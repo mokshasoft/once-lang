@@ -39,6 +39,7 @@ library
   import: shared
   exposed-modules:
       Lib
+      Once.Backend.C
       Once.Elaborate
       Once.Eval
       Once.IR
@@ -84,6 +85,7 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      BackendSpec
       ElaborateSpec
       IRSpec
       OptimizeSpec
@@ -100,7 +102,9 @@ test-suite once-test
       -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , directory
     , once
+    , process
     , tasty
     , tasty-hunit
     , tasty-quickcheck
