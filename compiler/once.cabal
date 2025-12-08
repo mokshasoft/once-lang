@@ -41,7 +41,9 @@ library
       Lib
       Once.Eval
       Once.IR
+      Once.Parser
       Once.Quantity
+      Once.Syntax
       Once.Type
       Once.Value
   other-modules:
@@ -52,6 +54,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , megaparsec
     , text
 
 executable compiler-exe
@@ -78,6 +81,7 @@ test-suite once-test
   other-modules:
       Paths_once
       IRSpec
+      ParserSpec
       QuantitySpec
   autogen-modules:
       Paths_once
@@ -91,4 +95,6 @@ test-suite once-test
       base >=4.7 && <5
     , once
     , tasty
+    , tasty-hunit
     , tasty-quickcheck
+    , text
