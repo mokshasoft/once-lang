@@ -467,16 +467,63 @@ $ ./test
 -- Uses linux interpretation
 
 main : Unit -> Unit
-main = compose (compose (compose (compose
-  (putchar 72)   -- H
-  (putchar 101)) -- e
-  (putchar 108)) -- l
-  (putchar 108)) -- l
-  (putchar 111)  -- o
+main = ... -- prints "Hello for Once"
 ```
 
 ```bash
 $ once build --exe --interp=linux hello.once -o hello
 $ ./hello
-Hello
+Hello for Once
+```
+
+## Phase 8: Nix Flake
+
+**Goal**: `nix build` produces working Once compiler.
+
+### Commits
+
+```
+1. Add flake.nix with GHC and dependencies
+2. Add devShell for development
+3. Test: nix build && nix run . -- build --help
+```
+
+## Phase 9: README with Build Instructions
+
+**Goal**: New users can build and run hello world.
+
+### Commits
+
+```
+1. Add Prerequisites section (nix or stack)
+2. Add Build section
+3. Add Hello World walkthrough
+4. Add link to design docs
+```
+
+### README Structure
+
+```markdown
+# Once
+
+Write once, compile anywhere.
+
+## Quick Start
+
+### With Nix (recommended)
+nix build
+./result/bin/once build --exe examples/hello.once
+
+### With Stack
+cd compiler && stack build
+stack exec -- once build --exe examples/hello.once
+
+## Hello World
+
+[walkthrough]
+
+## Documentation
+
+- [Design](docs/design/)
+- [Compiler](docs/compiler/)
 ```
