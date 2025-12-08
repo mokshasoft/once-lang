@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module IRSpec (irTests) where
 
 import Test.Tasty
