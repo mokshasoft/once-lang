@@ -440,3 +440,43 @@ $ ./test
 ```
 
 **That's the goal.** Everything else serves this.
+
+## Phase 7: Hello World Executable
+
+**Goal**: `once build --exe hello.once` produces runnable binary that prints "Hello".
+
+### Prerequisites
+
+- Interpretation loading (read `syscalls.once` + `syscalls.c`)
+- Linking interpretation C code with generated code
+
+### Commits
+
+```
+1. Add --interp flag to specify interpretation
+2. Parse interpretation's primitives.once
+3. Include interpretation's .c in generated output
+4. Create hello.once using putchar primitive
+5. Test: hello.once compiles and prints "Hello"
+```
+
+### Example
+
+```
+-- hello.once
+-- Uses linux interpretation
+
+main : Unit -> Unit
+main = compose (compose (compose (compose
+  (putchar 72)   -- H
+  (putchar 101)) -- e
+  (putchar 108)) -- l
+  (putchar 108)) -- l
+  (putchar 111)  -- o
+```
+
+```bash
+$ once build --exe --interp=linux hello.once -o hello
+$ ./hello
+Hello
+```
