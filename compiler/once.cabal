@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Once.IR
       Once.Quantity
       Once.Type
   other-modules:
