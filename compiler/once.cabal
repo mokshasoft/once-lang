@@ -62,6 +62,7 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      IRSpec
       QuantitySpec
   autogen-modules:
       Paths_once
