@@ -39,6 +39,7 @@ library
   import: shared
   exposed-modules:
       Lib
+      Once.Elaborate
       Once.Eval
       Once.IR
       Once.Parser
@@ -80,6 +81,7 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      ElaborateSpec
       IRSpec
       ParserSpec
       QuantitySpec
