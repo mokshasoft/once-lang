@@ -57,6 +57,7 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      QuantitySpec
   autogen-modules:
       Paths_once
   hs-source-dirs:
@@ -65,4 +66,6 @@ test-suite once-test
   build-depends:
       base >=4.7 && <5
     , once
+    , tasty
+    , tasty-quickcheck
   default-language: Haskell2010

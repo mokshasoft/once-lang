@@ -1,2 +1,10 @@
+module Main (main) where
+
+import Test.Tasty
+
+import QuantitySpec (quantityTests)
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = defaultMain $ testGroup "Once"
+  [ quantityTests
+  ]
