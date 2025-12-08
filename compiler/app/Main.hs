@@ -21,22 +21,24 @@ parseArgs _ = Nothing
 
 -- | Parse build command arguments
 parseBuild :: [String] -> Maybe Command
-parseBuild args = go args Nothing Library Nothing
+parseBuild args = go args Nothing Library Nothing Nothing
   where
-    -- go remaining output mode input
-    go :: [String] -> Maybe String -> OutputMode -> Maybe String -> Maybe Command
-    go [] _ _ Nothing = Nothing  -- no input file
-    go [] output mode (Just input) = Just $ Build BuildOptions
+    -- go remaining output mode interp input
+    go :: [String] -> Maybe String -> OutputMode -> Maybe String -> Maybe String -> Maybe Command
+    go [] _ _ _ Nothing = Nothing  -- no input file
+    go [] output mode interp (Just input) = Just $ Build BuildOptions
       { buildInput = input
       , buildOutput = output
       , buildMode = mode
+      , buildInterp = interp
       }
-    go ("-o" : out : rest) _ mode input = go rest (Just out) mode input
-    go ("--lib" : rest) output _ input = go rest output Library input
-    go ("--exe" : rest) output _ input = go rest output Executable input
-    go (x : rest) output mode _input = case x of
+    go ("-o" : out : rest) _ mode interp input = go rest (Just out) mode interp input
+    go ("--lib" : rest) output _ interp input = go rest output Library interp input
+    go ("--exe" : rest) output _ interp input = go rest output Executable interp input
+    go ("--interp" : i : rest) output mode _ input = go rest output mode (Just i) input
+    go (x : rest) output mode interp _input = case x of
       ('-':_) -> Nothing  -- unknown flag
-      _ -> go rest output mode (Just x)  -- treat as input file
+      _ -> go rest output mode interp (Just x)  -- treat as input file
 
 -- | Parse check command arguments
 parseCheck :: [String] -> Maybe Command
@@ -52,8 +54,9 @@ usage = do
   TIO.putStrLn "Usage: once <command> [options]"
   TIO.putStrLn ""
   TIO.putStrLn "Commands:"
-  TIO.putStrLn "  build [--lib|--exe] <file.once> [-o <output>]"
-  TIO.putStrLn "        --lib    Generate C library (header + source) [default]"
-  TIO.putStrLn "        --exe    Generate standalone executable"
-  TIO.putStrLn "  check <file.once>                Type check only"
+  TIO.putStrLn "  build [--lib|--exe] [--interp <path>] <file.once> [-o <output>]"
+  TIO.putStrLn "        --lib          Generate C library (header + source) [default]"
+  TIO.putStrLn "        --exe          Generate standalone executable"
+  TIO.putStrLn "        --interp PATH  Use interpretation from PATH"
+  TIO.putStrLn "  check <file.once>    Type check only"
   exitFailure

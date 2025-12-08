@@ -527,3 +527,7 @@ stack exec -- once build --exe examples/hello.once
 - [Design](docs/design/)
 - [Compiler](docs/compiler/)
 ```
+
+## Future Work
+
+- **String type**: Currently `hello` primitive is hardcoded. Add proper String type so hello world can use `puts` with a string literal.

@@ -23,3 +23,10 @@ int once_getchar(void* x) {
     (void)x;
     return getchar();
 }
+
+/* TODO: Replace with String type */
+void* hello(void* x) {
+    (void)x;
+    puts("Hello for Once");
+    return ((void*)0);
+}

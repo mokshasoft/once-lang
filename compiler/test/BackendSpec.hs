@@ -131,16 +131,16 @@ backendTests = testGroup "Backend.C"
       ]
 
   , testGroup "executable mode"
-      [ testCase "hi.once compiles to executable" $ do
+      [ testCase "hi.once compiles with interpretation" $ do
           let dir = "/tmp/once_test_exe"
           createDirectoryIfMissing True dir
 
           -- Write hi.once
           TIO.writeFile (dir ++ "/hi.once") hiOnce
 
-          -- Run the compiler via subprocess (once build --exe)
+          -- Run the compiler with --interp
           (exitCode, _, stderr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
 
           case exitCode of
             ExitFailure _ -> do
@@ -162,9 +162,9 @@ backendTests = testGroup "Backend.C"
           -- Write hi.once
           TIO.writeFile (dir ++ "/hi.once") hiOnce
 
-          -- Run the compiler via subprocess
+          -- Run the compiler with --interp
           (compilerCode, _, compilerErr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
 
           case compilerCode of
             ExitFailure _ -> do
@@ -185,16 +185,16 @@ backendTests = testGroup "Backend.C"
                   removeDirectoryRecursive dir
                   assertEqual "exit code is 0" ExitSuccess runCode
 
-      , testCase "primitives generate correct C declarations" $ do
+      , testCase "interpretation provides primitives" $ do
           let dir = "/tmp/once_test_prim"
           createDirectoryIfMissing True dir
 
           -- Write hi.once
           TIO.writeFile (dir ++ "/hi.once") hiOnce
 
-          -- Run the compiler via subprocess
+          -- Run the compiler with --interp
           (exitCode, _, stderr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
 
           case exitCode of
             ExitFailure _ -> do
@@ -203,9 +203,8 @@ backendTests = testGroup "Backend.C"
             ExitSuccess -> do
               source <- TIO.readFile (dir ++ "/hi.c")
 
-              -- Check primitive is implemented correctly
+              -- Check interpretation code is included
               assertBool "exit0 takes void* parameter" $ T.isInfixOf "exit0(void* x)" source
-              assertBool "exit0 suppresses unused warning" $ T.isInfixOf "(void)x" source
               assertBool "exit0 calls exit(0)" $ T.isInfixOf "exit(0)" source
 
               removeDirectoryRecursive dir

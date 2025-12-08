@@ -1,0 +1,5 @@
+-- hello.once: Hello World for Once
+primitive hello : Unit -> Unit
+
+main : Unit -> Unit
+main = hello
