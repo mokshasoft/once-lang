@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Once.Quantity
   other-modules:
       Paths_once
   autogen-modules:
