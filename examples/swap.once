@@ -1,0 +1,13 @@
+-- swap.once
+-- Once "hello world" - a pure library with C interface
+--
+-- Demonstrates:
+--   - Products (A * B)
+--   - Projections (fst, snd)
+--   - Pairing (pair)
+--   - Polymorphism (A, B are type variables)
+--
+-- No primitives - pure natural transformations only.
+
+swap : A * B -> B * A
+swap = pair snd fst
