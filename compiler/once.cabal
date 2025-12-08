@@ -46,6 +46,7 @@ library
       Once.Quantity
       Once.Syntax
       Once.Type
+      Once.TypeCheck
       Once.Value
   other-modules:
       Paths_once
@@ -55,6 +56,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
     , megaparsec
     , text
 
@@ -85,6 +87,7 @@ test-suite once-test
       IRSpec
       ParserSpec
       QuantitySpec
+      TypeCheckSpec
   autogen-modules:
       Paths_once
   hs-source-dirs:

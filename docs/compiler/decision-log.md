@@ -161,3 +161,66 @@ Use fourmolu's default settings (no custom `fourmolu.yaml`).
 ### Consequences
 - No `fourmolu.yaml` file in the repo
 - Run `fourmolu --mode inplace` with no extra flags
+
+---
+
+## D007: Structural Type Matching for Signatures
+
+**Date**: 2025-12-08
+**Status**: Accepted
+
+### Context
+When type-checking a function definition against its signature, we need to verify that the inferred type matches the declared type. Two approaches were considered:
+
+1. **Rigid/skolem variables** (ML-family approach): Signature type variables are treated as "rigid" - they cannot be unified with arbitrary types, only with other type variables. This ensures parametricity.
+
+2. **Structural matching**: The signature and inferred type must have the same structure, with consistent variable mappings.
+
+### Decision
+Use **strict structural matching** for signature checking. Signatures must exactly match the inferred type (modulo variable renaming).
+
+### Rationale
+
+**Why not rigid/skolem variables (ML approach)?**
+
+In ML-family languages, signatures are sometimes *necessary* for type inference:
+- Polymorphic recursion requires annotation
+- Higher-rank types need explicit `forall` placement
+- Type class ambiguity needs resolution
+- Monomorphism restriction affects unannotated bindings
+
+In Once, **none of these apply**:
+- No recursion (programs are finite compositions of generators)
+- No higher-rank types (everything is first-order categorical morphisms)
+- No type classes
+- No monomorphism restriction
+
+The generators have fixed, known types. The type of any expression is **fully determined** by how generators compose - there's no ambiguity, no choice for the compiler to make.
+
+**Why not allow signature specialization?**
+
+We considered allowing signatures to be more specific than the inferred type. For example:
+```
+foo : Unit -> Unit
+foo = id          -- id infers to A -> A
+```
+
+This was rejected because it would make signatures **semantically meaningful** - the signature would restrict the type rather than just document it. This has problematic implications:
+- Two different signatures for the same body would produce different functions
+- Signatures become "load-bearing" rather than purely declarative
+- The type of `foo` when used elsewhere would be `Unit -> Unit`, not `A -> A`
+
+**The Once approach: signatures as assertions**
+
+Signatures in Once serve a different purpose than in ML:
+- **Documentation** for human readers
+- **Assertions** that the programmer understands the composition correctly
+
+The expression alone determines the type. The signature is the programmer saying "I believe this has type X" and the compiler verifying that belief. This keeps the language simple and predictable.
+
+### Consequences
+- Simpler type checker implementation (no rigid variable tracking, no subsumption)
+- Clear error messages: "signature says X, inferred Y"
+- Signatures are optional - the compiler can always infer the type
+- Signatures cannot change the meaning of a program, only verify it
+- `foo : Unit -> Unit` with `foo = id` is rejected (signature doesn't match `A -> A`)
