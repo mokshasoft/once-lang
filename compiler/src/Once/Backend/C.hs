@@ -77,6 +77,7 @@ cTypeName ty = case ty of
   TVar _ -> "void*"
   TUnit -> "void*"  -- Unit represented as NULL
   TVoid -> "void"
+  TInt -> "int"
   TProduct _ _ -> "OncePair"
   TSum _ _ -> "OnceSum"
   TArrow _ _ -> "void*"  -- Function pointers (not used for swap)
@@ -123,6 +124,6 @@ generateExpr ir var = case ir of
 
   Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
 
-  Var n -> n
+  Var n -> n <> "(" <> var <> ")"  -- treat as function call
 
   Prim n _ _ -> n <> "(" <> var <> ")"

@@ -71,6 +71,7 @@ applySubst subst ty = case ty of
     Nothing -> ty
   TUnit -> TUnit
   TVoid -> TVoid
+  TInt -> TInt
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
   TSum a b -> TSum (applySubst subst a) (applySubst subst b)
   TArrow a b -> TArrow (applySubst subst a) (applySubst subst b)
@@ -85,6 +86,7 @@ occurs name ty = case ty of
   TVar n -> n == name
   TUnit -> False
   TVoid -> False
+  TInt -> False
   TProduct a b -> occurs name a || occurs name b
   TSum a b -> occurs name a || occurs name b
   TArrow a b -> occurs name a || occurs name b
@@ -103,6 +105,7 @@ unify t1 t2 = case (t1, t2) of
       else Right (Map.singleton a t)
   (TUnit, TUnit) -> Right emptySubst
   (TVoid, TVoid) -> Right emptySubst
+  (TInt, TInt) -> Right emptySubst
   (TProduct a1 b1, TProduct a2 b2) -> do
     s1 <- unify a1 a2
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
@@ -131,6 +134,7 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
     go _ _ (TVar _) = Nothing  -- inferred var must come from sig var
     go m TUnit TUnit = Just m
     go m TVoid TVoid = Just m
+    go m TInt TInt = Just m
     go m (TProduct a1 b1) (TProduct a2 b2) = do
       m' <- go m a1 a2
       go m' b1 b2
@@ -173,6 +177,8 @@ inferType ctx expr fresh = case expr of
     Right (TProduct (applySubst s tyA) tyB, s, fresh2)
 
   EUnit -> Right (TUnit, emptySubst, fresh)
+
+  EInt _ -> Right (TInt, emptySubst, fresh)
 
   ECase scrut x e1 y e2 -> do
     (scrutTy, s1, fresh1) <- inferType ctx scrut fresh
@@ -265,6 +271,7 @@ convertType sty = case sty of
   STVar name -> TVar name
   STUnit -> TUnit
   STVoid -> TVoid
+  STInt -> TInt
   STProduct a b -> TProduct (convertType a) (convertType b)
   STSum a b -> TSum (convertType a) (convertType b)
   STArrow a b -> TArrow (convertType a) (convertType b)

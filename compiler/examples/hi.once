@@ -1,0 +1,8 @@
+-- hi.once: The simplest Once executable
+-- Exits with code 0 (success)
+
+-- exit0 is a primitive that exits with status 0
+primitive exit0 : Unit -> Unit
+
+main : Unit -> Unit
+main = exit0

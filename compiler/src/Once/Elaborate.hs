@@ -5,6 +5,8 @@ module Once.Elaborate
   , ElabError (..)
   ) where
 
+import qualified Data.Text as T
+
 import Once.IR (IR (..))
 import Once.Syntax (Expr (..), SType (..), Name)
 import Once.Type (Type (..))
@@ -42,8 +44,9 @@ elaborateExpr expr = case expr of
   EVar "pair" -> Right $ Var "pair"        -- needs 2 args
   EVar "curry" -> Right $ Var "curry"      -- needs 1 arg
 
-  -- Regular variables
-  EVar name -> Left $ UnboundVariable name
+  -- Regular variables (including primitives and user-defined names)
+  -- The type checker ensures these are valid; we just pass them through
+  EVar name -> Right $ Var name
 
   -- Application: handle generator applications specially
   EApp f arg -> elaborateApp f arg
@@ -57,10 +60,17 @@ elaborateExpr expr = case expr of
   -- Unit literal
   EUnit -> Right $ Terminal placeholder  -- () elaborates to terminal
 
+  -- Integer literal - represented as a primitive constant
+  EInt n -> Right $ Prim ("__int_" <> tshow n) TUnit TInt
+
   -- Lambda, case, annotations - not yet supported
   ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
   ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
   EAnnot e _ -> elaborateExpr e  -- ignore annotation for now
+
+-- | Show for Text
+tshow :: Show a => a -> Name
+tshow = T.pack . show
 
 -- | Elaborate function application
 elaborateApp :: Expr -> Expr -> Either ElabError IR
@@ -109,6 +119,7 @@ elaborateType sty = case sty of
   STVar name -> TVar name
   STUnit -> TUnit
   STVoid -> TVoid
+  STInt -> TInt
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)
   STSum a b -> TSum (elaborateType a) (elaborateType b)
   STArrow a b -> TArrow (elaborateType a) (elaborateType b)

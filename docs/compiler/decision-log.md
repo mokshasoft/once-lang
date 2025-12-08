@@ -224,3 +224,55 @@ The expression alone determines the type. The signature is the programmer saying
 - Signatures are optional - the compiler can always infer the type
 - Signatures cannot change the meaning of a program, only verify it
 - `foo : Unit -> Unit` with `foo = id` is rejected (signature doesn't match `A -> A`)
+
+---
+
+## D008: Library vs Executable Output Modes
+
+**Date**: 2025-12-08
+**Status**: Accepted
+
+### Context
+Once programs can serve two purposes:
+1. **Libraries**: Reusable components called from other languages via FFI
+2. **Executables**: Standalone programs (for bare-metal, unikernels, OS binaries)
+
+The initial compiler only generated library output (`.h` + `.c` files). We needed to support standalone executables.
+
+### Decision
+Add `--lib` and `--exe` flags to the CLI:
+- `--lib` (default): Generates a C header and source file for FFI integration
+- `--exe`: Generates a standalone C file with `main()` entry point
+
+### Rationale
+- **Separation of concerns**: Libraries are for composition, executables are for deployment
+- **Different output structure**:
+  - Libraries need headers for consumers
+  - Executables need `main()` and primitive implementations
+- **Primitives differ**:
+  - In library mode, primitives are declared `extern` (provided by the host)
+  - In executable mode, known primitives (like `exit0`) are implemented inline
+- **Minimal viable example**: The "hi world" program (`main = exit0`) demonstrates a complete executable
+
+### Implementation Details
+- Executable mode generates a single `.c` file (no header needed)
+- The `main()` function calls `once_main(NULL)` and returns 0
+- Unknown primitives are declared `extern` (must be linked separately)
+
+### Built-in Primitives
+
+Currently supported primitives in executable mode:
+
+| Primitive | Type | C Implementation |
+|-----------|------|------------------|
+| `exit0` | `Unit -> Unit` | `exit(0)` |
+
+These are hardcoded in `CLI.hs`. Future work could:
+- Add more primitives (e.g., `exit : Int -> Unit`, `putchar : Int -> Unit`)
+- Allow primitive definitions in a separate file
+- Generate extern declarations for unknown primitives
+
+### Consequences
+- Users can now compile complete programs, not just libraries
+- Path to bare-metal/unikernel compilation is opened
+- Adding new primitives requires modifying `CLI.hs` (temporary limitation)

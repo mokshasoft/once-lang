@@ -129,6 +129,87 @@ backendTests = testGroup "Backend.C"
                 ExitFailure _ -> assertFailure $ "run failed: " ++ runErr
                 ExitSuccess -> assertEqual "swap output" "swap(1,2) = (2,1)\n" stdout
       ]
+
+  , testGroup "executable mode"
+      [ testCase "hi.once compiles to executable" $ do
+          let dir = "/tmp/once_test_exe"
+          createDirectoryIfMissing True dir
+
+          -- Write hi.once
+          TIO.writeFile (dir ++ "/hi.once") hiOnce
+
+          -- Run the compiler via subprocess (once build --exe)
+          (exitCode, _, stderr) <- readProcessWithExitCode "stack"
+            ["exec", "--", "once", "build", "--exe", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+
+          case exitCode of
+            ExitFailure _ -> do
+              removeDirectoryRecursive dir
+              assertFailure $ "once build failed: " ++ stderr
+            ExitSuccess -> do
+              -- Check file was generated
+              source <- TIO.readFile (dir ++ "/hi.c")
+              assertBool "has stdlib include" $ T.isInfixOf "#include <stdlib.h>" source
+              assertBool "has exit0 implementation" $ T.isInfixOf "exit(0)" source
+              assertBool "has main function" $ T.isInfixOf "int main(void)" source
+              assertBool "calls once_main" $ T.isInfixOf "once_main" source
+              removeDirectoryRecursive dir
+
+      , testCase "hi.once executable runs and exits 0" $ do
+          let dir = "/tmp/once_test_exe_run"
+          createDirectoryIfMissing True dir
+
+          -- Write hi.once
+          TIO.writeFile (dir ++ "/hi.once") hiOnce
+
+          -- Run the compiler via subprocess
+          (compilerCode, _, compilerErr) <- readProcessWithExitCode "stack"
+            ["exec", "--", "once", "build", "--exe", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+
+          case compilerCode of
+            ExitFailure _ -> do
+              removeDirectoryRecursive dir
+              assertFailure $ "once build failed: " ++ compilerErr
+            ExitSuccess -> do
+              -- Compile with gcc
+              (compileCode, _, compileErr) <- readProcessWithExitCode "gcc"
+                ["-o", dir ++ "/hi", dir ++ "/hi.c"] ""
+
+              case compileCode of
+                ExitFailure _ -> do
+                  removeDirectoryRecursive dir
+                  assertFailure $ "gcc compile failed: " ++ compileErr
+                ExitSuccess -> do
+                  -- Run the executable
+                  (runCode, _, _) <- readProcessWithExitCode (dir ++ "/hi") [] ""
+                  removeDirectoryRecursive dir
+                  assertEqual "exit code is 0" ExitSuccess runCode
+
+      , testCase "primitives generate correct C declarations" $ do
+          let dir = "/tmp/once_test_prim"
+          createDirectoryIfMissing True dir
+
+          -- Write hi.once
+          TIO.writeFile (dir ++ "/hi.once") hiOnce
+
+          -- Run the compiler via subprocess
+          (exitCode, _, stderr) <- readProcessWithExitCode "stack"
+            ["exec", "--", "once", "build", "--exe", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+
+          case exitCode of
+            ExitFailure _ -> do
+              removeDirectoryRecursive dir
+              assertFailure $ "once build failed: " ++ stderr
+            ExitSuccess -> do
+              source <- TIO.readFile (dir ++ "/hi.c")
+
+              -- Check primitive is implemented correctly
+              assertBool "exit0 takes void* parameter" $ T.isInfixOf "exit0(void* x)" source
+              assertBool "exit0 suppresses unused warning" $ T.isInfixOf "(void)x" source
+              assertBool "exit0 calls exit(0)" $ T.isInfixOf "exit(0)" source
+
+              removeDirectoryRecursive dir
+      ]
   ]
   where
     testMain :: T.Text
@@ -144,4 +225,13 @@ backendTests = testGroup "Backend.C"
       , "           (long)output.fst, (long)output.snd);"
       , "    return 0;"
       , "}"
+      ]
+
+    hiOnce :: T.Text
+    hiOnce = T.unlines
+      [ "-- hi.once: The simplest Once executable"
+      , "primitive exit0 : Unit -> Unit"
+      , ""
+      , "main : Unit -> Unit"
+      , "main = exit0"
       ]

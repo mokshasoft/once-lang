@@ -39,6 +39,7 @@ data Expr
   | EPair Expr Expr                 -- ^ Pair literal: (e1, e2)
   | ECase Expr Name Expr Name Expr  -- ^ Case: case e of { Left x -> e1; Right y -> e2 }
   | EUnit                           -- ^ Unit value: ()
+  | EInt Integer                    -- ^ Integer literal: 0, 1, 42, ...
   | EAnnot Expr SType               -- ^ Type annotation: (e : T)
   deriving (Eq, Show)
 
@@ -47,6 +48,7 @@ data SType
   = STVar Name                   -- ^ Type variable: A
   | STUnit                       -- ^ Unit type: Unit
   | STVoid                       -- ^ Void type: Void
+  | STInt                        -- ^ Integer type: Int
   | STProduct SType SType        -- ^ Product: A * B
   | STSum SType SType            -- ^ Sum: A + B
   | STArrow SType SType          -- ^ Function: A -> B

@@ -53,7 +53,7 @@ reservedWords :: [Text]
 reservedWords =
   -- Keywords
   [ "case", "of", "Left", "Right"
-  , "Unit", "Void"
+  , "Unit", "Void", "Int"
   , "primitive"
   -- Generators (the 12 categorical primitives)
   , "id", "compose"
@@ -62,6 +62,10 @@ reservedWords =
   , "terminal", "initial"
   , "curry", "apply"
   ]
+
+-- | Parse an integer literal
+integer :: Parser Integer
+integer = lexeme L.decimal
 
 -- | Parse a type variable (uppercase identifier)
 typeVar :: Parser Name
@@ -124,6 +128,7 @@ parseType = makeTypeExpr
     atomType = choice
       [ STUnit <$ reserved "Unit"
       , STVoid <$ reserved "Void"
+      , STInt <$ reserved "Int"
       , STVar <$> typeVar
       , parens parseType
       ]
@@ -156,6 +161,7 @@ parseExpr = annotExpr
 
     atomExpr = choice
       [ EUnit <$ symbol "()"
+      , EInt <$> integer
       , caseExpr
       , lamExpr
       , pairOrParens
