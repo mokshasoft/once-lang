@@ -40,6 +40,7 @@ library
   exposed-modules:
       Lib
       Once.Backend.C
+      Once.CLI
       Once.Elaborate
       Once.Eval
       Once.IR
@@ -59,10 +60,11 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , filepath
     , megaparsec
     , text
 
-executable compiler-exe
+executable once
   import: shared
   main-is: Main.hs
   other-modules:
@@ -78,6 +80,7 @@ executable compiler-exe
   build-depends:
       base >=4.7 && <5
     , once
+    , text
 
 test-suite once-test
   import: shared

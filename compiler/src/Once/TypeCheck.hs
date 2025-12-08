@@ -9,6 +9,8 @@ module Once.TypeCheck
   , extendContext
     -- * Errors
   , TypeError (..)
+    -- * Utilities
+  , convertType
   ) where
 
 import Data.Map.Strict (Map)
