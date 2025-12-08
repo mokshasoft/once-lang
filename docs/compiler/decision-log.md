@@ -276,3 +276,54 @@ These are hardcoded in `CLI.hs`. Future work could:
 - Users can now compile complete programs, not just libraries
 - Path to bare-metal/unikernel compilation is opened
 - Adding new primitives requires modifying `CLI.hs` (temporary limitation)
+
+---
+
+## D009: Interpretations Live Outside the Compiler
+
+**Date**: 2025-12-08
+**Status**: Accepted
+
+### Context
+Primitives are opaque operations at the boundary between Once and the external world. We needed to decide where primitive implementations live.
+
+### Options Considered
+
+1. **Hardcoded in compiler** - Primitive C code embedded in Haskell
+2. **Once file + implementation file** - `.once` declares types, `.c` provides C implementation
+3. **Pure Once files** - Interpretations as Once modules only
+4. **FFI syntax in Once** - `foreign import c "exit" ...`
+
+### Decision
+Option 2: **Interpretations are `.once` + `.c` file pairs, living outside the compiler**.
+
+```
+interpretations/
+  linux/
+    syscalls.once     -- type declarations
+    syscalls.c        -- C implementation
+  browser/
+    syscalls.once
+    syscalls.js       -- JS implementation
+  bare-metal/
+```
+
+### Rationale
+
+- **Generators only in compiler**: The 12 categorical generators are the language. Primitives are external.
+- **No FFI foot-gun**: Once is "write once, compile anywhere." No need to call other languages directly.
+- **Platform-native implementations**: Each interpretation uses its native language (C for linux, JS for browser).
+- **Extensible**: Users can create their own interpretations without modifying the compiler.
+- **Clean separation**: Pure Once (generators + composition) vs impure boundary (interpretations).
+
+### File Naming
+
+- `syscalls.once` - primitive type declarations
+- `syscalls.c` / `syscalls.js` - native implementation for that platform
+- Future: `drivers/gpio.once` etc. for device-specific primitives
+
+### Consequences
+- `interpretations/` directory at repo root, not in `compiler/`
+- Compiler only knows about generators
+- Linking interpretations is a separate concern (future work)
+- Each platform interpretation is self-contained
