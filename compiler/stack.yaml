@@ -64,3 +64,6 @@ packages:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+
+# Mute warning about nix being on PATH but not used
+notify-if-nix-on-path: false
