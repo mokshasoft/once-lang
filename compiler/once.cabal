@@ -29,6 +29,7 @@ library
       Once.IR
       Once.Quantity
       Once.Type
+      Once.Value
   other-modules:
       Paths_once
   autogen-modules:
