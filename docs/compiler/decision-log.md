@@ -612,3 +612,152 @@ Sized buffers (`Buffer { size <= 1024 }`) would be useful for safety. We needed 
 - Path to sized buffers is clear when needed
 - Comprehension categories guide future extension
 - See `type-system.md` for detailed discussion
+
+---
+
+## D018: Values with Implicit Lifting to Morphisms
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Once has a categorical core where everything is a morphism (natural transformation). However, writing purely point-free code can be verbose and hard to read. We needed to decide how the surface syntax handles "values" like string literals.
+
+### Options Considered
+
+1. **Pure point-free**: String literals are morphisms `Unit -> String Utf8`. Users must use explicit composition: `compose puts "hello"`.
+
+2. **Values with implicit lifting**: String literals are values `String Utf8`. The compiler lifts them to constant morphisms when needed.
+
+### Decision
+**Values with implicit lifting**. The surface syntax allows ML-style values and application. The compiler inserts the categorical machinery.
+
+```
+-- Surface syntax (what users write)
+main : Unit -> Unit
+main = puts "Hello"
+
+-- Categorical core (what compiler sees)
+-- "Hello" is lifted to a constant morphism Unit -> String Utf8
+-- puts "Hello" becomes compose puts "Hello" in IR
+```
+
+### Rationale
+- **Readability**: `puts "hello"` is immediately clear vs `compose puts "hello"`
+- **Familiarity**: Most programmers think in terms of values and function application
+- **Categorical core preserved**: The IR remains purely morphisms; elaborator handles translation
+- **Point-free still possible**: Users can write `f . g . h` when they want explicit composition
+- **Precedent**: Even Haskell, which supports point-free, lets you write `f x` not `f . const x`
+
+The key insight: The categorical foundation provides formal guarantees, but the surface language should be practical and readable.
+
+### Lifting Rules
+
+1. **String literals**: `"hello" : String Utf8` (value in surface syntax)
+2. **Application**: `puts "hello" : Unit` (standard function application)
+3. **Binding check**: When signature is `A -> B` but expression has type `B`, compiler accepts it
+4. **IR generation**: Values become constant morphisms (compose with terminal)
+
+### Consequences
+- Surface syntax feels like ML (values, application)
+- Type checker allows binding value to morphism type (with implicit lift)
+- Elaborator generates categorical IR from value-based surface syntax
+- Pure point-free style remains available via `.` operator and explicit `compose`
+
+---
+
+## D019: Composition Operator (.)
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+With values and application as the default, we needed a way to write explicit composition when desired.
+
+### Decision
+Add `.` as an infix operator for composition, desugaring to `compose`.
+
+```
+f . g        -- desugars to: compose f g
+f . g . h    -- desugars to: compose f (compose g h)  (right-associative)
+f x . g y    -- desugars to: compose (f x) (g y)  (application binds tighter)
+```
+
+### Rationale
+- **Familiar syntax**: Matches Haskell's composition operator
+- **Explicit when needed**: For point-free style or when composition is clearer
+- **Clean precedence**: Application binds tighter than composition (like Haskell)
+- **Right-associative**: `f . g . h` means `f . (g . h)` (like Haskell)
+
+### Examples
+
+```
+-- Point-free style (pure categorical)
+swap : A * B -> B * A
+swap = pair snd fst
+
+-- Alternative with explicit composition
+doubleFirst : A * B -> A * A
+doubleFirst = pair fst fst
+
+-- Mixed style
+process : String Utf8 -> Unit
+process = puts . toUpper    -- composition of two morphisms
+```
+
+### Consequences
+- Parser recognizes `.` as composition operator
+- Desugars to `compose` before elaboration
+- Both styles (value-based and point-free) work naturally
+- Users can choose based on readability for each situation
+
+---
+
+## D020: Point-Free Code Remains Fully Supported
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+With the introduction of values and implicit lifting (D018), we needed to clarify that pure categorical (point-free) code is still fully supported.
+
+### Decision
+Pure point-free code continues to work unchanged. The implicit lifting only applies when types require it.
+
+### Examples of Pure Point-Free Code
+
+```
+-- These work exactly as before, no lifting involved
+swap : A * B -> B * A
+swap = pair snd fst
+
+dup : A -> A * A
+dup = pair id id
+
+first : (A -> B) -> A * C -> B * C
+first f = pair (f . fst) snd
+
+-- Composition chain
+pipeline : A -> D
+pipeline = h . g . f
+```
+
+### Rationale
+- **Generators are morphisms**: `fst`, `snd`, `pair` etc. have morphism types
+- **Composition of morphisms**: `pair snd fst` composes morphisms, no values involved
+- **No lifting needed**: When types already match as morphisms, no transformation occurs
+- **Best of both worlds**: Use point-free for transformations, values for I/O and literals
+
+### When Lifting Occurs
+
+Lifting only happens when:
+1. A value (like `"hello"`) appears where a morphism is expected
+2. A binding has morphism type (`A -> B`) but expression has value type (`B`)
+
+For pure generator compositions, no lifting is involved.
+
+### Consequences
+- Existing point-free code works unchanged
+- Performance: no overhead for pure categorical code
+- Clear mental model: "values lift, morphisms compose"
+- Users can mix styles freely within a program

@@ -208,6 +208,37 @@ backendTests = testGroup "Backend.C"
               assertBool "exit0 calls exit(0)" $ T.isInfixOf "exit(0)" source
 
               removeDirectoryRecursive dir
+
+      , testCase "hello.once with string literal runs correctly" $ do
+          let dir = "/tmp/once_test_hello"
+          createDirectoryIfMissing True dir
+
+          -- Write hello.once
+          TIO.writeFile (dir ++ "/hello.once") helloOnce
+
+          -- Run the compiler with --interp
+          (compilerCode, _, compilerErr) <- readProcessWithExitCode "stack"
+            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hello.once", "-o", dir ++ "/hello"] ""
+
+          case compilerCode of
+            ExitFailure _ -> do
+              removeDirectoryRecursive dir
+              assertFailure $ "once build failed: " ++ compilerErr
+            ExitSuccess -> do
+              -- Compile with gcc
+              (compileCode, _, compileErr) <- readProcessWithExitCode "gcc"
+                ["-o", dir ++ "/hello", dir ++ "/hello.c"] ""
+
+              case compileCode of
+                ExitFailure _ -> do
+                  removeDirectoryRecursive dir
+                  assertFailure $ "gcc compile failed: " ++ compileErr
+                ExitSuccess -> do
+                  -- Run the executable
+                  (runCode, stdout, _) <- readProcessWithExitCode (dir ++ "/hello") [] ""
+                  removeDirectoryRecursive dir
+                  assertEqual "exit code is 0" ExitSuccess runCode
+                  assertEqual "output is Hello for Once" "Hello for Once\n" stdout
       ]
   ]
   where
@@ -233,4 +264,13 @@ backendTests = testGroup "Backend.C"
       , ""
       , "main : Unit -> Unit"
       , "main = exit0"
+      ]
+
+    helloOnce :: T.Text
+    helloOnce = T.unlines
+      [ "-- hello.once: Hello World for Once"
+      , "primitive puts : String Utf8 -> Unit"
+      , ""
+      , "main : Unit -> Unit"
+      , "main = puts \"Hello for Once\""
       ]

@@ -27,11 +27,13 @@ generateC name ty ir = CModule
 
 -- | Generate C header file
 generateHeader :: Name -> Type -> Text
-generateHeader name ty = T.unlines
+generateHeader name ty = T.unlines $
   [ "#ifndef ONCE_" <> T.toUpper name <> "_H"
   , "#define ONCE_" <> T.toUpper name <> "_H"
   , ""
-  , "/* Type definitions */"
+  ] ++
+  (if needsStddef ty then ["#include <stddef.h>", ""] else []) ++
+  [ "/* Type definitions */"
   , typeDefinitions ty
   , ""
   , "/* Function declaration */"
@@ -39,6 +41,16 @@ generateHeader name ty = T.unlines
   , ""
   , "#endif"
   ]
+  where
+    -- Need stddef.h for size_t (used by Buffer/String)
+    needsStddef :: Type -> Bool
+    needsStddef t = case t of
+      TBuffer -> True
+      TString _ -> True
+      TProduct a b -> needsStddef a || needsStddef b
+      TSum a b -> needsStddef a || needsStddef b
+      TArrow a b -> needsStddef a || needsStddef b
+      _ -> False
 
 -- | Generate C source file
 generateSource :: Name -> Type -> IR -> Text
@@ -55,6 +67,8 @@ typeDefinitions :: Type -> Text
 typeDefinitions ty = T.unlines $ catMaybes
   [ if needsPair ty then Just "typedef struct { void* fst; void* snd; } OncePair;" else Nothing
   , if needsSum ty then Just "typedef struct { int tag; void* value; } OnceSum;" else Nothing
+  , if needsBuffer ty then Just "typedef struct { const char* data; size_t len; } OnceBuffer;" else Nothing
+  , if needsString ty then Just "typedef OnceBuffer OnceString;  /* Encoding erased at runtime */" else Nothing
   ]
   where
     needsPair :: Type -> Bool
@@ -71,6 +85,23 @@ typeDefinitions ty = T.unlines $ catMaybes
       TArrow a b -> needsSum a || needsSum b
       _ -> False
 
+    needsBuffer :: Type -> Bool
+    needsBuffer t = case t of
+      TBuffer -> True
+      TString _ -> True  -- String needs Buffer typedef first
+      TProduct a b -> needsBuffer a || needsBuffer b
+      TSum a b -> needsBuffer a || needsBuffer b
+      TArrow a b -> needsBuffer a || needsBuffer b
+      _ -> False
+
+    needsString :: Type -> Bool
+    needsString t = case t of
+      TString _ -> True
+      TProduct a b -> needsString a || needsString b
+      TSum a b -> needsString a || needsString b
+      TArrow a b -> needsString a || needsString b
+      _ -> False
+
 -- | Generate C type name
 cTypeName :: Type -> Text
 cTypeName ty = case ty of
@@ -78,6 +109,8 @@ cTypeName ty = case ty of
   TUnit -> "void*"  -- Unit represented as NULL
   TVoid -> "void"
   TInt -> "int"
+  TBuffer -> "OnceBuffer"
+  TString _ -> "OnceString"  -- Encoding erased at runtime
   TProduct _ _ -> "OncePair"
   TSum _ _ -> "OnceSum"
   TArrow _ _ -> "void*"  -- Function pointers (not used for swap)
@@ -124,6 +157,29 @@ generateExpr ir var = case ir of
 
   Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
 
-  Var n -> n <> "(" <> var <> ")"  -- treat as function call
+  Var n -> "once_" <> n <> "(" <> var <> ")"  -- treat as function call
 
-  Prim n _ _ -> n <> "(" <> var <> ")"
+  Prim n _ _ -> "once_" <> n <> "(" <> var <> ")"
+
+  StringLit s ->
+    -- String literals are constant morphisms: Unit -> String Utf8
+    -- They ignore their input and return the string
+    -- Since we're in expression context, generate inline struct
+    "(OnceString){ .data = " <> cStringLiteral s <> ", .len = " <> tshow (T.length s) <> " }"
+
+-- | Convert Text to C string literal (with escaping)
+cStringLiteral :: Text -> Text
+cStringLiteral s = "\"" <> T.concatMap escapeChar s <> "\""
+  where
+    escapeChar :: Char -> Text
+    escapeChar c = case c of
+      '\n' -> "\\n"
+      '\t' -> "\\t"
+      '\r' -> "\\r"
+      '\\' -> "\\\\"
+      '"'  -> "\\\""
+      _    -> T.singleton c
+
+-- | Show for Text
+tshow :: Show a => a -> Text
+tshow = T.pack . show

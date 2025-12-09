@@ -18,7 +18,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text
 
 import Once.Syntax (Module (..), Decl (..), Expr (..), SType (..), Name)
-import Once.Type (Type (..))
+import Once.Type (Type (..), Encoding (..))
 
 -- | Type errors
 data TypeError
@@ -72,6 +72,8 @@ applySubst subst ty = case ty of
   TUnit -> TUnit
   TVoid -> TVoid
   TInt -> TInt
+  TBuffer -> TBuffer
+  TString enc -> TString enc
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
   TSum a b -> TSum (applySubst subst a) (applySubst subst b)
   TArrow a b -> TArrow (applySubst subst a) (applySubst subst b)
@@ -87,6 +89,8 @@ occurs name ty = case ty of
   TUnit -> False
   TVoid -> False
   TInt -> False
+  TBuffer -> False
+  TString _ -> False
   TProduct a b -> occurs name a || occurs name b
   TSum a b -> occurs name a || occurs name b
   TArrow a b -> occurs name a || occurs name b
@@ -106,6 +110,8 @@ unify t1 t2 = case (t1, t2) of
   (TUnit, TUnit) -> Right emptySubst
   (TVoid, TVoid) -> Right emptySubst
   (TInt, TInt) -> Right emptySubst
+  (TBuffer, TBuffer) -> Right emptySubst
+  (TString e1, TString e2) | e1 == e2 -> Right emptySubst
   (TProduct a1 b1, TProduct a2 b2) -> do
     s1 <- unify a1 a2
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
@@ -135,6 +141,8 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
     go m TUnit TUnit = Just m
     go m TVoid TVoid = Just m
     go m TInt TInt = Just m
+    go m TBuffer TBuffer = Just m
+    go m (TString e1) (TString e2) | e1 == e2 = Just m
     go m (TProduct a1 b1) (TProduct a2 b2) = do
       m' <- go m a1 a2
       go m' b1 b2
@@ -155,6 +163,7 @@ inferType ctx expr fresh = case expr of
       Just (ty, fresh') -> Right (ty, emptySubst, fresh')
       Nothing -> Left (UnboundVariable name)
 
+  -- Standard function application: f : A -> B, arg : A  ===>  B
   EApp f arg -> do
     (funTy, s1, fresh1) <- inferType ctx f fresh
     (argTy, s2, fresh2) <- inferType ctx arg fresh1
@@ -179,6 +188,10 @@ inferType ctx expr fresh = case expr of
   EUnit -> Right (TUnit, emptySubst, fresh)
 
   EInt _ -> Right (TInt, emptySubst, fresh)
+
+  -- String literals are values of type String Utf8
+  -- The compiler lifts them to constant morphisms when needed (e.g., in bindings)
+  EStringLit _ -> Right (TString Utf8, emptySubst, fresh)
 
   ECase scrut x e1 y e2 -> do
     (scrutTy, s1, fresh1) <- inferType ctx scrut fresh
@@ -272,6 +285,8 @@ convertType sty = case sty of
   STUnit -> TUnit
   STVoid -> TVoid
   STInt -> TInt
+  STBuffer -> TBuffer
+  STString enc -> TString enc
   STProduct a b -> TProduct (convertType a) (convertType b)
   STSum a b -> TSum (convertType a) (convertType b)
   STArrow a b -> TArrow (convertType a) (convertType b)
@@ -281,13 +296,19 @@ convertType sty = case sty of
 -- In Once, signatures are assertions - the inferred type must structurally
 -- match the signature. Unlike ML, signatures are never *needed* for inference;
 -- the type is fully determined by how generators compose.
+--
+-- Special case: if expected is `A -> B` and inferred is `B`, we allow it.
+-- The compiler will lift the value to a constant morphism (ignore input, return value).
 typeCheck :: Context -> Expr -> Type -> Either TypeError Subst
 typeCheck ctx expr expectedTy = do
   (inferredTy, s1, _) <- inferType ctx expr 0
   let finalInferred = applySubst s1 inferredTy
   if matchesStructure expectedTy finalInferred
     then Right s1
-    else Left (SignatureMismatch expectedTy finalInferred)
+    else case expectedTy of
+      -- Implicit lifting: expected `A -> B`, got `B` => lift to constant morphism
+      TArrow _ outTy | matchesStructure outTy finalInferred -> Right s1
+      _ -> Left (SignatureMismatch expectedTy finalInferred)
 
 -- | Type check a module
 checkModule :: Module -> Either TypeError ()

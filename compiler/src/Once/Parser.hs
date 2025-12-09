@@ -18,6 +18,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Once.Quantity (Quantity (..))
 import Once.Syntax
+import Once.Type (Encoding (..))
 
 -- | Parser type
 type Parser = Parsec Void Text
@@ -53,7 +54,8 @@ reservedWords :: [Text]
 reservedWords =
   -- Keywords
   [ "case", "of", "Left", "Right"
-  , "Unit", "Void", "Int"
+  , "Unit", "Void", "Int", "Buffer", "String"
+  , "Utf8", "Utf16", "Ascii"
   , "primitive"
   -- Generators (the 12 categorical primitives)
   , "id", "compose"
@@ -67,13 +69,30 @@ reservedWords =
 integer :: Parser Integer
 integer = lexeme L.decimal
 
+-- | Parse a string literal
+stringLiteral :: Parser Text
+stringLiteral = lexeme $ do
+  void $ char '"'
+  content <- many stringChar
+  void $ char '"'
+  pure $ T.pack content
+  where
+    stringChar = (char '\\' *> escapeChar) <|> satisfy (\c -> c /= '"' && c /= '\\')
+    escapeChar = choice
+      [ char 'n' $> '\n'
+      , char 't' $> '\t'
+      , char 'r' $> '\r'
+      , char '\\' $> '\\'
+      , char '"' $> '"'
+      ]
+
 -- | Parse a type variable (uppercase identifier)
 typeVar :: Parser Name
 typeVar = lexeme $ try $ do
   c <- upperChar
   cs <- many (alphaNumChar <|> char '_' <|> char '\'')
   let name = T.pack (c : cs)
-  if name `elem` ["Unit", "Void", "Left", "Right"]
+  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int"]
     then fail $ "Reserved type: " ++ T.unpack name
     else pure name
 
@@ -129,8 +148,22 @@ parseType = makeTypeExpr
       [ STUnit <$ reserved "Unit"
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
+      , STBuffer <$ reserved "Buffer"
+      , stringType
       , STVar <$> typeVar
       , parens parseType
+      ]
+
+    -- String with optional encoding: "String Utf8", "String Ascii", or just "String" (defaults to Utf8)
+    stringType = do
+      reserved "String"
+      enc <- option Utf8 encoding
+      pure $ STString enc
+
+    encoding = choice
+      [ Utf8 <$ reserved "Utf8"
+      , Utf16 <$ reserved "Utf16"
+      , Ascii <$ reserved "Ascii"
       ]
 
 -- | Left-associative chain
@@ -153,8 +186,18 @@ parseExpr :: Parser Expr
 parseExpr = annotExpr
   where
     annotExpr = do
-      e <- appExpr
+      e <- composeExpr
       option e (EAnnot e <$> (symbol ":" *> parseType))
+
+    -- Composition with . is right-associative (like Haskell)
+    -- f . g . h = f . (g . h)
+    composeExpr = do
+      e <- appExpr
+      option e (do
+        void $ symbol "."
+        e2 <- composeExpr
+        -- Desugar f . g to compose f g
+        pure $ EApp (EApp (EVar "compose") e) e2)
 
     -- Application is left-associative
     appExpr = chainl1 atomExpr (pure EApp)
@@ -162,6 +205,7 @@ parseExpr = annotExpr
     atomExpr = choice
       [ EUnit <$ symbol "()"
       , EInt <$> integer
+      , EStringLit <$> stringLiteral
       , caseExpr
       , lamExpr
       , pairOrParens

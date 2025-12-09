@@ -662,6 +662,39 @@ prop_string_encoding_erased s =
 
 ## Future Work
 
+### Buffer Allocation (Not Yet Implemented)
+
+The allocation system is designed (see D012-D015 in decision-log.md) but not implemented:
+
+**Current state:**
+- String literals compile to static `.rodata` pointers in C
+- No dynamic allocation occurs
+- No `@heap`, `@stack`, `@arena` annotations are parsed or used
+
+**To implement:**
+1. Parse allocation annotations in declarations: `concat @heap a b = ...`
+2. Add `--alloc` compiler flag for default allocation strategy
+3. Track allocation strategy through elaboration to codegen
+4. Generate appropriate C code:
+   - `@const`: Static `.rodata` (current behavior for literals)
+   - `@stack`: Stack-allocated arrays
+   - `@heap`: `malloc()` + copy
+   - `@pool`: Pool allocator interface
+   - `@arena`: Arena allocator interface
+5. Implement buffer operations (concat, slice, length) that respect allocation
+6. Add allocator interface types: `MallocLike`, `PoolLike`, `ArenaLike`
+
+**Properties to verify:**
+- Allocation strategy doesn't change semantics (only performance)
+- Arena buffers don't escape their scope
+
+### QTT and Linearity
+
+- **Quantity enforcement**: Implement QTT checking in TypeCheck.hs (currently quantities are parsed but ignored)
+- **Zero erasure**: Remove Zero-quantity code in C backend (test: verify Zero-quantity functions don't appear in output)
+
+### Type System Extensions
+
 - **Refinement types**: Add optional size constraints on Buffer (see type-system.md)
 - **Custom encodings**: User-defined Encoding types
 - **Slices**: Zero-copy views into buffers

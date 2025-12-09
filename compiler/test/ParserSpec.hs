@@ -6,6 +6,7 @@ import Test.Tasty.HUnit
 
 import Once.Parser (parseModule)
 import Once.Syntax
+import Once.Type (Encoding (..))
 
 parserTests :: TestTree
 parserTests = testGroup "Parser"
@@ -31,6 +32,25 @@ parserTests = testGroup "Parser"
           parseType' "A * B -> B * A" @?=
             Right (STArrow (STProduct (STVar "A") (STVar "B"))
                           (STProduct (STVar "B") (STVar "A")))
+
+      , testCase "Buffer type" $
+          parseType' "Buffer" @?= Right STBuffer
+
+      , testCase "String type (default Utf8)" $
+          parseType' "String" @?= Right (STString Utf8)
+
+      , testCase "String Utf8" $
+          parseType' "String Utf8" @?= Right (STString Utf8)
+
+      , testCase "String Ascii" $
+          parseType' "String Ascii" @?= Right (STString Ascii)
+
+      , testCase "String Utf16" $
+          parseType' "String Utf16" @?= Right (STString Utf16)
+
+      , testCase "puts signature" $
+          parseType' "String Utf8 -> Unit" @?=
+            Right (STArrow (STString Utf8) STUnit)
       ]
 
   , testGroup "Expressions"
@@ -55,6 +75,30 @@ parserTests = testGroup "Parser"
       , testCase "pair snd fst" $
           parseExpr' "pair snd fst" @?=
             Right (EApp (EApp (EVar "pair") (EVar "snd")) (EVar "fst"))
+
+      , testCase "string literal" $
+          parseExpr' "\"hello\"" @?= Right (EStringLit "hello")
+
+      , testCase "string literal with escape" $
+          parseExpr' "\"hello\\nworld\"" @?= Right (EStringLit "hello\nworld")
+
+      , testCase "function applied to string literal" $
+          parseExpr' "puts \"hello\"" @?=
+            Right (EApp (EVar "puts") (EStringLit "hello"))
+
+      , testCase "composition with ." $
+          parseExpr' "f . g" @?=
+            Right (EApp (EApp (EVar "compose") (EVar "f")) (EVar "g"))
+
+      , testCase "composition is right-associative" $
+          parseExpr' "f . g . h" @?=
+            Right (EApp (EApp (EVar "compose") (EVar "f"))
+                       (EApp (EApp (EVar "compose") (EVar "g")) (EVar "h")))
+
+      , testCase "application binds tighter than composition" $
+          parseExpr' "f x . g y" @?=
+            Right (EApp (EApp (EVar "compose") (EApp (EVar "f") (EVar "x")))
+                       (EApp (EVar "g") (EVar "y")))
       ]
 
   , testGroup "Declarations"

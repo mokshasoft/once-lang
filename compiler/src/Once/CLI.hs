@@ -204,8 +204,20 @@ generateExecutable name ty ir primitives interpCode = T.unlines
       Once.IR.Initial _ -> v
       Once.IR.Curry _ -> "/* curry not yet implemented */ ((void*)0)"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
-      Once.IR.Var n' -> n' <> "(" <> v <> ")"
-      Once.IR.Prim n' _ _ -> n' <> "(" <> v <> ")"
+      Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.StringLit s -> "(OnceString){ .data = \"" <> escapeString s <> "\", .len = " <> T.pack (show (T.length s)) <> " }"
+
+    escapeString :: Text -> Text
+    escapeString = T.concatMap escapeChar
+      where
+        escapeChar c = case c of
+          '\n' -> "\\n"
+          '\t' -> "\\t"
+          '\r' -> "\\r"
+          '\\' -> "\\\\"
+          '"'  -> "\\\""
+          _    -> T.singleton c
 
     -- Generate primitive declarations/implementations
     primDecls = T.unlines $ map primDecl primitives
@@ -214,7 +226,8 @@ generateExecutable name ty ir primitives interpCode = T.unlines
     primDecl (pname, pty) = case pty of
       TArrow inTy outTy ->
         -- Declare primitives as extern (interpretation provides them)
-        "extern " <> cTypeName outTy <> " " <> pname <> "(" <> cTypeName inTy <> " x);"
+        -- Use once_ prefix to avoid conflicts with stdlib
+        "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
       _ -> "/* primitive " <> pname <> " has non-function type */"
 
     cTypeName :: Type -> Text
@@ -223,6 +236,8 @@ generateExecutable name ty ir primitives interpCode = T.unlines
       TUnit -> "void*"
       TVoid -> "void"
       TInt -> "int"
+      TBuffer -> "OnceBuffer"
+      TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"

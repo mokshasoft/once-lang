@@ -13,6 +13,7 @@ module Once.Syntax
 import Data.Text (Text)
 
 import Once.Quantity (Quantity)
+import Once.Type (Encoding)
 
 -- | Variable and type names
 type Name = Text
@@ -40,6 +41,7 @@ data Expr
   | ECase Expr Name Expr Name Expr  -- ^ Case: case e of { Left x -> e1; Right y -> e2 }
   | EUnit                           -- ^ Unit value: ()
   | EInt Integer                    -- ^ Integer literal: 0, 1, 42, ...
+  | EStringLit Text                 -- ^ String literal: "hello"
   | EAnnot Expr SType               -- ^ Type annotation: (e : T)
   deriving (Eq, Show)
 
@@ -49,6 +51,8 @@ data SType
   | STUnit                       -- ^ Unit type: Unit
   | STVoid                       -- ^ Void type: Void
   | STInt                        -- ^ Integer type: Int
+  | STBuffer                     -- ^ Buffer type: Buffer
+  | STString Encoding            -- ^ String type with encoding: String Utf8
   | STProduct SType SType        -- ^ Product: A * B
   | STSum SType SType            -- ^ Sum: A + B
   | STArrow SType SType          -- ^ Function: A -> B

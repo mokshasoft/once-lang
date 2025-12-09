@@ -67,3 +67,6 @@ eval (Apply _ _) _ = Left (TypeError "apply expects (closure, argument) pair")
 -- Variables and primitives are not directly evaluable without context
 eval (Var name) _ = Left (UnboundVariable (show name))
 eval (Prim name _ _) _ = Left (UnboundVariable ("primitive: " ++ show name))
+
+-- String literals evaluate to string values (ignoring the input)
+eval (StringLit s) _ = Right (VString s)

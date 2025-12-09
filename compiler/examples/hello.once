@@ -1,5 +1,6 @@
 -- hello.once: Hello World for Once
-primitive hello : Unit -> Unit
+-- Uses string literal and puts primitive
+primitive puts : String Utf8 -> Unit
 
 main : Unit -> Unit
-main = hello
+main = puts "Hello for Once"

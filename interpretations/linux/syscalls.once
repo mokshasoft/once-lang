@@ -4,4 +4,4 @@ primitive exit0 : Unit -> Unit
 primitive exit : Int -> Unit
 primitive putchar : Int -> Unit
 primitive getchar : Unit -> Int
-primitive hello : Unit -> Unit  -- TODO: Replace with String type
+primitive puts : String Utf8 -> Unit

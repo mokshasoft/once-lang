@@ -2,8 +2,15 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 
-void* exit0(void* x) {
+/* OnceString type (encoding erased at runtime) */
+typedef struct {
+    const char* data;
+    size_t len;
+} OnceString;
+
+void* once_exit0(void* x) {
     (void)x;
     exit(0);
     return ((void*)0);
@@ -24,9 +31,8 @@ int once_getchar(void* x) {
     return getchar();
 }
 
-/* TODO: Replace with String type */
-void* hello(void* x) {
-    (void)x;
-    puts("Hello for Once");
+void* once_puts(OnceString s) {
+    fwrite(s.data, 1, s.len, stdout);
+    putchar('\n');
     return ((void*)0);
 }

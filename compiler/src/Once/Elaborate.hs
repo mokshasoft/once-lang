@@ -63,6 +63,9 @@ elaborateExpr expr = case expr of
   -- Integer literal - represented as a primitive constant
   EInt n -> Right $ Prim ("__int_" <> tshow n) TUnit TInt
 
+  -- String literal - represented as StringLit IR node
+  EStringLit s -> Right $ StringLit s
+
   -- Lambda, case, annotations - not yet supported
   ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
   ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
@@ -120,6 +123,8 @@ elaborateType sty = case sty of
   STUnit -> TUnit
   STVoid -> TVoid
   STInt -> TInt
+  STBuffer -> TBuffer
+  STString enc -> TString enc
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)
   STSum a b -> TSum (elaborateType a) (elaborateType b)
   STArrow a b -> TArrow (elaborateType a) (elaborateType b)

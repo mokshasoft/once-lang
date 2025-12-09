@@ -2,6 +2,8 @@ module Once.IR
   ( IR (..)
   ) where
 
+import Data.Text (Text)
+
 import Once.Type (Type, Name)
 
 -- | Intermediate representation: the 12 categorical generators
@@ -41,4 +43,7 @@ data IR
   -- Variables and primitives (for surface syntax elaboration)
   | Var Name                   -- ^ Variable reference
   | Prim Name Type Type        -- ^ Primitive operation: name, input type, output type
+
+  -- Literals
+  | StringLit Text             -- ^ String literal (Utf8 encoded)
   deriving (Eq, Show)
