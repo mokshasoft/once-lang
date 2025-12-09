@@ -327,3 +327,288 @@ interpretations/
 - Compiler only knows about generators
 - Linking interpretations is a separate concern (future work)
 - Each platform interpretation is self-contained
+
+---
+
+## D010: Buffer as Primitive Type
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Once needs a way to handle strings and byte sequences efficiently. We needed to decide how to represent contiguous byte data.
+
+### Options Considered
+
+1. **Derived from generators** - `type Buffer = List Byte`
+2. **Primitive type** - `Buffer` as a built-in type like `Int`
+
+### Decision
+Buffer is a **primitive type**, not derivable from generators.
+
+### Rationale
+- The 12 generators describe structure (products, sums, functions), not memory layout
+- "Contiguous bytes" is inherently about physical representation
+- `List Byte` would be a linked list - O(n) indexing, poor cache locality
+- Every target platform has efficient contiguous byte representation:
+  - C: `struct { uint8_t* data; size_t len; }`
+  - JavaScript: `Uint8Array`
+  - Bare metal: pointer + length
+
+### Consequences
+- Buffer is added to `Type.hs` alongside `TInt`, `TUnit`, etc.
+- Buffer operations (`concat`, `length`, `slice`) are primitives in IR
+- C backend generates efficient struct-based representation
+- This is the single primitive for byte storage - no fragmentation like Haskell
+
+---
+
+## D011: String as Parameterized Type with Encoding
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Once needs string handling. We needed to decide how to represent text and whether encoding should be part of the type.
+
+### Options Considered
+
+1. **Type alias** - `type String = Buffer` (encoding by convention)
+2. **Newtype** - `newtype String = String Buffer` (distinct type, no encoding info)
+3. **Type parameter** - `String : Encoding -> Type` (encoding in type)
+
+### Decision
+String is a **parameterized type** with encoding as type parameter: `String : Encoding -> Type`.
+
+### Rationale
+- Encoding is **semantic** - it affects how operations work (e.g., `charAt` for UTF-8 vs ASCII)
+- Allocation is **implementation** - it doesn't affect what the function computes
+- Semantic concerns belong in the type; implementation concerns don't
+- Type parameter provides compile-time safety (can't mix UTF-8 and UTF-16 accidentally)
+- Encoding is erased at runtime (zero cost) - just like other type parameters
+
+Built-in encodings: `Utf8`, `Utf16`, `Ascii`. Users can add more.
+
+### Consequences
+- `String Utf8`, `String Ascii`, etc. are distinct types
+- Explicit conversion between encodings: `toUtf8 : String Ascii -> String Utf8`
+- Under the hood, `String e` wraps `Buffer` with erased encoding tag
+- Encoding-agnostic operations work on any `String e`
+- Encoding-specific operations (like `charAt`) require specific encoding
+
+---
+
+## D012: Allocation Annotation in Implementation
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Buffer allocation strategy (stack, heap, pool, arena) needs to be expressible. We needed to decide where this annotation goes.
+
+### Options Considered
+
+1. **Inline in type** - `concat : Buffer @heap * Buffer @heap -> Buffer @heap`
+2. **Separate line above signature** - `@alloc heap` then `concat : Buffer * Buffer -> Buffer`
+3. **Separate line with @returns** - `@returns heap` then `concat : ...`
+4. **In implementation** - `concat @heap a b = ...`
+
+### Decision
+Allocation annotation goes in the **implementation**, not the type signature.
+
+```
+concat : Buffer * Buffer -> Buffer
+concat @heap a b = ...
+```
+
+For lambdas: `(@stack \x -> concat x x)`
+
+### Rationale
+- **Type signatures should be purely semantic** - they describe categorical meaning
+- **Allocation doesn't change meaning** - `f @heap` and `f @stack` compute the same function
+- **Allocation is implementation detail** - belongs with implementation, not type
+- Option 1 rejected: `@heap` looks like type parameter, suggests it could be used on inputs
+- Option 2/3 rejected: Adds extra line, still near type signature
+
+This aligns with D007: signatures verify but don't change meaning.
+
+### Consequences
+- Type signatures remain clean and categorical
+- Allocation is visibly an implementation choice
+- Lambdas can have allocation annotations
+- No annotation = inferred from context or compiler flag
+
+---
+
+## D013: Allocation Only Applies to Outputs
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+When annotating allocation, should it apply to inputs, outputs, or both?
+
+### Decision
+Allocation annotation only applies to **outputs** (return values).
+
+### Rationale
+- **Inputs**: Function accepts data from wherever the caller provides it - allocation already decided
+- **Outputs**: Function must decide where to allocate the result
+- For linear in-place operations (`^1 -> ^1`): output uses same memory as input, allocation inherited
+
+A function reading a buffer doesn't care where it came from. A function producing a buffer needs to know where to put it.
+
+### Consequences
+- `concat @heap a b = ...` means output goes to heap
+- Input buffers can come from any allocation strategy
+- Mixing strategies requires explicit conversion at call site
+- Linear transforms inherit allocation from input
+
+---
+
+## D014: Allocation Strategy Compiler Flag
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Not every function needs explicit allocation annotation. We needed a way to set defaults.
+
+### Decision
+Add `--alloc` compiler flag to set default allocation strategy.
+
+```bash
+once build myfile.once                  # platform default
+once build --alloc=stack myfile.once    # default to stack
+once build --alloc=arena myfile.once    # default to arena
+```
+
+### Rationale
+- Same source code can compile with different strategies
+- Bare metal projects can default to `--alloc=stack`
+- Server applications can default to `--alloc=arena`
+- No code changes needed for different deployment targets
+
+### Precedence
+1. Explicit `@stack` in implementation - always wins
+2. Compiler flag `--alloc=X` - default for unannotated
+3. Platform default - fallback (typically `heap` for Linux)
+
+### Consequences
+- CLI gains `--alloc` flag
+- Codegen tracks current default strategy
+- Most code needs no allocation annotations
+
+---
+
+## D015: Three Allocator Interface Classes
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Different allocation strategies have different interfaces. Users may want to add custom allocators. We needed to decide how to enable extensibility.
+
+### Decision
+Define three allocator interface classes that the compiler knows about:
+
+**MallocLike** (heap, custom allocators):
+```
+alloc : Size -> Ptr
+free : Ptr -> Unit
+realloc : Ptr -> Size -> Ptr
+```
+
+**PoolLike** (fixed-size block allocators):
+```
+createPool : BlockSize -> BlockCount -> Pool
+allocBlock : Pool -> Ptr
+freeBlock : Pool -> Ptr -> Unit
+destroyPool : Pool -> Unit
+```
+
+**ArenaLike** (bump allocators):
+```
+createArena : Size -> Arena
+allocArena : Arena -> Size -> Ptr
+resetArena : Arena -> Unit
+destroyArena : Arena -> Unit
+```
+
+Built-in strategies (`stack`, `const`) are compiler-managed, not user-extensible.
+
+### Rationale
+- Different strategies have fundamentally different interfaces (arena has no individual free)
+- Users can add custom allocators by implementing one of these interfaces
+- Compiler doesn't need updating for new allocators - just needs to know the interface class
+- Property test can verify all allocators produce same results
+
+### Consequences
+- Users can define custom allocators in Interpretations
+- Custom allocator picks an interface class and implements it
+- Compiler generates appropriate code based on interface class
+- `stack` and `const` remain special (compiler-managed)
+
+---
+
+## D016: Naming the Three Layers "Strata"
+
+**Date**: 2025-12-09
+**Status**: Accepted
+
+### Context
+Once has three conceptual layers: Generators, Derived, and Interpretations. We needed a collective name for these layers.
+
+### Options Considered
+- Layers (generic)
+- Stack (overloaded term)
+- Hierarchy (generic)
+- Strata (Latin for layers)
+
+### Decision
+The three layers are collectively called **Strata**.
+
+### Rationale
+- "Strata" is specific and technical-sounding
+- Captures the idea of distinct levels with different properties
+- Not overloaded with other meanings in programming
+- Each stratum has clear boundaries and rules
+
+### Consequences
+- Documentation refers to "the three strata" or "Once strata"
+- Individual layers: Generators Stratum, Derived Stratum, Interpretations Stratum
+
+---
+
+## D017: Refinement Types as Future Extension Path
+
+**Date**: 2025-12-09
+**Status**: Deferred
+
+### Context
+Sized buffers (`Buffer { size <= 1024 }`) would be useful for safety. We needed to decide whether to add dependent types or a simpler alternative.
+
+### Options Considered
+
+1. **Full dependent types** - Types depend on values, type-level computation
+2. **Refinement types** - Properties on types, always erased, SMT-checked
+3. **No extension** - Keep simple types only
+
+### Decision
+**Defer implementation**, but plan for **refinement types** (not full dependent types) using **comprehension categories** as the theoretical foundation.
+
+### Rationale
+- Refinement types cover practical cases (sizes, bounds, non-null)
+- Always erased at runtime (zero cost) - aligns with "types don't change meaning"
+- Simpler than full dependent types (often decidable with SMT)
+- Comprehension categories allow incremental extension:
+  1. Simple types (current)
+  2. Refinement types (future)
+  3. Full dependent types (if ever needed)
+- Simple users remain unaffected - refinements are opt-in
+
+### Consequences
+- Current type system unchanged
+- Path to sized buffers is clear when needed
+- Comprehension categories guide future extension
+- See `type-system.md` for detailed discussion

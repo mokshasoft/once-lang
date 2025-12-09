@@ -528,6 +528,141 @@ stack exec -- once build --exe examples/hello.once
 - [Compiler](docs/compiler/)
 ```
 
+## Phase 10: Buffer and String Types
+
+**Goal**: Add `Buffer` primitive and `String Encoding` type for proper string handling.
+
+See [buffers.md](../design/buffers.md) for full design rationale.
+
+### Overview
+
+```
+Buffer : Type                    -- primitive, contiguous bytes
+String : Encoding -> Type        -- Buffer with encoding (erased at runtime)
+
+-- Built-in encodings
+Utf8, Utf16, Ascii : Encoding
+```
+
+### Commits
+
+```
+1. Add Buffer to Type.hs as primitive type
+2. Add Encoding type and built-in encodings (Utf8, Utf16, Ascii)
+3. Add String as parameterized type wrapping Buffer
+4. Add Buffer operations to IR (concat, length, index, slice)
+5. Add C backend for Buffer (struct { uint8_t* data; size_t len; })
+6. Add string literal parsing (produces String Utf8)
+7. Add @alloc annotation parsing in implementation
+8. Add allocation strategy tracking in codegen
+9. Add --alloc compiler flag for default strategy
+10. Add puts primitive to linux interpretation
+11. Update hello.once to use String literal
+12. Add property test: allocation independence
+```
+
+### Type Representation
+
+```haskell
+-- In Type.hs
+data Type
+  = TVar Name
+  | TUnit
+  | TVoid
+  | TInt
+  | TBuffer                        -- NEW: primitive buffer
+  | TString Encoding               -- NEW: String with encoding
+  | TProduct Type Type
+  | TSum Type Type
+  | TArrow Type Type
+  deriving (Eq, Show)
+
+data Encoding = Utf8 | Utf16 | Ascii | CustomEncoding Name
+  deriving (Eq, Show)
+```
+
+### IR Operations
+
+```haskell
+-- New Buffer operations in IR
+data IR
+  = ...
+  | BufConcat                      -- Buffer * Buffer -> Buffer
+  | BufLength                      -- Buffer -> Int
+  | BufIndex                       -- Buffer * Int -> Byte + OutOfBounds
+  | BufSlice                       -- Buffer * Int * Int -> Buffer
+  | BufLiteral ByteString          -- Compile-time string literal
+  ...
+```
+
+### Allocation Annotation
+
+```haskell
+-- In Syntax.hs
+data Decl
+  = DefValue Name (Maybe AllocStrategy) [Name] Expr
+  | DefType Name Type
+  | DefPrimitive Name Type
+
+data AllocStrategy = Stack | Heap | Pool | Arena | Const
+  deriving (Eq, Show)
+```
+
+### C Backend
+
+```c
+// Buffer representation
+typedef struct {
+    uint8_t* data;
+    size_t len;
+} OnceBuffer;
+
+// String is same as Buffer at runtime (encoding erased)
+typedef OnceBuffer OnceString;
+
+// Operations
+OnceBuffer once_buf_concat(OnceBuffer a, OnceBuffer b);
+int64_t once_buf_length(OnceBuffer b);
+// etc.
+```
+
+### Example
+
+```
+-- hello.once (after Phase 10)
+main : Unit -> Unit
+main = puts "Hello for Once"
+
+-- Type of "Hello for Once" is String Utf8
+-- puts : String Utf8 -> Unit
+```
+
+### Properties
+
+```haskell
+-- Allocation doesn't change semantics
+prop_allocation_independent :: Program -> Input -> Property
+prop_allocation_independent prog input =
+  runWith Stack prog input === runWith Heap prog input
+
+-- String encoding is erased
+prop_string_encoding_erased :: String e -> Property
+prop_string_encoding_erased s =
+  sizeOf (toBuffer s) === sizeOf s  -- no runtime overhead
+```
+
+### Milestones
+
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M10.1** | Buffer type | Buffer in IR and C backend |
+| **M10.2** | String type | String Utf8 with encoding |
+| **M10.3** | Allocation | @alloc annotation working |
+| **M10.4** | Hello String | hello.once uses string literal |
+
 ## Future Work
 
-- **String type**: Currently `hello` primitive is hardcoded. Add proper String type so hello world can use `puts` with a string literal.
+- **Refinement types**: Add optional size constraints on Buffer (see type-system.md)
+- **Custom encodings**: User-defined Encoding types
+- **Slices**: Zero-copy views into buffers
+- **Arena lifetime**: Ensure arena buffers don't escape scope
