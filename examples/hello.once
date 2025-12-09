@@ -1,0 +1,15 @@
+-- hello.once: Hello World for Once
+--
+-- Demonstrates:
+--   - String literals with encoding (String Utf8)
+--   - Primitives (puts from linux interpretation)
+--   - Executable mode (main : Unit -> Unit)
+--
+-- Build and run:
+--   once build --exe --interp=linux examples/hello.once -o hello
+--   ./hello
+
+primitive puts : String Utf8 -> Unit
+
+main : Unit -> Unit
+main = puts "Hello for Once"

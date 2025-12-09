@@ -1,0 +1,15 @@
+-- hi.once: The simplest Once executable
+--
+-- Demonstrates:
+--   - Minimal executable (just exits with status 0)
+--   - Primitives (exit0 from linux interpretation)
+--   - No string handling, no I/O beyond exit
+--
+-- Build and run:
+--   once build --exe --interp=linux examples/hi.once -o hi
+--   ./hi && echo "Success!"
+
+primitive exit0 : Unit -> Unit
+
+main : Unit -> Unit
+main = exit0
