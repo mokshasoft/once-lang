@@ -3,15 +3,25 @@ module BackendSpec (backendTests) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Control.Exception (try, SomeException)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (removeDirectoryRecursive, createDirectoryIfMissing)
+import System.Directory (removeDirectoryRecursive, createDirectoryIfMissing, findExecutable)
 import System.Exit (ExitCode (..))
 import System.Process (readProcessWithExitCode)
 
 import Once.Backend.C (generateC, CModule (..))
 import Once.IR (IR (..))
 import Once.Type (Type (..))
+
+-- | Run the once compiler. Tries 'once' directly first (for Nix builds),
+-- falls back to 'stack exec -- once' for development.
+runOnce :: [String] -> IO (ExitCode, String, String)
+runOnce args = do
+  onceInPath <- findExecutable "once"
+  case onceInPath of
+    Just oncePath -> readProcessWithExitCode oncePath args ""
+    Nothing -> readProcessWithExitCode "stack" (["exec", "--", "once"] ++ args) ""
 
 -- Helper types
 tA, tB :: Type
@@ -139,8 +149,8 @@ backendTests = testGroup "Backend.C"
           TIO.writeFile (dir ++ "/hi.once") hiOnce
 
           -- Run the compiler with --interp
-          (exitCode, _, stderr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+          (exitCode, _, stderr) <- runOnce
+            ["build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
           case exitCode of
             ExitFailure _ -> do
@@ -163,8 +173,8 @@ backendTests = testGroup "Backend.C"
           TIO.writeFile (dir ++ "/hi.once") hiOnce
 
           -- Run the compiler with --interp
-          (compilerCode, _, compilerErr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+          (compilerCode, _, compilerErr) <- runOnce
+            ["build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
           case compilerCode of
             ExitFailure _ -> do
@@ -193,8 +203,8 @@ backendTests = testGroup "Backend.C"
           TIO.writeFile (dir ++ "/hi.once") hiOnce
 
           -- Run the compiler with --interp
-          (exitCode, _, stderr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"] ""
+          (exitCode, _, stderr) <- runOnce
+            ["build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
           case exitCode of
             ExitFailure _ -> do
@@ -217,8 +227,8 @@ backendTests = testGroup "Backend.C"
           TIO.writeFile (dir ++ "/hello.once") helloOnce
 
           -- Run the compiler with --interp
-          (compilerCode, _, compilerErr) <- readProcessWithExitCode "stack"
-            ["exec", "--", "once", "build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hello.once", "-o", dir ++ "/hello"] ""
+          (compilerCode, _, compilerErr) <- runOnce
+            ["build", "--exe", "--interp", "../interpretations/linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
           case compilerCode of
             ExitFailure _ -> do
