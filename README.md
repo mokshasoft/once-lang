@@ -70,12 +70,73 @@ Quantities are **inferred by default**, with optional annotations for guarantees
 - **Derived**: All pure code - portable to any target
 - **Interpretations**: Platform bindings (POSIX, bare metal, WASM)
 
+## Quick Start
+
+### Prerequisites
+
+- **Nix** (recommended) or **Stack** for building
+- **GCC** for compiling generated C code
+
+### Build with Nix
+
+```bash
+nix build
+./result/bin/once build --help
+```
+
+### Build with Stack
+
+```bash
+cd compiler
+stack build
+stack exec -- once build --help
+```
+
+### Hello World
+
+```bash
+# Create hello.once
+cat > hello.once << 'EOF'
+primitive puts : String Utf8 -> Unit
+
+main : Unit -> Unit
+main = puts "Hello for Once"
+EOF
+
+# Compile (using Nix)
+./result/bin/once build --exe --interp interpretations/linux hello.once -o hello
+
+# Or with Stack
+stack exec -- once build --exe --interp ../interpretations/linux hello.once -o hello
+
+# Compile the generated C and run
+gcc -o hello hello.c
+./hello
+# Output: Hello for Once
+```
+
+### Library Example
+
+Once compiles to C libraries that can be called from any language:
+
+```bash
+# swap.once - pure natural transformation, no primitives
+cat > swap.once << 'EOF'
+swap : A * B -> B * A
+swap = pair snd fst
+EOF
+
+# Generate C library
+./result/bin/once build swap.once -o swap
+
+# Creates: swap.h, swap.c
+# Use from C, Rust, Python, etc. via FFI
+```
+
 ## Documentation
 
-### Quick Start
-- [Quickstart](docs/design/quickstart.md) - 5-minute introduction
-
 ### Design
+- [Quickstart](docs/design/quickstart.md) - 5-minute introduction
 - [Overview](docs/design/overview.md) - Comprehensive introduction
 - [Design Philosophy](docs/design/design-philosophy.md) - Why natural transformations
 - [Memory](docs/design/memory.md) - QTT, linearity, and resource management
@@ -113,7 +174,20 @@ once-lang/
 
 ## Status
 
-**Early design phase.** The language design is documented but the compiler is not yet implemented.
+**Working compiler.** The Once compiler generates C code from `.once` source files.
+
+Currently supported:
+- Products (`A * B`), sums (`A + B`), functions (`A -> B`)
+- The 12 categorical generators
+- String literals and `Buffer`/`String` types
+- Library mode (generates `.h` + `.c`)
+- Executable mode with interpretations (linux)
+- Composition operator (`.`) and ML-style application
+
+Coming soon:
+- QTT quantity enforcement
+- More interpretations (WASM, bare metal)
+- Additional backends beyond C
 
 ## The Vision
 
