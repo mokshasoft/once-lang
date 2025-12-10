@@ -664,7 +664,9 @@ prop_string_encoding_erased s =
 
 **Goal**: Mechanized proofs of compiler correctness in Agda, with extraction to Haskell.
 
-See `docs/design/formal/verification-strategy.md` and decision D022.
+**Full Plan**: See [formal-verification-plan.md](formal-verification-plan.md) for complete verification roadmap (phases V1-V10).
+
+**Background**: See `docs/design/formal/verification-strategy.md` and decision D022.
 
 ### 11.1: Core IR + Semantics
 
