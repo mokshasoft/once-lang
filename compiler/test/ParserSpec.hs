@@ -10,7 +10,8 @@ import Once.Type (Encoding (..))
 
 parserTests :: TestTree
 parserTests = testGroup "Parser"
-  [ testGroup "Types"
+  [ importParserTests
+  , testGroup "Types"
       [ testCase "type variable" $
           parseType' "A" @?= Right (STVar "A")
 
@@ -132,7 +133,7 @@ parserTests = testGroup "Parser"
                 ]
           case parseModule input of
             Left err -> assertFailure $ "Parse error: " ++ show err
-            Right (Module decls) -> do
+            Right (Module _ decls) -> do
               length decls @?= 2
               case decls of
                 [TypeSig name1 _, FunDef name2 _ _] -> do
@@ -142,23 +143,83 @@ parserTests = testGroup "Parser"
       ]
   ]
 
+-- -----------------------------------------------------------------------------
+-- Import Tests
+-- -----------------------------------------------------------------------------
+
+importParserTests :: TestTree
+importParserTests = testGroup "imports"
+  [ testCase "simple import" $ do
+      let input = "import Canonical.Product"
+      case parseModule input of
+        Left err -> assertFailure $ "Parse error: " ++ show err
+        Right (Module [Import modPath Nothing] []) -> do
+          modPath @?= ["Canonical", "Product"]
+        Right other -> assertFailure $ "Unexpected: " ++ show other
+
+  , testCase "aliased import" $ do
+      let input = "import Canonical.Product as P"
+      case parseModule input of
+        Left err -> assertFailure $ "Parse error: " ++ show err
+        Right (Module [Import modPath (Just alias)] []) -> do
+          modPath @?= ["Canonical", "Product"]
+          alias @?= "P"
+        Right other -> assertFailure $ "Unexpected: " ++ show other
+
+  , testCase "multiple imports" $ do
+      let input = T.unlines
+            [ "import Canonical.Product"
+            , "import Canonical.Coproduct as C"
+            , ""
+            , "swap : A * B -> B * A"
+            , "swap = pair snd fst"
+            ]
+      case parseModule input of
+        Left err -> assertFailure $ "Parse error: " ++ show err
+        Right (Module imports decls) -> do
+          length imports @?= 2
+          length decls @?= 2
+        Right other -> assertFailure $ "Unexpected: " ++ show other
+
+  , testCase "single-component module path" $ do
+      let input = "import Prelude"
+      case parseModule input of
+        Left err -> assertFailure $ "Parse error: " ++ show err
+        Right (Module [Import ["Prelude"] Nothing] []) -> pure ()
+        Right other -> assertFailure $ "Unexpected: " ++ show other
+
+  , testCase "qualified access (name@Module)" $ do
+      let input = "f = swap@Canonical.Product"
+      case parseModule input of
+        Left err -> assertFailure $ "Parse error: " ++ show err
+        Right (Module _ [FunDef _ _ (EQualified "swap" ["Canonical", "Product"])]) -> pure ()
+        Right other -> assertFailure $ "Unexpected: " ++ show other
+
+  , testCase "qualified access in application" $ do
+      let input = "f = swap@Product x"
+      case parseModule input of
+        Left err -> assertFailure $ "Parse error: " ++ show err
+        Right (Module _ [FunDef _ _ (EApp (EQualified "swap" ["Product"]) (EVar "x"))]) -> pure ()
+        Right other -> assertFailure $ "Unexpected: " ++ show other
+  ]
+
 -- Helper to parse a single type from a type signature
 parseType' :: T.Text -> Either String SType
 parseType' input = case parseModule ("x : " <> input) of
   Left err -> Left (show err)
-  Right (Module [TypeSig _ ty]) -> Right ty
+  Right (Module _ [TypeSig _ ty]) -> Right ty
   Right _ -> Left "Unexpected parse result"
 
 -- Helper to parse a single expression from a function definition
 parseExpr' :: T.Text -> Either String Expr
 parseExpr' input = case parseModule ("x = " <> input) of
   Left err -> Left (show err)
-  Right (Module [FunDef _ _ e]) -> Right e
+  Right (Module _ [FunDef _ _ e]) -> Right e
   Right _ -> Left "Unexpected parse result"
 
 -- Helper to parse a single declaration
 parseDecl' :: T.Text -> Either String Decl
 parseDecl' input = case parseModule input of
   Left err -> Left (show err)
-  Right (Module [d]) -> Right d
-  Right (Module ds) -> Left $ "Expected 1 decl, got " ++ show (length ds)
+  Right (Module _ [d]) -> Right d
+  Right (Module _ ds) -> Left $ "Expected 1 decl, got " ++ show (length ds)

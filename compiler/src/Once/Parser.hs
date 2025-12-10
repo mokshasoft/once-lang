@@ -57,6 +57,7 @@ reservedWords =
   , "Unit", "Void", "Int", "Buffer", "String"
   , "Utf8", "Utf16", "Ascii"
   , "primitive"
+  , "import", "as"            -- Module system
   -- The 12 categorical generators
   , "id", "compose"           -- Category
   , "fst", "snd", "pair"      -- Products
@@ -107,6 +108,15 @@ lowerIdent = lexeme $ try $ do
   if name `elem` reservedWords
     then fail $ "Reserved word: " ++ T.unpack name
     else pure name
+
+-- | Parse an uppercase identifier (module name component)
+upperIdent :: Parser Name
+upperIdent = lexeme $ try $ do
+  c <- upperChar
+  cs <- many (alphaNumChar <|> char '_')
+  let name = T.pack (c : cs)
+  -- Module names like Canonical, Product are allowed
+  pure name
 
 -- | Parentheses
 parens :: Parser a -> Parser a
@@ -212,8 +222,19 @@ parseExpr = annotExpr
       , lamExpr
       , pairOrParens
       , generator
-      , EVar <$> lowerIdent
+      , qualifiedOrVar
       ]
+
+    -- Parse either a qualified name (name@Module.Path) or plain variable
+    -- The @ for qualified access is different from @alloc annotations:
+    -- - @alloc comes after name in definitions: foo @heap = ...
+    -- - @Module comes after name in expressions: swap@Product x
+    qualifiedOrVar = do
+      name <- lowerIdent
+      option (EVar name) $ do
+        void $ char '@'  -- no space allowed between name and @
+        modPath <- modulePath
+        pure $ EQualified name modPath
 
     -- Parse a generator (reserved primitive)
     generator = choice
@@ -309,9 +330,35 @@ parseDecl = choice
         ]
 
 -- -----------------------------------------------------------------------------
+-- Import Parser
+-- -----------------------------------------------------------------------------
+
+-- | Parse an import declaration
+--
+-- Syntax:
+--   import Module.Path          -- simple import
+--   import Module.Path as Alias -- aliased import
+--
+parseImport :: Parser Import
+parseImport = do
+  reserved "import"
+  modPath <- modulePath
+  alias <- optional (reserved "as" *> upperIdent)
+  pure $ Import modPath alias
+
+-- | Parse a module path (dot-separated uppercase identifiers)
+--
+-- Example: Canonical.Product -> ["Canonical", "Product"]
+--
+modulePath :: Parser [Name]
+modulePath = sepBy1 upperIdent (symbol ".")
+
+-- -----------------------------------------------------------------------------
 -- Module Parser
 -- -----------------------------------------------------------------------------
 
--- | Parse a module (list of declarations)
+-- | Parse a module (imports followed by declarations)
 parseModule :: Text -> Either ParseError Module
-parseModule input = Module <$> parse (sc *> many parseDecl <* eof) "<input>" input
+parseModule input = parse (sc *> moduleP <* eof) "<input>" input
+  where
+    moduleP = Module <$> many parseImport <*> many parseDecl

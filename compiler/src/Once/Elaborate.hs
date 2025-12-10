@@ -17,6 +17,7 @@ data ElabError
   | NotAFunction Name
   | TypeMismatch String
   | UnsupportedExpr String
+  | QualifiedNotResolved Name [Name]  -- ^ name@Module.Path not yet resolved
   deriving (Eq, Show)
 
 -- | Elaborate a surface expression to IR
@@ -47,6 +48,10 @@ elaborateExpr expr = case expr of
   -- Regular variables (including primitives and user-defined names)
   -- The type checker ensures these are valid; we just pass them through
   EVar name -> Right $ Var name
+
+  -- Qualified access (name@Module.Path)
+  -- TODO: Implement module resolution to look up the actual definition
+  EQualified name modPath -> Left $ QualifiedNotResolved name modPath
 
   -- Application: handle generator applications specially
   EApp f arg -> elaborateApp f arg

@@ -199,6 +199,11 @@ inferType ctx expr fresh = case expr of
       Just (ty, fresh') -> Right (ty, emptySubst, fresh')
       Nothing -> Left (UnboundVariable name)
 
+  -- Qualified access (name@Module.Path)
+  -- TODO: Resolve module and look up name's type
+  -- For now, treat as unbound until module resolution is implemented
+  EQualified name _modPath -> Left (UnboundVariable name)
+
   -- Standard function application: f : A -> B, arg : A  ===>  B
   EApp f arg -> do
     (funTy, s1, fresh1) <- inferType ctx f fresh
@@ -348,7 +353,7 @@ typeCheck ctx expr expectedTy = do
 
 -- | Type check a module
 checkModule :: Module -> Either TypeError ()
-checkModule (Module decls) = checkDecls emptyContext decls
+checkModule (Module _imports decls) = checkDecls emptyContext decls
 
 -- | Check a list of declarations
 checkDecls :: Context -> [Decl] -> Either TypeError ()
@@ -412,6 +417,7 @@ checkQuantity _ Omega _ = Right ()  -- unrestricted, any usage is fine
 countUsage :: Expr -> Usage
 countUsage expr = case expr of
   EVar name -> useVar name emptyUsage
+  EQualified name _ -> useVar name emptyUsage  -- qualified also counts as use
   EApp f arg -> mergeUsage (countUsage f) (countUsage arg)
   ELam _ body -> countUsage body  -- bound var handled separately
   EPair a b -> mergeUsage (countUsage a) (countUsage b)
@@ -438,6 +444,7 @@ maxUsage = Map.unionWith max
 validateLambdaUsage :: Expr -> Either TypeError ()
 validateLambdaUsage expr = case expr of
   EVar _ -> Right ()
+  EQualified _ _ -> Right ()  -- qualified names don't introduce lambdas
   EApp f arg -> validateLambdaUsage f >> validateLambdaUsage arg
   ELam x body -> do
     -- Check inner lambdas first

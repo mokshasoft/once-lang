@@ -42,7 +42,7 @@ elaborateTests = testGroup "Elaborate"
                 ]
           case parseModule input of
             Left err -> assertFailure $ "Parse error: " ++ show err
-            Right (Module [_, FunDef _ _ expr]) ->
+            Right (Module _ [_, FunDef _ _ expr]) ->
               case elaborate expr of
                 Right (Pair (Snd _ _) (Fst _ _)) -> pure ()
                 Right other -> assertFailure $ "Wrong IR: " ++ show other

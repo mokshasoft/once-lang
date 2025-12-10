@@ -157,13 +157,13 @@ loadInterpretationCode interpPath = do
 -- | Extract all primitives from a module
 -- Returns list of (name, type)
 extractPrimitives :: Module -> [(Text, Type)]
-extractPrimitives (Module decls) =
+extractPrimitives (Module _imports decls) =
   [ (name, convertType sty) | Primitive name sty <- decls ]
 
 -- | Extract the first function definition from a module
 -- Returns (name, type, allocation, expression)
 extractFunction :: Module -> Maybe (Text, Type, Maybe AllocStrategy, Expr)
-extractFunction (Module decls) = go decls Nothing
+extractFunction (Module _imports decls) = go decls Nothing
   where
     go [] _ = Nothing
     go (TypeSig name sty : FunDef name' alloc expr : rest) _

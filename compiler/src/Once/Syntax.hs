@@ -2,6 +2,7 @@ module Once.Syntax
   ( -- * Modules
     Module (..)
   , Decl (..)
+  , Import (..)
     -- * Expressions
   , Expr (..)
     -- * Types
@@ -10,6 +11,7 @@ module Once.Syntax
   , AllocStrategy (..)
     -- * Names
   , Name
+  , ModuleName
   ) where
 
 import Data.Text (Text)
@@ -20,9 +22,20 @@ import Once.Type (Encoding)
 -- | Variable and type names
 type Name = Text
 
--- | A module is a list of declarations
-newtype Module = Module { moduleDecls :: [Decl] }
-  deriving (Eq, Show)
+-- | Module names (dot-separated path)
+type ModuleName = [Text]
+
+-- | Import declaration
+data Import = Import
+  { importModule :: ModuleName   -- ^ Module path: ["Canonical", "Product"]
+  , importAlias  :: Maybe Name   -- ^ Optional alias: `import Foo as F`
+  } deriving (Eq, Show)
+
+-- | A module is a list of imports and declarations
+data Module = Module
+  { moduleImports :: [Import]
+  , moduleDecls   :: [Decl]
+  } deriving (Eq, Show)
 
 -- | Allocation strategy for buffer outputs
 data AllocStrategy
@@ -46,6 +59,7 @@ data Decl
 -- reserved names. The elaborator recognizes these and produces IR.
 data Expr
   = EVar Name                       -- ^ Variable or generator: x, fst, snd, pair, ...
+  | EQualified Name ModuleName      -- ^ Qualified access: swap@Canonical.Product
   | EApp Expr Expr                  -- ^ Application: f x
   | ELam Name Expr                  -- ^ Lambda: \x -> e
   | EPair Expr Expr                 -- ^ Pair literal: (e1, e2)
