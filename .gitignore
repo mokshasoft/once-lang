@@ -1,3 +1,7 @@
 # Build artifacts
 .build/
 result
+
+# Agda build artifacts
+formal/_build/
+*.agdai
