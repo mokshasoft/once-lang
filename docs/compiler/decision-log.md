@@ -761,3 +761,83 @@ For pure generator compositions, no lifting is involved.
 - Performance: no overhead for pure categorical code
 - Clear mental model: "values lift, morphisms compose"
 - Users can mix styles freely within a program
+
+---
+
+## D021: Canonical as the Standard Derived Library
+
+**Date**: 2025-12-10
+**Status**: Accepted
+
+### Context
+Once needs a curated set of derived combinators that users can rely on. These are morphisms that arise naturally from universal properties - the "obvious" constructions that every category theorist would recognize. We needed to decide what to call this collection and where it lives.
+
+### Options Considered
+
+1. **Prelude** - Familiar from Haskell, but borrowed terminology
+2. **Core** - Generic, not mathematical
+3. **Standard** - Generic
+4. **Universal** - Emphasizes universal properties
+5. **Canonical** - Emphasizes these are "the" natural choices
+
+### Decision
+The standard derived library is called **Canonical**. It lives within the Derived stratum as a distinguished, curated collection.
+
+### Rationale
+
+**Why "Canonical":**
+- In mathematics, a **canonical morphism** is one that arises uniquely from a universal property
+- Products have a canonical `swap : A * B -> B * A`
+- Every object has a canonical diagonal `diagonal : A -> A * A`
+- These aren't arbitrary choices - they're determined by the structure
+- The name signals: "these are the morphisms you'd expect"
+
+**Why not other names:**
+- "Prelude" is Haskell jargon without mathematical meaning
+- "Core" and "Standard" are generic and don't convey the mathematical nature
+- "Universal" is close but refers more to the properties than the morphisms themselves
+
+**What belongs in Canonical:**
+Morphisms that arise from universal properties of the categorical structures:
+
+| Structure | Canonical Morphisms |
+|-----------|---------------------|
+| Products | `swap`, `assocL`, `assocR`, `first`, `second`, `bimap`, `diagonal` |
+| Coproducts | `mirror`, `mapLeft`, `mapRight`, `bicase` |
+| Terminal | `unit` (alias for `terminal`) |
+| Initial | `absurd` (alias for `initial`) |
+| Exponential | `flip`, `const`, `(&)` (flip apply) |
+| Composition | `(.)`, `(|>)` (pipeline) |
+
+**What does NOT belong in Canonical:**
+- Data type definitions (Maybe, List, Either) - these go in `Derived/Data/`
+- Domain-specific libraries (JSON, crypto) - these go in `Derived/`
+- Anything requiring primitives - that's Interpretations
+
+### Directory Structure
+
+```
+Derived/
+├── Canonical/
+│   ├── Product.once      -- swap, diagonal, first, second, bimap, assocL, assocR
+│   ├── Coproduct.once    -- mirror, mapLeft, mapRight
+│   ├── Function.once     -- flip, const, (.), (|>), (&)
+│   └── Morphism.once     -- id, compose (re-exports for convenience)
+├── Data/
+│   ├── Bool.once
+│   ├── Maybe.once
+│   ├── Either.once
+│   ├── List.once
+│   └── ...
+└── ...
+```
+
+### Note on Imports
+The `import` syntax is not yet implemented in the compiler. This decision establishes the naming and organization; the import mechanism will be added in a future phase (see implementation plan).
+
+### Consequences
+- `Canonical/` is a curated, stable collection - additions are carefully considered
+- Each file in `Canonical/` corresponds to a categorical structure
+- The name communicates mathematical intent to users familiar with category theory
+- Users unfamiliar with the term will learn it means "standard" or "natural"
+- Requires implementing an import/module system (future work)
