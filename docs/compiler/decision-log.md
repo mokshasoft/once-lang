@@ -841,3 +841,100 @@ The `import` syntax is not yet implemented in the compiler. This decision establ
 - The name communicates mathematical intent to users familiar with category theory
 - Users unfamiliar with the term will learn it means "standard" or "natural"
 - Requires implementing an import/module system (future work)
+
+---
+
+## D022: Agda for Formal Verification
+
+**Date**: 2025-12-10
+**Status**: Accepted
+
+### Context
+Once is designed to be formally verifiable. We needed to choose a proof assistant for mechanizing the verification of the compiler. The choice affects both the verification effort and how verified code integrates with the existing Haskell codebase.
+
+### Options Considered
+
+1. **HOL4** - Used by CakeML, mature, classical logic
+2. **Coq** - Used by CompCert, largest community, good automation
+3. **Lean 4** - Modern, fast, excellent tooling, growing community
+4. **Agda** - Haskell extraction, category theory libraries, PL community
+5. **Idris 2** - Native QTT support, but too immature
+
+### Decision
+Use **Agda** for formal verification, with extraction to Haskell.
+
+### Rationale
+
+**Why Agda:**
+
+1. **Haskell extraction**: Once's compiler is Haskell. Agda extracts directly to Haskell via MAlonzo, enabling incremental replacement of unverified code with verified code.
+
+2. **agda-categories**: A mature category theory library that models cartesian closed categories - exactly what Once's 12 generators are.
+
+3. **PL community alignment**: QTT research and type theory papers often use Agda. The community that cares about linear types uses Agda.
+
+4. **Proofs are programs**: Agda's philosophy matches Once's - both emphasize that the code IS the specification.
+
+**Why not HOL4:**
+- Small community, SML-centric
+- Once is Haskell, not SML
+
+**Why not Coq:**
+- Haskell extraction is awkward compared to Agda
+- More automation, but Once's proofs are simple enough not to need it
+
+**Why not Lean 4:**
+- No Haskell extraction (compiles to C)
+- Would require either rewriting Once in Lean or maintaining parallel implementations
+
+**Why not Idris 2:**
+- Native QTT is attractive, but ecosystem too immature
+- Smaller community, less tooling
+
+### Architecture
+
+```
+┌─────────────────────────────────────────┐
+│          Verified Core (Agda)           │
+│  - IR, semantics, type checker, codegen │
+│  - Proofs of correctness                │
+└────────────────┬────────────────────────┘
+                 │ MAlonzo extraction
+                 ▼
+┌─────────────────────────────────────────┐
+│         Unverified Shell (Haskell)      │
+│  - Parser, CLI, File IO                 │
+└─────────────────────────────────────────┘
+```
+
+The security-critical core is verified. The plumbing (parser, CLI) is not - those aren't where the important bugs are.
+
+### Trusted Computing Base
+
+- Agda's type checker
+- MAlonzo extraction
+- GHC
+- The C compiler (for generated code)
+- OS and hardware
+
+This is comparable to CakeML (HOL4 + PolyML + OS) and CompCert (Coq + OCaml + OS).
+
+### Estimated Effort
+
+| Component | Lines of Agda | Time |
+|-----------|---------------|------|
+| Core IR + Semantics | ~300 | 1-2 weeks |
+| Categorical laws | ~400 | 2-3 weeks |
+| Type system + soundness | ~500 | 3-4 weeks |
+| QTT properties | ~400 | 2-3 weeks |
+| C backend correctness | ~1000 | 6-8 weeks |
+| **Total** | **~2600** | **~4 months** |
+
+Compare to CakeML (~100,000 lines) and CompCert (~100,000 lines). Once is ~40x simpler due to its minimal design.
+
+### Consequences
+- Agda becomes a project dependency for verification work
+- Verified code can incrementally replace unverified Haskell
+- QuickCheck properties are "theorem-shaped" - each corresponds to an Agda theorem
+- The PL community will accept Agda proofs
+- See `docs/design/formal/verification-strategy.md` for full details

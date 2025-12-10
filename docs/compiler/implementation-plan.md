@@ -697,3 +697,51 @@ The allocation system is designed (see D012-D015 in decision-log.md) and heap al
 - **Custom encodings**: User-defined Encoding types
 - **Slices**: Zero-copy views into buffers
 - **Arena lifetime**: Ensure arena buffers don't escape scope
+
+### Module System and Imports
+
+- **Import syntax**: Add `import` declarations to parser
+- **Module resolution**: Resolve imports from file system
+- **Canonical library**: Implement `Derived/Canonical/` with standard combinators (see D021)
+  - `Product.once`: swap, diagonal, first, second, bimap, assocL, assocR
+  - `Coproduct.once`: mirror, mapLeft, mapRight
+  - `Function.once`: flip, const, (.), (|>), (&)
+
+### Formal Verification (Agda)
+
+See `docs/design/formal/verification-strategy.md` and decision D022.
+
+**Phase 1: Core IR + Semantics** (~300 lines Agda, 1-2 weeks)
+- Define Type, IR datatypes in Agda
+- Define operational semantics (eval function)
+- Prove basic categorical laws (id-left, id-right, assoc)
+
+**Phase 2: Full Categorical Laws** (~400 lines Agda, 2-3 weeks)
+- Product laws (fst-pair, snd-pair, pair-unique)
+- Coproduct laws (case-inl, case-inr, case-unique)
+- Exponential laws (curry-apply)
+
+**Phase 3: Type System** (~500 lines Agda, 3-4 weeks)
+- Define typing rules
+- Prove progress theorem
+- Prove preservation theorem
+
+**Phase 4: QTT Verification** (~400 lines Agda, 2-3 weeks)
+- Define quantity semiring
+- Define quantitative typing
+- Prove linearity preservation
+
+**Phase 5: C Backend Verification** (~1000 lines Agda, 6-8 weeks)
+- Define C AST subset
+- Define C operational semantics
+- Define IR → C translation
+- Prove semantic preservation
+
+**Phase 6: Extraction and Integration**
+- Extract verified Agda to Haskell
+- Replace hand-written Once.IR with extracted code
+- Replace hand-written type checker with extracted code
+- Replace hand-written C backend with extracted code
+
+**Estimated total**: ~2600 lines of Agda, ~4 months effort.
+Compare to CakeML (~100,000 lines HOL4) and CompCert (~100,000 lines Coq).
