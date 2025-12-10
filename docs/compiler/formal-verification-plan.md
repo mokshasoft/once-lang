@@ -322,3 +322,13 @@ Verification is **complete** when:
 At that point, we can claim:
 
 > "The Once compiler from typed IR to C is formally verified. Any well-typed Once program compiles to C code that computes the same result as the IR semantics."
+
+## Future Work
+
+After verification is complete:
+
+1. **Write blog post about findings** - Document the verification journey, lessons learned, and comparison with other verified compilers (CakeML, CompCert). Cover:
+   - Why CCC-based IR makes verification tractable (~40x less code than CakeML)
+   - The "sugar + verified core" architecture pattern
+   - Practical challenges encountered during formalization
+   - Recommendations for other language implementers considering formal verification
