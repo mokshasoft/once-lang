@@ -60,6 +60,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , directory
     , filepath
     , megaparsec
     , text
@@ -88,6 +89,8 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      Backend.C.Spec
+      Backend.Common
       BackendSpec
       ElaborateSpec
       IRSpec

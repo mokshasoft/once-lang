@@ -662,31 +662,29 @@ prop_string_encoding_erased s =
 
 ## Future Work
 
-### Buffer Allocation (Not Yet Implemented)
+### Buffer Allocation (Heap Implementation Complete)
 
-The allocation system is designed (see D012-D015 in decision-log.md) but not implemented:
+The allocation system is designed (see D012-D015 in decision-log.md) and heap allocation is now implemented:
 
-**Current state:**
-- String literals compile to static `.rodata` pointers in C
-- No dynamic allocation occurs
-- No `@heap`, `@stack`, `@arena` annotations are parsed or used
+**Implemented:**
+- `@heap`, `@stack`, `@pool`, `@arena`, `@const` annotations parsed
+- `--alloc` compiler flag for default allocation strategy
+- Function annotation overrides `--alloc` flag
+- C codegen generates allocation-specific code for string literals
+- Heap allocation via MallocLike interface in interpretation layer:
+  - `interpretations/linux/memory.once` - primitive declarations
+  - `interpretations/linux/memory.c` - `once_heap_string()` implementation
+  - CLI loads all `*.c` files from interpretation directory
+- Tests verify:
+  - Allocation independence (all strategies produce same output)
+  - Heap uses `once_heap_string` (not static fallback)
+  - Stack uses compound literal `(char[]){...}`
+  - Const uses static string literal
 
-**To implement:**
-1. Parse allocation annotations in declarations: `concat @heap a b = ...`
-2. Add `--alloc` compiler flag for default allocation strategy
-3. Track allocation strategy through elaboration to codegen
-4. Generate appropriate C code:
-   - `@const`: Static `.rodata` (current behavior for literals)
-   - `@stack`: Stack-allocated arrays
-   - `@heap`: `malloc()` + copy
-   - `@pool`: Pool allocator interface
-   - `@arena`: Arena allocator interface
-5. Implement buffer operations (concat, slice, length) that respect allocation
-6. Add allocator interface types: `MallocLike`, `PoolLike`, `ArenaLike`
-
-**Properties to verify:**
-- Allocation strategy doesn't change semantics (only performance)
-- Arena buffers don't escape their scope
+**Still to implement:**
+1. Buffer operations (concat, slice, length) that respect allocation
+2. Pool and arena allocator interfaces (similar pattern to heap)
+3. Full MallocLike interface usage (`alloc`, `free`, `realloc` primitives)
 
 ### QTT and Linearity
 

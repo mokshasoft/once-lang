@@ -1,0 +1,9 @@
+-- MallocLike interface implementation for Linux
+-- See docs/design/buffers.md for interface specification
+
+primitive alloc : Int -> Buffer
+primitive free : Buffer -> Unit
+primitive realloc : Buffer -> Int -> Buffer
+
+-- Helper for heap string allocation (used by @heap annotation)
+primitive heap_string : Int -> Buffer -> String Utf8

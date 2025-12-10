@@ -323,7 +323,7 @@ checkDecls ctx (d:ds) = case d of
     let ctx' = extendContext name ty ctx
     checkDecls ctx' ds
 
-  FunDef name expr -> case lookupVar name ctx of
+  FunDef name _alloc expr -> case lookupVar name ctx of
     Nothing -> Left (UnboundVariable name)
     Just expectedTy -> do
       _ <- typeCheck ctx expr expectedTy

@@ -6,6 +6,8 @@ module Once.Syntax
   , Expr (..)
     -- * Types
   , SType (..)
+    -- * Allocation
+  , AllocStrategy (..)
     -- * Names
   , Name
   ) where
@@ -22,11 +24,20 @@ type Name = Text
 newtype Module = Module { moduleDecls :: [Decl] }
   deriving (Eq, Show)
 
+-- | Allocation strategy for buffer outputs
+data AllocStrategy
+  = AllocStack    -- ^ Stack-allocated, automatic lifetime
+  | AllocHeap     -- ^ Heap-allocated via malloc/free
+  | AllocPool     -- ^ Fixed-size block pool
+  | AllocArena    -- ^ Bump allocation, bulk free
+  | AllocConst    -- ^ Read-only constant section (string literals)
+  deriving (Eq, Show)
+
 -- | Top-level declarations
 data Decl
-  = TypeSig Name SType           -- ^ Type signature: name : Type
-  | FunDef Name Expr             -- ^ Function definition: name = expr
-  | Primitive Name SType         -- ^ Primitive declaration: primitive name : Type
+  = TypeSig Name SType                        -- ^ Type signature: name : Type
+  | FunDef Name (Maybe AllocStrategy) Expr    -- ^ Function definition: name [@alloc] = expr
+  | Primitive Name SType                      -- ^ Primitive declaration: primitive name : Type
   deriving (Eq, Show)
 
 -- | Surface syntax expressions (before elaboration to IR)

@@ -53,16 +53,18 @@ reserved w = lexeme $ try (string w *> notFollowedBy alphaNumChar)
 reservedWords :: [Text]
 reservedWords =
   -- Keywords
-  [ "case", "of", "Left", "Right"
+  [ "of", "Left", "Right"
   , "Unit", "Void", "Int", "Buffer", "String"
   , "Utf8", "Utf16", "Ascii"
   , "primitive"
-  -- Generators (the 12 categorical primitives)
-  , "id", "compose"
-  , "fst", "snd", "pair"
-  , "inl", "inr"
-  , "terminal", "initial"
-  , "curry", "apply"
+  -- The 12 categorical generators
+  , "id", "compose"           -- Category
+  , "fst", "snd", "pair"      -- Products
+  , "inl", "inr", "case"      -- Coproducts
+  , "terminal", "initial"     -- Terminal/Initial
+  , "curry", "apply"          -- Closed
+  -- Allocation strategies
+  , "stack", "heap", "pool", "arena", "const"
   ]
 
 -- | Parse an integer literal
@@ -291,9 +293,20 @@ parseDecl = choice
 
     funDef = do
       name <- lowerIdent
+      alloc <- optional allocAnnotation
       void $ symbol "="
       e <- parseExpr
-      pure $ FunDef name e
+      pure $ FunDef name alloc e
+
+    allocAnnotation = do
+      void $ symbol "@"
+      choice
+        [ AllocStack <$ reserved "stack"
+        , AllocHeap <$ reserved "heap"
+        , AllocPool <$ reserved "pool"
+        , AllocArena <$ reserved "arena"
+        , AllocConst <$ reserved "const"
+        ]
 
 -- -----------------------------------------------------------------------------
 -- Module Parser

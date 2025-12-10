@@ -110,8 +110,17 @@ parserTests = testGroup "Parser"
 
       , testCase "function definition" $
           parseDecl' "swap = pair snd fst" @?=
-            Right (FunDef "swap"
+            Right (FunDef "swap" Nothing
                     (EApp (EApp (EVar "pair") (EVar "snd")) (EVar "fst")))
+
+      , testCase "function definition with @heap" $
+          parseDecl' "concat @heap = pair snd fst" @?=
+            Right (FunDef "concat" (Just AllocHeap)
+                    (EApp (EApp (EVar "pair") (EVar "snd")) (EVar "fst")))
+
+      , testCase "function definition with @stack" $
+          parseDecl' "f @stack = id" @?=
+            Right (FunDef "f" (Just AllocStack) (EVar "id"))
       ]
 
   , testGroup "swap.once"
@@ -126,7 +135,7 @@ parserTests = testGroup "Parser"
             Right (Module decls) -> do
               length decls @?= 2
               case decls of
-                [TypeSig name1 _, FunDef name2 _] -> do
+                [TypeSig name1 _, FunDef name2 _ _] -> do
                   name1 @?= "swap"
                   name2 @?= "swap"
                 _ -> assertFailure "Expected type sig and fun def"
@@ -144,7 +153,7 @@ parseType' input = case parseModule ("x : " <> input) of
 parseExpr' :: T.Text -> Either String Expr
 parseExpr' input = case parseModule ("x = " <> input) of
   Left err -> Left (show err)
-  Right (Module [FunDef _ e]) -> Right e
+  Right (Module [FunDef _ _ e]) -> Right e
   Right _ -> Left "Unexpected parse result"
 
 -- Helper to parse a single declaration
