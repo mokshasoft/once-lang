@@ -185,17 +185,8 @@ eval-curry-eta g a b = refl
 -- Distributivity Laws
 ------------------------------------------------------------------------
 
--- | Products distribute over coproducts (left)
---
--- (A + B) × C ≅ (A × C) + (B × C)
---
--- The morphism: [ ⟨ inl ∘ fst , snd ⟩ , ⟨ inr ∘ fst , snd ⟩ ]
---
-eval-distrib-left : ∀ {A B C} (x : ⟦ (A + B) * C ⟧)
-                  → eval [ ⟨ inl ∘ fst , snd ⟩ , ⟨ inr ∘ fst , snd ⟩ ] (proj₁ x)
-                    ≡ [ (λ a → inj₁ (a , proj₂ x)) , (λ b → inj₂ (b , proj₂ x)) ] (proj₁ x)
-eval-distrib-left (inj₁ a , c) = refl
-eval-distrib-left (inj₂ b , c) = refl
+-- Distributivity of products over coproducts (C × (A + B) ≅ (C × A) + (C × B))
+-- is proven in Once.Surface.Correct as distribute-inl and distribute-inr.
 
 ------------------------------------------------------------------------
 -- Functoriality of Product and Coproduct

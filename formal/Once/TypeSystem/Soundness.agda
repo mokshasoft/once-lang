@@ -27,7 +27,7 @@ open import Once.TypeSystem.Typing
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
@@ -134,7 +134,6 @@ canonical-void ()
 --
 canonical-product : ∀ {A B} (x : ⟦ A * B ⟧) → ∃[ a ] ∃[ b ] (x ≡ (a , b))
 canonical-product (a , b) = a , b , refl
-  where open import Data.Product using (∃-syntax)
 
 -- | Canonical forms lemma for sums
 --
@@ -143,9 +142,7 @@ canonical-product (a , b) = a , b , refl
 canonical-sum : ∀ {A B} (x : ⟦ A + B ⟧)
               → (∃[ a ] x ≡ inj₁ a) ⊎ (∃[ b ] x ≡ inj₂ b)
 canonical-sum (inj₁ a) = inj₁ (a , refl)
-  where open import Data.Product using (∃-syntax)
 canonical-sum (inj₂ b) = inj₂ (b , refl)
-  where open import Data.Product using (∃-syntax)
 
 ------------------------------------------------------------------------
 -- Compositionality
