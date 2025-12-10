@@ -3,9 +3,9 @@
 ## Principles
 
 1. **Small focused commits** - Each commit does one thing, is testable
-2. **Property testing as spec** - QuickCheck properties ARE the formal specification
+2. **Agda proofs as spec** - Verified Agda code extracts to Haskell (see D022)
 3. **One backend (C)** - FFI-friendly library; other languages call via C FFI
-4. **Verification-ready** - Structure code so proofs can be added incrementally
+4. **Verification-first** - Formal spec in Agda before implementation
 5. **Fourmolu** - Consistent formatting
 6. **Example-driven** - Build only what's needed to compile the current example
 
@@ -386,22 +386,22 @@ test-dependencies:
 
 ## Verification Path
 
-### Now: Property Tests = Spec
+### Now: Property Tests
 
 ```haskell
--- This IS the formal specification
+-- QuickCheck property (executable test)
 prop_id_right f x = eval (Compose f (Id t)) x === eval f x
 ```
 
-### Later: Proofs
+### Target: Agda Proofs
 
-```coq
-(* Same property, now a theorem *)
-Theorem id_right : forall f x, eval (Compose f (Id _)) x = eval f x.
-Proof. reflexivity. Qed.
+```agda
+-- Agda theorem (machine-checked proof)
+id-right : ∀ {A B} (f : IR A B) → f ∘ id ≡ f
+id-right f = refl
 ```
 
-Properties are written to be **theorem-shaped**. Each one can become a Coq lemma.
+Properties are written to be **theorem-shaped**. Each QuickCheck property corresponds to an Agda theorem. The Agda code extracts to Haskell, replacing the hand-written implementation.
 
 ## Milestones
 
@@ -660,88 +660,271 @@ prop_string_encoding_erased s =
 | **M10.3** | Allocation | @alloc annotation working |
 | **M10.4** | Hello String | hello.once uses string literal |
 
-## Future Work
+## Phase 11: Formal Verification (Agda)
 
-### Buffer Allocation (Heap Implementation Complete)
+**Goal**: Mechanized proofs of compiler correctness in Agda, with extraction to Haskell.
 
-The allocation system is designed (see D012-D015 in decision-log.md) and heap allocation is now implemented:
+See `docs/design/formal/verification-strategy.md` and decision D022.
+
+### 11.1: Core IR + Semantics
+
+**Goal**: Define IR in Agda, prove basic categorical laws.
+
+```
+formal/
+├── Once/
+│   ├── Type.agda        -- Type definition
+│   ├── IR.agda          -- The 12 generators
+│   └── Semantics.agda   -- eval function
+└── Once.agda-lib
+```
+
+### Commits
+
+```
+1. Initialize Agda project with agda-stdlib dependency
+2. Define Type datatype (Unit, Void, Product, Sum, Arrow)
+3. Define IR datatype (id, compose, fst, snd, pair, inl, inr, case, terminal, initial, curry, apply)
+4. Define semantic interpretation ⟦_⟧ : Type → Set
+5. Define eval : IR A B → ⟦ A ⟧ → ⟦ B ⟧
+6. Prove id-left : id ∘ f ≡ f
+7. Prove id-right : f ∘ id ≡ f
+8. Prove assoc : f ∘ (g ∘ h) ≡ (f ∘ g) ∘ h
+```
+
+**Estimated**: ~300 lines Agda
+
+### 11.2: Full Categorical Laws
+
+**Goal**: Prove all CCC laws.
+
+### Commits
+
+```
+1. Prove fst-pair : fst ∘ ⟨ f , g ⟩ ≡ f
+2. Prove snd-pair : snd ∘ ⟨ f , g ⟩ ≡ g
+3. Prove pair-unique : ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h
+4. Prove case-inl : [ f , g ] ∘ inl ≡ f
+5. Prove case-inr : [ f , g ] ∘ inr ≡ g
+6. Prove case-unique : [ h ∘ inl , h ∘ inr ] ≡ h
+7. Prove curry-apply adjunction
+8. Prove terminal/initial laws
+```
+
+**Estimated**: ~400 lines Agda
+
+### 11.3: Type System Verification
+
+**Goal**: Define typing rules, prove type soundness.
+
+```
+formal/Once/
+├── TypeSystem/
+│   ├── Typing.agda       -- Typing judgments
+│   ├── Progress.agda     -- Well-typed terms step or are values
+│   └── Preservation.agda -- Typing preserved under evaluation
+```
+
+### Commits
+
+```
+1. Define typing context Γ
+2. Define typing judgment Γ ⊢ e : A
+3. Define typing rules for all 12 generators
+4. Prove progress theorem
+5. Prove preservation theorem
+6. Prove type soundness (progress + preservation)
+```
+
+**Estimated**: ~500 lines Agda
+
+### Milestones
+
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M11.1** | Core proofs | id/assoc laws proven |
+| **M11.2** | CCC laws | All categorical laws proven |
+| **M11.3** | Type soundness | Progress + preservation |
+
+## Phase 12: QTT Enforcement
+
+**Goal**: Enforce quantity annotations at type-check time.
+
+Currently quantities are parsed but ignored. This phase makes them meaningful.
+
+### Commits
+
+```
+1. Add QTT context (variables with quantities) to type checker
+2. Implement quantity checking for variables (use count matches declared quantity)
+3. Implement quantity checking for pair (both components used)
+4. Implement quantity checking for case (both branches use same quantity)
+5. Implement 0-quantity (erased) checking
+6. Implement 1-quantity (linear) checking - exactly one use
+7. Implement ω-quantity (unrestricted) checking
+8. Add error messages for quantity violations
+9. Add tests: linear variable used twice → error
+10. Add tests: linear variable unused → error (or warning?)
+```
+
+### Properties
+
+```haskell
+-- Linear code doesn't copy
+prop_linear_no_copy e =
+  inferQuantity e === One ==> not (containsDiagonal e)
+
+-- Zero-quantity code doesn't appear at runtime
+prop_zero_erased e =
+  hasZeroQuantity e ==> not (appearsInOutput e)
+```
+
+### Milestones
+
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M12.1** | Quantity tracking | Type checker tracks use counts |
+| **M12.2** | Linear enforcement | Linear vars must be used exactly once |
+| **M12.3** | Error messages | Clear errors for quantity violations |
+
+## Phase 13: Zero Erasure
+
+**Goal**: Remove zero-quantity code from generated output.
+
+Zero-quantity (erased) types exist only at compile time. They should not appear in the generated C code.
+
+### Commits
+
+```
+1. Track zero-quantity types through elaboration
+2. Add erasure pass after type checking
+3. Remove zero-quantity function arguments from IR
+4. Remove zero-quantity struct fields from C codegen
+5. Remove zero-quantity function parameters from C signatures
+6. Add test: zero-quantity type not in generated C
+7. Add test: proof-carrying code (proof erased, computation remains)
+```
+
+### Example
+
+```
+-- Once source
+id_with_proof : (A : Type) -> (pf : A = A) -> A -> A
+id_with_proof A pf x = x
+
+-- After erasure (A and pf have quantity 0)
+id_with_proof : A -> A
+id_with_proof x = x
+```
+
+### Milestones
+
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M13.1** | Erasure pass | Zero-quantity terms removed from IR |
+| **M13.2** | C codegen | Erased terms don't appear in C |
+
+## Phase 14: Buffer Allocation
+
+**Goal**: Complete the allocation system for buffers.
+
+Heap allocation is implemented (see D012-D015). This phase completes pool/arena and buffer operations.
+
+### Current State
 
 **Implemented:**
 - `@heap`, `@stack`, `@pool`, `@arena`, `@const` annotations parsed
 - `--alloc` compiler flag for default allocation strategy
-- Function annotation overrides `--alloc` flag
-- C codegen generates allocation-specific code for string literals
-- Heap allocation via MallocLike interface in interpretation layer:
-  - `interpretations/linux/memory.once` - primitive declarations
-  - `interpretations/linux/memory.c` - `once_heap_string()` implementation
-  - CLI loads all `*.c` files from interpretation directory
-- Tests verify:
-  - Allocation independence (all strategies produce same output)
-  - Heap uses `once_heap_string` (not static fallback)
-  - Stack uses compound literal `(char[]){...}`
-  - Const uses static string literal
+- Heap allocation via MallocLike interface
 
-**Still to implement:**
-1. Buffer operations (concat, slice, length) that respect allocation
-2. Pool and arena allocator interfaces (similar pattern to heap)
-3. Full MallocLike interface usage (`alloc`, `free`, `realloc` primitives)
+**To implement:**
 
-### QTT and Linearity
+### Commits
 
-- **Quantity enforcement**: Implement QTT checking in TypeCheck.hs (currently quantities are parsed but ignored)
-- **Zero erasure**: Remove Zero-quantity code in C backend (test: verify Zero-quantity functions don't appear in output)
+```
+1. Add Buffer concat operation to IR
+2. Add Buffer slice operation to IR
+3. Add Buffer length operation to IR
+4. Implement concat in C backend (respects allocation strategy)
+5. Implement slice in C backend (zero-copy when possible)
+6. Implement length in C backend
+7. Add pool allocator interface to interpretation layer
+8. Add arena allocator interface to interpretation layer
+9. Add tests: buffer operations with each allocation strategy
+10. Add test: allocation independence (same semantics regardless of strategy)
+```
 
-### Type System Extensions
+### Milestones
 
-- **Refinement types**: Add optional size constraints on Buffer (see type-system.md)
-- **Custom encodings**: User-defined Encoding types
-- **Slices**: Zero-copy views into buffers
-- **Arena lifetime**: Ensure arena buffers don't escape scope
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M14.1** | Buffer ops | concat, slice, length in IR |
+| **M14.2** | Pool/Arena | All allocation strategies working |
 
-### Module System and Imports
+## Phase 15: Module System and Imports
 
-- **Import syntax**: Add `import` declarations to parser
-- **Module resolution**: Resolve imports from file system
-- **Canonical library**: Implement `Derived/Canonical/` with standard combinators (see D021)
-  - `Product.once`: swap, diagonal, first, second, bimap, assocL, assocR
-  - `Coproduct.once`: mirror, mapLeft, mapRight
-  - `Function.once`: flip, const, (.), (|>), (&)
+**Goal**: Import declarations and the Canonical standard library.
 
-### Formal Verification (Agda)
+### Commits
 
-See `docs/design/formal/verification-strategy.md` and decision D022.
+```
+1. Add import declaration to parser: `import Module.Name`
+2. Add module resolution (search paths)
+3. Add module dependency tracking
+4. Create Derived/Canonical/Product.once (swap, diagonal, bimap, assocL, assocR)
+5. Create Derived/Canonical/Coproduct.once (mirror, mapLeft, mapRight)
+6. Create Derived/Canonical/Function.once (flip, const, pipe operators)
+7. Add test: import and use Canonical.Product.swap
+8. Add circular import detection
+9. Add qualified imports: `import Canonical.Product as P`
+```
 
-**Phase 1: Core IR + Semantics** (~300 lines Agda, 1-2 weeks)
-- Define Type, IR datatypes in Agda
-- Define operational semantics (eval function)
-- Prove basic categorical laws (id-left, id-right, assoc)
+### Directory Structure
 
-**Phase 2: Full Categorical Laws** (~400 lines Agda, 2-3 weeks)
-- Product laws (fst-pair, snd-pair, pair-unique)
-- Coproduct laws (case-inl, case-inr, case-unique)
-- Exponential laws (curry-apply)
+```
+Derived/
+├── Canonical/
+│   ├── Product.once      -- swap, diagonal, first, second, bimap, assocL, assocR
+│   ├── Coproduct.once    -- mirror, mapLeft, mapRight
+│   └── Function.once     -- flip, const, (.), (|>), (&)
+```
 
-**Phase 3: Type System** (~500 lines Agda, 3-4 weeks)
-- Define typing rules
-- Prove progress theorem
-- Prove preservation theorem
+See decision D021 for rationale on "Canonical" naming.
 
-**Phase 4: QTT Verification** (~400 lines Agda, 2-3 weeks)
-- Define quantity semiring
-- Define quantitative typing
+### Milestones
+
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M15.1** | Import syntax | Parser handles import declarations |
+| **M15.2** | Module resolution | Imports resolved from file system |
+| **M15.3** | Canonical library | Standard combinators available |
+
+## Future Work
+
+### Agda Verification: QTT and C Backend
+
+After Phase 11 (core Agda verification), additional verification work:
+
+**QTT Verification** (~400 lines Agda)
+- Define quantity semiring in Agda
+- Define quantitative typing rules
 - Prove linearity preservation
 
-**Phase 5: C Backend Verification** (~1000 lines Agda, 6-8 weeks)
-- Define C AST subset
+**C Backend Verification** (~1000 lines Agda)
+- Define C AST subset in Agda
 - Define C operational semantics
 - Define IR → C translation
 - Prove semantic preservation
 
-**Phase 6: Extraction and Integration**
+**Extraction and Integration**
 - Extract verified Agda to Haskell
 - Replace hand-written Once.IR with extracted code
 - Replace hand-written type checker with extracted code
 - Replace hand-written C backend with extracted code
 
-**Estimated total**: ~2600 lines of Agda, ~4 months effort.
-Compare to CakeML (~100,000 lines HOL4) and CompCert (~100,000 lines Coq).
+### Type System Extensions
+
+- **Refinement types**: Add optional size constraints on Buffer
+- **Custom encodings**: User-defined Encoding types
+- **Slices**: Zero-copy views into buffers
+- **Arena lifetime**: Ensure arena buffers don't escape scope
