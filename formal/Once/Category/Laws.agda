@@ -69,7 +69,7 @@ eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
 eval-snd-pair f g x = refl
 
 ------------------------------------------------------------------------
--- Product Laws (Eta)
+-- Product Laws (Eta/Uniqueness)
 ------------------------------------------------------------------------
 
 -- | ⟨ fst , snd ⟩ ≡ id (semantically)
@@ -79,6 +79,16 @@ eval-snd-pair f g x = refl
 eval-pair-eta : ∀ {A B} (x : ⟦ A * B ⟧)
               → eval ⟨ fst , snd ⟩ x ≡ x
 eval-pair-eta (a , b) = refl
+
+-- | Product uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h (semantically)
+--
+-- Any morphism into a product is uniquely determined by its projections.
+-- This is the universal property of products.
+--
+eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (x : ⟦ C ⟧)
+                 → eval ⟨ fst ∘ h , snd ∘ h ⟩ x ≡ eval h x
+eval-pair-unique h x with eval h x
+... | (a , b) = refl
 
 ------------------------------------------------------------------------
 -- Coproduct Laws (Beta)
@@ -101,7 +111,7 @@ eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ B ⟧)
 eval-case-inr f g x = refl
 
 ------------------------------------------------------------------------
--- Coproduct Laws (Eta)
+-- Coproduct Laws (Eta/Uniqueness)
 ------------------------------------------------------------------------
 
 -- | [ inl , inr ] ≡ id (semantically)
@@ -112,6 +122,16 @@ eval-case-eta : ∀ {A B} (x : ⟦ A + B ⟧)
               → eval [ inl , inr ] x ≡ x
 eval-case-eta (inj₁ a) = refl
 eval-case-eta (inj₂ b) = refl
+
+-- | Coproduct uniqueness: [ h ∘ inl , h ∘ inr ] ≡ h (semantically)
+--
+-- Any morphism from a coproduct is uniquely determined by its restrictions.
+-- This is the universal property of coproducts.
+--
+eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (x : ⟦ A + B ⟧)
+                 → eval [ h ∘ inl , h ∘ inr ] x ≡ eval h x
+eval-case-unique h (inj₁ a) = refl
+eval-case-unique h (inj₂ b) = refl
 
 ------------------------------------------------------------------------
 -- Terminal Object Laws
@@ -127,6 +147,19 @@ eval-terminal-unique f x with eval f x
 ... | tt = refl
 
 ------------------------------------------------------------------------
+-- Initial Object Laws
+------------------------------------------------------------------------
+
+-- | Any two morphisms from Void are equal (semantically)
+--
+-- Void is initial: there's a unique morphism from Void to any object.
+-- This is vacuously true since Void is empty.
+--
+eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void ⟧)
+                    → eval f x ≡ eval initial x
+eval-initial-unique f ()
+
+------------------------------------------------------------------------
 -- Exponential Laws (Curry/Apply adjunction)
 ------------------------------------------------------------------------
 
@@ -137,3 +170,55 @@ eval-terminal-unique f x with eval f x
 eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
                  → eval (apply ∘ ⟨ curry f ∘ fst , snd ⟩) x ≡ eval f x
 eval-curry-apply f (a , b) = refl
+
+-- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
+--
+-- This is the eta law for exponentials.
+-- Note: This requires function extensionality for full generality,
+-- but we can prove it pointwise.
+--
+eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+               → eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a b ≡ eval g a b
+eval-curry-eta g a b = refl
+
+------------------------------------------------------------------------
+-- Distributivity Laws
+------------------------------------------------------------------------
+
+-- | Products distribute over coproducts (left)
+--
+-- (A + B) × C ≅ (A × C) + (B × C)
+--
+-- The morphism: [ ⟨ inl ∘ fst , snd ⟩ , ⟨ inr ∘ fst , snd ⟩ ]
+--
+eval-distrib-left : ∀ {A B C} (x : ⟦ (A + B) * C ⟧)
+                  → eval [ ⟨ inl ∘ fst , snd ⟩ , ⟨ inr ∘ fst , snd ⟩ ] (proj₁ x)
+                    ≡ [ (λ a → inj₁ (a , proj₂ x)) , (λ b → inj₂ (b , proj₂ x)) ] (proj₁ x)
+eval-distrib-left (inj₁ a , c) = refl
+eval-distrib-left (inj₂ b , c) = refl
+
+------------------------------------------------------------------------
+-- Functoriality of Product and Coproduct
+------------------------------------------------------------------------
+
+-- | bimap f g = ⟨ f ∘ fst , g ∘ snd ⟩ preserves identity
+--
+eval-bimap-id : ∀ {A B} (x : ⟦ A * B ⟧)
+              → eval ⟨ id ∘ fst , id ∘ snd ⟩ x ≡ x
+eval-bimap-id (a , b) = refl
+
+-- | bimap preserves composition
+--
+eval-bimap-compose : ∀ {A B C D E F}
+                     (f : IR B C) (g : IR A B) (h : IR E F) (i : IR D E)
+                     (x : ⟦ A * D ⟧)
+                   → eval ⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ x
+                     ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ ∘ ⟨ g ∘ fst , i ∘ snd ⟩) x
+eval-bimap-compose f g h i (a , d) = refl
+
+-- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity
+--
+eval-bicase-id : ∀ {A B} (x : ⟦ A + B ⟧)
+               → eval [ inl ∘ id , inr ∘ id ] x ≡ x
+eval-bicase-id (inj₁ a) = refl
+eval-bicase-id (inj₂ b) = refl
