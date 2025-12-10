@@ -7,6 +7,7 @@ module Once.TypeCheck
   , Context
   , emptyContext
   , extendContext
+  , extendContextQ
     -- * Errors
   , TypeError (..)
     -- * Utilities
@@ -19,6 +20,7 @@ import qualified Data.Text
 
 import Once.Syntax (Module (..), Decl (..), Expr (..), SType (..), Name)
 import Once.Type (Type (..), Encoding (..))
+import Once.Quantity (Quantity (..))
 
 -- | Type errors
 data TypeError
@@ -31,23 +33,57 @@ data TypeError
   | UnificationError Type Type
   | ArityMismatch Name Int Int    -- name, expected, actual
   | SignatureMismatch Type Type   -- signature, inferred (structural mismatch)
+  -- Quantity errors (Phase 12)
+  | LinearUsedMultiple Name Int   -- linear variable used more than once
+  | LinearUnused Name             -- linear variable not used
+  | ErasedUsedAtRuntime Name      -- erased (0) variable used at runtime
+  | QuantityMismatch Name Quantity Quantity  -- name, expected, actual
   deriving (Eq, Show)
 
--- | Typing context: maps variable names to their types
-newtype Context = Context { getContext :: Map Name Type }
+-- | Binding information: type and declared quantity
+data Binding = Binding
+  { bindType :: Type
+  , bindQuantity :: Quantity
+  } deriving (Eq, Show)
+
+-- | Typing context: maps variable names to their types and quantities
+newtype Context = Context { getContext :: Map Name Binding }
   deriving (Eq, Show)
+
+-- | Usage tracking: how many times each variable is used
+type Usage = Map Name Int
+
+-- | Empty usage
+emptyUsage :: Usage
+emptyUsage = Map.empty
+
+-- | Record one use of a variable
+useVar :: Name -> Usage -> Usage
+useVar name usage = Map.insertWith (+) name 1 usage
+
+-- | Merge usages (for sequential composition)
+mergeUsage :: Usage -> Usage -> Usage
+mergeUsage = Map.unionWith (+)
 
 -- | Empty context
 emptyContext :: Context
 emptyContext = Context Map.empty
 
--- | Extend context with a new binding
+-- | Extend context with a new binding (default quantity = Omega for backwards compat)
 extendContext :: Name -> Type -> Context -> Context
-extendContext name ty (Context ctx) = Context (Map.insert name ty ctx)
+extendContext name ty = extendContextQ name ty Omega
+
+-- | Extend context with a new binding and quantity
+extendContextQ :: Name -> Type -> Quantity -> Context -> Context
+extendContextQ name ty q (Context ctx) = Context (Map.insert name (Binding ty q) ctx)
 
 -- | Look up a variable in the context
 lookupVar :: Name -> Context -> Maybe Type
-lookupVar name (Context ctx) = Map.lookup name ctx
+lookupVar name (Context ctx) = bindType <$> Map.lookup name ctx
+
+-- | Look up a variable's quantity in the context
+lookupQuantity :: Name -> Context -> Maybe Quantity
+lookupQuantity name (Context ctx) = bindQuantity <$> Map.lookup name ctx
 
 -- | Type checking state: tracks fresh type variable generation
 type Fresh = Int
@@ -290,7 +326,7 @@ convertType sty = case sty of
   STProduct a b -> TProduct (convertType a) (convertType b)
   STSum a b -> TSum (convertType a) (convertType b)
   STArrow a b -> TArrow (convertType a) (convertType b)
-  STQuant _ t -> convertType t  -- ignore quantity for now
+  STQuant q t -> convertType t  -- quantity tracked separately in context
 
 -- | Type check an expression against an expected type (from signature)
 -- In Once, signatures are assertions - the inferred type must structurally
@@ -320,16 +356,101 @@ checkDecls _ [] = Right ()
 checkDecls ctx (d:ds) = case d of
   TypeSig name sty -> do
     let ty = convertType sty
-    let ctx' = extendContext name ty ctx
+    let q = extractQuantity sty
+    let ctx' = extendContextQ name ty q ctx
     checkDecls ctx' ds
 
   FunDef name _alloc expr -> case lookupVar name ctx of
     Nothing -> Left (UnboundVariable name)
     Just expectedTy -> do
       _ <- typeCheck ctx expr expectedTy
+      -- Validate quantity usage for lambda-bound variables
+      validateLambdaUsage expr
       checkDecls ctx ds
 
   Primitive name sty -> do
     let ty = convertType sty
-    let ctx' = extendContext name ty ctx
+    let q = extractQuantity sty
+    let ctx' = extendContextQ name ty q ctx
     checkDecls ctx' ds
+
+-- | Extract the outermost quantity from a surface type (default: Omega)
+extractQuantity :: SType -> Quantity
+extractQuantity (STQuant q _) = q
+extractQuantity _ = Omega  -- unrestricted by default
+
+------------------------------------------------------------------------
+-- Quantity Validation (Phase 12)
+------------------------------------------------------------------------
+
+-- | Check that variable usage is consistent with declared quantities
+--
+-- QTT rules:
+--   - Zero (0):  Variable must not be used at runtime
+--   - One (1):   Variable must be used exactly once
+--   - Omega (ω): Variable can be used any number of times
+--
+validateUsage :: Context -> Usage -> Either TypeError ()
+validateUsage ctx usage = mapM_ checkBinding (Map.toList (getContext ctx))
+  where
+    checkBinding (name, Binding _ q) =
+      let count = Map.findWithDefault 0 name usage
+      in checkQuantity name q count
+
+-- | Check if usage count is valid for declared quantity
+checkQuantity :: Name -> Quantity -> Int -> Either TypeError ()
+checkQuantity name Zero count
+  | count > 0 = Left (ErasedUsedAtRuntime name)
+  | otherwise = Right ()
+checkQuantity name One count
+  | count == 0 = Left (LinearUnused name)
+  | count == 1 = Right ()
+  | otherwise  = Left (LinearUsedMultiple name count)
+checkQuantity _ Omega _ = Right ()  -- unrestricted, any usage is fine
+
+-- | Count variable usages in an expression
+countUsage :: Expr -> Usage
+countUsage expr = case expr of
+  EVar name -> useVar name emptyUsage
+  EApp f arg -> mergeUsage (countUsage f) (countUsage arg)
+  ELam _ body -> countUsage body  -- bound var handled separately
+  EPair a b -> mergeUsage (countUsage a) (countUsage b)
+  ECase scrut _ e1 _ e2 ->
+    -- For case, both branches must use variables the same way
+    -- This is a simplification; full QTT would use max of branch usages
+    mergeUsage (countUsage scrut) (maxUsage (countUsage e1) (countUsage e2))
+  EUnit -> emptyUsage
+  EInt _ -> emptyUsage
+  EStringLit _ -> emptyUsage
+  EAnnot e _ -> countUsage e
+
+-- | Max of two usages (for case branches - conservative)
+maxUsage :: Usage -> Usage -> Usage
+maxUsage = Map.unionWith max
+
+-- | Validate usage of lambda-bound variables in an expression
+--
+-- For each lambda \x -> body, we check that x is used according to
+-- its declared quantity. Currently, lambdas default to linear (One).
+--
+-- TODO: Parse quantity annotations on lambda parameters: \(x : A^1) -> ...
+--
+validateLambdaUsage :: Expr -> Either TypeError ()
+validateLambdaUsage expr = case expr of
+  EVar _ -> Right ()
+  EApp f arg -> validateLambdaUsage f >> validateLambdaUsage arg
+  ELam x body -> do
+    -- Check inner lambdas first
+    validateLambdaUsage body
+    -- Count usages of x in body
+    let usage = countUsage body
+    let xUsage = Map.findWithDefault 0 x usage
+    -- Default: lambdas are linear (quantity = One)
+    -- This enforces that lambda-bound variables are used exactly once
+    checkQuantity x One xUsage
+  EPair a b -> validateLambdaUsage a >> validateLambdaUsage b
+  ECase _ _ e1 _ e2 -> validateLambdaUsage e1 >> validateLambdaUsage e2
+  EUnit -> Right ()
+  EInt _ -> Right ()
+  EStringLit _ -> Right ()
+  EAnnot e _ -> validateLambdaUsage e

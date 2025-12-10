@@ -2,8 +2,11 @@ module QuantitySpec (quantityTests) where
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
+import Test.Tasty.HUnit
 
 import Once.Quantity
+import Once.Syntax
+import Once.TypeCheck
 
 instance Arbitrary Quantity where
   arbitrary = elements [Zero, One, Omega]
@@ -39,5 +42,53 @@ quantityTests = testGroup "Quantity"
           \a b c -> qMul a (qAdd b c) === qAdd (qMul a b) (qMul a c)
       , testProperty "right distributivity" $
           \a b c -> qMul (qAdd a b) c === qAdd (qMul a c) (qMul b c)
+      ]
+  , testGroup "QTT enforcement (Phase 12)"
+      [ testCase "linear variable used exactly once passes" $
+          -- \x -> x  (x used once, linear is satisfied)
+          let expr = ELam "x" (EVar "x")
+              mod' = Module
+                [ TypeSig "f" (STArrow (STVar "A") (STVar "A"))
+                , FunDef "f" Nothing expr
+                ]
+          in case checkModule mod' of
+               Right () -> pure ()
+               Left err -> assertFailure $ "Expected success but got: " ++ show err
+
+      , testCase "linear variable used twice fails" $
+          -- \x -> (x, x)  (x used twice, violates linear)
+          let expr = ELam "x" (EPair (EVar "x") (EVar "x"))
+              mod' = Module
+                [ TypeSig "f" (STArrow (STVar "A") (STProduct (STVar "A") (STVar "A")))
+                , FunDef "f" Nothing expr
+                ]
+          in case checkModule mod' of
+               Left (LinearUsedMultiple "x" 2) -> pure ()
+               Left err -> assertFailure $ "Expected LinearUsedMultiple but got: " ++ show err
+               Right () -> assertFailure "Expected failure but got success"
+
+      , testCase "linear variable unused fails" $
+          -- \x -> ()  (x not used, violates linear)
+          let expr = ELam "x" EUnit
+              mod' = Module
+                [ TypeSig "f" (STArrow (STVar "A") STUnit)
+                , FunDef "f" Nothing expr
+                ]
+          in case checkModule mod' of
+               Left (LinearUnused "x") -> pure ()
+               Left err -> assertFailure $ "Expected LinearUnused but got: " ++ show err
+               Right () -> assertFailure "Expected failure but got success"
+
+      , testCase "point-free composition passes (no lambdas)" $
+          -- pair snd fst  (point-free, no bound variables to check)
+          let expr = EApp (EApp (EVar "pair") (EVar "snd")) (EVar "fst")
+              mod' = Module
+                [ TypeSig "swap" (STArrow (STProduct (STVar "A") (STVar "B"))
+                                          (STProduct (STVar "B") (STVar "A")))
+                , FunDef "swap" Nothing expr
+                ]
+          in case checkModule mod' of
+               Right () -> pure ()
+               Left err -> assertFailure $ "Expected success but got: " ++ show err
       ]
   ]
