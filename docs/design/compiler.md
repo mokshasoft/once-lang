@@ -1,297 +1,300 @@
-# Once Compiler Architecture
+# The Once Compiler
 
-## Overview
+## Architecture Overview
 
-An Once compiler translates programs written in natural transformations to executable code for any target platform. The compilation is straightforward because the source language has precise mathematical semantics.
-
-## Compiler Pipeline
+The Once compiler transforms source code into target language output through a series of well-defined phases. The design emphasizes simplicity: because Once programs are built from ~12 categorical generators, the compiler's core is small and amenable to formal verification.
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Source    │ -> │  Categorical│ -> │  Optimized  │ -> │   Target    │
-│   Once      │    │     IR      │    │     IR      │    │   Code      │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-     Parse           Type Check          Rewrite           Generate
+Source (.once)
+     │
+     ▼
+┌─────────┐
+│  Parse  │
+└────┬────┘
+     │ AST
+     ▼
+┌─────────┐
+│  Type   │
+│  Check  │
+└────┬────┘
+     │ Typed AST
+     ▼
+┌─────────┐
+│  Lower  │
+└────┬────┘
+     │ Categorical IR
+     ▼
+┌─────────┐
+│Optimize │
+└────┬────┘
+     │ Optimized IR
+     ▼
+┌─────────┐
+│ Codegen │
+└────┬────┘
+     │
+     ▼
+Target (.c, .rs, .js, ...)
 ```
 
-## Frontend
+## Phase 1: Parsing
 
-### Parsing
+The parser converts Once source text into an abstract syntax tree.
 
-Once syntax is designed for clarity and ASCII-friendliness:
-
-```
--- Function definition
-parseJson : String -> Json + ParseError
-parseJson = compose validate (compose structure tokenize)
-
--- Data types
-data Json
-  = JsonNull
-  | JsonBool Bool
-  | JsonNumber Number
-  | JsonString String
-  | JsonArray (List Json)
-  | JsonObject (List (String * Json))
-```
-
-The parser produces an AST of categorical terms.
-
-### Type Checking
-
-The type checker verifies:
-- Morphisms have correct source and target types
-- Composition types match: `(A -> B)` composes with `(B -> C)`
-- Functor laws are respected
-- Natural transformation components have correct types
-
-Type checking is standard bidirectional type checking with inference.
-
-## Intermediate Representation
-
-The core IR is just the Generators:
+### Input Syntax
 
 ```
-data IR
-  = Id Type                          -- identity
-  | Compose IR IR                    -- composition
-  | Fst Type Type                    -- first projection
-  | Snd Type Type                    -- second projection
-  | Pair IR IR                       -- pairing
-  | Inl Type Type                    -- left injection
-  | Inr Type Type                    -- right injection
-  | Case IR IR                       -- case analysis
-  | Terminal Type                    -- discard
-  | Initial Type                     -- absurd
-  | Curry IR                         -- currying
-  | Apply Type Type                  -- application
-  | Fmap Functor IR                  -- functor mapping
-  | Primitive String Type Type       -- external primitives
+-- Type signature
+processData : String -> Result Data Error
+
+-- Definition using generators
+processData = compose validate parse
+
+-- Type definitions
+type Result A E = A + E
 ```
 
-This is essentially a **Categorical Abstract Machine (CAM)** - a well-studied compilation target for functional languages.
+### Output AST
 
-## Optimization
-
-Because semantics are categorical, every optimization is a **law application**:
-
-### Category Laws
-
-```
-compose f id = f                      -- right identity
-compose id f = f                      -- left identity
-compose f (compose g h) =             -- associativity
-  compose (compose f g) h
+```haskell
+data Expr
+  = Var Name
+  | App Expr Expr
+  | Lam Name Expr
+  | Let Name Expr Expr
+  | Ann Expr Type
+  | Prim Primitive
 ```
 
-### Functor Laws
+The AST is standard for functional languages - nothing unusual here.
+
+## Phase 2: Type Checking
+
+Bidirectional type checking with type inference. The type checker ensures:
+
+1. **Morphism compatibility**: In `compose f g`, the target of `g` matches the source of `f`
+2. **Product access**: `fst` and `snd` only apply to product types
+3. **Sum elimination**: `case` handlers cover both branches
+4. **Quantity tracking**: Linear values used exactly once (when QTT enabled)
+
+### Type Rules
 
 ```
-fmap id = id                          -- identity
-fmap (compose f g) =                  -- composition
-  compose (fmap f) (fmap g)
+─────────────────────────
+Γ ⊢ id : A → A
+
+Γ ⊢ f : B → C    Γ ⊢ g : A → B
+──────────────────────────────
+Γ ⊢ compose f g : A → C
+
+Γ ⊢ f : C → A    Γ ⊢ g : C → B
+───────────────────────────────
+Γ ⊢ pair f g : C → A × B
+```
+
+## Phase 3: Lowering to Categorical IR
+
+The typed AST is lowered to an intermediate representation containing only the generators.
+
+### IR Definition
+
+```haskell
+data CatIR
+  = CId Type
+  | CCompose CatIR CatIR
+  | CFst Type Type
+  | CSnd Type Type
+  | CPair CatIR CatIR
+  | CInl Type Type
+  | CInr Type Type
+  | CCase CatIR CatIR
+  | CTerminal Type
+  | CInitial Type
+  | CCurry CatIR
+  | CApply Type Type
+  | CPrimitive Name Type Type
+```
+
+This is the compiler's core abstraction. Every Once program reduces to compositions of these constructors.
+
+### Lowering Examples
+
+| Source | Categorical IR |
+|--------|---------------|
+| `\x -> x` | `CId A` |
+| `\x -> (x, x)` | `CPair (CId A) (CId A)` |
+| `\(a,b) -> (b,a)` | `CPair (CSnd A B) (CFst A B)` |
+
+## Phase 4: Optimization
+
+Optimizations are applications of categorical laws. Each rewrite preserves semantics by construction.
+
+### Identity Laws
+
+```
+compose f (CId _)  →  f
+compose (CId _) f  →  f
 ```
 
 ### Product Laws
 
 ```
-fst (pair f g) = f                    -- beta for products
-snd (pair f g) = g
-pair (compose fst h) (compose snd h) = h  -- eta for products
+CFst `compose` CPair f g  →  f
+CSnd `compose` CPair f g  →  g
+CPair CFst CSnd           →  CId
 ```
 
 ### Coproduct Laws
 
 ```
-case f g (inl x) = f x                -- beta for coproducts
-case f g (inr y) = g y
-case (compose h inl) (compose h inr) = h  -- eta for coproducts
+CCase CInl CInr           →  CId
+CCase f g `compose` CInl  →  f
+CCase f g `compose` CInr  →  g
 ```
 
-### Derived Optimizations
-
-From these laws:
-
-| Optimization | Law |
-|--------------|-----|
-| **Fusion** | `fmap f . fmap g = fmap (f . g)` |
-| **Identity elimination** | `f . id = f` |
-| **Dead code removal** | `terminal . f = terminal` |
-| **Case simplification** | `case inl inr = id` |
-
-The optimizer applies these rewrites until fixed point.
-
-## Code Generation
-
-### Generator Implementations
-
-Each target provides implementations for the generators:
-
-**C Target**
-
-| Generator | C Implementation |
-|-----------|------------------|
-| `id` | `return x` |
-| `compose f g` | `return f(g(x))` |
-| `fst` | `return x.fst` |
-| `snd` | `return x.snd` |
-| `pair f g` | `return (struct){f(x), g(x)}` |
-| `inl` | `return (union){.tag=0, .left=x}` |
-| `inr` | `return (union){.tag=1, .right=x}` |
-| `case f g` | `return x.tag ? g(x.right) : f(x.left)` |
-| `terminal` | `return (void)0` |
-| `initial` | `unreachable()` |
-| `curry f` | closure or code transformation |
-| `apply` | `return x.fn(x.arg)` |
-
-**Rust Target**
-
-| Generator | Rust Implementation |
-|-----------|---------------------|
-| `id` | `x` |
-| `compose f g` | `f(g(x))` |
-| `fst` | `x.0` |
-| `snd` | `x.1` |
-| `pair f g` | `(f(x), g(x))` |
-| `inl` | `Left(x)` |
-| `inr` | `Right(x)` |
-| `case f g` | `match x { Left(l) => f(l), Right(r) => g(r) }` |
-| `terminal` | `()` |
-| `initial` | `match x {}` |
-| `curry f` | `move \|y\| f((x, y))` |
-| `apply` | `(x.0)(x.1)` |
-
-**JavaScript Target**
-
-| Generator | JavaScript Implementation |
-|-----------|---------------------------|
-| `id` | `x` |
-| `compose f g` | `f(g(x))` |
-| `fst` | `x[0]` |
-| `snd` | `x[1]` |
-| `pair f g` | `[f(x), g(x)]` |
-| `inl` | `{tag: 'left', value: x}` |
-| `inr` | `{tag: 'right', value: x}` |
-| `case f g` | `x.tag === 'left' ? f(x.value) : g(x.value)` |
-| `terminal` | `undefined` |
-| `initial` | `throw 'unreachable'` |
-| `curry f` | `y => f([x, y])` |
-| `apply` | `x[0](x[1])` |
-
-### Example Compilation
-
-**Once Source**
+### Fusion
 
 ```
-double : Int -> Int
-double = compose add (pair id id)
-
-add : Int * Int -> Int
-add = primitive "add"
+CPair (compose f h) (compose g h)  →  compose (CPair f g) h
 ```
 
-**Generated C**
+The optimizer applies these rewrites to a fixed point.
 
-```c
-int64_t once_double(int64_t x) {
-    return add(x, x);
-}
+## Phase 5: Code Generation
 
-// After inlining pair id id -> diagonal
-// And simplifying
+The code generator maps each IR constructor to target language constructs.
+
+### C Backend
+
+```haskell
+genC :: CatIR -> CCode
+genC (CId t)        = "x"
+genC (CCompose f g) = genC f ++ "(" ++ genC g ++ "(x))"
+genC (CFst _ _)     = "x.fst"
+genC (CSnd _ _)     = "x.snd"
+genC (CPair f g)    = "{" ++ genC f ++ ", " ++ genC g ++ "}"
+genC (CInl _ _)     = "{.tag = 0, .val.left = x}"
+genC (CInr _ _)     = "{.tag = 1, .val.right = x}"
+genC (CCase f g)    = "x.tag ? " ++ genC g ++ " : " ++ genC f
 ```
 
-**Generated Rust**
+### Type Representations
 
-```rust
-fn double(x: i64) -> i64 {
-    add((x, x))
-}
-```
-
-**Generated JavaScript**
-
-```javascript
-function double(x) {
-    return add([x, x]);
-}
-```
-
-## Compilation Targets
-
-| Target | Output | Use Case |
-|--------|--------|----------|
-| C | `.c` + `.h` | Maximum portability |
-| Rust | `.rs` | Memory safety |
-| JavaScript | `.js` | Browser, Node.js |
-| WebAssembly | `.wasm` | Portable binary |
-| LLVM IR | `.ll` | Native optimization |
-| x86_64 | `.o` | Direct native |
-| ARM | `.o` | Embedded, mobile |
+| Once Type | C | Rust | JavaScript |
+|-----------|---|------|------------|
+| `A * B` | `struct {A fst; B snd;}` | `(A, B)` | `[a, b]` |
+| `A + B` | tagged union | `enum` | `{tag, val}` |
+| `A -> B` | function pointer | `fn(A) -> B` | function |
+| `Unit` | empty struct | `()` | `undefined` |
+| `Void` | empty enum | `!` | (impossible) |
 
 ## Primitives and Interpretations
 
-The compiler links primitives from the Interpretations layer:
+Primitives bridge Once code to platform-specific functionality.
+
+### Declaration
 
 ```
--- Declared in source
-primitive read : FileHandle -> IO Byte
-
--- Compiler looks up implementation for target:
--- C: int8_t once_read(FILE* handle) { return fgetc(handle); }
--- Rust: fn read(handle: &mut File) -> io::Result<u8> { ... }
+primitive readByte : Handle -> IO (Byte + Error)
 ```
 
-Different Interpretation modules provide different primitives:
+### Resolution
+
+The compiler looks up primitive implementations from the specified interpretation:
 
 ```
-Interpretation.POSIX    -- Unix system calls
-Interpretation.Windows  -- Windows API
-Interpretation.BareMetal.ARM  -- Direct hardware
-Interpretation.WASM     -- Browser APIs
+once build program.once --interp interpretations/linux
 ```
 
-## Verification
+The interpretation directory contains target-specific implementations:
 
-The compiler can be formally verified because:
-
-1. **Small trusted base**: Only ~12 generators
-2. **Known laws**: Category/functor laws proven in 1940s
-3. **Equational**: Each rewrite preserves equality
-
-Proof obligations:
-
-```coq
-(* Each generator preserves semantics *)
-Theorem compile_compose :
-  forall f g x,
-  eval (compile (Compose f g)) x =
-  eval (compile f) (eval (compile g) x).
-
-(* Each optimization is a valid law *)
-Theorem optimize_sound :
-  forall e e', optimize e = e' -> denote e = denote e'.
+```
+interpretations/linux/
+  io.c          -- readByte, writeByte, etc.
+  io.h
+  memory.c      -- allocation primitives
+  memory.h
 ```
 
-Estimated verification effort: ~5,000-8,000 lines of Coq (including QTT). See [Formal Verification](formal-verification.md) for details.
+## Compiler Implementation
 
-## Ya as Reference Implementation
+The current implementation is in Haskell:
 
-**Ya** is a Haskell library implementing Once principles. It serves as:
-- Proof that natural transformations work in practice
-- Reference semantics for the Once language
-- Test bed for compilation strategies
+```
+compiler/
+  src/
+    Once/
+      Parser.hs      -- Megaparsec-based parser
+      TypeCheck.hs   -- Bidirectional type checker
+      Lower.hs       -- AST to Categorical IR
+      Optimize.hs    -- Law-based rewriting
+      Codegen/
+        C.hs         -- C code generation
+```
 
-Ya programs demonstrate the categorical structure that Once compiles.
+### Building
 
-## Summary
+```bash
+cd compiler
+stack build
+stack exec -- once build example.once -o example
+```
 
-| Component | Description |
+## Verification Strategy
+
+The compiler's simplicity enables formal verification:
+
+1. **Small IR**: Only ~12 constructors to verify
+2. **Equational rewrites**: Each optimization is a proven law
+3. **Compositional semantics**: Meaning defined structurally
+
+See [What Is Proven](../formal/what-is-proven.md) for current verification status.
+
+### Trusted Computing Base
+
+| Component | Trust Level |
 |-----------|-------------|
-| **Frontend** | Parse Once syntax, type check |
-| **IR** | Categorical combinators (~12 constructors) |
-| **Optimizer** | Apply categorical laws |
-| **Backend** | Generate target code from generators |
-| **Verification** | Small trusted base, known laws |
+| Parser | Untrusted (can verify output) |
+| Type checker | Trusted (ensures well-formedness) |
+| Optimizer | Verified (laws proven in Agda) |
+| Codegen | Trusted (target-specific) |
 
-The Once compiler is simpler than typical compilers because the source language has precise, compositional semantics. Category theory does the heavy lifting.
+## Adding a New Backend
+
+To add a new target language:
+
+1. Create `src/Once/Codegen/NewTarget.hs`
+2. Implement generator mappings:
+   ```haskell
+   genNewTarget :: CatIR -> NewTargetCode
+   genNewTarget (CId t)        = ...
+   genNewTarget (CCompose f g) = ...
+   -- etc.
+   ```
+3. Add type representations for the target
+4. Register in the compiler driver
+
+The categorical IR isolates target-specific concerns to this single module.
+
+## Performance Considerations
+
+### Compilation Speed
+
+- Parsing: O(n) in source size
+- Type checking: O(n) typical, O(n²) worst case
+- Optimization: O(n × k) where k is rewrite iterations
+- Codegen: O(n) in IR size
+
+### Generated Code Quality
+
+The categorical laws enable optimizations that remove abstraction overhead:
+
+```
+-- Before optimization
+pair fst snd
+
+-- After optimization (eta reduction)
+id
+```
+
+Target-specific backends can apply additional optimizations (inlining, register allocation) appropriate for their platform.

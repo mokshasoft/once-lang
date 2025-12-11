@@ -1,333 +1,241 @@
-# Transformation: The Write-Once Principle
+# Cross-Platform Compilation
 
-## The Problem
+## The Core Insight
 
-Today, the same logic gets reimplemented in every language:
+Once programs compile to multiple target languages because they're built from universal building blocks. The 12 categorical generators exist in every programming language - they just have different syntax.
 
-```
-JSON parsers:     C, Rust, Go, Python, JavaScript, Java, Haskell, ...
-HTTP clients:     C, Rust, Go, Python, JavaScript, Java, Haskell, ...
-Compression:      C, Rust, Go, Python, JavaScript, Java, Haskell, ...
-Cryptography:     C, Rust, Go, Python, JavaScript, Java, Haskell, ...
-```
+## From Once to Any Target
 
-Each implementation:
-- Duplicates effort
-- Introduces bugs independently
-- Has different edge cases
-- Needs separate maintenance
-
-This is wasteful. The **logic** is the same - only the **substrate** differs.
-
-## The Solution: Natural Transformations
-
-Natural transformations are **substrate-independent**. They describe pure structure:
-
-- Morphisms (functions)
-- Composition
-- Products and coproducts
-- No mention of memory, GC, calling conventions
-
-This structure can be **interpreted** in any language because every language has:
-- Functions
-- A way to call functions in sequence
-- A way to handle pairs/records
-- A way to handle variants/unions
-
-## The Write-Once Principle
-
-**Write the logic once in Once. Compile to any target.**
+A Once program:
 
 ```
-                    Once (Derived)
-                    JSON Parser
-                          │
-        ┌─────────┬───────┼───────┬─────────┐
-        ▼         ▼       ▼       ▼         ▼
-       C        Rust     JS    Haskell    WASM
-    (native)  (native) (node)  (GHC)    (browser)
+swap : A * B -> B * A
+swap = pair snd fst
 ```
 
-The JSON parser is written once. The **same logic** runs everywhere.
+Contains only universal concepts:
+- Take the second element of a pair (`snd`)
+- Take the first element of a pair (`fst`)
+- Combine two values into a pair (`pair`)
 
-## How It Works
+Every language can express these operations.
 
-### Step 1: Write Pure Logic
+## Target Language Mappings
 
-```
--- json.once (in Derived layer)
+### Products
 
-data Json
-  = JsonNull
-  | JsonBool Bool
-  | JsonNumber Number
-  | JsonString String
-  | JsonArray (List Json)
-  | JsonObject (List (String * Json))
+| Once | C | Rust | JavaScript | Haskell |
+|------|---|------|------------|---------|
+| `A * B` | `struct { A a; B b; }` | `(A, B)` | `[a, b]` | `(A, B)` |
+| `fst` | `.a` | `.0` | `[0]` | `fst` |
+| `snd` | `.b` | `.1` | `[1]` | `snd` |
+| `pair f g` | `{f(x), g(x)}` | `(f(x), g(x))` | `[f(x), g(x)]` | `f &&& g` |
 
-parseJson : String -> Json + ParseError
-parseJson = ... composition of generators ...
-```
+### Coproducts
 
-### Step 2: Compile to Categorical IR
+| Once | C | Rust | JavaScript | Haskell |
+|------|---|------|------------|---------|
+| `A + B` | tagged union | `enum` | `{tag, val}` | `Either A B` |
+| `inl x` | `{0, x}` | `Left(x)` | `{tag:'l', val:x}` | `Left x` |
+| `inr x` | `{1, x}` | `Right(x)` | `{tag:'r', val:x}` | `Right x` |
+| `case f g` | `switch` | `match` | `if tag...` | `either f g` |
 
-The Once compiler produces a categorical intermediate representation:
+### Composition
 
-```
-parseJson =
-  Compose
-    (Case handleObject handleArray handlePrimitive)
-    (Compose skipWhitespace peekChar)
-```
-
-This IR is just generators and their compositions - pure structure.
-
-### Step 3: Generate Target Code
-
-Each backend interprets the generators:
-
-**C Backend**
-```c
-JsonResult parse_json(const char* input, size_t len) {
-    // Generators become C constructs
-    // compose -> function calls
-    // case -> switch/if
-    // pair -> struct
-    // fst/snd -> field access
-}
-```
-
-**Rust Backend**
-```rust
-fn parse_json(input: &str) -> Result<Json, ParseError> {
-    // compose -> function calls
-    // case -> match
-    // pair -> tuple
-    // inl/inr -> Ok/Err
-}
-```
-
-**JavaScript Backend**
-```javascript
-function parseJson(input) {
-    // compose -> function calls
-    // case -> if/switch
-    // pair -> array/object
-    // inl/inr -> tagged objects
-}
-```
-
-**Haskell Backend**
-```haskell
-parseJson :: String -> Either ParseError Json
-parseJson = -- direct translation, very close to source
-```
-
-## Generator Interpretation Table
-
-Each generator has a translation for each target:
-
-| Generator | C | Rust | JavaScript | Haskell |
-|-----------|---|------|------------|---------|
-| `id` | `x` | `x` | `x` | `id` |
+| Once | C | Rust | JavaScript | Haskell |
+|------|---|------|------------|---------|
 | `compose f g` | `f(g(x))` | `f(g(x))` | `f(g(x))` | `f . g` |
-| `fst` | `x.fst` | `x.0` | `x[0]` | `fst` |
-| `snd` | `x.snd` | `x.1` | `x[1]` | `snd` |
-| `pair f g` | `{f(x), g(x)}` | `(f(x), g(x))` | `[f(x), g(x)]` | `(,) <$> f <*> g` |
-| `inl` | `{.tag=0, .val=x}` | `Left(x)` | `{tag: 'l', val: x}` | `Left` |
-| `inr` | `{.tag=1, .val=x}` | `Right(x)` | `{tag: 'r', val: x}` | `Right` |
-| `case f g` | `if(x.tag) g(x.val) else f(x.val)` | `match x {...}` | `x.tag === 'l' ? f(x.val) : g(x.val)` | `either f g` |
-| `curry f` | `λy. f(x,y)` (closure) | `move \|y\| f(x,y)` | `y => f(x,y)` | `curry f` |
-| `apply` | `f(x)` | `f(x)` | `f(x)` | `uncurry ($)` |
+| `id` | `x` | `x` | `x` | `id` |
 
-## Why This Works
-
-### Mathematical Foundation
-
-Natural transformations satisfy **equational laws**:
+## Compilation Pipeline
 
 ```
-compose f id = f                    -- right identity
-compose id f = f                    -- left identity
-compose f (compose g h) = compose (compose f g) h  -- associativity
+┌──────────────┐
+│  Once Source │
+│  (*.once)    │
+└──────┬───────┘
+       │ Parse
+       ▼
+┌──────────────┐
+│  Typed AST   │
+│              │
+└──────┬───────┘
+       │ Lower to generators
+       ▼
+┌──────────────┐
+│ Categorical  │
+│     IR       │
+└──────┬───────┘
+       │ Target-specific codegen
+       ▼
+┌──────────────────────────────────────┐
+│    C    │  Rust  │   JS   │  WASM   │
+└──────────────────────────────────────┘
 ```
 
-These laws hold in **every language**. So transformations preserve meaning.
+The Categorical IR is the key abstraction - it contains only generators and their compositions, with no target-specific details.
 
-### Substrate Independence
+## Preserving Semantics
 
-The generators describe **what** to compute, not **how**:
+The categorical laws guarantee that meaning is preserved across targets:
 
-- `compose f g` means "do g then f" - every language can do this
-- `pair f g` means "compute both" - every language can do this
-- `case f g` means "branch" - every language can do this
+```
+-- These equalities hold in EVERY target language
+compose id f       = f
+compose f id       = f
+compose f (compose g h) = compose (compose f g) h
 
-The **how** (memory layout, calling convention, GC) is the backend's job.
+fst (pair f g)     = f
+snd (pair f g)     = g
+pair fst snd       = id
 
-## Compilation Targets
+case inl inr       = id
+case f g . inl     = f
+case f g . inr     = g
+```
 
-### Native Targets
+When the Once compiler transforms code using these laws, the behavior stays the same regardless of target.
 
-| Target | Output | Use Case |
-|--------|--------|----------|
-| C | `.c` + `.h` | Maximum portability, embed anywhere |
-| Rust | `.rs` | Memory safety, modern systems |
-| LLVM IR | `.ll` | Direct compilation, optimization |
-| x86_64 | `.o` / `.so` | Bare metal, max performance |
-| ARM | `.o` / `.so` | Embedded, mobile |
-
-### Managed Targets
-
-| Target | Output | Use Case |
-|--------|--------|----------|
-| JavaScript | `.js` | Browser, Node.js |
-| WebAssembly | `.wasm` | Browser, portable binary |
-| JVM bytecode | `.class` | Java ecosystem |
-| CLR | `.dll` | .NET ecosystem |
-
-### Functional Targets
-
-| Target | Output | Use Case |
-|--------|--------|----------|
-| Haskell | `.hs` | GHC ecosystem |
-| OCaml | `.ml` | ML ecosystem |
-| Agda/Coq | proof terms | Verification |
-
-## Example: One Parser, Many Languages
+## Practical Example
 
 ### Once Source
 
 ```
--- parser.once
-
-digit : Parser Char
-digit = satisfy isDigit
-
-number : Parser Int
-number = fmap digitsToInt (many1 digit)
-
-identifier : Parser String
-identifier = fmap toString (pair letter (many alphaNum))
+-- Safely access nested optional values
+flatMap : (A -> Maybe B) -> Maybe A -> Maybe B
+flatMap f = case (compose f id) (const nothing)
 ```
 
 ### Generated C
 
 ```c
-ParseResult_Char digit(const char* input, size_t pos) {
-    if (pos < strlen(input) && isdigit(input[pos])) {
-        return (ParseResult_Char){.ok = true, .value = input[pos], .pos = pos + 1};
-    }
-    return (ParseResult_Char){.ok = false, .pos = pos};
-}
+typedef struct { int tag; void* val; } Maybe;
 
-ParseResult_Int number(const char* input, size_t pos) {
-    // generated from fmap digitsToInt (many1 digit)
+Maybe flatMap(Maybe (*f)(void*), Maybe ma) {
+    if (ma.tag == 0) {  // nothing
+        return (Maybe){0, NULL};
+    }
+    return f(ma.val);   // just: apply f
 }
 ```
 
 ### Generated Rust
 
 ```rust
-fn digit(input: &str, pos: usize) -> ParseResult<char> {
-    input.chars().nth(pos)
-        .filter(|c| c.is_digit(10))
-        .map(|c| (c, pos + 1))
-        .ok_or(ParseError::Expected("digit"))
-}
-
-fn number(input: &str, pos: usize) -> ParseResult<i64> {
-    // generated from fmap digitsToInt (many1 digit)
+fn flat_map<A, B>(f: impl Fn(A) -> Option<B>, ma: Option<A>) -> Option<B> {
+    match ma {
+        None => None,
+        Some(a) => f(a),
+    }
 }
 ```
 
 ### Generated JavaScript
 
 ```javascript
-function digit(input, pos) {
-    const c = input[pos];
-    if (c && /\d/.test(c)) {
-        return { ok: true, value: c, pos: pos + 1 };
+function flatMap(f, ma) {
+    if (ma.tag === 'nothing') {
+        return { tag: 'nothing' };
     }
-    return { ok: false, error: 'expected digit', pos };
-}
-
-function number(input, pos) {
-    // generated from fmap digitsToInt (many1 digit)
+    return f(ma.val);
 }
 ```
 
-## Interpretations and Portability
+Same logic, different syntax. The Once compiler generates idiomatic code for each target.
 
-The **Derived** layer (pure) transforms to any target.
+## What Transfers, What Doesn't
 
-The **Interpretations** layer ties to specific platforms:
+### Transfers to All Targets
 
-```
--- This transforms to anything
-parseJson : String -> Json + Error     ✓ C, Rust, JS, WASM, ...
+- Pure computations (Derived stratum)
+- Data transformations
+- Business logic
+- Algorithms
 
--- This only works where POSIX exists
-readFile : Path -> IO String           ✓ C (POSIX), Rust (std)
-                                       ✗ Bare metal, browser
+### Requires Target-Specific Code
 
--- This only works in browser
-fetch : Url -> IO Response             ✓ JavaScript, WASM
-                                       ✗ C, Rust (without deps)
-```
+- File I/O
+- Network access
+- System calls
+- Hardware interaction
 
-## Optimization Across Targets
+This is why Once separates Derived (portable) from Interpretations (platform-specific).
 
-Because the categorical structure is known, the compiler can optimize:
+## Backend Architecture
 
-### Fusion
-
-```
--- Before: two traversals
-map f (map g xs)
-
--- After: one traversal (functor law)
-map (compose f g) xs
-```
-
-### Deforestation
+Each backend implements a single interface:
 
 ```
--- Before: intermediate list
-sum (map f xs)
-
--- After: no intermediate structure
-foldl (compose (+) f) 0 xs
+Backend = {
+  emitProduct   : Type -> Type -> TargetCode
+  emitCoproduct : Type -> Type -> TargetCode
+  emitCompose   : Code -> Code -> TargetCode
+  emitCase      : Code -> Code -> TargetCode
+  emitPair      : Code -> Code -> TargetCode
+  ...
+}
 ```
 
-### Target-Specific Optimization
+Adding a new target means implementing these ~12 functions. The rest of the compiler is shared.
 
-The backend can further optimize for each target:
+## Optimization Opportunities
 
-- **C**: inline small functions, use SIMD
-- **Rust**: leverage ownership for zero-copy
-- **JavaScript**: use typed arrays for numbers
-- **WASM**: use linear memory efficiently
+Because the compiler understands the categorical structure, it can apply principled optimizations:
 
-## The Value Proposition
+### Composition Fusion
 
-| Traditional | Once |
-|-------------|------|
-| Write JSON parser in C | Write JSON parser once |
-| Write JSON parser in Rust | Compile to C |
-| Write JSON parser in JS | Compile to Rust |
-| Write JSON parser in Python | Compile to JS |
-| ... | Compile to Python |
-| N implementations | 1 implementation |
-| N × bugs | 1 × bugs |
-| N × maintenance | 1 × maintenance |
+```
+-- Before
+compose (compose f g) (compose h k)
 
-## Summary
+-- After (associativity)
+compose f (compose g (compose h k))
+```
 
-The write-once principle:
+Reduces function call overhead.
 
-1. **Write pure logic in Once** (Derived layer)
-2. **Logic is substrate-independent** (just generators + composition)
-3. **Compile to any target** (each backend interprets generators)
-4. **One source of truth** (maintain once, use everywhere)
+### Dead Code via Terminal
 
-Natural transformations make this possible because they describe **structure**, not **implementation**. The structure is universal - every language can express it.
+```
+-- If result is discarded
+terminal . expensive_computation
+
+-- Can be simplified to
+terminal
+```
+
+The computation is never needed.
+
+### Product Simplification
+
+```
+-- Redundant pair
+fst (pair f g)
+
+-- Simplifies to
+f
+```
+
+The `g` computation is eliminated.
+
+## Current and Planned Targets
+
+| Target | Status | Output |
+|--------|--------|--------|
+| C | Implemented | `.c` + `.h` |
+| Rust | Planned | `.rs` |
+| JavaScript | Planned | `.js` |
+| WebAssembly | Planned | `.wasm` |
+| LLVM IR | Planned | `.ll` |
+| Haskell | Planned | `.hs` |
+
+## Benefits
+
+| Aspect | Traditional | Once |
+|--------|-------------|------|
+| Implementations | N (one per language) | 1 |
+| Bug surface | N independent codebases | 1 codebase |
+| Testing | N test suites | 1 test suite |
+| Maintenance | N × effort | 1 × effort |
+
+The categorical foundation makes this possible - natural transformations describe structure that every language can implement.

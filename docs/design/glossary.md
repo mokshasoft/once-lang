@@ -1,162 +1,150 @@
-# Once Glossary
+# Glossary
 
-Quick reference for types, operations, and concepts using standard category theory terminology.
+Reference for Once terminology, types, and categorical concepts.
 
-## Generators
+## The 12 Generators
 
-The primitive morphisms from which all Once programs are built:
+| Generator | Type | Meaning |
+|-----------|------|---------|
+| `id` | `A -> A` | Do nothing, return input |
+| `compose` | `(B -> C) -> (A -> B) -> (A -> C)` | Chain two functions |
+| `fst` | `A * B -> A` | Extract first component |
+| `snd` | `A * B -> B` | Extract second component |
+| `pair` | `(C -> A) -> (C -> B) -> (C -> A * B)` | Apply two functions, combine results |
+| `inl` | `A -> A + B` | Inject into left branch |
+| `inr` | `B -> A + B` | Inject into right branch |
+| `case` | `(A -> C) -> (B -> C) -> (A + B -> C)` | Handle both branches |
+| `terminal` | `A -> Unit` | Discard value |
+| `initial` | `Void -> A` | Impossible case |
+| `curry` | `(A * B -> C) -> (A -> (B -> C))` | Convert to curried form |
+| `apply` | `(A -> B) * A -> B` | Apply function to argument |
 
-| Name | Type | Description |
-|------|------|-------------|
-| `id` | `A -> A` | Identity morphism |
-| `compose` | `(B -> C) -> (A -> B) -> (A -> C)` | Morphism composition |
-| `fst` | `A * B -> A` | First projection |
-| `snd` | `A * B -> B` | Second projection |
-| `pair` | `(C -> A) -> (C -> B) -> (C -> A * B)` | Pairing (product introduction) |
-| `inl` | `A -> A + B` | Left injection |
-| `inr` | `B -> A + B` | Right injection |
-| `case` | `(A -> C) -> (B -> C) -> (A + B -> C)` | Case analysis (coproduct elimination) |
-| `terminal` | `A -> Unit` | Terminal morphism (discard) |
-| `initial` | `Void -> A` | Initial morphism (absurd) |
-| `curry` | `(A * B -> C) -> (A -> (B -> C))` | Currying |
-| `apply` | `(A -> B) * A -> B` | Function application |
+## Type Syntax
 
-## Type Constructors
+| Syntax | Name | Description |
+|--------|------|-------------|
+| `A -> B` | Function | Morphism from A to B |
+| `A * B` | Product | Both A and B |
+| `A + B` | Coproduct | Either A or B |
+| `Unit` | Terminal | Single value, no information |
+| `Void` | Initial | No values, impossible |
+| `A^1` | Linear | Used exactly once |
+| `A^0` | Erased | Compile-time only |
+| `A^ω` | Unrestricted | Used any number of times |
 
-| Name | Notation | Description |
-|------|----------|-------------|
-| `Product` | `A * B` | Pair of A and B (both present) |
-| `Coproduct` | `A + B` | Either A or B (one present) |
-| `Function` | `A -> B` | Morphism from A to B |
-| `Unit` | `Unit` | Terminal object (single value) |
-| `Void` | `Void` | Initial object (no values) |
+## Standard Types
 
-## Standard Functors
+### Initial Library Types
 
-| Name | Description |
-|------|-------------|
-| `Identity` | `Identity A = A` - The identity functor |
-| `Maybe` | `Maybe A = Unit + A` - Optional value |
-| `Result` | `Result A E = A + E` - Success or error (see D025) |
-| `List` | `List A = Unit + (A * List A)` - Recursive list |
-| `Compose F G` | `Compose F G A = F (G A)` - Functor composition |
-| `Const B` | `Const B A = B` - Constant functor |
+| Type | Definition | Purpose |
+|------|------------|---------|
+| `Bool` | `Unit + Unit` | True or false |
+| `Maybe A` | `Unit + A` | Optional value |
+| `Result A E` | `A + E` | Success (left) or error (right) |
+| `List A` | `Unit + (A * List A)` | Sequence of values |
 
-## Functor Operations
+### Result Conventions (D025)
 
-| Name | Type | Description |
-|------|------|-------------|
-| `fmap` | `(A -> B) -> F A -> F B` | Functor mapping |
-| `component` | `F A -> G A` | Natural transformation component |
+```
+ok  : A -> Result A E    -- ok = inl (success on left)
+err : E -> Result A E    -- err = inr (error on right)
+```
 
-## Derived Combinators
+## Canonical Library
 
-Common morphisms built from Generators:
+Derived morphisms from universal properties:
 
-| Name | Definition | Description |
-|------|------------|-------------|
-| `diagonal` | `pair id id` | Copy: `A -> A * A` |
-| `swap` | `pair snd fst` | Swap: `A * B -> B * A` |
-| `constant` | `curry fst` | Constant function: `A -> B -> A` |
-| `flip` | `curry (compose apply (pair (compose snd fst) (pair fst snd)))` | Flip arguments |
-| `(.)` | `compose` | Composition operator |
-| `(\|>)` | `flip apply` | Pipeline operator |
+| Name | Type | Definition |
+|------|------|------------|
+| `swap` | `A * B -> B * A` | `pair snd fst` |
+| `diagonal` | `A -> A * A` | `pair id id` |
+| `assocL` | `A * (B * C) -> (A * B) * C` | Reassociate left |
+| `assocR` | `(A * B) * C -> A * (B * C)` | Reassociate right |
+| `distrib` | `A * (B + C) -> (A * B) + (A * C)` | Distribute product over sum |
+
+## IO Monad (D026)
+
+Three composition levels:
+
+| Level | Operation | Type |
+|-------|-----------|------|
+| Functor | `fmap` | `(A -> B) -> IO A -> IO B` |
+| Applicative | `pure` | `A -> IO A` |
+| Applicative | `both` | `IO A -> IO B -> IO (A * B)` |
+| Monad | `bind` | `IO A -> (A -> IO B) -> IO B` |
+
+Choose the weakest level that works:
+- `fmap` when transforming results
+- `both` when combining independent operations (can parallelize)
+- `bind` when second operation depends on first (must sequence)
+
+## Three Strata
+
+| Stratum | Purity | Contents |
+|---------|--------|----------|
+| Generators | Pure | The 12 primitives |
+| Derived | Pure | All library code built from generators |
+| Interpretations | Impure | Platform-specific IO primitives |
 
 ## Recursion Schemes
 
-| Name | Type | Description |
-|------|------|-------------|
-| `Fix` | `Fix F = F (Fix F)` | Fixed point of functor |
-| `cata` | `(F A -> A) -> Fix F -> A` | Catamorphism (fold) |
-| `ana` | `(A -> F A) -> A -> Fix F` | Anamorphism (unfold) |
-| `hylo` | `(F B -> B) -> (A -> F A) -> A -> B` | Hylomorphism |
-| `para` | `(F (Fix F * A) -> A) -> Fix F -> A` | Paramorphism |
+| Scheme | Type | Meaning |
+|--------|------|---------|
+| `cata` | `(F A -> A) -> Fix F -> A` | Fold recursive structure |
+| `ana` | `(A -> F A) -> A -> Fix F` | Unfold into recursive structure |
+| `hylo` | `(F B -> B) -> (A -> F A) -> A -> B` | Combined unfold then fold |
 
-## Category Theory Concepts
+## Category Theory Terms
 
-| Concept | In Once | Description |
-|---------|---------|-------------|
-| **Category** | Types + morphisms | Objects and arrows with composition |
-| **Functor** | `F` with `fmap` | Structure-preserving map between categories |
-| **Natural Transformation** | `F -> G` | Structure-preserving map between functors |
-| **Product** | `A * B` | Categorical product (with projections) |
-| **Coproduct** | `A + B` | Categorical sum (with injections) |
-| **Terminal** | `Unit` | Object with unique morphism from any object |
-| **Initial** | `Void` | Object with unique morphism to any object |
-| **Exponential** | `A -> B` | Internal hom (function object) |
+| Term | Once Meaning |
+|------|--------------|
+| Morphism | Function between types |
+| Functor | Type constructor with `fmap` |
+| Natural transformation | Polymorphic function between functors |
+| Product | `A * B` with projections |
+| Coproduct | `A + B` with injections |
+| Terminal object | `Unit` |
+| Initial object | `Void` |
+| Cartesian closed | Has products, exponentials (functions), terminal |
 
-## Limits and Colimits
+## QTT Quantities
 
-| Name | Description |
-|------|-------------|
-| `Product` | Binary limit - `A * B` with `fst`, `snd` |
-| `Coproduct` | Binary colimit - `A + B` with `inl`, `inr` |
-| `Terminal` | Limit of empty diagram - `Unit` |
-| `Initial` | Colimit of empty diagram - `Void` |
-| `Equalizer` | Limit of parallel pair |
-| `Pullback` | Limit of cospan |
+| Quantity | Usage |
+|----------|-------|
+| `0` | Type-level only, erased at runtime |
+| `1` | Must use exactly once (linear) |
+| `ω` | May use any number of times |
 
-## Monoidal Structure
+Linear types (`^1`) enable:
+- No garbage collection needed
+- Predictable memory usage
+- Safe resource management
 
-| Concept | Description |
-|---------|-------------|
-| `Monoidal Category` | Category with tensor product `*` and unit `Unit` |
-| `Symmetric Monoidal` | Monoidal with `swap : A * B -> B * A` |
-| `Cartesian` | Symmetric monoidal with `diagonal` and `terminal` |
-| `Day Convolution` | Combines functors: `Day F G A = exists X Y. F X * G Y * (X * Y -> A)` |
+## Syntax Quick Reference
 
-## Adjunctions
+```
+-- Type signature
+name : Type
 
-| Name | Description |
-|------|-------------|
-| `Adjoint` | `F -| G` means `Hom(F A, B) ≅ Hom(A, G B)` |
-| `Curry/Uncurry` | `(- * A) -| (A -> -)` |
-| `Free/Forgetful` | Free construction left adjoint to forgetful functor |
+-- Definition
+name = expression
 
-## Effect Patterns
+-- Lambda
+\x -> body
 
-| Pattern | Description |
-|---------|-------------|
-| `IO` | Monad for input/output effects (see D026) |
-| `State S` | State effect: `S -> A * S` |
-| `Reader R` | Environment effect: `R -> A` |
-| `Writer W` | Logging effect: `A * W` |
-| `Maybe` | Partiality effect |
-| `List` | Nondeterminism effect |
+-- Application
+f x y
 
-## Quantitative Types (QTT)
+-- Composition
+f . g       -- right-to-left
+x |> f      -- left-to-right
 
-Once uses Quantitative Type Theory for resource tracking:
+-- Let binding
+let x = e in body
 
-| Quantity | Notation | Meaning |
-|----------|----------|---------|
-| `0` | `A^0` | Erased (compile-time only) |
-| `1` | `A^1` | Linear (used exactly once) |
-| `ω` | `A^ω` | Unrestricted (used any number of times) |
+-- Type alias
+type Name = Definition
 
-| Concept | Description |
-|---------|-------------|
-| **Semiring** | Quantities form a semiring: 0 + r = r, 1 · r = r, 0 · r = 0 |
-| **Graded morphism** | `f : A^r → B` - morphism using A with quantity r |
-| **Inference** | Compiler infers quantities; annotations optional |
-| **Linearity** | Quantity 1 guarantees no copy, no GC needed |
-
-## Library Layers
-
-| Layer | Purity | Description |
-|-------|--------|-------------|
-| **Generators** | Pure | The 12 primitive morphisms |
-| **Derived** | Pure | Everything built from Generators |
-| **Interpretations** | Impure | Platform bindings (primitives for external world) |
-
-## Syntax
-
-| Symbol | Meaning |
-|--------|---------|
-| `->` | Function type / morphism |
-| `*` | Product type |
-| `+` | Coproduct (sum) type |
-| `:` | Type annotation |
-| `=` | Definition |
-| `.` | Composition (right-to-left) |
-| `\|>` | Pipeline (left-to-right) |
+-- Primitive (Interpretations)
+primitive name : Type
+```

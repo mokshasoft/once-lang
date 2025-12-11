@@ -1,232 +1,223 @@
-# Syntax Exploration for Once
+# Syntax Design in Once
 
-## The Question
+## Design Goals
 
-What syntax is natural for a language based on natural transformations?
+Once's syntax must express categorical concepts clearly while remaining practical for everyday programming. The challenge: how do you write natural transformations in a way that's both mathematically honest and readable?
 
-**Key insight**: "Effect declarations" aren't really natural here. In Once, effects are encoded as:
-- Which **functor** the computation produces
-- **Type structure** itself
+## Core Syntax Elements
 
-There's no separate "effect system" - the types ARE the effects.
-
----
-
-## LED Blink in 5 Different Syntaxes
-
-### 1. Monadic Do-Notation (NOT natural for Once)
-
-```haskell
--- This is what Haskell does, but it assumes monads
-main :: IO ()
-main = forever $ do
-  digitalWrite led HIGH
-  delay 1000
-  digitalWrite led LOW
-  delay 1000
-```
-
-**Why it doesn't fit Once:**
-- `do` desugars to `>>=` which is Kleisli composition
-- Once uses natural transformations, not Kleisli arrows
-- The state threading is hidden, Once makes it explicit
-
----
-
-### 2. Composition Style (Very Natural)
+### Type Operators
 
 ```
--- Morphisms compose with . or compose
--- Read right-to-left: "delay after low after delay after high"
-
-led = pin 13
-
-cycle : Pin -> Pin
-cycle = compose (delay 1000) (compose low (compose (delay 1000) high))
-
-main : Stream Pin
-main = ana cycle led
+A -> B      Function/morphism from A to B
+A * B       Product (pair of A and B)
+A + B       Coproduct/sum (either A or B)
+A^1         Linear type (used exactly once)
+A^0         Erased type (compile-time only)
 ```
 
-**Why it fits:**
-- Direct categorical composition
-- No hidden state
-- Clear data flow
-- `ana` (anamorphism) generates the infinite stream
+### The 12 Generators
 
----
-
-### 3. Pipeline Style (Natural, reversed)
+Every Once program reduces to compositions of these primitives:
 
 ```
--- Same as composition, but left-to-right with |>
--- Read: "high, then delay, then low, then delay"
+-- Identity and composition
+id      : A -> A
+compose : (B -> C) -> (A -> B) -> (A -> C)
 
-led = pin 13
+-- Products
+fst     : A * B -> A
+snd     : A * B -> B
+pair    : (C -> A) -> (C -> B) -> (C -> A * B)
 
-cycle : Pin -> Pin
-cycle = high |> delay 1000 |> low |> delay 1000
+-- Coproducts
+inl     : A -> A + B
+inr     : B -> A + B
+case    : (A -> C) -> (B -> C) -> (A + B -> C)
 
-main : Stream Pin
-main = led |> ana cycle
+-- Terminal and initial
+terminal : A -> Unit
+initial  : Void -> A
+
+-- Exponentials
+curry   : (A * B -> C) -> (A -> (B -> C))
+apply   : (A -> B) * A -> B
 ```
 
-**Why it fits:**
-- Still just composition (flipped)
-- Reads like English
-- Popular in F#, Elixir, newer Haskell
+## Composition Styles
 
----
+Once supports multiple ways to compose morphisms, all equivalent:
 
-### 4. Point-Free Combinator Style (Very Natural)
+### Right-to-Left (Mathematical)
 
 ```
--- No variables at all, pure combinators
--- This is closest to the categorical foundations
-
-high  : Pin -> Pin
-low   : Pin -> Pin
-delay : Nat -> (A -> A)    -- polymorphic delay
-
--- Compose morphisms
-cycle = compose high (compose (delay 1000) (compose low (delay 1000)))
-
--- Unfold from initial state into stream
-main = ana (pair id cycle) (pin 13)
---         ^^^^^^^^^^^^^^
---         diagonal: produce (current, next)
+-- Read: "apply g, then f"
+result : A -> C
+result = compose f g
 ```
 
-**Why it fits:**
-- Directly mirrors categorical diagrams
-- `pair id id` is the diagonal (duplicate)
-- `ana` is anamorphism
-- No variable names cluttering things
+This matches standard mathematical notation where `f ∘ g` means "g then f".
 
----
-
-### 5. Arrow Notation (Somewhat Natural)
-
-```haskell
--- Haskell's arrow notation, designed for non-monadic composition
--- proc/do for arrows, -< for feeding inputs
-
-main : Stream Pin
-main = proc () -> do
-  rec state <- toggle -< state'
-      let state' = state
-  returnA -< state
-
-toggle : Pin -> Pin
-toggle = proc p -> do
-  high -< p
-  delay 1000 -< ()
-  low -< p
-  delay 1000 -< ()
-  returnA -< p
-```
-
-**Why it partially fits:**
-- Arrows are closer to natural transformations than monads
-- `proc` notation was designed for dataflow
-- But still has some imperative flavor
-
----
-
-## What About Effects?
-
-In traditional effect systems:
-```haskell
-effect GPIO where ...   -- declares an effect
-```
-
-In Once's categorical model, there's no separate declaration. The **type tells you the effect**:
+### Operator Syntax
 
 ```
--- The morphism signature declares effects
-high : Pin -> IO Pin              -- uses IO
-high : Pin -> State GPIO Pin      -- uses GPIO state
-high : Pin -> Pin                 -- pure (no effect)
+-- Dot operator (same as compose)
+result = f . g
+
+-- Pipeline operator (reversed)
+result = g |> f
 ```
 
----
+The pipeline operator `|>` reads left-to-right, which some find more intuitive for sequential operations.
 
-## Once Syntax Decisions
+### Comparison
 
-Based on design discussions, Once uses:
+| Style | Example | Reading Order |
+|-------|---------|---------------|
+| `compose f g` | Explicit | Right-to-left |
+| `f . g` | Operator | Right-to-left |
+| `g \|> f` | Pipeline | Left-to-right |
 
-```
--- Types declare capabilities implicitly
--- No "effect" keyword needed
+All three are equivalent - choose based on readability for your use case.
 
--- Pin operations produce IO values
-high : Pin -> IO Pin
-low  : Pin -> IO Pin
+## Function Application
 
--- Time operations
-wait : Nat -> IO Unit
-
--- Composition with standard symbols
-cycle : Pin -> IO Pin
-cycle = compose (wait 1000) (compose low (compose (wait 1000) high))
-
--- Product uses *
-both : Pin * Pin -> IO (Pin * Pin)
-both = pair high high      -- set both pins high simultaneously
-
--- Sum uses +
-either : Pin + Pin -> IO Pin
-either = case high low     -- handle left or right case
-
--- Stream from repeated application
-main : IO (Stream Unit)
-main = ana cycle (pin 13)
-```
-
-**Key syntax features:**
-- `->` for function types
-- `*` for products
-- `+` for coproducts (sums)
-- `compose` or `.` for composition
-- `|>` for pipeline (reverse composition)
-- ASCII-friendly throughout
-
----
-
-## Comparison
-
-| Syntax | Naturalness for Once | Readability | Notes |
-|--------|---------------------|-------------|-------|
-| Do-notation | ❌ Low | ✓ Familiar | Assumes monads |
-| Composition (.) | ✓✓ Very high | ~ Math-like | Right-to-left |
-| Pipeline (\|>) | ✓✓ Very high | ✓ Clear | Left-to-right |
-| Point-free | ✓✓✓ Highest | ~ Terse | Pure categorical |
-| Arrow proc | ✓ Medium | ✓ Clear | Still some sugar |
-
----
-
-## The Categorical Truth
-
-The most honest syntax is probably just:
+Once uses ML-style juxtaposition for application:
 
 ```
-main = ana (pair snd (compose high (compose (delay 1000) (compose low (delay 1000))))) led
+-- Apply f to x
+f x
+
+-- Apply f to multiple arguments (curried)
+f x y z
+
+-- Equivalent to
+apply (apply (apply f x) y) z
 ```
 
-Where:
-- `ana` = anamorphism (unfold)
-- `pair` = diagonal when both args are id (duplicate input)
-- `snd` = second projection (take next state)
-- `compose` = composition
-- `led` = initial state
+Parentheses group when needed:
 
-But that's hard to read. The art is finding syntax that's both **faithful to the math** and **pleasant to write**.
+```
+-- Apply f to the result of (g x)
+f (g x)
+```
 
-## Balance
+## Definitions
 
-Once aims for:
-1. **Standard symbols**: `->`, `*`, `+`, `.`, `|>`
-2. **Standard names**: `compose`, `pair`, `case`, `fst`, `snd`, etc.
-3. **Types as documentation**: Effect visible in return type
-4. **Optional type annotations**: Inference handles most cases
-5. **ASCII-friendly**: No Unicode required (but allowed)
+### Simple Definitions
+
+```
+-- Define a morphism
+swap : A * B -> B * A
+swap = pair snd fst
+
+-- With explicit type
+double : Int -> Int
+double = compose add (pair id id)
+```
+
+### Pattern Matching
+
+For sum types, use `case`:
+
+```
+-- Handle Result type
+handleResult : Result A E -> B
+handleResult = case onSuccess onError
+```
+
+## Effects in Types
+
+Once has no separate effect system. Effects appear in the type:
+
+```
+-- Pure function (no effects)
+increment : Int -> Int
+
+-- Effectful operation (returns IO)
+readFile : Path -> IO (String + Error)
+
+-- The type signature IS the effect declaration
+```
+
+This means:
+- Looking at a type tells you everything about its effects
+- No hidden side effects possible
+- Compiler tracks effect propagation automatically
+
+## Worked Example: Data Processing
+
+```
+-- Parse and validate input
+process : String -> Result Data Error
+process = compose validate parse
+
+-- Where:
+parse    : String -> Result Json Error
+validate : Result Json Error -> Result Data Error
+
+-- Using pipeline style:
+process = parse |> validate
+```
+
+## Worked Example: IO Sequencing
+
+```
+-- Copy a file
+copyFile : Path * Path -> IO (Unit + Error)
+copyFile = compose writeFile (compose (pair snd readFile) fst)
+
+-- More readable with bind:
+copyFile paths =
+  bind (readFile (snd paths)) (\contents ->
+    writeFile (fst paths) contents
+  )
+```
+
+## Quantitative Annotations
+
+Linearity annotations use superscript notation:
+
+```
+-- Linear: must use exactly once
+consume : Buffer^1 -> Result^1
+
+-- Erased: compile-time only, no runtime cost
+typeCheck : Type^0 -> Bool
+
+-- Unrestricted (default): use any number of times
+lookup : Key -> Map -> Value
+```
+
+## Records and Named Fields
+
+For complex products, Once supports named fields:
+
+```
+type Person = { name : String, age : Int }
+
+-- Access fields
+getName : Person -> String
+getName = .name
+
+-- Construct
+makePerson : String -> Int -> Person
+makePerson n a = { name = n, age = a }
+```
+
+This desugars to products and projections.
+
+## Summary
+
+| Element | Syntax | Example |
+|---------|--------|---------|
+| Function type | `->` | `A -> B` |
+| Product | `*` | `A * B` |
+| Sum | `+` | `A + B` |
+| Composition | `.` or `compose` | `f . g` |
+| Pipeline | `\|>` | `x \|> f` |
+| Application | juxtaposition | `f x` |
+| Linear | `^1` | `Buffer^1` |
+| Erased | `^0` | `Type^0` |
+
+Once's syntax aims for clarity and mathematical precision. Every syntactic construct has a direct categorical interpretation, making programs easier to reason about formally.

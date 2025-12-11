@@ -1,330 +1,207 @@
-# Library Structure in Once
+# Code Organization in Once
 
-## The Three Layers
+## The Three Strata
 
-Once organizes code into three distinct layers:
-
-```
-┌─────────────────────────────────────────────────────┐
-│              Interpretations                        │
-│   Impure: OS, hardware, network, external world     │
-├─────────────────────────────────────────────────────┤
-│              Derived                                │
-│   Pure: everything built from Generators            │
-├─────────────────────────────────────────────────────┤
-│              Generators                             │
-│   Primitive morphisms (the ~12 combinators)         │
-└─────────────────────────────────────────────────────┘
-```
-
-The key distinction: **Generators and Derived are pure. Interpretations are impure.**
-
-## Layer 1: Generators
-
-The **Generators** are the primitive morphisms from which everything else is built.
-
-### The Complete Set
+Once organizes all code into three distinct layers based on purity and portability:
 
 ```
--- Category structure
-id      : A -> A
-compose : (B -> C) -> (A -> B) -> (A -> C)
+┌─────────────────────────────────────┐
+│         Interpretations             │  Platform-specific IO
+├─────────────────────────────────────┤
+│            Derived                  │  Pure library code
+├─────────────────────────────────────┤
+│           Generators                │  The 12 primitives
+└─────────────────────────────────────┘
+```
 
--- Products
-fst     : A * B -> A
-snd     : A * B -> B
-pair    : (C -> A) -> (C -> B) -> (C -> A * B)
+This separation is fundamental to Once's "write once, compile anywhere" goal.
 
--- Coproducts
-inl     : A -> A + B
-inr     : B -> A + B
-case    : (A -> C) -> (B -> C) -> (A + B -> C)
+## Generators: The Foundation
 
--- Terminal and Initial
+The bottom stratum contains the ~12 categorical primitives that form Once's foundation:
+
+```
+id       : A -> A
+compose  : (B -> C) -> (A -> B) -> (A -> C)
+fst      : A * B -> A
+snd      : A * B -> B
+pair     : (C -> A) -> (C -> B) -> (C -> A * B)
+inl      : A -> A + B
+inr      : B -> A + B
+case     : (A -> C) -> (B -> C) -> (A + B -> C)
 terminal : A -> Unit
 initial  : Void -> A
-
--- Closed structure
-curry   : (A * B -> C) -> (A -> (B -> C))
-apply   : (A -> B) * A -> B
+curry    : (A * B -> C) -> (A -> (B -> C))
+apply    : (A -> B) * A -> B
 ```
 
-### For Functors and Natural Transformations
+These are not implemented in Once - they're the building blocks from which everything else is constructed. Every target language provides its own implementation of these operations.
+
+## Derived: Pure Libraries
+
+The middle stratum contains all pure code built from generators. This is where most Once code lives.
+
+### Canonical Library
+
+Standard morphisms derived from universal properties:
 
 ```
--- Functor mapping (for each functor F)
-fmap : (A -> B) -> F A -> F B
-
--- Natural transformation component (for each nat trans α : F => G)
-component : F A -> G A
-```
-
-### Properties
-
-- **Universal**: Every pure Once program reduces to these
-- **Minimal**: None can be derived from the others
-- **Mathematical**: Standard from category theory
-
-## Layer 2: Derived
-
-The **Derived** layer contains everything pure built from Generators. This includes both basic constructions and complex domain libraries.
-
-### Basic Constructions
-
-```
--- Swap product components
-swap : A * B -> B * A
-swap = pair snd fst
-
--- Diagonal (copy)
+swap     : A * B -> B * A
 diagonal : A -> A * A
-diagonal = pair id id
-
--- Constant function
-constant : A -> B -> A
-constant a = curry fst
-
--- Function composition
-(.) : (B -> C) -> (A -> B) -> (A -> C)
-(.) = compose
+assoc    : (A * B) * C -> A * (B * C)
+distrib  : A * (B + C) -> (A * B) + (A * C)
 ```
 
-### Standard Functors
+See [Prelude](prelude.md) for the full Canonical library.
+
+### Initial Library
+
+Standard data types as initial algebras:
+
+```
+type Bool   = Unit + Unit
+type Maybe A = Unit + A
+type List A  = Unit + (A * List A)
+type Result A E = A + E
+```
+
+With their standard operations:
 
 ```
 -- Maybe
-data Maybe A = Nothing | Just A
-
-fmap : (A -> B) -> Maybe A -> Maybe B
-fmap f = case (constant Nothing) (compose Just f)
+nothing : Maybe A
+just    : A -> Maybe A
+maybe   : B -> (A -> B) -> Maybe A -> B
 
 -- List
-data List A = Nil | Cons A (List A)
+nil    : List A
+cons   : A -> List A -> List A
+foldr  : (A -> B -> B) -> B -> List A -> B
 
-fmap : (A -> B) -> List A -> List B
-fmap f = foldr (compose Cons (pair f id)) Nil
-
--- Result (success-left convention, see D025)
-type Result A E = A + E
-
-ok : A -> Result A E
-ok = inl
-
-err : E -> Result A E
-err = inr
-
-mapResult : (A -> B) -> Result A E -> Result B E
-mapResult f = case (ok . f) err
+-- Result (success-left convention)
+ok     : A -> Result A E
+err    : E -> Result A E
+handle : (A -> C) -> (E -> C) -> Result A E -> C
 ```
 
-### Recursion Schemes
+### Domain Libraries
 
+Complex functionality built entirely from generators:
+
+**Text Processing**
 ```
--- Catamorphism (fold)
-cata : (F A -> A) -> Fix F -> A
-
--- Anamorphism (unfold)
-ana : (A -> F A) -> A -> Fix F
-
--- Hylomorphism
-hylo : (F B -> B) -> (A -> F A) -> A -> B
-```
-
-### Common Patterns
-
-```
--- Fold
-foldr : (A -> B -> B) -> B -> List A -> B
-
--- Map
-map : (A -> B) -> List A -> List B
-
--- Filter
-filter : (A -> Bool) -> List A -> List A
-
--- Iterate
-iterate : (A -> A) -> A -> Stream A
-```
-
-### Domain Libraries (All Pure)
-
-These are all in Derived because they're pure - built entirely from Generators:
-
-**Parsing**
-```
--- Parser combinators
-type Parser A = String -> (A * String) + ParseError
-
-char     : Char -> Parser Char
-many     : Parser A -> Parser (List A)
-choice   : List (Parser A) -> Parser A
-sequence : List (Parser A) -> Parser (List A)
-```
-
-**JSON**
-```
-data Json
-  = JsonNull
-  | JsonBool Bool
-  | JsonNumber Number
-  | JsonString String
-  | JsonArray (List Json)
-  | JsonObject (List (String * Json))
-
-parseJson  : String -> Json + ParseError
+parseJson : String -> Result Json ParseError
 renderJson : Json -> String
 ```
 
-**Compression**
+**Algorithms**
 ```
-compress   : Bytes -> Bytes
-decompress : Bytes -> Bytes + Error
-```
-
-**Cryptography**
-```
-sha256 : Bytes -> Hash
-hmac   : Key -> Bytes -> Mac
+sort   : (A -> A -> Bool) -> List A -> List A
+search : (A -> Bool) -> List A -> Maybe A
 ```
 
 **Data Structures**
 ```
--- Trees
-data Tree A = Leaf A | Branch (Tree A) (Tree A)
-
--- Maps (balanced trees)
-data Map K V = ...
-
 insert : K -> V -> Map K V -> Map K V
 lookup : K -> Map K V -> Maybe V
-
--- Sets
-data Set A = ...
-
 member : A -> Set A -> Bool
-union  : Set A -> Set A -> Set A
 ```
 
-**Mathematics**
+**Numeric**
 ```
--- Vectors
-dot      : Vec N -> Vec N -> Number
-cross    : Vec 3 -> Vec 3 -> Vec 3
-normalize : Vec N -> Vec N
-
--- Matrices
-multiply : Mat M N -> Mat N P -> Mat M P
-inverse  : Mat N N -> Maybe (Mat N N)
+add : Int -> Int -> Int
+multiply : Int -> Int -> Int
 ```
 
-All of these are **pure** - no IO, no external dependencies, portable to any target.
+All Derived code is:
+- **Pure**: No side effects
+- **Portable**: Compiles to any target
+- **Verifiable**: Can be formally proven correct
 
-## Layer 3: Interpretations
+## Interpretations: Platform Bindings
 
-The **Interpretations** layer provides primitives for the external world. This is the **only** impure layer.
+The top stratum contains platform-specific IO operations declared as primitives.
 
-### POSIX Interpretation
+### Linux Interpretation
 
 ```
-primitive open  : Path * Flags -> IO (Fd + Errno)
-primitive read  : Fd * Size -> IO (Bytes + Errno)
-primitive write : Fd * Bytes -> IO (Size + Errno)
-primitive close : Fd -> IO (Unit + Errno)
+primitive open  : Path -> Flags -> IO (Handle + Error)
+primitive read  : Handle -> Int -> IO (Bytes + Error)
+primitive write : Handle -> Bytes -> IO (Unit + Error)
+primitive close : Handle -> IO (Unit + Error)
+```
 
-primitive socket  : Domain * Type -> IO (Socket + Errno)
-primitive connect : Socket * Address -> IO (Unit + Errno)
-primitive send    : Socket * Bytes -> IO (Size + Errno)
-primitive recv    : Socket * Size -> IO (Bytes + Errno)
+### WASM/Browser Interpretation
+
+```
+primitive consoleLog : String -> IO Unit
+primitive fetch      : Request -> IO (Response + Error)
+primitive setTimeout : Int -> IO Unit -> IO Unit
 ```
 
 ### Bare Metal Interpretation
 
 ```
-primitive gpio_read  : Pin -> IO Level
-primitive gpio_write : Pin * Level -> IO Unit
-
-primitive i2c_read  : Bus * Address * Size -> IO Bytes
-primitive i2c_write : Bus * Address * Bytes -> IO Unit
-
-primitive mmio_read  : Address -> IO Word
-primitive mmio_write : Address * Word -> IO Unit
+primitive gpioRead  : Pin -> IO Level
+primitive gpioWrite : Pin -> Level -> IO Unit
+primitive delay     : Microseconds -> IO Unit
 ```
 
-### WebAssembly Interpretation
+### Using Interpretations
+
+Interpretations combine primitives with Derived code:
 
 ```
-primitive console_log : String -> IO Unit
-primitive fetch       : Url * Options -> IO (Response + Error)
-primitive set_timeout : Milliseconds * Handler -> IO TimerId
+-- Uses primitive + Derived JSON parser
+readConfig : Path -> IO (Result Config Error)
+readConfig path =
+  bind (readFile path) (\text ->
+    pure (parseJson text)
+  )
 ```
 
-### Interpretation Libraries
+## Portability Matrix
 
-Libraries in Interpretations use primitives + Derived:
-
-```
--- File utilities (uses POSIX primitives + Derived)
-readFile  : Path -> IO (String + Error)
-writeFile : Path * String -> IO (Unit + Error)
-
--- HTTP client (uses socket primitives + Derived JSON parser)
-httpGet   : Url -> IO (Response + Error)
-httpPost  : Url * Json -> IO (Response + Error)
-
--- JSON file operations (combines Derived JSON with file IO)
-readJsonFile : Path -> IO (Result Json Error)
-readJsonFile path =
-  case (err, \str -> parseJson str) (readFile path)  -- parseJson is from Derived
-```
-
-## The Pure/Impure Boundary
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   Derived (Pure)                                            │
-│                                                             │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐       │
-│   │  JSON   │  │ Crypto  │  │ Parser  │  │  Math   │       │
-│   │ Parser  │  │         │  │ Combos  │  │         │       │
-│   └─────────┘  └─────────┘  └─────────┘  └─────────┘       │
-│         │            │            │            │            │
-│         └────────────┴─────┬──────┴────────────┘            │
-│                            │                                │
-├────────────────────────────┼────────────────────────────────┤
-│                            │                                │
-│   Interpretations (Impure) │                                │
-│                            ▼                                │
-│   ┌─────────────────────────────────────────────┐          │
-│   │  readJsonFile = fmap parseJson readFile     │          │
-│   └─────────────────────────────────────────────┘          │
-│                            │                                │
-│                            ▼                                │
-│   ┌─────────────────────────────────────────────┐          │
-│   │  primitive readFile, writeFile, socket...   │          │
-│   └─────────────────────────────────────────────┘          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Portability
-
-| Layer | Portable? | Compile Target |
-|-------|-----------|----------------|
-| Generators | Yes | Any |
-| Derived | Yes | Any |
+| Stratum | Portable | Target |
+|---------|----------|--------|
+| Generators | Yes | All |
+| Derived | Yes | All |
 | Interpretations | No | Specific platform |
 
-Code that uses only Generators and Derived can be compiled to **any target**: C, Rust, JavaScript, WASM, bare metal, anything.
+### Maximizing Portability
 
-Code that uses Interpretations is tied to that platform's primitives.
+Structure code to keep IO at the edges:
+
+```
+-- GOOD: Pure core, thin IO wrapper
+processData : Data -> Result Report Error    -- Derived (portable)
+main = bind (readInput) (pure . processData) -- Interpretation (platform-specific)
+
+-- BAD: IO mixed throughout
+processData : Path -> IO Report              -- Not portable
+```
+
+## File Organization
+
+A typical Once project:
+
+```
+project/
+  src/
+    Core.once           -- Derived: pure logic
+    Types.once          -- Derived: data definitions
+    Main.once           -- Interpretations: IO entry point
+  interpretations/
+    linux/              -- Linux primitives
+    wasm/               -- Browser primitives
+```
 
 ## Summary
 
-| Layer | Purity | Contains | Examples |
-|-------|--------|----------|----------|
-| **Generators** | Pure | ~12 primitive morphisms | `id`, `compose`, `fst`, `curry` |
-| **Derived** | Pure | Everything built from Generators | `map`, `fold`, JSON, crypto, parsers |
-| **Interpretations** | Impure | IO primitives for external world | File IO, network, GPIO, syscalls |
+| Stratum | Purity | Contents | Portability |
+|---------|--------|----------|-------------|
+| Generators | Pure | 12 primitives | Universal |
+| Derived | Pure | All library code | Universal |
+| Interpretations | Impure | IO primitives | Platform-specific |
 
-The rule is simple: **if it doesn't touch the external world, it's Derived. If it does, it's Interpretations.**
+The stratum system enforces a clean separation between portable pure code and platform-specific IO. Most code lives in Derived where it can be compiled to any target and formally verified.

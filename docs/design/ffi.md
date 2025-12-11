@@ -1,302 +1,231 @@
-# Foreign Function Interface in Once
+# Foreign Function Interface
 
-## Two Directions
+## Overview
 
-Once's FFI works in both directions:
+Once provides bidirectional interoperability with other languages:
 
-| Direction | Meaning | Use Case |
-|-----------|---------|----------|
-| **Calling out** | Once code calls external functions | OS APIs, hardware, existing C libraries |
-| **Calling in** | External code calls Once functions | Once as a library for other languages |
+- **Import**: Call external functions from Once code
+- **Export**: Make Once functions callable from other languages
 
-Both are first-class concerns. Once is designed to be embedded, not just to be a standalone executable.
+This enables Once to integrate with existing codebases, use platform APIs, and serve as a library for other languages.
 
-## Calling Out: Primitive Declarations
+## Importing External Functions
 
-External functions are declared as **primitives** in the Interpretation layer:
+External functions are declared with the `primitive` keyword in the Interpretations stratum:
 
 ```
--- System calls
-primitive sys_read  : FileDescriptor * Buffer * Size -> IO SSize
-primitive sys_write : FileDescriptor * Buffer * Size -> IO SSize
-primitive sys_open  : Path * Flags -> IO (FileDescriptor + Error)
-
--- Hardware (bare metal)
-primitive gpio_read  : Pin -> IO Bit
-primitive gpio_write : Pin * Bit -> IO Unit
-
--- Existing C libraries
-primitive strlen : CString -> Size
-primitive memcpy : Dest * Src * Size -> Dest
+primitive puts : String -> IO Unit
+primitive getenv : String -> IO (String + Null)
 ```
 
-### Foreign Type Mapping
+### Type Correspondence
 
-Once types map to C types:
+Once types map to C types (the common FFI target):
 
-| Once Type | C Type | Notes |
-|-----------|--------|-------|
-| `Unit` | `void` | No return value |
-| `Byte` | `uint8_t` | Single byte |
-| `Int` | `int64_t` | Default integer |
-| `A * B` | `struct { A fst; B snd; }` | Product |
-| `A + B` | Tagged union | Coproduct |
-| `A -> B` | `B (*)(A)` | Function pointer |
+| Once | C |
+|------|---|
+| `Unit` | `void` (as return) |
+| `Int` | `int64_t` |
+| `Byte` | `uint8_t` |
+| `Bool` | `int` (0/1) |
+| `A * B` | `struct { A fst; B snd; }` |
+| `A + B` | tagged union |
+| `String` | `char*` + length |
+| `A -> B` | function pointer |
 
 ### Opaque Types
 
-For types that shouldn't be inspected:
+For foreign types whose internals Once shouldn't access:
 
 ```
--- Opaque: no internal structure visible to Once
 opaque FileHandle
 opaque Socket
-opaque CString
+opaque Regex
 
--- Primitives work with opaque types
-primitive fopen  : Path * Mode -> IO (FileHandle + Error)
+primitive fopen : String -> String -> IO (FileHandle + Error)
 primitive fclose : FileHandle -> IO Unit
 ```
 
-Opaque types are:
-- Created only by primitives
-- Consumed only by primitives
-- Cannot be pattern-matched or destructured
-- Passed through Once code unchanged
+Opaque types:
+- Can only be created/consumed by primitives
+- Pass through Once code unchanged
+- Cannot be pattern matched
 
-## Calling In: Exports
+## Exporting Once Functions
 
-Once functions can be exported with C calling convention:
+Once functions become callable from C using `export`:
 
 ```
--- Mark a function for export
-export parseJson : CString * Size -> JsonResult
-
--- Implementation is pure Once
-parseJson input len =
-  compose validate (compose parse (fromCString input len))
+export factorial : Int -> Int
+factorial n = case n of
+  0 -> 1
+  _ -> multiply n (factorial (subtract n 1))
 ```
 
-### What Gets Generated
+### Generated Interface
 
-For each export, the Once compiler generates:
+The compiler produces a C header:
 
 ```c
-// C header
-JsonResult once_parseJson(const char* input, size_t len);
+// factorial.h
+#pragma once
+#include <stdint.h>
 
-// Implementation calls into compiled Once code
-JsonResult once_parseJson(const char* input, size_t len) {
-    return _once_internal_parseJson(input, len);
-}
+int64_t once_factorial(int64_t n);
 ```
 
-### Callback Support
+And corresponding implementation that calls the compiled Once code.
 
-Once can provide callbacks to foreign code:
+### Export Conventions
 
-```
--- A callback type
-type Callback = Int -> IO Unit
+Exported functions use the C ABI:
+- No garbage collector
+- No runtime required
+- Predictable memory layout
+- Standard calling conventions
 
--- Export a function that returns a callback
-export makeHandler : Config -> Callback
+## Memory at the Boundary
 
--- Foreign code can call:
---   Callback cb = once_makeHandler(config);
---   cb(42);  // invokes Once code
-```
+### Ownership Rules
 
-## Memory Management at the Boundary
+Once doesn't manage memory for foreign code. At boundaries:
 
-### The Problem
+1. **Once allocates, caller frees**: Document this explicitly
+2. **Caller allocates, Once uses**: Provide buffer + size
+3. **Shared ownership**: Use reference counting primitives
 
-Once doesn't have garbage collection. External code might expect:
-- Allocated buffers
-- Caller-frees semantics
-- Reference counting
-
-### The Solution: Explicit Protocols
+### Buffer Patterns
 
 ```
--- Allocation primitives
-primitive malloc : Size -> IO (Ptr + Null)
-primitive free   : Ptr -> IO Unit
+-- Caller provides buffer
+export renderJson : Json -> Buffer -> Size -> Size + Error
 
--- Once code that allocates for foreign consumption
-export createBuffer : Size -> Ptr
-createBuffer size =
-  case malloc size of
-    inl ptr  -> ptr
-    inr null -> initial  -- absurd, or handle error
-
--- Caller is responsible for freeing
--- Document this in the export
+-- Once allocates (caller must free)
+export encodeBase64 : Bytes -> IO (Buffer * Size)
 ```
 
-For complex data:
+### QTT at Boundaries
+
+Linear types (`^1`) clarify ownership:
 
 ```
--- Serialize to foreign-friendly format
-export serializeResult : Result -> CString * Size
-
--- Or use caller-provided buffer
-export serializeInto : Result * Buffer * Size -> Size + Error
-```
-
-### Linear Discipline at Boundaries
-
-Once uses **Quantitative Type Theory (QTT)** to track resource usage. If code has quantity `1` (linear), memory management is straightforward:
-- Each value used exactly once
-- No hidden copies
-- Clear ownership transfer
-
-Linearity is **enforced by the type system**:
-
-```
--- Type guarantees linearity
 export processBuffer : Buffer^1 -> Result^1
--- Caller receives sole ownership, must use result exactly once
+-- Ownership transfers: caller gives up buffer, receives result
 ```
 
-See [Memory](memory.md) for details on QTT.
-
-## Platform Interpretation Layers
-
-Different targets have different primitives:
-
-### POSIX Interpretation
-
-```
--- File operations
-primitive open  : Path * Flags -> IO (Fd + Errno)
-primitive read  : Fd * Buf * Size -> IO (SSize + Errno)
-primitive write : Fd * Buf * Size -> IO (SSize + Errno)
-primitive close : Fd -> IO (Unit + Errno)
-
--- Memory
-primitive mmap : Addr * Size * Prot * Flags * Fd * Off -> IO (Addr + Errno)
-```
-
-### Bare Metal Interpretation (e.g., BeagleBone)
-
-```
--- GPIO
-primitive gpio_direction : Pin * Direction -> IO Unit
-primitive gpio_write     : Pin * Level -> IO Unit
-primitive gpio_read      : Pin -> IO Level
-
--- Memory-mapped IO
-primitive mmio_read  : Address -> IO Word
-primitive mmio_write : Address * Word -> IO Unit
-
--- Interrupts
-primitive enable_interrupt  : IRQ * Handler -> IO Unit
-primitive disable_interrupt : IRQ -> IO Unit
-```
-
-### WebAssembly Interpretation
-
-```
--- Host imports
-primitive console_log : CString * Size -> IO Unit
-primitive fetch       : Url -> IO (Response + Error)
-
--- Memory (WASM linear memory)
-primitive memory_grow : Pages -> IO (PageIndex + Error)
-```
-
-## Example: Once Library Used from C
+## Complete Example: JSON Library
 
 ### Once Source
 
 ```
--- math.once
+-- json.once
 
--- Pure function, no IO
-export gcd : Int * Int -> Int
-gcd (a, b) = case b of
-  0 -> a
-  _ -> gcd (b, mod a b)
+type Json
+  = JsonNull
+  + JsonBool Bool
+  + JsonNum Int
+  + JsonStr String
+  + JsonArr (List Json)
+  + JsonObj (List (String * Json))
 
--- Function that uses state internally but exports pure interface
-export fibonacci : Int -> Int
-fibonacci n = fst (iterate n step (0, 1))
-  where step (a, b) = (b, a + b)
+-- Pure parsing (Derived stratum)
+parseJson : String -> Result Json ParseError
+parseJson = ...
+
+-- Export with C-friendly interface
+export json_parse : CString -> Size -> JsonResult
+json_parse str len =
+  case parseJson (fromCString str len) of
+    ok json -> JsonOk json
+    err e   -> JsonErr (errorCode e)
+
+export json_free : JsonHandle -> IO Unit
+json_free = ...
 ```
 
-### Generated C Header
+### Generated Header
 
 ```c
-// math.h - generated by Once compiler
-#ifndef ONCE_MATH_H
-#define ONCE_MATH_H
+// json.h
+#pragma once
 
-#include <stdint.h>
+typedef struct JsonResult {
+    int tag;  // 0 = ok, 1 = error
+    union {
+        void* json;    // opaque handle
+        int error_code;
+    } val;
+} JsonResult;
 
-int64_t once_gcd(int64_t a, int64_t b);
-int64_t once_fibonacci(int64_t n);
-
-#endif
+JsonResult once_json_parse(const char* str, size_t len);
+void once_json_free(void* json);
 ```
 
 ### Usage from C
 
 ```c
-#include "math.h"
+#include "json.h"
 #include <stdio.h>
 
 int main() {
-    printf("gcd(48, 18) = %ld\n", once_gcd(48, 18));
-    printf("fib(10) = %ld\n", once_fibonacci(10));
+    const char* input = "{\"name\": \"test\"}";
+    JsonResult r = once_json_parse(input, strlen(input));
+
+    if (r.tag == 0) {
+        // Use json handle...
+        once_json_free(r.val.json);
+    } else {
+        printf("Parse error: %d\n", r.val.error_code);
+    }
     return 0;
 }
 ```
 
-## Example: Wrapping a C Library
+## Platform-Specific Primitives
 
-### C Library (existing)
+Different interpretation modules provide different primitives:
 
-```c
-// zlib.h
-int compress(Bytef *dest, uLongf *destLen,
-             const Bytef *source, uLong sourceLen);
-```
-
-### Once Wrapper
+### Linux
 
 ```
--- zlib.once
-
-opaque Bytef
-opaque ULong
-
--- Primitive declaration
-primitive c_compress : Bytef * ULong * Bytef * ULong -> IO Int
-
--- Once-friendly wrapper
-compress : Bytes -> IO (Bytes + Error)
-compress input =
-  let inputLen = length input
-      maxOutput = compressBound inputLen
-  in case malloc maxOutput of
-    inr null -> inr OutOfMemory
-    inl dest ->
-      case c_compress dest maxOutput (toPtr input) inputLen of
-        0 -> inl (fromPtr dest actualLen)
-        e -> inr (ZlibError e)
+primitive read  : Fd -> Buffer -> Size -> IO (Size + Errno)
+primitive write : Fd -> Buffer -> Size -> IO (Size + Errno)
+primitive mmap  : Size -> Prot -> Flags -> IO (Ptr + Errno)
 ```
+
+### Browser (WASM)
+
+```
+primitive fetch : Request -> IO (Response + Error)
+primitive setTimeout : Int -> (Unit -> IO Unit) -> IO TimerId
+```
+
+### Bare Metal
+
+```
+primitive gpioWrite : Pin -> Level -> IO Unit
+primitive gpioRead  : Pin -> IO Level
+primitive delayMicros : Int -> IO Unit
+```
+
+## Callbacks
+
+Once can provide callbacks to foreign code:
+
+```
+type EventHandler = Event -> IO Unit
+
+export registerHandler : EventHandler -> IO HandlerId
+```
+
+The callback is compiled to a C function pointer that foreign code can invoke.
 
 ## Summary
 
-| Aspect | Mechanism |
-|--------|-----------|
-| Calling out | `primitive` declarations |
-| Calling in | `export` declarations |
-| Opaque foreign types | `opaque` keyword |
-| Type mapping | Direct correspondence to C |
-| Memory | Explicit allocation primitives |
-| Callbacks | Function types export as function pointers |
-| Platform differences | Different Interpretation layers |
+| Direction | Keyword | Purpose |
+|-----------|---------|---------|
+| Import | `primitive` | Call external functions |
+| Export | `export` | Expose Once functions |
+| Hide internals | `opaque` | Foreign types |
 
-Once is designed to be a **library language** - not just for writing applications, but for writing libraries that any language can use. The natural transformation foundation means no runtime, no GC, just functions with C-compatible calling conventions.
+Once's FFI enables seamless integration with the C ecosystem while maintaining type safety within Once code. The lack of runtime overhead makes Once suitable as a library for performance-critical components.
