@@ -5,7 +5,8 @@
 The Prelude is the set of definitions available by default in Once programs. It consists of:
 
 1. **Generators** - Always available, the foundation
-2. **Core Derived** - Standard constructions everyone needs
+2. **Canonical** - Morphisms from universal properties (see D021)
+3. **Initial** - Standard data types as initial algebras (see D024)
 
 The Prelude is entirely **pure** - no Interpretations are imported by default.
 
@@ -117,26 +118,37 @@ mapMaybe : (A -> B) -> Maybe A -> Maybe B
 mapMaybe f = case (constant Nothing) (compose Just f)
 ```
 
-### Either
+### Result
+
+Once uses `Result` instead of `Either` for error handling, with a **success-left** convention (see D025):
 
 ```
-data Either E A = Left E | Right A
+type Result A E = A + E
 
-either : (E -> C) -> (A -> C) -> Either E A -> C
-either f g = case f g
+ok : A -> Result A E
+ok = inl
 
-isLeft : Either E A -> Bool
-isLeft = case (constant True) (constant False)
+err : E -> Result A E
+err = inr
 
-isRight : Either E A -> Bool
-isRight = case (constant False) (constant True)
+-- Combinators
+mapResult : (A -> B) -> Result A E -> Result B E
+mapResult f = case (ok . f) err
 
-mapEither : (A -> B) -> Either E A -> Either E B
-mapEither f = case Left (compose Right f)
+bindResult : (A -> Result B E) -> Result A E -> Result B E
+bindResult f = case f err
 
-mapLeft : (E -> F) -> Either E A -> Either F A
-mapLeft f = case (compose Left f) Right
+isOk : Result A E -> Bool
+isOk = case (constant True) (constant False)
+
+isErr : Result A E -> Bool
+isErr = case (constant False) (constant True)
+
+fromResult : A -> Result A E -> A
+fromResult default = case id (constant default)
 ```
+
+Note: Success is on the **left** (`inl`), error is on the **right** (`inr`). This differs from Haskell's `Either` convention.
 
 ### List
 
@@ -275,28 +287,23 @@ Prelude
 │   ├── curry, apply
 │   └── fmap
 │
-└── Core Derived
-    ├── Combinators
-    │   └── identity, flip, constant, swap, diagonal, (.), (|>), ($)
-    │
-    ├── Data Types
-    │   ├── Bool (True, False, not, and, or, if)
-    │   ├── Maybe (Nothing, Just, maybe, fromMaybe, ...)
-    │   ├── Either (Left, Right, either, ...)
-    │   └── List (Nil, Cons, foldr, map, filter, ...)
-    │
-    ├── Tuple Operations
-    │   └── first, second, both, uncurry
-    │
-    ├── Function Combinators
-    │   └── twice, iterate, fix, on
-    │
-    ├── Comparison
-    │   └── Ordering, compare, (==), (<), min, max, ...
-    │
-    └── Numeric
-        └── (+), (-), (*), (/), sum, product, ...
+├── Canonical (morphisms from universal properties)
+│   ├── Product: swap, diagonal, first, second, bimap, assocL, assocR
+│   ├── Coproduct: mirror, mapLeft, mapRight
+│   ├── Function: flip, const, (.), (|>), (&)
+│   └── Morphism: id, compose (re-exports)
+│
+└── Initial (data types as initial algebras)
+    ├── Bool (True, False, not, and, or, if)
+    ├── Maybe (Nothing, Just, maybe, fromMaybe, ...)
+    ├── Result (ok, err, mapResult, bindResult, ...) -- success-left convention
+    └── List (Nil, Cons, foldr, map, filter, ...)
 ```
+
+See also:
+- [D021](../compiler/decision-log.md#d021-canonical-as-the-standard-derived-library) - Canonical library
+- [D024](../compiler/decision-log.md#d024-initial-as-the-standard-data-type-library) - Initial library
+- [D025](../compiler/decision-log.md#d025-result-type-convention-success-left) - Result convention
 
 ## What's NOT in the Prelude
 
@@ -375,9 +382,8 @@ There are no special compiler features only available to Prelude code.
 | Aspect | Prelude Content |
 |--------|-----------------|
 | **Generators** | The ~12 primitives |
-| **Types** | Bool, Maybe, Either, List, Ordering |
-| **Combinators** | identity, flip, constant, (.), (\|>) |
-| **List ops** | map, filter, foldr, foldl, length, append |
+| **Canonical** | Morphisms: swap, diagonal, flip, const, (.), (\|>) |
+| **Initial** | Types: Bool, Maybe, Result, List, Ordering |
 | **Not included** | IO, parsing, JSON, networking |
 
 The Prelude is the **pure foundation**. Everything else is explicitly imported.

@@ -810,7 +810,7 @@ Morphisms that arise from universal properties of the categorical structures:
 | Composition | `(.)`, `(|>)` (pipeline) |
 
 **What does NOT belong in Canonical:**
-- Data type definitions (Maybe, List, Either) - these go in `Derived/Data/`
+- Data type definitions (Bool, Maybe, List, Result) - these go in `Initial/` (see D024)
 - Domain-specific libraries (JSON, crypto) - these go in `Derived/`
 - Anything requiring primitives - that's Interpretations
 
@@ -823,12 +823,11 @@ Derived/
 │   ├── Coproduct.once    -- mirror, mapLeft, mapRight
 │   ├── Function.once     -- flip, const, (.), (|>), (&)
 │   └── Morphism.once     -- id, compose (re-exports for convenience)
-├── Data/
+├── Initial/              -- data types as initial algebras (see D024)
 │   ├── Bool.once
 │   ├── Maybe.once
-│   ├── Either.once
 │   ├── List.once
-│   └── ...
+│   └── Result.once
 └── ...
 ```
 
@@ -1004,3 +1003,156 @@ Benefits:
 ### See Also
 - [Design Philosophy](../design/design-philosophy.md) - Error handling section
 - [IO](../design/io.md) - Effects as functor choice
+
+---
+
+## D024: Initial as the Standard Data Type Library
+
+**Date**: 2025-12-11
+**Status**: Accepted
+
+### Context
+Once needs a curated set of standard data types. In D021, we established `Canonical/` for morphisms arising from universal properties. We needed a parallel concept for data types.
+
+### Options Considered
+
+1. **Data/** - Generic name
+2. **Algebra/** - Mathematical, refers to algebraic data types
+3. **Initial/** - Category theory term for how these types are constructed
+4. **Base/** - Haskell convention
+5. **Data.Initial/** - Nested under Data
+
+### Decision
+The standard data type library is called **Initial**. It lives parallel to `Canonical/` within the Derived stratum.
+
+### Rationale
+
+**Why "Initial":**
+In category theory, these data types are **initial algebras**:
+
+| Type | Initial Algebra Of |
+|------|-------------------|
+| `Bool` | `1 + 1` (two-element set) |
+| `Maybe A` | `1 + A` (optional value) |
+| `List A` | `1 + A × X` (recursive list) |
+| `Result A E` | `A + E` (success or error) |
+
+The initiality property gives these types their universal character - they are "the" canonical representations of these patterns, just as `Canonical/` morphisms are "the" canonical transformations.
+
+**Why parallel to Canonical:**
+- `Canonical`: morphisms from universal properties
+- `Initial`: data types from initial algebras
+- Both are mathematical terms at the same level
+- Clean symmetry in the library structure
+
+**What belongs in Initial:**
+- `Bool` - the two-element type
+- `Maybe` - optional values
+- `List` - sequences
+- `Result` - success/error handling (see D025)
+- Other initial algebra constructions
+
+**What does NOT belong in Initial:**
+- Terminal coalgebras (streams, infinite structures) - future `Terminal/` library
+- Domain-specific types (Json, HttpRequest) - go in `Derived/`
+- Types requiring primitives - that's Interpretations
+
+### Directory Structure
+
+```
+Derived/
+├── Canonical/        -- morphisms from universal properties
+├── Initial/          -- data types as initial algebras
+│   ├── Bool.once
+│   ├── Maybe.once
+│   ├── List.once
+│   └── Result.once
+└── ...               -- domain-specific libraries
+```
+
+### Consequences
+- `Initial/` is a curated, stable collection parallel to `Canonical/`
+- The name communicates mathematical intent
+- Future: `Terminal/` for coalgebraic types (streams, etc.)
+- Requires implementing an import/module system (future work)
+
+---
+
+## D025: Result Type Convention (Success-Left)
+
+**Date**: 2025-12-11
+**Status**: Accepted
+
+### Context
+Error handling in Once uses sum types (see D023). We needed to decide on a convention for the `Result` type - which side represents success and which represents error.
+
+### Options Considered
+
+1. **Haskell convention** - `Either E A` where Left = error, Right = success
+2. **Success-left** - `Result A E = A + E` where Left = success, Right = error
+3. **No convention** - Just use `A + E` with `inl`/`inr` directly
+
+### Decision
+Adopt **success-left** convention: `Result A E = A + E` where `ok = inl` (success) and `err = inr` (error).
+
+### Rationale
+
+**Why not Haskell's convention:**
+- "Left = error" is arbitrary and counterintuitive to many
+- No categorical basis for this choice
+- Just historical accident in Haskell
+
+**Why success-left:**
+- Success is the primary/expected case - put it first
+- Reading left-to-right, you see the happy path first
+- `inl` = "in left" = "in success" feels natural
+- Still arbitrary, but more intuitive than Haskell
+
+**Why in Initial/, not Canonical/:**
+- `Result` is a type alias with semantic conventions (`ok`/`err`)
+- `Canonical/` is for morphisms from universal properties
+- `ok` and `err` are convenient names, not categorical necessities
+- This is a data type definition, belongs with `Bool`, `Maybe`, `List`
+
+### Definition
+
+```
+-- In Initial/Result.once
+
+type Result A E = A + E
+
+ok : A -> Result A E
+ok = inl
+
+err : E -> Result A E
+err = inr
+
+-- Combinators
+mapResult : (A -> B) -> Result A E -> Result B E
+mapResult f = case (ok . f) err
+
+bindResult : (A -> Result B E) -> Result A E -> Result B E
+bindResult f = case f err
+```
+
+### Usage Example
+
+```
+parseNumber : String -> Result Int ParseError
+parseNumber s = ...
+
+validatePositive : Int -> Result Int ValidationError
+validatePositive n = case (n > 0) of
+  true  -> ok n
+  false -> err ValidationError.NotPositive
+
+-- Chaining
+parseAndValidate : String -> Result Int Error
+parseAndValidate = bindResult validatePositive . parseNumber
+```
+
+### Consequences
+- Consistent error handling convention across Once code
+- `ok`/`err` are semantic aliases for `inl`/`inr`
+- Success-left is the standard, documented convention
+- Users can still use raw `A + E` with `inl`/`inr` if preferred
