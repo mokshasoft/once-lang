@@ -93,6 +93,9 @@ Choose the weakest level that works:
 | `cata` | `(F A -> A) -> Fix F -> A` | Fold recursive structure |
 | `ana` | `(A -> F A) -> A -> Fix F` | Unfold into recursive structure |
 | `hylo` | `(F B -> B) -> (A -> F A) -> A -> B` | Combined unfold then fold |
+| `para` | `(F (Fix F * A) -> A) -> Fix F -> A` | Fold with original subtree access |
+
+See [Recursion Schemes](recursion-schemes.md) for details.
 
 ## Category Theory Terms
 
