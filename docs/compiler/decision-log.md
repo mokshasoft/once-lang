@@ -938,3 +938,69 @@ Compare to CakeML (~100,000 lines) and CompCert (~100,000 lines). Once is ~40x s
 - QuickCheck properties are "theorem-shaped" - each corresponds to an Agda theorem
 - The PL community will accept Agda proofs
 - See `docs/design/formal/verification-strategy.md` for full details
+
+---
+
+## D023: No Exceptions
+
+**Date**: 2025-12-11
+**Status**: Accepted
+
+### Context
+Many programming languages provide exceptions as an error-handling mechanism. We needed to decide whether Once should support exceptions.
+
+### Decision
+**Exceptions will never be implemented in Once.**
+
+### Rationale
+
+**1. Not expressible with generators**
+
+The 12 generators form a cartesian closed category (CCC). Exceptions require **non-local control flow** - the ability to "jump" out of a computation at any point, bypassing intermediate stack frames. This is fundamentally incompatible with the compositional structure of morphisms:
+
+- `case` is local: `case f g : A + B -> C` handles both branches at the point of consumption
+- Exceptions are non-local: `throw` jumps past multiple stack frames to a distant `catch`
+
+To express exceptions categorically would require something like continuations, effect handlers, or monads - none of which are part of the CCC structure.
+
+**2. Difficult to formally verify**
+
+Exceptions break compositionality. When verifying `compose f g`, you cannot reason locally about `f` and `g` because either might throw, transferring control elsewhere. This makes proofs significantly harder:
+
+- Must track all possible exception paths
+- Compositional reasoning breaks down
+- Denotational semantics becomes complex
+
+**3. Difficult to reason about**
+
+The same property that makes exceptions hard to verify makes them hard to think about:
+
+- A function's type `A -> B` doesn't reveal it might throw
+- Control flow is implicit and non-local
+- Exception safety requires careful manual reasoning
+
+**4. Sum types are the right solution**
+
+Once already has explicit error handling via sum types:
+
+```
+parseJson : String -> Json + ParseError
+readFile : Path -> External (Buffer + IOError)
+```
+
+Benefits:
+- Errors are visible in the type - you cannot ignore them
+- Local handling - errors are handled where they occur
+- Compositional - `case` composes normally
+- Verifiable - standard CCC reasoning applies
+
+### Consequences
+- No `throw`, `catch`, `try`, or similar constructs
+- All error cases must be represented in types (typically as sum types)
+- Code is more explicit about failure modes
+- Formal verification remains tractable
+- Once programs are easier to reason about
+
+### See Also
+- [Design Philosophy](../design/design-philosophy.md) - Error handling section
+- [IO](../design/io.md) - Effects as functor choice

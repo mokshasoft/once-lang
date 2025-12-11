@@ -96,6 +96,90 @@ fmap : (A -> B) -> External A -> External B
 
 Primitives in the Interpretations layer produce `External` values. Everything else is pure.
 
+## Error Handling Without Exceptions
+
+Once deliberately omits exceptions. Errors are handled through **sum types**:
+
+```
+-- May fail with error
+parseJson : String -> Json + ParseError
+
+-- Chain operations that may fail
+parseAndValidate : String -> ValidJson + ParseError + ValidationError
+```
+
+### Why No Exceptions?
+
+**1. Not expressible with generators**
+
+The 12 generators form a cartesian closed category. Exceptions require non-local control flow - `throw` jumps past multiple stack frames to a distant `catch`. This violates the compositional structure:
+
+```
+-- With exceptions (NOT Once):
+f : A -> B        -- might throw, but type doesn't say
+g : B -> C        -- might throw, but type doesn't say
+compose g f : A -> C    -- where does the exception go?
+
+-- With sum types (Once):
+f : A -> B + E₁
+g : B -> C + E₂
+-- must explicitly handle E₁ before calling g
+```
+
+**2. Verifiability**
+
+Exceptions break compositional reasoning. When verifying `compose f g`, you cannot reason locally - either function might throw, transferring control elsewhere. Sum types preserve compositionality:
+
+```
+-- Categorical law still holds:
+compose (case f g) inl = f
+
+-- No hidden control flow paths to track
+```
+
+**3. Explicit is better than implicit**
+
+With exceptions, `A -> B` hides potential failures. With sum types, `A -> B + Error` makes failure explicit. You cannot accidentally ignore an error:
+
+```
+-- Must handle both cases
+result : Json + ParseError
+result = parseJson input
+
+-- case forces you to handle the error
+output = case handleJson handleError result
+```
+
+### Composing Fallible Operations
+
+For chaining operations that may fail, use standard categorical combinators:
+
+```
+-- Map over success case
+mapRight : (B -> C) -> (A + B) -> (A + C)
+
+-- Chain fallible operations
+bindRight : (B -> A + C) -> (A + B) -> (A + C)
+
+-- Example: parse then validate
+parseAndValidate : String -> ValidJson + Error
+parseAndValidate = bindRight validate . mapRight normalize . parseJson
+```
+
+These are derivable from the 12 generators - no special error-handling syntax needed.
+
+### Comparison
+
+| Aspect | Exceptions | Sum Types (Once) |
+|--------|------------|------------------|
+| In type signature | No | Yes |
+| Can ignore | Yes (accidentally) | No (must handle) |
+| Compositional | No (non-local jumps) | Yes |
+| Formally verifiable | Difficult | Standard CCC |
+| Control flow | Implicit | Explicit |
+
+Sum types make Once programs easier to verify, easier to reason about, and impossible to accidentally mishandle. See decision [D023](../compiler/decision-log.md#d023-no-exceptions) for the full rationale.
+
 ## The Three-Layer Architecture
 
 Once organizes code by **purity**, not by module:
