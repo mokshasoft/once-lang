@@ -23,6 +23,7 @@ open import Once.Type
 --   Coproducts:            inl, inr, [_,_]
 --   Terminal/Initial:      terminal, initial
 --   Exponential:           curry, apply
+--   Recursive types:       fold, unfold
 --
 data IR : Type → Type → Set where
   -- Category structure
@@ -48,6 +49,11 @@ data IR : Type → Type → Set where
   -- Exponential (A ⇒ B)
   curry   : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)
   apply   : ∀ {A B} → IR ((A ⇒ B) * A) B
+
+  -- Recursive types (Fixed point isomorphism)
+  -- Fix F ≅ F (Fix F), witnessed by fold/unfold
+  fold    : ∀ {F} → IR F (Fix F)      -- F (Fix F) → Fix F (constructor)
+  unfold  : ∀ {F} → IR (Fix F) F      -- Fix F → F (Fix F) (destructor)
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

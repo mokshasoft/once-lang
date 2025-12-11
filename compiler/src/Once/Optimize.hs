@@ -42,6 +42,12 @@ simplifyCompose g f = case (g, f) of
   -- case f g ∘ inr = g
   (Case _ k, Inr _ _) -> k
 
+  -- Recursive type laws (Fix isomorphism)
+  -- fold ∘ unfold = id : Fix F -> Fix F
+  (Fold t, Unfold t') | t == t' -> Id (TFix t)
+  -- unfold ∘ fold = id : F (Fix F) -> F (Fix F)
+  (Unfold t, Fold t') | t == t' -> Id t
+
   -- Composition associativity: normalize to right-associative
   -- (h ∘ g) ∘ f = h ∘ (g ∘ f)
   -- This helps expose more optimization opportunities
@@ -69,3 +75,8 @@ simplifyCase f g = case (f, g) of
   (Inl a b, Inr a' b') | a == a' && b == b' -> Id (TSum a b)
   -- No simplification applies
   _ -> Case f g
+
+-- Note: fold and unfold optimizations
+-- fold ∘ unfold = id : Fix F -> Fix F
+-- unfold ∘ fold = id : F (Fix F) -> F (Fix F)
+-- These are added in simplifyCompose when needed for recursion scheme fusion

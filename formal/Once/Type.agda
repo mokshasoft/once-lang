@@ -17,6 +17,7 @@ open import Level using (Level)
 -- - _*_ is the categorical product (×)
 -- - _+_ is the categorical coproduct (+)
 -- - _⇒_ is the exponential object (function space)
+-- - Fix is the fixed point (for recursive types)
 --
 data Type : Set where
   Unit  : Type                    -- Terminal object
@@ -24,6 +25,7 @@ data Type : Set where
   _*_   : Type → Type → Type      -- Product
   _+_   : Type → Type → Type      -- Coproduct (sum)
   _⇒_   : Type → Type → Type      -- Exponential (function)
+  Fix   : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
 
 infixr 30 _⇒_
 infixr 40 _+_

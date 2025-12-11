@@ -147,6 +147,20 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-apply : ∀ {Γ A B} → Γ ⊢ ((A ⇒ B) * A) ⟶ B
 
+  -- Fold (constructor for recursive types)
+  --
+  -- ─────────────────────────
+  -- Γ ⊢ F ⟶ Fix F
+  --
+  ty-fold : ∀ {Γ F} → Γ ⊢ F ⟶ Fix F
+
+  -- Unfold (destructor for recursive types)
+  --
+  -- ─────────────────────────
+  -- Γ ⊢ Fix F ⟶ F
+  --
+  ty-unfold : ∀ {Γ F} → Γ ⊢ Fix F ⟶ F
+
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
 ------------------------------------------------------------------------
@@ -168,6 +182,8 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-initial ⌋ = initial
 ⌊ ty-curry f ⌋ = curry ⌊ f ⌋
 ⌊ ty-apply ⌋ = apply
+⌊ ty-fold ⌋ = fold
+⌊ ty-unfold ⌋ = unfold
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -187,6 +203,8 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ initial ⌉ = ty-initial
 ⌈ curry f ⌉ = ty-curry ⌈ f ⌉
 ⌈ apply ⌉ = ty-apply
+⌈ fold ⌉ = ty-fold
+⌈ unfold ⌉ = ty-unfold
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
@@ -218,3 +236,5 @@ round-trip-ir terminal = refl
 round-trip-ir initial = refl
 round-trip-ir (curry f) = cong curry (round-trip-ir f)
 round-trip-ir apply = refl
+round-trip-ir fold = refl
+round-trip-ir unfold = refl

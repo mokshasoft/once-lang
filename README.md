@@ -104,10 +104,10 @@ main = puts "Hello for Once"
 EOF
 
 # Compile (using Nix)
-./result/bin/once build --exe --interp interpretations/linux hello.once -o hello
+./result/bin/once build --exe --interp lib/Interpretations/Linux hello.once -o hello
 
 # Or with Stack
-stack exec -- once build --exe --interp ../interpretations/linux hello.once -o hello
+stack exec -- once build --exe --interp ../lib/Interpretations/Linux hello.once -o hello
 
 # Compile the generated C and run
 gcc -o hello hello.c

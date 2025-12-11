@@ -51,6 +51,7 @@ data Decl
   = TypeSig Name SType                        -- ^ Type signature: name : Type
   | FunDef Name (Maybe AllocStrategy) Expr    -- ^ Function definition: name [@alloc] = expr
   | Primitive Name SType                      -- ^ Primitive declaration: primitive name : Type
+  | TypeAlias Name [Name] SType               -- ^ Type alias: type Name A B = Type
   deriving (Eq, Show)
 
 -- | Surface syntax expressions (before elaboration to IR)
@@ -82,4 +83,6 @@ data SType
   | STSum SType SType            -- ^ Sum: A + B
   | STArrow SType SType          -- ^ Function: A -> B
   | STQuant Quantity SType       -- ^ Quantity annotation: A^1
+  | STApp Name [SType]           -- ^ Type application: Maybe A, List Int
+  | STFix SType                  -- ^ Fixed point: Fix F (for recursive types)
   deriving (Eq, Show)

@@ -223,6 +223,9 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit s
+      -- Recursive type operations (identity at runtime)
+      Once.IR.Fold _ -> v
+      Once.IR.Unfold _ -> v
 
     -- Generate string literal based on allocation strategy
     generateStringLit :: Text -> Text
@@ -274,3 +277,5 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
+      TApp _ _ -> "void*"
+      TFix _ -> "void*"

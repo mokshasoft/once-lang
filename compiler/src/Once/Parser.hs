@@ -57,6 +57,7 @@ reservedWords =
   , "Unit", "Void", "Int", "Buffer", "String"
   , "Utf8", "Utf16", "Ascii"
   , "primitive"
+  , "type", "Fix"             -- Type aliases and fixed points
   , "import", "as"            -- Module system
   -- The 12 categorical generators
   , "id", "compose"           -- Category
@@ -64,6 +65,8 @@ reservedWords =
   , "inl", "inr", "case"      -- Coproducts
   , "terminal", "initial"     -- Terminal/Initial
   , "curry", "apply"          -- Closed
+  -- Recursive type generators
+  , "fold", "unfold"          -- Fix isomorphism
   -- Allocation strategies
   , "stack", "heap", "pool", "arena", "const"
   ]
@@ -162,6 +165,34 @@ parseType = makeTypeExpr
       , STInt <$ reserved "Int"
       , STBuffer <$ reserved "Buffer"
       , stringType
+      , fixType
+      , typeApp
+      , STVar <$> typeVar
+      , parens parseType
+      ]
+
+    -- Fix F (fixed point of functor F)
+    fixType = do
+      reserved "Fix"
+      STFix <$> atomType
+
+    -- Type constructor application: Maybe A, List Int, Either A B
+    -- Must be a named type followed by one or more type arguments
+    -- Arguments must be "simple" types (not type applications themselves)
+    typeApp = try $ do
+      name <- upperIdent
+      args <- some simpleType
+      pure $ STApp name args
+
+    -- Simple types that can be arguments to type applications
+    -- These don't include typeApp to avoid left recursion issues
+    simpleType = choice
+      [ STUnit <$ reserved "Unit"
+      , STVoid <$ reserved "Void"
+      , STInt <$ reserved "Int"
+      , STBuffer <$ reserved "Buffer"
+      , stringType
+      , fixType
       , STVar <$> typeVar
       , parens parseType
       ]
@@ -212,7 +243,17 @@ parseExpr = annotExpr
         pure $ EApp (EApp (EVar "compose") e) e2)
 
     -- Application is left-associative
-    appExpr = chainl1 atomExpr (pure EApp)
+    -- But don't consume identifiers that start a new declaration (name : Type)
+    appExpr = chainl1 atomExprNoDecl (pure EApp)
+
+    -- Atom expression that doesn't consume what looks like a new declaration
+    atomExprNoDecl = try $ do
+      e <- atomExpr
+      -- If this is an identifier followed by :, it might be a type signature
+      -- Don't consume it - let the declaration parser handle it
+      case e of
+        EVar _ -> notFollowedBy (symbol ":") *> pure e
+        _ -> pure e
 
     atomExpr = choice
       [ EUnit <$ symbol "()"
@@ -249,6 +290,9 @@ parseExpr = annotExpr
       , EVar "initial" <$ reserved "initial"
       , EVar "curry" <$ reserved "curry"
       , EVar "apply" <$ reserved "apply"
+      -- Recursive type generators
+      , EVar "fold" <$ reserved "fold"
+      , EVar "unfold" <$ reserved "unfold"
       ]
 
     lamExpr = do
@@ -295,6 +339,7 @@ parseExpr = annotExpr
 parseDecl :: Parser Decl
 parseDecl = choice
   [ primitiveDecl
+  , typeAliasDecl
   , try typeSig
   , funDef
   ]
@@ -305,6 +350,15 @@ parseDecl = choice
       void $ symbol ":"
       ty <- parseType
       pure $ Primitive name ty
+
+    -- | Parse type alias: type Name A B C = Type
+    typeAliasDecl = do
+      reserved "type"
+      name <- upperIdent
+      params <- many typeVar
+      void $ symbol "="
+      ty <- parseType
+      pure $ TypeAlias name params ty
 
     typeSig = do
       name <- lowerIdent

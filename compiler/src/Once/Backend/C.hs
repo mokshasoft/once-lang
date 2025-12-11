@@ -114,6 +114,8 @@ cTypeName ty = case ty of
   TProduct _ _ -> "OncePair"
   TSum _ _ -> "OnceSum"
   TArrow _ _ -> "void*"  -- Function pointers (not used for swap)
+  TApp _ _ -> "void*"    -- Type applications (polymorphic, boxed)
+  TFix _ -> "void*"      -- Fixed-point types (recursive, boxed)
 
 -- | Generate function declaration
 functionDecl :: Name -> Type -> Text
@@ -166,6 +168,11 @@ generateExpr ir var = case ir of
     -- They ignore their input and return the string
     -- Since we're in expression context, generate inline struct
     "(OnceString){ .data = " <> cStringLiteral s <> ", .len = " <> tshow (T.length s) <> " }"
+
+  -- Recursive type operations
+  -- At runtime, Fix F and F (Fix F) have the same representation (boxed pointer)
+  Fold _ -> var    -- fold is identity at runtime (wraps into Fix)
+  Unfold _ -> var  -- unfold is identity at runtime (unwraps from Fix)
 
 -- | Convert Text to C string literal (with escaping)
 cStringLiteral :: Text -> Text

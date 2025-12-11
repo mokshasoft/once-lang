@@ -191,9 +191,13 @@ project/
     Core.once           -- Derived: pure logic
     Types.once          -- Derived: data definitions
     Main.once           -- Interpretations: IO entry point
-  interpretations/
-    linux/              -- Linux primitives
-    wasm/               -- Browser primitives
+  lib/
+    Interpretations/
+      Linux/            -- Linux primitives
+      Browser/          -- Browser primitives
+    Derived/
+      Canonical/        -- morphisms from universal properties
+      Initial/          -- data types as initial algebras
 ```
 
 ## Summary

@@ -298,14 +298,19 @@ Primitives are opaque operations at the boundary between Once and the external w
 Option 2: **Interpretations are `.once` + `.c` file pairs, living outside the compiler**.
 
 ```
-interpretations/
-  linux/
-    syscalls.once     -- type declarations
-    syscalls.c        -- C implementation
-  browser/
-    syscalls.once
-    syscalls.js       -- JS implementation
-  bare-metal/
+lib/
+  Interpretations/
+    Linux/
+      syscalls.once     -- type declarations
+      syscalls.c        -- C implementation
+    Browser/
+      syscalls.once
+      syscalls.js       -- JS implementation
+    BareMetal/
+      ...
+  Derived/
+    Canonical/          -- morphisms from universal properties
+    Initial/            -- data types as initial algebras
 ```
 
 ### Rationale
@@ -323,7 +328,7 @@ interpretations/
 - Future: `drivers/gpio.once` etc. for device-specific primitives
 
 ### Consequences
-- `interpretations/` directory at repo root, not in `compiler/`
+- `lib/Interpretations/` directory at repo root, not in `compiler/`
 - Compiler only knows about generators
 - Linking interpretations is a separate concern (future work)
 - Each platform interpretation is self-contained
@@ -817,18 +822,23 @@ Morphisms that arise from universal properties of the categorical structures:
 ### Directory Structure
 
 ```
-Derived/
-├── Canonical/
-│   ├── Product.once      -- swap, diagonal, first, second, bimap, assocL, assocR
-│   ├── Coproduct.once    -- mirror, mapLeft, mapRight
-│   ├── Function.once     -- flip, const, (.), (|>), (&)
-│   └── Morphism.once     -- id, compose (re-exports for convenience)
-├── Initial/              -- data types as initial algebras (see D024)
-│   ├── Bool.once
-│   ├── Maybe.once
-│   ├── List.once
-│   └── Result.once
-└── ...
+lib/
+├── Derived/
+│   ├── Canonical/
+│   │   ├── Product.once      -- swap, diagonal, first, second, bimap, assocL, assocR
+│   │   ├── Coproduct.once    -- mirror, mapLeft, mapRight
+│   │   ├── Function.once     -- flip, const, (.), (|>), (&)
+│   │   └── Morphism.once     -- id, compose (re-exports for convenience)
+│   └── Initial/              -- data types as initial algebras (see D024)
+│       ├── Bool.once
+│       ├── Maybe.once
+│       ├── List.once
+│       ├── Result.once
+│       └── Recursion.once    -- Nat, List via Fix, recursion scheme patterns
+└── Interpretations/
+    └── Linux/
+        ├── syscalls.once
+        └── memory.once
 ```
 
 ### Note on Imports
@@ -1060,14 +1070,16 @@ The initiality property gives these types their universal character - they are "
 ### Directory Structure
 
 ```
-Derived/
-├── Canonical/        -- morphisms from universal properties
-├── Initial/          -- data types as initial algebras
-│   ├── Bool.once
-│   ├── Maybe.once
-│   ├── List.once
-│   └── Result.once
-└── ...               -- domain-specific libraries
+lib/
+├── Derived/
+│   ├── Canonical/        -- morphisms from universal properties
+│   └── Initial/          -- data types as initial algebras
+│       ├── Bool.once
+│       ├── Maybe.once
+│       ├── List.once
+│       ├── Result.once
+│       └── Recursion.once
+└── Interpretations/      -- platform-specific IO
 ```
 
 ### Consequences

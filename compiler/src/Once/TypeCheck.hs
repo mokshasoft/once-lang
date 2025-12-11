@@ -14,6 +14,7 @@ module Once.TypeCheck
   , convertType
   ) where
 
+import Control.Monad (foldM)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text
@@ -49,6 +50,17 @@ data Binding = Binding
 -- | Typing context: maps variable names to their types and quantities
 newtype Context = Context { getContext :: Map Name Binding }
   deriving (Eq, Show)
+
+-- | Type alias environment: maps alias names to (params, body)
+type TypeAliasEnv = Map Name ([Name], SType)
+
+-- | Empty type alias environment
+emptyAliasEnv :: TypeAliasEnv
+emptyAliasEnv = Map.empty
+
+-- | Add a type alias to the environment
+extendAliasEnv :: Name -> [Name] -> SType -> TypeAliasEnv -> TypeAliasEnv
+extendAliasEnv name params body = Map.insert name (params, body)
 
 -- | Usage tracking: how many times each variable is used
 type Usage = Map Name Int
@@ -113,6 +125,8 @@ applySubst subst ty = case ty of
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
   TSum a b -> TSum (applySubst subst a) (applySubst subst b)
   TArrow a b -> TArrow (applySubst subst a) (applySubst subst b)
+  TApp name args -> TApp name (map (applySubst subst) args)
+  TFix t -> TFix (applySubst subst t)
 
 -- | Compose substitutions
 composeSubst :: Subst -> Subst -> Subst
@@ -130,6 +144,8 @@ occurs name ty = case ty of
   TProduct a b -> occurs name a || occurs name b
   TSum a b -> occurs name a || occurs name b
   TArrow a b -> occurs name a || occurs name b
+  TApp _ args -> any (occurs name) args
+  TFix t -> occurs name t
 
 -- | Unify two types, producing a substitution
 unify :: Type -> Type -> Either TypeError Subst
@@ -164,6 +180,9 @@ unify t1 t2 = case (t1, t2) of
 
 -- | Check if two types have the same structure (ignoring variable names)
 -- Returns True if they match structurally with consistent variable mapping
+--
+-- The signature type can have concrete types that match inferred type variables,
+-- since type inference produces polymorphic types that can be instantiated.
 matchesStructure :: Type -> Type -> Bool
 matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
   where
@@ -173,7 +192,9 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
       Nothing -> Just (Map.insert a b m)  -- new mapping
       Just b' -> if b == b' then Just m else Nothing  -- must be consistent
     go _ (TVar _) _ = Nothing  -- sig var must map to inferred var
-    go _ _ (TVar _) = Nothing  -- inferred var must come from sig var
+    -- Concrete types in signature can match inferred type variables
+    -- This allows e.g. signature `Unit -> Nat` to match inferred `t5 -> Fix ...`
+    go m sig' (TVar _) = Just m  -- inferred var can be instantiated to anything
     go m TUnit TUnit = Just m
     go m TVoid TVoid = Just m
     go m TInt TInt = Just m
@@ -188,6 +209,10 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
     go m (TArrow a1 b1) (TArrow a2 b2) = do
       m' <- go m a1 a2
       go m' b1 b2
+    go m (TFix t1) (TFix t2) = go m t1 t2
+    go m (TApp n1 args1) (TApp n2 args2)
+      | n1 == n2 && length args1 == length args2 =
+          foldM (\m' (a, b) -> go m' a b) m (zip args1 args2)
     go _ _ _ = Nothing
 
 -- | Infer the type of an expression
@@ -317,21 +342,76 @@ generatorType name fresh = case name of
     -- compose : (B -> C) -> (A -> B) -> (A -> C)
     in Just (TArrow (TArrow b c) (TArrow (TArrow a b) (TArrow a c)), f3)
 
+  -- Recursive type generators
+  -- fold : F (Fix F) -> Fix F
+  -- unfold : Fix F -> F (Fix F)
+  -- Since we don't have HKT, we use TFix with a placeholder functor
+  "fold" ->
+    let (f, f1) = freshTVar fresh  -- F is a type variable (functor)
+    -- fold : F (Fix F) -> Fix F
+    -- Represented as: t -> Fix t (type inference resolves t)
+    in Just (TArrow f (TFix f), f1)
+
+  "unfold" ->
+    let (f, f1) = freshTVar fresh  -- F is a type variable (functor)
+    -- unfold : Fix F -> F (Fix F)
+    -- Represented as: Fix t -> t
+    in Just (TArrow (TFix f) f, f1)
+
   _ -> Nothing
 
 -- | Convert surface type to internal type
 convertType :: SType -> Type
-convertType sty = case sty of
-  STVar name -> TVar name
+convertType = convertTypeWithAliases emptyAliasEnv
+
+-- | Convert surface type to internal type, expanding type aliases
+convertTypeWithAliases :: TypeAliasEnv -> SType -> Type
+convertTypeWithAliases aliases sty = case sty of
+  STVar name ->
+    -- Check if this is a 0-ary type alias
+    case Map.lookup name aliases of
+      Just ([], body) -> conv body  -- 0-ary alias: expand it
+      Just (_, _) -> TVar name      -- Alias needs arguments: keep as variable
+      Nothing -> TVar name          -- Not an alias: keep as variable
   STUnit -> TUnit
   STVoid -> TVoid
   STInt -> TInt
   STBuffer -> TBuffer
   STString enc -> TString enc
-  STProduct a b -> TProduct (convertType a) (convertType b)
-  STSum a b -> TSum (convertType a) (convertType b)
-  STArrow a b -> TArrow (convertType a) (convertType b)
-  STQuant q t -> convertType t  -- quantity tracked separately in context
+  STProduct a b -> TProduct (conv a) (conv b)
+  STSum a b -> TSum (conv a) (conv b)
+  STArrow a b -> TArrow (conv a) (conv b)
+  STQuant _ t -> conv t  -- quantity tracked separately in context
+  STApp name args ->
+    -- Check if this is a type alias application
+    case Map.lookup name aliases of
+      Just (params, body) ->
+        -- Expand the alias: substitute params with args in body
+        let argSubst = Map.fromList (zip params args)
+            expanded = substSType argSubst body
+        in conv expanded
+      Nothing ->
+        -- Not an alias, keep as type application
+        TApp name (map conv args)
+  STFix t -> TFix (conv t)
+  where
+    conv = convertTypeWithAliases aliases
+
+-- | Substitute type variables in a surface type
+substSType :: Map Name SType -> SType -> SType
+substSType subst sty = case sty of
+  STVar name -> Map.findWithDefault (STVar name) name subst
+  STUnit -> STUnit
+  STVoid -> STVoid
+  STInt -> STInt
+  STBuffer -> STBuffer
+  STString enc -> STString enc
+  STProduct a b -> STProduct (substSType subst a) (substSType subst b)
+  STSum a b -> STSum (substSType subst a) (substSType subst b)
+  STArrow a b -> STArrow (substSType subst a) (substSType subst b)
+  STQuant q t -> STQuant q (substSType subst t)
+  STApp name args -> STApp name (map (substSType subst) args)
+  STFix t -> STFix (substSType subst t)
 
 -- | Type check an expression against an expected type (from signature)
 -- In Once, signatures are assertions - the inferred type must structurally
@@ -353,17 +433,17 @@ typeCheck ctx expr expectedTy = do
 
 -- | Type check a module
 checkModule :: Module -> Either TypeError ()
-checkModule (Module _imports decls) = checkDecls emptyContext decls
+checkModule (Module _imports decls) = checkDecls' emptyContext emptyAliasEnv decls
 
--- | Check a list of declarations
-checkDecls :: Context -> [Decl] -> Either TypeError ()
-checkDecls _ [] = Right ()
-checkDecls ctx (d:ds) = case d of
+-- | Check a list of declarations (with type alias environment)
+checkDecls' :: Context -> TypeAliasEnv -> [Decl] -> Either TypeError ()
+checkDecls' _ _ [] = Right ()
+checkDecls' ctx aliases (d:ds) = case d of
   TypeSig name sty -> do
-    let ty = convertType sty
+    let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx
-    checkDecls ctx' ds
+    checkDecls' ctx' aliases ds
 
   FunDef name _alloc expr -> case lookupVar name ctx of
     Nothing -> Left (UnboundVariable name)
@@ -371,13 +451,22 @@ checkDecls ctx (d:ds) = case d of
       _ <- typeCheck ctx expr expectedTy
       -- Validate quantity usage for lambda-bound variables
       validateLambdaUsage expr
-      checkDecls ctx ds
+      checkDecls' ctx aliases ds
+
+  TypeAlias aliasName params body ->
+    -- Add type alias to the environment for expansion
+    let aliases' = extendAliasEnv aliasName params body aliases
+    in checkDecls' ctx aliases' ds
 
   Primitive name sty -> do
-    let ty = convertType sty
+    let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx
-    checkDecls ctx' ds
+    checkDecls' ctx' aliases ds
+
+-- | Backwards-compatible wrapper
+checkDecls :: Context -> [Decl] -> Either TypeError ()
+checkDecls ctx = checkDecls' ctx emptyAliasEnv
 
 -- | Extract the outermost quantity from a surface type (default: Omega)
 extractQuantity :: SType -> Quantity

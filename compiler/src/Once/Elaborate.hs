@@ -39,6 +39,9 @@ elaborateExpr expr = case expr of
   EVar "terminal" -> Right $ Terminal placeholder
   EVar "initial" -> Right $ Initial placeholder
   EVar "apply" -> Right $ Apply placeholder placeholder
+  -- Recursive type generators
+  EVar "fold" -> Right $ Fold placeholder
+  EVar "unfold" -> Right $ Unfold placeholder
 
   -- Generators that take IR arguments
   EVar "compose" -> Right $ Var "compose"  -- needs 2 args
@@ -134,3 +137,5 @@ elaborateType sty = case sty of
   STSum a b -> TSum (elaborateType a) (elaborateType b)
   STArrow a b -> TArrow (elaborateType a) (elaborateType b)
   STQuant _ t -> elaborateType t  -- ignore quantity for now
+  STApp name args -> TApp name (map elaborateType args)
+  STFix t -> TFix (elaborateType t)

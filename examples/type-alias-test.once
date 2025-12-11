@@ -1,0 +1,8 @@
+-- Test type alias functionality
+
+-- Simple type alias
+type Pair A B = A * B
+
+-- Function using the alias
+swap : Pair A B -> Pair B A
+swap = pair snd fst

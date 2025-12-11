@@ -46,4 +46,10 @@ data IR
 
   -- Literals
   | StringLit Text             -- ^ String literal (Utf8 encoded)
+
+  -- Recursive types (Fixed points)
+  -- These are the isomorphism witnesses for Fix F ≅ F (Fix F)
+  | Fold Type                  -- ^ fold : F (Fix F) -> Fix F (constructor)
+  | Unfold Type                -- ^ unfold : Fix F -> F (Fix F) (destructor)
+
   deriving (Eq, Show)

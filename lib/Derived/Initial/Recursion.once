@@ -1,0 +1,79 @@
+-- | Recursion schemes for Once
+--
+-- This module defines List, Nat, and basic recursive structure operations.
+--
+-- Note: Without higher-kinded types, we define recursive types inline.
+-- For example, Nat = Fix (Unit + X) where X is the recursive position.
+
+------------------------------------------------------------------------
+-- Natural Numbers
+------------------------------------------------------------------------
+
+-- | Nat = Fix (Unit + X)
+-- The type of natural numbers: either Zero (Unit) or Succ (Nat)
+type Nat = Fix (Unit + X)
+
+-- | zero : Unit -> Nat
+-- Zero constructor: fold (inl ())
+zero : Unit -> Nat
+zero = fold . inl
+
+-- | succ : Nat -> Nat
+-- Successor constructor: fold (inr n)
+succ : Nat -> Nat
+succ = fold . inr
+
+-- | predOrZero : Nat -> Unit + Nat
+-- Destructor: pattern match on a natural number
+predOrZero : Nat -> Unit + Nat
+predOrZero = unfold
+
+------------------------------------------------------------------------
+-- Lists
+------------------------------------------------------------------------
+
+-- | List A = Fix (Unit + A * X)
+-- The type of lists: either Nil (Unit) or Cons (A, List A)
+-- Note: This uses A as a parameter, X as the recursive position
+type List A = Fix (Unit + A * X)
+
+-- | For concrete element types, define nil and cons specialized:
+--
+-- Example for List Int:
+--   nilInt : Unit -> List Int
+--   nilInt = fold . inl
+--
+--   consInt : Int * List Int -> List Int
+--   consInt = fold . inr
+--
+--   unconsInt : List Int -> Unit + Int * List Int
+--   unconsInt = unfold
+
+------------------------------------------------------------------------
+-- Recursion Schemes
+------------------------------------------------------------------------
+
+-- Without higher-kinded types, recursion schemes must be specialized
+-- to specific types. The patterns are:
+--
+-- | Catamorphism (fold):
+--   cata alg = alg . fmap (cata alg) . unfold
+--
+--   For Nat with algebra (Unit + A) -> A:
+--   cataNat : (Unit + A -> A) -> Nat -> A
+--
+-- | Anamorphism (unfold):
+--   ana coalg = fold . fmap (ana coalg) . coalg
+--
+--   For Nat with coalgebra S -> (Unit + S):
+--   anaNat : (S -> Unit + S) -> S -> Nat
+--
+-- | Hylomorphism (unfold then fold):
+--   hylo alg coalg = alg . fmap (hylo alg coalg) . coalg
+--
+--   This is the fusion of ana and cata, avoiding intermediate structure.
+--
+-- | Paramorphism (fold with context):
+--   para alg = alg . fmap (pair id (para alg)) . unfold
+--
+--   Gives access to both the recursive result and original substructure.

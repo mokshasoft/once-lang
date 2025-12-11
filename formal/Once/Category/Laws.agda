@@ -213,3 +213,59 @@ eval-bicase-id : ∀ {A B} (x : ⟦ A + B ⟧)
                → eval [ inl ∘ id , inr ∘ id ] x ≡ x
 eval-bicase-id (inj₁ a) = refl
 eval-bicase-id (inj₂ b) = refl
+
+------------------------------------------------------------------------
+-- Fixed Point Laws (Recursive Types)
+------------------------------------------------------------------------
+--
+-- KNOWN LIMITATION: These proofs are trivially refl because the
+-- semantics use a simple newtype wrapper, not true fixed points.
+-- See Once/Semantics.agda and docs/formal/what-is-proven.md for details.
+--
+------------------------------------------------------------------------
+
+-- | fold ∘ unfold ≡ id (semantically)
+--
+-- Folding after unfolding gives back the original fixed point value.
+-- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
+-- A proper proof would require functor semantics with substitution.
+--
+eval-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧)
+                 → eval (fold ∘ unfold) x ≡ x
+eval-fold-unfold x = refl
+
+-- | unfold ∘ fold ≡ id (semantically)
+--
+-- Unfolding after folding gives back the original value.
+-- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
+-- A proper proof would require functor semantics with substitution.
+--
+eval-unfold-fold : ∀ {F} (x : ⟦ F ⟧)
+                 → eval (unfold ∘ fold) x ≡ x
+eval-unfold-fold x = refl
+
+------------------------------------------------------------------------
+-- Recursion Scheme Laws
+------------------------------------------------------------------------
+
+-- | Catamorphism fusion law (conceptual)
+--
+-- For any algebra alg : F A → A and morphism h : A → B,
+-- if h ∘ alg = alg' ∘ fmap h, then h ∘ cata alg = cata alg'
+--
+-- This is the key optimization principle for recursion schemes:
+-- composing with a catamorphism can be fused into a single catamorphism.
+
+-- | Hylomorphism deforestation (conceptual)
+--
+-- cata alg ∘ ana coalg = hylo alg coalg
+--
+-- A catamorphism after an anamorphism can be computed directly
+-- without building the intermediate structure. This is the
+-- "banana split" or "hylo fusion" theorem.
+
+-- Note: Full proofs of recursion scheme laws require:
+-- 1. A formalization of functors and their fmap operations
+-- 2. The universal properties of initial algebras / final coalgebras
+-- 3. These are beyond the scope of the basic categorical laws
+--    but the fold/unfold isomorphism is the foundation
