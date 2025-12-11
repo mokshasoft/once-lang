@@ -144,7 +144,7 @@ In Once's categorical model, there's no separate declaration. The **type tells y
 
 ```
 -- The morphism signature declares effects
-high : Pin -> External Pin        -- uses external world
+high : Pin -> IO Pin              -- uses IO
 high : Pin -> State GPIO Pin      -- uses GPIO state
 high : Pin -> Pin                 -- pure (no effect)
 ```
@@ -159,27 +159,27 @@ Based on design discussions, Once uses:
 -- Types declare capabilities implicitly
 -- No "effect" keyword needed
 
--- Pin operations produce External values
-high : Pin -> External Pin
-low  : Pin -> External Pin
+-- Pin operations produce IO values
+high : Pin -> IO Pin
+low  : Pin -> IO Pin
 
 -- Time operations
-wait : Nat -> External Unit
+wait : Nat -> IO Unit
 
 -- Composition with standard symbols
-cycle : Pin -> External Pin
+cycle : Pin -> IO Pin
 cycle = compose (wait 1000) (compose low (compose (wait 1000) high))
 
 -- Product uses *
-both : Pin * Pin -> External (Pin * Pin)
+both : Pin * Pin -> IO (Pin * Pin)
 both = pair high high      -- set both pins high simultaneously
 
 -- Sum uses +
-either : Pin + Pin -> External Pin
+either : Pin + Pin -> IO Pin
 either = case high low     -- handle left or right case
 
 -- Stream from repeated application
-main : External (Stream Unit)
+main : IO (Stream Unit)
 main = ana cycle (pin 13)
 ```
 

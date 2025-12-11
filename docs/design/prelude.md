@@ -347,7 +347,7 @@ parseConfig = ...
 import Derived.Data.Json
 import Interpretations.POSIX
 
-loadConfig : Path -> External (Config + Error)
+loadConfig : Path -> IO (Config + Error)
 loadConfig path = fmap parseConfig (readFile path)
 ```
 

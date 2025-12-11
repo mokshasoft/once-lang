@@ -75,26 +75,31 @@ parse : String -> Maybe AST
 -- May fail with error
 parse : String -> AST + ParseError
 
--- Uses external IO
-readFile : Path -> External String
+-- Uses IO
+readFile : Path -> IO String
 
 -- Has state
 counter : Unit -> State Int Int
 ```
 
-The type tells you the effect. No effect system, no special keywords - just functors.
+The type tells you the effect. No effect system, no special keywords - just functors and monads.
 
-### The External Functor
+### IO is a Monad
 
-IO isn't special. `External` is just a functor marking "this needs the outside world":
+Once is honest: `IO` is a monad (see D026). This gives three levels of composition:
 
 ```
-External : Type -> Type
+-- Functor: transform results
+fmap : (A -> B) -> IO A -> IO B
 
-fmap : (A -> B) -> External A -> External B
+-- Applicative: combine independent effects
+both : IO A -> IO B -> IO (A * B)
+
+-- Monad: sequence dependent effects
+bind : IO A -> (A -> IO B) -> IO B
 ```
 
-Primitives in the Interpretations layer produce `External` values. Everything else is pure.
+Primitives in the Interpretations layer produce `IO` values. Everything else is pure. See [IO documentation](io.md) for details.
 
 ## Error Handling Without Exceptions
 

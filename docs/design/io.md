@@ -1,203 +1,233 @@
 # Input/Output in Once
 
-## The Principle
+## IO is a Monad
 
-Once has no special IO construct. There is no IO monad, no effect system syntax, no special keywords. IO is handled through:
-
-1. **Opaque primitives** - Morphisms declared at the boundary with the external world
-2. **Functor choice** - Which functors you transform between determines effects
-3. **Composition** - Everything else is just natural transformation composition
-
-## Opaque Primitives
-
-At the boundary between Once and the external world, certain morphisms are declared as **primitives**:
+Once is honest: `IO` is a monad. This gives us three levels of composition, each more powerful than the last.
 
 ```
--- These are provided by the Interpretation layer
--- They have no internal structure in Once
-
-primitive read_byte  : FileHandle -> Byte
-primitive write_byte : FileHandle * Byte -> Unit
-primitive open_file  : Path -> FileHandle + Error
-primitive close_file : FileHandle -> Unit
+Functor ⊂ Applicative ⊂ Monad
 ```
 
-These primitives are:
-- **Opaque** - No implementation in Once, provided by the environment
-- **Declared at boundaries** - Not scattered through the code
-- **Composable** - They're morphisms like any other
+If you know what a monad is, you know how Once's IO works. If you don't, this document explains the three levels of composition.
 
-Everything else is pure composition of natural transformations.
+## The Three Levels
 
-## Effects as Functor Choice
+### Level 1: Functor
 
-Effects aren't a language feature - they emerge from which functors appear in your types:
-
-| Transformation Type | Effect |
-|---------------------|--------|
-| `A -> A` | Pure (endomorphism) |
-| `A -> Maybe B` | Partiality (might fail) |
-| `A -> List B` | Nondeterminism (multiple results) |
-| `A -> (S -> S * B)` | State (reads/writes state S) |
-| `A -> E + B` | Errors (might produce E) |
-| `A -> External B` | IO (requires external primitive) |
-
-The type tells you everything. The compiler infers quantities and can report effects:
+Transform the result of an IO operation without changing the effect:
 
 ```
-> once analyze myFunction
-
-myFunction : String^ω -> Maybe (List Result)
-  Uses: Partiality, Nondeterminism
-  Does not use: State, IO
-  Quantity: ω (unrestricted, uses diagonal)
+fmap : (A -> B) -> IO A -> IO B
 ```
 
-Quantities are enforced by the type system via QTT. See [Memory](memory.md) for details.
-
-## Referential Transparency
-
-In Once, referential transparency is about **which equations hold**.
-
-A pure morphism `f : A -> B` satisfies:
-- `f = f` (trivially)
-- Can be substituted anywhere
-- Order of evaluation doesn't matter
-
-An effectful morphism like `read_byte : FileHandle -> Byte`:
-- Still composes correctly
-- But the **interpretation** involves the external world
-- The categorical laws still hold - just in a different category
-
-The insight: pure and effectful code live in **different categories**. Within each, the equations hold. The boundary (primitives) is where categories meet.
-
-## No Hidden Effects
-
-In Once, you cannot accidentally do IO:
-
+Example:
 ```
--- This type signature tells you everything
-processData : String -> Result
-
--- This CANNOT do IO - no External functor in the type
--- This CANNOT mutate state - no State functor
--- This CANNOT fail - no Maybe/Result
+-- readFile returns IO String
+-- We want IO Int (the length)
+fileLength : Path -> IO Int
+fileLength path = fmap length (readFile path)
 ```
 
-If a function needs IO, it must say so:
+`fmap` lets you work with the value "inside" the IO without extracting it. The IO effect is preserved.
+
+### Level 2: Applicative
+
+Combine independent IO operations:
 
 ```
--- The External functor appears in the type
-loadConfig : Path -> External (Config + Error)
+pure : A -> IO A
+both : IO A -> IO B -> IO (A * B)
 ```
 
-## Composition of Effectful Code
-
-Effectful code composes like any other natural transformation:
-
+Example:
 ```
--- Pure
-parse : String -> AST + Error
-validate : AST -> AST + Error
-transform : AST -> AST
-
--- Compose (all pure, error-tracking)
-pipeline : String -> AST + Error
-pipeline = compose transform (compose validate parse)
-
--- With IO
-readFile : Path -> External (String + Error)
-writeFile : Path * String -> External (Unit + Error)
-
--- Compose pure with effectful at boundaries
-processFile : Path -> External (Unit + Error)
-processFile = compose
-  (compose writeOutput pipeline)
-  readFile
+-- Read two files independently
+readBoth : Path -> Path -> IO (String * String)
+readBoth p1 p2 = both (readFile p1) (readFile p2)
 ```
 
-## The External Functor
+`both` runs two IO operations and pairs their results. The operations are independent - neither depends on the other's result. This means they could potentially run in parallel.
 
-`External` is Once's way of marking "this requires the outside world":
+`pure` lifts a pure value into IO (an IO operation that does nothing and returns the value).
 
-```
--- External is a functor
-fmap : (A -> B) -> (External A -> External B)
+### Level 3: Monad
 
--- Primitives produce External values
-read_byte : FileHandle -> External Byte
-
--- You can map pure functions over External
-processInput : External String -> External Result
-processInput = fmap parse
-```
-
-`External` is **not magic** - it's just a functor. The magic is in the primitives that produce `External` values, which are provided by the Interpretation layer.
-
-## Streaming IO
-
-For ongoing IO (like event loops), Once uses coalgebraic streams:
+Sequence dependent IO operations - where the second depends on the first's result:
 
 ```
--- A stream of values over time
-Stream : Type -> Type
-Stream A = A * Stream A   -- head and tail (coinductive)
-
--- Unfold a stream from a seed
-unfold : (S -> A * S) -> S -> Stream A
-
--- An event loop
-type EventLoop = External (Stream Event)
-
--- Main program that handles events
-main : EventLoop -> Stream Response
-main = fmap (map handleEvent)
+bind : IO A -> (A -> IO B) -> IO B
 ```
 
-Streams are infinite structures unfolded via anamorphism. Time is modeled coalgebraically.
+Example:
+```
+-- Read a config file, then read the file it points to
+readIndirect : Path -> IO String
+readIndirect configPath = bind (readFile configPath) (\config ->
+  readFile (parsePath config)
+)
+```
 
-## Console Example
+`bind` is the most powerful - the second operation can depend on the result of the first. This is sequential by nature.
 
-A simple console program:
+## When to Use Each Level
+
+| Level | Use When | Example |
+|-------|----------|---------|
+| Functor | Transforming a result | `fmap toUpper readLine` |
+| Applicative | Combining independent effects | `both (readFile a) (readFile b)` |
+| Monad | Second depends on first | `bind getConfig (\c -> loadFile c)` |
+
+**Prefer the weakest level that works:**
+- Functor when you're just transforming
+- Applicative when operations are independent
+- Monad only when there's true dependency
+
+This isn't just style - applicative operations can parallelize, monadic ones cannot.
+
+## IO Unit
+
+`IO Unit` means "an IO operation that performs an effect but returns no meaningful value":
 
 ```
--- Primitives (from Interpretation layer)
-primitive getChar : Unit -> External Char
-primitive putChar : Char -> External Unit
-
--- Derived
-putString : String -> External Unit
-putString = foldl (compose putChar) (terminal Unit)
-
-getLine : Unit -> External String
-getLine = unfold step ""
-  where step acc = case getChar () of
-    '\n' -> (acc, Nothing)
-    c    -> (acc, Just (acc ++ [c]))
-
--- Main program
-main : Unit -> External Unit
-main = compose putString (pair (constant "Hello, ") getLine)
+putLine : String -> IO Unit      -- prints, returns nothing
+writeFile : Path * String -> IO Unit  -- writes, returns nothing
 ```
+
+Compare to operations that return useful values:
+```
+readFile : Path -> IO String     -- returns file contents
+getLine : Unit -> IO String      -- returns user input
+```
+
+`Unit` is the terminal object (the type with exactly one value). `IO Unit` means "run this for its effect, not its result."
+
+## The Monad Laws
+
+`IO` satisfies the monad laws:
+
+```
+-- Left identity
+bind (pure a) f  ≡  f a
+
+-- Right identity
+bind m pure  ≡  m
+
+-- Associativity
+bind (bind m f) g  ≡  bind m (\x -> bind (f x) g)
+```
+
+These laws ensure composition behaves predictably.
+
+## Categorical Perspective
+
+A monad is a monoid in the category of endofunctors:
+
+```
+IO : Type -> Type              -- endofunctor
+pure : A -> IO A               -- unit (η)
+join : IO (IO A) -> IO A       -- multiplication (μ)
+```
+
+`bind` is derived from `fmap` and `join`:
+```
+bind m f = join (fmap f m)
+```
+
+The monad laws are the monoid laws (identity and associativity) lifted to endofunctors.
+
+## Primitives
+
+IO operations come from **primitives** in the Interpretations layer:
+
+```
+-- File operations
+primitive readFile  : Path -> IO (String + Error)
+primitive writeFile : Path * String -> IO (Unit + Error)
+
+-- Console
+primitive getLine : Unit -> IO String
+primitive putLine : String -> IO Unit
+
+-- Network
+primitive httpGet : Url -> IO (Response + Error)
+```
+
+Primitives are opaque - they have no implementation in Once, only a type signature. The interpretation (POSIX, bare metal, WASM) provides the implementation.
+
+## Composition Example
+
+A complete example using all three levels:
+
+```
+-- Configuration type
+type Config = { dataPath : Path, outputPath : Path }
+
+-- Parse config from string (pure)
+parseConfig : String -> Result Config ParseError
+
+-- Process data (pure)
+processData : String -> String
+
+-- The full pipeline
+pipeline : Path -> IO (Result Unit Error)
+pipeline configPath =
+  bind (readFile configPath) (\configResult ->
+    case configResult of
+      err e -> pure (err e)
+      ok configStr ->
+        case parseConfig configStr of
+          err e -> pure (err e)
+          ok config ->
+            bind (readFile config.dataPath) (\dataResult ->
+              case dataResult of
+                err e -> pure (err e)
+                ok data ->
+                  let result = processData data in
+                  writeFile (config.outputPath, result)
+            )
+  )
+```
+
+Notice:
+- `parseConfig` and `processData` are pure - no IO
+- `readFile` and `writeFile` are IO primitives
+- `bind` sequences the dependent operations
+- Error handling uses `Result` (sum types, see D025)
+
+## IO and Purity
+
+The type tells you everything:
+
+```
+-- Pure: no IO in the type
+process : String -> String
+
+-- Effectful: IO in the type
+load : Path -> IO String
+```
+
+You cannot accidentally do IO. If a function doesn't have `IO` in its type, it cannot perform IO. This is enforced by the type system.
 
 ## Comparison with Other Approaches
 
-| Approach | How IO is Marked | Once Equivalent |
-|----------|------------------|-----------------|
-| Haskell IO Monad | `IO a` type | `External a` functor |
-| Effect systems | Effect list in type | Functor composition in type |
+| Language | IO Approach | Once Equivalent |
+|----------|-------------|-----------------|
+| Haskell | IO monad | Same - IO is a monad |
 | Rust | No pure/impure distinction | Primitives only in Interpretations |
-| C | No marking at all | N/A (Once always marks) |
+| OCaml | Impure by default | N/A (Once tracks effects in types) |
+| Scala | IO monad (cats-effect, ZIO) | Same concept |
 
 ## Summary
 
 | Concept | Once Approach |
 |---------|---------------|
-| IO operations | Opaque primitives in Interpretation layer |
-| Effect tracking | Functors in the type signature |
-| Purity | Absence of External/State/etc functors |
-| Composition | Same as pure code - natural transformations |
-| Streaming | Coalgebraic streams via unfold |
-| Analysis | Tools report which effects are used |
+| IO type | `IO A` - a monad |
+| Transform results | `fmap : (A -> B) -> IO A -> IO B` |
+| Combine independent | `both : IO A -> IO B -> IO (A * B)` |
+| Sequence dependent | `bind : IO A -> (A -> IO B) -> IO B` |
+| Lift pure value | `pure : A -> IO A` |
+| Effect only | `IO Unit` - run for effect, not result |
+| IO operations | Primitives in Interpretations layer |
+| Purity tracking | IO in type = effectful, no IO = pure |
 
-In Once, IO is not special. It's morphisms that happen to be primitives, composed with natural transformations like everything else. The type tells you what effects are involved.
+Once is honest about IO being a monad. Use the weakest level of composition that works: functor for transforms, applicative for independent operations, monad for true dependencies.

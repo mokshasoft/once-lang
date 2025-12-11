@@ -984,7 +984,7 @@ Once already has explicit error handling via sum types:
 
 ```
 parseJson : String -> Json + ParseError
-readFile : Path -> External (Buffer + IOError)
+readFile : Path -> IO (Buffer + IOError)
 ```
 
 Benefits:
@@ -1156,3 +1156,97 @@ parseAndValidate = bindResult validatePositive . parseNumber
 - `ok`/`err` are semantic aliases for `inl`/`inr`
 - Success-left is the standard, documented convention
 - Users can still use raw `A + E` with `inl`/`inr` if preferred
+
+---
+
+## D026: IO is a Monad
+
+**Date**: 2025-12-11
+**Status**: Accepted
+
+### Context
+Once needs a way to handle input/output and other effects. We needed to decide how to represent IO and whether to be explicit about its mathematical nature.
+
+### Options Considered
+
+1. **Call it `External`** - A functor marking "needs external world", avoid monad terminology
+2. **Call it `IO`** - Standard name, be honest that it's a monad
+3. **Use effect handlers** - More complex, different abstraction
+4. **World-passing style** - Make state explicit in types
+
+### Decision
+**IO is a monad, and we call it that.**
+
+Once uses `IO` as the standard name for effectful computations. We are honest that it's a monad, providing all three levels of composition:
+
+```
+-- Functor
+fmap : (A -> B) -> IO A -> IO B
+
+-- Applicative
+pure : A -> IO A
+both : IO A -> IO B -> IO (A * B)
+
+-- Monad
+bind : IO A -> (A -> IO B) -> IO B
+```
+
+### Rationale
+
+**Why be honest about monads:**
+- If it has `bind` with the monad laws, it's a monad - calling it something else is misleading
+- Programmers familiar with monads immediately understand Once's IO
+- Mathematical honesty is a Once principle
+
+**Why `IO` not `External`:**
+- `IO` is the standard name in the PL community (Haskell, Scala, etc.)
+- `External` requires explanation; `IO` is self-documenting
+- Being different for the sake of being different doesn't help users
+
+**Why all three levels:**
+- Functor: transform results without changing effects
+- Applicative: combine independent effects (can parallelize)
+- Monad: sequence dependent effects (inherently sequential)
+
+Users should prefer the weakest level that works - this isn't just style, it affects what optimizations are possible.
+
+### Definition
+
+```
+-- IO is an opaque type provided by the runtime
+IO : Type -> Type
+
+-- Functor
+fmap : (A -> B) -> IO A -> IO B
+
+-- Applicative
+pure : A -> IO A
+both : IO A -> IO B -> IO (A * B)
+
+-- Monad
+bind : IO A -> (A -> IO B) -> IO B
+join : IO (IO A) -> IO A
+
+-- Laws: standard monad laws hold
+```
+
+### IO Primitives
+
+IO operations come from primitives in the Interpretations layer:
+
+```
+primitive readFile  : Path -> IO (String + Error)
+primitive writeFile : Path * String -> IO (Unit + Error)
+primitive getLine   : Unit -> IO String
+primitive putLine   : String -> IO Unit
+```
+
+### Consequences
+- `IO` is the standard name for effectful computations
+- Documentation is honest about IO being a monad
+- All three composition levels available (functor, applicative, monad)
+- Familiar to programmers from Haskell, Scala, etc.
+- Renamed from `External` in earlier documentation
+
+### See Also
+- [IO Documentation](../design/io.md) - Full IO documentation with examples

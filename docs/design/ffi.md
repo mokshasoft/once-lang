@@ -17,13 +17,13 @@ External functions are declared as **primitives** in the Interpretation layer:
 
 ```
 -- System calls
-primitive sys_read  : FileDescriptor * Buffer * Size -> External SSize
-primitive sys_write : FileDescriptor * Buffer * Size -> External SSize
-primitive sys_open  : Path * Flags -> External (FileDescriptor + Error)
+primitive sys_read  : FileDescriptor * Buffer * Size -> IO SSize
+primitive sys_write : FileDescriptor * Buffer * Size -> IO SSize
+primitive sys_open  : Path * Flags -> IO (FileDescriptor + Error)
 
 -- Hardware (bare metal)
-primitive gpio_read  : Pin -> External Bit
-primitive gpio_write : Pin * Bit -> External Unit
+primitive gpio_read  : Pin -> IO Bit
+primitive gpio_write : Pin * Bit -> IO Unit
 
 -- Existing C libraries
 primitive strlen : CString -> Size
@@ -54,8 +54,8 @@ opaque Socket
 opaque CString
 
 -- Primitives work with opaque types
-primitive fopen  : Path * Mode -> External (FileHandle + Error)
-primitive fclose : FileHandle -> External Unit
+primitive fopen  : Path * Mode -> IO (FileHandle + Error)
+primitive fclose : FileHandle -> IO Unit
 ```
 
 Opaque types are:
@@ -97,7 +97,7 @@ Once can provide callbacks to foreign code:
 
 ```
 -- A callback type
-type Callback = Int -> External Unit
+type Callback = Int -> IO Unit
 
 -- Export a function that returns a callback
 export makeHandler : Config -> Callback
@@ -120,8 +120,8 @@ Once doesn't have garbage collection. External code might expect:
 
 ```
 -- Allocation primitives
-primitive malloc : Size -> External (Ptr + Null)
-primitive free   : Ptr -> External Unit
+primitive malloc : Size -> IO (Ptr + Null)
+primitive free   : Ptr -> IO Unit
 
 -- Once code that allocates for foreign consumption
 export createBuffer : Size -> Ptr
@@ -169,41 +169,41 @@ Different targets have different primitives:
 
 ```
 -- File operations
-primitive open  : Path * Flags -> External (Fd + Errno)
-primitive read  : Fd * Buf * Size -> External (SSize + Errno)
-primitive write : Fd * Buf * Size -> External (SSize + Errno)
-primitive close : Fd -> External (Unit + Errno)
+primitive open  : Path * Flags -> IO (Fd + Errno)
+primitive read  : Fd * Buf * Size -> IO (SSize + Errno)
+primitive write : Fd * Buf * Size -> IO (SSize + Errno)
+primitive close : Fd -> IO (Unit + Errno)
 
 -- Memory
-primitive mmap : Addr * Size * Prot * Flags * Fd * Off -> External (Addr + Errno)
+primitive mmap : Addr * Size * Prot * Flags * Fd * Off -> IO (Addr + Errno)
 ```
 
 ### Bare Metal Interpretation (e.g., BeagleBone)
 
 ```
 -- GPIO
-primitive gpio_direction : Pin * Direction -> External Unit
-primitive gpio_write     : Pin * Level -> External Unit
-primitive gpio_read      : Pin -> External Level
+primitive gpio_direction : Pin * Direction -> IO Unit
+primitive gpio_write     : Pin * Level -> IO Unit
+primitive gpio_read      : Pin -> IO Level
 
 -- Memory-mapped IO
-primitive mmio_read  : Address -> External Word
-primitive mmio_write : Address * Word -> External Unit
+primitive mmio_read  : Address -> IO Word
+primitive mmio_write : Address * Word -> IO Unit
 
 -- Interrupts
-primitive enable_interrupt  : IRQ * Handler -> External Unit
-primitive disable_interrupt : IRQ -> External Unit
+primitive enable_interrupt  : IRQ * Handler -> IO Unit
+primitive disable_interrupt : IRQ -> IO Unit
 ```
 
 ### WebAssembly Interpretation
 
 ```
 -- Host imports
-primitive console_log : CString * Size -> External Unit
-primitive fetch       : Url -> External (Response + Error)
+primitive console_log : CString * Size -> IO Unit
+primitive fetch       : Url -> IO (Response + Error)
 
 -- Memory (WASM linear memory)
-primitive memory_grow : Pages -> External (PageIndex + Error)
+primitive memory_grow : Pages -> IO (PageIndex + Error)
 ```
 
 ## Example: Once Library Used from C
@@ -272,10 +272,10 @@ opaque Bytef
 opaque ULong
 
 -- Primitive declaration
-primitive c_compress : Bytef * ULong * Bytef * ULong -> External Int
+primitive c_compress : Bytef * ULong * Bytef * ULong -> IO Int
 
 -- Once-friendly wrapper
-compress : Bytes -> External (Bytes + Error)
+compress : Bytes -> IO (Bytes + Error)
 compress input =
   let inputLen = length input
       maxOutput = compressBound inputLen

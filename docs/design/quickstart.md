@@ -74,7 +74,7 @@ No special effect syntax. The type tells you:
 | `A -> Maybe B` | Might fail |
 | `A -> List B` | Multiple results |
 | `A -> E + B` | Error E possible |
-| `A -> External B` | Needs outside world |
+| `A -> IO B` | Needs outside world (IO monad) |
 
 ## Why It Works (1 minute)
 
@@ -114,7 +114,7 @@ parseNumber : String -> Int + ParseError
 parseNumber = compose digitsToInt (many1 digit)
 
 -- With IO (Interpretations layer, platform-specific)
-readConfig : Path -> External (Config + Error)
+readConfig : Path -> IO (Config + Error)
 readConfig = compose parseConfig readFile
 ```
 

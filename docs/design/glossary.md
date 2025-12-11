@@ -117,7 +117,7 @@ Common morphisms built from Generators:
 
 | Pattern | Description |
 |---------|-------------|
-| `External` | Functor marking external effects |
+| `IO` | Monad for input/output effects (see D026) |
 | `State S` | State effect: `S -> A * S` |
 | `Reader R` | Environment effect: `R -> A` |
 | `Writer W` | Logging effect: `A * W` |

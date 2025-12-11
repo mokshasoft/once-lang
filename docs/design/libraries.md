@@ -226,36 +226,36 @@ The **Interpretations** layer provides primitives for the external world. This i
 ### POSIX Interpretation
 
 ```
-primitive open  : Path * Flags -> External (Fd + Errno)
-primitive read  : Fd * Size -> External (Bytes + Errno)
-primitive write : Fd * Bytes -> External (Size + Errno)
-primitive close : Fd -> External (Unit + Errno)
+primitive open  : Path * Flags -> IO (Fd + Errno)
+primitive read  : Fd * Size -> IO (Bytes + Errno)
+primitive write : Fd * Bytes -> IO (Size + Errno)
+primitive close : Fd -> IO (Unit + Errno)
 
-primitive socket  : Domain * Type -> External (Socket + Errno)
-primitive connect : Socket * Address -> External (Unit + Errno)
-primitive send    : Socket * Bytes -> External (Size + Errno)
-primitive recv    : Socket * Size -> External (Bytes + Errno)
+primitive socket  : Domain * Type -> IO (Socket + Errno)
+primitive connect : Socket * Address -> IO (Unit + Errno)
+primitive send    : Socket * Bytes -> IO (Size + Errno)
+primitive recv    : Socket * Size -> IO (Bytes + Errno)
 ```
 
 ### Bare Metal Interpretation
 
 ```
-primitive gpio_read  : Pin -> External Level
-primitive gpio_write : Pin * Level -> External Unit
+primitive gpio_read  : Pin -> IO Level
+primitive gpio_write : Pin * Level -> IO Unit
 
-primitive i2c_read  : Bus * Address * Size -> External Bytes
-primitive i2c_write : Bus * Address * Bytes -> External Unit
+primitive i2c_read  : Bus * Address * Size -> IO Bytes
+primitive i2c_write : Bus * Address * Bytes -> IO Unit
 
-primitive mmio_read  : Address -> External Word
-primitive mmio_write : Address * Word -> External Unit
+primitive mmio_read  : Address -> IO Word
+primitive mmio_write : Address * Word -> IO Unit
 ```
 
 ### WebAssembly Interpretation
 
 ```
-primitive console_log : String -> External Unit
-primitive fetch       : Url * Options -> External (Response + Error)
-primitive set_timeout : Milliseconds * Handler -> External TimerId
+primitive console_log : String -> IO Unit
+primitive fetch       : Url * Options -> IO (Response + Error)
+primitive set_timeout : Milliseconds * Handler -> IO TimerId
 ```
 
 ### Interpretation Libraries
@@ -264,15 +264,15 @@ Libraries in Interpretations use primitives + Derived:
 
 ```
 -- File utilities (uses POSIX primitives + Derived)
-readFile  : Path -> External (String + Error)
-writeFile : Path * String -> External (Unit + Error)
+readFile  : Path -> IO (String + Error)
+writeFile : Path * String -> IO (Unit + Error)
 
 -- HTTP client (uses socket primitives + Derived JSON parser)
-httpGet   : Url -> External (Response + Error)
-httpPost  : Url * Json -> External (Response + Error)
+httpGet   : Url -> IO (Response + Error)
+httpPost  : Url * Json -> IO (Response + Error)
 
 -- JSON file operations (combines Derived JSON with file IO)
-readJsonFile : Path -> External (Result Json Error)
+readJsonFile : Path -> IO (Result Json Error)
 readJsonFile path =
   case (err, \str -> parseJson str) (readFile path)  -- parseJson is from Derived
 ```
@@ -325,6 +325,6 @@ Code that uses Interpretations is tied to that platform's primitives.
 |-------|--------|----------|----------|
 | **Generators** | Pure | ~12 primitive morphisms | `id`, `compose`, `fst`, `curry` |
 | **Derived** | Pure | Everything built from Generators | `map`, `fold`, JSON, crypto, parsers |
-| **Interpretations** | Impure | External world primitives | File IO, network, GPIO, syscalls |
+| **Interpretations** | Impure | IO primitives for external world | File IO, network, GPIO, syscalls |
 
 The rule is simple: **if it doesn't touch the external world, it's Derived. If it does, it's Interpretations.**

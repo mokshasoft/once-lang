@@ -235,7 +235,7 @@ The compiler links primitives from the Interpretations layer:
 
 ```
 -- Declared in source
-primitive read : FileHandle -> External Byte
+primitive read : FileHandle -> IO Byte
 
 -- Compiler looks up implementation for target:
 -- C: int8_t once_read(FILE* handle) { return fgetc(handle); }

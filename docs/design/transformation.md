@@ -267,11 +267,11 @@ The **Interpretations** layer ties to specific platforms:
 parseJson : String -> Json + Error     ✓ C, Rust, JS, WASM, ...
 
 -- This only works where POSIX exists
-readFile : Path -> External String     ✓ C (POSIX), Rust (std)
+readFile : Path -> IO String           ✓ C (POSIX), Rust (std)
                                        ✗ Bare metal, browser
 
 -- This only works in browser
-fetch : Url -> External Response       ✓ JavaScript, WASM
+fetch : Url -> IO Response             ✓ JavaScript, WASM
                                        ✗ C, Rust (without deps)
 ```
 

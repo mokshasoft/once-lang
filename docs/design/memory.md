@@ -256,7 +256,7 @@ Once provides safe wrappers in the Interpretations layer:
 
 ```
 -- Everything allocated in region freed together
-withRegion : (Region^1 → A)^1 → External A
+withRegion : (Region^1 → A)^1 → IO A
 allocIn    : Region^1 → Size → (Ptr^1 × Region^1)
 
 -- Usage
@@ -270,7 +270,7 @@ withRegion $ \region →
 
 ```
 -- Fast allocation, bulk free
-withArena : Size → (Arena^1 → A)^1 → External A
+withArena : Size → (Arena^1 → A)^1 → IO A
 bump      : Arena^1 → Size → (Ptr^1 × Arena^1)
 
 -- Common in compilers, games, request handlers
@@ -281,7 +281,7 @@ bump      : Arena^1 → Size → (Ptr^1 × Arena^1)
 ```
 -- Heap allocation with ownership tracking
 Box    : Type → Type
-new    : A^1 → External (Box A)^1
+new    : A^1 → IO (Box A)^1
 unbox  : (Box A)^1 → A^1
 -- Box freed when consumed
 ```
@@ -301,8 +301,8 @@ These abstractions are built on hidden primitives:
 
 ```
 -- In Interpretations, NOT exported to users
-primitive raw_malloc : Size → External (RawPtr + Null)
-primitive raw_free   : RawPtr → External Unit
+primitive raw_malloc : Size → IO (RawPtr + Null)
+primitive raw_free   : RawPtr → IO Unit
 
 -- Safe abstractions use these internally
 -- Users never see raw_malloc/raw_free

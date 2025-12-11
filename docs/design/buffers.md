@@ -332,7 +332,7 @@ parseJson : String Utf8 ^1 -> (Json + ParseError) ^1
 Interpretations provide concrete allocators and can specify allocation:
 
 ```
-readFile @heap : Path -> External (Buffer + Error)
+readFile @heap : Path -> IO (Buffer + Error)
 
 processRequest @arena : Request -> Response
 ```
