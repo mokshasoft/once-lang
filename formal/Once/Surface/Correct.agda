@@ -24,13 +24,12 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 ------------------------------------------------------------------------
--- Postulates
+-- Postulates (imported from central registry)
 ------------------------------------------------------------------------
 
--- Function extensionality is standard in type theory
-postulate
-  extensionality : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
-                   (∀ x → f x ≡ g x) → f ≡ g
+-- All postulates are centralized in Once.Postulates for transparency.
+-- See that module for documentation of each assumption.
+open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
 -- Environment interpretation

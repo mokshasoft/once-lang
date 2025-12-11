@@ -65,17 +65,66 @@ This proves that elaborating surface syntax (with lambdas and variables) to poin
 - Variable resolution via projection chains
 - Case expression distribution
 
-## What Is Postulated
+## Assumptions and Postulates
 
-| Postulate | Location | Justification |
-|-----------|----------|---------------|
-| `extensionality` | `Once/Surface/Correct.agda` | Function extensionality |
+All assumptions are centralized in `formal/Once/Postulates.agda`. This is the **single source of truth** for what is assumed without proof.
 
-Function extensionality is used only in proof terms, which are erased during extraction. The postulate never executes at runtime.
+### Detecting Assumptions
+
+To find all postulates in the formalization:
+
+```bash
+# Check if a file uses postulates (--safe fails if postulates are used)
+agda --safe formal/Once/Semantics.agda
+
+# Find all postulate declarations
+grep -r "postulate" formal/
+
+# List modules that import from Postulates.agda
+grep -r "import Once.Postulates" formal/
+```
+
+### P1: Function Extensionality
+
+| Property | Value |
+|----------|-------|
+| **Type** | `∀ {A B} {f g : A → B} → (∀ x → f x ≡ g x) → f ≡ g` |
+| **Location** | `Once/Postulates.agda` |
+| **Needed by** | `Once/Surface/Correct.agda` (elaboration correctness for lambdas) |
+| **Runtime effect** | None (erased during extraction) |
+
+**Justification**: Function extensionality is consistent with Agda's type theory and holds in most models (setoid model, cubical type theory). It's a standard assumption in formalized mathematics.
+
+### S1: Fixed Point Semantics (Semantic Gap)
+
+This is **not a postulate** but a known limitation in the semantic model. The current `⟦ Fix F ⟧` interpretation uses a newtype wrapper rather than true recursive substitution. See [Known Limitations](#known-limitations) for details.
+
+| Property | Value |
+|----------|-------|
+| **Type** | Semantic gap (not an axiom) |
+| **Location** | `Once/Semantics.agda` |
+| **Affected proofs** | `eval-fold-unfold`, `eval-unfold-fold` (trivially `refl`) |
+| **Runtime effect** | None (operational semantics are correct) |
+
+### Guidelines for Adding Assumptions
+
+When adding a postulate or discovering a semantic gap:
+
+1. **Centralize**: Add it to `Once/Postulates.agda` with full documentation
+2. **Identify**: Label it (P2, P3, ... for postulates; S2, S3, ... for semantic gaps)
+3. **Document**: Explain what is assumed and why it's needed
+4. **Justify**: Why we believe this is sound
+5. **Impact**: What would break if it's wrong
+6. **Update**: Add it to this document
+
+The goal is **zero hidden assumptions**. Anyone auditing the formalization should be able to find every assumption by:
+1. Reading `Once/Postulates.agda`
+2. Running `agda --safe` on files that should be postulate-free
+3. Reading the "Known Limitations" section of this document
 
 ## Known Limitations
 
-### Fixed Point Semantics (Fix, fold, unfold)
+### Fixed Point Semantics (Fix, fold, unfold) — Semantic Gap S1
 
 The current formalization of recursive types (`Fix F`) has a significant limitation. The semantics use a simple newtype wrapper:
 
@@ -131,9 +180,10 @@ All proofs are in the `formal/` directory:
 
 ```
 formal/Once/
+├── Postulates.agda        # ★ CENTRAL REGISTRY OF ALL ASSUMPTIONS ★
 ├── Type.agda              # Type definitions
 ├── IR.agda                # IR (12 generators)
-├── Semantics.agda         # Denotational semantics
+├── Semantics.agda         # Denotational semantics (includes S1 semantic gap)
 ├── Category/
 │   └── Laws.agda          # 17 CCC law proofs
 ├── TypeSystem/
@@ -142,8 +192,10 @@ formal/Once/
 └── Surface/
     ├── Syntax.agda        # Surface expression type
     ├── Elaborate.agda     # Elaboration function
-    └── Correct.agda       # Elaboration correctness
+    └── Correct.agda       # Elaboration correctness (imports P1)
 ```
+
+**Important**: `Postulates.agda` is the authoritative source for all assumptions. Check it first when auditing the formalization.
 
 ## Future Work: Fixed Point Semantics
 
