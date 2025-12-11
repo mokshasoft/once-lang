@@ -99,26 +99,29 @@ Verify the `once build` command produces correct C code. Specifically:
 
 ---
 
-### Phase V4: Elaboration Correctness (TODO)
+### Phase V4: Elaboration Correctness ✓ (DONE)
 
-**Status**: Not started
+**Status**: Completed in `formal/Once/Surface/`
 
 **What**: Prove elaboration from surface syntax to IR preserves semantics.
 
 **Deliverables**:
-- `formal/Once/Surface/Syntax.agda` - Surface expression type
-- `formal/Once/Surface/Elaborate.agda` - Elaboration function
+- `formal/Once/Surface/Syntax.agda` - Surface expression type with de Bruijn indices
+- `formal/Once/Surface/Elaborate.agda` - Total elaboration function
 - `formal/Once/Surface/Correct.agda` - Correctness proof
 
 **Key Challenge**: Surface syntax has lambdas and variables; IR is point-free.
 
 **Theorems**:
-1. `elaborate-sound` : elaborate(e) = Ok ir → ∀ ρ. evalSurface ρ e ≡ eval ir (interpEnv ρ)
+1. `elaborate-correct` : ∀ ρ e. evalSurface ρ e ≡ eval (elaborate e) (interpEnv ρ)
+
+**Note**: The theorem is stronger than originally planned - elaboration is total (not partial with `Ok`), meaning the types guarantee only well-formed expressions reach elaboration. Uses function extensionality postulate for the lambda case (safe due to proof erasure during extraction).
 
 **Scope**:
-- Lambda elimination (λx.e becomes point-free combinator)
-- Variable resolution
+- Lambda elimination (λx.e becomes point-free combinator via curry)
+- Variable resolution (de Bruijn indices to projection chains)
 - Generator recognition (fst, snd, pair, etc.)
+- Case expression distribution (environment distributed through branches)
 
 ---
 
@@ -273,7 +276,7 @@ compiler-correct : ∀ (source : String) →
 | V1 | Core IR Semantics | ✓ Done | (definitions) |
 | V2 | Categorical Laws | ✓ Done | 17 CCC law proofs |
 | V3 | Type Soundness | ✓ Done | Progress + Preservation |
-| V4 | Elaboration | TODO | elaborate-sound |
+| V4 | Elaboration | ✓ Done | elaborate-correct |
 | V5 | Optimization | TODO | optimize-correct |
 | V6 | C Semantics | TODO | (definitions) |
 | V7 | Code Generation | TODO | codegen-correct |
@@ -285,8 +288,7 @@ compiler-correct : ∀ (source : String) →
 
 | Phase | Lines (est.) | Weeks (est.) |
 |-------|--------------|--------------|
-| V1-V3 | ~700 | Done |
-| V4 | ~400 | 2-3 |
+| V1-V4 | ~1100 | Done |
 | V5 | ~200 | 1-2 |
 | V6 | ~300 | 2-3 |
 | V7 | ~600 | 4-6 |
@@ -312,8 +314,8 @@ This is comparable to CakeML (trusts HOL4, PolyML, OS) and CompCert (trusts Coq,
 
 Verification is **complete** when:
 
-1. ✓ Phases V1-V3 proven in Agda (DONE)
-2. □ Phases V4-V8 proven in Agda
+1. ✓ Phases V1-V4 proven in Agda (DONE)
+2. □ Phases V5-V8 proven in Agda
 3. □ Phase V9 end-to-end theorem proven
 4. □ Phase V10 extraction working, tests pass
 5. □ Documentation updated with verification status

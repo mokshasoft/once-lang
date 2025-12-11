@@ -1,6 +1,6 @@
 # Once
 
-**Write once, compile anywhere.** A programming language founded on natural transformations.
+**Capture essence, write Once, compile everywhere.** A programming language founded on natural transformations.
 
 ## What is Once?
 
@@ -8,7 +8,7 @@ Once is a programming language where programs are **natural transformations** fr
 
 - **Substrate independence** - Same code compiles to C, Rust, JavaScript, WASM, bare metal
 - **No garbage collector required** - Linear code (quantity 1) needs no GC
-- **Formal verification** - ~12 generators, graded categorical laws, tractable proofs
+- **Formal verification** - ~12 generators, graded categorical laws, [partially verified in Agda](docs/formal/what-is-proven.md)
 - **Memory safety** - Quantitative types (QTT) track resource usage at compile time
 
 ```
@@ -54,7 +54,7 @@ Once tracks resource usage via quantities:
 
 Quantities are **inferred by default**, with optional annotations for guarantees.
 
-### Three Layers
+### The Three Strata
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -67,7 +67,7 @@ Quantities are **inferred by default**, with optional annotations for guarantees
 ```
 
 - **Generators**: Universal primitives every language has
-- **Derived**: All pure code - portable to any target
+- **Derived**: All pure code - portable to any target. Includes the **Canonical** library of standard morphisms derived from universal properties.
 - **Interpretations**: Platform bindings (POSIX, bare metal, WASM)
 
 ## Quick Start
@@ -143,7 +143,7 @@ EOF
 - [Glossary](docs/design/glossary.md) - Reference for types and operations
 
 ### Architecture
-- [Libraries](docs/design/libraries.md) - The three-layer structure
+- [Libraries](docs/design/libraries.md) - The three strata
 - [IO](docs/design/io.md) - Effects as functor choice
 - [FFI](docs/design/ffi.md) - Foreign function interface
 - [Prelude](docs/design/prelude.md) - Standard library structure
@@ -152,6 +152,7 @@ EOF
 - [Transformation](docs/design/transformation.md) - Write-once, compile anywhere
 - [Compiler](docs/design/compiler.md) - Compiler architecture
 - [Formal Verification](docs/design/formal-verification.md) - Proving correctness
+- [What Is Proven](docs/formal/what-is-proven.md) - Current verification status
 
 ### Targets
 - [Bare Metal](docs/design/bare-metal.md) - No OS, no runtime
