@@ -198,6 +198,10 @@ Coming soon:
 
 One source of truth. Mathematical guarantees. Runs everywhere.
 
+## Acknowledgements
+
+The design of Once was influenced by [Ya](https://github.com/iokasimov/ya), a categorical programming language by Murat Kasimov. His exploration of natural transformations as a programming foundation and writings on categorical semantics helped shape Once's approach.
+
 ## License
 
 GPL-2.0

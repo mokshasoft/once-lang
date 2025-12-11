@@ -1,204 +1,189 @@
 # Parallelism in Once
 
-## The Categorical Model
+## Categorical Foundation
 
-In category theory, there are two fundamental ways to combine computations:
+In category theory, two fundamental ways to combine computations correspond to sequential and parallel execution:
 
-| Combinator | Symbol | Meaning | Data Dependency |
-|------------|--------|---------|-----------------|
-| **Composition** | `compose f g` or `g . f` | Sequential: f then g | g depends on f's output |
-| **Product** | `f * g` | Parallel: f AND g | Independent |
+| Structure | Once Syntax | Meaning | Execution |
+|-----------|-------------|---------|-----------|
+| Composition | `f . g` | Do g, then f | Sequential |
+| Product | `pair f g` | Compute both f and g | Potentially parallel |
 
-Once encodes both:
+This distinction is fundamental to Once's design and has direct implications for parallelism.
 
-```
--- Sequential
-compose g f       -- do f, then g
+## Products Enable Parallelism
 
--- Parallel
-pair f g          -- product: do f and g simultaneously
-```
-
-## Products = Parallelism
-
-The categorical product `A * B` represents "A and B together". When you have:
+When you write:
 
 ```
-pair f g : C -> A * B
--- where f : C -> A
--- and   g : C -> B
+pair f g : A -> B * C
 ```
 
-The computations `f` and `g` are **independent** - they both take `C` as input but don't depend on each other. A parallel runtime can execute them simultaneously.
-
-### In Once
+The functions `f : A -> B` and `g : A -> C` are **independent** - neither depends on the other's result. This independence is exactly what enables parallel execution.
 
 ```
--- Construct parallel pair
-result = pair f g       -- C -> A * B
+-- Sequential: g must complete before f starts
+compose f g : A -> C
 
--- Apply functions in parallel on product input
-both = bimap f g        -- (A * C) -> (B * D)
+-- Parallel opportunity: f and g can run simultaneously
+pair f g : A -> B * C
 ```
 
-## Day Convolution: Parallel Effects
+## Applicative vs Monadic Composition
 
-Once uses **Day convolution** for parallel effect combination:
+This connects directly to the IO monad levels (see D026):
 
-```
-Day F G A = exists X Y. (F X * G Y * (X * Y -> A))
-```
-
-This says: "Run effectful computation `F` and effectful computation `G` in parallel, then combine their results."
-
-### Monoidal Functors
-
-The `Monoidal` typeclass captures functors that preserve this parallel structure:
+| Level | Operation | Parallelizable? |
+|-------|-----------|-----------------|
+| Functor | `fmap f x` | N/A (single operation) |
+| Applicative | `both x y` | Yes - independent |
+| Monad | `bind x f` | No - f depends on x's result |
 
 ```
-class Monoidal F where
-  unit : Unit -> F Unit
-  mult : F A * F B -> F (A * B)
+-- Can parallelize: read two files independently
+both (readFile "a.txt") (readFile "b.txt") : IO (String * String)
+
+-- Cannot parallelize: second read depends on first
+bind (readFile "config.txt") (\cfg -> readFile (getPath cfg))
 ```
 
-## How Parallelism Compiles
+This is why the IO documentation recommends preferring the weakest abstraction level that works - applicative operations can parallelize, monadic ones cannot.
 
-### Source Level
+## Day Convolution
 
-```
--- Two independent computations
-computation = pair (fetchUser userId) (fetchPosts userId)
--- Type: IO (User * Posts)
-```
-
-### After Analysis
-
-The compiler sees:
-- `fetchUser` and `fetchPosts` are independent (no data flow between them)
-- Both can start immediately
-- Result is a pair
-
-### Generated Code (conceptual)
-
-```c
-// Sequential version
-User user = fetchUser(userId);
-Posts posts = fetchPosts(userId);
-return (Pair){user, posts};
-
-// Parallel version (compiler optimization)
-Future<User> userFuture = async(fetchUser, userId);
-Future<Posts> postsFuture = async(fetchPosts, userId);
-return (Pair){await(userFuture), await(postsFuture)};
-```
-
-### Bare Metal Version
-
-```asm
-; Fork two tasks
-fork task1, fetchUser, userId
-fork task2, fetchPosts, userId
-
-; Wait for both
-join task1, r1
-join task2, r2
-
-; Return pair
-push r1
-push r2
-ret
-```
-
-## Parallelism Operators in Once
-
-| Operator | Type | Meaning |
-|----------|------|---------|
-| `pair` | `(C -> A) -> (C -> B) -> (C -> A * B)` | Parallel pairing |
-| `bimap` | `(A -> B) -> (C -> D) -> (A * C -> B * D)` | Parallel morphisms |
-| `fst` | `A * B -> A` | First projection |
-| `snd` | `A * B -> B` | Second projection |
-| `Day` | Day convolution | Parallel effects |
-
-## Symmetric Monoidal Categories
-
-Once's categorical foundation is a **symmetric monoidal category**, which means:
+For combining effectful computations in parallel, Once uses **Day convolution**:
 
 ```
-A * B ≅ B * A   -- order doesn't matter (swap)
+Day F G A = exists X Y. F X * G Y * (X * Y -> A)
 ```
 
-This is exactly the property needed for parallelism: if order doesn't matter, we can execute in any order - including simultaneously.
-
-## Example: Parallel Effect Pipeline
+Day convolution combines two functors while preserving their independence. For `IO`:
 
 ```
-type Query = Network * State
-
--- Sequential: fetch then process then store
-sequential = compose store (compose process fetch)
-
--- Parallel: fetch user AND posts simultaneously
-parallel = compose render (compose combine (pair fetchUser fetchPosts))
---                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
---                                         These run in parallel!
+day : IO A -> IO B -> IO (A * B)
+day = both
 ```
 
-## Automatic Parallelization
+This is the applicative `both` operation - it runs two IO operations and pairs their results.
 
-Because the parallel structure is **in the types**, a compiler can:
+## Parallelism and Linearity
 
-1. **Detect independence**: Products indicate no data dependency
-2. **Extract parallelism**: Factor sequential code into parallel where possible
-3. **Generate parallel code**: Emit threads, async, or SIMD as appropriate
+Once's quantitative types (QTT) interact with parallelism:
 
-### Example Transformation
+| Quantity | Parallelism Implication |
+|----------|------------------------|
+| `0` (erased) | Compile-time only, no runtime |
+| `1` (linear) | Used exactly once - safe to parallelize without synchronization |
+| `ω` (unrestricted) | May need synchronization if shared |
 
-```
--- Programmer writes:
-compose i (compose (pair g h) f)
-
--- Compiler sees:
---   f must complete before (pair g h)
---   g and h are independent (product)
---   i waits for both g and h
-
--- Compiler generates:
-fork(f) -> (fork(g) || fork(h)) -> join -> i
-```
-
-## Categories with Explicit Parallelism
-
-For fine-grained control, Once could define:
+Linear values (`A^1`) are particularly amenable to parallelism because they cannot be shared - each parallel branch owns its inputs exclusively.
 
 ```
--- Parallel arrow category
-type Par A B = ...  -- tracks parallelism explicitly
-
--- With primitives:
-fork : (A -> B) -> Par A B     -- mark for parallel
-join : Par A B -> (A -> B)     -- synchronize
+-- Both branches use their input linearly
+parallel : A^1 * B^1 -> C^1 * D^1
+parallel = pair (processA . fst) (processB . snd)
 ```
 
-## Comparison with Other Approaches
+## Parallel Patterns
 
-| Approach | How Parallelism is Expressed |
-|----------|------------------------------|
-| **Threads** | Explicit `fork`/`join` |
-| **Async/Await** | Explicit `async`, implicit sync |
-| **Futures** | Explicit `Future`, explicit `get` |
-| **Par Monad** | Explicit `par`/`pseq` |
-| **Arrows** | `(***)` and `(&&&)` |
-| **Once/Categorical** | Products and Day convolution |
+### Map-Reduce
 
-The categorical approach makes parallelism **implicit in the structure** rather than explicit in the syntax.
+```
+-- Map phase: parallel (each element independent)
+mapParallel : (A -> B) -> List A -> List B
 
-## Conclusion
+-- Reduce phase: requires associative operation
+reduce : (B -> B -> B) -> B -> List B -> B
 
-In Once:
+-- Combined
+mapReduce : (A -> B) -> (B -> B -> B) -> B -> List A -> B
+mapReduce mapper reducer init = reduce reducer init . mapParallel mapper
+```
 
-1. **Sequential** = Composition (`compose`)
-2. **Parallel** = Products (`pair`, Day)
-3. **The types tell you** which is which
-4. **Compilers can automatically parallelize** based on categorical structure
+The categorical requirement: `reducer` must be associative for parallel reduction to be correct.
 
-Parallelism isn't an add-on feature - it's built into the mathematical foundation. Products `*` and Day convolution are inherently parallel constructs.
+### Fork-Join
+
+```
+-- Fork: split into independent computations
+fork : A -> (A -> B) * (A -> C) -> B * C
+fork x (f, g) = pair f g x
+
+-- Join: combine results
+join : B * C -> (B -> C -> D) -> D
+join (b, c) combine = combine b c
+```
+
+### Pipeline Parallelism
+
+```
+-- Three-stage pipeline
+stage1 : A -> B
+stage2 : B -> C
+stage3 : C -> D
+
+-- Sequential composition
+pipeline : A -> D
+pipeline = stage3 . stage2 . stage1
+
+-- With buffering, stages can overlap on different inputs
+```
+
+## Streams and Parallelism
+
+Once's coalgebraic streams (see [Time](time.md)) naturally support pipeline parallelism:
+
+```
+Stream A = A * Stream A
+
+-- Process stream elements in parallel batches
+batchProcess : Int -> (A -> B) -> Stream A -> Stream (List B)
+```
+
+Each element in a stream is independent of future elements, enabling parallel processing of batches.
+
+## Compiler Optimizations
+
+The Once compiler can analyze code for parallelism opportunities:
+
+1. **Independence analysis**: Identify `pair` constructions where both branches are pure
+2. **Quantity checking**: Ensure linear resources aren't incorrectly shared
+3. **Effect tracking**: Only parallelize applicative (not monadic) effect compositions
+
+```
+-- Compiler can parallelize
+pure : pair (expensive1 x) (expensive2 x)
+
+-- Compiler cannot parallelize (IO, but applicative - runtime can)
+io : both (readFile a) (readFile b)
+
+-- Compiler cannot parallelize (monadic dependency)
+sequential : bind (readFile a) (\x -> readFile (process x))
+```
+
+## Target-Specific Parallelism
+
+Different compilation targets implement parallelism differently:
+
+| Target | Parallelism Mechanism |
+|--------|----------------------|
+| C | pthreads, OpenMP pragmas |
+| Rust | rayon, async/await |
+| JavaScript | Web Workers, Promise.all |
+| WASM | SharedArrayBuffer, threads proposal |
+| Bare metal | Hardware parallelism, interrupts |
+
+Once's categorical IR maps to each target's native parallelism constructs.
+
+## Summary
+
+| Concept | Once Approach |
+|---------|---------------|
+| Sequential | Composition (`f . g`) |
+| Parallel opportunity | Product (`pair f g`) |
+| Effectful parallel | Applicative `both`, Day convolution |
+| Effectful sequential | Monadic `bind` |
+| Safety | QTT quantities track sharing |
+| Optimization | Compiler analyzes independence |
+
+Parallelism in Once emerges naturally from categorical structure. Products represent independent computations, applicative functors enable parallel effects, and quantitative types ensure safe resource usage across parallel branches.

@@ -1,265 +1,243 @@
 # Time in Once
 
-## Categorical Models of Time
+## Coalgebraic Time
 
-Time can be modeled categorically in several ways:
+Once models time using **coalgebras** - the categorical dual of algebras. While algebras describe how to *construct* finite data (like lists), coalgebras describe how to *observe* potentially infinite behavior (like streams of events over time).
 
-| Model | Categorical Structure | Once Type |
-|-------|----------------------|-----------|
-| **Streams** | Final coalgebra of `A * (-)` | `Stream` |
-| **State machines** | Coalgebras `S -> A * S` | `Transition` |
-| **Events** | State with output | `Event` |
-| **Discrete steps** | Endofunctor iteration | via `Fix` |
-| **Causality** | Arrow with delay | (can be added) |
+| Structure | Algebra (finite) | Coalgebra (infinite) |
+|-----------|------------------|---------------------|
+| Definition | `F A -> A` | `A -> F A` |
+| Example | `List A = 1 + A * List A` | `Stream A = A * Stream A` |
+| Operation | Fold (catamorphism) | Unfold (anamorphism) |
+| Time model | Discrete history | Ongoing process |
 
-## Once's Time Types
+## Streams
 
-### Stream: Infinite Time
-
-```
-Stream A = Fix (Along A)
--- Expands to: Fix (λX. A * X)
--- An infinite sequence: a₀, a₁, a₂, a₃, ...
-```
-
-This is the **final coalgebra** of the functor `A * (-)`. It represents:
-- Infinite discrete time
-- A value at every time step
-- No beginning, no end
-
-```
-Stream A = (A, Stream A)
-         = (a₀, (a₁, (a₂, (a₃, ...))))
-
-Time:      t=0  t=1  t=2  t=3  ...
-```
-
-### Transition: State Over Time
-
-```
-Transition S A = S -> A * S
--- "Given current state, produce output and next state"
-```
-
-This is a **Mealy machine** - the fundamental model of stateful computation over time:
-
-```
-         ┌─────────┐
-input →  │ current │ → output
-         │  state  │
-         └────┬────┘
-              │
-              ▼
-         next state
-```
-
-### Event: Discrete Happenings
-
-```
-Event S A = S -> A * S
--- Same structure as Transition
--- Semantically: something that happens and changes state
-```
-
-## The Coalgebraic View
-
-Time is naturally **coalgebraic**. Where algebras fold up (catamorphism), coalgebras unfold (anamorphism):
-
-```
--- Algebra (fold): consuming time
-cata : (F A -> A) -> Fix F -> A
-
--- Coalgebra (unfold): producing time
-ana : (A -> F A) -> A -> Fix F
-```
-
-### Stream as Coalgebra
-
-```
--- The coalgebra for streams
-unfold : (S -> A * S) -> S -> Stream A
-unfold step seed =
-  let (value, next) = step seed
-  in value :< unfold step next
-
--- In Once:
-ana : (S -> A * S) -> S -> Stream A
-```
-
-## Time Operators
-
-| Concept | Categorical | Once |
-|---------|-------------|------|
-| Current value | `head : Stream A -> A` | `head` |
-| Advance time | `tail : Stream A -> Stream A` | `tail` |
-| Unfold | `ana : (S -> F S) -> S -> Fix F` | `ana` |
-| Fold | `cata : (F A -> A) -> Fix F -> A` | `cata` |
-
-## Discrete vs Continuous Time
-
-### Discrete Time (Once has this)
+The primary time abstraction in Once is the **Stream**:
 
 ```
 Stream A = A * Stream A
--- Time steps: 0, 1, 2, 3, ...
--- Each step produces one value
 ```
 
-### Continuous Time (could be added)
+This is the **final coalgebra** of the functor `F X = A * X`. A stream is:
+- A current value of type `A`
+- Followed by the rest of the stream
 
-For continuous time, you'd model time as a parameter:
+Streams are infinite by construction - they always have a next element.
 
-```
-Continuous A = Time -> A
--- where Time = ℝ or a dense order
-
--- Or as a limit of discrete samples
-Signal A = Stream (Time * A)
-```
-
-## Causality
-
-A **causal** function is one where output at time `t` depends only on inputs at times `≤ t`:
+### Stream Operations
 
 ```
--- Causal arrow (conceptual)
-Causal A B = Stream A -> Stream B
--- with constraint: (output !! n) depends only on (take (n+1) input)
+-- Observe the current value
+head : Stream A -> A
+head = fst
+
+-- Advance to the rest
+tail : Stream A -> Stream A
+tail = snd
+
+-- Create a stream from a generator
+unfold : (S -> A * S) -> S -> Stream A
+
+-- Map over all elements
+mapStream : (A -> B) -> Stream A -> Stream B
+
+-- Zip two streams
+zipWith : (A -> B -> C) -> Stream A -> Stream B -> Stream C
 ```
 
-In categorical terms, causal functions are **natural transformations** between stream functors that respect the coalgebra structure.
-
-### The Delay Operator
-
-The key primitive for causal systems:
+### Example: Counter Stream
 
 ```
+-- Generate natural numbers: 0, 1, 2, 3, ...
+nats : Stream Int
+nats = unfold (\n -> (n, n + 1)) 0
+
+-- Take finite prefix
+take : Int -> Stream A -> List A
+take 0 _ = []
+take n s = head s :: take (n - 1) (tail s)
+```
+
+## Event Streams and IO
+
+Streams integrate with Once's IO monad for reactive programming:
+
+```
+-- A stream of events from the outside world
+EventStream A = IO (Stream A)
+
+-- Keyboard events
+keyEvents : IO (Stream KeyEvent)
+
+-- Mouse events
+mouseEvents : IO (Stream MouseEvent)
+
+-- Timer ticks
+every : Duration -> IO (Stream Unit)
+```
+
+### Example: Event Loop
+
+```
+-- Main event loop pattern
+eventLoop : IO (Stream Event) -> (State -> Event -> State) -> State -> IO Unit
+eventLoop events step initial =
+  bind events (\stream ->
+    runStream stream initial step
+  )
+
+-- Process events until termination
+runStream : Stream Event -> State -> (State -> Event -> State) -> IO Unit
+```
+
+## State Machines
+
+State machines are coalgebras of the form `S -> A * S`:
+
+```
+-- A state machine: given state, produce output and next state
+Machine S A = S -> A * S
+
+-- Run a machine to produce a stream
+runMachine : Machine S A -> S -> Stream A
+runMachine machine = unfold machine
+
+-- Compose machines
+composeMachine : Machine S A -> Machine T B -> Machine (S * T) (A * B)
+```
+
+### Example: Toggle Switch
+
+```
+-- Toggle between on/off states
+toggle : Machine Bool Bool
+toggle state = (state, not state)
+
+-- Produces: True, False, True, False, ...
+toggleStream : Stream Bool
+toggleStream = runMachine toggle True
+```
+
+## Discrete Time Steps
+
+For discrete time simulation, Once uses indexed streams:
+
+```
+-- Value at each time step
+type TimeSeries A = Stream A
+
+-- Delay by one step (requires initial value)
 delay : A -> Stream A -> Stream A
-delay initial stream = initial :< stream
+delay initial stream = unfold step (initial, stream)
+  where step (prev, s) = (prev, (head s, tail s))
 
--- Categorically: the "later" modality ▷
--- ▷A means "A at the next time step"
+-- Feedback loop (for recursive definitions)
+feedback : A -> (Stream A -> Stream A) -> Stream A
 ```
 
-## Temporal Types (Extension)
-
-Once could be extended with explicit temporal modalities:
+### Example: Fibonacci
 
 ```
--- "Later" modality
-Later A = Stream A  -- first element is "now", rest is "later"
+-- Fibonacci sequence as a stream
+fibs : Stream Int
+fibs = unfold step (0, 1)
+  where step (a, b) = (a, (b, a + b))
 
--- "Always" (□)
-Always A = Stream A  -- A at all future times
-
--- "Eventually" (◇)
-Eventually A = Fix (Maybe * (-))  -- A at some future time
+-- 0, 1, 1, 2, 3, 5, 8, 13, ...
 ```
 
-## State Machines Over Time
+## Temporal Operators
 
-The `Transition` type is a Moore/Mealy machine:
-
-```
-Transition S A = S -> A * S
-
--- Run for n steps
-run : Transition S A -> S -> Stream A
-run trans initial = ana trans initial
-```
-
-### Example: Counter
+Common temporal operators from reactive programming:
 
 ```
-counter : Transition Int Int
-counter = \n -> (n, n + 1)
+-- Sample stream at events
+sample : Stream A -> Stream Unit -> Stream A
 
--- run counter 0 = [0, 1, 2, 3, 4, ...]
+-- Hold last value until next event
+hold : A -> Stream (Maybe A) -> Stream A
+
+-- Accumulate over time
+scan : (B -> A -> B) -> B -> Stream A -> Stream B
+
+-- Filter events
+filter : (A -> Bool) -> Stream A -> Stream (Maybe A)
+
+-- Merge two event streams
+merge : Stream (Maybe A) -> Stream (Maybe A) -> Stream (Maybe A)
 ```
 
-## FRP (Functional Reactive Programming)
+## Time and Linearity
 
-Once's primitives can encode FRP:
-
-```
--- Behavior: value over time
-Behavior A = Stream A
-
--- Event: occasional occurrences
-EventStream A = Stream (Maybe A)
-
--- Signal function: transforms time-varying values
-SF A B = Behavior A -> Behavior B
--- This is just a causal stream transformer
-```
-
-### FRP Combinators
+Once's QTT interacts with temporal structures:
 
 ```
--- Sample behavior at events
-sample : Behavior A -> EventStream B -> EventStream A
+-- Linear stream: each element used exactly once
+LinearStream A = Stream (A^1)
 
--- Integrate over time (for continuous)
-integrate : Behavior Double -> Behavior Double
-
--- Switch behaviors
-switch : Behavior A -> EventStream (Behavior A) -> Behavior A
+-- Affine stream: elements may be dropped
+AffineStream A = Stream (Maybe A^1)
 ```
 
-## Time and Effects
+Linear streams guarantee that every event is processed exactly once - useful for resource management over time.
 
-Time interacts with effects via composition:
+## Comparison with Other Approaches
 
-```
-type TimeState A = State S (Stream A)
--- Stateful computation that also produces a stream of values
+| Approach | Model | Once Equivalent |
+|----------|-------|-----------------|
+| FRP (Elm, Reflex) | Signals + Events | Streams + IO |
+| Rx (RxJS, RxJava) | Observables | `IO (Stream A)` |
+| Async/await | Promises | `IO A` (single value) |
+| CSP (Go channels) | Channels | `Stream A` with effects |
 
-type EventLoop = Console * State * Halts -> Stream Event
--- An event loop: console I/O, state, can halt, produces events over time
-```
+## Categorical Perspective
 
-## Compilation of Time
-
-### Discrete Time → Event Loop
-
-```
--- Source
-main : Stream Action -> Stream Reaction
-main = fmap respond
-
--- Compiled (event loop)
-while (true) {
-    Action a = read_input();
-    Reaction r = respond(a);
-    write_output(r);
-}
-```
-
-### State Machine → State Variable
+Streams arise from the **final coalgebra** construction:
 
 ```
--- Source
-machine : Transition Int Int
-machine = \s -> (s * 2, s + 1)
+-- The functor
+F : Type -> Type
+F X = A * X
 
--- Compiled
-int state = 0;
-while (true) {
-    int output = state * 2;
-    emit(output);
-    state = state + 1;
-}
+-- Stream is the final coalgebra
+Stream A = νX. A * X
+
+-- Universal property: any coalgebra factors through Stream
+unfold : (S -> A * S) -> S -> Stream A
+```
+
+This means `Stream A` is the "largest" type satisfying the stream equation - it contains all possible infinite sequences.
+
+## Anamorphisms
+
+The dual of catamorphism (fold) is **anamorphism** (unfold):
+
+```
+-- Catamorphism: consume finite data
+cata : (F A -> A) -> Fix F -> A
+
+-- Anamorphism: produce infinite data
+ana : (A -> F A) -> A -> Cofix F
+```
+
+For streams:
+```
+-- Unfold is the anamorphism for streams
+unfold : (S -> A * S) -> S -> Stream A
+ana = unfold
 ```
 
 ## Summary
 
-| Time Concept | Once Encoding |
-|--------------|---------------|
-| Infinite sequence | `Stream = Fix (Along A)` |
-| State evolution | `Transition = S -> A * S` |
-| Discrete event | `Event` |
-| Step forward | `ana` (anamorphism) |
-| Collapse time | `cata` (catamorphism) |
-| Causality | Natural transformations on Stream |
+| Concept | Once Approach |
+|---------|---------------|
+| Infinite sequences | `Stream A = A * Stream A` |
+| Generation | `unfold : (S -> A * S) -> S -> Stream A` |
+| Observation | `head`, `tail` |
+| IO integration | `IO (Stream Event)` for event sources |
+| State machines | `S -> A * S` coalgebras |
+| Temporal operators | `scan`, `sample`, `hold`, `merge` |
+| Linearity | `Stream (A^1)` for resource safety |
 
-Time in Once is **coalgebraic** - it's about unfolding structure rather than folding it up. This matches intuition: time flows forward, producing new states and values as it goes.
+Time in Once is modeled coalgebraically. Streams represent ongoing processes, state machines capture stateful behavior, and the IO monad connects pure temporal abstractions to real-world event sources.
