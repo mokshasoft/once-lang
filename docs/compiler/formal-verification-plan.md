@@ -329,8 +329,26 @@ At that point, we can claim:
 
 After verification is complete:
 
-1. **Write blog post about findings** - Document the verification journey, lessons learned, and comparison with other verified compilers (CakeML, CompCert). Cover:
+1. **Write blog post series** - Document the verification journey for Haskell Weekly or similar. Cover:
    - Why CCC-based IR makes verification tractable (~40x less code than CakeML)
    - The "sugar + verified core" architecture pattern
    - Practical challenges encountered during formalization
    - Recommendations for other language implementers considering formal verification
+
+2. **Optimizer fixpoint iteration** - Run optimization passes repeatedly until no changes occur. Add CLI flag `--max-passes` to limit iterations. Needs decision on default behavior.
+
+3. **Catalog of categorical optimizations** - Document all CCC laws usable as optimizations, identify which are implemented, and track proof status. The generators are well-studied; we should leverage existing mathematical literature.
+
+4. **Tree shaking / dead code elimination** - When compiling, only include reachable functions. Mark entry points, trace call graph through both local project code and external dependencies, exclude all unreachable code from output.
+
+5. **External library FFI** - Enable calling external C libraries (e.g., OpenSSL) via interpretations before native Once implementations exist. Important for adoption.
+
+6. **Project file / dependency management** - Define a project file format for dependencies, build configuration, etc. Needs decision on naming (mathematical term?).
+
+7. **Development process with proofs** - Decide between staging area (unverified `compiler/stage/` that may diverge) vs incremental (keep proofs in sync with every change). Incremental likely better to avoid drift.
+
+8. **Self-hosting** - Write Once compiler in Once. Requires significant language features first (recursion schemes, etc.).
+
+9. **Program verification** - Enable proving properties about Once programs. Example: dining philosophers with starvation-freedom proof. Related to reducing TCB (GHC is large and has bugs).
+
+10. **Reduce trusted computing base** - Investigate alternatives to GHC in the TCB. Self-hosting Once could help here.
