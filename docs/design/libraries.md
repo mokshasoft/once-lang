@@ -104,11 +104,17 @@ data List A = Nil | Cons A (List A)
 fmap : (A -> B) -> List A -> List B
 fmap f = foldr (compose Cons (pair f id)) Nil
 
--- Either
-data Either E A = Left E | Right A
+-- Result (success-left convention, see D025)
+type Result A E = A + E
 
-fmap : (A -> B) -> Either E A -> Either E B
-fmap f = case Left (compose Right f)
+ok : A -> Result A E
+ok = inl
+
+err : E -> Result A E
+err = inr
+
+mapResult : (A -> B) -> Result A E -> Result B E
+mapResult f = case (ok . f) err
 ```
 
 ### Recursion Schemes
@@ -266,11 +272,9 @@ httpGet   : Url -> External (Response + Error)
 httpPost  : Url * Json -> External (Response + Error)
 
 -- JSON file operations (combines Derived JSON with file IO)
-readJsonFile : Path -> External (Json + Error)
+readJsonFile : Path -> External (Result Json Error)
 readJsonFile path =
-  case readFile path of
-    Left err -> Left err
-    Right str -> parseJson str  -- parseJson is from Derived
+  case (err, \str -> parseJson str) (readFile path)  -- parseJson is from Derived
 ```
 
 ## The Pure/Impure Boundary

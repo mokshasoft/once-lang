@@ -37,7 +37,7 @@ The primitive morphisms from which all Once programs are built:
 |------|-------------|
 | `Identity` | `Identity A = A` - The identity functor |
 | `Maybe` | `Maybe A = Unit + A` - Optional value |
-| `Either E` | `Either E A = E + A` - Error or value |
+| `Result` | `Result A E = A + E` - Success or error (see D025) |
 | `List` | `List A = Unit + (A * List A)` - Recursive list |
 | `Compose F G` | `Compose F G A = F (G A)` - Functor composition |
 | `Const B` | `Const B A = B` - Constant functor |

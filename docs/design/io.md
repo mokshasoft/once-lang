@@ -81,7 +81,7 @@ processData : String -> Result
 
 -- This CANNOT do IO - no External functor in the type
 -- This CANNOT mutate state - no State functor
--- This CANNOT fail - no Maybe/Either
+-- This CANNOT fail - no Maybe/Result
 ```
 
 If a function needs IO, it must say so:
