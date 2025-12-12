@@ -116,12 +116,44 @@ compile-x86 initial = ud2 ∷ []
 
 -- Curry: create closure
 -- Closure layout: [env (8 bytes), code_ptr (8 bytes)]
--- For curry f, the closure captures the current environment
--- and points to a thunk that applies f
-compile-x86 (curry f) =
-  -- Simplified: just return 0 for now
-  -- Full implementation requires generating a thunk
-  mov (reg rax) (imm 0) ∷ []
+-- For curry f, the closure captures the current environment (input a)
+-- and points to a thunk that, when called with b, computes f(a,b)
+--
+-- The code_ptr points to inline code that:
+--   1. Loads env (a) from r12
+--   2. Pairs it with argument (b) in rdi
+--   3. Executes compile-x86 f
+--
+-- We use a label to mark where the thunk code starts.
+-- The thunk is placed after the closure creation code.
+compile-x86 (curry {A} {B} {C} f) =
+  -- Allocate closure on stack
+  sub (reg rsp) (imm 16) ∷
+  -- Store environment (input a in rdi) as closure.env
+  mov (mem (base rsp)) (reg rdi) ∷
+  -- Store code pointer (address of thunk at label 300)
+  -- In a real implementation this would be the actual address
+  mov (mem (base+disp rsp 8)) (imm 300) ∷
+  -- Return closure pointer
+  mov (reg rax) (reg rsp) ∷
+  -- Jump over the thunk code
+  jmp 400 ∷
+  -- Thunk code (label 300): called via apply with b in rdi, env in r12
+  label 300 ∷
+  -- Allocate pair (a, b) on stack
+  sub (reg rsp) (imm 16) ∷
+  -- Store a (from r12) at [rsp]
+  mov (mem (base rsp)) (reg r12) ∷
+  -- Store b (from rdi) at [rsp+8]
+  mov (mem (base+disp rsp 8)) (reg rdi) ∷
+  -- Set rdi = pointer to pair
+  mov (reg rdi) (reg rsp) ∷
+  -- Execute f on the pair
+  compile-x86 f ++
+  -- Return (rax already has result)
+  ret ∷
+  -- End of thunk
+  label 400 ∷ []
 
 -- Apply: call closure
 -- Input is pair (closure, argument)
