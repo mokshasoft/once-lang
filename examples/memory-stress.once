@@ -1,8 +1,8 @@
 -- memory-stress.once: Stress test for MallocLike interface
 --
--- This example demonstrates heap allocation via @heap annotation.
--- When strings are used non-linearly (passed to multiple functions),
--- the compiler uses once_heap_string to allocate them on the heap.
+-- This example demonstrates runtime string handling via getenv.
+-- getenv returns a dynamic OnceString at runtime (not compile-time static),
+-- testing that the MallocLike interface handles non-static strings correctly.
 --
 -- Size Calculation for alloc:
 --   The size passed to alloc is simply the Int argument.
@@ -14,11 +14,13 @@
 --
 -- Build and run:
 --   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/memory-stress.once -o ../.build/memory-stress
---   ../.build/memory-stress
+--   TEST_VAR="dynamic string from environment" ../.build/memory-stress
 
 primitive println : String Utf8 -> Unit
+primitive getenv : String Utf8 -> String Utf8
 
--- Test: heap-allocated string (via @heap annotation)
--- This forces the string to be heap-allocated using once_heap_string
+-- Test: runtime string from environment variable
+-- getenv returns a String at runtime (not compile-time static)
+-- This tests that non-static strings work correctly
 main : Unit -> Unit
-main @heap = println "Memory stress test: heap-allocated string works!"
+main = println (getenv "TEST_VAR")
