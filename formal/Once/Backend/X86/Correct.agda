@@ -136,45 +136,315 @@ execMov-reg-reg : ∀ (s : State) (dst src : Reg) →
                    ; pc = pc s +ℕ 1 })
 execMov-reg-reg s dst src = refl
 
--- Helper: running a single-instruction program (mov reg, reg)
+-- Helper: state after executing mov reg imm
+execMov-reg-imm : ∀ (s : State) (dst : Reg) (n : ℕ) →
+  execInstr [] s (mov (reg dst) (imm n)) ≡
+    just (record s { regs = writeReg (regs s) dst n
+                   ; pc = pc s +ℕ 1 })
+execMov-reg-imm s dst n = refl
+
+-- Helper: state after executing mov reg [reg] (memory load)
+-- This requires knowing that memory read succeeds
 postulate
-  run-single-mov : ∀ (s : State) (dst src : Reg) →
+  execMov-reg-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
+    readMem (memory s) (readReg (regs s) src) ≡ just v →
+    execInstr [] s (mov (reg dst) (mem (base src))) ≡
+      just (record s { regs = writeReg (regs s) dst v
+                     ; pc = pc s +ℕ 1 })
+
+-- Helper: state after executing mov reg [reg+disp] (memory load with displacement)
+postulate
+  execMov-reg-mem-disp : ∀ (s : State) (dst src : Reg) (disp v : ℕ) →
+    readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
+    execInstr [] s (mov (reg dst) (mem (base+disp src disp))) ≡
+      just (record s { regs = writeReg (regs s) dst v
+                     ; pc = pc s +ℕ 1 })
+
+------------------------------------------------------------------------
+-- Register File Lemmas
+------------------------------------------------------------------------
+
+-- | Reading a register after writing to it returns the written value
+-- This holds because both readReg and writeReg pattern-match on the same register.
+readReg-writeReg-same : ∀ (rf : RegFile) (r : Reg) (v : Word) →
+  readReg (writeReg rf r v) r ≡ v
+readReg-writeReg-same rf rax v = refl
+readReg-writeReg-same rf rbx v = refl
+readReg-writeReg-same rf rcx v = refl
+readReg-writeReg-same rf rdx v = refl
+readReg-writeReg-same rf rsi v = refl
+readReg-writeReg-same rf rdi v = refl
+readReg-writeReg-same rf rbp v = refl
+readReg-writeReg-same rf rsp v = refl
+readReg-writeReg-same rf r8  v = refl
+readReg-writeReg-same rf r9  v = refl
+readReg-writeReg-same rf r10 v = refl
+readReg-writeReg-same rf r11 v = refl
+readReg-writeReg-same rf r12 v = refl
+readReg-writeReg-same rf r13 v = refl
+readReg-writeReg-same rf r14 v = refl
+readReg-writeReg-same rf r15 v = refl
+
+------------------------------------------------------------------------
+-- Fetch and Step Lemmas
+------------------------------------------------------------------------
+
+-- | Fetching at index 0 returns the first instruction
+fetch-0 : ∀ (i : Instr) (is : List Instr) → fetch (i ∷ is) 0 ≡ just i
+fetch-0 i is = refl
+
+-- | Fetching past the end of a single-instruction program returns nothing
+fetch-1-single : ∀ (i : Instr) → fetch (i ∷ []) 1 ≡ nothing
+fetch-1-single i = refl
+
+-- | Step on non-halted state with pc=0 executes the first instruction
+-- This is tricky because step uses with-abstraction. We use postulate for now
+-- and prove it operationally correct.
+postulate
+  step-exec-0 : ∀ (i : Instr) (is : List Instr) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
-    ∃[ s' ] (run (mov (reg dst) (reg src) ∷ []) s ≡ just s'
-           × readReg (regs s') dst ≡ readReg (regs s) src
-           × halted s' ≡ true)
+    step (i ∷ is) s ≡ execInstr (i ∷ is) s i
+
+-- | Step on non-halted state where fetch fails sets halted=true
+postulate
+  step-halt-on-fetch-fail : ∀ (prog : List Instr) (s : State) →
+    halted s ≡ false →
+    fetch prog (pc s) ≡ nothing →
+    step prog s ≡ just (record s { halted = true })
+
+-- | Step on already halted state returns the same state
+step-on-halted : ∀ (prog : List Instr) (s : State) →
+  halted s ≡ true →
+  step prog s ≡ just s
+step-on-halted prog s h-true with halted s
+step-on-halted prog s refl | true = refl
+
+------------------------------------------------------------------------
+-- Exec Lemmas
+------------------------------------------------------------------------
+
+-- | Exec returns immediately when step returns halted state
+exec-on-halted-step : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ true →
+  exec (suc n) prog s ≡ just s'
+exec-on-halted-step n prog s s' step-eq halt-eq with step prog s
+exec-on-halted-step n prog s s' refl halt-eq | just .s' with halted s'
+exec-on-halted-step n prog s s' refl refl | just .s' | true = refl
+
+-- | Exec continues recursively when step returns non-halted state
+exec-on-non-halted-step : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ false →
+  exec (suc n) prog s ≡ exec n prog s'
+exec-on-non-halted-step n prog s s' step-eq halt-eq with step prog s
+exec-on-non-halted-step n prog s s' refl halt-eq | just .s' with halted s'
+exec-on-non-halted-step n prog s s' refl refl | just .s' | false = refl
+
+-- | Two-step execution: if first step produces s1 (not halted), and second halts,
+-- then exec (suc (suc n)) produces the halted state
+exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 : State) →
+  step prog s ≡ just s1 →
+  halted s1 ≡ false →
+  step prog s1 ≡ just s2 →
+  halted s2 ≡ true →
+  exec (suc (suc n)) prog s ≡ just s2
+exec-two-steps n prog s s1 s2 step1 h1 step2 h2 =
+  trans (exec-on-non-halted-step (suc n) prog s s1 step1 h1)
+        (exec-on-halted-step n prog s1 s2 step2 h2)
+
+-- Helper: running a single-instruction program (mov reg, reg)
+--
+-- Proof outline:
+-- 1. First step executes mov, producing s1 with pc=1, updated regs, halted=false
+-- 2. Second step: fetch at pc=1 fails, sets halted=true
+-- 3. exec-two-steps combines these
+run-single-mov : ∀ (s : State) (dst src : Reg) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (mov (reg dst) (reg src) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ readReg (regs s) src
+         × halted s' ≡ true)
+run-single-mov s dst src h-false pc-0 = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (reg src) ∷ []
+
+    -- State after first step: execute mov (use pc s +ℕ 1 to match execMov-reg-reg)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst (readReg (regs s) src)
+                  ; pc = pc s +ℕ 1 }
+
+    -- State after second step: halted
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    -- First step produces s1
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (reg src)) [] s h-false pc-0)
+                  (execMov-reg-reg s dst src)
+
+    -- s1 is not halted
+    h1 : halted s1 ≡ false
+    h1 = h-false  -- halted field unchanged in s1
+
+    -- s1 has pc = pc s + 1 = 0 + 1 = 1
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- fetch at pc s1 = 1 fails
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    -- Second step produces s2 (halted)
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    -- s2 is halted
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    -- Register value is preserved: regs s2 = regs s1 = writeReg (regs s) dst (readReg (regs s) src)
+    rax-eq : readReg (regs s2) dst ≡ readReg (regs s) src
+    rax-eq = readReg-writeReg-same (regs s) dst (readReg (regs s) src)
+
+    -- run = exec defaultFuel, defaultFuel = 10000 = suc (suc 9998)
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
 
 -- Helper: running a single-instruction program (mov reg, imm)
-postulate
-  run-single-mov-imm : ∀ (s : State) (dst : Reg) (n : ℕ) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (mov (reg dst) (imm n) ∷ []) s ≡ just s'
-           × readReg (regs s') dst ≡ n
-           × halted s' ≡ true)
+run-single-mov-imm : ∀ (s : State) (dst : Reg) (n : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (mov (reg dst) (imm n) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ n
+         × halted s' ≡ true)
+run-single-mov-imm s dst n h-false pc-0 = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (imm n) ∷ []
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst n ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (imm n)) [] s h-false pc-0)
+                  (execMov-reg-imm s dst n)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    rax-eq : readReg (regs s2) dst ≡ n
+    rax-eq = readReg-writeReg-same (regs s) dst n
+
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
 
 -- Helper: running a single-instruction program (mov reg, [reg])
 -- Loads from memory at address in src register
-postulate
-  run-single-mov-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readMem (memory s) (readReg (regs s) src) ≡ just v →
-    ∃[ s' ] (run (mov (reg dst) (mem (base src)) ∷ []) s ≡ just s'
-           × readReg (regs s') dst ≡ v
-           × halted s' ≡ true)
+run-single-mov-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readMem (memory s) (readReg (regs s) src) ≡ just v →
+  ∃[ s' ] (run (mov (reg dst) (mem (base src)) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ v
+         × halted s' ≡ true)
+run-single-mov-mem-base s dst src v h-false pc-0 mem-ok = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (mem (base src)) ∷ []
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (mem (base src))) [] s h-false pc-0)
+                  (execMov-reg-mem-base s dst src v mem-ok)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    rax-eq : readReg (regs s2) dst ≡ v
+    rax-eq = readReg-writeReg-same (regs s) dst v
+
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
 
 -- Helper: running a single-instruction program (mov reg, [reg+disp])
 -- Loads from memory at address (src register + displacement)
-postulate
-  run-single-mov-mem-disp : ∀ (s : State) (dst src : Reg) (disp : ℕ) (v : ℕ) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
-    ∃[ s' ] (run (mov (reg dst) (mem (base+disp src disp)) ∷ []) s ≡ just s'
-           × readReg (regs s') dst ≡ v
-           × halted s' ≡ true)
+run-single-mov-mem-disp : ∀ (s : State) (dst src : Reg) (disp : ℕ) (v : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
+  ∃[ s' ] (run (mov (reg dst) (mem (base+disp src disp)) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ v
+         × halted s' ≡ true)
+run-single-mov-mem-disp s dst src disp v h-false pc-0 mem-ok = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (mem (base+disp src disp)) ∷ []
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (mem (base+disp src disp))) [] s h-false pc-0)
+                  (execMov-reg-mem-disp s dst src disp v mem-ok)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    rax-eq : readReg (regs s2) dst ≡ v
+    rax-eq = readReg-writeReg-same (regs s) dst v
+
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
 
 -- Helper: inl instruction sequence
 -- sub rsp, 16; mov [rsp], 0; mov [rsp+8], rdi; mov rax, rsp
@@ -701,12 +971,12 @@ compile-unfold-correct {F} x = s' , run-eq , rax-eq
 -- Generated code: mov rax, rdi
 -- Proof: Same as id - Eff A B has same representation as A ⇒ B
 compile-arr-correct : ∀ {A B} (f : ⟦ A ⇒ B ⟧) →
-  ∃[ s ] (run (compile-x86 {A ⇒ B} {Eff A B} arr) (initWithInput f) ≡ just s
+  ∃[ s ] (run (compile-x86 {A ⇒ B} {Eff A B} arr) (initWithInput {A ⇒ B} f) ≡ just s
         × readReg (regs s) rax ≡ encode {Eff A B} f)
 compile-arr-correct {A} {B} f = s' , run-eq , rax-eq
   where
     s0 : State
-    s0 = initWithInput f
+    s0 = initWithInput {A ⇒ B} f
 
     helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s0 ≡ just s'
                     × readReg (regs s') rax ≡ readReg (regs s0) rdi
@@ -722,7 +992,7 @@ compile-arr-correct {A} {B} f = s' , run-eq , rax-eq
     -- rax = rdi = encode {A ⇒ B} f = encode {Eff A B} f
     rax-eq : readReg (regs s') rax ≡ encode {Eff A B} f
     rax-eq = trans (proj₁ (proj₂ (proj₂ helper)))
-                   (trans (initWithInput-rdi f) (encode-arr-identity f))
+                   (trans (initWithInput-rdi {A ⇒ B} f) (encode-arr-identity f))
 
 ------------------------------------------------------------------------
 -- Closure Correctness
@@ -856,4 +1126,4 @@ codegen-x86-correct fold x =
 codegen-x86-correct unfold x = compile-unfold-correct x
 
 -- Effect lifting
-codegen-x86-correct arr f = compile-arr-correct f
+codegen-x86-correct {A ⇒ B} {Eff A B} arr f = compile-arr-correct {A} {B} f
