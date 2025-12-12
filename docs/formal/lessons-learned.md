@@ -4,19 +4,7 @@ Practical lessons from formalizing the Once compiler in Agda.
 
 ## Trusted Computing Base (TCB)
 
-### What is proven
-
-The following properties are fully proven in Agda:
-
-- **Categorical laws** (`Once/Category/Laws.agda`): Identity, associativity, product/coproduct universals, exponential laws
-- **Type soundness** (`Once/TypeSystem/Soundness.agda`): Progress, preservation, canonical forms
-- **Elaboration correctness** (`Once/Surface/Correct.agda`): `elaborate-correct` theorem showing surface syntax elaboration preserves semantics
-
-### What is postulated
-
-| Postulate | Location | Justification |
-|-----------|----------|---------------|
-| `extensionality` | `Once/Surface/Correct.agda:31` | Function extensionality |
+For a complete list of what is proven and what is postulated, see [What Is Proven](what-is-proven.md).
 
 ### On function extensionality and extraction
 
@@ -221,3 +209,133 @@ distribute = apply ∘ ⟨ [ curry (inl ∘ swap) , curry (inr ∘ swap) ] ∘ f
 ```
 
 This avoids the need for a primitive distribution combinator.
+
+## Code Generator Correctness Proofs
+
+### Layered postulate strategy
+
+When proving complex theorems about machine execution, introduce helper postulates that capture key execution properties, then build actual proofs on top of them:
+
+```agda
+-- Layer 1: Single-instruction execution helpers (postulated)
+postulate
+  run-single-mov : ∀ (s : State) (dst src : Reg) →
+    halted s ≡ false → pc s ≡ 0 →
+    ∃[ s' ] (run (mov (reg dst) (reg src) ∷ []) s ≡ just s'
+           × readReg (regs s') dst ≡ readReg (regs s) src
+           × halted s' ≡ true)
+
+-- Layer 2: Multi-instruction sequence helpers (postulated, use layer 1)
+postulate
+  run-inl-seq : ∀ {A B} (s : State) → ... →
+    ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s' × ...)
+
+-- Layer 3: Actual proofs (use layers 1-2)
+compile-inl-correct : ∀ {A B} (a : ⟦ A ⟧) → ...
+compile-inl-correct a = ... run-inl-seq ... encode-inl-construct ...
+```
+
+This separates "what needs to be true about execution" from "how we compose those facts".
+
+### Encoding axioms bridge semantics and machine state
+
+When bridging abstract semantics with concrete machine representation, encoding axioms form the interface:
+
+```agda
+postulate
+  -- Deconstruction: reading from encoded values
+  encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode (a , b)) ≡ just (encode a)
+
+  -- Construction: building encoded values from memory layout
+  encode-pair-construct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (p : Word) (m : Memory) →
+    readMem m p ≡ just (encode a) →
+    readMem m (p + 8) ≡ just (encode b) →
+    p ≡ encode (a , b)
+```
+
+Construction axioms are essential for stack-allocated values (pairs, sums) where code builds the encoding rather than receiving it.
+
+### Tuple projection requires careful counting
+
+When dealing with existential witnesses with many components, projection requires careful `proj₂` chains:
+
+```agda
+-- Helper returns 5-tuple: (s', (run-eq, (halt-eq, (rax-eq, (tag-eq, val-eq)))))
+helper : ∃[ s' ] (run ... ≡ just s'
+                × halted s' ≡ true
+                × readReg (regs s') rax ≡ ...
+                × readMem ... ≡ just 0
+                × readMem ... ≡ just ...)
+
+-- Extracting components:
+s' = proj₁ helper
+run-eq = proj₁ (proj₂ helper)
+halt-eq = proj₁ (proj₂ (proj₂ helper))
+rax-eq = proj₁ (proj₂ (proj₂ (proj₂ helper)))
+tag-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+val-eq = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+```
+
+### Provide explicit type arguments to avoid metavariables
+
+When pattern matching on constructors with implicit type arguments, provide explicit annotations:
+
+```agda
+-- BAD: Unsolved metavariables
+codegen-x86-correct (curry f) x = curry-correct f x
+  where postulate curry-correct : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A ⟧) → ...
+
+-- GOOD: Explicit type annotations
+codegen-x86-correct {A} {B ⇒ C} (curry {A} {B} {C} f) x = curry-correct f x
+  where postulate curry-correct : (f : IR (A * B) C) (x : ⟦ A ⟧) → ...
+```
+
+### Case split on sum types in proofs
+
+For theorems about case analysis, case split on the input in the proof:
+
+```agda
+compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧ ⊎ ⟦ B ⟧) → ...
+
+-- Case split matches semantic case analysis
+compile-case-correct f g (inj₁ a) = ... run-case-inl ...
+compile-case-correct f g (inj₂ b) = ... run-case-inr ...
+```
+
+This mirrors the structure of `eval [ f , g ]` which pattern matches on the sum.
+
+### Main theorem order matters
+
+The main correctness theorem must come after all per-generator theorems:
+
+```agda
+-- Per-generator proofs first
+compile-id-correct : ...
+compile-fst-correct : ...
+-- ... all other generator proofs ...
+
+-- Main theorem last (uses all generator proofs)
+codegen-x86-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) → ...
+codegen-x86-correct id x = compile-id-correct x
+codegen-x86-correct fst (a , b) = compile-fst-correct a b
+-- ... case for each IR constructor ...
+```
+
+### Handle special IR cases explicitly
+
+Some IR constructors need special handling in the main theorem:
+
+```agda
+-- Initial: no inputs exist (Void has no inhabitants)
+codegen-x86-correct initial ()  -- absurd pattern
+
+-- Terminal: need to connect rax=0 with encode tt
+codegen-x86-correct terminal x =
+  let (s , run-eq , rax-0) = compile-terminal-correct x
+  in s , run-eq , trans rax-0 (sym encode-unit)
+
+-- Curry/apply: remain postulated (future work)
+codegen-x86-correct (curry f) x = curry-correct f x
+  where postulate curry-correct : ...
+```

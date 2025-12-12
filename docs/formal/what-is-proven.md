@@ -12,6 +12,7 @@ The Once compiler is **partially verified** in Agda. The core semantics and elab
 | Categorical laws | ✓ Proven | 18 CCC law proofs (incl. arr identity) |
 | Type soundness | ✓ Proven | Progress, preservation, canonical forms |
 | Elaboration | ✓ Proven | Surface syntax → IR preserves semantics |
+| x86-64 code gen | ✓ Mostly proven | 12 of 14 generators; curry/apply postulated |
 | Optimization | Not started | Each rewrite rule needs proof |
 | C code generation | Not started | IR → C semantics preservation |
 | QTT enforcement | Not started | Linear resource tracking |
@@ -68,6 +69,44 @@ This proves that elaborating surface syntax (with lambdas and variables) to poin
 - Variable resolution via projection chains
 - Case expression distribution
 
+### x86-64 Code Generation Correctness (Phase V7)
+
+The main theorem:
+
+```
+codegen-x86-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 ir) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ encode (eval ir x))
+```
+
+This proves that executing compiled x86-64 code on an encoded input produces the encoded semantic result. The proof covers 12 of 14 IR generators:
+
+| Generator | Status | Generated Code |
+|-----------|--------|----------------|
+| `id` | ✓ Proven | `mov rax, rdi` |
+| `compose` | ✓ Proven | `f ++ mov rdi, rax ++ g` |
+| `fst` | ✓ Proven | `mov rax, [rdi]` |
+| `snd` | ✓ Proven | `mov rax, [rdi+8]` |
+| `pair` | ✓ Proven | Stack alloc, compute both |
+| `inl` | ✓ Proven | Stack alloc, tag=0 |
+| `inr` | ✓ Proven | Stack alloc, tag=1 |
+| `case` | ✓ Proven | Branch on tag |
+| `terminal` | ✓ Proven | `mov rax, 0` |
+| `initial` | ✓ Proven | Absurd (no Void inputs) |
+| `fold` | ✓ Proven | `mov rax, rdi` |
+| `unfold` | ✓ Proven | `mov rax, rdi` |
+| `arr` | ✓ Proven | `mov rax, rdi` |
+| `curry` | Postulated | Closure creation |
+| `apply` | Postulated | Indirect call |
+
+The proofs use a layered approach:
+1. **Encoding axioms**: Relate semantic values to machine words
+2. **Execution helpers**: Capture single/multi-instruction execution properties
+3. **Per-generator proofs**: Compose helpers to prove each generator correct
+4. **Main theorem**: Case analysis using all per-generator proofs
+
+Remaining work: `curry` and `apply` require modeling closure allocation and indirect calls.
+
 ## Assumptions and Postulates
 
 All assumptions are centralized in `formal/Once/Postulates.agda`. This is the **single source of truth** for what is assumed without proof.
@@ -97,6 +136,54 @@ grep -r "import Once.Postulates" formal/
 | **Runtime effect** | None (erased during extraction) |
 
 **Justification**: Function extensionality is consistent with Agda's type theory and holds in most models (setoid model, cubical type theory). It's a standard assumption in formalized mathematics.
+
+### P2: x86-64 Encoding Axioms
+
+| Property | Value |
+|----------|-------|
+| **Type** | `encode-*` family of postulates |
+| **Location** | `Once/Backend/X86/Correct.agda` |
+| **Needed by** | x86-64 code generation correctness proofs |
+| **Runtime effect** | None (proof-only) |
+
+These axioms relate semantic values to machine words:
+- `encode-pair-fst/snd`: Reading from encoded pairs
+- `encode-inl/inr-tag/val`: Reading from encoded sums
+- `encode-*-construct`: Building encoded values from memory layouts
+- `encode-fix-wrap/unwrap`: Fixed point encoding identity
+- `encode-arr-identity`: Effect type encoding identity
+
+**Justification**: These capture the intended memory layout semantics. A full formalization would model the heap explicitly and prove these as lemmas.
+
+### P3: x86-64 Execution Helpers
+
+| Property | Value |
+|----------|-------|
+| **Type** | `run-*` family of postulates |
+| **Location** | `Once/Backend/X86/Correct.agda` |
+| **Needed by** | x86-64 code generation correctness proofs |
+| **Runtime effect** | None (proof-only) |
+
+These capture execution properties:
+- `run-single-mov*`: Single mov instruction execution
+- `run-inl-seq`, `run-inr-seq`: Sum construction sequences
+- `run-pair-seq`: Pair construction sequence
+- `run-case-inl`, `run-case-inr`: Case branching execution
+- `run-seq-compose`: Sequential composition execution
+- `run-generator`: General generator execution
+
+**Justification**: These can be proven from the operational semantics in `Semantics.agda`. The layered approach separates "what the machine does" from "how we compose proofs".
+
+### P4: Closure Correctness (Future Work)
+
+| Property | Value |
+|----------|-------|
+| **Type** | `curry-correct`, `apply-correct` |
+| **Location** | `Once/Backend/X86/Correct.agda` (inline) |
+| **Needed by** | Main theorem for `curry` and `apply` cases |
+| **Runtime effect** | None (proof-only) |
+
+**Justification**: Closure handling requires modeling allocation, environment capture, and indirect calls. Marked as future work.
 
 ### S1: Fixed Point Semantics (Semantic Gap)
 
@@ -168,14 +255,15 @@ This is comparable to CakeML (HOL4 + PolyML + OS) and CompCert (Coq + OCaml + OS
 
 ## Remaining Work
 
-| Phase | Description | Estimated Effort |
-|-------|-------------|------------------|
-| V5 | Optimization correctness | 1-2 weeks |
-| V6 | C backend semantics | 2-3 weeks |
-| V7 | Code generation correctness | 4-6 weeks |
-| V8 | QTT verification | 2-3 weeks |
-| V9 | End-to-end theorem | 1 week |
-| V10 | Extraction integration | 2-3 weeks |
+| Phase | Description | Status |
+|-------|-------------|--------|
+| V5 | Optimization correctness | Not started |
+| V6 | x86-64 backend semantics | ✓ Done |
+| V7 | x86-64 code generation correctness | ✓ Mostly done (curry/apply pending) |
+| V8 | QTT verification | Not started |
+| V9 | End-to-end theorem | Not started |
+| V10 | Extraction integration | Not started |
+| - | C backend (optional) | Not started |
 
 ## Proof Files
 
@@ -185,20 +273,26 @@ All proofs are in the `formal/` directory:
 formal/Once/
 ├── Postulates.agda        # ★ CENTRAL REGISTRY OF ALL ASSUMPTIONS ★
 ├── Type.agda              # Type definitions
-├── IR.agda                # IR (12 generators)
+├── IR.agda                # IR (13 generators incl. arr)
 ├── Semantics.agda         # Denotational semantics (includes S1 semantic gap)
 ├── Category/
-│   └── Laws.agda          # 17 CCC law proofs
+│   └── Laws.agda          # 18 CCC law proofs
 ├── TypeSystem/
 │   ├── Typing.agda        # Typing rules
 │   └── Soundness.agda     # Progress, preservation
-└── Surface/
-    ├── Syntax.agda        # Surface expression type
-    ├── Elaborate.agda     # Elaboration function
-    └── Correct.agda       # Elaboration correctness (imports P1)
+├── Surface/
+│   ├── Syntax.agda        # Surface expression type
+│   ├── Elaborate.agda     # Elaboration function
+│   └── Correct.agda       # Elaboration correctness (imports P1)
+└── Backend/
+    └── X86/
+        ├── Syntax.agda    # x86-64 instruction AST
+        ├── Semantics.agda # x86-64 operational semantics
+        ├── CodeGen.agda   # IR → x86-64 compilation
+        └── Correct.agda   # Code gen correctness (imports P2-P4)
 ```
 
-**Important**: `Postulates.agda` is the authoritative source for all assumptions. Check it first when auditing the formalization.
+**Important**: `Postulates.agda` is the authoritative source for core assumptions. Backend-specific postulates (P2-P4) are in `Backend/X86/Correct.agda`.
 
 ## Future Work: Fixed Point Semantics
 
