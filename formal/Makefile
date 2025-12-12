@@ -17,6 +17,8 @@ ELABORATE := Once/Surface/Elaborate.agda
 CORRECT := Once/Surface/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
+X86_CODEGEN := Once/Backend/X86/CodeGen.agda
+X86_CORRECT := Once/Backend/X86/Correct.agda
 
 # Agda command: discovers standard library path from Nix store
 # The library file is created dynamically to avoid hardcoded paths
@@ -47,6 +49,8 @@ x86:
 	@echo "Type-checking x86-64 backend..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
 clean:
 	rm -rf _build
