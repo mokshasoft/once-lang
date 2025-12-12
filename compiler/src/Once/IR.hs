@@ -43,6 +43,7 @@ data IR
   -- Variables and primitives (for surface syntax elaboration)
   | Var Name                   -- ^ Variable reference (function call)
   | LocalVar Name              -- ^ Local variable reference (from let binding)
+  | FunRef Name                -- ^ Function reference (pointer to function, not a call)
   | Prim Name Type Type        -- ^ Primitive operation: name, input type, output type
 
   -- Literals

@@ -245,6 +245,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'  -- Local variable: just use the name
+      Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit s
       -- Recursive type operations (identity at runtime)
@@ -373,6 +374,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'
+      Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit alloc s
       Once.IR.Fold _ -> v

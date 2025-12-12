@@ -1,16 +1,23 @@
--- threads.once: Threading interface demonstration
+-- threads.once: Threading demonstration
 --
--- This file demonstrates the threading primitive declarations.
--- Actual threading requires curry/apply to pass function references,
--- which is planned for a future phase. See implementation-plan.md.
+-- Shows how to spawn threads in Once using raw Linux syscalls.
+-- Does NOT use pthread - uses clone/futex directly.
 --
--- Threading primitives (interface only - not yet runnable):
--- primitive thread_spawn : (Unit -> Unit) -> Buffer
--- primitive thread_join : Buffer -> Unit
--- primitive thread_detach : (Unit -> Unit) -> Unit
+-- Build and run:
+--   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/threads.once -o ../.build/threads
+--   ../.build/threads
 
--- For now, this is a placeholder that just prints a message
+-- Threading primitives (from interpretation layer)
+primitive thread_spawn : (Unit -> Unit) -> Buffer
+primitive thread_join : Buffer -> Unit
 primitive println : String Utf8 -> Unit
 
+-- Worker function that runs in a separate thread
+worker : Unit -> Unit
+worker = println "Hello from worker thread!"
+
+-- Main spawns a thread, waits for it, then prints completion
 main : Unit -> Unit
-main = println "Threading primitives require curry/apply (see implementation-plan.md)"
+main = let h = thread_spawn worker
+       in let _ = thread_join h
+          in println "Worker thread completed!"

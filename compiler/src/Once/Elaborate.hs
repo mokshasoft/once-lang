@@ -132,13 +132,34 @@ elaborateApp locals f arg = case f of
     -- Compose: (inner result) applied to arg
     Right $ Compose innerResult arg'
 
-  -- Generator or function applied to argument (e.g., fst x, thread_a x)
+  -- Generator or function applied to argument (e.g., fst x, thread_spawn worker)
   EVar name -> do
     f' <- elaborateExpr' locals (EVar name)
-    arg' <- elaborateExpr' locals arg
+    -- Check if arg is a function being passed as a value (not called)
+    -- This happens when arg is a variable name that's not a generator or local
+    arg' <- elaborateArg locals arg
     Right $ Compose f' arg'
 
   _ -> Left $ UnsupportedExpr "Complex application not yet supported"
+
+-- | Elaborate an argument expression
+-- If the argument is a plain variable (not a generator or local), it's likely
+-- a function being passed as a value, so we use FunRef instead of Var.
+elaborateArg :: Set Name -> Expr -> Either ElabError IR
+elaborateArg locals expr = case expr of
+  -- If it's a variable that's not a generator and not a local, treat as function reference
+  EVar name
+    | not (isGenerator name) && not (Set.member name locals) ->
+        Right $ FunRef name
+  -- Otherwise, elaborate normally
+  _ -> elaborateExpr' locals expr
+
+-- | Check if a name is a generator (built-in categorical primitive)
+isGenerator :: Name -> Bool
+isGenerator name = name `elem`
+  [ "id", "compose", "fst", "snd", "pair", "inl", "inr", "case"
+  , "terminal", "initial", "curry", "apply", "fold", "unfold"
+  ]
 
 -- | Placeholder type for type inference to fill in later
 placeholder :: Type

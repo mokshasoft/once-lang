@@ -163,6 +163,8 @@ generateExpr ir var = case ir of
 
   LocalVar n -> n  -- Local variable: just use the name
 
+  FunRef n -> "(void*)once_" <> n  -- Function reference (pointer, not call)
+
   Prim n _ _ -> "once_" <> n <> "(" <> var <> ")"
 
   StringLit s ->

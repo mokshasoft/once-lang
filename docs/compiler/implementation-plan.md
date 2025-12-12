@@ -1059,15 +1059,35 @@ After Phase 11 (core Agda verification), additional verification work:
 - Add cooperative multitasking abstractions to Derived stratum
 
 **Threading (Preemptive)**
-- Thread.once provides pthread-like interface without linking pthread
-- Built on raw Linux syscalls: clone, futex, mmap
-- Categorical perspective on threading operations:
-  - `parallel : Thread A -> Thread B -> Thread (A * B)` - product (fork-join)
-  - `race : Thread A -> Thread A -> Thread A` - coproduct (first to complete)
-  - `sequence : Thread A -> (A -> Thread B) -> Thread B` - monadic bind
-  - `spawn : Thread Unit -> Unit` - fire-and-forget (no result)
-- Synchronization primitives: mutex, condition variables, atomics
-- See Strata/Interpretations/Linux/Thread.once for interface
+- Thread.c provides threading without pthread, using raw Linux syscalls
+- Built on clone syscall with inline assembly (x86_64), futex, mmap
+- See D031 for implementation details
+
+Current limitations (to address):
+- **x86_64 only**: Inline assembly is architecture-specific
+- **Untyped handle**: `Buffer` instead of `Thread A`
+- **No return values**: `(Unit -> Unit)` instead of `(Unit -> A)`
+- **No thread pool**: Each spawn allocates fresh 4MB stack
+
+Better abstraction (future work):
+```once
+-- Typed thread handles
+Thread : Type -> Type
+
+-- Spawn returns typed handle
+thread_spawn : (Unit -> A) -> Thread A
+thread_join : Thread A -> A
+
+-- Categorical combinators
+parallel : Thread A -> Thread B -> Thread (A * B)  -- product
+race : Thread A -> Thread A -> Thread A            -- coproduct
+sequence : Thread A -> (A -> Thread B) -> Thread B -- bind
+```
+
+This requires type aliases or higher-kinded types to express `Thread : Type -> Type`.
+
+- Synchronization primitives: mutex, condition variables, atomics (implemented)
+- See Strata/Interpretations/Linux/Thread.once for current interface
 
 **Implementors Guide**
 - Guide for implementing Once on new targets

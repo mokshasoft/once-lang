@@ -1360,3 +1360,154 @@ No changes to the Agda formalization are required because:
 1. `let` doesn't add new expressive power - it's pure convenience
 2. The desugared form (`app (lam e2) e1`) is already covered
 3. The `elaborate-correct` theorem proves the elaboration preserves semantics
+
+---
+
+## D030: Function References (FunRef) and Threading
+
+**Date**: 2025-12-12
+**Status**: Accepted
+
+### Context
+To pass functions as arguments to primitives like `thread_spawn`, we needed a way to generate function pointers in C rather than function calls. The expression `thread_spawn worker` should pass `worker` as a value, not call it.
+
+### Decision
+Add `FunRef` IR node for function references.
+
+**IR change**:
+```haskell
+| FunRef Name  -- Function reference (pointer, not call)
+```
+
+**Elaboration heuristic**: When a variable is passed as an argument and it's not a generator or local binding, use `FunRef` instead of `Var`.
+
+**C codegen**:
+- `Var "f"` → `once_f(x)` (function call)
+- `FunRef "f"` → `(void*)once_f` (function pointer)
+
+### Verification Status
+
+**FunRef does NOT require changes to the Agda formalization** because:
+
+1. The Agda IR only models the pure categorical generators (id, compose, fst, snd, pair, inl, inr, case, terminal, initial, curry, apply, fold, unfold)
+
+2. `Var`, `LocalVar`, `FunRef`, `Prim`, `StringLit`, and `Let` are **implementation-level constructs** in the Haskell IR that don't appear in the formal model
+
+3. These nodes handle name resolution, primitives, and syntactic sugar - concerns outside the pure categorical semantics
+
+The formal guarantees apply to the categorical core. Implementation mechanisms like `FunRef` are in the "interpretation layer" - trusted but not formally verified.
+
+### Consequences
+- Functions can be passed to primitives like `thread_spawn worker`
+- Clear separation: Agda proves categorical core, C codegen is trusted
+- Simple heuristic-based elaboration (may need refinement for complex cases)
+
+---
+
+## D031: Raw Syscall Threading (x86_64)
+
+**Date**: 2025-12-12
+**Status**: Accepted
+
+### Context
+The Thread.c implementation needed to spawn threads using the `clone` syscall. The naive approach (using raw `syscall(SYS_clone, ...)`) failed because clone returns in both parent and child at the same instruction, causing stack corruption when both try to execute.
+
+### Options Considered
+
+1. **Use glibc clone() wrapper** - Works but adds glibc dependency
+2. **Use pthread** - Works but adds pthread dependency
+3. **Raw syscall with inline assembly** - Pure syscall interface, x86_64 specific
+
+### Decision
+**Raw syscall with inline assembly** (option 3).
+
+The key insight is that glibc's `clone()` wrapper:
+1. Pushes function pointer and argument onto the NEW stack before clone
+2. After clone returns 0 (in child), pops and calls the function
+3. Child exits via syscall, never returns to C code
+
+We implement this directly:
+
+```c
+static pid_t raw_clone_with_fn(void (*fn)(void*), void* stack_top, int flags, void* arg) {
+    pid_t ret;
+    void** sp = (void**)stack_top;
+    *--sp = arg;        /* Push arg */
+    *--sp = (void*)fn;  /* Push fn */
+
+    __asm__ volatile(
+        "syscall\n\t"
+        "test %%rax, %%rax\n\t"
+        "jnz 1f\n\t"
+        /* Child: pop fn, pop arg, call fn(arg), exit */
+        "pop %%rax\n\t"
+        "pop %%rdi\n\t"
+        "call *%%rax\n\t"
+        "mov $60, %%eax\n\t"
+        "xor %%edi, %%edi\n\t"
+        "syscall\n\t"
+        "1:\n\t"
+        : "=a"(ret)
+        : "a"(SYS_clone), "D"(flags), "S"(sp), ...
+    );
+    return ret;
+}
+```
+
+### Rationale
+- **Keeps impure code at the edge** - Only Thread.c has assembly, rest is pure C
+- **No library dependencies** - Just Linux syscalls
+- **Educational** - Shows how threading actually works
+
+### Limitations
+
+1. **x86_64 only** - The inline assembly is architecture-specific. Other architectures (ARM, RISC-V) would need their own implementations.
+
+2. **No thread pool** - Each spawn allocates a fresh 4MB stack. For many short-lived threads, this is inefficient.
+
+3. **Simplified interface** - Current API:
+   ```once
+   thread_spawn : (Unit -> Unit) -> Buffer
+   thread_join : Buffer -> Unit
+   ```
+
+   Limitations:
+   - Threads can only return Unit (no return values)
+   - Buffer is untyped (should be `Thread` type)
+   - No error handling for spawn failures
+
+### Future Improvements
+
+A richer threading abstraction could use categorical structure:
+
+```once
+-- Typed thread handles
+Thread : Type -> Type
+
+-- Fork returns result
+thread_spawn : (Unit -> A) -> Thread A
+thread_join : Thread A -> A
+
+-- Categorical combinators
+parallel : Thread A -> Thread B -> Thread (A * B)  -- product
+race : Thread A -> Thread A -> Thread A            -- coproduct
+```
+
+This would require:
+- Type aliases or higher-kinded types
+- More sophisticated codegen for Thread type
+
+### Performance
+
+Current implementation is comparable to pthread:
+- **Stack**: 4MB mmap (same as pthread default)
+- **Clone**: Single syscall + assembly trampoline
+- **Sync**: Futex-based (kernel-assisted, efficient)
+
+The main overhead is stack allocation per thread. A thread pool would amortize this.
+
+### Consequences
+- Threading works on x86_64 Linux
+- Other architectures need separate implementations
+- Simple but limited API (Unit -> Unit functions only)
+- Clear path to richer abstractions when needed
