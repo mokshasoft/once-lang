@@ -269,3 +269,37 @@ eval-unfold-fold x = refl
 -- 2. The universal properties of initial algebras / final coalgebras
 -- 3. These are beyond the scope of the basic categorical laws
 --    but the fold/unfold isomorphism is the foundation
+
+------------------------------------------------------------------------
+-- Arrow Laws (D032: Effect System)
+------------------------------------------------------------------------
+--
+-- The arr combinator lifts pure functions to effectful morphisms.
+-- arr : (A ⇒ B) → Eff A B
+--
+-- At runtime, Eff A B is represented the same as A ⇒ B (a function).
+-- The distinction is purely for effect tracking at the type level.
+--
+-- Arrow axioms (from Hughes' "Generalising Monads to Arrows"):
+-- In the context of Once, arr is essentially identity on function values.
+--
+------------------------------------------------------------------------
+
+-- | arr is semantically identity
+--
+-- Lifting a pure function just returns it unchanged, since Eff A B
+-- is semantically the same as A ⇒ B.
+--
+eval-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧)
+                  → eval arr f ≡ f
+eval-arr-identity f = refl
+
+-- | arr ∘ curry ≡ curry with effectful codomain (conceptually)
+--
+-- This captures that currying followed by arr produces an effectful
+-- curried function. The semantics are the same because effects are
+-- purely a type-level distinction.
+--
+-- Note: The exact formulation depends on how effectful composition
+-- is defined. For Once's simple model where Eff = function at runtime,
+-- this is trivially true.

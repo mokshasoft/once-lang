@@ -8,8 +8,8 @@ The Once compiler is **partially verified** in Agda. The core semantics and elab
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Core IR semantics | ✓ Proven | 12 generators, denotational semantics |
-| Categorical laws | ✓ Proven | 17 CCC law proofs |
+| Core IR semantics | ✓ Proven | 13 generators (incl. arr for effects), denotational semantics |
+| Categorical laws | ✓ Proven | 18 CCC law proofs (incl. arr identity) |
 | Type soundness | ✓ Proven | Progress, preservation, canonical forms |
 | Elaboration | ✓ Proven | Surface syntax → IR preserves semantics |
 | Optimization | Not started | Each rewrite rule needs proof |
@@ -20,15 +20,17 @@ The Once compiler is **partially verified** in Agda. The core semantics and elab
 
 ### Core IR Semantics (Phase V1)
 
-The 12 categorical generators and their denotational semantics are defined in Agda:
+The 13 categorical generators and their denotational semantics are defined in Agda:
 
-- `Type.agda` - Types: Unit, Void, products, sums, functions
-- `IR.agda` - The 12 generators as a GADT
+- `Type.agda` - Types: Unit, Void, products, sums, functions, Eff (effects)
+- `IR.agda` - The 13 generators as a GADT (including `arr` for effect lifting)
 - `Semantics.agda` - Evaluation function `eval : IR A B → ⟦A⟧ → ⟦B⟧`
+
+Note: The effect type `Eff A B` has the same semantics as `A ⇒ B` (pure functions). This is intentional - effects are a compile-time discipline, not a runtime distinction. See D032 in the decision log.
 
 ### Categorical Laws (Phase V2)
 
-17 theorems proving the IR satisfies cartesian closed category laws:
+18 theorems proving the IR satisfies cartesian closed category laws (including arrow law for `arr`):
 
 | Law | Theorem |
 |-----|---------|
@@ -42,6 +44,7 @@ The 12 categorical generators and their denotational semantics are defined in Ag
 | Case-inr | `eval ([f,g] ∘ inr) x ≡ eval g x` |
 | Case-eta | `eval [inl,inr] x ≡ x` |
 | Curry-apply | `eval (apply ∘ ⟨curry f ∘ fst, snd⟩) x ≡ eval f x` |
+| Arr-identity | `eval arr f ≡ f` (D032: arr is semantically identity) |
 | ... | (and 7 more) |
 
 ### Type Soundness (Phase V3)

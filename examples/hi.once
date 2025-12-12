@@ -9,7 +9,7 @@
 --   once build --exe --interp=linux examples/hi.once -o hi
 --   ./hi && echo "Success!"
 
-primitive exit0 : Unit -> Unit
+primitive exit0 : Eff Unit Unit
 
-main : Unit -> Unit
+main : IO Unit
 main = exit0

@@ -8,16 +8,16 @@
 --   ../.build/threads
 
 -- Threading primitives (from interpretation layer)
-primitive thread_spawn : (Unit -> Unit) -> Buffer
-primitive thread_join : Buffer -> Unit
-primitive println : String Utf8 -> Unit
+primitive thread_spawn : Eff (Eff Unit Unit) Buffer
+primitive thread_join : Eff Buffer Unit
+primitive println : Eff (String Utf8) Unit
 
 -- Worker function that runs in a separate thread
-worker : Unit -> Unit
-worker = println "Hello from worker thread!"
+worker : Eff Unit Unit
+worker = compose println "Hello from worker thread!"
 
 -- Main spawns a thread, waits for it, then prints completion
-main : Unit -> Unit
+main : IO Unit
 main = let h = thread_spawn worker
        in let _ = thread_join h
-          in println "Worker thread completed!"
+          in compose println "Worker thread completed!"

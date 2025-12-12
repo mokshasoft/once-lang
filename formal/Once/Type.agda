@@ -16,7 +16,8 @@ open import Level using (Level)
 -- - Void is the initial object (0)
 -- - _*_ is the categorical product (×)
 -- - _+_ is the categorical coproduct (+)
--- - _⇒_ is the exponential object (function space)
+-- - _⇒_ is the exponential object (function space, pure)
+-- - Eff is the effectful morphism (D032: arrow-based effects)
 -- - Fix is the fixed point (for recursive types)
 --
 data Type : Set where
@@ -24,9 +25,15 @@ data Type : Set where
   Void  : Type                    -- Initial object
   _*_   : Type → Type → Type      -- Product
   _+_   : Type → Type → Type      -- Coproduct (sum)
-  _⇒_   : Type → Type → Type      -- Exponential (function)
+  _⇒_   : Type → Type → Type      -- Exponential (function, pure)
+  Eff   : Type → Type → Type      -- Effectful morphism (D032)
   Fix   : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
 
 infixr 30 _⇒_
 infixr 40 _+_
 infixr 50 _*_
+
+-- | IO type alias (D032)
+-- IO A is sugar for Eff Unit A (effectful computation producing A)
+IO : Type → Type
+IO A = Eff Unit A

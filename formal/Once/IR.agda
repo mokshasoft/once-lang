@@ -55,6 +55,12 @@ data IR : Type → Type → Set where
   fold    : ∀ {F} → IR F (Fix F)      -- F (Fix F) → Fix F (constructor)
   unfold  : ∀ {F} → IR (Fix F) F      -- Fix F → F (Fix F) (destructor)
 
+  -- Effect lifting (D032)
+  -- arr lifts pure functions to effectful morphisms
+  -- arr : (A ⇒ B) → Eff A B
+  -- At runtime, this is essentially identity - Eff A B has same representation as A ⇒ B
+  arr     : ∀ {A B} → IR (A ⇒ B) (Eff A B)
+
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩
 infixr 3 [_,_]

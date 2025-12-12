@@ -54,12 +54,13 @@ record ⟦Fix⟧ (A : Set) : Set where
 open ⟦Fix⟧
 
 ⟦_⟧ : Type → Set
-⟦ Unit ⟧   = ⊤
-⟦ Void ⟧   = ⊥
-⟦ A * B ⟧  = ⟦ A ⟧ × ⟦ B ⟧
-⟦ A + B ⟧  = ⟦ A ⟧ ⊎ ⟦ B ⟧
-⟦ A ⇒ B ⟧  = ⟦ A ⟧ → ⟦ B ⟧
-⟦ Fix F ⟧  = ⟦Fix⟧ ⟦ F ⟧
+⟦ Unit ⟧     = ⊤
+⟦ Void ⟧     = ⊥
+⟦ A * B ⟧    = ⟦ A ⟧ × ⟦ B ⟧
+⟦ A + B ⟧    = ⟦ A ⟧ ⊎ ⟦ B ⟧
+⟦ A ⇒ B ⟧    = ⟦ A ⟧ → ⟦ B ⟧
+⟦ Eff A B ⟧  = ⟦ A ⟧ → ⟦ B ⟧  -- D032: Same representation as pure function
+⟦ Fix F ⟧    = ⟦Fix⟧ ⟦ F ⟧
 
 -- | Evaluation of IR morphisms
 --
@@ -98,3 +99,9 @@ eval apply (f , a)     = f a
 -- Recursive types (Fixed point isomorphism)
 eval fold x            = wrap x
 eval unfold x          = unwrap x
+
+-- Effect lifting (D032)
+-- arr : (A ⇒ B) → Eff A B
+-- Takes a pure function and returns it as an effectful morphism
+-- Semantically identity since Eff A B has same representation as A ⇒ B
+eval arr f             = f

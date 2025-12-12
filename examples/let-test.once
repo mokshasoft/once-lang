@@ -12,17 +12,17 @@
 --   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/let-test.once -o ../.build/let-test
 --   ../.build/let-test
 
-primitive println : String Utf8 -> Unit
+primitive println : Eff (String Utf8) Unit
 
 -- Test: single binding
-test_single : Unit -> Unit
-test_single = let msg = "Single binding works!" in println msg
+test_single : IO Unit
+test_single = let msg = "Single binding works!" in compose println msg
 
 -- Test: multiple bindings (semicolon separated)
 -- Later bindings can reference earlier ones
-test_multi : Unit -> Unit
-test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in println target
+test_multi : IO Unit
+test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in compose println target
 
 -- Main runs the multi-binding test
-main : Unit -> Unit
+main : IO Unit
 main = test_multi

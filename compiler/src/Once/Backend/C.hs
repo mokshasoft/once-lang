@@ -50,6 +50,7 @@ generateHeader name ty = T.unlines $
       TProduct a b -> needsStddef a || needsStddef b
       TSum a b -> needsStddef a || needsStddef b
       TArrow a b -> needsStddef a || needsStddef b
+      TEff a b -> needsStddef a || needsStddef b  -- D032: Eff same as Arrow at runtime
       _ -> False
 
 -- | Generate C source file
@@ -76,6 +77,7 @@ typeDefinitions ty = T.unlines $ catMaybes
       TProduct _ _ -> True
       TSum a b -> needsPair a || needsPair b
       TArrow a b -> needsPair a || needsPair b
+      TEff a b -> needsPair a || needsPair b  -- D032
       _ -> False
 
     needsSum :: Type -> Bool
@@ -83,6 +85,7 @@ typeDefinitions ty = T.unlines $ catMaybes
       TSum _ _ -> True
       TProduct a b -> needsSum a || needsSum b
       TArrow a b -> needsSum a || needsSum b
+      TEff a b -> needsSum a || needsSum b  -- D032
       _ -> False
 
     needsBuffer :: Type -> Bool
@@ -92,6 +95,7 @@ typeDefinitions ty = T.unlines $ catMaybes
       TProduct a b -> needsBuffer a || needsBuffer b
       TSum a b -> needsBuffer a || needsBuffer b
       TArrow a b -> needsBuffer a || needsBuffer b
+      TEff a b -> needsBuffer a || needsBuffer b  -- D032
       _ -> False
 
     needsString :: Type -> Bool
@@ -100,6 +104,7 @@ typeDefinitions ty = T.unlines $ catMaybes
       TProduct a b -> needsString a || needsString b
       TSum a b -> needsString a || needsString b
       TArrow a b -> needsString a || needsString b
+      TEff a b -> needsString a || needsString b  -- D032
       _ -> False
 
 -- | Generate C type name
@@ -114,6 +119,7 @@ cTypeName ty = case ty of
   TProduct _ _ -> "OncePair"
   TSum _ _ -> "OnceSum"
   TArrow _ _ -> "void*"  -- Function pointers (not used for swap)
+  TEff _ _ -> "void*"    -- D032: Effectful morphisms same as functions at runtime
   TApp _ _ -> "void*"    -- Type applications (polymorphic, boxed)
   TFix _ -> "void*"      -- Fixed-point types (recursive, boxed)
 
@@ -121,6 +127,8 @@ cTypeName ty = case ty of
 functionDecl :: Name -> Type -> Text
 functionDecl name ty = case ty of
   TArrow inTy outTy ->
+    cTypeName outTy <> " once_" <> name <> "(" <> cTypeName inTy <> " x)"
+  TEff inTy outTy ->  -- D032: Eff same as Arrow at runtime
     cTypeName outTy <> " once_" <> name <> "(" <> cTypeName inTy <> " x)"
   _ -> "void* once_" <> name <> "(void)"
 

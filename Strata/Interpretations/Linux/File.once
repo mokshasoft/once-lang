@@ -21,48 +21,48 @@ stderr : Int
 stderr = 2
 
 ------------------------------------------------------------------------
--- Output Operations
+-- Output Operations (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
 -- | Write string to stdout (no newline)
-primitive print : String Utf8 -> Unit
+primitive print : Eff (String Utf8) Unit
 
 -- | Write string to stdout with newline
-primitive println : String Utf8 -> Unit
+primitive println : Eff (String Utf8) Unit
 
 -- | Write string to stderr (no newline)
-primitive err : String Utf8 -> Unit
+primitive err : Eff (String Utf8) Unit
 
 -- | Write string to stderr with newline
-primitive errln : String Utf8 -> Unit
+primitive errln : Eff (String Utf8) Unit
 
 -- | Write a single character to stdout
-primitive putc : Int -> Unit
+primitive putc : Eff Int Unit
 
 -- | Flush stdout
-primitive flush : Unit -> Unit
+primitive flush : Eff Unit Unit
 
 ------------------------------------------------------------------------
--- Input Operations
+-- Input Operations (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
 -- | Read a single character from stdin
 -- Returns -1 on EOF
-primitive getc : Unit -> Int
+primitive getc : Eff Unit Int
 
 -- | Read a line from stdin into buffer
 -- Returns number of bytes read, or -1 on EOF
 -- Does not include the newline character
-primitive getline : Buffer -> Int -> Int
+primitive getline : Eff (Buffer * Int) Int
 
 ------------------------------------------------------------------------
--- File Reading Helpers
+-- File Reading Helpers (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
 -- | Read entire file contents into buffer
 -- Returns bytes read or -1 on error
-primitive readfile : String Utf8 -> Buffer -> Int -> Int
+primitive readfile : Eff (String Utf8 * Buffer * Int) Int
 
 -- | Get file size
 -- Returns size in bytes or -1 on error
-primitive filesize : String Utf8 -> Int
+primitive filesize : Eff (String Utf8) Int

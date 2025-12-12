@@ -1,9 +1,10 @@
 -- MallocLike interface implementation for Linux
 -- See docs/design/buffers.md for interface specification
+-- D032: Memory operations are effectful
 
-primitive alloc : Int -> Buffer
-primitive free : Buffer -> Unit
-primitive realloc : Buffer -> Int -> Buffer
+primitive alloc : Eff Int Buffer
+primitive free : Eff Buffer Unit
+primitive realloc : Eff (Buffer * Int) Buffer
 
 -- Helper for heap string allocation (used by @heap annotation)
-primitive heap_string : Int -> Buffer -> String Utf8
+primitive heap_string : Eff (Int * Buffer) (String Utf8)

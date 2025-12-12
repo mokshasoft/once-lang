@@ -125,6 +125,7 @@ applySubst subst ty = case ty of
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
   TSum a b -> TSum (applySubst subst a) (applySubst subst b)
   TArrow a b -> TArrow (applySubst subst a) (applySubst subst b)
+  TEff a b -> TEff (applySubst subst a) (applySubst subst b)
   TApp name args -> TApp name (map (applySubst subst) args)
   TFix t -> TFix (applySubst subst t)
 
@@ -144,6 +145,7 @@ occurs name ty = case ty of
   TProduct a b -> occurs name a || occurs name b
   TSum a b -> occurs name a || occurs name b
   TArrow a b -> occurs name a || occurs name b
+  TEff a b -> occurs name a || occurs name b
   TApp _ args -> any (occurs name) args
   TFix t -> occurs name t
 
@@ -173,6 +175,11 @@ unify t1 t2 = case (t1, t2) of
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
     Right (composeSubst s2 s1)
   (TArrow a1 b1, TArrow a2 b2) -> do
+    s1 <- unify a1 a2
+    s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
+    Right (composeSubst s2 s1)
+  -- TEff unifies with TEff, but NOT with TArrow (D032: effect system core)
+  (TEff a1 b1, TEff a2 b2) -> do
     s1 <- unify a1 a2
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
     Right (composeSubst s2 s1)
@@ -209,6 +216,10 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
     go m (TArrow a1 b1) (TArrow a2 b2) = do
       m' <- go m a1 a2
       go m' b1 b2
+    -- TEff matches TEff, but NOT TArrow (D032: effect system)
+    go m (TEff a1 b1) (TEff a2 b2) = do
+      m' <- go m a1 a2
+      go m' b1 b2
     go m (TFix t1) (TFix t2) = go m t1 t2
     go m (TApp n1 args1) (TApp n2 args2)
       | n1 == n2 && length args1 == length args2 =
@@ -229,13 +240,21 @@ inferType ctx expr fresh = case expr of
   -- For now, treat as unbound until module resolution is implemented
   EQualified name _modPath -> Left (UnboundVariable name)
 
-  -- Standard function application: f : A -> B, arg : A  ===>  B
+  -- Function application: f : A -> B or f : Eff A B, arg : A  ===>  B
+  -- Handles both pure (TArrow) and effectful (TEff) morphisms
   EApp f arg -> do
     (funTy, s1, fresh1) <- inferType ctx f fresh
     (argTy, s2, fresh2) <- inferType ctx arg fresh1
     let (retTy, fresh3) = freshTVar fresh2
     let funTy' = applySubst s2 funTy
-    s3 <- unify funTy' (TArrow argTy retTy)
+    -- Try to unify with TArrow first, then TEff
+    let tryArrow = unify funTy' (TArrow argTy retTy)
+    let tryEff = unify funTy' (TEff argTy retTy)
+    s3 <- case tryArrow of
+      Right s -> Right s
+      Left _ -> case tryEff of
+        Right s -> Right s
+        Left _ -> tryArrow  -- Report TArrow error (more common case)
     let finalSubst = composeSubst s3 (composeSubst s2 s1)
     Right (applySubst s3 retTy, finalSubst, fresh3)
 
@@ -366,6 +385,13 @@ generatorType name fresh = case name of
     -- Represented as: Fix t -> t
     in Just (TArrow (TFix f) f, f1)
 
+  -- Arrow generator (D032): lift pure functions to effectful
+  -- arr : (A -> B) -> Eff A B
+  "arr" ->
+    let (a, f1) = freshTVar fresh
+        (b, f2) = freshTVar f1
+    in Just (TArrow (TArrow a b) (TEff a b), f2)
+
   _ -> Nothing
 
 -- | Convert surface type to internal type
@@ -389,6 +415,7 @@ convertTypeWithAliases aliases sty = case sty of
   STProduct a b -> TProduct (conv a) (conv b)
   STSum a b -> TSum (conv a) (conv b)
   STArrow a b -> TArrow (conv a) (conv b)
+  STEff a b -> TEff (conv a) (conv b)
   STQuant _ t -> conv t  -- quantity tracked separately in context
   STApp name args ->
     -- Check if this is a type alias application
@@ -417,6 +444,7 @@ substSType subst sty = case sty of
   STProduct a b -> STProduct (substSType subst a) (substSType subst b)
   STSum a b -> STSum (substSType subst a) (substSType subst b)
   STArrow a b -> STArrow (substSType subst a) (substSType subst b)
+  STEff a b -> STEff (substSType subst a) (substSType subst b)
   STQuant q t -> STQuant q (substSType subst t)
   STApp name args -> STApp name (map (substSType subst) args)
   STFix t -> STFix (substSType subst t)
@@ -426,18 +454,15 @@ substSType subst sty = case sty of
 -- match the signature. Unlike ML, signatures are never *needed* for inference;
 -- the type is fully determined by how generators compose.
 --
--- Special case: if expected is `A -> B` and inferred is `B`, we allow it.
--- The compiler will lift the value to a constant morphism (ignore input, return value).
+-- D032: Implicit lifting removed. Effect types (Eff, IO) must be explicit.
+-- Pure functions (A -> B) and effectful morphisms (Eff A B) do NOT unify.
 typeCheck :: Context -> Expr -> Type -> Either TypeError Subst
 typeCheck ctx expr expectedTy = do
   (inferredTy, s1, _) <- inferType ctx expr 0
   let finalInferred = applySubst s1 inferredTy
   if matchesStructure expectedTy finalInferred
     then Right s1
-    else case expectedTy of
-      -- Implicit lifting: expected `A -> B`, got `B` => lift to constant morphism
-      TArrow _ outTy | matchesStructure outTy finalInferred -> Right s1
-      _ -> Left (SignatureMismatch expectedTy finalInferred)
+    else Left (SignatureMismatch expectedTy finalInferred)
 
 -- | Type check a module
 checkModule :: Module -> Either TypeError ()

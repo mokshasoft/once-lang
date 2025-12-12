@@ -3,13 +3,13 @@
 -- Demonstrates:
 --   - String literals with encoding (String Utf8)
 --   - Primitives (println from linux File interpretation)
---   - Executable mode (main : Unit -> Unit)
+--   - Executable mode (main : IO Unit)
 --
 -- Build and run:
 --   once build --exe --interp=linux examples/hello.once -o hello
 --   ./hello
 
-primitive println : String Utf8 -> Unit
+primitive println : Eff (String Utf8) Unit
 
-main : Unit -> Unit
-main = println "Hello for Once"
+main : IO Unit
+main = compose println "Hello for Once"

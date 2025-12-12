@@ -1,233 +1,211 @@
 # Input/Output in Once
 
-## IO is a Monad
+## IO is an Arrow
 
-Once is honest: `IO` is a monad. This gives us three levels of composition, each more powerful than the last.
-
-```
-Functor ⊂ Applicative ⊂ Monad
-```
-
-If you know what a monad is, you know how Once's IO works. If you don't, this document explains the three levels of composition.
-
-## The Three Levels
-
-### Level 1: Functor
-
-Transform the result of an IO operation without changing the effect:
+Once uses arrows for effect tracking. This is more general than monads and aligns perfectly with Once's categorical foundation.
 
 ```
-fmap : (A -> B) -> IO A -> IO B
+Categories ⊃ Arrows ⊃ Monads
 ```
 
-Example:
-```
--- readFile returns IO String
--- We want IO Int (the length)
-fileLength : Path -> IO Int
-fileLength path = fmap length (readFile path)
-```
+If you know Haskell's `IO` monad, you'll feel at home - `IO A` works as expected. Under the hood, it's sugar for the more general arrow type `Eff Unit A`.
 
-`fmap` lets you work with the value "inside" the IO without extracting it. The IO effect is preserved.
+## The Core Type: Eff
 
-### Level 2: Applicative
+`Eff A B` represents an effectful morphism from `A` to `B`:
 
-Combine independent IO operations:
+```once
+type Eff : Type -> Type -> Type
 
-```
-pure : A -> IO A
-both : IO A -> IO B -> IO (A * B)
+-- Effectful primitives
+println : Eff String Unit       -- takes String, produces Unit (with IO effect)
+readLine : Eff Unit String      -- takes Unit, produces String (with IO effect)
+readFile : Eff String (Result String Error)  -- may fail
 ```
 
-Example:
-```
--- Read two files independently
-readBoth : Path -> Path -> IO (String * String)
-readBoth p1 p2 = both (readFile p1) (readFile p2)
-```
+## IO as Sugar
 
-`both` runs two IO operations and pairs their results. The operations are independent - neither depends on the other's result. This means they could potentially run in parallel.
+For Haskell users, `IO A` is syntactic sugar for `Eff Unit A`:
 
-`pure` lifts a pure value into IO (an IO operation that does nothing and returns the value).
+```once
+type IO A = Eff Unit A
 
-### Level 3: Monad
-
-Sequence dependent IO operations - where the second depends on the first's result:
-
-```
-bind : IO A -> (A -> IO B) -> IO B
+main : IO Unit                  -- familiar syntax
+-- equivalent to:
+main : Eff Unit Unit            -- explicit arrow form
 ```
 
-Example:
-```
--- Read a config file, then read the file it points to
-readIndirect : Path -> IO String
-readIndirect configPath = bind (readFile configPath) (\config ->
-  readFile (parsePath config)
-)
-```
+## Arrow Composition
 
-`bind` is the most powerful - the second operation can depend on the result of the first. This is sequential by nature.
+### Sequential Composition (>>>)
 
-## When to Use Each Level
+Chain effectful operations:
 
-| Level | Use When | Example |
-|-------|----------|---------|
-| Functor | Transforming a result | `fmap toUpper readLine` |
-| Applicative | Combining independent effects | `both (readFile a) (readFile b)` |
-| Monad | Second depends on first | `bind getConfig (\c -> loadFile c)` |
+```once
+(>>>) : Eff A B -> Eff B C -> Eff A C
 
-**Prefer the weakest level that works:**
-- Functor when you're just transforming
-- Applicative when operations are independent
-- Monad only when there's true dependency
-
-This isn't just style - applicative operations can parallelize, monadic ones cannot.
-
-## IO Unit
-
-`IO Unit` means "an IO operation that performs an effect but returns no meaningful value":
-
-```
-putLine : String -> IO Unit      -- prints, returns nothing
-writeFile : Path * String -> IO Unit  -- writes, returns nothing
+-- Example: read input, then print it
+echo : Eff Unit Unit
+echo = readLine >>> println
 ```
 
-Compare to operations that return useful values:
-```
-readFile : Path -> IO String     -- returns file contents
-getLine : Unit -> IO String      -- returns user input
-```
+### Lifting Pure Functions (arr)
 
-`Unit` is the terminal object (the type with exactly one value). `IO Unit` means "run this for its effect, not its result."
+Embed pure functions into the effectful world:
 
-## The Monad Laws
+```once
+arr : (A -> B) -> Eff A B
 
-`IO` satisfies the monad laws:
-
-```
--- Left identity
-bind (pure a) f  ≡  f a
-
--- Right identity
-bind m pure  ≡  m
-
--- Associativity
-bind (bind m f) g  ≡  bind m (\x -> bind (f x) g)
+-- Example: greet with pure transformation
+greet : Eff Unit Unit
+greet = readLine >>> arr (\name -> "Hello, " ++ name) >>> println
 ```
 
-These laws ensure composition behaves predictably.
+### Parallel Composition
 
-## Categorical Perspective
+Work with multiple values:
 
-A monad is a monoid in the category of endofunctors:
-
-```
-IO : Type -> Type              -- endofunctor
-pure : A -> IO A               -- unit (η)
-join : IO (IO A) -> IO A       -- multiplication (μ)
-```
-
-`bind` is derived from `fmap` and `join`:
-```
-bind m f = join (fmap f m)
+```once
+first  : Eff A B -> Eff (A * C) (B * C)
+second : Eff A B -> Eff (C * A) (C * B)
+(***)  : Eff A B -> Eff C D -> Eff (A * C) (B * D)
+(&&&)  : Eff A B -> Eff A C -> Eff A (B * C)
 ```
 
-The monad laws are the monoid laws (identity and associativity) lifted to endofunctors.
+## Why Arrows over Monads?
+
+Once's 12 generators are already arrow-like:
+
+| Generator | Arrow Operation |
+|-----------|-----------------|
+| `compose` | `(>>>)` |
+| `pair` | `(&&&)` |
+| `case` | `(\|\|\|)` |
+| `curry`/`apply` | ArrowApply |
+
+Benefits:
+1. **Uniform composition** - everything uses `(>>>)`
+2. **Natural embedding** - pure functions use `arr`
+3. **Simpler verification** - one category, not two
+4. **More expressive** - arrows can represent things monads cannot
+
+## Comparison: Monad vs Arrow Style
+
+**Monad style** (what Haskell users know):
+```once
+main : IO Unit
+main = readLine >>= \name ->
+       println ("Hello, " ++ name)
+```
+
+**Arrow style** (Once's native approach):
+```once
+main : IO Unit
+main = readLine >>> arr (\name -> "Hello, " ++ name) >>> println
+```
+
+Both work in Once! ArrowApply (curry/apply) gives us monadic `>>=`.
+
+## Eff vs Result
+
+These are different concepts (see D025, D032):
+
+| Type | What It Is | Example |
+|------|------------|---------|
+| `Result A E` | A value: success or error | `A + E` (sum type) |
+| `Eff A B` | A morphism: effectful function | From A to B |
+| `IO A` | A computation: effectful, no input | `Eff Unit A` |
+
+They work together:
+```once
+readFile : Eff String (Result String Error)
+-- An effectful operation (Eff) that may fail (Result)
+```
 
 ## Primitives
 
 IO operations come from **primitives** in the Interpretations layer:
 
-```
+```once
 -- File operations
-primitive readFile  : Path -> IO (String + Error)
-primitive writeFile : Path * String -> IO (Unit + Error)
+primitive readFile  : Eff String (Result String Error)
+primitive writeFile : Eff (String * String) (Result Unit Error)
 
 -- Console
-primitive getLine : Unit -> IO String
-primitive putLine : String -> IO Unit
+primitive readLine : Eff Unit String
+primitive println  : Eff String Unit
 
 -- Network
-primitive httpGet : Url -> IO (Response + Error)
+primitive httpGet : Eff String (Result String Error)
 ```
 
-Primitives are opaque - they have no implementation in Once, only a type signature. The interpretation (POSIX, bare metal, WASM) provides the implementation.
+Primitives are opaque - they have no implementation in Once, only a type signature. The interpretation (Linux, bare metal, WASM) provides the implementation.
 
-## Composition Example
+## Complete Example
 
-A complete example using all three levels:
+```once
+-- Import primitives
+primitive readLine : Eff Unit String
+primitive println : Eff String Unit
+primitive readFile : Eff String (Result String Error)
 
-```
--- Configuration type
-type Config = { dataPath : Path, outputPath : Path }
+-- Pure helpers
+greetMessage : String -> String
+greetMessage name = "Hello, " ++ name ++ "!"
 
--- Parse config from string (pure)
-parseConfig : String -> Result Config ParseError
-
--- Process data (pure)
-processData : String -> String
-
--- The full pipeline
-pipeline : Path -> IO (Result Unit Error)
-pipeline configPath =
-  bind (readFile configPath) (\configResult ->
-    case configResult of
-      err e -> pure (err e)
-      ok configStr ->
-        case parseConfig configStr of
-          err e -> pure (err e)
-          ok config ->
-            bind (readFile config.dataPath) (\dataResult ->
-              case dataResult of
-                err e -> pure (err e)
-                ok data ->
-                  let result = processData data in
-                  writeFile (config.outputPath, result)
-            )
-  )
+-- Effectful pipeline
+main : IO Unit
+main = arr (\_ -> "What is your name?")
+   >>> println
+   >>> readLine
+   >>> arr greetMessage
+   >>> println
 ```
 
-Notice:
-- `parseConfig` and `processData` are pure - no IO
-- `readFile` and `writeFile` are IO primitives
-- `bind` sequences the dependent operations
-- Error handling uses `Result` (sum types, see D025)
+## The Arrow Laws
 
-## IO and Purity
+`Eff` satisfies the arrow laws:
+
+```
+-- Identity
+arr id >>> f        = f
+f >>> arr id        = f
+
+-- Associativity
+(f >>> g) >>> h     = f >>> (g >>> h)
+
+-- arr preserves composition
+arr (g . f)         = arr f >>> arr g
+```
+
+## Purity Tracking
 
 The type tells you everything:
 
-```
--- Pure: no IO in the type
+```once
+-- Pure: no Eff in the type
 process : String -> String
 
--- Effectful: IO in the type
-load : Path -> IO String
+-- Effectful: Eff in the type
+load : Eff String String
 ```
 
-You cannot accidentally do IO. If a function doesn't have `IO` in its type, it cannot perform IO. This is enforced by the type system.
-
-## Comparison with Other Approaches
-
-| Language | IO Approach | Once Equivalent |
-|----------|-------------|-----------------|
-| Haskell | IO monad | Same - IO is a monad |
-| Rust | No pure/impure distinction | Primitives only in Interpretations |
-| OCaml | Impure by default | N/A (Once tracks effects in types) |
-| Scala | IO monad (cats-effect, ZIO) | Same concept |
+You cannot accidentally do IO. If a function doesn't have `Eff` or `IO` in its type, it cannot perform effects. This is enforced by the type system.
 
 ## Summary
 
 | Concept | Once Approach |
 |---------|---------------|
-| IO type | `IO A` - a monad |
-| Transform results | `fmap : (A -> B) -> IO A -> IO B` |
-| Combine independent | `both : IO A -> IO B -> IO (A * B)` |
-| Sequence dependent | `bind : IO A -> (A -> IO B) -> IO B` |
-| Lift pure value | `pure : A -> IO A` |
-| Effect only | `IO Unit` - run for effect, not result |
+| Effect type | `Eff A B` (arrow) or `IO A` (sugar) |
+| Sequential | `(>>>) : Eff A B -> Eff B C -> Eff A C` |
+| Lift pure | `arr : (A -> B) -> Eff A B` |
+| Parallel | `(***), (&&&), first, second` |
+| Effect only | `Eff A Unit` or `IO Unit` |
 | IO operations | Primitives in Interpretations layer |
-| Purity tracking | IO in type = effectful, no IO = pure |
+| Purity tracking | Eff/IO in type = effectful, none = pure |
 
-Once is honest about IO being a monad. Use the weakest level of composition that works: functor for transforms, applicative for independent operations, monad for true dependencies.
+## See Also
+
+- D032: Arrow-Based Effect System
+- D025: Result Type Convention
+- docs/design/effects-proposal.md

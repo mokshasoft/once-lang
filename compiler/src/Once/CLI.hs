@@ -91,6 +91,13 @@ runBuild opts = do
               TIO.putStrLn "Error: No main function found"
               exitFailure
             ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
+              -- D032: main must be effectful (Eff Unit Unit or IO Unit)
+              case mainTy of
+                TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
+                _ -> do
+                  TIO.putStrLn $ "Error: main must have type 'Eff Unit Unit' or 'IO Unit', got: " <> T.pack (show mainTy)
+                  TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
+                  exitFailure
               -- Elaborate all functions to IR
               let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
               case elaborateAll ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
@@ -227,6 +234,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
     funcDecl :: Text -> Type -> Text
     funcDecl n t = case t of
       TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
+      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
       _ -> "void* once_" <> n <> "(void)"
 
     generateIRExpr :: Once.IR.IR -> Text -> Text
@@ -295,6 +303,8 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
         -- Declare primitives as extern (interpretation provides them)
         -- Use once_ prefix to avoid conflicts with stdlib
         "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
+      TEff inTy outTy ->  -- D032: Effectful primitives
+        "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
       _ -> "/* primitive " <> pname <> " has non-function type */"
 
     cTypeName :: Type -> Text
@@ -308,6 +318,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
+      TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
       TApp _ _ -> "void*"
       TFix _ -> "void*"
 
@@ -356,6 +367,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     funcDecl :: Text -> Type -> Text
     funcDecl n t = case t of
       TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
+      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
       _ -> "void* once_" <> n <> "(void)"
 
     generateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
@@ -412,6 +424,8 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     primDecl (pname, pty) = case pty of
       TArrow inTy outTy ->
         "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
+      TEff inTy outTy ->  -- D032: Eff same as Arrow at runtime
+        "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
       _ -> "/* primitive " <> pname <> " has non-function type */"
 
     cTypeName :: Type -> Text
@@ -425,5 +439,6 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
+      TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
       TApp _ _ -> "void*"
       TFix _ -> "void*"

@@ -53,6 +53,7 @@ elaborateExpr' locals expr = case expr of
   EVar "compose" -> Right $ Var "compose"  -- needs 2 args
   EVar "pair" -> Right $ Var "pair"        -- needs 2 args
   EVar "curry" -> Right $ Var "curry"      -- needs 1 arg
+  EVar "arr" -> Right $ Var "arr"          -- needs 1 arg (D032: lift pure to effectful)
 
   -- Check if variable is a local binding from let
   EVar name | Set.member name locals -> Right $ LocalVar name
@@ -119,6 +120,10 @@ elaborateApp locals f arg = case f of
     f' <- elaborateExpr' locals arg
     Right $ Curry f'
 
+  -- arr f => f (D032: arr is identity at IR level - Eff is type-only distinction)
+  -- At runtime, Eff A B compiles to the same code as A -> B
+  EVar "arr" -> elaborateExpr' locals arg
+
   -- case branches - not yet
   EApp (EVar "case") _ -> Left $ UnsupportedExpr "Case not yet supported"
 
@@ -159,6 +164,7 @@ isGenerator :: Name -> Bool
 isGenerator name = name `elem`
   [ "id", "compose", "fst", "snd", "pair", "inl", "inr", "case"
   , "terminal", "initial", "curry", "apply", "fold", "unfold"
+  , "arr"  -- D032: arrow generator for lifting pure to effectful
   ]
 
 -- | Placeholder type for type inference to fill in later
@@ -177,6 +183,7 @@ elaborateType sty = case sty of
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)
   STSum a b -> TSum (elaborateType a) (elaborateType b)
   STArrow a b -> TArrow (elaborateType a) (elaborateType b)
+  STEff a b -> TEff (elaborateType a) (elaborateType b)
   STQuant _ t -> elaborateType t  -- ignore quantity for now
   STApp name args -> TApp name (map elaborateType args)
   STFix t -> TFix (elaborateType t)

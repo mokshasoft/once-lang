@@ -161,6 +161,17 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-unfold : ∀ {Γ F} → Γ ⊢ Fix F ⟶ F
 
+  -- Arrow lift (D032: lift pure to effectful)
+  --
+  -- ─────────────────────────────
+  -- Γ ⊢ (A ⇒ B) ⟶ Eff A B
+  --
+  -- Note: This takes a pure function object and returns an effectful morphism.
+  -- At runtime, Eff A B is represented identically to A ⇒ B.
+  -- The distinction is purely for effect tracking.
+  --
+  ty-arr : ∀ {Γ A B} → Γ ⊢ (A ⇒ B) ⟶ Eff A B
+
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
 ------------------------------------------------------------------------
@@ -184,6 +195,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-apply ⌋ = apply
 ⌊ ty-fold ⌋ = fold
 ⌊ ty-unfold ⌋ = unfold
+⌊ ty-arr ⌋ = arr
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -205,6 +217,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ apply ⌉ = ty-apply
 ⌈ fold ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
+⌈ arr ⌉ = ty-arr
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
@@ -238,3 +251,4 @@ round-trip-ir (curry f) = cong curry (round-trip-ir f)
 round-trip-ir apply = refl
 round-trip-ir fold = refl
 round-trip-ir unfold = refl
+round-trip-ir arr = refl

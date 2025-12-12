@@ -58,14 +58,16 @@ reservedWords =
   , "Utf8", "Utf16", "Ascii"
   , "primitive"
   , "type", "Fix"             -- Type aliases and fixed points
+  , "Eff", "IO"               -- Effect types (D032)
   , "import", "as"            -- Module system
   , "let", "in"               -- Let bindings
-  -- The 12 categorical generators
+  -- The 12 categorical generators + arr for effects
   , "id", "compose"           -- Category
   , "fst", "snd", "pair"      -- Products
   , "inl", "inr", "case"      -- Coproducts
   , "terminal", "initial"     -- Terminal/Initial
   , "curry", "apply"          -- Closed
+  , "arr"                     -- Arrow: lift pure to effectful (D032)
   -- Recursive type generators
   , "fold", "unfold"          -- Fix isomorphism
   -- Allocation strategies
@@ -99,7 +101,7 @@ typeVar = lexeme $ try $ do
   c <- upperChar
   cs <- many (alphaNumChar <|> char '_' <|> char '\'')
   let name = T.pack (c : cs)
-  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int"]
+  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Eff", "IO", "Fix"]
     then fail $ "Reserved type: " ++ T.unpack name
     else pure name
 
@@ -167,6 +169,8 @@ parseType = makeTypeExpr
       , STBuffer <$ reserved "Buffer"
       , stringType
       , fixType
+      , effType     -- Eff A B (effectful morphism, D032)
+      , ioType      -- IO A = Eff Unit A (sugar, D032)
       , typeApp
       , STVar <$> typeVar
       , parens parseType
@@ -176,6 +180,19 @@ parseType = makeTypeExpr
     fixType = do
       reserved "Fix"
       STFix <$> atomType
+
+    -- Eff A B (effectful morphism from A to B, D032)
+    effType = do
+      reserved "Eff"
+      a <- simpleType
+      b <- simpleType
+      pure $ STEff a b
+
+    -- IO A = Eff Unit A (sugar for effectful computation, D032)
+    ioType = do
+      reserved "IO"
+      a <- simpleType
+      pure $ STEff STUnit a
 
     -- Type constructor application: Maybe A, List Int, Either A B
     -- Must be a named type followed by one or more type arguments
@@ -292,6 +309,8 @@ parseExpr = annotExpr
       , EVar "initial" <$ reserved "initial"
       , EVar "curry" <$ reserved "curry"
       , EVar "apply" <$ reserved "apply"
+      -- Arrow generator (D032)
+      , EVar "arr" <$ reserved "arr"
       -- Recursive type generators
       , EVar "fold" <$ reserved "fold"
       , EVar "unfold" <$ reserved "unfold"

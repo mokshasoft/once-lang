@@ -82,7 +82,8 @@ data SType
   | STString Encoding            -- ^ String type with encoding: String Utf8
   | STProduct SType SType        -- ^ Product: A * B
   | STSum SType SType            -- ^ Sum: A + B
-  | STArrow SType SType          -- ^ Function: A -> B
+  | STArrow SType SType          -- ^ Function: A -> B (pure)
+  | STEff SType SType            -- ^ Effectful morphism: Eff A B (see D032)
   | STQuant Quantity SType       -- ^ Quantity annotation: A^1
   | STApp Name [SType]           -- ^ Type application: Maybe A, List Int
   | STFix SType                  -- ^ Fixed point: Fix F (for recursive types)

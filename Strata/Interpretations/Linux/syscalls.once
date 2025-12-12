@@ -7,57 +7,57 @@
 -- only type signatures. The C implementation provides the actual syscalls.
 
 ------------------------------------------------------------------------
--- Process Control
+-- Process Control (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Exit the process with code 0
-primitive exit0 : Unit -> Unit
+primitive exit0 : Eff Unit Unit
 
 -- | Exit the process with given code
-primitive exit : Int -> Unit
+primitive exit : Eff Int Unit
 
 -- | Get current process ID
-primitive getpid : Unit -> Int
+primitive getpid : Eff Unit Int
 
 -- | Get parent process ID
-primitive getppid : Unit -> Int
+primitive getppid : Eff Unit Int
 
 -- | Get user ID
-primitive getuid : Unit -> Int
+primitive getuid : Eff Unit Int
 
 -- | Get effective user ID
-primitive geteuid : Unit -> Int
+primitive geteuid : Eff Unit Int
 
 -- | Get group ID
-primitive getgid : Unit -> Int
+primitive getgid : Eff Unit Int
 
 -- | Get effective group ID
-primitive getegid : Unit -> Int
+primitive getegid : Eff Unit Int
 
 ------------------------------------------------------------------------
--- File Descriptors
+-- File Descriptors (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | File descriptor type (Int alias for clarity)
 -- fd: 0 = stdin, 1 = stdout, 2 = stderr
 
 -- | Read from file descriptor into buffer, returns bytes read
-primitive fd_read : Int -> Buffer -> Int -> Int
+primitive fd_read : Eff (Int * Buffer * Int) Int
 
 -- | Write buffer to file descriptor, returns bytes written
-primitive fd_write : Int -> Buffer -> Int -> Int
+primitive fd_write : Eff (Int * Buffer * Int) Int
 
 -- | Close file descriptor
-primitive fd_close : Int -> Int
+primitive fd_close : Eff Int Int
 
 -- | Duplicate file descriptor
-primitive fd_dup : Int -> Int
+primitive fd_dup : Eff Int Int
 
 -- | Duplicate file descriptor to specific number
-primitive fd_dup2 : Int -> Int -> Int
+primitive fd_dup2 : Eff (Int * Int) Int
 
 ------------------------------------------------------------------------
--- File Operations
+-- File Operations (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Open flags (combine with bitwise OR)
@@ -65,198 +65,198 @@ primitive fd_dup2 : Int -> Int -> Int
 -- O_CREAT = 64, O_TRUNC = 512, O_APPEND = 1024
 
 -- | Open file, returns file descriptor
-primitive open : String Utf8 -> Int -> Int -> Int
+primitive open : Eff (String Utf8 * Int * Int) Int
 
 -- | Create file (shorthand for open with O_CREAT | O_WRONLY | O_TRUNC)
-primitive creat : String Utf8 -> Int -> Int
+primitive creat : Eff (String Utf8 * Int) Int
 
 -- | Unlink (delete) file
-primitive unlink : String Utf8 -> Int
+primitive unlink : Eff (String Utf8) Int
 
 -- | Rename file
-primitive rename : String Utf8 -> String Utf8 -> Int
+primitive rename : Eff (String Utf8 * String Utf8) Int
 
 -- | Create symbolic link
-primitive symlink : String Utf8 -> String Utf8 -> Int
+primitive symlink : Eff (String Utf8 * String Utf8) Int
 
 -- | Read symbolic link target into buffer
-primitive readlink : String Utf8 -> Buffer -> Int -> Int
+primitive readlink : Eff (String Utf8 * Buffer * Int) Int
 
 -- | Get file status (returns encoded stat structure in buffer)
-primitive stat : String Utf8 -> Buffer -> Int
+primitive stat : Eff (String Utf8 * Buffer) Int
 
 -- | Get file status (don't follow symlinks)
-primitive lstat : String Utf8 -> Buffer -> Int
+primitive lstat : Eff (String Utf8 * Buffer) Int
 
 -- | Get file status by file descriptor
-primitive fstat : Int -> Buffer -> Int
+primitive fstat : Eff (Int * Buffer) Int
 
 -- | Change file permissions
-primitive chmod : String Utf8 -> Int -> Int
+primitive chmod : Eff (String Utf8 * Int) Int
 
 -- | Change file permissions by file descriptor
-primitive fchmod : Int -> Int -> Int
+primitive fchmod : Eff (Int * Int) Int
 
 -- | Change file owner
-primitive chown : String Utf8 -> Int -> Int -> Int
+primitive chown : Eff (String Utf8 * Int * Int) Int
 
 -- | Truncate file to specified length
-primitive truncate : String Utf8 -> Int -> Int
+primitive truncate : Eff (String Utf8 * Int) Int
 
 -- | Truncate file by file descriptor
-primitive ftruncate : Int -> Int -> Int
+primitive ftruncate : Eff (Int * Int) Int
 
 ------------------------------------------------------------------------
--- Directory Operations
+-- Directory Operations (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Create directory
-primitive mkdir : String Utf8 -> Int -> Int
+primitive mkdir : Eff (String Utf8 * Int) Int
 
 -- | Remove directory
-primitive rmdir : String Utf8 -> Int
+primitive rmdir : Eff (String Utf8) Int
 
 -- | Change current directory
-primitive chdir : String Utf8 -> Int
+primitive chdir : Eff (String Utf8) Int
 
 -- | Get current directory into buffer
-primitive getcwd : Buffer -> Int -> Int
+primitive getcwd : Eff (Buffer * Int) Int
 
 -- | Change root directory
-primitive chroot : String Utf8 -> Int
+primitive chroot : Eff (String Utf8) Int
 
 ------------------------------------------------------------------------
--- File Seeking
+-- File Seeking (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Seek flags: SEEK_SET = 0, SEEK_CUR = 1, SEEK_END = 2
 
 -- | Seek to position in file, returns new position
-primitive lseek : Int -> Int -> Int -> Int
+primitive lseek : Eff (Int * Int * Int) Int
 
 ------------------------------------------------------------------------
--- Time
+-- Time (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get current time in seconds since epoch
-primitive time : Unit -> Int
+primitive time : Eff Unit Int
 
 -- | Get high-resolution time (nanoseconds in buffer)
-primitive clock_gettime : Int -> Buffer -> Int
+primitive clock_gettime : Eff (Int * Buffer) Int
 
 -- | Sleep for specified seconds
-primitive sleep : Int -> Int
+primitive sleep : Eff Int Int
 
 -- | Sleep for specified microseconds
-primitive usleep : Int -> Int
+primitive usleep : Eff Int Int
 
 -- | Sleep for specified nanoseconds (timespec in buffer)
-primitive nanosleep : Buffer -> Buffer -> Int
+primitive nanosleep : Eff (Buffer * Buffer) Int
 
 ------------------------------------------------------------------------
--- Environment
+-- Environment (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get environment variable value
-primitive getenv : String Utf8 -> String Utf8
+primitive getenv : Eff (String Utf8) (String Utf8)
 
 -- | Set environment variable
-primitive setenv : String Utf8 -> String Utf8 -> Int -> Int
+primitive setenv : Eff (String Utf8 * String Utf8 * Int) Int
 
 -- | Unset environment variable
-primitive unsetenv : String Utf8 -> Int
+primitive unsetenv : Eff (String Utf8) Int
 
 ------------------------------------------------------------------------
--- Memory Mapping
+-- Memory Mapping (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Map memory region
 -- prot: PROT_READ=1, PROT_WRITE=2, PROT_EXEC=4
 -- flags: MAP_SHARED=1, MAP_PRIVATE=2, MAP_ANONYMOUS=32
-primitive mmap : Int -> Int -> Int -> Int -> Int -> Int -> Buffer
+primitive mmap : Eff (Int * Int * Int * Int * Int * Int) Buffer
 
 -- | Unmap memory region
-primitive munmap : Buffer -> Int -> Int
+primitive munmap : Eff (Buffer * Int) Int
 
 -- | Change memory protection
-primitive mprotect : Buffer -> Int -> Int -> Int
+primitive mprotect : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
--- Signals (basic)
+-- Signals (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Signal numbers (common ones)
 -- SIGHUP=1, SIGINT=2, SIGQUIT=3, SIGKILL=9, SIGTERM=15, etc.
 
 -- | Send signal to process
-primitive kill : Int -> Int -> Int
+primitive kill : Eff (Int * Int) Int
 
 -- | Raise signal in current process
-primitive raise : Int -> Int
+primitive raise : Eff Int Int
 
 -- | Pause until signal received
-primitive pause : Unit -> Int
+primitive pause : Eff Unit Int
 
 ------------------------------------------------------------------------
--- Pipe and IPC
+-- Pipe and IPC (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Create pipe (writes fds to buffer: [read_fd, write_fd])
-primitive pipe : Buffer -> Int
+primitive pipe : Eff Buffer Int
 
 ------------------------------------------------------------------------
--- Socket Operations (basic)
+-- Socket Operations (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Address families: AF_UNIX=1, AF_INET=2, AF_INET6=10
 -- | Socket types: SOCK_STREAM=1, SOCK_DGRAM=2
 
 -- | Create socket
-primitive socket : Int -> Int -> Int -> Int
+primitive socket : Eff (Int * Int * Int) Int
 
 -- | Bind socket to address (sockaddr in buffer)
-primitive bind : Int -> Buffer -> Int -> Int
+primitive bind : Eff (Int * Buffer * Int) Int
 
 -- | Listen for connections
-primitive listen : Int -> Int -> Int
+primitive listen : Eff (Int * Int) Int
 
 -- | Accept connection, returns new socket fd
-primitive accept : Int -> Buffer -> Buffer -> Int
+primitive accept : Eff (Int * Buffer * Buffer) Int
 
 -- | Connect to address
-primitive connect : Int -> Buffer -> Int -> Int
+primitive connect : Eff (Int * Buffer * Int) Int
 
 -- | Send data on socket
-primitive send : Int -> Buffer -> Int -> Int -> Int
+primitive send : Eff (Int * Buffer * Int * Int) Int
 
 -- | Receive data from socket
-primitive recv : Int -> Buffer -> Int -> Int -> Int
+primitive recv : Eff (Int * Buffer * Int * Int) Int
 
 -- | Shutdown socket
-primitive shutdown : Int -> Int -> Int
+primitive shutdown : Eff (Int * Int) Int
 
 -- | Set socket option
-primitive setsockopt : Int -> Int -> Int -> Buffer -> Int -> Int
+primitive setsockopt : Eff (Int * Int * Int * Buffer * Int) Int
 
 -- | Get socket option
-primitive getsockopt : Int -> Int -> Int -> Buffer -> Buffer -> Int
+primitive getsockopt : Eff (Int * Int * Int * Buffer * Buffer) Int
 
 ------------------------------------------------------------------------
--- Polling
+-- Polling (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Poll file descriptors (pollfd array in buffer)
-primitive poll : Buffer -> Int -> Int -> Int
+primitive poll : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
--- Random
+-- Random (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get random bytes into buffer
-primitive getrandom : Buffer -> Int -> Int -> Int
+primitive getrandom : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
--- Threading (low-level)
+-- Threading (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Clone flags (combine with bitwise OR)
@@ -271,13 +271,13 @@ primitive getrandom : Buffer -> Int -> Int -> Int
 -- clone(flags, stack_ptr) -> thread_id or -1 on error
 -- Note: This is a low-level syscall. The stack must be allocated
 -- via mmap and prepared with the thread entry point.
-primitive clone : Int -> Buffer -> Int
+primitive clone : Eff (Int * Buffer) Int
 
 -- | Futex operations for thread synchronization
 -- futex(addr, op, val, timeout, addr2, val3) -> depends on op
 -- FUTEX_WAIT = 0    Block if *addr == val
 -- FUTEX_WAKE = 1    Wake up to val waiters
-primitive futex : Buffer -> Int -> Int -> Buffer -> Buffer -> Int -> Int
+primitive futex : Eff (Buffer * Int * Int * Buffer * Buffer * Int) Int
 
 -- | Get thread ID
-primitive gettid : Unit -> Int
+primitive gettid : Eff Unit Int

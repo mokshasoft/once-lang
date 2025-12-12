@@ -1511,3 +1511,164 @@ The main overhead is stack allocation per thread. A thread pool would amortize t
 - Other architectures need separate implementations
 - Simple but limited API (Unit -> Unit functions only)
 - Clear path to richer abstractions when needed
+
+---
+
+## D032: Arrow-Based Effect System (Eff)
+
+**Date**: 2025-12-12
+**Status**: Accepted
+
+### Context
+
+Once has an implicit lifting bug in the type checker (TypeCheck.hs lines 437-440) where expressions of type `B` are silently lifted when `A -> B` is expected. This allows effectful code to masquerade as pure functions:
+
+```once
+println "hello" : Unit
+-- Gets implicitly lifted to Unit -> Unit
+-- Can be used where a pure function is expected!
+```
+
+This breaks equational reasoning - we cannot distinguish pure from effectful code by looking at types.
+
+### Options Considered
+
+1. **IO Monad** (Haskell-style)
+   - `type IO : Type -> Type`
+   - `println : String -> IO Unit`
+   - Composition via `bind : IO A -> (A -> IO B) -> IO B`
+
+2. **Arrow-based Eff**
+   - `type Eff : Type -> Type -> Type`
+   - `println : Eff String Unit`
+   - Composition via `(>>>) : Eff A B -> Eff B C -> Eff A C`
+
+3. **No explicit effects**
+   - Keep current model, fix lifting bug only
+   - Effects remain implicit in semantics
+
+### Decision
+
+Adopt **arrow-based effect system** with `Eff A B` for effectful morphisms:
+
+```once
+-- Effectful morphism type
+type Eff : Type -> Type -> Type
+
+-- Lift pure functions to effectful
+arr : (A -> B) -> Eff A B
+
+-- Effectful primitives
+println : Eff String Unit
+readLine : Eff Unit String
+
+-- IO as sugar for nullary effects (familiar to Haskell users)
+type IO A = Eff Unit A
+
+-- Main is effectful
+main : IO Unit  -- or equivalently: main : Eff Unit Unit
+```
+
+### Rationale
+
+**Why Arrows over Monads:**
+
+1. **Once's generators are already arrow-like**:
+   - `compose` = `(>>>)` (sequential composition)
+   - `pair` = `(&&&)` (parallel composition)
+   - `case` = `(|||)` (choice)
+   - `curry`/`apply` = ArrowApply
+
+2. **Uniform composition**: Everything uses `(>>>)`, no need for two operators (`.` and `>>=`)
+
+3. **Natural embedding**: Pure functions embed via `arr`, no explicit lifting needed
+
+4. **Simpler verification**: One unified category instead of tracking pure vs Kleisli categories
+
+5. **More general**: Every monad gives rise to an arrow, but not vice versa (Arrows ⊃ Monads)
+
+**Why IO sugar:**
+- Familiar to Haskell users (`IO ()` vs `Eff Unit Unit`)
+- `IO A = Eff Unit A` (effectful computation with no input)
+- No semantic difference, purely ergonomic
+
+**Why remove implicit lifting:**
+- The lifting bug was introduced for convenience but breaks reasoning
+- Effectful code MUST be explicitly typed
+- Pure functions require `arr` to be used in effectful context
+
+### Implementation
+
+**Type-level only**: `Eff A B` compiles to the same C code as `A -> B`. The distinction exists purely for type checking.
+
+**New type constructor**:
+```haskell
+-- In Type.hs
+data Type = ... | TEff Type Type
+
+-- In Syntax.hs
+data SType = ... | STEff SType SType
+```
+
+**Parser recognizes**:
+- `Eff A B` → `STEff A B`
+- `IO A` → `STEff STUnit A` (sugar)
+
+**Unification**:
+- `TEff` unifies with `TEff`
+- `TEff` does NOT unify with `TArrow` (core of effect system)
+
+**New generator**:
+- `arr : (A -> B) -> Eff A B` (lifts pure to effectful)
+
+### Eff vs Result (see D025)
+
+These are orthogonal concepts:
+- `Result A E = A + E` is a **value** (sum type)
+- `Eff A B` is a **morphism** (effectful function)
+
+They work together:
+```once
+readFile : Eff String (Result String Error)
+-- Effectful operation that may fail
+```
+
+### Migration
+
+**Before** (broken):
+```once
+primitive println : String -> Unit
+main : Unit -> Unit
+main = compose println (compose (\_ -> "hello") terminal)
+```
+
+**After**:
+```once
+primitive println : Eff String Unit
+main : IO Unit
+main = compose println (compose (arr (\_ -> "hello")) terminal)
+```
+
+### Arrow Laws (for verification)
+
+```
+arr id >>> f           = f                    -- left identity
+f >>> arr id           = f                    -- right identity
+(f >>> g) >>> h        = f >>> (g >>> h)      -- associativity
+arr (f . g)            = arr g >>> arr f      -- arr preserves composition
+```
+
+### Consequences
+
+- **Breaking change**: All effectful code must use `Eff`/`IO` types
+- Pure functions (A -> B) are guaranteed side-effect free
+- Effect tracking enables verification of purity
+- Fixes the implicit lifting bug permanently
+- Users can use familiar `IO` notation
+- Foundation for future effect indexing (e.g., `Eff [Console, File] A B`)
+
+### See Also
+
+- D025: Result Type Convention (Success-Left)
+- D023: Error Handling via Sum Types
+- docs/design/effects-proposal.md (detailed comparison)

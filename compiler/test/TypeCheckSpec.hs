@@ -5,7 +5,7 @@ import Test.Tasty.HUnit
 
 import Once.Parser (parseModule)
 import Once.Syntax (Expr (..))
-import Once.Type (Type (..))
+import Once.Type (Type (..))  -- includes TEff for D032
 import Once.TypeCheck (inferType, checkModule, emptyContext, TypeError)
 
 import qualified Data.Text as T
@@ -94,8 +94,109 @@ typeCheckTests = testGroup "TypeCheck"
 
       , testCase "module with let binding type checks" $ do
           let input = T.unlines
-                [ "main : Unit -> Unit"
-                , "main = let x = terminal in x"
+                [ "test : Unit -> Unit"
+                , "test = let x = terminal in x"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+      ]
+
+  -- D032: Arrow-based effect system tests
+  , testGroup "Effect types (D032)"
+      [ testCase "arr : (A -> B) -> Eff A B" $ do
+          case inferExpr (EVar "arr") of
+            Right (TArrow (TArrow a1 b1) (TEff a2 b2))
+              | a1 == a2 && b1 == b2 -> pure ()
+            other -> assertFailure $ "Expected (A -> B) -> Eff A B, got: " ++ show other
+
+      , testCase "Eff does NOT unify with Arrow" $ do
+          -- A function declared as Eff should not type-check when pure is expected
+          let input = T.unlines
+                [ "effectful : Eff Unit Unit"
+                , "effectful = terminal"  -- terminal : A -> Unit is pure
+                , "usePure : (Unit -> Unit) -> Unit"
+                , "usePure = compose terminal id"
+                , "test : Unit -> Unit"
+                , "test = usePure effectful"  -- Error: passing Eff where pure expected
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> assertFailure "Should have failed: Eff should not unify with Arrow"
+              Left _ -> pure ()  -- expected failure
+
+      , testCase "main : Eff Unit Unit is valid" $ do
+          let input = T.unlines
+                [ "main : Eff Unit Unit"
+                , "main = arr terminal"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+
+      , testCase "arr lifts pure to effectful" $ do
+          let input = T.unlines
+                [ "pureSwap : A * B -> B * A"
+                , "pureSwap = pair snd fst"
+                , "effSwap : Eff (A * B) (B * A)"
+                , "effSwap = arr pureSwap"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+      ]
+
+  , testGroup "IO sugar (D032)"
+      [ testCase "IO A parses to Eff Unit A" $ do
+          let input = T.unlines
+                [ "action : IO Unit"
+                , "action = arr terminal"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+
+      , testCase "IO Unit unifies with Eff Unit Unit" $ do
+          -- These two type signatures should be equivalent
+          let input = T.unlines
+                [ "main : IO Unit"
+                , "main = arr terminal"
+                , "alias : Eff Unit Unit"
+                , "alias = main"  -- Should work: IO Unit = Eff Unit Unit
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+      ]
+
+  , testGroup "No implicit lifting (D032)"
+      [ testCase "pure function cannot masquerade as effectful" $ do
+          -- This was the bug: terminal (pure) could be used where Eff expected
+          let input = T.unlines
+                [ "main : Eff Unit Unit"
+                , "main = terminal"  -- Error: terminal is pure, not effectful
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> assertFailure "Should have failed: pure cannot satisfy Eff"
+              Left _ -> pure ()  -- expected failure
+
+      , testCase "must use arr to lift pure to effectful" $ do
+          let input = T.unlines
+                [ "main : Eff Unit Unit"
+                , "main = arr terminal"  -- Correct: use arr to lift
                 ]
           case parseModule input of
             Left err -> assertFailure $ "Parse error: " ++ show err

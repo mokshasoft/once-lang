@@ -22,49 +22,49 @@
 -- ThreadHandle = (tid: Int, futex_addr: Buffer)
 
 ------------------------------------------------------------------------
--- Thread Creation
+-- Thread Creation (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
 -- | Spawn a thread that executes a function
 -- Returns thread handle for joining
--- Note: The function must be a primitive that takes Unit and returns Unit
-primitive thread_spawn : (Unit -> Unit) -> Buffer
+-- Note: The function must be effectful (Eff Unit Unit)
+primitive thread_spawn : Eff (Eff Unit Unit) Buffer
 
 -- | Wait for thread to complete (join)
-primitive thread_join : Buffer -> Unit
+primitive thread_join : Eff Buffer Unit
 
 -- | Spawn without waiting (fire-and-forget)
 -- Like spawn but no join handle returned
-primitive thread_detach : (Unit -> Unit) -> Unit
+primitive thread_detach : Eff (Eff Unit Unit) Unit
 
 ------------------------------------------------------------------------
--- Synchronization Primitives
+-- Synchronization Primitives (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
 -- | Mutex (mutual exclusion lock)
 -- mutex_init returns a Buffer containing the mutex state
 
-primitive mutex_init : Unit -> Buffer
-primitive mutex_lock : Buffer -> Unit
-primitive mutex_unlock : Buffer -> Unit
+primitive mutex_init : Eff Unit Buffer
+primitive mutex_lock : Eff Buffer Unit
+primitive mutex_unlock : Eff Buffer Unit
 
 -- | Condition variable for signaling between threads
-primitive cond_init : Unit -> Buffer
-primitive cond_wait : Buffer -> Buffer -> Unit   -- (cond, mutex) -> Unit
-primitive cond_signal : Buffer -> Unit           -- Wake one waiter
-primitive cond_broadcast : Buffer -> Unit        -- Wake all waiters
+primitive cond_init : Eff Unit Buffer
+primitive cond_wait : Eff (Buffer * Buffer) Unit   -- (cond, mutex) -> Unit
+primitive cond_signal : Eff Buffer Unit            -- Wake one waiter
+primitive cond_broadcast : Eff Buffer Unit         -- Wake all waiters
 
 ------------------------------------------------------------------------
--- Atomic Operations
+-- Atomic Operations (D032: All I/O is effectful)
 ------------------------------------------------------------------------
 
 -- | Atomic compare-and-swap
 -- atomic_cas(addr, expected, new) -> previous value
-primitive atomic_cas : Buffer -> Int -> Int -> Int
+primitive atomic_cas : Eff (Buffer * Int * Int) Int
 
 -- | Atomic fetch-and-add
 -- atomic_add(addr, delta) -> previous value
-primitive atomic_add : Buffer -> Int -> Int
+primitive atomic_add : Eff (Buffer * Int) Int
 
 -- | Memory barrier
-primitive memory_barrier : Unit -> Unit
+primitive memory_barrier : Eff Unit Unit
