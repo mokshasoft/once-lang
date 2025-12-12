@@ -15,6 +15,8 @@ LAWS := Once/Category/Laws.agda
 SOUNDNESS := Once/TypeSystem/Soundness.agda
 ELABORATE := Once/Surface/Elaborate.agda
 CORRECT := Once/Surface/Correct.agda
+X86_SYNTAX := Once/Backend/X86/Syntax.agda
+X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 
 # Agda command: discovers standard library path from Nix store
 # The library file is created dynamically to avoid hardcoded paths
@@ -24,11 +26,11 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check laws surface clean
+.PHONY: all check laws surface x86 clean
 
 all: check
 
-check: laws surface
+check: laws surface x86
 	@echo "All proofs type-check successfully!"
 
 laws:
@@ -40,6 +42,11 @@ surface:
 	@echo "Type-checking surface syntax elaboration..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(ELABORATE)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(CORRECT)'
+
+x86:
+	@echo "Type-checking x86-64 backend..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
 
 clean:
 	rm -rf _build
