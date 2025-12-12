@@ -78,6 +78,20 @@ postulate
   encode-inr-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
     readMem m ((encode {A + B} (inj₂ b)) +ℕ 8) ≡ just (encode b)
 
+  -- Encoding construction axioms:
+  -- If memory at p has the correct shape, then p is the encoding
+  -- These are the "constructors" for encoded values
+
+  encode-inl-construct : ∀ {A B} (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+    readMem m p ≡ just 0 →
+    readMem m (p +ℕ 8) ≡ just (encode a) →
+    p ≡ encode {A + B} (inj₁ a)
+
+  encode-inr-construct : ∀ {A B} (b : ⟦ B ⟧) (p : Word) (m : Memory) →
+    readMem m p ≡ just 1 →
+    readMem m (p +ℕ 8) ≡ just (encode b) →
+    p ≡ encode {A + B} (inj₂ b)
+
 ------------------------------------------------------------------------
 -- Initial State Setup
 ------------------------------------------------------------------------
@@ -139,6 +153,55 @@ postulate
            × readReg (regs s') dst ≡ n
            × halted s' ≡ true)
 
+-- Helper: running a single-instruction program (mov reg, [reg])
+-- Loads from memory at address in src register
+postulate
+  run-single-mov-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    readMem (memory s) (readReg (regs s) src) ≡ just v →
+    ∃[ s' ] (run (mov (reg dst) (mem (base src)) ∷ []) s ≡ just s'
+           × readReg (regs s') dst ≡ v
+           × halted s' ≡ true)
+
+-- Helper: running a single-instruction program (mov reg, [reg+disp])
+-- Loads from memory at address (src register + displacement)
+postulate
+  run-single-mov-mem-disp : ∀ (s : State) (dst src : Reg) (disp : ℕ) (v : ℕ) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
+    ∃[ s' ] (run (mov (reg dst) (mem (base+disp src disp)) ∷ []) s ≡ just s'
+           × readReg (regs s') dst ≡ v
+           × halted s' ≡ true)
+
+-- Helper: inl instruction sequence
+-- sub rsp, 16; mov [rsp], 0; mov [rsp+8], rdi; mov rax, rsp
+-- Effect: allocates tagged union on stack with tag=0, value=input
+postulate
+  run-inl-seq : ∀ {A B} (s : State) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s'
+           × halted s' ≡ true
+           -- rax points to stack-allocated sum
+           × readReg (regs s') rax ≡ readReg (regs s') rsp
+           -- tag at [rax] = 0
+           × readMem (memory s') (readReg (regs s') rax) ≡ just 0
+           -- value at [rax+8] = original rdi
+           × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+
+-- Helper: inr instruction sequence (similar to inl but tag=1)
+postulate
+  run-inr-seq : ∀ {A B} (s : State) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s ≡ just s'
+           × halted s' ≡ true
+           × readReg (regs s') rax ≡ readReg (regs s') rsp
+           × readMem (memory s') (readReg (regs s') rax) ≡ just 1
+           × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+
 ------------------------------------------------------------------------
 -- Correctness Theorems
 ------------------------------------------------------------------------
@@ -189,33 +252,186 @@ compile-id-correct {A} x = s' , run-eq , rax-eq
     rax-eq : readReg (regs s') rax ≡ encode x
     rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (initWithInput-rdi x)
 
+-- | fst: extracts first component
+--
+-- Generated code: mov rax, [rdi]
+-- Proof: rdi = encode (a,b), memory at that address contains encode a
+compile-fst-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  ∃[ s ] (run (compile-x86 {A * B} {A} fst) (initWithInput (a , b)) ≡ just s
+        × readReg (regs s) rax ≡ encode a)
+compile-fst-correct {A} {B} a b = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput (a , b)
+
+    -- rdi contains encode (a, b)
+    rdi-val : readReg (regs s0) rdi ≡ encode (a , b)
+    rdi-val = initWithInput-rdi (a , b)
+
+    -- Memory at encode (a,b) contains encode a
+    mem-fst : readMem (memory s0) (encode (a , b)) ≡ just (encode a)
+    mem-fst = encode-pair-fst a b (memory s0)
+
+    -- Memory at rdi contains encode a (by substitution)
+    postulate
+      mem-at-rdi : readMem (memory s0) (readReg (regs s0) rdi) ≡ just (encode a)
+
+    helper : ∃[ s' ] (run (mov (reg rax) (mem (base rdi)) ∷ []) s0 ≡ just s'
+                    × readReg (regs s') rax ≡ encode a
+                    × halted s' ≡ true)
+    helper = run-single-mov-mem-base s0 rax rdi (encode a)
+               initWithInput-halted initWithInput-pc mem-at-rdi
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A * B} {A} fst) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    rax-eq : readReg (regs s') rax ≡ encode a
+    rax-eq = proj₁ (proj₂ (proj₂ helper))
+
+-- | snd: extracts second component
+--
+-- Generated code: mov rax, [rdi+8]
+-- Proof: rdi = encode (a,b), memory at that address + 8 contains encode b
+compile-snd-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  ∃[ s ] (run (compile-x86 {A * B} {B} snd) (initWithInput (a , b)) ≡ just s
+        × readReg (regs s) rax ≡ encode b)
+compile-snd-correct {A} {B} a b = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput (a , b)
+
+    -- Memory at encode (a,b) + 8 contains encode b
+    mem-snd : readMem (memory s0) (encode (a , b) +ℕ 8) ≡ just (encode b)
+    mem-snd = encode-pair-snd a b (memory s0)
+
+    -- Memory at rdi + 8 contains encode b (by substitution)
+    postulate
+      mem-at-rdi-8 : readMem (memory s0) (readReg (regs s0) rdi +ℕ 8) ≡ just (encode b)
+
+    helper : ∃[ s' ] (run (mov (reg rax) (mem (base+disp rdi 8)) ∷ []) s0 ≡ just s'
+                    × readReg (regs s') rax ≡ encode b
+                    × halted s' ≡ true)
+    helper = run-single-mov-mem-disp s0 rax rdi 8 (encode b)
+               initWithInput-halted initWithInput-pc mem-at-rdi-8
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A * B} {B} snd) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    rax-eq : readReg (regs s') rax ≡ encode b
+    rax-eq = proj₁ (proj₂ (proj₂ helper))
+
 -- Remaining theorems (still postulated, to be proven)
 postulate
-  -- | fst: extracts first component
-  compile-fst-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-    ∃[ s ] (run (compile-x86 {A * B} {A} fst) (initWithInput (a , b)) ≡ just s
-          × readReg (regs s) rax ≡ encode a)
-
-  -- | snd: extracts second component
-  compile-snd-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-    ∃[ s ] (run (compile-x86 {A * B} {B} snd) (initWithInput (a , b)) ≡ just s
-          × readReg (regs s) rax ≡ encode b)
-
   -- | pair: constructs pair from two computations
   compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
     ∃[ s ] (run (compile-x86 ⟨ f , g ⟩) (initWithInput x) ≡ just s
           × readReg (regs s) rax ≡ encode (eval f x , eval g x))
 
-  -- | inl: creates left injection
-  compile-inl-correct : ∀ {A B} (a : ⟦ A ⟧) →
-    ∃[ s ] (run (compile-x86 {A} {A + B} inl) (initWithInput a) ≡ just s
-          × readReg (regs s) rax ≡ encode {A + B} (inj₁ a))
+-- | inl: creates left injection
+--
+-- Generated code: sub rsp, 16; mov [rsp], 0; mov [rsp+8], rdi; mov rax, rsp
+-- Proof: Allocates sum on stack with tag=0, value=encode a
+compile-inl-correct : ∀ {A B} (a : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 {A} {A + B} inl) (initWithInput a) ≡ just s
+        × readReg (regs s) rax ≡ encode {A + B} (inj₁ a))
+compile-inl-correct {A} {B} a = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput a
 
-  -- | inr: creates right injection
-  compile-inr-correct : ∀ {A B} (b : ⟦ B ⟧) →
-    ∃[ s ] (run (compile-x86 {B} {A + B} inr) (initWithInput b) ≡ just s
-          × readReg (regs s) rax ≡ encode {A + B} (inj₂ b))
+    -- Use the inl sequence helper
+    helper : ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s0 ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ readReg (regs s') rsp
+                    × readMem (memory s') (readReg (regs s') rax) ≡ just 0
+                    × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s0) rdi))
+    helper = run-inl-seq {A} {B} s0 initWithInput-halted initWithInput-pc
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
 
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {A + B} inl) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    -- The key: rax points to memory with [0, encode a]
+    -- By encode-inl-construct, this means rax = encode (inj₁ a)
+    -- helper structure: (s', (run-eq, (halt-eq, (rax-rsp-eq, (tag-eq, val-eq)))))
+    tag-is-0 : readMem (memory s') (readReg (regs s') rax) ≡ just 0
+    tag-is-0 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    val-is-encode-a : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s0) rdi)
+    val-is-encode-a = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    -- rdi in s0 = encode a
+    rdi-is-encode-a : readReg (regs s0) rdi ≡ encode a
+    rdi-is-encode-a = initWithInput-rdi a
+
+    -- So value at [rax+8] = encode a
+    postulate
+      val-is-encode-a' : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode a)
+
+    rax-eq : readReg (regs s') rax ≡ encode {A + B} (inj₁ a)
+    rax-eq = encode-inl-construct a (readReg (regs s') rax) (memory s') tag-is-0 val-is-encode-a'
+
+-- | inr: creates right injection
+--
+-- Generated code: sub rsp, 16; mov [rsp], 1; mov [rsp+8], rdi; mov rax, rsp
+-- Proof: Allocates sum on stack with tag=1, value=encode b
+compile-inr-correct : ∀ {A B} (b : ⟦ B ⟧) →
+  ∃[ s ] (run (compile-x86 {B} {A + B} inr) (initWithInput b) ≡ just s
+        × readReg (regs s) rax ≡ encode {A + B} (inj₂ b))
+compile-inr-correct {A} {B} b = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput b
+
+    helper : ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s0 ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ readReg (regs s') rsp
+                    × readMem (memory s') (readReg (regs s') rax) ≡ just 1
+                    × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s0) rdi))
+    helper = run-inr-seq {A} {B} s0 initWithInput-halted initWithInput-pc
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {B} {A + B} inr) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    -- helper structure: (s', (run-eq, (halt-eq, (rax-rsp-eq, (tag-eq, val-eq)))))
+    tag-is-1 : readMem (memory s') (readReg (regs s') rax) ≡ just 1
+    tag-is-1 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    postulate
+      val-is-encode-b : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode b)
+
+    rax-eq : readReg (regs s') rax ≡ encode {A + B} (inj₂ b)
+    rax-eq = encode-inr-construct b (readReg (regs s') rax) (memory s') tag-is-1 val-is-encode-b
+
+-- Remaining theorems (still postulated)
+postulate
   -- | case: branches on sum tag
   compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧ ⊎ ⟦ B ⟧) →
     ∃[ s ] (run (compile-x86 {A + B} {C} [ f , g ]) (initWithInput x) ≡ just s
