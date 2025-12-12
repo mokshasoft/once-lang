@@ -879,7 +879,30 @@ Heap allocation is implemented (see D012-D015). This phase completes pool/arena 
 7. Add test: import and use Canonical.Product.swap
 8. Add circular import detection
 9. Add qualified imports: `import Canonical.Product as P`
+10. Update Interpretations to use imports (see note below)
 ```
+
+### Note: Interpretations and Imports
+
+When the module system is implemented, Interpretation files will need updating.
+Currently, each primitive in an Interpretation requires its own C implementation
+because there's no way to import and reuse other primitives.
+
+For example, `File.once` provides `print` and `println` which are implemented
+directly in `File.c` using `fwrite()`. Once imports work, these could instead
+be defined in terms of `fd_write` from `syscalls.once`:
+
+```once
+-- Future: when imports work
+import Linux.Syscalls (fd_write)
+
+print : String Utf8 -> Unit
+print s = fd_write 1 s (length s) |> terminal
+```
+
+Until then, Interpretation files must provide standalone C implementations
+for each primitive, even if conceptually they could be composed from other
+primitives.
 
 ### Directory Structure
 

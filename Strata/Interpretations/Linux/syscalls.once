@@ -1,7 +1,256 @@
--- Linux syscall primitives
+-- | Linux syscall primitives
+--
+-- Comprehensive interface to Linux kernel functionality.
+-- Organized by category for clarity.
+--
+-- Note: These are primitives - they have no implementation in Once,
+-- only type signatures. The C implementation provides the actual syscalls.
 
+------------------------------------------------------------------------
+-- Process Control
+------------------------------------------------------------------------
+
+-- | Exit the process with code 0
 primitive exit0 : Unit -> Unit
+
+-- | Exit the process with given code
 primitive exit : Int -> Unit
-primitive putchar : Int -> Unit
-primitive getchar : Unit -> Int
-primitive puts : String Utf8 -> Unit
+
+-- | Get current process ID
+primitive getpid : Unit -> Int
+
+-- | Get parent process ID
+primitive getppid : Unit -> Int
+
+-- | Get user ID
+primitive getuid : Unit -> Int
+
+-- | Get effective user ID
+primitive geteuid : Unit -> Int
+
+-- | Get group ID
+primitive getgid : Unit -> Int
+
+-- | Get effective group ID
+primitive getegid : Unit -> Int
+
+------------------------------------------------------------------------
+-- File Descriptors
+------------------------------------------------------------------------
+
+-- | File descriptor type (Int alias for clarity)
+-- fd: 0 = stdin, 1 = stdout, 2 = stderr
+
+-- | Read from file descriptor into buffer, returns bytes read
+primitive fd_read : Int -> Buffer -> Int -> Int
+
+-- | Write buffer to file descriptor, returns bytes written
+primitive fd_write : Int -> Buffer -> Int -> Int
+
+-- | Close file descriptor
+primitive fd_close : Int -> Int
+
+-- | Duplicate file descriptor
+primitive fd_dup : Int -> Int
+
+-- | Duplicate file descriptor to specific number
+primitive fd_dup2 : Int -> Int -> Int
+
+------------------------------------------------------------------------
+-- File Operations
+------------------------------------------------------------------------
+
+-- | Open flags (combine with bitwise OR)
+-- O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2
+-- O_CREAT = 64, O_TRUNC = 512, O_APPEND = 1024
+
+-- | Open file, returns file descriptor
+primitive open : String Utf8 -> Int -> Int -> Int
+
+-- | Create file (shorthand for open with O_CREAT | O_WRONLY | O_TRUNC)
+primitive creat : String Utf8 -> Int -> Int
+
+-- | Unlink (delete) file
+primitive unlink : String Utf8 -> Int
+
+-- | Rename file
+primitive rename : String Utf8 -> String Utf8 -> Int
+
+-- | Create symbolic link
+primitive symlink : String Utf8 -> String Utf8 -> Int
+
+-- | Read symbolic link target into buffer
+primitive readlink : String Utf8 -> Buffer -> Int -> Int
+
+-- | Get file status (returns encoded stat structure in buffer)
+primitive stat : String Utf8 -> Buffer -> Int
+
+-- | Get file status (don't follow symlinks)
+primitive lstat : String Utf8 -> Buffer -> Int
+
+-- | Get file status by file descriptor
+primitive fstat : Int -> Buffer -> Int
+
+-- | Change file permissions
+primitive chmod : String Utf8 -> Int -> Int
+
+-- | Change file permissions by file descriptor
+primitive fchmod : Int -> Int -> Int
+
+-- | Change file owner
+primitive chown : String Utf8 -> Int -> Int -> Int
+
+-- | Truncate file to specified length
+primitive truncate : String Utf8 -> Int -> Int
+
+-- | Truncate file by file descriptor
+primitive ftruncate : Int -> Int -> Int
+
+------------------------------------------------------------------------
+-- Directory Operations
+------------------------------------------------------------------------
+
+-- | Create directory
+primitive mkdir : String Utf8 -> Int -> Int
+
+-- | Remove directory
+primitive rmdir : String Utf8 -> Int
+
+-- | Change current directory
+primitive chdir : String Utf8 -> Int
+
+-- | Get current directory into buffer
+primitive getcwd : Buffer -> Int -> Int
+
+-- | Change root directory
+primitive chroot : String Utf8 -> Int
+
+------------------------------------------------------------------------
+-- File Seeking
+------------------------------------------------------------------------
+
+-- | Seek flags: SEEK_SET = 0, SEEK_CUR = 1, SEEK_END = 2
+
+-- | Seek to position in file, returns new position
+primitive lseek : Int -> Int -> Int -> Int
+
+------------------------------------------------------------------------
+-- Time
+------------------------------------------------------------------------
+
+-- | Get current time in seconds since epoch
+primitive time : Unit -> Int
+
+-- | Get high-resolution time (nanoseconds in buffer)
+primitive clock_gettime : Int -> Buffer -> Int
+
+-- | Sleep for specified seconds
+primitive sleep : Int -> Int
+
+-- | Sleep for specified microseconds
+primitive usleep : Int -> Int
+
+-- | Sleep for specified nanoseconds (timespec in buffer)
+primitive nanosleep : Buffer -> Buffer -> Int
+
+------------------------------------------------------------------------
+-- Environment
+------------------------------------------------------------------------
+
+-- | Get environment variable value
+primitive getenv : String Utf8 -> String Utf8
+
+-- | Set environment variable
+primitive setenv : String Utf8 -> String Utf8 -> Int -> Int
+
+-- | Unset environment variable
+primitive unsetenv : String Utf8 -> Int
+
+------------------------------------------------------------------------
+-- Memory Mapping
+------------------------------------------------------------------------
+
+-- | Map memory region
+-- prot: PROT_READ=1, PROT_WRITE=2, PROT_EXEC=4
+-- flags: MAP_SHARED=1, MAP_PRIVATE=2, MAP_ANONYMOUS=32
+primitive mmap : Int -> Int -> Int -> Int -> Int -> Int -> Buffer
+
+-- | Unmap memory region
+primitive munmap : Buffer -> Int -> Int
+
+-- | Change memory protection
+primitive mprotect : Buffer -> Int -> Int -> Int
+
+------------------------------------------------------------------------
+-- Signals (basic)
+------------------------------------------------------------------------
+
+-- | Signal numbers (common ones)
+-- SIGHUP=1, SIGINT=2, SIGQUIT=3, SIGKILL=9, SIGTERM=15, etc.
+
+-- | Send signal to process
+primitive kill : Int -> Int -> Int
+
+-- | Raise signal in current process
+primitive raise : Int -> Int
+
+-- | Pause until signal received
+primitive pause : Unit -> Int
+
+------------------------------------------------------------------------
+-- Pipe and IPC
+------------------------------------------------------------------------
+
+-- | Create pipe (writes fds to buffer: [read_fd, write_fd])
+primitive pipe : Buffer -> Int
+
+------------------------------------------------------------------------
+-- Socket Operations (basic)
+------------------------------------------------------------------------
+
+-- | Address families: AF_UNIX=1, AF_INET=2, AF_INET6=10
+-- | Socket types: SOCK_STREAM=1, SOCK_DGRAM=2
+
+-- | Create socket
+primitive socket : Int -> Int -> Int -> Int
+
+-- | Bind socket to address (sockaddr in buffer)
+primitive bind : Int -> Buffer -> Int -> Int
+
+-- | Listen for connections
+primitive listen : Int -> Int -> Int
+
+-- | Accept connection, returns new socket fd
+primitive accept : Int -> Buffer -> Buffer -> Int
+
+-- | Connect to address
+primitive connect : Int -> Buffer -> Int -> Int
+
+-- | Send data on socket
+primitive send : Int -> Buffer -> Int -> Int -> Int
+
+-- | Receive data from socket
+primitive recv : Int -> Buffer -> Int -> Int -> Int
+
+-- | Shutdown socket
+primitive shutdown : Int -> Int -> Int
+
+-- | Set socket option
+primitive setsockopt : Int -> Int -> Int -> Buffer -> Int -> Int
+
+-- | Get socket option
+primitive getsockopt : Int -> Int -> Int -> Buffer -> Buffer -> Int
+
+------------------------------------------------------------------------
+-- Polling
+------------------------------------------------------------------------
+
+-- | Poll file descriptors (pollfd array in buffer)
+primitive poll : Buffer -> Int -> Int -> Int
+
+------------------------------------------------------------------------
+-- Random
+------------------------------------------------------------------------
+
+-- | Get random bytes into buffer
+primitive getrandom : Buffer -> Int -> Int -> Int

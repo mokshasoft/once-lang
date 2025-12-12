@@ -1,0 +1,68 @@
+-- | File I/O convenience functions for Linux
+--
+-- Higher-level file operations built on raw syscalls.
+-- These are still primitives (implemented in C) but provide
+-- a more convenient interface than raw fd_read/fd_write.
+
+------------------------------------------------------------------------
+-- Standard File Descriptors
+------------------------------------------------------------------------
+
+-- | Standard input (fd 0)
+stdin : Int
+stdin = 0
+
+-- | Standard output (fd 1)
+stdout : Int
+stdout = 1
+
+-- | Standard error (fd 2)
+stderr : Int
+stderr = 2
+
+------------------------------------------------------------------------
+-- Output Operations
+------------------------------------------------------------------------
+
+-- | Write string to stdout (no newline)
+primitive print : String Utf8 -> Unit
+
+-- | Write string to stdout with newline
+primitive println : String Utf8 -> Unit
+
+-- | Write string to stderr (no newline)
+primitive err : String Utf8 -> Unit
+
+-- | Write string to stderr with newline
+primitive errln : String Utf8 -> Unit
+
+-- | Write a single character to stdout
+primitive putc : Int -> Unit
+
+-- | Flush stdout
+primitive flush : Unit -> Unit
+
+------------------------------------------------------------------------
+-- Input Operations
+------------------------------------------------------------------------
+
+-- | Read a single character from stdin
+-- Returns -1 on EOF
+primitive getc : Unit -> Int
+
+-- | Read a line from stdin into buffer
+-- Returns number of bytes read, or -1 on EOF
+-- Does not include the newline character
+primitive getline : Buffer -> Int -> Int
+
+------------------------------------------------------------------------
+-- File Reading Helpers
+------------------------------------------------------------------------
+
+-- | Read entire file contents into buffer
+-- Returns bytes read or -1 on error
+primitive readfile : String Utf8 -> Buffer -> Int -> Int
+
+-- | Get file size
+-- Returns size in bytes or -1 on error
+primitive filesize : String Utf8 -> Int
