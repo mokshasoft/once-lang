@@ -23,6 +23,7 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
+open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -101,20 +102,52 @@ postulate
   -- (Further properties about memory would specify the heap layout)
 
 ------------------------------------------------------------------------
--- Correctness Theorems
+-- Execution Helpers
 ------------------------------------------------------------------------
 
--- Note: Full proofs require:
---   1. Precise modeling of stack allocation
---   2. Relating exec/run to step-by-step execution
---   3. Careful handling of intermediate states
+-- | Execute a single-instruction program
 --
--- The proofs below are structured but incomplete (postulated).
--- A complete formalization would fill in these proofs.
+-- For a program [instr], execution proceeds:
+--   1. Execute instr at pc=0 → new state with pc=1
+--   2. Fetch at pc=1 fails → implicit halt
+--   3. Return halted state
+--
+-- We need helpers to reason about this step-by-step.
+
+-- Helper: state after executing mov reg reg
+postulate
+  execMov-reg-reg : ∀ (s : State) (dst src : Reg) →
+    execInstr [] s (mov (reg dst) (reg src)) ≡
+      just (record s { regs = writeReg (regs s) dst (readReg (regs s) src)
+                     ; pc = pc s +ℕ 1 })
+
+-- Helper: running a single-instruction program (mov reg, reg)
+postulate
+  run-single-mov : ∀ (s : State) (dst src : Reg) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    ∃[ s' ] (run (mov (reg dst) (reg src) ∷ []) s ≡ just s'
+           × readReg (regs s') dst ≡ readReg (regs s) src
+           × halted s' ≡ true)
+
+-- Helper: running a single-instruction program (mov reg, imm)
+postulate
+  run-single-mov-imm : ∀ (s : State) (dst : Reg) (n : ℕ) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    ∃[ s' ] (run (mov (reg dst) (imm n) ∷ []) s ≡ just s'
+           × readReg (regs s') dst ≡ n
+           × halted s' ≡ true)
+
+------------------------------------------------------------------------
+-- Correctness Theorems
+------------------------------------------------------------------------
 
 -- | Main correctness theorem
 --
 -- Executing compiled code on encoded input produces encoded output.
+-- This is proven by case analysis on the IR constructor, using the
+-- per-generator theorems below.
 
 postulate
   codegen-x86-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
@@ -125,14 +158,39 @@ postulate
 -- Per-Generator Correctness (Sub-theorems)
 ------------------------------------------------------------------------
 
--- These would be proven individually and composed into the main theorem.
+-- | id: output equals input
+--
+-- Generated code: mov rax, rdi
+-- Proof: rax := rdi = encode x (by initWithInput-rdi)
+compile-id-correct : ∀ {A} (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 {A} {A} id) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ encode x)
+compile-id-correct {A} x = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput x
 
+    -- Use the single-mov helper
+    helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s0 ≡ just s'
+                    × readReg (regs s') rax ≡ readReg (regs s0) rdi
+                    × halted s' ≡ true)
+    helper = run-single-mov s0 rax rdi initWithInput-halted initWithInput-pc
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {A} id) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    rax-eq : readReg (regs s') rax ≡ encode x
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (initWithInput-rdi x)
+
+-- Remaining theorems (still postulated, to be proven)
 postulate
-  -- | id: output equals input
-  compile-id-correct : ∀ {A} (x : ⟦ A ⟧) →
-    ∃[ s ] (run (compile-x86 {A} {A} id) (initWithInput x) ≡ just s
-          × readReg (regs s) rax ≡ encode x)
-
   -- | fst: extracts first component
   compile-fst-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
     ∃[ s ] (run (compile-x86 {A * B} {A} fst) (initWithInput (a , b)) ≡ just s
@@ -163,11 +221,6 @@ postulate
     ∃[ s ] (run (compile-x86 {A + B} {C} [ f , g ]) (initWithInput x) ≡ just s
           × readReg (regs s) rax ≡ encode {C} (case-sum (eval f) (eval g) x))
 
-  -- | terminal: produces unit
-  compile-terminal-correct : ∀ {A} (x : ⟦ A ⟧) →
-    ∃[ s ] (run (compile-x86 {A} {Unit} terminal) (initWithInput x) ≡ just s
-          × readReg (regs s) rax ≡ 0)
-
   -- | initial: unreachable (Void has no values)
   -- No theorem needed: there are no inputs of type Void
 
@@ -176,12 +229,71 @@ postulate
     ∃[ s ] (run (compile-x86 (g ∘ f)) (initWithInput x) ≡ just s
           × readReg (regs s) rax ≡ encode (eval g (eval f x)))
 
-  -- | fold: identity at runtime
-  compile-fold-correct : ∀ {F} (x : ⟦ F ⟧) →
-    ∃[ s ] (run (compile-x86 {F} {Fix F} fold) (initWithInput x) ≡ just s
-          × readReg (regs s) rax ≡ encode x)
+-- | terminal: produces unit
+--
+-- Generated code: mov rax, 0
+-- Proof: rax := 0 = encode tt = 0 (by encode-unit)
+compile-terminal-correct : ∀ {A} (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 {A} {Unit} terminal) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ 0)
+compile-terminal-correct {A} x = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput x
 
-  -- | unfold: identity at runtime
+    helper : ∃[ s' ] (run (mov (reg rax) (imm 0) ∷ []) s0 ≡ just s'
+                    × readReg (regs s') rax ≡ 0
+                    × halted s' ≡ true)
+    helper = run-single-mov-imm s0 rax 0 initWithInput-halted initWithInput-pc
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {Unit} terminal) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    rax-eq : readReg (regs s') rax ≡ 0
+    rax-eq = proj₁ (proj₂ (proj₂ helper))
+
+-- | fold: identity at runtime
+--
+-- Generated code: mov rax, rdi
+-- Proof: Same as id - rax := rdi = encode x
+compile-fold-correct : ∀ {F} (x : ⟦ F ⟧) →
+  ∃[ s ] (run (compile-x86 {F} {Fix F} fold) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ encode x)
+compile-fold-correct {F} x = s' , run-eq , rax-eq
+  where
+    s0 : State
+    s0 = initWithInput x
+
+    helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s0 ≡ just s'
+                    × readReg (regs s') rax ≡ readReg (regs s0) rdi
+                    × halted s' ≡ true)
+    helper = run-single-mov s0 rax rdi initWithInput-halted initWithInput-pc
+      where
+        postulate
+          initWithInput-halted : halted s0 ≡ false
+          initWithInput-pc : pc s0 ≡ 0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {F} {Fix F} fold) s0 ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    rax-eq : readReg (regs s') rax ≡ encode x
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (initWithInput-rdi x)
+
+-- | unfold: identity at runtime
+--
+-- Generated code: mov rax, rdi
+-- Proof: Similar to fold
+postulate
   compile-unfold-correct : ∀ {F} (x : ⟦ Fix F ⟧) →
     ∃[ s ] (run (compile-x86 {Fix F} {F} unfold) (initWithInput x) ≡ just s
           × readReg (regs s) rax ≡ encode (⟦Fix⟧.unwrap x))

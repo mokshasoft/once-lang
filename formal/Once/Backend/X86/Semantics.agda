@@ -289,7 +289,7 @@ step : Program → State → Maybe State
 step prog s with halted s
 ... | true = just s  -- Already halted
 ... | false with fetch prog (pc s)
-...   | nothing = nothing  -- Invalid PC
+...   | nothing = just (record s { halted = true })  -- End of program = implicit halt
 ...   | just instr = execInstr prog s instr
 
 -- | Execute n steps (bounded execution)
