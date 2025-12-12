@@ -100,6 +100,30 @@ parserTests = testGroup "Parser"
           parseExpr' "f x . g y" @?=
             Right (EApp (EApp (EVar "compose") (EApp (EVar "f") (EVar "x")))
                        (EApp (EVar "g") (EVar "y")))
+
+      , testCase "let binding (single)" $
+          parseExpr' "let x = y in x" @?=
+            Right (ELet "x" (EVar "y") (EVar "x"))
+
+      , testCase "let binding with string literal" $
+          parseExpr' "let msg = \"hello\" in println msg" @?=
+            Right (ELet "msg" (EStringLit "hello")
+                        (EApp (EVar "println") (EVar "msg")))
+
+      , testCase "let binding (multiple, semicolon separated)" $
+          parseExpr' "let x = a; y = b in x" @?=
+            Right (ELet "x" (EVar "a")
+                        (ELet "y" (EVar "b") (EVar "x")))
+
+      , testCase "let binding (three bindings)" $
+          parseExpr' "let x = a; y = b; z = c in z" @?=
+            Right (ELet "x" (EVar "a")
+                        (ELet "y" (EVar "b")
+                              (ELet "z" (EVar "c") (EVar "z"))))
+
+      , testCase "nested let expressions" $
+          parseExpr' "let x = let y = z in y in x" @?=
+            Right (ELet "x" (ELet "y" (EVar "z") (EVar "y")) (EVar "x"))
       ]
 
   , testGroup "Declarations"

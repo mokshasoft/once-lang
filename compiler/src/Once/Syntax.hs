@@ -63,6 +63,7 @@ data Expr
   | EQualified Name ModuleName      -- ^ Qualified access: swap@Canonical.Product
   | EApp Expr Expr                  -- ^ Application: f x
   | ELam Name Expr                  -- ^ Lambda: \x -> e
+  | ELet Name Expr Expr             -- ^ Let binding: let x = e1 in e2
   | EPair Expr Expr                 -- ^ Pair literal: (e1, e2)
   | ECase Expr Name Expr Name Expr  -- ^ Case: case e of { Left x -> e1; Right y -> e2 }
   | EUnit                           -- ^ Unit value: ()

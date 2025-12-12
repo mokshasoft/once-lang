@@ -66,6 +66,7 @@ eval (Apply _ _) _ = Left (TypeError "apply expects (closure, argument) pair")
 
 -- Variables and primitives are not directly evaluable without context
 eval (Var name) _ = Left (UnboundVariable (show name))
+eval (LocalVar name) _ = Left (UnboundVariable ("local: " ++ show name))
 eval (Prim name _ _) _ = Left (UnboundVariable ("primitive: " ++ show name))
 
 -- String literals evaluate to string values (ignoring the input)
@@ -75,3 +76,10 @@ eval (StringLit s) _ = Right (VString s)
 -- fold and unfold are identity at runtime since Fix F ≅ F (Fix F)
 eval (Fold _) v = Right v
 eval (Unfold _) v = Right v
+
+-- Let binding: evaluate e1, bind to name, evaluate e2
+-- Note: the interpreter doesn't have an environment for local bindings,
+-- so let isn't fully supported. For now, we just evaluate e2 with e1's value.
+eval (Let _ e1 e2) v = do
+  v1 <- eval e1 v
+  eval e2 v1

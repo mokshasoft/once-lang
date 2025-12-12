@@ -60,6 +60,37 @@ elaborateTests = testGroup "Elaborate"
                 Right other -> assertFailure $ "Wrong result: " ++ show other
                 Left err -> assertFailure $ "Eval error: " ++ show err
       ]
+
+  , testGroup "Let bindings"
+      [ testCase "let x = id in x elaborates to Let" $ do
+          let expr = ELet "x" (EVar "id") (EVar "x")
+          case elaborate expr of
+            Right (Let "x" (Id _) (LocalVar "x")) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "let with string literal" $ do
+          let expr = ELet "msg" (EStringLit "hello") (EVar "msg")
+          case elaborate expr of
+            Right (Let "msg" (StringLit "hello") (LocalVar "msg")) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "nested let bindings elaborate correctly" $ do
+          let expr = ELet "x" (EVar "fst") (ELet "y" (EVar "snd") (EVar "x"))
+          case elaborate expr of
+            Right (Let "x" (Fst _ _) (Let "y" (Snd _ _) (LocalVar "x"))) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "let body uses outer variable not inner" $ do
+          -- let x = fst in let y = snd in x should reference x, not y
+          let expr = ELet "x" (EVar "fst") (ELet "y" (EVar "snd") (EVar "x"))
+          case elaborate expr of
+            Right (Let "x" _ (Let "y" _ (LocalVar "x"))) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+      ]
   ]
 
 placeholder :: Type

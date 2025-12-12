@@ -161,6 +161,8 @@ generateExpr ir var = case ir of
 
   Var n -> "once_" <> n <> "(" <> var <> ")"  -- treat as function call
 
+  LocalVar n -> n  -- Local variable: just use the name
+
   Prim n _ _ -> "once_" <> n <> "(" <> var <> ")"
 
   StringLit s ->
@@ -173,6 +175,13 @@ generateExpr ir var = case ir of
   -- At runtime, Fix F and F (Fix F) have the same representation (boxed pointer)
   Fold _ -> var    -- fold is identity at runtime (wraps into Fix)
   Unfold _ -> var  -- unfold is identity at runtime (unwraps from Fix)
+
+  -- Let binding: use GCC statement expression ({ ... })
+  -- let x = e1 in e2 => ({ typeof(e1) x = e1; e2; })
+  -- Using GCC typeof extension to infer the type automatically
+  Let x e1 e2 ->
+    let e1Code = generateExpr e1 var
+    in "({ typeof(" <> e1Code <> ") " <> x <> " = " <> e1Code <> "; " <> generateExpr e2 x <> "; })"
 
 -- | Convert Text to C string literal (with escaping)
 cStringLiteral :: Text -> Text

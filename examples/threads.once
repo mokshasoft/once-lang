@@ -1,27 +1,16 @@
 -- threads.once: Threading interface demonstration
 --
--- Demonstrates the threading primitives available in Once.
+-- This file demonstrates the threading primitive declarations.
+-- Actual threading requires curry/apply to pass function references,
+-- which is planned for a future phase. See implementation-plan.md.
 --
--- Note: Full threading examples require let bindings to store handles.
--- This example shows the interface and a simple spawn-then-join pattern.
---
--- Build and run:
---   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/threads.once -o ../.build/threads
---   ../.build/threads
+-- Threading primitives (interface only - not yet runnable):
+-- primitive thread_spawn : (Unit -> Unit) -> Buffer
+-- primitive thread_join : Buffer -> Unit
+-- primitive thread_detach : (Unit -> Unit) -> Unit
 
--- Threading primitives
-primitive thread_spawn : (Unit -> Unit) -> Buffer
-primitive thread_join : Buffer -> Unit
-
--- I/O
+-- For now, this is a placeholder that just prints a message
 primitive println : String Utf8 -> Unit
 
--- Thread function: prints a message
-worker : Unit -> Unit
-worker = println "Hello from spawned thread!"
-
--- Main: spawn a thread and immediately join it
--- This uses composition: spawn returns Buffer, join takes Buffer
--- thread_join . thread_spawn : (Unit -> Unit) -> Unit
 main : Unit -> Unit
-main = (thread_join . thread_spawn) worker
+main = println "Threading primitives require curry/apply (see implementation-plan.md)"

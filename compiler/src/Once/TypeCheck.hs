@@ -245,6 +245,14 @@ inferType ctx expr fresh = case expr of
     (bodyTy, s1, fresh2) <- inferType ctx' body fresh1
     Right (TArrow (applySubst s1 argTy) bodyTy, s1, fresh2)
 
+  -- let x = e1 in e2
+  -- Type: infer type of e1, bind x to that type, then infer type of e2
+  ELet x e1 e2 -> do
+    (ty1, s1, fresh1) <- inferType ctx e1 fresh
+    let ctx' = extendContext x (applySubst s1 ty1) ctx
+    (ty2, s2, fresh2) <- inferType ctx' e2 fresh1
+    Right (ty2, composeSubst s2 s1, fresh2)
+
   EPair a b -> do
     (tyA, s1, fresh1) <- inferType ctx a fresh
     (tyB, s2, fresh2) <- inferType ctx b fresh1
@@ -509,6 +517,7 @@ countUsage expr = case expr of
   EQualified name _ -> useVar name emptyUsage  -- qualified also counts as use
   EApp f arg -> mergeUsage (countUsage f) (countUsage arg)
   ELam _ body -> countUsage body  -- bound var handled separately
+  ELet _ e1 e2 -> mergeUsage (countUsage e1) (countUsage e2)  -- bound var handled separately
   EPair a b -> mergeUsage (countUsage a) (countUsage b)
   ECase scrut _ e1 _ e2 ->
     -- For case, both branches must use variables the same way
@@ -544,6 +553,16 @@ validateLambdaUsage expr = case expr of
     -- Default: lambdas are linear (quantity = One)
     -- This enforces that lambda-bound variables are used exactly once
     checkQuantity x One xUsage
+  ELet x e1 e2 -> do
+    -- Check both parts for lambda usage
+    validateLambdaUsage e1
+    validateLambdaUsage e2
+    -- Count usages of x in e2
+    let usage = countUsage e2
+    let xUsage = Map.findWithDefault 0 x usage
+    -- Let bindings are unrestricted (can be used any number of times)
+    -- This differs from lambdas which are linear by default
+    checkQuantity x Omega xUsage
   EPair a b -> validateLambdaUsage a >> validateLambdaUsage b
   ECase _ _ e1 _ e2 -> validateLambdaUsage e1 >> validateLambdaUsage e2
   EUnit -> Right ()

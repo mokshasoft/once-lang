@@ -1,0 +1,28 @@
+-- let-test.once: Test let bindings
+--
+-- Demonstrates let expression syntax.
+--
+-- Single binding:
+--   let x = e in body
+--
+-- Multiple bindings (semicolon separated, desugars to nested lets):
+--   let x = e1; y = e2 in body
+--
+-- Build and run:
+--   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/let-test.once -o ../.build/let-test
+--   ../.build/let-test
+
+primitive println : String Utf8 -> Unit
+
+-- Test: single binding
+test_single : Unit -> Unit
+test_single = let msg = "Single binding works!" in println msg
+
+-- Test: multiple bindings (semicolon separated)
+-- Later bindings can reference earlier ones
+test_multi : Unit -> Unit
+test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in println target
+
+-- Main runs the multi-binding test
+main : Unit -> Unit
+main = test_multi

@@ -1306,3 +1306,57 @@ The implementation plan mentioned adding a project configuration file for Once p
 - No `once.yaml`, `once.toml`, or similar custom format
 - Leverages existing Nix ecosystem and tooling
 - Library functions reduce friction for users unfamiliar with Nix
+
+---
+
+## D029: Let Bindings with Desugaring
+
+**Date**: 2025-12-12
+**Status**: Accepted
+
+### Context
+Adding let bindings to Once for local variable introduction. Multiple design options exist:
+
+1. **Single binding only**: `let x = e in body`
+2. **Multiple bindings with comma**: `let x = e1, y = e2 in body`
+3. **Multiple bindings with semicolon**: `let x = e1; y = e2 in body`
+4. **Multiple bindings with newline/layout**: Like Haskell's layout rule
+
+### Decision
+**Semicolon-separated multiple bindings** that **desugar to nested lets**.
+
+```once
+let x = e1; y = e2; z = e3 in body
+```
+
+Desugars to:
+```once
+let x = e1 in let y = e2 in let z = e3 in body
+```
+
+### Rationale
+- **Desugaring over special AST node**: Keeps the core AST simple (single `ELet Name Expr Expr` node). This simplifies verification since we only need to verify single let semantics.
+- **Semicolon over comma**: Semicolons are visually distinct from commas in expressions, making parsing unambiguous without complex lookahead.
+- **Semicolon over layout**: Layout-sensitive parsing (like Haskell) is complex to implement correctly and can be confusing. Explicit delimiters are more predictable.
+- **Later bindings can reference earlier ones**: The desugaring to nested lets naturally provides this - `y` is in scope when evaluating `z`.
+
+### Consequences
+- Simple parser implementation using `sepBy1`
+- Single `ELet` AST node handles all cases after desugaring
+- No layout sensitivity required
+- Users can write `let x = a; y = b; z = c in body` on one line or split across lines
+
+### Verification Status
+
+Let bindings are **covered by existing Agda proofs** without requiring new theorems. The key insight is that `let` is syntactic sugar:
+
+```
+let x = e1 in e2   ≡   (λx. e2) e1
+```
+
+The elaborator translates `ELet x e1 e2` to IR using this equivalence. Since `lam` and `app` are already proven correct in `Once/Surface/Correct.agda` (via `elaborate-correct`), let bindings inherit correctness automatically.
+
+No changes to the Agda formalization are required because:
+1. `let` doesn't add new expressive power - it's pure convenience
+2. The desugared form (`app (lam e2) e1`) is already covered
+3. The `elaborate-correct` theorem proves the elaboration preserves semantics

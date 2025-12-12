@@ -59,6 +59,7 @@ reservedWords =
   , "primitive"
   , "type", "Fix"             -- Type aliases and fixed points
   , "import", "as"            -- Module system
+  , "let", "in"               -- Let bindings
   -- The 12 categorical generators
   , "id", "compose"           -- Category
   , "fst", "snd", "pair"      -- Products
@@ -260,6 +261,7 @@ parseExpr = annotExpr
       , EInt <$> integer
       , EStringLit <$> stringLiteral
       , caseExpr
+      , letExpr
       , lamExpr
       , pairOrParens
       , generator
@@ -301,6 +303,29 @@ parseExpr = annotExpr
       void $ symbol "->"
       e <- parseExpr
       pure $ ELam x e
+
+    -- let bindings with semicolon separation:
+    --   let x = e1; y = e2 in body
+    -- Desugars to nested lets: let x = e1 in let y = e2 in body
+    -- Single binding also works: let x = e1 in body
+    letExpr = do
+      reserved "let"
+      bindings <- letBinding `sepBy1` symbol ";"
+      reserved "in"
+      body <- parseExpr
+      pure $ foldr (\(x, e) acc -> ELet x e acc) body bindings
+
+    -- Single binding: x = e
+    -- Uses simpleExpr to avoid consuming too much (stops at ; or 'in')
+    letBinding = do
+      x <- lowerIdent
+      void $ symbol "="
+      e <- simpleExpr
+      pure (x, e)
+
+    -- Simple expression that doesn't consume ; or 'in'
+    -- This is a workaround - proper solution would be expression with precedence
+    simpleExpr = composeExpr
 
     caseExpr = do
       reserved "case"

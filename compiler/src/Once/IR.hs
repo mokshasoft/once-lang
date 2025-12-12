@@ -41,7 +41,8 @@ data IR
   | Apply Type Type            -- ^ apply : (A -> B) * A -> B
 
   -- Variables and primitives (for surface syntax elaboration)
-  | Var Name                   -- ^ Variable reference
+  | Var Name                   -- ^ Variable reference (function call)
+  | LocalVar Name              -- ^ Local variable reference (from let binding)
   | Prim Name Type Type        -- ^ Primitive operation: name, input type, output type
 
   -- Literals
@@ -51,5 +52,10 @@ data IR
   -- These are the isomorphism witnesses for Fix F ≅ F (Fix F)
   | Fold Type                  -- ^ fold : F (Fix F) -> Fix F (constructor)
   | Unfold Type                -- ^ unfold : Fix F -> F (Fix F) (destructor)
+
+  -- Let binding (for sequencing operations)
+  -- Categorically: let x = e1 in e2 ≡ (λx. e2) e1
+  -- But at runtime we generate explicit local variables for efficiency
+  | Let Name IR IR             -- ^ let x = e1 in e2
 
   deriving (Eq, Show)

@@ -71,6 +71,38 @@ typeCheckTests = testGroup "TypeCheck"
               Right () -> assertFailure "Should have failed type check"
               Left _ -> pure ()  -- expected failure
       ]
+
+  , testGroup "Let bindings"
+      [ testCase "let x = id in x : A -> A" $ do
+          let expr = ELet "x" (EVar "id") (EVar "x")
+          case inferExpr expr of
+            Right (TArrow a b) | a == b -> pure ()
+            other -> assertFailure $ "Expected A -> A, got: " ++ show other
+
+      , testCase "let with string literal" $ do
+          let expr = ELet "msg" (EStringLit "hello") (EVar "msg")
+          case inferExpr expr of
+            Right (TString _) -> pure ()
+            other -> assertFailure $ "Expected String, got: " ++ show other
+
+      , testCase "nested let bindings" $ do
+          let expr = ELet "x" (EVar "fst")
+                          (ELet "y" (EVar "snd") (EVar "x"))
+          case inferExpr expr of
+            Right (TArrow (TProduct _ _) _) -> pure ()
+            other -> assertFailure $ "Expected product projection type, got: " ++ show other
+
+      , testCase "module with let binding type checks" $ do
+          let input = T.unlines
+                [ "main : Unit -> Unit"
+                , "main = let x = terminal in x"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+      ]
   ]
 
 -- Helper to infer type of an expression

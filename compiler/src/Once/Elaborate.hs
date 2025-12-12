@@ -5,6 +5,8 @@ module Once.Elaborate
   , ElabError (..)
   ) where
 
+import Data.Set (Set)
+import qualified Data.Set as Set
 import qualified Data.Text as T
 
 import Once.IR (IR (..))
@@ -25,11 +27,15 @@ data ElabError
 -- For now, this handles the simple case of generator applications
 -- like `pair snd fst`. Full elaboration with type inference comes later.
 elaborate :: Expr -> Either ElabError IR
-elaborate = elaborateExpr
+elaborate = elaborateExpr' Set.empty
 
--- | Elaborate an expression to IR
+-- | Public interface (backwards compatible)
 elaborateExpr :: Expr -> Either ElabError IR
-elaborateExpr expr = case expr of
+elaborateExpr = elaborateExpr' Set.empty
+
+-- | Elaborate an expression to IR, tracking local variables
+elaborateExpr' :: Set Name -> Expr -> Either ElabError IR
+elaborateExpr' locals expr = case expr of
   -- Generators (0-ary, need type arguments filled in later)
   EVar "id" -> Right $ Id placeholder
   EVar "fst" -> Right $ Fst placeholder placeholder
@@ -48,6 +54,9 @@ elaborateExpr expr = case expr of
   EVar "pair" -> Right $ Var "pair"        -- needs 2 args
   EVar "curry" -> Right $ Var "curry"      -- needs 1 arg
 
+  -- Check if variable is a local binding from let
+  EVar name | Set.member name locals -> Right $ LocalVar name
+
   -- Regular variables (including primitives and user-defined names)
   -- The type checker ensures these are valid; we just pass them through
   EVar name -> Right $ Var name
@@ -57,7 +66,7 @@ elaborateExpr expr = case expr of
   EQualified name modPath -> Left $ QualifiedNotResolved name modPath
 
   -- Application: handle generator applications specially
-  EApp f arg -> elaborateApp f arg
+  EApp f arg -> elaborateApp locals f arg
 
   -- Pair literal: (a, b)
   EPair _ _ ->
@@ -74,48 +83,59 @@ elaborateExpr expr = case expr of
   -- String literal - represented as StringLit IR node
   EStringLit s -> Right $ StringLit s
 
+  -- Let binding: let x = e1 in e2
+  -- x becomes a local variable in e2
+  ELet x e1 e2 -> do
+    e1' <- elaborateExpr' locals e1
+    e2' <- elaborateExpr' (Set.insert x locals) e2
+    Right $ Let x e1' e2'
+
   -- Lambda, case, annotations - not yet supported
   ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
   ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
-  EAnnot e _ -> elaborateExpr e  -- ignore annotation for now
+  EAnnot e _ -> elaborateExpr' locals e  -- ignore annotation for now
 
 -- | Show for Text
 tshow :: Show a => a -> Name
 tshow = T.pack . show
 
 -- | Elaborate function application
-elaborateApp :: Expr -> Expr -> Either ElabError IR
-elaborateApp f arg = case f of
+elaborateApp :: Set Name -> Expr -> Expr -> Either ElabError IR
+elaborateApp locals f arg = case f of
   -- pair f g => Pair f' g'
   EApp (EVar "pair") f1 -> do
-    f1' <- elaborateExpr f1
-    arg' <- elaborateExpr arg
+    f1' <- elaborateExpr' locals f1
+    arg' <- elaborateExpr' locals arg
     Right $ Pair f1' arg'
 
   -- compose g f => Compose g' f'
   EApp (EVar "compose") g -> do
-    g' <- elaborateExpr g
-    f' <- elaborateExpr arg
+    g' <- elaborateExpr' locals g
+    f' <- elaborateExpr' locals arg
     Right $ Compose g' f'
 
   -- curry f => Curry f'
   EVar "curry" -> do
-    f' <- elaborateExpr arg
+    f' <- elaborateExpr' locals arg
     Right $ Curry f'
 
   -- case branches - not yet
   EApp (EVar "case") _ -> Left $ UnsupportedExpr "Case not yet supported"
 
   -- Nested application: ((f x) y)
-  EApp _ _ ->
-    -- This becomes composition or something else depending on types
-    -- For now, treat as error
-    Left $ UnsupportedExpr "Nested application not yet supported"
+  -- Elaborate f first, then compose with arg
+  EApp innerF innerArg -> do
+    -- Elaborate the inner application
+    innerResult <- elaborateApp locals innerF innerArg
+    -- Elaborate the outer argument
+    arg' <- elaborateExpr' locals arg
+    -- Compose: (inner result) applied to arg
+    Right $ Compose innerResult arg'
 
-  -- Generator applied to argument (e.g., fst x)
+  -- Generator or function applied to argument (e.g., fst x, thread_a x)
   EVar name -> do
-    f' <- elaborateExpr (EVar name)
-    arg' <- elaborateExpr arg
+    f' <- elaborateExpr' locals (EVar name)
+    arg' <- elaborateExpr' locals arg
     Right $ Compose f' arg'
 
   _ -> Left $ UnsupportedExpr "Complex application not yet supported"
