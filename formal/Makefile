@@ -11,6 +11,7 @@
 #   make clean    - Remove Agda build artifacts
 
 # Main entry points for each module
+POSTULATES := Once/Postulates.agda
 LAWS := Once/Category/Laws.agda
 SOUNDNESS := Once/TypeSystem/Soundness.agda
 ELABORATE := Once/Surface/Elaborate.agda
@@ -28,12 +29,16 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check laws surface x86 clean
+.PHONY: all check postulates laws surface x86 clean
 
 all: check
 
-check: laws surface x86
+check: postulates laws surface x86
 	@echo "All proofs type-check successfully!"
+
+postulates:
+	@echo "Type-checking postulates..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(POSTULATES)'
 
 laws:
 	@echo "Type-checking categorical laws..."
