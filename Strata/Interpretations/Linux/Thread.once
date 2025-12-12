@@ -1,0 +1,70 @@
+-- | Thread operations for Linux
+--
+-- Higher-level threading interface built on clone/futex syscalls.
+-- Does NOT link pthread - uses raw syscalls only.
+--
+-- Categorical perspective on threading:
+--   - fork/join: Product structure (run both, combine results)
+--   - race: Coproduct structure (run both, first wins)
+--   - spawn: Fire-and-forget (no result)
+--
+-- These map to categorical constructs:
+--   parallel : Thread A -> Thread B -> Thread (A * B)   -- product
+--   race     : Thread A -> Thread A -> Thread A         -- coproduct choice
+--   sequence : Thread A -> (A -> Thread B) -> Thread B  -- monadic bind
+
+------------------------------------------------------------------------
+-- Thread Types
+------------------------------------------------------------------------
+
+-- | Thread handle for joining
+-- Contains the thread ID and a futex for synchronization
+-- ThreadHandle = (tid: Int, futex_addr: Buffer)
+
+------------------------------------------------------------------------
+-- Thread Creation
+------------------------------------------------------------------------
+
+-- | Spawn a thread that executes a function
+-- Returns thread handle for joining
+-- Note: The function must be a primitive that takes Unit and returns Unit
+primitive thread_spawn : (Unit -> Unit) -> Buffer
+
+-- | Wait for thread to complete (join)
+primitive thread_join : Buffer -> Unit
+
+-- | Spawn without waiting (fire-and-forget)
+-- Like spawn but no join handle returned
+primitive thread_detach : (Unit -> Unit) -> Unit
+
+------------------------------------------------------------------------
+-- Synchronization Primitives
+------------------------------------------------------------------------
+
+-- | Mutex (mutual exclusion lock)
+-- mutex_init returns a Buffer containing the mutex state
+
+primitive mutex_init : Unit -> Buffer
+primitive mutex_lock : Buffer -> Unit
+primitive mutex_unlock : Buffer -> Unit
+
+-- | Condition variable for signaling between threads
+primitive cond_init : Unit -> Buffer
+primitive cond_wait : Buffer -> Buffer -> Unit   -- (cond, mutex) -> Unit
+primitive cond_signal : Buffer -> Unit           -- Wake one waiter
+primitive cond_broadcast : Buffer -> Unit        -- Wake all waiters
+
+------------------------------------------------------------------------
+-- Atomic Operations
+------------------------------------------------------------------------
+
+-- | Atomic compare-and-swap
+-- atomic_cas(addr, expected, new) -> previous value
+primitive atomic_cas : Buffer -> Int -> Int -> Int
+
+-- | Atomic fetch-and-add
+-- atomic_add(addr, delta) -> previous value
+primitive atomic_add : Buffer -> Int -> Int
+
+-- | Memory barrier
+primitive memory_barrier : Unit -> Unit

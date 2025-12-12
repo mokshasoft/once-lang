@@ -924,6 +924,74 @@ See decision D021 for rationale on "Canonical" naming.
 | **M15.2** | Module resolution | Imports resolved from file system |
 | **M15.3** | Canonical library | Standard combinators available |
 
+## Phase 16: Let Bindings
+
+**Goal**: Add let expressions for sequencing computations with intermediate values.
+
+Let bindings are essential for practical programs that need to:
+- Store intermediate results (e.g., thread handles)
+- Sequence effectful operations
+- Build complex data from parts
+
+### Syntax
+
+```once
+-- Single binding
+let x = expr in body
+
+-- Multiple bindings
+let x = expr1
+    y = expr2
+in body
+```
+
+### Example: Threading with let
+
+```once
+-- examples/threads.once update (after let bindings)
+main : Unit -> Unit
+main =
+  let h1 = thread_spawn thread_a
+      h2 = thread_spawn thread_b
+      _  = thread_join h1
+  in thread_join h2
+```
+
+This requires let bindings to:
+1. Store h1 (handle to first thread)
+2. Store h2 (handle to second thread)
+3. Join both threads in sequence
+
+### Commits
+
+```
+1. Add Let expression to AST: ELet Name Expr Expr
+2. Add let parsing: "let" name "=" expr "in" expr
+3. Add type checking for let (bind name in context)
+4. Add IR representation for let
+5. Add C codegen for let (local variable declaration)
+6. Test: simple let binding compiles
+7. Test: nested let bindings compile
+8. Update examples/threads.once to use let bindings
+```
+
+### Categorical Interpretation
+
+Let bindings are syntactic sugar for lambda application:
+```
+let x = e1 in e2  ≡  (λx. e2) e1
+```
+
+This maintains categorical purity while enabling convenient sequential style.
+
+### Milestones
+
+| Milestone | Goal | Deliverable |
+|-----------|------|-------------|
+| **M16.1** | Let syntax | Parser handles let expressions |
+| **M16.2** | Let codegen | C backend generates correct code |
+| **M16.3** | Threading example | examples/threads.once uses let for parallel threads |
+
 ## Future Work
 
 ### Agda Verification: QTT and C Backend
@@ -989,6 +1057,17 @@ After Phase 11 (core Agda verification), additional verification work:
 - Categorical interpretation: Interleaved = product, Racing = coproduct
 - Event-driven interpretation via cofree comonad structure
 - Add cooperative multitasking abstractions to Derived stratum
+
+**Threading (Preemptive)**
+- Thread.once provides pthread-like interface without linking pthread
+- Built on raw Linux syscalls: clone, futex, mmap
+- Categorical perspective on threading operations:
+  - `parallel : Thread A -> Thread B -> Thread (A * B)` - product (fork-join)
+  - `race : Thread A -> Thread A -> Thread A` - coproduct (first to complete)
+  - `sequence : Thread A -> (A -> Thread B) -> Thread B` - monadic bind
+  - `spawn : Thread Unit -> Unit` - fire-and-forget (no result)
+- Synchronization primitives: mutex, condition variables, atomics
+- See Strata/Interpretations/Linux/Thread.once for interface
 
 **Implementors Guide**
 - Guide for implementing Once on new targets

@@ -254,3 +254,30 @@ primitive poll : Buffer -> Int -> Int -> Int
 
 -- | Get random bytes into buffer
 primitive getrandom : Buffer -> Int -> Int -> Int
+
+------------------------------------------------------------------------
+-- Threading (low-level)
+------------------------------------------------------------------------
+
+-- | Clone flags (combine with bitwise OR)
+-- CLONE_VM = 0x100          Share virtual memory
+-- CLONE_FS = 0x200          Share filesystem info
+-- CLONE_FILES = 0x400       Share file descriptors
+-- CLONE_SIGHAND = 0x800     Share signal handlers
+-- CLONE_THREAD = 0x10000    Same thread group
+-- CLONE_PARENT = 0x8000     Share parent
+
+-- | Create a new thread
+-- clone(flags, stack_ptr) -> thread_id or -1 on error
+-- Note: This is a low-level syscall. The stack must be allocated
+-- via mmap and prepared with the thread entry point.
+primitive clone : Int -> Buffer -> Int
+
+-- | Futex operations for thread synchronization
+-- futex(addr, op, val, timeout, addr2, val3) -> depends on op
+-- FUTEX_WAIT = 0    Block if *addr == val
+-- FUTEX_WAKE = 1    Wake up to val waiters
+primitive futex : Buffer -> Int -> Int -> Buffer -> Buffer -> Int -> Int
+
+-- | Get thread ID
+primitive gettid : Unit -> Int

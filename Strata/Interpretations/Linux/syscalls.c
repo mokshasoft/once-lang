@@ -365,3 +365,36 @@ int64_t once_getrandom(OnceBuffer buf, int64_t buflen, int64_t flags) {
     return buflen;
 #endif
 }
+
+/*========================================================================
+ * Threading (low-level)
+ *========================================================================*/
+
+#define _GNU_SOURCE
+#include <sched.h>
+#include <linux/futex.h>
+#include <sys/syscall.h>
+
+int64_t once_clone(int64_t flags, OnceBuffer stack) {
+    /* clone() is complex - it needs assembly to properly set up the new thread.
+     * This is a simplified wrapper that uses the clone syscall directly.
+     * For proper thread creation, see Thread.c which handles stack setup.
+     */
+    return (int64_t)syscall(SYS_clone, (unsigned long)flags, stack.data, NULL, NULL, 0);
+}
+
+int64_t once_futex(OnceBuffer addr, int64_t op, int64_t val,
+                   OnceBuffer timeout, OnceBuffer addr2, int64_t val3) {
+    return (int64_t)syscall(SYS_futex,
+                            (int*)addr.data,
+                            (int)op,
+                            (int)val,
+                            timeout.data,
+                            addr2.data,
+                            (int)val3);
+}
+
+int64_t once_gettid(void* x) {
+    (void)x;
+    return (int64_t)syscall(SYS_gettid);
+}
