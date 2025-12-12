@@ -4,12 +4,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <stddef.h>
 
-/* OnceBuffer type */
-typedef struct {
-    void* data;
-    size_t len;
-} OnceBuffer;
+#ifndef ONCE_TYPES_DEFINED
+#define ONCE_TYPES_DEFINED
+typedef struct { const char* data; size_t len; } OnceString;
+typedef struct { void* data; size_t len; } OnceBuffer;
+#endif
 
 /* MallocLike interface */
 

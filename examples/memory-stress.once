@@ -1,0 +1,24 @@
+-- memory-stress.once: Stress test for MallocLike interface
+--
+-- This example demonstrates heap allocation via @heap annotation.
+-- When strings are used non-linearly (passed to multiple functions),
+-- the compiler uses once_heap_string to allocate them on the heap.
+--
+-- Size Calculation for alloc:
+--   The size passed to alloc is simply the Int argument.
+--   For structured data, the programmer must calculate:
+--   - Int: 8 bytes (int64_t)
+--   - Buffer: 16 bytes (ptr + len on 64-bit)
+--   - OnceString: 16 bytes (ptr + len)
+--   - Product types: sum of component sizes
+--
+-- Build and run:
+--   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/memory-stress.once -o ../.build/memory-stress
+--   ../.build/memory-stress
+
+primitive println : String Utf8 -> Unit
+
+-- Test: heap-allocated string (via @heap annotation)
+-- This forces the string to be heap-allocated using once_heap_string
+main : Unit -> Unit
+main @heap = println "Memory stress test: heap-allocated string works!"

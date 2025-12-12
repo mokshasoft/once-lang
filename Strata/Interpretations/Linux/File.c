@@ -17,19 +17,11 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-/* OnceString type (encoding erased at runtime)
- * Invariant: data is ALWAYS null-terminated (data[len] == '\0')
- */
-typedef struct {
-    const char* data;
-    size_t len;
-} OnceString;
-
-/* OnceBuffer type */
-typedef struct {
-    void* data;
-    size_t len;
-} OnceBuffer;
+#ifndef ONCE_TYPES_DEFINED
+#define ONCE_TYPES_DEFINED
+typedef struct { const char* data; size_t len; } OnceString;
+typedef struct { void* data; size_t len; } OnceBuffer;
+#endif
 
 /*========================================================================
  * Output Operations

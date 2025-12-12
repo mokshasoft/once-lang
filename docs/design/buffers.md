@@ -385,6 +385,47 @@ If you need a heap-allocated copy (e.g., to outlive the current scope):
 let copy @heap = "Hello, World" in ...
 ```
 
+## Size Calculation for alloc
+
+The `alloc : Int -> Buffer` primitive takes a size in bytes. The programmer must calculate sizes for structured data:
+
+### Primitive Sizes (64-bit systems)
+
+| Type | Size | C Equivalent |
+|------|------|--------------|
+| `Int` | 8 bytes | `int64_t` |
+| `Unit` | 0 bytes | (erased) |
+| `Buffer` | 16 bytes | `struct { void* data; size_t len; }` |
+| `OnceString` | 16 bytes | `struct { const char* data; size_t len; }` |
+
+### Composite Sizes
+
+| Structure | Formula |
+|-----------|---------|
+| Product `A * B` | `size(A) + size(B)` |
+| Coproduct `A + B` | `8 + max(size(A), size(B))` (tag + payload) |
+| Array of N elements | `N * size(element)` |
+
+### Example: Allocating an array of 100 Ints
+
+```once
+let int_size = 8
+    count = 100
+    buf = alloc (int_size * count)    -- 800 bytes
+in ...
+```
+
+### Future: sizeof operator
+
+A future enhancement could add a `sizeof` operator that computes sizes at compile time:
+
+```once
+-- Hypothetical future syntax
+let buf = alloc (sizeof Int * 100)
+```
+
+For now, sizes are manually specified. See `examples/memory-stress.once` for usage examples.
+
 ## Open Questions
 
 ### 1. Arena Lifetime Tracking
