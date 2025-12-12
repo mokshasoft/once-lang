@@ -1,9 +1,91 @@
--- | Recursion schemes for Once
+-- | Initial - Data types as initial algebras
 --
--- This module defines List, Nat, and basic recursive structure operations.
+-- This module defines standard data types (Bool, Maybe, Result, Nat, List)
+-- and recursion schemes for working with them.
+--
+-- Named after "initial algebras" in category theory - these types are uniquely
+-- determined by their structure. See D024 and the glossary for rationale.
 --
 -- Note: Without higher-kinded types, we define recursive types inline.
 -- For example, Nat = Fix (Unit + X) where X is the recursive position.
+
+------------------------------------------------------------------------
+-- Bool
+------------------------------------------------------------------------
+
+-- | Bool = Unit + Unit
+-- The two-element type: true (left) or false (right)
+type Bool = Unit + Unit
+
+true : Bool
+true = inl terminal
+
+false : Bool
+false = inr terminal
+
+not : Bool -> Bool
+not = case (const false) (const true)
+
+and : Bool -> Bool -> Bool
+and b1 b2 = case (const b2) (const false) b1
+
+or : Bool -> Bool -> Bool
+or b1 b2 = case (const true) (const b2) b1
+
+------------------------------------------------------------------------
+-- Maybe
+------------------------------------------------------------------------
+
+-- | Maybe A = Unit + A
+-- Optional value: nothing (left) or just a (right)
+type Maybe A = Unit + A
+
+nothing : Maybe A
+nothing = inl terminal
+
+just : A -> Maybe A
+just = inr
+
+maybe : B -> (A -> B) -> Maybe A -> B
+maybe b f = case (const b) f
+
+fromMaybe : A -> Maybe A -> A
+fromMaybe a = case (const a) id
+
+isJust : Maybe A -> Bool
+isJust = case (const false) (const true)
+
+isNothing : Maybe A -> Bool
+isNothing = case (const true) (const false)
+
+------------------------------------------------------------------------
+-- Result (Success-Left, see D025)
+------------------------------------------------------------------------
+
+-- | Result A E = A + E
+-- Success (left) or error (right) - opposite of Haskell's Either
+type Result A E = A + E
+
+ok : A -> Result A E
+ok = inl
+
+err : E -> Result A E
+err = inr
+
+handle : (A -> C) -> (E -> C) -> Result A E -> C
+handle = case
+
+mapResult : (A -> B) -> Result A E -> Result B E
+mapResult f = case (ok . f) err
+
+bindResult : (A -> Result B E) -> Result A E -> Result B E
+bindResult f = case f err
+
+isOk : Result A E -> Bool
+isOk = case (const true) (const false)
+
+isErr : Result A E -> Bool
+isErr = case (const false) (const true)
 
 ------------------------------------------------------------------------
 -- Natural Numbers

@@ -1,0 +1,184 @@
+-- | Canonical - Morphisms from universal properties
+--
+-- This module defines morphisms that arise uniquely from the universal
+-- properties of products, coproducts, exponentials, terminal, and initial
+-- objects in a cartesian closed category.
+--
+-- Named after "canonical morphisms" in category theory - these aren't
+-- arbitrary utility functions but the uniquely determined morphisms that
+-- every category theorist would recognize. See D021 and the glossary.
+
+------------------------------------------------------------------------
+-- Product Morphisms
+------------------------------------------------------------------------
+
+-- | swap : A * B -> B * A
+-- Swap the components of a product (uniquely determined by product UMP)
+swap : A * B -> B * A
+swap = pair snd fst
+
+-- | diagonal : A -> A * A
+-- Duplicate a value (the unique morphism making both projections equal to id)
+diagonal : A -> A * A
+diagonal = pair id id
+
+-- | first : (A -> C) -> A * B -> C * B
+-- Apply a function to the first component
+first : (A -> C) -> A * B -> C * B
+first f = pair (f . fst) snd
+
+-- | second : (B -> C) -> A * B -> A * C
+-- Apply a function to the second component
+second : (B -> C) -> A * B -> A * C
+second f = pair fst (f . snd)
+
+-- | bimap : (A -> C) -> (B -> D) -> A * B -> C * D
+-- Apply functions to both components
+bimap : (A -> C) -> (B -> D) -> A * B -> C * D
+bimap f g = pair (f . fst) (g . snd)
+
+-- | assocL : A * (B * C) -> (A * B) * C
+-- Reassociate product to the left
+assocL : A * (B * C) -> (A * B) * C
+assocL = pair (pair fst (fst . snd)) (snd . snd)
+
+-- | assocR : (A * B) * C -> A * (B * C)
+-- Reassociate product to the right
+assocR : (A * B) * C -> A * (B * C)
+assocR = pair (fst . fst) (pair (snd . fst) snd)
+
+-- | unitL : A -> Unit * A
+-- Introduce unit on the left
+unitL : A -> Unit * A
+unitL = pair terminal id
+
+-- | unitR : A -> A * Unit
+-- Introduce unit on the right
+unitR : A -> A * Unit
+unitR = pair id terminal
+
+-- | ununitL : Unit * A -> A
+-- Eliminate unit from the left
+ununitL : Unit * A -> A
+ununitL = snd
+
+-- | ununitR : A * Unit -> A
+-- Eliminate unit from the right
+ununitR : A * Unit -> A
+ununitR = fst
+
+------------------------------------------------------------------------
+-- Coproduct Morphisms
+------------------------------------------------------------------------
+
+-- | mirror : A + B -> B + A
+-- Swap the branches of a coproduct
+mirror : A + B -> B + A
+mirror = case inr inl
+
+-- | mapLeft : (A -> C) -> A + B -> C + B
+-- Apply a function to the left branch
+mapLeft : (A -> C) -> A + B -> C + B
+mapLeft f = case (inl . f) inr
+
+-- | mapRight : (B -> C) -> A + B -> A + C
+-- Apply a function to the right branch
+mapRight : (B -> C) -> A + B -> A + C
+mapRight f = case inl (inr . f)
+
+-- | bicase : (A -> C) -> (B -> D) -> A + B -> C + D
+-- Apply functions to both branches
+bicase : (A -> C) -> (B -> D) -> A + B -> C + D
+bicase f g = case (inl . f) (inr . g)
+
+-- | assocL+ : A + (B + C) -> (A + B) + C
+-- Reassociate coproduct to the left
+assocL+ : A + (B + C) -> (A + B) + C
+assocL+ = case (inl . inl) (case (inl . inr) inr)
+
+-- | assocR+ : (A + B) + C -> A + (B + C)
+-- Reassociate coproduct to the right
+assocR+ : (A + B) + C -> A + (B + C)
+assocR+ = case (case inl (inr . inl)) (inr . inr)
+
+-- | voidL : Void + A -> A
+-- Eliminate void from the left (impossible case)
+voidL : Void + A -> A
+voidL = case initial id
+
+-- | voidR : A + Void -> A
+-- Eliminate void from the right (impossible case)
+voidR : A + Void -> A
+voidR = case id initial
+
+------------------------------------------------------------------------
+-- Distributivity
+------------------------------------------------------------------------
+
+-- | distrib : A * (B + C) -> (A * B) + (A * C)
+-- Distribute product over coproduct
+distrib : A * (B + C) -> (A * B) + (A * C)
+distrib = uncurry (case (\a b -> inl (pair (const a) (const b) terminal))
+                        (\a c -> inr (pair (const a) (const c) terminal)))
+
+-- | undistrib : (A * B) + (A * C) -> A * (B + C)
+-- Collect coproduct under product
+undistrib : (A * B) + (A * C) -> A * (B + C)
+undistrib = case (pair fst (inl . snd)) (pair fst (inr . snd))
+
+------------------------------------------------------------------------
+-- Exponential / Function Morphisms
+------------------------------------------------------------------------
+
+-- | const : A -> B -> A
+-- Constant function (ignores second argument)
+const : A -> B -> A
+const = curry fst
+
+-- | flip : (A -> B -> C) -> B -> A -> C
+-- Flip the order of arguments
+flip : (A -> B -> C) -> B -> A -> C
+flip f = curry (apply . pair (f . snd) fst)
+
+-- | uncurry : (A -> B -> C) -> A * B -> C
+-- Convert curried function to uncurried
+uncurry : (A -> B -> C) -> A * B -> C
+uncurry f = apply . pair (f . fst) snd
+
+-- | eval : (A -> B) * A -> B
+-- Alias for apply (evaluation morphism)
+eval : (A -> B) * A -> B
+eval = apply
+
+-- | (&) : A -> (A -> B) -> B
+-- Flip of apply (pipe argument into function)
+(&) : A -> (A -> B) -> B
+(&) a f = apply (pair (const f) (const a) terminal)
+
+-- | (|>) : A -> (A -> B) -> B
+-- Pipeline operator (same as &)
+(|>) : A -> (A -> B) -> B
+(|>) = (&)
+
+------------------------------------------------------------------------
+-- Terminal / Initial
+------------------------------------------------------------------------
+
+-- | unit : A -> Unit
+-- Alias for terminal (discard value)
+unit : A -> Unit
+unit = terminal
+
+-- | absurd : Void -> A
+-- Alias for initial (impossible case)
+absurd : Void -> A
+absurd = initial
+
+------------------------------------------------------------------------
+-- Composition
+------------------------------------------------------------------------
+
+-- | (.) : (B -> C) -> (A -> B) -> A -> C
+-- Alias for compose (function composition)
+(.) : (B -> C) -> (A -> B) -> A -> C
+(.) = compose

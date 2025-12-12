@@ -191,13 +191,13 @@ project/
     Core.once           -- Derived: pure logic
     Types.once          -- Derived: data definitions
     Main.once           -- Interpretations: IO entry point
-  lib/
+  Strata/
     Interpretations/
       Linux/            -- Linux primitives
       Browser/          -- Browser primitives
     Derived/
-      Canonical/        -- morphisms from universal properties
-      Initial/          -- data types as initial algebras
+      Canonical.once    -- morphisms from universal properties
+      Initial.once      -- data types as initial algebras
 ```
 
 ## Summary

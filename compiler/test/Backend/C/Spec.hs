@@ -142,7 +142,7 @@ executableModeTests = testGroup "executable mode"
       TIO.writeFile (dir ++ "/hi.once") hiOnce
 
       (exitCode, _, stderr) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
       case exitCode of
         ExitFailure _ -> do
@@ -163,7 +163,7 @@ executableModeTests = testGroup "executable mode"
       TIO.writeFile (dir ++ "/hi.once") hiOnce
 
       (compilerCode, _, compilerErr) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
       case compilerCode of
         ExitFailure _ -> do
@@ -189,7 +189,7 @@ executableModeTests = testGroup "executable mode"
       TIO.writeFile (dir ++ "/hi.once") hiOnce
 
       (exitCode, _, stderr) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
       case exitCode of
         ExitFailure _ -> do
@@ -208,7 +208,7 @@ executableModeTests = testGroup "executable mode"
       TIO.writeFile (dir ++ "/hello.once") helloOnce
 
       (compilerCode, _, compilerErr) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
       case compilerCode of
         ExitFailure _ -> do
@@ -245,7 +245,7 @@ allocationTests = testGroup "allocation"
 
         let allocArg = maybe [] (\s -> ["--alloc", s]) allocFlag
         (compilerCode, _, compilerErr) <- runOnce $
-          ["build", "--exe", "--interp", "../lib/Interpretations/Linux"] ++ allocArg ++ [dir ++ "/hello.once", "-o", dir ++ "/hello"]
+          ["build", "--exe", "--interp", "../Strata/Interpretations/Linux"] ++ allocArg ++ [dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
         case compilerCode of
           ExitFailure _ -> do
@@ -281,7 +281,7 @@ allocationTests = testGroup "allocation"
       TIO.writeFile (dir ++ "/hello.once") (helloOnceWithAlloc "stack")
 
       (compilerCode, _, compilerErr) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", "--alloc", "heap", dir ++ "/hello.once", "-o", dir ++ "/hello"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", "--alloc", "heap", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
       case compilerCode of
         ExitFailure _ -> do
@@ -300,14 +300,14 @@ allocationTests = testGroup "allocation"
 
       -- Generate with const
       (code1, _, _) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", "--alloc", "const", dir ++ "/hello.once", "-o", dir ++ "/const"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", "--alloc", "const", dir ++ "/hello.once", "-o", dir ++ "/const"]
       constCode <- case code1 of
         ExitSuccess -> TIO.readFile (dir ++ "/const.c")
         _ -> return ""
 
       -- Generate with stack
       (code2, _, _) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", "--alloc", "stack", dir ++ "/hello.once", "-o", dir ++ "/stack"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", "--alloc", "stack", dir ++ "/hello.once", "-o", dir ++ "/stack"]
       stackCode <- case code2 of
         ExitSuccess -> TIO.readFile (dir ++ "/stack.c")
         _ -> return ""
@@ -327,7 +327,7 @@ allocationTests = testGroup "allocation"
 
       -- Generate with heap
       (exitCode, _, _) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/heap"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/heap"]
 
       case exitCode of
         ExitFailure _ -> do
@@ -350,7 +350,7 @@ allocationTests = testGroup "allocation"
 
       -- Build
       (compilerCode, _, compilerErr) <- runOnce
-        ["build", "--exe", "--interp", "../lib/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
+        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
       case compilerCode of
         ExitFailure _ -> do

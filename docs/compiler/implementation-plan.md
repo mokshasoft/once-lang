@@ -930,3 +930,44 @@ After Phase 11 (core Agda verification), additional verification work:
 - **Custom encodings**: User-defined Encoding types
 - **Slices**: Zero-copy views into buffers
 - **Arena lifetime**: Ensure arena buffers don't escape scope
+
+### Research Questions
+
+**Laziness in Natural Transformations**
+- Are lazy evaluation strategies expressible in NT?
+- Relationship to coalgebras and terminal objects
+- Could laziness be an interpretation rather than a language feature?
+
+**Totality and Turing Completeness**
+- Is NT Turing complete? Does it need to be?
+- Total programs with infinite event loops (each handler total)
+- Relationship to productivity and codata
+- Why is Turing completeness even needed if total programs cover practical use cases?
+
+**Dependent Types**
+- How much of DT *could be* syntactic sugar over NT core?
+- Could a separate DT frontend target the same IR?
+- Trade-off: DT in compiler vs external proofs in Agda
+- DT makes compilers complicated - why not offload that to the proof language?
+
+**Generators in Strata**
+- Could generators move from compiler to Strata/Generators?
+- Would this simplify the compiler?
+- What would the bootstrap process look like?
+
+**Alternative Backends**
+- LLVM IR instead of C for smaller TCB
+- Verified assembly languages (research needed)
+- Direct mapping of generators to assembly primitives
+- Generators are simple enough to map to very basic assembly
+
+**Cooperative Multitasking**
+- Based on idris2-coop: free monad over concurrent operations
+- Categorical interpretation: Interleaved = product, Racing = coproduct
+- Event-driven interpretation via cofree comonad structure
+- Add cooperative multitasking abstractions to Derived stratum
+
+**Implementors Guide**
+- Guide for implementing Once on new targets
+- Document the minimal set of operations each backend must provide
+- Explain how categorical laws translate to backend guarantees

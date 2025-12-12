@@ -86,6 +86,38 @@ Choose the weakest level that works:
 | Derived | Pure | All library code built from generators |
 | Interpretations | Impure | Platform-specific IO primitives |
 
+## Library Naming Rationale
+
+The Derived stratum contains two core libraries with mathematically meaningful names:
+
+### Initial (Initial.once)
+Named after **initial algebras** in category theory. Data types like Bool, Maybe, List, and Result are initial algebras of their signature functors:
+
+| Type | Signature | Meaning |
+|------|-----------|---------|
+| `Bool` | `1 + 1` | Two-element set |
+| `Maybe A` | `1 + A` | Optional value |
+| `List A` | `1 + A × X` | Recursive sequence |
+| `Result A E` | `A + E` | Success or error |
+
+The initiality property means these types are uniquely determined by their structure - they are "the" canonical representations of these patterns. Recursion schemes (cata, ana, hylo, para) operate on these initial algebras and thus belong in the same library. See D024.
+
+### Canonical (Canonical.once)
+Named after **canonical morphisms** - morphisms that arise uniquely from universal properties. Examples:
+
+- `swap : A * B -> B * A` - uniquely determined by product universal property
+- `diagonal : A -> A * A` - the unique morphism making both projections equal
+- `distrib : A * (B + C) -> (A * B) + (A * C)` - distributivity from CCC structure
+
+These aren't arbitrary utility functions; they are morphisms that every category theorist would recognize as "the obvious choice." See D021.
+
+### Terminal (future)
+Will contain **terminal coalgebras** (codata) - dual to initial algebras:
+- `Stream A` - infinite sequences
+- `CoList A` - potentially infinite lists
+
+Where Initial types are built up (constructors), Terminal types are torn down (destructors).
+
 ## Recursion Schemes
 
 | Scheme | Type | Meaning |

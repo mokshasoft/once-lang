@@ -104,10 +104,10 @@ main = puts "Hello for Once"
 EOF
 
 # Compile (using Nix)
-./result/bin/once build --exe --interp lib/Interpretations/Linux hello.once -o hello
+./result/bin/once build --exe --interp Strata/Interpretations/Linux hello.once -o hello
 
 # Or with Stack
-stack exec -- once build --exe --interp ../lib/Interpretations/Linux hello.once -o hello
+stack exec -- once build --exe --interp ../Strata/Interpretations/Linux hello.once -o hello
 
 # Compile the generated C and run
 gcc -o hello hello.c
@@ -168,6 +168,9 @@ EOF
 ```
 once-lang/
 ├── compiler/          # Haskell implementation of the Once compiler
+├── Strata/            # The three strata (see D016)
+│   ├── Derived/       # Pure library code (Canonical, Initial)
+│   └── Interpretations/  # Platform-specific bindings (Linux, etc.)
 ├── docs/
 │   └── design/        # Language design documentation
 └── examples/          # Example Once programs

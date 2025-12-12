@@ -298,7 +298,7 @@ Primitives are opaque operations at the boundary between Once and the external w
 Option 2: **Interpretations are `.once` + `.c` file pairs, living outside the compiler**.
 
 ```
-lib/
+Strata/
   Interpretations/
     Linux/
       syscalls.once     -- type declarations
@@ -328,7 +328,7 @@ lib/
 - Future: `drivers/gpio.once` etc. for device-specific primitives
 
 ### Consequences
-- `lib/Interpretations/` directory at repo root, not in `compiler/`
+- `Strata/Interpretations/` directory at repo root, not in `compiler/`
 - Compiler only knows about generators
 - Linking interpretations is a separate concern (future work)
 - Each platform interpretation is self-contained
@@ -822,19 +822,10 @@ Morphisms that arise from universal properties of the categorical structures:
 ### Directory Structure
 
 ```
-lib/
+Strata/
 ├── Derived/
-│   ├── Canonical/
-│   │   ├── Product.once      -- swap, diagonal, first, second, bimap, assocL, assocR
-│   │   ├── Coproduct.once    -- mirror, mapLeft, mapRight
-│   │   ├── Function.once     -- flip, const, (.), (|>), (&)
-│   │   └── Morphism.once     -- id, compose (re-exports for convenience)
-│   └── Initial/              -- data types as initial algebras (see D024)
-│       ├── Bool.once
-│       ├── Maybe.once
-│       ├── List.once
-│       ├── Result.once
-│       └── Recursion.once    -- Nat, List via Fix, recursion scheme patterns
+│   ├── Canonical.once        -- morphisms from universal properties
+│   └── Initial.once          -- data types as initial algebras (see D024)
 └── Interpretations/
     └── Linux/
         ├── syscalls.once
@@ -1070,20 +1061,15 @@ The initiality property gives these types their universal character - they are "
 ### Directory Structure
 
 ```
-lib/
+Strata/
 ├── Derived/
-│   ├── Canonical/        -- morphisms from universal properties
-│   └── Initial/          -- data types as initial algebras
-│       ├── Bool.once
-│       ├── Maybe.once
-│       ├── List.once
-│       ├── Result.once
-│       └── Recursion.once
+│   ├── Canonical.once    -- morphisms from universal properties
+│   └── Initial.once      -- data types as initial algebras
 └── Interpretations/      -- platform-specific IO
 ```
 
 ### Consequences
-- `Initial/` is a curated, stable collection parallel to `Canonical/`
+- `Initial.once` is a curated, stable collection parallel to `Canonical.once`
 - The name communicates mathematical intent
 - Future: `Terminal/` for coalgebraic types (streams, etc.)
 - Requires implementing an import/module system (future work)
@@ -1262,3 +1248,61 @@ primitive putLine   : String -> IO Unit
 
 ### See Also
 - [IO Documentation](../design/io.md) - Full IO documentation with examples
+
+---
+
+## D027: No Implicit Imports
+
+**Date**: 2025-12-12
+**Status**: Accepted
+
+### Context
+Many languages provide a "prelude" that is implicitly imported. We needed to decide whether Once should have implicit imports.
+
+### Decision
+**No implicit imports except generators.** All imports must be explicit. The 12 generators are always available as they are the language primitives.
+
+### Rationale
+- Implicit dependencies like a "prelude" often include OS dependencies
+- Even if those are compilable on Windows/Mac/Linux, they're not compilable on all bare-metal platforms
+- Users would have to actively remove the prelude and include their own
+- Better to be explicit from the start
+- Aligns with Once's philosophy of transparency and portability
+- Generators are different: they ARE the language, not imported functionality
+
+### Consequences
+- Generators (id, compose, fst, snd, pair, inl, inr, case, terminal, initial, curry, apply) are always available
+- Everything else requires explicit import
+- No hidden dependencies that break on new platforms
+- Slightly more verbose, but completely predictable
+- Easier to port to new targets
+
+---
+
+## D028: Use Nix for Project Configuration
+
+**Date**: 2025-12-12
+**Status**: Accepted
+
+### Context
+The implementation plan mentioned adding a project configuration file for Once projects. We needed to decide whether to create a custom format or use existing tooling.
+
+### Decision
+**Use Nix for project configuration.** No custom project file format.
+
+### Rationale
+- Nix already handles dependency management, build configuration, and reproducibility
+- Creating a custom project file would reinvent the wheel
+- Nix is already a project dependency (used for building the compiler)
+- Nix flakes provide standardized project structure
+
+### Mitigating Nix Learning Curve
+- Provide library functions that make Nix integration easy
+- Goal: using Nix should be as simple as maintaining a custom YAML format
+- Templates and examples in documentation
+
+### Consequences
+- Once projects use `flake.nix` for configuration
+- No `once.yaml`, `once.toml`, or similar custom format
+- Leverages existing Nix ecosystem and tooling
+- Library functions reduce friction for users unfamiliar with Nix

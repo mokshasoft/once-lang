@@ -161,7 +161,7 @@ stack build
 stack exec -- once build example.once -o example
 
 # Executable mode (with interpretation)
-stack exec -- once build --exe --interp ../lib/Interpretations/Linux main.once -o main
+stack exec -- once build --exe --interp ../Strata/Interpretations/Linux main.once -o main
 ```
 
 ### Example
@@ -192,7 +192,7 @@ swap_output once_swap(swap_input x) {
 Primitives connect Once code to platform-specific functionality. The `--interp` flag specifies an interpretation directory:
 
 ```
-lib/Interpretations/Linux/
+Strata/Interpretations/Linux/
 ├── syscalls.once  -- Primitive declarations (exit, puts, etc.)
 ├── syscalls.c     -- C implementations
 ├── memory.once    -- Memory primitives (alloc, free, etc.)
