@@ -803,6 +803,16 @@ exec-three-steps-nonhalt prog s s1 s2 s3 step1 h1 step2 h2 step3 h3 =
   trans (exec-on-non-halted-step 2 prog s s1 step1 h1)
         (exec-two-steps-nonhalt prog s1 s2 s3 step2 h2 step3 h3)
 
+exec-four-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 s3 s4 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  exec 4 prog s ≡ just s4
+exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4 =
+  trans (exec-on-non-halted-step 3 prog s s1 step1 h1)
+        (exec-three-steps-nonhalt prog s1 s2 s3 s4 step2 h2 step3 h3 step4 h4)
+
 ------------------------------------------------------------------------
 -- Non-halting sub-program execution (for compose proofs)
 -- These execute IR code within a larger program without requiring halt
