@@ -160,6 +160,37 @@ optimize-compose unfold initial = initial
 optimize-compose arr initial = initial
 optimize-compose (h ∘ g) initial = initial
 
+-- Pairing fusion: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
+-- Distributes composition into pairs, exposing beta reductions
+-- Note: id and initial cases handled above
+optimize-compose ⟨ f , g ⟩ (h ∘ k) = ⟨ optimize-compose f (h ∘ k) , optimize-compose g (h ∘ k) ⟩
+optimize-compose ⟨ f , g ⟩ fst = ⟨ optimize-compose f fst , optimize-compose g fst ⟩
+optimize-compose ⟨ f , g ⟩ snd = ⟨ optimize-compose f snd , optimize-compose g snd ⟩
+optimize-compose ⟨ f , g ⟩ ⟨ h , k ⟩ = ⟨ optimize-compose f ⟨ h , k ⟩ , optimize-compose g ⟨ h , k ⟩ ⟩
+optimize-compose ⟨ f , g ⟩ inl = ⟨ optimize-compose f inl , optimize-compose g inl ⟩
+optimize-compose ⟨ f , g ⟩ inr = ⟨ optimize-compose f inr , optimize-compose g inr ⟩
+optimize-compose ⟨ f , g ⟩ [ h , k ] = ⟨ optimize-compose f [ h , k ] , optimize-compose g [ h , k ] ⟩
+optimize-compose ⟨ f , g ⟩ terminal = ⟨ optimize-compose f terminal , optimize-compose g terminal ⟩
+optimize-compose ⟨ f , g ⟩ (curry h) = ⟨ optimize-compose f (curry h) , optimize-compose g (curry h) ⟩
+optimize-compose ⟨ f , g ⟩ apply = ⟨ optimize-compose f apply , optimize-compose g apply ⟩
+optimize-compose ⟨ f , g ⟩ fold = ⟨ optimize-compose f fold , optimize-compose g fold ⟩
+optimize-compose ⟨ f , g ⟩ unfold = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩
+optimize-compose ⟨ f , g ⟩ arr = ⟨ optimize-compose f arr , optimize-compose g arr ⟩
+
+-- Case fusion: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
+-- Distributes composition over case, exposing beta reductions
+-- Note: beta laws ([ f , g ] ∘ inl/inr) and terminal handled above
+-- Note: ⟨ h , k ⟩ [ f , g ] is covered by pairing fusion above
+optimize-compose fst [ f , g ] = [ optimize-compose fst f , optimize-compose fst g ]
+optimize-compose snd [ f , g ] = [ optimize-compose snd f , optimize-compose snd g ]
+optimize-compose inl [ f , g ] = [ optimize-compose inl f , optimize-compose inl g ]
+optimize-compose inr [ f , g ] = [ optimize-compose inr f , optimize-compose inr g ]
+optimize-compose (curry h) [ f , g ] = [ optimize-compose (curry h) f , optimize-compose (curry h) g ]
+optimize-compose apply [ f , g ] = [ optimize-compose apply f , optimize-compose apply g ]
+optimize-compose fold [ f , g ] = [ optimize-compose fold f , optimize-compose fold g ]
+optimize-compose unfold [ f , g ] = [ optimize-compose unfold f , optimize-compose unfold g ]
+optimize-compose arr [ f , g ] = [ optimize-compose arr f , optimize-compose arr g ]
+
 -- Associativity: normalize to right-associative form
 -- (h ∘ g) ∘ f  →  h ∘ (g ∘ f)
 -- This exposes more optimization opportunities
