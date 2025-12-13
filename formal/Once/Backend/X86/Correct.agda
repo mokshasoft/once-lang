@@ -1603,6 +1603,110 @@ run-pair-id-id {A} s h-false pc-0 = s9 , run-eq , halt-eq , rax-rsp-eq , fst-eq 
                    (trans (readMem-writeMem-same (memory s6) (new-rsp +ℕ 8) (readReg (regs s6) rax))
                           (cong just rax-s6))
 
+-- Helper: compose sequence for id ∘ id (base case)
+-- This is a concrete instance where both f and g are id.
+--
+-- Generated code:
+--   mov rax, rdi       ; 0 (compile-x86 id - first)
+--   mov rdi, rax       ; 1 (transfer result to input)
+--   mov rax, rdi       ; 2 (compile-x86 id - second)
+--
+-- Total: 3 instructions, 4 steps (3 + halt on fetch fail at pc=3)
+run-compose-id-id : ∀ {A} (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {A} {A} (id ∘ id)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ readReg (regs s) rdi)
+run-compose-id-id {A} s h-false pc-0 = s4 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A} {A} (id ∘ id)
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    -- State after step 1: mov rax, rdi (first id)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg rax) (reg rdi)) _ s h-false pc-0)
+                  (execMov-reg-reg s rax rdi)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov rdi, rax (transfer)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) rax)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (reg rdi) (reg rax)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg rax))) (sym pc1) refl))
+                  (execMov-reg-reg s1 rdi rax)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov rax, rdi (second id)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (reg rax) (reg rdi)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi))) (sym pc2) refl))
+                  (execMov-reg-reg s2 rax rdi)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 4: fetch fails at pc=3, sets halted=true
+    s4 : State
+    s4 = record s3 { halted = true }
+
+    fetch-fail : fetch prog (pc s3) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc3) refl
+
+    step4 : step prog s3 ≡ just s4
+    step4 = step-halt-on-fetch-fail prog s3 h3 fetch-fail
+
+    halt-eq : halted s4 ≡ true
+    halt-eq = refl
+
+    -- Combined execution: 4 steps (defaultFuel = 10000 = 4 + 9996)
+    run-eq : run prog s ≡ just s4
+    run-eq = exec-four-steps 9996 prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 halt-eq
+
+    -- Track rax through states
+    -- rax in s1 = rdi in s = orig-rdi
+    rax-s1 : readReg (regs s1) rax ≡ orig-rdi
+    rax-s1 = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
+
+    -- rdi in s2 = rax in s1 = orig-rdi
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) rax)) rax-s1
+
+    -- rax in s3 = rdi in s2 = orig-rdi
+    rax-s3 : readReg (regs s3) rax ≡ orig-rdi
+    rax-s3 = trans (readReg-writeReg-same (regs s2) rax (readReg (regs s2) rdi)) rdi-s2
+
+    -- Final result
+    rax-eq : readReg (regs s4) rax ≡ readReg (regs s) rdi
+    rax-eq = rax-s3
+
 -- Helper: apply sequence
 -- Takes pair (closure, arg), calls closure's code with arg in rdi and env in r12
 -- Returns result in rax
