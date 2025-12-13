@@ -1,0 +1,3 @@
+-- Exit.once: Minimal exit primitive for testing
+
+primitive exit0 : Eff Unit Unit

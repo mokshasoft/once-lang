@@ -1,0 +1,11 @@
+-- Simple.once: Basic derived morphisms for testing imports
+--
+-- Only uses simple syntax that the parser fully supports.
+
+-- | swap : A * B -> B * A
+swap : A * B -> B * A
+swap = pair snd fst
+
+-- | diagonal : A -> A * A
+diagonal : A -> A * A
+diagonal = pair id id

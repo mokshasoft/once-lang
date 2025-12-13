@@ -3,6 +3,7 @@ module Once.TypeCheck
     typeCheck
   , inferType
   , checkModule
+  , checkModuleWithEnv
     -- * Context
   , Context
   , emptyContext
@@ -19,9 +20,10 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text
 
-import Once.Syntax (Module (..), Decl (..), Expr (..), SType (..), Name)
+import Once.Syntax (Module (..), Decl (..), Expr (..), SType (..), Name, ModuleName)
 import Once.Type (Type (..), Encoding (..))
 import Once.Quantity (Quantity (..))
+import Once.Module (ModuleEnv (..), lookupQualified, DeclInfo (..), ModuleError, emptyModuleEnv, expandAbbreviations, resolveAlias)
 
 -- | Type errors
 data TypeError
@@ -39,6 +41,8 @@ data TypeError
   | LinearUnused Name             -- linear variable not used
   | ErasedUsedAtRuntime Name      -- erased (0) variable used at runtime
   | QuantityMismatch Name Quantity Quantity  -- name, expected, actual
+  -- Module errors
+  | ModuleResolutionError ModuleError  -- error resolving qualified name
   deriving (Eq, Show)
 
 -- | Binding information: type and declared quantity
@@ -594,3 +598,124 @@ validateLambdaUsage expr = case expr of
   EInt _ -> Right ()
   EStringLit _ -> Right ()
   EAnnot e _ -> validateLambdaUsage e
+
+------------------------------------------------------------------------
+-- Module-aware type checking
+------------------------------------------------------------------------
+
+-- | Type check a module with module environment for qualified name resolution
+checkModuleWithEnv :: ModuleEnv -> Module -> Either TypeError ()
+checkModuleWithEnv modEnv (Module _imports decls) =
+  checkDeclsWithEnv modEnv emptyContext emptyAliasEnv decls
+
+-- | Check declarations with module environment
+checkDeclsWithEnv :: ModuleEnv -> Context -> TypeAliasEnv -> [Decl] -> Either TypeError ()
+checkDeclsWithEnv _ _ _ [] = Right ()
+checkDeclsWithEnv modEnv ctx aliases (d:ds) = case d of
+  TypeSig name sty -> do
+    let ty = convertTypeWithAliases aliases sty
+    let q = extractQuantity sty
+    let ctx' = extendContextQ name ty q ctx
+    checkDeclsWithEnv modEnv ctx' aliases ds
+
+  FunDef name _alloc expr -> case lookupVar name ctx of
+    Nothing -> Left (UnboundVariable name)
+    Just expectedTy -> do
+      _ <- typeCheckWithEnv modEnv aliases ctx expr expectedTy
+      validateLambdaUsage expr
+      checkDeclsWithEnv modEnv ctx aliases ds
+
+  TypeAlias aliasName params body ->
+    let aliases' = extendAliasEnv aliasName params body aliases
+    in checkDeclsWithEnv modEnv ctx aliases' ds
+
+  Primitive name sty -> do
+    let ty = convertTypeWithAliases aliases sty
+    let q = extractQuantity sty
+    let ctx' = extendContextQ name ty q ctx
+    checkDeclsWithEnv modEnv ctx' aliases ds
+
+-- | Type check an expression with module environment
+typeCheckWithEnv :: ModuleEnv -> TypeAliasEnv -> Context -> Expr -> Type -> Either TypeError Subst
+typeCheckWithEnv modEnv aliases ctx expr expectedTy = do
+  (inferredTy, s1, _) <- inferTypeWithEnv modEnv aliases ctx expr 0
+  let finalInferred = applySubst s1 inferredTy
+  if matchesStructure expectedTy finalInferred
+    then Right s1
+    else Left (SignatureMismatch expectedTy finalInferred)
+
+-- | Infer type with module environment for qualified name resolution
+inferTypeWithEnv :: ModuleEnv -> TypeAliasEnv -> Context -> Expr -> Fresh -> Either TypeError (Type, Subst, Fresh)
+inferTypeWithEnv modEnv aliases ctx expr fresh = case expr of
+  EVar name -> case lookupVar name ctx of
+    Just ty -> Right (ty, emptySubst, fresh)
+    Nothing -> case generatorType name fresh of
+      Just (ty, fresh') -> Right (ty, emptySubst, fresh')
+      Nothing -> Left (UnboundVariable name)
+
+  -- Qualified access (name@Module.Path) - resolve using module environment
+  EQualified name modPath -> do
+    case lookupQualified name modPath modEnv of
+      Left modErr -> Left (ModuleResolutionError modErr)
+      Right declInfo -> case diType declInfo of
+        Just sty -> Right (convertTypeWithAliases aliases sty, emptySubst, fresh)
+        Nothing -> Left (UnboundVariable name)  -- No type signature found
+
+  EApp f arg -> do
+    (funTy, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx f fresh
+    (argTy, s2, fresh2) <- inferTypeWithEnv modEnv aliases ctx arg fresh1
+    let (retTy, fresh3) = freshTVar fresh2
+    let funTy' = applySubst s2 funTy
+    let tryArrow = unify funTy' (TArrow argTy retTy)
+    let tryEff = unify funTy' (TEff argTy retTy)
+    s3 <- case tryArrow of
+      Right s -> Right s
+      Left _ -> case tryEff of
+        Right s -> Right s
+        Left _ -> tryArrow
+    let finalSubst = composeSubst s3 (composeSubst s2 s1)
+    Right (applySubst s3 retTy, finalSubst, fresh3)
+
+  ELam x body -> do
+    let (argTy, fresh1) = freshTVar fresh
+    let ctx' = extendContext x argTy ctx
+    (bodyTy, s1, fresh2) <- inferTypeWithEnv modEnv aliases ctx' body fresh1
+    Right (TArrow (applySubst s1 argTy) bodyTy, s1, fresh2)
+
+  ELet x e1 e2 -> do
+    (ty1, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx e1 fresh
+    let ctx' = extendContext x (applySubst s1 ty1) ctx
+    (ty2, s2, fresh2) <- inferTypeWithEnv modEnv aliases ctx' e2 fresh1
+    Right (ty2, composeSubst s2 s1, fresh2)
+
+  EPair a b -> do
+    (tyA, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx a fresh
+    (tyB, s2, fresh2) <- inferTypeWithEnv modEnv aliases ctx b fresh1
+    Right (TProduct (applySubst s2 tyA) tyB, composeSubst s2 s1, fresh2)
+
+  ECase scrut xL bodyL xR bodyR -> do
+    (scrutTy, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx scrut fresh
+    let (tyL, fresh2) = freshTVar fresh1
+    let (tyR, fresh3) = freshTVar fresh2
+    s2 <- unify scrutTy (TSum tyL tyR)
+    let tyL' = applySubst s2 tyL
+    let tyR' = applySubst s2 tyR
+    let ctxL = extendContext xL tyL' ctx
+    let ctxR = extendContext xR tyR' ctx
+    (bodyTyL, s3, fresh4) <- inferTypeWithEnv modEnv aliases ctxL bodyL fresh3
+    (bodyTyR, s4, fresh5) <- inferTypeWithEnv modEnv aliases ctxR bodyR fresh4
+    s5 <- unify (applySubst s4 bodyTyL) bodyTyR
+    let finalSubst = composeSubst s5 (composeSubst s4 (composeSubst s3 (composeSubst s2 s1)))
+    Right (applySubst s5 bodyTyR, finalSubst, fresh5)
+
+  EUnit -> Right (TUnit, emptySubst, fresh)
+
+  EInt _ -> Right (TInt, emptySubst, fresh)
+
+  EStringLit _ -> Right (TString Utf8, emptySubst, fresh)
+
+  EAnnot e sty -> do
+    let expectedTy = convertTypeWithAliases aliases sty
+    (inferredTy, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx e fresh
+    s2 <- unify (applySubst s1 expectedTy) inferredTy
+    Right (applySubst s2 inferredTy, composeSubst s2 s1, fresh1)

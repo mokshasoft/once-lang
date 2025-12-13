@@ -1672,3 +1672,82 @@ arr (f . g)            = arr g >>> arr f      -- arr preserves composition
 - D025: Result Type Convention (Success-Left)
 - D023: Error Handling via Sum Types
 - docs/design/effects-proposal.md (detailed comparison)
+
+---
+
+## D033: Module Import System with Path Abbreviations
+
+**Date**: 2025-12-13
+**Status**: Accepted
+
+### Context
+
+Once programs need to import definitions from the Strata directory structure:
+- `Strata/Derived/` - Pure library code (morphisms, utilities)
+- `Strata/Interpretations/` - Platform-specific I/O implementations
+
+The import syntax was already parsed (D027) but module resolution was not implemented.
+
+### Decision
+
+Implement module resolution with **hardcoded path abbreviations**:
+- `I.` expands to `Interpretations.` (e.g., `import I.Linux.Syscalls`)
+- `D.` expands to `Derived.` (e.g., `import D.Simple`)
+
+### Rationale
+
+**Why abbreviations:**
+- The three strata (Generators, Derived, Interpretations) are fundamental to Once's architecture
+- Full paths like `Interpretations.Linux.Syscalls` are verbose
+- Single-letter abbreviations match the conceptual structure (I for Interpretation, D for Derived)
+- Generators don't need imports (they're reserved words per D001)
+
+**Why hardcoded:**
+- The strata structure is fixed by design
+- Configurability would add complexity without benefit
+- Matches Once's philosophy of minimal, principled design
+
+### Implementation
+
+**New module**: `Once/Module.hs`
+- `expandAbbreviations` - Expands I./D. to full paths
+- `loadModuleFile` - Parses module from Strata directory
+- `resolveImports` - Loads all imported modules with cycle detection
+- `lookupQualified` - Resolves `name@Module.Path` expressions
+
+**CLI changes**:
+- `--strata PATH` flag to specify Strata directory location
+- Auto-detection of Strata/ relative to input file
+
+**Type checking/Elaboration**:
+- `checkModuleWithEnv` / `inferTypeWithEnv` - Module-aware type inference
+- `elaborateWithEnv` - Resolves qualified names to actual definitions
+
+### Usage
+
+```once
+import D.Simple as S
+
+mySwap : A * B -> B * A
+mySwap = swap@S
+```
+
+### Cycle Detection
+
+Cyclic imports are **errors** (not allowed):
+```
+Module error: Cyclic import detected: A -> B -> C -> A
+```
+
+### Consequences
+
+- Qualified names (`swap@S`) resolve to imported definitions
+- Type checking verifies imported types match usage
+- Elaboration inlines imported definitions
+- C files from Interpretations are automatically included
+- V1 limitations: no re-exports, no unqualified imports, no wildcards
+
+### See Also
+
+- D009: Interpretations Outside Compiler
+- D027: No Implicit Imports

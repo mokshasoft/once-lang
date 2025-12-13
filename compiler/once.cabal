@@ -45,6 +45,7 @@ library
       Once.Elaborate
       Once.Eval
       Once.IR
+      Once.Module
       Once.Optimize
       Once.Parser
       Once.Quantity
@@ -95,6 +96,7 @@ test-suite once-test
       BackendSpec
       ElaborateSpec
       IRSpec
+      ModuleSpec
       OptimizeSpec
       ParserSpec
       QuantitySpec
@@ -109,6 +111,7 @@ test-suite once-test
       -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , directory
     , once
     , process

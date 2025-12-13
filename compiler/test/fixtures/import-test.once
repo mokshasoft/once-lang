@@ -1,0 +1,19 @@
+-- import-test.once: Test module imports with abbreviations
+--
+-- Demonstrates:
+--   - Import abbreviations (D. -> Derived., I. -> Interpretations.)
+--   - Qualified access (swap@S, exit0@E)
+--
+-- Build from compiler/ directory:
+--   stack exec -- once build --exe --strata test/fixtures/Strata test/fixtures/import-test.once -o ../.build/import-test
+
+import D.Simple as S
+import I.Linux.Exit as E
+
+-- Use swap from the imported Derived module
+mySwap : A * B -> B * A
+mySwap = swap@S
+
+-- Use exit0 from the imported Interpretation module
+main : IO Unit
+main = exit0@E

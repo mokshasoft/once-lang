@@ -1,5 +1,6 @@
 module Once.Elaborate
   ( elaborate
+  , elaborateWithEnv
   , elaborateExpr
   , elaborateType
   , ElabError (..)
@@ -10,8 +11,9 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 
 import Once.IR (IR (..))
-import Once.Syntax (Expr (..), SType (..), Name)
+import Once.Syntax (Expr (..), SType (..), Name, Decl (..), ModuleName)
 import Once.Type (Type (..))
+import Once.Module (ModuleEnv, lookupQualified, DeclInfo (..), ModuleError)
 
 -- | Elaboration errors
 data ElabError
@@ -20,6 +22,7 @@ data ElabError
   | TypeMismatch String
   | UnsupportedExpr String
   | QualifiedNotResolved Name [Name]  -- ^ name@Module.Path not yet resolved
+  | ModuleResolutionError ModuleError -- ^ Error resolving qualified name
   deriving (Eq, Show)
 
 -- | Elaborate a surface expression to IR
@@ -28,6 +31,10 @@ data ElabError
 -- like `pair snd fst`. Full elaboration with type inference comes later.
 elaborate :: Expr -> Either ElabError IR
 elaborate = elaborateExpr' Set.empty
+
+-- | Elaborate with module environment for qualified name resolution
+elaborateWithEnv :: ModuleEnv -> Expr -> Either ElabError IR
+elaborateWithEnv modEnv = elaborateExprWithEnv modEnv Set.empty
 
 -- | Public interface (backwards compatible)
 elaborateExpr :: Expr -> Either ElabError IR
@@ -187,3 +194,128 @@ elaborateType sty = case sty of
   STQuant _ t -> elaborateType t  -- ignore quantity for now
   STApp name args -> TApp name (map elaborateType args)
   STFix t -> TFix (elaborateType t)
+
+------------------------------------------------------------------------
+-- Module-aware elaboration
+------------------------------------------------------------------------
+
+-- | Elaborate an expression with module environment for qualified names
+elaborateExprWithEnv :: ModuleEnv -> Set Name -> Expr -> Either ElabError IR
+elaborateExprWithEnv modEnv locals expr = case expr of
+  -- Generators (0-ary, need type arguments filled in later)
+  EVar "id" -> Right $ Id placeholder
+  EVar "fst" -> Right $ Fst placeholder placeholder
+  EVar "snd" -> Right $ Snd placeholder placeholder
+  EVar "inl" -> Right $ Inl placeholder placeholder
+  EVar "inr" -> Right $ Inr placeholder placeholder
+  EVar "terminal" -> Right $ Terminal placeholder
+  EVar "initial" -> Right $ Initial placeholder
+  EVar "apply" -> Right $ Apply placeholder placeholder
+  EVar "fold" -> Right $ Fold placeholder
+  EVar "unfold" -> Right $ Unfold placeholder
+
+  -- Generators that take IR arguments
+  EVar "compose" -> Right $ Var "compose"
+  EVar "pair" -> Right $ Var "pair"
+  EVar "curry" -> Right $ Var "curry"
+  EVar "arr" -> Right $ Var "arr"
+
+  -- Check if variable is a local binding from let
+  EVar name | Set.member name locals -> Right $ LocalVar name
+
+  -- Regular variables
+  EVar name -> Right $ Var name
+
+  -- Qualified access - resolve using module environment
+  EQualified name modPath -> do
+    case lookupQualified name modPath modEnv of
+      Left modErr -> Left (ModuleResolutionError modErr)
+      Right declInfo -> case diDecl declInfo of
+        -- For function definitions, inline the elaborated expression
+        FunDef _ _ bodyExpr -> elaborateExprWithEnv modEnv locals bodyExpr
+        -- For primitives, generate a Prim node
+        Primitive pname sty -> Right $ Prim pname (elaborateType sty) placeholder
+        -- For type signatures without definition, just use Var
+        TypeSig _ _ -> Right $ Var name
+        -- Type aliases shouldn't appear here
+        TypeAlias {} -> Left $ UnsupportedExpr "Type alias in qualified access"
+
+  -- Application
+  EApp f arg -> elaborateAppWithEnv modEnv locals f arg
+
+  -- Pair literal
+  EPair _ _ -> Left $ UnsupportedExpr "Pair literals not yet supported"
+
+  -- Unit literal
+  EUnit -> Right $ Terminal placeholder
+
+  -- Integer literal
+  EInt n -> Right $ Prim ("__int_" <> tshow n) TUnit TInt
+
+  -- String literal
+  EStringLit s -> Right $ StringLit s
+
+  -- Let binding
+  ELet x e1 e2 -> do
+    e1' <- elaborateExprWithEnv modEnv locals e1
+    e2' <- elaborateExprWithEnv modEnv (Set.insert x locals) e2
+    Right $ Let x e1' e2'
+
+  -- Lambda, case, annotations
+  ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
+  ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
+  EAnnot e _ -> elaborateExprWithEnv modEnv locals e
+
+-- | Elaborate function application with module environment
+elaborateAppWithEnv :: ModuleEnv -> Set Name -> Expr -> Expr -> Either ElabError IR
+elaborateAppWithEnv modEnv locals f arg = case f of
+  -- pair f g => Pair f' g'
+  EApp (EVar "pair") f1 -> do
+    f1' <- elaborateExprWithEnv modEnv locals f1
+    arg' <- elaborateExprWithEnv modEnv locals arg
+    Right $ Pair f1' arg'
+
+  -- compose g f => Compose g' f'
+  EApp (EVar "compose") g -> do
+    g' <- elaborateExprWithEnv modEnv locals g
+    f' <- elaborateExprWithEnv modEnv locals arg
+    Right $ Compose g' f'
+
+  -- curry f => Curry f'
+  EVar "curry" -> do
+    f' <- elaborateExprWithEnv modEnv locals arg
+    Right $ Curry f'
+
+  -- arr f => f (D032: arr is identity at IR level)
+  EVar "arr" -> elaborateExprWithEnv modEnv locals arg
+
+  -- case branches
+  EApp (EVar "case") _ -> Left $ UnsupportedExpr "Case not yet supported"
+
+  -- Nested application
+  EApp innerF innerArg -> do
+    innerResult <- elaborateAppWithEnv modEnv locals innerF innerArg
+    arg' <- elaborateExprWithEnv modEnv locals arg
+    Right $ Compose innerResult arg'
+
+  -- Generator or function applied to argument
+  EVar name -> do
+    f' <- elaborateExprWithEnv modEnv locals (EVar name)
+    arg' <- elaborateArgWithEnv modEnv locals arg
+    Right $ Compose f' arg'
+
+  -- Qualified name applied to argument
+  EQualified name modPath -> do
+    f' <- elaborateExprWithEnv modEnv locals (EQualified name modPath)
+    arg' <- elaborateArgWithEnv modEnv locals arg
+    Right $ Compose f' arg'
+
+  _ -> Left $ UnsupportedExpr "Complex application not yet supported"
+
+-- | Elaborate an argument with module environment
+elaborateArgWithEnv :: ModuleEnv -> Set Name -> Expr -> Either ElabError IR
+elaborateArgWithEnv modEnv locals expr = case expr of
+  EVar name
+    | not (isGenerator name) && not (Set.member name locals) ->
+        Right $ FunRef name
+  _ -> elaborateExprWithEnv modEnv locals expr

@@ -5,6 +5,7 @@ import Test.Tasty
 import BackendSpec (backendTests)
 import ElaborateSpec (elaborateTests)
 import IRSpec (irTests)
+import ModuleSpec (moduleTests)
 import OptimizeSpec (optimizeTests)
 import ParserSpec (parserTests)
 import QuantitySpec (quantityTests)
@@ -18,5 +19,6 @@ main = defaultMain $ testGroup "Once"
   , parserTests
   , elaborateTests
   , typeCheckTests
+  , moduleTests
   , backendTests
   ]

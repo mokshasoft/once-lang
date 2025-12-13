@@ -9,21 +9,23 @@ module Once.CLI
 
 import Control.Applicative ((<|>))
 import Data.List (isSuffixOf)
+import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (listDirectory)
+import System.Directory (listDirectory, doesDirectoryExist)
 import System.Exit (exitFailure, exitSuccess)
-import System.FilePath (takeBaseName, (</>))
+import System.FilePath (takeBaseName, takeDirectory, (</>))
 
 import Once.Backend.C (generateC, CModule (..))
-import Once.Elaborate (elaborate)
+import Once.Elaborate (elaborate, elaborateWithEnv)
 import qualified Once.IR (IR (..))
+import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
 import Once.Optimize (optimize)
 import Once.Parser (parseModule)
 import Once.Syntax (Module (..), Decl (..), Expr, AllocStrategy (..))
 import Once.Type (Type (..))
-import Once.TypeCheck (checkModule, convertType)
+import Once.TypeCheck (checkModule, checkModuleWithEnv, convertType)
 
 -- | CLI commands
 data Command
@@ -42,8 +44,9 @@ data BuildOptions = BuildOptions
   { buildInput  :: FilePath
   , buildOutput :: Maybe FilePath       -- ^ Output base name (without extension)
   , buildMode   :: OutputMode           -- ^ Library or executable
-  , buildInterp :: Maybe FilePath       -- ^ Path to interpretation directory
+  , buildInterp :: Maybe FilePath       -- ^ Path to interpretation directory (deprecated, use --strata)
   , buildAlloc  :: Maybe AllocStrategy  -- ^ Default allocation strategy (Nothing = use per-function annotations)
+  , buildStrata :: Maybe FilePath       -- ^ Path to Strata directory (default: look relative to input file)
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -57,7 +60,7 @@ run cmd = case cmd of
   Build opts -> runBuild opts
   Check opts -> runCheck opts
 
--- | Run the build command: parse -> typecheck -> elaborate -> optimize -> codegen
+-- | Run the build command: parse -> resolve imports -> typecheck -> elaborate -> optimize -> codegen
 runBuild :: BuildOptions -> IO ()
 runBuild opts = do
   let inputPath = buildInput opts
@@ -65,6 +68,9 @@ runBuild opts = do
         Just base -> base
         Nothing -> takeBaseName inputPath
       mode = buildMode opts
+
+  -- Determine Strata path
+  strataPath <- findStrataPath opts inputPath
 
   -- Read input file
   source <- TIO.readFile inputPath
@@ -75,64 +81,100 @@ runBuild opts = do
       TIO.putStrLn $ "Parse error: " <> T.pack (show err)
       exitFailure
     Right m -> do
-      -- Type check
-      case checkModule m of
-        Left err -> do
-          TIO.putStrLn $ "Type error: " <> T.pack (show err)
+      -- Resolve imports (load all imported modules)
+      let initialEnv = emptyModuleEnv strataPath
+      resolveResult <- resolveImports initialEnv (moduleImports m)
+      case resolveResult of
+        Left modErr -> do
+          TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
-        Right () -> do
-          -- Extract primitives and all function definitions
-          let primitives = extractPrimitives m
-              allFunctions = extractFunctions m
-
-          -- Find main function
-          case filter (\(n, _, _, _) -> n == "main") allFunctions of
-            [] -> do
-              TIO.putStrLn "Error: No main function found"
+        Right modEnv -> do
+          -- Type check with module environment
+          case checkModuleWithEnv modEnv m of
+            Left err -> do
+              TIO.putStrLn $ "Type error: " <> T.pack (show err)
               exitFailure
-            ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
-              -- D032: main must be effectful (Eff Unit Unit or IO Unit)
-              case mainTy of
-                TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
-                _ -> do
-                  TIO.putStrLn $ "Error: main must have type 'Eff Unit Unit' or 'IO Unit', got: " <> T.pack (show mainTy)
-                  TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
+            Right () -> do
+              -- Extract primitives and all function definitions
+              let primitives = extractPrimitives m
+                  allFunctions = extractFunctions m
+
+              -- Find main function
+              case filter (\(n, _, _, _) -> n == "main") allFunctions of
+                [] -> do
+                  TIO.putStrLn "Error: No main function found"
                   exitFailure
-              -- Elaborate all functions to IR
-              let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-              case elaborateAll ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
-                Left err -> do
-                  TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
-                  exitFailure
-                Right irFunctions -> do
-                  -- Optimize all IRs
-                  let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
-                      (_, _, _, mainIR) = head optimizedFunctions
+                ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
+                  -- D032: main must be effectful (Eff Unit Unit or IO Unit)
+                  case mainTy of
+                    TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
+                    _ -> do
+                      TIO.putStrLn $ "Error: main must have type 'Eff Unit Unit' or 'IO Unit', got: " <> T.pack (show mainTy)
+                      TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
+                      exitFailure
+                  -- Elaborate all functions to IR (with module environment)
+                  let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
+                  case elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
+                    Left err -> do
+                      TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
+                      exitFailure
+                    Right irFunctions -> do
+                      -- Optimize all IRs
+                      let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
+                          (_, _, _, mainIR) = head optimizedFunctions
 
-                  -- Generate C based on mode
-                  case mode of
-                    Library -> do
-                      let CModule header source' = generateC mainName mainTy mainIR
-                          headerPath = outputBase ++ ".h"
-                          sourcePath = outputBase ++ ".c"
-                      TIO.writeFile headerPath header
-                      TIO.writeFile sourcePath source'
-                      TIO.putStrLn $ "Generated: " <> T.pack headerPath <> ", " <> T.pack sourcePath
+                      -- Generate C based on mode
+                      case mode of
+                        Library -> do
+                          let CModule header source' = generateC mainName mainTy mainIR
+                              headerPath = outputBase ++ ".h"
+                              sourcePath = outputBase ++ ".c"
+                          TIO.writeFile headerPath header
+                          TIO.writeFile sourcePath source'
+                          TIO.putStrLn $ "Generated: " <> T.pack headerPath <> ", " <> T.pack sourcePath
 
-                    Executable -> do
-                      -- For executable, generate C with main() wrapper
-                      -- Load all interpretation C code if provided
-                      interpCode <- case buildInterp opts of
-                        Nothing -> pure ""
-                        Just interpPath -> loadInterpretationCode interpPath
+                        Executable -> do
+                          -- For executable, generate C with main() wrapper
+                          -- Load interpretation C code from --interp and from imported modules
+                          interpCodeLegacy <- case buildInterp opts of
+                            Nothing -> pure ""
+                            Just interpPath -> loadInterpretationCode interpPath
 
-                      let sourcePath = outputBase ++ ".c"
-                          alloc = mainAlloc <|> buildAlloc opts
-                          source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
-                      TIO.writeFile sourcePath source'
-                      TIO.putStrLn $ "Generated: " <> T.pack sourcePath
+                          -- Collect C files from imported interpretation modules
+                          let importedCFiles = collectCFiles modEnv
+                          importedCCode <- T.concat <$> mapM TIO.readFile importedCFiles
 
-                  exitSuccess
+                          let sourcePath = outputBase ++ ".c"
+                              alloc = mainAlloc <|> buildAlloc opts
+                              interpCode = interpCodeLegacy <> "\n" <> importedCCode
+                              source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
+                          TIO.writeFile sourcePath source'
+                          TIO.putStrLn $ "Generated: " <> T.pack sourcePath
+
+                      exitSuccess
+
+-- | Find the Strata directory path
+-- Priority: 1) --strata flag, 2) Strata/ relative to input, 3) Strata/ in current directory
+findStrataPath :: BuildOptions -> FilePath -> IO FilePath
+findStrataPath opts inputPath = case buildStrata opts of
+  Just path -> pure path
+  Nothing -> do
+    -- Try relative to input file
+    let inputDir = takeDirectory inputPath
+        relativePath = inputDir </> "Strata"
+    exists1 <- doesDirectoryExist relativePath
+    if exists1
+      then pure relativePath
+      else do
+        -- Try in current directory
+        exists2 <- doesDirectoryExist "Strata"
+        if exists2
+          then pure "Strata"
+          else pure relativePath  -- Return the first attempt (will error if used)
+
+-- | Collect all C file paths from loaded interpretation modules
+collectCFiles :: ModuleEnv -> [FilePath]
+collectCFiles env = [cPath | LoadedModule { lmCPath = Just cPath } <- Map.elems (meModules env)]
 
 -- | Run the check command: parse -> typecheck
 runCheck :: CheckOptions -> IO ()
@@ -199,6 +241,18 @@ elaborateAll ((name, ty, alloc, expr):rest) =
   case elaborate expr of
     Left err -> Left (show err)
     Right ir -> case elaborateAll rest of
+      Left err -> Left err
+      Right irs -> Right ((name, ty, alloc, ir) : irs)
+
+-- | Elaborate all functions with module environment
+elaborateAllWithEnv :: ModuleEnv
+                    -> [(Text, Type, Maybe AllocStrategy, Expr)]
+                    -> Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)]
+elaborateAllWithEnv _ [] = Right []
+elaborateAllWithEnv env ((name, ty, alloc, expr):rest) =
+  case elaborateWithEnv env expr of
+    Left err -> Left (show err)
+    Right ir -> case elaborateAllWithEnv env rest of
       Left err -> Left err
       Right irs -> Right ((name, ty, alloc, ir) : irs)
 
