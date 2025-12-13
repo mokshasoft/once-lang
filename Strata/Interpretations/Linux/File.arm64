@@ -1,0 +1,426 @@
+// ======================================================================
+// File I/O Convenience Functions - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// Higher-level file operations using raw syscalls (no libc).
+//
+// Note: Linux ARM64 uses *at variants (openat, fstatat, etc.)
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_LINUX_ARM64_FILE_DEFINED
+#define ONCE_LINUX_ARM64_FILE_DEFINED
+
+.equ SYS_read,      63
+.equ SYS_write,     64
+.equ SYS_openat,    56
+.equ SYS_close,     57
+.equ SYS_fstatat,   79
+.equ SYS_fsync,     82
+
+// File descriptors
+.equ STDIN,         0
+.equ STDOUT,        1
+.equ STDERR,        2
+
+// Open flags
+.equ O_RDONLY,      0
+.equ AT_FDCWD,      -100
+
+// Stat structure offset for st_size (ARM64 Linux)
+.equ STAT_ST_SIZE,  48
+
+// ======================================================================
+// Output Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// print - Write string to stdout (no newline)
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_print
+.type once_print, %function
+once_print:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack string
+    ldr     x1, [x0]            // x1 = str_data
+    ldr     x2, [x0, #8]        // x2 = str_len
+
+    mov     x0, #STDOUT
+    mov     x8, #SYS_write
+    svc     #0
+
+    mov     x0, #0              // Return NULL
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_print, .-once_print
+
+// ----------------------------------------------------------------------
+// println - Write string to stdout with newline
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_println
+.type once_println, %function
+once_println:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+
+    // Unpack string
+    ldr     x1, [x0]
+    ldr     x2, [x0, #8]
+
+    // Write string
+    mov     x0, #STDOUT
+    mov     x8, #SYS_write
+    svc     #0
+
+    // Write newline
+    mov     w9, #'\n'
+    strb    w9, [sp, #16]
+    mov     x0, #STDOUT
+    add     x1, sp, #16
+    mov     x2, #1
+    mov     x8, #SYS_write
+    svc     #0
+
+    mov     x0, #0
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_println, .-once_println
+
+// ----------------------------------------------------------------------
+// err - Write string to stderr (no newline)
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_err
+.type once_err, %function
+once_err:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x1, [x0]
+    ldr     x2, [x0, #8]
+
+    mov     x0, #STDERR
+    mov     x8, #SYS_write
+    svc     #0
+
+    mov     x0, #0
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_err, .-once_err
+
+// ----------------------------------------------------------------------
+// errln - Write string to stderr with newline
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_errln
+.type once_errln, %function
+once_errln:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+
+    ldr     x1, [x0]
+    ldr     x2, [x0, #8]
+
+    mov     x0, #STDERR
+    mov     x8, #SYS_write
+    svc     #0
+
+    mov     w9, #'\n'
+    strb    w9, [sp, #16]
+    mov     x0, #STDERR
+    add     x1, sp, #16
+    mov     x2, #1
+    mov     x8, #SYS_write
+    svc     #0
+
+    mov     x0, #0
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_errln, .-once_errln
+
+// ----------------------------------------------------------------------
+// putc - Write single character to stdout
+// ----------------------------------------------------------------------
+// Input: Int (character code)
+// Output: Unit (NULL)
+.global once_putc
+.type once_putc, %function
+once_putc:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+
+    // Store char on stack
+    strb    w0, [sp, #16]
+
+    // Write it
+    mov     x0, #STDOUT
+    add     x1, sp, #16
+    mov     x2, #1
+    mov     x8, #SYS_write
+    svc     #0
+
+    mov     x0, #0
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_putc, .-once_putc
+
+// ----------------------------------------------------------------------
+// flush - Flush stdout
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Unit (NULL)
+.global once_flush
+.type once_flush, %function
+once_flush:
+    mov     x0, #STDOUT
+    mov     x8, #SYS_fsync
+    svc     #0
+
+    mov     x0, #0
+    ret
+.size once_flush, .-once_flush
+
+// ======================================================================
+// Input Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// getc - Read single character from stdin
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (character code, or -1 on EOF)
+.global once_getc
+.type once_getc, %function
+once_getc:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+
+    // Read one byte
+    mov     x0, #STDIN
+    add     x1, sp, #16
+    mov     x2, #1
+    mov     x8, #SYS_read
+    svc     #0
+
+    // Check result
+    cmp     x0, #0
+    b.le    .getc_eof_arm
+
+    // Return the character
+    ldrb    w0, [sp, #16]
+    b       .getc_done_arm
+
+.getc_eof_arm:
+    mov     x0, #-1
+
+.getc_done_arm:
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_getc, .-once_getc
+
+// ----------------------------------------------------------------------
+// getline - Read line from stdin into buffer
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), maxlen)
+// Output: Int (bytes read, or -1 on EOF with no data)
+.global once_getline
+.type once_getline, %function
+once_getline:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack: ((buf_data, buf_len), maxlen)
+    ldr     x9, [x0]            // x9 = ptr to buffer
+    ldr     x20, [x0, #8]       // x20 = maxlen
+
+    ldr     x19, [x9]           // x19 = buf_data
+
+    // Validate
+    cmp     x20, #0
+    b.le    .getline_error_arm
+    cbz     x19, .getline_error_arm
+
+    sub     x20, x20, #1        // Leave room for null
+    mov     x21, #0             // x21 = count
+
+.getline_loop_arm:
+    cmp     x21, x20
+    b.ge    .getline_done_arm
+
+    // Read one byte
+    mov     x0, #STDIN
+    add     x1, x19, x21
+    mov     x2, #1
+    mov     x8, #SYS_read
+    svc     #0
+
+    // Check for EOF
+    cmp     x0, #0
+    b.le    .getline_check_eof_arm
+
+    // Check for newline
+    ldrb    w9, [x19, x21]
+    cmp     w9, #'\n'
+    b.eq    .getline_done_arm
+
+    add     x21, x21, #1
+    b       .getline_loop_arm
+
+.getline_check_eof_arm:
+    cbz     x21, .getline_error_arm
+    b       .getline_done_arm
+
+.getline_done_arm:
+    // Null-terminate
+    strb    wzr, [x19, x21]
+    mov     x0, x21
+    b       .getline_exit_arm
+
+.getline_error_arm:
+    mov     x0, #-1
+
+.getline_exit_arm:
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_getline, .-once_getline
+
+// ======================================================================
+// File Reading Helpers
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readfile - Read entire file into buffer
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), ((buf_data, buf_len), maxlen))
+// Output: Int (bytes read, or -1 on error)
+.global once_readfile
+.type once_readfile, %function
+once_readfile:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x10, [x0, #8]       // x10 = ptr to rest
+
+    ldr     x19, [x9]           // x19 = path_data
+
+    ldr     x11, [x10]          // x11 = ptr to buffer
+    ldr     x21, [x10, #8]      // x21 = maxlen
+
+    ldr     x20, [x11]          // x20 = buf_data
+
+    // Open file (via openat)
+    mov     x0, #AT_FDCWD
+    mov     x1, x19             // path
+    mov     x2, #O_RDONLY
+    mov     x3, #0
+
+    mov     x8, #SYS_openat
+    svc     #0
+
+    cmp     x0, #0
+    b.lt    .readfile_error_arm
+    mov     x19, x0             // x19 = fd
+    mov     x22, #0             // x22 = total bytes
+
+.readfile_loop_arm:
+    cmp     x22, x21
+    b.ge    .readfile_done_arm
+
+    // Read chunk
+    mov     x0, x19             // fd
+    add     x1, x20, x22        // buf + total
+    sub     x2, x21, x22        // remaining
+
+    mov     x8, #SYS_read
+    svc     #0
+
+    cmp     x0, #0
+    b.lt    .readfile_close_error_arm
+    b.eq    .readfile_done_arm  // EOF
+
+    add     x22, x22, x0
+    b       .readfile_loop_arm
+
+.readfile_done_arm:
+    // Close file
+    mov     x0, x19
+    mov     x8, #SYS_close
+    svc     #0
+
+    mov     x0, x22             // Return total bytes
+    b       .readfile_exit_arm
+
+.readfile_close_error_arm:
+    mov     x0, x19
+    mov     x8, #SYS_close
+    svc     #0
+
+.readfile_error_arm:
+    mov     x0, #-1
+
+.readfile_exit_arm:
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_readfile, .-once_readfile
+
+// ----------------------------------------------------------------------
+// filesize - Get file size
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (size in bytes, or -1 on error)
+.global once_filesize
+.type once_filesize, %function
+once_filesize:
+    stp     x29, x30, [sp, #-176]!  // 128 for stat + 48 extra
+    mov     x29, sp
+
+    // Unpack path
+    ldr     x1, [x0]            // x1 = path_data
+
+    // fstatat(AT_FDCWD, path, buf, 0)
+    mov     x0, #AT_FDCWD
+    // x1 = path
+    add     x2, sp, #16         // stat buffer
+    mov     x3, #0              // flags
+
+    mov     x8, #SYS_fstatat
+    svc     #0
+
+    cmp     x0, #0
+    b.lt    .filesize_error_arm
+
+    // Extract st_size (offset 48)
+    ldr     x0, [sp, #16 + STAT_ST_SIZE]
+    b       .filesize_done_arm
+
+.filesize_error_arm:
+    mov     x0, #-1
+
+.filesize_done_arm:
+    ldp     x29, x30, [sp], #176
+    ret
+.size once_filesize, .-once_filesize
+
+#endif // ONCE_LINUX_ARM64_FILE_DEFINED
+

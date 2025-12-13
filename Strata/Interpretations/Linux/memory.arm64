@@ -1,0 +1,300 @@
+// ======================================================================
+// Memory Operations - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// MallocLike interface using mmap/munmap directly (no libc).
+//
+// Memory layout: Each allocation has an 8-byte header storing the size.
+//   [size: 8 bytes][user data: size bytes]
+//   ^-- mmap returns     ^-- returned to user
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_LINUX_ARM64_MEMORY_DEFINED
+#define ONCE_LINUX_ARM64_MEMORY_DEFINED
+
+.equ SYS_mmap,      222
+.equ SYS_munmap,    215
+
+// mmap constants
+.equ PROT_READ,     1
+.equ PROT_WRITE,    2
+.equ MAP_PRIVATE,   2
+.equ MAP_ANONYMOUS, 32
+
+// Header size
+.equ HEADER_SIZE,   8
+
+// ----------------------------------------------------------------------
+// alloc - Allocate memory
+// ----------------------------------------------------------------------
+// Input: Int (size in bytes)
+// Output: (buf_data, buf_len) - OnceBuffer
+.global once_alloc
+.type once_alloc, %function
+once_alloc:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    str     x19, [sp, #16]
+
+    mov     x19, x0             // x19 = requested size
+
+    // Total size = header + data
+    add     x1, x0, #HEADER_SIZE // x1 = total size
+
+    // mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
+    mov     x0, #0              // addr = NULL
+    // x1 = length
+    mov     x2, #(PROT_READ | PROT_WRITE)
+    mov     x3, #(MAP_PRIVATE | MAP_ANONYMOUS)
+    mov     x4, #-1             // fd = -1
+    mov     x5, #0              // offset = 0
+
+    mov     x8, #SYS_mmap
+    svc     #0
+
+    // Check for error
+    cmn     x0, #4096
+    b.hi    .alloc_failed_arm
+
+    // Store size in header
+    str     x19, [x0]
+
+    // Return buffer pointing past header
+    add     x9, x0, #HEADER_SIZE
+    str     x9, [sp, #32]       // data
+    str     x19, [sp, #40]      // len
+    add     x0, sp, #32
+    b       .alloc_done_arm
+
+.alloc_failed_arm:
+    str     xzr, [sp, #32]
+    str     xzr, [sp, #40]
+    add     x0, sp, #32
+
+.alloc_done_arm:
+    ldr     x19, [sp, #16]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_alloc, .-once_alloc
+
+// ----------------------------------------------------------------------
+// free - Free allocated memory
+// ----------------------------------------------------------------------
+// Input: (buf_data, buf_len) - OnceBuffer
+// Output: Unit (0/NULL)
+.global once_free
+.type once_free, %function
+once_free:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Get buffer data pointer
+    ldr     x0, [x0]            // x0 = buf_data
+
+    // Check for NULL
+    cbz     x0, .free_done_arm
+
+    // Calculate original mmap address
+    sub     x0, x0, #HEADER_SIZE
+
+    // Read size from header
+    ldr     x1, [x0]            // x1 = stored size
+
+    // Add header size for munmap
+    add     x1, x1, #HEADER_SIZE
+
+    // munmap
+    mov     x8, #SYS_munmap
+    svc     #0
+
+.free_done_arm:
+    mov     x0, #0              // Return NULL
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_free, .-once_free
+
+// ----------------------------------------------------------------------
+// realloc - Reallocate memory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), new_size)
+// Output: (buf_data, buf_len) - OnceBuffer
+.global once_realloc
+.type once_realloc, %function
+once_realloc:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack: ((buf_data, buf_len), new_size)
+    ldr     x9, [x0]            // x9 = ptr to old buffer
+    ldr     x20, [x0, #8]       // x20 = new_size
+
+    ldr     x19, [x9]           // x19 = old buf_data
+
+    // Handle NULL input
+    cbz     x19, .realloc_alloc_only_arm
+
+    // Get old size from header
+    ldr     x21, [x19, #-HEADER_SIZE]   // x21 = old size
+
+    // Allocate new memory
+    add     x1, x20, #HEADER_SIZE   // total size
+
+    mov     x0, #0
+    mov     x2, #(PROT_READ | PROT_WRITE)
+    mov     x3, #(MAP_PRIVATE | MAP_ANONYMOUS)
+    mov     x4, #-1
+    mov     x5, #0
+
+    mov     x8, #SYS_mmap
+    svc     #0
+
+    cmn     x0, #4096
+    b.hi    .realloc_failed_arm
+
+    // Store new size in header
+    str     x20, [x0]
+
+    // Calculate new data pointer
+    add     x22, x0, #HEADER_SIZE   // x22 = new data ptr
+
+    // Copy data: min(old_size, new_size)
+    mov     x9, x21             // x9 = old_size
+    cmp     x20, x9
+    csel    x9, x20, x9, lo     // x9 = min
+
+    mov     x10, x19            // source
+    mov     x11, x22            // dest
+.realloc_copy_loop_arm:
+    cbz     x9, .realloc_copy_done_arm
+    ldrb    w12, [x10], #1
+    strb    w12, [x11], #1
+    sub     x9, x9, #1
+    b       .realloc_copy_loop_arm
+
+.realloc_copy_done_arm:
+    // Save new ptr
+    str     x22, [sp, #48]      // data
+    str     x20, [sp, #56]      // len
+
+    // Free old memory
+    sub     x0, x19, #HEADER_SIZE
+    ldr     x1, [x0]
+    add     x1, x1, #HEADER_SIZE
+    mov     x8, #SYS_munmap
+    svc     #0
+
+    add     x0, sp, #48
+    b       .realloc_done_arm
+
+.realloc_alloc_only_arm:
+    // No old buffer, just allocate
+    add     x1, x20, #HEADER_SIZE
+
+    mov     x0, #0
+    mov     x2, #(PROT_READ | PROT_WRITE)
+    mov     x3, #(MAP_PRIVATE | MAP_ANONYMOUS)
+    mov     x4, #-1
+    mov     x5, #0
+
+    mov     x8, #SYS_mmap
+    svc     #0
+
+    cmn     x0, #4096
+    b.hi    .realloc_failed_arm
+
+    str     x20, [x0]
+    add     x9, x0, #HEADER_SIZE
+    str     x9, [sp, #48]
+    str     x20, [sp, #56]
+    add     x0, sp, #48
+    b       .realloc_done_arm
+
+.realloc_failed_arm:
+    str     xzr, [sp, #48]
+    str     xzr, [sp, #56]
+    add     x0, sp, #48
+
+.realloc_done_arm:
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_realloc, .-once_realloc
+
+// ----------------------------------------------------------------------
+// heap_string - Allocate and copy string to heap
+// ----------------------------------------------------------------------
+// Input: (len, (src_data, src_len))
+// Output: (str_data, str_len) - OnceString
+.global once_heap_string
+.type once_heap_string, %function
+once_heap_string:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    str     x21, [sp, #32]
+
+    // Unpack: (len, (src_data, src_len))
+    ldr     x19, [x0]           // x19 = len
+    ldr     x9, [x0, #8]        // x9 = ptr to src buffer
+    ldr     x20, [x9]           // x20 = src_data
+
+    // Allocate memory
+    add     x1, x19, #HEADER_SIZE
+
+    mov     x0, #0
+    mov     x2, #(PROT_READ | PROT_WRITE)
+    mov     x3, #(MAP_PRIVATE | MAP_ANONYMOUS)
+    mov     x4, #-1
+    mov     x5, #0
+
+    mov     x8, #SYS_mmap
+    svc     #0
+
+    cmn     x0, #4096
+    b.hi    .heap_string_failed_arm
+
+    // Store size in header
+    str     x19, [x0]
+
+    // Get data pointer
+    add     x21, x0, #HEADER_SIZE   // x21 = dest
+
+    // Copy data
+    mov     x9, x20             // source
+    mov     x10, x21            // dest
+    mov     x11, x19            // count
+.heap_string_copy_arm:
+    cbz     x11, .heap_string_copy_done_arm
+    ldrb    w12, [x9], #1
+    strb    w12, [x10], #1
+    sub     x11, x11, #1
+    b       .heap_string_copy_arm
+
+.heap_string_copy_done_arm:
+    // Return string
+    str     x21, [sp, #48]      // data
+    str     x19, [sp, #56]      // len
+    add     x0, sp, #48
+    b       .heap_string_done_arm
+
+.heap_string_failed_arm:
+    str     xzr, [sp, #48]
+    str     xzr, [sp, #56]
+    add     x0, sp, #48
+
+.heap_string_done_arm:
+    ldp     x19, x20, [sp, #16]
+    ldr     x21, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_heap_string, .-once_heap_string
+
+#endif // ONCE_LINUX_ARM64_MEMORY_DEFINED
+

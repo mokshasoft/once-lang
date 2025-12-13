@@ -1,0 +1,1472 @@
+// ======================================================================
+// Linux Syscall Primitives - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// Raw syscall wrappers for Linux ARM64.
+// Each once_* function corresponds to a primitive in syscalls.once.
+//
+// Linux ARM64 syscall convention:
+//   x8: syscall number
+//   x0-x5: arguments 1-6
+//   svc #0 instruction
+//   Return: x0 (negative values indicate -errno)
+//
+// Once calling convention (AArch64 AAPCS64):
+//   x0: first argument (pointer to tuple for multi-arg)
+//   x0: return value (pointer to tuple for multi-return)
+//   x19-x28: callee-saved registers
+//   x29: frame pointer, x30: link register
+//
+// Once tuple layout (nested pairs):
+//   (a, b, c) = (a, (b, c))
+//   Each pair: [fst: 8 bytes][snd: 8 bytes]
+//
+// Note: Linux ARM64 uses "new" unified syscall ABI with *at variants.
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_LINUX_ARM64_SYSCALLS_DEFINED
+#define ONCE_LINUX_ARM64_SYSCALLS_DEFINED
+
+// ======================================================================
+// Syscall Numbers (ARM64 Linux - same as RISC-V64)
+// ======================================================================
+.equ SYS_getcwd,        17
+.equ SYS_dup,           23
+.equ SYS_dup3,          24
+.equ SYS_fcntl,         25
+.equ SYS_mkdirat,       34
+.equ SYS_unlinkat,      35
+.equ SYS_symlinkat,     36
+.equ SYS_renameat,      38
+.equ SYS_ftruncate,     46
+.equ SYS_faccessat,     48
+.equ SYS_chdir,         49
+.equ SYS_chroot,        51
+.equ SYS_fchmod,        52
+.equ SYS_fchmodat,      53
+.equ SYS_fchownat,      54
+.equ SYS_fchown,        55
+.equ SYS_openat,        56
+.equ SYS_close,         57
+.equ SYS_pipe2,         59
+.equ SYS_lseek,         62
+.equ SYS_read,          63
+.equ SYS_write,         64
+.equ SYS_ppoll,         73
+.equ SYS_readlinkat,    78
+.equ SYS_fstatat,       79
+.equ SYS_fstat,         80
+.equ SYS_fsync,         82
+.equ SYS_exit,          93
+.equ SYS_exit_group,    94
+.equ SYS_futex,         98
+.equ SYS_nanosleep,     101
+.equ SYS_clock_gettime, 113
+.equ SYS_kill,          129
+.equ SYS_getpid,        172
+.equ SYS_getppid,       173
+.equ SYS_getuid,        174
+.equ SYS_geteuid,       175
+.equ SYS_getgid,        176
+.equ SYS_getegid,       177
+.equ SYS_gettid,        178
+.equ SYS_socket,        198
+.equ SYS_bind,          200
+.equ SYS_listen,        201
+.equ SYS_accept,        202
+.equ SYS_connect,       203
+.equ SYS_sendto,        206
+.equ SYS_recvfrom,      207
+.equ SYS_setsockopt,    208
+.equ SYS_getsockopt,    209
+.equ SYS_shutdown,      210
+.equ SYS_munmap,        215
+.equ SYS_clone,         220
+.equ SYS_mmap,          222
+.equ SYS_mprotect,      226
+.equ SYS_wait4,         260
+.equ SYS_getrandom,     278
+
+// AT_FDCWD for *at syscalls
+.equ AT_FDCWD,          -100
+
+// ======================================================================
+// Process Control
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// exit0 - Exit with code 0
+// ----------------------------------------------------------------------
+.global once_exit0
+.type once_exit0, %function
+once_exit0:
+    mov     x8, #SYS_exit_group
+    mov     x0, #0
+    svc     #0
+    // Does not return
+.size once_exit0, .-once_exit0
+
+// ----------------------------------------------------------------------
+// exit - Exit with given code
+// ----------------------------------------------------------------------
+.global once_exit
+.type once_exit, %function
+once_exit:
+    // x0 already has exit code
+    mov     x8, #SYS_exit_group
+    svc     #0
+    // Does not return
+.size once_exit, .-once_exit
+
+// ----------------------------------------------------------------------
+// getpid - Get process ID
+// ----------------------------------------------------------------------
+.global once_getpid
+.type once_getpid, %function
+once_getpid:
+    mov     x8, #SYS_getpid
+    svc     #0
+    ret
+.size once_getpid, .-once_getpid
+
+// ----------------------------------------------------------------------
+// getppid - Get parent process ID
+// ----------------------------------------------------------------------
+.global once_getppid
+.type once_getppid, %function
+once_getppid:
+    mov     x8, #SYS_getppid
+    svc     #0
+    ret
+.size once_getppid, .-once_getppid
+
+// ----------------------------------------------------------------------
+// getuid - Get user ID
+// ----------------------------------------------------------------------
+.global once_getuid
+.type once_getuid, %function
+once_getuid:
+    mov     x8, #SYS_getuid
+    svc     #0
+    ret
+.size once_getuid, .-once_getuid
+
+// ----------------------------------------------------------------------
+// geteuid - Get effective user ID
+// ----------------------------------------------------------------------
+.global once_geteuid
+.type once_geteuid, %function
+once_geteuid:
+    mov     x8, #SYS_geteuid
+    svc     #0
+    ret
+.size once_geteuid, .-once_geteuid
+
+// ----------------------------------------------------------------------
+// getgid - Get group ID
+// ----------------------------------------------------------------------
+.global once_getgid
+.type once_getgid, %function
+once_getgid:
+    mov     x8, #SYS_getgid
+    svc     #0
+    ret
+.size once_getgid, .-once_getgid
+
+// ----------------------------------------------------------------------
+// getegid - Get effective group ID
+// ----------------------------------------------------------------------
+.global once_getegid
+.type once_getegid, %function
+once_getegid:
+    mov     x8, #SYS_getegid
+    svc     #0
+    ret
+.size once_getegid, .-once_getegid
+
+// ======================================================================
+// File Descriptors
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fd_read - Read from file descriptor
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len), count) as nested tuple
+// Output: Int (bytes read or -errno)
+.global once_fd_read
+.type once_fd_read, %function
+once_fd_read:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack: (fd, ((buf_data, buf_len), count))
+    ldr     x9, [x0]            // x9 = fd
+    ldr     x0, [x0, #8]        // x0 = ptr to rest
+
+    ldr     x10, [x0]           // x10 = ptr to buffer pair
+    ldr     x2, [x0, #8]        // x2 = count
+
+    ldr     x1, [x10]           // x1 = buf_data
+
+    mov     x0, x9              // x0 = fd
+    // x1 = buf_data
+    // x2 = count
+
+    mov     x8, #SYS_read
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_fd_read, .-once_fd_read
+
+// ----------------------------------------------------------------------
+// fd_write - Write to file descriptor
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len), count) as nested tuple
+// Output: Int (bytes written or -errno)
+.global once_fd_write
+.type once_fd_write, %function
+once_fd_write:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack: (fd, ((buf_data, buf_len), count))
+    ldr     x9, [x0]            // x9 = fd
+    ldr     x0, [x0, #8]
+
+    ldr     x10, [x0]           // x10 = ptr to buffer pair
+    ldr     x2, [x0, #8]        // x2 = count
+
+    ldr     x1, [x10]           // x1 = buf_data
+
+    mov     x0, x9
+
+    mov     x8, #SYS_write
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_fd_write, .-once_fd_write
+
+// ----------------------------------------------------------------------
+// fd_close - Close file descriptor
+// ----------------------------------------------------------------------
+.global once_fd_close
+.type once_fd_close, %function
+once_fd_close:
+    // x0 = fd
+    mov     x8, #SYS_close
+    svc     #0
+    ret
+.size once_fd_close, .-once_fd_close
+
+// ----------------------------------------------------------------------
+// fd_dup - Duplicate file descriptor
+// ----------------------------------------------------------------------
+.global once_fd_dup
+.type once_fd_dup, %function
+once_fd_dup:
+    // x0 = fd
+    mov     x8, #SYS_dup
+    svc     #0
+    ret
+.size once_fd_dup, .-once_fd_dup
+
+// ----------------------------------------------------------------------
+// fd_dup2 - Duplicate fd to specific number (via dup3)
+// ----------------------------------------------------------------------
+// Input: (oldfd, newfd)
+// Output: Int (new fd or -errno)
+.global once_fd_dup2
+.type once_fd_dup2, %function
+once_fd_dup2:
+    ldr     x9, [x0]            // x9 = oldfd
+    ldr     x1, [x0, #8]        // x1 = newfd
+    mov     x0, x9              // x0 = oldfd
+    mov     x2, #0              // flags = 0
+
+    mov     x8, #SYS_dup3
+    svc     #0
+    ret
+.size once_fd_dup2, .-once_fd_dup2
+
+// ======================================================================
+// File Operations (using *at variants with AT_FDCWD)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// open - Open file (via openat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (flags, mode))
+// Output: Int (fd or -errno)
+.global once_open
+.type once_open, %function
+once_open:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack: ((path_data, path_len), (flags, mode))
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x10, [x0, #8]       // x10 = ptr to (flags, mode)
+
+    ldr     x1, [x9]            // x1 = path_data
+    ldr     x2, [x10]           // x2 = flags
+    ldr     x3, [x10, #8]       // x3 = mode
+
+    mov     x0, #AT_FDCWD       // dirfd
+
+    mov     x8, #SYS_openat
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_open, .-once_open
+
+// ----------------------------------------------------------------------
+// creat - Create file (via openat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (fd or -errno)
+.global once_creat
+.type once_creat, %function
+once_creat:
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x3, [x0, #8]        // x3 = mode
+    ldr     x1, [x9]            // x1 = path_data
+
+    mov     x0, #AT_FDCWD
+    mov     x2, #577            // O_WRONLY|O_CREAT|O_TRUNC
+
+    mov     x8, #SYS_openat
+    svc     #0
+    ret
+.size once_creat, .-once_creat
+
+// ----------------------------------------------------------------------
+// unlink - Delete file (via unlinkat)
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_unlink
+.type once_unlink, %function
+once_unlink:
+    ldr     x1, [x0]            // x1 = path_data
+    mov     x0, #AT_FDCWD
+    mov     x2, #0              // flags = 0
+
+    mov     x8, #SYS_unlinkat
+    svc     #0
+    ret
+.size once_unlink, .-once_unlink
+
+// ----------------------------------------------------------------------
+// rename - Rename file (via renameat)
+// ----------------------------------------------------------------------
+// Input: ((old_data, old_len), (new_data, new_len))
+// Output: Int (0 or -errno)
+.global once_rename
+.type once_rename, %function
+once_rename:
+    ldr     x9, [x0]            // x9 = ptr to old path
+    ldr     x10, [x0, #8]       // x10 = ptr to new path
+
+    ldr     x1, [x9]            // x1 = old_data
+    ldr     x3, [x10]           // x3 = new_data
+    mov     x0, #AT_FDCWD       // olddirfd
+    mov     x2, #AT_FDCWD       // newdirfd
+
+    mov     x8, #SYS_renameat
+    svc     #0
+    ret
+.size once_rename, .-once_rename
+
+// ----------------------------------------------------------------------
+// symlink - Create symbolic link (via symlinkat)
+// ----------------------------------------------------------------------
+// Input: ((target_data, target_len), (link_data, link_len))
+// Output: Int (0 or -errno)
+.global once_symlink
+.type once_symlink, %function
+once_symlink:
+    ldr     x9, [x0]            // x9 = ptr to target
+    ldr     x10, [x0, #8]       // x10 = ptr to link
+
+    ldr     x0, [x9]            // x0 = target_data
+    ldr     x2, [x10]           // x2 = link_data
+    mov     x1, #AT_FDCWD       // newdirfd
+
+    mov     x8, #SYS_symlinkat
+    svc     #0
+    ret
+.size once_symlink, .-once_symlink
+
+// ----------------------------------------------------------------------
+// readlink - Read symbolic link (via readlinkat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), ((buf_data, buf_len), bufsiz))
+// Output: Int (length or -errno)
+.global once_readlink
+.type once_readlink, %function
+once_readlink:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x10, [x0, #8]       // x10 = ptr to rest
+
+    ldr     x1, [x9]            // x1 = path_data
+
+    ldr     x11, [x10]          // x11 = ptr to buffer
+    ldr     x3, [x10, #8]       // x3 = bufsiz
+
+    ldr     x2, [x11]           // x2 = buf_data
+
+    mov     x0, #AT_FDCWD
+
+    mov     x8, #SYS_readlinkat
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_readlink, .-once_readlink
+
+// ----------------------------------------------------------------------
+// stat - Get file status (via fstatat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_stat
+.type once_stat, %function
+once_stat:
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x10, [x0, #8]       // x10 = ptr to buffer
+
+    ldr     x1, [x9]            // x1 = path_data
+    ldr     x2, [x10]           // x2 = buf_data
+    mov     x0, #AT_FDCWD
+    mov     x3, #0              // flags = 0
+
+    mov     x8, #SYS_fstatat
+    svc     #0
+    ret
+.size once_stat, .-once_stat
+
+// ----------------------------------------------------------------------
+// lstat - Get file status, don't follow symlinks
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_lstat
+.type once_lstat, %function
+once_lstat:
+    ldr     x9, [x0]
+    ldr     x10, [x0, #8]
+
+    ldr     x1, [x9]
+    ldr     x2, [x10]
+    mov     x0, #AT_FDCWD
+    mov     x3, #0x100          // AT_SYMLINK_NOFOLLOW
+
+    mov     x8, #SYS_fstatat
+    svc     #0
+    ret
+.size once_lstat, .-once_lstat
+
+// ----------------------------------------------------------------------
+// fstat - Get file status by fd
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_fstat
+.type once_fstat, %function
+once_fstat:
+    ldr     x9, [x0]            // x9 = fd
+    ldr     x10, [x0, #8]       // x10 = ptr to buffer
+
+    mov     x0, x9              // x0 = fd
+    ldr     x1, [x10]           // x1 = buf_data
+
+    mov     x8, #SYS_fstat
+    svc     #0
+    ret
+.size once_fstat, .-once_fstat
+
+// ----------------------------------------------------------------------
+// chmod - Change file permissions (via fchmodat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (0 or -errno)
+.global once_chmod
+.type once_chmod, %function
+once_chmod:
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x2, [x0, #8]        // x2 = mode
+    ldr     x1, [x9]            // x1 = path_data
+    mov     x0, #AT_FDCWD
+    mov     x3, #0              // flags
+
+    mov     x8, #SYS_fchmodat
+    svc     #0
+    ret
+.size once_chmod, .-once_chmod
+
+// ----------------------------------------------------------------------
+// fchmod - Change file permissions by fd
+// ----------------------------------------------------------------------
+// Input: (fd, mode)
+// Output: Int (0 or -errno)
+.global once_fchmod
+.type once_fchmod, %function
+once_fchmod:
+    ldr     x9, [x0]            // x9 = fd
+    ldr     x1, [x0, #8]        // x1 = mode
+    mov     x0, x9
+
+    mov     x8, #SYS_fchmod
+    svc     #0
+    ret
+.size once_fchmod, .-once_fchmod
+
+// ----------------------------------------------------------------------
+// chown - Change file owner (via fchownat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (owner, group))
+// Output: Int (0 or -errno)
+.global once_chown
+.type once_chown, %function
+once_chown:
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x10, [x0, #8]       // x10 = ptr to (owner, group)
+
+    ldr     x1, [x9]            // x1 = path_data
+    ldr     x2, [x10]           // x2 = owner
+    ldr     x3, [x10, #8]       // x3 = group
+    mov     x0, #AT_FDCWD
+    mov     x4, #0              // flags
+
+    mov     x8, #SYS_fchownat
+    svc     #0
+    ret
+.size once_chown, .-once_chown
+
+// ----------------------------------------------------------------------
+// truncate - Truncate file (open + ftruncate + close)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), length)
+// Output: Int (0 or -errno)
+.global once_truncate
+.type once_truncate, %function
+once_truncate:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+
+    // Save length
+    ldr     x20, [x0, #8]       // x20 = length
+
+    // Open file
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x1, [x9]            // x1 = path_data
+    mov     x0, #AT_FDCWD
+    mov     x2, #1              // O_WRONLY
+    mov     x3, #0
+
+    mov     x8, #SYS_openat
+    svc     #0
+
+    cmp     x0, #0
+    b.lt    .truncate_done_arm
+
+    mov     x19, x0             // x19 = fd
+
+    // ftruncate
+    mov     x0, x19
+    mov     x1, x20
+    mov     x8, #SYS_ftruncate
+    svc     #0
+
+    mov     x20, x0             // save result
+
+    // close
+    mov     x0, x19
+    mov     x8, #SYS_close
+    svc     #0
+
+    mov     x0, x20             // return ftruncate result
+
+.truncate_done_arm:
+    ldp     x19, x20, [sp, #16]
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_truncate, .-once_truncate
+
+// ----------------------------------------------------------------------
+// ftruncate - Truncate file by fd
+// ----------------------------------------------------------------------
+// Input: (fd, length)
+// Output: Int (0 or -errno)
+.global once_ftruncate
+.type once_ftruncate, %function
+once_ftruncate:
+    ldr     x9, [x0]            // x9 = fd
+    ldr     x1, [x0, #8]        // x1 = length
+    mov     x0, x9
+
+    mov     x8, #SYS_ftruncate
+    svc     #0
+    ret
+.size once_ftruncate, .-once_ftruncate
+
+// ======================================================================
+// Directory Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mkdir - Create directory (via mkdirat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (0 or -errno)
+.global once_mkdir
+.type once_mkdir, %function
+once_mkdir:
+    ldr     x9, [x0]            // x9 = ptr to path
+    ldr     x2, [x0, #8]        // x2 = mode
+    ldr     x1, [x9]            // x1 = path_data
+    mov     x0, #AT_FDCWD
+
+    mov     x8, #SYS_mkdirat
+    svc     #0
+    ret
+.size once_mkdir, .-once_mkdir
+
+// ----------------------------------------------------------------------
+// rmdir - Remove directory (via unlinkat with AT_REMOVEDIR)
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_rmdir
+.type once_rmdir, %function
+once_rmdir:
+    ldr     x1, [x0]            // x1 = path_data
+    mov     x0, #AT_FDCWD
+    mov     x2, #0x200          // AT_REMOVEDIR
+
+    mov     x8, #SYS_unlinkat
+    svc     #0
+    ret
+.size once_rmdir, .-once_rmdir
+
+// ----------------------------------------------------------------------
+// chdir - Change directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_chdir
+.type once_chdir, %function
+once_chdir:
+    ldr     x0, [x0]            // x0 = path_data
+
+    mov     x8, #SYS_chdir
+    svc     #0
+    ret
+.size once_chdir, .-once_chdir
+
+// ----------------------------------------------------------------------
+// getcwd - Get current directory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), size)
+// Output: Int (length or -errno)
+.global once_getcwd
+.type once_getcwd, %function
+once_getcwd:
+    ldr     x9, [x0]            // x9 = ptr to buffer
+    ldr     x1, [x0, #8]        // x1 = size
+    ldr     x0, [x9]            // x0 = buf_data
+
+    mov     x8, #SYS_getcwd
+    svc     #0
+    ret
+.size once_getcwd, .-once_getcwd
+
+// ----------------------------------------------------------------------
+// chroot - Change root directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_chroot
+.type once_chroot, %function
+once_chroot:
+    ldr     x0, [x0]            // x0 = path_data
+
+    mov     x8, #SYS_chroot
+    svc     #0
+    ret
+.size once_chroot, .-once_chroot
+
+// ======================================================================
+// File Seeking
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// lseek - Seek in file
+// ----------------------------------------------------------------------
+// Input: (fd, (offset, whence))
+// Output: Int (new position or -errno)
+.global once_lseek
+.type once_lseek, %function
+once_lseek:
+    ldr     x9, [x0]            // x9 = fd
+    ldr     x10, [x0, #8]       // x10 = ptr to (offset, whence)
+
+    mov     x0, x9              // x0 = fd
+    ldr     x1, [x10]           // x1 = offset
+    ldr     x2, [x10, #8]       // x2 = whence
+
+    mov     x8, #SYS_lseek
+    svc     #0
+    ret
+.size once_lseek, .-once_lseek
+
+// ======================================================================
+// Time
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// time - Get current time (via clock_gettime)
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (seconds since epoch)
+.global once_time
+.type once_time, %function
+once_time:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+
+    // clock_gettime(CLOCK_REALTIME, &ts)
+    mov     x0, #0              // CLOCK_REALTIME
+    add     x1, sp, #16         // timespec on stack
+
+    mov     x8, #SYS_clock_gettime
+    svc     #0
+
+    // Return tv_sec
+    ldr     x0, [sp, #16]
+
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_time, .-once_time
+
+// ----------------------------------------------------------------------
+// clock_gettime - Get high-resolution time
+// ----------------------------------------------------------------------
+// Input: (clk_id, (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_clock_gettime
+.type once_clock_gettime, %function
+once_clock_gettime:
+    ldr     x9, [x0]            // x9 = clk_id
+    ldr     x10, [x0, #8]       // x10 = ptr to buffer
+
+    mov     x0, x9              // x0 = clk_id
+    ldr     x1, [x10]           // x1 = buf_data
+
+    mov     x8, #SYS_clock_gettime
+    svc     #0
+    ret
+.size once_clock_gettime, .-once_clock_gettime
+
+// ----------------------------------------------------------------------
+// sleep - Sleep for seconds
+// ----------------------------------------------------------------------
+// Input: Int (seconds)
+// Output: Int (remaining seconds)
+.global once_sleep
+.type once_sleep, %function
+once_sleep:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+
+    // Build timespec
+    str     x0, [sp, #16]       // tv_sec
+    str     xzr, [sp, #24]      // tv_nsec = 0
+
+    add     x0, sp, #16         // req
+    add     x1, sp, #32         // rem
+
+    mov     x8, #SYS_nanosleep
+    svc     #0
+
+    // Return remaining seconds
+    ldr     x0, [sp, #32]
+
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_sleep, .-once_sleep
+
+// ----------------------------------------------------------------------
+// usleep - Sleep for microseconds
+// ----------------------------------------------------------------------
+// Input: Int (microseconds)
+// Output: Int (0 or -errno)
+.global once_usleep
+.type once_usleep, %function
+once_usleep:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+
+    // Convert usec to timespec
+    mov     x9, #1000000
+    udiv    x10, x0, x9         // x10 = sec
+    msub    x11, x10, x9, x0    // x11 = usec remainder
+    mov     x9, #1000
+    mul     x11, x11, x9        // x11 = nsec
+
+    str     x10, [sp, #16]      // tv_sec
+    str     x11, [sp, #24]      // tv_nsec
+
+    add     x0, sp, #16
+    mov     x1, #0              // NULL for rem
+
+    mov     x8, #SYS_nanosleep
+    svc     #0
+
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_usleep, .-once_usleep
+
+// ----------------------------------------------------------------------
+// nanosleep - Sleep with timespec
+// ----------------------------------------------------------------------
+// Input: ((req_data, req_len), (rem_data, rem_len))
+// Output: Int (0 or -errno)
+.global once_nanosleep
+.type once_nanosleep, %function
+once_nanosleep:
+    ldr     x9, [x0]            // x9 = ptr to req buffer
+    ldr     x10, [x0, #8]       // x10 = ptr to rem buffer
+
+    ldr     x0, [x9]            // x0 = req_data
+    ldr     x1, [x10]           // x1 = rem_data
+
+    mov     x8, #SYS_nanosleep
+    svc     #0
+    ret
+.size once_nanosleep, .-once_nanosleep
+
+// ======================================================================
+// Environment (stubs)
+// ======================================================================
+
+.global once_getenv
+.type once_getenv, %function
+once_getenv:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+    str     xzr, [sp, #16]      // data = NULL
+    str     xzr, [sp, #24]      // len = 0
+    add     x0, sp, #16
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_getenv, .-once_getenv
+
+.global once_setenv
+.type once_setenv, %function
+once_setenv:
+    mov     x0, #-1
+    ret
+.size once_setenv, .-once_setenv
+
+.global once_unsetenv
+.type once_unsetenv, %function
+once_unsetenv:
+    mov     x0, #-1
+    ret
+.size once_unsetenv, .-once_unsetenv
+
+// ======================================================================
+// Memory Mapping
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mmap - Map memory
+// ----------------------------------------------------------------------
+// Input: (addr, (length, (prot, (flags, (fd, offset)))))
+// Output: (buf_data, buf_len) - Buffer struct
+.global once_mmap
+.type once_mmap, %function
+once_mmap:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+
+    // Unpack 6 args
+    ldr     x9, [x0]            // addr
+    ldr     x0, [x0, #8]
+    ldr     x19, [x0]           // length (save)
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]            // prot
+    ldr     x0, [x0, #8]
+    ldr     x3, [x0]            // flags
+    ldr     x0, [x0, #8]
+    ldr     x4, [x0]            // fd
+    ldr     x5, [x0, #8]        // offset
+
+    mov     x0, x9              // addr
+    mov     x1, x19             // length
+
+    mov     x8, #SYS_mmap
+    svc     #0
+
+    // Check for error
+    cmn     x0, #4096
+    b.hi    .mmap_failed_arm
+
+    str     x0, [sp, #32]       // data
+    str     x19, [sp, #40]      // len
+    add     x0, sp, #32
+    b       .mmap_done_arm
+
+.mmap_failed_arm:
+    str     xzr, [sp, #32]
+    str     xzr, [sp, #40]
+    add     x0, sp, #32
+
+.mmap_done_arm:
+    ldp     x19, x20, [sp, #16]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_mmap, .-once_mmap
+
+// ----------------------------------------------------------------------
+// munmap - Unmap memory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), length)
+// Output: Int (0 or -errno)
+.global once_munmap
+.type once_munmap, %function
+once_munmap:
+    ldr     x9, [x0]            // x9 = ptr to buffer
+    ldr     x1, [x0, #8]        // x1 = length
+    ldr     x0, [x9]            // x0 = buf_data
+
+    mov     x8, #SYS_munmap
+    svc     #0
+    ret
+.size once_munmap, .-once_munmap
+
+// ----------------------------------------------------------------------
+// mprotect - Change memory protection
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), (length, prot))
+// Output: Int (0 or -errno)
+.global once_mprotect
+.type once_mprotect, %function
+once_mprotect:
+    ldr     x9, [x0]            // x9 = ptr to buffer
+    ldr     x10, [x0, #8]       // x10 = ptr to (length, prot)
+
+    ldr     x0, [x9]            // x0 = buf_data
+    ldr     x1, [x10]           // x1 = length
+    ldr     x2, [x10, #8]       // x2 = prot
+
+    mov     x8, #SYS_mprotect
+    svc     #0
+    ret
+.size once_mprotect, .-once_mprotect
+
+// ======================================================================
+// Signals
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// kill - Send signal to process
+// ----------------------------------------------------------------------
+// Input: (pid, sig)
+// Output: Int (0 or -errno)
+.global once_kill
+.type once_kill, %function
+once_kill:
+    ldr     x9, [x0]            // x9 = pid
+    ldr     x1, [x0, #8]        // x1 = sig
+    mov     x0, x9
+
+    mov     x8, #SYS_kill
+    svc     #0
+    ret
+.size once_kill, .-once_kill
+
+// ----------------------------------------------------------------------
+// raise - Send signal to self
+// ----------------------------------------------------------------------
+// Input: Int (sig)
+// Output: Int (0 or -errno)
+.global once_raise
+.type once_raise, %function
+once_raise:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+    str     x19, [sp, #16]
+
+    mov     x19, x0             // save sig
+
+    mov     x8, #SYS_getpid
+    svc     #0
+
+    // kill(pid, sig)
+    mov     x1, x19
+    mov     x8, #SYS_kill
+    svc     #0
+
+    ldr     x19, [sp, #16]
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_raise, .-once_raise
+
+// ----------------------------------------------------------------------
+// pause - Wait for signal (via ppoll with NULL)
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (-errno)
+.global once_pause
+.type once_pause, %function
+once_pause:
+    mov     x0, #0              // fds = NULL
+    mov     x1, #0              // nfds = 0
+    mov     x2, #0              // timeout = NULL
+    mov     x3, #0              // sigmask = NULL
+
+    mov     x8, #SYS_ppoll
+    svc     #0
+    ret
+.size once_pause, .-once_pause
+
+// ======================================================================
+// Pipe and IPC
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// pipe - Create pipe (via pipe2)
+// ----------------------------------------------------------------------
+// Input: (buf_data, buf_len)
+// Output: Int (0 or -errno)
+.global once_pipe
+.type once_pipe, %function
+once_pipe:
+    ldr     x0, [x0]            // x0 = buf_data
+    mov     x1, #0              // flags = 0
+
+    mov     x8, #SYS_pipe2
+    svc     #0
+    ret
+.size once_pipe, .-once_pipe
+
+// ======================================================================
+// Socket Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// socket - Create socket
+// ----------------------------------------------------------------------
+// Input: (domain, (type, protocol))
+// Output: Int (fd or -errno)
+.global once_socket
+.type once_socket, %function
+once_socket:
+    ldr     x9, [x0]            // x9 = domain
+    ldr     x10, [x0, #8]       // x10 = ptr to (type, protocol)
+
+    mov     x0, x9              // x0 = domain
+    ldr     x1, [x10]           // x1 = type
+    ldr     x2, [x10, #8]       // x2 = protocol
+
+    mov     x8, #SYS_socket
+    svc     #0
+    ret
+.size once_socket, .-once_socket
+
+// ----------------------------------------------------------------------
+// bind - Bind socket to address
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), addrlen))
+// Output: Int (0 or -errno)
+.global once_bind
+.type once_bind, %function
+once_bind:
+    ldr     x9, [x0]            // x9 = sockfd
+    ldr     x10, [x0, #8]       // x10 = ptr to rest
+
+    mov     x0, x9              // x0 = sockfd
+
+    ldr     x11, [x10]          // x11 = ptr to addr buffer
+    ldr     x2, [x10, #8]       // x2 = addrlen
+
+    ldr     x1, [x11]           // x1 = addr_data
+
+    mov     x8, #SYS_bind
+    svc     #0
+    ret
+.size once_bind, .-once_bind
+
+// ----------------------------------------------------------------------
+// listen - Listen on socket
+// ----------------------------------------------------------------------
+// Input: (sockfd, backlog)
+// Output: Int (0 or -errno)
+.global once_listen
+.type once_listen, %function
+once_listen:
+    ldr     x9, [x0]
+    ldr     x1, [x0, #8]
+    mov     x0, x9
+
+    mov     x8, #SYS_listen
+    svc     #0
+    ret
+.size once_listen, .-once_listen
+
+// ----------------------------------------------------------------------
+// accept - Accept connection
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), (addrlen_data, addrlen_len)))
+// Output: Int (new fd or -errno)
+.global once_accept
+.type once_accept, %function
+once_accept:
+    ldr     x9, [x0]            // x9 = sockfd
+    ldr     x10, [x0, #8]       // x10 = ptr to rest
+
+    mov     x0, x9
+
+    ldr     x11, [x10]          // x11 = ptr to addr buffer
+    ldr     x12, [x10, #8]      // x12 = ptr to addrlen buffer
+
+    ldr     x1, [x11]           // x1 = addr_data
+    ldr     x2, [x12]           // x2 = addrlen_data
+
+    mov     x8, #SYS_accept
+    svc     #0
+    ret
+.size once_accept, .-once_accept
+
+// ----------------------------------------------------------------------
+// connect - Connect to address
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), addrlen))
+// Output: Int (0 or -errno)
+.global once_connect
+.type once_connect, %function
+once_connect:
+    ldr     x9, [x0]
+    ldr     x10, [x0, #8]
+
+    mov     x0, x9
+
+    ldr     x11, [x10]
+    ldr     x2, [x10, #8]
+
+    ldr     x1, [x11]
+
+    mov     x8, #SYS_connect
+    svc     #0
+    ret
+.size once_connect, .-once_connect
+
+// ----------------------------------------------------------------------
+// send - Send on socket (via sendto)
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((buf_data, buf_len), (len, flags)))
+// Output: Int (bytes sent or -errno)
+.global once_send
+.type once_send, %function
+once_send:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x9, [x0]            // sockfd
+    ldr     x10, [x0, #8]       // ptr to rest
+
+    ldr     x11, [x10]          // ptr to buffer
+    ldr     x12, [x10, #8]      // ptr to (len, flags)
+
+    mov     x0, x9              // sockfd
+    ldr     x1, [x11]           // buf_data
+    ldr     x2, [x12]           // len
+    ldr     x3, [x12, #8]       // flags
+    mov     x4, #0              // dest_addr = NULL
+    mov     x5, #0              // addrlen = 0
+
+    mov     x8, #SYS_sendto
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_send, .-once_send
+
+// ----------------------------------------------------------------------
+// recv - Receive from socket (via recvfrom)
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((buf_data, buf_len), (len, flags)))
+// Output: Int (bytes received or -errno)
+.global once_recv
+.type once_recv, %function
+once_recv:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x9, [x0]
+    ldr     x10, [x0, #8]
+
+    ldr     x11, [x10]
+    ldr     x12, [x10, #8]
+
+    mov     x0, x9
+    ldr     x1, [x11]
+    ldr     x2, [x12]
+    ldr     x3, [x12, #8]
+    mov     x4, #0              // src_addr = NULL
+    mov     x5, #0              // addrlen = NULL
+
+    mov     x8, #SYS_recvfrom
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_recv, .-once_recv
+
+// ----------------------------------------------------------------------
+// shutdown - Shutdown socket
+// ----------------------------------------------------------------------
+// Input: (sockfd, how)
+// Output: Int (0 or -errno)
+.global once_shutdown
+.type once_shutdown, %function
+once_shutdown:
+    ldr     x9, [x0]
+    ldr     x1, [x0, #8]
+    mov     x0, x9
+
+    mov     x8, #SYS_shutdown
+    svc     #0
+    ret
+.size once_shutdown, .-once_shutdown
+
+// ----------------------------------------------------------------------
+// setsockopt - Set socket option
+// ----------------------------------------------------------------------
+// Input: (sockfd, (level, (optname, ((optval_data, optval_len), optlen))))
+// Output: Int (0 or -errno)
+.global once_setsockopt
+.type once_setsockopt, %function
+once_setsockopt:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack 5 args
+    ldr     x9, [x0]            // sockfd
+    ldr     x0, [x0, #8]
+    ldr     x10, [x0]           // level
+    ldr     x0, [x0, #8]
+    ldr     x11, [x0]           // optname
+    ldr     x0, [x0, #8]
+    ldr     x12, [x0]           // ptr to optval buffer
+    ldr     x4, [x0, #8]        // optlen
+
+    mov     x0, x9
+    mov     x1, x10
+    mov     x2, x11
+    ldr     x3, [x12]           // optval_data
+
+    mov     x8, #SYS_setsockopt
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_setsockopt, .-once_setsockopt
+
+// ----------------------------------------------------------------------
+// getsockopt - Get socket option
+// ----------------------------------------------------------------------
+// Input: (sockfd, (level, (optname, ((optval_data, optval_len), (optlen_data, optlen_len)))))
+// Output: Int (0 or -errno)
+.global once_getsockopt
+.type once_getsockopt, %function
+once_getsockopt:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x9, [x0]            // sockfd
+    ldr     x0, [x0, #8]
+    ldr     x10, [x0]           // level
+    ldr     x0, [x0, #8]
+    ldr     x11, [x0]           // optname
+    ldr     x0, [x0, #8]
+    ldr     x12, [x0]           // ptr to optval buffer
+    ldr     x13, [x0, #8]       // ptr to optlen buffer
+
+    mov     x0, x9
+    mov     x1, x10
+    mov     x2, x11
+    ldr     x3, [x12]           // optval_data
+    ldr     x4, [x13]           // optlen_data
+
+    mov     x8, #SYS_getsockopt
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_getsockopt, .-once_getsockopt
+
+// ======================================================================
+// Polling (via ppoll)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// poll - Poll file descriptors
+// ----------------------------------------------------------------------
+// Input: ((fds_data, fds_len), (nfds, timeout))
+// Output: Int (ready count or -errno)
+.global once_poll
+.type once_poll, %function
+once_poll:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+
+    ldr     x9, [x0]            // x9 = ptr to fds buffer
+    ldr     x10, [x0, #8]       // x10 = ptr to (nfds, timeout)
+
+    ldr     x0, [x9]            // x0 = fds_data
+    ldr     x1, [x10]           // x1 = nfds
+    ldr     x11, [x10, #8]      // x11 = timeout (ms)
+
+    // Convert ms timeout to timespec if not -1
+    cmn     x11, #1
+    b.eq    .poll_infinite_arm
+
+    // timeout >= 0: convert to timespec
+    mov     x12, #1000
+    udiv    x13, x11, x12       // sec
+    msub    x14, x13, x12, x11  // ms
+    mov     x12, #1000000
+    mul     x14, x14, x12       // nsec
+
+    str     x13, [sp, #16]
+    str     x14, [sp, #24]
+    add     x2, sp, #16         // timeout ptr
+    b       .poll_call_arm
+
+.poll_infinite_arm:
+    mov     x2, #0              // NULL = infinite
+
+.poll_call_arm:
+    mov     x3, #0              // sigmask = NULL
+
+    mov     x8, #SYS_ppoll
+    svc     #0
+
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_poll, .-once_poll
+
+// ======================================================================
+// Random
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// getrandom - Get random bytes
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), (buflen, flags))
+// Output: Int (bytes or -errno)
+.global once_getrandom
+.type once_getrandom, %function
+once_getrandom:
+    ldr     x9, [x0]            // x9 = ptr to buffer
+    ldr     x10, [x0, #8]       // x10 = ptr to (buflen, flags)
+
+    ldr     x0, [x9]            // x0 = buf_data
+    ldr     x1, [x10]           // x1 = buflen
+    ldr     x2, [x10, #8]       // x2 = flags
+
+    mov     x8, #SYS_getrandom
+    svc     #0
+    ret
+.size once_getrandom, .-once_getrandom
+
+// ======================================================================
+// Threading (low-level)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// clone - Create new thread
+// ----------------------------------------------------------------------
+// Input: (flags, (stack_data, stack_len))
+// Output: Int (tid or -errno)
+.global once_clone
+.type once_clone, %function
+once_clone:
+    ldr     x9, [x0]            // x9 = flags
+    ldr     x10, [x0, #8]       // x10 = ptr to stack buffer
+
+    mov     x0, x9              // x0 = flags
+    ldr     x1, [x10]           // x1 = stack_data
+    mov     x2, #0              // parent_tid = NULL
+    mov     x3, #0              // tls = 0
+    mov     x4, #0              // child_tid = NULL
+
+    mov     x8, #SYS_clone
+    svc     #0
+    ret
+.size once_clone, .-once_clone
+
+// ----------------------------------------------------------------------
+// futex - Fast userspace mutex operations
+// ----------------------------------------------------------------------
+// Input: ((addr_data, addr_len), (op, (val, ((timeout_data, timeout_len), ((addr2_data, addr2_len), val3)))))
+// Output: Int (depends on op)
+.global once_futex
+.type once_futex, %function
+once_futex:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack 6 args
+    ldr     x9, [x0]            // ptr to addr buffer
+    ldr     x0, [x0, #8]
+    ldr     x10, [x0]           // op
+    ldr     x0, [x0, #8]
+    ldr     x11, [x0]           // val
+    ldr     x0, [x0, #8]
+    ldr     x12, [x0]           // ptr to timeout buffer
+    ldr     x0, [x0, #8]
+    ldr     x13, [x0]           // ptr to addr2 buffer
+    ldr     x5, [x0, #8]        // val3
+
+    ldr     x0, [x9]            // addr_data
+    mov     x1, x10             // op
+    mov     x2, x11             // val
+    ldr     x3, [x12]           // timeout_data
+    ldr     x4, [x13]           // addr2_data
+
+    mov     x8, #SYS_futex
+    svc     #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_futex, .-once_futex
+
+// ----------------------------------------------------------------------
+// gettid - Get thread ID
+// ----------------------------------------------------------------------
+.global once_gettid
+.type once_gettid, %function
+once_gettid:
+    mov     x8, #SYS_gettid
+    svc     #0
+    ret
+.size once_gettid, .-once_gettid
+
+#endif // ONCE_LINUX_ARM64_SYSCALLS_DEFINED
+
