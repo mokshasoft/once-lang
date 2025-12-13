@@ -855,7 +855,7 @@ run-terminal-nonhalt : ∀ {A} (rest : Program) (x : ⟦ A ⟧) (s : State) →
   ∃[ s' ] (exec 1 (compile-x86 {A} {Unit} terminal ++ rest) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ 1
-         × readReg (regs s') rax ≡ encode tt)
+         × readReg (regs s') rax ≡ encode {Unit} tt)
 run-terminal-nonhalt {A} rest x s h-false pc-0 = s' , exec-eq , h' , pc' , rax-eq
   where
     prog : Program
@@ -972,7 +972,7 @@ run-terminal-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : 
   ∃[ s' ] (step (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
-         × readReg (regs s') rax ≡ encode tt)
+         × readReg (regs s') rax ≡ encode {Unit} tt)
 run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
@@ -998,6 +998,123 @@ run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' ,
 
     rax-eq : readReg (regs s') rax ≡ encode tt
     rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
+
+-- | Execute fold at arbitrary offset in a program (non-halting)
+-- compile-x86 fold = [mov rax, rdi] (same as id)
+-- Result is encode (wrap x) = encode x by encode-fix-wrap
+run-fold-at-offset : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (step (prefix ++ compile-x86 {F} {Fix F} fold ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode (wrap x))
+run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {F} {Fix F} fold ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                    (execMov-reg-reg s rax rdi)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ encode (wrap x)
+    rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
+                   (trans rdi-eq (encode-fix-wrap x))
+
+-- | Execute unfold at arbitrary offset in a program (non-halting)
+-- compile-x86 unfold = [mov rax, rdi] (same as id)
+-- Result is encode (eval unfold x) by encode-fix-unwrap
+run-unfold-at-offset : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (step (prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode (eval {Fix F} {F} unfold x))
+run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                    (execMov-reg-reg s rax rdi)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    -- eval unfold x = unwrap x, encode (unwrap x) = encode x by encode-fix-unwrap
+    rax-eq : readReg (regs s') rax ≡ encode (eval {Fix F} {F} unfold x)
+    rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
+                   (trans rdi-eq (encode-fix-unwrap x))
+
+-- | Execute arr at arbitrary offset in a program (non-halting)
+-- compile-x86 arr = [mov rax, rdi] (same as id)
+-- arr : IR (A ⇒ B) (Eff A B), eval arr f = f (identity)
+-- encode (eval arr f) = encode f
+run-arr-at-offset : ∀ {A B} (prefix suffix : Program) (f : ⟦ A ⇒ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode f →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode {Eff A B} f)
+run-arr-at-offset {A} {B} prefix suffix f s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                    (execMov-reg-reg s rax rdi)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    -- eval arr f = f, and encode-arr-identity says encode {A ⇒ B} f ≡ encode {Eff A B} f
+    rax-eq : readReg (regs s') rax ≡ encode {Eff A B} f
+    rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
+                   (trans rdi-eq (encode-arr-identity f))
 
 -- | Two-step execution: if first step produces s1 (not halted), and second halts,
 -- then exec (suc (suc n)) produces the halted state
@@ -1776,7 +1893,7 @@ run-generator-terminal : ∀ {A} (x : ⟦ A ⟧) (s : State) →
   readReg (regs s) rdi ≡ encode x →
   ∃[ s' ] (run (compile-x86 {A} {Unit} terminal) s ≡ just s'
          × halted s' ≡ true
-         × readReg (regs s') rax ≡ encode (eval {A} {Unit} terminal x))
+         × readReg (regs s') rax ≡ encode {Unit} (eval {A} {Unit} terminal x))
 run-generator-terminal {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
   where
     helper : ∃[ s' ] (run (mov (reg rax) (imm 0) ∷ []) s ≡ just s'
@@ -2563,7 +2680,7 @@ run-generator-compose-terminal-id : ∀ {A} (x : ⟦ A ⟧) (s : State) →
   readReg (regs s) rdi ≡ encode x →
   ∃[ s' ] (run (compile-x86 {A} {Unit} (terminal ∘ id)) s ≡ just s'
          × halted s' ≡ true
-         × readReg (regs s') rax ≡ encode (eval {A} {Unit} (terminal ∘ id) x))
+         × readReg (regs s') rax ≡ encode {Unit} (eval {A} {Unit} (terminal ∘ id) x))
 run-generator-compose-terminal-id {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
   where
     -- Use run-seq-compose-terminal-id base case
@@ -2696,7 +2813,7 @@ run-generator-compose-id-terminal : ∀ {A} (x : ⟦ A ⟧) (s : State) →
   readReg (regs s) rdi ≡ encode x →
   ∃[ s' ] (run (compile-x86 {A} {Unit} (id ∘ terminal)) s ≡ just s'
          × halted s' ≡ true
-         × readReg (regs s') rax ≡ encode (eval {A} {Unit} (id ∘ terminal) x))
+         × readReg (regs s') rax ≡ encode {Unit} (eval {A} {Unit} (id ∘ terminal) x))
 run-generator-compose-id-terminal {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
   where
     helper : ∃[ s' ] (run (compile-x86 {A} {Unit} (id ∘ terminal)) s ≡ just s'
@@ -2821,7 +2938,7 @@ run-generator-compose-terminal-terminal : ∀ {A} (x : ⟦ A ⟧) (s : State) �
   readReg (regs s) rdi ≡ encode x →
   ∃[ s' ] (run (compile-x86 {A} {Unit} (terminal ∘ terminal)) s ≡ just s'
          × halted s' ≡ true
-         × readReg (regs s') rax ≡ encode (eval {A} {Unit} (terminal ∘ terminal) x))
+         × readReg (regs s') rax ≡ encode {Unit} (eval {A} {Unit} (terminal ∘ terminal) x))
 run-generator-compose-terminal-terminal {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
   where
     helper : ∃[ s' ] (run (compile-x86 {A} {Unit} (terminal ∘ terminal)) s ≡ just s'
