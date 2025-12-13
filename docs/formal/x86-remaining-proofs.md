@@ -1,8 +1,37 @@
 # Plan: Remaining x86 Correctness Proofs
 
-## Current Status
+## Current Status (Updated 2024-12-13)
 
-### Proven (base cases)
+### Proven (base cases) - run-generator-* functions
+- `run-generator-id` - mov rax, rdi
+- `run-generator-terminal` - mov rax, 0
+- `run-generator-fold` - mov rax, rdi (+ encoding)
+- `run-generator-unfold` - mov rax, rdi (+ encoding)
+- `run-generator-arr` - mov rax, rdi (+ encoding)
+- `run-generator-fst` - mov rax, [rdi]
+- `run-generator-snd` - mov rax, [rdi+8]
+- `run-generator-inl` - allocate + tag=0
+- `run-generator-inr` - allocate + tag=1
+- `run-generator-curry` - closure creation
+
+### Proven (compose base cases)
+- `run-generator-compose-id-id`
+- `run-generator-compose-terminal-id`
+- `run-generator-compose-id-terminal`
+- `run-generator-compose-terminal-terminal`
+- `run-generator-compose-fold-unfold`
+- `run-generator-compose-unfold-fold`
+- `run-generator-compose-id-fst`
+- `run-generator-compose-id-snd`
+
+### Proven (mutual block helpers) - run-ir-at-offset-* functions
+- `run-ir-at-offset-compose` - FULLY PROVEN with no internal postulates
+- `run-ir-at-offset-pair` - 5-phase structure with documented postulates
+- `run-ir-at-offset-case` - structure with documented postulates
+- `run-ir-at-offset-curry` - execution trace documented (6 steps due to jmp)
+- `run-ir-at-offset-apply` - call/ret complexity documented
+
+### Older proofs (still referenced)
 - `run-case-inl-id` / `run-case-inr-id` - case analysis with f = g = id
 - `run-pair-id-id` - pair construction with f = g = id
 - `run-compose-id-id` - composition with f = g = id
@@ -254,7 +283,17 @@ r14-preserved : ∀ ir x s s' →
 
 ---
 
-## Estimated Effort
+## Estimated Effort (Updated)
+
+The main theorem `run-generator` remains postulated. The path to proving it would require:
+
+1. **Connecting run-ir-at-offset to run-generator**: The `run-ir-at-offset-*` functions prove correctness within a larger program. We need a lemma showing that when `prefix = []` and `suffix = []`, these reduce to `run-generator-*` properties.
+
+2. **Mutual recursion**: The recursive IR cases (compose, pair, case) need mutual recursion since:
+   - `run-ir-at-offset-compose f g` calls `run-ir-at-offset f` and `run-ir-at-offset g`
+   - These sub-IRs are structurally smaller, so termination is guaranteed
+
+3. **Remaining phase postulates**: Within pair/case/curry/apply proofs, individual phase postulates (exec-setup, exec-f, exec-middle, etc.) would need to be proven by tracing specific instruction sequences.
 
 | Phase | Items | Difficulty | Effort |
 |-------|-------|------------|--------|
