@@ -10,6 +10,7 @@
 #   make surface  - Type-check surface syntax elaboration only
 #   make surfaceir - Type-check surface IR and desugar (D035)
 #   make optimize - Type-check optimizer correctness proofs
+#   make endtoend - Type-check end-to-end compilation theorem
 #   make malonzo  - Generate Haskell via MAlonzo (D035)
 #   make clean    - Remove Agda build artifacts
 
@@ -29,6 +30,7 @@ X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
+ENDTOEND := Once/EndToEnd.agda
 
 # Agda command: discovers standard library path from Nix store
 # The library file is created dynamically to avoid hardcoded paths
@@ -38,11 +40,11 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize x86 malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize x86 endtoend malonzo clean
 
 all: check
 
-check: postulates laws surface surfaceir optimize x86
+check: postulates laws surface surfaceir optimize x86 endtoend
 	@echo "All proofs type-check successfully!"
 
 postulates:
@@ -76,6 +78,10 @@ x86:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+
+endtoend:
+	@echo "Type-checking end-to-end compilation theorem..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(ENDTOEND)'
 
 malonzo:
 	@echo "Generating Haskell via MAlonzo..."
