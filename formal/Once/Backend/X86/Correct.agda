@@ -44,7 +44,7 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
@@ -396,6 +396,26 @@ fetch-1-single i = refl
 -- | Fetching past the end of a 4-instruction program returns nothing
 fetch-4-of-4 : ∀ (i0 i1 i2 i3 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) 4 ≡ nothing
 fetch-4-of-4 i0 i1 i2 i3 = refl
+
+------------------------------------------------------------------------
+-- Sub-program fetch lemmas
+-- These allow reasoning about fetching from combined programs
+------------------------------------------------------------------------
+
+-- | Fetching from combined program at offset past prefix equals fetching from suffix
+-- Key lemma for proving sub-program execution in composed programs
+fetch-append-right : ∀ (prefix suffix : List Instr) (n : ℕ) →
+  fetch (prefix ++ suffix) (length prefix +ℕ n) ≡ fetch suffix n
+fetch-append-right [] suffix n = refl
+fetch-append-right (x ∷ prefix) suffix n = fetch-append-right prefix suffix n
+
+-- | Fetching from combined program within prefix equals fetching from prefix
+fetch-append-left : ∀ (prefix suffix : List Instr) (n : ℕ) →
+  n < length prefix →
+  fetch (prefix ++ suffix) n ≡ fetch prefix n
+fetch-append-left [] suffix n ()
+fetch-append-left (x ∷ prefix) suffix zero _ = refl
+fetch-append-left (x ∷ prefix) suffix (suc n) (s≤s n<len) = fetch-append-left prefix suffix n n<len
 
 -- | Step on non-halted state executes the instruction at pc
 -- Proof: match on halted s, then on fetch prog (pc s)
