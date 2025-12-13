@@ -1,10 +1,38 @@
 module Once.Optimize
   ( optimize
   , optimizeOnce
+  , optimizeWithMAlonzo
+  , OptimizerBackend (..)
+  , optimizeWith
   ) where
 
 import Once.IR (IR (..))
 import Once.Type (Type (..))
+import qualified Once.MAlonzo as M
+
+-- | Which optimizer backend to use
+data OptimizerBackend
+  = HaskellOptimizer   -- ^ Use the Haskell optimizer (default)
+  | MAlonzoOptimizer   -- ^ Use the verified MAlonzo optimizer (when possible)
+  deriving (Eq, Show)
+
+-- | Optimize with the specified backend
+optimizeWith :: OptimizerBackend -> IR -> IR
+optimizeWith HaskellOptimizer = optimize
+optimizeWith MAlonzoOptimizer = optimizeWithMAlonzo
+
+-- | Optimize using MAlonzo (verified) if possible, fallback to Haskell
+--
+-- The MAlonzo optimizer is generated from verified Agda code.
+-- It can only optimize IR that:
+-- - Uses only categorical types (Unit, Void, Product, Sum, Arrow, Eff, Fix)
+-- - Does not contain Var, LocalVar, FunRef, or StringLit
+--
+-- For IR that cannot be converted, falls back to the Haskell optimizer.
+optimizeWithMAlonzo :: IR -> IR
+optimizeWithMAlonzo ir
+  | M.canConvertIR ir = M.optimizeMAlonzo ir
+  | otherwise = optimize ir  -- Fallback to Haskell
 
 -- | Optimize IR by applying categorical rewrite rules until fixed point
 optimize :: IR -> IR

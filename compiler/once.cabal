@@ -45,6 +45,7 @@ library
       Once.Elaborate
       Once.Eval
       Once.IR
+      Once.MAlonzo
       Once.Module
       Once.Optimize
       Once.Parser
@@ -55,10 +56,41 @@ library
       Once.Value
   other-modules:
       Paths_once
+      -- MAlonzo generated modules (from verified Agda)
+      -- These are internal, imported only by Once.MAlonzo
+      MAlonzo.RTE
+      MAlonzo.Code.Once.Type
+      MAlonzo.Code.Once.IR
+      MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.Optimize
+      MAlonzo.Code.Once.Surface.IR
+      MAlonzo.Code.Once.Surface.Desugar
+      MAlonzo.Code.Agda.Builtin.Bool
+      MAlonzo.Code.Agda.Builtin.Equality
+      MAlonzo.Code.Agda.Builtin.Maybe
+      MAlonzo.Code.Agda.Builtin.Sigma
+      MAlonzo.Code.Agda.Builtin.String
+      MAlonzo.Code.Agda.Builtin.Unit
+      MAlonzo.Code.Agda.Primitive
+      MAlonzo.Code.Data.Bool.Base
+      MAlonzo.Code.Data.Empty
+      MAlonzo.Code.Data.Irrelevant
+      MAlonzo.Code.Data.Sum.Base
+      MAlonzo.Code.Function.Base
+      MAlonzo.Code.Level
+      MAlonzo.Code.Relation.Nullary.Decidable.Core
+      MAlonzo.Code.Relation.Nullary.Negation.Core
+      MAlonzo.Code.Relation.Nullary.Reflects
   autogen-modules:
       Paths_once
   hs-source-dirs:
       src
+      ../formal/_build/malonzo
+  ghc-options:
+      -Wno-overlapping-patterns
+      -Wno-missing-signatures
+      -Wno-unused-imports
+      -Wno-missing-export-lists
   build-depends:
       base >=4.7 && <5
     , containers

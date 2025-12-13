@@ -24,7 +24,7 @@ import Once.Backend.C (generateC, CModule (..))
 import Once.Elaborate (elaborate, elaborateWithEnv)
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
-import Once.Optimize (optimize)
+import Once.Optimize (optimize, optimizeWith, OptimizerBackend (..))
 import Once.Parser (parseModule)
 import Once.Syntax (Module (..), Decl (..), Expr, AllocStrategy (..))
 import Once.Type (Type (..))
@@ -74,6 +74,7 @@ data BuildOptions = BuildOptions
   , buildAlloc  :: Maybe AllocStrategy  -- ^ Default allocation strategy (Nothing = use per-function annotations)
   , buildStrata :: Maybe FilePath       -- ^ Path to Strata directory (default: look relative to input file)
   , buildTarget :: Target               -- ^ Target architecture (default: TargetC)
+  , buildOptimizer :: OptimizerBackend  -- ^ Which optimizer to use (default: HaskellOptimizer)
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -144,7 +145,8 @@ runBuild opts = do
                           exitFailure
                         Right irFunctions -> do
                           -- Optimize and generate for each function
-                          let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
+                          let opt = optimizeWith (buildOptimizer opts)
+                          let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
                           -- Generate library with all functions
                           let (header, source') = generateLibraryAll optimizedFunctions
                               headerPath = outputBase ++ ".h"
@@ -185,7 +187,8 @@ runBuild opts = do
                           exitFailure
                         Right irFunctions -> do
                           -- Optimize all IRs
-                          let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
+                          let opt = optimizeWith (buildOptimizer opts)
+                          let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
 
                           -- For executable, generate C with main() wrapper
                           -- Load interpretation C code from --interp and from imported modules
