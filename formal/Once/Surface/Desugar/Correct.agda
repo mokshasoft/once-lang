@@ -14,6 +14,7 @@ open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.IR as C
 open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap)
+open import Once.Postulates using (extensionality)
 open ⟦Fix⟧ using (unwrap)
 
 open import Data.Unit using (⊤; tt)
@@ -33,6 +34,11 @@ open import Data.String using (String)
 -- Primitives are opaque - we postulate their evaluation exists.
 -- The correctness proof assumes primitives evaluate identically
 -- in both Surface and Core IR.
+--
+-- NOTE: These postulates will be eliminated when Prim is added to
+-- Core IR (see TODO in Once.Surface.Desugar). At that point:
+--   - evalPrim moves to Once.Semantics as the eval case for Prim
+--   - prim-eval-eq becomes trivially refl
 --
 postulate
   evalPrim : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
@@ -141,9 +147,7 @@ desugar-correct S.terminal x = refl
 desugar-correct S.initial ()
 
 -- Exponential
-desugar-correct (S.curry f) a = cong (λ h → λ b → h (a , b)) (funext (λ p → desugar-correct f p))
-  where
-    postulate funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
+desugar-correct (S.curry f) a = cong (λ h → λ b → h (a , b)) (extensionality (λ p → desugar-correct f p))
 desugar-correct S.apply (f , a) = refl
 
 -- Recursive types

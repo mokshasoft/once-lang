@@ -27,6 +27,30 @@ open import Data.String using (String)
 --
 -- In MAlonzo compilation, this will be implemented via FFI.
 --
+------------------------------------------------------------------------
+-- TODO: Add Prim to Core IR (Option A)
+------------------------------------------------------------------------
+--
+-- Currently primitives are postulated here. A cleaner solution is to
+-- add Prim directly to Once.IR:
+--
+--   Prim : ∀ {A B} → String → IR A B
+--
+-- This would require:
+--   1. Add Prim to Once.IR
+--   2. Add eval case in Once.Semantics (postulate evalPrim)
+--   3. Add optimize cases in Once.Optimize (pass through unchanged)
+--   4. Add proof cases in Once.Optimize.Correct (all trivial refl)
+--   5. Add codegen in Once.Backend.X86.CodeGen (emit call)
+--   6. Add proof in Once.Backend.X86.Correct (postulate call semantics)
+--
+-- Deferred until x86 backend verification is complete, since adding
+-- Prim to Core IR would require updating all pattern matches in the
+-- backend proofs.
+--
+-- See D035 for context on the two-stage IR architecture.
+--
+------------------------------------------------------------------------
 postulate
   prim : ∀ {A B} → String → C.IR A B
 
