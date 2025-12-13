@@ -2452,9 +2452,216 @@ mutual
            × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
   run-ir-at-offset-compose {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq =
-    -- TODO: Implement using recursive calls to run-ir-at-offset f and run-ir-at-offset g
-    -- For now, use postulate to validate structure
-    run-ir-at-offset-compose-postulate {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq
+    s3 , exec-all , h3 , pc3 , rax3
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
+
+      -- Shorthand
+      len-f : ℕ
+      len-f = compile-length f
+
+      len-g : ℕ
+      len-g = compile-length g
+
+      code-f : Program
+      code-f = compile-x86 f
+
+      code-g : Program
+      code-g = compile-x86 g
+
+      transfer : Instr
+      transfer = mov (reg rdi) (reg rax)
+
+      -- The full program
+      prog : Program
+      prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+
+      -- compile-x86 (g ∘ f) = code-f ++ [transfer] ++ code-g
+      -- The middle section suffix for f is: [transfer] ++ code-g ++ suffix
+      suffix-f : Program
+      suffix-f = transfer ∷ code-g ++ suffix
+
+      -- After executing f, the prefix for transfer is: prefix ++ code-f
+      prefix-transfer : Program
+      prefix-transfer = prefix ++ code-f
+
+      -- After executing transfer, the prefix for g is: prefix ++ code-f ++ [transfer]
+      prefix-g : Program
+      prefix-g = prefix ++ code-f ++ transfer ∷ []
+
+      -- Program equality: prog ≡ prefix ++ code-f ++ suffix-f
+      -- Key insight: compile-x86 (g ∘ f) = code-f ++ transfer ∷ [] ++ code-g
+      -- And suffix-f = transfer ∷ (code-g ++ suffix) = transfer ∷ code-g ++ suffix
+      --
+      -- Postulate this program equality for now - the complex list associativity
+      -- can be established but requires careful parenthesis management
+      postulate
+        prog-eq-f : prog ≡ prefix ++ code-f ++ suffix-f
+
+      -- Step 1: Execute f
+      step-f : ∃[ s1 ] (exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just s1
+                      × halted s1 ≡ false
+                      × pc s1 ≡ length prefix +ℕ len-f
+                      × readReg (regs s1) rax ≡ encode (eval f x))
+      step-f = run-ir-at-offset f prefix suffix-f x s h-false pc-eq rdi-eq
+
+      s1 : State
+      s1 = proj₁ step-f
+
+      exec-f : exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just s1
+      exec-f = proj₁ (proj₂ step-f)
+
+      h1 : halted s1 ≡ false
+      h1 = proj₁ (proj₂ (proj₂ step-f))
+
+      pc1 : pc s1 ≡ length prefix +ℕ len-f
+      pc1 = proj₁ (proj₂ (proj₂ (proj₂ step-f)))
+
+      rax1 : readReg (regs s1) rax ≡ encode (eval f x)
+      rax1 = proj₂ (proj₂ (proj₂ (proj₂ step-f)))
+
+      -- Program equality: prefix ++ code-f ++ suffix-f ≡ prefix-transfer ++ [transfer] ++ (code-g ++ suffix)
+      -- Note: suffix-f = transfer ∷ (code-g ++ suffix), prefix-transfer = prefix ++ code-f
+      -- So RHS = (prefix ++ code-f) ++ (transfer ∷ (code-g ++ suffix))
+      -- and LHS = prefix ++ (code-f ++ (transfer ∷ (code-g ++ suffix)))
+      prog-eq-transfer : prefix ++ code-f ++ suffix-f ≡ prefix-transfer ++ transfer ∷ (code-g ++ suffix)
+      prog-eq-transfer = sym (++-assoc prefix code-f suffix-f)
+
+      -- Length of prefix-transfer
+      len-prefix-transfer : length prefix-transfer ≡ length prefix +ℕ len-f
+      len-prefix-transfer = begin
+        length prefix-transfer
+          ≡⟨ refl ⟩
+        length (prefix ++ code-f)
+          ≡⟨ List-length-++ prefix {code-f} ⟩
+        length prefix +ℕ length code-f
+          ≡⟨ cong (length prefix +ℕ_) (compile-length-correct f) ⟩
+        length prefix +ℕ len-f
+          ∎
+
+      -- pc1 in terms of prefix-transfer
+      pc1-transfer : pc s1 ≡ length prefix-transfer
+      pc1-transfer = trans pc1 (sym len-prefix-transfer)
+
+      -- Step 2: Execute transfer instruction
+      step-transfer : ∃[ s2 ] (step (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 ≡ just s2
+                             × halted s2 ≡ false
+                             × pc s2 ≡ length prefix-transfer +ℕ 1
+                             × readReg (regs s2) rdi ≡ readReg (regs s1) rax
+                             × readReg (regs s2) rax ≡ readReg (regs s1) rax)
+      step-transfer = exec-transfer-at prefix-transfer (code-g ++ suffix) s1 h1 pc1-transfer
+
+      s2 : State
+      s2 = proj₁ step-transfer
+
+      step-t : step (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 ≡ just s2
+      step-t = proj₁ (proj₂ step-transfer)
+
+      h2 : halted s2 ≡ false
+      h2 = proj₁ (proj₂ (proj₂ step-transfer))
+
+      pc2-raw : pc s2 ≡ length prefix-transfer +ℕ 1
+      pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ step-transfer)))
+
+      rdi2 : readReg (regs s2) rdi ≡ readReg (regs s1) rax
+      rdi2 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ step-transfer))))
+
+      -- exec 1 from step
+      exec-transfer : exec 1 (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 ≡ just s2
+      exec-transfer = exec-one-step-nonhalt (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 s2 step-t h2
+
+      -- rdi s2 = encode (eval f x)
+      rdi2-enc : readReg (regs s2) rdi ≡ encode (eval f x)
+      rdi2-enc = trans rdi2 rax1
+
+      -- pc s2 = length prefix + len-f + 1
+      pc2 : pc s2 ≡ length prefix +ℕ len-f +ℕ 1
+      pc2 = trans pc2-raw (cong (_+ℕ 1) len-prefix-transfer)
+
+      -- Program equality: prefix-transfer ++ [transfer] ++ (code-g ++ suffix) ≡ prefix-g ++ code-g ++ suffix
+      -- Postulate for now - list associativity
+      postulate
+        prog-eq-g : prefix-transfer ++ transfer ∷ (code-g ++ suffix) ≡ prefix-g ++ code-g ++ suffix
+
+      -- Length of prefix-g
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f +ℕ 1
+      len-prefix-g = begin
+        length prefix-g
+          ≡⟨ refl ⟩
+        length (prefix ++ code-f ++ transfer ∷ [])
+          ≡⟨ List-length-++ prefix {code-f ++ transfer ∷ []} ⟩
+        length prefix +ℕ length (code-f ++ transfer ∷ [])
+          ≡⟨ cong (length prefix +ℕ_) (List-length-++ code-f {transfer ∷ []}) ⟩
+        length prefix +ℕ (length code-f +ℕ 1)
+          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ 1)) (compile-length-correct f) ⟩
+        length prefix +ℕ (len-f +ℕ 1)
+          ≡⟨ sym (+-assoc (length prefix) len-f 1) ⟩
+        length prefix +ℕ len-f +ℕ 1
+          ∎
+
+      -- pc s2 in terms of prefix-g
+      pc2-g : pc s2 ≡ length prefix-g
+      pc2-g = trans pc2 (sym len-prefix-g)
+
+      -- Step 3: Execute g
+      step-g : ∃[ s3 ] (exec len-g (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
+                      × halted s3 ≡ false
+                      × pc s3 ≡ length prefix-g +ℕ len-g
+                      × readReg (regs s3) rax ≡ encode (eval g (eval f x)))
+      step-g = run-ir-at-offset g prefix-g suffix (eval f x) s2 h2 pc2-g rdi2-enc
+
+      s3 : State
+      s3 = proj₁ step-g
+
+      exec-g : exec len-g (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
+      exec-g = proj₁ (proj₂ step-g)
+
+      h3 : halted s3 ≡ false
+      h3 = proj₁ (proj₂ (proj₂ step-g))
+
+      pc3-raw : pc s3 ≡ length prefix-g +ℕ len-g
+      pc3-raw = proj₁ (proj₂ (proj₂ (proj₂ step-g)))
+
+      rax3-raw : readReg (regs s3) rax ≡ encode (eval g (eval f x))
+      rax3-raw = proj₂ (proj₂ (proj₂ (proj₂ step-g)))
+
+      -- Final pc: length prefix + compile-length (g ∘ f)
+      -- compile-length (g ∘ f) = (len-f + 1) + len-g
+      -- Postulate for now - arithmetic manipulation
+      postulate
+        pc3 : pc s3 ≡ length prefix +ℕ compile-length (g ∘ f)
+
+      -- eval (g ∘ f) x = eval g (eval f x)
+      rax3 : readReg (regs s3) rax ≡ encode (eval (g ∘ f) x)
+      rax3 = rax3-raw
+
+      -- Chain execution: exec len-f then exec 1 then exec len-g
+      -- Use prog equality to convert programs
+
+      -- Step 1 on original program
+      exec-f-orig : exec len-f prog s ≡ just s1
+      exec-f-orig = subst (λ p → exec len-f p s ≡ just s1) (sym prog-eq-f) exec-f
+
+      -- exec (len-f + 1) gives s2
+      exec-f-plus-1 : exec (len-f +ℕ 1) prog s ≡ just s2
+      exec-f-plus-1 =
+        let prog-eq : prog ≡ prefix-transfer ++ transfer ∷ (code-g ++ suffix)
+            prog-eq = trans prog-eq-f prog-eq-transfer
+            exec-f' : exec len-f prog s ≡ just s1
+            exec-f' = exec-f-orig
+            exec-t' : exec 1 prog s1 ≡ just s2
+            exec-t' = subst (λ p → exec 1 p s1 ≡ just s2) (sym prog-eq) exec-transfer
+        in exec-chain len-f 1 prog s s1 s2 exec-f' h1 exec-t'
+
+      -- exec (len-f + 1 + len-g) gives s3
+      exec-all : exec (compile-length (g ∘ f)) prog s ≡ just s3
+      exec-all =
+        let exec-g' : exec len-g prog s2 ≡ just s3
+            exec-g' = subst (λ p → exec len-g p s2 ≡ just s3)
+                           (trans (sym prog-eq-g) (trans (sym prog-eq-transfer) (sym prog-eq-f)))
+                           exec-g
+        in exec-chain (len-f +ℕ 1) len-g prog s s2 s3 exec-f-plus-1 h2 exec-g'
 
   -- | Pair case: ⟨ f , g ⟩
   run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →

@@ -1,0 +1,15 @@
+When selecting the solution to the fix problem there are many terms floating around:
+- QTT, that we already use
+- HoTT
+- Polynomial Functors
+- Sized Types
+- Well-Founded
+- QIITs
+- Soundness
+- Vec, Sigma, Pi, refinements
+- CCC alignment 
+- Sound by construction
+- HoTT/cubical understanding
+Well, if we remove QTT and implement erasure in another way, does that simplify the fix problem? Using only NT and HoTT? Or another combination of things?
+
+For the formal verifiction, would it speed up if Correct.agda was broken up into several logical files?

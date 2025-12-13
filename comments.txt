@@ -1,0 +1,25 @@
+DO NOT COMMIT THIS
+Implement:
+ Rename the lib folder to Strata to match the naming
+ Initial.once move all Int.once, etc to one file, not single files
+ Implement Canonical.once
+ Interpretations Linux/Syscall.once entire (or at least close to) kernel interface
+ create a program that stress tests the MallocLike interface, how are the sizes calculated? Since the size has to be passed to malloc.
+ some pthread like wrapper ontop of the syscalls, do not link pthread. What would the categorical solution look like in terms of interface to threads?
+ dinigng philosophers in example/
+ Coop - check repo in /home/whatever/Repo/OpenSource/once-refs/idris2-coop, what would this type of structure be called in CT? What other abstractions of cooperative multitasking is there? Could we add a couple to the Derived stratum?
+ Make a program for one of the standard programming language performance competitions
+Ideas:
+ Instead of using C as a backend, how about using a general assembly language? Maybe LLVM? Or are there any verified assembly languages that could be used? Doesn't the generators map to very simple assbembly primitives? This would create a smaller TCB.
+Decision log change:
+ No implicit imports except the generators. If implementaitons should be easy to port implicit dependencies, like a "prelude", often include OS, dependencies. Even if those OS dependencies are compilable on Windows, Mac, Linux, etc, it is not compilable on all bare-metal platforms. Then you actively have to remove the "prelude" and include your own, better to be explicit.
+ There is a task to add a project config file, but why not just use nix instead? Why reimplement the wheel?
+Docs:
+ Lazyness, are they expressible in NT?
+ Is NT, turing complete? What about totality and other programming language properties? Why is even turing completness needed? Doesn't total programs cover all programs you actually want to write? Given that its total in a sense that they can have an infinite even loop where each event handling is total.
+ Create an implementors guide to Once.
+Ideas:
+ How much of dependent types are implementable as syntactic sugar ontop of the NT core?
+ How easy would it be to create one language similar to what Once is now, with one "frontend" compiler, and then add another "frontend" that can compile fully dependent typed programs?
+ Is dependent types really needed, if there are good machinery to prove the Once code anyways? DT makes the compiler very complicated and why not offload that complexity to the proof language instead?
+ Now the generators are implemented in the compiler, would moving them to the Strata/Generators as implement them there make the compiler simpler? Or is that even possible?
