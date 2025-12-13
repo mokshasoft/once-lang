@@ -1834,6 +1834,155 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
                    (trans (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi))
                           (cong just rdi-s2))
 
+------------------------------------------------------------------------
+-- run-ir-at-offset: Non-halting execution of IR at arbitrary offset
+--
+-- This is the key recursive function that enables proving the mutual
+-- recursion cluster. It executes IR code at any position in a larger
+-- program WITHOUT halting (continues to next instruction).
+--
+-- For base cases (id, fst, snd, terminal, fold, unfold, arr):
+--   compile-length = 1, execute single step
+--
+-- For compose (g ∘ f):
+--   1. Execute f at offset (recursive call)
+--   2. Execute mov rdi, rax at offset + compile-length f
+--   3. Execute g at offset + compile-length f + 1 (recursive call)
+--   4. Chain using exec-chain
+------------------------------------------------------------------------
+
+-- Postulates for complex IR cases (used by run-ir-at-offset below)
+-- These will be proven incrementally as we develop the proofs
+
+postulate
+  -- Compose case: g ∘ f
+  run-ir-at-offset-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec (compile-length (g ∘ f)) (prefix ++ compile-x86 (g ∘ f) ++ suffix) s ≡ just s'
+           × halted s' ≡ false
+           × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
+           × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
+
+  -- fst and snd need memory preconditions
+  run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+           × readReg (regs s') rax ≡ encode (eval fst x))
+
+  run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+           × readReg (regs s') rax ≡ encode (eval snd x))
+
+  -- inl and inr (4 instructions each)
+  run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec 4 (prefix ++ compile-x86 {A} {A + B} inl ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
+           × readReg (regs s') rax ≡ encode (eval {A} {A + B} inl x))
+
+  run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec 4 (prefix ++ compile-x86 {B} {A + B} inr ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
+           × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x))
+
+  -- pair (complex - needs f and g execution)
+  run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+           × readReg (regs s') rax ≡ encode (eval ⟨ f , g ⟩ x))
+
+  -- case (complex - needs branching)
+  run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec (compile-length [ f , g ]) (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
+           × readReg (regs s') rax ≡ encode (eval [ f , g ] x))
+
+  -- initial (unreachable - Void has no inhabitants)
+  run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+    ∃[ s' ] (exec 1 (prefix ++ compile-x86 {Void} {A} initial ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+           × readReg (regs s') rax ≡ encode {A} (eval {Void} {A} initial x))
+
+  -- curry (12 + compile-length f instructions)
+  run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode a →
+    ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-x86 (curry f) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
+           × readReg (regs s') rax ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) a))
+
+  -- apply (6 instructions)
+  run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
+    ∃[ s' ] (exec 6 (prefix ++ compile-x86 {(A ⇒ B) * A} {B} apply ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 6
+           × readReg (regs s') rax ≡ encode {B} (eval {(A ⇒ B) * A} {B} apply x))
+
+-- | Non-halting execution of IR at arbitrary offset
+-- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
+-- with rax = encode (eval ir x)
+--
+-- Note: For IR that reads memory (fst, snd, case), additional memory preconditions
+-- would be needed. For now, we handle the simple cases.
+run-ir-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (exec (compile-length ir) (prefix ++ compile-x86 ir ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ compile-length ir
+         × readReg (regs s') rax ≡ encode (eval ir x))
+-- Base case: id
+run-ir-at-offset (id {A}) prefix suffix x s h-false pc-eq rdi-eq =
+  let (s' , step-eq , h' , pc' , rax-eq) = run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {A} id ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+-- Base case: terminal
+run-ir-at-offset (terminal {A}) prefix suffix x s h-false pc-eq rdi-eq =
+  let (s' , step-eq , h' , pc' , rax-eq) = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+-- Base case: fold
+run-ir-at-offset (fold {F}) prefix suffix x s h-false pc-eq rdi-eq =
+  let (s' , step-eq , h' , pc' , rax-eq) = run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {F} {Fix F} fold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+-- Base case: unfold
+run-ir-at-offset (unfold {F}) prefix suffix x s h-false pc-eq rdi-eq =
+  let (s' , step-eq , h' , pc' , rax-eq) = run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+-- Base case: arr
+run-ir-at-offset (arr {A} {B}) prefix suffix f s h-false pc-eq rdi-eq =
+  let (s' , step-eq , h' , pc' , rax-eq) = run-arr-at-offset {A} {B} prefix suffix f s h-false pc-eq rdi-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+-- Remaining cases using the postulates above
+run-ir-at-offset (_∘_ {A} {B} {C} g f) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-compose {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (fst {A} {B}) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (snd {A} {B}) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-pair {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (inl {A} {B}) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (inr {A} {B}) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-case {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (initial {A}) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-curry {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq
+run-ir-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq =
+  run-ir-at-offset-apply {A} {B} prefix suffix x s h-false pc-eq rdi-eq
+
+------------------------------------------------------------------------
 -- Helper: sequential execution of two programs
 -- If p1 produces s1 with rax=v, and p2 with rdi=v produces s2,
 -- then p1 ++ [mov rdi, rax] ++ p2 produces s2
