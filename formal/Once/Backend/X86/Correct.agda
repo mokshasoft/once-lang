@@ -2960,6 +2960,241 @@ run-generator-compose-terminal-terminal {A} x s h-false pc-0 rdi-eq = s' , run-e
     rax-eq : readReg (regs s') rax ≡ encode (eval {A} {Unit} (terminal ∘ terminal) x)
     rax-eq = trans (proj₂ (proj₂ (proj₂ helper))) (sym encode-unit)
 
+-- | run-seq-compose for (fold ∘ unfold) : Fix F → Fix F
+-- Generated code: [mov rax, rdi] ++ [mov rdi, rax] ++ [mov rax, rdi]
+-- This is unfold (Fix F → F) followed by fold (F → Fix F)
+-- Total: 3 instructions, 4 steps (3 + halt on fetch fail at pc=3)
+run-seq-compose-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {Fix F} {Fix F} (fold ∘ unfold)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode x)
+run-seq-compose-fold-unfold {F} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {Fix F} {Fix F} (fold ∘ unfold)
+    -- = compile-x86 unfold ++ mov rdi rax ∷ [] ++ compile-x86 fold
+    -- = [mov rax rdi] ++ [mov rdi rax] ++ [mov rax rdi]
+
+    -- State after step 1: mov rax, rdi (unfold)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg rax) (reg rdi)) _ s h-false pc-0)
+                  (execMov-reg-reg s rax rdi)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov rdi, rax (transfer result)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) rax)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec-1 (mov (reg rax) (reg rdi)) (mov (reg rdi) (reg rax)) _ s1 h1 pc1)
+                  (execMov-reg-reg s1 rdi rax)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov rax, rdi (fold)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec-2 (mov (reg rax) (reg rdi)) (mov (reg rdi) (reg rax)) (mov (reg rax) (reg rdi)) [] s2 h2 pc2)
+                  (execMov-reg-reg s2 rax rdi)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- Step 4: fetch fails at pc=3 (past end of program), halts
+    s4 : State
+    s4 = record s3 { halted = true }
+
+    fetch-fail : fetch prog (pc s3) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc3) refl
+
+    step4 : step prog s3 ≡ just s4
+    step4 = step-halt-on-fetch-fail prog s3 h3 fetch-fail
+
+    halt-eq : halted s4 ≡ true
+    halt-eq = refl
+
+    -- Combined execution: 4 steps
+    run-eq : run prog s ≡ just s4
+    run-eq = exec-four-steps 9996 prog s s1 s2 s3 s4
+               step1 h1 step2 h2 step3 h3 step4 halt-eq
+
+    -- Track rax through states:
+    -- s1.rax = s.rdi = encode x
+    -- s2.rdi = s1.rax = encode x
+    -- s3.rax = s2.rdi = encode x
+    rax-eq : readReg (regs s4) rax ≡ encode x
+    rax-eq = trans (readReg-writeReg-same (regs s2) rax (readReg (regs s2) rdi))
+                   (trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) rax))
+                          (trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
+                                 rdi-eq))
+
+-- | run-generator for (fold ∘ unfold)
+run-generator-compose-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {Fix F} {Fix F} (fold ∘ unfold)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {Fix F} {Fix F} (fold ∘ unfold) x))
+run-generator-compose-fold-unfold {F} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (compile-x86 {Fix F} {Fix F} (fold ∘ unfold)) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ encode x)
+    helper = run-seq-compose-fold-unfold x s h-false pc-0 rdi-eq
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {Fix F} {Fix F} (fold ∘ unfold)) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval (fold ∘ unfold) x = fold (unfold x) = wrap (unwrap x) = x
+    -- So encode (eval (fold ∘ unfold) x) = encode x
+    rax-eq : readReg (regs s') rax ≡ encode (eval {Fix F} {Fix F} (fold ∘ unfold) x)
+    rax-eq = proj₂ (proj₂ (proj₂ helper))
+
+-- | run-seq-compose for (unfold ∘ fold) : F → F
+-- Generated code: [mov rax, rdi] ++ [mov rdi, rax] ++ [mov rax, rdi]
+-- This is fold (F → Fix F) followed by unfold (Fix F → F)
+-- Total: 3 instructions, 4 steps (3 + halt on fetch fail at pc=3)
+run-seq-compose-unfold-fold : ∀ {F} (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {F} {F} (unfold ∘ fold)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode x)
+run-seq-compose-unfold-fold {F} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {F} {F} (unfold ∘ fold)
+
+    -- State after step 1: mov rax, rdi (fold)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg rax) (reg rdi)) _ s h-false pc-0)
+                  (execMov-reg-reg s rax rdi)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov rdi, rax (transfer result)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) rax)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec-1 (mov (reg rax) (reg rdi)) (mov (reg rdi) (reg rax)) _ s1 h1 pc1)
+                  (execMov-reg-reg s1 rdi rax)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov rax, rdi (unfold)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec-2 (mov (reg rax) (reg rdi)) (mov (reg rdi) (reg rax)) (mov (reg rax) (reg rdi)) [] s2 h2 pc2)
+                  (execMov-reg-reg s2 rax rdi)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- Step 4: fetch fails at pc=3 (past end of program), halts
+    s4 : State
+    s4 = record s3 { halted = true }
+
+    fetch-fail : fetch prog (pc s3) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc3) refl
+
+    step4 : step prog s3 ≡ just s4
+    step4 = step-halt-on-fetch-fail prog s3 h3 fetch-fail
+
+    halt-eq : halted s4 ≡ true
+    halt-eq = refl
+
+    -- Combined execution: 4 steps
+    run-eq : run prog s ≡ just s4
+    run-eq = exec-four-steps 9996 prog s s1 s2 s3 s4
+               step1 h1 step2 h2 step3 h3 step4 halt-eq
+
+    -- Track rax through states: same as fold-unfold
+    rax-eq : readReg (regs s4) rax ≡ encode x
+    rax-eq = trans (readReg-writeReg-same (regs s2) rax (readReg (regs s2) rdi))
+                   (trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) rax))
+                          (trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
+                                 rdi-eq))
+
+-- | run-generator for (unfold ∘ fold)
+run-generator-compose-unfold-fold : ∀ {F} (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {F} {F} (unfold ∘ fold)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {F} {F} (unfold ∘ fold) x))
+run-generator-compose-unfold-fold {F} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (compile-x86 {F} {F} (unfold ∘ fold)) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ encode x)
+    helper = run-seq-compose-unfold-fold x s h-false pc-0 rdi-eq
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {F} {F} (unfold ∘ fold)) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval (unfold ∘ fold) x = unfold (fold x) = unwrap (wrap x) = x
+    -- So encode (eval (unfold ∘ fold) x) = encode x
+    rax-eq : readReg (regs s') rax ≡ encode (eval {F} {F} (unfold ∘ fold) x)
+    rax-eq = proj₂ (proj₂ (proj₂ helper))
+
 -- Helper: pair sequence for ⟨ id , id ⟩ (base case)
 -- This is a concrete instance where both f and g are id.
 -- Validates the proof structure before generalizing to arbitrary IR.
