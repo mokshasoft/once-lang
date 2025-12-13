@@ -1,0 +1,1412 @@
+// ======================================================================
+// Linux Syscall Primitives - x86_64 Implementation
+// ======================================================================
+//
+// Raw syscall wrappers for Linux x86_64.
+// Each once_* function corresponds to a primitive in syscalls.once.
+//
+// Linux x86_64 syscall convention:
+//   rax: syscall number
+//   rdi: arg1, rsi: arg2, rdx: arg3, r10: arg4, r8: arg5, r9: arg6
+//   syscall instruction
+//   Return: rax (negative values indicate -errno)
+//
+// Once calling convention (System V AMD64 ABI):
+//   rdi: first argument (pointer to tuple for multi-arg)
+//   rax: return value (pointer to tuple for multi-return)
+//   rbx, rbp, r12-r15: callee-saved
+//
+// Once tuple layout (nested pairs):
+//   (a, b, c) = (a, (b, c))
+//   Each pair: [fst: 8 bytes][snd: 8 bytes]
+//   Access: mov reg, [ptr] for fst, mov reg, [ptr+8] for snd
+//
+// OnceString/OnceBuffer layout:
+//   { data: ptr, len: size_t } = 16 bytes
+//   In tuple: treated as (data, len) pair
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_LINUX_X86_64_SYSCALLS_DEFINED
+#define ONCE_LINUX_X86_64_SYSCALLS_DEFINED
+
+// ======================================================================
+// Syscall Numbers
+// ======================================================================
+.equ SYS_read,          0
+.equ SYS_write,         1
+.equ SYS_open,          2
+.equ SYS_close,         3
+.equ SYS_stat,          4
+.equ SYS_fstat,         5
+.equ SYS_lstat,         6
+.equ SYS_poll,          7
+.equ SYS_lseek,         8
+.equ SYS_mmap,          9
+.equ SYS_mprotect,      10
+.equ SYS_munmap,        11
+.equ SYS_pipe,          22
+.equ SYS_dup,           32
+.equ SYS_dup2,          33
+.equ SYS_pause,         34
+.equ SYS_nanosleep,     35
+.equ SYS_getpid,        39
+.equ SYS_socket,        41
+.equ SYS_connect,       42
+.equ SYS_accept,        43
+.equ SYS_sendto,        44
+.equ SYS_recvfrom,      45
+.equ SYS_shutdown,      48
+.equ SYS_bind,          49
+.equ SYS_listen,        50
+.equ SYS_setsockopt,    54
+.equ SYS_getsockopt,    55
+.equ SYS_clone,         56
+.equ SYS_exit,          60
+.equ SYS_kill,          62
+.equ SYS_truncate,      76
+.equ SYS_ftruncate,     77
+.equ SYS_getcwd,        79
+.equ SYS_chdir,         80
+.equ SYS_rename,        82
+.equ SYS_mkdir,         83
+.equ SYS_rmdir,         84
+.equ SYS_creat,         85
+.equ SYS_unlink,        87
+.equ SYS_symlink,       88
+.equ SYS_readlink,      89
+.equ SYS_chmod,         90
+.equ SYS_fchmod,        91
+.equ SYS_chown,         92
+.equ SYS_getuid,        102
+.equ SYS_getgid,        104
+.equ SYS_geteuid,       107
+.equ SYS_getegid,       108
+.equ SYS_getppid,       110
+.equ SYS_chroot,        161
+.equ SYS_gettid,        186
+.equ SYS_time,          201
+.equ SYS_futex,         202
+.equ SYS_clock_gettime, 228
+.equ SYS_exit_group,    231
+.equ SYS_getrandom,     318
+
+// ======================================================================
+// Process Control
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// exit0 - Exit with code 0
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Does not return
+.global once_exit0
+.type once_exit0, @function
+once_exit0:
+    mov     $SYS_exit_group, %rax
+    xor     %edi, %edi          // status = 0
+    syscall
+    // Does not return
+.size once_exit0, .-once_exit0
+
+// ----------------------------------------------------------------------
+// exit - Exit with given code
+// ----------------------------------------------------------------------
+// Input: Int (exit code)
+// Output: Does not return
+.global once_exit
+.type once_exit, @function
+once_exit:
+    mov     %rdi, %rdi          // status already in rdi
+    mov     $SYS_exit_group, %rax
+    syscall
+    // Does not return
+.size once_exit, .-once_exit
+
+// ----------------------------------------------------------------------
+// getpid - Get process ID
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (pid)
+.global once_getpid
+.type once_getpid, @function
+once_getpid:
+    mov     $SYS_getpid, %rax
+    syscall
+    ret
+.size once_getpid, .-once_getpid
+
+// ----------------------------------------------------------------------
+// getppid - Get parent process ID
+// ----------------------------------------------------------------------
+.global once_getppid
+.type once_getppid, @function
+once_getppid:
+    mov     $SYS_getppid, %rax
+    syscall
+    ret
+.size once_getppid, .-once_getppid
+
+// ----------------------------------------------------------------------
+// getuid - Get user ID
+// ----------------------------------------------------------------------
+.global once_getuid
+.type once_getuid, @function
+once_getuid:
+    mov     $SYS_getuid, %rax
+    syscall
+    ret
+.size once_getuid, .-once_getuid
+
+// ----------------------------------------------------------------------
+// geteuid - Get effective user ID
+// ----------------------------------------------------------------------
+.global once_geteuid
+.type once_geteuid, @function
+once_geteuid:
+    mov     $SYS_geteuid, %rax
+    syscall
+    ret
+.size once_geteuid, .-once_geteuid
+
+// ----------------------------------------------------------------------
+// getgid - Get group ID
+// ----------------------------------------------------------------------
+.global once_getgid
+.type once_getgid, @function
+once_getgid:
+    mov     $SYS_getgid, %rax
+    syscall
+    ret
+.size once_getgid, .-once_getgid
+
+// ----------------------------------------------------------------------
+// getegid - Get effective group ID
+// ----------------------------------------------------------------------
+.global once_getegid
+.type once_getegid, @function
+once_getegid:
+    mov     $SYS_getegid, %rax
+    syscall
+    ret
+.size once_getegid, .-once_getegid
+
+// ======================================================================
+// File Descriptors
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fd_read - Read from file descriptor
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len), count) as nested tuple
+// Output: Int (bytes read or -errno)
+.global once_fd_read
+.type once_fd_read, @function
+once_fd_read:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack: (fd, ((buf_data, buf_len), count))
+    mov     (%rdi), %r8         // r8 = fd
+    mov     8(%rdi), %rdi       // rdi = ptr to rest
+
+    mov     (%rdi), %r9         // r9 = ptr to buffer pair
+    mov     8(%rdi), %rdx       // rdx = count
+
+    mov     (%r9), %rsi         // rsi = buf_data
+    // buf_len at 8(%r9) not needed for syscall
+
+    mov     %r8, %rdi           // rdi = fd
+    // rsi = buf_data
+    // rdx = count
+
+    mov     $SYS_read, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_fd_read, .-once_fd_read
+
+// ----------------------------------------------------------------------
+// fd_write - Write to file descriptor
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len), count) as nested tuple
+// Output: Int (bytes written or -errno)
+.global once_fd_write
+.type once_fd_write, @function
+once_fd_write:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack: (fd, ((buf_data, buf_len), count))
+    mov     (%rdi), %r8         // r8 = fd
+    mov     8(%rdi), %rdi       // rdi = ptr to rest
+
+    mov     (%rdi), %r9         // r9 = ptr to buffer pair
+    mov     8(%rdi), %rdx       // rdx = count
+
+    mov     (%r9), %rsi         // rsi = buf_data
+
+    mov     %r8, %rdi           // rdi = fd
+    // rsi = buf_data
+    // rdx = count
+
+    mov     $SYS_write, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_fd_write, .-once_fd_write
+
+// ----------------------------------------------------------------------
+// fd_close - Close file descriptor
+// ----------------------------------------------------------------------
+// Input: Int (fd)
+// Output: Int (0 or -errno)
+.global once_fd_close
+.type once_fd_close, @function
+once_fd_close:
+    // rdi = fd
+    mov     $SYS_close, %rax
+    syscall
+    ret
+.size once_fd_close, .-once_fd_close
+
+// ----------------------------------------------------------------------
+// fd_dup - Duplicate file descriptor
+// ----------------------------------------------------------------------
+// Input: Int (fd)
+// Output: Int (new fd or -errno)
+.global once_fd_dup
+.type once_fd_dup, @function
+once_fd_dup:
+    // rdi = fd
+    mov     $SYS_dup, %rax
+    syscall
+    ret
+.size once_fd_dup, .-once_fd_dup
+
+// ----------------------------------------------------------------------
+// fd_dup2 - Duplicate fd to specific number
+// ----------------------------------------------------------------------
+// Input: (oldfd, newfd)
+// Output: Int (new fd or -errno)
+.global once_fd_dup2
+.type once_fd_dup2, @function
+once_fd_dup2:
+    // Unpack: (oldfd, newfd)
+    mov     (%rdi), %rax        // rax = oldfd
+    mov     8(%rdi), %rsi       // rsi = newfd
+    mov     %rax, %rdi          // rdi = oldfd
+
+    mov     $SYS_dup2, %rax
+    syscall
+    ret
+.size once_fd_dup2, .-once_fd_dup2
+
+// ======================================================================
+// File Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// open - Open file
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (flags, mode))
+// Output: Int (fd or -errno)
+.global once_open
+.type once_open, @function
+once_open:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack: ((path_data, path_len), (flags, mode))
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %r9        // r9 = ptr to (flags, mode)
+
+    mov     (%r8), %rdi         // rdi = path_data
+    mov     (%r9), %rsi         // rsi = flags
+    mov     8(%r9), %rdx        // rdx = mode
+
+    mov     $SYS_open, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_open, .-once_open
+
+// ----------------------------------------------------------------------
+// creat - Create file
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (fd or -errno)
+.global once_creat
+.type once_creat, @function
+once_creat:
+    // Unpack: ((path_data, path_len), mode)
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %rsi       // rsi = mode
+    mov     (%r8), %rdi         // rdi = path_data
+
+    mov     $SYS_creat, %rax
+    syscall
+    ret
+.size once_creat, .-once_creat
+
+// ----------------------------------------------------------------------
+// unlink - Delete file
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_unlink
+.type once_unlink, @function
+once_unlink:
+    // Unpack path string
+    mov     (%rdi), %rdi        // rdi = path_data
+
+    mov     $SYS_unlink, %rax
+    syscall
+    ret
+.size once_unlink, .-once_unlink
+
+// ----------------------------------------------------------------------
+// rename - Rename file
+// ----------------------------------------------------------------------
+// Input: ((old_data, old_len), (new_data, new_len))
+// Output: Int (0 or -errno)
+.global once_rename
+.type once_rename, @function
+once_rename:
+    // Unpack: ((old_data, old_len), (new_data, new_len))
+    mov     (%rdi), %r8         // r8 = ptr to old path
+    mov     8(%rdi), %r9        // r9 = ptr to new path
+
+    mov     (%r8), %rdi         // rdi = old_data
+    mov     (%r9), %rsi         // rsi = new_data
+
+    mov     $SYS_rename, %rax
+    syscall
+    ret
+.size once_rename, .-once_rename
+
+// ----------------------------------------------------------------------
+// symlink - Create symbolic link
+// ----------------------------------------------------------------------
+// Input: ((target_data, target_len), (link_data, link_len))
+// Output: Int (0 or -errno)
+.global once_symlink
+.type once_symlink, @function
+once_symlink:
+    // Unpack: ((target_data, target_len), (link_data, link_len))
+    mov     (%rdi), %r8         // r8 = ptr to target
+    mov     8(%rdi), %r9        // r9 = ptr to link
+
+    mov     (%r8), %rdi         // rdi = target_data
+    mov     (%r9), %rsi         // rsi = link_data
+
+    mov     $SYS_symlink, %rax
+    syscall
+    ret
+.size once_symlink, .-once_symlink
+
+// ----------------------------------------------------------------------
+// readlink - Read symbolic link
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), ((buf_data, buf_len), bufsiz))
+// Output: Int (length or -errno)
+.global once_readlink
+.type once_readlink, @function
+once_readlink:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %r9        // r9 = ptr to rest
+
+    mov     (%r8), %rdi         // rdi = path_data
+
+    mov     (%r9), %r10         // r10 = ptr to buffer
+    mov     8(%r9), %rdx        // rdx = bufsiz
+
+    mov     (%r10), %rsi        // rsi = buf_data
+
+    mov     $SYS_readlink, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_readlink, .-once_readlink
+
+// ----------------------------------------------------------------------
+// stat - Get file status
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_stat
+.type once_stat, @function
+once_stat:
+    // Unpack
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %r9        // r9 = ptr to buffer
+
+    mov     (%r8), %rdi         // rdi = path_data
+    mov     (%r9), %rsi         // rsi = buf_data
+
+    mov     $SYS_stat, %rax
+    syscall
+    ret
+.size once_stat, .-once_stat
+
+// ----------------------------------------------------------------------
+// lstat - Get file status (don't follow symlinks)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_lstat
+.type once_lstat, @function
+once_lstat:
+    mov     (%rdi), %r8
+    mov     8(%rdi), %r9
+    mov     (%r8), %rdi
+    mov     (%r9), %rsi
+
+    mov     $SYS_lstat, %rax
+    syscall
+    ret
+.size once_lstat, .-once_lstat
+
+// ----------------------------------------------------------------------
+// fstat - Get file status by fd
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_fstat
+.type once_fstat, @function
+once_fstat:
+    mov     (%rdi), %r8         // r8 = fd
+    mov     8(%rdi), %r9        // r9 = ptr to buffer
+
+    mov     %r8, %rdi           // rdi = fd
+    mov     (%r9), %rsi         // rsi = buf_data
+
+    mov     $SYS_fstat, %rax
+    syscall
+    ret
+.size once_fstat, .-once_fstat
+
+// ----------------------------------------------------------------------
+// chmod - Change file permissions
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (0 or -errno)
+.global once_chmod
+.type once_chmod, @function
+once_chmod:
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %rsi       // rsi = mode
+    mov     (%r8), %rdi         // rdi = path_data
+
+    mov     $SYS_chmod, %rax
+    syscall
+    ret
+.size once_chmod, .-once_chmod
+
+// ----------------------------------------------------------------------
+// fchmod - Change file permissions by fd
+// ----------------------------------------------------------------------
+// Input: (fd, mode)
+// Output: Int (0 or -errno)
+.global once_fchmod
+.type once_fchmod, @function
+once_fchmod:
+    mov     (%rdi), %rax        // rax = fd
+    mov     8(%rdi), %rsi       // rsi = mode
+    mov     %rax, %rdi          // rdi = fd
+
+    mov     $SYS_fchmod, %rax
+    syscall
+    ret
+.size once_fchmod, .-once_fchmod
+
+// ----------------------------------------------------------------------
+// chown - Change file owner
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (owner, group))
+// Output: Int (0 or -errno)
+.global once_chown
+.type once_chown, @function
+once_chown:
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %r9        // r9 = ptr to (owner, group)
+
+    mov     (%r8), %rdi         // rdi = path_data
+    mov     (%r9), %rsi         // rsi = owner
+    mov     8(%r9), %rdx        // rdx = group
+
+    mov     $SYS_chown, %rax
+    syscall
+    ret
+.size once_chown, .-once_chown
+
+// ----------------------------------------------------------------------
+// truncate - Truncate file
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), length)
+// Output: Int (0 or -errno)
+.global once_truncate
+.type once_truncate, @function
+once_truncate:
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %rsi       // rsi = length
+    mov     (%r8), %rdi         // rdi = path_data
+
+    mov     $SYS_truncate, %rax
+    syscall
+    ret
+.size once_truncate, .-once_truncate
+
+// ----------------------------------------------------------------------
+// ftruncate - Truncate file by fd
+// ----------------------------------------------------------------------
+// Input: (fd, length)
+// Output: Int (0 or -errno)
+.global once_ftruncate
+.type once_ftruncate, @function
+once_ftruncate:
+    mov     (%rdi), %rax        // rax = fd
+    mov     8(%rdi), %rsi       // rsi = length
+    mov     %rax, %rdi          // rdi = fd
+
+    mov     $SYS_ftruncate, %rax
+    syscall
+    ret
+.size once_ftruncate, .-once_ftruncate
+
+// ======================================================================
+// Directory Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mkdir - Create directory
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (0 or -errno)
+.global once_mkdir
+.type once_mkdir, @function
+once_mkdir:
+    mov     (%rdi), %r8         // r8 = ptr to path
+    mov     8(%rdi), %rsi       // rsi = mode
+    mov     (%r8), %rdi         // rdi = path_data
+
+    mov     $SYS_mkdir, %rax
+    syscall
+    ret
+.size once_mkdir, .-once_mkdir
+
+// ----------------------------------------------------------------------
+// rmdir - Remove directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_rmdir
+.type once_rmdir, @function
+once_rmdir:
+    mov     (%rdi), %rdi        // rdi = path_data
+
+    mov     $SYS_rmdir, %rax
+    syscall
+    ret
+.size once_rmdir, .-once_rmdir
+
+// ----------------------------------------------------------------------
+// chdir - Change directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_chdir
+.type once_chdir, @function
+once_chdir:
+    mov     (%rdi), %rdi        // rdi = path_data
+
+    mov     $SYS_chdir, %rax
+    syscall
+    ret
+.size once_chdir, .-once_chdir
+
+// ----------------------------------------------------------------------
+// getcwd - Get current directory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), size)
+// Output: Int (length or -errno)
+.global once_getcwd
+.type once_getcwd, @function
+once_getcwd:
+    mov     (%rdi), %r8         // r8 = ptr to buffer
+    mov     8(%rdi), %rsi       // rsi = size
+    mov     (%r8), %rdi         // rdi = buf_data
+
+    mov     $SYS_getcwd, %rax
+    syscall
+    ret
+.size once_getcwd, .-once_getcwd
+
+// ----------------------------------------------------------------------
+// chroot - Change root directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_chroot
+.type once_chroot, @function
+once_chroot:
+    mov     (%rdi), %rdi        // rdi = path_data
+
+    mov     $SYS_chroot, %rax
+    syscall
+    ret
+.size once_chroot, .-once_chroot
+
+// ======================================================================
+// File Seeking
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// lseek - Seek in file
+// ----------------------------------------------------------------------
+// Input: (fd, (offset, whence))
+// Output: Int (new position or -errno)
+.global once_lseek
+.type once_lseek, @function
+once_lseek:
+    mov     (%rdi), %r8         // r8 = fd
+    mov     8(%rdi), %r9        // r9 = ptr to (offset, whence)
+
+    mov     %r8, %rdi           // rdi = fd
+    mov     (%r9), %rsi         // rsi = offset
+    mov     8(%r9), %rdx        // rdx = whence
+
+    mov     $SYS_lseek, %rax
+    syscall
+    ret
+.size once_lseek, .-once_lseek
+
+// ======================================================================
+// Time
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// time - Get current time
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (seconds since epoch)
+.global once_time
+.type once_time, @function
+once_time:
+    xor     %edi, %edi          // NULL
+    mov     $SYS_time, %rax
+    syscall
+    ret
+.size once_time, .-once_time
+
+// ----------------------------------------------------------------------
+// clock_gettime - Get high-resolution time
+// ----------------------------------------------------------------------
+// Input: (clk_id, (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_clock_gettime
+.type once_clock_gettime, @function
+once_clock_gettime:
+    mov     (%rdi), %r8         // r8 = clk_id
+    mov     8(%rdi), %r9        // r9 = ptr to buffer
+
+    mov     %r8, %rdi           // rdi = clk_id
+    mov     (%r9), %rsi         // rsi = buf_data
+
+    mov     $SYS_clock_gettime, %rax
+    syscall
+    ret
+.size once_clock_gettime, .-once_clock_gettime
+
+// ----------------------------------------------------------------------
+// sleep - Sleep for seconds
+// ----------------------------------------------------------------------
+// Input: Int (seconds)
+// Output: Int (remaining seconds)
+.global once_sleep
+.type once_sleep, @function
+once_sleep:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $32, %rsp           // Space for two timespecs
+
+    // Build timespec {tv_sec, tv_nsec}
+    mov     %rdi, (%rsp)        // tv_sec = seconds
+    movq    $0, 8(%rsp)         // tv_nsec = 0
+
+    lea     (%rsp), %rdi        // req
+    lea     16(%rsp), %rsi      // rem
+
+    mov     $SYS_nanosleep, %rax
+    syscall
+
+    // Return remaining seconds (from rem.tv_sec)
+    mov     16(%rsp), %rax
+
+    add     $32, %rsp
+    pop     %rbp
+    ret
+.size once_sleep, .-once_sleep
+
+// ----------------------------------------------------------------------
+// usleep - Sleep for microseconds
+// ----------------------------------------------------------------------
+// Input: Int (microseconds)
+// Output: Int (0 or -errno)
+.global once_usleep
+.type once_usleep, @function
+once_usleep:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $32, %rsp
+
+    // Convert usec to timespec
+    mov     %rdi, %rax
+    mov     $1000000, %rcx
+    xor     %edx, %edx
+    div     %rcx                // rax = sec, rdx = usec
+
+    mov     %rax, (%rsp)        // tv_sec
+    imul    $1000, %rdx, %rdx
+    mov     %rdx, 8(%rsp)       // tv_nsec
+
+    lea     (%rsp), %rdi
+    xor     %esi, %esi          // NULL for rem
+
+    mov     $SYS_nanosleep, %rax
+    syscall
+
+    add     $32, %rsp
+    pop     %rbp
+    ret
+.size once_usleep, .-once_usleep
+
+// ----------------------------------------------------------------------
+// nanosleep - Sleep with timespec
+// ----------------------------------------------------------------------
+// Input: ((req_data, req_len), (rem_data, rem_len))
+// Output: Int (0 or -errno)
+.global once_nanosleep
+.type once_nanosleep, @function
+once_nanosleep:
+    mov     (%rdi), %r8         // r8 = ptr to req buffer
+    mov     8(%rdi), %r9        // r9 = ptr to rem buffer
+
+    mov     (%r8), %rdi         // rdi = req_data
+    mov     (%r9), %rsi         // rsi = rem_data
+
+    mov     $SYS_nanosleep, %rax
+    syscall
+    ret
+.size once_nanosleep, .-once_nanosleep
+
+// ======================================================================
+// Environment
+// Note: getenv/setenv/unsetenv use libc, not raw syscalls
+// These require linking with libc or implementing environ handling
+// ======================================================================
+
+// For now, these are stubs that return error/empty
+// A full implementation would need to parse the environ array
+
+.global once_getenv
+.type once_getenv, @function
+once_getenv:
+    // Return empty string (data=NULL, len=0)
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $16, %rsp
+
+    movq    $0, (%rsp)          // data = NULL
+    movq    $0, 8(%rsp)         // len = 0
+    mov     %rsp, %rax
+
+    add     $16, %rsp
+    pop     %rbp
+    ret
+.size once_getenv, .-once_getenv
+
+.global once_setenv
+.type once_setenv, @function
+once_setenv:
+    mov     $-1, %rax           // Not implemented
+    ret
+.size once_setenv, .-once_setenv
+
+.global once_unsetenv
+.type once_unsetenv, @function
+once_unsetenv:
+    mov     $-1, %rax           // Not implemented
+    ret
+.size once_unsetenv, .-once_unsetenv
+
+// ======================================================================
+// Memory Mapping
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mmap - Map memory
+// ----------------------------------------------------------------------
+// Input: (addr, (length, (prot, (flags, (fd, offset)))))
+// Output: (buf_data, buf_len) - Buffer struct
+.global once_mmap
+.type once_mmap, @function
+once_mmap:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+    sub     $16, %rsp
+
+    // Unpack 6 args from nested tuple
+    mov     (%rdi), %r8         // addr
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r12        // length (save for return)
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %rdx        // prot
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        // flags
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r13        // fd (temp)
+    mov     8(%rdi), %r9        // offset
+
+    mov     %r8, %rdi           // rdi = addr
+    mov     %r12, %rsi          // rsi = length
+    // rdx = prot
+    // r10 = flags
+    mov     %r13, %r8           // r8 = fd
+    // r9 = offset
+
+    mov     $SYS_mmap, %rax
+    syscall
+
+    // Build return buffer on stack
+    // Check for MAP_FAILED (-1 through -4095)
+    cmp     $-4095, %rax
+    jae     .mmap_failed
+
+    mov     %rax, -32(%rbp)     // data
+    mov     %r12, -24(%rbp)     // len
+    lea     -32(%rbp), %rax
+    jmp     .mmap_done
+
+.mmap_failed:
+    movq    $0, -32(%rbp)       // data = NULL
+    movq    $0, -24(%rbp)       // len = 0
+    lea     -32(%rbp), %rax
+
+.mmap_done:
+    add     $16, %rsp
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_mmap, .-once_mmap
+
+// ----------------------------------------------------------------------
+// munmap - Unmap memory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), length)
+// Output: Int (0 or -errno)
+.global once_munmap
+.type once_munmap, @function
+once_munmap:
+    mov     (%rdi), %r8         // r8 = ptr to buffer
+    mov     8(%rdi), %rsi       // rsi = length
+    mov     (%r8), %rdi         // rdi = buf_data
+
+    mov     $SYS_munmap, %rax
+    syscall
+    ret
+.size once_munmap, .-once_munmap
+
+// ----------------------------------------------------------------------
+// mprotect - Change memory protection
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), (length, prot))
+// Output: Int (0 or -errno)
+.global once_mprotect
+.type once_mprotect, @function
+once_mprotect:
+    mov     (%rdi), %r8         // r8 = ptr to buffer
+    mov     8(%rdi), %r9        // r9 = ptr to (length, prot)
+
+    mov     (%r8), %rdi         // rdi = buf_data
+    mov     (%r9), %rsi         // rsi = length
+    mov     8(%r9), %rdx        // rdx = prot
+
+    mov     $SYS_mprotect, %rax
+    syscall
+    ret
+.size once_mprotect, .-once_mprotect
+
+// ======================================================================
+// Signals
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// kill - Send signal to process
+// ----------------------------------------------------------------------
+// Input: (pid, sig)
+// Output: Int (0 or -errno)
+.global once_kill
+.type once_kill, @function
+once_kill:
+    mov     (%rdi), %rax        // rax = pid
+    mov     8(%rdi), %rsi       // rsi = sig
+    mov     %rax, %rdi          // rdi = pid
+
+    mov     $SYS_kill, %rax
+    syscall
+    ret
+.size once_kill, .-once_kill
+
+// ----------------------------------------------------------------------
+// raise - Send signal to self
+// ----------------------------------------------------------------------
+// Input: Int (sig)
+// Output: Int (0 or -errno)
+.global once_raise
+.type once_raise, @function
+once_raise:
+    mov     %rdi, %rsi          // rsi = sig
+
+    // Get own pid
+    mov     $SYS_getpid, %rax
+    syscall
+    mov     %rax, %rdi          // rdi = pid
+
+    mov     $SYS_kill, %rax
+    syscall
+    ret
+.size once_raise, .-once_raise
+
+// ----------------------------------------------------------------------
+// pause - Wait for signal
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (-errno, always -EINTR)
+.global once_pause
+.type once_pause, @function
+once_pause:
+    mov     $SYS_pause, %rax
+    syscall
+    ret
+.size once_pause, .-once_pause
+
+// ======================================================================
+// Pipe and IPC
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// pipe - Create pipe
+// ----------------------------------------------------------------------
+// Input: (buf_data, buf_len)
+// Output: Int (0 or -errno)
+.global once_pipe
+.type once_pipe, @function
+once_pipe:
+    mov     (%rdi), %rdi        // rdi = buf_data
+
+    mov     $SYS_pipe, %rax
+    syscall
+    ret
+.size once_pipe, .-once_pipe
+
+// ======================================================================
+// Socket Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// socket - Create socket
+// ----------------------------------------------------------------------
+// Input: (domain, (type, protocol))
+// Output: Int (fd or -errno)
+.global once_socket
+.type once_socket, @function
+once_socket:
+    mov     (%rdi), %r8         // r8 = domain
+    mov     8(%rdi), %r9        // r9 = ptr to (type, protocol)
+
+    mov     %r8, %rdi           // rdi = domain
+    mov     (%r9), %rsi         // rsi = type
+    mov     8(%r9), %rdx        // rdx = protocol
+
+    mov     $SYS_socket, %rax
+    syscall
+    ret
+.size once_socket, .-once_socket
+
+// ----------------------------------------------------------------------
+// bind - Bind socket to address
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), addrlen))
+// Output: Int (0 or -errno)
+.global once_bind
+.type once_bind, @function
+once_bind:
+    mov     (%rdi), %r8         // r8 = sockfd
+    mov     8(%rdi), %r9        // r9 = ptr to rest
+
+    mov     %r8, %rdi           // rdi = sockfd
+
+    mov     (%r9), %r10         // r10 = ptr to addr buffer
+    mov     8(%r9), %rdx        // rdx = addrlen
+
+    mov     (%r10), %rsi        // rsi = addr_data
+
+    mov     $SYS_bind, %rax
+    syscall
+    ret
+.size once_bind, .-once_bind
+
+// ----------------------------------------------------------------------
+// listen - Listen on socket
+// ----------------------------------------------------------------------
+// Input: (sockfd, backlog)
+// Output: Int (0 or -errno)
+.global once_listen
+.type once_listen, @function
+once_listen:
+    mov     (%rdi), %rax        // rax = sockfd
+    mov     8(%rdi), %rsi       // rsi = backlog
+    mov     %rax, %rdi          // rdi = sockfd
+
+    mov     $SYS_listen, %rax
+    syscall
+    ret
+.size once_listen, .-once_listen
+
+// ----------------------------------------------------------------------
+// accept - Accept connection
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), (addrlen_data, addrlen_len)))
+// Output: Int (new fd or -errno)
+.global once_accept
+.type once_accept, @function
+once_accept:
+    mov     (%rdi), %r8         // r8 = sockfd
+    mov     8(%rdi), %r9        // r9 = ptr to rest
+
+    mov     %r8, %rdi           // rdi = sockfd
+
+    mov     (%r9), %r10         // r10 = ptr to addr buffer
+    mov     8(%r9), %r11        // r11 = ptr to addrlen buffer
+
+    mov     (%r10), %rsi        // rsi = addr_data
+    mov     (%r11), %rdx        // rdx = addrlen_data
+
+    mov     $SYS_accept, %rax
+    syscall
+    ret
+.size once_accept, .-once_accept
+
+// ----------------------------------------------------------------------
+// connect - Connect to address
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), addrlen))
+// Output: Int (0 or -errno)
+.global once_connect
+.type once_connect, @function
+once_connect:
+    mov     (%rdi), %r8         // r8 = sockfd
+    mov     8(%rdi), %r9        // r9 = ptr to rest
+
+    mov     %r8, %rdi           // rdi = sockfd
+
+    mov     (%r9), %r10         // r10 = ptr to addr buffer
+    mov     8(%r9), %rdx        // rdx = addrlen
+
+    mov     (%r10), %rsi        // rsi = addr_data
+
+    mov     $SYS_connect, %rax
+    syscall
+    ret
+.size once_connect, .-once_connect
+
+// ----------------------------------------------------------------------
+// send - Send on socket (via sendto)
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((buf_data, buf_len), (len, flags)))
+// Output: Int (bytes sent or -errno)
+.global once_send
+.type once_send, @function
+once_send:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    mov     (%rdi), %r8         // r8 = sockfd
+    mov     8(%rdi), %r9        // r9 = ptr to rest
+
+    mov     (%r9), %r10         // r10 = ptr to buffer
+    mov     8(%r9), %r11        // r11 = ptr to (len, flags)
+
+    mov     %r8, %rdi           // rdi = sockfd
+    mov     (%r10), %rsi        // rsi = buf_data
+    mov     (%r11), %rdx        // rdx = len
+    mov     8(%r11), %r10       // r10 = flags
+    xor     %r8d, %r8d          // r8 = NULL (dest_addr)
+    xor     %r9d, %r9d          // r9 = 0 (addrlen)
+
+    mov     $SYS_sendto, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_send, .-once_send
+
+// ----------------------------------------------------------------------
+// recv - Receive from socket (via recvfrom)
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((buf_data, buf_len), (len, flags)))
+// Output: Int (bytes received or -errno)
+.global once_recv
+.type once_recv, @function
+once_recv:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    mov     (%rdi), %r8         // r8 = sockfd
+    mov     8(%rdi), %r9        // r9 = ptr to rest
+
+    mov     (%r9), %r10         // r10 = ptr to buffer
+    mov     8(%r9), %r11        // r11 = ptr to (len, flags)
+
+    mov     %r8, %rdi           // rdi = sockfd
+    mov     (%r10), %rsi        // rsi = buf_data
+    mov     (%r11), %rdx        // rdx = len
+    mov     8(%r11), %r10       // r10 = flags
+    xor     %r8d, %r8d          // r8 = NULL (src_addr)
+    xor     %r9d, %r9d          // r9 = NULL (addrlen)
+
+    mov     $SYS_recvfrom, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_recv, .-once_recv
+
+// ----------------------------------------------------------------------
+// shutdown - Shutdown socket
+// ----------------------------------------------------------------------
+// Input: (sockfd, how)
+// Output: Int (0 or -errno)
+.global once_shutdown
+.type once_shutdown, @function
+once_shutdown:
+    mov     (%rdi), %rax        // rax = sockfd
+    mov     8(%rdi), %rsi       // rsi = how
+    mov     %rax, %rdi          // rdi = sockfd
+
+    mov     $SYS_shutdown, %rax
+    syscall
+    ret
+.size once_shutdown, .-once_shutdown
+
+// ----------------------------------------------------------------------
+// setsockopt - Set socket option
+// ----------------------------------------------------------------------
+// Input: (sockfd, (level, (optname, ((optval_data, optval_len), optlen))))
+// Output: Int (0 or -errno)
+.global once_setsockopt
+.type once_setsockopt, @function
+once_setsockopt:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack 5 args
+    mov     (%rdi), %r8         // sockfd
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9         // level
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        // optname
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r11        // ptr to optval buffer
+    mov     8(%rdi), %rcx       // optlen (use rcx temp)
+
+    mov     %r8, %rdi           // rdi = sockfd
+    mov     %r9, %rsi           // rsi = level
+    mov     %r10, %rdx          // rdx = optname
+    mov     (%r11), %r10        // r10 = optval_data
+    mov     %rcx, %r8           // r8 = optlen
+
+    mov     $SYS_setsockopt, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_setsockopt, .-once_setsockopt
+
+// ----------------------------------------------------------------------
+// getsockopt - Get socket option
+// ----------------------------------------------------------------------
+// Input: (sockfd, (level, (optname, ((optval_data, optval_len), (optlen_data, optlen_len)))))
+// Output: Int (0 or -errno)
+.global once_getsockopt
+.type once_getsockopt, @function
+once_getsockopt:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack
+    mov     (%rdi), %r8         // sockfd
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9         // level
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        // optname
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r11        // ptr to optval buffer
+    mov     8(%rdi), %rcx       // ptr to optlen buffer
+
+    mov     %r8, %rdi           // rdi = sockfd
+    mov     %r9, %rsi           // rsi = level
+    mov     %r10, %rdx          // rdx = optname
+    mov     (%r11), %r10        // r10 = optval_data
+    mov     (%rcx), %r8         // r8 = optlen_data
+
+    mov     $SYS_getsockopt, %rax
+    syscall
+
+    pop     %rbp
+    ret
+.size once_getsockopt, .-once_getsockopt
+
+// ======================================================================
+// Polling
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// poll - Poll file descriptors
+// ----------------------------------------------------------------------
+// Input: ((fds_data, fds_len), (nfds, timeout))
+// Output: Int (ready count or -errno)
+.global once_poll
+.type once_poll, @function
+once_poll:
+    mov     (%rdi), %r8         // r8 = ptr to fds buffer
+    mov     8(%rdi), %r9        // r9 = ptr to (nfds, timeout)
+
+    mov     (%r8), %rdi         // rdi = fds_data
+    mov     (%r9), %rsi         // rsi = nfds
+    mov     8(%r9), %rdx        // rdx = timeout
+
+    mov     $SYS_poll, %rax
+    syscall
+    ret
+.size once_poll, .-once_poll
+
+// ======================================================================
+// Random
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// getrandom - Get random bytes
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), (buflen, flags))
+// Output: Int (bytes or -errno)
+.global once_getrandom
+.type once_getrandom, @function
+once_getrandom:
+    mov     (%rdi), %r8         // r8 = ptr to buffer
+    mov     8(%rdi), %r9        // r9 = ptr to (buflen, flags)
+
+    mov     (%r8), %rdi         // rdi = buf_data
+    mov     (%r9), %rsi         // rsi = buflen
+    mov     8(%r9), %rdx        // rdx = flags
+
+    mov     $SYS_getrandom, %rax
+    syscall
+    ret
+.size once_getrandom, .-once_getrandom
+
+// ======================================================================
+// Threading (low-level)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// clone - Create new thread
+// ----------------------------------------------------------------------
+// Input: (flags, (stack_data, stack_len))
+// Output: Int (tid or -errno)
+.global once_clone
+.type once_clone, @function
+once_clone:
+    mov     (%rdi), %r8         // r8 = flags
+    mov     8(%rdi), %r9        // r9 = ptr to stack buffer
+
+    mov     %r8, %rdi           // rdi = flags
+    mov     (%r9), %rsi         // rsi = stack_data
+    xor     %edx, %edx          // rdx = NULL (parent_tid)
+    xor     %r10d, %r10d        // r10 = NULL (child_tid)
+    xor     %r8d, %r8d          // r8 = 0 (tls)
+
+    mov     $SYS_clone, %rax
+    syscall
+    ret
+.size once_clone, .-once_clone
+
+// ----------------------------------------------------------------------
+// futex - Fast userspace mutex operations
+// ----------------------------------------------------------------------
+// Input: ((addr_data, addr_len), (op, (val, ((timeout_data, timeout_len), ((addr2_data, addr2_len), val3)))))
+// Output: Int (depends on op)
+.global once_futex
+.type once_futex, @function
+once_futex:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+
+    // Unpack 6 args
+    mov     (%rdi), %r8         // ptr to addr buffer
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9         // op
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        // val
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r11        // ptr to timeout buffer
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r12        // ptr to addr2 buffer
+    mov     8(%rdi), %rcx       // val3
+
+    mov     (%r8), %rdi         // rdi = addr_data
+    mov     %r9, %rsi           // rsi = op
+    mov     %r10, %rdx          // rdx = val
+    mov     (%r11), %r10        // r10 = timeout_data
+    mov     (%r12), %r8         // r8 = addr2_data
+    mov     %rcx, %r9           // r9 = val3
+
+    mov     $SYS_futex, %rax
+    syscall
+
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_futex, .-once_futex
+
+// ----------------------------------------------------------------------
+// gettid - Get thread ID
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (tid)
+.global once_gettid
+.type once_gettid, @function
+once_gettid:
+    mov     $SYS_gettid, %rax
+    syscall
+    ret
+.size once_gettid, .-once_gettid
+
+#endif // ONCE_LINUX_X86_64_SYSCALLS_DEFINED
+

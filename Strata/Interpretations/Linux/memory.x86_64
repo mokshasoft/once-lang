@@ -1,0 +1,339 @@
+// ======================================================================
+// Memory Operations - x86_64 Implementation
+// ======================================================================
+//
+// MallocLike interface using mmap/munmap directly (no libc).
+//
+// Memory layout: Each allocation has an 8-byte header storing the size.
+//   [size: 8 bytes][user data: size bytes]
+//   ^-- mmap returns     ^-- returned to user
+//
+// This allows munmap to know the correct size to unmap.
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_LINUX_X86_64_MEMORY_DEFINED
+#define ONCE_LINUX_X86_64_MEMORY_DEFINED
+
+.equ SYS_mmap,      9
+.equ SYS_munmap,    11
+
+// mmap constants
+.equ PROT_READ,     1
+.equ PROT_WRITE,    2
+.equ MAP_PRIVATE,   2
+.equ MAP_ANONYMOUS, 32
+
+// Header size (stores allocation size)
+.equ HEADER_SIZE,   8
+
+// ----------------------------------------------------------------------
+// alloc - Allocate memory
+// ----------------------------------------------------------------------
+// Input: Int (size in bytes)
+// Output: (buf_data, buf_len) - OnceBuffer
+//
+// Uses mmap with MAP_PRIVATE | MAP_ANONYMOUS
+.global once_alloc
+.type once_alloc, @function
+once_alloc:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    sub     $24, %rsp           // Space for return buffer
+
+    mov     %rdi, %r12          // r12 = requested size
+
+    // Calculate total size (header + data)
+    lea     HEADER_SIZE(%rdi), %rsi  // rsi = total size
+
+    // mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
+    xor     %edi, %edi          // addr = NULL
+    // rsi = length (already set)
+    mov     $(PROT_READ | PROT_WRITE), %edx
+    mov     $(MAP_PRIVATE | MAP_ANONYMOUS), %r10d
+    mov     $-1, %r8d           // fd = -1
+    xor     %r9d, %r9d          // offset = 0
+
+    mov     $SYS_mmap, %rax
+    syscall
+
+    // Check for error (MAP_FAILED = -1 through -4095)
+    cmp     $-4095, %rax
+    jae     .alloc_failed
+
+    // Store size in header
+    mov     %r12, (%rax)
+
+    // Return buffer pointing past header
+    lea     HEADER_SIZE(%rax), %rcx
+    mov     %rcx, -32(%rbp)     // data = ptr + 8
+    mov     %r12, -24(%rbp)     // len = requested size
+    lea     -32(%rbp), %rax
+    jmp     .alloc_done
+
+.alloc_failed:
+    movq    $0, -32(%rbp)       // data = NULL
+    movq    $0, -24(%rbp)       // len = 0
+    lea     -32(%rbp), %rax
+
+.alloc_done:
+    add     $24, %rsp
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_alloc, .-once_alloc
+
+// ----------------------------------------------------------------------
+// free - Free allocated memory
+// ----------------------------------------------------------------------
+// Input: (buf_data, buf_len) - OnceBuffer
+// Output: Unit (0/NULL)
+//
+// Reads size from header and calls munmap
+.global once_free
+.type once_free, @function
+once_free:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Get buffer data pointer
+    mov     (%rdi), %rdi        // rdi = buf_data
+
+    // Check for NULL
+    test    %rdi, %rdi
+    jz      .free_done
+
+    // Calculate original mmap address (data - header)
+    sub     $HEADER_SIZE, %rdi
+
+    // Read size from header
+    mov     (%rdi), %rsi        // rsi = stored size
+
+    // Add header size for munmap
+    add     $HEADER_SIZE, %rsi
+
+    // munmap(addr, length)
+    mov     $SYS_munmap, %rax
+    syscall
+
+.free_done:
+    xor     %eax, %eax          // Return NULL (Unit)
+    pop     %rbp
+    ret
+.size once_free, .-once_free
+
+// ----------------------------------------------------------------------
+// realloc - Reallocate memory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), new_size)
+// Output: (buf_data, buf_len) - OnceBuffer
+//
+// Strategy: allocate new, copy, free old
+// Note: This is inefficient but simple. A real allocator would
+// try to expand in place if possible.
+.global once_realloc
+.type once_realloc, @function
+once_realloc:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+    push    %r14
+    sub     $24, %rsp
+
+    // Unpack: ((buf_data, buf_len), new_size)
+    mov     (%rdi), %r12        // r12 = ptr to old buffer
+    mov     8(%rdi), %r13       // r13 = new_size
+
+    mov     (%r12), %r14        // r14 = old buf_data
+
+    // Handle NULL input (act like alloc)
+    test    %r14, %r14
+    jz      .realloc_alloc_only
+
+    // Get old size from header
+    mov     -HEADER_SIZE(%r14), %rcx  // rcx = old size
+
+    // Allocate new memory
+    mov     %r13, %rdi          // new_size
+    lea     HEADER_SIZE(%rdi), %rsi
+
+    xor     %edi, %edi
+    mov     $(PROT_READ | PROT_WRITE), %edx
+    mov     $(MAP_PRIVATE | MAP_ANONYMOUS), %r10d
+    mov     $-1, %r8d
+    xor     %r9d, %r9d
+
+    mov     $SYS_mmap, %rax
+    syscall
+
+    cmp     $-4095, %rax
+    jae     .realloc_failed
+
+    // Store new size in header
+    mov     %r13, (%rax)
+
+    // Calculate new data pointer
+    lea     HEADER_SIZE(%rax), %r8   // r8 = new data ptr
+
+    // Copy old data to new (min of old_size, new_size)
+    mov     -HEADER_SIZE(%r14), %rcx  // old size
+    cmp     %r13, %rcx
+    cmova   %r13, %rcx          // rcx = min(old_size, new_size)
+
+    // Simple byte copy (could use rep movsb but this is clearer)
+    mov     %r14, %rsi          // source
+    mov     %r8, %rdi           // dest
+    push    %r8                 // save new ptr
+.realloc_copy_loop:
+    test    %rcx, %rcx
+    jz      .realloc_copy_done
+    movb    (%rsi), %al
+    movb    %al, (%rdi)
+    inc     %rsi
+    inc     %rdi
+    dec     %rcx
+    jmp     .realloc_copy_loop
+
+.realloc_copy_done:
+    pop     %r8                 // restore new ptr
+
+    // Free old memory
+    mov     %r14, %rdi
+    sub     $HEADER_SIZE, %rdi
+    mov     (%rdi), %rsi
+    add     $HEADER_SIZE, %rsi
+    mov     $SYS_munmap, %rax
+    syscall
+
+    // Return new buffer
+    mov     %r8, -40(%rbp)      // data
+    mov     %r13, -32(%rbp)     // len
+    lea     -40(%rbp), %rax
+    jmp     .realloc_done
+
+.realloc_alloc_only:
+    // No old buffer, just allocate
+    mov     %r13, %rdi
+    lea     HEADER_SIZE(%rdi), %rsi
+
+    xor     %edi, %edi
+    mov     $(PROT_READ | PROT_WRITE), %edx
+    mov     $(MAP_PRIVATE | MAP_ANONYMOUS), %r10d
+    mov     $-1, %r8d
+    xor     %r9d, %r9d
+
+    mov     $SYS_mmap, %rax
+    syscall
+
+    cmp     $-4095, %rax
+    jae     .realloc_failed
+
+    mov     %r13, (%rax)
+    lea     HEADER_SIZE(%rax), %rcx
+    mov     %rcx, -40(%rbp)
+    mov     %r13, -32(%rbp)
+    lea     -40(%rbp), %rax
+    jmp     .realloc_done
+
+.realloc_failed:
+    movq    $0, -40(%rbp)
+    movq    $0, -32(%rbp)
+    lea     -40(%rbp), %rax
+
+.realloc_done:
+    add     $24, %rsp
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_realloc, .-once_realloc
+
+// ----------------------------------------------------------------------
+// heap_string - Allocate and copy string to heap
+// ----------------------------------------------------------------------
+// Input: (len, (src_data, src_len))
+// Output: (str_data, str_len) - OnceString
+//
+// Allocates len bytes and copies from source buffer
+.global once_heap_string
+.type once_heap_string, @function
+once_heap_string:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+    push    %r14
+    sub     $24, %rsp
+
+    // Unpack: (len, (src_data, src_len))
+    mov     (%rdi), %r12        // r12 = len
+    mov     8(%rdi), %r13       // r13 = ptr to src buffer
+    mov     (%r13), %r14        // r14 = src_data
+
+    // Allocate memory
+    lea     HEADER_SIZE(%r12), %rsi
+
+    xor     %edi, %edi
+    mov     $(PROT_READ | PROT_WRITE), %edx
+    mov     $(MAP_PRIVATE | MAP_ANONYMOUS), %r10d
+    mov     $-1, %r8d
+    xor     %r9d, %r9d
+
+    mov     $SYS_mmap, %rax
+    syscall
+
+    cmp     $-4095, %rax
+    jae     .heap_string_failed
+
+    // Store size in header
+    mov     %r12, (%rax)
+
+    // Get data pointer
+    lea     HEADER_SIZE(%rax), %r8   // r8 = dest
+
+    // Copy data
+    mov     %r14, %rsi          // source
+    mov     %r8, %rdi           // dest
+    mov     %r12, %rcx          // count
+    push    %r8
+.heap_string_copy:
+    test    %rcx, %rcx
+    jz      .heap_string_copy_done
+    movb    (%rsi), %al
+    movb    %al, (%rdi)
+    inc     %rsi
+    inc     %rdi
+    dec     %rcx
+    jmp     .heap_string_copy
+
+.heap_string_copy_done:
+    pop     %r8
+
+    // Return string
+    mov     %r8, -40(%rbp)      // data
+    mov     %r12, -32(%rbp)     // len
+    lea     -40(%rbp), %rax
+    jmp     .heap_string_done
+
+.heap_string_failed:
+    movq    $0, -40(%rbp)
+    movq    $0, -32(%rbp)
+    lea     -40(%rbp), %rax
+
+.heap_string_done:
+    add     $24, %rsp
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_heap_string, .-once_heap_string
+
+#endif // ONCE_LINUX_X86_64_MEMORY_DEFINED
+

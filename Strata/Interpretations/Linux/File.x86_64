@@ -1,0 +1,445 @@
+// ======================================================================
+// File I/O Convenience Functions - x86_64 Implementation
+// ======================================================================
+//
+// Higher-level file operations using raw syscalls (no libc).
+// These provide a more convenient interface than raw fd_read/fd_write.
+//
+// Note: No buffering - all writes go directly to kernel.
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_LINUX_X86_64_FILE_DEFINED
+#define ONCE_LINUX_X86_64_FILE_DEFINED
+
+.equ SYS_read,      0
+.equ SYS_write,     1
+.equ SYS_open,      2
+.equ SYS_close,     3
+.equ SYS_stat,      4
+.equ SYS_fsync,     74
+
+// File descriptors
+.equ STDIN,         0
+.equ STDOUT,        1
+.equ STDERR,        2
+
+// Open flags
+.equ O_RDONLY,      0
+
+// Stat structure offset for st_size (x86_64 Linux)
+.equ STAT_ST_SIZE,  48
+
+// ======================================================================
+// Output Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// print - Write string to stdout (no newline)
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_print
+.type once_print, @function
+once_print:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Unpack string
+    mov     (%rdi), %rsi        // rsi = str_data
+    mov     8(%rdi), %rdx       // rdx = str_len
+
+    mov     $STDOUT, %edi       // fd = stdout
+    mov     $SYS_write, %rax
+    syscall
+
+    xor     %eax, %eax          // Return NULL
+    pop     %rbp
+    ret
+.size once_print, .-once_print
+
+// ----------------------------------------------------------------------
+// println - Write string to stdout with newline
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_println
+.type once_println, @function
+once_println:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $8, %rsp            // Space for newline
+
+    // Unpack string
+    mov     (%rdi), %rsi        // rsi = str_data
+    mov     8(%rdi), %rdx       // rdx = str_len
+
+    // Write string
+    mov     $STDOUT, %edi
+    mov     $SYS_write, %rax
+    syscall
+
+    // Write newline
+    movb    $'\n', -1(%rbp)
+    lea     -1(%rbp), %rsi
+    mov     $1, %edx
+    mov     $STDOUT, %edi
+    mov     $SYS_write, %rax
+    syscall
+
+    xor     %eax, %eax
+    add     $8, %rsp
+    pop     %rbp
+    ret
+.size once_println, .-once_println
+
+// ----------------------------------------------------------------------
+// err - Write string to stderr (no newline)
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_err
+.type once_err, @function
+once_err:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    mov     (%rdi), %rsi
+    mov     8(%rdi), %rdx
+
+    mov     $STDERR, %edi
+    mov     $SYS_write, %rax
+    syscall
+
+    xor     %eax, %eax
+    pop     %rbp
+    ret
+.size once_err, .-once_err
+
+// ----------------------------------------------------------------------
+// errln - Write string to stderr with newline
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_errln
+.type once_errln, @function
+once_errln:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $8, %rsp
+
+    mov     (%rdi), %rsi
+    mov     8(%rdi), %rdx
+
+    mov     $STDERR, %edi
+    mov     $SYS_write, %rax
+    syscall
+
+    movb    $'\n', -1(%rbp)
+    lea     -1(%rbp), %rsi
+    mov     $1, %edx
+    mov     $STDERR, %edi
+    mov     $SYS_write, %rax
+    syscall
+
+    xor     %eax, %eax
+    add     $8, %rsp
+    pop     %rbp
+    ret
+.size once_errln, .-once_errln
+
+// ----------------------------------------------------------------------
+// putc - Write single character to stdout
+// ----------------------------------------------------------------------
+// Input: Int (character code)
+// Output: Unit (NULL)
+.global once_putc
+.type once_putc, @function
+once_putc:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $8, %rsp
+
+    // Store char on stack
+    movb    %dil, -1(%rbp)
+
+    // Write it
+    lea     -1(%rbp), %rsi
+    mov     $1, %edx
+    mov     $STDOUT, %edi
+    mov     $SYS_write, %rax
+    syscall
+
+    xor     %eax, %eax
+    add     $8, %rsp
+    pop     %rbp
+    ret
+.size once_putc, .-once_putc
+
+// ----------------------------------------------------------------------
+// flush - Flush stdout
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Unit (NULL)
+//
+// Note: With raw syscalls there's no buffering to flush.
+// We call fsync anyway for completeness.
+.global once_flush
+.type once_flush, @function
+once_flush:
+    mov     $STDOUT, %edi
+    mov     $SYS_fsync, %rax
+    syscall
+
+    xor     %eax, %eax
+    ret
+.size once_flush, .-once_flush
+
+// ======================================================================
+// Input Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// getc - Read single character from stdin
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (character code, or -1 on EOF)
+.global once_getc
+.type once_getc, @function
+once_getc:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $8, %rsp
+
+    // Read one byte
+    lea     -1(%rbp), %rsi
+    mov     $1, %edx
+    mov     $STDIN, %edi
+    mov     $SYS_read, %rax
+    syscall
+
+    // Check result
+    test    %rax, %rax
+    jle     .getc_eof
+
+    // Return the character (zero-extended)
+    movzbl  -1(%rbp), %eax
+    jmp     .getc_done
+
+.getc_eof:
+    mov     $-1, %rax
+
+.getc_done:
+    add     $8, %rsp
+    pop     %rbp
+    ret
+.size once_getc, .-once_getc
+
+// ----------------------------------------------------------------------
+// getline - Read line from stdin into buffer
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), maxlen)
+// Output: Int (bytes read, or -1 on EOF with no data)
+//
+// Reads until newline or maxlen-1 reached. Does not include newline.
+// Null-terminates the result.
+.global once_getline
+.type once_getline, @function
+once_getline:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+    push    %r14
+    sub     $8, %rsp
+
+    // Unpack: ((buf_data, buf_len), maxlen)
+    mov     (%rdi), %r12        // r12 = ptr to buffer
+    mov     8(%rdi), %r13       // r13 = maxlen
+
+    mov     (%r12), %r14        // r14 = buf_data
+
+    // Validate
+    test    %r13, %r13
+    jle     .getline_error
+    test    %r14, %r14
+    jz      .getline_error
+
+    dec     %r13                // Leave room for null terminator
+    xor     %r12d, %r12d        // r12 = count = 0
+
+.getline_loop:
+    cmp     %r13, %r12
+    jge     .getline_done
+
+    // Read one byte
+    lea     (%r14,%r12), %rsi
+    mov     $1, %edx
+    mov     $STDIN, %edi
+    mov     $SYS_read, %rax
+    syscall
+
+    // Check for EOF
+    test    %rax, %rax
+    jle     .getline_check_eof
+
+    // Check for newline
+    movzbl  (%r14,%r12), %eax
+    cmp     $'\n', %al
+    je      .getline_done
+
+    inc     %r12
+    jmp     .getline_loop
+
+.getline_check_eof:
+    // EOF - return -1 if no data read, else return count
+    test    %r12, %r12
+    jz      .getline_error
+    jmp     .getline_done
+
+.getline_done:
+    // Null-terminate
+    movb    $0, (%r14,%r12)
+    mov     %r12, %rax
+    jmp     .getline_exit
+
+.getline_error:
+    mov     $-1, %rax
+
+.getline_exit:
+    add     $8, %rsp
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_getline, .-once_getline
+
+// ======================================================================
+// File Reading Helpers
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readfile - Read entire file into buffer
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), ((buf_data, buf_len), maxlen))
+// Output: Int (bytes read, or -1 on error)
+.global once_readfile
+.type once_readfile, @function
+once_readfile:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    // Unpack: ((path_data, path_len), ((buf_data, buf_len), maxlen))
+    mov     (%rdi), %r12        // r12 = ptr to path
+    mov     8(%rdi), %r13       // r13 = ptr to rest
+
+    mov     (%r12), %rdi        // rdi = path_data
+
+    mov     (%r13), %r14        // r14 = ptr to buffer
+    mov     8(%r13), %r15       // r15 = maxlen
+
+    mov     (%r14), %r14        // r14 = buf_data
+
+    // Open file
+    mov     $O_RDONLY, %esi
+    xor     %edx, %edx          // mode (ignored for O_RDONLY)
+    mov     $SYS_open, %rax
+    syscall
+
+    test    %rax, %rax
+    js      .readfile_error
+
+    mov     %rax, %r12          // r12 = fd
+    xor     %r13d, %r13d        // r13 = total bytes read
+
+.readfile_loop:
+    cmp     %r15, %r13
+    jge     .readfile_done
+
+    // Read chunk
+    mov     %r12, %rdi          // fd
+    lea     (%r14,%r13), %rsi   // buf + total
+    mov     %r15, %rdx
+    sub     %r13, %rdx          // remaining
+
+    mov     $SYS_read, %rax
+    syscall
+
+    test    %rax, %rax
+    js      .readfile_close_error
+    jz      .readfile_done      // EOF
+
+    add     %rax, %r13
+    jmp     .readfile_loop
+
+.readfile_done:
+    // Close file
+    mov     %r12, %rdi
+    mov     $SYS_close, %rax
+    syscall
+
+    mov     %r13, %rax          // Return total bytes
+    jmp     .readfile_exit
+
+.readfile_close_error:
+    mov     %r12, %rdi
+    mov     $SYS_close, %rax
+    syscall
+
+.readfile_error:
+    mov     $-1, %rax
+
+.readfile_exit:
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_readfile, .-once_readfile
+
+// ----------------------------------------------------------------------
+// filesize - Get file size
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (size in bytes, or -1 on error)
+.global once_filesize
+.type once_filesize, @function
+once_filesize:
+    push    %rbp
+    mov     %rsp, %rbp
+    sub     $144, %rsp          // Space for struct stat (144 bytes on x86_64)
+
+    // Unpack path
+    mov     (%rdi), %rdi        // rdi = path_data
+    lea     -144(%rbp), %rsi    // rsi = stat buffer
+
+    mov     $SYS_stat, %rax
+    syscall
+
+    test    %rax, %rax
+    js      .filesize_error
+
+    // Extract st_size (offset 48 in struct stat on x86_64)
+    mov     -144+STAT_ST_SIZE(%rbp), %rax
+    jmp     .filesize_done
+
+.filesize_error:
+    mov     $-1, %rax
+
+.filesize_done:
+    add     $144, %rsp
+    pop     %rbp
+    ret
+.size once_filesize, .-once_filesize
+
+#endif // ONCE_LINUX_X86_64_FILE_DEFINED
+
