@@ -2354,6 +2354,49 @@ run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) 
 run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq rdi-eq = ⊥-elim x
 
 ------------------------------------------------------------------------
+-- List manipulation lemmas for compose proof
+------------------------------------------------------------------------
+
+open import Data.List.Properties using (++-assoc; ++-identityʳ) renaming (length-++ to length-++-global)
+
+-- | Compose program equality lemma
+-- Shows: prefix ++ (code-f ++ [transfer] ++ code-g) ++ suffix
+--      ≡ prefix ++ code-f ++ (transfer ∷ code-g ++ suffix)
+-- Note: transfer ∷ [] ++ code-g = transfer ∷ code-g by definition
+-- and (transfer ∷ code-g) ++ suffix = transfer ∷ (code-g ++ suffix) by definition
+compose-prog-eq : ∀ (prefix code-f code-g suffix : Program) (transfer : Instr) →
+  prefix ++ (code-f ++ transfer ∷ [] ++ code-g) ++ suffix ≡
+  prefix ++ code-f ++ (transfer ∷ code-g ++ suffix)
+compose-prog-eq prefix code-f code-g suffix transfer =
+  cong (prefix ++_) (++-assoc code-f (transfer ∷ code-g) suffix)
+
+-- | Program equality for transfer position
+-- Shows: prefix ++ code-f ++ (transfer ∷ code-g ++ suffix)
+--      ≡ (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
+compose-transfer-eq : ∀ (prefix code-f code-g suffix : Program) (transfer : Instr) →
+  prefix ++ code-f ++ (transfer ∷ code-g ++ suffix) ≡
+  (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
+compose-transfer-eq prefix code-f code-g suffix transfer =
+  sym (++-assoc prefix code-f (transfer ∷ code-g ++ suffix))
+
+-- | Program equality for g position
+-- Shows: (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
+--      ≡ (prefix ++ code-f ++ transfer ∷ []) ++ code-g ++ suffix
+-- Key insight: (transfer ∷ []) ++ xs = transfer ∷ xs by definition
+compose-g-eq : ∀ (prefix code-f code-g suffix : Program) (transfer : Instr) →
+  (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix) ≡
+  (prefix ++ code-f ++ transfer ∷ []) ++ code-g ++ suffix
+compose-g-eq prefix code-f code-g suffix transfer = begin
+    (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
+  ≡⟨ ++-assoc prefix code-f (transfer ∷ (code-g ++ suffix)) ⟩
+    prefix ++ (code-f ++ (transfer ∷ (code-g ++ suffix)))
+  ≡⟨ cong (prefix ++_) (sym (++-assoc code-f (transfer ∷ []) (code-g ++ suffix))) ⟩
+    prefix ++ ((code-f ++ transfer ∷ []) ++ (code-g ++ suffix))
+  ≡⟨ sym (++-assoc prefix (code-f ++ transfer ∷ []) (code-g ++ suffix)) ⟩
+    (prefix ++ (code-f ++ transfer ∷ [])) ++ (code-g ++ suffix)
+  ∎
+
+------------------------------------------------------------------------
 -- Mutual block for run-ir-at-offset and complex IR cases
 ------------------------------------------------------------------------
 
@@ -2494,10 +2537,9 @@ mutual
       -- Key insight: compile-x86 (g ∘ f) = code-f ++ transfer ∷ [] ++ code-g
       -- And suffix-f = transfer ∷ (code-g ++ suffix) = transfer ∷ code-g ++ suffix
       --
-      -- Postulate this program equality for now - the complex list associativity
-      -- can be established but requires careful parenthesis management
-      postulate
-        prog-eq-f : prog ≡ prefix ++ code-f ++ suffix-f
+      -- Uses compose-prog-eq helper to establish list associativity
+      prog-eq-f : prog ≡ prefix ++ code-f ++ suffix-f
+      prog-eq-f = compose-prog-eq prefix code-f code-g suffix transfer
 
       -- Step 1: Execute f
       step-f : ∃[ s1 ] (exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just s1
@@ -2580,9 +2622,9 @@ mutual
       pc2 = trans pc2-raw (cong (_+ℕ 1) len-prefix-transfer)
 
       -- Program equality: prefix-transfer ++ [transfer] ++ (code-g ++ suffix) ≡ prefix-g ++ code-g ++ suffix
-      -- Postulate for now - list associativity
-      postulate
-        prog-eq-g : prefix-transfer ++ transfer ∷ (code-g ++ suffix) ≡ prefix-g ++ code-g ++ suffix
+      -- Uses compose-g-eq helper to establish list associativity
+      prog-eq-g : prefix-transfer ++ transfer ∷ (code-g ++ suffix) ≡ prefix-g ++ code-g ++ suffix
+      prog-eq-g = compose-g-eq prefix code-f code-g suffix transfer
 
       -- Length of prefix-g
       len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f +ℕ 1
@@ -2628,9 +2670,21 @@ mutual
 
       -- Final pc: length prefix + compile-length (g ∘ f)
       -- compile-length (g ∘ f) = (len-f + 1) + len-g
-      -- Postulate for now - arithmetic manipulation
-      postulate
-        pc3 : pc s3 ≡ length prefix +ℕ compile-length (g ∘ f)
+      -- Proof by arithmetic manipulation of length prefix-g + len-g
+      pc3 : pc s3 ≡ length prefix +ℕ compile-length (g ∘ f)
+      pc3 = begin
+        pc s3
+          ≡⟨ pc3-raw ⟩
+        length prefix-g +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) len-prefix-g ⟩
+        (length prefix +ℕ len-f +ℕ 1) +ℕ len-g
+          ≡⟨ +-assoc (length prefix +ℕ len-f) 1 len-g ⟩
+        (length prefix +ℕ len-f) +ℕ (1 +ℕ len-g)
+          ≡⟨ +-assoc (length prefix) len-f (1 +ℕ len-g) ⟩
+        length prefix +ℕ (len-f +ℕ (1 +ℕ len-g))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f 1 len-g)) ⟩
+        length prefix +ℕ ((len-f +ℕ 1) +ℕ len-g)
+          ∎
 
       -- eval (g ∘ f) x = eval g (eval f x)
       rax3 : readReg (regs s3) rax ≡ encode (eval (g ∘ f) x)
@@ -2701,11 +2755,62 @@ mutual
       --   <compile-x86 g>   ; 4+|f| to 3+|f|+|g|
       --   mov [rsp+8], rax  ; 4+|f|+|g|
       --   mov rax, rsp      ; 5+|f|+|g|
+      --
+      -- Total: 6 + len-f + len-g instructions
+      -- compile-length ⟨ f , g ⟩ = (6 + len-f) + len-g
 
-      -- The pair proof is complex due to register/memory preservation.
-      -- We postulate the key properties and chain them together.
+      -- Initial setup instructions
+      setup-sub : Instr
+      setup-sub = sub (reg rsp) (imm 16)
+
+      setup-save : Instr
+      setup-save = mov (reg r14) (reg rdi)
+
+      -- Middle instructions (between f and g)
+      store-f : Instr
+      store-f = mov (mem (base rsp)) (reg rax)
+
+      restore-input : Instr
+      restore-input = mov (reg rdi) (reg r14)
+
+      -- Final instructions (after g)
+      store-g : Instr
+      store-g = mov (mem (base+disp rsp 8)) (reg rax)
+
+      return-pair : Instr
+      return-pair = mov (reg rax) (reg rsp)
+
+      -- Prefix for f: prefix ++ [sub rsp, 16; mov r14, rdi]
+      prefix-f : Program
+      prefix-f = prefix ++ setup-sub ∷ setup-save ∷ []
+
+      -- Suffix for f: [mov [rsp], rax; mov rdi, r14] ++ compile-x86 g ++ [mov [rsp+8], rax; mov rax, rsp] ++ suffix
+      suffix-f : Program
+      suffix-f = store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ suffix
+
+      -- Prefix for g: prefix-f ++ code-f ++ [mov [rsp], rax; mov rdi, r14]
+      prefix-g : Program
+      prefix-g = prefix-f ++ code-f ++ store-f ∷ restore-input ∷ []
+
+      -- Suffix for g: [mov [rsp+8], rax; mov rax, rsp] ++ suffix
+      suffix-g : Program
+      suffix-g = store-g ∷ return-pair ∷ suffix
+
+      -- The pair proof follows the compose pattern:
+      -- 1. Execute initial setup (2 instructions)
+      -- 2. Execute f using recursive call
+      -- 3. Execute middle instructions (2 instructions)
+      -- 4. Execute g using recursive call
+      -- 5. Execute final instructions (2 instructions)
+      --
+      -- Key preservation properties (postulated):
+      -- - r14 is preserved through f execution (callee-saved)
+      -- - [rsp] is preserved through g execution (stack discipline)
 
       -- Postulate: executing the pair code produces the expected result
+      -- The full proof requires additional machinery for register/memory preservation
+      -- which would add significant complexity. We postulate the key properties
+      -- and can prove them incrementally.
       postulate
         -- Final state exists with the right properties
         s-final : State
@@ -2785,7 +2890,20 @@ mutual
       --   11+|f|: label end
 
       -- Curry creates a closure without executing f.
-      -- The thunk code is jumped over.
+      -- The thunk code is jumped over by the jmp instruction.
+      --
+      -- API NOTE: There's a mismatch between compile-length and actual execution:
+      -- - compile-length (curry f) = 12 + |f| (total instruction count)
+      -- - Actual execution: 5 setup + jmp + label = 7 steps before reaching suffix
+      -- The jmp causes the pc to skip from position 4 to 11+|f| (the end label).
+      -- After executing the label, pc = length prefix + 12 + |f|.
+      --
+      -- This means:
+      -- - If suffix is non-empty, execution continues into suffix
+      -- - If suffix is empty, fetch fails and execution halts
+      --
+      -- For proper handling, curry may need different step counting.
+      -- Currently postulated pending API refinement.
 
       postulate
         s-final : State
