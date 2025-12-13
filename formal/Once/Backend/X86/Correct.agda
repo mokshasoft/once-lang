@@ -43,7 +43,7 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
@@ -160,6 +160,28 @@ postulate
       just (record s { regs = writeReg (regs s) dst v
                      ; pc = pc s +ℕ 1 })
 
+-- Helper: state after executing mov [reg] imm (memory store)
+postulate
+  execMov-mem-base-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
+    execInstr prog s (mov (mem (base dst)) (imm v)) ≡
+      just (record s { memory = writeMem (memory s) (readReg (regs s) dst) v
+                     ; pc = pc s +ℕ 1 })
+
+-- Helper: state after executing mov [reg+disp] reg (memory store)
+postulate
+  execMov-mem-disp-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) (disp : ℕ) →
+    execInstr prog s (mov (mem (base+disp dst disp)) (reg src)) ≡
+      just (record s { memory = writeMem (memory s) (readReg (regs s) dst +ℕ disp) (readReg (regs s) src)
+                     ; pc = pc s +ℕ 1 })
+
+-- Helper: state after executing sub reg imm
+postulate
+  execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
+    execInstr prog s (sub (reg dst) (imm v)) ≡
+      just (record s { regs = writeReg (regs s) dst (readReg (regs s) dst ∸ v)
+                     ; pc = pc s +ℕ 1
+                     ; flags = updateFlags (readReg (regs s) dst ∸ v) (readReg (regs s) dst) })
+
 ------------------------------------------------------------------------
 -- Register File Lemmas
 ------------------------------------------------------------------------
@@ -193,18 +215,65 @@ readReg-writeReg-same rf r15 v = refl
 fetch-0 : ∀ (i : Instr) (is : List Instr) → fetch (i ∷ is) 0 ≡ just i
 fetch-0 i is = refl
 
+-- | Fetching at index 1 returns the second instruction
+fetch-1 : ∀ (i0 i1 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ is) 1 ≡ just i1
+fetch-1 i0 i1 is = refl
+
+-- | Fetching at index 2 returns the third instruction
+fetch-2 : ∀ (i0 i1 i2 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ is) 2 ≡ just i2
+fetch-2 i0 i1 i2 is = refl
+
+-- | Fetching at index 3 returns the fourth instruction
+fetch-3 : ∀ (i0 i1 i2 i3 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) 3 ≡ just i3
+fetch-3 i0 i1 i2 i3 is = refl
+
 -- | Fetching past the end of a single-instruction program returns nothing
 fetch-1-single : ∀ (i : Instr) → fetch (i ∷ []) 1 ≡ nothing
 fetch-1-single i = refl
 
--- | Step on non-halted state with pc=0 executes the first instruction
--- This is tricky because step uses with-abstraction. We use postulate for now
--- and prove it operationally correct.
+-- | Fetching past the end of a 4-instruction program returns nothing
+fetch-4-of-4 : ∀ (i0 i1 i2 i3 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) 4 ≡ nothing
+fetch-4-of-4 i0 i1 i2 i3 = refl
+
+-- | Step on non-halted state executes the instruction at pc
+-- This is tricky because step uses with-abstraction. We use postulate for now.
 postulate
-  step-exec-0 : ∀ (i : Instr) (is : List Instr) (s : State) →
+  step-exec : ∀ (prog : List Instr) (s : State) (i : Instr) →
     halted s ≡ false →
-    pc s ≡ 0 →
-    step (i ∷ is) s ≡ execInstr (i ∷ is) s i
+    fetch prog (pc s) ≡ just i →
+    step prog s ≡ execInstr prog s i
+
+-- | Step on non-halted state with pc=0 executes the first instruction
+step-exec-0 : ∀ (i : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  step (i ∷ is) s ≡ execInstr (i ∷ is) s i
+step-exec-0 i is s h-false pc-0 =
+  step-exec (i ∷ is) s i h-false (subst (λ p → fetch (i ∷ is) p ≡ just i) (sym pc-0) refl)
+
+-- | Step on non-halted state with pc=1 executes the second instruction
+step-exec-1 : ∀ (i0 i1 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 1 →
+  step (i0 ∷ i1 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ is) s i1
+step-exec-1 i0 i1 is s h-false pc-1 =
+  step-exec (i0 ∷ i1 ∷ is) s i1 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ is) p ≡ just i1) (sym pc-1) refl)
+
+-- | Step on non-halted state with pc=2 executes the third instruction
+step-exec-2 : ∀ (i0 i1 i2 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 2 →
+  step (i0 ∷ i1 ∷ i2 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ is) s i2
+step-exec-2 i0 i1 i2 is s h-false pc-2 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ is) s i2 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ is) p ≡ just i2) (sym pc-2) refl)
+
+-- | Step on non-halted state with pc=3 executes the fourth instruction
+step-exec-3 : ∀ (i0 i1 i2 i3 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 3 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s i3
+step-exec-3 i0 i1 i2 i3 is s h-false pc-3 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s i3 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) p ≡ just i3) (sym pc-3) refl)
 
 -- | Step on non-halted state where fetch fails sets halted=true
 postulate
@@ -253,6 +322,39 @@ exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 : State) →
 exec-two-steps n prog s s1 s2 step1 h1 step2 h2 =
   trans (exec-on-non-halted-step (suc n) prog s s1 step1 h1)
         (exec-on-halted-step n prog s1 s2 step2 h2)
+
+-- | Three-step execution
+exec-three-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ true →
+  exec (suc (suc (suc n))) prog s ≡ just s3
+exec-three-steps n prog s s1 s2 s3 step1 h1 step2 h2 step3 h3 =
+  trans (exec-on-non-halted-step (suc (suc n)) prog s s1 step1 h1)
+        (exec-two-steps n prog s1 s2 s3 step2 h2 step3 h3)
+
+-- | Four-step execution
+exec-four-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ true →
+  exec (suc (suc (suc (suc n)))) prog s ≡ just s4
+exec-four-steps n prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4 =
+  trans (exec-on-non-halted-step (suc (suc (suc n))) prog s s1 step1 h1)
+        (exec-three-steps n prog s1 s2 s3 s4 step2 h2 step3 h3 step4 h4)
+
+-- | Five-step execution (4 instructions + halt)
+exec-five-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ true →
+  exec (suc (suc (suc (suc (suc n))))) prog s ≡ just s5
+exec-five-steps n prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 =
+  trans (exec-on-non-halted-step (suc (suc (suc (suc n)))) prog s s1 step1 h1)
+        (exec-four-steps n prog s1 s2 s3 s4 s5 step2 h2 step3 h3 step4 h4 step5 h5)
 
 -- Helper: running a single-instruction program (mov reg, reg)
 --
