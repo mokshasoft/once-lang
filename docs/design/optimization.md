@@ -255,62 +255,133 @@ mapTree f . mapTree g = mapTree (f . g)
 
 ## 5. Current Optimizer Laws
 
-The Once optimizer (`compiler/src/Once/Optimize.hs`) implements these categorical laws:
+The Once optimizer is formally verified in Agda (`formal/Once/Optimize.agda` and `formal/Once/Optimize/Correct.agda`). All optimizations below have machine-checked correctness proofs.
 
-### Identity Laws
+### 5.1 Identity Laws
 
 ```
-f . id = f    -- right identity
 id . f = f    -- left identity
+f . id = f    -- right identity
 ```
 
-### Product Laws (Beta)
+### 5.2 Product Laws (Beta)
 
 ```
-fst . pair f g = f
-snd . pair f g = g
+fst . ⟨f, g⟩ = f
+snd . ⟨f, g⟩ = g
 ```
 
-### Product Laws (Eta)
+These eliminate dead code: if you build a pair then immediately project, the unused component is never computed.
+
+### 5.3 Product Laws (Eta)
 
 ```
-pair fst snd = id    -- on products
+⟨fst, snd⟩ = id    -- on products
 ```
 
-### Coproduct Laws (Beta)
+Building a pair from projections is the same as doing nothing.
+
+### 5.4 Coproduct Laws (Beta)
 
 ```
-case f g . inl = f
-case f g . inr = g
+[f, g] . inl = f
+[f, g] . inr = g
 ```
 
-### Coproduct Laws (Eta)
+Case analysis followed by injection reduces to the appropriate branch.
+
+### 5.5 Coproduct Laws (Eta)
 
 ```
-case inl inr = id    -- on coproducts
+[inl, inr] = id    -- on coproducts
 ```
 
-### Fixed Point Laws
+A case that just re-injects is the same as doing nothing.
+
+### 5.6 Fixed Point Laws
 
 ```
 fold . unfold = id : Fix F -> Fix F
 unfold . fold = id : F (Fix F) -> F (Fix F)
 ```
 
-### Associativity Normalization
+Folding then immediately unfolding (or vice versa) is identity.
+
+### 5.7 Terminal Fusion (Dead Code Elimination)
+
+```
+terminal . f = terminal    -- for any f
+```
+
+If you're going to discard the result anyway, don't compute it. This is dead code elimination expressed categorically.
+
+### 5.8 Initial Absorption (Vacuous Code Elimination)
+
+```
+f . initial = initial    -- for any f
+```
+
+Any computation starting from `Void` (the impossible case) produces `Void`. Since `Void` has no inhabitants, this is vacuously true and the computation can be skipped.
+
+### 5.9 Pairing Fusion (Distributivity)
+
+```
+⟨f, g⟩ . h = ⟨f . h, g . h⟩
+```
+
+Composition distributes into pair construction. This exposes beta reductions:
+
+```
+fst . ⟨f, g⟩ . h
+  → fst . ⟨f . h, g . h⟩    (pairing fusion)
+  → f . h                    (product beta)
+```
+
+The dead computation `g . h` is eliminated.
+
+### 5.10 Case Fusion (Distributivity)
+
+```
+h . [f, g] = [h . f, h . g]
+```
+
+Composition distributes over case analysis. This enables post-processing to be pushed into branches.
+
+### 5.11 Bimap Fusion (Derived)
+
+Through multiple passes, pairing fusion + beta laws achieve bimap fusion:
+
+```
+⟨f . fst, g . snd⟩ . ⟨h, k⟩
+  → ⟨f . fst . ⟨h, k⟩, g . snd . ⟨h, k⟩⟩    (pairing fusion)
+  → ⟨f . h, g . k⟩                            (beta laws)
+```
+
+This fuses two product transformations into one.
+
+### 5.12 Associativity Normalization
 
 ```
 (h . g) . f  -->  h . (g . f)    -- right-associative normal form
 ```
 
-This normalization exposes more optimization opportunities.
+Right-associativity exposes more optimization opportunities by bringing inner compositions to where outer rules can match.
 
-### What's Not Yet Implemented
+### 5.13 What's Not Implemented (And Why)
 
-- Map fusion (requires recognizing `fmap` patterns)
-- Catamorphism fusion
-- Hylomorphism deforestation
-- Naturality-based rewrites
+**Curry-Apply Beta** (`apply . ⟨curry f . fst, snd⟩ = f`)
+
+This is the beta law for exponentials (function types). It was attempted but removed due to complex nested pattern matching that Agda's coverage checker couldn't easily verify. The pattern `⟨curry f . fst, snd⟩` requires deep structural matching that conflicts with the simpler fusion rules.
+
+*Impact*: Low for typical code. Most currying patterns don't produce this exact structure.
+
+**Map Fusion** (`fmap f . fmap g = fmap (f . g)`)
+
+Requires recognizing `fmap` patterns in the IR, which are currently compositions of projections and pairs. Will be added when recursion schemes are exposed in the surface language.
+
+**Catamorphism/Hylomorphism Fusion**
+
+Requires the surface language to produce `fold`/`unfold` patterns that the optimizer can recognize. Currently `fold`/`unfold` are in the IR but not produced by elaboration.
 
 ---
 
@@ -640,6 +711,26 @@ The optimizer is semantics-preserving by construction.
 
 The optimization laws suggest specific **programming idioms** that work well with the optimizer. Writing in these styles enables automatic optimization; deviating from them produces opaque code the optimizer can't improve.
 
+### 11.0 Realistic Impact Assessment
+
+Before diving into guidelines, understand when optimizations actually help:
+
+| Code Style | Impact of Current Optimizer |
+|------------|----------------------------|
+| **Point-free categorical** | High - patterns match directly |
+| **Recursion schemes (cata/ana)** | High - fusion laws apply |
+| **Applicative/Arrow style** | Medium - pairing fusion helps |
+| **Let-bound imperative style** | Low - patterns rarely emerge |
+| **Manual recursion** | None - opaque to optimizer |
+
+**The honest truth**: Most of the current optimizations prepare the foundation for recursion scheme fusion. Until the surface language generates `fold`/`unfold` patterns, the primary benefits are:
+
+1. **Dead code elimination** via beta laws and terminal fusion
+2. **Simplification** of compositional code
+3. **Enabling future fusion** when recursion schemes are added
+
+The optimizer shines when you write in *categorical style* (compositions of standard combinators). If you write *imperative style* (let-bindings and manual recursion), the optimizer has little to work with.
+
 ### 11.1 Write in Fusible Style
 
 **Do**: Use compositions of standard combinators (`map`, `filter`, `fold`, `unfold`)
@@ -863,63 +954,89 @@ If expected fusion didn't happen:
 
 ---
 
-## 12. Future Implementation Roadmap
+## 12. Implementation Status and Roadmap
 
-### Priority 1: Map Fusion
+### 12.1 What's Done (Verified in Agda)
 
-**What**: Implement `fmap f . fmap g = fmap (f . g)` for product/coproduct bifunctors.
+The following optimizations are **implemented and proven correct** in `formal/Once/Optimize.agda`:
 
-**Where**: Add to `Optimize.hs`:
+| Optimization | Law | Status |
+|-------------|-----|--------|
+| Identity (left/right) | `id . f = f`, `f . id = f` | ✓ Verified |
+| Product beta | `fst . ⟨f,g⟩ = f`, `snd . ⟨f,g⟩ = g` | ✓ Verified |
+| Product eta | `⟨fst, snd⟩ = id` | ✓ Verified |
+| Coproduct beta | `[f,g] . inl = f`, `[f,g] . inr = g` | ✓ Verified |
+| Coproduct eta | `[inl, inr] = id` | ✓ Verified |
+| Fixed point | `fold . unfold = id`, `unfold . fold = id` | ✓ Verified |
+| Terminal fusion | `terminal . f = terminal` | ✓ Verified |
+| Initial absorption | `f . initial = initial` | ✓ Verified |
+| Pairing fusion | `⟨f,g⟩ . h = ⟨f.h, g.h⟩` | ✓ Verified |
+| Case fusion | `h . [f,g] = [h.f, h.g]` | ✓ Verified |
+| Associativity | `(h . g) . f → h . (g . f)` | ✓ Verified |
 
-```haskell
--- Recognize bimap pattern
-simplifyCompose (Pair (Compose f Fst) (Compose h Snd))
-                (Pair (Compose g Fst) (Compose i Snd))
-  = Pair (Compose (f . g) Fst) (Compose (h . i) Snd)
+**Postulates**: The only postulate used is **function extensionality** (funext), which is:
+- Consistent with MLTT (proven via setoid models)
+- Provable in Cubical Agda
+- Standard practice in formalization
+
+### 12.2 What Was Attempted But Removed
+
+**Curry-Apply Beta** (`apply . ⟨curry f . fst, snd⟩ = f`)
+
+This exponential beta law was implemented but removed because:
+1. The nested pattern `⟨curry f . fst, snd⟩` conflicts with pairing fusion
+2. Agda's coverage checker requires enumerating many sub-patterns
+3. Impact is low - this pattern rarely appears in generated code
+
+It can be added later with a dedicated pass before fusion rules.
+
+### 12.3 What's Next
+
+**Priority 1: Sync Haskell Optimizer**
+
+The Haskell compiler (`compiler/src/Once/Optimize.hs`) should implement the same laws as the Agda specification. Currently they may be out of sync.
+
+**Priority 2: Map Fusion (Bimap)**
+
+Recognize bimap pattern: `⟨f . fst, g . snd⟩ . ⟨h . fst, k . snd⟩ → ⟨(f.h) . fst, (g.k) . snd⟩`
+
+This is partially achieved through pairing fusion + beta, but a dedicated rule would be more direct.
+
+**Priority 3: Surface Language Recursion Schemes**
+
+The biggest gain requires the surface language to produce `fold`/`unfold` patterns:
+- Expose `cata`, `ana`, `hylo` as surface syntax
+- Elaborate list/tree operations to these patterns
+- Then catamorphism fusion becomes possible
+
+**Priority 4: Catamorphism Fusion**
+
+```
+h . cata alg = cata alg'   when h . alg = alg' . fmap h
 ```
 
-**Agda proof**: Add to `Laws.agda`:
+Challenge: Checking the fusion condition requires type-level reasoning.
 
-```agda
-eval-bimap-fusion : eval (bimap f g . bimap f' g') x
-                  ≡ eval (bimap (f . f') (g . g')) x
+**Priority 5: Hylomorphism Deforestation**
+
+```
+cata alg . ana coalg = hylo alg coalg
 ```
 
-### Priority 2: Catamorphism Fusion
+Current `fold . unfold = id` is a special case. Full deforestation requires:
+1. Recognizing producer-consumer patterns
+2. Eliminating intermediate `Fix F` structures
 
-**What**: Implement `h . cata alg = cata alg'` when fusion condition holds.
+### 12.4 Proof Requirements
 
-**Where**: Add pattern matching in `Optimize.hs` for `Compose h (Fold alg)`.
+Each new optimization needs:
 
-**Challenge**: Need to check the fusion condition `h . alg = alg' . fmap h`.
+1. **Agda implementation** in `formal/Once/Optimize.agda`
+2. **Correctness proof** in `formal/Once/Optimize/Correct.agda`
+3. **Haskell implementation** in `compiler/src/Once/Optimize.hs`
+4. **QuickCheck property** in `compiler/test/Once/OptimizeSpec.hs`
 
-### Priority 3: Hylomorphism Fusion
-
-**What**: Implement `cata alg . ana coalg = hylo alg coalg`.
-
-**Where**: Pattern match `Compose (Fold alg) (Unfold coalg)`.
-
-**Note**: Current `fold . unfold = id` is a special case.
-
-### Priority 4: Build/Foldr Style
-
-**What**: Add abstract producer representation for short-cut fusion.
-
-**Where**: New IR node or pattern for `build`.
-
-### Priority 5: QTT-Aware Rules
-
-**What**: Linearity-sensitive optimizations.
-
-**Where**: Extend optimizer to track quantities, apply rules conditionally.
-
-### Proof Requirements
-
-Each new optimization rule needs:
-
-1. **Haskell implementation** in `Optimize.hs`
-2. **QuickCheck property** in `OptimizeSpec.hs`
-3. **Agda proof** in `formal/Once/Category/Laws.agda`
+The Agda proofs are the source of truth. The Haskell implementation should match.
 
 ---
 
