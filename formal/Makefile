@@ -20,6 +20,7 @@ ELABORATE := Once/Surface/Elaborate.agda
 CORRECT := Once/Surface/Correct.agda
 SURFACE_IR := Once/Surface/IR.agda
 SURFACE_DESUGAR := Once/Surface/Desugar.agda
+SURFACE_DESUGAR_CORRECT := Once/Surface/Desugar/Correct.agda
 OPTIMIZE := Once/Optimize.agda
 OPTIMIZE_CORRECT := Once/Optimize/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
@@ -60,6 +61,7 @@ surfaceir:
 	@echo "Type-checking surface IR and desugar..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_IR)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR_CORRECT)'
 
 optimize:
 	@echo "Type-checking optimizer..."
