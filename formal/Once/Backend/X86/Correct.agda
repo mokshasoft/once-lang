@@ -1889,13 +1889,7 @@ postulate
            × readReg (regs s') rax ≡ encode (eval snd x))
 
   -- inl and inr (4 instructions each) - proved below
-  -- (moved out of postulate block)
-
-  run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec 4 (prefix ++ compile-x86 {B} {A + B} inr ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
-           × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x))
+  -- (moved out of postulate block - see run-ir-at-offset-inl and run-ir-at-offset-inr proofs)
 
   -- pair (complex - needs f and g execution)
   run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
@@ -2165,6 +2159,218 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
     -- Final result: rax s4 = encode (eval inl x) = encode (inj₁ x)
     rax-eq : readReg (regs s4) rax ≡ encode (eval {A} {A + B} inl x)
     rax-eq = trans rax-s4 rax-is-encode-inl
+
+-- | run-ir-at-offset-inr: Execute inr at arbitrary offset
+-- inr generates 4 instructions:
+--   sub rsp, 16
+--   mov [rsp], 1          (tag = 1)
+--   mov [rsp+8], rdi      (value)
+--   mov rax, rsp          (return pointer)
+run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (exec 4 (prefix ++ compile-x86 {B} {A + B} inr ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
+         × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x))
+run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
+  s4 , exec-eq , h4 , pc4 , rax-eq
+  where
+    -- Program structure
+    i0 = sub (reg rsp) (imm 16)
+    i1 = mov (mem (base rsp)) (imm 1)
+    i2 = mov (mem (base+disp rsp 8)) (reg rdi)
+    i3 = mov (reg rax) (reg rsp)
+    prog = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ suffix
+
+    -- Original register values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    -- State after step 2: mov [rsp], 1
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 1
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    -- Fetch lemmas for each instruction position
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ i3 ∷ suffix)
+
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ suffix))
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = length-++ prefix (i0 ∷ [])
+
+    fetch1-helper : fetch ((prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix) (length (prefix ++ i0 ∷ [])) ≡ just i1
+    fetch1-helper = fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ i3 ∷ suffix)
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1 fetch1-helper
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ suffix))
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+    len-prefix-2 = length-++ prefix (i0 ∷ i1 ∷ [])
+
+    fetch2-helper : fetch ((prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix) (length (prefix ++ i0 ∷ i1 ∷ [])) ≡ just i2
+    fetch2-helper = fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 (i3 ∷ suffix)
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2 fetch2-helper
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ suffix))
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix-3 = length-++ prefix (i0 ∷ i1 ∷ i2 ∷ [])
+
+    fetch3-helper : fetch ((prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix) (length (prefix ++ i0 ∷ i1 ∷ i2 ∷ [])) ≡ just i3
+    fetch3-helper = fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 suffix
+
+    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3 fetch3-helper
+
+    -- Step proofs
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execMov-mem-base-imm prog s1 rsp 1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ p → p +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ p → p +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    -- Combine 4 steps
+    exec-eq : exec 4 prog s ≡ just s4
+    exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
+    -- Register tracking: rsp preserved through s1..s4
+    rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
+    rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = rsp-s1  -- memory write doesn't change regs
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2  -- memory write doesn't change regs
+
+    rsp-s4 : readReg (regs s4) rsp ≡ new-rsp
+    rsp-s4 = trans (readReg-writeReg-rax-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
+
+    -- rax in s4 = rsp in s3 = new-rsp
+    rax-s4 : readReg (regs s4) rax ≡ new-rsp
+    rax-s4 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    -- rdi preserved through s1, s2
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1  -- memory write doesn't change regs
+
+    -- Address disjointness: new-rsp ≠ new-rsp + 8
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- Memory at new-rsp = 1 (set in s2)
+    mem-tag-s2 : readMem (memory s2) new-rsp ≡ just 1
+    mem-tag-s2 = subst (λ addr → readMem (writeMem (memory s1) addr 1) new-rsp ≡ just 1)
+                       (sym rsp-s1)
+                       (readMem-writeMem-same (memory s1) new-rsp 1)
+
+    -- Memory at new-rsp preserved from s2 to s3
+    mem-tag-s3 : readMem (memory s3) new-rsp ≡ just 1
+    mem-tag-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) new-rsp ≡
+                                        readMem (memory s2) new-rsp)
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi)
+                                                     (λ eq → addr-disjoint (sym eq))))
+                       mem-tag-s2
+
+    -- Memory at new-rsp preserved from s3 to s4
+    mem-tag-s4 : readMem (memory s4) new-rsp ≡ just 1
+    mem-tag-s4 = mem-tag-s3
+
+    -- Memory at new-rsp + 8 = orig-rdi (set in s3)
+    mem-val-s3 : readMem (memory s3) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) (new-rsp +ℕ 8) ≡
+                                        just (readReg (regs s2) rdi))
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi)))
+                       (cong just rdi-s2)
+
+    -- Memory at new-rsp + 8 preserved from s3 to s4
+    mem-val-s4 : readMem (memory s4) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s4 = mem-val-s3
+
+    -- orig-rdi = encode x
+    orig-rdi-is-encode-x : orig-rdi ≡ encode x
+    orig-rdi-is-encode-x = rdi-eq
+
+    -- Adjust memory proofs to use encode x
+    mem-val-encoded : readMem (memory s4) (new-rsp +ℕ 8) ≡ just (encode x)
+    mem-val-encoded = trans mem-val-s4 (cong just orig-rdi-is-encode-x)
+
+    -- Apply encode-inr-construct
+    rax-is-encode-inr : new-rsp ≡ encode {A + B} (inj₂ x)
+    rax-is-encode-inr = encode-inr-construct x new-rsp (memory s4) mem-tag-s4 mem-val-encoded
+
+    -- Final result: rax s4 = encode (eval inr x) = encode (inj₂ x)
+    rax-eq : readReg (regs s4) rax ≡ encode (eval {B} {A + B} inr x)
+    rax-eq = trans rax-s4 rax-is-encode-inr
 
 -- | Non-halting execution of IR at arbitrary offset
 -- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
