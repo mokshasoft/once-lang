@@ -1971,6 +1971,210 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     rax-eq : readReg (regs s8) rax ≡ encode a
     rax-eq = rax-s5
 
+-- Base case for case analysis with inr input (f = g = id)
+-- Tests the proof technique for the right branch (tag = 1, jne taken)
+--
+-- For [ id , id ]:
+--   len-f = compile-length id = 1
+--   len-g = compile-length id = 1
+--   right-branch = 5 + len-f = 6
+--   end-label = (7 + len-f) + len-g = 9
+--
+-- Generated code for [ id , id ]:
+--   0: mov r15, [rdi]       -- r15 := tag (1 for inr)
+--   1: cmp r15, 0           -- sets zf := false (1 ≠ 0)
+--   2: jne 6                -- TAKEN (zf=false), pc := 6
+--   6: label 6              -- right-branch label
+--   7: mov rdi, [rdi+8]     -- rdi := value
+--   8: mov rax, rdi         -- compile-x86 id
+--   9: label 9              -- end-label
+--   (halt at pc=10)
+--
+-- Execution: 8 steps (3 before jne + jne + label + 2 instr + label + halt)
+run-case-inr-id : ∀ {A} (b : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode {A + A} (inj₂ b) →
+  readMem (memory s) (encode {A + A} (inj₂ b)) ≡ just 1 →
+  readMem (memory s) (encode {A + A} (inj₂ b) +ℕ 8) ≡ just (encode b) →
+  ∃[ s' ] (run (compile-x86 {A + A} {A} [ id , id ]) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode b)
+run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A + A} {A} [ id , id ]
+    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    --   jmp 9 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
+
+    -- Original values
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    -- Memory lookups using rdi
+    mem-at-rdi : readMem (memory s) (readReg (regs s) rdi) ≡ just 1
+    mem-at-rdi = subst (λ addr → readMem (memory s) addr ≡ just 1) (sym rdi-enc) tag-1
+
+    mem-at-rdi-8 : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode b)
+    mem-at-rdi-8 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode b)) (sym rdi-enc) val-b
+
+    -- State after step 0: mov r15, [rdi]
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) r15 1 ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 _ _ s h-false pc-0)
+                  (execMov-reg-mem-base s r15 rdi 1 mem-at-rdi)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 1: cmp r15, 0 (r15 = 1, so zf := false, cf := false since 1 >= 0)
+    s2 : State
+    s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags false false false }
+
+    r15-s1 : readReg (regs s1) r15 ≡ 1
+    r15-s1 = readReg-writeReg-same (regs s) r15 1
+
+    -- Helper: cmp when values are not equal sets zf = false
+    execCmp-neq : ∀ (prog : List Instr) (s : State) (r : Reg) →
+      readReg (regs s) r ≡ 1 →
+      execInstr prog s (cmp (reg r) (imm 0)) ≡
+        just (record s { pc = pc s +ℕ 1 ; flags = mkflags false false false })
+    execCmp-neq prog s r eq rewrite eq = refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (cmp (reg r15) (imm 0)) h1
+                             (subst (λ p → fetch prog p ≡ just (cmp (reg r15) (imm 0))) (sym pc1) refl))
+                  (execCmp-neq prog s1 r15 r15-s1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 2: jne 6 (TAKEN, zf = false)
+    s3 : State
+    s3 = record s2 { pc = 6 }
+
+    zf-s2 : zf (flags s2) ≡ false
+    zf-s2 = refl
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (jne 6) h2
+                             (subst (λ p → fetch prog p ≡ just (jne 6)) (sym pc2) refl))
+                  (execJne-taken prog s2 6 zf-s2)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 6
+    pc3 = refl
+
+    -- State after step 3: label 6 (no-op)
+    s4 : State
+    s4 = record s3 { pc = 7 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (label 6) h3
+                             (subst (λ p → fetch prog p ≡ just (label 6)) (sym pc3) refl))
+                  (execLabel prog s3 6)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 7
+    pc4 = refl
+
+    -- State after step 4: mov rdi, [rdi+8]
+    -- rdi in s3 = orig-rdi (unchanged through r15 write, cmp, jne, label)
+    rdi-s3 : readReg (regs s3) rdi ≡ orig-rdi
+    rdi-s3 = trans (readReg-writeReg-r15-rdi (regs s) 1) refl
+      where
+        readReg-writeReg-r15-rdi : ∀ (rf : RegFile) (v : Word) →
+          readReg (writeReg rf r15 v) rdi ≡ readReg rf rdi
+        readReg-writeReg-r15-rdi rf v = refl
+
+    -- Memory at [rdi+8] = encode b (memory unchanged)
+    mem-s3-rdi-8 : readMem (memory s3) (readReg (regs s3) rdi +ℕ 8) ≡ just (encode b)
+    mem-s3-rdi-8 = subst (λ r → readMem (memory s3) (r +ℕ 8) ≡ just (encode b)) (sym rdi-s3) mem-at-rdi-8
+
+    s5 : State
+    s5 = record s4 { regs = writeReg (regs s4) rdi (encode b) ; pc = pc s4 +ℕ 1 }
+
+    step5 : step prog s4 ≡ just s5
+    step5 = trans (step-exec prog s4 (mov (reg rdi) (mem (base+disp rdi 8))) h4
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (mem (base+disp rdi 8)))) (sym pc4) refl))
+                  (execMov-reg-mem-disp s4 rdi rdi 8 (encode b) mem-s3-rdi-8)
+
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ 8
+    pc5 = refl
+
+    -- State after step 5: mov rax, rdi
+    -- rdi in s5 = encode b
+    rdi-s5 : readReg (regs s5) rdi ≡ encode b
+    rdi-s5 = readReg-writeReg-same (regs s4) rdi (encode b)
+
+    s6 : State
+    s6 = record s5 { regs = writeReg (regs s5) rax (readReg (regs s5) rdi) ; pc = pc s5 +ℕ 1 }
+
+    step6 : step prog s5 ≡ just s6
+    step6 = trans (step-exec prog s5 (mov (reg rax) (reg rdi)) h5
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi))) (sym pc5) refl))
+                  (execMov-reg-reg s5 rax rdi)
+
+    h6 : halted s6 ≡ false
+    h6 = h-false
+
+    pc6 : pc s6 ≡ 9
+    pc6 = refl
+
+    -- State after step 6: label 9 (no-op)
+    s7 : State
+    s7 = record s6 { pc = 10 }
+
+    step7 : step prog s6 ≡ just s7
+    step7 = trans (step-exec prog s6 (label 9) h6
+                             (subst (λ p → fetch prog p ≡ just (label 9)) (sym pc6) refl))
+                  (execLabel prog s6 9)
+
+    h7 : halted s7 ≡ false
+    h7 = h-false
+
+    -- State after step 7: fetch at pc=10 fails, halt
+    s8 : State
+    s8 = record s7 { halted = true }
+
+    -- fetch at pc=10 fails (program has only 10 instructions, indices 0-9)
+    fetch-10-fail : fetch prog 10 ≡ nothing
+    fetch-10-fail = refl
+
+    step8 : step prog s7 ≡ just s8
+    step8 = step-halt-on-fetch-fail prog s7 h7 fetch-10-fail
+
+    halt-eq : halted s8 ≡ true
+    halt-eq = refl
+
+    -- Combine all steps using exec
+    run-eq : run prog s ≡ just s8
+    run-eq = exec-eight-steps 9992 prog s s1 s2 s3 s4 s5 s6 s7 s8
+               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 halt-eq
+
+    -- rax in s6 = rdi in s5 = encode b
+    rax-s6 : readReg (regs s6) rax ≡ encode b
+    rax-s6 = trans (readReg-writeReg-same (regs s5) rax (readReg (regs s5) rdi)) rdi-s5
+
+    -- rax unchanged from s6 to s8 (only pc and halted changed)
+    rax-eq : readReg (regs s8) rax ≡ encode b
+    rax-eq = rax-s6
+
 -- Helper: apply sequence
 -- Takes pair (closure, arg), calls closure's code with arg in rdi and env in r12
 -- Returns result in rax
