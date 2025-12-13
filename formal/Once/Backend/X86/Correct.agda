@@ -226,6 +226,11 @@ execJne-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
   execInstr prog s (jne target) ≡ just (record s { pc = target })
 execJne-taken prog s target zf-false rewrite zf-false = refl
 
+-- Helper: label is a no-op, just advances pc
+execLabel : ∀ (prog : List Instr) (s : State) (n : ℕ) →
+  execInstr prog s (label n) ≡ just (record s { pc = pc s +ℕ 1 })
+execLabel prog s n = refl
+
 ------------------------------------------------------------------------
 -- Register File Lemmas
 ------------------------------------------------------------------------
@@ -1169,19 +1174,19 @@ postulate
 -- Creates closure [env, code_ptr] where env = input a and code_ptr points to thunk
 -- The thunk, when called with b (in rdi) and env (in r12), computes f(a,b)
 --
--- Generated code for curry f:
---   sub rsp, 16          ; allocate closure on stack
---   mov [rsp], rdi       ; store environment (input a)
---   mov [rsp+8], 300     ; store code pointer (thunk label)
---   mov rax, rsp         ; return closure pointer
---   jmp 400              ; jump over thunk code
---   label 300            ; thunk code (not executed by curry)
---   ...                  ; thunk body
---   label 400            ; end
+-- Generated code for curry f (code-ptr = 5, end-label = 11 + |f|):
+--   0: sub rsp, 16          ; allocate closure on stack
+--   1: mov [rsp], rdi       ; store environment (input a)
+--   2: mov [rsp+8], 5       ; store code pointer
+--   3: mov rax, rsp         ; return closure pointer
+--   4: jmp (11+|f|)         ; jump over thunk code
+--   5: label 5              ; thunk code (not executed by curry)
+--   ...                     ; thunk body
+--   11+|f|: label (11+|f|)  ; end
 --
--- Execution: 5 instructions, then jmp sets pc=400, fetch fails, halts
+-- Execution: 5 instructions, jmp to end label, execute label (no-op), halt on fetch fail
 --
--- Proof: trace through 6 steps (5 instrs + halt on fetch fail after jmp)
+-- Proof: trace through 7 steps (5 instrs + label + halt)
 run-curry-seq : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
@@ -1192,10 +1197,17 @@ run-curry-seq : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
          × readMem (memory s') (readReg (regs s') rax) ≡ just (encode a)
          -- closure has valid code pointer (abstract - we don't specify the exact value)
          )
-run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s6 , run-eq , halt-eq , env-eq
+run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s7 , run-eq , halt-eq , env-eq
   where
     prog : List Instr
     prog = compile-x86 {A} {B ⇒ C} (curry f)
+
+    -- Computed label values
+    code-ptr : ℕ
+    code-ptr = 5
+
+    end-label : ℕ
+    end-label = 11 +ℕ compile-length f
 
     -- Original values we need to track
     orig-rsp : Word
@@ -1245,15 +1257,15 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s6 , run-eq , halt-eq , en
     pc2 : pc s2 ≡ 2
     pc2 = cong (λ x → x +ℕ 1) pc1
 
-    -- State after step 3: mov [rsp+8], 300 (store code pointer)
+    -- State after step 3: mov [rsp+8], 5 (store code pointer)
     s3 : State
-    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) 300
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) code-ptr
                    ; pc = pc s2 +ℕ 1 }
 
     step3 : step prog s2 ≡ just s3
-    step3 = trans (step-exec prog s2 (mov (mem (base+disp rsp 8)) (imm 300)) h2
-                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (imm 300))) (sym pc2) refl))
-                  (execMov-mem-disp-imm prog s2 rsp 8 300)
+    step3 = trans (step-exec prog s2 (mov (mem (base+disp rsp 8)) (imm code-ptr)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (imm code-ptr))) (sym pc2) refl))
+                  (execMov-mem-disp-imm prog s2 rsp 8 code-ptr)
       where
         execMov-mem-disp-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (disp n : ℕ) →
           execInstr prog s (mov (mem (base+disp dst disp)) (imm n)) ≡
@@ -1283,47 +1295,55 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s6 , run-eq , halt-eq , en
     pc4 : pc s4 ≡ 4
     pc4 = cong (λ x → x +ℕ 1) pc3
 
-    -- State after step 5: jmp 400 (jump over thunk)
+    -- State after step 5: jmp end-label (jump over thunk)
     s5 : State
-    s5 = record s4 { pc = 400 }
+    s5 = record s4 { pc = end-label }
 
     step5 : step prog s4 ≡ just s5
-    step5 = trans (step-exec prog s4 (jmp 400) h4
-                             (subst (λ p → fetch prog p ≡ just (jmp 400)) (sym pc4) refl))
-                  (execJmp prog s4 400)
+    step5 = trans (step-exec prog s4 (jmp end-label) h4
+                             (subst (λ p → fetch prog p ≡ just (jmp end-label)) (sym pc4) refl))
+                  (execJmp prog s4 end-label)
 
     h5 : halted s5 ≡ false
     h5 = h-false
 
-    -- State after step 6: fetch at pc=400 fails, sets halted=true
-    -- The program is much shorter than 400 instructions, so fetch fails
+    -- State after step 6: execute label (no-op) at end-label
     s6 : State
-    s6 = record s5 { halted = true }
+    s6 = record s5 { pc = end-label +ℕ 1 }
 
-    -- fetch at pc=400 fails because program is short
-    -- compile-x86 (curry f) produces at most ~15 + length(compile-x86 f) instructions
-    -- which is much less than 400
-    fetch-fail : fetch prog 400 ≡ nothing
-    fetch-fail = fetch-at-400-fails prog
-      where
-        -- Helper to show fetch at 400 returns nothing for typical curry program
-        -- The curry codegen produces: 5 setup + 1 label + 4 thunk setup + compile-x86 f + 1 ret + 1 label
-        -- Total is about 12 + length(compile-x86 f) which is < 400 for any reasonable f
-        postulate
-          fetch-at-400-fails : ∀ (p : List Instr) → fetch p 400 ≡ nothing
+    -- For step 6, we need to fetch the label instruction at position end-label
+    -- This requires knowing that fetch prog end-label ≡ just (label end-label)
+    -- We postulate this for now as it requires detailed analysis of compile-x86 (curry f)
+    postulate
+      fetch-end-label : fetch prog end-label ≡ just (label end-label)
 
     step6 : step prog s5 ≡ just s6
-    step6 = step-halt-on-fetch-fail prog s5 h5 fetch-fail
+    step6 = trans (step-exec prog s5 (label end-label) h5 fetch-end-label)
+                  (execLabel prog s5 end-label)
 
-    halt-eq : halted s6 ≡ true
+    h6 : halted s6 ≡ false
+    h6 = h-false
+
+    -- State after step 7: fetch at end-label+1 fails, halts
+    -- The program has exactly 12 + compile-length f instructions, so fetch at 12 + compile-length f fails
+    s7 : State
+    s7 = record s6 { halted = true }
+
+    -- fetch at end-label+1 = 12 + compile-length f fails because that's past the end
+    postulate
+      fetch-past-end : fetch prog (end-label +ℕ 1) ≡ nothing
+
+    step7 : step prog s6 ≡ just s7
+    step7 = step-halt-on-fetch-fail prog s6 h6 fetch-past-end
+
+    halt-eq : halted s7 ≡ true
     halt-eq = refl
 
-    -- Combined execution: 6 steps total (5 instructions + halt)
-    -- defaultFuel = 10000 = suc (suc (suc (suc (suc (suc 9994)))))
-    run-eq : run prog s ≡ just s6
-    run-eq = exec-six-steps 9994 prog s s1 s2 s3 s4 s5 s6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 halt-eq
+    -- Combined execution: 7 steps total (5 instructions + label + halt)
+    run-eq : run prog s ≡ just s7
+    run-eq = exec-seven-steps 9993 prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 halt-eq
 
-    -- Now prove properties about s6
+    -- Now prove properties about s7
 
     -- rsp is constant from s1 onwards (only sub modifies it)
     rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
@@ -1340,30 +1360,30 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s6 , run-eq , halt-eq , en
     rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
     rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
 
-    -- rax in s6 = rax in s4 = rsp in s3 = new-rsp
+    -- rax in s7 = rax in s4 = rsp in s3 = new-rsp
     rax-s4 : readReg (regs s4) rax ≡ new-rsp
     rax-s4 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
 
-    rax-s6 : readReg (regs s6) rax ≡ new-rsp
-    rax-s6 = rax-s4
+    rax-s7 : readReg (regs s7) rax ≡ new-rsp
+    rax-s7 = rax-s4
 
     -- Address calculations
     addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
     addr-disjoint = n≢n+suc new-rsp 7
 
-    -- Memory trace: s6.memory = s3.memory = writeMem s2.memory (new-rsp+8) 300
+    -- Memory trace: s7.memory = s3.memory = writeMem s2.memory (new-rsp+8) code-ptr
     --               s2.memory = writeMem s1.memory new-rsp orig-rdi
 
     -- Environment at [rax] = orig-rdi = encode a
-    -- Reading from new-rsp in s6:
-    --   s6.memory = s3.memory (s4,s5,s6 don't touch memory, jmp and halt only affect pc/halted)
-    --   s3.memory = writeMem s2.memory (new-rsp+8) 300
+    -- Reading from new-rsp in s7:
+    --   s7.memory = s3.memory (s4,s5,s6,s7 don't touch memory)
+    --   s3.memory = writeMem s2.memory (new-rsp+8) code-ptr
     --   s2.memory = writeMem s1.memory new-rsp orig-rdi
     -- So reading at new-rsp: first check s3's write (at new-rsp+8, different addr),
     -- then s2's write (at new-rsp, matches)
-    env-eq : readMem (memory s6) (readReg (regs s6) rax) ≡ just (encode a)
-    env-eq = trans (cong (readMem (memory s6)) rax-s6)
-                   (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp 300 (λ eq → addr-disjoint (sym eq)))
+    env-eq : readMem (memory s7) (readReg (regs s7) rax) ≡ just (encode a)
+    env-eq = trans (cong (readMem (memory s7)) rax-s7)
+                   (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp code-ptr (λ eq → addr-disjoint (sym eq)))
                           (trans (readMem-writeMem-same (memory s1) new-rsp (readReg (regs s1) rdi))
                                  (trans (cong just rdi-s1) (cong just rdi-eq))))
 
@@ -1755,21 +1775,23 @@ run-compose-id-id {A} s h-false pc-0 = s4 , run-eq , halt-eq , rax-eq
 -- Base case for case analysis with inl input (f = g = id)
 -- Tests the proof technique for the left branch (tag = 0, jne not taken)
 --
+-- For [ id , id ]:
+--   len-f = compile-length id = 1
+--   len-g = compile-length id = 1
+--   right-branch = 5 + len-f = 6
+--   end-label = (7 + len-f) + len-g = 9
+--
 -- Generated code for [ id , id ]:
 --   0: mov r15, [rdi]       -- r15 := tag (0 for inl)
 --   1: cmp r15, 0           -- sets zf := true
---   2: jne 100              -- not taken (zf=true), pc := 3
+--   2: jne 6                -- not taken (zf=true), pc := 3
 --   3: mov rdi, [rdi+8]     -- rdi := value
 --   4: mov rax, rdi         -- compile-x86 id
---   5: jmp 200              -- pc := 200, out of bounds → halt
---   6: label 100
+--   5: jmp 9                -- jump to end-label
+--   6: label 6              -- right-branch label
 --   7: mov rdi, [rdi+8]
 --   8: mov rax, rdi
---   9: label 200
---
--- LIMITATION: The inr case (run-case-inr-id) cannot be proven with current codegen
--- because jne 100 would set pc=100, which is out of bounds (program only has 10 instructions).
--- The codegen uses placeholder labels that don't match actual instruction positions.
+--   9: label 9              -- end-label (executed, then halt at pc=10)
 --
 -- Note: Uses A + A (not A + B) because [ id , id ] requires both branches to return the same type.
 run-case-inl-id : ∀ {A} (a : ⟦ A ⟧) (s : State) →
@@ -1781,12 +1803,12 @@ run-case-inl-id : ∀ {A} (a : ⟦ A ⟧) (s : State) →
   ∃[ s' ] (run (compile-x86 {A + A} {A} [ id , id ]) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode a)
-run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s7 , run-eq , halt-eq , rax-eq
+run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq , rax-eq
   where
     prog : List Instr
     prog = compile-x86 {A + A} {A} [ id , id ]
-    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 100 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
-    --   jmp 200 ∷ label 100 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 200 ∷ []
+    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    --   jmp 9 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
 
     -- Original values
     orig-rdi : Word
@@ -1831,7 +1853,7 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s7 , run-eq , halt-eq
     pc2 : pc s2 ≡ 2
     pc2 = cong (λ x → x +ℕ 1) pc1
 
-    -- State after step 2: jne 100 (not taken, zf = true)
+    -- State after step 2: jne 6 (not taken, zf = true)
     s3 : State
     s3 = record s2 { pc = pc s2 +ℕ 1 }
 
@@ -1839,9 +1861,9 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s7 , run-eq , halt-eq
     zf-s2 = refl
 
     step3 : step prog s2 ≡ just s3
-    step3 = trans (step-exec prog s2 (jne 100) h2
-                             (subst (λ p → fetch prog p ≡ just (jne 100)) (sym pc2) refl))
-                  (execJne-not-taken prog s2 100 zf-s2)
+    step3 = trans (step-exec prog s2 (jne 6) h2
+                             (subst (λ p → fetch prog p ≡ just (jne 6)) (sym pc2) refl))
+                  (execJne-not-taken prog s2 6 zf-s2)
 
     h3 : halted s3 ≡ false
     h3 = h-false
@@ -1895,43 +1917,58 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s7 , run-eq , halt-eq
     pc5 : pc s5 ≡ 5
     pc5 = cong (λ x → x +ℕ 1) pc4
 
-    -- State after step 5: jmp 200
+    -- State after step 5: jmp 9
     s6 : State
-    s6 = record s5 { pc = 200 }
+    s6 = record s5 { pc = 9 }
 
     step6 : step prog s5 ≡ just s6
-    step6 = trans (step-exec prog s5 (jmp 200) h5
-                             (subst (λ p → fetch prog p ≡ just (jmp 200)) (sym pc5) refl))
-                  (execJmp prog s5 200)
+    step6 = trans (step-exec prog s5 (jmp 9) h5
+                             (subst (λ p → fetch prog p ≡ just (jmp 9)) (sym pc5) refl))
+                  (execJmp prog s5 9)
 
     h6 : halted s6 ≡ false
     h6 = h-false
 
-    -- State after step 6: fetch at pc=200 fails, halt
-    s7 : State
-    s7 = record s6 { halted = true }
+    pc6 : pc s6 ≡ 9
+    pc6 = refl
 
-    -- fetch at pc=200 fails (program has only 10 instructions)
-    fetch-200-fail : fetch prog 200 ≡ nothing
-    fetch-200-fail = refl
+    -- State after step 6: label 9 (no-op, pc := 10)
+    s7 : State
+    s7 = record s6 { pc = 10 }
 
     step7 : step prog s6 ≡ just s7
-    step7 = step-halt-on-fetch-fail prog s6 h6 fetch-200-fail
+    step7 = trans (step-exec prog s6 (label 9) h6
+                             (subst (λ p → fetch prog p ≡ just (label 9)) (sym pc6) refl))
+                  (execLabel prog s6 9)
 
-    halt-eq : halted s7 ≡ true
+    h7 : halted s7 ≡ false
+    h7 = h-false
+
+    -- State after step 7: fetch at pc=10 fails, halt
+    s8 : State
+    s8 = record s7 { halted = true }
+
+    -- fetch at pc=10 fails (program has only 10 instructions, indices 0-9)
+    fetch-10-fail : fetch prog 10 ≡ nothing
+    fetch-10-fail = refl
+
+    step8 : step prog s7 ≡ just s8
+    step8 = step-halt-on-fetch-fail prog s7 h7 fetch-10-fail
+
+    halt-eq : halted s8 ≡ true
     halt-eq = refl
 
     -- Combine all steps using exec
-    run-eq : run prog s ≡ just s7
-    run-eq = exec-seven-steps 9993 prog s s1 s2 s3 s4 s5 s6 s7
-               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 halt-eq
+    run-eq : run prog s ≡ just s8
+    run-eq = exec-eight-steps 9992 prog s s1 s2 s3 s4 s5 s6 s7 s8
+               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 halt-eq
 
     -- rax in s5 = rdi in s4 = encode a
     rax-s5 : readReg (regs s5) rax ≡ encode a
     rax-s5 = trans (readReg-writeReg-same (regs s4) rax (readReg (regs s4) rdi)) rdi-s4
 
-    -- rax unchanged from s5 to s7 (only pc and halted changed)
-    rax-eq : readReg (regs s7) rax ≡ encode a
+    -- rax unchanged from s5 to s8 (only pc and halted changed)
+    rax-eq : readReg (regs s8) rax ≡ encode a
     rax-eq = rax-s5
 
 -- Helper: apply sequence

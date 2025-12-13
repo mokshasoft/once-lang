@@ -18,8 +18,32 @@ open import Once.IR
 
 open import Once.Backend.X86.Syntax
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
+open import Data.List using (List; []; _∷_; _++_; length)
+
+------------------------------------------------------------------------
+-- Compile length calculation
+------------------------------------------------------------------------
+
+-- | Calculate the number of instructions generated for an IR morphism
+-- This is needed for computing jump targets in case analysis and curry.
+compile-length : ∀ {A B} → IR A B → ℕ
+
+compile-length id = 1
+compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
+compile-length fst = 1
+compile-length snd = 1
+compile-length ⟨ f , g ⟩ = (6 +ℕ compile-length f) +ℕ compile-length g
+compile-length inl = 4
+compile-length inr = 4
+compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
+compile-length terminal = 1
+compile-length initial = 1
+compile-length (curry f) = 12 +ℕ compile-length f
+compile-length apply = 6
+compile-length fold = 1
+compile-length unfold = 1
+compile-length arr = 1
 
 ------------------------------------------------------------------------
 -- Code generation
@@ -90,23 +114,39 @@ compile-x86 inr =
   mov (reg rax) (reg rsp) ∷ []             -- return pointer
 
 -- Case analysis: branch on tag
--- Uses label counter for generating unique labels
+-- Jump targets are computed based on compiled code lengths
 compile-x86 [ f , g ] =
+  let len-f = compile-length f
+      len-g = compile-length g
+      -- Layout:
+      --   0: mov r15, [rdi]
+      --   1: cmp r15, 0
+      --   2: jne right-branch
+      --   3: mov rdi, [rdi+8]
+      --   4 to 3+|f|: compile-x86 f
+      --   4+|f|: jmp end
+      --   5+|f|: label (right-branch)
+      --   6+|f|: mov rdi, [rdi+8]
+      --   7+|f| to 6+|f|+|g|: compile-x86 g
+      --   7+|f|+|g|: label (end)
+      right-branch = 5 +ℕ len-f
+      end-label = (7 +ℕ len-f) +ℕ len-g
+  in
   -- Load tag
   mov (reg r15) (mem (base rdi)) ∷
   -- Compare with 0
   cmp (reg r15) (imm 0) ∷
   -- Jump to right branch if not zero
-  jne 100 ∷  -- label: right_branch (placeholder)
+  jne right-branch ∷
   -- Left branch: load value and apply f
   mov (reg rdi) (mem (base+disp rdi 8)) ∷
   compile-x86 f ++
-  jmp 200 ∷  -- label: end (placeholder)
+  jmp end-label ∷
   -- Right branch: load value and apply g
-  label 100 ∷
+  label right-branch ∷
   mov (reg rdi) (mem (base+disp rdi 8)) ∷
   compile-x86 g ++
-  label 200 ∷ []
+  label end-label ∷ []
 
 -- Terminal: return unit (represented as 0)
 compile-x86 terminal = mov (reg rax) (imm 0) ∷ []
@@ -124,22 +164,38 @@ compile-x86 initial = ud2 ∷ []
 --   2. Pairs it with argument (b) in rdi
 --   3. Executes compile-x86 f
 --
--- We use a label to mark where the thunk code starts.
--- The thunk is placed after the closure creation code.
+-- Jump targets are computed based on compiled code length.
 compile-x86 (curry {A} {B} {C} f) =
+  let len-f = compile-length f
+      -- Layout:
+      --   0: sub rsp, 16
+      --   1: mov [rsp], rdi
+      --   2: mov [rsp+8], code-ptr
+      --   3: mov rax, rsp
+      --   4: jmp end
+      --   5: label code-ptr
+      --   6: sub rsp, 16
+      --   7: mov [rsp], r12
+      --   8: mov [rsp+8], rdi
+      --   9: mov rdi, rsp
+      --   10 to 9+|f|: compile-x86 f
+      --   10+|f|: ret
+      --   11+|f|: label end
+      code-ptr = 5
+      end-label = 11 +ℕ len-f
+  in
   -- Allocate closure on stack
   sub (reg rsp) (imm 16) ∷
   -- Store environment (input a in rdi) as closure.env
   mov (mem (base rsp)) (reg rdi) ∷
-  -- Store code pointer (address of thunk at label 300)
-  -- In a real implementation this would be the actual address
-  mov (mem (base+disp rsp 8)) (imm 300) ∷
+  -- Store code pointer (address of thunk)
+  mov (mem (base+disp rsp 8)) (imm code-ptr) ∷
   -- Return closure pointer
   mov (reg rax) (reg rsp) ∷
   -- Jump over the thunk code
-  jmp 400 ∷
-  -- Thunk code (label 300): called via apply with b in rdi, env in r12
-  label 300 ∷
+  jmp end-label ∷
+  -- Thunk code: called via apply with b in rdi, env in r12
+  label code-ptr ∷
   -- Allocate pair (a, b) on stack
   sub (reg rsp) (imm 16) ∷
   -- Store a (from r12) at [rsp]
@@ -153,7 +209,7 @@ compile-x86 (curry {A} {B} {C} f) =
   -- Return (rax already has result)
   ret ∷
   -- End of thunk
-  label 400 ∷ []
+  label end-label ∷ []
 
 -- Apply: call closure
 -- Input is pair (closure, argument)
