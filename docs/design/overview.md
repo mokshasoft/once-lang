@@ -134,6 +134,19 @@ The categorical foundation enables tractable formal verification:
 
 See [What Is Proven](../formal/what-is-proven.md) for current verification status.
 
+## Optimization
+
+The natural transformation foundation enables principled optimization:
+
+- **Parametricity** gives "free theorems" - equations that hold by construction
+- **Functor laws** enable map fusion: `map f . map g = map (f . g)`
+- **Recursion schemes** enable deforestation: eliminate intermediate data structures
+- **Linearity** enables in-place updates without aliasing concerns
+
+The optimizer applies categorical laws as rewrite rules, preserving semantics by construction.
+
+See [Optimization](optimization.md) for theory, laws, and programming guidelines.
+
 ## Documentation Structure
 
 | Section | Contents |
@@ -141,6 +154,7 @@ See [What Is Proven](../formal/what-is-proven.md) for current verification statu
 | [Quickstart](quickstart.md) | 5-minute introduction |
 | [Design Philosophy](design-philosophy.md) | Why natural transformations |
 | [Compiler](compiler.md) | Compiler architecture |
+| [Optimization](optimization.md) | NT-based optimization theory and guidelines |
 | [Libraries](libraries.md) | The three strata |
 | [IO](io.md) | The IO monad |
 | [Memory](memory.md) | QTT and resource management |
