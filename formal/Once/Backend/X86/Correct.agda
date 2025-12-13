@@ -21,6 +21,7 @@ open import Once.Semantics
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
+open Once.Backend.X86.Semantics.Flags
 open import Once.Backend.X86.CodeGen
 
 -- Import encoding axioms from central postulates module
@@ -202,6 +203,28 @@ execSub-reg-imm prog s dst v = refl
 execJmp : ∀ (prog : List Instr) (s : State) (target : ℕ) →
   execInstr prog s (jmp target) ≡ just (record s { pc = target })
 execJmp prog s target = refl
+
+-- Helper: state after executing cmp (reg r) (imm 0) when r contains 0
+-- This is the specific case we need for case analysis (tag comparison)
+execCmp-zero : ∀ (prog : List Instr) (s : State) (r : Reg) →
+  readReg (regs s) r ≡ 0 →
+  execInstr prog s (cmp (reg r) (imm 0)) ≡
+    just (record s { pc = pc s +ℕ 1 ; flags = mkflags true false false })
+execCmp-zero prog s r eq rewrite eq = refl
+
+-- Helper: state after executing jne when ZF = true (not taken)
+-- Proof: when zf = true, pc := pc + 1
+execJne-not-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
+  zf (flags s) ≡ true →
+  execInstr prog s (jne target) ≡ just (record s { pc = pc s +ℕ 1 })
+execJne-not-taken prog s target zf-true rewrite zf-true = refl
+
+-- Helper: state after executing jne when ZF = false (taken)
+-- Proof: when zf = false, pc := target
+execJne-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
+  zf (flags s) ≡ false →
+  execInstr prog s (jne target) ≡ just (record s { pc = target })
+execJne-taken prog s target zf-false rewrite zf-false = refl
 
 ------------------------------------------------------------------------
 -- Register File Lemmas
@@ -391,6 +414,14 @@ fetch-6 i0 i1 i2 i3 i4 i5 i6 is = refl
 fetch-7 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) 7 ≡ just i7
 fetch-7 i0 i1 i2 i3 i4 i5 i6 i7 is = refl
 
+-- | Fetching at index 8 returns the ninth instruction
+fetch-8 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 i8 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ is) 8 ≡ just i8
+fetch-8 i0 i1 i2 i3 i4 i5 i6 i7 i8 is = refl
+
+-- | Fetching at index 9 returns the tenth instruction
+fetch-9 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 i8 i9 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ i9 ∷ is) 9 ≡ just i9
+fetch-9 i0 i1 i2 i3 i4 i5 i6 i7 i8 i9 is = refl
+
 -- | Step on non-halted state with pc=4 executes the fifth instruction
 step-exec-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) (s : State) →
   halted s ≡ false →
@@ -422,6 +453,20 @@ step-exec-7 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 : Instr) (is : List Instr) (s : State
   step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) s i7
 step-exec-7 i0 i1 i2 i3 i4 i5 i6 i7 is s h-false pc-7 =
   step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) s i7 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) p ≡ just i7) (sym pc-7) refl)
+
+step-exec-8 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 i8 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 8 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ is) s i8
+step-exec-8 i0 i1 i2 i3 i4 i5 i6 i7 i8 is s h-false pc-8 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ is) s i8 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ is) p ≡ just i8) (sym pc-8) refl)
+
+step-exec-9 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 i8 i9 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 9 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ i9 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ i9 ∷ is) s i9
+step-exec-9 i0 i1 i2 i3 i4 i5 i6 i7 i8 i9 is s h-false pc-9 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ i9 ∷ is) s i9 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ i9 ∷ is) p ≡ just i9) (sym pc-9) refl)
 
 -- | Step on non-halted state where fetch fails sets halted=true
 -- Proof: match on halted s, then on fetch prog (pc s)
@@ -1706,6 +1751,188 @@ run-compose-id-id {A} s h-false pc-0 = s4 , run-eq , halt-eq , rax-eq
     -- Final result
     rax-eq : readReg (regs s4) rax ≡ readReg (regs s) rdi
     rax-eq = rax-s3
+
+-- Base case for case analysis with inl input (f = g = id)
+-- Tests the proof technique for the left branch (tag = 0, jne not taken)
+--
+-- Generated code for [ id , id ]:
+--   0: mov r15, [rdi]       -- r15 := tag (0 for inl)
+--   1: cmp r15, 0           -- sets zf := true
+--   2: jne 100              -- not taken (zf=true), pc := 3
+--   3: mov rdi, [rdi+8]     -- rdi := value
+--   4: mov rax, rdi         -- compile-x86 id
+--   5: jmp 200              -- pc := 200, out of bounds → halt
+--   6: label 100
+--   7: mov rdi, [rdi+8]
+--   8: mov rax, rdi
+--   9: label 200
+--
+-- LIMITATION: The inr case (run-case-inr-id) cannot be proven with current codegen
+-- because jne 100 would set pc=100, which is out of bounds (program only has 10 instructions).
+-- The codegen uses placeholder labels that don't match actual instruction positions.
+--
+-- Note: Uses A + A (not A + B) because [ id , id ] requires both branches to return the same type.
+run-case-inl-id : ∀ {A} (a : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode {A + A} (inj₁ a) →
+  readMem (memory s) (encode {A + A} (inj₁ a)) ≡ just 0 →
+  readMem (memory s) (encode {A + A} (inj₁ a) +ℕ 8) ≡ just (encode a) →
+  ∃[ s' ] (run (compile-x86 {A + A} {A} [ id , id ]) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode a)
+run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s7 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A + A} {A} [ id , id ]
+    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 100 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    --   jmp 200 ∷ label 100 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 200 ∷ []
+
+    -- Original values
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    -- Memory lookups using rdi
+    mem-at-rdi : readMem (memory s) (readReg (regs s) rdi) ≡ just 0
+    mem-at-rdi = subst (λ addr → readMem (memory s) addr ≡ just 0) (sym rdi-enc) tag-0
+
+    mem-at-rdi-8 : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode a)
+    mem-at-rdi-8 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode a)) (sym rdi-enc) val-a
+
+    -- State after step 0: mov r15, [rdi]
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) r15 0 ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 _ _ s h-false pc-0)
+                  (execMov-reg-mem-base s r15 rdi 0 mem-at-rdi)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 1: cmp r15, 0 (r15 = 0, so zf := true)
+    s2 : State
+    s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags true false false }
+
+    r15-s1 : readReg (regs s1) r15 ≡ 0
+    r15-s1 = readReg-writeReg-same (regs s) r15 0
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (cmp (reg r15) (imm 0)) h1
+                             (subst (λ p → fetch prog p ≡ just (cmp (reg r15) (imm 0))) (sym pc1) refl))
+                  (execCmp-zero prog s1 r15 r15-s1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 2: jne 100 (not taken, zf = true)
+    s3 : State
+    s3 = record s2 { pc = pc s2 +ℕ 1 }
+
+    zf-s2 : zf (flags s2) ≡ true
+    zf-s2 = refl
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (jne 100) h2
+                             (subst (λ p → fetch prog p ≡ just (jne 100)) (sym pc2) refl))
+                  (execJne-not-taken prog s2 100 zf-s2)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 3: mov rdi, [rdi+8]
+    -- rdi in s2 = orig-rdi (unchanged through r15 write and cmp)
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = trans (readReg-writeReg-r15-rdi (regs s) 0) refl
+      where
+        readReg-writeReg-r15-rdi : ∀ (rf : RegFile) (v : Word) →
+          readReg (writeReg rf r15 v) rdi ≡ readReg rf rdi
+        readReg-writeReg-r15-rdi rf v = refl
+
+    -- Memory at [rdi+8] in s2 = encode a (memory unchanged)
+    mem-s2-rdi-8 : readMem (memory s2) (readReg (regs s2) rdi +ℕ 8) ≡ just (encode a)
+    mem-s2-rdi-8 = subst (λ r → readMem (memory s2) (r +ℕ 8) ≡ just (encode a)) (sym rdi-s2) mem-at-rdi-8
+
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rdi (encode a) ; pc = pc s3 +ℕ 1 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rdi) (mem (base+disp rdi 8))) h3
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (mem (base+disp rdi 8)))) (sym pc3) refl))
+                  (execMov-reg-mem-disp s3 rdi rdi 8 (encode a) mem-s2-rdi-8)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 4
+    pc4 = cong (λ x → x +ℕ 1) pc3
+
+    -- State after step 4: mov rax, rdi
+    -- rdi in s4 = encode a
+    rdi-s4 : readReg (regs s4) rdi ≡ encode a
+    rdi-s4 = readReg-writeReg-same (regs s3) rdi (encode a)
+
+    s5 : State
+    s5 = record s4 { regs = writeReg (regs s4) rax (readReg (regs s4) rdi) ; pc = pc s4 +ℕ 1 }
+
+    step5 : step prog s4 ≡ just s5
+    step5 = trans (step-exec prog s4 (mov (reg rax) (reg rdi)) h4
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi))) (sym pc4) refl))
+                  (execMov-reg-reg s4 rax rdi)
+
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ 5
+    pc5 = cong (λ x → x +ℕ 1) pc4
+
+    -- State after step 5: jmp 200
+    s6 : State
+    s6 = record s5 { pc = 200 }
+
+    step6 : step prog s5 ≡ just s6
+    step6 = trans (step-exec prog s5 (jmp 200) h5
+                             (subst (λ p → fetch prog p ≡ just (jmp 200)) (sym pc5) refl))
+                  (execJmp prog s5 200)
+
+    h6 : halted s6 ≡ false
+    h6 = h-false
+
+    -- State after step 6: fetch at pc=200 fails, halt
+    s7 : State
+    s7 = record s6 { halted = true }
+
+    -- fetch at pc=200 fails (program has only 10 instructions)
+    fetch-200-fail : fetch prog 200 ≡ nothing
+    fetch-200-fail = refl
+
+    step7 : step prog s6 ≡ just s7
+    step7 = step-halt-on-fetch-fail prog s6 h6 fetch-200-fail
+
+    halt-eq : halted s7 ≡ true
+    halt-eq = refl
+
+    -- Combine all steps using exec
+    run-eq : run prog s ≡ just s7
+    run-eq = exec-seven-steps 9993 prog s s1 s2 s3 s4 s5 s6 s7
+               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 halt-eq
+
+    -- rax in s5 = rdi in s4 = encode a
+    rax-s5 : readReg (regs s5) rax ≡ encode a
+    rax-s5 = trans (readReg-writeReg-same (regs s4) rax (readReg (regs s4) rdi)) rdi-s4
+
+    -- rax unchanged from s5 to s7 (only pc and halted changed)
+    rax-eq : readReg (regs s7) rax ≡ encode a
+    rax-eq = rax-s5
 
 -- Helper: apply sequence
 -- Takes pair (closure, arg), calls closure's code with arg in rdi and env in r12
