@@ -43,7 +43,7 @@ import MAlonzo.RTE (coe)
 ------------------------------------------------------------------------
 
 -- | Convert Haskell Type to MAlonzo Type
--- Returns Nothing for types that don't exist in MAlonzo (TVar, TInt, etc.)
+-- Returns Nothing for types that don't exist in MAlonzo (TApp)
 toMAlonzoType :: H.Type -> Maybe M.T_Type_4
 toMAlonzoType t = case t of
   H.TUnit -> Just M.C_Unit_6
@@ -53,11 +53,12 @@ toMAlonzoType t = case t of
   H.TArrow a b -> M.C__'8658'__14 <$> toMAlonzoType a <*> toMAlonzoType b
   H.TEff a b -> M.C_Eff_16 <$> toMAlonzoType a <*> toMAlonzoType b
   H.TFix f -> M.C_Fix_18 <$> toMAlonzoType f
-  -- These don't exist in MAlonzo
-  H.TVar _ -> Nothing
-  H.TInt -> Nothing
-  H.TBuffer -> Nothing
-  H.TString _ -> Nothing
+  -- Base types (now supported in MAlonzo)
+  H.TInt -> Just M.C_Int_20
+  H.TBuffer -> Just M.C_Buffer_24
+  H.TString _ -> Just M.C_Str_22  -- Encoding is erased
+  H.TVar name -> Just $ M.C_TVar_26 name
+  -- Not yet supported
   H.TApp _ _ -> Nothing
 
 -- | Convert MAlonzo Type back to Haskell Type
@@ -70,6 +71,11 @@ fromMAlonzoType t = case t of
   M.C__'8658'__14 a b -> H.TArrow (fromMAlonzoType a) (fromMAlonzoType b)
   M.C_Eff_16 a b -> H.TEff (fromMAlonzoType a) (fromMAlonzoType b)
   M.C_Fix_18 f -> H.TFix (fromMAlonzoType f)
+  -- Base types
+  M.C_Int_20 -> H.TInt
+  M.C_Str_22 -> H.TString H.Utf8
+  M.C_Buffer_24 -> H.TBuffer
+  M.C_TVar_26 name -> H.TVar name
 
 ------------------------------------------------------------------------
 -- IR conversion
@@ -171,7 +177,7 @@ getOutputType ir = case ir of
   H.Var _ -> Nothing
   H.LocalVar _ -> Nothing
   H.FunRef _ -> Nothing
-  H.StringLit _ -> Just (H.TString H.Utf8)
+  H.StringLit _ -> Just (H.TString H.Utf8)  -- Returns Str type
 
 -- | Convert MAlonzo Core IR back to Haskell IR
 fromMAlonzoCoreIR :: MC.T_IR_4 -> H.IR

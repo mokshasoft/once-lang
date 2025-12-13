@@ -8,6 +8,7 @@
 module Once.Type where
 
 open import Level using (Level)
+open import Data.String using (String)
 
 -- | Types in Once
 --
@@ -20,14 +21,26 @@ open import Level using (Level)
 -- - Eff is the effectful morphism (D032: arrow-based effects)
 -- - Fix is the fixed point (for recursive types)
 --
+-- Additional base types for practical programming:
+-- - Int is machine integers
+-- - Str is UTF-8 strings
+-- - Buffer is raw byte buffers
+-- - TVar is a type variable (for polymorphism)
+--
 data Type : Set where
-  Unit  : Type                    -- Terminal object
-  Void  : Type                    -- Initial object
-  _*_   : Type → Type → Type      -- Product
-  _+_   : Type → Type → Type      -- Coproduct (sum)
-  _⇒_   : Type → Type → Type      -- Exponential (function, pure)
-  Eff   : Type → Type → Type      -- Effectful morphism (D032)
-  Fix   : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
+  -- Categorical structure
+  Unit   : Type                    -- Terminal object
+  Void   : Type                    -- Initial object
+  _*_    : Type → Type → Type      -- Product
+  _+_    : Type → Type → Type      -- Coproduct (sum)
+  _⇒_    : Type → Type → Type      -- Exponential (function, pure)
+  Eff    : Type → Type → Type      -- Effectful morphism (D032)
+  Fix    : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
+  -- Base types for practical programming
+  Int    : Type                    -- Machine integers
+  Str    : Type                    -- UTF-8 strings
+  Buffer : Type                    -- Raw byte buffers
+  TVar   : String → Type           -- Type variable (polymorphism)
 
 infixr 30 _⇒_
 infixr 40 _+_

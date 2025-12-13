@@ -14,6 +14,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
+open import Data.Integer using (ℤ)
+open import Data.String using (String)
 
 -- | Semantic interpretation of types
 --
@@ -61,6 +63,11 @@ open ⟦Fix⟧
 ⟦ A ⇒ B ⟧    = ⟦ A ⟧ → ⟦ B ⟧
 ⟦ Eff A B ⟧  = ⟦ A ⟧ → ⟦ B ⟧  -- D032: Same representation as pure function
 ⟦ Fix F ⟧    = ⟦Fix⟧ ⟦ F ⟧
+-- Base types
+⟦ Int ⟧      = ℤ
+⟦ Str ⟧      = String
+⟦ Buffer ⟧   = String           -- Simplified: use String for bytes
+⟦ TVar _ ⟧   = ⊤                 -- Type variables: use Unit as placeholder
 
 -- | Evaluation of IR morphisms
 --
