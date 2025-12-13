@@ -45,13 +45,14 @@ open import Once.Postulates public
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; module ≡-Reasoning)
+open ≡-Reasoning
 
 ------------------------------------------------------------------------
 -- Initial State Setup
@@ -76,7 +77,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 initWithInput : ∀ {A} → ⟦ A ⟧ → State
 initWithInput {A} x = mkstate
   (writeReg (writeReg emptyRegFile rdi (encode x)) rsp stackBase)
-  (encodedMemory x)
+  encodedMemory
   initFlags
   0
   false
@@ -85,9 +86,14 @@ initWithInput {A} x = mkstate
     stackBase : Word
     stackBase = 0x7FFF0000
 
-    -- Memory containing the encoded value (postulated)
-    postulate
-      encodedMemory : ⟦ A ⟧ → Memory
+    -- Memory containing encoded values
+    -- The encoding postulates (encode-pair-fst, encode-inl-tag, etc.) in
+    -- Once.Postulates already assert that reading from any memory at
+    -- encode addresses returns the correct components. This models a
+    -- "magic heap" where all semantic values are pre-allocated.
+    -- We use emptyMemory here; the encoding postulates handle the rest.
+    encodedMemory : Memory
+    encodedMemory = emptyMemory
 
 -- | The input is placed in rdi (proven from definition)
 --
@@ -426,6 +432,211 @@ fetch-8 i0 i1 i2 i3 i4 i5 i6 i7 i8 is = refl
 -- | Fetching at index 9 returns the tenth instruction
 fetch-9 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 i8 i9 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ i8 ∷ i9 ∷ is) 9 ≡ just i9
 fetch-9 i0 i1 i2 i3 i4 i5 i6 i7 i8 i9 is = refl
+
+------------------------------------------------------------------------
+-- Fetch Lemmas for List Concatenation
+------------------------------------------------------------------------
+
+-- | Fetching past a prefix goes into the suffix
+-- fetch (xs ++ ys) (length xs + n) ≡ fetch ys n
+fetch-append-skip : ∀ (xs ys : List Instr) (n : ℕ) →
+  fetch (xs ++ ys) (length xs +ℕ n) ≡ fetch ys n
+fetch-append-skip [] ys n = refl
+fetch-append-skip (x ∷ xs) ys n = fetch-append-skip xs ys n
+
+-- | Fetching past the end of a list returns nothing
+fetch-past-length : ∀ (xs : List Instr) (n : ℕ) →
+  fetch xs (length xs +ℕ n) ≡ nothing
+fetch-past-length [] n = refl
+fetch-past-length (x ∷ xs) n = fetch-past-length xs n
+
+-- | Length of concatenated lists
+length-++ : ∀ (xs ys : List Instr) → length (xs ++ ys) ≡ length xs +ℕ length ys
+length-++ [] ys = refl
+length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
+
+------------------------------------------------------------------------
+-- Compile-length Correctness
+------------------------------------------------------------------------
+
+-- | compile-length correctly computes the length of compile-x86
+-- This is essential for proving fetch lemmas at computed positions
+compile-length-correct : ∀ {A B} (ir : IR A B) →
+  length (compile-x86 ir) ≡ compile-length ir
+compile-length-correct id = refl
+compile-length-correct (g ∘ f) = helper
+  where
+    open import Data.Nat.Properties using (+-assoc)
+
+    -- Key insight: a + suc b = a + (1 + b) = (a + 1) + b
+    -- Since 1 + b = suc b definitionally, we just need +-assoc
+    a+suc≡a+1+ : ∀ a b → a +ℕ suc b ≡ (a +ℕ 1) +ℕ b
+    a+suc≡a+1+ a b = sym (+-assoc a 1 b)
+
+    helper : length (compile-x86 f ++ mov (reg rdi) (reg rax) ∷ compile-x86 g) ≡
+             (compile-length f +ℕ 1) +ℕ compile-length g
+    helper =
+      begin
+        length (compile-x86 f ++ mov (reg rdi) (reg rax) ∷ compile-x86 g)
+      ≡⟨ length-++ (compile-x86 f) _ ⟩
+        length (compile-x86 f) +ℕ suc (length (compile-x86 g))
+      ≡⟨ cong (λ x → x +ℕ suc (length (compile-x86 g))) (compile-length-correct f) ⟩
+        compile-length f +ℕ suc (length (compile-x86 g))
+      ≡⟨ cong (λ x → compile-length f +ℕ suc x) (compile-length-correct g) ⟩
+        compile-length f +ℕ suc (compile-length g)
+      ≡⟨ a+suc≡a+1+ (compile-length f) (compile-length g) ⟩
+        (compile-length f +ℕ 1) +ℕ compile-length g
+      ∎
+compile-length-correct fst = refl
+compile-length-correct snd = refl
+compile-length-correct ⟨ f , g ⟩ = helper
+  where
+    open import Data.Nat.Properties using (+-assoc; +-comm)
+
+    -- Structure: sub ∷ mov ∷ (compile-x86 f ++ mov ∷ mov ∷ (compile-x86 g ++ mov ∷ mov ∷ []))
+    -- We need to show: 2 + (|f| + (2 + (|g| + 2))) = (6 + |f|) + |g|
+
+    inner-tail : List Instr
+    inner-tail = mov (mem (base+disp rsp 8)) (reg rax) ∷ mov (reg rax) (reg rsp) ∷ []
+
+    -- Lemma: length of the middle part after f
+    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 2
+    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 2) (compile-length-correct g))
+
+    mid-tail : List Instr
+    mid-tail = mov (mem (base rsp)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ (compile-x86 g ++ inner-tail)
+
+    -- Lemma: length after f
+    len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 2)
+    len-after-f = cong (λ x → 2 +ℕ x) len-middle
+
+    full-tail : List Instr
+    full-tail = compile-x86 f ++ mid-tail
+
+    -- Lemma: length including f
+    len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 2))
+    len-with-f = trans (length-++ (compile-x86 f) mid-tail)
+                       (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
+                              (cong (λ x → compile-length f +ℕ x) len-after-f))
+
+    -- Prove: 2 + (a + (2 + (b + 2))) = (6 + a) + b
+    -- Using +-comm and +-assoc with equational reasoning
+    arith2 : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
+    arith2 a b =
+      begin
+        2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2)))
+      ≡⟨ cong (2 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 2))) ⟩
+        2 +ℕ (a +ℕ (2 +ℕ (2 +ℕ b)))
+      ≡⟨ cong (2 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 2 b))) ⟩
+        2 +ℕ (a +ℕ (4 +ℕ b))
+      ≡⟨ cong (2 +ℕ_) (sym (+-assoc a 4 b)) ⟩
+        2 +ℕ ((a +ℕ 4) +ℕ b)
+      ≡⟨ cong (2 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
+        2 +ℕ ((4 +ℕ a) +ℕ b)
+      ≡⟨ sym (+-assoc 2 (4 +ℕ a) b) ⟩
+        (2 +ℕ (4 +ℕ a)) +ℕ b
+      ≡⟨ cong (_+ℕ b) (sym (+-assoc 2 4 a)) ⟩
+        (6 +ℕ a) +ℕ b
+      ∎
+
+    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (6 +ℕ compile-length f) +ℕ compile-length g
+    helper = trans (cong (λ x → 2 +ℕ x) len-with-f)
+                   (arith2 (compile-length f) (compile-length g))
+compile-length-correct inl = refl
+compile-length-correct inr = refl
+compile-length-correct [ f , g ] = helper
+  where
+    open import Data.Nat.Properties using (+-assoc; +-comm)
+
+    -- Structure: mov ∷ cmp ∷ jne ∷ mov ∷ (compile-x86 f ++ jmp ∷ label ∷ mov ∷ (compile-x86 g ++ label ∷ []))
+    -- Length = 4 + (|f| + (3 + (|g| + 1))) = (8 + |f|) + |g|
+
+    end-lbl : ℕ
+    end-lbl = (7 +ℕ compile-length f) +ℕ compile-length g
+
+    right-lbl : ℕ
+    right-lbl = 5 +ℕ compile-length f
+
+    inner-tail : List Instr
+    inner-tail = label end-lbl ∷ []
+
+    len-inner : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 1
+    len-inner = trans (length-++ (compile-x86 g) inner-tail)
+                      (cong (λ x → x +ℕ 1) (compile-length-correct g))
+
+    mid-tail : List Instr
+    mid-tail = jmp end-lbl ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
+               (compile-x86 g ++ inner-tail)
+
+    len-mid : length mid-tail ≡ 3 +ℕ (compile-length g +ℕ 1)
+    len-mid = cong (λ x → 3 +ℕ x) len-inner
+
+    full-tail : List Instr
+    full-tail = compile-x86 f ++ mid-tail
+
+    len-with-f : length full-tail ≡ compile-length f +ℕ (3 +ℕ (compile-length g +ℕ 1))
+    len-with-f = trans (length-++ (compile-x86 f) mid-tail)
+                       (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
+                              (cong (λ x → compile-length f +ℕ x) len-mid))
+
+    -- Prove: 4 + (a + (3 + (b + 1))) = (8 + a) + b
+    arith : ∀ a b → 4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1))) ≡ (8 +ℕ a) +ℕ b
+    arith a b =
+      begin
+        4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1)))
+      ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (cong (3 +ℕ_) (+-comm b 1))) ⟩
+        4 +ℕ (a +ℕ (3 +ℕ (1 +ℕ b)))
+      ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 3 1 b))) ⟩
+        4 +ℕ (a +ℕ (4 +ℕ b))
+      ≡⟨ cong (4 +ℕ_) (sym (+-assoc a 4 b)) ⟩
+        4 +ℕ ((a +ℕ 4) +ℕ b)
+      ≡⟨ cong (4 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
+        4 +ℕ ((4 +ℕ a) +ℕ b)
+      ≡⟨ sym (+-assoc 4 (4 +ℕ a) b) ⟩
+        (4 +ℕ (4 +ℕ a)) +ℕ b
+      ≡⟨ cong (_+ℕ b) (sym (+-assoc 4 4 a)) ⟩
+        (8 +ℕ a) +ℕ b
+      ∎
+
+    helper : length (compile-x86 [ f , g ]) ≡ (8 +ℕ compile-length f) +ℕ compile-length g
+    helper = trans (cong (λ x → 4 +ℕ x) len-with-f)
+                   (arith (compile-length f) (compile-length g))
+compile-length-correct terminal = refl
+compile-length-correct initial = refl
+compile-length-correct (curry f) = helper
+  where
+    open import Data.Nat.Properties using (+-assoc; +-comm)
+
+    -- Structure: sub ∷ mov ∷ mov ∷ mov ∷ jmp ∷ label ∷ sub ∷ mov ∷ mov ∷ mov ∷ (compile-x86 f ++ ret ∷ label ∷ [])
+    -- Length = 10 + (|f| + 2) = 12 + |f|
+
+    end-lbl : ℕ
+    end-lbl = 11 +ℕ compile-length f
+
+    inner-tail : List Instr
+    inner-tail = ret ∷ label end-lbl ∷ []
+
+    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 2
+    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 2) (compile-length-correct f))
+
+    -- Prove: 10 + (a + 2) = 12 + a
+    arith : ∀ a → 10 +ℕ (a +ℕ 2) ≡ 12 +ℕ a
+    arith a =
+      begin
+        10 +ℕ (a +ℕ 2)
+      ≡⟨ cong (10 +ℕ_) (+-comm a 2) ⟩
+        10 +ℕ (2 +ℕ a)
+      ≡⟨ sym (+-assoc 10 2 a) ⟩
+        12 +ℕ a
+      ∎
+
+    helper : length (compile-x86 (curry f)) ≡ 12 +ℕ compile-length f
+    helper = trans (cong (λ x → 10 +ℕ x) len-inner)
+                   (arith (compile-length f))
+compile-length-correct apply = refl
+compile-length-correct fold = refl
+compile-length-correct unfold = refl
+compile-length-correct arr = refl
 
 -- | Step on non-halted state with pc=4 executes the fifth instruction
 step-exec-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) (s : State) →
@@ -1312,10 +1523,70 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s7 , run-eq , halt-eq , en
     s6 = record s5 { pc = end-label +ℕ 1 }
 
     -- For step 6, we need to fetch the label instruction at position end-label
-    -- This requires knowing that fetch prog end-label ≡ just (label end-label)
-    -- We postulate this for now as it requires detailed analysis of compile-x86 (curry f)
-    postulate
-      fetch-end-label : fetch prog end-label ≡ just (label end-label)
+    -- Proof: use fetch-append-skip twice to skip past prefix and compile-x86 f
+
+    -- The program structure:
+    -- prog = prefix10 ++ (compile-x86 f ++ tail2)
+    -- where prefix10 = sub ∷ mov ∷ mov ∷ mov ∷ jmp ∷ label ∷ sub ∷ mov ∷ mov ∷ mov ∷ []
+    -- and tail2 = ret ∷ label end-label ∷ []
+
+    prefix10 : List Instr
+    prefix10 = sub (reg rsp) (imm 16) ∷
+               mov (mem (base rsp)) (reg rdi) ∷
+               mov (mem (base+disp rsp 8)) (imm code-ptr) ∷
+               mov (reg rax) (reg rsp) ∷
+               jmp end-label ∷
+               label code-ptr ∷
+               sub (reg rsp) (imm 16) ∷
+               mov (mem (base rsp)) (reg r12) ∷
+               mov (mem (base+disp rsp 8)) (reg rdi) ∷
+               mov (reg rdi) (reg rsp) ∷
+               []
+
+    tail2 : List Instr
+    tail2 = ret ∷ label end-label ∷ []
+
+    -- prog = prefix10 ++ (compile-x86 f ++ tail2)
+    prog-structure : prog ≡ prefix10 ++ (compile-x86 f ++ tail2)
+    prog-structure = refl
+
+    -- end-label = 11 + |f| = 10 + (|f| + 1)
+    -- Step 1: fetch prog (10 + (|f| + 1)) = fetch (compile-x86 f ++ tail2) (|f| + 1)
+    -- Step 2: fetch (compile-x86 f ++ tail2) (|f| + 1) = fetch tail2 1
+    -- Step 3: fetch tail2 1 = just (label end-label)
+
+    open import Data.Nat.Properties using (+-comm; +-assoc)
+
+    -- Prove 11 + |f| = 10 + (|f| + 1)
+    end-label-eq : end-label ≡ 10 +ℕ (compile-length f +ℕ 1)
+    end-label-eq = sym (trans (+-assoc 10 (compile-length f) 1)
+                              (cong (10 +ℕ_) (+-comm (compile-length f) 1)))
+
+    -- Skip prefix to get tail
+    skip-prefix : fetch prog (10 +ℕ (compile-length f +ℕ 1)) ≡ fetch (compile-x86 f ++ tail2) (compile-length f +ℕ 1)
+    skip-prefix = fetch-append-skip prefix10 (compile-x86 f ++ tail2) (compile-length f +ℕ 1)
+
+    -- Need: length (compile-x86 f) = compile-length f
+    len-f : length (compile-x86 f) ≡ compile-length f
+    len-f = compile-length-correct f
+
+    -- Skip compile-x86 f to get tail2
+    skip-f : fetch (compile-x86 f ++ tail2) (length (compile-x86 f) +ℕ 1) ≡ fetch tail2 1
+    skip-f = fetch-append-skip (compile-x86 f) tail2 1
+
+    -- Adjust skip-f to use compile-length f instead of length (compile-x86 f)
+    skip-f' : fetch (compile-x86 f ++ tail2) (compile-length f +ℕ 1) ≡ fetch tail2 1
+    skip-f' = subst (λ n → fetch (compile-x86 f ++ tail2) (n +ℕ 1) ≡ fetch tail2 1) len-f skip-f
+
+    -- Fetch at position 1 of tail2 gives label end-label
+    fetch-tail2 : fetch tail2 1 ≡ just (label end-label)
+    fetch-tail2 = refl
+
+    fetch-end-label : fetch prog end-label ≡ just (label end-label)
+    fetch-end-label = trans (subst (λ n → fetch prog n ≡ fetch prog (10 +ℕ (compile-length f +ℕ 1)))
+                                   (sym end-label-eq) refl)
+                           (trans skip-prefix
+                                  (trans skip-f' fetch-tail2))
 
     step6 : step prog s5 ≡ just s6
     step6 = trans (step-exec prog s5 (label end-label) h5 fetch-end-label)
@@ -1330,8 +1601,35 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s7 , run-eq , halt-eq , en
     s7 = record s6 { halted = true }
 
     -- fetch at end-label+1 = 12 + compile-length f fails because that's past the end
-    postulate
-      fetch-past-end : fetch prog (end-label +ℕ 1) ≡ nothing
+    -- Proof: end-label + 1 = 12 + |f| = length prog, and fetch-past-length says fetch at length prog fails
+
+    -- length prog = 12 + compile-length f
+    prog-length : length prog ≡ 12 +ℕ compile-length f
+    prog-length = compile-length-correct (curry f)
+
+    -- end-label + 1 = 12 + compile-length f
+    -- (11 + |f|) + 1 = 11 + (|f| + 1) = 11 + (1 + |f|) = (11 + 1) + |f| = 12 + |f|
+    end-plus-1 : end-label +ℕ 1 ≡ 12 +ℕ compile-length f
+    end-plus-1 = trans (+-assoc 11 (compile-length f) 1)
+                       (trans (cong (11 +ℕ_) (+-comm (compile-length f) 1))
+                              (sym (+-assoc 11 1 (compile-length f))))
+
+    -- end-label + 1 = length prog
+    pos-eq-length : end-label +ℕ 1 ≡ length prog
+    pos-eq-length = trans end-plus-1 (sym prog-length)
+
+    -- fetch prog (length prog + 0) = nothing
+    fetch-at-length : fetch prog (length prog +ℕ 0) ≡ nothing
+    fetch-at-length = fetch-past-length prog 0
+
+    -- Simplify: length prog + 0 = length prog
+    open import Data.Nat.Properties using (+-identityʳ)
+
+    fetch-at-length' : fetch prog (length prog) ≡ nothing
+    fetch-at-length' = subst (λ n → fetch prog n ≡ nothing) (+-identityʳ (length prog)) fetch-at-length
+
+    fetch-past-end : fetch prog (end-label +ℕ 1) ≡ nothing
+    fetch-past-end = subst (λ n → fetch prog n ≡ nothing) (sym pos-eq-length) fetch-at-length'
 
     step7 : step prog s6 ≡ just s7
     step7 = step-halt-on-fetch-fail prog s6 h6 fetch-past-end
