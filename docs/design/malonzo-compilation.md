@@ -370,11 +370,12 @@ The optimizer is the critical verified component—it's where categorical laws a
 - [x] Configure for Nix (dynamic stdlib discovery)
 - [x] Test: generates ~222 Haskell files successfully
 
-### Phase 4: Haskell Integration (Current)
-- [ ] Create IR conversion layer (Haskell IR ↔ MAlonzo types)
-- [ ] Import MAlonzo-generated modules into compiler
-- [ ] Wire `d_compile_8` into compilation pipeline
-- [ ] Test full compilation through verified optimizer
+### Phase 4: Haskell Integration ✓
+- [x] Create `Once.MAlonzo` bridge module with type/IR conversion
+- [x] Import MAlonzo-generated modules into compiler (once.cabal)
+- [x] Wire `d_compile_8` into compilation pipeline via `optimizeMAlonzo`
+- [x] Add `--optimizer malonzo` CLI flag
+- [x] Test: Both optimizers produce identical output for pure categorical IR
 
 ### Phase 5: Codegen Migration (Future)
 - [ ] Move x86 codegen to Agda (in progress - see Once.Backend.X86)
