@@ -881,6 +881,17 @@ run-terminal-nonhalt {A} rest x s h-false pc-0 = s' , exec-eq , h' , pc' , rax-e
     rax-eq : readReg (regs s') rax ≡ encode tt
     rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
 
+-- | Exec chaining: if exec n produces s' (not halted), then exec m on s' produces s'',
+-- then exec (n + m) produces s''
+-- This is key for composing sub-program executions
+-- Postulate for now - can be proven by induction on n
+postulate
+  exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
+    exec n prog s ≡ just s' →
+    halted s' ≡ false →
+    exec m prog s' ≡ just s'' →
+    exec (n +ℕ m) prog s ≡ just s''
+
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
 fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
