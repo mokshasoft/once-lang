@@ -1,0 +1,1505 @@
+// ======================================================================
+// Linux Syscall Primitives - RISC-V64 Implementation
+// ======================================================================
+//
+// Raw syscall wrappers for Linux RISC-V64 (RV64).
+// Each once_* function corresponds to a primitive in syscalls.once.
+//
+// Linux RISC-V64 syscall convention:
+//   a7: syscall number
+//   a0-a5: arguments 1-6
+//   ecall instruction
+//   Return: a0 (negative values indicate -errno)
+//
+// Once calling convention (RISC-V LP64 ABI):
+//   a0: first argument (pointer to tuple for multi-arg)
+//   a0: return value (pointer to tuple for multi-return)
+//   s0-s11: callee-saved registers
+//   ra: return address
+//
+// Once tuple layout (nested pairs):
+//   (a, b, c) = (a, (b, c))
+//   Each pair: [fst: 8 bytes][snd: 8 bytes]
+//
+// Note: RISC-V Linux uses "new" syscall ABI with *at variants.
+// Many traditional syscalls (open, mkdir, etc.) don't exist;
+// use openat, mkdirat, etc. with AT_FDCWD (-100) for cwd-relative.
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_LINUX_RISCV64_SYSCALLS_DEFINED
+#define ONCE_LINUX_RISCV64_SYSCALLS_DEFINED
+
+// ======================================================================
+// Syscall Numbers (RISC-V64 Linux)
+// ======================================================================
+.equ SYS_getcwd,        17
+.equ SYS_dup,           23
+.equ SYS_dup3,          24
+.equ SYS_fcntl,         25
+.equ SYS_mkdirat,       34
+.equ SYS_unlinkat,      35
+.equ SYS_symlinkat,     36
+.equ SYS_renameat,      38
+.equ SYS_ftruncate,     46
+.equ SYS_faccessat,     48
+.equ SYS_chdir,         49
+.equ SYS_fchmod,        52
+.equ SYS_fchmodat,      53
+.equ SYS_fchownat,      54
+.equ SYS_fchown,        55
+.equ SYS_openat,        56
+.equ SYS_close,         57
+.equ SYS_pipe2,         59
+.equ SYS_lseek,         62
+.equ SYS_read,          63
+.equ SYS_write,         64
+.equ SYS_readv,         65
+.equ SYS_writev,        66
+.equ SYS_readlinkat,    78
+.equ SYS_fstatat,       79
+.equ SYS_fstat,         80
+.equ SYS_fsync,         82
+.equ SYS_exit,          93
+.equ SYS_exit_group,    94
+.equ SYS_futex,         98
+.equ SYS_nanosleep,     101
+.equ SYS_clock_gettime, 113
+.equ SYS_kill,          129
+.equ SYS_getpid,        172
+.equ SYS_getppid,       173
+.equ SYS_getuid,        174
+.equ SYS_geteuid,       175
+.equ SYS_getgid,        176
+.equ SYS_getegid,       177
+.equ SYS_gettid,        178
+.equ SYS_socket,        198
+.equ SYS_bind,          200
+.equ SYS_listen,        201
+.equ SYS_accept,        202
+.equ SYS_connect,       203
+.equ SYS_sendto,        206
+.equ SYS_recvfrom,      207
+.equ SYS_setsockopt,    208
+.equ SYS_getsockopt,    209
+.equ SYS_shutdown,      210
+.equ SYS_munmap,        215
+.equ SYS_clone,         220
+.equ SYS_mmap,          222
+.equ SYS_mprotect,      226
+.equ SYS_ppoll,         73
+.equ SYS_getrandom,     278
+.equ SYS_chroot,        51
+
+// AT_FDCWD for *at syscalls (current working directory)
+.equ AT_FDCWD,          -100
+
+// ======================================================================
+// Process Control
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// exit0 - Exit with code 0
+// ----------------------------------------------------------------------
+.global once_exit0
+.type once_exit0, @function
+once_exit0:
+    li      a7, SYS_exit_group
+    li      a0, 0
+    ecall
+    // Does not return
+.size once_exit0, .-once_exit0
+
+// ----------------------------------------------------------------------
+// exit - Exit with given code
+// ----------------------------------------------------------------------
+.global once_exit
+.type once_exit, @function
+once_exit:
+    // a0 already has exit code
+    li      a7, SYS_exit_group
+    ecall
+    // Does not return
+.size once_exit, .-once_exit
+
+// ----------------------------------------------------------------------
+// getpid - Get process ID
+// ----------------------------------------------------------------------
+.global once_getpid
+.type once_getpid, @function
+once_getpid:
+    li      a7, SYS_getpid
+    ecall
+    ret
+.size once_getpid, .-once_getpid
+
+// ----------------------------------------------------------------------
+// getppid - Get parent process ID
+// ----------------------------------------------------------------------
+.global once_getppid
+.type once_getppid, @function
+once_getppid:
+    li      a7, SYS_getppid
+    ecall
+    ret
+.size once_getppid, .-once_getppid
+
+// ----------------------------------------------------------------------
+// getuid - Get user ID
+// ----------------------------------------------------------------------
+.global once_getuid
+.type once_getuid, @function
+once_getuid:
+    li      a7, SYS_getuid
+    ecall
+    ret
+.size once_getuid, .-once_getuid
+
+// ----------------------------------------------------------------------
+// geteuid - Get effective user ID
+// ----------------------------------------------------------------------
+.global once_geteuid
+.type once_geteuid, @function
+once_geteuid:
+    li      a7, SYS_geteuid
+    ecall
+    ret
+.size once_geteuid, .-once_geteuid
+
+// ----------------------------------------------------------------------
+// getgid - Get group ID
+// ----------------------------------------------------------------------
+.global once_getgid
+.type once_getgid, @function
+once_getgid:
+    li      a7, SYS_getgid
+    ecall
+    ret
+.size once_getgid, .-once_getgid
+
+// ----------------------------------------------------------------------
+// getegid - Get effective group ID
+// ----------------------------------------------------------------------
+.global once_getegid
+.type once_getegid, @function
+once_getegid:
+    li      a7, SYS_getegid
+    ecall
+    ret
+.size once_getegid, .-once_getegid
+
+// ======================================================================
+// File Descriptors
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fd_read - Read from file descriptor
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len), count) as nested tuple
+// Output: Int (bytes read or -errno)
+.global once_fd_read
+.type once_fd_read, @function
+once_fd_read:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    // Unpack: (fd, ((buf_data, buf_len), count))
+    ld      t0, 0(a0)           // t0 = fd
+    ld      a0, 8(a0)           // a0 = ptr to rest
+
+    ld      t1, 0(a0)           // t1 = ptr to buffer pair
+    ld      a2, 8(a0)           // a2 = count
+
+    ld      a1, 0(t1)           // a1 = buf_data
+
+    mv      a0, t0              // a0 = fd
+    // a1 = buf_data
+    // a2 = count
+
+    li      a7, SYS_read
+    ecall
+
+    ld      ra, 8(sp)
+    ld      s0, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_fd_read, .-once_fd_read
+
+// ----------------------------------------------------------------------
+// fd_write - Write to file descriptor
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len), count) as nested tuple
+// Output: Int (bytes written or -errno)
+.global once_fd_write
+.type once_fd_write, @function
+once_fd_write:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    // Unpack: (fd, ((buf_data, buf_len), count))
+    ld      t0, 0(a0)           // t0 = fd
+    ld      a0, 8(a0)           // a0 = ptr to rest
+
+    ld      t1, 0(a0)           // t1 = ptr to buffer pair
+    ld      a2, 8(a0)           // a2 = count
+
+    ld      a1, 0(t1)           // a1 = buf_data
+
+    mv      a0, t0              // a0 = fd
+
+    li      a7, SYS_write
+    ecall
+
+    ld      ra, 8(sp)
+    ld      s0, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_fd_write, .-once_fd_write
+
+// ----------------------------------------------------------------------
+// fd_close - Close file descriptor
+// ----------------------------------------------------------------------
+.global once_fd_close
+.type once_fd_close, @function
+once_fd_close:
+    // a0 = fd
+    li      a7, SYS_close
+    ecall
+    ret
+.size once_fd_close, .-once_fd_close
+
+// ----------------------------------------------------------------------
+// fd_dup - Duplicate file descriptor
+// ----------------------------------------------------------------------
+.global once_fd_dup
+.type once_fd_dup, @function
+once_fd_dup:
+    // a0 = fd
+    li      a7, SYS_dup
+    ecall
+    ret
+.size once_fd_dup, .-once_fd_dup
+
+// ----------------------------------------------------------------------
+// fd_dup2 - Duplicate fd to specific number (via dup3)
+// ----------------------------------------------------------------------
+// Input: (oldfd, newfd)
+// Output: Int (new fd or -errno)
+.global once_fd_dup2
+.type once_fd_dup2, @function
+once_fd_dup2:
+    // Unpack: (oldfd, newfd)
+    ld      t0, 0(a0)           // t0 = oldfd
+    ld      a1, 8(a0)           // a1 = newfd
+    mv      a0, t0              // a0 = oldfd
+    li      a2, 0               // flags = 0
+
+    li      a7, SYS_dup3
+    ecall
+    ret
+.size once_fd_dup2, .-once_fd_dup2
+
+// ======================================================================
+// File Operations (using *at variants with AT_FDCWD)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// open - Open file (via openat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (flags, mode))
+// Output: Int (fd or -errno)
+.global once_open
+.type once_open, @function
+once_open:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    // Unpack: ((path_data, path_len), (flags, mode))
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      t1, 8(a0)           // t1 = ptr to (flags, mode)
+
+    ld      a1, 0(t0)           // a1 = path_data
+    ld      a2, 0(t1)           // a2 = flags
+    ld      a3, 8(t1)           // a3 = mode
+
+    li      a0, AT_FDCWD        // dirfd = AT_FDCWD
+
+    li      a7, SYS_openat
+    ecall
+
+    ld      ra, 8(sp)
+    ld      s0, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_open, .-once_open
+
+// ----------------------------------------------------------------------
+// creat - Create file (via openat with O_CREAT|O_WRONLY|O_TRUNC)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (fd or -errno)
+.global once_creat
+.type once_creat, @function
+once_creat:
+    // Unpack: ((path_data, path_len), mode)
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      a3, 8(a0)           // a3 = mode
+    ld      a1, 0(t0)           // a1 = path_data
+
+    li      a0, AT_FDCWD        // dirfd
+    // O_WRONLY=1, O_CREAT=64, O_TRUNC=512 => 577
+    li      a2, 577             // flags
+
+    li      a7, SYS_openat
+    ecall
+    ret
+.size once_creat, .-once_creat
+
+// ----------------------------------------------------------------------
+// unlink - Delete file (via unlinkat)
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_unlink
+.type once_unlink, @function
+once_unlink:
+    ld      a1, 0(a0)           // a1 = path_data
+    li      a0, AT_FDCWD        // dirfd
+    li      a2, 0               // flags = 0 (not AT_REMOVEDIR)
+
+    li      a7, SYS_unlinkat
+    ecall
+    ret
+.size once_unlink, .-once_unlink
+
+// ----------------------------------------------------------------------
+// rename - Rename file (via renameat)
+// ----------------------------------------------------------------------
+// Input: ((old_data, old_len), (new_data, new_len))
+// Output: Int (0 or -errno)
+.global once_rename
+.type once_rename, @function
+once_rename:
+    // Unpack: ((old_data, old_len), (new_data, new_len))
+    ld      t0, 0(a0)           // t0 = ptr to old path
+    ld      t1, 8(a0)           // t1 = ptr to new path
+
+    ld      a1, 0(t0)           // a1 = old_data
+    ld      a3, 0(t1)           // a3 = new_data
+    li      a0, AT_FDCWD        // olddirfd
+    li      a2, AT_FDCWD        // newdirfd
+
+    li      a7, SYS_renameat
+    ecall
+    ret
+.size once_rename, .-once_rename
+
+// ----------------------------------------------------------------------
+// symlink - Create symbolic link (via symlinkat)
+// ----------------------------------------------------------------------
+// Input: ((target_data, target_len), (link_data, link_len))
+// Output: Int (0 or -errno)
+.global once_symlink
+.type once_symlink, @function
+once_symlink:
+    ld      t0, 0(a0)           // t0 = ptr to target
+    ld      t1, 8(a0)           // t1 = ptr to link
+
+    ld      a0, 0(t0)           // a0 = target_data
+    ld      a2, 0(t1)           // a2 = link_data
+    li      a1, AT_FDCWD        // newdirfd
+
+    li      a7, SYS_symlinkat
+    ecall
+    ret
+.size once_symlink, .-once_symlink
+
+// ----------------------------------------------------------------------
+// readlink - Read symbolic link (via readlinkat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), ((buf_data, buf_len), bufsiz))
+// Output: Int (length or -errno)
+.global once_readlink
+.type once_readlink, @function
+once_readlink:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    // Unpack
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      t1, 8(a0)           // t1 = ptr to rest
+
+    ld      a1, 0(t0)           // a1 = path_data
+
+    ld      t2, 0(t1)           // t2 = ptr to buffer
+    ld      a3, 8(t1)           // a3 = bufsiz
+
+    ld      a2, 0(t2)           // a2 = buf_data
+
+    li      a0, AT_FDCWD        // dirfd
+
+    li      a7, SYS_readlinkat
+    ecall
+
+    ld      ra, 8(sp)
+    ld      s0, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_readlink, .-once_readlink
+
+// ----------------------------------------------------------------------
+// stat - Get file status (via fstatat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_stat
+.type once_stat, @function
+once_stat:
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      t1, 8(a0)           // t1 = ptr to buffer
+
+    ld      a1, 0(t0)           // a1 = path_data
+    ld      a2, 0(t1)           // a2 = buf_data
+    li      a0, AT_FDCWD        // dirfd
+    li      a3, 0               // flags = 0 (follow symlinks)
+
+    li      a7, SYS_fstatat
+    ecall
+    ret
+.size once_stat, .-once_stat
+
+// ----------------------------------------------------------------------
+// lstat - Get file status, don't follow symlinks (via fstatat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_lstat
+.type once_lstat, @function
+once_lstat:
+    ld      t0, 0(a0)
+    ld      t1, 8(a0)
+
+    ld      a1, 0(t0)
+    ld      a2, 0(t1)
+    li      a0, AT_FDCWD
+    li      a3, 0x100           // AT_SYMLINK_NOFOLLOW
+
+    li      a7, SYS_fstatat
+    ecall
+    ret
+.size once_lstat, .-once_lstat
+
+// ----------------------------------------------------------------------
+// fstat - Get file status by fd
+// ----------------------------------------------------------------------
+// Input: (fd, (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_fstat
+.type once_fstat, @function
+once_fstat:
+    ld      t0, 0(a0)           // t0 = fd
+    ld      t1, 8(a0)           // t1 = ptr to buffer
+
+    mv      a0, t0              // a0 = fd
+    ld      a1, 0(t1)           // a1 = buf_data
+
+    li      a7, SYS_fstat
+    ecall
+    ret
+.size once_fstat, .-once_fstat
+
+// ----------------------------------------------------------------------
+// chmod - Change file permissions (via fchmodat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (0 or -errno)
+.global once_chmod
+.type once_chmod, @function
+once_chmod:
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      a2, 8(a0)           // a2 = mode
+    ld      a1, 0(t0)           // a1 = path_data
+    li      a0, AT_FDCWD        // dirfd
+    li      a3, 0               // flags
+
+    li      a7, SYS_fchmodat
+    ecall
+    ret
+.size once_chmod, .-once_chmod
+
+// ----------------------------------------------------------------------
+// fchmod - Change file permissions by fd
+// ----------------------------------------------------------------------
+// Input: (fd, mode)
+// Output: Int (0 or -errno)
+.global once_fchmod
+.type once_fchmod, @function
+once_fchmod:
+    ld      t0, 0(a0)           // t0 = fd
+    ld      a1, 8(a0)           // a1 = mode
+    mv      a0, t0              // a0 = fd
+
+    li      a7, SYS_fchmod
+    ecall
+    ret
+.size once_fchmod, .-once_fchmod
+
+// ----------------------------------------------------------------------
+// chown - Change file owner (via fchownat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), (owner, group))
+// Output: Int (0 or -errno)
+.global once_chown
+.type once_chown, @function
+once_chown:
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      t1, 8(a0)           // t1 = ptr to (owner, group)
+
+    ld      a1, 0(t0)           // a1 = path_data
+    ld      a2, 0(t1)           // a2 = owner
+    ld      a3, 8(t1)           // a3 = group
+    li      a0, AT_FDCWD        // dirfd
+    li      a4, 0               // flags
+
+    li      a7, SYS_fchownat
+    ecall
+    ret
+.size once_chown, .-once_chown
+
+// ----------------------------------------------------------------------
+// truncate - Truncate file (open + ftruncate + close)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), length)
+// Output: Int (0 or -errno)
+.global once_truncate
+.type once_truncate, @function
+once_truncate:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+    sd      s0, 16(sp)
+    sd      s1, 8(sp)
+
+    // Save length
+    ld      s1, 8(a0)           // s1 = length
+
+    // Open file
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      a1, 0(t0)           // a1 = path_data
+    li      a0, AT_FDCWD
+    li      a2, 1               // O_WRONLY
+    li      a3, 0
+
+    li      a7, SYS_openat
+    ecall
+
+    bltz    a0, .truncate_done
+    mv      s0, a0              // s0 = fd
+
+    // ftruncate
+    mv      a0, s0
+    mv      a1, s1
+    li      a7, SYS_ftruncate
+    ecall
+
+    mv      s1, a0              // save result
+
+    // close
+    mv      a0, s0
+    li      a7, SYS_close
+    ecall
+
+    mv      a0, s1              // return ftruncate result
+
+.truncate_done:
+    ld      ra, 24(sp)
+    ld      s0, 16(sp)
+    ld      s1, 8(sp)
+    addi    sp, sp, 32
+    ret
+.size once_truncate, .-once_truncate
+
+// ----------------------------------------------------------------------
+// ftruncate - Truncate file by fd
+// ----------------------------------------------------------------------
+// Input: (fd, length)
+// Output: Int (0 or -errno)
+.global once_ftruncate
+.type once_ftruncate, @function
+once_ftruncate:
+    ld      t0, 0(a0)           // t0 = fd
+    ld      a1, 8(a0)           // a1 = length
+    mv      a0, t0
+
+    li      a7, SYS_ftruncate
+    ecall
+    ret
+.size once_ftruncate, .-once_ftruncate
+
+// ======================================================================
+// Directory Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mkdir - Create directory (via mkdirat)
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), mode)
+// Output: Int (0 or -errno)
+.global once_mkdir
+.type once_mkdir, @function
+once_mkdir:
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      a2, 8(a0)           // a2 = mode
+    ld      a1, 0(t0)           // a1 = path_data
+    li      a0, AT_FDCWD        // dirfd
+
+    li      a7, SYS_mkdirat
+    ecall
+    ret
+.size once_mkdir, .-once_mkdir
+
+// ----------------------------------------------------------------------
+// rmdir - Remove directory (via unlinkat with AT_REMOVEDIR)
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_rmdir
+.type once_rmdir, @function
+once_rmdir:
+    ld      a1, 0(a0)           // a1 = path_data
+    li      a0, AT_FDCWD
+    li      a2, 0x200           // AT_REMOVEDIR
+
+    li      a7, SYS_unlinkat
+    ecall
+    ret
+.size once_rmdir, .-once_rmdir
+
+// ----------------------------------------------------------------------
+// chdir - Change directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_chdir
+.type once_chdir, @function
+once_chdir:
+    ld      a0, 0(a0)           // a0 = path_data
+
+    li      a7, SYS_chdir
+    ecall
+    ret
+.size once_chdir, .-once_chdir
+
+// ----------------------------------------------------------------------
+// getcwd - Get current directory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), size)
+// Output: Int (length or -errno)
+.global once_getcwd
+.type once_getcwd, @function
+once_getcwd:
+    ld      t0, 0(a0)           // t0 = ptr to buffer
+    ld      a1, 8(a0)           // a1 = size
+    ld      a0, 0(t0)           // a0 = buf_data
+
+    li      a7, SYS_getcwd
+    ecall
+    ret
+.size once_getcwd, .-once_getcwd
+
+// ----------------------------------------------------------------------
+// chroot - Change root directory
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (0 or -errno)
+.global once_chroot
+.type once_chroot, @function
+once_chroot:
+    ld      a0, 0(a0)           // a0 = path_data
+
+    li      a7, SYS_chroot
+    ecall
+    ret
+.size once_chroot, .-once_chroot
+
+// ======================================================================
+// File Seeking
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// lseek - Seek in file
+// ----------------------------------------------------------------------
+// Input: (fd, (offset, whence))
+// Output: Int (new position or -errno)
+.global once_lseek
+.type once_lseek, @function
+once_lseek:
+    ld      t0, 0(a0)           // t0 = fd
+    ld      t1, 8(a0)           // t1 = ptr to (offset, whence)
+
+    mv      a0, t0              // a0 = fd
+    ld      a1, 0(t1)           // a1 = offset
+    ld      a2, 8(t1)           // a2 = whence
+
+    li      a7, SYS_lseek
+    ecall
+    ret
+.size once_lseek, .-once_lseek
+
+// ======================================================================
+// Time
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// time - Get current time (via clock_gettime)
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (seconds since epoch)
+.global once_time
+.type once_time, @function
+once_time:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+
+    // clock_gettime(CLOCK_REALTIME, &ts)
+    li      a0, 0               // CLOCK_REALTIME
+    addi    a1, sp, 0           // timespec on stack
+
+    li      a7, SYS_clock_gettime
+    ecall
+
+    // Return tv_sec
+    ld      a0, 0(sp)
+
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    ret
+.size once_time, .-once_time
+
+// ----------------------------------------------------------------------
+// clock_gettime - Get high-resolution time
+// ----------------------------------------------------------------------
+// Input: (clk_id, (buf_data, buf_len))
+// Output: Int (0 or -errno)
+.global once_clock_gettime
+.type once_clock_gettime, @function
+once_clock_gettime:
+    ld      t0, 0(a0)           // t0 = clk_id
+    ld      t1, 8(a0)           // t1 = ptr to buffer
+
+    mv      a0, t0              // a0 = clk_id
+    ld      a1, 0(t1)           // a1 = buf_data
+
+    li      a7, SYS_clock_gettime
+    ecall
+    ret
+.size once_clock_gettime, .-once_clock_gettime
+
+// ----------------------------------------------------------------------
+// sleep - Sleep for seconds
+// ----------------------------------------------------------------------
+// Input: Int (seconds)
+// Output: Int (remaining seconds)
+.global once_sleep
+.type once_sleep, @function
+once_sleep:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+
+    // Build timespec
+    sd      a0, 0(sp)           // tv_sec
+    sd      zero, 8(sp)         // tv_nsec = 0
+
+    addi    a0, sp, 0           // req
+    addi    a1, sp, 16          // rem
+
+    li      a7, SYS_nanosleep
+    ecall
+
+    // Return remaining seconds
+    ld      a0, 16(sp)
+
+    ld      ra, 40(sp)
+    addi    sp, sp, 48
+    ret
+.size once_sleep, .-once_sleep
+
+// ----------------------------------------------------------------------
+// usleep - Sleep for microseconds
+// ----------------------------------------------------------------------
+// Input: Int (microseconds)
+// Output: Int (0 or -errno)
+.global once_usleep
+.type once_usleep, @function
+once_usleep:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+
+    // Convert usec to timespec
+    li      t0, 1000000
+    div     t1, a0, t0          // t1 = sec
+    rem     t2, a0, t0          // t2 = usec remainder
+    li      t0, 1000
+    mul     t2, t2, t0          // t2 = nsec
+
+    sd      t1, 0(sp)           // tv_sec
+    sd      t2, 8(sp)           // tv_nsec
+
+    addi    a0, sp, 0
+    li      a1, 0               // NULL for rem
+
+    li      a7, SYS_nanosleep
+    ecall
+
+    ld      ra, 40(sp)
+    addi    sp, sp, 48
+    ret
+.size once_usleep, .-once_usleep
+
+// ----------------------------------------------------------------------
+// nanosleep - Sleep with timespec
+// ----------------------------------------------------------------------
+// Input: ((req_data, req_len), (rem_data, rem_len))
+// Output: Int (0 or -errno)
+.global once_nanosleep
+.type once_nanosleep, @function
+once_nanosleep:
+    ld      t0, 0(a0)           // t0 = ptr to req buffer
+    ld      t1, 8(a0)           // t1 = ptr to rem buffer
+
+    ld      a0, 0(t0)           // a0 = req_data
+    ld      a1, 0(t1)           // a1 = rem_data
+
+    li      a7, SYS_nanosleep
+    ecall
+    ret
+.size once_nanosleep, .-once_nanosleep
+
+// ======================================================================
+// Environment (stubs - require libc or environ parsing)
+// ======================================================================
+
+.global once_getenv
+.type once_getenv, @function
+once_getenv:
+    addi    sp, sp, -16
+    sd      zero, 0(sp)         // data = NULL
+    sd      zero, 8(sp)         // len = 0
+    mv      a0, sp
+    addi    sp, sp, 16
+    ret
+.size once_getenv, .-once_getenv
+
+.global once_setenv
+.type once_setenv, @function
+once_setenv:
+    li      a0, -1
+    ret
+.size once_setenv, .-once_setenv
+
+.global once_unsetenv
+.type once_unsetenv, @function
+once_unsetenv:
+    li      a0, -1
+    ret
+.size once_unsetenv, .-once_unsetenv
+
+// ======================================================================
+// Memory Mapping
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mmap - Map memory
+// ----------------------------------------------------------------------
+// Input: (addr, (length, (prot, (flags, (fd, offset)))))
+// Output: (buf_data, buf_len) - Buffer struct
+.global once_mmap
+.type once_mmap, @function
+once_mmap:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+    sd      s0, 32(sp)
+    sd      s1, 24(sp)
+
+    // Unpack 6 args
+    ld      t0, 0(a0)           // addr
+    ld      a0, 8(a0)
+    ld      s0, 0(a0)           // length (save)
+    ld      a0, 8(a0)
+    ld      a2, 0(a0)           // prot
+    ld      a0, 8(a0)
+    ld      a3, 0(a0)           // flags
+    ld      a0, 8(a0)
+    ld      a4, 0(a0)           // fd
+    ld      a5, 8(a0)           // offset
+
+    mv      a0, t0              // addr
+    mv      a1, s0              // length
+
+    li      a7, SYS_mmap
+    ecall
+
+    // Check for error
+    li      t0, -4096
+    bltu    t0, a0, .mmap_failed_rv
+
+    sd      a0, 0(sp)           // data
+    sd      s0, 8(sp)           // len
+    addi    a0, sp, 0
+    j       .mmap_done_rv
+
+.mmap_failed_rv:
+    sd      zero, 0(sp)
+    sd      zero, 8(sp)
+    addi    a0, sp, 0
+
+.mmap_done_rv:
+    ld      ra, 40(sp)
+    ld      s0, 32(sp)
+    ld      s1, 24(sp)
+    addi    sp, sp, 48
+    ret
+.size once_mmap, .-once_mmap
+
+// ----------------------------------------------------------------------
+// munmap - Unmap memory
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), length)
+// Output: Int (0 or -errno)
+.global once_munmap
+.type once_munmap, @function
+once_munmap:
+    ld      t0, 0(a0)           // t0 = ptr to buffer
+    ld      a1, 8(a0)           // a1 = length
+    ld      a0, 0(t0)           // a0 = buf_data
+
+    li      a7, SYS_munmap
+    ecall
+    ret
+.size once_munmap, .-once_munmap
+
+// ----------------------------------------------------------------------
+// mprotect - Change memory protection
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), (length, prot))
+// Output: Int (0 or -errno)
+.global once_mprotect
+.type once_mprotect, @function
+once_mprotect:
+    ld      t0, 0(a0)           // t0 = ptr to buffer
+    ld      t1, 8(a0)           // t1 = ptr to (length, prot)
+
+    ld      a0, 0(t0)           // a0 = buf_data
+    ld      a1, 0(t1)           // a1 = length
+    ld      a2, 8(t1)           // a2 = prot
+
+    li      a7, SYS_mprotect
+    ecall
+    ret
+.size once_mprotect, .-once_mprotect
+
+// ======================================================================
+// Signals
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// kill - Send signal to process
+// ----------------------------------------------------------------------
+// Input: (pid, sig)
+// Output: Int (0 or -errno)
+.global once_kill
+.type once_kill, @function
+once_kill:
+    ld      t0, 0(a0)           // t0 = pid
+    ld      a1, 8(a0)           // a1 = sig
+    mv      a0, t0
+
+    li      a7, SYS_kill
+    ecall
+    ret
+.size once_kill, .-once_kill
+
+// ----------------------------------------------------------------------
+// raise - Send signal to self
+// ----------------------------------------------------------------------
+// Input: Int (sig)
+// Output: Int (0 or -errno)
+.global once_raise
+.type once_raise, @function
+once_raise:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    mv      s0, a0              // save sig
+
+    li      a7, SYS_getpid
+    ecall
+
+    // kill(pid, sig)
+    mv      a1, s0
+    li      a7, SYS_kill
+    ecall
+
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_raise, .-once_raise
+
+// ----------------------------------------------------------------------
+// pause - Wait for signal (via ppoll with NULL)
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (-errno)
+.global once_pause
+.type once_pause, @function
+once_pause:
+    li      a0, 0               // fds = NULL
+    li      a1, 0               // nfds = 0
+    li      a2, 0               // timeout = NULL (infinite)
+    li      a3, 0               // sigmask = NULL
+
+    li      a7, SYS_ppoll
+    ecall
+    ret
+.size once_pause, .-once_pause
+
+// ======================================================================
+// Pipe and IPC
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// pipe - Create pipe (via pipe2)
+// ----------------------------------------------------------------------
+// Input: (buf_data, buf_len)
+// Output: Int (0 or -errno)
+.global once_pipe
+.type once_pipe, @function
+once_pipe:
+    ld      a0, 0(a0)           // a0 = buf_data
+    li      a1, 0               // flags = 0
+
+    li      a7, SYS_pipe2
+    ecall
+    ret
+.size once_pipe, .-once_pipe
+
+// ======================================================================
+// Socket Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// socket - Create socket
+// ----------------------------------------------------------------------
+// Input: (domain, (type, protocol))
+// Output: Int (fd or -errno)
+.global once_socket
+.type once_socket, @function
+once_socket:
+    ld      t0, 0(a0)           // t0 = domain
+    ld      t1, 8(a0)           // t1 = ptr to (type, protocol)
+
+    mv      a0, t0              // a0 = domain
+    ld      a1, 0(t1)           // a1 = type
+    ld      a2, 8(t1)           // a2 = protocol
+
+    li      a7, SYS_socket
+    ecall
+    ret
+.size once_socket, .-once_socket
+
+// ----------------------------------------------------------------------
+// bind - Bind socket to address
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), addrlen))
+// Output: Int (0 or -errno)
+.global once_bind
+.type once_bind, @function
+once_bind:
+    ld      t0, 0(a0)           // t0 = sockfd
+    ld      t1, 8(a0)           // t1 = ptr to rest
+
+    mv      a0, t0              // a0 = sockfd
+
+    ld      t2, 0(t1)           // t2 = ptr to addr buffer
+    ld      a2, 8(t1)           // a2 = addrlen
+
+    ld      a1, 0(t2)           // a1 = addr_data
+
+    li      a7, SYS_bind
+    ecall
+    ret
+.size once_bind, .-once_bind
+
+// ----------------------------------------------------------------------
+// listen - Listen on socket
+// ----------------------------------------------------------------------
+// Input: (sockfd, backlog)
+// Output: Int (0 or -errno)
+.global once_listen
+.type once_listen, @function
+once_listen:
+    ld      t0, 0(a0)
+    ld      a1, 8(a0)
+    mv      a0, t0
+
+    li      a7, SYS_listen
+    ecall
+    ret
+.size once_listen, .-once_listen
+
+// ----------------------------------------------------------------------
+// accept - Accept connection
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), (addrlen_data, addrlen_len)))
+// Output: Int (new fd or -errno)
+.global once_accept
+.type once_accept, @function
+once_accept:
+    ld      t0, 0(a0)           // t0 = sockfd
+    ld      t1, 8(a0)           // t1 = ptr to rest
+
+    mv      a0, t0
+
+    ld      t2, 0(t1)           // t2 = ptr to addr buffer
+    ld      t3, 8(t1)           // t3 = ptr to addrlen buffer
+
+    ld      a1, 0(t2)           // a1 = addr_data
+    ld      a2, 0(t3)           // a2 = addrlen_data
+
+    li      a7, SYS_accept
+    ecall
+    ret
+.size once_accept, .-once_accept
+
+// ----------------------------------------------------------------------
+// connect - Connect to address
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((addr_data, addr_len), addrlen))
+// Output: Int (0 or -errno)
+.global once_connect
+.type once_connect, @function
+once_connect:
+    ld      t0, 0(a0)
+    ld      t1, 8(a0)
+
+    mv      a0, t0
+
+    ld      t2, 0(t1)
+    ld      a2, 8(t1)
+
+    ld      a1, 0(t2)
+
+    li      a7, SYS_connect
+    ecall
+    ret
+.size once_connect, .-once_connect
+
+// ----------------------------------------------------------------------
+// send - Send on socket (via sendto)
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((buf_data, buf_len), (len, flags)))
+// Output: Int (bytes sent or -errno)
+.global once_send
+.type once_send, @function
+once_send:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      t0, 0(a0)           // sockfd
+    ld      t1, 8(a0)           // ptr to rest
+
+    ld      t2, 0(t1)           // ptr to buffer
+    ld      t3, 8(t1)           // ptr to (len, flags)
+
+    mv      a0, t0              // sockfd
+    ld      a1, 0(t2)           // buf_data
+    ld      a2, 0(t3)           // len
+    ld      a3, 8(t3)           // flags
+    li      a4, 0               // dest_addr = NULL
+    li      a5, 0               // addrlen = 0
+
+    li      a7, SYS_sendto
+    ecall
+
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_send, .-once_send
+
+// ----------------------------------------------------------------------
+// recv - Receive from socket (via recvfrom)
+// ----------------------------------------------------------------------
+// Input: (sockfd, ((buf_data, buf_len), (len, flags)))
+// Output: Int (bytes received or -errno)
+.global once_recv
+.type once_recv, @function
+once_recv:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      t0, 0(a0)
+    ld      t1, 8(a0)
+
+    ld      t2, 0(t1)
+    ld      t3, 8(t1)
+
+    mv      a0, t0
+    ld      a1, 0(t2)
+    ld      a2, 0(t3)
+    ld      a3, 8(t3)
+    li      a4, 0               // src_addr = NULL
+    li      a5, 0               // addrlen = NULL
+
+    li      a7, SYS_recvfrom
+    ecall
+
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_recv, .-once_recv
+
+// ----------------------------------------------------------------------
+// shutdown - Shutdown socket
+// ----------------------------------------------------------------------
+// Input: (sockfd, how)
+// Output: Int (0 or -errno)
+.global once_shutdown
+.type once_shutdown, @function
+once_shutdown:
+    ld      t0, 0(a0)
+    ld      a1, 8(a0)
+    mv      a0, t0
+
+    li      a7, SYS_shutdown
+    ecall
+    ret
+.size once_shutdown, .-once_shutdown
+
+// ----------------------------------------------------------------------
+// setsockopt - Set socket option
+// ----------------------------------------------------------------------
+// Input: (sockfd, (level, (optname, ((optval_data, optval_len), optlen))))
+// Output: Int (0 or -errno)
+.global once_setsockopt
+.type once_setsockopt, @function
+once_setsockopt:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    // Unpack 5 args
+    ld      t0, 0(a0)           // sockfd
+    ld      a0, 8(a0)
+    ld      t1, 0(a0)           // level
+    ld      a0, 8(a0)
+    ld      t2, 0(a0)           // optname
+    ld      a0, 8(a0)
+    ld      t3, 0(a0)           // ptr to optval buffer
+    ld      a4, 8(a0)           // optlen
+
+    mv      a0, t0
+    mv      a1, t1
+    mv      a2, t2
+    ld      a3, 0(t3)           // optval_data
+
+    li      a7, SYS_setsockopt
+    ecall
+
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_setsockopt, .-once_setsockopt
+
+// ----------------------------------------------------------------------
+// getsockopt - Get socket option
+// ----------------------------------------------------------------------
+// Input: (sockfd, (level, (optname, ((optval_data, optval_len), (optlen_data, optlen_len)))))
+// Output: Int (0 or -errno)
+.global once_getsockopt
+.type once_getsockopt, @function
+once_getsockopt:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      t0, 0(a0)           // sockfd
+    ld      a0, 8(a0)
+    ld      t1, 0(a0)           // level
+    ld      a0, 8(a0)
+    ld      t2, 0(a0)           // optname
+    ld      a0, 8(a0)
+    ld      t3, 0(a0)           // ptr to optval buffer
+    ld      t4, 8(a0)           // ptr to optlen buffer
+
+    mv      a0, t0
+    mv      a1, t1
+    mv      a2, t2
+    ld      a3, 0(t3)           // optval_data
+    ld      a4, 0(t4)           // optlen_data
+
+    li      a7, SYS_getsockopt
+    ecall
+
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_getsockopt, .-once_getsockopt
+
+// ======================================================================
+// Polling (via ppoll)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// poll - Poll file descriptors
+// ----------------------------------------------------------------------
+// Input: ((fds_data, fds_len), (nfds, timeout))
+// Output: Int (ready count or -errno)
+.global once_poll
+.type once_poll, @function
+once_poll:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+
+    ld      t0, 0(a0)           // t0 = ptr to fds buffer
+    ld      t1, 8(a0)           // t1 = ptr to (nfds, timeout)
+
+    ld      a0, 0(t0)           // a0 = fds_data
+    ld      a1, 0(t1)           // a1 = nfds
+    ld      t2, 8(t1)           // t2 = timeout (ms)
+
+    // Convert ms timeout to timespec if not -1
+    li      t3, -1
+    beq     t2, t3, .poll_infinite
+
+    // timeout >= 0: convert to timespec
+    li      t3, 1000
+    div     t4, t2, t3          // sec
+    rem     t5, t2, t3          // ms
+    li      t3, 1000000
+    mul     t5, t5, t3          // nsec
+
+    sd      t4, 0(sp)
+    sd      t5, 8(sp)
+    addi    a2, sp, 0           // timeout ptr
+    j       .poll_call
+
+.poll_infinite:
+    li      a2, 0               // NULL = infinite
+
+.poll_call:
+    li      a3, 0               // sigmask = NULL
+
+    li      a7, SYS_ppoll
+    ecall
+
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    ret
+.size once_poll, .-once_poll
+
+// ======================================================================
+// Random
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// getrandom - Get random bytes
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), (buflen, flags))
+// Output: Int (bytes or -errno)
+.global once_getrandom
+.type once_getrandom, @function
+once_getrandom:
+    ld      t0, 0(a0)           // t0 = ptr to buffer
+    ld      t1, 8(a0)           // t1 = ptr to (buflen, flags)
+
+    ld      a0, 0(t0)           // a0 = buf_data
+    ld      a1, 0(t1)           // a1 = buflen
+    ld      a2, 8(t1)           // a2 = flags
+
+    li      a7, SYS_getrandom
+    ecall
+    ret
+.size once_getrandom, .-once_getrandom
+
+// ======================================================================
+// Threading (low-level)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// clone - Create new thread
+// ----------------------------------------------------------------------
+// Input: (flags, (stack_data, stack_len))
+// Output: Int (tid or -errno)
+.global once_clone
+.type once_clone, @function
+once_clone:
+    ld      t0, 0(a0)           // t0 = flags
+    ld      t1, 8(a0)           // t1 = ptr to stack buffer
+
+    mv      a0, t0              // a0 = flags
+    ld      a1, 0(t1)           // a1 = stack_data
+    li      a2, 0               // parent_tid = NULL
+    li      a3, 0               // tls = 0
+    li      a4, 0               // child_tid = NULL
+
+    li      a7, SYS_clone
+    ecall
+    ret
+.size once_clone, .-once_clone
+
+// ----------------------------------------------------------------------
+// futex - Fast userspace mutex operations
+// ----------------------------------------------------------------------
+// Input: ((addr_data, addr_len), (op, (val, ((timeout_data, timeout_len), ((addr2_data, addr2_len), val3)))))
+// Output: Int (depends on op)
+.global once_futex
+.type once_futex, @function
+once_futex:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    // Unpack 6 args
+    ld      t0, 0(a0)           // ptr to addr buffer
+    ld      a0, 8(a0)
+    ld      t1, 0(a0)           // op
+    ld      a0, 8(a0)
+    ld      t2, 0(a0)           // val
+    ld      a0, 8(a0)
+    ld      t3, 0(a0)           // ptr to timeout buffer
+    ld      a0, 8(a0)
+    ld      t4, 0(a0)           // ptr to addr2 buffer
+    ld      a5, 8(a0)           // val3
+
+    ld      a0, 0(t0)           // addr_data
+    mv      a1, t1              // op
+    mv      a2, t2              // val
+    ld      a3, 0(t3)           // timeout_data
+    ld      a4, 0(t4)           // addr2_data
+
+    li      a7, SYS_futex
+    ecall
+
+    ld      ra, 8(sp)
+    ld      s0, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_futex, .-once_futex
+
+// ----------------------------------------------------------------------
+// gettid - Get thread ID
+// ----------------------------------------------------------------------
+.global once_gettid
+.type once_gettid, @function
+once_gettid:
+    li      a7, SYS_gettid
+    ecall
+    ret
+.size once_gettid, .-once_gettid
+
+#endif // ONCE_LINUX_RISCV64_SYSCALLS_DEFINED
+

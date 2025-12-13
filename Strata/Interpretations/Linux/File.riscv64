@@ -1,0 +1,437 @@
+// ======================================================================
+// File I/O Convenience Functions - RISC-V64 Implementation
+// ======================================================================
+//
+// Higher-level file operations using raw syscalls (no libc).
+//
+// Note: RISC-V Linux uses *at variants (openat, fstatat, etc.)
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_LINUX_RISCV64_FILE_DEFINED
+#define ONCE_LINUX_RISCV64_FILE_DEFINED
+
+.equ SYS_read,      63
+.equ SYS_write,     64
+.equ SYS_openat,    56
+.equ SYS_close,     57
+.equ SYS_fstatat,   79
+.equ SYS_fsync,     82
+
+// File descriptors
+.equ STDIN,         0
+.equ STDOUT,        1
+.equ STDERR,        2
+
+// Open flags
+.equ O_RDONLY,      0
+.equ AT_FDCWD,      -100
+
+// Stat structure offset for st_size (RISC-V64 Linux)
+.equ STAT_ST_SIZE,  48
+
+// ======================================================================
+// Output Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// print - Write string to stdout (no newline)
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_print
+.type once_print, @function
+once_print:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    // Unpack string
+    ld      a1, 0(a0)           // a1 = str_data
+    ld      a2, 8(a0)           // a2 = str_len
+
+    li      a0, STDOUT
+    li      a7, SYS_write
+    ecall
+
+    li      a0, 0               // Return NULL
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_print, .-once_print
+
+// ----------------------------------------------------------------------
+// println - Write string to stdout with newline
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_println
+.type once_println, @function
+once_println:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+    sd      s0, 16(sp)
+
+    // Unpack string
+    ld      a1, 0(a0)
+    ld      a2, 8(a0)
+
+    // Write string
+    li      a0, STDOUT
+    li      a7, SYS_write
+    ecall
+
+    // Write newline
+    li      t0, '\n'
+    sb      t0, 0(sp)
+    li      a0, STDOUT
+    addi    a1, sp, 0
+    li      a2, 1
+    li      a7, SYS_write
+    ecall
+
+    li      a0, 0
+    ld      ra, 24(sp)
+    ld      s0, 16(sp)
+    addi    sp, sp, 32
+    ret
+.size once_println, .-once_println
+
+// ----------------------------------------------------------------------
+// err - Write string to stderr (no newline)
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_err
+.type once_err, @function
+once_err:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      a1, 0(a0)
+    ld      a2, 8(a0)
+
+    li      a0, STDERR
+    li      a7, SYS_write
+    ecall
+
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_err, .-once_err
+
+// ----------------------------------------------------------------------
+// errln - Write string to stderr with newline
+// ----------------------------------------------------------------------
+// Input: (str_data, str_len)
+// Output: Unit (NULL)
+.global once_errln
+.type once_errln, @function
+once_errln:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+
+    ld      a1, 0(a0)
+    ld      a2, 8(a0)
+
+    li      a0, STDERR
+    li      a7, SYS_write
+    ecall
+
+    li      t0, '\n'
+    sb      t0, 0(sp)
+    li      a0, STDERR
+    addi    a1, sp, 0
+    li      a2, 1
+    li      a7, SYS_write
+    ecall
+
+    li      a0, 0
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    ret
+.size once_errln, .-once_errln
+
+// ----------------------------------------------------------------------
+// putc - Write single character to stdout
+// ----------------------------------------------------------------------
+// Input: Int (character code)
+// Output: Unit (NULL)
+.global once_putc
+.type once_putc, @function
+once_putc:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    // Store char on stack
+    sb      a0, 0(sp)
+
+    // Write it
+    li      a0, STDOUT
+    addi    a1, sp, 0
+    li      a2, 1
+    li      a7, SYS_write
+    ecall
+
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_putc, .-once_putc
+
+// ----------------------------------------------------------------------
+// flush - Flush stdout
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Unit (NULL)
+.global once_flush
+.type once_flush, @function
+once_flush:
+    li      a0, STDOUT
+    li      a7, SYS_fsync
+    ecall
+
+    li      a0, 0
+    ret
+.size once_flush, .-once_flush
+
+// ======================================================================
+// Input Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// getc - Read single character from stdin
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (character code, or -1 on EOF)
+.global once_getc
+.type once_getc, @function
+once_getc:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    // Read one byte
+    li      a0, STDIN
+    addi    a1, sp, 0
+    li      a2, 1
+    li      a7, SYS_read
+    ecall
+
+    // Check result
+    blez    a0, .getc_eof_rv
+
+    // Return the character
+    lbu     a0, 0(sp)
+    j       .getc_done_rv
+
+.getc_eof_rv:
+    li      a0, -1
+
+.getc_done_rv:
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_getc, .-once_getc
+
+// ----------------------------------------------------------------------
+// getline - Read line from stdin into buffer
+// ----------------------------------------------------------------------
+// Input: ((buf_data, buf_len), maxlen)
+// Output: Int (bytes read, or -1 on EOF with no data)
+.global once_getline
+.type once_getline, @function
+once_getline:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+    sd      s0, 32(sp)
+    sd      s1, 24(sp)
+    sd      s2, 16(sp)
+
+    // Unpack: ((buf_data, buf_len), maxlen)
+    ld      t0, 0(a0)           // t0 = ptr to buffer
+    ld      s1, 8(a0)           // s1 = maxlen
+
+    ld      s0, 0(t0)           // s0 = buf_data
+
+    // Validate
+    blez    s1, .getline_error_rv
+    beqz    s0, .getline_error_rv
+
+    addi    s1, s1, -1          // Leave room for null
+    li      s2, 0               // s2 = count
+
+.getline_loop_rv:
+    bge     s2, s1, .getline_done_rv
+
+    // Read one byte
+    li      a0, STDIN
+    add     a1, s0, s2
+    li      a2, 1
+    li      a7, SYS_read
+    ecall
+
+    // Check for EOF
+    blez    a0, .getline_check_eof_rv
+
+    // Check for newline
+    add     t0, s0, s2
+    lbu     t1, 0(t0)
+    li      t2, '\n'
+    beq     t1, t2, .getline_done_rv
+
+    addi    s2, s2, 1
+    j       .getline_loop_rv
+
+.getline_check_eof_rv:
+    beqz    s2, .getline_error_rv
+    j       .getline_done_rv
+
+.getline_done_rv:
+    // Null-terminate
+    add     t0, s0, s2
+    sb      zero, 0(t0)
+    mv      a0, s2
+    j       .getline_exit_rv
+
+.getline_error_rv:
+    li      a0, -1
+
+.getline_exit_rv:
+    ld      ra, 40(sp)
+    ld      s0, 32(sp)
+    ld      s1, 24(sp)
+    ld      s2, 16(sp)
+    addi    sp, sp, 48
+    ret
+.size once_getline, .-once_getline
+
+// ======================================================================
+// File Reading Helpers
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readfile - Read entire file into buffer
+// ----------------------------------------------------------------------
+// Input: ((path_data, path_len), ((buf_data, buf_len), maxlen))
+// Output: Int (bytes read, or -1 on error)
+.global once_readfile
+.type once_readfile, @function
+once_readfile:
+    addi    sp, sp, -64
+    sd      ra, 56(sp)
+    sd      s0, 48(sp)
+    sd      s1, 40(sp)
+    sd      s2, 32(sp)
+    sd      s3, 24(sp)
+
+    // Unpack
+    ld      t0, 0(a0)           // t0 = ptr to path
+    ld      t1, 8(a0)           // t1 = ptr to rest
+
+    ld      s0, 0(t0)           // s0 = path_data
+
+    ld      t2, 0(t1)           // t2 = ptr to buffer
+    ld      s2, 8(t1)           // s2 = maxlen
+
+    ld      s1, 0(t2)           // s1 = buf_data
+
+    // Open file (via openat)
+    li      a0, AT_FDCWD
+    mv      a1, s0              // path
+    li      a2, O_RDONLY
+    li      a3, 0
+
+    li      a7, SYS_openat
+    ecall
+
+    bltz    a0, .readfile_error_rv
+    mv      s0, a0              // s0 = fd
+    li      s3, 0               // s3 = total bytes
+
+.readfile_loop_rv:
+    bge     s3, s2, .readfile_done_rv
+
+    // Read chunk
+    mv      a0, s0              // fd
+    add     a1, s1, s3          // buf + total
+    sub     a2, s2, s3          // remaining
+
+    li      a7, SYS_read
+    ecall
+
+    bltz    a0, .readfile_close_error_rv
+    beqz    a0, .readfile_done_rv   // EOF
+
+    add     s3, s3, a0
+    j       .readfile_loop_rv
+
+.readfile_done_rv:
+    // Close file
+    mv      a0, s0
+    li      a7, SYS_close
+    ecall
+
+    mv      a0, s3              // Return total bytes
+    j       .readfile_exit_rv
+
+.readfile_close_error_rv:
+    mv      a0, s0
+    li      a7, SYS_close
+    ecall
+
+.readfile_error_rv:
+    li      a0, -1
+
+.readfile_exit_rv:
+    ld      ra, 56(sp)
+    ld      s0, 48(sp)
+    ld      s1, 40(sp)
+    ld      s2, 32(sp)
+    ld      s3, 24(sp)
+    addi    sp, sp, 64
+    ret
+.size once_readfile, .-once_readfile
+
+// ----------------------------------------------------------------------
+// filesize - Get file size
+// ----------------------------------------------------------------------
+// Input: (path_data, path_len)
+// Output: Int (size in bytes, or -1 on error)
+.global once_filesize
+.type once_filesize, @function
+once_filesize:
+    addi    sp, sp, -160        // Space for struct stat (128 bytes) + 32
+    sd      ra, 152(sp)
+
+    // Unpack path
+    ld      a1, 0(a0)           // a1 = path_data
+
+    // fstatat(AT_FDCWD, path, buf, 0)
+    li      a0, AT_FDCWD
+    // a1 = path
+    addi    a2, sp, 0           // stat buffer
+    li      a3, 0               // flags
+
+    li      a7, SYS_fstatat
+    ecall
+
+    bltz    a0, .filesize_error_rv
+
+    // Extract st_size (offset 48)
+    ld      a0, STAT_ST_SIZE(sp)
+    j       .filesize_done_rv
+
+.filesize_error_rv:
+    li      a0, -1
+
+.filesize_done_rv:
+    ld      ra, 152(sp)
+    addi    sp, sp, 160
+    ret
+.size once_filesize, .-once_filesize
+
+#endif // ONCE_LINUX_RISCV64_FILE_DEFINED
+

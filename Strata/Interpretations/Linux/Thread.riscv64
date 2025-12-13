@@ -1,0 +1,644 @@
+// ======================================================================
+// Thread Operations - RISC-V64 Implementation
+// ======================================================================
+//
+// Threading using raw Linux syscalls (clone, futex).
+// Does NOT use pthread - pure syscall implementation.
+//
+// Thread handle structure (24 bytes):
+//   [tid: 8 bytes][done: 4 bytes][pad: 4 bytes][stack: 8 bytes]
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_LINUX_RISCV64_THREAD_DEFINED
+#define ONCE_LINUX_RISCV64_THREAD_DEFINED
+
+.equ SYS_read,      63
+.equ SYS_write,     64
+.equ SYS_mmap,      222
+.equ SYS_munmap,    215
+.equ SYS_clone,     220
+.equ SYS_exit,      93
+.equ SYS_wait4,     260
+.equ SYS_futex,     98
+
+// Clone flags
+.equ CLONE_VM,      0x00000100
+.equ SIGCHLD,       17
+
+// Futex operations
+.equ FUTEX_WAIT,    0
+.equ FUTEX_WAKE,    1
+
+// mmap constants
+.equ PROT_READ,     1
+.equ PROT_WRITE,    2
+.equ MAP_PRIVATE,   2
+.equ MAP_ANONYMOUS, 32
+.equ MAP_STACK,     0x20000
+
+// Thread stack size (4MB)
+.equ THREAD_STACK_SIZE, 4194304
+
+// Thread handle offsets
+.equ TH_TID,        0
+.equ TH_DONE,       8
+.equ TH_STACK,      16
+.equ TH_SIZE,       24
+
+// ======================================================================
+// Thread Creation
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// thread_spawn - Create a new thread
+// ----------------------------------------------------------------------
+// Input: function pointer (Eff Unit Unit)
+// Output: (handle_data, handle_len) - OnceBuffer (ThreadHandle)
+.global once_thread_spawn
+.type once_thread_spawn, @function
+once_thread_spawn:
+    addi    sp, sp, -64
+    sd      ra, 56(sp)
+    sd      s0, 48(sp)
+    sd      s1, 40(sp)
+    sd      s2, 32(sp)
+    sd      s3, 24(sp)
+
+    mv      s0, a0              // s0 = user function
+
+    // Allocate thread handle (24 bytes) via mmap
+    li      a0, 0               // addr = NULL
+    li      a1, TH_SIZE         // size = 24
+    li      a2, (PROT_READ | PROT_WRITE)
+    li      a3, (MAP_PRIVATE | MAP_ANONYMOUS)
+    li      a4, -1
+    li      a5, 0
+
+    li      a7, SYS_mmap
+    ecall
+
+    li      t0, -4096
+    bltu    t0, a0, .spawn_failed_rv
+
+    mv      s1, a0              // s1 = handle
+
+    // Initialize handle
+    sd      zero, TH_TID(s1)
+    sw      zero, TH_DONE(s1)   // done = 0
+    sd      zero, TH_STACK(s1)
+
+    // Allocate stack via mmap
+    li      a0, 0
+    li      a1, THREAD_STACK_SIZE
+    li      a2, (PROT_READ | PROT_WRITE)
+    li      a3, (MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK)
+    li      a4, -1
+    li      a5, 0
+
+    li      a7, SYS_mmap
+    ecall
+
+    li      t0, -4096
+    bltu    t0, a0, .spawn_free_handle_rv
+
+    mv      s2, a0              // s2 = stack base
+    sd      a0, TH_STACK(s1)
+
+    // Calculate stack top (stack grows down)
+    li      t0, THREAD_STACK_SIZE
+    add     s3, s2, t0          // s3 = stack top
+
+    // Prepare child stack: push handle ptr, user function
+    addi    s3, s3, -8
+    sd      s1, 0(s3)           // handle ptr
+    addi    s3, s3, -8
+    sd      s0, 0(s3)           // user function
+
+    // Clone syscall
+    // a0 = flags, a1 = stack, a2 = parent_tid, a3 = tls, a4 = child_tid
+    li      a0, (CLONE_VM | SIGCHLD)
+    mv      a1, s3              // stack
+    li      a2, 0               // parent_tid = NULL
+    li      a3, 0               // tls = 0
+    li      a4, 0               // child_tid = NULL
+
+    li      a7, SYS_clone
+    ecall
+
+    bltz    a0, .spawn_free_stack_rv
+    beqz    a0, .spawn_child_rv // a0=0 means child
+
+    // Parent: save tid and return handle
+    sd      a0, TH_TID(s1)
+
+    // Return buffer (handle, size)
+    sd      s1, 0(sp)
+    li      t0, TH_SIZE
+    sd      t0, 8(sp)
+    addi    a0, sp, 0
+    j       .spawn_done_rv
+
+.spawn_child_rv:
+    // Child execution
+    // Stack has: [user_fn][handle_ptr]
+    ld      s0, 0(sp)           // user function
+    addi    sp, sp, 8
+    ld      s1, 0(sp)           // handle ptr
+    addi    sp, sp, 8
+
+    // Call user function with NULL arg
+    li      a0, 0
+    jalr    s0
+
+    // Signal completion
+    li      t0, 1
+    sw      t0, TH_DONE(s1)
+
+    // Wake parent
+    addi    a0, s1, TH_DONE
+    li      a1, FUTEX_WAKE
+    li      a2, 1
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    // Exit child
+    li      a0, 0
+    li      a7, SYS_exit
+    ecall
+    // Never returns
+
+.spawn_free_stack_rv:
+    mv      a0, s2
+    li      a1, THREAD_STACK_SIZE
+    li      a7, SYS_munmap
+    ecall
+
+.spawn_free_handle_rv:
+    mv      a0, s1
+    li      a1, TH_SIZE
+    li      a7, SYS_munmap
+    ecall
+
+.spawn_failed_rv:
+    sd      zero, 0(sp)
+    sd      zero, 8(sp)
+    addi    a0, sp, 0
+
+.spawn_done_rv:
+    ld      ra, 56(sp)
+    ld      s0, 48(sp)
+    ld      s1, 40(sp)
+    ld      s2, 32(sp)
+    ld      s3, 24(sp)
+    addi    sp, sp, 64
+    ret
+.size once_thread_spawn, .-once_thread_spawn
+
+// ----------------------------------------------------------------------
+// thread_join - Wait for thread to complete
+// ----------------------------------------------------------------------
+// Input: (handle_data, handle_len) - OnceBuffer
+// Output: Unit (NULL)
+.global once_thread_join
+.type once_thread_join, @function
+once_thread_join:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+    sd      s0, 16(sp)
+    sd      s1, 8(sp)
+
+    // Get handle
+    ld      s0, 0(a0)           // s0 = handle ptr
+    beqz    s0, .join_done_rv
+
+.join_wait_loop_rv:
+    // Check if done
+    lw      t0, TH_DONE(s0)
+    bnez    t0, .join_reap_rv
+
+    // Futex wait
+    addi    a0, s0, TH_DONE
+    li      a1, FUTEX_WAIT
+    li      a2, 0               // val = 0
+    li      a3, 0               // timeout = NULL
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    j       .join_wait_loop_rv
+
+.join_reap_rv:
+    // Wait for child to exit (reap zombie)
+    ld      a0, TH_TID(s0)
+    li      a1, 0               // status = NULL
+    li      a2, 0               // options = 0
+    li      a3, 0               // rusage = NULL
+
+    li      a7, SYS_wait4
+    ecall
+
+    // Free stack
+    ld      a0, TH_STACK(s0)
+    beqz    a0, .join_free_handle_rv
+
+    li      a1, THREAD_STACK_SIZE
+    li      a7, SYS_munmap
+    ecall
+
+.join_free_handle_rv:
+    // Free handle
+    mv      a0, s0
+    li      a1, TH_SIZE
+    li      a7, SYS_munmap
+    ecall
+
+.join_done_rv:
+    li      a0, 0
+    ld      ra, 24(sp)
+    ld      s0, 16(sp)
+    ld      s1, 8(sp)
+    addi    sp, sp, 32
+    ret
+.size once_thread_join, .-once_thread_join
+
+// ----------------------------------------------------------------------
+// thread_detach - Spawn thread without join handle
+// ----------------------------------------------------------------------
+// Input: function pointer
+// Output: Unit (NULL)
+.global once_thread_detach
+.type once_thread_detach, @function
+once_thread_detach:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    // Spawn thread (ignore handle)
+    call    once_thread_spawn
+
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_thread_detach, .-once_thread_detach
+
+// ======================================================================
+// Synchronization Primitives
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// mutex_init - Initialize mutex
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: (mutex_data, mutex_len) - OnceBuffer
+.global once_mutex_init
+.type once_mutex_init, @function
+once_mutex_init:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+
+    // Allocate 4 bytes via mmap
+    li      a0, 0
+    li      a1, 4
+    li      a2, (PROT_READ | PROT_WRITE)
+    li      a3, (MAP_PRIVATE | MAP_ANONYMOUS)
+    li      a4, -1
+    li      a5, 0
+
+    li      a7, SYS_mmap
+    ecall
+
+    li      t0, -4096
+    bltu    t0, a0, .mutex_init_failed_rv
+
+    // Initialize to 0 (unlocked)
+    sw      zero, 0(a0)
+
+    sd      a0, 0(sp)
+    li      t0, 4
+    sd      t0, 8(sp)
+    addi    a0, sp, 0
+    j       .mutex_init_done_rv
+
+.mutex_init_failed_rv:
+    sd      zero, 0(sp)
+    sd      zero, 8(sp)
+    addi    a0, sp, 0
+
+.mutex_init_done_rv:
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    ret
+.size once_mutex_init, .-once_mutex_init
+
+// ----------------------------------------------------------------------
+// mutex_lock - Acquire mutex
+// ----------------------------------------------------------------------
+// Input: (mutex_data, mutex_len) - OnceBuffer
+// Output: Unit (NULL)
+.global once_mutex_lock
+.type once_mutex_lock, @function
+once_mutex_lock:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    ld      s0, 0(a0)           // s0 = mutex ptr
+
+.mutex_lock_loop_rv:
+    // Try to acquire: amoswap 0 -> 1
+    li      t0, 1
+    amoswap.w.aq t1, t0, (s0)   // t1 = old value, set to 1
+    beqz    t1, .mutex_lock_done_rv  // acquired if was 0
+
+    // Wait via futex
+    mv      a0, s0
+    li      a1, FUTEX_WAIT
+    li      a2, 1               // val = 1 (locked)
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    j       .mutex_lock_loop_rv
+
+.mutex_lock_done_rv:
+    li      a0, 0
+    ld      ra, 8(sp)
+    ld      s0, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_mutex_lock, .-once_mutex_lock
+
+// ----------------------------------------------------------------------
+// mutex_unlock - Release mutex
+// ----------------------------------------------------------------------
+// Input: (mutex_data, mutex_len) - OnceBuffer
+// Output: Unit (NULL)
+.global once_mutex_unlock
+.type once_mutex_unlock, @function
+once_mutex_unlock:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      a0, 0(a0)           // a0 = mutex ptr
+
+    // Unlock: store 0 with release
+    amoswap.w.rl zero, zero, (a0)
+
+    // Wake one waiter
+    mv      a0, a0
+    li      a1, FUTEX_WAKE
+    li      a2, 1
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_mutex_unlock, .-once_mutex_unlock
+
+// ----------------------------------------------------------------------
+// cond_init - Initialize condition variable
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: (cond_data, cond_len) - OnceBuffer
+.global once_cond_init
+.type once_cond_init, @function
+once_cond_init:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+
+    // Allocate 4 bytes
+    li      a0, 0
+    li      a1, 4
+    li      a2, (PROT_READ | PROT_WRITE)
+    li      a3, (MAP_PRIVATE | MAP_ANONYMOUS)
+    li      a4, -1
+    li      a5, 0
+
+    li      a7, SYS_mmap
+    ecall
+
+    li      t0, -4096
+    bltu    t0, a0, .cond_init_failed_rv
+
+    sw      zero, 0(a0)         // seq = 0
+
+    sd      a0, 0(sp)
+    li      t0, 4
+    sd      t0, 8(sp)
+    addi    a0, sp, 0
+    j       .cond_init_done_rv
+
+.cond_init_failed_rv:
+    sd      zero, 0(sp)
+    sd      zero, 8(sp)
+    addi    a0, sp, 0
+
+.cond_init_done_rv:
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    ret
+.size once_cond_init, .-once_cond_init
+
+// ----------------------------------------------------------------------
+// cond_wait - Wait on condition variable
+// ----------------------------------------------------------------------
+// Input: ((cond_data, cond_len), (mutex_data, mutex_len))
+// Output: Unit (NULL)
+.global once_cond_wait
+.type once_cond_wait, @function
+once_cond_wait:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+    sd      s0, 32(sp)
+    sd      s1, 24(sp)
+    sd      s2, 16(sp)
+
+    // Unpack: ((cond_data, cond_len), (mutex_data, mutex_len))
+    ld      t0, 0(a0)           // t0 = ptr to cond buffer
+    ld      s1, 8(a0)           // s1 = ptr to mutex buffer
+
+    ld      s0, 0(t0)           // s0 = cond_data
+
+    // Read current sequence
+    lw      s2, 0(s0)           // s2 = seq
+
+    // Unlock mutex
+    mv      a0, s1
+    call    once_mutex_unlock
+
+    // Futex wait for seq to change
+    mv      a0, s0
+    li      a1, FUTEX_WAIT
+    mv      a2, s2              // val = seq
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    // Reacquire mutex
+    mv      a0, s1
+    call    once_mutex_lock
+
+    li      a0, 0
+    ld      ra, 40(sp)
+    ld      s0, 32(sp)
+    ld      s1, 24(sp)
+    ld      s2, 16(sp)
+    addi    sp, sp, 48
+    ret
+.size once_cond_wait, .-once_cond_wait
+
+// ----------------------------------------------------------------------
+// cond_signal - Signal one waiter
+// ----------------------------------------------------------------------
+// Input: (cond_data, cond_len) - OnceBuffer
+// Output: Unit (NULL)
+.global once_cond_signal
+.type once_cond_signal, @function
+once_cond_signal:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      a0, 0(a0)           // a0 = cond_data
+
+    // Increment sequence (atomic)
+    li      t0, 1
+    amoadd.w zero, t0, (a0)
+
+    // Wake one waiter
+    li      a1, FUTEX_WAKE
+    li      a2, 1
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_cond_signal, .-once_cond_signal
+
+// ----------------------------------------------------------------------
+// cond_broadcast - Signal all waiters
+// ----------------------------------------------------------------------
+// Input: (cond_data, cond_len) - OnceBuffer
+// Output: Unit (NULL)
+.global once_cond_broadcast
+.type once_cond_broadcast, @function
+once_cond_broadcast:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    ld      a0, 0(a0)           // a0 = cond_data
+
+    // Increment sequence
+    li      t0, 1
+    amoadd.w zero, t0, (a0)
+
+    // Wake all waiters
+    li      a1, FUTEX_WAKE
+    li      t0, 0x7fffffff
+    mv      a2, t0
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    li      a7, SYS_futex
+    ecall
+
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_cond_broadcast, .-once_cond_broadcast
+
+// ======================================================================
+// Atomic Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// atomic_cas - Compare and swap
+// ----------------------------------------------------------------------
+// Input: ((addr_data, addr_len), (expected, new_val))
+// Output: Int (previous value)
+.global once_atomic_cas
+.type once_atomic_cas, @function
+once_atomic_cas:
+    // Unpack: ((addr_data, addr_len), (expected, new_val))
+    ld      t0, 0(a0)           // t0 = ptr to addr buffer
+    ld      t1, 8(a0)           // t1 = ptr to (expected, new_val)
+
+    ld      t0, 0(t0)           // t0 = addr_data
+    ld      t2, 0(t1)           // t2 = expected
+    ld      t3, 8(t1)           // t3 = new_val
+
+    // RISC-V doesn't have direct cmpxchg, use LR/SC loop
+.cas_retry:
+    lr.d.aq t4, (t0)            // Load-reserved
+    bne     t4, t2, .cas_fail   // If not expected, fail
+    sc.d.rl t5, t3, (t0)        // Store-conditional
+    bnez    t5, .cas_retry      // Retry if SC failed
+
+.cas_fail:
+    mv      a0, t4              // Return previous value
+    ret
+.size once_atomic_cas, .-once_atomic_cas
+
+// ----------------------------------------------------------------------
+// atomic_add - Fetch and add
+// ----------------------------------------------------------------------
+// Input: ((addr_data, addr_len), delta)
+// Output: Int (previous value)
+.global once_atomic_add
+.type once_atomic_add, @function
+once_atomic_add:
+    // Unpack: ((addr_data, addr_len), delta)
+    ld      t0, 0(a0)           // t0 = ptr to addr buffer
+    ld      t1, 8(a0)           // t1 = delta
+
+    ld      t0, 0(t0)           // t0 = addr_data
+
+    // Atomic add
+    amoadd.d a0, t1, (t0)       // a0 = old value
+    ret
+.size once_atomic_add, .-once_atomic_add
+
+// ----------------------------------------------------------------------
+// memory_barrier - Full memory fence
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Unit (NULL)
+.global once_memory_barrier
+.type once_memory_barrier, @function
+once_memory_barrier:
+    fence   rw, rw
+    li      a0, 0
+    ret
+.size once_memory_barrier, .-once_memory_barrier
+
+#endif // ONCE_LINUX_RISCV64_THREAD_DEFINED
+
