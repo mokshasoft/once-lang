@@ -126,6 +126,17 @@ initWithInput-pc x = refl
 --   run-single-mov-mem-disp
 --   run-inl-seq, run-inr-seq, run-curry-seq
 --
+-- PROVEN (run-generator base cases - non-recursive IR constructors):
+--   run-generator-id       : id (mov rax, rdi)
+--   run-generator-terminal : terminal (mov rax, 0)
+--   run-generator-fold     : fold (mov rax, rdi + encoding)
+--   run-generator-unfold   : unfold (mov rax, rdi + encoding)
+--   run-generator-arr      : arr (mov rax, rdi + encoding)
+--   run-generator-fst      : fst (mov rax, [rdi])
+--   run-generator-snd      : snd (mov rax, [rdi+8])
+--   run-generator-inl      : inl (allocate + tag=0)
+--   run-generator-inr      : inr (allocate + tag=1)
+--
 -- POSTULATED (require mutual induction on IR):
 --   run-seq-compose  : Sequential composition (needs recursive IR proofs)
 --   run-case-inl/inr : Case analysis (needs recursive IR proofs + label resolution)
@@ -1341,6 +1352,329 @@ postulate
     ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
            × halted s' ≡ true
            × readReg (regs s') rax ≡ encode (eval ir x))
+
+------------------------------------------------------------------------
+-- Proven base cases for run-generator
+-- These prove run-generator for specific IR constructors that don't
+-- require mutual recursion (9 of 14 IR constructors):
+--   id, terminal, fold, unfold, arr, fst, snd, inl, inr
+--
+-- Remaining (require mutual recursion):
+--   compose (∘), case ([ , ]), pair (⟨ , ⟩), curry, apply
+------------------------------------------------------------------------
+
+-- | run-generator for id
+-- compile-x86 id = [mov rax, rdi]
+-- Uses run-single-mov directly
+run-generator-id : ∀ {A} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {A} {A} id) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A} {A} id x))
+run-generator-id {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ readReg (regs s) rdi
+                    × halted s' ≡ true)
+    helper = run-single-mov s rax rdi h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {A} id) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A} {A} id x)
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) rdi-eq
+
+-- | run-generator for terminal
+-- compile-x86 terminal = [mov rax, 0]
+-- Uses run-single-mov-imm directly
+run-generator-terminal : ∀ {A} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {A} {Unit} terminal) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A} {Unit} terminal x))
+run-generator-terminal {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (mov (reg rax) (imm 0) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ 0
+                    × halted s' ≡ true)
+    helper = run-single-mov-imm s rax 0 h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {Unit} terminal) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    -- eval terminal x = tt, encode tt = 0
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A} {Unit} terminal x)
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (sym encode-unit)
+
+-- | run-generator for fold
+-- compile-x86 fold = [mov rax, rdi]
+-- Uses run-single-mov and encode-fix-wrap
+run-generator-fold : ∀ {F} (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {F} {Fix F} fold) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {F} {Fix F} fold x))
+run-generator-fold {F} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ readReg (regs s) rdi
+                    × halted s' ≡ true)
+    helper = run-single-mov s rax rdi h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {F} {Fix F} fold) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    -- eval fold x = wrap x, encode (wrap x) = encode x by encode-fix-wrap
+    rax-eq : readReg (regs s') rax ≡ encode (eval {F} {Fix F} fold x)
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (trans rdi-eq (encode-fix-wrap x))
+
+-- | run-generator for unfold
+-- compile-x86 unfold = [mov rax, rdi]
+-- Uses run-single-mov and encode-fix-unwrap
+run-generator-unfold : ∀ {F} (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {Fix F} {F} unfold) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {Fix F} {F} unfold x))
+run-generator-unfold {F} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ readReg (regs s) rdi
+                    × halted s' ≡ true)
+    helper = run-single-mov s rax rdi h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {Fix F} {F} unfold) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    -- eval unfold x = unwrap x, encode (unwrap x) = encode x by encode-fix-unwrap
+    rax-eq : readReg (regs s') rax ≡ encode (eval {Fix F} {F} unfold x)
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (trans rdi-eq (encode-fix-unwrap x))
+
+-- | run-generator for arr
+-- compile-x86 arr = [mov rax, rdi]
+-- Uses run-single-mov and encode-arr-identity
+run-generator-arr : ∀ {A B} (f : ⟦ A ⇒ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode {A ⇒ B} f →
+  ∃[ s' ] (run (compile-x86 {A ⇒ B} {Eff A B} arr) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr f))
+run-generator-arr {A} {B} f s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (mov (reg rax) (reg rdi) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ readReg (regs s) rdi
+                    × halted s' ≡ true)
+    helper = run-single-mov s rax rdi h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A ⇒ B} {Eff A B} arr) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    -- eval arr f = f (definitionally), encode {A ⇒ B} f = encode {Eff A B} f by encode-arr-identity
+    rax-eq : readReg (regs s') rax ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr f)
+    rax-eq = trans (proj₁ (proj₂ (proj₂ helper))) (trans rdi-eq (encode-arr-identity f))
+
+-- | run-generator for fst
+-- compile-x86 fst = [mov rax, [rdi]]
+-- Uses run-single-mov-mem-base and encode-pair-fst
+run-generator-fst : ∀ {A B} (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {A * B} {A} fst) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A * B} {A} fst x))
+run-generator-fst {A} {B} (a , b) s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    -- Memory at rdi contains encode a (from pair encoding postulate)
+    mem-at-rdi : readMem (memory s) (readReg (regs s) rdi) ≡ just (encode a)
+    mem-at-rdi = subst (λ addr → readMem (memory s) addr ≡ just (encode a))
+                       (sym rdi-eq)
+                       (encode-pair-fst a b (memory s))
+
+    helper : ∃[ s' ] (run (mov (reg rax) (mem (base rdi)) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ encode a
+                    × halted s' ≡ true)
+    helper = run-single-mov-mem-base s rax rdi (encode a) h-false pc-0 mem-at-rdi
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A * B} {A} fst) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    -- eval fst (a , b) = a
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A * B} {A} fst (a , b))
+    rax-eq = proj₁ (proj₂ (proj₂ helper))
+
+-- | run-generator for snd
+-- compile-x86 snd = [mov rax, [rdi+8]]
+-- Uses run-single-mov-mem-disp and encode-pair-snd
+run-generator-snd : ∀ {A B} (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {A * B} {B} snd) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A * B} {B} snd x))
+run-generator-snd {A} {B} (a , b) s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    -- Memory at rdi + 8 contains encode b (from pair encoding postulate)
+    mem-at-rdi-8 : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode b)
+    mem-at-rdi-8 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode b))
+                         (sym rdi-eq)
+                         (encode-pair-snd a b (memory s))
+
+    helper : ∃[ s' ] (run (mov (reg rax) (mem (base+disp rdi 8)) ∷ []) s ≡ just s'
+                    × readReg (regs s') rax ≡ encode b
+                    × halted s' ≡ true)
+    helper = run-single-mov-mem-disp s rax rdi 8 (encode b) h-false pc-0 mem-at-rdi-8
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A * B} {B} snd) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₂ (proj₂ (proj₂ helper))
+
+    -- eval snd (a , b) = b
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A * B} {B} snd (a , b))
+    rax-eq = proj₁ (proj₂ (proj₂ helper))
+
+-- | run-generator for inl
+-- compile-x86 inl allocates stack with [0, rdi] and returns pointer
+-- Uses run-inl-seq and encode-inl-construct
+run-generator-inl : ∀ {A B} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A} {A + B} inl x))
+run-generator-inl {A} {B} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    -- Use run-inl-seq to execute the inl code
+    helper : ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ readReg (regs s') rsp
+                    × readMem (memory s') (readReg (regs s') rax) ≡ just 0
+                    × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+    helper = run-inl-seq {A} {B} s h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {A + B} inl) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- Memory at rax has [0, encode x]
+    tag-is-0 : readMem (memory s') (readReg (regs s') rax) ≡ just 0
+    tag-is-0 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    val-is-rdi : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    val-is-rdi = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    -- rdi = encode x, so value at [rax+8] = encode x
+    val-is-encode-x : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode x)
+    val-is-encode-x = trans val-is-rdi (cong just rdi-eq)
+
+    -- By encode-inl-construct: memory has [0, encode x] at rax, so rax = encode (inj₁ x)
+    -- eval inl x = inj₁ x
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A} {A + B} inl x)
+    rax-eq = encode-inl-construct x (readReg (regs s') rax) (memory s') tag-is-0 val-is-encode-x
+
+-- | run-generator for inr
+-- compile-x86 inr allocates stack with [1, rdi] and returns pointer
+-- Uses run-inr-seq and encode-inr-construct
+run-generator-inr : ∀ {A B} (x : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x))
+run-generator-inr {A} {B} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    -- Use run-inr-seq to execute the inr code
+    helper : ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ readReg (regs s') rsp
+                    × readMem (memory s') (readReg (regs s') rax) ≡ just 1
+                    × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+    helper = run-inr-seq {A} {B} s h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {B} {A + B} inr) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- Memory at rax has [1, encode x]
+    tag-is-1 : readMem (memory s') (readReg (regs s') rax) ≡ just 1
+    tag-is-1 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    val-is-rdi : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    val-is-rdi = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    -- rdi = encode x, so value at [rax+8] = encode x
+    val-is-encode-x : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode x)
+    val-is-encode-x = trans val-is-rdi (cong just rdi-eq)
+
+    -- By encode-inr-construct: memory has [1, encode x] at rax, so rax = encode (inj₂ x)
+    -- eval inr x = inj₂ x
+    rax-eq : readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x)
+    rax-eq = encode-inr-construct x (readReg (regs s') rax) (memory s') tag-is-1 val-is-encode-x
+
+------------------------------------------------------------------------
 
 -- Helper: case sequence with inj₁ input (left branch)
 -- When tag=0, loads value, applies f, jumps to end
