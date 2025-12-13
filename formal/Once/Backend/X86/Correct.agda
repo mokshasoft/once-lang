@@ -234,6 +234,41 @@ readReg-writeReg-rsp-rdi : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rsp v) rdi ≡ readReg rf rdi
 readReg-writeReg-rsp-rdi rf v = refl
 
+-- | Reading rdi after writing r14 returns the old value
+readReg-writeReg-r14-rdi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r14 v) rdi ≡ readReg rf rdi
+readReg-writeReg-r14-rdi rf v = refl
+
+-- | Reading rsp after writing r14 returns the old value
+readReg-writeReg-r14-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r14 v) rsp ≡ readReg rf rsp
+readReg-writeReg-r14-rsp rf v = refl
+
+-- | Reading r14 after writing rax returns the old value
+readReg-writeReg-rax-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rax v) r14 ≡ readReg rf r14
+readReg-writeReg-rax-r14 rf v = refl
+
+-- | Reading rsp after writing rax returns the old value
+readReg-writeReg-rax-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rax v) rsp ≡ readReg rf rsp
+readReg-writeReg-rax-rsp rf v = refl
+
+-- | Reading rsp after writing rdi returns the old value
+readReg-writeReg-rdi-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rdi v) rsp ≡ readReg rf rsp
+readReg-writeReg-rdi-rsp rf v = refl
+
+-- | Reading r14 after writing rdi returns the old value
+readReg-writeReg-rdi-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rdi v) r14 ≡ readReg rf r14
+readReg-writeReg-rdi-r14 rf v = refl
+
+-- | Reading rdi after writing rax returns the old value
+readReg-writeReg-rax-rdi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rax v) rdi ≡ readReg rf rdi
+readReg-writeReg-rax-rdi rf v = refl
+
 ------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
@@ -344,6 +379,18 @@ step-exec-3 i0 i1 i2 i3 is s h-false pc-3 =
 fetch-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) 4 ≡ just i4
 fetch-4 i0 i1 i2 i3 i4 is = refl
 
+-- | Fetching at index 5 returns the sixth instruction
+fetch-5 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) 5 ≡ just i5
+fetch-5 i0 i1 i2 i3 i4 i5 is = refl
+
+-- | Fetching at index 6 returns the seventh instruction
+fetch-6 : ∀ (i0 i1 i2 i3 i4 i5 i6 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) 6 ≡ just i6
+fetch-6 i0 i1 i2 i3 i4 i5 i6 is = refl
+
+-- | Fetching at index 7 returns the eighth instruction
+fetch-7 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) 7 ≡ just i7
+fetch-7 i0 i1 i2 i3 i4 i5 i6 i7 is = refl
+
 -- | Step on non-halted state with pc=4 executes the fifth instruction
 step-exec-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) (s : State) →
   halted s ≡ false →
@@ -351,6 +398,30 @@ step-exec-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) (s : State) →
   step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s i4
 step-exec-4 i0 i1 i2 i3 i4 is s h-false pc-4 =
   step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s i4 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) p ≡ just i4) (sym pc-4) refl)
+
+-- | Step on non-halted state with pc=5 executes the sixth instruction
+step-exec-5 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 5 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s i5
+step-exec-5 i0 i1 i2 i3 i4 i5 is s h-false pc-5 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s i5 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) p ≡ just i5) (sym pc-5) refl)
+
+-- | Step on non-halted state with pc=6 executes the seventh instruction
+step-exec-6 : ∀ (i0 i1 i2 i3 i4 i5 i6 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 6 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) s i6
+step-exec-6 i0 i1 i2 i3 i4 i5 i6 is s h-false pc-6 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) s i6 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) p ≡ just i6) (sym pc-6) refl)
+
+-- | Step on non-halted state with pc=7 executes the eighth instruction
+step-exec-7 : ∀ (i0 i1 i2 i3 i4 i5 i6 i7 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 7 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) s i7
+step-exec-7 i0 i1 i2 i3 i4 i5 i6 i7 is s h-false pc-7 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) s i7 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ i7 ∷ is) p ≡ just i7) (sym pc-7) refl)
 
 -- | Step on non-halted state where fetch fails sets halted=true
 -- Proof: match on halted s, then on fetch prog (pc s)
@@ -448,6 +519,51 @@ exec-six-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 : State)
 exec-six-steps n prog s s1 s2 s3 s4 s5 s6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 =
   trans (exec-on-non-halted-step (suc (suc (suc (suc (suc n))))) prog s s1 step1 h1)
         (exec-five-steps n prog s1 s2 s3 s4 s5 s6 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6)
+
+-- | Seven-step execution (6 instructions + halt)
+exec-seven-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ false →
+  step prog s5 ≡ just s6 → halted s6 ≡ false →
+  step prog s6 ≡ just s7 → halted s7 ≡ true →
+  exec (suc (suc (suc (suc (suc (suc (suc n))))))) prog s ≡ just s7
+exec-seven-steps n prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 =
+  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc (suc n)))))) prog s s1 step1 h1)
+        (exec-six-steps n prog s1 s2 s3 s4 s5 s6 s7 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7)
+
+-- | Eight-step execution (7 instructions + halt)
+exec-eight-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 s8 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ false →
+  step prog s5 ≡ just s6 → halted s6 ≡ false →
+  step prog s6 ≡ just s7 → halted s7 ≡ false →
+  step prog s7 ≡ just s8 → halted s8 ≡ true →
+  exec (suc (suc (suc (suc (suc (suc (suc (suc n)))))))) prog s ≡ just s8
+exec-eight-steps n prog s s1 s2 s3 s4 s5 s6 s7 s8 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 =
+  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc (suc (suc n))))))) prog s s1 step1 h1)
+        (exec-seven-steps n prog s1 s2 s3 s4 s5 s6 s7 s8 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8)
+
+-- | Nine-step execution (8 instructions + halt)
+exec-nine-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 s8 s9 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ false →
+  step prog s5 ≡ just s6 → halted s6 ≡ false →
+  step prog s6 ≡ just s7 → halted s7 ≡ false →
+  step prog s7 ≡ just s8 → halted s8 ≡ false →
+  step prog s8 ≡ just s9 → halted s9 ≡ true →
+  exec (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))) prog s ≡ just s9
+exec-nine-steps n prog s s1 s2 s3 s4 s5 s6 s7 s8 s9 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9 =
+  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc (suc (suc (suc n)))))))) prog s s1 step1 h1)
+        (exec-eight-steps n prog s1 s2 s3 s4 s5 s6 s7 s8 s9 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9)
 
 -- Helper: running a single-instruction program (mov reg, reg)
 --
@@ -1205,6 +1321,287 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s6 , run-eq , halt-eq , en
                    (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp 300 (λ eq → addr-disjoint (sym eq)))
                           (trans (readMem-writeMem-same (memory s1) new-rsp (readReg (regs s1) rdi))
                                  (trans (cong just rdi-s1) (cong just rdi-eq))))
+
+-- Helper: pair sequence for ⟨ id , id ⟩ (base case)
+-- This is a concrete instance where both f and g are id.
+-- Validates the proof structure before generalizing to arbitrary IR.
+--
+-- Generated code:
+--   sub rsp, 16        ; 0
+--   mov r14, rdi       ; 1
+--   mov rax, rdi       ; 2 (compile-x86 id)
+--   mov [rsp], rax     ; 3
+--   mov rdi, r14       ; 4
+--   mov rax, rdi       ; 5 (compile-x86 id)
+--   mov [rsp+8], rax   ; 6
+--   mov rax, rsp       ; 7
+--
+-- Total: 8 instructions, 9 steps (8 + halt on fetch fail at pc=8)
+run-pair-id-id : ∀ {A} (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {A} {A * A} ⟨ id , id ⟩) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ readReg (regs s') rsp
+         × readMem (memory s') (readReg (regs s') rax) ≡ just (readReg (regs s) rdi)
+         × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+run-pair-id-id {A} s h-false pc-0 = s9 , run-eq , halt-eq , rax-rsp-eq , fst-eq , snd-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A} {A * A} ⟨ id , id ⟩
+
+    -- Original values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (sub (reg rsp) (imm 16)) _ s h-false pc-0)
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov r14, rdi (save input)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) r14 (readReg (regs s1) rdi)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (reg r14) (reg rdi)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (reg r14) (reg rdi))) (sym pc1) refl))
+                  (execMov-reg-reg s1 r14 rdi)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov rax, rdi (compile-x86 id)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (reg rax) (reg rdi)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi))) (sym pc2) refl))
+                  (execMov-reg-reg s2 rax rdi)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 4: mov [rsp], rax (store f result)
+    s4 : State
+    s4 = record s3 { memory = writeMem (memory s3) (readReg (regs s3) rsp) (readReg (regs s3) rax)
+                   ; pc = pc s3 +ℕ 1 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (mem (base rsp)) (reg rax)) h3
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (reg rax))) (sym pc3) refl))
+                  (execMov-mem-base-reg prog s3 rsp rax)
+      where
+        execMov-mem-base-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) →
+          execInstr prog s (mov (mem (base dst)) (reg src)) ≡
+            just (record s { memory = writeMem (memory s) (readReg (regs s) dst) (readReg (regs s) src)
+                           ; pc = pc s +ℕ 1 })
+        execMov-mem-base-reg prog s dst src = refl
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 4
+    pc4 = cong (λ x → x +ℕ 1) pc3
+
+    -- State after step 5: mov rdi, r14 (restore input)
+    s5 : State
+    s5 = record s4 { regs = writeReg (regs s4) rdi (readReg (regs s4) r14)
+                   ; pc = pc s4 +ℕ 1 }
+
+    step5 : step prog s4 ≡ just s5
+    step5 = trans (step-exec prog s4 (mov (reg rdi) (reg r14)) h4
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg r14))) (sym pc4) refl))
+                  (execMov-reg-reg s4 rdi r14)
+
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ 5
+    pc5 = cong (λ x → x +ℕ 1) pc4
+
+    -- State after step 6: mov rax, rdi (compile-x86 id again)
+    s6 : State
+    s6 = record s5 { regs = writeReg (regs s5) rax (readReg (regs s5) rdi)
+                   ; pc = pc s5 +ℕ 1 }
+
+    step6 : step prog s5 ≡ just s6
+    step6 = trans (step-exec prog s5 (mov (reg rax) (reg rdi)) h5
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi))) (sym pc5) refl))
+                  (execMov-reg-reg s5 rax rdi)
+
+    h6 : halted s6 ≡ false
+    h6 = h-false
+
+    pc6 : pc s6 ≡ 6
+    pc6 = cong (λ x → x +ℕ 1) pc5
+
+    -- State after step 7: mov [rsp+8], rax (store g result)
+    s7 : State
+    s7 = record s6 { memory = writeMem (memory s6) (readReg (regs s6) rsp +ℕ 8) (readReg (regs s6) rax)
+                   ; pc = pc s6 +ℕ 1 }
+
+    step7 : step prog s6 ≡ just s7
+    step7 = trans (step-exec prog s6 (mov (mem (base+disp rsp 8)) (reg rax)) h6
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (reg rax))) (sym pc6) refl))
+                  (execMov-mem-disp-reg prog s6 rsp rax 8)
+
+    h7 : halted s7 ≡ false
+    h7 = h-false
+
+    pc7 : pc s7 ≡ 7
+    pc7 = cong (λ x → x +ℕ 1) pc6
+
+    -- State after step 8: mov rax, rsp (return pointer)
+    s8 : State
+    s8 = record s7 { regs = writeReg (regs s7) rax (readReg (regs s7) rsp)
+                   ; pc = pc s7 +ℕ 1 }
+
+    step8 : step prog s7 ≡ just s8
+    step8 = trans (step-exec prog s7 (mov (reg rax) (reg rsp)) h7
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rsp))) (sym pc7) refl))
+                  (execMov-reg-reg s7 rax rsp)
+
+    h8 : halted s8 ≡ false
+    h8 = h-false
+
+    pc8 : pc s8 ≡ 8
+    pc8 = cong (λ x → x +ℕ 1) pc7
+
+    -- State after step 9: fetch fails at pc=8, sets halted=true
+    s9 : State
+    s9 = record s8 { halted = true }
+
+    fetch-fail : fetch prog (pc s8) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc8) refl
+
+    step9 : step prog s8 ≡ just s9
+    step9 = step-halt-on-fetch-fail prog s8 h8 fetch-fail
+
+    halt-eq : halted s9 ≡ true
+    halt-eq = refl
+
+    -- Combined execution: 9 steps (defaultFuel = 10000 = 9 + 9991)
+    run-eq : run prog s ≡ just s9
+    run-eq = exec-nine-steps 9991 prog s s1 s2 s3 s4 s5 s6 s7 s8 s9
+               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 halt-eq
+
+    -- Now prove the properties about s9
+
+    -- Register tracing: rsp is constant from s1 (only sub modifies it)
+    rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
+    rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    -- rsp doesn't change through s2 (mov r14, rdi only writes r14)
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = trans (readReg-writeReg-r14-rsp (regs s1) (readReg (regs s1) rdi)) rsp-s1
+
+    -- rsp doesn't change through s3 (mov rax, rdi only writes rax)
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = trans (readReg-writeReg-rax-rsp (regs s2) (readReg (regs s2) rdi)) rsp-s2
+
+    -- rsp constant through s4 (memory write), s5 (mov rdi, r14 writes rdi)
+    rsp-s5 : readReg (regs s5) rsp ≡ new-rsp
+    rsp-s5 = trans (readReg-writeReg-rdi-rsp (regs s4) (readReg (regs s4) r14)) rsp-s3
+
+    -- rsp constant through s6 (mov rax, rdi writes rax)
+    rsp-s6 : readReg (regs s6) rsp ≡ new-rsp
+    rsp-s6 = trans (readReg-writeReg-rax-rsp (regs s5) (readReg (regs s5) rdi)) rsp-s5
+
+    -- rsp constant through s7 (memory write), s8 (mov rax, rsp writes rax)
+    rsp-s8 : readReg (regs s8) rsp ≡ new-rsp
+    rsp-s8 = trans (readReg-writeReg-rax-rsp (regs s7) (readReg (regs s7) rsp)) rsp-s6
+
+    -- rax in s8 = rsp in s7 = new-rsp
+    rax-s8 : readReg (regs s8) rax ≡ new-rsp
+    rax-s8 = trans (readReg-writeReg-same (regs s7) rax (readReg (regs s7) rsp)) rsp-s6
+
+    -- rax = rsp in final state
+    rax-rsp-eq : readReg (regs s9) rax ≡ readReg (regs s9) rsp
+    rax-rsp-eq = trans rax-s8 (sym rsp-s8)
+
+    -- Address calculations
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- Track rdi through states: rdi is preserved from s to s1 (only rsp changed)
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    -- rdi in s2 = rdi in s1 (mov r14, rdi reads but doesn't write rdi)
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = trans (readReg-writeReg-r14-rdi (regs s1) (readReg (regs s1) rdi)) rdi-s1
+
+    -- rdi in s3 = rdi in s2 (mov rax, rdi reads but doesn't write rdi)
+    rdi-s3 : readReg (regs s3) rdi ≡ orig-rdi
+    rdi-s3 = trans (readReg-writeReg-rax-rdi (regs s2) (readReg (regs s2) rdi)) rdi-s2
+
+    -- Track rax in s3: rax = rdi = orig-rdi
+    rax-s3 : readReg (regs s3) rax ≡ orig-rdi
+    rax-s3 = trans (readReg-writeReg-same (regs s2) rax (readReg (regs s2) rdi)) rdi-s2
+
+    -- Track r14: saved rdi value
+    r14-s2 : readReg (regs s2) r14 ≡ orig-rdi
+    r14-s2 = trans (readReg-writeReg-same (regs s1) r14 (readReg (regs s1) rdi)) rdi-s1
+
+    -- r14 preserved through s3, s4, s5
+    r14-s3 : readReg (regs s3) r14 ≡ orig-rdi
+    r14-s3 = trans (readReg-writeReg-rax-r14 (regs s2) (readReg (regs s2) rdi)) r14-s2
+
+    r14-s4 : readReg (regs s4) r14 ≡ orig-rdi
+    r14-s4 = r14-s3  -- memory write doesn't change regs
+
+    -- rdi in s5 = r14 in s4 = orig-rdi
+    rdi-s5 : readReg (regs s5) rdi ≡ orig-rdi
+    rdi-s5 = trans (readReg-writeReg-same (regs s4) rdi (readReg (regs s4) r14)) r14-s4
+
+    -- rax in s6 = rdi in s5 = orig-rdi
+    rax-s6 : readReg (regs s6) rax ≡ orig-rdi
+    rax-s6 = trans (readReg-writeReg-same (regs s5) rax (readReg (regs s5) rdi)) rdi-s5
+
+    -- Memory tracing: s4 has first write at [new-rsp] = rax-s3 = orig-rdi
+    -- s7 has second write at [new-rsp+8] = rax-s6 = orig-rdi
+
+    -- fst at [rax] = orig-rdi
+    -- Memory in s9 = memory in s7 = writeMem (memory s6) (new-rsp+8) (rax-s6)
+    -- memory in s6 = memory s4 = writeMem (memory s3) new-rsp (rax-s3)
+    fst-eq : readMem (memory s9) (readReg (regs s9) rax) ≡ just (readReg (regs s) rdi)
+    fst-eq = trans (cong (readMem (memory s9)) rax-s8)
+                   (trans (readMem-writeMem-diff (memory s6) (new-rsp +ℕ 8) new-rsp (readReg (regs s6) rax) (λ eq → addr-disjoint (sym eq)))
+                          (trans (readMem-writeMem-same (memory s3) new-rsp (readReg (regs s3) rax))
+                                 (cong just rax-s3)))
+
+    -- snd at [rax+8] = orig-rdi
+    snd-eq : readMem (memory s9) (readReg (regs s9) rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    snd-eq = trans (cong (λ a → readMem (memory s9) (a +ℕ 8)) rax-s8)
+                   (trans (readMem-writeMem-same (memory s6) (new-rsp +ℕ 8) (readReg (regs s6) rax))
+                          (cong just rax-s6))
 
 -- Helper: apply sequence
 -- Takes pair (closure, arg), calls closure's code with arg in rdi and env in r12
