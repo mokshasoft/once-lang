@@ -8,6 +8,7 @@
 #   make check    - Same as above
 #   make laws     - Type-check categorical laws only
 #   make surface  - Type-check surface syntax elaboration only
+#   make surfaceir - Type-check surface IR and desugar (D035)
 #   make optimize - Type-check optimizer correctness proofs
 #   make clean    - Remove Agda build artifacts
 
@@ -17,6 +18,8 @@ LAWS := Once/Category/Laws.agda
 SOUNDNESS := Once/TypeSystem/Soundness.agda
 ELABORATE := Once/Surface/Elaborate.agda
 CORRECT := Once/Surface/Correct.agda
+SURFACE_IR := Once/Surface/IR.agda
+SURFACE_DESUGAR := Once/Surface/Desugar.agda
 OPTIMIZE := Once/Optimize.agda
 OPTIMIZE_CORRECT := Once/Optimize/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
@@ -32,11 +35,11 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface optimize x86 clean
+.PHONY: all check postulates laws surface surfaceir optimize x86 clean
 
 all: check
 
-check: postulates laws surface optimize x86
+check: postulates laws surface surfaceir optimize x86
 	@echo "All proofs type-check successfully!"
 
 postulates:
@@ -52,6 +55,11 @@ surface:
 	@echo "Type-checking surface syntax elaboration..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(ELABORATE)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(CORRECT)'
+
+surfaceir:
+	@echo "Type-checking surface IR and desugar..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_IR)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR)'
 
 optimize:
 	@echo "Type-checking optimizer..."
