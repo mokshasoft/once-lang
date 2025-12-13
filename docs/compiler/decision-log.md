@@ -1833,3 +1833,94 @@ once build --exe --target x86_64 hello.once
 
 - D009: Interpretations Outside Compiler
 - D033: Module Import System
+
+---
+
+## D035: Two-Stage IR and MAlonzo Compilation
+
+**Date**: 2025-12-13
+**Status**: Accepted
+
+### Context
+
+The Once compiler has two IR definitions:
+- **Agda IR** (`formal/Once/IR.agda`): 13 pure categorical constructors + fold/unfold + arr
+- **Haskell IR** (`compiler/src/Once/IR.hs`): Same plus Let, LocalVar, Var, FunRef, Prim, StringLit
+
+The goal is to generate the optimizer (and eventually entire compiler) from verified Agda code using MAlonzo (Agda's Haskell backend).
+
+### Problem
+
+The IR mismatch creates integration challenges:
+1. **Extend Agda IR?** Adding Let, Var, etc. means every proof needs extra cases, complicating verification
+2. **Wrapper approach?** Keeping Agda pure with Haskell wrapper means two IRs to maintain
+3. **Replace Haskell IR?** Requires major refactor, may lose useful constructs
+
+### Decision
+
+**Two-stage IR architecture in Agda**:
+
+```
+Surface IR (Agda)     -- has Let, Prim, ConstStr
+      ↓
+  desugar (Agda)      -- expand to categorical form
+      ↓
+Core IR (Agda)        -- pure categorical (current Once.IR)
+      ↓
+  optimize (Agda)     -- verified optimizer (current Once.Optimize)
+      ↓
+  codegen (Agda)      -- generate assembly (current Once.Backend.X86)
+```
+
+### Surface IR Design
+
+```agda
+data SurfaceIR : Type → Type → Set where
+  -- All Core IR constructors embedded
+  id, _∘_, fst, snd, ⟨_,_⟩, inl, inr, [_,_],
+  terminal, initial, curry, apply, fold, unfold, arr
+
+  -- Surface-only constructs
+  Let      : ∀ {A B C} → SurfaceIR A B → SurfaceIR (A * B) C → SurfaceIR A C
+  Prim     : ∀ {A B} → String → SurfaceIR A B
+  ConstStr : String → SurfaceIR Unit StringType
+```
+
+**Key insight**: `Let` uses De Bruijn style - the body receives `(original-input, bound-value)` via `fst`/`snd`. No named `LocalVar` needed!
+
+### Desugar Transformation
+
+```agda
+desugar : ∀ {A B} → SurfaceIR A B → CoreIR A B
+desugar (Let e1 e2) = desugar e2 ∘ ⟨ id , desugar e1 ⟩
+desugar (Prim name) = prim name
+desugar (ConstStr s) = constStr s ∘ terminal
+desugar (f ∘ g) = desugar f ∘ desugar g
+-- ... structural recursion ...
+```
+
+The categorical translation of `let`:
+```
+let x = e1 in e2   ≡   e2 ∘ ⟨id, e1⟩
+```
+where `e2` uses `fst` for original input and `snd` for bound value.
+
+### Rationale
+
+1. **Core IR stays minimal**: Optimizer proofs don't need Let cases
+2. **Desugar is trivial**: Structural recursion with one interesting case
+3. **Existing proofs unchanged**: Once.Optimize.Correct works as-is
+4. **MAlonzo generates everything**: Full pipeline from verified Agda
+5. **Clear separation**: Naming/binding is Surface concern, computation is Core
+
+### Consequences
+
+- Agda formalization grows but stays modular
+- Haskell compiler becomes thin wrapper calling MAlonzo-generated functions
+- Path to fully verified compiler (desugar → optimize → codegen all in Agda)
+- D029 (Let Bindings) still applies to surface syntax; this decision covers IR representation
+
+### See Also
+
+- D029: Let Bindings with Desugaring (surface syntax)
+- [MAlonzo Compilation](../design/malonzo-compilation.md) (detailed design)

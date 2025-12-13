@@ -132,7 +132,10 @@ The categorical foundation enables tractable formal verification:
 - Rewrites are applications of categorical laws
 - Laws have been proven correct since the 1940s
 
+The compiler itself can be generated from verified Agda code using MAlonzo, ensuring the optimizer provably preserves program semantics.
+
 See [What Is Proven](../formal/what-is-proven.md) for current verification status.
+See [MAlonzo Compilation](malonzo-compilation.md) for the verified compiler architecture.
 
 ## Optimization
 
@@ -154,6 +157,7 @@ See [Optimization](optimization.md) for theory, laws, and programming guidelines
 | [Quickstart](quickstart.md) | 5-minute introduction |
 | [Design Philosophy](design-philosophy.md) | Why natural transformations |
 | [Compiler](compiler.md) | Compiler architecture |
+| [MAlonzo Compilation](malonzo-compilation.md) | Generating compiler from Agda |
 | [Optimization](optimization.md) | NT-based optimization theory and guidelines |
 | [Libraries](libraries.md) | The three strata |
 | [IO](io.md) | The IO monad |

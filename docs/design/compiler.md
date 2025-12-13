@@ -91,6 +91,32 @@ data IR
 
 Every Once program elaborates to this IR before code generation.
 
+## Two-Stage IR Architecture (D035)
+
+The compiler uses a **two-stage IR** to support both programmer convenience and verified optimization:
+
+```
+Surface IR (Agda)     -- Core + Let, Prim, ConstStr
+      ↓
+  desugar (Agda)      -- Expand let bindings
+      ↓
+Core IR (Agda)        -- Pure categorical (13 generators)
+      ↓
+  optimize (Agda)     -- Verified optimizer
+      ↓
+  codegen
+```
+
+**Surface IR** includes constructs like `Let` that make elaboration easier. **Core IR** is purely categorical, keeping optimizer proofs simple. The desugar pass translates between them:
+
+```
+let x = e1 in e2   →   e2 ∘ ⟨id, e1⟩
+```
+
+Both IRs and the transformations are defined in Agda, enabling the entire pipeline to be generated from verified code via MAlonzo.
+
+See [MAlonzo Compilation](malonzo-compilation.md) for details.
+
 ## Optimization
 
 The optimizer (`Optimize.hs`) applies categorical laws:
@@ -220,10 +246,16 @@ Ya demonstrates the categorical principles in Haskell. The Once compiler applies
 
 ## Future Work
 
+- **MAlonzo compilation** (D035): Generate optimizer from verified Agda code
 - Additional backends (Rust, JavaScript, WASM)
 - QTT quantity enforcement
 - More optimizations (eta rules, fusion)
-- Formal verification of the optimizer
+
+## Verification Status
+
+The optimizer is **formally verified** in Agda (`formal/Once/Optimize.agda` and `formal/Once/Optimize/Correct.agda`). The correctness proof shows that optimization preserves program semantics—the only postulate required is function extensionality.
+
+See [MAlonzo Compilation](malonzo-compilation.md) for plans to generate the optimizer directly from the verified Agda code.
 
 ## Summary
 
@@ -231,8 +263,9 @@ The Once compiler transforms categorical programs into efficient C code:
 
 1. **Parse** Once syntax into an AST
 2. **Type check** with bidirectional inference
-3. **Elaborate** surface syntax to categorical IR
-4. **Optimize** by applying categorical laws
-5. **Generate** C code from IR
+3. **Elaborate** surface syntax to Surface IR
+4. **Desugar** Surface IR to categorical Core IR
+5. **Optimize** by applying categorical laws (verified)
+6. **Generate** C code from IR
 
-The small IR (~12 generators) makes each phase straightforward and amenable to formal verification.
+The small IR (~12 generators) makes each phase straightforward. The optimizer is formally verified in Agda.
