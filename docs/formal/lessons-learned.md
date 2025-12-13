@@ -458,31 +458,44 @@ mutual
 
 The non-recursive helpers (`run-inl-seq`, `run-inr-seq`, `run-curry-seq`) can be proven independently because they don't involve nested IR execution. Recursive helpers must be part of the mutual block.
 
-### Placeholder labels in codegen cause out-of-bounds fetch
+### Computed labels enable complete branch proofs
 
-The codegen uses hardcoded label numbers (100, 200, 300, 400) that don't correspond to actual instruction positions. For example:
+**Problem**: Placeholder label values (100, 200, 300, 400) in codegen cause proofs to fail because jump targets don't match actual instruction positions.
+
+**Solution**: Use a `compile-length` function to compute instruction counts, then calculate actual jump targets:
 
 ```agda
+-- Calculate the number of instructions generated for an IR morphism
+compile-length : ∀ {A B} → IR A B → ℕ
+compile-length id = 1
+compile-length (g ∘ f) = (compile-length f + 1) + compile-length g
+compile-length [ f , g ] = (8 + compile-length f) + compile-length g
+compile-length (curry f) = 12 + compile-length f
+-- ... etc for each constructor
+
+-- Use computed labels in code generation
 compile-x86 [ f , g ] =
-  ...
-  jne 100 ∷          -- placeholder, actual label at 4+len(f)+2
-  ...
-  jmp 200 ∷          -- placeholder, actual label at 8+len(f)+len(g)
-  label 100 ∷
-  ...
-  label 200 ∷ []
+  let len-f = compile-length f
+      len-g = compile-length g
+      right-branch = 5 + len-f      -- actual position of right branch
+      end-label = (7 + len-f) + len-g  -- actual position of end
+  in
+  mov (reg r15) (mem (base rdi)) ∷
+  cmp (reg r15) (imm 0) ∷
+  jne right-branch ∷               -- computed, not placeholder
+  mov (reg rdi) (mem (base+disp rdi 8)) ∷
+  compile-x86 f ++
+  jmp end-label ∷                  -- computed, not placeholder
+  label right-branch ∷
+  mov (reg rdi) (mem (base+disp rdi 8)) ∷
+  compile-x86 g ++
+  label end-label ∷ []
 ```
 
-Since `jne 100` jumps to instruction 100 but the actual label is at position ~5+len(f), the jump either:
-- Causes out-of-bounds fetch (if program < 100 instructions) → halts
-- Lands on wrong instruction (if program ≥ 100 instructions) → undefined
+**Why this matters**: With computed labels, both branches are provable:
+- `run-case-inl-id`: tag=0, `jne 6` not taken, executes left branch
+- `run-case-inr-id`: tag=1, `jne 6` taken, jumps to correct position, executes right branch
 
-For formal verification, this means:
-1. Non-recursive IR (`id`, `fst`, `inl`, etc.) work because no label jumps
-2. Simple closures (`curry`) work because `jmp 400` causes out-of-bounds halt
-3. Recursive cases (`[ f , g ]`, `g ∘ f`) would require fixing the codegen to use correct label resolution
+Previously, `run-case-inr-id` was impossible because `jne 100` would jump out of bounds (program only had ~10 instructions).
 
-To fully prove `run-case-inl/inr`, either:
-- Fix CodeGen to use proper label calculation
-- Add postulates about label resolution being correct
-- Use a different proof strategy that doesn't trace exact PC values
+**Key insight**: The `compile-length` function must be defined for all IR constructors and must exactly match the instruction count produced by `compile-x86`. Any mismatch causes proofs to fail with concrete instruction position mismatches.
