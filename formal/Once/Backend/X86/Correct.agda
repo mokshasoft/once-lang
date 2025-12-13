@@ -1116,6 +1116,122 @@ run-arr-at-offset {A} {B} prefix suffix f s h-false pc-eq rdi-eq = s' , step-eq 
     rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
                    (trans rdi-eq (encode-arr-identity f))
 
+-- | Execute fst at arbitrary offset in a program (non-halting)
+-- compile-x86 fst = [mov rax, [rdi]] (1 instruction)
+run-fst-at-offset : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  readMem (memory s) (encode (a , b)) ≡ just (encode a) →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode a)
+run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (encode a)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (mem (base rdi)))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (mem (base rdi))))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (mem (base rdi))) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (mem (base rdi))) h-false fetch-eq)
+                    (execMov-reg-mem-base s rax rdi (encode a)
+                      (trans (cong (λ addr → readMem (memory s) addr) rdi-eq) mem-eq))
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ encode a
+    rax-eq = readReg-writeReg-same (regs s) rax (encode a)
+
+-- | Execute snd at arbitrary offset in a program (non-halting)
+-- compile-x86 snd = [mov rax, [rdi+8]] (1 instruction)
+run-snd-at-offset : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b) →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode b)
+run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (encode b)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (mem (base+disp rdi 8)))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (mem (base+disp rdi 8))))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (mem (base+disp rdi 8))) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (mem (base+disp rdi 8))) h-false fetch-eq)
+                    (execMov-reg-mem-disp s rax rdi 8 (encode b)
+                      (trans (cong (λ addr → readMem (memory s) (addr +ℕ 8)) rdi-eq) mem-eq))
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ encode b
+    rax-eq = readReg-writeReg-same (regs s) rax (encode b)
+
+-- | Execute mov rdi, rax at arbitrary offset (transfer result to input register)
+-- This is the glue instruction between composed programs
+run-mov-rdi-rax-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (step (prefix ++ mov (reg rdi) (reg rax) ∷ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rdi ≡ readReg (regs s) rax
+         × readReg (regs s') rax ≡ readReg (regs s) rax)
+run-mov-rdi-rax-at-offset prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-eq , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ mov (reg rdi) (reg rax) ∷ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rdi) (reg rax))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg rax)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rdi) (reg rax)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rdi) (reg rax)) h-false fetch-eq)
+                    (execMov-reg-reg s rdi rax)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rdi-eq : readReg (regs s') rdi ≡ readReg (regs s) rax
+    rdi-eq = readReg-writeReg-same (regs s) rdi (readReg (regs s) rax)
+
+    -- rax is preserved (we only wrote to rdi)
+    rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
+    rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
+
 -- | Two-step execution: if first step produces s1 (not halted), and second halts,
 -- then exec (suc (suc n)) produces the halted state
 exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 : State) →
