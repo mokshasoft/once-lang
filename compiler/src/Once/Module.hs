@@ -82,10 +82,10 @@ formatModuleError = \case
 
 -- | A loaded module with its exports
 data LoadedModule = LoadedModule
-  { lmModule  :: Module              -- ^ The parsed module
-  , lmPath    :: FilePath            -- ^ Source file path
-  , lmExports :: Map Name DeclInfo   -- ^ Exported names with their declarations
-  , lmCPath   :: Maybe FilePath      -- ^ Companion .c file (for interpretations)
+  { lmModule     :: Module              -- ^ The parsed module
+  , lmPath       :: FilePath            -- ^ Source file path
+  , lmExports    :: Map Name DeclInfo   -- ^ Exported names with their declarations
+  , lmTargetPath :: Maybe FilePath      -- ^ Target-specific implementation file (.c, .x86_64, etc.)
   } deriving (Show)
 
 -- | Information about an exported declaration
@@ -99,14 +99,16 @@ data ModuleEnv = ModuleEnv
   { meModules    :: Map ModuleName LoadedModule  -- ^ Loaded modules by canonical path
   , meAliases    :: Map Name ModuleName          -- ^ Alias -> canonical module path
   , meStrataPath :: FilePath                     -- ^ Base path for Strata directory
+  , meTargetExt  :: String                       -- ^ Target file extension (e.g., ".c", ".x86_64")
   } deriving (Show)
 
 -- | Create an empty module environment
-emptyModuleEnv :: FilePath -> ModuleEnv
-emptyModuleEnv strataPath = ModuleEnv
+emptyModuleEnv :: FilePath -> String -> ModuleEnv
+emptyModuleEnv strataPath targetExt = ModuleEnv
   { meModules = Map.empty
   , meAliases = Map.empty
   , meStrataPath = strataPath
+  , meTargetExt = targetExt
   }
 
 -- | Expand path abbreviations
@@ -131,11 +133,11 @@ moduleToFilePath :: FilePath -> ModuleName -> FilePath
 moduleToFilePath strataPath modPath =
   strataPath </> foldr1 (</>) (map T.unpack modPath) <.> "once"
 
--- | Get companion C file path (for interpretation modules)
--- ["Interpretations", "Linux", "Syscalls"] -> "Strata/Interpretations/Linux/Syscalls.c"
-companionCPath :: FilePath -> ModuleName -> FilePath
-companionCPath strataPath modPath =
-  strataPath </> foldr1 (</>) (map T.unpack modPath) <.> "c"
+-- | Get target-specific implementation file path
+-- ["Interpretations", "Linux", "Syscalls"] -> "Strata/Interpretations/Linux/Syscalls.c" (or .x86_64, etc.)
+targetFilePath :: FilePath -> String -> ModuleName -> FilePath
+targetFilePath strataPath ext modPath =
+  strataPath </> foldr1 (</>) (map T.unpack modPath) ++ ext
 
 -- | Build exports map from a module's declarations
 -- Associates each name with its type signature and definition
@@ -164,8 +166,8 @@ buildExports m = foldr addDecl Map.empty (moduleDecls m)
     addDef decl (Just info) = Just info { diDecl = decl }
 
 -- | Load a single module file
-loadModuleFile :: FilePath -> ModuleName -> IO (Either ModuleError LoadedModule)
-loadModuleFile strataPath modPath = do
+loadModuleFile :: FilePath -> String -> ModuleName -> IO (Either ModuleError LoadedModule)
+loadModuleFile strataPath targetExt modPath = do
   let oncePath = moduleToFilePath strataPath modPath
   exists <- doesFileExist oncePath
   if not exists
@@ -175,14 +177,14 @@ loadModuleFile strataPath modPath = do
       case parseModule content of
         Left err -> return $ Left (ModuleParseError modPath (T.pack $ show err))
         Right m -> do
-          -- Check for companion .c file
-          let cPath = companionCPath strataPath modPath
-          hasC <- doesFileExist cPath
+          -- Check for target-specific implementation file (.c, .x86_64, etc.)
+          let tgtPath = targetFilePath strataPath targetExt modPath
+          hasTarget <- doesFileExist tgtPath
           return $ Right LoadedModule
             { lmModule = m
             , lmPath = oncePath
             , lmExports = buildExports m
-            , lmCPath = if hasC then Just cPath else Nothing
+            , lmTargetPath = if hasTarget then Just tgtPath else Nothing
             }
 
 -- | Resolve all imports for a module, loading dependencies recursively
@@ -231,8 +233,8 @@ loadModulesWithCycleCheck env loading (modPath : rest) = do
       else do
         -- Mark as loading
         let loading' = Set.insert modPath loading
-        -- Load the module
-        result <- loadModuleFile (meStrataPath env) modPath
+        -- Load the module (using target extension from environment)
+        result <- loadModuleFile (meStrataPath env) (meTargetExt env) modPath
         case result of
           Left err -> return $ Left err
           Right lm -> do

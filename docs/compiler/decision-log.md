@@ -1751,3 +1751,85 @@ Module error: Cyclic import detected: A -> B -> C -> A
 
 - D009: Interpretations Outside Compiler
 - D027: No Implicit Imports
+
+---
+
+## D034: Target Architecture Flag
+
+**Date**: 2025-12-13
+**Status**: Accepted
+
+### Context
+
+Once aims to support multiple target architectures:
+- C backend (current, via gcc)
+- x86-64 assembly (future)
+- ARM64 assembly (future)
+- RISC-V 64-bit (future)
+
+Each target requires different interpretation files alongside the `.once` declarations.
+
+### Decision
+
+Add `--target <arch>` CLI flag with target-specific file extensions:
+
+| Target | Extension | Description |
+|--------|-----------|-------------|
+| `c` | `.c` | C backend (default) |
+| `x86_64` | `.x86_64` | x86-64 assembly |
+| `arm64` | `.arm64` | ARM64 assembly |
+| `riscv64` | `.riscv64` | RISC-V 64-bit |
+
+### Directory Structure
+
+```
+Strata/Interpretations/Linux/
+├── syscalls.once       # Type declarations (shared)
+├── syscalls.c          # C implementation
+├── syscalls.x86_64     # x86-64 assembly (future)
+└── syscalls.arm64      # ARM64 assembly (future)
+```
+
+### Implementation
+
+**Types** (`Once/CLI.hs`):
+```haskell
+data Target = TargetC | TargetX86_64 | TargetArm64 | TargetRiscV64
+
+targetExtension :: Target -> String
+targetExtension TargetC = ".c"
+targetExtension TargetX86_64 = ".x86_64"
+-- etc.
+```
+
+**Module environment** (`Once/Module.hs`):
+- `meTargetExt` field stores target extension
+- `loadModuleFile` finds target-specific files
+- `lmTargetPath` (renamed from `lmCPath`) stores path
+
+### Usage
+
+```bash
+# Default (C backend)
+once build --exe hello.once -o hello
+
+# Explicit target
+once build --exe --target c hello.once -o hello
+
+# Future targets (graceful error)
+once build --exe --target x86_64 hello.once
+# Error: Target 'TargetX86_64' not yet implemented
+# Hint: Use --target c for C backend
+```
+
+### Consequences
+
+- One `.once` file pairs with multiple target implementations
+- Module loading automatically finds correct target file
+- Future assembly backends can be added incrementally
+- V1: Only `TargetC` is implemented
+
+### See Also
+
+- D009: Interpretations Outside Compiler
+- D033: Module Import System

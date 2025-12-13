@@ -86,24 +86,24 @@ pathResolutionTests = testGroup "File path resolution"
 aliasTests :: TestTree
 aliasTests = testGroup "Alias resolution"
   [ testCase "Single alias resolves" $ do
-      let env = (emptyModuleEnv "Strata")
+      let env = (emptyModuleEnv "Strata" ".c")
                   { meAliases = Map.singleton "C" ["Derived", "Canonical"] }
       resolveAlias env ["C"]
         @?= ["Derived", "Canonical"]
 
   , testCase "Unknown alias unchanged" $ do
-      let env = emptyModuleEnv "Strata"
+      let env = emptyModuleEnv "Strata" ".c"
       resolveAlias env ["Unknown"]
         @?= ["Unknown"]
 
   , testCase "Multi-component path not resolved as alias" $ do
-      let env = (emptyModuleEnv "Strata")
+      let env = (emptyModuleEnv "Strata" ".c")
                   { meAliases = Map.singleton "C" ["Derived", "Canonical"] }
       resolveAlias env ["C", "Extra"]
         @?= ["C", "Extra"]
 
   , testCase "Multiple aliases in environment" $ do
-      let env = (emptyModuleEnv "Strata")
+      let env = (emptyModuleEnv "Strata" ".c")
                   { meAliases = Map.fromList
                       [ ("S", ["Derived", "Simple"])
                       , ("E", ["Interpretations", "Linux", "Exit"])
@@ -120,14 +120,14 @@ aliasTests = testGroup "Alias resolution"
 lookupTests :: TestTree
 lookupTests = testGroup "Qualified name lookup"
   [ testCase "Lookup in empty env fails with ModuleNotFound" $ do
-      let env = emptyModuleEnv "Strata"
+      let env = emptyModuleEnv "Strata" ".c"
       case lookupQualified "swap" ["Derived", "Simple"] env of
         Left (ModuleNotFound _ _) -> pure ()
         other -> assertFailure $ "Expected ModuleNotFound, got: " ++ show other
 
   , testCase "Alias resolved before abbreviation check" $ do
       -- When path is an alias, it should resolve without trying abbreviation expansion
-      let env = (emptyModuleEnv "Strata")
+      let env = (emptyModuleEnv "Strata" ".c")
                   { meAliases = Map.singleton "S" ["Derived", "Simple"] }
       -- "S" is an alias, not an abbreviation - should not fail with AbbreviationNotFound
       case lookupQualified "swap" ["S"] env of

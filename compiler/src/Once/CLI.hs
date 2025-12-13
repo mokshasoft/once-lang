@@ -5,6 +5,9 @@ module Once.CLI
   , CheckOptions (..)
   , OutputMode (..)
   , AllocStrategy (..)
+  , Target (..)
+  , targetExtension
+  , parseTarget
   ) where
 
 import Control.Applicative ((<|>))
@@ -39,6 +42,29 @@ data OutputMode
   | Executable  -- ^ Generate standalone executable with main()
   deriving (Eq, Show)
 
+-- | Target architecture
+data Target
+  = TargetC       -- ^ C backend (current, default)
+  | TargetX86_64  -- ^ x86-64 assembly (future)
+  | TargetArm64   -- ^ ARM64 assembly (future)
+  | TargetRiscV64 -- ^ RISC-V 64-bit (future)
+  deriving (Eq, Show)
+
+-- | File extension for each target
+targetExtension :: Target -> String
+targetExtension TargetC = ".c"
+targetExtension TargetX86_64 = ".x86_64"
+targetExtension TargetArm64 = ".arm64"
+targetExtension TargetRiscV64 = ".riscv64"
+
+-- | Parse target from string
+parseTarget :: String -> Maybe Target
+parseTarget "c" = Just TargetC
+parseTarget "x86_64" = Just TargetX86_64
+parseTarget "arm64" = Just TargetArm64
+parseTarget "riscv64" = Just TargetRiscV64
+parseTarget _ = Nothing
+
 -- | Options for the build command
 data BuildOptions = BuildOptions
   { buildInput  :: FilePath
@@ -47,6 +73,7 @@ data BuildOptions = BuildOptions
   , buildInterp :: Maybe FilePath       -- ^ Path to interpretation directory (deprecated, use --strata)
   , buildAlloc  :: Maybe AllocStrategy  -- ^ Default allocation strategy (Nothing = use per-function annotations)
   , buildStrata :: Maybe FilePath       -- ^ Path to Strata directory (default: look relative to input file)
+  , buildTarget :: Target               -- ^ Target architecture (default: TargetC)
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -69,8 +96,10 @@ runBuild opts = do
         Nothing -> takeBaseName inputPath
       mode = buildMode opts
 
-  -- Determine Strata path
+  -- Determine Strata path and target
   strataPath <- findStrataPath opts inputPath
+  let target = buildTarget opts
+      targetExt = targetExtension target
 
   -- Read input file
   source <- TIO.readFile inputPath
@@ -82,7 +111,7 @@ runBuild opts = do
       exitFailure
     Right m -> do
       -- Resolve imports (load all imported modules)
-      let initialEnv = emptyModuleEnv strataPath
+      let initialEnv = emptyModuleEnv strataPath targetExt
       resolveResult <- resolveImports initialEnv (moduleImports m)
       case resolveResult of
         Left modErr -> do
@@ -134,19 +163,27 @@ runBuild opts = do
                           TIO.putStrLn $ "Generated: " <> T.pack headerPath <> ", " <> T.pack sourcePath
 
                         Executable -> do
+                          -- Check if target is supported
+                          case target of
+                            TargetC -> pure ()  -- C is supported
+                            other -> do
+                              TIO.putStrLn $ "Error: Target '" <> T.pack (show other) <> "' not yet implemented"
+                              TIO.putStrLn "Hint: Use --target c for C backend"
+                              exitFailure
+
                           -- For executable, generate C with main() wrapper
                           -- Load interpretation C code from --interp and from imported modules
                           interpCodeLegacy <- case buildInterp opts of
                             Nothing -> pure ""
                             Just interpPath -> loadInterpretationCode interpPath
 
-                          -- Collect C files from imported interpretation modules
-                          let importedCFiles = collectCFiles modEnv
-                          importedCCode <- T.concat <$> mapM TIO.readFile importedCFiles
+                          -- Collect target-specific files from imported interpretation modules
+                          let importedTargetFiles = collectTargetFiles modEnv
+                          importedCode <- T.concat <$> mapM TIO.readFile importedTargetFiles
 
                           let sourcePath = outputBase ++ ".c"
                               alloc = mainAlloc <|> buildAlloc opts
-                              interpCode = interpCodeLegacy <> "\n" <> importedCCode
+                              interpCode = interpCodeLegacy <> "\n" <> importedCode
                               source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
                           TIO.writeFile sourcePath source'
                           TIO.putStrLn $ "Generated: " <> T.pack sourcePath
@@ -172,9 +209,9 @@ findStrataPath opts inputPath = case buildStrata opts of
           then pure "Strata"
           else pure relativePath  -- Return the first attempt (will error if used)
 
--- | Collect all C file paths from loaded interpretation modules
-collectCFiles :: ModuleEnv -> [FilePath]
-collectCFiles env = [cPath | LoadedModule { lmCPath = Just cPath } <- Map.elems (meModules env)]
+-- | Collect all target-specific file paths from loaded interpretation modules
+collectTargetFiles :: ModuleEnv -> [FilePath]
+collectTargetFiles env = [path | LoadedModule { lmTargetPath = Just path } <- Map.elems (meModules env)]
 
 -- | Run the check command: parse -> typecheck
 runCheck :: CheckOptions -> IO ()
