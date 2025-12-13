@@ -4,7 +4,20 @@
 -- Correctness proofs for the Once optimizer.
 -- Each optimization rule preserves semantics.
 --
--- All proofs are constructive except for funext (function extensionality).
+-- POSTULATES: This module uses one postulate:
+--   - funext (function extensionality): ∀ x → f x ≡ g x → f ≡ g
+--
+-- WHY FUNEXT IS SAFE TO POSTULATE:
+--   1. It's consistent with MLTT (proven via setoid/realizability models)
+--   2. It's provable in Cubical Type Theory (Agda --cubical)
+--   3. It holds in the standard "sets and functions" semantics
+--   4. It's standard practice (see Axiom.Extensionality.Propositional
+--      in the Agda standard library)
+--
+-- WHY FUNEXT IS NEEDED:
+--   The curry case requires proving equality of functions:
+--     eval (curry (optimize-once f)) x ≡ eval (curry f) x
+--   which reduces to proving two lambdas equal, requiring funext.
 ------------------------------------------------------------------------
 
 module Once.Optimize.Correct where
@@ -392,6 +405,8 @@ optimize-once-correct terminal x = refl
 optimize-once-correct initial ()
 optimize-once-correct (curry f) x = cong (λ h → λ b → h (x , b)) (funext (λ p → optimize-once-correct f p))
   where
+    -- POSTULATE: Function extensionality (see module header for justification)
+    -- This is the ONLY postulate in the optimizer correctness proofs.
     postulate funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
 optimize-once-correct apply x = refl
 optimize-once-correct fold x = refl
