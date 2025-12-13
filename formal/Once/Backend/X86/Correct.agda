@@ -1893,12 +1893,7 @@ postulate
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
            × readReg (regs s') rax ≡ encode (eval [ f , g ] x))
 
-  -- initial (unreachable - Void has no inhabitants)
-  run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec 1 (prefix ++ compile-x86 {Void} {A} initial ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
-           × readReg (regs s') rax ≡ encode {A} (eval {Void} {A} initial x))
+  -- initial: proved below (trivially by ⊥-elim since Void has no inhabitants)
 
   -- curry (12 + compile-length f instructions)
   run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
@@ -2393,6 +2388,15 @@ run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
       -- Use existing run-snd-at-offset with the memory precondition
       (s' , step-eq , h' , pc' , rax-eq) = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
   in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+
+-- | run-ir-at-offset-initial: Execute initial at arbitrary offset
+-- Trivially proven because Void (⊥) has no inhabitants
+run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (exec 1 (prefix ++ compile-x86 {Void} {A} initial ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode {A} (eval {Void} {A} initial x))
+run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq rdi-eq = ⊥-elim x
 
 -- | Non-halting execution of IR at arbitrary offset
 -- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
