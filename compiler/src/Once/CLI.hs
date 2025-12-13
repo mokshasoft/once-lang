@@ -128,48 +128,64 @@ runBuild opts = do
               let primitives = extractPrimitives m
                   allFunctions = extractFunctions m
 
-              -- Find main function
-              case filter (\(n, _, _, _) -> n == "main") allFunctions of
-                [] -> do
-                  TIO.putStrLn "Error: No main function found"
-                  exitFailure
-                ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
-                  -- D032: main must be effectful (Eff Unit Unit or IO Unit)
-                  case mainTy of
-                    TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
+              -- Generate C based on mode
+              case mode of
+                Library -> do
+                  -- Library mode: generate code for all functions (no main required)
+                  case allFunctions of
+                    [] -> do
+                      TIO.putStrLn "Error: No functions found"
+                      exitFailure
                     _ -> do
-                      TIO.putStrLn $ "Error: main must have type 'Eff Unit Unit' or 'IO Unit', got: " <> T.pack (show mainTy)
-                      TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
-                      exitFailure
-                  -- Elaborate all functions to IR (with module environment)
-                  let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-                  case elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
-                    Left err -> do
-                      TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
-                      exitFailure
-                    Right irFunctions -> do
-                      -- Optimize all IRs
-                      let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
-                          (_, _, _, mainIR) = head optimizedFunctions
-
-                      -- Generate C based on mode
-                      case mode of
-                        Library -> do
-                          let CModule header source' = generateC mainName mainTy mainIR
+                      -- Elaborate all functions
+                      case elaborateAllWithEnv modEnv allFunctions of
+                        Left err -> do
+                          TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
+                          exitFailure
+                        Right irFunctions -> do
+                          -- Optimize and generate for each function
+                          let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
+                          -- Generate library with all functions
+                          let (header, source') = generateLibraryAll optimizedFunctions
                               headerPath = outputBase ++ ".h"
                               sourcePath = outputBase ++ ".c"
                           TIO.writeFile headerPath header
                           TIO.writeFile sourcePath source'
                           TIO.putStrLn $ "Generated: " <> T.pack headerPath <> ", " <> T.pack sourcePath
+                          exitSuccess
 
-                        Executable -> do
-                          -- Check if target is supported
-                          case target of
-                            TargetC -> pure ()  -- C is supported
-                            other -> do
-                              TIO.putStrLn $ "Error: Target '" <> T.pack (show other) <> "' not yet implemented"
-                              TIO.putStrLn "Hint: Use --target c for C backend"
-                              exitFailure
+                Executable -> do
+                  -- Executable mode: requires main
+                  case filter (\(n, _, _, _) -> n == "main") allFunctions of
+                    [] -> do
+                      TIO.putStrLn "Error: No main function found"
+                      exitFailure
+                    ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
+                      -- D032: main must be effectful (Eff Unit Unit or IO Unit)
+                      case mainTy of
+                        TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
+                        _ -> do
+                          TIO.putStrLn $ "Error: main must have type 'Eff Unit Unit' or 'IO Unit', got: " <> T.pack (show mainTy)
+                          TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
+                          exitFailure
+
+                      -- Check if target is supported
+                      case target of
+                        TargetC -> pure ()  -- C is supported
+                        other -> do
+                          TIO.putStrLn $ "Error: Target '" <> T.pack (show other) <> "' not yet implemented"
+                          TIO.putStrLn "Hint: Use --target c for C backend"
+                          exitFailure
+
+                      -- Elaborate all functions to IR (with module environment)
+                      let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
+                      case elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
+                        Left err -> do
+                          TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
+                          exitFailure
+                        Right irFunctions -> do
+                          -- Optimize all IRs
+                          let optimizedFunctions = [(n, t, a, optimize ir) | (n, t, a, ir) <- irFunctions]
 
                           -- For executable, generate C with main() wrapper
                           -- Load interpretation C code from --interp and from imported modules
@@ -187,8 +203,7 @@ runBuild opts = do
                               source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
                           TIO.writeFile sourcePath source'
                           TIO.putStrLn $ "Generated: " <> T.pack sourcePath
-
-                      exitSuccess
+                          exitSuccess
 
 -- | Find the Strata directory path
 -- Priority: 1) --strata flag, 2) Strata/ relative to input, 3) Strata/ in current directory
@@ -423,6 +438,9 @@ generateExecutableAll :: [(Text, Type, Maybe AllocStrategy, Once.IR.IR)]
 generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
   [ "/* Generated by Once compiler */"
   , ""
+  , "/* Type definitions */"
+  , typeDefinitions
+  , ""
   , "/* Interpretation code */"
   , interpCode
   , ""
@@ -443,6 +461,53 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     (mainFuncs, helpers) = partition (\(n, _, _, _) -> n == "main") functions
     orderedFunctions = helpers ++ mainFuncs
     partition p xs = (filter p xs, filter (not . p) xs)
+
+    -- Collect all types from functions and primitives
+    allTypes = map (\(_, t, _, _) -> t) functions ++ map snd primitives
+
+    -- Generate type definitions based on what's needed
+    typeDefinitions = T.unlines $ concat
+      [ if any needsPair allTypes then ["typedef struct { void* fst; void* snd; } OncePair;"] else []
+      , if any needsSum allTypes then ["typedef struct { int tag; void* value; } OnceSum;"] else []
+      , if any needsBuffer allTypes then ["typedef struct { const char* data; size_t len; } OnceBuffer;"] else []
+      , if any needsString allTypes then ["typedef OnceBuffer OnceString;"] else []
+      ]
+
+    needsPair :: Type -> Bool
+    needsPair t = case t of
+      TProduct _ _ -> True
+      TSum a b -> needsPair a || needsPair b
+      TArrow a b -> needsPair a || needsPair b
+      TEff a b -> needsPair a || needsPair b
+      _ -> False
+
+    needsSum :: Type -> Bool
+    needsSum t = case t of
+      TSum _ _ -> True
+      TProduct a b -> needsSum a || needsSum b
+      TArrow a b -> needsSum a || needsSum b
+      TEff a b -> needsSum a || needsSum b
+      _ -> False
+
+    needsBuffer :: Type -> Bool
+    needsBuffer t = case t of
+      TBuffer -> True
+      TString _ -> True
+      TProduct a b -> needsBuffer a || needsBuffer b
+      TSum a b -> needsBuffer a || needsBuffer b
+      TArrow a b -> needsBuffer a || needsBuffer b
+      TEff a b -> needsBuffer a || needsBuffer b
+      _ -> False
+
+    needsString :: Type -> Bool
+    needsString t = case t of
+      TString _ -> True
+      TProduct a b -> needsString a || needsString b
+      TSum a b -> needsString a || needsString b
+      TArrow a b -> needsString a || needsString b
+      TEff a b -> needsString a || needsString b
+      _ -> False
+
     generateFunc :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
     generateFunc (n, t, funcAlloc, ir) =
       let alloc = funcAlloc <|> defaultAlloc
@@ -533,3 +598,123 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
       TApp _ _ -> "void*"
       TFix _ -> "void*"
+
+-- | Generate library header and source for multiple functions (no main required)
+generateLibraryAll :: [(Text, Type, Maybe AllocStrategy, Once.IR.IR)] -> (Text, Text)
+generateLibraryAll functions = (header, source)
+  where
+    header = T.unlines $
+      [ "/* Generated by Once compiler */"
+      , "#pragma once"
+      , "#include <stddef.h>"
+      , ""
+      , "/* Type definitions */"
+      , "#ifndef ONCE_TYPES_DEFINED"
+      , "#define ONCE_TYPES_DEFINED"
+      , "typedef struct { const char* data; size_t len; } OnceString;"
+      , "typedef struct { void* data; size_t len; } OnceBuffer;"
+      , "typedef struct { void* fst; void* snd; } OncePair;"
+      , "typedef struct { int tag; void* value; } OnceSum;"
+      , "#endif"
+      , ""
+      , "/* Function declarations */"
+      ] ++ map funcDecl functions
+
+    source = T.unlines $
+      [ "/* Generated by Once compiler */"
+      , "#include <stddef.h>"
+      , ""
+      , "/* Type definitions */"
+      , "#ifndef ONCE_TYPES_DEFINED"
+      , "#define ONCE_TYPES_DEFINED"
+      , "typedef struct { const char* data; size_t len; } OnceString;"
+      , "typedef struct { void* data; size_t len; } OnceBuffer;"
+      , "typedef struct { void* fst; void* snd; } OncePair;"
+      , "typedef struct { int tag; void* value; } OnceSum;"
+      , "#endif"
+      , ""
+      , "/* Function definitions */"
+      ] ++ map (funcDef Nothing) functions
+
+    funcDecl :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
+    funcDecl (name, ty, _, _) = case ty of
+      TArrow inTy outTy ->
+        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
+      TEff inTy outTy ->
+        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
+      _ -> "/* " <> name <> " has non-function type */"
+
+    funcDef :: Maybe AllocStrategy -> (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
+    funcDef globalAlloc (name, ty, localAlloc, ir) = case ty of
+      TArrow inTy outTy ->
+        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
+        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
+        "}"
+      TEff inTy outTy ->
+        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
+        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
+        "}"
+      _ -> "/* " <> name <> " has non-function type */"
+
+    libCTypeName :: Type -> Text
+    libCTypeName t = case t of
+      TVar _ -> "void*"
+      TUnit -> "void*"
+      TVoid -> "void"
+      TInt -> "int"
+      TBuffer -> "OnceBuffer"
+      TString _ -> "OnceString"
+      TProduct _ _ -> "OncePair"
+      TSum _ _ -> "OnceSum"
+      TArrow _ _ -> "void*"
+      TEff _ _ -> "void*"
+      TApp _ _ -> "void*"
+      TFix _ -> "void*"
+
+    libGenerateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
+    libGenerateIRExpr alloc ir v = case ir of
+      Once.IR.Id _ -> v
+      Once.IR.Fst _ _ -> v <> ".fst"
+      Once.IR.Snd _ _ -> v <> ".snd"
+      Once.IR.Pair f g -> "(OncePair){ .fst = " <> libGenerateIRExpr alloc f v <> ", .snd = " <> libGenerateIRExpr alloc g v <> " }"
+      Once.IR.Compose g f -> libGenerateIRExpr alloc g (libGenerateIRExpr alloc f v)
+      Once.IR.Terminal _ -> "((void*)0)"
+      Once.IR.Inl _ _ -> "(OnceSum){ .tag = 0, .value = " <> v <> " }"
+      Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
+      Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> libGenerateIRExpr alloc l (v <> ".value") <> " : " <> libGenerateIRExpr alloc r (v <> ".value") <> ")"
+      Once.IR.Initial _ -> v
+      Once.IR.Curry _ -> "/* curry not yet implemented */ ((void*)0)"
+      Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
+      Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.LocalVar n' -> n'
+      Once.IR.FunRef n' -> "(void*)once_" <> n'
+      Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.StringLit s -> libGenerateStringLit alloc s
+      Once.IR.Fold _ -> v
+      Once.IR.Unfold _ -> v
+      Once.IR.Let x' e1 e2 ->
+        let e1Code = libGenerateIRExpr alloc e1 v
+        in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> libGenerateIRExpr alloc e2 x' <> "; })"
+
+    libGenerateStringLit :: Maybe AllocStrategy -> Text -> Text
+    libGenerateStringLit alloc s =
+      let escaped = libEscapeString s
+          len = T.pack (show (T.length s))
+      in case alloc of
+        Nothing -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
+        Just AllocConst -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
+        Just AllocStack -> "(OnceString){ .data = (char[]){\"" <> escaped <> "\"}, .len = " <> len <> " }"
+        Just AllocHeap -> "once_heap_string(" <> len <> ", (OnceBuffer){ .data = \"" <> escaped <> "\", .len = " <> len <> " })"
+        Just AllocPool -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
+        Just AllocArena -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
+
+    libEscapeString :: Text -> Text
+    libEscapeString = T.concatMap escapeChar
+      where
+        escapeChar c = case c of
+          '\n' -> "\\n"
+          '\t' -> "\\t"
+          '\r' -> "\\r"
+          '\\' -> "\\\\"
+          '"'  -> "\\\""
+          _    -> T.singleton c

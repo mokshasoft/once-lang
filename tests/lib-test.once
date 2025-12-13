@@ -1,0 +1,6 @@
+-- lib-test.once: Test library mode output
+--
+-- Tests: --lib flag generates .h and .c files
+
+swap : A * B -> B * A
+swap = pair snd fst

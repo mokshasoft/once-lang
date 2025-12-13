@@ -1,0 +1,7 @@
+-- Simple.once: Basic derived morphisms for testing
+
+swap : A * B -> B * A
+swap = pair snd fst
+
+diagonal : A -> A * A
+diagonal = pair id id

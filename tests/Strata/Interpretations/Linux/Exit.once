@@ -1,0 +1,3 @@
+-- Exit.once: Exit syscall for testing
+
+primitive exit0 : Eff Unit Unit

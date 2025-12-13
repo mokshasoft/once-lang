@@ -1,0 +1,8 @@
+-- simple.once: Minimal test program
+--
+-- Tests: basic compilation with import
+
+import I.Linux.Exit as E
+
+main : IO Unit
+main = exit0@E

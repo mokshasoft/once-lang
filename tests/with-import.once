@@ -1,0 +1,12 @@
+-- with-import.once: Test module imports
+--
+-- Tests: --strata flag, import abbreviations, qualified access
+
+import D.Simple as S
+import I.Linux.Exit as E
+
+mySwap : A * B -> B * A
+mySwap = swap@S
+
+main : IO Unit
+main = exit0@E
