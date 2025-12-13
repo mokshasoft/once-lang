@@ -2806,6 +2806,66 @@ mutual
       -- Key preservation properties (postulated):
       -- - r14 is preserved through f execution (callee-saved)
       -- - [rsp] is preserved through g execution (stack discipline)
+      --
+      -- compile-length ⟨ f , g ⟩ = (6 + len-f) + len-g
+      -- Step count: 2 (setup) + len-f + 2 (middle) + len-g + 2 (final) = 6 + len-f + len-g
+
+      -- Length calculations
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 2
+      len-prefix-f = begin
+        length prefix-f
+          ≡⟨ refl ⟩
+        length (prefix ++ setup-sub ∷ setup-save ∷ [])
+          ≡⟨ List-length-++ prefix {setup-sub ∷ setup-save ∷ []} ⟩
+        length prefix +ℕ 2
+          ∎
+
+      -- Helper: (a + 2) + (b + 2) = a + b + 4
+      add-2-2 : ∀ a b → (a +ℕ 2) +ℕ (b +ℕ 2) ≡ a +ℕ b +ℕ 4
+      add-2-2 a b = begin
+        (a +ℕ 2) +ℕ (b +ℕ 2)
+          ≡⟨ +-assoc a 2 (b +ℕ 2) ⟩
+        a +ℕ (2 +ℕ (b +ℕ 2))
+          ≡⟨ cong (a +ℕ_) (+-assoc 2 b 2) ⟩
+        a +ℕ ((2 +ℕ b) +ℕ 2)
+          ≡⟨ cong (λ z → a +ℕ (z +ℕ 2)) (+-comm 2 b) ⟩
+        a +ℕ ((b +ℕ 2) +ℕ 2)
+          ≡⟨ cong (a +ℕ_) (+-assoc b 2 2) ⟩
+        a +ℕ (b +ℕ 4)
+          ≡⟨ sym (+-assoc a b 4) ⟩
+        a +ℕ b +ℕ 4
+          ∎
+
+      -- Helper: a + b + 4 = a + 4 + b
+      commute-4 : ∀ a b → a +ℕ b +ℕ 4 ≡ a +ℕ 4 +ℕ b
+      commute-4 a b = begin
+        a +ℕ b +ℕ 4
+          ≡⟨ +-assoc a b 4 ⟩
+        a +ℕ (b +ℕ 4)
+          ≡⟨ cong (a +ℕ_) (+-comm b 4) ⟩
+        a +ℕ (4 +ℕ b)
+          ≡⟨ sym (+-assoc a 4 b) ⟩
+        a +ℕ 4 +ℕ b
+          ∎
+
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+      len-prefix-g = begin
+        length prefix-g
+          ≡⟨ refl ⟩
+        length (prefix-f ++ code-f ++ store-f ∷ restore-input ∷ [])
+          ≡⟨ List-length-++ prefix-f {code-f ++ store-f ∷ restore-input ∷ []} ⟩
+        length prefix-f +ℕ length (code-f ++ store-f ∷ restore-input ∷ [])
+          ≡⟨ cong (_+ℕ length (code-f ++ store-f ∷ restore-input ∷ [])) len-prefix-f ⟩
+        (length prefix +ℕ 2) +ℕ length (code-f ++ store-f ∷ restore-input ∷ [])
+          ≡⟨ cong ((length prefix +ℕ 2) +ℕ_) (List-length-++ code-f {store-f ∷ restore-input ∷ []}) ⟩
+        (length prefix +ℕ 2) +ℕ (length code-f +ℕ 2)
+          ≡⟨ cong (λ z → (length prefix +ℕ 2) +ℕ (z +ℕ 2)) (compile-length-correct f) ⟩
+        (length prefix +ℕ 2) +ℕ (len-f +ℕ 2)
+          ≡⟨ add-2-2 (length prefix) len-f ⟩
+        length prefix +ℕ len-f +ℕ 4
+          ≡⟨ commute-4 (length prefix) len-f ⟩
+        length prefix +ℕ 4 +ℕ len-f
+          ∎
 
       -- Postulate: executing the pair code produces the expected result
       -- The full proof requires additional machinery for register/memory preservation
