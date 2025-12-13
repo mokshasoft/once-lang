@@ -201,17 +201,67 @@ MAlonzo is Agda's Haskell backend. It compiles Agda to Haskell, generating:
 
 ### Compilation Setup
 
-In `formal/`:
+MAlonzo compilation is set up in `formal/Makefile`:
 
 ```bash
-# Compile Once.Optimize to Haskell
-agda --compile --ghc-flag=-O2 Once/Compile.agda
+cd formal
+make malonzo    # Generate Haskell code to _build/malonzo/
 ```
 
-This generates `MAlonzo/Code/Once/Compile.hs` containing:
-- `desugar :: SurfaceIR a b -> IR a b`
-- `optimize :: IR a b -> IR a b`
-- Data types for IR, Type, etc.
+The Makefile target uses these flags:
+```bash
+agda -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compile.agda
+```
+
+Key flags:
+- `-c` / `--compile`: Enable compilation to Haskell
+- `--ghc-dont-call-ghc`: Generate Haskell but don't compile it (we want the source)
+- `--compile-dir=PATH`: Output directory for generated files
+
+### Generated Structure
+
+Running `make malonzo` produces:
+```
+_build/malonzo/
+├── MAlonzo/
+│   ├── RTE.hs                    # Runtime support
+│   └── Code/
+│       ├── Once/
+│       │   ├── Compile.hs        # Main entry point
+│       │   ├── IR.hs             # Core IR data type
+│       │   ├── Type.hs           # Type data type
+│       │   ├── Optimize.hs       # Verified optimizer (~77KB!)
+│       │   └── Surface/
+│       │       ├── IR.hs         # Surface IR
+│       │       └── Desugar.hs    # Desugar transformation
+│       ├── Agda/...              # Standard library support
+│       └── Data/...              # Data structure support
+```
+
+Total: ~222 Haskell files generated.
+
+### Generated Functions
+
+The entry point `MAlonzo.Code.Once.Compile` exports:
+
+```haskell
+-- d_compile_8 : compile = optimize ∘ desugar
+d_compile_8 :: T_Type_4 -> T_Type_4 -> T_SurfaceIR_6 -> T_IR_4
+
+-- d_compile'45'no'45'opt_16 : compile-no-opt = desugar
+d_compile'45'no'45'opt_16 :: T_Type_4 -> T_Type_4 -> T_SurfaceIR_6 -> T_IR_4
+```
+
+These are the verified compilation functions that will be called from the Haskell wrapper.
+
+### Nix Integration
+
+MAlonzo compilation runs within the Nix development shell:
+```bash
+nix develop #default --command sh -c 'agda -c ...'
+```
+
+The standard library path is discovered dynamically from the Nix store to avoid hardcoded paths.
 
 ### Haskell Wrapper
 
@@ -301,33 +351,45 @@ The optimizer is the critical verified component—it's where categorical laws a
 
 ## Implementation Roadmap
 
-### Phase 1: Documentation (Current)
+### Phase 1: Documentation ✓
 - [x] D035 decision log entry
 - [x] This design document
-- [ ] Update overview.md
-- [ ] Update compiler.md
+- [x] Update overview.md
+- [x] Update compiler.md
 
-### Phase 2: Agda Surface IR
-- [ ] Create `formal/Once/Surface/IR.agda`
-- [ ] Create `formal/Once/Surface/Desugar.agda`
-- [ ] Add to `formal/Makefile`
-- [ ] Type-check
+### Phase 2: Agda Surface IR ✓
+- [x] Create `formal/Once/Surface/IR.agda` - Surface IR with Let, Prim
+- [x] Create `formal/Once/Surface/Desugar.agda` - Transformation to Core IR
+- [x] Create `formal/Once/Surface/Desugar/Correct.agda` - Correctness proof
+- [x] Add `surfaceir` target to `formal/Makefile`
+- [x] Type-check passes
 
-### Phase 3: MAlonzo Setup
-- [ ] Configure MAlonzo compilation
-- [ ] Create main compilation module `Once/Compile.agda`
-- [ ] Test standalone compilation
+### Phase 3: MAlonzo Setup ✓
+- [x] Create `formal/Once/Compile.agda` - Main entry point
+- [x] Add `malonzo` target to `formal/Makefile`
+- [x] Configure for Nix (dynamic stdlib discovery)
+- [x] Test: generates ~222 Haskell files successfully
 
-### Phase 4: Haskell Integration
-- [ ] Create `Once/ToAgda.hs` (Haskell IR → Agda SurfaceIR)
-- [ ] Import MAlonzo-generated modules
-- [ ] Wire into compiler pipeline
-- [ ] Test full compilation
+### Phase 4: Haskell Integration (Current)
+- [ ] Create IR conversion layer (Haskell IR ↔ MAlonzo types)
+- [ ] Import MAlonzo-generated modules into compiler
+- [ ] Wire `d_compile_8` into compilation pipeline
+- [ ] Test full compilation through verified optimizer
 
 ### Phase 5: Codegen Migration (Future)
-- [ ] Move x86 codegen to Agda
-- [ ] Generate via MAlonzo
-- [ ] Full verified pipeline
+- [ ] Move x86 codegen to Agda (in progress - see Once.Backend.X86)
+- [ ] Generate x86 codegen via MAlonzo
+- [ ] Full verified pipeline from SurfaceIR to assembly
+
+### Known Limitations
+
+**Prim postulate**: Currently `Prim` is handled via postulate. See TODO in `Once/Surface/Desugar.agda`:
+```agda
+-- TODO: When x86 verification is complete, consider moving Prim to Core IR
+-- (Option A from desugar design discussion). This would eliminate the postulate.
+```
+
+**Funext dependency**: The correctness proof requires function extensionality (`extensionality` from `Once/Postulates.agda`). This is standard but worth noting in the TCB.
 
 ## Alternatives Considered
 

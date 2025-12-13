@@ -10,6 +10,7 @@
 #   make surface  - Type-check surface syntax elaboration only
 #   make surfaceir - Type-check surface IR and desugar (D035)
 #   make optimize - Type-check optimizer correctness proofs
+#   make malonzo  - Generate Haskell via MAlonzo (D035)
 #   make clean    - Remove Agda build artifacts
 
 # Main entry points for each module
@@ -21,6 +22,7 @@ CORRECT := Once/Surface/Correct.agda
 SURFACE_IR := Once/Surface/IR.agda
 SURFACE_DESUGAR := Once/Surface/Desugar.agda
 SURFACE_DESUGAR_CORRECT := Once/Surface/Desugar/Correct.agda
+COMPILE := Once/Compile.agda
 OPTIMIZE := Once/Optimize.agda
 OPTIMIZE_CORRECT := Once/Optimize/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
@@ -36,7 +38,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize x86 clean
+.PHONY: all check postulates laws surface surfaceir optimize x86 malonzo clean
 
 all: check
 
@@ -74,6 +76,13 @@ x86:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+
+malonzo:
+	@echo "Generating Haskell via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
+	@echo "Generated Haskell files in _build/malonzo/"
+	@echo "Entry point: MAlonzo.Code.Once.Compile"
 
 clean:
 	rm -rf _build

@@ -1924,3 +1924,110 @@ where `e2` uses `fst` for original input and `snd` for bound value.
 
 - D029: Let Bindings with Desugaring (surface syntax)
 - [MAlonzo Compilation](../design/malonzo-compilation.md) (detailed design)
+
+---
+
+## D036: Generate Compiler from Agda via MAlonzo
+
+**Date**: 2025-12-13
+**Status**: Accepted
+
+### Context
+
+Once has two parallel implementations:
+- **Agda formalization** (`formal/`): Verified IR, optimizer, semantics
+- **Haskell compiler** (`compiler/`): Unverified but complete
+
+The Haskell optimizer implements the same categorical laws as the Agda version, but isn't formally verified. We needed to decide whether to:
+
+1. **Implement directly**: Keep separate Haskell implementation, use QuickCheck for testing
+2. **Generate from Agda**: Use MAlonzo to generate Haskell from verified Agda code
+
+### Decision
+
+**Generate the compiler from Agda via MAlonzo.**
+
+The verified Agda code is compiled to Haskell using Agda's MAlonzo backend:
+```bash
+cd formal && make malonzo
+```
+
+This generates:
+- `MAlonzo.Code.Once.Compile` - Main entry point
+- `MAlonzo.Code.Once.Optimize` - Verified optimizer (~77KB)
+- `MAlonzo.Code.Once.Surface.{IR,Desugar}` - Surface IR handling
+- ~222 supporting modules (stdlib, data types)
+
+The Haskell compiler becomes a thin wrapper that:
+1. Parses `.once` files (not verified)
+2. Type-checks (not verified)
+3. Elaborates to Surface IR (not verified)
+4. Calls MAlonzo-generated `d_compile_8` (**verified**)
+5. Code-generates to C/assembly (partially verified via x86 backend)
+
+### Rationale
+
+**Why generate:**
+
+1. **Single source of truth**: The Agda code IS the specification AND implementation. No drift possible.
+
+2. **Verified by construction**: The optimizer is proven correct in Agda. MAlonzo extraction is part of the TCB, but much smaller than trusting a hand-written Haskell optimizer.
+
+3. **Incremental adoption**: We can replace one component at a time:
+   - Phase 1: optimizer (done - generates 77KB Haskell)
+   - Phase 2: desugar (done)
+   - Phase 3: x86 codegen (in progress)
+   - Phase 4: parser/type-checker (future, if ever)
+
+4. **MAlonzo is mature**: Used in production by other verified compilers. Trusted by the Agda community.
+
+**Why not implement directly:**
+
+1. **Duplication**: Maintaining two implementations (Agda for proofs, Haskell for execution) means bugs in Haskell version aren't caught by proofs.
+
+2. **Drift risk**: Even with careful discipline, Haskell and Agda can diverge over time.
+
+3. **Wasted effort**: If we're already writing the Agda code, why write it again in Haskell?
+
+### Technical Details
+
+**MAlonzo compilation command:**
+```bash
+agda -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compile.agda
+```
+
+**Generated entry point:**
+```haskell
+-- MAlonzo.Code.Once.Compile
+d_compile_8 :: T_Type_4 -> T_Type_4 -> T_SurfaceIR_6 -> T_IR_4
+d_compile_8 v0 v1 v2 = coe
+    MAlonzo.Code.Once.Optimize.d_optimize_612 v0 v1
+    (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16 v0 v1 v2)
+```
+
+**Integration point:**
+The Haskell compiler will import and call these generated functions, converting between Haskell IR and MAlonzo types.
+
+### Trusted Computing Base (TCB)
+
+With MAlonzo generation, the TCB is:
+1. **Agda type checker** - Verifies proofs
+2. **MAlonzo extraction** - Translates Agda to Haskell
+3. **GHC** - Compiles generated Haskell
+4. **Haskell wrapper** - Parser, type-checker, elaborator (unverified)
+5. **OS/hardware** - Execution platform
+
+The verified optimizer is NOT in the TCB - it's proven correct.
+
+### Consequences
+
+- Compiler depends on MAlonzo-generated code
+- Build process runs `make malonzo` to regenerate after Agda changes
+- ~222 Haskell files generated (stdlib support, data types, etc.)
+- Generated code is readable but not intended for manual editing
+- Postulates require FFI bindings (e.g., `Prim` evaluation)
+
+### See Also
+
+- D035: Two-Stage IR and MAlonzo Compilation
+- [MAlonzo Compilation Design](../design/malonzo-compilation.md)
