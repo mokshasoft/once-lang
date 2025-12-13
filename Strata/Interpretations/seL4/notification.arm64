@@ -1,0 +1,142 @@
+// ======================================================================
+// seL4 Notification Primitives - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// Notifications are lightweight signaling objects in seL4.
+// Unlike endpoints, they don't transfer message data - just a word-sized
+// bitmask (the "notification word").
+//
+// Internally, notification operations use the same syscalls as IPC:
+// - seL4_Signal uses seL4_SysSend (-1)
+// - seL4_Wait uses seL4_SysRecv (-3)
+// - seL4_Poll uses seL4_SysNBRecv (-8)
+//
+// The kernel distinguishes notification vs endpoint by the capability type.
+//
+// seL4 AArch64 syscall convention:
+//   x0: Capability (notification object)
+//   x1: MessageInfo (zero for notifications)
+//   x7: Syscall number (negative)
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_SEL4_NOTIFICATION_ARM64_DEFINED
+#define ONCE_SEL4_NOTIFICATION_ARM64_DEFINED
+
+// ----------------------------------------------------------------------
+// seL4_Signal - Signal a notification object
+// ----------------------------------------------------------------------
+// Input: cap (notification capability)
+// Output: Unit
+//
+// The capability's badge is ORed into the notification word.
+// This is non-blocking - returns immediately.
+
+.global once_seL4_Signal
+.type once_seL4_Signal, %function
+once_seL4_Signal:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // x0 already has the notification capability
+
+    // Zero message info (notifications don't carry message data)
+    mov     x1, #0
+
+    // Clear message registers (not used for notifications)
+    mov     x2, #0
+    mov     x3, #0
+    mov     x4, #0
+    mov     x5, #0
+
+    // Syscall number for seL4_Send (used for Signal on notification caps)
+    mov     x7, #-1
+
+    // Trap to kernel
+    svc     #0
+
+    // Return Unit
+    mov     x0, #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_Signal, .-once_seL4_Signal
+
+// ----------------------------------------------------------------------
+// seL4_Wait - Wait for notification (blocking)
+// ----------------------------------------------------------------------
+// Input: (src, reply) as pair
+// - src: Notification capability to wait on
+// - reply: Reply capability (MCS kernel, ignored on master)
+// Output: Int (notification word)
+//
+// Blocks until the notification word is non-zero.
+// Returns and atomically clears the notification word.
+
+.global once_seL4_Wait
+.type once_seL4_Wait, %function
+once_seL4_Wait:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack input pair: (src, reply)
+    ldr     x8, [x0]            // x8 = src (notification cap)
+    // x9 = reply cap (not used on master kernel, but loaded for MCS)
+    ldr     x9, [x0, #8]
+
+    // Set up seL4 registers
+    mov     x0, x8              // x0 = notification capability
+
+    // Syscall number for seL4_Recv (used for Wait on notification caps)
+    mov     x7, #-3
+
+    // Trap to kernel
+    svc     #0
+
+    // On return from notification wait:
+    // x0 = badge (the notification word that was set)
+    // For notifications, this IS the return value we want
+
+    // x0 already has the notification word to return
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_Wait, .-once_seL4_Wait
+
+// ----------------------------------------------------------------------
+// seL4_Poll - Poll notification (non-blocking)
+// ----------------------------------------------------------------------
+// Input: cap (notification capability)
+// Output: Int (notification word, 0 if nothing signaled)
+//
+// Non-blocking check of notification.
+// Returns notification word and clears it, or returns 0.
+
+.global once_seL4_Poll
+.type once_seL4_Poll, %function
+once_seL4_Poll:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // x0 already has the notification capability
+
+    // Syscall number for seL4_NBRecv (used for Poll on notification caps)
+    mov     x7, #-8
+
+    // Trap to kernel
+    svc     #0
+
+    // On return:
+    // x0 = badge (notification word, or 0 if nothing signaled)
+
+    // x0 already has the result
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_Poll, .-once_seL4_Poll
+
+#endif // ONCE_SEL4_NOTIFICATION_ARM64_DEFINED
+

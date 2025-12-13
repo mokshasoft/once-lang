@@ -1,0 +1,131 @@
+------------------------------------------------------------------------
+-- seL4 Types for Once
+--
+-- Core types for seL4 IPC and capability operations.
+-- seL4 is a formally verified microkernel using capability-based security.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Capability Types
+------------------------------------------------------------------------
+
+-- | seL4 Capability (word-sized handle to kernel object)
+-- In seL4, capabilities are unforgeable tokens granting access to objects.
+-- All kernel resources are accessed through capabilities.
+type Capability = Int
+
+-- | Null capability constant (invalid/empty slot)
+seL4_CapNull : Int
+seL4_CapNull = 0
+
+------------------------------------------------------------------------
+-- Message Info
+------------------------------------------------------------------------
+
+-- | seL4 MessageInfo (packed into single word)
+-- Layout on AArch64: [label:52][capsUnwrapped:3][extraCaps:2][length:7]
+-- The exact layout depends on seL4 configuration (word size, MCS mode).
+type MessageInfo = Int
+
+------------------------------------------------------------------------
+-- seL4 Error Codes
+------------------------------------------------------------------------
+
+-- | seL4 error type
+type seL4_Error = Int
+
+-- | No error - operation succeeded
+seL4_NoError : Int
+seL4_NoError = 0
+
+-- | Invalid argument passed to syscall
+seL4_InvalidArgument : Int
+seL4_InvalidArgument = 1
+
+-- | Capability is invalid or has wrong type
+seL4_InvalidCapability : Int
+seL4_InvalidCapability = 2
+
+-- | Operation not permitted on this object
+seL4_IllegalOperation : Int
+seL4_IllegalOperation = 3
+
+-- | Numeric argument out of range
+seL4_RangeError : Int
+seL4_RangeError = 4
+
+-- | Address alignment error
+seL4_AlignmentError : Int
+seL4_AlignmentError = 5
+
+-- | Capability lookup failed
+seL4_FailedLookup : Int
+seL4_FailedLookup = 6
+
+-- | Message was truncated (too long for IPC buffer)
+seL4_TruncatedMessage : Int
+seL4_TruncatedMessage = 7
+
+-- | Must delete child capabilities first
+seL4_DeleteFirst : Int
+seL4_DeleteFirst = 8
+
+-- | Must revoke derived capabilities first
+seL4_RevokeFirst : Int
+seL4_RevokeFirst = 9
+
+-- | Not enough untyped memory
+seL4_NotEnoughMemory : Int
+seL4_NotEnoughMemory = 10
+
+------------------------------------------------------------------------
+-- System Call Numbers (AArch64)
+------------------------------------------------------------------------
+
+-- | seL4 syscall numbers are negative on AArch64
+-- These go in register x7 before the svc instruction
+
+seL4_SysSend : Int
+seL4_SysSend = -1
+
+seL4_SysNBSend : Int
+seL4_SysNBSend = -2
+
+seL4_SysRecv : Int
+seL4_SysRecv = -3
+
+seL4_SysReply : Int
+seL4_SysReply = -4
+
+seL4_SysReplyRecv : Int
+seL4_SysReplyRecv = -5
+
+seL4_SysCall : Int
+seL4_SysCall = -6
+
+seL4_SysYield : Int
+seL4_SysYield = -7
+
+seL4_SysNBRecv : Int
+seL4_SysNBRecv = -8
+
+------------------------------------------------------------------------
+-- MessageInfo Helpers
+------------------------------------------------------------------------
+
+-- | Create MessageInfo from components
+-- Arguments: (label, capsUnwrapped, extraCaps, length)
+-- Returns packed MessageInfo word
+primitive mkMessageInfo : Eff (Int * Int * Int * Int) Int
+
+-- | Extract label from MessageInfo (bits 12-63 on 64-bit)
+primitive msgLabel : Eff Int Int
+
+-- | Extract message length from MessageInfo (bits 0-6)
+primitive msgLength : Eff Int Int
+
+-- | Extract extra capabilities count from MessageInfo (bits 7-8)
+primitive msgExtraCaps : Eff Int Int
+
+-- | Extract caps unwrapped count from MessageInfo (bits 9-11)
+primitive msgCapsUnwrapped : Eff Int Int

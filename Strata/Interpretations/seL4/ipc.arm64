@@ -1,0 +1,450 @@
+// ======================================================================
+// seL4 IPC Primitives - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// seL4 AArch64 syscall convention:
+//   x0: Capability (destination/source endpoint)
+//   x1: MessageInfo (packed word)
+//   x2-x5: Message Registers 0-3 (fast path)
+//   x7: Syscall number (negative for seL4)
+//
+// Syscall invocation: svc #0
+//
+// On return:
+//   x0: Badge (for Recv) or unchanged
+//   x1: MessageInfo (for Recv/Call)
+//   x2-x5: Message Registers 0-3
+//
+// Once calling convention (AArch64 System V ABI):
+//   x0: First argument (pointer to tuple for multi-arg)
+//   x0: Return value (pointer to tuple for multi-return)
+//   x19-x28: Callee-saved registers
+//
+// Once tuple layout (nested pairs):
+//   (a, b, c, d) = (a, (b, (c, d)))
+//   Each pair: [fst: 8 bytes][snd: 8 bytes]
+//   Access: ldr x, [ptr] for fst, ldr x, [ptr, #8] for snd
+//
+// ======================================================================
+
+.text
+.align 4
+
+// ----------------------------------------------------------------------
+// Type definitions guard (for concatenation safety)
+// ----------------------------------------------------------------------
+#ifndef ONCE_SEL4_ARM64_DEFINED
+#define ONCE_SEL4_ARM64_DEFINED
+
+// ----------------------------------------------------------------------
+// seL4_Yield - Yield remaining timeslice
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Unit (returns 0)
+// Simplest syscall - good for testing
+
+.global once_seL4_Yield
+.type once_seL4_Yield, %function
+once_seL4_Yield:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Syscall number for seL4_Yield
+    mov     x7, #-7
+
+    // Trap to seL4 kernel
+    svc     #0
+
+    // Return Unit (0/NULL)
+    mov     x0, #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_Yield, .-once_seL4_Yield
+
+// ----------------------------------------------------------------------
+// seL4_Send - Send message to endpoint (blocking)
+// ----------------------------------------------------------------------
+// Input: (cap, msgInfo, mr0, mr1, mr2, mr3) as nested tuple
+// Output: Unit
+
+.global once_seL4_Send
+.type once_seL4_Send, %function
+once_seL4_Send:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack nested tuple: (cap, (msgInfo, (mr0, (mr1, (mr2, mr3)))))
+    // x0 points to first pair
+    ldr     x8, [x0]            // x8 = cap
+    ldr     x0, [x0, #8]        // x0 = ptr to rest
+
+    ldr     x9, [x0]            // x9 = msgInfo
+    ldr     x0, [x0, #8]        // x0 = ptr to rest
+
+    ldr     x2, [x0]            // x2 = mr0
+    ldr     x0, [x0, #8]        // x0 = ptr to rest
+
+    ldr     x3, [x0]            // x3 = mr1
+    ldr     x0, [x0, #8]        // x0 = ptr to rest
+
+    ldr     x4, [x0]            // x4 = mr2
+    ldr     x5, [x0, #8]        // x5 = mr3
+
+    // Set up seL4 registers
+    mov     x0, x8              // x0 = capability
+    mov     x1, x9              // x1 = msgInfo
+    // x2-x5 already have MRs
+
+    // Syscall number for seL4_Send
+    mov     x7, #-1
+
+    // Trap to kernel
+    svc     #0
+
+    // Return Unit
+    mov     x0, #0
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_Send, .-once_seL4_Send
+
+// ----------------------------------------------------------------------
+// seL4_NBSend - Non-blocking send
+// ----------------------------------------------------------------------
+// Same as seL4_Send but with syscall number -2
+
+.global once_seL4_NBSend
+.type once_seL4_NBSend, %function
+once_seL4_NBSend:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack tuple (same as seL4_Send)
+    ldr     x8, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x9, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x3, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x4, [x0]
+    ldr     x5, [x0, #8]
+
+    mov     x0, x8
+    mov     x1, x9
+
+    // Syscall number for seL4_NBSend
+    mov     x7, #-2
+
+    svc     #0
+
+    mov     x0, #0
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_NBSend, .-once_seL4_NBSend
+
+// ----------------------------------------------------------------------
+// seL4_Recv - Wait for message on endpoint (blocking)
+// ----------------------------------------------------------------------
+// Input: (src, reply) as pair
+// Output: (badge, msgInfo, mr0, mr1, mr2, mr3) as nested tuple
+//
+// Returns tuple allocated on stack
+
+.global once_seL4_Recv
+.type once_seL4_Recv, %function
+once_seL4_Recv:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack input: (src, reply)
+    ldr     x8, [x0]            // x8 = src (endpoint cap)
+    ldr     x9, [x0, #8]        // x9 = reply cap (MCS)
+
+    // Set up seL4 registers
+    mov     x0, x8              // x0 = endpoint capability
+
+    // Syscall number for seL4_Recv
+    mov     x7, #-3
+
+    // Trap to kernel
+    svc     #0
+
+    // On return:
+    // x0 = badge, x1 = msgInfo, x2-x5 = mr0-mr3
+
+    // Save return values
+    mov     x19, x0             // badge
+    mov     x20, x1             // msgInfo
+    mov     x21, x2             // mr0
+    mov     x22, x3             // mr1
+    // x4, x5 still have mr2, mr3
+
+    // Build result tuple on stack
+    // Layout: 6 words = 48 bytes for nested pairs
+    // (badge, (msgInfo, (mr0, (mr1, (mr2, mr3)))))
+    sub     sp, sp, #80         // Space for 5 pairs (each 16 bytes)
+
+    // Innermost pair: (mr2, mr3)
+    str     x4, [sp, #64]       // mr2
+    str     x5, [sp, #72]       // mr3
+
+    // (mr1, ptr_to_mr2_mr3)
+    add     x10, sp, #64        // ptr to (mr2, mr3)
+    str     x22, [sp, #48]      // mr1
+    str     x10, [sp, #56]      // ptr
+
+    // (mr0, ptr_to_rest)
+    add     x10, sp, #48
+    str     x21, [sp, #32]      // mr0
+    str     x10, [sp, #40]      // ptr
+
+    // (msgInfo, ptr_to_rest)
+    add     x10, sp, #32
+    str     x20, [sp, #16]      // msgInfo
+    str     x10, [sp, #24]      // ptr
+
+    // (badge, ptr_to_rest)
+    add     x10, sp, #16
+    str     x19, [sp, #0]       // badge
+    str     x10, [sp, #8]       // ptr
+
+    // Return pointer to outermost pair
+    mov     x0, sp
+
+    add     sp, sp, #80
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_seL4_Recv, .-once_seL4_Recv
+
+// ----------------------------------------------------------------------
+// seL4_NBRecv - Non-blocking receive
+// ----------------------------------------------------------------------
+// Same as seL4_Recv but with syscall number -8
+
+.global once_seL4_NBRecv
+.type once_seL4_NBRecv, %function
+once_seL4_NBRecv:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack input
+    ldr     x8, [x0]
+    ldr     x9, [x0, #8]
+
+    mov     x0, x8
+    mov     x7, #-8             // seL4_NBRecv
+
+    svc     #0
+
+    // Save and build tuple (same as seL4_Recv)
+    mov     x19, x0
+    mov     x20, x1
+    mov     x21, x2
+    mov     x22, x3
+
+    sub     sp, sp, #80
+
+    str     x4, [sp, #64]
+    str     x5, [sp, #72]
+
+    add     x10, sp, #64
+    str     x22, [sp, #48]
+    str     x10, [sp, #56]
+
+    add     x10, sp, #48
+    str     x21, [sp, #32]
+    str     x10, [sp, #40]
+
+    add     x10, sp, #32
+    str     x20, [sp, #16]
+    str     x10, [sp, #24]
+
+    add     x10, sp, #16
+    str     x19, [sp, #0]
+    str     x10, [sp, #8]
+
+    mov     x0, sp
+
+    add     sp, sp, #80
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_seL4_NBRecv, .-once_seL4_NBRecv
+
+// ----------------------------------------------------------------------
+// seL4_Call - RPC-style send and receive
+// ----------------------------------------------------------------------
+// Input: (cap, msgInfo, mr0, mr1, mr2, mr3)
+// Output: (msgInfo, mr0, mr1, mr2, mr3)
+
+.global once_seL4_Call
+.type once_seL4_Call, %function
+once_seL4_Call:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    str     x21, [sp, #32]
+
+    // Unpack input tuple
+    ldr     x8, [x0]            // cap
+    ldr     x0, [x0, #8]
+    ldr     x9, [x0]            // msgInfo
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]            // mr0
+    ldr     x0, [x0, #8]
+    ldr     x3, [x0]            // mr1
+    ldr     x0, [x0, #8]
+    ldr     x4, [x0]            // mr2
+    ldr     x5, [x0, #8]        // mr3
+
+    mov     x0, x8
+    mov     x1, x9
+    mov     x7, #-6             // seL4_Call
+
+    svc     #0
+
+    // Return: x1=msgInfo, x2-x5=mr0-mr3
+    mov     x19, x1             // msgInfo
+    mov     x20, x2             // mr0
+    mov     x21, x3             // mr1
+    // x4, x5 have mr2, mr3
+
+    // Build result tuple: (msgInfo, (mr0, (mr1, (mr2, mr3))))
+    sub     sp, sp, #64
+
+    str     x4, [sp, #48]       // mr2
+    str     x5, [sp, #56]       // mr3
+
+    add     x10, sp, #48
+    str     x21, [sp, #32]      // mr1
+    str     x10, [sp, #40]
+
+    add     x10, sp, #32
+    str     x20, [sp, #16]      // mr0
+    str     x10, [sp, #24]
+
+    add     x10, sp, #16
+    str     x19, [sp, #0]       // msgInfo
+    str     x10, [sp, #8]
+
+    mov     x0, sp
+
+    add     sp, sp, #64
+    ldr     x21, [sp, #32]
+    ldp     x19, x20, [sp, #16]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_seL4_Call, .-once_seL4_Call
+
+// ----------------------------------------------------------------------
+// seL4_Reply - Reply to caller
+// ----------------------------------------------------------------------
+// Input: (msgInfo, mr0, mr1, mr2, mr3)
+// Output: Unit
+
+.global once_seL4_Reply
+.type once_seL4_Reply, %function
+once_seL4_Reply:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack: (msgInfo, (mr0, (mr1, (mr2, mr3))))
+    ldr     x1, [x0]            // msgInfo
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]            // mr0
+    ldr     x0, [x0, #8]
+    ldr     x3, [x0]            // mr1
+    ldr     x0, [x0, #8]
+    ldr     x4, [x0]            // mr2
+    ldr     x5, [x0, #8]        // mr3
+
+    mov     x7, #-4             // seL4_Reply
+
+    svc     #0
+
+    mov     x0, #0
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_Reply, .-once_seL4_Reply
+
+// ----------------------------------------------------------------------
+// seL4_ReplyRecv - Atomic reply and receive
+// ----------------------------------------------------------------------
+// Input: (src, msgInfo, mr0, mr1, mr2, mr3, reply)
+// Output: (badge, msgInfo, mr0, mr1, mr2, mr3)
+
+.global once_seL4_ReplyRecv
+.type once_seL4_ReplyRecv, %function
+once_seL4_ReplyRecv:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack 7-element tuple
+    ldr     x8, [x0]            // src (endpoint)
+    ldr     x0, [x0, #8]
+    ldr     x9, [x0]            // msgInfo
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]            // mr0
+    ldr     x0, [x0, #8]
+    ldr     x3, [x0]            // mr1
+    ldr     x0, [x0, #8]
+    ldr     x4, [x0]            // mr2
+    ldr     x0, [x0, #8]
+    ldr     x5, [x0]            // mr3
+    // Note: reply cap at [x0, #8] - used by MCS kernel
+
+    mov     x0, x8              // endpoint cap
+    mov     x1, x9              // msgInfo
+    mov     x7, #-5             // seL4_ReplyRecv
+
+    svc     #0
+
+    // Save results and build return tuple (same as Recv)
+    mov     x19, x0
+    mov     x20, x1
+    mov     x21, x2
+    mov     x22, x3
+
+    sub     sp, sp, #80
+
+    str     x4, [sp, #64]
+    str     x5, [sp, #72]
+
+    add     x10, sp, #64
+    str     x22, [sp, #48]
+    str     x10, [sp, #56]
+
+    add     x10, sp, #48
+    str     x21, [sp, #32]
+    str     x10, [sp, #40]
+
+    add     x10, sp, #32
+    str     x20, [sp, #16]
+    str     x10, [sp, #24]
+
+    add     x10, sp, #16
+    str     x19, [sp, #0]
+    str     x10, [sp, #8]
+
+    mov     x0, sp
+
+    add     sp, sp, #80
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_seL4_ReplyRecv, .-once_seL4_ReplyRecv
+
+#endif // ONCE_SEL4_ARM64_DEFINED

@@ -1,0 +1,104 @@
+------------------------------------------------------------------------
+-- seL4 IPC Primitives
+--
+-- Core Inter-Process Communication operations for seL4.
+-- These map directly to seL4 kernel syscalls on AArch64.
+--
+-- seL4's IPC model:
+-- - All communication is via capabilities to endpoint/notification objects
+-- - Messages contain up to 4 "fast" registers (mr0-mr3) in registers
+-- - Larger messages use the IPC buffer in memory
+-- - seL4_Call provides RPC-style request/response
+-- - Notifications provide lightweight signaling
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Core IPC Operations
+------------------------------------------------------------------------
+
+-- | seL4_Send - Send message to endpoint capability (blocking)
+-- Blocks until the message is received by another thread.
+--
+-- Arguments: (cap, msgInfo, mr0, mr1, mr2, mr3)
+-- - cap: Endpoint capability to send to
+-- - msgInfo: Packed message info (label, length, etc.)
+-- - mr0-mr3: Message registers (first 4 words of message)
+--
+-- Returns: Unit (void)
+primitive seL4_Send : Eff (Int * Int * Int * Int * Int * Int) Unit
+
+-- | seL4_NBSend - Non-blocking send
+-- Returns immediately even if no receiver is waiting.
+-- Message is lost if no receiver ready.
+--
+-- Arguments: Same as seL4_Send
+-- Returns: Unit
+primitive seL4_NBSend : Eff (Int * Int * Int * Int * Int * Int) Unit
+
+-- | seL4_Recv - Receive/wait on endpoint (blocking)
+-- Blocks until a message arrives on the endpoint.
+--
+-- Arguments: (src, reply)
+-- - src: Endpoint capability to receive from
+-- - reply: Reply capability slot (for MCS kernel, ignored on master)
+--
+-- Returns: (badge, msgInfo, mr0, mr1, mr2, mr3)
+-- - badge: Sender's badge (identifies sender)
+-- - msgInfo: Received message info
+-- - mr0-mr3: Message registers
+primitive seL4_Recv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
+
+-- | seL4_NBRecv - Non-blocking receive
+-- Returns immediately with empty message if no sender waiting.
+--
+-- Arguments: Same as seL4_Recv
+-- Returns: Same as seL4_Recv (badge=0 if no message)
+primitive seL4_NBRecv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
+
+-- | seL4_Call - Send and wait for reply (RPC-style)
+-- Sends a message and blocks waiting for a reply.
+-- This is the standard client-side RPC pattern.
+--
+-- Arguments: (cap, msgInfo, mr0, mr1, mr2, mr3)
+-- - cap: Endpoint capability for the server
+-- - msgInfo: Request message info
+-- - mr0-mr3: Request message registers
+--
+-- Returns: (msgInfo, mr0, mr1, mr2, mr3)
+-- - msgInfo: Reply message info
+-- - mr0-mr3: Reply message registers
+primitive seL4_Call : Eff (Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int)
+
+-- | seL4_Reply - Reply to caller
+-- Sends a reply to the thread that did seL4_Call.
+-- Used by servers to respond to client requests.
+--
+-- Arguments: (msgInfo, mr0, mr1, mr2, mr3)
+-- - msgInfo: Reply message info
+-- - mr0-mr3: Reply message registers
+--
+-- Returns: Unit
+primitive seL4_Reply : Eff (Int * Int * Int * Int * Int) Unit
+
+-- | seL4_ReplyRecv - Atomic reply and wait for next message
+-- Combines seL4_Reply and seL4_Recv atomically.
+-- This is the standard server loop pattern - reply to current
+-- client and wait for next request in one syscall.
+--
+-- Arguments: (src, msgInfo, mr0, mr1, mr2, mr3, reply)
+-- - src: Endpoint to receive next message from
+-- - msgInfo: Reply message info for current caller
+-- - mr0-mr3: Reply message registers
+-- - reply: Reply capability slot (MCS kernel)
+--
+-- Returns: (badge, msgInfo, mr0, mr1, mr2, mr3)
+-- - Same as seL4_Recv
+primitive seL4_ReplyRecv : Eff (Int * Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int * Int)
+
+-- | seL4_Yield - Yield remaining timeslice
+-- Voluntarily gives up CPU time to other threads of same or
+-- higher priority. Returns immediately if no other runnable thread.
+--
+-- Arguments: Unit
+-- Returns: Unit
+primitive seL4_Yield : Eff Unit Unit

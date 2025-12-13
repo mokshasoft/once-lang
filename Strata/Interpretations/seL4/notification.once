@@ -1,0 +1,56 @@
+------------------------------------------------------------------------
+-- seL4 Notification Primitives
+--
+-- Lightweight signaling mechanism for seL4.
+-- Notifications are simpler than endpoints - they are word-sized
+-- bitmasks that can be signaled and waited on.
+--
+-- seL4's notification model:
+-- - Notification objects hold a word-sized bitmask
+-- - seL4_Signal ORs the badge into the notification word
+-- - seL4_Wait blocks until notification word is non-zero, returns and clears it
+-- - seL4_Poll checks non-blocking, returns and clears if non-zero
+--
+-- Use cases:
+-- - Interrupt delivery (driver notification)
+-- - Event signaling between threads
+-- - Condition variable implementation
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Notification Operations
+------------------------------------------------------------------------
+
+-- | seL4_Signal - Signal a notification object
+-- ORs the capability's badge into the notification word.
+-- Non-blocking: returns immediately.
+--
+-- Arguments: cap
+-- - cap: Notification capability with badge to signal
+--
+-- Returns: Unit
+primitive seL4_Signal : Eff Int Unit
+
+-- | seL4_Wait - Wait for notification (blocking)
+-- Blocks until the notification word is non-zero.
+-- Returns and atomically clears the notification word.
+--
+-- Arguments: (src, reply)
+-- - src: Notification capability to wait on
+-- - reply: Reply capability slot (MCS kernel, ignored on master)
+--
+-- Returns: Int (the notification word that was set)
+-- The returned word contains all badges that were signaled
+-- since last wait/poll.
+primitive seL4_Wait : Eff (Int * Int) Int
+
+-- | seL4_Poll - Poll notification (non-blocking)
+-- Checks if notification word is non-zero.
+-- Returns and atomically clears if set, returns 0 if not set.
+--
+-- Arguments: cap
+-- - cap: Notification capability to poll
+--
+-- Returns: Int (notification word, 0 if nothing signaled)
+primitive seL4_Poll : Eff Int Int
+
