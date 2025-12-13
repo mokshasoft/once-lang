@@ -1875,21 +1875,9 @@ postulate
            × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
 
-  -- fst and snd need memory preconditions
-  run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
-           × readReg (regs s') rax ≡ encode (eval fst x))
-
-  run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
-           × readReg (regs s') rax ≡ encode (eval snd x))
-
-  -- inl and inr (4 instructions each) - proved below
-  -- (moved out of postulate block - see run-ir-at-offset-inl and run-ir-at-offset-inr proofs)
+  -- fst/snd: proved below using encode-pair-fst/snd axioms
+  -- inl/inr (4 instructions each): proved below
+  -- (all moved out of postulate block)
 
   -- pair (complex - needs f and g execution)
   run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
@@ -2371,6 +2359,40 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
     -- Final result: rax s4 = encode (eval inr x) = encode (inj₂ x)
     rax-eq : readReg (regs s4) rax ≡ encode (eval {B} {A + B} inr x)
     rax-eq = trans rax-s4 rax-is-encode-inr
+
+-- | run-ir-at-offset-fst: Execute fst at arbitrary offset
+-- Uses encode-pair-fst axiom to provide memory precondition
+run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode (eval fst x))
+run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
+  let a = proj₁ x
+      b = proj₂ x
+      -- Memory precondition from encoding axiom
+      mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
+      mem-eq = encode-pair-fst a b (memory s)
+      -- Use existing run-fst-at-offset with the memory precondition
+      (s' , step-eq , h' , pc' , rax-eq) = run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
+
+-- | run-ir-at-offset-snd: Execute snd at arbitrary offset
+-- Uses encode-pair-snd axiom to provide memory precondition
+run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode (eval snd x))
+run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
+  let a = proj₁ x
+      b = proj₂ x
+      -- Memory precondition from encoding axiom
+      mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
+      mem-eq = encode-pair-snd a b (memory s)
+      -- Use existing run-snd-at-offset with the memory precondition
+      (s' , step-eq , h' , pc' , rax-eq) = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s s' step-eq h' , h' , pc' , rax-eq
 
 -- | Non-halting execution of IR at arbitrary offset
 -- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
