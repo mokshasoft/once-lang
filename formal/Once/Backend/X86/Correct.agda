@@ -136,6 +136,7 @@ initWithInput-pc x = refl
 --   run-generator-snd      : snd (mov rax, [rdi+8])
 --   run-generator-inl      : inl (allocate + tag=0)
 --   run-generator-inr      : inr (allocate + tag=1)
+--   run-generator-curry    : curry (create closure)
 --
 -- POSTULATED (require mutual induction on IR):
 --   run-seq-compose  : Sequential composition (needs recursive IR proofs)
@@ -1356,11 +1357,11 @@ postulate
 ------------------------------------------------------------------------
 -- Proven base cases for run-generator
 -- These prove run-generator for specific IR constructors that don't
--- require mutual recursion (9 of 14 IR constructors):
---   id, terminal, fold, unfold, arr, fst, snd, inl, inr
+-- require mutual recursion (10 of 14 IR constructors):
+--   id, terminal, fold, unfold, arr, fst, snd, inl, inr, curry
 --
 -- Remaining (require mutual recursion):
---   compose (∘), case ([ , ]), pair (⟨ , ⟩), curry, apply
+--   compose (∘), case ([ , ]), pair (⟨ , ⟩), apply
 ------------------------------------------------------------------------
 
 -- | run-generator for id
@@ -2018,6 +2019,42 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s7 , run-eq , halt-eq , en
                    (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp code-ptr (λ eq → addr-disjoint (sym eq)))
                           (trans (readMem-writeMem-same (memory s1) new-rsp (readReg (regs s1) rdi))
                                  (trans (cong just rdi-s1) (cong just rdi-eq))))
+
+-- | run-generator for curry
+-- compile-x86 (curry f) creates a closure [env, code_ptr]
+-- Uses run-curry-seq and encode-closure-construct
+run-generator-curry : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode {A} a →
+  ∃[ s' ] (run (compile-x86 {A} {B ⇒ C} (curry f)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) a))
+run-generator-curry {A} {B} {C} f a s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    -- Use run-curry-seq to execute the curry code
+    helper : ∃[ s' ] (run (compile-x86 {A} {B ⇒ C} (curry f)) s ≡ just s'
+                    × halted s' ≡ true
+                    × readMem (memory s') (readReg (regs s') rax) ≡ just (encode {A} a))
+    helper = run-curry-seq f a s h-false pc-0 rdi-eq
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {B ⇒ C} (curry f)) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- Memory at rax contains encode a (the environment)
+    env-at-rax : readMem (memory s') (readReg (regs s') rax) ≡ just (encode {A} a)
+    env-at-rax = proj₂ (proj₂ (proj₂ helper))
+
+    -- By encode-closure-construct: if memory at p has encode a, then p = encode (λ b → eval f (a, b))
+    -- eval (curry f) a = λ b → eval f (a, b) by definition (definitionally equal)
+    rax-eq : readReg (regs s') rax ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) a)
+    rax-eq = encode-closure-construct f a (readReg (regs s') rax) (memory s') env-at-rax
 
 -- Helper: pair sequence for ⟨ id , id ⟩ (base case)
 -- This is a concrete instance where both f and g are id.
