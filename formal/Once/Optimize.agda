@@ -128,6 +128,38 @@ optimize-compose [ f , g ] inr = g
 optimize-compose fold unfold = id
 optimize-compose unfold fold = id
 
+-- Terminal fusion: terminal ∘ f = terminal (dead code elimination)
+-- Any computation followed by discarding the result can skip the computation
+optimize-compose terminal (g ∘ f) = terminal
+optimize-compose terminal fst = terminal
+optimize-compose terminal snd = terminal
+optimize-compose terminal ⟨ f , g ⟩ = terminal
+optimize-compose terminal inl = terminal
+optimize-compose terminal inr = terminal
+optimize-compose terminal [ f , g ] = terminal
+optimize-compose terminal terminal = terminal
+optimize-compose terminal (curry f) = terminal
+optimize-compose terminal apply = terminal
+optimize-compose terminal fold = terminal
+optimize-compose terminal unfold = terminal
+optimize-compose terminal arr = terminal
+
+-- Initial absorption: f ∘ initial = initial (dead code elimination)
+-- Composition with initial is initial (vacuously true, Void is empty)
+optimize-compose fst initial = initial
+optimize-compose snd initial = initial
+optimize-compose ⟨ f , g ⟩ initial = initial
+optimize-compose inl initial = initial
+optimize-compose inr initial = initial
+optimize-compose [ f , g ] initial = initial
+optimize-compose terminal initial = initial
+optimize-compose (curry f) initial = initial
+optimize-compose apply initial = initial
+optimize-compose fold initial = initial
+optimize-compose unfold initial = initial
+optimize-compose arr initial = initial
+optimize-compose (h ∘ g) initial = initial
+
 -- Associativity: normalize to right-associative form
 -- (h ∘ g) ∘ f  →  h ∘ (g ∘ f)
 -- This exposes more optimization opportunities
