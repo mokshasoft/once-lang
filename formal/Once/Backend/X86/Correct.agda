@@ -3195,6 +3195,244 @@ run-generator-compose-unfold-fold {F} x s h-false pc-0 rdi-eq = s' , run-eq , ha
     rax-eq : readReg (regs s') rax ≡ encode (eval {F} {F} (unfold ∘ fold) x)
     rax-eq = proj₂ (proj₂ (proj₂ helper))
 
+-- | run-seq-compose for (id ∘ fst) : A * B → A
+-- Generated code: [mov rax, [rdi]] ++ [mov rdi, rax] ++ [mov rax, rdi]
+-- This is fst (A * B → A) followed by id (A → A)
+-- Total: 3 instructions, 4 steps (3 + halt on fetch fail at pc=3)
+run-seq-compose-id-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  readMem (memory s) (encode (a , b)) ≡ just (encode a) →
+  ∃[ s' ] (run (compile-x86 {A * B} {A} (id ∘ fst)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode a)
+run-seq-compose-id-fst {A} {B} a b s h-false pc-0 rdi-eq mem-eq = s4 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A * B} {A} (id ∘ fst)
+
+    pair-addr : Word
+    pair-addr = encode (a , b)
+
+    -- State after step 1: mov rax, [rdi] (fst - load from memory)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rax (encode a)
+                  ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg rax) (mem (base rdi))) _ s h-false pc-0)
+                  (execMov-reg-mem-base s rax rdi (encode a)
+                    (trans (cong (λ addr → readMem (memory s) addr) rdi-eq)
+                           mem-eq))
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov rdi, rax (transfer result)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) rax)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec-1 (mov (reg rax) (mem (base rdi))) (mov (reg rdi) (reg rax)) _ s1 h1 pc1)
+                  (execMov-reg-reg s1 rdi rax)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov rax, rdi (id)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec-2 (mov (reg rax) (mem (base rdi))) (mov (reg rdi) (reg rax)) (mov (reg rax) (reg rdi)) [] s2 h2 pc2)
+                  (execMov-reg-reg s2 rax rdi)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- Step 4: fetch fails at pc=3, halts
+    s4 : State
+    s4 = record s3 { halted = true }
+
+    fetch-fail : fetch prog (pc s3) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc3) refl
+
+    step4 : step prog s3 ≡ just s4
+    step4 = step-halt-on-fetch-fail prog s3 h3 fetch-fail
+
+    halt-eq : halted s4 ≡ true
+    halt-eq = refl
+
+    run-eq : run prog s ≡ just s4
+    run-eq = exec-four-steps 9996 prog s s1 s2 s3 s4
+               step1 h1 step2 h2 step3 h3 step4 halt-eq
+
+    -- Track rax: s1.rax = encode a, s2.rdi = s1.rax, s3.rax = s2.rdi
+    rax-eq : readReg (regs s4) rax ≡ encode a
+    rax-eq = trans (readReg-writeReg-same (regs s2) rax (readReg (regs s2) rdi))
+                   (trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) rax))
+                          (readReg-writeReg-same (regs s) rax (encode a)))
+
+-- | run-generator for (id ∘ fst)
+run-generator-compose-id-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  readMem (memory s) (encode (a , b)) ≡ just (encode a) →
+  ∃[ s' ] (run (compile-x86 {A * B} {A} (id ∘ fst)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A * B} {A} (id ∘ fst) (a , b)))
+run-generator-compose-id-fst {A} {B} a b s h-false pc-0 rdi-eq mem-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (compile-x86 {A * B} {A} (id ∘ fst)) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ encode a)
+    helper = run-seq-compose-id-fst a b s h-false pc-0 rdi-eq mem-eq
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A * B} {A} (id ∘ fst)) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval (id ∘ fst) (a , b) = id (fst (a , b)) = id a = a
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A * B} {A} (id ∘ fst) (a , b))
+    rax-eq = proj₂ (proj₂ (proj₂ helper))
+
+-- | run-seq-compose for (id ∘ snd) : A * B → B
+-- Generated code: [mov rax, [rdi+8]] ++ [mov rdi, rax] ++ [mov rax, rdi]
+-- This is snd (A * B → B) followed by id (B → B)
+-- Total: 3 instructions, 4 steps (3 + halt on fetch fail at pc=3)
+run-seq-compose-id-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b) →
+  ∃[ s' ] (run (compile-x86 {A * B} {B} (id ∘ snd)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode b)
+run-seq-compose-id-snd {A} {B} a b s h-false pc-0 rdi-eq mem-eq = s4 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A * B} {B} (id ∘ snd)
+
+    pair-addr : Word
+    pair-addr = encode (a , b)
+
+    -- State after step 1: mov rax, [rdi+8] (snd - load from memory offset 8)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rax (encode b)
+                  ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg rax) (mem (base+disp rdi 8))) _ s h-false pc-0)
+                  (execMov-reg-mem-disp s rax rdi 8 (encode b)
+                    (trans (cong (λ addr → readMem (memory s) (addr +ℕ 8)) rdi-eq)
+                           mem-eq))
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov rdi, rax (transfer result)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) rax)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec-1 (mov (reg rax) (mem (base+disp rdi 8))) (mov (reg rdi) (reg rax)) _ s1 h1 pc1)
+                  (execMov-reg-reg s1 rdi rax)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov rax, rdi (id)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec-2 (mov (reg rax) (mem (base+disp rdi 8))) (mov (reg rdi) (reg rax)) (mov (reg rax) (reg rdi)) [] s2 h2 pc2)
+                  (execMov-reg-reg s2 rax rdi)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- Step 4: fetch fails at pc=3, halts
+    s4 : State
+    s4 = record s3 { halted = true }
+
+    fetch-fail : fetch prog (pc s3) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc3) refl
+
+    step4 : step prog s3 ≡ just s4
+    step4 = step-halt-on-fetch-fail prog s3 h3 fetch-fail
+
+    halt-eq : halted s4 ≡ true
+    halt-eq = refl
+
+    run-eq : run prog s ≡ just s4
+    run-eq = exec-four-steps 9996 prog s s1 s2 s3 s4
+               step1 h1 step2 h2 step3 h3 step4 halt-eq
+
+    -- Track rax: s1.rax = encode b, s2.rdi = s1.rax, s3.rax = s2.rdi
+    rax-eq : readReg (regs s4) rax ≡ encode b
+    rax-eq = trans (readReg-writeReg-same (regs s2) rax (readReg (regs s2) rdi))
+                   (trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) rax))
+                          (readReg-writeReg-same (regs s) rax (encode b)))
+
+-- | run-generator for (id ∘ snd)
+run-generator-compose-id-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b) →
+  ∃[ s' ] (run (compile-x86 {A * B} {B} (id ∘ snd)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A * B} {B} (id ∘ snd) (a , b)))
+run-generator-compose-id-snd {A} {B} a b s h-false pc-0 rdi-eq mem-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (compile-x86 {A * B} {B} (id ∘ snd)) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ encode b)
+    helper = run-seq-compose-id-snd a b s h-false pc-0 rdi-eq mem-eq
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A * B} {B} (id ∘ snd)) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval (id ∘ snd) (a , b) = id (snd (a , b)) = id b = b
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A * B} {B} (id ∘ snd) (a , b))
+    rax-eq = proj₂ (proj₂ (proj₂ helper))
+
 -- Helper: pair sequence for ⟨ id , id ⟩ (base case)
 -- This is a concrete instance where both f and g are id.
 -- Validates the proof structure before generalizing to arbitrary IR.
