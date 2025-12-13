@@ -43,14 +43,14 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst)
 
 ------------------------------------------------------------------------
 -- Initial State Setup
@@ -144,43 +144,49 @@ execMov-reg-imm : ∀ (s : State) (dst : Reg) (n : ℕ) →
 execMov-reg-imm s dst n = refl
 
 -- Helper: state after executing mov reg [reg] (memory load)
--- This requires knowing that memory read succeeds
-postulate
-  execMov-reg-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
-    readMem (memory s) (readReg (regs s) src) ≡ just v →
-    execInstr [] s (mov (reg dst) (mem (base src))) ≡
-      just (record s { regs = writeReg (regs s) dst v
-                     ; pc = pc s +ℕ 1 })
+-- Proof: with-match on readOperand, which equals readMem for memory operands
+execMov-reg-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
+  readMem (memory s) (readReg (regs s) src) ≡ just v →
+  execInstr [] s (mov (reg dst) (mem (base src))) ≡
+    just (record s { regs = writeReg (regs s) dst v
+                   ; pc = pc s +ℕ 1 })
+execMov-reg-mem-base s dst src v mem-ok with readMem (memory s) (readReg (regs s) src) | mem-ok
+... | just .v | refl = refl
 
 -- Helper: state after executing mov reg [reg+disp] (memory load with displacement)
-postulate
-  execMov-reg-mem-disp : ∀ (s : State) (dst src : Reg) (disp v : ℕ) →
-    readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
-    execInstr [] s (mov (reg dst) (mem (base+disp src disp))) ≡
-      just (record s { regs = writeReg (regs s) dst v
-                     ; pc = pc s +ℕ 1 })
+-- Proof: with-match on readOperand, effectiveAddr computes to (reg s src + disp)
+execMov-reg-mem-disp : ∀ (s : State) (dst src : Reg) (disp v : ℕ) →
+  readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
+  execInstr [] s (mov (reg dst) (mem (base+disp src disp))) ≡
+    just (record s { regs = writeReg (regs s) dst v
+                   ; pc = pc s +ℕ 1 })
+execMov-reg-mem-disp s dst src disp v mem-ok with readMem (memory s) (readReg (regs s) src +ℕ disp) | mem-ok
+... | just .v | refl = refl
 
 -- Helper: state after executing mov [reg] imm (memory store)
-postulate
-  execMov-mem-base-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
-    execInstr prog s (mov (mem (base dst)) (imm v)) ≡
-      just (record s { memory = writeMem (memory s) (readReg (regs s) dst) v
-                     ; pc = pc s +ℕ 1 })
+-- Proof: readOperand (imm v) = just v (always succeeds), so no with-matching needed
+execMov-mem-base-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
+  execInstr prog s (mov (mem (base dst)) (imm v)) ≡
+    just (record s { memory = writeMem (memory s) (readReg (regs s) dst) v
+                   ; pc = pc s +ℕ 1 })
+execMov-mem-base-imm prog s dst v = refl
 
 -- Helper: state after executing mov [reg+disp] reg (memory store)
-postulate
-  execMov-mem-disp-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) (disp : ℕ) →
-    execInstr prog s (mov (mem (base+disp dst disp)) (reg src)) ≡
-      just (record s { memory = writeMem (memory s) (readReg (regs s) dst +ℕ disp) (readReg (regs s) src)
-                     ; pc = pc s +ℕ 1 })
+-- Proof: readOperand (reg src) = just (readReg regs src) (always succeeds)
+execMov-mem-disp-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) (disp : ℕ) →
+  execInstr prog s (mov (mem (base+disp dst disp)) (reg src)) ≡
+    just (record s { memory = writeMem (memory s) (readReg (regs s) dst +ℕ disp) (readReg (regs s) src)
+                   ; pc = pc s +ℕ 1 })
+execMov-mem-disp-reg prog s dst src disp = refl
 
 -- Helper: state after executing sub reg imm
-postulate
-  execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
-    execInstr prog s (sub (reg dst) (imm v)) ≡
-      just (record s { regs = writeReg (regs s) dst (readReg (regs s) dst ∸ v)
-                     ; pc = pc s +ℕ 1
-                     ; flags = updateFlags (readReg (regs s) dst ∸ v) (readReg (regs s) dst) })
+-- Proof: both readOperand (reg dst) and readOperand (imm v) always succeed
+execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
+  execInstr prog s (sub (reg dst) (imm v)) ≡
+    just (record s { regs = writeReg (regs s) dst (readReg (regs s) dst ∸ v)
+                   ; pc = pc s +ℕ 1
+                   ; flags = updateFlags (readReg (regs s) dst ∸ v) (readReg (regs s) dst) })
+execSub-reg-imm prog s dst v = refl
 
 ------------------------------------------------------------------------
 -- Register File Lemmas
@@ -206,6 +212,48 @@ readReg-writeReg-same rf r12 v = refl
 readReg-writeReg-same rf r13 v = refl
 readReg-writeReg-same rf r14 v = refl
 readReg-writeReg-same rf r15 v = refl
+
+-- | Reading rdi after writing rsp returns the old value
+-- This is what we need for run-inl-seq
+readReg-writeReg-rsp-rdi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsp v) rdi ≡ readReg rf rdi
+readReg-writeReg-rsp-rdi rf v = refl
+
+------------------------------------------------------------------------
+-- Memory Lemmas
+------------------------------------------------------------------------
+
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ)
+
+-- | n ≡ᵇ n is always true (helper)
+≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
+≡ᵇ-refl zero = refl
+≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+
+-- | Reading from the address we just wrote returns the written value
+readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
+  readMem (writeMem m addr v) addr ≡ just v
+readMem-writeMem-same m addr v with addr ≡ᵇ addr | ≡ᵇ-refl addr
+... | true | _ = refl
+
+-- | n ≢ n + k for k > 0 (needed for disjoint memory addresses)
+n≢n+suc : ∀ (n k : ℕ) → n ≢ n +ℕ suc k
+n≢n+suc n k eq = helper n k (sym eq)
+  where
+    helper : ∀ n k → n +ℕ suc k ≢ n
+    helper zero k ()
+    helper (suc n) k eq = helper n k (suc-injective eq)
+      where
+        suc-injective : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
+        suc-injective refl = refl
+
+-- | Reading from a different address after a write returns the old value
+readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
+  addr1 ≢ addr2 →
+  readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
+readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | ≡ᵇ⇒≡ addr2 addr1
+... | false | _ = refl
+... | true | eq = ⊥-elim (addr1≢addr2 (sym (eq tt)))
 
 ------------------------------------------------------------------------
 -- Fetch and Step Lemmas
@@ -236,12 +284,14 @@ fetch-4-of-4 : ∀ (i0 i1 i2 i3 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ 
 fetch-4-of-4 i0 i1 i2 i3 = refl
 
 -- | Step on non-halted state executes the instruction at pc
--- This is tricky because step uses with-abstraction. We use postulate for now.
-postulate
-  step-exec : ∀ (prog : List Instr) (s : State) (i : Instr) →
-    halted s ≡ false →
-    fetch prog (pc s) ≡ just i →
-    step prog s ≡ execInstr prog s i
+-- Proof: match on halted s, then on fetch prog (pc s)
+step-exec : ∀ (prog : List Instr) (s : State) (i : Instr) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ just i →
+  step prog s ≡ execInstr prog s i
+step-exec prog s i h-false fetch-ok with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-ok
+...   | just .i | refl = refl
 
 -- | Step on non-halted state with pc=0 executes the first instruction
 step-exec-0 : ∀ (i : Instr) (is : List Instr) (s : State) →
@@ -276,11 +326,14 @@ step-exec-3 i0 i1 i2 i3 is s h-false pc-3 =
   step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s i3 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) p ≡ just i3) (sym pc-3) refl)
 
 -- | Step on non-halted state where fetch fails sets halted=true
-postulate
-  step-halt-on-fetch-fail : ∀ (prog : List Instr) (s : State) →
-    halted s ≡ false →
-    fetch prog (pc s) ≡ nothing →
-    step prog s ≡ just (record s { halted = true })
+-- Proof: match on halted s, then on fetch prog (pc s)
+step-halt-on-fetch-fail : ∀ (prog : List Instr) (s : State) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ nothing →
+  step prog s ≡ just (record s { halted = true })
+step-halt-on-fetch-fail prog s h-false fetch-fail with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-fail
+...   | nothing | refl = refl
 
 -- | Step on already halted state returns the same state
 step-on-halted : ∀ (prog : List Instr) (s : State) →
@@ -551,29 +604,298 @@ run-single-mov-mem-disp s dst src disp v h-false pc-0 mem-ok = s2 , run-eq , rax
 -- Helper: inl instruction sequence
 -- sub rsp, 16; mov [rsp], 0; mov [rsp+8], rdi; mov rax, rsp
 -- Effect: allocates tagged union on stack with tag=0, value=input
-postulate
-  run-inl-seq : ∀ {A B} (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s'
-           × halted s' ≡ true
-           -- rax points to stack-allocated sum
-           × readReg (regs s') rax ≡ readReg (regs s') rsp
-           -- tag at [rax] = 0
-           × readMem (memory s') (readReg (regs s') rax) ≡ just 0
-           -- value at [rax+8] = original rdi
-           × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+--
+-- Proof: trace through 5 steps (4 instructions + implicit halt when fetch fails at pc=4)
+run-inl-seq : ∀ {A B} (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s'
+         × halted s' ≡ true
+         -- rax points to stack-allocated sum
+         × readReg (regs s') rax ≡ readReg (regs s') rsp
+         -- tag at [rax] = 0
+         × readMem (memory s') (readReg (regs s') rax) ≡ just 0
+         -- value at [rax+8] = original rdi
+         × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+run-inl-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq , val-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A} {A + B} inl
+
+    -- Original values we need to track
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    -- Use pc s +ℕ 1 to match execSub-reg-imm output
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (sub (reg rsp) (imm 16)) _ s h-false pc-0)
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov [rsp], 0
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 0
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (mem (base rsp)) (imm 0)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (imm 0))) (sym pc1) refl))
+                  (execMov-mem-base-imm prog s1 rsp 0)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (mem (base+disp rsp 8)) (reg rdi)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (reg rdi))) (sym pc2) refl))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rax) (reg rsp)) h3
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rsp))) (sym pc3) refl))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 4
+    pc4 = cong (λ x → x +ℕ 1) pc3
+
+    -- State after step 5: fetch fails at pc=4, sets halted=true
+    s5 : State
+    s5 = record s4 { halted = true }
+
+    fetch-fail : fetch prog (pc s4) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc4) refl
+
+    step5 : step prog s4 ≡ just s5
+    step5 = step-halt-on-fetch-fail prog s4 h4 fetch-fail
+
+    halt-eq : halted s5 ≡ true
+    halt-eq = refl
+
+    -- Combined execution
+    run-eq : run prog s ≡ just s5
+    run-eq = exec-five-steps 9995 prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h4 step5 halt-eq
+
+    -- Now prove the properties about s5
+
+    -- rax = rsp in s5 (both unchanged from s4)
+    rax-rsp-eq : readReg (regs s5) rax ≡ readReg (regs s5) rsp
+    rax-rsp-eq = readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)
+
+    -- Helper: rsp is constant through s1,s2,s3 since only sub modifies it in s1
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2
+
+    -- Helper: rdi is constant through all states (never modified)
+    -- In s1, only rsp was modified by sub instruction
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1  -- regs s2 = regs s1 (mov [rsp], 0 doesn't touch registers)
+
+    -- Helper: rax in s5 = rsp in s3 = new-rsp
+    rax-s5 : readReg (regs s5) rax ≡ new-rsp
+    rax-s5 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    -- Key: new-rsp ≠ new-rsp + 8
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- tag at [rax] = 0
+    -- Memory path: s5.memory = s3.memory = writeMem s2.memory (new-rsp+8) rdi
+    --              s2.memory = writeMem s1.memory new-rsp 0
+    -- Reading at new-rsp: first write doesn't touch it (different addr), second does
+    tag-eq : readMem (memory s5) (readReg (regs s5) rax) ≡ just 0
+    tag-eq = trans (cong (readMem (memory s5)) rax-s5)
+                   (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi) (λ eq → addr-disjoint (sym eq)))
+                          (readMem-writeMem-same (memory s1) new-rsp 0))
+
+    -- value at [rax+8] = original rdi
+    -- Memory path: same as above, but reading at new-rsp+8
+    val-eq : readMem (memory s5) (readReg (regs s5) rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    val-eq = trans (cong (λ a → readMem (memory s5) (a +ℕ 8)) rax-s5)
+                   (trans (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi))
+                          (cong just rdi-s2))
 
 -- Helper: inr instruction sequence (similar to inl but tag=1)
-postulate
-  run-inr-seq : ∀ {A B} (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') rax ≡ readReg (regs s') rsp
-           × readMem (memory s') (readReg (regs s') rax) ≡ just 1
-           × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+-- Proof: identical structure to run-inl-seq, just writes tag=1 instead of tag=0
+run-inr-seq : ∀ {A B} (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ readReg (regs s') rsp
+         × readMem (memory s') (readReg (regs s') rax) ≡ just 1
+         × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq , val-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {B} {A + B} inr
+
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (sub (reg rsp) (imm 16)) _ s h-false pc-0)
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov [rsp], 1 (tag = 1 for inr)
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 1
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (mem (base rsp)) (imm 1)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (imm 1))) (sym pc1) refl))
+                  (execMov-mem-base-imm prog s1 rsp 1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (mem (base+disp rsp 8)) (reg rdi)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (reg rdi))) (sym pc2) refl))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rax) (reg rsp)) h3
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rsp))) (sym pc3) refl))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 4
+    pc4 = cong (λ x → x +ℕ 1) pc3
+
+    -- State after step 5: fetch fails at pc=4, sets halted=true
+    s5 : State
+    s5 = record s4 { halted = true }
+
+    fetch-fail : fetch prog (pc s4) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc4) refl
+
+    step5 : step prog s4 ≡ just s5
+    step5 = step-halt-on-fetch-fail prog s4 h4 fetch-fail
+
+    halt-eq : halted s5 ≡ true
+    halt-eq = refl
+
+    run-eq : run prog s ≡ just s5
+    run-eq = exec-five-steps 9995 prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h4 step5 halt-eq
+
+    -- Properties about s5
+    rax-rsp-eq : readReg (regs s5) rax ≡ readReg (regs s5) rsp
+    rax-rsp-eq = readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)
+
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2
+
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1
+
+    rax-s5 : readReg (regs s5) rax ≡ new-rsp
+    rax-s5 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- tag at [rax] = 1
+    tag-eq : readMem (memory s5) (readReg (regs s5) rax) ≡ just 1
+    tag-eq = trans (cong (readMem (memory s5)) rax-s5)
+                   (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi) (λ eq → addr-disjoint (sym eq)))
+                          (readMem-writeMem-same (memory s1) new-rsp 1))
+
+    -- value at [rax+8] = original rdi
+    val-eq : readMem (memory s5) (readReg (regs s5) rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    val-eq = trans (cong (λ a → readMem (memory s5) (a +ℕ 8)) rax-s5)
+                   (trans (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi))
+                          (cong just rdi-s2))
 
 -- Helper: sequential execution of two programs
 -- If p1 produces s1 with rax=v, and p2 with rdi=v produces s2,
