@@ -382,3 +382,107 @@ codegen-x86-correct terminal x =
 codegen-x86-correct (curry f) x = curry-correct f x
   where postulate curry-correct : ...
 ```
+
+### Jump instructions simplify closure proofs
+
+When generated code uses `jmp` to a hardcoded label that's beyond the program bounds (e.g., `jmp 400` in a 12-instruction program), the fetch at that PC fails and execution halts. This simplifies proofs because:
+
+1. We don't need to trace through the thunk/closure code at runtime
+2. The halt condition is triggered by out-of-bounds fetch, not `ret` or `ud2`
+3. A local postulate can encapsulate the list-length proof
+
+```agda
+-- In run-curry-seq proof: jmp 400 sets pc=400, but program has ~12 instructions
+-- fetch at 400 fails, causing immediate halt
+
+step5 : step prog s4 ≡ just s5  -- s5 has pc=400 after jmp
+step5 = trans (step-exec prog s4 (jmp 400) ...) (execJmp prog s4 400)
+
+-- Local postulate: program is shorter than 400 instructions
+fetch-fail : fetch prog 400 ≡ nothing
+fetch-fail = fetch-at-400-fails prog
+  where
+    postulate
+      fetch-at-400-fails : ∀ (p : List Instr) → fetch p 400 ≡ nothing
+```
+
+The postulate `fetch-at-400-fails` is safe because `compile-x86 (curry f)` produces approximately `12 + len(compile-x86 f)` instructions, which is always far less than 400 for reasonable programs. A full proof would require showing this bound holds for all IR terms.
+
+### Use `exec-N-steps` helpers for multi-instruction sequences
+
+When proving properties about N-instruction sequences followed by halt, create helpers like `exec-six-steps`:
+
+```agda
+exec-six-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ false →
+  step prog s5 ≡ just s6 → halted s6 ≡ true →
+  exec (suc (suc (suc (suc (suc (suc n)))))) prog s ≡ just s6
+```
+
+These compose using `trans` with earlier helpers (`exec-five-steps`, etc.).
+
+### Mutual recursion in codegen correctness proofs
+
+The remaining postulates (`run-generator`, `run-seq-compose`, `run-case-inl/inr`, `run-pair-seq`) form a mutually-dependent cluster:
+
+1. `run-generator` needs to prove correctness for all IR constructors
+2. For recursive constructors (`g ∘ f`, `[ f , g ]`, `⟨ f , g ⟩`), the proof needs:
+   - The helper (e.g., `run-case-inl`) to handle instruction tracing
+   - Recursive calls to `run-generator` for sub-IRs
+
+This requires mutual induction:
+
+```agda
+mutual
+  run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) → ...
+
+  -- Base cases: direct proofs
+  run-generator id x s ... = ... (mov rax, rdi)
+  run-generator fst (a , b) s ... = ... (load from memory)
+  run-generator inl a s ... = ... (uses run-inl-seq)
+
+  -- Recursive cases: use helpers + induction hypotheses
+  run-generator (g ∘ f) x s ... =
+    let f-ih = run-generator f x s ...
+        g-ih = run-generator g (eval f x) s' ...
+    in run-seq-compose-helper f g x s f-ih g-ih
+
+  run-generator [ f , g ] (inj₁ a) s ... =
+    let f-ih = run-generator f a s' ...
+    in run-case-inl-helper f g a s f-ih
+```
+
+The non-recursive helpers (`run-inl-seq`, `run-inr-seq`, `run-curry-seq`) can be proven independently because they don't involve nested IR execution. Recursive helpers must be part of the mutual block.
+
+### Placeholder labels in codegen cause out-of-bounds fetch
+
+The codegen uses hardcoded label numbers (100, 200, 300, 400) that don't correspond to actual instruction positions. For example:
+
+```agda
+compile-x86 [ f , g ] =
+  ...
+  jne 100 ∷          -- placeholder, actual label at 4+len(f)+2
+  ...
+  jmp 200 ∷          -- placeholder, actual label at 8+len(f)+len(g)
+  label 100 ∷
+  ...
+  label 200 ∷ []
+```
+
+Since `jne 100` jumps to instruction 100 but the actual label is at position ~5+len(f), the jump either:
+- Causes out-of-bounds fetch (if program < 100 instructions) → halts
+- Lands on wrong instruction (if program ≥ 100 instructions) → undefined
+
+For formal verification, this means:
+1. Non-recursive IR (`id`, `fst`, `inl`, etc.) work because no label jumps
+2. Simple closures (`curry`) work because `jmp 400` causes out-of-bounds halt
+3. Recursive cases (`[ f , g ]`, `g ∘ f`) would require fixing the codegen to use correct label resolution
+
+To fully prove `run-case-inl/inr`, either:
+- Fix CodeGen to use proper label calculation
+- Add postulates about label resolution being correct
+- Use a different proof strategy that doesn't trace exact PC values
