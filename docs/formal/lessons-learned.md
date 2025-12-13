@@ -499,3 +499,123 @@ compile-x86 [ f , g ] =
 Previously, `run-case-inr-id` was impossible because `jne 100` would jump out of bounds (program only had ~10 instructions).
 
 **Key insight**: The `compile-length` function must be defined for all IR constructors and must exactly match the instruction count produced by `compile-x86`. Any mismatch causes proofs to fail with concrete instruction position mismatches.
+
+## MAlonzo Extraction and Integration
+
+### String equality explodes transitive dependencies
+
+Adding decidable equality for types containing strings (like `TVar : String → Type`) pulls in massive dependency chains:
+
+```agda
+-- This single import...
+open import Data.String.Properties using () renaming (_≟_ to _≟String_)
+
+-- ...brings in ~180 additional modules including:
+-- Data.List.*, Data.Nat.*, Algebra.*, Relation.Binary.*, Function.*
+```
+
+**Impact**: Our cabal file went from ~20 MAlonzo modules to ~200 modules.
+
+**Mitigation options**:
+1. Accept the dependency cost (chosen approach)
+2. Use a simpler decidability mechanism (e.g., boolean equality without proofs)
+3. Avoid string-indexed types in the verified core
+
+### Type extensions cause unsolved metavariables in downstream proofs
+
+Adding new constructors to the `Type` datatype breaks proofs that pattern match on types with implicit arguments:
+
+```agda
+-- Before: 7 type constructors, proofs worked
+data Type : Set where
+  Unit Void _*_ _+_ _⇒_ Eff Fix : ...
+
+-- After: 11 type constructors, x86 proofs fail with unsolved metas
+data Type : Set where
+  Unit Void _*_ _+_ _⇒_ Eff Fix Int Str Buffer TVar : ...
+```
+
+**Why it happens**: Pattern matches like `compile-x86-correct {A} {B} ir x` can no longer infer `A` and `B` when there are more possible cases.
+
+**Fix**: Provide explicit type annotations at every pattern match:
+
+```agda
+-- BAD: Ambiguous after type extension
+codegen-x86-correct (curry f) x = ...
+
+-- GOOD: Explicit type arguments
+codegen-x86-correct {A} {B ⇒ C} (curry {A} {B} {C} f) x = ...
+```
+
+### Two-stage IR isolates proof impact
+
+The Surface IR → Core IR architecture pays off during extension:
+
+```
+Surface IR (extended)  →  desugar  →  Core IR (unchanged)
+      ↓                                      ↓
+Type changes here              Optimizer proofs unaffected
+```
+
+When we added `Int`, `Str`, `Buffer`, `TVar` to `Type`:
+- **Affected**: Type equality (`_≟Type_`), semantics (`⟦_⟧`)
+- **Unaffected**: All optimizer proofs (they operate on Core IR structure, not type details)
+
+This separation meant we could extend types without touching any optimization correctness proofs.
+
+### MAlonzo erases types—use placeholders when converting back
+
+MAlonzo-generated code erases type information. When converting Core IR back to Haskell IR:
+
+```haskell
+fromMAlonzoCoreIR :: MC.T_IR_4 -> H.IR
+fromMAlonzoCoreIR ir = case ir of
+  MC.C_id_8 -> H.Id H.TUnit  -- Type erased, use placeholder
+  MC.C_fst_22 -> H.Fst H.TUnit H.TUnit  -- Both types erased
+  MC.C__'8728'__16 mT g f ->
+    H.Compose (fromMAlonzoCoreIR g) (fromMAlonzoCoreIR f)
+    -- mT (middle type) is available but we ignore it
+```
+
+**Why placeholders work**: The Haskell backend re-infers types during code generation. The IR structure (which morphism, how composed) is preserved; only type annotations are lost.
+
+### Cabal requires explicit MAlonzo module listing
+
+All MAlonzo-generated modules must be explicitly listed in `other-modules`:
+
+```cabal
+other-modules:
+    MAlonzo.RTE
+    MAlonzo.Code.Once.Type
+    MAlonzo.Code.Once.IR
+    -- ... 200+ modules ...
+    MAlonzo.Code.Data.String.Properties
+```
+
+**No automatic discovery**: GHC's linker fails with "undefined reference" if any module is missing.
+
+**Maintenance burden**: After regenerating MAlonzo code, run:
+```bash
+find formal/_build/malonzo -name "*.hs" | \
+  sed 's|.*/malonzo/||; s|\.hs$||; s|/|.|g' | sort
+```
+Then update the cabal file with any new modules.
+
+### Type equality case explosion
+
+Adding N new type constructors requires O(N²) new cases in decidable equality:
+
+```agda
+-- Each new type needs comparison with ALL existing types
+Int ≟Type Int = yes refl
+Int ≟Type Unit = no (λ ())
+Int ≟Type Void = no (λ ())
+Int ≟Type (_ * _) = no (λ ())
+-- ... 10 more cases for Int vs other types ...
+
+-- Then Str vs all types, Buffer vs all types, TVar vs all types...
+```
+
+For our 4 new types + 7 existing = 11 total types, we added ~100 new cases.
+
+**Alternative**: Use a type universe with generic decidable equality, but this changes the API significantly.
