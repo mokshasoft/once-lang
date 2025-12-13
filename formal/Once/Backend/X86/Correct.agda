@@ -773,6 +773,232 @@ exec-on-non-halted-step n prog s s' step-eq halt-eq with step prog s
 exec-on-non-halted-step n prog s s' refl halt-eq | just .s' with halted s'
 exec-on-non-halted-step n prog s s' refl refl | just .s' | false = refl
 
+-- | Single-step non-halting execution: execute exactly 1 step without halting
+-- Key lemma for sub-program execution where we don't want to halt
+exec-one-step-nonhalt : ∀ (prog : List Instr) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ false →
+  exec 1 prog s ≡ just s'
+exec-one-step-nonhalt prog s s' step-eq halt-eq =
+  trans (exec-on-non-halted-step 0 prog s s' step-eq halt-eq) refl
+
+-- | Two-step non-halting execution: execute exactly 2 steps without halting
+exec-two-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 : State) →
+  step prog s ≡ just s1 →
+  halted s1 ≡ false →
+  step prog s1 ≡ just s2 →
+  halted s2 ≡ false →
+  exec 2 prog s ≡ just s2
+exec-two-steps-nonhalt prog s s1 s2 step1 h1 step2 h2 =
+  trans (exec-on-non-halted-step 1 prog s s1 step1 h1)
+        (exec-one-step-nonhalt prog s1 s2 step2 h2)
+
+-- | Three-step non-halting execution
+exec-three-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 s3 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  exec 3 prog s ≡ just s3
+exec-three-steps-nonhalt prog s s1 s2 s3 step1 h1 step2 h2 step3 h3 =
+  trans (exec-on-non-halted-step 2 prog s s1 step1 h1)
+        (exec-two-steps-nonhalt prog s1 s2 s3 step2 h2 step3 h3)
+
+------------------------------------------------------------------------
+-- Non-halting sub-program execution (for compose proofs)
+-- These execute IR code within a larger program without requiring halt
+------------------------------------------------------------------------
+
+-- | Execute id in a larger program (non-halting)
+-- compile-x86 id = [mov rax, rdi]
+-- After 1 step: pc=1, rax=encode x, halted=false
+run-id-nonhalt : ∀ {A} (rest : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (exec 1 (compile-x86 {A} {A} id ++ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ 1
+         × readReg (regs s') rax ≡ encode x)
+run-id-nonhalt {A} rest x s h-false pc-0 rdi-eq = s' , exec-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = compile-x86 {A} {A} id ++ rest
+
+    -- State after mov rax, rdi
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    -- Step proof
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec-0 (mov (reg rax) (reg rdi)) rest s h-false pc-0)
+                    (execMov-reg-reg s rax rdi)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ 1
+    pc' = cong (λ p → p +ℕ 1) pc-0
+
+    exec-eq : exec 1 prog s ≡ just s'
+    exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+
+    rax-eq : readReg (regs s') rax ≡ encode x
+    rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)) rdi-eq
+
+-- | Execute terminal in a larger program (non-halting)
+-- compile-x86 terminal = [mov rax, 0]
+-- After 1 step: pc=1, rax=0=encode tt, halted=false
+run-terminal-nonhalt : ∀ {A} (rest : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (exec 1 (compile-x86 {A} {Unit} terminal ++ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ 1
+         × readReg (regs s') rax ≡ encode tt)
+run-terminal-nonhalt {A} rest x s h-false pc-0 = s' , exec-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = compile-x86 {A} {Unit} terminal ++ rest
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax 0
+                  ; pc = pc s +ℕ 1 }
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec-0 (mov (reg rax) (imm 0)) rest s h-false pc-0)
+                    (execMov-reg-imm s rax 0)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ 1
+    pc' = cong (λ p → p +ℕ 1) pc-0
+
+    exec-eq : exec 1 prog s ≡ just s'
+    exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+
+    rax-eq : readReg (regs s') rax ≡ encode tt
+    rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
+
+-- | Fetching at the end of a prefix returns the first element of suffix
+-- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
+  fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end [] i rest = refl
+fetch-at-prefix-end (x ∷ prefix) i rest = fetch-at-prefix-end prefix i rest
+
+-- | Execute transfer instruction (mov rdi, rax) at position N in a program
+-- Used between sub-programs in compose to transfer result to input
+exec-transfer-at : ∀ (prefix : Program) (suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (step (prefix ++ mov (reg rdi) (reg rax) ∷ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rdi ≡ readReg (regs s) rax
+         × readReg (regs s') rax ≡ readReg (regs s) rax)
+exec-transfer-at prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-eq , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ mov (reg rdi) (reg rax) ∷ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rdi) (reg rax))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg rax)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rdi) (reg rax)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rdi) (reg rax)) h-false fetch-eq)
+                    (execMov-reg-reg s rdi rax)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rdi-eq : readReg (regs s') rdi ≡ readReg (regs s) rax
+    rdi-eq = readReg-writeReg-same (regs s) rdi (readReg (regs s) rax)
+
+    rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
+    rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
+
+-- | Execute id at arbitrary offset in a program (non-halting)
+-- This is the general case of run-id-nonhalt where id code can be at any position
+-- Program structure: prefix ++ [mov rax, rdi] ++ suffix
+run-id-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A} {A} id ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode x)
+run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A} {A} id ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                    (execMov-reg-reg s rax rdi)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ encode x
+    rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)) rdi-eq
+
+-- | Execute terminal at arbitrary offset in a program (non-halting)
+-- Program structure: prefix ++ [mov rax, 0] ++ suffix
+run-terminal-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode tt)
+run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A} {Unit} terminal ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax 0
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (imm 0))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (imm 0)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (imm 0)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (imm 0)) h-false fetch-eq)
+                    (execMov-reg-imm s rax 0)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ encode tt
+    rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
+
 -- | Two-step execution: if first step produces s1 (not halted), and second halts,
 -- then exec (suc (suc n)) produces the halted state
 exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 : State) →
@@ -2490,6 +2716,131 @@ run-generator-compose-id-terminal {A} x s h-false pc-0 rdi-eq = s' , run-eq , ha
     -- eval (id ∘ terminal) x = eval id (eval terminal x) = eval id tt = tt
     -- encode tt = 0 by encode-unit
     rax-eq : readReg (regs s') rax ≡ encode (eval {A} {Unit} (id ∘ terminal) x)
+    rax-eq = trans (proj₂ (proj₂ (proj₂ helper))) (sym encode-unit)
+
+------------------------------------------------------------------------
+-- Compose proofs using offset helpers (demonstrating the approach)
+------------------------------------------------------------------------
+
+-- | run-seq-compose for (terminal ∘ terminal)
+-- Demonstrates the compose pattern with both sub-programs being terminal
+--
+-- Generated code:
+--   mov rax, 0      ; 0 (compile-x86 terminal)
+--   mov rdi, rax    ; 1 (transfer)
+--   mov rax, 0      ; 2 (compile-x86 terminal)
+--
+-- Total: 3 instructions, 4 steps (3 + halt on fetch fail at pc=3)
+run-seq-compose-terminal-terminal : ∀ {A} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {A} {Unit} (terminal ∘ terminal)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ 0)
+run-seq-compose-terminal-terminal {A} x s h-false pc-0 = s4 , run-eq , halt-eq , rax-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A} {Unit} (terminal ∘ terminal)
+
+    -- State after step 1: mov rax, 0 (terminal)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rax 0
+                  ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg rax) (imm 0)) _ s h-false pc-0)
+                  (execMov-reg-imm s rax 0)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-0
+
+    rax-s1 : readReg (regs s1) rax ≡ 0
+    rax-s1 = readReg-writeReg-same (regs s) rax 0
+
+    -- State after step 2: mov rdi, rax (transfer)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) rax)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (reg rdi) (reg rax)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg rax))) (sym pc1) refl))
+                  (execMov-reg-reg s1 rdi rax)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ p → p +ℕ 1) pc1
+
+    -- State after step 3: mov rax, 0 (second terminal)
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rax 0
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (reg rax) (imm 0)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (imm 0))) (sym pc2) refl))
+                  (execMov-reg-imm s2 rax 0)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ p → p +ℕ 1) pc2
+
+    -- State after step 4: fetch fails at pc=3, halts
+    s4 : State
+    s4 = record s3 { halted = true }
+
+    fetch-fail : fetch prog (pc s3) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc3) refl
+
+    step4 : step prog s3 ≡ just s4
+    step4 = step-halt-on-fetch-fail prog s3 h3 fetch-fail
+
+    halt-eq : halted s4 ≡ true
+    halt-eq = refl
+
+    -- Combined execution: 4 steps
+    run-eq : run prog s ≡ just s4
+    run-eq = exec-four-steps 9996 prog s s1 s2 s3 s4
+               step1 h1 step2 h2 step3 h3 step4 halt-eq
+
+    -- Track rax through states: final rax = 0
+    rax-eq : readReg (regs s4) rax ≡ 0
+    rax-eq = readReg-writeReg-same (regs s2) rax 0
+
+-- | run-generator for (terminal ∘ terminal)
+run-generator-compose-terminal-terminal : ∀ {A} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 {A} {Unit} (terminal ∘ terminal)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval {A} {Unit} (terminal ∘ terminal) x))
+run-generator-compose-terminal-terminal {A} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-eq
+  where
+    helper : ∃[ s' ] (run (compile-x86 {A} {Unit} (terminal ∘ terminal)) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') rax ≡ 0)
+    helper = run-seq-compose-terminal-terminal x s h-false pc-0
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-x86 {A} {Unit} (terminal ∘ terminal)) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval (terminal ∘ terminal) x = terminal (terminal x) = terminal tt = tt
+    -- encode tt = 0
+    rax-eq : readReg (regs s') rax ≡ encode (eval {A} {Unit} (terminal ∘ terminal) x)
     rax-eq = trans (proj₂ (proj₂ (proj₂ helper))) (sym encode-unit)
 
 -- Helper: pair sequence for ⟨ id , id ⟩ (base case)
