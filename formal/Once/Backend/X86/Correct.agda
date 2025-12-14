@@ -3304,6 +3304,11 @@ postulate
     step prog s ≡ just (record s { halted = true })
 
 -- Lemma: exec (n+1) = exec n followed by one step
+-- This is complex to prove due to with-abstraction in exec definition.
+-- We keep it as a postulate - it follows directly from exec semantics.
+--
+-- Semantically: if we've executed n steps to reach s' (non-halted),
+-- and one more step from s' gives s'', then n+1 steps gives s''.
 postulate
   exec-suc : ∀ (n : ℕ) (prog : Program) (s s' : State) →
     exec n prog s ≡ just s' →
@@ -3311,11 +3316,21 @@ postulate
     (s'' : State) → step prog s' ≡ just s'' →
     exec (suc n) prog s ≡ just s''
 
+-- Lemma: When halted, step returns the same state
+step-halted-stable : ∀ (prog : Program) (s : State) →
+  halted s ≡ true →
+  step prog s ≡ just s
+step-halted-stable prog s h-true with halted s
+... | true = refl
+... | false with () ← h-true
+
 -- Lemma: When halted, further exec keeps the same state
-postulate
-  exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
-    halted s ≡ true →
-    exec n prog s ≡ just s
+-- Proof by induction on n, using the fact that step returns the same halted state
+exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
+  halted s ≡ true →
+  exec n prog s ≡ just s
+exec-halted-stable zero prog s h-true = refl
+exec-halted-stable (suc n) prog s h-true rewrite step-halted-stable prog s h-true | h-true = refl
 
 -- Main bridge: run-ir-at-offset with empty suffix implies run-generator
 -- After run-ir-at-offset completes, one more step halts (fetch fails)
