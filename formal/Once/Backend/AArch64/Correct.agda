@@ -511,7 +511,14 @@ exec-chain (suc n') m prog s s' s'' exec-n-eq h-false exec-m-eq =
 -- | Execution within a concatenated program (left part)
 -- If we execute the first part of a concatenated program and haven't halted,
 -- the execution is the same as executing just the first part.
--- Postulated - requires careful reasoning about fetch and pc bounds.
+--
+-- NOTE: This lemma is correct for sequential code where pc advances by 1 each step.
+-- For code with branches, additional invariants about pc staying in bounds would
+-- be needed. In the Once backend, compiled IR generates sequential code for each
+-- generator, with internal jumps only within the generator's code.
+--
+-- The proof would use fetch-append-left to show that fetches within the first
+-- part of concatenated programs match fetches in the original program.
 postulate
   exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
     halted s ≡ false →
