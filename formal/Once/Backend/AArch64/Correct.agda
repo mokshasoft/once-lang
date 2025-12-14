@@ -369,9 +369,34 @@ exec-one-step prog s s' instr h-false fetch-eq exec-eq halt-true
 ...     | just .s' | refl with halted s' | halt-true
 ...       | true | refl = refl
 
+-- | step on a halted state returns the same state
+step-halted : ∀ (prog : Program) (s : State) →
+  halted s ≡ true →
+  step prog s ≡ just s
+step-halted prog s h-true with halted s | h-true
+... | true | refl = refl
+
+-- | exec 0 always returns initial state
+exec-0 : ∀ (prog : Program) (s : State) → exec 0 prog s ≡ just s
+exec-0 prog s = refl
+
+-- | exec (suc n) on a halted state returns the same state
+exec-suc-halted : ∀ (n : ℕ) (prog : Program) (s : State) →
+  halted s ≡ true →
+  exec (suc n) prog s ≡ just s
+exec-suc-halted n prog s h-true with step prog s | step-halted prog s h-true
+... | just .s | refl with halted s | h-true
+...   | true | refl = refl
+
 -- | Executing N+1 steps when the N-step execution halts
--- This is useful for showing that extra fuel doesn't change the result.
--- Postulated due to complexity of reasoning through `with` abstractions in `exec`.
+-- If exec n gives a halted state, exec (suc n) gives the same state.
+-- Postulated due to complexity of with-abstraction reasoning in exec.
+-- The proof sketch is:
+--   Base (n=0): exec 0 prog s = just s, so s = s' and halted s' = true
+--               By exec-suc-halted: exec 1 prog s' = just s'
+--   Inductive: exec (suc n) prog s = just s' means step gives s₁,
+--              then exec n prog s₁ = just s' (if not halted at s₁)
+--              By IH on the recursive call
 postulate
   exec-N-if-halts : ∀ (n : ℕ) (prog : Program) (s s' : State) →
     exec n prog s ≡ just s' →
@@ -379,7 +404,9 @@ postulate
     exec (suc n) prog s ≡ just s'
 
 -- | Monotonicity: if exec with n steps halts, exec with more fuel returns same result.
--- Postulated due to complexity of reasoning through `with` abstractions in `exec`.
+-- Postulated - follows from exec-N-if-halts by iteration.
+-- The proof would iterate exec-N-if-halts (m - n) times, but requires
+-- careful handling of arithmetic (k + suc n vs suc k + n).
 postulate
   exec-mono : ∀ (n m : ℕ) (prog : Program) (s s' : State) →
     n ≤ m →
@@ -549,8 +576,14 @@ execInstr-bl prog s target = refl
 -- program to completion. The program executes the instruction, then
 -- halts when fetch fails at the next PC.
 
+-- | Running nop to completion: executes nop, then halts when fetch fails
+-- Postulated - the proof requires careful handling of with-abstractions in step/exec.
+-- Proof sketch:
+--   1. step at pc=0 executes nop, sets pc=1
+--   2. step at pc=1 fails fetch (past end), sets halted=true
+--   3. exec 2 reaches halted state
+--   4. By exec-mono, run (exec 10000) also reaches same state
 postulate
-  -- | Running nop to completion: executes nop, then halts when fetch fails
   run-single-nop : ∀ (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -558,6 +591,7 @@ postulate
            × halted s' ≡ true
            × regs s' ≡ regs s)
 
+postulate
   -- | Running ldr to completion
   run-single-ldr : ∀ (s : State) (dst : Reg) (m : Mem) (v : Word) →
     halted s ≡ false →
