@@ -318,7 +318,8 @@ readMem-writeMem-diff-8 m addr v = readMem-writeMem-diff m addr (addr +ℕ 8) v 
 -- They are proven directly from those definitions.
 
 open import Data.Nat using (_<_; _≤_; z<s; s≤s; z≤n; s<s)
-open import Data.Nat.Properties using (+-comm; +-identityʳ; +-suc; m+n∸m≡n)
+open import Data.Nat.Properties using (+-comm; +-identityʳ; +-suc; m+n∸m≡n; +-assoc)
+open import Data.List.Properties using (length-++)
 
 -- | Fetching at index 0 returns the first instruction
 fetch-0 : ∀ (i : Instr) (is : Program) → fetch (i ∷ is) 0 ≡ just i
@@ -413,6 +414,109 @@ postulate
     exec n prog s ≡ just s' →
     halted s' ≡ true →
     exec m prog s ≡ just s'
+
+------------------------------------------------------------------------
+-- Execution Chaining Infrastructure (Well-Founded Recursion Support)
+------------------------------------------------------------------------
+
+-- These lemmas enable compositional proofs for the mutual recursion cluster
+-- (compose, case, pair). The key idea is to chain execution results.
+
+-- | Chaining execution: if exec n reaches s', then exec m from s' reaches s'',
+-- then exec (n + m) from s reaches s''.
+-- Postulated - proof requires induction on n with careful step reasoning.
+-- Proof sketch:
+--   Base (n=0): exec 0 prog s = just s, so s = s'. Then exec m prog s' = just s''.
+--               By substitution: exec (0 + m) prog s = exec m prog s = just s''.
+--   Inductive: exec (suc n) prog s means step gives s₁, then exec n prog s₁ = just s'.
+--              By IH: exec (n + m) prog s₁ = just s''.
+--              So exec (suc n + m) prog s = exec (suc (n + m)) prog s
+--              = step gives s₁, exec (n + m) prog s₁ = just s''.
+postulate
+  exec-chain : ∀ (n m : ℕ) (prog : Program) (s s' s'' : State) →
+    exec n prog s ≡ just s' →
+    halted s' ≡ false →
+    exec m prog s' ≡ just s'' →
+    exec (n +ℕ m) prog s ≡ just s''
+
+-- | Execution within a concatenated program (left part)
+-- If we execute the first part of a concatenated program and haven't halted,
+-- the execution is the same as executing just the first part.
+-- Postulated - requires careful reasoning about fetch and pc bounds.
+postulate
+  exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
+    halted s ≡ false →
+    pc s +ℕ n ≤ length prog1 →
+    exec n prog1 s ≡ just s' →
+    exec n (prog1 ++ prog2) s ≡ just s'
+
+-- | After executing first part, continue to second part
+-- If exec n on prog1++prog2 reaches state s' with pc at end of prog1,
+-- then continuing execution is like running prog2 from adjusted state.
+-- Postulated - requires pc offset adjustment reasoning.
+postulate
+  exec-concat-continue : ∀ (n m : ℕ) (prog1 prog2 : Program) (s s' s'' : State) →
+    exec n (prog1 ++ prog2) s ≡ just s' →
+    halted s' ≡ false →
+    pc s' ≡ length prog1 →
+    exec m prog2 (record s' { pc = 0 }) ≡ just s'' →
+    exec (n +ℕ m) (prog1 ++ prog2) s ≡ just (record s'' { pc = pc s'' +ℕ length prog1 })
+
+-- | Alternative formulation: running concatenated program
+-- This is useful for the composition proof where we run f, then nop, then g.
+postulate
+  run-concat-seq : ∀ (prog1 prog2 : Program) (s s' s'' : State) →
+    run prog1 s ≡ just s' →
+    halted s' ≡ false →
+    pc s' ≡ length prog1 →
+    run prog2 (record s' { pc = 0 }) ≡ just s'' →
+    run (prog1 ++ prog2) s ≡ just (record s'' { pc = pc s'' +ℕ length prog1 })
+
+------------------------------------------------------------------------
+-- Well-Founded IR Correctness (Mutual Recursion Structure)
+------------------------------------------------------------------------
+
+-- The mutual recursion cluster (compose, case, pair, curry) requires proving
+-- that running compiled code on sub-IR terms produces correct results.
+-- This is handled by structural induction on IR.
+--
+-- Key insight: For any IR term ir, running compile-aarch64 ir with correct
+-- preconditions produces a state where x0 = encode (eval ir x).
+--
+-- The preconditions are:
+--   - halted s ≡ false (not already halted)
+--   - pc s ≡ 0 (start at beginning)
+--   - readReg (regs s) x0 ≡ encode x (input in x0)
+--   - memory s ≡ encodedMemory (access to encoded values)
+--
+-- For recursive cases:
+--   - compose (g ∘ f): IH on f gives intermediate result, IH on g gives final
+--   - case [f,g]: IH on f or g depending on tag
+--   - pair ⟨f,g⟩: IH on f, preserve input, IH on g
+--   - curry f: IH on f when thunk is called
+
+-- | State transformation predicate
+-- This captures what running an IR term does to the state.
+IRCorrectAt : ∀ {A B : Type} → IR A B → ⟦ A ⟧ → State → State → Set
+IRCorrectAt ir x s s' =
+  run (compile-aarch64 ir) s ≡ just s'
+  × halted s' ≡ true
+  × readReg (regs s') x0 ≡ encode (eval ir x)
+
+-- | Valid input state predicate
+ValidInputState : ∀ {A : Type} → ⟦ A ⟧ → State → Set
+ValidInputState x s =
+  halted s ≡ false
+  × pc s ≡ 0
+  × readReg (regs s) x0 ≡ encode x
+  × memory s ≡ encodedMemory
+
+-- | The main correctness property we want to prove for each IR term
+-- This will be proven by mutual recursion on IR structure.
+IRCorrect : ∀ {A B : Type} → IR A B → Set
+IRCorrect {A} {B} ir = ∀ (x : ⟦ A ⟧) (s : State) →
+  ValidInputState x s →
+  ∃[ s' ] IRCorrectAt ir x s s'
 
 ------------------------------------------------------------------------
 -- Initial State with Input
@@ -668,10 +772,218 @@ run-single-brk s n h-false pc-0 =
 -- Multi-instruction sequence helpers
 ------------------------------------------------------------------------
 
-postulate
-  -- | Compile-length matches actual length
-  compile-length-correct : ∀ {A B : Type} (ir : IR A B) →
-    length (compile-aarch64 ir) ≡ compile-length ir
+-- | Compile-length matches actual length
+-- Proven by structural induction on IR
+compile-length-correct : ∀ {A B : Type} (ir : IR A B) →
+  length (compile-aarch64 ir) ≡ compile-length ir
+
+-- Base cases: single-instruction generators
+compile-length-correct id = refl
+compile-length-correct fst = refl
+compile-length-correct snd = refl
+compile-length-correct terminal = refl
+compile-length-correct initial = refl
+compile-length-correct fold = refl
+compile-length-correct unfold = refl
+compile-length-correct arr = refl
+
+-- inl: 4 instructions (sub-sp, str-zr, str, mov-from-sp)
+compile-length-correct inl = refl
+
+-- inr: 5 instructions (sub-sp, mov, str, str, mov-from-sp)
+compile-length-correct inr = refl
+
+-- apply: 6 instructions (ldr, ldr, ldr, ldr, mov, blr)
+compile-length-correct apply = refl
+
+-- compose: |f| + 1 + |g|
+compile-length-correct (g ∘ f) =
+  let len-f = compile-length f
+      len-g = compile-length g
+      IHf = compile-length-correct f
+      IHg = compile-length-correct g
+      -- compile-aarch64 (g ∘ f) = compile-aarch64 f ++ (nop ∷ []) ++ compile-aarch64 g
+      -- length = |f| + (1 + |g|) by length-++
+      -- compile-length (g ∘ f) = (len-f + 1) + len-g
+      step1 : length (compile-aarch64 f ++ nop ∷ [] ++ compile-aarch64 g) ≡
+              length (compile-aarch64 f) +ℕ length (nop ∷ [] ++ compile-aarch64 g)
+      step1 = length-++ (compile-aarch64 f)
+      step2 : length (nop ∷ [] ++ compile-aarch64 g) ≡ 1 +ℕ length (compile-aarch64 g)
+      step2 = refl
+      step3 : length (compile-aarch64 f) +ℕ (1 +ℕ length (compile-aarch64 g)) ≡
+              (len-f +ℕ 1) +ℕ len-g
+      step3 = begin
+        length (compile-aarch64 f) +ℕ (1 +ℕ length (compile-aarch64 g))
+          ≡⟨ cong (λ x → x +ℕ (1 +ℕ length (compile-aarch64 g))) IHf ⟩
+        len-f +ℕ (1 +ℕ length (compile-aarch64 g))
+          ≡⟨ cong (λ x → len-f +ℕ (1 +ℕ x)) IHg ⟩
+        len-f +ℕ (1 +ℕ len-g)
+          ≡⟨ sym (+-assoc len-f 1 len-g) ⟩
+        (len-f +ℕ 1) +ℕ len-g
+        ∎
+  in trans step1 (trans (cong (length (compile-aarch64 f) +ℕ_) step2) step3)
+  where open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+-- pair: 6 + |f| + |g|
+compile-length-correct ⟨ f , g ⟩ =
+  let len-f = compile-length f
+      len-g = compile-length g
+      IHf = compile-length-correct f
+      IHg = compile-length-correct g
+      -- compile-aarch64 ⟨ f , g ⟩ =
+      --   sub-sp 16 ∷ mov x20 (reg x0) ∷ compile-aarch64 f ++
+      --   str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ compile-aarch64 g ++
+      --   str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+      -- length = 2 + |f| + 2 + |g| + 2 = 6 + |f| + |g|
+      -- compile-length ⟨ f , g ⟩ = (6 + len-f) + len-g
+      prog-f = compile-aarch64 f
+      prog-g = compile-aarch64 g
+      -- Step through the length calculation using length-++
+      step1 : length (sub-sp 16 ∷ mov x20 (reg x0) ∷ prog-f ++
+                     str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ prog-g ++
+                     str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []) ≡
+              2 +ℕ length (prog-f ++
+                          str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ prog-g ++
+                          str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ [])
+      step1 = refl
+      step2 : length (prog-f ++
+                     str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ prog-g ++
+                     str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []) ≡
+              length prog-f +ℕ length (str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ prog-g ++
+                                       str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ [])
+      step2 = length-++ prog-f
+      step3 : length (str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ prog-g ++
+                     str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []) ≡
+              2 +ℕ length (prog-g ++ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ [])
+      step3 = refl
+      step4 : length (prog-g ++ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []) ≡
+              length prog-g +ℕ 2
+      step4 = trans (length-++ prog-g) refl
+      -- Combine: 2 + (|f| + (2 + (|g| + 2))) = (6 + |f|) + |g|
+      combine : 2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2))) ≡ (6 +ℕ len-f) +ℕ len-g
+      combine = begin
+        2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2)))
+          ≡⟨ cong (λ x → 2 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 2)))) IHf ⟩
+        2 +ℕ (len-f +ℕ (2 +ℕ (length prog-g +ℕ 2)))
+          ≡⟨ cong (λ x → 2 +ℕ (len-f +ℕ (2 +ℕ (x +ℕ 2)))) IHg ⟩
+        2 +ℕ (len-f +ℕ (2 +ℕ (len-g +ℕ 2)))
+          ≡⟨ cong (2 +ℕ_) (sym (+-assoc len-f 2 (len-g +ℕ 2))) ⟩
+        2 +ℕ ((len-f +ℕ 2) +ℕ (len-g +ℕ 2))
+          ≡⟨ cong (λ x → 2 +ℕ (x +ℕ (len-g +ℕ 2))) (+-comm len-f 2) ⟩
+        2 +ℕ ((2 +ℕ len-f) +ℕ (len-g +ℕ 2))
+          ≡⟨ sym (+-assoc 2 (2 +ℕ len-f) (len-g +ℕ 2)) ⟩
+        (2 +ℕ (2 +ℕ len-f)) +ℕ (len-g +ℕ 2)
+          ≡⟨ cong (_+ℕ (len-g +ℕ 2)) (sym (+-assoc 2 2 len-f)) ⟩
+        (4 +ℕ len-f) +ℕ (len-g +ℕ 2)
+          ≡⟨ cong ((4 +ℕ len-f) +ℕ_) (+-comm len-g 2) ⟩
+        (4 +ℕ len-f) +ℕ (2 +ℕ len-g)
+          ≡⟨ sym (+-assoc (4 +ℕ len-f) 2 len-g) ⟩
+        ((4 +ℕ len-f) +ℕ 2) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-comm (4 +ℕ len-f) 2) ⟩
+        (2 +ℕ (4 +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 2 4 len-f)) ⟩
+        (6 +ℕ len-f) +ℕ len-g
+        ∎
+  in trans step1 (trans (cong (2 +ℕ_) step2)
+     (trans (cong (λ x → 2 +ℕ (length prog-f +ℕ x)) step3)
+     (trans (cong (λ x → 2 +ℕ (length prog-f +ℕ (2 +ℕ x))) step4) combine)))
+  where open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+-- case: 8 + |f| + |g|
+compile-length-correct [ f , g ] =
+  let len-f = compile-length f
+      len-g = compile-length g
+      IHf = compile-length-correct f
+      IHg = compile-length-correct g
+      prog-f = compile-aarch64 f
+      prog-g = compile-aarch64 g
+      right-branch = 5 +ℕ len-f
+      end-label = (7 +ℕ len-f) +ℕ len-g
+      -- The program structure (8 fixed instructions + f + g):
+      -- ldr ∷ cmp ∷ b-ne ∷ ldr ∷ f ++ b ∷ label ∷ ldr ∷ g ++ label ∷ []
+      -- Length = 4 + |f| + 1 + 1 + 1 + |g| + 1 = 8 + |f| + |g|
+      step1 : length (ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-branch ∷
+                     ldr x0 (base+imm x0 8) ∷ prog-f ++
+                     b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                     label end-label ∷ []) ≡
+              4 +ℕ length (prog-f ++
+                          b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                          label end-label ∷ [])
+      step1 = refl
+      step2 : length (prog-f ++
+                     b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                     label end-label ∷ []) ≡
+              length prog-f +ℕ length (b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                                       label end-label ∷ [])
+      step2 = length-++ prog-f
+      step3 : length (b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                     label end-label ∷ []) ≡
+              3 +ℕ length (prog-g ++ label end-label ∷ [])
+      step3 = refl
+      step4 : length (prog-g ++ label end-label ∷ []) ≡ length prog-g +ℕ 1
+      step4 = trans (length-++ prog-g) refl
+      -- Combine: 4 + (|f| + (3 + (|g| + 1))) = (8 + |f|) + |g|
+      combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (8 +ℕ len-f) +ℕ len-g
+      combine = begin
+        4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1)))
+          ≡⟨ cong (λ x → 4 +ℕ (x +ℕ (3 +ℕ (length prog-g +ℕ 1)))) IHf ⟩
+        4 +ℕ (len-f +ℕ (3 +ℕ (length prog-g +ℕ 1)))
+          ≡⟨ cong (λ x → 4 +ℕ (len-f +ℕ (3 +ℕ (x +ℕ 1)))) IHg ⟩
+        4 +ℕ (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))
+          ≡⟨ cong (4 +ℕ_) (sym (+-assoc len-f 3 (len-g +ℕ 1))) ⟩
+        4 +ℕ ((len-f +ℕ 3) +ℕ (len-g +ℕ 1))
+          ≡⟨ cong (λ x → 4 +ℕ (x +ℕ (len-g +ℕ 1))) (+-comm len-f 3) ⟩
+        4 +ℕ ((3 +ℕ len-f) +ℕ (len-g +ℕ 1))
+          ≡⟨ sym (+-assoc 4 (3 +ℕ len-f) (len-g +ℕ 1)) ⟩
+        (4 +ℕ (3 +ℕ len-f)) +ℕ (len-g +ℕ 1)
+          ≡⟨ cong (_+ℕ (len-g +ℕ 1)) (sym (+-assoc 4 3 len-f)) ⟩
+        (7 +ℕ len-f) +ℕ (len-g +ℕ 1)
+          ≡⟨ cong ((7 +ℕ len-f) +ℕ_) (+-comm len-g 1) ⟩
+        (7 +ℕ len-f) +ℕ (1 +ℕ len-g)
+          ≡⟨ sym (+-assoc (7 +ℕ len-f) 1 len-g) ⟩
+        ((7 +ℕ len-f) +ℕ 1) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-comm (7 +ℕ len-f) 1) ⟩
+        (1 +ℕ (7 +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 1 7 len-f)) ⟩
+        (8 +ℕ len-f) +ℕ len-g
+        ∎
+  in trans step1 (trans (cong (4 +ℕ_) step2)
+     (trans (cong (λ x → 4 +ℕ (length prog-f +ℕ x)) step3)
+     (trans (cong (λ x → 4 +ℕ (length prog-f +ℕ (3 +ℕ x))) step4) combine)))
+  where open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+-- curry: 12 + |f|
+compile-length-correct (curry f) =
+  let len-f = compile-length f
+      IHf = compile-length-correct f
+      prog-f = compile-aarch64 f
+      code-ptr = 6
+      end-label = 11 +ℕ len-f
+      -- The program structure (12 fixed instructions + f):
+      -- sub-sp ∷ str ∷ mov ∷ str ∷ mov-from-sp ∷ b ∷ label ∷ sub-sp ∷ stp ∷ mov-from-sp ∷
+      -- f ++ ret ∷ label ∷ []
+      -- Length = 10 + |f| + 2 = 12 + |f|
+      step1 : length (sub-sp 16 ∷ str x0 (sp+imm 0) ∷ mov x9 (imm code-ptr) ∷
+                     str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b end-label ∷
+                     label code-ptr ∷ sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷ mov-from-sp x0 ∷
+                     prog-f ++ ret ∷ label end-label ∷ []) ≡
+              10 +ℕ length (prog-f ++ ret ∷ label end-label ∷ [])
+      step1 = refl
+      step2 : length (prog-f ++ ret ∷ label end-label ∷ []) ≡ length prog-f +ℕ 2
+      step2 = trans (length-++ prog-f) refl
+      -- Combine: 10 + (|f| + 2) = 12 + |f|
+      combine : 10 +ℕ (length prog-f +ℕ 2) ≡ 12 +ℕ len-f
+      combine = begin
+        10 +ℕ (length prog-f +ℕ 2)
+          ≡⟨ cong (λ x → 10 +ℕ (x +ℕ 2)) IHf ⟩
+        10 +ℕ (len-f +ℕ 2)
+          ≡⟨ cong (10 +ℕ_) (+-comm len-f 2) ⟩
+        10 +ℕ (2 +ℕ len-f)
+          ≡⟨ sym (+-assoc 10 2 len-f) ⟩
+        12 +ℕ len-f
+        ∎
+  in trans step1 (trans (cong (10 +ℕ_) step2) combine)
+  where open Relation.Binary.PropositionalEquality.≡-Reasoning
 
 ------------------------------------------------------------------------
 -- Per-Generator Proofs
@@ -986,22 +1298,32 @@ postulate
 --
 -- PROOF STRATEGY:
 --
--- The proofs use well-founded induction on IR, with the induction hypothesis:
+-- The proofs use structural induction on IR, with the correctness property
+-- defined in terms of IRCorrect, IRCorrectAt, and ValidInputState (above).
 --
---   IH(ir) : ∀ x s → (conditions) →
---            ∃ s' . run (compile-aarch64 ir) s ≡ just s' ∧
---                   readReg (regs s') x0 ≡ encode (eval ir x)
+-- The induction hypothesis for a sub-term ir' of ir:
+--   IH(ir') : IRCorrect ir'
+--           = ∀ x s → ValidInputState x s → ∃ s' . IRCorrectAt ir' x s s'
 --
--- Key Lemmas Needed (to be proven):
+-- INFRASTRUCTURE USED (defined in "Execution Chaining Infrastructure"):
 --
--- 1. run-append-left : For programs p₁ ++ p₂, if running p₁ reaches a
---    non-halted state s₁ at pc = length p₁, then continuing executes p₂.
+-- 1. exec-chain : Chain two executions (n steps then m steps)
+-- 2. exec-concat-left : Execute left part of concatenated program
+-- 3. exec-concat-continue : Continue from left to right part
+-- 4. run-concat-seq : Run concatenated program sequentially
 --
--- 2. run-append-skip : Running p₁ ++ p₂ from initial state, where p₁
---    execution completes (resets pc conceptually), continues with p₂.
+-- MUTUAL RECURSION STRUCTURE:
 --
--- 3. pc-continuation : After running program prefix, pc points to next
---    instruction in concatenated program.
+-- The proof proceeds by case analysis on IR, with recursive cases calling
+-- the IH on structurally smaller sub-terms:
+--
+--   ir-correct : ∀ {A B} (ir : IR A B) → IRCorrect ir
+--   ir-correct id = run-generator-id
+--   ir-correct (g ∘ f) = ... ir-correct f ... ir-correct g ...
+--   ir-correct [ f , g ] = ... ir-correct f ... ir-correct g ...
+--   ir-correct ⟨ f , g ⟩ = ... ir-correct f ... ir-correct g ...
+--   ir-correct (curry f) = ... ir-correct f ...
+--   ... (other cases use per-generator proofs)
 --
 -- COMPOSE (g ∘ f) PROOF SKETCH:
 -- Code: compile-aarch64 f ++ [nop] ++ compile-aarch64 g
