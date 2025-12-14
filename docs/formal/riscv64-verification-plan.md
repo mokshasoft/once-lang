@@ -16,14 +16,19 @@ This document outlines the remaining work for a complete end-to-end verification
 - Polynomial functors (SPF module for recursive types)
 - End-to-end theorem structure (composes all phases)
 
-**Completed for x86-64 Only:**
+**Completed for x86-64:**
 - `Backend/X86/Syntax.agda` - Instruction set definition (~62 lines)
 - `Backend/X86/Semantics.agda` - Operational semantics (~315 lines)
 - `Backend/X86/CodeGen.agda` - IR → x86-64 translation (~259 lines)
 - `Backend/X86/Correct.agda` - Correctness proofs (~4500+ lines)
 
-**Not Yet Started:**
-- `Backend/RiscV64/` - Entire directory
+**COMPLETED for RISC-V 64:**
+- `Backend/RiscV64/Syntax.agda` - Instruction set definition (~371 lines) ✓
+- `Backend/RiscV64/Semantics.agda` - Operational semantics (~621 lines) ✓
+- `Backend/RiscV64/CodeGen.agda` - IR → RISC-V translation (~297 lines) ✓
+- `Backend/RiscV64/Correct.agda` - Correctness proofs (~831 lines) ✓
+- `EndToEnd.agda` - Updated with `compilation-correct-riscv` ✓
+- `Makefile` - Added `make riscv` target ✓
 
 ## Lessons Learned from x86-64 Verification
 
