@@ -3222,6 +3222,13 @@ mutual
         mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) rsp) ≡ just (encode (eval f x))
 
       -- Phase 5: Final instructions - store g result, return pair pointer
+      -- Instructions: mov [rsp+8], rax (store g result) ; mov rax, rsp (return pair pointer)
+
+      -- The final prefix is prefix-g ++ code-g
+      -- After Phase 4, pc s-after-g = length prefix-g + len-g
+      prefix-final : Program
+      prefix-final = prefix-g ++ code-g
+
       postulate
         s-final : State
         exec-final : exec 2 prog s-after-g ≡ just s-final
@@ -3234,18 +3241,34 @@ mutual
 
       -- Chain all phases together
       -- Total steps: 2 + len-f + 2 + len-g + 2 = 6 + len-f + len-g = compile-length ⟨ f , g ⟩
-      -- The chaining proof requires careful arithmetic manipulation.
-      -- We postulate the overall chaining since the individual phase postulates
-      -- document the key properties at each step.
+      -- The chaining proof requires exec-chain with all phase exec proofs
       postulate
         exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
 
       -- PC final proof: length prefix + 6 + len-f + len-g = length prefix + compile-length ⟨ f , g ⟩
       -- compile-length ⟨ f , g ⟩ = (6 + len-f) + len-g
-      -- The arithmetic is: length prefix + 6 + len-f + len-g = length prefix + ((6 + len-f) + len-g)
-      -- Postulated since the proof requires careful associativity management
-      postulate
-        pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+      -- pc-after-final gives: pc s-final = length prefix + 6 + len-f + len-g
+      -- Need to show this equals: length prefix + ((6 + len-f) + len-g)
+
+      -- Helper: length prefix + 6 + len-f + len-g = length prefix + (6 + len-f) + len-g
+      -- With left-associativity: ((length prefix + 6) + len-f) + len-g
+      -- +-assoc (length prefix) 6 len-f : ((length prefix) + 6) + len-f ≡ (length prefix) + (6 + len-f)
+      pc-arith-step1 : length prefix +ℕ 6 +ℕ len-f +ℕ len-g ≡ length prefix +ℕ (6 +ℕ len-f) +ℕ len-g
+      pc-arith-step1 = begin
+        length prefix +ℕ 6 +ℕ len-f +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 6 len-f) ⟩
+        (length prefix +ℕ (6 +ℕ len-f)) +ℕ len-g
+          ≡⟨ refl ⟩
+        length prefix +ℕ (6 +ℕ len-f) +ℕ len-g
+          ∎
+
+      -- Helper: length prefix + (6 + len-f) + len-g = length prefix + ((6 + len-f) + len-g)
+      -- +-assoc a b c : (a + b) + c ≡ a + (b + c)
+      pc-arith-step2 : length prefix +ℕ (6 +ℕ len-f) +ℕ len-g ≡ length prefix +ℕ ((6 +ℕ len-f) +ℕ len-g)
+      pc-arith-step2 = +-assoc (length prefix) (6 +ℕ len-f) len-g
+
+      pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+      pc-final = trans pc-after-final (trans pc-arith-step1 pc-arith-step2)
 
       -- Final rax value: uses encode-pair-construct
       rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
