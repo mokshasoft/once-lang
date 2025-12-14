@@ -37,19 +37,19 @@
 - `exec-pair-setup-at` helper executes `sub rsp, 16; mov r14, rdi`
 - All setup properties derived from helper
 
-**Phase 2 (execute f)**: Mostly proven (2 postulates)
+**Phase 2 (execute f)**: Mostly proven (1 postulate)
 - Recursive call to `run-ir-at-offset f` works
-- `prog-eq-f`: program equality (list associativity - can be proven)
-- `r14-preserved-f`: r14 preservation (semantic property)
+- `prog-eq-f`: PROVEN using inner-pair-suffix-eq and ++-assoc
+- `r14-preserved-f`: r14 preservation (semantic property) - postulated
 
 **Phase 3 (middle)**: Structure added (6 postulates)
 - `prefix-mid` and `pc-for-mid` conversions proven
 - Instruction execution postulated
 
-**Phase 4 (execute g)**: Mostly proven (2 postulates)
+**Phase 4 (execute g)**: Mostly proven (1 postulate)
 - Recursive call to `run-ir-at-offset g` works
-- `prog-eq-g`: program equality (list associativity - can be proven)
-- `mem-fst-preserved`: memory preservation (semantic property)
+- `prog-eq-g`: PROVEN using suffix-f-rewrite and prefix-g-expand helpers
+- `mem-fst-preserved`: memory preservation (semantic property) - postulated
 
 **Phase 5 (final)**: Structure added, pc-final proven (7 postulates)
 - `pc-final` proven via arithmetic manipulation
@@ -58,7 +58,7 @@
 **Chaining**: 1 postulate
 - `exec-all` combines all phases
 
-Total remaining postulates in pair: **18** (was 32+)
+Total remaining postulates in pair: **16** (was 32+, ~50% reduction)
 
 ### Older proofs (still referenced)
 - `run-case-inl-id` / `run-case-inr-id` - case analysis with f = g = id
@@ -332,6 +332,80 @@ The main theorem `run-generator` remains postulated. The path to proving it woul
 | 3.1 | run-apply-seq | Very High | 1-2 days |
 
 **Total**: ~1 week of focused work
+
+---
+
+## Lessons Learned
+
+### 1. List Associativity (`++` is Right-Associative)
+
+**Key insight**: In Agda's standard library, `_++_` is declared as `infixr 5`, meaning:
+```agda
+prefix ++ X ++ suffix  =  prefix ++ (X ++ suffix)   -- NOT (prefix ++ X) ++ suffix
+```
+
+**Impact on proofs**: When proving program equality like:
+```agda
+prog ≡ prefix ++ instr₁ ∷ instr₂ ∷ rest
+```
+Use the pattern:
+```agda
+suffix-eq : compile-x86 ir ++ suffix ≡ instr₁ ∷ instr₂ ∷ rest
+suffix-eq = cong (_++ suffix) compile-x86-ir-eq
+
+prog-eq : prog ≡ prefix ++ instr₁ ∷ instr₂ ∷ rest
+prog-eq = cong (prefix ++_) suffix-eq
+```
+
+**Common error**: Trying to use `++-assoc` to restructure `prefix ++ X ++ suffix` fails because it's already right-associated.
+
+### 2. Arithmetic Associativity Direction
+
+**`+-assoc` direction**: The lemma is:
+```agda
++-assoc : ∀ m n o → (m + n) + o ≡ m + (n + o)
+```
+
+**Common mistake**: Adding unnecessary `sym` calls. When you have `(a + b) + c` and want `a + (b + c)`, use `+-assoc a b c` directly (no `sym`).
+
+**Example from pc-final proof**:
+```agda
+-- Need: length prefix +ℕ 6 +ℕ len-f +ℕ len-g ≡ length prefix +ℕ ((6 +ℕ len-f) +ℕ len-g)
+pc-arith-step1 : ... ≡ length prefix +ℕ (6 +ℕ len-f) +ℕ len-g
+pc-arith-step1 = cong (_+ℕ len-g) (+-assoc (length prefix) 6 len-f)
+
+pc-arith-step2 : ... ≡ length prefix +ℕ ((6 +ℕ len-f) +ℕ len-g)
+pc-arith-step2 = +-assoc (length prefix) (6 +ℕ len-f) len-g
+```
+
+### 3. `compile-length-correct` is Essential
+
+The lemma `compile-length-correct : length (compile-x86 ir) ≡ compile-length ir` is crucial for:
+- Converting between runtime list lengths and static `compile-length` values
+- Proving PC calculations match expected offsets
+- Establishing prefix length equality for recursive calls
+
+### 4. Helper Functions Simplify Multi-Instruction Sequences
+
+For instruction sequences like `sub rsp, 16; mov r14, rdi`, create dedicated helpers:
+```agda
+exec-pair-setup-at : ∀ prefix suffix s →
+  ... →
+  exec 2 (prefix ++ sub (reg rsp) (imm 16) ∷ mov (reg r14) (reg rdi) ∷ suffix) s ≡ just s-after-setup
+```
+
+Benefits:
+- Encapsulates instruction execution details
+- Properties (pc, registers) derived from helper output
+- Reusable across different proof contexts
+
+### 5. Recursive Calls Need Careful Prefix/Suffix Setup
+
+For `run-ir-at-offset f prefix-f suffix-f`:
+- `prefix-f` must include all instructions before `compile-x86 f`
+- `suffix-f` must include all instructions after `compile-x86 f`
+- Program equality `prog ≡ prefix-f ++ compile-x86 f ++ suffix-f` needed
+- PC conversion: `pc-for-f : pc s-before ≡ length prefix-f` (in terms of compile-length)
 
 ---
 

@@ -3081,10 +3081,37 @@ mutual
       -- gives us a state with rax = encode (eval f x)
 
       -- Program equality: prog = prefix-f ++ code-f ++ suffix-f
-      -- This follows from associativity of ++ and the structure of compile-x86 ⟨ f , g ⟩
-      -- The proof is complex due to nested ++ and ∷ operators, so postulated for now
-      postulate
-        prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      -- Proof strategy:
+      -- 1. Show inner-pair ++ suffix ≡ code-f ++ suffix-f via ++-assoc
+      -- 2. Use cong to lift to prefix level
+      -- 3. Use sym ++-assoc to get prefix-f form
+
+      -- Helper: inner-pair ++ suffix ≡ code-f ++ suffix-f
+      -- inner-pair = code-f ++ store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ []
+      -- suffix-f = store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ suffix
+      inner-pair-suffix-eq : inner-pair ++ suffix ≡ code-f ++ suffix-f
+      inner-pair-suffix-eq = trans step1 (cong (code-f ++_) step2)
+        where
+          -- Step 1: (code-f ++ rest) ++ suffix ≡ code-f ++ (rest ++ suffix)
+          step1 : inner-pair ++ suffix ≡ code-f ++ ((store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ []) ++ suffix)
+          step1 = ++-assoc code-f (store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ []) suffix
+
+          -- Step 2: (store-f ∷ restore-input ∷ ...) ++ suffix ≡ suffix-f
+          -- The cons parts are definitional, only need ++-assoc for code-g
+          step2 : (store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ []) ++ suffix ≡ suffix-f
+          step2 = cong (λ x → store-f ∷ restore-input ∷ x)
+                       (++-assoc code-g (store-g ∷ return-pair ∷ []) suffix)
+
+      prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      prog-eq-f = begin
+        prog
+          ≡⟨ refl ⟩
+        prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+          ≡⟨ cong (λ x → prefix ++ setup-sub ∷ setup-save ∷ x) inner-pair-suffix-eq ⟩
+        prefix ++ setup-sub ∷ setup-save ∷ (code-f ++ suffix-f)
+          ≡⟨ sym (++-assoc prefix (setup-sub ∷ setup-save ∷ []) (code-f ++ suffix-f)) ⟩
+        prefix-f ++ code-f ++ suffix-f
+          ∎
 
       -- Convert pc-after-setup to length prefix-f
       pc-for-f : pc s-after-setup ≡ length prefix-f
@@ -3178,8 +3205,62 @@ mutual
           ∎
 
       -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
-      postulate
-        prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+      -- Proof strategy:
+      -- 1. We already have inner-pair ++ suffix ≡ code-f ++ suffix-f (from inner-pair-suffix-eq)
+      -- 2. suffix-f = store-f ∷ restore-input ∷ (code-g ++ suffix-g) definitionally
+      -- 3. So inner-pair ++ suffix ≡ code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g)
+      -- 4. prefix-g = prefix-f ++ code-f ++ [store-f; restore-input]
+      -- 5. Use ++-assoc to show prefix-g ++ code-g ++ suffix-g equals the RHS
+
+      -- Helper: suffix-f ≡ store-f ∷ restore-input ∷ (code-g ++ suffix-g)
+      -- This is definitional since both parse to the same expression
+      suffix-f-rewrite : suffix-f ≡ store-f ∷ restore-input ∷ (code-g ++ suffix-g)
+      suffix-f-rewrite = refl
+
+      -- Helper: prefix-g ++ X ≡ prefix-f ++ (code-f ++ [store-f; restore-input] ++ X)
+      -- Using multiple ++-assoc applications
+      prefix-g-expand : ∀ X → prefix-g ++ X ≡ prefix-f ++ (code-f ++ store-f ∷ restore-input ∷ X)
+      prefix-g-expand X = begin
+        prefix-g ++ X
+          ≡⟨ refl ⟩
+        (prefix-f ++ code-f ++ store-f ∷ restore-input ∷ []) ++ X
+          ≡⟨ ++-assoc prefix-f (code-f ++ store-f ∷ restore-input ∷ []) X ⟩
+        prefix-f ++ ((code-f ++ store-f ∷ restore-input ∷ []) ++ X)
+          ≡⟨ cong (prefix-f ++_) (++-assoc code-f (store-f ∷ restore-input ∷ []) X) ⟩
+        prefix-f ++ (code-f ++ ((store-f ∷ restore-input ∷ []) ++ X))
+          ≡⟨ refl ⟩  -- (a ∷ b ∷ []) ++ X = a ∷ b ∷ X definitionally
+        prefix-f ++ (code-f ++ store-f ∷ restore-input ∷ X)
+          ∎
+
+      -- Helper: prefix-f ++ Y ≡ prefix ++ setup-sub ∷ setup-save ∷ Y
+      -- Uses ++-assoc on prefix and the setup list
+      prefix-f-expand : ∀ Y → prefix-f ++ Y ≡ prefix ++ setup-sub ∷ setup-save ∷ Y
+      prefix-f-expand Y = begin
+        prefix-f ++ Y
+          ≡⟨ refl ⟩
+        (prefix ++ setup-sub ∷ setup-save ∷ []) ++ Y
+          ≡⟨ ++-assoc prefix (setup-sub ∷ setup-save ∷ []) Y ⟩
+        prefix ++ ((setup-sub ∷ setup-save ∷ []) ++ Y)
+          ≡⟨ refl ⟩  -- (a ∷ b ∷ []) ++ Y = a ∷ b ∷ Y definitionally
+        prefix ++ setup-sub ∷ setup-save ∷ Y
+          ∎
+
+      prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+      prog-eq-g = begin
+        prog
+          ≡⟨ refl ⟩
+        prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+          ≡⟨ cong (λ x → prefix ++ setup-sub ∷ setup-save ∷ x) inner-pair-suffix-eq ⟩
+        prefix ++ setup-sub ∷ setup-save ∷ (code-f ++ suffix-f)
+          ≡⟨ cong (λ x → prefix ++ setup-sub ∷ setup-save ∷ (code-f ++ x)) suffix-f-rewrite ⟩
+        prefix ++ setup-sub ∷ setup-save ∷ (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))
+          ≡⟨ sym (prefix-f-expand (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))) ⟩
+        prefix-f ++ (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))
+          ≡⟨ sym (prefix-g-expand (code-g ++ suffix-g)) ⟩
+        prefix-g ++ (code-g ++ suffix-g)
+          ≡⟨ refl ⟩  -- ++ is right-associative
+        prefix-g ++ code-g ++ suffix-g
+          ∎
 
       -- Convert pc-after-middle to length prefix-g
       pc-for-g : pc s-after-middle ≡ length prefix-g
