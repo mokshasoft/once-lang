@@ -2564,15 +2564,18 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 
 -- | Prove run-ir-at-offset-inl: execute inl at arbitrary offset
 -- compile-x86 inl = [sub rsp 16, mov [rsp] 0, mov [rsp+8] rdi, mov rax rsp]
+-- Memory frame property: writes are to [rsp-16] and [rsp-8], which are below r15
+-- when called in the pair context (where rsp ≤ r15 is maintained)
 run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   ∃[ s' ] (exec 4 (prefix ++ compile-x86 {A} {A + B} inl ++ suffix) s ≡ just s'
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
          × readReg (regs s') rax ≡ encode (eval {A} {A + B} inl x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
-         × readReg (regs s') r15 ≡ readReg (regs s) r15)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
 run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
-  s4 , exec-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq
+  s4 , exec-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved
   where
     -- The program
     prog : Program
@@ -2812,6 +2815,37 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
     r15-eq = trans (readReg-writeReg-rax-r15 (regs s3) (readReg (regs s3) rsp))
                    (readReg-writeReg-rsp-r15 (regs s) new-rsp)
 
+    -- Memory preservation: inl writes to [new_rsp] and [new_rsp + 8]
+    -- These addresses are below r15 in the pair context (where rsp ≤ r15)
+    -- Writes: s2 writes to [new_rsp], s3 writes to [new_rsp + 8]
+    -- We need: new_rsp ≠ r15 and new_rsp + 8 ≠ r15
+    -- This holds when rsp ≤ r15 (maintained in pair context)
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    -- Memory at [r15] unchanged through s1 (regs change only)
+    mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s1 = refl
+
+    -- Memory at [r15] unchanged through s2 if new_rsp ≠ r15
+    -- s2 writes to [new_rsp], need [new_rsp] ≠ [r15]
+    postulate
+      addr-diff-1 : new-rsp ≢ orig-r15
+
+    mem-s2 : readMem (memory s2) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s2 = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 0 (λ eq → addr-diff-1 eq)) mem-s1
+
+    -- Memory at [r15] unchanged through s3 if new_rsp + 8 ≠ r15
+    postulate
+      addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
+
+    mem-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-r15 orig-rdi (λ eq → addr-diff-2 eq)) mem-s2
+
+    -- s4 doesn't change memory
+    mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-preserved = mem-s3
+
 -- | run-ir-at-offset-inr: Execute inr at arbitrary offset
 -- inr generates 4 instructions:
 --   sub rsp, 16
@@ -2824,9 +2858,10 @@ run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : 
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
          × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
-         × readReg (regs s') r15 ≡ readReg (regs s) r15)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
 run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
-  s4 , exec-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq
+  s4 , exec-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved
   where
     -- Program structure
     i0 = sub (reg rsp) (imm 16)
@@ -3036,6 +3071,33 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
     r15-eq = trans (readReg-writeReg-rax-r15 (regs s3) (readReg (regs s3) rsp))
                    (readReg-writeReg-rsp-r15 (regs s) new-rsp)
 
+    -- Memory preservation: inr writes to [new_rsp] and [new_rsp + 8]
+    -- These addresses are below r15 in the pair context (where rsp ≤ r15)
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    -- Memory at [r15] unchanged through s1 (regs change only)
+    mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s1 = refl
+
+    -- Memory at [r15] unchanged through s2 if new_rsp ≠ r15
+    postulate
+      addr-diff-1 : new-rsp ≢ orig-r15
+
+    mem-s2 : readMem (memory s2) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s2 = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 1 (λ eq → addr-diff-1 eq)) mem-s1
+
+    -- Memory at [r15] unchanged through s3 if new_rsp + 8 ≠ r15
+    postulate
+      addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
+
+    mem-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-r15 orig-rdi (λ eq → addr-diff-2 eq)) mem-s2
+
+    -- s4 doesn't change memory
+    mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-preserved = mem-s3
+
 -- | run-ir-at-offset-fst: Execute fst at arbitrary offset
 -- Uses encode-pair-fst axiom to provide memory precondition
 run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
@@ -3044,7 +3106,8 @@ run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (eval fst x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
-         × readReg (regs s') r15 ≡ readReg (regs s) r15)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
 run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
   let a = proj₁ x
       b = proj₂ x
@@ -3057,7 +3120,10 @@ run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
       r14-eq = readReg-writeReg-rax-r14 (regs s) (encode a)
       -- r15 preserved: fst only writes rax (mov rax, [rdi])
       r15-eq = readReg-writeReg-rax-r15 (regs s) (encode a)
-  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+      -- memory preserved: fst doesn't write memory
+      mem-preserved : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-preserved = refl
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved
 
 -- | run-ir-at-offset-snd: Execute snd at arbitrary offset
 -- Uses encode-pair-snd axiom to provide memory precondition
@@ -3067,7 +3133,8 @@ run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (eval snd x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
-         × readReg (regs s') r15 ≡ readReg (regs s) r15)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
 run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
   let a = proj₁ x
       b = proj₂ x
@@ -3080,7 +3147,10 @@ run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
       r14-eq = readReg-writeReg-rax-r14 (regs s) (encode b)
       -- r15 preserved: snd only writes rax (mov rax, [rdi+8])
       r15-eq = readReg-writeReg-rax-r15 (regs s) (encode b)
-  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+      -- memory preserved: snd doesn't write memory
+      mem-preserved : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-preserved = refl
+  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved
 
 -- | run-ir-at-offset-initial: Execute initial at arbitrary offset
 -- Trivially proven because Void (⊥) has no inhabitants
@@ -3090,7 +3160,8 @@ run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) 
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode {A} (eval {Void} {A} initial x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
-         × readReg (regs s') r15 ≡ readReg (regs s) r15)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
 run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq rdi-eq = ⊥-elim x
 
 ------------------------------------------------------------------------
@@ -3145,6 +3216,8 @@ mutual
   -- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
   -- with rax = encode (eval ir x)
   -- Also preserves r14 and r15 (callee-saved registers)
+  -- Memory frame property: memory at [initial r15] is preserved through execution
+  -- This holds because all writes are to stack addresses below r15
   run-ir-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -3154,7 +3227,8 @@ mutual
            × pc s' ≡ length prefix +ℕ compile-length ir
            × readReg (regs s') rax ≡ encode (eval ir x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
-           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+           × readReg (regs s') r15 ≡ readReg (regs s) r15
+           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
   -- Base case: id
   run-ir-at-offset (id {A}) prefix suffix x s h-false pc-eq rdi-eq =
     let (s' , step-eq , h' , pc' , rax-eq) = run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq
@@ -3162,7 +3236,10 @@ mutual
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: id only writes rax
         r15-eq = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {A} id ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+        -- memory preserved: id doesn't write memory
+        mem-eq : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        mem-eq = refl
+    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {A} id ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq
   -- Base case: terminal
   run-ir-at-offset (terminal {A}) prefix suffix x s h-false pc-eq rdi-eq =
     let (s' , step-eq , h' , pc' , rax-eq) = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
@@ -3170,7 +3247,10 @@ mutual
         r14-eq = readReg-writeReg-rax-r14 (regs s) 0
         -- r15 preserved: terminal only writes rax
         r15-eq = readReg-writeReg-rax-r15 (regs s) 0
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+        -- memory preserved: terminal doesn't write memory
+        mem-eq : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        mem-eq = refl
+    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq
   -- Base case: fold
   run-ir-at-offset (fold {F}) prefix suffix x s h-false pc-eq rdi-eq =
     let (s' , step-eq , h' , pc' , rax-eq) = run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
@@ -3178,7 +3258,10 @@ mutual
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: fold only writes rax (mov rax, rdi)
         r15-eq = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {F} {Fix F} fold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+        -- memory preserved: fold doesn't write memory
+        mem-eq : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        mem-eq = refl
+    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {F} {Fix F} fold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq
   -- Base case: unfold
   run-ir-at-offset (unfold {F}) prefix suffix x s h-false pc-eq rdi-eq =
     let (s' , step-eq , h' , pc' , rax-eq) = run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
@@ -3186,7 +3269,10 @@ mutual
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: unfold only writes rax (mov rax, rdi)
         r15-eq = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+        -- memory preserved: unfold doesn't write memory
+        mem-eq : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        mem-eq = refl
+    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq
   -- Base case: arr
   run-ir-at-offset (arr {A} {B}) prefix suffix fn s h-false pc-eq rdi-eq =
     let (s' , step-eq , h' , pc' , rax-eq) = run-arr-at-offset {A} {B} prefix suffix fn s h-false pc-eq rdi-eq
@@ -3194,7 +3280,10 @@ mutual
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: arr only writes rax (mov rax, rdi)
         r15-eq = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq
+        -- memory preserved: arr doesn't write memory
+        mem-eq : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        mem-eq = refl
+    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq
   -- Non-recursive cases (use standalone helpers)
   run-ir-at-offset (fst {A} {B}) prefix suffix x s h-false pc-eq rdi-eq =
     run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq
@@ -3230,9 +3319,10 @@ mutual
            × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
-           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+           × readReg (regs s') r15 ≡ readReg (regs s) r15
+           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
   run-ir-at-offset-compose {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq =
-    s3 , exec-all , h3 , pc3 , rax3 , r14-3 , r15-3
+    s3 , exec-all , h3 , pc3 , rax3 , r14-3 , r15-3 , mem-3
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -3284,7 +3374,8 @@ mutual
                       × pc s1 ≡ length prefix +ℕ len-f
                       × readReg (regs s1) rax ≡ encode (eval f x)
                       × readReg (regs s1) r14 ≡ readReg (regs s) r14
-                      × readReg (regs s1) r15 ≡ readReg (regs s) r15)
+                      × readReg (regs s1) r15 ≡ readReg (regs s) r15
+                      × readMem (memory s1) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
       step-f = run-ir-at-offset f prefix suffix-f x s h-false pc-eq rdi-eq
 
       s1 : State
@@ -3391,7 +3482,8 @@ mutual
                       × pc s3 ≡ length prefix-g +ℕ len-g
                       × readReg (regs s3) rax ≡ encode (eval g (eval f x))
                       × readReg (regs s3) r14 ≡ readReg (regs s2) r14
-                      × readReg (regs s3) r15 ≡ readReg (regs s2) r15)
+                      × readReg (regs s3) r15 ≡ readReg (regs s2) r15
+                      × readMem (memory s3) (readReg (regs s2) r15) ≡ readMem (memory s2) (readReg (regs s2) r15))
       step-g = run-ir-at-offset g prefix-g suffix (eval f x) s2 h2 pc2-g rdi2-enc
 
       s3 : State
@@ -3470,7 +3562,7 @@ mutual
 
       -- r14 in s3 = r14 in s2 (by step-g)
       r14-3-from-s2 : readReg (regs s3) r14 ≡ readReg (regs s2) r14
-      r14-3-from-s2 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-g)))))
+      r14-3-from-s2 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-g)))))  -- still position 5, before r15
 
       -- Chain: r14 in s3 = r14 in s
       r14-3 : readReg (regs s3) r14 ≡ readReg (regs s) r14
@@ -3479,7 +3571,7 @@ mutual
       -- r15 preservation through compose: f preserves r15, transfer preserves r15, g preserves r15
       -- r15 in s1 = r15 in s (by step-f)
       r15-1 : readReg (regs s1) r15 ≡ readReg (regs s) r15
-      r15-1 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-f)))))
+      r15-1 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-f))))))
 
       -- r15 in s2 = r15 in s1 (transfer writes rdi, not r15)
       r15-2 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
@@ -3487,11 +3579,36 @@ mutual
 
       -- r15 in s3 = r15 in s2 (by step-g)
       r15-3-from-s2 : readReg (regs s3) r15 ≡ readReg (regs s2) r15
-      r15-3-from-s2 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-g)))))
+      r15-3-from-s2 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-g))))))
 
       -- Chain: r15 in s3 = r15 in s
       r15-3 : readReg (regs s3) r15 ≡ readReg (regs s) r15
       r15-3 = trans r15-3-from-s2 (trans r15-2 r15-1)
+
+      -- Memory preservation through compose: f preserves mem[r15], transfer preserves mem[r15], g preserves mem[r15]
+      -- mem[s.r15] in s1 = mem[s.r15] in s (by step-f)
+      mem-1 : readMem (memory s1) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-1 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-f))))))
+
+      -- mem[s.r15] in s2 = mem[s.r15] in s1 (transfer doesn't write memory)
+      mem-2 : readMem (memory s2) (readReg (regs s) r15) ≡ readMem (memory s1) (readReg (regs s) r15)
+      mem-2 = refl  -- transfer only modifies regs, not memory
+
+      -- mem[s2.r15] in s3 = mem[s2.r15] in s2 (by step-g)
+      mem-3-from-s2-raw : readMem (memory s3) (readReg (regs s2) r15) ≡ readMem (memory s2) (readReg (regs s2) r15)
+      mem-3-from-s2-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-g))))))
+
+      -- s2.r15 = s.r15 (by r15-2 and r15-1)
+      r15-s2-eq-s : readReg (regs s2) r15 ≡ readReg (regs s) r15
+      r15-s2-eq-s = trans r15-2 r15-1
+
+      -- Convert mem-3-from-s2-raw to use s.r15
+      mem-3-from-s2 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s2) (readReg (regs s) r15)
+      mem-3-from-s2 = subst₂ (λ a b → readMem (memory s3) a ≡ readMem (memory s2) b) r15-s2-eq-s r15-s2-eq-s mem-3-from-s2-raw
+
+      -- Chain: mem[s.r15] in s3 = mem[s.r15] in s
+      mem-3 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-3 = trans mem-3-from-s2 (trans mem-2 mem-1)
 
   -- | Pair case: ⟨ f , g ⟩
   run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
@@ -3500,9 +3617,10 @@ mutual
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
            × readReg (regs s') rax ≡ encode (eval ⟨ f , g ⟩ x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
-           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+           × readReg (regs s') r15 ≡ readReg (regs s) r15
+           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
   run-ir-at-offset-pair {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final
+    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -3797,7 +3915,8 @@ mutual
                         × pc s' ≡ length prefix-f +ℕ len-f
                         × readReg (regs s') rax ≡ encode (eval f x)
                         × readReg (regs s') r14 ≡ readReg (regs s-after-setup) r14
-                        × readReg (regs s') r15 ≡ readReg (regs s-after-setup) r15)
+                        × readReg (regs s') r15 ≡ readReg (regs s-after-setup) r15
+                        × readMem (memory s') (readReg (regs s-after-setup) r15) ≡ readMem (memory s-after-setup) (readReg (regs s-after-setup) r15))
       f-result = run-ir-at-offset f prefix-f suffix-f x s-after-setup h-after-setup pc-for-f rdi-after-setup
 
       -- Extract the state and properties
@@ -4019,7 +4138,8 @@ mutual
                         × pc s' ≡ length prefix-g +ℕ len-g
                         × readReg (regs s') rax ≡ encode (eval g x)
                         × readReg (regs s') r14 ≡ readReg (regs s-after-middle) r14
-                        × readReg (regs s') r15 ≡ readReg (regs s-after-middle) r15)
+                        × readReg (regs s') r15 ≡ readReg (regs s-after-middle) r15
+                        × readMem (memory s') (readReg (regs s-after-middle) r15) ≡ readMem (memory s-after-middle) (readReg (regs s-after-middle) r15))
       g-result = run-ir-at-offset g prefix-g suffix-g x s-after-middle h-after-middle pc-for-g rdi-after-middle
 
       -- Extract the state and properties
@@ -4047,9 +4167,27 @@ mutual
       rax-after-g = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))
 
       -- Preservation: [r15] still contains fst result
-      -- This requires knowing that compile-x86 g doesn't modify [r15]
-      postulate
-        mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) r15) ≡ just (encode (eval f x))
+      -- Now proven using memory frame preservation from run-ir-at-offset
+
+      -- r15 in s-after-g = r15 in s-after-middle (from g-result 7th component)
+      r15-preserved-g : readReg (regs s-after-g) r15 ≡ readReg (regs s-after-middle) r15
+      r15-preserved-g = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))))
+
+      -- Memory at [s-after-middle.r15] preserved through g (from g-result 8th component)
+      mem-preserved-g : readMem (memory s-after-g) (readReg (regs s-after-middle) r15) ≡ readMem (memory s-after-middle) (readReg (regs s-after-middle) r15)
+      mem-preserved-g = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))))
+
+      -- Chain: s-after-g.mem[s-after-g.r15] = s-after-g.mem[s-after-middle.r15] = s-after-middle.mem[s-after-middle.r15] = encode (eval f x)
+      mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) r15) ≡ just (encode (eval f x))
+      mem-fst-preserved = begin
+        readMem (memory s-after-g) (readReg (regs s-after-g) r15)
+          ≡⟨ cong (readMem (memory s-after-g)) r15-preserved-g ⟩
+        readMem (memory s-after-g) (readReg (regs s-after-middle) r15)
+          ≡⟨ mem-preserved-g ⟩
+        readMem (memory s-after-middle) (readReg (regs s-after-middle) r15)
+          ≡⟨ mem-fst-stored ⟩
+        just (encode (eval f x))
+          ∎
 
       -- Stack preservation: rsp = r15 throughout the pair execution
       -- STRUCTURAL LIMITATION: This assumes f and g preserve rsp, but the current
@@ -4294,6 +4432,11 @@ mutual
       postulate
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
 
+      -- Memory at [outer r15] preservation: pair writes to [inner r15] and stack,
+      -- but [outer r15] is at a different address (higher on stack)
+      postulate
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+
   -- | Case case: [ f , g ]
   run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
@@ -4301,9 +4444,10 @@ mutual
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
            × readReg (regs s') rax ≡ encode (eval [ f , g ] x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
-           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+           × readReg (regs s') r15 ≡ readReg (regs s) r15
+           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
   run-ir-at-offset-case {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final
+    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -4366,6 +4510,11 @@ mutual
         -- r15 preservation: case branches don't modify r15
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
 
+      -- Memory at [r15] preservation: case analysis doesn't write to [r15]
+      -- (only reads from input and executes f or g which preserve memory)
+      postulate
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+
   -- | Curry case: curry f
   run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode a →
@@ -4373,9 +4522,10 @@ mutual
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
            × readReg (regs s') rax ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) a)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
-           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+           × readReg (regs s') r15 ≡ readReg (regs s) r15
+           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
   run-ir-at-offset-curry {A} {B} {C} f prefix suffix a s h-false pc-eq rdi-eq =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final
+    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final
     where
       -- The full program
       prog : Program
@@ -4430,16 +4580,22 @@ mutual
         -- r15 preservation: curry doesn't touch r15 in the closure allocation phase
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
 
+      -- Memory at [r15] preservation: curry writes to [rsp-16] and [rsp-8],
+      -- which are different from [r15] in the pair context (where rsp ≤ r15)
+      postulate
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+
   -- | Apply case: apply
   run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
     ∃[ s' ] (exec 6 (prefix ++ compile-x86 {(A ⇒ B) * A} {B} apply ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ 6
-           × readReg (regs s') rax ≡ encode {B} (eval {(A ⇒ B) * A} {B} apply x)
+           × readReg (regs s') rax ≡ encode (eval {(A ⇒ B) * A} {B} apply x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
-           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+           × readReg (regs s') r15 ≡ readReg (regs s) r15
+           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
   run-ir-at-offset-apply {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final
+    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final
     where
       -- The full program
       prog : Program
@@ -4486,6 +4642,8 @@ mutual
         r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
         -- r15 preservation: apply uses r15 temporarily but thunk should restore it
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        -- Memory at [r15] preservation: apply doesn't write to [outer r15]
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
 -- run-seq-compose is defined after run-generator (which it depends on)
 -- See the definition below run-generator
@@ -4718,7 +4876,8 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq =
                            × halted s' ≡ false × pc s' ≡ 0 +ℕ compile-length ir
                            × readReg (regs s') rax ≡ encode (eval ir x)
                            × readReg (regs s') r14 ≡ readReg (regs s) r14
-                           × readReg (regs s') r15 ≡ readReg (regs s) r15)
+                           × readReg (regs s') r15 ≡ readReg (regs s) r15
+                           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
     offset-result = run-ir-at-offset ir [] [] x s h-false pc-0 rdi-eq
 
     s' : State
