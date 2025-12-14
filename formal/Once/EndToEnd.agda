@@ -9,12 +9,15 @@
 --
 -- The compilation pipeline is:
 --
---   SurfaceIR → desugar → CoreIR → optimize → CoreIR → compile-x86 → x86-64
+--   SurfaceIR → desugar → CoreIR → optimize → CoreIR → compile → Backend
 --
--- Main theorem:
---   compilation-correct : For any SurfaceIR program and input,
---     executing the generated x86-64 code produces the same result
---     as evaluating the source program.
+-- Supported backends:
+--   - x86-64: compile-x86 → x86-64 machine code
+--   - RISC-V 64: compile-riscv → RISC-V 64 machine code
+--
+-- Main theorems:
+--   compilation-correct-x86   : End-to-end for x86-64 backend
+--   compilation-correct-riscv : End-to-end for RISC-V 64 backend
 --
 ------------------------------------------------------------------------
 
@@ -29,11 +32,23 @@ open import Once.Surface.Desugar.Correct using (evalSurface; desugar-correct)
 open import Once.Optimize using (optimize)
 open import Once.Optimize.Correct using (optimize-correct)
 open import Once.Compile using (compile)
+-- x86-64 backend
 open import Once.Backend.X86.Syntax using (rax)
-open import Once.Backend.X86.Semantics using (State; run; readReg)
-open Once.Backend.X86.Semantics.State
+open import Once.Backend.X86.Semantics as X86 using ()
+  renaming (State to X86State; run to runX86; readReg to readRegX86)
+open X86.State renaming (regs to regsX86)
 open import Once.Backend.X86.CodeGen using (compile-x86)
-open import Once.Backend.X86.Correct using (codegen-x86-correct; initWithInput; encode)
+open import Once.Backend.X86.Correct as X86Correct using (codegen-x86-correct)
+  renaming (initWithInput to initWithInputX86; encode to encodeX86)
+
+-- RISC-V 64 backend
+open import Once.Backend.RiscV64.Syntax as RV64Syntax using (a0)
+open import Once.Backend.RiscV64.Semantics as RV64 using ()
+  renaming (State to RV64State; run to runRV64; readReg to readRegRV64)
+open RV64.State renaming (regs to regsRV64)
+open import Once.Backend.RiscV64.CodeGen using (compile-riscv)
+open import Once.Backend.RiscV64.Correct as RV64Correct using (codegen-riscv-correct)
+  renaming (initWithInput to initWithInputRV64; encode to encodeRV64)
 
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -65,7 +80,7 @@ compile-preserves-semantics ir x =
   where open Relation.Binary.PropositionalEquality.≡-Reasoning
 
 ------------------------------------------------------------------------
--- Phase 2: Code generation correctness
+-- Phase 2a: x86-64 Code Generation Correctness
 ------------------------------------------------------------------------
 
 -- | Code generation produces x86-64 code that computes the correct result.
@@ -73,16 +88,29 @@ compile-preserves-semantics ir x =
 -- For any Core IR term, the generated code when executed yields
 -- the encoded semantic value in rax.
 --
--- This is just re-exported from Once.Backend.X86.Correct.
--- We include it here for the complete picture.
---
-codegen-correct : ∀ {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-x86 ir) (initWithInput x) ≡ just s
-        × readReg (regs s) rax ≡ encode (eval ir x))
-codegen-correct = codegen-x86-correct
+codegen-correct-x86 : ∀ {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (runX86 (compile-x86 ir) (initWithInputX86 x) ≡ just s
+        × readRegX86 (regsX86 s) rax ≡ encodeX86 (eval ir x))
+codegen-correct-x86 = codegen-x86-correct
 
 ------------------------------------------------------------------------
--- Main Theorem: End-to-End Compilation Correctness
+-- Phase 2b: RISC-V 64 Code Generation Correctness
+------------------------------------------------------------------------
+
+-- | Code generation produces RISC-V 64 code that computes the correct result.
+--
+-- For any Core IR term, the generated code when executed yields
+-- the encoded semantic value in a0.
+--
+-- Key difference from x86: RISC-V uses a0 for both input AND output.
+--
+codegen-correct-riscv : ∀ {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (runRV64 (compile-riscv ir) (initWithInputRV64 x) ≡ just s
+        × readRegRV64 (regsRV64 s) a0 ≡ encodeRV64 (eval ir x))
+codegen-correct-riscv = codegen-riscv-correct
+
+------------------------------------------------------------------------
+-- Main Theorem: End-to-End Compilation Correctness (x86-64)
 ------------------------------------------------------------------------
 
 -- | For any SurfaceIR program and input, executing the generated x86-64
@@ -94,14 +122,14 @@ codegen-correct = codegen-x86-correct
 --
 -- COMPOSITION:
 --   compile-preserves-semantics : eval (compile ir) x ≡ evalSurface ir x
---   codegen-correct            : run asm init ≡ just s ∧ rax = encode (eval core x)
+--   codegen-correct-x86        : run asm init ≡ just s ∧ rax = encode (eval core x)
 --
 -- Together: rax = encode (evalSurface ir x)
 --
-compilation-correct : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-x86 (compile ir)) (initWithInput x) ≡ just s
-        × readReg (regs s) rax ≡ encode (evalSurface ir x))
-compilation-correct ir x =
+compilation-correct-x86 : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (runX86 (compile-x86 (compile ir)) (initWithInputX86 x) ≡ just s
+        × readRegX86 (regsX86 s) rax ≡ encodeX86 (evalSurface ir x))
+compilation-correct-x86 ir x =
   let
     -- Step 1: Core IR from compilation
     core = compile ir
@@ -116,30 +144,81 @@ compilation-correct ir x =
 
     -- Step 4: rax contains encoded evalSurface result
     -- encode (eval core x) ≡ encode (evalSurface ir x)
-    rax-surface-eq : readReg (regs s) rax ≡ encode (evalSurface ir x)
-    rax-surface-eq = trans rax-eq (cong encode semantics-eq)
+    rax-surface-eq : readRegX86 (regsX86 s) rax ≡ encodeX86 (evalSurface ir x)
+    rax-surface-eq = trans rax-eq (cong encodeX86 semantics-eq)
 
   in s , run-eq , rax-surface-eq
+
+-- | Legacy alias for backwards compatibility
+compilation-correct : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (runX86 (compile-x86 (compile ir)) (initWithInputX86 x) ≡ just s
+        × readRegX86 (regsX86 s) rax ≡ encodeX86 (evalSurface ir x))
+compilation-correct = compilation-correct-x86
+
+------------------------------------------------------------------------
+-- Main Theorem: End-to-End Compilation Correctness (RISC-V 64)
+------------------------------------------------------------------------
+
+-- | For any SurfaceIR program and input, executing the generated RISC-V 64
+-- code produces the same result as evaluating the source program.
+--
+-- More precisely: there exists a final machine state such that:
+--   1. Running the generated code reaches that state
+--   2. The a0 register contains the encoded result of source evaluation
+--
+-- COMPOSITION:
+--   compile-preserves-semantics : eval (compile ir) x ≡ evalSurface ir x
+--   codegen-correct-riscv      : run asm init ≡ just s ∧ a0 = encode (eval core x)
+--
+-- Together: a0 = encode (evalSurface ir x)
+--
+compilation-correct-riscv : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (runRV64 (compile-riscv (compile ir)) (initWithInputRV64 x) ≡ just s
+        × readRegRV64 (regsRV64 s) a0 ≡ encodeRV64 (evalSurface ir x))
+compilation-correct-riscv ir x =
+  let
+    -- Step 1: Core IR from compilation
+    core = compile ir
+
+    -- Step 2: Code generation correctness for the Core IR
+    (s , run-eq , a0-eq) = codegen-riscv-correct core x
+
+    -- Step 3: Link semantic equivalence
+    -- eval core x ≡ evalSurface ir x
+    semantics-eq : eval core x ≡ evalSurface ir x
+    semantics-eq = compile-preserves-semantics ir x
+
+    -- Step 4: a0 contains encoded evalSurface result
+    -- encode (eval core x) ≡ encode (evalSurface ir x)
+    a0-surface-eq : readRegRV64 (regsRV64 s) a0 ≡ encodeRV64 (evalSurface ir x)
+    a0-surface-eq = trans a0-eq (cong encodeRV64 semantics-eq)
+
+  in s , run-eq , a0-surface-eq
 
 ------------------------------------------------------------------------
 -- Summary of Trusted Assumptions
 ------------------------------------------------------------------------
 
--- The end-to-end theorem depends on the following assumptions
+-- The end-to-end theorems depend on the following assumptions
 -- (see Once.Postulates for full documentation):
 --
 -- P1: Function Extensionality (used in elaborate-correct, optimize-correct)
 --     ∀ x → f x ≡ g x → f ≡ g
 --
--- P2: x86-64 Value Encoding Axioms (used in codegen-correct)
+-- P2: Value Encoding Axioms (shared by both backends)
 --     - encode-pair-fst/snd
 --     - encode-inl/inr-tag/val
 --     - encode-fix-wrap/unwrap
 --     - encode-arr-identity
 --
--- P3: x86-64 Execution Helpers (used in codegen-correct)
+-- P3-x86: x86-64 Execution Helpers (used in codegen-correct-x86)
 --     - run-single-* for single instructions
 --     - run-*-seq for instruction sequences
+--
+-- P3-riscv: RISC-V 64 Execution Helpers (used in codegen-correct-riscv)
+--     - exec-one-step, exec-two-steps
+--     - run-inl-seq, run-inr-seq, etc.
+--     - readReg-writeReg-same-zero (x0 special case, never instantiated)
 --
 -- S1: Fixed Point Semantics (known limitation)
 --     - ⟦Fix F⟧ uses newtype wrapper, not true recursion
@@ -151,21 +230,28 @@ compilation-correct ir x =
 --
 
 ------------------------------------------------------------------------
--- What This Theorem Means
+-- What These Theorems Mean
 ------------------------------------------------------------------------
 
 -- Given:
 --   ir : SurfaceIR A B    -- A source program in Surface IR
 --   x  : ⟦ A ⟧            -- An input value
 --
--- The theorem compilation-correct guarantees:
+-- The theorem compilation-correct-x86 guarantees:
 --
 -- 1. The generated x86-64 code TERMINATES (reaches a final state s)
 --
 -- 2. The result in register rax EQUALS the encoded source semantics:
---      readReg s rax ≡ encode (evalSurface ir x)
+--      readRegX86 s rax ≡ encodeX86 (evalSurface ir x)
 --
--- This means the compiled binary computes exactly what the source
+-- The theorem compilation-correct-riscv guarantees:
+--
+-- 1. The generated RISC-V 64 code TERMINATES (reaches a final state s)
+--
+-- 2. The result in register a0 EQUALS the encoded source semantics:
+--      readRegRV64 s a0 ≡ encodeRV64 (evalSurface ir x)
+--
+-- Both theorems mean the compiled binary computes exactly what the source
 -- program specifies, modulo the encoding of values to machine words.
 --
 -- The encoding (Once values → machine words) is axiomatized in P2.
