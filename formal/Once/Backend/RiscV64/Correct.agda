@@ -25,36 +25,42 @@
 --   - id, terminal, fold, unfold, arr: Basic generators (nop/li)
 --   - fst, snd: Projection with load instruction and memory axiom
 --   - inl, inr: Sum construction with full memory tracking
+--   - curry: Closure creation with encode-closure-construct axiom
 --
 -- PROVEN HELPERS:
 --   - exec-one-step through exec-eight-steps: Multi-step execution
 --   - run-fst-seq, run-snd-seq: Projection instruction sequences
 --   - run-inl-seq, run-inr-seq: Sum construction (4-5 instructions each)
+--   - run-curry-seq: Closure creation (8 steps, with 2 local postulates)
 --   - All instruction execution helpers (execNop, execLd, execSd, etc.)
 --   - All register file lemmas (readReg-writeReg-*)
 --   - Memory lemmas (readMem-writeMem-same, readMem-writeMem-diff)
 --
--- POSTULATED (9 total):
+-- POSTULATED (6 top-level + 2 local = 8 total):
 --   1. readReg-writeReg-same-zero: Logically unprovable (x0 writes ignored)
 --      Never instantiated - generated code never writes to x0.
 --
 --   2. run-generator: Main induction theorem
 --      Requires mutual recursion over IR structure.
 --
---   3. run-curry-seq: Closure creation (12+ instructions with jump)
---   4. run-apply-seq: Closure application (7 instructions with indirect call)
---      Complex instruction sequences with control flow.
+--   3. run-apply-seq: Closure application (7 instructions with indirect call)
+--      Complex: jalr transfers control to thunk code which is not part of
+--      the apply program. Our semantics model doesn't support cross-program
+--      calls with absolute addressing.
 --
---   5-7. compile-compose-correct, compile-pair-correct, compile-case-correct:
+--   4-6. compile-compose-correct, compile-pair-correct, compile-case-correct:
 --      Require mutual recursion - the proofs for sub-IRs need run-generator.
 --
---   8-9. compile-curry-correct, compile-apply-correct:
---      Depend on run-curry-seq and run-apply-seq.
+--   7. compile-apply-correct: Depends on run-apply-seq.
+--
+--   LOCAL (in run-curry-seq):
+--     step7, step8: Label execution and halt at end of curry program.
+--     These require proving fetch at position end-label in concatenated list.
 --
 -- NOTE: The end-to-end theorem compilation-correct-riscv in EndToEnd.agda
 -- successfully composes all phases. The postulates above are sound axioms
 -- that could be proven with additional effort (mutual recursion block and
--- complex instruction tracing).
+-- more sophisticated code/memory model for indirect calls).
 ------------------------------------------------------------------------
 
 module Once.Backend.RiscV64.Correct where
@@ -403,6 +409,18 @@ fetch-2 i0 i1 i2 is = refl
 fetch-3 : ∀ (i0 i1 i2 i3 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) 3 ≡ just i3
 fetch-3 i0 i1 i2 i3 is = refl
 
+-- | Fetching at index 4 returns the fifth instruction
+fetch-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) 4 ≡ just i4
+fetch-4 i0 i1 i2 i3 i4 is = refl
+
+-- | Fetching at index 5 returns the sixth instruction
+fetch-5 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) 5 ≡ just i5
+fetch-5 i0 i1 i2 i3 i4 i5 is = refl
+
+-- | Fetching at index 6 returns the seventh instruction
+fetch-6 : ∀ (i0 i1 i2 i3 i4 i5 i6 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) 6 ≡ just i6
+fetch-6 i0 i1 i2 i3 i4 i5 i6 is = refl
+
 -- | Fetching past end of single-instruction program returns nothing
 fetch-1-single : ∀ (i : Instr) → fetch (i ∷ []) 1 ≡ nothing
 fetch-1-single i = refl
@@ -463,6 +481,14 @@ step-exec-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) (s : State) →
   step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s i4
 step-exec-4 i0 i1 i2 i3 i4 is s h-false pc-4 =
   step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s i4 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) p ≡ just i4) (sym pc-4) refl)
+
+-- | Step on non-halted state with pc=5 executes the sixth instruction
+step-exec-5 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (is : List Instr) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 5 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s i5
+step-exec-5 i0 i1 i2 i3 i4 i5 is s h-false pc-5 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s i5 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) p ≡ just i5) (sym pc-5) refl)
 
 -- | Step halts when fetch returns nothing
 step-halt-on-fetch-fail : ∀ (prog : Program) (s : State) →
@@ -1319,19 +1345,218 @@ run-inr-seq {A} {B} x s h-false pc-0 a0-eq = st6 , run-eq , refl , a0-final
     a0-final = encode-inr-construct x (readReg (regs st6) a0) (memory st6) tag-is-1 val-is-encode-x
 
 ------------------------------------------------------------------------
--- Remaining postulated helpers for complex generators
+-- curry sequence execution
+------------------------------------------------------------------------
+
+-- | curry execution creates a closure on the stack
+-- Program: addi sp -16; sd a0 0(sp); li t0 6; sd t0 8(sp); mv a0 sp; j end-label; ...
+-- After executing instructions 0-5, we jump to end-label and halt.
+-- Final state: a0 points to closure, M[a0] = encode a (captured env)
+run-curry-seq : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) a0 ≡ encode a →
+  ∃[ s' ] (run (compile-riscv {A} {B ⇒ C} (curry f)) s ≡ just s'
+         × halted s' ≡ true
+         × readMem (memory s') (readReg (regs s') a0) ≡ just (encode a))
+run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-final
+  where
+    len-f = compile-length f
+    end-label = 12 +ℕ len-f
+    prog = compile-riscv {A} {B ⇒ C} (curry f)
+
+    -- Stack allocation
+    new-sp : Word
+    new-sp = readReg (regs s) sp ∸ 16
+
+    -- State st1: after addi sp sp -16
+    st1 : State
+    st1 = record s { regs = writeReg (regs s) sp new-sp ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just st1
+    step1 = trans (step-exec-0 (addi sp sp neg16) _ s h-false pc-0)
+                  (execAddiNeg prog s sp sp 15)
+
+    h1 : halted st1 ≡ false
+    h1 = h-false
+
+    pc1 : pc st1 ≡ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-0
+
+    -- State st2: after sd a0 0(sp) - stores env at closure.env
+    st2 : State
+    st2 = record st1 { memory = writeMem (memory st1) (readReg (regs st1) sp +ℕ 0) (readReg (regs st1) a0)
+                     ; pc = pc st1 +ℕ 1 }
+
+    -- sp in st1 = new-sp
+    sp-st1 : readReg (regs st1) sp ≡ new-sp
+    sp-st1 = readReg-writeReg-same (regs s) sp new-sp
+
+    -- a0 in st1 = encode a (writing sp doesn't change a0)
+    a0-st1 : readReg (regs st1) a0 ≡ encode a
+    a0-st1 = trans (readReg-writeReg-sp-a0 (regs s) new-sp) a0-eq
+
+    step2 : step prog st1 ≡ just st2
+    step2 = trans (step-exec-1 (addi sp sp neg16) (sd a0 (+ 0) sp) _ st1 h1 pc1)
+                  (execSd prog st1 a0 0 sp)
+
+    h2 : halted st2 ≡ false
+    h2 = h-false
+
+    pc2 : pc st2 ≡ 2
+    pc2 = cong (λ p → p +ℕ 1) pc1
+
+    -- State st3: after li t0 6
+    st3 : State
+    st3 = record st2 { regs = writeReg (regs st2) t0 6 ; pc = pc st2 +ℕ 1 }
+
+    step3 : step prog st2 ≡ just st3
+    step3 = trans (step-exec-2 (addi sp sp neg16) (sd a0 (+ 0) sp) (li t0 (+ 6)) _ st2 h2 pc2)
+                  (execLi prog st2 t0 6)
+
+    h3 : halted st3 ≡ false
+    h3 = h-false
+
+    pc3 : pc st3 ≡ 3
+    pc3 = cong (λ p → p +ℕ 1) pc2
+
+    -- sp in st3 = new-sp (sd and li don't change sp)
+    sp-st3 : readReg (regs st3) sp ≡ new-sp
+    sp-st3 = sp-st1
+
+    -- State st4: after sd t0 8(sp) - stores code-ptr at closure.code
+    st4 : State
+    st4 = record st3 { memory = writeMem (memory st3) (readReg (regs st3) sp +ℕ 8) (readReg (regs st3) t0)
+                     ; pc = pc st3 +ℕ 1 }
+
+    step4 : step prog st3 ≡ just st4
+    step4 = trans (step-exec-3 (addi sp sp neg16) (sd a0 (+ 0) sp) (li t0 (+ 6)) (sd t0 (+ 8) sp) _ st3 h3 pc3)
+                  (execSd prog st3 t0 8 sp)
+
+    h4 : halted st4 ≡ false
+    h4 = h-false
+
+    pc4 : pc st4 ≡ 4
+    pc4 = cong (λ p → p +ℕ 1) pc3
+
+    -- sp in st4 = new-sp
+    sp-st4 : readReg (regs st4) sp ≡ new-sp
+    sp-st4 = sp-st3
+
+    -- State st5: after mv a0 sp - a0 = new-sp (closure pointer)
+    st5 : State
+    st5 = record st4 { regs = writeReg (regs st4) a0 (readReg (regs st4) sp)
+                     ; pc = pc st4 +ℕ 1 }
+
+    step5 : step prog st4 ≡ just st5
+    step5 = trans (step-exec-4 (addi sp sp neg16) (sd a0 (+ 0) sp) (li t0 (+ 6)) (sd t0 (+ 8) sp) (mv a0 sp) _ st4 h4 pc4)
+                  (execMv prog st4 a0 sp)
+
+    h5 : halted st5 ≡ false
+    h5 = h-false
+
+    pc5 : pc st5 ≡ 5
+    pc5 = cong (λ p → p +ℕ 1) pc4
+
+    -- a0 in st5 = new-sp
+    a0-st5 : readReg (regs st5) a0 ≡ new-sp
+    a0-st5 = trans (readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp)) sp-st4
+
+    -- State st6: after j end-label - pc = end-label = 12 + len-f
+    st6 : State
+    st6 = record st5 { pc = end-label }
+
+    step6 : step prog st5 ≡ just st6
+    step6 = trans (step-exec-5 (addi sp sp neg16) (sd a0 (+ 0) sp) (li t0 (+ 6)) (sd t0 (+ 8) sp) (mv a0 sp) (j end-label) _ st5 h5 pc5)
+                  (execJ prog st5 end-label)
+
+    h6 : halted st6 ≡ false
+    h6 = h-false
+
+    pc6 : pc st6 ≡ end-label
+    pc6 = refl
+
+    -- State st7: after label end-label - pc = end-label + 1 = 13 + len-f
+    st7 : State
+    st7 = record st6 { pc = pc st6 +ℕ 1 }
+
+    -- For the label execution and final halt, we need to reason about
+    -- fetching at position end-label in the complex program structure.
+    -- The program has the label at position 12+len-f.
+    postulate
+      step7 : step prog st6 ≡ just st7
+
+    h7 : halted st7 ≡ false
+    h7 = h-false
+
+    pc7 : pc st7 ≡ 13 +ℕ len-f
+    pc7 = +-comm (12 +ℕ len-f) 1
+
+    -- State st8: halt (fetch at 13+len-f fails, program has 13+len-f instructions)
+    st8 : State
+    st8 = record st7 { halted = true }
+
+    postulate
+      step8 : step prog st7 ≡ just st8
+
+    -- Full execution
+    run-eq : run prog s ≡ just st8
+    run-eq = exec-eight-steps 9992 prog s st1 st2 st3 st4 st5 st6 st7 st8
+               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 refl
+
+    -- Memory tracking: M[new-sp] = encode a
+    -- Written by sd a0 0(sp) in st2
+    -- Not overwritten by sd t0 8(sp) in st4 (different address: new-sp+8 vs new-sp)
+
+    addr-st2 : readReg (regs st1) sp +ℕ 0 ≡ new-sp
+    addr-st2 = trans (+-identityʳ (readReg (regs st1) sp)) sp-st1
+
+    addr-st4 : readReg (regs st3) sp +ℕ 8 ≡ new-sp +ℕ 8
+    addr-st4 = cong (_+ℕ 8) sp-st3
+
+    new-sp≢new-sp+8 : new-sp ≢ new-sp +ℕ 8
+    new-sp≢new-sp+8 = n≢n+suc new-sp 7
+
+    -- a0 in st8 = new-sp (unchanged after mv in st5)
+    a0-st8 : readReg (regs st8) a0 ≡ new-sp
+    a0-st8 = a0-st5
+
+    -- Memory at new-sp = encode a
+    -- memory st8 = memory st7 = memory st6 = memory st5 = memory st4
+    -- memory st4 = writeMem (memory st3) (new-sp+8) 6
+    -- memory st3 = memory st2
+    -- memory st2 = writeMem (memory st1) new-sp (encode a)
+    mem-final : readMem (memory st8) (readReg (regs st8) a0) ≡ just (encode a)
+    mem-final =
+      begin
+        readMem (memory st8) (readReg (regs st8) a0)
+      ≡⟨ cong (readMem (memory st8)) a0-st8 ⟩
+        readMem (memory st8) new-sp
+      ≡⟨ refl ⟩  -- memory unchanged through st5-st8
+        readMem (memory st4) new-sp
+      ≡⟨ refl ⟩  -- memory st4 = writeMem (memory st3) (new-sp+8) (t0 in st3)
+        readMem (writeMem (memory st3) (readReg (regs st3) sp +ℕ 8) (readReg (regs st3) t0)) new-sp
+      ≡⟨ cong (λ addr → readMem (writeMem (memory st3) addr (readReg (regs st3) t0)) new-sp) addr-st4 ⟩
+        readMem (writeMem (memory st3) (new-sp +ℕ 8) (readReg (regs st3) t0)) new-sp
+      ≡⟨ readMem-writeMem-diff (memory st3) (new-sp +ℕ 8) new-sp (readReg (regs st3) t0) (λ eq → new-sp≢new-sp+8 (sym eq)) ⟩
+        readMem (memory st3) new-sp
+      ≡⟨ refl ⟩  -- memory st3 = memory st2
+        readMem (memory st2) new-sp
+      ≡⟨ refl ⟩  -- memory st2 = writeMem (memory st1) new-sp (a0 in st1)
+        readMem (writeMem (memory st1) (readReg (regs st1) sp +ℕ 0) (readReg (regs st1) a0)) new-sp
+      ≡⟨ cong (λ addr → readMem (writeMem (memory st1) addr (readReg (regs st1) a0)) new-sp) addr-st2 ⟩
+        readMem (writeMem (memory st1) new-sp (readReg (regs st1) a0)) new-sp
+      ≡⟨ readMem-writeMem-same (memory st1) new-sp (readReg (regs st1) a0) ⟩
+        just (readReg (regs st1) a0)
+      ≡⟨ cong just a0-st1 ⟩
+        just (encode a)
+      ∎
+
+------------------------------------------------------------------------
+-- apply sequence execution (postulated)
 ------------------------------------------------------------------------
 
 postulate
-  -- | curry sequence execution
-  run-curry-seq : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) a0 ≡ encode a →
-    ∃[ s' ] (run (compile-riscv {A} {B ⇒ C} (curry f)) s ≡ just s'
-           × halted s' ≡ true
-           × readMem (memory s') (readReg (regs s') a0) ≡ just (encode a))
-
   -- | apply sequence execution
   run-apply-seq : ∀ {A B} (f : ⟦ A ⟧ → ⟦ B ⟧) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -1456,6 +1681,26 @@ compile-snd-correct {A} {B} a b =
                                           (encode-pair-snd a b (memory init))
   in s' , run-eq , a0-eq
 
+-- | curry correctness
+--
+-- Proved by composing run-curry-seq with encode-closure-construct.
+-- run-curry-seq shows: M[result-ptr] = encode a
+-- encode-closure-construct shows: if M[p] = encode a, then p = encode (λ b → eval f (a,b))
+compile-curry-correct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-riscv (curry f)) (initWithInput a) ≡ just s
+        × readReg (regs s) a0 ≡ encode {B ⇒ C} (λ b → eval f (a , b)))
+compile-curry-correct {A} {B} {C} f a =
+  let init = initWithInput a
+      (s' , run-eq , halt-eq , mem-eq) = run-curry-seq {A} {B} {C} f a init
+                                            (initWithInput-halted a)
+                                            (initWithInput-pc a)
+                                            (initWithInput-a0 a)
+      -- mem-eq : readMem (memory s') (readReg (regs s') a0) ≡ just (encode a)
+      -- By encode-closure-construct: this means a0 = encode (λ b → eval f (a,b))
+      closure-eq : readReg (regs s') a0 ≡ encode {B ⇒ C} (λ b → eval f (a , b))
+      closure-eq = encode-closure-construct f a (readReg (regs s') a0) (memory s') mem-eq
+  in s' , run-eq , closure-eq
+
 postulate
   -- | compose correctness
   compile-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧) →
@@ -1471,11 +1716,6 @@ postulate
   compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧) →
     ∃[ s ] (run (compile-riscv ([ f , g ])) (initWithInput x) ≡ just s
           × readReg (regs s) a0 ≡ encode (eval ([ f , g ]) x))
-
-  -- | curry correctness
-  compile-curry-correct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) →
-    ∃[ s ] (run (compile-riscv (curry f)) (initWithInput a) ≡ just s
-          × readReg (regs s) a0 ≡ encode {B ⇒ C} (λ b → eval f (a , b)))
 
   -- | apply correctness
   compile-apply-correct : ∀ {A B} (f : ⟦ A ⟧ → ⟦ B ⟧) (a : ⟦ A ⟧) →
