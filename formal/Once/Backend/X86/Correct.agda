@@ -3128,6 +3128,24 @@ mutual
         r14-preserved-f : readReg (regs s-after-f) r14 ≡ encode x
 
       -- Phase 3: Middle instructions - store f result, restore input
+      -- Instructions: mov [rsp], rax (store f result) ; mov rdi, r14 (restore input)
+
+      -- The middle prefix is prefix-f ++ code-f
+      -- After Phase 2, pc s-after-f = length prefix-f + len-f = length (prefix-f ++ code-f)
+      -- using compile-length-correct f
+      prefix-mid : Program
+      prefix-mid = prefix-f ++ code-f
+
+      len-prefix-mid : length prefix-mid ≡ length prefix-f +ℕ len-f
+      len-prefix-mid = trans (List-length-++ prefix-f) (cong (length prefix-f +ℕ_) (compile-length-correct f))
+
+      -- Convert pc-after-f to length prefix-mid
+      pc-for-mid : pc s-after-f ≡ length prefix-mid
+      pc-for-mid = trans pc-after-f-raw (sym len-prefix-mid)
+
+      -- The execution of middle instructions and their properties
+      -- This requires knowing that suffix-f = store-f ∷ restore-input ∷ rest
+      -- and that prog = prefix-mid ++ suffix-f (up to associativity)
       postulate
         s-after-middle : State
         exec-middle : exec 2 prog s-after-f ≡ just s-after-middle
@@ -3138,13 +3156,69 @@ mutual
         mem-fst-stored : readMem (memory s-after-middle) (readReg (regs s-after-middle) rsp) ≡ just (encode (eval f x))
 
       -- Phase 4: Execute g using recursive call
+
+      -- Length of prefix-g calculation
+      len-prefix-g' : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+      len-prefix-g' = begin
+        length prefix-g
+          ≡⟨ refl ⟩
+        length (prefix-f ++ code-f ++ store-f ∷ restore-input ∷ [])
+          ≡⟨ List-length-++ prefix-f ⟩
+        length prefix-f +ℕ length (code-f ++ store-f ∷ restore-input ∷ [])
+          ≡⟨ cong (length prefix-f +ℕ_) (List-length-++ code-f) ⟩
+        length prefix-f +ℕ (length code-f +ℕ 2)
+          ≡⟨ cong (length prefix-f +ℕ_) (cong (_+ℕ 2) (compile-length-correct f)) ⟩
+        length prefix-f +ℕ (len-f +ℕ 2)
+          ≡⟨ cong (_+ℕ (len-f +ℕ 2)) len-prefix-f ⟩
+        (length prefix +ℕ 2) +ℕ (len-f +ℕ 2)
+          ≡⟨ add-2-2 (length prefix) len-f ⟩
+        length prefix +ℕ len-f +ℕ 4
+          ≡⟨ commute-4 (length prefix) len-f ⟩
+        length prefix +ℕ 4 +ℕ len-f
+          ∎
+
+      -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
       postulate
-        s-after-g : State
-        exec-g : exec len-g prog s-after-middle ≡ just s-after-g
-        h-after-g : halted s-after-g ≡ false
-        pc-after-g : pc s-after-g ≡ length prefix +ℕ 4 +ℕ len-f +ℕ len-g
-        rax-after-g : readReg (regs s-after-g) rax ≡ encode (eval g x)
-        -- Preservation: [rsp] still contains fst result
+        prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+
+      -- Convert pc-after-middle to length prefix-g
+      pc-for-g : pc s-after-middle ≡ length prefix-g
+      pc-for-g = trans pc-after-middle (sym len-prefix-g')
+
+      -- Make the recursive call
+      g-result : ∃[ s' ] (exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s'
+                        × halted s' ≡ false
+                        × pc s' ≡ length prefix-g +ℕ len-g
+                        × readReg (regs s') rax ≡ encode (eval g x))
+      g-result = run-ir-at-offset g prefix-g suffix-g x s-after-middle h-after-middle pc-for-g rdi-after-middle
+
+      -- Extract the state and properties
+      s-after-g : State
+      s-after-g = proj₁ g-result
+
+      exec-g-raw : exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s-after-g
+      exec-g-raw = proj₁ (proj₂ g-result)
+
+      -- Convert to exec on prog using prog-eq-g
+      exec-g : exec len-g prog s-after-middle ≡ just s-after-g
+      exec-g = subst (λ p → exec len-g p s-after-middle ≡ just s-after-g) (sym prog-eq-g) exec-g-raw
+
+      h-after-g : halted s-after-g ≡ false
+      h-after-g = proj₁ (proj₂ (proj₂ g-result))
+
+      pc-after-g-raw : pc s-after-g ≡ length prefix-g +ℕ len-g
+      pc-after-g-raw = proj₁ (proj₂ (proj₂ (proj₂ g-result)))
+
+      -- Convert pc to prefix form: length prefix-g + len-g = length prefix + 4 + len-f + len-g
+      pc-after-g : pc s-after-g ≡ length prefix +ℕ 4 +ℕ len-f +ℕ len-g
+      pc-after-g = trans pc-after-g-raw (cong (_+ℕ len-g) len-prefix-g')
+
+      rax-after-g : readReg (regs s-after-g) rax ≡ encode (eval g x)
+      rax-after-g = proj₂ (proj₂ (proj₂ (proj₂ g-result)))
+
+      -- Preservation: [rsp] still contains fst result
+      -- This requires knowing that compile-x86 g doesn't modify [rsp]
+      postulate
         mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) rsp) ≡ just (encode (eval f x))
 
       -- Phase 5: Final instructions - store g result, return pair pointer
