@@ -15,10 +15,11 @@ The Once compiler is **substantially verified** in Agda. The full compilation pi
 | Desugar | ✓ Proven | SurfaceIR → CoreIR preserves semantics |
 | Optimization | ✓ Proven | Categorical rewrites preserve semantics |
 | x86-64 code gen | ✓ Proven | All 14 generators proven |
-| End-to-end theorem | ✓ Proven | Full pipeline: Surface → x86 preserves semantics |
+| End-to-end theorem (x86) | ✓ Proven | Full pipeline: Surface → x86 preserves semantics |
+| End-to-end theorem (AArch64) | ✓ Theorem exists | Full pipeline: Surface → AArch64 (backend postulated) |
 | Polynomial functors | ✓ Proven | SPF module with proper recursive type semantics |
 | Primitive specs | ✓ Axiomatized | Memory, IO, Thread axioms (orthogonal to type system) |
-| AArch64 code gen | ☐ Structure defined | Syntax, Semantics, CodeGen, Correct created |
+| AArch64 code gen | ◐ Structure defined | Syntax, Semantics, CodeGen complete; Correct postulated |
 | C code generation | Not started | IR → C semantics preservation |
 | QTT enforcement | Not started | Linear resource tracking |
 
@@ -114,7 +115,7 @@ The proofs use a layered approach:
 
 The AArch64 backend follows the same structure as x86-64, targeting the ARM64 architecture verified by seL4.
 
-**Status**: Backend definition files created, proofs postulated.
+**Status**: Backend definition files created, end-to-end theorem established, proofs postulated.
 
 ```
 codegen-aarch64-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
@@ -127,6 +128,11 @@ codegen-aarch64-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
 - `Once/Backend/AArch64/Semantics.agda` - PSTATE flags, SP handling
 - `Once/Backend/AArch64/CodeGen.agda` - IR → AArch64 translation
 - `Once/Backend/AArch64/Correct.agda` - Correctness theorem (postulated)
+- `Once/EndToEndAArch64.agda` - End-to-end compilation theorem
+
+The end-to-end theorem (`compilation-correct-aarch64`) composes:
+1. `compile-preserves-semantics` (shared with x86, fully proven)
+2. `codegen-aarch64-correct` (currently postulated)
 
 **Key differences from x86-64**:
 - Single input/output register (x0) instead of rdi/rax
@@ -318,7 +324,8 @@ formal/Once/
 ├── SPF.agda               # ★ Strictly Positive Functors (proper Fix semantics) ★
 ├── Compile.agda           # Compilation pipeline (desugar + optimize)
 ├── Optimize.agda          # Optimizer
-├── EndToEnd.agda          # ★ End-to-end compilation theorem ★
+├── EndToEnd.agda          # ★ End-to-end compilation theorem (x86) ★
+├── EndToEndAArch64.agda   # ★ End-to-end compilation theorem (AArch64) ★
 ├── Category/
 │   └── Laws.agda          # 18 CCC law proofs
 ├── TypeSystem/
