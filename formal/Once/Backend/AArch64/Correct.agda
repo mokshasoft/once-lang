@@ -760,6 +760,14 @@ run-generator-arr {A} {B} f s h-false pc-0 x0-eq =
   in s' , run-eq , halt-eq , x0-result
 
 -- Projection generators (fst, snd)
+-- NOTE: These require pattern matching on ⟦ B ⟧ / ⟦ A ⟧ which Agda rejects
+-- for abstract type parameters. The proof structure is outlined in comments.
+-- Proof sketch for fst:
+--   - compile-aarch64 fst = ldr x0 (base x0) ∷ []
+--   - effectiveAddr s (base x0) = readReg (regs s) x0 = encode (a, b)
+--   - readMem encodedMemory (encode (a, b)) = just (encode a) by encode-pair-fst
+--   - run-single-ldr gives us x0 = encode a = encode (eval fst (a, b))
+-- Proof sketch for snd is similar with offset 8 and encode-pair-snd.
 
 postulate
   -- | fst: ldr x0, [x0]
