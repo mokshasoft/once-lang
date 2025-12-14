@@ -3078,15 +3078,53 @@ mutual
 
       -- Phase 2: Execute f using recursive call
       -- The recursive call run-ir-at-offset f prefix-f suffix-f x s-after-setup
-      -- would give us a state with rax = encode (eval f x)
-      -- But we need to prove the program equality first
+      -- gives us a state with rax = encode (eval f x)
+
+      -- Program equality: prog = prefix-f ++ code-f ++ suffix-f
+      -- This follows from associativity of ++ and the structure of compile-x86 ⟨ f , g ⟩
+      -- The proof is complex due to nested ++ and ∷ operators, so postulated for now
       postulate
-        s-after-f : State
-        exec-f : exec len-f prog s-after-setup ≡ just s-after-f
-        h-after-f : halted s-after-f ≡ false
-        pc-after-f : pc s-after-f ≡ length prefix +ℕ 2 +ℕ len-f
-        rax-after-f : readReg (regs s-after-f) rax ≡ encode (eval f x)
-        -- Preservation: r14 still holds original input
+        prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+
+      -- Convert pc-after-setup to length prefix-f
+      pc-for-f : pc s-after-setup ≡ length prefix-f
+      pc-for-f = trans pc-after-setup (sym len-prefix-f)
+
+      -- Make the recursive call
+      f-result : ∃[ s' ] (exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s'
+                        × halted s' ≡ false
+                        × pc s' ≡ length prefix-f +ℕ len-f
+                        × readReg (regs s') rax ≡ encode (eval f x))
+      f-result = run-ir-at-offset f prefix-f suffix-f x s-after-setup h-after-setup pc-for-f rdi-after-setup
+
+      -- Extract the state and properties
+      s-after-f : State
+      s-after-f = proj₁ f-result
+
+      exec-f-raw : exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s-after-f
+      exec-f-raw = proj₁ (proj₂ f-result)
+
+      -- Convert to exec on prog using prog-eq-f
+      exec-f : exec len-f prog s-after-setup ≡ just s-after-f
+      exec-f = subst (λ p → exec len-f p s-after-setup ≡ just s-after-f) (sym prog-eq-f) exec-f-raw
+
+      h-after-f : halted s-after-f ≡ false
+      h-after-f = proj₁ (proj₂ (proj₂ f-result))
+
+      pc-after-f-raw : pc s-after-f ≡ length prefix-f +ℕ len-f
+      pc-after-f-raw = proj₁ (proj₂ (proj₂ (proj₂ f-result)))
+
+      -- Convert pc to prefix form: length prefix-f + len-f = length prefix + 2 + len-f
+      pc-after-f : pc s-after-f ≡ length prefix +ℕ 2 +ℕ len-f
+      pc-after-f = trans pc-after-f-raw (cong (_+ℕ len-f) len-prefix-f)
+
+      rax-after-f : readReg (regs s-after-f) rax ≡ encode (eval f x)
+      rax-after-f = proj₂ (proj₂ (proj₂ (proj₂ f-result)))
+
+      -- Preservation: r14 still holds original input
+      -- This requires proving that compile-x86 f doesn't modify r14
+      -- r14 is callee-saved, so well-behaved IR should preserve it
+      postulate
         r14-preserved-f : readReg (regs s-after-f) r14 ≡ encode x
 
       -- Phase 3: Middle instructions - store f result, restore input
