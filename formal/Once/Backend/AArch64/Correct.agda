@@ -953,10 +953,88 @@ postulate
 -- Mutual Recursion Cluster
 ------------------------------------------------------------------------
 
--- These generators have recursive structure and must be proven together.
+-- These generators have recursive structure and must be proven together
+-- using well-founded recursion on the IR structure.
+--
+-- PROOF STRATEGY:
+--
+-- The proofs use well-founded induction on IR, with the induction hypothesis:
+--
+--   IH(ir) : ∀ x s → (conditions) →
+--            ∃ s' . run (compile-aarch64 ir) s ≡ just s' ∧
+--                   readReg (regs s') x0 ≡ encode (eval ir x)
+--
+-- Key Lemmas Needed (to be proven):
+--
+-- 1. run-append-left : For programs p₁ ++ p₂, if running p₁ reaches a
+--    non-halted state s₁ at pc = length p₁, then continuing executes p₂.
+--
+-- 2. run-append-skip : Running p₁ ++ p₂ from initial state, where p₁
+--    execution completes (resets pc conceptually), continues with p₂.
+--
+-- 3. pc-continuation : After running program prefix, pc points to next
+--    instruction in concatenated program.
+--
+-- COMPOSE (g ∘ f) PROOF SKETCH:
+-- Code: compile-aarch64 f ++ [nop] ++ compile-aarch64 g
+--
+-- Phase 1: Run compile-aarch64 f from state s with x0 = encode x
+--          By IH(f): reaches s₁ with x0 = encode (eval f x)
+-- Phase 2: Execute nop, reaches s₂ with same x0
+-- Phase 3: Run compile-aarch64 g from s₂
+--          By IH(g): reaches s₃ with x0 = encode (eval g (eval f x))
+-- Conclude: x0 = encode (eval (g ∘ f) x) by definition of eval (g ∘ f)
+--
+-- CASE [f,g] PROOF SKETCH:
+-- Code: ldr x9, [x0]      -- load tag
+--       cmp x9, #0        -- compare with 0
+--       b.ne right        -- branch if tag ≠ 0
+--       ldr x0, [x0, #8]  -- load left value
+--       compile-aarch64 f
+--       b end
+--   right:
+--       ldr x0, [x0, #8]  -- load right value
+--       compile-aarch64 g
+--   end:
+--
+-- Case inl: tag = 0, falls through to f branch
+--   By encode-inl-tag: memory[x0] = 0
+--   By encode-inl-val: memory[x0+8] = encode a
+--   After ldr: x0 = encode a
+--   By IH(f): reaches state with x0 = encode (eval f a)
+--   Conclude: x0 = encode (eval [f,g] (inj₁ a))
+--
+-- Case inr: tag = 1, branches to g
+--   By encode-inr-tag: memory[x0] = 1
+--   By encode-inr-val: memory[x0+8] = encode b
+--   After branch and ldr: x0 = encode b
+--   By IH(g): reaches state with x0 = encode (eval g b)
+--   Conclude: x0 = encode (eval [f,g] (inj₂ b))
+--
+-- PAIR ⟨f,g⟩ PROOF SKETCH:
+-- Code: sub-sp 16         -- allocate pair
+--       mov x20, x0       -- save input (callee-saved)
+--       compile-aarch64 f
+--       str x0, [sp]      -- store fst result
+--       mov x0, x20       -- restore input
+--       compile-aarch64 g
+--       str x0, [sp+8]    -- store snd result
+--       mov-from-sp x0    -- return pair pointer
+--
+-- Phase 1: sub-sp allocates, mov saves input in x20
+-- Phase 2: Run f with x0 = encode x
+--          By IH(f): x0 = encode (eval f x)
+--          x20 preserved (callee-saved)
+-- Phase 3: str stores fst, mov restores x0 = encode x from x20
+-- Phase 4: Run g with x0 = encode x
+--          By IH(g): x0 = encode (eval g x)
+-- Phase 5: str stores snd, mov-from-sp sets x0 = sp
+-- Conclude: x0 points to pair with [encode (eval f x), encode (eval g x)]
+--           By encode-pair-construct: x0 = encode (eval f x, eval g x)
 
 postulate
   -- | compose: sequence f then g
+  -- Proof: Use IH on f and g, chain execution via run-append lemmas
   run-seq-compose : ∀ {A B C : Type} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -966,7 +1044,8 @@ postulate
            × halted s' ≡ true
            × readReg (regs s') x0 ≡ encode {C} (eval (g ∘ f) x))
 
-  -- | case: branch on sum tag
+  -- | case: branch on sum tag (left branch)
+  -- Proof: Tag = 0 via encode-inl-tag, fall through, IH on f
   run-case-inl : ∀ {A B C : Type} (f : IR A C) (g : IR B C) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -976,6 +1055,8 @@ postulate
            × halted s' ≡ true
            × readReg (regs s') x0 ≡ encode {C} (eval [ f , g ] (inj₁ a)))
 
+  -- | case: branch on sum tag (right branch)
+  -- Proof: Tag = 1 via encode-inr-tag, branch taken, IH on g
   run-case-inr : ∀ {A B C : Type} (f : IR A C) (g : IR B C) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -986,6 +1067,7 @@ postulate
            × readReg (regs s') x0 ≡ encode {C} (eval [ f , g ] (inj₂ b)))
 
   -- | pair: compute both components and construct pair
+  -- Proof: x20 preserves input across f, stack preserves f result across g
   run-pair-seq : ∀ {A B C : Type} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -999,8 +1081,56 @@ postulate
 -- Closure Operations
 ------------------------------------------------------------------------
 
+-- CLOSURE PROOF STRATEGY:
+--
+-- Closures are the most complex part of the compilation because they
+-- involve creating code that will be called later with different arguments.
+--
+-- CURRY (curry f) PROOF SKETCH:
+-- Code: sub-sp 16           -- allocate closure
+--       str x0, [sp]        -- store env (input a)
+--       mov x9, #code-ptr   -- load thunk address
+--       str x9, [sp+8]      -- store code pointer
+--       mov-from-sp x0      -- return closure pointer
+--       b end               -- skip over thunk
+--   code-ptr:
+--       sub-sp 16           -- allocate pair (for thunk)
+--       stp x19, x0, [sp]   -- store (env, arg) as pair
+--       mov-from-sp x0      -- x0 = pair pointer
+--       compile-aarch64 f   -- execute f on pair
+--       ret                 -- return
+--   end:
+--
+-- Phase 1: Allocate closure on stack, store env (a) and code pointer
+-- Phase 2: Skip over thunk code, return closure pointer
+-- Result: x0 = encode {B ⇒ C} (λb. eval f (a, b))
+--
+-- The closure encoding stores:
+--   [sp]   = encode a (the captured environment)
+--   [sp+8] = code-ptr (address of thunk)
+--
+-- By encode-curry-construct: this represents the curried function.
+--
+-- APPLY (apply) PROOF SKETCH:
+-- Code: ldr x9, [x0]        -- load closure from pair.fst
+--       ldr x10, [x0, #8]   -- load arg from pair.snd
+--       ldr x19, [x9]       -- load env from closure.env
+--       ldr x9, [x9, #8]    -- load code_ptr from closure.code
+--       mov x0, x10         -- move arg to x0
+--       blr x9              -- call thunk
+--
+-- Input: x0 = encode (closure, arg)
+-- Phase 1: Load closure and arg from the pair
+-- Phase 2: Load env and code_ptr from closure
+-- Phase 3: Call thunk with env in x19, arg in x0
+-- Phase 4: Thunk constructs (env, arg) pair, calls f
+-- Result: x0 = encode (eval f (env, arg)) = encode (closure arg)
+--
+-- By encode-apply-correct: blr executes the thunk which computes f(env, arg).
+
 postulate
   -- | curry: create closure
+  -- Proof: Closure construction + encode-curry-construct
   run-curry-seq : ∀ {A B C : Type} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -1010,6 +1140,7 @@ postulate
            × readReg (regs s') x0 ≡ encode {B ⇒ C} (eval (curry f) a))
 
   -- | apply: call closure
+  -- Proof: Closure unpacking + thunk execution + encode-apply-correct
   run-apply-seq : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
