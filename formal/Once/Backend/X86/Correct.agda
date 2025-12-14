@@ -1069,6 +1069,106 @@ exec-pair-setup-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , p
     rdi-eq : readReg (regs s-final) rdi ≡ readReg (regs s) rdi
     rdi-eq = trans (readReg-writeReg-r14-rdi (regs s1) (readReg (regs s1) rdi)) rdi-s1-eq
 
+-- | Execute pair middle instructions (mov [rsp], rax; mov rdi, r14) at arbitrary offset
+-- Used for phase 3 of pair construction - storing f's result and restoring input
+-- Instructions:
+--   mov [rsp], rax   - store f's result at [rsp]
+--   mov rdi, r14     - restore original input from r14 to rdi
+exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 2 (prefix ++ mov (mem (base rsp)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 2
+         × readReg (regs s') rdi ≡ readReg (regs s) r14
+         × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) rax))
+exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (+-assoc)
+
+    prog : Program
+    prog = prefix ++ mov (mem (base rsp)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest
+
+    -- State after step 1: mov [rsp], rax (store rax to memory at rsp)
+    s1 : State
+    s1 = record s { memory = writeMem (memory s) (readReg (regs s) rsp) (readReg (regs s) rax)
+                  ; pc = pc s +ℕ 1 }
+
+    -- Fetch mov [rsp], rax at length prefix
+    fetch0 : fetch prog (length prefix) ≡ just (mov (mem (base rsp)) (reg rax))
+    fetch0 = fetch-at-prefix-end prefix (mov (mem (base rsp)) (reg rax)) (mov (reg rdi) (reg r14) ∷ rest)
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s (mov (mem (base rsp)) (reg rax)) h-false
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (reg rax))) (sym pc-eq) fetch0))
+                  (execMov-mem-base-reg prog s rsp rax)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    -- State after step 2: mov rdi, r14
+    s-final : State
+    s-final = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) r14)
+                        ; pc = pc s1 +ℕ 1 }
+
+    -- For fetch at position length prefix + 1, rearrange program
+    prog-eq1 : prog ≡ (prefix ++ mov (mem (base rsp)) (reg rax) ∷ []) ++ mov (reg rdi) (reg r14) ∷ rest
+    prog-eq1 = sym (++-assoc prefix (mov (mem (base rsp)) (reg rax) ∷ []) (mov (reg rdi) (reg r14) ∷ rest))
+
+    len-prefix-1 : length (prefix ++ mov (mem (base rsp)) (reg rax) ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = List-length-++ prefix {mov (mem (base rsp)) (reg rax) ∷ []}
+
+    fetch1-helper : fetch ((prefix ++ mov (mem (base rsp)) (reg rax) ∷ []) ++ mov (reg rdi) (reg r14) ∷ rest)
+                         (length (prefix ++ mov (mem (base rsp)) (reg rax) ∷ []))
+                  ≡ just (mov (reg rdi) (reg r14))
+    fetch1-helper = fetch-at-prefix-end (prefix ++ mov (mem (base rsp)) (reg rax) ∷ []) (mov (reg rdi) (reg r14)) rest
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just (mov (reg rdi) (reg r14))
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just (mov (reg rdi) (reg r14))) (sym prog-eq1) len-prefix-1 fetch1-helper
+
+    step2 : step prog s1 ≡ just s-final
+    step2 = trans (step-exec prog s1 (mov (reg rdi) (reg r14)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg r14))) (sym pc1) fetch1))
+                  (execMov-reg-reg s1 rdi r14)
+
+    h-final : halted s-final ≡ false
+    h-final = h-false
+
+    pc-final : pc s-final ≡ length prefix +ℕ 2
+    pc-final = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    exec-eq : exec 2 prog s ≡ just s-final
+    exec-eq = exec-two-steps-nonhalt prog s s1 s-final step1 h1 step2 h-final
+
+    -- r14 in s1 is the same as in s (mov [rsp], rax doesn't change registers)
+    r14-s1-eq : readReg (regs s1) r14 ≡ readReg (regs s) r14
+    r14-s1-eq = refl
+
+    -- rdi gets r14's value from s1, which equals r14 from s
+    rdi-eq : readReg (regs s-final) rdi ≡ readReg (regs s) r14
+    rdi-eq = trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) r14)) r14-s1-eq
+
+    -- Memory at rsp: s-final's memory came from s1, which came from writing rax to [rsp]
+    -- Need to show readMem (memory s-final) (readReg (regs s-final) rsp) = just (rax from s)
+    -- s-final's memory is s1's memory (mov rdi, r14 doesn't change memory)
+    -- s1's memory has writeMem at (rsp of s) with value (rax of s)
+    -- s-final's rsp is s1's rsp (mov rdi, r14 doesn't change rsp)
+    -- s1's rsp is s's rsp (mov [rsp], rax doesn't change rsp)
+
+    rsp-s1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp
+    rsp-s1-eq = refl
+
+    rsp-final-eq : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
+    rsp-final-eq = trans (readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) r14)) rsp-s1-eq
+
+    mem-eq : readMem (memory s-final) (readReg (regs s-final) rsp) ≡ just (readReg (regs s) rax)
+    mem-eq = trans (cong (readMem (memory s-final)) rsp-final-eq)
+                   (readMem-writeMem-same (memory s) (readReg (regs s) rsp) (readReg (regs s) rax))
+
 -- | Execute id at arbitrary offset in a program (non-halting)
 -- This is the general case of run-id-nonhalt where id code can be at any position
 -- Program structure: prefix ++ [mov rax, rdi] ++ suffix
