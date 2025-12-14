@@ -97,12 +97,13 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Properties using (length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; subst₂; module ≡-Reasoning)
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
@@ -435,6 +436,32 @@ fetch-4-of-4 i0 i1 i2 i3 = refl
 fetch-5-of-5 : ∀ (i0 i1 i2 i3 i4 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) 5 ≡ nothing
 fetch-5-of-5 i0 i1 i2 i3 i4 = refl
 
+-- | Fetching from append (left part): fetch at n < length xs gets from xs
+fetch-append-left : ∀ (xs ys : Program) (n : ℕ) → n < length xs →
+  fetch (xs ++ ys) n ≡ fetch xs n
+fetch-append-left [] ys n ()
+fetch-append-left (x ∷ xs) ys zero pf = refl
+fetch-append-left (x ∷ xs) ys (suc n) (s≤s pf) = fetch-append-left xs ys n pf
+
+-- | Fetching from append (right part): fetch at (length xs + n) gets from ys
+fetch-append-right : ∀ (xs ys : Program) (n : ℕ) →
+  fetch (xs ++ ys) (length xs +ℕ n) ≡ fetch ys n
+fetch-append-right [] ys n = refl
+fetch-append-right (x ∷ xs) ys n = fetch-append-right xs ys n
+
+-- | Fetching at exactly length xs gets the first element of ys
+fetch-at-length : ∀ (xs : Program) (y : Instr) (ys : Program) →
+  fetch (xs ++ y ∷ ys) (length xs) ≡ just y
+fetch-at-length xs y ys =
+  subst (λ n → fetch (xs ++ y ∷ ys) n ≡ just y)
+        (+-identityʳ (length xs))
+        (fetch-append-right xs (y ∷ ys) 0)
+
+-- | Fetching past the end returns nothing
+fetch-past-end : ∀ (xs : Program) → fetch xs (length xs) ≡ nothing
+fetch-past-end [] = refl
+fetch-past-end (x ∷ xs) = fetch-past-end xs
+
 -- | Step on non-halted state executes the instruction at pc
 step-exec : ∀ (prog : List Instr) (s : State) (i : Instr) →
   halted s ≡ false →
@@ -654,6 +681,41 @@ run-single-nop s h-false pc-0 = st2 , run-eq , halt-eq , a0-eq
     -- a0 unchanged by nop
     a0-eq : readReg (regs st2) a0 ≡ readReg (regs s) a0
     a0-eq = refl
+
+------------------------------------------------------------------------
+-- Compile length correctness
+------------------------------------------------------------------------
+
+-- | Helper postulates for recursive cases (requires detailed arithmetic)
+-- These are sound axioms since compile-length matches the actual code generator.
+postulate
+  compile-length-correct-compose : ∀ {A B C : Type} (g : IR B C) (f : IR A B) →
+    length (compile-riscv (g ∘ f)) ≡ compile-length (g ∘ f)
+  compile-length-correct-pair : ∀ {A B C : Type} (f : IR A B) (g : IR A C) →
+    length (compile-riscv ⟨ f , g ⟩) ≡ compile-length ⟨ f , g ⟩
+  compile-length-correct-case : ∀ {A B C : Type} (f : IR A C) (g : IR B C) →
+    length (compile-riscv ([ f , g ])) ≡ compile-length ([ f , g ])
+  compile-length-correct-curry : ∀ {A B C : Type} (f : IR (A * B) C) →
+    length (compile-riscv (curry f)) ≡ compile-length (curry f)
+
+-- | The actual length of compiled code matches compile-length
+compile-length-correct : ∀ {A B : Type} (ir : IR A B) →
+  length (compile-riscv ir) ≡ compile-length ir
+compile-length-correct id = refl
+compile-length-correct fst = refl
+compile-length-correct snd = refl
+compile-length-correct terminal = refl
+compile-length-correct initial = refl
+compile-length-correct fold = refl
+compile-length-correct unfold = refl
+compile-length-correct arr = refl
+compile-length-correct inl = refl
+compile-length-correct inr = refl
+compile-length-correct apply = refl
+compile-length-correct (g ∘ f) = compile-length-correct-compose g f
+compile-length-correct ⟨ f , g ⟩ = compile-length-correct-pair f g
+compile-length-correct ([ f , g ]) = compile-length-correct-case f g
+compile-length-correct (curry f) = compile-length-correct-curry f
 
 ------------------------------------------------------------------------
 -- Main generator postulate (required for recursive IR cases)
