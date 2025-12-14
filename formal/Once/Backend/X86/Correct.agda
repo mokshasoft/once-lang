@@ -1247,9 +1247,17 @@ exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , 
 --   pop r14            - restore saved r14
 --
 -- Note: The pop instructions require memory at rsp to be defined. In the pair construction
--- context, this is guaranteed by the earlier push r14 and push r15 instructions.
--- We assume stack memory is defined via internal postulates.
-exec-pair-final-at : ∀ (prefix : Program) (rest : Program) (s : State) →
+-- context, this is guaranteed by the store-f instruction writing to [r15] and the
+-- mov [r15+8], rax instruction writing to [r15+8].
+--
+-- Parameters:
+--   fst-val     : The value at [rsp] = [r15] (the f-result from store-f)
+--   fst-in-mem  : Proof that memory at [rsp] contains fst-val
+--   rsp-eq-r15  : Invariant that rsp = r15 (pair base) at entry
+exec-pair-final-at : ∀ (prefix : Program) (rest : Program) (s : State)
+  (fst-val : Word)
+  (fst-in-mem : readMem (memory s) (readReg (regs s) rsp) ≡ just fst-val)
+  (rsp-eq-r15 : readReg (regs s) rsp ≡ readReg (regs s) r15) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ∃[ s' ] (exec 4 (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ pop r14 ∷ rest) s ≡ just s'
@@ -1258,7 +1266,7 @@ exec-pair-final-at : ∀ (prefix : Program) (rest : Program) (s : State) →
          × readReg (regs s') rax ≡ readReg (regs s) r15
          × readMem (memory s') (readReg (regs s) r15 +ℕ 8) ≡ just (readReg (regs s) rax)
          × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
-exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-eq , mem-snd-eq , mem-fst-eq
+exec-pair-final-at prefix rest s fst-val fst-in-mem rsp-eq-r15 h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-eq , mem-snd-eq , mem-fst-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
@@ -1274,6 +1282,10 @@ exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-e
 
     orig-rsp : Word
     orig-rsp = readReg (regs s) rsp
+
+    -- Key inequality: [r15 + 8] ≢ [r15], used for memory address separation
+    addr-diff : (orig-r15 +ℕ 8) ≢ orig-r15
+    addr-diff eq = n≢n+suc orig-r15 7 (sym eq)
 
     -- Step 1: mov [r15+8], rax - store rax at [r15+8]
     s1 : State
@@ -1330,11 +1342,29 @@ exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-e
     rax-s2 = trans (readReg-writeReg-same (regs s1) rax (readReg (regs s1) r15)) r15-s1
 
     -- Step 3: pop r15 - pop stack value into r15
-    -- Requires memory at rsp to be defined
-    -- In pair context, this was pushed earlier
-    postulate
-      stack-val-r15 : Word
-      stack-mem-r15 : readMem (memory s2) (readReg (regs s2) rsp) ≡ just stack-val-r15
+    -- Memory at [rsp] contains fst-val (the f-result), provided as parameter
+    -- Steps 1-2 preserve [rsp] since they only write to [r15+8] and [r15+8] ≢ [rsp] = [r15]
+    stack-val-r15 : Word
+    stack-val-r15 = fst-val
+
+    -- Proof that [rsp] is preserved: we wrote to [r15+8] but [r15+8] ≢ [r15] = [rsp]
+    -- Using rsp-eq-r15 to connect rsp with r15
+    rsp-s2 : readReg (regs s2) rsp ≡ orig-rsp
+    rsp-s2 = refl  -- steps 1-2 don't modify rsp
+
+    -- Memory at [orig-r15+8] ≢ [orig-rsp] because rsp = r15 and addr-diff shows r15+8 ≢ r15
+    write-addr-diff-rsp : (orig-r15 +ℕ 8) ≢ orig-rsp
+    write-addr-diff-rsp eq = addr-diff (trans eq rsp-eq-r15)
+
+    -- Memory at s1 at [orig-rsp] = memory at s at [orig-rsp] (write was to different address)
+    mem-s1-at-rsp : readMem (memory s1) orig-rsp ≡ readMem (memory s) orig-rsp
+    mem-s1-at-rsp = readMem-writeMem-diff (memory s) (orig-r15 +ℕ 8) orig-rsp orig-rax write-addr-diff-rsp
+
+    -- Memory at s2 = memory at s1 (mov reg,reg doesn't change memory)
+    -- s2 memory is s1 memory since only regs changed
+    stack-mem-r15 : readMem (memory s2) (readReg (regs s2) rsp) ≡ just stack-val-r15
+    stack-mem-r15 = trans (cong (λ addr → readMem (memory s1) addr) rsp-s2)
+                          (trans mem-s1-at-rsp fst-in-mem)
 
     s3 : State
     s3 = record s2 { regs = writeReg (writeReg (regs s2) r15 stack-val-r15) rsp (readReg (regs s2) rsp +ℕ 8)
@@ -1368,10 +1398,26 @@ exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-e
                    (trans (readReg-writeReg-r15-rax (regs s2) stack-val-r15) rax-s2)
 
     -- Step 4: pop r14 - pop stack value into r14
-    -- rsp in s3 is original rsp + 8
-    postulate
-      stack-val-r14 : Word
-      stack-mem-r14 : readMem (memory s3) (readReg (regs s3) rsp) ≡ just stack-val-r14
+    -- rsp in s3 = orig-rsp + 8 = orig-r15 + 8 (after first pop incremented rsp)
+    -- Memory at [orig-r15 + 8] was written with orig-rax in step 1
+    stack-val-r14 : Word
+    stack-val-r14 = orig-rax
+
+    -- rsp in s3 = rsp in s2 + 8 = orig-rsp + 8
+    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp +ℕ 8
+    rsp-s3 = readReg-writeReg-same (writeReg (regs s2) r15 stack-val-r15) rsp (readReg (regs s2) rsp +ℕ 8)
+
+    -- Connect rsp in s3 with orig-r15 + 8 using rsp-eq-r15
+    -- rsp-eq-r15 : orig-rsp ≡ orig-r15, so cong (_+ℕ 8) gives orig-rsp + 8 ≡ orig-r15 + 8
+    rsp-s3-eq-r15-plus-8 : readReg (regs s3) rsp ≡ orig-r15 +ℕ 8
+    rsp-s3-eq-r15-plus-8 = trans rsp-s3 (cong (_+ℕ 8) rsp-eq-r15)
+
+    -- Memory at s3 at [orig-r15 + 8] = memory at s1 at [orig-r15 + 8]
+    -- (pop doesn't modify arbitrary memory, and s2 memory = s1 memory)
+    -- s1 memory has writeMem at [orig-r15 + 8] with orig-rax
+    stack-mem-r14 : readMem (memory s3) (readReg (regs s3) rsp) ≡ just stack-val-r14
+    stack-mem-r14 = trans (cong (readMem (memory s1)) rsp-s3-eq-r15-plus-8)
+                          (readMem-writeMem-same (memory s) (orig-r15 +ℕ 8) orig-rax)
 
     s4 : State
     s4 = record s3 { regs = writeReg (writeReg (regs s3) r14 stack-val-r14) rsp (readReg (regs s3) rsp +ℕ 8)
@@ -1417,10 +1463,7 @@ exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-e
     mem-snd-eq = readMem-writeMem-same (memory s) (orig-r15 +ℕ 8) orig-rax
 
     -- Memory at [r15] is preserved (we only wrote to [r15+8])
-    -- Proof: orig-r15 + 8 ≢ orig-r15, so the write doesn't affect [orig-r15]
-    addr-diff : (orig-r15 +ℕ 8) ≢ orig-r15
-    addr-diff eq = n≢n+suc orig-r15 7 (sym eq)
-
+    -- Uses addr-diff defined earlier to show the write doesn't affect [orig-r15]
     mem-fst-eq : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
     mem-fst-eq = readMem-writeMem-diff (memory s) (orig-r15 +ℕ 8) orig-r15 orig-rax addr-diff
 
@@ -3712,6 +3755,17 @@ mutual
       postulate
         mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) r15) ≡ just (encode (eval f x))
 
+      -- Stack preservation: rsp = r15 throughout the pair execution
+      -- This is a key invariant: r15 was set to rsp after the initial setup,
+      -- and both f and g should preserve rsp (callee-save discipline)
+      postulate
+        rsp-eq-r15-after-g : readReg (regs s-after-g) rsp ≡ readReg (regs s-after-g) r15
+
+      -- Connect mem-fst-preserved with rsp to get memory at [rsp]
+      mem-fst-at-rsp : readMem (memory s-after-g) (readReg (regs s-after-g) rsp) ≡ just (encode (eval f x))
+      mem-fst-at-rsp = subst (λ addr → readMem (memory s-after-g) addr ≡ just (encode (eval f x)))
+                             (sym rsp-eq-r15-after-g) mem-fst-preserved
+
       -- Phase 5: Final instructions - store g result, return pair pointer
       -- Instructions: mov [r15+8], rax; mov rax, r15; pop r15; pop r14
 
@@ -3746,14 +3800,19 @@ mutual
       pc-for-final : pc s-after-g ≡ length prefix-final
       pc-for-final = trans pc-after-g (sym len-prefix-final)
 
-      -- Apply exec-pair-final-at
+      -- Apply exec-pair-final-at with the new parameters:
+      --   fst-val = encode (eval f x)
+      --   fst-in-mem = mem-fst-at-rsp
+      --   rsp-eq-r15 = rsp-eq-r15-after-g
       final-result : ∃[ s' ] (exec 4 (prefix-final ++ store-g ∷ return-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s-after-g ≡ just s'
                             × halted s' ≡ false
                             × pc s' ≡ length prefix-final +ℕ 4
                             × readReg (regs s') rax ≡ readReg (regs s-after-g) r15
                             × readMem (memory s') (readReg (regs s-after-g) r15 +ℕ 8) ≡ just (readReg (regs s-after-g) rax)
                             × readMem (memory s') (readReg (regs s-after-g) r15) ≡ readMem (memory s-after-g) (readReg (regs s-after-g) r15))
-      final-result = exec-pair-final-at prefix-final suffix s-after-g h-after-g pc-for-final
+      final-result = exec-pair-final-at prefix-final suffix s-after-g
+                       (encode (eval f x)) mem-fst-at-rsp rsp-eq-r15-after-g
+                       h-after-g pc-for-final
 
       -- Extract the state and properties
       s-final : State
