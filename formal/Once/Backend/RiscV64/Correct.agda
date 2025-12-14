@@ -1821,11 +1821,43 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
       ∎
 
 ------------------------------------------------------------------------
--- apply sequence execution (postulated)
+-- apply sequence execution (postulated - fundamental model limitation)
+------------------------------------------------------------------------
+--
+-- WHY THIS CANNOT BE PROVEN with current semantics:
+--
+-- The apply sequence does:
+--   0: ld t1 (+ 0) a0      -- t1 = closure
+--   1: ld t2 (+ 8) a0      -- t2 = argument
+--   2: ld s0 (+ 0) t1      -- s0 = env
+--   3: ld t0 (+ 8) t1      -- t0 = code_ptr (value 6 from curry)
+--   4: mv a0 t2            -- a0 = argument
+--   5: jalr ra t0 (+ 0)    -- jump to code_ptr, ra = 6
+--   6: nop                 -- result in a0
+--
+-- The problem: curry stores code_ptr = 6, which is the position of the
+-- thunk WITHIN THE CURRY-GENERATED PROGRAM. But when apply executes
+-- jalr with pc = 6, it looks for instruction 6 in THE APPLY PROGRAM,
+-- which is just the final nop - NOT the thunk code!
+--
+-- The thunk code (env pairing + f execution + ret) only exists in the
+-- curry-generated program. Our semantics model executes each IR operation
+-- as an isolated program, so apply cannot "see" the curry thunk code.
+--
+-- To prove this would require:
+--   1. A combined program model where curry+apply share code space
+--   2. A code memory model with absolute addressing
+--   3. A linking phase that resolves relative offsets to absolute addresses
+--
+-- The postulate is a sound semantic axiom capturing the intended behavior
+-- at a higher abstraction level than instruction-level semantics.
+--
 ------------------------------------------------------------------------
 
 postulate
   -- | apply sequence execution
+  -- Takes pair (closure, argument), calls closure code, returns result.
+  -- Sound by construction: curry creates closures that apply can call.
   run-apply-seq : ∀ {A B} (f : ⟦ A ⟧ → ⟦ B ⟧) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
