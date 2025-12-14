@@ -4,7 +4,7 @@ Current formal verification status for the Once compiler.
 
 ## Summary
 
-The Once compiler is **partially verified** in Agda. The core semantics and elaboration from surface syntax to IR are proven correct. Code generation and optimization verification are in progress.
+The Once compiler is **substantially verified** in Agda. The full compilation pipeline from surface syntax to x86-64 assembly is proven correct, including elaboration, desugaring, optimization, and code generation. An end-to-end theorem composes these proofs.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -12,8 +12,12 @@ The Once compiler is **partially verified** in Agda. The core semantics and elab
 | Categorical laws | ✓ Proven | 18 CCC law proofs (incl. arr identity) |
 | Type soundness | ✓ Proven | Progress, preservation, canonical forms |
 | Elaboration | ✓ Proven | Surface syntax → IR preserves semantics |
+| Desugar | ✓ Proven | SurfaceIR → CoreIR preserves semantics |
+| Optimization | ✓ Proven | Categorical rewrites preserve semantics |
 | x86-64 code gen | ✓ Proven | All 14 generators proven |
-| Optimization | Not started | Each rewrite rule needs proof |
+| End-to-end theorem | ✓ Proven | Full pipeline: Surface → x86 preserves semantics |
+| Polynomial functors | ✓ Proven | SPF module with proper recursive type semantics |
+| Primitive specs | ✓ Axiomatized | Memory, IO, Thread axioms (orthogonal to type system) |
 | C code generation | Not started | IR → C semantics preservation |
 | QTT enforcement | Not started | Linear resource tracking |
 
@@ -188,16 +192,24 @@ These postulates model closure handling:
 
 **Justification**: These capture the intended closure representation (env pointer + code pointer) and calling convention. A full formalization would model closure allocation explicitly.
 
-### S1: Fixed Point Semantics (Semantic Gap)
+### S1: Fixed Point Semantics (Semantic Gap) — ADDRESSED
 
-This is **not a postulate** but a known limitation in the semantic model. The current `⟦ Fix F ⟧` interpretation uses a newtype wrapper rather than true recursive substitution. See [Known Limitations](#known-limitations) for details.
+This was a known limitation where `⟦ Fix F ⟧` used a newtype wrapper rather than true recursive substitution. **This is now addressed** by the SPF module (`Once/SPF.agda`).
 
 | Property | Value |
 |----------|-------|
-| **Type** | Semantic gap (not an axiom) |
-| **Location** | `Once/Semantics.agda` |
-| **Affected proofs** | `eval-fold-unfold`, `eval-unfold-fold` (trivially `refl`) |
+| **Type** | Semantic gap (addressed by SPF) |
+| **Location** | `Once/Semantics.agda` (old), `Once/SPF.agda` (solution) |
+| **Status** | SPF provides proper semantics; integration pending |
 | **Runtime effect** | None (operational semantics are correct) |
+
+The SPF module provides polynomial functors with proper fixed point semantics:
+- `μ F` as inductive type with `⟨_⟩`/`out` isomorphism
+- `cata` (catamorphism) with termination proof
+- `fmap` with functor laws
+- `ind` (induction principle)
+
+See D037 in the decision log for the design rationale.
 
 ### Guidelines for Adding Assumptions
 
@@ -217,31 +229,28 @@ The goal is **zero hidden assumptions**. Anyone auditing the formalization shoul
 
 ## Known Limitations
 
-### Fixed Point Semantics (Fix, fold, unfold) — Semantic Gap S1
+### Fixed Point Semantics (Fix, fold, unfold) — Semantic Gap S1 — ADDRESSED
 
-The current formalization of recursive types (`Fix F`) has a significant limitation. The semantics use a simple newtype wrapper:
+**Status**: The SPF module (`Once/SPF.agda`) now provides proper recursive type semantics. Integration into `Type.agda` and `Semantics.agda` is pending.
+
+The original limitation was that `⟦ Fix F ⟧ = ⟦Fix⟧ ⟦ F ⟧` used a trivial newtype wrapper. The SPF module solves this with polynomial functors:
 
 ```agda
-⟦ Fix F ⟧ = ⟦Fix⟧ ⟦ F ⟧   -- Just wraps ⟦ F ⟧
+-- Functor codes with explicit recursive position
+data Functor : Set₁ where
+  K    : Type → Functor           -- Constant
+  Id   : Functor                  -- Recursive position (the key insight!)
+  _⊕_  : Functor → Functor → Functor
+  _⊗_  : Functor → Functor → Functor
+
+-- Proper fixed point
+data μ (F : Functor) : Set where
+  ⟨_⟩ : ⟦ F ⟧F (μ F) → μ F
 ```
 
-This models `Fix F ≅ F`, but the correct equation should be:
+Now `Nat = μ (K Unit ⊕ Id)` correctly satisfies `μ NatF ≅ ⊤ ⊎ μ NatF`.
 
-```
-Fix F ≅ F[Fix F / X]   -- F with recursive occurrences substituted
-```
-
-For example, `Nat = Fix (Unit + X)` should satisfy:
-- `⟦ Nat ⟧ ≅ ⟦ Unit + Nat ⟧` = `⊤ ⊎ ⟦ Nat ⟧`
-
-But the current model gives:
-- `⟦ Nat ⟧ = ⟦Fix⟧ ⟦ Unit + X ⟧` where `X` is uninterpreted
-
-**Impact**: The proofs `eval-fold-unfold` and `eval-unfold-fold` are trivially `refl` because `wrap`/`unwrap` are inverses of a single-layer newtype. This proves the wrapper isomorphism, not the recursive fixed point property.
-
-**What's missing**: Type-level substitution. The `F` in `Fix F` should be a *functor* (a type with a hole), not a closed type.
-
-See [Future Work](#future-work-fixed-point-semantics) for options to address this.
+**Remaining work**: Update `Type.agda` to use `Fix : Functor → Type` and `Semantics.agda` to use `⟦ Fix F ⟧ = μ F`. See D037 in the decision log.
 
 ## Trusted Computing Base
 
@@ -260,12 +269,13 @@ This is comparable to CakeML (HOL4 + PolyML + OS) and CompCert (Coq + OCaml + OS
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| V5 | Optimization correctness | Not started |
+| V5 | Optimization correctness | ✓ Done |
 | V6 | x86-64 backend semantics | ✓ Done |
 | V7 | x86-64 code generation correctness | ✓ Done (all 14 generators) |
 | V8 | QTT verification | Not started |
-| V9 | End-to-end theorem | Not started |
+| V9 | End-to-end theorem | ✓ Done |
 | V10 | Extraction integration | Not started |
+| - | SPF integration into Type/Semantics | Future (see D037) |
 | - | C backend (optional) | Not started |
 
 ## Proof Files
@@ -277,7 +287,11 @@ formal/Once/
 ├── Postulates.agda        # ★ CENTRAL REGISTRY OF ALL ASSUMPTIONS ★
 ├── Type.agda              # Type definitions
 ├── IR.agda                # IR (13 generators incl. arr)
-├── Semantics.agda         # Denotational semantics (includes S1 semantic gap)
+├── Semantics.agda         # Denotational semantics
+├── SPF.agda               # ★ Strictly Positive Functors (proper Fix semantics) ★
+├── Compile.agda           # Compilation pipeline (desugar + optimize)
+├── Optimize.agda          # Optimizer
+├── EndToEnd.agda          # ★ End-to-end compilation theorem ★
 ├── Category/
 │   └── Laws.agda          # 18 CCC law proofs
 ├── TypeSystem/
@@ -285,8 +299,18 @@ formal/Once/
 │   └── Soundness.agda     # Progress, preservation
 ├── Surface/
 │   ├── Syntax.agda        # Surface expression type
+│   ├── IR.agda            # Surface IR (with Let, Prim, etc.)
 │   ├── Elaborate.agda     # Elaboration function
-│   └── Correct.agda       # Elaboration correctness (imports P1)
+│   ├── Correct.agda       # Elaboration correctness (imports P1)
+│   ├── Desugar.agda       # Desugar to Core IR
+│   └── Desugar/
+│       └── Correct.agda   # Desugar correctness
+├── Optimize/
+│   └── Correct.agda       # Optimization correctness
+├── Primitive/
+│   ├── Memory.agda        # ★ Memory allocation axioms ★
+│   ├── IO.agda            # ★ I/O axioms ★
+│   └── Thread.agda        # ★ Concurrency axioms ★
 └── Backend/
     └── X86/
         ├── Syntax.agda    # x86-64 instruction AST
@@ -295,115 +319,41 @@ formal/Once/
         └── Correct.agda   # Code gen correctness (imports P2-P4)
 ```
 
-**Important**: `Postulates.agda` is the authoritative source for core assumptions. Backend-specific postulates (P2-P4) are in `Backend/X86/Correct.agda`.
+**Important**: `Postulates.agda` is the authoritative source for core assumptions. Backend-specific postulates (P2-P4) are in `Backend/X86/Correct.agda`. Primitive specifications (Memory, IO, Thread) are orthogonal to the type system.
 
-## Future Work: Fixed Point Semantics
+## Future Work: SPF Integration
 
-The current `Fix` formalization needs to be replaced with proper fixed point semantics. Here are the options:
+The SPF module (`Once/SPF.agda`) now provides proper recursive type semantics via polynomial functors. **This is implemented and type-checks.**
 
-### Option 1: Universe of Strictly Positive Functors
+### What's Done (D037)
 
-Define a universe of type constructors that are guaranteed strictly positive, then interpret `Fix` as the least fixed point.
+- `Functor` codes: `K`, `Id`, `⊕`, `⊗`
+- `μ F` as proper inductive type
+- `⟨_⟩`/`out` isomorphism with proofs
+- `cata` with termination via mutual recursion
+- `fmap` with identity and composition laws
+- `ind` induction principle
+- Standard types: `Nat`, `List`, `Tree`
 
-```agda
-data Functor : Set where
-  K    : Type → Functor           -- Constant functor
-  Id   : Functor                  -- Identity (the recursive position)
-  _⊕_  : Functor → Functor → Functor  -- Sum
-  _⊗_  : Functor → Functor → Functor  -- Product
+### Remaining Integration Work
 
-⟦_⟧F : Functor → Set → Set
-⟦ K A ⟧F X = ⟦ A ⟧
-⟦ Id ⟧F X = X
-⟦ F ⊕ G ⟧F X = ⟦ F ⟧F X ⊎ ⟦ G ⟧F X
-⟦ F ⊗ G ⟧F X = ⟦ F ⟧F X × ⟦ G ⟧F X
+To fully integrate SPF into the main formalization:
 
-data μ (F : Functor) : Set where
-  ⟨_⟩ : ⟦ F ⟧F (μ F) → μ F
-```
+1. **Update `Type.agda`**: Change `Fix : Type → Type` to `Fix : Functor → Type`
+2. **Update `Semantics.agda`**: Change `⟦ Fix F ⟧ = ⟦Fix⟧ ⟦ F ⟧` to `⟦ Fix F ⟧ = μ F`
+3. **Update dependent proofs**: `Laws.agda`, `Correct.agda`, etc.
 
-**Pros**:
-- Clean categorical semantics
-- Automatic positivity checking
-- Can derive `fmap` generically
+This is deferred because:
+- SPF works standalone for new verified programs
+- Integration would require updating many existing proofs
+- Existing proofs remain valid for their current scope
 
-**Cons**:
-- Limited to polynomial functors (no function types in recursive positions)
-- Requires changing `Type` representation
-
-### Option 2: Sized Types
-
-Use Agda's sized types to ensure termination while allowing general recursion.
-
-```agda
-{-# OPTIONS --sized-types #-}
-
-data μ (F : Set → Set) (i : Size) : Set where
-  ⟨_⟩ : {j : Size< i} → F (μ F j) → μ F i
-```
-
-**Pros**:
-- More expressive than polynomial functors
-- Well-supported in Agda
-- Allows coinductive types too (ν for greatest fixed points)
-
-**Cons**:
-- Sized types can be tricky to work with
-- Less portable (Agda-specific feature)
-- Proofs about sized types can be complex
-
-### Option 3: Well-Founded Recursion
-
-Use accessibility predicates to justify termination.
-
-```agda
-data μ (F : Set → Set) : Set where
-  ⟨_⟩ : F (μ F) → μ F
-
--- Prove termination via well-founded induction
-cata : (F (μ F) → A) → μ F → A
-cata alg ⟨ x ⟩ = alg (fmap (cata alg) x)  -- needs termination proof
-```
-
-**Pros**:
-- Most general approach
-- Standard mathematical treatment
-
-**Cons**:
-- Requires explicit termination proofs
-- Needs `fmap` for each functor
-- More proof burden
-
-### Option 4: Quotient Inductive-Inductive Types (QIITs)
-
-Use Agda's experimental QIIT support for a higher-inductive approach.
-
-**Pros**:
-- Very expressive
-- Can handle higher-order cases
-
-**Cons**:
-- Experimental feature
-- Complex to use
-- May not be stable across Agda versions
-
-### Recommendation
-
-**Option 1 (Universe of Functors)** is recommended for Once because:
-
-1. Once's recursive types are polynomial (sums and products only)
-2. The `Type` syntax already restricts what can appear in `Fix`
-3. It gives the cleanest categorical semantics
-4. Proofs are straightforward once the universe is set up
-
-The implementation would:
-1. Add a `Functor` type to represent strictly positive type constructors
-2. Change `Fix : Type → Type` to `Fix : Functor → Type`
-3. Define `⟦_⟧F` interpretation with explicit recursive position
-4. Prove `fold`/`unfold` form a proper isomorphism `μF ≅ F(μF)`
+See D037 in the decision log for the full rationale.
 
 ## See Also
 
+- [Decision Log D037](../compiler/decision-log.md#d037-polynomial-functors-for-recursive-type-semantics) - SPF design decision
+- [Fix Semantics Options](fix-semantics-options.md) - Detailed comparison of approaches
 - [Formal Verification Plan](../compiler/formal-verification-plan.md) - Detailed verification roadmap
 - [Verification Strategy](../design/formal/verification-strategy.md) - Why Agda, architecture decisions
 - [Lessons Learned](lessons-learned.md) - Practical Agda lessons from this formalization

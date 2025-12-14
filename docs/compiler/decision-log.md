@@ -2031,3 +2031,117 @@ The verified optimizer is NOT in the TCB - it's proven correct.
 
 - D035: Two-Stage IR and MAlonzo Compilation
 - [MAlonzo Compilation Design](../design/malonzo-compilation.md)
+
+---
+
+## D037: Polynomial Functors for Recursive Type Semantics
+
+**Date**: 2025-12-14
+**Status**: Accepted
+
+### Context
+
+The formal semantics had a known limitation (S1 in `what-is-proven.md`): the `Fix F` type used a trivial newtype wrapper rather than true recursive semantics. This meant `fold`/`unfold` proofs were trivially `refl` instead of proving the actual fixed point isomorphism `μF ≅ F(μF)`.
+
+Four options were analyzed in `docs/formal/fix-semantics-options.md`:
+1. **Polynomial Functors** - Universe of strictly positive type expressions
+2. **Sized Types** - Agda's sized types for termination
+3. **Well-Founded Recursion** - Explicit termination proofs
+4. **QIITs** - Quotient inductive-inductive types
+
+### Decision
+
+Use **Polynomial Functors** (Option 1) implemented in `formal/Once/SPF.agda`.
+
+### Implementation
+
+The SPF module provides:
+
+```agda
+-- Functor codes (strictly positive type expressions)
+data Functor : Set₁ where
+  K    : Type → Functor           -- Constant
+  Id   : Functor                  -- Recursive position
+  _⊕_  : Functor → Functor → Functor  -- Sum
+  _⊗_  : Functor → Functor → Functor  -- Product
+
+-- Functor interpretation
+⟦_⟧F : Functor → Set → Set
+
+-- Proper fixed point (initial algebra)
+data μ (F : Functor) : Set where
+  ⟨_⟩ : ⟦ F ⟧F (μ F) → μ F
+
+-- Destructor
+out : ∀ (F : Functor) → μ F → ⟦ F ⟧F (μ F)
+
+-- Catamorphism with termination proof
+cata : ∀ {F} {A : Set} → (⟦ F ⟧F A → A) → μ F → A
+
+-- Functor laws
+fmap-id : ∀ F {X} (x : ⟦ F ⟧F X) → fmap F id x ≡ x
+fmap-comp : ∀ F f g x → fmap F (g ∘ f) x ≡ fmap F g (fmap F f x)
+
+-- Fixed point isomorphism
+fold-unfold : ∀ F x → out F ⟨ x ⟩ ≡ x
+unfold-fold : ∀ F x → ⟨ out F x ⟩ ≡ x
+
+-- Induction principle
+ind : ∀ {F} (P : μ F → Set) → ... → (x : μ F) → P x
+```
+
+### Rationale
+
+| Criterion | Polynomial Functors | Other Options |
+|-----------|:------------------:|:-------------:|
+| Implementation effort | **~340 lines** | 200-500+ lines |
+| Ongoing proof burden | **Lowest** | Medium-High |
+| Once compatibility | **Excellent** | Good |
+| User syntax change | **None** | None |
+| QTT/Linearity fit | **Best** | Varies |
+| CCC alignment | **Perfect** | Good |
+
+**Why Polynomial Functors win:**
+
+1. **Zero user impact**: Surface syntax unchanged (`Fix (Unit + X)` still works)
+2. **Lowest proof burden**: One-time setup, then automatic induction principles
+3. **Best QTT fit**: No functions in recursive positions means clean linearity
+4. **CCC alignment**: Polynomial functors = free cartesian category on one generator
+5. **Sufficient expressiveness**: Covers all Once recursive types (Nat, List, Tree)
+
+**What it cannot express** (and Once doesn't need):
+- `Fix (X -> A)` - X in negative position (rarely needed)
+- Church/Scott encodings - higher-order (native Fix is better)
+- PHOAS - negative occurrence (use de Bruijn)
+
+### Mathematical Foundation
+
+Polynomial functors form the **free cartesian category** on one generator. This aligns perfectly with Once's CCC foundation. Initial algebras of polynomial functors always exist in Set, giving us proper inductive types with sound semantics.
+
+### Integration Status
+
+The SPF module is **standalone** and type-checks successfully. Full integration into `Type.agda` and `Semantics.agda` is deferred as future work because:
+
+1. Would require updating many existing proofs
+2. SPF can be used directly for new verified programs
+3. Existing proofs remain valid for their current scope
+
+### Future Work
+
+To fully integrate SPF:
+1. Change `Fix : Type → Type` to `Fix : Functor → Type` in `Type.agda`
+2. Change `⟦ Fix F ⟧ = ⟦Fix⟧ ⟦ F ⟧` to `⟦ Fix F ⟧ = μ F` in `Semantics.agda`
+3. Update dependent proofs in `Laws.agda`, `Correct.agda`, etc.
+
+### Consequences
+
+- S1 semantic gap is **addressable** (foundation now exists)
+- New verified programs can use SPF directly
+- Existing formalization unchanged (no breaking changes)
+- Clear path to full integration when needed
+
+### See Also
+
+- `docs/formal/fix-semantics-options.md` - Detailed comparison of all options
+- `formal/Once/SPF.agda` - Implementation
+- `docs/formal/what-is-proven.md` - S1 limitation documentation
