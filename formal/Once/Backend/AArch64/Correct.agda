@@ -283,6 +283,11 @@ readSP-writeReg rf x28 v = refl
 readSP-writeReg rf x29 v = refl
 readSP-writeReg rf x30 v = refl
 
+-- | Reading SP after writing SP returns the written value
+readSP-writeSP : ∀ (rf : RegFile) (v : Word) →
+  readSP (writeSP rf v) ≡ v
+readSP-writeSP rf v = refl
+
 -- | Memory: reading after writing same address returns written value
 -- Uses the definition: writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
@@ -633,6 +638,13 @@ execInstr-mov-imm : ∀ (prog : Program) (s : State) (dst : Reg) (n : ℕ) →
   execInstr prog s (mov dst (imm n)) ≡ just (record s { regs = writeReg (regs s) dst n ; pc = pc s +ℕ 1 })
 execInstr-mov-imm prog s dst n = refl
 
+-- | What execInstr does for mov (general case when readOperand succeeds)
+execInstr-mov-success : ∀ (prog : Program) (s : State) (dst : Reg) (src : Operand) (v : Word) →
+  readOperand s src ≡ just v →
+  execInstr prog s (mov dst src) ≡ just (record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 })
+execInstr-mov-success prog s dst src v src-eq with readOperand s src | src-eq
+... | just .v | refl = refl
+
 -- | What execInstr does for brk
 execInstr-brk : ∀ (prog : Program) (s : State) (n : ℕ) →
   execInstr prog s (brk n) ≡ just (record s { halted = true })
@@ -761,16 +773,43 @@ step-end-of-program prog s h-false fetch-eq
 ... | false | refl with fetch prog (pc s) | fetch-eq
 ...   | nothing | refl = refl
 
+-- | exec 1 after a step always returns that step's result
+-- Key insight: Looking at exec's definition, when step prog s = just s',
+-- exec 1 returns just s' regardless of whether s' is halted.
+-- Case halted s' = true:  exec 1 = just s'
+-- Case halted s' = false: exec 1 = exec 0 prog s' = just s'
+exec-1-step : ∀ (prog : Program) (s s' : State) →
+  step prog s ≡ just s' →
+  exec 1 prog s ≡ just s'
+exec-1-step prog s s' step-eq with step prog s | step-eq
+... | just .s' | refl with halted s'
+...   | true = refl
+...   | false = refl
+
 -- | exec 2 on a single instruction program reaches halted state
 -- This is a key lemma for proving single-instruction runners.
--- We postulate it for now and use it to build higher-level proofs.
-postulate
-  exec-2-single-instr : ∀ (prog : Program) (s s₁ : State) →
-    halted s ≡ false →
-    step prog s ≡ just s₁ →
-    halted s₁ ≡ false →
-    fetch prog (pc s₁) ≡ nothing →
-    ∃[ s' ] (exec 2 prog s ≡ just s' × halted s' ≡ true × s' ≡ record s₁ { halted = true })
+-- Proof strategy: Use exec-1-step twice and exec-chain.
+exec-2-single-instr : ∀ (prog : Program) (s s₁ : State) →
+  halted s ≡ false →
+  step prog s ≡ just s₁ →
+  halted s₁ ≡ false →
+  fetch prog (pc s₁) ≡ nothing →
+  ∃[ s' ] (exec 2 prog s ≡ just s' × halted s' ≡ true × s' ≡ record s₁ { halted = true })
+exec-2-single-instr prog s s₁ h-false step-eq h₁-false fetch-fail =
+  let s₂ = record s₁ { halted = true }
+      -- Step 1: exec 1 prog s = just s₁ (using exec-1-step)
+      exec-1-s : exec 1 prog s ≡ just s₁
+      exec-1-s = exec-1-step prog s s₁ step-eq
+      -- Step 2: step prog s₁ = just s₂ (using step-end-of-program)
+      step-s₁ : step prog s₁ ≡ just s₂
+      step-s₁ = step-end-of-program prog s₁ h₁-false fetch-fail
+      -- Step 3: exec 1 prog s₁ = just s₂ (using exec-1-step)
+      exec-1-s₁ : exec 1 prog s₁ ≡ just s₂
+      exec-1-s₁ = exec-1-step prog s₁ s₂ step-s₁
+      -- Step 4: exec 2 prog s = just s₂ (using exec-chain)
+      exec-2-eq : exec 2 prog s ≡ just s₂
+      exec-2-eq = exec-chain 1 1 prog s s₁ s₂ exec-1-s h₁-false exec-1-s₁
+  in s₂ , exec-2-eq , refl , refl
 
 ------------------------------------------------------------------------
 -- Single-instruction program execution (run to completion)
@@ -819,56 +858,221 @@ run-single-nop s h-false pc-eq =
       run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
   in s' , run-eq , h'-true , regs-eq
 
-postulate
-  -- | Running ldr to completion
-  run-single-ldr : ∀ (s : State) (dst : Reg) (m : Mem) (v : Word) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readMem (memory s) (effectiveAddr s m) ≡ just v →
-    ∃[ s' ] (run (ldr dst m ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') dst ≡ v)
+-- | Running ldr to completion: executes ldr, then halts when fetch fails
+-- Proof: compose step-instr, step-end-of-program, exec-2-single-instr, and exec-mono.
+run-single-ldr : ∀ (s : State) (dst : Reg) (m : Mem) (v : Word) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readMem (memory s) (effectiveAddr s m) ≡ just v →
+  ∃[ s' ] (run (ldr dst m ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') dst ≡ v)
+run-single-ldr s dst m v h-false pc-eq mem-eq =
+  let prog = ldr dst m ∷ []
+      -- Step 1: Execute ldr at pc=0
+      -- execInstr-ldr-success: execInstr prog s (ldr dst m) ≡ just (record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 })
+      s₁ = record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (ldr dst m) h-false
+                 (subst (λ p → fetch prog p ≡ just (ldr dst m)) (sym pc-eq) refl)
+                 (execInstr-ldr-success prog s dst m v mem-eq)
+      -- s₁ properties
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false  -- halted field unchanged by ldr
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq  -- pc s₁ = pc s + 1 = 0 + 1 = 1
+      -- Step 2: Fetch fails at pc=1 (program has only 1 instruction)
+      fetch-fail : fetch prog 1 ≡ nothing
+      fetch-fail = refl
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) fetch-fail
+      -- Step 3: exec 2 reaches halted state
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      -- s' ≡ record s₁ { halted = true }
+      -- regs s' = regs s₁ = writeReg (regs s) dst v
+      regs-eq : regs s' ≡ regs s₁
+      regs-eq = cong regs s'-eq
+      dst-eq : readReg (regs s') dst ≡ v
+      dst-eq = trans (cong (λ rf → readReg rf dst) regs-eq) (readReg-writeReg-same (regs s) dst v)
+      -- Step 4: By exec-mono, run also reaches s'
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , dst-eq
 
-  -- | Running str to completion
-  run-single-str : ∀ (s : State) (src : Reg) (m : Mem) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (str src m ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × readMem (memory s') (effectiveAddr s m) ≡ just (readReg (regs s) src))
+-- | Running str to completion: executes str, then halts when fetch fails
+-- Proof: Similar to run-single-ldr, using execInstr-str and readMem-writeMem-same.
+run-single-str : ∀ (s : State) (src : Reg) (m : Mem) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (str src m ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × readMem (memory s') (effectiveAddr s m) ≡ just (readReg (regs s) src))
+run-single-str s src m h-false pc-eq =
+  let prog = str src m ∷ []
+      addr = effectiveAddr s m
+      v = readReg (regs s) src
+      -- Step 1: Execute str at pc=0
+      -- After str, state has updated memory and pc = pc s + 1
+      s₁ = record (writeToMem s m v) { pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (str src m) h-false
+                 (subst (λ p → fetch prog p ≡ just (str src m)) (sym pc-eq) refl)
+                 (execInstr-str prog s src m)
+      -- s₁ properties
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false  -- halted unchanged by str
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq
+      -- Step 2: Fetch fails at pc=1
+      fetch-fail : fetch prog 1 ≡ nothing
+      fetch-fail = refl
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) fetch-fail
+      -- Step 3: exec 2 reaches halted state
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      -- s' = record s₁ { halted = true }
+      -- memory s' = memory s₁ = writeMem (memory s) addr v
+      mem-eq : memory s' ≡ memory s₁
+      mem-eq = cong memory s'-eq
+      -- readMem (memory s') addr = just v by readMem-writeMem-same
+      -- Need to show memory s₁ = writeMem (memory s) addr v
+      -- From writeToMem definition: memory (writeToMem s m v) = writeMem (memory s) (effectiveAddr s m) v
+      mem-s₁-eq : memory s₁ ≡ writeMem (memory s) addr v
+      mem-s₁-eq = refl  -- by definition of s₁ and writeToMem
+      mem-result : readMem (memory s') addr ≡ just v
+      mem-result = trans (cong (λ mem → readMem mem addr) mem-eq)
+                        (trans (cong (λ mem → readMem mem addr) mem-s₁-eq)
+                               (readMem-writeMem-same (memory s) addr v))
+      -- Step 4: By exec-mono, run also reaches s'
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , mem-result
 
-  -- | Running mov to completion
-  run-single-mov : ∀ (s : State) (dst : Reg) (src : Operand) (v : Word) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readOperand s src ≡ just v →
-    ∃[ s' ] (run (mov dst src ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') dst ≡ v)
+-- | Running mov to completion
+run-single-mov : ∀ (s : State) (dst : Reg) (src : Operand) (v : Word) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readOperand s src ≡ just v →
+  ∃[ s' ] (run (mov dst src ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') dst ≡ v)
+run-single-mov s dst src v h-false pc-eq src-eq =
+  let prog = mov dst src ∷ []
+      s₁ = record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (mov dst src) h-false
+                 (subst (λ p → fetch prog p ≡ just (mov dst src)) (sym pc-eq) refl)
+                 (execInstr-mov-success prog s dst src v src-eq)
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq
+      fetch-fail : fetch prog 1 ≡ nothing
+      fetch-fail = refl
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) fetch-fail
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      regs-eq : regs s' ≡ regs s₁
+      regs-eq = cong regs s'-eq
+      dst-eq : readReg (regs s') dst ≡ v
+      dst-eq = trans (cong (λ rf → readReg rf dst) regs-eq) (readReg-writeReg-same (regs s) dst v)
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , dst-eq
 
-  -- | Running mov-from-sp to completion
-  run-single-mov-from-sp : ∀ (s : State) (dst : Reg) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (mov-from-sp dst ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') dst ≡ readSP (regs s))
+-- | Running mov-from-sp to completion
+run-single-mov-from-sp : ∀ (s : State) (dst : Reg) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (mov-from-sp dst ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') dst ≡ readSP (regs s))
+run-single-mov-from-sp s dst h-false pc-eq =
+  let prog = mov-from-sp dst ∷ []
+      sp-val = readSP (regs s)
+      s₁ = record s { regs = writeReg (regs s) dst sp-val ; pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (mov-from-sp dst) h-false
+                 (subst (λ p → fetch prog p ≡ just (mov-from-sp dst)) (sym pc-eq) refl)
+                 (execInstr-mov-from-sp prog s dst)
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) refl
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      regs-eq : regs s' ≡ regs s₁
+      regs-eq = cong regs s'-eq
+      dst-eq : readReg (regs s') dst ≡ sp-val
+      dst-eq = trans (cong (λ rf → readReg rf dst) regs-eq) (readReg-writeReg-same (regs s) dst sp-val)
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , dst-eq
 
-  -- | Running sub-sp to completion
-  run-single-sub-sp : ∀ (s : State) (n : ℕ) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (sub-sp n ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × readSP (regs s') ≡ readSP (regs s) ∸ n)
+-- | Running sub-sp to completion
+run-single-sub-sp : ∀ (s : State) (n : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (sub-sp n ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × readSP (regs s') ≡ readSP (regs s) ∸ n)
+run-single-sub-sp s n h-false pc-eq =
+  let prog = sub-sp n ∷ []
+      new-sp = readSP (regs s) ∸ n
+      s₁ = record s { regs = writeSP (regs s) new-sp ; pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (sub-sp n) h-false
+                 (subst (λ p → fetch prog p ≡ just (sub-sp n)) (sym pc-eq) refl)
+                 (execInstr-sub-sp prog s n)
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) refl
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      regs-eq : regs s' ≡ regs s₁
+      regs-eq = cong regs s'-eq
+      sp-eq : readSP (regs s') ≡ new-sp
+      sp-eq = trans (cong readSP regs-eq) (readSP-writeSP (regs s) new-sp)
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , sp-eq
 
-  -- | Running str-zr to completion
-  run-single-str-zr : ∀ (s : State) (m : Mem) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (str-zr m ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × readMem (memory s') (effectiveAddr s m) ≡ just 0)
+-- | Running str-zr to completion
+run-single-str-zr : ∀ (s : State) (m : Mem) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (str-zr m ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × readMem (memory s') (effectiveAddr s m) ≡ just 0)
+run-single-str-zr s m h-false pc-eq =
+  let prog = str-zr m ∷ []
+      addr = effectiveAddr s m
+      s₁ = record (writeToMem s m 0) { pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (str-zr m) h-false
+                 (subst (λ p → fetch prog p ≡ just (str-zr m)) (sym pc-eq) refl)
+                 (execInstr-str-zr prog s m)
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) refl
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      mem-eq : memory s' ≡ memory s₁
+      mem-eq = cong memory s'-eq
+      mem-s₁-eq : memory s₁ ≡ writeMem (memory s) addr 0
+      mem-s₁-eq = refl
+      mem-result : readMem (memory s') addr ≡ just 0
+      mem-result = trans (cong (λ mem → readMem mem addr) mem-eq)
+                        (trans (cong (λ mem → readMem mem addr) mem-s₁-eq)
+                               (readMem-writeMem-same (memory s) addr 0))
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , mem-result
 
 -- | Running brk to completion (brk actually sets halted)
 -- Proven: brk sets halted=true in one step
