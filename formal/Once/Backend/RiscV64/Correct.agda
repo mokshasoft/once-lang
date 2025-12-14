@@ -238,10 +238,11 @@ execSd : ∀ (prog : List Instr) (s : State) (rs2 : Reg) (n : ℕ) (rs1 : Reg) �
                    ; pc = pc s +ℕ 1 })
 execSd prog s rs2 n rs1 = refl
 
--- Helper: state after executing j target
-execJ : ∀ (prog : List Instr) (s : State) (target : ℕ) →
-  execInstr prog s (j target) ≡ just (record s { pc = target })
-execJ prog s target = refl
+-- Helper: state after executing j offset (PC-relative)
+-- For non-negative offsets, pc = pc + offset
+execJ : ∀ (prog : List Instr) (s : State) (offset : ℕ) →
+  execInstr prog s (j (+ offset)) ≡ just (record s { pc = pc s +ℕ offset })
+execJ prog s offset = refl
 
 -- Helper: state after executing label (no-op at runtime)
 execLabel : ∀ (prog : List Instr) (s : State) (n : ℕ) →
@@ -264,17 +265,18 @@ execLd prog s rd n rs v mem-eq rewrite mem-eq = refl
 
 -- Helper: state after executing bne when registers are equal (not taken)
 -- Note: RISC-V branches compare registers directly (no flags!)
--- We need to use inspect to properly handle the with-clause
-execBne-not-taken : ∀ (prog : List Instr) (s : State) (rs1 rs2 : Reg) (target : ℕ) →
+-- With PC-relative branches, not-taken means pc = pc + 1
+execBne-not-taken : ∀ (prog : List Instr) (s : State) (rs1 rs2 : Reg) (offset : ℕ) →
   readReg (regs s) rs1 ≡ readReg (regs s) rs2 →
-  execInstr prog s (bne rs1 rs2 target) ≡ just (record s { pc = pc s +ℕ 1 })
-execBne-not-taken prog s rs1 rs2 target eq rewrite eq | ≡ᵇ-refl (readReg (regs s) rs2) = refl
+  execInstr prog s (bne rs1 rs2 (+ offset)) ≡ just (record s { pc = pc s +ℕ 1 })
+execBne-not-taken prog s rs1 rs2 offset eq rewrite eq | ≡ᵇ-refl (readReg (regs s) rs2) = refl
 
 -- Helper: state after executing bne when registers are different (taken)
-execBne-taken : ∀ (prog : List Instr) (s : State) (rs1 rs2 : Reg) (target : ℕ) →
+-- With PC-relative branches, taken means pc = pc + offset
+execBne-taken : ∀ (prog : List Instr) (s : State) (rs1 rs2 : Reg) (offset : ℕ) →
   (readReg (regs s) rs1 ≡ᵇ readReg (regs s) rs2) ≡ false →
-  execInstr prog s (bne rs1 rs2 target) ≡ just (record s { pc = target })
-execBne-taken prog s rs1 rs2 target neq-bool rewrite neq-bool = refl
+  execInstr prog s (bne rs1 rs2 (+ offset)) ≡ just (record s { pc = pc s +ℕ offset })
+execBne-taken prog s rs1 rs2 offset neq-bool rewrite neq-bool = refl
 
 ------------------------------------------------------------------------
 -- Register File Lemmas
@@ -1362,7 +1364,8 @@ run-curry-seq : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
 run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-final
   where
     len-f = compile-length f
-    end-label = 12 +ℕ len-f
+    end-offset = 7 +ℕ len-f  -- PC-relative offset: j at pos 5 → end at pos 12+len-f
+    end-label = 12 +ℕ len-f  -- Absolute position (for reasoning about program structure)
     prog = compile-riscv {A} {B ⇒ C} (curry f)
 
     -- Stack allocation
@@ -1462,19 +1465,20 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
     a0-st5 : readReg (regs st5) a0 ≡ new-sp
     a0-st5 = trans (readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp)) sp-st4
 
-    -- State st6: after j end-label - pc = end-label = 12 + len-f
+    -- State st6: after j end-offset - pc = pc + offset = 5 + (7 + len-f) = 12 + len-f
     st6 : State
-    st6 = record st5 { pc = end-label }
+    st6 = record st5 { pc = pc st5 +ℕ end-offset }
 
     step6 : step prog st5 ≡ just st6
-    step6 = trans (step-exec-5 (addi sp sp neg16) (sd a0 (+ 0) sp) (li t0 (+ 6)) (sd t0 (+ 8) sp) (mv a0 sp) (j end-label) _ st5 h5 pc5)
-                  (execJ prog st5 end-label)
+    step6 = trans (step-exec-5 (addi sp sp neg16) (sd a0 (+ 0) sp) (li t0 (+ 6)) (sd t0 (+ 8) sp) (mv a0 sp) (j (+ end-offset)) _ st5 h5 pc5)
+                  (execJ prog st5 end-offset)
 
     h6 : halted st6 ≡ false
     h6 = h-false
 
+    -- pc st6 = pc st5 +ℕ end-offset = 5 + (7 + len-f) = 12 + len-f = end-label
     pc6 : pc st6 ≡ end-label
-    pc6 = refl
+    pc6 = trans (cong (_+ℕ end-offset) pc5) (sym (+-assoc 5 7 len-f))
 
     -- State st7: after label end-label - pc = end-label + 1 = 13 + len-f
     st7 : State
@@ -1489,8 +1493,9 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
     h7 : halted st7 ≡ false
     h7 = h-false
 
+    -- pc st7 = pc st6 +ℕ 1 = end-label +ℕ 1 = (12 + len-f) + 1 = 13 + len-f
     pc7 : pc st7 ≡ 13 +ℕ len-f
-    pc7 = +-comm (12 +ℕ len-f) 1
+    pc7 = trans (cong (_+ℕ 1) pc6) (+-comm (12 +ℕ len-f) 1)
 
     -- State st8: halt (fetch at 13+len-f fails, program has 13+len-f instructions)
     st8 : State

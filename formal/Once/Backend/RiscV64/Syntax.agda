@@ -223,18 +223,19 @@ data Instr : Set where
   sb     : Reg → ℤ → Reg → Instr      -- M[rs1 + offset] = rs2[7:0] (8-bit)
 
   ------------------------------------------------------------------------
-  -- B-type: Conditional Branches
-  -- Format: op rs1, rs2, label
+  -- B-type: Conditional Branches (PC-relative)
+  -- Format: op rs1, rs2, offset
   -- Note: Unlike x86, RISC-V branches compare two registers directly
   --       (no flags register!)
+  -- Note: Offsets are PC-relative: pc = pc + offset (if branch taken)
   ------------------------------------------------------------------------
 
-  beq    : Reg → Reg → ℕ → Instr      -- if (rs1 == rs2) pc = label
-  bne    : Reg → Reg → ℕ → Instr      -- if (rs1 != rs2) pc = label
-  blt    : Reg → Reg → ℕ → Instr      -- if (rs1 < rs2) pc = label (signed)
-  bge    : Reg → Reg → ℕ → Instr      -- if (rs1 >= rs2) pc = label (signed)
-  bltu   : Reg → Reg → ℕ → Instr      -- if (rs1 < rs2) pc = label (unsigned)
-  bgeu   : Reg → Reg → ℕ → Instr      -- if (rs1 >= rs2) pc = label (unsigned)
+  beq    : Reg → Reg → ℤ → Instr      -- if (rs1 == rs2) pc = pc + offset
+  bne    : Reg → Reg → ℤ → Instr      -- if (rs1 != rs2) pc = pc + offset
+  blt    : Reg → Reg → ℤ → Instr      -- if (rs1 < rs2) pc = pc + offset (signed)
+  bge    : Reg → Reg → ℤ → Instr      -- if (rs1 >= rs2) pc = pc + offset (signed)
+  bltu   : Reg → Reg → ℤ → Instr      -- if (rs1 < rs2) pc = pc + offset (unsigned)
+  bgeu   : Reg → Reg → ℤ → Instr      -- if (rs1 >= rs2) pc = pc + offset (unsigned)
 
   ------------------------------------------------------------------------
   -- U-type: Upper Immediate
@@ -245,14 +246,14 @@ data Instr : Set where
   auipc  : Reg → ℤ → Instr            -- rd = pc + (imm << 12) (add upper to PC)
 
   ------------------------------------------------------------------------
-  -- J-type: Unconditional Jumps
+  -- J-type: Unconditional Jumps (PC-relative)
   ------------------------------------------------------------------------
 
-  -- Jump and link (direct)
-  jal    : Reg → ℕ → Instr            -- rd = pc + 4; pc = label
+  -- Jump and link (direct, PC-relative)
+  jal    : Reg → ℤ → Instr            -- rd = pc + 1; pc = pc + offset
 
-  -- Jump and link register (indirect)
-  jalr   : Reg → Reg → ℤ → Instr      -- rd = pc + 4; pc = (rs1 + offset) & ~1
+  -- Jump and link register (indirect, absolute)
+  jalr   : Reg → Reg → ℤ → Instr      -- rd = pc + 1; pc = (rs1 + offset) & ~1
 
   ------------------------------------------------------------------------
   -- Pseudo-instructions
@@ -266,11 +267,11 @@ data Instr : Set where
   -- Move register (expands to addi rd, rs, 0)
   mv     : Reg → Reg → Instr          -- rd = rs
 
-  -- Jump (expands to jal zero, label)
-  j      : ℕ → Instr                  -- pc = label (no link)
+  -- Jump (expands to jal zero, offset) - PC-relative
+  j      : ℤ → Instr                  -- pc = pc + offset (no link)
 
-  -- Call (expands to jal ra, label)
-  call   : ℕ → Instr                  -- ra = pc + 4; pc = label
+  -- Call (expands to jal ra, offset) - PC-relative
+  call   : ℤ → Instr                  -- ra = pc + 1; pc = pc + offset
 
   -- Return (expands to jalr zero, ra, 0)
   ret    : Instr                      -- pc = ra
