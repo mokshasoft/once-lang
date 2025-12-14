@@ -1,3 +1,0 @@
-Should where statements be allowed or only lets?
-
-https://bartoszmilewski.com/
