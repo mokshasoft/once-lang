@@ -216,6 +216,13 @@ effectiveAddr rf base-reg offset with isNegative offset
 ... | false = readReg rf base-reg + offsetToℕ offset
 ... | true  = readReg rf base-reg ∸ ∣ offset ∣
 
+-- | Compute PC + offset for PC-relative branches and jumps
+-- Format: pc + offset where offset is signed (can be negative for backward jumps)
+pcPlusOffset : ℕ → ℤ → ℕ
+pcPlusOffset pc offset with isNegative offset
+... | false = pc + offsetToℕ offset
+... | true  = pc ∸ ∣ offset ∣
+
 ------------------------------------------------------------------------
 -- Arithmetic helpers
 ------------------------------------------------------------------------
@@ -473,39 +480,40 @@ execInstr prog s (sb rs2 offset rs1) =
                     ; pc = pc s + 1 })
 
 ------------------------------------------------------------------------
--- Branch Instructions
+-- Branch Instructions (PC-relative)
 -- Note: RISC-V branches compare two registers directly (no flags!)
+-- Offsets are PC-relative: if branch taken, pc = pc + offset
 ------------------------------------------------------------------------
 
-execInstr prog s (beq rs1 rs2 target) =
+execInstr prog s (beq rs1 rs2 offset) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 ≡ᵇ v2 then target else pc s + 1 })
+  in just (record s { pc = if v1 ≡ᵇ v2 then pcPlusOffset (pc s) offset else pc s + 1 })
 
-execInstr prog s (bne rs1 rs2 target) =
+execInstr prog s (bne rs1 rs2 offset) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 ≡ᵇ v2 then pc s + 1 else target })
+  in just (record s { pc = if v1 ≡ᵇ v2 then pc s + 1 else pcPlusOffset (pc s) offset })
 
-execInstr prog s (blt rs1 rs2 target) =
+execInstr prog s (blt rs1 rs2 offset) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 <ᵇ v2 then target else pc s + 1 })
+  in just (record s { pc = if v1 <ᵇ v2 then pcPlusOffset (pc s) offset else pc s + 1 })
 
-execInstr prog s (bge rs1 rs2 target) =
+execInstr prog s (bge rs1 rs2 offset) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 <ᵇ v2 then pc s + 1 else target })
+  in just (record s { pc = if v1 <ᵇ v2 then pc s + 1 else pcPlusOffset (pc s) offset })
 
-execInstr prog s (bltu rs1 rs2 target) =
+execInstr prog s (bltu rs1 rs2 offset) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 <ᵇ v2 then target else pc s + 1 })
+  in just (record s { pc = if v1 <ᵇ v2 then pcPlusOffset (pc s) offset else pc s + 1 })
 
-execInstr prog s (bgeu rs1 rs2 target) =
+execInstr prog s (bgeu rs1 rs2 offset) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 <ᵇ v2 then pc s + 1 else target })
+  in just (record s { pc = if v1 <ᵇ v2 then pc s + 1 else pcPlusOffset (pc s) offset })
 
 ------------------------------------------------------------------------
 -- Upper Immediate Instructions
@@ -522,15 +530,15 @@ execInstr prog s (auipc rd imm) =
                     ; pc = pc s + 1 })
 
 ------------------------------------------------------------------------
--- Jump Instructions
+-- Jump Instructions (PC-relative for jal, absolute for jalr)
 ------------------------------------------------------------------------
 
--- jal: Jump and Link (direct jump)
--- rd = pc + 4 (or pc + 1 in our instruction-indexed model)
--- pc = target
-execInstr prog s (jal rd target) =
+-- jal: Jump and Link (direct jump, PC-relative)
+-- rd = pc + 1 (return address)
+-- pc = pc + offset
+execInstr prog s (jal rd offset) =
   just (record s { regs = writeReg (regs s) rd (pc s + 1)
-                 ; pc = target })
+                 ; pc = pcPlusOffset (pc s) offset })
 
 -- jalr: Jump and Link Register (indirect jump)
 -- rd = pc + 4; pc = (rs1 + offset) & ~1
@@ -555,14 +563,14 @@ execInstr prog s (mv rd rs) =
   in just (record s { regs = writeReg (regs s) rd v
                     ; pc = pc s + 1 })
 
--- j: Unconditional Jump (pseudo-instruction, expands to jal zero, target)
-execInstr prog s (j target) =
-  just (record s { pc = target })
+-- j: Unconditional Jump (pseudo-instruction, PC-relative)
+execInstr prog s (j offset) =
+  just (record s { pc = pcPlusOffset (pc s) offset })
 
--- call: Function Call (pseudo-instruction, expands to jal ra, target)
-execInstr prog s (call target) =
+-- call: Function Call (pseudo-instruction, PC-relative)
+execInstr prog s (call offset) =
   just (record s { regs = writeReg (regs s) ra (pc s + 1)
-                 ; pc = target })
+                 ; pc = pcPlusOffset (pc s) offset })
 
 -- ret: Return (pseudo-instruction, expands to jalr zero, ra, 0)
 execInstr prog s ret =

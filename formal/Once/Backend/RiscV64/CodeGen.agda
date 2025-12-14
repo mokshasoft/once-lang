@@ -129,38 +129,42 @@ compile-riscv inr =
   mv a0 sp ∷ []                -- return pointer
 
 -- Case analysis: branch on tag
--- Jump targets are computed based on compiled code lengths
+-- Jump offsets are PC-relative, computed based on compiled code lengths
 --
 -- Note: RISC-V branches compare two registers directly (no flags!)
--- bne t0, zero, target = branch if t0 != 0
+-- bne t0, zero, offset = branch if t0 != 0, pc = pc + offset
 compile-riscv [ f , g ] =
   let len-f = compile-length f
       len-g = compile-length g
       -- Layout:
       --   0: ld t0, 0(a0)          -- load tag
       --   1: ld a0, 8(a0)          -- load value (do this before branch!)
-      --   2: bne t0, zero, right   -- branch if tag != 0
+      --   2: bne t0, zero, +offset -- branch if tag != 0 (PC-relative)
       --   3 to 2+|f|: compile-riscv f
-      --   3+|f|: j end
+      --   3+|f|: j +offset         -- jump to end (PC-relative)
       --   4+|f|: label right
       --   5+|f| to 4+|f|+|g|: compile-riscv g
       --   5+|f|+|g|: label end
-      right-branch = 4 +ℕ len-f
-      end-label = (5 +ℕ len-f) +ℕ len-g
+      --
+      -- PC-relative offsets:
+      --   bne at pos 2 → right at pos 4+|f|: offset = (4+|f|) - 2 = 2+|f|
+      --   j at pos 3+|f| → end at pos 5+|f|+|g|: offset = (5+|f|+|g|) - (3+|f|) = 2+|g|
+      right-offset = + (2 +ℕ len-f)
+      end-offset = + (2 +ℕ len-g)
   in
   -- Load tag into t0
   ld t0 (+ 0) a0 ∷
   -- Load value into a0 (do before branch, both branches need it)
   ld a0 (+ 8) a0 ∷
-  -- Branch to right if tag != 0
-  bne t0 zero right-branch ∷
+  -- Branch to right if tag != 0 (PC-relative: pc + offset)
+  bne t0 zero right-offset ∷
   -- Left branch: apply f
   compile-riscv f ++
-  j end-label ∷
+  j end-offset ∷
   -- Right branch: apply g
-  label right-branch ∷
+  label (4 +ℕ len-f) ∷
   compile-riscv g ++
-  label end-label ∷ []
+  label ((5 +ℕ len-f) +ℕ len-g) ∷ []
 
 -- Terminal: return unit (represented as 0)
 compile-riscv terminal = li a0 (+ 0) ∷ []
@@ -178,7 +182,7 @@ compile-riscv initial = ebreak ∷ []
 --   2. Pairs it with argument (b) in a0
 --   3. Executes compile-riscv f
 --
--- Jump targets are computed based on compiled code length.
+-- Jump offsets are PC-relative, computed based on compiled code length.
 compile-riscv (curry {A} {B} {C} f) =
   let len-f = compile-length f
       -- Layout:
@@ -187,7 +191,7 @@ compile-riscv (curry {A} {B} {C} f) =
       --   2: li t0, code-ptr
       --   3: sd t0, 8(sp)          -- store code_ptr
       --   4: mv a0, sp             -- return closure
-      --   5: j end
+      --   5: j +offset             -- jump over thunk (PC-relative)
       --   6: label code-ptr
       --   7: addi sp, sp, -16
       --   8: sd s0, 0(sp)          -- store env (a)
@@ -196,8 +200,11 @@ compile-riscv (curry {A} {B} {C} f) =
       --   11 to 10+|f|: compile-riscv f
       --   11+|f|: ret
       --   12+|f|: label end
+      --
+      -- PC-relative offset for j at pos 5 → end at pos 12+|f|:
+      --   offset = (12+|f|) - 5 = 7+|f|
       code-ptr = 6
-      end-label = 12 +ℕ len-f
+      end-offset = + (7 +ℕ len-f)
   in
   -- Allocate closure on stack
   addi sp sp neg16 ∷
@@ -208,8 +215,8 @@ compile-riscv (curry {A} {B} {C} f) =
   sd t0 (+ 8) sp ∷
   -- Return closure pointer
   mv a0 sp ∷
-  -- Jump over the thunk code
-  j end-label ∷
+  -- Jump over the thunk code (PC-relative: pc + offset)
+  j end-offset ∷
   -- Thunk code: called via apply with b in a0, env in s0
   label code-ptr ∷
   -- Allocate pair (a, b) on stack
@@ -225,7 +232,7 @@ compile-riscv (curry {A} {B} {C} f) =
   -- Return (a0 already has result)
   ret ∷
   -- End of thunk
-  label end-label ∷ []
+  label (12 +ℕ len-f) ∷ []
 
 -- Apply: call closure
 -- Input is pair (closure, argument)
