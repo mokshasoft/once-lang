@@ -220,6 +220,14 @@ execMov-mem-disp-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) (disp
                    ; pc = pc s +ℕ 1 })
 execMov-mem-disp-reg prog s dst src disp = refl
 
+-- Helper: state after executing mov [reg] reg (memory store from register)
+-- Proof: readOperand (reg src) = just (readReg regs src) (always succeeds)
+execMov-mem-base-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) →
+  execInstr prog s (mov (mem (base dst)) (reg src)) ≡
+    just (record s { memory = writeMem (memory s) (readReg (regs s) dst) (readReg (regs s) src)
+                   ; pc = pc s +ℕ 1 })
+execMov-mem-base-reg prog s dst src = refl
+
 -- Helper: state after executing sub reg imm
 -- Proof: both readOperand (reg dst) and readOperand (imm v) always succeed
 execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
@@ -751,6 +759,34 @@ step-on-halted : ∀ (prog : List Instr) (s : State) →
 step-on-halted prog s h-true with halted s
 step-on-halted prog s refl | true = refl
 
+-- | Step at arbitrary offset within combined program
+-- Key lemma: if pc = length prefix, step executes instruction at that position
+step-exec-at-offset : ∀ (prefix : Program) (instr : Instr) (suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  step (prefix ++ instr ∷ suffix) s ≡ execInstr (prefix ++ instr ∷ suffix) s instr
+step-exec-at-offset prefix instr suffix s h-false pc-eq =
+  step-exec (prefix ++ instr ∷ suffix) s instr h-false fetch-eq
+  where
+    open import Data.Nat.Properties using (+-identityʳ)
+    -- Step 1: fetch (prefix ++ instr ∷ suffix) (length prefix +ℕ 0) ≡ just instr
+    fetch-with-plus-0 : fetch (prefix ++ instr ∷ suffix) (length prefix +ℕ 0) ≡ just instr
+    fetch-with-plus-0 = fetch-append-right prefix (instr ∷ suffix) 0
+
+    -- Step 2: Use +-identityʳ to rewrite (length prefix +ℕ 0) to (length prefix)
+    -- +-identityʳ (length prefix) : (length prefix +ℕ 0) ≡ length prefix
+    fetch-at-prefix-len : fetch (prefix ++ instr ∷ suffix) (length prefix) ≡ just instr
+    fetch-at-prefix-len = subst (λ n → fetch (prefix ++ instr ∷ suffix) n ≡ just instr)
+                                (+-identityʳ (length prefix))
+                                fetch-with-plus-0
+
+    -- Step 3: Use pc-eq to rewrite (length prefix) to (pc s)
+    -- pc-eq : pc s ≡ length prefix, so sym pc-eq : length prefix ≡ pc s
+    fetch-eq : fetch (prefix ++ instr ∷ suffix) (pc s) ≡ just instr
+    fetch-eq = subst (λ n → fetch (prefix ++ instr ∷ suffix) n ≡ just instr)
+                     (sym pc-eq)
+                     fetch-at-prefix-len
+
 ------------------------------------------------------------------------
 -- Exec Lemmas
 ------------------------------------------------------------------------
@@ -947,6 +983,91 @@ exec-transfer-at prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-e
 
     rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
     rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
+
+-- | Execute pair setup (sub rsp, 16; mov r14, rdi) at arbitrary offset
+-- Used for the first phase of pair construction
+exec-pair-setup-at : ∀ (prefix : Program) (rest : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 2 (prefix ++ sub (reg rsp) (imm 16) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 2
+         × readReg (regs s') r14 ≡ readReg (regs s) rdi
+         × readReg (regs s') rdi ≡ readReg (regs s) rdi)
+exec-pair-setup-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , r14-eq , rdi-eq
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (+-assoc)
+
+    prog : Program
+    prog = prefix ++ sub (reg rsp) (imm 16) ∷ mov (reg r14) (reg rdi) ∷ rest
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp (readReg (regs s) rsp ∸ 16)
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags (readReg (regs s) rsp ∸ 16) (readReg (regs s) rsp) }
+
+    -- Fetch sub instruction at length prefix
+    fetch0 : fetch prog (length prefix) ≡ just (sub (reg rsp) (imm 16))
+    fetch0 = fetch-at-prefix-end prefix (sub (reg rsp) (imm 16)) (mov (reg r14) (reg rdi) ∷ rest)
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s (sub (reg rsp) (imm 16)) h-false
+                             (subst (λ p → fetch prog p ≡ just (sub (reg rsp) (imm 16))) (sym pc-eq) fetch0))
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    -- State after step 2: mov r14, rdi
+    s-final : State
+    s-final = record s1 { regs = writeReg (regs s1) r14 (readReg (regs s1) rdi)
+                        ; pc = pc s1 +ℕ 1 }
+
+    -- For fetch at position length prefix + 1, rearrange program
+    prog-eq1 : prog ≡ (prefix ++ sub (reg rsp) (imm 16) ∷ []) ++ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq1 = sym (++-assoc prefix (sub (reg rsp) (imm 16) ∷ []) (mov (reg r14) (reg rdi) ∷ rest))
+
+    len-prefix-1 : length (prefix ++ sub (reg rsp) (imm 16) ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = List-length-++ prefix {sub (reg rsp) (imm 16) ∷ []}
+
+    fetch1-helper : fetch ((prefix ++ sub (reg rsp) (imm 16) ∷ []) ++ mov (reg r14) (reg rdi) ∷ rest)
+                         (length (prefix ++ sub (reg rsp) (imm 16) ∷ []))
+                  ≡ just (mov (reg r14) (reg rdi))
+    fetch1-helper = fetch-at-prefix-end (prefix ++ sub (reg rsp) (imm 16) ∷ []) (mov (reg r14) (reg rdi)) rest
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just (mov (reg r14) (reg rdi))
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r14) (reg rdi))) (sym prog-eq1) len-prefix-1 fetch1-helper
+
+    step2 : step prog s1 ≡ just s-final
+    step2 = trans (step-exec prog s1 (mov (reg r14) (reg rdi)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (reg r14) (reg rdi))) (sym pc1) fetch1))
+                  (execMov-reg-reg s1 r14 rdi)
+
+    h-final : halted s-final ≡ false
+    h-final = h-false
+
+    pc-final : pc s-final ≡ length prefix +ℕ 2
+    pc-final = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    exec-eq : exec 2 prog s ≡ just s-final
+    exec-eq = exec-two-steps-nonhalt prog s s1 s-final step1 h1 step2 h-final
+
+    -- r14 gets the value of rdi from s1, which is the same as rdi from s
+    -- because the sub instruction doesn't change rdi
+    rdi-s1-eq : readReg (regs s1) rdi ≡ readReg (regs s) rdi
+    rdi-s1-eq = readReg-writeReg-rsp-rdi (regs s) (readReg (regs s) rsp ∸ 16)
+
+    r14-eq : readReg (regs s-final) r14 ≡ readReg (regs s) rdi
+    r14-eq = trans (readReg-writeReg-same (regs s1) r14 (readReg (regs s1) rdi)) rdi-s1-eq
+
+    -- rdi is preserved through mov r14, rdi (writing to r14 doesn't affect rdi)
+    rdi-eq : readReg (regs s-final) rdi ≡ readReg (regs s) rdi
+    rdi-eq = trans (readReg-writeReg-r14-rdi (regs s1) (readReg (regs s1) rdi)) rdi-s1-eq
 
 -- | Execute id at arbitrary offset in a program (non-halting)
 -- This is the general case of run-id-nonhalt where id code can be at any position
@@ -3860,12 +3981,6 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s7 , run-eq , halt-eq , en
     step2 = trans (step-exec prog s1 (mov (mem (base rsp)) (reg rdi)) h1
                              (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (reg rdi))) (sym pc1) refl))
                   (execMov-mem-base-reg prog s1 rsp rdi)
-      where
-        execMov-mem-base-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) →
-          execInstr prog s (mov (mem (base dst)) (reg src)) ≡
-            just (record s { memory = writeMem (memory s) (readReg (regs s) dst) (readReg (regs s) src)
-                           ; pc = pc s +ℕ 1 })
-        execMov-mem-base-reg prog s dst src = refl
 
     h2 : halted s2 ≡ false
     h2 = h-false
@@ -5107,12 +5222,6 @@ run-pair-id-id {A} s h-false pc-0 = s9 , run-eq , halt-eq , rax-rsp-eq , fst-eq 
     step4 = trans (step-exec prog s3 (mov (mem (base rsp)) (reg rax)) h3
                              (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (reg rax))) (sym pc3) refl))
                   (execMov-mem-base-reg prog s3 rsp rax)
-      where
-        execMov-mem-base-reg : ∀ (prog : List Instr) (s : State) (dst src : Reg) →
-          execInstr prog s (mov (mem (base dst)) (reg src)) ≡
-            just (record s { memory = writeMem (memory s) (readReg (regs s) dst) (readReg (regs s) src)
-                           ; pc = pc s +ℕ 1 })
-        execMov-mem-base-reg prog s dst src = refl
 
     h4 : halted s4 ≡ false
     h4 = h-false

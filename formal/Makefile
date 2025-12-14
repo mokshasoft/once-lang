@@ -45,7 +45,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize x86 endtoend primitives spf malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize x86 x86-correct endtoend primitives spf malonzo clean
 
 all: check
 
@@ -82,6 +82,10 @@ x86:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+
+x86-correct:
+	@echo "Type-checking x86-64 correctness proofs only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
 endtoend:
