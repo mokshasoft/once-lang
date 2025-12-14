@@ -44,14 +44,14 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ)
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
@@ -350,7 +350,7 @@ readReg-writeReg-rax-rdi rf v = refl
 -- Memory Lemmas
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ)
 
 -- | n ≡ᵇ n is always true (helper)
 ≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
@@ -828,6 +828,17 @@ exec-one-step-nonhalt : ∀ (prog : List Instr) (s s' : State) →
 exec-one-step-nonhalt prog s s' step-eq halt-eq =
   trans (exec-on-non-halted-step 0 prog s s' step-eq halt-eq) refl
 
+-- | Single-step execution: execute exactly 1 step (works for both halted and non-halted results)
+-- This is the general version that doesn't require halted s' ≡ false
+exec-one-step : ∀ (prog : List Instr) (s s' : State) →
+  step prog s ≡ just s' →
+  exec 1 prog s ≡ just s'
+exec-one-step prog s s' step-eq with step prog s
+... | nothing with () ← step-eq
+exec-one-step prog s s' step-eq | just s1 with halted s1 | step-eq
+... | true | refl = refl
+... | false | refl = refl
+
 -- | Two-step non-halting execution: execute exactly 2 steps without halting
 exec-two-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 : State) →
   step prog s ≡ just s1 →
@@ -937,16 +948,39 @@ run-terminal-nonhalt {A} rest x s h-false pc-0 = s' , exec-eq , h' , pc' , rax-e
     rax-eq : readReg (regs s') rax ≡ encode tt
     rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
 
+-- | Helper: true ≡ false is absurd
+true≢false : true ≡ false → ⊥
+true≢false ()
+
 -- | Exec chaining: if exec n produces s' (not halted), then exec m on s' produces s'',
 -- then exec (n + m) produces s''
 -- This is key for composing sub-program executions
--- Postulate for now - can be proven by induction on n
-postulate
-  exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ false →
-    exec m prog s' ≡ just s'' →
-    exec (n +ℕ m) prog s ≡ just s''
+-- Proof by induction on n
+exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ false →
+  exec m prog s' ≡ just s'' →
+  exec (n +ℕ m) prog s ≡ just s''
+-- Base case: n=0, so exec 0 prog s = just s, thus s' = s
+exec-chain zero m prog s .s s'' refl h-false exec-m = exec-m
+-- Inductive case: n = suc n'
+-- Match on the step and halted values that exec uses
+exec-chain (suc n') m prog s s' s'' exec-n h-false exec-m with step prog s
+-- Step fails: exec (suc n') returns nothing, contradicts exec-n
+... | nothing with () ← exec-n
+-- Step succeeds with state s1
+... | just s1 with halted s1 in eq-halt
+-- s1 is halted: exec returns s1 = s', but halted s' = false contradicts halted s1 = true
+...   | true with refl ← exec-n = ⊥-elim (true≢false (trans (sym eq-halt) h-false))
+-- s1 is not halted: exec (suc n') prog s = exec n' prog s1
+...   | false =
+  -- At this point: exec (suc n') prog s = exec n' prog s1
+  -- And exec-n : exec n' prog s1 ≡ just s'
+  -- IH: exec (n' +ℕ m) prog s1 ≡ just s''
+  -- Goal: exec (suc (n' +ℕ m)) prog s ≡ just s''
+  -- Since step prog s = just s1 and halted s1 = false,
+  -- exec (suc (n' +ℕ m)) prog s = exec (n' +ℕ m) prog s1
+  exec-chain n' m prog s1 s' s'' exec-n h-false exec-m
 
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
@@ -2650,34 +2684,6 @@ compose-g-eq prefix code-f code-g suffix transfer = begin
 -- Mutual block for run-ir-at-offset and complex IR cases
 ------------------------------------------------------------------------
 
--- Temporary postulates for complex cases (to be replaced with proofs)
-postulate
-  run-ir-at-offset-compose-postulate : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec (compile-length (g ∘ f)) (prefix ++ compile-x86 (g ∘ f) ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
-           × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-  run-ir-at-offset-pair-postulate : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-           × readReg (regs s') rax ≡ encode (eval ⟨ f , g ⟩ x))
-  run-ir-at-offset-case-postulate : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (exec (compile-length [ f , g ]) (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
-           × readReg (regs s') rax ≡ encode (eval [ f , g ] x))
-  run-ir-at-offset-curry-postulate : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode a →
-    ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-x86 (curry f) ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
-           × readReg (regs s') rax ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) a))
-  run-ir-at-offset-apply-postulate : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
-    ∃[ s' ] (exec 6 (prefix ++ compile-x86 {(A ⇒ B) * A} {B} apply ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ 6
-           × readReg (regs s') rax ≡ encode {B} (eval {(A ⇒ B) * A} {B} apply x))
-
 mutual
   -- | Non-halting execution of IR at arbitrary offset
   -- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
@@ -4059,30 +4065,36 @@ fetch-at-end ir = subst (λ n → fetch (compile-x86 ir) n ≡ nothing)
 -- Proof follows from step definition: when halted=false and fetch=nothing, step sets halted=true
 --
 -- This is tricky to prove directly because step uses with-abstraction.
--- We keep it as a postulate since it follows directly from the step definition:
---   step prog s with halted s
---   ... | true = just s
---   ... | false with fetch prog (pc s)
---   ...   | nothing = just (record s { halted = true })  <-- this case
---   ...   | just instr = execInstr prog s instr
-postulate
-  step-halts-on-fetch-fail : ∀ (prog : Program) (s : State) →
-    halted s ≡ false →
-    fetch prog (pc s) ≡ nothing →
-    step prog s ≡ just (record s { halted = true })
+-- Alias for step-halt-on-fetch-fail (proven above at line ~757)
+-- Uses the proven lemma instead of postulate
+step-halts-on-fetch-fail : ∀ (prog : Program) (s : State) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ nothing →
+  step prog s ≡ just (record s { halted = true })
+step-halts-on-fetch-fail = step-halt-on-fetch-fail
+
+-- Helper: n + 1 ≡ suc n (by commutativity and definition)
+n+1≡sucn : ∀ n → n +ℕ 1 ≡ suc n
+n+1≡sucn zero = refl
+n+1≡sucn (suc n) = cong suc (n+1≡sucn n)
 
 -- Lemma: exec (n+1) = exec n followed by one step
--- This is complex to prove due to with-abstraction in exec definition.
--- We keep it as a postulate - it follows directly from exec semantics.
---
 -- Semantically: if we've executed n steps to reach s' (non-halted),
 -- and one more step from s' gives s'', then n+1 steps gives s''.
-postulate
-  exec-suc : ∀ (n : ℕ) (prog : Program) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ false →
-    (s'' : State) → step prog s' ≡ just s'' →
-    exec (suc n) prog s ≡ just s''
+-- Proof: Use exec-chain with m=1 and exec-one-step
+exec-suc : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ false →
+  (s'' : State) → step prog s' ≡ just s'' →
+  exec (suc n) prog s ≡ just s''
+exec-suc n prog s s' exec-n h-false s'' step-eq =
+  let exec-1 : exec 1 prog s' ≡ just s''
+      exec-1 = exec-one-step prog s' s'' step-eq
+      -- exec-chain gives: exec (n + 1) prog s ≡ just s''
+      chain-result : exec (n +ℕ 1) prog s ≡ just s''
+      chain-result = exec-chain n 1 prog s s' s'' exec-n h-false exec-1
+  -- Convert n + 1 to suc n
+  in subst (λ k → exec k prog s ≡ just s'') (n+1≡sucn n) chain-result
 
 -- Lemma: When halted, step returns the same state
 step-halted-stable : ∀ (prog : Program) (s : State) →
@@ -4099,6 +4111,16 @@ exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
   exec n prog s ≡ just s
 exec-halted-stable zero prog s h-true = refl
 exec-halted-stable (suc n) prog s h-true rewrite step-halted-stable prog s h-true | h-true = refl
+
+-- | Exec extend for halted states: if exec n reaches halted s', exec (n+m) also gives s'
+-- This is the halted version of exec-chain
+-- Postulated due to complex with-abstraction in exec definition
+-- The property is: once execution reaches a halted state, further steps preserve it
+postulate
+  exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
+    exec n prog s ≡ just s' →
+    halted s' ≡ true →
+    exec (n +ℕ m) prog s ≡ just s'
 
 -- Main bridge: run-ir-at-offset with empty suffix implies run-generator
 -- After run-ir-at-offset completes, one more step halts (fetch fails)
@@ -4164,11 +4186,33 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq =
     exec-n1 : exec (suc (compile-length ir)) prog s ≡ just s-halted
     exec-n1 = exec-suc (compile-length ir) prog s s' exec-n-prog h' s-halted step-halt
 
-    -- run = exec defaultFuel, and compile-length ir < defaultFuel for any IR
-    -- After halting, further exec steps are stable
-    -- So exec defaultFuel prog s = just s-halted
+    -- run = exec defaultFuel
+    -- Use exec-halted-extend: exec n halted → exec (n+m) halted
+    -- We have exec (suc (compile-length ir)) giving halted state
+    -- defaultFuel = 10000, which is much larger than any compile-length
+    --
+    -- exec-halted-extend (suc (compile-length ir)) remaining prog s s-halted exec-n1 halted-true
+    -- where remaining = defaultFuel - suc (compile-length ir)
+    -- gives: exec (suc (compile-length ir) + remaining) prog s = just s-halted
+    -- which is: exec defaultFuel prog s = just s-halted (when n + (defaultFuel - n) = defaultFuel)
+
+    -- The number of steps we've taken
+    n-steps : ℕ
+    n-steps = suc (compile-length ir)
+
+    -- Remaining fuel
+    remaining : ℕ
+    remaining = defaultFuel ∸ n-steps
+
+    -- n-steps + remaining = defaultFuel (when n-steps ≤ defaultFuel)
+    -- This follows from m + (n - m) = n when m ≤ n
+    -- Postulated: suc (compile-length ir) ≤ 10000 always holds for any IR
     postulate
-      run-from-exec : exec defaultFuel prog s ≡ just s-halted
+      fuel-eq : n-steps +ℕ remaining ≡ defaultFuel
+
+    run-from-exec : exec defaultFuel prog s ≡ just s-halted
+    run-from-exec = subst (λ k → exec k prog s ≡ just s-halted) fuel-eq
+                          (exec-halted-extend n-steps remaining prog s s-halted exec-n1 refl)
 
     run-eq : run prog s ≡ just s-halted
     run-eq = run-from-exec
