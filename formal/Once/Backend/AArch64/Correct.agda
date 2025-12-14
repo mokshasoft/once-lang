@@ -673,16 +673,28 @@ run-generator-id {A} x s h-false pc-0 x0-eq =
     x0-result = trans x0-preserved x0-eq  -- since eval id x = x
   in s' , run-eq , halt-eq , x0-result
 
-postulate
-
-  -- | terminal: mov x0, #0
-  run-generator-terminal : ∀ {A : Type} (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {A} x →
-    ∃[ s' ] (run (compile-aarch64 {A} {Unit} terminal) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {Unit} (eval {A} {Unit} terminal x))
+-- | terminal: mov x0, #0
+-- compile-aarch64 terminal = mov x0 (imm 0) ∷ []
+-- eval terminal x = tt
+-- encode {Unit} tt = 0  by encode-unit
+run-generator-terminal : ∀ {A : Type} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode {A} x →
+  ∃[ s' ] (run (compile-aarch64 {A} {Unit} terminal) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode {Unit} (eval {A} {Unit} terminal x))
+run-generator-terminal {A} x s h-false pc-0 _ =
+  let
+    -- readOperand s (imm 0) = just 0 (by definition)
+    read-imm : readOperand s (imm 0) ≡ just 0
+    read-imm = refl
+    -- Use run-single-mov for mov x0 (imm 0)
+    (s' , run-eq , halt-eq , x0-eq) = run-single-mov s x0 (imm 0) 0 h-false pc-0 read-imm
+    -- eval terminal x = tt, and encode tt = 0
+    x0-result : readReg (regs s') x0 ≡ encode {Unit} (eval {A} {Unit} terminal x)
+    x0-result = trans x0-eq (sym encode-unit)
+  in s' , run-eq , halt-eq , x0-result
 
 -- | fold: nop (identity at runtime)
 -- compile-aarch64 fold = nop ∷ []
