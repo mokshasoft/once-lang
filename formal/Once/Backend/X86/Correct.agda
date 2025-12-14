@@ -44,7 +44,7 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
@@ -375,7 +375,7 @@ readReg-writeReg-rax-rdi rf v = refl
 -- Memory Lemmas
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n)
 
 -- | n ≡ᵇ n is always true (helper)
 ≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
@@ -1417,9 +1417,12 @@ exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-e
     mem-snd-eq = readMem-writeMem-same (memory s) (orig-r15 +ℕ 8) orig-rax
 
     -- Memory at [r15] is preserved (we only wrote to [r15+8])
-    -- Need to show [r15] ≠ [r15+8] or that the write at [r15+8] doesn't affect [r15]
-    postulate
-      mem-fst-eq : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+    -- Proof: orig-r15 + 8 ≢ orig-r15, so the write doesn't affect [orig-r15]
+    addr-diff : (orig-r15 +ℕ 8) ≢ orig-r15
+    addr-diff eq = n≢n+suc orig-r15 7 (sym eq)
+
+    mem-fst-eq : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-fst-eq = readMem-writeMem-diff (memory s) (orig-r15 +ℕ 8) orig-r15 orig-rax addr-diff
 
 -- | Execute id at arbitrary offset in a program (non-halting)
 -- This is the general case of run-id-nonhalt where id code can be at any position
@@ -4385,9 +4388,12 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq =
 
     -- n-steps + remaining = defaultFuel (when n-steps ≤ defaultFuel)
     -- This follows from m + (n - m) = n when m ≤ n
-    -- Postulated: suc (compile-length ir) ≤ 10000 always holds for any IR
+    -- We postulate the bound: compile-length ir < 10000 for any IR
     postulate
-      fuel-eq : n-steps +ℕ remaining ≡ defaultFuel
+      n-steps≤fuel : n-steps ≤ defaultFuel
+
+    fuel-eq : n-steps +ℕ remaining ≡ defaultFuel
+    fuel-eq = m+[n∸m]≡n n-steps≤fuel
 
     run-from-exec : exec defaultFuel prog s ≡ just s-halted
     run-from-exec = subst (λ k → exec k prog s ≡ just s-halted) fuel-eq
