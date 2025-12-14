@@ -26,9 +26,29 @@ This document outlines the remaining work for a complete end-to-end verification
 - `Backend/RiscV64/Syntax.agda` - Instruction set definition (~371 lines) ✓
 - `Backend/RiscV64/Semantics.agda` - Operational semantics (~621 lines) ✓
 - `Backend/RiscV64/CodeGen.agda` - IR → RISC-V translation (~297 lines) ✓
-- `Backend/RiscV64/Correct.agda` - Correctness proofs (~831 lines) ✓
+- `Backend/RiscV64/Correct.agda` - Correctness proofs (~1530 lines) ✓
 - `EndToEnd.agda` - Updated with `compilation-correct-riscv` ✓
 - `Makefile` - Added `make riscv` target ✓
+
+**PROVEN in Correct.agda (non-postulated):**
+- `exec-one-step`, `exec-two-steps` through `exec-six-steps` - Multi-step execution
+- `run-fst-seq`, `run-snd-seq` - Projection instruction sequences
+- `run-inl-seq`, `run-inr-seq` - Sum construction with full memory tracking
+- `compile-fst-correct`, `compile-snd-correct` - Projection correctness
+- `compile-id-correct`, `compile-terminal-correct` - Basic generators
+- `compile-fold-correct`, `compile-unfold-correct`, `compile-arr-correct` - Type coercions
+- `compile-inl-correct`, `compile-inr-correct` - Sum injection correctness
+
+**REMAINING POSTULATES (9 total):**
+1. `readReg-writeReg-same-zero` - Logically unprovable (x0 writes ignored), never instantiated
+2. `run-generator` - Main induction theorem, requires mutual block
+3. `run-curry-seq` - Closure creation (12+ instructions)
+4. `run-apply-seq` - Closure application (7 instructions)
+5. `compile-compose-correct` - Requires mutual recursion for sub-IRs
+6. `compile-pair-correct` - Requires mutual recursion for sub-IRs
+7. `compile-case-correct` - Requires mutual recursion for sub-IRs
+8. `compile-curry-correct` - Depends on run-curry-seq
+9. `compile-apply-correct` - Depends on run-apply-seq
 
 ## Lessons Learned from x86-64 Verification
 
