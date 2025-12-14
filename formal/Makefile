@@ -10,6 +10,8 @@
 #   make surface  - Type-check surface syntax elaboration only
 #   make surfaceir - Type-check surface IR and desugar (D035)
 #   make optimize - Type-check optimizer correctness proofs
+#   make x86      - Type-check x86-64 backend proofs
+#   make riscv    - Type-check RISC-V 64-bit backend proofs
 #   make endtoend - Type-check end-to-end compilation theorem
 #   make primitives - Type-check primitive specifications
 #   make malonzo  - Generate Haskell via MAlonzo (D035)
@@ -31,6 +33,10 @@ X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
+RISCV_SYNTAX := Once/Backend/RiscV64/Syntax.agda
+RISCV_SEMANTICS := Once/Backend/RiscV64/Semantics.agda
+RISCV_CODEGEN := Once/Backend/RiscV64/CodeGen.agda
+RISCV_CORRECT := Once/Backend/RiscV64/Correct.agda
 ENDTOEND := Once/EndToEnd.agda
 PRIM_MEMORY := Once/Primitive/Memory.agda
 PRIM_IO := Once/Primitive/IO.agda
@@ -45,7 +51,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize x86 x86-correct endtoend primitives spf malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize x86 x86-correct riscv endtoend primitives spf malonzo clean
 
 all: check
 
@@ -87,6 +93,13 @@ x86:
 x86-correct:
 	@echo "Type-checking x86-64 correctness proofs only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+
+riscv:
+	@echo "Type-checking RISC-V 64-bit backend..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
+	@if [ -f "$(RISCV_SEMANTICS)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SEMANTICS)'; fi
+	@if [ -f "$(RISCV_CODEGEN)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
+	@if [ -f "$(RISCV_CORRECT)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
 endtoend:
 	@echo "Type-checking end-to-end compilation theorem..."
