@@ -1,6 +1,6 @@
 # Plan: Remaining x86 Correctness Proofs
 
-## Current Status (Updated 2024-12-13)
+## Current Status (Updated 2024-12-14)
 
 ### Proven (base cases) - run-generator-* functions
 - `run-generator-id` - mov rax, rdi
@@ -26,10 +26,39 @@
 
 ### Proven (mutual block helpers) - run-ir-at-offset-* functions
 - `run-ir-at-offset-compose` - FULLY PROVEN with no internal postulates
-- `run-ir-at-offset-pair` - 5-phase structure with documented postulates
+- `run-ir-at-offset-pair` - 5-phase structure, significant progress (see below)
 - `run-ir-at-offset-case` - structure with documented postulates
 - `run-ir-at-offset-curry` - execution trace documented (6 steps due to jmp)
 - `run-ir-at-offset-apply` - call/ret complexity documented
+
+### run-ir-at-offset-pair Progress (Updated 2024-12-14)
+
+**Phase 1 (setup)**: FULLY PROVEN
+- `exec-pair-setup-at` helper executes `sub rsp, 16; mov r14, rdi`
+- All setup properties derived from helper
+
+**Phase 2 (execute f)**: Mostly proven (2 postulates)
+- Recursive call to `run-ir-at-offset f` works
+- `prog-eq-f`: program equality (list associativity - can be proven)
+- `r14-preserved-f`: r14 preservation (semantic property)
+
+**Phase 3 (middle)**: Structure added (6 postulates)
+- `prefix-mid` and `pc-for-mid` conversions proven
+- Instruction execution postulated
+
+**Phase 4 (execute g)**: Mostly proven (2 postulates)
+- Recursive call to `run-ir-at-offset g` works
+- `prog-eq-g`: program equality (list associativity - can be proven)
+- `mem-fst-preserved`: memory preservation (semantic property)
+
+**Phase 5 (final)**: Structure added, pc-final proven (7 postulates)
+- `pc-final` proven via arithmetic manipulation
+- Final instruction execution postulated
+
+**Chaining**: 1 postulate
+- `exec-all` combines all phases
+
+Total remaining postulates in pair: **18** (was 32+)
 
 ### Older proofs (still referenced)
 - `run-case-inl-id` / `run-case-inr-id` - case analysis with f = g = id
