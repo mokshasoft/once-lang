@@ -33,7 +33,7 @@ compile-length id = 1
 compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
-compile-length ⟨ f , g ⟩ = (6 +ℕ compile-length f) +ℕ compile-length g
+compile-length ⟨ f , g ⟩ = (11 +ℕ compile-length f) +ℕ compile-length g
 compile-length inl = 4
 compile-length inr = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
@@ -80,23 +80,35 @@ compile-x86 snd = mov (reg rax) (mem (base+disp rdi 8)) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
 -- Stack layout: [fst (8 bytes), snd (8 bytes)]
+--
+-- Uses callee-save discipline with push/pop for r14/r15 to handle
+-- nested pairs correctly. r15 holds stable pair base address,
+-- r14 holds saved input.
 compile-x86 ⟨ f , g ⟩ =
-  -- Allocate 16 bytes on stack
+  -- Save callee-saved registers
+  push (reg r14) ∷
+  push (reg r15) ∷
+  -- Allocate 16 bytes on stack for pair
   sub (reg rsp) (imm 16) ∷
-  -- Save input in r14 (callee-saved)
+  -- r15 = stable base address for this pair
+  mov (reg r15) (reg rsp) ∷
+  -- r14 = saved input
   mov (reg r14) (reg rdi) ∷
-  -- Compute f
+  -- Compute f (may nest, but restores r14/r15)
   compile-x86 f ++
-  -- Store result at [rsp]
-  mov (mem (base rsp)) (reg rax) ∷
-  -- Restore input
+  -- Store f result at [r15] (stable address)
+  mov (mem (base r15)) (reg rax) ∷
+  -- Restore input for g
   mov (reg rdi) (reg r14) ∷
   -- Compute g
   compile-x86 g ++
-  -- Store result at [rsp + 8]
-  mov (mem (base+disp rsp 8)) (reg rax) ∷
+  -- Store g result at [r15 + 8]
+  mov (mem (base+disp r15 8)) (reg rax) ∷
   -- Return pointer to pair
-  mov (reg rax) (reg rsp) ∷ []
+  mov (reg rax) (reg r15) ∷
+  -- Restore callee-saved registers
+  pop r15 ∷
+  pop r14 ∷ []
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
