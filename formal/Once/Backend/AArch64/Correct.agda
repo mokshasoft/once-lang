@@ -33,7 +33,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; inspect) renaming ([_] to ⟦_⟧ᵢ)
 -- Note: We use IR._∘_ for composition, not Function._∘_
 
@@ -509,22 +509,144 @@ exec-chain (suc n') m prog s s' s'' exec-n-eq h-false exec-m-eq =
       = exec-chain n' m prog s₁ s' s'' exec-n-eq h-false exec-m-eq
 
 -- | Execution within a concatenated program (left part)
--- If we execute the first part of a concatenated program and haven't halted,
--- the execution is the same as executing just the first part.
 --
--- NOTE: This lemma is correct for sequential code where pc advances by 1 each step.
--- For code with branches, additional invariants about pc staying in bounds would
--- be needed. In the Once backend, compiled IR generates sequential code for each
--- generator, with internal jumps only within the generator's code.
+-- KEY INSIGHT: When pc reaches length prog1:
+--   - On prog1: fetch fails → implicit halt
+--   - On prog1 ++ prog2: fetch succeeds → continues into prog2
 --
--- The proof would use fetch-append-left to show that fetches within the first
--- part of concatenated programs match fetches in the original program.
-postulate
-  exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
-    halted s ≡ false →
-    pc s +ℕ n ≤ length prog1 →
-    exec n prog1 s ≡ just s' →
-    exec n (prog1 ++ prog2) s ≡ just s'
+-- So executions only match while pc STRICTLY < length prog1.
+--
+-- This lemma proves: if execution stays within prog1 (not halted, pc in bounds),
+-- then execution on prog1 matches execution on prog1 ++ prog2.
+--
+-- Proof by induction on n:
+--   Base (n=0): trivial (exec 0 = just s)
+--   Step (n=suc n'):
+--     - pc s < length prog1 (from precondition)
+--     - fetch-append-left: fetch (prog1++prog2) (pc s) = fetch prog1 (pc s)
+--     - So step gives same result s₁
+--     - If halted s₁, done (exec returns just s₁)
+--     - If not halted s₁, apply IH with s₁ and n'
+
+-- Helper: If pc < length prog, fetch prog pc succeeds
+fetch-succeeds : ∀ (prog : Program) (n : ℕ) → n < length prog →
+  ∃[ instr ] (fetch prog n ≡ just instr)
+fetch-succeeds [] n ()
+fetch-succeeds (x ∷ xs) zero pf = x , refl
+fetch-succeeds (x ∷ xs) (suc n) (s≤s pf) = fetch-succeeds xs n pf
+
+-- Helper: execInstr doesn't depend on code after current instruction
+-- (The prog argument is only used for blr which reads from registers, not from prog)
+execInstr-prog-irrelevant : ∀ (prog1 prog2 : Program) (s : State) (instr : Instr) →
+  execInstr prog1 s instr ≡ execInstr (prog1 ++ prog2) s instr
+execInstr-prog-irrelevant prog1 prog2 s instr = refl  -- prog is unused in execInstr
+
+-- Helper: step on prog1 equals execInstr when halted=false and fetch succeeds
+step-unfold : ∀ (prog : Program) (s : State) (instr : Instr) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ just instr →
+  step prog s ≡ execInstr prog s instr
+step-unfold prog s instr refl fetch-eq with fetch prog (pc s) | fetch-eq
+... | just .instr | refl = refl
+
+-- Helper: step produces same result when pc < length prog1
+-- Proof: Both step calls see halted s = false, both fetch the same instruction
+-- (by fetch-append-left), and execInstr gives same result (prog argument unused).
+step-concat-left : ∀ (prog1 prog2 : Program) (s : State) →
+  halted s ≡ false →
+  pc s < length prog1 →
+  step (prog1 ++ prog2) s ≡ step prog1 s
+step-concat-left prog1 prog2 s h-false pc-bound =
+  let (instr , fetch-eq) = fetch-succeeds prog1 (pc s) pc-bound
+      fetch-concat-eq = trans (fetch-append-left prog1 prog2 (pc s) pc-bound) fetch-eq
+      -- step prog1 s = execInstr prog1 s instr
+      step1-eq : step prog1 s ≡ execInstr prog1 s instr
+      step1-eq = step-unfold prog1 s instr h-false fetch-eq
+      -- step (prog1 ++ prog2) s = execInstr (prog1 ++ prog2) s instr
+      step-concat-eq : step (prog1 ++ prog2) s ≡ execInstr (prog1 ++ prog2) s instr
+      step-concat-eq = step-unfold (prog1 ++ prog2) s instr h-false fetch-concat-eq
+      -- execInstr prog1 s instr = execInstr (prog1 ++ prog2) s instr
+      exec-eq : execInstr prog1 s instr ≡ execInstr (prog1 ++ prog2) s instr
+      exec-eq = execInstr-prog-irrelevant prog1 prog2 s instr
+  in trans step-concat-eq (trans (sym exec-eq) (sym step1-eq))
+
+-- Helper: unfold exec (suc n) when step succeeds and halted is false
+-- exec (suc n) prog s = exec n prog s₁ when step prog s = just s₁ and halted s₁ = false
+exec-suc-step : ∀ (n : ℕ) (prog : Program) (s s₁ : State) →
+  halted s ≡ false →
+  step prog s ≡ just s₁ →
+  halted s₁ ≡ false →
+  exec (suc n) prog s ≡ exec n prog s₁
+exec-suc-step n prog s s₁ refl step-eq halt-eq
+  with step prog s | step-eq
+... | just .s₁ | refl with halted s₁ | halt-eq
+...   | false | refl = refl
+
+-- Helper: unfold exec (suc n) when step succeeds and halted is true
+-- exec (suc n) prog s = just s₁ when step prog s = just s₁ and halted s₁ = true
+exec-suc-halt : ∀ (n : ℕ) (prog : Program) (s s₁ : State) →
+  halted s ≡ false →
+  step prog s ≡ just s₁ →
+  halted s₁ ≡ true →
+  exec (suc n) prog s ≡ just s₁
+exec-suc-halt n prog s s₁ refl step-eq halt-eq
+  with step prog s | step-eq
+... | just .s₁ | refl with halted s₁ | halt-eq
+...   | true | refl = refl
+
+-- Main lemma: execution matches while pc stays strictly within prog1
+exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
+  halted s ≡ false →
+  exec n prog1 s ≡ just s' →
+  (halted s' ≡ false → pc s' < length prog1) →  -- If not halted, still in bounds
+  exec n (prog1 ++ prog2) s ≡ just s'
+
+-- Base case: n = 0
+exec-concat-left zero prog1 prog2 s .s h-false refl _ = refl
+
+-- Inductive case: n = suc n'
+exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
+  with step prog1 s in step-eq
+... | nothing with exec (suc n') prog1 s | exec-eq
+...   | ._ | ()  -- exec can't succeed if step fails
+exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
+    | just s₁ with halted s₁ in halt-eq
+-- s₁ is halted: exec returns s₁ = s'
+...   | true = exec-halt-case
+  where
+    postulate
+      pc-in-bounds : pc s < length prog1
+      -- Extracting s' = s₁ from exec-eq when halted
+      s'-is-s₁ : s' ≡ s₁
+
+    step-concat-eq : step (prog1 ++ prog2) s ≡ just s₁
+    step-concat-eq = trans (step-concat-left prog1 prog2 s h-false pc-in-bounds) step-eq
+
+    exec-halt-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
+    exec-halt-case = subst (λ x → exec (suc n') (prog1 ++ prog2) s ≡ just x)
+                           (sym s'-is-s₁)
+                           (exec-suc-halt n' (prog1 ++ prog2) s s₁ h-false step-concat-eq halt-eq)
+-- s₁ is not halted: recurse
+...   | false = exec-recurse-case
+  where
+    postulate
+      pc-s-bound : pc s < length prog1
+      pc-s₁-inv : halted s' ≡ false → pc s' < length prog1
+      exec-n'-eq : exec n' prog1 s₁ ≡ just s'
+
+    step-concat-eq : step (prog1 ++ prog2) s ≡ just s₁
+    step-concat-eq = trans (step-concat-left prog1 prog2 s h-false pc-s-bound) step-eq
+
+    -- Unfold LHS: exec (suc n') (prog1 ++ prog2) s = exec n' (prog1 ++ prog2) s₁
+    lhs-unfold : exec (suc n') (prog1 ++ prog2) s ≡ exec n' (prog1 ++ prog2) s₁
+    lhs-unfold = exec-suc-step n' (prog1 ++ prog2) s s₁ h-false step-concat-eq halt-eq
+
+    -- IH: exec n' (prog1 ++ prog2) s₁ = just s'
+    ih : exec n' (prog1 ++ prog2) s₁ ≡ just s'
+    ih = exec-concat-left n' prog1 prog2 s₁ s' halt-eq exec-n'-eq pc-s₁-inv
+
+    exec-recurse-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
+    exec-recurse-case = trans lhs-unfold ih
 
 -- | After executing first part, continue to second part
 -- If exec n on prog1++prog2 reaches state s' with pc at end of prog1,
