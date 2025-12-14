@@ -146,16 +146,16 @@ initWithInput-pc x = refl
 --   run-generator-compose-terminal-id: uses run-seq-compose-terminal-id
 --   run-generator-compose-id-terminal: uses run-seq-compose-id-terminal
 --
--- POSTULATED (pair/case base cases - concrete instances):
---   run-pair-id-id    : ⟨ id , id ⟩ (13 instructions, TODO: update for new callee-save discipline)
+-- POSTULATED (case base cases - concrete instances, used before mutual induction):
 --   run-case-inl-id   : [ id , g ] for left injection (8 instructions)
 --   run-case-inr-id   : [ f , id ] for right injection (8 instructions)
 --
--- POSTULATED (require mutual induction on IR):
---   run-seq-compose  : Sequential composition (general case)
---   run-case-inl/inr : Case analysis (general case)
---   run-pair-seq     : Pairing (general case)
---   run-generator    : Main induction theorem (depends on all above)
+-- PROVEN (via run-ir-at-offset mutual block):
+--   run-seq-compose  : Sequential composition - derived from run-generator
+--   run-case-inl/inr : Case analysis - derived from run-generator
+--   run-generator    : Main induction theorem - alias to offset-to-generator
+--
+-- TRUSTED ASSUMPTION (intentionally kept postulated):
 --   run-apply-seq    : Closure application (complex calling convention)
 --
 -- The non-recursive helpers trace through fixed instruction sequences.
@@ -4783,23 +4783,6 @@ run-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (b : ⟦ B ⟧) (s : State)
          × readReg (regs s') rax ≡ encode (eval g b))
 run-case-inr {A} {B} {C} f g b s h-false pc-0 rdi-eq = run-generator [ f , g ] (inj₂ b) s h-false pc-0 rdi-eq
 
--- Helper: pair sequence
--- Allocates stack, runs f, stores result, restores input, runs g, stores result
--- Returns pointer to pair
-postulate
-  run-pair-seq : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (run (compile-x86 {C} {A * B} ⟨ f , g ⟩) s ≡ just s'
-           × halted s' ≡ true
-           -- rax points to stack-allocated pair
-           × readReg (regs s') rax ≡ readReg (regs s') rsp
-           -- pair.fst = encode (eval f x)
-           × readMem (memory s') (readReg (regs s') rax) ≡ just (encode (eval f x))
-           -- pair.snd = encode (eval g x)
-           × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode (eval g x)))
-
 -- Helper: curry sequence
 -- Creates closure [env, code_ptr] where env = input a and code_ptr points to thunk
 -- The thunk, when called with b (in rdi) and env (in r12), computes f(a,b)
@@ -6020,36 +6003,6 @@ run-generator-compose-id-snd {A} {B} a b s h-false pc-0 rdi-eq mem-eq = s' , run
     rax-eq : readReg (regs s') rax ≡ encode (eval {A * B} {B} (id ∘ snd) (a , b))
     rax-eq = proj₂ (proj₂ (proj₂ helper))
 
--- Helper: pair sequence for ⟨ id , id ⟩ (base case)
--- This is a concrete instance where both f and g are id.
--- Validates the proof structure before generalizing to arbitrary IR.
---
--- Generated code (new callee-save discipline):
---   push r14           ; 0
---   push r15           ; 1
---   sub rsp, 16        ; 2
---   mov r15, rsp       ; 3
---   mov r14, rdi       ; 4
---   mov rax, rdi       ; 5 (compile-x86 id)
---   mov [r15], rax     ; 6
---   mov rdi, r14       ; 7
---   mov rax, rdi       ; 8 (compile-x86 id)
---   mov [r15+8], rax   ; 9
---   mov rax, r15       ; 10
---   pop r15            ; 11
---   pop r14            ; 12
---
--- Total: 13 instructions, 14 steps (13 + halt on fetch fail at pc=13)
--- TODO: Update this step-by-step proof for the new instruction sequence
-postulate
-  run-pair-id-id : ∀ {A} (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (compile-x86 {A} {A * A} ⟨ id , id ⟩) s ≡ just s'
-           × halted s' ≡ true
-           × readMem (memory s') (readReg (regs s') rax) ≡ just (readReg (regs s) rdi)
-           × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
-
 -- Helper: compose sequence for id ∘ id (base case)
 -- This is a concrete instance where both f and g are id.
 --
@@ -6685,38 +6638,14 @@ compile-snd-correct {A} {B} a b = s' , run-eq , rax-eq
 -- | pair: constructs pair from two computations
 --
 -- Generated code: allocates stack, runs f, stores, restores input, runs g, stores
--- Proof: Uses run-pair-seq helper and encode-pair-construct
+-- Proof: Uses run-generator directly (eval ⟨ f , g ⟩ x = (eval f x , eval g x) by definition)
 compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
   ∃[ s ] (run (compile-x86 ⟨ f , g ⟩) (initWithInput x) ≡ just s
         × readReg (regs s) rax ≡ encode (eval f x , eval g x))
-compile-pair-correct {A} {B} {C} f g x = s' , run-eq , rax-eq
-  where
-    s0 : State
-    s0 = initWithInput x
-
-    helper : ∃[ s' ] (run (compile-x86 {C} {A * B} ⟨ f , g ⟩) s0 ≡ just s'
-                    × halted s' ≡ true
-                    × readReg (regs s') rax ≡ readReg (regs s') rsp
-                    × readMem (memory s') (readReg (regs s') rax) ≡ just (encode (eval f x))
-                    × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode (eval g x)))
-    helper = run-pair-seq f g x s0 (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
-
-    s' : State
-    s' = proj₁ helper
-
-    run-eq : run (compile-x86 ⟨ f , g ⟩) s0 ≡ just s'
-    run-eq = proj₁ (proj₂ helper)
-
-    -- helper structure: (s', (run-eq, (halt-eq, (rax-rsp-eq, (fst-eq, snd-eq)))))
-    fst-is-eval-f : readMem (memory s') (readReg (regs s') rax) ≡ just (encode (eval f x))
-    fst-is-eval-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
-
-    snd-is-eval-g : readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (encode (eval g x))
-    snd-is-eval-g = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
-
-    rax-eq : readReg (regs s') rax ≡ encode (eval f x , eval g x)
-    rax-eq = encode-pair-construct (eval f x) (eval g x) (readReg (regs s') rax) (memory s')
-               fst-is-eval-f snd-is-eval-g
+compile-pair-correct {A} {B} {C} f g x =
+  let (s' , run-eq , _ , rax-eq) = run-generator ⟨ f , g ⟩ x (initWithInput x)
+                                     (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
+  in s' , run-eq , rax-eq
 
 -- | inl: creates left injection
 --
