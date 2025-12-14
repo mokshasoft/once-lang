@@ -669,12 +669,6 @@ run-single-brk s n h-false pc-0 =
 ------------------------------------------------------------------------
 
 postulate
-  -- | Execute N steps helper
-  exec-N-steps : ∀ (n : ℕ) (prog : Program) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ true →
-    exec (suc n) prog s ≡ just s'
-
   -- | Compile-length matches actual length
   compile-length-correct : ∀ {A B : Type} (ir : IR A B) →
     length (compile-aarch64 ir) ≡ compile-length ir
