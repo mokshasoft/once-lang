@@ -34,7 +34,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; inspect) renaming ([_] to ⟦_⟧ᵢ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; inspect) renaming ([_] to ⟦_⟧ᵢ)
 -- Note: We use IR._∘_ for composition, not Function._∘_
 
 ------------------------------------------------------------------------
@@ -1529,14 +1529,242 @@ inl-final-val s a-enc =
       mem₁ = writeMem (memory s) sp₁ 0
   in readMem-writeMem-same mem₁ (sp₁ +ℕ 8) a-enc
 
--- | The multi-instruction execution postulate for inl
--- This captures the execution of the 4-instruction inl sequence
-postulate
-  run-inl-program : ∀ (s : State) (a-enc : Word) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ a-enc →
-    run (compile-aarch64 {Unit} {Unit + Unit} inl) s ≡ just (inl-final-state s a-enc)
+-- | The multi-instruction execution proof for inl
+-- This captures the execution of the 4-instruction inl sequence:
+--   sub-sp 16 ∷ str-zr (sp+imm 0) ∷ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+--
+-- Proof by explicit chaining of all 4 instruction executions plus final halt.
+run-inl-program : ∀ (s : State) (a-enc : Word) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ a-enc →
+  run (compile-aarch64 {Unit} {Unit + Unit} inl) s ≡ just (inl-final-state s a-enc)
+run-inl-program s a-enc h-false pc-eq x0-eq =
+  let prog = compile-aarch64 {Unit} {Unit + Unit} inl
+      -- prog = sub-sp 16 ∷ str-zr (sp+imm 0) ∷ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+
+      -- Abbreviations for state components
+      sp₀ = readSP (regs s)
+      sp₁ = sp₀ ∸ 16
+      rf₀ = regs s
+      mem₀ = memory s
+      ps₀ = pstate s
+
+      ----------------------------------------------------------------------
+      -- Step 1: Execute sub-sp 16 (pc: 0 → 1)
+      ----------------------------------------------------------------------
+      rf₁ = writeSP rf₀ sp₁
+      -- Define s₁ as the actual result of execInstr
+      s₁-raw : State
+      s₁-raw = record s { regs = writeSP (regs s) (readSP (regs s) ∸ 16) ; pc = pc s +ℕ 1 }
+
+      s₁ : State
+      s₁ = mkstate rf₁ mem₀ ps₀ 1 false
+
+      -- Show that s₁-raw = s₁ using pc-eq and h-false
+      -- s₁-raw = record s { regs = rf₁; pc = pc s + 1 }
+      --        = mkstate rf₁ mem₀ ps₀ (pc s + 1) (halted s)
+      -- s₁     = mkstate rf₁ mem₀ ps₀ 1 false
+      -- Need: pc s + 1 = 1 (from pc-eq) and halted s = false (from h-false)
+      s₁-eq : s₁-raw ≡ s₁
+      s₁-eq = cong₂ (λ p h → mkstate rf₁ mem₀ ps₀ p h)
+                    (cong (λ x → x +ℕ 1) pc-eq)
+                    h-false
+
+      -- Fetch at pc=0
+      fetch-0 : fetch prog 0 ≡ just (sub-sp 16)
+      fetch-0 = refl
+
+      fetch-s-0 : fetch prog (pc s) ≡ just (sub-sp 16)
+      fetch-s-0 = subst (λ p → fetch prog p ≡ just (sub-sp 16)) (sym pc-eq) fetch-0
+
+      -- execInstr for sub-sp
+      exec-sub-sp-raw : execInstr prog s (sub-sp 16) ≡ just s₁-raw
+      exec-sub-sp-raw = execInstr-sub-sp prog s 16
+
+      exec-sub-sp-eq : execInstr prog s (sub-sp 16) ≡ just s₁
+      exec-sub-sp-eq = trans exec-sub-sp-raw (cong just s₁-eq)
+
+      -- step from s to s₁
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ (sub-sp 16) h-false fetch-s-0 exec-sub-sp-eq
+
+      -- exec 1 from s to s₁
+      exec-1-s : exec 1 prog s ≡ just s₁
+      exec-1-s = exec-1-step prog s s₁ step-1
+
+      ----------------------------------------------------------------------
+      -- Step 2: Execute str-zr (sp+imm 0) (pc: 1 → 2)
+      ----------------------------------------------------------------------
+      -- effectiveAddr s₁ (sp+imm 0) = readSP rf₁ + 0 = sp₁
+      -- Note: readSP (writeSP rf₀ sp₁) = sp₁ by readSP-writeSP-same
+      mem₁ = writeMem mem₀ sp₁ 0
+      s₂ : State
+      s₂ = mkstate rf₁ mem₁ ps₀ 2 false
+
+      -- Fetch at pc=1
+      fetch-1 : fetch prog 1 ≡ just (str-zr (sp+imm 0))
+      fetch-1 = refl
+
+      -- For execInstr-str-zr, we need writeToMem s₁ (sp+imm 0) 0
+      -- writeToMem s₁ m v = record s₁ { memory = writeMem (memory s₁) (effectiveAddr s₁ m) v }
+      -- effectiveAddr s₁ (sp+imm 0) = readSP (regs s₁) + 0 = readSP rf₁ + 0 = sp₁ + 0 = sp₁
+      -- So writeToMem s₁ (sp+imm 0) 0 = record s₁ { memory = writeMem mem₀ sp₁ 0 } = record s₁ { memory = mem₁ }
+
+      -- We need: effectiveAddr s₁ (sp+imm 0) = sp₁
+      eff-addr-s₁ : effectiveAddr s₁ (sp+imm 0) ≡ sp₁ +ℕ 0
+      eff-addr-s₁ = cong (λ sp → sp +ℕ 0) (readSP-writeSP-same rf₀ sp₁)
+
+      eff-addr-s₁' : effectiveAddr s₁ (sp+imm 0) ≡ sp₁
+      eff-addr-s₁' = trans eff-addr-s₁ (+-identityʳ sp₁)
+
+      -- execInstr for str-zr
+      exec-str-zr-result : State
+      exec-str-zr-result = record (writeToMem s₁ (sp+imm 0) 0) { pc = pc s₁ +ℕ 1 }
+
+      -- Show exec-str-zr-result = s₂
+      str-zr-result-eq : exec-str-zr-result ≡ s₂
+      str-zr-result-eq = cong₂ (λ m p → mkstate rf₁ m ps₀ p false)
+        (cong (λ addr → writeMem mem₀ addr 0) eff-addr-s₁')
+        refl
+
+      exec-str-zr-eq : execInstr prog s₁ (str-zr (sp+imm 0)) ≡ just s₂
+      exec-str-zr-eq = trans (execInstr-str-zr prog s₁ (sp+imm 0)) (cong just str-zr-result-eq)
+
+      -- step from s₁ to s₂
+      step-2 : step prog s₁ ≡ just s₂
+      step-2 = step-instr prog s₁ s₂ (str-zr (sp+imm 0)) refl fetch-1 exec-str-zr-eq
+
+      -- exec 1 from s₁ to s₂
+      exec-1-s₁ : exec 1 prog s₁ ≡ just s₂
+      exec-1-s₁ = exec-1-step prog s₁ s₂ step-2
+
+      -- exec 2 from s to s₂
+      exec-2-s : exec 2 prog s ≡ just s₂
+      exec-2-s = exec-chain 1 1 prog s s₁ s₂ exec-1-s refl exec-1-s₁
+
+      ----------------------------------------------------------------------
+      -- Step 3: Execute str x0 (sp+imm 8) (pc: 2 → 3)
+      ----------------------------------------------------------------------
+      -- effectiveAddr s₂ (sp+imm 8) = readSP rf₁ + 8 = sp₁ + 8
+      -- readReg rf₁ x0 = readReg (writeSP rf₀ sp₁) x0 = readReg rf₀ x0 = a-enc
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) a-enc
+      s₃ : State
+      s₃ = mkstate rf₁ mem₂ ps₀ 3 false
+
+      -- Fetch at pc=2
+      fetch-2 : fetch prog 2 ≡ just (str x0 (sp+imm 8))
+      fetch-2 = refl
+
+      -- readReg rf₁ x0 = a-enc
+      x0-rf₁-eq : readReg rf₁ x0 ≡ a-enc
+      x0-rf₁-eq = trans (readReg-writeSP rf₀ x0 sp₁) x0-eq
+
+      -- effectiveAddr s₂ (sp+imm 8) = sp₁ + 8
+      eff-addr-s₂ : effectiveAddr s₂ (sp+imm 8) ≡ sp₁ +ℕ 8
+      eff-addr-s₂ = cong (λ sp → sp +ℕ 8) (readSP-writeSP-same rf₀ sp₁)
+
+      -- execInstr for str
+      exec-str-result : State
+      exec-str-result = record (writeToMem s₂ (sp+imm 8) (readReg (regs s₂) x0)) { pc = pc s₂ +ℕ 1 }
+
+      -- Show exec-str-result = s₃
+      str-result-eq : exec-str-result ≡ s₃
+      str-result-eq = cong₂ (λ m p → mkstate rf₁ m ps₀ p false)
+        (trans (cong₂ (λ addr v → writeMem mem₁ addr v) eff-addr-s₂ x0-rf₁-eq) refl)
+        refl
+
+      exec-str-eq : execInstr prog s₂ (str x0 (sp+imm 8)) ≡ just s₃
+      exec-str-eq = trans (execInstr-str prog s₂ x0 (sp+imm 8)) (cong just str-result-eq)
+
+      -- step from s₂ to s₃
+      step-3 : step prog s₂ ≡ just s₃
+      step-3 = step-instr prog s₂ s₃ (str x0 (sp+imm 8)) refl fetch-2 exec-str-eq
+
+      -- exec 1 from s₂ to s₃
+      exec-1-s₂ : exec 1 prog s₂ ≡ just s₃
+      exec-1-s₂ = exec-1-step prog s₂ s₃ step-3
+
+      -- exec 3 from s to s₃
+      exec-3-s : exec 3 prog s ≡ just s₃
+      exec-3-s = exec-chain 2 1 prog s s₂ s₃ exec-2-s refl exec-1-s₂
+
+      ----------------------------------------------------------------------
+      -- Step 4: Execute mov-from-sp x0 (pc: 3 → 4)
+      ----------------------------------------------------------------------
+      -- readSP rf₁ = sp₁
+      rf₂ = writeReg rf₁ x0 sp₁
+      s₄ : State
+      s₄ = mkstate rf₂ mem₂ ps₀ 4 false
+
+      -- Fetch at pc=3
+      fetch-3 : fetch prog 3 ≡ just (mov-from-sp x0)
+      fetch-3 = refl
+
+      -- execInstr for mov-from-sp
+      exec-mov-from-sp-result : State
+      exec-mov-from-sp-result = record s₃ { regs = writeReg (regs s₃) x0 (readSP (regs s₃)) ; pc = pc s₃ +ℕ 1 }
+
+      -- readSP (regs s₃) = readSP rf₁ = sp₁
+      sp-s₃-eq : readSP (regs s₃) ≡ sp₁
+      sp-s₃-eq = readSP-writeSP-same rf₀ sp₁
+
+      -- Show exec-mov-from-sp-result = s₄
+      mov-from-sp-result-eq : exec-mov-from-sp-result ≡ s₄
+      mov-from-sp-result-eq = cong₂ (λ rf p → mkstate rf mem₂ ps₀ p false)
+        (cong (writeReg rf₁ x0) sp-s₃-eq)
+        refl
+
+      exec-mov-from-sp-eq : execInstr prog s₃ (mov-from-sp x0) ≡ just s₄
+      exec-mov-from-sp-eq = trans (execInstr-mov-from-sp prog s₃ x0) (cong just mov-from-sp-result-eq)
+
+      -- step from s₃ to s₄
+      step-4 : step prog s₃ ≡ just s₄
+      step-4 = step-instr prog s₃ s₄ (mov-from-sp x0) refl fetch-3 exec-mov-from-sp-eq
+
+      -- exec 1 from s₃ to s₄
+      exec-1-s₃ : exec 1 prog s₃ ≡ just s₄
+      exec-1-s₃ = exec-1-step prog s₃ s₄ step-4
+
+      -- exec 4 from s to s₄
+      exec-4-s : exec 4 prog s ≡ just s₄
+      exec-4-s = exec-chain 3 1 prog s s₃ s₄ exec-3-s refl exec-1-s₃
+
+      ----------------------------------------------------------------------
+      -- Step 5: Fetch fails at pc=4 (program has 4 instructions at 0-3)
+      ----------------------------------------------------------------------
+      s₅ : State
+      s₅ = mkstate rf₂ mem₂ ps₀ 4 true
+
+      -- Fetch at pc=4 returns nothing
+      fetch-4 : fetch prog 4 ≡ nothing
+      fetch-4 = refl
+
+      -- step at s₄ halts
+      step-5 : step prog s₄ ≡ just s₅
+      step-5 = step-end-of-program prog s₄ refl fetch-4
+
+      -- exec 1 from s₄ to s₅
+      exec-1-s₄ : exec 1 prog s₄ ≡ just s₅
+      exec-1-s₄ = exec-1-step prog s₄ s₅ step-5
+
+      -- exec 5 from s to s₅
+      exec-5-s : exec 5 prog s ≡ just s₅
+      exec-5-s = exec-chain 4 1 prog s s₄ s₅ exec-4-s refl exec-1-s₄
+
+      ----------------------------------------------------------------------
+      -- s₅ is the expected inl-final-state
+      ----------------------------------------------------------------------
+      s₅-eq : s₅ ≡ inl-final-state s a-enc
+      s₅-eq = refl
+
+      ----------------------------------------------------------------------
+      -- Final: Use exec-mono to extend from exec 5 to run
+      ----------------------------------------------------------------------
+      run-eq : run prog s ≡ just s₅
+      run-eq = exec-mono 5 defaultFuel prog s s₅ (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))) exec-5-s refl
+
+  in trans run-eq (cong just s₅-eq)
 
 -- | inl generator proof
 -- Postulated due to Agda's inability to pattern match on ⟦ A ⟧
