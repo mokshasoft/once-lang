@@ -34,7 +34,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; inspect) renaming ([_] to ⟦_⟧ᵢ)
 -- Note: We use IR._∘_ for composition, not Function._∘_
 
 ------------------------------------------------------------------------
@@ -424,20 +424,43 @@ postulate
 
 -- | Chaining execution: if exec n reaches s', then exec m from s' reaches s'',
 -- then exec (n + m) from s reaches s''.
--- Postulated - proof requires induction on n with careful step reasoning.
--- Proof sketch:
---   Base (n=0): exec 0 prog s = just s, so s = s'. Then exec m prog s' = just s''.
---               By substitution: exec (0 + m) prog s = exec m prog s = just s''.
---   Inductive: exec (suc n) prog s means step gives s₁, then exec n prog s₁ = just s'.
---              By IH: exec (n + m) prog s₁ = just s''.
---              So exec (suc n + m) prog s = exec (suc (n + m)) prog s
---              = step gives s₁, exec (n + m) prog s₁ = just s''.
-postulate
-  exec-chain : ∀ (n m : ℕ) (prog : Program) (s s' s'' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ false →
-    exec m prog s' ≡ just s'' →
-    exec (n +ℕ m) prog s ≡ just s''
+-- Proven by induction on n.
+exec-chain : ∀ (n m : ℕ) (prog : Program) (s s' s'' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ false →
+  exec m prog s' ≡ just s'' →
+  exec (n +ℕ m) prog s ≡ just s''
+
+-- Base case: n = 0
+-- exec 0 prog s = just s by definition
+-- exec-0-eq : just s ≡ just s', so s ≡ s'
+-- exec (0 + m) prog s = exec m prog s = exec m prog s' = just s''
+exec-chain zero m prog s .s s'' refl h-false exec-m-eq = exec-m-eq
+
+-- Inductive case: n = suc n'
+-- Use a helper to handle step and halted pattern matching
+exec-chain (suc n') m prog s s' s'' exec-n-eq h-false exec-m-eq =
+  exec-chain-suc n' m prog s s' s'' exec-n-eq h-false exec-m-eq
+  where
+    -- Helper for the successor case
+    exec-chain-suc : ∀ (n' m : ℕ) (prog : Program) (s s' s'' : State) →
+      exec (suc n') prog s ≡ just s' →
+      halted s' ≡ false →
+      exec m prog s' ≡ just s'' →
+      exec (suc n' +ℕ m) prog s ≡ just s''
+    exec-chain-suc n' m prog s s' s'' exec-n-eq h-false exec-m-eq
+      with step prog s
+    -- step fails: impossible since exec succeeded
+    exec-chain-suc n' m prog s s' s'' () h-false exec-m-eq | nothing
+    -- step succeeds with s₁
+    exec-chain-suc n' m prog s s' s'' exec-n-eq h-false exec-m-eq | just s₁
+      with halted s₁ in halt-eq
+    -- s₁ halted: then s' = s₁ and halted s' = true, contradicts h-false
+    exec-chain-suc n' m prog s .s₁ s'' refl h-false exec-m-eq | just s₁ | true
+      rewrite halt-eq with () ← h-false
+    -- s₁ not halted: recurse
+    exec-chain-suc n' m prog s s' s'' exec-n-eq h-false exec-m-eq | just s₁ | false
+      = exec-chain n' m prog s₁ s' s'' exec-n-eq h-false exec-m-eq
 
 -- | Execution within a concatenated program (left part)
 -- If we execute the first part of a concatenated program and haven't halted,
