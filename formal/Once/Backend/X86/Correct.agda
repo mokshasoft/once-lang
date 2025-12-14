@@ -3270,17 +3270,85 @@ mutual
       pc-for-mid : pc s-after-f ≡ length prefix-mid
       pc-for-mid = trans pc-after-f-raw (sym len-prefix-mid)
 
-      -- The execution of middle instructions and their properties
-      -- This requires knowing that suffix-f = store-f ∷ restore-input ∷ rest
-      -- and that prog = prefix-mid ++ suffix-f (up to associativity)
-      postulate
-        s-after-middle : State
-        exec-middle : exec 2 prog s-after-f ≡ just s-after-middle
-        h-after-middle : halted s-after-middle ≡ false
-        pc-after-middle : pc s-after-middle ≡ length prefix +ℕ 4 +ℕ len-f
-        rdi-after-middle : readReg (regs s-after-middle) rdi ≡ encode x
-        -- Memory: [rsp] now contains encode (eval f x)
-        mem-fst-stored : readMem (memory s-after-middle) (readReg (regs s-after-middle) rsp) ≡ just (encode (eval f x))
+      -- The rest after middle instructions
+      rest-mid : Program
+      rest-mid = code-g ++ suffix-g
+
+      -- Helper: suffix-f ≡ store-f ∷ restore-input ∷ (code-g ++ suffix-g)
+      -- This is definitional since both parse to the same expression (right-assoc of ∷ and ++)
+      suffix-f-eq-rest : suffix-f ≡ store-f ∷ restore-input ∷ rest-mid
+      suffix-f-eq-rest = refl
+
+      -- Program equality for middle: prog ≡ prefix-mid ++ store-f ∷ restore-input ∷ rest-mid
+      -- Uses prog-eq-f, ++-assoc, and suffix-f-eq-rest
+      prog-eq-mid-step1 : prog ≡ prefix-mid ++ suffix-f
+      prog-eq-mid-step1 = trans prog-eq-f (sym (++-assoc prefix-f code-f suffix-f))
+
+      prog-eq-mid : prog ≡ prefix-mid ++ store-f ∷ restore-input ∷ rest-mid
+      prog-eq-mid = trans prog-eq-mid-step1 (cong (prefix-mid ++_) suffix-f-eq-rest)
+
+      -- Apply the exec-pair-middle-at helper
+      middle-result : ∃[ s' ] (exec 2 (prefix-mid ++ store-f ∷ restore-input ∷ rest-mid) s-after-f ≡ just s'
+                             × halted s' ≡ false
+                             × pc s' ≡ length prefix-mid +ℕ 2
+                             × readReg (regs s') rdi ≡ readReg (regs s-after-f) r14
+                             × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s-after-f) rax))
+      middle-result = exec-pair-middle-at prefix-mid rest-mid s-after-f h-after-f pc-for-mid
+
+      -- Extract the state and properties
+      s-after-middle : State
+      s-after-middle = proj₁ middle-result
+
+      exec-middle-raw : exec 2 (prefix-mid ++ store-f ∷ restore-input ∷ rest-mid) s-after-f ≡ just s-after-middle
+      exec-middle-raw = proj₁ (proj₂ middle-result)
+
+      -- Convert to exec on prog using prog-eq-mid
+      exec-middle : exec 2 prog s-after-f ≡ just s-after-middle
+      exec-middle = subst (λ p → exec 2 p s-after-f ≡ just s-after-middle) (sym prog-eq-mid) exec-middle-raw
+
+      h-after-middle : halted s-after-middle ≡ false
+      h-after-middle = proj₁ (proj₂ (proj₂ middle-result))
+
+      pc-after-middle-raw : pc s-after-middle ≡ length prefix-mid +ℕ 2
+      pc-after-middle-raw = proj₁ (proj₂ (proj₂ (proj₂ middle-result)))
+
+      -- Convert pc: length prefix-mid + 2 = length prefix + 4 + len-f
+      -- length prefix-mid = length prefix-f + len-f = (length prefix + 2) + len-f
+      -- So length prefix-mid + 2 = (length prefix + 2) + len-f + 2
+      --                          = length prefix + 2 + len-f + 2
+      --                          = length prefix + len-f + 4
+      --                          = length prefix + 4 + len-f (by commute-4)
+      pc-mid-arith : length prefix-mid +ℕ 2 ≡ length prefix +ℕ 4 +ℕ len-f
+      pc-mid-arith = begin
+        length prefix-mid +ℕ 2
+          ≡⟨ cong (_+ℕ 2) len-prefix-mid ⟩
+        (length prefix-f +ℕ len-f) +ℕ 2
+          ≡⟨ cong (λ x → (x +ℕ len-f) +ℕ 2) len-prefix-f ⟩
+        ((length prefix +ℕ 2) +ℕ len-f) +ℕ 2
+          ≡⟨ +-assoc (length prefix +ℕ 2) len-f 2 ⟩
+        (length prefix +ℕ 2) +ℕ (len-f +ℕ 2)
+          ≡⟨ add-2-2 (length prefix) len-f ⟩
+        length prefix +ℕ len-f +ℕ 4
+          ≡⟨ commute-4 (length prefix) len-f ⟩
+        length prefix +ℕ 4 +ℕ len-f
+          ∎
+
+      pc-after-middle : pc s-after-middle ≡ length prefix +ℕ 4 +ℕ len-f
+      pc-after-middle = trans pc-after-middle-raw pc-mid-arith
+
+      rdi-after-middle-raw : readReg (regs s-after-middle) rdi ≡ readReg (regs s-after-f) r14
+      rdi-after-middle-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+
+      -- rdi-after-middle needs r14-preserved-f
+      rdi-after-middle : readReg (regs s-after-middle) rdi ≡ encode x
+      rdi-after-middle = trans rdi-after-middle-raw r14-preserved-f
+
+      mem-fst-stored-raw : readMem (memory s-after-middle) (readReg (regs s-after-middle) rsp) ≡ just (readReg (regs s-after-f) rax)
+      mem-fst-stored-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+
+      -- Memory: [rsp] now contains encode (eval f x)
+      mem-fst-stored : readMem (memory s-after-middle) (readReg (regs s-after-middle) rsp) ≡ just (encode (eval f x))
+      mem-fst-stored = trans mem-fst-stored-raw (cong just rax-after-f)
 
       -- Phase 4: Execute g using recursive call
 
