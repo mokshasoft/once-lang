@@ -37,22 +37,19 @@
 --   - All register file lemmas (readReg-writeReg-*)
 --   - Memory lemmas (readMem-writeMem-same, readMem-writeMem-diff)
 --
--- POSTULATED (11 top-level):
---   1. readReg-writeReg-same-zero: Logically unprovable (x0 writes ignored)
---      Never instantiated - generated code never writes to x0.
---
---   2. run-generator: Main induction theorem
+-- POSTULATED (10 top-level):
+--   1. run-generator: Main induction theorem
 --      Requires mutual recursion over IR structure.
 --
---   3. run-apply-seq: Closure application (7 instructions with indirect call)
+--   2. run-apply-seq: Closure application (7 instructions with indirect call)
 --      Complex: jalr transfers control to thunk code which is not part of
 --      the apply program. Our semantics model doesn't support cross-program
 --      calls with absolute addressing.
 --
---   4-7. compile-length-correct-{compose,pair,case,curry}: Length calculations
+--   3-6. compile-length-correct-{compose,pair,case,curry}: Length calculations
 --      for recursive IR constructors. Sound by inspection of code generator.
 --
---   8-11. compile-{compose,pair,case,apply}-correct: Recursive IR correctness
+--   7-10. compile-{compose,pair,case,apply}-correct: Recursive IR correctness
 --      Require mutual recursion - the proofs for sub-IRs need run-generator.
 --
 -- NOTE: The end-to-end theorem compilation-correct-riscv in EndToEnd.agda
@@ -287,52 +284,46 @@ readReg-zero-always-0 : ∀ (rf : RegFile) →
   readReg rf zero ≡ 0
 readReg-zero-always-0 rf = refl
 
--- | Postulated: read-after-write for zero register
--- This is logically impossible when v ≠ 0 (writes to zero are ignored).
--- We postulate it because the generated code NEVER writes to zero:
---   - Zero is only used as a source register (for tag = 0 in inl)
---   - All destination registers are a0, sp, s0, s1, t0-t2
--- This postulate is sound because it's never instantiated.
-postulate
-  readReg-writeReg-same-zero : ∀ (rf : RegFile) (v : Word) →
-    readReg (writeReg rf zero v) zero ≡ v
-
 -- | Reading a register after writing to it returns the written value
+--
+-- Precondition: r ≢ zero, because writes to x0 are ignored by hardware.
+-- For x0: readReg (writeReg rf zero v) zero = readReg rf zero = 0 ≠ v
+-- This precondition is trivially satisfied since zero is a distinct constructor.
 readReg-writeReg-same : ∀ (rf : RegFile) (r : Reg) (v : Word) →
+  r ≢ zero →
   readReg (writeReg rf r v) r ≡ v
--- x0 (zero) is special: postulated since generated code never writes to it
-readReg-writeReg-same rf zero v = readReg-writeReg-same-zero rf v
-readReg-writeReg-same rf ra   v = refl
-readReg-writeReg-same rf sp   v = refl
-readReg-writeReg-same rf gp   v = refl
-readReg-writeReg-same rf tp   v = refl
-readReg-writeReg-same rf t0   v = refl
-readReg-writeReg-same rf t1   v = refl
-readReg-writeReg-same rf t2   v = refl
-readReg-writeReg-same rf s0   v = refl
-readReg-writeReg-same rf s1   v = refl
-readReg-writeReg-same rf a0   v = refl
-readReg-writeReg-same rf a1   v = refl
-readReg-writeReg-same rf a2   v = refl
-readReg-writeReg-same rf a3   v = refl
-readReg-writeReg-same rf a4   v = refl
-readReg-writeReg-same rf a5   v = refl
-readReg-writeReg-same rf a6   v = refl
-readReg-writeReg-same rf a7   v = refl
-readReg-writeReg-same rf s2   v = refl
-readReg-writeReg-same rf s3   v = refl
-readReg-writeReg-same rf s4   v = refl
-readReg-writeReg-same rf s5   v = refl
-readReg-writeReg-same rf s6   v = refl
-readReg-writeReg-same rf s7   v = refl
-readReg-writeReg-same rf s8   v = refl
-readReg-writeReg-same rf s9   v = refl
-readReg-writeReg-same rf s10  v = refl
-readReg-writeReg-same rf s11  v = refl
-readReg-writeReg-same rf t3   v = refl
-readReg-writeReg-same rf t4   v = refl
-readReg-writeReg-same rf t5   v = refl
-readReg-writeReg-same rf t6   v = refl
+readReg-writeReg-same rf zero v r≢zero = ⊥-elim (r≢zero refl)
+readReg-writeReg-same rf ra   v _ = refl
+readReg-writeReg-same rf sp   v _ = refl
+readReg-writeReg-same rf gp   v _ = refl
+readReg-writeReg-same rf tp   v _ = refl
+readReg-writeReg-same rf t0   v _ = refl
+readReg-writeReg-same rf t1   v _ = refl
+readReg-writeReg-same rf t2   v _ = refl
+readReg-writeReg-same rf s0   v _ = refl
+readReg-writeReg-same rf s1   v _ = refl
+readReg-writeReg-same rf a0   v _ = refl
+readReg-writeReg-same rf a1   v _ = refl
+readReg-writeReg-same rf a2   v _ = refl
+readReg-writeReg-same rf a3   v _ = refl
+readReg-writeReg-same rf a4   v _ = refl
+readReg-writeReg-same rf a5   v _ = refl
+readReg-writeReg-same rf a6   v _ = refl
+readReg-writeReg-same rf a7   v _ = refl
+readReg-writeReg-same rf s2   v _ = refl
+readReg-writeReg-same rf s3   v _ = refl
+readReg-writeReg-same rf s4   v _ = refl
+readReg-writeReg-same rf s5   v _ = refl
+readReg-writeReg-same rf s6   v _ = refl
+readReg-writeReg-same rf s7   v _ = refl
+readReg-writeReg-same rf s8   v _ = refl
+readReg-writeReg-same rf s9   v _ = refl
+readReg-writeReg-same rf s10  v _ = refl
+readReg-writeReg-same rf s11  v _ = refl
+readReg-writeReg-same rf t3   v _ = refl
+readReg-writeReg-same rf t4   v _ = refl
+readReg-writeReg-same rf t5   v _ = refl
+readReg-writeReg-same rf t6   v _ = refl
 
 -- | Reading a0 after writing sp returns the old value
 readReg-writeReg-sp-a0 : ∀ (rf : RegFile) (v : Word) →
@@ -814,7 +805,7 @@ run-generator-terminal {A} x s h-false pc-0 a0-eq = st2 , run-eq , halt-eq , a0-
 
     -- a0 = 0 = encode tt (by encode-unit)
     a0-eq' : readReg (regs st2) a0 ≡ encode {Unit} tt
-    a0-eq' = trans (readReg-writeReg-same (regs s) a0 0) (sym encode-unit)
+    a0-eq' = trans (readReg-writeReg-same (regs s) a0 0 (λ ())) (sym encode-unit)
 
 -- | run-generator for fold (identity at runtime)
 --
@@ -931,7 +922,7 @@ run-fst-seq {A} {B} a b s h-false pc-0 a0-eq mem-eq = st2 , run-eq , refl , a0-e
 
     -- a0 in final state
     a0-eq' : readReg (regs st2) a0 ≡ encode a
-    a0-eq' = readReg-writeReg-same (regs s) a0 (encode a)
+    a0-eq' = readReg-writeReg-same (regs s) a0 (encode a) (λ ())
 
 -- | snd execution: ld a0, 8(a0)
 -- Generated code: ld a0 (+ 8) a0 ∷ []
@@ -992,7 +983,7 @@ run-snd-seq {A} {B} a b s h-false pc-0 a0-eq mem-eq = st2 , run-eq , refl , a0-e
 
     -- a0 in final state
     a0-eq' : readReg (regs st2) a0 ≡ encode b
-    a0-eq' = readReg-writeReg-same (regs s) a0 (encode b)
+    a0-eq' = readReg-writeReg-same (regs s) a0 (encode b) (λ ())
 
 ------------------------------------------------------------------------
 -- inl and inr execution proofs
@@ -1037,7 +1028,7 @@ run-inl-seq {A} {B} x s h-false pc-0 a0-eq = st5 , run-eq , refl , a0-final
 
     -- sp in st1 is new-sp
     sp-st1 : readReg (regs st1) sp ≡ new-sp
-    sp-st1 = readReg-writeReg-same (regs s) sp new-sp
+    sp-st1 = readReg-writeReg-same (regs s) sp new-sp (λ ())
 
     step2 : step prog st1 ≡ just st2
     step2 = trans (step-exec-1 (addi sp sp neg16) (sd zero (+ 0) sp) _ st1 h1 pc1)
@@ -1107,7 +1098,7 @@ run-inl-seq {A} {B} x s h-false pc-0 a0-eq = st5 , run-eq , refl , a0-final
 
     -- a0 in st5 = a0 in st4 = sp in st3 = new-sp
     a0-st5 : readReg (regs st5) a0 ≡ new-sp
-    a0-st5 = readReg-writeReg-same (regs st3) a0 (readReg (regs st3) sp)
+    a0-st5 = readReg-writeReg-same (regs st3) a0 (readReg (regs st3) sp) (λ ())
 
     -- Memory chain tracking
     -- s → st1 (addi: no mem change)
@@ -1306,7 +1297,7 @@ run-inr-seq {A} {B} x s h-false pc-0 a0-eq = st6 , run-eq , refl , a0-final
 
     -- sp tracking: sp in st1 = new-sp, writing t0 preserves sp
     sp-st1 : readReg (regs st1) sp ≡ new-sp
-    sp-st1 = readReg-writeReg-same (regs s) sp new-sp
+    sp-st1 = readReg-writeReg-same (regs s) sp new-sp (λ ())
 
     -- sp in st2 = new-sp (li writes t0, not sp)
     readReg-writeReg-t0-sp : ∀ (rf : RegFile) (v : Word) → readReg (writeReg rf t0 v) sp ≡ readReg rf sp
@@ -1317,7 +1308,7 @@ run-inr-seq {A} {B} x s h-false pc-0 a0-eq = st6 , run-eq , refl , a0-final
 
     -- t0 in st2 = 1 (from li)
     t0-st2 : readReg (regs st2) t0 ≡ 1
-    t0-st2 = readReg-writeReg-same (regs st1) t0 1
+    t0-st2 = readReg-writeReg-same (regs st1) t0 1 (λ ())
 
     -- sp in st3 = new-sp (sd doesn't change registers)
     sp-st3 : readReg (regs st3) sp ≡ new-sp
@@ -1353,7 +1344,7 @@ run-inr-seq {A} {B} x s h-false pc-0 a0-eq = st6 , run-eq , refl , a0-final
     sp-st4 = sp-st3
 
     a0-st6 : readReg (regs st6) a0 ≡ new-sp
-    a0-st6 = readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp)
+    a0-st6 = readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp) (λ ())
 
     -- Reading tag (at new-sp) from memory st6
     -- memory st6 = memory st5 = memory st4
@@ -1453,7 +1444,7 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
 
     -- sp in st1 = new-sp
     sp-st1 : readReg (regs st1) sp ≡ new-sp
-    sp-st1 = readReg-writeReg-same (regs s) sp new-sp
+    sp-st1 = readReg-writeReg-same (regs s) sp new-sp (λ ())
 
     -- a0 in st1 = encode a (writing sp doesn't change a0)
     a0-st1 : readReg (regs st1) a0 ≡ encode a
@@ -1523,7 +1514,7 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
 
     -- a0 in st5 = new-sp
     a0-st5 : readReg (regs st5) a0 ≡ new-sp
-    a0-st5 = trans (readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp)) sp-st4
+    a0-st5 = trans (readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp) (λ ())) sp-st4
 
     -- State st6: after j end-offset - pc = pc + offset = 5 + (7 + len-f) = 12 + len-f
     st6 : State
