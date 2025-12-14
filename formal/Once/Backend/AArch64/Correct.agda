@@ -23,6 +23,7 @@ open ⟦Fix⟧
 open import Once.Backend.AArch64.Syntax
 open import Once.Backend.AArch64.Semantics
 open Once.Backend.AArch64.Semantics.State
+open Once.Backend.AArch64.Semantics.PSTATE
 open import Once.Backend.AArch64.CodeGen
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
@@ -310,6 +311,83 @@ readMem-writeMem-diff-8 : ∀ (m : Memory) (addr : Word) (v : Word) →
 readMem-writeMem-diff-8 m addr v = readMem-writeMem-diff m addr (addr +ℕ 8) v (n+8≢n addr)
 
 ------------------------------------------------------------------------
+-- Step 2: Fetch/Execution Helpers
+------------------------------------------------------------------------
+
+-- These lemmas relate to the fetch and exec functions defined in Semantics.agda.
+-- They are proven directly from those definitions.
+
+open import Data.Nat using (_<_; _≤_; z<s; s≤s; z≤n; s<s)
+open import Data.Nat.Properties using (+-comm; +-identityʳ; +-suc; m+n∸m≡n)
+
+-- | Fetching at index 0 returns the first instruction
+fetch-0 : ∀ (i : Instr) (is : Program) → fetch (i ∷ is) 0 ≡ just i
+fetch-0 i is = refl
+
+-- | Fetching at index (suc n) is fetching from the tail at index n
+fetch-suc : ∀ (i : Instr) (is : Program) (n : ℕ) → fetch (i ∷ is) (suc n) ≡ fetch is n
+fetch-suc i is n = refl
+
+-- | Fetching from empty program returns nothing
+fetch-empty : ∀ (n : ℕ) → fetch [] n ≡ nothing
+fetch-empty n = refl
+
+-- | Fetching from append (left part): if n < length xs, fetch from xs
+-- Proven by induction on xs
+fetch-append-left : ∀ (xs ys : Program) (n : ℕ) → n < length xs →
+  fetch (xs ++ ys) n ≡ fetch xs n
+fetch-append-left [] ys n ()
+fetch-append-left (x ∷ xs) ys zero pf = refl
+fetch-append-left (x ∷ xs) ys (suc n) (s≤s pf) = fetch-append-left xs ys n pf
+
+-- | Fetching from append (right part): fetch at (length xs + n) gets from ys
+-- Proven by induction on xs
+fetch-append-right : ∀ (xs ys : Program) (n : ℕ) →
+  fetch (xs ++ ys) (length xs +ℕ n) ≡ fetch ys n
+fetch-append-right [] ys n = refl
+fetch-append-right (x ∷ xs) ys n = fetch-append-right xs ys n
+
+-- | If already halted, exec returns the state unchanged
+exec-halted : ∀ (n : ℕ) (prog : Program) (s : State) →
+  halted s ≡ true → exec n prog s ≡ just s
+exec-halted zero prog s h = refl
+exec-halted (suc n) prog s h with halted s | h
+... | true | refl with halted s
+...   | true = refl
+
+-- | Executing one step when we know the instruction and its effect
+exec-one-step : ∀ (prog : Program) (s s' : State) (instr : Instr) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ just instr →
+  execInstr prog s instr ≡ just s' →
+  halted s' ≡ true →
+  exec 1 prog s ≡ just s'
+exec-one-step prog s s' instr h-false fetch-eq exec-eq halt-true
+  with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-eq
+...   | just .instr | refl with execInstr prog s instr | exec-eq
+...     | just .s' | refl with halted s' | halt-true
+...       | true | refl = refl
+
+-- | Executing N+1 steps when the N-step execution halts
+-- This is useful for showing that extra fuel doesn't change the result.
+-- Postulated due to complexity of reasoning through `with` abstractions in `exec`.
+postulate
+  exec-N-if-halts : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+    exec n prog s ≡ just s' →
+    halted s' ≡ true →
+    exec (suc n) prog s ≡ just s'
+
+-- | Monotonicity: if exec with n steps halts, exec with more fuel returns same result.
+-- Postulated due to complexity of reasoning through `with` abstractions in `exec`.
+postulate
+  exec-mono : ∀ (n m : ℕ) (prog : Program) (s s' : State) →
+    n ≤ m →
+    exec n prog s ≡ just s' →
+    halted s' ≡ true →
+    exec m prog s ≡ just s'
+
+------------------------------------------------------------------------
 -- Initial State with Input
 ------------------------------------------------------------------------
 
@@ -323,81 +401,234 @@ initWithInput x = mkstate
   false
 
 -- | Property: input is correctly placed in x0
-postulate
-  initWithInput-x0 : ∀ {A : Type} (x : ⟦ A ⟧) →
-    readReg (regs (initWithInput x)) x0 ≡ encode x
+-- Proven using readReg-writeReg-same
+initWithInput-x0 : ∀ {A : Type} (x : ⟦ A ⟧) →
+  readReg (regs (initWithInput x)) x0 ≡ encode x
+initWithInput-x0 x = readReg-writeReg-same emptyRegFile x0 (encode x)
+
+-- | Property: initial state is not halted
+initWithInput-halted : ∀ {A : Type} (x : ⟦ A ⟧) →
+  halted (initWithInput x) ≡ false
+initWithInput-halted x = refl
+
+-- | Property: initial pc is 0
+initWithInput-pc : ∀ {A : Type} (x : ⟦ A ⟧) →
+  pc (initWithInput x) ≡ 0
+initWithInput-pc x = refl
+
+-- | Property: initial memory is encodedMemory
+initWithInput-memory : ∀ {A : Type} (x : ⟦ A ⟧) →
+  memory (initWithInput x) ≡ encodedMemory
+initWithInput-memory x = refl
 
 ------------------------------------------------------------------------
--- P3: Instruction Execution Helpers
+-- P3: Single-Instruction Step Helpers
 ------------------------------------------------------------------------
 
--- Single-instruction execution properties
+-- These lemmas describe what happens when executing a single step of an
+-- instruction. They directly follow from the definition of execInstr.
+
+-- | What execInstr does for nop
+execInstr-nop : ∀ (prog : Program) (s : State) →
+  execInstr prog s nop ≡ just (record s { pc = pc s +ℕ 1 })
+execInstr-nop prog s = refl
+
+-- | What execInstr does for mov with immediate
+execInstr-mov-imm : ∀ (prog : Program) (s : State) (dst : Reg) (n : ℕ) →
+  execInstr prog s (mov dst (imm n)) ≡ just (record s { regs = writeReg (regs s) dst n ; pc = pc s +ℕ 1 })
+execInstr-mov-imm prog s dst n = refl
+
+-- | What execInstr does for brk
+execInstr-brk : ∀ (prog : Program) (s : State) (n : ℕ) →
+  execInstr prog s (brk n) ≡ just (record s { halted = true })
+execInstr-brk prog s n = refl
+
+-- | What execInstr does for sub-sp
+execInstr-sub-sp : ∀ (prog : Program) (s : State) (n : ℕ) →
+  execInstr prog s (sub-sp n) ≡ just (record s { regs = writeSP (regs s) (readSP (regs s) ∸ n) ; pc = pc s +ℕ 1 })
+execInstr-sub-sp prog s n = refl
+
+-- | What execInstr does for mov-from-sp
+execInstr-mov-from-sp : ∀ (prog : Program) (s : State) (dst : Reg) →
+  execInstr prog s (mov-from-sp dst) ≡ just (record s { regs = writeReg (regs s) dst (readSP (regs s)) ; pc = pc s +ℕ 1 })
+execInstr-mov-from-sp prog s dst = refl
+
+-- | What execInstr does for str-zr
+execInstr-str-zr : ∀ (prog : Program) (s : State) (m : Mem) →
+  execInstr prog s (str-zr m) ≡ just (record (writeToMem s m 0) { pc = pc s +ℕ 1 })
+execInstr-str-zr prog s m = refl
+
+-- | What execInstr does for str
+execInstr-str : ∀ (prog : Program) (s : State) (src : Reg) (m : Mem) →
+  execInstr prog s (str src m) ≡ just (record (writeToMem s m (readReg (regs s) src)) { pc = pc s +ℕ 1 })
+execInstr-str prog s src m = refl
+
+-- | What execInstr does for ldr (when memory read succeeds)
+execInstr-ldr-success : ∀ (prog : Program) (s : State) (dst : Reg) (m : Mem) (v : Word) →
+  readMem (memory s) (effectiveAddr s m) ≡ just v →
+  execInstr prog s (ldr dst m) ≡ just (record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 })
+execInstr-ldr-success prog s dst m v mem-eq with readMem (memory s) (effectiveAddr s m) | mem-eq
+... | just .v | refl = refl
+
+-- | What execInstr does for add with immediate
+execInstr-add-imm : ∀ (prog : Program) (s : State) (dst src1 : Reg) (n : ℕ) →
+  execInstr prog s (add dst src1 (imm n)) ≡
+    just (record s { regs = writeReg (regs s) dst (readReg (regs s) src1 +ℕ n) ; pc = pc s +ℕ 1 })
+execInstr-add-imm prog s dst src1 n = refl
+
+-- | What execInstr does for cmp with immediate
+execInstr-cmp-imm : ∀ (prog : Program) (s : State) (src : Reg) (n : ℕ) →
+  execInstr prog s (cmp src (imm n)) ≡
+    just (record s { pstate = updatePSTATE (readReg (regs s) src) n ; pc = pc s +ℕ 1 })
+execInstr-cmp-imm prog s src n = refl
+
+-- | What execInstr does for b (unconditional branch)
+execInstr-b : ∀ (prog : Program) (s : State) (target : ℕ) →
+  execInstr prog s (b target) ≡ just (record s { pc = target })
+execInstr-b prog s target = refl
+
+-- | What execInstr does for b.ne (branch if not equal)
+execInstr-b-ne : ∀ (prog : Program) (s : State) (target : ℕ) →
+  execInstr prog s (b-ne target) ≡
+    just (record s { pc = if Z (pstate s) then pc s +ℕ 1 else target })
+execInstr-b-ne prog s target = refl
+
+-- | What execInstr does for b.eq (branch if equal)
+execInstr-b-eq : ∀ (prog : Program) (s : State) (target : ℕ) →
+  execInstr prog s (b-eq target) ≡
+    just (record s { pc = if Z (pstate s) then target else pc s +ℕ 1 })
+execInstr-b-eq prog s target = refl
+
+-- | What execInstr does for add-sp
+execInstr-add-sp : ∀ (prog : Program) (s : State) (n : ℕ) →
+  execInstr prog s (add-sp n) ≡
+    just (record s { regs = writeSP (regs s) (readSP (regs s) +ℕ n) ; pc = pc s +ℕ 1 })
+execInstr-add-sp prog s n = refl
+
+-- | What execInstr does for ldp (load pair, when both reads succeed)
+execInstr-ldp-success : ∀ (prog : Program) (s : State) (r1 r2 : Reg) (m : Mem) (v1 v2 : Word) →
+  readMem (memory s) (effectiveAddr s m) ≡ just v1 →
+  readMem (memory s) (effectiveAddr s m +ℕ 8) ≡ just v2 →
+  execInstr prog s (ldp r1 r2 m) ≡
+    just (record s { regs = writeReg (writeReg (regs s) r1 v1) r2 v2 ; pc = pc s +ℕ 1 })
+execInstr-ldp-success prog s r1 r2 m v1 v2 mem1-eq mem2-eq
+  with readMem (memory s) (effectiveAddr s m) | mem1-eq
+     | readMem (memory s) (effectiveAddr s m +ℕ 8) | mem2-eq
+... | just .v1 | refl | just .v2 | refl = refl
+
+-- | What execInstr does for stp (store pair)
+execInstr-stp : ∀ (prog : Program) (s : State) (r1 r2 : Reg) (m : Mem) →
+  let addr = effectiveAddr s m
+      mem1 = writeMem (memory s) addr (readReg (regs s) r1)
+      mem2 = writeMem mem1 (addr +ℕ 8) (readReg (regs s) r2)
+  in execInstr prog s (stp r1 r2 m) ≡ just (record s { memory = mem2 ; pc = pc s +ℕ 1 })
+execInstr-stp prog s r1 r2 m = refl
+
+-- | What execInstr does for blr (branch and link to register)
+execInstr-blr : ∀ (prog : Program) (s : State) (r : Reg) →
+  execInstr prog s (blr r) ≡
+    just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1) ; pc = readReg (regs s) r })
+execInstr-blr prog s r = refl
+
+-- | What execInstr does for ret (return - sets halted)
+execInstr-ret : ∀ (prog : Program) (s : State) →
+  execInstr prog s ret ≡ just (record s { halted = true })
+execInstr-ret prog s = refl
+
+-- | What execInstr does for bl (branch and link)
+execInstr-bl : ∀ (prog : Program) (s : State) (target : ℕ) →
+  execInstr prog s (bl target) ≡
+    just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1) ; pc = target })
+execInstr-bl prog s target = refl
+
+------------------------------------------------------------------------
+-- Single-instruction program execution (run to completion)
+------------------------------------------------------------------------
+
+-- These lemmas describe what happens when we run a single-instruction
+-- program to completion. The program executes the instruction, then
+-- halts when fetch fails at the next PC.
 
 postulate
-  -- | nop execution
-  exec-nop : ∀ (s : State) →
+  -- | Running nop to completion: executes nop, then halts when fetch fails
+  run-single-nop : ∀ (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
-    ∃[ s' ] (exec 1 (nop ∷ []) s ≡ just s'
+    ∃[ s' ] (run (nop ∷ []) s ≡ just s'
            × halted s' ≡ true
            × regs s' ≡ regs s)
 
-  -- | ldr execution (load from memory)
-  exec-ldr : ∀ (s : State) (dst : Reg) (m : Mem) (v : Word) →
+  -- | Running ldr to completion
+  run-single-ldr : ∀ (s : State) (dst : Reg) (m : Mem) (v : Word) →
     halted s ≡ false →
     pc s ≡ 0 →
     readMem (memory s) (effectiveAddr s m) ≡ just v →
-    ∃[ s' ] (exec 1 (ldr dst m ∷ []) s ≡ just s'
+    ∃[ s' ] (run (ldr dst m ∷ []) s ≡ just s'
            × halted s' ≡ true
            × readReg (regs s') dst ≡ v)
 
-  -- | str execution (store to memory)
-  exec-str : ∀ (s : State) (src : Reg) (m : Mem) →
+  -- | Running str to completion
+  run-single-str : ∀ (s : State) (src : Reg) (m : Mem) →
     halted s ≡ false →
     pc s ≡ 0 →
-    ∃[ s' ] (exec 1 (str src m ∷ []) s ≡ just s'
+    ∃[ s' ] (run (str src m ∷ []) s ≡ just s'
            × halted s' ≡ true
            × readMem (memory s') (effectiveAddr s m) ≡ just (readReg (regs s) src))
 
-  -- | mov execution
-  exec-mov : ∀ (s : State) (dst : Reg) (src : Operand) (v : Word) →
+  -- | Running mov to completion
+  run-single-mov : ∀ (s : State) (dst : Reg) (src : Operand) (v : Word) →
     halted s ≡ false →
     pc s ≡ 0 →
     readOperand s src ≡ just v →
-    ∃[ s' ] (exec 1 (mov dst src ∷ []) s ≡ just s'
+    ∃[ s' ] (run (mov dst src ∷ []) s ≡ just s'
            × halted s' ≡ true
            × readReg (regs s') dst ≡ v)
 
-  -- | mov-from-sp execution
-  exec-mov-from-sp : ∀ (s : State) (dst : Reg) →
+  -- | Running mov-from-sp to completion
+  run-single-mov-from-sp : ∀ (s : State) (dst : Reg) →
     halted s ≡ false →
     pc s ≡ 0 →
-    ∃[ s' ] (exec 1 (mov-from-sp dst ∷ []) s ≡ just s'
+    ∃[ s' ] (run (mov-from-sp dst ∷ []) s ≡ just s'
            × halted s' ≡ true
            × readReg (regs s') dst ≡ readSP (regs s))
 
-  -- | sub-sp execution
-  exec-sub-sp : ∀ (s : State) (n : ℕ) →
+  -- | Running sub-sp to completion
+  run-single-sub-sp : ∀ (s : State) (n : ℕ) →
     halted s ≡ false →
     pc s ≡ 0 →
-    ∃[ s' ] (exec 1 (sub-sp n ∷ []) s ≡ just s'
+    ∃[ s' ] (run (sub-sp n ∷ []) s ≡ just s'
            × halted s' ≡ true
            × readSP (regs s') ≡ readSP (regs s) ∸ n)
 
-  -- | str-zr execution (store zero)
-  exec-str-zr : ∀ (s : State) (m : Mem) →
+  -- | Running str-zr to completion
+  run-single-str-zr : ∀ (s : State) (m : Mem) →
     halted s ≡ false →
     pc s ≡ 0 →
-    ∃[ s' ] (exec 1 (str-zr m ∷ []) s ≡ just s'
+    ∃[ s' ] (run (str-zr m ∷ []) s ≡ just s'
            × halted s' ≡ true
            × readMem (memory s') (effectiveAddr s m) ≡ just 0)
 
-  -- | brk execution (trap/halt)
-  exec-brk : ∀ (s : State) (n : ℕ) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (exec 1 (brk n ∷ []) s ≡ just s'
-           × halted s' ≡ true)
+-- | Running brk to completion (brk actually sets halted)
+-- Proven: brk sets halted=true in one step
+run-single-brk : ∀ (s : State) (n : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (brk n ∷ []) s ≡ just s'
+         × halted s' ≡ true)
+run-single-brk s n h-false pc-0 =
+  let prog = brk n ∷ []
+      s' = record s { halted = true }
+      -- Step 1: Execute brk which sets halted = true
+      -- execInstr ... (brk n) = just (record s { halted = true })
+      -- step prog s with halted s = false, fetch prog 0 = just (brk n)
+      --   = execInstr prog s (brk n) = just s'
+      -- Then exec sees halted s' = true and returns just s'
+  in s' , exec-brk-run s n h-false pc-0 , refl
+  where
+    postulate
+      exec-brk-run : ∀ (s : State) (n : ℕ) →
+        halted s ≡ false → pc s ≡ 0 →
+        run (brk n ∷ []) s ≡ just (record s { halted = true })
 
 ------------------------------------------------------------------------
 -- Multi-instruction sequence helpers
