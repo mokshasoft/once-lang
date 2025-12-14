@@ -651,15 +651,29 @@ postulate
 
 -- Simple generators (id, terminal, fold, unfold, arr)
 
+-- | id: x0 unchanged (nop)
+-- compile-aarch64 id = nop ∷ []
+-- eval id x = x
+run-generator-id : ∀ {A : Type} (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode x →
+  ∃[ s' ] (run (compile-aarch64 {A} {A} id) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval id x))
+run-generator-id {A} x s h-false pc-0 x0-eq =
+  let
+    -- run-single-nop gives us the execution result
+    (s' , run-eq , halt-eq , regs-eq) = run-single-nop s h-false pc-0
+    -- x0 is preserved through nop execution
+    x0-preserved : readReg (regs s') x0 ≡ readReg (regs s) x0
+    x0-preserved = cong (λ rf → readReg rf x0) regs-eq
+    -- Link to semantic result: eval id x = x
+    x0-result : readReg (regs s') x0 ≡ encode (eval {A} {A} id x)
+    x0-result = trans x0-preserved x0-eq  -- since eval id x = x
+  in s' , run-eq , halt-eq , x0-result
+
 postulate
-  -- | id: x0 unchanged (nop)
-  run-generator-id : ∀ {A : Type} (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode x →
-    ∃[ s' ] (run (compile-aarch64 {A} {A} id) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode (eval id x))
 
   -- | terminal: mov x0, #0
   run-generator-terminal : ∀ {A : Type} (x : ⟦ A ⟧) (s : State) →
@@ -670,32 +684,68 @@ postulate
            × halted s' ≡ true
            × readReg (regs s') x0 ≡ encode {Unit} (eval {A} {Unit} terminal x))
 
-  -- | fold: nop (identity at runtime)
-  run-generator-fold : ∀ {F : Type} (x : ⟦ F ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {F} x →
-    ∃[ s' ] (run (compile-aarch64 {F} {Fix F} fold) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {Fix F} (eval {F} {Fix F} fold x))
+-- | fold: nop (identity at runtime)
+-- compile-aarch64 fold = nop ∷ []
+-- eval fold x = wrap x
+-- encode {F} x ≡ encode {Fix F} (wrap x)  by encode-fix-wrap
+run-generator-fold : ∀ {F : Type} (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode {F} x →
+  ∃[ s' ] (run (compile-aarch64 {F} {Fix F} fold) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode {Fix F} (eval {F} {Fix F} fold x))
+run-generator-fold {F} x s h-false pc-0 x0-eq =
+  let
+    (s' , run-eq , halt-eq , regs-eq) = run-single-nop s h-false pc-0
+    x0-preserved : readReg (regs s') x0 ≡ readReg (regs s) x0
+    x0-preserved = cong (λ rf → readReg rf x0) regs-eq
+    -- eval fold x = wrap x, and encode {F} x ≡ encode {Fix F} (wrap x)
+    x0-result : readReg (regs s') x0 ≡ encode {Fix F} (eval {F} {Fix F} fold x)
+    x0-result = trans x0-preserved (trans x0-eq (encode-fix-wrap x))
+  in s' , run-eq , halt-eq , x0-result
 
-  -- | unfold: nop (identity at runtime)
-  run-generator-unfold : ∀ {F : Type} (x : ⟦ Fix F ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {Fix F} x →
-    ∃[ s' ] (run (compile-aarch64 {Fix F} {F} unfold) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {F} (eval {Fix F} {F} unfold x))
+-- | unfold: nop (identity at runtime)
+-- compile-aarch64 unfold = nop ∷ []
+-- eval unfold x = unwrap x
+-- encode {Fix F} x ≡ encode {F} (unwrap x)  by encode-fix-unwrap
+run-generator-unfold : ∀ {F : Type} (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode {Fix F} x →
+  ∃[ s' ] (run (compile-aarch64 {Fix F} {F} unfold) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode {F} (eval {Fix F} {F} unfold x))
+run-generator-unfold {F} x s h-false pc-0 x0-eq =
+  let
+    (s' , run-eq , halt-eq , regs-eq) = run-single-nop s h-false pc-0
+    x0-preserved : readReg (regs s') x0 ≡ readReg (regs s) x0
+    x0-preserved = cong (λ rf → readReg rf x0) regs-eq
+    -- eval unfold x = unwrap x, and encode {Fix F} x ≡ encode {F} (unwrap x)
+    x0-result : readReg (regs s') x0 ≡ encode {F} (eval {Fix F} {F} unfold x)
+    x0-result = trans x0-preserved (trans x0-eq (encode-fix-unwrap x))
+  in s' , run-eq , halt-eq , x0-result
 
-  -- | arr: nop (effect lifting is identity, per D032)
-  run-generator-arr : ∀ {A B : Type} (f : ⟦ A ⇒ B ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {A ⇒ B} f →
-    ∃[ s' ] (run (compile-aarch64 {A ⇒ B} {Eff A B} arr) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr f))
+-- | arr: nop (effect lifting is identity, per D032)
+-- compile-aarch64 arr = nop ∷ []
+-- eval arr f = f (effect lifting is identity)
+-- encode {A ⇒ B} f ≡ encode {Eff A B} f  by encode-arr-identity
+run-generator-arr : ∀ {A B : Type} (f : ⟦ A ⇒ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode {A ⇒ B} f →
+  ∃[ s' ] (run (compile-aarch64 {A ⇒ B} {Eff A B} arr) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr f))
+run-generator-arr {A} {B} f s h-false pc-0 x0-eq =
+  let
+    (s' , run-eq , halt-eq , regs-eq) = run-single-nop s h-false pc-0
+    x0-preserved : readReg (regs s') x0 ≡ readReg (regs s) x0
+    x0-preserved = cong (λ rf → readReg rf x0) regs-eq
+    -- eval arr f = f, and encode {A ⇒ B} f ≡ encode {Eff A B} f
+    x0-result : readReg (regs s') x0 ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr f)
+    x0-result = trans x0-preserved (trans x0-eq (encode-arr-identity f))
+  in s' , run-eq , halt-eq , x0-result
 
 -- Projection generators (fst, snd)
 
