@@ -1,0 +1,354 @@
+// ======================================================================
+// Once Categorical Generators - AArch64 Reference Implementation
+// ======================================================================
+//
+// NOTE: This file is NOT used for compilation. The actual generators
+// are implemented in Agda (formal/Once/Backend/AArch64/CodeGen.agda) and
+// transformed to Haskell. This file serves as reference documentation
+// showing the assembly code that each categorical generator produces.
+//
+// AArch64 AAPCS64 Calling Convention:
+//   x0: Input AND Output value (same register!)
+//   x19: Environment pointer (callee-saved, used for closures)
+//   x20: Saved input for pair construction (callee-saved)
+//   x9, x10: Temporary registers (scratch)
+//   sp: Stack pointer (must be 16-byte aligned)
+//   x30 (lr): Link register (return address)
+//
+// Key difference from x86-64:
+//   AArch64 uses x0 for BOTH input and output, so id/fold/unfold/arr
+//   become true no-ops. x86-64 uses rdi for input, rax for output.
+//
+// Memory Layout:
+//   Pair (A * B): [fst: 8 bytes][snd: 8 bytes] = 16 bytes
+//   Sum (A + B):  [tag: 8 bytes][value: 8 bytes] = 16 bytes
+//   Closure:      [env: 8 bytes][code_ptr: 8 bytes] = 16 bytes
+//
+// Value Encoding:
+//   Unit  -> 0
+//   Void  -> (no values, unreachable)
+//   A * B -> pointer to [A, B]
+//   A + B -> pointer to [tag, A or B]
+//   A => B -> pointer to closure [env, code]
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_ARM64_GENERATORS_DEFINED
+#define ONCE_ARM64_GENERATORS_DEFINED
+
+// ======================================================================
+// Identity and Composition
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// id : A -> A
+// ----------------------------------------------------------------------
+// Identity morphism - no-op (x0 already contains value)
+// Input: x0 (value)
+// Output: x0 (same value)
+//
+// Compile length: 1 instruction
+once_gen_id:
+    nop
+    ret
+
+// ----------------------------------------------------------------------
+// compose (g . f) : A -> C  (given f : A -> B, g : B -> C)
+// ----------------------------------------------------------------------
+// Composition - sequence f then g
+// Input: x0 (value of type A)
+// Output: x0 (value of type C)
+//
+// Generated code pattern:
+//   <compile f>           // x0 -> x0
+//   nop                   // placeholder for consistent length
+//   <compile g>           // x0 -> x0
+//
+// No register transfer needed since both use x0!
+//
+// Compile length: |f| + 1 + |g| instructions
+
+// ======================================================================
+// Products (Pairs)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fst : A * B -> A
+// ----------------------------------------------------------------------
+// First projection - load from offset 0
+// Input: x0 (pointer to pair)
+// Output: x0 (first element)
+//
+// Compile length: 1 instruction
+once_gen_fst:
+    ldr     x0, [x0]
+    ret
+
+// ----------------------------------------------------------------------
+// snd : A * B -> B
+// ----------------------------------------------------------------------
+// Second projection - load from offset 8
+// Input: x0 (pointer to pair)
+// Output: x0 (second element)
+//
+// Compile length: 1 instruction
+once_gen_snd:
+    ldr     x0, [x0, #8]
+    ret
+
+// ----------------------------------------------------------------------
+// pair <f, g> : A -> B * C  (given f : A -> B, g : A -> C)
+// ----------------------------------------------------------------------
+// Pairing - allocate pair on stack, compute both components
+// Input: x0 (value of type A)
+// Output: x0 (pointer to pair [f(A), g(A)])
+//
+// Uses x20 (callee-saved) to preserve input across sub-computations
+//
+// Compile length: 6 + |f| + |g| instructions
+//
+// Generated code pattern:
+once_gen_pair:
+    // Allocate 16 bytes on stack (16-byte aligned)
+    sub     sp, sp, #16
+    // Save input in x20 (callee-saved)
+    mov     x20, x0
+    // --- <compile f> goes here ---
+    // Store result at [sp]
+    str     x0, [sp]
+    // Restore input from x20
+    mov     x0, x20
+    // --- <compile g> goes here ---
+    // Store result at [sp + 8]
+    str     x0, [sp, #8]
+    // Return pointer to pair (sp -> x0)
+    mov     x0, sp
+    ret
+
+// ======================================================================
+// Coproducts (Sums / Tagged Unions)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// inl : A -> A + B
+// ----------------------------------------------------------------------
+// Left injection - create tagged union with tag = 0
+// Input: x0 (value of type A)
+// Output: x0 (pointer to sum [0, value])
+//
+// Uses zero register (xzr) for efficient tag = 0
+//
+// Compile length: 4 instructions
+once_gen_inl:
+    sub     sp, sp, #16             // allocate sum
+    str     xzr, [sp]               // tag = 0 (using zero register!)
+    str     x0, [sp, #8]            // value
+    mov     x0, sp                  // return pointer
+    ret
+
+// ----------------------------------------------------------------------
+// inr : B -> A + B
+// ----------------------------------------------------------------------
+// Right injection - create tagged union with tag = 1
+// Input: x0 (value of type B)
+// Output: x0 (pointer to sum [1, value])
+//
+// Compile length: 5 instructions
+once_gen_inr:
+    sub     sp, sp, #16             // allocate sum
+    mov     x9, #1                  // load tag value 1
+    str     x9, [sp]                // tag = 1
+    str     x0, [sp, #8]            // value
+    mov     x0, sp                  // return pointer
+    ret
+
+// ----------------------------------------------------------------------
+// case [f, g] : A + B -> C  (given f : A -> C, g : B -> C)
+// ----------------------------------------------------------------------
+// Case analysis - branch on tag
+// Input: x0 (pointer to sum)
+// Output: x0 (result of f or g)
+//
+// Jump targets computed from compile lengths:
+//   right_branch = 5 + |f|
+//   end_label = 7 + |f| + |g|
+//
+// Compile length: 8 + |f| + |g| instructions
+//
+// Generated code pattern:
+once_gen_case:
+    // Load tag into x9
+    ldr     x9, [x0]
+    // Compare with 0
+    cmp     x9, #0
+    // Jump to right branch if not zero
+    b.ne    .aarch64_case_right
+    // Left branch: load value and apply f
+    ldr     x0, [x0, #8]
+    // --- <compile f> goes here ---
+    b       .aarch64_case_end
+.aarch64_case_right:
+    // Right branch: load value and apply g
+    ldr     x0, [x0, #8]
+    // --- <compile g> goes here ---
+.aarch64_case_end:
+    ret
+
+// ======================================================================
+// Terminal and Initial Objects
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// terminal : A -> Unit
+// ----------------------------------------------------------------------
+// Terminal morphism - return unit (represented as 0)
+// Input: x0 (any value, ignored)
+// Output: x0 (0 = unit)
+//
+// Compile length: 1 instruction
+once_gen_terminal:
+    mov     x0, #0
+    ret
+
+// ----------------------------------------------------------------------
+// initial : Void -> A
+// ----------------------------------------------------------------------
+// Initial morphism - unreachable (Void has no inhabitants)
+// Input: (none - this code should never execute)
+// Output: (does not return)
+//
+// Compile length: 1 instruction
+once_gen_initial:
+    brk     #0                      // breakpoint trap
+    // Does not return
+
+// ======================================================================
+// Exponentials (Functions / Closures)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// curry f : A -> (B => C)  (given f : A * B -> C)
+// ----------------------------------------------------------------------
+// Create closure that captures environment
+// Input: x0 (value of type A, the environment)
+// Output: x0 (pointer to closure [env, code_ptr])
+//
+// Closure layout: [env: 8 bytes][code_ptr: 8 bytes]
+// The code_ptr points to a thunk that:
+//   1. Loads env (a) from x19 (callee-saved environment register)
+//   2. Pairs it with argument (b) in x0
+//   3. Executes f on the pair
+//
+// Jump targets computed from compile length:
+//   code_ptr = 6
+//   end_label = 11 + |f|
+//
+// Compile length: 12 + |f| instructions
+//
+// Generated code pattern:
+once_gen_curry:
+    // Allocate closure on stack
+    sub     sp, sp, #16
+    // Store environment (input a in x0) as closure.env
+    str     x0, [sp]
+    // Store code pointer (address of thunk)
+    // Note: In actual codegen, this is a computed offset
+    adr     x9, .aarch64_curry_thunk
+    str     x9, [sp, #8]
+    // Return closure pointer (sp -> x0)
+    mov     x0, sp
+    // Jump over the thunk code
+    b       .aarch64_curry_end
+
+.aarch64_curry_thunk:
+    // Thunk code: called via apply with b in x0, env in x19
+    // Allocate pair (a, b) on stack
+    sub     sp, sp, #16
+    // Store a (from x19) and b (from x0) as pair using stp
+    stp     x19, x0, [sp]
+    // Set x0 = pointer to pair
+    mov     x0, sp
+    // --- <compile f> goes here ---
+    // Return (x0 already has result)
+    ret
+
+.aarch64_curry_end:
+    ret
+
+// ----------------------------------------------------------------------
+// apply : (A => B) * A -> B
+// ----------------------------------------------------------------------
+// Call closure with argument
+// Input: x0 (pointer to pair [closure, argument])
+// Output: x0 (result of calling closure with argument)
+//
+// Compile length: 6 instructions
+once_gen_apply:
+    // Load closure from pair.fst into x9
+    ldr     x9, [x0]
+    // Load argument from pair.snd into x10
+    ldr     x10, [x0, #8]
+    // Load env from closure.fst into x19 (environment register)
+    ldr     x19, [x9]
+    // Load code_ptr from closure.snd into x9
+    ldr     x9, [x9, #8]
+    // Move argument to x0
+    mov     x0, x10
+    // Call the code (blr saves return address to x30)
+    blr     x9
+    ret
+
+// ======================================================================
+// Recursive Types
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fold : F(Fix F) -> Fix F
+// ----------------------------------------------------------------------
+// Fold into recursive type - identity at runtime
+// Input: x0 (value of type F(Fix F))
+// Output: x0 (same value, viewed as Fix F)
+//
+// No-op since x0 is both input and output!
+//
+// Compile length: 1 instruction
+once_gen_fold:
+    nop
+    ret
+
+// ----------------------------------------------------------------------
+// unfold : Fix F -> F(Fix F)
+// ----------------------------------------------------------------------
+// Unfold from recursive type - identity at runtime
+// Input: x0 (value of type Fix F)
+// Output: x0 (same value, viewed as F(Fix F))
+//
+// No-op since x0 is both input and output!
+//
+// Compile length: 1 instruction
+once_gen_unfold:
+    nop
+    ret
+
+// ======================================================================
+// Effectful Arrow
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// arr : (A -> B) -> Eff A B
+// ----------------------------------------------------------------------
+// Lift pure function to effectful - identity at runtime
+// Input: x0 (pure computation)
+// Output: x0 (same computation, viewed as effectful)
+//
+// No-op since x0 is both input and output!
+//
+// Compile length: 1 instruction
+once_gen_arr:
+    nop
+    ret
+
+#endif // ONCE_ARM64_GENERATORS_DEFINED

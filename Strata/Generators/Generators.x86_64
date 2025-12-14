@@ -1,0 +1,351 @@
+// ======================================================================
+// Once Categorical Generators - x86-64 Reference Implementation
+// ======================================================================
+//
+// NOTE: This file is NOT used for compilation. The actual generators
+// are implemented in Agda (formal/Once/Backend/X86/CodeGen.agda) and
+// transformed to Haskell. This file serves as reference documentation
+// showing the assembly code that each categorical generator produces.
+//
+// x86-64 System V AMD64 ABI Calling Convention:
+//   rdi: Input value (first argument)
+//   rax: Output value (return value)
+//   r12: Environment pointer (callee-saved, used for closures)
+//   r14, r15: Callee-saved temporaries (used for nested pairs)
+//   rsp: Stack pointer
+//
+// Memory Layout:
+//   Pair (A * B): [fst: 8 bytes][snd: 8 bytes] = 16 bytes
+//   Sum (A + B):  [tag: 8 bytes][value: 8 bytes] = 16 bytes
+//   Closure:      [env: 8 bytes][code_ptr: 8 bytes] = 16 bytes
+//
+// Value Encoding:
+//   Unit  -> 0
+//   Void  -> (no values, unreachable)
+//   A * B -> pointer to [A, B]
+//   A + B -> pointer to [tag, A or B]
+//   A => B -> pointer to closure [env, code]
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_X86_64_GENERATORS_DEFINED
+#define ONCE_X86_64_GENERATORS_DEFINED
+
+// ======================================================================
+// Identity and Composition
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// id : A -> A
+// ----------------------------------------------------------------------
+// Identity morphism - move input to output
+// Input: rdi (value)
+// Output: rax (same value)
+//
+// Compile length: 1 instruction
+once_gen_id:
+    mov     %rdi, %rax
+    ret
+
+// ----------------------------------------------------------------------
+// compose (g . f) : A -> C  (given f : A -> B, g : B -> C)
+// ----------------------------------------------------------------------
+// Composition - sequence f then g
+// Input: rdi (value of type A)
+// Output: rax (value of type C)
+//
+// Generated code pattern:
+//   <compile f>           // rdi -> rax
+//   mov rdi, rax          // transfer result to input
+//   <compile g>           // rdi -> rax
+//
+// Compile length: |f| + 1 + |g| instructions
+
+// ======================================================================
+// Products (Pairs)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fst : A * B -> A
+// ----------------------------------------------------------------------
+// First projection - load from offset 0
+// Input: rdi (pointer to pair)
+// Output: rax (first element)
+//
+// Compile length: 1 instruction
+once_gen_fst:
+    mov     (%rdi), %rax
+    ret
+
+// ----------------------------------------------------------------------
+// snd : A * B -> B
+// ----------------------------------------------------------------------
+// Second projection - load from offset 8
+// Input: rdi (pointer to pair)
+// Output: rax (second element)
+//
+// Compile length: 1 instruction
+once_gen_snd:
+    mov     8(%rdi), %rax
+    ret
+
+// ----------------------------------------------------------------------
+// pair <f, g> : A -> B * C  (given f : A -> B, g : A -> C)
+// ----------------------------------------------------------------------
+// Pairing - allocate pair on stack, compute both components
+// Input: rdi (value of type A)
+// Output: rax (pointer to pair [f(A), g(A)])
+//
+// Uses callee-saved r14/r15 for nested pair support:
+//   r15 = stable base address for this pair
+//   r14 = saved input
+//
+// Compile length: 11 + |f| + |g| instructions
+//
+// Generated code pattern:
+once_gen_pair:
+    // Save callee-saved registers
+    push    %r14
+    push    %r15
+    // Allocate 16 bytes on stack for pair
+    sub     $16, %rsp
+    // r15 = stable base address for this pair
+    mov     %rsp, %r15
+    // r14 = saved input
+    mov     %rdi, %r14
+    // --- <compile f> goes here ---
+    // (f may nest, but restores r14/r15)
+    // Store f result at [r15] (stable address)
+    mov     %rax, (%r15)
+    // Restore input for g
+    mov     %r14, %rdi
+    // --- <compile g> goes here ---
+    // Store g result at [r15 + 8]
+    mov     %rax, 8(%r15)
+    // Return pointer to pair
+    mov     %r15, %rax
+    // Restore callee-saved registers
+    pop     %r15
+    pop     %r14
+    ret
+
+// ======================================================================
+// Coproducts (Sums / Tagged Unions)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// inl : A -> A + B
+// ----------------------------------------------------------------------
+// Left injection - create tagged union with tag = 0
+// Input: rdi (value of type A)
+// Output: rax (pointer to sum [0, value])
+//
+// Compile length: 4 instructions
+once_gen_inl:
+    sub     $16, %rsp               // allocate sum
+    movq    $0, (%rsp)              // tag = 0 (left)
+    mov     %rdi, 8(%rsp)           // value
+    mov     %rsp, %rax              // return pointer
+    ret
+
+// ----------------------------------------------------------------------
+// inr : B -> A + B
+// ----------------------------------------------------------------------
+// Right injection - create tagged union with tag = 1
+// Input: rdi (value of type B)
+// Output: rax (pointer to sum [1, value])
+//
+// Compile length: 4 instructions
+once_gen_inr:
+    sub     $16, %rsp               // allocate sum
+    movq    $1, (%rsp)              // tag = 1 (right)
+    mov     %rdi, 8(%rsp)           // value
+    mov     %rsp, %rax              // return pointer
+    ret
+
+// ----------------------------------------------------------------------
+// case [f, g] : A + B -> C  (given f : A -> C, g : B -> C)
+// ----------------------------------------------------------------------
+// Case analysis - branch on tag
+// Input: rdi (pointer to sum)
+// Output: rax (result of f or g)
+//
+// Jump targets computed from compile lengths:
+//   right_branch = 5 + |f|
+//   end_label = 7 + |f| + |g|
+//
+// Compile length: 8 + |f| + |g| instructions
+//
+// Generated code pattern:
+once_gen_case:
+    // Load tag
+    mov     (%rdi), %r15
+    // Compare with 0
+    cmp     $0, %r15
+    // Jump to right branch if not zero
+    jne     .case_right
+    // Left branch: load value and apply f
+    mov     8(%rdi), %rdi
+    // --- <compile f> goes here ---
+    jmp     .case_end
+.case_right:
+    // Right branch: load value and apply g
+    mov     8(%rdi), %rdi
+    // --- <compile g> goes here ---
+.case_end:
+    ret
+
+// ======================================================================
+// Terminal and Initial Objects
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// terminal : A -> Unit
+// ----------------------------------------------------------------------
+// Terminal morphism - return unit (represented as 0)
+// Input: rdi (any value, ignored)
+// Output: rax (0 = unit)
+//
+// Compile length: 1 instruction
+once_gen_terminal:
+    mov     $0, %rax
+    ret
+
+// ----------------------------------------------------------------------
+// initial : Void -> A
+// ----------------------------------------------------------------------
+// Initial morphism - unreachable (Void has no inhabitants)
+// Input: (none - this code should never execute)
+// Output: (does not return)
+//
+// Compile length: 1 instruction
+once_gen_initial:
+    ud2                             // undefined instruction trap
+    // Does not return
+
+// ======================================================================
+// Exponentials (Functions / Closures)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// curry f : A -> (B => C)  (given f : A * B -> C)
+// ----------------------------------------------------------------------
+// Create closure that captures environment
+// Input: rdi (value of type A, the environment)
+// Output: rax (pointer to closure [env, code_ptr])
+//
+// Closure layout: [env: 8 bytes][code_ptr: 8 bytes]
+// The code_ptr points to a thunk that:
+//   1. Loads env (a) from r12
+//   2. Pairs it with argument (b) in rdi
+//   3. Executes f on the pair
+//
+// Jump targets computed from compile length:
+//   code_ptr = 5
+//   end_label = 11 + |f|
+//
+// Compile length: 12 + |f| instructions
+//
+// Generated code pattern:
+once_gen_curry:
+    // Allocate closure on stack
+    sub     $16, %rsp
+    // Store environment (input a in rdi) as closure.env
+    mov     %rdi, (%rsp)
+    // Store code pointer (address of thunk)
+    // Note: In actual codegen, this is a computed offset
+    lea     .curry_thunk(%rip), %rax
+    mov     %rax, 8(%rsp)
+    // Return closure pointer
+    mov     %rsp, %rax
+    // Jump over the thunk code
+    jmp     .curry_end
+
+.curry_thunk:
+    // Thunk code: called via apply with b in rdi, env in r12
+    // Allocate pair (a, b) on stack
+    sub     $16, %rsp
+    // Store a (from r12) at [rsp]
+    mov     %r12, (%rsp)
+    // Store b (from rdi) at [rsp+8]
+    mov     %rdi, 8(%rsp)
+    // Set rdi = pointer to pair
+    mov     %rsp, %rdi
+    // --- <compile f> goes here ---
+    // Return (rax already has result)
+    ret
+
+.curry_end:
+    ret
+
+// ----------------------------------------------------------------------
+// apply : (A => B) * A -> B
+// ----------------------------------------------------------------------
+// Call closure with argument
+// Input: rdi (pointer to pair [closure, argument])
+// Output: rax (result of calling closure with argument)
+//
+// Compile length: 6 instructions
+once_gen_apply:
+    // Load closure from pair.fst
+    mov     (%rdi), %r15
+    // Load argument from pair.snd
+    mov     8(%rdi), %rsi
+    // Load env from closure.fst into r12 (environment register)
+    mov     (%r15), %r12
+    // Load code_ptr from closure.snd
+    mov     8(%r15), %r15
+    // Move argument to rdi
+    mov     %rsi, %rdi
+    // Call the code
+    call    *%r15
+    ret
+
+// ======================================================================
+// Recursive Types
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fold : F(Fix F) -> Fix F
+// ----------------------------------------------------------------------
+// Fold into recursive type - identity at runtime
+// Input: rdi (value of type F(Fix F))
+// Output: rax (same value, viewed as Fix F)
+//
+// Compile length: 1 instruction
+once_gen_fold:
+    mov     %rdi, %rax
+    ret
+
+// ----------------------------------------------------------------------
+// unfold : Fix F -> F(Fix F)
+// ----------------------------------------------------------------------
+// Unfold from recursive type - identity at runtime
+// Input: rdi (value of type Fix F)
+// Output: rax (same value, viewed as F(Fix F))
+//
+// Compile length: 1 instruction
+once_gen_unfold:
+    mov     %rdi, %rax
+    ret
+
+// ======================================================================
+// Effectful Arrow
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// arr : (A -> B) -> Eff A B
+// ----------------------------------------------------------------------
+// Lift pure function to effectful - identity at runtime
+// Input: rdi (pure computation)
+// Output: rax (same computation, viewed as effectful)
+//
+// Compile length: 1 instruction
+once_gen_arr:
+    mov     %rdi, %rax
+    ret
+
+#endif // ONCE_X86_64_GENERATORS_DEFINED

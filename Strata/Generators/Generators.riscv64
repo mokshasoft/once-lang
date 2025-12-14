@@ -1,0 +1,389 @@
+// ======================================================================
+// Once Categorical Generators - RISC-V 64-bit Reference Implementation
+// ======================================================================
+//
+// NOTE: This file is NOT used for compilation. The actual generators
+// are implemented in Agda (formal/Once/Backend/RiscV64/CodeGen.agda) and
+// transformed to Haskell. This file serves as reference documentation
+// showing the assembly code that each categorical generator produces.
+//
+// RISC-V LP64 ABI Calling Convention:
+//   a0: Input AND Output value (same register!)
+//   s0: Environment pointer (callee-saved, used for closures)
+//   s1: Saved input for pair construction (callee-saved)
+//   t0, t1, t2: Temporary registers (caller-saved)
+//   sp: Stack pointer
+//   ra: Return address
+//   zero: Hardwired zero register (useful for tag = 0)
+//
+// Key difference from x86-64:
+//   RISC-V uses a0 for BOTH input and output, so id/fold/unfold/arr
+//   become true no-ops. x86-64 uses rdi for input, rax for output.
+//   Also, compose doesn't need a mov between f and g!
+//
+// Another key feature:
+//   RISC-V has a hardwired zero register, making tag = 0 very efficient.
+//   Branches compare two registers directly (no flags register).
+//
+// Memory Layout:
+//   Pair (A * B): [fst: 8 bytes][snd: 8 bytes] = 16 bytes
+//   Sum (A + B):  [tag: 8 bytes][value: 8 bytes] = 16 bytes
+//   Closure:      [env: 8 bytes][code_ptr: 8 bytes] = 16 bytes
+//
+// Value Encoding:
+//   Unit  -> 0
+//   Void  -> (no values, unreachable)
+//   A * B -> pointer to [A, B]
+//   A + B -> pointer to [tag, A or B]
+//   A => B -> pointer to closure [env, code]
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_RISCV64_GENERATORS_DEFINED
+#define ONCE_RISCV64_GENERATORS_DEFINED
+
+// ======================================================================
+// Identity and Composition
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// id : A -> A
+// ----------------------------------------------------------------------
+// Identity morphism - no-op (a0 already contains value)
+// Input: a0 (value)
+// Output: a0 (same value)
+//
+// This is simpler than x86-64 which needs mov rax, rdi
+//
+// Compile length: 1 instruction
+once_gen_id:
+    nop
+    ret
+
+// ----------------------------------------------------------------------
+// compose (g . f) : A -> C  (given f : A -> B, g : B -> C)
+// ----------------------------------------------------------------------
+// Composition - sequence f then g
+// Input: a0 (value of type A)
+// Output: a0 (value of type C)
+//
+// Generated code pattern:
+//   <compile f>           // a0 -> a0
+//   <compile g>           // a0 -> a0
+//
+// No mov needed between f and g since both use a0!
+// This is simpler than x86-64 which needs mov rdi, rax between f and g.
+//
+// Compile length: |f| + |g| instructions (no overhead!)
+
+// ======================================================================
+// Products (Pairs)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fst : A * B -> A
+// ----------------------------------------------------------------------
+// First projection - load from offset 0
+// Input: a0 (pointer to pair)
+// Output: a0 (first element)
+//
+// Compile length: 1 instruction
+once_gen_fst:
+    ld      a0, 0(a0)
+    ret
+
+// ----------------------------------------------------------------------
+// snd : A * B -> B
+// ----------------------------------------------------------------------
+// Second projection - load from offset 8
+// Input: a0 (pointer to pair)
+// Output: a0 (second element)
+//
+// Compile length: 1 instruction
+once_gen_snd:
+    ld      a0, 8(a0)
+    ret
+
+// ----------------------------------------------------------------------
+// pair <f, g> : A -> B * C  (given f : A -> B, g : A -> C)
+// ----------------------------------------------------------------------
+// Pairing - allocate pair on stack, compute both components
+// Input: a0 (value of type A)
+// Output: a0 (pointer to pair [f(A), g(A)])
+//
+// Uses s1 (callee-saved) to preserve input across sub-computations
+//
+// Compile length: 6 + |f| + |g| instructions
+//
+// Generated code pattern:
+once_gen_pair:
+    // Allocate 16 bytes on stack
+    addi    sp, sp, -16
+    // Save input in s1 (callee-saved)
+    mv      s1, a0
+    // --- <compile f> goes here ---
+    // (input in a0, output in a0)
+    // Store result at [sp]
+    sd      a0, 0(sp)
+    // Restore input
+    mv      a0, s1
+    // --- <compile g> goes here ---
+    // (input in a0, output in a0)
+    // Store result at [sp + 8]
+    sd      a0, 8(sp)
+    // Return pointer to pair
+    mv      a0, sp
+    ret
+
+// ======================================================================
+// Coproducts (Sums / Tagged Unions)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// inl : A -> A + B
+// ----------------------------------------------------------------------
+// Left injection - create tagged union with tag = 0
+// Input: a0 (value of type A)
+// Output: a0 (pointer to sum [0, value])
+//
+// Uses zero register directly for tag = 0 (very efficient!)
+//
+// Compile length: 4 instructions
+once_gen_inl:
+    addi    sp, sp, -16             // allocate sum
+    sd      zero, 0(sp)             // tag = 0 (use zero register!)
+    sd      a0, 8(sp)               // value
+    mv      a0, sp                  // return pointer
+    ret
+
+// ----------------------------------------------------------------------
+// inr : B -> A + B
+// ----------------------------------------------------------------------
+// Right injection - create tagged union with tag = 1
+// Input: a0 (value of type B)
+// Output: a0 (pointer to sum [1, value])
+//
+// Compile length: 5 instructions
+once_gen_inr:
+    addi    sp, sp, -16             // allocate sum
+    li      t0, 1                   // load tag = 1 into t0
+    sd      t0, 0(sp)               // tag = 1
+    sd      a0, 8(sp)               // value
+    mv      a0, sp                  // return pointer
+    ret
+
+// ----------------------------------------------------------------------
+// case [f, g] : A + B -> C  (given f : A -> C, g : B -> C)
+// ----------------------------------------------------------------------
+// Case analysis - branch on tag
+// Input: a0 (pointer to sum)
+// Output: a0 (result of f or g)
+//
+// Note: RISC-V branches compare two registers directly (no flags!)
+//   bne t0, zero, target = branch if t0 != 0
+//
+// We load the value BEFORE branching since both branches need it.
+//
+// Jump targets computed from compile lengths:
+//   right_branch = 4 + |f|
+//   end_label = 5 + |f| + |g|
+//
+// Compile length: 7 + |f| + |g| instructions
+//
+// Generated code pattern:
+once_gen_case:
+    // Load tag into t0
+    ld      t0, 0(a0)
+    // Load value into a0 (do before branch, both branches need it!)
+    ld      a0, 8(a0)
+    // Branch to right if tag != 0
+    bne     t0, zero, .riscv_case_right
+    // Left branch: apply f (value already in a0)
+    // --- <compile f> goes here ---
+    j       .riscv_case_end
+.riscv_case_right:
+    // Right branch: apply g (value already in a0)
+    // --- <compile g> goes here ---
+.riscv_case_end:
+    ret
+
+// ======================================================================
+// Terminal and Initial Objects
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// terminal : A -> Unit
+// ----------------------------------------------------------------------
+// Terminal morphism - return unit (represented as 0)
+// Input: a0 (any value, ignored)
+// Output: a0 (0 = unit)
+//
+// Compile length: 1 instruction
+once_gen_terminal:
+    li      a0, 0
+    ret
+
+// ----------------------------------------------------------------------
+// initial : Void -> A
+// ----------------------------------------------------------------------
+// Initial morphism - unreachable (Void has no inhabitants)
+// Input: (none - this code should never execute)
+// Output: (does not return)
+//
+// Compile length: 1 instruction
+once_gen_initial:
+    ebreak                          // environment breakpoint trap
+    // Does not return
+
+// ======================================================================
+// Exponentials (Functions / Closures)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// curry f : A -> (B => C)  (given f : A * B -> C)
+// ----------------------------------------------------------------------
+// Create closure that captures environment
+// Input: a0 (value of type A, the environment)
+// Output: a0 (pointer to closure [env, code_ptr])
+//
+// Closure layout: [env: 8 bytes][code_ptr: 8 bytes]
+// The code_ptr points to a thunk that:
+//   1. Loads env (a) from s0 (callee-saved)
+//   2. Pairs it with argument (b) in a0
+//   3. Executes f on the pair
+//
+// Jump targets computed from compile length:
+//   code_ptr = 6
+//   end_label = 12 + |f|
+//
+// Compile length: 12 + |f| instructions
+//
+// Generated code pattern:
+once_gen_curry:
+    // Allocate closure on stack
+    addi    sp, sp, -16
+    // Store environment (input a in a0) as closure.env
+    sd      a0, 0(sp)
+    // Store code pointer (address of thunk)
+    // Note: In actual codegen, this is a computed offset
+    la      t0, .riscv_curry_thunk
+    sd      t0, 8(sp)
+    // Return closure pointer
+    mv      a0, sp
+    // Jump over the thunk code
+    j       .riscv_curry_end
+
+.riscv_curry_thunk:
+    // Thunk code: called via apply with b in a0, env in s0
+    // Allocate pair (a, b) on stack
+    addi    sp, sp, -16
+    // Store a (from s0) at [sp]
+    sd      s0, 0(sp)
+    // Store b (from a0) at [sp+8]
+    sd      a0, 8(sp)
+    // Set a0 = pointer to pair
+    mv      a0, sp
+    // --- <compile f> goes here ---
+    // Return (a0 already has result)
+    ret
+
+.riscv_curry_end:
+    ret
+
+// ----------------------------------------------------------------------
+// apply : (A => B) * A -> B
+// ----------------------------------------------------------------------
+// Call closure with argument
+// Input: a0 (pointer to pair [closure, argument])
+// Output: a0 (result of calling closure with argument)
+//
+// Compile length: 7 instructions
+once_gen_apply:
+    // Load closure from pair.fst into t1
+    ld      t1, 0(a0)
+    // Load argument from pair.snd into t2
+    ld      t2, 8(a0)
+    // Load env from closure.fst into s0 (callee-saved, used by thunk)
+    ld      s0, 0(t1)
+    // Load code_ptr from closure.snd into t0
+    ld      t0, 8(t1)
+    // Move argument to a0
+    mv      a0, t2
+    // Call the code (jalr ra, t0, 0)
+    jalr    ra, t0, 0
+    // Result is in a0
+    nop
+    ret
+
+// ======================================================================
+// Recursive Types
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fold : F(Fix F) -> Fix F
+// ----------------------------------------------------------------------
+// Fold into recursive type - identity at runtime
+// Input: a0 (value of type F(Fix F))
+// Output: a0 (same value, viewed as Fix F)
+//
+// True no-op since a0 is both input and output!
+//
+// Compile length: 1 instruction
+once_gen_fold:
+    nop
+    ret
+
+// ----------------------------------------------------------------------
+// unfold : Fix F -> F(Fix F)
+// ----------------------------------------------------------------------
+// Unfold from recursive type - identity at runtime
+// Input: a0 (value of type Fix F)
+// Output: a0 (same value, viewed as F(Fix F))
+//
+// True no-op since a0 is both input and output!
+//
+// Compile length: 1 instruction
+once_gen_unfold:
+    nop
+    ret
+
+// ======================================================================
+// Effectful Arrow
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// arr : (A -> B) -> Eff A B
+// ----------------------------------------------------------------------
+// Lift pure function to effectful - identity at runtime
+// Input: a0 (pure computation)
+// Output: a0 (same computation, viewed as effectful)
+//
+// True no-op since a0 is both input and output!
+//
+// Compile length: 1 instruction
+once_gen_arr:
+    nop
+    ret
+
+// ======================================================================
+// Register Usage Summary
+// ======================================================================
+//
+// a0     : Input argument AND return value
+// t0-t2  : Scratch registers (caller-saved)
+// s0     : Environment pointer for closures (callee-saved)
+// s1     : Saved input for pair construction (callee-saved)
+// sp     : Stack pointer
+// ra     : Return address
+// zero   : Hardwired zero (useful for tag = 0 in inl)
+//
+// Note: The use of a0 for both input AND output is a key simplification
+// compared to x86-64. This means:
+//   - id, fold, unfold, arr are true no-ops
+//   - compose doesn't need a mov between f and g
+//   - Overall code is often shorter
+
+#endif // ONCE_RISCV64_GENERATORS_DEFINED
