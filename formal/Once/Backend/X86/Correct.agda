@@ -370,6 +370,11 @@ readReg-writeReg-r15-rdi : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf r15 v) rdi ≡ readReg rf rdi
 readReg-writeReg-r15-rdi rf v = refl
 
+-- | Reading rsp after writing r15 returns the old value
+readReg-writeReg-r15-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r15 v) rsp ≡ readReg rf rsp
+readReg-writeReg-r15-rsp rf v = refl
+
 -- | Reading rax after writing r14 returns the old value
 readReg-writeReg-r14-rax : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf r14 v) rax ≡ readReg rf rax
@@ -1115,8 +1120,9 @@ exec-pair-setup-at : ∀ (prefix : Program) (rest : Program) (s : State) →
          × pc s' ≡ length prefix +ℕ 5
          × readReg (regs s') r14 ≡ readReg (regs s) rdi
          × readReg (regs s') rdi ≡ readReg (regs s) rdi
-         × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 32)
-exec-pair-setup-at prefix rest s h-false pc-eq = s5 , exec-eq , h5 , pc5 , r14-eq , rdi-eq , r15-eq
+         × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 32
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 32)
+exec-pair-setup-at prefix rest s h-false pc-eq = s5 , exec-eq , h5 , pc5 , r14-eq , rdi-eq , r15-eq , rsp-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -1303,6 +1309,13 @@ exec-pair-setup-at prefix rest s h-false pc-eq = s5 , exec-eq , h5 , pc5 , r14-e
 
     r15-eq : readReg (regs s5) r15 ≡ orig-rsp ∸ 32
     r15-eq = trans (readReg-writeReg-r14-r15 (regs s4) (readReg (regs s4) rdi)) r15-s4
+
+    -- rsp is preserved through s4 (writes r15) and s5 (writes r14)
+    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ 32
+    rsp-s4 = trans (readReg-writeReg-r15-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
+
+    rsp-eq : readReg (regs s5) rsp ≡ orig-rsp ∸ 32
+    rsp-eq = trans (readReg-writeReg-r14-rsp (regs s4) (readReg (regs s4) rdi)) rsp-s4
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
 -- Used for phase 3 of pair construction - storing f's result and restoring input
@@ -3697,7 +3710,8 @@ mutual
                             × pc s' ≡ length prefix +ℕ 5
                             × readReg (regs s') r14 ≡ readReg (regs s) rdi
                             × readReg (regs s') rdi ≡ readReg (regs s) rdi
-                            × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 32)  -- rsp after 2 pushes and sub 16
+                            × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 32
+                            × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 32)
       setup-result = exec-pair-setup-at prefix rest-for-setup s h-false pc-eq
 
       -- Extract the state and properties
@@ -3724,7 +3738,10 @@ mutual
       rdi-after-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
 
       r15-after-setup-raw : readReg (regs s-after-setup) r15 ≡ readReg (regs s) rsp ∸ 32
-      r15-after-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
+      r15-after-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
+
+      rsp-after-setup-raw : readReg (regs s-after-setup) rsp ≡ readReg (regs s) rsp ∸ 32
+      rsp-after-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
 
       -- Connect with rdi-eq to get encode x
       r14-after-setup : readReg (regs s-after-setup) r14 ≡ encode x
@@ -4035,8 +4052,15 @@ mutual
         mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) r15) ≡ just (encode (eval f x))
 
       -- Stack preservation: rsp = r15 throughout the pair execution
-      -- This is a key invariant: r15 was set to rsp after the initial setup,
-      -- and both f and g should preserve rsp (callee-save discipline)
+      -- STRUCTURAL LIMITATION: This assumes f and g preserve rsp, but the current
+      -- codegen does NOT preserve rsp for:
+      --   - inl/inr: do "sub rsp, 16" without restoring
+      --   - nested pairs: do push/push/sub but only pop/pop (missing "add rsp, 16")
+      -- After setup: r15 = rsp = orig_rsp - 32 (we now track both)
+      -- r15 is preserved through f and g (tracked via IH)
+      -- rsp is NOT generally preserved (stack allocations lower it)
+      -- This postulate holds when f and g are "stack-neutral" (id, fst, snd, etc.)
+      -- or would require codegen changes to properly restore rsp.
       postulate
         rsp-eq-r15-after-g : readReg (regs s-after-g) rsp ≡ readReg (regs s-after-g) r15
 
