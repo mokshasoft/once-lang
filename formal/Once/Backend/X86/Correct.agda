@@ -3902,23 +3902,8 @@ mutual
         pc-final : pc s-final ≡ length prefix +ℕ 6
         rax-final : readReg (regs s-final) rax ≡ encode {B} (eval {(A ⇒ B) * A} {B} apply x)
 
-------------------------------------------------------------------------
--- Helper: sequential execution of two programs
--- If p1 produces s1 with rax=v, and p2 with rdi=v produces s2,
--- then p1 ++ [mov rdi, rax] ++ p2 produces s2
-postulate
-  run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : State) →
-    halted s0 ≡ false →
-    pc s0 ≡ 0 →
-    readReg (regs s0) rdi ≡ encode x →
-    -- After running f: exists s1 with rax = encode (eval f x)
-    (∃[ s1 ] (run (compile-x86 f) s0 ≡ just s1
-            × halted s1 ≡ true
-            × readReg (regs s1) rax ≡ encode (eval f x))) →
-    -- After running g ∘ f: exists s2 with rax = encode (eval g (eval f x))
-    ∃[ s2 ] (run (compile-x86 (g ∘ f)) s0 ≡ just s2
-           × halted s2 ≡ true
-           × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
+-- run-seq-compose is defined after run-generator (which it depends on)
+-- See the definition below run-generator
 
 -- Base case: run-seq-compose for id ∘ id
 -- Validates the proof structure before generalizing
@@ -4114,13 +4099,18 @@ exec-halted-stable (suc n) prog s h-true rewrite step-halted-stable prog s h-tru
 
 -- | Exec extend for halted states: if exec n reaches halted s', exec (n+m) also gives s'
 -- This is the halted version of exec-chain
--- Postulated due to complex with-abstraction in exec definition
 -- The property is: once execution reaches a halted state, further steps preserve it
-postulate
-  exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ true →
-    exec (n +ℕ m) prog s ≡ just s'
+-- Proof by induction on n
+exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ true →
+  exec (n +ℕ m) prog s ≡ just s'
+exec-halted-extend zero m prog s .s refl h-true = exec-halted-stable m prog s h-true
+exec-halted-extend (suc n') m prog s s' exec-eq h-true with step prog s in eq-step
+... | nothing with () ← exec-eq
+... | just s1 with halted s1 in eq-halt
+...   | true with refl ← exec-eq = refl
+...   | false = exec-halted-extend n' m prog s1 s' exec-eq h-true
 
 -- Main bridge: run-ir-at-offset with empty suffix implies run-generator
 -- After run-ir-at-offset completes, one more step halts (fetch fails)
@@ -4227,14 +4217,35 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq =
 -- Helper: generalized generator correctness (used for compose)
 -- Running compiled code on state with rdi=encode x produces rax=encode (eval ir x)
 -- This is now connected to run-ir-at-offset via offset-to-generator
-postulate
-  run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) rdi ≡ encode x →
-    ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') rax ≡ encode (eval ir x))
+run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval ir x))
+run-generator = offset-to-generator
+
+------------------------------------------------------------------------
+-- Helper: sequential execution of two programs
+-- If p1 produces s1 with rax=v, and p2 with rdi=v produces s2,
+-- then p1 ++ [mov rdi, rax] ++ p2 produces s2
+-- Now derived from run-generator directly
+------------------------------------------------------------------------
+
+run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : State) →
+  halted s0 ≡ false →
+  pc s0 ≡ 0 →
+  readReg (regs s0) rdi ≡ encode x →
+  -- After running f: exists s1 with rax = encode (eval f x)
+  (∃[ s1 ] (run (compile-x86 f) s0 ≡ just s1
+          × halted s1 ≡ true
+          × readReg (regs s1) rax ≡ encode (eval f x))) →
+  -- After running g ∘ f: exists s2 with rax = encode (eval g (eval f x))
+  ∃[ s2 ] (run (compile-x86 (g ∘ f)) s0 ≡ just s2
+         × halted s2 ≡ true
+         × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
+run-seq-compose {A} {B} {C} f g x s0 h-false pc-0 rdi-eq _ = run-generator (g ∘ f) x s0 h-false pc-0 rdi-eq
 
 ------------------------------------------------------------------------
 -- Proven base cases for run-generator
@@ -4561,25 +4572,27 @@ run-generator-inr {A} {B} x s h-false pc-0 rdi-eq = s' , run-eq , halt-eq , rax-
 
 -- Helper: case sequence with inj₁ input (left branch)
 -- When tag=0, loads value, applies f, jumps to end
-postulate
-  run-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (a : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
-    ∃[ s' ] (run (compile-x86 {A + B} {C} [ f , g ]) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') rax ≡ encode (eval f a))
+-- Derived from run-generator: eval [ f , g ] (inj₁ a) = eval f a
+run-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (a : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
+  ∃[ s' ] (run (compile-x86 {A + B} {C} [ f , g ]) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval f a))
+run-case-inl {A} {B} {C} f g a s h-false pc-0 rdi-eq = run-generator [ f , g ] (inj₁ a) s h-false pc-0 rdi-eq
 
 -- Helper: case sequence with inj₂ input (right branch)
 -- When tag=1, loads value, applies g, jumps to end
-postulate
-  run-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (b : ⟦ B ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
-    ∃[ s' ] (run (compile-x86 {A + B} {C} [ f , g ]) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') rax ≡ encode (eval g b))
+-- Derived from run-generator: eval [ f , g ] (inj₂ b) = eval g b
+run-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
+  ∃[ s' ] (run (compile-x86 {A + B} {C} [ f , g ]) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval g b))
+run-case-inr {A} {B} {C} f g b s h-false pc-0 rdi-eq = run-generator [ f , g ] (inj₂ b) s h-false pc-0 rdi-eq
 
 -- Helper: pair sequence
 -- Allocates stack, runs f, stores result, restores input, runs g, stores result
