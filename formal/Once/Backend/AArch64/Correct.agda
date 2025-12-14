@@ -116,6 +116,200 @@ postulate
     ∃[ f ] (p ≡ encode {A ⇒ (B ⇒ C)} f)
 
 ------------------------------------------------------------------------
+-- Register/Memory Lemmas (Step 1)
+------------------------------------------------------------------------
+
+-- These are foundational lemmas for register file and memory operations.
+-- They are proven directly from the definitions in Semantics.agda.
+
+open import Relation.Nullary using (¬_; yes; no)
+open import Data.Bool using (T)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ)
+
+-- | n ≡ᵇ n is always true
+n≡ᵇn : ∀ (n : ℕ) → (n ≡ᵇ n) ≡ true
+n≡ᵇn zero = refl
+n≡ᵇn (suc n) = n≡ᵇn n
+
+-- | Reading a register after writing returns the written value
+-- Proven by case analysis on register
+readReg-writeReg-same : ∀ (rf : RegFile) (r : Reg) (v : Word) →
+  readReg (writeReg rf r v) r ≡ v
+readReg-writeReg-same rf x0  v = refl
+readReg-writeReg-same rf x1  v = refl
+readReg-writeReg-same rf x2  v = refl
+readReg-writeReg-same rf x3  v = refl
+readReg-writeReg-same rf x4  v = refl
+readReg-writeReg-same rf x5  v = refl
+readReg-writeReg-same rf x6  v = refl
+readReg-writeReg-same rf x7  v = refl
+readReg-writeReg-same rf x8  v = refl
+readReg-writeReg-same rf x9  v = refl
+readReg-writeReg-same rf x10 v = refl
+readReg-writeReg-same rf x11 v = refl
+readReg-writeReg-same rf x12 v = refl
+readReg-writeReg-same rf x13 v = refl
+readReg-writeReg-same rf x14 v = refl
+readReg-writeReg-same rf x15 v = refl
+readReg-writeReg-same rf x16 v = refl
+readReg-writeReg-same rf x17 v = refl
+readReg-writeReg-same rf x18 v = refl
+readReg-writeReg-same rf x19 v = refl
+readReg-writeReg-same rf x20 v = refl
+readReg-writeReg-same rf x21 v = refl
+readReg-writeReg-same rf x22 v = refl
+readReg-writeReg-same rf x23 v = refl
+readReg-writeReg-same rf x24 v = refl
+readReg-writeReg-same rf x25 v = refl
+readReg-writeReg-same rf x26 v = refl
+readReg-writeReg-same rf x27 v = refl
+readReg-writeReg-same rf x28 v = refl
+readReg-writeReg-same rf x29 v = refl
+readReg-writeReg-same rf x30 v = refl
+
+-- | Cross-register preservation: writing x0 doesn't affect x9
+readReg-writeReg-x0-x9 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x0 v) x9 ≡ readReg rf x9
+readReg-writeReg-x0-x9 rf v = refl
+
+-- | Cross-register preservation: writing x0 doesn't affect x19 (env pointer)
+readReg-writeReg-x0-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x0 v) x19 ≡ readReg rf x19
+readReg-writeReg-x0-x19 rf v = refl
+
+-- | Cross-register preservation: writing x0 doesn't affect x20 (callee-saved)
+readReg-writeReg-x0-x20 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x0 v) x20 ≡ readReg rf x20
+readReg-writeReg-x0-x20 rf v = refl
+
+-- | Cross-register preservation: writing x9 doesn't affect x0
+readReg-writeReg-x9-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x9 v) x0 ≡ readReg rf x0
+readReg-writeReg-x9-x0 rf v = refl
+
+-- | Cross-register preservation: writing x19 doesn't affect x0
+readReg-writeReg-x19-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x19 v) x0 ≡ readReg rf x0
+readReg-writeReg-x19-x0 rf v = refl
+
+-- | Cross-register preservation: writing x20 doesn't affect x0
+readReg-writeReg-x20-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x20 v) x0 ≡ readReg rf x0
+readReg-writeReg-x20-x0 rf v = refl
+
+-- | Cross-register preservation: writing x20 doesn't affect x19
+readReg-writeReg-x20-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x20 v) x19 ≡ readReg rf x19
+readReg-writeReg-x20-x19 rf v = refl
+
+-- | Cross-register preservation: writing x19 doesn't affect x20
+readReg-writeReg-x19-x20 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x19 v) x20 ≡ readReg rf x20
+readReg-writeReg-x19-x20 rf v = refl
+
+-- | SP lemmas: reading SP after writing returns the written value
+readSP-writeSP-same : ∀ (rf : RegFile) (v : Word) →
+  readSP (writeSP rf v) ≡ v
+readSP-writeSP-same rf v = refl
+
+-- | Writing SP doesn't affect general registers
+readReg-writeSP : ∀ (rf : RegFile) (r : Reg) (v : Word) →
+  readReg (writeSP rf v) r ≡ readReg rf r
+readReg-writeSP rf x0  v = refl
+readReg-writeSP rf x1  v = refl
+readReg-writeSP rf x2  v = refl
+readReg-writeSP rf x3  v = refl
+readReg-writeSP rf x4  v = refl
+readReg-writeSP rf x5  v = refl
+readReg-writeSP rf x6  v = refl
+readReg-writeSP rf x7  v = refl
+readReg-writeSP rf x8  v = refl
+readReg-writeSP rf x9  v = refl
+readReg-writeSP rf x10 v = refl
+readReg-writeSP rf x11 v = refl
+readReg-writeSP rf x12 v = refl
+readReg-writeSP rf x13 v = refl
+readReg-writeSP rf x14 v = refl
+readReg-writeSP rf x15 v = refl
+readReg-writeSP rf x16 v = refl
+readReg-writeSP rf x17 v = refl
+readReg-writeSP rf x18 v = refl
+readReg-writeSP rf x19 v = refl
+readReg-writeSP rf x20 v = refl
+readReg-writeSP rf x21 v = refl
+readReg-writeSP rf x22 v = refl
+readReg-writeSP rf x23 v = refl
+readReg-writeSP rf x24 v = refl
+readReg-writeSP rf x25 v = refl
+readReg-writeSP rf x26 v = refl
+readReg-writeSP rf x27 v = refl
+readReg-writeSP rf x28 v = refl
+readReg-writeSP rf x29 v = refl
+readReg-writeSP rf x30 v = refl
+
+-- | Writing register doesn't affect SP
+readSP-writeReg : ∀ (rf : RegFile) (r : Reg) (v : Word) →
+  readSP (writeReg rf r v) ≡ readSP rf
+readSP-writeReg rf x0  v = refl
+readSP-writeReg rf x1  v = refl
+readSP-writeReg rf x2  v = refl
+readSP-writeReg rf x3  v = refl
+readSP-writeReg rf x4  v = refl
+readSP-writeReg rf x5  v = refl
+readSP-writeReg rf x6  v = refl
+readSP-writeReg rf x7  v = refl
+readSP-writeReg rf x8  v = refl
+readSP-writeReg rf x9  v = refl
+readSP-writeReg rf x10 v = refl
+readSP-writeReg rf x11 v = refl
+readSP-writeReg rf x12 v = refl
+readSP-writeReg rf x13 v = refl
+readSP-writeReg rf x14 v = refl
+readSP-writeReg rf x15 v = refl
+readSP-writeReg rf x16 v = refl
+readSP-writeReg rf x17 v = refl
+readSP-writeReg rf x18 v = refl
+readSP-writeReg rf x19 v = refl
+readSP-writeReg rf x20 v = refl
+readSP-writeReg rf x21 v = refl
+readSP-writeReg rf x22 v = refl
+readSP-writeReg rf x23 v = refl
+readSP-writeReg rf x24 v = refl
+readSP-writeReg rf x25 v = refl
+readSP-writeReg rf x26 v = refl
+readSP-writeReg rf x27 v = refl
+readSP-writeReg rf x28 v = refl
+readSP-writeReg rf x29 v = refl
+readSP-writeReg rf x30 v = refl
+
+-- | Memory: reading after writing same address returns written value
+-- Uses the definition: writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
+readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
+  readMem (writeMem m addr v) addr ≡ just v
+readMem-writeMem-same m addr v rewrite n≡ᵇn addr = refl
+
+-- | Memory: reading different address after writing is unchanged
+readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
+  (addr2 ≡ᵇ addr1) ≡ false →
+  readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
+readMem-writeMem-diff m addr1 addr2 v neq rewrite neq = refl
+
+-- | Address inequality: n ≢ n + 8
+n≢n+8 : ∀ (n : ℕ) → (n ≡ᵇ (n +ℕ 8)) ≡ false
+n≢n+8 zero = refl
+n≢n+8 (suc n) = n≢n+8 n
+
+-- | Address inequality (swapped): n + 8 ≢ n
+n+8≢n : ∀ (n : ℕ) → ((n +ℕ 8) ≡ᵇ n) ≡ false
+n+8≢n zero = refl
+n+8≢n (suc n) = n+8≢n n
+
+-- | Corollary: reading at addr+8 after writing at addr is unchanged
+readMem-writeMem-diff-8 : ∀ (m : Memory) (addr : Word) (v : Word) →
+  readMem (writeMem m addr v) (addr +ℕ 8) ≡ readMem m (addr +ℕ 8)
+readMem-writeMem-diff-8 m addr v = readMem-writeMem-diff m addr (addr +ℕ 8) v (n+8≢n addr)
+
+------------------------------------------------------------------------
 -- Initial State with Input
 ------------------------------------------------------------------------
 
