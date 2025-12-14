@@ -1,0 +1,19 @@
+-- | Control flow primitives
+--
+-- These primitives enable branching based on integer values.
+-- Essential for algorithms that need conditional execution.
+
+------------------------------------------------------------------------
+-- Branching on integers
+------------------------------------------------------------------------
+
+-- | Branch on zero: returns Left () if zero, Right () if non-zero
+-- This is the fundamental way to convert Int comparisons to sum types
+-- for use with Once's case construct.
+primitive ifZero : Int -> Unit + Unit
+
+-- | Parse integer from string (returns 0 on failure)
+primitive parseInt : String Utf8 -> Int
+
+-- | Convert integer to string
+primitive intToString : Int -> String Utf8

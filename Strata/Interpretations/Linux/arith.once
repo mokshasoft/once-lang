@@ -1,0 +1,83 @@
+-- | Integer arithmetic primitives for Linux
+--
+-- These primitives enable numeric computation in Once.
+-- Required for competitive programming, algorithms, etc.
+
+------------------------------------------------------------------------
+-- Basic Arithmetic (pure - no effects needed)
+------------------------------------------------------------------------
+
+-- | Addition
+primitive add : Int * Int -> Int
+
+-- | Subtraction
+primitive sub : Int * Int -> Int
+
+-- | Multiplication
+primitive mul : Int * Int -> Int
+
+-- | Division (integer division, truncated toward zero)
+primitive div : Int * Int -> Int
+
+-- | Modulo (remainder after division)
+primitive mod : Int * Int -> Int
+
+-- | Negation
+primitive neg : Int -> Int
+
+-- | Absolute value
+primitive abs : Int -> Int
+
+------------------------------------------------------------------------
+-- Comparisons (return 0 for false, 1 for true)
+------------------------------------------------------------------------
+
+-- | Equal
+primitive eq : Int * Int -> Int
+
+-- | Not equal
+primitive neq : Int * Int -> Int
+
+-- | Less than
+primitive lt : Int * Int -> Int
+
+-- | Less than or equal
+primitive le : Int * Int -> Int
+
+-- | Greater than
+primitive gt : Int * Int -> Int
+
+-- | Greater than or equal
+primitive ge : Int * Int -> Int
+
+------------------------------------------------------------------------
+-- Bitwise Operations
+------------------------------------------------------------------------
+
+-- | Bitwise AND
+primitive band : Int * Int -> Int
+
+-- | Bitwise OR
+primitive bor : Int * Int -> Int
+
+-- | Bitwise XOR
+primitive bxor : Int * Int -> Int
+
+-- | Bitwise NOT
+primitive bnot : Int -> Int
+
+-- | Left shift
+primitive shl : Int * Int -> Int
+
+-- | Right shift (arithmetic)
+primitive shr : Int * Int -> Int
+
+------------------------------------------------------------------------
+-- Min/Max
+------------------------------------------------------------------------
+
+-- | Minimum of two integers
+primitive min : Int * Int -> Int
+
+-- | Maximum of two integers
+primitive max : Int * Int -> Int
