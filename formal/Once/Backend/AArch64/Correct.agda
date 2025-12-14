@@ -737,6 +737,42 @@ execInstr-bl : ∀ (prog : Program) (s : State) (target : ℕ) →
 execInstr-bl prog s target = refl
 
 ------------------------------------------------------------------------
+-- Step Lemmas for Single-Instruction Programs
+------------------------------------------------------------------------
+
+-- | What step does when not halted and fetch succeeds
+step-instr : ∀ (prog : Program) (s s' : State) (instr : Instr) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ just instr →
+  execInstr prog s instr ≡ just s' →
+  step prog s ≡ just s'
+step-instr prog s s' instr h-false fetch-eq exec-eq
+  with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-eq
+...   | just .instr | refl = exec-eq
+
+-- | What step does when not halted and fetch fails (end of program)
+step-end-of-program : ∀ (prog : Program) (s : State) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ nothing →
+  step prog s ≡ just (record s { halted = true })
+step-end-of-program prog s h-false fetch-eq
+  with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-eq
+...   | nothing | refl = refl
+
+-- | exec 2 on a single instruction program reaches halted state
+-- This is a key lemma for proving single-instruction runners.
+-- We postulate it for now and use it to build higher-level proofs.
+postulate
+  exec-2-single-instr : ∀ (prog : Program) (s s₁ : State) →
+    halted s ≡ false →
+    step prog s ≡ just s₁ →
+    halted s₁ ≡ false →
+    fetch prog (pc s₁) ≡ nothing →
+    ∃[ s' ] (exec 2 prog s ≡ just s' × halted s' ≡ true × s' ≡ record s₁ { halted = true })
+
+------------------------------------------------------------------------
 -- Single-instruction program execution (run to completion)
 ------------------------------------------------------------------------
 
@@ -745,19 +781,43 @@ execInstr-bl prog s target = refl
 -- halts when fetch fails at the next PC.
 
 -- | Running nop to completion: executes nop, then halts when fetch fails
--- Postulated - the proof requires careful handling of with-abstractions in step/exec.
--- Proof sketch:
---   1. step at pc=0 executes nop, sets pc=1
---   2. step at pc=1 fails fetch (past end), sets halted=true
---   3. exec 2 reaches halted state
---   4. By exec-mono, run (exec 10000) also reaches same state
-postulate
-  run-single-nop : ∀ (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    ∃[ s' ] (run (nop ∷ []) s ≡ just s'
-           × halted s' ≡ true
-           × regs s' ≡ regs s)
+-- Proof: compose step-instr, step-end-of-program, exec-2-single-instr, and exec-mono.
+run-single-nop : ∀ (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (nop ∷ []) s ≡ just s'
+         × halted s' ≡ true
+         × regs s' ≡ regs s)
+run-single-nop s h-false pc-eq =
+  let prog = nop ∷ []
+      -- Step 1: Execute nop at pc=0
+      -- execInstr-nop: execInstr prog s nop ≡ just (record s { pc = pc s +ℕ 1 })
+      -- With pc s = 0: pc s +ℕ 1 = 1
+      s₁ = record s { pc = pc s +ℕ 1 }
+      step-1 : step prog s ≡ just s₁
+      step-1 = step-instr prog s s₁ nop h-false
+                 (subst (λ p → fetch prog p ≡ just nop) (sym pc-eq) refl)
+                 (execInstr-nop prog s)
+      -- s₁ properties
+      h₁-false : halted s₁ ≡ false
+      h₁-false = h-false  -- halted field unchanged by nop
+      pc₁-eq : pc s₁ ≡ 1
+      pc₁-eq = cong (λ p → p +ℕ 1) pc-eq  -- pc s₁ = pc s + 1 = 0 + 1 = 1
+      -- Step 2: Fetch fails at pc=1 (program has only 1 instruction)
+      fetch-fail : fetch prog 1 ≡ nothing
+      fetch-fail = refl
+      fetch-s₁-fail : fetch prog (pc s₁) ≡ nothing
+      fetch-s₁-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc₁-eq) fetch-fail
+      -- Step 3: exec 2 reaches halted state
+      (s' , exec-2-eq , h'-true , s'-eq) = exec-2-single-instr prog s s₁ h-false step-1 h₁-false fetch-s₁-fail
+      -- s' ≡ record s₁ { halted = true } = record (record s { pc = pc s +ℕ 1 }) { halted = true }
+      -- regs s' = regs (record s₁ { halted = true }) = regs s₁ = regs s
+      regs-eq : regs s' ≡ regs s
+      regs-eq = cong regs s'-eq  -- regs (record s₁ { halted = true }) = regs s₁ = regs s
+      -- Step 4: By exec-mono, run also reaches s'
+      run-eq : run prog s ≡ just s'
+      run-eq = exec-mono 2 defaultFuel prog s s' (s≤s (s≤s z≤n)) exec-2-eq h'-true
+  in s' , run-eq , h'-true , regs-eq
 
 postulate
   -- | Running ldr to completion
