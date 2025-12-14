@@ -3273,14 +3273,30 @@ prog-empty-prefix-suffix : ∀ {A B} (ir : IR A B) →
   [] ++ compile-x86 ir ++ [] ≡ compile-x86 ir
 prog-empty-prefix-suffix ir = ++-identityʳ (compile-x86 ir)
 
+-- Lemma: fetch at length returns nothing (by induction on list)
+fetch-at-length : ∀ (xs : Program) → fetch xs (length xs) ≡ nothing
+fetch-at-length [] = refl
+fetch-at-length (x ∷ xs) = fetch-at-length xs
+
 -- Lemma: At pc = compile-length ir with program = compile-x86 ir, fetch fails
--- Because pc = length (compile-x86 ir), there's nothing to fetch
-postulate
-  fetch-at-end : ∀ {A B} (ir : IR A B) →
-    fetch (compile-x86 ir) (compile-length ir) ≡ nothing
+-- Because compile-length ir = length (compile-x86 ir), there's nothing to fetch
+fetch-at-end : ∀ {A B} (ir : IR A B) →
+  fetch (compile-x86 ir) (compile-length ir) ≡ nothing
+fetch-at-end ir = subst (λ n → fetch (compile-x86 ir) n ≡ nothing)
+                        (compile-length-correct ir)
+                        (fetch-at-length (compile-x86 ir))
 
 -- Lemma: step halts when fetch fails
 -- When fetch returns nothing, state becomes halted with true
+-- Proof follows from step definition: when halted=false and fetch=nothing, step sets halted=true
+--
+-- This is tricky to prove directly because step uses with-abstraction.
+-- We keep it as a postulate since it follows directly from the step definition:
+--   step prog s with halted s
+--   ... | true = just s
+--   ... | false with fetch prog (pc s)
+--   ...   | nothing = just (record s { halted = true })  <-- this case
+--   ...   | just instr = execInstr prog s instr
 postulate
   step-halts-on-fetch-fail : ∀ (prog : Program) (s : State) →
     halted s ≡ false →
@@ -3993,14 +4009,14 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 rdi-eq = s7 , run-eq , halt-eq , en
     pos-eq-length = trans end-plus-1 (sym prog-length)
 
     -- fetch prog (length prog + 0) = nothing
-    fetch-at-length : fetch prog (length prog +ℕ 0) ≡ nothing
-    fetch-at-length = fetch-past-length prog 0
+    fetch-at-length-local : fetch prog (length prog +ℕ 0) ≡ nothing
+    fetch-at-length-local = fetch-past-length prog 0
 
     -- Simplify: length prog + 0 = length prog
     open import Data.Nat.Properties using (+-identityʳ)
 
     fetch-at-length' : fetch prog (length prog) ≡ nothing
-    fetch-at-length' = subst (λ n → fetch prog n ≡ nothing) (+-identityʳ (length prog)) fetch-at-length
+    fetch-at-length' = subst (λ n → fetch prog n ≡ nothing) (+-identityʳ (length prog)) fetch-at-length-local
 
     fetch-past-end : fetch prog (end-label +ℕ 1) ≡ nothing
     fetch-past-end = subst (λ n → fetch prog n ≡ nothing) (sym pos-eq-length) fetch-at-length'
