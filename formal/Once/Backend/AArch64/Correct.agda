@@ -791,9 +791,81 @@ postulate
            × readReg (regs s') x0 ≡ encode (eval snd (a , b)))
 
 -- Injection generators (inl, inr)
+--
+-- These are multi-instruction sequences that allocate sum types on the stack.
+--
+-- compile-aarch64 inl = sub-sp 16 ∷ str-zr (sp+imm 0) ∷ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+-- compile-aarch64 inr = sub-sp 16 ∷ mov x9 (imm 1) ∷ str x9 (sp+imm 0) ∷ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+--
+-- Proof sketch for inl:
+--   Let sp₀ = readSP (regs s), val = encode a
+--   After sub-sp 16:   sp₁ = sp₀ - 16
+--   After str-zr:      memory[sp₁] = 0 (tag)
+--   After str x0:      memory[sp₁ + 8] = val
+--   After mov-from-sp: x0 = sp₁
+--
+--   Final state: x0 = sp₁, memory[x0] = 0, memory[x0 + 8] = val
+--   By encode-inl-construct: sp₁ = encode (inj₁ a)
+--   Therefore: x0 = encode (inj₁ a) = encode (eval inl a)
 
+-- | Helper: What the inl program produces
+-- This describes the state after running the 4 inl instructions
+inl-final-state : ∀ (s : State) (a-enc : Word) →
+  let sp₀ = readSP (regs s)
+      sp₁ = sp₀ ∸ 16
+      mem₁ = writeMem (memory s) sp₁ 0
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) a-enc
+      rf₁ = writeSP (regs s) sp₁
+      rf₂ = writeReg rf₁ x0 sp₁
+  in State
+inl-final-state s a-enc =
+  let sp₀ = readSP (regs s)
+      sp₁ = sp₀ ∸ 16
+      mem₁ = writeMem (memory s) sp₁ 0
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) a-enc
+      rf₁ = writeSP (regs s) sp₁
+      rf₂ = writeReg rf₁ x0 sp₁
+  in mkstate rf₂ mem₂ (pstate s) 4 true  -- pc=4 (past all instructions), halted
+
+-- | Properties of inl-final-state
+inl-final-x0 : ∀ (s : State) (a-enc : Word) →
+  readReg (regs (inl-final-state s a-enc)) x0 ≡ readSP (regs s) ∸ 16
+inl-final-x0 s a-enc = readReg-writeReg-same (writeSP (regs s) (readSP (regs s) ∸ 16)) x0 (readSP (regs s) ∸ 16)
+
+inl-final-tag : ∀ (s : State) (a-enc : Word) →
+  let sp₁ = readSP (regs s) ∸ 16
+  in readMem (memory (inl-final-state s a-enc)) sp₁ ≡ just 0
+inl-final-tag s a-enc =
+  let sp₁ = readSP (regs s) ∸ 16
+      mem₁ = writeMem (memory s) sp₁ 0
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) a-enc
+  in trans (readMem-writeMem-diff mem₁ (sp₁ +ℕ 8) sp₁ a-enc (n≢n+8 sp₁))
+           (readMem-writeMem-same (memory s) sp₁ 0)
+
+inl-final-val : ∀ (s : State) (a-enc : Word) →
+  let sp₁ = readSP (regs s) ∸ 16
+  in readMem (memory (inl-final-state s a-enc)) (sp₁ +ℕ 8) ≡ just a-enc
+inl-final-val s a-enc =
+  let sp₁ = readSP (regs s) ∸ 16
+      mem₁ = writeMem (memory s) sp₁ 0
+  in readMem-writeMem-same mem₁ (sp₁ +ℕ 8) a-enc
+
+-- | The multi-instruction execution postulate for inl
+-- This captures the execution of the 4-instruction inl sequence
 postulate
-  -- | inl: allocate sum with tag=0
+  run-inl-program : ∀ (s : State) (a-enc : Word) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    readReg (regs s) x0 ≡ a-enc →
+    run (compile-aarch64 {Unit} {Unit + Unit} inl) s ≡ just (inl-final-state s a-enc)
+
+-- | inl generator proof
+-- Postulated due to Agda's inability to pattern match on ⟦ A ⟧
+-- The proof structure is:
+--   1. Use run-inl-program for multi-instruction execution
+--   2. Use inl-final-x0/tag/val for state properties
+--   3. Use encode-inl-construct to link to semantics
+postulate
   run-generator-inl : ∀ {A B : Type} (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -802,7 +874,68 @@ postulate
            × halted s' ≡ true
            × readReg (regs s') x0 ≡ encode {A + B} (eval {A} {A + B} inl a))
 
-  -- | inr: allocate sum with tag=1
+-- | Helper: What the inr program produces
+inr-final-state : ∀ (s : State) (b-enc : Word) →
+  let sp₀ = readSP (regs s)
+      sp₁ = sp₀ ∸ 16
+      rf₁ = writeSP (regs s) sp₁
+      rf₂ = writeReg rf₁ x9 1
+      mem₁ = writeMem (memory s) sp₁ 1
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) b-enc
+      rf₃ = writeReg rf₂ x0 sp₁
+  in State
+inr-final-state s b-enc =
+  let sp₀ = readSP (regs s)
+      sp₁ = sp₀ ∸ 16
+      rf₁ = writeSP (regs s) sp₁
+      rf₂ = writeReg rf₁ x9 1
+      mem₁ = writeMem (memory s) sp₁ 1
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) b-enc
+      rf₃ = writeReg rf₂ x0 sp₁
+  in mkstate rf₃ mem₂ (pstate s) 5 true  -- pc=5 (past all 5 instructions), halted
+
+-- | Properties of inr-final-state
+inr-final-x0 : ∀ (s : State) (b-enc : Word) →
+  readReg (regs (inr-final-state s b-enc)) x0 ≡ readSP (regs s) ∸ 16
+inr-final-x0 s b-enc =
+  let sp₁ = readSP (regs s) ∸ 16
+      rf₁ = writeSP (regs s) sp₁
+      rf₂ = writeReg rf₁ x9 1
+  in readReg-writeReg-same rf₂ x0 sp₁
+
+inr-final-tag : ∀ (s : State) (b-enc : Word) →
+  let sp₁ = readSP (regs s) ∸ 16
+  in readMem (memory (inr-final-state s b-enc)) sp₁ ≡ just 1
+inr-final-tag s b-enc =
+  let sp₁ = readSP (regs s) ∸ 16
+      mem₁ = writeMem (memory s) sp₁ 1
+      mem₂ = writeMem mem₁ (sp₁ +ℕ 8) b-enc
+  in trans (readMem-writeMem-diff mem₁ (sp₁ +ℕ 8) sp₁ b-enc (n≢n+8 sp₁))
+           (readMem-writeMem-same (memory s) sp₁ 1)
+
+inr-final-val : ∀ (s : State) (b-enc : Word) →
+  let sp₁ = readSP (regs s) ∸ 16
+  in readMem (memory (inr-final-state s b-enc)) (sp₁ +ℕ 8) ≡ just b-enc
+inr-final-val s b-enc =
+  let sp₁ = readSP (regs s) ∸ 16
+      mem₁ = writeMem (memory s) sp₁ 1
+  in readMem-writeMem-same mem₁ (sp₁ +ℕ 8) b-enc
+
+-- | The multi-instruction execution postulate for inr
+postulate
+  run-inr-program : ∀ (s : State) (b-enc : Word) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    readReg (regs s) x0 ≡ b-enc →
+    run (compile-aarch64 {Unit} {Unit + Unit} inr) s ≡ just (inr-final-state s b-enc)
+
+-- | inr generator proof
+-- Postulated due to Agda's inability to pattern match on ⟦ B ⟧
+-- The proof structure is identical to run-generator-inl:
+--   1. Use run-inr-program for multi-instruction execution
+--   2. Use inr-final-x0/tag/val for state properties
+--   3. Use encode-inr-construct to link to semantics
+postulate
   run-generator-inr : ∀ {A B : Type} (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
