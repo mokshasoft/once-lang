@@ -21,6 +21,8 @@
 #define ONCE_TYPES_DEFINED
 typedef struct { const char* data; size_t len; } OnceString;
 typedef struct { void* data; size_t len; } OnceBuffer;
+typedef struct { void* fst; void* snd; } OncePair;
+typedef struct { int tag; void* value; } OnceSum;
 #endif
 
 /*========================================================================
