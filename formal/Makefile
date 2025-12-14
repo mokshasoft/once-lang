@@ -35,6 +35,7 @@ ENDTOEND := Once/EndToEnd.agda
 PRIM_MEMORY := Once/Primitive/Memory.agda
 PRIM_IO := Once/Primitive/IO.agda
 PRIM_THREAD := Once/Primitive/Thread.agda
+SPF := Once/SPF.agda
 
 # Agda command: discovers standard library path from Nix store
 # The library file is created dynamically to avoid hardcoded paths
@@ -44,11 +45,11 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize x86 endtoend primitives malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize x86 endtoend primitives spf malonzo clean
 
 all: check
 
-check: postulates laws surface surfaceir optimize x86 endtoend primitives
+check: postulates laws surface surfaceir optimize x86 endtoend primitives spf
 	@echo "All proofs type-check successfully!"
 
 postulates:
@@ -92,6 +93,10 @@ primitives:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(PRIM_MEMORY)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(PRIM_IO)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(PRIM_THREAD)'
+
+spf:
+	@echo "Type-checking strictly positive functors..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SPF)'
 
 malonzo:
 	@echo "Generating Haskell via MAlonzo..."
