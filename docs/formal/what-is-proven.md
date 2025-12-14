@@ -18,6 +18,7 @@ The Once compiler is **substantially verified** in Agda. The full compilation pi
 | End-to-end theorem | ✓ Proven | Full pipeline: Surface → x86 preserves semantics |
 | Polynomial functors | ✓ Proven | SPF module with proper recursive type semantics |
 | Primitive specs | ✓ Axiomatized | Memory, IO, Thread axioms (orthogonal to type system) |
+| AArch64 code gen | ☐ Structure defined | Syntax, Semantics, CodeGen, Correct created |
 | C code generation | Not started | IR → C semantics preservation |
 | QTT enforcement | Not started | Linear resource tracking |
 
@@ -108,6 +109,32 @@ The proofs use a layered approach:
 2. **Execution helpers**: Capture single/multi-instruction execution properties
 3. **Per-generator proofs**: Compose helpers to prove each generator correct
 4. **Main theorem**: Case analysis using all per-generator proofs
+
+### AArch64 Code Generation Correctness (In Progress)
+
+The AArch64 backend follows the same structure as x86-64, targeting the ARM64 architecture verified by seL4.
+
+**Status**: Backend definition files created, proofs postulated.
+
+```
+codegen-aarch64-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-aarch64 ir) (initWithInput x) ≡ just s
+        × readReg (regs s) x0 ≡ encode (eval ir x))
+```
+
+**Files**:
+- `Once/Backend/AArch64/Syntax.agda` - 31 GPRs, AAPCS64 instruction subset
+- `Once/Backend/AArch64/Semantics.agda` - PSTATE flags, SP handling
+- `Once/Backend/AArch64/CodeGen.agda` - IR → AArch64 translation
+- `Once/Backend/AArch64/Correct.agda` - Correctness theorem (postulated)
+
+**Key differences from x86-64**:
+- Single input/output register (x0) instead of rdi/rax
+- Zero register (xzr) for efficient tag=0 stores
+- PSTATE condition flags (NZCV) instead of EFLAGS
+- 16-byte stack alignment requirement
+
+See `docs/formal/aarch64-remaining-proofs.md` for detailed progress tracking.
 
 ## Assumptions and Postulates
 
@@ -312,11 +339,16 @@ formal/Once/
 │   ├── IO.agda            # ★ I/O axioms ★
 │   └── Thread.agda        # ★ Concurrency axioms ★
 └── Backend/
-    └── X86/
-        ├── Syntax.agda    # x86-64 instruction AST
-        ├── Semantics.agda # x86-64 operational semantics
-        ├── CodeGen.agda   # IR → x86-64 compilation
-        └── Correct.agda   # Code gen correctness (imports P2-P4)
+    ├── X86/
+    │   ├── Syntax.agda    # x86-64 instruction AST
+    │   ├── Semantics.agda # x86-64 operational semantics
+    │   ├── CodeGen.agda   # IR → x86-64 compilation
+    │   └── Correct.agda   # Code gen correctness (imports P2-P4)
+    └── AArch64/
+        ├── Syntax.agda    # AArch64 instruction AST (31 GPRs, AAPCS64)
+        ├── Semantics.agda # AArch64 operational semantics (PSTATE)
+        ├── CodeGen.agda   # IR → AArch64 compilation
+        └── Correct.agda   # Code gen correctness (postulated)
 ```
 
 **Important**: `Postulates.agda` is the authoritative source for core assumptions. Backend-specific postulates (P2-P4) are in `Backend/X86/Correct.agda`. Primitive specifications (Memory, IO, Thread) are orthogonal to the type system.
