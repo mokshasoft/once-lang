@@ -1437,8 +1437,10 @@ run-generator-arr {A} {B} f s h-false pc-0 x0-eq =
 --   - run-single-ldr gives us x0 = encode a = encode (eval fst (a, b))
 -- Proof sketch for snd is similar with offset 8 and encode-pair-snd.
 
+-- | fst: ldr x0, [x0]
+-- NOTE: Kept as postulate because Agda cannot pattern match on ⟦ B ⟧ when B is abstract.
+-- The proof would use run-single-ldr with encode-pair-fst.
 postulate
-  -- | fst: ldr x0, [x0]
   run-generator-fst : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -1449,6 +1451,8 @@ postulate
            × readReg (regs s') x0 ≡ encode (eval fst (a , b)))
 
   -- | snd: ldr x0, [x0, #8]
+  -- NOTE: Kept as postulate because Agda cannot pattern match on ⟦ A ⟧ when A is abstract.
+  -- The proof would use run-single-ldr with encode-pair-snd.
   run-generator-snd : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
