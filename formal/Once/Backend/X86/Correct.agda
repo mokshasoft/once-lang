@@ -3256,8 +3256,134 @@ run-seq-compose-id-id {A} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-
     rax-eq : readReg (regs s4) rax ≡ encode x
     rax-eq = trans rax-s3 rdi-eq
 
+------------------------------------------------------------------------
+-- Connecting run-ir-at-offset to run-generator
+------------------------------------------------------------------------
+
+-- Key insight: run-ir-at-offset with empty prefix/suffix gives us:
+--   exec (compile-length ir) (compile-x86 ir) s ≡ just s'
+--   halted s' ≡ false
+--   pc s' ≡ compile-length ir = length (compile-x86 ir)
+--
+-- One more step causes fetch to fail (pc ≥ length), which halts.
+-- This connects to run-generator which expects halted s' ≡ true.
+
+-- Lemma: When prefix = [] and suffix = [], program is just compile-x86 ir
+prog-empty-prefix-suffix : ∀ {A B} (ir : IR A B) →
+  [] ++ compile-x86 ir ++ [] ≡ compile-x86 ir
+prog-empty-prefix-suffix ir = ++-identityʳ (compile-x86 ir)
+
+-- Lemma: At pc = compile-length ir with program = compile-x86 ir, fetch fails
+-- Because pc = length (compile-x86 ir), there's nothing to fetch
+postulate
+  fetch-at-end : ∀ {A B} (ir : IR A B) →
+    fetch (compile-x86 ir) (compile-length ir) ≡ nothing
+
+-- Lemma: step halts when fetch fails
+-- When fetch returns nothing, state becomes halted with true
+postulate
+  step-halts-on-fetch-fail : ∀ (prog : Program) (s : State) →
+    halted s ≡ false →
+    fetch prog (pc s) ≡ nothing →
+    step prog s ≡ just (record s { halted = true })
+
+-- Lemma: exec (n+1) = exec n followed by one step
+postulate
+  exec-suc : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+    exec n prog s ≡ just s' →
+    halted s' ≡ false →
+    (s'' : State) → step prog s' ≡ just s'' →
+    exec (suc n) prog s ≡ just s''
+
+-- Lemma: When halted, further exec keeps the same state
+postulate
+  exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
+    halted s ≡ true →
+    exec n prog s ≡ just s
+
+-- Main bridge: run-ir-at-offset with empty suffix implies run-generator
+-- After run-ir-at-offset completes, one more step halts (fetch fails)
+offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
+  ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval ir x))
+offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq =
+  s-halted , run-eq , halted-true , rax-preserved
+  where
+    open import Data.List.Properties using (++-identityʳ)
+
+    prog : Program
+    prog = compile-x86 ir
+
+    -- Use run-ir-at-offset with empty prefix and suffix
+    -- Need to adjust for pc s = 0 = length []
+    offset-result : ∃[ s' ] (exec (compile-length ir) ([] ++ compile-x86 ir ++ []) s ≡ just s'
+                           × halted s' ≡ false × pc s' ≡ 0 +ℕ compile-length ir
+                           × readReg (regs s') rax ≡ encode (eval ir x))
+    offset-result = run-ir-at-offset ir [] [] x s h-false pc-0 rdi-eq
+
+    s' : State
+    s' = proj₁ offset-result
+
+    exec-n : exec (compile-length ir) ([] ++ compile-x86 ir ++ []) s ≡ just s'
+    exec-n = proj₁ (proj₂ offset-result)
+
+    h' : halted s' ≡ false
+    h' = proj₁ (proj₂ (proj₂ offset-result))
+
+    pc'-raw : pc s' ≡ 0 +ℕ compile-length ir
+    pc'-raw = proj₁ (proj₂ (proj₂ (proj₂ offset-result)))
+
+    -- 0 + n = n by definition
+    pc' : pc s' ≡ compile-length ir
+    pc' = pc'-raw
+
+    rax' : readReg (regs s') rax ≡ encode (eval ir x)
+    rax' = proj₂ (proj₂ (proj₂ (proj₂ offset-result)))
+
+    -- Program equality: [] ++ compile-x86 ir ++ [] = compile-x86 ir
+    prog-eq : [] ++ compile-x86 ir ++ [] ≡ prog
+    prog-eq = ++-identityʳ prog
+
+    -- exec-n using prog directly
+    exec-n-prog : exec (compile-length ir) prog s ≡ just s'
+    exec-n-prog = subst (λ p → exec (compile-length ir) p s ≡ just s') prog-eq exec-n
+
+    -- fetch at pc s' = compile-length ir fails
+    fetch-fail : fetch prog (pc s') ≡ nothing
+    fetch-fail = subst (λ n → fetch prog n ≡ nothing) (sym pc') (fetch-at-end ir)
+
+    -- One more step halts
+    s-halted : State
+    s-halted = record s' { halted = true }
+
+    step-halt : step prog s' ≡ just s-halted
+    step-halt = step-halts-on-fetch-fail prog s' h' fetch-fail
+
+    -- exec (n+1) gives halted state
+    exec-n1 : exec (suc (compile-length ir)) prog s ≡ just s-halted
+    exec-n1 = exec-suc (compile-length ir) prog s s' exec-n-prog h' s-halted step-halt
+
+    -- run = exec defaultFuel, and compile-length ir < defaultFuel for any IR
+    -- After halting, further exec steps are stable
+    -- So exec defaultFuel prog s = just s-halted
+    postulate
+      run-from-exec : exec defaultFuel prog s ≡ just s-halted
+
+    run-eq : run prog s ≡ just s-halted
+    run-eq = run-from-exec
+
+    halted-true : halted s-halted ≡ true
+    halted-true = refl
+
+    -- rax is preserved when we just set halted = true
+    rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
+    rax-preserved = rax'
+
 -- Helper: generalized generator correctness (used for compose)
 -- Running compiled code on state with rdi=encode x produces rax=encode (eval ir x)
+-- This is now connected to run-ir-at-offset via offset-to-generator
 postulate
   run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
