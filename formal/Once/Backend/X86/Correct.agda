@@ -2997,15 +2997,84 @@ mutual
       --
       -- We postulate the preservation properties needed between phases.
 
-      -- Phase 1: Setup - postulate since we need specific instruction helpers
-      postulate
-        -- After setup: rsp decremented, r14 = original rdi, pc advanced by 2
-        s-after-setup : State
-        exec-setup : exec 2 prog s ≡ just s-after-setup
-        h-after-setup : halted s-after-setup ≡ false
-        pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 2
-        r14-after-setup : readReg (regs s-after-setup) r14 ≡ encode x
-        rdi-after-setup : readReg (regs s-after-setup) rdi ≡ encode x
+      -- Phase 1: Setup - proved using exec-pair-setup-at
+      -- Program equality: prog = prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup
+      -- where rest-for-setup = inner-pair ++ suffix
+      --       inner-pair = code-f ++ [store-f; restore-input; code-g; store-g; return-pair]
+
+      -- The "inner" part of compile-x86 ⟨ f , g ⟩ after the first two instructions
+      inner-pair : Program
+      inner-pair = code-f ++ store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ []
+
+      -- rest for the setup helper
+      rest-for-setup : Program
+      rest-for-setup = inner-pair ++ suffix
+
+      -- Program equality: prog ≡ prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup
+      -- compile-x86 ⟨ f , g ⟩ = setup-sub ∷ setup-save ∷ inner-pair (by definition)
+      -- prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      --      = prefix ++ (setup-sub ∷ setup-save ∷ inner-pair) ++ suffix
+      --      = prefix ++ setup-sub ∷ setup-save ∷ (inner-pair ++ suffix)  [by ++-assoc]
+      --      = prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup
+
+      -- First prove the definitional equality
+      compile-x86-pair-eq : compile-x86 ⟨ f , g ⟩ ≡ setup-sub ∷ setup-save ∷ inner-pair
+      compile-x86-pair-eq = refl
+
+      -- Key insight: ++ is right-associative (infixr 5)
+      -- So prog = prefix ++ (compile-x86 ⟨ f , g ⟩ ++ suffix)
+      --         = prefix ++ ((setup-sub ∷ setup-save ∷ inner-pair) ++ suffix)
+      --         = prefix ++ (setup-sub ∷ setup-save ∷ (inner-pair ++ suffix))  [by ++ on cons]
+      --         = prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup
+
+      -- Step: compile-x86 ⟨ f , g ⟩ ++ suffix ≡ setup-sub ∷ setup-save ∷ rest-for-setup
+      -- By cong (_++ suffix) compile-x86-pair-eq, we get:
+      --   compile-x86 ⟨ f , g ⟩ ++ suffix ≡ (setup-sub ∷ setup-save ∷ inner-pair) ++ suffix
+      -- And (x ∷ y ∷ xs) ++ zs = x ∷ (y ∷ (xs ++ zs)) = x ∷ y ∷ (xs ++ zs) definitionally
+      suffix-eq : compile-x86 ⟨ f , g ⟩ ++ suffix ≡ setup-sub ∷ setup-save ∷ rest-for-setup
+      suffix-eq = cong (_++ suffix) compile-x86-pair-eq
+
+      -- Final: prog ≡ prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup
+      prog-eq-setup : prog ≡ prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup
+      prog-eq-setup = cong (prefix ++_) suffix-eq
+
+      -- Apply exec-pair-setup-at
+      setup-result : ∃[ s' ] (exec 2 (prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup) s ≡ just s'
+                            × halted s' ≡ false
+                            × pc s' ≡ length prefix +ℕ 2
+                            × readReg (regs s') r14 ≡ readReg (regs s) rdi
+                            × readReg (regs s') rdi ≡ readReg (regs s) rdi)
+      setup-result = exec-pair-setup-at prefix rest-for-setup s h-false pc-eq
+
+      -- Extract the state and properties
+      s-after-setup : State
+      s-after-setup = proj₁ setup-result
+
+      exec-setup-raw : exec 2 (prefix ++ setup-sub ∷ setup-save ∷ rest-for-setup) s ≡ just s-after-setup
+      exec-setup-raw = proj₁ (proj₂ setup-result)
+
+      -- Convert to exec 2 prog s using prog-eq-setup
+      exec-setup : exec 2 prog s ≡ just s-after-setup
+      exec-setup = subst (λ p → exec 2 p s ≡ just s-after-setup) (sym prog-eq-setup) exec-setup-raw
+
+      h-after-setup : halted s-after-setup ≡ false
+      h-after-setup = proj₁ (proj₂ (proj₂ setup-result))
+
+      pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 2
+      pc-after-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
+
+      r14-after-setup-raw : readReg (regs s-after-setup) r14 ≡ readReg (regs s) rdi
+      r14-after-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
+
+      rdi-after-setup-raw : readReg (regs s-after-setup) rdi ≡ readReg (regs s) rdi
+      rdi-after-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
+
+      -- Connect with rdi-eq to get encode x
+      r14-after-setup : readReg (regs s-after-setup) r14 ≡ encode x
+      r14-after-setup = trans r14-after-setup-raw rdi-eq
+
+      rdi-after-setup : readReg (regs s-after-setup) rdi ≡ encode x
+      rdi-after-setup = trans rdi-after-setup-raw rdi-eq
 
       -- Phase 2: Execute f using recursive call
       -- The recursive call run-ir-at-offset f prefix-f suffix-f x s-after-setup
