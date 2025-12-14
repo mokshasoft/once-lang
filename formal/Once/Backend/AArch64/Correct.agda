@@ -391,29 +391,70 @@ exec-suc-halted n prog s h-true with step prog s | step-halted prog s h-true
 
 -- | Executing N+1 steps when the N-step execution halts
 -- If exec n gives a halted state, exec (suc n) gives the same state.
--- Postulated due to complexity of with-abstraction reasoning in exec.
--- The proof sketch is:
---   Base (n=0): exec 0 prog s = just s, so s = s' and halted s' = true
---               By exec-suc-halted: exec 1 prog s' = just s'
---   Inductive: exec (suc n) prog s = just s' means step gives s₁,
---              then exec n prog s₁ = just s' (if not halted at s₁)
---              By IH on the recursive call
-postulate
-  exec-N-if-halts : ∀ (n : ℕ) (prog : Program) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ true →
-    exec (suc n) prog s ≡ just s'
+-- Proof by induction on n.
+exec-N-if-halts : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ true →
+  exec (suc n) prog s ≡ just s'
+
+-- Base case: n = 0
+-- exec 0 prog s = just s, so s = s' and halted s' = true
+-- By exec-suc-halted: exec 1 prog s = just s = just s'
+exec-N-if-halts zero prog s .s refl h-true = exec-suc-halted zero prog s h-true
+
+-- Inductive case: n = suc n'
+exec-N-if-halts (suc n') prog s s' exec-eq h-true =
+  exec-N-if-halts-suc n' prog s s' exec-eq h-true
+  where
+    exec-N-if-halts-suc : ∀ (n' : ℕ) (prog : Program) (s s' : State) →
+      exec (suc n') prog s ≡ just s' →
+      halted s' ≡ true →
+      exec (suc (suc n')) prog s ≡ just s'
+    exec-N-if-halts-suc n' prog s s' exec-eq h-true
+      with step prog s
+    -- step fails: impossible since exec (suc n') succeeded
+    exec-N-if-halts-suc n' prog s s' () h-true | nothing
+    -- step succeeds with s₁
+    exec-N-if-halts-suc n' prog s s' exec-eq h-true | just s₁
+      with halted s₁ in halt-eq
+    -- s₁ halted: exec (suc n') returns just s₁, so s₁ = s'
+    -- exec (suc (suc n')) also returns just s₁ = just s'
+    exec-N-if-halts-suc n' prog s .s₁ refl h-true | just s₁ | true = refl
+    -- s₁ not halted: exec (suc n') = exec n' prog s₁ = just s'
+    -- By IH: exec (suc n') prog s₁ = just s'
+    -- exec (suc (suc n')) prog s = step → s₁ (not halted) → exec (suc n') prog s₁
+    exec-N-if-halts-suc n' prog s s' exec-eq h-true | just s₁ | false
+      = exec-N-if-halts n' prog s₁ s' exec-eq h-true
 
 -- | Monotonicity: if exec with n steps halts, exec with more fuel returns same result.
--- Postulated - follows from exec-N-if-halts by iteration.
--- The proof would iterate exec-N-if-halts (m - n) times, but requires
--- careful handling of arithmetic (k + suc n vs suc k + n).
-postulate
-  exec-mono : ∀ (n m : ℕ) (prog : Program) (s s' : State) →
-    n ≤ m →
-    exec n prog s ≡ just s' →
-    halted s' ≡ true →
-    exec m prog s ≡ just s'
+-- Proof: Use a helper that adds k more steps, then derive exec-mono by setting k = m ∸ n.
+exec-mono : ∀ (n m : ℕ) (prog : Program) (s s' : State) →
+  n ≤ m →
+  exec n prog s ≡ just s' →
+  halted s' ≡ true →
+  exec m prog s ≡ just s'
+exec-mono n m prog s s' n≤m exec-eq h-true =
+  subst (λ x → exec x prog s ≡ just s') (m∸n+n≡m n≤m) (exec-mono-aux (m ∸ n) n prog s s' exec-eq h-true)
+  where
+    -- Import additional lemmas needed for the proof
+    open import Data.Nat.Properties using (m∸n+n≡m; +-suc)
+
+    -- Helper: adding k more steps to a halted execution still returns the halted state
+    exec-mono-aux : ∀ (k n : ℕ) (prog : Program) (s s' : State) →
+      exec n prog s ≡ just s' →
+      halted s' ≡ true →
+      exec (k +ℕ n) prog s ≡ just s'
+    -- Base: adding 0 steps is identity
+    exec-mono-aux zero n prog s s' exec-eq h-true = exec-eq
+    -- Inductive: adding (suc k) steps
+    -- IH: exec-mono-aux k (suc n) ... : exec (k + suc n) prog s ≡ just s'
+    -- Goal: exec (suc k + n) prog s ≡ just s'
+    -- suc k + n = suc (k + n)  definitionally (by def of +)
+    -- k + suc n = suc (k + n)  (by +-suc k n)
+    -- So subst with +-suc k n: from (k + suc n) to suc (k + n) = suc k + n
+    exec-mono-aux (suc k) n prog s s' exec-eq h-true =
+      subst (λ x → exec x prog s ≡ just s') (+-suc k n)
+        (exec-mono-aux k (suc n) prog s s' (exec-N-if-halts n prog s s' exec-eq h-true) h-true)
 
 ------------------------------------------------------------------------
 -- Execution Chaining Infrastructure (Well-Founded Recursion Support)
