@@ -37,7 +37,7 @@
 --   - All register file lemmas (readReg-writeReg-*)
 --   - Memory lemmas (readMem-writeMem-same, readMem-writeMem-diff)
 --
--- POSTULATED (10 top-level):
+-- POSTULATED (6 top-level):
 --   1. run-generator: Main induction theorem
 --      Requires mutual recursion over IR structure.
 --
@@ -46,11 +46,13 @@
 --      the apply program. Our semantics model doesn't support cross-program
 --      calls with absolute addressing.
 --
---   3-6. compile-length-correct-{compose,pair,case,curry}: Length calculations
---      for recursive IR constructors. Sound by inspection of code generator.
---
---   7-10. compile-{compose,pair,case,apply}-correct: Recursive IR correctness
+--   3-6. compile-{compose,pair,case,apply}-correct: Recursive IR correctness
 --      Require mutual recursion - the proofs for sub-IRs need run-generator.
+--
+-- FULLY PROVEN (additional):
+--   - compile-length-correct: Length calculation for all IR constructors
+--     including recursive cases (compose, pair, case, curry) using structural
+--     induction and arithmetic lemmas.
 --
 -- NOTE: The end-to-end theorem compilation-correct-riscv in EndToEnd.agda
 -- successfully composes all phases. The postulates above are sound axioms
@@ -354,7 +356,7 @@ readReg-writeReg-s1-sp rf v = refl
 -- Memory Lemmas
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; +-suc)
 
 -- | Reading from the address we just wrote returns the written value
 readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
@@ -675,21 +677,15 @@ run-single-nop s h-false pc-0 = st2 , run-eq , halt-eq , a0-eq
 -- Compile length correctness
 ------------------------------------------------------------------------
 
--- | Helper postulates for recursive cases (requires detailed arithmetic)
--- These are sound axioms since compile-length matches the actual code generator.
-postulate
-  compile-length-correct-compose : ∀ {A B C : Type} (g : IR B C) (f : IR A B) →
-    length (compile-riscv (g ∘ f)) ≡ compile-length (g ∘ f)
-  compile-length-correct-pair : ∀ {A B C : Type} (f : IR A B) (g : IR A C) →
-    length (compile-riscv ⟨ f , g ⟩) ≡ compile-length ⟨ f , g ⟩
-  compile-length-correct-case : ∀ {A B C : Type} (f : IR A C) (g : IR B C) →
-    length (compile-riscv ([ f , g ])) ≡ compile-length ([ f , g ])
-  compile-length-correct-curry : ∀ {A B C : Type} (f : IR (A * B) C) →
-    length (compile-riscv (curry f)) ≡ compile-length (curry f)
-
 -- | The actual length of compiled code matches compile-length
+--
+-- This is proven by structural recursion on IR. For recursive cases
+-- (compose, pair, case, curry), we use length-++ and the induction
+-- hypothesis on subterms.
 compile-length-correct : ∀ {A B : Type} (ir : IR A B) →
   length (compile-riscv ir) ≡ compile-length ir
+
+-- Base cases: direct computation
 compile-length-correct id = refl
 compile-length-correct fst = refl
 compile-length-correct snd = refl
@@ -701,10 +697,153 @@ compile-length-correct arr = refl
 compile-length-correct inl = refl
 compile-length-correct inr = refl
 compile-length-correct apply = refl
-compile-length-correct (g ∘ f) = compile-length-correct-compose g f
-compile-length-correct ⟨ f , g ⟩ = compile-length-correct-pair f g
-compile-length-correct ([ f , g ]) = compile-length-correct-case f g
-compile-length-correct (curry f) = compile-length-correct-curry f
+
+-- Compose: length (f ++ g) = length f + length g
+compile-length-correct (g ∘ f) =
+  trans (length-++ (compile-riscv f))
+        (cong₂ _+ℕ_ (compile-length-correct f) (compile-length-correct g))
+
+-- Pair: [addi, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv]
+-- Length = 2 + len-f + 2 + len-g + 2 = 6 + len-f + len-g
+compile-length-correct ⟨ f , g ⟩ =
+  let len-f = compile-length f
+      len-g = compile-length g
+      ih-f = compile-length-correct f
+      ih-g = compile-length-correct g
+      -- Arithmetic lemma: 2 + (len-f + (2 + (len-g + 2))) = (6 + len-f) + len-g
+      -- Helper: x + 2 = suc (suc x)
+      plus-2 : ∀ x → x +ℕ 2 ≡ suc (suc x)
+      plus-2 x = begin
+          x +ℕ 2
+        ≡⟨ +-suc x 1 ⟩
+          suc (x +ℕ 1)
+        ≡⟨ cong suc (+-suc x 0) ⟩
+          suc (suc (x +ℕ 0))
+        ≡⟨ cong (λ n → suc (suc n)) (+-identityʳ x) ⟩
+          suc (suc x)
+        ∎
+      arith : suc (suc (len-f +ℕ suc (suc (len-g +ℕ 2)))) ≡ (6 +ℕ len-f) +ℕ len-g
+      arith = begin
+          suc (suc (len-f +ℕ suc (suc (len-g +ℕ 2))))
+        ≡⟨ cong (λ n → suc (suc n)) (+-suc len-f (suc (len-g +ℕ 2))) ⟩
+          suc (suc (suc (len-f +ℕ suc (len-g +ℕ 2))))
+        ≡⟨ cong (λ n → suc (suc (suc n))) (+-suc len-f (len-g +ℕ 2)) ⟩
+          suc (suc (suc (suc (len-f +ℕ (len-g +ℕ 2)))))
+        ≡⟨ cong (λ n → suc (suc (suc (suc n)))) (sym (+-assoc len-f len-g 2)) ⟩
+          suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 2))))
+        ≡⟨ cong (λ n → suc (suc (suc (suc n)))) (plus-2 (len-f +ℕ len-g)) ⟩
+          suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))
+        ≡⟨ refl ⟩  -- (6 + len-f) + len-g = suc^6 (len-f + len-g) definitionally
+          (6 +ℕ len-f) +ℕ len-g
+        ∎
+  in begin
+    length (addi sp sp neg16 ∷ mv s1 a0 ∷ compile-riscv f ++
+            sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
+            sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])
+  ≡⟨ refl ⟩
+    suc (suc (length (compile-riscv f ++
+              sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
+              sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])))
+  ≡⟨ cong (λ n → suc (suc n)) (length-++ (compile-riscv f)) ⟩
+    suc (suc (length (compile-riscv f) +ℕ
+              length (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
+                      sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])))
+  ≡⟨ cong (λ n → suc (suc (n +ℕ _))) ih-f ⟩
+    suc (suc (len-f +ℕ suc (suc (length (compile-riscv g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])))))
+  ≡⟨ cong (λ n → suc (suc (len-f +ℕ suc (suc n)))) (length-++ (compile-riscv g)) ⟩
+    suc (suc (len-f +ℕ suc (suc (length (compile-riscv g) +ℕ 2))))
+  ≡⟨ cong (λ n → suc (suc (len-f +ℕ suc (suc (n +ℕ 2))))) ih-g ⟩
+    suc (suc (len-f +ℕ suc (suc (len-g +ℕ 2))))
+  ≡⟨ arith ⟩
+    (6 +ℕ len-f) +ℕ len-g
+  ∎
+
+-- Case: [ld, ld, bne] ++ f ++ [j, label] ++ g ++ [label]
+-- Length = 3 + len-f + 2 + len-g + 1 = 6 + len-f + len-g
+compile-length-correct ([ f , g ]) =
+  let len-f = compile-length f
+      len-g = compile-length g
+      ih-f = compile-length-correct f
+      ih-g = compile-length-correct g
+      -- Helper: x + 1 = suc x
+      plus-1 : ∀ x → x +ℕ 1 ≡ suc x
+      plus-1 x = begin
+          x +ℕ 1
+        ≡⟨ +-suc x 0 ⟩
+          suc (x +ℕ 0)
+        ≡⟨ cong suc (+-identityʳ x) ⟩
+          suc x
+        ∎
+      -- Arithmetic lemma: 3 + (len-f + (2 + (len-g + 1))) = (6 + len-f) + len-g
+      arith : suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1))))) ≡ (6 +ℕ len-f) +ℕ len-g
+      arith = begin
+          suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1)))))
+        ≡⟨ cong (λ n → suc (suc (suc n))) (+-suc len-f (suc (len-g +ℕ 1))) ⟩
+          suc (suc (suc (suc (len-f +ℕ suc (len-g +ℕ 1)))))
+        ≡⟨ cong (λ n → suc (suc (suc (suc n)))) (+-suc len-f (len-g +ℕ 1)) ⟩
+          suc (suc (suc (suc (suc (len-f +ℕ (len-g +ℕ 1))))))
+        ≡⟨ cong (λ n → suc (suc (suc (suc (suc n))))) (sym (+-assoc len-f len-g 1)) ⟩
+          suc (suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 1)))))
+        ≡⟨ cong (λ n → suc (suc (suc (suc (suc n))))) (plus-1 (len-f +ℕ len-g)) ⟩
+          suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))
+        ≡⟨ refl ⟩  -- (6 + len-f) + len-g = suc^6 (len-f + len-g) definitionally
+          (6 +ℕ len-f) +ℕ len-g
+        ∎
+  in begin
+    length (compile-riscv ([ f , g ]))
+  ≡⟨ refl ⟩
+    suc (suc (suc (length (compile-riscv f ++ j (+ (2 +ℕ len-g)) ∷ label (4 +ℕ len-f) ∷
+                           compile-riscv g ++ label ((5 +ℕ len-f) +ℕ len-g) ∷ []))))
+  ≡⟨ cong (λ n → suc (suc (suc n))) (length-++ (compile-riscv f)) ⟩
+    suc (suc (suc (length (compile-riscv f) +ℕ
+              length (j (+ (2 +ℕ len-g)) ∷ label (4 +ℕ len-f) ∷
+                      compile-riscv g ++ label ((5 +ℕ len-f) +ℕ len-g) ∷ []))))
+  ≡⟨ cong (λ n → suc (suc (suc (n +ℕ
+              length (j (+ (2 +ℕ len-g)) ∷ label (4 +ℕ len-f) ∷
+                      compile-riscv g ++ label ((5 +ℕ len-f) +ℕ len-g) ∷ []))))) ih-f ⟩
+    suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g ++ label ((5 +ℕ len-f) +ℕ len-g) ∷ []))))))
+  ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc n))))) (length-++ (compile-riscv g)) ⟩
+    suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g) +ℕ 1)))))
+  ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc (n +ℕ 1)))))) ih-g ⟩
+    suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1)))))
+  ≡⟨ arith ⟩
+    (6 +ℕ len-f) +ℕ len-g
+  ∎
+
+-- Curry: [addi, sd, li, sd, mv, j, label, addi, sd, sd, mv] ++ f ++ [ret, label]
+-- Length = 11 + len-f + 2 = 13 + len-f
+compile-length-correct (curry f) =
+  let len-f = compile-length f
+      ih-f = compile-length-correct f
+      -- Helper: x + 2 = suc (suc x)
+      plus-2 : ∀ x → x +ℕ 2 ≡ suc (suc x)
+      plus-2 x = begin
+          x +ℕ 2
+        ≡⟨ +-suc x 1 ⟩
+          suc (x +ℕ 1)
+        ≡⟨ cong suc (+-suc x 0) ⟩
+          suc (suc (x +ℕ 0))
+        ≡⟨ cong (λ n → suc (suc n)) (+-identityʳ x) ⟩
+          suc (suc x)
+        ∎
+  in begin
+    length (compile-riscv (curry f))
+  ≡⟨ refl ⟩
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
+      (length (compile-riscv f ++ ret ∷ label (12 +ℕ len-f) ∷ []))))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n)))))))))))
+          (length-++ (compile-riscv f)) ⟩
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
+      (length (compile-riscv f) +ℕ 2)))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (n +ℕ 2))))))))))))
+          ih-f ⟩
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ 2)))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n)))))))))))
+          (plus-2 len-f) ⟩
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc len-f))))))))))))
+  ≡⟨ refl ⟩
+    13 +ℕ len-f
+  ∎
 
 ------------------------------------------------------------------------
 -- Main generator postulate (required for recursive IR cases)
@@ -1535,9 +1674,9 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
     st7 : State
     st7 = record st6 { pc = pc st6 +ℕ 1 }
 
-    -- Program length from compile-length-correct-curry
+    -- Program length from compile-length-correct
     prog-length : length prog ≡ 13 +ℕ len-f
-    prog-length = compile-length-correct-curry f
+    prog-length = compile-length-correct (curry f)
 
     -- For step7, we need to fetch at position end-label = 12 + len-f
     -- The instruction there is label (12 + len-f)
