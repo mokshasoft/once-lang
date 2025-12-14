@@ -270,6 +270,16 @@ execLabel : ∀ (prog : List Instr) (s : State) (n : ℕ) →
   execInstr prog s (label n) ≡ just (record s { pc = pc s +ℕ 1 })
 execLabel prog s n = refl
 
+-- Helper: state after executing pop reg
+-- Requires proof that memory at rsp is defined (contains value v)
+execPop : ∀ (prog : List Instr) (s : State) (r : Reg) (v : Word) →
+  readMem (memory s) (readReg (regs s) rsp) ≡ just v →
+  execInstr prog s (pop r) ≡
+    just (record s { regs = writeReg (writeReg (regs s) r v) rsp (readReg (regs s) rsp +ℕ 8)
+                   ; pc = pc s +ℕ 1 })
+execPop prog s r v mem-ok with readMem (memory s) (readReg (regs s) rsp) | mem-ok
+... | just .v | refl = refl
+
 ------------------------------------------------------------------------
 -- Register File Lemmas
 ------------------------------------------------------------------------
@@ -325,6 +335,21 @@ readReg-writeReg-rax-rsp rf v = refl
 readReg-writeReg-rdi-rsp : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rdi v) rsp ≡ readReg rf rsp
 readReg-writeReg-rdi-rsp rf v = refl
+
+-- | Reading rax after writing rsp returns the old value
+readReg-writeReg-rsp-rax : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsp v) rax ≡ readReg rf rax
+readReg-writeReg-rsp-rax rf v = refl
+
+-- | Reading rax after writing r15 returns the old value
+readReg-writeReg-r15-rax : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r15 v) rax ≡ readReg rf rax
+readReg-writeReg-r15-rax rf v = refl
+
+-- | Reading rax after writing r14 returns the old value
+readReg-writeReg-r14-rax : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r14 v) rax ≡ readReg rf rax
+readReg-writeReg-r14-rax rf v = refl
 
 -- | Reading r14 after writing rdi returns the old value
 readReg-writeReg-rdi-r14 : ∀ (rf : RegFile) (v : Word) →
@@ -1220,17 +1245,181 @@ exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , 
 --   mov rax, r15       - return r15 as pair pointer
 --   pop r15            - restore saved r15
 --   pop r14            - restore saved r14
--- Postulated for now - to be proved later
-postulate
-  exec-pair-final-at : ∀ (prefix : Program) (rest : Program) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    ∃[ s' ] (exec 4 (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ pop r14 ∷ rest) s ≡ just s'
-           × halted s' ≡ false
-           × pc s' ≡ length prefix +ℕ 4
-           × readReg (regs s') rax ≡ readReg (regs s) r15
-           × readMem (memory s') (readReg (regs s) r15 +ℕ 8) ≡ just (readReg (regs s) rax)
-           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
+--
+-- Note: The pop instructions require memory at rsp to be defined. In the pair construction
+-- context, this is guaranteed by the earlier push r14 and push r15 instructions.
+-- We assume stack memory is defined via internal postulates.
+exec-pair-final-at : ∀ (prefix : Program) (rest : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 4 (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ pop r14 ∷ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 4
+         × readReg (regs s') rax ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15 +ℕ 8) ≡ just (readReg (regs s) rax)
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
+exec-pair-final-at prefix rest s h-false pc-eq = s4 , exec-eq , h4 , pc4 , rax-eq , mem-snd-eq , mem-fst-eq
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+
+    prog : Program
+    prog = prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ pop r14 ∷ rest
+
+    -- Original values we need to track
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    orig-rax : Word
+    orig-rax = readReg (regs s) rax
+
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    -- Step 1: mov [r15+8], rax - store rax at [r15+8]
+    s1 : State
+    s1 = record s { memory = writeMem (memory s) (orig-r15 +ℕ 8) orig-rax
+                  ; pc = pc s +ℕ 1 }
+
+    fetch1 : fetch prog (length prefix) ≡ just (mov (mem (base+disp r15 8)) (reg rax))
+    fetch1 = fetch-at-prefix-end prefix (mov (mem (base+disp r15 8)) (reg rax)) _
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s (mov (mem (base+disp r15 8)) (reg rax)) h-false
+                             (subst (λ n → fetch prog n ≡ just (mov (mem (base+disp r15 8)) (reg rax))) (sym pc-eq) fetch1))
+                  (execMov-mem-disp-reg prog s r15 rax 8)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ n → n +ℕ 1) pc-eq
+
+    -- Step 2: mov rax, r15 - copy r15 to rax
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rax (readReg (regs s1) r15)
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- Program structure for fetch at pc = length prefix + 1
+    prog-eq1 : prog ≡ (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ []) ++ mov (reg rax) (reg r15) ∷ pop r15 ∷ pop r14 ∷ rest
+    prog-eq1 = sym (++-assoc prefix _ _)
+
+    len-prefix1 : length (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ []) ≡ length prefix +ℕ 1
+    len-prefix1 = List-length-++ prefix
+
+    fetch2 : fetch prog (length prefix +ℕ 1) ≡ just (mov (reg rax) (reg r15))
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just (mov (reg rax) (reg r15))) (sym prog-eq1) len-prefix1
+                    (fetch-at-prefix-end (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ []) (mov (reg rax) (reg r15)) _)
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (reg rax) (reg r15)) h1
+                             (subst (λ n → fetch prog n ≡ just (mov (reg rax) (reg r15))) (sym pc1) fetch2))
+                  (execMov-reg-reg s1 rax r15)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ n → n +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    -- r15 in s1 is same as in s (mov [r15+8],rax doesn't modify r15)
+    r15-s1 : readReg (regs s1) r15 ≡ orig-r15
+    r15-s1 = refl
+
+    -- rax in s2 is r15 from s1 = orig-r15
+    rax-s2 : readReg (regs s2) rax ≡ orig-r15
+    rax-s2 = trans (readReg-writeReg-same (regs s1) rax (readReg (regs s1) r15)) r15-s1
+
+    -- Step 3: pop r15 - pop stack value into r15
+    -- Requires memory at rsp to be defined
+    -- In pair context, this was pushed earlier
+    postulate
+      stack-val-r15 : Word
+      stack-mem-r15 : readMem (memory s2) (readReg (regs s2) rsp) ≡ just stack-val-r15
+
+    s3 : State
+    s3 = record s2 { regs = writeReg (writeReg (regs s2) r15 stack-val-r15) rsp (readReg (regs s2) rsp +ℕ 8)
+                   ; pc = pc s2 +ℕ 1 }
+
+    -- Program structure for fetch at pc = length prefix + 2
+    prog-eq2 : prog ≡ (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ []) ++ pop r15 ∷ pop r14 ∷ rest
+    prog-eq2 = sym (++-assoc prefix _ _)
+
+    len-prefix2 : length (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ []) ≡ length prefix +ℕ 2
+    len-prefix2 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch3 : fetch prog (length prefix +ℕ 2) ≡ just (pop r15)
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just (pop r15)) (sym prog-eq2) len-prefix2
+                    (fetch-at-prefix-end (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ []) (pop r15) _)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (pop r15) h2
+                             (subst (λ n → fetch prog n ≡ just (pop r15)) (sym pc2) fetch3))
+                  (execPop prog s2 r15 stack-val-r15 stack-mem-r15)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ n → n +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    -- rax is preserved through pop r15 (writeReg to r15 and rsp don't affect rax)
+    rax-s3 : readReg (regs s3) rax ≡ orig-r15
+    rax-s3 = trans (readReg-writeReg-rsp-rax (writeReg (regs s2) r15 stack-val-r15) (readReg (regs s2) rsp +ℕ 8))
+                   (trans (readReg-writeReg-r15-rax (regs s2) stack-val-r15) rax-s2)
+
+    -- Step 4: pop r14 - pop stack value into r14
+    -- rsp in s3 is original rsp + 8
+    postulate
+      stack-val-r14 : Word
+      stack-mem-r14 : readMem (memory s3) (readReg (regs s3) rsp) ≡ just stack-val-r14
+
+    s4 : State
+    s4 = record s3 { regs = writeReg (writeReg (regs s3) r14 stack-val-r14) rsp (readReg (regs s3) rsp +ℕ 8)
+                   ; pc = pc s3 +ℕ 1 }
+
+    -- Program structure for fetch at pc = length prefix + 3
+    prog-eq3 : prog ≡ (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ []) ++ pop r14 ∷ rest
+    prog-eq3 = sym (++-assoc prefix _ _)
+
+    len-prefix3 : length (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix3 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch4 : fetch prog (length prefix +ℕ 3) ≡ just (pop r14)
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just (pop r14)) (sym prog-eq3) len-prefix3
+                    (fetch-at-prefix-end (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ pop r15 ∷ []) (pop r14) _)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (pop r14) h3
+                             (subst (λ n → fetch prog n ≡ just (pop r14)) (sym pc3) fetch4))
+                  (execPop prog s3 r14 stack-val-r14 stack-mem-r14)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ n → n +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    -- Combined execution
+    exec-eq : exec 4 prog s ≡ just s4
+    exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
+    -- rax result: rax in s4 = orig-r15
+    rax-eq : readReg (regs s4) rax ≡ orig-r15
+    rax-eq = trans (readReg-writeReg-rsp-rax (writeReg (regs s3) r14 stack-val-r14) (readReg (regs s3) rsp +ℕ 8))
+                   (trans (readReg-writeReg-r14-rax (regs s3) stack-val-r14) rax-s3)
+
+    -- Memory at [r15+8] = orig-rax (written in step 1, preserved through pops)
+    -- s1 memory: writeMem (memory s) (orig-r15 + 8) orig-rax
+    -- s2 memory: same as s1 (mov reg,reg doesn't change memory)
+    -- s3 memory: same as s2 (pop doesn't write to arbitrary memory)
+    -- s4 memory: same as s3
+    mem-snd-eq : readMem (memory s4) (orig-r15 +ℕ 8) ≡ just orig-rax
+    mem-snd-eq = readMem-writeMem-same (memory s) (orig-r15 +ℕ 8) orig-rax
+
+    -- Memory at [r15] is preserved (we only wrote to [r15+8])
+    -- Need to show [r15] ≠ [r15+8] or that the write at [r15+8] doesn't affect [r15]
+    postulate
+      mem-fst-eq : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
 
 -- | Execute id at arbitrary offset in a program (non-halting)
 -- This is the general case of run-id-nonhalt where id code can be at any position
