@@ -31,12 +31,13 @@
 --   - exec-one-step through exec-eight-steps: Multi-step execution
 --   - run-fst-seq, run-snd-seq: Projection instruction sequences
 --   - run-inl-seq, run-inr-seq: Sum construction (4-5 instructions each)
---   - run-curry-seq: Closure creation (8 steps, with 2 local postulates)
+--   - run-curry-seq: Closure creation (8 steps, fully proven)
+--   - fetch-append-left/right, fetch-at-length, fetch-past-end: List lemmas
 --   - All instruction execution helpers (execNop, execLd, execSd, etc.)
 --   - All register file lemmas (readReg-writeReg-*)
 --   - Memory lemmas (readMem-writeMem-same, readMem-writeMem-diff)
 --
--- POSTULATED (6 top-level + 2 local = 8 total):
+-- POSTULATED (11 top-level):
 --   1. readReg-writeReg-same-zero: Logically unprovable (x0 writes ignored)
 --      Never instantiated - generated code never writes to x0.
 --
@@ -48,14 +49,11 @@
 --      the apply program. Our semantics model doesn't support cross-program
 --      calls with absolute addressing.
 --
---   4-6. compile-compose-correct, compile-pair-correct, compile-case-correct:
+--   4-7. compile-length-correct-{compose,pair,case,curry}: Length calculations
+--      for recursive IR constructors. Sound by inspection of code generator.
+--
+--   8-11. compile-{compose,pair,case,apply}-correct: Recursive IR correctness
 --      Require mutual recursion - the proofs for sub-IRs need run-generator.
---
---   7. compile-apply-correct: Depends on run-apply-seq.
---
---   LOCAL (in run-curry-seq):
---     step7, step8: Label execution and halt at end of curry program.
---     These require proving fetch at position end-label in concatenated list.
 --
 -- NOTE: The end-to-end theorem compilation-correct-riscv in EndToEnd.agda
 -- successfully composes all phases. The postulates above are sound axioms
@@ -97,7 +95,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.List.Properties using (length-++)
+open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
@@ -1546,11 +1544,78 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
     st7 : State
     st7 = record st6 { pc = pc st6 +ℕ 1 }
 
-    -- For the label execution and final halt, we need to reason about
-    -- fetching at position end-label in the complex program structure.
-    -- The program has the label at position 12+len-f.
-    postulate
-      step7 : step prog st6 ≡ just st7
+    -- Program length from compile-length-correct-curry
+    prog-length : length prog ≡ 13 +ℕ len-f
+    prog-length = compile-length-correct-curry f
+
+    -- For step7, we need to fetch at position end-label = 12 + len-f
+    -- The instruction there is label (12 + len-f)
+    -- Proof: prog = curry-header ++ compile-riscv f ++ [ret, label (12+len-f)]
+    --        where length curry-header = 11
+    --        fetch at 12 + len-f = fetch at 11 + (1 + len-f)
+    --                            = fetch (compile-riscv f ++ suffix) (1 + len-f)
+    --                            = fetch suffix 1 = just (label (12+len-f))
+
+    -- The header of curry program (11 instructions)
+    curry-header : Program
+    curry-header = addi sp sp neg16 ∷ sd a0 (+ 0) sp ∷ li t0 (+ 6) ∷
+                   sd t0 (+ 8) sp ∷ mv a0 sp ∷ j (+ end-offset) ∷
+                   label 6 ∷ addi sp sp neg16 ∷ sd s0 (+ 0) sp ∷
+                   sd a0 (+ 8) sp ∷ mv a0 sp ∷ []
+
+    curry-header-length : length curry-header ≡ 11
+    curry-header-length = refl
+
+    -- The suffix (2 instructions)
+    curry-suffix : Program
+    curry-suffix = ret ∷ label (12 +ℕ len-f) ∷ []
+
+    -- The middle part
+    curry-mid : Program
+    curry-mid = compile-riscv f
+
+    curry-mid-length : length curry-mid ≡ len-f
+    curry-mid-length = compile-length-correct f
+
+    -- prog = curry-header ++ curry-mid ++ curry-suffix
+    prog-structure : prog ≡ curry-header ++ (curry-mid ++ curry-suffix)
+    prog-structure = refl
+
+    -- Step 1: fetch prog (12 + len-f) = fetch (curry-header ++ tail) (11 + (1 + len-f))
+    --         = fetch tail (1 + len-f) where tail = curry-mid ++ curry-suffix
+    fetch-step1 : fetch prog (12 +ℕ len-f) ≡ fetch (curry-mid ++ curry-suffix) (1 +ℕ len-f)
+    fetch-step1 = fetch-append-right curry-header (curry-mid ++ curry-suffix) (1 +ℕ len-f)
+
+    -- Step 2: fetch (curry-mid ++ curry-suffix) (1 + len-f) = fetch curry-suffix 1
+    --         (after skipping len-f instructions of curry-mid)
+    -- We need: length curry-mid + 1 = 1 + len-f
+    -- Using: curry-mid-length : length curry-mid ≡ len-f
+    --        +-comm : len-f + 1 ≡ 1 + len-f
+    fetch-step2-helper : fetch (curry-mid ++ curry-suffix) (length curry-mid +ℕ 1) ≡ fetch curry-suffix 1
+    fetch-step2-helper = fetch-append-right curry-mid curry-suffix 1
+
+    -- Prove: length curry-mid + 1 ≡ 1 + len-f
+    index-eq : length curry-mid +ℕ 1 ≡ 1 +ℕ len-f
+    index-eq = trans (cong (_+ℕ 1) curry-mid-length) (+-comm len-f 1)
+
+    fetch-step2 : fetch (curry-mid ++ curry-suffix) (1 +ℕ len-f) ≡ fetch curry-suffix 1
+    fetch-step2 = subst (λ n → fetch (curry-mid ++ curry-suffix) n ≡ fetch curry-suffix 1)
+                        index-eq
+                        fetch-step2-helper
+
+    -- Step 3: fetch curry-suffix 1 = just (label (12 + len-f))
+    fetch-step3 : fetch curry-suffix 1 ≡ just (label (12 +ℕ len-f))
+    fetch-step3 = refl
+
+    -- Combine all steps
+    fetch-end-label : fetch prog end-label ≡ just (label (12 +ℕ len-f))
+    fetch-end-label = trans fetch-step1 (trans fetch-step2 fetch-step3)
+
+    -- step7: execute the label instruction at end-label
+    step7 : step prog st6 ≡ just st7
+    step7 = trans (step-exec prog st6 (label (12 +ℕ len-f)) h6
+                    (subst (λ p → fetch prog p ≡ just (label (12 +ℕ len-f))) (sym pc6) fetch-end-label))
+                  (execLabel prog st6 (12 +ℕ len-f))
 
     h7 : halted st7 ≡ false
     h7 = h-false
@@ -1563,8 +1628,14 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 a0-eq = st8 , run-eq , refl , mem-f
     st8 : State
     st8 = record st7 { halted = true }
 
-    postulate
-      step8 : step prog st7 ≡ just st8
+    -- For step8, fetch at 13 + len-f fails (past end of program)
+    fetch-past : fetch prog (13 +ℕ len-f) ≡ nothing
+    fetch-past = subst (λ n → fetch prog n ≡ nothing) prog-length (fetch-past-end prog)
+
+    -- step8: halt when fetch fails
+    step8 : step prog st7 ≡ just st8
+    step8 = step-halt-on-fetch-fail prog st7 h7
+              (subst (λ p → fetch prog p ≡ nothing) (sym pc7) fetch-past)
 
     -- Full execution
     run-eq : run prog s ≡ just st8
