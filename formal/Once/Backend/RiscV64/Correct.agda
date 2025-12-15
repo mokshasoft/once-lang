@@ -79,6 +79,9 @@ open import Once.Backend.Common.Fetch
         ; fetch-append-left; fetch-append-right; fetch-at-length; fetch-past-end
         )
 
+-- Import common exec N-steps lemmas (parameterized module)
+-- Instantiated below after defining the base lemmas exec-step-continue and exec-one-step
+
 -- Import encoding axioms from central postulates module
 open import Once.Postulates public
   using ( encode
@@ -485,89 +488,11 @@ exec-step-continue : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
   exec (suc n) prog s ≡ exec n prog s'
 exec-step-continue n prog s s' step-eq halt-eq rewrite step-eq | halt-eq = refl
 
--- | Execute 2 steps and halt
-exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ true →
-  exec (suc (suc n)) prog s ≡ just st2
-exec-two-steps n prog s st1 st2 step1-eq h1 step2-eq h2 =
-  trans (exec-step-continue (suc n) prog s st1 step1-eq h1)
-        (exec-one-step n prog st1 st2 step2-eq h2)
-
--- | Execute 3 steps and halt
-exec-three-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 st3 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ false →
-  step prog st2 ≡ just st3 → halted st3 ≡ true →
-  exec (suc (suc (suc n))) prog s ≡ just st3
-exec-three-steps n prog s st1 st2 st3 step1 h1 step2 h2 step3 h3 =
-  trans (exec-step-continue (suc (suc n)) prog s st1 step1 h1)
-        (exec-two-steps n prog st1 st2 st3 step2 h2 step3 h3)
-
--- | Execute 4 steps and halt
-exec-four-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 st3 st4 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ false →
-  step prog st2 ≡ just st3 → halted st3 ≡ false →
-  step prog st3 ≡ just st4 → halted st4 ≡ true →
-  exec (suc (suc (suc (suc n)))) prog s ≡ just st4
-exec-four-steps n prog s st1 st2 st3 st4 step1 h1 step2 h2 step3 h3 step4 h4 =
-  trans (exec-step-continue (suc (suc (suc n))) prog s st1 step1 h1)
-        (exec-three-steps n prog st1 st2 st3 st4 step2 h2 step3 h3 step4 h4)
-
--- | Execute 5 steps and halt
-exec-five-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 st3 st4 st5 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ false →
-  step prog st2 ≡ just st3 → halted st3 ≡ false →
-  step prog st3 ≡ just st4 → halted st4 ≡ false →
-  step prog st4 ≡ just st5 → halted st5 ≡ true →
-  exec (suc (suc (suc (suc (suc n))))) prog s ≡ just st5
-exec-five-steps n prog s st1 st2 st3 st4 st5 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 =
-  trans (exec-step-continue (suc (suc (suc (suc n)))) prog s st1 step1 h1)
-        (exec-four-steps n prog st1 st2 st3 st4 st5 step2 h2 step3 h3 step4 h4 step5 h5)
-
--- | Execute 6 steps and halt
-exec-six-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 st3 st4 st5 st6 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ false →
-  step prog st2 ≡ just st3 → halted st3 ≡ false →
-  step prog st3 ≡ just st4 → halted st4 ≡ false →
-  step prog st4 ≡ just st5 → halted st5 ≡ false →
-  step prog st5 ≡ just st6 → halted st6 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc n)))))) prog s ≡ just st6
-exec-six-steps n prog s st1 st2 st3 st4 st5 st6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 =
-  trans (exec-step-continue (suc (suc (suc (suc (suc n))))) prog s st1 step1 h1)
-        (exec-five-steps n prog st1 st2 st3 st4 st5 st6 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6)
-
--- | Execute 7 steps and halt
-exec-seven-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 st3 st4 st5 st6 st7 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ false →
-  step prog st2 ≡ just st3 → halted st3 ≡ false →
-  step prog st3 ≡ just st4 → halted st4 ≡ false →
-  step prog st4 ≡ just st5 → halted st5 ≡ false →
-  step prog st5 ≡ just st6 → halted st6 ≡ false →
-  step prog st6 ≡ just st7 → halted st7 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc n))))))) prog s ≡ just st7
-exec-seven-steps n prog s st1 st2 st3 st4 st5 st6 st7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 =
-  trans (exec-step-continue (suc (suc (suc (suc (suc (suc n)))))) prog s st1 step1 h1)
-        (exec-six-steps n prog st1 st2 st3 st4 st5 st6 st7 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7)
-
--- | Execute 8 steps and halt
-exec-eight-steps : ∀ (n : ℕ) (prog : List Instr) (s st1 st2 st3 st4 st5 st6 st7 st8 : State) →
-  step prog s ≡ just st1 → halted st1 ≡ false →
-  step prog st1 ≡ just st2 → halted st2 ≡ false →
-  step prog st2 ≡ just st3 → halted st3 ≡ false →
-  step prog st3 ≡ just st4 → halted st4 ≡ false →
-  step prog st4 ≡ just st5 → halted st5 ≡ false →
-  step prog st5 ≡ just st6 → halted st6 ≡ false →
-  step prog st6 ≡ just st7 → halted st7 ≡ false →
-  step prog st7 ≡ just st8 → halted st8 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc (suc n)))))))) prog s ≡ just st8
-exec-eight-steps n prog s st1 st2 st3 st4 st5 st6 st7 st8 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 =
-  trans (exec-step-continue (suc (suc (suc (suc (suc (suc (suc n))))))) prog s st1 step1 h1)
-        (exec-seven-steps n prog st1 st2 st3 st4 st5 st6 st7 st8 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8)
+-- Import N-step execution lemmas from Common.Exec
+-- Instantiated with our State, Instr, and base lemmas
+open import Once.Backend.Common.Exec
+  halted step exec exec-step-continue exec-one-step
+  public
 
 ------------------------------------------------------------------------
 -- Single instruction execution proofs

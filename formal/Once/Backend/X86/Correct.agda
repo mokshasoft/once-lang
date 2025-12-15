@@ -31,6 +31,9 @@ open import Once.Backend.Common.Fetch
         ; fetch-append-left; fetch-append-right
         )
 
+-- Import common exec N-steps lemmas (parameterized module)
+-- Instantiated below after defining the base lemmas exec-on-non-halted-step and exec-on-halted-step
+
 -- Import encoding axioms from central postulates module
 open import Once.Postulates public
   using ( encode
@@ -1917,108 +1920,11 @@ run-mov-rdi-rax-at-offset prefix suffix s h-false pc-eq = s' , step-eq , h' , pc
     rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
     rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
 
--- | Two-step execution: if first step produces s1 (not halted), and second halts,
--- then exec (suc (suc n)) produces the halted state
-exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 : State) →
-  step prog s ≡ just s1 →
-  halted s1 ≡ false →
-  step prog s1 ≡ just s2 →
-  halted s2 ≡ true →
-  exec (suc (suc n)) prog s ≡ just s2
-exec-two-steps n prog s s1 s2 step1 h1 step2 h2 =
-  trans (exec-on-non-halted-step (suc n) prog s s1 step1 h1)
-        (exec-on-halted-step n prog s1 s2 step2 h2)
-
--- | Three-step execution
-exec-three-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ true →
-  exec (suc (suc (suc n))) prog s ≡ just s3
-exec-three-steps n prog s s1 s2 s3 step1 h1 step2 h2 step3 h3 =
-  trans (exec-on-non-halted-step (suc (suc n)) prog s s1 step1 h1)
-        (exec-two-steps n prog s1 s2 s3 step2 h2 step3 h3)
-
--- | Four-step execution
-exec-four-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ false →
-  step prog s3 ≡ just s4 → halted s4 ≡ true →
-  exec (suc (suc (suc (suc n)))) prog s ≡ just s4
-exec-four-steps n prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4 =
-  trans (exec-on-non-halted-step (suc (suc (suc n))) prog s s1 step1 h1)
-        (exec-three-steps n prog s1 s2 s3 s4 step2 h2 step3 h3 step4 h4)
-
--- | Five-step execution (4 instructions + halt)
-exec-five-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ false →
-  step prog s3 ≡ just s4 → halted s4 ≡ false →
-  step prog s4 ≡ just s5 → halted s5 ≡ true →
-  exec (suc (suc (suc (suc (suc n))))) prog s ≡ just s5
-exec-five-steps n prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 =
-  trans (exec-on-non-halted-step (suc (suc (suc (suc n)))) prog s s1 step1 h1)
-        (exec-four-steps n prog s1 s2 s3 s4 s5 step2 h2 step3 h3 step4 h4 step5 h5)
-
--- | Six-step execution (5 instructions + halt)
-exec-six-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ false →
-  step prog s3 ≡ just s4 → halted s4 ≡ false →
-  step prog s4 ≡ just s5 → halted s5 ≡ false →
-  step prog s5 ≡ just s6 → halted s6 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc n)))))) prog s ≡ just s6
-exec-six-steps n prog s s1 s2 s3 s4 s5 s6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 =
-  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc n))))) prog s s1 step1 h1)
-        (exec-five-steps n prog s1 s2 s3 s4 s5 s6 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6)
-
--- | Seven-step execution (6 instructions + halt)
-exec-seven-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ false →
-  step prog s3 ≡ just s4 → halted s4 ≡ false →
-  step prog s4 ≡ just s5 → halted s5 ≡ false →
-  step prog s5 ≡ just s6 → halted s6 ≡ false →
-  step prog s6 ≡ just s7 → halted s7 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc n))))))) prog s ≡ just s7
-exec-seven-steps n prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 =
-  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc (suc n)))))) prog s s1 step1 h1)
-        (exec-six-steps n prog s1 s2 s3 s4 s5 s6 s7 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7)
-
--- | Eight-step execution (7 instructions + halt)
-exec-eight-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 s8 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ false →
-  step prog s3 ≡ just s4 → halted s4 ≡ false →
-  step prog s4 ≡ just s5 → halted s5 ≡ false →
-  step prog s5 ≡ just s6 → halted s6 ≡ false →
-  step prog s6 ≡ just s7 → halted s7 ≡ false →
-  step prog s7 ≡ just s8 → halted s8 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc (suc n)))))))) prog s ≡ just s8
-exec-eight-steps n prog s s1 s2 s3 s4 s5 s6 s7 s8 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 =
-  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc (suc (suc n))))))) prog s s1 step1 h1)
-        (exec-seven-steps n prog s1 s2 s3 s4 s5 s6 s7 s8 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8)
-
--- | Nine-step execution (8 instructions + halt)
-exec-nine-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 s8 s9 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ false →
-  step prog s2 ≡ just s3 → halted s3 ≡ false →
-  step prog s3 ≡ just s4 → halted s4 ≡ false →
-  step prog s4 ≡ just s5 → halted s5 ≡ false →
-  step prog s5 ≡ just s6 → halted s6 ≡ false →
-  step prog s6 ≡ just s7 → halted s7 ≡ false →
-  step prog s7 ≡ just s8 → halted s8 ≡ false →
-  step prog s8 ≡ just s9 → halted s9 ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))) prog s ≡ just s9
-exec-nine-steps n prog s s1 s2 s3 s4 s5 s6 s7 s8 s9 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9 =
-  trans (exec-on-non-halted-step (suc (suc (suc (suc (suc (suc (suc (suc n)))))))) prog s s1 step1 h1)
-        (exec-eight-steps n prog s1 s2 s3 s4 s5 s6 s7 s8 s9 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9)
+-- Import N-step execution lemmas from Common.Exec
+-- Instantiated with our State, Instr, and base lemmas
+open import Once.Backend.Common.Exec
+  halted step exec exec-on-non-halted-step exec-on-halted-step
+  public
 
 -- Helper: running a single-instruction program (mov reg, reg)
 --
