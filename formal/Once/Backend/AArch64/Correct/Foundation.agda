@@ -58,30 +58,33 @@ postulate
   encode : ∀ {A : Type} → ⟦ A ⟧ → Word
 
   -- | Memory containing encoded values (for projection/case analysis)
+  -- Used in ValidInputState to ensure memory has proper encoding
   encodedMemory : Memory
 
   -- | Unit encoding
   encode-unit : encode {Unit} tt ≡ 0
 
   -- | Pair encoding (fst at offset 0, snd at offset 8)
-  encode-pair-fst : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-    readMem encodedMemory (encode (a , b)) ≡ just (encode a)
+  -- Takes memory parameter for use with arbitrary state memory
+  encode-pair-fst : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode (a , b)) ≡ just (encode a)
 
-  encode-pair-snd : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-    readMem encodedMemory (encode (a , b) +ℕ 8) ≡ just (encode b)
+  encode-pair-snd : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode (a , b) +ℕ 8) ≡ just (encode b)
 
   -- | Sum encoding (tag at offset 0, value at offset 8)
-  encode-inl-tag : ∀ {A B : Type} (a : ⟦ A ⟧) →
-    readMem encodedMemory (encode {A + B} (inj₁ a)) ≡ just 0
+  -- Takes memory parameter for use with arbitrary state memory
+  encode-inl-tag : ∀ {A B : Type} (a : ⟦ A ⟧) (m : Memory) →
+    readMem m (encode {A + B} (inj₁ a)) ≡ just 0
 
-  encode-inl-val : ∀ {A B : Type} (a : ⟦ A ⟧) →
-    readMem encodedMemory (encode {A + B} (inj₁ a) +ℕ 8) ≡ just (encode a)
+  encode-inl-val : ∀ {A B : Type} (a : ⟦ A ⟧) (m : Memory) →
+    readMem m (encode {A + B} (inj₁ a) +ℕ 8) ≡ just (encode a)
 
-  encode-inr-tag : ∀ {A B : Type} (b : ⟦ B ⟧) →
-    readMem encodedMemory (encode {A + B} (inj₂ b)) ≡ just 1
+  encode-inr-tag : ∀ {A B : Type} (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode {A + B} (inj₂ b)) ≡ just 1
 
-  encode-inr-val : ∀ {A B : Type} (b : ⟦ B ⟧) →
-    readMem encodedMemory (encode {A + B} (inj₂ b) +ℕ 8) ≡ just (encode b)
+  encode-inr-val : ∀ {A B : Type} (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode {A + B} (inj₂ b) +ℕ 8) ≡ just (encode b)
 
   -- | Fix type encoding (identity wrapper at runtime)
   -- Wrapping doesn't change the encoding
