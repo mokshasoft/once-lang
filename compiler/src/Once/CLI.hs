@@ -15,16 +15,21 @@ module Once.CLI
 import Control.Applicative ((<|>))
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (listDirectory, doesDirectoryExist, removeFile)
+import System.Directory (listDirectory, doesDirectoryExist, removeFile, doesFileExist)
 import System.Exit (exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 
 import Once.Backend.C (generateC, CModule (..))
 import Once.Backend.CCompiler as CC
-import Once.Backend.Native (compileToAArch64, compileToX86, compileToRiscV64)
+import Once.Backend.Native
+  ( compileToAArch64, compileToX86, compileToRiscV64
+  , compileFullToAArch64, compileFullToX86, compileFullToRiscV64
+  , containsPrimitives, collectPrimitives
+  )
 import qualified Once.Backend.Assembler as Asm
 import Once.Elaborate (elaborate, elaborateWithEnv)
 import qualified Once.IR (IR (..))
@@ -279,27 +284,73 @@ runBuild opts = do
                                   exitSuccess
 
                             nativeTarget -> do
-                              -- Native targets: use verified code generators
-                              -- For now, we only compile the main function (categorical IR only)
+                              -- Native targets: use verified code generators for categorical IR,
+                              -- Haskell-based codegen for IR with primitives
                               let (_, _, _, mainIR) = head optimizedFunctions
-                              let asmResult = case nativeTarget of
-                                    TargetArm64 -> compileToAArch64 mainIR
-                                    TargetX86_64 -> compileToX86 mainIR
-                                    TargetRiscV64 -> compileToRiscV64 mainIR
-                                    TargetC -> error "unreachable"
-                              case asmResult of
-                                Nothing -> do
-                                  TIO.putStrLn "Error: IR contains non-categorical constructs (primitives, strings, etc.)"
-                                  TIO.putStrLn "Native targets only support pure categorical expressions."
-                                  TIO.putStrLn "Hint: Use --target c for full language support."
+                                  hasPrimitives = containsPrimitives mainIR
+
+                              -- Generate assembly code
+                              let asmCode = if hasPrimitives
+                                    then case nativeTarget of
+                                      TargetArm64 -> compileFullToAArch64 mainIR
+                                      TargetX86_64 -> compileFullToX86 mainIR
+                                      TargetRiscV64 -> compileFullToRiscV64 mainIR
+                                      TargetC -> error "unreachable"
+                                    else case (case nativeTarget of
+                                           TargetArm64 -> compileToAArch64 mainIR
+                                           TargetX86_64 -> compileToX86 mainIR
+                                           TargetRiscV64 -> compileToRiscV64 mainIR
+                                           TargetC -> error "unreachable") of
+                                      Just code -> code
+                                      Nothing -> case nativeTarget of
+                                        TargetArm64 -> compileFullToAArch64 mainIR
+                                        TargetX86_64 -> compileFullToX86 mainIR
+                                        TargetRiscV64 -> compileFullToRiscV64 mainIR
+                                        TargetC -> error "unreachable"
+
+                              -- Wrap assembly with _start entry point
+                              let wrappedAsm = wrapNativeExe nativeTarget "main" asmCode
+                              let asmPath = outputBase ++ ".s"
+                                  objPath = outputBase ++ ".o"
+                              TIO.writeFile asmPath wrappedAsm
+
+                              -- Assemble main .s -> .o
+                              asmResult' <- Asm.assemble asmPath objPath
+                              case asmResult' of
+                                Left err -> do
+                                  TIO.putStrLn $ "Assembly failed: " <> T.pack (show err)
                                   exitFailure
-                                Just asmCode -> do
-                                  -- Wrap assembly with proper directives
-                                  let wrappedAsm = wrapNativeAsm nativeTarget "main" asmCode
-                                  let asmPath = outputBase ++ ".s"
-                                  TIO.writeFile asmPath wrappedAsm
-                                  TIO.putStrLn $ "Generated: " <> T.pack asmPath
-                                  exitSuccess
+                                Right _ -> do
+                                  -- Collect interpretation files to link if we have primitives
+                                  interpObjFiles <- if hasPrimitives
+                                    then do
+                                      -- Collect interpretation assembly files from:
+                                      -- 1. Explicit -I:TYPE flags matching this target
+                                      let explicitFiles = resolveExplicitNativeInterps strataPath nativeTarget (buildExplicitInterps opts)
+                                      -- 2. Module env (from imports)
+                                      let moduleFiles = collectNativeInterpFiles strataPath nativeTarget modEnv
+                                      let interpAsmFiles = explicitFiles ++ moduleFiles
+                                      -- Assemble each interpretation file
+                                      assembleInterpFiles nativeTarget interpAsmFiles outputBase
+                                    else pure []
+
+                                  -- Link all .o files -> executable
+                                  let allObjFiles = objPath : interpObjFiles
+                                  linkResult <- Asm.link allObjFiles outputBase
+                                  case linkResult of
+                                    Left err -> do
+                                      TIO.putStrLn $ "Linking failed: " <> T.pack (show err)
+                                      exitFailure
+                                    Right exePath -> do
+                                      -- Clean up unless --save-temps
+                                      if buildSaveTemps opts
+                                        then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
+                                        else do
+                                          removeFile asmPath
+                                          removeFile objPath
+                                          mapM_ removeFile interpObjFiles
+                                          TIO.putStrLn $ "Generated: " <> T.pack exePath
+                                      exitSuccess
 
 -- | Find the Strata directory path
 -- Priority: 1) --strata flag, 2) Strata/ relative to input, 3) Strata/ in current directory
@@ -400,7 +451,7 @@ extractFunction m = case filter (\(n, _, _, _) -> n == "main") (extractFunctions
   [] -> Nothing
   (f:_) -> Just f
 
--- | Wrap assembly code with proper directives for a given target
+-- | Wrap assembly code with proper directives for a given target (library mode)
 wrapNativeAsm :: Target -> Text -> Text -> Text
 wrapNativeAsm target name body = case target of
   TargetArm64 -> T.unlines
@@ -434,6 +485,80 @@ wrapNativeAsm target name body = case target of
     , ".size once_" <> name <> ", .-once_" <> name
     ]
   TargetC -> error "wrapNativeAsm: TargetC is not a native target"
+
+-- | Wrap assembly code for executable mode (with _start and exit syscall)
+wrapNativeExe :: Target -> Text -> Text -> Text
+wrapNativeExe target name body = case target of
+  TargetArm64 -> T.unlines
+    [ "// Generated by Once (verified via MAlonzo)"
+    , ".text"
+    , ""
+    , "// Once function"
+    , ".globl once_" <> name
+    , ".type once_" <> name <> ", %function"
+    , "once_" <> name <> ":"
+    , body
+    , "    ret"
+    , ".size once_" <> name <> ", .-once_" <> name
+    , ""
+    , "// Entry point"
+    , ".globl _start"
+    , ".type _start, %function"
+    , "_start:"
+    , "    mov x0, #0"            -- arg = NULL (Unit)
+    , "    bl once_" <> name
+    , "    mov x8, #93"           -- syscall: exit
+    , "    mov x0, #0"            -- status = 0
+    , "    svc #0"
+    , ".size _start, .-_start"
+    ]
+  TargetX86_64 -> T.unlines
+    [ "# Generated by Once (verified via MAlonzo)"
+    , ".text"
+    , ""
+    , "# Once function"
+    , ".globl once_" <> name
+    , ".type once_" <> name <> ", @function"
+    , "once_" <> name <> ":"
+    , body
+    , "    retq"
+    , ".size once_" <> name <> ", .-once_" <> name
+    , ""
+    , "# Entry point"
+    , ".globl _start"
+    , ".type _start, @function"
+    , "_start:"
+    , "    xorq %rdi, %rdi"       -- arg = NULL (Unit)
+    , "    call once_" <> name
+    , "    movq $60, %rax"        -- syscall: exit
+    , "    xorq %rdi, %rdi"       -- status = 0
+    , "    syscall"
+    , ".size _start, .-_start"
+    ]
+  TargetRiscV64 -> T.unlines
+    [ "# Generated by Once (verified via MAlonzo)"
+    , ".text"
+    , ""
+    , "# Once function"
+    , ".globl once_" <> name
+    , ".type once_" <> name <> ", @function"
+    , "once_" <> name <> ":"
+    , body
+    , "    ret"
+    , ".size once_" <> name <> ", .-once_" <> name
+    , ""
+    , "# Entry point"
+    , ".globl _start"
+    , ".type _start, @function"
+    , "_start:"
+    , "    li a0, 0"              -- arg = NULL (Unit)
+    , "    call once_" <> name
+    , "    li a7, 93"             -- syscall: exit
+    , "    li a0, 0"              -- status = 0
+    , "    ecall"
+    , ".size _start, .-_start"
+    ]
+  TargetC -> error "wrapNativeExe: TargetC is not a native target"
 
 -- | Elaborate all functions, returning elaborated IR or first error
 elaborateAll :: [(Text, Type, Maybe AllocStrategy, Expr)]
@@ -868,3 +993,58 @@ generateLibraryAll functions = (header, source)
           '\\' -> "\\\\"
           '"'  -> "\\\""
           _    -> T.singleton c
+
+------------------------------------------------------------------------
+-- Native target interpretation file handling
+------------------------------------------------------------------------
+
+-- | Get the file extension for native target interpretation files
+nativeTargetExtension :: Target -> String
+nativeTargetExtension TargetX86_64 = ".x86_64"
+nativeTargetExtension TargetArm64 = ".arm64"
+nativeTargetExtension TargetRiscV64 = ".riscv64"
+nativeTargetExtension TargetC = ".c"
+
+-- | Collect all interpretation assembly files for native targets from loaded modules
+collectNativeInterpFiles :: FilePath -> Target -> ModuleEnv -> [FilePath]
+collectNativeInterpFiles _strataPath _target env =
+  -- Get target-specific files from loaded modules
+  [path | LoadedModule { lmTargetPath = Just path } <- Map.elems (meModules env)]
+
+-- | Resolve explicit interpretation files for native targets from -I:TYPE flags
+-- Only returns files matching the target's InterpType
+resolveExplicitNativeInterps :: FilePath -> Target -> [(InterpType, String)] -> [FilePath]
+resolveExplicitNativeInterps strataPath target explicitInterps =
+  let targetInterpType = case target of
+        TargetX86_64 -> InterpX86_64
+        TargetArm64 -> InterpArm64
+        TargetRiscV64 -> InterpRiscV64
+        TargetC -> InterpC
+  in [ strataPath </> moduleToPath modPath ++ interpTypeExtension itype
+     | (itype, modPath) <- explicitInterps
+     , itype == targetInterpType
+     ]
+
+-- | Assemble interpretation files and return list of .o file paths
+assembleInterpFiles :: Target -> [FilePath] -> FilePath -> IO [FilePath]
+assembleInterpFiles _ [] _ = pure []
+assembleInterpFiles target asmFiles outputBase = do
+  -- For each .{arch} file, assemble to .o
+  results <- mapM assembleOne (zip [0..] asmFiles)
+  pure $ concat results
+  where
+    assembleOne :: (Int, FilePath) -> IO [FilePath]
+    assembleOne (idx, asmPath) = do
+      exists <- doesFileExist asmPath
+      if exists
+        then do
+          let objPath = outputBase ++ "_interp_" ++ show idx ++ ".o"
+          result <- Asm.assemble asmPath objPath
+          case result of
+            Left err -> do
+              TIO.putStrLn $ "Warning: Failed to assemble " <> T.pack asmPath <> ": " <> T.pack (show err)
+              pure []
+            Right _ -> pure [objPath]
+        else do
+          TIO.putStrLn $ "Warning: Interpretation file not found: " <> T.pack asmPath
+          pure []

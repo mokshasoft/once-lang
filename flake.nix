@@ -41,6 +41,13 @@
             # Build tools
             pkgs.gcc
 
+            # Cross-compilation toolchains
+            pkgs.pkgsCross.aarch64-multiplatform.buildPackages.gcc
+            pkgs.pkgsCross.riscv64.buildPackages.gcc
+
+            # QEMU for testing cross-compiled binaries
+            pkgs.qemu
+
             # Agda for formal verification
             pkgs.agda
             pkgs.agdaPackages.standard-library
