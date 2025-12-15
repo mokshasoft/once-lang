@@ -39,7 +39,9 @@ library
   import: shared
   exposed-modules:
       Lib
+      Once.Backend.Assembler
       Once.Backend.C
+      Once.Backend.Native
       Once.Backend.X86
       Once.CLI
       Once.Elaborate
@@ -67,6 +69,17 @@ library
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Surface.IR
       MAlonzo.Code.Once.Surface.Desugar
+      -- Backend code generators (verified, extracted via MAlonzo)
+      MAlonzo.Code.Once.Backend.Emit
+      MAlonzo.Code.Once.Backend.AArch64.CodeGen
+      MAlonzo.Code.Once.Backend.AArch64.Emit
+      MAlonzo.Code.Once.Backend.AArch64.Syntax
+      MAlonzo.Code.Once.Backend.X86.CodeGen
+      MAlonzo.Code.Once.Backend.X86.Emit
+      MAlonzo.Code.Once.Backend.X86.Syntax
+      MAlonzo.Code.Once.Backend.RiscV64.CodeGen
+      MAlonzo.Code.Once.Backend.RiscV64.Emit
+      MAlonzo.Code.Once.Backend.RiscV64.Syntax
       -- Agda builtins
       MAlonzo.Code.Agda.Builtin.Bool
       MAlonzo.Code.Agda.Builtin.Char
@@ -167,6 +180,7 @@ library
       MAlonzo.Code.Data.List.Relation.Unary.Unique.Setoid
       -- Data.Maybe
       MAlonzo.Code.Data.Maybe.Base
+      MAlonzo.Code.Data.Maybe.Effectful
       MAlonzo.Code.Data.Maybe.Relation.Unary.Any
       -- Data.Nat
       MAlonzo.Code.Data.Nat
@@ -178,6 +192,9 @@ library
       MAlonzo.Code.Data.Nat.GeneralisedArithmetic
       MAlonzo.Code.Data.Nat.Induction
       MAlonzo.Code.Data.Nat.Properties
+      MAlonzo.Code.Data.Nat.Show
+      -- Data.Digit
+      MAlonzo.Code.Data.Digit
       -- Data.Parity
       MAlonzo.Code.Data.Parity.Base
       -- Data.Product
@@ -329,6 +346,7 @@ library
     , directory
     , filepath
     , megaparsec
+    , process
     , text
 
 executable once

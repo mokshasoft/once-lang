@@ -21,6 +21,8 @@ import System.Exit (exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 
 import Once.Backend.C (generateC, CModule (..))
+import Once.Backend.Native (compileToAArch64, compileToX86, compileToRiscV64)
+import qualified Once.Backend.Assembler as Asm
 import Once.Elaborate (elaborate, elaborateWithEnv)
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
@@ -147,14 +149,40 @@ runBuild opts = do
                           -- Optimize and generate for each function
                           let opt = optimizeWith (buildOptimizer opts)
                           let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
-                          -- Generate library with all functions
-                          let (header, source') = generateLibraryAll optimizedFunctions
-                              headerPath = outputBase ++ ".h"
-                              sourcePath = outputBase ++ ".c"
-                          TIO.writeFile headerPath header
-                          TIO.writeFile sourcePath source'
-                          TIO.putStrLn $ "Generated: " <> T.pack headerPath <> ", " <> T.pack sourcePath
-                          exitSuccess
+
+                          -- Branch based on target
+                          case target of
+                            TargetC -> do
+                              -- Generate library with all functions (C backend)
+                              let (header, source') = generateLibraryAll optimizedFunctions
+                                  headerPath = outputBase ++ ".h"
+                                  sourcePath = outputBase ++ ".c"
+                              TIO.writeFile headerPath header
+                              TIO.writeFile sourcePath source'
+                              TIO.putStrLn $ "Generated: " <> T.pack headerPath <> ", " <> T.pack sourcePath
+                              exitSuccess
+
+                            nativeTarget -> do
+                              -- Native targets: generate assembly for first function
+                              -- TODO: Support multiple functions in native library mode
+                              let (funcName, _, _, funcIR) = head optimizedFunctions
+                              let asmResult = case nativeTarget of
+                                    TargetArm64 -> compileToAArch64 funcIR
+                                    TargetX86_64 -> compileToX86 funcIR
+                                    TargetRiscV64 -> compileToRiscV64 funcIR
+                                    TargetC -> error "unreachable"
+                              case asmResult of
+                                Nothing -> do
+                                  TIO.putStrLn "Error: IR contains non-categorical constructs (primitives, strings, etc.)"
+                                  TIO.putStrLn "Native targets only support pure categorical expressions."
+                                  TIO.putStrLn "Hint: Use --target c for full language support."
+                                  exitFailure
+                                Just asmCode -> do
+                                  let wrappedAsm = wrapNativeAsm nativeTarget funcName asmCode
+                                  let asmPath = outputBase ++ ".s"
+                                  TIO.writeFile asmPath wrappedAsm
+                                  TIO.putStrLn $ "Generated: " <> T.pack asmPath
+                                  exitSuccess
 
                 Executable -> do
                   -- Executable mode: requires main
@@ -171,14 +199,6 @@ runBuild opts = do
                           TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
                           exitFailure
 
-                      -- Check if target is supported
-                      case target of
-                        TargetC -> pure ()  -- C is supported
-                        other -> do
-                          TIO.putStrLn $ "Error: Target '" <> T.pack (show other) <> "' not yet implemented"
-                          TIO.putStrLn "Hint: Use --target c for C backend"
-                          exitFailure
-
                       -- Elaborate all functions to IR (with module environment)
                       let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
                       case elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
@@ -190,23 +210,49 @@ runBuild opts = do
                           let opt = optimizeWith (buildOptimizer opts)
                           let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
 
-                          -- For executable, generate C with main() wrapper
-                          -- Load interpretation C code from --interp and from imported modules
-                          interpCodeLegacy <- case buildInterp opts of
-                            Nothing -> pure ""
-                            Just interpPath -> loadInterpretationCode interpPath
+                          -- Branch based on target
+                          case target of
+                            TargetC -> do
+                              -- For executable, generate C with main() wrapper
+                              -- Load interpretation C code from --interp and from imported modules
+                              interpCodeLegacy <- case buildInterp opts of
+                                Nothing -> pure ""
+                                Just interpPath -> loadInterpretationCode interpPath
 
-                          -- Collect target-specific files from imported interpretation modules
-                          let importedTargetFiles = collectTargetFiles modEnv
-                          importedCode <- T.concat <$> mapM TIO.readFile importedTargetFiles
+                              -- Collect target-specific files from imported interpretation modules
+                              let importedTargetFiles = collectTargetFiles modEnv
+                              importedCode <- T.concat <$> mapM TIO.readFile importedTargetFiles
 
-                          let sourcePath = outputBase ++ ".c"
-                              alloc = mainAlloc <|> buildAlloc opts
-                              interpCode = interpCodeLegacy <> "\n" <> importedCode
-                              source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
-                          TIO.writeFile sourcePath source'
-                          TIO.putStrLn $ "Generated: " <> T.pack sourcePath
-                          exitSuccess
+                              let sourcePath = outputBase ++ ".c"
+                                  alloc = mainAlloc <|> buildAlloc opts
+                                  interpCode = interpCodeLegacy <> "\n" <> importedCode
+                                  source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
+                              TIO.writeFile sourcePath source'
+                              TIO.putStrLn $ "Generated: " <> T.pack sourcePath
+                              exitSuccess
+
+                            nativeTarget -> do
+                              -- Native targets: use verified code generators
+                              -- For now, we only compile the main function (categorical IR only)
+                              let (_, _, _, mainIR) = head optimizedFunctions
+                              let asmResult = case nativeTarget of
+                                    TargetArm64 -> compileToAArch64 mainIR
+                                    TargetX86_64 -> compileToX86 mainIR
+                                    TargetRiscV64 -> compileToRiscV64 mainIR
+                                    TargetC -> error "unreachable"
+                              case asmResult of
+                                Nothing -> do
+                                  TIO.putStrLn "Error: IR contains non-categorical constructs (primitives, strings, etc.)"
+                                  TIO.putStrLn "Native targets only support pure categorical expressions."
+                                  TIO.putStrLn "Hint: Use --target c for full language support."
+                                  exitFailure
+                                Just asmCode -> do
+                                  -- Wrap assembly with proper directives
+                                  let wrappedAsm = wrapNativeAsm nativeTarget "main" asmCode
+                                  let asmPath = outputBase ++ ".s"
+                                  TIO.writeFile asmPath wrappedAsm
+                                  TIO.putStrLn $ "Generated: " <> T.pack asmPath
+                                  exitSuccess
 
 -- | Find the Strata directory path
 -- Priority: 1) --strata flag, 2) Strata/ relative to input, 3) Strata/ in current directory
@@ -287,6 +333,41 @@ extractFunction :: Module -> Maybe (Text, Type, Maybe AllocStrategy, Expr)
 extractFunction m = case filter (\(n, _, _, _) -> n == "main") (extractFunctions m) of
   [] -> Nothing
   (f:_) -> Just f
+
+-- | Wrap assembly code with proper directives for a given target
+wrapNativeAsm :: Target -> Text -> Text -> Text
+wrapNativeAsm target name body = case target of
+  TargetArm64 -> T.unlines
+    [ "// Generated by Once (verified via MAlonzo)"
+    , ".text"
+    , ".globl once_" <> name
+    , ".type once_" <> name <> ", %function"
+    , "once_" <> name <> ":"
+    , body
+    , "    ret"
+    , ".size once_" <> name <> ", .-once_" <> name
+    ]
+  TargetX86_64 -> T.unlines
+    [ "# Generated by Once (verified via MAlonzo)"
+    , ".text"
+    , ".globl once_" <> name
+    , ".type once_" <> name <> ", @function"
+    , "once_" <> name <> ":"
+    , body
+    , "    retq"
+    , ".size once_" <> name <> ", .-once_" <> name
+    ]
+  TargetRiscV64 -> T.unlines
+    [ "# Generated by Once (verified via MAlonzo)"
+    , ".text"
+    , ".globl once_" <> name
+    , ".type once_" <> name <> ", @function"
+    , "once_" <> name <> ":"
+    , body
+    , "    ret"
+    , ".size once_" <> name <> ", .-once_" <> name
+    ]
+  TargetC -> error "wrapNativeAsm: TargetC is not a native target"
 
 -- | Elaborate all functions, returning elaborated IR or first error
 elaborateAll :: [(Text, Type, Maybe AllocStrategy, Expr)]
