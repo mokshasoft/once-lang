@@ -6,8 +6,10 @@ module Once.CLI
   , OutputMode (..)
   , AllocStrategy (..)
   , Target (..)
+  , InterpType (..)
   , targetExtension
   , parseTarget
+  , parseInterpType
   ) where
 
 import Control.Applicative ((<|>))
@@ -16,11 +18,12 @@ import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (listDirectory, doesDirectoryExist)
+import System.Directory (listDirectory, doesDirectoryExist, removeFile)
 import System.Exit (exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 
 import Once.Backend.C (generateC, CModule (..))
+import Once.Backend.CCompiler as CC
 import Once.Backend.Native (compileToAArch64, compileToX86, compileToRiscV64)
 import qualified Once.Backend.Assembler as Asm
 import Once.Elaborate (elaborate, elaborateWithEnv)
@@ -67,6 +70,30 @@ parseTarget "arm64" = Just TargetArm64
 parseTarget "riscv64" = Just TargetRiscV64
 parseTarget _ = Nothing
 
+-- | Interpretation implementation type
+data InterpType
+  = InterpC       -- ^ C implementation (.c)
+  | InterpX86_64  -- ^ x86-64 assembly (.x86_64)
+  | InterpArm64   -- ^ ARM64 assembly (.arm64)
+  | InterpRiscV64 -- ^ RISC-V assembly (.riscv64)
+  deriving (Eq, Show)
+
+-- | Parse interpretation type from string
+parseInterpType :: String -> Maybe InterpType
+parseInterpType "C" = Just InterpC
+parseInterpType "c" = Just InterpC
+parseInterpType "x86_64" = Just InterpX86_64
+parseInterpType "arm64" = Just InterpArm64
+parseInterpType "riscv64" = Just InterpRiscV64
+parseInterpType _ = Nothing
+
+-- | File extension for each interpretation type
+interpTypeExtension :: InterpType -> String
+interpTypeExtension InterpC = ".c"
+interpTypeExtension InterpX86_64 = ".x86_64"
+interpTypeExtension InterpArm64 = ".arm64"
+interpTypeExtension InterpRiscV64 = ".riscv64"
+
 -- | Options for the build command
 data BuildOptions = BuildOptions
   { buildInput  :: FilePath
@@ -77,6 +104,9 @@ data BuildOptions = BuildOptions
   , buildStrata :: Maybe FilePath       -- ^ Path to Strata directory (default: look relative to input file)
   , buildTarget :: Target               -- ^ Target architecture (default: TargetC)
   , buildOptimizer :: OptimizerBackend  -- ^ Which optimizer to use (default: HaskellOptimizer)
+  , buildSaveTemps :: Bool              -- ^ Keep intermediate files (.c, .s, .o)
+  , buildExplicitInterps :: [(InterpType, String)]  -- ^ Explicit interpretations: -I:TYPE MODULE
+  , buildAutoResolve :: Maybe [InterpType]          -- ^ Auto-resolve priority: -A:TYPE:TYPE:...
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -214,7 +244,7 @@ runBuild opts = do
                           case target of
                             TargetC -> do
                               -- For executable, generate C with main() wrapper
-                              -- Load interpretation C code from --interp and from imported modules
+                              -- Load interpretation C code from --interp (legacy)
                               interpCodeLegacy <- case buildInterp opts of
                                 Nothing -> pure ""
                                 Just interpPath -> loadInterpretationCode interpPath
@@ -223,13 +253,30 @@ runBuild opts = do
                               let importedTargetFiles = collectTargetFiles modEnv
                               importedCode <- T.concat <$> mapM TIO.readFile importedTargetFiles
 
+                              -- Resolve and load explicit interpretation files from -I:TYPE MODULE
+                              let explicitFiles = resolveExplicitInterps strataPath (buildExplicitInterps opts)
+                              explicitCode <- T.concat <$> mapM TIO.readFile explicitFiles
+
                               let sourcePath = outputBase ++ ".c"
                                   alloc = mainAlloc <|> buildAlloc opts
-                                  interpCode = interpCodeLegacy <> "\n" <> importedCode
+                                  interpCode = interpCodeLegacy <> "\n" <> importedCode <> "\n" <> explicitCode
                                   source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
                               TIO.writeFile sourcePath source'
-                              TIO.putStrLn $ "Generated: " <> T.pack sourcePath
-                              exitSuccess
+
+                              -- Compile C to executable
+                              result <- CC.compile [sourcePath] outputBase
+                              case result of
+                                Left err -> do
+                                  TIO.putStrLn $ "Compilation failed: " <> T.pack (show err)
+                                  exitFailure
+                                Right exePath -> do
+                                  -- Clean up intermediate .c unless --save-temps
+                                  if buildSaveTemps opts
+                                    then TIO.putStrLn $ "Generated: " <> T.pack sourcePath <> ", " <> T.pack exePath
+                                    else do
+                                      removeFile sourcePath
+                                      TIO.putStrLn $ "Generated: " <> T.pack exePath
+                                  exitSuccess
 
                             nativeTarget -> do
                               -- Native targets: use verified code generators
@@ -276,6 +323,25 @@ findStrataPath opts inputPath = case buildStrata opts of
 -- | Collect all target-specific file paths from loaded interpretation modules
 collectTargetFiles :: ModuleEnv -> [FilePath]
 collectTargetFiles env = [path | LoadedModule { lmTargetPath = Just path } <- Map.elems (meModules env)]
+
+-- | Convert module path to file path
+-- I.Linux.Syscalls → Interpretations/Linux/Syscalls
+-- D.Canonical → Derived/Canonical
+moduleToPath :: String -> FilePath
+moduleToPath modPath = case modPath of
+  'I':'.':rest -> "Interpretations" </> dotsToSlash rest
+  'D':'.':rest -> "Derived" </> dotsToSlash rest
+  _ -> dotsToSlash modPath
+  where
+    dotsToSlash = map (\c -> if c == '.' then '/' else c)
+
+-- | Resolve explicit interpretation files from -I:TYPE MODULE flags
+-- Returns list of resolved file paths
+resolveExplicitInterps :: FilePath -> [(InterpType, String)] -> [FilePath]
+resolveExplicitInterps strataPath = map resolve
+  where
+    resolve (itype, modPath) =
+      strataPath </> moduleToPath modPath ++ interpTypeExtension itype
 
 -- | Run the check command: parse -> typecheck
 runCheck :: CheckOptions -> IO ()

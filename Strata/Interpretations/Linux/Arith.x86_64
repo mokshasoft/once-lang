@@ -1,0 +1,218 @@
+/* Integer arithmetic primitives for Once
+ *
+ * x86-64 System V ABI implementation of Arith.once primitives.
+ * OncePair (16 bytes) passed in: rdi (fst), rsi (snd)
+ * int64_t passed in: rdi
+ * Return value in: rax
+ */
+
+.text
+
+/*========================================================================
+ * Basic Arithmetic
+ *========================================================================*/
+
+.globl once_add
+.type once_add, @function
+once_add:
+    mov     %rdi, %rax      // a = fst
+    add     %rsi, %rax      // a + snd
+    ret
+.size once_add, .-once_add
+
+.globl once_sub
+.type once_sub, @function
+once_sub:
+    mov     %rdi, %rax      // a = fst
+    sub     %rsi, %rax      // a - snd
+    ret
+.size once_sub, .-once_sub
+
+.globl once_mul
+.type once_mul, @function
+once_mul:
+    mov     %rdi, %rax      // a = fst
+    imul    %rsi, %rax      // a * snd
+    ret
+.size once_mul, .-once_mul
+
+.globl once_div
+.type once_div, @function
+once_div:
+    test    %rsi, %rsi      // check if b == 0
+    jz      .div_zero
+    mov     %rdi, %rax      // a = fst
+    cqo                     // sign-extend rax to rdx:rax
+    idiv    %rsi            // rdx:rax / rsi -> quotient in rax
+    ret
+.div_zero:
+    xor     %eax, %eax      // return 0 for division by zero
+    ret
+.size once_div, .-once_div
+
+.globl once_mod
+.type once_mod, @function
+once_mod:
+    test    %rsi, %rsi      // check if b == 0
+    jz      .mod_zero
+    mov     %rdi, %rax      // a = fst
+    cqo                     // sign-extend rax to rdx:rax
+    idiv    %rsi            // rdx:rax / rsi -> remainder in rdx
+    mov     %rdx, %rax      // return remainder
+    ret
+.mod_zero:
+    xor     %eax, %eax      // return 0 for mod by zero
+    ret
+.size once_mod, .-once_mod
+
+.globl once_neg
+.type once_neg, @function
+once_neg:
+    mov     %rdi, %rax
+    neg     %rax
+    ret
+.size once_neg, .-once_neg
+
+.globl once_abs
+.type once_abs, @function
+once_abs:
+    mov     %rdi, %rax
+    mov     %rdi, %rdx
+    neg     %rdx
+    cmovs   %rdx, %rax      // if rax was negative, use negated value
+    ret
+.size once_abs, .-once_abs
+
+/*========================================================================
+ * Comparisons (return 0 or 1)
+ *========================================================================*/
+
+.globl once_eq
+.type once_eq, @function
+once_eq:
+    xor     %eax, %eax      // result = 0
+    cmp     %rsi, %rdi      // compare fst, snd
+    sete    %al             // set al = 1 if equal
+    ret
+.size once_eq, .-once_eq
+
+.globl once_neq
+.type once_neq, @function
+once_neq:
+    xor     %eax, %eax
+    cmp     %rsi, %rdi
+    setne   %al
+    ret
+.size once_neq, .-once_neq
+
+.globl once_lt
+.type once_lt, @function
+once_lt:
+    xor     %eax, %eax
+    cmp     %rsi, %rdi      // fst - snd
+    setl    %al             // signed less than
+    ret
+.size once_lt, .-once_lt
+
+.globl once_le
+.type once_le, @function
+once_le:
+    xor     %eax, %eax
+    cmp     %rsi, %rdi
+    setle   %al
+    ret
+.size once_le, .-once_le
+
+.globl once_gt
+.type once_gt, @function
+once_gt:
+    xor     %eax, %eax
+    cmp     %rsi, %rdi
+    setg    %al
+    ret
+.size once_gt, .-once_gt
+
+.globl once_ge
+.type once_ge, @function
+once_ge:
+    xor     %eax, %eax
+    cmp     %rsi, %rdi
+    setge   %al
+    ret
+.size once_ge, .-once_ge
+
+/*========================================================================
+ * Bitwise Operations
+ *========================================================================*/
+
+.globl once_band
+.type once_band, @function
+once_band:
+    mov     %rdi, %rax
+    and     %rsi, %rax
+    ret
+.size once_band, .-once_band
+
+.globl once_bor
+.type once_bor, @function
+once_bor:
+    mov     %rdi, %rax
+    or      %rsi, %rax
+    ret
+.size once_bor, .-once_bor
+
+.globl once_bxor
+.type once_bxor, @function
+once_bxor:
+    mov     %rdi, %rax
+    xor     %rsi, %rax
+    ret
+.size once_bxor, .-once_bxor
+
+.globl once_bnot
+.type once_bnot, @function
+once_bnot:
+    mov     %rdi, %rax
+    not     %rax
+    ret
+.size once_bnot, .-once_bnot
+
+.globl once_shl
+.type once_shl, @function
+once_shl:
+    mov     %rdi, %rax
+    mov     %rsi, %rcx      // shift amount must be in cl
+    shl     %cl, %rax
+    ret
+.size once_shl, .-once_shl
+
+.globl once_shr
+.type once_shr, @function
+once_shr:
+    mov     %rdi, %rax
+    mov     %rsi, %rcx      // shift amount must be in cl
+    sar     %cl, %rax       // arithmetic right shift (preserves sign)
+    ret
+.size once_shr, .-once_shr
+
+/*========================================================================
+ * Min/Max
+ *========================================================================*/
+
+.globl once_min
+.type once_min, @function
+once_min:
+    mov     %rdi, %rax      // a = fst
+    cmp     %rsi, %rdi      // compare a, b
+    cmovg   %rsi, %rax      // if a > b, use b
+    ret
+.size once_min, .-once_min
+
+.globl once_max
+.type once_max, @function
+once_max:
+    mov     %rdi, %rax      // a = fst
+    cmp     %rsi, %rdi      // compare a, b
+    cmovl   %rsi, %rax      // if a < b, use b
+    ret
+.size once_max, .-once_max

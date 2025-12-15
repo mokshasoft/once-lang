@@ -4,7 +4,8 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
 
-import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), OutputMode (..), AllocStrategy (..), Target (..), parseTarget)
+import Data.List (isPrefixOf, stripPrefix)
+import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), OutputMode (..), AllocStrategy (..), Target (..), InterpType (..), parseTarget, parseInterpType)
 import Once.Optimize (OptimizerBackend (..))
 
 main :: IO ()
@@ -20,40 +21,96 @@ parseArgs ("build" : rest) = parseBuild rest
 parseArgs ("check" : rest) = parseCheck rest
 parseArgs _ = Nothing
 
+-- | Build configuration state for parsing
+data BuildConfig = BuildConfig
+  { bcOutput     :: Maybe String
+  , bcMode       :: OutputMode
+  , bcInterp     :: Maybe String
+  , bcAlloc      :: Maybe AllocStrategy
+  , bcStrata     :: Maybe String
+  , bcTarget     :: Target
+  , bcOptimizer  :: OptimizerBackend
+  , bcSaveTemps  :: Bool
+  , bcExplicit   :: [(InterpType, String)]  -- -I:TYPE MODULE
+  , bcAutoRes    :: Maybe [InterpType]      -- -A:PRIORITY
+  , bcInput      :: Maybe String
+  }
+
+defaultBuildConfig :: BuildConfig
+defaultBuildConfig = BuildConfig
+  { bcOutput    = Nothing
+  , bcMode      = Library
+  , bcInterp    = Nothing
+  , bcAlloc     = Nothing
+  , bcStrata    = Nothing
+  , bcTarget    = TargetC
+  , bcOptimizer = HaskellOptimizer
+  , bcSaveTemps = False
+  , bcExplicit  = []
+  , bcAutoRes   = Nothing
+  , bcInput     = Nothing
+  }
+
 -- | Parse build command arguments
 parseBuild :: [String] -> Maybe Command
-parseBuild args = go args Nothing Library Nothing Nothing Nothing TargetC HaskellOptimizer Nothing
+parseBuild args = go args defaultBuildConfig
   where
-    -- go remaining output mode interp alloc strata target optimizer input
-    go :: [String] -> Maybe String -> OutputMode -> Maybe String -> Maybe AllocStrategy -> Maybe String -> Target -> OptimizerBackend -> Maybe String -> Maybe Command
-    go [] _ _ _ _ _ _ _ Nothing = Nothing  -- no input file
-    go [] output mode interp alloc strata target optimizer (Just input) = Just $ Build BuildOptions
-      { buildInput = input
-      , buildOutput = output
-      , buildMode = mode
-      , buildInterp = interp
-      , buildAlloc = alloc
-      , buildStrata = strata
-      , buildTarget = target
-      , buildOptimizer = optimizer
-      }
-    go ("-o" : out : rest) _ mode interp alloc strata target opt input = go rest (Just out) mode interp alloc strata target opt input
-    go ("--lib" : rest) output _ interp alloc strata target opt input = go rest output Library interp alloc strata target opt input
-    go ("--exe" : rest) output _ interp alloc strata target opt input = go rest output Executable interp alloc strata target opt input
-    go ("--interp" : i : rest) output mode _ alloc strata target opt input = go rest output mode (Just i) alloc strata target opt input
-    go ("--strata" : s : rest) output mode interp alloc _ target opt input = go rest output mode interp alloc (Just s) target opt input
-    go ("--target" : t : rest) output mode interp alloc strata _ opt input = case parseTarget t of
-      Just target -> go rest output mode interp alloc strata target opt input
+    go :: [String] -> BuildConfig -> Maybe Command
+    go [] cfg = case bcInput cfg of
+      Nothing -> Nothing  -- no input file
+      Just input -> Just $ Build BuildOptions
+        { buildInput = input
+        , buildOutput = bcOutput cfg
+        , buildMode = bcMode cfg
+        , buildInterp = bcInterp cfg
+        , buildAlloc = bcAlloc cfg
+        , buildStrata = bcStrata cfg
+        , buildTarget = bcTarget cfg
+        , buildOptimizer = bcOptimizer cfg
+        , buildSaveTemps = bcSaveTemps cfg
+        , buildExplicitInterps = bcExplicit cfg
+        , buildAutoResolve = bcAutoRes cfg
+        }
+    go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }
+    go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
+    go ("--exe" : rest) cfg = go rest cfg { bcMode = Executable }
+    go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
+    go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
+    go ("--target" : t : rest) cfg = case parseTarget t of
+      Just target -> go rest cfg { bcTarget = target }
       Nothing -> Nothing  -- invalid target
-    go ("--alloc" : a : rest) output mode interp _ strata target opt input = case parseAllocStrategy a of
-      Just alloc -> go rest output mode interp (Just alloc) strata target opt input
+    go ("--alloc" : a : rest) cfg = case parseAllocStrategy a of
+      Just alloc -> go rest cfg { bcAlloc = Just alloc }
       Nothing -> Nothing  -- invalid allocation strategy
-    go ("--optimizer" : o : rest) output mode interp alloc strata target _ input = case parseOptimizer o of
-      Just opt -> go rest output mode interp alloc strata target opt input
+    go ("--optimizer" : o : rest) cfg = case parseOptimizer o of
+      Just opt -> go rest cfg { bcOptimizer = opt }
       Nothing -> Nothing  -- invalid optimizer
-    go (x : rest) output mode interp alloc strata target opt _input = case x of
+    go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
+    -- Parse -I:TYPE MODULE
+    go (x : modPath : rest) cfg
+      | "-I:" `isPrefixOf` x =
+          case stripPrefix "-I:" x >>= parseInterpType of
+            Just itype -> go rest cfg { bcExplicit = bcExplicit cfg ++ [(itype, modPath)] }
+            Nothing -> Nothing  -- invalid interpretation type
+    -- Parse -A:PRIORITY (e.g., -A:C:x86_64)
+    go (x : rest) cfg
+      | "-A:" `isPrefixOf` x =
+          case stripPrefix "-A:" x >>= parseAutoResolve of
+            Just priority -> go rest cfg { bcAutoRes = Just priority }
+            Nothing -> Nothing  -- invalid auto-resolve priority
+    go (x : rest) cfg = case x of
       ('-':_) -> Nothing  -- unknown flag
-      _ -> go rest output mode interp alloc strata target opt (Just x)  -- treat as input file
+      _ -> go rest cfg { bcInput = Just x }  -- treat as input file
+
+-- | Parse auto-resolve priority string (e.g., "C:x86_64" -> [InterpC, InterpX86_64])
+parseAutoResolve :: String -> Maybe [InterpType]
+parseAutoResolve s = mapM parseInterpType (splitOn ':' s)
+  where
+    splitOn :: Char -> String -> [String]
+    splitOn _ [] = []
+    splitOn c str = case break (== c) str of
+      (x, [])     -> [x]
+      (x, _:rest) -> x : splitOn c rest
 
 -- | Parse optimizer backend from string
 parseOptimizer :: String -> Maybe OptimizerBackend
@@ -87,25 +144,37 @@ usage = do
   TIO.putStrLn "Usage: once <command> [options]"
   TIO.putStrLn ""
   TIO.putStrLn "Commands:"
-  TIO.putStrLn "  build [--lib|--exe] [--target <arch>] [--strata <path>] [--alloc <strategy>] [--optimizer <backend>] <file.once> [-o <output>]"
-  TIO.putStrLn "        --lib             Generate C library (header + source) [default]"
-  TIO.putStrLn "        --exe             Generate standalone executable"
-  TIO.putStrLn "        --target ARCH     Target architecture (c|x86_64|arm64|riscv64) [default: c]"
-  TIO.putStrLn "        --strata PATH     Path to Strata directory for imports (default: auto-detect)"
-  TIO.putStrLn "        --alloc STRATEGY  Default allocation strategy (stack|heap|pool|arena|const)"
-  TIO.putStrLn "                          const: read-only data section (works for all pure Once programs)"
-  TIO.putStrLn "        --optimizer BACKEND  Optimizer to use (haskell|malonzo) [default: haskell]"
-  TIO.putStrLn "                          malonzo: Use verified optimizer from Agda (D036)"
-  TIO.putStrLn "        --interp PATH     (deprecated) Use interpretation from PATH"
-  TIO.putStrLn "  check <file.once>       Type check only"
+  TIO.putStrLn "  build [options] <file.once> [-o <output>]"
+  TIO.putStrLn ""
+  TIO.putStrLn "Build options:"
+  TIO.putStrLn "  --lib               Generate C library (header + source) [default]"
+  TIO.putStrLn "  --exe               Generate standalone executable"
+  TIO.putStrLn "  --target ARCH       Target architecture (c|x86_64|arm64|riscv64) [default: c]"
+  TIO.putStrLn "  --save-temps        Keep intermediate files (.c, .s, .o)"
+  TIO.putStrLn "  --strata PATH       Path to Strata directory for imports (default: auto-detect)"
+  TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
+  TIO.putStrLn "  --optimizer BACKEND Optimizer to use (haskell|malonzo) [default: haskell]"
+  TIO.putStrLn ""
+  TIO.putStrLn "Interpretation resolution:"
+  TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:C I.Linux.Syscalls)"
+  TIO.putStrLn "                      TYPE: C, x86_64, arm64, riscv64"
+  TIO.putStrLn "                      Extension added automatically based on TYPE"
+  TIO.putStrLn "  -A:PRIORITY         Auto-resolve with priority (e.g., -A:C:x86_64)"
+  TIO.putStrLn "                      Example: -A:x86_64:C means prefer native, fall back to C"
+  TIO.putStrLn ""
+  TIO.putStrLn "Legacy options:"
+  TIO.putStrLn "  --interp PATH       (deprecated) Use interpretation from PATH"
+  TIO.putStrLn ""
+  TIO.putStrLn "Other commands:"
+  TIO.putStrLn "  check <file.once>   Type check only"
   TIO.putStrLn ""
   TIO.putStrLn "Import abbreviations:"
   TIO.putStrLn "  I. -> Interpretations.  (e.g., import I.Linux.Syscalls)"
   TIO.putStrLn "  D. -> Derived.          (e.g., import D.Canonical)"
   TIO.putStrLn ""
   TIO.putStrLn "Target architectures:"
-  TIO.putStrLn "  c       - C backend (implemented)"
-  TIO.putStrLn "  x86_64  - x86-64 assembly (future)"
-  TIO.putStrLn "  arm64   - ARM64 assembly (future)"
-  TIO.putStrLn "  riscv64 - RISC-V 64-bit (future)"
+  TIO.putStrLn "  c       - C backend (default, full language support)"
+  TIO.putStrLn "  x86_64  - x86-64 native"
+  TIO.putStrLn "  arm64   - ARM64 native"
+  TIO.putStrLn "  riscv64 - RISC-V 64-bit native"
   exitFailure

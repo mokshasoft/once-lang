@@ -41,6 +41,7 @@ library
       Lib
       Once.Backend.Assembler
       Once.Backend.C
+      Once.Backend.CCompiler
       Once.Backend.Native
       Once.Backend.X86
       Once.CLI
