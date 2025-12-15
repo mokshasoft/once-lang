@@ -709,22 +709,104 @@ mutual
                 × halted s' ≡ true
                 × readReg (regs s') a0 ≡ encode {C} (eval f (env , arg)))
 
+  ------------------------------------------------------------------------
+  -- Proven helper for fst (1 instruction)
+  ------------------------------------------------------------------------
+
+  -- | run-ir-at-offset-fst: Execute fst at arbitrary offset (PROVEN)
+  -- compile-riscv fst = ld a0 (+ 0) a0 ∷ []
+  -- effectiveAddr (regs s) a0 (+ 0) = readReg (regs s) a0 + 0 = encode x
+  -- After ld: a0 = memory[a0] = encode (proj₁ x)
+  run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-riscv (fst {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
+           × readReg (regs s') a0 ≡ encode (eval (fst {A} {B}) x)
+           × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq a0-eq =
+    let prog = prefix ++ compile-riscv (fst {A} {B}) ++ suffix
+        a = proj₁ x
+        -- Memory precondition from encoding axiom
+        mem-eq : readMem (memory s) (encode x) ≡ just (encode a)
+        mem-eq = encode-pair-fst (proj₁ x) (proj₂ x) (memory s)
+        -- Effective address = a0 + 0 = encode x
+        eff-addr : effectiveAddr (regs s) a0 (+ 0) ≡ encode x
+        eff-addr = trans (cong (readReg (regs s) a0 +ℕ_) refl) (trans (+-identityʳ (readReg (regs s) a0)) a0-eq)
+        -- Memory read succeeds
+        mem-read : readMem (memory s) (effectiveAddr (regs s) a0 (+ 0)) ≡ just (encode a)
+        mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
+        -- Target state
+        s' : State
+        s' = record s { regs = writeReg (regs s) a0 (encode a) ; pc = pc s +ℕ 1 }
+        -- Fetch succeeds
+        fetch-eq : fetch prog (pc s) ≡ just (ld a0 (+ 0) a0)
+        fetch-eq = subst (λ p → fetch prog p ≡ just (ld a0 (+ 0) a0))
+                         (sym pc-eq) (fetch-at-prefix-end prefix (ld a0 (+ 0) a0) suffix)
+        -- Step produces s'
+        step-eq : step prog s ≡ just s'
+        step-eq = trans (step-exec prog s (ld a0 (+ 0) a0) h-false fetch-eq)
+                        (execInstr-ld-success prog s a0 a0 (+ 0) (encode a) mem-read)
+        -- Properties of s'
+        h' : halted s' ≡ false
+        h' = h-false
+        pc' : pc s' ≡ length prefix +ℕ 1
+        pc' = cong (λ p → p +ℕ 1) pc-eq
+        a0' : readReg (regs s') a0 ≡ encode a
+        a0' = readReg-writeReg-same (regs s) a0 (encode a) (λ ())
+        s1' : readReg (regs s') s1 ≡ readReg (regs s) s1
+        s1' = readReg-writeReg-a0-s1 (regs s) (encode a)
+    in s' , exec-one-step-nonhalt prog s s' step-eq h' , h' , pc' , a0' , s1'
+
+  ------------------------------------------------------------------------
+  -- Proven helper for snd (1 instruction)
+  ------------------------------------------------------------------------
+
+  -- | run-ir-at-offset-snd: Execute snd at arbitrary offset (PROVEN)
+  -- compile-riscv snd = ld a0 (+ 8) a0 ∷ []
+  -- effectiveAddr (regs s) a0 (+ 8) = readReg (regs s) a0 + 8 = encode x + 8
+  -- After ld: a0 = memory[a0+8] = encode (proj₂ x)
+  run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-riscv (snd {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
+           × readReg (regs s') a0 ≡ encode (eval (snd {A} {B}) x)
+           × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq a0-eq =
+    let prog = prefix ++ compile-riscv (snd {A} {B}) ++ suffix
+        b = proj₂ x
+        -- Memory precondition from encoding axiom
+        mem-eq : readMem (memory s) (encode x +ℕ 8) ≡ just (encode b)
+        mem-eq = encode-pair-snd (proj₁ x) (proj₂ x) (memory s)
+        -- Effective address = a0 + 8 = encode x + 8
+        eff-addr : effectiveAddr (regs s) a0 (+ 8) ≡ encode x +ℕ 8
+        eff-addr = cong (_+ℕ 8) a0-eq
+        -- Memory read succeeds
+        mem-read : readMem (memory s) (effectiveAddr (regs s) a0 (+ 8)) ≡ just (encode b)
+        mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
+        -- Target state
+        s' : State
+        s' = record s { regs = writeReg (regs s) a0 (encode b) ; pc = pc s +ℕ 1 }
+        -- Fetch succeeds
+        fetch-eq : fetch prog (pc s) ≡ just (ld a0 (+ 8) a0)
+        fetch-eq = subst (λ p → fetch prog p ≡ just (ld a0 (+ 8) a0))
+                         (sym pc-eq) (fetch-at-prefix-end prefix (ld a0 (+ 8) a0) suffix)
+        -- Step produces s'
+        step-eq : step prog s ≡ just s'
+        step-eq = trans (step-exec prog s (ld a0 (+ 8) a0) h-false fetch-eq)
+                        (execInstr-ld-success prog s a0 a0 (+ 8) (encode b) mem-read)
+        -- Properties of s'
+        h' : halted s' ≡ false
+        h' = h-false
+        pc' : pc s' ≡ length prefix +ℕ 1
+        pc' = cong (λ p → p +ℕ 1) pc-eq
+        a0' : readReg (regs s') a0 ≡ encode b
+        a0' = readReg-writeReg-same (regs s) a0 (encode b) (λ ())
+        s1' : readReg (regs s') s1 ≡ readReg (regs s) s1
+        s1' = readReg-writeReg-a0-s1 (regs s) (encode b)
+    in s' , exec-one-step-nonhalt prog s s' step-eq h' , h' , pc' , a0' , s1'
+
   -- Postulated helpers for complex cases (to be proven incrementally)
   postulate
-    run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-riscv (fst {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
-             × readReg (regs s') a0 ≡ encode (eval (fst {A} {B}) x)
-             × readReg (regs s') s1 ≡ readReg (regs s) s1)
-
-    run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-riscv (snd {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
-             × readReg (regs s') a0 ≡ encode (eval (snd {A} {B}) x)
-             × readReg (regs s') s1 ≡ readReg (regs s) s1)
-
     run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
       halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
       ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix) s ≡ just s'
