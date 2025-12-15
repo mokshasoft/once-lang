@@ -403,3 +403,68 @@ exec-step-continue n prog s s' step-eq halt-eq rewrite step-eq | halt-eq = refl
 open import Once.Backend.Common.Exec
   halted step exec exec-step-continue exec-one-step
   public
+
+------------------------------------------------------------------------
+-- Non-halting execution lemmas (for mutual block proofs)
+------------------------------------------------------------------------
+
+-- | Helper: true ≡ false is absurd
+true≢false : true ≡ false → ⊥
+true≢false ()
+
+-- | Single-step non-halting execution: execute exactly 1 step without halting
+-- Key lemma for sub-program execution where we don't want to halt
+exec-one-step-nonhalt : ∀ (prog : List Instr) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ false →
+  exec 1 prog s ≡ just s'
+exec-one-step-nonhalt prog s s' step-eq halt-eq =
+  trans (exec-step-continue 0 prog s s' step-eq halt-eq) refl
+
+-- | Exec chaining: if exec n produces s' (not halted), then exec m on s' produces s'',
+-- then exec (n + m) produces s''
+-- This is key for composing sub-program executions
+-- Proof by induction on n
+exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ false →
+  exec m prog s' ≡ just s'' →
+  exec (n +ℕ m) prog s ≡ just s''
+-- Base case: n=0, so exec 0 prog s = just s, thus s' = s
+exec-chain zero m prog s .s s'' refl h-false exec-m = exec-m
+-- Inductive case: n = suc n'
+-- Match on the step and halted values that exec uses
+exec-chain (suc n') m prog s s' s'' exec-n h-false exec-m with step prog s
+-- Step fails: exec (suc n') returns nothing, contradicts exec-n
+... | nothing with () ← exec-n
+-- Step succeeds with state sNext
+... | just sNext with halted sNext in eq-halt
+-- sNext is halted: exec returns sNext = s', but halted s' = false contradicts halted sNext = true
+...   | true with refl ← exec-n = ⊥-elim (true≢false (trans (sym eq-halt) h-false))
+-- sNext is not halted: exec (suc n') prog s = exec n' prog sNext
+...   | false =
+  -- At this point: exec (suc n') prog s = exec n' prog sNext
+  -- And exec-n : exec n' prog sNext ≡ just s'
+  -- IH: exec (n' +ℕ m) prog sNext ≡ just s''
+  -- Goal: exec (suc (n' +ℕ m)) prog s ≡ just s''
+  -- Since step prog s = just sNext and halted sNext = false,
+  -- exec (suc (n' +ℕ m)) prog s = exec (n' +ℕ m) prog sNext
+  exec-chain n' m prog sNext s' s'' exec-n h-false exec-m
+
+-- | Fetching at the end of a prefix returns the first element of suffix
+-- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
+  fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end [] i rest = refl
+fetch-at-prefix-end (x ∷ prefix) i rest = fetch-at-prefix-end prefix i rest
+
+-- | Step at arbitrary offset in a program
+-- Used for executing instructions in the middle of a larger program
+step-at-offset : ∀ (prefix : Program) (i : Instr) (suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  step (prefix ++ i ∷ suffix) s ≡ execInstr (prefix ++ i ∷ suffix) s i
+step-at-offset prefix i suffix s h-false pc-eq =
+  step-exec (prefix ++ i ∷ suffix) s i h-false
+    (subst (λ p → fetch (prefix ++ i ∷ suffix) p ≡ just i)
+           (sym pc-eq) (fetch-at-prefix-end prefix i suffix))
