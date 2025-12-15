@@ -33,7 +33,7 @@ compile-length id = 1
 compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
-compile-length ⟨ f , g ⟩ = (11 +ℕ compile-length f) +ℕ compile-length g
+compile-length ⟨ f , g ⟩ = (12 +ℕ compile-length f) +ℕ compile-length g
 compile-length inl = 4
 compile-length inr = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
@@ -104,9 +104,11 @@ compile-x86 ⟨ f , g ⟩ =
   compile-x86 g ++
   -- Store g result at [r15 + 8]
   mov (mem (base+disp r15 8)) (reg rax) ∷
-  -- Return pointer to pair
+  -- Return pointer to pair (before deallocating pair space!)
   mov (reg rax) (reg r15) ∷
-  -- Restore callee-saved registers
+  -- Deallocate pair space (r15 still holds valid pointer in rax)
+  add (reg rsp) (imm 16) ∷
+  -- Restore callee-saved registers (now pops from correct locations)
   pop r15 ∷
   pop r14 ∷ []
 
