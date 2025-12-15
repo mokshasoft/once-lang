@@ -50,6 +50,10 @@ RISCV_FOUNDATION := Once/Backend/RiscV64/Correct/Foundation.agda
 COMMON_FETCH := Once/Backend/Common/Fetch.agda
 COMMON_EXEC := Once/Backend/Common/Exec.agda
 COMMON_MEMORY := Once/Backend/Common/Memory.agda
+AARCH64_EMIT := Once/Backend/AArch64/Emit.agda
+X86_EMIT := Once/Backend/X86/Emit.agda
+RISCV_EMIT := Once/Backend/RiscV64/Emit.agda
+EMIT_ALL := Once/Backend/Emit.agda
 ENDTOEND := Once/EndToEnd.agda
 ENDTOEND_AARCH64 := Once/EndToEndAArch64.agda
 PRIM_MEMORY := Once/Primitive/Memory.agda
@@ -65,7 +69,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-foundation riscv riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-foundation riscv riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean
 
 all: check
 
@@ -164,6 +168,27 @@ malonzo:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
 	@echo "Generated Haskell files in _build/malonzo/"
 	@echo "Entry point: MAlonzo.Code.Once.Compile"
+
+emit:
+	@echo "Type-checking assembly emission modules..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_EMIT)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_EMIT)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_EMIT)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(EMIT_ALL)'
+
+malonzo-codegen:
+	@echo "Extracting verified code generators via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
+	@echo "Copying MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Backend
+	@cp -r _build/malonzo/MAlonzo/Code/Once/Backend/* ../compiler/src/MAlonzo/Code/Once/Backend/
+	@echo "  - Backend modules copied"
+	@# Copy core dependencies (IR, Type) that Backend modules need
+	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "  - Core IR/Type modules copied"
+	@echo "Done. Verified code generators in compiler/src/MAlonzo/Code/Once/Backend/"
 
 clean:
 	rm -rf _build
