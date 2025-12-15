@@ -76,6 +76,27 @@ case-analysis-inl ρ s l r a eq with evalSurface ρ s | eq
 ... | inj₁ x | refl = refl
 ```
 
+### List operator precedence (Critical for backend proofs!)
+
+**`++` is RIGHT-associative** (`infixr 5`):
+```agda
+a ++ b ++ c = a ++ (b ++ c)  -- NOT (a ++ b) ++ c
+```
+
+**`∷` binds tighter than `++`**:
+```agda
+x ∷ ys ++ zs = (x ∷ ys) ++ zs  -- NOT x ∷ (ys ++ zs)
+```
+
+**Definitional equality for cons-append**:
+```agda
+(x ∷ xs) ++ ys = x ∷ (xs ++ ys)  -- definitionally equal by ++ definition
+```
+
+This means `(nop ∷ code-g) ++ suffix = nop ∷ (code-g ++ suffix)` definitionally, which is crucial when proving list equalities in code generator correctness.
+
+**Common error pattern**: When Agda reports `X != Y` where X and Y look identical except for parentheses, trace through the `++` associativity carefully. The fix is usually adding/removing `sym` on `++-assoc` calls.
+
 ### Operator name conflicts
 
 When importing modules with overlapping operator names, use renaming:
@@ -457,6 +478,96 @@ mutual
 ```
 
 The non-recursive helpers (`run-inl-seq`, `run-inr-seq`, `run-curry-seq`) can be proven independently because they don't involve nested IR execution. Recursive helpers must be part of the mutual block.
+
+### The `run-ir-at-offset` pattern for multi-backend proofs
+
+All backends (x86, RISC-V, AArch64) use the same fundamental pattern: prove execution at arbitrary program offsets WITHOUT halting, then derive the halting `run-generator` theorem.
+
+**Key insight**: The main theorem `run-generator` proves that executing `compile ir` from the start halts with the correct result. But for recursive IR (compose, pair, case), we need to execute sub-IRs in the *middle* of a larger program. The `run-ir-at-offset` function handles this.
+
+```agda
+mutual
+  -- Execute IR at arbitrary offset WITHOUT halting
+  -- This is the key: execution continues (halted s' ≡ false)
+  run-ir-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) inputReg ≡ encode x →
+    ∃[ s' ] (exec (compile-length ir) (prefix ++ compile ir ++ suffix) s ≡ just s'
+           × halted s' ≡ false      -- KEY: does NOT halt
+           × pc s' ≡ length prefix +ℕ compile-length ir
+           × readReg (regs s') outputReg ≡ encode (eval ir x)
+           × readReg (regs s') calleeSaved ≡ readReg (regs s) calleeSaved)
+
+  -- Base cases: prove directly from instruction semantics
+  run-ir-at-offset id prefix suffix x s h pc-eq reg-eq = ...
+  run-ir-at-offset fst prefix suffix (a , b) s ... = ...
+
+  -- Recursive cases: call run-ir-at-offset for sub-IRs
+  run-ir-at-offset (g ∘ f) prefix suffix x s h pc-eq reg-eq =
+    let -- Execute f at prefix, with (nop ∷ compile g ++ suffix) as suffix
+        (sf , ...) = run-ir-at-offset f prefix (nop ∷ compile g ++ suffix) x s ...
+        -- Execute nop
+        (sn , ...) = run-nop-at-offset (prefix ++ compile f) (compile g ++ suffix) sf ...
+        -- Execute g at (prefix ++ compile f ++ nop ∷ []), with suffix as suffix
+        (sg , ...) = run-ir-at-offset g (prefix ++ compile f ++ nop ∷ []) suffix (eval f x) sn ...
+    in sg , ... -- chain the results
+```
+
+**Derive `run-generator` from `run-ir-at-offset`**:
+
+```agda
+-- When prefix=[] and suffix=[], pc goes past program end → halts
+offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ 0 → readReg (regs s) inputReg ≡ encode x →
+  ∃[ s' ] (run (compile ir) s ≡ just s'
+         × halted s' ≡ true     -- DOES halt (pc out of bounds)
+         × readReg (regs s') outputReg ≡ encode (eval ir x))
+offset-to-generator ir x s h pc-0 reg-eq =
+  let (s' , exec-eq , h-false , pc-eq , result-eq , _) =
+        run-ir-at-offset ir [] [] x s h pc-0 reg-eq
+      -- After execution, pc = compile-length ir, program has that many instructions
+      -- fetch at pc fails → execution halts
+  in s' , exec-to-run exec-eq pc-eq , refl , result-eq
+
+run-generator = offset-to-generator  -- QED
+```
+
+**Backend-specific details**:
+
+| Backend | Input Reg | Output Reg | Compose Transfer | Callee-Saved |
+|---------|-----------|------------|------------------|--------------|
+| x86-64  | rdi       | rax        | `mov rdi, rax`   | r14, r15     |
+| RISC-V  | a0        | a0         | None needed!     | s1           |
+| AArch64 | x0        | x0         | nop (placeholder)| x20          |
+
+RISC-V's use of a0 for both input and output simplifies compose—no register transfer instruction needed between f and g.
+
+### Type naming: Use `Void` from `Once.Type`, not `⊥` from `Data.Empty`
+
+The IR uses `Void` as the initial object type (the empty type with no inhabitants):
+
+```agda
+-- In Once/Type.agda
+data Type : Set where
+  Void : Type  -- Initial object (0)
+  ...
+
+-- In Once/IR.agda
+initial : ∀ {A} → IR Void A  -- Morphism from initial object
+```
+
+When writing proofs involving `initial`, use `Void` from `Once.Type`:
+
+```agda
+-- WRONG: ⊥ is from Data.Empty, not a Once Type
+run-ir-at-offset-initial : ∀ {A} ... (x : ⟦ ⊥ ⟧) ... -- Type error!
+
+-- CORRECT: Void is from Once.Type
+run-ir-at-offset-initial : ∀ {A} ... (x : ⟦ Void ⟧) ... -- Works
+```
+
+Note: `⟦ Void ⟧` evaluates to `Data.Empty.⊥` in the semantics, but the type argument must be `Void` (the Once type), not `⊥` (the Agda type).
 
 ### Computed labels enable complete branch proofs
 
