@@ -227,6 +227,18 @@ execLabel : ∀ (prog : List Instr) (s : State) (n : ℕ) →
   execInstr prog s (label n) ≡ just (record s { pc = pc s +ℕ 1 })
 execLabel prog s n = refl
 
+-- Helper: state after executing call (reg r)
+-- In simplified model: just jumps to address in register (no stack push)
+execCall-reg : ∀ (prog : List Instr) (s : State) (r : Reg) →
+  execInstr prog s (call (reg r)) ≡ just (record s { pc = readReg (regs s) r })
+execCall-reg prog s r = refl
+
+-- Helper: state after executing ret
+-- In simplified model: ret halts execution
+execRet : ∀ (prog : List Instr) (s : State) →
+  execInstr prog s ret ≡ just (record s { halted = true })
+execRet prog s = refl
+
 -- Helper: state after executing pop reg
 -- Requires proof that memory at rsp is defined (contains value v)
 execPop : ∀ (prog : List Instr) (s : State) (r : Reg) (v : Word) →
@@ -507,56 +519,57 @@ compile-length-correct ⟨ f , g ⟩ = helper
   where
     -- Structure: push ∷ push ∷ sub ∷ mov ∷ mov ∷
     --            (compile-x86 f ++ mov ∷ mov ∷
-    --             (compile-x86 g ++ mov ∷ mov ∷ pop ∷ pop ∷ []))
-    -- We need to show: 5 + (|f| + (2 + (|g| + 4))) = (11 + |f|) + |g|
+    --             (compile-x86 g ++ mov ∷ mov ∷ add ∷ pop ∷ pop ∷ []))
+    -- We need to show: 5 + (|f| + (2 + (|g| + 5))) = (12 + |f|) + |g|
 
     inner-tail : List Instr
     inner-tail = mov (mem (base+disp r15 8)) (reg rax) ∷
                  mov (reg rax) (reg r15) ∷
+                 add (reg rsp) (imm 16) ∷
                  pop r15 ∷
                  pop r14 ∷ []
 
     -- Lemma: length of the trailing part after g
-    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 4
-    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 4) (compile-length-correct g))
+    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 5
+    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 5) (compile-length-correct g))
 
     mid-tail : List Instr
     mid-tail = mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ (compile-x86 g ++ inner-tail)
 
     -- Lemma: length after f
-    len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 4)
+    len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 5)
     len-after-f = cong (λ x → 2 +ℕ x) len-middle
 
     full-tail : List Instr
     full-tail = compile-x86 f ++ mid-tail
 
     -- Lemma: length including f
-    len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 4))
+    len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 5))
     len-with-f = trans (length-++ (compile-x86 f) mid-tail)
                        (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
                               (cong (λ x → compile-length f +ℕ x) len-after-f))
 
-    -- Prove: 5 + (a + (2 + (b + 4))) = (11 + a) + b
+    -- Prove: 5 + (a + (2 + (b + 5))) = (12 + a) + b
     -- Using +-comm and +-assoc with equational reasoning
-    arith2 : ∀ a b → 5 +ℕ (a +ℕ (2 +ℕ (b +ℕ 4))) ≡ (11 +ℕ a) +ℕ b
+    arith2 : ∀ a b → 5 +ℕ (a +ℕ (2 +ℕ (b +ℕ 5))) ≡ (12 +ℕ a) +ℕ b
     arith2 a b =
       begin
-        5 +ℕ (a +ℕ (2 +ℕ (b +ℕ 4)))
-      ≡⟨ cong (5 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 4))) ⟩
-        5 +ℕ (a +ℕ (2 +ℕ (4 +ℕ b)))
-      ≡⟨ cong (5 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 4 b))) ⟩
-        5 +ℕ (a +ℕ (6 +ℕ b))
-      ≡⟨ cong (5 +ℕ_) (sym (+-assoc a 6 b)) ⟩
-        5 +ℕ ((a +ℕ 6) +ℕ b)
-      ≡⟨ cong (5 +ℕ_) (cong (_+ℕ b) (+-comm a 6)) ⟩
-        5 +ℕ ((6 +ℕ a) +ℕ b)
-      ≡⟨ sym (+-assoc 5 (6 +ℕ a) b) ⟩
-        (5 +ℕ (6 +ℕ a)) +ℕ b
-      ≡⟨ cong (_+ℕ b) (sym (+-assoc 5 6 a)) ⟩
-        (11 +ℕ a) +ℕ b
+        5 +ℕ (a +ℕ (2 +ℕ (b +ℕ 5)))
+      ≡⟨ cong (5 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 5))) ⟩
+        5 +ℕ (a +ℕ (2 +ℕ (5 +ℕ b)))
+      ≡⟨ cong (5 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 5 b))) ⟩
+        5 +ℕ (a +ℕ (7 +ℕ b))
+      ≡⟨ cong (5 +ℕ_) (sym (+-assoc a 7 b)) ⟩
+        5 +ℕ ((a +ℕ 7) +ℕ b)
+      ≡⟨ cong (5 +ℕ_) (cong (_+ℕ b) (+-comm a 7)) ⟩
+        5 +ℕ ((7 +ℕ a) +ℕ b)
+      ≡⟨ sym (+-assoc 5 (7 +ℕ a) b) ⟩
+        (5 +ℕ (7 +ℕ a)) +ℕ b
+      ≡⟨ cong (_+ℕ b) (sym (+-assoc 5 7 a)) ⟩
+        (12 +ℕ a) +ℕ b
       ∎
 
-    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (11 +ℕ compile-length f) +ℕ compile-length g
+    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (12 +ℕ compile-length f) +ℕ compile-length g
     helper = trans (cong (λ x → 5 +ℕ x) len-with-f)
                    (arith2 (compile-length f) (compile-length g))
 compile-length-correct inl = refl
