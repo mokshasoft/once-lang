@@ -936,6 +936,27 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq x0-eq =
 -- Postulated helpers for complex cases (to be proven incrementally)
 ------------------------------------------------------------------------
 
+-- | Case analysis: [ f , g ]
+--
+-- compile-aarch64 [ f , g ] =
+--   ldr x9 (base x0) ∷           -- 0: load tag
+--   cmp x9 (imm 0) ∷             -- 1: compare with 0
+--   b-ne right-branch ∷          -- 2: branch if not zero
+--   ldr x0 (base+imm x0 8) ∷     -- 3: load left value
+--   compile-aarch64 f ++         -- 4 to 3+|f|
+--   b end-label ∷                -- 4+|f|: skip right branch
+--   label right-branch ∷         -- 5+|f|
+--   ldr x0 (base+imm x0 8) ∷     -- 6+|f|: load right value
+--   compile-aarch64 g ++         -- 7+|f| to 6+|f|+|g|
+--   label end-label ∷ []         -- 7+|f|+|g|
+--
+-- compile-length [ f , g ] = (8 + |f|) + |g|
+--
+-- WHY POSTULATED: The execution path depends on the tag value:
+--   Left (tag=0):  4 setup + |f| + 1 jmp + skip labels
+--   Right (tag=1): 3 setup + 1 b.ne + 1 label + 1 load + |g| + 1 label
+-- The actual step count differs from compile-length. A proper proof would
+-- need branch semantics and case analysis on the input sum type.
 postulate
   run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
@@ -944,6 +965,32 @@ postulate
            × readReg (regs s') x0 ≡ encode (eval ([_,_] f g) x)
            × readReg (regs s') x20 ≡ readReg (regs s) x20)
 
+-- | Curry: curry f
+--
+-- compile-aarch64 (curry f) =
+--   sub-sp 16 ∷                  -- 0: allocate closure
+--   str x0 (sp+imm 0) ∷          -- 1: store env (input a)
+--   adr x9 thunk-offset ∷        -- 2: compute absolute code-ptr
+--   str x9 (sp+imm 8) ∷          -- 3: store code pointer
+--   mov-from-sp x0 ∷             -- 4: return closure pointer
+--   b end-label ∷                -- 5: skip over thunk
+--   label code-ptr ∷             -- 6: thunk entry point
+--   sub-sp 16 ∷                  -- 7: allocate pair
+--   stp x19 x0 (sp+imm 0) ∷      -- 8: store (env, arg)
+--   mov-from-sp x0 ∷             -- 9: x0 = pair pointer
+--   compile-aarch64 f ++         -- 10 to 9+|f|
+--   ret ∷                        -- 10+|f|
+--   label end-label ∷ []         -- 11+|f|
+--
+-- compile-length (curry f) = 12 + |f|
+--
+-- WHY POSTULATED: Curry creates a closure without executing f.
+-- The b instruction jumps over the thunk, so only ~6 instructions execute,
+-- not compile-length (12 + |f|) instructions. A proper proof would need:
+--   1. Branch semantics for b instruction
+--   2. Closure encoding (encode-curry axiom)
+--   3. Careful step counting through the jump
+postulate
   run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode {A} x →
     ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-aarch64 (curry f) ++ suffix) s ≡ just s'
@@ -951,6 +998,8 @@ postulate
            × readReg (regs s') x0 ≡ encode {B ⇒ C} (eval (curry f) x)
            × readReg (regs s') x20 ≡ readReg (regs s) x20)
 
+-- | Apply and Initial (see dedicated sections below)
+postulate
   run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
     ∃[ s' ] (exec (compile-length (apply {A} {B})) (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
