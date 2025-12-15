@@ -43,6 +43,7 @@ RISCV_SYNTAX := Once/Backend/RiscV64/Syntax.agda
 RISCV_SEMANTICS := Once/Backend/RiscV64/Semantics.agda
 RISCV_CODEGEN := Once/Backend/RiscV64/CodeGen.agda
 RISCV_CORRECT := Once/Backend/RiscV64/Correct.agda
+COMMON_FETCH := Once/Backend/Common/Fetch.agda
 ENDTOEND := Once/EndToEnd.agda
 ENDTOEND_AARCH64 := Once/EndToEndAArch64.agda
 PRIM_MEMORY := Once/Primitive/Memory.agda
@@ -58,11 +59,11 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize x86 x86-correct aarch64 riscv endtoend endtoend-aarch64 primitives spf malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct aarch64 riscv endtoend endtoend-aarch64 primitives spf malonzo clean
 
 all: check
 
-check: postulates laws surface surfaceir optimize x86 aarch64 endtoend endtoend-aarch64 primitives spf
+check: postulates laws surface surfaceir optimize common x86 aarch64 endtoend endtoend-aarch64 primitives spf
 	@echo "All proofs type-check successfully!"
 
 postulates:
@@ -89,6 +90,10 @@ optimize:
 	@echo "Type-checking optimizer..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(OPTIMIZE)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(OPTIMIZE_CORRECT)'
+
+common:
+	@echo "Type-checking common backend lemmas..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(COMMON_FETCH)'
 
 x86:
 	@echo "Type-checking x86-64 backend..."
