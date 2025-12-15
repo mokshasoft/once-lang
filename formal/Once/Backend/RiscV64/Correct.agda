@@ -71,6 +71,14 @@ open import Once.Backend.RiscV64.Semantics
 open Once.Backend.RiscV64.Semantics.State
 open import Once.Backend.RiscV64.CodeGen
 
+-- Import common fetch lemmas (polymorphic, work with any instruction type)
+open import Once.Backend.Common.Fetch
+  using ( fetch-0; fetch-1; fetch-2; fetch-3; fetch-4; fetch-5; fetch-6
+        ; fetch-suc; fetch-empty
+        ; fetch-1-single; fetch-4-of-4; fetch-5-of-5
+        ; fetch-append-left; fetch-append-right; fetch-at-length; fetch-past-end
+        )
+
 -- Import encoding axioms from central postulates module
 open import Once.Postulates public
   using ( encode
@@ -387,71 +395,8 @@ readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | �
 -- Fetch and Step Lemmas
 ------------------------------------------------------------------------
 
--- | Fetching at index 0 returns the first instruction
-fetch-0 : ∀ (i : Instr) (is : List Instr) → fetch (i ∷ is) 0 ≡ just i
-fetch-0 i is = refl
-
--- | Fetching at index 1 returns the second instruction
-fetch-1 : ∀ (i0 i1 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ is) 1 ≡ just i1
-fetch-1 i0 i1 is = refl
-
--- | Fetching at index 2 returns the third instruction
-fetch-2 : ∀ (i0 i1 i2 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ is) 2 ≡ just i2
-fetch-2 i0 i1 i2 is = refl
-
--- | Fetching at index 3 returns the fourth instruction
-fetch-3 : ∀ (i0 i1 i2 i3 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) 3 ≡ just i3
-fetch-3 i0 i1 i2 i3 is = refl
-
--- | Fetching at index 4 returns the fifth instruction
-fetch-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) 4 ≡ just i4
-fetch-4 i0 i1 i2 i3 i4 is = refl
-
--- | Fetching at index 5 returns the sixth instruction
-fetch-5 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) 5 ≡ just i5
-fetch-5 i0 i1 i2 i3 i4 i5 is = refl
-
--- | Fetching at index 6 returns the seventh instruction
-fetch-6 : ∀ (i0 i1 i2 i3 i4 i5 i6 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ is) 6 ≡ just i6
-fetch-6 i0 i1 i2 i3 i4 i5 i6 is = refl
-
--- | Fetching past end of single-instruction program returns nothing
-fetch-1-single : ∀ (i : Instr) → fetch (i ∷ []) 1 ≡ nothing
-fetch-1-single i = refl
-
--- | Fetching past end of 4-instruction program returns nothing
-fetch-4-of-4 : ∀ (i0 i1 i2 i3 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) 4 ≡ nothing
-fetch-4-of-4 i0 i1 i2 i3 = refl
-
--- | Fetching past end of 5-instruction program returns nothing
-fetch-5-of-5 : ∀ (i0 i1 i2 i3 i4 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) 5 ≡ nothing
-fetch-5-of-5 i0 i1 i2 i3 i4 = refl
-
--- | Fetching from append (left part): fetch at n < length xs gets from xs
-fetch-append-left : ∀ (xs ys : Program) (n : ℕ) → n < length xs →
-  fetch (xs ++ ys) n ≡ fetch xs n
-fetch-append-left [] ys n ()
-fetch-append-left (x ∷ xs) ys zero pf = refl
-fetch-append-left (x ∷ xs) ys (suc n) (s≤s pf) = fetch-append-left xs ys n pf
-
--- | Fetching from append (right part): fetch at (length xs + n) gets from ys
-fetch-append-right : ∀ (xs ys : Program) (n : ℕ) →
-  fetch (xs ++ ys) (length xs +ℕ n) ≡ fetch ys n
-fetch-append-right [] ys n = refl
-fetch-append-right (x ∷ xs) ys n = fetch-append-right xs ys n
-
--- | Fetching at exactly length xs gets the first element of ys
-fetch-at-length : ∀ (xs : Program) (y : Instr) (ys : Program) →
-  fetch (xs ++ y ∷ ys) (length xs) ≡ just y
-fetch-at-length xs y ys =
-  subst (λ n → fetch (xs ++ y ∷ ys) n ≡ just y)
-        (+-identityʳ (length xs))
-        (fetch-append-right xs (y ∷ ys) 0)
-
--- | Fetching past the end returns nothing
-fetch-past-end : ∀ (xs : Program) → fetch xs (length xs) ≡ nothing
-fetch-past-end [] = refl
-fetch-past-end (x ∷ xs) = fetch-past-end xs
+-- Fetch lemmas (fetch-0 through fetch-6, fetch-append-left/right, fetch-at-length,
+-- fetch-past-end, fetch-N-single, etc.) are now imported from Once.Backend.Common.Fetch.
 
 -- | Step on non-halted state executes the instruction at pc
 step-exec : ∀ (prog : List Instr) (s : State) (i : Instr) →

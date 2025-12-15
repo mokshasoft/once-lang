@@ -26,6 +26,10 @@ open Once.Backend.AArch64.Semantics.State
 open Once.Backend.AArch64.Semantics.PSTATE
 open import Once.Backend.AArch64.CodeGen
 
+-- Import common fetch lemmas (polymorphic, work with any instruction type)
+open import Once.Backend.Common.Fetch
+  using (fetch-0; fetch-suc; fetch-empty; fetch-append-left; fetch-append-right)
+
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -320,38 +324,12 @@ readMem-writeMem-diff-8 m addr v = readMem-writeMem-diff m addr (addr +ℕ 8) v 
 ------------------------------------------------------------------------
 
 -- These lemmas relate to the fetch and exec functions defined in Semantics.agda.
--- They are proven directly from those definitions.
+-- Fetch lemmas (fetch-0, fetch-suc, fetch-empty, fetch-append-left, fetch-append-right)
+-- are now imported from Once.Backend.Common.Fetch.
 
 open import Data.Nat using (_<_; _≤_; z<s; s≤s; z≤n; s<s)
 open import Data.Nat.Properties using (+-comm; +-identityʳ; +-suc; m+n∸m≡n; +-assoc)
 open import Data.List.Properties using (length-++)
-
--- | Fetching at index 0 returns the first instruction
-fetch-0 : ∀ (i : Instr) (is : Program) → fetch (i ∷ is) 0 ≡ just i
-fetch-0 i is = refl
-
--- | Fetching at index (suc n) is fetching from the tail at index n
-fetch-suc : ∀ (i : Instr) (is : Program) (n : ℕ) → fetch (i ∷ is) (suc n) ≡ fetch is n
-fetch-suc i is n = refl
-
--- | Fetching from empty program returns nothing
-fetch-empty : ∀ (n : ℕ) → fetch [] n ≡ nothing
-fetch-empty n = refl
-
--- | Fetching from append (left part): if n < length xs, fetch from xs
--- Proven by induction on xs
-fetch-append-left : ∀ (xs ys : Program) (n : ℕ) → n < length xs →
-  fetch (xs ++ ys) n ≡ fetch xs n
-fetch-append-left [] ys n ()
-fetch-append-left (x ∷ xs) ys zero pf = refl
-fetch-append-left (x ∷ xs) ys (suc n) (s≤s pf) = fetch-append-left xs ys n pf
-
--- | Fetching from append (right part): fetch at (length xs + n) gets from ys
--- Proven by induction on xs
-fetch-append-right : ∀ (xs ys : Program) (n : ℕ) →
-  fetch (xs ++ ys) (length xs +ℕ n) ≡ fetch ys n
-fetch-append-right [] ys n = refl
-fetch-append-right (x ∷ xs) ys n = fetch-append-right xs ys n
 
 -- | If already halted, exec returns the state unchanged
 exec-halted : ∀ (n : ℕ) (prog : Program) (s : State) →

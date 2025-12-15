@@ -24,6 +24,13 @@ open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
 open import Once.Backend.X86.CodeGen
 
+-- Import common fetch lemmas (polymorphic, work with any instruction type)
+open import Once.Backend.Common.Fetch
+  using ( fetch-0; fetch-1; fetch-2; fetch-3
+        ; fetch-1-single; fetch-4-of-4
+        ; fetch-append-left; fetch-append-right
+        )
+
 -- Import encoding axioms from central postulates module
 open import Once.Postulates public
   using ( encode
@@ -450,49 +457,8 @@ readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | �
 -- Fetch and Step Lemmas
 ------------------------------------------------------------------------
 
--- | Fetching at index 0 returns the first instruction
-fetch-0 : ∀ (i : Instr) (is : List Instr) → fetch (i ∷ is) 0 ≡ just i
-fetch-0 i is = refl
-
--- | Fetching at index 1 returns the second instruction
-fetch-1 : ∀ (i0 i1 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ is) 1 ≡ just i1
-fetch-1 i0 i1 is = refl
-
--- | Fetching at index 2 returns the third instruction
-fetch-2 : ∀ (i0 i1 i2 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ is) 2 ≡ just i2
-fetch-2 i0 i1 i2 is = refl
-
--- | Fetching at index 3 returns the fourth instruction
-fetch-3 : ∀ (i0 i1 i2 i3 : Instr) (is : List Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) 3 ≡ just i3
-fetch-3 i0 i1 i2 i3 is = refl
-
--- | Fetching past the end of a single-instruction program returns nothing
-fetch-1-single : ∀ (i : Instr) → fetch (i ∷ []) 1 ≡ nothing
-fetch-1-single i = refl
-
--- | Fetching past the end of a 4-instruction program returns nothing
-fetch-4-of-4 : ∀ (i0 i1 i2 i3 : Instr) → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) 4 ≡ nothing
-fetch-4-of-4 i0 i1 i2 i3 = refl
-
-------------------------------------------------------------------------
--- Sub-program fetch lemmas
--- These allow reasoning about fetching from combined programs
-------------------------------------------------------------------------
-
--- | Fetching from combined program at offset past prefix equals fetching from suffix
--- Key lemma for proving sub-program execution in composed programs
-fetch-append-right : ∀ (prefix suffix : List Instr) (n : ℕ) →
-  fetch (prefix ++ suffix) (length prefix +ℕ n) ≡ fetch suffix n
-fetch-append-right [] suffix n = refl
-fetch-append-right (x ∷ prefix) suffix n = fetch-append-right prefix suffix n
-
--- | Fetching from combined program within prefix equals fetching from prefix
-fetch-append-left : ∀ (prefix suffix : List Instr) (n : ℕ) →
-  n < length prefix →
-  fetch (prefix ++ suffix) n ≡ fetch prefix n
-fetch-append-left [] suffix n ()
-fetch-append-left (x ∷ prefix) suffix zero _ = refl
-fetch-append-left (x ∷ prefix) suffix (suc n) (s≤s n<len) = fetch-append-left prefix suffix n n<len
+-- Fetch lemmas (fetch-0 through fetch-3, fetch-append-left/right, fetch-N-single, etc.)
+-- are now imported from Once.Backend.Common.Fetch.
 
 -- | Step on non-halted state executes the instruction at pc
 -- Proof: match on halted s, then on fetch prog (pc s)

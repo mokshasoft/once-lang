@@ -18,6 +18,10 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function using (_∘_)
 
+-- Import common fetch function (polymorphic list indexing)
+-- Re-export publicly so downstream modules (Correct.agda) can use it
+open import Once.Backend.Common.Fetch using (fetch) public
+
 ------------------------------------------------------------------------
 -- Machine State
 ------------------------------------------------------------------------
@@ -278,11 +282,7 @@ execInstr prog s (label _) =
 -- Program execution
 ------------------------------------------------------------------------
 
--- | Fetch instruction at program counter
-fetch : Program → ℕ → Maybe Instr
-fetch [] _ = nothing
-fetch (i ∷ _) zero = just i
-fetch (_ ∷ is) (suc n) = fetch is n
+-- | fetch is imported from Once.Backend.Common.Fetch
 
 -- | Execute one step
 step : Program → State → Maybe State
