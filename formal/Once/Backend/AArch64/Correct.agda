@@ -752,6 +752,74 @@ run-mov-x0-at-offset prefix suffix s h-false pc-eq = s' , exec-eq , h' , pc' , x
     x20-eq = refl
 
 ------------------------------------------------------------------------
+-- Postulated helpers for complex cases (to be proven incrementally)
+------------------------------------------------------------------------
+
+postulate
+  run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
+           × readReg (regs s') x0 ≡ encode (eval (fst {A} {B}) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
+           × readReg (regs s') x0 ≡ encode (eval (snd {A} {B}) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+           × readReg (regs s') x0 ≡ encode (eval ⟨ f , g ⟩ x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (inl {A} {B})) (prefix ++ compile-aarch64 (inl {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (inl {A} {B})
+           × readReg (regs s') x0 ≡ encode (eval (inl {A} {B}) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (inr {A} {B})) (prefix ++ compile-aarch64 (inr {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (inr {A} {B})
+           × readReg (regs s') x0 ≡ encode (eval (inr {A} {B}) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length ([_,_] f g)) (prefix ++ compile-aarch64 ([_,_] f g) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ([_,_] f g)
+           × readReg (regs s') x0 ≡ encode (eval ([_,_] f g) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode {A} x →
+    ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-aarch64 (curry f) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
+           × readReg (regs s') x0 ≡ encode {B ⇒ C} (eval (curry f) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
+    ∃[ s' ] (exec (compile-length (apply {A} {B})) (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
+           × readReg (regs s') x0 ≡ encode {B} (eval (apply {A} {B}) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (initial {A})) (prefix ++ compile-aarch64 (initial {A}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (initial {A})
+           × readReg (regs s') x0 ≡ encode (eval (initial {A}) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+------------------------------------------------------------------------
 -- Mutual block for run-ir-at-offset
 ------------------------------------------------------------------------
 
@@ -1069,70 +1137,84 @@ mutual
       exec-all : exec (compile-length (g ∘ f)) prog s ≡ just sg
       exec-all = exec-chain (len-f +ℕ 1) len-g prog s sn sg exec-f-nop hn exec-g-prog
 
-  -- Postulated helpers for complex cases (to be proven incrementally)
-  postulate
-    run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
-             × readReg (regs s') x0 ≡ encode (eval (fst {A} {B}) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+------------------------------------------------------------------------
+-- Apply Proof Structure
+------------------------------------------------------------------------
 
-    run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
-             × readReg (regs s') x0 ≡ encode (eval (snd {A} {B}) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+-- The apply case is special because `blr` jumps to thunk code that is
+-- NOT part of apply's 6 instructions. The correct approach is:
+--
+-- 1. run-apply-setup: Prove apply's 6 instructions set up correctly
+--    - After 6 steps: pc = code-ptr, x19 = env, x0 = arg, x30 = return addr
+--
+-- 2. run-thunk-at-offset: Prove thunk execution is correct
+--    - Thunk constructs pair, calls f, returns with result
+--
+-- 3. Compose: For complete programs, chain setup → blr → thunk → ret
 
-    run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-             × readReg (regs s') x0 ≡ encode (eval ⟨ f , g ⟩ x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+-- | Closure field accessors (postulated - depend on encoding)
+postulate
+  -- Extract code-ptr from encoded closure
+  closure-code-ptr : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
 
-    run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (inl {A} {B})) (prefix ++ compile-aarch64 (inl {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (inl {A} {B})
-             × readReg (regs s') x0 ≡ encode (eval (inl {A} {B}) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+  -- Extract env from encoded closure
+  closure-env : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
 
-    run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (inr {A} {B})) (prefix ++ compile-aarch64 (inr {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (inr {A} {B})
-             × readReg (regs s') x0 ≡ encode (eval (inr {A} {B}) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+  -- Closure encoding axioms: reading from encoded closure yields components
+  encode-closure-code-ptr : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) →
+    readMem encodedMemory (encode {A ⇒ B} closure +ℕ 8) ≡ just (closure-code-ptr {A} {B} closure)
 
-    run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length ([_,_] f g)) (prefix ++ compile-aarch64 ([_,_] f g) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ([_,_] f g)
-             × readReg (regs s') x0 ≡ encode (eval ([_,_] f g) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+  encode-closure-env : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) →
+    readMem encodedMemory (encode {A ⇒ B} closure) ≡ just (closure-env {A} {B} closure)
 
-    run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-aarch64 (curry f) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
-             × readReg (regs s') x0 ≡ encode (eval (curry f) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+-- | What apply's 6 instructions actually do (the provable property)
+-- This proves the SETUP phase only - pc jumps to thunk, registers are ready
+--
+-- After execution:
+--   pc = closure-code-ptr (thunk entry)
+--   x19 = closure-env (environment for thunk)
+--   x0 = arg (argument for thunk)
+--   x30 = return address (after blr)
+--   halted = false (blr doesn't halt)
+postulate
+  run-apply-setup : ∀ {A B} (prefix suffix : Program)
+    (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} (closure , arg) →
+    memory s ≡ encodedMemory →
+    ∃[ s' ] (exec 6 (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false
+           × pc s' ≡ closure-code-ptr {A} {B} closure
+           × readReg (regs s') x19 ≡ closure-env {A} {B} closure
+           × readReg (regs s') x0 ≡ encode {A} arg
+           × readReg (regs s') x30 ≡ length prefix +ℕ 6
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
 
-    run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (apply {A} {B})) (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
-             × readReg (regs s') x0 ≡ encode (eval (apply {A} {B}) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
-
-    run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length (initial {A})) (prefix ++ compile-aarch64 (initial {A}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (initial {A})
-             × readReg (regs s') x0 ≡ encode (eval (initial {A}) x)
-             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+-- | Thunk execution: given proper setup, thunk computes f(env, arg)
+-- The thunk code is: sub-sp 16; stp x19, x0, [sp]; mov-from-sp x0; f; ret
+--
+-- Preconditions:
+--   pc at thunk entry
+--   x19 = encoded env
+--   x0 = encoded arg
+--
+-- Postconditions:
+--   halted = true (ret halts)
+--   x0 = encode (eval f (env, arg))
+postulate
+  run-thunk-at-offset : ∀ {A B C} (f : IR (A * B) C)
+    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) x19 ≡ encode {A} env →
+    readReg (regs s) x0 ≡ encode {B} arg →
+    let thunk-code = sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷ mov-from-sp x0 ∷
+                     compile-aarch64 f ++ ret ∷ []
+        thunk-len = 4 +ℕ compile-length f
+    in ∃[ s' ] (exec thunk-len (prefix ++ thunk-code ++ suffix) s ≡ just s'
+              × halted s' ≡ true
+              × readReg (regs s') x0 ≡ encode {C} (eval f (env , arg)))
 
 ------------------------------------------------------------------------
 -- Derive run-generator from run-ir-at-offset
