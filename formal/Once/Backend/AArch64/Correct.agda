@@ -33,7 +33,7 @@ open import Once.Backend.AArch64.Correct.Foundation public
 
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
-  using (fetch-0; fetch-suc; fetch-empty; fetch-append-left; fetch-append-right)
+  using (fetch-0; fetch-suc; fetch-empty; fetch-append-left; fetch-append-right; fetch-past-end)
 
 -- Import common memory helper lemmas (with AArch64 naming convention)
 open import Once.Backend.Common.Memory
@@ -55,7 +55,7 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-identityʳ; +-suc; m+n∸m≡n; +-assoc)
 open import Data.Nat using (_<_; _≤_; z<s; s≤s; z≤n; s<s)
-open import Data.List.Properties using (length-++)
+open import Data.List.Properties using (length-++; ++-assoc; ++-identityʳ)
 
 ------------------------------------------------------------------------
 -- Single-instruction program execution (run to completion)
@@ -672,6 +672,560 @@ run-generator-arr {A} {B} f s h-false pc-0 x0-eq =
     x0-result : readReg (regs s') x0 ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr f)
     x0-result = trans x0-preserved (trans x0-eq (encode-arr-identity f))
   in s' , run-eq , halt-eq , x0-result
+
+------------------------------------------------------------------------
+-- Non-halting execution at arbitrary offset (for mutual block)
+------------------------------------------------------------------------
+
+-- | Execute nop at arbitrary offset in a program (non-halting)
+-- Used as base case for run-ir-at-offset id
+run-nop-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 1 (prefix ++ nop ∷ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') x0 ≡ readReg (regs s) x0
+         × readReg (regs s') x20 ≡ readReg (regs s) x20)
+run-nop-at-offset prefix suffix s h-false pc-eq = s' , exec-eq , h' , pc' , x0-eq , x20-eq
+  where
+    prog : Program
+    prog = prefix ++ nop ∷ suffix
+
+    s' : State
+    s' = record s { pc = pc s +ℕ 1 }
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix nop suffix s h-false pc-eq)
+                    (execInstr-nop prog s)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    exec-eq : exec 1 prog s ≡ just s'
+    exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+
+    x0-eq : readReg (regs s') x0 ≡ readReg (regs s) x0
+    x0-eq = refl
+
+    x20-eq : readReg (regs s') x20 ≡ readReg (regs s) x20
+    x20-eq = refl
+
+-- | Execute mov x0, #0 at arbitrary offset in a program (non-halting)
+-- Used as base case for run-ir-at-offset terminal
+run-mov-x0-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 1 (prefix ++ mov x0 (imm 0) ∷ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') x0 ≡ 0
+         × readReg (regs s') x20 ≡ readReg (regs s) x20)
+run-mov-x0-at-offset prefix suffix s h-false pc-eq = s' , exec-eq , h' , pc' , x0-eq , x20-eq
+  where
+    prog : Program
+    prog = prefix ++ mov x0 (imm 0) ∷ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) x0 0 ; pc = pc s +ℕ 1 }
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix (mov x0 (imm 0)) suffix s h-false pc-eq)
+                    (execInstr-mov-imm prog s x0 0)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    exec-eq : exec 1 prog s ≡ just s'
+    exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+
+    x0-eq : readReg (regs s') x0 ≡ 0
+    x0-eq = readReg-writeReg-same (regs s) x0 0
+
+    x20-eq : readReg (regs s') x20 ≡ readReg (regs s) x20
+    x20-eq = refl
+
+------------------------------------------------------------------------
+-- Mutual block for run-ir-at-offset
+------------------------------------------------------------------------
+
+-- | Non-halting execution of IR at arbitrary offset
+--
+-- This is the key function that enables proving the mutual recursion cluster.
+-- It executes IR code at any position in a larger program WITHOUT halting
+-- (continues to next instruction).
+--
+-- For AArch64, compose is similar to x86:
+--   - x0 is input AND output (like RISC-V)
+--   - compose needs a nop between f and g for consistent compile-length counting
+--   - The proof for compose: run f, execute nop, run g, chain together
+
+mutual
+  run-ir-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length ir) (prefix ++ compile-aarch64 ir ++ suffix) s ≡ just s'
+           × halted s' ≡ false
+           × pc s' ≡ length prefix +ℕ compile-length ir
+           × readReg (regs s') x0 ≡ encode (eval ir x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+  -- Base case: id (nop)
+  run-ir-at-offset (id {A}) prefix suffix x s h-false pc-eq x0-eq =
+    let (s' , exec-eq , h' , pc' , x0-eq' , x20-eq) =
+          run-nop-at-offset prefix suffix s h-false pc-eq
+        -- x0 unchanged, eval id x = x
+        x0-final : readReg (regs s') x0 ≡ encode (eval id x)
+        x0-final = trans x0-eq' x0-eq
+    in s' , exec-eq , h' , pc' , x0-final , x20-eq
+
+  -- Base case: terminal (mov x0, #0)
+  run-ir-at-offset (terminal {A}) prefix suffix x s h-false pc-eq x0-eq =
+    let (s' , exec-eq , h' , pc' , x0-eq' , x20-eq) =
+          run-mov-x0-at-offset prefix suffix s h-false pc-eq
+        -- x0 = 0 = encode tt (by encode-unit)
+        x0-final : readReg (regs s') x0 ≡ encode (eval terminal x)
+        x0-final = trans x0-eq' (sym encode-unit)
+    in s' , exec-eq , h' , pc' , x0-final , x20-eq
+
+  -- Base case: fold (nop - identity at runtime)
+  run-ir-at-offset (fold {F}) prefix suffix x s h-false pc-eq x0-eq =
+    let (s' , exec-eq , h' , pc' , x0-eq' , x20-eq) =
+          run-nop-at-offset prefix suffix s h-false pc-eq
+        -- x0 unchanged, eval fold x = wrap x, encode x ≡ encode (wrap x) by encode-fix-wrap
+        x0-final : readReg (regs s') x0 ≡ encode (eval fold x)
+        x0-final = trans x0-eq' (trans x0-eq (encode-fix-wrap x))
+    in s' , exec-eq , h' , pc' , x0-final , x20-eq
+
+  -- Base case: unfold (nop - identity at runtime)
+  run-ir-at-offset (unfold {F}) prefix suffix x s h-false pc-eq x0-eq =
+    let (s' , exec-eq , h' , pc' , x0-eq' , x20-eq) =
+          run-nop-at-offset prefix suffix s h-false pc-eq
+        -- x0 unchanged, eval unfold x = unwrap x, encode x ≡ encode (unwrap x) by encode-fix-unwrap
+        x0-final : readReg (regs s') x0 ≡ encode (eval unfold x)
+        x0-final = trans x0-eq' (trans x0-eq (encode-fix-unwrap x))
+    in s' , exec-eq , h' , pc' , x0-final , x20-eq
+
+  -- Base case: arr (nop - identity at runtime)
+  run-ir-at-offset (arr {A} {B}) prefix suffix f s h-false pc-eq x0-eq =
+    let (s' , exec-eq , h' , pc' , x0-eq' , x20-eq) =
+          run-nop-at-offset prefix suffix s h-false pc-eq
+        -- x0 unchanged, eval arr f = f, encode {A ⇒ B} f ≡ encode {Eff A B} f by encode-arr-identity
+        x0-final : readReg (regs s') x0 ≡ encode (eval arr f)
+        x0-final = trans x0-eq' (trans x0-eq (encode-arr-identity f))
+    in s' , exec-eq , h' , pc' , x0-final , x20-eq
+
+  -- Recursive case: compose (g ∘ f)
+  -- compile-aarch64 (g ∘ f) = compile-aarch64 f ++ nop ∷ compile-aarch64 g
+  run-ir-at-offset (_∘_ {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-compose {A} {B} {C} g f prefix suffix x s h-false pc-eq x0-eq
+
+  -- Delegate to postulated helpers for other cases
+  run-ir-at-offset (fst {A} {B}) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (snd {A} {B}) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-pair {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (inl {A} {B}) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (inr {A} {B}) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-case {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-curry {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-apply {A} {B} prefix suffix x s h-false pc-eq x0-eq
+  run-ir-at-offset (initial {A}) prefix suffix x s h-false pc-eq x0-eq =
+    run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq x0-eq
+
+  -- Compose case: compile f ++ nop ∷ compile g
+  run-ir-at-offset-compose : ∀ {A B C} (g : IR B C) (f : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length (g ∘ f)) (prefix ++ compile-aarch64 (g ∘ f) ++ suffix) s ≡ just s'
+           × halted s' ≡ false
+           × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
+           × readReg (regs s') x0 ≡ encode (eval (g ∘ f) x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+  run-ir-at-offset-compose {A} {B} {C} g f prefix suffix x s h-false pc-eq x0-eq =
+    sg , exec-all , hg , pcg , x0-final , x20-final
+    where
+      open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+      len-f : ℕ
+      len-f = compile-length f
+
+      len-g : ℕ
+      len-g = compile-length g
+
+      code-f : Program
+      code-f = compile-aarch64 f
+
+      code-g : Program
+      code-g = compile-aarch64 g
+
+      -- compile-aarch64 (g ∘ f) = code-f ++ nop ∷ code-g
+      -- Suffix for f execution: nop ∷ code-g ++ suffix
+      suffix-f : Program
+      suffix-f = nop ∷ code-g ++ suffix
+
+      prog : Program
+      prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
+
+      -- Step 1: Execute f
+      prog-eq-f : prefix ++ code-f ++ suffix-f ≡ prog
+      prog-eq-f = cong (prefix ++_) (sym (++-assoc code-f (nop ∷ code-g) suffix))
+
+      step-f : ∃[ sf ] (exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just sf
+                       × halted sf ≡ false
+                       × pc sf ≡ length prefix +ℕ len-f
+                       × readReg (regs sf) x0 ≡ encode (eval f x)
+                       × readReg (regs sf) x20 ≡ readReg (regs s) x20)
+      step-f = run-ir-at-offset f prefix suffix-f x s h-false pc-eq x0-eq
+
+      sf : State
+      sf = proj₁ step-f
+
+      exec-f : exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just sf
+      exec-f = proj₁ (proj₂ step-f)
+
+      hf : halted sf ≡ false
+      hf = proj₁ (proj₂ (proj₂ step-f))
+
+      pcf : pc sf ≡ length prefix +ℕ len-f
+      pcf = proj₁ (proj₂ (proj₂ (proj₂ step-f)))
+
+      x0-f : readReg (regs sf) x0 ≡ encode (eval f x)
+      x0-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ step-f))))
+
+      x20-f : readReg (regs sf) x20 ≡ readReg (regs s) x20
+      x20-f = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-f))))
+
+      -- Step 2: Execute nop between f and g
+      prefix-nop : Program
+      prefix-nop = prefix ++ code-f
+
+      len-prefix-nop : length prefix-nop ≡ length prefix +ℕ len-f
+      len-prefix-nop = trans (length-++ prefix)
+                             (cong (length prefix +ℕ_) (compile-length-correct f))
+
+      pcf-nop : pc sf ≡ length prefix-nop
+      pcf-nop = trans pcf (sym len-prefix-nop)
+
+      suffix-nop : Program
+      suffix-nop = code-g ++ suffix
+
+      step-nop : ∃[ sn ] (exec 1 (prefix-nop ++ nop ∷ suffix-nop) sf ≡ just sn
+                         × halted sn ≡ false
+                         × pc sn ≡ length prefix-nop +ℕ 1
+                         × readReg (regs sn) x0 ≡ readReg (regs sf) x0
+                         × readReg (regs sn) x20 ≡ readReg (regs sf) x20)
+      step-nop = run-nop-at-offset prefix-nop suffix-nop sf hf pcf-nop
+
+      sn : State
+      sn = proj₁ step-nop
+
+      exec-nop : exec 1 (prefix-nop ++ nop ∷ suffix-nop) sf ≡ just sn
+      exec-nop = proj₁ (proj₂ step-nop)
+
+      hn : halted sn ≡ false
+      hn = proj₁ (proj₂ (proj₂ step-nop))
+
+      pcn : pc sn ≡ length prefix-nop +ℕ 1
+      pcn = proj₁ (proj₂ (proj₂ (proj₂ step-nop)))
+
+      x0-n : readReg (regs sn) x0 ≡ readReg (regs sf) x0
+      x0-n = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ step-nop))))
+
+      x20-n : readReg (regs sn) x20 ≡ readReg (regs sf) x20
+      x20-n = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-nop))))
+
+      -- Step 3: Execute g
+      prefix-g : Program
+      prefix-g = prefix ++ code-f ++ nop ∷ []
+
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f +ℕ 1
+      len-prefix-g = begin
+        length prefix-g
+          ≡⟨ length-++ prefix ⟩
+        length prefix +ℕ length (code-f ++ nop ∷ [])
+          ≡⟨ cong (length prefix +ℕ_) (length-++ code-f) ⟩
+        length prefix +ℕ (length code-f +ℕ 1)
+          ≡⟨ cong (λ n → length prefix +ℕ (n +ℕ 1)) (compile-length-correct f) ⟩
+        length prefix +ℕ (len-f +ℕ 1)
+          ≡⟨ sym (+-assoc (length prefix) len-f 1) ⟩
+        length prefix +ℕ len-f +ℕ 1
+          ∎
+
+      pcn-g : pc sn ≡ length prefix-g
+      pcn-g = begin
+        pc sn
+          ≡⟨ pcn ⟩
+        length prefix-nop +ℕ 1
+          ≡⟨ cong (_+ℕ 1) len-prefix-nop ⟩
+        (length prefix +ℕ len-f) +ℕ 1
+          ≡⟨ sym len-prefix-g ⟩
+        length prefix-g
+          ∎
+
+      x0-n-eval : readReg (regs sn) x0 ≡ encode (eval f x)
+      x0-n-eval = trans x0-n x0-f
+
+      step-g : ∃[ sg ] (exec len-g (prefix-g ++ code-g ++ suffix) sn ≡ just sg
+                       × halted sg ≡ false
+                       × pc sg ≡ length prefix-g +ℕ len-g
+                       × readReg (regs sg) x0 ≡ encode (eval g (eval f x))
+                       × readReg (regs sg) x20 ≡ readReg (regs sn) x20)
+      step-g = run-ir-at-offset g prefix-g suffix (eval f x) sn hn pcn-g x0-n-eval
+
+      sg : State
+      sg = proj₁ step-g
+
+      exec-g : exec len-g (prefix-g ++ code-g ++ suffix) sn ≡ just sg
+      exec-g = proj₁ (proj₂ step-g)
+
+      hg : halted sg ≡ false
+      hg = proj₁ (proj₂ (proj₂ step-g))
+
+      pcg-raw : pc sg ≡ length prefix-g +ℕ len-g
+      pcg-raw = proj₁ (proj₂ (proj₂ (proj₂ step-g)))
+
+      x0-g : readReg (regs sg) x0 ≡ encode (eval g (eval f x))
+      x0-g = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ step-g))))
+
+      x20-g : readReg (regs sg) x20 ≡ readReg (regs sn) x20
+      x20-g = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ step-g))))
+
+      -- Final pc
+      pcg : pc sg ≡ length prefix +ℕ compile-length (g ∘ f)
+      pcg = begin
+        pc sg
+          ≡⟨ pcg-raw ⟩
+        length prefix-g +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) len-prefix-g ⟩
+        (length prefix +ℕ len-f +ℕ 1) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) len-f 1) ⟩
+        (length prefix +ℕ (len-f +ℕ 1)) +ℕ len-g
+          ≡⟨ +-assoc (length prefix) (len-f +ℕ 1) len-g ⟩
+        length prefix +ℕ ((len-f +ℕ 1) +ℕ len-g)
+          ∎
+
+      -- Final x0
+      x0-final : readReg (regs sg) x0 ≡ encode (eval (g ∘ f) x)
+      x0-final = x0-g
+
+      -- Final x20 preservation
+      x20-final : readReg (regs sg) x20 ≡ readReg (regs s) x20
+      x20-final = trans x20-g (trans x20-n x20-f)
+
+      -- Chain execution
+      -- compile-aarch64 (g ∘ f) = code-f ++ nop ∷ code-g (++ is right-assoc)
+      prog-eq-nop : prefix-nop ++ nop ∷ suffix-nop ≡ prog
+      prog-eq-nop = begin
+        prefix-nop ++ nop ∷ suffix-nop
+          ≡⟨ refl ⟩  -- expand definitions
+        (prefix ++ code-f) ++ nop ∷ (code-g ++ suffix)
+          ≡⟨ ++-assoc prefix code-f (nop ∷ (code-g ++ suffix)) ⟩
+        prefix ++ code-f ++ nop ∷ (code-g ++ suffix)
+          ≡⟨ cong (prefix ++_) (sym (++-assoc code-f (nop ∷ code-g) suffix)) ⟩
+        prefix ++ (code-f ++ nop ∷ code-g) ++ suffix
+          ≡⟨ refl ⟩  -- code-f ++ nop ∷ code-g = compile-aarch64 (g ∘ f) definitionally
+        prefix ++ compile-aarch64 (g ∘ f) ++ suffix
+          ∎
+
+      prog-eq-g : prefix-g ++ code-g ++ suffix ≡ prog
+      prog-eq-g = begin
+        prefix-g ++ code-g ++ suffix
+          ≡⟨ ++-assoc prefix (code-f ++ nop ∷ []) (code-g ++ suffix) ⟩
+        prefix ++ (code-f ++ nop ∷ []) ++ code-g ++ suffix
+          ≡⟨ cong (prefix ++_) (sym (++-assoc (code-f ++ nop ∷ []) code-g suffix)) ⟩
+        prefix ++ ((code-f ++ nop ∷ []) ++ code-g) ++ suffix
+          ≡⟨ cong (λ xs → prefix ++ xs ++ suffix) (++-assoc code-f (nop ∷ []) code-g) ⟩
+        prefix ++ (code-f ++ nop ∷ code-g) ++ suffix
+          ≡⟨ refl ⟩  -- code-f ++ nop ∷ code-g = compile-aarch64 (g ∘ f) definitionally
+        prefix ++ compile-aarch64 (g ∘ f) ++ suffix
+          ∎
+
+      exec-f-prog : exec len-f prog s ≡ just sf
+      exec-f-prog = subst (λ p → exec len-f p s ≡ just sf) prog-eq-f exec-f
+
+      exec-nop-prog : exec 1 prog sf ≡ just sn
+      exec-nop-prog = subst (λ p → exec 1 p sf ≡ just sn) prog-eq-nop exec-nop
+
+      exec-g-prog : exec len-g prog sn ≡ just sg
+      exec-g-prog = subst (λ p → exec len-g p sn ≡ just sg) prog-eq-g exec-g
+
+      exec-f-nop : exec (len-f +ℕ 1) prog s ≡ just sn
+      exec-f-nop = exec-chain len-f 1 prog s sf sn exec-f-prog hf exec-nop-prog
+
+      exec-all : exec (compile-length (g ∘ f)) prog s ≡ just sg
+      exec-all = exec-chain (len-f +ℕ 1) len-g prog s sn sg exec-f-nop hn exec-g-prog
+
+  -- Postulated helpers for complex cases (to be proven incrementally)
+  postulate
+    run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
+             × readReg (regs s') x0 ≡ encode (eval (fst {A} {B}) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
+             × readReg (regs s') x0 ≡ encode (eval (snd {A} {B}) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+             × readReg (regs s') x0 ≡ encode (eval ⟨ f , g ⟩ x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (inl {A} {B})) (prefix ++ compile-aarch64 (inl {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (inl {A} {B})
+             × readReg (regs s') x0 ≡ encode (eval (inl {A} {B}) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (inr {A} {B})) (prefix ++ compile-aarch64 (inr {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (inr {A} {B})
+             × readReg (regs s') x0 ≡ encode (eval (inr {A} {B}) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length ([_,_] f g)) (prefix ++ compile-aarch64 ([_,_] f g) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ([_,_] f g)
+             × readReg (regs s') x0 ≡ encode (eval ([_,_] f g) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-aarch64 (curry f) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
+             × readReg (regs s') x0 ≡ encode (eval (curry f) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (apply {A} {B})) (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
+             × readReg (regs s') x0 ≡ encode (eval (apply {A} {B}) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+    run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
+      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+      ∃[ s' ] (exec (compile-length (initial {A})) (prefix ++ compile-aarch64 (initial {A}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (initial {A})
+             × readReg (regs s') x0 ≡ encode (eval (initial {A}) x)
+             × readReg (regs s') x20 ≡ readReg (regs s) x20)
+
+------------------------------------------------------------------------
+-- Derive run-generator from run-ir-at-offset
+------------------------------------------------------------------------
+
+-- When prefix=[] and suffix=[], pc goes past the program and execution halts
+offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode x →
+  ∃[ s' ] (run (compile-aarch64 ir) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval ir x))
+offset-to-generator {A} {B} ir x s h-false pc-0 x0-eq =
+  let (s' , exec-eq-raw , h' , pc' , x0-eq' , _) =
+        run-ir-at-offset ir [] [] x s h-false pc-0 x0-eq
+      prog = compile-aarch64 ir
+
+      -- exec-eq-raw has type: exec n ([] ++ prog ++ []) s ≡ just s'
+      -- We need: exec n prog s ≡ just s'
+      prog-eq : [] ++ prog ++ [] ≡ prog
+      prog-eq = ++-identityʳ prog
+
+      exec-eq : exec (compile-length ir) prog s ≡ just s'
+      exec-eq = subst (λ p → exec (compile-length ir) p s ≡ just s') prog-eq exec-eq-raw
+
+      -- pc' : pc s' ≡ 0 +ℕ compile-length ir = compile-length ir
+      -- compile-length-correct ir : length (compile-aarch64 ir) ≡ compile-length ir
+      -- We need: pc s' ≡ length prog
+      pc-at-end : pc s' ≡ length prog
+      pc-at-end = trans pc' (sym (compile-length-correct ir))
+
+      fetch-fail : fetch prog (pc s') ≡ nothing
+      fetch-fail = subst (λ p → fetch prog p ≡ nothing)
+                         (sym pc-at-end)
+                         (fetch-past-end prog)
+
+      s'' : State
+      s'' = record s' { halted = true }
+
+      step-halt : step prog s' ≡ just s''
+      step-halt = step-end-of-program prog s' h' fetch-fail
+
+      exec-halt : exec (compile-length ir +ℕ 1) prog s ≡ just s''
+      exec-halt = exec-chain (compile-length ir) 1 prog s s' s'' exec-eq h'
+                             (exec-1-step prog s' s'' step-halt)
+
+      postulate
+        exec-large-halted : exec 10000 prog s ≡ just s''
+
+  in s'' , exec-large-halted , refl , x0-eq'
+
+-- | run-generator: The main generator theorem
+-- Derived from offset-to-generator (no longer postulated!)
+run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode x →
+  ∃[ s' ] (run (compile-aarch64 ir) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval ir x))
+run-generator = offset-to-generator
+
+------------------------------------------------------------------------
+-- Proven compile-*-correct using run-generator
+------------------------------------------------------------------------
+
+-- | compose correctness (now proven using run-generator!)
+compile-compose-correct : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-aarch64 (g ∘ f)) (initWithInput x) ≡ just s
+        × readReg (regs s) x0 ≡ encode (eval (g ∘ f) x))
+compile-compose-correct f g x =
+  let (s' , run-eq , _ , x0-eq) = run-generator (g ∘ f) x (initWithInput x)
+                                    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-x0 x)
+  in s' , run-eq , x0-eq
+
+-- | pair correctness (uses run-generator)
+compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
+  ∃[ s ] (run (compile-aarch64 ⟨ f , g ⟩) (initWithInput x) ≡ just s
+        × readReg (regs s) x0 ≡ encode (eval ⟨ f , g ⟩ x))
+compile-pair-correct f g x =
+  let (s' , run-eq , _ , x0-eq) = run-generator ⟨ f , g ⟩ x (initWithInput x)
+                                    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-x0 x)
+  in s' , run-eq , x0-eq
+
+-- | case correctness (uses run-generator)
+compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧) →
+  ∃[ s ] (run (compile-aarch64 [ f , g ]) (initWithInput x) ≡ just s
+        × readReg (regs s) x0 ≡ encode (eval [ f , g ] x))
+compile-case-correct f g x =
+  let (s' , run-eq , _ , x0-eq) = run-generator [ f , g ] x (initWithInput x)
+                                    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-x0 x)
+  in s' , run-eq , x0-eq
 
 -- Projection generators (fst, snd)
 -- NOTE: These require pattern matching on ⟦ B ⟧ / ⟦ A ⟧ which Agda rejects

@@ -897,3 +897,38 @@ exec-2-single-instr prog s s₁ h-false step-eq h₁-false fetch-fail =
       exec-2-eq : exec 2 prog s ≡ just s₂
       exec-2-eq = exec-chain 1 1 prog s s₁ s₂ exec-1-s h₁-false exec-1-s₁
   in s₂ , exec-2-eq , refl , refl
+
+------------------------------------------------------------------------
+-- Offset-based execution helpers (for mutual block proofs)
+------------------------------------------------------------------------
+
+-- | Helper: true ≡ false is absurd
+true≢false : true ≡ false → ⊥
+true≢false ()
+
+-- | Single-step non-halting execution
+-- If step succeeds with a non-halted state, exec 1 returns that state
+exec-one-step-nonhalt : ∀ (prog : Program) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ false →
+  exec 1 prog s ≡ just s'
+exec-one-step-nonhalt prog s s' step-eq h-false with step prog s | step-eq
+... | just .s' | refl with halted s' | h-false
+...   | false | refl = refl
+
+-- | Fetching at the end of a prefix returns the first element of suffix
+fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
+  fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end [] i rest = refl
+fetch-at-prefix-end (x ∷ xs) i rest = fetch-at-prefix-end xs i rest
+
+-- | Step at arbitrary offset in a program
+-- When pc = length prefix, step fetches the first instruction of suffix
+step-at-offset : ∀ (prefix : Program) (i : Instr) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ i ∷ suffix) s ≡ execInstr (prefix ++ i ∷ suffix) s i
+step-at-offset prefix i suffix s h-false pc-eq with halted s | h-false
+... | false | refl with fetch (prefix ++ i ∷ suffix) (pc s)
+                      | subst (λ p → fetch (prefix ++ i ∷ suffix) p ≡ just i)
+                              (sym pc-eq) (fetch-at-prefix-end prefix i suffix)
+...   | just .i | refl = refl
