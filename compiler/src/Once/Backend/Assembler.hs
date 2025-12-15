@@ -6,12 +6,12 @@
 -- assembly source files.
 --
 -- Environment variables for configuration:
---   AS        - Assembler for native target
---   AS_ARM64  - Assembler for AArch64 cross-compilation
---   AS_RISCV  - Assembler for RISC-V cross-compilation
---   LD        - Linker for native target
---   LD_ARM64  - Linker for AArch64
---   LD_RISCV  - Linker for RISC-V
+--   AS  - Assembler (default: as)
+--   LD  - Linker (default: ld)
+--
+-- For cross-compilation, set AS and LD appropriately:
+--   AS=aarch64-linux-gnu-as LD=aarch64-linux-gnu-ld   for ARM64
+--   AS=riscv64-linux-gnu-as LD=riscv64-linux-gnu-ld  for RISC-V64
 module Once.Backend.Assembler
   ( -- * Assembly
     assemble
@@ -55,38 +55,19 @@ data AssemblerError
 -- Configuration
 ------------------------------------------------------------------------
 
--- | Get the assembler for a target
--- Checks environment variables, falls back to defaults
-getAssembler :: Target -> IO FilePath
-getAssembler target = do
-  -- Check target-specific env var first
-  specific <- lookupEnv specificVar
-  -- Then check generic AS
-  generic <- lookupEnv "AS"
-  pure $ case (specific, generic) of
-    (Just s, _) -> s      -- Target-specific takes priority
-    (_, Just g) -> g      -- Generic AS
-    (_, _)      -> defAs  -- Default
-  where
-    (specificVar, defAs) = case target of
-      X86_64  -> ("AS", "as")
-      AArch64 -> ("AS_ARM64", "aarch64-linux-gnu-as")
-      RiscV64 -> ("AS_RISCV", "riscv64-linux-gnu-as")
+-- | Get the assembler
+-- Checks AS environment variable, falls back to "as"
+getAssembler :: IO FilePath
+getAssembler = do
+  as <- lookupEnv "AS"
+  pure $ maybe "as" id as
 
--- | Get the linker for a target
-getLinker :: Target -> IO FilePath
-getLinker target = do
-  specific <- lookupEnv specificVar
-  generic <- lookupEnv "LD"
-  pure $ case (specific, generic) of
-    (Just s, _) -> s
-    (_, Just g) -> g
-    (_, _)      -> defLd
-  where
-    (specificVar, defLd) = case target of
-      X86_64  -> ("LD", "ld")
-      AArch64 -> ("LD_ARM64", "aarch64-linux-gnu-ld")
-      RiscV64 -> ("LD_RISCV", "riscv64-linux-gnu-ld")
+-- | Get the linker
+-- Checks LD environment variable, falls back to "ld"
+getLinker :: IO FilePath
+getLinker = do
+  ld <- lookupEnv "LD"
+  pure $ maybe "ld" id ld
 
 ------------------------------------------------------------------------
 -- Assembly
@@ -94,9 +75,9 @@ getLinker target = do
 
 -- | Assemble a .s file to .o
 -- Returns the path to the object file on success
-assemble :: Target -> FilePath -> FilePath -> IO (Either AssemblerError FilePath)
-assemble target asmFile objFile = do
-  as <- getAssembler target
+assemble :: FilePath -> FilePath -> IO (Either AssemblerError FilePath)
+assemble asmFile objFile = do
+  as <- getAssembler
   result <- try $ readProcessWithExitCode as [asmFile, "-o", objFile] ""
   case result of
     Left (e :: IOException) ->
@@ -111,9 +92,9 @@ assemble target asmFile objFile = do
 ------------------------------------------------------------------------
 
 -- | Link object files to an executable
-link :: Target -> [FilePath] -> FilePath -> IO (Either AssemblerError FilePath)
-link target objFiles output = do
-  ld <- getLinker target
+link :: [FilePath] -> FilePath -> IO (Either AssemblerError FilePath)
+link objFiles output = do
+  ld <- getLinker
   let args = objFiles ++ ["-o", output]
   result <- try $ readProcessWithExitCode ld args ""
   case result of

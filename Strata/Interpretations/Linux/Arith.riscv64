@@ -1,0 +1,190 @@
+/* Integer arithmetic primitives for Once
+ *
+ * RISC-V LP64D ABI implementation of Arith.once primitives.
+ * OncePair (16 bytes) passed in: a0 (fst), a1 (snd)
+ * int64_t passed in: a0
+ * Return value in: a0
+ */
+
+.text
+
+/*========================================================================
+ * Basic Arithmetic
+ *========================================================================*/
+
+.globl once_add
+.type once_add, @function
+once_add:
+    add     a0, a0, a1      // return fst + snd
+    ret
+.size once_add, .-once_add
+
+.globl once_sub
+.type once_sub, @function
+once_sub:
+    sub     a0, a0, a1      // return fst - snd
+    ret
+.size once_sub, .-once_sub
+
+.globl once_mul
+.type once_mul, @function
+once_mul:
+    mul     a0, a0, a1      // return fst * snd
+    ret
+.size once_mul, .-once_mul
+
+.globl once_div
+.type once_div, @function
+once_div:
+    beqz    a1, .Ldiv_zero  // if snd == 0, return 0
+    div     a0, a0, a1      // signed divide
+    ret
+.Ldiv_zero:
+    li      a0, 0
+    ret
+.size once_div, .-once_div
+
+.globl once_mod
+.type once_mod, @function
+once_mod:
+    beqz    a1, .Lmod_zero  // if snd == 0, return 0
+    rem     a0, a0, a1      // signed remainder
+    ret
+.Lmod_zero:
+    li      a0, 0
+    ret
+.size once_mod, .-once_mod
+
+.globl once_neg
+.type once_neg, @function
+once_neg:
+    neg     a0, a0
+    ret
+.size once_neg, .-once_neg
+
+.globl once_abs
+.type once_abs, @function
+once_abs:
+    bgez    a0, .Labs_done  // if a0 >= 0, already positive
+    neg     a0, a0
+.Labs_done:
+    ret
+.size once_abs, .-once_abs
+
+/*========================================================================
+ * Comparisons (return 0 or 1)
+ *========================================================================*/
+
+.globl once_eq
+.type once_eq, @function
+once_eq:
+    xor     a0, a0, a1      // a0 = 0 if equal
+    seqz    a0, a0          // a0 = 1 if a0 == 0
+    ret
+.size once_eq, .-once_eq
+
+.globl once_neq
+.type once_neq, @function
+once_neq:
+    xor     a0, a0, a1      // a0 = 0 if equal
+    snez    a0, a0          // a0 = 1 if a0 != 0
+    ret
+.size once_neq, .-once_neq
+
+.globl once_lt
+.type once_lt, @function
+once_lt:
+    slt     a0, a0, a1      // a0 = 1 if fst < snd (signed)
+    ret
+.size once_lt, .-once_lt
+
+.globl once_le
+.type once_le, @function
+once_le:
+    slt     a0, a1, a0      // a0 = 1 if snd < fst
+    xori    a0, a0, 1       // a0 = !(snd < fst) = (fst <= snd)
+    ret
+.size once_le, .-once_le
+
+.globl once_gt
+.type once_gt, @function
+once_gt:
+    slt     a0, a1, a0      // a0 = 1 if snd < fst (i.e., fst > snd)
+    ret
+.size once_gt, .-once_gt
+
+.globl once_ge
+.type once_ge, @function
+once_ge:
+    slt     a0, a0, a1      // a0 = 1 if fst < snd
+    xori    a0, a0, 1       // a0 = !(fst < snd) = (fst >= snd)
+    ret
+.size once_ge, .-once_ge
+
+/*========================================================================
+ * Bitwise Operations
+ *========================================================================*/
+
+.globl once_band
+.type once_band, @function
+once_band:
+    and     a0, a0, a1
+    ret
+.size once_band, .-once_band
+
+.globl once_bor
+.type once_bor, @function
+once_bor:
+    or      a0, a0, a1
+    ret
+.size once_bor, .-once_bor
+
+.globl once_bxor
+.type once_bxor, @function
+once_bxor:
+    xor     a0, a0, a1
+    ret
+.size once_bxor, .-once_bxor
+
+.globl once_bnot
+.type once_bnot, @function
+once_bnot:
+    not     a0, a0
+    ret
+.size once_bnot, .-once_bnot
+
+.globl once_shl
+.type once_shl, @function
+once_shl:
+    sll     a0, a0, a1      // logical left shift
+    ret
+.size once_shl, .-once_shl
+
+.globl once_shr
+.type once_shr, @function
+once_shr:
+    sra     a0, a0, a1      // arithmetic right shift
+    ret
+.size once_shr, .-once_shr
+
+/*========================================================================
+ * Min/Max
+ *========================================================================*/
+
+.globl once_min
+.type once_min, @function
+once_min:
+    blt     a0, a1, .Lmin_done  // if fst < snd, use fst
+    mv      a0, a1              // else use snd
+.Lmin_done:
+    ret
+.size once_min, .-once_min
+
+.globl once_max
+.type once_max, @function
+once_max:
+    bgt     a0, a1, .Lmax_done  // if fst > snd, use fst
+    mv      a0, a1              // else use snd
+.Lmax_done:
+    ret
+.size once_max, .-once_max
