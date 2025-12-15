@@ -79,6 +79,10 @@ open import Once.Backend.Common.Fetch
         ; fetch-append-left; fetch-append-right; fetch-at-length; fetch-past-end
         )
 
+-- Import common memory helper lemmas
+open import Once.Backend.Common.Memory
+  using (≡ᵇ-refl; n≢n+suc)
+
 -- Import common exec N-steps lemmas (parameterized module)
 -- Instantiated below after defining the base lemmas exec-step-continue and exec-one-step
 
@@ -267,10 +271,7 @@ execLd : ∀ (prog : List Instr) (s : State) (rd : Reg) (n : ℕ) (rs : Reg) (v 
                    ; pc = pc s +ℕ 1 })
 execLd prog s rd n rs v mem-eq rewrite mem-eq = refl
 
--- | n ≡ᵇ n is always true (needed for branch proofs)
-≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
-≡ᵇ-refl zero = refl
-≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+-- ≡ᵇ-refl is now imported from Once.Backend.Common.Memory
 
 -- Helper: state after executing bne when registers are equal (not taken)
 -- Note: RISC-V branches compare registers directly (no flags!)
@@ -375,16 +376,7 @@ readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
 readMem-writeMem-same m addr v with addr ≡ᵇ addr | ≡ᵇ-refl addr
 ... | true | _ = refl
 
--- | n ≢ n + k for k > 0
-n≢n+suc : ∀ (n k : ℕ) → n ≢ n +ℕ suc k
-n≢n+suc n k eq = helper n k (sym eq)
-  where
-    helper : ∀ n k → n +ℕ suc k ≢ n
-    helper zero k ()
-    helper (suc n) k eq = helper n k (suc-injective eq)
-      where
-        suc-injective : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
-        suc-injective refl = refl
+-- n≢n+suc is now imported from Once.Backend.Common.Memory
 
 -- | Reading from a different address after a write returns the old value
 readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →

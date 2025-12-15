@@ -31,6 +31,10 @@ open import Once.Backend.Common.Fetch
         ; fetch-append-left; fetch-append-right
         )
 
+-- Import common memory helper lemmas
+open import Once.Backend.Common.Memory
+  using (≡ᵇ-refl; n≢n+suc)
+
 -- Import common exec N-steps lemmas (parameterized module)
 -- Instantiated below after defining the base lemmas exec-on-non-halted-step and exec-on-halted-step
 
@@ -426,27 +430,13 @@ readReg-writeReg-rax-rdi rf v = refl
 
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
 
--- | n ≡ᵇ n is always true (helper)
-≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
-≡ᵇ-refl zero = refl
-≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+-- ≡ᵇ-refl and n≢n+suc are now imported from Once.Backend.Common.Memory
 
 -- | Reading from the address we just wrote returns the written value
 readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
   readMem (writeMem m addr v) addr ≡ just v
 readMem-writeMem-same m addr v with addr ≡ᵇ addr | ≡ᵇ-refl addr
 ... | true | _ = refl
-
--- | n ≢ n + k for k > 0 (needed for disjoint memory addresses)
-n≢n+suc : ∀ (n k : ℕ) → n ≢ n +ℕ suc k
-n≢n+suc n k eq = helper n k (sym eq)
-  where
-    helper : ∀ n k → n +ℕ suc k ≢ n
-    helper zero k ()
-    helper (suc n) k eq = helper n k (suc-injective eq)
-      where
-        suc-injective : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
-        suc-injective refl = refl
 
 -- | Reading from a different address after a write returns the old value
 readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →

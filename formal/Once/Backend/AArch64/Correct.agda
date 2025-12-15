@@ -30,6 +30,10 @@ open import Once.Backend.AArch64.CodeGen
 open import Once.Backend.Common.Fetch
   using (fetch-0; fetch-suc; fetch-empty; fetch-append-left; fetch-append-right)
 
+-- Import common memory helper lemmas (with AArch64 naming convention)
+open import Once.Backend.Common.Memory
+  using () renaming (≡ᵇ-refl to n≡ᵇn; n≢n+8-bool to n≢n+8; n+8≢n-bool to n+8≢n)
+
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -131,10 +135,7 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ)
 
--- | n ≡ᵇ n is always true
-n≡ᵇn : ∀ (n : ℕ) → (n ≡ᵇ n) ≡ true
-n≡ᵇn zero = refl
-n≡ᵇn (suc n) = n≡ᵇn n
+-- n≡ᵇn is now imported from Once.Backend.Common.Memory (renamed from ≡ᵇ-refl)
 
 -- | Reading a register after writing returns the written value
 -- Proven by case analysis on register
@@ -304,15 +305,7 @@ readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
   readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
 readMem-writeMem-diff m addr1 addr2 v neq rewrite neq = refl
 
--- | Address inequality: n ≢ n + 8
-n≢n+8 : ∀ (n : ℕ) → (n ≡ᵇ (n +ℕ 8)) ≡ false
-n≢n+8 zero = refl
-n≢n+8 (suc n) = n≢n+8 n
-
--- | Address inequality (swapped): n + 8 ≢ n
-n+8≢n : ∀ (n : ℕ) → ((n +ℕ 8) ≡ᵇ n) ≡ false
-n+8≢n zero = refl
-n+8≢n (suc n) = n+8≢n n
+-- n≢n+8 and n+8≢n are now imported from Once.Backend.Common.Memory
 
 -- | Corollary: reading at addr+8 after writing at addr is unchanged
 readMem-writeMem-diff-8 : ∀ (m : Memory) (addr : Word) (v : Word) →
