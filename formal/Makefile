@@ -44,6 +44,7 @@ RISCV_SEMANTICS := Once/Backend/RiscV64/Semantics.agda
 RISCV_CODEGEN := Once/Backend/RiscV64/CodeGen.agda
 RISCV_CORRECT := Once/Backend/RiscV64/Correct.agda
 COMMON_FETCH := Once/Backend/Common/Fetch.agda
+COMMON_EXEC := Once/Backend/Common/Exec.agda
 ENDTOEND := Once/EndToEnd.agda
 ENDTOEND_AARCH64 := Once/EndToEndAArch64.agda
 PRIM_MEMORY := Once/Primitive/Memory.agda
@@ -94,6 +95,7 @@ optimize:
 common:
 	@echo "Type-checking common backend lemmas..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(COMMON_FETCH)'
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(COMMON_EXEC)'
 
 x86:
 	@echo "Type-checking x86-64 backend..."
