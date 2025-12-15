@@ -154,6 +154,7 @@ data Instr : Set where
   -- Special
   nop    : Instr                          -- no operation
   brk    : ℕ → Instr                      -- brk #imm (breakpoint - trap for unreachable)
+  adr    : Reg → ℕ → Instr                -- adr xD, #offset (PC-relative address: xD = PC + offset)
 
   -- Zero register store (for tag=0)
   str-zr : Mem → Instr                    -- str xzr, [mem] (store zero)

@@ -887,6 +887,14 @@ execInstr-bl : ∀ (prog : Program) (s : State) (target : ℕ) →
     just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1) ; pc = target })
 execInstr-bl prog s target = refl
 
+-- | What execInstr does for adr (PC-relative address)
+-- adr computes the absolute address: dst = PC + offset
+-- This is crucial for curry to store the correct thunk address.
+execInstr-adr : ∀ (prog : Program) (s : State) (dst : Reg) (offset : ℕ) →
+  execInstr prog s (adr dst offset) ≡
+    just (record s { regs = writeReg (regs s) dst (pc s +ℕ offset) ; pc = pc s +ℕ 1 })
+execInstr-adr prog s dst offset = refl
+
 ------------------------------------------------------------------------
 -- Step Lemmas for Single-Instruction Programs
 ------------------------------------------------------------------------

@@ -364,6 +364,12 @@ execInstr prog s nop =
 execInstr prog s (brk _) =
   just (record s { halted = true })
 
+-- adr xD, #offset (PC-relative address: xD = PC + offset)
+-- This computes the absolute address of a location offset bytes from the current PC.
+-- Used by curry to store the absolute address of the thunk entry point.
+execInstr prog s (adr dst offset) =
+  just (record s { regs = writeReg (regs s) dst (pc s + offset) ; pc = pc s + 1 })
+
 -- str xzr, [mem] (store zero)
 execInstr prog s (str-zr m) =
   just (record (writeToMem s m 0) { pc = pc s + 1 })
