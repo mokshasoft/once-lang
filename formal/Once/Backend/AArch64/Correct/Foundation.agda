@@ -210,6 +210,58 @@ readReg-writeReg-x19-x20 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x19 v) x20 ≡ readReg rf x20
 readReg-writeReg-x19-x20 rf v = refl
 
+-- | Cross-register preservation for x30 (link register, used by blr)
+-- Writing x30 doesn't affect x0 (input/output register)
+readReg-writeReg-x30-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x30 v) x0 ≡ readReg rf x0
+readReg-writeReg-x30-x0 rf v = refl
+
+-- Writing x30 doesn't affect x9 (temp register holding code-ptr)
+readReg-writeReg-x30-x9 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x30 v) x9 ≡ readReg rf x9
+readReg-writeReg-x30-x9 rf v = refl
+
+-- Writing x30 doesn't affect x10 (temp register)
+readReg-writeReg-x30-x10 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x30 v) x10 ≡ readReg rf x10
+readReg-writeReg-x30-x10 rf v = refl
+
+-- Writing x30 doesn't affect x19 (env pointer)
+readReg-writeReg-x30-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x30 v) x19 ≡ readReg rf x19
+readReg-writeReg-x30-x19 rf v = refl
+
+-- Writing x30 doesn't affect x20 (callee-saved)
+readReg-writeReg-x30-x20 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x30 v) x20 ≡ readReg rf x20
+readReg-writeReg-x30-x20 rf v = refl
+
+-- | Cross-register preservation for x10 (used by apply to hold arg)
+-- Writing x10 doesn't affect x0
+readReg-writeReg-x10-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x10 v) x0 ≡ readReg rf x0
+readReg-writeReg-x10-x0 rf v = refl
+
+-- Writing x10 doesn't affect x9
+readReg-writeReg-x10-x9 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x10 v) x9 ≡ readReg rf x9
+readReg-writeReg-x10-x9 rf v = refl
+
+-- Writing x10 doesn't affect x19
+readReg-writeReg-x10-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x10 v) x19 ≡ readReg rf x19
+readReg-writeReg-x10-x19 rf v = refl
+
+-- Writing x10 doesn't affect x20
+readReg-writeReg-x10-x20 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x10 v) x20 ≡ readReg rf x20
+readReg-writeReg-x10-x20 rf v = refl
+
+-- Writing x10 doesn't affect x30
+readReg-writeReg-x10-x30 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x10 v) x30 ≡ readReg rf x30
+readReg-writeReg-x10-x30 rf v = refl
+
 -- | SP lemmas: reading SP after writing returns the written value
 readSP-writeSP-same : ∀ (rf : RegFile) (v : Word) →
   readSP (writeSP rf v) ≡ v
@@ -932,3 +984,52 @@ step-at-offset prefix i suffix s h-false pc-eq with halted s | h-false
                       | subst (λ p → fetch (prefix ++ i ∷ suffix) p ≡ just i)
                               (sym pc-eq) (fetch-at-prefix-end prefix i suffix)
 ...   | just .i | refl = refl
+
+------------------------------------------------------------------------
+-- Branch and Link Register (blr) Lemmas
+------------------------------------------------------------------------
+
+-- | Step a blr instruction at arbitrary offset
+-- Combines step-at-offset with execInstr-blr for a convenient lemma.
+-- This is crucial for proving apply correctness where blr jumps to closure code.
+step-blr-at-offset : ∀ (prefix : Program) (r : Reg) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ blr r ∷ suffix) s ≡
+    just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1)
+                   ; pc = readReg (regs s) r })
+step-blr-at-offset prefix r suffix s h-false pc-eq =
+  trans (step-at-offset prefix (blr r) suffix s h-false pc-eq)
+        (execInstr-blr (prefix ++ blr r ∷ suffix) s r)
+
+-- | Key insight for apply: after blr, halted is still false
+-- (blr is a branch instruction, not a halting instruction)
+blr-preserves-nonhalt : ∀ (s : State) (r : Reg) →
+  halted (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1)
+                   ; pc = readReg (regs s) r }) ≡ halted s
+blr-preserves-nonhalt s r = refl
+
+-- | After blr, the new PC is the value that was in the target register
+blr-pc-is-target : ∀ (s : State) (r : Reg) →
+  pc (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1)
+               ; pc = readReg (regs s) r }) ≡ readReg (regs s) r
+blr-pc-is-target s r = refl
+
+-- | After blr, x30 holds the return address (pc + 1)
+blr-x30-is-return : ∀ (s : State) (r : Reg) →
+  let s' = record s { regs = writeReg (regs s) x30 (pc s +ℕ 1)
+                    ; pc = readReg (regs s) r }
+  in readReg (regs s') x30 ≡ pc s +ℕ 1
+blr-x30-is-return s r = readReg-writeReg-same (regs s) x30 (pc s +ℕ 1)
+
+------------------------------------------------------------------------
+-- Return (ret) Lemmas
+------------------------------------------------------------------------
+
+-- | Step a ret instruction at arbitrary offset
+-- ret sets halted = true (it's how we model function return)
+step-ret-at-offset : ∀ (prefix : Program) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ ret ∷ suffix) s ≡ just (record s { halted = true })
+step-ret-at-offset prefix suffix s h-false pc-eq =
+  trans (step-at-offset prefix ret suffix s h-false pc-eq)
+        (execInstr-ret (prefix ++ ret ∷ suffix) s)
