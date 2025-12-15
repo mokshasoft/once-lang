@@ -752,23 +752,106 @@ run-mov-x0-at-offset prefix suffix s h-false pc-eq = s' , exec-eq , h' , pc' , x
     x20-eq = refl
 
 ------------------------------------------------------------------------
+-- Proven helpers for fst and snd
+------------------------------------------------------------------------
+
+-- | run-ir-at-offset-fst: Execute fst at arbitrary offset (PROVEN)
+-- Uses encode-pair-fst axiom to provide memory precondition
+--
+-- compile-aarch64 fst = ldr x0 (base x0) ∷ []
+-- effectiveAddr s (base x0) = readReg (regs s) x0
+-- After ldr: x0 = memory[x0] = encode (proj₁ x)
+run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+  ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
+         × readReg (regs s') x0 ≡ encode (eval (fst {A} {B}) x)
+         × readReg (regs s') x20 ≡ readReg (regs s) x20)
+run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq x0-eq =
+  let prog = prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix
+      a = proj₁ x
+      -- Memory precondition from encoding axiom
+      mem-eq : readMem (memory s) (encode x) ≡ just (encode a)
+      mem-eq = encode-pair-fst (proj₁ x) (proj₂ x) (memory s)
+      -- Effective address = x0 = encode x
+      eff-addr : effectiveAddr s (base x0) ≡ encode x
+      eff-addr = x0-eq
+      -- Memory read succeeds
+      mem-read : readMem (memory s) (effectiveAddr s (base x0)) ≡ just (encode a)
+      mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
+      -- Target state
+      s' : State
+      s' = record s { regs = writeReg (regs s) x0 (encode a) ; pc = pc s +ℕ 1 }
+      -- Fetch succeeds
+      fetch-eq : fetch prog (pc s) ≡ just (ldr x0 (base x0))
+      fetch-eq = subst (λ p → fetch prog p ≡ just (ldr x0 (base x0)))
+                       (sym pc-eq) (fetch-at-prefix-end prefix (ldr x0 (base x0)) suffix)
+      -- Step produces s'
+      step-eq : step prog s ≡ just s'
+      step-eq = trans (step-unfold prog s (ldr x0 (base x0)) h-false fetch-eq)
+                      (execInstr-ldr-success prog s x0 (base x0) (encode a) mem-read)
+      -- Properties of s'
+      h' : halted s' ≡ false
+      h' = h-false
+      pc' : pc s' ≡ length prefix +ℕ 1
+      pc' = cong (λ p → p +ℕ 1) pc-eq
+      x0' : readReg (regs s') x0 ≡ encode a
+      x0' = readReg-writeReg-same (regs s) x0 (encode a)
+      x20' : readReg (regs s') x20 ≡ readReg (regs s) x20
+      x20' = readReg-writeReg-x0-x20 (regs s) (encode a)
+  in s' , exec-one-step-nonhalt prog s s' step-eq h' , h' , pc' , x0' , x20'
+
+-- | run-ir-at-offset-snd: Execute snd at arbitrary offset (PROVEN)
+-- Uses encode-pair-snd axiom to provide memory precondition
+--
+-- compile-aarch64 snd = ldr x0 (base+imm x0 8) ∷ []
+-- effectiveAddr s (base+imm x0 8) = readReg (regs s) x0 + 8
+-- After ldr: x0 = memory[x0+8] = encode (proj₂ x)
+run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+  ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
+         × readReg (regs s') x0 ≡ encode (eval (snd {A} {B}) x)
+         × readReg (regs s') x20 ≡ readReg (regs s) x20)
+run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq x0-eq =
+  let prog = prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix
+      b = proj₂ x
+      -- Memory precondition from encoding axiom
+      mem-eq : readMem (memory s) (encode x +ℕ 8) ≡ just (encode b)
+      mem-eq = encode-pair-snd (proj₁ x) (proj₂ x) (memory s)
+      -- Effective address = x0 + 8 = encode x + 8
+      eff-addr : effectiveAddr s (base+imm x0 8) ≡ encode x +ℕ 8
+      eff-addr = cong (λ r → r +ℕ 8) x0-eq
+      -- Memory read succeeds
+      mem-read : readMem (memory s) (effectiveAddr s (base+imm x0 8)) ≡ just (encode b)
+      mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
+      -- Target state
+      s' : State
+      s' = record s { regs = writeReg (regs s) x0 (encode b) ; pc = pc s +ℕ 1 }
+      -- Fetch succeeds
+      fetch-eq : fetch prog (pc s) ≡ just (ldr x0 (base+imm x0 8))
+      fetch-eq = subst (λ p → fetch prog p ≡ just (ldr x0 (base+imm x0 8)))
+                       (sym pc-eq) (fetch-at-prefix-end prefix (ldr x0 (base+imm x0 8)) suffix)
+      -- Step produces s'
+      step-eq : step prog s ≡ just s'
+      step-eq = trans (step-unfold prog s (ldr x0 (base+imm x0 8)) h-false fetch-eq)
+                      (execInstr-ldr-success prog s x0 (base+imm x0 8) (encode b) mem-read)
+      -- Properties of s'
+      h' : halted s' ≡ false
+      h' = h-false
+      pc' : pc s' ≡ length prefix +ℕ 1
+      pc' = cong (λ p → p +ℕ 1) pc-eq
+      x0' : readReg (regs s') x0 ≡ encode b
+      x0' = readReg-writeReg-same (regs s) x0 (encode b)
+      x20' : readReg (regs s') x20 ≡ readReg (regs s) x20
+      x20' = readReg-writeReg-x0-x20 (regs s) (encode b)
+  in s' , exec-one-step-nonhalt prog s s' step-eq h' , h' , pc' , x0' , x20'
+
+------------------------------------------------------------------------
 -- Postulated helpers for complex cases (to be proven incrementally)
 ------------------------------------------------------------------------
 
 postulate
-  run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-    ∃[ s' ] (exec (compile-length (fst {A} {B})) (prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (fst {A} {B})
-           × readReg (regs s') x0 ≡ encode (eval (fst {A} {B}) x)
-           × readReg (regs s') x20 ≡ readReg (regs s) x20)
-
-  run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-    ∃[ s' ] (exec (compile-length (snd {A} {B})) (prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (snd {A} {B})
-           × readReg (regs s') x0 ≡ encode (eval (snd {A} {B}) x)
-           × readReg (regs s') x20 ≡ readReg (regs s) x20)
 
   run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
