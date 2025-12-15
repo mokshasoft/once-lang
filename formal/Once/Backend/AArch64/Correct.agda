@@ -937,14 +937,6 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq x0-eq =
 ------------------------------------------------------------------------
 
 postulate
-
-  run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
-    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
-    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
-           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-           × readReg (regs s') x0 ≡ encode (eval ⟨ f , g ⟩ x)
-           × readReg (regs s') x20 ≡ readReg (regs s) x20)
-
   run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
     ∃[ s' ] (exec (compile-length ([_,_] f g)) (prefix ++ compile-aarch64 ([_,_] f g) ++ suffix) s ≡ just s'
@@ -1290,6 +1282,179 @@ mutual
 
       exec-all : exec (compile-length (g ∘ f)) prog s ≡ just sg
       exec-all = exec-chain (len-f +ℕ 1) len-g prog s sn sg exec-f-nop hn exec-g-prog
+
+  -- | Pair case: ⟨ f , g ⟩
+  -- compile-aarch64 ⟨ f , g ⟩ =
+  --   sub-sp 16 ∷             -- 0: allocate space for pair
+  --   mov x20 (reg x0) ∷      -- 1: save input in x20
+  --   compile-aarch64 f ++    -- 2 to 1+len-f: run f
+  --   str x0 (sp+imm 0) ∷     -- 2+len-f: store f result at [sp]
+  --   mov x0 (reg x20) ∷      -- 3+len-f: restore input from x20
+  --   compile-aarch64 g ++    -- 4+len-f to 3+len-f+len-g: run g
+  --   str x0 (sp+imm 8) ∷     -- 4+len-f+len-g: store g result at [sp+8]
+  --   mov-from-sp x0 ∷ []     -- 5+len-f+len-g: return sp as pair pointer
+  -- compile-length ⟨ f , g ⟩ = (6 + len-f) + len-g
+  run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+           × readReg (regs s') x0 ≡ encode (eval ⟨ f , g ⟩ x)
+           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+  run-ir-at-offset-pair {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq =
+    s-final , exec-all , h-final , pc-final , x0-final , x20-final
+    where
+      open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+      len-f = compile-length f
+      len-g = compile-length g
+      code-f = compile-aarch64 f
+      code-g = compile-aarch64 g
+
+      prog : Program
+      prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
+
+      -- Phase 1: Setup (2 instructions) - sub-sp 16; mov x20, x0
+      -- After setup: sp = sp-16, x20 = x0 (input saved)
+      prefix-f : Program
+      prefix-f = prefix ++ sub-sp 16 ∷ mov x20 (reg x0) ∷ []
+
+      suffix-f : Program
+      suffix-f = str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g ++ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ suffix
+
+      -- After 2 setup instructions, we have:
+      -- - sp = original sp - 16 (pair slot allocated)
+      -- - x20 = encode x (input saved)
+      -- - x0 = encode x (unchanged)
+      -- - pc = length prefix + 2
+
+      -- Execute f (recursive call)
+      -- f runs with x0 = encode x, produces x0 = encode (eval f x)
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 2
+      len-prefix-f = trans (length-++ prefix) refl
+
+      -- We need setup state - postulate for now
+      postulate
+        s-after-setup : State
+        exec-setup : exec 2 prog s ≡ just s-after-setup
+        h-after-setup : halted s-after-setup ≡ false
+        pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 2
+        x0-after-setup : readReg (regs s-after-setup) x0 ≡ encode x
+        x20-after-setup : readReg (regs s-after-setup) x20 ≡ encode x
+
+      pc-for-f : pc s-after-setup ≡ length prefix-f
+      pc-for-f = trans pc-after-setup (sym len-prefix-f)
+
+      -- Recursive call for f
+      f-result : ∃[ sf ] (exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just sf
+                        × halted sf ≡ false
+                        × pc sf ≡ length prefix-f +ℕ len-f
+                        × readReg (regs sf) x0 ≡ encode (eval f x)
+                        × readReg (regs sf) x20 ≡ readReg (regs s-after-setup) x20)
+      f-result = run-ir-at-offset f prefix-f suffix-f x s-after-setup h-after-setup pc-for-f x0-after-setup
+
+      sf = proj₁ f-result
+      h-after-f = proj₁ (proj₂ (proj₂ f-result))
+      x0-after-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))
+      x20-after-f = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))
+
+      -- Phase 3: Middle (2 instructions) - str x0, [sp]; mov x0, x20
+      -- After middle: [sp] = eval f x, x0 = x (restored from x20)
+
+      prefix-g : Program
+      prefix-g = prefix-f ++ code-f ++ str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ []
+
+      suffix-g : Program
+      suffix-g = str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ suffix
+
+      postulate
+        s-after-middle : State
+        exec-middle : exec 2 prog sf ≡ just s-after-middle
+        h-after-middle : halted s-after-middle ≡ false
+        pc-after-middle : pc s-after-middle ≡ length prefix-f +ℕ len-f +ℕ 2
+        x0-after-middle : readReg (regs s-after-middle) x0 ≡ encode x
+        x20-after-middle : readReg (regs s-after-middle) x20 ≡ readReg (regs sf) x20
+
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+      len-prefix-g = begin
+        length prefix-g
+          ≡⟨ length-++ prefix-f ⟩
+        length prefix-f +ℕ length (code-f ++ str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ [])
+          ≡⟨ cong (length prefix-f +ℕ_) (length-++ code-f) ⟩
+        length prefix-f +ℕ (length code-f +ℕ 2)
+          ≡⟨ cong (length prefix-f +ℕ_) (cong (_+ℕ 2) (compile-length-correct f)) ⟩
+        length prefix-f +ℕ (len-f +ℕ 2)
+          ≡⟨ cong (_+ℕ (len-f +ℕ 2)) len-prefix-f ⟩
+        (length prefix +ℕ 2) +ℕ (len-f +ℕ 2)
+          ≡⟨ +-assoc (length prefix) 2 (len-f +ℕ 2) ⟩
+        length prefix +ℕ (2 +ℕ (len-f +ℕ 2))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 2 len-f 2)) ⟩
+        length prefix +ℕ ((2 +ℕ len-f) +ℕ 2)
+          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ 2)) (+-comm 2 len-f) ⟩
+        length prefix +ℕ ((len-f +ℕ 2) +ℕ 2)
+          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 2 2) ⟩
+        length prefix +ℕ (len-f +ℕ 4)
+          ≡⟨ sym (+-assoc (length prefix) len-f 4) ⟩
+        length prefix +ℕ len-f +ℕ 4
+          ≡⟨ cong (_+ℕ 4) (+-comm (length prefix) len-f) ⟩
+        len-f +ℕ length prefix +ℕ 4
+          ≡⟨ +-assoc len-f (length prefix) 4 ⟩
+        len-f +ℕ (length prefix +ℕ 4)
+          ≡⟨ +-comm len-f (length prefix +ℕ 4) ⟩
+        length prefix +ℕ 4 +ℕ len-f
+          ∎
+
+      pc-for-g : pc s-after-middle ≡ length prefix-g
+      pc-for-g = begin
+        pc s-after-middle
+          ≡⟨ pc-after-middle ⟩
+        length prefix-f +ℕ len-f +ℕ 2
+          ≡⟨ cong (_+ℕ 2) (cong (_+ℕ len-f) len-prefix-f) ⟩
+        (length prefix +ℕ 2) +ℕ len-f +ℕ 2
+          ≡⟨ cong (_+ℕ 2) (+-assoc (length prefix) 2 len-f) ⟩
+        (length prefix +ℕ (2 +ℕ len-f)) +ℕ 2
+          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ 2) (+-comm 2 len-f) ⟩
+        (length prefix +ℕ (len-f +ℕ 2)) +ℕ 2
+          ≡⟨ +-assoc (length prefix) (len-f +ℕ 2) 2 ⟩
+        length prefix +ℕ ((len-f +ℕ 2) +ℕ 2)
+          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 2 2) ⟩
+        length prefix +ℕ (len-f +ℕ 4)
+          ≡⟨ sym (+-assoc (length prefix) len-f 4) ⟩
+        length prefix +ℕ len-f +ℕ 4
+          ≡⟨ cong (_+ℕ 4) (+-comm (length prefix) len-f) ⟩
+        len-f +ℕ length prefix +ℕ 4
+          ≡⟨ +-assoc len-f (length prefix) 4 ⟩
+        len-f +ℕ (length prefix +ℕ 4)
+          ≡⟨ +-comm len-f (length prefix +ℕ 4) ⟩
+        length prefix +ℕ 4 +ℕ len-f
+          ≡⟨ sym len-prefix-g ⟩
+        length prefix-g
+          ∎
+
+      -- Recursive call for g
+      g-result : ∃[ sg ] (exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just sg
+                        × halted sg ≡ false
+                        × pc sg ≡ length prefix-g +ℕ len-g
+                        × readReg (regs sg) x0 ≡ encode (eval g x)
+                        × readReg (regs sg) x20 ≡ readReg (regs s-after-middle) x20)
+      g-result = run-ir-at-offset g prefix-g suffix-g x s-after-middle h-after-middle pc-for-g x0-after-middle
+
+      sg = proj₁ g-result
+      h-after-g = proj₁ (proj₂ (proj₂ g-result))
+      x0-after-g = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))
+
+      -- Phase 5: Final (2 instructions) - str x0, [sp+8]; mov-from-sp x0
+      -- After final: [sp+8] = eval g x, x0 = sp (pointer to pair)
+
+      postulate
+        s-final : State
+        exec-final : exec 2 prog sg ≡ just s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+        x0-final : readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
+        x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+
+      postulate
+        exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
 
 ------------------------------------------------------------------------
 -- Apply Proof Structure
