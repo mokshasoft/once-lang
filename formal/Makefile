@@ -35,14 +35,18 @@ X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
+X86_FOUNDATION := Once/Backend/X86/Correct/Foundation.agda
+X86_SEQHELPERS := Once/Backend/X86/Correct/SequenceHelpers.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
 AARCH64_CORRECT := Once/Backend/AArch64/Correct.agda
+AARCH64_FOUNDATION := Once/Backend/AArch64/Correct/Foundation.agda
 RISCV_SYNTAX := Once/Backend/RiscV64/Syntax.agda
 RISCV_SEMANTICS := Once/Backend/RiscV64/Semantics.agda
 RISCV_CODEGEN := Once/Backend/RiscV64/CodeGen.agda
 RISCV_CORRECT := Once/Backend/RiscV64/Correct.agda
+RISCV_FOUNDATION := Once/Backend/RiscV64/Correct/Foundation.agda
 COMMON_FETCH := Once/Backend/Common/Fetch.agda
 COMMON_EXEC := Once/Backend/Common/Exec.agda
 COMMON_MEMORY := Once/Backend/Common/Memory.agda
@@ -61,7 +65,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct aarch64 riscv endtoend endtoend-aarch64 primitives spf malonzo clean
+.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-foundation riscv riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo clean
 
 all: check
 
@@ -110,6 +114,10 @@ x86-correct:
 	@echo "Type-checking x86-64 correctness proofs only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
+x86-foundation:
+	@echo "Type-checking x86-64 foundation module only..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_FOUNDATION)'
+
 aarch64:
 	@echo "Type-checking AArch64 backend..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_SYNTAX)'
@@ -117,12 +125,20 @@ aarch64:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CODEGEN)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
+aarch64-foundation:
+	@echo "Type-checking AArch64 foundation module only..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_FOUNDATION)'
+
 riscv:
 	@echo "Type-checking RISC-V 64-bit backend..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
 	@if [ -f "$(RISCV_SEMANTICS)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SEMANTICS)'; fi
 	@if [ -f "$(RISCV_CODEGEN)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
 	@if [ -f "$(RISCV_CORRECT)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
+
+riscv-foundation:
+	@echo "Type-checking RISC-V foundation module only..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_FOUNDATION)'
 
 endtoend:
 	@echo "Type-checking end-to-end compilation theorem (x86)..."
