@@ -1005,7 +1005,36 @@ mutual
       pc' : pc s' ≡ length prefix +ℕ 5
       pc' = refl
 
-  -- Postulated helpers for remaining complex cases (to be proven incrementally)
+  ------------------------------------------------------------------------
+  -- Postulated helpers for complex branch/closure cases
+  ------------------------------------------------------------------------
+  --
+  -- These remain postulated because they involve:
+  --
+  -- 1. CASE ([f,g]): Conditional branching with two paths
+  --    compile-riscv [ f , g ] =
+  --      ld t0 0(a0) ∷ beq t0 zero left ∷ ...
+  --    The proof requires tracking both branches and showing convergence.
+  --    Would need case analysis on the sum value (inj₁ vs inj₂).
+  --
+  -- 2. CURRY: Creates closure with embedded code pointer
+  --    compile-riscv (curry f) =
+  --      addi sp sp -16 ∷ sd a0 0(sp) ∷ auipc t0 X ∷ addi t0 t0 Y ∷ ...
+  --    The proof requires tracking the closure structure and code-ptr computation.
+  --    Also involves jump-over-thunk pattern.
+  --
+  -- 3. APPLY: Indirect call via closure
+  --    compile-riscv apply =
+  --      ld t0 0(a0) ∷ ld a1 8(a0) ∷ ld s0 0(t0) ∷ ld t0 8(t0) ∷ mv a0 a1 ∷ jalr ra t0 0 ∷ ...
+  --    The proof requires modeling indirect jumps (jalr) and closure invocation.
+  --    This is where compile-time code meets runtime behavior.
+  --
+  -- Strategy: These can be proven by:
+  --   1. Adding step lemmas for branch/call instructions to Foundation
+  --   2. Using sum case analysis for [f,g]
+  --   3. Using closure encoding axioms for curry/apply
+  --   4. Possibly requiring execution trace reasoning for indirect calls
+
   postulate
     run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
       halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
