@@ -35,7 +35,7 @@ open import Once.Backend.Common.Fetch
 
 -- Import common memory helper lemmas
 open import Once.Backend.Common.Memory
-  using (≡ᵇ-refl; n≢n+suc)
+  using (≡ᵇ-refl; n≢n+suc; readMem-writeMem-same; readMem-writeMem-diff)
   public
 
 -- Import common exec N-steps lemmas (parameterized module)
@@ -299,23 +299,10 @@ readReg-writeReg-s1-sp rf v = refl
 -- Memory Lemmas
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; +-suc)
+open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-suc)
 
--- | Reading from the address we just wrote returns the written value
-readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
-  readMem (writeMem m addr v) addr ≡ just v
-readMem-writeMem-same m addr v with addr ≡ᵇ addr | ≡ᵇ-refl addr
-... | true | _ = refl
-
--- n≢n+suc is now imported from Once.Backend.Common.Memory
-
--- | Reading from a different address after a write returns the old value
-readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
-  addr1 ≢ addr2 →
-  readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
-readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | ≡ᵇ⇒≡ addr2 addr1
-... | false | _ = refl
-... | true | eq = ⊥-elim (addr1≢addr2 (sym (eq tt)))
+-- Memory read/write lemmas now imported from Once.Backend.Common.Memory:
+--   readMem-writeMem-same, readMem-writeMem-diff, n≢n+suc
 
 ------------------------------------------------------------------------
 -- Fetch and Step Lemmas

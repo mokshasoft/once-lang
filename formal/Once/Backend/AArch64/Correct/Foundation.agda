@@ -27,7 +27,9 @@ open import Once.Backend.Common.Fetch
 
 -- Import common memory helper lemmas (with AArch64 naming convention)
 open import Once.Backend.Common.Memory
-  using () renaming (≡ᵇ-refl to n≡ᵇn; n≢n+8-bool to n≢n+8; n+8≢n-bool to n+8≢n)
+  using (readMem-writeMem-same)
+  renaming (≡ᵇ-refl to n≡ᵇn; n≢n+8-bool to n≢n+8; n+8≢n-bool to n+8≢n; readMem-writeMem-diff-bool to readMem-writeMem-diff)
+  public
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -288,19 +290,9 @@ readSP-writeSP : ∀ (rf : RegFile) (v : Word) →
   readSP (writeSP rf v) ≡ v
 readSP-writeSP rf v = refl
 
--- | Memory: reading after writing same address returns written value
--- Uses the definition: writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
-readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
-  readMem (writeMem m addr v) addr ≡ just v
-readMem-writeMem-same m addr v rewrite n≡ᵇn addr = refl
-
--- | Memory: reading different address after writing is unchanged
-readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
-  (addr2 ≡ᵇ addr1) ≡ false →
-  readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
-readMem-writeMem-diff m addr1 addr2 v neq rewrite neq = refl
-
--- n≢n+8 and n+8≢n are now imported from Once.Backend.Common.Memory
+-- Memory lemmas now imported from Once.Backend.Common.Memory:
+--   readMem-writeMem-same, readMem-writeMem-diff (renamed from readMem-writeMem-diff-bool)
+--   n≢n+8, n+8≢n (renamed from n≢n+8-bool, n+8≢n-bool)
 
 -- | Corollary: reading at addr+8 after writing at addr is unchanged
 readMem-writeMem-diff-8 : ∀ (m : Memory) (addr : Word) (v : Word) →

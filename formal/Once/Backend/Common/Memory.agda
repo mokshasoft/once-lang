@@ -11,9 +11,11 @@
 
 module Once.Backend.Common.Memory where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; _≢_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; _≢_; inspect) renaming ([_] to ⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Boolean equality lemmas
@@ -58,3 +60,57 @@ n≢n+16-bool (suc n) = n≢n+16-bool n
 n+16≢n-bool : ∀ (n : ℕ) → ((n + 16) ≡ᵇ n) ≡ false
 n+16≢n-bool zero = refl
 n+16≢n-bool (suc n) = n+16≢n-bool n
+
+-- | Boolean equality implies propositional equality
+≡ᵇ⇒≡ : ∀ (m n : ℕ) → (m ≡ᵇ n) ≡ true → m ≡ n
+≡ᵇ⇒≡ zero zero _ = refl
+≡ᵇ⇒≡ (suc m) (suc n) eq = cong suc (≡ᵇ⇒≡ m n eq)
+
+------------------------------------------------------------------------
+-- Memory Model
+------------------------------------------------------------------------
+
+-- All backends use identical memory model: Word = ℕ, Memory = Word → Maybe Word
+-- These definitions mirror those in Backend/*/Semantics.agda
+
+-- | 64-bit word (represented as ℕ)
+Word : Set
+Word = ℕ
+
+-- | Memory is a partial function from addresses to values
+Memory : Set
+Memory = Word → Maybe Word
+
+-- | Read from memory
+readMem : Memory → Word → Maybe Word
+readMem m addr = m addr
+
+-- | Write to memory (identical to all backend definitions)
+writeMem : Memory → Word → Word → Memory
+writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
+
+------------------------------------------------------------------------
+-- Memory Read/Write Lemmas
+------------------------------------------------------------------------
+
+-- | Reading from the address we just wrote returns the written value
+readMem-writeMem-same : ∀ (m : Memory) (addr : Word) (v : Word) →
+  readMem (writeMem m addr v) addr ≡ just v
+readMem-writeMem-same m addr v with addr ≡ᵇ addr | ≡ᵇ-refl addr
+... | true | _ = refl
+
+-- | Reading from a different address after a write returns the old value
+-- (propositional inequality version - used by X86 and RiscV64)
+readMem-writeMem-diff : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
+  addr1 ≢ addr2 →
+  readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
+readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | inspect (_≡ᵇ addr1) addr2
+... | false | _ = refl
+... | true | ⟦ eq ⟧ = ⊥-elim (addr1≢addr2 (sym (≡ᵇ⇒≡ addr2 addr1 eq)))
+
+-- | Reading from a different address after a write returns the old value
+-- (boolean version - used by AArch64)
+readMem-writeMem-diff-bool : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
+  (addr2 ≡ᵇ addr1) ≡ false →
+  readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2
+readMem-writeMem-diff-bool m addr1 addr2 v neq rewrite neq = refl
