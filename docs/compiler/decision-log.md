@@ -2145,3 +2145,152 @@ To fully integrate SPF:
 - `docs/formal/fix-semantics-options.md` - Detailed comparison of all options
 - `formal/Once/SPF.agda` - Implementation
 - `docs/formal/what-is-proven.md` - S1 limitation documentation
+
+---
+
+## D038: Multiple Generator Implementation Profiles
+
+**Date**: 2025-12-15
+**Status**: Accepted
+
+### Context
+
+The formal verification analysis (see `docs/formal/proof-analysis.md`) revealed that:
+
+1. **apply is fundamentally unprovable** with the current isolated-program execution model due to code addressing issues (thunk code lives in curry's program space, not apply's)
+
+2. **Some generators are difficult to prove** due to program concatenation reasoning (compose, pair, case)
+
+3. **Different use cases have different priorities**: cryptographic code needs constant-time execution, safety-critical systems need formal verification, general applications need performance
+
+4. **Branchless implementations** offer both easier proofs (no control flow reasoning) and side-channel resistance (constant-time)
+
+### Decision
+
+Support **multiple implementation profiles** for generators, allowing the same Once program to be compiled with different code generation strategies based on the target use case.
+
+### Implementation Profiles
+
+| Profile | Primary Goal | Trade-offs |
+|---------|--------------|------------|
+| **Crypto** | Constant-time execution | Slower (2x+ for case due to speculation) |
+| **Verified** | Provable correctness | May be slower, uses defunctionalization |
+| **Fast** | Maximum performance | Complex proofs or postulates |
+| **Small** | Minimal code size | May be slower |
+| **Debug** | Observable execution | Slowest, includes tracing |
+
+### Per-Generator Implementation Matrix
+
+| Generator | Crypto | Verified | Fast | Small |
+|-----------|--------|----------|------|-------|
+| id | nop | nop | nop | nop |
+| compose | f;g | f;nop;g | f;g | f;g |
+| fst | load | load | load | load |
+| snd | load | load | load | load |
+| pair | stack-only | stack-only | register | stack-only |
+| inl | standard | standard | standard | standard |
+| inr | standard | standard | standard | standard |
+| case | **branchless** | stack-only | branching | branching |
+| terminal | mov | mov | mov | mov |
+| initial | trap | trap | trap | trap |
+| curry | **defunc** | defunc | thunk+jump | defunc |
+| apply | **branchless-defunc** | defunc-case | indirect-call | defunc-case |
+| fold | nop | nop | nop | nop |
+| unfold | nop | nop | nop | nop |
+| arr | nop | nop | nop | nop |
+
+### Rationale
+
+**Why multiple implementations:**
+
+1. **No single optimal choice**: Constant-time code is slower but essential for crypto. Fast code has branches that complicate proofs. The right choice depends on the application.
+
+2. **Proof strategy**: Simpler implementations (stack-only, branchless) can be proven correct, then equivalence to faster implementations can be established.
+
+3. **apply becomes provable**: With defunctionalization, apply becomes a case dispatch rather than an indirect jump, making it fully provable for the Verified profile.
+
+4. **Side-channel resistance**: The Crypto profile eliminates data-dependent branches, providing constant-time execution for cryptographic operations.
+
+**Profile selection algorithm:**
+```
+select_profile(program):
+  if program.handles_secrets:
+    return Crypto
+  elif program.requires_certification:
+    return Verified
+  elif program.memory_constrained:
+    return Small
+  else:
+    return Fast
+```
+
+### Branchless Execution (Crypto Profile)
+
+The Crypto profile uses branchless code to prevent timing side channels:
+
+**Branchless case:**
+```asm
+; Execute BOTH branches, select result with cmov/csel
+ldr     x9, [x0]            ; tag
+ldr     x0, [x0, #8]        ; value
+mov     x20, x0             ; save value
+; --- compile f ---
+mov     x21, x0             ; save f result
+mov     x0, x20             ; restore value
+; --- compile g ---
+cmp     x9, #0
+csel    x0, x21, x0, eq     ; branchless select
+```
+
+**Branchless apply (via defunctionalization):**
+- curry stores `(env, tag)` instead of `(env, code_ptr)`
+- apply executes ALL possible functions and selects result based on tag
+- No indirect jumps, constant instruction count
+
+### Cycle Cost Comparison
+
+| Profile | case cycles | apply cycles | Predictable? |
+|---------|-------------|--------------|--------------|
+| Fast | 8 + \|one branch\| | 25-40 (indirect) | No |
+| Crypto | 8 + \|both branches\| + 3 | 10 + \|all funcs\| + 3n | **Yes** |
+| Verified | 10 + \|one branch\| | depends on defunc | Partially |
+
+### Proof Strategy by Profile
+
+| Profile | Proof Approach |
+|---------|----------------|
+| Crypto | Prove constant-time property + correctness |
+| Verified | Full correctness proof via stack-machine equivalence |
+| Fast | Equivalence to Verified, or accept postulates |
+| Small | Equivalence to Verified |
+
+### Future CLI Integration
+
+```bash
+# Default (Fast)
+once build --exe hello.once -o hello
+
+# Crypto profile for constant-time
+once build --exe --profile crypto hello.once -o hello
+
+# Verified profile for formally proven code
+once build --exe --profile verified hello.once -o hello
+
+# Mix profiles (future)
+once build --exe --crypto-functions "deriveKey,encrypt" hello.once -o hello
+```
+
+### Consequences
+
+- Same Once source can compile to different implementations
+- Crypto-critical code gets side-channel resistance
+- Safety-critical code gets formal verification
+- General code gets maximum performance
+- Path to proving apply via defunctionalization
+- Branchless implementations simplify proofs (no control flow)
+
+### See Also
+
+- `docs/formal/proof-analysis.md` - Full analysis of proof status and branchless implementations
+- D022: Agda for Formal Verification
+- D032: Arrow-Based Effect System
