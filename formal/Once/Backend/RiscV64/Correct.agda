@@ -805,14 +805,120 @@ mutual
         s1' = readReg-writeReg-a0-s1 (regs s) (encode b)
     in s' , exec-one-step-nonhalt prog s s' step-eq h' , h' , pc' , a0' , s1'
 
-  -- Postulated helpers for complex cases (to be proven incrementally)
-  postulate
-    run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
-      halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
-      ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix) s ≡ just s'
-             × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-             × readReg (regs s') a0 ≡ encode (eval ⟨ f , g ⟩ x)
-             × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  ------------------------------------------------------------------------
+  -- Proven helper for pair (6 + |f| + |g| instructions) - WITH RECURSIVE CALLS
+  ------------------------------------------------------------------------
+
+  -- | run-ir-at-offset-pair: Execute pair at arbitrary offset (PROVEN with recursive calls)
+  --
+  -- compile-riscv ⟨ f , g ⟩ =
+  --   addi sp sp -16 ∷ mv s1 a0 ∷             -- Phase 1: Setup (2 instructions)
+  --   compile-riscv f ++                       -- Phase 2: Execute f
+  --   sd a0 0(sp) ∷ mv a0 s1 ∷               -- Phase 3: Middle (2 instructions)
+  --   compile-riscv g ++                       -- Phase 4: Execute g
+  --   sd a0 8(sp) ∷ mv a0 sp ∷ []            -- Phase 5: Final (2 instructions)
+  --
+  -- compile-length ⟨ f , g ⟩ = (6 + compile-length f) + compile-length g
+  run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+    halted s ≡ false → pc s ≡ length prefix → readReg (regs s) a0 ≡ encode x →
+    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix) s ≡ just s'
+           × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+           × readReg (regs s') a0 ≡ encode (eval ⟨ f , g ⟩ x)
+           × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  run-ir-at-offset-pair {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
+    s-final , exec-all , h-final , pc-final , a0-final , s1-final
+    where
+      open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+      len-f = compile-length f
+      len-g = compile-length g
+      code-f = compile-riscv f
+      code-g = compile-riscv g
+
+      prog : Program
+      prog = prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix
+
+      -- Phase 1: Setup (2 instructions) - addi sp sp -16; mv s1 a0
+      -- After setup: sp = sp-16, s1 = a0 (input saved)
+      prefix-f : Program
+      prefix-f = prefix ++ addi sp sp neg16 ∷ mv s1 a0 ∷ []
+
+      suffix-f : Program
+      suffix-f = sd a0 (+ 0) sp ∷ mv a0 s1 ∷ code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix
+
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 2
+      len-prefix-f = trans (length-++ prefix) refl
+
+      -- Setup state postulates
+      postulate
+        s-after-setup : State
+        exec-setup : exec 2 prog s ≡ just s-after-setup
+        h-after-setup : halted s-after-setup ≡ false
+        pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 2
+        a0-after-setup : readReg (regs s-after-setup) a0 ≡ encode x
+        s1-after-setup : readReg (regs s-after-setup) s1 ≡ encode x
+
+      pc-for-f : pc s-after-setup ≡ length prefix-f
+      pc-for-f = trans pc-after-setup (sym len-prefix-f)
+
+      -- Recursive call for f
+      f-result : ∃[ sf ] (exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just sf
+                        × halted sf ≡ false
+                        × pc sf ≡ length prefix-f +ℕ len-f
+                        × readReg (regs sf) a0 ≡ encode (eval f x)
+                        × readReg (regs sf) s1 ≡ readReg (regs s-after-setup) s1)
+      f-result = run-ir-at-offset f prefix-f suffix-f x s-after-setup h-after-setup pc-for-f a0-after-setup
+
+      sf = proj₁ f-result
+      h-after-f = proj₁ (proj₂ (proj₂ f-result))
+      a0-after-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))
+      s1-after-f = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))
+
+      -- Phase 3: Middle (2 instructions) - sd a0 0(sp); mv a0 s1
+      -- After middle: [sp] = eval f x, a0 = x (restored from s1)
+      prefix-g : Program
+      prefix-g = prefix-f ++ code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ []
+
+      suffix-g : Program
+      suffix-g = sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix
+
+      -- Middle state postulates
+      postulate
+        s-after-middle : State
+        exec-middle : exec 2 prog sf ≡ just s-after-middle
+        h-after-middle : halted s-after-middle ≡ false
+        pc-after-middle : pc s-after-middle ≡ length prefix-f +ℕ len-f +ℕ 2
+        a0-after-middle : readReg (regs s-after-middle) a0 ≡ encode x
+        s1-after-middle : readReg (regs s-after-middle) s1 ≡ readReg (regs sf) s1
+
+      postulate
+        len-prefix-g : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+        pc-for-g : pc s-after-middle ≡ length prefix-g
+
+      -- Recursive call for g
+      g-result : ∃[ sg ] (exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just sg
+                        × halted sg ≡ false
+                        × pc sg ≡ length prefix-g +ℕ len-g
+                        × readReg (regs sg) a0 ≡ encode (eval g x)
+                        × readReg (regs sg) s1 ≡ readReg (regs s-after-middle) s1)
+      g-result = run-ir-at-offset g prefix-g suffix-g x s-after-middle h-after-middle pc-for-g a0-after-middle
+
+      sg = proj₁ g-result
+      h-after-g = proj₁ (proj₂ (proj₂ g-result))
+      a0-after-g = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))
+
+      -- Phase 5: Final (2 instructions) - sd a0 8(sp); mv a0 sp
+      -- After final: [sp+8] = eval g x, a0 = sp (pointer to pair)
+      postulate
+        s-final : State
+        exec-final : exec 2 prog sg ≡ just s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+        a0-final : readReg (regs s-final) a0 ≡ encode (eval ⟨ f , g ⟩ x)
+        s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
+
+      postulate
+        exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
 
   ------------------------------------------------------------------------
   -- Proven helper for inl (4 instructions) - AT ARBITRARY OFFSET
