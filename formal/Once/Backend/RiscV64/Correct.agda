@@ -634,6 +634,81 @@ mutual
       exec-all : exec (compile-length (g ∘ f)) prog s ≡ just sg
       exec-all = exec-chain len-f len-g prog s sf sg exec-f-prog hf exec-g-prog
 
+  ------------------------------------------------------------------------
+  -- Closure Accessors (RISC-V specific)
+  ------------------------------------------------------------------------
+
+  -- | Closure field accessors (postulated - depend on encoding)
+  postulate
+    -- Extract code-ptr from encoded closure
+    closure-code-ptr-riscv : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+
+    -- Extract env from encoded closure
+    closure-env-riscv : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+
+  ------------------------------------------------------------------------
+  -- Apply Proof Structure (RISC-V specific)
+  ------------------------------------------------------------------------
+
+  -- | What apply's 7 instructions actually do (the provable property)
+  -- This proves the SETUP phase only - pc jumps to thunk, registers are ready
+  --
+  -- RISC-V apply codegen (7 instructions):
+  --   0: ld t1, 0(a0)        ; load closure from pair.fst
+  --   1: ld t2, 8(a0)        ; load argument from pair.snd
+  --   2: ld s0, 0(t1)        ; load env from closure.fst
+  --   3: ld t0, 8(t1)        ; load code_ptr from closure.snd
+  --   4: mv a0, t2           ; move argument to a0
+  --   5: jalr ra, t0, 0      ; call the code (jump to thunk)
+  --   6: nop                 ; padding
+  --
+  -- After jalr execution:
+  --   pc = closure-code-ptr (thunk entry)
+  --   s0 = closure-env (environment for thunk)
+  --   a0 = arg (argument for thunk)
+  --   ra = return address
+  --   halted = false
+  postulate
+    run-apply-setup-riscv : ∀ {A B} (prefix suffix : Program)
+      (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
+      halted s ≡ false →
+      pc s ≡ length prefix →
+      readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} (closure , arg) →
+      ∃[ s' ] (exec 6 (prefix ++ compile-riscv (apply {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false
+             × pc s' ≡ closure-code-ptr-riscv {A} {B} closure
+             × readReg (regs s') s0 ≡ closure-env-riscv {A} {B} closure
+             × readReg (regs s') a0 ≡ encode {A} arg
+             × readReg (regs s') s1 ≡ readReg (regs s) s1)
+
+  -- | Thunk execution: given proper setup, thunk computes f(env, arg)
+  -- The RISC-V thunk code is: addi sp,-16; sd s0,0(sp); sd a0,8(sp); mv a0,sp; f; jalr zero,ra,0
+  --
+  -- Preconditions:
+  --   pc at thunk entry
+  --   s0 = encoded env
+  --   a0 = encoded arg
+  --
+  -- Postconditions:
+  --   halted = true (ret halts in our model)
+  --   a0 = encode (eval f (env, arg))
+  postulate
+    run-thunk-at-offset-riscv : ∀ {A B C} (f : IR (A * B) C)
+      (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
+      halted s ≡ false →
+      pc s ≡ length prefix →
+      readReg (regs s) s0 ≡ encode {A} env →
+      readReg (regs s) a0 ≡ encode {B} arg →
+      let thunk-code = addi sp sp neg16 ∷
+                       sd s0 (+ 0) sp ∷
+                       sd a0 (+ 8) sp ∷
+                       mv a0 sp ∷
+                       compile-riscv f ++ jalr zero ra (+ 0) ∷ []
+          thunk-len = 5 +ℕ compile-length f
+      in ∃[ s' ] (exec thunk-len (prefix ++ thunk-code ++ suffix) s ≡ just s'
+                × halted s' ≡ true
+                × readReg (regs s') a0 ≡ encode {C} (eval f (env , arg)))
+
   -- Postulated helpers for complex cases (to be proven incrementally)
   postulate
     run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →

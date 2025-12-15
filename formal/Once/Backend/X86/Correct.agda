@@ -4447,6 +4447,79 @@ mutual
       postulate
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
+  ------------------------------------------------------------------------
+  -- Closure Accessors (x86 specific)
+  ------------------------------------------------------------------------
+
+  -- | Closure field accessors (postulated - depend on encoding)
+  postulate
+    -- Extract code-ptr from encoded closure
+    closure-code-ptr-x86 : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+
+    -- Extract env from encoded closure
+    closure-env-x86 : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+
+  ------------------------------------------------------------------------
+  -- Apply Proof Structure (x86 specific)
+  ------------------------------------------------------------------------
+
+  -- | What apply's 6 instructions actually do (the provable property)
+  -- This proves the SETUP phase only - pc jumps to thunk, registers are ready
+  --
+  -- x86 apply codegen (6 instructions):
+  --   0: mov r15, [rdi]      ; load closure from pair.fst
+  --   1: mov rsi, [rdi+8]    ; load argument from pair.snd
+  --   2: mov r12, [r15]      ; load env from closure.fst
+  --   3: mov r15, [r15+8]    ; load code_ptr from closure.snd
+  --   4: mov rdi, rsi        ; move argument to rdi
+  --   5: call r15            ; call the code
+  --
+  -- After execution:
+  --   pc = closure-code-ptr (thunk entry)
+  --   r12 = closure-env (environment for thunk)
+  --   rdi = arg (argument for thunk)
+  --   halted = false (call doesn't halt)
+  postulate
+    run-apply-setup-x86 : ∀ {A B} (prefix suffix : Program)
+      (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
+      halted s ≡ false →
+      pc s ≡ length prefix →
+      readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (closure , arg) →
+      ∃[ s' ] (exec 6 (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s ≡ just s'
+             × halted s' ≡ false
+             × pc s' ≡ closure-code-ptr-x86 {A} {B} closure
+             × readReg (regs s') r12 ≡ closure-env-x86 {A} {B} closure
+             × readReg (regs s') rdi ≡ encode {A} arg
+             × readReg (regs s') r14 ≡ readReg (regs s) r14)
+
+  -- | Thunk execution: given proper setup, thunk computes f(env, arg)
+  -- The x86 thunk code is: sub rsp,16; mov [rsp],r12; mov [rsp+8],rdi; mov rdi,rsp; f; ret
+  --
+  -- Preconditions:
+  --   pc at thunk entry
+  --   r12 = encoded env
+  --   rdi = encoded arg
+  --
+  -- Postconditions:
+  --   halted = true (ret halts)
+  --   rax = encode (eval f (env, arg))
+  postulate
+    run-thunk-at-offset-x86 : ∀ {A B C} (f : IR (A * B) C)
+      (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
+      halted s ≡ false →
+      pc s ≡ length prefix →
+      readReg (regs s) r12 ≡ encode {A} env →
+      readReg (regs s) rdi ≡ encode {B} arg →
+      let thunk-code = sub (reg rsp) (imm 16) ∷
+                       mov (mem (base rsp)) (reg r12) ∷
+                       mov (mem (base+disp rsp 8)) (reg rdi) ∷
+                       mov (reg rdi) (reg rsp) ∷
+                       compile-x86 f ++ ret ∷ []
+          thunk-len = 5 +ℕ compile-length f
+      in ∃[ s' ] (exec thunk-len (prefix ++ thunk-code ++ suffix) s ≡ just s'
+                × halted s' ≡ true
+                × readReg (regs s') rax ≡ encode {C} (eval f (env , arg)))
+
   -- | Apply case: apply
   run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
