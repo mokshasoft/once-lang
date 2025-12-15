@@ -198,7 +198,7 @@ compile-aarch64 (curry {A} {B} {C} f) =
       -- Layout:
       --   0: sub sp, sp, #16
       --   1: str x0, [sp]         -- store env (input a)
-      --   2: mov x9, #code-ptr
+      --   2: adr x9, #4           -- code-ptr = PC + 4 = 2 + 4 = 6 (thunk entry)
       --   3: str x9, [sp+8]       -- store code pointer
       --   4: mov-from-sp x0       -- x0 = sp (closure pointer)
       --   5: b end                -- jump over thunk
@@ -209,15 +209,22 @@ compile-aarch64 (curry {A} {B} {C} f) =
       --   10 to 9+|f|: compile-aarch64 f
       --   10+|f|: ret             -- return
       --   11+|f|: label end
-      code-ptr = 6
+      --
+      -- IMPORTANT: The adr instruction computes PC-relative addresses.
+      -- When adr is at position N, it stores N + 4 into x9.
+      -- The thunk is always at position N + 4 (4 instructions after adr).
+      -- This makes the code-ptr ABSOLUTE and correct regardless of where
+      -- curry appears in the larger program.
+      thunk-offset = 4   -- offset from adr instruction to thunk entry
+      code-ptr = 6       -- used only for label name
       end-label = 11 +ℕ len-f
   in
   -- Allocate closure on stack
   sub-sp 16 ∷
   -- Store environment (input a in x0) as closure.env
   str x0 (sp+imm 0) ∷
-  -- Store code pointer (address of thunk)
-  mov x9 (imm code-ptr) ∷
+  -- Compute absolute address of thunk: PC + 4 = position(adr) + 4 = thunk position
+  adr x9 thunk-offset ∷
   str x9 (sp+imm 8) ∷
   -- Return closure pointer (sp → x0)
   mov-from-sp x0 ∷

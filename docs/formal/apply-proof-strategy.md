@@ -156,18 +156,28 @@ The proof would proceed as:
 - [x] `make aarch64` succeeds
 - [x] Documentation complete
 
-## Second Limitation: Execution Count Mismatch
+## Second Limitation: Execution Count Mismatch (RESOLVED)
 
-There's another fundamental issue with the current type signature:
+**Status: This limitation has been resolved by understanding the correct semantics.**
+
+The original concern was about the type signature:
 
 ```agda
 run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) x0 ≡ encode x →
   ∃[ s' ] (exec (compile-length apply) ... s ≡ just s'  -- compile-length apply = 6
-         × halted s' ≡ false × ...)
+         × halted s' ≡ false × pc s' ≡ length prefix + 6
+         × readReg (regs s') x0 ≡ encode (eval apply x)   -- THIS IS THE PROBLEM
+         × ...)
 ```
 
-The problem: `compile-length apply = 6`, but the actual execution path is:
+**Key Insight:** The current type claims `x0 = encode (eval apply x)` after only 6 steps, but this is IMPOSSIBLE because:
+
+1. apply's 6 instructions set up for the call (ldr×4, mov, blr)
+2. After blr, pc jumps to thunk code (which is NOT part of apply's 6 instructions)
+3. The thunk hasn't executed yet, so x0 doesn't contain the result
+
+The actual execution path is:
 
 ```
 Instructions in apply (6 total):
@@ -190,45 +200,47 @@ So the actual number of steps is: 6 + 3 + compile-length f + 1 = 10 + compile-le
 
 But the type says `exec 6`, which would only execute the setup instructions and blr. After blr, we'd be at the thunk entry, NOT halted, but `exec 6` would return a state where `pc = code-ptr` and `halted = false`.
 
-### Possible Solutions
+### Solution: Split into Setup + Thunk Execution
 
-**Option 1: Change the execution model for apply**
+The correct approach is to split the proof into two parts:
 
-Instead of `exec (compile-length apply)`, use a different count:
-
-```agda
--- New apply execution count that includes thunk execution
-apply-exec-length : ∀ {A B} → ⟦ A ⇒ B ⟧ → ℕ
-apply-exec-length closure = 6 + thunk-length closure
-  where thunk-length = ... -- depends on the curry's f
-```
-
-Problem: We don't know the thunk length from just the closure type.
-
-**Option 2: Use a "run to halt" model**
+**Part 1: `run-apply-setup`** - Prove apply's 6 instructions correctly set up:
 
 ```agda
-run-ir-to-halt : ∀ {A B} (ir : IR A B) (prog : Program) (s : State) →
-  -- Execute until halted
-  ∃[ n ] ∃[ s' ] (exec n prog s ≡ just s' × halted s' ≡ true × ...)
+-- What apply's 6 instructions actually do (provable!)
+run-apply-setup : ∀ {A B} (prefix suffix : Program)
+  (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  readReg (regs s) x0 ≡ encode (closure , arg) →
+  ∃[ s' ] (exec 6 (prefix ++ compile-aarch64 apply ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ closure-code-ptr closure        -- PC at thunk entry
+         × readReg (regs s') x19 ≡ closure-env closure  -- env loaded
+         × readReg (regs s') x0 ≡ encode arg       -- arg in x0
+         × readReg (regs s') x30 ≡ length prefix + 6)  -- return address
 ```
 
-This doesn't require knowing the step count upfront.
-
-**Option 3: Prove a weaker property for apply**
-
-Just prove that apply's 6 instructions correctly set up for the blr:
+**Part 2: `run-thunk-at-offset`** - Prove thunk execution is correct:
 
 ```agda
-run-apply-setup : ∀ {A B} (...) →
-  ∃[ s' ] (exec 6 ... s ≡ just s'
-         × pc s' ≡ code-ptr-from-closure
-         × readReg (regs s') x19 ≡ env-from-closure
-         × readReg (regs s') x0 ≡ arg
-         × readReg (regs s') x30 ≡ return-address)
+-- Thunk executes correctly when called with proper setup
+run-thunk-at-offset : ∀ {A B C} (f : IR (A * B) C)
+  (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →                    -- at thunk entry
+  readReg (regs s) x19 ≡ encode env →       -- env in x19
+  readReg (regs s) x0 ≡ encode arg →        -- arg in x0
+  ∃[ s' ] (exec (4 + compile-length f) (prefix ++ thunk-code f ++ suffix) s ≡ just s'
+         × halted s' ≡ true                  -- ret halts
+         × readReg (regs s') x0 ≡ encode (eval f (env , arg)))
 ```
 
-Then have a separate lemma for thunk execution, and compose them.
+**Part 3: Compose for full apply semantics**
+
+For a complete program with `curry f` followed by `apply`, the proof chains:
+1. curry creates closure with code-ptr pointing to thunk
+2. apply's setup loads closure data and jumps to thunk
+3. thunk executes f and returns
 
 ## Path Forward
 
