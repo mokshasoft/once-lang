@@ -60,7 +60,7 @@ open import Once.Postulates public
         ; encode-closure-construct
         )
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -468,3 +468,41 @@ step-at-offset prefix i suffix s h-false pc-eq =
   step-exec (prefix ++ i ∷ suffix) s i h-false
     (subst (λ p → fetch (prefix ++ i ∷ suffix) p ≡ just i)
            (sym pc-eq) (fetch-at-prefix-end prefix i suffix))
+
+------------------------------------------------------------------------
+-- Instruction execution lemmas
+------------------------------------------------------------------------
+
+-- | What execInstr does for ld (load doubleword) when memory read succeeds
+execInstr-ld-success : ∀ (prog : Program) (s : State) (rd rs1 : Reg) (offset : ℤ) (v : Word) →
+  readMem (memory s) (effectiveAddr (regs s) rs1 offset) ≡ just v →
+  execInstr prog s (ld rd offset rs1) ≡ just (record s { regs = writeReg (regs s) rd v ; pc = pc s +ℕ 1 })
+execInstr-ld-success prog s rd rs1 offset v mem-eq with readMem (memory s) (effectiveAddr (regs s) rs1 offset) | mem-eq
+... | just .v | refl = refl
+
+-- | What execInstr does for sd (store doubleword)
+execInstr-sd : ∀ (prog : Program) (s : State) (rs2 rs1 : Reg) (offset : ℤ) →
+  execInstr prog s (sd rs2 offset rs1) ≡
+    just (record s { memory = writeMem (memory s) (effectiveAddr (regs s) rs1 offset) (readReg (regs s) rs2)
+                   ; pc = pc s +ℕ 1 })
+execInstr-sd prog s rs2 rs1 offset = refl
+
+-- | What execInstr does for addi
+-- The result depends on whether imm is negative
+execInstr-addi : ∀ (prog : Program) (s : State) (rd rs1 : Reg) (imm : ℤ) →
+  let v1 = readReg (regs s) rs1
+      result = if isNegative imm then v1 ∸ ∣ imm ∣ else v1 +ℕ offsetToℕ imm
+  in execInstr prog s (addi rd rs1 imm) ≡
+    just (record s { regs = writeReg (regs s) rd result ; pc = pc s +ℕ 1 })
+execInstr-addi prog s rd rs1 imm = refl
+
+-- | What execInstr does for mv (pseudo: addi rd, rs, 0)
+execInstr-mv : ∀ (prog : Program) (s : State) (rd rs : Reg) →
+  execInstr prog s (mv rd rs) ≡
+    just (record s { regs = writeReg (regs s) rd (readReg (regs s) rs) ; pc = pc s +ℕ 1 })
+execInstr-mv prog s rd rs = refl
+
+-- | What execInstr does for nop
+execInstr-nop : ∀ (prog : Program) (s : State) →
+  execInstr prog s nop ≡ just (record s { pc = pc s +ℕ 1 })
+execInstr-nop prog s = refl
