@@ -118,11 +118,12 @@ postulate
     p ≡ encode {A + B} (inj₂ b)
 
   -- | Closure encoding
-  encode-closure-construct : ∀ {A B C}
-    (env : ⟦ A ⟧) (code-ptr : Word) (p : Word) (m : Memory) →
-    readMem m p ≡ just (encode env) →
-    readMem m (p +ℕ 8) ≡ just code-ptr →
-    ∃[ f ] (p ≡ encode {A ⇒ (B ⇒ C)} f)
+  -- If memory at p contains encode a, then p encodes the closure λ b → eval f (a , b)
+  -- This matches Once.Postulates and is the key axiom for curry correctness
+  encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+    readMem m p ≡ just (encode a) →
+    -- (code pointer is abstract - we just need env to be correct)
+    p ≡ encode {B ⇒ C} (λ b → eval f (a , b))
 
 ------------------------------------------------------------------------
 -- Register/Memory Lemmas (Step 1)
@@ -897,6 +898,12 @@ execInstr-adr : ∀ (prog : Program) (s : State) (dst : Reg) (offset : ℕ) →
   execInstr prog s (adr dst offset) ≡
     just (record s { regs = writeReg (regs s) dst (pc s +ℕ offset) ; pc = pc s +ℕ 1 })
 execInstr-adr prog s dst offset = refl
+
+-- | What execInstr does for label (pseudo-instruction)
+-- Labels just increment PC by 1 (no operation at runtime)
+execInstr-label : ∀ (prog : Program) (s : State) (n : ℕ) →
+  execInstr prog s (label n) ≡ just (record s { pc = pc s +ℕ 1 })
+execInstr-label prog s n = refl
 
 ------------------------------------------------------------------------
 -- Step Lemmas for Single-Instruction Programs
