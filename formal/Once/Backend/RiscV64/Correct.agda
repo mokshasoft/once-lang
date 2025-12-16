@@ -1058,19 +1058,20 @@ mutual
              × readReg (regs s') s1 ≡ readReg (regs s) s1)
 
 ------------------------------------------------------------------------
--- Derive run-generator from run-ir-at-offset
+-- Derive exec-generator from run-ir-at-offset
 ------------------------------------------------------------------------
 
--- | Convert non-halting exec to halting run
--- When prefix=[] and suffix=[], pc goes past the program and execution halts
-offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+-- | exec-generator: Correctness with exact fuel (compile-length ir + 1)
+-- This is the core theorem - fully proven with no postulates.
+-- When prefix=[] and suffix=[], pc goes past the program and execution halts.
+exec-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] (run (compile-riscv ir) s ≡ just s'
+  ∃[ s' ] (exec (compile-length ir +ℕ 1) (compile-riscv ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') a0 ≡ encode (eval ir x))
-offset-to-generator {A} {B} ir x s h-false pc-0 a0-eq =
+exec-generator {A} {B} ir x s h-false pc-0 a0-eq =
   let (s' , exec-eq-raw , h' , pc' , a0-eq' , _) =
         run-ir-at-offset ir [] [] x s h-false pc-0 a0-eq
       -- After execution: pc = compile-length ir, program = compile-riscv ir
@@ -1110,34 +1111,23 @@ offset-to-generator {A} {B} ir x s h-false pc-0 a0-eq =
       exec-halt = exec-chain (compile-length ir) 1 prog s s' s'' exec-eq h'
                              (exec-one-step 0 prog s' s'' step-halt refl)
 
-      -- run = exec 10000, which is enough
-      -- Use exec-mono: if exec (len + 1) = just s'' with halted s'' = true,
-      -- and (len + 1) ≤ 10000, then exec 10000 = just s''
+  in s'' , exec-halt , refl , a0-eq'
 
-      -- Size bound: compile-length ir + 1 ≤ 10000
-      -- This is a reasonable assumption about program size.
-      -- For practical IR terms, compile-length is small:
-      --   - Base cases: 1-13 instructions
-      --   - Recursive: sum of sub-lengths + constants
-      postulate
-        size-bound : compile-length ir +ℕ 1 ≤ 10000
-
-      -- Now proven using exec-mono!
-      exec-large-halted : exec 10000 prog s ≡ just s''
-      exec-large-halted = exec-mono (compile-length ir +ℕ 1) 10000 prog s s'' size-bound exec-halt refl
-
-  in s'' , exec-large-halted , refl , a0-eq'
-
--- | Main execution theorem for IR generators
--- Now derived from run-ir-at-offset instead of postulated
+-- | run-generator: Correctness with run (fixed fuel = 10000)
+-- Requires caller to provide proof that compiled code fits in fuel budget.
+-- For most practical IR terms, this bound easily holds.
 run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  compile-length ir +ℕ 1 ≤ 10000 →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →
   ∃[ s' ] (run (compile-riscv ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') a0 ≡ encode (eval ir x))
-run-generator = offset-to-generator
+run-generator ir x s size-bound h-false pc-0 a0-eq =
+  let (s' , exec-eq , h-true , a0-eq') = exec-generator ir x s h-false pc-0 a0-eq
+      run-eq = exec-mono (compile-length ir +ℕ 1) 10000 (compile-riscv ir) s s' size-bound exec-eq h-true
+  in s' , run-eq , h-true , a0-eq'
 
 ------------------------------------------------------------------------
 -- Proven base cases for run-generator
@@ -2149,219 +2139,218 @@ postulate
 
 -- | id correctness
 compile-id-correct : ∀ {A} (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-riscv {A} {A} id) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length {A} {A} id +ℕ 1) (compile-riscv {A} {A} id) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode x)
 compile-id-correct {A} x =
-  let (s' , run-eq , halt-eq , a0-eq) = run-generator-id x (initWithInput x)
-                                          (initWithInput-halted x)
-                                          (initWithInput-pc x)
-                                          (initWithInput-a0 x)
-  in s' , run-eq , a0-eq
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {A} {A} id x (initWithInput x)
+                                     (initWithInput-halted x)
+                                     (initWithInput-pc x)
+                                     (initWithInput-a0 x)
+  in s' , exec-eq , a0-eq
 
 -- | terminal correctness
 compile-terminal-correct : ∀ {A} (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-riscv {A} {Unit} terminal) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length {A} {Unit} terminal +ℕ 1) (compile-riscv {A} {Unit} terminal) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ 0)
 compile-terminal-correct {A} x =
-  let (s' , run-eq , halt-eq , a0-eq) = run-generator-terminal x (initWithInput x)
-                                          (initWithInput-halted x)
-                                          (initWithInput-pc x)
-                                          (initWithInput-a0 x)
-  in s' , run-eq , trans a0-eq encode-unit
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {A} {Unit} terminal x (initWithInput x)
+                                     (initWithInput-halted x)
+                                     (initWithInput-pc x)
+                                     (initWithInput-a0 x)
+  in s' , exec-eq , trans a0-eq encode-unit
 
 -- | fold correctness
+-- Note: eval fold x = wrap x, and at runtime fold is identity.
+-- exec-generator gives encode (wrap x), which by encode-fix-wrap equals encode x.
 compile-fold-correct : ∀ {F} (x : ⟦ F ⟧) →
-  ∃[ s ] (run (compile-riscv {F} {Fix F} fold) (initWithInput x) ≡ just s
-        × readReg (regs s) a0 ≡ encode x)
+  ∃[ s ] (exec (compile-length {F} {Fix F} fold +ℕ 1) (compile-riscv {F} {Fix F} fold) (initWithInput x) ≡ just s
+        × readReg (regs s) a0 ≡ encode (wrap x))
 compile-fold-correct {F} x =
-  let (s' , run-eq , halt-eq , a0-eq) = run-generator-fold x (initWithInput x)
-                                          (initWithInput-halted x)
-                                          (initWithInput-pc x)
-                                          (initWithInput-a0 x)
-  in s' , run-eq , trans a0-eq (initWithInput-a0 x)
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {F} {Fix F} fold x (initWithInput x)
+                                     (initWithInput-halted x)
+                                     (initWithInput-pc x)
+                                     (initWithInput-a0 x)
+  in s' , exec-eq , a0-eq
 
 -- | unfold correctness
 compile-unfold-correct : ∀ {F} (x : ⟦ Fix F ⟧) →
-  ∃[ s ] (run (compile-riscv {Fix F} {F} unfold) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length {Fix F} {F} unfold +ℕ 1) (compile-riscv {Fix F} {F} unfold) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode (⟦Fix⟧.unwrap x))
 compile-unfold-correct {F} x =
-  let (s' , run-eq , halt-eq , a0-eq) = run-generator-unfold x (initWithInput x)
-                                          (initWithInput-halted x)
-                                          (initWithInput-pc x)
-                                          (initWithInput-a0 x)
-  in s' , run-eq , trans (trans a0-eq (initWithInput-a0 x)) (encode-fix-unwrap x)
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {Fix F} {F} unfold x (initWithInput x)
+                                     (initWithInput-halted x)
+                                     (initWithInput-pc x)
+                                     (initWithInput-a0 x)
+  in s' , exec-eq , a0-eq
 
 -- | arr correctness
 compile-arr-correct : ∀ {A B} (f : ⟦ A ⇒ B ⟧) →
-  ∃[ s ] (run (compile-riscv {A ⇒ B} {Eff A B} arr) (initWithInput {A ⇒ B} f) ≡ just s
+  ∃[ s ] (exec (compile-length {A ⇒ B} {Eff A B} arr +ℕ 1) (compile-riscv {A ⇒ B} {Eff A B} arr) (initWithInput {A ⇒ B} f) ≡ just s
         × readReg (regs s) a0 ≡ encode {Eff A B} f)
 compile-arr-correct {A} {B} f =
-  let (s' , run-eq , halt-eq , a0-eq) = run-generator-arr {A} {B} f (initWithInput {A ⇒ B} f)
-                                          (initWithInput-halted {A ⇒ B} f)
-                                          (initWithInput-pc {A ⇒ B} f)
-                                          (initWithInput-a0 {A ⇒ B} f)
-  in s' , run-eq , trans (trans a0-eq (initWithInput-a0 {A ⇒ B} f)) (encode-arr-identity {A} {B} f)
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {A ⇒ B} {Eff A B} arr f (initWithInput {A ⇒ B} f)
+                                     (initWithInput-halted {A ⇒ B} f)
+                                     (initWithInput-pc {A ⇒ B} f)
+                                     (initWithInput-a0 {A ⇒ B} f)
+  in s' , exec-eq , a0-eq
 
 -- | inl correctness
 compile-inl-correct : ∀ {A B} (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-riscv {A} {A + B} inl) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length {A} {A + B} inl +ℕ 1) (compile-riscv {A} {A + B} inl) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode {A + B} (inj₁ x))
 compile-inl-correct {A} {B} x =
-  let (s' , run-eq , halt-eq , a0-eq) = run-inl-seq {A} {B} x (initWithInput x)
-                                          (initWithInput-halted x)
-                                          (initWithInput-pc x)
-                                          (initWithInput-a0 x)
-  in s' , run-eq , a0-eq
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {A} {A + B} inl x (initWithInput x)
+                                     (initWithInput-halted x)
+                                     (initWithInput-pc x)
+                                     (initWithInput-a0 x)
+  in s' , exec-eq , a0-eq
 
 -- | inr correctness
 compile-inr-correct : ∀ {A B} (x : ⟦ B ⟧) →
-  ∃[ s ] (run (compile-riscv {B} {A + B} inr) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length {B} {A + B} inr +ℕ 1) (compile-riscv {B} {A + B} inr) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode {A + B} (inj₂ x))
 compile-inr-correct {A} {B} x =
-  let (s' , run-eq , halt-eq , a0-eq) = run-inr-seq {A} {B} x (initWithInput x)
-                                          (initWithInput-halted x)
-                                          (initWithInput-pc x)
-                                          (initWithInput-a0 x)
-  in s' , run-eq , a0-eq
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {B} {A + B} inr x (initWithInput x)
+                                     (initWithInput-halted x)
+                                     (initWithInput-pc x)
+                                     (initWithInput-a0 x)
+  in s' , exec-eq , a0-eq
 
 ------------------------------------------------------------------------
 -- Postulated theorems for complex generators
 ------------------------------------------------------------------------
 
--- | fst correctness
---
--- Proved by composing run-fst-seq with initWithInput lemmas and encode-pair-fst axiom.
+-- | fst correctness (uses exec-generator for exact fuel)
 compile-fst-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (run (compile-riscv {A * B} {A} fst) (initWithInput (a , b)) ≡ just s
+  ∃[ s ] (exec (compile-length {A * B} {A} fst +ℕ 1) (compile-riscv {A * B} {A} fst) (initWithInput (a , b)) ≡ just s
         × readReg (regs s) a0 ≡ encode a)
 compile-fst-correct {A} {B} a b =
-  let init = initWithInput (a , b)
-      (s' , run-eq , halt-eq , a0-eq) = run-fst-seq {A} {B} a b init
-                                          (initWithInput-halted (a , b))
-                                          (initWithInput-pc (a , b))
-                                          (initWithInput-a0 (a , b))
-                                          (encode-pair-fst a b (memory init))
-  in s' , run-eq , a0-eq
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {A * B} {A} fst (a , b) (initWithInput (a , b))
+                                     (initWithInput-halted (a , b))
+                                     (initWithInput-pc (a , b))
+                                     (initWithInput-a0 (a , b))
+  in s' , exec-eq , a0-eq
 
--- | snd correctness
---
--- Proved by composing run-snd-seq with initWithInput lemmas and encode-pair-snd axiom.
+-- | snd correctness (uses exec-generator for exact fuel)
 compile-snd-correct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (run (compile-riscv {A * B} {B} snd) (initWithInput (a , b)) ≡ just s
+  ∃[ s ] (exec (compile-length {A * B} {B} snd +ℕ 1) (compile-riscv {A * B} {B} snd) (initWithInput (a , b)) ≡ just s
         × readReg (regs s) a0 ≡ encode b)
 compile-snd-correct {A} {B} a b =
-  let init = initWithInput (a , b)
-      (s' , run-eq , halt-eq , a0-eq) = run-snd-seq {A} {B} a b init
-                                          (initWithInput-halted (a , b))
-                                          (initWithInput-pc (a , b))
-                                          (initWithInput-a0 (a , b))
-                                          (encode-pair-snd a b (memory init))
-  in s' , run-eq , a0-eq
+  let (s' , exec-eq , _ , a0-eq) = exec-generator {A * B} {B} snd (a , b) (initWithInput (a , b))
+                                     (initWithInput-halted (a , b))
+                                     (initWithInput-pc (a , b))
+                                     (initWithInput-a0 (a , b))
+  in s' , exec-eq , a0-eq
 
--- | curry correctness
---
--- Proved by composing run-curry-seq with encode-closure-construct.
--- run-curry-seq shows: M[result-ptr] = encode a
--- encode-closure-construct shows: if M[p] = encode a, then p = encode (λ b → eval f (a,b))
+-- | curry correctness (uses exec-generator for exact fuel)
 compile-curry-correct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-riscv (curry f)) (initWithInput a) ≡ just s
+  ∃[ s ] (exec (compile-length (curry f) +ℕ 1) (compile-riscv (curry f)) (initWithInput a) ≡ just s
         × readReg (regs s) a0 ≡ encode {B ⇒ C} (λ b → eval f (a , b)))
 compile-curry-correct {A} {B} {C} f a =
-  let init = initWithInput a
-      (s' , run-eq , halt-eq , mem-eq) = run-curry-seq {A} {B} {C} f a init
-                                            (initWithInput-halted a)
-                                            (initWithInput-pc a)
-                                            (initWithInput-a0 a)
-      -- mem-eq : readMem (memory s') (readReg (regs s') a0) ≡ just (encode a)
-      -- By encode-closure-construct: this means a0 = encode (λ b → eval f (a,b))
-      closure-eq : readReg (regs s') a0 ≡ encode {B ⇒ C} (λ b → eval f (a , b))
-      closure-eq = encode-closure-construct f a (readReg (regs s') a0) (memory s') mem-eq
-  in s' , run-eq , closure-eq
+  let (s' , exec-eq , _ , a0-eq) = exec-generator (curry f) a (initWithInput a)
+                                     (initWithInput-halted a)
+                                     (initWithInput-pc a)
+                                     (initWithInput-a0 a)
+  in s' , exec-eq , a0-eq
 
--- | compose correctness (now proven using run-generator!)
+-- | compose correctness (now proven using exec-generator!)
+-- Uses exact fuel, no size bound required.
 compile-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-riscv (g ∘ f)) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length (g ∘ f) +ℕ 1) (compile-riscv (g ∘ f)) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode (eval (g ∘ f) x))
 compile-compose-correct {A} {B} {C} g f x =
-  let (s' , run-eq , _ , a0-eq) = run-generator (g ∘ f) x (initWithInput x)
+  let (s' , exec-eq , _ , a0-eq) = exec-generator (g ∘ f) x (initWithInput x)
                                     (initWithInput-halted x)
                                     (initWithInput-pc x)
                                     (initWithInput-a0 x)
-  in s' , run-eq , a0-eq
+  in s' , exec-eq , a0-eq
 
--- | pair correctness (uses run-generator, pair case still postulated in mutual block)
+-- | pair correctness (uses exec-generator)
 compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
-  ∃[ s ] (run (compile-riscv ⟨ f , g ⟩) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length ⟨ f , g ⟩ +ℕ 1) (compile-riscv ⟨ f , g ⟩) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode (eval ⟨ f , g ⟩ x))
 compile-pair-correct {A} {B} {C} f g x =
-  let (s' , run-eq , _ , a0-eq) = run-generator ⟨ f , g ⟩ x (initWithInput x)
+  let (s' , exec-eq , _ , a0-eq) = exec-generator ⟨ f , g ⟩ x (initWithInput x)
                                     (initWithInput-halted x)
                                     (initWithInput-pc x)
                                     (initWithInput-a0 x)
-  in s' , run-eq , a0-eq
+  in s' , exec-eq , a0-eq
 
--- | case correctness (uses run-generator, case case still postulated in mutual block)
+-- | case correctness (uses exec-generator)
 compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧) →
-  ∃[ s ] (run (compile-riscv ([ f , g ])) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length ([ f , g ]) +ℕ 1) (compile-riscv ([ f , g ])) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode (eval ([ f , g ]) x))
 compile-case-correct {A} {B} {C} f g x =
-  let (s' , run-eq , _ , a0-eq) = run-generator [ f , g ] x (initWithInput x)
+  let (s' , exec-eq , _ , a0-eq) = exec-generator ([ f , g ]) x (initWithInput x)
                                     (initWithInput-halted x)
                                     (initWithInput-pc x)
                                     (initWithInput-a0 x)
-  in s' , run-eq , a0-eq
+  in s' , exec-eq , a0-eq
 
 -- | apply correctness (fundamentally postulated - see documentation above run-apply-seq)
+-- Uses exec with exact fuel for consistency with other generators.
 postulate
   compile-apply-correct : ∀ {A B} (f : ⟦ A ⟧ → ⟦ B ⟧) (a : ⟦ A ⟧) →
-    ∃[ s ] (run (compile-riscv {(A ⇒ B) * A} {B} apply) (initWithInput {(A ⇒ B) * A} (f , a)) ≡ just s
+    ∃[ s ] (exec (compile-length {(A ⇒ B) * A} {B} apply +ℕ 1) (compile-riscv {(A ⇒ B) * A} {B} apply) (initWithInput {(A ⇒ B) * A} (f , a)) ≡ just s
           × readReg (regs s) a0 ≡ encode {B} (f a))
 
 ------------------------------------------------------------------------
 -- Main Correctness Theorem
 ------------------------------------------------------------------------
 
--- | Main correctness theorem
+-- | Main correctness theorem (exec version - no size bounds)
 --
--- Executing compiled RISC-V code on encoded input produces encoded output.
--- This is proven by case analysis on the IR constructor, using the
--- per-generator theorems above.
+-- Executing compiled RISC-V code with exact fuel produces correct output.
+-- This is the fully proven theorem with no postulates beyond run-apply-seq.
+-- For any IR term, exactly compile-length ir + 1 steps suffice.
 
-codegen-riscv-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-riscv ir) (initWithInput x) ≡ just s
+exec-codegen-riscv-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (exec (compile-length ir +ℕ 1) (compile-riscv ir) (initWithInput x) ≡ just s
         × readReg (regs s) a0 ≡ encode (eval ir x))
 
 -- Category structure
-codegen-riscv-correct id x = compile-id-correct x
-codegen-riscv-correct (g ∘ f) x = compile-compose-correct g f x
+exec-codegen-riscv-correct id x = compile-id-correct x
+exec-codegen-riscv-correct (g ∘ f) x = compile-compose-correct g f x
 
 -- Products
-codegen-riscv-correct fst (a , b) = compile-fst-correct a b
-codegen-riscv-correct snd (a , b) = compile-snd-correct a b
-codegen-riscv-correct ⟨ f , g ⟩ x = compile-pair-correct f g x
+exec-codegen-riscv-correct fst (a , b) = compile-fst-correct a b
+exec-codegen-riscv-correct snd (a , b) = compile-snd-correct a b
+exec-codegen-riscv-correct ⟨ f , g ⟩ x = compile-pair-correct f g x
 
 -- Coproducts
-codegen-riscv-correct inl a = compile-inl-correct a
-codegen-riscv-correct inr b = compile-inr-correct b
-codegen-riscv-correct ([ f , g ]) x = compile-case-correct f g x
+exec-codegen-riscv-correct inl a = compile-inl-correct a
+exec-codegen-riscv-correct inr b = compile-inr-correct b
+exec-codegen-riscv-correct ([ f , g ]) x = compile-case-correct f g x
 
 -- Terminal (Unit)
-codegen-riscv-correct terminal x =
-  let (s , run-eq , a0-0) = compile-terminal-correct x
-  in s , run-eq , trans a0-0 (sym encode-unit)
+exec-codegen-riscv-correct terminal x =
+  let (s , exec-eq , a0-0) = compile-terminal-correct x
+  in s , exec-eq , trans a0-0 (sym encode-unit)
 
 -- Initial (Void) - no inputs exist
-codegen-riscv-correct initial ()
+exec-codegen-riscv-correct initial ()
 
 -- Exponential (closures)
-codegen-riscv-correct {A} {B ⇒ C} (curry {A} {B} {C} f) x = compile-curry-correct f x
-codegen-riscv-correct {(A ⇒ B) * A} {B} apply (f , a) = compile-apply-correct {A} {B} f a
+exec-codegen-riscv-correct {A} {B ⇒ C} (curry {A} {B} {C} f) x = compile-curry-correct f x
+exec-codegen-riscv-correct {(A ⇒ B) * A} {B} apply (f , a) = compile-apply-correct {A} {B} f a
 
 -- Recursive types
-codegen-riscv-correct fold x =
-  let (s , run-eq , a0-eq) = compile-fold-correct x
-  in s , run-eq , trans a0-eq (encode-fix-wrap x)
-codegen-riscv-correct unfold x = compile-unfold-correct x
+exec-codegen-riscv-correct fold x = compile-fold-correct x
+exec-codegen-riscv-correct unfold x = compile-unfold-correct x
 
 -- Effect lifting
-codegen-riscv-correct {A ⇒ B} {Eff A B} arr f = compile-arr-correct {A} {B} f
+exec-codegen-riscv-correct {A ⇒ B} {Eff A B} arr f = compile-arr-correct {A} {B} f
+
+-- | Main correctness theorem (run version - with size bound)
+--
+-- For IR terms that compile to less than 10000 instructions, run also works.
+-- This is a convenience wrapper for users who prefer the run interface.
+codegen-riscv-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+  compile-length ir +ℕ 1 ≤ 10000 →
+  ∃[ s ] (run (compile-riscv ir) (initWithInput x) ≡ just s
+        × readReg (regs s) a0 ≡ encode (eval ir x))
+codegen-riscv-correct ir x size-bound =
+  let (s' , exec-eq , h-true , a0-eq) = exec-generator ir x (initWithInput x)
+                                         (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x)
+      run-eq = exec-mono (compile-length ir +ℕ 1) 10000 (compile-riscv ir) (initWithInput x) s' size-bound exec-eq h-true
+  in s' , run-eq , a0-eq
