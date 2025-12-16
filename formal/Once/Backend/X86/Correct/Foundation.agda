@@ -194,6 +194,23 @@ execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
                    ; flags = updateFlags (readReg (regs s) dst ∸ v) (readReg (regs s) dst) })
 execSub-reg-imm prog s dst v = refl
 
+-- Helper: state after executing add dst, imm
+-- Proof: adds immediate to register value
+execAdd-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
+  execInstr prog s (add (reg dst) (imm v)) ≡
+    just (record s { regs = writeReg (regs s) dst (readReg (regs s) dst +ℕ v)
+                   ; pc = pc s +ℕ 1
+                   ; flags = updateFlags (readReg (regs s) dst +ℕ v) (readReg (regs s) dst) })
+execAdd-reg-imm prog s dst v = refl
+
+-- Helper: state after executing lea reg, [mem]
+-- Computes effective address and stores in register
+execLea : ∀ (prog : List Instr) (s : State) (r : Reg) (m : Mem) →
+  execInstr prog s (lea r m) ≡
+    just (record s { regs = writeReg (regs s) r (effectiveAddr s m)
+                   ; pc = pc s +ℕ 1 })
+execLea prog s r m = refl
+
 -- Helper: state after executing jmp target
 -- Proof: jmp uses PC-relative offset, sets pc = pc + 1 + target
 execJmp : ∀ (prog : List Instr) (s : State) (target : ℕ) →
@@ -585,6 +602,10 @@ compile-length-correct [ f , g ] = helper
     right-lbl : ℕ
     right-lbl = 5 +ℕ compile-length f
 
+    -- PC-relative offset for jmp (same as codegen's end-offset)
+    end-offset : ℕ
+    end-offset = 2 +ℕ compile-length g
+
     inner-tail : List Instr
     inner-tail = label end-lbl ∷ []
 
@@ -592,8 +613,9 @@ compile-length-correct [ f , g ] = helper
     len-inner = trans (length-++ (compile-x86 g) inner-tail)
                       (cong (λ x → x +ℕ 1) (compile-length-correct g))
 
+    -- jmp uses PC-relative offset end-offset, not absolute end-lbl
     mid-tail : List Instr
-    mid-tail = jmp end-lbl ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
+    mid-tail = jmp end-offset ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
                (compile-x86 g ++ inner-tail)
 
     len-mid : length mid-tail ≡ 3 +ℕ (compile-length g +ℕ 1)
