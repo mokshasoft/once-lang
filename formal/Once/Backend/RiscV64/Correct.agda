@@ -72,7 +72,7 @@ open Once.Backend.RiscV64.Semantics.State
 open import Once.Backend.RiscV64.CodeGen
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++; ++-assoc; ++-identityʳ)

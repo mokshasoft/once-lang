@@ -337,10 +337,33 @@ run-single-brk s n h-false pc-0 =
       -- Then exec sees halted s' = true and returns just s'
   in s' , exec-brk-run s n h-false pc-0 , refl
   where
-    postulate
-      exec-brk-run : ∀ (s : State) (n : ℕ) →
-        halted s ≡ false → pc s ≡ 0 →
-        run (brk n ∷ []) s ≡ just (record s { halted = true })
+    -- | exec-brk-run: Proof that running a single brk instruction halts
+    exec-brk-run : ∀ (s : State) (n : ℕ) →
+      halted s ≡ false → pc s ≡ 0 →
+      run (brk n ∷ []) s ≡ just (record s { halted = true })
+    exec-brk-run s n h-false pc-0 =
+      let prog = brk n ∷ []
+          s' = record s { halted = true }
+          -- fetch (brk n ∷ []) 0 = just (brk n)
+          fetch-eq : fetch prog 0 ≡ just (brk n)
+          fetch-eq = fetch-0 (brk n) []
+          -- pc s = 0 (from pc-0)
+          fetch-eq' : fetch prog (pc s) ≡ just (brk n)
+          fetch-eq' = subst (λ x → fetch prog x ≡ just (brk n)) (sym pc-0) fetch-eq
+          -- execInstr prog s (brk n) = just s'
+          exec-eq : execInstr prog s (brk n) ≡ just s'
+          exec-eq = execInstr-brk prog s n
+          -- step prog s = just s'
+          step-eq : step prog s ≡ just s'
+          step-eq = step-instr prog s s' (brk n) h-false fetch-eq' exec-eq
+          -- exec 1 prog s = just s' (brk sets halted = true immediately)
+          exec-1-eq : exec 1 prog s ≡ just s'
+          exec-1-eq = exec-1-step prog s s' step-eq
+          -- halted s' = true
+          h'-true : halted s' ≡ true
+          h'-true = refl
+      -- run = exec defaultFuel, and exec 1 already halts, so use exec-mono
+      in exec-mono 1 defaultFuel prog s s' (s≤s z≤n) exec-1-eq h'-true
 
 ------------------------------------------------------------------------
 -- Multi-instruction sequence helpers
@@ -1693,29 +1716,117 @@ compile-case-correct f g x =
 -- Proof sketch for snd is similar with offset 8 and encode-pair-snd.
 
 -- | fst: ldr x0, [x0]
--- NOTE: Kept as postulate because Agda cannot pattern match on ⟦ B ⟧ when B is abstract.
--- The proof would use run-single-ldr with encode-pair-fst.
-postulate
-  run-generator-fst : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode (a , b) →
-    memory s ≡ encodedMemory →
-    ∃[ s' ] (run (compile-aarch64 {A * B} {A} fst) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode (eval fst (a , b)))
+-- PROVEN: Uses projections (proj₁/proj₂) instead of pattern matching to avoid
+-- Agda's split error on abstract types. Uses run-single-ldr with encode-pair-fst.
+run-generator-fst : ∀ {A B : Type} (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode x →
+  memory s ≡ encodedMemory →
+  ∃[ s' ] (run (compile-aarch64 {A * B} {A} fst) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval {A * B} {A} fst x))
+run-generator-fst {A} {B} x s h-false pc-0 x0-eq mem-eq = s' , run-eq , halt-eq , x0-result
+  where
+    fst-val = proj₁ x
+    snd-val = proj₂ x
 
-  -- | snd: ldr x0, [x0, #8]
-  -- NOTE: Kept as postulate because Agda cannot pattern match on ⟦ A ⟧ when A is abstract.
-  -- The proof would use run-single-ldr with encode-pair-snd.
-  run-generator-snd : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode (a , b) →
-    memory s ≡ encodedMemory →
-    ∃[ s' ] (run (compile-aarch64 {A * B} {B} snd) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode (eval snd (a , b)))
+    -- Memory precondition: readMem (memory s) (encode x) = just (encode fst-val)
+    mem-eq-pair : readMem (memory s) (encode x) ≡ just (encode fst-val)
+    mem-eq-pair = subst (λ m → readMem m (encode x) ≡ just (encode fst-val))
+                        (sym mem-eq)
+                        (encode-pair-fst fst-val snd-val encodedMemory)
+
+    -- Memory at x0 contains encode fst-val (via x0 = encode x)
+    mem-at-x0 : readMem (memory s) (readReg (regs s) x0) ≡ just (encode fst-val)
+    mem-at-x0 = subst (λ addr → readMem (memory s) addr ≡ just (encode fst-val))
+                      (sym x0-eq)
+                      mem-eq-pair
+
+    -- effectiveAddr s (base x0) = readReg (regs s) x0
+    effective-eq : effectiveAddr s (base x0) ≡ readReg (regs s) x0
+    effective-eq = refl
+
+    -- Memory at effective address contains encode fst-val
+    mem-effective : readMem (memory s) (effectiveAddr s (base x0)) ≡ just (encode fst-val)
+    mem-effective = subst (λ addr → readMem (memory s) addr ≡ just (encode fst-val))
+                          (sym effective-eq)
+                          mem-at-x0
+
+    -- Use run-single-ldr helper
+    helper : ∃[ s' ] (run (ldr x0 (base x0) ∷ []) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') x0 ≡ encode fst-val)
+    helper = run-single-ldr s x0 (base x0) (encode fst-val) h-false pc-0 mem-effective
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-aarch64 {A * B} {A} fst) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval fst x = proj₁ x = a
+    x0-result : readReg (regs s') x0 ≡ encode (eval {A * B} {A} fst x)
+    x0-result = proj₂ (proj₂ (proj₂ helper))
+
+-- | snd: ldr x0, [x0, #8]
+-- PROVEN: Similar to fst, with offset 8 and encode-pair-snd. Uses projections.
+run-generator-snd : ∀ {A B : Type} (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode x →
+  memory s ≡ encodedMemory →
+  ∃[ s' ] (run (compile-aarch64 {A * B} {B} snd) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval {A * B} {B} snd x))
+run-generator-snd {A} {B} x s h-false pc-0 x0-eq mem-eq = s' , run-eq , halt-eq , x0-result
+  where
+    fst-val = proj₁ x
+    snd-val = proj₂ x
+
+    -- Memory precondition: readMem (memory s) (encode x + 8) = just (encode snd-val)
+    mem-eq-pair : readMem (memory s) (encode x +ℕ 8) ≡ just (encode snd-val)
+    mem-eq-pair = subst (λ m → readMem m (encode x +ℕ 8) ≡ just (encode snd-val))
+                        (sym mem-eq)
+                        (encode-pair-snd fst-val snd-val encodedMemory)
+
+    -- Memory at x0+8 contains encode snd-val (via x0 = encode x)
+    mem-at-x0-8 : readMem (memory s) (readReg (regs s) x0 +ℕ 8) ≡ just (encode snd-val)
+    mem-at-x0-8 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode snd-val))
+                        (sym x0-eq)
+                        mem-eq-pair
+
+    -- effectiveAddr s (base+imm x0 8) = readReg (regs s) x0 + 8
+    effective-eq : effectiveAddr s (base+imm x0 8) ≡ readReg (regs s) x0 +ℕ 8
+    effective-eq = refl
+
+    -- Memory at effective address contains encode snd-val
+    mem-effective : readMem (memory s) (effectiveAddr s (base+imm x0 8)) ≡ just (encode snd-val)
+    mem-effective = subst (λ addr → readMem (memory s) addr ≡ just (encode snd-val))
+                          (sym effective-eq)
+                          mem-at-x0-8
+
+    -- Use run-single-ldr helper
+    helper : ∃[ s' ] (run (ldr x0 (base+imm x0 8) ∷ []) s ≡ just s'
+                    × halted s' ≡ true
+                    × readReg (regs s') x0 ≡ encode snd-val)
+    helper = run-single-ldr s x0 (base+imm x0 8) (encode snd-val) h-false pc-0 mem-effective
+
+    s' : State
+    s' = proj₁ helper
+
+    run-eq : run (compile-aarch64 {A * B} {B} snd) s ≡ just s'
+    run-eq = proj₁ (proj₂ helper)
+
+    halt-eq : halted s' ≡ true
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+
+    -- eval snd x = proj₂ x = snd-val
+    x0-result : readReg (regs s') x0 ≡ encode (eval {A * B} {B} snd x)
+    x0-result = proj₂ (proj₂ (proj₂ helper))
 
 -- Injection generators (inl, inr)
 --
@@ -2620,19 +2731,31 @@ curry-apply-len-check : curry-apply-len ≡ 27
 curry-apply-len-check = refl
 
 -- | Thunk entry position within curry
--- In curry codegen: label 5 is the thunk entry point
--- Within the pair: pair setup (4) + (curry begins at position 4)
--- Curry layout: sub-sp, str, adr, str, b (jump), label 5
--- So thunk label is at position: 4 + 5 = 9
+-- Full program: ⟨curry fst, id⟩ ∘ apply
+-- Pair starts at 0:
+--   0: sub-sp 16
+--   1: mov x20 (reg x0)
+--   2-14: curry fst (13 instructions)
+-- Within curry fst (starting at 2):
+--   2: sub-sp 16
+--   3: str x0 [sp]
+--   4: adr x9 4
+--   5: str x9 [sp+8]
+--   6: mov-from-sp x0
+--   7: b end
+--   8: label 6  <-- thunk entry
+--   9: sub-sp 16
+--   ...
 thunk-entry-pos : ℕ
-thunk-entry-pos = 9
+thunk-entry-pos = 8
 
 -- | Thunk entry is within program bounds
 thunk-in-bounds : thunk-entry-pos < curry-apply-len
-thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))
+thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
 
 -- | Verify the thunk entry is a label instruction
-thunk-entry-is-label : fetch curry-apply-prog thunk-entry-pos ≡ just (label 5)
+-- Within curry, the thunk label is label 6 (code-ptr = pc + 4 when adr is at position 4)
+thunk-entry-is-label : fetch curry-apply-prog thunk-entry-pos ≡ just (label 6)
 thunk-entry-is-label = refl
 
 ------------------------------------------------------------------------
