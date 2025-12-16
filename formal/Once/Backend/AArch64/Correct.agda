@@ -899,11 +899,229 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq x0-eq =
     s' : State
     s' = mkstate rf' mem₂ (pstate s) (length prefix +ℕ 4) false
 
-    -- The key properties (postulated for now - full proof is tedious but straightforward)
-    postulate
-      exec-eq : exec 4 prog s ≡ just s'
-      x0' : readReg (regs s') x0 ≡ encode {A + B} (inj₁ x)
-      x20' : readReg (regs s') x20 ≡ readReg (regs s) x20
+    -- The inl code sequence
+    inl-code = compile-aarch64 (inl {A} {B})
+    -- inl-code = sub-sp 16 ∷ str-zr (sp+imm 0) ∷ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+
+    ------------------------------------------------------------------------
+    -- Step 1: Execute sub-sp 16 at offset (pc: length prefix → length prefix + 1)
+    ------------------------------------------------------------------------
+    -- After step: sp = sp₁, pc = length prefix + 1
+    s₁ : State
+    s₁ = mkstate rf₁ (memory s) (pstate s) (length prefix +ℕ 1) false
+
+    -- prog = prefix ++ (inl-code ++ suffix) where inl-code = sub-sp 16 ∷ str-zr ... ∷ str ... ∷ mov-from-sp ... ∷ []
+    -- Fetch at length prefix + n gets element n of (inl-code ++ suffix) by fetch-append-right
+    inl-rest = compile-aarch64 (inl {A} {B}) ++ suffix
+
+    -- Step 1: fetch prog (length prefix) = fetch inl-rest 0 = just (sub-sp 16)
+    fetch-step-1 : fetch prog (length prefix) ≡ just (sub-sp 16)
+    fetch-step-1 = subst (λ n → fetch prog n ≡ just (sub-sp 16))
+                         (+-identityʳ (length prefix))
+                         (fetch-append-right prefix inl-rest 0)
+
+    -- execInstr for sub-sp produces s₁-raw then we show s₁-raw = s₁
+    s₁-raw : State
+    s₁-raw = record s { regs = writeSP (regs s) (readSP (regs s) ∸ 16) ; pc = pc s +ℕ 1 }
+
+    s₁-eq : s₁-raw ≡ s₁
+    s₁-eq = cong₂ (λ p h → mkstate rf₁ (memory s) (pstate s) p h)
+                  (cong (_+ℕ 1) pc-eq)
+                  h-false
+
+    exec-sub-sp-eq : execInstr prog s (sub-sp 16) ≡ just s₁
+    exec-sub-sp-eq = trans (execInstr-sub-sp prog s 16) (cong just s₁-eq)
+
+    step-1 : step prog s ≡ just s₁
+    step-1 = step-instr prog s s₁ (sub-sp 16) h-false
+               (subst (λ p → fetch prog p ≡ just (sub-sp 16)) (sym pc-eq) fetch-step-1)
+               exec-sub-sp-eq
+
+    exec-1-s : exec 1 prog s ≡ just s₁
+    exec-1-s = exec-1-step prog s s₁ step-1
+
+    ------------------------------------------------------------------------
+    -- Step 2: Execute str-zr (sp+imm 0) at offset (pc: length prefix + 1 → length prefix + 2)
+    ------------------------------------------------------------------------
+    -- After step: memory[sp₁] = 0, pc = length prefix + 2
+    s₂ : State
+    s₂ = mkstate rf₁ mem₁ (pstate s) (length prefix +ℕ 2) false
+
+    -- Step 2: fetch prog (length prefix + 1) = fetch inl-rest 1 = just (str-zr (sp+imm 0))
+    fetch-step-2 : fetch prog (length prefix +ℕ 1) ≡ just (str-zr (sp+imm 0))
+    fetch-step-2 = fetch-append-right prefix inl-rest 1
+
+    -- effectiveAddr s₁ (sp+imm 0) = readSP rf₁ + 0 = sp₁
+    eff-addr-s₁ : effectiveAddr s₁ (sp+imm 0) ≡ sp₁
+    eff-addr-s₁ = trans (cong (λ sp → sp +ℕ 0) (readSP-writeSP-same (regs s) sp₁))
+                        (+-identityʳ sp₁)
+
+    -- execInstr for str-zr: execInstr-str-zr gives us the raw result
+    -- The result is: record (writeToMem s₁ (sp+imm 0) 0) { pc = pc s₁ + 1 }
+    -- We need to show this equals s₂
+
+    -- The effective address calculation
+    -- effectiveAddr s₁ (sp+imm 0) = readSP rf₁ + 0 = sp₁ + 0 = sp₁
+    -- So writeMem (memory s₁) (effectiveAddr s₁ (sp+imm 0)) 0 = writeMem (memory s) sp₁ 0 = mem₁
+
+    -- (length prefix + 1) + 1 = length prefix + 2 by associativity
+    pc-s₂-eq : (length prefix +ℕ 1) +ℕ 1 ≡ length prefix +ℕ 2
+    pc-s₂-eq = +-assoc (length prefix) 1 1
+
+    -- Define s₂' as the explicit unfolding of what execInstr produces
+    s₂' : State
+    s₂' = mkstate rf₁ (writeMem (memory s) (effectiveAddr s₁ (sp+imm 0)) 0) (pstate s) ((length prefix +ℕ 1) +ℕ 1) false
+
+    -- Show s₂' = s₂ using address equality and pc associativity
+    s₂'-eq-s₂ : s₂' ≡ s₂
+    s₂'-eq-s₂ = cong₂ (λ addr pc' → mkstate rf₁ (writeMem (memory s) addr 0) (pstate s) pc' false)
+                       eff-addr-s₁
+                       pc-s₂-eq
+
+    -- Show execInstr result equals s₂'
+    -- execInstr-str-zr gives: record (writeToMem s₁ (sp+imm 0) 0) { pc = pc s₁ + 1 }
+    -- which unfolds to exactly s₂'
+    exec-str-zr-eq : execInstr prog s₁ (str-zr (sp+imm 0)) ≡ just s₂
+    exec-str-zr-eq = trans (execInstr-str-zr prog s₁ (sp+imm 0)) (cong just s₂'-eq-s₂)
+
+    step-2 : step prog s₁ ≡ just s₂
+    step-2 = step-instr prog s₁ s₂ (str-zr (sp+imm 0)) refl fetch-step-2 exec-str-zr-eq
+
+    exec-1-s₁ : exec 1 prog s₁ ≡ just s₂
+    exec-1-s₁ = exec-1-step prog s₁ s₂ step-2
+
+    exec-2-s : exec 2 prog s ≡ just s₂
+    exec-2-s = exec-chain 1 1 prog s s₁ s₂ exec-1-s refl exec-1-s₁
+
+    ------------------------------------------------------------------------
+    -- Step 3: Execute str x0 (sp+imm 8) at offset (pc: length prefix + 2 → length prefix + 3)
+    ------------------------------------------------------------------------
+    -- After step: memory[sp₁+8] = encode x, pc = length prefix + 3
+    s₃ : State
+    s₃ = mkstate rf₁ mem₂ (pstate s) (length prefix +ℕ 3) false
+
+    -- Step 3: fetch prog (length prefix + 2) = fetch inl-rest 2 = just (str x0 (sp+imm 8))
+    fetch-step-3 : fetch prog (length prefix +ℕ 2) ≡ just (str x0 (sp+imm 8))
+    fetch-step-3 = fetch-append-right prefix inl-rest 2
+
+    -- effectiveAddr s₂ (sp+imm 8) = readSP rf₁ + 8 = sp₁ + 8
+    eff-addr-s₂ : effectiveAddr s₂ (sp+imm 8) ≡ sp₁ +ℕ 8
+    eff-addr-s₂ = cong (λ sp → sp +ℕ 8) (readSP-writeSP-same (regs s) sp₁)
+
+    -- readReg (regs s₂) x0 = readReg rf₁ x0 = readReg (regs s) x0 = encode x
+    x0-s₂ : readReg (regs s₂) x0 ≡ encode x
+    x0-s₂ = trans (readReg-writeSP (regs s) x0 sp₁) x0-eq
+
+    -- (length prefix + 2) + 1 = length prefix + 3 by associativity
+    pc-s₃-eq : (length prefix +ℕ 2) +ℕ 1 ≡ length prefix +ℕ 3
+    pc-s₃-eq = +-assoc (length prefix) 2 1
+
+    -- Define s₃' as the explicit unfolding of what execInstr produces
+    s₃' : State
+    s₃' = mkstate rf₁ (writeMem mem₁ (effectiveAddr s₂ (sp+imm 8)) (readReg (regs s₂) x0)) (pstate s) ((length prefix +ℕ 2) +ℕ 1) false
+
+    -- Show s₃' = s₃ using address/value equality and pc associativity
+    -- Need cong₃ or nested cong₂ for three variables
+    s₃'-eq-s₃ : s₃' ≡ s₃
+    s₃'-eq-s₃ = trans (cong₂ (λ addr v → mkstate rf₁ (writeMem mem₁ addr v) (pstate s) ((length prefix +ℕ 2) +ℕ 1) false)
+                              eff-addr-s₂
+                              x0-s₂)
+                      (cong (λ pc' → mkstate rf₁ mem₂ (pstate s) pc' false) pc-s₃-eq)
+
+    exec-str-eq : execInstr prog s₂ (str x0 (sp+imm 8)) ≡ just s₃
+    exec-str-eq = trans (execInstr-str prog s₂ x0 (sp+imm 8)) (cong just s₃'-eq-s₃)
+
+    step-3 : step prog s₂ ≡ just s₃
+    step-3 = step-instr prog s₂ s₃ (str x0 (sp+imm 8)) refl fetch-step-3 exec-str-eq
+
+    exec-1-s₂ : exec 1 prog s₂ ≡ just s₃
+    exec-1-s₂ = exec-1-step prog s₂ s₃ step-3
+
+    exec-3-s : exec 3 prog s ≡ just s₃
+    exec-3-s = exec-chain 2 1 prog s s₂ s₃ exec-2-s refl exec-1-s₂
+
+    ------------------------------------------------------------------------
+    -- Step 4: Execute mov-from-sp x0 at offset (pc: length prefix + 3 → length prefix + 4)
+    ------------------------------------------------------------------------
+    -- After step: x0 = sp₁, pc = length prefix + 4
+
+    -- Step 4: fetch prog (length prefix + 3) = fetch inl-rest 3 = just (mov-from-sp x0)
+    fetch-step-4 : fetch prog (length prefix +ℕ 3) ≡ just (mov-from-sp x0)
+    fetch-step-4 = fetch-append-right prefix inl-rest 3
+
+    -- readSP (regs s₃) = readSP rf₁ = sp₁
+    sp-s₃ : readSP (regs s₃) ≡ sp₁
+    sp-s₃ = readSP-writeSP-same (regs s) sp₁
+
+    -- (length prefix + 3) + 1 = length prefix + 4 by associativity
+    pc-s'-eq : (length prefix +ℕ 3) +ℕ 1 ≡ length prefix +ℕ 4
+    pc-s'-eq = +-assoc (length prefix) 3 1
+
+    -- Define s'' as the explicit unfolding of what execInstr produces
+    s'' : State
+    s'' = mkstate (writeReg rf₁ x0 (readSP (regs s₃))) mem₂ (pstate s) ((length prefix +ℕ 3) +ℕ 1) false
+
+    -- Show s'' = s' using sp equality and pc associativity
+    s''-eq-s' : s'' ≡ s'
+    s''-eq-s' = trans (cong (λ sp' → mkstate (writeReg rf₁ x0 sp') mem₂ (pstate s) ((length prefix +ℕ 3) +ℕ 1) false) sp-s₃)
+                      (cong (λ pc' → mkstate rf' mem₂ (pstate s) pc' false) pc-s'-eq)
+
+    exec-mov-from-sp-eq : execInstr prog s₃ (mov-from-sp x0) ≡ just s'
+    exec-mov-from-sp-eq = trans (execInstr-mov-from-sp prog s₃ x0) (cong just s''-eq-s')
+
+    step-4 : step prog s₃ ≡ just s'
+    step-4 = step-instr prog s₃ s' (mov-from-sp x0) refl fetch-step-4 exec-mov-from-sp-eq
+
+    exec-1-s₃ : exec 1 prog s₃ ≡ just s'
+    exec-1-s₃ = exec-1-step prog s₃ s' step-4
+
+    -- Chain all 4 steps
+    exec-eq : exec 4 prog s ≡ just s'
+    exec-eq = exec-chain 3 1 prog s s₃ s' exec-3-s refl exec-1-s₃
+
+    ------------------------------------------------------------------------
+    -- Prove x0' using encode-inl-construct
+    ------------------------------------------------------------------------
+    -- Need: readMem (memory s') (readReg (regs s') x0) ≡ just 0 (tag)
+    -- Need: readMem (memory s') (readReg (regs s') x0 +ℕ 8) ≡ just (encode x) (value)
+
+    -- readReg (regs s') x0 = readReg (writeReg rf₁ x0 sp₁) x0 = sp₁
+    x0-is-sp₁ : readReg (regs s') x0 ≡ sp₁
+    x0-is-sp₁ = readReg-writeReg-same rf₁ x0 sp₁
+
+    -- memory s' = mem₂ = writeMem mem₁ (sp₁ + 8) (encode x)
+    --           where mem₁ = writeMem (memory s) sp₁ 0
+    -- readMem mem₂ sp₁ = 0 (by writeMem-diff then writeMem-same)
+    tag-eq : readMem (memory s') sp₁ ≡ just 0
+    tag-eq = trans (readMem-writeMem-diff mem₁ (sp₁ +ℕ 8) sp₁ (encode x) (n≢n+8 sp₁))
+                   (readMem-writeMem-same (memory s) sp₁ 0)
+
+    -- readMem mem₂ (sp₁ + 8) = encode x (by writeMem-same)
+    val-eq : readMem (memory s') (sp₁ +ℕ 8) ≡ just (encode x)
+    val-eq = readMem-writeMem-same mem₁ (sp₁ +ℕ 8) (encode x)
+
+    -- tag at x0
+    tag-at-x0 : readMem (memory s') (readReg (regs s') x0) ≡ just 0
+    tag-at-x0 = subst (λ addr → readMem (memory s') addr ≡ just 0) (sym x0-is-sp₁) tag-eq
+
+    -- val at x0+8
+    val-at-x0 : readMem (memory s') (readReg (regs s') x0 +ℕ 8) ≡ just (encode x)
+    val-at-x0 = subst (λ addr → readMem (memory s') (addr +ℕ 8) ≡ just (encode x)) (sym x0-is-sp₁) val-eq
+
+    -- By encode-inl-construct
+    x0' : readReg (regs s') x0 ≡ encode {A + B} (inj₁ x)
+    x0' = encode-inl-construct x (readReg (regs s') x0) (memory s') tag-at-x0 val-at-x0
+
+    ------------------------------------------------------------------------
+    -- Prove x20' using register preservation
+    ------------------------------------------------------------------------
+    -- regs s' = writeReg rf₁ x0 sp₁ = writeReg (writeSP (regs s) sp₁) x0 sp₁
+    -- readReg (writeReg (writeSP (regs s) sp₁) x0 sp₁) x20
+    -- = readReg (writeSP (regs s) sp₁) x20   [by readReg-writeReg-x0-x20]
+    -- = readReg (regs s) x20                  [by readReg-writeSP]
+    x20' : readReg (regs s') x20 ≡ readReg (regs s) x20
+    x20' = trans (readReg-writeReg-x0-x20 rf₁ sp₁)
+                 (readReg-writeSP (regs s) x20 sp₁)
 
     h' : halted s' ≡ false
     h' = refl
@@ -942,11 +1160,213 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq x0-eq =
     s' : State
     s' = mkstate rf' mem₂ (pstate s) (length prefix +ℕ 5) false
 
-    -- The key properties (postulated for now - full proof is tedious but straightforward)
-    postulate
-      exec-eq : exec 5 prog s ≡ just s'
-      x0' : readReg (regs s') x0 ≡ encode {A + B} (inj₂ x)
-      x20' : readReg (regs s') x20 ≡ readReg (regs s) x20
+    -- prog = prefix ++ (inr-code ++ suffix) where inr-code = sub-sp 16 ∷ mov x9 (imm 1) ∷ str x9 (sp+imm 0) ∷ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+    inr-rest = compile-aarch64 (inr {A} {B}) ++ suffix
+
+    ------------------------------------------------------------------------
+    -- Step 1: Execute sub-sp 16 (pc: length prefix → length prefix + 1)
+    ------------------------------------------------------------------------
+    s₁ : State
+    s₁ = mkstate rf₁ (memory s) (pstate s) (length prefix +ℕ 1) false
+
+    fetch-step-1 : fetch prog (length prefix) ≡ just (sub-sp 16)
+    fetch-step-1 = subst (λ n → fetch prog n ≡ just (sub-sp 16))
+                         (+-identityʳ (length prefix))
+                         (fetch-append-right prefix inr-rest 0)
+
+    s₁-raw : State
+    s₁-raw = record s { regs = writeSP (regs s) (readSP (regs s) ∸ 16) ; pc = pc s +ℕ 1 }
+
+    s₁-eq : s₁-raw ≡ s₁
+    s₁-eq = cong₂ (λ p h → mkstate rf₁ (memory s) (pstate s) p h)
+                  (cong (_+ℕ 1) pc-eq)
+                  h-false
+
+    exec-sub-sp-eq : execInstr prog s (sub-sp 16) ≡ just s₁
+    exec-sub-sp-eq = trans (execInstr-sub-sp prog s 16) (cong just s₁-eq)
+
+    step-1 : step prog s ≡ just s₁
+    step-1 = step-instr prog s s₁ (sub-sp 16) h-false
+               (subst (λ p → fetch prog p ≡ just (sub-sp 16)) (sym pc-eq) fetch-step-1)
+               exec-sub-sp-eq
+
+    exec-1-s : exec 1 prog s ≡ just s₁
+    exec-1-s = exec-1-step prog s s₁ step-1
+
+    ------------------------------------------------------------------------
+    -- Step 2: Execute mov x9 (imm 1) (pc: length prefix + 1 → length prefix + 2)
+    ------------------------------------------------------------------------
+    s₂ : State
+    s₂ = mkstate rf₂ (memory s) (pstate s) (length prefix +ℕ 2) false
+
+    fetch-step-2 : fetch prog (length prefix +ℕ 1) ≡ just (mov x9 (imm 1))
+    fetch-step-2 = fetch-append-right prefix inr-rest 1
+
+    pc-s₂-eq : (length prefix +ℕ 1) +ℕ 1 ≡ length prefix +ℕ 2
+    pc-s₂-eq = +-assoc (length prefix) 1 1
+
+    s₂' : State
+    s₂' = mkstate (writeReg rf₁ x9 1) (memory s) (pstate s) ((length prefix +ℕ 1) +ℕ 1) false
+
+    s₂'-eq-s₂ : s₂' ≡ s₂
+    s₂'-eq-s₂ = cong (λ pc' → mkstate rf₂ (memory s) (pstate s) pc' false) pc-s₂-eq
+
+    exec-mov-x9-eq : execInstr prog s₁ (mov x9 (imm 1)) ≡ just s₂
+    exec-mov-x9-eq = trans (execInstr-mov-imm prog s₁ x9 1) (cong just s₂'-eq-s₂)
+
+    step-2 : step prog s₁ ≡ just s₂
+    step-2 = step-instr prog s₁ s₂ (mov x9 (imm 1)) refl fetch-step-2 exec-mov-x9-eq
+
+    exec-1-s₁ : exec 1 prog s₁ ≡ just s₂
+    exec-1-s₁ = exec-1-step prog s₁ s₂ step-2
+
+    exec-2-s : exec 2 prog s ≡ just s₂
+    exec-2-s = exec-chain 1 1 prog s s₁ s₂ exec-1-s refl exec-1-s₁
+
+    ------------------------------------------------------------------------
+    -- Step 3: Execute str x9 (sp+imm 0) (pc: length prefix + 2 → length prefix + 3)
+    ------------------------------------------------------------------------
+    s₃ : State
+    s₃ = mkstate rf₂ mem₁ (pstate s) (length prefix +ℕ 3) false
+
+    fetch-step-3 : fetch prog (length prefix +ℕ 2) ≡ just (str x9 (sp+imm 0))
+    fetch-step-3 = fetch-append-right prefix inr-rest 2
+
+    eff-addr-s₂ : effectiveAddr s₂ (sp+imm 0) ≡ sp₁
+    eff-addr-s₂ = trans (cong (λ sp → sp +ℕ 0) (trans (readSP-writeReg rf₁ x9 1) (readSP-writeSP-same (regs s) sp₁)))
+                        (+-identityʳ sp₁)
+
+    -- readReg (regs s₂) x9 = readReg rf₂ x9 = 1
+    x9-s₂ : readReg (regs s₂) x9 ≡ 1
+    x9-s₂ = readReg-writeReg-same rf₁ x9 1
+
+    pc-s₃-eq : (length prefix +ℕ 2) +ℕ 1 ≡ length prefix +ℕ 3
+    pc-s₃-eq = +-assoc (length prefix) 2 1
+
+    s₃' : State
+    s₃' = mkstate rf₂ (writeMem (memory s) (effectiveAddr s₂ (sp+imm 0)) (readReg (regs s₂) x9)) (pstate s) ((length prefix +ℕ 2) +ℕ 1) false
+
+    s₃'-eq-s₃ : s₃' ≡ s₃
+    s₃'-eq-s₃ = trans (cong₂ (λ addr v → mkstate rf₂ (writeMem (memory s) addr v) (pstate s) ((length prefix +ℕ 2) +ℕ 1) false)
+                              eff-addr-s₂
+                              x9-s₂)
+                      (cong (λ pc' → mkstate rf₂ mem₁ (pstate s) pc' false) pc-s₃-eq)
+
+    exec-str-x9-eq : execInstr prog s₂ (str x9 (sp+imm 0)) ≡ just s₃
+    exec-str-x9-eq = trans (execInstr-str prog s₂ x9 (sp+imm 0)) (cong just s₃'-eq-s₃)
+
+    step-3 : step prog s₂ ≡ just s₃
+    step-3 = step-instr prog s₂ s₃ (str x9 (sp+imm 0)) refl fetch-step-3 exec-str-x9-eq
+
+    exec-1-s₂ : exec 1 prog s₂ ≡ just s₃
+    exec-1-s₂ = exec-1-step prog s₂ s₃ step-3
+
+    exec-3-s : exec 3 prog s ≡ just s₃
+    exec-3-s = exec-chain 2 1 prog s s₂ s₃ exec-2-s refl exec-1-s₂
+
+    ------------------------------------------------------------------------
+    -- Step 4: Execute str x0 (sp+imm 8) (pc: length prefix + 3 → length prefix + 4)
+    ------------------------------------------------------------------------
+    s₄ : State
+    s₄ = mkstate rf₂ mem₂ (pstate s) (length prefix +ℕ 4) false
+
+    fetch-step-4 : fetch prog (length prefix +ℕ 3) ≡ just (str x0 (sp+imm 8))
+    fetch-step-4 = fetch-append-right prefix inr-rest 3
+
+    eff-addr-s₃ : effectiveAddr s₃ (sp+imm 8) ≡ sp₁ +ℕ 8
+    eff-addr-s₃ = cong (λ sp → sp +ℕ 8) (trans (readSP-writeReg rf₁ x9 1) (readSP-writeSP-same (regs s) sp₁))
+
+    -- readReg (regs s₃) x0 = readReg rf₂ x0 = readReg rf₁ x0 = readReg (regs s) x0 = encode x
+    x0-s₃ : readReg (regs s₃) x0 ≡ encode x
+    x0-s₃ = trans (readReg-writeReg-x9-x0 rf₁ 1)
+                  (trans (readReg-writeSP (regs s) x0 sp₁) x0-eq)
+
+    pc-s₄-eq : (length prefix +ℕ 3) +ℕ 1 ≡ length prefix +ℕ 4
+    pc-s₄-eq = +-assoc (length prefix) 3 1
+
+    s₄' : State
+    s₄' = mkstate rf₂ (writeMem mem₁ (effectiveAddr s₃ (sp+imm 8)) (readReg (regs s₃) x0)) (pstate s) ((length prefix +ℕ 3) +ℕ 1) false
+
+    s₄'-eq-s₄ : s₄' ≡ s₄
+    s₄'-eq-s₄ = trans (cong₂ (λ addr v → mkstate rf₂ (writeMem mem₁ addr v) (pstate s) ((length prefix +ℕ 3) +ℕ 1) false)
+                              eff-addr-s₃
+                              x0-s₃)
+                      (cong (λ pc' → mkstate rf₂ mem₂ (pstate s) pc' false) pc-s₄-eq)
+
+    exec-str-x0-eq : execInstr prog s₃ (str x0 (sp+imm 8)) ≡ just s₄
+    exec-str-x0-eq = trans (execInstr-str prog s₃ x0 (sp+imm 8)) (cong just s₄'-eq-s₄)
+
+    step-4 : step prog s₃ ≡ just s₄
+    step-4 = step-instr prog s₃ s₄ (str x0 (sp+imm 8)) refl fetch-step-4 exec-str-x0-eq
+
+    exec-1-s₃ : exec 1 prog s₃ ≡ just s₄
+    exec-1-s₃ = exec-1-step prog s₃ s₄ step-4
+
+    exec-4-s : exec 4 prog s ≡ just s₄
+    exec-4-s = exec-chain 3 1 prog s s₃ s₄ exec-3-s refl exec-1-s₃
+
+    ------------------------------------------------------------------------
+    -- Step 5: Execute mov-from-sp x0 (pc: length prefix + 4 → length prefix + 5)
+    ------------------------------------------------------------------------
+    fetch-step-5 : fetch prog (length prefix +ℕ 4) ≡ just (mov-from-sp x0)
+    fetch-step-5 = fetch-append-right prefix inr-rest 4
+
+    sp-s₄ : readSP (regs s₄) ≡ sp₁
+    sp-s₄ = trans (readSP-writeReg rf₁ x9 1) (readSP-writeSP-same (regs s) sp₁)
+
+    pc-s'-eq : (length prefix +ℕ 4) +ℕ 1 ≡ length prefix +ℕ 5
+    pc-s'-eq = +-assoc (length prefix) 4 1
+
+    s'' : State
+    s'' = mkstate (writeReg rf₂ x0 (readSP (regs s₄))) mem₂ (pstate s) ((length prefix +ℕ 4) +ℕ 1) false
+
+    s''-eq-s' : s'' ≡ s'
+    s''-eq-s' = trans (cong (λ sp' → mkstate (writeReg rf₂ x0 sp') mem₂ (pstate s) ((length prefix +ℕ 4) +ℕ 1) false) sp-s₄)
+                      (cong (λ pc' → mkstate rf' mem₂ (pstate s) pc' false) pc-s'-eq)
+
+    exec-mov-from-sp-eq : execInstr prog s₄ (mov-from-sp x0) ≡ just s'
+    exec-mov-from-sp-eq = trans (execInstr-mov-from-sp prog s₄ x0) (cong just s''-eq-s')
+
+    step-5 : step prog s₄ ≡ just s'
+    step-5 = step-instr prog s₄ s' (mov-from-sp x0) refl fetch-step-5 exec-mov-from-sp-eq
+
+    exec-1-s₄ : exec 1 prog s₄ ≡ just s'
+    exec-1-s₄ = exec-1-step prog s₄ s' step-5
+
+    -- Chain all 5 steps
+    exec-eq : exec 5 prog s ≡ just s'
+    exec-eq = exec-chain 4 1 prog s s₄ s' exec-4-s refl exec-1-s₄
+
+    ------------------------------------------------------------------------
+    -- Prove x0' using encode-inr-construct
+    ------------------------------------------------------------------------
+    x0-is-sp₁ : readReg (regs s') x0 ≡ sp₁
+    x0-is-sp₁ = readReg-writeReg-same rf₂ x0 sp₁
+
+    tag-eq : readMem (memory s') sp₁ ≡ just 1
+    tag-eq = trans (readMem-writeMem-diff mem₁ (sp₁ +ℕ 8) sp₁ (encode x) (n≢n+8 sp₁))
+                   (readMem-writeMem-same (memory s) sp₁ 1)
+
+    val-eq : readMem (memory s') (sp₁ +ℕ 8) ≡ just (encode x)
+    val-eq = readMem-writeMem-same mem₁ (sp₁ +ℕ 8) (encode x)
+
+    tag-at-x0 : readMem (memory s') (readReg (regs s') x0) ≡ just 1
+    tag-at-x0 = subst (λ addr → readMem (memory s') addr ≡ just 1) (sym x0-is-sp₁) tag-eq
+
+    val-at-x0 : readMem (memory s') (readReg (regs s') x0 +ℕ 8) ≡ just (encode x)
+    val-at-x0 = subst (λ addr → readMem (memory s') (addr +ℕ 8) ≡ just (encode x)) (sym x0-is-sp₁) val-eq
+
+    x0' : readReg (regs s') x0 ≡ encode {A + B} (inj₂ x)
+    x0' = encode-inr-construct x (readReg (regs s') x0) (memory s') tag-at-x0 val-at-x0
+
+    ------------------------------------------------------------------------
+    -- Prove x20' using register preservation
+    ------------------------------------------------------------------------
+    -- regs s' = writeReg rf₂ x0 sp₁ = writeReg (writeReg (writeSP (regs s) sp₁) x9 1) x0 sp₁
+    x20' : readReg (regs s') x20 ≡ readReg (regs s) x20
+    x20' = trans (readReg-writeReg-x0-x20 rf₂ sp₁)
+                 (trans (readReg-writeReg-x9-x20 rf₁ 1)
+                        (readReg-writeSP (regs s) x20 sp₁))
 
     h' : halted s' ≡ false
     h' = refl
