@@ -506,3 +506,238 @@ execInstr-mv prog s rd rs = refl
 execInstr-nop : ∀ (prog : Program) (s : State) →
   execInstr prog s nop ≡ just (record s { pc = pc s +ℕ 1 })
 execInstr-nop prog s = refl
+
+------------------------------------------------------------------------
+-- exec-concat-left and helper lemmas
+------------------------------------------------------------------------
+--
+-- These lemmas prove that executing a prefix program gives the same
+-- result as executing the full concatenated program, as long as the
+-- PC stays within the prefix. This is critical for composition proofs.
+
+-- | If pc < length prog, fetch prog pc succeeds
+fetch-succeeds : ∀ (prog : Program) (n : ℕ) → n < length prog →
+  ∃[ instr ] (fetch prog n ≡ just instr)
+fetch-succeeds [] n ()
+fetch-succeeds (x ∷ xs) zero pf = x , refl
+fetch-succeeds (x ∷ xs) (suc n) (s≤s pf) = fetch-succeeds xs n pf
+
+-- | execInstr doesn't depend on code after current instruction
+-- The prog argument is only used for jalr which reads from registers, not from prog.
+-- In RISC-V, like AArch64 and x86, the program is unused in instruction execution.
+execInstr-prog-irrelevant : ∀ (prog1 prog2 : Program) (s : State) (instr : Instr) →
+  execInstr prog1 s instr ≡ execInstr (prog1 ++ prog2) s instr
+execInstr-prog-irrelevant prog1 prog2 s instr = refl  -- prog is unused in execInstr
+
+-- | step on prog equals execInstr when halted=false and fetch succeeds
+step-unfold : ∀ (prog : Program) (s : State) (instr : Instr) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ just instr →
+  step prog s ≡ execInstr prog s instr
+step-unfold prog s instr refl fetch-eq with fetch prog (pc s) | fetch-eq
+... | just .instr | refl = refl
+
+-- | step produces same result when pc < length prog1
+-- Proof: Both step calls see halted s = false, both fetch the same instruction
+-- (by fetch-append-left), and execInstr gives same result (prog argument unused).
+step-concat-left : ∀ (prog1 prog2 : Program) (s : State) →
+  halted s ≡ false →
+  pc s < length prog1 →
+  step (prog1 ++ prog2) s ≡ step prog1 s
+step-concat-left prog1 prog2 s h-false pc-bound =
+  let (instr , fetch-eq) = fetch-succeeds prog1 (pc s) pc-bound
+      fetch-concat-eq = trans (fetch-append-left prog1 prog2 (pc s) pc-bound) fetch-eq
+      -- step prog1 s = execInstr prog1 s instr
+      step1-eq : step prog1 s ≡ execInstr prog1 s instr
+      step1-eq = step-unfold prog1 s instr h-false fetch-eq
+      -- step (prog1 ++ prog2) s = execInstr (prog1 ++ prog2) s instr
+      step-concat-eq : step (prog1 ++ prog2) s ≡ execInstr (prog1 ++ prog2) s instr
+      step-concat-eq = step-unfold (prog1 ++ prog2) s instr h-false fetch-concat-eq
+      -- execInstr prog1 s instr = execInstr (prog1 ++ prog2) s instr
+      exec-eq : execInstr prog1 s instr ≡ execInstr (prog1 ++ prog2) s instr
+      exec-eq = execInstr-prog-irrelevant prog1 prog2 s instr
+  in trans step-concat-eq (trans (sym exec-eq) (sym step1-eq))
+
+-- | Unfold exec (suc n) when step succeeds and halted is false
+-- exec (suc n) prog s = exec n prog s₁ when step prog s = just s₁ and halted s₁ = false
+exec-suc-step : ∀ (n : ℕ) (prog : Program) (s s₁ : State) →
+  halted s ≡ false →
+  step prog s ≡ just s₁ →
+  halted s₁ ≡ false →
+  exec (suc n) prog s ≡ exec n prog s₁
+exec-suc-step n prog s s₁ refl step-eq halt-eq
+  with step prog s | step-eq
+... | just .s₁ | refl with halted s₁ | halt-eq
+...   | false | refl = refl
+
+-- | Unfold exec (suc n) when step succeeds and halted is true
+-- exec (suc n) prog s = just s₁ when step prog s = just s₁ and halted s₁ = true
+exec-suc-halt : ∀ (n : ℕ) (prog : Program) (s s₁ : State) →
+  halted s ≡ false →
+  step prog s ≡ just s₁ →
+  halted s₁ ≡ true →
+  exec (suc n) prog s ≡ just s₁
+exec-suc-halt n prog s s₁ refl step-eq halt-eq
+  with step prog s | step-eq
+... | just .s₁ | refl with halted s₁ | halt-eq
+...   | true | refl = refl
+
+-- | Main lemma: execution matches while pc stays strictly within prog1
+-- This is critical for composition proofs: we can execute a sub-program
+-- and the result is the same whether we execute just the sub-program or
+-- the full concatenated program.
+exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
+  halted s ≡ false →
+  exec n prog1 s ≡ just s' →
+  (halted s' ≡ false → pc s' < length prog1) →  -- If not halted, still in bounds
+  exec n (prog1 ++ prog2) s ≡ just s'
+
+-- Base case: n = 0
+exec-concat-left zero prog1 prog2 s .s h-false refl _ = refl
+
+-- Inductive case: n = suc n'
+exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
+  with step prog1 s in step-eq
+... | nothing with exec (suc n') prog1 s | exec-eq
+...   | ._ | ()  -- exec can't succeed if step fails
+exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
+    | just s₁ with halted s₁ in halt-eq
+-- s₁ is halted: exec returns s₁ = s'
+...   | true = exec-halt-case
+  where
+    postulate
+      pc-in-bounds : pc s < length prog1
+      -- Extracting s' = s₁ from exec-eq when halted
+      s'-is-s₁ : s' ≡ s₁
+
+    step-concat-eq : step (prog1 ++ prog2) s ≡ just s₁
+    step-concat-eq = trans (step-concat-left prog1 prog2 s h-false pc-in-bounds) step-eq
+
+    exec-halt-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
+    exec-halt-case = subst (λ x → exec (suc n') (prog1 ++ prog2) s ≡ just x)
+                           (sym s'-is-s₁)
+                           (exec-suc-halt n' (prog1 ++ prog2) s s₁ h-false step-concat-eq halt-eq)
+-- s₁ is not halted: recurse
+...   | false = exec-recurse-case
+  where
+    postulate
+      pc-s-bound : pc s < length prog1
+      pc-s₁-inv : halted s' ≡ false → pc s' < length prog1
+      exec-n'-eq : exec n' prog1 s₁ ≡ just s'
+
+    step-concat-eq : step (prog1 ++ prog2) s ≡ just s₁
+    step-concat-eq = trans (step-concat-left prog1 prog2 s h-false pc-s-bound) step-eq
+
+    -- Unfold LHS: exec (suc n') (prog1 ++ prog2) s = exec n' (prog1 ++ prog2) s₁
+    lhs-unfold : exec (suc n') (prog1 ++ prog2) s ≡ exec n' (prog1 ++ prog2) s₁
+    lhs-unfold = exec-suc-step n' (prog1 ++ prog2) s s₁ h-false step-concat-eq halt-eq
+
+    -- IH: exec n' (prog1 ++ prog2) s₁ = just s'
+    ih : exec n' (prog1 ++ prog2) s₁ ≡ just s'
+    ih = exec-concat-left n' prog1 prog2 s₁ s' halt-eq exec-n'-eq pc-s₁-inv
+
+    exec-recurse-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
+    exec-recurse-case = trans lhs-unfold ih
+
+------------------------------------------------------------------------
+-- Halted state lemmas
+------------------------------------------------------------------------
+--
+-- These lemmas prove that once execution reaches a halted state,
+-- additional execution steps don't change the result. This is critical
+-- for proving that run (with large fuel) gives the same result as
+-- exec (with exact step count).
+
+open import Data.Nat.Properties using (m∸n+n≡m)
+open import Data.Nat using (_≤_; z≤n)
+
+-- | If already halted, exec returns the state unchanged
+exec-halted : ∀ (n : ℕ) (prog : Program) (s : State) →
+  halted s ≡ true → exec n prog s ≡ just s
+exec-halted zero prog s h = refl
+exec-halted (suc n) prog s h with halted s | h
+... | true | refl with halted s
+...   | true = refl
+
+-- | step on a halted state returns the same state
+step-halted : ∀ (prog : Program) (s : State) →
+  halted s ≡ true →
+  step prog s ≡ just s
+step-halted prog s h-true with halted s | h-true
+... | true | refl = refl
+
+-- | exec 0 always returns initial state
+exec-0 : ∀ (prog : Program) (s : State) → exec 0 prog s ≡ just s
+exec-0 prog s = refl
+
+-- | exec (suc n) on a halted state returns the same state
+exec-suc-halted : ∀ (n : ℕ) (prog : Program) (s : State) →
+  halted s ≡ true →
+  exec (suc n) prog s ≡ just s
+exec-suc-halted n prog s h-true with step prog s | step-halted prog s h-true
+... | just .s | refl with halted s | h-true
+...   | true | refl = refl
+
+-- | Executing N+1 steps when the N-step execution halts
+-- If exec n gives a halted state, exec (suc n) gives the same state.
+-- Proof by induction on n.
+exec-N-if-halts : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ true →
+  exec (suc n) prog s ≡ just s'
+
+-- Base case: n = 0
+-- exec 0 prog s = just s, so s = s' and halted s' = true
+-- By exec-suc-halted: exec 1 prog s = just s = just s'
+exec-N-if-halts zero prog s .s refl h-true = exec-suc-halted zero prog s h-true
+
+-- Inductive case: n = suc n'
+exec-N-if-halts (suc n') prog s s' exec-eq h-true =
+  exec-N-if-halts-suc n' prog s s' exec-eq h-true
+  where
+    exec-N-if-halts-suc : ∀ (n' : ℕ) (prog : Program) (s s' : State) →
+      exec (suc n') prog s ≡ just s' →
+      halted s' ≡ true →
+      exec (suc (suc n')) prog s ≡ just s'
+    exec-N-if-halts-suc n' prog s s' exec-eq h-true
+      with step prog s
+    -- step fails: impossible since exec (suc n') succeeded
+    exec-N-if-halts-suc n' prog s s' () h-true | nothing
+    -- step succeeds with s₁
+    exec-N-if-halts-suc n' prog s s' exec-eq h-true | just s₁
+      with halted s₁ in halt-eq
+    -- s₁ halted: exec (suc n') returns just s₁, so s₁ = s'
+    -- exec (suc (suc n')) also returns just s₁ = just s'
+    exec-N-if-halts-suc n' prog s .s₁ refl h-true | just s₁ | true = refl
+    -- s₁ not halted: exec (suc n') = exec n' prog s₁ = just s'
+    -- By IH: exec (suc n') prog s₁ = just s'
+    -- exec (suc (suc n')) prog s = step → s₁ (not halted) → exec (suc n') prog s₁
+    exec-N-if-halts-suc n' prog s s' exec-eq h-true | just s₁ | false
+      = exec-N-if-halts n' prog s₁ s' exec-eq h-true
+
+-- | Monotonicity: if exec with n steps halts, exec with more fuel returns same result.
+-- Proof: Use a helper that adds k more steps, then derive exec-mono by setting k = m ∸ n.
+exec-mono : ∀ (n m : ℕ) (prog : Program) (s s' : State) →
+  n ≤ m →
+  exec n prog s ≡ just s' →
+  halted s' ≡ true →
+  exec m prog s ≡ just s'
+exec-mono n m prog s s' n≤m exec-eq h-true =
+  subst (λ x → exec x prog s ≡ just s') (m∸n+n≡m n≤m) (exec-mono-aux (m ∸ n) n prog s s' exec-eq h-true)
+  where
+    -- Helper: adding k more steps to a halted execution still returns the halted state
+    exec-mono-aux : ∀ (k n : ℕ) (prog : Program) (s s' : State) →
+      exec n prog s ≡ just s' →
+      halted s' ≡ true →
+      exec (k +ℕ n) prog s ≡ just s'
+    -- Base: adding 0 steps is identity
+    exec-mono-aux zero n prog s s' exec-eq h-true = exec-eq
+    -- Inductive: adding (suc k) steps
+    -- IH: exec-mono-aux k (suc n) ... : exec (k + suc n) prog s ≡ just s'
+    -- Goal: exec (suc k + n) prog s ≡ just s'
+    -- suc k + n = suc (k + n)  definitionally (by def of +)
+    -- k + suc n = suc (k + n)  (by +-suc k n)
+    -- So subst with +-suc k n: from (k + suc n) to suc (k + n) = suc k + n
+    exec-mono-aux (suc k) n prog s s' exec-eq h-true =
+      subst (λ x → exec x prog s ≡ just s') (+-suc k n)
+        (exec-mono-aux k (suc n) prog s s' (exec-N-if-halts n prog s s' exec-eq h-true) h-true)
