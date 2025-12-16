@@ -2354,3 +2354,91 @@ codegen-riscv-correct ir x size-bound =
                                          (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x)
       run-eq = exec-mono (compile-length ir +ℕ 1) 10000 (compile-riscv ir) (initWithInput x) s' size-bound exec-eq h-true
   in s' , run-eq , a0-eq
+
+------------------------------------------------------------------------
+-- Concrete E2E Tests
+------------------------------------------------------------------------
+
+-- | Test: Curry + Apply composed
+-- IR: apply ∘ ⟨curry fst, id⟩
+--
+-- This is the TRUE end-to-end test for closure semantics.
+-- The compiled program is self-contained: the thunk code that curry creates
+-- is INSIDE the same program that apply calls.
+--
+-- Execution flow:
+--   1. Pair setup: allocate pair on stack, save input
+--   2. Curry: create closure with env=input, code_ptr=thunk address
+--   3. Id: nop (input unchanged)
+--   4. Pair construction complete
+--   5. Apply: load closure, load env into s0, call thunk
+--   6. Thunk: pair (env, arg), execute fst, return
+--   7. Result: first component of pair = env = original input
+
+test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-riscv {A} {A} (apply ∘ ⟨ curry fst , id ⟩)) (initWithInput a) ≡ just s
+        × readReg (regs s) a0 ≡ encode (eval (apply ∘ ⟨ curry fst , id ⟩) a))
+test-curry-apply {A} a = codegen-riscv-correct {A} {A} (apply ∘ ⟨ curry fst , id ⟩) a (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))))))))
+
+------------------------------------------------------------------------
+-- Structural E2E Verification
+------------------------------------------------------------------------
+
+-- To prove that apply ∘ ⟨curry fst, id⟩ is truly self-contained,
+-- we verify structural properties of the compiled program.
+
+-- | The compiled program
+curry-apply-prog : Program
+curry-apply-prog = compile-riscv {Unit} {Unit} (apply ∘ ⟨ curry fst , id ⟩)
+
+-- | Program length
+curry-apply-len : ℕ
+curry-apply-len = length curry-apply-prog
+
+-- | Length verification: 28 instructions
+-- Structure:
+--   ⟨ curry fst , id ⟩ = pair setup (6) + curry (13+1=14) + id (1) = 21
+--   apply = 7
+--   Total: 21 + 7 = 28
+curry-apply-len-check : curry-apply-len ≡ 28
+curry-apply-len-check = refl
+
+-- | Thunk entry position within curry
+-- In curry codegen: label 6 is the thunk entry point
+-- Within the pair: pair setup (2) + curry begins
+-- So thunk is at position: 2 + 6 = 8
+thunk-entry-pos : ℕ
+thunk-entry-pos = 8
+
+-- | Thunk entry is within program bounds
+thunk-in-bounds : thunk-entry-pos < curry-apply-len
+thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+-- | Verify the thunk entry is a label instruction
+thunk-entry-is-label : fetch curry-apply-prog thunk-entry-pos ≡ just (label 6)
+thunk-entry-is-label = refl
+
+------------------------------------------------------------------------
+-- E2E Summary
+------------------------------------------------------------------------
+--
+-- The RISC-V backend compiles apply ∘ ⟨curry fst, id⟩ to 28 instructions:
+--
+-- Positions 0-1:   Pair setup (addi sp, mv s1)
+-- Positions 2-7:   Curry closure creation (addi sp, sd, li, sd, mv, j)
+-- Position 8:      Thunk label
+-- Positions 9-13:  Thunk code (addi sp, sd s0, sd a0, mv a0 sp)
+-- Position 14:     fst (ld a0, 0(a0))
+-- Position 15:     ret
+-- Position 16:     End label for curry
+-- Position 17:     sd a0, 0(sp) - store curry result
+-- Position 18:     mv a0 s1 - restore input for id
+-- Position 19:     nop - id execution
+-- Position 20:     sd a0, 8(sp) - store id result
+-- Position 21:     mv a0 sp - return pair pointer
+-- Positions 22-28: Apply (ld×4, mv, jalr, nop)
+--
+-- Key differences from X86 (37 instructions):
+-- - RISC-V uses a0 for both input/output, so id is nop (vs mov rax,rdi)
+-- - Composition doesn't need mov between f and g
+-- - No push/pop for callee-saved registers in pair (simpler convention)
