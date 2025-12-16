@@ -7435,7 +7435,7 @@ compile-apply-correct {A} {B} f a = s' , run-eq , rax-eq
 -- Notes on Postulates
 ------------------------------------------------------------------------
 
--- The postulates in this module fall into two categories:
+-- The postulates in this module fall into several categories:
 --
 -- 1. ENCODING AXIOMS (encode-*, initWithInput-*)
 --    These specify the relationship between semantic values and
@@ -7448,6 +7448,21 @@ compile-apply-correct {A} {B} f a = s' , run-eq , rax-eq
 --    - Stepping through the generated code
 --    - Tracking state changes
 --    - Showing final state matches expected
+--
+-- 3. CLOSURE/APPLY LIMITATIONS
+--    run-apply-seq is postulated because:
+--    - apply ends with "call r15" jumping to thunk code
+--    - In isolation, the thunk code isn't part of the program
+--
+--    Additionally, composed expressions (like apply ∘ ⟨curry f, id⟩)
+--    have a codegen issue: curry stores code-ptr = 5 as a fixed
+--    immediate, but when curry appears at offset k in a larger
+--    program, the thunk is at k+5, not 5.
+--
+--    For a full E2E POC, codegen would need:
+--    - PC-relative addressing (like AArch64's adr), or
+--    - Runtime absolute address computation, or
+--    - Label resolution at link time
 --
 -- The structure shows WHAT needs to be proven. The proofs themselves
 -- require significant work to complete.
