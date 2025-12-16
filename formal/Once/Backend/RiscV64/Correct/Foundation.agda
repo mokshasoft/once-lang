@@ -741,3 +741,126 @@ exec-mono n m prog s s' n≤m exec-eq h-true =
     exec-mono-aux (suc k) n prog s s' exec-eq h-true =
       subst (λ x → exec x prog s ≡ just s') (+-suc k n)
         (exec-mono-aux k (suc n) prog s s' (exec-N-if-halts n prog s s' exec-eq h-true) h-true)
+
+------------------------------------------------------------------------
+-- Instruction-level helpers (for E2E trace proofs)
+------------------------------------------------------------------------
+--
+-- These helpers describe the exact behavior of key instructions.
+-- They are essential for step-by-step trace proofs similar to X86.
+
+-- | What execInstr does for jalr (jump and link register)
+-- jalr rd rs1 offset: rd = pc+1, pc = rs1 + offset
+-- This is the indirect call instruction for closure application.
+execJalr : ∀ (prog : Program) (s : State) (rd rs1 : Reg) (offset : ℤ) →
+  execInstr prog s (jalr rd rs1 offset) ≡
+    just (record s { regs = writeReg (regs s) rd (pc s +ℕ 1)
+                   ; pc = effectiveAddr (regs s) rs1 offset })
+execJalr prog s rd rs1 offset = refl
+
+-- | What execInstr does for ret (return from function)
+-- ret is a pseudo-instruction that expands to jalr zero ra 0
+-- pc = ra (jumps to return address)
+execRet : ∀ (prog : Program) (s : State) →
+  execInstr prog s ret ≡ just (record s { pc = readReg (regs s) ra })
+execRet prog s = refl
+
+-- | What execInstr does for ebreak (halt execution)
+execEbreak : ∀ (prog : Program) (s : State) →
+  execInstr prog s ebreak ≡ just (record s { halted = true })
+execEbreak prog s = refl
+
+-- | What execInstr does for jal (jump and link)
+-- jal rd offset: rd = pc+1, pc = pc + offset
+execJal : ∀ (prog : Program) (s : State) (rd : Reg) (offset : ℕ) →
+  execInstr prog s (jal rd (+ offset)) ≡
+    just (record s { regs = writeReg (regs s) rd (pc s +ℕ 1)
+                   ; pc = pc s +ℕ offset })
+execJal prog s rd offset = refl
+
+------------------------------------------------------------------------
+-- Additional register preservation lemmas (for call/return patterns)
+------------------------------------------------------------------------
+
+-- | Reading ra after writing a0 returns the old value
+readReg-writeReg-a0-ra : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf a0 v) ra ≡ readReg rf ra
+readReg-writeReg-a0-ra rf v = refl
+
+-- | Reading a0 after writing ra returns the old value
+readReg-writeReg-ra-a0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf ra v) a0 ≡ readReg rf a0
+readReg-writeReg-ra-a0 rf v = refl
+
+-- | Reading sp after writing ra returns the old value
+readReg-writeReg-ra-sp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf ra v) sp ≡ readReg rf sp
+readReg-writeReg-ra-sp rf v = refl
+
+-- | Reading t0 after writing ra returns the old value
+readReg-writeReg-ra-t0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf ra v) t0 ≡ readReg rf t0
+readReg-writeReg-ra-t0 rf v = refl
+
+-- | Reading a0 after writing s2 returns the old value
+readReg-writeReg-s2-a0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s2 v) a0 ≡ readReg rf a0
+readReg-writeReg-s2-a0 rf v = refl
+
+-- | Reading s2 after writing a0 returns the old value
+readReg-writeReg-a0-s2 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf a0 v) s2 ≡ readReg rf s2
+readReg-writeReg-a0-s2 rf v = refl
+
+-- | Reading sp after writing s2 returns the old value
+readReg-writeReg-s2-sp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s2 v) sp ≡ readReg rf sp
+readReg-writeReg-s2-sp rf v = refl
+
+-- | Reading s1 after writing s2 returns the old value
+readReg-writeReg-s2-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s2 v) s1 ≡ readReg rf s1
+readReg-writeReg-s2-s1 rf v = refl
+
+------------------------------------------------------------------------
+-- Step helpers at arbitrary offset (for mutual block proofs)
+------------------------------------------------------------------------
+
+-- | Step a jalr instruction at arbitrary offset
+step-jalr-at-offset : ∀ (prefix : Program) (rd rs1 : Reg) (offset : ℤ) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ jalr rd rs1 offset ∷ suffix) s ≡
+    just (record s { regs = writeReg (regs s) rd (pc s +ℕ 1)
+                   ; pc = effectiveAddr (regs s) rs1 offset })
+step-jalr-at-offset prefix rd rs1 offset suffix s h-false pc-eq =
+  trans (step-at-offset prefix (jalr rd rs1 offset) suffix s h-false pc-eq)
+        (execJalr (prefix ++ jalr rd rs1 offset ∷ suffix) s rd rs1 offset)
+
+-- | Step a ret instruction at arbitrary offset
+step-ret-at-offset : ∀ (prefix : Program) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ ret ∷ suffix) s ≡ just (record s { pc = readReg (regs s) ra })
+step-ret-at-offset prefix suffix s h-false pc-eq =
+  trans (step-at-offset prefix ret suffix s h-false pc-eq)
+        (execRet (prefix ++ ret ∷ suffix) s)
+
+-- | Key insight: after jalr, halted is still false
+-- (jalr is a branch instruction, not a halting instruction)
+jalr-preserves-nonhalt : ∀ (s : State) (rd rs1 : Reg) (offset : ℤ) →
+  halted (record s { regs = writeReg (regs s) rd (pc s +ℕ 1)
+                   ; pc = effectiveAddr (regs s) rs1 offset }) ≡ halted s
+jalr-preserves-nonhalt s rd rs1 offset = refl
+
+-- | After jalr, ra holds the return address (pc + 1) when rd = ra
+jalr-ra-is-return : ∀ (s : State) (rs1 : Reg) (offset : ℤ) →
+  let s' = record s { regs = writeReg (regs s) ra (pc s +ℕ 1)
+                    ; pc = effectiveAddr (regs s) rs1 offset }
+  in readReg (regs s') ra ≡ pc s +ℕ 1
+jalr-ra-is-return s rs1 offset = readReg-writeReg-same (regs s) ra (pc s +ℕ 1) (λ ())
+
+-- | After jalr with rd=ra, a0 is preserved
+jalr-ra-preserves-a0 : ∀ (s : State) (rs1 : Reg) (offset : ℤ) →
+  let s' = record s { regs = writeReg (regs s) ra (pc s +ℕ 1)
+                    ; pc = effectiveAddr (regs s) rs1 offset }
+  in readReg (regs s') a0 ≡ readReg (regs s) a0
+jalr-ra-preserves-a0 s rs1 offset = readReg-writeReg-ra-a0 (regs s) (pc s +ℕ 1)
