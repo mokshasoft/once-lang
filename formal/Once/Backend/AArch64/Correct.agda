@@ -1631,7 +1631,10 @@ offset-to-generator {A} {B} ir x s h-false pc-0 x0-eq =
                              (exec-1-step prog s' s'' step-halt)
 
       postulate
-        exec-large-halted : exec 10000 prog s ≡ just s''
+        size-bound : compile-length ir +ℕ 1 ≤ 10000
+
+      exec-large-halted : exec 10000 prog s ≡ just s''
+      exec-large-halted = exec-mono (compile-length ir +ℕ 1) 10000 prog s s'' size-bound exec-halt refl
 
   in s'' , exec-large-halted , refl , x0-eq'
 
