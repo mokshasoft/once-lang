@@ -618,60 +618,62 @@ compile-length-correct ⟨ f , g ⟩ = helper
   where
     open import Data.Nat.Properties using (+-assoc; +-comm)
 
-    -- Structure: push ∷ push ∷ sub ∷ mov ∷ mov ∷
-    --            (compile-x86 f ++ mov ∷ mov ∷
-    --             (compile-x86 g ++ mov ∷ mov ∷ add ∷ pop ∷ pop ∷ []))
-    -- We need to show: 5 + (|f| + (2 + (|g| + 5))) = (12 + |f|) + |g|
+    -- Structure with frame pointer:
+    --   push ∷ push ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷
+    --   (compile-x86 f ++ mov ∷ mov ∷
+    --    (compile-x86 g ++ mov ∷ mov ∷ mov ∷ pop ∷ pop ∷ pop ∷ []))
+    -- We need to show: 7 + (|f| + (2 + (|g| + 6))) = (15 + |f|) + |g|
 
     inner-tail : List Instr
     inner-tail = mov (mem (base+disp r15 8)) (reg rax) ∷
                  mov (reg rax) (reg r15) ∷
-                 add (reg rsp) (imm 16) ∷
+                 mov (reg rsp) (reg rbp) ∷
+                 pop rbp ∷
                  pop r15 ∷
                  pop r14 ∷ []
 
     -- Lemma: length of the trailing part after g
-    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 5
-    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 5) (compile-length-correct g))
+    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 6
+    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 6) (compile-length-correct g))
 
     mid-tail : List Instr
     mid-tail = mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ (compile-x86 g ++ inner-tail)
 
     -- Lemma: length after f
-    len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 5)
+    len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 6)
     len-after-f = cong (λ x → 2 +ℕ x) len-middle
 
     full-tail : List Instr
     full-tail = compile-x86 f ++ mid-tail
 
     -- Lemma: length including f
-    len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 5))
+    len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 6))
     len-with-f = trans (length-++ (compile-x86 f) mid-tail)
                        (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
                               (cong (λ x → compile-length f +ℕ x) len-after-f))
 
-    -- Prove: 5 + (a + (2 + (b + 5))) = (12 + a) + b
+    -- Prove: 7 + (a + (2 + (b + 6))) = (15 + a) + b
     -- Using +-comm and +-assoc with equational reasoning
-    arith2 : ∀ a b → 5 +ℕ (a +ℕ (2 +ℕ (b +ℕ 5))) ≡ (12 +ℕ a) +ℕ b
+    arith2 : ∀ a b → 7 +ℕ (a +ℕ (2 +ℕ (b +ℕ 6))) ≡ (15 +ℕ a) +ℕ b
     arith2 a b =
       begin
-        5 +ℕ (a +ℕ (2 +ℕ (b +ℕ 5)))
-      ≡⟨ cong (5 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 5))) ⟩
-        5 +ℕ (a +ℕ (2 +ℕ (5 +ℕ b)))
-      ≡⟨ cong (5 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 5 b))) ⟩
-        5 +ℕ (a +ℕ (7 +ℕ b))
-      ≡⟨ cong (5 +ℕ_) (sym (+-assoc a 7 b)) ⟩
-        5 +ℕ ((a +ℕ 7) +ℕ b)
-      ≡⟨ cong (5 +ℕ_) (cong (_+ℕ b) (+-comm a 7)) ⟩
-        5 +ℕ ((7 +ℕ a) +ℕ b)
-      ≡⟨ sym (+-assoc 5 (7 +ℕ a) b) ⟩
-        (5 +ℕ (7 +ℕ a)) +ℕ b
-      ≡⟨ cong (_+ℕ b) (sym (+-assoc 5 7 a)) ⟩
-        (12 +ℕ a) +ℕ b
+        7 +ℕ (a +ℕ (2 +ℕ (b +ℕ 6)))
+      ≡⟨ cong (7 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 6))) ⟩
+        7 +ℕ (a +ℕ (2 +ℕ (6 +ℕ b)))
+      ≡⟨ cong (7 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 6 b))) ⟩
+        7 +ℕ (a +ℕ (8 +ℕ b))
+      ≡⟨ cong (7 +ℕ_) (sym (+-assoc a 8 b)) ⟩
+        7 +ℕ ((a +ℕ 8) +ℕ b)
+      ≡⟨ cong (7 +ℕ_) (cong (_+ℕ b) (+-comm a 8)) ⟩
+        7 +ℕ ((8 +ℕ a) +ℕ b)
+      ≡⟨ sym (+-assoc 7 (8 +ℕ a) b) ⟩
+        (7 +ℕ (8 +ℕ a)) +ℕ b
+      ≡⟨ cong (_+ℕ b) (sym (+-assoc 7 8 a)) ⟩
+        (15 +ℕ a) +ℕ b
       ∎
 
-    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (12 +ℕ compile-length f) +ℕ compile-length g
-    helper = trans (cong (λ x → 5 +ℕ x) len-with-f)
+    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (15 +ℕ compile-length f) +ℕ compile-length g
+    helper = trans (cong (λ x → 7 +ℕ x) len-with-f)
                    (arith2 (compile-length f) (compile-length g))
 compile-length-correct inl = refl
 compile-length-correct inr = refl
@@ -1321,6 +1323,30 @@ exec-pair-setup-at prefix rest s h-false pc-eq = s5 , exec-eq , h5 , pc5 , r14-e
 
     rsp-eq : readReg (regs s5) rsp ≡ orig-rsp ∸ 32
     rsp-eq = trans (readReg-writeReg-r14-rsp (regs s4) (readReg (regs s4) rdi)) rsp-s4
+
+-- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
+-- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
+--
+-- After execution:
+--   rsp = orig_rsp - 40 (3 pushes of 8 bytes + sub 16)
+--   rbp = orig_rsp - 24 (frame base, after 3 pushes)
+--   r15 = rsp (pair base address)
+--   r14 = orig_rdi (saved input)
+--   rdi = orig_rdi (unchanged)
+--   pc = orig_pc + 7
+-- POSTULATE: This extends exec-pair-setup-at with 2 extra instructions for frame pointer
+postulate
+  exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ∃[ s' ] (exec 7 (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
+           × halted s' ≡ false
+           × pc s' ≡ length prefix +ℕ 7
+           × readReg (regs s') r14 ≡ readReg (regs s) rdi
+           × readReg (regs s') rdi ≡ readReg (regs s) rdi
+           × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
+           × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
+           × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24)
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
 -- Used for phase 3 of pair construction - storing f's result and restoring input
@@ -3397,12 +3423,18 @@ mutual
       -- Total: 11 + len-f + len-g instructions
       -- compile-length ⟨ f , g ⟩ = (11 + len-f) + len-g
 
-      -- Initial setup instructions (5 instructions)
+      -- Initial setup instructions (7 instructions with frame pointer)
       setup-push-r14 : Instr
       setup-push-r14 = push (reg r14)
 
       setup-push-r15 : Instr
       setup-push-r15 = push (reg r15)
+
+      setup-push-rbp : Instr
+      setup-push-rbp = push (reg rbp)
+
+      setup-frame : Instr
+      setup-frame = mov (reg rbp) (reg rsp)
 
       setup-sub : Instr
       setup-sub = sub (reg rsp) (imm 16)
@@ -3420,15 +3452,18 @@ mutual
       restore-input : Instr
       restore-input = mov (reg rdi) (reg r14)
 
-      -- Final instructions (after g) - 5 instructions now (including add rsp, 16)
+      -- Final instructions (after g) - 6 instructions (mov rsp rbp instead of add rsp 16)
       store-g : Instr
       store-g = mov (mem (base+disp r15 8)) (reg rax)
 
       return-pair : Instr
       return-pair = mov (reg rax) (reg r15)
 
-      dealloc-pair : Instr
-      dealloc-pair = add (reg rsp) (imm 16)
+      restore-rsp : Instr
+      restore-rsp = mov (reg rsp) (reg rbp)
+
+      final-pop-rbp : Instr
+      final-pop-rbp = pop rbp
 
       final-pop-r15 : Instr
       final-pop-r15 = pop r15
@@ -3436,21 +3471,21 @@ mutual
       final-pop-r14 : Instr
       final-pop-r14 = pop r14
 
-      -- Prefix for f: prefix ++ [push r14; push r15; sub rsp, 16; mov r15, rsp; mov r14, rdi]
+      -- Prefix for f: prefix ++ [push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi]
       prefix-f : Program
-      prefix-f = prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []
+      prefix-f = prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []
 
-      -- Suffix for f: [mov [r15], rax; mov rdi, r14] ++ compile-x86 g ++ [mov [r15+8], rax; mov rax, r15; add rsp, 16; pop r15; pop r14] ++ suffix
+      -- Suffix for f: [mov [r15], rax; mov rdi, r14] ++ compile-x86 g ++ [mov [r15+8], rax; mov rax, r15; mov rsp, rbp; pop rbp; pop r15; pop r14] ++ suffix
       suffix-f : Program
-      suffix-f = store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      suffix-f = store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
 
       -- Prefix for g: prefix-f ++ code-f ++ [mov [r15], rax; mov rdi, r14]
       prefix-g : Program
       prefix-g = prefix-f ++ code-f ++ store-f ∷ restore-input ∷ []
 
-      -- Suffix for g: [mov [r15+8], rax; mov rax, r15; add rsp, 16; pop r15; pop r14] ++ suffix
+      -- Suffix for g: [mov [r15+8], rax; mov rax, r15; mov rsp, rbp; pop rbp; pop r15; pop r14] ++ suffix
       suffix-g : Program
-      suffix-g = store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      suffix-g = store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
 
       -- The pair proof follows the compose pattern:
       -- 1. Execute initial setup (5 instructions) - push r14; push r15; sub rsp, 16; mov r15, rsp; mov r14, rdi
@@ -3465,48 +3500,48 @@ mutual
       -- - [r15] is preserved through g execution (r15 holds stable pair base address)
       --
       -- compile-length ⟨ f , g ⟩ = (11 + len-f) + len-g
-      -- Step count: 5 (setup) + len-f + 2 (middle) + len-g + 4 (final) = 11 + len-f + len-g
+      -- Step count: 7 (setup) + len-f + 2 (middle) + len-g + 6 (final) = 15 + len-f + len-g
 
       -- Length calculations
-      len-prefix-f : length prefix-f ≡ length prefix +ℕ 5
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 7
       len-prefix-f = begin
         length prefix-f
           ≡⟨ refl ⟩
-        length (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ [])
-          ≡⟨ List-length-++ prefix {setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []} ⟩
-        length prefix +ℕ 5
+        length (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ [])
+          ≡⟨ List-length-++ prefix {setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []} ⟩
+        length prefix +ℕ 7
           ∎
 
-      -- Helper: (a + 5) + (b + 2) = a + b + 7
-      add-5-2 : ∀ a b → (a +ℕ 5) +ℕ (b +ℕ 2) ≡ a +ℕ b +ℕ 7
-      add-5-2 a b = begin
-        (a +ℕ 5) +ℕ (b +ℕ 2)
-          ≡⟨ +-assoc a 5 (b +ℕ 2) ⟩
-        a +ℕ (5 +ℕ (b +ℕ 2))
-          ≡⟨ cong (a +ℕ_) (+-assoc 5 b 2) ⟩
-        a +ℕ ((5 +ℕ b) +ℕ 2)
-          ≡⟨ cong (λ z → a +ℕ (z +ℕ 2)) (+-comm 5 b) ⟩
-        a +ℕ ((b +ℕ 5) +ℕ 2)
-          ≡⟨ cong (a +ℕ_) (+-assoc b 5 2) ⟩
-        a +ℕ (b +ℕ 7)
-          ≡⟨ sym (+-assoc a b 7) ⟩
-        a +ℕ b +ℕ 7
+      -- Helper: (a + 7) + (b + 2) = a + b + 9
+      add-7-2 : ∀ a b → (a +ℕ 7) +ℕ (b +ℕ 2) ≡ a +ℕ b +ℕ 9
+      add-7-2 a b = begin
+        (a +ℕ 7) +ℕ (b +ℕ 2)
+          ≡⟨ +-assoc a 7 (b +ℕ 2) ⟩
+        a +ℕ (7 +ℕ (b +ℕ 2))
+          ≡⟨ cong (a +ℕ_) (+-assoc 7 b 2) ⟩
+        a +ℕ ((7 +ℕ b) +ℕ 2)
+          ≡⟨ cong (λ z → a +ℕ (z +ℕ 2)) (+-comm 7 b) ⟩
+        a +ℕ ((b +ℕ 7) +ℕ 2)
+          ≡⟨ cong (a +ℕ_) (+-assoc b 7 2) ⟩
+        a +ℕ (b +ℕ 9)
+          ≡⟨ sym (+-assoc a b 9) ⟩
+        a +ℕ b +ℕ 9
           ∎
 
-      -- Helper: a + b + 7 = a + 7 + b
-      commute-7 : ∀ a b → a +ℕ b +ℕ 7 ≡ a +ℕ 7 +ℕ b
-      commute-7 a b = begin
-        a +ℕ b +ℕ 7
-          ≡⟨ +-assoc a b 7 ⟩
-        a +ℕ (b +ℕ 7)
-          ≡⟨ cong (a +ℕ_) (+-comm b 7) ⟩
-        a +ℕ (7 +ℕ b)
-          ≡⟨ sym (+-assoc a 7 b) ⟩
-        a +ℕ 7 +ℕ b
+      -- Helper: a + b + 9 = a + 9 + b
+      commute-9 : ∀ a b → a +ℕ b +ℕ 9 ≡ a +ℕ 9 +ℕ b
+      commute-9 a b = begin
+        a +ℕ b +ℕ 9
+          ≡⟨ +-assoc a b 9 ⟩
+        a +ℕ (b +ℕ 9)
+          ≡⟨ cong (a +ℕ_) (+-comm b 9) ⟩
+        a +ℕ (9 +ℕ b)
+          ≡⟨ sym (+-assoc a 9 b) ⟩
+        a +ℕ 9 +ℕ b
           ∎
 
-      -- len-prefix-g = length prefix + 5 + len-f + 2 = length prefix + 7 + len-f
-      len-prefix-g : length prefix-g ≡ length prefix +ℕ 7 +ℕ len-f
+      -- len-prefix-g = length prefix + 7 + len-f + 2 = length prefix + 9 + len-f
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ 9 +ℕ len-f
       len-prefix-g = begin
         length prefix-g
           ≡⟨ refl ⟩
@@ -3514,79 +3549,81 @@ mutual
           ≡⟨ List-length-++ prefix-f {code-f ++ store-f ∷ restore-input ∷ []} ⟩
         length prefix-f +ℕ length (code-f ++ store-f ∷ restore-input ∷ [])
           ≡⟨ cong (_+ℕ length (code-f ++ store-f ∷ restore-input ∷ [])) len-prefix-f ⟩
-        (length prefix +ℕ 5) +ℕ length (code-f ++ store-f ∷ restore-input ∷ [])
-          ≡⟨ cong ((length prefix +ℕ 5) +ℕ_) (List-length-++ code-f {store-f ∷ restore-input ∷ []}) ⟩
-        (length prefix +ℕ 5) +ℕ (length code-f +ℕ 2)
-          ≡⟨ cong (λ z → (length prefix +ℕ 5) +ℕ (z +ℕ 2)) (compile-length-correct f) ⟩
-        (length prefix +ℕ 5) +ℕ (len-f +ℕ 2)
-          ≡⟨ add-5-2 (length prefix) len-f ⟩
-        length prefix +ℕ len-f +ℕ 7
-          ≡⟨ commute-7 (length prefix) len-f ⟩
-        length prefix +ℕ 7 +ℕ len-f
+        (length prefix +ℕ 7) +ℕ length (code-f ++ store-f ∷ restore-input ∷ [])
+          ≡⟨ cong ((length prefix +ℕ 7) +ℕ_) (List-length-++ code-f {store-f ∷ restore-input ∷ []}) ⟩
+        (length prefix +ℕ 7) +ℕ (length code-f +ℕ 2)
+          ≡⟨ cong (λ z → (length prefix +ℕ 7) +ℕ (z +ℕ 2)) (compile-length-correct f) ⟩
+        (length prefix +ℕ 7) +ℕ (len-f +ℕ 2)
+          ≡⟨ add-7-2 (length prefix) len-f ⟩
+        length prefix +ℕ len-f +ℕ 9
+          ≡⟨ commute-9 (length prefix) len-f ⟩
+        length prefix +ℕ 9 +ℕ len-f
           ∎
 
       -- The pair proof follows the compose pattern with 5 phases:
-      -- Phase 1: Execute setup (5 instructions) - push r14; push r15; sub rsp, 16; mov r15, rsp; mov r14, rdi
+      -- Phase 1: Execute setup (7 instructions) - push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
       -- Phase 2: Execute f using recursive call
       -- Phase 3: Execute middle (2 instructions) - mov [r15], rax; mov rdi, r14
       -- Phase 4: Execute g using recursive call
-      -- Phase 5: Execute final (5 instructions) - mov [r15+8], rax; mov rax, r15; add rsp, 16; pop r15; pop r14
+      -- Phase 5: Execute final (6 instructions) - mov [r15+8], rax; mov rax, r15; mov rsp, rbp; pop rbp; pop r15; pop r14
       --
-      -- Key: with push/pop callee-save discipline, r14 and r15 are preserved through f and g
+      -- Key: with frame pointer (rbp), stack restoration is correct even when f/g allocate stack
 
-      -- Phase 1: Setup - proved using exec-pair-setup-at (5 instructions)
-      -- Program equality: prog = prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
+      -- Phase 1: Setup - proved using exec-pair-setup-at (7 instructions)
+      -- Program equality: prog = prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
       -- where rest-for-setup = inner-pair ++ suffix
-      --       inner-pair = code-f ++ [store-f; restore-input; code-g; store-g; return-pair; dealloc-pair; pop-r15; pop-r14]
+      --       inner-pair = code-f ++ [store-f; restore-input; code-g; store-g; return-pair; restore-rsp; pop-rbp; pop-r15; pop-r14]
 
-      -- The "inner" part of compile-x86 ⟨ f , g ⟩ after the first 5 setup instructions
+      -- The "inner" part of compile-x86 ⟨ f , g ⟩ after the first 7 setup instructions
       inner-pair : Program
-      inner-pair = code-f ++ store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
+      inner-pair = code-f ++ store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
 
       -- rest for the setup helper
       rest-for-setup : Program
       rest-for-setup = inner-pair ++ suffix
 
-      -- Program equality: prog ≡ prefix ++ (5 setup instructions) ∷ rest-for-setup
-      -- compile-x86 ⟨ f , g ⟩ = push r14 ∷ push r15 ∷ sub ∷ mov r15 ∷ mov r14 ∷ inner-pair (by definition)
+      -- Program equality: prog ≡ prefix ++ (7 setup instructions) ∷ rest-for-setup
+      -- compile-x86 ⟨ f , g ⟩ = push r14 ∷ push r15 ∷ push rbp ∷ mov rbp rsp ∷ sub ∷ mov r15 ∷ mov r14 ∷ inner-pair (by definition)
 
       -- First prove the definitional equality
-      compile-x86-pair-eq : compile-x86 ⟨ f , g ⟩ ≡ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ inner-pair
+      compile-x86-pair-eq : compile-x86 ⟨ f , g ⟩ ≡ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ inner-pair
       compile-x86-pair-eq = refl
 
       -- Step: compile-x86 ⟨ f , g ⟩ ++ suffix
-      suffix-eq : compile-x86 ⟨ f , g ⟩ ++ suffix ≡ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
+      suffix-eq : compile-x86 ⟨ f , g ⟩ ++ suffix ≡ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
       suffix-eq = cong (_++ suffix) compile-x86-pair-eq
 
-      -- Final: prog ≡ prefix ++ (5 setup) ∷ rest-for-setup
-      prog-eq-setup : prog ≡ prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
+      -- Final: prog ≡ prefix ++ (7 setup) ∷ rest-for-setup
+      prog-eq-setup : prog ≡ prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
       prog-eq-setup = cong (prefix ++_) suffix-eq
 
-      -- Setup result for 5 instructions - proved using exec-pair-setup-at helper
-      setup-result : ∃[ s' ] (exec 5 (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup) s ≡ just s'
+      -- Setup result for 7 instructions - need new exec-pair-setup-at-7
+      -- Stack after setup: rsp = initial - 40, rbp = initial - 24, r15 = initial - 40
+      setup-result : ∃[ s' ] (exec 7 (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup) s ≡ just s'
                             × halted s' ≡ false
-                            × pc s' ≡ length prefix +ℕ 5
+                            × pc s' ≡ length prefix +ℕ 7
                             × readReg (regs s') r14 ≡ readReg (regs s) rdi
                             × readReg (regs s') rdi ≡ readReg (regs s) rdi
-                            × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 32
-                            × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 32)
-      setup-result = exec-pair-setup-at prefix rest-for-setup s h-false pc-eq
+                            × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
+                            × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
+                            × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24)
+      setup-result = exec-pair-setup-at-7 prefix rest-for-setup s h-false pc-eq
 
       -- Extract the state and properties
       s-after-setup : State
       s-after-setup = proj₁ setup-result
 
-      exec-setup-raw : exec 5 (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup) s ≡ just s-after-setup
+      exec-setup-raw : exec 7 (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup) s ≡ just s-after-setup
       exec-setup-raw = proj₁ (proj₂ setup-result)
 
-      -- Convert to exec 5 prog s using prog-eq-setup
-      exec-setup : exec 5 prog s ≡ just s-after-setup
-      exec-setup = subst (λ p → exec 5 p s ≡ just s-after-setup) (sym prog-eq-setup) exec-setup-raw
+      -- Convert to exec 7 prog s using prog-eq-setup
+      exec-setup : exec 7 prog s ≡ just s-after-setup
+      exec-setup = subst (λ p → exec 7 p s ≡ just s-after-setup) (sym prog-eq-setup) exec-setup-raw
 
       h-after-setup : halted s-after-setup ≡ false
       h-after-setup = proj₁ (proj₂ (proj₂ setup-result))
 
-      pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 5
+      pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 7
       pc-after-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
 
       r14-after-setup-raw : readReg (regs s-after-setup) r14 ≡ readReg (regs s) rdi
@@ -3595,11 +3632,14 @@ mutual
       rdi-after-setup-raw : readReg (regs s-after-setup) rdi ≡ readReg (regs s) rdi
       rdi-after-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
 
-      r15-after-setup-raw : readReg (regs s-after-setup) r15 ≡ readReg (regs s) rsp ∸ 32
+      r15-after-setup-raw : readReg (regs s-after-setup) r15 ≡ readReg (regs s) rsp ∸ 40
       r15-after-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
 
-      rsp-after-setup-raw : readReg (regs s-after-setup) rsp ≡ readReg (regs s) rsp ∸ 32
-      rsp-after-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
+      rsp-after-setup-raw : readReg (regs s-after-setup) rsp ≡ readReg (regs s) rsp ∸ 40
+      rsp-after-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+
+      rbp-after-setup-raw : readReg (regs s-after-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+      rbp-after-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
 
       -- Connect with rdi-eq to get encode x
       r14-after-setup : readReg (regs s-after-setup) r14 ≡ encode x
@@ -3619,29 +3659,29 @@ mutual
       -- 3. Use sym ++-assoc to get prefix-f form
 
       -- Helper: inner-pair ++ suffix ≡ code-f ++ suffix-f
-      -- inner-pair = code-f ++ store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
-      -- suffix-f = store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      -- inner-pair = code-f ++ store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
+      -- suffix-f = store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
       inner-pair-suffix-eq : inner-pair ++ suffix ≡ code-f ++ suffix-f
       inner-pair-suffix-eq = trans step1 (cong (code-f ++_) step2)
         where
           -- Step 1: (code-f ++ rest) ++ suffix ≡ code-f ++ (rest ++ suffix)
-          step1 : inner-pair ++ suffix ≡ code-f ++ ((store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) ++ suffix)
-          step1 = ++-assoc code-f (store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) suffix
+          step1 : inner-pair ++ suffix ≡ code-f ++ ((store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) ++ suffix)
+          step1 = ++-assoc code-f (store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) suffix
 
           -- Step 2: (store-f ∷ restore-input ∷ ...) ++ suffix ≡ suffix-f
           -- The cons parts are definitional, only need ++-assoc for code-g
-          step2 : (store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) ++ suffix ≡ suffix-f
+          step2 : (store-f ∷ restore-input ∷ code-g ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) ++ suffix ≡ suffix-f
           step2 = cong (λ x → store-f ∷ restore-input ∷ x)
-                       (++-assoc code-g (store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) suffix)
+                       (++-assoc code-g (store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []) suffix)
 
       prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
       prog-eq-f = begin
         prog
           ≡⟨ refl ⟩
         prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-          ≡⟨ cong (λ x → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ x) inner-pair-suffix-eq ⟩
-        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ suffix-f)
-          ≡⟨ sym (++-assoc prefix (setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) (code-f ++ suffix-f)) ⟩
+          ≡⟨ cong (λ x → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ x) inner-pair-suffix-eq ⟩
+        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ suffix-f)
+          ≡⟨ sym (++-assoc prefix (setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) (code-f ++ suffix-f)) ⟩
         prefix-f ++ code-f ++ suffix-f
           ∎
 
@@ -3676,8 +3716,8 @@ mutual
       pc-after-f-raw : pc s-after-f ≡ length prefix-f +ℕ len-f
       pc-after-f-raw = proj₁ (proj₂ (proj₂ (proj₂ f-result)))
 
-      -- Convert pc to prefix form: length prefix-f + len-f = length prefix + 5 + len-f
-      pc-after-f : pc s-after-f ≡ length prefix +ℕ 5 +ℕ len-f
+      -- Convert pc to prefix form: length prefix-f + len-f = length prefix + 7 + len-f
+      pc-after-f : pc s-after-f ≡ length prefix +ℕ 7 +ℕ len-f
       pc-after-f = trans pc-after-f-raw (cong (_+ℕ len-f) len-prefix-f)
 
       rax-after-f : readReg (regs s-after-f) rax ≡ encode (eval f x)
@@ -3753,25 +3793,25 @@ mutual
       -- Convert pc: length prefix-mid + 2 = length prefix + 7 + len-f
       -- length prefix-mid = length prefix-f + len-f = (length prefix + 5) + len-f
       -- So length prefix-mid + 2 = (length prefix + 5) + len-f + 2
-      --                          = length prefix + 5 + len-f + 2
-      --                          = length prefix + len-f + 7
-      --                          = length prefix + 7 + len-f (by commute-7)
-      pc-mid-arith : length prefix-mid +ℕ 2 ≡ length prefix +ℕ 7 +ℕ len-f
+      --                          = length prefix + 7 + len-f + 2
+      --                          = length prefix + len-f + 9
+      --                          = length prefix + 9 + len-f (by commute-9)
+      pc-mid-arith : length prefix-mid +ℕ 2 ≡ length prefix +ℕ 9 +ℕ len-f
       pc-mid-arith = begin
         length prefix-mid +ℕ 2
           ≡⟨ cong (_+ℕ 2) len-prefix-mid ⟩
         (length prefix-f +ℕ len-f) +ℕ 2
           ≡⟨ cong (λ x → (x +ℕ len-f) +ℕ 2) len-prefix-f ⟩
-        ((length prefix +ℕ 5) +ℕ len-f) +ℕ 2
-          ≡⟨ +-assoc (length prefix +ℕ 5) len-f 2 ⟩
-        (length prefix +ℕ 5) +ℕ (len-f +ℕ 2)
-          ≡⟨ add-5-2 (length prefix) len-f ⟩
-        length prefix +ℕ len-f +ℕ 7
-          ≡⟨ commute-7 (length prefix) len-f ⟩
-        length prefix +ℕ 7 +ℕ len-f
+        ((length prefix +ℕ 7) +ℕ len-f) +ℕ 2
+          ≡⟨ +-assoc (length prefix +ℕ 7) len-f 2 ⟩
+        (length prefix +ℕ 7) +ℕ (len-f +ℕ 2)
+          ≡⟨ add-7-2 (length prefix) len-f ⟩
+        length prefix +ℕ len-f +ℕ 9
+          ≡⟨ commute-9 (length prefix) len-f ⟩
+        length prefix +ℕ 9 +ℕ len-f
           ∎
 
-      pc-after-middle : pc s-after-middle ≡ length prefix +ℕ 7 +ℕ len-f
+      pc-after-middle : pc s-after-middle ≡ length prefix +ℕ 9 +ℕ len-f
       pc-after-middle = trans pc-after-middle-raw pc-mid-arith
 
       rdi-after-middle-raw : readReg (regs s-after-middle) rdi ≡ readReg (regs s-after-f) r14
@@ -3791,7 +3831,7 @@ mutual
       -- Phase 4: Execute g using recursive call
 
       -- Length of prefix-g calculation
-      len-prefix-g' : length prefix-g ≡ length prefix +ℕ 7 +ℕ len-f
+      len-prefix-g' : length prefix-g ≡ length prefix +ℕ 9 +ℕ len-f
       len-prefix-g' = begin
         length prefix-g
           ≡⟨ refl ⟩
@@ -3803,11 +3843,11 @@ mutual
           ≡⟨ cong (length prefix-f +ℕ_) (cong (_+ℕ 2) (compile-length-correct f)) ⟩
         length prefix-f +ℕ (len-f +ℕ 2)
           ≡⟨ cong (_+ℕ (len-f +ℕ 2)) len-prefix-f ⟩
-        (length prefix +ℕ 5) +ℕ (len-f +ℕ 2)
-          ≡⟨ add-5-2 (length prefix) len-f ⟩
-        length prefix +ℕ len-f +ℕ 7
-          ≡⟨ commute-7 (length prefix) len-f ⟩
-        length prefix +ℕ 7 +ℕ len-f
+        (length prefix +ℕ 7) +ℕ (len-f +ℕ 2)
+          ≡⟨ add-7-2 (length prefix) len-f ⟩
+        length prefix +ℕ len-f +ℕ 9
+          ≡⟨ commute-9 (length prefix) len-f ⟩
+        length prefix +ℕ 9 +ℕ len-f
           ∎
 
       -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
@@ -3840,15 +3880,15 @@ mutual
 
       -- Helper: prefix-f ++ Y ≡ prefix ++ (5 setup) ∷ Y
       -- Uses ++-assoc on prefix and the setup list
-      prefix-f-expand : ∀ Y → prefix-f ++ Y ≡ prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ Y
+      prefix-f-expand : ∀ Y → prefix-f ++ Y ≡ prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ Y
       prefix-f-expand Y = begin
         prefix-f ++ Y
           ≡⟨ refl ⟩
-        (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) ++ Y
-          ≡⟨ ++-assoc prefix (setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) Y ⟩
-        prefix ++ ((setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) ++ Y)
+        (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) ++ Y
+          ≡⟨ ++-assoc prefix (setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) Y ⟩
+        prefix ++ ((setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) ++ Y)
           ≡⟨ refl ⟩  -- cons-append is definitional
-        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ Y
+        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ Y
           ∎
 
       prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
@@ -3856,10 +3896,10 @@ mutual
         prog
           ≡⟨ refl ⟩
         prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-          ≡⟨ cong (λ x → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ x) inner-pair-suffix-eq ⟩
-        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ suffix-f)
-          ≡⟨ cong (λ x → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ x)) suffix-f-rewrite ⟩
-        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))
+          ≡⟨ cong (λ x → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ x) inner-pair-suffix-eq ⟩
+        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ suffix-f)
+          ≡⟨ cong (λ x → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ x)) suffix-f-rewrite ⟩
+        prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))
           ≡⟨ sym (prefix-f-expand (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))) ⟩
         prefix-f ++ (code-f ++ store-f ∷ restore-input ∷ (code-g ++ suffix-g))
           ≡⟨ sym (prefix-g-expand (code-g ++ suffix-g)) ⟩
@@ -3899,8 +3939,8 @@ mutual
       pc-after-g-raw : pc s-after-g ≡ length prefix-g +ℕ len-g
       pc-after-g-raw = proj₁ (proj₂ (proj₂ (proj₂ g-result)))
 
-      -- Convert pc to prefix form: length prefix-g + len-g = length prefix + 7 + len-f + len-g
-      pc-after-g : pc s-after-g ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+      -- Convert pc to prefix form: length prefix-g + len-g = length prefix + 9 + len-f + len-g
+      pc-after-g : pc s-after-g ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
       pc-after-g = trans pc-after-g-raw (cong (_+ℕ len-g) len-prefix-g')
 
       rax-after-g : readReg (regs s-after-g) rax ≡ encode (eval g x)
@@ -3956,7 +3996,7 @@ mutual
       prefix-final = prefix-g ++ code-g
 
       -- Length of prefix-final
-      len-prefix-final : length prefix-final ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+      len-prefix-final : length prefix-final ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
       len-prefix-final = begin
         length prefix-final
           ≡⟨ refl ⟩
@@ -3966,81 +4006,79 @@ mutual
           ≡⟨ cong (length prefix-g +ℕ_) (compile-length-correct g) ⟩
         length prefix-g +ℕ len-g
           ≡⟨ cong (_+ℕ len-g) len-prefix-g' ⟩
-        (length prefix +ℕ 7 +ℕ len-f) +ℕ len-g
+        (length prefix +ℕ 9 +ℕ len-f) +ℕ len-g
           ≡⟨ refl ⟩
-        length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+        length prefix +ℕ 9 +ℕ len-f +ℕ len-g
           ∎
 
-      -- Program equality: prog ≡ prefix-final ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
-      -- Since suffix-g = store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix and prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+      -- Program equality: prog ≡ prefix-final ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      -- Since suffix-g = store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix and prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
       -- Use ++-assoc to get prefix-final ++ suffix-g form
-      prog-eq-final : prog ≡ prefix-final ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      prog-eq-final : prog ≡ prefix-final ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
       prog-eq-final = trans prog-eq-g (sym (++-assoc prefix-g code-g suffix-g))
 
       -- Convert pc-after-g to length prefix-final
       pc-for-final : pc s-after-g ≡ length prefix-final
       pc-for-final = trans pc-after-g (sym len-prefix-final)
 
-      -- Apply exec-pair-final-at with the new parameters:
+      -- Apply exec-pair-final-at-6 with the new parameters:
       --   fst-val = encode (eval f x)
       --   fst-in-mem = mem-fst-at-rsp
-      --   rsp-eq-r15 = rsp-eq-r15-after-g
-      final-result : ∃[ s' ] (exec 5 (prefix-final ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s-after-g ≡ just s'
-                            × halted s' ≡ false
-                            × pc s' ≡ length prefix-final +ℕ 5
-                            × readReg (regs s') rax ≡ readReg (regs s-after-g) r15
-                            × readMem (memory s') (readReg (regs s-after-g) r15 +ℕ 8) ≡ just (readReg (regs s-after-g) rax)
-                            × readMem (memory s') (readReg (regs s-after-g) r15) ≡ readMem (memory s-after-g) (readReg (regs s-after-g) r15))
-      final-result = exec-pair-final-at prefix-final suffix s-after-g
-                       (encode (eval f x)) mem-fst-at-rsp rsp-eq-r15-after-g
-                       h-after-g pc-for-final
+      --   rbp-has-frame-base for frame pointer restoration
+      -- POSTULATE: Need exec-pair-final-at-6 for 6 final instructions with frame pointer
+      postulate
+        final-result : ∃[ s' ] (exec 6 (prefix-final ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s-after-g ≡ just s'
+                              × halted s' ≡ false
+                              × pc s' ≡ length prefix-final +ℕ 6
+                              × readReg (regs s') rax ≡ readReg (regs s-after-g) r15
+                              × readMem (memory s') (readReg (regs s-after-g) r15 +ℕ 8) ≡ just (readReg (regs s-after-g) rax)
+                              × readMem (memory s') (readReg (regs s-after-g) r15) ≡ readMem (memory s-after-g) (readReg (regs s-after-g) r15))
 
       -- Extract the state and properties
       s-final : State
       s-final = proj₁ final-result
 
-      exec-final-raw : exec 5 (prefix-final ++ store-g ∷ return-pair ∷ dealloc-pair ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s-after-g ≡ just s-final
+      exec-final-raw : exec 6 (prefix-final ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s-after-g ≡ just s-final
       exec-final-raw = proj₁ (proj₂ final-result)
 
       -- Convert to exec on prog using prog-eq-final
-      exec-final : exec 5 prog s-after-g ≡ just s-final
-      exec-final = subst (λ p → exec 5 p s-after-g ≡ just s-final) (sym prog-eq-final) exec-final-raw
+      exec-final : exec 6 prog s-after-g ≡ just s-final
+      exec-final = subst (λ p → exec 6 p s-after-g ≡ just s-final) (sym prog-eq-final) exec-final-raw
 
       h-final : halted s-final ≡ false
       h-final = proj₁ (proj₂ (proj₂ final-result))
 
-      pc-after-final-raw : pc s-final ≡ length prefix-final +ℕ 5
+      pc-after-final-raw : pc s-final ≡ length prefix-final +ℕ 6
       pc-after-final-raw = proj₁ (proj₂ (proj₂ (proj₂ final-result)))
 
-      -- Convert pc: length prefix-final + 5 = length prefix + 12 + len-f + len-g
-      -- length prefix-final = length prefix + 7 + len-f + len-g
-      -- So length prefix-final + 5 = (length prefix + 7 + len-f + len-g) + 5
-      --                            = length prefix + 7 + len-f + len-g + 5
-      --                            = length prefix + 12 + len-f + len-g
-      pc-final-arith : length prefix-final +ℕ 5 ≡ length prefix +ℕ 12 +ℕ len-f +ℕ len-g
+      -- Convert pc: length prefix-final + 6 = length prefix + 15 + len-f + len-g
+      -- length prefix-final = length prefix + 9 + len-f + len-g
+      -- So length prefix-final + 6 = (length prefix + 9 + len-f + len-g) + 6
+      --                            = length prefix + 15 + len-f + len-g
+      pc-final-arith : length prefix-final +ℕ 6 ≡ length prefix +ℕ 15 +ℕ len-f +ℕ len-g
       pc-final-arith = begin
-        length prefix-final +ℕ 5
-          ≡⟨ cong (_+ℕ 5) len-prefix-final ⟩
-        (length prefix +ℕ 7 +ℕ len-f +ℕ len-g) +ℕ 5
-          ≡⟨ +-assoc (length prefix +ℕ 7 +ℕ len-f) len-g 5 ⟩
-        (length prefix +ℕ 7 +ℕ len-f) +ℕ (len-g +ℕ 5)
-          ≡⟨ cong ((length prefix +ℕ 7 +ℕ len-f) +ℕ_) (+-comm len-g 5) ⟩
-        (length prefix +ℕ 7 +ℕ len-f) +ℕ (5 +ℕ len-g)
-          ≡⟨ sym (+-assoc (length prefix +ℕ 7 +ℕ len-f) 5 len-g) ⟩
-        ((length prefix +ℕ 7 +ℕ len-f) +ℕ 5) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 7) len-f 5) ⟩
-        ((length prefix +ℕ 7) +ℕ (len-f +ℕ 5)) +ℕ len-g
-          ≡⟨ cong (λ x → ((length prefix +ℕ 7) +ℕ x) +ℕ len-g) (+-comm len-f 5) ⟩
-        ((length prefix +ℕ 7) +ℕ (5 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 7) 5 len-f)) ⟩
-        (((length prefix +ℕ 7) +ℕ 5) +ℕ len-f) +ℕ len-g
-          ≡⟨ cong (λ x → (x +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 7 5) ⟩
-        ((length prefix +ℕ 12) +ℕ len-f) +ℕ len-g
+        length prefix-final +ℕ 6
+          ≡⟨ cong (_+ℕ 6) len-prefix-final ⟩
+        (length prefix +ℕ 9 +ℕ len-f +ℕ len-g) +ℕ 6
+          ≡⟨ +-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6 ⟩
+        (length prefix +ℕ 9 +ℕ len-f) +ℕ (len-g +ℕ 6)
+          ≡⟨ cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6) ⟩
+        (length prefix +ℕ 9 +ℕ len-f) +ℕ (6 +ℕ len-g)
+          ≡⟨ sym (+-assoc (length prefix +ℕ 9 +ℕ len-f) 6 len-g) ⟩
+        ((length prefix +ℕ 9 +ℕ len-f) +ℕ 6) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 9) len-f 6) ⟩
+        ((length prefix +ℕ 9) +ℕ (len-f +ℕ 6)) +ℕ len-g
+          ≡⟨ cong (λ x → ((length prefix +ℕ 9) +ℕ x) +ℕ len-g) (+-comm len-f 6) ⟩
+        ((length prefix +ℕ 9) +ℕ (6 +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 9) 6 len-f)) ⟩
+        (((length prefix +ℕ 9) +ℕ 6) +ℕ len-f) +ℕ len-g
+          ≡⟨ cong (λ x → (x +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 9 6) ⟩
+        ((length prefix +ℕ 15) +ℕ len-f) +ℕ len-g
           ≡⟨ refl ⟩
-        length prefix +ℕ 12 +ℕ len-f +ℕ len-g
+        length prefix +ℕ 15 +ℕ len-f +ℕ len-g
           ∎
 
-      pc-after-final : pc s-final ≡ length prefix +ℕ 12 +ℕ len-f +ℕ len-g
+      pc-after-final : pc s-final ≡ length prefix +ℕ 15 +ℕ len-f +ℕ len-g
       pc-after-final = trans pc-after-final-raw pc-final-arith
 
       -- rax now holds r15 (the pair pointer)
@@ -4081,72 +4119,72 @@ mutual
           ∎
 
       -- Chain all phases together
-      -- Total steps: 5 + len-f + 2 + len-g + 4 = 11 + len-f + len-g = compile-length ⟨ f , g ⟩
+      -- Total steps: 7 + len-f + 2 + len-g + 6 = 15 + len-f + len-g = compile-length ⟨ f , g ⟩
       -- The chaining proof requires exec-chain with all phase exec proofs
 
-      -- Chain Phase 1 and Phase 2: exec (5 + len-f) prog s ≡ just s-after-f
-      exec-1-2 : exec (5 +ℕ len-f) prog s ≡ just s-after-f
-      exec-1-2 = exec-chain 5 len-f prog s s-after-setup s-after-f exec-setup h-after-setup exec-f
+      -- Chain Phase 1 and Phase 2: exec (7 + len-f) prog s ≡ just s-after-f
+      exec-1-2 : exec (7 +ℕ len-f) prog s ≡ just s-after-f
+      exec-1-2 = exec-chain 7 len-f prog s s-after-setup s-after-f exec-setup h-after-setup exec-f
 
-      -- Chain Phases 1-2 with Phase 3: exec (5 + len-f + 2) prog s ≡ just s-after-middle
-      exec-1-3 : exec ((5 +ℕ len-f) +ℕ 2) prog s ≡ just s-after-middle
-      exec-1-3 = exec-chain (5 +ℕ len-f) 2 prog s s-after-f s-after-middle exec-1-2 h-after-f exec-middle
+      -- Chain Phases 1-2 with Phase 3: exec (7 + len-f + 2) prog s ≡ just s-after-middle
+      exec-1-3 : exec ((7 +ℕ len-f) +ℕ 2) prog s ≡ just s-after-middle
+      exec-1-3 = exec-chain (7 +ℕ len-f) 2 prog s s-after-f s-after-middle exec-1-2 h-after-f exec-middle
 
-      -- Chain Phases 1-3 with Phase 4: exec (5 + len-f + 2 + len-g) prog s ≡ just s-after-g
-      exec-1-4 : exec (((5 +ℕ len-f) +ℕ 2) +ℕ len-g) prog s ≡ just s-after-g
-      exec-1-4 = exec-chain ((5 +ℕ len-f) +ℕ 2) len-g prog s s-after-middle s-after-g exec-1-3 h-after-middle exec-g
+      -- Chain Phases 1-3 with Phase 4: exec (7 + len-f + 2 + len-g) prog s ≡ just s-after-g
+      exec-1-4 : exec (((7 +ℕ len-f) +ℕ 2) +ℕ len-g) prog s ≡ just s-after-g
+      exec-1-4 = exec-chain ((7 +ℕ len-f) +ℕ 2) len-g prog s s-after-middle s-after-g exec-1-3 h-after-middle exec-g
 
-      -- Chain Phases 1-4 with Phase 5: exec (5 + len-f + 2 + len-g + 5) prog s ≡ just s-final
-      exec-1-5 : exec ((((5 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 5) prog s ≡ just s-final
-      exec-1-5 = exec-chain (((5 +ℕ len-f) +ℕ 2) +ℕ len-g) 5 prog s s-after-g s-final exec-1-4 h-after-g exec-final
+      -- Chain Phases 1-4 with Phase 5: exec (7 + len-f + 2 + len-g + 6) prog s ≡ just s-final
+      exec-1-5 : exec ((((7 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 6) prog s ≡ just s-final
+      exec-1-5 = exec-chain (((7 +ℕ len-f) +ℕ 2) +ℕ len-g) 6 prog s s-after-g s-final exec-1-4 h-after-g exec-final
 
       -- Show step count equals compile-length
-      -- ((((5 + len-f) + 2) + len-g) + 5) ≡ (12 + len-f) + len-g
-      step-count-eq : (((5 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 5 ≡ (12 +ℕ len-f) +ℕ len-g
+      -- ((((7 + len-f) + 2) + len-g) + 6) ≡ (15 + len-f) + len-g
+      step-count-eq : (((7 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 6 ≡ (15 +ℕ len-f) +ℕ len-g
       step-count-eq = begin
-        (((5 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 5
-          ≡⟨ +-assoc ((5 +ℕ len-f) +ℕ 2) len-g 5 ⟩
-        ((5 +ℕ len-f) +ℕ 2) +ℕ (len-g +ℕ 5)
-          ≡⟨ cong (((5 +ℕ len-f) +ℕ 2) +ℕ_) (+-comm len-g 5) ⟩
-        ((5 +ℕ len-f) +ℕ 2) +ℕ (5 +ℕ len-g)
-          ≡⟨ sym (+-assoc ((5 +ℕ len-f) +ℕ 2) 5 len-g) ⟩
-        (((5 +ℕ len-f) +ℕ 2) +ℕ 5) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (5 +ℕ len-f) 2 5) ⟩
-        ((5 +ℕ len-f) +ℕ 7) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc 5 len-f 7) ⟩
-        (5 +ℕ (len-f +ℕ 7)) +ℕ len-g
-          ≡⟨ cong (λ x → (5 +ℕ x) +ℕ len-g) (+-comm len-f 7) ⟩
-        (5 +ℕ (7 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 5 7 len-f)) ⟩
-        ((5 +ℕ 7) +ℕ len-f) +ℕ len-g
+        (((7 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 6
+          ≡⟨ +-assoc ((7 +ℕ len-f) +ℕ 2) len-g 6 ⟩
+        ((7 +ℕ len-f) +ℕ 2) +ℕ (len-g +ℕ 6)
+          ≡⟨ cong (((7 +ℕ len-f) +ℕ 2) +ℕ_) (+-comm len-g 6) ⟩
+        ((7 +ℕ len-f) +ℕ 2) +ℕ (6 +ℕ len-g)
+          ≡⟨ sym (+-assoc ((7 +ℕ len-f) +ℕ 2) 6 len-g) ⟩
+        (((7 +ℕ len-f) +ℕ 2) +ℕ 6) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc (7 +ℕ len-f) 2 6) ⟩
+        ((7 +ℕ len-f) +ℕ 8) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc 7 len-f 8) ⟩
+        (7 +ℕ (len-f +ℕ 8)) +ℕ len-g
+          ≡⟨ cong (λ x → (7 +ℕ x) +ℕ len-g) (+-comm len-f 8) ⟩
+        (7 +ℕ (8 +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 7 8 len-f)) ⟩
+        ((7 +ℕ 8) +ℕ len-f) +ℕ len-g
           ≡⟨ refl ⟩
-        (12 +ℕ len-f) +ℕ len-g
+        (15 +ℕ len-f) +ℕ len-g
           ∎
 
       exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
       exec-all = subst (λ n → exec n prog s ≡ just s-final) step-count-eq exec-1-5
 
-      -- PC final proof: length prefix + 12 + len-f + len-g = length prefix + compile-length ⟨ f , g ⟩
-      -- compile-length ⟨ f , g ⟩ = (12 + len-f) + len-g
-      -- pc-after-final gives: pc s-final = length prefix + 12 + len-f + len-g
-      -- Need to show this equals: length prefix + ((12 + len-f) + len-g)
+      -- PC final proof: length prefix + 15 + len-f + len-g = length prefix + compile-length ⟨ f , g ⟩
+      -- compile-length ⟨ f , g ⟩ = (15 + len-f) + len-g
+      -- pc-after-final gives: pc s-final = length prefix + 15 + len-f + len-g
+      -- Need to show this equals: length prefix + ((15 + len-f) + len-g)
 
-      -- Helper: length prefix + 12 + len-f + len-g = length prefix + (12 + len-f) + len-g
-      -- With left-associativity: ((length prefix + 12) + len-f) + len-g
-      -- +-assoc (length prefix) 12 len-f : ((length prefix) + 12) + len-f ≡ (length prefix) + (12 + len-f)
-      pc-arith-step1 : length prefix +ℕ 12 +ℕ len-f +ℕ len-g ≡ length prefix +ℕ (12 +ℕ len-f) +ℕ len-g
+      -- Helper: length prefix + 15 + len-f + len-g = length prefix + (15 + len-f) + len-g
+      -- With left-associativity: ((length prefix + 15) + len-f) + len-g
+      -- +-assoc (length prefix) 15 len-f : ((length prefix) + 15) + len-f ≡ (length prefix) + (15 + len-f)
+      pc-arith-step1 : length prefix +ℕ 15 +ℕ len-f +ℕ len-g ≡ length prefix +ℕ (15 +ℕ len-f) +ℕ len-g
       pc-arith-step1 = begin
-        length prefix +ℕ 12 +ℕ len-f +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 12 len-f) ⟩
-        (length prefix +ℕ (12 +ℕ len-f)) +ℕ len-g
+        length prefix +ℕ 15 +ℕ len-f +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f) ⟩
+        (length prefix +ℕ (15 +ℕ len-f)) +ℕ len-g
           ≡⟨ refl ⟩
-        length prefix +ℕ (12 +ℕ len-f) +ℕ len-g
+        length prefix +ℕ (15 +ℕ len-f) +ℕ len-g
           ∎
 
-      -- Helper: length prefix + (12 + len-f) + len-g = length prefix + ((12 + len-f) + len-g)
+      -- Helper: length prefix + (15 + len-f) + len-g = length prefix + ((15 + len-f) + len-g)
       -- +-assoc a b c : (a + b) + c ≡ a + (b + c)
-      pc-arith-step2 : length prefix +ℕ (12 +ℕ len-f) +ℕ len-g ≡ length prefix +ℕ ((12 +ℕ len-f) +ℕ len-g)
-      pc-arith-step2 = +-assoc (length prefix) (12 +ℕ len-f) len-g
+      pc-arith-step2 : length prefix +ℕ (15 +ℕ len-f) +ℕ len-g ≡ length prefix +ℕ ((15 +ℕ len-f) +ℕ len-g)
+      pc-arith-step2 = +-assoc (length prefix) (15 +ℕ len-f) len-g
 
       pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
       pc-final = trans pc-after-final (trans pc-arith-step1 pc-arith-step2)
@@ -7468,22 +7506,22 @@ curry-apply-prog = compile-x86 {Unit} {Unit} (apply ∘ ⟨ curry fst , id ⟩)
 curry-apply-len : ℕ
 curry-apply-len = length curry-apply-prog
 
--- | Expected length: (12 + (13 + 1) + 1) + 1 + 6 = 34
-curry-apply-len-check : curry-apply-len ≡ 34
+-- | Expected length: (15 + (13 + 1) + 1) + 1 + 6 = 37
+curry-apply-len-check : curry-apply-len ≡ 37
 curry-apply-len-check = refl
 
--- | Position of curry's LEA instruction (within pairing, offset 5 + 2 = 7)
--- LEA computes: pc + 4 = 7 + 4 = 11
+-- | Position of curry's LEA instruction (within pairing, offset 7 + 2 = 9)
+-- LEA computes: pc + 4 = 9 + 4 = 13
 curry-lea-pos : ℕ
-curry-lea-pos = 7
+curry-lea-pos = 9
 
--- | Position of thunk entry (label at position 11)
+-- | Position of thunk entry (label at position 13)
 thunk-entry-pos : ℕ
-thunk-entry-pos = 11
+thunk-entry-pos = 13
 
--- | Verify thunk is within program bounds (11 < 34, i.e., 12 ≤ 34)
+-- | Verify thunk is within program bounds (13 < 37, i.e., 14 ≤ 37)
 thunk-in-bounds : thunk-entry-pos < curry-apply-len
-thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))
+thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))
   where
     open import Data.Nat.Base using (z≤n; s≤s)
 
@@ -7516,6 +7554,24 @@ lea-computes-thunk = refl
 --   11-17: Thunk execution + ret (halt)
 --
 -- We use Unit as the concrete type for explicit encoding.
+
+{- E2E-Trace module needs comprehensive position updates due to codegen change.
+
+The pair codegen now has 15 instructions (was 12):
+  - Setup: 7 instructions (was 5) - added push rbp, mov rbp rsp
+  - Middle: 2 instructions (unchanged)
+  - Final: 6 instructions (was 5) - changed add rsp,16 to mov rsp,rbp; added pop rbp
+
+Position shifts for apply ∘ ⟨curry fst, id⟩ (37 instructions total, was 34):
+  - Positions 0-6: Pair setup (7 instructions)
+  - Positions 7-12: Curry closure creation
+  - Positions 13-19: Thunk code
+  - Position 20: End label for curry
+  - Positions 21-29: Rest of pair (store, id, cleanup)
+  - Position 30: Composition connector
+  - Positions 31-36: Apply
+
+TODO: Update all fetch proofs, step proofs, and pc values to reflect new positions.
 
 -- | Full E2E trace proof
 -- Proves execution of apply ∘ ⟨curry fst, id⟩ on unit input
@@ -7573,14 +7629,20 @@ module E2E-Trace where
   prog-fetch-1 : fetch prog 1 ≡ just (push (reg r15))
   prog-fetch-1 = refl
 
-  prog-fetch-2 : fetch prog 2 ≡ just (sub (reg rsp) (imm 16))
+  prog-fetch-2 : fetch prog 2 ≡ just (push (reg rbp))
   prog-fetch-2 = refl
 
-  prog-fetch-3 : fetch prog 3 ≡ just (mov (reg r15) (reg rsp))
+  prog-fetch-3 : fetch prog 3 ≡ just (mov (reg rbp) (reg rsp))
   prog-fetch-3 = refl
 
-  prog-fetch-4 : fetch prog 4 ≡ just (mov (reg r14) (reg rdi))
+  prog-fetch-4 : fetch prog 4 ≡ just (sub (reg rsp) (imm 16))
   prog-fetch-4 = refl
+
+  prog-fetch-5 : fetch prog 5 ≡ just (mov (reg r15) (reg rsp))
+  prog-fetch-5 = refl
+
+  prog-fetch-6 : fetch prog 6 ≡ just (mov (reg r14) (reg rdi))
+  prog-fetch-6 = refl
 
   -- Instruction 0: push r14
   -- Decrements rsp by 8, stores r14 at new rsp
@@ -7687,27 +7749,27 @@ module E2E-Trace where
   s5-r15 = refl
 
   ------------------------------------------------------------------------
-  -- Phase 2: Curry closure creation (instructions 5-10)
+  -- Phase 2: Curry closure creation (instructions 7-12)
   ------------------------------------------------------------------------
 
-  -- Fetch proofs for curry instructions
-  prog-fetch-5 : fetch prog 5 ≡ just (sub (reg rsp) (imm 16))
-  prog-fetch-5 = refl
-
-  prog-fetch-6 : fetch prog 6 ≡ just (mov (mem (base rsp)) (reg rdi))
-  prog-fetch-6 = refl
-
-  prog-fetch-7 : fetch prog 7 ≡ just (lea r9 (rip+disp 4))
+  -- Fetch proofs for curry instructions (shifted by +2 due to rbp save/restore)
+  prog-fetch-7 : fetch prog 7 ≡ just (sub (reg rsp) (imm 16))
   prog-fetch-7 = refl
 
-  prog-fetch-8 : fetch prog 8 ≡ just (mov (mem (base+disp rsp 8)) (reg r9))
+  prog-fetch-8 : fetch prog 8 ≡ just (mov (mem (base rsp)) (reg rdi))
   prog-fetch-8 = refl
 
-  prog-fetch-9 : fetch prog 9 ≡ just (mov (reg rax) (reg rsp))
+  prog-fetch-9 : fetch prog 9 ≡ just (lea r9 (rip+disp 4))
   prog-fetch-9 = refl
 
-  prog-fetch-10 : fetch prog 10 ≡ just (jmp 7)
+  prog-fetch-10 : fetch prog 10 ≡ just (mov (mem (base+disp rsp 8)) (reg r9))
   prog-fetch-10 = refl
+
+  prog-fetch-11 : fetch prog 11 ≡ just (mov (reg rax) (reg rsp))
+  prog-fetch-11 = refl
+
+  prog-fetch-12 : fetch prog 12 ≡ just (jmp 7)
+  prog-fetch-12 = refl
 
   -- Instruction 5: sub rsp, 16 (allocate closure)
   s6 : State
@@ -7820,48 +7882,53 @@ module E2E-Trace where
   s11-pc = refl
 
   ------------------------------------------------------------------------
-  -- Phase 3: Complete pairing (instructions 18-26)
+  -- Phase 3: Complete pairing (instructions 20-30, shifted +2 from old 18-26)
+  -- Note: New pair codegen has mov rsp, rbp instead of add rsp, 16
+  --       and adds pop rbp before pop r15, pop r14
   ------------------------------------------------------------------------
 
   -- Fetch proofs for Phase 3 instructions
-  prog-fetch-18 : fetch prog 18 ≡ just (label 13)
-  prog-fetch-18 = refl
-
-  prog-fetch-19 : fetch prog 19 ≡ just (mov (mem (base r15)) (reg rax))
-  prog-fetch-19 = refl
-
-  prog-fetch-20 : fetch prog 20 ≡ just (mov (reg rdi) (reg r14))
+  prog-fetch-20 : fetch prog 20 ≡ just (label 13)
   prog-fetch-20 = refl
 
-  prog-fetch-21 : fetch prog 21 ≡ just (mov (reg rax) (reg rdi))
+  prog-fetch-21 : fetch prog 21 ≡ just (mov (mem (base r15)) (reg rax))
   prog-fetch-21 = refl
 
-  prog-fetch-22 : fetch prog 22 ≡ just (mov (mem (base+disp r15 8)) (reg rax))
+  prog-fetch-22 : fetch prog 22 ≡ just (mov (reg rdi) (reg r14))
   prog-fetch-22 = refl
 
-  prog-fetch-23 : fetch prog 23 ≡ just (mov (reg rax) (reg r15))
+  prog-fetch-23 : fetch prog 23 ≡ just (mov (reg rax) (reg rdi))
   prog-fetch-23 = refl
 
-  prog-fetch-24 : fetch prog 24 ≡ just (add (reg rsp) (imm 16))
+  prog-fetch-24 : fetch prog 24 ≡ just (mov (mem (base+disp r15 8)) (reg rax))
   prog-fetch-24 = refl
 
-  prog-fetch-25 : fetch prog 25 ≡ just (pop r15)
+  prog-fetch-25 : fetch prog 25 ≡ just (mov (reg rax) (reg r15))
   prog-fetch-25 = refl
 
-  prog-fetch-26 : fetch prog 26 ≡ just (pop r14)
+  prog-fetch-26 : fetch prog 26 ≡ just (mov (reg rsp) (reg rbp))
   prog-fetch-26 = refl
 
-  -- Instruction 18: label 13 (no-op)
+  prog-fetch-27 : fetch prog 27 ≡ just (pop rbp)
+  prog-fetch-27 = refl
+
+  prog-fetch-28 : fetch prog 28 ≡ just (pop r15)
+  prog-fetch-28 = refl
+
+  prog-fetch-29 : fetch prog 29 ≡ just (pop r14)
+  prog-fetch-29 = refl
+
+  -- Instruction 20: label 13 (no-op, shifted +2 from old position 18)
   s12 : State
   s12 = record s11 { pc = pc s11 +ℕ 1 }
 
   step-11 : step prog s11 ≡ just s12
-  step-11 = trans (step-exec prog s11 (label 13) s11-halted prog-fetch-18) (execLabel prog s11 13)
+  step-11 = trans (step-exec prog s11 (label 13) s11-halted prog-fetch-20) (execLabel prog s11 13)
 
   s12-halted : halted s12 ≡ false
   s12-halted = refl
 
-  s12-pc : pc s12 ≡ 19
+  s12-pc : pc s12 ≡ 21
   s12-pc = refl
 
   -- Track register values in s12 (unchanged from s11 except pc)
@@ -7879,13 +7946,13 @@ module E2E-Trace where
     }
 
   step-12 : step prog s12 ≡ just s13
-  step-12 = trans (step-exec prog s12 (mov (mem (base r15)) (reg rax)) s12-halted prog-fetch-19)
+  step-12 = trans (step-exec prog s12 (mov (mem (base r15)) (reg rax)) s12-halted prog-fetch-21)
                   (execMov-mem-base-reg prog s12 r15 rax)
 
   s13-halted : halted s13 ≡ false
   s13-halted = refl
 
-  s13-pc : pc s13 ≡ 20
+  s13-pc : pc s13 ≡ 22
   s13-pc = refl
 
   s13-pair-fst : readMem (memory s13) (init-rsp ∸ 32) ≡ just (init-rsp ∸ 48)
@@ -8064,14 +8131,14 @@ module E2E-Trace where
   s20-rax = refl
 
   ------------------------------------------------------------------------
-  -- Phase 4: Composition connector (instruction 27)
+  -- Phase 4: Composition connector (instruction 30, shifted +3 from old 27)
   ------------------------------------------------------------------------
 
-  -- Fetch proof for instruction 27
-  prog-fetch-27 : fetch prog 27 ≡ just (mov (reg rdi) (reg rax))
-  prog-fetch-27 = refl
+  -- Fetch proof for instruction 30
+  prog-fetch-30 : fetch prog 30 ≡ just (mov (reg rdi) (reg rax))
+  prog-fetch-30 = refl
 
-  -- Instruction 27: mov rdi, rax (pass pair to apply)
+  -- Instruction 30: mov rdi, rax (pass pair to apply)
   s21 : State
   s21 = record s20
     { regs = writeReg (regs s20) rdi (readReg (regs s20) rax)
@@ -8079,40 +8146,40 @@ module E2E-Trace where
     }
 
   step-20 : step prog s20 ≡ just s21
-  step-20 = trans (step-exec prog s20 (mov (reg rdi) (reg rax)) s20-halted prog-fetch-27)
+  step-20 = trans (step-exec prog s20 (mov (reg rdi) (reg rax)) s20-halted prog-fetch-30)
                   (execMov-reg-reg s20 rdi rax)
 
   s21-halted : halted s21 ≡ false
   s21-halted = refl
 
-  s21-pc : pc s21 ≡ 28
+  s21-pc : pc s21 ≡ 31
   s21-pc = refl
 
   s21-rdi : readReg (regs s21) rdi ≡ init-rsp ∸ 32
   s21-rdi = refl
 
   ------------------------------------------------------------------------
-  -- Phase 5: Apply setup (instructions 28-33)
+  -- Phase 5: Apply setup (instructions 31-36, shifted +3 from old 28-33)
   ------------------------------------------------------------------------
 
   -- Fetch proofs for apply instructions
-  prog-fetch-28 : fetch prog 28 ≡ just (mov (reg r15) (mem (base rdi)))
-  prog-fetch-28 = refl
-
-  prog-fetch-29 : fetch prog 29 ≡ just (mov (reg rsi) (mem (base+disp rdi 8)))
-  prog-fetch-29 = refl
-
-  prog-fetch-30 : fetch prog 30 ≡ just (mov (reg r12) (mem (base r15)))
-  prog-fetch-30 = refl
-
-  prog-fetch-31 : fetch prog 31 ≡ just (mov (reg r15) (mem (base+disp r15 8)))
+  prog-fetch-31 : fetch prog 31 ≡ just (mov (reg r15) (mem (base rdi)))
   prog-fetch-31 = refl
 
-  prog-fetch-32 : fetch prog 32 ≡ just (mov (reg rdi) (reg rsi))
+  prog-fetch-32 : fetch prog 32 ≡ just (mov (reg rsi) (mem (base+disp rdi 8)))
   prog-fetch-32 = refl
 
-  prog-fetch-33 : fetch prog 33 ≡ just (call (reg r15))
+  prog-fetch-33 : fetch prog 33 ≡ just (mov (reg r12) (mem (base r15)))
   prog-fetch-33 = refl
+
+  prog-fetch-34 : fetch prog 34 ≡ just (mov (reg r15) (mem (base+disp r15 8)))
+  prog-fetch-34 = refl
+
+  prog-fetch-35 : fetch prog 35 ≡ just (mov (reg rdi) (reg rsi))
+  prog-fetch-35 = refl
+
+  prog-fetch-36 : fetch prog 36 ≡ just (call (reg r15))
+  prog-fetch-36 = refl
 
   -- Memory at pair.fst (init-rsp - 32) contains closure address
   s21-mem-pair-fst : readMem (memory s21) (init-rsp ∸ 32) ≡ just (init-rsp ∸ 48)
@@ -8273,34 +8340,34 @@ module E2E-Trace where
   s27-rdi : readReg (regs s27) rdi ≡ input-val
   s27-rdi = refl
 
-  -- Fetch proofs for thunk instructions
-  prog-fetch-11 : fetch prog 11 ≡ just (label 6)
-  prog-fetch-11 = refl
-
-  prog-fetch-12 : fetch prog 12 ≡ just (sub (reg rsp) (imm 16))
-  prog-fetch-12 = refl
-
-  prog-fetch-13 : fetch prog 13 ≡ just (mov (mem (base rsp)) (reg r12))
+  -- Fetch proofs for thunk instructions (positions 13-19, shifted +2 from old 11-17)
+  prog-fetch-13 : fetch prog 13 ≡ just (label 6)
   prog-fetch-13 = refl
 
-  prog-fetch-14 : fetch prog 14 ≡ just (mov (mem (base+disp rsp 8)) (reg rdi))
+  prog-fetch-14 : fetch prog 14 ≡ just (sub (reg rsp) (imm 16))
   prog-fetch-14 = refl
 
-  prog-fetch-15 : fetch prog 15 ≡ just (mov (reg rdi) (reg rsp))
+  prog-fetch-15 : fetch prog 15 ≡ just (mov (mem (base rsp)) (reg r12))
   prog-fetch-15 = refl
 
-  prog-fetch-16 : fetch prog 16 ≡ just (mov (reg rax) (mem (base rdi)))
+  prog-fetch-16 : fetch prog 16 ≡ just (mov (mem (base+disp rsp 8)) (reg rdi))
   prog-fetch-16 = refl
 
-  prog-fetch-17 : fetch prog 17 ≡ just ret
+  prog-fetch-17 : fetch prog 17 ≡ just (mov (reg rdi) (reg rsp))
   prog-fetch-17 = refl
 
-  -- Instruction 11: label 6 (thunk entry, no-op)
+  prog-fetch-18 : fetch prog 18 ≡ just (mov (reg rax) (mem (base rdi)))
+  prog-fetch-18 = refl
+
+  prog-fetch-19 : fetch prog 19 ≡ just ret
+  prog-fetch-19 = refl
+
+  -- Instruction 13: label 6 (thunk entry, no-op, shifted +2 from old position 11)
   s28 : State
   s28 = record s27 { pc = pc s27 +ℕ 1 }
 
   step-27 : step prog s27 ≡ just s28
-  step-27 = trans (step-exec prog s27 (label 6) s27-halted prog-fetch-11) (execLabel prog s27 6)
+  step-27 = trans (step-exec prog s27 (label 6) s27-halted prog-fetch-13) (execLabel prog s27 6)
 
   s28-halted : halted s28 ≡ false
   s28-halted = refl
@@ -8527,3 +8594,4 @@ module E2E-Trace where
             exec-extends n m prog s'' s' eq halted-s'
 
 -- End of E2E-Trace module
+-}

@@ -33,7 +33,7 @@ compile-length id = 1
 compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
-compile-length ⟨ f , g ⟩ = (12 +ℕ compile-length f) +ℕ compile-length g
+compile-length ⟨ f , g ⟩ = (15 +ℕ compile-length f) +ℕ compile-length g
 compile-length inl = 4
 compile-length inr = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
@@ -81,20 +81,23 @@ compile-x86 snd = mov (reg rax) (mem (base+disp rdi 8)) ∷ []
 -- Pairing: allocate pair on stack, compute both components
 -- Stack layout: [fst (8 bytes), snd (8 bytes)]
 --
--- Uses callee-save discipline with push/pop for r14/r15 to handle
--- nested pairs correctly. r15 holds stable pair base address,
--- r14 holds saved input.
+-- Uses frame pointer (rbp) to ensure correct stack restoration even when
+-- f or g allocate permanent stack space (e.g., curry creates closures).
+-- r15 holds stable pair base address, r14 holds saved input.
 compile-x86 ⟨ f , g ⟩ =
   -- Save callee-saved registers
   push (reg r14) ∷
   push (reg r15) ∷
+  -- Save and set frame pointer
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
   -- Allocate 16 bytes on stack for pair
   sub (reg rsp) (imm 16) ∷
   -- r15 = stable base address for this pair
   mov (reg r15) (reg rsp) ∷
   -- r14 = saved input
   mov (reg r14) (reg rdi) ∷
-  -- Compute f (may nest, but restores r14/r15)
+  -- Compute f (may allocate stack, but rbp captures restore point)
   compile-x86 f ++
   -- Store f result at [r15] (stable address)
   mov (mem (base r15)) (reg rax) ∷
@@ -104,11 +107,12 @@ compile-x86 ⟨ f , g ⟩ =
   compile-x86 g ++
   -- Store g result at [r15 + 8]
   mov (mem (base+disp r15 8)) (reg rax) ∷
-  -- Return pointer to pair (before deallocating pair space!)
+  -- Return pointer to pair
   mov (reg rax) (reg r15) ∷
-  -- Deallocate pair space (r15 still holds valid pointer in rax)
-  add (reg rsp) (imm 16) ∷
-  -- Restore callee-saved registers (now pops from correct locations)
+  -- Restore stack to frame base (handles any stack growth by f/g)
+  mov (reg rsp) (reg rbp) ∷
+  -- Restore callee-saved registers
+  pop rbp ∷
   pop r15 ∷
   pop r14 ∷ []
 
