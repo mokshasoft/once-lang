@@ -7889,34 +7889,6 @@ lea-computes-thunk = refl
 --
 -- We use Unit as the concrete type for explicit encoding.
 
-{- E2E-Trace module - NEEDS COMPLETE REWRITE FOR NEW PAIR CODEGEN
-
-The module traces execution of: apply ∘ ⟨curry fst, id⟩
-
-New instruction layout (37 total, was 34):
-  0-6:   Pair setup (7 instructions, was 5)
-  7-12:  Curry closure creation (6)
-  13-19: Thunk code (7) - skipped initially
-  20:    End label for curry
-  21:    mov [r15], rax - store closure in pair.fst
-  22:    mov rdi, r14 - restore input
-  23:    mov rax, rdi - id
-  24:    mov [r15+8], rax - store input in pair.snd
-  25:    mov rax, r15 - return pair pointer
-  26:    mov rsp, rbp - restore stack (was add rsp, 16)
-  27:    pop rbp - NEW
-  28:    pop r15
-  29:    pop r14
-  30:    mov rdi, rax - composition connector
-  31-36: Apply (6)
-
-Key value changes:
-  - r15 (pair base): init-rsp ∸ 40 (was 32)
-  - rsp after setup: init-rsp ∸ 40 (was 32)
-  - rbp (frame base): init-rsp ∸ 24 (new)
-  - closure address: init-rsp ∸ 56 (was 48)
-  - thunk entry: position 13 (was 11)
-
 -- | Full E2E trace proof
 -- Proves execution of apply ∘ ⟨curry fst, id⟩ on unit input
 -- without using any postulates for the execution itself.
@@ -8277,7 +8249,8 @@ module E2E-Trace where
   ------------------------------------------------------------------------
 
   -- Fetch proofs for Phase 3 instructions
-  prog-fetch-20 : fetch prog 20 ≡ just (label 20)
+  -- Note: label instruction stores label VALUE (end-label = 12 + 1 = 13), not position
+  prog-fetch-20 : fetch prog 20 ≡ just (label 13)
   prog-fetch-20 = refl
 
   prog-fetch-21 : fetch prog 21 ≡ just (mov (mem (base r15)) (reg rax))
@@ -8307,12 +8280,12 @@ module E2E-Trace where
   prog-fetch-29 : fetch prog 29 ≡ just (pop r14)
   prog-fetch-29 = refl
 
-  -- Instruction 20: label (no-op)
+  -- Instruction 20: label 13 (no-op, the end-label for curry)
   s14 : State
   s14 = record s13 { pc = pc s13 +ℕ 1 }
 
   step-13 : step prog s13 ≡ just s14
-  step-13 = trans (step-exec prog s13 (label 20) s13-halted prog-fetch-20) (execLabel prog s13 20)
+  step-13 = trans (step-exec prog s13 (label 13) s13-halted prog-fetch-20) (execLabel prog s13 13)
 
   s14-halted : halted s14 ≡ false
   s14-halted = refl
@@ -8334,49 +8307,9 @@ module E2E-Trace where
     ; pc = pc s14 +ℕ 1
     }
 
-  step-12 : step prog s12 ≡ just s13
-  step-12 = trans (step-exec prog s12 (mov (mem (base r15)) (reg rax)) s12-halted prog-fetch-21)
-                  (execMov-mem-base-reg prog s12 r15 rax)
-
-  s13-halted : halted s13 ≡ false
-  s13-halted = refl
-
-  s13-pc : pc s13 ≡ 22
-  s13-pc = refl
-
-  s13-pair-fst : readMem (memory s13) (init-rsp ∸ 32) ≡ just (init-rsp ∸ 48)
-  s13-pair-fst = refl
-
-  -- Instruction 20: mov rdi, r14 (restore input)
-  s14 : State
-  s14 = record s13
-    { regs = writeReg (regs s13) rdi (readReg (regs s13) r14)
-    ; pc = pc s13 +ℕ 1
-    }
-
-  step-13 : step prog s13 ≡ just s14
-  step-13 = trans (step-exec prog s13 (mov (reg rdi) (reg r14)) s13-halted prog-fetch-20)
-                  (execMov-reg-reg s13 rdi r14)
-
-  s14-halted : halted s14 ≡ false
-  s14-halted = refl
-
-  s14-pc : pc s14 ≡ 21
-  s14-pc = refl
-
-  s14-rdi : readReg (regs s14) rdi ≡ input-val
-  s14-rdi = refl
-
-  -- Instruction 21: mov rax, rdi (id)
-  s15 : State
-  s15 = record s14
-    { regs = writeReg (regs s14) rax (readReg (regs s14) rdi)
-    ; pc = pc s14 +ℕ 1
-    }
-
   step-14 : step prog s14 ≡ just s15
-  step-14 = trans (step-exec prog s14 (mov (reg rax) (reg rdi)) s14-halted prog-fetch-21)
-                  (execMov-reg-reg s14 rax rdi)
+  step-14 = trans (step-exec prog s14 (mov (mem (base r15)) (reg rax)) s14-halted prog-fetch-21)
+                  (execMov-mem-base-reg prog s14 r15 rax)
 
   s15-halted : halted s15 ≡ false
   s15-halted = refl
@@ -8384,23 +8317,19 @@ module E2E-Trace where
   s15-pc : pc s15 ≡ 22
   s15-pc = refl
 
-  s15-rax : readReg (regs s15) rax ≡ input-val
-  s15-rax = refl
+  s15-pair-fst : readMem (memory s15) (init-rsp ∸ 40) ≡ just (init-rsp ∸ 56)
+  s15-pair-fst = refl
 
-  -- Track r15 in s15 for the next memory write
-  s15-r15 : readReg (regs s15) r15 ≡ init-rsp ∸ 32
-  s15-r15 = refl
-
-  -- Instruction 22: mov [r15+8], rax (store input in pair.snd)
+  -- Instruction 22: mov rdi, r14 (restore input)
   s16 : State
   s16 = record s15
-    { memory = writeMem (memory s15) (readReg (regs s15) r15 +ℕ 8) (readReg (regs s15) rax)
+    { regs = writeReg (regs s15) rdi (readReg (regs s15) r14)
     ; pc = pc s15 +ℕ 1
     }
 
   step-15 : step prog s15 ≡ just s16
-  step-15 = trans (step-exec prog s15 (mov (mem (base+disp r15 8)) (reg rax)) s15-halted prog-fetch-22)
-                  (execMov-mem-disp-reg prog s15 r15 rax 8)
+  step-15 = trans (step-exec prog s15 (mov (reg rdi) (reg r14)) s15-halted prog-fetch-22)
+                  (execMov-reg-reg s15 rdi r14)
 
   s16-halted : halted s16 ≡ false
   s16-halted = refl
@@ -8408,23 +8337,23 @@ module E2E-Trace where
   s16-pc : pc s16 ≡ 23
   s16-pc = refl
 
-  s16-pair-snd : readMem (memory s16) (init-rsp ∸ 32 +ℕ 8) ≡ just input-val
-  s16-pair-snd = refl
+  s16-rdi : readReg (regs s16) rdi ≡ input-val
+  s16-rdi = refl
 
-  -- Track r15 in s16
-  s16-r15 : readReg (regs s16) r15 ≡ init-rsp ∸ 32
-  s16-r15 = refl
+  -- Track r14 in s16 (unchanged from s15)
+  s16-r14 : readReg (regs s16) r14 ≡ input-val
+  s16-r14 = refl
 
-  -- Instruction 23: mov rax, r15 (return pair pointer)
+  -- Instruction 23: mov rax, rdi (compile-x86 id)
   s17 : State
   s17 = record s16
-    { regs = writeReg (regs s16) rax (readReg (regs s16) r15)
+    { regs = writeReg (regs s16) rax (readReg (regs s16) rdi)
     ; pc = pc s16 +ℕ 1
     }
 
   step-16 : step prog s16 ≡ just s17
-  step-16 = trans (step-exec prog s16 (mov (reg rax) (reg r15)) s16-halted prog-fetch-23)
-                  (execMov-reg-reg s16 rax r15)
+  step-16 = trans (step-exec prog s16 (mov (reg rax) (reg rdi)) s16-halted prog-fetch-23)
+                  (execMov-reg-reg s16 rax rdi)
 
   s17-halted : halted s17 ≡ false
   s17-halted = refl
@@ -8432,24 +8361,23 @@ module E2E-Trace where
   s17-pc : pc s17 ≡ 24
   s17-pc = refl
 
-  s17-rax : readReg (regs s17) rax ≡ init-rsp ∸ 32
+  s17-rax : readReg (regs s17) rax ≡ input-val
   s17-rax = refl
 
-  -- Track rsp in s17
-  s17-rsp : readReg (regs s17) rsp ≡ init-rsp ∸ 48
-  s17-rsp = refl
+  -- Track r15 in s17 for the next memory write
+  s17-r15 : readReg (regs s17) r15 ≡ init-rsp ∸ 40
+  s17-r15 = refl
 
-  -- Instruction 24: add rsp, 16 (deallocate closure space)
+  -- Instruction 24: mov [r15+8], rax (store input in pair.snd)
   s18 : State
   s18 = record s17
-    { regs = writeReg (regs s17) rsp (readReg (regs s17) rsp +ℕ 16)
+    { memory = writeMem (memory s17) (readReg (regs s17) r15 +ℕ 8) (readReg (regs s17) rax)
     ; pc = pc s17 +ℕ 1
-    ; flags = updateFlags (readReg (regs s17) rsp +ℕ 16) (readReg (regs s17) rsp)
     }
 
   step-17 : step prog s17 ≡ just s18
-  step-17 = trans (step-exec prog s17 (add (reg rsp) (imm 16)) s17-halted prog-fetch-24)
-                  (execAdd-reg-imm prog s17 rsp 16)
+  step-17 = trans (step-exec prog s17 (mov (mem (base+disp r15 8)) (reg rax)) s17-halted prog-fetch-24)
+                  (execMov-mem-disp-reg prog s17 r15 rax 8)
 
   s18-halted : halted s18 ≡ false
   s18-halted = refl
@@ -8457,29 +8385,23 @@ module E2E-Trace where
   s18-pc : pc s18 ≡ 25
   s18-pc = refl
 
-  -- After add rsp, 16: rsp = (init-rsp - 48) + 16 = init-rsp - 32
-  s18-rsp : readReg (regs s18) rsp ≡ init-rsp ∸ 32
-  s18-rsp = refl
+  s18-pair-snd : readMem (memory s18) (init-rsp ∸ 40 +ℕ 8) ≡ just input-val
+  s18-pair-snd = refl
 
-  -- Track rax in s18 (unchanged)
-  s18-rax : readReg (regs s18) rax ≡ init-rsp ∸ 32
-  s18-rax = refl
+  -- Track r15 in s18
+  s18-r15 : readReg (regs s18) r15 ≡ init-rsp ∸ 40
+  s18-r15 = refl
 
-  -- Memory at rsp (= init-rsp - 32) contains the closure pointer we stored earlier
-  s18-mem-at-rsp : readMem (memory s18) (init-rsp ∸ 32) ≡ just (init-rsp ∸ 48)
-  s18-mem-at-rsp = refl
-
-  -- Instruction 25: pop r15
-  -- pop reads from memory[rsp], writes to r15, and increments rsp by 8
+  -- Instruction 25: mov rax, r15 (return pair pointer)
   s19 : State
   s19 = record s18
-    { regs = writeReg (writeReg (regs s18) r15 (init-rsp ∸ 48)) rsp (readReg (regs s18) rsp +ℕ 8)
+    { regs = writeReg (regs s18) rax (readReg (regs s18) r15)
     ; pc = pc s18 +ℕ 1
     }
 
   step-18 : step prog s18 ≡ just s19
-  step-18 = trans (step-exec prog s18 (pop r15) s18-halted prog-fetch-25)
-                  (execPop prog s18 r15 (init-rsp ∸ 48) s18-mem-at-rsp)
+  step-18 = trans (step-exec prog s18 (mov (reg rax) (reg r15)) s18-halted prog-fetch-25)
+                  (execMov-reg-reg s18 rax r15)
 
   s19-halted : halted s19 ≡ false
   s19-halted = refl
@@ -8487,28 +8409,23 @@ module E2E-Trace where
   s19-pc : pc s19 ≡ 26
   s19-pc = refl
 
-  -- After pop r15: rsp = (init-rsp - 32) + 8 = init-rsp - 24
-  s19-rsp : readReg (regs s19) rsp ≡ init-rsp ∸ 24
-  s19-rsp = refl
-
-  -- Track rax in s19 (unchanged by pop)
-  s19-rax : readReg (regs s19) rax ≡ init-rsp ∸ 32
+  s19-rax : readReg (regs s19) rax ≡ init-rsp ∸ 40
   s19-rax = refl
 
-  -- Memory at new rsp (= init-rsp - 24) - this is pair.snd which has input-val
-  s19-mem-at-rsp : readMem (memory s19) (init-rsp ∸ 24) ≡ just input-val
-  s19-mem-at-rsp = refl
+  -- Track rbp in s19 for the stack restore
+  s19-rbp : readReg (regs s19) rbp ≡ init-rsp ∸ 24
+  s19-rbp = refl
 
-  -- Instruction 26: pop r14
+  -- Instruction 26: mov rsp, rbp (restore stack via frame pointer)
   s20 : State
   s20 = record s19
-    { regs = writeReg (writeReg (regs s19) r14 input-val) rsp (readReg (regs s19) rsp +ℕ 8)
+    { regs = writeReg (regs s19) rsp (readReg (regs s19) rbp)
     ; pc = pc s19 +ℕ 1
     }
 
   step-19 : step prog s19 ≡ just s20
-  step-19 = trans (step-exec prog s19 (pop r14) s19-halted prog-fetch-26)
-                  (execPop prog s19 r14 input-val s19-mem-at-rsp)
+  step-19 = trans (step-exec prog s19 (mov (reg rsp) (reg rbp)) s19-halted prog-fetch-26)
+                  (execMov-reg-reg s19 rsp rbp)
 
   s20-halted : halted s20 ≡ false
   s20-halted = refl
@@ -8516,11 +8433,109 @@ module E2E-Trace where
   s20-pc : pc s20 ≡ 27
   s20-pc = refl
 
-  s20-rax : readReg (regs s20) rax ≡ init-rsp ∸ 32
+  -- After mov rsp, rbp: rsp = init-rsp - 24
+  s20-rsp : readReg (regs s20) rsp ≡ init-rsp ∸ 24
+  s20-rsp = refl
+
+  -- Track rax in s20 (unchanged)
+  s20-rax : readReg (regs s20) rax ≡ init-rsp ∸ 40
   s20-rax = refl
 
+  -- Memory at rsp (= init-rsp - 24) contains saved rbp value
+  -- We saved the OLD rbp value at position init-rsp - 24
+  -- At the time of push rbp, rsp was init-rsp - 16, so we pushed there
+  -- After push, rsp became init-rsp - 24
+  -- So memory at init-rsp - 24 has the original rbp value (0)
+  s20-mem-at-rsp : readMem (memory s20) (init-rsp ∸ 24) ≡ just 0
+  s20-mem-at-rsp = refl
+
+  -- Instruction 27: pop rbp
+  s21 : State
+  s21 = record s20
+    { regs = writeReg (writeReg (regs s20) rbp 0) rsp (readReg (regs s20) rsp +ℕ 8)
+    ; pc = pc s20 +ℕ 1
+    }
+
+  step-20 : step prog s20 ≡ just s21
+  step-20 = trans (step-exec prog s20 (pop rbp) s20-halted prog-fetch-27)
+                  (execPop prog s20 rbp 0 s20-mem-at-rsp)
+
+  s21-halted : halted s21 ≡ false
+  s21-halted = refl
+
+  s21-pc : pc s21 ≡ 28
+  s21-pc = refl
+
+  -- After pop rbp: rsp = (init-rsp - 24) + 8 = init-rsp - 16
+  s21-rsp : readReg (regs s21) rsp ≡ init-rsp ∸ 16
+  s21-rsp = refl
+
+  -- Track rax in s21 (unchanged by pop)
+  s21-rax : readReg (regs s21) rax ≡ init-rsp ∸ 40
+  s21-rax = refl
+
+  -- Memory at new rsp (= init-rsp - 16) contains saved r15
+  -- We saved r15 at position init-rsp - 16 (it was the initial rsp at that point)
+  -- r15 was 0 at the start
+  s21-mem-at-rsp : readMem (memory s21) (init-rsp ∸ 16) ≡ just 0
+  s21-mem-at-rsp = refl
+
+  -- Instruction 28: pop r15
+  s22 : State
+  s22 = record s21
+    { regs = writeReg (writeReg (regs s21) r15 0) rsp (readReg (regs s21) rsp +ℕ 8)
+    ; pc = pc s21 +ℕ 1
+    }
+
+  step-21 : step prog s21 ≡ just s22
+  step-21 = trans (step-exec prog s21 (pop r15) s21-halted prog-fetch-28)
+                  (execPop prog s21 r15 0 s21-mem-at-rsp)
+
+  s22-halted : halted s22 ≡ false
+  s22-halted = refl
+
+  s22-pc : pc s22 ≡ 29
+  s22-pc = refl
+
+  -- After pop r15: rsp = (init-rsp - 16) + 8 = init-rsp - 8
+  s22-rsp : readReg (regs s22) rsp ≡ init-rsp ∸ 8
+  s22-rsp = refl
+
+  -- Track rax in s22 (unchanged)
+  s22-rax : readReg (regs s22) rax ≡ init-rsp ∸ 40
+  s22-rax = refl
+
+  -- Memory at new rsp (= init-rsp - 8) contains saved r14
+  -- r14 was 0 at the start
+  s22-mem-at-rsp : readMem (memory s22) (init-rsp ∸ 8) ≡ just 0
+  s22-mem-at-rsp = refl
+
+  -- Instruction 29: pop r14
+  s23 : State
+  s23 = record s22
+    { regs = writeReg (writeReg (regs s22) r14 0) rsp (readReg (regs s22) rsp +ℕ 8)
+    ; pc = pc s22 +ℕ 1
+    }
+
+  step-22 : step prog s22 ≡ just s23
+  step-22 = trans (step-exec prog s22 (pop r14) s22-halted prog-fetch-29)
+                  (execPop prog s22 r14 0 s22-mem-at-rsp)
+
+  s23-halted : halted s23 ≡ false
+  s23-halted = refl
+
+  s23-pc : pc s23 ≡ 30
+  s23-pc = refl
+
+  -- After pop r14: rsp = init-rsp
+  s23-rsp : readReg (regs s23) rsp ≡ init-rsp
+  s23-rsp = refl
+
+  s23-rax : readReg (regs s23) rax ≡ init-rsp ∸ 40
+  s23-rax = refl
+
   ------------------------------------------------------------------------
-  -- Phase 4: Composition connector (instruction 30, shifted +3 from old 27)
+  -- Phase 4: Composition connector (instruction 30)
   ------------------------------------------------------------------------
 
   -- Fetch proof for instruction 30
@@ -8528,27 +8543,27 @@ module E2E-Trace where
   prog-fetch-30 = refl
 
   -- Instruction 30: mov rdi, rax (pass pair to apply)
-  s21 : State
-  s21 = record s20
-    { regs = writeReg (regs s20) rdi (readReg (regs s20) rax)
-    ; pc = pc s20 +ℕ 1
+  s24 : State
+  s24 = record s23
+    { regs = writeReg (regs s23) rdi (readReg (regs s23) rax)
+    ; pc = pc s23 +ℕ 1
     }
 
-  step-20 : step prog s20 ≡ just s21
-  step-20 = trans (step-exec prog s20 (mov (reg rdi) (reg rax)) s20-halted prog-fetch-30)
-                  (execMov-reg-reg s20 rdi rax)
+  step-23 : step prog s23 ≡ just s24
+  step-23 = trans (step-exec prog s23 (mov (reg rdi) (reg rax)) s23-halted prog-fetch-30)
+                  (execMov-reg-reg s23 rdi rax)
 
-  s21-halted : halted s21 ≡ false
-  s21-halted = refl
+  s24-halted : halted s24 ≡ false
+  s24-halted = refl
 
-  s21-pc : pc s21 ≡ 31
-  s21-pc = refl
+  s24-pc : pc s24 ≡ 31
+  s24-pc = refl
 
-  s21-rdi : readReg (regs s21) rdi ≡ init-rsp ∸ 32
-  s21-rdi = refl
+  s24-rdi : readReg (regs s24) rdi ≡ init-rsp ∸ 40
+  s24-rdi = refl
 
   ------------------------------------------------------------------------
-  -- Phase 5: Apply setup (instructions 31-36, shifted +3 from old 28-33)
+  -- Phase 5: Apply (instructions 31-36)
   ------------------------------------------------------------------------
 
   -- Fetch proofs for apply instructions
@@ -8570,92 +8585,20 @@ module E2E-Trace where
   prog-fetch-36 : fetch prog 36 ≡ just (call (reg r15))
   prog-fetch-36 = refl
 
-  -- Memory at pair.fst (init-rsp - 32) contains closure address
-  s21-mem-pair-fst : readMem (memory s21) (init-rsp ∸ 32) ≡ just (init-rsp ∸ 48)
-  s21-mem-pair-fst = refl
+  -- Memory at pair.fst (init-rsp - 40) contains closure address (init-rsp - 56)
+  s24-mem-pair-fst : readMem (memory s24) (init-rsp ∸ 40) ≡ just (init-rsp ∸ 56)
+  s24-mem-pair-fst = refl
 
-  -- Instruction 28: mov r15, [rdi] (load closure from pair.fst)
-  s22 : State
-  s22 = record s21
-    { regs = writeReg (regs s21) r15 (init-rsp ∸ 48)
-    ; pc = pc s21 +ℕ 1
-    }
-
-  step-21 : step prog s21 ≡ just s22
-  step-21 = trans (step-exec prog s21 (mov (reg r15) (mem (base rdi))) s21-halted prog-fetch-28)
-                  (execMov-reg-mem prog s21 r15 (base rdi) (init-rsp ∸ 48) s21-mem-pair-fst)
-
-  s22-halted : halted s22 ≡ false
-  s22-halted = refl
-
-  s22-pc : pc s22 ≡ 29
-  s22-pc = refl
-
-  s22-r15 : readReg (regs s22) r15 ≡ init-rsp ∸ 48
-  s22-r15 = refl
-
-  -- Memory at pair.snd (init-rsp - 24) contains input-val
-  s22-mem-pair-snd : readMem (memory s22) (init-rsp ∸ 32 +ℕ 8) ≡ just input-val
-  s22-mem-pair-snd = refl
-
-  -- Instruction 29: mov rsi, [rdi+8] (load argument from pair.snd)
-  s23 : State
-  s23 = record s22
-    { regs = writeReg (regs s22) rsi input-val
-    ; pc = pc s22 +ℕ 1
-    }
-
-  step-22 : step prog s22 ≡ just s23
-  step-22 = trans (step-exec prog s22 (mov (reg rsi) (mem (base+disp rdi 8))) s22-halted prog-fetch-29)
-                  (execMov-reg-mem prog s22 rsi (base+disp rdi 8) input-val s22-mem-pair-snd)
-
-  s23-halted : halted s23 ≡ false
-  s23-halted = refl
-
-  s23-pc : pc s23 ≡ 30
-  s23-pc = refl
-
-  s23-rsi : readReg (regs s23) rsi ≡ input-val
-  s23-rsi = refl
-
-  -- Memory at closure.env (init-rsp - 48) contains input-val
-  s23-mem-closure-env : readMem (memory s23) (init-rsp ∸ 48) ≡ just input-val
-  s23-mem-closure-env = refl
-
-  -- Instruction 30: mov r12, [r15] (load env from closure.fst)
-  s24 : State
-  s24 = record s23
-    { regs = writeReg (regs s23) r12 input-val
-    ; pc = pc s23 +ℕ 1
-    }
-
-  step-23 : step prog s23 ≡ just s24
-  step-23 = trans (step-exec prog s23 (mov (reg r12) (mem (base r15))) s23-halted prog-fetch-30)
-                  (execMov-reg-mem prog s23 r12 (base r15) input-val s23-mem-closure-env)
-
-  s24-halted : halted s24 ≡ false
-  s24-halted = refl
-
-  s24-pc : pc s24 ≡ 31
-  s24-pc = refl
-
-  s24-r12 : readReg (regs s24) r12 ≡ input-val
-  s24-r12 = refl
-
-  -- Memory at closure.code-ptr (init-rsp - 40) contains 11
-  s24-mem-closure-ptr : readMem (memory s24) (init-rsp ∸ 48 +ℕ 8) ≡ just 11
-  s24-mem-closure-ptr = refl
-
-  -- Instruction 31: mov r15, [r15+8] (load code-ptr from closure.snd)
+  -- Instruction 31: mov r15, [rdi] (load closure from pair.fst)
   s25 : State
   s25 = record s24
-    { regs = writeReg (regs s24) r15 11
+    { regs = writeReg (regs s24) r15 (init-rsp ∸ 56)
     ; pc = pc s24 +ℕ 1
     }
 
   step-24 : step prog s24 ≡ just s25
-  step-24 = trans (step-exec prog s24 (mov (reg r15) (mem (base+disp r15 8))) s24-halted prog-fetch-31)
-                  (execMov-reg-mem prog s24 r15 (base+disp r15 8) 11 s24-mem-closure-ptr)
+  step-24 = trans (step-exec prog s24 (mov (reg r15) (mem (base rdi))) s24-halted prog-fetch-31)
+                  (execMov-reg-mem prog s24 r15 (base rdi) (init-rsp ∸ 56) s24-mem-pair-fst)
 
   s25-halted : halted s25 ≡ false
   s25-halted = refl
@@ -8663,23 +8606,23 @@ module E2E-Trace where
   s25-pc : pc s25 ≡ 32
   s25-pc = refl
 
-  s25-r15 : readReg (regs s25) r15 ≡ 11
+  s25-r15 : readReg (regs s25) r15 ≡ init-rsp ∸ 56
   s25-r15 = refl
 
-  -- Track rsi in s25
-  s25-rsi : readReg (regs s25) rsi ≡ input-val
-  s25-rsi = refl
+  -- Memory at pair.snd (init-rsp - 32) contains input-val
+  s25-mem-pair-snd : readMem (memory s25) (init-rsp ∸ 40 +ℕ 8) ≡ just input-val
+  s25-mem-pair-snd = refl
 
-  -- Instruction 32: mov rdi, rsi (move argument to rdi)
+  -- Instruction 32: mov rsi, [rdi+8] (load argument from pair.snd)
   s26 : State
   s26 = record s25
-    { regs = writeReg (regs s25) rdi (readReg (regs s25) rsi)
+    { regs = writeReg (regs s25) rsi input-val
     ; pc = pc s25 +ℕ 1
     }
 
   step-25 : step prog s25 ≡ just s26
-  step-25 = trans (step-exec prog s25 (mov (reg rdi) (reg rsi)) s25-halted prog-fetch-32)
-                  (execMov-reg-reg s25 rdi rsi)
+  step-25 = trans (step-exec prog s25 (mov (reg rsi) (mem (base+disp rdi 8))) s25-halted prog-fetch-32)
+                  (execMov-reg-mem prog s25 rsi (base+disp rdi 8) input-val s25-mem-pair-snd)
 
   s26-halted : halted s26 ≡ false
   s26-halted = refl
@@ -8687,49 +8630,121 @@ module E2E-Trace where
   s26-pc : pc s26 ≡ 33
   s26-pc = refl
 
-  s26-rdi : readReg (regs s26) rdi ≡ input-val
-  s26-rdi = refl
+  s26-rsi : readReg (regs s26) rsi ≡ input-val
+  s26-rsi = refl
 
-  s26-r12 : readReg (regs s26) r12 ≡ input-val
-  s26-r12 = refl
+  -- Memory at closure.env (init-rsp - 56) contains input-val (saved rdi at curry time)
+  s26-mem-closure-env : readMem (memory s26) (init-rsp ∸ 56) ≡ just input-val
+  s26-mem-closure-env = refl
 
-  s26-r15 : readReg (regs s26) r15 ≡ 11
-  s26-r15 = refl
-
-  ------------------------------------------------------------------------
-  -- Phase 6: Apply call (instruction 33) - JUMPS TO THUNK!
-  ------------------------------------------------------------------------
-
-  -- Instruction 33: call r15 (jumps to position 11 = thunk entry!)
-  -- call reads r15 (= 11) and jumps there
+  -- Instruction 33: mov r12, [r15] (load env from closure.fst)
   s27 : State
-  s27 = record s26 { pc = 11 }
+  s27 = record s26
+    { regs = writeReg (regs s26) r12 input-val
+    ; pc = pc s26 +ℕ 1
+    }
 
   step-26 : step prog s26 ≡ just s27
-  step-26 = trans (step-exec prog s26 (call (reg r15)) s26-halted prog-fetch-33)
-                  (execCall-reg prog s26 r15)
+  step-26 = trans (step-exec prog s26 (mov (reg r12) (mem (base r15))) s26-halted prog-fetch-33)
+                  (execMov-reg-mem prog s26 r12 (base r15) input-val s26-mem-closure-env)
 
   s27-halted : halted s27 ≡ false
   s27-halted = refl
 
-  s27-pc : pc s27 ≡ 11
+  s27-pc : pc s27 ≡ 34
   s27-pc = refl
-
-  ------------------------------------------------------------------------
-  -- Phase 7: Thunk execution (instructions 11-17)
-  ------------------------------------------------------------------------
-
-  -- Track rsp, r12, rdi entering thunk
-  s27-rsp : readReg (regs s27) rsp ≡ init-rsp ∸ 16
-  s27-rsp = refl
 
   s27-r12 : readReg (regs s27) r12 ≡ input-val
   s27-r12 = refl
 
-  s27-rdi : readReg (regs s27) rdi ≡ input-val
-  s27-rdi = refl
+  -- Memory at closure.code-ptr (init-rsp - 48) contains 13 (thunk entry)
+  s27-mem-closure-ptr : readMem (memory s27) (init-rsp ∸ 56 +ℕ 8) ≡ just 13
+  s27-mem-closure-ptr = refl
 
-  -- Fetch proofs for thunk instructions (positions 13-19, shifted +2 from old 11-17)
+  -- Instruction 34: mov r15, [r15+8] (load code-ptr from closure.snd)
+  s28 : State
+  s28 = record s27
+    { regs = writeReg (regs s27) r15 13
+    ; pc = pc s27 +ℕ 1
+    }
+
+  step-27 : step prog s27 ≡ just s28
+  step-27 = trans (step-exec prog s27 (mov (reg r15) (mem (base+disp r15 8))) s27-halted prog-fetch-34)
+                  (execMov-reg-mem prog s27 r15 (base+disp r15 8) 13 s27-mem-closure-ptr)
+
+  s28-halted : halted s28 ≡ false
+  s28-halted = refl
+
+  s28-pc : pc s28 ≡ 35
+  s28-pc = refl
+
+  s28-r15 : readReg (regs s28) r15 ≡ 13
+  s28-r15 = refl
+
+  -- Track rsi in s28 (unchanged)
+  s28-rsi : readReg (regs s28) rsi ≡ input-val
+  s28-rsi = refl
+
+  -- Instruction 35: mov rdi, rsi (move argument to rdi)
+  s29 : State
+  s29 = record s28
+    { regs = writeReg (regs s28) rdi (readReg (regs s28) rsi)
+    ; pc = pc s28 +ℕ 1
+    }
+
+  step-28 : step prog s28 ≡ just s29
+  step-28 = trans (step-exec prog s28 (mov (reg rdi) (reg rsi)) s28-halted prog-fetch-35)
+                  (execMov-reg-reg s28 rdi rsi)
+
+  s29-halted : halted s29 ≡ false
+  s29-halted = refl
+
+  s29-pc : pc s29 ≡ 36
+  s29-pc = refl
+
+  s29-rdi : readReg (regs s29) rdi ≡ input-val
+  s29-rdi = refl
+
+  s29-r12 : readReg (regs s29) r12 ≡ input-val
+  s29-r12 = refl
+
+  s29-r15 : readReg (regs s29) r15 ≡ 13
+  s29-r15 = refl
+
+  ------------------------------------------------------------------------
+  -- Phase 6: Apply call (instruction 36) - JUMPS TO THUNK!
+  ------------------------------------------------------------------------
+
+  -- Instruction 36: call r15 (jumps to position 13 = thunk entry!)
+  -- call reads r15 (= 13) and jumps there
+  s30 : State
+  s30 = record s29 { pc = 13 }
+
+  step-29 : step prog s29 ≡ just s30
+  step-29 = trans (step-exec prog s29 (call (reg r15)) s29-halted prog-fetch-36)
+                  (execCall-reg prog s29 r15)
+
+  s30-halted : halted s30 ≡ false
+  s30-halted = refl
+
+  s30-pc : pc s30 ≡ 13
+  s30-pc = refl
+
+  ------------------------------------------------------------------------
+  -- Phase 7: Thunk execution (instructions 13-19)
+  ------------------------------------------------------------------------
+
+  -- Track rsp, r12, rdi entering thunk
+  s30-rsp : readReg (regs s30) rsp ≡ init-rsp
+  s30-rsp = refl
+
+  s30-r12 : readReg (regs s30) r12 ≡ input-val
+  s30-r12 = refl
+
+  s30-rdi : readReg (regs s30) rdi ≡ input-val
+  s30-rdi = refl
+
+  -- Fetch proofs for thunk instructions (positions 13-19)
   prog-fetch-13 : fetch prog 13 ≡ just (label 6)
   prog-fetch-13 = refl
 
@@ -8751,124 +8766,149 @@ module E2E-Trace where
   prog-fetch-19 : fetch prog 19 ≡ just ret
   prog-fetch-19 = refl
 
-  -- Instruction 13: label 6 (thunk entry, no-op, shifted +2 from old position 11)
-  s28 : State
-  s28 = record s27 { pc = pc s27 +ℕ 1 }
-
-  step-27 : step prog s27 ≡ just s28
-  step-27 = trans (step-exec prog s27 (label 6) s27-halted prog-fetch-13) (execLabel prog s27 6)
-
-  s28-halted : halted s28 ≡ false
-  s28-halted = refl
-
-  s28-pc : pc s28 ≡ 12
-  s28-pc = refl
-
-  -- Instruction 12: sub rsp, 16 (allocate thunk pair)
-  s29 : State
-  s29 = record s28
-    { regs = writeReg (regs s28) rsp (readReg (regs s28) rsp ∸ 16)
-    ; pc = pc s28 +ℕ 1
-    ; flags = updateFlags (readReg (regs s28) rsp ∸ 16) (readReg (regs s28) rsp)
-    }
-
-  step-28 : step prog s28 ≡ just s29
-  step-28 = trans (step-exec prog s28 (sub (reg rsp) (imm 16)) s28-halted prog-fetch-12)
-                  (execSub-reg-imm prog s28 rsp 16)
-
-  s29-halted : halted s29 ≡ false
-  s29-halted = refl
-
-  s29-pc : pc s29 ≡ 13
-  s29-pc = refl
-
-  s29-rsp : readReg (regs s29) rsp ≡ init-rsp ∸ 32
-  s29-rsp = refl
-
-  -- Instruction 13: mov [rsp], r12 (store env in pair.fst)
-  s30 : State
-  s30 = record s29
-    { memory = writeMem (memory s29) (readReg (regs s29) rsp) (readReg (regs s29) r12)
-    ; pc = pc s29 +ℕ 1
-    }
-
-  step-29 : step prog s29 ≡ just s30
-  step-29 = trans (step-exec prog s29 (mov (mem (base rsp)) (reg r12)) s29-halted prog-fetch-13)
-                  (execMov-mem-base-reg prog s29 rsp r12)
-
-  s30-halted : halted s30 ≡ false
-  s30-halted = refl
-
-  s30-pc : pc s30 ≡ 14
-  s30-pc = refl
-
-  -- Instruction 14: mov [rsp+8], rdi (store arg in pair.snd)
+  -- Instruction 13: label 6 (thunk entry, no-op)
   s31 : State
-  s31 = record s30
-    { memory = writeMem (memory s30) (readReg (regs s30) rsp +ℕ 8) (readReg (regs s30) rdi)
-    ; pc = pc s30 +ℕ 1
-    }
+  s31 = record s30 { pc = pc s30 +ℕ 1 }
 
   step-30 : step prog s30 ≡ just s31
-  step-30 = trans (step-exec prog s30 (mov (mem (base+disp rsp 8)) (reg rdi)) s30-halted prog-fetch-14)
-                  (execMov-mem-disp-reg prog s30 rsp rdi 8)
+  step-30 = trans (step-exec prog s30 (label 6) s30-halted prog-fetch-13) (execLabel prog s30 6)
 
   s31-halted : halted s31 ≡ false
   s31-halted = refl
 
-  s31-pc : pc s31 ≡ 15
+  s31-pc : pc s31 ≡ 14
   s31-pc = refl
 
-  -- Instruction 15: mov rdi, rsp (rdi = pair pointer)
+  -- Track rsp, r12, rdi in s31 (unchanged from s30)
+  s31-rsp : readReg (regs s31) rsp ≡ init-rsp
+  s31-rsp = refl
+
+  s31-r12 : readReg (regs s31) r12 ≡ input-val
+  s31-r12 = refl
+
+  s31-rdi : readReg (regs s31) rdi ≡ input-val
+  s31-rdi = refl
+
+  -- Instruction 14: sub rsp, 16 (allocate thunk pair)
   s32 : State
   s32 = record s31
-    { regs = writeReg (regs s31) rdi (readReg (regs s31) rsp)
+    { regs = writeReg (regs s31) rsp (readReg (regs s31) rsp ∸ 16)
     ; pc = pc s31 +ℕ 1
+    ; flags = updateFlags (readReg (regs s31) rsp ∸ 16) (readReg (regs s31) rsp)
     }
 
   step-31 : step prog s31 ≡ just s32
-  step-31 = trans (step-exec prog s31 (mov (reg rdi) (reg rsp)) s31-halted prog-fetch-15)
-                  (execMov-reg-reg s31 rdi rsp)
+  step-31 = trans (step-exec prog s31 (sub (reg rsp) (imm 16)) s31-halted prog-fetch-14)
+                  (execSub-reg-imm prog s31 rsp 16)
 
   s32-halted : halted s32 ≡ false
   s32-halted = refl
 
-  s32-pc : pc s32 ≡ 16
+  s32-pc : pc s32 ≡ 15
   s32-pc = refl
 
-  s32-rdi : readReg (regs s32) rdi ≡ init-rsp ∸ 32
+  s32-rsp : readReg (regs s32) rsp ≡ init-rsp ∸ 16
+  s32-rsp = refl
+
+  s32-r12 : readReg (regs s32) r12 ≡ input-val
+  s32-r12 = refl
+
+  s32-rdi : readReg (regs s32) rdi ≡ input-val
   s32-rdi = refl
 
-  -- Memory at pair.fst (rdi = init-rsp - 32) contains r12 = input-val
-  s32-mem-pair-fst : readMem (memory s32) (init-rsp ∸ 32) ≡ just input-val
-  s32-mem-pair-fst = refl
-
-  -- Instruction 16: mov rax, [rdi] (fst - loads env = input!)
+  -- Instruction 15: mov [rsp], r12 (store env in pair.fst)
   s33 : State
   s33 = record s32
-    { regs = writeReg (regs s32) rax input-val
+    { memory = writeMem (memory s32) (readReg (regs s32) rsp) (readReg (regs s32) r12)
     ; pc = pc s32 +ℕ 1
     }
 
   step-32 : step prog s32 ≡ just s33
-  step-32 = trans (step-exec prog s32 (mov (reg rax) (mem (base rdi))) s32-halted prog-fetch-16)
-                  (execMov-reg-mem prog s32 rax (base rdi) input-val s32-mem-pair-fst)
+  step-32 = trans (step-exec prog s32 (mov (mem (base rsp)) (reg r12)) s32-halted prog-fetch-15)
+                  (execMov-mem-base-reg prog s32 rsp r12)
 
   s33-halted : halted s33 ≡ false
   s33-halted = refl
 
-  s33-pc : pc s33 ≡ 17
+  s33-pc : pc s33 ≡ 16
   s33-pc = refl
 
-  s33-rax : readReg (regs s33) rax ≡ input-val
-  s33-rax = refl
+  s33-rsp : readReg (regs s33) rsp ≡ init-rsp ∸ 16
+  s33-rsp = refl
 
-  -- Instruction 17: ret (halts execution)
+  s33-rdi : readReg (regs s33) rdi ≡ input-val
+  s33-rdi = refl
+
+  -- Instruction 16: mov [rsp+8], rdi (store arg in pair.snd)
+  s34 : State
+  s34 = record s33
+    { memory = writeMem (memory s33) (readReg (regs s33) rsp +ℕ 8) (readReg (regs s33) rdi)
+    ; pc = pc s33 +ℕ 1
+    }
+
+  step-33 : step prog s33 ≡ just s34
+  step-33 = trans (step-exec prog s33 (mov (mem (base+disp rsp 8)) (reg rdi)) s33-halted prog-fetch-16)
+                  (execMov-mem-disp-reg prog s33 rsp rdi 8)
+
+  s34-halted : halted s34 ≡ false
+  s34-halted = refl
+
+  s34-pc : pc s34 ≡ 17
+  s34-pc = refl
+
+  s34-rsp : readReg (regs s34) rsp ≡ init-rsp ∸ 16
+  s34-rsp = refl
+
+  -- Instruction 17: mov rdi, rsp (rdi = pair pointer)
+  s35 : State
+  s35 = record s34
+    { regs = writeReg (regs s34) rdi (readReg (regs s34) rsp)
+    ; pc = pc s34 +ℕ 1
+    }
+
+  step-34 : step prog s34 ≡ just s35
+  step-34 = trans (step-exec prog s34 (mov (reg rdi) (reg rsp)) s34-halted prog-fetch-17)
+                  (execMov-reg-reg s34 rdi rsp)
+
+  s35-halted : halted s35 ≡ false
+  s35-halted = refl
+
+  s35-pc : pc s35 ≡ 18
+  s35-pc = refl
+
+  s35-rdi : readReg (regs s35) rdi ≡ init-rsp ∸ 16
+  s35-rdi = refl
+
+  -- Memory at pair.fst (rdi = init-rsp - 16) contains r12 = input-val
+  s35-mem-pair-fst : readMem (memory s35) (init-rsp ∸ 16) ≡ just input-val
+  s35-mem-pair-fst = refl
+
+  -- Instruction 18: mov rax, [rdi] (fst - loads env = input!)
+  s36 : State
+  s36 = record s35
+    { regs = writeReg (regs s35) rax input-val
+    ; pc = pc s35 +ℕ 1
+    }
+
+  step-35 : step prog s35 ≡ just s36
+  step-35 = trans (step-exec prog s35 (mov (reg rax) (mem (base rdi))) s35-halted prog-fetch-18)
+                  (execMov-reg-mem prog s35 rax (base rdi) input-val s35-mem-pair-fst)
+
+  s36-halted : halted s36 ≡ false
+  s36-halted = refl
+
+  s36-pc : pc s36 ≡ 19
+  s36-pc = refl
+
+  s36-rax : readReg (regs s36) rax ≡ input-val
+  s36-rax = refl
+
+  -- Instruction 19: ret (halts execution)
   s-final : State
-  s-final = record s33 { halted = true }
+  s-final = record s36 { halted = true }
 
-  step-33 : step prog s33 ≡ just s-final
-  step-33 = trans (step-exec prog s33 ret s33-halted prog-fetch-17) (execRet prog s33)
+  step-36 : step prog s36 ≡ just s-final
+  step-36 = trans (step-exec prog s36 ret s36-halted prog-fetch-19) (execRet prog s36)
 
   s-final-halted : halted s-final ≡ true
   s-final-halted = refl
@@ -8880,7 +8920,7 @@ module E2E-Trace where
   -- Final theorem: E2E correctness
   ------------------------------------------------------------------------
 
-  -- Chain all 34 steps together using exec
+  -- Chain all 37 steps together using exec
   -- We need a chain lemma or we build it step by step
 
   -- Helper: chain two steps
@@ -8915,46 +8955,47 @@ module E2E-Trace where
     with halted s2 | h2-true
   exec-chain-halt prog s1 s2 refl refl | just .s2 | true | refl = refl
 
-  -- Build the chain of 34 execution steps
-  -- We use an internal postulate to avoid explicit large chain construction
+  -- Build the chain of 37 execution steps
   -- The individual step proofs above guarantee each step succeeds
-  exec-all : exec 34 prog s0 ≡ just s-final
+  exec-all : exec 37 prog s0 ≡ just s-final
   exec-all =
-    exec-chain-2 33 prog s0 s1 s-final step-0 s1-halted
-      (exec-chain-2 32 prog s1 s2 s-final step-1 s2-halted
-        (exec-chain-2 31 prog s2 s3 s-final step-2 s3-halted
-          (exec-chain-2 30 prog s3 s4 s-final step-3 s4-halted
-            (exec-chain-2 29 prog s4 s5 s-final step-4 s5-halted
-              (exec-chain-2 28 prog s5 s6 s-final step-5 s6-halted
-                (exec-chain-2 27 prog s6 s7 s-final step-6 s7-halted
-                  (exec-chain-2 26 prog s7 s8 s-final step-7 s8-halted
-                    (exec-chain-2 25 prog s8 s9 s-final step-8 s9-halted
-                      (exec-chain-2 24 prog s9 s10 s-final step-9 s10-halted
-                        (exec-chain-2 23 prog s10 s11 s-final step-10 s11-halted
-                          (exec-chain-2 22 prog s11 s12 s-final step-11 s12-halted
-                            (exec-chain-2 21 prog s12 s13 s-final step-12 s13-halted
-                              (exec-chain-2 20 prog s13 s14 s-final step-13 s14-halted
-                                (exec-chain-2 19 prog s14 s15 s-final step-14 s15-halted
-                                  (exec-chain-2 18 prog s15 s16 s-final step-15 s16-halted
-                                    (exec-chain-2 17 prog s16 s17 s-final step-16 s17-halted
-                                      (exec-chain-2 16 prog s17 s18 s-final step-17 s18-halted
-                                        (exec-chain-2 15 prog s18 s19 s-final step-18 s19-halted
-                                          (exec-chain-2 14 prog s19 s20 s-final step-19 s20-halted
-                                            (exec-chain-2 13 prog s20 s21 s-final step-20 s21-halted
-                                              (exec-chain-2 12 prog s21 s22 s-final step-21 s22-halted
-                                                (exec-chain-2 11 prog s22 s23 s-final step-22 s23-halted
-                                                  (exec-chain-2 10 prog s23 s24 s-final step-23 s24-halted
-                                                    (exec-chain-2 9 prog s24 s25 s-final step-24 s25-halted
-                                                      (exec-chain-2 8 prog s25 s26 s-final step-25 s26-halted
-                                                        (exec-chain-2 7 prog s26 s27 s-final step-26 s27-halted
-                                                          (exec-chain-2 6 prog s27 s28 s-final step-27 s28-halted
-                                                            (exec-chain-2 5 prog s28 s29 s-final step-28 s29-halted
-                                                              (exec-chain-2 4 prog s29 s30 s-final step-29 s30-halted
-                                                                (exec-chain-2 3 prog s30 s31 s-final step-30 s31-halted
-                                                                  (exec-chain-2 2 prog s31 s32 s-final step-31 s32-halted
-                                                                    (exec-chain-2 1 prog s32 s33 s-final step-32 s33-halted
-                                                                      (exec-chain-halt prog s33 s-final step-33 s-final-halted)
-                                                                    ))))))))))))))))))))))))))))))))
+    exec-chain-2 36 prog s0 s1 s-final step-0 s1-halted
+      (exec-chain-2 35 prog s1 s2 s-final step-1 s2-halted
+        (exec-chain-2 34 prog s2 s3 s-final step-2 s3-halted
+          (exec-chain-2 33 prog s3 s4 s-final step-3 s4-halted
+            (exec-chain-2 32 prog s4 s5 s-final step-4 s5-halted
+              (exec-chain-2 31 prog s5 s6 s-final step-5 s6-halted
+                (exec-chain-2 30 prog s6 s7 s-final step-6 s7-halted
+                  (exec-chain-2 29 prog s7 s8 s-final step-7 s8-halted
+                    (exec-chain-2 28 prog s8 s9 s-final step-8 s9-halted
+                      (exec-chain-2 27 prog s9 s10 s-final step-9 s10-halted
+                        (exec-chain-2 26 prog s10 s11 s-final step-10 s11-halted
+                          (exec-chain-2 25 prog s11 s12 s-final step-11 s12-halted
+                            (exec-chain-2 24 prog s12 s13 s-final step-12 s13-halted
+                              (exec-chain-2 23 prog s13 s14 s-final step-13 s14-halted
+                                (exec-chain-2 22 prog s14 s15 s-final step-14 s15-halted
+                                  (exec-chain-2 21 prog s15 s16 s-final step-15 s16-halted
+                                    (exec-chain-2 20 prog s16 s17 s-final step-16 s17-halted
+                                      (exec-chain-2 19 prog s17 s18 s-final step-17 s18-halted
+                                        (exec-chain-2 18 prog s18 s19 s-final step-18 s19-halted
+                                          (exec-chain-2 17 prog s19 s20 s-final step-19 s20-halted
+                                            (exec-chain-2 16 prog s20 s21 s-final step-20 s21-halted
+                                              (exec-chain-2 15 prog s21 s22 s-final step-21 s22-halted
+                                                (exec-chain-2 14 prog s22 s23 s-final step-22 s23-halted
+                                                  (exec-chain-2 13 prog s23 s24 s-final step-23 s24-halted
+                                                    (exec-chain-2 12 prog s24 s25 s-final step-24 s25-halted
+                                                      (exec-chain-2 11 prog s25 s26 s-final step-25 s26-halted
+                                                        (exec-chain-2 10 prog s26 s27 s-final step-26 s27-halted
+                                                          (exec-chain-2 9 prog s27 s28 s-final step-27 s28-halted
+                                                            (exec-chain-2 8 prog s28 s29 s-final step-28 s29-halted
+                                                              (exec-chain-2 7 prog s29 s30 s-final step-29 s30-halted
+                                                                (exec-chain-2 6 prog s30 s31 s-final step-30 s31-halted
+                                                                  (exec-chain-2 5 prog s31 s32 s-final step-31 s32-halted
+                                                                    (exec-chain-2 4 prog s32 s33 s-final step-32 s33-halted
+                                                                      (exec-chain-2 3 prog s33 s34 s-final step-33 s34-halted
+                                                                        (exec-chain-2 2 prog s34 s35 s-final step-34 s35-halted
+                                                                          (exec-chain-2 1 prog s35 s36 s-final step-35 s36-halted
+                                                                            (exec-chain-halt prog s36 s-final step-36 s-final-halted))))))))))))))))))))))))))))))))))))
 
   -- The main theorem: running the compiled program produces correct result
   e2e-correct : ∃[ s ] (run prog s0 ≡ just s
@@ -8962,11 +9003,11 @@ module E2E-Trace where
                       × readReg (regs s) rax ≡ input-val)
   e2e-correct = s-final , run-eq , s-final-halted , s-final-rax
     where
-      -- run uses 10000 steps of fuel, which is more than enough for 34 steps
-      -- exec 34 prog s0 ≡ just s-final, and s-final is halted
+      -- run uses 10000 steps of fuel, which is more than enough for 37 steps
+      -- exec 37 prog s0 ≡ just s-final, and s-final is halted
       -- So exec 10000 prog s0 ≡ just s-final as well
       run-eq : run prog s0 ≡ just s-final
-      run-eq = exec-extends 34 9966 prog s0 s-final exec-all s-final-halted
+      run-eq = exec-extends 37 9963 prog s0 s-final exec-all s-final-halted
         where
           -- Helper: if exec n terminates with halted state, exec (n + m) gives same result
           exec-extends : ∀ n m prog s s' →
@@ -8983,4 +9024,3 @@ module E2E-Trace where
             exec-extends n m prog s'' s' eq halted-s'
 
 -- End of E2E-Trace module
--}
