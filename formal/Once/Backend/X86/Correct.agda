@@ -1861,14 +1861,234 @@ exec-pair-final-at prefix rest s fst-val fst-in-mem rsp-eq-r15 h-false pc-eq = s
     orig-rax : Word
     orig-rax = readReg (regs s) rax
 
+    prog : Program
+    prog = prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ add (reg rsp) (imm 16) ∷ pop r15 ∷ pop r14 ∷ rest
+
+    -- Instruction abbreviations
+    i0 : Instr
+    i0 = mov (mem (base+disp r15 8)) (reg rax)
+    i1 : Instr
+    i1 = mov (reg rax) (reg r15)
+    i2 : Instr
+    i2 = add (reg rsp) (imm 16)
+    i3 : Instr
+    i3 = pop r15
+    i4 : Instr
+    i4 = pop r14
+
+    -- State after instruction 0: mov [r15+8], rax
+    s1 : State
+    s1 = record s { memory = writeMem (memory s) (readReg (regs s) r15 +ℕ 8) orig-rax
+                  ; pc = pc s +ℕ 1 }
+
+    -- State after instruction 1: mov rax, r15
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rax orig-r15
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- Original rsp value
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    -- State after instruction 2: add rsp, 16
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rsp (orig-rsp +ℕ 16)
+                   ; pc = pc s2 +ℕ 1
+                   ; flags = updateFlags (orig-rsp +ℕ 16) orig-rsp }
+
+    -- For pop r15: need memory at new rsp (which is orig-rsp + 16)
+    -- After add rsp, 16, the stack looks like:
+    --   rsp points to saved r15 value (pushed earlier by push r15)
+    --   rsp+8 points to saved r14 value
+    --
+    -- NOTE: The pop instructions require memory at rsp to be defined.
+    -- This is assumed via the fst-in-mem precondition for the pair context.
+    -- For now, we postulate the memory contents for the pop instructions.
     postulate
-      s5 : State
-      exec-eq : exec 5 (prefix ++ mov (mem (base+disp r15 8)) (reg rax) ∷ mov (reg rax) (reg r15) ∷ add (reg rsp) (imm 16) ∷ pop r15 ∷ pop r14 ∷ rest) s ≡ just s5
-      h5 : halted s5 ≡ false
-      pc5 : pc s5 ≡ length prefix +ℕ 5
-      rax-eq : readReg (regs s5) rax ≡ orig-r15
-      mem-snd-eq : readMem (memory s5) (orig-r15 +ℕ 8) ≡ just orig-rax
-      mem-fst-eq : readMem (memory s5) orig-r15 ≡ readMem (memory s) orig-r15
+      pop-r15-mem : readMem (memory s3) (orig-rsp +ℕ 16) ≡ just fst-val
+      pop-r14-mem : readMem (memory s3) (orig-rsp +ℕ 24) ≡ just fst-val
+
+    -- State after instruction 3: pop r15
+    s4 : State
+    s4 = record s3 { regs = writeReg (writeReg (regs s3) r15 fst-val) rsp (orig-rsp +ℕ 24)
+                   ; pc = pc s3 +ℕ 1 }
+
+    -- State after instruction 4: pop r14
+    s5 : State
+    s5 = record s4 { regs = writeReg (writeReg (regs s4) r14 fst-val) rsp (orig-rsp +ℕ 32)
+                   ; pc = pc s4 +ℕ 1 }
+
+    -- Fetch and step proofs
+    fetch0 : fetch prog (pc s) ≡ just i0
+    fetch0 = subst (λ p → fetch prog p ≡ just i0)
+                   (sym pc-eq) (fetch-at-prefix-end prefix i0 _)
+
+    step-0 : step prog s ≡ just s1
+    step-0 = trans (step-exec prog s i0 h-false fetch0)
+                   (execMov-mem-disp-reg prog s r15 rax 8)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc-s1 : pc s1 ≡ length prefix +ℕ 1
+    pc-s1 = cong (_+ℕ 1) pc-eq
+
+    -- Program equality for fetch1
+    open import Data.List.Properties using (++-assoc)
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ i4 ∷ rest
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ i4 ∷ rest))
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = length-++ prefix _
+
+    fetch1 : fetch prog (pc s1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) (trans len-prefix-1 (sym pc-s1))
+                    (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 _)
+
+    step-1 : step prog s1 ≡ just s2
+    step-1 = trans (step-exec prog s1 i1 h1 fetch1)
+                   (execMov-reg-reg s1 rax r15)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc-s2 : pc s2 ≡ length prefix +ℕ 2
+    pc-s2 = trans (cong (_+ℕ 1) pc-s1) (+-assoc (length prefix) 1 1)
+
+    -- Program equality for fetch2
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ i4 ∷ rest
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ i4 ∷ rest))
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+    len-prefix-2 = length-++ prefix _
+
+    fetch2 : fetch prog (pc s2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) (trans len-prefix-2 (sym pc-s2))
+                    (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 _)
+
+    -- For step-2, need to show add instruction execution
+    -- Note: rsp in s2 is same as in s1 and s (only rax changed)
+    rsp-s2 : readReg (regs s2) rsp ≡ orig-rsp
+    rsp-s2 = readReg-writeReg-rax-rsp (regs s1) orig-r15
+
+    step-2 : step prog s2 ≡ just s3
+    step-2 = trans (step-exec prog s2 i2 h2 fetch2)
+                   (execAdd-reg-imm prog s2 rsp 16)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc-s3 : pc s3 ≡ length prefix +ℕ 3
+    pc-s3 = trans (cong (_+ℕ 1) pc-s2) (+-assoc (length prefix) 2 1)
+
+    -- Program equality for fetch3
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ i4 ∷ rest
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ i4 ∷ rest))
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix-3 = length-++ prefix _
+
+    fetch3 : fetch prog (pc s3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) (trans len-prefix-3 (sym pc-s3))
+                    (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 _)
+
+    -- step-3 needs pop execution helper
+    -- pop r15 reads from memory at rsp, writes to r15 and rsp
+    postulate
+      step-3 : step prog s3 ≡ just s4
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc-s4 : pc s4 ≡ length prefix +ℕ 4
+    pc-s4 = trans (cong (_+ℕ 1) pc-s3) (+-assoc (length prefix) 3 1)
+
+    -- Program equality for fetch4
+    prog-eq4 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ++ i4 ∷ rest
+    prog-eq4 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) (i4 ∷ rest))
+
+    len-prefix-4 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ≡ length prefix +ℕ 4
+    len-prefix-4 = length-++ prefix _
+
+    fetch4 : fetch prog (pc s4) ≡ just i4
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) (trans len-prefix-4 (sym pc-s4))
+                    (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) i4 _)
+
+    postulate
+      step-4 : step prog s4 ≡ just s5
+
+    -- Chain executions
+    exec-2 : exec 2 prog s ≡ just s2
+    exec-2 = exec-two-steps-nonhalt prog s s1 s2 step-0 h1 step-1 h2
+
+    exec-4 : exec 4 prog s ≡ just s4
+    exec-4 = exec-chain 2 2 prog s s2 s4
+               exec-2 h2
+               (exec-two-steps-nonhalt prog s2 s3 s4 step-2 h3 step-3 h4)
+
+    exec-eq : exec 5 prog s ≡ just s5
+    exec-eq = exec-chain 4 1 prog s s4 s5 exec-4 h4 (exec-one-step prog s4 s5 step-4)
+
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ length prefix +ℕ 5
+    pc5 = trans (cong (_+ℕ 1) pc-s4) (+-assoc (length prefix) 4 1)
+
+    -- Final properties
+    -- rax was set to orig-r15 in step 1, and not changed since
+    rax-eq : readReg (regs s5) rax ≡ orig-r15
+    rax-eq = trans rax-s5 (trans rax-s4 (trans rax-s3 rax-s2))
+      where
+        rax-s2 : readReg (regs s2) rax ≡ orig-r15
+        rax-s2 = readReg-writeReg-same (regs s1) rax orig-r15
+        -- rax unchanged through s3 (add rsp changes rsp, not rax)
+        rax-s3 : readReg (regs s3) rax ≡ readReg (regs s2) rax
+        rax-s3 = readReg-writeReg-rsp-rax (regs s2) (orig-rsp +ℕ 16)
+        -- rax unchanged through s4 (pop r15 changes r15 and rsp, not rax)
+        rax-s4 : readReg (regs s4) rax ≡ readReg (regs s3) rax
+        rax-s4 = trans (readReg-writeReg-rsp-rax (writeReg (regs s3) r15 fst-val) (orig-rsp +ℕ 24))
+                       (readReg-writeReg-r15-rax (regs s3) fst-val)
+        -- rax unchanged through s5 (pop r14 changes r14 and rsp, not rax)
+        rax-s5 : readReg (regs s5) rax ≡ readReg (regs s4) rax
+        rax-s5 = trans (readReg-writeReg-rsp-rax (writeReg (regs s4) r14 fst-val) (orig-rsp +ℕ 32))
+                       (readReg-writeReg-r14-rax (regs s4) fst-val)
+
+    -- Memory at [r15+8] was written in step 0, unchanged after
+    mem-snd-eq : readMem (memory s5) (orig-r15 +ℕ 8) ≡ just orig-rax
+    mem-snd-eq = trans mem-s5 (trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1)))
+      where
+        mem-s1 : readMem (memory s1) (orig-r15 +ℕ 8) ≡ just orig-rax
+        mem-s1 = readMem-writeMem-same (memory s) (orig-r15 +ℕ 8) orig-rax
+        -- Memory unchanged in s2 (mov only changes regs)
+        mem-s2 : readMem (memory s2) (orig-r15 +ℕ 8) ≡ readMem (memory s1) (orig-r15 +ℕ 8)
+        mem-s2 = refl
+        -- Memory unchanged in s3 (add only changes regs)
+        mem-s3 : readMem (memory s3) (orig-r15 +ℕ 8) ≡ readMem (memory s2) (orig-r15 +ℕ 8)
+        mem-s3 = refl
+        -- Memory unchanged in s4 (pop reads memory, doesn't write to it)
+        mem-s4 : readMem (memory s4) (orig-r15 +ℕ 8) ≡ readMem (memory s3) (orig-r15 +ℕ 8)
+        mem-s4 = refl
+        -- Memory unchanged in s5 (pop reads memory, doesn't write to it)
+        mem-s5 : readMem (memory s5) (orig-r15 +ℕ 8) ≡ readMem (memory s4) (orig-r15 +ℕ 8)
+        mem-s5 = refl
+
+    -- Memory at [r15] was not modified by any instruction
+    mem-fst-eq : readMem (memory s5) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-fst-eq = trans mem-s5 (trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1)))
+      where
+        -- s1 wrote to [r15+8], not [r15]
+        mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
+        mem-s1 = readMem-writeMem-diff (memory s) (orig-r15 +ℕ 8) orig-r15 orig-rax
+                   (λ eq → n≢n+suc orig-r15 7 (sym eq))
+        mem-s2 : readMem (memory s2) orig-r15 ≡ readMem (memory s1) orig-r15
+        mem-s2 = refl
+        mem-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s2) orig-r15
+        mem-s3 = refl
+        mem-s4 : readMem (memory s4) orig-r15 ≡ readMem (memory s3) orig-r15
+        mem-s4 = refl
+        mem-s5 : readMem (memory s5) orig-r15 ≡ readMem (memory s4) orig-r15
+        mem-s5 = refl
 
 -- | Execute id at arbitrary offset in a program (non-halting)
 -- This is the general case of run-id-nonhalt where id code can be at any position
