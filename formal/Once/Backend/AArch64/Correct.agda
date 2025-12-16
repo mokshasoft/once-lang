@@ -19,8 +19,7 @@ module Once.Backend.AArch64.Correct where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap)
-open ⟦Fix⟧
+open import Once.Semantics
 
 open import Once.Backend.AArch64.Syntax
 open import Once.Backend.AArch64.Semantics
@@ -2126,19 +2125,66 @@ run-inl-program s a-enc h-false pc-eq x0-eq =
   in trans run-eq (cong just s₅-eq)
 
 -- | inl generator proof
--- Postulated due to Agda's inability to pattern match on ⟦ A ⟧
--- The proof structure is:
---   1. Use run-inl-program for multi-instruction execution
---   2. Use inl-final-x0/tag/val for state properties
---   3. Use encode-inl-construct to link to semantics
-postulate
-  run-generator-inl : ∀ {A B : Type} (a : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {A} a →
-    ∃[ s' ] (run (compile-aarch64 {A} {A + B} inl) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {A + B} (eval {A} {A + B} inl a))
+-- Uses run-inl-program and encode-inl-construct
+run-generator-inl : ∀ {A B} (a : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode a →
+  ∃[ s' ] (run (compile-aarch64 {A} {A + B} inl) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval {A} {A + B} inl a))
+run-generator-inl {A} {B} a s h-false pc-0 x0-eq = s' , run-eq , halt-eq , x0-result
+  where
+    a-enc = encode a
+
+    -- The final state after running inl
+    s' : State
+    s' = inl-final-state s a-enc
+
+    -- The generated code is identical regardless of type parameters
+    prog-eq : compile-aarch64 {A} {A + B} inl ≡ compile-aarch64 {Unit} {Unit + Unit} inl
+    prog-eq = refl
+
+    -- Run the program to get final state
+    run-unit : run (compile-aarch64 {Unit} {Unit + Unit} inl) s ≡ just s'
+    run-unit = run-inl-program s a-enc h-false pc-0 x0-eq
+
+    run-eq : run (compile-aarch64 {A} {A + B} inl) s ≡ just s'
+    run-eq = subst (λ prog → run prog s ≡ just s') (sym prog-eq) run-unit
+
+    -- Halted in final state
+    halt-eq : halted s' ≡ true
+    halt-eq = refl
+
+    -- Memory properties of final state
+    sp₁ = readSP (regs s) ∸ 16
+
+    -- x0 in final state = sp₁
+    x0-is-sp₁ : readReg (regs s') x0 ≡ sp₁
+    x0-is-sp₁ = inl-final-x0 s a-enc
+
+    -- tag at sp₁ is 0
+    tag-is-0 : readMem (memory s') sp₁ ≡ just 0
+    tag-is-0 = inl-final-tag s a-enc
+
+    -- value at sp₁+8 is encode a
+    val-is-enc : readMem (memory s') (sp₁ +ℕ 8) ≡ just a-enc
+    val-is-enc = inl-final-val s a-enc
+
+    -- Memory at x0 has tag=0, value=encode a
+    tag-at-x0 : readMem (memory s') (readReg (regs s') x0) ≡ just 0
+    tag-at-x0 = subst (λ addr → readMem (memory s') addr ≡ just 0) (sym x0-is-sp₁) tag-is-0
+
+    val-at-x0 : readMem (memory s') (readReg (regs s') x0 +ℕ 8) ≡ just a-enc
+    val-at-x0 = subst (λ addr → readMem (memory s') (addr +ℕ 8) ≡ just a-enc) (sym x0-is-sp₁) val-is-enc
+
+    -- By encode-inl-construct: x0 = encode (inj₁ a)
+    x0-is-encode-inl : readReg (regs s') x0 ≡ encode {A + B} (inj₁ a)
+    x0-is-encode-inl = encode-inl-construct a (readReg (regs s') x0) (memory s') tag-at-x0 val-at-x0
+
+    -- eval inl a = inj₁ a
+    x0-result : readReg (regs s') x0 ≡ encode (eval {A} {A + B} inl a)
+    x0-result = x0-is-encode-inl
 
 -- | Helper: What the inr program produces
 inr-final-state : ∀ (s : State) (b-enc : Word) →
@@ -2422,20 +2468,71 @@ run-inr-program s b-enc h-false pc-eq x0-eq =
 
   in trans run-eq (cong just s₆-eq)
 
--- | inr generator proof
--- Postulated due to Agda's inability to pattern match on ⟦ B ⟧
--- The proof structure is identical to run-generator-inl:
---   1. Use run-inr-program for multi-instruction execution
---   2. Use inr-final-x0/tag/val for state properties
---   3. Use encode-inr-construct to link to semantics
-postulate
-  run-generator-inr : ∀ {A B : Type} (b : ⟦ B ⟧) (s : State) →
+-- | inr generator proof - internal helper
+-- Takes the encoded word directly to avoid pattern matching on ⟦ B ⟧
+private
+  run-generator-inr-helper : ∀ (b-enc : Word) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {B} b →
-    ∃[ s' ] (run (compile-aarch64 {B} {A + B} inr) s ≡ just s'
+    readReg (regs s) x0 ≡ b-enc →
+    ∃[ s' ] (run (compile-aarch64 {Unit} {Unit + Unit} inr) s ≡ just s'
            × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {A + B} (eval {B} {A + B} inr b))
+           × readReg (regs s') x0 ≡ readSP (regs s) ∸ 16
+           × readMem (memory s') (readSP (regs s) ∸ 16) ≡ just 1
+           × readMem (memory s') ((readSP (regs s) ∸ 16) +ℕ 8) ≡ just b-enc)
+  run-generator-inr-helper b-enc s h-false pc-0 x0-eq =
+    let s' = inr-final-state s b-enc
+        sp₁ = readSP (regs s) ∸ 16
+    in s' ,
+       run-inr-program s b-enc h-false pc-0 x0-eq ,
+       refl ,
+       inr-final-x0 s b-enc ,
+       inr-final-tag s b-enc ,
+       inr-final-val s b-enc
+
+-- | inr generator proof
+-- Mirrors run-generator-inl with tag=1 instead of tag=0
+run-generator-inr : ∀ {A B} (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode b →
+  ∃[ s' ] (run (compile-aarch64 {B} {A + B} inr) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode (eval {B} {A + B} inr b))
+run-generator-inr {A} {B} = λ b s h-false pc-0 x0-eq →
+  let
+    b-enc = encode b
+    sp₁ = readSP (regs s) ∸ 16
+
+    -- Use the helper to run the program
+    helper = run-generator-inr-helper b-enc s h-false pc-0 x0-eq
+
+    s' = proj₁ helper
+    run-unit = proj₁ (proj₂ helper)
+    halt-eq = proj₁ (proj₂ (proj₂ helper))
+    x0-is-sp₁ = proj₁ (proj₂ (proj₂ (proj₂ helper)))
+    tag-is-1 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+    val-is-enc = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper))))
+
+    -- The generated code is identical regardless of type parameters
+    prog-eq : compile-aarch64 {B} {A + B} inr ≡ compile-aarch64 {Unit} {Unit + Unit} inr
+    prog-eq = refl
+
+    run-eq : run (compile-aarch64 {B} {A + B} inr) s ≡ just s'
+    run-eq = subst (λ prog → run prog s ≡ just s') (sym prog-eq) run-unit
+
+    -- Memory at x0 has tag=1, value=encode b
+    tag-at-x0 : readMem (memory s') (readReg (regs s') x0) ≡ just 1
+    tag-at-x0 = subst (λ addr → readMem (memory s') addr ≡ just 1) (sym x0-is-sp₁) tag-is-1
+
+    val-at-x0 : readMem (memory s') (readReg (regs s') x0 +ℕ 8) ≡ just b-enc
+    val-at-x0 = subst (λ addr → readMem (memory s') (addr +ℕ 8) ≡ just b-enc) (sym x0-is-sp₁) val-is-enc
+
+    -- By encode-inr-construct: x0 = encode (inj₂ b)
+    x0-is-encode-inr : readReg (regs s') x0 ≡ encode {A + B} (inj₂ b)
+    x0-is-encode-inr = encode-inr-construct b (readReg (regs s') x0) (memory s') tag-at-x0 val-at-x0
+
+  in s' , run-eq , halt-eq , x0-is-encode-inr
 
 -- Initial generator
 -- Note: initial : Void → B doesn't need a postulate.

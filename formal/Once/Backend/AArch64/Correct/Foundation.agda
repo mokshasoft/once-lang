@@ -12,7 +12,7 @@ module Once.Backend.AArch64.Correct.Foundation where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap)
+open import Once.Semantics
 open ⟦Fix⟧
 
 open import Once.Backend.AArch64.Syntax
@@ -55,7 +55,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 postulate
   -- | Encode semantic values as machine words
-  encode : ∀ {A : Type} → ⟦ A ⟧ → Word
+  encode : ∀ {A} → ⟦ A ⟧ → Word
 
   -- | Memory containing encoded values (for projection/case analysis)
   -- Used in ValidInputState to ensure memory has proper encoding
@@ -66,37 +66,37 @@ postulate
 
   -- | Pair encoding (fst at offset 0, snd at offset 8)
   -- Takes memory parameter for use with arbitrary state memory
-  encode-pair-fst : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+  encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
     readMem m (encode (a , b)) ≡ just (encode a)
 
-  encode-pair-snd : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+  encode-pair-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
     readMem m (encode (a , b) +ℕ 8) ≡ just (encode b)
 
   -- | Sum encoding (tag at offset 0, value at offset 8)
   -- Takes memory parameter for use with arbitrary state memory
-  encode-inl-tag : ∀ {A B : Type} (a : ⟦ A ⟧) (m : Memory) →
+  encode-inl-tag : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
     readMem m (encode {A + B} (inj₁ a)) ≡ just 0
 
-  encode-inl-val : ∀ {A B : Type} (a : ⟦ A ⟧) (m : Memory) →
+  encode-inl-val : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
     readMem m (encode {A + B} (inj₁ a) +ℕ 8) ≡ just (encode a)
 
-  encode-inr-tag : ∀ {A B : Type} (b : ⟦ B ⟧) (m : Memory) →
+  encode-inr-tag : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
     readMem m (encode {A + B} (inj₂ b)) ≡ just 1
 
-  encode-inr-val : ∀ {A B : Type} (b : ⟦ B ⟧) (m : Memory) →
+  encode-inr-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
     readMem m (encode {A + B} (inj₂ b) +ℕ 8) ≡ just (encode b)
 
   -- | Fix type encoding (identity wrapper at runtime)
   -- Wrapping doesn't change the encoding
-  encode-fix-wrap : ∀ {F : Type} (x : ⟦ F ⟧) →
+  encode-fix-wrap : ∀ {F} (x : ⟦ F ⟧) →
     encode {F} x ≡ encode {Fix F} (wrap x)
 
   -- Unwrapping doesn't change the encoding
-  encode-fix-unwrap : ∀ {F : Type} (x : ⟦ Fix F ⟧) →
+  encode-fix-unwrap : ∀ {F} (x : ⟦ Fix F ⟧) →
     encode {Fix F} x ≡ encode {F} (unwrap x)
 
   -- | Effect type encoding (identity at runtime, per D032)
-  encode-arr-identity : ∀ {A B : Type} (f : ⟦ A ⇒ B ⟧) →
+  encode-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧) →
     encode {A ⇒ B} f ≡ encode {Eff A B} f
 
   -- | Pair construction: given properly laid out memory, derive encoding
