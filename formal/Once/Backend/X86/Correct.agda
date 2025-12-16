@@ -6942,6 +6942,24 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
 -- Helper: apply sequence
 -- Takes pair (closure, arg), calls closure's code with arg in rdi and env in r12
 -- Returns result in rax
+--
+-- WHY POSTULATED: This cannot be proven in isolation because:
+-- 1. compile-x86 apply ends with "call r15" which jumps to the thunk code
+-- 2. The thunk code was created by compile-x86 (curry f) as part of the closure
+-- 3. But compile-x86 apply only contains 6 instructions - the thunk code is NOT
+--    part of this program, so fetch fails after call transfers control
+--
+-- To prove this properly, we would need:
+-- - A composed expression like: apply ∘ ⟨curry f, id⟩
+-- - Where both curry and apply code are in the same program
+-- - And the closure's code-ptr points to the thunk within the same program
+--
+-- The simplified call/ret semantics also complicate this:
+-- - call just jumps (doesn't push return address)
+-- - ret just halts (doesn't return to caller)
+--
+-- See run-apply-setup-x86 and run-thunk-at-offset-x86 for proof structures
+-- of the individual phases (setup and thunk execution).
 postulate
   run-apply-seq : ∀ {A B} (f : ⟦ A ⟧ → ⟦ B ⟧) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
