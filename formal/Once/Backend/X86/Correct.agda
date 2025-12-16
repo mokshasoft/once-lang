@@ -8412,6 +8412,71 @@ lea-computes-thunk = refl
 -- position 11, which is the thunk's entry point - a valid instruction.
 
 ------------------------------------------------------------------------
+-- Generalized Composition Theorems
+------------------------------------------------------------------------
+--
+-- These theorems make explicit the key insight: apply is only meaningful
+-- in composition with curry. The compiled code for curry embeds a thunk,
+-- and apply's `call r15` jumps to that thunk within the same program.
+--
+-- See docs/formal/x86-full-proof-architecture.md for the full proof strategy.
+
+-- | Curry-Apply Fundamental Theorem
+--
+-- For any f : IR (A * B) C, the composition `apply ∘ ⟨curry f ∘ fst, snd⟩`
+-- correctly implements f. This is the categorical curry-apply law at the
+-- code generation level.
+--
+-- Semantically: eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a, b) = eval f (a, b)
+curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  ∃[ s ] (run (compile-x86 (apply ∘ ⟨ curry f ∘ fst , snd ⟩)) (initWithInput (a , b)) ≡ just s
+        × readReg (regs s) rax ≡ encode (eval f (a , b)))
+curry-apply-composition {A} {B} {C} f a b =
+  -- This follows directly from codegen-x86-correct
+  -- The key is that eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a,b) = eval f (a,b)
+  -- by the categorical curry-apply law (proven in Once.Category.Laws)
+  let (s , run-eq , rax-eq) = codegen-x86-correct (apply ∘ ⟨ curry f ∘ fst , snd ⟩) (a , b)
+  in s , run-eq , rax-eq
+
+-- | Curry-Apply with arbitrary second component
+--
+-- More general: for any f : IR (A * B) C and g : IR D B,
+-- `apply ∘ ⟨curry f, g⟩` applies the closure (curry f x) to (g x).
+--
+-- Semantically: eval (apply ∘ ⟨curry f, g⟩) x = eval f (x, eval g x)
+curry-apply-any-g : ∀ {A B C} (f : IR (A * B) C) (g : IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 (apply ∘ ⟨ curry f , g ⟩)) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ encode (eval f (x , eval g x)))
+curry-apply-any-g {A} {B} {C} f g x =
+  let (s , run-eq , rax-eq) = codegen-x86-correct (apply ∘ ⟨ curry f , g ⟩) x
+  in s , run-eq , rax-eq
+
+-- | Curry-Apply with identity (the E2E test case)
+--
+-- Special case: `apply ∘ ⟨curry f, id⟩` where the argument is passed through.
+-- This is the pattern proven step-by-step in E2E-Trace below.
+--
+-- Semantically: eval (apply ∘ ⟨curry f, id⟩) x = eval f (x, x)
+curry-apply-id : ∀ {A C} (f : IR (A * A) C) (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 (apply ∘ ⟨ curry f , id ⟩)) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ encode (eval f (x , x)))
+curry-apply-id {A} {C} f x =
+  let (s , run-eq , rax-eq) = codegen-x86-correct (apply ∘ ⟨ curry f , id ⟩) x
+  in s , run-eq , rax-eq
+
+-- | Curry-Apply with constant environment
+--
+-- Shows curry works with a constant captured value:
+-- `apply ∘ ⟨curry f ∘ terminal, id⟩` where f : IR (Unit * A) B
+-- The closure captures unit (empty environment) and applies to the input.
+curry-apply-const-env : ∀ {A B} (f : IR (Unit * A) B) (x : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 (apply ∘ ⟨ curry f ∘ terminal , id ⟩)) (initWithInput x) ≡ just s
+        × readReg (regs s) rax ≡ encode (eval f (tt , x)))
+curry-apply-const-env {A} {B} f x =
+  let (s , run-eq , rax-eq) = codegen-x86-correct (apply ∘ ⟨ curry f ∘ terminal , id ⟩) x
+  in s , run-eq , rax-eq
+
+------------------------------------------------------------------------
 -- Full Trace-Through E2E Proof
 ------------------------------------------------------------------------
 --
