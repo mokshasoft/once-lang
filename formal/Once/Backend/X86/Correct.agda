@@ -7889,14 +7889,33 @@ lea-computes-thunk = refl
 --
 -- We use Unit as the concrete type for explicit encoding.
 
-{- E2E-Trace module - WORK IN PROGRESS
-   Positions updated for new 15-instruction pair codegen:
-   - Phase 1 (setup): Instructions 0-6 - UPDATED
-   - Phase 2 (curry): Instructions 7-12 - UPDATED
-   - Phase 3 (pairing): Instructions 20-29 - NEEDS FULL REWRITE
-   - Phase 4 (connector): Instruction 30 - NEEDS UPDATE
-   - Phase 5 (apply): Instructions 31-36 - NEEDS UPDATE
-   - Phase 6 (thunk): Back to 13-19 - NEEDS UPDATE
+{- E2E-Trace module - NEEDS COMPLETE REWRITE FOR NEW PAIR CODEGEN
+
+The module traces execution of: apply ∘ ⟨curry fst, id⟩
+
+New instruction layout (37 total, was 34):
+  0-6:   Pair setup (7 instructions, was 5)
+  7-12:  Curry closure creation (6)
+  13-19: Thunk code (7) - skipped initially
+  20:    End label for curry
+  21:    mov [r15], rax - store closure in pair.fst
+  22:    mov rdi, r14 - restore input
+  23:    mov rax, rdi - id
+  24:    mov [r15+8], rax - store input in pair.snd
+  25:    mov rax, r15 - return pair pointer
+  26:    mov rsp, rbp - restore stack (was add rsp, 16)
+  27:    pop rbp - NEW
+  28:    pop r15
+  29:    pop r14
+  30:    mov rdi, rax - composition connector
+  31-36: Apply (6)
+
+Key value changes:
+  - r15 (pair base): init-rsp ∸ 40 (was 32)
+  - rsp after setup: init-rsp ∸ 40 (was 32)
+  - rbp (frame base): init-rsp ∸ 24 (new)
+  - closure address: init-rsp ∸ 56 (was 48)
+  - thunk entry: position 13 (was 11)
 
 -- | Full E2E trace proof
 -- Proves execution of apply ∘ ⟨curry fst, id⟩ on unit input
