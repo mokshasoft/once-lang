@@ -39,7 +39,7 @@ compile-length inr = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1
 compile-length initial = 1
-compile-length (curry f) = 12 +ℕ compile-length f
+compile-length (curry f) = 13 +ℕ compile-length f  -- Added lea for RIP-relative code-ptr
 compile-length apply = 6
 compile-length fold = 1
 compile-length unfold = 1
@@ -181,29 +181,34 @@ compile-x86 initial = ud2 ∷ []
 -- Jump targets are computed based on compiled code length.
 compile-x86 (curry {A} {B} {C} f) =
   let len-f = compile-length f
-      -- Layout:
+      -- Layout (with RIP-relative code-ptr):
       --   0: sub rsp, 16
       --   1: mov [rsp], rdi
-      --   2: mov [rsp+8], code-ptr
-      --   3: mov rax, rsp
-      --   4: jmp end
-      --   5: label code-ptr
-      --   6: sub rsp, 16
-      --   7: mov [rsp], r12
-      --   8: mov [rsp+8], rdi
-      --   9: mov rdi, rsp
-      --   10 to 9+|f|: compile-x86 f
-      --   10+|f|: ret
-      --   11+|f|: label end
-      code-ptr = 5
-      end-label = 11 +ℕ len-f
+      --   2: lea r9, [rip+4]      -- r9 = pc+4 = 2+4 = 6 (thunk entry)
+      --   3: mov [rsp+8], r9
+      --   4: mov rax, rsp
+      --   5: jmp end
+      --   6: label code-ptr
+      --   7: sub rsp, 16
+      --   8: mov [rsp], r12
+      --   9: mov [rsp+8], rdi
+      --   10: mov rdi, rsp
+      --   11 to 10+|f|: compile-x86 f
+      --   11+|f|: ret
+      --   12+|f|: label end
+      code-ptr = 6
+      rip-offset = 4        -- From instruction 2, offset to reach 6
+      end-label = 12 +ℕ len-f
   in
   -- Allocate closure on stack
   sub (reg rsp) (imm 16) ∷
   -- Store environment (input a in rdi) as closure.env
   mov (mem (base rsp)) (reg rdi) ∷
-  -- Store code pointer (address of thunk)
-  mov (mem (base+disp rsp 8)) (imm code-ptr) ∷
+  -- Compute code pointer using RIP-relative addressing
+  -- At pc=2, lea computes pc+4=6 (thunk entry address)
+  lea r9 (rip+disp rip-offset) ∷
+  -- Store code pointer from r9
+  mov (mem (base+disp rsp 8)) (reg r9) ∷
   -- Return closure pointer
   mov (reg rax) (reg rsp) ∷
   -- Jump over the thunk code

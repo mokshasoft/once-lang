@@ -60,6 +60,9 @@ data Mem : Set where
   base : Reg → Mem
   -- [reg + offset]: base plus displacement (8-byte aligned for 64-bit)
   base+disp : Reg → ℕ → Mem
+  -- [rip + offset]: RIP-relative addressing for position-independent code
+  -- Used by curry to compute absolute address of thunk code
+  rip+disp : ℕ → Mem
 
 ------------------------------------------------------------------------
 -- Operands
