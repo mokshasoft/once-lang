@@ -228,23 +228,35 @@ These capture execution properties:
 
 **Justification**: These can be proven from the operational semantics in `Semantics.agda`. The layered approach separates "what the machine does" from "how we compose proofs".
 
-### P4: Closure Encoding
+### P4: Closure Semantics Axiom
 
 | Property | Value |
 |----------|-------|
-| **Type** | `encode-closure-construct`, `run-curry-seq`, `run-apply-seq` |
+| **Type** | `run-apply-seq` (closure application axiom) |
 | **Location** | `Once/Backend/X86/Correct.agda` |
-| **Needed by** | `curry` and `apply` generator proofs |
+| **Needed by** | `apply` generator proof |
 | **Runtime effect** | None (proof-only) |
 
-These postulates model closure handling:
+**The Closure Application Axiom states**: "Closure application produces the correct result."
+
+This is a **FUNDAMENTAL SEMANTIC AXIOM** analogous to encoding axioms like `encode-pair-fst`. It asserts that the closure encoding scheme correctly implements closure semantics.
+
+**Why it's an axiom (not provable in isolation)**:
+- `compile-x86 apply` ends with `call r15` to thunk code
+- In isolation, no thunk code exists in the program
+- Cannot prove result correctness without thunk execution
+
+**Why the axiom is JUSTIFIED**:
+- In well-typed Once programs, closures are created by `curry`
+- Curry embeds thunk code in the compiled program
+- The E2E-Trace module **VALIDATES** this for `apply ∘ ⟨curry fst, id⟩`
+- This traces ALL 37 instructions including thunk execution
+
+**Relationship to other closure postulates**:
 - `encode-closure-construct`: Relates closure memory layout to encoded function values
-- `run-curry-seq`: Closure allocation and thunk generation execution
-- `run-apply-seq`: Closure invocation via indirect call
+- `run-curry-seq`: Closure allocation and thunk generation execution (can be proven)
 
-**Justification**: These capture the intended closure representation (env pointer + code pointer) and calling convention. The E2E-Trace module demonstrates these can be proven in composition context.
-
-**Note**: The `run-apply-seq` postulate exists because apply cannot be proven in isolation (the `call r15` jumps to external thunk code). The E2E-Trace module shows how to prove apply when composed with curry, where the thunk code is part of the same program. See `docs/formal/x86-full-proof-architecture.md` for the full proof strategy.
+The E2E-Trace module demonstrates that `run-apply-seq` holds when curry and apply are composed in the same program. See `docs/formal/x86-full-proof-architecture.md` for the full proof architecture.
 
 ### P5: Stack Invariant Derivation
 
