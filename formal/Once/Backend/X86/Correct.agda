@@ -7889,23 +7889,14 @@ lea-computes-thunk = refl
 --
 -- We use Unit as the concrete type for explicit encoding.
 
-{- E2E-Trace module needs comprehensive position updates due to codegen change.
-
-The pair codegen now has 15 instructions (was 12):
-  - Setup: 7 instructions (was 5) - added push rbp, mov rbp rsp
-  - Middle: 2 instructions (unchanged)
-  - Final: 6 instructions (was 5) - changed add rsp,16 to mov rsp,rbp; added pop rbp
-
-Position shifts for apply ∘ ⟨curry fst, id⟩ (37 instructions total, was 34):
-  - Positions 0-6: Pair setup (7 instructions)
-  - Positions 7-12: Curry closure creation
-  - Positions 13-19: Thunk code
-  - Position 20: End label for curry
-  - Positions 21-29: Rest of pair (store, id, cleanup)
-  - Position 30: Composition connector
-  - Positions 31-36: Apply
-
-TODO: Update all fetch proofs, step proofs, and pc values to reflect new positions.
+{- E2E-Trace module - WORK IN PROGRESS
+   Positions updated for new 15-instruction pair codegen:
+   - Phase 1 (setup): Instructions 0-6 - UPDATED
+   - Phase 2 (curry): Instructions 7-12 - UPDATED
+   - Phase 3 (pairing): Instructions 20-29 - NEEDS FULL REWRITE
+   - Phase 4 (connector): Instruction 30 - NEEDS UPDATE
+   - Phase 5 (apply): Instructions 31-36 - NEEDS UPDATE
+   - Phase 6 (thunk): Back to 13-19 - NEEDS UPDATE
 
 -- | Full E2E trace proof
 -- Proves execution of apply ∘ ⟨curry fst, id⟩ on unit input
@@ -8019,16 +8010,16 @@ module E2E-Trace where
   s2-rsp : readReg (regs s2) rsp ≡ init-rsp ∸ 16
   s2-rsp = refl
 
-  -- Instruction 2: sub rsp, 16
+  -- Instruction 2: push rbp
   s3 : State
   s3 = record s2
-    { regs = writeReg (regs s2) rsp (readReg (regs s2) rsp ∸ 16)
+    { regs = writeReg (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
+    ; memory = writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)
     ; pc = pc s2 +ℕ 1
-    ; flags = updateFlags (readReg (regs s2) rsp ∸ 16) (readReg (regs s2) rsp)
     }
 
   step-2 : step prog s2 ≡ just s3
-  step-2 = trans (step-exec prog s2 (sub (reg rsp) (imm 16)) s2-halted prog-fetch-2) (execSub-reg-imm prog s2 rsp 16)
+  step-2 = trans (step-exec prog s2 (push (reg rbp)) s2-halted prog-fetch-2) (execPush-reg prog s2 rbp)
 
   s3-halted : halted s3 ≡ false
   s3-halted = refl
@@ -8036,18 +8027,18 @@ module E2E-Trace where
   s3-pc : pc s3 ≡ 3
   s3-pc = refl
 
-  s3-rsp : readReg (regs s3) rsp ≡ init-rsp ∸ 32
+  s3-rsp : readReg (regs s3) rsp ≡ init-rsp ∸ 24
   s3-rsp = refl
 
-  -- Instruction 3: mov r15, rsp
+  -- Instruction 3: mov rbp, rsp
   s4 : State
   s4 = record s3
-    { regs = writeReg (regs s3) r15 (readReg (regs s3) rsp)
+    { regs = writeReg (regs s3) rbp (readReg (regs s3) rsp)
     ; pc = pc s3 +ℕ 1
     }
 
   step-3 : step prog s3 ≡ just s4
-  step-3 = trans (step-exec prog s3 (mov (reg r15) (reg rsp)) s3-halted prog-fetch-3) (execMov-reg-reg s3 r15 rsp)
+  step-3 = trans (step-exec prog s3 (mov (reg rbp) (reg rsp)) s3-halted prog-fetch-3) (execMov-reg-reg s3 rbp rsp)
 
   s4-halted : halted s4 ≡ false
   s4-halted = refl
@@ -8055,18 +8046,22 @@ module E2E-Trace where
   s4-pc : pc s4 ≡ 4
   s4-pc = refl
 
-  s4-r15 : readReg (regs s4) r15 ≡ init-rsp ∸ 32
-  s4-r15 = refl
+  s4-rbp : readReg (regs s4) rbp ≡ init-rsp ∸ 24
+  s4-rbp = refl
 
-  -- Instruction 4: mov r14, rdi
+  s4-rsp : readReg (regs s4) rsp ≡ init-rsp ∸ 24
+  s4-rsp = refl
+
+  -- Instruction 4: sub rsp, 16
   s5 : State
   s5 = record s4
-    { regs = writeReg (regs s4) r14 (readReg (regs s4) rdi)
+    { regs = writeReg (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
     ; pc = pc s4 +ℕ 1
+    ; flags = updateFlags (readReg (regs s4) rsp ∸ 16) (readReg (regs s4) rsp)
     }
 
   step-4 : step prog s4 ≡ just s5
-  step-4 = trans (step-exec prog s4 (mov (reg r14) (reg rdi)) s4-halted prog-fetch-4) (execMov-reg-reg s4 r14 rdi)
+  step-4 = trans (step-exec prog s4 (sub (reg rsp) (imm 16)) s4-halted prog-fetch-4) (execSub-reg-imm prog s4 rsp 16)
 
   s5-halted : halted s5 ≡ false
   s5-halted = refl
@@ -8074,19 +8069,60 @@ module E2E-Trace where
   s5-pc : pc s5 ≡ 5
   s5-pc = refl
 
-  -- rdi hasn't been written since s0, so this normalizes
-  s5-r14 : readReg (regs s5) r14 ≡ input-val
-  s5-r14 = refl
+  s5-rsp : readReg (regs s5) rsp ≡ init-rsp ∸ 40
+  s5-rsp = refl
 
-  -- r15 hasn't been written since s4
-  s5-r15 : readReg (regs s5) r15 ≡ init-rsp ∸ 32
-  s5-r15 = refl
+  -- Instruction 5: mov r15, rsp
+  s6 : State
+  s6 = record s5
+    { regs = writeReg (regs s5) r15 (readReg (regs s5) rsp)
+    ; pc = pc s5 +ℕ 1
+    }
+
+  step-5 : step prog s5 ≡ just s6
+  step-5 = trans (step-exec prog s5 (mov (reg r15) (reg rsp)) s5-halted prog-fetch-5) (execMov-reg-reg s5 r15 rsp)
+
+  s6-halted : halted s6 ≡ false
+  s6-halted = refl
+
+  s6-pc : pc s6 ≡ 6
+  s6-pc = refl
+
+  s6-r15 : readReg (regs s6) r15 ≡ init-rsp ∸ 40
+  s6-r15 = refl
+
+  s6-rsp : readReg (regs s6) rsp ≡ init-rsp ∸ 40
+  s6-rsp = refl
+
+  -- Instruction 6: mov r14, rdi
+  s7 : State
+  s7 = record s6
+    { regs = writeReg (regs s6) r14 (readReg (regs s6) rdi)
+    ; pc = pc s6 +ℕ 1
+    }
+
+  step-6 : step prog s6 ≡ just s7
+  step-6 = trans (step-exec prog s6 (mov (reg r14) (reg rdi)) s6-halted prog-fetch-6) (execMov-reg-reg s6 r14 rdi)
+
+  s7-halted : halted s7 ≡ false
+  s7-halted = refl
+
+  s7-pc : pc s7 ≡ 7
+  s7-pc = refl
+
+  -- rdi hasn't been written since s0, so this normalizes
+  s7-r14 : readReg (regs s7) r14 ≡ input-val
+  s7-r14 = refl
+
+  -- r15 hasn't been written since s6
+  s7-r15 : readReg (regs s7) r15 ≡ init-rsp ∸ 40
+  s7-r15 = refl
 
   ------------------------------------------------------------------------
   -- Phase 2: Curry closure creation (instructions 7-12)
   ------------------------------------------------------------------------
 
-  -- Fetch proofs for curry instructions (shifted by +2 due to rbp save/restore)
+  -- Fetch proofs for curry instructions
   prog-fetch-7 : fetch prog 7 ≡ just (sub (reg rsp) (imm 16))
   prog-fetch-7 = refl
 
@@ -8105,55 +8141,16 @@ module E2E-Trace where
   prog-fetch-12 : fetch prog 12 ≡ just (jmp 7)
   prog-fetch-12 = refl
 
-  -- Instruction 5: sub rsp, 16 (allocate closure)
-  s6 : State
-  s6 = record s5
-    { regs = writeReg (regs s5) rsp (readReg (regs s5) rsp ∸ 16)
-    ; pc = pc s5 +ℕ 1
-    ; flags = updateFlags (readReg (regs s5) rsp ∸ 16) (readReg (regs s5) rsp)
-    }
-
-  step-5 : step prog s5 ≡ just s6
-  step-5 = trans (step-exec prog s5 (sub (reg rsp) (imm 16)) s5-halted prog-fetch-5) (execSub-reg-imm prog s5 rsp 16)
-
-  s6-halted : halted s6 ≡ false
-  s6-halted = refl
-
-  s6-pc : pc s6 ≡ 6
-  s6-pc = refl
-
-  s6-rsp : readReg (regs s6) rsp ≡ init-rsp ∸ 48
-  s6-rsp = refl
-
-  -- Instruction 6: mov [rsp], rdi (store env = input)
-  s7 : State
-  s7 = record s6
-    { memory = writeMem (memory s6) (readReg (regs s6) rsp) (readReg (regs s6) rdi)
-    ; pc = pc s6 +ℕ 1
-    }
-
-  step-6 : step prog s6 ≡ just s7
-  step-6 = trans (step-exec prog s6 (mov (mem (base rsp)) (reg rdi)) s6-halted prog-fetch-6) (execMov-mem-base-reg prog s6 rsp rdi)
-
-  s7-halted : halted s7 ≡ false
-  s7-halted = refl
-
-  s7-pc : pc s7 ≡ 7
-  s7-pc = refl
-
-  s7-closure-env : readMem (memory s7) (init-rsp ∸ 48) ≡ just input-val
-  s7-closure-env = refl
-
-  -- Instruction 7: lea r9, [rip+4]
-  -- effectiveAddr computes pc + 4 = 7 + 4 = 11
+  -- Instruction 7: sub rsp, 16 (allocate closure)
   s8 : State
   s8 = record s7
-    { regs = writeReg (regs s7) r9 (effectiveAddr s7 (rip+disp 4))
+    { regs = writeReg (regs s7) rsp (readReg (regs s7) rsp ∸ 16)
     ; pc = pc s7 +ℕ 1
+    ; flags = updateFlags (readReg (regs s7) rsp ∸ 16) (readReg (regs s7) rsp)
     }
 
   step-7 : step prog s7 ≡ just s8
-  step-7 = trans (step-exec prog s7 (lea r9 (rip+disp 4)) s7-halted prog-fetch-7) (execLea prog s7 r9 (rip+disp 4))
+  step-7 = trans (step-exec prog s7 (sub (reg rsp) (imm 16)) s7-halted prog-fetch-7) (execSub-reg-imm prog s7 rsp 16)
 
   s8-halted : halted s8 ≡ false
   s8-halted = refl
@@ -8161,18 +8158,18 @@ module E2E-Trace where
   s8-pc : pc s8 ≡ 8
   s8-pc = refl
 
-  s8-r9 : readReg (regs s8) r9 ≡ 11
-  s8-r9 = refl
+  s8-rsp : readReg (regs s8) rsp ≡ init-rsp ∸ 56
+  s8-rsp = refl
 
-  -- Instruction 8: mov [rsp+8], r9 (store code-ptr)
+  -- Instruction 8: mov [rsp], rdi (store env = input)
   s9 : State
   s9 = record s8
-    { memory = writeMem (memory s8) (readReg (regs s8) rsp +ℕ 8) (readReg (regs s8) r9)
+    { memory = writeMem (memory s8) (readReg (regs s8) rsp) (readReg (regs s8) rdi)
     ; pc = pc s8 +ℕ 1
     }
 
   step-8 : step prog s8 ≡ just s9
-  step-8 = trans (step-exec prog s8 (mov (mem (base+disp rsp 8)) (reg r9)) s8-halted prog-fetch-8) (execMov-mem-disp-reg prog s8 rsp r9 8)
+  step-8 = trans (step-exec prog s8 (mov (mem (base rsp)) (reg rdi)) s8-halted prog-fetch-8) (execMov-mem-base-reg prog s8 rsp rdi)
 
   s9-halted : halted s9 ≡ false
   s9-halted = refl
@@ -8180,18 +8177,19 @@ module E2E-Trace where
   s9-pc : pc s9 ≡ 9
   s9-pc = refl
 
-  s9-closure-ptr : readMem (memory s9) (init-rsp ∸ 48 +ℕ 8) ≡ just 11
-  s9-closure-ptr = refl
+  s9-closure-env : readMem (memory s9) (init-rsp ∸ 56) ≡ just input-val
+  s9-closure-env = refl
 
-  -- Instruction 9: mov rax, rsp
+  -- Instruction 9: lea r9, [rip+4]
+  -- effectiveAddr computes pc + 4 = 9 + 4 = 13
   s10 : State
   s10 = record s9
-    { regs = writeReg (regs s9) rax (readReg (regs s9) rsp)
+    { regs = writeReg (regs s9) r9 (effectiveAddr s9 (rip+disp 4))
     ; pc = pc s9 +ℕ 1
     }
 
   step-9 : step prog s9 ≡ just s10
-  step-9 = trans (step-exec prog s9 (mov (reg rax) (reg rsp)) s9-halted prog-fetch-9) (execMov-reg-reg s9 rax rsp)
+  step-9 = trans (step-exec prog s9 (lea r9 (rip+disp 4)) s9-halted prog-fetch-9) (execLea prog s9 r9 (rip+disp 4))
 
   s10-halted : halted s10 ≡ false
   s10-halted = refl
@@ -8199,30 +8197,68 @@ module E2E-Trace where
   s10-pc : pc s10 ≡ 10
   s10-pc = refl
 
-  s10-rax : readReg (regs s10) rax ≡ init-rsp ∸ 48
-  s10-rax = refl
+  s10-r9 : readReg (regs s10) r9 ≡ 13
+  s10-r9 = refl
 
-  -- Instruction 10: jmp 7 (PC-relative: pc = 10+1+7 = 18)
+  -- Instruction 10: mov [rsp+8], r9 (store code-ptr)
   s11 : State
-  s11 = record s10 { pc = pc s10 +ℕ 1 +ℕ 7 }
+  s11 = record s10
+    { memory = writeMem (memory s10) (readReg (regs s10) rsp +ℕ 8) (readReg (regs s10) r9)
+    ; pc = pc s10 +ℕ 1
+    }
 
   step-10 : step prog s10 ≡ just s11
-  step-10 = trans (step-exec prog s10 (jmp 7) s10-halted prog-fetch-10) (execJmp prog s10 7)
+  step-10 = trans (step-exec prog s10 (mov (mem (base+disp rsp 8)) (reg r9)) s10-halted prog-fetch-10) (execMov-mem-disp-reg prog s10 rsp r9 8)
 
   s11-halted : halted s11 ≡ false
   s11-halted = refl
 
-  s11-pc : pc s11 ≡ 18
+  s11-pc : pc s11 ≡ 11
   s11-pc = refl
 
+  s11-closure-ptr : readMem (memory s11) (init-rsp ∸ 56 +ℕ 8) ≡ just 13
+  s11-closure-ptr = refl
+
+  -- Instruction 11: mov rax, rsp
+  s12 : State
+  s12 = record s11
+    { regs = writeReg (regs s11) rax (readReg (regs s11) rsp)
+    ; pc = pc s11 +ℕ 1
+    }
+
+  step-11 : step prog s11 ≡ just s12
+  step-11 = trans (step-exec prog s11 (mov (reg rax) (reg rsp)) s11-halted prog-fetch-11) (execMov-reg-reg s11 rax rsp)
+
+  s12-halted : halted s12 ≡ false
+  s12-halted = refl
+
+  s12-pc : pc s12 ≡ 12
+  s12-pc = refl
+
+  s12-rax : readReg (regs s12) rax ≡ init-rsp ∸ 56
+  s12-rax = refl
+
+  -- Instruction 12: jmp 7 (PC-relative: pc = 12+1+7 = 20)
+  s13 : State
+  s13 = record s12 { pc = pc s12 +ℕ 1 +ℕ 7 }
+
+  step-12 : step prog s12 ≡ just s13
+  step-12 = trans (step-exec prog s12 (jmp 7) s12-halted prog-fetch-12) (execJmp prog s12 7)
+
+  s13-halted : halted s13 ≡ false
+  s13-halted = refl
+
+  s13-pc : pc s13 ≡ 20
+  s13-pc = refl
+
   ------------------------------------------------------------------------
-  -- Phase 3: Complete pairing (instructions 20-30, shifted +2 from old 18-26)
-  -- Note: New pair codegen has mov rsp, rbp instead of add rsp, 16
-  --       and adds pop rbp before pop r15, pop r14
+  -- Phase 3: Complete pairing (instructions 20-29)
+  -- Thunk code is at 13-19, but we skip it via jmp
+  -- We land at position 20 (end label for curry)
   ------------------------------------------------------------------------
 
   -- Fetch proofs for Phase 3 instructions
-  prog-fetch-20 : fetch prog 20 ≡ just (label 13)
+  prog-fetch-20 : fetch prog 20 ≡ just (label 20)
   prog-fetch-20 = refl
 
   prog-fetch-21 : fetch prog 21 ≡ just (mov (mem (base r15)) (reg rax))
@@ -8252,31 +8288,31 @@ module E2E-Trace where
   prog-fetch-29 : fetch prog 29 ≡ just (pop r14)
   prog-fetch-29 = refl
 
-  -- Instruction 20: label 13 (no-op, shifted +2 from old position 18)
-  s12 : State
-  s12 = record s11 { pc = pc s11 +ℕ 1 }
+  -- Instruction 20: label (no-op)
+  s14 : State
+  s14 = record s13 { pc = pc s13 +ℕ 1 }
 
-  step-11 : step prog s11 ≡ just s12
-  step-11 = trans (step-exec prog s11 (label 13) s11-halted prog-fetch-20) (execLabel prog s11 13)
+  step-13 : step prog s13 ≡ just s14
+  step-13 = trans (step-exec prog s13 (label 20) s13-halted prog-fetch-20) (execLabel prog s13 20)
 
-  s12-halted : halted s12 ≡ false
-  s12-halted = refl
+  s14-halted : halted s14 ≡ false
+  s14-halted = refl
 
-  s12-pc : pc s12 ≡ 21
-  s12-pc = refl
+  s14-pc : pc s14 ≡ 21
+  s14-pc = refl
 
-  -- Track register values in s12 (unchanged from s11 except pc)
-  s12-rax : readReg (regs s12) rax ≡ init-rsp ∸ 48
-  s12-rax = refl
+  -- Track register values in s14 (unchanged from s13 except pc)
+  s14-rax : readReg (regs s14) rax ≡ init-rsp ∸ 56
+  s14-rax = refl
 
-  s12-r15 : readReg (regs s12) r15 ≡ init-rsp ∸ 32
-  s12-r15 = refl
+  s14-r15 : readReg (regs s14) r15 ≡ init-rsp ∸ 40
+  s14-r15 = refl
 
-  -- Instruction 19: mov [r15], rax (store closure in pair.fst)
-  s13 : State
-  s13 = record s12
-    { memory = writeMem (memory s12) (readReg (regs s12) r15) (readReg (regs s12) rax)
-    ; pc = pc s12 +ℕ 1
+  -- Instruction 21: mov [r15], rax (store closure in pair.fst)
+  s15 : State
+  s15 = record s14
+    { memory = writeMem (memory s14) (readReg (regs s14) r15) (readReg (regs s14) rax)
+    ; pc = pc s14 +ℕ 1
     }
 
   step-12 : step prog s12 ≡ just s13
