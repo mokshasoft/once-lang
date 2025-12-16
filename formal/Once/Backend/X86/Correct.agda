@@ -463,6 +463,41 @@ readReg-writeReg-rax-rdi : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rax v) rdi ≡ readReg rf rdi
 readReg-writeReg-rax-rdi rf v = refl
 
+-- | Reading rbp after writing rsp returns the old value
+readReg-writeReg-rsp-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsp v) rbp ≡ readReg rf rbp
+readReg-writeReg-rsp-rbp rf v = refl
+
+-- | Reading rsp after writing rbp returns the old value
+readReg-writeReg-rbp-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rbp v) rsp ≡ readReg rf rsp
+readReg-writeReg-rbp-rsp rf v = refl
+
+-- | Reading rdi after writing rbp returns the old value
+readReg-writeReg-rbp-rdi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rbp v) rdi ≡ readReg rf rdi
+readReg-writeReg-rbp-rdi rf v = refl
+
+-- | Reading r14 after writing rbp returns the old value
+readReg-writeReg-rbp-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rbp v) r14 ≡ readReg rf r14
+readReg-writeReg-rbp-r14 rf v = refl
+
+-- | Reading r15 after writing rbp returns the old value
+readReg-writeReg-rbp-r15 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rbp v) r15 ≡ readReg rf r15
+readReg-writeReg-rbp-r15 rf v = refl
+
+-- | Reading rbp after writing r15 returns the old value
+readReg-writeReg-r15-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r15 v) rbp ≡ readReg rf rbp
+readReg-writeReg-r15-rbp rf v = refl
+
+-- | Reading rbp after writing r14 returns the old value
+readReg-writeReg-r14-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r14 v) rbp ≡ readReg rf rbp
+readReg-writeReg-r14-rbp rf v = refl
+
 ------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
@@ -952,6 +987,31 @@ exec-five-steps-nonhalt prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h
   trans (exec-on-non-halted-step 4 prog s s1 step1 h1)
         (exec-four-steps-nonhalt prog s1 s2 s3 s4 s5 step2 h2 step3 h3 step4 h4 step5 h5)
 
+exec-six-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 s3 s4 s5 s6 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ false →
+  step prog s5 ≡ just s6 → halted s6 ≡ false →
+  exec 6 prog s ≡ just s6
+exec-six-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 =
+  trans (exec-on-non-halted-step 5 prog s s1 step1 h1)
+        (exec-five-steps-nonhalt prog s1 s2 s3 s4 s5 s6 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6)
+
+exec-seven-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 s3 s4 s5 s6 s7 : State) →
+  step prog s ≡ just s1 → halted s1 ≡ false →
+  step prog s1 ≡ just s2 → halted s2 ≡ false →
+  step prog s2 ≡ just s3 → halted s3 ≡ false →
+  step prog s3 ≡ just s4 → halted s4 ≡ false →
+  step prog s4 ≡ just s5 → halted s5 ≡ false →
+  step prog s5 ≡ just s6 → halted s6 ≡ false →
+  step prog s6 ≡ just s7 → halted s7 ≡ false →
+  exec 7 prog s ≡ just s7
+exec-seven-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 =
+  trans (exec-on-non-halted-step 6 prog s s1 step1 h1)
+        (exec-six-steps-nonhalt prog s1 s2 s3 s4 s5 s6 s7 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7)
+
 ------------------------------------------------------------------------
 -- Non-halting sub-program execution (for compose proofs)
 -- These execute IR code within a larger program without requiring halt
@@ -1334,19 +1394,293 @@ exec-pair-setup-at prefix rest s h-false pc-eq = s5 , exec-eq , h5 , pc5 , r14-e
 --   r14 = orig_rdi (saved input)
 --   rdi = orig_rdi (unchanged)
 --   pc = orig_pc + 7
--- POSTULATE: This extends exec-pair-setup-at with 2 extra instructions for frame pointer
-postulate
-  exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    ∃[ s' ] (exec 7 (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
-           × halted s' ≡ false
-           × pc s' ≡ length prefix +ℕ 7
-           × readReg (regs s') r14 ≡ readReg (regs s) rdi
-           × readReg (regs s') rdi ≡ readReg (regs s) rdi
-           × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
-           × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
-           × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24)
+exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 7 (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 7
+         × readReg (regs s') r14 ≡ readReg (regs s) rdi
+         × readReg (regs s') rdi ≡ readReg (regs s) rdi
+         × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
+         × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24)
+exec-pair-setup-at-7 prefix rest s h-false pc-eq = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (+-assoc)
+
+    prog : Program
+    prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+
+    -- Original values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    orig-r14 : Word
+    orig-r14 = readReg (regs s) r14
+
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    orig-rbp : Word
+    orig-rbp = readReg (regs s) rbp
+
+    -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp (orig-rsp ∸ 8)
+                  ; memory = writeMem (memory s) (orig-rsp ∸ 8) orig-r14
+                  ; pc = pc s +ℕ 1 }
+
+    fetch1 : fetch prog (length prefix) ≡ just (push (reg r14))
+    fetch1 = fetch-at-prefix-end prefix (push (reg r14)) _
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s (push (reg r14)) h-false
+                             (subst (λ n → fetch prog n ≡ just (push (reg r14))) (sym pc-eq) fetch1))
+                  (execPush-reg prog s r14)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ n → n +ℕ 1) pc-eq
+
+    rsp-s1 : readReg (regs s1) rsp ≡ orig-rsp ∸ 8
+    rsp-s1 = readReg-writeReg-same (regs s) rsp (orig-rsp ∸ 8)
+
+    r15-s1 : readReg (regs s1) r15 ≡ orig-r15
+    r15-s1 = readReg-writeReg-rsp-r15 (regs s) (orig-rsp ∸ 8)
+
+    rbp-s1 : readReg (regs s1) rbp ≡ orig-rbp
+    rbp-s1 = readReg-writeReg-rsp-rbp (regs s) (orig-rsp ∸ 8)
+
+    -- Step 2: push r15 - save r15 to stack, decrement rsp by 8
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rsp (readReg (regs s1) rsp ∸ 8)
+                   ; memory = writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)
+                   ; pc = pc s1 +ℕ 1 }
+
+    prog-eq1 : prog ≡ (prefix ++ push (reg r14) ∷ []) ++ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq1 = sym (++-assoc prefix _ _)
+
+    len-prefix1 : length (prefix ++ push (reg r14) ∷ []) ≡ length prefix +ℕ 1
+    len-prefix1 = List-length-++ prefix
+
+    fetch2 : fetch prog (length prefix +ℕ 1) ≡ just (push (reg r15))
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just (push (reg r15))) (sym prog-eq1) len-prefix1
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ []) (push (reg r15)) _)
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (push (reg r15)) h1
+                             (subst (λ n → fetch prog n ≡ just (push (reg r15))) (sym pc1) fetch2))
+                  (execPush-reg prog s1 r15)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ n → n +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    rsp-s2-raw : readReg (regs s2) rsp ≡ readReg (regs s1) rsp ∸ 8
+    rsp-s2-raw = readReg-writeReg-same (regs s1) rsp (readReg (regs s1) rsp ∸ 8)
+
+    rsp-s2 : readReg (regs s2) rsp ≡ orig-rsp ∸ 16
+    rsp-s2 = trans rsp-s2-raw (trans (cong (_∸ 8) rsp-s1) (∸-+-assoc orig-rsp 8 8))
+
+    rbp-s2 : readReg (regs s2) rbp ≡ orig-rbp
+    rbp-s2 = trans (readReg-writeReg-rsp-rbp (regs s1) (readReg (regs s1) rsp ∸ 8)) rbp-s1
+
+    -- Step 3: push rbp - save rbp to stack, decrement rsp by 8
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
+                   ; memory = writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)
+                   ; pc = pc s2 +ℕ 1 }
+
+    prog-eq2 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ++ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq2 = sym (++-assoc prefix _ _)
+
+    len-prefix2 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ≡ length prefix +ℕ 2
+    len-prefix2 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch3 : fetch prog (length prefix +ℕ 2) ≡ just (push (reg rbp))
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just (push (reg rbp))) (sym prog-eq2) len-prefix2
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) (push (reg rbp)) _)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (push (reg rbp)) h2
+                             (subst (λ n → fetch prog n ≡ just (push (reg rbp))) (sym pc2) fetch3))
+                  (execPush-reg prog s2 rbp)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ n → n +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    rsp-s3-raw : readReg (regs s3) rsp ≡ readReg (regs s2) rsp ∸ 8
+    rsp-s3-raw = readReg-writeReg-same (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
+
+    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp ∸ 24
+    rsp-s3 = trans rsp-s3-raw (trans (cong (_∸ 8) rsp-s2) (∸-+-assoc orig-rsp 16 8))
+
+    -- Step 4: mov rbp, rsp - set rbp to current rsp (frame base)
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rbp (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    prog-eq3 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ++ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq3 = sym (++-assoc prefix _ _)
+
+    len-prefix3 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ≡ length prefix +ℕ 3
+    len-prefix3 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch4 : fetch prog (length prefix +ℕ 3) ≡ just (mov (reg rbp) (reg rsp))
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just (mov (reg rbp) (reg rsp))) (sym prog-eq3) len-prefix3
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) (mov (reg rbp) (reg rsp)) _)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rbp) (reg rsp)) h3
+                             (subst (λ n → fetch prog n ≡ just (mov (reg rbp) (reg rsp))) (sym pc3) fetch4))
+                  (execMov-reg-reg s3 rbp rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ n → n +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    rbp-s4 : readReg (regs s4) rbp ≡ orig-rsp ∸ 24
+    rbp-s4 = trans (readReg-writeReg-same (regs s3) rbp (readReg (regs s3) rsp)) rsp-s3
+
+    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ 24
+    rsp-s4 = trans (readReg-writeReg-rbp-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
+
+    -- Step 5: sub rsp, 16 - allocate 16 bytes on stack
+    s5 : State
+    s5 = record s4 { regs = writeReg (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
+                   ; pc = pc s4 +ℕ 1
+                   ; flags = updateFlags (readReg (regs s4) rsp ∸ 16) (readReg (regs s4) rsp) }
+
+    prog-eq4 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ++ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq4 = sym (++-assoc prefix _ _)
+
+    len-prefix4 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ≡ length prefix +ℕ 4
+    len-prefix4 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch5 : fetch prog (length prefix +ℕ 4) ≡ just (sub (reg rsp) (imm 16))
+    fetch5 = subst₂ (λ p n → fetch p n ≡ just (sub (reg rsp) (imm 16))) (sym prog-eq4) len-prefix4
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) (sub (reg rsp) (imm 16)) _)
+
+    step5 : step prog s4 ≡ just s5
+    step5 = trans (step-exec prog s4 (sub (reg rsp) (imm 16)) h4
+                             (subst (λ n → fetch prog n ≡ just (sub (reg rsp) (imm 16))) (sym pc4) fetch5))
+                  (execSub-reg-imm prog s4 rsp 16)
+
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ length prefix +ℕ 5
+    pc5 = trans (cong (λ n → n +ℕ 1) pc4) (+-assoc (length prefix) 4 1)
+
+    rsp-s5-raw : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ 16
+    rsp-s5-raw = readReg-writeReg-same (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
+
+    rsp-s5 : readReg (regs s5) rsp ≡ orig-rsp ∸ 40
+    rsp-s5 = trans rsp-s5-raw (trans (cong (_∸ 16) rsp-s4) (∸-+-assoc orig-rsp 24 16))
+
+    rbp-s5 : readReg (regs s5) rbp ≡ orig-rsp ∸ 24
+    rbp-s5 = trans (readReg-writeReg-rsp-rbp (regs s4) (readReg (regs s4) rsp ∸ 16)) rbp-s4
+
+    -- Step 6: mov r15, rsp - set r15 to current rsp (pair base address)
+    s6 : State
+    s6 = record s5 { regs = writeReg (regs s5) r15 (readReg (regs s5) rsp)
+                   ; pc = pc s5 +ℕ 1 }
+
+    prog-eq5 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) ++ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq5 = sym (++-assoc prefix _ _)
+
+    len-prefix5 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) ≡ length prefix +ℕ 5
+    len-prefix5 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch6 : fetch prog (length prefix +ℕ 5) ≡ just (mov (reg r15) (reg rsp))
+    fetch6 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r15) (reg rsp))) (sym prog-eq5) len-prefix5
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) (mov (reg r15) (reg rsp)) _)
+
+    step6 : step prog s5 ≡ just s6
+    step6 = trans (step-exec prog s5 (mov (reg r15) (reg rsp)) h5
+                             (subst (λ n → fetch prog n ≡ just (mov (reg r15) (reg rsp))) (sym pc5) fetch6))
+                  (execMov-reg-reg s5 r15 rsp)
+
+    h6 : halted s6 ≡ false
+    h6 = h-false
+
+    pc6 : pc s6 ≡ length prefix +ℕ 6
+    pc6 = trans (cong (λ n → n +ℕ 1) pc5) (+-assoc (length prefix) 5 1)
+
+    r15-s6 : readReg (regs s6) r15 ≡ orig-rsp ∸ 40
+    r15-s6 = trans (readReg-writeReg-same (regs s5) r15 (readReg (regs s5) rsp)) rsp-s5
+
+    rsp-s6 : readReg (regs s6) rsp ≡ orig-rsp ∸ 40
+    rsp-s6 = trans (readReg-writeReg-r15-rsp (regs s5) (readReg (regs s5) rsp)) rsp-s5
+
+    rbp-s6 : readReg (regs s6) rbp ≡ orig-rsp ∸ 24
+    rbp-s6 = trans (readReg-writeReg-r15-rbp (regs s5) (readReg (regs s5) rsp)) rbp-s5
+
+    rdi-s6 : readReg (regs s6) rdi ≡ orig-rdi
+    rdi-s6 = trans (readReg-writeReg-r15-rdi (regs s5) (readReg (regs s5) rsp))
+                   (trans (readReg-writeReg-rsp-rdi (regs s4) (readReg (regs s4) rsp ∸ 16))
+                          (trans (readReg-writeReg-rbp-rdi (regs s3) (readReg (regs s3) rsp))
+                                 (trans (readReg-writeReg-rsp-rdi (regs s2) (readReg (regs s2) rsp ∸ 8))
+                                        (trans (readReg-writeReg-rsp-rdi (regs s1) (readReg (regs s1) rsp ∸ 8))
+                                               (readReg-writeReg-rsp-rdi (regs s) (orig-rsp ∸ 8))))))
+
+    -- Step 7: mov r14, rdi - save input to r14
+    s7 : State
+    s7 = record s6 { regs = writeReg (regs s6) r14 (readReg (regs s6) rdi)
+                   ; pc = pc s6 +ℕ 1 }
+
+    prog-eq6 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) ++ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq6 = sym (++-assoc prefix _ _)
+
+    len-prefix6 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) ≡ length prefix +ℕ 6
+    len-prefix6 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch7 : fetch prog (length prefix +ℕ 6) ≡ just (mov (reg r14) (reg rdi))
+    fetch7 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r14) (reg rdi))) (sym prog-eq6) len-prefix6
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) (mov (reg r14) (reg rdi)) _)
+
+    step7 : step prog s6 ≡ just s7
+    step7 = trans (step-exec prog s6 (mov (reg r14) (reg rdi)) h6
+                             (subst (λ n → fetch prog n ≡ just (mov (reg r14) (reg rdi))) (sym pc6) fetch7))
+                  (execMov-reg-reg s6 r14 rdi)
+
+    h7 : halted s7 ≡ false
+    h7 = h-false
+
+    pc7 : pc s7 ≡ length prefix +ℕ 7
+    pc7 = trans (cong (λ n → n +ℕ 1) pc6) (+-assoc (length prefix) 6 1)
+
+    exec-eq : exec 7 prog s ≡ just s7
+    exec-eq = exec-seven-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7
+
+    r14-eq : readReg (regs s7) r14 ≡ orig-rdi
+    r14-eq = trans (readReg-writeReg-same (regs s6) r14 (readReg (regs s6) rdi)) rdi-s6
+
+    rdi-eq : readReg (regs s7) rdi ≡ orig-rdi
+    rdi-eq = trans (readReg-writeReg-r14-rdi (regs s6) (readReg (regs s6) rdi)) rdi-s6
+
+    r15-eq : readReg (regs s7) r15 ≡ orig-rsp ∸ 40
+    r15-eq = trans (readReg-writeReg-r14-r15 (regs s6) (readReg (regs s6) rdi)) r15-s6
+
+    rsp-eq : readReg (regs s7) rsp ≡ orig-rsp ∸ 40
+    rsp-eq = trans (readReg-writeReg-r14-rsp (regs s6) (readReg (regs s6) rdi)) rsp-s6
+
+    rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ 24
+    rbp-eq = trans (readReg-writeReg-r14-rbp (regs s6) (readReg (regs s6) rdi)) rbp-s6
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
 -- Used for phase 3 of pair construction - storing f's result and restoring input
