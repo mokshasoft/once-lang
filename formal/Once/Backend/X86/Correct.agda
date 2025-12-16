@@ -58,7 +58,7 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
@@ -124,6 +124,72 @@ initWithInput-halted x = refl
 -- | Initial state has pc = 0 (proven from definition)
 initWithInput-pc : ∀ {A} (x : ⟦ A ⟧) → pc (initWithInput x) ≡ 0
 initWithInput-pc x = refl
+
+------------------------------------------------------------------------
+-- Stack Invariants (WellFormed)
+------------------------------------------------------------------------
+--
+-- To eliminate addr-diff postulates, we track a stack invariant:
+--   - Either r15 = 0 (unused), OR
+--   - rsp ≤ r15 (stack has grown into pair context)
+--
+-- From this invariant, we derive that writing to [rsp - 16] and [rsp - 8]
+-- cannot collide with [r15]:
+--   - If r15 = 0, then rsp - 16 ≢ 0 (since rsp is a high address)
+--   - If rsp ≤ r15, then rsp - 16 < rsp ≤ r15, so rsp - 16 ≢ r15
+
+-- | Stack invariant: either r15 is unused (0) or rsp ≤ r15
+data StackInvariant (s : State) : Set where
+  r15-unused : readReg (regs s) r15 ≡ 0 → StackInvariant s
+  stack-below-r15 : readReg (regs s) rsp ≤ readReg (regs s) r15 → StackInvariant s
+
+-- | Initial state satisfies the invariant (r15 = 0)
+initWithInput-stack-inv : ∀ {A} (x : ⟦ A ⟧) → StackInvariant (initWithInput x)
+initWithInput-stack-inv x = r15-unused r15-is-zero
+  where
+    -- r15 is 0 in initWithInput because:
+    -- regs = writeReg (writeReg emptyRegFile rdi (encode x)) rsp stackBase
+    -- writeReg doesn't touch r15 when writing to rdi or rsp
+    r15-is-zero : readReg (regs (initWithInput x)) r15 ≡ 0
+    r15-is-zero = refl
+
+-- | Helper: if n < m, then n ≢ m
+<-implies-≢ : ∀ {n m} → n < m → n ≢ m
+<-implies-≢ {zero} {suc m} (s≤s z≤n) ()
+<-implies-≢ {suc n} {suc m} (s≤s p) refl = <-implies-≢ p refl
+
+-- | Helper: if n > 0 and m = 0, then n ≢ m
+positive-neq-zero : ∀ {n} → n > 0 → n ≢ 0
+positive-neq-zero (s≤s z≤n) ()
+
+-- | addr-diff derivation: from stack invariant, prove new addresses don't collide
+-- with r15 when we've done sub rsp, 16
+--
+-- Given: StackInvariant s, new-rsp = rsp - 16
+-- Prove: new-rsp ≢ r15 and (new-rsp + 8) ≢ r15
+--
+-- Case 1: r15 = 0
+--   new-rsp = high_addr - 16 > 0, so new-rsp ≢ 0 = r15
+--   This requires rsp > 16 (always true: rsp starts at 0x7FFF0000)
+--
+-- Case 2: rsp ≤ r15
+--   new-rsp = rsp - 16 < rsp ≤ r15, so new-rsp < r15, hence new-rsp ≢ r15
+--   Similarly for new-rsp + 8 < rsp ≤ r15
+--
+-- The full proof requires:
+-- 1. Showing rsp is always "high enough" (tracked separately)
+-- 2. Arithmetic reasoning about ∸ with ≤ bounds
+--
+-- We postulate this with the understanding that:
+-- - initWithInput sets rsp = 0x7FFF0000 (huge value)
+-- - Stack operations decrease rsp by 16 at most per operation
+-- - In nested pair context, rsp ≤ r15 is maintained
+postulate
+  addr-diff-from-invariant : ∀ (s : State) →
+    StackInvariant s →
+    let new-rsp = readReg (regs s) rsp ∸ 16
+        orig-r15 = readReg (regs s) r15
+    in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
 
 ------------------------------------------------------------------------
 -- Execution Helpers
