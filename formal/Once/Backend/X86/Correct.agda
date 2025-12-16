@@ -4889,12 +4889,224 @@ mutual
 
       -- After 4 setup instructions: rdi = pointer to pair (env, arg)
       -- This is the input to f
-      postulate
-        s-after-setup : State
-        exec-setup : exec 4 prog s ≡ just s-after-setup
-        h-after-setup : halted s-after-setup ≡ false
-        pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 4
-        rdi-after-setup : readReg (regs s-after-setup) rdi ≡ encode {A * B} (env , arg)
+      --
+      -- Trace through 4 instructions:
+      --   0: sub rsp, 16       ; allocate pair space
+      --   1: mov [rsp], r12    ; store env
+      --   2: mov [rsp+8], rdi  ; store arg
+      --   3: mov rdi, rsp      ; rdi = pair pointer
+
+      -- Original register values
+      orig-rsp : Word
+      orig-rsp = readReg (regs s) rsp
+      orig-r12 : Word
+      orig-r12 = readReg (regs s) r12
+      orig-rdi : Word
+      orig-rdi = readReg (regs s) rdi
+      new-rsp : Word
+      new-rsp = orig-rsp ∸ 16
+
+      -- State after instruction 0: sub rsp, 16
+      s1 : State
+      s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                    ; pc = pc s +ℕ 1
+                    ; flags = updateFlags new-rsp orig-rsp }
+
+      -- State after instruction 1: mov [rsp], r12
+      s2 : State
+      s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) (readReg (regs s1) r12)
+                     ; pc = pc s1 +ℕ 1 }
+
+      -- State after instruction 2: mov [rsp+8], rdi
+      s3 : State
+      s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                     ; pc = pc s2 +ℕ 1 }
+
+      -- State after instruction 3: mov rdi, rsp
+      s-after-setup : State
+      s-after-setup = record s3 { regs = writeReg (regs s3) rdi (readReg (regs s3) rsp)
+                                ; pc = pc s3 +ℕ 1 }
+
+      -- Fetch lemmas
+      fetch0 : fetch prog (pc s) ≡ just (sub (reg rsp) (imm 16))
+      fetch0 = subst (λ p → fetch prog p ≡ just (sub (reg rsp) (imm 16)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (sub (reg rsp) (imm 16)) _)
+
+      -- Step proofs
+      step-0 : step prog s ≡ just s1
+      step-0 = trans (step-exec prog s (sub (reg rsp) (imm 16)) h-false fetch0)
+                     (execSub-reg-imm prog s rsp 16)
+
+      h1 : halted s1 ≡ false
+      h1 = h-false
+
+      -- For subsequent fetches, we need length lemmas and program equality
+      pc-s1 : pc s1 ≡ length prefix +ℕ 1
+      pc-s1 = cong (_+ℕ 1) pc-eq
+
+      -- Abbreviations for instructions
+      i0 : Instr
+      i0 = sub (reg rsp) (imm 16)
+      i1 : Instr
+      i1 = mov (mem (base rsp)) (reg r12)
+      i2 : Instr
+      i2 = mov (mem (base+disp rsp 8)) (reg rdi)
+      i3 : Instr
+      i3 = mov (reg rdi) (reg rsp)
+
+      -- Rest of thunk code after setup - structure must match thunk-code ++ suffix
+      rest-code : Program
+      rest-code = (compile-x86 f ++ ret ∷ []) ++ suffix
+
+      -- Program equality: prog = (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ rest-code
+      -- Proof: prog = prefix ++ thunk-code ++ suffix
+      --              = prefix ++ (thunk-code ++ suffix)         [right-assoc ++]
+      --              = prefix ++ (i0 ∷ i1 ∷ i2 ∷ i3 ∷ rest-code) [definitional]
+      --              ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ rest-code  [by sym ++-assoc]
+      open import Data.List.Properties using (++-assoc)
+      prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ rest-code
+      prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ rest-code))
+
+      len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+      len-prefix-1 = length-++ prefix _
+
+      fetch1 : fetch prog (pc s1) ≡ just i1
+      fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) (trans len-prefix-1 (sym pc-s1))
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 _)
+
+      step-1 : step prog s1 ≡ just s2
+      step-1 = trans (step-exec prog s1 i1 h1 fetch1)
+                     (execMov-mem-base-reg prog s1 rsp r12)
+
+      h2 : halted s2 ≡ false
+      h2 = h-false
+
+      pc-s2 : pc s2 ≡ length prefix +ℕ 2
+      pc-s2 = trans (cong (_+ℕ 1) pc-s1) (+-assoc (length prefix) 1 1)
+
+      -- Program equality for fetch2
+      prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ rest-code
+      prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ rest-code))
+
+      len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+      len-prefix-2 = length-++ prefix _
+
+      fetch2 : fetch prog (pc s2) ≡ just i2
+      fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) (trans len-prefix-2 (sym pc-s2))
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 _)
+
+      step-2 : step prog s2 ≡ just s3
+      step-2 = trans (step-exec prog s2 i2 h2 fetch2)
+                     (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+      h3 : halted s3 ≡ false
+      h3 = h-false
+
+      pc-s3 : pc s3 ≡ length prefix +ℕ 3
+      pc-s3 = trans (cong (_+ℕ 1) pc-s2) (+-assoc (length prefix) 2 1)
+
+      -- Program equality for fetch3
+      prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ rest-code
+      prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ rest-code))
+
+      len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+      len-prefix-3 = length-++ prefix _
+
+      fetch3 : fetch prog (pc s3) ≡ just i3
+      fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) (trans len-prefix-3 (sym pc-s3))
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 _)
+
+      step-3 : step prog s3 ≡ just s-after-setup
+      step-3 = trans (step-exec prog s3 (mov (reg rdi) (reg rsp)) h3 fetch3)
+                     (execMov-reg-reg s3 rdi rsp)
+
+      -- Chain the 4 steps using exec-three-steps-nonhalt + exec-chain
+      exec-3 : exec 3 prog s ≡ just s3
+      exec-3 = exec-three-steps-nonhalt prog s s1 s2 s3 step-0 h1 step-1 h2 step-2 h3
+
+      exec-1-from-s3 : exec 1 prog s3 ≡ just s-after-setup
+      exec-1-from-s3 = exec-one-step prog s3 s-after-setup step-3
+
+      exec-setup : exec 4 prog s ≡ just s-after-setup
+      exec-setup = exec-chain 3 1 prog s s3 s-after-setup exec-3 h3 exec-1-from-s3
+
+      h-after-setup : halted s-after-setup ≡ false
+      h-after-setup = h-false
+
+      pc-after-setup : pc s-after-setup ≡ length prefix +ℕ 4
+      pc-after-setup = trans (cong (_+ℕ 1) pc-s3) (+-assoc (length prefix) 3 1)
+
+      -- Memory properties for encode-pair-construct
+      -- rsp in s1/s2/s3/s-after-setup is new-rsp
+      rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
+      rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+      -- r12 value preserved through s1
+      r12-s1 : readReg (regs s1) r12 ≡ orig-r12
+      r12-s1 = readReg-writeReg-rsp-r12 (regs s) new-rsp
+        where
+          readReg-writeReg-rsp-r12 : ∀ rf v → readReg (writeReg rf rsp v) r12 ≡ readReg rf r12
+          readReg-writeReg-rsp-r12 rf v = refl
+
+      -- Memory at [new-rsp] after s2 contains orig-r12 = encode env
+      mem-env : readMem (memory s-after-setup) new-rsp ≡ just orig-r12
+      mem-env = trans mem-s4 (trans mem-s3 mem-s2)
+        where
+          -- s2 wrote orig-r12 to [new-rsp]
+          -- memory s2 = writeMem (memory s1) (readReg (regs s1) rsp) (readReg (regs s1) r12)
+          -- readReg (regs s1) rsp ≡ new-rsp (by rsp-s1)
+          -- readReg (regs s1) r12 ≡ orig-r12 (by r12-s1)
+          mem-s2 : readMem (memory s2) new-rsp ≡ just orig-r12
+          mem-s2 = subst₂ (λ addr val → readMem (writeMem (memory s1) addr val) new-rsp ≡ just val)
+                          (sym rsp-s1) (sym r12-s1)
+                          (readMem-writeMem-same (memory s1) new-rsp orig-r12)
+          -- s3 wrote to [new-rsp + 8], doesn't affect [new-rsp]
+          mem-s3 : readMem (memory s3) new-rsp ≡ readMem (memory s2) new-rsp
+          mem-s3 = readMem-writeMem-diff (memory s2) (readReg (regs s2) rsp +ℕ 8) new-rsp
+                     (readReg (regs s2) rdi) (λ eq → n≢n+suc new-rsp 7 (sym eq))
+          -- s-after-setup doesn't change memory
+          mem-s4 : readMem (memory s-after-setup) new-rsp ≡ readMem (memory s3) new-rsp
+          mem-s4 = refl
+
+      -- Memory at [new-rsp + 8] after s3 contains orig-rdi = encode arg
+      mem-arg : readMem (memory s-after-setup) (new-rsp +ℕ 8) ≡ just orig-rdi
+      mem-arg = trans mem-s4 mem-s3
+        where
+          -- rsp preserved through s2
+          rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+          rsp-s2 = rsp-s1  -- regs unchanged in s2 (only memory changed)
+          -- rdi preserved through s1, s2
+          rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+          rdi-s2 = trans (readReg-writeReg-rsp-rdi (regs s) new-rsp) refl
+          -- s3 wrote orig-rdi to [new-rsp + 8]
+          mem-s3 : readMem (memory s3) (new-rsp +ℕ 8) ≡ just orig-rdi
+          mem-s3 = trans (readMem-writeMem-same (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi))
+                         (cong just rdi-s2)
+          -- s-after-setup doesn't change memory
+          mem-s4 : readMem (memory s-after-setup) (new-rsp +ℕ 8) ≡ readMem (memory s3) (new-rsp +ℕ 8)
+          mem-s4 = refl
+
+      -- rdi in s-after-setup equals new-rsp
+      rdi-is-new-rsp : readReg (regs s-after-setup) rdi ≡ new-rsp
+      rdi-is-new-rsp = trans (readReg-writeReg-same (regs s3) rdi (readReg (regs s3) rsp)) rsp-s3
+        where
+          rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+          rsp-s3 = rsp-s1  -- regs unchanged through s2, s3 (only memory changed)
+
+      -- Use encode-pair-construct: new-rsp = encode (env, arg)
+      -- Preconditions: memory[new-rsp] = encode env, memory[new-rsp+8] = encode arg
+      mem-env-encoded : readMem (memory s-after-setup) new-rsp ≡ just (encode env)
+      mem-env-encoded = trans mem-env (cong just r12-eq)
+
+      mem-arg-encoded : readMem (memory s-after-setup) (new-rsp +ℕ 8) ≡ just (encode arg)
+      mem-arg-encoded = trans mem-arg (cong just rdi-eq)
+
+      new-rsp-is-encode-pair : new-rsp ≡ encode {A * B} (env , arg)
+      new-rsp-is-encode-pair = encode-pair-construct env arg new-rsp (memory s-after-setup)
+                                 mem-env-encoded mem-arg-encoded
+
+      rdi-after-setup : readReg (regs s-after-setup) rdi ≡ encode {A * B} (env , arg)
+      rdi-after-setup = trans rdi-is-new-rsp new-rsp-is-encode-pair
 
       -- Recursive call to f (uses run-ir-at-offset from mutual block)
       prefix-f : Program
@@ -4909,8 +5121,8 @@ mutual
       len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
       len-prefix-f = length-++ prefix _
 
-      postulate
-        pc-for-f : pc s-after-setup ≡ length prefix-f
+      pc-for-f : pc s-after-setup ≡ length prefix-f
+      pc-for-f = trans pc-after-setup (sym len-prefix-f)
 
       -- Result from executing f (uses mutual recursive call)
       -- Note: This would be: run-ir-at-offset f prefix-f suffix-f (env, arg) s-after-setup ...
