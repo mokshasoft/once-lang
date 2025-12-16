@@ -52,7 +52,7 @@ compile-length inr = 5             -- addi sp + li + sd + sd + mv
 compile-length [ f , g ] = (6 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1        -- li a0, 0
 compile-length initial = 1         -- ebreak
-compile-length (curry f) = 13 +ℕ compile-length f
+compile-length (curry f) = 14 +ℕ compile-length f  -- auipc + addi instead of li
 compile-length apply = 7
 compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
@@ -185,33 +185,41 @@ compile-riscv initial = ebreak ∷ []
 -- Jump offsets are PC-relative, computed based on compiled code length.
 compile-riscv (curry {A} {B} {C} f) =
   let len-f = compile-length f
-      -- Layout:
+      -- Layout (with PC-relative code-ptr via auipc+addi):
       --   0: addi sp, sp, -16
       --   1: sd a0, 0(sp)          -- store env
-      --   2: li t0, code-ptr
-      --   3: sd t0, 8(sp)          -- store code_ptr
-      --   4: mv a0, sp             -- return closure
-      --   5: j +offset             -- jump over thunk (PC-relative)
-      --   6: label code-ptr
-      --   7: addi sp, sp, -16
-      --   8: sd s0, 0(sp)          -- store env (a)
-      --   9: sd a0, 8(sp)          -- store arg (b)
-      --   10: mv a0, sp            -- a0 = pointer to pair
-      --   11 to 10+|f|: compile-riscv f
-      --   11+|f|: ret
-      --   12+|f|: label end
+      --   2: auipc t0, 0           -- t0 = pc (current instruction index = 2)
+      --   3: addi t0, t0, 5        -- t0 = 2 + 5 = 7 (thunk position)
+      --   4: sd t0, 8(sp)          -- store code_ptr
+      --   5: mv a0, sp             -- return closure
+      --   6: j +offset             -- jump over thunk (PC-relative)
+      --   7: label code-ptr        -- thunk entry
+      --   8: addi sp, sp, -16
+      --   9: sd s0, 0(sp)          -- store env (a)
+      --   10: sd a0, 8(sp)         -- store arg (b)
+      --   11: mv a0, sp            -- a0 = pointer to pair
+      --   12 to 11+|f|: compile-riscv f
+      --   12+|f|: ret
+      --   13+|f|: label end
       --
-      -- PC-relative offset for j at pos 5 → end at pos 12+|f|:
-      --   offset = (12+|f|) - 5 = 7+|f|
-      code-ptr = 6
+      -- PC-relative offset for j at pos 6 → end at pos 13+|f|:
+      --   offset = (13+|f|) - 6 = 7+|f|
+      --
+      -- KEY FIX: code-ptr is now computed at runtime via auipc+addi,
+      -- so it correctly points to the thunk even in composed programs
+      -- like `apply ∘ ⟨curry f, id⟩`.
+      code-ptr = 7        -- thunk starts at position 7
+      auipc-to-thunk = 5  -- offset from auipc (pos 2) to thunk (pos 7)
       end-offset = + (7 +ℕ len-f)
   in
   -- Allocate closure on stack
   addi sp sp neg16 ∷
   -- Store environment (input a in a0) as closure.env
   sd a0 (+ 0) sp ∷
-  -- Store code pointer (address of thunk)
-  li t0 (+ code-ptr) ∷
+  -- Compute code pointer using PC-relative addressing:
+  -- auipc gives current PC, addi adds offset to thunk
+  auipc t0 (+ 0) ∷                    -- t0 = pc (instruction index)
+  addi t0 t0 (+ auipc-to-thunk) ∷     -- t0 = pc + 5 = thunk position
   sd t0 (+ 8) sp ∷
   -- Return closure pointer
   mv a0 sp ∷
@@ -232,7 +240,7 @@ compile-riscv (curry {A} {B} {C} f) =
   -- Return (a0 already has result)
   ret ∷
   -- End of thunk
-  label (12 +ℕ len-f) ∷ []
+  label (13 +ℕ len-f) ∷ []
 
 -- Apply: call closure
 -- Input is pair (closure, argument)

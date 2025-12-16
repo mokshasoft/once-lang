@@ -275,6 +275,11 @@ readReg-writeReg-sp-a0 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf sp v) a0 ≡ readReg rf a0
 readReg-writeReg-sp-a0 rf v = refl
 
+-- | Reading s1 after writing sp returns the old value
+readReg-writeReg-sp-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf sp v) s1 ≡ readReg rf s1
+readReg-writeReg-sp-s1 rf v = refl
+
 -- | Reading sp after writing a0 returns the old value
 readReg-writeReg-a0-sp : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf a0 v) sp ≡ readReg rf sp
@@ -822,6 +827,21 @@ readReg-writeReg-s2-s1 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf s2 v) s1 ≡ readReg rf s1
 readReg-writeReg-s2-s1 rf v = refl
 
+-- | Reading sp after writing t0 returns the old value
+readReg-writeReg-t0-sp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) sp ≡ readReg rf sp
+readReg-writeReg-t0-sp rf v = refl
+
+-- | Reading a0 after writing t0 returns the old value
+readReg-writeReg-t0-a0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) a0 ≡ readReg rf a0
+readReg-writeReg-t0-a0 rf v = refl
+
+-- | Reading s1 after writing t0 returns the old value
+readReg-writeReg-t0-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) s1 ≡ readReg rf s1
+readReg-writeReg-t0-s1 rf v = refl
+
 ------------------------------------------------------------------------
 -- Step helpers at arbitrary offset (for mutual block proofs)
 ------------------------------------------------------------------------
@@ -864,3 +884,55 @@ jalr-ra-preserves-a0 : ∀ (s : State) (rs1 : Reg) (offset : ℤ) →
                     ; pc = effectiveAddr (regs s) rs1 offset }
   in readReg (regs s') a0 ≡ readReg (regs s) a0
 jalr-ra-preserves-a0 s rs1 offset = readReg-writeReg-ra-a0 (regs s) (pc s +ℕ 1)
+
+------------------------------------------------------------------------
+-- Non-halting multi-step execution helpers
+------------------------------------------------------------------------
+--
+-- These are analogous to X86's exec-n-steps-nonhalt helpers.
+-- They chain together step proofs for sub-program execution where
+-- we don't want to halt after each step.
+--
+-- Note: We use st1, st2, etc. to avoid conflict with register names s1, s2.
+
+-- | Two-step non-halting execution: execute exactly 2 steps without halting
+exec-two-steps-nonhalt : ∀ (prog : List Instr) (s st1 st2 : State) →
+  step prog s ≡ just st1 → halted st1 ≡ false →
+  step prog st1 ≡ just st2 → halted st2 ≡ false →
+  exec 2 prog s ≡ just st2
+exec-two-steps-nonhalt prog s st1 st2 step1 h1 step2 h2 =
+  trans (exec-step-continue 1 prog s st1 step1 h1)
+        (exec-one-step-nonhalt prog st1 st2 step2 h2)
+
+-- | Three-step non-halting execution
+exec-three-steps-nonhalt : ∀ (prog : List Instr) (s st1 st2 st3 : State) →
+  step prog s ≡ just st1 → halted st1 ≡ false →
+  step prog st1 ≡ just st2 → halted st2 ≡ false →
+  step prog st2 ≡ just st3 → halted st3 ≡ false →
+  exec 3 prog s ≡ just st3
+exec-three-steps-nonhalt prog s st1 st2 st3 step1 h1 step2 h2 step3 h3 =
+  trans (exec-step-continue 2 prog s st1 step1 h1)
+        (exec-two-steps-nonhalt prog st1 st2 st3 step2 h2 step3 h3)
+
+-- | Four-step non-halting execution
+exec-four-steps-nonhalt : ∀ (prog : List Instr) (s st1 st2 st3 st4 : State) →
+  step prog s ≡ just st1 → halted st1 ≡ false →
+  step prog st1 ≡ just st2 → halted st2 ≡ false →
+  step prog st2 ≡ just st3 → halted st3 ≡ false →
+  step prog st3 ≡ just st4 → halted st4 ≡ false →
+  exec 4 prog s ≡ just st4
+exec-four-steps-nonhalt prog s st1 st2 st3 st4 step1 h1 step2 h2 step3 h3 step4 h4 =
+  trans (exec-step-continue 3 prog s st1 step1 h1)
+        (exec-three-steps-nonhalt prog st1 st2 st3 st4 step2 h2 step3 h3 step4 h4)
+
+-- | Five-step non-halting execution
+exec-five-steps-nonhalt : ∀ (prog : List Instr) (s st1 st2 st3 st4 st5 : State) →
+  step prog s ≡ just st1 → halted st1 ≡ false →
+  step prog st1 ≡ just st2 → halted st2 ≡ false →
+  step prog st2 ≡ just st3 → halted st3 ≡ false →
+  step prog st3 ≡ just st4 → halted st4 ≡ false →
+  step prog st4 ≡ just st5 → halted st5 ≡ false →
+  exec 5 prog s ≡ just st5
+exec-five-steps-nonhalt prog s st1 st2 st3 st4 st5 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 =
+  trans (exec-step-continue 4 prog s st1 step1 h1)
+        (exec-four-steps-nonhalt prog st1 st2 st3 st4 st5 step2 h2 step3 h3 step4 h4 step5 h5)
