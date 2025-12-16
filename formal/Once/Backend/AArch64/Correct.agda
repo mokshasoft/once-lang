@@ -1585,18 +1585,20 @@ postulate
               × readReg (regs s') x0 ≡ encode {C} (eval f (env , arg)))
 
 ------------------------------------------------------------------------
--- Derive run-generator from run-ir-at-offset
+-- Derive exec-generator from run-ir-at-offset
 ------------------------------------------------------------------------
 
--- When prefix=[] and suffix=[], pc goes past the program and execution halts
-offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+-- | exec-generator: Correctness with exact fuel (compile-length ir + 1)
+-- This is the core theorem - fully proven with no postulates.
+-- When prefix=[] and suffix=[], pc goes past the program and execution halts.
+exec-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) x0 ≡ encode x →
-  ∃[ s' ] (run (compile-aarch64 ir) s ≡ just s'
+  ∃[ s' ] (exec (compile-length ir +ℕ 1) (compile-aarch64 ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') x0 ≡ encode (eval ir x))
-offset-to-generator {A} {B} ir x s h-false pc-0 x0-eq =
+exec-generator {A} {B} ir x s h-false pc-0 x0-eq =
   let (s' , exec-eq-raw , h' , pc' , x0-eq' , _) =
         run-ir-at-offset ir [] [] x s h-false pc-0 x0-eq
       prog = compile-aarch64 ir
@@ -1630,55 +1632,55 @@ offset-to-generator {A} {B} ir x s h-false pc-0 x0-eq =
       exec-halt = exec-chain (compile-length ir) 1 prog s s' s'' exec-eq h'
                              (exec-1-step prog s' s'' step-halt)
 
-      postulate
-        size-bound : compile-length ir +ℕ 1 ≤ 10000
+  in s'' , exec-halt , refl , x0-eq'
 
-      exec-large-halted : exec 10000 prog s ≡ just s''
-      exec-large-halted = exec-mono (compile-length ir +ℕ 1) 10000 prog s s'' size-bound exec-halt refl
-
-  in s'' , exec-large-halted , refl , x0-eq'
-
--- | run-generator: The main generator theorem
--- Derived from offset-to-generator (no longer postulated!)
+-- | run-generator: Correctness with run (fixed fuel = 10000)
+-- Requires caller to provide proof that compiled code fits in fuel budget.
+-- For most practical IR terms, this bound easily holds.
 run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  compile-length ir +ℕ 1 ≤ 10000 →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) x0 ≡ encode x →
   ∃[ s' ] (run (compile-aarch64 ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') x0 ≡ encode (eval ir x))
-run-generator = offset-to-generator
+run-generator ir x s size-bound h-false pc-0 x0-eq =
+  let (s' , exec-eq , h-true , x0-eq') = exec-generator ir x s h-false pc-0 x0-eq
+      run-eq = exec-mono (compile-length ir +ℕ 1) 10000 (compile-aarch64 ir) s s' size-bound exec-eq h-true
+  in s' , run-eq , h-true , x0-eq'
 
 ------------------------------------------------------------------------
--- Proven compile-*-correct using run-generator
+-- Proven compile-*-correct using exec-generator
 ------------------------------------------------------------------------
 
--- | compose correctness (now proven using run-generator!)
+-- | compose correctness (now proven using exec-generator!)
+-- Uses exact fuel, no size bound required.
 compile-compose-correct : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-aarch64 (g ∘ f)) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length (g ∘ f) +ℕ 1) (compile-aarch64 (g ∘ f)) (initWithInput x) ≡ just s
         × readReg (regs s) x0 ≡ encode (eval (g ∘ f) x))
 compile-compose-correct f g x =
-  let (s' , run-eq , _ , x0-eq) = run-generator (g ∘ f) x (initWithInput x)
+  let (s' , exec-eq , _ , x0-eq) = exec-generator (g ∘ f) x (initWithInput x)
                                     (initWithInput-halted x) (initWithInput-pc x) (initWithInput-x0 x)
-  in s' , run-eq , x0-eq
+  in s' , exec-eq , x0-eq
 
--- | pair correctness (uses run-generator)
+-- | pair correctness (uses exec-generator)
 compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
-  ∃[ s ] (run (compile-aarch64 ⟨ f , g ⟩) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length ⟨ f , g ⟩ +ℕ 1) (compile-aarch64 ⟨ f , g ⟩) (initWithInput x) ≡ just s
         × readReg (regs s) x0 ≡ encode (eval ⟨ f , g ⟩ x))
 compile-pair-correct f g x =
-  let (s' , run-eq , _ , x0-eq) = run-generator ⟨ f , g ⟩ x (initWithInput x)
+  let (s' , exec-eq , _ , x0-eq) = exec-generator ⟨ f , g ⟩ x (initWithInput x)
                                     (initWithInput-halted x) (initWithInput-pc x) (initWithInput-x0 x)
-  in s' , run-eq , x0-eq
+  in s' , exec-eq , x0-eq
 
--- | case correctness (uses run-generator)
+-- | case correctness (uses exec-generator)
 compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧) →
-  ∃[ s ] (run (compile-aarch64 [ f , g ]) (initWithInput x) ≡ just s
+  ∃[ s ] (exec (compile-length [ f , g ] +ℕ 1) (compile-aarch64 [ f , g ]) (initWithInput x) ≡ just s
         × readReg (regs s) x0 ≡ encode (eval [ f , g ] x))
 compile-case-correct f g x =
-  let (s' , run-eq , _ , x0-eq) = run-generator [ f , g ] x (initWithInput x)
+  let (s' , exec-eq , _ , x0-eq) = exec-generator [ f , g ] x (initWithInput x)
                                     (initWithInput-halted x) (initWithInput-pc x) (initWithInput-x0 x)
-  in s' , run-eq , x0-eq
+  in s' , exec-eq , x0-eq
 
 -- Projection generators (fst, snd)
 -- NOTE: These require pattern matching on ⟦ B ⟧ / ⟦ A ⟧ which Agda rejects
