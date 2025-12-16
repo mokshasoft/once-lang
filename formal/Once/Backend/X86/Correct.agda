@@ -257,6 +257,14 @@ execJmp : ∀ (prog : List Instr) (s : State) (target : ℕ) →
   execInstr prog s (jmp target) ≡ just (record s { pc = pc s +ℕ 1 +ℕ target })
 execJmp prog s target = refl
 
+-- Helper: state after executing lea reg, [mem]
+-- Computes effective address and stores in register
+execLea : ∀ (prog : List Instr) (s : State) (r : Reg) (m : Mem) →
+  execInstr prog s (lea r m) ≡
+    just (record s { regs = writeReg (regs s) r (effectiveAddr s m)
+                   ; pc = pc s +ℕ 1 })
+execLea prog s r m = refl
+
 -- Helper: state after executing cmp (reg r) (imm 0) when r contains 0
 -- This is the specific case we need for case analysis (tag comparison)
 execCmp-zero : ∀ (prog : List Instr) (s : State) (r : Reg) →
@@ -7651,53 +7659,134 @@ module E2E-Trace where
   -- Phase 2: Curry closure creation (instructions 5-10)
   ------------------------------------------------------------------------
 
+  -- Fetch proofs for curry instructions
+  prog-fetch-5 : fetch prog 5 ≡ just (sub (reg rsp) (imm 16))
+  prog-fetch-5 = refl
+
+  prog-fetch-6 : fetch prog 6 ≡ just (mov (mem (base rsp)) (reg rdi))
+  prog-fetch-6 = refl
+
+  prog-fetch-7 : fetch prog 7 ≡ just (lea r9 (rip+disp 4))
+  prog-fetch-7 = refl
+
+  prog-fetch-8 : fetch prog 8 ≡ just (mov (mem (base+disp rsp 8)) (reg r9))
+  prog-fetch-8 = refl
+
+  prog-fetch-9 : fetch prog 9 ≡ just (mov (reg rax) (reg rsp))
+  prog-fetch-9 = refl
+
+  prog-fetch-10 : fetch prog 10 ≡ just (jmp 7)
+  prog-fetch-10 = refl
+
   -- Instruction 5: sub rsp, 16 (allocate closure)
-  postulate
-    s6 : State
-    step-5 : step prog s5 ≡ just s6
-    s6-halted : halted s6 ≡ false
-    s6-pc : pc s6 ≡ 6
-    s6-rsp : readReg (regs s6) rsp ≡ init-rsp ∸ 48
+  s6 : State
+  s6 = record s5
+    { regs = writeReg (regs s5) rsp (readReg (regs s5) rsp ∸ 16)
+    ; pc = pc s5 +ℕ 1
+    ; flags = updateFlags (readReg (regs s5) rsp ∸ 16) (readReg (regs s5) rsp)
+    }
+
+  step-5 : step prog s5 ≡ just s6
+  step-5 = trans (step-exec prog s5 (sub (reg rsp) (imm 16)) s5-halted prog-fetch-5) (execSub-reg-imm prog s5 rsp 16)
+
+  s6-halted : halted s6 ≡ false
+  s6-halted = refl
+
+  s6-pc : pc s6 ≡ 6
+  s6-pc = refl
+
+  s6-rsp : readReg (regs s6) rsp ≡ init-rsp ∸ 48
+  s6-rsp = refl
 
   -- Instruction 6: mov [rsp], rdi (store env = input)
-  postulate
-    s7 : State
-    step-6 : step prog s6 ≡ just s7
-    s7-halted : halted s7 ≡ false
-    s7-pc : pc s7 ≡ 7
-    s7-closure-env : readMem (memory s7) (init-rsp ∸ 48) ≡ just input-val
+  s7 : State
+  s7 = record s6
+    { memory = writeMem (memory s6) (readReg (regs s6) rsp) (readReg (regs s6) rdi)
+    ; pc = pc s6 +ℕ 1
+    }
+
+  step-6 : step prog s6 ≡ just s7
+  step-6 = trans (step-exec prog s6 (mov (mem (base rsp)) (reg rdi)) s6-halted prog-fetch-6) (execMov-mem-base-reg prog s6 rsp rdi)
+
+  s7-halted : halted s7 ≡ false
+  s7-halted = refl
+
+  s7-pc : pc s7 ≡ 7
+  s7-pc = refl
+
+  s7-closure-env : readMem (memory s7) (init-rsp ∸ 48) ≡ just input-val
+  s7-closure-env = refl
 
   -- Instruction 7: lea r9, [rip+4]
-  -- At pc=7, computes 7+4=11 (thunk address)
-  postulate
-    s8 : State
-    step-7 : step prog s7 ≡ just s8
-    s8-halted : halted s8 ≡ false
-    s8-pc : pc s8 ≡ 8
-    s8-r9 : readReg (regs s8) r9 ≡ 11  -- thunk entry position
+  -- effectiveAddr computes pc + 4 = 7 + 4 = 11
+  s8 : State
+  s8 = record s7
+    { regs = writeReg (regs s7) r9 (effectiveAddr s7 (rip+disp 4))
+    ; pc = pc s7 +ℕ 1
+    }
+
+  step-7 : step prog s7 ≡ just s8
+  step-7 = trans (step-exec prog s7 (lea r9 (rip+disp 4)) s7-halted prog-fetch-7) (execLea prog s7 r9 (rip+disp 4))
+
+  s8-halted : halted s8 ≡ false
+  s8-halted = refl
+
+  s8-pc : pc s8 ≡ 8
+  s8-pc = refl
+
+  s8-r9 : readReg (regs s8) r9 ≡ 11
+  s8-r9 = refl
 
   -- Instruction 8: mov [rsp+8], r9 (store code-ptr)
-  postulate
-    s9 : State
-    step-8 : step prog s8 ≡ just s9
-    s9-halted : halted s9 ≡ false
-    s9-pc : pc s9 ≡ 9
-    s9-closure-ptr : readMem (memory s9) (init-rsp ∸ 48 +ℕ 8) ≡ just 11
+  s9 : State
+  s9 = record s8
+    { memory = writeMem (memory s8) (readReg (regs s8) rsp +ℕ 8) (readReg (regs s8) r9)
+    ; pc = pc s8 +ℕ 1
+    }
 
-  -- Instruction 9: mov rax, rsp (return closure pointer)
-  postulate
-    s10 : State
-    step-9 : step prog s9 ≡ just s10
-    s10-halted : halted s10 ≡ false
-    s10-pc : pc s10 ≡ 10
-    s10-rax : readReg (regs s10) rax ≡ init-rsp ∸ 48  -- closure address
+  step-8 : step prog s8 ≡ just s9
+  step-8 = trans (step-exec prog s8 (mov (mem (base+disp rsp 8)) (reg r9)) s8-halted prog-fetch-8) (execMov-mem-disp-reg prog s8 rsp r9 8)
+
+  s9-halted : halted s9 ≡ false
+  s9-halted = refl
+
+  s9-pc : pc s9 ≡ 9
+  s9-pc = refl
+
+  s9-closure-ptr : readMem (memory s9) (init-rsp ∸ 48 +ℕ 8) ≡ just 11
+  s9-closure-ptr = refl
+
+  -- Instruction 9: mov rax, rsp
+  s10 : State
+  s10 = record s9
+    { regs = writeReg (regs s9) rax (readReg (regs s9) rsp)
+    ; pc = pc s9 +ℕ 1
+    }
+
+  step-9 : step prog s9 ≡ just s10
+  step-9 = trans (step-exec prog s9 (mov (reg rax) (reg rsp)) s9-halted prog-fetch-9) (execMov-reg-reg s9 rax rsp)
+
+  s10-halted : halted s10 ≡ false
+  s10-halted = refl
+
+  s10-pc : pc s10 ≡ 10
+  s10-pc = refl
+
+  s10-rax : readReg (regs s10) rax ≡ init-rsp ∸ 48
+  s10-rax = refl
 
   -- Instruction 10: jmp 7 (PC-relative: pc = 10+1+7 = 18)
-  postulate
-    s11 : State
-    step-10 : step prog s10 ≡ just s11
-    s11-halted : halted s11 ≡ false
-    s11-pc : pc s11 ≡ 18  -- Jumped over thunk!
+  s11 : State
+  s11 = record s10 { pc = pc s10 +ℕ 1 +ℕ 7 }
+
+  step-10 : step prog s10 ≡ just s11
+  step-10 = trans (step-exec prog s10 (jmp 7) s10-halted prog-fetch-10) (execJmp prog s10 7)
+
+  s11-halted : halted s11 ≡ false
+  s11-halted = refl
+
+  s11-pc : pc s11 ≡ 18
+  s11-pc = refl
 
   ------------------------------------------------------------------------
   -- Phase 3: Complete pairing (instructions 18-26)
