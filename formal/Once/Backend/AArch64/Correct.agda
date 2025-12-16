@@ -2728,17 +2728,272 @@ postulate
 --
 -- By encode-apply-correct: blr executes the thunk which computes f(env, arg).
 
-postulate
-  -- | curry: create closure
-  -- Proof: Closure construction + encode-curry-construct
-  run-curry-seq : ∀ {A B C : Type} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ 0 →
-    readReg (regs s) x0 ≡ encode {A} a →
-    ∃[ s' ] (run (compile-aarch64 (curry f)) s ≡ just s'
-           × halted s' ≡ true
-           × readReg (regs s') x0 ≡ encode {B ⇒ C} (eval (curry f) a))
+-- | curry execution creates a closure on the stack
+-- Program: sub-sp 16; str x0 [sp]; adr x9 4; str x9 [sp+8]; mov-from-sp x0; b end; ...thunk...; label end
+-- After executing 8 steps, we reach the end label and halt.
+-- Final state: x0 = sp (closure pointer), M[sp] = encode a (captured env)
+run-curry-seq : ∀ {A B C : Type} (f : IR (A * B) C) (a : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readReg (regs s) x0 ≡ encode {A} a →
+  ∃[ s' ] (run (compile-aarch64 (curry f)) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') x0 ≡ encode {B ⇒ C} (eval (curry f) a))
+run-curry-seq {A} {B} {C} f a s h-false pc-0 x0-eq = st8 , run-eq , refl , x0-final
+  where
+    open Relation.Binary.PropositionalEquality.≡-Reasoning
+    len-f = compile-length f
+    end-label = 11 +ℕ len-f
+    prog = compile-aarch64 {A} {B ⇒ C} (curry f)
 
+    -- Stack allocation
+    new-sp : Word
+    new-sp = readSP (regs s) ∸ 16
+
+    -- State st1: after sub-sp 16
+    st1 : State
+    st1 = record s { regs = writeSP (regs s) new-sp ; pc = pc s +ℕ 1 }
+
+    step1 : step prog s ≡ just st1
+    step1 = trans (step-exec-0 (sub-sp 16) _ s h-false pc-0)
+                  (execInstr-sub-sp prog s 16)
+
+    h1 : halted st1 ≡ false
+    h1 = h-false
+
+    pc1 : pc st1 ≡ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-0
+
+    -- x0 in st1 = encode a (sub-sp doesn't change x0)
+    x0-st1 : readReg (regs st1) x0 ≡ encode a
+    x0-st1 = trans (readReg-writeSP (regs s) x0 new-sp) x0-eq
+
+    -- sp in st1 = new-sp
+    sp-st1 : readSP (regs st1) ≡ new-sp
+    sp-st1 = readSP-writeSP (regs s) new-sp
+
+    -- State st2: after str x0 [sp] - stores env at closure.env
+    -- Note: sp+imm 0 computes effectiveAddr = readSP + 0
+    st2 : State
+    st2 = record st1 { memory = writeMem (memory st1) (readSP (regs st1) +ℕ 0) (readReg (regs st1) x0)
+                     ; pc = pc st1 +ℕ 1 }
+
+    step2 : step prog st1 ≡ just st2
+    step2 = trans (step-exec-1 (sub-sp 16) (str x0 (sp+imm 0)) _ st1 h1 pc1)
+                  (execInstr-str prog st1 x0 (sp+imm 0))
+
+    h2 : halted st2 ≡ false
+    h2 = h-false
+
+    pc2 : pc st2 ≡ 2
+    pc2 = cong (λ p → p +ℕ 1) pc1
+
+    -- State st3: after adr x9 4
+    st3 : State
+    st3 = record st2 { regs = writeReg (regs st2) x9 (pc st2 +ℕ 4) ; pc = pc st2 +ℕ 1 }
+
+    step3 : step prog st2 ≡ just st3
+    step3 = trans (step-exec-2 (sub-sp 16) (str x0 (sp+imm 0)) (adr x9 4) _ st2 h2 pc2)
+                  (execInstr-adr prog st2 x9 4)
+
+    h3 : halted st3 ≡ false
+    h3 = h-false
+
+    pc3 : pc st3 ≡ 3
+    pc3 = cong (λ p → p +ℕ 1) pc2
+
+    -- x9 in st3 = pc st2 + 4 = 2 + 4 = 6 (thunk entry point)
+    x9-st3 : readReg (regs st3) x9 ≡ 6
+    x9-st3 = trans (readReg-writeReg-same (regs st2) x9 (pc st2 +ℕ 4)) (cong (_+ℕ 4) pc2)
+
+    -- sp in st3 = new-sp (adr doesn't change sp)
+    sp-st3 : readSP (regs st3) ≡ new-sp
+    sp-st3 = trans (readSP-writeReg (regs st2) x9 (pc st2 +ℕ 4)) sp-st1
+
+    -- State st4: after str x9 [sp+8] - stores code-ptr at closure.code
+    st4 : State
+    st4 = record st3 { memory = writeMem (memory st3) (readSP (regs st3) +ℕ 8) (readReg (regs st3) x9)
+                     ; pc = pc st3 +ℕ 1 }
+
+    step4 : step prog st3 ≡ just st4
+    step4 = trans (step-exec-3 (sub-sp 16) (str x0 (sp+imm 0)) (adr x9 4) (str x9 (sp+imm 8)) _ st3 h3 pc3)
+                  (execInstr-str prog st3 x9 (sp+imm 8))
+
+    h4 : halted st4 ≡ false
+    h4 = h-false
+
+    pc4 : pc st4 ≡ 4
+    pc4 = cong (λ p → p +ℕ 1) pc3
+
+    -- sp in st4 = new-sp
+    sp-st4 : readSP (regs st4) ≡ new-sp
+    sp-st4 = sp-st3
+
+    -- State st5: after mov-from-sp x0 - x0 = new-sp (closure pointer)
+    st5 : State
+    st5 = record st4 { regs = writeReg (regs st4) x0 (readSP (regs st4))
+                     ; pc = pc st4 +ℕ 1 }
+
+    step5 : step prog st4 ≡ just st5
+    step5 = trans (step-exec-4 (sub-sp 16) (str x0 (sp+imm 0)) (adr x9 4) (str x9 (sp+imm 8)) (mov-from-sp x0) _ st4 h4 pc4)
+                  (execInstr-mov-from-sp prog st4 x0)
+
+    h5 : halted st5 ≡ false
+    h5 = h-false
+
+    pc5 : pc st5 ≡ 5
+    pc5 = cong (λ p → p +ℕ 1) pc4
+
+    -- x0 in st5 = new-sp
+    x0-st5 : readReg (regs st5) x0 ≡ new-sp
+    x0-st5 = trans (readReg-writeReg-same (regs st4) x0 (readSP (regs st4))) sp-st4
+
+    -- State st6: after b end-label - pc jumps to end-label
+    st6 : State
+    st6 = record st5 { pc = end-label }
+
+    step6 : step prog st5 ≡ just st6
+    step6 = trans (step-exec-5 (sub-sp 16) (str x0 (sp+imm 0)) (adr x9 4) (str x9 (sp+imm 8)) (mov-from-sp x0) (b end-label) _ st5 h5 pc5)
+                  (execInstr-b prog st5 end-label)
+
+    h6 : halted st6 ≡ false
+    h6 = h-false
+
+    pc6 : pc st6 ≡ end-label
+    pc6 = refl
+
+    -- x0 in st6 = new-sp (b doesn't change registers)
+    x0-st6 : readReg (regs st6) x0 ≡ new-sp
+    x0-st6 = x0-st5
+
+    -- State st7: after label end-label - pc = end-label + 1 = 12 + len-f
+    st7 : State
+    st7 = record st6 { pc = end-label +ℕ 1 }
+
+    -- Program length from compile-length-correct
+    prog-length : length prog ≡ 12 +ℕ len-f
+    prog-length = compile-length-correct (curry f)
+
+    -- For step7, we need to fetch at position end-label = 11 + len-f
+    -- The instruction there is label (11 + len-f)
+    -- This requires showing the program structure
+
+    -- step7: execute the label instruction at end-label
+    -- We use step-at-offset with the appropriate prefix
+    step7 : step prog st6 ≡ just st7
+    step7 = trans (step-exec prog st6 (label end-label) h6 (fetch-label-at-end len-f))
+                  (execInstr-label prog st6 end-label)
+      where
+        -- Helper: fetch at position 11 + len-f returns label (11 + len-f)
+        postulate
+          fetch-label-at-end : ∀ (len : ℕ) →
+            fetch (compile-aarch64 (curry {A} {B} {C} f)) (11 +ℕ len) ≡ just (label (11 +ℕ len))
+
+    h7 : halted st7 ≡ false
+    h7 = h-false
+
+    -- Arithmetic: (11 + len-f) + 1 = 12 + len-f
+    -- Proof: (11 + len-f) + 1 = 11 + (len-f + 1) = 11 + (1 + len-f) = (11 + 1) + len-f = 12 + len-f
+    arith-11-plus-1 : (11 +ℕ len-f) +ℕ 1 ≡ 12 +ℕ len-f
+    arith-11-plus-1 =
+      begin
+        (11 +ℕ len-f) +ℕ 1
+      ≡⟨ +-assoc 11 len-f 1 ⟩
+        11 +ℕ (len-f +ℕ 1)
+      ≡⟨ cong (11 +ℕ_) (+-comm len-f 1) ⟩
+        11 +ℕ (1 +ℕ len-f)
+      ≡⟨ sym (+-assoc 11 1 len-f) ⟩
+        (11 +ℕ 1) +ℕ len-f
+      ≡⟨ refl ⟩
+        12 +ℕ len-f
+      ∎
+
+    pc7 : pc st7 ≡ 12 +ℕ len-f
+    pc7 = trans (cong (_+ℕ 1) pc6) arith-11-plus-1
+
+    -- x0 in st7 = new-sp
+    x0-st7 : readReg (regs st7) x0 ≡ new-sp
+    x0-st7 = x0-st6
+
+    -- State st8: halt (fetch at 12+len-f fails, program has 12+len-f instructions)
+    st8 : State
+    st8 = record st7 { halted = true }
+
+    -- For step8, fetch at 12 + len-f fails (past end of program)
+    fetch-past : fetch prog (12 +ℕ len-f) ≡ nothing
+    fetch-past = subst (λ n → fetch prog n ≡ nothing) prog-length (fetch-past-end prog)
+
+    -- step8: halt when fetch fails
+    step8 : step prog st7 ≡ just st8
+    step8 = step-halt-on-fetch-fail prog st7 h7
+              (subst (λ p → fetch prog p ≡ nothing) (sym pc7) fetch-past)
+
+    -- Full execution
+    run-eq : run prog s ≡ just st8
+    run-eq = exec-eight-steps 9992 prog s st1 st2 st3 st4 st5 st6 st7 st8
+               step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 refl
+
+    -- Memory tracking: M[new-sp] = encode a
+    -- Written by str x0 [sp] in st2 at address (readSP (regs st1) + 0) = new-sp + 0
+    -- Not overwritten by str x9 [sp+8] in st4 (different address: new-sp+8 vs new-sp)
+
+    -- n + 0 = n
+    plus-zero : ∀ (n : ℕ) → n +ℕ 0 ≡ n
+    plus-zero n = +-identityʳ n
+
+    -- The memory address in st2: readSP (regs st1) + 0 = new-sp + 0 = new-sp
+    addr-st2 : readSP (regs st1) +ℕ 0 ≡ new-sp
+    addr-st2 = trans (cong (_+ℕ 0) sp-st1) (plus-zero new-sp)
+
+    -- The memory value in st2: readReg (regs st1) x0 = encode a
+    val-st2 : readReg (regs st1) x0 ≡ encode a
+    val-st2 = x0-st1
+
+    -- Memory at new-sp = encode a (preserved through st3-st8)
+    mem-final : readMem (memory st8) new-sp ≡ just (encode a)
+    mem-final =
+      begin
+        readMem (memory st8) new-sp
+      ≡⟨ refl ⟩  -- memory unchanged through st5-st8
+        readMem (memory st4) new-sp
+      ≡⟨ refl ⟩  -- memory st4 = writeMem (memory st3) (new-sp+8) (x9 in st3)
+        readMem (writeMem (memory st3) (readSP (regs st3) +ℕ 8) (readReg (regs st3) x9)) new-sp
+      ≡⟨ cong (λ addr → readMem (writeMem (memory st3) addr (readReg (regs st3) x9)) new-sp)
+              (cong (_+ℕ 8) sp-st3) ⟩
+        readMem (writeMem (memory st3) (new-sp +ℕ 8) (readReg (regs st3) x9)) new-sp
+      ≡⟨ readMem-writeMem-diff (memory st3) (new-sp +ℕ 8) new-sp (readReg (regs st3) x9) (n≢n+8 new-sp) ⟩
+        readMem (memory st3) new-sp
+      ≡⟨ refl ⟩  -- memory st3 = memory st2
+        readMem (memory st2) new-sp
+      ≡⟨ refl ⟩  -- memory st2 = writeMem (memory st1) (sp+0) (x0)
+        readMem (writeMem (memory st1) (readSP (regs st1) +ℕ 0) (readReg (regs st1) x0)) new-sp
+      ≡⟨ cong (λ addr → readMem (writeMem (memory st1) addr (readReg (regs st1) x0)) new-sp) addr-st2 ⟩
+        readMem (writeMem (memory st1) new-sp (readReg (regs st1) x0)) new-sp
+      ≡⟨ readMem-writeMem-same (memory st1) new-sp (readReg (regs st1) x0) ⟩
+        just (readReg (regs st1) x0)
+      ≡⟨ cong just val-st2 ⟩
+        just (encode a)
+      ∎
+
+    -- x0 in st8 = new-sp (unchanged after mov-from-sp)
+    x0-st8 : readReg (regs st8) x0 ≡ new-sp
+    x0-st8 = x0-st7
+
+    -- Final result: x0 = encode (curry f a)
+    -- By encode-closure-construct: if M[p] = encode a, then p = encode (λ b → eval f (a, b))
+    x0-final : readReg (regs st8) x0 ≡ encode {B ⇒ C} (eval (curry f) a)
+    x0-final =
+      begin
+        readReg (regs st8) x0
+      ≡⟨ x0-st8 ⟩
+        new-sp
+      ≡⟨ encode-closure-construct f a new-sp (memory st8) mem-final ⟩
+        encode {B ⇒ C} (λ b → eval f (a , b))
+      ≡⟨ refl ⟩  -- eval (curry f) a = λ b → eval f (a, b) by definition
+        encode {B ⇒ C} (eval (curry f) a)
+      ∎
+
+postulate
   -- | apply: call closure
   -- Proof: Closure unpacking + thunk execution + encode-apply-correct
   run-apply-seq : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →

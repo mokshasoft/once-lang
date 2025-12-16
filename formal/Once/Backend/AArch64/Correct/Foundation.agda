@@ -23,7 +23,8 @@ open import Once.Backend.AArch64.CodeGen
 
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
-  using (fetch-0; fetch-suc; fetch-empty; fetch-append-left; fetch-append-right)
+  using (fetch-0; fetch-suc; fetch-empty; fetch-append-left; fetch-append-right; fetch-past-end)
+  public
 
 -- Import common memory helper lemmas (with AArch64 naming convention)
 open import Once.Backend.Common.Memory
@@ -608,6 +609,26 @@ exec-suc-halt n prog s s₁ refl step-eq halt-eq
 ... | just .s₁ | refl with halted s₁ | halt-eq
 ...   | true | refl = refl
 
+-- | For Common.Exec: exec (suc n) unfolds to exec n when step succeeds and result not halted
+exec-step-continue : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ false →
+  exec (suc n) prog s ≡ exec n prog s'
+exec-step-continue n prog s s' step-eq halt-eq rewrite step-eq | halt-eq = refl
+
+-- | For Common.Exec: exec (suc n) = just s' when step halts
+exec-halt-step : ∀ (n : ℕ) (prog : Program) (s s' : State) →
+  step prog s ≡ just s' →
+  halted s' ≡ true →
+  exec (suc n) prog s ≡ just s'
+exec-halt-step n prog s s' step-eq halt-eq rewrite step-eq | halt-eq = refl
+
+-- Import N-step execution lemmas from Common.Exec
+-- Provides exec-two-steps through exec-nine-steps
+open import Once.Backend.Common.Exec
+  halted step exec exec-step-continue exec-halt-step
+  public
+
 -- Main lemma: execution matches while pc stays strictly within prog1
 exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
   halted s ≡ false →
@@ -991,6 +1012,66 @@ fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
   fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
 fetch-at-prefix-end [] i rest = refl
 fetch-at-prefix-end (x ∷ xs) i rest = fetch-at-prefix-end xs i rest
+
+-- | General step helper: when pc matches, step executes that instruction
+step-exec : ∀ (prog : Program) (s : State) (i : Instr) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ just i →
+  step prog s ≡ execInstr prog s i
+step-exec prog s i h-false fetch-eq with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-eq
+...   | just .i | refl = refl
+
+-- | Step with pc=0 executes first instruction
+step-exec-0 : ∀ (i : Instr) (is : Program) (s : State) →
+  halted s ≡ false → pc s ≡ 0 →
+  step (i ∷ is) s ≡ execInstr (i ∷ is) s i
+step-exec-0 i is s h-false pc-0 =
+  step-exec (i ∷ is) s i h-false (subst (λ p → fetch (i ∷ is) p ≡ just i) (sym pc-0) refl)
+
+-- | Step with pc=1 executes second instruction
+step-exec-1 : ∀ (i0 i1 : Instr) (is : Program) (s : State) →
+  halted s ≡ false → pc s ≡ 1 →
+  step (i0 ∷ i1 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ is) s i1
+step-exec-1 i0 i1 is s h-false pc-1 =
+  step-exec (i0 ∷ i1 ∷ is) s i1 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ is) p ≡ just i1) (sym pc-1) refl)
+
+-- | Step with pc=2 executes third instruction
+step-exec-2 : ∀ (i0 i1 i2 : Instr) (is : Program) (s : State) →
+  halted s ≡ false → pc s ≡ 2 →
+  step (i0 ∷ i1 ∷ i2 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ is) s i2
+step-exec-2 i0 i1 i2 is s h-false pc-2 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ is) s i2 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ is) p ≡ just i2) (sym pc-2) refl)
+
+-- | Step with pc=3 executes fourth instruction
+step-exec-3 : ∀ (i0 i1 i2 i3 : Instr) (is : Program) (s : State) →
+  halted s ≡ false → pc s ≡ 3 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s i3
+step-exec-3 i0 i1 i2 i3 is s h-false pc-3 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) s i3 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ is) p ≡ just i3) (sym pc-3) refl)
+
+-- | Step with pc=4 executes fifth instruction
+step-exec-4 : ∀ (i0 i1 i2 i3 i4 : Instr) (is : Program) (s : State) →
+  halted s ≡ false → pc s ≡ 4 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s i4
+step-exec-4 i0 i1 i2 i3 i4 is s h-false pc-4 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) s i4 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ is) p ≡ just i4) (sym pc-4) refl)
+
+-- | Step with pc=5 executes sixth instruction
+step-exec-5 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (is : Program) (s : State) →
+  halted s ≡ false → pc s ≡ 5 →
+  step (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s ≡ execInstr (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s i5
+step-exec-5 i0 i1 i2 i3 i4 i5 is s h-false pc-5 =
+  step-exec (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) s i5 h-false (subst (λ p → fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ is) p ≡ just i5) (sym pc-5) refl)
+
+-- | Step halts when fetch fails at end of program
+step-halt-on-fetch-fail : ∀ (prog : Program) (s : State) →
+  halted s ≡ false →
+  fetch prog (pc s) ≡ nothing →
+  step prog s ≡ just (record s { halted = true })
+step-halt-on-fetch-fail prog s h-false fetch-fail with halted s | h-false
+... | false | refl with fetch prog (pc s) | fetch-fail
+...   | nothing | refl = refl
 
 -- | Step at arbitrary offset in a program
 -- When pc = length prefix, step fetches the first instruction of suffix
