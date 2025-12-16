@@ -230,14 +230,16 @@ execInstr prog s (test op1 op2) with readOperand s op1 | readOperand s op2
   just (record s { pc = pc s + 1
                  ; flags = mkflags (v1 ≡ᵇ 0) false false })
 
+-- Jump instructions use PC-relative offsets (like real x86-64)
+-- Target is offset from the NEXT instruction (pc + 1 + target)
 execInstr prog s (jmp target) =
-  just (record s { pc = target })
+  just (record s { pc = pc s + 1 + target })
 
 execInstr prog s (je target) =
-  just (record s { pc = if zf (flags s) then target else pc s + 1 })
+  just (record s { pc = if zf (flags s) then pc s + 1 + target else pc s + 1 })
 
 execInstr prog s (jne target) =
-  just (record s { pc = if zf (flags s) then pc s + 1 else target })
+  just (record s { pc = if zf (flags s) then pc s + 1 else pc s + 1 + target })
 
 -- call and ret: simplified model (would need stack handling)
 execInstr prog s (call target) with readOperand s target
