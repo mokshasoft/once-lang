@@ -783,6 +783,26 @@ execJal : ∀ (prog : Program) (s : State) (rd : Reg) (offset : ℕ) →
                    ; pc = pc s +ℕ offset })
 execJal prog s rd offset = refl
 
+-- | Helper: 0 << n ≡ 0 for any n
+0-<<-n : ∀ n → 0 << n ≡ 0
+0-<<-n zero = refl
+0-<<-n (suc n) = 0-<<-n n  -- (0 + 0) << n = 0 << n = 0
+
+-- | Helper: pc + 0 ≡ pc (uses +-identityʳ)
+open import Data.Nat.Properties using (+-identityʳ)
+
+-- | What execInstr does for auipc with imm=0
+-- auipc rd (+ 0): rd = pc (since 0 << 12 = 0), pc = pc + 1
+-- This is used in curry codegen to capture the current PC for code-ptr computation
+execAuipc0 : ∀ (prog : Program) (s : State) (rd : Reg) →
+  execInstr prog s (auipc rd (+ 0)) ≡
+    just (record s { regs = writeReg (regs s) rd (pc s)
+                   ; pc = pc s +ℕ 1 })
+execAuipc0 prog s rd =
+  -- result = pc s + (offsetToℕ (+ 0) << 12) = pc s + (0 << 12) = pc s + 0 = pc s
+  cong (λ r → just (record s { regs = writeReg (regs s) rd r ; pc = pc s +ℕ 1 }))
+       (trans (cong (pc s +ℕ_) (0-<<-n 12)) (+-identityʳ (pc s)))
+
 ------------------------------------------------------------------------
 -- Additional register preservation lemmas (for call/return patterns)
 ------------------------------------------------------------------------
@@ -863,6 +883,37 @@ step-ret-at-offset : ∀ (prefix : Program) (suffix : Program) (s : State) →
 step-ret-at-offset prefix suffix s h-false pc-eq =
   trans (step-at-offset prefix ret suffix s h-false pc-eq)
         (execRet (prefix ++ ret ∷ suffix) s)
+
+-- | Step an auipc instruction with imm=0 at arbitrary offset
+-- auipc rd (+ 0): rd = pc, pc = pc + 1
+step-auipc0-at-offset : ∀ (prefix : Program) (rd : Reg) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ auipc rd (+ 0) ∷ suffix) s ≡
+    just (record s { regs = writeReg (regs s) rd (pc s)
+                   ; pc = pc s +ℕ 1 })
+step-auipc0-at-offset prefix rd suffix s h-false pc-eq =
+  trans (step-at-offset prefix (auipc rd (+ 0)) suffix s h-false pc-eq)
+        (execAuipc0 (prefix ++ auipc rd (+ 0) ∷ suffix) s rd)
+
+-- | Step a j instruction at arbitrary offset
+-- j offset: pc = pc + offset
+step-j-at-offset : ∀ (prefix : Program) (offset : ℕ) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ j (+ offset) ∷ suffix) s ≡
+    just (record s { pc = pc s +ℕ offset })
+step-j-at-offset prefix offset suffix s h-false pc-eq =
+  trans (step-at-offset prefix (j (+ offset)) suffix s h-false pc-eq)
+        (execJ (prefix ++ j (+ offset) ∷ suffix) s offset)
+
+-- | Step a label instruction at arbitrary offset
+-- label n: pc = pc + 1 (no-op)
+step-label-at-offset : ∀ (prefix : Program) (n : ℕ) (suffix : Program) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix →
+  step (prefix ++ label n ∷ suffix) s ≡
+    just (record s { pc = pc s +ℕ 1 })
+step-label-at-offset prefix n suffix s h-false pc-eq =
+  trans (step-at-offset prefix (label n) suffix s h-false pc-eq)
+        (execLabel (prefix ++ label n ∷ suffix) s n)
 
 -- | Key insight: after jalr, halted is still false
 -- (jalr is a branch instruction, not a halting instruction)
