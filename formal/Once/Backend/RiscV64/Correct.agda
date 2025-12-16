@@ -1021,16 +1021,71 @@ mutual
       pc-after-middle : pc s-after-middle ≡ length prefix +ℕ 2 +ℕ len-f +ℕ 2
       pc-after-middle = trans pc-sf+2 (cong (_+ℕ 2) pc-after-f')
 
-      -- Length calculations for prefix-g (postulated due to complex arithmetic)
+      -- Length calculations for prefix-g (PROVEN)
       -- Structure: prefix-g = prefix-f ++ code-f ++ sd a0 0(sp) ∷ mv a0 s1 ∷ []
       -- = (prefix ++ 2) ++ len-f ++ 2 = length prefix + 4 + len-f
-      postulate
-        len-prefix-g : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+      len-prefix-g =
+        begin
+          length prefix-g
+        ≡⟨⟩
+          length (prefix-f ++ code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])
+        ≡⟨ length-++ prefix-f ⟩
+          length prefix-f +ℕ length (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])
+        ≡⟨ cong (length prefix-f +ℕ_) (length-++ code-f) ⟩
+          length prefix-f +ℕ (length code-f +ℕ 2)
+        ≡⟨ cong (λ x → x +ℕ (length code-f +ℕ 2)) len-prefix-f ⟩
+          (length prefix +ℕ 2) +ℕ (length code-f +ℕ 2)
+        ≡⟨ cong (λ x → (length prefix +ℕ 2) +ℕ (x +ℕ 2)) (compile-length-correct f) ⟩
+          (length prefix +ℕ 2) +ℕ (len-f +ℕ 2)
+        ≡⟨ +-assoc (length prefix) 2 (len-f +ℕ 2) ⟩
+          length prefix +ℕ (2 +ℕ (len-f +ℕ 2))
+        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 2 len-f 2)) ⟩
+          length prefix +ℕ ((2 +ℕ len-f) +ℕ 2)
+        ≡⟨ cong (λ x → length prefix +ℕ (x +ℕ 2)) (+-comm 2 len-f) ⟩
+          length prefix +ℕ ((len-f +ℕ 2) +ℕ 2)
+        ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 2 2) ⟩
+          length prefix +ℕ (len-f +ℕ 4)
+        ≡⟨ sym (+-assoc (length prefix) len-f 4) ⟩
+          (length prefix +ℕ len-f) +ℕ 4
+        ≡⟨ cong (_+ℕ 4) (+-comm (length prefix) len-f) ⟩
+          (len-f +ℕ length prefix) +ℕ 4
+        ≡⟨ +-assoc len-f (length prefix) 4 ⟩
+          len-f +ℕ (length prefix +ℕ 4)
+        ≡⟨ +-comm len-f (length prefix +ℕ 4) ⟩
+          (length prefix +ℕ 4) +ℕ len-f
+        ∎
 
-      -- PC for g: need to show pc s-after-middle ≡ length prefix-g
+      -- PC for g: need to show pc s-after-middle ≡ length prefix-g (PROVEN)
       -- pc s-after-middle = length prefix + 2 + len-f + 2 = length prefix + 4 + len-f
-      postulate
-        pc-for-g : pc s-after-middle ≡ length prefix-g
+      -- Note: _+ℕ_ is left-associative, so a +ℕ b +ℕ c +ℕ d = ((a +ℕ b) +ℕ c) +ℕ d
+      pc-for-g : pc s-after-middle ≡ length prefix-g
+      pc-for-g =
+        begin
+          pc s-after-middle
+        ≡⟨ pc-after-middle ⟩
+          ((length prefix +ℕ 2) +ℕ len-f) +ℕ 2
+        ≡⟨ +-assoc (length prefix +ℕ 2) len-f 2 ⟩
+          (length prefix +ℕ 2) +ℕ (len-f +ℕ 2)
+        ≡⟨ +-assoc (length prefix) 2 (len-f +ℕ 2) ⟩
+          length prefix +ℕ (2 +ℕ (len-f +ℕ 2))
+        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 2 len-f 2)) ⟩
+          length prefix +ℕ ((2 +ℕ len-f) +ℕ 2)
+        ≡⟨ cong (λ x → length prefix +ℕ (x +ℕ 2)) (+-comm 2 len-f) ⟩
+          length prefix +ℕ ((len-f +ℕ 2) +ℕ 2)
+        ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 2 2) ⟩
+          length prefix +ℕ (len-f +ℕ 4)
+        ≡⟨ sym (+-assoc (length prefix) len-f 4) ⟩
+          (length prefix +ℕ len-f) +ℕ 4
+        ≡⟨ cong (_+ℕ 4) (+-comm (length prefix) len-f) ⟩
+          (len-f +ℕ length prefix) +ℕ 4
+        ≡⟨ +-assoc len-f (length prefix) 4 ⟩
+          len-f +ℕ (length prefix +ℕ 4)
+        ≡⟨ +-comm len-f (length prefix +ℕ 4) ⟩
+          (length prefix +ℕ 4) +ℕ len-f
+        ≡⟨ sym len-prefix-g ⟩
+          length prefix-g
+        ∎
 
       -- Recursive call for g
       g-result : ∃[ sg ] (exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just sg
@@ -1124,9 +1179,58 @@ mutual
       pc-sg+2 : pc s-final ≡ pc sg +ℕ 2
       pc-sg+2 = +-assoc (pc sg) 1 1
 
-      -- PC final calculation (postulated due to complex arithmetic)
-      postulate
-        pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+      -- PC final calculation (PROVEN)
+      -- pc s-final = pc sg + 2 = (length prefix-g + len-g) + 2
+      --            = ((length prefix + 4 + len-f) + len-g) + 2
+      --            = length prefix + (6 + len-f) + len-g
+      --            = length prefix + compile-length ⟨ f , g ⟩
+      --
+      -- Helper: (len-f + len-g + 4) + 2 = (6 + len-f) + len-g
+      pc-arith : ∀ lp lf lg → (((lp +ℕ 4) +ℕ lf) +ℕ lg) +ℕ 2 ≡ lp +ℕ ((6 +ℕ lf) +ℕ lg)
+      pc-arith lp lf lg =
+        begin
+          (((lp +ℕ 4) +ℕ lf) +ℕ lg) +ℕ 2
+        ≡⟨ +-assoc ((lp +ℕ 4) +ℕ lf) lg 2 ⟩
+          ((lp +ℕ 4) +ℕ lf) +ℕ (lg +ℕ 2)
+        ≡⟨ +-assoc (lp +ℕ 4) lf (lg +ℕ 2) ⟩
+          (lp +ℕ 4) +ℕ (lf +ℕ (lg +ℕ 2))
+        ≡⟨ +-assoc lp 4 (lf +ℕ (lg +ℕ 2)) ⟩
+          lp +ℕ (4 +ℕ (lf +ℕ (lg +ℕ 2)))
+        ≡⟨ cong (lp +ℕ_) (sym (+-assoc 4 lf (lg +ℕ 2))) ⟩
+          lp +ℕ ((4 +ℕ lf) +ℕ (lg +ℕ 2))
+        ≡⟨ cong (lp +ℕ_) (sym (+-assoc (4 +ℕ lf) lg 2)) ⟩
+          lp +ℕ (((4 +ℕ lf) +ℕ lg) +ℕ 2)
+        ≡⟨ cong (λ x → lp +ℕ ((x +ℕ lg) +ℕ 2)) (+-comm 4 lf) ⟩
+          lp +ℕ (((lf +ℕ 4) +ℕ lg) +ℕ 2)
+        ≡⟨ cong (λ x → lp +ℕ (x +ℕ 2)) (+-assoc lf 4 lg) ⟩
+          lp +ℕ ((lf +ℕ (4 +ℕ lg)) +ℕ 2)
+        ≡⟨ cong (λ x → lp +ℕ ((lf +ℕ x) +ℕ 2)) (+-comm 4 lg) ⟩
+          lp +ℕ ((lf +ℕ (lg +ℕ 4)) +ℕ 2)
+        ≡⟨ cong (lp +ℕ_) (+-assoc lf (lg +ℕ 4) 2) ⟩
+          lp +ℕ (lf +ℕ ((lg +ℕ 4) +ℕ 2))
+        ≡⟨ cong (λ x → lp +ℕ (lf +ℕ x)) (+-assoc lg 4 2) ⟩
+          lp +ℕ (lf +ℕ (lg +ℕ 6))
+        ≡⟨ cong (λ x → lp +ℕ (lf +ℕ x)) (+-comm lg 6) ⟩
+          lp +ℕ (lf +ℕ (6 +ℕ lg))
+        ≡⟨ cong (lp +ℕ_) (sym (+-assoc lf 6 lg)) ⟩
+          lp +ℕ ((lf +ℕ 6) +ℕ lg)
+        ≡⟨ cong (λ x → lp +ℕ (x +ℕ lg)) (+-comm lf 6) ⟩
+          lp +ℕ ((6 +ℕ lf) +ℕ lg)
+        ∎
+
+      pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+      pc-final =
+        begin
+          pc s-final
+        ≡⟨ pc-sg+2 ⟩
+          pc sg +ℕ 2
+        ≡⟨ cong (_+ℕ 2) pc-after-g ⟩
+          (length prefix-g +ℕ len-g) +ℕ 2
+        ≡⟨ cong (λ x → (x +ℕ len-g) +ℕ 2) len-prefix-g ⟩
+          (((length prefix +ℕ 4) +ℕ len-f) +ℕ len-g) +ℕ 2
+        ≡⟨ pc-arith (length prefix) len-f len-g ⟩
+          length prefix +ℕ ((6 +ℕ len-f) +ℕ len-g)
+        ∎
 
       -- a0 final: need to show a0 = encode (eval ⟨ f , g ⟩ x) = encode (eval f x, eval g x)
       -- a0 in s-final = sp = new-sp (pointer to pair on stack)
