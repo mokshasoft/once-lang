@@ -942,17 +942,94 @@ mutual
       suffix-g : Program
       suffix-g = sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix
 
-      -- Middle state postulates
-      postulate
-        s-after-middle : State
-        exec-middle : exec 2 prog sf ≡ just s-after-middle
-        h-after-middle : halted s-after-middle ≡ false
-        pc-after-middle : pc s-after-middle ≡ length prefix-f +ℕ len-f +ℕ 2
-        a0-after-middle : readReg (regs s-after-middle) a0 ≡ encode x
-        s1-after-middle : readReg (regs s-after-middle) s1 ≡ readReg (regs sf) s1
+      -- Middle phase: 2 instructions (sd a0 0(sp); mv a0 s1)
+      -- After f executes: a0 = encode (eval f x), s1 = encode x, sp = new-sp
+      -- Instruction definitions
+      middle-i0 = sd a0 (+ 0) sp
+      middle-i1 = mv a0 s1
 
+      -- PC after f: length prefix-f + len-f = length prefix + 2 + len-f
+      pc-after-f : pc sf ≡ length prefix-f +ℕ len-f
+      pc-after-f = proj₁ (proj₂ (proj₂ (proj₂ f-result)))
+
+      pc-after-f' : pc sf ≡ length prefix +ℕ 2 +ℕ len-f
+      pc-after-f' = trans pc-after-f (cong (_+ℕ len-f) len-prefix-f)
+
+      -- s1 preserved through f execution: s1 in sf = s1 after setup = encode x
+      s1-sf : readReg (regs sf) s1 ≡ encode x
+      s1-sf = trans s1-after-f s1-after-setup
+
+      -- Intermediate state after sd a0 0(sp)
+      -- This stores eval f x at memory[sp]
+      -- Note: execSd produces sp +ℕ 0, not just sp
+      middle-st1 : State
+      middle-st1 = record sf { memory = writeMem (memory sf) (readReg (regs sf) sp +ℕ 0) (readReg (regs sf) a0)
+                             ; pc = pc sf +ℕ 1 }
+
+      -- State after mv a0 s1 (restores a0 to original input x)
+      s-after-middle : State
+      s-after-middle = record middle-st1 { regs = writeReg (regs middle-st1) a0 (readReg (regs middle-st1) s1)
+                                         ; pc = pc middle-st1 +ℕ 1 }
+
+      -- Middle phase step proofs - postulate fetch due to complex ++ structure
+      postulate
+        fetch-middle0 : fetch prog (pc sf) ≡ just middle-i0
+        fetch-middle1 : fetch prog (pc sf +ℕ 1) ≡ just middle-i1
+
+      step-middle1 : step prog sf ≡ just middle-st1
+      step-middle1 = trans (step-exec prog sf middle-i0 h-after-f fetch-middle0)
+                           (execSd prog sf a0 0 sp)
+
+      h-middle1 : halted middle-st1 ≡ false
+      h-middle1 = h-after-f  -- middle-st1 derived from sf, which has halted sf = false
+
+      pc-middle1 : pc middle-st1 ≡ pc sf +ℕ 1
+      pc-middle1 = refl
+
+      step-middle2 : step prog middle-st1 ≡ just s-after-middle
+      step-middle2 = trans (step-exec prog middle-st1 middle-i1 h-middle1 (subst (λ p → fetch prog p ≡ just middle-i1) (sym pc-middle1) fetch-middle1))
+                           (execMv prog middle-st1 a0 s1)
+
+      h-after-middle : halted s-after-middle ≡ false
+      h-after-middle = h-after-f  -- s-after-middle derived from sf via middle-st1
+
+      -- Combine 2 middle steps
+      exec-middle : exec 2 prog sf ≡ just s-after-middle
+      exec-middle = exec-two-steps-nonhalt prog sf middle-st1 s-after-middle step-middle1 h-middle1 step-middle2 h-after-middle
+
+      -- Register tracking through middle phase
+      -- s1 in middle-st1: unchanged (sd doesn't modify registers)
+      s1-middle-st1 : readReg (regs middle-st1) s1 ≡ readReg (regs sf) s1
+      s1-middle-st1 = refl  -- memory write doesn't change regs
+
+      -- a0 in s-after-middle: a0 = s1 (restored from saved input)
+      a0-after-middle : readReg (regs s-after-middle) a0 ≡ encode x
+      a0-after-middle = trans (readReg-writeReg-same (regs middle-st1) a0 (readReg (regs middle-st1) s1) (λ ()))
+                              (trans s1-middle-st1 s1-sf)
+
+      -- s1 in s-after-middle: preserved (a0 write doesn't affect s1)
+      s1-after-middle : readReg (regs s-after-middle) s1 ≡ readReg (regs sf) s1
+      s1-after-middle = trans (readReg-writeReg-a0-s1 (regs middle-st1) (readReg (regs middle-st1) s1))
+                              s1-middle-st1
+
+      -- PC after middle: pc sf + 2 = length prefix + 2 + len-f + 2 = length prefix + 4 + len-f
+      -- pc s-after-middle = pc middle-st1 + 1 = (pc sf + 1) + 1
+      -- Need to show (pc sf + 1) + 1 = pc sf + 2
+      pc-sf+2 : pc s-after-middle ≡ pc sf +ℕ 2
+      pc-sf+2 = +-assoc (pc sf) 1 1  -- (pc sf + 1) + 1 = pc sf + (1 + 1) = pc sf + 2
+
+      pc-after-middle : pc s-after-middle ≡ length prefix +ℕ 2 +ℕ len-f +ℕ 2
+      pc-after-middle = trans pc-sf+2 (cong (_+ℕ 2) pc-after-f')
+
+      -- Length calculations for prefix-g (postulated due to complex arithmetic)
+      -- Structure: prefix-g = prefix-f ++ code-f ++ sd a0 0(sp) ∷ mv a0 s1 ∷ []
+      -- = (prefix ++ 2) ++ len-f ++ 2 = length prefix + 4 + len-f
       postulate
         len-prefix-g : length prefix-g ≡ length prefix +ℕ 4 +ℕ len-f
+
+      -- PC for g: need to show pc s-after-middle ≡ length prefix-g
+      -- pc s-after-middle = length prefix + 2 + len-f + 2 = length prefix + 4 + len-f
+      postulate
         pc-for-g : pc s-after-middle ≡ length prefix-g
 
       -- Recursive call for g
