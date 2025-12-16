@@ -195,9 +195,9 @@ execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
 execSub-reg-imm prog s dst v = refl
 
 -- Helper: state after executing jmp target
--- Proof: jmp has no with-clause, just sets pc to target
+-- Proof: jmp uses PC-relative offset, sets pc = pc + 1 + target
 execJmp : ∀ (prog : List Instr) (s : State) (target : ℕ) →
-  execInstr prog s (jmp target) ≡ just (record s { pc = target })
+  execInstr prog s (jmp target) ≡ just (record s { pc = pc s +ℕ 1 +ℕ target })
 execJmp prog s target = refl
 
 -- Helper: state after executing cmp (reg r) (imm 0) when r contains 0
@@ -216,10 +216,10 @@ execJne-not-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
 execJne-not-taken prog s target zf-true rewrite zf-true = refl
 
 -- Helper: state after executing jne when ZF = false (taken)
--- Proof: when zf = false, pc := target
+-- Proof: when zf = false, pc := pc + 1 + target (PC-relative)
 execJne-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
   zf (flags s) ≡ false →
-  execInstr prog s (jne target) ≡ just (record s { pc = target })
+  execInstr prog s (jne target) ≡ just (record s { pc = pc s +ℕ 1 +ℕ target })
 execJne-taken prog s target zf-false rewrite zf-false = refl
 
 -- Helper: label is a no-op, just advances pc

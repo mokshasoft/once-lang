@@ -128,36 +128,38 @@ compile-x86 inr =
   mov (reg rax) (reg rsp) ∷ []             -- return pointer
 
 -- Case analysis: branch on tag
--- Jump targets are computed based on compiled code lengths
+-- Jump offsets are PC-relative: target = pc + 1 + offset
 compile-x86 [ f , g ] =
   let len-f = compile-length f
       len-g = compile-length g
       -- Layout:
       --   0: mov r15, [rdi]
       --   1: cmp r15, 0
-      --   2: jne right-branch
+      --   2: jne right-offset     ; target = 5+len-f, offset = (5+len-f) - 3 = 2+len-f
       --   3: mov rdi, [rdi+8]
       --   4 to 3+|f|: compile-x86 f
-      --   4+|f|: jmp end
+      --   4+|f|: jmp end-offset   ; target = 7+len-f+len-g, offset = (7+len-f+len-g) - (5+len-f) = 2+len-g
       --   5+|f|: label (right-branch)
       --   6+|f|: mov rdi, [rdi+8]
       --   7+|f| to 6+|f|+|g|: compile-x86 g
       --   7+|f|+|g|: label (end)
-      right-branch = 5 +ℕ len-f
+      right-offset = 2 +ℕ len-f    -- jne at pos 2 to reach pos 5+len-f
+      end-offset = 2 +ℕ len-g      -- jmp at pos 4+len-f to reach pos 7+len-f+len-g
+      right-label = 5 +ℕ len-f     -- For label pseudo-instruction
       end-label = (7 +ℕ len-f) +ℕ len-g
   in
   -- Load tag
   mov (reg r15) (mem (base rdi)) ∷
   -- Compare with 0
   cmp (reg r15) (imm 0) ∷
-  -- Jump to right branch if not zero
-  jne right-branch ∷
+  -- Jump to right branch if not zero (PC-relative)
+  jne right-offset ∷
   -- Left branch: load value and apply f
   mov (reg rdi) (mem (base+disp rdi 8)) ∷
   compile-x86 f ++
-  jmp end-label ∷
+  jmp end-offset ∷
   -- Right branch: load value and apply g
-  label right-branch ∷
+  label right-label ∷
   mov (reg rdi) (mem (base+disp rdi 8)) ∷
   compile-x86 g ++
   label end-label ∷ []
@@ -178,7 +180,7 @@ compile-x86 initial = ud2 ∷ []
 --   2. Pairs it with argument (b) in rdi
 --   3. Executes compile-x86 f
 --
--- Jump targets are computed based on compiled code length.
+-- Jump offsets are PC-relative: target = pc + 1 + offset
 compile-x86 (curry {A} {B} {C} f) =
   let len-f = compile-length f
       -- Layout (with RIP-relative code-ptr):
@@ -187,7 +189,7 @@ compile-x86 (curry {A} {B} {C} f) =
       --   2: lea r9, [rip+4]      -- r9 = pc+4 = 2+4 = 6 (thunk entry)
       --   3: mov [rsp+8], r9
       --   4: mov rax, rsp
-      --   5: jmp end
+      --   5: jmp end-offset       ; target = 12+len-f, offset = (12+len-f) - 6 = 6+len-f
       --   6: label code-ptr
       --   7: sub rsp, 16
       --   8: mov [rsp], r12
@@ -196,9 +198,10 @@ compile-x86 (curry {A} {B} {C} f) =
       --   11 to 10+|f|: compile-x86 f
       --   11+|f|: ret
       --   12+|f|: label end
-      code-ptr = 6
-      rip-offset = 4        -- From instruction 2, offset to reach 6
-      end-label = 12 +ℕ len-f
+      code-ptr-label = 6
+      rip-offset = 4             -- From instruction 2, offset to reach 6
+      end-offset = 6 +ℕ len-f    -- jmp at pos 5 to reach pos 12+len-f
+      end-label = 12 +ℕ len-f    -- For label pseudo-instruction
   in
   -- Allocate closure on stack
   sub (reg rsp) (imm 16) ∷
@@ -211,10 +214,10 @@ compile-x86 (curry {A} {B} {C} f) =
   mov (mem (base+disp rsp 8)) (reg r9) ∷
   -- Return closure pointer
   mov (reg rax) (reg rsp) ∷
-  -- Jump over the thunk code
-  jmp end-label ∷
+  -- Jump over the thunk code (PC-relative)
+  jmp end-offset ∷
   -- Thunk code: called via apply with b in rdi, env in r12
-  label code-ptr ∷
+  label code-ptr-label ∷
   -- Allocate pair (a, b) on stack
   sub (reg rsp) (imm 16) ∷
   -- Store a (from r12) at [rsp]

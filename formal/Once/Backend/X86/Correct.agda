@@ -252,9 +252,9 @@ execSub-reg-imm : ∀ (prog : List Instr) (s : State) (dst : Reg) (v : ℕ) →
 execSub-reg-imm prog s dst v = refl
 
 -- Helper: state after executing jmp target
--- Proof: jmp has no with-clause, just sets pc to target
+-- Proof: jmp uses PC-relative offset, sets pc = pc + 1 + target
 execJmp : ∀ (prog : List Instr) (s : State) (target : ℕ) →
-  execInstr prog s (jmp target) ≡ just (record s { pc = target })
+  execInstr prog s (jmp target) ≡ just (record s { pc = pc s +ℕ 1 +ℕ target })
 execJmp prog s target = refl
 
 -- Helper: state after executing cmp (reg r) (imm 0) when r contains 0
@@ -273,10 +273,10 @@ execJne-not-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
 execJne-not-taken prog s target zf-true rewrite zf-true = refl
 
 -- Helper: state after executing jne when ZF = false (taken)
--- Proof: when zf = false, pc := target
+-- Proof: when zf = false, pc := pc + 1 + target (PC-relative)
 execJne-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
   zf (flags s) ≡ false →
-  execInstr prog s (jne target) ≡ just (record s { pc = target })
+  execInstr prog s (jne target) ≡ just (record s { pc = pc s +ℕ 1 +ℕ target })
 execJne-taken prog s target zf-false rewrite zf-false = refl
 
 -- Helper: label is a no-op, just advances pc
@@ -642,12 +642,17 @@ compile-length-correct [ f , g ] = helper
 
     -- Structure: mov ∷ cmp ∷ jne ∷ mov ∷ (compile-x86 f ++ jmp ∷ label ∷ mov ∷ (compile-x86 g ++ label ∷ []))
     -- Length = 4 + (|f| + (3 + (|g| + 1))) = (8 + |f|) + |g|
+    -- Note: jne/jmp offsets are now PC-relative but don't affect instruction count
 
     end-lbl : ℕ
     end-lbl = (7 +ℕ compile-length f) +ℕ compile-length g
 
     right-lbl : ℕ
     right-lbl = 5 +ℕ compile-length f
+
+    -- PC-relative offsets (new)
+    end-offset : ℕ
+    end-offset = 2 +ℕ compile-length g
 
     inner-tail : List Instr
     inner-tail = label end-lbl ∷ []
@@ -657,7 +662,7 @@ compile-length-correct [ f , g ] = helper
                       (cong (λ x → x +ℕ 1) (compile-length-correct g))
 
     mid-tail : List Instr
-    mid-tail = jmp end-lbl ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
+    mid-tail = jmp end-offset ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
                (compile-x86 g ++ inner-tail)
 
     len-mid : length mid-tail ≡ 3 +ℕ (compile-length g +ℕ 1)
@@ -6299,16 +6304,18 @@ run-compose-id-id {A} s h-false pc-0 = s4 , run-eq , halt-eq , rax-eq
 -- For [ id , id ]:
 --   len-f = compile-length id = 1
 --   len-g = compile-length id = 1
---   right-branch = 5 + len-f = 6
+--   right-label = 5 + len-f = 6
 --   end-label = (7 + len-f) + len-g = 9
+--   right-offset = 2 + len-f = 3 (PC-relative: pc+1+3 = 2+1+3 = 6)
+--   end-offset = 2 + len-g = 3 (PC-relative: pc+1+3 = 5+1+3 = 9)
 --
 -- Generated code for [ id , id ]:
 --   0: mov r15, [rdi]       -- r15 := tag (0 for inl)
 --   1: cmp r15, 0           -- sets zf := true
---   2: jne 6                -- not taken (zf=true), pc := 3
+--   2: jne 3                -- not taken (zf=true), pc := 3 (if taken: pc := 2+1+3 = 6)
 --   3: mov rdi, [rdi+8]     -- rdi := value
 --   4: mov rax, rdi         -- compile-x86 id
---   5: jmp 9                -- jump to end-label
+--   5: jmp 3                -- PC-relative: pc := 5+1+3 = 9
 --   6: label 6              -- right-branch label
 --   7: mov rdi, [rdi+8]
 --   8: mov rax, rdi
@@ -6328,8 +6335,8 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
   where
     prog : List Instr
     prog = compile-x86 {A + A} {A} [ id , id ]
-    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
-    --   jmp 9 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
+    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 3 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    --   jmp 3 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
 
     -- Original values
     orig-rdi : Word
@@ -6374,7 +6381,7 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     pc2 : pc s2 ≡ 2
     pc2 = cong (λ x → x +ℕ 1) pc1
 
-    -- State after step 2: jne 6 (not taken, zf = true)
+    -- State after step 2: jne 3 (not taken, zf = true) - PC-relative offset
     s3 : State
     s3 = record s2 { pc = pc s2 +ℕ 1 }
 
@@ -6382,9 +6389,9 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     zf-s2 = refl
 
     step3 : step prog s2 ≡ just s3
-    step3 = trans (step-exec prog s2 (jne 6) h2
-                             (subst (λ p → fetch prog p ≡ just (jne 6)) (sym pc2) refl))
-                  (execJne-not-taken prog s2 6 zf-s2)
+    step3 = trans (step-exec prog s2 (jne 3) h2
+                             (subst (λ p → fetch prog p ≡ just (jne 3)) (sym pc2) refl))
+                  (execJne-not-taken prog s2 3 zf-s2)
 
     h3 : halted s3 ≡ false
     h3 = h-false
@@ -6434,24 +6441,24 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     pc5 : pc s5 ≡ 5
     pc5 = cong (λ x → x +ℕ 1) pc4
 
-    -- State after step 5: jmp 9
+    -- State after step 5: jmp 3 (PC-relative: pc := 5+1+3 = 9)
     s6 : State
-    s6 = record s5 { pc = 9 }
+    s6 = record s5 { pc = pc s5 +ℕ 1 +ℕ 3 }
 
     step6 : step prog s5 ≡ just s6
-    step6 = trans (step-exec prog s5 (jmp 9) h5
-                             (subst (λ p → fetch prog p ≡ just (jmp 9)) (sym pc5) refl))
-                  (execJmp prog s5 9)
+    step6 = trans (step-exec prog s5 (jmp 3) h5
+                             (subst (λ p → fetch prog p ≡ just (jmp 3)) (sym pc5) refl))
+                  (execJmp prog s5 3)
 
     h6 : halted s6 ≡ false
     h6 = h-false
 
     pc6 : pc s6 ≡ 9
-    pc6 = refl
+    pc6 = cong (λ x → x +ℕ 1 +ℕ 3) pc5  -- 5 + 1 + 3 = 9
 
     -- State after step 6: label 9 (no-op, pc := 10)
     s7 : State
-    s7 = record s6 { pc = 10 }
+    s7 = record s6 { pc = pc s6 +ℕ 1 }
 
     step7 : step prog s6 ≡ just s7
     step7 = trans (step-exec prog s6 (label 9) h6
@@ -6461,6 +6468,9 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     h7 : halted s7 ≡ false
     h7 = h-false
 
+    pc7 : pc s7 ≡ 10
+    pc7 = cong (λ x → x +ℕ 1) pc6
+
     -- State after step 7: fetch at pc=10 fails, halt
     s8 : State
     s8 = record s7 { halted = true }
@@ -6469,8 +6479,11 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     fetch-10-fail : fetch prog 10 ≡ nothing
     fetch-10-fail = refl
 
+    fetch-s7-fail : fetch prog (pc s7) ≡ nothing
+    fetch-s7-fail = subst (λ x → fetch prog x ≡ nothing) (sym pc7) fetch-10-fail
+
     step8 : step prog s7 ≡ just s8
-    step8 = step-halt-on-fetch-fail prog s7 h7 fetch-10-fail
+    step8 = step-halt-on-fetch-fail prog s7 h7 fetch-s7-fail
 
     halt-eq : halted s8 ≡ true
     halt-eq = refl
@@ -6494,13 +6507,14 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
 -- For [ id , id ]:
 --   len-f = compile-length id = 1
 --   len-g = compile-length id = 1
---   right-branch = 5 + len-f = 6
+--   right-label = 5 + len-f = 6
 --   end-label = (7 + len-f) + len-g = 9
+--   right-offset = 2 + len-f = 3 (PC-relative: pc+1+3 = 2+1+3 = 6)
 --
 -- Generated code for [ id , id ]:
 --   0: mov r15, [rdi]       -- r15 := tag (1 for inr)
 --   1: cmp r15, 0           -- sets zf := false (1 ≠ 0)
---   2: jne 6                -- TAKEN (zf=false), pc := 6
+--   2: jne 3                -- TAKEN (zf=false), pc := 2+1+3 = 6
 --   6: label 6              -- right-branch label
 --   7: mov rdi, [rdi+8]     -- rdi := value
 --   8: mov rax, rdi         -- compile-x86 id
@@ -6521,8 +6535,8 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
   where
     prog : List Instr
     prog = compile-x86 {A + A} {A} [ id , id ]
-    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
-    --   jmp 9 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
+    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 3 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    --   jmp 3 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
 
     -- Original values
     orig-rdi : Word
@@ -6574,27 +6588,27 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     pc2 : pc s2 ≡ 2
     pc2 = cong (λ x → x +ℕ 1) pc1
 
-    -- State after step 2: jne 6 (TAKEN, zf = false)
+    -- State after step 2: jne 3 (TAKEN, zf = false) - PC-relative: pc := 2+1+3 = 6
     s3 : State
-    s3 = record s2 { pc = 6 }
+    s3 = record s2 { pc = pc s2 +ℕ 1 +ℕ 3 }
 
     zf-s2 : zf (flags s2) ≡ false
     zf-s2 = refl
 
     step3 : step prog s2 ≡ just s3
-    step3 = trans (step-exec prog s2 (jne 6) h2
-                             (subst (λ p → fetch prog p ≡ just (jne 6)) (sym pc2) refl))
-                  (execJne-taken prog s2 6 zf-s2)
+    step3 = trans (step-exec prog s2 (jne 3) h2
+                             (subst (λ p → fetch prog p ≡ just (jne 3)) (sym pc2) refl))
+                  (execJne-taken prog s2 3 zf-s2)
 
     h3 : halted s3 ≡ false
     h3 = h-false
 
     pc3 : pc s3 ≡ 6
-    pc3 = refl
+    pc3 = cong (λ x → x +ℕ 1 +ℕ 3) pc2  -- 2 + 1 + 3 = 6
 
     -- State after step 3: label 6 (no-op)
     s4 : State
-    s4 = record s3 { pc = 7 }
+    s4 = record s3 { pc = pc s3 +ℕ 1 }
 
     step4 : step prog s3 ≡ just s4
     step4 = trans (step-exec prog s3 (label 6) h3
@@ -6605,7 +6619,7 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     h4 = h-false
 
     pc4 : pc s4 ≡ 7
-    pc4 = refl
+    pc4 = cong (λ x → x +ℕ 1) pc3  -- 6 + 1 = 7
 
     -- State after step 4: mov rdi, [rdi+8]
     -- rdi in s3 = orig-rdi (unchanged through r15 write, cmp, jne, label)
@@ -6628,7 +6642,7 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     h5 = h-false
 
     pc5 : pc s5 ≡ 8
-    pc5 = refl
+    pc5 = cong (λ x → x +ℕ 1) pc4  -- 7 + 1 = 8
 
     -- State after step 5: mov rax, rdi
     -- rdi in s5 = encode b
@@ -6647,11 +6661,11 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     h6 = h-false
 
     pc6 : pc s6 ≡ 9
-    pc6 = refl
+    pc6 = cong (λ x → x +ℕ 1) pc5  -- 8 + 1 = 9
 
     -- State after step 6: label 9 (no-op)
     s7 : State
-    s7 = record s6 { pc = 10 }
+    s7 = record s6 { pc = pc s6 +ℕ 1 }
 
     step7 : step prog s6 ≡ just s7
     step7 = trans (step-exec prog s6 (label 9) h6
@@ -6661,6 +6675,9 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     h7 : halted s7 ≡ false
     h7 = h-false
 
+    pc7 : pc s7 ≡ 10
+    pc7 = cong (λ x → x +ℕ 1) pc6  -- 9 + 1 = 10
+
     -- State after step 7: fetch at pc=10 fails, halt
     s8 : State
     s8 = record s7 { halted = true }
@@ -6669,8 +6686,11 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     fetch-10-fail : fetch prog 10 ≡ nothing
     fetch-10-fail = refl
 
+    fetch-s7-fail : fetch prog (pc s7) ≡ nothing
+    fetch-s7-fail = subst (λ x → fetch prog x ≡ nothing) (sym pc7) fetch-10-fail
+
     step8 : step prog s7 ≡ just s8
-    step8 = step-halt-on-fetch-fail prog s7 h7 fetch-10-fail
+    step8 = step-halt-on-fetch-fail prog s7 h7 fetch-s7-fail
 
     halt-eq : halted s8 ≡ true
     halt-eq = refl
@@ -7318,6 +7338,21 @@ test-curry : ∀ {A B} (a : ⟦ A ⟧) →
   ∃[ s ] (run (compile-x86 {A} {B ⇒ A} (curry fst)) (initWithInput a) ≡ just s
         × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry fst) a))
 test-curry {A} {B} a = codegen-x86-correct {A} {B ⇒ A} (curry fst) a
+
+-- | Test 6: TRUE E2E - Curry + Apply composed
+-- IR: apply ∘ ⟨curry fst, id⟩
+-- Input: a
+-- Expected: a (creates closure λb.a, pairs with a, applies closure to a, returns a)
+--
+-- THIS IS THE KEY TEST: The compiled program includes BOTH:
+--   - curry's thunk code (inside the pairing)
+--   - apply's call instruction
+-- When apply calls the closure, it jumps to the thunk WITHIN THE SAME PROGRAM.
+-- With RIP-relative addressing, the code-ptr is computed correctly.
+test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
+  ∃[ s ] (run (compile-x86 {A} {A} (apply ∘ ⟨ curry fst , id ⟩)) (initWithInput a) ≡ just s
+        × readReg (regs s) rax ≡ encode (eval (apply ∘ ⟨ curry fst , id ⟩) a))
+test-curry-apply {A} a = codegen-x86-correct {A} {A} (apply ∘ ⟨ curry fst , id ⟩) a
 
 ------------------------------------------------------------------------
 -- E2E Summary
