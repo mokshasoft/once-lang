@@ -100,25 +100,25 @@ postulate
     encode {A ⇒ B} f ≡ encode {Eff A B} f
 
   -- | Pair construction: given properly laid out memory, derive encoding
-  encode-pair-construct : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (p : Word) (m : Memory) →
+  encode-pair-construct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     readMem m (p +ℕ 8) ≡ just (encode b) →
     p ≡ encode (a , b)
 
   -- | Sum construction (inl)
-  encode-inl-construct : ∀ {A B : Type} (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+  encode-inl-construct : ∀ {A B} (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just 0 →
     readMem m (p +ℕ 8) ≡ just (encode a) →
     p ≡ encode {A + B} (inj₁ a)
 
   -- | Sum construction (inr)
-  encode-inr-construct : ∀ {A B : Type} (b : ⟦ B ⟧) (p : Word) (m : Memory) →
+  encode-inr-construct : ∀ {A B} (b : ⟦ B ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just 1 →
     readMem m (p +ℕ 8) ≡ just (encode b) →
     p ≡ encode {A + B} (inj₂ b)
 
   -- | Closure encoding
-  encode-closure-construct : ∀ {A B C : Type}
+  encode-closure-construct : ∀ {A B C}
     (env : ⟦ A ⟧) (code-ptr : Word) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode env) →
     readMem m (p +ℕ 8) ≡ just code-ptr →
