@@ -498,6 +498,36 @@ readReg-writeReg-r14-rbp : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf r14 v) rbp ≡ readReg rf rbp
 readReg-writeReg-r14-rbp rf v = refl
 
+-- | Reading r12 after writing rdi returns the old value
+readReg-writeReg-rdi-r12 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rdi v) r12 ≡ readReg rf r12
+readReg-writeReg-rdi-r12 rf v = refl
+
+-- | Reading r12 after writing rsi returns the old value
+readReg-writeReg-rsi-r12 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsi v) r12 ≡ readReg rf r12
+readReg-writeReg-rsi-r12 rf v = refl
+
+-- | Reading r14 after writing rsi returns the old value
+readReg-writeReg-rsi-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsi v) r14 ≡ readReg rf r14
+readReg-writeReg-rsi-r14 rf v = refl
+
+-- | Reading r14 after writing r12 returns the old value
+readReg-writeReg-r12-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r12 v) r14 ≡ readReg rf r14
+readReg-writeReg-r12-r14 rf v = refl
+
+-- | Reading r14 after writing r15 returns the old value
+readReg-writeReg-r15-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r15 v) r14 ≡ readReg rf r14
+readReg-writeReg-r15-r14 rf v = refl
+
+-- | Reading r12 after writing r15 returns the old value
+readReg-writeReg-r15-r12 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r15 v) r12 ≡ readReg rf r12
+readReg-writeReg-r15-r12 rf v = refl
+
 ------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
@@ -4785,10 +4815,30 @@ mutual
       pc' : pc s' ≡ closure-code-ptr-x86 closure
       pc' = refl
 
-      postulate
-        r12' : readReg (regs s') r12 ≡ closure-env-x86 closure
-        rdi' : readReg (regs s') rdi ≡ encode arg
-        r14' : readReg (regs s') r14 ≡ readReg (regs s) r14
+      -- Intermediate register files for proving register properties
+      rf1 : RegFile
+      rf1 = writeReg (regs s) r15 (closure-code-ptr-x86 closure)
+      rf2 : RegFile
+      rf2 = writeReg rf1 r12 (closure-env-x86 closure)
+      rf3 : RegFile
+      rf3 = writeReg rf2 rsi (encode arg)
+
+      -- r12 was written with closure-env-x86, reading it back passes through outer writes
+      r12' : readReg (regs s') r12 ≡ closure-env-x86 closure
+      r12' = trans (readReg-writeReg-rdi-r12 rf3 (encode arg))
+               (trans (readReg-writeReg-rsi-r12 rf2 (encode arg))
+                 (readReg-writeReg-same rf1 r12 (closure-env-x86 closure)))
+
+      -- rdi was the outermost write with encode arg
+      rdi' : readReg (regs s') rdi ≡ encode arg
+      rdi' = readReg-writeReg-same rf3 rdi (encode arg)
+
+      -- r14 was never written, so we read through all four writes
+      r14' : readReg (regs s') r14 ≡ readReg (regs s) r14
+      r14' = trans (readReg-writeReg-rdi-r14 rf3 (encode arg))
+               (trans (readReg-writeReg-rsi-r14 rf2 (encode arg))
+                 (trans (readReg-writeReg-r12-r14 rf1 (closure-env-x86 closure))
+                   (readReg-writeReg-r15-r14 (regs s) (closure-code-ptr-x86 closure))))
 
   -- | Thunk execution: given proper setup, thunk computes f(env, arg)
   -- The x86 thunk code is: sub rsp,16; mov [rsp],r12; mov [rsp+8],rdi; mov rdi,rsp; f; ret
@@ -4856,8 +4906,10 @@ mutual
       suffix-f : Program
       suffix-f = ret ∷ suffix
 
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
+      len-prefix-f = length-++ prefix _
+
       postulate
-        len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
         pc-for-f : pc s-after-setup ≡ length prefix-f
 
       -- Result from executing f (uses mutual recursive call)
