@@ -154,6 +154,7 @@ initState = mkstate emptyRegFile emptyMemory initFlags 0 false
 effectiveAddr : State → Mem → Word
 effectiveAddr s (base r) = readReg (regs s) r
 effectiveAddr s (base+disp r d) = readReg (regs s) r + d
+effectiveAddr s (rip+disp d) = pc s + d  -- RIP-relative: pc + offset
 
 -- | Read an operand value
 readOperand : State → Operand → Maybe Word
