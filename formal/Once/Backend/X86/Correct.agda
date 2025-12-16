@@ -180,16 +180,13 @@ positive-neq-zero (s≤s z≤n) ()
 -- 1. Showing rsp is always "high enough" (tracked separately)
 -- 2. Arithmetic reasoning about ∸ with ≤ bounds
 --
--- We postulate this with the understanding that:
--- - initWithInput sets rsp = 0x7FFF0000 (huge value)
--- - Stack operations decrease rsp by 16 at most per operation
--- - In nested pair context, rsp ≤ r15 is maintained
-postulate
-  addr-diff-from-invariant : ∀ (s : State) →
-    StackInvariant s →
-    let new-rsp = readReg (regs s) rsp ∸ 16
-        orig-r15 = readReg (regs s) r15
-    in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
+-- NOTE: The addr-diff-from-invariant helper would be:
+--   addr-diff-from-invariant : ∀ (s : State) → StackInvariant s →
+--     let new-rsp = readReg (regs s) rsp ∸ 16
+--         orig-r15 = readReg (regs s) r15
+--     in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
+-- This can be proven once StackInvariant is threaded through run-ir-at-offset.
+-- For now, the individual addr-diff postulates in inl/inr remain.
 
 ------------------------------------------------------------------------
 -- Execution Helpers
@@ -2979,6 +2976,9 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 -- compile-x86 inl = [sub rsp 16, mov [rsp] 0, mov [rsp+8] rdi, mov rax rsp]
 -- Memory frame property: writes are to [rsp-16] and [rsp-8], which are below r15
 -- when called in the pair context (where rsp ≤ r15 is maintained)
+--
+-- NOTE: The addr-diff postulates here can be eliminated by using StackInvariant
+-- in a context where the invariant is established (e.g., composition proofs).
 run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   ∃[ s' ] (exec 4 (prefix ++ compile-x86 {A} {A + B} inl ++ suffix) s ≡ just s'
@@ -3242,6 +3242,7 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
 
     -- Memory at [r15] unchanged through s2 if new_rsp ≠ r15
     -- s2 writes to [new_rsp], need [new_rsp] ≠ [r15]
+    -- TODO: Can be eliminated with StackInvariant in contexts where it's established
     postulate
       addr-diff-1 : new-rsp ≢ orig-r15
 
@@ -3249,6 +3250,7 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq =
     mem-s2 = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 0 (λ eq → addr-diff-1 eq)) mem-s1
 
     -- Memory at [r15] unchanged through s3 if new_rsp + 8 ≠ r15
+    -- TODO: Can be eliminated with StackInvariant in contexts where it's established
     postulate
       addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
 
@@ -4619,26 +4621,13 @@ mutual
         just (encode (eval f x))
           ∎
 
-      -- Stack preservation: rsp = r15 throughout the pair execution
-      -- STRUCTURAL LIMITATION: This assumes f and g preserve rsp, but the current
-      -- codegen does NOT preserve rsp for:
-      --   - inl/inr: do "sub rsp, 16" without restoring
-      --   - nested pairs: do push/push/sub but only pop/pop (missing "add rsp, 16")
-      -- After setup: r15 = rsp = orig_rsp - 32 (we now track both)
-      -- r15 is preserved through f and g (tracked via IH)
-      -- rsp is NOT generally preserved (stack allocations lower it)
-      -- This postulate holds when f and g are "stack-neutral" (id, fst, snd, etc.)
-      -- or would require codegen changes to properly restore rsp.
-      postulate
-        rsp-eq-r15-after-g : readReg (regs s-after-g) rsp ≡ readReg (regs s-after-g) r15
-
-      -- Connect mem-fst-preserved with rsp to get memory at [rsp]
-      mem-fst-at-rsp : readMem (memory s-after-g) (readReg (regs s-after-g) rsp) ≡ just (encode (eval f x))
-      mem-fst-at-rsp = subst (λ addr → readMem (memory s-after-g) addr ≡ just (encode (eval f x)))
-                             (sym rsp-eq-r15-after-g) mem-fst-preserved
+      -- NOTE: The old proof had rsp-eq-r15-after-g and mem-fst-at-rsp here,
+      -- but they were dead code - the proof uses r15 directly via mem-fst-preserved.
+      -- The frame pointer (rbp) ensures proper stack restoration regardless of
+      -- what f and g do to rsp. See docs/formal/x86-full-proof-architecture.md.
 
       -- Phase 5: Final instructions - store g result, return pair pointer
-      -- Instructions: mov [r15+8], rax; mov rax, r15; pop r15; pop r14
+      -- Instructions: mov [r15+8], rax; mov rax, r15; mov rsp, rbp; pop rbp; pop r15; pop r14
 
       -- The final prefix is prefix-g ++ code-g
       -- After Phase 4, pc s-after-g = length prefix-g + len-g
@@ -4673,8 +4662,8 @@ mutual
 
       -- Apply exec-pair-final-at-6 with the new parameters:
       --   fst-val = encode (eval f x)
-      --   fst-in-mem = mem-fst-at-rsp
-      --   rbp-has-frame-base for frame pointer restoration
+      --   Uses r15 directly (not rsp) via mem-fst-preserved
+      --   rbp ensures proper stack restoration via mov rsp, rbp
       -- POSTULATE: Need exec-pair-final-at-6 for 6 final instructions with frame pointer
       postulate
         final-result : ∃[ s' ] (exec 6 (prefix-final ++ store-g ∷ return-pair ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s-after-g ≡ just s'

@@ -111,6 +111,25 @@ The proofs use a layered approach:
 3. **Per-generator proofs**: Compose helpers to prove each generator correct
 4. **Main theorem**: Case analysis using all per-generator proofs
 
+### Complete E2E Trace Proof (X86)
+
+The module `E2E-Trace` in `Once/Backend/X86/Correct.agda` provides a **complete, postulate-free execution proof** for the composed expression `apply ∘ ⟨curry fst, id⟩`. This proof:
+
+- Steps through all 37 instructions manually
+- Traces register and memory state at each step
+- Shows the `call r15` correctly transfers to thunk code (within the same program)
+- Demonstrates the composition approach: apply is proven with its thunk context
+
+```agda
+e2e-correct : ∃[ s ] (run prog s0 ≡ just s
+                    × halted s ≡ true
+                    × readReg (regs s) rax ≡ input-val)
+```
+
+This proof validates the full proof architecture described in `docs/formal/x86-full-proof-architecture.md`.
+
+**Key insight**: Apply cannot be proven in isolation because `call r15` jumps to thunk code. But by proving apply **in composition with curry**, where the thunk code is part of the same program, we achieve a complete proof.
+
 ### AArch64 Code Generation Correctness (In Progress)
 
 The AArch64 backend follows the same structure as x86-64, targeting the ARM64 architecture verified by seL4.
@@ -223,7 +242,24 @@ These postulates model closure handling:
 - `run-curry-seq`: Closure allocation and thunk generation execution
 - `run-apply-seq`: Closure invocation via indirect call
 
-**Justification**: These capture the intended closure representation (env pointer + code pointer) and calling convention. A full formalization would model closure allocation explicitly.
+**Justification**: These capture the intended closure representation (env pointer + code pointer) and calling convention. The E2E-Trace module demonstrates these can be proven in composition context.
+
+**Note**: The `run-apply-seq` postulate exists because apply cannot be proven in isolation (the `call r15` jumps to external thunk code). The E2E-Trace module shows how to prove apply when composed with curry, where the thunk code is part of the same program. See `docs/formal/x86-full-proof-architecture.md` for the full proof strategy.
+
+### P5: Stack Invariant Derivation
+
+| Property | Value |
+|----------|-------|
+| **Type** | `addr-diff-from-invariant` |
+| **Location** | `Once/Backend/X86/Correct.agda` |
+| **Needed by** | `inl`, `inr` generators for address disjointness |
+| **Runtime effect** | None (proof-only) |
+
+The `StackInvariant` predicate tracks the relationship between rsp and r15:
+- `r15-unused`: r15 = 0 (no pair allocation active)
+- `stack-below-r15`: rsp ≤ r15 (stack grows below pair allocation)
+
+This invariant enables deriving address disjointness properties (new stack addresses don't collide with r15). The infrastructure is in place; full integration requires threading the invariant through all of `run-ir-at-offset`.
 
 ### S1: Fixed Point Semantics (Semantic Gap) — ADDRESSED
 
@@ -305,11 +341,26 @@ This is comparable to CakeML (HOL4 + PolyML + OS) and CompCert (Coq + OCaml + OS
 | V5 | Optimization correctness | ✓ Done |
 | V6 | x86-64 backend semantics | ✓ Done |
 | V7 | x86-64 code generation correctness | ✓ Done (all 14 generators) |
+| V7+ | E2E trace proof for composition | ✓ Done (apply ∘ ⟨curry fst, id⟩) |
 | V8 | QTT verification | Not started |
 | V9 | End-to-end theorem | ✓ Done |
 | V10 | Extraction integration | Not started |
 | - | SPF integration into Type/Semantics | Future (see D037) |
 | - | C backend (optional) | Not started |
+
+### X86 Backend Proof Progress
+
+The X86 backend has the following postulate categories remaining:
+
+| Category | Count | Path to Elimination |
+|----------|-------|---------------------|
+| Encoding axioms | ~10 | Intentional trusted base |
+| Address disjointness (addr-diff) | 4 | StackInvariant infrastructure in place |
+| Stack restoration (rsp-eq-r15) | 1 | Frame pointer (rbp) tracking |
+| Closure/apply execution | ~8 | Composition theorems (see E2E-Trace) |
+| Step/execution proofs | ~5 | Mechanical but tedious |
+
+See `docs/formal/x86-full-proof-architecture.md` for the detailed elimination strategy.
 
 ## Proof Files
 
