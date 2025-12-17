@@ -127,52 +127,69 @@ foo = x , proof
 
 ## Proof Techniques
 
-### Natural number arithmetic equalities are often just `refl` (CRITICAL!)
+### Natural number arithmetic: When `refl` works and when it doesn't (CRITICAL!)
 
-**Problem**: Proving arithmetic equalities like `(a + 4 + b + c) + 1 ≡ a + 5 + b + c` with verbose chains of `+-assoc` and `+-comm` is tedious and adds dozens of lines per proof.
+**Problem**: Proving arithmetic equalities with verbose chains of `+-assoc` and `+-comm` is tedious. Can we just use `refl`?
 
-**Solution**: Try `refl` first! Agda's `_+_` on ℕ normalizes both sides to the same form.
+**The Rule**: `refl` works **ONLY when all first arguments to `+` are concrete numbers**.
 
-```agda
--- BAD: 15+ lines of verbose equational reasoning
-arith-plus-1 : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
-arith-plus-1 a b c = begin
-  (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1
-    ≡⟨ +-assoc (a +ℕ 4 +ℕ b) c 1 ⟩
-  -- ... 10+ more steps ...
-    ≡⟨ cong (λ z → (z +ℕ b) +ℕ c) (+-assoc a 4 1) ⟩
-  ((a +ℕ 5) +ℕ b) +ℕ c
-    ∎
-
--- GOOD: Just use refl!
-arith-plus-1 : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
-arith-plus-1 a b c = refl
-```
-
-**Why it works**: The standard library's `_+_` is defined by recursion on the first argument:
+**Why**: The standard library's `_+_` is defined by recursion on the **first** argument:
 ```agda
 zero  + n = n
 suc m + n = suc (m + n)
 ```
 
-So `4 + x` computes to `suc (suc (suc (suc x)))`. Both sides of arithmetic equalities often normalize to the same `suc`-tower, making them definitionally equal.
+So `4 + x` computes to `suc⁴(x)`, but `a + 4` does NOT compute when `a` is abstract.
 
-**Examples that work as `refl`**:
-- `(a + 4 + b + c) + 1 ≡ a + 5 + b + c`
-- `(p + 4 + a + b) + 2 ≡ (p + (6 + a)) + b`
-- `2 + (a + (2 + (b + 2))) ≡ (6 + a) + b`
-- `4 + (a + (3 + (b + 1))) ≡ (8 + a) + b`
+**Examples that WORK as `refl`** (first args are concrete):
+```agda
+-- All first arguments (2, 4) are concrete numbers
+ex1 : ∀ x → 2 +ℕ (4 +ℕ x) ≡ 6 +ℕ x
+ex1 x = refl  -- Both sides normalize to suc⁶(x)
 
-**When to use the solver instead**: If `refl` doesn't work (expressions don't normalize to the same form), use `Data.Nat.Solver`:
+-- The outer + has concrete first arg
+ex2 : ∀ x y → 3 +ℕ (2 +ℕ x +ℕ y) ≡ 5 +ℕ x +ℕ y
+ex2 x y = refl  -- 3 + ... = suc³(...), 5 + x = suc⁵(x), but x + y blocks
+```
+
+**Examples that DO NOT work as `refl`** (abstract first args):
+```agda
+-- BAD: 'a' is first arg to +, doesn't normalize
+arith-pair : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
+arith-pair a b = refl  -- ERROR! a + ... doesn't normalize
+
+-- BAD: 'a' is first arg in (a + 4)
+arith-bad : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
+arith-bad a b c = refl  -- ERROR! (a + 4) doesn't normalize
+
+-- BAD: 'a' and 'b' are first args
+arith-case : ∀ a b → 4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1))) ≡ (8 +ℕ a) +ℕ b
+arith-case a b = refl  -- ERROR! a + ... and b + 1 don't normalize
+```
+
+**For abstract variables, use equational reasoning**:
+```agda
+arith-pair : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
+arith-pair a b = begin
+  2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2)))
+    ≡⟨ cong (2 +ℕ_) (sym (+-assoc a 2 (b +ℕ 2))) ⟩
+  2 +ℕ ((a +ℕ 2) +ℕ (b +ℕ 2))
+    ≡⟨ ... ⟩  -- Use +-assoc and +-comm to rearrange
+  (6 +ℕ a) +ℕ b
+    ∎
+```
+
+**Or use the solver**:
 ```agda
 open import Data.Nat.Solver
 open +-*-Solver
 
-complicated : ∀ a b → a + b + a ≡ 2 * a + b
-complicated = solve 2 (λ a b → a :+ b :+ a := con 2 :* a :+ b) refl
+arith-pair : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
+arith-pair = solve 2 (λ a b → con 2 :+ (a :+ (con 2 :+ (b :+ con 2)))
+                            := (con 6 :+ a) :+ b) refl
 ```
 
-**Lesson**: Before writing ANY `+-assoc`/`+-comm` chain, always try `refl` first. It saves 10-60 lines per proof.
+**Quick check**: Before trying `refl`, look at every `+` in your expression. If ANY has an abstract variable as its first (left) argument, `refl` won't work.
 
 ### Use arithmetic lemmas for large number comparisons (CRITICAL for performance!)
 

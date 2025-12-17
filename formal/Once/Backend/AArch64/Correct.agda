@@ -456,8 +456,29 @@ compile-length-correct ⟨ f , g ⟩ =
               length prog-g +ℕ 2
       step4 = trans (length-++ prog-g) refl
       -- Arithmetic helper: 2 + (a + (2 + (b + 2))) = (6 + a) + b
+      -- This cannot be refl because the expressions don't normalize with abstract a, b
       arith-pair : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
-      arith-pair a b = refl
+      arith-pair a b = begin
+        2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2)))
+          ≡⟨ cong (2 +ℕ_) (sym (+-assoc a 2 (b +ℕ 2))) ⟩
+        2 +ℕ ((a +ℕ 2) +ℕ (b +ℕ 2))
+          ≡⟨ cong (λ x → 2 +ℕ (x +ℕ (b +ℕ 2))) (+-comm a 2) ⟩
+        2 +ℕ ((2 +ℕ a) +ℕ (b +ℕ 2))
+          ≡⟨ sym (+-assoc 2 (2 +ℕ a) (b +ℕ 2)) ⟩
+        (2 +ℕ (2 +ℕ a)) +ℕ (b +ℕ 2)
+          ≡⟨ cong (_+ℕ (b +ℕ 2)) (sym (+-assoc 2 2 a)) ⟩
+        (4 +ℕ a) +ℕ (b +ℕ 2)
+          ≡⟨ cong ((4 +ℕ a) +ℕ_) (+-comm b 2) ⟩
+        (4 +ℕ a) +ℕ (2 +ℕ b)
+          ≡⟨ sym (+-assoc (4 +ℕ a) 2 b) ⟩
+        ((4 +ℕ a) +ℕ 2) +ℕ b
+          ≡⟨ cong (_+ℕ b) (+-assoc 4 a 2) ⟩
+        (4 +ℕ (a +ℕ 2)) +ℕ b
+          ≡⟨ cong (λ x → (4 +ℕ x) +ℕ b) (+-comm a 2) ⟩
+        (4 +ℕ (2 +ℕ a)) +ℕ b
+          ≡⟨ cong (_+ℕ b) (sym (+-assoc 4 2 a)) ⟩
+        (6 +ℕ a) +ℕ b
+          ∎
       -- Combine IH substitutions with arithmetic
       combine : 2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2))) ≡ (6 +ℕ len-f) +ℕ len-g
       combine = trans (cong (λ x → 2 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 2)))) IHf)
@@ -502,8 +523,29 @@ compile-length-correct [ f , g ] =
       step4 : length (prog-g ++ label end-label ∷ []) ≡ length prog-g +ℕ 1
       step4 = trans (length-++ prog-g) refl
       -- Arithmetic helper: 4 + (a + (3 + (b + 1))) = (8 + a) + b
+      -- This cannot be refl because the expressions don't normalize with abstract a, b
       arith-case : ∀ a b → 4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1))) ≡ (8 +ℕ a) +ℕ b
-      arith-case a b = refl
+      arith-case a b = begin
+        4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1)))
+          ≡⟨ cong (4 +ℕ_) (sym (+-assoc a 3 (b +ℕ 1))) ⟩
+        4 +ℕ ((a +ℕ 3) +ℕ (b +ℕ 1))
+          ≡⟨ cong (λ x → 4 +ℕ (x +ℕ (b +ℕ 1))) (+-comm a 3) ⟩
+        4 +ℕ ((3 +ℕ a) +ℕ (b +ℕ 1))
+          ≡⟨ sym (+-assoc 4 (3 +ℕ a) (b +ℕ 1)) ⟩
+        (4 +ℕ (3 +ℕ a)) +ℕ (b +ℕ 1)
+          ≡⟨ cong (_+ℕ (b +ℕ 1)) (sym (+-assoc 4 3 a)) ⟩
+        (7 +ℕ a) +ℕ (b +ℕ 1)
+          ≡⟨ cong ((7 +ℕ a) +ℕ_) (+-comm b 1) ⟩
+        (7 +ℕ a) +ℕ (1 +ℕ b)
+          ≡⟨ sym (+-assoc (7 +ℕ a) 1 b) ⟩
+        ((7 +ℕ a) +ℕ 1) +ℕ b
+          ≡⟨ cong (_+ℕ b) (+-assoc 7 a 1) ⟩
+        (7 +ℕ (a +ℕ 1)) +ℕ b
+          ≡⟨ cong (λ x → (7 +ℕ x) +ℕ b) (+-comm a 1) ⟩
+        (7 +ℕ (1 +ℕ a)) +ℕ b
+          ≡⟨ cong (_+ℕ b) (sym (+-assoc 7 1 a)) ⟩
+        (8 +ℕ a) +ℕ b
+          ∎
       -- Combine IH substitutions with arithmetic
       combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (8 +ℕ len-f) +ℕ len-g
       combine = trans (cong (λ x → 4 +ℕ (x +ℕ (3 +ℕ (length prog-g +ℕ 1)))) IHf)
@@ -2244,14 +2286,14 @@ mutual
       code-f-split = sym (++-assoc code-f (str x0 (sp+imm 0) ∷ []) after-f-1)
 
       -- pair-code = setup-plus-f-1 ++ after-f-1
-      pair-code-eq : pair-code ≡ setup-plus-f-1 ++ after-f-1
-      pair-code-eq = trans pair-code-unfold
+      pair-code-eq-base : pair-code ≡ setup-plus-f-1 ++ after-f-1
+      pair-code-eq-base = trans pair-code-unfold
                            (cong (λ xs → sub-sp 16 ∷ mov x20 (reg x0) ∷ xs)
                                  (trans (cong (code-f ++_) middle-split) code-f-split))
 
       -- (pair-code ++ suffix) = (setup-plus-f-1 ++ after-f-1) ++ suffix = setup-plus-f-1 ++ (after-f-1 ++ suffix)
       pair-code-eq-1 : pair-code ++ suffix ≡ setup-plus-f-1 ++ after-f-1-suffix
-      pair-code-eq-1 = trans (cong (_++ suffix) pair-code-eq) (++-assoc setup-plus-f-1 after-f-1 suffix)
+      pair-code-eq-1 = trans (cong (_++ suffix) pair-code-eq-base) (++-assoc setup-plus-f-1 after-f-1 suffix)
 
       -- The rest after mov x0 (reg x20) in after-f-1-suffix
       -- after-f-1-suffix = (mov x0 (reg x20) ∷ X) ++ suffix = mov x0 (reg x20) ∷ (X ++ suffix)
@@ -2635,11 +2677,66 @@ mutual
           ∎
 
       -- x0-final: readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
-      -- s-final.x0 = readSP (regs s-fin₁) = sp (from setup phase)
-      -- eval ⟨ f , g ⟩ x = (eval f x , eval g x)
-      -- encode (eval f x , eval g x) = sp (by encode-pair-construct with memory containing both values)
+      -- Proof structure using encode-pair-construct:
+      -- 1. s-final.x0 = readSP (regs s-fin₁) = sp₁ (stack pointer from setup)
+      -- 2. Memory at sp₁ contains encode (eval f x) (written in middle phase)
+      -- 3. Memory at sp₁+8 contains encode (eval g x) (written in final phase)
+      -- 4. Apply encode-pair-construct to conclude sp₁ = encode (eval f x, eval g x)
+
+      -- Step 1: x0 in s-final is the SP value
+      x0-is-sp-raw : readReg (regs s-final) x0 ≡ readSP (regs s-fin₁)
+      x0-is-sp-raw = readReg-writeReg-same (regs s-fin₁) x0 (readSP (regs s-fin₁))
+
+      -- SP preservation through execution phases
+      -- These track that SP remains at sp₁ = readSP (regs s) - 16 throughout
+      -- NOTE: Proving these requires adding SP preservation to run-ir-at-offset signature
       postulate
-        x0-final : readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
+        sp-preserved-through-f : readSP (regs sf) ≡ sp₁
+        sp-preserved-through-middle : readSP (regs s-after-middle) ≡ sp₁
+        sp-preserved-through-g : readSP (regs sg) ≡ sp₁
+
+      -- SP in s-fin₁: writeToMem doesn't change registers
+      sp-fin₁ : readSP (regs s-fin₁) ≡ sp₁
+      sp-fin₁ = sp-preserved-through-g  -- s-fin₁.regs = writeToMem sg ... which preserves regs
+
+      x0-is-sp : readReg (regs s-final) x0 ≡ sp₁
+      x0-is-sp = trans x0-is-sp-raw sp-fin₁
+
+      -- Memory properties for encode-pair-construct
+      -- Memory at sp₁ was written in middle phase (str x0 (sp+imm 0)) and preserved through g
+      -- Memory at sp₁+8 was written in final phase (str x0 (sp+imm 8))
+      -- NOTE: Proving mem-fst requires memory frame preservation through g
+      postulate
+        mem-fst : readMem (memory s-final) sp₁ ≡ just (encode (eval f x))
+
+      -- Memory at sp₁+8: written by str x0 (sp+imm 8) in s-fin₁, then s-final only changes regs
+      -- s-fin₁ = record (writeToMem sg (sp+imm 8) v) { pc = ... }
+      -- memory s-fin₁ = writeMem (memory sg) (effectiveAddr sg (sp+imm 8)) v  where v = readReg (regs sg) x0
+      -- effectiveAddr sg (sp+imm 8) = readSP (regs sg) + 8 = sp₁ + 8
+      -- readReg (regs sg) x0 = encode (eval g x)
+      -- s-final.memory = memory s-fin₁ (only regs changed)
+      mem-snd : readMem (memory s-final) (sp₁ +ℕ 8) ≡ just (encode (eval g x))
+      mem-snd = begin
+        readMem (memory s-final) (sp₁ +ℕ 8)
+          ≡⟨ refl ⟩  -- s-final.memory = memory s-fin₁
+        readMem (memory s-fin₁) (sp₁ +ℕ 8)
+          ≡⟨ refl ⟩  -- memory s-fin₁ = writeMem (memory sg) (effectiveAddr sg (sp+imm 8)) v
+        readMem (writeMem (memory sg) (effectiveAddr sg (sp+imm 8)) (readReg (regs sg) x0)) (sp₁ +ℕ 8)
+          ≡⟨ cong (λ addr → readMem (writeMem (memory sg) addr (readReg (regs sg) x0)) (sp₁ +ℕ 8)) addr-eq ⟩
+        readMem (writeMem (memory sg) (sp₁ +ℕ 8) (readReg (regs sg) x0)) (sp₁ +ℕ 8)
+          ≡⟨ readMem-writeMem-same (memory sg) (sp₁ +ℕ 8) (readReg (regs sg) x0) ⟩
+        just (readReg (regs sg) x0)
+          ≡⟨ cong just x0-after-g ⟩
+        just (encode (eval g x))
+          ∎
+        where
+          -- effectiveAddr sg (sp+imm 8) = readSP (regs sg) + 8 = sp₁ + 8
+          addr-eq : effectiveAddr sg (sp+imm 8) ≡ sp₁ +ℕ 8
+          addr-eq = cong (_+ℕ 8) sp-preserved-through-g
+
+      -- Apply encode-pair-construct
+      x0-final : readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
+      x0-final = trans x0-is-sp (encode-pair-construct (eval f x) (eval g x) sp₁ (memory s-final) mem-fst mem-snd)
 
       -- x20-final: x20 preservation requires that the pair code save/restore x20
       -- Currently the pair code uses x20 as a temp (mov x20, x0 in setup)

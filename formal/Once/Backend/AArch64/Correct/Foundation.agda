@@ -205,6 +205,36 @@ readReg-writeReg-x19-x0 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x19 v) x0 ≡ readReg rf x0
 readReg-writeReg-x19-x0 rf v = refl
 
+-- | Cross-register preservation: writing x19 doesn't affect x9
+readReg-writeReg-x19-x9 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x19 v) x9 ≡ readReg rf x9
+readReg-writeReg-x19-x9 rf v = refl
+
+-- | Cross-register preservation: writing x19 doesn't affect x10
+readReg-writeReg-x19-x10 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x19 v) x10 ≡ readReg rf x10
+readReg-writeReg-x19-x10 rf v = refl
+
+-- | Cross-register preservation: writing x19 doesn't affect x30
+readReg-writeReg-x19-x30 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x19 v) x30 ≡ readReg rf x30
+readReg-writeReg-x19-x30 rf v = refl
+
+-- | Cross-register preservation: writing x9 doesn't affect x10
+readReg-writeReg-x9-x10 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x9 v) x10 ≡ readReg rf x10
+readReg-writeReg-x9-x10 rf v = refl
+
+-- | Cross-register preservation: writing x9 doesn't affect x19
+readReg-writeReg-x9-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x9 v) x19 ≡ readReg rf x19
+readReg-writeReg-x9-x19 rf v = refl
+
+-- | Cross-register preservation: writing x9 doesn't affect x30
+readReg-writeReg-x9-x30 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x9 v) x30 ≡ readReg rf x30
+readReg-writeReg-x9-x30 rf v = refl
+
 -- | Cross-register preservation: writing x20 doesn't affect x0
 readReg-writeReg-x20-x0 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x20 v) x0 ≡ readReg rf x0
