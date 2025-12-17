@@ -868,11 +868,39 @@ mutual
       s-after-setup = record setup-st1 { regs = writeReg (regs setup-st1) s1 (readReg (regs setup-st1) a0)
                                        ; pc = pc setup-st1 +ℕ 1 }
 
-      -- Setup phase step proofs using step-at-offset
-      -- These use postulates for now due to the complex nested ++ structure in compile-riscv ⟨ f , g ⟩
-      postulate
-        fetch-setup0 : fetch prog (length prefix) ≡ just setup-i0
-        fetch-setup1 : fetch prog (length prefix +ℕ 1) ≡ just setup-i1
+      -- Setup phase step proofs using fetch-at-prefix-end
+      -- The key is showing prog has the right structure for fetch
+
+      -- Rest of compile-riscv ⟨ f , g ⟩ after first instruction
+      rest0 : Program
+      rest0 = mv s1 a0 ∷ code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ []
+
+      -- compile-riscv ⟨ f , g ⟩ = setup-i0 ∷ rest0 (by definition)
+      -- prog = prefix ++ (setup-i0 ∷ rest0) ++ suffix
+      --      = prefix ++ setup-i0 ∷ (rest0 ++ suffix)  [by how ∷ and ++ interact]
+
+      prog-eq0 : prog ≡ prefix ++ setup-i0 ∷ (rest0 ++ suffix)
+      prog-eq0 = refl  -- definitional equality!
+
+      fetch-setup0 : fetch prog (length prefix) ≡ just setup-i0
+      fetch-setup0 = fetch-at-prefix-end prefix setup-i0 (rest0 ++ suffix)
+
+      -- Rest after second instruction
+      rest1 : Program
+      rest1 = code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ []
+
+      -- For fetch-setup1, we need prog = (prefix ++ setup-i0 ∷ []) ++ setup-i1 ∷ (rest1 ++ suffix)
+      prog-eq1 : prog ≡ (prefix ++ setup-i0 ∷ []) ++ setup-i1 ∷ (rest1 ++ suffix)
+      prog-eq1 = sym (++-assoc prefix (setup-i0 ∷ []) (setup-i1 ∷ rest1 ++ suffix))
+
+      len-prefix-plus-1 : length (prefix ++ setup-i0 ∷ []) ≡ length prefix +ℕ 1
+      len-prefix-plus-1 = length-++ prefix
+
+      fetch-setup1 : fetch prog (length prefix +ℕ 1) ≡ just setup-i1
+      fetch-setup1 = subst₂ (λ p n → fetch p n ≡ just setup-i1)
+                            (sym prog-eq1)
+                            len-prefix-plus-1
+                            (fetch-at-prefix-end (prefix ++ setup-i0 ∷ []) setup-i1 (rest1 ++ suffix))
 
       -- Step proofs
       step-setup1 : step prog s ≡ just setup-st1
@@ -971,10 +999,87 @@ mutual
       s-after-middle = record middle-st1 { regs = writeReg (regs middle-st1) a0 (readReg (regs middle-st1) s1)
                                          ; pc = pc middle-st1 +ℕ 1 }
 
-      -- Middle phase step proofs - postulate fetch due to complex ++ structure
-      postulate
-        fetch-middle0 : fetch prog (pc sf) ≡ just middle-i0
-        fetch-middle1 : fetch prog (pc sf +ℕ 1) ≡ just middle-i1
+      -- Middle phase step proofs using fetch-at-prefix-end
+      -- After f executes, we're at position length prefix + 2 + len-f
+
+      -- Prefix for middle fetch = prefix ++ setup ++ code-f
+      prefix-middle : Program
+      prefix-middle = prefix ++ addi sp sp neg16 ∷ mv s1 a0 ∷ code-f
+
+      -- The "rest" after code-f in compile-riscv ⟨ f , g ⟩
+      mid-rest : Program
+      mid-rest = sd a0 (+ 0) sp ∷ mv a0 s1 ∷ code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ []
+
+      -- Rest after middle-i0
+      rest-middle0 : Program
+      rest-middle0 = mv a0 s1 ∷ code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix
+
+      -- Key structural fact: compile-riscv ⟨ f , g ⟩ = addi ∷ mv ∷ (code-f ++ mid-rest)
+      -- This holds definitionally because of how ++ unfolds with ∷
+
+      -- Step 1: Show mid-rest ++ suffix = middle-i0 ∷ rest-middle0
+      -- mid-rest = sd ∷ mv ∷ (code-g ++ sd ∷ mv ∷ [])
+      -- mid-rest ++ suffix = sd ∷ mv ∷ ((code-g ++ sd ∷ mv ∷ []) ++ suffix)
+      --                    = sd ∷ mv ∷ (code-g ++ ((sd ∷ mv ∷ []) ++ suffix))  [++-assoc]
+      --                    = sd ∷ mv ∷ (code-g ++ sd ∷ mv ∷ suffix)  [def of ++]
+      --                    = middle-i0 ∷ rest-middle0
+      final-instrs : Program
+      final-instrs = sd a0 (+ 8) sp ∷ mv a0 sp ∷ []
+
+      mid-rest-suffix-eq : mid-rest ++ suffix ≡ middle-i0 ∷ rest-middle0
+      mid-rest-suffix-eq = cong (sd a0 (+ 0) sp ∷_) (cong (mv a0 s1 ∷_) (++-assoc code-g final-instrs suffix))
+
+      -- Step 2: Show (code-f ++ mid-rest) ++ suffix = code-f ++ (middle-i0 ∷ rest-middle0)
+      -- By ++-assoc code-f mid-rest suffix and step 1
+      code-f-mid-suffix : (code-f ++ mid-rest) ++ suffix ≡ code-f ++ (middle-i0 ∷ rest-middle0)
+      code-f-mid-suffix = trans (++-assoc code-f mid-rest suffix) (cong (code-f ++_) mid-rest-suffix-eq)
+
+      -- Step 3: Final proof
+      -- prog = prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix
+      --      = prefix ++ (addi ∷ mv ∷ (code-f ++ mid-rest)) ++ suffix
+      --      = prefix ++ (addi ∷ mv ∷ ((code-f ++ mid-rest) ++ suffix))  [def of ++]
+      --      = prefix ++ (addi ∷ mv ∷ (code-f ++ (middle-i0 ∷ rest-middle0)))  [step 2]
+      -- RHS: prefix-middle ++ middle-i0 ∷ rest-middle0
+      --    = (prefix ++ addi ∷ mv ∷ code-f) ++ (middle-i0 ∷ rest-middle0)
+      --    = prefix ++ ((addi ∷ mv ∷ code-f) ++ (middle-i0 ∷ rest-middle0))  [++-assoc]
+      --    = prefix ++ (addi ∷ mv ∷ (code-f ++ (middle-i0 ∷ rest-middle0)))  [def of ++]
+      prog-eq-middle : prog ≡ prefix-middle ++ middle-i0 ∷ rest-middle0
+      prog-eq-middle = trans (cong (prefix ++_) (cong (addi sp sp neg16 ∷_) (cong (mv s1 a0 ∷_) code-f-mid-suffix)))
+                             (sym (++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ code-f) (middle-i0 ∷ rest-middle0)))
+
+      len-prefix-middle : length prefix-middle ≡ length prefix +ℕ 2 +ℕ len-f
+      len-prefix-middle = trans (length-++ prefix)
+                                (trans (cong (length prefix +ℕ_) (cong (2 +ℕ_) (compile-length-correct f)))
+                                       (sym (+-assoc (length prefix) 2 len-f)))
+
+      -- pc sf = length prefix-f + len-f = length prefix + 2 + len-f = length prefix-middle
+      pc-sf-eq : pc sf ≡ length prefix-middle
+      pc-sf-eq = trans pc-after-f (trans (cong (_+ℕ len-f) len-prefix-f) (sym len-prefix-middle))
+
+      fetch-middle0 : fetch prog (pc sf) ≡ just middle-i0
+      fetch-middle0 = subst₂ (λ p n → fetch p n ≡ just middle-i0)
+                             (sym prog-eq-middle)
+                             (sym pc-sf-eq)
+                             (fetch-at-prefix-end prefix-middle middle-i0 rest-middle0)
+
+      -- For fetch-middle1
+      prefix-middle1 : Program
+      prefix-middle1 = prefix-middle ++ middle-i0 ∷ []
+
+      rest-middle1 : Program
+      rest-middle1 = code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix
+
+      prog-eq-middle1 : prog ≡ prefix-middle1 ++ middle-i1 ∷ rest-middle1
+      prog-eq-middle1 = trans prog-eq-middle (sym (++-assoc prefix-middle (middle-i0 ∷ []) (middle-i1 ∷ rest-middle1)))
+
+      len-prefix-middle1 : length prefix-middle1 ≡ pc sf +ℕ 1
+      len-prefix-middle1 = trans (length-++ prefix-middle) (cong (_+ℕ 1) (sym pc-sf-eq))
+
+      fetch-middle1 : fetch prog (pc sf +ℕ 1) ≡ just middle-i1
+      fetch-middle1 = subst₂ (λ p n → fetch p n ≡ just middle-i1)
+                             (sym prog-eq-middle1)
+                             len-prefix-middle1
+                             (fetch-at-prefix-end prefix-middle1 middle-i1 rest-middle1)
 
       step-middle1 : step prog sf ≡ just middle-st1
       step-middle1 = trans (step-exec prog sf middle-i0 h-after-f fetch-middle0)
@@ -1121,10 +1226,130 @@ mutual
       s-final = record final-st1 { regs = writeReg (regs final-st1) a0 (readReg (regs final-st1) sp)
                                  ; pc = pc final-st1 +ℕ 1 }
 
-      -- Final phase step proofs - postulate fetch due to complex ++ structure
-      postulate
-        fetch-final0 : fetch prog (pc sg) ≡ just final-i0
-        fetch-final1 : fetch prog (pc sg +ℕ 1) ≡ just final-i1
+      -- Final phase step proofs using fetch-at-prefix-end
+      -- After g executes, we're at position length prefix-g + len-g
+
+      -- Prefix for final fetch = prefix-g ++ code-g
+      prefix-final : Program
+      prefix-final = prefix-g ++ code-g
+
+      -- Rest after final-i0
+      rest-final0 : Program
+      rest-final0 = mv a0 sp ∷ suffix
+
+      -- Show prog has the right structure for final fetch
+      -- This requires showing the structural relationship between prog and prefix-final
+      --
+      -- prog = prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix
+      --      = prefix ++ (addi ∷ mv ∷ (code-f ++ (sd ∷ mv ∷ (code-g ++ (sd ∷ mv ∷ []))))) ++ suffix
+      --
+      -- prefix-final ++ final-i0 ∷ rest-final0
+      --      = (prefix-g ++ code-g) ++ (sd ∷ mv ∷ suffix)
+      --      = prefix ++ addi ∷ mv ∷ code-f ++ sd ∷ mv ∷ code-g ++ (sd ∷ mv ∷ suffix)
+      --
+      -- These are equal via multiple ++-assoc applications
+
+      -- First, show suffix-g = final-i0 ∷ rest-final0 (definitional)
+      suffix-g-eq : suffix-g ≡ final-i0 ∷ rest-final0
+      suffix-g-eq = refl
+
+      -- The code after middle in compile-riscv ⟨ f , g ⟩
+      code-after-middle : Program
+      code-after-middle = code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ []
+
+      -- Step 1: Show (sd ∷ mv ∷ []) ++ suffix = sd ∷ mv ∷ suffix (definitional)
+      -- Step 2: Show code-g ++ ((sd ∷ mv ∷ []) ++ suffix) = code-g ++ sd ∷ mv ∷ suffix
+      final-suffix-eq : (code-g ++ final-instrs) ++ suffix ≡ code-g ++ (final-i0 ∷ rest-final0)
+      final-suffix-eq = ++-assoc code-g final-instrs suffix
+
+      -- Step 3: Show sd ∷ mv ∷ ((code-g ++ final-instrs) ++ suffix) = sd ∷ mv ∷ (code-g ++ final-i0 ∷ rest-final0)
+      middle-to-final : (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ final-instrs)) ++ suffix
+                      ≡ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ (final-i0 ∷ rest-final0))
+      middle-to-final = cong (sd a0 (+ 0) sp ∷_) (cong (mv a0 s1 ∷_) final-suffix-eq)
+
+      -- Step 4: Chain from code-f through to final
+      f-to-final : (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ final-instrs)) ++ suffix
+                 ≡ code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ (final-i0 ∷ rest-final0))
+      f-to-final = trans (++-assoc code-f (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ final-instrs)) suffix)
+                         (cong (code-f ++_) middle-to-final)
+
+      -- Step 5: Full transformation
+      -- compile-riscv ⟨ f , g ⟩ ++ suffix
+      -- = addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ (code-g ++ sd ∷ mv ∷ [])) ++ suffix
+      -- = addi ∷ mv ∷ ((code-f ++ sd ∷ mv ∷ (code-g ++ sd ∷ mv ∷ [])) ++ suffix)
+      -- = addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ (code-g ++ (sd ∷ mv ∷ suffix)))
+      full-suffix-transform : compile-riscv ⟨ f , g ⟩ ++ suffix
+                            ≡ addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ (final-i0 ∷ rest-final0)))
+      full-suffix-transform = cong (addi sp sp neg16 ∷_) (cong (mv s1 a0 ∷_) f-to-final)
+
+      -- Now relate to prefix-final structure
+      -- prefix-final = prefix-g ++ code-g
+      --              = (prefix-f ++ code-f ++ sd ∷ mv ∷ []) ++ code-g
+      --              = (prefix ++ addi ∷ mv ∷ []) ++ code-f ++ sd ∷ mv ∷ [] ++ code-g
+
+      -- Key: show (prefix-g ++ code-g) ++ (final-i0 ∷ rest-final0) = prefix ++ (addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ (code-g ++ final-i0 ∷ rest-final0)))
+      -- This requires showing prefix-g expands correctly
+
+      -- Expand prefix-g step by step
+      -- prefix-g = prefix-f ++ code-f ++ sd ∷ mv ∷ [] is definitionally
+      -- prefix-f ++ (code-f ++ (sd ∷ mv ∷ [])) due to right assoc of ++
+      prefix-g-expand : prefix-g ≡ prefix-f ++ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])
+      prefix-g-expand = refl
+
+      -- prefix-f = prefix ++ addi ∷ mv ∷ []
+      -- So prefix-g = prefix ++ addi ∷ mv ∷ [] ++ (code-f ++ sd ∷ mv ∷ [])
+      --             = prefix ++ (addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ []))
+      prefix-g-from-prefix : prefix-g ≡ prefix ++ addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])
+      prefix-g-from-prefix = trans prefix-g-expand
+                                   (trans (cong (_++ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])) refl)
+                                          (++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ []) (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])))
+
+      -- Now: prefix-final ++ (final-i0 ∷ rest-final0)
+      --    = (prefix-g ++ code-g) ++ (final-i0 ∷ rest-final0)
+      --    = prefix-g ++ (code-g ++ (final-i0 ∷ rest-final0))           [++-assoc]
+      --    = prefix ++ addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ []) ++ (code-g ++ final-i0 ∷ rest-final0)
+      --    = prefix ++ addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ (code-g ++ final-i0 ∷ rest-final0))
+
+      -- Relate prefix-final to prefix
+      prefix-final-expand : prefix-final ++ (final-i0 ∷ rest-final0)
+                          ≡ prefix ++ addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ (final-i0 ∷ rest-final0)))
+      prefix-final-expand =
+        let step1 = ++-assoc prefix-g code-g (final-i0 ∷ rest-final0)  -- (prefix-g ++ code-g) ++ ... = prefix-g ++ (code-g ++ ...)
+            step2 = cong (_++ (code-g ++ (final-i0 ∷ rest-final0))) prefix-g-from-prefix  -- expand prefix-g
+            step3 = ++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])) (code-g ++ (final-i0 ∷ rest-final0))
+        in trans step1 (trans step2 (sym step3))
+
+      prog-eq-final : prog ≡ prefix-final ++ final-i0 ∷ rest-final0
+      prog-eq-final = trans (cong (prefix ++_) full-suffix-transform) (sym prefix-final-expand)
+
+      len-prefix-final : length prefix-final ≡ length prefix-g +ℕ len-g
+      len-prefix-final = trans (length-++ prefix-g) (cong (length prefix-g +ℕ_) (compile-length-correct g))
+
+      -- pc sg = length prefix-g + len-g = length prefix-final
+      pc-sg-eq : pc sg ≡ length prefix-final
+      pc-sg-eq = trans pc-after-g (sym len-prefix-final)
+
+      fetch-final0 : fetch prog (pc sg) ≡ just final-i0
+      fetch-final0 = subst₂ (λ p n → fetch p n ≡ just final-i0)
+                            (sym prog-eq-final)
+                            pc-sg-eq
+                            (fetch-at-prefix-end prefix-final final-i0 rest-final0)
+
+      -- For fetch-final1
+      prefix-final1 : Program
+      prefix-final1 = prefix-final ++ final-i0 ∷ []
+
+      prog-eq-final1 : prog ≡ prefix-final1 ++ final-i1 ∷ suffix
+      prog-eq-final1 = trans prog-eq-final (sym (++-assoc prefix-final (final-i0 ∷ []) (final-i1 ∷ suffix)))
+
+      len-prefix-final1 : length prefix-final1 ≡ pc sg +ℕ 1
+      len-prefix-final1 = trans (length-++ prefix-final) (cong (_+ℕ 1) (sym pc-sg-eq))
+
+      fetch-final1 : fetch prog (pc sg +ℕ 1) ≡ just final-i1
+      fetch-final1 = subst₂ (λ p n → fetch p n ≡ just final-i1)
+                            (sym prog-eq-final1)
+                            len-prefix-final1
+                            (fetch-at-prefix-end prefix-final1 final-i1 suffix)
 
       step-final1 : step prog sg ≡ just final-st1
       step-final1 = trans (step-exec prog sg final-i0 h-after-g fetch-final0)
@@ -1239,6 +1464,13 @@ mutual
         a0-final : readReg (regs s-final) a0 ≡ encode (eval ⟨ f , g ⟩ x)
 
       -- exec-all: combine all phases
+      -- Phase execution summary:
+      --   exec-setup: exec 2 prog s ≡ just s-after-setup
+      --   f-result: exec len-f (prefix-f++code-f++suffix-f) s-after-setup ≡ just sf
+      --   exec-middle: exec 2 prog sf ≡ just s-after-middle
+      --   g-result: exec len-g (prefix-g++code-g++suffix-g) s-after-middle ≡ just sg
+      --   exec-final: exec 2 prog sg ≡ just s-final
+      -- Total: 2 + len-f + 2 + len-g + 2 = (6 + len-f) + len-g = compile-length ⟨ f , g ⟩
       postulate
         exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
 
@@ -1956,18 +2188,29 @@ mutual
       new-sp : Word
       new-sp = orig-sp ∸ 16
 
+      -- Curry execution: 8 steps (closure creation + jump + label)
+      -- The actual execution visits positions 0-6 then jumps to 13+len-f (end label)
+      --
+      -- Key observation: NONE of the curry instructions modify s1:
+      --   addi sp sp -16  → sp
+      --   sd a0 0(sp)     → memory
+      --   auipc t0 0      → t0
+      --   addi t0 t0 5    → t0
+      --   sd t0 8(sp)     → memory
+      --   mv a0 sp        → a0
+      --   j offset        → pc
+      --   label           → pc
+      --
+      -- Therefore s1 is preserved through curry execution.
+
       -- Postulate the complex execution details
-      -- Full proof would require:
-      -- 1. Step through closure creation (6 instructions)
-      -- 2. Step through jump (1 instruction, PC jumps to 13+len-f)
-      -- 3. Step through end label (1 instruction)
-      -- 4. Account for remaining fuel executing suffix code
       postulate
         s-final : State
         exec-all : exec (compile-length (curry f)) prog s ≡ just s-final
         h-final : halted s-final ≡ false
         pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
         a0-final : readReg (regs s-final) a0 ≡ encode (eval (curry f) x)
+        -- s1 preservation: curry doesn't touch s1 (instructions only modify sp, t0, a0, memory, pc)
         s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
 
   postulate
