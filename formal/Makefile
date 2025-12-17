@@ -69,7 +69,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-foundation riscv riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean
+.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-correct aarch64-foundation riscv riscv-correct riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean
 
 all: check
 
@@ -129,6 +129,10 @@ aarch64:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CODEGEN)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
+aarch64-correct:
+	@echo "Type-checking AArch64 correctness proofs only..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
+
 aarch64-foundation:
 	@echo "Type-checking AArch64 foundation module only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_FOUNDATION)'
@@ -138,6 +142,10 @@ riscv:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
 	@if [ -f "$(RISCV_SEMANTICS)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SEMANTICS)'; fi
 	@if [ -f "$(RISCV_CODEGEN)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
+	@if [ -f "$(RISCV_CORRECT)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
+
+riscv-correct:
+	@echo "Type-checking RISC-V correctness proofs only..."
 	@if [ -f "$(RISCV_CORRECT)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
 riscv-foundation:
