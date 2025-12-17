@@ -8388,10 +8388,11 @@ thunk-entry-pos : ℕ
 thunk-entry-pos = 13
 
 -- | Verify thunk is within program bounds (13 < 37, i.e., 14 ≤ 37)
+-- Using arithmetic lemma: 14 + 23 = 37, so m≤m+n 14 23 proves 14 ≤ 37 in O(1)
 thunk-in-bounds : thunk-entry-pos < curry-apply-len
-thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))
+thunk-in-bounds = m≤m+n 14 23
   where
-    open import Data.Nat.Base using (z≤n; s≤s)
+    open import Data.Nat.Properties using (m≤m+n)
 
 -- | The instruction at thunk entry is a label (no-op)
 thunk-entry-is-label : fetch curry-apply-prog thunk-entry-pos ≡ just (label 6)
