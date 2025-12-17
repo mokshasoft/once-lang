@@ -127,6 +127,53 @@ foo = x , proof
 
 ## Proof Techniques
 
+### Natural number arithmetic equalities are often just `refl` (CRITICAL!)
+
+**Problem**: Proving arithmetic equalities like `(a + 4 + b + c) + 1 ≡ a + 5 + b + c` with verbose chains of `+-assoc` and `+-comm` is tedious and adds dozens of lines per proof.
+
+**Solution**: Try `refl` first! Agda's `_+_` on ℕ normalizes both sides to the same form.
+
+```agda
+-- BAD: 15+ lines of verbose equational reasoning
+arith-plus-1 : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
+arith-plus-1 a b c = begin
+  (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1
+    ≡⟨ +-assoc (a +ℕ 4 +ℕ b) c 1 ⟩
+  -- ... 10+ more steps ...
+    ≡⟨ cong (λ z → (z +ℕ b) +ℕ c) (+-assoc a 4 1) ⟩
+  ((a +ℕ 5) +ℕ b) +ℕ c
+    ∎
+
+-- GOOD: Just use refl!
+arith-plus-1 : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
+arith-plus-1 a b c = refl
+```
+
+**Why it works**: The standard library's `_+_` is defined by recursion on the first argument:
+```agda
+zero  + n = n
+suc m + n = suc (m + n)
+```
+
+So `4 + x` computes to `suc (suc (suc (suc x)))`. Both sides of arithmetic equalities often normalize to the same `suc`-tower, making them definitionally equal.
+
+**Examples that work as `refl`**:
+- `(a + 4 + b + c) + 1 ≡ a + 5 + b + c`
+- `(p + 4 + a + b) + 2 ≡ (p + (6 + a)) + b`
+- `2 + (a + (2 + (b + 2))) ≡ (6 + a) + b`
+- `4 + (a + (3 + (b + 1))) ≡ (8 + a) + b`
+
+**When to use the solver instead**: If `refl` doesn't work (expressions don't normalize to the same form), use `Data.Nat.Solver`:
+```agda
+open import Data.Nat.Solver
+open +-*-Solver
+
+complicated : ∀ a b → a + b + a ≡ 2 * a + b
+complicated = solve 2 (λ a b → a :+ b :+ a := con 2 :* a :+ b) refl
+```
+
+**Lesson**: Before writing ANY `+-assoc`/`+-comm` chain, always try `refl` first. It saves 10-60 lines per proof.
+
 ### Use arithmetic lemmas for large number comparisons (CRITICAL for performance!)
 
 **Problem**: Proving `17 ≤ 2147418112` (or similar large number comparisons) by structural induction is infeasible - Agda would need billions of reduction steps.

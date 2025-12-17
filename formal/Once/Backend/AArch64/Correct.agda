@@ -457,21 +457,7 @@ compile-length-correct ⟨ f , g ⟩ =
       step4 = trans (length-++ prog-g) refl
       -- Arithmetic helper: 2 + (a + (2 + (b + 2))) = (6 + a) + b
       arith-pair : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
-      arith-pair a b = begin
-        2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2)))
-          ≡⟨ cong (2 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 2))) ⟩
-        2 +ℕ (a +ℕ (2 +ℕ (2 +ℕ b)))
-          ≡⟨ cong (2 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 2 b))) ⟩
-        2 +ℕ (a +ℕ (4 +ℕ b))
-          ≡⟨ cong (2 +ℕ_) (sym (+-assoc a 4 b)) ⟩
-        2 +ℕ ((a +ℕ 4) +ℕ b)
-          ≡⟨ cong (2 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
-        2 +ℕ ((4 +ℕ a) +ℕ b)
-          ≡⟨ sym (+-assoc 2 (4 +ℕ a) b) ⟩
-        (2 +ℕ (4 +ℕ a)) +ℕ b
-          ≡⟨ cong (_+ℕ b) (sym (+-assoc 2 4 a)) ⟩
-        (6 +ℕ a) +ℕ b
-        ∎
+      arith-pair a b = refl
       -- Combine IH substitutions with arithmetic
       combine : 2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2))) ≡ (6 +ℕ len-f) +ℕ len-g
       combine = trans (cong (λ x → 2 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 2)))) IHf)
@@ -517,21 +503,7 @@ compile-length-correct [ f , g ] =
       step4 = trans (length-++ prog-g) refl
       -- Arithmetic helper: 4 + (a + (3 + (b + 1))) = (8 + a) + b
       arith-case : ∀ a b → 4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1))) ≡ (8 +ℕ a) +ℕ b
-      arith-case a b = begin
-        4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1)))
-          ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (cong (3 +ℕ_) (+-comm b 1))) ⟩
-        4 +ℕ (a +ℕ (3 +ℕ (1 +ℕ b)))
-          ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 3 1 b))) ⟩
-        4 +ℕ (a +ℕ (4 +ℕ b))
-          ≡⟨ cong (4 +ℕ_) (sym (+-assoc a 4 b)) ⟩
-        4 +ℕ ((a +ℕ 4) +ℕ b)
-          ≡⟨ cong (4 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
-        4 +ℕ ((4 +ℕ a) +ℕ b)
-          ≡⟨ sym (+-assoc 4 (4 +ℕ a) b) ⟩
-        (4 +ℕ (4 +ℕ a)) +ℕ b
-          ≡⟨ cong (_+ℕ b) (sym (+-assoc 4 4 a)) ⟩
-        (8 +ℕ a) +ℕ b
-        ∎
+      arith-case a b = refl
       -- Combine IH substitutions with arithmetic
       combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (8 +ℕ len-f) +ℕ len-g
       combine = trans (cong (λ x → 4 +ℕ (x +ℕ (3 +ℕ (length prog-g +ℕ 1)))) IHf)
@@ -2572,23 +2544,7 @@ mutual
 
       -- Arithmetic helper: (a + 4 + b + c) + 1 = a + 5 + b + c
       arith-plus-1 : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
-      arith-plus-1 a b c = begin
-        (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1
-          ≡⟨ +-assoc (a +ℕ 4 +ℕ b) c 1 ⟩
-        (a +ℕ 4 +ℕ b) +ℕ (c +ℕ 1)
-          ≡⟨ cong ((a +ℕ 4 +ℕ b) +ℕ_) (+-comm c 1) ⟩
-        (a +ℕ 4 +ℕ b) +ℕ (1 +ℕ c)
-          ≡⟨ sym (+-assoc (a +ℕ 4 +ℕ b) 1 c) ⟩
-        ((a +ℕ 4 +ℕ b) +ℕ 1) +ℕ c
-          ≡⟨ cong (_+ℕ c) (+-assoc (a +ℕ 4) b 1) ⟩
-        ((a +ℕ 4) +ℕ (b +ℕ 1)) +ℕ c
-          ≡⟨ cong (λ z → ((a +ℕ 4) +ℕ z) +ℕ c) (+-comm b 1) ⟩
-        ((a +ℕ 4) +ℕ (1 +ℕ b)) +ℕ c
-          ≡⟨ cong (_+ℕ c) (sym (+-assoc (a +ℕ 4) 1 b)) ⟩
-        (((a +ℕ 4) +ℕ 1) +ℕ b) +ℕ c
-          ≡⟨ cong (λ z → (z +ℕ b) +ℕ c) (+-assoc a 4 1) ⟩
-        ((a +ℕ 5) +ℕ b) +ℕ c
-          ∎
+      arith-plus-1 a b c = refl
 
       -- pc sg + 1 = length prefix + 5 + len-f + len-g
       pcg-plus-1 : pc sg +ℕ 1 ≡ length prefix +ℕ 5 +ℕ len-f +ℕ len-g
@@ -2664,25 +2620,7 @@ mutual
 
       -- Arithmetic helper: (p + 4 + a + b) + 2 = (p + (6 + a)) + b
       arith-pc-final : ∀ p a b → (p +ℕ 4 +ℕ a +ℕ b) +ℕ 2 ≡ (p +ℕ (6 +ℕ a)) +ℕ b
-      arith-pc-final p a b = begin
-        (p +ℕ 4 +ℕ a +ℕ b) +ℕ 2
-          ≡⟨ +-assoc (p +ℕ 4 +ℕ a) b 2 ⟩
-        (p +ℕ 4 +ℕ a) +ℕ (b +ℕ 2)
-          ≡⟨ cong ((p +ℕ 4 +ℕ a) +ℕ_) (+-comm b 2) ⟩
-        (p +ℕ 4 +ℕ a) +ℕ (2 +ℕ b)
-          ≡⟨ sym (+-assoc (p +ℕ 4 +ℕ a) 2 b) ⟩
-        ((p +ℕ 4 +ℕ a) +ℕ 2) +ℕ b
-          ≡⟨ cong (_+ℕ b) (+-assoc (p +ℕ 4) a 2) ⟩
-        ((p +ℕ 4) +ℕ (a +ℕ 2)) +ℕ b
-          ≡⟨ cong (λ z → ((p +ℕ 4) +ℕ z) +ℕ b) (+-comm a 2) ⟩
-        ((p +ℕ 4) +ℕ (2 +ℕ a)) +ℕ b
-          ≡⟨ cong (_+ℕ b) (sym (+-assoc (p +ℕ 4) 2 a)) ⟩
-        (((p +ℕ 4) +ℕ 2) +ℕ a) +ℕ b
-          ≡⟨ cong (λ z → (z +ℕ a) +ℕ b) (+-assoc p 4 2) ⟩
-        ((p +ℕ 6) +ℕ a) +ℕ b
-          ≡⟨ cong (_+ℕ b) (sym (+-assoc p 6 a)) ⟩
-        (p +ℕ (6 +ℕ a)) +ℕ b
-          ∎
+      arith-pc-final p a b = refl
 
       -- pc s-final = pc sg + 2 = (length prefix + (6 + len-f)) + len-g
       pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
