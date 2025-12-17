@@ -300,6 +300,21 @@ readReg-writeReg-s1-sp : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf s1 v) sp ≡ readReg rf sp
 readReg-writeReg-s1-sp rf v = refl
 
+-- | Reading s0 after writing sp returns the old value
+readReg-writeReg-sp-s0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf sp v) s0 ≡ readReg rf s0
+readReg-writeReg-sp-s0 rf v = refl
+
+-- | Reading s0 after writing a0 returns the old value
+readReg-writeReg-a0-s0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf a0 v) s0 ≡ readReg rf s0
+readReg-writeReg-a0-s0 rf v = refl
+
+-- | Reading sp after writing s0 returns the old value
+readReg-writeReg-s0-sp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s0 v) sp ≡ readReg rf sp
+readReg-writeReg-s0-sp rf v = refl
+
 ------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
