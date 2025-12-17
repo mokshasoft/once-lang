@@ -127,6 +127,52 @@ foo = x , proof
 
 ## Proof Techniques
 
+### Use arithmetic lemmas for large number comparisons (CRITICAL for performance!)
+
+**Problem**: Proving `17 ≤ 2147418112` (or similar large number comparisons) by structural induction is infeasible - Agda would need billions of reduction steps.
+
+**Solution**: Use `m≤m+n` from `Data.Nat.Properties` which proves `m ≤ m + n` for ANY `n` in O(1):
+
+```agda
+open import Data.Nat.Properties using (m≤m+n)
+
+-- BAD: Would take forever (structural induction on 2147418112)
+-- stackBase>16 : 17 ≤ 0x7FFF0000
+-- stackBase>16 = s≤s (s≤s ... z≤n)  -- 17 nested s≤s, then normalize RHS
+
+-- GOOD: O(1) proof using arithmetic lemma
+-- Key insight: 0x7FFF0000 = 2147418112 = 17 + 2147418095
+stackBase>16 : 17 ≤ 0x7FFF0000
+stackBase>16 = m≤m+n 17 2147418095  -- Instant!
+```
+
+**Why it works**:
+1. `m≤m+n` proves `m ≤ m + n` without inspecting `n`
+2. Agda computes `17 + 2147418095 = 2147418112 = 0x7FFF0000` (equality by normalization)
+3. So `m≤m+n 17 2147418095` has type `17 ≤ 0x7FFF0000`
+
+**Other useful arithmetic lemmas**:
+- `m≤n+m` : `m ≤ n + m`
+- `m≤m*n` : `m ≤ m * n` (when n ≥ 1)
+- `m<m+n` : `m < m + suc n`
+- `≤-trans` : Chain inequalities
+
+**TODO: Audit codebase for this pattern**. Any proof involving:
+- Large constants (addresses, stack sizes, fuel values)
+- Comparisons like `n > 16`, `n ≤ 10000`, `addr₁ ≢ addr₂`
+
+...should use arithmetic lemmas instead of structural induction. This can dramatically speed up type-checking.
+
+**Example applications**:
+- Stack base comparisons: `rsp > 16` where `rsp` starts at `0x7FFF0000`
+- Fuel bounds: `compile-length ir ≤ 10000`
+- Address disjointness: proving `addr₁ ≢ addr₂` via `addr₁ < addr₂`
+
+**Files to audit**:
+- `Once/Backend/X86/Correct.agda` - main x86 proofs
+- `Once/Backend/AArch64/Correct.agda` - AArch64 proofs (when proven)
+- Any file using `s≤s`/`z≤n` chains with constants > 100
+
 ### Use `mutual` for mutually recursive proofs
 
 When a main theorem needs helper lemmas that themselves need the theorem:

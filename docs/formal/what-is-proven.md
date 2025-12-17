@@ -209,24 +209,34 @@ These axioms relate semantic values to machine words:
 
 **Justification**: These capture the intended memory layout semantics. A full formalization would model the heap explicitly and prove these as lemmas.
 
-### P3: x86-64 Execution Helpers
+### P3: x86-64 Internal Postulates (~30 mechanical postulates)
 
 | Property | Value |
 |----------|-------|
-| **Type** | `run-*` family of postulates |
-| **Location** | `Once/Backend/X86/Correct.agda` |
+| **Type** | Per-generator execution traces, register/memory preservation |
+| **Location** | `Once/Backend/X86/Correct.agda` (~23 postulate blocks) |
 | **Needed by** | x86-64 code generation correctness proofs |
 | **Runtime effect** | None (proof-only) |
 
-These capture execution properties:
-- `run-single-mov*`: Single mov instruction execution
-- `run-inl-seq`, `run-inr-seq`: Sum construction sequences
-- `run-pair-seq`: Pair construction sequence
-- `run-case-inl`, `run-case-inr`: Case branching execution
-- `run-seq-compose`: Sequential composition execution
-- `run-generator`: General generator execution
+These exist for proof engineering, not fundamental limitations:
 
-**Justification**: These can be proven from the operational semantics in `Semantics.agda`. The layered approach separates "what the machine does" from "how we compose proofs".
+**A. Per-generator execution traces (~20 postulates)**:
+- `final-result` in pair: 6-instruction final sequence
+- `s-final`, `exec-all`, etc. in case/curry: execution result and step count
+- `exec-eq` in apply setup: 6-instruction setup execution
+- Thunk execution postulates: for closure application
+
+**B. Register/memory preservation (~10 postulates)**:
+- `r14-final`, `r15-final`: callee-saved register preservation
+- `mem-final`: memory at [r15] preservation through generators
+
+**C. Practical size assumption (1 postulate)**:
+- `n-steps≤fuel`: `suc (compile-length ir) ≤ 10000`
+- True for all practical programs, unprovable without type-level IR size bounds
+
+**Justification**: These are MECHANICAL and could be eliminated with more proof work. They follow the same pattern as existing fully-proven generators (inl, inr, id, fst, snd, terminal, fold, unfold, arr). The E2E-Trace module demonstrates the proof technique by tracing all 37 instructions for `apply ∘ ⟨curry fst, id⟩` without postulates.
+
+**Recent elimination**: The 4 `addr-diff-*` postulates were eliminated by integrating `StackInvariant` into `run-ir-at-offset`. The `stack-inv-after-setup` postulate in pair was proven directly.
 
 ### P4: Closure Semantics Axiom
 
@@ -258,20 +268,28 @@ This is a **FUNDAMENTAL SEMANTIC AXIOM** analogous to encoding axioms like `enco
 
 The E2E-Trace module demonstrates that `run-apply-seq` holds when curry and apply are composed in the same program. See `docs/formal/x86-full-proof-architecture.md` for the full proof architecture.
 
-### P5: Stack Invariant Derivation
+### P5: Stack Invariant (Now Integrated)
 
 | Property | Value |
 |----------|-------|
-| **Type** | `addr-diff-from-invariant` |
+| **Type** | `StackInvariant s` predicate |
 | **Location** | `Once/Backend/X86/Correct.agda` |
 | **Needed by** | `inl`, `inr` generators for address disjointness |
 | **Runtime effect** | None (proof-only) |
+| **Status** | ✓ **INTEGRATED** - addr-diff postulates eliminated |
 
 The `StackInvariant` predicate tracks the relationship between rsp and r15:
 - `r15-unused`: r15 = 0 (no pair allocation active)
 - `stack-below-r15`: rsp ≤ r15 (stack grows below pair allocation)
 
-This invariant enables deriving address disjointness properties (new stack addresses don't collide with r15). The infrastructure is in place; full integration requires threading the invariant through all of `run-ir-at-offset`.
+**Progress**:
+- ✓ `addr-diff-from-invariant` lemma derives address disjointness from invariant
+- ✓ `StackInvariant s` and `rsp > 16` added as parameters to `run-ir-at-offset`
+- ✓ All 4 `addr-diff` postulates in `inl`/`inr` generators eliminated
+- ✓ `stack-inv-after-setup` in pair generator proven (r15 = rsp after setup)
+- `initWithInput-stack-inv` proven (initial state has r15 = 0)
+
+**Remaining**: Some StackInvariant preservation postulates remain because `run-ir-at-offset` doesn't return `StackInvariant s'` in its result tuple. Full elimination would require extending the return type.
 
 ### S1: Fixed Point Semantics (Semantic Gap) — ADDRESSED
 
@@ -362,15 +380,35 @@ This is comparable to CakeML (HOL4 + PolyML + OS) and CompCert (Coq + OCaml + OS
 
 ### X86 Backend Proof Progress
 
-The X86 backend has the following postulate categories remaining:
+The X86 backend has the following postulate categories remaining (see `Correct.agda` Notes on Postulates section for complete inventory):
 
-| Category | Count | Path to Elimination |
-|----------|-------|---------------------|
-| Encoding axioms | ~10 | Intentional trusted base |
-| Address disjointness (addr-diff) | 4 | StackInvariant infrastructure in place |
-| Stack restoration (rsp-eq-r15) | 1 | Frame pointer (rbp) tracking |
-| Closure/apply execution | ~8 | Composition theorems (see E2E-Trace) |
-| Step/execution proofs | ~5 | Mechanical but tedious |
+| Category | Count | Status |
+|----------|-------|--------|
+| **Trusted Base (Intentional)** | | |
+| Encoding axioms | ~10 | Cannot eliminate without heap model |
+| Closure semantics (`run-apply-seq`) | 1 | Fundamental axiom (validated by E2E-Trace) |
+| Closure accessors | 2 | Similar to encoding axioms |
+| **Practical Assumptions** | | |
+| Size assumption (`n-steps≤fuel`) | 1 | True for practical programs |
+| Initial stack size (`initWithInput-rsp>16`) | 1 | True for stackBase = 0x7FFF0000 |
+| **Mechanical (Could Be Eliminated)** | | |
+| Per-generator traces | ~20 | Extensive step-by-step work |
+| Register preservation | ~10 | Step-by-step proofs |
+| Address disjointness | ~~4~~ **0** | ✓ **ELIMINATED** via StackInvariant |
+| StackInvariant preservation | ~5 | Requires threading invariant through run-ir-at-offset |
+| Stack size after operations | ~5 | Requires stronger preconditions |
+
+**Recent Progress**:
+- **Address disjointness postulates eliminated**: The 4 `addr-diff-*` postulates in `run-ir-at-offset-inl` and `run-ir-at-offset-inr` have been replaced with derivations from `StackInvariant`. The `addr-diff-from-invariant` lemma derives address disjointness from the invariant.
+- **StackInvariant infrastructure**: `StackInvariant` tracks `rsp ≤ r15` (stack below pair allocation) or `r15 = 0` (unused). Added to `run-ir-at-offset` signature.
+- **Pair generator `stack-inv-after-setup` proven**: After pair setup, r15 = rsp, so StackInvariant holds trivially.
+
+**Remaining mechanical postulates** require either:
+1. **Stronger preconditions**: `rsp > 56` instead of `rsp > 16` to handle stack allocation
+2. **Extended preservation tracking**: Add StackInvariant to run-ir-at-offset return type
+3. **Memory frame tracking**: Track stack memory preservation for pop sequences
+
+**Summary**: ~30 mechanical postulates remain. The E2E-Trace module demonstrates the technique for a complete 37-instruction trace proof.
 
 See `docs/formal/x86-full-proof-architecture.md` for the detailed elimination strategy.
 
