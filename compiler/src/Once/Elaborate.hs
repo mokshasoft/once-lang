@@ -186,6 +186,7 @@ elaborateType sty = case sty of
   STVoid -> TVoid
   STInt -> TInt
   STFloat -> TFloat
+  STByte -> TByte
   STBuffer -> TBuffer
   STString enc -> TString enc
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)
@@ -236,6 +237,10 @@ elaborateExprWithEnv modEnv locals expr = case expr of
         FunDef _ _ bodyExpr -> elaborateExprWithEnv modEnv locals bodyExpr
         -- For primitives, generate a Prim node
         Primitive pname sty -> Right $ Prim pname (elaborateType sty) placeholder
+        -- For primitive families, generate a Prim node with family name
+        -- The Monomorphize pass will resolve to specific implementation
+        PrimitiveFamily pname sty _mappings ->
+          Right $ Prim pname (elaborateType sty) placeholder
         -- For type signatures without definition, just use Var
         TypeSig _ _ -> Right $ Var name
         -- Type aliases shouldn't appear here

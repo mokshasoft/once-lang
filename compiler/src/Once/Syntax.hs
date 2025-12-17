@@ -51,6 +51,9 @@ data Decl
   = TypeSig Name SType                        -- ^ Type signature: name : Type
   | FunDef Name (Maybe AllocStrategy) Expr    -- ^ Function definition: name [@alloc] = expr
   | Primitive Name SType                      -- ^ Primitive declaration: primitive name : Type
+  | PrimitiveFamily Name SType [(SType, Name)]
+    -- ^ Primitive family: primitive name : Type where Type => impl, ...
+    -- The list maps concrete types to implementation names
   | TypeAlias Name [Name] SType               -- ^ Type alias: type Name A B = Type
   deriving (Eq, Show)
 
@@ -79,6 +82,7 @@ data SType
   | STVoid                       -- ^ Void type: Void
   | STInt                        -- ^ Integer type: Int
   | STFloat                      -- ^ Floating-point type: Float
+  | STByte                       -- ^ Byte type: Byte (unsigned 8-bit, 0-255)
   | STBuffer                     -- ^ Buffer type: Buffer
   | STString Encoding            -- ^ String type with encoding: String Utf8
   | STProduct SType SType        -- ^ Product: A * B

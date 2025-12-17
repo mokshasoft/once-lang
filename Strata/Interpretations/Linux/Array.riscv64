@@ -1,0 +1,281 @@
+// ======================================================================
+// Array Operations - RISC-V64 Implementation
+// ======================================================================
+//
+// Provides indexed read/write access to buffers.
+// Type-specific implementations for monomorphization (D038).
+//
+// OnceBuffer struct layout (16 bytes):
+//   offset 0: void* data
+//   offset 8: size_t len
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_LINUX_RISCV64_ARRAY_DEFINED
+#define ONCE_LINUX_RISCV64_ARRAY_DEFINED
+
+// ======================================================================
+// Integer Array Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readInt: Read 64-bit integer at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in a0 (data at 0, len at 8), offset in a1
+// Output: int64 in a0
+.global once_readInt
+.type once_readInt, @function
+once_readInt:
+    // Check data != NULL
+    ld      t0, 0(a0)               // t0 = buf.data
+    beqz    t0, .readInt_zero
+
+    // Check offset >= 0
+    bltz    a1, .readInt_zero
+
+    // Check offset + 8 <= len
+    addi    t1, a1, 8
+    ld      t2, 8(a0)               // t2 = buf.len
+    bgtu    t1, t2, .readInt_zero
+
+    // Read value
+    add     t0, t0, a1
+    ld      a0, 0(t0)
+    ret
+
+.readInt_zero:
+    li      a0, 0
+    ret
+.size once_readInt, .-once_readInt
+
+// ----------------------------------------------------------------------
+// writeInt: Write 64-bit integer at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in a0, offset in a1, value in a2
+// Output: Unit (0) in a0
+.global once_writeInt
+.type once_writeInt, @function
+once_writeInt:
+    ld      t0, 0(a0)
+    beqz    t0, .writeInt_done
+
+    bltz    a1, .writeInt_done
+
+    addi    t1, a1, 8
+    ld      t2, 8(a0)
+    bgtu    t1, t2, .writeInt_done
+
+    add     t0, t0, a1
+    sd      a2, 0(t0)
+
+.writeInt_done:
+    li      a0, 0
+    ret
+.size once_writeInt, .-once_writeInt
+
+// ======================================================================
+// Float Array Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readFloat: Read 64-bit float at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in a0, offset in a1
+// Output: double in fa0
+.global once_readFloat
+.type once_readFloat, @function
+once_readFloat:
+    ld      t0, 0(a0)
+    beqz    t0, .readFloat_zero
+
+    bltz    a1, .readFloat_zero
+
+    addi    t1, a1, 8
+    ld      t2, 8(a0)
+    bgtu    t1, t2, .readFloat_zero
+
+    add     t0, t0, a1
+    fld     fa0, 0(t0)
+    ret
+
+.readFloat_zero:
+    fmv.d.x fa0, zero
+    ret
+.size once_readFloat, .-once_readFloat
+
+// ----------------------------------------------------------------------
+// writeFloat: Write 64-bit float at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in a0, offset in a1, value in fa0
+// Output: Unit (0) in a0
+.global once_writeFloat
+.type once_writeFloat, @function
+once_writeFloat:
+    ld      t0, 0(a0)
+    beqz    t0, .writeFloat_done
+
+    bltz    a1, .writeFloat_done
+
+    addi    t1, a1, 8
+    ld      t2, 8(a0)
+    bgtu    t1, t2, .writeFloat_done
+
+    add     t0, t0, a1
+    fsd     fa0, 0(t0)
+
+.writeFloat_done:
+    li      a0, 0
+    ret
+.size once_writeFloat, .-once_writeFloat
+
+// ======================================================================
+// Byte Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readByte: Read single byte at offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in a0, offset in a1
+// Output: int64 (0-255) in a0
+.global once_readByte
+.type once_readByte, @function
+once_readByte:
+    ld      t0, 0(a0)
+    beqz    t0, .readByte_zero
+
+    bltz    a1, .readByte_zero
+
+    ld      t1, 8(a0)
+    bgeu    a1, t1, .readByte_zero
+
+    add     t0, t0, a1
+    lbu     a0, 0(t0)
+    ret
+
+.readByte_zero:
+    li      a0, 0
+    ret
+.size once_readByte, .-once_readByte
+
+// ----------------------------------------------------------------------
+// writeByte: Write single byte at offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in a0, offset in a1, value in a2
+// Output: Unit (0) in a0
+.global once_writeByte
+.type once_writeByte, @function
+once_writeByte:
+    ld      t0, 0(a0)
+    beqz    t0, .writeByte_done
+
+    bltz    a1, .writeByte_done
+
+    ld      t1, 8(a0)
+    bgeu    a1, t1, .writeByte_done
+
+    add     t0, t0, a1
+    sb      a2, 0(t0)
+
+.writeByte_done:
+    li      a0, 0
+    ret
+.size once_writeByte, .-once_writeByte
+
+// ======================================================================
+// Bulk Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// memcpy: Copy bytes between buffers
+// ----------------------------------------------------------------------
+// Input: dest in a0, destOff in a1, src in a2, srcOff in a3, count in a4
+// Output: Unit (0) in a0
+.global once_memcpy
+.type once_memcpy, @function
+once_memcpy:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+    sd      s0, 32(sp)
+    sd      s1, 24(sp)
+    sd      s2, 16(sp)
+
+    // Validate dest
+    ld      s0, 0(a0)               // s0 = dest.data
+    beqz    s0, .memcpy_done
+
+    // Validate src
+    ld      s1, 0(a2)               // s1 = src.data
+    beqz    s1, .memcpy_done
+
+    // Check count > 0
+    blez    a4, .memcpy_done
+
+    // Check dest bounds
+    bltz    a1, .memcpy_done
+    add     t0, a1, a4
+    ld      t1, 8(a0)
+    bgtu    t0, t1, .memcpy_done
+
+    // Check src bounds
+    bltz    a3, .memcpy_done
+    add     t0, a3, a4
+    ld      t1, 8(a2)
+    bgtu    t0, t1, .memcpy_done
+
+    // Do the copy
+    add     a0, s0, a1              // dest + destOff
+    add     a1, s1, a3              // src + srcOff
+    mv      a2, a4                  // count
+    call    memmove
+
+.memcpy_done:
+    li      a0, 0
+    ld      ra, 40(sp)
+    ld      s0, 32(sp)
+    ld      s1, 24(sp)
+    ld      s2, 16(sp)
+    addi    sp, sp, 48
+    ret
+.size once_memcpy, .-once_memcpy
+
+// ----------------------------------------------------------------------
+// memset: Fill buffer with byte value
+// ----------------------------------------------------------------------
+// Input: buf in a0, offset in a1, value in a2, count in a3
+// Output: Unit (0) in a0
+.global once_memset
+.type once_memset, @function
+once_memset:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+
+    // Validate buffer
+    ld      t0, 0(a0)               // t0 = buf.data
+    beqz    t0, .memset_done
+
+    // Check count > 0
+    blez    a3, .memset_done
+
+    // Check bounds
+    bltz    a1, .memset_done
+    add     t1, a1, a3
+    ld      t2, 8(a0)
+    bgtu    t1, t2, .memset_done
+
+    // Do the memset
+    add     a0, t0, a1              // buf.data + offset
+    mv      a1, a2                  // value
+    mv      a2, a3                  // count
+    call    memset
+
+.memset_done:
+    li      a0, 0
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_memset, .-once_memset
+
+#endif // ONCE_LINUX_RISCV64_ARRAY_DEFINED

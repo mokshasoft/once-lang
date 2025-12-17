@@ -124,6 +124,8 @@ applySubst subst ty = case ty of
   TUnit -> TUnit
   TVoid -> TVoid
   TInt -> TInt
+  TFloat -> TFloat
+  TByte -> TByte
   TBuffer -> TBuffer
   TString enc -> TString enc
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
@@ -144,6 +146,8 @@ occurs name ty = case ty of
   TUnit -> False
   TVoid -> False
   TInt -> False
+  TFloat -> False
+  TByte -> False
   TBuffer -> False
   TString _ -> False
   TProduct a b -> occurs name a || occurs name b
@@ -168,6 +172,8 @@ unify t1 t2 = case (t1, t2) of
   (TUnit, TUnit) -> Right emptySubst
   (TVoid, TVoid) -> Right emptySubst
   (TInt, TInt) -> Right emptySubst
+  (TFloat, TFloat) -> Right emptySubst
+  (TByte, TByte) -> Right emptySubst
   (TBuffer, TBuffer) -> Right emptySubst
   (TString e1, TString e2) | e1 == e2 -> Right emptySubst
   (TProduct a1 b1, TProduct a2 b2) -> do
@@ -209,6 +215,8 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
     go m TUnit TUnit = Just m
     go m TVoid TVoid = Just m
     go m TInt TInt = Just m
+    go m TFloat TFloat = Just m
+    go m TByte TByte = Just m
     go m TBuffer TBuffer = Just m
     go m (TString e1) (TString e2) | e1 == e2 = Just m
     go m (TProduct a1 b1) (TProduct a2 b2) = do
@@ -415,6 +423,7 @@ convertTypeWithAliases aliases sty = case sty of
   STVoid -> TVoid
   STInt -> TInt
   STFloat -> TFloat
+  STByte -> TByte
   STBuffer -> TBuffer
   STString enc -> TString enc
   STProduct a b -> TProduct (conv a) (conv b)
@@ -445,6 +454,7 @@ substSType subst sty = case sty of
   STVoid -> STVoid
   STInt -> STInt
   STFloat -> STFloat
+  STByte -> STByte
   STBuffer -> STBuffer
   STString enc -> STString enc
   STProduct a b -> STProduct (substSType subst a) (substSType subst b)
@@ -498,6 +508,14 @@ checkDecls' ctx aliases (d:ds) = case d of
     in checkDecls' ctx aliases' ds
 
   Primitive name sty -> do
+    let ty = convertTypeWithAliases aliases sty
+    let q = extractQuantity sty
+    let ctx' = extendContextQ name ty q ctx
+    checkDecls' ctx' aliases ds
+
+  -- Primitive family: add to context with polymorphic type (same as Primitive)
+  -- The mapping to implementations is used during elaboration, not type checking
+  PrimitiveFamily name sty _mappings -> do
     let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx
@@ -632,6 +650,13 @@ checkDeclsWithEnv modEnv ctx aliases (d:ds) = case d of
     in checkDeclsWithEnv modEnv ctx aliases' ds
 
   Primitive name sty -> do
+    let ty = convertTypeWithAliases aliases sty
+    let q = extractQuantity sty
+    let ctx' = extendContextQ name ty q ctx
+    checkDeclsWithEnv modEnv ctx' aliases ds
+
+  -- Primitive family: add to context with polymorphic type (same as Primitive)
+  PrimitiveFamily name sty _mappings -> do
     let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx

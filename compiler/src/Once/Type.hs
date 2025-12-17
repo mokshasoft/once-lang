@@ -23,6 +23,7 @@ data Type
   | TVoid                  -- ^ Void type (initial object)
   | TInt                   -- ^ Integer type
   | TFloat                 -- ^ Floating-point type (double precision)
+  | TByte                  -- ^ Byte type (unsigned 8-bit, 0-255)
   | TBuffer                -- ^ Buffer type (contiguous bytes)
   | TString Encoding       -- ^ String type with encoding (encoding erased at runtime)
   | TProduct Type Type     -- ^ Product type: A * B

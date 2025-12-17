@@ -47,6 +47,7 @@ library
       Once.IR
       Once.MAlonzo
       Once.Module
+      Once.Monomorphize
       Once.Optimize
       Once.Parser
       Once.Quantity

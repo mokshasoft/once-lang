@@ -54,9 +54,9 @@ reservedWords :: [Text]
 reservedWords =
   -- Keywords
   [ "of", "Left", "Right"
-  , "Unit", "Void", "Int", "Float", "Buffer", "String"
+  , "Unit", "Void", "Int", "Float", "Byte", "Buffer", "String"
   , "Utf8", "Utf16", "Ascii"
-  , "primitive"
+  , "primitive", "where"      -- Primitives and primitive families
   , "type", "Fix"             -- Type aliases and fixed points
   , "Eff", "IO"               -- Effect types (D032)
   , "import", "as"            -- Module system
@@ -101,7 +101,7 @@ typeVar = lexeme $ try $ do
   c <- upperChar
   cs <- many (alphaNumChar <|> char '_' <|> char '\'')
   let name = T.pack (c : cs)
-  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Float", "Eff", "IO", "Fix"]
+  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Float", "Byte", "Eff", "IO", "Fix"]
     then fail $ "Reserved type: " ++ T.unpack name
     else pure name
 
@@ -167,6 +167,7 @@ parseType = makeTypeExpr
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
       , STFloat <$ reserved "Float"
+      , STByte <$ reserved "Byte"
       , STBuffer <$ reserved "Buffer"
       , stringType
       , fixType
@@ -210,6 +211,7 @@ parseType = makeTypeExpr
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
       , STFloat <$ reserved "Float"
+      , STByte <$ reserved "Byte"
       , STBuffer <$ reserved "Buffer"
       , stringType
       , fixType
@@ -390,12 +392,44 @@ parseDecl = choice
   , funDef
   ]
   where
+    -- | Parse primitive or primitive family
+    -- primitive name : Type
+    -- primitive name : Type where Type => impl, Type => impl, ...
     primitiveDecl = do
       reserved "primitive"
       name <- lowerIdent
       void $ symbol ":"
       ty <- parseType
-      pure $ Primitive name ty
+      -- Optional where clause for primitive families
+      mappings <- optional whereClause
+      case mappings of
+        Nothing -> pure $ Primitive name ty
+        Just ms -> pure $ PrimitiveFamily name ty ms
+
+    -- | Parse where clause: where Type => impl, Type => impl, ...
+    whereClause :: Parser [(SType, Name)]
+    whereClause = do
+      reserved "where"
+      typeMapping `sepBy1` symbol ","
+
+    -- | Parse a single type mapping: Type => implName
+    typeMapping :: Parser (SType, Name)
+    typeMapping = do
+      ty <- simpleTypeForMapping
+      void $ symbol "=>"
+      impl <- lowerIdent
+      pure (ty, impl)
+
+    -- | Simple types for mapping (no arrows, products, etc.)
+    simpleTypeForMapping :: Parser SType
+    simpleTypeForMapping = choice
+      [ STUnit <$ reserved "Unit"
+      , STInt <$ reserved "Int"
+      , STFloat <$ reserved "Float"
+      , STByte <$ reserved "Byte"
+      , STBuffer <$ reserved "Buffer"
+      , STVar <$> typeVar
+      ]
 
     -- | Parse type alias: type Name A B C = Type
     typeAliasDecl = do

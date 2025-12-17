@@ -155,6 +155,9 @@ buildExports m = foldr addDecl Map.empty (moduleDecls m)
       Primitive name sty ->
         -- Primitive has both type and "definition"
         Map.insert name (DeclInfo (Just sty) (Primitive name sty)) acc
+      PrimitiveFamily name sty mappings ->
+        -- Primitive family has polymorphic type and implementation mappings
+        Map.insert name (DeclInfo (Just sty) (PrimitiveFamily name sty mappings)) acc
       TypeAlias name params sty ->
         -- Type aliases are exported as-is
         Map.insert name (DeclInfo Nothing (TypeAlias name params sty)) acc

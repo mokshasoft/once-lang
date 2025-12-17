@@ -1,0 +1,282 @@
+// ======================================================================
+// Array Operations - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// Provides indexed read/write access to buffers.
+// Type-specific implementations for monomorphization (D038).
+//
+// OnceBuffer struct layout (16 bytes):
+//   offset 0: void* data
+//   offset 8: size_t len
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_LINUX_ARM64_ARRAY_DEFINED
+#define ONCE_LINUX_ARM64_ARRAY_DEFINED
+
+// ======================================================================
+// Integer Array Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readInt: Read 64-bit integer at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in x0 (data at 0, len at 8), offset in x1
+// Output: int64 in x0
+.global once_readInt
+.type once_readInt, %function
+once_readInt:
+    // Check data != NULL
+    ldr     x2, [x0]                // x2 = buf.data
+    cbz     x2, .readInt_zero
+
+    // Check offset >= 0
+    tbnz    x1, #63, .readInt_zero
+
+    // Check offset + 8 <= len
+    add     x3, x1, #8
+    ldr     x4, [x0, #8]            // x4 = buf.len
+    cmp     x3, x4
+    bhi     .readInt_zero
+
+    // Read value
+    ldr     x0, [x2, x1]
+    ret
+
+.readInt_zero:
+    mov     x0, #0
+    ret
+.size once_readInt, .-once_readInt
+
+// ----------------------------------------------------------------------
+// writeInt: Write 64-bit integer at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in x0, offset in x1, value in x2
+// Output: Unit (0) in x0
+.global once_writeInt
+.type once_writeInt, %function
+once_writeInt:
+    ldr     x3, [x0]
+    cbz     x3, .writeInt_done
+
+    tbnz    x1, #63, .writeInt_done
+
+    add     x4, x1, #8
+    ldr     x5, [x0, #8]
+    cmp     x4, x5
+    bhi     .writeInt_done
+
+    str     x2, [x3, x1]
+
+.writeInt_done:
+    mov     x0, #0
+    ret
+.size once_writeInt, .-once_writeInt
+
+// ======================================================================
+// Float Array Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readFloat: Read 64-bit float at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in x0, offset in x1
+// Output: double in d0
+.global once_readFloat
+.type once_readFloat, %function
+once_readFloat:
+    ldr     x2, [x0]
+    cbz     x2, .readFloat_zero
+
+    tbnz    x1, #63, .readFloat_zero
+
+    add     x3, x1, #8
+    ldr     x4, [x0, #8]
+    cmp     x3, x4
+    bhi     .readFloat_zero
+
+    ldr     d0, [x2, x1]
+    ret
+
+.readFloat_zero:
+    fmov    d0, xzr
+    ret
+.size once_readFloat, .-once_readFloat
+
+// ----------------------------------------------------------------------
+// writeFloat: Write 64-bit float at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in x0, offset in x1, value in d0
+// Output: Unit (0) in x0
+.global once_writeFloat
+.type once_writeFloat, %function
+once_writeFloat:
+    ldr     x2, [x0]
+    cbz     x2, .writeFloat_done
+
+    tbnz    x1, #63, .writeFloat_done
+
+    add     x3, x1, #8
+    ldr     x4, [x0, #8]
+    cmp     x3, x4
+    bhi     .writeFloat_done
+
+    str     d0, [x2, x1]
+
+.writeFloat_done:
+    mov     x0, #0
+    ret
+.size once_writeFloat, .-once_writeFloat
+
+// ======================================================================
+// Byte Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readByte: Read single byte at offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in x0, offset in x1
+// Output: int64 (0-255) in x0
+.global once_readByte
+.type once_readByte, %function
+once_readByte:
+    ldr     x2, [x0]
+    cbz     x2, .readByte_zero
+
+    tbnz    x1, #63, .readByte_zero
+
+    ldr     x3, [x0, #8]
+    cmp     x1, x3
+    bhs     .readByte_zero
+
+    ldrb    w0, [x2, x1]
+    ret
+
+.readByte_zero:
+    mov     x0, #0
+    ret
+.size once_readByte, .-once_readByte
+
+// ----------------------------------------------------------------------
+// writeByte: Write single byte at offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in x0, offset in x1, value in x2
+// Output: Unit (0) in x0
+.global once_writeByte
+.type once_writeByte, %function
+once_writeByte:
+    ldr     x3, [x0]
+    cbz     x3, .writeByte_done
+
+    tbnz    x1, #63, .writeByte_done
+
+    ldr     x4, [x0, #8]
+    cmp     x1, x4
+    bhs     .writeByte_done
+
+    strb    w2, [x3, x1]
+
+.writeByte_done:
+    mov     x0, #0
+    ret
+.size once_writeByte, .-once_writeByte
+
+// ======================================================================
+// Bulk Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// memcpy: Copy bytes between buffers
+// ----------------------------------------------------------------------
+// Input: dest in x0, destOff in x1, src in x2, srcOff in x3, count in x4
+// Output: Unit (0) in x0
+.global once_memcpy
+.type once_memcpy, %function
+once_memcpy:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Validate dest
+    ldr     x19, [x0]               // x19 = dest.data
+    cbz     x19, .memcpy_done
+
+    // Validate src
+    ldr     x20, [x2]               // x20 = src.data
+    cbz     x20, .memcpy_done
+
+    // Check count > 0
+    cmp     x4, #0
+    ble     .memcpy_done
+
+    // Check dest bounds
+    tbnz    x1, #63, .memcpy_done
+    add     x5, x1, x4
+    ldr     x6, [x0, #8]
+    cmp     x5, x6
+    bhi     .memcpy_done
+
+    // Check src bounds
+    tbnz    x3, #63, .memcpy_done
+    add     x5, x3, x4
+    ldr     x6, [x2, #8]
+    cmp     x5, x6
+    bhi     .memcpy_done
+
+    // Do the copy
+    add     x0, x19, x1             // dest + destOff
+    add     x1, x20, x3             // src + srcOff
+    mov     x2, x4                  // count
+    bl      memmove
+
+.memcpy_done:
+    mov     x0, #0
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_memcpy, .-once_memcpy
+
+// ----------------------------------------------------------------------
+// memset: Fill buffer with byte value
+// ----------------------------------------------------------------------
+// Input: buf in x0, offset in x1, value in x2, count in x3
+// Output: Unit (0) in x0
+.global once_memset
+.type once_memset, %function
+once_memset:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Validate buffer
+    ldr     x4, [x0]                // x4 = buf.data
+    cbz     x4, .memset_done
+
+    // Check count > 0
+    cmp     x3, #0
+    ble     .memset_done
+
+    // Check bounds
+    tbnz    x1, #63, .memset_done
+    add     x5, x1, x3
+    ldr     x6, [x0, #8]
+    cmp     x5, x6
+    bhi     .memset_done
+
+    // Do the memset
+    add     x0, x4, x1              // buf.data + offset
+    mov     w1, w2                  // value
+    mov     x2, x3                  // count
+    bl      memset
+
+.memset_done:
+    mov     x0, #0
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_memset, .-once_memset
+
+#endif // ONCE_LINUX_ARM64_ARRAY_DEFINED

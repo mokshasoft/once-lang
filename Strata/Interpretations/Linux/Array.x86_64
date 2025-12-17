@@ -1,0 +1,292 @@
+// ======================================================================
+// Array Operations - x86_64 Implementation
+// ======================================================================
+//
+// Provides indexed read/write access to buffers.
+// Type-specific implementations for monomorphization (D038).
+//
+// OnceBuffer struct layout (16 bytes):
+//   offset 0: void* data
+//   offset 8: size_t len
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_LINUX_X86_64_ARRAY_DEFINED
+#define ONCE_LINUX_X86_64_ARRAY_DEFINED
+
+// ======================================================================
+// Integer Array Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readInt: Read 64-bit integer at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in rdi (data, len), offset in rsi
+// Output: int64 in rax
+.global once_readInt
+.type once_readInt, @function
+once_readInt:
+    // Check data != NULL
+    mov     (%rdi), %rax            // rax = buf.data
+    test    %rax, %rax
+    jz      .readInt_zero
+
+    // Check bounds: offset >= 0 && offset + 8 <= len
+    test    %rsi, %rsi
+    js      .readInt_zero           // offset < 0
+    lea     8(%rsi), %rcx           // rcx = offset + 8
+    cmp     8(%rdi), %rcx           // compare with buf.len
+    ja      .readInt_zero           // offset + 8 > len
+
+    // Read value
+    mov     (%rax,%rsi), %rax
+    ret
+
+.readInt_zero:
+    xor     %eax, %eax
+    ret
+.size once_readInt, .-once_readInt
+
+// ----------------------------------------------------------------------
+// writeInt: Write 64-bit integer at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in rdi, offset in rsi, value in rdx
+// Output: Unit (NULL) in rax
+.global once_writeInt
+.type once_writeInt, @function
+once_writeInt:
+    // Check data != NULL
+    mov     (%rdi), %rax            // rax = buf.data
+    test    %rax, %rax
+    jz      .writeInt_done
+
+    // Check bounds
+    test    %rsi, %rsi
+    js      .writeInt_done
+    lea     8(%rsi), %rcx
+    cmp     8(%rdi), %rcx
+    ja      .writeInt_done
+
+    // Write value
+    mov     %rdx, (%rax,%rsi)
+
+.writeInt_done:
+    xor     %eax, %eax
+    ret
+.size once_writeInt, .-once_writeInt
+
+// ======================================================================
+// Float Array Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readFloat: Read 64-bit float at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in rdi, offset in rsi
+// Output: double in xmm0
+.global once_readFloat
+.type once_readFloat, @function
+once_readFloat:
+    // Check data != NULL
+    mov     (%rdi), %rax
+    test    %rax, %rax
+    jz      .readFloat_zero
+
+    // Check bounds
+    test    %rsi, %rsi
+    js      .readFloat_zero
+    lea     8(%rsi), %rcx
+    cmp     8(%rdi), %rcx
+    ja      .readFloat_zero
+
+    // Read value
+    movsd   (%rax,%rsi), %xmm0
+    ret
+
+.readFloat_zero:
+    xorpd   %xmm0, %xmm0
+    ret
+.size once_readFloat, .-once_readFloat
+
+// ----------------------------------------------------------------------
+// writeFloat: Write 64-bit float at byte offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in rdi, offset in rsi, value in xmm0
+// Output: Unit (NULL) in rax
+.global once_writeFloat
+.type once_writeFloat, @function
+once_writeFloat:
+    // Check data != NULL
+    mov     (%rdi), %rax
+    test    %rax, %rax
+    jz      .writeFloat_done
+
+    // Check bounds
+    test    %rsi, %rsi
+    js      .writeFloat_done
+    lea     8(%rsi), %rcx
+    cmp     8(%rdi), %rcx
+    ja      .writeFloat_done
+
+    // Write value
+    movsd   %xmm0, (%rax,%rsi)
+
+.writeFloat_done:
+    xor     %eax, %eax
+    ret
+.size once_writeFloat, .-once_writeFloat
+
+// ======================================================================
+// Byte Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// readByte: Read single byte at offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in rdi, offset in rsi
+// Output: int64 (0-255) in rax
+.global once_readByte
+.type once_readByte, @function
+once_readByte:
+    mov     (%rdi), %rax
+    test    %rax, %rax
+    jz      .readByte_zero
+
+    test    %rsi, %rsi
+    js      .readByte_zero
+    cmp     8(%rdi), %rsi
+    jae     .readByte_zero
+
+    movzbl  (%rax,%rsi), %eax
+    ret
+
+.readByte_zero:
+    xor     %eax, %eax
+    ret
+.size once_readByte, .-once_readByte
+
+// ----------------------------------------------------------------------
+// writeByte: Write single byte at offset
+// ----------------------------------------------------------------------
+// Input: OnceBuffer in rdi, offset in rsi, value in rdx
+// Output: Unit (NULL) in rax
+.global once_writeByte
+.type once_writeByte, @function
+once_writeByte:
+    mov     (%rdi), %rax
+    test    %rax, %rax
+    jz      .writeByte_done
+
+    test    %rsi, %rsi
+    js      .writeByte_done
+    cmp     8(%rdi), %rsi
+    jae     .writeByte_done
+
+    movb    %dl, (%rax,%rsi)
+
+.writeByte_done:
+    xor     %eax, %eax
+    ret
+.size once_writeByte, .-once_writeByte
+
+// ======================================================================
+// Bulk Operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// memcpy: Copy bytes between buffers
+// ----------------------------------------------------------------------
+// Input: dest in rdi, destOff in rsi, src in rdx, srcOff in rcx, count in r8
+// Output: Unit (NULL) in rax
+.global once_memcpy
+.type once_memcpy, @function
+once_memcpy:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+
+    // Validate dest
+    mov     (%rdi), %r9             // r9 = dest.data
+    test    %r9, %r9
+    jz      .memcpy_done
+
+    // Validate src
+    mov     (%rdx), %r10            // r10 = src.data
+    test    %r10, %r10
+    jz      .memcpy_done
+
+    // Check count > 0
+    test    %r8, %r8
+    jle     .memcpy_done
+
+    // Check dest bounds
+    test    %rsi, %rsi
+    js      .memcpy_done
+    lea     (%rsi,%r8), %r11
+    cmp     8(%rdi), %r11
+    ja      .memcpy_done
+
+    // Check src bounds
+    test    %rcx, %rcx
+    js      .memcpy_done
+    lea     (%rcx,%r8), %r11
+    cmp     8(%rdx), %r11
+    ja      .memcpy_done
+
+    // Do the copy (use memmove for safety)
+    add     %rsi, %r9               // dest + destOff
+    add     %rcx, %r10              // src + srcOff
+    mov     %r9, %rdi
+    mov     %r10, %rsi
+    mov     %r8, %rdx
+    call    memmove@PLT
+
+.memcpy_done:
+    xor     %eax, %eax
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_memcpy, .-once_memcpy
+
+// ----------------------------------------------------------------------
+// memset: Fill buffer with byte value
+// ----------------------------------------------------------------------
+// Input: buf in rdi, offset in rsi, value in rdx, count in rcx
+// Output: Unit (NULL) in rax
+.global once_memset
+.type once_memset, @function
+once_memset:
+    // Validate buffer
+    mov     (%rdi), %r8             // r8 = buf.data
+    test    %r8, %r8
+    jz      .memset_done
+
+    // Check count > 0
+    test    %rcx, %rcx
+    jle     .memset_done
+
+    // Check bounds
+    test    %rsi, %rsi
+    js      .memset_done
+    lea     (%rsi,%rcx), %r9
+    cmp     8(%rdi), %r9
+    ja      .memset_done
+
+    // Do the memset
+    add     %rsi, %r8               // buf.data + offset
+    mov     %r8, %rdi
+    mov     %edx, %esi              // value (int)
+    mov     %rcx, %rdx              // count
+    call    memset@PLT
+
+.memset_done:
+    xor     %eax, %eax
+    ret
+.size once_memset, .-once_memset
+
+#endif // ONCE_LINUX_X86_64_ARRAY_DEFINED

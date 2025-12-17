@@ -2145,3 +2145,82 @@ To fully integrate SPF:
 - `docs/formal/fix-semantics-options.md` - Detailed comparison of all options
 - `formal/Once/SPF.agda` - Implementation
 - `docs/formal/what-is-proven.md` - S1 limitation documentation
+
+---
+
+## D038: Monomorphization for Type-Parameterized Primitives
+
+**Date**: 2025-12-17
+**Status**: Accepted
+
+### Context
+
+Generic array operations like `read : Array a * Int -> a` need to call different C implementations based on the element type (`readInt`, `readFloat`, etc.). We needed to decide how to dispatch to type-specific implementations.
+
+### Options Considered
+
+1. **Runtime polymorphism**: Box values, use type tags or dictionaries at runtime
+2. **Monomorphization**: Specialize at compile time based on concrete types
+
+### Decision
+
+Use **monomorphization** to generate type-specific primitive calls at compile time.
+
+Example:
+- `read` on `Array Int` generates `once_readInt`
+- `read` on `Array Float` generates `once_readFloat`
+- `read` on `Array Byte` generates `once_readByte`
+
+### Rationale
+
+- **Zero runtime overhead**: No boxing, no type tags, no dictionary passing
+- **Matches existing primitive structure**: C/assembly implementations already have type suffixes (`once_readInt`, `once_readFloat`, etc.)
+- **Orthogonal to type system**: Can later add runtime polymorphism as an alternative strategy selected via hints
+- **Simpler codegen**: Direct function calls rather than indirect dispatch
+
+### Verification Impact
+
+**None**. Monomorphization is an implementation detail in the C backend:
+
+- The Agda IR (`formal/Once/IR.agda`) has no `Prim` constructor - it only contains the 12 categorical generators + fold/unfold + arr
+- Primitives are postulated as opaque morphisms in the interpretation layer
+- Formal proofs verify categorical composition semantics, not primitive dispatch
+- Primitives remain in the **trusted computing base (TCB)**, not the verified core
+
+This separation is by design - the interpretation layer is platform-specific and outside formal verification.
+
+### Implementation
+
+The monomorphization pass runs after elaboration, before optimization:
+
+```
+Parse → TypeCheck → Elaborate → **Monomorphize** → Optimize → CodeGen
+```
+
+For each `Prim name inTy outTy` in the IR:
+1. Extract element types from input/output types
+2. If type-specific implementation exists, mangle the name
+3. Generate specialized primitive call
+
+### Consequences
+
+- Type information must flow through elaboration to codegen
+- Future: hints could select runtime polymorphism for specific use cases
+- Proofs unaffected (primitives are TCB)
+
+### Current Implementation Status
+
+**Phase 1 (completed):** Infrastructure and type-specific primitives
+- `Monomorphize.hs` module with type-suffix logic (infrastructure ready)
+- Type-specific primitives in Array.once (`readInt`, `readFloat`, etc.)
+- C and assembly implementations for all three targets (x86_64, arm64, riscv64)
+
+**Phase 2 (future work):** Parser support for polymorphic primitives
+- Requires parser changes to support type variables in primitive declarations
+- Would enable `primitive read : Buffer * Int -> a` syntax
+- Monomorphization pass would then rename based on call-site types
+
+### See Also
+
+- D009: Interpretations Outside Compiler
+- D035: Two-Stage IR and MAlonzo Compilation

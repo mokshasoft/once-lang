@@ -1,0 +1,71 @@
+-- | Array operations for buffer-based data structures
+--
+-- Provides indexed read/write access to buffers.
+-- Essential for algorithms that need arrays (n-body, fannkuch, etc.)
+--
+-- Generic operations (read, write) are provided as primitive families.
+-- The compiler monomorphizes them to type-specific implementations
+-- (readInt, readFloat, readByte) based on the concrete type at the call site.
+--
+-- Reads are pure (no side effects).
+-- Writes are effectful (mutate buffer contents).
+
+------------------------------------------------------------------------
+-- Generic Array Operations (Primitive Families - D038)
+------------------------------------------------------------------------
+
+-- | Read element at byte offset (pure)
+-- Generic over element type: resolves to readInt, readFloat, or readByte
+-- based on the return type at the call site.
+primitive read : Buffer * Int -> A
+  where Int => readInt, Float => readFloat, Byte => readByte
+
+-- | Write element at byte offset (effectful)
+-- Generic over element type: resolves to writeInt, writeFloat, or writeByte
+-- based on the value type at the call site.
+primitive write : Eff (Buffer * Int * A) Unit
+  where Int => writeInt, Float => writeFloat, Byte => writeByte
+
+------------------------------------------------------------------------
+-- Integer Array Operations (Implementation Targets)
+------------------------------------------------------------------------
+
+-- | Read 64-bit integer at byte offset (pure)
+primitive readInt : Buffer * Int -> Int
+
+-- | Write 64-bit integer at byte offset (effectful)
+primitive writeInt : Eff (Buffer * Int * Int) Unit
+
+------------------------------------------------------------------------
+-- Float Array Operations (Implementation Targets)
+------------------------------------------------------------------------
+
+-- | Read 64-bit float (double) at byte offset (pure)
+primitive readFloat : Buffer * Int -> Float
+
+-- | Write 64-bit float (double) at byte offset (effectful)
+primitive writeFloat : Eff (Buffer * Int * Float) Unit
+
+------------------------------------------------------------------------
+-- Byte Operations (Implementation Targets)
+------------------------------------------------------------------------
+
+-- | Read single byte at offset (pure)
+-- Returns Byte (unsigned 8-bit, 0-255)
+primitive readByte : Buffer * Int -> Byte
+
+-- | Write single byte at offset (effectful)
+-- Takes Byte (unsigned 8-bit, 0-255)
+primitive writeByte : Eff (Buffer * Int * Byte) Unit
+
+------------------------------------------------------------------------
+-- Bulk Operations (effectful)
+------------------------------------------------------------------------
+
+-- | Copy bytes between buffers
+-- memcpy (dest, destOffset, src, srcOffset, count)
+primitive memcpy : Eff (Buffer * Int * Buffer * Int * Int) Unit
+
+-- | Fill buffer with byte value
+-- memset (buffer, offset, value, count)
+primitive memset : Eff (Buffer * Int * Int * Int) Unit
