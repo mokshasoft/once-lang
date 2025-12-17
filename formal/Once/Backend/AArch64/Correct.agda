@@ -2464,44 +2464,9 @@ mutual
       pcg-eq = pc-after-g
 
       -- For fetch: pc sg = length prefix + 4 + len-f + len-g
+      -- Both sides parse as (((length prefix) + 4) + len-f) + len-g
       pcg-for-fetch : pc sg ≡ length prefix +ℕ 4 +ℕ len-f +ℕ len-g
-      pcg-for-fetch = begin
-        pc sg
-          ≡⟨ pcg-eq ⟩
-        length prefix-g +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) len-prefix-g ⟩
-        (length prefix +ℕ 4 +ℕ len-f) +ℕ len-g
-          ≡⟨ +-assoc (length prefix +ℕ 4) len-f len-g ⟩
-        (length prefix +ℕ 4) +ℕ (len-f +ℕ len-g)
-          ≡⟨ +-assoc (length prefix) 4 (len-f +ℕ len-g) ⟩
-        length prefix +ℕ (4 +ℕ (len-f +ℕ len-g))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 4 len-f len-g)) ⟩
-        length prefix +ℕ ((4 +ℕ len-f) +ℕ len-g)
-          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ len-g)) (+-comm 4 len-f) ⟩
-        length prefix +ℕ ((len-f +ℕ 4) +ℕ len-g)
-          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 4 len-g) ⟩
-        length prefix +ℕ (len-f +ℕ (4 +ℕ len-g))
-          ≡⟨ cong (λ z → length prefix +ℕ (len-f +ℕ z)) (+-comm 4 len-g) ⟩
-        length prefix +ℕ (len-f +ℕ (len-g +ℕ 4))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f len-g 4)) ⟩
-        length prefix +ℕ ((len-f +ℕ len-g) +ℕ 4)
-          ≡⟨ sym (+-assoc (length prefix) (len-f +ℕ len-g) 4) ⟩
-        (length prefix +ℕ (len-f +ℕ len-g)) +ℕ 4
-          ≡⟨ cong (_+ℕ 4) (sym (+-assoc (length prefix) len-f len-g)) ⟩
-        ((length prefix +ℕ len-f) +ℕ len-g) +ℕ 4
-          ≡⟨ +-assoc (length prefix +ℕ len-f) len-g 4 ⟩
-        (length prefix +ℕ len-f) +ℕ (len-g +ℕ 4)
-          ≡⟨ cong ((length prefix +ℕ len-f) +ℕ_) (+-comm len-g 4) ⟩
-        (length prefix +ℕ len-f) +ℕ (4 +ℕ len-g)
-          ≡⟨ sym (+-assoc (length prefix +ℕ len-f) 4 len-g) ⟩
-        ((length prefix +ℕ len-f) +ℕ 4) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) len-f 4) ⟩
-        (length prefix +ℕ (len-f +ℕ 4)) +ℕ len-g
-          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ len-g) (+-comm len-f 4) ⟩
-        (length prefix +ℕ (4 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix) 4 len-f)) ⟩
-        length prefix +ℕ 4 +ℕ len-f +ℕ len-g
-          ∎
+      pcg-for-fetch = trans pcg-eq (cong (_+ℕ len-g) len-prefix-g)
 
       -- Define after-g portion: instructions after code-g in pair-code
       after-g : Program
@@ -2612,6 +2577,7 @@ mutual
       h-fin₁ = refl
 
       -- pc sg + 1 = length prefix + 4 + len-f + len-g + 1 = length prefix + 5 + len-f + len-g
+      -- Arithmetic: (a + 4 + b + c) + 1 = a + 5 + b + c
       pcg-plus-1 : pc sg +ℕ 1 ≡ length prefix +ℕ 5 +ℕ len-f +ℕ len-g
       pcg-plus-1 = begin
         pc sg +ℕ 1
@@ -2619,21 +2585,27 @@ mutual
         (length prefix +ℕ 4 +ℕ len-f +ℕ len-g) +ℕ 1
           ≡⟨ +-assoc (length prefix +ℕ 4 +ℕ len-f) len-g 1 ⟩
         (length prefix +ℕ 4 +ℕ len-f) +ℕ (len-g +ℕ 1)
-          ≡⟨ cong ((length prefix +ℕ 4 +ℕ len-f) +ℕ_) (+-comm len-g 1) ⟩
-        (length prefix +ℕ 4 +ℕ len-f) +ℕ (1 +ℕ len-g)
-          ≡⟨ sym (+-assoc (length prefix +ℕ 4 +ℕ len-f) 1 len-g) ⟩
-        ((length prefix +ℕ 4 +ℕ len-f) +ℕ 1) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 4) len-f 1) ⟩
-        ((length prefix +ℕ 4) +ℕ (len-f +ℕ 1)) +ℕ len-g
-          ≡⟨ cong (λ z → ((length prefix +ℕ 4) +ℕ z) +ℕ len-g) (+-comm len-f 1) ⟩
-        ((length prefix +ℕ 4) +ℕ (1 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 4) 1 len-f)) ⟩
-        (((length prefix +ℕ 4) +ℕ 1) +ℕ len-f) +ℕ len-g
-          ≡⟨ cong (λ z → (z +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 4 1) ⟩
-        ((length prefix +ℕ 5) +ℕ len-f) +ℕ len-g
-          ≡⟨ +-assoc (length prefix +ℕ 5) len-f len-g ⟩
-        (length prefix +ℕ 5) +ℕ (len-f +ℕ len-g)
-          ≡⟨ sym (+-assoc (length prefix) 5 (len-f +ℕ len-g)) ⟩
+          ≡⟨ +-assoc (length prefix +ℕ 4) len-f (len-g +ℕ 1) ⟩
+        (length prefix +ℕ 4) +ℕ (len-f +ℕ (len-g +ℕ 1))
+          ≡⟨ +-assoc (length prefix) 4 (len-f +ℕ (len-g +ℕ 1)) ⟩
+        length prefix +ℕ (4 +ℕ (len-f +ℕ (len-g +ℕ 1)))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 4 len-f (len-g +ℕ 1))) ⟩
+        length prefix +ℕ ((4 +ℕ len-f) +ℕ (len-g +ℕ 1))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc (4 +ℕ len-f) len-g 1)) ⟩
+        length prefix +ℕ (((4 +ℕ len-f) +ℕ len-g) +ℕ 1)
+          ≡⟨ cong (λ z → length prefix +ℕ ((z +ℕ len-g) +ℕ 1)) (+-comm 4 len-f) ⟩
+        length prefix +ℕ (((len-f +ℕ 4) +ℕ len-g) +ℕ 1)
+          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ 1)) (+-assoc len-f 4 len-g) ⟩
+        length prefix +ℕ ((len-f +ℕ (4 +ℕ len-g)) +ℕ 1)
+          ≡⟨ cong (λ z → length prefix +ℕ ((len-f +ℕ z) +ℕ 1)) (+-comm 4 len-g) ⟩
+        length prefix +ℕ ((len-f +ℕ (len-g +ℕ 4)) +ℕ 1)
+          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f (len-g +ℕ 4) 1) ⟩
+        length prefix +ℕ (len-f +ℕ ((len-g +ℕ 4) +ℕ 1))
+          ≡⟨ cong (λ z → length prefix +ℕ (len-f +ℕ z)) (+-assoc len-g 4 1) ⟩
+        length prefix +ℕ (len-f +ℕ (len-g +ℕ 5))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f len-g 5)) ⟩
+        length prefix +ℕ ((len-f +ℕ len-g) +ℕ 5)
+          ≡⟨ cong (length prefix +ℕ_) (+-comm (len-f +ℕ len-g) 5) ⟩
         length prefix +ℕ (5 +ℕ (len-f +ℕ len-g))
           ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 5 len-f len-g)) ⟩
         length prefix +ℕ ((5 +ℕ len-f) +ℕ len-g)
@@ -2647,13 +2619,13 @@ mutual
         length prefix +ℕ ((len-f +ℕ len-g) +ℕ 5)
           ≡⟨ sym (+-assoc (length prefix) (len-f +ℕ len-g) 5) ⟩
         (length prefix +ℕ (len-f +ℕ len-g)) +ℕ 5
-          ≡⟨ cong (_+ℕ 5) (sym (+-assoc (length prefix) len-f len-g)) ⟩
-        ((length prefix +ℕ len-f) +ℕ len-g) +ℕ 5
-          ≡⟨ +-assoc (length prefix +ℕ len-f) len-g 5 ⟩
-        (length prefix +ℕ len-f) +ℕ (len-g +ℕ 5)
-          ≡⟨ cong ((length prefix +ℕ len-f) +ℕ_) (+-comm len-g 5) ⟩
-        (length prefix +ℕ len-f) +ℕ (5 +ℕ len-g)
-          ≡⟨ sym (+-assoc (length prefix +ℕ len-f) 5 len-g) ⟩
+          ≡⟨ +-comm (length prefix +ℕ (len-f +ℕ len-g)) 5 ⟩
+        5 +ℕ (length prefix +ℕ (len-f +ℕ len-g))
+          ≡⟨ cong (5 +ℕ_) (sym (+-assoc (length prefix) len-f len-g)) ⟩
+        5 +ℕ ((length prefix +ℕ len-f) +ℕ len-g)
+          ≡⟨ sym (+-assoc 5 (length prefix +ℕ len-f) len-g) ⟩
+        (5 +ℕ (length prefix +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-comm 5 (length prefix +ℕ len-f)) ⟩
         ((length prefix +ℕ len-f) +ℕ 5) +ℕ len-g
           ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) len-f 5) ⟩
         (length prefix +ℕ (len-f +ℕ 5)) +ℕ len-g
