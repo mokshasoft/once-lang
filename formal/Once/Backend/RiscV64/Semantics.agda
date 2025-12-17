@@ -17,13 +17,14 @@ module Once.Backend.RiscV64.Semantics where
 
 open import Once.Backend.RiscV64.Syntax
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<ᵇ_; _≟_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.Bool using (Bool; true; false; if_then_else_; not; _∧_; _∨_; _xor_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function using (_∘_)
+open import Relation.Nullary using (yes; no)
 
 -- Import common fetch function (polymorphic list indexing)
 -- Re-export publicly so downstream modules (Correct.agda) can use it
@@ -615,6 +616,26 @@ exec (suc n) prog s with step prog s
 ... | just s' with halted s'
 ...   | true = just s'
 ...   | false = exec n prog s'
+
+-- | Execute until PC reaches target (or halted, or fuel exhausted)
+--
+-- This is useful for branching proofs where the actual step count differs
+-- from compile-length due to jumps. Instead of proving exec with fixed fuel,
+-- we can prove exec-until-pc stops at the right position.
+--
+-- Returns: just s' where pc s' = target (if reached successfully)
+--          just s' where halted s' = true (if halted before target)
+--          just s  if fuel = 0
+--          nothing if step fails
+exec-until-pc : (target : ℕ) → (fuel : ℕ) → Program → State → Maybe State
+exec-until-pc target zero prog s = just s
+exec-until-pc target (suc fuel) prog s with halted s
+... | true = just s  -- Already halted, stop
+... | false with pc s ≟ target
+...   | yes _ = just s  -- Reached target pc, stop
+...   | no _ with step prog s
+...     | nothing = nothing  -- Step failed
+...     | just s' = exec-until-pc target fuel prog s'
 
 ------------------------------------------------------------------------
 -- Convenience: execute until halt or fuel exhausted
