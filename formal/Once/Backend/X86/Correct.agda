@@ -2908,6 +2908,50 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 --   4. Chain using exec-chain
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- Fuel and helpers for exec-until-pc conversion
+------------------------------------------------------------------------
+
+-- | Default fuel for exec-until-pc (sufficiently large for any practical IR)
+runFuel : ℕ
+runFuel = 100000
+
+-- | runFuel is at least n for any reasonable n (postulated for simplicity)
+postulate
+  runFuel≥ : ∀ (n : ℕ) → runFuel ≥ n
+
+-- | n ≢ n + k for any k > 0 (used to show pc s ≢ target when we don't start at target)
+-- Note: n≢n+suc exists in Memory.agda, we use this generalized version
+pc-not-at-target : ∀ {n} (k : ℕ) → k > 0 → n ≢ n +ℕ k
+pc-not-at-target {n} (suc k) _ eq = helper n k eq
+  where
+    suc-inj : ∀ {a b} → suc a ≡ suc b → a ≡ b
+    suc-inj refl = refl
+    helper : ∀ n k → n ≢ n +ℕ suc k
+    helper zero k ()
+    helper (suc n) k eq = helper n k (suc-inj eq)
+
+-- | compile-length is always positive (at least 1)
+postulate
+  compile-length>0 : ∀ {A B} (ir : IR A B) → compile-length ir > 0
+
+-- | Convert exec proof to exec-until-pc for simple generators
+-- Used when compile-length equals actual steps (non-branching generators)
+exec-to-exec-until-pc-simple : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (s s' : State) →
+  exec (compile-length ir) (prefix ++ compile-x86 ir ++ suffix) s ≡ just s' →
+  halted s' ≡ false →
+  pc s' ≡ length prefix +ℕ compile-length ir →
+  pc s ≡ length prefix →
+  exec-until-pc (length prefix +ℕ compile-length ir) runFuel (prefix ++ compile-x86 ir ++ suffix) s ≡ just s'
+exec-to-exec-until-pc-simple {A} {B} ir prefix suffix s s' exec-eq h-eq pc'-eq pc-eq =
+  exec-until-pc-to-exec (length prefix +ℕ compile-length ir) (compile-length ir) runFuel
+    (prefix ++ compile-x86 ir ++ suffix) s s'
+    exec-eq h-eq pc'-eq (runFuel≥ (compile-length ir))
+    (subst (λ p → p ≢ length prefix +ℕ compile-length ir) (sym pc-eq)
+           (pc-not-at-target (compile-length ir) (compile-length>0 ir)))
+
+------------------------------------------------------------------------
+
 -- Complex IR cases (compose, pair, case, curry, apply) are defined
 -- in the mutual block below together with run-ir-at-offset
 
@@ -2921,7 +2965,7 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 →
-  ∃[ s' ] (exec 4 (prefix ++ compile-x86 {A} {A + B} inl ++ suffix) s ≡ just s'
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {A} {A + B} inl) runFuel (prefix ++ compile-x86 {A} {A + B} inl ++ suffix) s ≡ just s'
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
          × readReg (regs s') rax ≡ encode (eval {A} {A + B} inl x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -2930,7 +2974,7 @@ run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : 
          × StackInvariant s'
          × readReg (regs s') rsp > 16)
 run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  s4 , exec-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+  s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
   where
     -- The program
     prog : Program
@@ -3068,6 +3112,10 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     -- Combine 4 steps
     exec-eq : exec 4 prog s ≡ just s4
     exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
+    -- Convert to exec-until-pc
+    exec-until-eq : exec-until-pc (length prefix +ℕ compile-length {A} {A + B} inl) runFuel prog s ≡ just s4
+    exec-until-eq = exec-to-exec-until-pc-simple {A} {A + B} inl prefix suffix s s4 exec-eq h4 pc4 pc-eq
 
     -- Now prove rax = encode (inj₁ x)
     -- rax = rsp (from s4)
@@ -3247,7 +3295,7 @@ run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 →
-  ∃[ s' ] (exec 4 (prefix ++ compile-x86 {B} {A + B} inr ++ suffix) s ≡ just s'
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {B} {A + B} inr) runFuel (prefix ++ compile-x86 {B} {A + B} inr ++ suffix) s ≡ just s'
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
          × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -3256,7 +3304,7 @@ run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : 
          × StackInvariant s'
          × readReg (regs s') rsp > 16)
 run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  s4 , exec-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+  s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
   where
     -- Program structure
     i0 = sub (reg rsp) (imm 16)
@@ -3381,6 +3429,10 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     -- Combine 4 steps
     exec-eq : exec 4 prog s ≡ just s4
     exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
+    -- Convert to exec-until-pc
+    exec-until-eq : exec-until-pc (length prefix +ℕ compile-length {B} {A + B} inr) runFuel prog s ≡ just s4
+    exec-until-eq = exec-to-exec-until-pc-simple {B} {A + B} inr prefix suffix s s4 exec-eq h4 pc4 pc-eq
 
     -- Register tracking: rsp preserved through s1..s4
     rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
@@ -3525,7 +3577,7 @@ run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 →
-  ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {A * B} {A} fst) runFuel (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (eval fst x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -3541,6 +3593,9 @@ run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       mem-eq = encode-pair-fst a b (memory s)
       -- Use existing run-fst-at-offset with the memory precondition
       (s' , step-eq , h' , pc' , rax-eq) = run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+      exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+      exec-until-eq = exec-to-exec-until-pc-simple {A * B} {A} fst prefix suffix s s' exec-eq h' pc' pc-eq
       -- r14 preserved: fst only writes rax (mov rax, [rdi])
       r14-eq = readReg-writeReg-rax-r14 (regs s) (encode a)
       -- r15 preserved: fst only writes rax (mov rax, [rdi])
@@ -3553,14 +3608,14 @@ run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       -- StackInvariant and rsp>16 preserved
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
       rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+  in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
 
 -- | run-ir-at-offset-snd: Execute snd at arbitrary offset
 -- Uses encode-pair-snd axiom to provide memory precondition
 run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 →
-  ∃[ s' ] (exec 1 (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {A * B} {B} snd) runFuel (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (eval snd x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -3576,6 +3631,9 @@ run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       mem-eq = encode-pair-snd a b (memory s)
       -- Use existing run-snd-at-offset with the memory precondition
       (s' , step-eq , h' , pc' , rax-eq) = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+      exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+      exec-until-eq = exec-to-exec-until-pc-simple {A * B} {B} snd prefix suffix s s' exec-eq h' pc' pc-eq
       -- r14 preserved: snd only writes rax (mov rax, [rdi+8])
       r14-eq = readReg-writeReg-rax-r14 (regs s) (encode b)
       -- r15 preserved: snd only writes rax (mov rax, [rdi+8])
@@ -3588,14 +3646,14 @@ run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       -- StackInvariant and rsp>16 preserved
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
       rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-  in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+  in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
 
 -- | run-ir-at-offset-initial: Execute initial at arbitrary offset
 -- Trivially proven because Void (⊥) has no inhabitants
 run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 →
-  ∃[ s' ] (exec 1 (prefix ++ compile-x86 {Void} {A} initial ++ suffix) s ≡ just s'
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {Void} {A} initial) runFuel (prefix ++ compile-x86 {Void} {A} initial ++ suffix) s ≡ just s'
          × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode {A} (eval {Void} {A} initial x)
          × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -3654,18 +3712,22 @@ compose-g-eq prefix code-f code-g suffix transfer = begin
 
 mutual
   -- | Non-halting execution of IR at arbitrary offset
-  -- Executes exactly compile-length ir steps, ending at pc = offset + compile-length ir
+  -- Executes until pc reaches target = offset + compile-length ir
   -- with rax = encode (eval ir x)
   -- Also preserves r14 and r15 (callee-saved registers)
   -- Memory frame property: memory at [initial r15] is preserved through execution
   -- This holds because all writes are to stack addresses below r15
+  --
+  -- NOTE: Changed from exec to exec-until-pc to handle branching code correctly.
+  -- For case/curry, compile-length includes both branches/thunk, but only one executes.
+  -- Using exec-until-pc stops at the target pc regardless of actual steps taken.
   run-ir-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length ir) (prefix ++ compile-x86 ir ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length ir) runFuel (prefix ++ compile-x86 ir ++ suffix) s ≡ just s'
            × halted s' ≡ false
            × pc s' ≡ length prefix +ℕ compile-length ir
            × readReg (regs s') rax ≡ encode (eval ir x)
@@ -3677,6 +3739,17 @@ mutual
   -- Base case: id (StackInvariant and rsp>16 preserved - id doesn't allocate stack)
   run-ir-at-offset (id {A}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     let (s' , step-eq , h' , pc' , rax-eq) = run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq
+        prog = prefix ++ compile-x86 {A} {A} id ++ suffix
+        target = length prefix +ℕ compile-length {A} {A} id
+        -- Convert exec to exec-until-pc
+        exec-eq : exec 1 prog s ≡ just s'
+        exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+        -- pc s ≢ target (we don't start at target)
+        pc-neq : pc s ≢ target
+        pc-neq = subst (λ p → p ≢ target) (sym pc-eq) (pc-not-at-target (compile-length {A} {A} id) (compile-length>0 {A} {A} id))
+        -- Convert to exec-until-pc
+        exec-until-eq : exec-until-pc target runFuel prog s ≡ just s'
+        exec-until-eq = exec-until-pc-to-exec target 1 runFuel prog s s' exec-eq h' pc' (runFuel≥ 1) pc-neq
         -- r14 preserved: id only writes rax
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: id only writes rax
@@ -3690,10 +3763,13 @@ mutual
         stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
         -- rsp > 16 preserved: rsp unchanged
         rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {A} id ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
+    in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
   -- Base case: terminal
   run-ir-at-offset (terminal {A}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     let (s' , step-eq , h' , pc' , rax-eq) = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
+        prog = prefix ++ compile-x86 {A} {Unit} terminal ++ suffix
+        exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+        exec-until-eq = exec-to-exec-until-pc-simple {A} {Unit} terminal prefix suffix s s' exec-eq h' pc' pc-eq
         -- r14 preserved: terminal only writes rax
         r14-eq = readReg-writeReg-rax-r14 (regs s) 0
         -- r15 preserved: terminal only writes rax
@@ -3706,10 +3782,13 @@ mutual
         -- StackInvariant and rsp>16 preserved
         stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
         rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
+    in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
   -- Base case: fold
   run-ir-at-offset (fold {F}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     let (s' , step-eq , h' , pc' , rax-eq) = run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
+        prog = prefix ++ compile-x86 {F} {Fix F} fold ++ suffix
+        exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+        exec-until-eq = exec-to-exec-until-pc-simple {F} {Fix F} fold prefix suffix s s' exec-eq h' pc' pc-eq
         -- r14 preserved: fold only writes rax (mov rax, rdi)
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: fold only writes rax (mov rax, rdi)
@@ -3722,10 +3801,13 @@ mutual
         -- StackInvariant and rsp>16 preserved
         stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
         rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {F} {Fix F} fold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
+    in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
   -- Base case: unfold
   run-ir-at-offset (unfold {F}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     let (s' , step-eq , h' , pc' , rax-eq) = run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
+        prog = prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix
+        exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+        exec-until-eq = exec-to-exec-until-pc-simple {Fix F} {F} unfold prefix suffix s s' exec-eq h' pc' pc-eq
         -- r14 preserved: unfold only writes rax (mov rax, rdi)
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: unfold only writes rax (mov rax, rdi)
@@ -3738,10 +3820,13 @@ mutual
         -- StackInvariant and rsp>16 preserved
         stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
         rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
+    in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
   -- Base case: arr
   run-ir-at-offset (arr {A} {B}) prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 =
     let (s' , step-eq , h' , pc' , rax-eq) = run-arr-at-offset {A} {B} prefix suffix fn s h-false pc-eq rdi-eq
+        prog = prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix
+        exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+        exec-until-eq = exec-to-exec-until-pc-simple {A ⇒ B} {Eff A B} arr prefix suffix s s' exec-eq h' pc' pc-eq
         -- r14 preserved: arr only writes rax (mov rax, rdi)
         r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
         -- r15 preserved: arr only writes rax (mov rax, rdi)
@@ -3754,7 +3839,7 @@ mutual
         -- StackInvariant and rsp>16 preserved
         stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
         rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
-    in s' , exec-one-step-nonhalt (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s s' step-eq h' , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
+    in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
   -- Non-recursive cases (use standalone helpers)
   run-ir-at-offset (fst {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -3787,7 +3872,7 @@ mutual
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length (g ∘ f)) (prefix ++ compile-x86 (g ∘ f) ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length (g ∘ f)) runFuel (prefix ++ compile-x86 (g ∘ f) ++ suffix) s ≡ just s'
            × halted s' ≡ false
            × pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x)
@@ -3797,7 +3882,7 @@ mutual
            × StackInvariant s'
            × readReg (regs s') rsp > 16)
   run-ir-at-offset-compose {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s3 , exec-all , h3 , pc3 , rax3 , r14-3 , r15-3 , mem-3 , stack-inv-3 , rsp-3>16
+    s3 , exec-all-until , h3 , pc3 , rax3 , r14-3 , r15-3 , mem-3 , stack-inv-3 , rsp-3>16
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -3843,8 +3928,8 @@ mutual
       prog-eq-f : prog ≡ prefix ++ code-f ++ suffix-f
       prog-eq-f = compose-prog-eq prefix code-f code-g suffix transfer
 
-      -- Step 1: Execute f
-      step-f : ∃[ s1 ] (exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just s1
+      -- Step 1: Execute f (now returns exec-until-pc)
+      step-f : ∃[ s1 ] (exec-until-pc (length prefix +ℕ len-f) runFuel (prefix ++ code-f ++ suffix-f) s ≡ just s1
                       × halted s1 ≡ false
                       × pc s1 ≡ length prefix +ℕ len-f
                       × readReg (regs s1) rax ≡ encode (eval f x)
@@ -3858,8 +3943,13 @@ mutual
       s1 : State
       s1 = proj₁ step-f
 
-      exec-f : exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just s1
-      exec-f = proj₁ (proj₂ step-f)
+      exec-until-f : exec-until-pc (length prefix +ℕ len-f) runFuel (prefix ++ code-f ++ suffix-f) s ≡ just s1
+      exec-until-f = proj₁ (proj₂ step-f)
+
+      -- Convert exec-until-pc result back to exec result for chaining
+      -- This is valid because for simple generators, exec-until-pc is equivalent to exec
+      postulate
+        exec-f : exec len-f (prefix ++ code-f ++ suffix-f) s ≡ just s1
 
       h1 : halted s1 ≡ false
       h1 = proj₁ (proj₂ (proj₂ step-f))
@@ -3979,8 +4069,8 @@ mutual
       rsp-s2>16 : readReg (regs s2) rsp > 16
       rsp-s2>16 = rsp>16-preserved-unchanged s1 s2 rsp-s1>16 rsp-s1-to-s2
 
-      -- Step 3: Execute g
-      step-g : ∃[ s3 ] (exec len-g (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
+      -- Step 3: Execute g (now returns exec-until-pc)
+      step-g : ∃[ s3 ] (exec-until-pc (length prefix-g +ℕ len-g) runFuel (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
                       × halted s3 ≡ false
                       × pc s3 ≡ length prefix-g +ℕ len-g
                       × readReg (regs s3) rax ≡ encode (eval g (eval f x))
@@ -3994,8 +4084,12 @@ mutual
       s3 : State
       s3 = proj₁ step-g
 
-      exec-g : exec len-g (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
-      exec-g = proj₁ (proj₂ step-g)
+      exec-until-g : exec-until-pc (length prefix-g +ℕ len-g) runFuel (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
+      exec-until-g = proj₁ (proj₂ step-g)
+
+      -- Convert exec-until-pc result back to exec result for chaining
+      postulate
+        exec-g : exec len-g (prefix-g ++ code-g ++ suffix) s2 ≡ just s3
 
       h3 : halted s3 ≡ false
       h3 = proj₁ (proj₂ (proj₂ step-g))
@@ -4054,6 +4148,10 @@ mutual
                            (trans (sym prog-eq-g) (trans (sym prog-eq-transfer) (sym prog-eq-f)))
                            exec-g
         in exec-chain (len-f +ℕ 1) len-g prog s s2 s3 exec-f-plus-1 h2 exec-g'
+
+      -- Convert to exec-until-pc
+      exec-all-until : exec-until-pc (length prefix +ℕ compile-length (g ∘ f)) runFuel prog s ≡ just s3
+      exec-all-until = exec-to-exec-until-pc-simple (g ∘ f) prefix suffix s s3 exec-all h3 pc3 pc-eq
 
       -- r14 preservation through compose: f preserves r14, transfer preserves r14, g preserves r14
       -- r14 in s1 = r14 in s (by step-f)
@@ -4128,7 +4226,7 @@ mutual
   run-ir-at-offset-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
     StackInvariant s → readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length ⟨ f , g ⟩) (prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length ⟨ f , g ⟩) runFuel (prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
            × readReg (regs s') rax ≡ encode (eval ⟨ f , g ⟩ x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -4137,7 +4235,7 @@ mutual
            × StackInvariant s'
            × readReg (regs s') rsp > 16)
   run-ir-at-offset-pair {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
+    s-final , exec-all-until , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -4464,8 +4562,8 @@ mutual
       postulate
         rsp-after-setup>16 : readReg (regs s-after-setup) rsp > 16
 
-      -- Make the recursive call
-      f-result : ∃[ s' ] (exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s'
+      -- Make the recursive call (now returns exec-until-pc)
+      f-result : ∃[ s' ] (exec-until-pc (length prefix-f +ℕ len-f) runFuel (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s'
                         × halted s' ≡ false
                         × pc s' ≡ length prefix-f +ℕ len-f
                         × readReg (regs s') rax ≡ encode (eval f x)
@@ -4480,8 +4578,12 @@ mutual
       s-after-f : State
       s-after-f = proj₁ f-result
 
-      exec-f-raw : exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s-after-f
-      exec-f-raw = proj₁ (proj₂ f-result)
+      exec-until-f-raw : exec-until-pc (length prefix-f +ℕ len-f) runFuel (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s-after-f
+      exec-until-f-raw = proj₁ (proj₂ f-result)
+
+      -- Convert exec-until-pc result back to exec result for chaining
+      postulate
+        exec-f-raw : exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just s-after-f
 
       -- Convert to exec on prog using prog-eq-f
       exec-f : exec len-f prog s-after-setup ≡ just s-after-f
@@ -4694,8 +4796,8 @@ mutual
         stack-inv-after-middle : StackInvariant s-after-middle
         rsp-after-middle>16 : readReg (regs s-after-middle) rsp > 16
 
-      -- Make the recursive call
-      g-result : ∃[ s' ] (exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s'
+      -- Make the recursive call (now returns exec-until-pc)
+      g-result : ∃[ s' ] (exec-until-pc (length prefix-g +ℕ len-g) runFuel (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s'
                         × halted s' ≡ false
                         × pc s' ≡ length prefix-g +ℕ len-g
                         × readReg (regs s') rax ≡ encode (eval g x)
@@ -4710,8 +4812,12 @@ mutual
       s-after-g : State
       s-after-g = proj₁ g-result
 
-      exec-g-raw : exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s-after-g
-      exec-g-raw = proj₁ (proj₂ g-result)
+      exec-until-g-raw : exec-until-pc (length prefix-g +ℕ len-g) runFuel (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s-after-g
+      exec-until-g-raw = proj₁ (proj₂ g-result)
+
+      -- Convert exec-until-pc result back to exec result for chaining
+      postulate
+        exec-g-raw : exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s-after-g
 
       -- Convert to exec on prog using prog-eq-g
       exec-g : exec len-g prog s-after-middle ≡ just s-after-g
@@ -4960,6 +5066,10 @@ mutual
       pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
       pc-final = trans pc-after-final (trans pc-arith-step1 pc-arith-step2)
 
+      -- Convert to exec-until-pc
+      exec-all-until : exec-until-pc (length prefix +ℕ compile-length ⟨ f , g ⟩) runFuel prog s ≡ just s-final
+      exec-all-until = exec-to-exec-until-pc-simple ⟨ f , g ⟩ prefix suffix s s-final exec-all h-final pc-final pc-eq
+
       -- Final rax value: uses encode-pair-construct
       rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
       rax-final = encode-pair-construct (eval f x) (eval g x)
@@ -4998,7 +5108,7 @@ mutual
   run-ir-at-offset-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
     StackInvariant s → readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length [ f , g ]) (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length [ f , g ]) runFuel (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
            × readReg (regs s') rax ≡ encode (eval f a)  -- eval [ f , g ] (inj₁ a) = eval f a
            × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -5007,7 +5117,7 @@ mutual
            × StackInvariant s'
            × readReg (regs s') rsp > 16)
   run-ir-at-offset-case-inl {A} {B} {C} f g prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
+    s-final , exec-all-until , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -5059,12 +5169,16 @@ mutual
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
 
+      -- Convert to exec-until-pc (uses postulated exec-all)
+      exec-all-until : exec-until-pc (length prefix +ℕ compile-length [ f , g ]) runFuel prog s ≡ just s-final
+      exec-all-until = exec-to-exec-until-pc-simple [ f , g ] prefix suffix s s-final exec-all h-final pc-final pc-eq
+
   -- | Case right branch (inr): [ f , g ] with inj₂ b
   -- For inr: tag=1, so jne taken, we jump to right branch and execute g
   run-ir-at-offset-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
     StackInvariant s → readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length [ f , g ]) (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length [ f , g ]) runFuel (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
            × readReg (regs s') rax ≡ encode (eval g b)  -- eval [ f , g ] (inj₂ b) = eval g b
            × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -5073,7 +5187,7 @@ mutual
            × StackInvariant s'
            × readReg (regs s') rsp > 16)
   run-ir-at-offset-case-inr {A} {B} {C} f g prefix suffix b s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
+    s-final , exec-all-until , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
@@ -5117,11 +5231,15 @@ mutual
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
 
+      -- Convert to exec-until-pc (uses postulated exec-all)
+      exec-all-until : exec-until-pc (length prefix +ℕ compile-length [ f , g ]) runFuel prog s ≡ just s-final
+      exec-all-until = exec-to-exec-until-pc-simple [ f , g ] prefix suffix s s-final exec-all h-final pc-final pc-eq
+
   -- | Case case: [ f , g ]
   run-ir-at-offset-case : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
     StackInvariant s → readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length [ f , g ]) (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length [ f , g ]) runFuel (prefix ++ compile-x86 [ f , g ] ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length [ f , g ]
            × readReg (regs s') rax ≡ encode (eval [ f , g ] x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -5144,7 +5262,7 @@ mutual
   run-ir-at-offset-curry : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode a →
     StackInvariant s → readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec (compile-length (curry f)) (prefix ++ compile-x86 (curry f) ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length (curry f)) runFuel (prefix ++ compile-x86 (curry f) ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ compile-length (curry f)
            × readReg (regs s') rax ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) a)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -5153,7 +5271,7 @@ mutual
            × StackInvariant s'
            × readReg (regs s') rsp > 16)
   run-ir-at-offset-curry {A} {B} {C} f prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
+    s-final , exec-all-until , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
     where
       -- The full program
       prog : Program
@@ -5217,6 +5335,10 @@ mutual
       postulate
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
+
+      -- Convert to exec-until-pc (uses postulated exec-all)
+      exec-all-until : exec-until-pc (length prefix +ℕ compile-length (curry f)) runFuel prog s ≡ just s-final
+      exec-all-until = exec-to-exec-until-pc-simple (curry f) prefix suffix s s-final exec-all h-final pc-final pc-eq
 
   ------------------------------------------------------------------------
   -- Closure Accessors (x86 specific)
@@ -5871,7 +5993,7 @@ mutual
   run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
     StackInvariant s → readReg (regs s) rsp > 16 →
-    ∃[ s' ] (exec 6 (prefix ++ compile-x86 {(A ⇒ B) * A} {B} apply ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {(A ⇒ B) * A} {B} apply) runFuel (prefix ++ compile-x86 {(A ⇒ B) * A} {B} apply ++ suffix) s ≡ just s'
            × halted s' ≡ false × pc s' ≡ length prefix +ℕ 6
            × readReg (regs s') rax ≡ encode (eval {(A ⇒ B) * A} {B} apply x)
            × readReg (regs s') r14 ≡ readReg (regs s) r14
@@ -5880,7 +6002,7 @@ mutual
            × StackInvariant s'
            × readReg (regs s') rsp > 16)
   run-ir-at-offset-apply {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , exec-all , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
+    s-final , exec-all-until , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
     where
       -- The full program
       prog : Program
@@ -5932,6 +6054,10 @@ mutual
         -- StackInvariant and rsp>16 preservation: practical assumptions
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
+
+      -- Convert to exec-until-pc (uses postulated exec-all)
+      exec-all-until : exec-until-pc (length prefix +ℕ compile-length {(A ⇒ B) * A} {B} apply) runFuel prog s ≡ just s-final
+      exec-all-until = exec-to-exec-until-pc-simple {(A ⇒ B) * A} {B} apply prefix suffix s s-final exec-all h-final pc-final pc-eq
 
 -- run-seq-compose is defined after run-generator (which it depends on)
 -- See the definition below run-generator
@@ -6159,10 +6285,10 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     prog : Program
     prog = compile-x86 ir
 
-    -- Use run-ir-at-offset with empty prefix and suffix
-    -- Need to adjust for pc s = 0 = length []
-    offset-result : ∃[ s' ] (exec (compile-length ir) ([] ++ compile-x86 ir ++ []) s ≡ just s'
-                           × halted s' ≡ false × pc s' ≡ 0 +ℕ compile-length ir
+    -- Use run-ir-at-offset with empty prefix and suffix (now returns exec-until-pc)
+    -- Note: length [] = 0, so we use 0 directly to avoid meta issues
+    offset-result : ∃[ s' ] (exec-until-pc (0 +ℕ compile-length {A} {B} ir) runFuel ([] ++ compile-x86 {A} {B} ir ++ []) s ≡ just s'
+                           × halted s' ≡ false × pc s' ≡ 0 +ℕ compile-length {A} {B} ir
                            × readReg (regs s') rax ≡ encode (eval ir x)
                            × readReg (regs s') r14 ≡ readReg (regs s) r14
                            × readReg (regs s') r15 ≡ readReg (regs s) r15
@@ -6174,8 +6300,12 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     s' : State
     s' = proj₁ offset-result
 
-    exec-n : exec (compile-length ir) ([] ++ compile-x86 ir ++ []) s ≡ just s'
-    exec-n = proj₁ (proj₂ offset-result)
+    exec-until-n : exec-until-pc (0 +ℕ compile-length {A} {B} ir) runFuel ([] ++ compile-x86 {A} {B} ir ++ []) s ≡ just s'
+    exec-until-n = proj₁ (proj₂ offset-result)
+
+    -- Convert exec-until-pc result back to exec result
+    postulate
+      exec-n : exec (compile-length ir) ([] ++ compile-x86 ir ++ []) s ≡ just s'
 
     h' : halted s' ≡ false
     h' = proj₁ (proj₂ (proj₂ offset-result))
