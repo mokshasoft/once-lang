@@ -209,21 +209,21 @@ These axioms relate semantic values to machine words:
 
 **Justification**: These capture the intended memory layout semantics. A full formalization would model the heap explicitly and prove these as lemmas.
 
-### P3: x86-64 Internal Postulates (~30 mechanical postulates)
+### P3: x86-64 Internal Postulates (~40 mechanical postulates)
 
 | Property | Value |
 |----------|-------|
 | **Type** | Per-generator execution traces, register/memory preservation |
-| **Location** | `Once/Backend/X86/Correct.agda` (~23 postulate blocks) |
+| **Location** | `Once/Backend/X86/Correct.agda` (~21 postulate blocks) |
 | **Needed by** | x86-64 code generation correctness proofs |
 | **Runtime effect** | None (proof-only) |
 
 These exist for proof engineering, not fundamental limitations:
 
-**A. Per-generator execution traces (~20 postulates)**:
+**A. Per-generator execution traces (~18 postulates)**:
 - `final-result` in pair: 6-instruction final sequence
 - `s-final`, `exec-all`, etc. in case/curry: execution result and step count
-- `exec-eq` in apply setup: 6-instruction setup execution
+- ~~`exec-eq` in apply setup~~: ✓ **PROVEN** (6-instruction setup execution)
 - Thunk execution postulates: for closure application
 
 **B. Register/memory preservation (~10 postulates)**:
@@ -236,7 +236,10 @@ These exist for proof engineering, not fundamental limitations:
 
 **Justification**: These are MECHANICAL and could be eliminated with more proof work. They follow the same pattern as existing fully-proven generators (inl, inr, id, fst, snd, terminal, fold, unfold, arr). The E2E-Trace module demonstrates the proof technique by tracing all 37 instructions for `apply ∘ ⟨curry fst, id⟩` without postulates.
 
-**Recent elimination**: The 4 `addr-diff-*` postulates were eliminated by integrating `StackInvariant` into `run-ir-at-offset`. The `stack-inv-after-setup` postulate in pair was proven directly.
+**Recent eliminations**:
+- The 4 `addr-diff-*` postulates were eliminated by integrating `StackInvariant` into `run-ir-at-offset`
+- The `stack-inv-after-setup` postulate in pair was proven directly
+- The `exec-eq` postulate in `run-apply-setup-x86` was proven by stepping through all 6 apply setup instructions
 
 ### P4: Closure Semantics Axiom
 
