@@ -877,6 +877,95 @@ readReg-writeReg-t0-s1 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf t0 v) s1 ≡ readReg rf s1
 readReg-writeReg-t0-s1 rf v = refl
 
+-- | Reading s0 after writing t0 returns the old value
+readReg-writeReg-t0-s0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) s0 ≡ readReg rf s0
+readReg-writeReg-t0-s0 rf v = refl
+
+------------------------------------------------------------------------
+-- Register preservation lemmas for t1 (apply proof)
+------------------------------------------------------------------------
+
+-- | Reading a0 after writing t1 returns the old value
+readReg-writeReg-t1-a0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t1 v) a0 ≡ readReg rf a0
+readReg-writeReg-t1-a0 rf v = refl
+
+-- | Reading s1 after writing t1 returns the old value
+readReg-writeReg-t1-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t1 v) s1 ≡ readReg rf s1
+readReg-writeReg-t1-s1 rf v = refl
+
+-- | Reading t1 after writing t2 returns the old value
+readReg-writeReg-t2-t1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t2 v) t1 ≡ readReg rf t1
+readReg-writeReg-t2-t1 rf v = refl
+
+-- | Reading a0 after writing t2 returns the old value
+readReg-writeReg-t2-a0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t2 v) a0 ≡ readReg rf a0
+readReg-writeReg-t2-a0 rf v = refl
+
+-- | Reading s1 after writing t2 returns the old value
+readReg-writeReg-t2-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t2 v) s1 ≡ readReg rf s1
+readReg-writeReg-t2-s1 rf v = refl
+
+-- | Reading t1 after writing s0 returns the old value
+readReg-writeReg-s0-t1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s0 v) t1 ≡ readReg rf t1
+readReg-writeReg-s0-t1 rf v = refl
+
+-- | Reading t2 after writing s0 returns the old value
+readReg-writeReg-s0-t2 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s0 v) t2 ≡ readReg rf t2
+readReg-writeReg-s0-t2 rf v = refl
+
+-- | Reading s1 after writing s0 returns the old value
+readReg-writeReg-s0-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s0 v) s1 ≡ readReg rf s1
+readReg-writeReg-s0-s1 rf v = refl
+
+-- | Reading t1 after writing t0 returns the old value
+readReg-writeReg-t0-t1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) t1 ≡ readReg rf t1
+readReg-writeReg-t0-t1 rf v = refl
+
+-- | Reading t2 after writing t0 returns the old value
+readReg-writeReg-t0-t2 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) t2 ≡ readReg rf t2
+readReg-writeReg-t0-t2 rf v = refl
+
+-- | Reading s0 after writing t1 returns the old value
+readReg-writeReg-t1-s0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t1 v) s0 ≡ readReg rf s0
+readReg-writeReg-t1-s0 rf v = refl
+
+-- | Reading s0 after writing t2 returns the old value
+readReg-writeReg-t2-s0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t2 v) s0 ≡ readReg rf s0
+readReg-writeReg-t2-s0 rf v = refl
+
+-- | Reading t2 after writing a0 returns the old value
+readReg-writeReg-a0-t2 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf a0 v) t2 ≡ readReg rf t2
+readReg-writeReg-a0-t2 rf v = refl
+
+-- | Reading t0 after writing a0 returns the old value
+readReg-writeReg-a0-t0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf a0 v) t0 ≡ readReg rf t0
+readReg-writeReg-a0-t0 rf v = refl
+
+-- | Reading s0 after writing ra returns the old value
+readReg-writeReg-ra-s0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf ra v) s0 ≡ readReg rf s0
+readReg-writeReg-ra-s0 rf v = refl
+
+-- | Reading s1 after writing ra returns the old value
+readReg-writeReg-ra-s1 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf ra v) s1 ≡ readReg rf s1
+readReg-writeReg-ra-s1 rf v = refl
+
 ------------------------------------------------------------------------
 -- Step helpers at arbitrary offset (for mutual block proofs)
 ------------------------------------------------------------------------
@@ -1002,3 +1091,16 @@ exec-five-steps-nonhalt : ∀ (prog : List Instr) (s st1 st2 st3 st4 st5 : State
 exec-five-steps-nonhalt prog s st1 st2 st3 st4 st5 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 =
   trans (exec-step-continue 4 prog s st1 step1 h1)
         (exec-four-steps-nonhalt prog st1 st2 st3 st4 st5 step2 h2 step3 h3 step4 h4 step5 h5)
+
+-- | Six-step non-halting execution
+exec-six-steps-nonhalt : ∀ (prog : List Instr) (s st1 st2 st3 st4 st5 st6 : State) →
+  step prog s ≡ just st1 → halted st1 ≡ false →
+  step prog st1 ≡ just st2 → halted st2 ≡ false →
+  step prog st2 ≡ just st3 → halted st3 ≡ false →
+  step prog st3 ≡ just st4 → halted st4 ≡ false →
+  step prog st4 ≡ just st5 → halted st5 ≡ false →
+  step prog st5 ≡ just st6 → halted st6 ≡ false →
+  exec 6 prog s ≡ just st6
+exec-six-steps-nonhalt prog s st1 st2 st3 st4 st5 st6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 =
+  trans (exec-step-continue 5 prog s st1 step1 h1)
+        (exec-five-steps-nonhalt prog st1 st2 st3 st4 st5 st6 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6)

@@ -669,18 +669,312 @@ mutual
   --   a0 = arg (argument for thunk)
   --   ra = return address
   --   halted = false
-  postulate
-    run-apply-setup-riscv : ∀ {A B} (prefix suffix : Program)
-      (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
-      halted s ≡ false →
-      pc s ≡ length prefix →
-      readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} (closure , arg) →
-      ∃[ s' ] (exec 6 (prefix ++ compile-riscv (apply {A} {B}) ++ suffix) s ≡ just s'
-             × halted s' ≡ false
-             × pc s' ≡ closure-code-ptr-riscv {A} {B} closure
-             × readReg (regs s') s0 ≡ closure-env-riscv {A} {B} closure
-             × readReg (regs s') a0 ≡ encode {A} arg
-             × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  --
+  -- PROOF STRUCTURE (like X86): step-by-step with memory postulates
+  run-apply-setup-riscv : ∀ {A B} (prefix suffix : Program)
+    (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} (closure , arg) →
+    ∃[ s' ] (exec 6 (prefix ++ compile-riscv (apply {A} {B}) ++ suffix) s ≡ just s'
+           × halted s' ≡ false
+           × pc s' ≡ closure-code-ptr-riscv {A} {B} closure
+           × readReg (regs s') s0 ≡ closure-env-riscv {A} {B} closure
+           × readReg (regs s') a0 ≡ encode {A} arg
+           × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  run-apply-setup-riscv {A} {B} prefix suffix closure arg s h-false pc-eq a0-eq =
+    s' , exec-eq , h' , pc' , s0' , a0' , s1'
+    where
+      prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+
+      -- The 6 instructions are:
+      -- 0: ld t1, 0(a0)      ; load closure from pair.fst
+      -- 1: ld t2, 8(a0)      ; load argument from pair.snd
+      -- 2: ld s0, 0(t1)      ; load env from closure.fst
+      -- 3: ld t0, 8(t1)      ; load code_ptr from closure.snd
+      -- 4: mv a0, t2         ; move argument to a0
+      -- 5: jalr ra, t0, 0    ; call the code
+
+      -- Memory access axioms (depend on encoding)
+      -- Note: using +ℕ 0 to match execLd's address computation
+      postulate
+        -- Pair encoding: (closure, arg) encodes to ptr where [ptr]=encode closure, [ptr+8]=encode arg
+        mem-pair-fst : readMem (memory s) (encode {(A ⇒ B) * A} (closure , arg) +ℕ 0) ≡ just (encode {A ⇒ B} closure)
+        mem-pair-snd : readMem (memory s) (encode {(A ⇒ B) * A} (closure , arg) +ℕ 8) ≡ just (encode {A} arg)
+
+        -- Closure encoding: closure encodes to ptr where [ptr]=env, [ptr+8]=code_ptr
+        mem-closure-env : readMem (memory s) (encode {A ⇒ B} closure +ℕ 0) ≡ just (closure-env-riscv {A} {B} closure)
+        mem-closure-code : readMem (memory s) (encode {A ⇒ B} closure +ℕ 8) ≡ just (closure-code-ptr-riscv {A} {B} closure)
+
+      -- Shorthand for values
+      closure-ptr : Word
+      closure-ptr = encode {A ⇒ B} closure
+
+      arg-val : Word
+      arg-val = encode {A} arg
+
+      env-val : Word
+      env-val = closure-env-riscv {A} {B} closure
+
+      code-ptr : Word
+      code-ptr = closure-code-ptr-riscv {A} {B} closure
+
+      open import Data.List.Properties using (++-assoc)
+
+      -- Instructions
+      i0 : Instr
+      i0 = ld t1 (+ 0) a0
+      i1 : Instr
+      i1 = ld t2 (+ 8) a0
+      i2 : Instr
+      i2 = ld s0 (+ 0) t1
+      i3 : Instr
+      i3 = ld t0 (+ 8) t1
+      i4 : Instr
+      i4 = mv a0 t2
+      i5 : Instr
+      i5 = jalr ra t0 (+ 0)
+
+      -- ================================================================
+      -- Step 0: ld t1, 0(a0) - load closure from pair.fst
+      -- ================================================================
+      st1 : State
+      st1 = record s { regs = writeReg (regs s) t1 closure-ptr
+                     ; pc = pc s +ℕ 1 }
+
+      -- a0 holds the pair pointer
+      a0-is-pair : readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} (closure , arg)
+      a0-is-pair = a0-eq
+
+      -- Memory at [a0 + 0] contains closure pointer
+      mem-st0 : readMem (memory s) (readReg (regs s) a0 +ℕ 0) ≡ just closure-ptr
+      mem-st0 = subst (λ x → readMem (memory s) (x +ℕ 0) ≡ just closure-ptr)
+                      (sym a0-eq) mem-pair-fst
+
+      fetch0 : fetch prog (length prefix) ≡ just i0
+      fetch0 = fetch-at-prefix-end prefix i0 _
+
+      step-0 : step prog s ≡ just st1
+      step-0 = trans (step-exec prog s i0 h-false (subst (λ n → fetch prog n ≡ just i0) (sym pc-eq) fetch0))
+                     (execLd prog s t1 0 a0 closure-ptr mem-st0)
+
+      h1 : halted st1 ≡ false
+      h1 = h-false
+
+      pc-st1 : pc st1 ≡ length prefix +ℕ 1
+      pc-st1 = cong (_+ℕ 1) pc-eq
+
+      -- ================================================================
+      -- Step 1: ld t2, 8(a0) - load argument from pair.snd
+      -- ================================================================
+      st2 : State
+      st2 = record st1 { regs = writeReg (regs st1) t2 arg-val
+                       ; pc = pc st1 +ℕ 1 }
+
+      -- a0 still holds pair pointer (wasn't modified by t1 write)
+      a0-st1 : readReg (regs st1) a0 ≡ encode {(A ⇒ B) * A} (closure , arg)
+      a0-st1 = trans (readReg-writeReg-t1-a0 (regs s) closure-ptr) a0-is-pair
+
+      mem-st1 : readMem (memory st1) (readReg (regs st1) a0 +ℕ 8) ≡ just arg-val
+      mem-st1 = subst (λ x → readMem (memory s) (x +ℕ 8) ≡ just arg-val)
+                      (sym a0-st1) mem-pair-snd
+
+      prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ _
+      prog-eq1 = sym (++-assoc prefix (i0 ∷ []) _)
+
+      len-prefix1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+      len-prefix1 = length-++ prefix
+
+      fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+      fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix1
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 _)
+
+      step-1 : step prog st1 ≡ just st2
+      step-1 = trans (step-exec prog st1 i1 h1 (subst (λ n → fetch prog n ≡ just i1) (sym pc-st1) fetch1))
+                     (execLd prog st1 t2 8 a0 arg-val mem-st1)
+
+      h2 : halted st2 ≡ false
+      h2 = h-false
+
+      pc-st2 : pc st2 ≡ length prefix +ℕ 2
+      pc-st2 = trans (cong (_+ℕ 1) pc-st1) (+-assoc (length prefix) 1 1)
+
+      -- ================================================================
+      -- Step 2: ld s0, 0(t1) - load env from closure.fst
+      -- ================================================================
+      st3 : State
+      st3 = record st2 { regs = writeReg (regs st2) s0 env-val
+                       ; pc = pc st2 +ℕ 1 }
+
+      -- t1 holds closure pointer (preserved through t2 write)
+      t1-st2 : readReg (regs st2) t1 ≡ closure-ptr
+      t1-st2 = trans (readReg-writeReg-t2-t1 (regs st1) arg-val)
+                     (readReg-writeReg-same (regs s) t1 closure-ptr (λ ()))
+
+      mem-st2 : readMem (memory st2) (readReg (regs st2) t1 +ℕ 0) ≡ just env-val
+      mem-st2 = subst (λ x → readMem (memory s) (x +ℕ 0) ≡ just env-val)
+                      (sym t1-st2) mem-closure-env
+
+      prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ _
+      prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) _)
+
+      len-prefix2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+      len-prefix2 = length-++ prefix
+
+      fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+      fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix2
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 _)
+
+      step-2 : step prog st2 ≡ just st3
+      step-2 = trans (step-exec prog st2 i2 h2 (subst (λ n → fetch prog n ≡ just i2) (sym pc-st2) fetch2))
+                     (execLd prog st2 s0 0 t1 env-val mem-st2)
+
+      h3 : halted st3 ≡ false
+      h3 = h-false
+
+      pc-st3 : pc st3 ≡ length prefix +ℕ 3
+      pc-st3 = trans (cong (_+ℕ 1) pc-st2) (+-assoc (length prefix) 2 1)
+
+      -- ================================================================
+      -- Step 3: ld t0, 8(t1) - load code_ptr from closure.snd
+      -- ================================================================
+      st4 : State
+      st4 = record st3 { regs = writeReg (regs st3) t0 code-ptr
+                       ; pc = pc st3 +ℕ 1 }
+
+      -- t1 still holds closure pointer (preserved through s0 write)
+      t1-st3 : readReg (regs st3) t1 ≡ closure-ptr
+      t1-st3 = trans (readReg-writeReg-s0-t1 (regs st2) env-val) t1-st2
+
+      mem-st3 : readMem (memory st3) (readReg (regs st3) t1 +ℕ 8) ≡ just code-ptr
+      mem-st3 = subst (λ x → readMem (memory s) (x +ℕ 8) ≡ just code-ptr)
+                      (sym t1-st3) mem-closure-code
+
+      prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ _
+      prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) _)
+
+      len-prefix3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+      len-prefix3 = length-++ prefix
+
+      fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+      fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix3
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 _)
+
+      step-3 : step prog st3 ≡ just st4
+      step-3 = trans (step-exec prog st3 i3 h3 (subst (λ n → fetch prog n ≡ just i3) (sym pc-st3) fetch3))
+                     (execLd prog st3 t0 8 t1 code-ptr mem-st3)
+
+      h4 : halted st4 ≡ false
+      h4 = h-false
+
+      pc-st4 : pc st4 ≡ length prefix +ℕ 4
+      pc-st4 = trans (cong (_+ℕ 1) pc-st3) (+-assoc (length prefix) 3 1)
+
+      -- ================================================================
+      -- Step 4: mv a0, t2 - move argument to a0
+      -- ================================================================
+      st5 : State
+      st5 = record st4 { regs = writeReg (regs st4) a0 (readReg (regs st4) t2)
+                       ; pc = pc st4 +ℕ 1 }
+
+      -- t2 holds arg-val (preserved through s0 and t0 writes)
+      t2-st4 : readReg (regs st4) t2 ≡ arg-val
+      t2-st4 = trans (readReg-writeReg-t0-t2 (regs st3) code-ptr)
+                     (trans (readReg-writeReg-s0-t2 (regs st2) env-val)
+                            (readReg-writeReg-same (regs st1) t2 arg-val (λ ())))
+
+      prog-eq4 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ++ i4 ∷ _
+      prog-eq4 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) _)
+
+      len-prefix4 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ≡ length prefix +ℕ 4
+      len-prefix4 = length-++ prefix
+
+      fetch4 : fetch prog (length prefix +ℕ 4) ≡ just i4
+      fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) len-prefix4
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) i4 _)
+
+      step-4 : step prog st4 ≡ just st5
+      step-4 = trans (step-exec prog st4 i4 h4 (subst (λ n → fetch prog n ≡ just i4) (sym pc-st4) fetch4))
+                     (execMv prog st4 a0 t2)
+
+      h5 : halted st5 ≡ false
+      h5 = h-false
+
+      pc-st5 : pc st5 ≡ length prefix +ℕ 5
+      pc-st5 = trans (cong (_+ℕ 1) pc-st4) (+-assoc (length prefix) 4 1)
+
+      -- ================================================================
+      -- Step 5: jalr ra, t0, 0 - call the code (jump to thunk)
+      -- ================================================================
+      -- jalr rd rs1 offset: rd = pc + 1, pc = rs1 + offset
+      -- Here: ra = pc + 1, pc = t0 + 0 = code-ptr
+      s' : State
+      s' = record st5 { regs = writeReg (regs st5) ra (pc st5 +ℕ 1)
+                      ; pc = readReg (regs st5) t0 +ℕ 0 }
+
+      -- t0 holds code-ptr (preserved through a0 write)
+      t0-st5 : readReg (regs st5) t0 ≡ code-ptr
+      t0-st5 = trans (readReg-writeReg-a0-t0 (regs st4) (readReg (regs st4) t2))
+                     (readReg-writeReg-same (regs st3) t0 code-ptr (λ ()))
+
+      prog-eq5 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) ++ i5 ∷ _
+      prog-eq5 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) _)
+
+      len-prefix5 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) ≡ length prefix +ℕ 5
+      len-prefix5 = length-++ prefix
+
+      fetch5 : fetch prog (length prefix +ℕ 5) ≡ just i5
+      fetch5 = subst₂ (λ p n → fetch p n ≡ just i5) (sym prog-eq5) len-prefix5
+                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) i5 _)
+
+      step-5 : step prog st5 ≡ just s'
+      step-5 = trans (step-exec prog st5 i5 h5 (subst (λ n → fetch prog n ≡ just i5) (sym pc-st5) fetch5))
+                     (execJalr prog st5 ra t0 (+ 0))
+
+      -- ================================================================
+      -- Chain steps and prove postconditions
+      -- ================================================================
+      exec-6 : exec 6 prog s ≡ just s'
+      exec-6 = exec-six-steps-nonhalt prog s st1 st2 st3 st4 st5 s'
+                 step-0 h1 step-1 h2 step-2 h3 step-3 h4 step-4 h5 step-5 h'
+        where
+          h' : halted s' ≡ false
+          h' = h-false
+
+      exec-eq : exec 6 prog s ≡ just s'
+      exec-eq = exec-6
+
+      h' : halted s' ≡ false
+      h' = h-false
+
+      -- pc s' = t0 + 0 = code-ptr
+      pc' : pc s' ≡ code-ptr
+      pc' = trans (+-identityʳ (readReg (regs st5) t0)) t0-st5
+
+      -- s0 in s' = env-val (preserved through a0 and ra writes)
+      s0-st5 : readReg (regs st5) s0 ≡ env-val
+      s0-st5 = trans (readReg-writeReg-a0-s0 (regs st4) (readReg (regs st4) t2))
+                     (trans (readReg-writeReg-t0-s0 (regs st3) code-ptr)
+                            (readReg-writeReg-same (regs st2) s0 env-val (λ ())))
+
+      s0' : readReg (regs s') s0 ≡ env-val
+      s0' = trans (readReg-writeReg-ra-s0 (regs st5) (pc st5 +ℕ 1)) s0-st5
+
+      -- a0 in s' = arg-val (a0 was written with t2 value, preserved through ra write)
+      a0-st5 : readReg (regs st5) a0 ≡ arg-val
+      a0-st5 = trans (readReg-writeReg-same (regs st4) a0 (readReg (regs st4) t2) (λ ())) t2-st4
+
+      a0' : readReg (regs s') a0 ≡ arg-val
+      a0' = trans (readReg-writeReg-ra-a0 (regs st5) (pc st5 +ℕ 1)) a0-st5
+
+      -- s1 preserved through all writes
+      s1' : readReg (regs s') s1 ≡ readReg (regs s) s1
+      s1' = trans (readReg-writeReg-ra-s1 (regs st5) (pc st5 +ℕ 1))
+                  (trans (readReg-writeReg-a0-s1 (regs st4) (readReg (regs st4) t2))
+                  (trans (readReg-writeReg-t0-s1 (regs st3) code-ptr)
+                  (trans (readReg-writeReg-s0-s1 (regs st2) env-val)
+                  (trans (readReg-writeReg-t2-s1 (regs st1) arg-val)
+                         (readReg-writeReg-t1-s1 (regs s) closure-ptr)))))
 
   -- | Thunk execution: given proper setup, thunk computes f(env, arg)
   -- The RISC-V thunk code is: addi sp,-16; sd s0,0(sp); sd a0,8(sp); mv a0,sp; f; jalr zero,ra,0
