@@ -4781,9 +4781,12 @@ curry-apply-len-check = refl
 thunk-entry-pos : ℕ
 thunk-entry-pos = 8
 
--- | Thunk entry is within program bounds
+-- | Thunk entry is within program bounds (8 < 27, i.e., 9 ≤ 27)
+-- Using arithmetic lemma: 9 + 18 = 27, so m≤m+n 9 18 proves 9 ≤ 27 in O(1)
 thunk-in-bounds : thunk-entry-pos < curry-apply-len
-thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+thunk-in-bounds = m≤m+n 9 18
+  where
+    open import Data.Nat.Properties using (m≤m+n)
 
 -- | Verify the thunk entry is a label instruction
 -- Within curry, the thunk label is label 6 (code-ptr = pc + 4 when adr is at position 4)

@@ -3283,7 +3283,12 @@ codegen-riscv-correct ir x size-bound =
 test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
   ∃[ s ] (run (compile-riscv {A} {A} (apply ∘ ⟨ curry fst , id ⟩)) (initWithInput a) ≡ just s
         × readReg (regs s) a0 ≡ encode (eval (apply ∘ ⟨ curry fst , id ⟩) a))
-test-curry-apply {A} a = codegen-riscv-correct {A} {A} (apply ∘ ⟨ curry fst , id ⟩) a (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))))))))
+test-curry-apply {A} a = codegen-riscv-correct {A} {A} (apply ∘ ⟨ curry fst , id ⟩) a size-bound
+  where
+    open import Data.Nat.Properties using (m≤m+n)
+    -- compile-length = 29, so 29 + 1 = 30 ≤ 10000. Use m≤m+n 30 9970.
+    size-bound : 30 ≤ 10000
+    size-bound = m≤m+n 30 9970
 
 ------------------------------------------------------------------------
 -- Structural E2E Verification
@@ -3314,9 +3319,12 @@ curry-apply-len-check = refl
 thunk-entry-pos : ℕ
 thunk-entry-pos = 9
 
--- | Thunk entry is within program bounds
+-- | Thunk entry is within program bounds (9 < 29, i.e., 10 ≤ 29)
+-- Using arithmetic lemma: 10 + 19 = 29, so m≤m+n 10 19 proves 10 ≤ 29 in O(1)
 thunk-in-bounds : thunk-entry-pos < curry-apply-len
-thunk-in-bounds = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))
+thunk-in-bounds = m≤m+n 10 19
+  where
+    open import Data.Nat.Properties using (m≤m+n)
 
 -- | Verify the thunk entry is a label instruction
 thunk-entry-is-label : fetch curry-apply-prog thunk-entry-pos ≡ just (label 7)
