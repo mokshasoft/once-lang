@@ -2694,20 +2694,322 @@ postulate
 --   x0 = arg (argument for thunk)
 --   x30 = return address (after blr)
 --   halted = false (blr doesn't halt)
-postulate
-  run-apply-setup : ∀ {A B} (prefix suffix : Program)
-    (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} (closure , arg) →
-    memory s ≡ encodedMemory →
-    ∃[ s' ] (exec 6 (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
-           × halted s' ≡ false
-           × pc s' ≡ closure-code-ptr {A} {B} closure
-           × readReg (regs s') x19 ≡ closure-env {A} {B} closure
-           × readReg (regs s') x0 ≡ encode {A} arg
-           × readReg (regs s') x30 ≡ length prefix +ℕ 6
-           × readReg (regs s') x20 ≡ readReg (regs s) x20)
+--
+-- compile-aarch64 apply =
+--   ldr x9 (base x0) ∷           -- 0: load closure from pair.fst
+--   ldr x10 (base+imm x0 8) ∷    -- 1: load arg from pair.snd
+--   ldr x19 (base x9) ∷          -- 2: load env from closure
+--   ldr x9 (base+imm x9 8) ∷     -- 3: load code_ptr from closure
+--   mov x0 (reg x10) ∷           -- 4: move arg to x0
+--   blr x9 ∷ []                  -- 5: branch to thunk code
+run-apply-setup : ∀ {A B} (prefix suffix : Program)
+  (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} (closure , arg) →
+  memory s ≡ encodedMemory →
+  ∃[ s' ] (exec 6 (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ closure-code-ptr {A} {B} closure
+         × readReg (regs s') x19 ≡ closure-env {A} {B} closure
+         × readReg (regs s') x0 ≡ encode {A} arg
+         × readReg (regs s') x30 ≡ length prefix +ℕ 6
+         × readReg (regs s') x20 ≡ readReg (regs s) x20)
+run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
+  s₆ , exec-6 , h-final , pc-final , x19-final , x0-final , x30-final , x20-final
+  where
+    open Relation.Binary.PropositionalEquality.≡-Reasoning
+
+    prog : Program
+    prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
+
+    -- apply-code = ldr x9 (base x0) ∷ ldr x10 (base+imm x0 8) ∷ ldr x19 (base x9) ∷
+    --              ldr x9 (base+imm x9 8) ∷ mov x0 (reg x10) ∷ blr x9 ∷ []
+    apply-code : Program
+    apply-code = compile-aarch64 (apply {A} {B})
+
+    -- Helper: pair encoding in memory s
+    pair-enc : encode {(A ⇒ B) * A} (closure , arg)
+    pair-enc = encode (closure , arg)
+
+    -- Memory axioms: reading pair components
+    mem-fst : readMem (memory s) (encode (closure , arg)) ≡ just (encode closure)
+    mem-fst = subst (λ m → readMem m (encode (closure , arg)) ≡ just (encode closure))
+                    (sym mem-eq)
+                    (encode-pair-fst closure arg encodedMemory)
+
+    mem-snd : readMem (memory s) (encode (closure , arg) +ℕ 8) ≡ just (encode arg)
+    mem-snd = subst (λ m → readMem m (encode (closure , arg) +ℕ 8) ≡ just (encode arg))
+                    (sym mem-eq)
+                    (encode-pair-snd closure arg encodedMemory)
+
+    -- Step 1: ldr x9 (base x0) - load closure pointer from pair
+    -- After: x9 = encode closure, pc = length prefix + 1
+
+    postulate
+      fetch-1 : fetch prog (pc s) ≡ just (ldr x9 (base x0))
+
+    s₁ : State
+    s₁ = record s { regs = writeReg (regs s) x9 (encode closure) ; pc = pc s +ℕ 1 }
+
+    eff-addr-1 : effectiveAddr s (base x0) ≡ encode (closure , arg)
+    eff-addr-1 = x0-eq
+
+    mem-read-1 : readMem (memory s) (effectiveAddr s (base x0)) ≡ just (encode closure)
+    mem-read-1 = subst (λ addr → readMem (memory s) addr ≡ just (encode closure))
+                       (sym eff-addr-1) mem-fst
+
+    exec-ldr-1 : execInstr prog s (ldr x9 (base x0)) ≡ just s₁
+    exec-ldr-1 = execInstr-ldr-success prog s x9 (base x0) (encode closure) mem-read-1
+
+    step-1 : step prog s ≡ just s₁
+    step-1 = step-instr prog s s₁ (ldr x9 (base x0)) h-false fetch-1 exec-ldr-1
+
+    exec-1 : exec 1 prog s ≡ just s₁
+    exec-1 = exec-1-step prog s s₁ step-1
+
+    h₁ : halted s₁ ≡ false
+    h₁ = h-false
+
+    -- Step 2: ldr x10 (base+imm x0 8) - load arg from pair
+    -- After: x10 = encode arg, pc = length prefix + 2
+
+    postulate
+      fetch-2 : fetch prog (pc s₁) ≡ just (ldr x10 (base+imm x0 8))
+
+    -- x0 in s₁ is unchanged from s (ldr wrote to x9)
+    x0-s₁ : readReg (regs s₁) x0 ≡ encode (closure , arg)
+    x0-s₁ = trans (readReg-writeReg-x9-x0 (regs s) (encode closure)) x0-eq
+
+    eff-addr-2 : effectiveAddr s₁ (base+imm x0 8) ≡ encode (closure , arg) +ℕ 8
+    eff-addr-2 = cong (_+ℕ 8) x0-s₁
+
+    -- Memory in s₁ is same as s
+    mem-s₁ : memory s₁ ≡ memory s
+    mem-s₁ = refl
+
+    mem-read-2 : readMem (memory s₁) (effectiveAddr s₁ (base+imm x0 8)) ≡ just (encode arg)
+    mem-read-2 = subst (λ addr → readMem (memory s₁) addr ≡ just (encode arg))
+                       (sym eff-addr-2)
+                       (subst (λ m → readMem m (encode (closure , arg) +ℕ 8) ≡ just (encode arg))
+                              (sym mem-s₁) mem-snd)
+
+    s₂ : State
+    s₂ = record s₁ { regs = writeReg (regs s₁) x10 (encode arg) ; pc = pc s₁ +ℕ 1 }
+
+    exec-ldr-2 : execInstr prog s₁ (ldr x10 (base+imm x0 8)) ≡ just s₂
+    exec-ldr-2 = execInstr-ldr-success prog s₁ x10 (base+imm x0 8) (encode arg) mem-read-2
+
+    step-2 : step prog s₁ ≡ just s₂
+    step-2 = step-instr prog s₁ s₂ (ldr x10 (base+imm x0 8)) h₁ fetch-2 exec-ldr-2
+
+    exec-2 : exec 1 prog s₁ ≡ just s₂
+    exec-2 = exec-1-step prog s₁ s₂ step-2
+
+    h₂ : halted s₂ ≡ false
+    h₂ = h₁
+
+    -- Step 3: ldr x19 (base x9) - load env from closure
+    -- After: x19 = closure-env, pc = length prefix + 3
+
+    postulate
+      fetch-3 : fetch prog (pc s₂) ≡ just (ldr x19 (base x9))
+
+    -- x9 in s₂ is still encode closure (ldr wrote to x10)
+    x9-s₂ : readReg (regs s₂) x9 ≡ encode closure
+    x9-s₂ = trans (readReg-writeReg-x10-x9 (regs s₁) (encode arg))
+                  (readReg-writeReg-same (regs s) x9 (encode closure))
+
+    eff-addr-3 : effectiveAddr s₂ (base x9) ≡ encode closure
+    eff-addr-3 = x9-s₂
+
+    -- Memory in s₂ is same as s
+    mem-s₂ : memory s₂ ≡ memory s
+    mem-s₂ = refl
+
+    -- Use closure encoding axiom
+    mem-read-3 : readMem (memory s₂) (effectiveAddr s₂ (base x9)) ≡ just (closure-env closure)
+    mem-read-3 = subst (λ addr → readMem (memory s₂) addr ≡ just (closure-env closure))
+                       (sym eff-addr-3)
+                       (subst (λ m → readMem m (encode closure) ≡ just (closure-env closure))
+                              (sym (trans mem-s₂ mem-eq))
+                              (encode-closure-env closure))
+
+    s₃ : State
+    s₃ = record s₂ { regs = writeReg (regs s₂) x19 (closure-env closure) ; pc = pc s₂ +ℕ 1 }
+
+    exec-ldr-3 : execInstr prog s₂ (ldr x19 (base x9)) ≡ just s₃
+    exec-ldr-3 = execInstr-ldr-success prog s₂ x19 (base x9) (closure-env closure) mem-read-3
+
+    step-3 : step prog s₂ ≡ just s₃
+    step-3 = step-instr prog s₂ s₃ (ldr x19 (base x9)) h₂ fetch-3 exec-ldr-3
+
+    exec-3 : exec 1 prog s₂ ≡ just s₃
+    exec-3 = exec-1-step prog s₂ s₃ step-3
+
+    h₃ : halted s₃ ≡ false
+    h₃ = h₂
+
+    -- Step 4: ldr x9 (base+imm x9 8) - load code_ptr from closure
+    -- After: x9 = closure-code-ptr, pc = length prefix + 4
+
+    postulate
+      fetch-4 : fetch prog (pc s₃) ≡ just (ldr x9 (base+imm x9 8))
+
+    -- x9 in s₃ is still encode closure (ldr wrote to x19)
+    x9-s₃ : readReg (regs s₃) x9 ≡ encode closure
+    x9-s₃ = trans (readReg-writeReg-x19-x9 (regs s₂) (closure-env closure)) x9-s₂
+
+    eff-addr-4 : effectiveAddr s₃ (base+imm x9 8) ≡ encode closure +ℕ 8
+    eff-addr-4 = cong (_+ℕ 8) x9-s₃
+
+    -- Memory in s₃ is same as s
+    mem-s₃ : memory s₃ ≡ memory s
+    mem-s₃ = refl
+
+    -- Use closure encoding axiom for code-ptr
+    mem-read-4 : readMem (memory s₃) (effectiveAddr s₃ (base+imm x9 8)) ≡ just (closure-code-ptr closure)
+    mem-read-4 = subst (λ addr → readMem (memory s₃) addr ≡ just (closure-code-ptr closure))
+                       (sym eff-addr-4)
+                       (subst (λ m → readMem m (encode closure +ℕ 8) ≡ just (closure-code-ptr closure))
+                              (sym (trans mem-s₃ mem-eq))
+                              (encode-closure-code-ptr closure))
+
+    s₄ : State
+    s₄ = record s₃ { regs = writeReg (regs s₃) x9 (closure-code-ptr closure) ; pc = pc s₃ +ℕ 1 }
+
+    exec-ldr-4 : execInstr prog s₃ (ldr x9 (base+imm x9 8)) ≡ just s₄
+    exec-ldr-4 = execInstr-ldr-success prog s₃ x9 (base+imm x9 8) (closure-code-ptr closure) mem-read-4
+
+    step-4 : step prog s₃ ≡ just s₄
+    step-4 = step-instr prog s₃ s₄ (ldr x9 (base+imm x9 8)) h₃ fetch-4 exec-ldr-4
+
+    exec-4 : exec 1 prog s₃ ≡ just s₄
+    exec-4 = exec-1-step prog s₃ s₄ step-4
+
+    h₄ : halted s₄ ≡ false
+    h₄ = h₃
+
+    -- Step 5: mov x0 (reg x10) - move arg to x0
+    -- After: x0 = encode arg, pc = length prefix + 5
+
+    postulate
+      fetch-5 : fetch prog (pc s₄) ≡ just (mov x0 (reg x10))
+
+    -- x10 in s₄ still holds encode arg
+    x10-s₄ : readReg (regs s₄) x10 ≡ encode arg
+    x10-s₄ = trans (readReg-writeReg-x9-x10 (regs s₃) (closure-code-ptr closure))
+                   (trans (readReg-writeReg-x19-x10 (regs s₂) (closure-env closure))
+                          (readReg-writeReg-same (regs s₁) x10 (encode arg)))
+
+    s₅ : State
+    s₅ = record s₄ { regs = writeReg (regs s₄) x0 (readReg (regs s₄) x10) ; pc = pc s₄ +ℕ 1 }
+
+    exec-mov-5 : execInstr prog s₄ (mov x0 (reg x10)) ≡ just s₅
+    exec-mov-5 = execInstr-mov-reg prog s₄ x0 x10
+
+    step-5 : step prog s₄ ≡ just s₅
+    step-5 = step-instr prog s₄ s₅ (mov x0 (reg x10)) h₄ fetch-5 exec-mov-5
+
+    exec-5 : exec 1 prog s₄ ≡ just s₅
+    exec-5 = exec-1-step prog s₄ s₅ step-5
+
+    h₅ : halted s₅ ≡ false
+    h₅ = h₄
+
+    -- Step 6: blr x9 - branch to thunk code
+    -- After: pc = closure-code-ptr, x30 = pc + 1 = length prefix + 6
+
+    postulate
+      fetch-6 : fetch prog (pc s₅) ≡ just (blr x9)
+
+    -- x9 in s₅ still holds closure-code-ptr
+    x9-s₅ : readReg (regs s₅) x9 ≡ closure-code-ptr closure
+    x9-s₅ = trans (readReg-writeReg-x0-x9 (regs s₄) (readReg (regs s₄) x10))
+                  (readReg-writeReg-same (regs s₃) x9 (closure-code-ptr closure))
+
+    -- pc s₅ = length prefix + 5
+    pc-s₅ : pc s₅ ≡ length prefix +ℕ 5
+    pc-s₅ = begin
+      pc s₅
+        ≡⟨ refl ⟩
+      pc s₄ +ℕ 1
+        ≡⟨ refl ⟩
+      (pc s₃ +ℕ 1) +ℕ 1
+        ≡⟨ refl ⟩
+      ((pc s₂ +ℕ 1) +ℕ 1) +ℕ 1
+        ≡⟨ refl ⟩
+      (((pc s₁ +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1
+        ≡⟨ refl ⟩
+      ((((pc s +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1
+        ≡⟨ cong (λ p → ((((p +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) pc-eq ⟩
+      ((((length prefix +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1
+        ≡⟨ cong (λ n → (((n +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) (+-assoc (length prefix) 1 1) ⟩
+      (((length prefix +ℕ 2) +ℕ 1) +ℕ 1) +ℕ 1
+        ≡⟨ cong (λ n → ((n +ℕ 1) +ℕ 1) +ℕ 1) (+-assoc (length prefix) 2 1) ⟩
+      ((length prefix +ℕ 3) +ℕ 1) +ℕ 1
+        ≡⟨ cong (λ n → (n +ℕ 1) +ℕ 1) (+-assoc (length prefix) 3 1) ⟩
+      (length prefix +ℕ 4) +ℕ 1
+        ≡⟨ cong (_+ℕ 1) (+-assoc (length prefix) 4 1) ⟩
+      length prefix +ℕ 5
+        ∎
+
+    s₆ : State
+    s₆ = record s₅ { regs = writeReg (regs s₅) x30 (pc s₅ +ℕ 1)
+                   ; pc = readReg (regs s₅) x9 }
+
+    exec-blr-6 : execInstr prog s₅ (blr x9) ≡ just s₆
+    exec-blr-6 = execInstr-blr prog s₅ x9
+
+    step-6 : step prog s₅ ≡ just s₆
+    step-6 = step-instr prog s₅ s₆ (blr x9) h₅ fetch-6 exec-blr-6
+
+    exec-1-6 : exec 1 prog s₅ ≡ just s₆
+    exec-1-6 = exec-1-step prog s₅ s₆ step-6
+
+    -- Chain all 6 steps
+    exec-6 : exec 6 prog s ≡ just s₆
+    exec-6 = exec-chain 1 5 prog s s₁ s₆ exec-1
+               h₁
+               (exec-chain 1 4 prog s₁ s₂ s₆ exec-2
+                 h₂
+                 (exec-chain 1 3 prog s₂ s₃ s₆ exec-3
+                   h₃
+                   (exec-chain 1 2 prog s₃ s₄ s₆ exec-4
+                     h₄
+                     (exec-chain 1 1 prog s₄ s₅ s₆ exec-5
+                       h₅
+                       exec-1-6))))
+
+    -- Final properties
+    h-final : halted s₆ ≡ false
+    h-final = h₅
+
+    pc-final : pc s₆ ≡ closure-code-ptr closure
+    pc-final = x9-s₅
+
+    x19-final : readReg (regs s₆) x19 ≡ closure-env closure
+    x19-final = trans (readReg-writeReg-x30-x19 (regs s₅) (pc s₅ +ℕ 1))
+                      (trans (readReg-writeReg-x0-x19 (regs s₄) (readReg (regs s₄) x10))
+                             (trans (readReg-writeReg-x9-x19 (regs s₃) (closure-code-ptr closure))
+                                    (readReg-writeReg-same (regs s₂) x19 (closure-env closure))))
+
+    x0-final : readReg (regs s₆) x0 ≡ encode arg
+    x0-final = trans (readReg-writeReg-x30-x0 (regs s₅) (pc s₅ +ℕ 1))
+                     (trans (readReg-writeReg-same (regs s₄) x0 (readReg (regs s₄) x10))
+                            x10-s₄)
+
+    x30-final : readReg (regs s₆) x30 ≡ length prefix +ℕ 6
+    x30-final = trans (readReg-writeReg-same (regs s₅) x30 (pc s₅ +ℕ 1))
+                      (cong (_+ℕ 1) pc-s₅)
+
+    x20-final : readReg (regs s₆) x20 ≡ readReg (regs s) x20
+    x20-final = trans (readReg-writeReg-x30-x20 (regs s₅) (pc s₅ +ℕ 1))
+                      (trans (readReg-writeReg-x0-x20 (regs s₄) (readReg (regs s₄) x10))
+                             (trans (readReg-writeReg-x9-x20 (regs s₃) (closure-code-ptr closure))
+                                    (trans (readReg-writeReg-x19-x20 (regs s₂) (closure-env closure))
+                                           (trans (readReg-writeReg-x10-x20 (regs s₁) (encode arg))
+                                                  (readReg-writeReg-x9-x20 (regs s) (encode closure))))))
 
 -- | Thunk execution: given proper setup, thunk computes f(env, arg)
 -- The thunk code is: sub-sp 16; stp x19, x0, [sp]; mov-from-sp x0; f; ret
