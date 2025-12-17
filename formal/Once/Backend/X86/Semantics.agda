@@ -11,12 +11,13 @@ module Once.Backend.X86.Semantics where
 
 open import Once.Backend.X86.Syntax
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function using (_∘_)
+open import Relation.Nullary using (yes; no)
 
 -- Import common fetch function (polymorphic list indexing)
 -- Re-export publicly so downstream modules (Correct.agda) can use it
@@ -315,3 +316,25 @@ defaultFuel = 10000
 -- | Run a program with default fuel
 run : Program → State → Maybe State
 run = exec defaultFuel
+
+------------------------------------------------------------------------
+-- Target-based execution (for branching code)
+------------------------------------------------------------------------
+
+-- | Execute until pc reaches target, or fuel exhausted, or halted
+-- This is essential for branching code where compile-length doesn't match
+-- actual steps executed (e.g., case where one branch is skipped).
+--
+-- Returns: just s' where pc s' = target (if reached successfully)
+--          just s' where halted s' = true (if halted before target)
+--          just s  if fuel = 0
+--          nothing if step fails
+exec-until-pc : (target : ℕ) → (fuel : ℕ) → Program → State → Maybe State
+exec-until-pc target zero prog s = just s
+exec-until-pc target (suc fuel) prog s with halted s
+... | true = just s  -- Already halted, stop
+... | false with pc s ≟ target
+...   | yes _ = just s  -- Reached target pc, stop
+...   | no _ with step prog s
+...     | nothing = nothing  -- Step failed
+...     | just s' = exec-until-pc target fuel prog s'
