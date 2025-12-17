@@ -182,3 +182,23 @@ absurd = initial
 -- Alias for compose (function composition)
 (.) : (B -> C) -> (A -> B) -> A -> C
 (.) = compose
+
+------------------------------------------------------------------------
+-- Effect Morphisms (D032)
+------------------------------------------------------------------------
+
+-- Note: The functions below use point-free style as required by the parser.
+-- Functions with parameters (like `first f = ...`) are not yet supported.
+-- Note: "const" is a reserved word (for allocation annotations), so we use "konst".
+
+-- | liftEff : A -> Eff Unit A
+-- Lift a pure value into an effectful context.
+-- This creates an effectful morphism that ignores its input and returns
+-- the given value. Requires 'konst' from Exponential section above.
+--
+-- Note: This definition requires fixing 'compose arr konst' codegen issue.
+-- For now, use effCompose directly with primitives that have matching types.
+--
+-- Usage: effCompose println@F (liftEff "Hello")
+-- liftEff : A -> Eff Unit A
+-- liftEff = compose arr konst  -- TODO: fix arr/curry codegen

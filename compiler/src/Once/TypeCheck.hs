@@ -404,6 +404,14 @@ generatorType name fresh = case name of
         (b, f2) = freshTVar f1
     in Just (TArrow (TArrow a b) (TEff a b), f2)
 
+  -- Effect composition (D032): Kleisli composition for Eff
+  -- effCompose : Eff B C -> Eff A B -> Eff A C
+  "effCompose" ->
+    let (a, f1) = freshTVar fresh
+        (b, f2) = freshTVar f1
+        (c, f3) = freshTVar f2
+    in Just (TArrow (TEff b c) (TArrow (TEff a b) (TEff a c)), f3)
+
   _ -> Nothing
 
 -- | Convert surface type to internal type

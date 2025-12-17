@@ -61,6 +61,7 @@ elaborateExpr' locals expr = case expr of
   EVar "pair" -> Right $ Var "pair"        -- needs 2 args
   EVar "curry" -> Right $ Var "curry"      -- needs 1 arg
   EVar "arr" -> Right $ Var "arr"          -- needs 1 arg (D032: lift pure to effectful)
+  EVar "effCompose" -> Right $ Var "effCompose"  -- needs 2 args (D032: Kleisli composition)
 
   -- Check if variable is a local binding from let
   EVar name | Set.member name locals -> Right $ LocalVar name
@@ -122,6 +123,12 @@ elaborateApp locals f arg = case f of
     f' <- elaborateExpr' locals arg
     Right $ Compose g' f'
 
+  -- effCompose g f => Compose g' f' (D032: Eff is type-only, same IR as compose)
+  EApp (EVar "effCompose") g -> do
+    g' <- elaborateExpr' locals g
+    f' <- elaborateExpr' locals arg
+    Right $ Compose g' f'
+
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExpr' locals arg
@@ -172,6 +179,7 @@ isGenerator name = name `elem`
   [ "id", "compose", "fst", "snd", "pair", "inl", "inr", "case"
   , "terminal", "initial", "curry", "apply", "fold", "unfold"
   , "arr"  -- D032: arrow generator for lifting pure to effectful
+  , "effCompose"  -- D032: Kleisli composition for Eff
   ]
 
 -- | Placeholder type for type inference to fill in later
@@ -221,6 +229,7 @@ elaborateExprWithEnv modEnv locals expr = case expr of
   EVar "pair" -> Right $ Var "pair"
   EVar "curry" -> Right $ Var "curry"
   EVar "arr" -> Right $ Var "arr"
+  EVar "effCompose" -> Right $ Var "effCompose"
 
   -- Check if variable is a local binding from let
   EVar name | Set.member name locals -> Right $ LocalVar name
@@ -283,6 +292,12 @@ elaborateAppWithEnv modEnv locals f arg = case f of
 
   -- compose g f => Compose g' f'
   EApp (EVar "compose") g -> do
+    g' <- elaborateExprWithEnv modEnv locals g
+    f' <- elaborateExprWithEnv modEnv locals arg
+    Right $ Compose g' f'
+
+  -- effCompose g f => Compose g' f' (D032: Eff is type-only, same IR as compose)
+  EApp (EVar "effCompose") g -> do
     g' <- elaborateExprWithEnv modEnv locals g
     f' <- elaborateExprWithEnv modEnv locals arg
     Right $ Compose g' f'

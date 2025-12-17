@@ -1,0 +1,24 @@
+-- fannkuch.once: Fannkuch-redux benchmark (TODO: implement in Once)
+--
+-- Benchmarks Game: https://benchmarksgame-team.pages.debian.net/benchmarksgame/
+--
+-- Expected output for n=7:
+--   228
+--   Pfannkuchen(7) = 16
+--
+-- STATUS: Not yet implemented
+--
+-- This benchmark requires:
+--   1. Effect composition (effCompose) - DONE
+--   2. Recursion schemes (cataNat, hyloNat) - TODO
+--   3. Array primitives (readInt, writeInt) - Available in I.Linux.Array
+--
+-- The algorithm must be written in Once (not C) per the project philosophy:
+--   - C interpretations are only for low-level primitives
+--   - Algorithm logic belongs in Once for verification
+
+import I.Linux.Syscalls as S
+
+-- Placeholder: just exit successfully until algorithm is implemented
+main : IO Unit
+main = exit0@S
