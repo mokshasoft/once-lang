@@ -5042,9 +5042,10 @@ mutual
       --
       -- Resolution: The postulates assume the execution converges to the correct state.
       -- A full proof would require either:
-      -- 1. A specialized exec variant that stops at a given pc
-      -- 2. Proving suffix code preserves our invariants
+      -- 1. Using exec-until-pc (now available in Semantics) + changing type signature
+      -- 2. Proving suffix code preserves our invariants (not generally provable)
       -- 3. Using run-ir-at-offset with exact fuel (6+len-f) and converting
+      -- Option 1 is the recommended path but requires refactoring run-ir-at-offset
 
       postulate
         s-final : State
@@ -5098,11 +5099,11 @@ mutual
       --
       -- FUEL MISMATCH CHALLENGE (same as inl):
       -- compile-length = 8 + len-f + len-g provides (8+len-f+len-g) steps of fuel
-      -- But inr branch only needs: 3 (setup) + 1 (jne taken) + 1 (label) + 1 (load) + len-g (g) + 1 (label) = 7+len-g steps
-      -- Wait, actually: 3 (mov,cmp,jne) + 1 (label) + 1 (mov) + len-g (g) + 1 (label) = 6+len-g steps
+      -- But inr branch only needs: 3 (mov,cmp,jne) + 1 (label) + 1 (mov) + len-g (g) + 1 (label) = 6+len-g steps
       -- Extra fuel: (8+len-f+len-g) - (6+len-g) = 2+len-f steps
       --
       -- Same structural issue as inl: extra fuel would execute into suffix.
+      -- See inl comment for resolution options (exec-until-pc is now available).
 
       postulate
         s-final : State
