@@ -687,10 +687,25 @@ readReg-writeReg-rsi-r14 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rsi v) r14 ≡ readReg rf r14
 readReg-writeReg-rsi-r14 rf v = refl
 
+-- | Reading r15 after writing rsi returns the old value
+readReg-writeReg-rsi-r15 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsi v) r15 ≡ readReg rf r15
+readReg-writeReg-rsi-r15 rf v = refl
+
 -- | Reading r14 after writing r12 returns the old value
 readReg-writeReg-r12-r14 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf r12 v) r14 ≡ readReg rf r14
 readReg-writeReg-r12-r14 rf v = refl
+
+-- | Reading r15 after writing r12 returns the old value
+readReg-writeReg-r12-r15 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r12 v) r15 ≡ readReg rf r15
+readReg-writeReg-r12-r15 rf v = refl
+
+-- | Reading rsi after writing r12 returns the old value
+readReg-writeReg-r12-rsi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r12 v) rsi ≡ readReg rf rsi
+readReg-writeReg-r12-rsi rf v = refl
 
 -- | Reading r14 after writing r15 returns the old value
 readReg-writeReg-r15-r14 : ∀ (rf : RegFile) (v : Word) →
@@ -701,6 +716,16 @@ readReg-writeReg-r15-r14 rf v = refl
 readReg-writeReg-r15-r12 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf r15 v) r12 ≡ readReg rf r12
 readReg-writeReg-r15-r12 rf v = refl
+
+-- | Reading rsi after writing r15 returns the old value
+readReg-writeReg-r15-rsi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r15 v) rsi ≡ readReg rf rsi
+readReg-writeReg-r15-rsi rf v = refl
+
+-- | Reading r12 after writing rsp returns the old value
+readReg-writeReg-rsp-r12 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsp v) r12 ≡ readReg rf r12
+readReg-writeReg-rsp-r12 rf v = refl
 
 ------------------------------------------------------------------------
 -- Memory Lemmas
@@ -4960,18 +4985,254 @@ mutual
         mem-closure-code : readMem (memory s) (encode {A ⇒ B} closure +ℕ 8) ≡ just (closure-code-ptr-x86 {A} {B} closure)
 
       -- Final state after 6 instructions
-      -- Build incrementally: s → s1 → s2 → s3 → s4 → s5 → s'
+      -- Build incrementally: s → s1 → s2 → s3 → s4 → s5 → s6
+
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Data.Nat.Properties using (+-assoc)
+
+      -- Shorthand for values read from memory
+      closure-ptr : Word
+      closure-ptr = encode {A ⇒ B} closure
+
+      arg-val : Word
+      arg-val = encode {A} arg
+
+      env-val : Word
+      env-val = closure-env-x86 {A} {B} closure
+
+      code-ptr : Word
+      code-ptr = closure-code-ptr-x86 {A} {B} closure
+
+      -- Step 1: mov r15, [rdi] - load closure from pair.fst
+      s1 : State
+      s1 = record s { regs = writeReg (regs s) r15 closure-ptr
+                    ; pc = pc s +ℕ 1 }
+
+      -- rdi holds the pair pointer
+      rdi-is-pair : readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (closure , arg)
+      rdi-is-pair = rdi-eq
+
+      -- Memory at [rdi] contains closure pointer
+      mem-s1 : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-ptr
+      mem-s1 = subst (λ x → readMem (memory s) x ≡ just closure-ptr) (sym rdi-is-pair) mem-pair-fst
+
+      instr0 : Instr
+      instr0 = mov (reg r15) (mem (base rdi))
+
+      fetch0 : fetch prog (length prefix) ≡ just instr0
+      fetch0 = fetch-at-prefix-end prefix instr0 _
+
+      step1 : step prog s ≡ just s1
+      step1 = trans (step-exec prog s instr0 h-false (subst (λ n → fetch prog n ≡ just instr0) (sym pc-eq) fetch0))
+                    (execMov-reg-mem-base s r15 rdi closure-ptr mem-s1)
+
+      h1 : halted s1 ≡ false
+      h1 = h-false
+
+      pc1 : pc s1 ≡ length prefix +ℕ 1
+      pc1 = cong (λ n → n +ℕ 1) pc-eq
+
+      -- Step 2: mov rsi, [rdi+8] - load argument from pair.snd
+      s2 : State
+      s2 = record s1 { regs = writeReg (regs s1) rsi arg-val
+                     ; pc = pc s1 +ℕ 1 }
+
+      -- rdi still holds pair pointer (wasn't modified)
+      rdi-s1 : readReg (regs s1) rdi ≡ encode {(A ⇒ B) * A} (closure , arg)
+      rdi-s1 = trans (readReg-writeReg-r15-rdi (regs s) closure-ptr) rdi-is-pair
+
+      mem-s2 : readMem (memory s1) (readReg (regs s1) rdi +ℕ 8) ≡ just arg-val
+      mem-s2 = subst (λ x → readMem (memory s1) (x +ℕ 8) ≡ just arg-val) (sym rdi-s1) mem-pair-snd
+
+      instr1 : Instr
+      instr1 = mov (reg rsi) (mem (base+disp rdi 8))
+
+      prog-eq1 : prog ≡ (prefix ++ instr0 ∷ []) ++ instr1 ∷ _
+      prog-eq1 = sym (++-assoc prefix _ _)
+
+      len-prefix1 : length (prefix ++ instr0 ∷ []) ≡ length prefix +ℕ 1
+      len-prefix1 = List-length-++ prefix
+
+      fetch1 : fetch prog (length prefix +ℕ 1) ≡ just instr1
+      fetch1 = subst₂ (λ p n → fetch p n ≡ just instr1) (sym prog-eq1) len-prefix1
+                      (fetch-at-prefix-end (prefix ++ instr0 ∷ []) instr1 _)
+
+      step2 : step prog s1 ≡ just s2
+      step2 = trans (step-exec prog s1 instr1 h1 (subst (λ n → fetch prog n ≡ just instr1) (sym pc1) fetch1))
+                    (execMov-reg-mem-disp s1 rsi rdi 8 arg-val mem-s2)
+
+      h2 : halted s2 ≡ false
+      h2 = h-false
+
+      pc2 : pc s2 ≡ length prefix +ℕ 2
+      pc2 = trans (cong (λ n → n +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+      -- Step 3: mov r12, [r15] - load env from closure.fst
+      s3 : State
+      s3 = record s2 { regs = writeReg (regs s2) r12 env-val
+                     ; pc = pc s2 +ℕ 1 }
+
+      -- r15 holds closure pointer (from step 1)
+      r15-s2 : readReg (regs s2) r15 ≡ closure-ptr
+      r15-s2 = trans (readReg-writeReg-rsi-r15 (regs s1) arg-val)
+                     (readReg-writeReg-same (regs s) r15 closure-ptr)
+
+      mem-s3 : readMem (memory s2) (readReg (regs s2) r15) ≡ just env-val
+      mem-s3 = subst (λ x → readMem (memory s2) x ≡ just env-val) (sym r15-s2) mem-closure-env
+
+      instr2 : Instr
+      instr2 = mov (reg r12) (mem (base r15))
+
+      prog-eq2 : prog ≡ (prefix ++ instr0 ∷ instr1 ∷ []) ++ instr2 ∷ _
+      prog-eq2 = sym (++-assoc prefix _ _)
+
+      len-prefix2 : length (prefix ++ instr0 ∷ instr1 ∷ []) ≡ length prefix +ℕ 2
+      len-prefix2 = trans (List-length-++ prefix) refl
+
+      fetch2 : fetch prog (length prefix +ℕ 2) ≡ just instr2
+      fetch2 = subst₂ (λ p n → fetch p n ≡ just instr2) (sym prog-eq2) len-prefix2
+                      (fetch-at-prefix-end (prefix ++ instr0 ∷ instr1 ∷ []) instr2 _)
+
+      step3 : step prog s2 ≡ just s3
+      step3 = trans (step-exec prog s2 instr2 h2 (subst (λ n → fetch prog n ≡ just instr2) (sym pc2) fetch2))
+                    (execMov-reg-mem-base s2 r12 r15 env-val mem-s3)
+
+      h3 : halted s3 ≡ false
+      h3 = h-false
+
+      pc3 : pc s3 ≡ length prefix +ℕ 3
+      pc3 = trans (cong (λ n → n +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+      -- Step 4: mov r15, [r15+8] - load code_ptr from closure.snd
+      s4 : State
+      s4 = record s3 { regs = writeReg (regs s3) r15 code-ptr
+                     ; pc = pc s3 +ℕ 1 }
+
+      -- r15 still holds closure pointer (need to read through r12 write)
+      r15-s3 : readReg (regs s3) r15 ≡ closure-ptr
+      r15-s3 = trans (readReg-writeReg-r12-r15 (regs s2) env-val) r15-s2
+
+      mem-s4 : readMem (memory s3) (readReg (regs s3) r15 +ℕ 8) ≡ just code-ptr
+      mem-s4 = subst (λ x → readMem (memory s3) (x +ℕ 8) ≡ just code-ptr) (sym r15-s3) mem-closure-code
+
+      instr3 : Instr
+      instr3 = mov (reg r15) (mem (base+disp r15 8))
+
+      prog-eq3 : prog ≡ (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ []) ++ instr3 ∷ _
+      prog-eq3 = sym (++-assoc prefix _ _)
+
+      len-prefix3 : length (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ []) ≡ length prefix +ℕ 3
+      len-prefix3 = trans (List-length-++ prefix) refl
+
+      fetch3 : fetch prog (length prefix +ℕ 3) ≡ just instr3
+      fetch3 = subst₂ (λ p n → fetch p n ≡ just instr3) (sym prog-eq3) len-prefix3
+                      (fetch-at-prefix-end (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ []) instr3 _)
+
+      step4 : step prog s3 ≡ just s4
+      step4 = trans (step-exec prog s3 instr3 h3 (subst (λ n → fetch prog n ≡ just instr3) (sym pc3) fetch3))
+                    (execMov-reg-mem-disp s3 r15 r15 8 code-ptr mem-s4)
+
+      h4 : halted s4 ≡ false
+      h4 = h-false
+
+      pc4 : pc s4 ≡ length prefix +ℕ 4
+      pc4 = trans (cong (λ n → n +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+      -- Step 5: mov rdi, rsi - move argument to rdi
+      s5 : State
+      s5 = record s4 { regs = writeReg (regs s4) rdi (readReg (regs s4) rsi)
+                     ; pc = pc s4 +ℕ 1 }
+
+      -- rsi holds arg-val (from step 2, preserved through r12 and r15 writes)
+      rsi-s4 : readReg (regs s4) rsi ≡ arg-val
+      rsi-s4 = trans (readReg-writeReg-r15-rsi (regs s3) code-ptr)
+                     (trans (readReg-writeReg-r12-rsi (regs s2) env-val)
+                            (readReg-writeReg-same (regs s1) rsi arg-val))
+
+      instr4 : Instr
+      instr4 = mov (reg rdi) (reg rsi)
+
+      prog-eq4 : prog ≡ (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ instr3 ∷ []) ++ instr4 ∷ _
+      prog-eq4 = sym (++-assoc prefix _ _)
+
+      len-prefix4 : length (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ instr3 ∷ []) ≡ length prefix +ℕ 4
+      len-prefix4 = trans (List-length-++ prefix) refl
+
+      fetch4 : fetch prog (length prefix +ℕ 4) ≡ just instr4
+      fetch4 = subst₂ (λ p n → fetch p n ≡ just instr4) (sym prog-eq4) len-prefix4
+                      (fetch-at-prefix-end (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ instr3 ∷ []) instr4 _)
+
+      step5 : step prog s4 ≡ just s5
+      step5 = trans (step-exec prog s4 instr4 h4 (subst (λ n → fetch prog n ≡ just instr4) (sym pc4) fetch4))
+                    (execMov-reg-reg s4 rdi rsi)
+
+      h5 : halted s5 ≡ false
+      h5 = h-false
+
+      pc5 : pc s5 ≡ length prefix +ℕ 5
+      pc5 = trans (cong (λ n → n +ℕ 1) pc4) (+-assoc (length prefix) 4 1)
+
+      -- Step 6: call r15 - jump to code_ptr
+      s6 : State
+      s6 = record s5 { pc = readReg (regs s5) r15 }
+
+      -- r15 holds code-ptr (from step 4, preserved through rdi write)
+      r15-s5 : readReg (regs s5) r15 ≡ code-ptr
+      r15-s5 = trans (readReg-writeReg-rdi-r15 (regs s4) (readReg (regs s4) rsi))
+                     (readReg-writeReg-same (regs s3) r15 code-ptr)
+
+      instr5 : Instr
+      instr5 = call (reg r15)
+
+      prog-eq5 : prog ≡ (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ instr3 ∷ instr4 ∷ []) ++ instr5 ∷ _
+      prog-eq5 = sym (++-assoc prefix _ _)
+
+      len-prefix5 : length (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ instr3 ∷ instr4 ∷ []) ≡ length prefix +ℕ 5
+      len-prefix5 = trans (List-length-++ prefix) refl
+
+      fetch5 : fetch prog (length prefix +ℕ 5) ≡ just instr5
+      fetch5 = subst₂ (λ p n → fetch p n ≡ just instr5) (sym prog-eq5) len-prefix5
+                      (fetch-at-prefix-end (prefix ++ instr0 ∷ instr1 ∷ instr2 ∷ instr3 ∷ instr4 ∷ []) instr5 _)
+
+      step6 : step prog s5 ≡ just s6
+      step6 = trans (step-exec prog s5 instr5 h5 (subst (λ n → fetch prog n ≡ just instr5) (sym pc5) fetch5))
+                    (execCall-reg prog s5 r15)
+
+      h6 : halted s6 ≡ false
+      h6 = h-false
+
+      -- Chain all 6 steps
+      exec-eq-raw : exec 6 prog s ≡ just s6
+      exec-eq-raw = exec-six-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6
+
+      -- s' is the expected final state - prove it equals s6
       s' : State
       s' = record s { regs = writeReg (writeReg (writeReg (writeReg (regs s)
-                                r15 (closure-code-ptr-x86 closure))
-                                r12 (closure-env-x86 closure))
-                                rsi (encode arg))
-                                rdi (encode arg)
-                    ; pc = closure-code-ptr-x86 closure }
+                                r15 code-ptr)
+                                r12 env-val)
+                                rsi arg-val)
+                                rdi arg-val
+                    ; pc = code-ptr }
 
-      -- Key properties (postulated - stepping through 6 instructions is tedious but straightforward)
-      postulate
-        exec-eq : exec 6 prog s ≡ just s'
+      -- Prove s6 ≡ s' by showing all fields match
+      -- The register files are equal due to record eta-equality
+      -- We need: regs s6 ≡ regs s'
+
+      -- s6.rdi = arg-val (from step 5, using rsi-s4)
+      rdi-s6 : readReg (regs s6) rdi ≡ arg-val
+      rdi-s6 = trans (readReg-writeReg-same (regs s4) rdi (readReg (regs s4) rsi)) rsi-s4
+
+      -- s6.pc = code-ptr
+      pc-s6 : pc s6 ≡ code-ptr
+      pc-s6 = r15-s5
+
+      -- For now, use a helper to bridge s6 and s' equality
+      -- The key insight is that both have same register values and pc
+      s6≡s' : s6 ≡ s'
+      s6≡s' = refl  -- Should work due to record eta-equality
+
+      exec-eq : exec 6 prog s ≡ just s'
+      exec-eq = subst (λ x → exec 6 prog s ≡ just x) s6≡s' exec-eq-raw
 
       h' : halted s' ≡ false
       h' = h-false
@@ -5208,9 +5469,6 @@ mutual
       -- r12 value preserved through s1
       r12-s1 : readReg (regs s1) r12 ≡ orig-r12
       r12-s1 = readReg-writeReg-rsp-r12 (regs s) new-rsp
-        where
-          readReg-writeReg-rsp-r12 : ∀ rf v → readReg (writeReg rf rsp v) r12 ≡ readReg rf r12
-          readReg-writeReg-rsp-r12 rf v = refl
 
       -- Memory at [new-rsp] after s2 contains orig-r12 = encode env
       mem-env : readMem (memory s-after-setup) new-rsp ≡ just orig-r12
