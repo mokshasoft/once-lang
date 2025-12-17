@@ -35,6 +35,13 @@ open import Once.Backend.Common.Fetch
 open import Once.Backend.Common.Memory
   using (≡ᵇ-refl; n≢n+suc)
 
+-- Import common program manipulation lemmas
+open import Once.Backend.Common.ProgramLemmas
+  using ( prog-shift-1; prog-shift-2; prog-shift-3
+        ; len-shift-1; len-shift-2; len-shift-3
+        ; compose-prog-eq; compose-transfer-eq; compose-g-eq
+        )
+
 -- Import common exec N-steps lemmas (parameterized module)
 -- Instantiated below after defining the base lemmas exec-on-non-halted-step and exec-on-halted-step
 
@@ -1796,48 +1803,8 @@ run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) 
          × readReg (regs s') rsp > 16)
 run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 = ⊥-elim x
 
-------------------------------------------------------------------------
--- List manipulation lemmas for compose proof
-------------------------------------------------------------------------
-
-open import Data.List.Properties using (++-assoc; ++-identityʳ) renaming (length-++ to length-++-global)
-
--- | Compose program equality lemma
--- Shows: prefix ++ (code-f ++ [transfer] ++ code-g) ++ suffix
---      ≡ prefix ++ code-f ++ (transfer ∷ code-g ++ suffix)
--- Note: transfer ∷ [] ++ code-g = transfer ∷ code-g by definition
--- and (transfer ∷ code-g) ++ suffix = transfer ∷ (code-g ++ suffix) by definition
-compose-prog-eq : ∀ (prefix code-f code-g suffix : Program) (transfer : Instr) →
-  prefix ++ (code-f ++ transfer ∷ [] ++ code-g) ++ suffix ≡
-  prefix ++ code-f ++ (transfer ∷ code-g ++ suffix)
-compose-prog-eq prefix code-f code-g suffix transfer =
-  cong (prefix ++_) (++-assoc code-f (transfer ∷ code-g) suffix)
-
--- | Program equality for transfer position
--- Shows: prefix ++ code-f ++ (transfer ∷ code-g ++ suffix)
---      ≡ (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
-compose-transfer-eq : ∀ (prefix code-f code-g suffix : Program) (transfer : Instr) →
-  prefix ++ code-f ++ (transfer ∷ code-g ++ suffix) ≡
-  (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
-compose-transfer-eq prefix code-f code-g suffix transfer =
-  sym (++-assoc prefix code-f (transfer ∷ code-g ++ suffix))
-
--- | Program equality for g position
--- Shows: (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
---      ≡ (prefix ++ code-f ++ transfer ∷ []) ++ code-g ++ suffix
--- Key insight: (transfer ∷ []) ++ xs = transfer ∷ xs by definition
-compose-g-eq : ∀ (prefix code-f code-g suffix : Program) (transfer : Instr) →
-  (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix) ≡
-  (prefix ++ code-f ++ transfer ∷ []) ++ code-g ++ suffix
-compose-g-eq prefix code-f code-g suffix transfer = begin
-    (prefix ++ code-f) ++ transfer ∷ (code-g ++ suffix)
-  ≡⟨ ++-assoc prefix code-f (transfer ∷ (code-g ++ suffix)) ⟩
-    prefix ++ (code-f ++ (transfer ∷ (code-g ++ suffix)))
-  ≡⟨ cong (prefix ++_) (sym (++-assoc code-f (transfer ∷ []) (code-g ++ suffix))) ⟩
-    prefix ++ ((code-f ++ transfer ∷ []) ++ (code-g ++ suffix))
-  ≡⟨ sym (++-assoc prefix (code-f ++ transfer ∷ []) (code-g ++ suffix)) ⟩
-    (prefix ++ (code-f ++ transfer ∷ [])) ++ (code-g ++ suffix)
-  ∎
+-- NOTE: List manipulation lemmas (compose-prog-eq, compose-transfer-eq, compose-g-eq)
+-- are now imported from Once.Backend.Common.ProgramLemmas
 
 ------------------------------------------------------------------------
 -- Mutual block for run-ir-at-offset and complex IR cases
@@ -4586,11 +4553,6 @@ run-seq-compose-id-id {A} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-
 --
 -- One more step causes fetch to fail (pc ≥ length), which halts.
 -- This connects to run-generator which expects halted s' ≡ true.
-
--- Lemma: When prefix = [] and suffix = [], program is just compile-x86 ir
-prog-empty-prefix-suffix : ∀ {A B} (ir : IR A B) →
-  [] ++ compile-x86 ir ++ [] ≡ compile-x86 ir
-prog-empty-prefix-suffix ir = ++-identityʳ (compile-x86 ir)
 
 -- Lemma: fetch at length returns nothing (by induction on list)
 fetch-at-length : ∀ (xs : Program) → fetch xs (length xs) ≡ nothing
