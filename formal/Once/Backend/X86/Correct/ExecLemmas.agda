@@ -916,8 +916,31 @@ pc-not-at-target {n} (suc k) _ eq = helper n k eq
     helper (suc n) k eq = helper n k (suc-inj eq)
 
 -- | compile-length is always positive (at least 1)
-postulate
-  compile-length>0 : ∀ {A B} (ir : IR A B) → compile-length ir > 0
+-- Proof by structural induction on IR constructors
+compile-length>0 : ∀ {A B} (ir : IR A B) → compile-length ir > 0
+compile-length>0 id = s≤s z≤n
+compile-length>0 (g ∘ f) = +≥1-left (compile-length f +ℕ 1) (compile-length g) (n+1≥1 (compile-length f))
+  where
+    -- n + 1 ≥ 1 for any n
+    n+1≥1 : ∀ n → n +ℕ 1 ≥ 1
+    n+1≥1 zero = s≤s z≤n
+    n+1≥1 (suc n) = s≤s z≤n
+    -- m ≥ 1 implies m + n ≥ 1
+    +≥1-left : ∀ m n → m ≥ 1 → m +ℕ n ≥ 1
+    +≥1-left (suc m) n _ = s≤s z≤n
+compile-length>0 fst = s≤s z≤n
+compile-length>0 snd = s≤s z≤n
+compile-length>0 ⟨ f , g ⟩ = s≤s z≤n  -- (15 + n) + m starts with suc 14
+compile-length>0 inl = s≤s z≤n
+compile-length>0 inr = s≤s z≤n
+compile-length>0 [ f , g ] = s≤s z≤n  -- (8 + n) + m starts with suc 7
+compile-length>0 terminal = s≤s z≤n
+compile-length>0 initial = s≤s z≤n
+compile-length>0 (curry f) = s≤s z≤n  -- 13 + n starts with suc 12
+compile-length>0 apply = s≤s z≤n
+compile-length>0 fold = s≤s z≤n
+compile-length>0 unfold = s≤s z≤n
+compile-length>0 arr = s≤s z≤n
 
 -- | Convert exec proof to exec-until-pc for simple generators
 -- Used when compile-length equals actual steps (non-branching generators)
