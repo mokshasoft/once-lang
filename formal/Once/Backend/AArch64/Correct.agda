@@ -455,31 +455,28 @@ compile-length-correct ⟨ f , g ⟩ =
       step4 : length (prog-g ++ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []) ≡
               length prog-g +ℕ 2
       step4 = trans (length-++ prog-g) refl
-      -- Combine: 2 + (|f| + (2 + (|g| + 2))) = (6 + |f|) + |g|
-      combine : 2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2))) ≡ (6 +ℕ len-f) +ℕ len-g
-      combine = begin
-        2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2)))
-          ≡⟨ cong (λ x → 2 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 2)))) IHf ⟩
-        2 +ℕ (len-f +ℕ (2 +ℕ (length prog-g +ℕ 2)))
-          ≡⟨ cong (λ x → 2 +ℕ (len-f +ℕ (2 +ℕ (x +ℕ 2)))) IHg ⟩
-        2 +ℕ (len-f +ℕ (2 +ℕ (len-g +ℕ 2)))
-          ≡⟨ cong (2 +ℕ_) (sym (+-assoc len-f 2 (len-g +ℕ 2))) ⟩
-        2 +ℕ ((len-f +ℕ 2) +ℕ (len-g +ℕ 2))
-          ≡⟨ cong (λ x → 2 +ℕ (x +ℕ (len-g +ℕ 2))) (+-comm len-f 2) ⟩
-        2 +ℕ ((2 +ℕ len-f) +ℕ (len-g +ℕ 2))
-          ≡⟨ sym (+-assoc 2 (2 +ℕ len-f) (len-g +ℕ 2)) ⟩
-        (2 +ℕ (2 +ℕ len-f)) +ℕ (len-g +ℕ 2)
-          ≡⟨ cong (_+ℕ (len-g +ℕ 2)) (sym (+-assoc 2 2 len-f)) ⟩
-        (4 +ℕ len-f) +ℕ (len-g +ℕ 2)
-          ≡⟨ cong ((4 +ℕ len-f) +ℕ_) (+-comm len-g 2) ⟩
-        (4 +ℕ len-f) +ℕ (2 +ℕ len-g)
-          ≡⟨ sym (+-assoc (4 +ℕ len-f) 2 len-g) ⟩
-        ((4 +ℕ len-f) +ℕ 2) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-comm (4 +ℕ len-f) 2) ⟩
-        (2 +ℕ (4 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 2 4 len-f)) ⟩
-        (6 +ℕ len-f) +ℕ len-g
+      -- Arithmetic helper: 2 + (a + (2 + (b + 2))) = (6 + a) + b
+      arith-pair : ∀ a b → 2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2))) ≡ (6 +ℕ a) +ℕ b
+      arith-pair a b = begin
+        2 +ℕ (a +ℕ (2 +ℕ (b +ℕ 2)))
+          ≡⟨ cong (2 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 2))) ⟩
+        2 +ℕ (a +ℕ (2 +ℕ (2 +ℕ b)))
+          ≡⟨ cong (2 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 2 b))) ⟩
+        2 +ℕ (a +ℕ (4 +ℕ b))
+          ≡⟨ cong (2 +ℕ_) (sym (+-assoc a 4 b)) ⟩
+        2 +ℕ ((a +ℕ 4) +ℕ b)
+          ≡⟨ cong (2 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
+        2 +ℕ ((4 +ℕ a) +ℕ b)
+          ≡⟨ sym (+-assoc 2 (4 +ℕ a) b) ⟩
+        (2 +ℕ (4 +ℕ a)) +ℕ b
+          ≡⟨ cong (_+ℕ b) (sym (+-assoc 2 4 a)) ⟩
+        (6 +ℕ a) +ℕ b
         ∎
+      -- Combine IH substitutions with arithmetic
+      combine : 2 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2))) ≡ (6 +ℕ len-f) +ℕ len-g
+      combine = trans (cong (λ x → 2 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 2)))) IHf)
+               (trans (cong (λ x → 2 +ℕ (len-f +ℕ (2 +ℕ (x +ℕ 2)))) IHg)
+                      (arith-pair len-f len-g))
   in trans step1 (trans (cong (2 +ℕ_) step2)
      (trans (cong (λ x → 2 +ℕ (length prog-f +ℕ x)) step3)
      (trans (cong (λ x → 2 +ℕ (length prog-f +ℕ (2 +ℕ x))) step4) combine)))
@@ -518,31 +515,28 @@ compile-length-correct [ f , g ] =
       step3 = refl
       step4 : length (prog-g ++ label end-label ∷ []) ≡ length prog-g +ℕ 1
       step4 = trans (length-++ prog-g) refl
-      -- Combine: 4 + (|f| + (3 + (|g| + 1))) = (8 + |f|) + |g|
-      combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (8 +ℕ len-f) +ℕ len-g
-      combine = begin
-        4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1)))
-          ≡⟨ cong (λ x → 4 +ℕ (x +ℕ (3 +ℕ (length prog-g +ℕ 1)))) IHf ⟩
-        4 +ℕ (len-f +ℕ (3 +ℕ (length prog-g +ℕ 1)))
-          ≡⟨ cong (λ x → 4 +ℕ (len-f +ℕ (3 +ℕ (x +ℕ 1)))) IHg ⟩
-        4 +ℕ (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))
-          ≡⟨ cong (4 +ℕ_) (sym (+-assoc len-f 3 (len-g +ℕ 1))) ⟩
-        4 +ℕ ((len-f +ℕ 3) +ℕ (len-g +ℕ 1))
-          ≡⟨ cong (λ x → 4 +ℕ (x +ℕ (len-g +ℕ 1))) (+-comm len-f 3) ⟩
-        4 +ℕ ((3 +ℕ len-f) +ℕ (len-g +ℕ 1))
-          ≡⟨ sym (+-assoc 4 (3 +ℕ len-f) (len-g +ℕ 1)) ⟩
-        (4 +ℕ (3 +ℕ len-f)) +ℕ (len-g +ℕ 1)
-          ≡⟨ cong (_+ℕ (len-g +ℕ 1)) (sym (+-assoc 4 3 len-f)) ⟩
-        (7 +ℕ len-f) +ℕ (len-g +ℕ 1)
-          ≡⟨ cong ((7 +ℕ len-f) +ℕ_) (+-comm len-g 1) ⟩
-        (7 +ℕ len-f) +ℕ (1 +ℕ len-g)
-          ≡⟨ sym (+-assoc (7 +ℕ len-f) 1 len-g) ⟩
-        ((7 +ℕ len-f) +ℕ 1) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-comm (7 +ℕ len-f) 1) ⟩
-        (1 +ℕ (7 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 1 7 len-f)) ⟩
-        (8 +ℕ len-f) +ℕ len-g
+      -- Arithmetic helper: 4 + (a + (3 + (b + 1))) = (8 + a) + b
+      arith-case : ∀ a b → 4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1))) ≡ (8 +ℕ a) +ℕ b
+      arith-case a b = begin
+        4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1)))
+          ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (cong (3 +ℕ_) (+-comm b 1))) ⟩
+        4 +ℕ (a +ℕ (3 +ℕ (1 +ℕ b)))
+          ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 3 1 b))) ⟩
+        4 +ℕ (a +ℕ (4 +ℕ b))
+          ≡⟨ cong (4 +ℕ_) (sym (+-assoc a 4 b)) ⟩
+        4 +ℕ ((a +ℕ 4) +ℕ b)
+          ≡⟨ cong (4 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
+        4 +ℕ ((4 +ℕ a) +ℕ b)
+          ≡⟨ sym (+-assoc 4 (4 +ℕ a) b) ⟩
+        (4 +ℕ (4 +ℕ a)) +ℕ b
+          ≡⟨ cong (_+ℕ b) (sym (+-assoc 4 4 a)) ⟩
+        (8 +ℕ a) +ℕ b
         ∎
+      -- Combine IH substitutions with arithmetic
+      combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (8 +ℕ len-f) +ℕ len-g
+      combine = trans (cong (λ x → 4 +ℕ (x +ℕ (3 +ℕ (length prog-g +ℕ 1)))) IHf)
+               (trans (cong (λ x → 4 +ℕ (len-f +ℕ (3 +ℕ (x +ℕ 1)))) IHg)
+                      (arith-case len-f len-g))
   in trans step1 (trans (cong (4 +ℕ_) step2)
      (trans (cong (λ x → 4 +ℕ (length prog-f +ℕ x)) step3)
      (trans (cong (λ x → 4 +ℕ (length prog-f +ℕ (3 +ℕ x))) step4) combine)))
@@ -2576,64 +2570,29 @@ mutual
       h-fin₁ : halted s-fin₁ ≡ false
       h-fin₁ = refl
 
-      -- pc sg + 1 = length prefix + 4 + len-f + len-g + 1 = length prefix + 5 + len-f + len-g
-      -- Arithmetic: (a + 4 + b + c) + 1 = a + 5 + b + c
-      pcg-plus-1 : pc sg +ℕ 1 ≡ length prefix +ℕ 5 +ℕ len-f +ℕ len-g
-      pcg-plus-1 = begin
-        pc sg +ℕ 1
-          ≡⟨ cong (_+ℕ 1) pcg-for-fetch ⟩
-        (length prefix +ℕ 4 +ℕ len-f +ℕ len-g) +ℕ 1
-          ≡⟨ +-assoc (length prefix +ℕ 4 +ℕ len-f) len-g 1 ⟩
-        (length prefix +ℕ 4 +ℕ len-f) +ℕ (len-g +ℕ 1)
-          ≡⟨ +-assoc (length prefix +ℕ 4) len-f (len-g +ℕ 1) ⟩
-        (length prefix +ℕ 4) +ℕ (len-f +ℕ (len-g +ℕ 1))
-          ≡⟨ +-assoc (length prefix) 4 (len-f +ℕ (len-g +ℕ 1)) ⟩
-        length prefix +ℕ (4 +ℕ (len-f +ℕ (len-g +ℕ 1)))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 4 len-f (len-g +ℕ 1))) ⟩
-        length prefix +ℕ ((4 +ℕ len-f) +ℕ (len-g +ℕ 1))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc (4 +ℕ len-f) len-g 1)) ⟩
-        length prefix +ℕ (((4 +ℕ len-f) +ℕ len-g) +ℕ 1)
-          ≡⟨ cong (λ z → length prefix +ℕ ((z +ℕ len-g) +ℕ 1)) (+-comm 4 len-f) ⟩
-        length prefix +ℕ (((len-f +ℕ 4) +ℕ len-g) +ℕ 1)
-          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ 1)) (+-assoc len-f 4 len-g) ⟩
-        length prefix +ℕ ((len-f +ℕ (4 +ℕ len-g)) +ℕ 1)
-          ≡⟨ cong (λ z → length prefix +ℕ ((len-f +ℕ z) +ℕ 1)) (+-comm 4 len-g) ⟩
-        length prefix +ℕ ((len-f +ℕ (len-g +ℕ 4)) +ℕ 1)
-          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f (len-g +ℕ 4) 1) ⟩
-        length prefix +ℕ (len-f +ℕ ((len-g +ℕ 4) +ℕ 1))
-          ≡⟨ cong (λ z → length prefix +ℕ (len-f +ℕ z)) (+-assoc len-g 4 1) ⟩
-        length prefix +ℕ (len-f +ℕ (len-g +ℕ 5))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f len-g 5)) ⟩
-        length prefix +ℕ ((len-f +ℕ len-g) +ℕ 5)
-          ≡⟨ cong (length prefix +ℕ_) (+-comm (len-f +ℕ len-g) 5) ⟩
-        length prefix +ℕ (5 +ℕ (len-f +ℕ len-g))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 5 len-f len-g)) ⟩
-        length prefix +ℕ ((5 +ℕ len-f) +ℕ len-g)
-          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ len-g)) (+-comm 5 len-f) ⟩
-        length prefix +ℕ ((len-f +ℕ 5) +ℕ len-g)
-          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 5 len-g) ⟩
-        length prefix +ℕ (len-f +ℕ (5 +ℕ len-g))
-          ≡⟨ cong (λ z → length prefix +ℕ (len-f +ℕ z)) (+-comm 5 len-g) ⟩
-        length prefix +ℕ (len-f +ℕ (len-g +ℕ 5))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f len-g 5)) ⟩
-        length prefix +ℕ ((len-f +ℕ len-g) +ℕ 5)
-          ≡⟨ sym (+-assoc (length prefix) (len-f +ℕ len-g) 5) ⟩
-        (length prefix +ℕ (len-f +ℕ len-g)) +ℕ 5
-          ≡⟨ +-comm (length prefix +ℕ (len-f +ℕ len-g)) 5 ⟩
-        5 +ℕ (length prefix +ℕ (len-f +ℕ len-g))
-          ≡⟨ cong (5 +ℕ_) (sym (+-assoc (length prefix) len-f len-g)) ⟩
-        5 +ℕ ((length prefix +ℕ len-f) +ℕ len-g)
-          ≡⟨ sym (+-assoc 5 (length prefix +ℕ len-f) len-g) ⟩
-        (5 +ℕ (length prefix +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-comm 5 (length prefix +ℕ len-f)) ⟩
-        ((length prefix +ℕ len-f) +ℕ 5) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) len-f 5) ⟩
-        (length prefix +ℕ (len-f +ℕ 5)) +ℕ len-g
-          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ len-g) (+-comm len-f 5) ⟩
-        (length prefix +ℕ (5 +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix) 5 len-f)) ⟩
-        length prefix +ℕ 5 +ℕ len-f +ℕ len-g
+      -- Arithmetic helper: (a + 4 + b + c) + 1 = a + 5 + b + c
+      arith-plus-1 : ∀ a b c → (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1 ≡ a +ℕ 5 +ℕ b +ℕ c
+      arith-plus-1 a b c = begin
+        (a +ℕ 4 +ℕ b +ℕ c) +ℕ 1
+          ≡⟨ +-assoc (a +ℕ 4 +ℕ b) c 1 ⟩
+        (a +ℕ 4 +ℕ b) +ℕ (c +ℕ 1)
+          ≡⟨ cong ((a +ℕ 4 +ℕ b) +ℕ_) (+-comm c 1) ⟩
+        (a +ℕ 4 +ℕ b) +ℕ (1 +ℕ c)
+          ≡⟨ sym (+-assoc (a +ℕ 4 +ℕ b) 1 c) ⟩
+        ((a +ℕ 4 +ℕ b) +ℕ 1) +ℕ c
+          ≡⟨ cong (_+ℕ c) (+-assoc (a +ℕ 4) b 1) ⟩
+        ((a +ℕ 4) +ℕ (b +ℕ 1)) +ℕ c
+          ≡⟨ cong (λ z → ((a +ℕ 4) +ℕ z) +ℕ c) (+-comm b 1) ⟩
+        ((a +ℕ 4) +ℕ (1 +ℕ b)) +ℕ c
+          ≡⟨ cong (_+ℕ c) (sym (+-assoc (a +ℕ 4) 1 b)) ⟩
+        (((a +ℕ 4) +ℕ 1) +ℕ b) +ℕ c
+          ≡⟨ cong (λ z → (z +ℕ b) +ℕ c) (+-assoc a 4 1) ⟩
+        ((a +ℕ 5) +ℕ b) +ℕ c
           ∎
+
+      -- pc sg + 1 = length prefix + 5 + len-f + len-g
+      pcg-plus-1 : pc sg +ℕ 1 ≡ length prefix +ℕ 5 +ℕ len-f +ℕ len-g
+      pcg-plus-1 = trans (cong (_+ℕ 1) pcg-for-fetch) (arith-plus-1 (length prefix) len-f len-g)
 
       -- Fetch mov-from-sp x0 at pc s-fin₁ = pc sg + 1
       -- pc s-fin₁ = length prefix-plus-before + 1
@@ -2703,65 +2662,37 @@ mutual
       h-final : halted s-final ≡ false
       h-final = refl
 
-      -- pc s-final = pc s-fin₁ + 1 = (pc sg + 1) + 1 = pc sg + 2
-      --            = length prefix + 4 + len-f + len-g + 2
-      --            = length prefix + 6 + len-f + len-g
-      --            = length prefix + compile-length ⟨ f , g ⟩
-
-      -- Arithmetic helper: (4 + a + b) + 2 = (6 + a) + b
-      arith-pair-pc : ∀ a b → (4 +ℕ a +ℕ b) +ℕ 2 ≡ (6 +ℕ a) +ℕ b
-      arith-pair-pc a b = begin
-        (4 +ℕ a +ℕ b) +ℕ 2
-          ≡⟨ +-assoc (4 +ℕ a) b 2 ⟩
-        (4 +ℕ a) +ℕ (b +ℕ 2)
-          ≡⟨ cong ((4 +ℕ a) +ℕ_) (+-comm b 2) ⟩
-        (4 +ℕ a) +ℕ (2 +ℕ b)
-          ≡⟨ sym (+-assoc (4 +ℕ a) 2 b) ⟩
-        ((4 +ℕ a) +ℕ 2) +ℕ b
-          ≡⟨ cong (_+ℕ b) (+-assoc 4 a 2) ⟩
-        (4 +ℕ (a +ℕ 2)) +ℕ b
-          ≡⟨ cong (λ z → (4 +ℕ z) +ℕ b) (+-comm a 2) ⟩
-        (4 +ℕ (2 +ℕ a)) +ℕ b
-          ≡⟨ cong (_+ℕ b) (sym (+-assoc 4 2 a)) ⟩
-        (6 +ℕ a) +ℕ b
+      -- Arithmetic helper: (p + 4 + a + b) + 2 = (p + (6 + a)) + b
+      arith-pc-final : ∀ p a b → (p +ℕ 4 +ℕ a +ℕ b) +ℕ 2 ≡ (p +ℕ (6 +ℕ a)) +ℕ b
+      arith-pc-final p a b = begin
+        (p +ℕ 4 +ℕ a +ℕ b) +ℕ 2
+          ≡⟨ +-assoc (p +ℕ 4 +ℕ a) b 2 ⟩
+        (p +ℕ 4 +ℕ a) +ℕ (b +ℕ 2)
+          ≡⟨ cong ((p +ℕ 4 +ℕ a) +ℕ_) (+-comm b 2) ⟩
+        (p +ℕ 4 +ℕ a) +ℕ (2 +ℕ b)
+          ≡⟨ sym (+-assoc (p +ℕ 4 +ℕ a) 2 b) ⟩
+        ((p +ℕ 4 +ℕ a) +ℕ 2) +ℕ b
+          ≡⟨ cong (_+ℕ b) (+-assoc (p +ℕ 4) a 2) ⟩
+        ((p +ℕ 4) +ℕ (a +ℕ 2)) +ℕ b
+          ≡⟨ cong (λ z → ((p +ℕ 4) +ℕ z) +ℕ b) (+-comm a 2) ⟩
+        ((p +ℕ 4) +ℕ (2 +ℕ a)) +ℕ b
+          ≡⟨ cong (_+ℕ b) (sym (+-assoc (p +ℕ 4) 2 a)) ⟩
+        (((p +ℕ 4) +ℕ 2) +ℕ a) +ℕ b
+          ≡⟨ cong (λ z → (z +ℕ a) +ℕ b) (+-assoc p 4 2) ⟩
+        ((p +ℕ 6) +ℕ a) +ℕ b
+          ≡⟨ cong (_+ℕ b) (sym (+-assoc p 6 a)) ⟩
+        (p +ℕ (6 +ℕ a)) +ℕ b
           ∎
 
+      -- pc s-final = pc sg + 2 = (length prefix + (6 + len-f)) + len-g
       pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
       pc-final = begin
         pc s-final
-          ≡⟨ refl ⟩
-        pc s-fin₁ +ℕ 1
-          ≡⟨ cong (_+ℕ 1) refl ⟩
-        (pc sg +ℕ 1) +ℕ 1
           ≡⟨ +-assoc (pc sg) 1 1 ⟩
         pc sg +ℕ 2
           ≡⟨ cong (_+ℕ 2) pcg-for-fetch ⟩
         (length prefix +ℕ 4 +ℕ len-f +ℕ len-g) +ℕ 2
-          ≡⟨ cong (_+ℕ 2) (+-assoc (length prefix) (4 +ℕ len-f) len-g) ⟩
-        (length prefix +ℕ ((4 +ℕ len-f) +ℕ len-g)) +ℕ 2
-          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ 2) (cong (_+ℕ len-g) (+-comm 4 len-f)) ⟩
-        (length prefix +ℕ ((len-f +ℕ 4) +ℕ len-g)) +ℕ 2
-          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ 2) (+-assoc len-f 4 len-g) ⟩
-        (length prefix +ℕ (len-f +ℕ (4 +ℕ len-g))) +ℕ 2
-          ≡⟨ cong (λ z → (length prefix +ℕ (len-f +ℕ z)) +ℕ 2) (+-comm 4 len-g) ⟩
-        (length prefix +ℕ (len-f +ℕ (len-g +ℕ 4))) +ℕ 2
-          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ 2) (sym (+-assoc len-f len-g 4)) ⟩
-        (length prefix +ℕ ((len-f +ℕ len-g) +ℕ 4)) +ℕ 2
-          ≡⟨ cong (_+ℕ 2) (sym (+-assoc (length prefix) (len-f +ℕ len-g) 4)) ⟩
-        ((length prefix +ℕ (len-f +ℕ len-g)) +ℕ 4) +ℕ 2
-          ≡⟨ +-assoc (length prefix +ℕ (len-f +ℕ len-g)) 4 2 ⟩
-        (length prefix +ℕ (len-f +ℕ len-g)) +ℕ 6
-          ≡⟨ +-comm (length prefix +ℕ (len-f +ℕ len-g)) 6 ⟩
-        6 +ℕ (length prefix +ℕ (len-f +ℕ len-g))
-          ≡⟨ cong (6 +ℕ_) (sym (+-assoc (length prefix) len-f len-g)) ⟩
-        6 +ℕ ((length prefix +ℕ len-f) +ℕ len-g)
-          ≡⟨ sym (+-assoc 6 (length prefix +ℕ len-f) len-g) ⟩
-        (6 +ℕ (length prefix +ℕ len-f)) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-comm 6 (length prefix +ℕ len-f)) ⟩
-        ((length prefix +ℕ len-f) +ℕ 6) +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) len-f 6) ⟩
-        (length prefix +ℕ (len-f +ℕ 6)) +ℕ len-g
-          ≡⟨ cong (λ z → (length prefix +ℕ z) +ℕ len-g) (+-comm len-f 6) ⟩
+          ≡⟨ arith-pc-final (length prefix) len-f len-g ⟩
         (length prefix +ℕ (6 +ℕ len-f)) +ℕ len-g
           ∎
 
