@@ -18,6 +18,7 @@
 #   make primitives - Type-check primitive specifications
 #   make malonzo  - Generate Haskell via MAlonzo (D035)
 #   make clean    - Remove Agda build artifacts
+#   make agda MODULE=Once/Path/To/File.agda - Type-check a single module
 
 # Main entry points for each module
 POSTULATES := Once/Postulates.agda
@@ -69,7 +70,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-correct aarch64-foundation riscv riscv-correct riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean
+.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-foundation aarch64 aarch64-correct aarch64-foundation riscv riscv-correct riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean agda
 
 all: check
 
@@ -201,3 +202,10 @@ malonzo-codegen:
 clean:
 	rm -rf _build
 	find . -name "*.agdai" -delete
+
+# Type-check a single Agda module
+# Usage: make agda MODULE=Once/Path/To/File.agda
+agda:
+	@if [ -z "$(MODULE)" ]; then echo "Usage: make agda MODULE=Once/Path/To/File.agda"; exit 1; fi
+	@echo "Type-checking $(MODULE)..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(MODULE)'
