@@ -1,0 +1,20 @@
+-- | Command-line argument access for Linux
+--
+-- Provides access to argc/argv without modifying the compiler.
+-- Uses /proc/self/cmdline to read arguments at startup.
+
+------------------------------------------------------------------------
+-- Argument Access (D032: All I/O is effectful)
+------------------------------------------------------------------------
+
+-- | Get the number of command-line arguments (argc)
+primitive argc : Eff Unit Int
+
+-- | Get argument at index (0-based). Returns empty string if out of bounds.
+-- Index 0 is the program name.
+primitive argv : Eff Int (String Utf8)
+
+-- | Get argument at index 1 (first user argument), parsed as integer.
+-- Returns 0 if no argument or parse fails.
+-- Convenience for benchmarks that take N as first argument.
+primitive argn : Eff Unit Int

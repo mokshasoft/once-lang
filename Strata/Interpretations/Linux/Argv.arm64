@@ -1,0 +1,274 @@
+// ======================================================================
+// Command-line Argument Access - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// Provides access to argc/argv by reading /proc/self/cmdline at startup.
+// Uses a constructor function to parse arguments before main().
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_LINUX_ARM64_ARGV_DEFINED
+#define ONCE_LINUX_ARM64_ARGV_DEFINED
+
+.equ SYS_openat,    56
+.equ SYS_close,     57
+.equ SYS_read,      63
+.equ O_RDONLY,      0
+.equ AT_FDCWD,      -100
+
+.equ MAX_ARGS,      256
+.equ CMDLINE_SIZE,  4096
+
+// ======================================================================
+// Data Section
+// ======================================================================
+
+.section .bss
+.align 8
+g_argc:
+    .space 8
+g_argv:
+    .space 8 * MAX_ARGS
+g_cmdline_buf:
+    .space CMDLINE_SIZE
+
+.section .rodata
+.align 1
+.Lprocpath:
+    .asciz "/proc/self/cmdline"
+.Lempty_str:
+    .asciz ""
+
+.text
+
+// ======================================================================
+// Initialization (constructor)
+// ======================================================================
+
+.section .init_array,"aw"
+.align 8
+    .xword once_argv_init
+
+.text
+
+// ----------------------------------------------------------------------
+// once_argv_init - Parse /proc/self/cmdline at startup
+// ----------------------------------------------------------------------
+.type once_argv_init, %function
+once_argv_init:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+    stp     x23, x24, [sp, #48]
+
+    // Open /proc/self/cmdline
+    mov     x0, #AT_FDCWD
+    adrp    x1, .Lprocpath
+    add     x1, x1, :lo12:.Lprocpath
+    mov     x2, #O_RDONLY
+    mov     x3, #0
+    mov     x8, #SYS_openat
+    svc     #0
+
+    tbnz    x0, #63, .init_done     // branch if negative (error)
+    mov     x19, x0                 // x19 = fd
+
+    // Read cmdline
+    mov     x0, x19
+    adrp    x1, g_cmdline_buf
+    add     x1, x1, :lo12:g_cmdline_buf
+    mov     x2, #CMDLINE_SIZE - 1
+    mov     x8, #SYS_read
+    svc     #0
+
+    mov     x20, x0                 // x20 = bytes read
+
+    // Close fd
+    mov     x0, x19
+    mov     x8, #SYS_close
+    svc     #0
+
+    cmp     x20, #0
+    ble     .init_done
+
+    // Null-terminate
+    adrp    x21, g_cmdline_buf
+    add     x21, x21, :lo12:g_cmdline_buf
+    strb    wzr, [x21, x20]
+
+    // Parse null-separated arguments
+    mov     x22, #0                 // x22 = argc = 0
+    mov     x23, #0                 // x23 = position
+
+.parse_loop:
+    cmp     x23, x20
+    bge     .parse_done
+    cmp     x22, #MAX_ARGS
+    bge     .parse_done
+
+    // Check current byte
+    ldrb    w9, [x21, x23]
+    cbz     w9, .skip_null
+
+    // Found start of argument - store pointer
+    add     x10, x21, x23
+    adrp    x11, g_argv
+    add     x11, x11, :lo12:g_argv
+    str     x10, [x11, x22, lsl #3]
+    add     x22, x22, #1
+
+    // Skip to end of argument
+.skip_arg:
+    add     x23, x23, #1
+    cmp     x23, x20
+    bge     .parse_done
+    ldrb    w9, [x21, x23]
+    cbnz    w9, .skip_arg
+    b       .parse_loop
+
+.skip_null:
+    add     x23, x23, #1
+    b       .parse_loop
+
+.parse_done:
+    // Store argc
+    adrp    x10, g_argc
+    add     x10, x10, :lo12:g_argc
+    str     x22, [x10]
+
+.init_done:
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x23, x24, [sp, #48]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_argv_init, .-once_argv_init
+
+// ======================================================================
+// Public Functions
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// argc - Get argument count
+// ----------------------------------------------------------------------
+// Input: Unit (ignored) in x0
+// Output: int64 in x0
+.global once_argc
+.type once_argc, %function
+once_argc:
+    adrp    x0, g_argc
+    add     x0, x0, :lo12:g_argc
+    ldr     x0, [x0]
+    ret
+.size once_argc, .-once_argc
+
+// ----------------------------------------------------------------------
+// argv - Get argument at index
+// ----------------------------------------------------------------------
+// Input: int64 index in x0
+// Output: OnceString (data in x0, len in x1)
+.global once_argv
+.type once_argv, %function
+once_argv:
+    // Check bounds: 0 <= idx < g_argc
+    tbnz    x0, #63, .argv_empty    // branch if negative
+
+    adrp    x9, g_argc
+    add     x9, x9, :lo12:g_argc
+    ldr     x9, [x9]
+    cmp     x0, x9
+    bge     .argv_empty
+
+    // Get pointer: g_argv[idx]
+    adrp    x9, g_argv
+    add     x9, x9, :lo12:g_argv
+    ldr     x9, [x9, x0, lsl #3]    // x9 = g_argv[idx]
+    cbz     x9, .argv_empty
+
+    // Calculate length (strlen)
+    mov     x0, x9                  // x0 = data pointer
+    mov     x1, #0                  // x1 = len = 0
+.strlen_loop:
+    ldrb    w10, [x9, x1]
+    cbz     w10, .strlen_done
+    add     x1, x1, #1
+    b       .strlen_loop
+
+.strlen_done:
+    ret
+
+.argv_empty:
+    adrp    x0, .Lempty_str
+    add     x0, x0, :lo12:.Lempty_str
+    mov     x1, #0
+    ret
+.size once_argv, .-once_argv
+
+// ----------------------------------------------------------------------
+// argn - Get first argument as integer
+// ----------------------------------------------------------------------
+// Input: Unit (ignored) in x0
+// Output: int64 in x0
+.global once_argn
+.type once_argn, %function
+once_argn:
+    // Check if argc >= 2
+    adrp    x9, g_argc
+    add     x9, x9, :lo12:g_argc
+    ldr     x9, [x9]
+    cmp     x9, #2
+    blt     .argn_zero
+
+    // Get argv[1]
+    adrp    x9, g_argv
+    add     x9, x9, :lo12:g_argv
+    ldr     x9, [x9, #8]            // x9 = g_argv[1]
+    cbz     x9, .argn_zero
+
+    // Parse as integer (simple atoll)
+    mov     x0, #0                  // result = 0
+    mov     x10, #0                 // negative flag = 0
+
+    // Check for negative
+    ldrb    w11, [x9]
+    cmp     w11, #'-'
+    bne     .atoll_loop
+    mov     x10, #1
+    add     x9, x9, #1
+
+.atoll_loop:
+    ldrb    w11, [x9]
+    cbz     w11, .atoll_done
+
+    // Check if digit ('0' = 48, '9' = 57)
+    sub     w11, w11, #'0'
+    tbnz    w11, #31, .atoll_done   // branch if negative
+    cmp     w11, #9
+    bgt     .atoll_done
+
+    // result = result * 10 + digit
+    mov     x12, #10
+    mul     x0, x0, x12
+    add     x0, x0, x11, uxtw
+
+    add     x9, x9, #1
+    b       .atoll_loop
+
+.atoll_done:
+    // Apply sign
+    cbz     x10, .argn_return
+    neg     x0, x0
+
+.argn_return:
+    ret
+
+.argn_zero:
+    mov     x0, #0
+    ret
+.size once_argn, .-once_argn
+
+#endif // ONCE_LINUX_ARM64_ARGV_DEFINED
