@@ -1297,12 +1297,12 @@ mutual
       prefix-g-expand = refl
 
       -- prefix-f = prefix ++ addi ∷ mv ∷ []
-      -- So prefix-g = prefix ++ addi ∷ mv ∷ [] ++ (code-f ++ sd ∷ mv ∷ [])
-      --             = prefix ++ (addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ []))
+      -- prefix-g = prefix-f ++ (code-f ++ sd ∷ mv ∷ [])
+      --          = (prefix ++ addi ∷ mv ∷ []) ++ (code-f ++ sd ∷ mv ∷ [])
+      --          = prefix ++ ((addi ∷ mv ∷ []) ++ (code-f ++ sd ∷ mv ∷ []))   [++-assoc]
+      --          = prefix ++ (addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ []))          [def of ++]
       prefix-g-from-prefix : prefix-g ≡ prefix ++ addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])
-      prefix-g-from-prefix = trans prefix-g-expand
-                                   (trans (cong (_++ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])) refl)
-                                          (++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ []) (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])))
+      prefix-g-from-prefix = ++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ []) (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])
 
       -- Now: prefix-final ++ (final-i0 ∷ rest-final0)
       --    = (prefix-g ++ code-g) ++ (final-i0 ∷ rest-final0)
@@ -1310,14 +1310,27 @@ mutual
       --    = prefix ++ addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ []) ++ (code-g ++ final-i0 ∷ rest-final0)
       --    = prefix ++ addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ (code-g ++ final-i0 ∷ rest-final0))
 
+      -- Helper: (code-f ++ sd ∷ mv ∷ []) ++ xs = code-f ++ (sd ∷ mv ∷ xs)
+      -- This uses ++-assoc code-f (sd ∷ mv ∷ []) xs
+      inner-assoc : (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ []) ++ (code-g ++ (final-i0 ∷ rest-final0))
+                  ≡ code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ (final-i0 ∷ rest-final0))
+      inner-assoc = ++-assoc code-f (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ []) (code-g ++ (final-i0 ∷ rest-final0))
+
       -- Relate prefix-final to prefix
       prefix-final-expand : prefix-final ++ (final-i0 ∷ rest-final0)
                           ≡ prefix ++ addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ (final-i0 ∷ rest-final0)))
       prefix-final-expand =
-        let step1 = ++-assoc prefix-g code-g (final-i0 ∷ rest-final0)  -- (prefix-g ++ code-g) ++ ... = prefix-g ++ (code-g ++ ...)
-            step2 = cong (_++ (code-g ++ (final-i0 ∷ rest-final0))) prefix-g-from-prefix  -- expand prefix-g
+        let -- Step 1: (prefix-g ++ code-g) ++ ... = prefix-g ++ (code-g ++ ...)
+            step1 = ++-assoc prefix-g code-g (final-i0 ∷ rest-final0)
+            -- Step 2: prefix-g ++ ... = (prefix ++ addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ [])) ++ ...
+            step2 = cong (_++ (code-g ++ (final-i0 ∷ rest-final0))) prefix-g-from-prefix
+            -- Step 3: (prefix ++ X) ++ Y = prefix ++ (X ++ Y) where X = addi ∷ mv ∷ ...
             step3 = ++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ [])) (code-g ++ (final-i0 ∷ rest-final0))
-        in trans step1 (trans step2 (sym step3))
+            -- After step3: prefix ++ ((addi ∷ mv ∷ (code-f ++ sd ∷ mv ∷ [])) ++ (code-g ++ ...))
+            -- This equals prefix ++ (addi ∷ mv ∷ ((code-f ++ sd ∷ mv ∷ []) ++ (code-g ++ ...))) definitionally
+            -- Step 4: Use inner-assoc to transform (code-f ++ sd ∷ mv ∷ []) ++ ... = code-f ++ sd ∷ mv ∷ ...
+            step4 = cong (prefix ++_) (cong (addi sp sp neg16 ∷_) (cong (mv s1 a0 ∷_) inner-assoc))
+        in trans step1 (trans step2 (trans step3 step4))
 
       prog-eq-final : prog ≡ prefix-final ++ final-i0 ∷ rest-final0
       prog-eq-final = trans (cong (prefix ++_) full-suffix-transform) (sym prefix-final-expand)
@@ -1332,7 +1345,7 @@ mutual
       fetch-final0 : fetch prog (pc sg) ≡ just final-i0
       fetch-final0 = subst₂ (λ p n → fetch p n ≡ just final-i0)
                             (sym prog-eq-final)
-                            pc-sg-eq
+                            (sym pc-sg-eq)
                             (fetch-at-prefix-end prefix-final final-i0 rest-final0)
 
       -- For fetch-final1
