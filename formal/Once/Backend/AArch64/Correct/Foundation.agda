@@ -807,6 +807,12 @@ execInstr-mov-imm : ∀ (prog : Program) (s : State) (dst : Reg) (n : ℕ) →
   execInstr prog s (mov dst (imm n)) ≡ just (record s { regs = writeReg (regs s) dst n ; pc = pc s +ℕ 1 })
 execInstr-mov-imm prog s dst n = refl
 
+-- | What execInstr does for mov with register source
+execInstr-mov-reg : ∀ (prog : Program) (s : State) (dst src : Reg) →
+  execInstr prog s (mov dst (reg src)) ≡
+    just (record s { regs = writeReg (regs s) dst (readReg (regs s) src) ; pc = pc s +ℕ 1 })
+execInstr-mov-reg prog s dst src = refl
+
 -- | What execInstr does for mov (general case when readOperand succeeds)
 execInstr-mov-success : ∀ (prog : Program) (s : State) (dst : Reg) (src : Operand) (v : Word) →
   readOperand s src ≡ just v →
