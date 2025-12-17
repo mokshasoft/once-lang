@@ -54,7 +54,7 @@ reservedWords :: [Text]
 reservedWords =
   -- Keywords
   [ "of", "Left", "Right"
-  , "Unit", "Void", "Int", "Buffer", "String"
+  , "Unit", "Void", "Int", "Float", "Buffer", "String"
   , "Utf8", "Utf16", "Ascii"
   , "primitive"
   , "type", "Fix"             -- Type aliases and fixed points
@@ -101,7 +101,7 @@ typeVar = lexeme $ try $ do
   c <- upperChar
   cs <- many (alphaNumChar <|> char '_' <|> char '\'')
   let name = T.pack (c : cs)
-  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Eff", "IO", "Fix"]
+  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Float", "Eff", "IO", "Fix"]
     then fail $ "Reserved type: " ++ T.unpack name
     else pure name
 
@@ -166,6 +166,7 @@ parseType = makeTypeExpr
       [ STUnit <$ reserved "Unit"
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
+      , STFloat <$ reserved "Float"
       , STBuffer <$ reserved "Buffer"
       , stringType
       , fixType
@@ -208,6 +209,7 @@ parseType = makeTypeExpr
       [ STUnit <$ reserved "Unit"
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
+      , STFloat <$ reserved "Float"
       , STBuffer <$ reserved "Buffer"
       , stringType
       , fixType

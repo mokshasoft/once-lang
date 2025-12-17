@@ -1,0 +1,316 @@
+// ======================================================================
+// Floating-point Arithmetic Primitives - ARM64 (AArch64) Implementation
+// ======================================================================
+//
+// Double-precision (64-bit) floating-point operations.
+// Required for n-body, spectral-norm, mandelbrot benchmarks.
+//
+// Note: Transcendental functions (sin, cos, exp, log, pow) require
+// libm or software implementations. This file provides hardware-only
+// operations. Use the C implementation for transcendentals.
+//
+// Calling convention:
+// - Float values passed/returned in d0
+// - Pairs passed as pointer to OncePair in x0
+// - Integer results returned in x0
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_LINUX_ARM64_FLOAT_DEFINED
+#define ONCE_LINUX_ARM64_FLOAT_DEFINED
+
+// ======================================================================
+// Basic Arithmetic
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fadd - Add two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: double in d0
+.global once_fadd
+.type once_fadd, %function
+once_fadd:
+    ldr     d0, [x0]            // d0 = fst
+    ldr     d1, [x0, #8]        // d1 = snd
+    fadd    d0, d0, d1
+    ret
+.size once_fadd, .-once_fadd
+
+// ----------------------------------------------------------------------
+// fsub - Subtract two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: double in d0
+.global once_fsub
+.type once_fsub, %function
+once_fsub:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fsub    d0, d0, d1
+    ret
+.size once_fsub, .-once_fsub
+
+// ----------------------------------------------------------------------
+// fmul - Multiply two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: double in d0
+.global once_fmul
+.type once_fmul, %function
+once_fmul:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fmul    d0, d0, d1
+    ret
+.size once_fmul, .-once_fmul
+
+// ----------------------------------------------------------------------
+// fdiv - Divide two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: double in d0
+.global once_fdiv
+.type once_fdiv, %function
+once_fdiv:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fdiv    d0, d0, d1
+    ret
+.size once_fdiv, .-once_fdiv
+
+// ----------------------------------------------------------------------
+// fneg - Negate a float
+// ----------------------------------------------------------------------
+// Input: double in d0
+// Output: double in d0
+.global once_fneg
+.type once_fneg, %function
+once_fneg:
+    fneg    d0, d0
+    ret
+.size once_fneg, .-once_fneg
+
+// ----------------------------------------------------------------------
+// fabs - Absolute value
+// ----------------------------------------------------------------------
+// Input: double in d0
+// Output: double in d0
+.global once_fabs
+.type once_fabs, %function
+once_fabs:
+    fabs    d0, d0
+    ret
+.size once_fabs, .-once_fabs
+
+// ======================================================================
+// Hardware-supported operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fsqrt - Square root
+// ----------------------------------------------------------------------
+// Input: double in d0
+// Output: double in d0
+.global once_fsqrt
+.type once_fsqrt, %function
+once_fsqrt:
+    fsqrt   d0, d0
+    ret
+.size once_fsqrt, .-once_fsqrt
+
+// ======================================================================
+// Comparisons (return 0 for false, 1 for true)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// flt - Less than
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: int64 (0 or 1) in x0
+.global once_flt
+.type once_flt, %function
+once_flt:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fcmp    d0, d1
+    cset    x0, mi              // mi = less than (negative)
+    ret
+.size once_flt, .-once_flt
+
+// ----------------------------------------------------------------------
+// fle - Less than or equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: int64 (0 or 1) in x0
+.global once_fle
+.type once_fle, %function
+once_fle:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fcmp    d0, d1
+    cset    x0, ls              // ls = less than or equal (lower or same)
+    ret
+.size once_fle, .-once_fle
+
+// ----------------------------------------------------------------------
+// fgt - Greater than
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: int64 (0 or 1) in x0
+.global once_fgt
+.type once_fgt, %function
+once_fgt:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fcmp    d0, d1
+    cset    x0, gt              // gt = greater than
+    ret
+.size once_fgt, .-once_fgt
+
+// ----------------------------------------------------------------------
+// fge - Greater than or equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: int64 (0 or 1) in x0
+.global once_fge
+.type once_fge, %function
+once_fge:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fcmp    d0, d1
+    cset    x0, ge              // ge = greater than or equal
+    ret
+.size once_fge, .-once_fge
+
+// ----------------------------------------------------------------------
+// feq - Equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: int64 (0 or 1) in x0
+.global once_feq
+.type once_feq, %function
+once_feq:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fcmp    d0, d1
+    cset    x0, eq              // eq = equal
+    ret
+.size once_feq, .-once_feq
+
+// ----------------------------------------------------------------------
+// fne - Not equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: int64 (0 or 1) in x0
+.global once_fne
+.type once_fne, %function
+once_fne:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fcmp    d0, d1
+    cset    x0, ne              // ne = not equal
+    ret
+.size once_fne, .-once_fne
+
+// ======================================================================
+// Conversions
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// intToFloat - Convert integer to float
+// ----------------------------------------------------------------------
+// Input: int64 in x0
+// Output: double in d0
+.global once_intToFloat
+.type once_intToFloat, %function
+once_intToFloat:
+    scvtf   d0, x0              // signed convert to float
+    ret
+.size once_intToFloat, .-once_intToFloat
+
+// ----------------------------------------------------------------------
+// floatToInt - Convert float to integer (truncate toward zero)
+// ----------------------------------------------------------------------
+// Input: double in d0
+// Output: int64 in x0
+.global once_floatToInt
+.type once_floatToInt, %function
+once_floatToInt:
+    fcvtzs  x0, d0              // float convert to signed, truncate toward zero
+    ret
+.size once_floatToInt, .-once_floatToInt
+
+// ======================================================================
+// Constants
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// pi - Return pi constant
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: double in d0
+.global once_pi
+.type once_pi, %function
+once_pi:
+    adrp    x0, .Lpi_const
+    add     x0, x0, :lo12:.Lpi_const
+    ldr     d0, [x0]
+    ret
+.size once_pi, .-once_pi
+
+.section .rodata
+.align 8
+.Lpi_const:
+    .double 3.14159265358979323846
+
+.text
+
+// ======================================================================
+// Min/Max
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fmin - Minimum of two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: double in d0
+.global once_fmin
+.type once_fmin, %function
+once_fmin:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fmin    d0, d0, d1
+    ret
+.size once_fmin, .-once_fmin
+
+// ----------------------------------------------------------------------
+// fmax - Maximum of two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in x0
+// Output: double in d0
+.global once_fmax
+.type once_fmax, %function
+once_fmax:
+    ldr     d0, [x0]
+    ldr     d1, [x0, #8]
+    fmax    d0, d0, d1
+    ret
+.size once_fmax, .-once_fmax
+
+// ======================================================================
+// Transcendental functions - STUB implementations
+// ======================================================================
+// These require libm or software implementations.
+// For now, they are not implemented in pure assembly.
+// Use the C implementation (Float.c) for these functions.
+//
+// Not implemented: fsin, fcos, fpow, flog, fexp
+// Not implemented: parseFloat, floatToString (require string handling)
+//
+// ======================================================================
+
+#endif // ONCE_LINUX_ARM64_FLOAT_DEFINED

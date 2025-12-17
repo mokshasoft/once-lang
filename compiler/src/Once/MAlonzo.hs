@@ -58,7 +58,8 @@ toMAlonzoType t = case t of
   H.TBuffer -> Just M.C_Buffer_24
   H.TString _ -> Just M.C_Str_22  -- Encoding is erased
   H.TVar name -> Just $ M.C_TVar_26 name
-  -- Not yet supported
+  -- Not yet supported (no Agda definition)
+  H.TFloat -> Nothing
   H.TApp _ _ -> Nothing
 
 -- | Convert MAlonzo Type back to Haskell Type
