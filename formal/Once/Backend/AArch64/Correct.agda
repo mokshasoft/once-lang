@@ -2256,8 +2256,36 @@ mutual
       -- sub-sp ∷ mov x20 ∷ (code-f ++ (str ∷ mov ∷ (code-g ++ ...)))
       -- = (sub-sp ∷ mov x20 ∷ (code-f ++ str ∷ [])) ++ (mov ∷ (code-g ++ ...))
       -- which is true by ++-assoc on the inner lists
-      postulate
-        pair-code-eq-1 : pair-code ++ suffix ≡ setup-plus-f-1 ++ after-f-1-suffix
+
+      -- First, show pair-code structure
+      -- pair-code = sub-sp 16 ∷ mov x20 (reg x0) ∷ code-f ++ middle-and-rest
+      -- where middle-and-rest = str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g ++ final-instrs
+      -- and final-instrs = str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+
+      middle-and-rest : Program
+      middle-and-rest = str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g ++ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
+
+      -- pair-code = sub-sp 16 ∷ mov x20 (reg x0) ∷ (code-f ++ middle-and-rest)
+      pair-code-unfold : pair-code ≡ sub-sp 16 ∷ mov x20 (reg x0) ∷ code-f ++ middle-and-rest
+      pair-code-unfold = refl
+
+      -- middle-and-rest = str ∷ after-f-1 by cons split
+      middle-split : middle-and-rest ≡ str x0 (sp+imm 0) ∷ after-f-1
+      middle-split = refl
+
+      -- code-f ++ (str ∷ after-f-1) = (code-f ++ str ∷ []) ++ after-f-1
+      code-f-split : code-f ++ str x0 (sp+imm 0) ∷ after-f-1 ≡ (code-f ++ str x0 (sp+imm 0) ∷ []) ++ after-f-1
+      code-f-split = sym (++-assoc code-f (str x0 (sp+imm 0) ∷ []) after-f-1)
+
+      -- pair-code = setup-plus-f-1 ++ after-f-1
+      pair-code-eq : pair-code ≡ setup-plus-f-1 ++ after-f-1
+      pair-code-eq = trans pair-code-unfold
+                           (cong (λ xs → sub-sp 16 ∷ mov x20 (reg x0) ∷ xs)
+                                 (trans (cong (code-f ++_) middle-split) code-f-split))
+
+      -- (pair-code ++ suffix) = (setup-plus-f-1 ++ after-f-1) ++ suffix = setup-plus-f-1 ++ (after-f-1 ++ suffix)
+      pair-code-eq-1 : pair-code ++ suffix ≡ setup-plus-f-1 ++ after-f-1-suffix
+      pair-code-eq-1 = trans (cong (_++ suffix) pair-code-eq) (++-assoc setup-plus-f-1 after-f-1 suffix)
 
       -- The rest after mov x0 (reg x20) in after-f-1-suffix
       -- after-f-1-suffix = (mov x0 (reg x20) ∷ X) ++ suffix = mov x0 (reg x20) ∷ (X ++ suffix)
@@ -2479,10 +2507,92 @@ mutual
       after-g : Program
       after-g = str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []
 
+      -- Define the prefix of pair-code before after-g
+      before-after-g : Program
+      before-after-g = sub-sp 16 ∷ mov x20 (reg x0) ∷ code-f ++ str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g
+
+      -- pair-code = before-after-g ++ after-g
+      pair-code-split-at-g : pair-code ≡ before-after-g ++ after-g
+      pair-code-split-at-g = refl
+
+      -- length before-after-g = 4 + len-f + len-g
+      len-before-after-g : length before-after-g ≡ 4 +ℕ len-f +ℕ len-g
+      len-before-after-g = begin
+        length before-after-g
+          ≡⟨ refl ⟩
+        suc (suc (length (code-f ++ str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g)))
+          ≡⟨ cong (λ n → suc (suc n)) (length-++ code-f) ⟩
+        suc (suc (length code-f +ℕ length (str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g)))
+          ≡⟨ cong (λ n → suc (suc (n +ℕ length (str x0 (sp+imm 0) ∷ mov x0 (reg x20) ∷ code-g)))) (compile-length-correct f) ⟩
+        suc (suc (len-f +ℕ (2 +ℕ length code-g)))
+          ≡⟨ cong (λ n → suc (suc (len-f +ℕ (2 +ℕ n)))) (compile-length-correct g) ⟩
+        suc (suc (len-f +ℕ (2 +ℕ len-g)))
+          ≡⟨ cong (λ n → suc (suc n)) (sym (+-assoc len-f 2 len-g)) ⟩
+        suc (suc ((len-f +ℕ 2) +ℕ len-g))
+          ≡⟨ refl ⟩
+        (2 +ℕ (len-f +ℕ 2)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-comm 2 (len-f +ℕ 2)) ⟩
+        ((len-f +ℕ 2) +ℕ 2) +ℕ len-g
+          ≡⟨ cong (λ n → (n +ℕ 2) +ℕ len-g) (+-comm len-f 2) ⟩
+        ((2 +ℕ len-f) +ℕ 2) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc 2 len-f 2) ⟩
+        (2 +ℕ (len-f +ℕ 2)) +ℕ len-g
+          ≡⟨ cong (λ n → (2 +ℕ n) +ℕ len-g) (+-comm len-f 2) ⟩
+        (2 +ℕ (2 +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 2 2 len-f)) ⟩
+        (4 +ℕ len-f) +ℕ len-g
+          ≡⟨ +-assoc 4 len-f len-g ⟩
+        4 +ℕ (len-f +ℕ len-g)
+          ≡⟨ sym (+-assoc 4 len-f len-g) ⟩
+        4 +ℕ len-f +ℕ len-g
+          ∎
+
+      -- Program structure: prog = prefix ++ before-after-g ++ after-g ++ suffix
+      prefix-plus-before : Program
+      prefix-plus-before = prefix ++ before-after-g
+
+      len-prefix-plus-before : length prefix-plus-before ≡ length prefix +ℕ (4 +ℕ len-f +ℕ len-g)
+      len-prefix-plus-before = trans (length-++ prefix) (cong (length prefix +ℕ_) len-before-after-g)
+
+      -- Rewrite pcg-for-fetch to match length prefix-plus-before
+      pcg-eq-len-prefix-plus-before : pc sg ≡ length prefix-plus-before
+      pcg-eq-len-prefix-plus-before = begin
+        pc sg
+          ≡⟨ pcg-for-fetch ⟩
+        length prefix +ℕ 4 +ℕ len-f +ℕ len-g
+          ≡⟨ cong (λ n → n +ℕ len-f +ℕ len-g) (+-comm (length prefix) 4) ⟩
+        (4 +ℕ length prefix) +ℕ len-f +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-assoc 4 (length prefix) len-f) ⟩
+        (4 +ℕ (length prefix +ℕ len-f)) +ℕ len-g
+          ≡⟨ cong (λ n → (4 +ℕ n) +ℕ len-g) (+-comm (length prefix) len-f) ⟩
+        (4 +ℕ (len-f +ℕ length prefix)) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 4 len-f (length prefix))) ⟩
+        ((4 +ℕ len-f) +ℕ length prefix) +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) (+-comm (4 +ℕ len-f) (length prefix)) ⟩
+        (length prefix +ℕ (4 +ℕ len-f)) +ℕ len-g
+          ≡⟨ +-assoc (length prefix) (4 +ℕ len-f) len-g ⟩
+        length prefix +ℕ ((4 +ℕ len-f) +ℕ len-g)
+          ≡⟨ cong (length prefix +ℕ_) (+-assoc 4 len-f len-g) ⟩
+        length prefix +ℕ (4 +ℕ (len-f +ℕ len-g))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 4 len-f len-g)) ⟩
+        length prefix +ℕ (4 +ℕ len-f +ℕ len-g)
+          ≡⟨ sym len-prefix-plus-before ⟩
+        length prefix-plus-before
+          ∎
+
+      -- Restructure program for fetch
+      prog-eq-for-final : prog ≡ prefix-plus-before ++ after-g ++ suffix
+      prog-eq-for-final = cong (prefix ++_)
+                                (trans pair-code-split-at-g (++-assoc before-after-g after-g suffix))
+
       -- Fetch str x0 (sp+imm 8) at pc sg
       -- At offset 4 + len-f + len-g in pair-code, we have str x0 (sp+imm 8)
-      postulate
-        fetch-final-1 : fetch prog (pc sg) ≡ just (str x0 (sp+imm 8))
+      fetch-final-1 : fetch prog (pc sg) ≡ just (str x0 (sp+imm 8))
+      fetch-final-1 = subst (λ p → fetch prog p ≡ just (str x0 (sp+imm 8)))
+                            (sym pcg-eq-len-prefix-plus-before)
+                            (subst (λ p → fetch p (length prefix-plus-before) ≡ just (str x0 (sp+imm 8)))
+                                   (sym prog-eq-for-final)
+                                   (fetch-at-prefix-end prefix-plus-before (str x0 (sp+imm 8)) (mov-from-sp x0 ∷ suffix)))
 
       -- Step 1 of final: str x0 (sp+imm 8)
       -- After: memory[sp+8] = encode (eval g x), pc += 1
@@ -2554,8 +2664,51 @@ mutual
           ∎
 
       -- Fetch mov-from-sp x0 at pc s-fin₁ = pc sg + 1
-      postulate
-        fetch-final-2 : fetch prog (pc s-fin₁) ≡ just (mov-from-sp x0)
+      -- pc s-fin₁ = length prefix-plus-before + 1
+      -- At position 1 in after-g ++ suffix, we have mov-from-sp x0
+
+      -- Define prefix-plus-before-plus-1 = prefix-plus-before ++ [str x0 (sp+imm 8)]
+      prefix-plus-before-plus-1 : Program
+      prefix-plus-before-plus-1 = prefix-plus-before ++ str x0 (sp+imm 8) ∷ []
+
+      len-prefix-plus-before-plus-1 : length prefix-plus-before-plus-1 ≡ length prefix-plus-before +ℕ 1
+      len-prefix-plus-before-plus-1 = trans (length-++ prefix-plus-before) (cong (length prefix-plus-before +ℕ_) refl)
+
+      pc-fin₁-eq-len : pc s-fin₁ ≡ length prefix-plus-before-plus-1
+      pc-fin₁-eq-len = begin
+        pc s-fin₁
+          ≡⟨ refl ⟩
+        pc sg +ℕ 1
+          ≡⟨ cong (_+ℕ 1) pcg-eq-len-prefix-plus-before ⟩
+        length prefix-plus-before +ℕ 1
+          ≡⟨ sym len-prefix-plus-before-plus-1 ⟩
+        length prefix-plus-before-plus-1
+          ∎
+
+      -- prog = prefix-plus-before-plus-1 ++ mov-from-sp x0 ∷ suffix
+      prog-eq-for-final-2 : prog ≡ prefix-plus-before-plus-1 ++ mov-from-sp x0 ∷ suffix
+      prog-eq-for-final-2 = begin
+        prog
+          ≡⟨ prog-eq-for-final ⟩
+        prefix-plus-before ++ after-g ++ suffix
+          ≡⟨ sym (++-assoc prefix-plus-before after-g suffix) ⟩
+        (prefix-plus-before ++ after-g) ++ suffix
+          ≡⟨ refl ⟩  -- after-g = str ∷ mov-from-sp ∷ []
+        (prefix-plus-before ++ str x0 (sp+imm 8) ∷ mov-from-sp x0 ∷ []) ++ suffix
+          ≡⟨ cong (_++ suffix) (++-assoc prefix-plus-before (str x0 (sp+imm 8) ∷ []) (mov-from-sp x0 ∷ [])) ⟩
+        ((prefix-plus-before ++ str x0 (sp+imm 8) ∷ []) ++ mov-from-sp x0 ∷ []) ++ suffix
+          ≡⟨ ++-assoc prefix-plus-before-plus-1 (mov-from-sp x0 ∷ []) suffix ⟩
+        prefix-plus-before-plus-1 ++ mov-from-sp x0 ∷ [] ++ suffix
+          ≡⟨ refl ⟩
+        prefix-plus-before-plus-1 ++ mov-from-sp x0 ∷ suffix
+          ∎
+
+      fetch-final-2 : fetch prog (pc s-fin₁) ≡ just (mov-from-sp x0)
+      fetch-final-2 = subst (λ p → fetch prog p ≡ just (mov-from-sp x0))
+                            (sym pc-fin₁-eq-len)
+                            (subst (λ p → fetch p (length prefix-plus-before-plus-1) ≡ just (mov-from-sp x0))
+                                   (sym prog-eq-for-final-2)
+                                   (fetch-at-prefix-end prefix-plus-before-plus-1 (mov-from-sp x0) suffix))
 
       -- Step 2 of final: mov-from-sp x0
       -- After: x0 = sp (pointer to pair), pc += 1
@@ -2746,8 +2899,19 @@ run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
     -- Step 1: ldr x9 (base x0) - load closure pointer from pair
     -- After: x9 = encode closure, pc = length prefix + 1
 
-    postulate
-      fetch-1 : fetch prog (pc s) ≡ just (ldr x9 (base x0))
+    -- apply-code structure: first instruction is ldr x9 (base x0)
+    apply-code-head : apply-code ≡ ldr x9 (base x0) ∷
+                                   ldr x10 (base+imm x0 8) ∷
+                                   ldr x19 (base x9) ∷
+                                   ldr x9 (base+imm x9 8) ∷
+                                   mov x0 (reg x10) ∷
+                                   blr x9 ∷ []
+    apply-code-head = refl
+
+    fetch-1 : fetch prog (pc s) ≡ just (ldr x9 (base x0))
+    fetch-1 = subst (λ p → fetch prog p ≡ just (ldr x9 (base x0)))
+                    (sym (trans pc-eq (+-identityʳ (length prefix))))
+                    (fetch-append-right prefix (apply-code ++ suffix) 0)
 
     s₁ : State
     s₁ = record s { regs = writeReg (regs s) x9 (encode closure) ; pc = pc s +ℕ 1 }
@@ -2774,8 +2938,14 @@ run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
     -- Step 2: ldr x10 (base+imm x0 8) - load arg from pair
     -- After: x10 = encode arg, pc = length prefix + 2
 
-    postulate
-      fetch-2 : fetch prog (pc s₁) ≡ just (ldr x10 (base+imm x0 8))
+    -- pc s₁ = pc s + 1 = length prefix + 1
+    pc-s₁-eq : pc s₁ ≡ length prefix +ℕ 1
+    pc-s₁-eq = cong (_+ℕ 1) pc-eq
+
+    fetch-2 : fetch prog (pc s₁) ≡ just (ldr x10 (base+imm x0 8))
+    fetch-2 = subst (λ p → fetch prog p ≡ just (ldr x10 (base+imm x0 8)))
+                    (sym pc-s₁-eq)
+                    (fetch-append-right prefix (apply-code ++ suffix) 1)
 
     -- x0 in s₁ is unchanged from s (ldr wrote to x9)
     x0-s₁ : readReg (regs s₁) x0 ≡ encode (closure , arg)
@@ -2812,8 +2982,14 @@ run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
     -- Step 3: ldr x19 (base x9) - load env from closure
     -- After: x19 = closure-env, pc = length prefix + 3
 
-    postulate
-      fetch-3 : fetch prog (pc s₂) ≡ just (ldr x19 (base x9))
+    -- pc s₂ = pc s₁ + 1 = length prefix + 2
+    pc-s₂-eq : pc s₂ ≡ length prefix +ℕ 2
+    pc-s₂-eq = trans (cong (_+ℕ 1) pc-s₁-eq) (+-assoc (length prefix) 1 1)
+
+    fetch-3 : fetch prog (pc s₂) ≡ just (ldr x19 (base x9))
+    fetch-3 = subst (λ p → fetch prog p ≡ just (ldr x19 (base x9)))
+                    (sym pc-s₂-eq)
+                    (fetch-append-right prefix (apply-code ++ suffix) 2)
 
     -- x9 in s₂ is still encode closure (ldr wrote to x10)
     x9-s₂ : readReg (regs s₂) x9 ≡ encode closure
@@ -2853,8 +3029,14 @@ run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
     -- Step 4: ldr x9 (base+imm x9 8) - load code_ptr from closure
     -- After: x9 = closure-code-ptr, pc = length prefix + 4
 
-    postulate
-      fetch-4 : fetch prog (pc s₃) ≡ just (ldr x9 (base+imm x9 8))
+    -- pc s₃ = pc s₂ + 1 = length prefix + 3
+    pc-s₃-eq : pc s₃ ≡ length prefix +ℕ 3
+    pc-s₃-eq = trans (cong (_+ℕ 1) pc-s₂-eq) (+-assoc (length prefix) 2 1)
+
+    fetch-4 : fetch prog (pc s₃) ≡ just (ldr x9 (base+imm x9 8))
+    fetch-4 = subst (λ p → fetch prog p ≡ just (ldr x9 (base+imm x9 8)))
+                    (sym pc-s₃-eq)
+                    (fetch-append-right prefix (apply-code ++ suffix) 3)
 
     -- x9 in s₃ is still encode closure (ldr wrote to x19)
     x9-s₃ : readReg (regs s₃) x9 ≡ encode closure
@@ -2893,8 +3075,14 @@ run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
     -- Step 5: mov x0 (reg x10) - move arg to x0
     -- After: x0 = encode arg, pc = length prefix + 5
 
-    postulate
-      fetch-5 : fetch prog (pc s₄) ≡ just (mov x0 (reg x10))
+    -- pc s₄ = pc s₃ + 1 = length prefix + 4
+    pc-s₄-eq : pc s₄ ≡ length prefix +ℕ 4
+    pc-s₄-eq = trans (cong (_+ℕ 1) pc-s₃-eq) (+-assoc (length prefix) 3 1)
+
+    fetch-5 : fetch prog (pc s₄) ≡ just (mov x0 (reg x10))
+    fetch-5 = subst (λ p → fetch prog p ≡ just (mov x0 (reg x10)))
+                    (sym pc-s₄-eq)
+                    (fetch-append-right prefix (apply-code ++ suffix) 4)
 
     -- x10 in s₄ still holds encode arg
     x10-s₄ : readReg (regs s₄) x10 ≡ encode arg
@@ -2920,8 +3108,14 @@ run-apply-setup {A} {B} prefix suffix closure arg s h-false pc-eq x0-eq mem-eq =
     -- Step 6: blr x9 - branch to thunk code
     -- After: pc = closure-code-ptr, x30 = pc + 1 = length prefix + 6
 
-    postulate
-      fetch-6 : fetch prog (pc s₅) ≡ just (blr x9)
+    -- pc s₅ = pc s₄ + 1 = length prefix + 5
+    pc-s₅-eq : pc s₅ ≡ length prefix +ℕ 5
+    pc-s₅-eq = trans (cong (_+ℕ 1) pc-s₄-eq) (+-assoc (length prefix) 4 1)
+
+    fetch-6 : fetch prog (pc s₅) ≡ just (blr x9)
+    fetch-6 = subst (λ p → fetch prog p ≡ just (blr x9))
+                    (sym pc-s₅-eq)
+                    (fetch-append-right prefix (apply-code ++ suffix) 5)
 
     -- x9 in s₅ still holds closure-code-ptr
     x9-s₅ : readReg (regs s₅) x9 ≡ closure-code-ptr closure
@@ -4314,10 +4508,66 @@ run-curry-seq {A} {B} {C} f a s h-false pc-0 x0-eq = st8 , run-eq , refl , x0-fi
     step7 = trans (step-exec prog st6 (label end-label) h6 (fetch-label-at-end len-f))
                   (execInstr-label prog st6 end-label)
       where
+        open Relation.Binary.PropositionalEquality.≡-Reasoning renaming (begin_ to ≡-begin_; _∎ to _≡-∎)
         -- Helper: fetch at position 11 + len-f returns label (11 + len-f)
-        postulate
-          fetch-label-at-end : ∀ (len : ℕ) →
-            fetch (compile-aarch64 (curry {A} {B} {C} f)) (11 +ℕ len) ≡ just (label (11 +ℕ len))
+        -- The curry code structure is:
+        --   10 fixed instructions (positions 0-9)
+        --   compile-aarch64 f (positions 10 to 9+len-f, that's len-f instructions)
+        --   ret at position 10+len-f
+        --   label (11 + len-f) at position 11+len-f
+
+        -- Define the fixed prefix (10 instructions: positions 0-9)
+        curry-fixed-prefix : Program
+        curry-fixed-prefix = sub-sp 16 ∷ str x0 (sp+imm 0) ∷ adr x9 4 ∷ str x9 (sp+imm 8) ∷
+                             mov-from-sp x0 ∷ b (11 +ℕ len-f) ∷ label 6 ∷ sub-sp 16 ∷
+                             stp x19 x0 (sp+imm 0) ∷ mov-from-sp x0 ∷ []
+
+        len-curry-fixed-prefix : length curry-fixed-prefix ≡ 10
+        len-curry-fixed-prefix = refl
+
+        -- The part before the final label: fixed-prefix ++ code-f ++ [ret]
+        curry-before-label : Program
+        curry-before-label = curry-fixed-prefix ++ compile-aarch64 f ++ ret ∷ []
+
+        -- Length of curry-before-label = 10 + len-f + 1 = 11 + len-f
+        len-curry-before-label : length curry-before-label ≡ 11 +ℕ len-f
+        len-curry-before-label = ≡-begin
+          length curry-before-label
+            ≡⟨ length-++ curry-fixed-prefix ⟩
+          length curry-fixed-prefix +ℕ length (compile-aarch64 f ++ ret ∷ [])
+            ≡⟨ cong (length curry-fixed-prefix +ℕ_) (length-++ (compile-aarch64 f)) ⟩
+          length curry-fixed-prefix +ℕ (length (compile-aarch64 f) +ℕ 1)
+            ≡⟨ cong (λ n → length curry-fixed-prefix +ℕ (n +ℕ 1)) (compile-length-correct f) ⟩
+          length curry-fixed-prefix +ℕ (len-f +ℕ 1)
+            ≡⟨ cong (λ n → n +ℕ (len-f +ℕ 1)) len-curry-fixed-prefix ⟩
+          10 +ℕ (len-f +ℕ 1)
+            ≡⟨ cong (10 +ℕ_) (+-comm len-f 1) ⟩
+          10 +ℕ (1 +ℕ len-f)
+            ≡⟨ sym (+-assoc 10 1 len-f) ⟩
+          11 +ℕ len-f
+            ≡-∎
+
+        -- curry code = curry-before-label ++ [label (11 + len-f)]
+        curry-code-split : compile-aarch64 (curry {A} {B} {C} f) ≡ curry-before-label ++ label (11 +ℕ len-f) ∷ []
+        curry-code-split = ≡-begin
+          compile-aarch64 (curry {A} {B} {C} f)
+            ≡⟨ refl ⟩
+          curry-fixed-prefix ++ compile-aarch64 f ++ ret ∷ label (11 +ℕ len-f) ∷ []
+            ≡⟨ cong (curry-fixed-prefix ++_) (sym (++-assoc (compile-aarch64 f) (ret ∷ []) (label (11 +ℕ len-f) ∷ []))) ⟩
+          curry-fixed-prefix ++ (compile-aarch64 f ++ ret ∷ []) ++ label (11 +ℕ len-f) ∷ []
+            ≡⟨ sym (++-assoc curry-fixed-prefix (compile-aarch64 f ++ ret ∷ []) (label (11 +ℕ len-f) ∷ [])) ⟩
+          curry-before-label ++ label (11 +ℕ len-f) ∷ []
+            ≡-∎
+
+        fetch-label-at-end : ∀ (len : ℕ) →
+          fetch (compile-aarch64 (curry {A} {B} {C} f)) (11 +ℕ len) ≡ just (label (11 +ℕ len))
+        fetch-label-at-end len = subst (λ p → fetch p (11 +ℕ len) ≡ just (label (11 +ℕ len)))
+                                       (sym curry-code-split)
+                                       (subst (λ n → fetch (curry-before-label ++ label (11 +ℕ len-f) ∷ []) n ≡ just (label (11 +ℕ len)))
+                                              (sym len-curry-before-label)
+                                              (subst (λ l → fetch (curry-before-label ++ label l ∷ []) (length curry-before-label) ≡ just (label l))
+                                                     (sym len-curry-before-label)
+                                                     (fetch-at-prefix-end curry-before-label (label (length curry-before-label)) [])))
 
     h7 : halted st7 ≡ false
     h7 = h-false
