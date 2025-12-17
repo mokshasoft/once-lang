@@ -1,0 +1,295 @@
+// ======================================================================
+// Command-line Argument Access - x86_64 Implementation
+// ======================================================================
+//
+// Provides access to argc/argv by reading /proc/self/cmdline at startup.
+// Uses a constructor function to parse arguments before main().
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_LINUX_X86_64_ARGV_DEFINED
+#define ONCE_LINUX_X86_64_ARGV_DEFINED
+
+.equ SYS_open,      2
+.equ SYS_close,     3
+.equ SYS_read,      0
+.equ O_RDONLY,      0
+
+.equ MAX_ARGS,      256
+.equ CMDLINE_SIZE,  4096
+
+// ======================================================================
+// Data Section
+// ======================================================================
+
+.section .bss
+.align 8
+g_argc:
+    .space 8                    // int64_t
+g_argv:
+    .space 8 * MAX_ARGS         // char* array
+g_cmdline_buf:
+    .space CMDLINE_SIZE         // raw cmdline buffer
+
+.section .rodata
+.align 1
+.Lprocpath:
+    .asciz "/proc/self/cmdline"
+
+.text
+
+// ======================================================================
+// Initialization (constructor)
+// ======================================================================
+
+.section .init_array,"aw"
+.align 8
+    .quad once_argv_init
+
+.text
+
+// ----------------------------------------------------------------------
+// once_argv_init - Parse /proc/self/cmdline at startup
+// ----------------------------------------------------------------------
+.type once_argv_init, @function
+once_argv_init:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    // Open /proc/self/cmdline
+    lea     .Lprocpath(%rip), %rdi
+    mov     $O_RDONLY, %esi
+    xor     %edx, %edx
+    mov     $SYS_open, %rax
+    syscall
+
+    test    %rax, %rax
+    js      .init_done
+
+    mov     %rax, %r12              // r12 = fd
+
+    // Read cmdline
+    mov     %r12, %rdi
+    lea     g_cmdline_buf(%rip), %rsi
+    mov     $CMDLINE_SIZE - 1, %edx
+    mov     $SYS_read, %rax
+    syscall
+
+    mov     %rax, %r13              // r13 = bytes read
+
+    // Close fd
+    mov     %r12, %rdi
+    mov     $SYS_close, %rax
+    syscall
+
+    test    %r13, %r13
+    jle     .init_done
+
+    // Null-terminate
+    lea     g_cmdline_buf(%rip), %r14
+    movb    $0, (%r14,%r13)
+
+    // Parse null-separated arguments
+    xor     %r15d, %r15d            // r15 = argc = 0
+    xor     %rcx, %rcx              // rcx = position
+
+.parse_loop:
+    cmp     %r13, %rcx
+    jge     .parse_done
+    cmp     $MAX_ARGS, %r15d
+    jge     .parse_done
+
+    // Skip leading nulls
+    movzbl  (%r14,%rcx), %eax
+    test    %al, %al
+    jz      .skip_null
+
+    // Found start of argument
+    lea     (%r14,%rcx), %rax
+    lea     g_argv(%rip), %rdx
+    mov     %rax, (%rdx,%r15,8)
+    inc     %r15
+
+    // Skip to end of argument
+.skip_arg:
+    inc     %rcx
+    cmp     %r13, %rcx
+    jge     .parse_done
+    movzbl  (%r14,%rcx), %eax
+    test    %al, %al
+    jnz     .skip_arg
+    jmp     .parse_loop
+
+.skip_null:
+    inc     %rcx
+    jmp     .parse_loop
+
+.parse_done:
+    // Store argc
+    lea     g_argc(%rip), %rax
+    mov     %r15, (%rax)
+
+.init_done:
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_argv_init, .-once_argv_init
+
+// ======================================================================
+// Public Functions
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// argc - Get argument count
+// ----------------------------------------------------------------------
+// Input: Unit (ignored) in rdi
+// Output: int64 in rax
+.global once_argc
+.type once_argc, @function
+once_argc:
+    lea     g_argc(%rip), %rax
+    mov     (%rax), %rax
+    ret
+.size once_argc, .-once_argc
+
+// ----------------------------------------------------------------------
+// argv - Get argument at index
+// ----------------------------------------------------------------------
+// Input: int64 index in rdi
+// Output: OnceString (data, len) in rax (pointer to struct)
+//
+// Note: Returns struct by value. On x86_64, small structs are returned
+// in rax:rdx. We return data in rax, len in rdx.
+.global once_argv
+.type once_argv, @function
+once_argv:
+    push    %rbp
+    mov     %rsp, %rbp
+
+    // Check bounds: 0 <= idx < g_argc
+    test    %rdi, %rdi
+    js      .argv_empty
+
+    lea     g_argc(%rip), %rax
+    cmp     (%rax), %rdi
+    jge     .argv_empty
+
+    // Get pointer: g_argv[idx]
+    lea     g_argv(%rip), %rax
+    mov     (%rax,%rdi,8), %rax     // rax = g_argv[idx]
+    test    %rax, %rax
+    jz      .argv_empty
+
+    // Calculate length (strlen)
+    mov     %rax, %rcx              // save pointer
+    xor     %edx, %edx              // len = 0
+.strlen_loop:
+    movzbl  (%rax,%rdx), %esi
+    test    %sil, %sil
+    jz      .strlen_done
+    inc     %rdx
+    jmp     .strlen_loop
+
+.strlen_done:
+    mov     %rcx, %rax              // rax = data pointer
+    // rdx already has length
+    pop     %rbp
+    ret
+
+.argv_empty:
+    lea     .Lempty_str(%rip), %rax
+    xor     %edx, %edx
+    pop     %rbp
+    ret
+.size once_argv, .-once_argv
+
+.section .rodata
+.Lempty_str:
+    .asciz ""
+
+.text
+
+// ----------------------------------------------------------------------
+// argn - Get first argument as integer
+// ----------------------------------------------------------------------
+// Input: Unit (ignored) in rdi
+// Output: int64 in rax
+//
+// Parses argv[1] as integer, returns 0 if not available or invalid.
+.global once_argn
+.type once_argn, @function
+once_argn:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %r12
+
+    // Check if argc >= 2
+    lea     g_argc(%rip), %rax
+    mov     (%rax), %rax
+    cmp     $2, %rax
+    jl      .argn_zero
+
+    // Get argv[1]
+    lea     g_argv(%rip), %rax
+    mov     8(%rax), %rdi           // rdi = g_argv[1]
+    test    %rdi, %rdi
+    jz      .argn_zero
+
+    // Parse as integer (simple atoll)
+    xor     %rax, %rax              // result = 0
+    xor     %r12d, %r12d            // negative flag = 0
+
+    // Check for negative
+    movzbl  (%rdi), %ecx
+    cmp     $'-', %cl
+    jne     .atoll_loop
+    mov     $1, %r12d
+    inc     %rdi
+
+.atoll_loop:
+    movzbl  (%rdi), %ecx
+    test    %cl, %cl
+    jz      .atoll_done
+
+    // Check if digit
+    sub     $'0', %cl
+    cmp     $9, %cl
+    ja      .atoll_done
+
+    // result = result * 10 + digit
+    imul    $10, %rax, %rax
+    movzbl  %cl, %ecx
+    add     %rcx, %rax
+
+    inc     %rdi
+    jmp     .atoll_loop
+
+.atoll_done:
+    // Apply sign
+    test    %r12d, %r12d
+    jz      .argn_return
+    neg     %rax
+
+.argn_return:
+    pop     %r12
+    pop     %rbp
+    ret
+
+.argn_zero:
+    xor     %eax, %eax
+    pop     %r12
+    pop     %rbp
+    ret
+.size once_argn, .-once_argn
+
+#endif // ONCE_LINUX_X86_64_ARGV_DEFINED
