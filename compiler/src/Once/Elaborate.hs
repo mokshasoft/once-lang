@@ -198,6 +198,7 @@ elaborateType sty = case sty of
   STUnit -> TUnit
   STVoid -> TVoid
   STInt -> TInt
+  STFloat -> TFloat
   STBuffer -> TBuffer
   STString enc -> TString enc
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)

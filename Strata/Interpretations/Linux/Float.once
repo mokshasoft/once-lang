@@ -1,0 +1,103 @@
+-- | Floating-point arithmetic primitives for Linux
+--
+-- Double-precision (64-bit) floating-point operations.
+-- Required for n-body, spectral-norm, mandelbrot benchmarks.
+
+------------------------------------------------------------------------
+-- Basic Arithmetic
+------------------------------------------------------------------------
+
+-- | Addition
+primitive fadd : Float * Float -> Float
+
+-- | Subtraction
+primitive fsub : Float * Float -> Float
+
+-- | Multiplication
+primitive fmul : Float * Float -> Float
+
+-- | Division
+primitive fdiv : Float * Float -> Float
+
+-- | Negation
+primitive fneg : Float -> Float
+
+-- | Absolute value
+primitive fabs : Float -> Float
+
+------------------------------------------------------------------------
+-- Transcendental Functions
+------------------------------------------------------------------------
+
+-- | Square root
+primitive fsqrt : Float -> Float
+
+-- | Sine
+primitive fsin : Float -> Float
+
+-- | Cosine
+primitive fcos : Float -> Float
+
+-- | Power (x^y)
+primitive fpow : Float * Float -> Float
+
+-- | Natural logarithm
+primitive flog : Float -> Float
+
+-- | Exponential (e^x)
+primitive fexp : Float -> Float
+
+------------------------------------------------------------------------
+-- Comparisons (return 0 for false, 1 for true)
+------------------------------------------------------------------------
+
+-- | Less than
+primitive flt : Float * Float -> Int
+
+-- | Less than or equal
+primitive fle : Float * Float -> Int
+
+-- | Greater than
+primitive fgt : Float * Float -> Int
+
+-- | Greater than or equal
+primitive fge : Float * Float -> Int
+
+-- | Equal (exact comparison)
+primitive feq : Float * Float -> Int
+
+-- | Not equal
+primitive fne : Float * Float -> Int
+
+------------------------------------------------------------------------
+-- Conversions
+------------------------------------------------------------------------
+
+-- | Convert integer to float
+primitive intToFloat : Int -> Float
+
+-- | Convert float to integer (truncates toward zero)
+primitive floatToInt : Float -> Int
+
+-- | Parse float from string (returns 0.0 on failure)
+primitive parseFloat : String Utf8 -> Float
+
+-- | Convert float to string
+primitive floatToString : Float -> String Utf8
+
+------------------------------------------------------------------------
+-- Constants
+------------------------------------------------------------------------
+
+-- | Pi (3.14159...)
+primitive pi : Unit -> Float
+
+------------------------------------------------------------------------
+-- Min/Max
+------------------------------------------------------------------------
+
+-- | Minimum of two floats
+primitive fmin : Float * Float -> Float
+
+-- | Maximum of two floats
+primitive fmax : Float * Float -> Float

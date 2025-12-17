@@ -78,6 +78,7 @@ data SType
   | STUnit                       -- ^ Unit type: Unit
   | STVoid                       -- ^ Void type: Void
   | STInt                        -- ^ Integer type: Int
+  | STFloat                      -- ^ Floating-point type: Float
   | STBuffer                     -- ^ Buffer type: Buffer
   | STString Encoding            -- ^ String type with encoding: String Utf8
   | STProduct SType SType        -- ^ Product: A * B

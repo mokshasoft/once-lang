@@ -414,6 +414,7 @@ convertTypeWithAliases aliases sty = case sty of
   STUnit -> TUnit
   STVoid -> TVoid
   STInt -> TInt
+  STFloat -> TFloat
   STBuffer -> TBuffer
   STString enc -> TString enc
   STProduct a b -> TProduct (conv a) (conv b)
@@ -443,6 +444,7 @@ substSType subst sty = case sty of
   STUnit -> STUnit
   STVoid -> STVoid
   STInt -> STInt
+  STFloat -> STFloat
   STBuffer -> STBuffer
   STString enc -> STString enc
   STProduct a b -> STProduct (substSType subst a) (substSType subst b)

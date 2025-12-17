@@ -61,6 +61,7 @@ canConvertType t = case t of
   H.TFix f        -> canConvertType f
   H.TVar n        -> True
   -- Cannot convert these
+  H.TFloat        -> False  -- Float not in MAlonzo
   H.TString _     -> False  -- MAlonzo has Str without encoding
   H.TApp _ _      -> False  -- Type applications not in MAlonzo
 
@@ -90,6 +91,7 @@ toMAlonzoType t = case t of
   H.TFix f       -> M.C_Fix_18 (toMAlonzoType f)
   H.TVar n       -> M.C_TVar_26 n  -- MAlonzo uses Text directly
   -- These should not occur (checked by canConvertType)
+  H.TFloat       -> error "MAlonzo: TFloat not supported"
   H.TString _    -> error "MAlonzo: TString not supported"
   H.TApp _ _     -> error "MAlonzo: TApp not supported"
 

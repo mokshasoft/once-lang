@@ -1,0 +1,320 @@
+// ======================================================================
+// Floating-point Arithmetic Primitives - x86_64 Implementation
+// ======================================================================
+//
+// Double-precision (64-bit) floating-point operations using SSE2.
+// Required for n-body, spectral-norm, mandelbrot benchmarks.
+//
+// Note: Transcendental functions (sin, cos, exp, log, pow) require
+// libm or software implementations. This file provides hardware-only
+// operations. Use the C implementation for transcendentals.
+//
+// Calling convention:
+// - Float values passed/returned in xmm0 (or via memory for pairs)
+// - Pairs passed as pointer to OncePair in rdi
+// - Float stored in void* via type punning (same bits as double)
+//
+// ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_LINUX_X86_64_FLOAT_DEFINED
+#define ONCE_LINUX_X86_64_FLOAT_DEFINED
+
+// ======================================================================
+// Basic Arithmetic
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fadd - Add two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: double in xmm0
+.global once_fadd
+.type once_fadd, @function
+once_fadd:
+    movsd   (%rdi), %xmm0       // xmm0 = fst
+    addsd   8(%rdi), %xmm0      // xmm0 += snd
+    ret
+.size once_fadd, .-once_fadd
+
+// ----------------------------------------------------------------------
+// fsub - Subtract two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: double in xmm0
+.global once_fsub
+.type once_fsub, @function
+once_fsub:
+    movsd   (%rdi), %xmm0       // xmm0 = fst
+    subsd   8(%rdi), %xmm0      // xmm0 -= snd
+    ret
+.size once_fsub, .-once_fsub
+
+// ----------------------------------------------------------------------
+// fmul - Multiply two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: double in xmm0
+.global once_fmul
+.type once_fmul, @function
+once_fmul:
+    movsd   (%rdi), %xmm0       // xmm0 = fst
+    mulsd   8(%rdi), %xmm0      // xmm0 *= snd
+    ret
+.size once_fmul, .-once_fmul
+
+// ----------------------------------------------------------------------
+// fdiv - Divide two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: double in xmm0
+.global once_fdiv
+.type once_fdiv, @function
+once_fdiv:
+    movsd   (%rdi), %xmm0       // xmm0 = fst
+    divsd   8(%rdi), %xmm0      // xmm0 /= snd
+    ret
+.size once_fdiv, .-once_fdiv
+
+// ----------------------------------------------------------------------
+// fneg - Negate a float
+// ----------------------------------------------------------------------
+// Input: double in xmm0
+// Output: double in xmm0
+.global once_fneg
+.type once_fneg, @function
+once_fneg:
+    // XOR with sign bit mask to flip sign
+    movq    %xmm0, %rax
+    movabs  $0x8000000000000000, %rcx
+    xor     %rcx, %rax
+    movq    %rax, %xmm0
+    ret
+.size once_fneg, .-once_fneg
+
+// ----------------------------------------------------------------------
+// fabs - Absolute value
+// ----------------------------------------------------------------------
+// Input: double in xmm0
+// Output: double in xmm0
+.global once_fabs
+.type once_fabs, @function
+once_fabs:
+    // AND with mask to clear sign bit
+    movq    %xmm0, %rax
+    movabs  $0x7FFFFFFFFFFFFFFF, %rcx
+    and     %rcx, %rax
+    movq    %rax, %xmm0
+    ret
+.size once_fabs, .-once_fabs
+
+// ======================================================================
+// Hardware-supported operations
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fsqrt - Square root
+// ----------------------------------------------------------------------
+// Input: double in xmm0
+// Output: double in xmm0
+.global once_fsqrt
+.type once_fsqrt, @function
+once_fsqrt:
+    sqrtsd  %xmm0, %xmm0
+    ret
+.size once_fsqrt, .-once_fsqrt
+
+// ======================================================================
+// Comparisons (return 0 for false, 1 for true)
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// flt - Less than
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: int64 (0 or 1) in rax
+.global once_flt
+.type once_flt, @function
+once_flt:
+    movsd   (%rdi), %xmm0       // xmm0 = fst
+    ucomisd 8(%rdi), %xmm0      // compare fst with snd
+    setb    %al                 // set if fst < snd (below, for unordered compare)
+    movzbl  %al, %eax
+    ret
+.size once_flt, .-once_flt
+
+// ----------------------------------------------------------------------
+// fle - Less than or equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: int64 (0 or 1) in rax
+.global once_fle
+.type once_fle, @function
+once_fle:
+    movsd   (%rdi), %xmm0
+    ucomisd 8(%rdi), %xmm0
+    setbe   %al                 // set if fst <= snd
+    movzbl  %al, %eax
+    ret
+.size once_fle, .-once_fle
+
+// ----------------------------------------------------------------------
+// fgt - Greater than
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: int64 (0 or 1) in rax
+.global once_fgt
+.type once_fgt, @function
+once_fgt:
+    movsd   (%rdi), %xmm0
+    ucomisd 8(%rdi), %xmm0
+    seta    %al                 // set if fst > snd
+    movzbl  %al, %eax
+    ret
+.size once_fgt, .-once_fgt
+
+// ----------------------------------------------------------------------
+// fge - Greater than or equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: int64 (0 or 1) in rax
+.global once_fge
+.type once_fge, @function
+once_fge:
+    movsd   (%rdi), %xmm0
+    ucomisd 8(%rdi), %xmm0
+    setae   %al                 // set if fst >= snd
+    movzbl  %al, %eax
+    ret
+.size once_fge, .-once_fge
+
+// ----------------------------------------------------------------------
+// feq - Equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: int64 (0 or 1) in rax
+.global once_feq
+.type once_feq, @function
+once_feq:
+    movsd   (%rdi), %xmm0
+    ucomisd 8(%rdi), %xmm0
+    sete    %al
+    setnp   %cl                 // also check not unordered (NaN)
+    and     %cl, %al
+    movzbl  %al, %eax
+    ret
+.size once_feq, .-once_feq
+
+// ----------------------------------------------------------------------
+// fne - Not equal
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: int64 (0 or 1) in rax
+.global once_fne
+.type once_fne, @function
+once_fne:
+    movsd   (%rdi), %xmm0
+    ucomisd 8(%rdi), %xmm0
+    setne   %al
+    setp    %cl                 // or if unordered (NaN)
+    or      %cl, %al
+    movzbl  %al, %eax
+    ret
+.size once_fne, .-once_fne
+
+// ======================================================================
+// Conversions
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// intToFloat - Convert integer to float
+// ----------------------------------------------------------------------
+// Input: int64 in rdi
+// Output: double in xmm0
+.global once_intToFloat
+.type once_intToFloat, @function
+once_intToFloat:
+    cvtsi2sdq %rdi, %xmm0
+    ret
+.size once_intToFloat, .-once_intToFloat
+
+// ----------------------------------------------------------------------
+// floatToInt - Convert float to integer (truncate toward zero)
+// ----------------------------------------------------------------------
+// Input: double in xmm0
+// Output: int64 in rax
+.global once_floatToInt
+.type once_floatToInt, @function
+once_floatToInt:
+    cvttsd2siq %xmm0, %rax
+    ret
+.size once_floatToInt, .-once_floatToInt
+
+// ======================================================================
+// Constants
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// pi - Return pi constant
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: double in xmm0
+.global once_pi
+.type once_pi, @function
+once_pi:
+    movsd   .Lpi_const(%rip), %xmm0
+    ret
+.size once_pi, .-once_pi
+
+.section .rodata
+.align 8
+.Lpi_const:
+    .double 3.14159265358979323846
+
+.text
+
+// ======================================================================
+// Min/Max
+// ======================================================================
+
+// ----------------------------------------------------------------------
+// fmin - Minimum of two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: double in xmm0
+.global once_fmin
+.type once_fmin, @function
+once_fmin:
+    movsd   (%rdi), %xmm0
+    minsd   8(%rdi), %xmm0
+    ret
+.size once_fmin, .-once_fmin
+
+// ----------------------------------------------------------------------
+// fmax - Maximum of two floats
+// ----------------------------------------------------------------------
+// Input: OncePair* (fst, snd) in rdi
+// Output: double in xmm0
+.global once_fmax
+.type once_fmax, @function
+once_fmax:
+    movsd   (%rdi), %xmm0
+    maxsd   8(%rdi), %xmm0
+    ret
+.size once_fmax, .-once_fmax
+
+// ======================================================================
+// Transcendental functions - STUB implementations
+// ======================================================================
+// These require libm or software implementations.
+// For now, they are not implemented in pure assembly.
+// Use the C implementation (Float.c) for these functions.
+//
+// Not implemented: fsin, fcos, fpow, flog, fexp
+// Not implemented: parseFloat, floatToString (require string handling)
+//
+// ======================================================================
+
+#endif // ONCE_LINUX_X86_64_FLOAT_DEFINED

@@ -127,6 +127,7 @@ cTypeName ty = case ty of
   TUnit -> "void*"  -- Unit represented as NULL
   TVoid -> "void"
   TInt -> "int"
+  TFloat -> "double"  -- Double-precision floating point
   TBuffer -> "OnceBuffer"
   TString _ -> "OnceString"  -- Encoding erased at runtime
   TProduct _ _ -> "OncePair"
