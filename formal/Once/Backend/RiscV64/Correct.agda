@@ -962,6 +962,49 @@ mutual
       a0-after-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))
       s1-after-f = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))
 
+      -- exec f on the sub-program
+      exec-f : exec len-f (prefix-f ++ code-f ++ suffix-f) s-after-setup ≡ just sf
+      exec-f = proj₁ (proj₂ f-result)
+
+      -- Program equality for f: prefix-f ++ code-f ++ suffix-f ≡ prog
+      -- The proof uses associativity to show both sides equal
+      -- prefix ++ (addi ∷ mv ∷ (code-f ++ suffix-f))
+      --
+      -- suffix-f = sd ∷ mv ∷ (code-g ++ sd ∷ mv ∷ suffix) by definition
+      -- compile-riscv ⟨ f , g ⟩ ++ suffix = addi ∷ mv ∷ (code-f ++ suffix-f) after ++-assoc
+
+      -- Show compile-riscv ⟨ f , g ⟩ ++ suffix = addi ∷ mv ∷ (code-f ++ suffix-f)
+      -- This helper is reused for both prog-eq-f-pair and prog-eq-g-pair
+      pair-code-suffix-inner1 : (code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ []) ++ suffix ≡ code-g ++ (sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix)
+      pair-code-suffix-inner1 = ++-assoc code-g (sd a0 (+ 8) sp ∷ mv a0 sp ∷ []) suffix
+
+      pair-code-suffix-inner2 : (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])) ++ suffix
+                              ≡ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix)
+      pair-code-suffix-inner2 = cong (sd a0 (+ 0) sp ∷_) (cong (mv a0 s1 ∷_) pair-code-suffix-inner1)
+
+      pair-code-suffix-inner3 : (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])) ++ suffix
+                              ≡ code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ (code-g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ suffix)
+      pair-code-suffix-inner3 = trans (++-assoc code-f _ suffix) (cong (code-f ++_) pair-code-suffix-inner2)
+
+      pair-code-suffix : compile-riscv ⟨ f , g ⟩ ++ suffix ≡ addi sp sp neg16 ∷ mv s1 a0 ∷ (code-f ++ suffix-f)
+      pair-code-suffix = cong (addi sp sp neg16 ∷_) (cong (mv s1 a0 ∷_) pair-code-suffix-inner3)
+
+      -- Program equality for f: prefix-f ++ code-f ++ suffix-f ≡ prog
+      -- Using ++-assoc and pair-code-suffix:
+      -- prefix-f ++ (code-f ++ suffix-f) = (prefix ++ addi ∷ mv ∷ []) ++ (code-f ++ suffix-f)
+      --                                  = prefix ++ ((addi ∷ mv ∷ []) ++ (code-f ++ suffix-f))  [++-assoc]
+      --                                  = prefix ++ (addi ∷ mv ∷ (code-f ++ suffix-f))          [definitional]
+      --                                  = prefix ++ (compile-riscv ⟨ f , g ⟩ ++ suffix)         [sym pair-code-suffix]
+      --                                  = prog                                                   [definition]
+      prog-eq-f-pair : prefix-f ++ code-f ++ suffix-f ≡ prog
+      prog-eq-f-pair =
+        trans (++-assoc prefix (addi sp sp neg16 ∷ mv s1 a0 ∷ []) (code-f ++ suffix-f))
+              (cong (prefix ++_) (sym pair-code-suffix))
+
+      -- exec f on the full program (via subst)
+      exec-f-prog : exec len-f prog s-after-setup ≡ just sf
+      exec-f-prog = subst (λ p → exec len-f p s-after-setup ≡ just sf) prog-eq-f-pair exec-f
+
       -- Phase 3: Middle (2 instructions) - sd a0 0(sp); mv a0 s1
       -- After middle: [sp] = eval f x, a0 = x (restored from s1)
       prefix-g : Program
@@ -1204,6 +1247,29 @@ mutual
       h-after-g = proj₁ (proj₂ (proj₂ g-result))
       a0-after-g = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))
       s1-after-g = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ g-result))))
+
+      -- exec g on the sub-program
+      exec-g : exec len-g (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just sg
+      exec-g = proj₁ (proj₂ g-result)
+
+      -- Program equality for g: prefix-g ++ code-g ++ suffix-g ≡ prog
+      -- Using ++-assoc chains:
+      -- prefix-g ++ (code-g ++ suffix-g)
+      -- = (prefix-f ++ (code-f ++ sd ∷ mv ∷ [])) ++ (code-g ++ suffix-g)         [definition]
+      -- = prefix-f ++ ((code-f ++ sd ∷ mv ∷ []) ++ (code-g ++ suffix-g))         [++-assoc]
+      -- = prefix-f ++ (code-f ++ ((sd ∷ mv ∷ []) ++ (code-g ++ suffix-g)))       [++-assoc]
+      -- = prefix-f ++ (code-f ++ (sd ∷ mv ∷ (code-g ++ suffix-g)))               [definitional]
+      -- = prefix-f ++ (code-f ++ suffix-f)                                        [suffix-g def, suffix-f def]
+      -- = prog                                                                    [prog-eq-f-pair]
+      prog-eq-g-pair : prefix-g ++ code-g ++ suffix-g ≡ prog
+      prog-eq-g-pair =
+        trans (++-assoc prefix-f (code-f ++ sd a0 (+ 0) sp ∷ mv a0 s1 ∷ []) (code-g ++ suffix-g))
+              (trans (cong (prefix-f ++_) (++-assoc code-f (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ []) (code-g ++ suffix-g)))
+                     prog-eq-f-pair)
+
+      -- exec g on the full program (via subst)
+      exec-g-prog : exec len-g prog s-after-middle ≡ just sg
+      exec-g-prog = subst (λ p → exec len-g p s-after-middle ≡ just sg) prog-eq-g-pair exec-g
 
       -- Phase 5: Final (2 instructions) - sd a0 8(sp); mv a0 sp
       -- After final: [sp+8] = eval g x, a0 = sp (pointer to pair)
@@ -1476,16 +1542,68 @@ mutual
       postulate
         a0-final : readReg (regs s-final) a0 ≡ encode (eval ⟨ f , g ⟩ x)
 
-      -- exec-all: combine all phases
+      -- exec-all: combine all phases using exec-chain
       -- Phase execution summary:
       --   exec-setup: exec 2 prog s ≡ just s-after-setup
-      --   f-result: exec len-f (prefix-f++code-f++suffix-f) s-after-setup ≡ just sf
+      --   exec-f-prog: exec len-f prog s-after-setup ≡ just sf
       --   exec-middle: exec 2 prog sf ≡ just s-after-middle
-      --   g-result: exec len-g (prefix-g++code-g++suffix-g) s-after-middle ≡ just sg
+      --   exec-g-prog: exec len-g prog s-after-middle ≡ just sg
       --   exec-final: exec 2 prog sg ≡ just s-final
       -- Total: 2 + len-f + 2 + len-g + 2 = (6 + len-f) + len-g = compile-length ⟨ f , g ⟩
-      postulate
-        exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
+
+      -- exec-all: combine all phases using exec-chain
+      -- Phase chaining:
+      --   1. exec-chain 2 len-f → exec (2 + len-f) = just sf
+      --   2. exec-chain (2 + len-f) 2 → exec (4 + len-f) = just s-after-middle
+      --   3. exec-chain (4 + len-f) len-g → exec (4 + len-f + len-g) = just sg
+      --   4. exec-chain (4 + len-f + len-g) 2 → exec (6 + len-f + len-g) = just s-final
+      -- And (6 + len-f) + len-g = compile-length ⟨ f , g ⟩
+
+      -- Step 1: exec (2 + len-f) prog s ≡ just sf
+      exec-1 : exec (2 +ℕ len-f) prog s ≡ just sf
+      exec-1 = exec-chain 2 len-f prog s s-after-setup sf exec-setup h-after-setup exec-f-prog
+
+      -- Step 2: exec ((2 + len-f) + 2) prog s ≡ just s-after-middle
+      exec-2 : exec ((2 +ℕ len-f) +ℕ 2) prog s ≡ just s-after-middle
+      exec-2 = exec-chain (2 +ℕ len-f) 2 prog s sf s-after-middle exec-1 h-after-f exec-middle
+
+      -- Step 3: exec (((2 + len-f) + 2) + len-g) prog s ≡ just sg
+      exec-3 : exec (((2 +ℕ len-f) +ℕ 2) +ℕ len-g) prog s ≡ just sg
+      exec-3 = exec-chain ((2 +ℕ len-f) +ℕ 2) len-g prog s s-after-middle sg exec-2 h-after-middle exec-g-prog
+
+      -- Step 4: exec ((((2 + len-f) + 2) + len-g) + 2) prog s ≡ just s-final
+      exec-4 : exec ((((2 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 2) prog s ≡ just s-final
+      exec-4 = exec-chain (((2 +ℕ len-f) +ℕ 2) +ℕ len-g) 2 prog s sg s-final exec-3 h-after-g exec-final
+
+      -- Arithmetic: (((2 + len-f) + 2) + len-g) + 2 = (6 + len-f) + len-g
+      -- Note: refl doesn't work here because len-f and len-g are variables,
+      -- blocking full normalization. Need explicit equational reasoning.
+      exec-arith : (((2 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 2 ≡ (6 +ℕ len-f) +ℕ len-g
+      exec-arith =
+        begin
+          (((2 +ℕ len-f) +ℕ 2) +ℕ len-g) +ℕ 2
+        ≡⟨ cong (λ x → (x +ℕ len-g) +ℕ 2) (+-assoc 2 len-f 2) ⟩
+          ((2 +ℕ (len-f +ℕ 2)) +ℕ len-g) +ℕ 2
+        ≡⟨ cong (λ x → ((2 +ℕ x) +ℕ len-g) +ℕ 2) (+-comm len-f 2) ⟩
+          ((2 +ℕ (2 +ℕ len-f)) +ℕ len-g) +ℕ 2
+        ≡⟨ cong (λ x → (x +ℕ len-g) +ℕ 2) (sym (+-assoc 2 2 len-f)) ⟩
+          ((4 +ℕ len-f) +ℕ len-g) +ℕ 2
+        ≡⟨ +-assoc (4 +ℕ len-f) len-g 2 ⟩
+          (4 +ℕ len-f) +ℕ (len-g +ℕ 2)
+        ≡⟨ cong ((4 +ℕ len-f) +ℕ_) (+-comm len-g 2) ⟩
+          (4 +ℕ len-f) +ℕ (2 +ℕ len-g)
+        ≡⟨ sym (+-assoc (4 +ℕ len-f) 2 len-g) ⟩
+          ((4 +ℕ len-f) +ℕ 2) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (+-assoc 4 len-f 2) ⟩
+          (4 +ℕ (len-f +ℕ 2)) +ℕ len-g
+        ≡⟨ cong (λ x → (4 +ℕ x) +ℕ len-g) (+-comm len-f 2) ⟩
+          (4 +ℕ (2 +ℕ len-f)) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (sym (+-assoc 4 2 len-f)) ⟩
+          (6 +ℕ len-f) +ℕ len-g
+        ∎
+
+      exec-all : exec (compile-length ⟨ f , g ⟩) prog s ≡ just s-final
+      exec-all = subst (λ n → exec n prog s ≡ just s-final) exec-arith exec-4
 
   ------------------------------------------------------------------------
   -- Proven helper for inl (4 instructions) - AT ARBITRARY OFFSET
