@@ -57,17 +57,50 @@ n≢n+8 n = n≢n+suc-m n 7
 -- THE 3 FUNDAMENTAL AXIOMS
 ------------------------------------------------------------------------
 
+-- Import helpers from Common.Memory
+open import Once.Backend.Common.Memory using (≡ᵇ-refl)
+
+-- THEOREM 1: Read after write (same address) - NOW PROVEN!
+mem-read-write : ∀ {m : Memory} {addr v : Word} →
+  readMem (writeMem m addr v) addr ≡ just v
+mem-read-write {m} {addr} {v} = lemma
+  where
+    -- writeMem m addr v = λ a → if a ≡ᵇ addr then just v else m a
+    -- readMem (writeMem m addr v) addr = (writeMem m addr v) addr
+    --                                  = if addr ≡ᵇ addr then just v else m addr
+    --                                  = if true then just v else m addr
+    --                                  = just v
+    lemma : (if addr ≡ᵇ addr then just v else m addr) ≡ just v
+    lemma rewrite ≡ᵇ-refl addr = refl
+
+-- THEOREM 2: Frame rule (different address) - NOW PROVEN!
+mem-read-other : ∀ {m : Memory} {addr₁ addr₂ v : Word} →
+  addr₁ ≢ addr₂ →
+  readMem (writeMem m addr₁ v) addr₂ ≡ readMem m addr₂
+mem-read-other {m} {addr₁} {addr₂} {v} neq = lemma
+  where
+    -- Need: (if addr₂ ≡ᵇ addr₁ then just v else m addr₂) ≡ m addr₂
+    -- Since addr₁ ≢ addr₂, we have addr₂ ≢ addr₁, so addr₂ ≡ᵇ addr₁ = false
+    addr₂≢addr₁ : addr₂ ≢ addr₁
+    addr₂≢addr₁ eq = neq (sym eq)
+
+    -- Use ≢ to derive that ≡ᵇ is false
+    ≡ᵇ-false : (addr₂ ≡ᵇ addr₁) ≡ false
+    ≡ᵇ-false with addr₂ ≡ᵇ addr₁ in eq
+    ... | false = refl
+    ... | true = ⊥-elim (addr₂≢addr₁ (≡ᵇ-true→≡ eq))
+      where
+        open import Data.Empty using (⊥-elim)
+        -- If n ≡ᵇ m = true, then n ≡ m
+        ≡ᵇ-true→≡ : ∀ {n m : ℕ} → (n ≡ᵇ m) ≡ true → n ≡ m
+        ≡ᵇ-true→≡ {zero} {zero} _ = refl
+        ≡ᵇ-true→≡ {suc n} {suc m} p = cong suc (≡ᵇ-true→≡ p)
+
+    lemma : (if addr₂ ≡ᵇ addr₁ then just v else m addr₂) ≡ m addr₂
+    lemma rewrite ≡ᵇ-false = refl
+
+-- Axiom 3: Encoding is injective (still postulated - requires concrete encode)
 postulate
-  -- Axiom 1: Read after write (same address)
-  mem-read-write : ∀ {m : Memory} {addr v : Word} →
-    readMem (writeMem m addr v) addr ≡ just v
-
-  -- Axiom 2: Frame rule (different address)
-  mem-read-other : ∀ {m : Memory} {addr₁ addr₂ v : Word} →
-    addr₁ ≢ addr₂ →
-    readMem (writeMem m addr₁ v) addr₂ ≡ readMem m addr₂
-
-  -- Axiom 3: Encoding is injective
   encode-injective : ∀ {A : Set} {x y : A} {encode : A → Word} →
     encode x ≡ encode y → x ≡ y
 
