@@ -4,6 +4,9 @@
 -- Operational semantics for the x86-64 instruction subset.
 -- Defines how instructions modify machine state.
 --
+-- IMPORTANT: No `with` clauses allowed. Use `case_of_` instead.
+-- This ensures definitional equality is preserved for proofs.
+--
 -- Based on the Sail x86-64 formal specification from REMS project.
 ------------------------------------------------------------------------
 
@@ -14,9 +17,9 @@ open import Once.Backend.X86.Syntax
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing; maybe)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Function using (_∘_)
+open import Function using (_∘_; case_of_)
 open import Relation.Nullary using (yes; no)
 
 -- Import common fetch function (polymorphic list indexing)
@@ -180,56 +183,68 @@ updateFlags result original = mkflags
   false           -- cf: simplified, not tracking carry
   false           -- sf: simplified, not tracking sign
 
+-- | Helper for comparing naturals (used by cmp)
+_<ᵇ_ : ℕ → ℕ → Bool
+zero <ᵇ zero = false
+zero <ᵇ suc _ = true
+suc _ <ᵇ zero = false
+suc m <ᵇ suc n = m <ᵇ n
+
 -- | Execute a single instruction
 -- Returns the new state, or nothing if execution cannot proceed
+-- NOTE: Uses case_of_ instead of with for definitional equality
 execInstr : Program → State → Instr → Maybe State
-execInstr prog s (mov dst src) with readOperand s src
-... | nothing = nothing
-... | just v = just (record (writeOperand s dst v) { pc = pc s + 1 })
+
+execInstr prog s (mov dst src) =
+  case readOperand s src of λ where
+    nothing → nothing
+    (just v) → just (record (writeOperand s dst v) { pc = pc s + 1 })
 
 execInstr prog s (lea r m) =
   just (record s { regs = writeReg (regs s) r (effectiveAddr s m)
                  ; pc = pc s + 1 })
 
-execInstr prog s (add dst src) with readOperand s dst | readOperand s src
-... | nothing | _ = nothing
-... | _ | nothing = nothing
-... | just d | just v =
-  let result = d + v
-  in just (record (writeOperand s dst result)
-                  { pc = pc s + 1
-                  ; flags = updateFlags result d })
+execInstr prog s (add dst src) =
+  case readOperand s dst of λ where
+    nothing → nothing
+    (just d) → case readOperand s src of λ where
+      nothing → nothing
+      (just v) →
+        let result = d + v
+        in just (record (writeOperand s dst result)
+                        { pc = pc s + 1
+                        ; flags = updateFlags result d })
 
-execInstr prog s (sub dst src) with readOperand s dst | readOperand s src
-... | nothing | _ = nothing
-... | _ | nothing = nothing
-... | just d | just v =
-  let result = d ∸ v
-  in just (record (writeOperand s dst result)
-                  { pc = pc s + 1
-                  ; flags = updateFlags result d })
+execInstr prog s (sub dst src) =
+  case readOperand s dst of λ where
+    nothing → nothing
+    (just d) → case readOperand s src of λ where
+      nothing → nothing
+      (just v) →
+        let result = d ∸ v
+        in just (record (writeOperand s dst result)
+                        { pc = pc s + 1
+                        ; flags = updateFlags result d })
 
-execInstr prog s (cmp op1 op2) with readOperand s op1 | readOperand s op2
-... | nothing | _ = nothing
-... | _ | nothing = nothing
-... | just v1 | just v2 =
-  let result = v1 ∸ v2
-  in just (record s { pc = pc s + 1
-                    ; flags = mkflags (v1 ≡ᵇ v2) (v1 < v2) false })
-  where
-    _<_ : ℕ → ℕ → Bool
-    zero < zero = false
-    zero < suc _ = true
-    suc _ < zero = false
-    suc m < suc n = m < n
+execInstr prog s (cmp op1 op2) =
+  case readOperand s op1 of λ where
+    nothing → nothing
+    (just v1) → case readOperand s op2 of λ where
+      nothing → nothing
+      (just v2) →
+        let result = v1 ∸ v2
+        in just (record s { pc = pc s + 1
+                          ; flags = mkflags (v1 ≡ᵇ v2) (v1 <ᵇ v2) false })
 
-execInstr prog s (test op1 op2) with readOperand s op1 | readOperand s op2
-... | nothing | _ = nothing
-... | _ | nothing = nothing
-... | just v1 | just v2 =
-  -- test performs bitwise AND and sets flags (simplified)
-  just (record s { pc = pc s + 1
-                 ; flags = mkflags (v1 ≡ᵇ 0) false false })
+execInstr prog s (test op1 op2) =
+  case readOperand s op1 of λ where
+    nothing → nothing
+    (just v1) → case readOperand s op2 of λ where
+      nothing → nothing
+      (just v2) →
+        -- test performs bitwise AND and sets flags (simplified)
+        just (record s { pc = pc s + 1
+                       ; flags = mkflags (v1 ≡ᵇ 0) false false })
 
 -- Jump instructions use PC-relative offsets (like real x86-64)
 -- Target is offset from the NEXT instruction (pc + 1 + target)
@@ -243,33 +258,36 @@ execInstr prog s (jne target) =
   just (record s { pc = if zf (flags s) then pc s + 1 else pc s + 1 + target })
 
 -- call and ret: simplified model (would need stack handling)
-execInstr prog s (call target) with readOperand s target
-... | nothing = nothing
-... | just addr =
-  -- Push return address, jump to target
-  -- Simplified: just update pc
-  just (record s { pc = addr })
+execInstr prog s (call target) =
+  case readOperand s target of λ where
+    nothing → nothing
+    (just addr) →
+      -- Push return address, jump to target
+      -- Simplified: just update pc
+      just (record s { pc = addr })
 
 execInstr prog s ret =
   -- Pop return address and jump
   -- Simplified: halt execution
   just (record s { halted = true })
 
-execInstr prog s (push src) with readOperand s src
-... | nothing = nothing
-... | just v =
-  let sp = readReg (regs s) rsp
-      newSp = sp ∸ 8
-  in just (record s { regs = writeReg (regs s) rsp newSp
-                    ; memory = writeMem (memory s) newSp v
-                    ; pc = pc s + 1 })
+execInstr prog s (push src) =
+  case readOperand s src of λ where
+    nothing → nothing
+    (just v) →
+      let sp = readReg (regs s) rsp
+          newSp = sp ∸ 8
+      in just (record s { regs = writeReg (regs s) rsp newSp
+                        ; memory = writeMem (memory s) newSp v
+                        ; pc = pc s + 1 })
 
-execInstr prog s (pop r) with readMem (memory s) (readReg (regs s) rsp)
-... | nothing = nothing
-... | just v =
-  let sp = readReg (regs s) rsp
-  in just (record s { regs = writeReg (writeReg (regs s) r v) rsp (sp + 8)
-                    ; pc = pc s + 1 })
+execInstr prog s (pop r) =
+  case readMem (memory s) (readReg (regs s) rsp) of λ where
+    nothing → nothing
+    (just v) →
+      let sp = readReg (regs s) rsp
+      in just (record s { regs = writeReg (writeReg (regs s) r v) rsp (sp + 8)
+                        ; pc = pc s + 1 })
 
 execInstr prog s nop =
   just (record s { pc = pc s + 1 })
@@ -289,21 +307,25 @@ execInstr prog s (label _) =
 -- | fetch is imported from Once.Backend.Common.Fetch
 
 -- | Execute one step
+-- NOTE: Uses case_of_ instead of with for definitional equality
 step : Program → State → Maybe State
-step prog s with halted s
-... | true = just s  -- Already halted
-... | false with fetch prog (pc s)
-...   | nothing = just (record s { halted = true })  -- End of program = implicit halt
-...   | just instr = execInstr prog s instr
+step prog s =
+  case halted s of λ where
+    true → just s  -- Already halted
+    false → case fetch prog (pc s) of λ where
+      nothing → just (record s { halted = true })  -- End of program = implicit halt
+      (just instr) → execInstr prog s instr
 
 -- | Execute n steps (bounded execution)
+-- NOTE: Uses case_of_ instead of with for definitional equality
 exec : ℕ → Program → State → Maybe State
 exec zero _ s = just s
-exec (suc n) prog s with step prog s
-... | nothing = nothing
-... | just s' with halted s'
-...   | true = just s'
-...   | false = exec n prog s'
+exec (suc n) prog s =
+  case step prog s of λ where
+    nothing → nothing
+    (just s') → case halted s' of λ where
+      true → just s'
+      false → exec n prog s'
 
 ------------------------------------------------------------------------
 -- Convenience: execute until halt or fuel exhausted
@@ -329,12 +351,14 @@ run = exec defaultFuel
 --          just s' where halted s' = true (if halted before target)
 --          just s  if fuel = 0
 --          nothing if step fails
+-- NOTE: Uses case_of_ instead of with for definitional equality
 exec-until-pc : (target : ℕ) → (fuel : ℕ) → Program → State → Maybe State
 exec-until-pc target zero prog s = just s
-exec-until-pc target (suc fuel) prog s with halted s
-... | true = just s  -- Already halted, stop
-... | false with pc s ≟ target
-...   | yes _ = just s  -- Reached target pc, stop
-...   | no _ with step prog s
-...     | nothing = nothing  -- Step failed
-...     | just s' = exec-until-pc target fuel prog s'
+exec-until-pc target (suc fuel) prog s =
+  case halted s of λ where
+    true → just s  -- Already halted, stop
+    false → case pc s ≟ target of λ where
+      (yes _) → just s  -- Reached target pc, stop
+      (no _) → case step prog s of λ where
+        nothing → nothing  -- Step failed
+        (just s') → exec-until-pc target fuel prog s'
