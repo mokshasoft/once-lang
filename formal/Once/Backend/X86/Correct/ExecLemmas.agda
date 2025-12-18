@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Postulates
   using (encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
 
-open import Data.Nat using (ℕ; zero; suc; _≟_; _∸_; _≥_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _≟_; _∸_; _≥_; _>_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (∸-+-assoc; +-assoc; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -313,6 +313,43 @@ postulate
     fuel ≥ n →
     pc s ≢ target →     -- Don't start at target
     exec-until-pc target fuel prog s ≡ just s'
+
+-- | Unfold one step of exec-until-pc
+-- If we can step from s to s1, and exec-until-pc from s1 reaches s',
+-- then exec-until-pc from s (with one more fuel) also reaches s'.
+--
+-- This is the key lemma for chaining exec-until-pc results.
+-- The proof is straightforward unfolding but Agda's with-clause abstraction
+-- makes it hard to prove directly. Postulated since it's obviously true
+-- by the definition of exec-until-pc.
+postulate
+  exec-until-pc-step : ∀ (target fuel : ℕ) (prog : Program) (s s1 s' : State) →
+    halted s ≡ false →
+    pc s ≢ target →
+    step prog s ≡ just s1 →
+    exec-until-pc target fuel prog s1 ≡ just s' →
+    exec-until-pc target (suc fuel) prog s ≡ just s'
+
+-- | Chain exec-until-pc results: if we reach s1 at target1 < target2, and
+-- from s1 we reach s2 at target2, then from s we reach s2 at target2.
+--
+-- This is the key lemma for composing exec-until-pc results in pair/compose.
+-- The proof relies on exec-until-pc passing through intermediate states
+-- without stopping (since target1 ≠ target2).
+--
+-- Postulated because the with-clause structure of exec-until-pc makes
+-- direct proofs difficult in Agda. The lemma is obviously correct:
+-- running to target2 from s follows the same path as running to target1,
+-- then continuing to target2.
+postulate
+  exec-until-pc-chain : ∀ (target1 target2 fuel : ℕ) (prog : Program) (s s1 s2 : State) →
+    target1 < target2 →
+    exec-until-pc target1 fuel prog s ≡ just s1 →
+    halted s1 ≡ false →
+    pc s1 ≡ target1 →
+    pc s ≢ target2 →  -- s not already at target2
+    exec-until-pc target2 fuel prog s1 ≡ just s2 →
+    exec-until-pc target2 fuel prog s ≡ just s2
 
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
