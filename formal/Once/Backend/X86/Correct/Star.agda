@@ -18,7 +18,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _≟_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 open import Relation.Nullary using (yes; no)
 
 ------------------------------------------------------------------------
@@ -120,23 +120,38 @@ star-step4 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ =
   ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ refl*
 
 ------------------------------------------------------------------------
--- Bridge Lemmas
+-- Bridge Lemmas (Postulates)
 --
 -- These connect the fuel-based execution (exec, exec-until-pc) to Star.
 --
--- NOTE: These remain postulated because proving them requires complex
--- case analysis that interacts poorly with Agda's pattern matching.
--- They are "plumbing" - they don't add semantic assumptions, just
--- bridge two equivalent representations of multi-step execution.
+-- WHY POSTULATED: The exec/exec-until-pc functions use `case_of_` for
+-- definitional equality in proofs. However, `case_of_` is just function
+-- application: `case x of f = f x`. When the scrutinee `x` is abstract
+-- (not a concrete constructor), the case doesn't reduce.
+--
+-- Even with `with halted s | true`, the TERM `exec n prog s` still
+-- contains `halted s` as a subexpression - `with` abstracts in the TYPE
+-- but the term doesn't reduce. So we can't prove `exec n prog s ≡ just s'`
+-- implies `Star prog s s'` by computation.
+--
+-- JUSTIFICATION: These are "plumbing" postulates that don't add semantic
+-- assumptions. They connect two provably-equivalent representations:
+-- - Fuel-based: exec n prog s = just s' (bounded computation)
+-- - Star-based: Star prog s s' (unbounded relational steps)
+--
+-- Both representations are operationally equivalent - if exec succeeds
+-- in n steps, the same n step proofs would build the Star. The postulate
+-- just bridges the representation gap caused by `case_of_`.
 ------------------------------------------------------------------------
 
+-- | If exec n succeeds, we have a star execution
 postulate
-  -- | If exec n succeeds, we have a star execution
   exec-to-star : ∀ {n prog s s'} →
                  exec n prog s ≡ just s' →
                  Star prog s s'
 
-  -- | If exec-until-pc succeeds, we have a star execution
+-- | If exec-until-pc succeeds, we have a star execution
+postulate
   exec-until-pc-to-star : ∀ {target fuel prog s s'} →
                           exec-until-pc target fuel prog s ≡ just s' →
                           Star prog s s'

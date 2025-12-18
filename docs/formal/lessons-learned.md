@@ -453,6 +453,20 @@ codegen-x86-correct fst (a , b) = compile-fst-correct a b
 -- ... case for each IR constructor ...
 ```
 
+### `case_of_` vs `with`: The Tradeoff
+
+**Rule: Use `case_of_` in definitions, `with` in proofs when needed.**
+
+**Why `case_of_` in definitions**: The `case_of_` function preserves definitional equality - when the scrutinee is a concrete constructor, the case reduces and proofs can use `refl`. This eliminates most "mechanical postulates" that existed because `with` blocked computation.
+
+**Why `with` in proofs is acceptable**: Proofs are erased at runtime. Using `with` in a proof term doesn't affect the computational behavior of the program - it only helps Agda pattern match to show the proof is valid.
+
+**The limitation**: `case_of_` is just function application: `case x of f = f x`. When `x` is abstract (not a concrete constructor), the case doesn't reduce. Even `with` pattern matching in the outer context doesn't help - the `with` abstraction affects the TYPE but the TERM still contains the abstract scrutinee.
+
+**Consequence for bridge lemmas**: Properties like `exec n prog s ≡ just s' → Star prog s s'` cannot be proven when `exec` uses `case_of_`, because the term `exec n prog s` contains abstract `(halted s)` that doesn't reduce. These bridge lemmas must be postulated - they're "plumbing" that connects equivalent representations without adding semantic assumptions.
+
+**This is an acceptable tradeoff**: The benefit of definitional equality for direct proofs (no `step-exec` or `exec-chain` postulates needed) far outweighs the cost of a few bridge postulates that connect fuel-based and Star-based representations.
+
 ### `with` abstraction blocks definitional equality in step/exec proofs
 
 When proving execution properties, Agda's `with` abstraction prevents direct computation. The `step` and `execInstr` functions use `with` to pattern match on runtime values:

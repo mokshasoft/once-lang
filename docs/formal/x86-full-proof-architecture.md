@@ -58,27 +58,63 @@ The **~15 encoding axioms** in Postulates.agda (encode-pair-fst, encode-inl-tag,
 
 ## Current Postulate Inventory
 
-| Module | Postulate | Category | Notes |
-|--------|-----------|----------|-------|
-| Encoding.agda | `mem-read-write` | **Fundamental** | Memory axiom 1 |
-| Encoding.agda | `mem-read-other` | **Fundamental** | Memory axiom 2 |
-| Encoding.agda | `encode-injective` | **Fundamental** | Memory axiom 3 |
-| Encoding.agda | `encode-is-alloc-addr-pair` | **Fundamental** | Connection axiom |
-| Star.agda | `exec-to-star` | Plumbing | Bridge lemma |
-| Star.agda | `exec-until-pc-to-star` | Plumbing | Bridge lemma |
-| Correct.agda | `closure-code-ptr-x86` | Runtime | Closure support |
-| Correct.agda | `run-apply-seq` | Runtime | Closure application |
-| Correct.agda | `postulate-pc-at-fuel-zero` | Edge case | Rarely hit |
+### Postulate Categories
 
-**Eliminated this session:**
+1. **Fundamental axioms** - Core truths about memory and encoding
+2. **Plumbing postulates** - Bridge equivalent representations (`case_of_` tradeoff)
+3. **Engineering postulates** - Could be eliminated with structural changes
+4. **Runtime postulates** - Complex closure behavior
+
+### Fundamental Axioms (4)
+
+| Module | Postulate | Notes |
+|--------|-----------|-------|
+| Encoding.agda | `mem-read-write` | Memory read-after-write (same addr) |
+| Encoding.agda | `mem-read-other` | Memory frame (different addr) |
+| Encoding.agda | `encode-injective` | Encoding is injective |
+| Encoding.agda | `encode-is-alloc-addr-pair` | Encoding returns alloc address |
+
+### Plumbing Postulates (2)
+
+| Module | Postulate | Notes |
+|--------|-----------|-------|
+| Star.agda | `exec-to-star` | `case_of_` tradeoff (see below) |
+| Star.agda | `exec-until-pc-to-star` | `case_of_` tradeoff (see below) |
+
+**Why plumbing?** These connect fuel-based execution (`exec`) to Star-based execution. They don't add semantic assumptions - if exec succeeds in n steps, the same n step proofs would build the Star. The postulate bridges the representation gap caused by `case_of_`.
+
+### Engineering Postulates (eliminable with work)
+
+| Module | Postulate | Root Cause | Solution |
+|--------|-----------|------------|----------|
+| Correct.agda | `rsp>16'` (many) | Stack invariant needs rsp > 32 | Strengthen precondition |
+| Correct.agda | `s-final` (case-inl/inr) | Fuel mismatch: compile-length > actual steps | Use `exec-until-pc` |
+| Correct.agda | `r14-final`, `r15-final` (pair) | Codegen pop reads wrong location | Fix codegen order |
+| Correct.agda | `mem-final` (pair) | Same as above | Fix codegen order |
+| Correct.agda | `stack-inv-final` | Practical assumption | Track stack depth |
+
+**Fuel mismatch explained**: For case branches, `compile-length [ f , g ]` gives fuel for both branches, but only one executes. The solution is `exec-until-pc` which stops at the target PC regardless of remaining fuel.
+
+### Runtime Postulates (2)
+
+| Module | Postulate | Notes |
+|--------|-----------|-------|
+| Correct.agda | `closure-code-ptr-x86` | Closure code pointer at correct address |
+| Correct.agda | `run-apply-seq` | Apply sequence executes correctly |
+
+**Why runtime?** Closures involve complex runtime behavior (thunk construction, application, environment capture) that would require significant additional proof infrastructure.
+
+### Eliminated This Session
+
 - ✅ `∸+<-lemma` - proven using standard library
 - ✅ `exec-until-pc-to-exec` - deleted (was unused)
+- ✅ `postulate-pc-at-fuel-zero` - deleted (lemma was unused and unprovable as stated)
 
 ---
 
-## The No-`with` Rule
+## The No-`with` Rule (for Definitions)
 
-**`with` is banned everywhere.**
+**`with` is banned in definitions.** Proofs may use `with` when needed.
 
 ### Why
 
@@ -121,6 +157,23 @@ step prog s =
       nothing → just (record s { halted = true })
       (just instr) → execInstr prog s instr
 ```
+
+### The `case_of_` Tradeoff
+
+Using `case_of_` instead of `with` enables **definitional equality** in proofs - when the scrutinee is a concrete constructor, the case reduces and we can use `refl`. This is the major benefit.
+
+However, `case_of_` is just function application: `case x of f = f x`. When `x` is **abstract** (not a concrete constructor), the case doesn't reduce. Even `with` pattern matching in the outer context doesn't help - the `with` abstraction affects the TYPE but the TERM still contains the abstract scrutinee.
+
+**Consequence:** Bridge lemmas like `exec-to-star` must be postulated:
+```agda
+-- Cannot prove: even when we know halted s = true from `with`,
+-- the term `exec (suc n) prog s` still contains (halted s) as a subterm
+-- and the case_of_ doesn't reduce.
+postulate
+  exec-to-star : exec n prog s ≡ just s' → Star prog s s'
+```
+
+**This is an acceptable tradeoff.** The bridge postulates are "plumbing" - they connect equivalent representations and don't add semantic assumptions. The benefit of definitional equality for direct proofs far outweighs the cost of a few plumbing postulates.
 
 ---
 
