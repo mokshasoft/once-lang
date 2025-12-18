@@ -87,6 +87,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ)
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
