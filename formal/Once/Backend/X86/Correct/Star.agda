@@ -145,3 +145,39 @@ compose-star-results r₁ star₂ h₃ rax₃ = record
   ; rax-correct = rax₃
   }
 
+------------------------------------------------------------------------
+-- Usage Pattern: Composing IR proofs with Star
+--
+-- Old approach (fuel arithmetic):
+--   exec (len-f + 1 + len-g) prog s ≡ just s'
+--   requires: exec-chain lemmas, fuel arithmetic proofs
+--
+-- New approach (Star transitivity):
+--   Star prog s s₁  -- from running f
+--   Star prog s₁ s₂ -- from transfer instruction
+--   Star prog s₂ s₃ -- from running g
+--   ───────────────────────────────────────
+--   Star prog s s₃  -- by star-trans twice
+--
+-- Example structure for compose proof:
+--
+--   compose-star : ∀ {A B C} (f : IR A B) (g : IR B C) prog s x →
+--       preconditions →
+--       StarResult prog s s' (encode (eval (g ∘ f) x))
+--   compose-star f g prog s x preconds =
+--     let
+--       -- Step 1: Execute f
+--       r₁ = run-ir-star f ... -- gives StarResult prog s s₁
+--
+--       -- Step 2: Execute transfer (mov rdi, rax)
+--       step₂ = star-single h₁ step-transfer-eq
+--
+--       -- Step 3: Execute g
+--       r₃ = run-ir-star g ... -- gives StarResult prog s₂ s₃
+--
+--       -- Compose: s →* s₁ →* s₂ →* s₃
+--       star-all = star-trans (star-trans (star-exec r₁) step₂) (star-exec r₃)
+--     in
+--       record { star-exec = star-all ; not-halted = ... ; rax-correct = ... }
+------------------------------------------------------------------------
+
