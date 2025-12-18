@@ -406,8 +406,10 @@ exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 2
          × readReg (regs s') rdi ≡ readReg (regs s) r14
-         × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax))
-exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq
+         × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp)
+exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq , r15-final-eq , rsp-final-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -489,6 +491,13 @@ exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , 
 
     r15-final-eq : readReg (regs s-final) r15 ≡ readReg (regs s) r15
     r15-final-eq = trans (readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) r14)) r15-s1-eq
+
+    -- rsp preservation: neither mov [r15], rax nor mov rdi, r14 changes rsp
+    rsp-s1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp
+    rsp-s1-eq = refl
+
+    rsp-final-eq : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
+    rsp-final-eq = trans (readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) r14)) rsp-s1-eq
 
     mem-eq : readMem (memory s-final) (readReg (regs s-final) r15) ≡ just (readReg (regs s) rax)
     mem-eq = trans (cong (readMem (memory s-final)) r15-final-eq)
@@ -2637,6 +2646,18 @@ mutual
       r14-preserved-f : readReg (regs s-after-f) r14 ≡ encode x
       r14-preserved-f = trans r14-after-f r14-after-setup
 
+      -- r15 preservation from f's IH
+      r15-after-f : readReg (regs s-after-f) r15 ≡ readReg (regs s-after-setup) r15
+      r15-after-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))))
+
+      -- StackInvariant from f's IH
+      stack-inv-after-f : StackInvariant s-after-f
+      stack-inv-after-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))))))
+
+      -- rsp > 16 from f's IH
+      rsp-after-f>16 : readReg (regs s-after-f) rsp > 16
+      rsp-after-f>16 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result))))))))
+
       -- Phase 3: Middle instructions - store f result, restore input
       -- Instructions: mov [rsp], rax (store f result) ; mov rdi, r14 (restore input)
 
@@ -2675,7 +2696,9 @@ mutual
                              × halted s' ≡ false
                              × pc s' ≡ length prefix-mid +ℕ 2
                              × readReg (regs s') rdi ≡ readReg (regs s-after-f) r14
-                             × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s-after-f) rax))
+                             × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s-after-f) rax)
+                             × readReg (regs s') r15 ≡ readReg (regs s-after-f) r15
+                             × readReg (regs s') rsp ≡ readReg (regs s-after-f) rsp)
       middle-result = exec-pair-middle-at prefix-mid rest-mid s-after-f h-after-f pc-for-mid
 
       -- Extract the state and properties
@@ -2727,11 +2750,18 @@ mutual
       rdi-after-middle = trans rdi-after-middle-raw r14-preserved-f
 
       mem-fst-stored-raw : readMem (memory s-after-middle) (readReg (regs s-after-middle) r15) ≡ just (readReg (regs s-after-f) rax)
-      mem-fst-stored-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+      mem-fst-stored-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
 
       -- Memory: [r15] now contains encode (eval f x)
       mem-fst-stored : readMem (memory s-after-middle) (readReg (regs s-after-middle) r15) ≡ just (encode (eval f x))
       mem-fst-stored = trans mem-fst-stored-raw (cong just rax-after-f)
+
+      -- r15 and rsp preservation through middle phase
+      r15-mid-pres : readReg (regs s-after-middle) r15 ≡ readReg (regs s-after-f) r15
+      r15-mid-pres = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
+
+      rsp-mid-pres : readReg (regs s-after-middle) rsp ≡ readReg (regs s-after-f) rsp
+      rsp-mid-pres = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
 
       -- Phase 4: Execute g using recursive call
 
@@ -2818,9 +2848,14 @@ mutual
       pc-for-g = trans pc-after-middle (sym len-prefix-g')
 
       -- StackInvariant preserved through f execution and middle phase
-      postulate
-        stack-inv-after-middle : StackInvariant s-after-middle
-        rsp-after-middle>16 : readReg (regs s-after-middle) rsp > 16
+      -- Middle phase only writes to memory and rdi - r15 and rsp unchanged
+      stack-inv-after-middle : StackInvariant s-after-middle
+      stack-inv-after-middle = stack-inv-preserved-unchanged s-after-f s-after-middle
+                                 stack-inv-after-f r15-mid-pres rsp-mid-pres
+
+      rsp-after-middle>16 : readReg (regs s-after-middle) rsp > 16
+      rsp-after-middle>16 = rsp>16-preserved-unchanged s-after-f s-after-middle
+                              rsp-after-f>16 rsp-mid-pres
 
       -- Make the recursive call (now returns exec-until-pc)
       g-result : ∃[ s' ] (exec-until-pc (length prefix-g +ℕ len-g) runFuel (prefix-g ++ code-g ++ suffix-g) s-after-middle ≡ just s'
