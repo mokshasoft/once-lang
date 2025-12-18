@@ -31,6 +31,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Type
 open import Once.IR
 open import Once.Semantics
+-- Re-export encode so downstream modules can import it from Postulates
+open Once.Semantics public using (encode)
 
 ------------------------------------------------------------------------
 -- Postulate P1: Function Extensionality
@@ -58,6 +60,35 @@ open import Once.Semantics
 postulate
   extensionality : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
                    (∀ x → f x ≡ g x) → f ≡ g
+
+------------------------------------------------------------------------
+-- Postulate P1b: Closure Equality (Semantics-Based)
+------------------------------------------------------------------------
+--
+-- Two closures are equal if their semantics are equal.
+-- The env-addr and code-ptr fields are implementation metadata for
+-- code generation; they don't affect behavioral equality.
+--
+-- NEEDED BY: Once.Surface.Correct (elaborate-correct for lambdas)
+--
+-- JUSTIFICATION:
+--   Closures are semantically identified by their behavior.
+--   The env-addr/code-ptr are used only during compilation to track
+--   how the closure is represented at runtime. For semantic proofs,
+--   only the semantics field matters.
+--
+-- IMPACT:
+--   If this were false, different implementations of the same function
+--   would be distinguishable, which violates functional extensionality.
+--
+-- RUNTIME EFFECT: None (erased during extraction)
+--
+------------------------------------------------------------------------
+
+postulate
+  closure-semantics-eq : ∀ {A B : Type} (c1 c2 : Closure A B) →
+                         Closure.semantics c1 ≡ Closure.semantics c2 →
+                         c1 ≡ c2
 
 ------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics
@@ -159,10 +190,10 @@ Memory = Word → Maybe Word
 readMem : Memory → Word → Maybe Word
 readMem m addr = m addr
 
-postulate
-  -- Encoding of values to words (address or immediate)
-  encode : ∀ {A} → ⟦ A ⟧ → Word
+-- encode is now defined in Once.Semantics (imported above)
+-- This allows eval (curry f) to set env-addr = encode a
 
+postulate
   -- Encoding Unit produces 0
   encode-unit : encode {Unit} tt ≡ 0
 

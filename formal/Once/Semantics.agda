@@ -110,6 +110,20 @@ mutual
 
 open Closure public
 
+------------------------------------------------------------------------
+-- Encoding (moved here so eval can use it for closures)
+------------------------------------------------------------------------
+
+-- | Encode semantic values as machine words
+--
+-- For closures, encoding is the env-addr field (computable).
+-- For other types, encoding is abstract (postulated properties in Postulates.agda).
+--
+-- This is defined here (not in Postulates.agda) so eval can set
+-- env-addr = encode a when creating closures.
+postulate
+  encode : ∀ {A} → ⟦ A ⟧ → Word
+
 -- | Evaluation of IR morphisms
 --
 -- Maps IR morphisms to Agda functions.
@@ -142,9 +156,10 @@ eval initial ()
 
 -- Exponential (with explicit Closure)
 -- curry f : IR A (B ⇒ C) creates a closure capturing the input
+-- env-addr = encode a makes closure encoding computable!
 eval (curry f) a       = record
-  { env-addr  = 0  -- Placeholder; actual address determined at runtime
-  ; code-ptr  = 0  -- Placeholder; actual code pointer from compilation
+  { env-addr  = encode a  -- Encoded environment (enables derivable encode-closure-construct)
+  ; code-ptr  = 0         -- Placeholder; actual code pointer from compilation
   ; semantics = λ b → eval f (a , b)
   }
 -- apply : IR ((A ⇒ B) * A) B extracts and applies the closure's semantics
