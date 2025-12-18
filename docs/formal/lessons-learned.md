@@ -653,6 +653,55 @@ run-generator = offset-to-generator  -- QED
 
 RISC-V's use of a0 for both input and output simplifies compose—no register transfer instruction needed between f and g.
 
+### Memory frame preservation for pair proofs (TODO: AArch64 alignment)
+
+**Problem**: The `pair` generator needs to prove that memory written in the "middle phase" (storing f's result) is preserved through g's execution. This requires `run-ir-at-offset` to guarantee memory frame preservation.
+
+**X86 solution**: Uses a dedicated callee-saved register (r15) for the pair pointer, and `run-ir-at-offset` returns 7 components including memory frame preservation:
+
+```agda
+-- X86's run-ir-at-offset signature (7 return values)
+∃[ s' ] (exec (compile-length ir) (prefix ++ compile-x86 ir ++ suffix) s ≡ just s'
+       × halted s' ≡ false
+       × pc s' ≡ length prefix +ℕ compile-length ir
+       × readReg (regs s') rax ≡ encode (eval ir x)
+       × readReg (regs s') r14 ≡ readReg (regs s) r14
+       × readReg (regs s') r15 ≡ readReg (regs s) r15
+       × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15))
+--      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--      KEY: Memory at r15 is preserved through execution
+```
+
+This allows proving `mem-fst-preserved` without postulates:
+```agda
+mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) r15) ≡ just (encode (eval f x))
+mem-fst-preserved = trans (cong ... r15-preserved-g) (trans mem-preserved-g mem-fst-stored)
+```
+
+**AArch64 current state**: Uses SP directly for pair pointer, and `run-ir-at-offset` only returns 5 components (no memory frame preservation). This requires postulates:
+
+```agda
+-- AArch64's run-ir-at-offset signature (5 return values, missing memory frame)
+∃[ s' ] (exec (compile-length ir) (prefix ++ compile-aarch64 ir ++ suffix) s ≡ just s'
+       × halted s' ≡ false
+       × pc s' ≡ length prefix +ℕ compile-length ir
+       × readReg (regs s') x0 ≡ encode (eval ir x)
+       × readReg (regs s') x20 ≡ readReg (regs s) x20)
+-- Missing: memory frame preservation
+
+-- Result: pair proof requires postulates
+postulate
+  mem-fst : readMem (memory s-final) sp₁ ≡ just (encode (eval f x))
+```
+
+**TODO**: Align AArch64 with X86's approach:
+1. Change AArch64 codegen to use a callee-saved register (e.g., x19) for pair pointer instead of SP
+2. Add memory frame preservation to `run-ir-at-offset` signature
+3. Prove memory frame preservation for all IR cases
+4. Remove `mem-fst` postulate from pair proof
+
+This architectural change would make AArch64 proofs as complete as X86's.
+
 ### Type naming: Use `Void` from `Once.Type`, not `⊥` from `Data.Empty`
 
 The IR uses `Void` as the initial object type (the empty type with no inhabitants):

@@ -8,6 +8,8 @@
 --   - Input value in x0 (first argument per AAPCS64)
 --   - Output value in x0 (return value)
 --   - x19 reserved for environment pointer (callee-saved, closures)
+--   - x20 reserved for preserving input across sub-computations
+--   - x21 reserved for pair pointer (enables memory frame preservation proofs)
 --   - Stack used for pair/sum allocation (SP must be 16-byte aligned)
 ------------------------------------------------------------------------
 
@@ -39,9 +41,9 @@ compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
 
--- pair: sub sp + mov x20 + f + str + mov x0 + g + str + mov x0, sp
--- 6 instructions + |f| + |g|
-compile-length ⟨ f , g ⟩ = (6 +ℕ compile-length f) +ℕ compile-length g
+-- pair: sub sp + mov x21 + mov x20 + f + str + mov x0 + g + str + mov x0
+-- 7 instructions + |f| + |g|
+compile-length ⟨ f , g ⟩ = (7 +ℕ compile-length f) +ℕ compile-length g
 
 -- inl: sub sp + str-zr + str + mov = 4 instructions
 compile-length inl = 4
@@ -108,24 +110,27 @@ compile-aarch64 snd = ldr x0 (base+imm x0 8) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
 -- Stack layout: [fst (8 bytes), snd (8 bytes)]
+-- We use x21 (callee-saved) for pair pointer (like X86's r15)
 -- We use x20 (callee-saved) to preserve input across sub-computations
 compile-aarch64 ⟨ f , g ⟩ =
   -- Allocate 16 bytes on stack (must be 16-byte aligned)
   sub-sp 16 ∷
+  -- Save pair pointer in x21 (callee-saved, allows memory frame preservation proofs)
+  mov-from-sp x21 ∷
   -- Save input in x20 (callee-saved)
   mov x20 (reg x0) ∷
   -- Compute f
   compile-aarch64 f ++
-  -- Store result at [sp]
-  str x0 (sp+imm 0) ∷
+  -- Store result at [x21] (the pair base)
+  str x0 (base x21) ∷
   -- Restore input from x20
   mov x0 (reg x20) ∷
   -- Compute g
   compile-aarch64 g ++
-  -- Store result at [sp + 8]
-  str x0 (sp+imm 8) ∷
-  -- Return pointer to pair (get SP into x0)
-  mov-from-sp x0 ∷ []
+  -- Store result at [x21 + 8]
+  str x0 (base+imm x21 8) ∷
+  -- Return pointer to pair
+  mov x0 (reg x21) ∷ []
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
