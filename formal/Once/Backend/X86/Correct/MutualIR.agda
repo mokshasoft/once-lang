@@ -3332,6 +3332,8 @@ mutual
   run-ir-at-offset-curry {A} {B} {C} f prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 =
     s-final , exec-all-until , h-final , pc-final , rax-final , r14-final , r15-final , mem-final , stack-inv-final , rsp>16-final
     where
+      open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+
       -- The full program
       prog : Program
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -3643,12 +3645,51 @@ mutual
 
       -- Memory at [r15] preservation: curry writes to [new-rsp] and [new-rsp+8]
       -- These are different from [r15] when StackInvariant holds
-      postulate
-        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      orig-r15 : Word
+      orig-r15 = readReg (regs s) r15
 
-      -- StackInvariant preservation
+      -- Address disjointness from StackInvariant
+      addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
+      addr-diffs = addr-diff-from-invariant s stack-inv rsp>16
+
+      addr-diff-1 : new-rsp ≢ orig-r15
+      addr-diff-1 = proj₁ addr-diffs
+
+      addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
+      addr-diff-2 = proj₂ addr-diffs
+
+      -- Memory unchanged through s1 (only regs change)
+      mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
+      mem-s1 = refl
+
+      -- Memory at [r15] unchanged through s2 (writes to new-rsp ≠ r15)
+      mem-s2 : readMem (memory s2) orig-r15 ≡ readMem (memory s) orig-r15
+      mem-s2 = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 _ addr-diff-1) mem-s1
+
+      -- Memory unchanged through s3 (only regs change)
+      mem-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+      mem-s3 = mem-s2
+
+      -- Memory at [r15] unchanged through s4 (writes to new-rsp+8 ≠ r15)
+      mem-s4 : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+      mem-s4 = trans (readMem-writeMem-diff (memory s3) (new-rsp +ℕ 8) orig-r15 _ addr-diff-2) mem-s3
+
+      -- s5, s6, s7 don't modify memory
+      mem-final : readMem (memory s-final) orig-r15 ≡ readMem (memory s) orig-r15
+      mem-final = mem-s4
+
+      -- StackInvariant preservation: r15 unchanged, rsp decreased to new-rsp
+      stack-inv-helper : StackInvariant s → StackInvariant s-final
+      stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-final r15≡0)
+      stack-inv-helper (stack-below-r15 rsp≤r15) =
+        stack-below-r15 (subst₂ _≤_ (sym rsp-s7) (sym r15-final)
+                                 (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+
+      stack-inv-final : StackInvariant s-final
+      stack-inv-final = stack-inv-helper stack-inv
+
+      -- rsp > 16: practical assumption (needs orig-rsp > 32)
       postulate
-        stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
 
       -- Convert to exec-until-pc using exec-until-pc-to-exec with n=7
