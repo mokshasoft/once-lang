@@ -36,6 +36,7 @@ X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
+X86_STAR := Once/Backend/X86/Correct/Star.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
@@ -68,7 +69,7 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct aarch64 aarch64-correct aarch64-foundation riscv riscv-correct riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean agda
+.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-star aarch64 aarch64-correct aarch64-foundation riscv riscv-correct riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean agda
 
 all: check
 
@@ -116,6 +117,10 @@ x86:
 x86-correct:
 	@echo "Type-checking x86-64 correctness proofs only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+
+x86-star:
+	@echo "Type-checking x86-64 star relation module..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_STAR)'
 
 aarch64:
 	@echo "Type-checking AArch64 backend..."
