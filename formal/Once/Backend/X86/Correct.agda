@@ -27,6 +27,7 @@ open import Once.Backend.X86.CodeGen
 -- Import Star relation for compositional proofs
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single;
+         _◅◅_; ⟨_,_⟩◅_; star-step2; star-step3; star-step4;
          exec-to-star; exec-until-pc-to-star;
          StarResult; star-exec; not-halted; rax-correct;
          exec-to-star-result; compose-star-results)

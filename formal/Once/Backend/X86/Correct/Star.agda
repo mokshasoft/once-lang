@@ -65,6 +65,61 @@ star-single : ∀ {prog s s'} →
 star-single h step-eq = step* h step-eq refl*
 
 ------------------------------------------------------------------------
+-- Step Chaining Combinators
+--
+-- These make building long chains of steps readable:
+--   star-all = step-0 ◅ step-1 ◅ step-2 ◅ ... ◅ step-n ◅ refl*
+--
+-- Compare to the old approach with nested exec-chain-2 calls!
+------------------------------------------------------------------------
+
+-- | Prepend a single step to a Star (snoc-style chaining)
+-- Usage: star-single h₁ step₁ ◅◅ star-rest
+infixr 5 _◅◅_
+_◅◅_ : ∀ {prog s s' s''} →
+       Star prog s s' →
+       Star prog s' s'' →
+       Star prog s s''
+_◅◅_ = star-trans
+
+-- | Build Star from step proof and continuation
+-- Usage: ⟨ h , step-eq ⟩◅ star-rest
+infixr 5 ⟨_,_⟩◅_
+⟨_,_⟩◅_ : ∀ {prog s s' s''} →
+          halted s ≡ false →
+          step prog s ≡ just s' →
+          Star prog s' s'' →
+          Star prog s s''
+⟨ h , step-eq ⟩◅ rest = step* h step-eq rest
+
+-- | Chain 2 steps
+star-step2 : ∀ {prog s₀ s₁ s₂} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
+    Star prog s₀ s₂
+star-step2 h₀ step₀ h₁ step₁ =
+  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ refl*
+
+-- | Chain 3 steps
+star-step3 : ∀ {prog s₀ s₁ s₂ s₃} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
+    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
+    Star prog s₀ s₃
+star-step3 h₀ step₀ h₁ step₁ h₂ step₂ =
+  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ refl*
+
+-- | Chain 4 steps
+star-step4 : ∀ {prog s₀ s₁ s₂ s₃ s₄} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
+    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
+    halted s₃ ≡ false → step prog s₃ ≡ just s₄ →
+    Star prog s₀ s₄
+star-step4 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ =
+  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ refl*
+
+------------------------------------------------------------------------
 -- Bridge Lemmas (Postulated)
 --
 -- These connect the fuel-based execution (exec, exec-until-pc) to Star.
