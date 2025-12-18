@@ -177,8 +177,9 @@ eval-curry-apply f (a , b) = refl
 -- Note: This requires function extensionality for full generality,
 -- but we can prove it pointwise.
 --
+-- With explicit Closure, application uses Closure.semantics
 eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a b ≡ eval g a b
+               → Closure.semantics (eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a) b ≡ Closure.semantics (eval g a) b
 eval-curry-eta g a b = refl
 
 ------------------------------------------------------------------------

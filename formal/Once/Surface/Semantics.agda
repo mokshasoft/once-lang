@@ -8,7 +8,7 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧)
+open import Once.Semantics using (⟦_⟧; Closure)
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
@@ -42,8 +42,10 @@ envLookup (_ ∷ ρ) (Fin.suc i) = envLookup ρ i
 evalSurface : ∀ {n} {Γ : Ctx n} {A} → Env Γ → Expr Γ A → ⟦ A ⟧
 
 evalSurface ρ (var i)        = envLookup ρ i
-evalSurface ρ (lam e)        = λ a → evalSurface (a ∷ ρ) e
-evalSurface ρ (app f x)      = (evalSurface ρ f) (evalSurface ρ x)
+-- Create explicit Closure for lambda (env-addr and code-ptr are placeholders)
+evalSurface ρ (lam e)        = record { env-addr = 0; code-ptr = 0; semantics = λ a → evalSurface (a ∷ ρ) e }
+-- Apply closure using semantics field
+evalSurface ρ (app f x)      = Closure.semantics (evalSurface ρ f) (evalSurface ρ x)
 evalSurface ρ (pair a b)     = (evalSurface ρ a , evalSurface ρ b)
 evalSurface ρ (fst' p)       = proj₁ (evalSurface ρ p)
 evalSurface ρ (snd' p)       = proj₂ (evalSurface ρ p)

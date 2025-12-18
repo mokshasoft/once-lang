@@ -9,7 +9,7 @@ module Once.Surface.Correct where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics as IR using (⟦_⟧; eval)
+open import Once.Semantics as IR using (⟦_⟧; eval; Closure)
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd) renaming (_,_ to _▸_)
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate)
@@ -90,6 +90,20 @@ case-analysis-inr ρ s l r b eq with evalSurface ρ s | eq
 ... | inj₂ y | refl = refl
 
 ------------------------------------------------------------------------
+-- Closure equality helper
+------------------------------------------------------------------------
+
+-- Two closures with equal semantics are equal (env-addr and code-ptr are 0)
+-- Helper to build a Closure with default addresses
+mkClosure : ∀ {A B} → (⟦ A ⟧ → ⟦ B ⟧) → Closure A B
+mkClosure f = record { env-addr = 0; code-ptr = 0; semantics = f }
+
+closure-eq : ∀ {A B} {f g : ⟦ A ⟧ → ⟦ B ⟧} →
+             (∀ x → f x ≡ g x) →
+             mkClosure f ≡ mkClosure g
+closure-eq {A} {B} {f} {g} f≡g = cong mkClosure (extensionality f≡g)
+
+------------------------------------------------------------------------
 -- Main correctness theorem (mutually recursive)
 ------------------------------------------------------------------------
 
@@ -101,8 +115,10 @@ mutual
   elaborate-correct : ∀ {n} {Γ : Ctx n} {A} (ρ : Env Γ) (e : Expr Γ A) →
                       evalSurface ρ e ≡ eval (elaborate e) (interpEnv ρ)
   elaborate-correct ρ (var i) = proj-correct ρ i
-  elaborate-correct ρ (lam e) = extensionality λ a → elaborate-correct (a ∷ ρ) e
-  elaborate-correct ρ (app f x) = cong₂ (λ f' x' → f' x') (elaborate-correct ρ f) (elaborate-correct ρ x)
+  -- For lam: use closure-eq since both sides create closures with env-addr=code-ptr=0
+  elaborate-correct ρ (lam e) = closure-eq λ a → elaborate-correct (a ∷ ρ) e
+  -- For app: apply Closure.semantics to both sides
+  elaborate-correct ρ (app f x) = cong₂ (λ f' x' → Closure.semantics f' x') (elaborate-correct ρ f) (elaborate-correct ρ x)
   elaborate-correct ρ (pair a b) = cong₂ _,_ (elaborate-correct ρ a) (elaborate-correct ρ b)
   elaborate-correct ρ (fst' p) = cong proj₁ (elaborate-correct ρ p)
   elaborate-correct ρ (snd' p) = cong proj₂ (elaborate-correct ρ p)

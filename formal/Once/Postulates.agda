@@ -149,11 +149,9 @@ postulate
 --
 ------------------------------------------------------------------------
 
--- | 64-bit word (same as in Semantics.agda)
-Word : Set
-Word = ℕ
+-- Word is now imported from Once.Semantics
 
--- | Memory model (same as in Semantics.agda)
+-- | Memory model
 Memory : Set
 Memory = Word → Maybe Word
 
@@ -225,12 +223,13 @@ postulate
     p ≡ encode {A * B} (a , b)
 
   -- Encoding construction for closures (functions):
-  -- A closure representing λb. f(a,b) is encoded as a pointer to [env, code]
+  -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a
+  -- NOTE: With explicit Closure record, this may become derivable from env-addr field
   encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
-    p ≡ encode {B ⇒ C} (λ b → eval f (a , b))
+    p ≡ encode {B ⇒ C} (eval (curry f) a)
 
 ------------------------------------------------------------------------
 -- Postulate P3: x86-64 Execution Helpers (in Once.Backend.X86.Correct)
