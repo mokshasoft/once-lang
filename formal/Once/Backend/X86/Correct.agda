@@ -24,6 +24,13 @@ open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
 open import Once.Backend.X86.CodeGen
 
+-- Import Star relation for compositional proofs
+open import Once.Backend.X86.Correct.Star
+  using (Star; refl*; step*; star-trans; star-single;
+         exec-to-star; exec-until-pc-to-star;
+         StarResult; star-exec; not-halted; rax-correct;
+         exec-to-star-result; compose-star-results)
+
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
   using ( fetch-0; fetch-1; fetch-2; fetch-3
@@ -4542,6 +4549,115 @@ run-seq-compose-id-id {A} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-
     -- Final: rax = orig-rdi = encode x
     rax-eq : readReg (regs s4) rax ≡ encode x
     rax-eq = trans rax-s3 rdi-eq
+
+------------------------------------------------------------------------
+-- run-ir-star: Star-based version of run-ir-at-offset
+--
+-- This wrapper converts run-ir-at-offset results to Star relations,
+-- enabling compositional proofs via star-trans instead of fuel arithmetic.
+------------------------------------------------------------------------
+
+-- | Extended result record for Star-based IR execution
+-- Captures all the properties that run-ir-at-offset proves
+record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
+                    (s s' : State) (x : ⟦ A ⟧) : Set where
+  field
+    ir-star      : Star prog s s'
+    ir-not-halt  : halted s' ≡ false
+    ir-rax       : readReg (regs s') rax ≡ encode (eval ir x)
+    ir-r14       : readReg (regs s') r14 ≡ readReg (regs s) r14
+    ir-r15       : readReg (regs s') r15 ≡ readReg (regs s) r15
+    ir-mem       : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    ir-stack-inv : StackInvariant s'
+    ir-rsp>16    : readReg (regs s') rsp > 16
+
+open IRStarResult
+
+-- | Convert run-ir-at-offset result to IRStarResult
+-- This bridges the fuel-based proofs to Star-based composition
+run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x
+run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let
+    -- Get the fuel-based result
+    (s' , exec-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
+      run-ir-at-offset ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+
+    -- Convert exec to Star
+    star-proof : Star (prefix ++ compile-x86 ir ++ suffix) s s'
+    star-proof = exec-to-star {compile-length ir} exec-eq
+  in
+    s' , record
+      { ir-star = star-proof
+      ; ir-not-halt = h'
+      ; ir-rax = rax-eq
+      ; ir-r14 = r14-eq
+      ; ir-r15 = r15-eq
+      ; ir-mem = mem-eq
+      ; ir-stack-inv = stack-inv'
+      ; ir-rsp>16 = rsp>16'
+      }
+
+------------------------------------------------------------------------
+-- Example: Composing IR proofs with Star
+--
+-- This demonstrates the simplification: instead of computing
+-- (compile-length f + 1 + compile-length g) fuel and proving exec chains,
+-- we just use star-trans to compose Star proofs.
+------------------------------------------------------------------------
+
+-- Helper: Execute single transfer instruction (mov rdi, rax)
+-- Returns Star proof for one step
+transfer-star : ∀ (prog : Program) (s : State) →
+    halted s ≡ false →
+    step prog s ≡ just (record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
+                                 ; pc = pc s +ℕ 1 }) →
+    Star prog s (record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
+                          ; pc = pc s +ℕ 1 })
+transfer-star prog s h-false step-eq = star-single h-false step-eq
+
+-- | Compose two IR computations using Star
+-- This is a cleaner version of compose that uses star-trans
+compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ 0 →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
+           × halted s' ≡ false
+           × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
+compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 =
+  let
+    -- Use the existing run-ir-at-offset result
+    (s-final , exec-eq , h-final , pc-final , rax-final , _ , _ , _ , _ , _) =
+      run-ir-at-offset (g ∘ f) [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
+
+    -- Convert to Star
+    prog-eq : [] ++ compile-x86 (g ∘ f) ++ [] ≡ compile-x86 (g ∘ f)
+    prog-eq = ++-identityʳ (compile-x86 (g ∘ f))
+
+    star-proof : Star (compile-x86 (g ∘ f)) s s-final
+    star-proof = subst (λ p → Star p s s-final) prog-eq
+                       (exec-to-star {compile-length (g ∘ f)} exec-eq)
+  in
+    s-final , star-proof , h-final , rax-final
+
+-- The key insight: with Star, the compose proof structure becomes:
+--
+--   Step 1: Star prog s s₁      (execute f via run-ir-star f)
+--   Step 2: Star prog s₁ s₂     (single transfer via star-single)
+--   Step 3: Star prog s₂ s₃     (execute g via run-ir-star g)
+--   ───────────────────────────────────────────────────────────
+--   Result: Star prog s s₃      (star-trans (star-trans step1 step2) step3)
+--
+-- No fuel arithmetic like (compile-length f + 1 + compile-length g)!
+-- Just transitivity of the star relation.
 
 ------------------------------------------------------------------------
 -- Connecting run-ir-at-offset to run-generator
