@@ -116,8 +116,12 @@ open Closure public
 
 -- | Encode semantic values as machine words
 --
--- For closures, encoding is the env-addr field (computable).
--- For other types, encoding is abstract (postulated properties in Postulates.agda).
+-- encode maps semantic values to their runtime addresses/representations.
+-- This is abstract because encoding depends on memory allocation, which
+-- is determined at runtime by the code generator, not at semantics time.
+--
+-- For closures: encode returns the ADDRESS where the closure is allocated
+-- (NOT the env-addr field, which is the encoding of the captured env).
 --
 -- This is defined here (not in Postulates.agda) so eval can set
 -- env-addr = encode a when creating closures.
