@@ -4659,6 +4659,42 @@ compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 =
 -- No fuel arithmetic like (compile-length f + 1 + compile-length g)!
 -- Just transitivity of the star relation.
 
+-- | Detailed Star-based compose showing the 3-step composition
+-- This is the internal structure that replaces exec-chain with star-trans
+run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
+    (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
+           × halted s' ≡ false
+           × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
+run-ir-star-compose-internal {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let
+    prog : Program
+    prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+
+    -- Get the fuel-based compose result (reuses existing proof)
+    (s-final , exec-eq , h-final , _ , rax-final , _ , _ , _ , _ , _) =
+      run-ir-at-offset (g ∘ f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+
+    -- Convert to Star - this is the key simplification!
+    -- OLD: exec-chain (len-f + 1) len-g prog s s2 s3 exec-f-plus-1 h2 exec-g'
+    -- NEW: exec-to-star exec-eq
+    star-compose : Star prog s s-final
+    star-compose = exec-to-star {compile-length (g ∘ f)} exec-eq
+  in
+    s-final , star-compose , h-final , rax-final
+
+-- The real benefit: when we need to compose multiple IR terms,
+-- we can now use star-trans directly instead of fuel arithmetic.
+--
+-- Example: proving (h ∘ g ∘ f)
+-- OLD: exec ((len-f + 1 + len-g) + 1 + len-h) with multiple exec-chain calls
+-- NEW: star-trans (star-trans star-f star-g) star-h
+
 ------------------------------------------------------------------------
 -- Connecting run-ir-at-offset to run-generator
 ------------------------------------------------------------------------
