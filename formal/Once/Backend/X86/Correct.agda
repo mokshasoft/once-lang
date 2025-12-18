@@ -3723,13 +3723,17 @@ mutual
   -- Closure Accessors (x86 specific)
   ------------------------------------------------------------------------
 
-  -- | Closure field accessors (postulated - depend on encoding)
-  postulate
-    -- Extract code-ptr from encoded closure
-    closure-code-ptr-x86 : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+  -- | Closure field accessors (now definitions using explicit Closure record)
+  -- These were postulates before the Closure record was made explicit.
+  -- Now they are simply projections from the Closure record.
 
-    -- Extract env from encoded closure
-    closure-env-x86 : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+  -- Extract code-ptr from closure
+  closure-code-ptr-x86 : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+  closure-code-ptr-x86 cl = Closure.code-ptr cl
+
+  -- Extract env from closure
+  closure-env-x86 : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
+  closure-env-x86 cl = Closure.env-addr cl
 
   ------------------------------------------------------------------------
   -- Apply Proof Structure (x86 specific)
