@@ -37,6 +37,7 @@ X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
 X86_STAR := Once/Backend/X86/Correct/Star.agda
+X86_ENCODING := Once/Backend/X86/Encoding.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
@@ -69,44 +70,51 @@ if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store
 AGDA_DIR="" agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
 
-.PHONY: all check postulates laws surface surfaceir optimize common x86 x86-correct x86-star aarch64 aarch64-correct aarch64-foundation riscv riscv-correct riscv-foundation endtoend endtoend-aarch64 primitives spf malonzo emit malonzo-codegen clean agda
-
+.PHONY: all
 all: check
 
+.PHONY: check
 check: postulates laws surface surfaceir optimize common x86 aarch64 endtoend endtoend-aarch64 primitives spf
 	@echo "All proofs type-check successfully!"
 
+.PHONY: postulates
 postulates:
 	@echo "Type-checking postulates..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(POSTULATES)'
 
+.PHONY: laws
 laws:
 	@echo "Type-checking categorical laws..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(LAWS)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SOUNDNESS)'
 
+.PHONY: surface
 surface:
 	@echo "Type-checking surface syntax elaboration..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(ELABORATE)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(CORRECT)'
 
+.PHONY: surfaceir
 surfaceir:
 	@echo "Type-checking surface IR and desugar..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_IR)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR_CORRECT)'
 
+.PHONY: optimize
 optimize:
 	@echo "Type-checking optimizer..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(OPTIMIZE)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(OPTIMIZE_CORRECT)'
 
+.PHONY: common
 common:
 	@echo "Type-checking common backend lemmas..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(COMMON_FETCH)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(COMMON_EXEC)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(COMMON_MEMORY)'
 
+.PHONY: x86
 x86:
 	@echo "Type-checking x86-64 backend..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
@@ -114,14 +122,22 @@ x86:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
+.PHONY: x86-correct
 x86-correct:
 	@echo "Type-checking x86-64 correctness proofs only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
+.PHONY: x86-star
 x86-star:
 	@echo "Type-checking x86-64 star relation module..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_STAR)'
 
+.PHONY: x86-encoding
+x86-encoding:
+	@echo "Type-checking x86-64 encoding derivations..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_ENCODING)'
+
+.PHONY: aarch64
 aarch64:
 	@echo "Type-checking AArch64 backend..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_SYNTAX)'
@@ -129,14 +145,17 @@ aarch64:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CODEGEN)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
+.PHONY: aarch64-correct
 aarch64-correct:
 	@echo "Type-checking AArch64 correctness proofs only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
+.PHONY: aarch64-foundation
 aarch64-foundation:
 	@echo "Type-checking AArch64 foundation module only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_FOUNDATION)'
 
+.PHONY: riscv
 riscv:
 	@echo "Type-checking RISC-V 64-bit backend..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
@@ -144,32 +163,39 @@ riscv:
 	@if [ -f "$(RISCV_CODEGEN)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
 	@if [ -f "$(RISCV_CORRECT)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
+.PHONY: riscv-correct
 riscv-correct:
 	@echo "Type-checking RISC-V correctness proofs only..."
 	@if [ -f "$(RISCV_CORRECT)" ]; then nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
+.PHONY: riscv-foundation
 riscv-foundation:
 	@echo "Type-checking RISC-V foundation module only..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_FOUNDATION)'
 
+.PHONY: endtoend
 endtoend:
 	@echo "Type-checking end-to-end compilation theorem (x86)..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(ENDTOEND)'
 
+.PHONY: endtoend-aarch64
 endtoend-aarch64:
 	@echo "Type-checking end-to-end compilation theorem (AArch64)..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(ENDTOEND_AARCH64)'
 
+.PHONY: primitives
 primitives:
 	@echo "Type-checking primitive specifications..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(PRIM_MEMORY)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(PRIM_IO)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(PRIM_THREAD)'
 
+.PHONY: spf
 spf:
 	@echo "Type-checking strictly positive functors..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(SPF)'
 
+.PHONY: malonzo
 malonzo:
 	@echo "Generating Haskell via MAlonzo..."
 	@mkdir -p _build/malonzo
@@ -177,6 +203,7 @@ malonzo:
 	@echo "Generated Haskell files in _build/malonzo/"
 	@echo "Entry point: MAlonzo.Code.Once.Compile"
 
+.PHONY: emit
 emit:
 	@echo "Type-checking assembly emission modules..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(AARCH64_EMIT)'
@@ -184,6 +211,7 @@ emit:
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(RISCV_EMIT)'
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(EMIT_ALL)'
 
+.PHONY: malonzo-codegen
 malonzo-codegen:
 	@echo "Extracting verified code generators via MAlonzo..."
 	@mkdir -p _build/malonzo
@@ -198,12 +226,14 @@ malonzo-codegen:
 	@echo "  - Core IR/Type modules copied"
 	@echo "Done. Verified code generators in compiler/src/MAlonzo/Code/Once/Backend/"
 
+.PHONY: clean
 clean:
 	rm -rf _build
 	find . -name "*.agdai" -delete
 
 # Type-check a single Agda module
 # Usage: make agda MODULE=Once/Path/To/File.agda
+.PHONY: agda
 agda:
 	@if [ -z "$(MODULE)" ]; then echo "Usage: make agda MODULE=Once/Path/To/File.agda"; exit 1; fi
 	@echo "Type-checking $(MODULE)..."
