@@ -97,3 +97,51 @@ infix 4 _⟶*_
 _⟶*_ : Program → State → State → Set
 prog ⟶* s = Star prog s
 
+------------------------------------------------------------------------
+-- StarResult: Execution result with Star instead of exec
+--
+-- This record captures the properties of successful IR execution
+-- in a Star-friendly way, enabling trivial composition via star-trans.
+------------------------------------------------------------------------
+
+open import Data.Nat using (_+_; _>_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+
+-- | Result of executing IR code with Star semantics
+record StarResult (prog : Program) (s s' : State) (result-val : Word) : Set where
+  field
+    star-exec   : Star prog s s'           -- Execution reaches s'
+    not-halted  : halted s' ≡ false        -- Still running (not ret'd)
+    rax-correct : readReg (regs s') rax ≡ result-val  -- Output in rax
+
+open StarResult public
+
+-- | Convert exec-based result to StarResult
+exec-to-star-result : ∀ {n prog s s' result-val} →
+    exec n prog s ≡ just s' →
+    halted s' ≡ false →
+    readReg (regs s') rax ≡ result-val →
+    StarResult prog s s' result-val
+exec-to-star-result {n} {prog} {s} {s'} exec-eq h-false rax-eq = record
+  { star-exec = exec-to-star {n} {prog} {s} {s'} exec-eq
+  ; not-halted = h-false
+  ; rax-correct = rax-eq
+  }
+
+-- | Compose two StarResults via transitivity
+--
+-- Key benefit: no fuel arithmetic needed!
+-- If executing A reaches s₁, and executing from s₁ reaches s₂,
+-- then we can compose them trivially.
+compose-star-results : ∀ {prog s₁ s₂ s₃ v₁ v₂} →
+    StarResult prog s₁ s₂ v₁ →
+    Star prog s₂ s₃ →
+    halted s₃ ≡ false →
+    readReg (regs s₃) rax ≡ v₂ →
+    StarResult prog s₁ s₃ v₂
+compose-star-results r₁ star₂ h₃ rax₃ = record
+  { star-exec = star-trans (star-exec r₁) star₂
+  ; not-halted = h₃
+  ; rax-correct = rax₃
+  }
+
