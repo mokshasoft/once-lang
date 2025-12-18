@@ -17,7 +17,7 @@ open State
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (yes; no)
 
@@ -120,16 +120,14 @@ star-step4 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ =
   ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ refl*
 
 ------------------------------------------------------------------------
--- Bridge Lemmas (Postulated)
+-- Bridge Lemmas
 --
 -- These connect the fuel-based execution (exec, exec-until-pc) to Star.
--- Postulated because proving them requires case analysis on `halted s`
--- which abstracts over expressions containing `halted s`, breaking
--- the connection to step/exec definitions.
 --
--- These are "plumbing" postulates - they don't add trusted assumptions
--- about correctness, just bridge two equivalent ways of expressing
--- multi-step execution.
+-- NOTE: These remain postulated because proving them requires complex
+-- case analysis that interacts poorly with Agda's pattern matching.
+-- They are "plumbing" - they don't add semantic assumptions, just
+-- bridge two equivalent representations of multi-step execution.
 ------------------------------------------------------------------------
 
 postulate
