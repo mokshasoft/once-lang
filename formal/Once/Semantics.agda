@@ -9,6 +9,8 @@ module Once.Semantics where
 
 open import Once.Type
 open import Once.IR
+open import Once.Memory using (Word; AllocState; alloc-state; mem; heap-ptr)
+  renaming (alloc-two-words to alloc-pair-mem)
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -19,11 +21,11 @@ open import Data.String using (String)
 open import Data.Nat using (ℕ)
 
 ------------------------------------------------------------------------
--- Word Type (Machine Words / Addresses)
+-- Word Type (imported from Once.Memory)
 ------------------------------------------------------------------------
 
-Word : Set
-Word = ℕ
+-- Word is now imported from Once.Memory for consistency
+-- This enables sharing memory model between semantics and backends
 
 ------------------------------------------------------------------------
 -- KNOWN LIMITATION: Fixed Point Semantics

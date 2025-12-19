@@ -1,14 +1,16 @@
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Encoding
 --
--- Derivation of encoding properties from 3 fundamental axioms.
+-- Derivation of encoding properties from the shared memory model.
 --
--- The 3-Axiom Foundation:
+-- Key theorems (all PROVEN in Once.Memory):
 --   1. mem-read-write : readMem (writeMem m addr v) addr ≡ just v
 --   2. mem-read-other : addr₁ ≢ addr₂ → readMem (writeMem m addr₁ v) addr₂ ≡ readMem m addr₂
+--
+-- Remaining postulate:
 --   3. encode-injective : encode x ≡ encode y → x ≡ y
 --
--- All other encoding properties are DERIVED from these 3 axioms.
+-- All other encoding properties are DERIVED from these.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Encoding where
@@ -22,82 +24,17 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (yes; no)
 
 ------------------------------------------------------------------------
--- Memory Model (same as Semantics.agda)
+-- Memory Model (imported from shared module)
 ------------------------------------------------------------------------
 
-Word : Set
-Word = ℕ
+open import Once.Memory public
+  using (Word; Memory; readMem; writeMem; AllocState; alloc-state; mem; heap-ptr;
+         init-alloc-state; alloc-two-words; alloc-two-words-fst; alloc-two-words-snd;
+         n≢n+8; n≢n+suc-m)
 
-Memory : Set
-Memory = Word → Maybe Word
-
-readMem : Memory → Word → Maybe Word
-readMem m addr = m addr
-
-writeMem : Memory → Word → Word → Memory
-writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
-
-------------------------------------------------------------------------
--- Helper: n ≢ n + 8
-------------------------------------------------------------------------
-
--- n + suc m ≡ suc (n + m), so n = n + suc m would require n = suc (n + m)
--- But n cannot equal suc of anything larger than n - 1
-n≢n+suc-m : ∀ (n m : ℕ) → n ≢ n + suc m
-n≢n+suc-m zero m ()      -- 0 ≢ suc m
-n≢n+suc-m (suc n) m eq = n≢n+suc-m n m (suc-injective eq)
-  where
-    suc-injective : ∀ {a b : ℕ} → suc a ≡ suc b → a ≡ b
-    suc-injective refl = refl
-
-n≢n+8 : ∀ (n : ℕ) → n ≢ n + 8
-n≢n+8 n = n≢n+suc-m n 7
-
-------------------------------------------------------------------------
--- THE 3 FUNDAMENTAL AXIOMS
-------------------------------------------------------------------------
-
--- Import helpers from Common.Memory
-open import Once.Backend.Common.Memory using (≡ᵇ-refl)
-
--- THEOREM 1: Read after write (same address) - NOW PROVEN!
-mem-read-write : ∀ {m : Memory} {addr v : Word} →
-  readMem (writeMem m addr v) addr ≡ just v
-mem-read-write {m} {addr} {v} = lemma
-  where
-    -- writeMem m addr v = λ a → if a ≡ᵇ addr then just v else m a
-    -- readMem (writeMem m addr v) addr = (writeMem m addr v) addr
-    --                                  = if addr ≡ᵇ addr then just v else m addr
-    --                                  = if true then just v else m addr
-    --                                  = just v
-    lemma : (if addr ≡ᵇ addr then just v else m addr) ≡ just v
-    lemma rewrite ≡ᵇ-refl addr = refl
-
--- THEOREM 2: Frame rule (different address) - NOW PROVEN!
-mem-read-other : ∀ {m : Memory} {addr₁ addr₂ v : Word} →
-  addr₁ ≢ addr₂ →
-  readMem (writeMem m addr₁ v) addr₂ ≡ readMem m addr₂
-mem-read-other {m} {addr₁} {addr₂} {v} neq = lemma
-  where
-    -- Need: (if addr₂ ≡ᵇ addr₁ then just v else m addr₂) ≡ m addr₂
-    -- Since addr₁ ≢ addr₂, we have addr₂ ≢ addr₁, so addr₂ ≡ᵇ addr₁ = false
-    addr₂≢addr₁ : addr₂ ≢ addr₁
-    addr₂≢addr₁ eq = neq (sym eq)
-
-    -- Use ≢ to derive that ≡ᵇ is false
-    ≡ᵇ-false : (addr₂ ≡ᵇ addr₁) ≡ false
-    ≡ᵇ-false with addr₂ ≡ᵇ addr₁ in eq
-    ... | false = refl
-    ... | true = ⊥-elim (addr₂≢addr₁ (≡ᵇ-true→≡ eq))
-      where
-        open import Data.Empty using (⊥-elim)
-        -- If n ≡ᵇ m = true, then n ≡ m
-        ≡ᵇ-true→≡ : ∀ {n m : ℕ} → (n ≡ᵇ m) ≡ true → n ≡ m
-        ≡ᵇ-true→≡ {zero} {zero} _ = refl
-        ≡ᵇ-true→≡ {suc n} {suc m} p = cong suc (≡ᵇ-true→≡ p)
-
-    lemma : (if addr₂ ≡ᵇ addr₁ then just v else m addr₂) ≡ m addr₂
-    lemma rewrite ≡ᵇ-false = refl
+-- Re-export memory theorems (now PROVEN, not postulates!)
+open import Once.Memory public
+  using (mem-read-write; mem-read-other)
 
 -- Axiom 3: Encoding is injective (still postulated - requires concrete encode)
 postulate
@@ -339,51 +276,18 @@ encode-with-alloc amap enc-a enc-b pair with amap .lookup-pair enc-a enc-b pair
 -- Key insight: if we track allocations WITH their addresses,
 -- then encode-is-alloc-addr becomes trivially provable.
 --
--- AllocationState = (Memory, HeapPointer, AddressMap)
--- - HeapPointer: next free address
--- - AddressMap: maps values to their allocated addresses
+-- AllocState is now imported from Once.Memory
 ------------------------------------------------------------------------
 
--- | Allocation state: memory + heap pointer
-record AllocState : Set where
-  constructor alloc-state
-  field
-    mem : Memory
-    heap-ptr : Word
-
-open AllocState public
-
--- | Initial allocation state (empty memory, heap starts at 1000)
-init-alloc-state : AllocState
-init-alloc-state = alloc-state (λ _ → nothing) 1000
-
--- | Allocate a pair in the allocation state
--- Returns: (new state, address where pair was allocated)
+-- Specialized allocation for pairs/sums (uses alloc-two-words from Memory)
 alloc-pair-stateful : AllocState → Word → Word → AllocState × Word
-alloc-pair-stateful st v₁ v₂ = (st' , base)
-  where
-    base = heap-ptr st
-    m₁ = writeMem (mem st) base v₁
-    m₂ = writeMem m₁ (base + 8) v₂
-    st' = alloc-state m₂ (base + 16)
+alloc-pair-stateful = alloc-two-words
 
--- | Allocate a left sum in the allocation state
 alloc-inl-stateful : AllocState → Word → AllocState × Word
-alloc-inl-stateful st v = (st' , base)
-  where
-    base = heap-ptr st
-    m₁ = writeMem (mem st) base 0       -- tag = 0
-    m₂ = writeMem m₁ (base + 8) v
-    st' = alloc-state m₂ (base + 16)
+alloc-inl-stateful st v = alloc-two-words st 0 v  -- tag = 0
 
--- | Allocate a right sum in the allocation state
 alloc-inr-stateful : AllocState → Word → AllocState × Word
-alloc-inr-stateful st v = (st' , base)
-  where
-    base = heap-ptr st
-    m₁ = writeMem (mem st) base 1       -- tag = 1
-    m₂ = writeMem m₁ (base + 8) v
-    st' = alloc-state m₂ (base + 16)
+alloc-inr-stateful st v = alloc-two-words st 1 v  -- tag = 1
 
 ------------------------------------------------------------------------
 -- PROVEN: encode-is-alloc-addr for stateful allocation
