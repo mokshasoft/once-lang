@@ -273,10 +273,13 @@ This is pure structural recursion on the Star witness. No `case_of_`, no abstrac
 2. Pattern matching on `halted s` causes the goal to reduce
 3. Induction proceeds cleanly
 
-`star-to-exec` is provable because:
-1. Star is a concrete data structure
-2. We can count `step*` constructors to get fuel
-3. Induction on Star structure, not on abstract scrutinees
+`star-to-exec` is conceptually simple but currently blocked:
+1. Star is a concrete data structure (we can count `step*` for fuel)
+2. BUT: `exec (suc n) prog s` unfolds to `case halted s of ...`
+3. `with` abstraction doesn't reduce nested `case_of_` in goal types
+4. **Current status**: POSTULATED (plumbing postulate)
+
+**Resolution path**: Change `exec` to return step witnesses, or use a different proof structure where goals don't contain nested `case_of_`.
 
 ---
 
@@ -284,14 +287,14 @@ This is pure structural recursion on the Star witness. No `case_of_`, no abstrac
 
 - [x] `exec-to-star` PROVEN
 - [x] `exec-until-pc-to-star` PROVEN
-- [ ] Stage 1: `star-to-exec` ADDED
+- [x] Stage 1: `star-to-exec` ADDED (postulated - blocked by case_of_)
 - [ ] Stage 2: Encoding axioms DERIVED
 - [ ] Stage 3: `encode-injective` DERIVED
 - [ ] Stage 4: Correct.agda REFACTORED to use Star
 - [ ] Stage 5: Arithmetic postulates PROVEN
 - [ ] Stage 6: `run-apply-seq` DERIVED
 - [ ] **`make x86` passes**
-- [ ] **0 postulates remain**
+- [ ] **0 postulates remain** (currently: star-to-exec postulated)
 
 ---
 
