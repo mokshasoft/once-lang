@@ -226,6 +226,74 @@ postulate
 
 
 ------------------------------------------------------------------------
+-- Bridge lemmas: Connect validity to abstract encode
+--
+-- These make it easy to replace axioms with derived lemmas.
+-- Precondition: PairAt a b (encode (a , b)) (memory s)
+-- This says: "the pair is properly encoded at its encode address"
+------------------------------------------------------------------------
+
+-- | If pair is valid at encode address, derive the axiom property
+pair-valid-at-encode-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+  PairAt a b (encode (a , b)) m →
+  readMem m (encode (a , b)) ≡ just (encode a)
+pair-valid-at-encode-fst a b m valid = fst-valid valid
+
+pair-valid-at-encode-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+  PairAt a b (encode (a , b)) m →
+  readMem m (encode (a , b) +ℕ 8) ≡ just (encode b)
+pair-valid-at-encode-snd a b m valid = snd-valid valid
+
+-- | If left sum is valid at encode address, derive the axiom property
+inl-valid-at-encode-tag : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
+  InlAt {A} {B} a (encode (inj₁ a)) m →
+  readMem m (encode {A + B} (inj₁ a)) ≡ just 0
+inl-valid-at-encode-tag a m valid = tag-valid valid
+
+inl-valid-at-encode-val : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
+  InlAt {A} {B} a (encode (inj₁ a)) m →
+  readMem m (encode {A + B} (inj₁ a) +ℕ 8) ≡ just (encode a)
+inl-valid-at-encode-val a m valid = val-valid valid
+
+-- | If right sum is valid at encode address, derive the axiom property
+inr-valid-at-encode-tag : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
+  InrAt {A} {B} b (encode (inj₂ b)) m →
+  readMem m (encode {A + B} (inj₂ b)) ≡ just 1
+inr-valid-at-encode-tag b m valid = tag-valid valid
+
+inr-valid-at-encode-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
+  InrAt {A} {B} b (encode (inj₂ b)) m →
+  readMem m (encode {A + B} (inj₂ b) +ℕ 8) ≡ just (encode b)
+inr-valid-at-encode-val b m valid = val-valid valid
+
+------------------------------------------------------------------------
+-- MemoryValid: Combined validity for all values in state
+--
+-- This is analogous to StackInvariant - a predicate that captures
+-- the invariant for the entire memory state.
+------------------------------------------------------------------------
+
+-- | A single value's validity record
+data ValueValid (m : Memory) : Set₁ where
+  valid-pair : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → PairAt a b (encode {A * B} (a , b)) m → ValueValid m
+  valid-inl  : ∀ {A B} (a : ⟦ A ⟧) → InlAt {A} {B} a (encode {A + B} (inj₁ a)) m → ValueValid m
+  valid-inr  : ∀ {A B} (b : ⟦ B ⟧) → InrAt {A} {B} b (encode {A + B} (inj₂ b)) m → ValueValid m
+
+open import Data.List using (List; []; _∷_)
+
+-- | MemoryValid: list of all valid values in memory
+-- Analogous to StackInvariant, this is threaded through proofs
+MemoryValid : Memory → Set₁
+MemoryValid m = List (ValueValid m)
+
+-- | Empty memory has no valid values
+empty-memory-valid : ∀ (m : Memory) → MemoryValid m
+empty-memory-valid m = []
+
+-- | Lookup a pair's validity from MemoryValid
+-- (Would need decidable equality on values to make this practical)
+
+------------------------------------------------------------------------
 -- Summary: How to use this module
 --
 -- OLD (using axioms from Postulates.agda):

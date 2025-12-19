@@ -283,6 +283,59 @@ This is pure structural recursion on the Star witness. No `case_of_`, no abstrac
 
 ---
 
+## Encoding Axiom Architecture (Stage 2 Status)
+
+### The Problem
+
+The encoding axioms in `Postulates.agda` claim to hold for ANY memory:
+```agda
+encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+  readMem m (encode (a , b)) ≡ just (encode a)
+```
+
+This is too strong - it should only hold for memory where `(a, b)` was properly allocated.
+
+### Root Cause
+
+`encode : ∀ {A} → ⟦ A ⟧ → Word` is itself a postulate - an abstract oracle that assigns addresses to values without knowing allocation state.
+
+### Infrastructure Created
+
+`MemoryValid.agda` provides validity predicates that track properly allocated values:
+```agda
+-- Validity predicate: pair is properly encoded at address
+record PairAt {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (addr : Word) (m : Memory) : Set
+
+-- PROVEN: allocation creates validity
+alloc-pair-creates-valid : ... → PairAt a b addr m₂
+
+-- Derived: reading with validity proof (replaces axiom)
+encode-pair-fst-derived : ... → PairAt a b addr m → readMem m addr ≡ just (encode a)
+```
+
+### Resolution Options
+
+**Option A: Thread AllocState through Semantics.eval**
+- Replace abstract `encode` with stateful encode
+- All encoding axioms become theorems
+- **Impact**: Major rewrite of Semantics.agda and all proofs that use `encode`
+
+**Option B: Use validity predicates as preconditions**
+- Add `MemoryValid` precondition to `run-ir-at-offset-*` functions
+- Prove validity is established by allocation operations
+- Prove validity is preserved through execution
+- **Impact**: Moderate rewrite similar to `StackInvariant` threading
+
+**Option C: Accept as semantic model axioms**
+- The encoding axioms define the intended memory layout
+- They're the "contract" between semantics and code generation
+- Keep as trusted base, focus on eliminating mechanical postulates
+- **Impact**: Minimal code changes, documented trust assumptions
+
+**Current Status**: Infrastructure (MemoryValid.agda) created. Full derivation requires Option A or B - significant architectural work.
+
+---
+
 ## Success Criteria
 
 - [x] `exec-to-star` PROVEN
