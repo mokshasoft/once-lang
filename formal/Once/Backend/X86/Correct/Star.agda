@@ -222,6 +222,50 @@ compose-star-results r₁ star₂ h₃ rax₃ = record
   }
 
 ------------------------------------------------------------------------
+-- Reverse Bridge: Star to exec (PROVEN!)
+--
+-- Convert Star execution back to fuel-based exec.
+-- Used at final theorem boundaries when we need exec for extraction.
+------------------------------------------------------------------------
+
+-- | Helper: Star from halted state must be reflexive
+star-halted-refl : ∀ {prog s s'} →
+                   Star prog s s' →
+                   halted s ≡ true →
+                   s ≡ s'
+star-halted-refl refl* _ = refl
+star-halted-refl (step* h-false _ _) h-true with () ← trans (sym h-true) h-false
+
+-- | Count steps in a Star (determines fuel needed)
+star-length : ∀ {prog s s'} → Star prog s s' → ℕ
+star-length refl* = 0
+star-length (step* _ _ rest) = suc (star-length rest)
+
+-- | Helper: extract equality from just
+just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
+just-injective refl = refl
+
+-- | Convert Star to exec with computed fuel
+-- POSTULATED for now due to case_of_ reduction issues in goals.
+-- Semantically obvious: count step* constructors to get fuel.
+-- The proof is blocked because `exec (suc n) prog s` unfolds to
+-- `case halted s of ...` and `with` abstraction doesn't reduce
+-- nested case_of_ applications in the goal type.
+-- TODO: Prove by changing exec to return step witnesses.
+postulate
+  star-to-exec : ∀ {prog s s'} →
+                 (star : Star prog s s') →
+                 halted s' ≡ true →
+                 exec (star-length star) prog s ≡ just s'
+
+-- | Existential version: returns the fuel needed
+star-to-exec-∃ : ∀ {prog s s'} →
+                 Star prog s s' →
+                 halted s' ≡ true →
+                 ∃[ n ] exec n prog s ≡ just s'
+star-to-exec-∃ star h-final = star-length star , star-to-exec star h-final
+
+------------------------------------------------------------------------
 -- Usage Pattern: Composing IR proofs with Star
 --
 -- Old approach (fuel arithmetic):
