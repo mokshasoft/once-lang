@@ -4,14 +4,16 @@ import System.Directory (renameFile)
 import Control.Monad (when)
 
 -- Function to split the file based on the specified ranges
-splitFile :: [(Int, Int)] -> FilePath -> FilePath -> IO ()
-splitFile ranges inputFile outputFile = do
+splitFile :: [(Int, Int)] -> FilePath -> FilePath -> Bool -> IO ()
+splitFile ranges inputFile outputFile append = do
     -- Open the input file in read mode
     inputHandle <- openFile inputFile ReadMode
     -- Create a temporary file for writing the modified content
     tempFileHandle <- openFile "tempFile.tmp" WriteMode
-    -- Open the output file to write the lines to be removed
-    outputHandle <- openFile outputFile WriteMode
+    -- Open the output file: either in WriteMode (overwrite) or AppendMode
+    outputHandle <- if append 
+                     then openFile outputFile AppendMode  -- Append mode
+                     else openFile outputFile WriteMode   -- Overwrite mode
 
     -- Stream the input file line-by-line and process it
     processLines ranges inputHandle 1 tempFileHandle outputHandle
@@ -60,13 +62,33 @@ main = do
     -- Get command line arguments
     args <- getArgs
     case args of
-        -- Expecting ranges, input file, and output file
+        -- Check for append flag and then parse ranges and file paths
+        ("-a":rangeStrs:inputFile:outputFile:_) -> do
+            -- Parse the range strings into actual tuples
+            let ranges = parseRanges rangeStrs
+            -- Call the splitFile function with the append flag set to True
+            splitFile ranges inputFile outputFile True
+
+        -- Default behavior (no append flag)
         (rangeStrs:inputFile:outputFile:_) -> do
             -- Parse the range strings into actual tuples
             let ranges = parseRanges rangeStrs
-            -- Call the splitFile function with the parsed ranges
-            splitFile ranges inputFile outputFile
-        _ -> putStrLn "Usage: <ranges> <input-file> <output-file>"
+            -- Call the splitFile function with the append flag set to False (default)
+            splitFile ranges inputFile outputFile False
+
+        -- Handle the case where arguments are missing or invalid
+        _ -> putStrLn usageMessage
+
+-- Usage message for help section
+usageMessage :: String
+usageMessage = unlines
+    [ "Usage: splitFile <ranges> <input-file> <output-file> [--append]"
+    , "  <ranges>     : A comma-separated list of line ranges to remove (e.g., '1-3,5-7')."
+    , "  <input-file> : The input file to process. The file will be **edited in place**, and the lines that fall within the specified ranges will be removed."
+    , "  <output-file>: The file where the removed lines will be written."
+    , "  --append     : Optional flag to append the removed lines to the output file (default is overwrite)."
+    , "  If '--append' is not provided, the output file will be overwritten."
+    ]
 
 -- Helper function to split a string based on a delimiter (in this case, commas)
 wordsWhen :: (Char -> Bool) -> String -> [String]
