@@ -18,7 +18,7 @@ open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.Correct.InitState using (initWithInput)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; m∸n≤m)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; m∸n≤m; m∸n+n≡m; <⇒≤; +-comm; m+n∸n≡m)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂)
 
@@ -88,10 +88,19 @@ n>0⇒n≢0 (s≤s z≤n) ()
 <⇒≢ {zero} {suc n} (s≤s z≤n) ()
 <⇒≢ {suc m} {suc n} (s≤s p) refl = <⇒≢ p refl
 
+-- Helper: k + 8 < k + 16 for any k (by induction)
+k+8<k+16 : ∀ k → k +ℕ 8 < k +ℕ 16
+k+8<k+16 zero = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+k+8<k+16 (suc k) = s≤s (k+8<k+16 k)
+
 -- Helper: (m ∸ 16) + 8 < m when m > 16
--- ARITHMETIC AXIOM: Postulated because the proof is complex but the fact is obviously true
-postulate
-  ∸+<-lemma : ∀ {m} → m > 16 → (m ∸ 16) +ℕ 8 < m
+-- PROVEN: When m > 16, we have (m ∸ 16) + 16 = m, so (m ∸ 16) + 8 < m
+∸+<-lemma : ∀ {m} → m > 16 → (m ∸ 16) +ℕ 8 < m
+∸+<-lemma {m} m>16 = subst ((m ∸ 16) +ℕ 8 <_) (m∸n+n≡m 16≤m) (k+8<k+16 (m ∸ 16))
+  where
+    -- m > 16 means suc 16 ≤ m, so 16 ≤ m
+    16≤m : 16 ≤ m
+    16≤m = <⇒≤ m>16
 
 ------------------------------------------------------------------------
 -- Address disjointness derivation
