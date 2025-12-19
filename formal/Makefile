@@ -37,6 +37,14 @@ X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
 X86_STAR := Once/Backend/X86/Correct/Star.agda
+X86_PREMUTUAL := Once/Backend/X86/Correct/PreMutual.agda
+X86_PAIR_HELPERS := Once/Backend/X86/Correct/PairHelpers.agda
+X86_CURRY_HELPERS := Once/Backend/X86/Correct/CurryHelpers.agda
+X86_MUTUALIR := Once/Backend/X86/Correct/MutualIR.agda
+X86_IRRESULT := Once/Backend/X86/Correct/IRResult.agda
+X86_SIMULATION := Once/Backend/X86/Correct/Simulation.agda
+X86_SIMPROOFS := Once/Backend/X86/Correct/SimProofs.agda
+X86_E2ETRACE := Once/Backend/X86/Correct/E2ETrace.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
@@ -136,6 +144,46 @@ x86-star:
 x86-encoding:
 	@echo "Type-checking x86-64 encoding derivations..."
 	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_ENCODING)'
+
+.PHONY: x86-premutual
+x86-premutual:
+	@echo "Type-checking x86-64 pre-mutual helpers..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_PREMUTUAL)'
+
+.PHONY: x86-pair-helpers
+x86-pair-helpers:
+	@echo "Type-checking x86-64 pair helpers..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_PAIR_HELPERS)'
+
+.PHONY: x86-curry-helpers
+x86-curry-helpers:
+	@echo "Type-checking x86-64 curry helpers..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_CURRY_HELPERS)'
+
+.PHONY: x86-mutualir
+x86-mutualir:
+	@echo "Type-checking x86-64 mutual IR block..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_MUTUALIR)'
+
+.PHONY: x86-irresult
+x86-irresult:
+	@echo "Type-checking x86-64 IRResult record..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_IRRESULT)'
+
+.PHONY: x86-simulation
+x86-simulation:
+	@echo "Type-checking x86-64 Simulation records..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SIMULATION)'
+
+.PHONY: x86-simproofs
+x86-simproofs:
+	@echo "Type-checking x86-64 SimProofs..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_SIMPROOFS)'
+
+.PHONY: x86-e2etrace
+x86-e2etrace:
+	@echo "Type-checking x86-64 E2ETrace..."
+	@nix develop ..#default --command sh -c '$(AGDA_CMD) $(X86_E2ETRACE)'
 
 .PHONY: aarch64
 aarch64:

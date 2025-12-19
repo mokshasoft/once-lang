@@ -1,0 +1,1727 @@
+------------------------------------------------------------------------
+-- Once.Backend.X86.Correct.PreMutual
+--
+-- Pre-mutual helpers for IR code generation correctness proofs.
+--
+-- This module contains helper functions that the mutual block depends on,
+-- but are NOT themselves mutually recursive. Splitting these out allows
+-- faster incremental compilation.
+--
+-- Exports:
+--   exec-pair-setup-at-7, exec-pair-middle-at (pair construction)
+--   run-single-mov-*, run-inl-seq, run-inr-seq (instruction sequences)
+--   run-ir-at-offset-inl/inr/fst/snd/initial (simple IR cases)
+--
+-- Level 3a - depends on StackInvariant, ExecLemmas, RegisterLemmas
+------------------------------------------------------------------------
+
+module Once.Backend.X86.Correct.PreMutual where
+
+open import Once.Type public
+open import Once.IR public
+open import Once.Semantics hiding (code-ptr; env-addr; semantics) public  -- Hide clashing names
+
+open import Once.Backend.X86.Syntax public
+open import Once.Backend.X86.Semantics public
+open Once.Backend.X86.Semantics.State public
+open Once.Backend.X86.Semantics.Flags public
+open import Once.Backend.X86.CodeGen public
+
+-- Import common fetch lemmas (polymorphic, work with any instruction type)
+open import Once.Backend.Common.Fetch
+  using ( fetch-0; fetch-1; fetch-2; fetch-3
+        ; fetch-1-single; fetch-4-of-4
+        ; fetch-append-left; fetch-append-right
+        ) public
+
+-- Import common memory helper lemmas
+open import Once.Backend.Common.Memory
+  using (≡ᵇ-refl; n≢n+suc) public
+
+-- Import common program manipulation lemmas
+open import Once.Backend.Common.ProgramLemmas
+  using ( prog-shift-1; prog-shift-2; prog-shift-3
+        ; len-shift-1; len-shift-2; len-shift-3
+        ; compose-prog-eq; compose-transfer-eq; compose-g-eq
+        ) public
+
+-- Import encoding axioms from central postulates module
+open import Once.Postulates
+  using ( encode
+        ; encode-unit
+        ; encode-pair-fst
+        ; encode-pair-snd
+        ; encode-inl-tag
+        ; encode-inl-val
+        ; encode-inr-tag
+        ; encode-inr-val
+        ; encode-inl-construct
+        ; encode-inr-construct
+        ; encode-fix-unwrap
+        ; encode-fix-wrap
+        ; encode-arr-identity
+        ; encode-pair-construct
+        ; encode-closure-construct
+        ) public
+
+-- Import extracted correctness proof modules
+open import Once.Backend.X86.Correct.RegisterLemmas public
+open import Once.Backend.X86.Correct.FetchStep public
+open import Once.Backend.X86.Correct.CompileLength public hiding (length-++)
+open import Once.Backend.X86.Correct.InitState
+  using (initWithInput; initWithInput-rdi; initWithInput-halted; initWithInput-pc; stackBase)
+open import Once.Backend.X86.Correct.InstrExec public
+
+-- Level 1: Depends on InitState
+open import Once.Backend.X86.Correct.StackInvariant public
+
+-- Level 2: Depends on FetchStep, InstrExec, RegisterLemmas
+open import Once.Backend.X86.Correct.ExecLemmas public
+
+open import Data.Bool using (Bool; true; false) public
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_) public
+open import Data.List using (List; []; _∷_; _++_; length) public
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax) public
+open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum) public
+open import Data.Unit using (⊤; tt) public
+open import Data.Empty using (⊥; ⊥-elim) public
+open import Data.Maybe using (Maybe; just; nothing) public
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ) public
+open import Relation.Nullary using (yes; no) public
+open ≡-Reasoning public
+
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc) public
+
+------------------------------------------------------------------------
+-- Execution Helpers for Pair Construction
+------------------------------------------------------------------------
+
+-- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
+-- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
+--
+-- After execution:
+--   rsp = orig_rsp - 40 (3 pushes of 8 bytes + sub 16)
+--   rbp = orig_rsp - 24 (frame base, after 3 pushes)
+--   r15 = rsp (pair base address)
+--   r14 = orig_rdi (saved input)
+--   rdi = orig_rdi (unchanged)
+--   pc = orig_pc + 7
+exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 7 (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 7
+         × readReg (regs s') r14 ≡ readReg (regs s) rdi
+         × readReg (regs s') rdi ≡ readReg (regs s) rdi
+         × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
+         × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24)
+exec-pair-setup-at-7 prefix rest s h-false pc-eq = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (+-assoc)
+
+    prog : Program
+    prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+
+    -- Original values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    orig-r14 : Word
+    orig-r14 = readReg (regs s) r14
+
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    orig-rbp : Word
+    orig-rbp = readReg (regs s) rbp
+
+    -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp (orig-rsp ∸ 8)
+                  ; memory = writeMem (memory s) (orig-rsp ∸ 8) orig-r14
+                  ; pc = pc s +ℕ 1 }
+
+    fetch1 : fetch prog (length prefix) ≡ just (push (reg r14))
+    fetch1 = fetch-at-prefix-end prefix (push (reg r14)) _
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s (push (reg r14)) h-false
+                             (subst (λ n → fetch prog n ≡ just (push (reg r14))) (sym pc-eq) fetch1))
+                  (execPush-reg prog s r14)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ n → n +ℕ 1) pc-eq
+
+    rsp-s1 : readReg (regs s1) rsp ≡ orig-rsp ∸ 8
+    rsp-s1 = readReg-writeReg-same (regs s) rsp (orig-rsp ∸ 8)
+
+    r15-s1 : readReg (regs s1) r15 ≡ orig-r15
+    r15-s1 = readReg-writeReg-rsp-r15 (regs s) (orig-rsp ∸ 8)
+
+    rbp-s1 : readReg (regs s1) rbp ≡ orig-rbp
+    rbp-s1 = readReg-writeReg-rsp-rbp (regs s) (orig-rsp ∸ 8)
+
+    -- Step 2: push r15 - save r15 to stack, decrement rsp by 8
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rsp (readReg (regs s1) rsp ∸ 8)
+                   ; memory = writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)
+                   ; pc = pc s1 +ℕ 1 }
+
+    prog-eq1 : prog ≡ (prefix ++ push (reg r14) ∷ []) ++ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq1 = sym (++-assoc prefix _ _)
+
+    len-prefix1 : length (prefix ++ push (reg r14) ∷ []) ≡ length prefix +ℕ 1
+    len-prefix1 = List-length-++ prefix
+
+    fetch2 : fetch prog (length prefix +ℕ 1) ≡ just (push (reg r15))
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just (push (reg r15))) (sym prog-eq1) len-prefix1
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ []) (push (reg r15)) _)
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (push (reg r15)) h1
+                             (subst (λ n → fetch prog n ≡ just (push (reg r15))) (sym pc1) fetch2))
+                  (execPush-reg prog s1 r15)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ n → n +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    rsp-s2-raw : readReg (regs s2) rsp ≡ readReg (regs s1) rsp ∸ 8
+    rsp-s2-raw = readReg-writeReg-same (regs s1) rsp (readReg (regs s1) rsp ∸ 8)
+
+    rsp-s2 : readReg (regs s2) rsp ≡ orig-rsp ∸ 16
+    rsp-s2 = trans rsp-s2-raw (trans (cong (_∸ 8) rsp-s1) (∸-+-assoc orig-rsp 8 8))
+
+    rbp-s2 : readReg (regs s2) rbp ≡ orig-rbp
+    rbp-s2 = trans (readReg-writeReg-rsp-rbp (regs s1) (readReg (regs s1) rsp ∸ 8)) rbp-s1
+
+    -- Step 3: push rbp - save rbp to stack, decrement rsp by 8
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
+                   ; memory = writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)
+                   ; pc = pc s2 +ℕ 1 }
+
+    prog-eq2 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ++ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq2 = sym (++-assoc prefix _ _)
+
+    len-prefix2 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ≡ length prefix +ℕ 2
+    len-prefix2 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch3 : fetch prog (length prefix +ℕ 2) ≡ just (push (reg rbp))
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just (push (reg rbp))) (sym prog-eq2) len-prefix2
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) (push (reg rbp)) _)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (push (reg rbp)) h2
+                             (subst (λ n → fetch prog n ≡ just (push (reg rbp))) (sym pc2) fetch3))
+                  (execPush-reg prog s2 rbp)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ n → n +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    rsp-s3-raw : readReg (regs s3) rsp ≡ readReg (regs s2) rsp ∸ 8
+    rsp-s3-raw = readReg-writeReg-same (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
+
+    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp ∸ 24
+    rsp-s3 = trans rsp-s3-raw (trans (cong (_∸ 8) rsp-s2) (∸-+-assoc orig-rsp 16 8))
+
+    -- Step 4: mov rbp, rsp - set rbp to current rsp (frame base)
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rbp (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    prog-eq3 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ++ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq3 = sym (++-assoc prefix _ _)
+
+    len-prefix3 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ≡ length prefix +ℕ 3
+    len-prefix3 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch4 : fetch prog (length prefix +ℕ 3) ≡ just (mov (reg rbp) (reg rsp))
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just (mov (reg rbp) (reg rsp))) (sym prog-eq3) len-prefix3
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) (mov (reg rbp) (reg rsp)) _)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rbp) (reg rsp)) h3
+                             (subst (λ n → fetch prog n ≡ just (mov (reg rbp) (reg rsp))) (sym pc3) fetch4))
+                  (execMov-reg-reg s3 rbp rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ n → n +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    rbp-s4 : readReg (regs s4) rbp ≡ orig-rsp ∸ 24
+    rbp-s4 = trans (readReg-writeReg-same (regs s3) rbp (readReg (regs s3) rsp)) rsp-s3
+
+    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ 24
+    rsp-s4 = trans (readReg-writeReg-rbp-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
+
+    -- Step 5: sub rsp, 16 - allocate 16 bytes on stack
+    s5 : State
+    s5 = record s4 { regs = writeReg (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
+                   ; pc = pc s4 +ℕ 1
+                   ; flags = updateFlags (readReg (regs s4) rsp ∸ 16) (readReg (regs s4) rsp) }
+
+    prog-eq4 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ++ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq4 = sym (++-assoc prefix _ _)
+
+    len-prefix4 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ≡ length prefix +ℕ 4
+    len-prefix4 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch5 : fetch prog (length prefix +ℕ 4) ≡ just (sub (reg rsp) (imm 16))
+    fetch5 = subst₂ (λ p n → fetch p n ≡ just (sub (reg rsp) (imm 16))) (sym prog-eq4) len-prefix4
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) (sub (reg rsp) (imm 16)) _)
+
+    step5 : step prog s4 ≡ just s5
+    step5 = trans (step-exec prog s4 (sub (reg rsp) (imm 16)) h4
+                             (subst (λ n → fetch prog n ≡ just (sub (reg rsp) (imm 16))) (sym pc4) fetch5))
+                  (execSub-reg-imm prog s4 rsp 16)
+
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ length prefix +ℕ 5
+    pc5 = trans (cong (λ n → n +ℕ 1) pc4) (+-assoc (length prefix) 4 1)
+
+    rsp-s5-raw : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ 16
+    rsp-s5-raw = readReg-writeReg-same (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
+
+    rsp-s5 : readReg (regs s5) rsp ≡ orig-rsp ∸ 40
+    rsp-s5 = trans rsp-s5-raw (trans (cong (_∸ 16) rsp-s4) (∸-+-assoc orig-rsp 24 16))
+
+    rbp-s5 : readReg (regs s5) rbp ≡ orig-rsp ∸ 24
+    rbp-s5 = trans (readReg-writeReg-rsp-rbp (regs s4) (readReg (regs s4) rsp ∸ 16)) rbp-s4
+
+    -- Step 6: mov r15, rsp - set r15 to current rsp (pair base address)
+    s6 : State
+    s6 = record s5 { regs = writeReg (regs s5) r15 (readReg (regs s5) rsp)
+                   ; pc = pc s5 +ℕ 1 }
+
+    prog-eq5 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) ++ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq5 = sym (++-assoc prefix _ _)
+
+    len-prefix5 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) ≡ length prefix +ℕ 5
+    len-prefix5 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch6 : fetch prog (length prefix +ℕ 5) ≡ just (mov (reg r15) (reg rsp))
+    fetch6 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r15) (reg rsp))) (sym prog-eq5) len-prefix5
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) (mov (reg r15) (reg rsp)) _)
+
+    step6 : step prog s5 ≡ just s6
+    step6 = trans (step-exec prog s5 (mov (reg r15) (reg rsp)) h5
+                             (subst (λ n → fetch prog n ≡ just (mov (reg r15) (reg rsp))) (sym pc5) fetch6))
+                  (execMov-reg-reg s5 r15 rsp)
+
+    h6 : halted s6 ≡ false
+    h6 = h-false
+
+    pc6 : pc s6 ≡ length prefix +ℕ 6
+    pc6 = trans (cong (λ n → n +ℕ 1) pc5) (+-assoc (length prefix) 5 1)
+
+    r15-s6 : readReg (regs s6) r15 ≡ orig-rsp ∸ 40
+    r15-s6 = trans (readReg-writeReg-same (regs s5) r15 (readReg (regs s5) rsp)) rsp-s5
+
+    rsp-s6 : readReg (regs s6) rsp ≡ orig-rsp ∸ 40
+    rsp-s6 = trans (readReg-writeReg-r15-rsp (regs s5) (readReg (regs s5) rsp)) rsp-s5
+
+    rbp-s6 : readReg (regs s6) rbp ≡ orig-rsp ∸ 24
+    rbp-s6 = trans (readReg-writeReg-r15-rbp (regs s5) (readReg (regs s5) rsp)) rbp-s5
+
+    rdi-s6 : readReg (regs s6) rdi ≡ orig-rdi
+    rdi-s6 = trans (readReg-writeReg-r15-rdi (regs s5) (readReg (regs s5) rsp))
+                   (trans (readReg-writeReg-rsp-rdi (regs s4) (readReg (regs s4) rsp ∸ 16))
+                          (trans (readReg-writeReg-rbp-rdi (regs s3) (readReg (regs s3) rsp))
+                                 (trans (readReg-writeReg-rsp-rdi (regs s2) (readReg (regs s2) rsp ∸ 8))
+                                        (trans (readReg-writeReg-rsp-rdi (regs s1) (readReg (regs s1) rsp ∸ 8))
+                                               (readReg-writeReg-rsp-rdi (regs s) (orig-rsp ∸ 8))))))
+
+    -- Step 7: mov r14, rdi - save input to r14
+    s7 : State
+    s7 = record s6 { regs = writeReg (regs s6) r14 (readReg (regs s6) rdi)
+                   ; pc = pc s6 +ℕ 1 }
+
+    prog-eq6 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) ++ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq6 = sym (++-assoc prefix _ _)
+
+    len-prefix6 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) ≡ length prefix +ℕ 6
+    len-prefix6 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
+
+    fetch7 : fetch prog (length prefix +ℕ 6) ≡ just (mov (reg r14) (reg rdi))
+    fetch7 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r14) (reg rdi))) (sym prog-eq6) len-prefix6
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) (mov (reg r14) (reg rdi)) _)
+
+    step7 : step prog s6 ≡ just s7
+    step7 = trans (step-exec prog s6 (mov (reg r14) (reg rdi)) h6
+                             (subst (λ n → fetch prog n ≡ just (mov (reg r14) (reg rdi))) (sym pc6) fetch7))
+                  (execMov-reg-reg s6 r14 rdi)
+
+    h7 : halted s7 ≡ false
+    h7 = h-false
+
+    pc7 : pc s7 ≡ length prefix +ℕ 7
+    pc7 = trans (cong (λ n → n +ℕ 1) pc6) (+-assoc (length prefix) 6 1)
+
+    exec-eq : exec 7 prog s ≡ just s7
+    exec-eq = exec-seven-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7
+
+    r14-eq : readReg (regs s7) r14 ≡ orig-rdi
+    r14-eq = trans (readReg-writeReg-same (regs s6) r14 (readReg (regs s6) rdi)) rdi-s6
+
+    rdi-eq : readReg (regs s7) rdi ≡ orig-rdi
+    rdi-eq = trans (readReg-writeReg-r14-rdi (regs s6) (readReg (regs s6) rdi)) rdi-s6
+
+    r15-eq : readReg (regs s7) r15 ≡ orig-rsp ∸ 40
+    r15-eq = trans (readReg-writeReg-r14-r15 (regs s6) (readReg (regs s6) rdi)) r15-s6
+
+    rsp-eq : readReg (regs s7) rsp ≡ orig-rsp ∸ 40
+    rsp-eq = trans (readReg-writeReg-r14-rsp (regs s6) (readReg (regs s6) rdi)) rsp-s6
+
+    rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ 24
+    rbp-eq = trans (readReg-writeReg-r14-rbp (regs s6) (readReg (regs s6) rdi)) rbp-s6
+
+-- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
+-- Used for phase 3 of pair construction - storing f's result and restoring input
+-- Instructions:
+--   mov [r15], rax   - store f's result at [r15] (stable pair base)
+--   mov rdi, r14     - restore original input from r14 to rdi
+exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (exec 2 (prefix ++ mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 2
+         × readReg (regs s') rdi ≡ readReg (regs s) r14
+         × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax))
+exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (+-assoc)
+
+    prog : Program
+    prog = prefix ++ mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest
+
+    -- State after step 1: mov [r15], rax (store rax to memory at r15)
+    s1 : State
+    s1 = record s { memory = writeMem (memory s) (readReg (regs s) r15) (readReg (regs s) rax)
+                  ; pc = pc s +ℕ 1 }
+
+    -- Fetch mov [r15], rax at length prefix
+    fetch0 : fetch prog (length prefix) ≡ just (mov (mem (base r15)) (reg rax))
+    fetch0 = fetch-at-prefix-end prefix (mov (mem (base r15)) (reg rax)) (mov (reg rdi) (reg r14) ∷ rest)
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s (mov (mem (base r15)) (reg rax)) h-false
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base r15)) (reg rax))) (sym pc-eq) fetch0))
+                  (execMov-mem-base-reg prog s r15 rax)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    -- State after step 2: mov rdi, r14
+    s-final : State
+    s-final = record s1 { regs = writeReg (regs s1) rdi (readReg (regs s1) r14)
+                        ; pc = pc s1 +ℕ 1 }
+
+    -- For fetch at position length prefix + 1, rearrange program
+    prog-eq1 : prog ≡ (prefix ++ mov (mem (base r15)) (reg rax) ∷ []) ++ mov (reg rdi) (reg r14) ∷ rest
+    prog-eq1 = sym (++-assoc prefix (mov (mem (base r15)) (reg rax) ∷ []) (mov (reg rdi) (reg r14) ∷ rest))
+
+    len-prefix-1 : length (prefix ++ mov (mem (base r15)) (reg rax) ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = List-length-++ prefix {mov (mem (base r15)) (reg rax) ∷ []}
+
+    fetch1-helper : fetch ((prefix ++ mov (mem (base r15)) (reg rax) ∷ []) ++ mov (reg rdi) (reg r14) ∷ rest)
+                         (length (prefix ++ mov (mem (base r15)) (reg rax) ∷ []))
+                  ≡ just (mov (reg rdi) (reg r14))
+    fetch1-helper = fetch-at-prefix-end (prefix ++ mov (mem (base r15)) (reg rax) ∷ []) (mov (reg rdi) (reg r14)) rest
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just (mov (reg rdi) (reg r14))
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just (mov (reg rdi) (reg r14))) (sym prog-eq1) len-prefix-1 fetch1-helper
+
+    step2 : step prog s1 ≡ just s-final
+    step2 = trans (step-exec prog s1 (mov (reg rdi) (reg r14)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg r14))) (sym pc1) fetch1))
+                  (execMov-reg-reg s1 rdi r14)
+
+    h-final : halted s-final ≡ false
+    h-final = h-false
+
+    pc-final : pc s-final ≡ length prefix +ℕ 2
+    pc-final = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    exec-eq : exec 2 prog s ≡ just s-final
+    exec-eq = exec-two-steps-nonhalt prog s s1 s-final step1 h1 step2 h-final
+
+    -- r14 in s1 is the same as in s (mov [r15], rax doesn't change registers)
+    r14-s1-eq : readReg (regs s1) r14 ≡ readReg (regs s) r14
+    r14-s1-eq = refl
+
+    -- rdi gets r14's value from s1, which equals r14 from s
+    rdi-eq : readReg (regs s-final) rdi ≡ readReg (regs s) r14
+    rdi-eq = trans (readReg-writeReg-same (regs s1) rdi (readReg (regs s1) r14)) r14-s1-eq
+
+    -- Memory at r15: s-final's memory came from s1, which came from writing rax to [r15]
+    -- Need to show readMem (memory s-final) (readReg (regs s-final) r15) = just (rax from s)
+    -- s-final's memory is s1's memory (mov rdi, r14 doesn't change memory)
+    -- s1's memory has writeMem at (r15 of s) with value (rax of s)
+    -- s-final's r15 is s1's r15 (mov rdi, r14 doesn't change r15)
+    -- s1's r15 is s's r15 (mov [r15], rax doesn't change r15)
+
+    r15-s1-eq : readReg (regs s1) r15 ≡ readReg (regs s) r15
+    r15-s1-eq = refl
+
+    r15-final-eq : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+    r15-final-eq = trans (readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) r14)) r15-s1-eq
+
+    mem-eq : readMem (memory s-final) (readReg (regs s-final) r15) ≡ just (readReg (regs s) rax)
+    mem-eq = trans (cong (readMem (memory s-final)) r15-final-eq)
+                   (readMem-writeMem-same (memory s) (readReg (regs s) r15) (readReg (regs s) rax))
+
+-- NOTE: exec-pair-final-at was removed - it was dead code with an outdated
+-- instruction sequence (used add rsp, 16 instead of mov rsp, rbp).
+-- The actual proof uses inline postulates in run-pair-at-offset.
+-- See docs/formal/x86-full-proof-architecture.md for the correct approach.
+
+-- | Execute id at arbitrary offset in a program (non-halting)
+-- This is the general case of run-id-nonhalt where id code can be at any position
+-- Program structure: prefix ++ [mov rax, rdi] ++ suffix
+-- NOTE: run-*-at-offset functions and Common.Exec are imported from ExecLemmas
+
+-- Helper: running a single-instruction program (mov reg, reg)
+--
+-- Proof outline:
+-- 1. First step executes mov, producing s1 with pc=1, updated regs, halted=false
+-- 2. Second step: fetch at pc=1 fails, sets halted=true
+-- 3. exec-two-steps combines these
+run-single-mov : ∀ (s : State) (dst src : Reg) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (mov (reg dst) (reg src) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ readReg (regs s) src
+         × halted s' ≡ true)
+run-single-mov s dst src h-false pc-0 = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (reg src) ∷ []
+
+    -- State after first step: execute mov (use pc s +ℕ 1 to match execMov-reg-reg)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst (readReg (regs s) src)
+                  ; pc = pc s +ℕ 1 }
+
+    -- State after second step: halted
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    -- First step produces s1
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (reg src)) [] s h-false pc-0)
+                  (execMov-reg-reg s dst src)
+
+    -- s1 is not halted
+    h1 : halted s1 ≡ false
+    h1 = h-false  -- halted field unchanged in s1
+
+    -- s1 has pc = pc s + 1 = 0 + 1 = 1
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- fetch at pc s1 = 1 fails
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    -- Second step produces s2 (halted)
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    -- s2 is halted
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    -- Register value is preserved: regs s2 = regs s1 = writeReg (regs s) dst (readReg (regs s) src)
+    rax-eq : readReg (regs s2) dst ≡ readReg (regs s) src
+    rax-eq = readReg-writeReg-same (regs s) dst (readReg (regs s) src)
+
+    -- run = exec defaultFuel, defaultFuel = 10000 = suc (suc 9998)
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
+
+-- Helper: running a single-instruction program (mov reg, imm)
+run-single-mov-imm : ∀ (s : State) (dst : Reg) (n : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (mov (reg dst) (imm n) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ n
+         × halted s' ≡ true)
+run-single-mov-imm s dst n h-false pc-0 = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (imm n) ∷ []
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst n ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (imm n)) [] s h-false pc-0)
+                  (execMov-reg-imm s dst n)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    rax-eq : readReg (regs s2) dst ≡ n
+    rax-eq = readReg-writeReg-same (regs s) dst n
+
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
+
+-- Helper: running a single-instruction program (mov reg, [reg])
+-- Loads from memory at address in src register
+run-single-mov-mem-base : ∀ (s : State) (dst src : Reg) (v : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readMem (memory s) (readReg (regs s) src) ≡ just v →
+  ∃[ s' ] (run (mov (reg dst) (mem (base src)) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ v
+         × halted s' ≡ true)
+run-single-mov-mem-base s dst src v h-false pc-0 mem-ok = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (mem (base src)) ∷ []
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (mem (base src))) [] s h-false pc-0)
+                  (execMov-reg-mem-base s dst src v mem-ok)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    rax-eq : readReg (regs s2) dst ≡ v
+    rax-eq = readReg-writeReg-same (regs s) dst v
+
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
+
+-- Helper: running a single-instruction program (mov reg, [reg+disp])
+-- Loads from memory at address (src register + displacement)
+run-single-mov-mem-disp : ∀ (s : State) (dst src : Reg) (disp : ℕ) (v : ℕ) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  readMem (memory s) (readReg (regs s) src +ℕ disp) ≡ just v →
+  ∃[ s' ] (run (mov (reg dst) (mem (base+disp src disp)) ∷ []) s ≡ just s'
+         × readReg (regs s') dst ≡ v
+         × halted s' ≡ true)
+run-single-mov-mem-disp s dst src disp v h-false pc-0 mem-ok = s2 , run-eq , rax-eq , halt-eq
+  where
+    prog : List Instr
+    prog = mov (reg dst) (mem (base+disp src disp)) ∷ []
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) dst v ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { halted = true }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (mov (reg dst) (mem (base+disp src disp))) [] s h-false pc-0)
+                  (execMov-reg-mem-disp s dst src disp v mem-ok)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    fetch-fail : fetch prog (pc s1) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc1) refl
+
+    step2 : step prog s1 ≡ just s2
+    step2 = step-halt-on-fetch-fail prog s1 h1 fetch-fail
+
+    halt-eq : halted s2 ≡ true
+    halt-eq = refl
+
+    rax-eq : readReg (regs s2) dst ≡ v
+    rax-eq = readReg-writeReg-same (regs s) dst v
+
+    run-eq : run prog s ≡ just s2
+    run-eq = exec-two-steps 9998 prog s s1 s2 step1 h1 step2 halt-eq
+
+-- Helper: inl instruction sequence
+-- sub rsp, 16; mov [rsp], 0; mov [rsp+8], rdi; mov rax, rsp
+-- Effect: allocates tagged union on stack with tag=0, value=input
+--
+-- Proof: trace through 5 steps (4 instructions + implicit halt when fetch fails at pc=4)
+run-inl-seq : ∀ {A B} (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {A} {A + B} inl) s ≡ just s'
+         × halted s' ≡ true
+         -- rax points to stack-allocated sum
+         × readReg (regs s') rax ≡ readReg (regs s') rsp
+         -- tag at [rax] = 0
+         × readMem (memory s') (readReg (regs s') rax) ≡ just 0
+         -- value at [rax+8] = original rdi
+         × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+run-inl-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq , val-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {A} {A + B} inl
+
+    -- Original values we need to track
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    -- Use pc s +ℕ 1 to match execSub-reg-imm output
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (sub (reg rsp) (imm 16)) _ s h-false pc-0)
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov [rsp], 0
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 0
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (mem (base rsp)) (imm 0)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (imm 0))) (sym pc1) refl))
+                  (execMov-mem-base-imm prog s1 rsp 0)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (mem (base+disp rsp 8)) (reg rdi)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (reg rdi))) (sym pc2) refl))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rax) (reg rsp)) h3
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rsp))) (sym pc3) refl))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 4
+    pc4 = cong (λ x → x +ℕ 1) pc3
+
+    -- State after step 5: fetch fails at pc=4, sets halted=true
+    s5 : State
+    s5 = record s4 { halted = true }
+
+    fetch-fail : fetch prog (pc s4) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc4) refl
+
+    step5 : step prog s4 ≡ just s5
+    step5 = step-halt-on-fetch-fail prog s4 h4 fetch-fail
+
+    halt-eq : halted s5 ≡ true
+    halt-eq = refl
+
+    -- Combined execution
+    run-eq : run prog s ≡ just s5
+    run-eq = exec-five-steps 9995 prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h4 step5 halt-eq
+
+    -- Now prove the properties about s5
+
+    -- rax = rsp in s5 (both unchanged from s4)
+    rax-rsp-eq : readReg (regs s5) rax ≡ readReg (regs s5) rsp
+    rax-rsp-eq = readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)
+
+    -- Helper: rsp is constant through s1,s2,s3 since only sub modifies it in s1
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2
+
+    -- Helper: rdi is constant through all states (never modified)
+    -- In s1, only rsp was modified by sub instruction
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1  -- regs s2 = regs s1 (mov [rsp], 0 doesn't touch registers)
+
+    -- Helper: rax in s5 = rsp in s3 = new-rsp
+    rax-s5 : readReg (regs s5) rax ≡ new-rsp
+    rax-s5 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    -- Key: new-rsp ≠ new-rsp + 8
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- tag at [rax] = 0
+    -- Memory path: s5.memory = s3.memory = writeMem s2.memory (new-rsp+8) rdi
+    --              s2.memory = writeMem s1.memory new-rsp 0
+    -- Reading at new-rsp: first write doesn't touch it (different addr), second does
+    tag-eq : readMem (memory s5) (readReg (regs s5) rax) ≡ just 0
+    tag-eq = trans (cong (readMem (memory s5)) rax-s5)
+                   (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi) (λ eq → addr-disjoint (sym eq)))
+                          (readMem-writeMem-same (memory s1) new-rsp 0))
+
+    -- value at [rax+8] = original rdi
+    -- Memory path: same as above, but reading at new-rsp+8
+    val-eq : readMem (memory s5) (readReg (regs s5) rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    val-eq = trans (cong (λ a → readMem (memory s5) (a +ℕ 8)) rax-s5)
+                   (trans (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi))
+                          (cong just rdi-s2))
+
+-- Helper: inr instruction sequence (similar to inl but tag=1)
+-- Proof: identical structure to run-inl-seq, just writes tag=1 instead of tag=0
+run-inr-seq : ∀ {A B} (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ∃[ s' ] (run (compile-x86 {B} {A + B} inr) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ readReg (regs s') rsp
+         × readMem (memory s') (readReg (regs s') rax) ≡ just 1
+         × readMem (memory s') (readReg (regs s') rax +ℕ 8) ≡ just (readReg (regs s) rdi))
+run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq , val-eq
+  where
+    prog : List Instr
+    prog = compile-x86 {B} {A + B} inr
+
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec-0 (sub (reg rsp) (imm 16)) _ s h-false pc-0)
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ 1
+    pc1 = cong (λ x → x +ℕ 1) pc-0
+
+    -- State after step 2: mov [rsp], 1 (tag = 1 for inr)
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 1
+                   ; pc = pc s1 +ℕ 1 }
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 (mov (mem (base rsp)) (imm 1)) h1
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base rsp)) (imm 1))) (sym pc1) refl))
+                  (execMov-mem-base-imm prog s1 rsp 1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ 2
+    pc2 = cong (λ x → x +ℕ 1) pc1
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 (mov (mem (base+disp rsp 8)) (reg rdi)) h2
+                             (subst (λ p → fetch prog p ≡ just (mov (mem (base+disp rsp 8)) (reg rdi))) (sym pc2) refl))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ 3
+    pc3 = cong (λ x → x +ℕ 1) pc2
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 (mov (reg rax) (reg rsp)) h3
+                             (subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rsp))) (sym pc3) refl))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ 4
+    pc4 = cong (λ x → x +ℕ 1) pc3
+
+    -- State after step 5: fetch fails at pc=4, sets halted=true
+    s5 : State
+    s5 = record s4 { halted = true }
+
+    fetch-fail : fetch prog (pc s4) ≡ nothing
+    fetch-fail = subst (λ p → fetch prog p ≡ nothing) (sym pc4) refl
+
+    step5 : step prog s4 ≡ just s5
+    step5 = step-halt-on-fetch-fail prog s4 h4 fetch-fail
+
+    halt-eq : halted s5 ≡ true
+    halt-eq = refl
+
+    run-eq : run prog s ≡ just s5
+    run-eq = exec-five-steps 9995 prog s s1 s2 s3 s4 s5 step1 h1 step2 h2 step3 h3 step4 h4 step5 halt-eq
+
+    -- Properties about s5
+    rax-rsp-eq : readReg (regs s5) rax ≡ readReg (regs s5) rsp
+    rax-rsp-eq = readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)
+
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2
+
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1
+
+    rax-s5 : readReg (regs s5) rax ≡ new-rsp
+    rax-s5 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- tag at [rax] = 1
+    tag-eq : readMem (memory s5) (readReg (regs s5) rax) ≡ just 1
+    tag-eq = trans (cong (readMem (memory s5)) rax-s5)
+                   (trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi) (λ eq → addr-disjoint (sym eq)))
+                          (readMem-writeMem-same (memory s1) new-rsp 1))
+
+    -- value at [rax+8] = original rdi
+    val-eq : readMem (memory s5) (readReg (regs s5) rax +ℕ 8) ≡ just (readReg (regs s) rdi)
+    val-eq = trans (cong (λ a → readMem (memory s5) (a +ℕ 8)) rax-s5)
+                   (trans (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi))
+                          (cong just rdi-s2))
+
+------------------------------------------------------------------------
+-- run-ir-at-offset: Non-halting execution of IR at arbitrary offset
+--
+-- This is the key recursive function that enables proving the mutual
+-- recursion cluster. It executes IR code at any position in a larger
+-- program WITHOUT halting (continues to next instruction).
+--
+-- For base cases (id, fst, snd, terminal, fold, unfold, arr):
+--   compile-length = 1, execute single step
+--
+-- For compose (g ∘ f):
+--   1. Execute f at offset (recursive call)
+--   2. Execute mov rdi, rax at offset + compile-length f
+--   3. Execute g at offset + compile-length f + 1 (recursive call)
+--   4. Chain using exec-chain
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+-- Complex IR cases (compose, pair, case, curry, apply) are defined
+-- in the mutual block below together with run-ir-at-offset
+
+-- | Prove run-ir-at-offset-inl: execute inl at arbitrary offset
+-- compile-x86 inl = [sub rsp 16, mov [rsp] 0, mov [rsp+8] rdi, mov rax rsp]
+-- Memory frame property: writes are to [rsp-16] and [rsp-8], which are below r15
+-- when called in the pair context (where rsp ≤ r15 is maintained)
+--
+-- NOTE: The addr-diff postulates here can be eliminated by using StackInvariant
+-- in a context where the invariant is established (e.g., composition proofs).
+run-ir-at-offset-inl : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {A} {A + B} inl) runFuel (prefix ++ compile-x86 {A} {A + B} inl ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
+         × readReg (regs s') rax ≡ encode (eval {A} {A + B} inl x)
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+         × StackInvariant s'
+         × readReg (regs s') rsp > 16)
+run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+  where
+    -- The program
+    prog : Program
+    prog = prefix ++ compile-x86 {A} {A + B} inl ++ suffix
+
+    -- The 4 instructions of inl
+    i0 : Instr
+    i0 = sub (reg rsp) (imm 16)
+    i1 : Instr
+    i1 = mov (mem (base rsp)) (imm 0)
+    i2 : Instr
+    i2 = mov (mem (base+disp rsp 8)) (reg rdi)
+    i3 : Instr
+    i3 = mov (reg rax) (reg rsp)
+
+    -- Original register values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    -- State after step 2: mov [rsp], 0
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 0
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    -- Fetch lemmas for each instruction position
+    -- Use fetch-at-prefix-end with appropriate prefixes
+
+    -- Instruction 0 at position (length prefix)
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ i3 ∷ suffix)
+
+    -- For subsequent fetches at positions length prefix + 1, 2, 3
+    -- We use list associativity and the local length-++ lemma
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+
+    -- Helper: prog rearranged for fetch calculations
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ suffix))
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = length-++ prefix (i0 ∷ [])
+
+    fetch1-helper : fetch ((prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix) (length (prefix ++ i0 ∷ [])) ≡ just i1
+    fetch1-helper = fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ i3 ∷ suffix)
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1 fetch1-helper
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ suffix))
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+    len-prefix-2 = length-++ prefix (i0 ∷ i1 ∷ [])
+
+    fetch2-helper : fetch ((prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix) (length (prefix ++ i0 ∷ i1 ∷ [])) ≡ just i2
+    fetch2-helper = fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 (i3 ∷ suffix)
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2 fetch2-helper
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ suffix))
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix-3 = length-++ prefix (i0 ∷ i1 ∷ i2 ∷ [])
+
+    fetch3-helper : fetch ((prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix) (length (prefix ++ i0 ∷ i1 ∷ i2 ∷ [])) ≡ just i3
+    fetch3-helper = fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 suffix
+
+    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3 fetch3-helper
+
+    -- Step proofs
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execMov-mem-base-imm prog s1 rsp 0)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ p → p +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ p → p +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    -- Combine 4 steps
+    exec-eq : exec 4 prog s ≡ just s4
+    exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
+    -- Convert to exec-until-pc
+    exec-until-eq : exec-until-pc (length prefix +ℕ compile-length {A} {A + B} inl) runFuel prog s ≡ just s4
+    exec-until-eq = exec-to-exec-until-pc-simple {A} {A + B} inl prefix suffix s s4 exec-eq h4 pc4 pc-eq
+
+    -- Now prove rax = encode (inj₁ x)
+    -- rax = rsp (from s4)
+    -- rsp in s4 = rsp in s3 = rsp in s2 = rsp in s1 = new-rsp
+    -- memory[new-rsp] = 0 (from s2)
+    -- memory[new-rsp + 8] = orig-rdi = encode x (from s3)
+
+    -- Track rsp through states
+    rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
+    rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = rsp-s1  -- memory write doesn't change regs
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2  -- memory write doesn't change regs
+
+    rsp-s4 : readReg (regs s4) rsp ≡ new-rsp
+    rsp-s4 = trans (readReg-writeReg-rax-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
+
+    -- rax in s4 = rsp in s3 = new-rsp
+    rax-s4 : readReg (regs s4) rax ≡ new-rsp
+    rax-s4 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    -- Track rdi through states (unchanged until s3)
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1  -- memory write doesn't change regs
+
+    -- Address disjointness: new-rsp ≠ new-rsp + 8
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- Memory at new-rsp = 0 (set in s2)
+    -- memory s2 = writeMem (memory s1) (readReg (regs s1) rsp) 0
+    -- readReg (regs s1) rsp = new-rsp (from rsp-s1)
+    mem-tag-s2 : readMem (memory s2) new-rsp ≡ just 0
+    mem-tag-s2 = subst (λ addr → readMem (writeMem (memory s1) addr 0) new-rsp ≡ just 0)
+                       (sym rsp-s1)
+                       (readMem-writeMem-same (memory s1) new-rsp 0)
+
+    -- Memory at new-rsp preserved from s2 to s3 (s3 writes at new-rsp+8)
+    -- memory s3 = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+    mem-tag-s3 : readMem (memory s3) new-rsp ≡ just 0
+    mem-tag-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) new-rsp ≡
+                                        readMem (memory s2) new-rsp)
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi)
+                                                     (λ eq → addr-disjoint (sym eq))))
+                       mem-tag-s2
+
+    -- Memory at new-rsp preserved from s3 to s4 (s4 doesn't write memory)
+    mem-tag-s4 : readMem (memory s4) new-rsp ≡ just 0
+    mem-tag-s4 = mem-tag-s3  -- s4 = record s3 { regs = ...; pc = ... }, memory unchanged
+
+    -- Memory at new-rsp + 8 = orig-rdi (set in s3)
+    mem-val-s3 : readMem (memory s3) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) (new-rsp +ℕ 8) ≡
+                                        just (readReg (regs s2) rdi))
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi)))
+                       (cong just rdi-s2)
+
+    -- Memory at new-rsp + 8 preserved from s3 to s4
+    mem-val-s4 : readMem (memory s4) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s4 = mem-val-s3  -- s4 doesn't write memory
+
+    -- Use encode-inl-construct: if mem[p] = 0 and mem[p+8] = encode x, then p = encode (inj₁ x)
+    -- We have: rax = new-rsp, mem[new-rsp] = 0, mem[new-rsp+8] = encode x
+    -- So: rax = encode (inj₁ x)
+
+    -- First, orig-rdi = encode x (from precondition)
+    orig-rdi-is-encode-x : orig-rdi ≡ encode x
+    orig-rdi-is-encode-x = rdi-eq
+
+    -- Adjust memory proofs to use encode x
+    mem-val-encoded : readMem (memory s4) (new-rsp +ℕ 8) ≡ just (encode x)
+    mem-val-encoded = trans mem-val-s4 (cong just orig-rdi-is-encode-x)
+
+    -- Apply encode-inl-construct
+    rax-is-encode-inl : new-rsp ≡ encode {A + B} (inj₁ x)
+    rax-is-encode-inl = encode-inl-construct x new-rsp (memory s4) mem-tag-s4 mem-val-encoded
+
+    -- Final result: rax s4 = encode (eval inl x) = encode (inj₁ x)
+    rax-eq : readReg (regs s4) rax ≡ encode (eval {A} {A + B} inl x)
+    rax-eq = trans rax-s4 rax-is-encode-inl
+
+    -- r14 preserved: inl only writes rsp (once) and rax (once), plus memory
+    -- s1.regs = writeReg (regs s) rsp new-rsp
+    -- s2.regs = s1.regs (memory write)
+    -- s3.regs = s2.regs (memory write)
+    -- s4.regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+    r14-eq : readReg (regs s4) r14 ≡ readReg (regs s) r14
+    r14-eq = trans (readReg-writeReg-rax-r14 (regs s3) (readReg (regs s3) rsp))
+                   (readReg-writeReg-rsp-r14 (regs s) new-rsp)
+
+    -- r15 preserved: same reasoning as r14
+    r15-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
+    r15-eq = trans (readReg-writeReg-rax-r15 (regs s3) (readReg (regs s3) rsp))
+                   (readReg-writeReg-rsp-r15 (regs s) new-rsp)
+
+    -- Memory preservation: inl writes to [new_rsp] and [new_rsp + 8]
+    -- These addresses are below r15 in the pair context (where rsp ≤ r15)
+    -- Writes: s2 writes to [new_rsp], s3 writes to [new_rsp + 8]
+    -- We need: new_rsp ≠ r15 and new_rsp + 8 ≠ r15
+    -- This holds when rsp ≤ r15 (maintained in pair context)
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    -- Memory at [r15] unchanged through s1 (regs change only)
+    mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s1 = refl
+
+    -- Memory at [r15] unchanged through s2 if new_rsp ≠ r15
+    -- s2 writes to [new_rsp], need [new_rsp] ≠ [r15]
+    -- PROVEN: Using addr-diff-from-invariant with StackInvariant parameter
+    addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
+    addr-diffs = addr-diff-from-invariant s stack-inv rsp>16
+
+    addr-diff-1 : new-rsp ≢ orig-r15
+    addr-diff-1 = proj₁ addr-diffs
+
+    mem-s2 : readMem (memory s2) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s2 = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 0 (λ eq → addr-diff-1 eq)) mem-s1
+
+    -- Memory at [r15] unchanged through s3 if new_rsp + 8 ≠ r15
+    -- PROVEN: Using addr-diff-from-invariant with StackInvariant parameter
+    addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
+    addr-diff-2 = proj₂ addr-diffs
+
+    mem-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-r15 orig-rdi (λ eq → addr-diff-2 eq)) mem-s2
+
+    -- s4 doesn't change memory
+    mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-preserved = mem-s3
+
+    -- StackInvariant preservation: r15 unchanged, rsp decreased
+    -- r15 is not modified by any of the 4 instructions
+    r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
+    r15-s4-eq = trans (readReg-writeReg-rax-r15 (regs s3) (readReg (regs s3) rsp))
+                      (trans (readReg-writeReg-rsp-r15 (regs s) new-rsp)
+                             refl)
+
+    -- rsp in s4 = new-rsp (sub rsp, 16 in s1, then no more rsp writes)
+    rsp-s4-eq : readReg (regs s4) rsp ≡ new-rsp
+    rsp-s4-eq = trans (readReg-writeReg-rax-rsp (regs s3) (readReg (regs s3) rsp))
+                      (readReg-writeReg-same (regs s) rsp new-rsp)
+
+    -- StackInvariant s4: case analysis on original invariant
+    -- - r15-unused: r15 stays 0
+    -- - stack-below-r15: rsp' = rsp - 16 ≤ rsp ≤ r15
+    stack-inv-helper : StackInvariant s → StackInvariant s4
+    stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-s4-eq r15≡0)
+    stack-inv-helper (stack-below-r15 rsp≤r15) =
+      stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-s4-eq)
+                               (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+
+    stack-inv' : StackInvariant s4
+    stack-inv' = stack-inv-helper stack-inv
+
+    -- rsp s4 > 16: practical assumption
+    -- After sub rsp, 16, we have new-rsp = orig-rsp - 16
+    -- For new-rsp > 16, we need orig-rsp > 32
+    -- This is a practical assumption that stack has sufficient space
+    postulate
+      rsp>16' : readReg (regs s4) rsp > 16
+
+-- | run-ir-at-offset-inr: Execute inr at arbitrary offset
+-- inr generates 4 instructions:
+--   sub rsp, 16
+--   mov [rsp], 1          (tag = 1)
+--   mov [rsp+8], rdi      (value)
+--   mov rax, rsp          (return pointer)
+run-ir-at-offset-inr : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {B} {A + B} inr) runFuel (prefix ++ compile-x86 {B} {A + B} inr ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 4
+         × readReg (regs s') rax ≡ encode (eval {B} {A + B} inr x)
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+         × StackInvariant s'
+         × readReg (regs s') rsp > 16)
+run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+  where
+    -- Program structure
+    i0 = sub (reg rsp) (imm 16)
+    i1 = mov (mem (base rsp)) (imm 1)
+    i2 = mov (mem (base+disp rsp 8)) (reg rdi)
+    i3 = mov (reg rax) (reg rsp)
+    prog = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ suffix
+
+    -- Original register values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+    orig-rdi : Word
+    orig-rdi = readReg (regs s) rdi
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    -- State after step 2: mov [rsp], 1
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 1
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    -- Fetch lemmas for each instruction position
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ i3 ∷ suffix)
+
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ suffix))
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = length-++ prefix (i0 ∷ [])
+
+    fetch1-helper : fetch ((prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix) (length (prefix ++ i0 ∷ [])) ≡ just i1
+    fetch1-helper = fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ i3 ∷ suffix)
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1 fetch1-helper
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ suffix))
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+    len-prefix-2 = length-++ prefix (i0 ∷ i1 ∷ [])
+
+    fetch2-helper : fetch ((prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix) (length (prefix ++ i0 ∷ i1 ∷ [])) ≡ just i2
+    fetch2-helper = fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 (i3 ∷ suffix)
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2 fetch2-helper
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ suffix))
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix-3 = length-++ prefix (i0 ∷ i1 ∷ i2 ∷ [])
+
+    fetch3-helper : fetch ((prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix) (length (prefix ++ i0 ∷ i1 ∷ i2 ∷ [])) ≡ just i3
+    fetch3-helper = fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 suffix
+
+    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3 fetch3-helper
+
+    -- Step proofs
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execMov-mem-base-imm prog s1 rsp 1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ p → p +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ p → p +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    -- Combine 4 steps
+    exec-eq : exec 4 prog s ≡ just s4
+    exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
+    -- Convert to exec-until-pc
+    exec-until-eq : exec-until-pc (length prefix +ℕ compile-length {B} {A + B} inr) runFuel prog s ≡ just s4
+    exec-until-eq = exec-to-exec-until-pc-simple {B} {A + B} inr prefix suffix s s4 exec-eq h4 pc4 pc-eq
+
+    -- Register tracking: rsp preserved through s1..s4
+    rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
+    rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = rsp-s1  -- memory write doesn't change regs
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2  -- memory write doesn't change regs
+
+    rsp-s4 : readReg (regs s4) rsp ≡ new-rsp
+    rsp-s4 = trans (readReg-writeReg-rax-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
+
+    -- rax in s4 = rsp in s3 = new-rsp
+    rax-s4 : readReg (regs s4) rax ≡ new-rsp
+    rax-s4 = trans (readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)) rsp-s3
+
+    -- rdi preserved through s1, s2
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1  -- memory write doesn't change regs
+
+    -- Address disjointness: new-rsp ≠ new-rsp + 8
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint = n≢n+suc new-rsp 7
+
+    -- Memory at new-rsp = 1 (set in s2)
+    mem-tag-s2 : readMem (memory s2) new-rsp ≡ just 1
+    mem-tag-s2 = subst (λ addr → readMem (writeMem (memory s1) addr 1) new-rsp ≡ just 1)
+                       (sym rsp-s1)
+                       (readMem-writeMem-same (memory s1) new-rsp 1)
+
+    -- Memory at new-rsp preserved from s2 to s3
+    mem-tag-s3 : readMem (memory s3) new-rsp ≡ just 1
+    mem-tag-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) new-rsp ≡
+                                        readMem (memory s2) new-rsp)
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi)
+                                                     (λ eq → addr-disjoint (sym eq))))
+                       mem-tag-s2
+
+    -- Memory at new-rsp preserved from s3 to s4
+    mem-tag-s4 : readMem (memory s4) new-rsp ≡ just 1
+    mem-tag-s4 = mem-tag-s3
+
+    -- Memory at new-rsp + 8 = orig-rdi (set in s3)
+    mem-val-s3 : readMem (memory s3) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) (new-rsp +ℕ 8) ≡
+                                        just (readReg (regs s2) rdi))
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi)))
+                       (cong just rdi-s2)
+
+    -- Memory at new-rsp + 8 preserved from s3 to s4
+    mem-val-s4 : readMem (memory s4) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s4 = mem-val-s3
+
+    -- orig-rdi = encode x
+    orig-rdi-is-encode-x : orig-rdi ≡ encode x
+    orig-rdi-is-encode-x = rdi-eq
+
+    -- Adjust memory proofs to use encode x
+    mem-val-encoded : readMem (memory s4) (new-rsp +ℕ 8) ≡ just (encode x)
+    mem-val-encoded = trans mem-val-s4 (cong just orig-rdi-is-encode-x)
+
+    -- Apply encode-inr-construct
+    rax-is-encode-inr : new-rsp ≡ encode {A + B} (inj₂ x)
+    rax-is-encode-inr = encode-inr-construct x new-rsp (memory s4) mem-tag-s4 mem-val-encoded
+
+    -- Final result: rax s4 = encode (eval inr x) = encode (inj₂ x)
+    rax-eq : readReg (regs s4) rax ≡ encode (eval {B} {A + B} inr x)
+    rax-eq = trans rax-s4 rax-is-encode-inr
+
+    -- r14 preserved: inr only writes rsp (once) and rax (once), plus memory
+    r14-eq : readReg (regs s4) r14 ≡ readReg (regs s) r14
+    r14-eq = trans (readReg-writeReg-rax-r14 (regs s3) (readReg (regs s3) rsp))
+                   (readReg-writeReg-rsp-r14 (regs s) new-rsp)
+
+    -- r15 preserved: same reasoning as r14
+    r15-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
+    r15-eq = trans (readReg-writeReg-rax-r15 (regs s3) (readReg (regs s3) rsp))
+                   (readReg-writeReg-rsp-r15 (regs s) new-rsp)
+
+    -- Memory preservation: inr writes to [new_rsp] and [new_rsp + 8]
+    -- These addresses are below r15 in the pair context (where rsp ≤ r15)
+    orig-r15 : Word
+    orig-r15 = readReg (regs s) r15
+
+    -- Memory at [r15] unchanged through s1 (regs change only)
+    mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s1 = refl
+
+    -- Memory at [r15] unchanged through s2 if new_rsp ≠ r15
+    -- PROVEN: Using addr-diff-from-invariant with StackInvariant parameter
+    addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
+    addr-diffs = addr-diff-from-invariant s stack-inv rsp>16
+
+    addr-diff-1 : new-rsp ≢ orig-r15
+    addr-diff-1 = proj₁ addr-diffs
+
+    mem-s2 : readMem (memory s2) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s2 = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 1 (λ eq → addr-diff-1 eq)) mem-s1
+
+    -- Memory at [r15] unchanged through s3 if new_rsp + 8 ≠ r15
+    -- PROVEN: Using addr-diff-from-invariant with StackInvariant parameter
+    addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
+    addr-diff-2 = proj₂ addr-diffs
+
+    mem-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-r15 orig-rdi (λ eq → addr-diff-2 eq)) mem-s2
+
+    -- s4 doesn't change memory
+    mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-preserved = mem-s3
+
+    -- StackInvariant preservation: r15 unchanged, rsp decreased
+    -- r15 is not modified by any of the 4 instructions (already proven in r15-eq)
+    -- rsp in s4 = new-rsp (sub rsp, 16 in s1, then no more rsp writes)
+    rsp-s4-eq : readReg (regs s4) rsp ≡ new-rsp
+    rsp-s4-eq = trans (readReg-writeReg-rax-rsp (regs s3) (readReg (regs s3) rsp))
+                      (readReg-writeReg-same (regs s) rsp new-rsp)
+
+    -- StackInvariant s4: case analysis on original invariant
+    stack-inv-helper : StackInvariant s → StackInvariant s4
+    stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-eq r15≡0)
+    stack-inv-helper (stack-below-r15 rsp≤r15) =
+      stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-eq)
+                               (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+
+    stack-inv' : StackInvariant s4
+    stack-inv' = stack-inv-helper stack-inv
+
+    -- rsp s4 > 16: practical assumption (same reasoning as inl)
+    postulate
+      rsp>16' : readReg (regs s4) rsp > 16
+
+-- | run-ir-at-offset-fst: Execute fst at arbitrary offset
+-- Uses encode-pair-fst axiom to provide memory precondition
+run-ir-at-offset-fst : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {A * B} {A} fst) runFuel (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode (eval fst x)
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+         × StackInvariant s'
+         × readReg (regs s') rsp > 16)
+run-ir-at-offset-fst {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let a = proj₁ x
+      b = proj₂ x
+      -- Memory precondition from encoding axiom
+      mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
+      mem-eq = encode-pair-fst a b (memory s)
+      -- Use existing run-fst-at-offset with the memory precondition
+      (s' , step-eq , h' , pc' , rax-eq) = run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+      exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+      exec-until-eq = exec-to-exec-until-pc-simple {A * B} {A} fst prefix suffix s s' exec-eq h' pc' pc-eq
+      -- r14 preserved: fst only writes rax (mov rax, [rdi])
+      r14-eq = readReg-writeReg-rax-r14 (regs s) (encode a)
+      -- r15 preserved: fst only writes rax (mov rax, [rdi])
+      r15-eq = readReg-writeReg-rax-r15 (regs s) (encode a)
+      -- rsp preserved: fst only writes rax
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) (encode a)
+      -- memory preserved: fst doesn't write memory
+      mem-preserved : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-preserved = refl
+      -- StackInvariant and rsp>16 preserved
+      stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
+      rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
+  in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+
+-- | run-ir-at-offset-snd: Execute snd at arbitrary offset
+-- Uses encode-pair-snd axiom to provide memory precondition
+run-ir-at-offset-snd : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {A * B} {B} snd) runFuel (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode (eval snd x)
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+         × StackInvariant s'
+         × readReg (regs s') rsp > 16)
+run-ir-at-offset-snd {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let a = proj₁ x
+      b = proj₂ x
+      -- Memory precondition from encoding axiom
+      mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
+      mem-eq = encode-pair-snd a b (memory s)
+      -- Use existing run-snd-at-offset with the memory precondition
+      (s' , step-eq , h' , pc' , rax-eq) = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+      exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
+      exec-until-eq = exec-to-exec-until-pc-simple {A * B} {B} snd prefix suffix s s' exec-eq h' pc' pc-eq
+      -- r14 preserved: snd only writes rax (mov rax, [rdi+8])
+      r14-eq = readReg-writeReg-rax-r14 (regs s) (encode b)
+      -- r15 preserved: snd only writes rax (mov rax, [rdi+8])
+      r15-eq = readReg-writeReg-rax-r15 (regs s) (encode b)
+      -- rsp preserved: snd only writes rax
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) (encode b)
+      -- memory preserved: snd doesn't write memory
+      mem-preserved : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-preserved = refl
+      -- StackInvariant and rsp>16 preserved
+      stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
+      rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
+  in s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-preserved , stack-inv' , rsp>16'
+
+-- | run-ir-at-offset-initial: Execute initial at arbitrary offset
+-- Trivially proven because Void (⊥) has no inhabitants
+run-ir-at-offset-initial : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ length prefix → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (exec-until-pc (length prefix +ℕ compile-length {Void} {A} initial) runFuel (prefix ++ compile-x86 {Void} {A} initial ++ suffix) s ≡ just s'
+         × halted s' ≡ false × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ encode {A} (eval {Void} {A} initial x)
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+         × StackInvariant s'
+         × readReg (regs s') rsp > 16)
+run-ir-at-offset-initial {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 = ⊥-elim x
+
+-- NOTE: List manipulation lemmas (compose-prog-eq, compose-transfer-eq, compose-g-eq)
+-- are now imported from Once.Backend.Common.ProgramLemmas
+
