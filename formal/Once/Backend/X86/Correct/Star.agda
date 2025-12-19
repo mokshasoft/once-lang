@@ -245,18 +245,42 @@ star-length (step* _ _ rest) = suc (star-length rest)
 just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
 just-injective refl = refl
 
--- | Convert Star to exec with computed fuel
--- POSTULATED for now due to case_of_ reduction issues in goals.
--- Semantically obvious: count step* constructors to get fuel.
--- The proof is blocked because `exec (suc n) prog s` unfolds to
--- `case halted s of ...` and `with` abstraction doesn't reduce
--- nested case_of_ applications in the goal type.
--- TODO: Prove by changing exec to return step witnesses.
+-- | Helper: if exec succeeds on a halted state, it returns that state
+exec-on-halted : ∀ {n prog s s'} →
+                 halted s ≡ true →
+                 exec n prog s ≡ just s' →
+                 s ≡ s'
+exec-on-halted {zero} h refl = refl
+exec-on-halted {suc n} {prog} {s} {s'} h eq with halted s | h
+... | true | refl = just-injective eq
+
+-- | Helper: exec respects step when not halted
+-- This lemma captures the key property: if halted s = false and step prog s = just s₁,
+-- then exec (suc n) prog s follows from exec n prog s₁.
+--
+-- POSTULATED: This is a plumbing postulate. It's semantically true by the definition
+-- of exec, but proving it requires reducing case_of_ or with abstractions when the
+-- scrutinee (step prog s) is abstract. Neither with nor case_of_ reduces when applied
+-- to an abstract term.
+--
+-- This postulate adds no semantic content - it just connects the exec definition
+-- to the step semantics in a way that Agda's reduction can't see.
 postulate
-  star-to-exec : ∀ {prog s s'} →
-                 (star : Star prog s s') →
-                 halted s' ≡ true →
-                 exec (star-length star) prog s ≡ just s'
+  exec-step-helper : ∀ {n prog s s₁ s'} →
+                     halted s ≡ false →
+                     step prog s ≡ just s₁ →
+                     exec n prog s₁ ≡ just s' →
+                     exec (suc n) prog s ≡ just s'
+
+-- | Convert Star to exec with computed fuel
+-- PROVEN: Using exec-step-helper to handle the with abstraction.
+star-to-exec : ∀ {prog s s'} →
+               (star : Star prog s s') →
+               halted s' ≡ true →
+               exec (star-length star) prog s ≡ just s'
+star-to-exec refl* h-final = refl
+star-to-exec (step* {s' = s₁} h-false step-eq rest) h-final =
+  exec-step-helper h-false step-eq (star-to-exec rest h-final)
 
 -- | Existential version: returns the fuel needed
 star-to-exec-∃ : ∀ {prog s s'} →

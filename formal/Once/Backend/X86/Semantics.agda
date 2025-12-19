@@ -306,31 +306,37 @@ execInstr prog s (label _) =
 
 -- | fetch is imported from Once.Backend.Common.Fetch
 
+-- | Execute one step when not halted (helper for step)
+-- Uses case_of_ (not with) so proofs can work with equations.
+-- With creates abstract function names that block unification.
+step-not-halted : Program → State → Maybe State
+step-not-halted prog s = case fetch prog (pc s) of λ where
+  nothing → just (record s { halted = true })  -- End of program = implicit halt
+  (just instr) → execInstr prog s instr
+
 -- | Execute one step
--- NOTE: Uses case_of_ instead of with for definitional equality
+-- NOTE: Uses `with` pattern matching for Star-First architecture.
+-- The halted check is at the outer level for clean pattern matching.
 step : Program → State → Maybe State
-step prog s =
-  case halted s of λ where
-    true → just s  -- Already halted
-    false → case fetch prog (pc s) of λ where
-      nothing → just (record s { halted = true })  -- End of program = implicit halt
-      (just instr) → execInstr prog s instr
+step prog s with halted s
+... | true = just s  -- Already halted
+... | false = step-not-halted prog s
 
 -- | Execute n steps (bounded execution)
--- NOTE: Uses case_of_ instead of with for definitional equality.
+-- NOTE: Uses `with` pattern matching for Star-First architecture.
+--       This enables bridge proofs (exec-to-star, star-to-exec) to work
+--       via pattern matching, at the cost of some concrete reductions
+--       requiring explicit lemmas instead of refl.
 -- NOTE: Checks halted s FIRST so bridge proofs can pattern match.
---       Semantics: when halted s = true, we return immediately.
---       This is equivalent to the old behavior (step returns s when halted).
 exec : ℕ → Program → State → Maybe State
 exec zero _ s = just s
-exec (suc n) prog s =
-  case halted s of λ where
-    true → just s
-    false → case step prog s of λ where
-      nothing → nothing
-      (just s') → case halted s' of λ where
-        true → just s'
-        false → exec n prog s'
+exec (suc n) prog s with halted s
+... | true = just s
+... | false with step prog s
+...   | nothing = nothing
+...   | just s' with halted s'
+...     | true = just s'
+...     | false = exec n prog s'
 
 ------------------------------------------------------------------------
 -- Convenience: execute until halt or fuel exhausted
@@ -356,14 +362,13 @@ run = exec defaultFuel
 --          just s' where halted s' = true (if halted before target)
 --          just s  if fuel = 0
 --          nothing if step fails
--- NOTE: Uses case_of_ instead of with for definitional equality
+-- NOTE: Uses `with` pattern matching for Star-First architecture.
 exec-until-pc : (target : ℕ) → (fuel : ℕ) → Program → State → Maybe State
 exec-until-pc target zero prog s = just s
-exec-until-pc target (suc fuel) prog s =
-  case halted s of λ where
-    true → just s  -- Already halted, stop
-    false → case pc s ≟ target of λ where
-      (yes _) → just s  -- Reached target pc, stop
-      (no _) → case step prog s of λ where
-        nothing → nothing  -- Step failed
-        (just s') → exec-until-pc target fuel prog s'
+exec-until-pc target (suc fuel) prog s with halted s
+... | true = just s  -- Already halted, stop
+... | false with pc s ≟ target
+...   | yes _ = just s  -- Reached target pc, stop
+...   | no _ with step prog s
+...     | nothing = nothing  -- Step failed
+...     | just s' = exec-until-pc target fuel prog s'
