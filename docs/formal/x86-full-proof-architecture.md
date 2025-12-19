@@ -67,7 +67,7 @@ The **~15 encoding axioms** in Postulates.agda (encode-pair-fst, encode-inl-tag,
 ### 🔄 In Progress
 
 10. **Eliminate bridge axiom** - Refactor module structure to:
-    - Move `Memory`/`AllocState` to shared module
+    - ✅ Move `Memory`/`AllocState` to shared `Once.Memory` module
     - Have `Once.Semantics` use concrete encode from stateful module
     - Remove `encode-agrees-with-stateful` postulate
 
@@ -292,10 +292,11 @@ make x86
 - [x] **`encode-is-alloc-addr` PROVEN** in Stateful.agda (Option B)
 - [x] **Closure accessors eliminated** - now projections (Option B)
 - [x] **`Once/Semantics/Stateful.agda` created** with allocation tracking
+- [x] **`Once/Memory.agda` created** - shared memory model for all modules
 
 ### In Progress 🔄
 
-- [ ] Refactor module structure to eliminate bridge postulate
+- [~] Refactor module structure to eliminate bridge postulate (Memory module done)
 - [ ] Use derived proofs in Correct.agda (replace axiom calls)
 - [ ] Remove encoding axioms from Postulates.agda
 
