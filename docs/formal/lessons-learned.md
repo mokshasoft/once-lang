@@ -2,6 +2,109 @@
 
 Practical lessons from formalizing the Once compiler in Agda.
 
+---
+
+## CRITICAL: Use Star for Execution Proofs (Most Important Lesson)
+
+**The single most important architectural decision for backend verification.**
+
+### The Problem: Fuel-Based Execution Proofs Are Fragile
+
+When `exec` uses `case_of_` or `with` for pattern matching:
+```agda
+exec (suc n) prog s = case halted s of λ where
+  true → just s
+  false → case step prog s of ...
+```
+
+Proving `exec (suc n) prog s ≡ just s'` requires reducing the `case_of_`. But when `halted s` is abstract (not a concrete `true` or `false`), `case_of_` doesn't reduce. This blocks critical lemmas like:
+- `exec-on-halted-step`
+- `exec-two-steps-nonhalt`
+- `exec-chain`
+
+**Consequence**: You end up postulating "obvious" execution facts that should be provable, creating a large trusted base.
+
+### The Solution: Star as the Primary Abstraction
+
+Use **Star** (reflexive-transitive closure of step) for all internal proof composition:
+
+```agda
+-- Star is the right abstraction for execution proofs
+data Star (prog : Program) : State → State → Set where
+  refl* : ∀ {s} → Star prog s s
+  step* : ∀ {s s' s''} →
+          halted s ≡ false →
+          step prog s ≡ just s' →
+          Star prog s' s'' →
+          Star prog s s''
+
+-- Composition is TRIVIAL transitivity
+star-trans : Star prog s₁ s₂ → Star prog s₂ s₃ → Star prog s₁ s₃
+star-trans refl* p₂ = p₂
+star-trans (step* h step-eq p₁) p₂ = step* h step-eq (star-trans p₁ p₂)
+```
+
+### Why Star Works
+
+1. **Composition is structural**: `star-trans` is pure recursion on the Star witness. No `case_of_`, no abstract scrutinees, no blocked proofs.
+
+2. **No fuel arithmetic**: Instead of tracking step counts and proving `exec (n + m) = ...`, just use `star-trans`.
+
+3. **Bridge lemmas ARE provable**: When `exec` checks `halted s` FIRST, pattern matching reduces the goal:
+   ```agda
+   exec-to-star : exec n prog s ≡ just s' → Star prog s s'
+   exec-to-star {suc n} {prog} {s} eq with halted s | inspect halted s
+   ... | true  | _ = refl*  -- Goal reduces!
+   ... | false | [ h-eq ] with step prog s | inspect (step prog) s
+   ...   | just s₁ | [ step-eq ] = step* h-eq step-eq (exec-to-star ...)
+   ```
+
+### The Pattern: Compose High, Convert at Boundaries
+
+1. **Build step proofs**: `halted s ≡ false`, `step prog s ≡ just s'`
+2. **Compose using Star**: `star-trans`, `step*`, `star-step2`, etc.
+3. **Convert to `exec` only at the final theorem** using `star-to-exec`
+
+```agda
+-- Internal proofs use Star
+star-f : Star prog s s₁
+star-g : Star prog s₁ s₂
+star-all : Star prog s s₂
+star-all = star-trans star-f star-g
+
+-- Convert at final theorem boundary
+final-exec : exec n prog s ≡ just s₂
+final-exec = proj₂ (star-to-exec star-all h-final)
+```
+
+### Architectural Requirement: Check `halted` First in `exec`
+
+For bridge lemmas to work, `exec` MUST check `halted s` BEFORE calling `step`:
+
+```agda
+-- GOOD: halted check first enables bridge proofs
+exec (suc n) prog s with halted s
+... | true = just s
+... | false with step prog s
+...   | nothing = nothing
+...   | just s' with halted s'
+...     | true = just s'
+...     | false = exec n prog s'
+```
+
+When `halted s` is the first thing checked, pattern matching on it causes goals to reduce, enabling induction.
+
+### Key Insight
+
+**Star is the "native" abstraction for execution proofs. Fuel-based exec is an implementation detail for extraction.**
+
+This follows the same pattern as:
+- Type-level programming: work with types, erase at runtime
+- Category theory: work with morphisms, interpret at the end
+- CompCert: work with step relations, extract to execution
+
+---
+
 ## Trusted Computing Base (TCB)
 
 For a complete list of what is proven and what is postulated, see [What Is Proven](what-is-proven.md).
@@ -453,70 +556,15 @@ codegen-x86-correct fst (a , b) = compile-fst-correct a b
 -- ... case for each IR constructor ...
 ```
 
-### `case_of_` vs `with`: Use Star for Composition
+### Note on `case_of_` vs `with`
 
-**Rule: Use `case_of_` in definitions, and Star (not fuel-based exec) for proof composition.**
+The Star-based approach (see the CRITICAL section at the top) was developed because of this fundamental issue:
 
-**Why `case_of_` in definitions**: The `case_of_` function preserves definitional equality - when the scrutinee is a concrete constructor, the case reduces and proofs can use `refl`. This eliminates most "mechanical postulates" that existed because `with` blocked computation.
+- **`case_of_` in definitions** preserves definitional equality when scrutinee is concrete, but doesn't reduce when abstract
+- **`with` in definitions** creates opaque function names that block unification
+- **Solution**: Use Star for composition, convert to `exec` only at boundaries
 
-**Why `with` in proofs is acceptable**: Proofs are erased at runtime. Using `with` in a proof term doesn't affect the computational behavior of the program - it only helps Agda pattern match to show the proof is valid.
-
-**The limitation**: `case_of_` is just function application: `case x of f = f x`. When `x` is abstract (not a concrete constructor), the case doesn't reduce.
-
-**The solution: Use Star as the composition abstraction**
-
-Rather than trying to prove properties about `exec` directly (which gets blocked), use Star (reflexive-transitive closure of step) for all internal composition:
-
-```agda
--- Star is the right abstraction for execution proofs
-data Star (prog : Program) : State → State → Set where
-  refl* : ∀ {s} → Star prog s s
-  step* : ∀ {s s' s''} →
-          halted s ≡ false →
-          step prog s ≡ just s' →
-          Star prog s' s'' →
-          Star prog s s''
-
--- Composition is trivial transitivity
-star-trans : Star prog s₁ s₂ → Star prog s₂ s₃ → Star prog s₁ s₃
-
--- Bridge lemmas (PROVEN when exec checks halted first)
-exec-to-star : exec n prog s ≡ just s' → Star prog s s'
-star-to-exec : Star prog s s' → halted s' ≡ true → ∃ n, exec n prog s ≡ just s'
-```
-
-**The pattern**:
-1. Build step proofs: `halted s ≡ false`, `step prog s ≡ just s'`
-2. Compose using Star: `star-trans`, `step*`, `star-step2`, etc.
-3. Convert to `exec` only at the final theorem boundary using `star-to-exec`
-
-**Why this works**: Star composition never touches `case_of_` - it's pure data structure manipulation. The bridge lemmas (`exec-to-star`, `star-to-exec`) ARE provable when `exec` is structured to check `halted s` first, allowing pattern matching to reduce the goal.
-
-**Key insight**: Compose at the highest abstraction level (Star), convert only at boundaries. This eliminates the need for `exec-on-halted-step`, `exec-two-steps`, and similar fuel-arithmetic lemmas.
-
-### Architectural pattern: Check `halted` first in `exec`
-
-For bridge lemmas between fuel-based execution and Star to be provable, `exec` must check `halted s` BEFORE calling `step`:
-
-```agda
--- GOOD: halted check first enables bridge proofs
-exec (suc n) prog s =
-  case halted s of λ where
-    true → just s
-    false → case step prog s of λ where
-      nothing → nothing
-      (just s') → case halted s' of λ where
-        true → just s'
-        false → exec n prog s'
-
--- This structure allows exec-to-star to pattern match:
-exec-to-star {suc n} {prog} {s} eq with halted s | inspect halted s
-... | true | [ hs-eq ] = refl*  -- Goal reduces!
-... | false | [ hs-eq ] with step prog s | inspect (step prog) s
-...   | just s₁ | [ step-eq ] = step* hs-eq step-eq (exec-to-star ...)
-```
-
-When `halted s` is the first thing checked, pattern matching on it causes the goal to reduce, enabling the proof to proceed by induction.
+See the top of this document for the full explanation and solution.
 
 ### Handle special IR cases explicitly
 
