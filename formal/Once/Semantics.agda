@@ -119,16 +119,69 @@ open Closure public
 -- | Encode semantic values as machine words
 --
 -- encode maps semantic values to their runtime addresses/representations.
--- This is abstract because encoding depends on memory allocation, which
--- is determined at runtime by the code generator, not at semantics time.
---
--- For closures: encode returns the ADDRESS where the closure is allocated
--- (NOT the env-addr field, which is the encoding of the captured env).
+-- For compound types (pairs, sums, closures), encoding returns an ALLOCATION
+-- ADDRESS where the value is stored in memory. For simple types (Unit, Fix),
+-- encoding is a direct computation.
 --
 -- This is defined here (not in Postulates.agda) so eval can set
 -- env-addr = encode a when creating closures.
+--
+-- PARTIALLY CONCRETE: Some types have obvious encodings that don't need
+-- allocation state. These are defined concretely, making their encoding
+-- axioms provable as refl.
+
+-- | Abstract encoding primitives for types needing allocation addresses
+-- These are the TRUE postulates - compound types need allocation.
 postulate
-  encode : ∀ {A} → ⟦ A ⟧ → Word
+  encode-pair-addr : ∀ {A B : Type} → ⟦ A ⟧ → ⟦ B ⟧ → Word      -- Pair allocation address
+  encode-inl-addr  : ∀ {A B : Type} → ⟦ A ⟧ → Word              -- Left sum allocation address
+  encode-inr-addr  : ∀ {A B : Type} → ⟦ B ⟧ → Word              -- Right sum allocation address
+  encode-closure-addr : ∀ {A B : Type} → Closure A B → Word     -- Closure allocation address
+  encode-int       : ℤ → Word                                    -- Integer encoding
+  encode-str       : String → Word                               -- String encoding
+  encode-buffer    : String → Word                               -- Buffer encoding
+
+-- | Concrete encode function
+-- TERMINATING: Fix case recurses on smaller type (unwrapped value).
+-- The recursion terminates because types are finite structures.
+{-# TERMINATING #-}
+encode : ∀ {A} → ⟦ A ⟧ → Word
+encode {Unit} tt = 0                                      -- Unit → 0 (CONCRETE!)
+encode {Void} ()                                          -- Void has no values
+encode {A * B} (a , b) = encode-pair-addr {A} {B} a b     -- Needs allocation
+encode {A + B} (inj₁ a) = encode-inl-addr {A} {B} a       -- Needs allocation
+encode {A + B} (inj₂ b) = encode-inr-addr {A} {B} b       -- Needs allocation
+encode {A ⇒ B} cl = encode-closure-addr cl                -- Needs allocation
+encode {Eff A B} cl = encode-closure-addr cl              -- Same as ⇒ (CONCRETE!)
+encode {Fix F} (wrap x) = encode {F} x                    -- Identity (CONCRETE!)
+encode {Int} n = encode-int n                             -- Primitive
+encode {Str} s = encode-str s                             -- Primitive
+encode {Buffer} b = encode-buffer b                       -- Primitive
+encode {TVar _} _ = 0                                     -- Placeholder
+
+------------------------------------------------------------------------
+-- PROVEN Encoding Properties (now refl!)
+------------------------------------------------------------------------
+
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
+-- | encode-unit: Unit encodes to 0 (PROVEN - was postulated!)
+encode-unit : encode {Unit} tt ≡ 0
+encode-unit = refl
+
+-- | encode-fix-wrap: wrapping doesn't change encoding (PROVEN - was postulated!)
+encode-fix-wrap : ∀ {F} (x : ⟦ F ⟧) → encode {F} x ≡ encode {Fix F} (wrap x)
+encode-fix-wrap x = refl
+
+-- | encode-fix-unwrap: unwrapping doesn't change encoding (PROVEN - was postulated!)
+encode-fix-unwrap : ∀ {F} (x : ⟦ Fix F ⟧) → encode {Fix F} x ≡ encode {F} (unwrap x)
+encode-fix-unwrap (wrap x) = refl
+
+-- | encode-arr-identity: Eff and ⇒ have same encoding (PROVEN - was postulated!)
+encode-arr-identity : ∀ {A B} (cl : Closure A B) → encode {A ⇒ B} cl ≡ encode {Eff A B} cl
+encode-arr-identity cl = refl
+
+------------------------------------------------------------------------
 
 -- | Evaluation of IR morphisms
 --

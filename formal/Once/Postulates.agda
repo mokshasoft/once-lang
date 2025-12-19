@@ -32,8 +32,10 @@ open import Once.Type
 open import Once.IR
 open import Once.Memory using (Word)
 open import Once.Semantics
--- Re-export encode so downstream modules can import it from Postulates
-open Once.Semantics public using (encode)
+-- Re-export encode and PROVEN encoding properties from Semantics
+open Once.Semantics public using (encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
+-- Re-export low-level encoding postulates (for proofs that need them directly)
+open Once.Semantics public using (encode-pair-addr; encode-inl-addr; encode-inr-addr; encode-closure-addr)
 
 ------------------------------------------------------------------------
 -- Postulate P1: Function Extensionality
@@ -163,11 +165,19 @@ postulate
 -- A full proof would require modeling the heap explicitly and proving
 -- that allocation produces the correct memory layout.
 --
--- NEEDED BY: Once.Backend.X86.Correct (all generator proofs)
+-- PROGRESS: 4 axioms are now PROVEN in Once.Semantics!
+--   - encode-unit       : PROVEN (encode {Unit} tt = 0 by definition)
+--   - encode-fix-wrap   : PROVEN (Fix is identity at runtime)
+--   - encode-fix-unwrap : PROVEN (Fix is identity at runtime)
+--   - encode-arr-identity : PROVEN (Eff = Closure at runtime)
+--
+-- REMAINING: Memory-dependent axioms for pairs/sums/closures.
+-- These require knowing that values are properly allocated in memory.
+--
+-- NEEDED BY: Once.Backend.X86.Correct (generator proofs)
 --
 -- JUSTIFICATION:
 --   These capture the intended memory layout for the x86-64 backend:
---   - Unit → 0
 --   - Pairs → pointer to [fst, snd]
 --   - Sums → pointer to [tag, value]
 --   - Functions → pointer to closure [env, code]
@@ -191,13 +201,10 @@ Memory = Word → Maybe Word
 readMem : Memory → Word → Maybe Word
 readMem m addr = m addr
 
--- encode is now defined in Once.Semantics (imported above)
--- This allows eval (curry f) to set env-addr = encode a
+-- encode is now defined in Once.Semantics (partially concrete!)
+-- encode-unit, encode-fix-*, encode-arr-identity are now PROVEN there.
 
 postulate
-  -- Encoding Unit produces 0
-  encode-unit : encode {Unit} tt ≡ 0
-
   -- Encoding preserves pair structure
   -- encode (a , b) is an address pointing to [encode a, encode b]
   encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
@@ -234,18 +241,6 @@ postulate
     readMem m p ≡ just 1 →
     readMem m (p +ℕ 8) ≡ just (encode b) →
     p ≡ encode {A + B} (inj₂ b)
-
-  -- Encoding of Fix is the same as the unwrapped type (identity at runtime)
-  encode-fix-unwrap : ∀ {F} (x : ⟦ Fix F ⟧) →
-    encode {Fix F} x ≡ encode {F} (⟦Fix⟧.unwrap x)
-
-  -- Converse: wrapping doesn't change the encoding
-  encode-fix-wrap : ∀ {F} (x : ⟦ F ⟧) →
-    encode {F} x ≡ encode {Fix F} (wrap x)
-
-  -- Encoding of Eff is the same as the underlying function (identity at runtime)
-  encode-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧) →
-    encode {A ⇒ B} f ≡ encode {Eff A B} f
 
   -- Encoding construction for pairs:
   -- If memory at p has [encode a, encode b], then p is encode (a, b)

@@ -273,7 +273,7 @@ run-terminal-nonhalt {A} rest x s h-false pc-0 = s' , exec-eq , h' , pc' , rax-e
     exec-eq : exec 1 prog s ≡ just s'
     exec-eq = exec-one-step-nonhalt prog s s' step-eq h'
 
-    rax-eq : readReg (regs s') rax ≡ encode tt
+    rax-eq : readReg (regs s') rax ≡ encode {Unit} tt
     rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
 
 -- | Helper: true ≡ false is absurd
@@ -686,7 +686,7 @@ run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' ,
     pc' : pc s' ≡ length prefix +ℕ 1
     pc' = cong (λ p → p +ℕ 1) pc-eq
 
-    rax-eq : readReg (regs s') rax ≡ encode tt
+    rax-eq : readReg (regs s') rax ≡ encode {Unit} tt
     rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
 
 -- | Execute fold at arbitrary offset in a program (non-halting)
@@ -773,7 +773,7 @@ run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq ,
 run-arr-at-offset : ∀ {A B} (prefix suffix : Program) (f : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  readReg (regs s) rdi ≡ encode f →
+  readReg (regs s) rdi ≡ encode {A ⇒ B} f →
   ∃[ s' ] (step (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
