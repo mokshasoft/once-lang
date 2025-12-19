@@ -8,7 +8,7 @@
 module Once.Backend.X86.Correct.InitState where
 
 open import Once.Type
-open import Once.Semantics hiding (Word)  -- Use X86.Semantics.Word to avoid clash
+open import Once.Semantics  -- Word is from X86.Semantics
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics

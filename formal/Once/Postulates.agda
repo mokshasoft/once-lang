@@ -30,6 +30,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type
 open import Once.IR
+open import Once.Memory using (Word)
 open import Once.Semantics
 -- Re-export encode so downstream modules can import it from Postulates
 open Once.Semantics public using (encode)
@@ -180,7 +181,7 @@ postulate
 --
 ------------------------------------------------------------------------
 
--- Word is now imported from Once.Semantics
+-- Word is now imported from Once.Memory
 
 -- | Memory model
 Memory : Set

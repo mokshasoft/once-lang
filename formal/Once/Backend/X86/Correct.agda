@@ -16,7 +16,7 @@ module Once.Backend.X86.Correct where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics hiding (Word; code-ptr; env-addr; semantics)  -- Hide clashing names
+open import Once.Semantics hiding (code-ptr; env-addr; semantics)  -- Hide clashing names
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics

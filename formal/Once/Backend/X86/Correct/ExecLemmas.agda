@@ -8,7 +8,7 @@
 module Once.Backend.X86.Correct.ExecLemmas where
 
 open import Once.Type
-open import Once.Semantics hiding (Word)  -- Use X86.Semantics.Word
+open import Once.Semantics  -- Word is from X86.Semantics
 open import Once.IR
 
 open import Once.Backend.X86.Syntax
