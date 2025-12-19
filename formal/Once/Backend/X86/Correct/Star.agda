@@ -120,41 +120,49 @@ star-step4 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ =
   ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ refl*
 
 ------------------------------------------------------------------------
--- Bridge Lemmas (Postulates)
+-- Bridge Lemmas (PROVEN!)
 --
 -- These connect the fuel-based execution (exec, exec-until-pc) to Star.
---
--- WHY POSTULATED: The exec/exec-until-pc functions use `case_of_` for
--- definitional equality in proofs. However, `case_of_` is just function
--- application: `case x of f = f x`. When the scrutinee `x` is abstract
--- (not a concrete constructor), the case doesn't reduce.
---
--- Even with `with halted s | true`, the TERM `exec n prog s` still
--- contains `halted s` as a subexpression - `with` abstracts in the TYPE
--- but the term doesn't reduce. So we can't prove `exec n prog s ≡ just s'`
--- implies `Star prog s s'` by computation.
---
--- JUSTIFICATION: These are "plumbing" postulates that don't add semantic
--- assumptions. They connect two provably-equivalent representations:
--- - Fuel-based: exec n prog s = just s' (bounded computation)
--- - Star-based: Star prog s s' (unbounded relational steps)
---
--- Both representations are operationally equivalent - if exec succeeds
--- in n steps, the same n step proofs would build the Star. The postulate
--- just bridges the representation gap caused by `case_of_`.
+-- Both exec and exec-until-pc check `halted s` FIRST, so pattern matching
+-- on `halted s` makes the goals reduce.
 ------------------------------------------------------------------------
 
--- | If exec n succeeds, we have a star execution
-postulate
-  exec-to-star : ∀ {n prog s s'} →
-                 exec n prog s ≡ just s' →
-                 Star prog s s'
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 
--- | If exec-until-pc succeeds, we have a star execution
-postulate
-  exec-until-pc-to-star : ∀ {target fuel prog s s'} →
-                          exec-until-pc target fuel prog s ≡ just s' →
-                          Star prog s s'
+-- | If exec n succeeds, we have a star execution (PROVEN!)
+exec-to-star : ∀ {n prog s s'} →
+               exec n prog s ≡ just s' →
+               Star prog s s'
+exec-to-star {zero} refl = refl*
+exec-to-star {suc n} {prog} {s} {s'} eq with halted s | inspect halted s
+exec-to-star {suc n} {prog} {s} {.s} refl | true | _ = refl*
+exec-to-star {suc n} {prog} {s} {s'} eq | false | [ h-eq ]
+  with step prog s | inspect (step prog) s
+exec-to-star {suc n} {prog} {s} {s'} () | false | _ | nothing | _
+exec-to-star {suc n} {prog} {s} {s'} eq | false | [ h-eq ] | just s₁ | [ step-eq ]
+  with halted s₁ | inspect halted s₁
+exec-to-star {suc n} {prog} {s} {.s₁} refl | false | [ h-eq ] | just s₁ | [ step-eq ] | true | _
+  = step* h-eq step-eq refl*
+exec-to-star {suc n} {prog} {s} {s'} eq | false | [ h-eq ] | just s₁ | [ step-eq ] | false | _
+  = step* h-eq step-eq (exec-to-star {n} {prog} {s₁} {s'} eq)
+
+-- | If exec-until-pc succeeds, we have a star execution (PROVEN!)
+exec-until-pc-to-star : ∀ {target fuel prog s s'} →
+                        exec-until-pc target fuel prog s ≡ just s' →
+                        Star prog s s'
+exec-until-pc-to-star {target} {zero} refl = refl*
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} eq
+  with halted s | inspect halted s
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {.s} refl | true | _ = refl*
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} eq | false | [ h-eq ]
+  with pc s ≟ target
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {.s} refl | false | _ | yes _ = refl*
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} eq | false | [ h-eq ] | no _
+  with step prog s | inspect (step prog) s
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} () | false | _ | no _ | nothing | _
+exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} eq | false | [ h-eq ] | no _ | just s₁ | [ step-eq ]
+  = step* h-eq step-eq (exec-until-pc-to-star {target} {fuel} {prog} {s₁} {s'} eq)
 
 ------------------------------------------------------------------------
 -- Export infix syntax

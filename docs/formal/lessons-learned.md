@@ -453,62 +453,70 @@ codegen-x86-correct fst (a , b) = compile-fst-correct a b
 -- ... case for each IR constructor ...
 ```
 
-### `case_of_` vs `with`: The Tradeoff
+### `case_of_` vs `with`: Use Star for Composition
 
-**Rule: Use `case_of_` in definitions, `with` in proofs when needed.**
+**Rule: Use `case_of_` in definitions, and Star (not fuel-based exec) for proof composition.**
 
 **Why `case_of_` in definitions**: The `case_of_` function preserves definitional equality - when the scrutinee is a concrete constructor, the case reduces and proofs can use `refl`. This eliminates most "mechanical postulates" that existed because `with` blocked computation.
 
 **Why `with` in proofs is acceptable**: Proofs are erased at runtime. Using `with` in a proof term doesn't affect the computational behavior of the program - it only helps Agda pattern match to show the proof is valid.
 
-**The limitation**: `case_of_` is just function application: `case x of f = f x`. When `x` is abstract (not a concrete constructor), the case doesn't reduce. Even `with` pattern matching in the outer context doesn't help - the `with` abstraction affects the TYPE but the TERM still contains the abstract scrutinee.
+**The limitation**: `case_of_` is just function application: `case x of f = f x`. When `x` is abstract (not a concrete constructor), the case doesn't reduce.
 
-**Consequence for bridge lemmas**: Properties like `exec n prog s ≡ just s' → Star prog s s'` cannot be proven when `exec` uses `case_of_`, because the term `exec n prog s` contains abstract `(halted s)` that doesn't reduce. These bridge lemmas must be postulated - they're "plumbing" that connects equivalent representations without adding semantic assumptions.
+**The solution: Use Star as the composition abstraction**
 
-**This is an acceptable tradeoff**: The benefit of definitional equality for direct proofs (no `step-exec` or `exec-chain` postulates needed) far outweighs the cost of a few bridge postulates that connect fuel-based and Star-based representations.
-
-### `with` abstraction blocks definitional equality in step/exec proofs
-
-When proving execution properties, Agda's `with` abstraction prevents direct computation. The `step` and `execInstr` functions use `with` to pattern match on runtime values:
+Rather than trying to prove properties about `exec` directly (which gets blocked), use Star (reflexive-transitive closure of step) for all internal composition:
 
 ```agda
--- In Semantics.agda
-step prog s with halted s
-... | true = just s
-... | false with fetch prog (pc s)
-...   | nothing = just (record s { halted = true })
-...   | just instr = execInstr prog s instr
+-- Star is the right abstraction for execution proofs
+data Star (prog : Program) : State → State → Set where
+  refl* : ∀ {s} → Star prog s s
+  step* : ∀ {s s' s''} →
+          halted s ≡ false →
+          step prog s ≡ just s' →
+          Star prog s' s'' →
+          Star prog s s''
 
-execInstr prog s (mov dst src) with readOperand s src
-... | nothing = nothing
-... | just v = just (record (writeOperand s dst v) { pc = pc s + 1 })
+-- Composition is trivial transitivity
+star-trans : Star prog s₁ s₂ → Star prog s₂ s₃ → Star prog s₁ s₃
+
+-- Bridge lemmas (PROVEN when exec checks halted first)
+exec-to-star : exec n prog s ≡ just s' → Star prog s s'
+star-to-exec : Star prog s s' → halted s' ≡ true → ∃ n, exec n prog s ≡ just s'
 ```
 
-This means proofs cannot use `refl` directly even when the computation should obviously succeed. Instead, introduce postulates at this layer and build proofs on top:
+**The pattern**:
+1. Build step proofs: `halted s ≡ false`, `step prog s ≡ just s'`
+2. Compose using Star: `star-trans`, `step*`, `star-step2`, etc.
+3. Convert to `exec` only at the final theorem boundary using `star-to-exec`
+
+**Why this works**: Star composition never touches `case_of_` - it's pure data structure manipulation. The bridge lemmas (`exec-to-star`, `star-to-exec`) ARE provable when `exec` is structured to check `halted s` first, allowing pattern matching to reduce the goal.
+
+**Key insight**: Compose at the highest abstraction level (Star), convert only at boundaries. This eliminates the need for `exec-on-halted-step`, `exec-two-steps`, and similar fuel-arithmetic lemmas.
+
+### Architectural pattern: Check `halted` first in `exec`
+
+For bridge lemmas between fuel-based execution and Star to be provable, `exec` must check `halted s` BEFORE calling `step`:
 
 ```agda
--- Postulate the low-level step behavior (blocked by with)
-postulate
-  step-exec : ∀ (prog : List Instr) (s : State) (i : Instr) →
-    halted s ≡ false →
-    fetch prog (pc s) ≡ just i →
-    step prog s ≡ execInstr prog s i
+-- GOOD: halted check first enables bridge proofs
+exec (suc n) prog s =
+  case halted s of λ where
+    true → just s
+    false → case step prog s of λ where
+      nothing → nothing
+      (just s') → case halted s' of λ where
+        true → just s'
+        false → exec n prog s'
 
--- Derive specific cases from the general postulate
-step-exec-0 : ∀ (i : Instr) (is : List Instr) (s : State) →
-  halted s ≡ false → pc s ≡ 0 →
-  step (i ∷ is) s ≡ execInstr (i ∷ is) s i
-step-exec-0 i is s h-false pc-0 =
-  step-exec (i ∷ is) s i h-false (subst (λ p → fetch (i ∷ is) p ≡ just i) (sym pc-0) refl)
-
--- Build higher-level proofs using exec lemmas
-exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s1 s2 : State) →
-  step prog s ≡ just s1 → halted s1 ≡ false →
-  step prog s1 ≡ just s2 → halted s2 ≡ true →
-  exec (suc (suc n)) prog s ≡ just s2
+-- This structure allows exec-to-star to pattern match:
+exec-to-star {suc n} {prog} {s} eq with halted s | inspect halted s
+... | true | [ hs-eq ] = refl*  -- Goal reduces!
+... | false | [ hs-eq ] with step prog s | inspect (step prog) s
+...   | just s₁ | [ step-eq ] = step* hs-eq step-eq (exec-to-star ...)
 ```
 
-The key insight: postulates at the `with`-boundary are unavoidable without rewriting the operational semantics, but everything above that layer can be proven by composition. This gives a clean separation between "trusted execution semantics" and "compositional proof structure".
+When `halted s` is the first thing checked, pattern matching on it causes the goal to reduce, enabling the proof to proceed by induction.
 
 ### Handle special IR cases explicitly
 

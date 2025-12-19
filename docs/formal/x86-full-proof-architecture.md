@@ -10,9 +10,39 @@ Target: **0 postulates** in X86 verification.
 
 ---
 
+## Key Architectural Decision: Star for Composition
+
+**Use Star (reflexive-transitive closure of step) as the primary abstraction for execution proofs.**
+
+```agda
+-- Star is the right abstraction for execution proofs
+data Star (prog : Program) : State → State → Set where
+  refl* : ∀ {s} → Star prog s s
+  step* : ∀ {s s' s''} →
+          halted s ≡ false →
+          step prog s ≡ just s' →
+          Star prog s' s'' →
+          Star prog s s''
+
+-- Composition is trivial transitivity
+star-trans : Star prog s₁ s₂ → Star prog s₂ s₃ → Star prog s₁ s₃
+```
+
+**Why Star over fuel-based exec**:
+1. **Composition is trivial**: `star-trans` is just structural recursion
+2. **No fuel arithmetic**: No need to track step counts or prove fuel bounds
+3. **Bridge lemmas are provable**: When `exec` checks `halted s` first, `exec-to-star` is a clean induction
+
+**The pattern**:
+1. Build step proofs: `halted s ≡ false`, `step prog s ≡ just s'`
+2. Compose using Star: `star-trans`, `step*`, `star-step2`, etc.
+3. Convert to `exec` only at final theorem using `star-to-exec`
+
+---
+
 ## Proven Foundation
 
-The core memory axioms are **PROVEN**, not postulated:
+### Memory Axioms (PROVEN)
 
 ```agda
 -- PROVEN in Once.Memory.agda (concrete writeMem definition):
@@ -20,21 +50,41 @@ mem-read-write : readMem (writeMem m addr v) addr ≡ just v
 mem-read-other : addr₁ ≢ addr₂ → readMem (writeMem m addr₁ v) addr₂ ≡ readMem m addr₂
 ```
 
-Everything else derives from these proven theorems:
+### Star Bridge Lemmas (PROVEN)
+
+```agda
+-- PROVEN in Star.agda (exec checks halted s first):
+exec-to-star : exec n prog s ≡ just s' → Star prog s s'
+exec-until-pc-to-star : exec-until-pc target fuel prog s ≡ just s' → Star prog s s'
+```
+
+These work because `exec` is structured to check `halted s` BEFORE calling `step`:
+
+```agda
+exec (suc n) prog s =
+  case halted s of λ where
+    true → just s  -- Check halted FIRST
+    false → case step prog s of λ where
+      nothing → nothing
+      (just s') → ...
+```
+
+### Derived Infrastructure
+
 - `encode-is-alloc-addr` - PROVEN (trivially refl in Stateful.agda)
 - `alloc-pair-fst/snd`, `alloc-inl-tag/val`, `alloc-inr-tag/val` - DERIVED in Encoding.agda
 - HeapValid tracking - available in Encoding.agda
 
 ---
 
-## Current Postulate Inventory (~41 total)
+## Current Postulate Inventory
 
 | Category | Count | Status |
 |----------|-------|--------|
 | Encoding axioms (Postulates.agda) | 11 | **DERIVE** from proven infrastructure |
-| Star bridges (Star.agda) | 2 | **ELIMINATE** (prove or change architecture) |
-| ExecLemmas | 4 | **ELIMINATE** |
-| Correct.agda engineering | ~23 | **ELIMINATE** |
+| Star bridges (Star.agda) | 0 | **DONE** - exec-to-star PROVEN |
+| star-to-exec (Star.agda) | 1 | **ADD** - reverse bridge needed |
+| Correct.agda engineering | ~23 | **REFACTOR** to use Star |
 | Apply semantic | 1 | **DERIVE** from closure encoding |
 | encode-injective | 1 | **DERIVE** from mem-read-write + induction |
 
@@ -42,7 +92,27 @@ Everything else derives from these proven theorems:
 
 ## Implementation Stages
 
-### Stage 0: Derive Encoding Axioms (HIGHEST IMPACT)
+### Stage 1: Add star-to-exec Bridge (IMMEDIATE)
+
+**Target**: Add `star-to-exec` to `formal/Once/Backend/X86/Correct/Star.agda`
+
+```agda
+-- Convert Star back to exec for final theorem
+star-to-exec : ∀ {prog s s'} →
+               Star prog s s' →
+               halted s' ≡ true →
+               ∃[ n ] exec n prog s ≡ just s'
+star-to-exec refl* h-eq = 0 , refl  -- Already at final state
+star-to-exec (step* h step-eq rest) h-final =
+  let (n , exec-rest) = star-to-exec rest h-final
+  in suc n , ...  -- Prepend the step
+```
+
+**Why this is provable**: Star is a concrete data structure. We can count the `step*` constructors to get the fuel needed.
+
+**Verify**: `make agda MODULE=Once/Backend/X86/Correct/Star.agda`
+
+### Stage 2: Derive Encoding Axioms (HIGHEST IMPACT)
 
 **Target**: 11 encoding axioms in `formal/Once/Postulates.agda` → DERIVED
 
@@ -69,7 +139,7 @@ Everything else derives from these proven theorems:
 
 **Verify**: `make x86-correct`
 
-### Stage 0b: Derive encode-injective
+### Stage 3: Derive encode-injective
 
 **Target**: `encode-injective` in `formal/Once/Backend/X86/Encoding.agda`
 
@@ -77,95 +147,61 @@ Everything else derives from these proven theorems:
 
 **Verify**: `make x86-encoding`
 
-### Stage 1: Eliminate Exec Bridge Postulates
+### Stage 4: Refactor Correct.agda to Use Star
 
-**Target**: 2 postulates in `formal/Once/Backend/X86/Correct/Star.agda`
+**Target**: Replace fuel-based composition with Star composition
 
-| Postulate | Line | Approach |
-|-----------|------|----------|
-| `exec-to-star` | 148 | Prove by induction on fuel |
-| `exec-until-pc-to-star` | 154 | Use exec-to-star |
-
-**Proof approach**:
+**Before** (blocked by case_of_):
 ```agda
-exec-to-star : exec n prog s ≡ just s' → Star prog s s'
-exec-to-star {zero} refl = refl*
-exec-to-star {suc n} eq = ... -- induction with step analysis
+-- These lemmas are hard to prove when exec uses case_of_
+exec-on-halted-step : ... → exec (suc n) prog s ≡ just s'
+exec-two-steps-nonhalt : ... → exec 2 prog s ≡ just s2
 ```
 
-**If blocked**: Change architecture - maybe `exec` should return a step witness instead of just final state.
+**After** (Star composition is trivial):
+```agda
+-- Step proofs compose directly via Star
+star-f : Star prog s s1
+star-g : Star prog s1 s2
+star-all : Star prog s s2
+star-all = star-trans star-f star-g
 
-**Verify**: `make agda MODULE=Once/Backend/X86/Correct/Star.agda`
+-- Convert at final theorem boundary
+final-exec : exec n prog s ≡ just s2
+final-exec = proj₂ (star-to-exec star-all h-final)
+```
 
-### Stage 2: Prove ExecLemmas Postulates
+**Key insight**: The `run-ir-at-offset` pattern returns Star instead of exec proofs:
 
-**Target**: 3-4 postulates in `formal/Once/Backend/X86/Correct/ExecLemmas.agda`
-
-| Postulate | Approach |
-|-----------|----------|
-| `runFuel≥` | Concrete: runFuel = 100000, use arithmetic |
-| `compile-length>0` | Pattern match on all IR constructors |
-| `exec-until-pc-to-exec` | Induction with fuel tracking |
-
-**Verify**: `make x86-correct`
-
-### Stage 3: Compose Bridge Postulates
-
-**Target**: ~4 postulates in `run-ir-at-offset-compose`
-
-Mechanical once Stage 2 complete - derive from exec-until-pc-to-exec.
-
-**Verify**: `make x86-correct`
-
-### Stage 4: Pair Generator Postulates
-
-**Target**: ~6 postulates in `run-ir-at-offset-pair`
-
-| Postulate | Approach |
-|-----------|----------|
-| `rsp-after-setup>16` | Arithmetic: stackBase = 2147418112 >> 56 |
-| `exec-f-raw` | Derive from exec-until-pc |
-| `r14-final`, `r15-final` | Track through instructions |
-| `mem-final` | Use mem-read-other from Once.Memory |
-| `stack-inv-final` | StackInvariant preservation |
+```agda
+run-ir-at-offset-star : ∀ {A B} (ir : IR A B) ... →
+  ∃[ s' ] (Star (prefix ++ compile ir ++ suffix) s s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix + compile-length ir
+         × readReg (regs s') rax ≡ encode (eval ir x))
+```
 
 **Verify**: `make x86-correct`
 
-### Stage 5: Case Generator Postulates
-
-**Target**: ~10 postulates in `run-ir-at-offset-case-inl/inr`
-
-**Key insight**: Fuel mismatch - use `exec-until-pc` which stops at target PC.
-
-**Verify**: `make x86-correct`
-
-### Stage 6: Curry Generator Postulates
-
-**Target**: ~8 postulates in `run-ir-at-offset-curry`
-
-Track state through 6 setup instructions + thunk + jmp.
-
-**Verify**: `make x86-correct`
-
-### Stage 7: Arithmetic Postulates
+### Stage 5: Arithmetic Postulates
 
 **Target**: 2 postulates
 
 | Postulate | File | Approach |
 |-----------|------|----------|
 | `∸+<-lemma` | StackInvariant.agda:93 | Arithmetic proof |
-| `n-steps≤fuel` | Correct.agda:5168 | Use concrete defaultFuel |
+| Fuel bounds | Various | Eliminated by Star (no fuel tracking needed) |
 
 **Verify**: `make x86-correct`
 
-### Stage 8: Derive run-apply-seq
+### Stage 6: Derive run-apply-seq
 
-**Target**: `run-apply-seq` (Correct.agda:7111)
+**Target**: `run-apply-seq` (Correct.agda)
 
-Once encoding axioms are derived (Stage 0), `run-apply-seq` follows from:
+Once encoding axioms are derived (Stage 2), `run-apply-seq` follows from:
 1. `encode-closure-construct` → closure at address has [env, code-ptr]
-2. Step through apply instructions using derived memory properties
-3. Chain exec proofs for: load pair → load closure → call thunk → return
+2. Build Star proof for apply instructions
+3. Convert to exec at theorem boundary
 
 **Verify**: `make x86-correct`
 
@@ -194,55 +230,78 @@ make x86
 
 | Stage | File | Changes |
 |-------|------|---------|
-| 0 | `formal/Once/Backend/X86/Correct.agda` | Add HeapValid, use derived encoding proofs |
-| 0 | `formal/Once/Backend/X86/Encoding.agda` | Export derived proofs |
-| 0 | `formal/Once/Postulates.agda` | Remove encoding axioms |
-| 0b | `formal/Once/Backend/X86/Encoding.agda` | Prove encode-injective |
-| 1 | `formal/Once/Backend/X86/Correct/Star.agda` | Prove exec-to-star |
-| 2 | `formal/Once/Backend/X86/Correct/ExecLemmas.agda` | Prove runFuel≥, compile-length>0 |
-| 3-6 | `formal/Once/Backend/X86/Correct.agda` | Replace postulates with proofs |
-| 7 | `formal/Once/Backend/X86/Correct/StackInvariant.agda` | Prove ∸+<-lemma |
-| 8 | `formal/Once/Backend/X86/Correct.agda` | Derive run-apply-seq |
+| 1 | `formal/Once/Backend/X86/Correct/Star.agda` | Add star-to-exec |
+| 2 | `formal/Once/Backend/X86/Correct.agda` | Add HeapValid, use derived encoding proofs |
+| 2 | `formal/Once/Backend/X86/Encoding.agda` | Export derived proofs |
+| 2 | `formal/Once/Postulates.agda` | Remove encoding axioms |
+| 3 | `formal/Once/Backend/X86/Encoding.agda` | Prove encode-injective |
+| 4 | `formal/Once/Backend/X86/Correct.agda` | Refactor to use Star |
+| 4 | `formal/Once/Backend/X86/Correct/ExecLemmas.agda` | Simplify or remove |
+| 5 | `formal/Once/Backend/X86/Correct/StackInvariant.agda` | Prove ∸+<-lemma |
+| 6 | `formal/Once/Backend/X86/Correct.agda` | Derive run-apply-seq |
 
 ---
 
-## Risk Mitigation & Philosophy
+## Why Star Eliminates Blocked Proofs
 
-### Core Principle: Proofs Should Compute
+### The Problem with Fuel-Based Composition
 
-With concrete `writeMem` and `case_of_` definitions, proofs should reduce to `refl`.
-If a proof is blocked, the issue is likely the **statement** not the proof technique.
+When `exec` uses `case_of_`:
+```agda
+exec (suc n) prog s = case halted s of λ where ...
+```
 
-### When Stuck: Change the Architecture, Not the Proof
+Proving `exec (suc n) prog s ≡ just s'` requires reducing the `case_of_`. But when `halted s` is abstract, `case_of_` doesn't reduce. This blocks lemmas like:
+- `exec-on-halted-step`
+- `exec-on-non-halted-step`
+- `exec-two-steps-nonhalt`
 
-1. **If a statement can't be proven**: The statement is likely wrong
-   - Don't add workarounds or concrete bounds
-   - Change the primitives or architecture to make the statement provable
-   - Example: If `runFuel≥` is needed, maybe the architecture shouldn't depend on fuel bounds
+### The Solution: Star as Primary Abstraction
 
-2. **If case_of_ blocks a proof**: The definition may need restructuring
-   - Consider whether the function should return more information
-   - Example: If `exec-to-star` is blocked, maybe `exec` should return a witness
+Star composition never touches `case_of_`:
+```agda
+star-trans refl* p₂ = p₂
+star-trans (step* h step-eq p₁) p₂ = step* h step-eq (star-trans p₁ p₂)
+```
 
-3. **Type errors cascade**: Work stage by stage, verify with `make agda MODULE=...`
+This is pure structural recursion on the Star witness. No `case_of_`, no abstract scrutinees, no blocked proofs.
 
-4. **Document and continue**: If blocked, document exactly why and continue with next stage
+### Bridge Lemmas Are Provable
 
-### The Goal
+`exec-to-star` and `exec-until-pc-to-star` ARE proven because:
+1. `exec` checks `halted s` FIRST
+2. Pattern matching on `halted s` causes the goal to reduce
+3. Induction proceeds cleanly
 
-Every property should follow from the concrete definitions by computation.
-Postulates are a symptom of architecture issues, not proof difficulty.
+`star-to-exec` is provable because:
+1. Star is a concrete data structure
+2. We can count `step*` constructors to get fuel
+3. Induction on Star structure, not on abstract scrutinees
 
 ---
 
 ## Success Criteria
 
-- [ ] Stage 0: Encoding axioms DERIVED
-- [ ] Stage 0b: `encode-injective` DERIVED
-- [ ] Stage 1: Exec bridges ELIMINATED
-- [ ] Stage 2: ExecLemmas PROVEN
-- [ ] Stage 3-6: Engineering postulates PROVEN
-- [ ] Stage 7: Arithmetic postulates PROVEN
-- [ ] Stage 8: run-apply-seq DERIVED
+- [x] `exec-to-star` PROVEN
+- [x] `exec-until-pc-to-star` PROVEN
+- [ ] Stage 1: `star-to-exec` ADDED
+- [ ] Stage 2: Encoding axioms DERIVED
+- [ ] Stage 3: `encode-injective` DERIVED
+- [ ] Stage 4: Correct.agda REFACTORED to use Star
+- [ ] Stage 5: Arithmetic postulates PROVEN
+- [ ] Stage 6: `run-apply-seq` DERIVED
 - [ ] **`make x86` passes**
 - [ ] **0 postulates remain**
+
+---
+
+## Philosophy: Compose High, Convert at Boundaries
+
+**The principle**: Work at the highest abstraction level (Star), convert only at system boundaries (final theorem).
+
+This follows the same pattern as:
+- Type-level programming: work with types, erase at runtime
+- Category theory: work with morphisms, interpret at the end
+- CompCert: work with step relations, extract to execution
+
+Star is the "native" abstraction for execution proofs. Fuel-based exec is an implementation detail for extraction. Keep them separate.

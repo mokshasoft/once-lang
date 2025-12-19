@@ -317,15 +317,20 @@ step prog s =
       (just instr) → execInstr prog s instr
 
 -- | Execute n steps (bounded execution)
--- NOTE: Uses case_of_ instead of with for definitional equality
+-- NOTE: Uses case_of_ instead of with for definitional equality.
+-- NOTE: Checks halted s FIRST so bridge proofs can pattern match.
+--       Semantics: when halted s = true, we return immediately.
+--       This is equivalent to the old behavior (step returns s when halted).
 exec : ℕ → Program → State → Maybe State
 exec zero _ s = just s
 exec (suc n) prog s =
-  case step prog s of λ where
-    nothing → nothing
-    (just s') → case halted s' of λ where
-      true → just s'
-      false → exec n prog s'
+  case halted s of λ where
+    true → just s
+    false → case step prog s of λ where
+      nothing → nothing
+      (just s') → case halted s' of λ where
+        true → just s'
+        false → exec n prog s'
 
 ------------------------------------------------------------------------
 -- Convenience: execute until halt or fuel exhausted
