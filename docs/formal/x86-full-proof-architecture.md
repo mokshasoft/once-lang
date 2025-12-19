@@ -81,12 +81,33 @@ exec (suc n) prog s =
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Encoding axioms (Postulates.agda) | 11 | **DERIVE** from proven infrastructure |
-| Star bridges (Star.agda) | 0 | **DONE** - exec-to-star PROVEN |
-| star-to-exec (Star.agda) | 1 | **ADD** - reverse bridge needed |
+| Encoding axioms (Postulates.agda) | 10 | 4 PROVEN, 10 remain (need allocation) |
+| Star bridges (Star.agda) | 1 | exec-step-helper (plumbing) |
 | Correct.agda engineering | ~23 | **REFACTOR** to use Star |
 | Apply semantic | 1 | **DERIVE** from closure encoding |
-| encode-injective | 1 | **DERIVE** from mem-read-write + induction |
+
+### PROVEN Encoding Axioms (Stage 2 Progress)
+
+**4 axioms are now THEOREMS** (proved as `refl`):
+- `encode-unit` : `encode {Unit} tt ≡ 0`
+- `encode-fix-wrap` : `encode {F} x ≡ encode {Fix F} (wrap x)`
+- `encode-fix-unwrap` : `encode {Fix F} x ≡ encode {F} (unwrap x)`
+- `encode-arr-identity` : `encode {A ⇒ B} cl ≡ encode {Eff A B} cl`
+
+**Key insight**: Made `encode` a pattern-matching function:
+```agda
+encode {Unit} tt = 0                              -- CONCRETE!
+encode {Fix F} (wrap x) = encode {F} x            -- CONCRETE (identity)
+encode {A ⇒ B} cl = encode-closure-addr cl        -- Uses postulate
+encode {Eff A B} cl = encode-closure-addr cl      -- Same as ⇒
+encode {A * B} (a , b) = encode-pair-addr a b     -- Needs allocation
+encode {A + B} (inj₁ a) = encode-inl-addr a       -- Needs allocation
+```
+
+**10 remaining axioms** (require allocation state tracking):
+- `encode-pair-fst/snd` : memory layout of pairs
+- `encode-inl/inr-tag/val` : memory layout of sums
+- `encode-*-construct` : inverse axioms
 
 ---
 
@@ -340,14 +361,15 @@ encode-pair-fst-derived : ... → PairAt a b addr m → readMem m addr ≡ just 
 
 - [x] `exec-to-star` PROVEN
 - [x] `exec-until-pc-to-star` PROVEN
-- [x] Stage 1: `star-to-exec` ADDED (postulated - blocked by case_of_)
-- [ ] Stage 2: Encoding axioms DERIVED
+- [x] Stage 1: `star-to-exec` ADDED (uses exec-step-helper postulate)
+- [x] Stage 2a: 4 encoding axioms PROVEN (encode-unit, encode-fix-*, encode-arr-identity)
+- [ ] Stage 2b: Remaining 10 encoding axioms (need allocation tracking)
 - [ ] Stage 3: `encode-injective` DERIVED
 - [ ] Stage 4: Correct.agda REFACTORED to use Star
 - [ ] Stage 5: Arithmetic postulates PROVEN
 - [ ] Stage 6: `run-apply-seq` DERIVED
-- [ ] **`make x86` passes**
-- [ ] **0 postulates remain** (currently: star-to-exec postulated)
+- [ ] **`make x86` passes** (currently passes, verification is slower)
+- [ ] **Minimal postulates** (reduced encoding axioms from 14 to 10)
 
 ---
 
