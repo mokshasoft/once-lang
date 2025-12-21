@@ -68,7 +68,7 @@ monomorphizeWithContext families funcType ir =
       Inr a b -> Inr a b
       Case l r -> Case (monoWithReturn fams retTy l) (monoWithReturn fams retTy r)
       Initial ty -> Initial ty
-      Curry fir -> Curry (monoWithReturn fams retTy fir)
+      Curry varName fir -> Curry varName (monoWithReturn fams retTy fir)
       Apply a b -> Apply a b
       Var n -> Var n
       LocalVar n -> LocalVar n
@@ -106,7 +106,7 @@ monomorphizeWithFamilies families ir = case ir of
   Inr a b -> Inr a b
   Case l r -> Case (go l) (go r)
   Initial ty -> Initial ty
-  Curry f -> Curry (go f)
+  Curry varName f -> Curry varName (go f)
   Apply a b -> Apply a b
   Var n -> Var n
   LocalVar n -> LocalVar n

@@ -356,16 +356,21 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
   where
     -- Generate Once function without include
     onceFuncCode :: Text -> Type -> Once.IR.IR -> Text
-    onceFuncCode n t i = T.unlines
-      [ funcDecl n t <> " {"
-      , "    return " <> generateIRExpr i "x" <> ";"
-      , "}"
-      ]
+    onceFuncCode n t ir =
+      -- D039: If function body is a Curry, use its variable name for the parameter
+      let (paramName, body) = case ir of
+            Once.IR.Curry varName bodyIR -> (varName, bodyIR)
+            _ -> ("x", ir)
+      in T.unlines
+        [ funcDeclSimple n t paramName <> " {"
+        , "    return " <> generateIRExpr body paramName <> ";"
+        , "}"
+        ]
 
-    funcDecl :: Text -> Type -> Text
-    funcDecl n t = case t of
-      TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
-      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
+    funcDeclSimple :: Text -> Type -> Text -> Text
+    funcDeclSimple n t param = case t of
+      TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"
+      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"  -- D032
       _ -> "void* once_" <> n <> "(void)"
 
     generateIRExpr :: Once.IR.IR -> Text -> Text
@@ -380,10 +385,12 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
       Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> generateIRExpr l (v <> ".value") <> " : " <> generateIRExpr r (v <> ".value") <> ")"
       Once.IR.Initial _ -> v
-      Once.IR.Curry _ -> "/* curry not yet implemented */ ((void*)0)"
+      -- D039: Curry inside expression (e.g., case branches) needs to bind the variable
+      Once.IR.Curry varName body ->
+        "({ typeof(" <> v <> ") " <> varName <> " = " <> v <> "; " <> generateIRExpr body varName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.LocalVar n' -> n'  -- Local variable: just use the name
+      Once.IR.LocalVar n' -> n'  -- Local variable (let binding or lambda param)
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit s
@@ -447,6 +454,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       TFloat -> "double"
       TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
+      TArray _ -> "OnceBuffer"  -- D042: Array erases to Buffer
       TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
@@ -519,6 +527,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     needsBuffer :: Type -> Bool
     needsBuffer t = case t of
       TBuffer -> True
+      TArray _ -> True  -- D042: Array erases to Buffer
       TString _ -> True
       TProduct a b -> needsBuffer a || needsBuffer b
       TSum a b -> needsBuffer a || needsBuffer b
@@ -541,16 +550,21 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       in generateFuncWithAlloc n t ir alloc
 
     generateFuncWithAlloc :: Text -> Type -> Once.IR.IR -> Maybe AllocStrategy -> Text
-    generateFuncWithAlloc n t ir alloc = T.unlines
-      [ funcDecl n t <> " {"
-      , "    return " <> generateIRExpr alloc ir "x" <> ";"
-      , "}"
-      ]
+    generateFuncWithAlloc n t ir alloc =
+      -- D039: If function body is a Curry, use its variable name for the parameter
+      let (paramName, body) = case ir of
+            Once.IR.Curry varName bodyIR -> (varName, bodyIR)
+            _ -> ("x", ir)
+      in T.unlines
+        [ funcDeclWithParam n t paramName <> " {"
+        , "    return " <> generateIRExpr alloc body paramName <> ";"
+        , "}"
+        ]
 
-    funcDecl :: Text -> Type -> Text
-    funcDecl n t = case t of
-      TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
-      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
+    funcDeclWithParam :: Text -> Type -> Text -> Text
+    funcDeclWithParam n t param = case t of
+      TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"
+      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"  -- D032
       _ -> "void* once_" <> n <> "(void)"
 
     generateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
@@ -565,10 +579,12 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
       Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> generateIRExpr alloc l (v <> ".value") <> " : " <> generateIRExpr alloc r (v <> ".value") <> ")"
       Once.IR.Initial _ -> v
-      Once.IR.Curry _ -> "/* curry not yet implemented */ ((void*)0)"
+      -- D039: Curry inside expression (e.g., case branches) needs to bind the variable
+      Once.IR.Curry varName body ->
+        "({ typeof(" <> v <> ") " <> varName <> " = " <> v <> "; " <> generateIRExpr alloc body varName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.LocalVar n' -> n'
+      Once.IR.LocalVar n' -> n'  -- Local variable (let binding or lambda param)
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit alloc s
@@ -620,6 +636,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TFloat -> "double"
       TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
+      TArray _ -> "OnceBuffer"  -- D042: Array erases to Buffer
       TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
@@ -676,16 +693,22 @@ generateLibraryAll functions = (header, source)
       _ -> "/* " <> name <> " has non-function type */"
 
     funcDef :: Maybe AllocStrategy -> (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
-    funcDef globalAlloc (name, ty, localAlloc, ir) = case ty of
-      TArrow inTy outTy ->
-        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
-        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
-        "}"
-      TEff inTy outTy ->
-        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
-        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
-        "}"
-      _ -> "/* " <> name <> " has non-function type */"
+    funcDef globalAlloc (name, ty, localAlloc, ir) =
+      -- D039: If function body is a Curry, use its variable name for the parameter
+      let (paramName, body) = case ir of
+            Once.IR.Curry varName bodyIR -> (varName, bodyIR)
+            _ -> ("x", ir)
+          alloc = localAlloc <|> globalAlloc
+      in case ty of
+        TArrow inTy outTy ->
+          libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " " <> paramName <> ") {\n" <>
+          "    return " <> libGenerateIRExpr alloc body paramName <> ";\n" <>
+          "}"
+        TEff inTy outTy ->
+          libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " " <> paramName <> ") {\n" <>
+          "    return " <> libGenerateIRExpr alloc body paramName <> ";\n" <>
+          "}"
+        _ -> "/* " <> name <> " has non-function type */"
 
     libCTypeName :: Type -> Text
     libCTypeName t = case t of
@@ -696,6 +719,7 @@ generateLibraryAll functions = (header, source)
       TFloat -> "double"
       TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
+      TArray _ -> "OnceBuffer"  -- D042: Array erases to Buffer
       TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
@@ -716,10 +740,12 @@ generateLibraryAll functions = (header, source)
       Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
       Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> libGenerateIRExpr alloc l (v <> ".value") <> " : " <> libGenerateIRExpr alloc r (v <> ".value") <> ")"
       Once.IR.Initial _ -> v
-      Once.IR.Curry _ -> "/* curry not yet implemented */ ((void*)0)"
+      -- D039: Curry inside expression (e.g., case branches) needs to bind the variable
+      Once.IR.Curry varName body ->
+        "({ typeof(" <> v <> ") " <> varName <> " = " <> v <> "; " <> libGenerateIRExpr alloc body varName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.LocalVar n' -> n'
+      Once.IR.LocalVar n' -> n'  -- Local variable (let binding or lambda param)
       Once.IR.FunRef n' -> "(void*)once_" <> n'
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> libGenerateStringLit alloc s

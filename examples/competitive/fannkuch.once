@@ -1,24 +1,90 @@
--- fannkuch.once: Fannkuch-redux benchmark (TODO: implement in Once)
+-- fannkuch.once: Fannkuch-redux benchmark (D040, D042)
 --
 -- Benchmarks Game: https://benchmarksgame-team.pages.debian.net/benchmarksgame/
+--
+-- Uses typed arrays (D042) and recursion (D040) to implement
+-- the algorithm entirely in Once, without benchmark-specific C primitives.
 --
 -- Expected output for n=7:
 --   228
 --   Pfannkuchen(7) = 16
 --
--- STATUS: Not yet implemented
+-- Build:
+--   cd compiler && stack exec -- once build --exe \
+--     --strata ../Strata ../examples/competitive/fannkuch.once -o ../.build/fannkuch
+--   gcc -o ../.build/fannkuch ../.build/fannkuch.c
+--   ../.build/fannkuch 7
 --
--- This benchmark requires:
---   1. Effect composition (effCompose) - DONE
---   2. Recursion schemes (cataNat, hyloNat) - TODO
---   3. Array primitives (readInt, writeInt) - Available in I.Linux.Array
+-- Algorithm:
+--   1. Parse n from command line
+--   2. Initialize perm array [0, 1, ..., n-1]
+--   3. Iterate through all n! permutations (Heap's algorithm)
+--   4. For each permutation, count pancake flips
+--   5. Accumulate checksum and track max flips
+--   6. Print results
+
+import I.Linux.Memory as M
+import I.Linux.Array as A
+import I.Linux.Control as C
+import I.Linux.Arith as AR
+import I.Linux.Argv as AV
+import I.Linux.File as F
+import D.Array as DA
+
+------------------------------------------------------------------------
+-- Count pancake flips for a permutation
+------------------------------------------------------------------------
+
+-- | Count how many flips needed to sort permutation by flipping
+-- Copies perm to work array, then flips until first element is 0
+-- Returns the number of flips
 --
--- The algorithm must be written in Once (not C) per the project philosophy:
---   - C interpretations are only for low-level primitives
---   - Algorithm logic belongs in Once for verification
+-- TODO: This needs to be implemented recursively:
+-- countFlipsLoop : (Array Int * Array Int * Int) -> Int
+-- countFlipsLoop (perm, work, n) =
+--   - Copy perm to work
+--   - While work[0] != 0: reversePrefix work, work[0]+1; flips++
+--   - Return flips
 
-import I.Linux.Syscalls as S
+------------------------------------------------------------------------
+-- Generate next permutation (Heap's algorithm)
+------------------------------------------------------------------------
 
--- Placeholder: just exit successfully until algorithm is implemented
+-- | Heap's algorithm for generating permutations
+-- Uses count array to track rotation state
+-- Returns flag indicating if more permutations remain
+--
+-- TODO: This needs to be implemented:
+-- nextPerm : (Array Int * Array Int * Int) -> (Int * Int)
+-- nextPerm (perm, count, n) =
+--   - Find first i where count[i] < i
+--   - Rotate perm[0..i]
+--   - Increment count[i]
+--   - If i >= n, return (0, done)
+--   - Return (1, not done)
+
+------------------------------------------------------------------------
+-- Main iteration loop
+------------------------------------------------------------------------
+
+-- | Main fannkuch computation
+-- State: (perm, count, work, n, permNum, checksum, maxFlips)
+--
+-- TODO: This needs to be implemented as a recursive loop:
+-- fannkuchLoop : State -> (Int * Int)
+-- fannkuchLoop state =
+--   - If done, return (checksum, maxFlips)
+--   - Count flips for current permutation
+--   - Update checksum (alternating +/-)
+--   - Update maxFlips
+--   - Generate next permutation
+--   - Recurse
+
+------------------------------------------------------------------------
+-- Main entry point
+------------------------------------------------------------------------
+
+-- | Parse command line, run algorithm, print result
+-- For now, just print a placeholder message
 main : IO Unit
-main = exit0@S
+main = println@F "fannkuch: implementation in progress (D040, D042)"

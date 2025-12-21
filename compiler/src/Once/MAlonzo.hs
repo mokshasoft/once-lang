@@ -60,6 +60,8 @@ toMAlonzoType t = case t of
   H.TVar name -> Just $ M.C_TVar_26 name
   -- Not yet supported (no Agda definition)
   H.TFloat -> Nothing
+  H.TByte -> Nothing       -- D038: Byte type (not in Agda yet)
+  H.TArray _ -> Nothing    -- D042: Array type (not in Agda yet)
   H.TApp _ _ -> Nothing
 
 -- | Convert MAlonzo Type back to Haskell Type
@@ -97,7 +99,7 @@ canConvertIR ir = case ir of
   H.Inr a b -> canConvertType a && canConvertType b
   H.Case f g -> canConvertIR f && canConvertIR g
   H.Initial t -> canConvertType t
-  H.Curry f -> canConvertIR f
+  H.Curry _ f -> canConvertIR f
   H.Apply a b -> canConvertType a && canConvertType b
   H.Fold t -> canConvertType t
   H.Unfold t -> canConvertType t
@@ -136,7 +138,7 @@ toMAlonzoSurfaceIR ir = case ir of
   H.Inr _ _ -> Just MS.C_inr_50
   H.Case f g -> MS.C_'91'_'44'_'93'_58 <$> toMAlonzoSurfaceIR f <*> toMAlonzoSurfaceIR g
   H.Initial _ -> Just MS.C_initial_66
-  H.Curry f -> MS.C_curry_74 <$> toMAlonzoSurfaceIR f
+  H.Curry _ f -> MS.C_curry_74 <$> toMAlonzoSurfaceIR f
   H.Apply _ _ -> Just MS.C_apply_80
   H.Fold _ -> Just MS.C_fold_84
   H.Unfold _ -> Just MS.C_unfold_88
@@ -169,7 +171,7 @@ getOutputType ir = case ir of
   H.Inr a b -> Just (H.TSum a b)
   H.Case f _ -> getOutputType f
   H.Initial t -> Just t
-  H.Curry _ -> Nothing  -- Would need full type
+  H.Curry _ _ -> Nothing  -- Would need full type
   H.Apply _ b -> Just b
   H.Fold t -> Just (H.TFix t)
   H.Unfold t -> Just t  -- Output is F (Fix F)
@@ -196,7 +198,7 @@ fromMAlonzoCoreIR ir = case ir of
     H.Case (fromMAlonzoCoreIR f) (fromMAlonzoCoreIR g)
   MC.C_terminal_60 -> H.Terminal H.TUnit
   MC.C_initial_64 -> H.Initial H.TUnit
-  MC.C_curry_72 f -> H.Curry (fromMAlonzoCoreIR f)
+  MC.C_curry_72 f -> H.Curry "_" (fromMAlonzoCoreIR f)
   MC.C_apply_78 -> H.Apply H.TUnit H.TUnit
   MC.C_fold_82 -> H.Fold H.TUnit
   MC.C_unfold_86 -> H.Unfold H.TUnit
@@ -237,7 +239,7 @@ getInputType ir = case ir of
     -- This is imprecise without full type info
     Nothing  -- Too complex
   H.Initial _ -> Just H.TVoid
-  H.Curry f -> do
+  H.Curry _ f -> do
     fIn <- getInputType f
     case fIn of
       H.TProduct a _ -> Just a

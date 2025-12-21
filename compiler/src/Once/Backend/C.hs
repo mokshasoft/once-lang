@@ -46,6 +46,7 @@ generateHeader name ty = T.unlines $
     needsStddef :: Type -> Bool
     needsStddef t = case t of
       TBuffer -> True
+      TArray _ -> True  -- D042: Array erases to Buffer
       TString _ -> True
       TProduct a b -> needsStddef a || needsStddef b
       TSum a b -> needsStddef a || needsStddef b
@@ -91,6 +92,7 @@ typeDefinitions ty = T.unlines $ catMaybes
     needsBuffer :: Type -> Bool
     needsBuffer t = case t of
       TBuffer -> True
+      TArray _ -> True   -- D042: Array erases to Buffer
       TString _ -> True  -- String needs Buffer typedef first
       TProduct a b -> needsBuffer a || needsBuffer b
       TSum a b -> needsBuffer a || needsBuffer b
@@ -116,6 +118,7 @@ cTypeName ty = case ty of
   TInt -> "int"
   TFloat -> "double"  -- Double-precision floating point
   TBuffer -> "OnceBuffer"
+  TArray _ -> "OnceBuffer"   -- D042: Array erases to Buffer at runtime
   TString _ -> "OnceString"  -- Encoding erased at runtime
   TProduct _ _ -> "OncePair"
   TSum _ _ -> "OnceSum"
@@ -164,7 +167,10 @@ generateExpr ir var = case ir of
 
   Initial _ -> var  -- Void -> A (unreachable)
 
-  Curry _ -> "/* curry not yet implemented */ ((void*)0)"
+  -- Curry body: bind the variable name to the input and evaluate body.
+  -- D039: Curry inside expressions (e.g., case branches) needs to bind the variable.
+  Curry varName body ->
+    "({ typeof(" <> var <> ") " <> varName <> " = " <> var <> "; " <> generateExpr body varName <> "; })"
 
   Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
 

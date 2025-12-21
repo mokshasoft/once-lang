@@ -1,0 +1,95 @@
+-- | Derived array operations (D042)
+--
+-- Higher-level array operations implemented in Once using
+-- the primitives from I.Linux.Array.
+--
+-- Uses recursion (D040) for iteration patterns.
+
+import I.Linux.Array as A
+import I.Linux.Control as C
+import I.Linux.Arith as AR
+
+------------------------------------------------------------------------
+-- Swap operation
+------------------------------------------------------------------------
+
+-- | Swap elements at two positions in an array (polymorphic)
+-- swap (array, (i, j)) swaps array[i] and array[j]
+-- Input is nested pair: (Array A * (Int * Int))
+-- Works on any element type via primitive families
+swap : Eff (Array A * (Int * Int)) Unit
+swap = \args ->
+  let array = fst args in
+  let ij = snd args in
+  let i = fst ij in
+  let j = snd ij in
+  let vi = read@A (array, i) in
+  let vj = read@A (array, j) in
+  let writeIargs = (array, (i, vj)) in
+  let writeJargs = (array, (j, vi)) in
+  effCompose (write@A writeIargs) (write@A writeJargs)
+
+------------------------------------------------------------------------
+-- Reverse prefix operation
+------------------------------------------------------------------------
+
+-- | Reverse the first k elements of an array (0 to k-1)
+-- Uses recursive approach (D040)
+--
+-- Input: (Array Int * (Int * Int)) = (array, (lo, hi))
+-- Internal helper: reversePrefixLoop
+reversePrefixLoop : Eff (Array Int * (Int * Int)) Unit
+reversePrefixLoop = \args ->
+  let array = fst args in
+  let lohi = snd args in
+  let lo = fst lohi in
+  let hi = snd lohi in
+  let diff = sub@AR (hi, lo) in
+  case ifZero@C diff of {
+    Left done -> id;
+    Right cont ->
+      let lo1 = add@AR (lo, 1) in
+      let hi1 = sub@AR (hi, 1) in
+      let swapArgs = (array, (lo, hi1)) in
+      let nextArgs = (array, (lo1, hi1)) in
+      effCompose (swap swapArgs) (reversePrefixLoop nextArgs)
+  }
+
+-- | Reverse first k elements
+-- reversePrefix (array, k) reverses array[0]..array[k-1]
+reversePrefix : Eff (Array Int * Int) Unit
+reversePrefix = \args ->
+  let array = fst args in
+  let k = snd args in
+  let loopArgs = (array, (0, k)) in
+  reversePrefixLoop loopArgs
+
+------------------------------------------------------------------------
+-- Initialize array with range
+------------------------------------------------------------------------
+
+-- | Initialize array with values [0, 1, 2, ..., n-1]
+-- Input: (Array Int * (Int * Int)) = (array, (i, n))
+initRangeLoop : Eff (Array Int * (Int * Int)) Unit
+initRangeLoop = \args ->
+  let array = fst args in
+  let in_ = snd args in
+  let i = fst in_ in
+  let n = snd in_ in
+  let diff = sub@AR (n, i) in
+  case ifZero@C diff of {
+    Left done -> id;
+    Right cont ->
+      let i1 = add@AR (i, 1) in
+      let writeArgs = (array, (i, i)) in
+      let nextArgs = (array, (i1, n)) in
+      effCompose (write@A writeArgs) (initRangeLoop nextArgs)
+  }
+
+-- | Initialize array with range [0..n-1]
+initRange : Eff (Array Int * Int) Unit
+initRange = \args ->
+  let array = fst args in
+  let n = snd args in
+  let loopArgs = (array, (0, n)) in
+  initRangeLoop loopArgs

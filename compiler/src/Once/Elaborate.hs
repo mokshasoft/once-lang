@@ -62,6 +62,7 @@ elaborateExpr' locals expr = case expr of
   EVar "curry" -> Right $ Var "curry"      -- needs 1 arg
   EVar "arr" -> Right $ Var "arr"          -- needs 1 arg (D032: lift pure to effectful)
   EVar "effCompose" -> Right $ Var "effCompose"  -- needs 2 args (D032: Kleisli composition)
+  -- D041: while removed - use recursion with TCO instead
 
   -- Check if variable is a local binding from let
   EVar name | Set.member name locals -> Right $ LocalVar name
@@ -77,11 +78,11 @@ elaborateExpr' locals expr = case expr of
   -- Application: handle generator applications specially
   EApp f arg -> elaborateApp locals f arg
 
-  -- Pair literal: (a, b)
-  EPair _ _ ->
-    -- Pair literal becomes: pair (const a) (const b) applied to unit
-    -- For now, we don't support pair literals in this simple elaborator
-    Left $ UnsupportedExpr "Pair literals not yet supported"
+  -- Pair literal: (a, b) elaborates to Pair a' b'
+  EPair a b -> do
+    a' <- elaborateExpr' locals a
+    b' <- elaborateExpr' locals b
+    Right $ Pair a' b'
 
   -- Unit literal
   EUnit -> Right $ Terminal placeholder  -- () elaborates to terminal
@@ -99,9 +100,21 @@ elaborateExpr' locals expr = case expr of
     e2' <- elaborateExpr' (Set.insert x locals) e2
     Right $ Let x e1' e2'
 
-  -- Lambda, case, annotations - not yet supported
-  ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
-  ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
+  -- Lambda: \x -> e becomes curry e' where x is accessed via snd (D039)
+  -- The body is elaborated with x in locals (becomes LocalVar x)
+  -- The C backend handles LocalVar inside Curry by generating snd access
+  ELam x body -> do
+    body' <- elaborateExpr' (Set.insert x locals) body
+    Right $ Curry x body'
+
+  -- Case expressions: case scrutinee of { Left x -> e1; Right y -> e2 }
+  -- Elaborates to: Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
+  -- Each branch is like a lambda: Left x -> e1 becomes \x -> e1
+  ECase scrutinee x e1 y e2 -> do
+    scrutinee' <- elaborateExpr' locals scrutinee
+    e1' <- elaborateExpr' (Set.insert x locals) e1
+    e2' <- elaborateExpr' (Set.insert y locals) e2
+    Right $ Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
   EAnnot e _ -> elaborateExpr' locals e  -- ignore annotation for now
 
 -- | Show for Text
@@ -129,10 +142,12 @@ elaborateApp locals f arg = case f of
     f' <- elaborateExpr' locals arg
     Right $ Compose g' f'
 
+  -- D041: while removed - use recursion with TCO instead
+
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExpr' locals arg
-    Right $ Curry f'
+    Right $ Curry "_" f'  -- generator curry, no specific var name
 
   -- arr f => f (D032: arr is identity at IR level - Eff is type-only distinction)
   -- At runtime, Eff A B compiles to the same code as A -> B
@@ -180,6 +195,7 @@ isGenerator name = name `elem`
   , "terminal", "initial", "curry", "apply", "fold", "unfold"
   , "arr"  -- D032: arrow generator for lifting pure to effectful
   , "effCompose"  -- D032: Kleisli composition for Eff
+  -- D041: while removed - use recursion with TCO instead
   ]
 
 -- | Placeholder type for type inference to fill in later
@@ -196,6 +212,7 @@ elaborateType sty = case sty of
   STFloat -> TFloat
   STByte -> TByte
   STBuffer -> TBuffer
+  STArray elemTy -> TArray (elaborateType elemTy)  -- D042: typed arrays
   STString enc -> TString enc
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)
   STSum a b -> TSum (elaborateType a) (elaborateType b)
@@ -258,8 +275,11 @@ elaborateExprWithEnv modEnv locals expr = case expr of
   -- Application
   EApp f arg -> elaborateAppWithEnv modEnv locals f arg
 
-  -- Pair literal
-  EPair _ _ -> Left $ UnsupportedExpr "Pair literals not yet supported"
+  -- Pair literal: (a, b) elaborates to Pair a' b'
+  EPair a b -> do
+    a' <- elaborateExprWithEnv modEnv locals a
+    b' <- elaborateExprWithEnv modEnv locals b
+    Right $ Pair a' b'
 
   -- Unit literal
   EUnit -> Right $ Terminal placeholder
@@ -276,9 +296,18 @@ elaborateExprWithEnv modEnv locals expr = case expr of
     e2' <- elaborateExprWithEnv modEnv (Set.insert x locals) e2
     Right $ Let x e1' e2'
 
-  -- Lambda, case, annotations
-  ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
-  ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
+  -- Lambda: \x -> e becomes curry e' (D039)
+  ELam x body -> do
+    body' <- elaborateExprWithEnv modEnv (Set.insert x locals) body
+    Right $ Curry x body'
+
+  -- Case expressions: case scrutinee of { Left x -> e1; Right y -> e2 }
+  -- Elaborates to: Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
+  ECase scrutinee x e1 y e2 -> do
+    scrutinee' <- elaborateExprWithEnv modEnv locals scrutinee
+    e1' <- elaborateExprWithEnv modEnv (Set.insert x locals) e1
+    e2' <- elaborateExprWithEnv modEnv (Set.insert y locals) e2
+    Right $ Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
   EAnnot e _ -> elaborateExprWithEnv modEnv locals e
 
 -- | Elaborate function application with module environment
@@ -305,7 +334,7 @@ elaborateAppWithEnv modEnv locals f arg = case f of
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExprWithEnv modEnv locals arg
-    Right $ Curry f'
+    Right $ Curry "_" f'  -- generator curry, no specific var name
 
   -- arr f => f (D032: arr is identity at IR level)
   EVar "arr" -> elaborateExprWithEnv modEnv locals arg

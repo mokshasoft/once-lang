@@ -1,7 +1,7 @@
 -- | Control flow primitives
 --
--- These primitives enable branching based on integer values.
--- Essential for algorithms that need conditional execution.
+-- These primitives enable branching and iteration.
+-- Essential for algorithms that need conditional execution and loops.
 
 ------------------------------------------------------------------------
 -- Branching on integers
@@ -17,3 +17,19 @@ primitive parseInt : String Utf8 -> Int
 
 -- | Convert integer to string
 primitive intToString : Int -> String Utf8
+
+------------------------------------------------------------------------
+-- Iteration primitives (simple forms)
+------------------------------------------------------------------------
+
+-- Note: Complex iteration with callbacks requires higher-order function
+-- support. For now, benchmarks should use algorithm-specific C primitives
+-- that encapsulate the iteration logic.
+--
+-- Example: For fannkuch, provide:
+--   fannkuchCore : Eff (Int * Buffer) (Int * Int)
+-- which does the full permutation iteration in C and returns (checksum, maxFlips).
+--
+-- Future: Add proper higher-order iteration once function-as-value is supported:
+--   loopN : Int -> Eff A A -> Eff A A
+--   forRange : Int -> (Int -> Eff A A) -> Eff A A

@@ -127,6 +127,7 @@ applySubst subst ty = case ty of
   TFloat -> TFloat
   TByte -> TByte
   TBuffer -> TBuffer
+  TArray elemTy -> TArray (applySubst subst elemTy)  -- D042: typed arrays
   TString enc -> TString enc
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
   TSum a b -> TSum (applySubst subst a) (applySubst subst b)
@@ -149,6 +150,7 @@ occurs name ty = case ty of
   TFloat -> False
   TByte -> False
   TBuffer -> False
+  TArray elemTy -> occurs name elemTy  -- D042: typed arrays
   TString _ -> False
   TProduct a b -> occurs name a || occurs name b
   TSum a b -> occurs name a || occurs name b
@@ -193,6 +195,8 @@ unify t1 t2 = case (t1, t2) of
     s1 <- unify a1 a2
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
     Right (composeSubst s2 s1)
+  -- D042: Typed arrays unify element types
+  (TArray e1, TArray e2) -> unify e1 e2
   _ -> Left (UnificationError t1 t2)
 
 -- | Check if two types have the same structure (ignoring variable names)
@@ -218,6 +222,7 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
     go m TFloat TFloat = Just m
     go m TByte TByte = Just m
     go m TBuffer TBuffer = Just m
+    go m (TArray e1) (TArray e2) = go m e1 e2  -- D042: typed arrays
     go m (TString e1) (TString e2) | e1 == e2 = Just m
     go m (TProduct a1 b1) (TProduct a2 b2) = do
       m' <- go m a1 a2
@@ -412,6 +417,8 @@ generatorType name fresh = case name of
         (c, f3) = freshTVar f2
     in Just (TArrow (TEff b c) (TArrow (TEff a b) (TEff a c)), f3)
 
+  -- D041: while removed - use recursion with TCO instead
+
   _ -> Nothing
 
 -- | Convert surface type to internal type
@@ -433,6 +440,7 @@ convertTypeWithAliases aliases sty = case sty of
   STFloat -> TFloat
   STByte -> TByte
   STBuffer -> TBuffer
+  STArray elemTy -> TArray (conv elemTy)  -- D042: typed arrays
   STString enc -> TString enc
   STProduct a b -> TProduct (conv a) (conv b)
   STSum a b -> TSum (conv a) (conv b)
@@ -464,6 +472,7 @@ substSType subst sty = case sty of
   STFloat -> STFloat
   STByte -> STByte
   STBuffer -> STBuffer
+  STArray elemTy -> STArray (substSType subst elemTy)  -- D042: typed arrays
   STString enc -> STString enc
   STProduct a b -> STProduct (substSType subst a) (substSType subst b)
   STSum a b -> STSum (substSType subst a) (substSType subst b)
@@ -493,41 +502,60 @@ checkModule :: Module -> Either TypeError ()
 checkModule (Module _imports decls) = checkDecls' emptyContext emptyAliasEnv decls
 
 -- | Check a list of declarations (with type alias environment)
+-- D043: Two-pass approach for mutual recursion support
 checkDecls' :: Context -> TypeAliasEnv -> [Decl] -> Either TypeError ()
-checkDecls' _ _ [] = Right ()
-checkDecls' ctx aliases (d:ds) = case d of
-  TypeSig name sty -> do
-    let ty = convertTypeWithAliases aliases sty
-    let q = extractQuantity sty
-    let ctx' = extendContextQ name ty q ctx
-    checkDecls' ctx' aliases ds
+checkDecls' ctx aliases decls = do
+  -- Pass 1: Collect all type aliases first (needed for type conversion)
+  let aliases' = collectTypeAliases aliases decls
+  -- Pass 2: Add all type signatures, primitives to context
+  let ctx' = collectSignatures ctx aliases' decls
+  -- Pass 3: Check all function definitions (with full context)
+  checkFunDefs ctx' aliases' decls
 
+-- | Collect type aliases into the alias environment
+collectTypeAliases :: TypeAliasEnv -> [Decl] -> TypeAliasEnv
+collectTypeAliases aliases [] = aliases
+collectTypeAliases aliases (d:ds) = case d of
+  TypeAlias aliasName params body ->
+    collectTypeAliases (extendAliasEnv aliasName params body aliases) ds
+  _ -> collectTypeAliases aliases ds
+
+-- | Collect all type signatures and primitives into context
+collectSignatures :: Context -> TypeAliasEnv -> [Decl] -> Context
+collectSignatures ctx _ [] = ctx
+collectSignatures ctx aliases (d:ds) = case d of
+  TypeSig name sty ->
+    let ty = convertTypeWithAliases aliases sty
+        q = extractQuantity sty
+        ctx' = extendContextQ name ty q ctx
+    in collectSignatures ctx' aliases ds
+
+  Primitive name sty ->
+    let ty = convertTypeWithAliases aliases sty
+        q = extractQuantity sty
+        ctx' = extendContextQ name ty q ctx
+    in collectSignatures ctx' aliases ds
+
+  PrimitiveFamily name sty _mappings ->
+    let ty = convertTypeWithAliases aliases sty
+        q = extractQuantity sty
+        ctx' = extendContextQ name ty q ctx
+    in collectSignatures ctx' aliases ds
+
+  _ -> collectSignatures ctx aliases ds
+
+-- | Check all function definitions
+checkFunDefs :: Context -> TypeAliasEnv -> [Decl] -> Either TypeError ()
+checkFunDefs _ _ [] = Right ()
+checkFunDefs ctx aliases (d:ds) = case d of
   FunDef name _alloc expr -> case lookupVar name ctx of
     Nothing -> Left (UnboundVariable name)
     Just expectedTy -> do
+      -- D040: Function name already in context for recursive calls
       _ <- typeCheck ctx expr expectedTy
-      -- Validate quantity usage for lambda-bound variables
       validateLambdaUsage expr
-      checkDecls' ctx aliases ds
-
-  TypeAlias aliasName params body ->
-    -- Add type alias to the environment for expansion
-    let aliases' = extendAliasEnv aliasName params body aliases
-    in checkDecls' ctx aliases' ds
-
-  Primitive name sty -> do
-    let ty = convertTypeWithAliases aliases sty
-    let q = extractQuantity sty
-    let ctx' = extendContextQ name ty q ctx
-    checkDecls' ctx' aliases ds
-
-  -- Primitive family: add to context with polymorphic type (same as Primitive)
-  -- The mapping to implementations is used during elaboration, not type checking
-  PrimitiveFamily name sty _mappings -> do
-    let ty = convertTypeWithAliases aliases sty
-    let q = extractQuantity sty
-    let ctx' = extendContextQ name ty q ctx
-    checkDecls' ctx' aliases ds
+      checkFunDefs ctx aliases ds
+  _ -> checkFunDefs ctx aliases ds
 
 -- | Backwards-compatible wrapper
 checkDecls :: Context -> [Decl] -> Either TypeError ()
@@ -649,7 +677,9 @@ checkDeclsWithEnv modEnv ctx aliases (d:ds) = case d of
   FunDef name _alloc expr -> case lookupVar name ctx of
     Nothing -> Left (UnboundVariable name)
     Just expectedTy -> do
-      _ <- typeCheckWithEnv modEnv aliases ctx expr expectedTy
+      -- D040: Add function to context for recursive calls
+      let ctx' = extendContext name expectedTy ctx
+      _ <- typeCheckWithEnv modEnv aliases ctx' expr expectedTy
       validateLambdaUsage expr
       checkDeclsWithEnv modEnv ctx aliases ds
 

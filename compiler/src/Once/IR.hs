@@ -37,8 +37,10 @@ data IR
   | Initial Type               -- ^ initial : Void -> A (ex falso quodlibet)
 
   -- Exponentials (corresponds to categorical exponential/closed structure)
-  | Curry IR                   -- ^ curry f : A -> (B -> C) (where f : A * B -> C)
+  | Curry Name IR              -- ^ curry f : A -> (B -> C) (with lambda var name for codegen)
   | Apply Type Type            -- ^ apply : (A -> B) * A -> B
+
+  -- D041: while removed - use recursion with TCO instead
 
   -- Variables and primitives (for surface syntax elaboration)
   | Var Name                   -- ^ Variable reference (function call)

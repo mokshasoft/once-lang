@@ -2224,3 +2224,448 @@ For each `Prim name inTy outTy` in the IR:
 
 - D009: Interpretations Outside Compiler
 - D035: Two-Stage IR and MAlonzo Compilation
+
+---
+
+## D039: Lambda Elaboration
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+Once programs often need to express operations that take arguments and use them multiple times or in complex ways. The current elaborator rejects lambdas (`ELam`) with "Lambdas not yet supported". Without lambdas, expressing operations like array swap requires verbose point-free style with deeply nested `fst`/`snd` chains.
+
+### Options Considered
+
+1. **Point-free only**: Force all code to use point-free style with explicit `fst`, `snd`, `pair` compositions
+2. **Lambda elaboration**: Translate `\x -> e` to categorical form using `curry`
+
+### Decision
+
+Add **lambda elaboration** as syntactic sugar for `curry`.
+
+```
+\x -> e   ≡   curry e'
+```
+
+where in `e'`:
+- The bound variable `x` is accessed via `snd`
+- The original context (if any) is accessed via `fst`
+
+### Rationale
+
+- **No new expressive power**: `curry` already exists as a generator; lambdas are purely syntactic
+- **Readability**: Complex operations become much more readable
+- **Follows categorical semantics**: The translation is the standard categorical encoding of lambda calculus
+- **Enables derived functions**: Operations like `swap` can be expressed naturally in Once
+
+### Example
+
+```once
+-- With lambdas (readable)
+swap arr i j =
+  let vi = read (arr, i)
+  ; vj = read (arr, j)
+  in write (arr, i, vj) . write (arr, j, vi)
+
+-- Without lambdas (verbose point-free)
+swap =
+  let vi = read . pair fst (fst . snd)
+  in let vj = read . pair (fst . fst) (snd . snd . fst)
+     in ...  -- even more complex
+```
+
+### Implementation
+
+In `Elaborate.hs`:
+```haskell
+ELam x body -> do
+  body' <- elaborateExpr' (Set.insert x locals) body
+  -- Transform body to access x via snd, context via fst
+  Right $ Curry (transformForLambda x body')
+```
+
+The transformation replaces occurrences of `x` with `Snd` and adjusts other variable accesses to go through `Fst`.
+
+### Consequences
+
+- Lambdas become usable in Once programs
+- Derived functions can be written more naturally
+- The categorical foundation remains unchanged (curry already exists)
+- Users can choose between lambda and point-free style
+
+### See Also
+
+- D001: Generators as Reserved Words (curry is a generator)
+- D029: Let Bindings with Desugaring (let also uses lambda-like semantics)
+
+---
+
+## D040: Recursive Function Definitions
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+Once needs iteration for benchmarks (fannkuch, etc.) but the current `while` generator is unprincipled:
+- Type `(A -> A) -> (A -> Int) -> A -> A` uses `Int` instead of `Unit + Unit` for booleans
+- It's not a categorical generator from the 12 primitives
+
+Program-driven development reveals: if we need iteration, we should add recursion properly, not work around it.
+
+### Options Considered
+
+1. **Keep `while` generator**: Quick but unprincipled
+2. **Add `fix` combinator**: `fix : ((A -> B) -> A -> B) -> A -> B` - general but complex
+3. **Recursive function definitions**: Allow a function to call itself in its body
+
+### Decision
+
+Allow **recursive function definitions** with **tail call optimization** (TCO).
+
+```once
+loop : A -> A
+loop a = case pred a of
+  inl () -> a                -- done
+  inr () -> loop (step a)    -- tail recursive call
+```
+
+The compiler detects tail recursion and compiles to a C `while` loop.
+
+### Rationale
+
+- **Principled**: Recursion is the natural way to express iteration in functional languages
+- **Categorical fit**: Works with existing Fix types and fold/unfold
+- **Efficient**: Tail recursion compiles to C loops with no stack growth
+- **General**: More expressive than `while` - supports non-tail recursion too
+- **Removes unprincipled `while`**: D041 removes the generator
+
+### Implementation
+
+1. **TypeCheck.hs**: Allow function name in its own definition scope
+2. **Elaborate.hs**: Detect recursive calls, mark in IR
+3. **Backend/C.hs**: For tail-recursive functions, generate:
+   ```c
+   void* once_loop(void* a) {
+     while (1) {
+       if (pred(a)) return a;  // base case
+       a = step(a);            // recursive case (tail call)
+     }
+   }
+   ```
+
+### Tail Call Detection
+
+A call is in tail position if it's the last thing before returning:
+- `f x` where result is returned directly
+- `case ... of { inl a -> ...; inr b -> f b }` where `f b` is in tail position
+- NOT: `g (f x)` - f's result is used by g
+
+### Consequences
+
+- Functions can be recursive
+- Tail recursion → C while loop (zero overhead)
+- Non-tail recursion → regular C function calls (uses stack)
+- `while` generator can be removed (D041)
+
+### See Also
+
+- D041: Remove `while` Generator
+- D039: Lambda Elaboration (enables readable recursive definitions)
+- D043: Mutual Recursion (extends this to mutually recursive functions)
+
+---
+
+## D043: Mutual Recursion
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+D040 added support for recursive function definitions, where a function can call itself. However, the current type checker processes declarations sequentially, which prevents **mutual recursion**:
+
+```once
+isEven : Int -> Int
+isEven = \n -> case ifZero n of { Left _ -> 1; Right _ -> isOdd (sub (n, 1)) }
+-- ERROR: isOdd not in context yet!
+
+isOdd : Int -> Int
+isOdd = \n -> case ifZero n of { Left _ -> 0; Right _ -> isEven (sub (n, 1)) }
+-- OK: isEven is in context
+```
+
+When checking `isEven`'s body, `isOdd` hasn't been added to the context yet.
+
+### Decision
+
+Use **two-pass type checking** to support mutual recursion:
+
+1. **Pass 1**: Collect all type signatures and add them to context
+2. **Pass 2**: Check all function bodies (with all signatures in scope)
+
+### Rationale
+
+- **No loss of expressiveness**: Mutual recursion can be encoded as single recursion over a sum type, so this is purely syntactic convenience
+- **No change to categorical foundations**: The 12 generators remain the same
+- **No change to linearity**: Each function still uses its arguments linearly
+- **No change to C codegen**: C naturally supports mutually recursive functions
+- **Minimal proof impact**: The Agda proofs only need a small lemma about two-pass context construction
+
+The current sequential processing is an artificial restriction from the implementation, not a principled design choice.
+
+### Implementation
+
+In `TypeCheck.hs`, change `checkDecls'` to:
+
+```haskell
+checkDecls' ctx aliases decls = do
+  -- Pass 1: Add all type signatures to context
+  let ctx' = foldl addTypeSig ctx (filter isTypeSig decls)
+  -- Pass 2: Check all function bodies
+  mapM_ (checkFunDef ctx' aliases) (filter isFunDef decls)
+```
+
+Where:
+- `addTypeSig` adds a type signature to the context
+- `checkFunDef` checks a function definition body
+
+### Example
+
+After this change, the following compiles:
+
+```once
+isEven : Int -> Int
+isEven = \n ->
+  let m = n in
+  case ifZero m of { Left _ -> 1; Right _ -> isOdd (sub (m, 1)) }
+
+isOdd : Int -> Int
+isOdd = \n ->
+  let m = n in
+  case ifZero m of { Left _ -> 0; Right _ -> isEven (sub (m, 1)) }
+```
+
+### Consequences
+
+- All function signatures are visible when checking any function body
+- Mutual recursion works naturally
+- Slightly more complex type checker (two passes instead of one)
+- Error messages might reference functions defined later in the file
+
+### See Also
+
+- D040: Recursive Function Definitions (single recursion)
+- D039: Lambda Elaboration (enables readable recursive definitions)
+
+---
+
+## D041: Remove `while` Generator
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+The IR previously included a `while` generator:
+
+```haskell
+| While IR IR  -- while step pred : A -> A (loop while pred returns non-zero)
+```
+
+With the type:
+```
+while : (A -> A) -> (A -> Int) -> A -> A
+```
+
+This was added as a convenience for iteration, but it has several problems.
+
+### Problems with `while`
+
+1. **Unprincipled type**: Uses `Int` instead of proper sum type `Unit + Unit` for the predicate result
+
+2. **Not categorical**: The 12 generators are the primitives of cartesian closed categories. `while` is not a categorical generator - it's an operational construct.
+
+3. **Redundant**: With D040 (recursive definitions) and tail call optimization, iteration is expressible as:
+   ```once
+   loop : A -> A
+   loop = \a -> case pred a of { Left _ -> a; Right _ -> loop (step a) }
+   ```
+   This compiles to the same C `while` loop via TCO.
+
+4. **Breaks purity**: The 12 generators should remain the ONLY IR primitives. Adding `while` was a slippery slope.
+
+### Decision
+
+**Remove the `while` generator from the IR.**
+
+Iteration is now expressed via recursive function definitions (D040) which:
+- Use proper sum types (`Unit + Unit`) for conditions
+- Compile to efficient C while loops via tail call optimization
+- Keep the IR minimal and principled
+
+### Changes
+
+1. Remove `While IR IR` from `IR.hs`
+2. Remove `while` elaboration from `Elaborate.hs`
+3. Remove `while` typing from `TypeCheck.hs`
+4. Remove `while` from reserved words
+
+### Migration
+
+Old code:
+```once
+loop = while step pred
+```
+
+New code:
+```once
+loop : A -> A
+loop = \a -> case pred a of { Left _ -> a; Right _ -> loop (step a) }
+```
+
+### Consequences
+
+- The 12 generators remain the only IR primitives
+- Iteration is derived, not primitive
+- Code is more explicit about control flow
+- Types are more precise (`Unit + Unit` vs `Int`)
+
+### See Also
+
+- D040: Recursive Function Definitions (enables iteration via recursion)
+- D043: Mutual Recursion (extends recursion support)
+
+---
+
+## D042: Typed Arrays (Array A)
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+Once currently provides `Buffer` as the primitive for contiguous memory. Array operations work on `Buffer` directly with primitive families for type-specific behavior:
+
+```once
+primitive read : Buffer * Int -> A
+  where Int => readInt, Float => readFloat, Byte => readByte
+```
+
+This works but has issues:
+1. `Buffer` is too low-level - it's just raw bytes
+2. No type safety - reading an `Int` from a `Float` buffer compiles
+3. Element size calculations are manual (multiply index by sizeof)
+
+### Decision
+
+Add `TArray Type` as a built-in type that wraps `Buffer` with element type information:
+
+```haskell
+data Type = ...
+  | TArray Type  -- ^ Array A (typed indexed collection)
+  | ...
+```
+
+With syntax:
+```once
+Array Int    -- array of integers
+Array Float  -- array of floats
+Array Byte   -- array of bytes (equivalent to Buffer)
+```
+
+### Rationale
+
+**Follows the String pattern**: `TString Encoding` wraps `Buffer` with encoding metadata. Similarly, `TArray Type` wraps `Buffer` with element type metadata.
+
+**Type safety**: Operations become polymorphic with type constraints:
+```once
+read : Array A * Int -> A
+write : Eff (Array A * Int * A) Unit
+```
+
+The type parameter `A` flows through naturally. An `Array Int` can only be read as `Int`.
+
+**No runtime overhead**: `Array A` erases to `Buffer` at runtime. The type parameter is purely for type checking - no boxing, no tags.
+
+**Index vs byte offset**: With typed arrays, indices are element indices (0, 1, 2, ...) not byte offsets. The compiler/primitives handle the multiplication by element size.
+
+### Implementation
+
+1. Add `TArray Type` to `Type.hs`
+2. Add `STArray SType` to `Syntax.hs`
+3. Parse `Array A` in `Parser.hs`
+4. Handle unification for `TArray` in `TypeCheck.hs`
+5. Erase `TArray A` to `TBuffer` in code generation
+
+### Array Operations
+
+Primitives in `Interpretations/Linux/Array.once`:
+```once
+-- Allocation
+primitive alloc : Int -> Array A           -- allocate n elements
+primitive free : Eff (Array A) Unit        -- free array
+
+-- Access (index-based, not byte offset)
+primitive read : Array A * Int -> A        -- read element at index
+primitive write : Eff (Array A * Int * A) Unit  -- write element at index
+
+-- Bulk
+primitive length : Array A -> Int          -- number of elements
+```
+
+Derived operations in `Derived/Array.once` (using recursion D040):
+```once
+-- Swap two elements
+swap : Eff (Array A * Int * Int) Unit
+swap = \args ->
+  let arr = fst args in
+  let i = fst (snd args) in
+  let j = snd (snd args) in
+  let vi = read (arr, i) in
+  let vj = read (arr, j) in
+  effCompose (write (arr, i, vj)) (write (arr, j, vi))
+
+-- Reverse first k elements (recursive)
+reversePrefix : Eff (Array A * Int) Unit
+reversePrefix = \args -> ... recursive with swap
+
+-- Initialize array with range [0..n-1]
+initRange : Eff (Array Int * Int) Unit
+initRange = \args -> ... recursive with write
+```
+
+### C Code Generation
+
+For `Array A`:
+- Erases to `OnceBuffer` struct: `{ void* data; size_t len; }`
+- Element size known from type: `sizeof(int64_t)`, `sizeof(double)`, etc.
+- Index operations multiply by element size
+
+Example generated C:
+```c
+// read : Array Int * Int -> Int
+int64_t once_read(OnceBuffer arr, int64_t idx) {
+    return ((int64_t*)arr.data)[idx];
+}
+
+// write : Eff (Array Int * Int * Int) Unit
+void once_write(OnceBuffer arr, int64_t idx, int64_t val) {
+    ((int64_t*)arr.data)[idx] = val;
+}
+```
+
+### Consequences
+
+- `Buffer` remains as the low-level untyped primitive
+- `Array A` is the typed wrapper for safe array access
+- Array operations use element indices, not byte offsets
+- Type safety catches mismatched array/element types
+- No runtime overhead - types erase to pointers
+
+### See Also
+
+- D038: Primitive Families (monomorphization for generic primitives)
+- D040: Recursive Definitions (enables array algorithms in Once)
