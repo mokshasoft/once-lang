@@ -17,7 +17,7 @@ open State
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _≟_)
+open import Data.Nat using (ℕ; zero; suc; _≟_) renaming (_+_ to _+ℕ_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 open import Relation.Nullary using (yes; no)
 
@@ -271,6 +271,14 @@ postulate
                      step prog s ≡ just s₁ →
                      exec n prog s₁ ≡ just s' →
                      exec (suc n) prog s ≡ just s'
+
+-- | Once halted, more fuel doesn't change result
+-- POSTULATED: Plumbing postulate - semantically clear but blocked by with abstraction
+postulate
+  exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
+    exec n prog s ≡ just s' →
+    halted s' ≡ true →
+    exec (n +ℕ m) prog s ≡ just s'
 
 -- | Convert Star to exec with computed fuel
 -- PROVEN: Using exec-step-helper to handle the with abstraction.
