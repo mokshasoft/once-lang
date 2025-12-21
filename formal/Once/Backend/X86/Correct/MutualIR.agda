@@ -3955,9 +3955,9 @@ mutual
   run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
   run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    run-apply-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
 
   -- | Star-based compose (POSTULATE-FREE!)
   -- Uses star-trans (PROVEN) instead of exec-chain (postulate)
@@ -4631,6 +4631,82 @@ mutual
         h-final : halted s-final ≡ false
         pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
         rax-final : readReg (regs s-final) rax ≡ encode (eval g b)
+        r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        stack-inv-final : StackInvariant s-final
+        rsp>16-final : readReg (regs s-final) rsp > 16
+
+  -- | Star-based curry execution (direct, uses Star throughout)
+  -- compile-length (curry f) = 13 + len-f
+  -- Curry creates a closure; only executes 7 instructions (setup + jmp to end label)
+  run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+  run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+    s-final , record
+      { ir-star = star-all
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-rax = rax-final
+      ; ir-r14 = r14-final
+      ; ir-r15 = r15-final
+      ; ir-mem = mem-final
+      ; ir-stack-inv = stack-inv-final
+      ; ir-rsp-bound = rsp>16-final
+      }
+    where
+      len-f = compile-length f
+      prog = prefix ++ compile-x86 (curry f) ++ suffix
+
+      postulate
+        s-final : State
+        star-all : Star prog s s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
+        rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)
+        r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        stack-inv-final : StackInvariant s-final
+        rsp>16-final : readReg (regs s-final) rsp > 16
+
+  -- | Star-based apply execution (direct, uses Star throughout)
+  -- compile-length apply = 6
+  run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
+  run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+    s-final , record
+      { ir-star = star-all
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-rax = rax-final
+      ; ir-r14 = r14-final
+      ; ir-r15 = r15-final
+      ; ir-mem = mem-final
+      ; ir-stack-inv = stack-inv-final
+      ; ir-rsp-bound = rsp>16-final
+      }
+    where
+      prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+
+      postulate
+        s-final : State
+        star-all : Star prog s s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length (apply {A} {B})
+        rax-final : readReg (regs s-final) rax ≡ encode {B} (eval (apply {A} {B}) x)
         r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
