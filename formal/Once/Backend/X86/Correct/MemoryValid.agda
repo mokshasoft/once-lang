@@ -210,20 +210,9 @@ pair-valid-preserved a b pair-addr write-addr v m valid no-over neq-snd =
 -- then the encoding axioms hold.
 ------------------------------------------------------------------------
 
--- | Bridge axiom: encode returns the address where value is allocated
--- This connects abstract encode to concrete validity.
--- TODO: This could be eliminated by making encode stateful.
-postulate
-  encode-pair-is-addr : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-    ∃[ addr ] (encode {A * B} (a , b) ≡ addr)
-    -- The addr here should be the allocation address
-
-  encode-inl-is-addr : ∀ {A B} (a : ⟦ A ⟧) →
-    ∃[ addr ] (encode {A + B} (inj₁ a) ≡ addr)
-
-  encode-inr-is-addr : ∀ {A B} (b : ⟦ B ⟧) →
-    ∃[ addr ] (encode {A + B} (inj₂ b) ≡ addr)
-
+-- NOTE: encode-*-is-addr postulates were removed (unused).
+-- These are trivially true (encode always produces an addr) but added
+-- no semantic value. Real progress comes from stateful encoding.
 
 ------------------------------------------------------------------------
 -- Bridge lemmas: Connect validity to abstract encode

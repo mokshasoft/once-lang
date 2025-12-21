@@ -36,10 +36,9 @@ open import Once.Memory public
 open import Once.Memory public
   using (mem-read-write; mem-read-other)
 
--- Axiom 3: Encoding is injective (still postulated - requires concrete encode)
-postulate
-  encode-injective : ∀ {A : Set} {x y : A} {encode : A → Word} →
-    encode x ≡ encode y → x ≡ y
+-- NOTE: encode-injective was removed (unused). If needed in future,
+-- it can be derived from stateful encoding where each allocation
+-- produces a unique address.
 
 ------------------------------------------------------------------------
 -- Allocation Primitives
@@ -386,14 +385,9 @@ encode-pair-stateful-snd enc-a enc-b st a b = alloc-pair-stateful-snd st (enc-a 
 -- For now, we keep one bridge axiom connecting abstract to stateful:
 ------------------------------------------------------------------------
 
-postulate
-  -- | Bridge axiom: abstract encode agrees with stateful encode
-  -- This connects the abstract `encode` to our concrete scheme.
-  --
-  -- To fully eliminate: thread AllocState through Semantics.eval
-  encode-agrees-with-stateful : ∀ {A B : Set} (enc-a : A → Word) (enc-b : B → Word)
-    (enc-ab : A × B → Word) (st : AllocState) (a : A) (b : B) →
-    enc-ab (a , b) ≡ proj₂ (encode-pair-stateful enc-a enc-b st (a , b))
+-- NOTE: encode-agrees-with-stateful was removed (unused).
+-- To truly eliminate encoding postulates: thread AllocState through
+-- Semantics.eval, replacing abstract encode with encode-stateful.
 
 ------------------------------------------------------------------------
 -- Summary: Memory Axiom Architecture (Updated with Stateful Proofs)
@@ -404,16 +398,7 @@ postulate
 --   3. encode-is-alloc-addr-PROVEN  : for stateful encoding ✓
 --   4. encode-pair-stateful-fst/snd : memory read correctness ✓
 --
--- REMAINING POSTULATES:
---   - encode-injective           : encoding is a bijection
---   - encode-agrees-with-stateful: bridges abstract to stateful encode
---
--- KEY PROGRESS:
---   The encode-is-alloc-addr axiom is now PROVEN for stateful allocation!
---   The remaining bridge axiom (encode-agrees-with-stateful) is weaker:
---   it just says abstract encode equals stateful encode.
---
--- TO FULLY ELIMINATE THE BRIDGE:
---   Thread AllocState through Semantics.eval, replacing abstract encode
---   with encode-stateful. This is a significant architectural change.
+-- REMAINING WORK:
+--   Thread AllocState through Semantics.eval to eliminate encoding
+--   postulates in Once/Postulates.agda.
 ------------------------------------------------------------------------
