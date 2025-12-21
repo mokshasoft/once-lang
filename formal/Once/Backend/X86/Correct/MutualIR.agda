@@ -38,6 +38,9 @@ open import Once.Backend.X86.Correct.InitState
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
+-- Star for compositional proofs without exec postulates
+open import Once.Backend.X86.Correct.Star
+  using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -52,6 +55,52 @@ open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ)
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
+
+------------------------------------------------------------------------
+-- Star-Based Prototype
+--
+-- This demonstrates the Star approach eliminates postulates.
+-- run-ir-at-offset-id-star returns Star instead of exec-until-pc,
+-- using star-single (PROVEN) instead of exec-one-step-nonhalt (uses postulate).
+------------------------------------------------------------------------
+
+-- | Star-based version of id execution (PROTOTYPE - no postulates needed!)
+run-ir-at-offset-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 {A} {A} id ++ suffix
+  in ∃[ s' ] (Star prog s s'           -- Star proof (no postulates!)
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ compile-length {A} {A} id
+         × readReg (regs s') rax ≡ encode (eval {A} {A} id x)
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+         × StackInvariant s'
+         × readReg (regs s') rsp > 16)
+run-ir-at-offset-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let (s' , step-eq , h' , pc' , rax-eq') = run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq
+      prog = prefix ++ compile-x86 {A} {A} id ++ suffix
+      -- Key change: use star-single (PROVEN) instead of exec-one-step-nonhalt (postulate)
+      star-proof : Star prog s s'
+      star-proof = star-single h-false step-eq
+      -- Register preservation (same as before)
+      r14-eq = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
+      r15-eq = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
+      mem-eq : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-eq = refl
+      stack-inv' = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
+      rsp>16' = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
+      -- rax correctness (eval id x = x, so encode (eval id x) = encode x)
+      rax-eq : readReg (regs s') rax ≡ encode (eval {A} {A} id x)
+      rax-eq = rax-eq'  -- eval id x = x by definition
+  in s' , star-proof , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16'
+
+------------------------------------------------------------------------
 
 -- | Prove run-ir-at-offset-inl: execute inl at arbitrary offset
 -- compile-x86 inl = [sub rsp 16, mov [rsp] 0, mov [rsp+8] rdi, mov rax rsp]
