@@ -74,10 +74,6 @@ int64_t once_getc(void* x) {
 }
 
 int64_t once_getline(OnceBuffer buf, int64_t maxlen) {
-    if (maxlen <= 0 || !buf || buf->data == NULL) {
-        return -1;
-    }
-
     char* ptr = (char*)buf->data;
     int64_t count = 0;
     int c;
@@ -103,8 +99,6 @@ int64_t once_getline(OnceBuffer buf, int64_t maxlen) {
  *========================================================================*/
 
 int64_t once_readfile(OnceString path, OnceBuffer buf, int64_t maxlen) {
-    if (!buf || !buf->data) return -1;
-
     int fd = open(path.data, O_RDONLY);
     if (fd < 0) {
         return -1;

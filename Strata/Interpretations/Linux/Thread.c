@@ -8,6 +8,10 @@
  * - https://nullprogram.com/blog/2023/03/23/ (Practical libc-free threading)
  *
  * Architecture: x86_64 (inline assembly is architecture-specific)
+ *
+ * Invariant: All buffer arguments are valid (non-null).
+ * The type system guarantees this - no runtime checks needed.
+ * Allocation failure: crash immediately (abort).
  */
 
 #ifndef _GNU_SOURCE
@@ -132,19 +136,14 @@ static pid_t raw_clone_with_fn(void (*fn)(void*), void* stack_top, int flags, vo
 OnceBuffer once_thread_spawn(void* func) {
     /* Allocate thread handle (shared between parent and child via CLONE_VM) */
     ThreadHandle* handle = (ThreadHandle*)malloc(sizeof(ThreadHandle));
-    if (!handle) {
-        return NULL;
-    }
+    if (!handle) abort();
 
     /* Allocate stack via mmap */
     void* stack = mmap(NULL, THREAD_STACK_SIZE,
                        PROT_READ | PROT_WRITE,
                        MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
                        -1, 0);
-    if (stack == MAP_FAILED) {
-        free(handle);
-        return NULL;
-    }
+    if (stack == MAP_FAILED) abort();
 
     /* Initialize handle */
     handle->stack = stack;
@@ -160,26 +159,19 @@ OnceBuffer once_thread_spawn(void* func) {
 
     /* Clone with shared address space (CLONE_VM) and SIGCHLD for waitpid */
     pid_t tid = raw_clone_with_fn(thread_wrapper, stack_top, CLONE_VM | SIGCHLD, args);
-
-    if (tid < 0) {
-        munmap(stack, THREAD_STACK_SIZE);
-        free(handle);
-        return NULL;
-    }
+    if (tid < 0) abort();
 
     handle->tid = tid;
 
     /* Allocate OnceBuffer to wrap the handle */
     OnceBuffer buf = (OnceBuffer)malloc(sizeof(OnceBufferData));
-    if (buf) {
-        buf->data = handle;
-        buf->len = sizeof(ThreadHandle);
-    }
+    if (!buf) abort();
+    buf->data = handle;
+    buf->len = sizeof(ThreadHandle);
     return buf;
 }
 
 void* once_thread_join(OnceBuffer handle_buf) {
-    if (!handle_buf || !handle_buf->data) return NULL;
     ThreadHandle* handle = (ThreadHandle*)handle_buf->data;
 
     /* Wait for thread completion using futex */
@@ -191,9 +183,7 @@ void* once_thread_join(OnceBuffer handle_buf) {
     waitpid(handle->tid, NULL, 0);
 
     /* Free resources */
-    if (handle->stack) {
-        munmap(handle->stack, THREAD_STACK_SIZE);
-    }
+    munmap(handle->stack, THREAD_STACK_SIZE);
     free(handle);
     free(handle_buf);
 
@@ -218,19 +208,17 @@ void* once_thread_detach(void* func) {
 OnceBuffer once_mutex_init(void* x) {
     (void)x;
     int32_t* mutex = (int32_t*)malloc(sizeof(int32_t));
-    if (!mutex) return NULL;
+    if (!mutex) abort();
     *mutex = 0;  /* Unlocked */
 
     OnceBuffer buf = (OnceBuffer)malloc(sizeof(OnceBufferData));
-    if (buf) {
-        buf->data = mutex;
-        buf->len = sizeof(int32_t);
-    }
+    if (!buf) abort();
+    buf->data = mutex;
+    buf->len = sizeof(int32_t);
     return buf;
 }
 
 void* once_mutex_lock(OnceBuffer mutex_buf) {
-    if (!mutex_buf || !mutex_buf->data) return NULL;
     _Atomic int32_t* mutex = (_Atomic int32_t*)mutex_buf->data;
 
     while (1) {
@@ -245,7 +233,6 @@ void* once_mutex_lock(OnceBuffer mutex_buf) {
 }
 
 void* once_mutex_unlock(OnceBuffer mutex_buf) {
-    if (!mutex_buf || !mutex_buf->data) return NULL;
     _Atomic int32_t* mutex = (_Atomic int32_t*)mutex_buf->data;
 
     atomic_store(mutex, 0);  /* Unlock */
@@ -262,19 +249,17 @@ typedef struct {
 OnceBuffer once_cond_init(void* x) {
     (void)x;
     CondVar* cond = (CondVar*)malloc(sizeof(CondVar));
-    if (!cond) return NULL;
+    if (!cond) abort();
     atomic_store(&cond->seq, 0);
 
     OnceBuffer buf = (OnceBuffer)malloc(sizeof(OnceBufferData));
-    if (buf) {
-        buf->data = cond;
-        buf->len = sizeof(CondVar);
-    }
+    if (!buf) abort();
+    buf->data = cond;
+    buf->len = sizeof(CondVar);
     return buf;
 }
 
 void* once_cond_wait(OnceBuffer cond_buf, OnceBuffer mutex_buf) {
-    if (!cond_buf || !cond_buf->data) return NULL;
     CondVar* cond = (CondVar*)cond_buf->data;
     int32_t seq = atomic_load(&cond->seq);
 
@@ -291,7 +276,6 @@ void* once_cond_wait(OnceBuffer cond_buf, OnceBuffer mutex_buf) {
 }
 
 void* once_cond_signal(OnceBuffer cond_buf) {
-    if (!cond_buf || !cond_buf->data) return NULL;
     CondVar* cond = (CondVar*)cond_buf->data;
 
     atomic_fetch_add(&cond->seq, 1);  /* Change sequence */
@@ -301,7 +285,6 @@ void* once_cond_signal(OnceBuffer cond_buf) {
 }
 
 void* once_cond_broadcast(OnceBuffer cond_buf) {
-    if (!cond_buf || !cond_buf->data) return NULL;
     CondVar* cond = (CondVar*)cond_buf->data;
 
     atomic_fetch_add(&cond->seq, 1);  /* Change sequence */
@@ -315,7 +298,6 @@ void* once_cond_broadcast(OnceBuffer cond_buf) {
  *========================================================================*/
 
 int64_t once_atomic_cas(OnceBuffer addr_buf, int64_t expected, int64_t new_val) {
-    if (!addr_buf || !addr_buf->data) return expected;
     _Atomic int64_t* addr = (_Atomic int64_t*)addr_buf->data;
     int64_t exp = expected;
     atomic_compare_exchange_strong(addr, &exp, new_val);
@@ -323,7 +305,6 @@ int64_t once_atomic_cas(OnceBuffer addr_buf, int64_t expected, int64_t new_val) 
 }
 
 int64_t once_atomic_add(OnceBuffer addr_buf, int64_t delta) {
-    if (!addr_buf || !addr_buf->data) return 0;
     _Atomic int64_t* addr = (_Atomic int64_t*)addr_buf->data;
     return atomic_fetch_add(addr, delta);
 }
