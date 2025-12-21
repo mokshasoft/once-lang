@@ -3953,7 +3953,7 @@ mutual
   run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     run-pair-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
   run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    run-case-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
   run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
@@ -4515,4 +4515,125 @@ mutual
       postulate
         rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+
+  -- | Star-based case execution (direct, uses Star throughout)
+  -- For inl: Setup(4) → f → JumpToEnd(2) (labels are pseudo-instructions)
+  -- For inr: Setup(3) → Jump(1) → LoadVal(1) → g → Label(1)
+  -- compile-length [ f , g ] = (8 + len-f) + len-g
+  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
+  run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    with x
+  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix a s h-false pc-eq rdi-eq-inl stack-inv rsp>16
+    where
+      rdi-eq-inl : readReg (regs s) rdi ≡ encode {A + B} (inj₁ a)
+      rdi-eq-inl = rdi-eq
+  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix b s h-false pc-eq rdi-eq-inr stack-inv rsp>16
+    where
+      rdi-eq-inr : readReg (regs s) rdi ≡ encode {A + B} (inj₂ b)
+      rdi-eq-inr = rdi-eq
+
+  -- | Star-based case left branch (inl)
+  -- Structure:
+  --   Phase 1: Setup - 4 instructions (mov r15 [rdi], cmp, jne not taken, mov rdi [rdi+8])
+  --   Phase 2: Execute f - recursive Star call
+  --   Phase 3: Jump to end - 2 instructions (jmp, label)
+  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
+  run-case-star-direct-inl {A} {B} {C} f g prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 =
+    s-final , record
+      { ir-star = star-all
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-rax = rax-final
+      ; ir-r14 = r14-final
+      ; ir-r15 = r15-final
+      ; ir-mem = mem-final
+      ; ir-stack-inv = stack-inv-final
+      ; ir-rsp-bound = rsp>16-final
+      }
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
+
+      len-f = compile-length f
+      len-g = compile-length g
+      code-f = compile-x86 f
+      code-g = compile-x86 g
+      prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+
+      -- Postulate the entire execution for now (to be refined later)
+      -- The structure is clear, but the detailed phase proofs need careful alignment
+      postulate
+        s-final : State
+        star-all : Star prog s s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+        rax-final : readReg (regs s-final) rax ≡ encode (eval f a)
+        r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        stack-inv-final : StackInvariant s-final
+        rsp>16-final : readReg (regs s-final) rsp > 16
+
+  -- | Star-based case right branch (inr)
+  -- Structure:
+  --   Phase 1: Setup - 3 instructions (mov r15 [rdi], cmp, jne taken)
+  --   Phase 2: Right branch setup - 2 instructions (label, mov rdi [rdi+8])
+  --   Phase 3: Execute g - recursive Star call
+  --   Phase 4: End label - 1 instruction
+  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b) (length prefix)
+  run-case-star-direct-inr {A} {B} {C} f g prefix suffix b s h-false pc-eq rdi-eq stack-inv rsp>16 =
+    s-final , record
+      { ir-star = star-all
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-rax = rax-final
+      ; ir-r14 = r14-final
+      ; ir-r15 = r15-final
+      ; ir-mem = mem-final
+      ; ir-stack-inv = stack-inv-final
+      ; ir-rsp-bound = rsp>16-final
+      }
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
+
+      len-f = compile-length f
+      len-g = compile-length g
+      code-f = compile-x86 f
+      code-g = compile-x86 g
+      prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+
+      -- Postulate the entire execution for now
+      postulate
+        s-final : State
+        star-all : Star prog s s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+        rax-final : readReg (regs s-final) rax ≡ encode (eval g b)
+        r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        stack-inv-final : StackInvariant s-final
+        rsp>16-final : readReg (regs s-final) rsp > 16
 
