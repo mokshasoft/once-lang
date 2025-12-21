@@ -4105,7 +4105,7 @@ mutual
       }
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
+      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl)
       open import Once.Backend.X86.Correct.Star using (exec-to-star; exec-until-pc-to-star)
 
       -- Shorthand
@@ -4224,14 +4224,63 @@ mutual
 
       -- ========== Phase 2: Execute f ==========
       -- Need prog equality: prog = prefix-f ++ code-f ++ suffix-f
-      -- Postulated: the list associativity proof is mechanical but complex
-      postulate
-        prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      -- PROVEN using list associativity
 
-      -- StackInvariant preserved through setup
-      -- For now, postulate the StackInvariant after setup (complex stack manipulation)
+      -- The final instructions (before suffix)
+      final-nil : Program
+      final-nil = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
+
+      final-with-suffix : Program
+      final-with-suffix = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+
+      -- final-nil ++ suffix = final-with-suffix (by computation)
+      final-suffix-eq : final-nil ++ suffix ≡ final-with-suffix
+      final-suffix-eq = refl
+
+      -- Helper: the part of inner-pair after code-f
+      mid-final-nil : Program
+      mid-final-nil = store-f-instr ∷ restore-input ∷ code-g ++ final-nil
+
+      -- mid-final-nil ++ suffix = suffix-f requires ++-assoc for code-g part
+      mid-final-suffix-eq : mid-final-nil ++ suffix ≡ suffix-f
+      mid-final-suffix-eq = cong (store-f-instr ∷_) (cong (restore-input ∷_)
+                              (trans (++-assoc code-g final-nil suffix)
+                                     (cong (code-g ++_) final-suffix-eq)))
+
+      -- inner-pair = code-f ++ mid-final-nil (by definition)
+      inner-pair-split : inner-pair ≡ code-f ++ mid-final-nil
+      inner-pair-split = refl
+
+      -- rest-for-setup = code-f ++ suffix-f
+      rest-eq : rest-for-setup ≡ code-f ++ suffix-f
+      rest-eq = trans (cong (_++ suffix) inner-pair-split)
+                      (trans (++-assoc code-f mid-final-nil suffix) (cong (code-f ++_) mid-final-suffix-eq))
+
+      -- Setup prefix equality: prefix ++ [7 setup] ++ xs = prefix-f ++ xs
+      prefix-setup-eq : ∀ xs → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ xs ≡ prefix-f ++ xs
+      prefix-setup-eq xs = sym (++-assoc prefix (setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) xs)
+
+      prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      prog-eq-f = trans prog-eq-setup (trans (prefix-setup-eq rest-for-setup) (cong (prefix-f ++_) rest-eq))
+
+      -- StackInvariant after setup: rsp = r15 (both = initial rsp - 40)
+      -- So stack-below-r15 (rsp ≤ r15) holds trivially
+      stack-inv-setup : StackInvariant s-setup
+      stack-inv-setup = stack-below-r15 rsp≤r15
+        where
+          -- After setup: rsp = r15 = initial_rsp ∸ 40
+          rsp-r15-eq : readReg (regs s-setup) rsp ≡ readReg (regs s-setup) r15
+          rsp-r15-eq = trans rsp-setup (sym r15-setup)
+
+          -- rsp = r15 implies rsp ≤ r15
+          rsp≤r15 : readReg (regs s-setup) rsp ≤ readReg (regs s-setup) r15
+          rsp≤r15 = subst (readReg (regs s-setup) rsp ≤_) (sym rsp-r15-eq) ≤-refl
+
+      -- rsp>16-setup: requires (initial rsp ∸ 40) > 16, i.e., initial rsp > 56
+      -- The precondition only gives rsp>16 (> 16), not > 56
+      -- In practice, initWithInput gives rsp = 0x7FFF0000 >> 56, so this always holds
+      -- Kept as postulate because proving it requires strengthening the rsp bound
       postulate
-        stack-inv-setup : StackInvariant s-setup
         rsp>16-setup : readReg (regs s-setup) rsp > 16
 
       -- Execute f using Star (recursive call)
@@ -4277,8 +4326,16 @@ mutual
       pc1-mid = trans pc1 (sym len-prefix-mid)
 
       -- Program equality for middle: we need prog = prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
-      postulate
-        prog-eq-mid : prog ≡ prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
+      -- PROVEN from prog-eq-f using ++-assoc
+
+      -- suffix-f = store-f-instr ∷ restore-input ∷ rest-mid (by definition)
+      suffix-f-eq-rest : suffix-f ≡ store-f-instr ∷ restore-input ∷ rest-mid
+      suffix-f-eq-rest = refl
+
+      prog-eq-mid : prog ≡ prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
+      prog-eq-mid = trans prog-eq-f
+                          (trans (sym (++-assoc prefix-f code-f suffix-f))
+                                 (cong (prefix-mid ++_) suffix-f-eq-rest))
 
       -- r14 preserved through f execution (from ir-r14 r-f)
       r14-s1 : readReg (regs s1) r14 ≡ readReg (regs s-setup) r14
@@ -4323,8 +4380,41 @@ mutual
 
       -- ========== Phase 4: Execute g ==========
       -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
+      -- PROVEN from prog-eq-mid using ++-assoc
+
+      -- rest-mid = code-g ++ suffix-g (by definition)
+      rest-mid-eq-g : rest-mid ≡ code-g ++ suffix-g
+      rest-mid-eq-g = refl
+
+      -- prefix-g = prefix-mid ++ [store-f, restore] (by ++-assoc)
+      prefix-g-eq-mid : prefix-g ≡ prefix-mid ++ store-f-instr ∷ restore-input ∷ []
+      prefix-g-eq-mid = sym (++-assoc prefix-f code-f (store-f-instr ∷ restore-input ∷ []))
+
+      -- (store-f ∷ restore ∷ []) ++ xs = store-f ∷ restore ∷ xs
+      cons-flatten : ∀ xs → (store-f-instr ∷ restore-input ∷ []) ++ xs ≡ store-f-instr ∷ restore-input ∷ xs
+      cons-flatten xs = refl
+
+      prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+      prog-eq-g = begin
+        prog
+          ≡⟨ prog-eq-mid ⟩
+        prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
+          ≡⟨ cong (prefix-mid ++_) (cong (store-f-instr ∷_) (cong (restore-input ∷_) rest-mid-eq-g)) ⟩
+        prefix-mid ++ store-f-instr ∷ restore-input ∷ (code-g ++ suffix-g)
+          ≡⟨ cong (prefix-mid ++_) (sym (cons-flatten (code-g ++ suffix-g))) ⟩
+        prefix-mid ++ ((store-f-instr ∷ restore-input ∷ []) ++ (code-g ++ suffix-g))
+          ≡⟨ sym (++-assoc prefix-mid (store-f-instr ∷ restore-input ∷ []) (code-g ++ suffix-g)) ⟩
+        (prefix-mid ++ store-f-instr ∷ restore-input ∷ []) ++ (code-g ++ suffix-g)
+          ≡⟨ cong (_++ (code-g ++ suffix-g)) (sym prefix-g-eq-mid) ⟩
+        prefix-g ++ (code-g ++ suffix-g)
+          ∎
+
+      -- StackInvariant and rsp>16 through middle phase
+      -- The middle phase executes: mov [r15], rax ; mov rdi, r14
+      -- Neither instruction modifies rsp or r15, so invariant is preserved
+      -- Would need exec-pair-middle-at extended to export rsp/r15 preservation
+      -- s1 has: ir-stack-inv r-f (StackInvariant s1), ir-rsp-bound r-f (rsp>16 for s1)
       postulate
-        prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
         stack-inv-s2 : StackInvariant s2
         rsp>16-s2 : readReg (regs s2) rsp > 16
 
@@ -4391,9 +4481,10 @@ mutual
       stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
       rsp>16-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
 
-      -- Program equality for final
-      postulate
-        prog-eq-final : prog ≡ prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      -- Program equality for final: prog = prefix-final ++ suffix-g
+      -- PROVEN from prog-eq-g using ++-assoc
+      prog-eq-final : prog ≡ prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      prog-eq-final = trans prog-eq-g (sym (++-assoc prefix-g code-g suffix-g))
 
       -- Convert final exec to Star
       star-fin-raw : Star (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 s-final
