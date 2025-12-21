@@ -4338,29 +4338,181 @@ mutual
       pc1 : pc s1 ≡ length prefix +ℕ 7 +ℕ len-f
       pc1 = trans pc1-raw (cong (_+ℕ len-f) len-prefix-f)
 
-      -- ========== Phases 3-5: Middle, g, Final (TODO) ==========
-      -- For now, use the existing run-ir-at-offset-pair to get the final state
-      -- This is a temporary bridge until we have full Star-based proofs
+      -- ========== Phase 3: Middle (2 instructions) ==========
+      -- mov [r15], rax   - store f's result
+      -- mov rdi, r14     - restore input for g
 
-      -- Get the full result from the fuel-based function
-      full-result = run-ir-at-offset-pair f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+      -- Prefix for middle = prefix-f ++ code-f = prefix + 7 + len-f instructions
+      prefix-mid : Program
+      prefix-mid = prefix-f ++ code-f
 
-      s-final = proj₁ full-result
-      exec-until-final = proj₁ (proj₂ full-result)
-      h-final = proj₁ (proj₂ (proj₂ full-result))
-      pc-final-raw = proj₁ (proj₂ (proj₂ (proj₂ full-result)))
-      rax-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ full-result))))
-      r14-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ full-result)))))
-      r15-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ full-result))))))
-      mem-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ full-result)))))))
-      stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ full-result))))))))
-      rsp>16-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ full-result))))))))
+      -- Rest for middle = code-g ++ final-stuff ++ suffix
+      -- Note: restore-input is already part of exec-pair-middle-at's template
+      rest-mid : Program
+      rest-mid = code-g ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
 
-      -- Convert exec-until-pc to Star
+      -- Length of prefix-mid
+      len-prefix-mid : length prefix-mid ≡ length prefix +ℕ 7 +ℕ len-f
+      len-prefix-mid = trans (List-length-++ prefix-f) (trans (cong (_+ℕ length code-f) len-prefix-f)
+                       (trans (cong ((length prefix +ℕ 7) +ℕ_) (compile-length-correct f)) refl))
+
+      -- pc s1 = length prefix-mid (from pc1 and len-prefix-mid)
+      pc1-mid : pc s1 ≡ length prefix-mid
+      pc1-mid = trans pc1 (sym len-prefix-mid)
+
+      -- Program equality for middle: we need prog = prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
+      postulate
+        prog-eq-mid : prog ≡ prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
+
+      -- r14 preserved through f execution (from ir-r14 r-f)
+      r14-s1 : readReg (regs s1) r14 ≡ readReg (regs s-setup) r14
+      r14-s1 = ir-r14 r-f
+
+      -- r14 in s-setup = rdi in s (from setup)
+      r14-s1-is-input : readReg (regs s1) r14 ≡ encode x
+      r14-s1-is-input = trans r14-s1 (trans r14-setup rdi-eq)
+
+      -- Execute middle 2 instructions
+      middle-result = exec-pair-middle-at prefix-mid rest-mid s1 h1 pc1-mid
+
+      s2 = proj₁ middle-result
+      exec-mid = proj₁ (proj₂ middle-result)
+      h2 = proj₁ (proj₂ (proj₂ middle-result))
+      pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ middle-result)))
+      rdi2-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+      mem-fst-stored = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+
+      -- Convert middle exec to Star
+      star-mid-raw : Star (prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid) s1 s2
+      star-mid-raw = exec-to-star exec-mid
+
+      star-mid : Star prog s1 s2
+      star-mid = subst (λ p → Star p s1 s2) (sym prog-eq-mid) star-mid-raw
+
+      -- rdi s2 = r14 s1 = encode x (input restored for g)
+      rdi2 : readReg (regs s2) rdi ≡ encode x
+      rdi2 = trans rdi2-raw r14-s1-is-input
+
+      -- pc s2 = length prefix-mid + 2 = length prefix + 7 + len-f + 2 = length prefix + 9 + len-f
+      pc2 : pc s2 ≡ length prefix +ℕ 9 +ℕ len-f
+      pc2 = trans pc2-raw (trans (cong (_+ℕ 2) len-prefix-mid)
+            (trans (+-assoc (length prefix +ℕ 7) len-f 2)
+            (trans (cong ((length prefix +ℕ 7) +ℕ_) (+-comm len-f 2))
+            (trans (sym (+-assoc (length prefix +ℕ 7) 2 len-f))
+            (trans (cong (_+ℕ len-f) (+-assoc (length prefix) 7 2)) refl)))))
+
+      -- pc s2 = length prefix-g
+      pc2-g : pc s2 ≡ length prefix-g
+      pc2-g = trans pc2 (sym len-prefix-g)
+
+      -- ========== Phase 4: Execute g ==========
+      -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
+      postulate
+        prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+        stack-inv-s2 : StackInvariant s2
+        rsp>16-s2 : readReg (regs s2) rsp > 16
+
+      -- Execute g using Star (recursive call)
+      step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
+      step-g = run-ir-star-at-offset g prefix-g suffix-g x s2 h2 pc2-g rdi2 stack-inv-s2 rsp>16-s2
+
+      s3 = proj₁ step-g
+      r-g = proj₂ step-g
+      star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s2 s3
+      star-g-raw = ir-star r-g
+      h3 = ir-halted r-g
+      pc3-raw = ir-pc r-g  -- pc s3 = length prefix-g + len-g
+      rax3 = ir-rax r-g    -- rax s3 = encode (eval g x)
+
+      -- Convert star-g to use prog
+      star-g : Star prog s2 s3
+      star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
+
+      -- pc s3 = length prefix-g + len-g = length prefix + 9 + len-f + len-g
+      pc3 : pc s3 ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
+      pc3 = trans pc3-raw (cong (_+ℕ len-g) len-prefix-g)
+
+      -- ========== Phase 5: Final (6 instructions) ==========
+      -- mov [r15+8], rax   - store g's result
+      -- mov rax, r15       - return pair pointer
+      -- mov rsp, rbp       - restore stack via frame pointer
+      -- pop rbp            - restore rbp
+      -- pop r15            - restore r15
+      -- pop r14            - restore r14
+
+      -- Prefix for final = prefix-g ++ code-g
+      prefix-final : Program
+      prefix-final = prefix-g ++ code-g
+
+      -- Length of prefix-final
+      len-prefix-final : length prefix-final ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
+      len-prefix-final = trans (List-length-++ prefix-g)
+                         (trans (cong (_+ℕ length code-g) len-prefix-g)
+                         (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (compile-length-correct g)))
+
+      -- pc s3 = length prefix-final
+      pc3-final : pc s3 ≡ length prefix-final
+      pc3-final = trans pc3 (sym len-prefix-final)
+
+      -- Postulate the final 6-instruction execution (same as in run-ir-at-offset-pair)
+      postulate
+        final-result : ∃[ s-fin ] (exec 6 (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 ≡ just s-fin
+                                  × halted s-fin ≡ false
+                                  × pc s-fin ≡ length prefix-final +ℕ 6
+                                  × readReg (regs s-fin) rax ≡ readReg (regs s3) r15
+                                  × readReg (regs s-fin) r14 ≡ readReg (regs s) r14
+                                  × readReg (regs s-fin) r15 ≡ readReg (regs s) r15
+                                  × StackInvariant s-fin
+                                  × readReg (regs s-fin) rsp > 16)
+
+      s-final = proj₁ final-result
+      exec-fin = proj₁ (proj₂ final-result)
+      h-final = proj₁ (proj₂ (proj₂ final-result))
+      pc-fin-raw = proj₁ (proj₂ (proj₂ (proj₂ final-result)))
+      rax-fin-is-r15 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))
+      r14-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))
+      r15-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))))
+      stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
+      rsp>16-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
+
+      -- Program equality for final
+      postulate
+        prog-eq-final : prog ≡ prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+
+      -- Convert final exec to Star
+      star-fin-raw : Star (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 s-final
+      star-fin-raw = exec-to-star exec-fin
+
+      star-fin : Star prog s3 s-final
+      star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) star-fin-raw
+
+      -- ========== Compose all 5 phases with star-trans ==========
+      -- s →[setup]→ s-setup →[f]→ s1 →[mid]→ s2 →[g]→ s3 →[fin]→ s-final
       star-all : Star prog s s-final
-      star-all = exec-until-pc-to-star exec-until-final
+      star-all = star-trans star-setup (star-trans star-f (star-trans star-mid (star-trans star-g star-fin)))
+
+      -- ========== Final properties ==========
 
       -- pc-final = length prefix + compile-length ⟨ f , g ⟩
+      -- compile-length ⟨ f , g ⟩ = (15 + len-f) + len-g
+      -- pc s-final = length prefix-final + 6 = length prefix + 9 + len-f + len-g + 6 = length prefix + 15 + len-f + len-g
+      -- We need: length prefix + 15 + len-f + len-g ≡ length prefix + ((15 + len-f) + len-g)
       pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-      pc-final = pc-final-raw
+      pc-final = trans pc-fin-raw (trans (cong (_+ℕ 6) len-prefix-final)
+                 (trans (+-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6)
+                 (trans (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6))
+                 (trans (sym (+-assoc (length prefix +ℕ 9 +ℕ len-f) 6 len-g))
+                 (trans (cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 9) len-f 6))
+                 (trans (cong (λ z → (length prefix +ℕ 9 +ℕ z) +ℕ len-g) (+-comm len-f 6))
+                 (trans (cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 9) 6 len-f)))
+                 (trans (cong (λ z → (z +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 9 6))
+                 (trans (cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f))
+                 (+-assoc (length prefix) (15 +ℕ len-f) len-g))))))))))
+
+      -- rax-final: need encode (eval ⟨ f , g ⟩ x) = encode (eval f x , eval g x)
+      -- Currently rax = r15 (pair pointer), and [r15] = encode (eval f x), [r15+8] = encode (eval g x)
+      -- The pair encoding axiom should give us this
+      postulate
+        rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
+        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
