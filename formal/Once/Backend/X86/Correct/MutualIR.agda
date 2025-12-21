@@ -1790,7 +1790,9 @@ mutual
                              × halted s' ≡ false
                              × pc s' ≡ length prefix-mid +ℕ 2
                              × readReg (regs s') rdi ≡ readReg (regs s-after-f) r14
-                             × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s-after-f) rax))
+                             × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s-after-f) rax)
+                             × readReg (regs s') r15 ≡ readReg (regs s-after-f) r15
+                             × readReg (regs s') rsp ≡ readReg (regs s-after-f) rsp)
       middle-result = exec-pair-middle-at prefix-mid rest-mid s-after-f h-after-f pc-for-mid
 
       -- Extract the state and properties
@@ -1842,7 +1844,7 @@ mutual
       rdi-after-middle = trans rdi-after-middle-raw r14-preserved-f
 
       mem-fst-stored-raw : readMem (memory s-after-middle) (readReg (regs s-after-middle) r15) ≡ just (readReg (regs s-after-f) rax)
-      mem-fst-stored-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+      mem-fst-stored-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
 
       -- Memory: [r15] now contains encode (eval f x)
       mem-fst-stored : readMem (memory s-after-middle) (readReg (regs s-after-middle) r15) ≡ just (encode (eval f x))
@@ -4103,7 +4105,9 @@ mutual
       h2 = proj₁ (proj₂ (proj₂ middle-result))
       pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ middle-result)))
       rdi2-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
-      mem-fst-stored = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
+      mem-fst-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
+      r15-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
+      rsp-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
 
       -- Convert middle exec to Star
       star-mid-raw : Star (prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid) s1 s2
@@ -4160,13 +4164,18 @@ mutual
           ∎
 
       -- StackInvariant and rsp>16 through middle phase
-      -- The middle phase executes: mov [r15], rax ; mov rdi, r14
-      -- Neither instruction modifies rsp or r15, so invariant is preserved
-      -- Would need exec-pair-middle-at extended to export rsp/r15 preservation
-      -- s1 has: ir-stack-inv r-f (StackInvariant s1), ir-rsp-bound r-f (rsp>16 for s1)
-      postulate
-        stack-inv-s2 : StackInvariant s2
-        rsp>16-s2 : readReg (regs s2) rsp > 16
+      -- The middle phase preserves rsp and r15, so invariants are preserved
+      -- r15-mid : readReg (regs s2) r15 ≡ readReg (regs s1) r15
+      -- rsp-mid : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+
+      -- rsp s2 = rsp s1 (from rsp-mid), and rsp s1 > 16 (from ir-rsp-bound r-f)
+      rsp>16-s2 : readReg (regs s2) rsp > 16
+      rsp>16-s2 = subst (_> 16) (sym rsp-mid) (ir-rsp-bound r-f)
+
+      -- StackInvariant s2: r15 and rsp are preserved from s1
+      -- Use the invariant preservation lemma with r15-mid and rsp-mid
+      stack-inv-s2 : StackInvariant s2
+      stack-inv-s2 = stack-inv-preserved-unchanged s1 s2 (ir-stack-inv r-f) (sym r15-mid) (sym rsp-mid)
 
       -- Execute g using Star (recursive call)
       step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)

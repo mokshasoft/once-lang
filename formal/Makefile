@@ -37,6 +37,7 @@ X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
 X86_STAR := Once/Backend/X86/Correct/Star.agda
+X86_STARBASE := Once/Backend/X86/Correct/StarBase.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
@@ -134,6 +135,11 @@ x86-correct:
 x86-star:
 	@echo "Type-checking x86-64 star relation module..."
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_STAR)'
+
+.PHONY: x86-starbase
+x86-starbase:
+	@echo "Type-checking x86-64 star base proofs..."
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_STARBASE)'
 
 .PHONY: x86-encoding
 x86-encoding:

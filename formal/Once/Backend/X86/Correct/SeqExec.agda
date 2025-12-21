@@ -351,8 +351,10 @@ exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 2
          × readReg (regs s') rdi ≡ readReg (regs s) r14
-         × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax))
-exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq
+         × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax)
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp)
+exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq , r15-eq , rsp-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -432,11 +434,18 @@ exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , 
     r15-s1-eq : readReg (regs s1) r15 ≡ readReg (regs s) r15
     r15-s1-eq = refl
 
-    r15-final-eq : readReg (regs s-final) r15 ≡ readReg (regs s) r15
-    r15-final-eq = trans (readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) r14)) r15-s1-eq
+    r15-eq : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+    r15-eq = trans (readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) r14)) r15-s1-eq
+
+    -- rsp is not touched by either instruction
+    rsp-s1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp
+    rsp-s1-eq = refl
+
+    rsp-eq : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
+    rsp-eq = trans (readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) r14)) rsp-s1-eq
 
     mem-eq : readMem (memory s-final) (readReg (regs s-final) r15) ≡ just (readReg (regs s) rax)
-    mem-eq = trans (cong (readMem (memory s-final)) r15-final-eq)
+    mem-eq = trans (cong (readMem (memory s-final)) r15-eq)
                    (readMem-writeMem-same (memory s) (readReg (regs s) r15) (readReg (regs s) rax))
 
 -- NOTE: exec-pair-final-at was removed - it was dead code with an outdated

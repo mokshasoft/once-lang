@@ -24,12 +24,14 @@ open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.InstrExec
+open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; fst-valid; snd-valid)
 
+open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
