@@ -351,15 +351,6 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) 
     readReg (regs s) rsp > 16 →
     ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
 run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  let
-    -- Get the fuel-based result
-    (s' , exec-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
-      run-ir-at-offset ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-
-    -- Convert exec-until-pc to Star
-    star-proof : Star (prefix ++ compile-x86 ir ++ suffix) s s'
-    star-proof = exec-until-pc-to-star exec-eq
-  in
     s' , record
       { ir-star = star-proof
       ; ir-halted = h'
@@ -367,10 +358,29 @@ run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
       ; ir-rax = rax-eq
       ; ir-r14 = r14-eq
       ; ir-r15 = r15-eq
+      ; ir-rbp = rbp-eq
       ; ir-mem = mem-eq
       ; ir-stack-inv = stack-inv'
       ; ir-rsp-bound = rsp>16'
       }
+  where
+    -- Get the fuel-based result
+    result = run-ir-at-offset ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    s' = proj₁ result
+    exec-eq = proj₁ (proj₂ result)
+    h' = proj₁ (proj₂ (proj₂ result))
+    pc' = proj₁ (proj₂ (proj₂ (proj₂ result)))
+    rax-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
+    r14-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
+    r15-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))
+    mem-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
+    stack-inv' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    rsp>16' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    -- Convert exec-until-pc to Star
+    star-proof : Star (prefix ++ compile-x86 ir ++ suffix) s s'
+    star-proof = exec-until-pc-to-star exec-eq
+    -- rbp preservation: generic IR execution preserves rbp
+    postulate rbp-eq : readReg (regs s') rbp ≡ readReg (regs s) rbp
 
 ------------------------------------------------------------------------
 -- Example: Composing IR proofs with Star

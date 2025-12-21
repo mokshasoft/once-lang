@@ -134,6 +134,11 @@ readReg-writeReg-rdi-rax : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rdi v) rax ≡ readReg rf rax
 readReg-writeReg-rdi-rax rf v = refl
 
+-- | Reading rbp after writing rdi returns the old value
+readReg-writeReg-rdi-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rdi v) rbp ≡ readReg rf rbp
+readReg-writeReg-rdi-rbp rf v = refl
+
 -- | Reading r15 after writing rax returns the old value
 readReg-writeReg-rax-r15 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rax v) r15 ≡ readReg rf r15
@@ -143,6 +148,11 @@ readReg-writeReg-rax-r15 rf v = refl
 readReg-writeReg-rax-rdi : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf rax v) rdi ≡ readReg rf rdi
 readReg-writeReg-rax-rdi rf v = refl
+
+-- | Reading rbp after writing rax returns the old value
+readReg-writeReg-rax-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rax v) rbp ≡ readReg rf rbp
+readReg-writeReg-rax-rbp rf v = refl
 
 -- | Reading rbp after writing rsp returns the old value
 readReg-writeReg-rsp-rbp : ∀ (rf : RegFile) (v : Word) →

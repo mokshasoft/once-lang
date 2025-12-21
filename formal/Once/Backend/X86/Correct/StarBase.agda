@@ -45,6 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- | Record type for Star-based IR execution result
 -- Same properties as run-ir-at-offset but with Star instead of exec-until-pc
 -- Added ir-pc for compose chaining (eliminates pc postulates)
+-- Added ir-rbp for frame pointer preservation (needed for pair teardown)
 record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
@@ -54,6 +55,7 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-rax        : readReg (regs s') rax ≡ encode (eval ir x)
     ir-r14        : readReg (regs s') r14 ≡ readReg (regs s) r14
     ir-r15        : readReg (regs s') r15 ≡ readReg (regs s) r15
+    ir-rbp        : readReg (regs s') rbp ≡ readReg (regs s) rbp
     ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     ir-stack-inv  : StackInvariant s'
     ir-rsp-bound  : readReg (regs s') rsp > 16
@@ -83,6 +85,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -109,6 +112,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 =
     ; ir-rax = trans rax-eq' (sym encode-unit)
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) 0
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) 0
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) 0
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) 0)
@@ -136,6 +140,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rax = trans rax-eq' (sym (encode-fix-wrap x))
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -163,6 +168,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rax = trans rax-eq' (sym (encode-fix-unwrap x))
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -190,6 +196,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rax = trans rax-eq' (sym (encode-arr-identity {A} {B} fn))
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -221,6 +228,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -252,6 +260,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -290,6 +299,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
@@ -321,6 +331,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))

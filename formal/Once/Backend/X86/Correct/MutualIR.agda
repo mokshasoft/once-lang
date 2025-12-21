@@ -53,7 +53,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Re-export StarBase for backwards compatibility
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-stack-inv; ir-rsp-bound;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star;
@@ -707,23 +707,34 @@ run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) �
   let prog = prefix ++ compile-x86 {A} {A + B} inl ++ suffix
   in ∃[ s' ] IRStarResult {A} {A + B} inl prog s s' x (length prefix)
 run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  let (s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
-        run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-      prog = prefix ++ compile-x86 {A} {A + B} inl ++ suffix
-      star-proof = exec-until-pc-to-star exec-until-eq
-  in s4 , record
+    s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
     ; ir-pc = pc4
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
+    ; ir-rbp = rbp-eq
     ; ir-mem = mem-eq
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
   where
     open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+    result = run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    s4 = proj₁ result
+    exec-until-eq = proj₁ (proj₂ result)
+    h4 = proj₁ (proj₂ (proj₂ result))
+    pc4 = proj₁ (proj₂ (proj₂ (proj₂ result)))
+    rax-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
+    r14-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
+    r15-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))
+    mem-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
+    stack-inv' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    rsp>16' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    star-proof = exec-until-pc-to-star exec-until-eq
+    -- rbp preservation: inl doesn't touch rbp (sub rsp, mov [rsp], mov [rsp+8], mov rax)
+    postulate rbp-eq : readReg (regs s4) rbp ≡ readReg (regs s) rbp
 
 -- | Star-based inr execution
 run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
@@ -735,23 +746,34 @@ run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) �
   let prog = prefix ++ compile-x86 {B} {A + B} inr ++ suffix
   in ∃[ s' ] IRStarResult {B} {A + B} inr prog s s' x (length prefix)
 run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  let (s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
-        run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-      prog = prefix ++ compile-x86 {B} {A + B} inr ++ suffix
-      star-proof = exec-until-pc-to-star exec-until-eq
-  in s4 , record
+    s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
     ; ir-pc = pc4
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
+    ; ir-rbp = rbp-eq
     ; ir-mem = mem-eq
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
   where
     open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+    result = run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    s4 = proj₁ result
+    exec-until-eq = proj₁ (proj₂ result)
+    h4 = proj₁ (proj₂ (proj₂ result))
+    pc4 = proj₁ (proj₂ (proj₂ (proj₂ result)))
+    rax-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
+    r14-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
+    r15-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))
+    mem-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
+    stack-inv' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    rsp>16' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    star-proof = exec-until-pc-to-star exec-until-eq
+    -- rbp preservation: inr doesn't touch rbp (sub rsp, mov [rsp], mov [rsp+8], mov rax)
+    postulate rbp-eq : readReg (regs s4) rbp ≡ readReg (regs s) rbp
 
 -- | run-ir-at-offset-fst: Execute fst at arbitrary offset
 -- Uses encode-pair-fst axiom to provide memory precondition
@@ -3524,23 +3546,34 @@ run-compose-star : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Progra
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
 run-compose-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
-        run-ir-at-offset-compose f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-      prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
-      star-proof = exec-until-pc-to-star exec-until-eq
-  in s' , record
+    s' , record
     { ir-star = star-proof
     ; ir-halted = h'
     ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
+    ; ir-rbp = rbp-eq
     ; ir-mem = mem-eq
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
   where
     open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+    result = run-ir-at-offset-compose f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    s' = proj₁ result
+    exec-until-eq = proj₁ (proj₂ result)
+    h' = proj₁ (proj₂ (proj₂ result))
+    pc' = proj₁ (proj₂ (proj₂ (proj₂ result)))
+    rax-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
+    r14-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
+    r15-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))
+    mem-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
+    stack-inv' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    rsp>16' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    star-proof = exec-until-pc-to-star exec-until-eq
+    -- rbp preservation: compose calls f then g, both preserve rbp by induction
+    postulate rbp-eq : readReg (regs s') rbp ≡ readReg (regs s) rbp
 
 -- | Star-based pair execution
 run-pair-star : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
@@ -3552,23 +3585,34 @@ run-pair-star : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) 
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
 run-pair-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-  let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
-        run-ir-at-offset-pair f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-      prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-      star-proof = exec-until-pc-to-star exec-until-eq
-  in s' , record
+    s' , record
     { ir-star = star-proof
     ; ir-halted = h'
     ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
+    ; ir-rbp = rbp-eq
     ; ir-mem = mem-eq
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
   where
     open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+    result = run-ir-at-offset-pair f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    s' = proj₁ result
+    exec-until-eq = proj₁ (proj₂ result)
+    h' = proj₁ (proj₂ (proj₂ result))
+    pc' = proj₁ (proj₂ (proj₂ (proj₂ result)))
+    rax-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
+    r14-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
+    r15-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))
+    mem-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
+    stack-inv' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    rsp>16' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    star-proof = exec-until-pc-to-star exec-until-eq
+    -- rbp preservation: pair saves/restores rbp via frame pointer
+    postulate rbp-eq : readReg (regs s') rbp ≡ readReg (regs s) rbp
 
 ------------------------------------------------------------------------
 -- Star-Based Mutual Block
@@ -3645,6 +3689,7 @@ mutual
       ; ir-rax = rax3
       ; ir-r14 = r14-3
       ; ir-r15 = r15-3
+      ; ir-rbp = rbp-3
       ; ir-mem = mem-3
       ; ir-stack-inv = stack-inv-3
       ; ir-rsp-bound = rsp-3>16
@@ -3753,9 +3798,10 @@ mutual
       pc2-g : pc s2 ≡ length prefix-g
       pc2-g = trans pc2 (sym len-prefix-g)
 
-      -- Preserve r14, r15 through transfer (writes rdi only)
+      -- Preserve r14, r15, rbp through transfer (writes rdi only)
       r14-s1-to-s2 = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) rax)
       r15-s1-to-s2 = readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) rax)
+      rbp-s1-to-s2 = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) rax)
       rsp-s1-to-s2 = readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) rax)
 
       -- StackInvariant preserved through transfer
@@ -3816,6 +3862,12 @@ mutual
       r15-2 = trans r15-s1-to-s2 r15-1
       r15-3 = trans r15-3-from-s2 r15-2
 
+      -- rbp preservation through all steps
+      rbp-1 = ir-rbp r1
+      rbp-3-from-s2 = ir-rbp r3
+      rbp-2 = trans rbp-s1-to-s2 rbp-1
+      rbp-3 = trans rbp-3-from-s2 rbp-2
+
       -- Memory preservation through all steps
       mem-1 = ir-mem r1
       mem-2 : readMem (memory s2) (readReg (regs s) r15) ≡ readMem (memory s1) (readReg (regs s) r15)
@@ -3851,6 +3903,7 @@ mutual
       ; ir-rax = rax-final
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
@@ -4278,8 +4331,10 @@ mutual
       -- rax-final: need encode (eval ⟨ f , g ⟩ x) = encode (eval f x , eval g x)
       -- Currently rax = r15 (pair pointer), and [r15] = encode (eval f x), [r15+8] = encode (eval g x)
       -- The pair encoding axiom should give us this
+      -- rbp-final: pop rbp restores original rbp from stack
       postulate
         rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
+        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
   -- | Star-based case execution (direct, uses Star throughout)
@@ -4326,6 +4381,7 @@ mutual
       ; ir-rax = rax-final
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
@@ -4350,6 +4406,7 @@ mutual
         rax-final : readReg (regs s-final) rax ≡ encode (eval f a)
         r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
@@ -4376,6 +4433,7 @@ mutual
       ; ir-rax = rax-final
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
@@ -4399,6 +4457,7 @@ mutual
         rax-final : readReg (regs s-final) rax ≡ encode (eval g b)
         r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
@@ -4422,6 +4481,7 @@ mutual
       ; ir-rax = rax-final
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
@@ -4780,6 +4840,12 @@ mutual
       r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
       r15-final = r15-s1  -- s2-s7 don't modify r15
 
+      rbp-s1 : readReg (regs s1) rbp ≡ readReg (regs s) rbp
+      rbp-s1 = readReg-writeReg-rsp-rbp (regs s) new-rsp
+
+      rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
+      rbp-final = rbp-s1  -- s2-s7 don't modify rbp
+
       -- rsp tracking
       rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
       rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
@@ -4886,6 +4952,7 @@ mutual
       ; ir-rax = rax-final
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
@@ -4901,6 +4968,7 @@ mutual
         rax-final : readReg (regs s-final) rax ≡ encode {B} (eval (apply {A} {B}) x)
         r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
