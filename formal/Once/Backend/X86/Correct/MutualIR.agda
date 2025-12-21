@@ -2937,10 +2937,25 @@ mutual
       h6 = h-false
 
       -- pc s6 = prefix + 5 + 1 + (6 + len-f) = prefix + 12 + len-f
-      -- Arithmetic: (prefix + 5) + 1 + (6 + len-f) = prefix + 12 + len-f
-      -- Postulated for now - tedious but not conceptually deep
-      postulate
-        pc6-correct : pc s6 ≡ length prefix +ℕ 12 +ℕ len-f
+      -- PROVEN: arithmetic chain
+      pc6-correct : pc s6 ≡ length prefix +ℕ 12 +ℕ len-f
+      pc6-correct = begin
+        pc s6
+          ≡⟨ refl ⟩  -- Definition of s6
+        pc s5 +ℕ 1 +ℕ (6 +ℕ len-f)
+          ≡⟨ cong (λ z → z +ℕ 1 +ℕ (6 +ℕ len-f)) pc5 ⟩
+        (length prefix +ℕ 5) +ℕ 1 +ℕ (6 +ℕ len-f)
+          ≡⟨ cong (_+ℕ (6 +ℕ len-f)) (+-assoc (length prefix) 5 1) ⟩
+        (length prefix +ℕ 6) +ℕ (6 +ℕ len-f)
+          ≡⟨ +-assoc (length prefix) 6 (6 +ℕ len-f) ⟩
+        length prefix +ℕ (6 +ℕ (6 +ℕ len-f))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 6 len-f)) ⟩
+        length prefix +ℕ ((6 +ℕ 6) +ℕ len-f)
+          ≡⟨ cong (length prefix +ℕ_) refl ⟩
+        length prefix +ℕ (12 +ℕ len-f)
+          ≡⟨ sym (+-assoc (length prefix) 12 len-f) ⟩
+        length prefix +ℕ 12 +ℕ len-f
+          ∎
 
       step6 : step prog s6 ≡ just s7
       step6 = trans (step-exec prog s6 i6-label h6 (subst (λ p → fetch prog p ≡ just i6-label) (sym pc6-correct) fetch6))
@@ -2950,8 +2965,27 @@ mutual
       h7 = h-false
 
       -- pc s7 = pc s6 + 1 = prefix + 12 + len-f + 1 = prefix + 13 + len-f = prefix + compile-length (curry f)
-      postulate
-        pc7 : pc s7 ≡ length prefix +ℕ compile-length (curry f)
+      -- PROVEN: arithmetic chain + compile-length (curry f) = 13 + len-f
+      pc7 : pc s7 ≡ length prefix +ℕ compile-length (curry f)
+      pc7 = begin
+        pc s7
+          ≡⟨ refl ⟩  -- Definition of s7
+        pc s6 +ℕ 1
+          ≡⟨ cong (_+ℕ 1) pc6-correct ⟩
+        (length prefix +ℕ 12 +ℕ len-f) +ℕ 1
+          ≡⟨ +-assoc (length prefix +ℕ 12) len-f 1 ⟩
+        (length prefix +ℕ 12) +ℕ (len-f +ℕ 1)
+          ≡⟨ cong ((length prefix +ℕ 12) +ℕ_) (+-comm len-f 1) ⟩
+        (length prefix +ℕ 12) +ℕ (1 +ℕ len-f)
+          ≡⟨ sym (+-assoc (length prefix +ℕ 12) 1 len-f) ⟩
+        ((length prefix +ℕ 12) +ℕ 1) +ℕ len-f
+          ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 12 1) ⟩
+        (length prefix +ℕ 13) +ℕ len-f
+          ≡⟨ +-assoc (length prefix) 13 len-f ⟩
+        length prefix +ℕ (13 +ℕ len-f)
+          ≡⟨ refl ⟩  -- compile-length (curry f) = 13 + len-f by definition
+        length prefix +ℕ compile-length (curry f)
+          ∎
 
       -- Chain all 7 steps
       exec-7 : exec 7 prog s ≡ just s7
