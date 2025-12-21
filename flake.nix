@@ -60,17 +60,23 @@
           AGDA_DIR = "${pkgs.agdaPackages.standard-library}/share/agda";
 
           shellHook = ''
-            echo "Once development environment"
-            echo "  ghc:    $(ghc --version)"
-            echo "  stack:  $(stack --version | head -1)"
-            echo "  gcc:    $(gcc --version | head -1)"
-            echo "  agda:   $(agda --version)"
-            echo ""
-            echo "Commands:"
-            echo "  stack build    - Build the compiler"
-            echo "  stack test     - Run tests"
-            echo "  nix build      - Build with Nix"
-            echo "  agda formal/Once/Category/Laws.agda - Type check Agda proofs"
+            # Only print banner in interactive shells (not when running commands)
+            if [ -t 0 ] && [ -z "$ONCE_QUIET" ]; then
+              echo "Once development environment"
+              echo "  ghc:    $(ghc --version)"
+              echo "  stack:  $(stack --version | head -1)"
+              echo "  gcc:    $(gcc --version | head -1)"
+              echo "  agda:   $(agda --version)"
+              echo "Built with flags (cabal -f)"
+              echo " - optimise-heavily: extra optimisations"
+              echo " - debug: enable debug printing ('-v' verbosity flags)"
+              echo ""
+              echo "Commands:"
+              echo "  stack build    - Build the compiler"
+              echo "  stack test     - Run tests"
+              echo "  nix build      - Build with Nix"
+              echo "  agda formal/Once/Category/Laws.agda - Type check Agda proofs"
+            fi
           '';
         };
       }
