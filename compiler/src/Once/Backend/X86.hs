@@ -210,7 +210,7 @@ generateIRNasm ir inputReg outputReg labelCtr = case ir of
     , "    ud2"
     ]
 
-  Curry _ ->
+  Curry _ _ ->
     -- curry: create closure (simplified - not fully implemented)
     [ "    ; curry (closure creation)"
     , "    ; TODO: Full closure implementation"
@@ -409,7 +409,7 @@ generateIRGas ir inputReg outputReg labelCtr = case ir of
     , "    ud2"
     ]
 
-  Curry _ ->
+  Curry _ _ ->
     [ "    # curry (TODO)"
     , "    xorq " <> outputReg <> ", " <> outputReg
     ]

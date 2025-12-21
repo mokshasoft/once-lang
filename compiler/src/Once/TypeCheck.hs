@@ -635,9 +635,11 @@ validateLambdaUsage expr = case expr of
     -- Count usages of x in body
     let usage = countUsage body
     let xUsage = Map.findWithDefault 0 x usage
-    -- Default: lambdas are linear (quantity = One)
-    -- This enforces that lambda-bound variables are used exactly once
-    checkQuantity x One xUsage
+    -- D044: Temporarily default to Omega (unrestricted) for lambda parameters
+    -- This allows patterns like: let a = fst args in let b = snd args in ...
+    -- TODO: Implement proper pair pattern matching or split operation
+    -- to enable linear usage with pair destructuring
+    checkQuantity x Omega xUsage
   ELet x e1 e2 -> do
     -- Check both parts for lambda usage
     validateLambdaUsage e1

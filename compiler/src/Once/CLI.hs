@@ -392,6 +392,10 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'  -- Local variable (let binding or lambda param)
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
+      -- Integer literals: __int_N -> just the number
+      Once.IR.Prim n' _ TInt | "__int_" `T.isPrefixOf` n' ->
+        let numStr = T.drop 6 n'  -- drop "__int_" prefix
+        in "((int64_t)" <> numStr <> ")"
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit s
       -- Recursive type operations (identity at runtime)
@@ -450,7 +454,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       TVar _ -> "void*"
       TUnit -> "void*"
       TVoid -> "void"
-      TInt -> "int"
+      TInt -> "int64_t"
       TFloat -> "double"
       TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
@@ -501,10 +505,12 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     allTypes = map (\(_, t, _, _) -> t) functions ++ map snd primitives
 
     -- Generate type definitions based on what's needed
+    -- Note: OncePair uses intptr_t to hold both pointers and integers on 64-bit systems
     typeDefinitions = T.unlines $ concat
-      [ if any needsPair allTypes then ["typedef struct { void* fst; void* snd; } OncePair;"] else []
-      , if any needsSum allTypes then ["typedef struct { int tag; void* value; } OnceSum;"] else []
-      , if any needsBuffer allTypes then ["typedef struct { const char* data; size_t len; } OnceBuffer;"] else []
+      [ ["#include <stdint.h>"]  -- For intptr_t
+      , if any needsPair allTypes then ["typedef struct { intptr_t fst; intptr_t snd; } OncePair;"] else []
+      , if any needsSum allTypes then ["typedef struct { int tag; intptr_t value; } OnceSum;"] else []
+      , if any needsBuffer allTypes then ["typedef struct { char* data; size_t len; } OnceBuffer;"] else []
       , if any needsString allTypes then ["typedef OnceBuffer OnceString;"] else []
       ]
 
@@ -586,6 +592,10 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'  -- Local variable (let binding or lambda param)
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
+      -- Integer literals: __int_N -> just the number
+      Once.IR.Prim n' _ TInt | "__int_" `T.isPrefixOf` n' ->
+        let numStr = T.drop 6 n'  -- drop "__int_" prefix
+        in "((int64_t)" <> numStr <> ")"
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit alloc s
       Once.IR.Fold _ -> v
@@ -632,7 +642,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TVar _ -> "void*"
       TUnit -> "void*"
       TVoid -> "void"
-      TInt -> "int"
+      TInt -> "int64_t"
       TFloat -> "double"
       TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
@@ -658,10 +668,10 @@ generateLibraryAll functions = (header, source)
       , "/* Type definitions */"
       , "#ifndef ONCE_TYPES_DEFINED"
       , "#define ONCE_TYPES_DEFINED"
-      , "typedef struct { const char* data; size_t len; } OnceString;"
-      , "typedef struct { void* data; size_t len; } OnceBuffer;"
-      , "typedef struct { void* fst; void* snd; } OncePair;"
-      , "typedef struct { int tag; void* value; } OnceSum;"
+      , "typedef struct { char* data; size_t len; } OnceString;"
+      , "typedef struct { char* data; size_t len; } OnceBuffer;"
+      , "typedef struct { intptr_t fst; intptr_t snd; } OncePair;"
+      , "typedef struct { int tag; intptr_t value; } OnceSum;"
       , "#endif"
       , ""
       , "/* Function declarations */"
@@ -675,10 +685,10 @@ generateLibraryAll functions = (header, source)
       , "/* Type definitions */"
       , "#ifndef ONCE_TYPES_DEFINED"
       , "#define ONCE_TYPES_DEFINED"
-      , "typedef struct { const char* data; size_t len; } OnceString;"
-      , "typedef struct { void* data; size_t len; } OnceBuffer;"
-      , "typedef struct { void* fst; void* snd; } OncePair;"
-      , "typedef struct { int tag; void* value; } OnceSum;"
+      , "typedef struct { char* data; size_t len; } OnceString;"
+      , "typedef struct { char* data; size_t len; } OnceBuffer;"
+      , "typedef struct { intptr_t fst; intptr_t snd; } OncePair;"
+      , "typedef struct { int tag; intptr_t value; } OnceSum;"
       , "#endif"
       , ""
       , "/* Function definitions */"
@@ -715,7 +725,7 @@ generateLibraryAll functions = (header, source)
       TVar _ -> "void*"
       TUnit -> "void*"
       TVoid -> "void"
-      TInt -> "int"
+      TInt -> "int64_t"
       TFloat -> "double"
       TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
@@ -747,6 +757,10 @@ generateLibraryAll functions = (header, source)
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'  -- Local variable (let binding or lambda param)
       Once.IR.FunRef n' -> "(void*)once_" <> n'
+      -- Integer literals: __int_N -> just the number
+      Once.IR.Prim n' _ TInt | "__int_" `T.isPrefixOf` n' ->
+        let numStr = T.drop 6 n'  -- drop "__int_" prefix
+        in "((int64_t)" <> numStr <> ")"
       Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> libGenerateStringLit alloc s
       Once.IR.Fold _ -> v

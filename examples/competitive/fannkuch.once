@@ -1,9 +1,13 @@
--- fannkuch.once: Fannkuch-redux benchmark (D040, D042)
+-- fannkuch.once: Fannkuch-redux benchmark (D040, D042, D044)
 --
 -- Benchmarks Game: https://benchmarksgame-team.pages.debian.net/benchmarksgame/
 --
--- Uses typed arrays (D042) and recursion (D040) to implement
--- the algorithm entirely in Once, without benchmark-specific C primitives.
+-- Uses typed arrays (D042) with pure operations (D044) and recursion (D040)
+-- to implement the algorithm entirely in Once.
+--
+-- D044: Array operations are PURE (not wrapped in Eff).
+-- State is threaded through return values.
+-- Only I/O (print) uses effects.
 --
 -- Expected output for n=7:
 --   228
@@ -32,59 +36,195 @@ import I.Linux.File as F
 import D.Array as DA
 
 ------------------------------------------------------------------------
--- Count pancake flips for a permutation
+-- Count pancake flips (pure)
 ------------------------------------------------------------------------
 
--- | Count how many flips needed to sort permutation by flipping
--- Copies perm to work array, then flips until first element is 0
--- Returns the number of flips
---
--- TODO: This needs to be implemented recursively:
--- countFlipsLoop : (Array Int * Array Int * Int) -> Int
--- countFlipsLoop (perm, work, n) =
---   - Copy perm to work
---   - While work[0] != 0: reversePrefix work, work[0]+1; flips++
---   - Return flips
+-- | Count flips loop: flip prefix until first element is 0
+-- Input: (work, flips) where work is the working array
+-- Returns: (work, flips) with final flip count
+countFlipsLoop : Array Int * Int -> Array Int * Int
+countFlipsLoop = \args ->
+  let work = fst args in
+  let flips = snd args in
+  let first = read@A (work, 0) in
+  case ifZero@C first of {
+    Left done -> (work, flips);
+    Right cont ->
+      let first1 = add@AR (first, 1) in
+      let work1 = reversePrefix@DA (work, first1) in
+      let flips1 = add@AR (flips, 1) in
+      countFlipsLoop (work1, flips1)
+  }
+
+-- | Count flips for a permutation (pure)
+-- Input: (perm, (work, n))
+-- Copies perm to work, counts flips
+-- Returns: (work, flips)
+countFlips : Array Int * (Array Int * Int) -> Array Int * Int
+countFlips = \args ->
+  let perm = fst args in
+  let wn = snd args in
+  let work = fst wn in
+  let n = snd wn in
+  -- Copy perm to work
+  let work1 = copyArray@DA (work, (perm, n)) in
+  -- Count flips starting from 0
+  countFlipsLoop (work1, 0)
 
 ------------------------------------------------------------------------
--- Generate next permutation (Heap's algorithm)
+-- Heap's algorithm: generate next permutation (pure)
 ------------------------------------------------------------------------
 
--- | Heap's algorithm for generating permutations
--- Uses count array to track rotation state
--- Returns flag indicating if more permutations remain
---
--- TODO: This needs to be implemented:
--- nextPerm : (Array Int * Array Int * Int) -> (Int * Int)
--- nextPerm (perm, count, n) =
---   - Find first i where count[i] < i
---   - Rotate perm[0..i]
---   - Increment count[i]
---   - If i >= n, return (0, done)
---   - Return (1, not done)
+-- | Heap's algorithm loop
+-- Input: (perm, (count, (i, n)))
+-- Returns: (perm, (count, isDone)) where isDone = 1 if no more perms
+nextPermLoop : Array Int * (Array Int * (Int * Int)) -> Array Int * (Array Int * Int)
+nextPermLoop = \args ->
+  let perm = fst args in
+  let rest1 = snd args in
+  let count = fst rest1 in
+  let in_ = snd rest1 in
+  let i = fst in_ in
+  let n = snd in_ in
+  -- Check if i >= n (done with all permutations)
+  let diff = sub@AR (n, i) in
+  case ifZero@C diff of {
+    Left atEnd ->
+      -- i >= n: no more permutations
+      (perm, (count, 1));
+    Right notAtEnd ->
+      -- Check if count[i] < i
+      let ci = read@A (count, i) in
+      let diff2 = sub@AR (i, ci) in
+      case ifZero@C diff2 of {
+        Left ciGeI ->
+          -- count[i] >= i: reset count[i] to 0 and try next i
+          let i1 = add@AR (i, 1) in
+          let count1 = write@A (count, (i, 0)) in
+          nextPermLoop (perm, (count1, (i1, n)));
+        Right ciLtI ->
+          -- count[i] < i: do the swap
+          -- If i is even, swap perm[0] and perm[i]
+          -- If i is odd, swap perm[count[i]] and perm[i]
+          let iMod2 = mod@AR (i, 2) in
+          let swapIdx = case ifZero@C iMod2 of {
+            Left isEven -> 0;
+            Right isOdd -> ci
+          } in
+          let perm1 = swap@DA (perm, (swapIdx, i)) in
+          let ci1 = add@AR (ci, 1) in
+          let count1 = write@A (count, (i, ci1)) in
+          -- More permutations available (isDone = 0)
+          (perm1, (count1, 0))
+      }
+  }
+
+-- | Generate next permutation (pure)
+-- Input: (perm, (count, n))
+-- Returns: (perm, (count, isDone))
+nextPerm : Array Int * (Array Int * Int) -> Array Int * (Array Int * Int)
+nextPerm = \args ->
+  let perm = fst args in
+  let rest1 = snd args in
+  let count = fst rest1 in
+  let n = snd rest1 in
+  -- Start loop at i = 1
+  nextPermLoop (perm, (count, (1, n)))
 
 ------------------------------------------------------------------------
--- Main iteration loop
+-- Main fannkuch loop (pure array operations)
 ------------------------------------------------------------------------
 
--- | Main fannkuch computation
--- State: (perm, count, work, n, permNum, checksum, maxFlips)
---
--- TODO: This needs to be implemented as a recursive loop:
--- fannkuchLoop : State -> (Int * Int)
--- fannkuchLoop state =
---   - If done, return (checksum, maxFlips)
---   - Count flips for current permutation
---   - Update checksum (alternating +/-)
---   - Update maxFlips
---   - Generate next permutation
---   - Recurse
+-- | State for fannkuch: (perm, (work, (count, (n, (permNum, (checksum, maxFlips))))))
+-- All in one tuple, threaded through
+
+-- | Main iteration: process all permutations (pure)
+-- Input: state = (perm, (work, (count, (n, (permNum, (checksum, maxFlips))))))
+-- Returns: final state
+fannkuchLoop : Array Int * (Array Int * (Array Int * (Int * (Int * (Int * Int)))))
+            -> Array Int * (Array Int * (Array Int * (Int * (Int * (Int * Int)))))
+fannkuchLoop = \state ->
+  let perm = fst state in
+  let rest1 = snd state in
+  let work = fst rest1 in
+  let rest2 = snd rest1 in
+  let count = fst rest2 in
+  let rest3 = snd rest2 in
+  let n = fst rest3 in
+  let rest4 = snd rest3 in
+  let permNum = fst rest4 in
+  let rest5 = snd rest4 in
+  let checksum = fst rest5 in
+  let maxFlips = snd rest5 in
+  -- Count flips for current permutation
+  let flipResult = countFlips (perm, (work, n)) in
+  let work1 = fst flipResult in
+  let flips = snd flipResult in
+  -- Update checksum: + if even permNum, - if odd
+  let permMod2 = mod@AR (permNum, 2) in
+  let delta = case ifZero@C permMod2 of {
+    Left isEven -> flips;
+    Right isOdd -> neg@AR flips
+  } in
+  let checksum1 = add@AR (checksum, delta) in
+  -- Update maxFlips
+  let maxFlips1 = max@AR (maxFlips, flips) in
+  -- Increment permNum
+  let permNum1 = add@AR (permNum, 1) in
+  -- Generate next permutation
+  let nextResult = nextPerm (perm, (count, n)) in
+  let perm1 = fst nextResult in
+  let countDone = snd nextResult in
+  let count1 = fst countDone in
+  let isDone = snd countDone in
+  -- Build updated state
+  let newState = (perm1, (work1, (count1, (n, (permNum1, (checksum1, maxFlips1)))))) in
+  -- Check if done
+  case ifZero@C isDone of {
+    Left notDone -> fannkuchLoop newState;
+    Right done -> newState
+  }
 
 ------------------------------------------------------------------------
 -- Main entry point
 ------------------------------------------------------------------------
 
--- | Parse command line, run algorithm, print result
--- For now, just print a placeholder message
 main : IO Unit
-main = println@F "fannkuch: implementation in progress (D040, D042)"
+main =
+  -- Get n from command line
+  let argc_ = argc@AV () in
+  let checkArgc = lt@AR (argc_, 2) in
+  case ifZero@C checkArgc of {
+    Left hasArg ->
+      -- Parse n
+      let nStr = argv@AV 1 in
+      let n = parseInt@C nStr in
+      -- Allocate arrays
+      let perm = allocIntArray@M n in
+      let work = allocIntArray@M n in
+      let count = allocIntArray@M n in
+      -- Initialize perm to [0, 1, ..., n-1]
+      let perm1 = initRange@DA (perm, n) in
+      -- Initialize count to zeros
+      let count1 = fill@DA (count, (0, n)) in
+      -- Build initial state: (perm, (work, (count, (n, (permNum, (checksum, maxFlips))))))
+      let initState = (perm1, (work, (count1, (n, (0, (0, 0)))))) in
+      -- Run main loop
+      let finalState = fannkuchLoop initState in
+      -- Extract results
+      let finalRest = snd (snd (snd (snd finalState))) in
+      let checksum = fst (snd finalRest) in
+      let maxFlips = snd (snd finalRest) in
+      -- Print results
+      let checksumStr = intToString@C checksum in
+      let maxFlipsStr = intToString@C maxFlips in
+      let nStr2 = intToString@C n in
+      -- Build effect chain: arr lifts pure value, >>> composes effects
+      arr (\_ -> checksumStr) >>> println@F
+        >>> arr (\_ -> "Pfannkuchen(") >>> print@F
+        >>> arr (\_ -> nStr2) >>> print@F
+        >>> arr (\_ -> ") = ") >>> print@F
+        >>> arr (\_ -> maxFlipsStr) >>> println@F;
+    Right noArg ->
+      arr (\_ -> "Usage: fannkuch <n>") >>> println@F
+  }

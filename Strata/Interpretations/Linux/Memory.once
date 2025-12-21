@@ -2,9 +2,27 @@
 -- See docs/design/buffers.md for interface specification
 -- D032: Memory operations are effectful
 
+-- | Low-level buffer allocation (size in bytes)
 primitive alloc : Eff Int Buffer
 primitive free : Eff Buffer Unit
 primitive realloc : Eff (Buffer * Int) Buffer
+
+-- | Typed array allocation (D042)
+-- Size is in number of elements. Erases to alloc(n * sizeof(element)).
+-- Uses primitive families to dispatch based on element type.
+primitive allocArray : Eff Int (Array A)
+  where Int => allocIntArray, Float => allocFloatArray, Byte => alloc
+
+-- Implementation targets for allocArray
+primitive allocIntArray : Eff Int (Array Int)
+primitive allocFloatArray : Eff Int (Array Float)
+
+-- | Free a typed array (erases to free)
+primitive freeArray : Eff (Array A) Unit
+  where Int => freeIntArray, Float => freeFloatArray, Byte => free
+
+primitive freeIntArray : Eff (Array Int) Unit
+primitive freeFloatArray : Eff (Array Float) Unit
 
 -- Helper for heap string allocation (used by @heap annotation)
 primitive heap_string : Eff (Int * Buffer) (String Utf8)

@@ -115,7 +115,7 @@ cTypeName ty = case ty of
   TVar _ -> "void*"
   TUnit -> "void*"  -- Unit represented as NULL
   TVoid -> "void"
-  TInt -> "int"
+  TInt -> "int64_t"
   TFloat -> "double"  -- Double-precision floating point
   TBuffer -> "OnceBuffer"
   TArray _ -> "OnceBuffer"   -- D042: Array erases to Buffer at runtime
@@ -179,6 +179,11 @@ generateExpr ir var = case ir of
   LocalVar n -> n  -- Local variable: just use the name
 
   FunRef n -> "(void*)once_" <> n  -- Function reference (pointer, not call)
+
+  -- Integer literals: __int_N -> just the number
+  Prim n _ TInt | "__int_" `T.isPrefixOf` n ->
+    let numStr = T.drop 6 n  -- drop "__int_" prefix
+    in "((int64_t)" <> numStr <> ")"
 
   Prim n _ _ -> "once_" <> n <> "(" <> var <> ")"
 

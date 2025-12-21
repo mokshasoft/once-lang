@@ -1,74 +1,88 @@
--- | Array operations for indexed data structures (D042)
+-- | Array operations for indexed data structures (D042, D044)
 --
 -- Provides type-safe indexed read/write access to arrays.
 -- Array A is a typed wrapper around Buffer that erases to Buffer at runtime.
+--
+-- D044: Array operations are PURE (not wrapped in Eff).
+-- Arrays are values. Mutation is computation, not I/O.
+-- QTT quantities control whether mutation is in-place (^1) or copy-on-write (^ω).
 --
 -- Generic operations (read, write) are provided as primitive families.
 -- The compiler monomorphizes them to type-specific implementations
 -- (readInt, readFloat, readByte) based on the concrete element type.
 --
--- Note: Current implementation uses byte offsets for compatibility with
--- existing C primitives. Element-indexed access may be added later.
---
--- Reads are pure (no side effects).
--- Writes are effectful (mutate array contents).
+-- Indices are element indices (0, 1, 2, ...) not byte offsets.
+-- Element size is handled by the primitives.
 
 ------------------------------------------------------------------------
--- Generic Array Operations (Primitive Families - D038, D042)
+-- Generic Array Operations (Primitive Families - D038, D044)
 ------------------------------------------------------------------------
 
--- | Read element at byte offset (pure)
+-- | Read element at index (pure)
 -- Generic over element type: resolves to readInt, readFloat, or readByte
 -- based on the return type at the call site.
 primitive read : Array A * Int -> A
   where Int => readInt, Float => readFloat, Byte => readByte
 
--- | Write element at byte offset (effectful)
+-- | Write element at index (pure - returns updated array)
 -- Generic over element type: resolves to writeInt, writeFloat, or writeByte
 -- based on the value type at the call site.
-primitive write : Eff (Array A * Int * A) Unit
+-- Returns the same array (for chaining). QTT determines if in-place or copy.
+primitive write : Array A * Int * A -> Array A
   where Int => writeInt, Float => writeFloat, Byte => writeByte
 
 ------------------------------------------------------------------------
 -- Integer Array Operations (Implementation Targets)
 ------------------------------------------------------------------------
 
--- | Read 64-bit integer at byte offset (pure)
+-- | Read 64-bit integer at element index (pure)
 primitive readInt : Array Int * Int -> Int
 
--- | Write 64-bit integer at byte offset (effectful)
-primitive writeInt : Eff (Array Int * Int * Int) Unit
+-- | Write 64-bit integer at element index (pure, returns array)
+primitive writeInt : Array Int * Int * Int -> Array Int
 
 ------------------------------------------------------------------------
 -- Float Array Operations (Implementation Targets)
 ------------------------------------------------------------------------
 
--- | Read 64-bit float (double) at byte offset (pure)
+-- | Read 64-bit float (double) at element index (pure)
 primitive readFloat : Array Float * Int -> Float
 
--- | Write 64-bit float (double) at byte offset (effectful)
-primitive writeFloat : Eff (Array Float * Int * Float) Unit
+-- | Write 64-bit float (double) at element index (pure, returns array)
+primitive writeFloat : Array Float * Int * Float -> Array Float
 
 ------------------------------------------------------------------------
 -- Byte Operations (Implementation Targets)
 ------------------------------------------------------------------------
 
--- | Read single byte at offset (pure)
+-- | Read single byte at index (pure)
 -- Returns Byte (unsigned 8-bit, 0-255)
 primitive readByte : Array Byte * Int -> Byte
 
--- | Write single byte at offset (effectful)
+-- | Write single byte at index (pure, returns array)
 -- Takes Byte (unsigned 8-bit, 0-255)
-primitive writeByte : Eff (Array Byte * Int * Byte) Unit
+primitive writeByte : Array Byte * Int * Byte -> Array Byte
 
 ------------------------------------------------------------------------
--- Bulk Operations (effectful, work on raw buffers)
+-- Array Info
 ------------------------------------------------------------------------
 
--- | Copy bytes between arrays
+-- | Get array length (in elements, not bytes)
+primitive length : Array A -> Int
+  where Int => lengthInt, Float => lengthFloat, Byte => lengthByte
+
+primitive lengthInt : Array Int -> Int
+primitive lengthFloat : Array Float -> Int
+primitive lengthByte : Array Byte -> Int
+
+------------------------------------------------------------------------
+-- Bulk Operations (pure, work on raw buffers)
+------------------------------------------------------------------------
+
+-- | Copy bytes between arrays (pure, returns destination array)
 -- memcpy (dest, destOffset, src, srcOffset, count)
-primitive memcpy : Eff (Array Byte * Int * Array Byte * Int * Int) Unit
+primitive memcpy : Array Byte * Int * Array Byte * Int * Int -> Array Byte
 
--- | Fill array with byte value
+-- | Fill array with byte value (pure, returns updated array)
 -- memset (array, offset, value, count)
-primitive memset : Eff (Array Byte * Int * Int * Int) Unit
+primitive memset : Array Byte * Int * Int * Int -> Array Byte

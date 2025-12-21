@@ -2669,3 +2669,174 @@ void once_write(OnceBuffer arr, int64_t idx, int64_t val) {
 
 - D038: Primitive Families (monomorphization for generic primitives)
 - D040: Recursive Definitions (enables array algorithms in Once)
+
+---
+
+## D044: Pure Functional Arrays (NOT Effectful)
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+The initial Array implementation (D042) wrapped mutation operations in `Eff`:
+
+```once
+primitive write : Eff (Array A * Int * A) Unit
+```
+
+This follows Haskell's approach where array mutation requires IO/ST monads. However, this conflates "state mutation" with "I/O effects" and adds ceremony without benefit.
+
+### The Haskell Mistake
+
+Haskell treats array mutation as an effect requiring monad wrappers:
+
+```haskell
+writeArray :: MArray a e m => a Int e -> Int -> e -> m ()
+```
+
+But array writes are:
+- **Deterministic** - no external interaction
+- **Local** - only affects this array
+- **Predictable** - same inputs → same outputs
+
+This is NOT I/O. It's just computation.
+
+### Decision
+
+Array operations are **pure functions**, NOT wrapped in `Eff`:
+
+```once
+-- Pure operations (no Eff wrapper!)
+read  : Array A * Int -> A
+write : Array A * Int * A -> Array A
+swap  : Array A * Int * Int -> Array A
+```
+
+**Key insight**: `Eff` is for external world interaction (console, files, network). Array mutation is internal computation.
+
+### QTT Handles Mutation
+
+Quantitative Type Theory determines memory behavior:
+
+| Quantity | Array Behavior |
+|----------|----------------|
+| `^1` (Linear) | In-place mutation |
+| `^ω` (Shared) | Copy-on-write |
+
+The compiler infers quantities automatically. No annotations needed.
+
+### Rationale
+
+1. **Mutation is NOT I/O** - just moving bits in memory
+2. **No ceremony** - pure functions compose naturally
+3. **Same efficiency** - linear arrays update in place
+4. **QTT handles safety** - compiler tracks usage
+5. **Matches C** - direct memory access without wrappers
+
+### Implementation
+
+C code returns the array (same memory) instead of void:
+
+```c
+// Before (effectful)
+void* once_writeInt(OnceBuffer arr, int64_t idx, int64_t val) {
+    ((int64_t*)arr.data)[idx] = val;
+    return (void*)0;  // Unit
+}
+
+// After (pure)
+OnceBuffer once_writeInt(OnceBuffer arr, int64_t idx, int64_t val) {
+    ((int64_t*)arr.data)[idx] = val;
+    return arr;  // Same array, for chaining
+}
+```
+
+### Consequences
+
+- Array operations are pure, not effectful
+- `Eff` reserved for actual I/O
+- QTT linearity determines in-place vs copy
+- Simpler reasoning about array code
+- No monad transformers or lifting needed
+
+### See Also
+
+- D042: Typed Arrays (`Array A`)
+- D003: Quantity Type as Semiring (QTT foundation)
+- [Array Design Document](../design/arrays.md)
+
+---
+
+## D045: Arrow Composition Syntax (>>>)
+
+**Date**: 2025-12-21
+**Status**: Accepted
+
+### Context
+
+D032 introduced `effCompose` for sequencing effectful operations:
+
+```once
+effCompose : Eff B C -> Eff A B -> Eff A C
+```
+
+This is Kleisli composition for the `Eff` arrow. However, the function syntax is verbose:
+
+```once
+effCompose (effCompose (effCompose a b) c) d
+```
+
+The standard mathematical notation for arrow composition is `>>>`.
+
+### Decision
+
+Add `>>>` as infix operator for arrow composition:
+
+```once
+-- Before (verbose)
+effCompose (effCompose a b) c
+
+-- After (readable)
+a >>> b >>> c
+```
+
+### Type
+
+```once
+(>>>) : Eff A B -> Eff B C -> Eff A C
+```
+
+Note: This is `effCompose` with arguments in "pipeline" order (left-to-right flow).
+
+### Implementation
+
+Parser change: Add `>>>` as right-associative infix operator.
+
+```
+a >>> b >>> c   parses as   a >>> (b >>> c)
+```
+
+Desugars to composition with swapped argument order:
+```
+a >>> b   =   compose b a   (in IR)
+```
+
+### Rationale
+
+1. **Standard notation** - matches Haskell's Arrow class
+2. **Readable** - left-to-right data flow
+3. **Composable** - chains naturally
+4. **No new semantics** - just syntax sugar for `effCompose`
+
+### Consequences
+
+- More readable effectful code
+- Familiar to Haskell Arrow users
+- `effCompose` remains available for programmatic use
+- Parser gains new operator
+
+### See Also
+
+- D032: Arrow-Based Effect System
+- [Effects Proposal](../design/effects-proposal.md)

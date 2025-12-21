@@ -1,7 +1,11 @@
--- | Derived array operations (D042)
+-- | Derived array operations (D042, D044)
 --
 -- Higher-level array operations implemented in Once using
 -- the primitives from I.Linux.Array.
+--
+-- D044: All operations are PURE (not wrapped in Eff).
+-- Arrays are values. Write operations return the updated array.
+-- QTT handles in-place vs copy-on-write automatically.
 --
 -- Uses recursion (D040) for iteration patterns.
 
@@ -10,86 +14,161 @@ import I.Linux.Control as C
 import I.Linux.Arith as AR
 
 ------------------------------------------------------------------------
--- Swap operation
+-- Swap operation (pure)
 ------------------------------------------------------------------------
 
 -- | Swap elements at two positions in an array (polymorphic)
--- swap (array, (i, j)) swaps array[i] and array[j]
+-- swap (array, (i, j)) returns array with array[i] and array[j] swapped
 -- Input is nested pair: (Array A * (Int * Int))
 -- Works on any element type via primitive families
-swap : Eff (Array A * (Int * Int)) Unit
+swap : Array A * (Int * Int) -> Array A
 swap = \args ->
-  let array = fst args in
+  let a = fst args in
   let ij = snd args in
   let i = fst ij in
   let j = snd ij in
-  let vi = read@A (array, i) in
-  let vj = read@A (array, j) in
-  let writeIargs = (array, (i, vj)) in
-  let writeJargs = (array, (j, vi)) in
-  effCompose (write@A writeIargs) (write@A writeJargs)
+  let vi = read@A (a, i) in
+  let vj = read@A (a, j) in
+  let a1 = write@A (a, (i, vj)) in
+  write@A (a1, (j, vi))
 
 ------------------------------------------------------------------------
--- Reverse prefix operation
+-- Reverse prefix operation (pure)
 ------------------------------------------------------------------------
 
 -- | Reverse the first k elements of an array (0 to k-1)
 -- Uses recursive approach (D040)
 --
 -- Input: (Array Int * (Int * Int)) = (array, (lo, hi))
--- Internal helper: reversePrefixLoop
-reversePrefixLoop : Eff (Array Int * (Int * Int)) Unit
+-- Returns: updated array with prefix reversed
+reversePrefixLoop : Array Int * (Int * Int) -> Array Int
 reversePrefixLoop = \args ->
-  let array = fst args in
+  let a = fst args in
   let lohi = snd args in
   let lo = fst lohi in
   let hi = snd lohi in
   let diff = sub@AR (hi, lo) in
   case ifZero@C diff of {
-    Left done -> id;
+    Left done -> a;
     Right cont ->
       let lo1 = add@AR (lo, 1) in
       let hi1 = sub@AR (hi, 1) in
-      let swapArgs = (array, (lo, hi1)) in
-      let nextArgs = (array, (lo1, hi1)) in
-      effCompose (swap swapArgs) (reversePrefixLoop nextArgs)
+      let swapArgs = (a, (lo, hi1)) in
+      let a1 = swap swapArgs in
+      let nextArgs = (a1, (lo1, hi1)) in
+      reversePrefixLoop nextArgs
   }
 
--- | Reverse first k elements
--- reversePrefix (array, k) reverses array[0]..array[k-1]
-reversePrefix : Eff (Array Int * Int) Unit
+-- | Reverse first k elements (pure)
+-- reversePrefix (array, k) returns array with array[0]..array[k-1] reversed
+reversePrefix : Array Int * Int -> Array Int
 reversePrefix = \args ->
-  let array = fst args in
+  let a = fst args in
   let k = snd args in
-  let loopArgs = (array, (0, k)) in
+  let loopArgs = (a, (0, k)) in
   reversePrefixLoop loopArgs
 
 ------------------------------------------------------------------------
--- Initialize array with range
+-- Initialize array with range (pure)
 ------------------------------------------------------------------------
 
 -- | Initialize array with values [0, 1, 2, ..., n-1]
 -- Input: (Array Int * (Int * Int)) = (array, (i, n))
-initRangeLoop : Eff (Array Int * (Int * Int)) Unit
+-- Returns: updated array with values written
+initRangeLoop : Array Int * (Int * Int) -> Array Int
 initRangeLoop = \args ->
-  let array = fst args in
+  let a = fst args in
   let in_ = snd args in
   let i = fst in_ in
   let n = snd in_ in
   let diff = sub@AR (n, i) in
   case ifZero@C diff of {
-    Left done -> id;
+    Left done -> a;
     Right cont ->
       let i1 = add@AR (i, 1) in
-      let writeArgs = (array, (i, i)) in
-      let nextArgs = (array, (i1, n)) in
-      effCompose (write@A writeArgs) (initRangeLoop nextArgs)
+      let writeArgs = (a, (i, i)) in
+      let a1 = write@A writeArgs in
+      let nextArgs = (a1, (i1, n)) in
+      initRangeLoop nextArgs
   }
 
--- | Initialize array with range [0..n-1]
-initRange : Eff (Array Int * Int) Unit
+-- | Initialize array with range [0..n-1] (pure)
+-- Returns: updated array
+initRange : Array Int * Int -> Array Int
 initRange = \args ->
-  let array = fst args in
+  let a = fst args in
   let n = snd args in
-  let loopArgs = (array, (0, n)) in
+  let loopArgs = (a, (0, n)) in
   initRangeLoop loopArgs
+
+------------------------------------------------------------------------
+-- Copy array (pure)
+------------------------------------------------------------------------
+
+-- | Copy n integers from src to dest (element by element)
+-- Input: (dest, (src, (i, n)))
+-- Returns: updated dest array
+copyLoop : Array Int * (Array Int * (Int * Int)) -> Array Int
+copyLoop = \args ->
+  let dest = fst args in
+  let rest1 = snd args in
+  let src = fst rest1 in
+  let in_ = snd rest1 in
+  let i = fst in_ in
+  let n = snd in_ in
+  let diff = sub@AR (n, i) in
+  case ifZero@C diff of {
+    Left done -> dest;
+    Right cont ->
+      let v = read@A (src, i) in
+      let i1 = add@AR (i, 1) in
+      let writeArgs = (dest, (i, v)) in
+      let dest1 = write@A writeArgs in
+      let nextArgs = (dest1, (src, (i1, n))) in
+      copyLoop nextArgs
+  }
+
+-- | Copy first n elements from src to dest (pure)
+-- Returns: updated dest array
+copyArray : Array Int * (Array Int * Int) -> Array Int
+copyArray = \args ->
+  let dest = fst args in
+  let rest1 = snd args in
+  let src = fst rest1 in
+  let n = snd rest1 in
+  let loopArgs = (dest, (src, (0, n))) in
+  copyLoop loopArgs
+
+------------------------------------------------------------------------
+-- Fill array with value (pure)
+------------------------------------------------------------------------
+
+-- | Fill array with a value from index i to n-1
+-- Input: (array, (value, (i, n)))
+-- Returns: updated array
+fillLoop : Array Int * (Int * (Int * Int)) -> Array Int
+fillLoop = \args ->
+  let a = fst args in
+  let rest = snd args in
+  let value = fst rest in
+  let in_ = snd rest in
+  let i = fst in_ in
+  let n = snd in_ in
+  let diff = sub@AR (n, i) in
+  case ifZero@C diff of {
+    Left done -> a;
+    Right cont ->
+      let i1 = add@AR (i, 1) in
+      let a1 = write@A (a, (i, value)) in
+      fillLoop (a1, (value, (i1, n)))
+  }
+
+-- | Fill first n elements with value (pure)
+-- Returns: updated array
+fill : Array Int * (Int * Int) -> Array Int
+fill = \args ->
+  let a = fst args in
+  let vn = snd args in
+  let value = fst vn in
+  let n = snd vn in
+  fillLoop (a, (value, (0, n)))

@@ -261,15 +261,26 @@ parseExpr = annotExpr
       e <- composeExpr
       option e (EAnnot e <$> (symbol ":" *> parseType))
 
-    -- Composition with . is right-associative (like Haskell)
+    -- Composition operators are right-associative
     -- f . g . h = f . (g . h)
+    -- a >>> b >>> c = a >>> (b >>> c)
     composeExpr = do
       e <- appExpr
-      option e (do
-        void $ symbol "."
-        e2 <- composeExpr
-        -- Desugar f . g to compose f g
-        pure $ EApp (EApp (EVar "compose") e) e2)
+      option e (composeWith e <|> arrowComposeWith e)
+
+    -- Pure composition: f . g desugars to compose f g
+    composeWith e = do
+      void $ symbol "."
+      e2 <- composeExpr
+      pure $ EApp (EApp (EVar "compose") e) e2
+
+    -- Arrow composition (D045): a >>> b desugars to effCompose b a
+    -- Note: effCompose takes args as (g, f) for g after f
+    -- >>> uses pipeline order (left-to-right) so we swap
+    arrowComposeWith e = do
+      void $ symbol ">>>"
+      e2 <- composeExpr
+      pure $ EApp (EApp (EVar "effCompose") e2) e
 
     -- Application is left-associative
     -- But don't consume identifiers that start a new declaration (name : Type)
