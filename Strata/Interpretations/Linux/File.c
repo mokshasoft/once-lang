@@ -19,8 +19,10 @@
 
 #ifndef ONCE_TYPES_DEFINED
 #define ONCE_TYPES_DEFINED
+/* OnceBuffer is a POINTER to allow storage in intptr_t pairs */
+typedef struct { void* data; size_t len; } OnceBufferData;
+typedef OnceBufferData* OnceBuffer;
 typedef struct { const char* data; size_t len; } OnceString;
-typedef struct { void* data; size_t len; } OnceBuffer;
 typedef struct { intptr_t fst; intptr_t snd; } OncePair;
 typedef struct { int tag; intptr_t value; } OnceSum;
 #endif
@@ -72,11 +74,11 @@ int64_t once_getc(void* x) {
 }
 
 int64_t once_getline(OnceBuffer buf, int64_t maxlen) {
-    if (maxlen <= 0 || buf.data == NULL) {
+    if (maxlen <= 0 || !buf || buf->data == NULL) {
         return -1;
     }
 
-    char* ptr = (char*)buf.data;
+    char* ptr = (char*)buf->data;
     int64_t count = 0;
     int c;
 
@@ -101,6 +103,8 @@ int64_t once_getline(OnceBuffer buf, int64_t maxlen) {
  *========================================================================*/
 
 int64_t once_readfile(OnceString path, OnceBuffer buf, int64_t maxlen) {
+    if (!buf || !buf->data) return -1;
+
     int fd = open(path.data, O_RDONLY);
     if (fd < 0) {
         return -1;
@@ -108,7 +112,7 @@ int64_t once_readfile(OnceString path, OnceBuffer buf, int64_t maxlen) {
 
     ssize_t total = 0;
     ssize_t remaining = (ssize_t)maxlen;
-    char* ptr = (char*)buf.data;
+    char* ptr = (char*)buf->data;
 
     while (remaining > 0) {
         ssize_t n = read(fd, ptr + total, (size_t)remaining);
