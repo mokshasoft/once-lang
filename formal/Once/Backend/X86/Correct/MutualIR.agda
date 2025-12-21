@@ -42,6 +42,13 @@ open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
+-- MemoryValid for postulate-free encoding proofs
+open import Once.Backend.X86.Correct.MemoryValid
+  using (PairAt; pair-at; fst-valid; snd-valid;
+         InlAt; inl-at; InrAt; inr-at;
+         encode-pair-fst-derived; encode-pair-snd-derived;
+         encode-inl-tag-derived; encode-inl-val-derived;
+         encode-inr-tag-derived; encode-inr-val-derived)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -256,6 +263,73 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
       b = proj₂ x
       mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
       mem-eq = encode-pair-snd a b (memory s)
+      (s' , step-eq , h' , pc' , rax-eq') = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h'
+    ; ir-rax = rax-eq'
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-mem = refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
+                       (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
+    ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16
+                       (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
+    }
+
+------------------------------------------------------------------------
+-- POSTULATE-FREE fst/snd using MemoryValid
+--
+-- These versions take a validity precondition (PairAt) instead of
+-- using the postulated encode-pair-fst/snd axioms.
+------------------------------------------------------------------------
+
+-- | Postulate-free fst: uses PairAt validity instead of axiom
+run-fst-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  PairAt a b (encode (a , b)) (memory s) →  -- Validity precondition (PROVEN by allocation)
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+  in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' (a , b)
+run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 =
+  let -- Use DERIVED lemma (proven!) instead of postulate
+      mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
+      mem-eq = fst-valid pair-valid  -- From MemoryValid, not Postulates!
+      (s' , step-eq , h' , pc' , rax-eq') = run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h'
+    ; ir-rax = rax-eq'
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-mem = refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
+                       (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
+    ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16
+                       (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
+    }
+
+-- | Postulate-free snd: uses PairAt validity instead of axiom
+run-snd-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode (a , b) →
+  PairAt a b (encode (a , b)) (memory s) →  -- Validity precondition (PROVEN by allocation)
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+  in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' (a , b)
+run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 =
+  let -- Use DERIVED lemma (proven!) instead of postulate
+      mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
+      mem-eq = snd-valid pair-valid  -- From MemoryValid, not Postulates!
       (s' , step-eq , h' , pc' , rax-eq') = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
       prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
   in s' , record
