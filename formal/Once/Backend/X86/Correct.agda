@@ -94,8 +94,8 @@ open import Once.Backend.X86.Correct.SeqExec public
 -- Level 4: Mutual block for run-ir-at-offset
 open import Once.Backend.X86.Correct.MutualIR public
 
--- Level 5: E2E traces (optional)
-open import Once.Backend.X86.Correct.E2ETrace public
+-- Level 5: E2E traces (optional) - Commented out: uses old exec-chain approach
+-- open import Once.Backend.X86.Correct.E2ETrace public
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
