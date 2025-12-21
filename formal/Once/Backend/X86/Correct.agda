@@ -340,23 +340,9 @@ run-seq-compose-id-id {A} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-
 --
 -- This wrapper converts run-ir-at-offset results to Star relations,
 -- enabling compositional proofs via star-trans instead of fuel arithmetic.
+--
+-- Note: IRStarResult is defined in MutualIR.agda and re-exported from there.
 ------------------------------------------------------------------------
-
--- | Extended result record for Star-based IR execution
--- Captures all the properties that run-ir-at-offset proves
-record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
-                    (s s' : State) (x : ⟦ A ⟧) : Set where
-  field
-    ir-star      : Star prog s s'
-    ir-not-halt  : halted s' ≡ false
-    ir-rax       : readReg (regs s') rax ≡ encode (eval ir x)
-    ir-r14       : readReg (regs s') r14 ≡ readReg (regs s) r14
-    ir-r15       : readReg (regs s') r15 ≡ readReg (regs s) r15
-    ir-mem       : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-    ir-stack-inv : StackInvariant s'
-    ir-rsp>16    : readReg (regs s') rsp > 16
-
-open IRStarResult
 
 -- | Convert run-ir-at-offset result to IRStarResult
 -- This bridges the fuel-based proofs to Star-based composition
@@ -379,13 +365,13 @@ run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   in
     s' , record
       { ir-star = star-proof
-      ; ir-not-halt = h'
+      ; ir-halted = h'
       ; ir-rax = rax-eq
       ; ir-r14 = r14-eq
       ; ir-r15 = r15-eq
       ; ir-mem = mem-eq
       ; ir-stack-inv = stack-inv'
-      ; ir-rsp>16 = rsp>16'
+      ; ir-rsp-bound = rsp>16'
       }
 
 ------------------------------------------------------------------------
