@@ -3670,3 +3670,89 @@ mutual
 -- run-seq-compose is defined after run-generator (which it depends on)
 -- See the definition below run-generator
 
+------------------------------------------------------------------------
+-- Star wrappers for complex IR cases
+-- These call the mutual-block functions and convert to Star
+------------------------------------------------------------------------
+
+-- | Star-based compose execution
+run-compose-star : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+  in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x
+run-compose-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
+        run-ir-at-offset-compose f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+      prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+      star-proof = exec-until-pc-to-star exec-until-eq
+  in s' , record
+    { ir-star = star-proof
+    ; ir-halted = h'
+    ; ir-rax = rax-eq
+    ; ir-r14 = r14-eq
+    ; ir-r15 = r15-eq
+    ; ir-mem = mem-eq
+    ; ir-stack-inv = stack-inv'
+    ; ir-rsp-bound = rsp>16'
+    }
+  where
+    open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+
+-- | Star-based pair execution
+run-pair-star : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+  in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x
+run-pair-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
+        run-ir-at-offset-pair f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+      prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      star-proof = exec-until-pc-to-star exec-until-eq
+  in s' , record
+    { ir-star = star-proof
+    ; ir-halted = h'
+    ; ir-rax = rax-eq
+    ; ir-r14 = r14-eq
+    ; ir-r15 = r15-eq
+    ; ir-mem = mem-eq
+    ; ir-stack-inv = stack-inv'
+    ; ir-rsp-bound = rsp>16'
+    }
+  where
+    open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+
+-- | Star-based case execution
+run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  in ∃[ s' ] IRStarResult [ f , g ] prog s s' x
+run-case-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+  let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
+        run-ir-at-offset-case f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+      prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      star-proof = exec-until-pc-to-star exec-until-eq
+  in s' , record
+    { ir-star = star-proof
+    ; ir-halted = h'
+    ; ir-rax = rax-eq
+    ; ir-r14 = r14-eq
+    ; ir-r15 = r15-eq
+    ; ir-mem = mem-eq
+    ; ir-stack-inv = stack-inv'
+    ; ir-rsp-bound = rsp>16'
+    }
+  where
+    open import Once.Backend.X86.Correct.Star using (exec-until-pc-to-star)
+
