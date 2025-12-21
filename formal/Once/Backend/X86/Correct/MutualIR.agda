@@ -76,11 +76,13 @@ open ≡-Reasoning
 
 -- | Record type for Star-based IR execution result
 -- Same properties as run-ir-at-offset but with Star instead of exec-until-pc
+-- Added ir-pc for compose chaining (eliminates pc postulates)
 record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
-                    (s s' : State) (x : ⟦ A ⟧) : Set where
+                    (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     ir-star       : Star prog s s'
     ir-halted     : halted s' ≡ false
+    ir-pc         : pc s' ≡ offset +ℕ compile-length ir
     ir-rax        : readReg (regs s') rax ≡ encode (eval ir x)
     ir-r14        : readReg (regs s') r14 ≡ readReg (regs s) r14
     ir-r15        : readReg (regs s') r15 ≡ readReg (regs s) r15
@@ -98,13 +100,14 @@ run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A} {A} id ++ suffix
-  in ∃[ s' ] IRStarResult {A} {A} id prog s s' x
+  in ∃[ s' ] IRStarResult {A} {A} id prog s s' x (length prefix)
 run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , step-eq , h' , pc' , rax-eq') = run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 {A} {A} id ++ suffix
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -123,13 +126,14 @@ run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A} {Unit} terminal ++ suffix
-  in ∃[ s' ] IRStarResult {A} {Unit} terminal prog s s' x
+  in ∃[ s' ] IRStarResult {A} {Unit} terminal prog s s' x (length prefix)
 run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 =
   let (s' , step-eq , h' , pc' , rax-eq') = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
       prog = prefix ++ compile-x86 {A} {Unit} terminal ++ suffix
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = trans rax-eq' (sym encode-unit)
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) 0
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) 0
@@ -149,13 +153,14 @@ run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) �
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {F} {Fix F} fold ++ suffix
-  in ∃[ s' ] IRStarResult {F} {Fix F} fold prog s s' x
+  in ∃[ s' ] IRStarResult {F} {Fix F} fold prog s s' x (length prefix)
 run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , step-eq , h' , pc' , rax-eq') = run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 {F} {Fix F} fold ++ suffix
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = trans rax-eq' (sym (encode-fix-wrap x))
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -175,13 +180,14 @@ run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : Sta
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix
-  in ∃[ s' ] IRStarResult {Fix F} {F} unfold prog s s' x
+  in ∃[ s' ] IRStarResult {Fix F} {F} unfold prog s s' x (length prefix)
 run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , step-eq , h' , pc' , rax-eq') = run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = trans rax-eq' (sym (encode-fix-unwrap x))
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -201,13 +207,14 @@ run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : S
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix
-  in ∃[ s' ] IRStarResult {A ⇒ B} {Eff A B} arr prog s s' fn
+  in ∃[ s' ] IRStarResult {A ⇒ B} {Eff A B} arr prog s s' fn (length prefix)
 run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , step-eq , h' , pc' , rax-eq') = run-arr-at-offset {A} {B} prefix suffix fn s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = trans rax-eq' (sym (encode-arr-identity {A} {B} fn))
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -227,7 +234,7 @@ run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : Stat
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
-  in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' x
+  in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' x (length prefix)
 run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let a = proj₁ x
       b = proj₂ x
@@ -238,6 +245,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -257,7 +265,7 @@ run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : Stat
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
-  in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' x
+  in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' x (length prefix)
 run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let a = proj₁ x
       b = proj₂ x
@@ -268,6 +276,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -295,7 +304,7 @@ run-fst-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
-  in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' (a , b)
+  in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' (a , b) (length prefix)
 run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 =
   let -- Use DERIVED lemma (proven!) instead of postulate
       mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
@@ -305,6 +314,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -325,7 +335,7 @@ run-snd-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
-  in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' (a , b)
+  in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' (a , b) (length prefix)
 run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 =
   let -- Use DERIVED lemma (proven!) instead of postulate
       mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
@@ -335,6 +345,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq'
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
@@ -978,7 +989,7 @@ run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) �
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {A} {A + B} inl ++ suffix
-  in ∃[ s' ] IRStarResult {A} {A + B} inl prog s s' x
+  in ∃[ s' ] IRStarResult {A} {A + B} inl prog s s' x (length prefix)
 run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-inl {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -987,6 +998,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   in s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
+    ; ir-pc = pc4
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -1005,7 +1017,7 @@ run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) �
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {B} {A + B} inr ++ suffix
-  in ∃[ s' ] IRStarResult {B} {A + B} inr prog s s' x
+  in ∃[ s' ] IRStarResult {B} {A + B} inr prog s s' x (length prefix)
 run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s4 , exec-until-eq , h4 , pc4 , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-inr {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -1014,6 +1026,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   in s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
+    ; ir-pc = pc4
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -3757,7 +3770,7 @@ run-compose-star : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Progra
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
-  in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x
+  in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
 run-compose-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-compose f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -3766,6 +3779,7 @@ run-compose-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-in
   in s' , record
     { ir-star = star-proof
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -3784,7 +3798,7 @@ run-pair-star : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) 
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-  in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x
+  in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
 run-pair-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-pair f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -3793,6 +3807,7 @@ run-pair-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv r
   in s' , record
     { ir-star = star-proof
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -3811,7 +3826,7 @@ run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) 
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-  in ∃[ s' ] IRStarResult [ f , g ] prog s s' x
+  in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
 run-case-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-case f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -3820,6 +3835,7 @@ run-case-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv r
   in s' , record
     { ir-star = star-proof
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -3838,7 +3854,7 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
-  in ∃[ s' ] IRStarResult (curry f) prog s s' x
+  in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
 run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-curry f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -3847,6 +3863,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
   in s' , record
     { ir-star = star-proof
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -3865,7 +3882,7 @@ run-apply-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧)
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 {(A ⇒ B) * A} {B} apply ++ suffix
-  in ∃[ s' ] IRStarResult apply prog s s' x
+  in ∃[ s' ] IRStarResult apply prog s s' x (length prefix)
 run-apply-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let (s' , exec-until-eq , h' , pc' , rax-eq , r14-eq , r15-eq , mem-eq , stack-inv' , rsp>16') =
         run-ir-at-offset-apply prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
@@ -3874,6 +3891,7 @@ run-apply-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   in s' , record
     { ir-star = star-proof
     ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-rax = rax-eq
     ; ir-r14 = r14-eq
     ; ir-r15 = r15-eq
@@ -3905,7 +3923,7 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     let prog = prefix ++ compile-x86 ir ++ suffix
-    in ∃[ s' ] IRStarResult ir prog s s' x
+    in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
   -- Base cases: delegate to existing Star functions
   run-ir-star-at-offset (id {A}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
@@ -3950,11 +3968,12 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
-    in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x
+    in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
   run-compose-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     s3 , record
       { ir-star = star-all
       ; ir-halted = h3
+      ; ir-pc = pc3
       ; ir-rax = rax3
       ; ir-r14 = r14-3
       ; ir-r15 = r15-3
@@ -4006,7 +4025,7 @@ mutual
 
       -- Step 1: Execute f using Star (recursive call!)
       -- Note: We call run-ir-star-at-offset which returns IRStarResult
-      step-f : ∃[ s1 ] IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x
+      step-f : ∃[ s1 ] IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
       step-f = run-ir-star-at-offset f prefix suffix-f x s h-false pc-eq rdi-eq stack-inv rsp>16
 
       s1 = proj₁ step-f
@@ -4025,11 +4044,11 @@ mutual
       star-f : Star prog s s1
       star-f = subst (λ p → Star p s s1) (sym prog-eq-f) star-f-raw
 
-      -- pc s1 should be length prefix + len-f
-      -- This follows from the structure of run-ir-star-at-offset
-      -- For now, we postulate this connection
-      postulate
-        pc1 : pc s1 ≡ length prefix +ℕ len-f
+      -- pc s1 = length prefix + len-f (from ir-pc r1!)
+      -- ir-pc r1 : pc s1 ≡ length prefix +ℕ compile-length f
+      -- len-f = compile-length f, so this is exactly what we need
+      pc1 : pc s1 ≡ length prefix +ℕ len-f
+      pc1 = ir-pc r1
 
       pc1-transfer : pc s1 ≡ length prefix-transfer
       pc1-transfer = trans pc1 (sym len-prefix-transfer)
@@ -4076,7 +4095,7 @@ mutual
       rsp-2>16 = rsp>16-preserved-unchanged s1 s2 rsp-1>16 rsp-s1-to-s2
 
       -- Step 3: Execute g using Star (recursive call!)
-      step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x)
+      step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
       step-g = run-ir-star-at-offset g prefix-g suffix (eval f x) s2 h2 pc2-g rdi2-enc stack-inv-2 rsp-2>16
 
       s3 = proj₁ step-g
@@ -4102,6 +4121,24 @@ mutual
       -- Final rax: eval (g ∘ f) x = eval g (eval f x)
       rax3 : readReg (regs s3) rax ≡ encode (eval (g ∘ f) x)
       rax3 = rax3-raw  -- eval (g ∘ f) x = eval g (eval f x) by definition
+
+      -- Final pc: length prefix + compile-length (g ∘ f) (from ir-pc r3!)
+      -- ir-pc r3 : pc s3 ≡ length prefix-g + compile-length g
+      -- compile-length (g ∘ f) = compile-length f + 1 + compile-length g = len-f + 1 + len-g
+      pc3 : pc s3 ≡ length prefix +ℕ compile-length (g ∘ f)
+      pc3 = begin
+        pc s3
+          ≡⟨ ir-pc r3 ⟩
+        length prefix-g +ℕ len-g
+          ≡⟨ cong (_+ℕ len-g) len-prefix-g ⟩
+        (length prefix +ℕ len-f +ℕ 1) +ℕ len-g
+          ≡⟨ +-assoc (length prefix +ℕ len-f) 1 len-g ⟩
+        (length prefix +ℕ len-f) +ℕ (1 +ℕ len-g)
+          ≡⟨ +-assoc (length prefix) len-f (1 +ℕ len-g) ⟩
+        length prefix +ℕ (len-f +ℕ (1 +ℕ len-g))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f 1 len-g)) ⟩
+        length prefix +ℕ (len-f +ℕ 1 +ℕ len-g)
+          ∎
 
       -- r14 preservation through all steps
       r14-2 = trans r14-s1-to-s2 r14-1

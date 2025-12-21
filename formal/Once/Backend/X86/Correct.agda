@@ -353,7 +353,7 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) 
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
-    ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x
+    ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
 run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let
     -- Get the fuel-based result
@@ -367,6 +367,7 @@ run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     s' , record
       { ir-star = star-proof
       ; ir-halted = h'
+      ; ir-pc = pc'
       ; ir-rax = rax-eq
       ; ir-r14 = r14-eq
       ; ir-r15 = r15-eq
