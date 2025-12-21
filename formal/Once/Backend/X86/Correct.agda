@@ -30,7 +30,8 @@ open import Once.Backend.X86.Correct.Star
          _◅◅_; ⟨_,_⟩◅_; star-step2; star-step3; star-step4;
          exec-to-star; exec-until-pc-to-star;
          StarResult; star-exec; not-halted; rax-correct;
-         exec-to-star-result; compose-star-results)
+         exec-to-star-result; compose-star-results;
+         star-length; star-to-exec)
 
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
@@ -943,9 +944,116 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
     rax-preserved = rax'
 
+------------------------------------------------------------------------
+-- Star-based offset-to-generator (FEWER POSTULATES!)
+--
+-- This version uses Star to eliminate:
+-- 1. The local exec-n postulate (exec-until-pc to exec conversion)
+-- 2. exec-suc and exec-chain dependencies
+--
+-- Still uses: exec-halted-extend (plumbing, can address in Stage 1.4)
+------------------------------------------------------------------------
+
+offset-to-generator-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval ir x))
+offset-to-generator-star {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
+  s-halted , run-eq , halted-true , rax-preserved
+  where
+    open import Data.List.Properties using (++-identityʳ)
+
+    prog : Program
+    prog = compile-x86 ir
+
+    -- Use run-ir-at-offset with empty prefix and suffix
+    offset-result = run-ir-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
+
+    s' : State
+    s' = proj₁ offset-result
+
+    exec-until-n : exec-until-pc (0 +ℕ compile-length {A} {B} ir) runFuel ([] ++ compile-x86 {A} {B} ir ++ []) s ≡ just s'
+    exec-until-n = proj₁ (proj₂ offset-result)
+
+    h' : halted s' ≡ false
+    h' = proj₁ (proj₂ (proj₂ offset-result))
+
+    pc' : pc s' ≡ compile-length ir
+    pc' = proj₁ (proj₂ (proj₂ (proj₂ offset-result)))
+
+    rax' : readReg (regs s') rax ≡ encode (eval ir x)
+    rax' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ offset-result))))
+
+    -- Program equality: [] ++ compile-x86 ir ++ [] = compile-x86 ir
+    prog-eq : [] ++ compile-x86 ir ++ [] ≡ prog
+    prog-eq = ++-identityʳ prog
+
+    -- STAR-BASED APPROACH (no exec-n postulate needed!)
+    -- Convert exec-until-pc to Star (PROVEN in Star.agda)
+    star-to-s' : Star ([] ++ compile-x86 ir ++ []) s s'
+    star-to-s' = exec-until-pc-to-star exec-until-n
+
+    -- One more step halts (fetch fails at end of program)
+    s-halted : State
+    s-halted = record s' { halted = true }
+
+    -- fetch at pc s' = compile-length ir fails
+    fetch-fail : fetch prog (pc s') ≡ nothing
+    fetch-fail = subst (λ n → fetch prog n ≡ nothing) (sym pc') (fetch-at-end ir)
+
+    step-halt : step prog s' ≡ just s-halted
+    step-halt = step-halts-on-fetch-fail prog s' h' fetch-fail
+
+    -- Convert prog first, then add halt step
+    prog-star-eq : Star ([] ++ compile-x86 ir ++ []) s s' → Star prog s s'
+    prog-star-eq = subst (λ p → Star p s s') prog-eq
+    star-s'-prog : Star prog s s'
+    star-s'-prog = prog-star-eq star-to-s'
+
+    star-halt-step : Star prog s' s-halted
+    star-halt-step = step* h' step-halt refl*
+
+    star-full : Star prog s s-halted
+    star-full = star-trans star-s'-prog star-halt-step
+
+    -- Convert Star to exec (PROVEN in Star.agda)
+    -- This works because s-halted has halted = true
+    halted-true : halted s-halted ≡ true
+    halted-true = refl
+
+    exec-from-star : exec (star-length star-full) prog s ≡ just s-halted
+    exec-from-star = star-to-exec star-full halted-true
+
+    -- Now extend to defaultFuel using exec-halted-extend
+    n-steps : ℕ
+    n-steps = star-length star-full
+
+    remaining : ℕ
+    remaining = defaultFuel ∸ n-steps
+
+    -- Practical size assumption (same as before)
+    postulate
+      n-steps≤fuel : n-steps ≤ defaultFuel
+
+    fuel-eq : n-steps +ℕ remaining ≡ defaultFuel
+    fuel-eq = m+[n∸m]≡n n-steps≤fuel
+
+    run-from-exec : exec defaultFuel prog s ≡ just s-halted
+    run-from-exec = subst (λ k → exec k prog s ≡ just s-halted) fuel-eq
+                          (exec-halted-extend n-steps remaining prog s s-halted exec-from-star halted-true)
+
+    run-eq : run prog s ≡ just s-halted
+    run-eq = run-from-exec
+
+    -- rax is preserved when we just set halted = true
+    rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
+    rax-preserved = rax'
+
 -- Helper: generalized generator correctness (used for compose)
 -- Running compiled code on state with rdi=encode x produces rax=encode (eval ir x)
--- This is now connected to run-ir-at-offset via offset-to-generator
+-- Now uses Star-based version to eliminate postulates
 run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
@@ -955,7 +1063,7 @@ run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
-run-generator = offset-to-generator
+run-generator = offset-to-generator-star
 
 ------------------------------------------------------------------------
 -- Helper: sequential execution of two programs
