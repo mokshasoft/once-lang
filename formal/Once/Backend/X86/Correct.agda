@@ -91,7 +91,7 @@ open import Once.Backend.X86.Correct.ExecLemmas public
 -- Level 3: Sequential execution helpers
 open import Once.Backend.X86.Correct.SeqExec public
 
--- Level 4: Mutual block for run-ir-at-offset
+-- Level 4: Mutual block for run-ir-star-at-offset (Star-based IR execution)
 open import Once.Backend.X86.Correct.MutualIR public
 
 open import Data.Bool using (Bool; true; false)
@@ -150,10 +150,10 @@ open ≡-Reasoning
 --   run-case-inl-id   : [ id , g ] for left injection (8 instructions)
 --   run-case-inr-id   : [ f , id ] for right injection (8 instructions)
 --
--- PROVEN (via run-ir-at-offset mutual block):
+-- PROVEN (via run-ir-star-at-offset mutual block):
 --   run-seq-compose  : Sequential composition - derived from run-generator
 --   run-case-inl/inr : Case analysis - derived from run-generator
---   run-generator    : Main induction theorem - alias to offset-to-generator
+--   run-generator    : Main induction theorem - uses run-ir-star-at-offset
 --
 -- TRUSTED ASSUMPTION (intentionally kept postulated):
 --   run-apply-seq    : Closure application (complex calling convention)
@@ -193,33 +193,27 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 --   - run-*-at-offset functions from ExecLemmas
 
 ------------------------------------------------------------------------
--- run-ir-at-offset: Non-halting execution of IR at arbitrary offset
+-- run-ir-star-at-offset: Star-based non-halting execution of IR
 --
--- This is the key recursive function that enables proving the mutual
--- recursion cluster. It executes IR code at any position in a larger
--- program WITHOUT halting (continues to next instruction).
+-- This is the key recursive function using Star relations for composable
+-- proofs without fuel arithmetic. It executes IR code at any position
+-- in a larger program WITHOUT halting (continues to next instruction).
 --
--- For base cases (id, fst, snd, terminal, fold, unfold, arr):
---   compile-length = 1, execute single step
---
--- For compose (g ∘ f):
---   1. Execute f at offset (recursive call)
---   2. Execute mov rdi, rax at offset + compile-length f
---   3. Execute g at offset + compile-length f + 1 (recursive call)
---   4. Chain using exec-chain
+-- Uses star-trans for composition instead of exec-chain postulates.
+-- Returns IRStarResult with Star proof and all register/memory properties.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 
 -- Complex IR cases (compose, pair, case, curry, apply) are defined
--- in the mutual block below together with run-ir-at-offset
+-- in MutualIR.agda using Star-based proofs (run-*-star-direct).
 
 
 -- NOTE: List manipulation lemmas (compose-prog-eq, compose-transfer-eq, compose-g-eq)
 -- are now imported from Once.Backend.Common.ProgramLemmas
 
 ------------------------------------------------------------------------
--- Mutual block for run-ir-at-offset and complex IR cases
+-- Main entry point: run-ir-star-at-offset from MutualIR.agda
 ------------------------------------------------------------------------
 
 -- Base case: run-seq-compose for id ∘ id
@@ -333,16 +327,15 @@ run-seq-compose-id-id {A} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-
     rax-eq = trans rax-s3 rdi-eq
 
 ------------------------------------------------------------------------
--- run-ir-star: Star-based version of run-ir-at-offset
+-- run-ir-star: Star-based version of IR execution
 --
--- This wrapper converts run-ir-at-offset results to Star relations,
--- enabling compositional proofs via star-trans instead of fuel arithmetic.
+-- Delegates directly to run-ir-star-at-offset which returns IRStarResult.
+-- No postulates needed - all properties are tracked in the Star-based proofs.
 --
 -- Note: IRStarResult is defined in MutualIR.agda and re-exported from there.
 ------------------------------------------------------------------------
 
--- | Convert run-ir-at-offset result to IRStarResult
--- This bridges the fuel-based proofs to Star-based composition
+-- | Star-based IR execution at arbitrary offset
 run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -350,37 +343,7 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) 
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
-run-ir-star {A} {B} ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s' , record
-      { ir-star = star-proof
-      ; ir-halted = h'
-      ; ir-pc = pc'
-      ; ir-rax = rax-eq
-      ; ir-r14 = r14-eq
-      ; ir-r15 = r15-eq
-      ; ir-rbp = rbp-eq
-      ; ir-mem = mem-eq
-      ; ir-stack-inv = stack-inv'
-      ; ir-rsp-bound = rsp>16'
-      }
-  where
-    -- Get the fuel-based result
-    result = run-ir-at-offset ir prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-    s' = proj₁ result
-    exec-eq = proj₁ (proj₂ result)
-    h' = proj₁ (proj₂ (proj₂ result))
-    pc' = proj₁ (proj₂ (proj₂ (proj₂ result)))
-    rax-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
-    r14-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
-    r15-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))
-    mem-eq = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
-    stack-inv' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
-    rsp>16' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
-    -- Convert exec-until-pc to Star
-    star-proof : Star (prefix ++ compile-x86 ir ++ suffix) s s'
-    star-proof = exec-until-pc-to-star exec-eq
-    -- rbp preservation: generic IR execution preserves rbp
-    postulate rbp-eq : readReg (regs s') rbp ≡ readReg (regs s) rbp
+run-ir-star = run-ir-star-at-offset
 
 ------------------------------------------------------------------------
 -- Example: Composing IR proofs with Star
@@ -401,7 +364,7 @@ transfer-star : ∀ (prog : Program) (s : State) →
 transfer-star prog s h-false step-eq = star-single h-false step-eq
 
 -- | Compose two IR computations using Star
--- This is a cleaner version of compose that uses star-trans
+-- Uses run-ir-star-at-offset directly - no postulates needed
 compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -416,20 +379,19 @@ compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 =
   where
     open import Data.List.Properties using (++-identityʳ)
 
-    -- Use the existing run-ir-at-offset result
-    result = run-ir-at-offset (g ∘ f) [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
+    -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
+    result = run-ir-star-at-offset (g ∘ f) [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
     s-final = proj₁ result
-    exec-eq = proj₁ (proj₂ result)
-    h-final = proj₁ (proj₂ (proj₂ result))
-    rax-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
+    r = proj₂ result
+    h-final = ir-halted r
+    rax-final = ir-rax r
 
-    -- Convert exec-until-pc to Star
+    -- Convert program equality
     prog-eq : [] ++ compile-x86 (g ∘ f) ++ [] ≡ compile-x86 (g ∘ f)
     prog-eq = ++-identityʳ (compile-x86 (g ∘ f))
 
     star-proof : Star (compile-x86 (g ∘ f)) s s-final
-    star-proof = subst (λ p → Star p s s-final) prog-eq
-                       (exec-until-pc-to-star exec-eq)
+    star-proof = subst (λ p → Star p s s-final) prog-eq (ir-star r)
 
 -- The key insight: with Star, the compose proof structure becomes:
 --
@@ -443,7 +405,7 @@ compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 =
 -- Just transitivity of the star relation.
 
 -- | Detailed Star-based compose showing the 3-step composition
--- This is the internal structure that replaces exec-chain with star-trans
+-- Uses run-ir-star-at-offset directly - no fuel conversion needed
 run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -456,20 +418,12 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
 run-ir-star-compose-internal {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   let
-    prog : Program
-    prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
-
-    -- Get the fuel-based compose result (reuses existing proof)
-    (s-final , exec-eq , h-final , _ , rax-final , _ , _ , _ , _ , _) =
-      run-ir-at-offset (g ∘ f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
-
-    -- Convert exec-until-pc to Star - this is the key simplification!
-    -- OLD: exec-chain (len-f + 1) len-g prog s s2 s3 exec-f-plus-1 h2 exec-g'
-    -- NEW: exec-until-pc-to-star exec-eq
-    star-compose : Star prog s s-final
-    star-compose = exec-until-pc-to-star exec-eq
+    -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
+    result = run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    s-final = proj₁ result
+    r = proj₂ result
   in
-    s-final , star-compose , h-final , rax-final
+    s-final , ir-star r , ir-halted r , ir-rax r
 
 -- The real benefit: when we need to compose multiple IR terms,
 -- we can now use star-trans directly instead of fuel arithmetic.
@@ -481,18 +435,16 @@ run-ir-star-compose-internal {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi
 ------------------------------------------------------------------------
 -- Full Star-based compose: explicit 3-step composition
 --
--- DISABLED: These example functions have incorrect type annotations
--- (use 'exec' instead of 'exec-until-pc'). They need to be updated
--- to work with run-ir-at-offset's exec-until-pc results.
--- For now, see compose-with-star and pair-star-explicit-v2 above.
+-- DISABLED: These example functions have incorrect type annotations.
+-- For Star-based compose, see compose-with-star above.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- Connecting run-ir-at-offset to run-generator
+-- Connecting run-ir-star-at-offset to run-generator
 ------------------------------------------------------------------------
 
--- Key insight: run-ir-at-offset with empty prefix/suffix gives us:
---   exec (compile-length ir) (compile-x86 ir) s ≡ just s'
+-- Key insight: run-ir-star-at-offset with empty prefix/suffix gives us:
+--   Star (compile-x86 ir) s s' (via IRStarResult.ir-star)
 --   halted s' ≡ false
 --   pc s' ≡ compile-length ir = length (compile-x86 ir)
 --
@@ -574,8 +526,8 @@ postulate
     halted s' ≡ true →
     exec (n +ℕ m) prog s ≡ just s'
 
--- Main bridge: run-ir-at-offset with empty suffix implies run-generator
--- After run-ir-at-offset completes, one more step halts (fetch fails)
+-- Main bridge: run-ir-star-at-offset with empty suffix implies run-generator
+-- After Star execution completes, one more step halts (fetch fails)
 offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 →
@@ -590,166 +542,30 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     prog : Program
     prog = compile-x86 ir
 
-    -- Use run-ir-at-offset with empty prefix and suffix (now returns exec-until-pc)
-    -- Note: length [] = 0, so we use 0 directly to avoid meta issues
-    offset-result : ∃[ s' ] (exec-until-pc (0 +ℕ compile-length {A} {B} ir) runFuel ([] ++ compile-x86 {A} {B} ir ++ []) s ≡ just s'
-                           × halted s' ≡ false × pc s' ≡ 0 +ℕ compile-length {A} {B} ir
-                           × readReg (regs s') rax ≡ encode (eval ir x)
-                           × readReg (regs s') r14 ≡ readReg (regs s) r14
-                           × readReg (regs s') r15 ≡ readReg (regs s) r15
-                           × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-                           × StackInvariant s'
-                           × readReg (regs s') rsp > 16)
-    offset-result = run-ir-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
-
-    s' : State
-    s' = proj₁ offset-result
-
-    exec-until-n : exec-until-pc (0 +ℕ compile-length {A} {B} ir) runFuel ([] ++ compile-x86 {A} {B} ir ++ []) s ≡ just s'
-    exec-until-n = proj₁ (proj₂ offset-result)
-
-    -- Convert exec-until-pc result back to exec result
-    postulate
-      exec-n : exec (compile-length ir) ([] ++ compile-x86 ir ++ []) s ≡ just s'
+    -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
+    result = run-ir-star-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
+    s' = proj₁ result
+    r = proj₂ result
 
     h' : halted s' ≡ false
-    h' = proj₁ (proj₂ (proj₂ offset-result))
+    h' = ir-halted r
 
-    pc'-raw : pc s' ≡ 0 +ℕ compile-length ir
-    pc'-raw = proj₁ (proj₂ (proj₂ (proj₂ offset-result)))
-
-    -- 0 + n = n by definition
     pc' : pc s' ≡ compile-length ir
-    pc' = pc'-raw
+    pc' = ir-pc r
 
     rax' : readReg (regs s') rax ≡ encode (eval ir x)
-    rax' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ offset-result))))
+    rax' = ir-rax r
 
     -- Program equality: [] ++ compile-x86 ir ++ [] = compile-x86 ir
     prog-eq : [] ++ compile-x86 ir ++ [] ≡ prog
     prog-eq = ++-identityʳ prog
 
-    -- exec-n using prog directly
-    exec-n-prog : exec (compile-length ir) prog s ≡ just s'
-    exec-n-prog = subst (λ p → exec (compile-length ir) p s ≡ just s') prog-eq exec-n
+    -- Convert Star to use prog
+    star-raw : Star ([] ++ compile-x86 ir ++ []) s s'
+    star-raw = ir-star r
 
-    -- fetch at pc s' = compile-length ir fails
-    fetch-fail : fetch prog (pc s') ≡ nothing
-    fetch-fail = subst (λ n → fetch prog n ≡ nothing) (sym pc') (fetch-at-end ir)
-
-    -- One more step halts
-    s-halted : State
-    s-halted = record s' { halted = true }
-
-    step-halt : step prog s' ≡ just s-halted
-    step-halt = step-halts-on-fetch-fail prog s' h' fetch-fail
-
-    -- exec (n+1) gives halted state
-    exec-n1 : exec (suc (compile-length ir)) prog s ≡ just s-halted
-    exec-n1 = exec-suc (compile-length ir) prog s s' exec-n-prog h' s-halted step-halt
-
-    -- run = exec defaultFuel
-    -- Use exec-halted-extend: exec n halted → exec (n+m) halted
-    -- We have exec (suc (compile-length ir)) giving halted state
-    -- defaultFuel = 10000, which is much larger than any compile-length
-    --
-    -- exec-halted-extend (suc (compile-length ir)) remaining prog s s-halted exec-n1 halted-true
-    -- where remaining = defaultFuel - suc (compile-length ir)
-    -- gives: exec (suc (compile-length ir) + remaining) prog s = just s-halted
-    -- which is: exec defaultFuel prog s = just s-halted (when n + (defaultFuel - n) = defaultFuel)
-
-    -- The number of steps we've taken
-    n-steps : ℕ
-    n-steps = suc (compile-length ir)
-
-    -- Remaining fuel
-    remaining : ℕ
-    remaining = defaultFuel ∸ n-steps
-
-    -- n-steps + remaining = defaultFuel (when n-steps ≤ defaultFuel)
-    -- This follows from m + (n - m) = n when m ≤ n
-    --
-    -- PRACTICAL SIZE ASSUMPTION:
-    -- This postulate asserts suc (compile-length ir) ≤ 10000.
-    -- True for any practical program but unprovable in general because:
-    --   - IR depth is unbounded (no type-level size constraint)
-    --   - compile-length grows with IR tree size
-    --   - Worst case: pair nesting to depth d gives ~15^d instructions
-    --
-    -- This is analogous to assuming programs fit in memory - a practical
-    -- constraint that all real programs satisfy. Could be eliminated by:
-    --   1. Adding type-level IR size bounds, or
-    --   2. Changing the proof to use exact step counts instead of defaultFuel
-    postulate
-      n-steps≤fuel : n-steps ≤ defaultFuel
-
-    fuel-eq : n-steps +ℕ remaining ≡ defaultFuel
-    fuel-eq = m+[n∸m]≡n n-steps≤fuel
-
-    run-from-exec : exec defaultFuel prog s ≡ just s-halted
-    run-from-exec = subst (λ k → exec k prog s ≡ just s-halted) fuel-eq
-                          (exec-halted-extend n-steps remaining prog s s-halted exec-n1 refl)
-
-    run-eq : run prog s ≡ just s-halted
-    run-eq = run-from-exec
-
-    halted-true : halted s-halted ≡ true
-    halted-true = refl
-
-    -- rax is preserved when we just set halted = true
-    rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
-    rax-preserved = rax'
-
-------------------------------------------------------------------------
--- Star-based offset-to-generator (FEWER POSTULATES!)
---
--- This version uses Star to eliminate:
--- 1. The local exec-n postulate (exec-until-pc to exec conversion)
--- 2. exec-suc and exec-chain dependencies
---
--- Still uses: exec-halted-extend (plumbing, can address in Stage 1.4)
-------------------------------------------------------------------------
-
-offset-to-generator-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
-  StackInvariant s → readReg (regs s) rsp > 16 →
-  ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
-         × halted s' ≡ true
-         × readReg (regs s') rax ≡ encode (eval ir x))
-offset-to-generator-star {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
-  s-halted , run-eq , halted-true , rax-preserved
-  where
-    open import Data.List.Properties using (++-identityʳ)
-
-    prog : Program
-    prog = compile-x86 ir
-
-    -- Use run-ir-at-offset with empty prefix and suffix
-    offset-result = run-ir-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
-
-    s' : State
-    s' = proj₁ offset-result
-
-    exec-until-n : exec-until-pc (0 +ℕ compile-length {A} {B} ir) runFuel ([] ++ compile-x86 {A} {B} ir ++ []) s ≡ just s'
-    exec-until-n = proj₁ (proj₂ offset-result)
-
-    h' : halted s' ≡ false
-    h' = proj₁ (proj₂ (proj₂ offset-result))
-
-    pc' : pc s' ≡ compile-length ir
-    pc' = proj₁ (proj₂ (proj₂ (proj₂ offset-result)))
-
-    rax' : readReg (regs s') rax ≡ encode (eval ir x)
-    rax' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ offset-result))))
-
-    -- Program equality: [] ++ compile-x86 ir ++ [] = compile-x86 ir
-    prog-eq : [] ++ compile-x86 ir ++ [] ≡ prog
-    prog-eq = ++-identityʳ prog
-
-    -- STAR-BASED APPROACH (no exec-n postulate needed!)
-    -- Convert exec-until-pc to Star (PROVEN in Star.agda)
-    star-to-s' : Star ([] ++ compile-x86 ir ++ []) s s'
-    star-to-s' = exec-until-pc-to-star exec-until-n
+    star-prog : Star prog s s'
+    star-prog = subst (λ p → Star p s s') prog-eq star-raw
 
     -- One more step halts (fetch fails at end of program)
     s-halted : State
@@ -762,34 +578,28 @@ offset-to-generator-star {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     step-halt : step prog s' ≡ just s-halted
     step-halt = step-halts-on-fetch-fail prog s' h' fetch-fail
 
-    -- Convert prog first, then add halt step
-    prog-star-eq : Star ([] ++ compile-x86 ir ++ []) s s' → Star prog s s'
-    prog-star-eq = subst (λ p → Star p s s') prog-eq
-    star-s'-prog : Star prog s s'
-    star-s'-prog = prog-star-eq star-to-s'
-
+    -- Extend star with halt step
     star-halt-step : Star prog s' s-halted
     star-halt-step = step* h' step-halt refl*
 
     star-full : Star prog s s-halted
-    star-full = star-trans star-s'-prog star-halt-step
+    star-full = star-trans star-prog star-halt-step
 
-    -- Convert Star to exec (PROVEN in Star.agda)
-    -- This works because s-halted has halted = true
     halted-true : halted s-halted ≡ true
     halted-true = refl
 
+    -- Convert Star to exec
     exec-from-star : exec (star-length star-full) prog s ≡ just s-halted
     exec-from-star = star-to-exec star-full halted-true
 
-    -- Now extend to defaultFuel using exec-halted-extend
+    -- Extend to defaultFuel
     n-steps : ℕ
     n-steps = star-length star-full
 
     remaining : ℕ
     remaining = defaultFuel ∸ n-steps
 
-    -- Practical size assumption (same as before)
+    -- Practical size assumption: program steps fit in defaultFuel
     postulate
       n-steps≤fuel : n-steps ≤ defaultFuel
 
@@ -798,7 +608,7 @@ offset-to-generator-star {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
 
     run-from-exec : exec defaultFuel prog s ≡ just s-halted
     run-from-exec = subst (λ k → exec k prog s ≡ just s-halted) fuel-eq
-                          (exec-halted-extend n-steps remaining prog s s-halted exec-from-star halted-true)
+                          (exec-halted-extend n-steps remaining prog s s-halted exec-from-star refl)
 
     run-eq : run prog s ≡ just s-halted
     run-eq = run-from-exec
@@ -806,6 +616,20 @@ offset-to-generator-star {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     -- rax is preserved when we just set halted = true
     rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
     rax-preserved = rax'
+
+------------------------------------------------------------------------
+-- Star-based offset-to-generator
+--
+-- Now just delegates to offset-to-generator which uses run-ir-star-at-offset.
+------------------------------------------------------------------------
+
+offset-to-generator-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 →
+  ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval ir x))
+offset-to-generator-star = offset-to-generator
 
 -- Helper: generalized generator correctness (used for compose)
 -- Running compiled code on state with rdi=encode x produces rax=encode (eval ir x)
