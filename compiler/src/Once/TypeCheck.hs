@@ -13,6 +13,9 @@ module Once.TypeCheck
   , TypeError (..)
     -- * Utilities
   , convertType
+    -- * Substitutions (for elaboration)
+  , Subst
+  , applySubst
   ) where
 
 import Control.Monad (foldM)
@@ -662,45 +665,49 @@ validateLambdaUsage expr = case expr of
 ------------------------------------------------------------------------
 
 -- | Type check a module with module environment for qualified name resolution
-checkModuleWithEnv :: ModuleEnv -> Module -> Either TypeError ()
+-- Returns a map from function names to their type substitutions
+checkModuleWithEnv :: ModuleEnv -> Module -> Either TypeError (Map Name Subst)
 checkModuleWithEnv modEnv (Module _imports decls) =
-  checkDeclsWithEnv modEnv emptyContext emptyAliasEnv decls
+  checkDeclsWithEnv modEnv emptyContext emptyAliasEnv Map.empty decls
 
 -- | Check declarations with module environment
-checkDeclsWithEnv :: ModuleEnv -> Context -> TypeAliasEnv -> [Decl] -> Either TypeError ()
-checkDeclsWithEnv _ _ _ [] = Right ()
-checkDeclsWithEnv modEnv ctx aliases (d:ds) = case d of
+-- Accumulates substitutions for each function definition
+checkDeclsWithEnv :: ModuleEnv -> Context -> TypeAliasEnv -> Map Name Subst -> [Decl] -> Either TypeError (Map Name Subst)
+checkDeclsWithEnv _ _ _ substs [] = Right substs
+checkDeclsWithEnv modEnv ctx aliases substs (d:ds) = case d of
   TypeSig name sty -> do
     let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx
-    checkDeclsWithEnv modEnv ctx' aliases ds
+    checkDeclsWithEnv modEnv ctx' aliases substs ds
 
   FunDef name _alloc expr -> case lookupVar name ctx of
     Nothing -> Left (UnboundVariable name)
     Just expectedTy -> do
       -- D040: Add function to context for recursive calls
       let ctx' = extendContext name expectedTy ctx
-      _ <- typeCheckWithEnv modEnv aliases ctx' expr expectedTy
+      funSubst <- typeCheckWithEnv modEnv aliases ctx' expr expectedTy
       validateLambdaUsage expr
-      checkDeclsWithEnv modEnv ctx aliases ds
+      -- Record the substitution for this function
+      let substs' = Map.insert name funSubst substs
+      checkDeclsWithEnv modEnv ctx aliases substs' ds
 
   TypeAlias aliasName params body ->
     let aliases' = extendAliasEnv aliasName params body aliases
-    in checkDeclsWithEnv modEnv ctx aliases' ds
+    in checkDeclsWithEnv modEnv ctx aliases' substs ds
 
   Primitive name sty -> do
     let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx
-    checkDeclsWithEnv modEnv ctx' aliases ds
+    checkDeclsWithEnv modEnv ctx' aliases substs ds
 
   -- Primitive family: add to context with polymorphic type (same as Primitive)
   PrimitiveFamily name sty _mappings -> do
     let ty = convertTypeWithAliases aliases sty
     let q = extractQuantity sty
     let ctx' = extendContextQ name ty q ctx
-    checkDeclsWithEnv modEnv ctx' aliases ds
+    checkDeclsWithEnv modEnv ctx' aliases substs ds
 
 -- | Type check an expression with module environment
 typeCheckWithEnv :: ModuleEnv -> TypeAliasEnv -> Context -> Expr -> Type -> Either TypeError Subst

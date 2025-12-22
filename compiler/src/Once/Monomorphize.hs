@@ -2,6 +2,7 @@ module Once.Monomorphize
   ( monomorphize
   , monomorphizeWithFamilies
   , monomorphizeWithContext
+  , applySubstToIR
   , PrimitiveFamilies
   , extractPrimitiveFamilies
   ) where
@@ -13,6 +14,7 @@ import Data.Text (Text)
 import Once.IR (IR (..))
 import Once.Syntax (Decl (..), SType (..), Module (..))
 import Once.Type (Type (..), Name)
+import Once.TypeCheck (Subst, applySubst)
 
 -- | Mapping from primitive family name to its type-to-implementation mappings
 -- For example: "read" -> [(STInt, "readInt"), (STFloat, "readFloat")]
@@ -152,6 +154,7 @@ findMatch mappings inTy outTy = go mappings
     go [] = Nothing
     go ((sty, impl) : rest)
       | matchesType sty outTy = Just impl  -- Match on output type (for read)
+      | matchesType sty (extractArrayElemType inTy) = Just impl  -- Match on array element type (for read/write)
       | matchesType sty (extractValueType inTy) = Just impl  -- Match on value type (for write)
       | otherwise = go rest
 
@@ -166,15 +169,54 @@ matchesType STBuffer TBuffer = True
 matchesType (STVar _) _ = True  -- Type variable matches anything
 matchesType _ _ = False
 
+-- | Extract the array element type from an input type
+-- For read/write: Array A * ... -> extract A from the array
+-- Note: inTy may be the full arrow type, so unwrap first
+extractArrayElemType :: Type -> Type
+extractArrayElemType ty = case ty of
+  -- Full arrow type: unwrap to get domain
+  TArrow domain _ -> extractArrayElemType domain
+  TEff domain _ -> extractArrayElemType domain
+  -- Array A * Int (for read) or Array A * (Int * A) (for write)
+  TProduct (TArray elemTy) _ -> elemTy
+  -- Fallback
+  _ -> TVar "_"
+
 -- | Extract the "value type" from an input type
--- For write operations: Buffer * Int * Value -> extract Value
--- For read operations: Buffer * Int -> extract the index type (fallback)
+-- For write operations: Array A * (Int * A) -> extract A (the value being written)
 extractValueType :: Type -> Type
 extractValueType ty = case ty of
-  -- write : Eff (Buffer * Int * Value) Unit
-  -- The value type is the last element
+  -- write : Array A * (Int * A) -> Array A
+  -- The value type is the second element of the nested pair
   TProduct _ (TProduct _ val) -> val
-  -- Two-element product (like read): return the second element
+  -- Two-element product: return the second element
   TProduct _ b -> b
   -- Fallback
   other -> other
+
+-- | Apply a type substitution to all types in an IR tree
+-- This instantiates type variables with their concrete types
+applySubstToIR :: Subst -> IR -> IR
+applySubstToIR subst ir = case ir of
+  Id ty -> Id (applySubst subst ty)
+  Compose g f -> Compose (go g) (go f)
+  Fst a b -> Fst (applySubst subst a) (applySubst subst b)
+  Snd a b -> Snd (applySubst subst a) (applySubst subst b)
+  Pair f g -> Pair (go f) (go g)
+  Terminal ty -> Terminal (applySubst subst ty)
+  Inl a b -> Inl (applySubst subst a) (applySubst subst b)
+  Inr a b -> Inr (applySubst subst a) (applySubst subst b)
+  Case l r -> Case (go l) (go r)
+  Initial ty -> Initial (applySubst subst ty)
+  Curry varName f -> Curry varName (go f)
+  Apply a b -> Apply (applySubst subst a) (applySubst subst b)
+  Var n -> Var n
+  LocalVar n -> LocalVar n
+  FunRef n -> FunRef n
+  Prim n inTy outTy -> Prim n (applySubst subst inTy) (applySubst subst outTy)
+  StringLit s -> StringLit s
+  Fold ty -> Fold (applySubst subst ty)
+  Unfold ty -> Unfold (applySubst subst ty)
+  Let x e1 e2 -> Let x (go e1) (go e2)
+  where
+    go = applySubstToIR subst

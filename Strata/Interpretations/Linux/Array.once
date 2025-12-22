@@ -1,4 +1,4 @@
--- | Array operations for indexed data structures (D042, D044)
+-- | Array operations for indexed data structures (D042, D044, D046)
 --
 -- Provides type-safe indexed read/write access to arrays.
 -- Array A is a typed wrapper around Buffer that erases to Buffer at runtime.
@@ -7,73 +7,34 @@
 -- Arrays are values. Mutation is computation, not I/O.
 -- QTT quantities control whether mutation is in-place (^1) or copy-on-write (^ω).
 --
--- Generic operations (read, write) are provided as primitive families.
--- The compiler monomorphizes them to type-specific implementations
--- (readInt, readFloat, readByte) based on the concrete element type.
+-- D046: Generic operations (read, write, length) work for any primitive element
+-- type. The compiler generates inline code based on the element type extracted
+-- from TArray. No type-specific primitives needed in interpretation.
 --
 -- Indices are element indices (0, 1, 2, ...) not byte offsets.
--- Element size is handled by the primitives.
+-- Element size is calculated by the compiler from the element type.
 
 ------------------------------------------------------------------------
--- Generic Array Operations (Primitive Families - D038, D044)
+-- Generic Array Operations (D046)
 ------------------------------------------------------------------------
 
--- | Read element at index (pure)
--- Generic over element type: resolves to readInt, readFloat, or readByte
--- based on the return type at the call site.
-primitive read : Array A * Int -> A
-  where Int => readInt, Float => readFloat, Byte => readByte
+-- | Read element at index (pure, UNSAFE - no bounds checking)
+-- Works for any primitive element type (Int, Float, Byte).
+-- Compiler generates inline code based on element type.
+-- Caller must ensure 0 <= index < length.
+primitive unsafeRead : Array A * Int -> A
 
--- | Write element at index (pure - returns updated array)
--- Generic over element type: resolves to writeInt, writeFloat, or writeByte
--- based on the value type at the call site.
+-- | Write element at index (pure, UNSAFE - no bounds checking)
+-- Works for any primitive element type (Int, Float, Byte).
 -- Returns the same array (for chaining). QTT determines if in-place or copy.
-primitive write : Array A * Int * A -> Array A
-  where Int => writeInt, Float => writeFloat, Byte => writeByte
-
-------------------------------------------------------------------------
--- Integer Array Operations (Implementation Targets)
-------------------------------------------------------------------------
-
--- | Read 64-bit integer at element index (pure)
-primitive readInt : Array Int * Int -> Int
-
--- | Write 64-bit integer at element index (pure, returns array)
-primitive writeInt : Array Int * Int * Int -> Array Int
-
-------------------------------------------------------------------------
--- Float Array Operations (Implementation Targets)
-------------------------------------------------------------------------
-
--- | Read 64-bit float (double) at element index (pure)
-primitive readFloat : Array Float * Int -> Float
-
--- | Write 64-bit float (double) at element index (pure, returns array)
-primitive writeFloat : Array Float * Int * Float -> Array Float
-
-------------------------------------------------------------------------
--- Byte Operations (Implementation Targets)
-------------------------------------------------------------------------
-
--- | Read single byte at index (pure)
--- Returns Byte (unsigned 8-bit, 0-255)
-primitive readByte : Array Byte * Int -> Byte
-
--- | Write single byte at index (pure, returns array)
--- Takes Byte (unsigned 8-bit, 0-255)
-primitive writeByte : Array Byte * Int * Byte -> Array Byte
-
-------------------------------------------------------------------------
--- Array Info
-------------------------------------------------------------------------
+-- Signature uses (arr, (idx, val)) for ergonomic calling convention.
+-- Caller must ensure 0 <= index < length.
+primitive unsafeWrite : Array A * (Int * A) -> Array A
 
 -- | Get array length (in elements, not bytes)
+-- Works for any primitive element type (Int, Float, Byte).
+-- Compiler generates inline code: buffer_len / element_size.
 primitive length : Array A -> Int
-  where Int => lengthInt, Float => lengthFloat, Byte => lengthByte
-
-primitive lengthInt : Array Int -> Int
-primitive lengthFloat : Array Float -> Int
-primitive lengthByte : Array Byte -> Int
 
 ------------------------------------------------------------------------
 -- Bulk Operations (pure, work on raw buffers)

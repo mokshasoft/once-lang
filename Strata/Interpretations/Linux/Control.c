@@ -42,9 +42,10 @@ int64_t once_parseInt(OnceString s) {
 
 /* intToString: Convert integer to string */
 OnceString once_intToString(int64_t x) {
-    // Static buffer for simplicity (not thread-safe, but works for benchmarks)
-    static char buf[32];
-    int len = snprintf(buf, sizeof(buf), "%ld", (long)x);
+    // Heap-allocate to avoid static buffer issues with multiple calls
+    char* buf = (char*)malloc(32);
+    if (!buf) abort();
+    int len = snprintf(buf, 32, "%ld", (long)x);
     OnceString result = { buf, (size_t)len };
     return result;
 }

@@ -46,7 +46,7 @@ countFlipsLoop : Array Int * Int -> Array Int * Int
 countFlipsLoop = \args ->
   let work = fst args in
   let flips = snd args in
-  let first = read@A (work, 0) in
+  let first = unsafeRead@A (work, 0) in
   case ifZero@C first of {
     Left done -> (work, flips);
     Right cont ->
@@ -72,10 +72,10 @@ countFlips = \args ->
   countFlipsLoop (work1, 0)
 
 ------------------------------------------------------------------------
--- Heap's algorithm: generate next permutation (pure)
+-- Rotation-based next permutation (pure)
 ------------------------------------------------------------------------
 
--- | Heap's algorithm loop
+-- | Rotation-based permutation generation loop
 -- Input: (perm, (count, (i, n)))
 -- Returns: (perm, (count, isDone)) where isDone = 1 if no more perms
 nextPermLoop : Array Int * (Array Int * (Int * Int)) -> Array Int * (Array Int * Int)
@@ -93,29 +93,24 @@ nextPermLoop = \args ->
       -- i >= n: no more permutations
       (perm, (count, 1));
     Right notAtEnd ->
-      -- Check if count[i] < i
-      let ci = read@A (count, i) in
-      let diff2 = sub@AR (i, ci) in
-      case ifZero@C diff2 of {
-        Left ciGeI ->
-          -- count[i] >= i: reset count[i] to 0 and try next i
+      -- Rotate perm[0..i]: move first element to position i
+      let perm1 = rotate@DA (perm, i) in
+      -- Increment count[i]
+      let ci = unsafeRead@A (count, i) in
+      let ci1 = add@AR (ci, 1) in
+      let count1 = unsafeWrite@A (count, (i, ci1)) in
+      -- Check if count[i] > i (need to reset and try next i)
+      -- lt returns 1 if first < second, 0 otherwise
+      let ciGtI = lt@AR (i, ci1) in
+      case ifZero@C ciGtI of {
+        Left ciLeI ->
+          -- ci1 <= i: we have a new permutation (isDone = 0)
+          (perm1, (count1, 0));
+        Right ciGtITrue ->
+          -- ci1 > i: reset count[i] to 0 and try next i
+          let count2 = unsafeWrite@A (count1, (i, 0)) in
           let i1 = add@AR (i, 1) in
-          let count1 = write@A (count, (i, 0)) in
-          nextPermLoop (perm, (count1, (i1, n)));
-        Right ciLtI ->
-          -- count[i] < i: do the swap
-          -- If i is even, swap perm[0] and perm[i]
-          -- If i is odd, swap perm[count[i]] and perm[i]
-          let iMod2 = mod@AR (i, 2) in
-          let swapIdx = case ifZero@C iMod2 of {
-            Left isEven -> 0;
-            Right isOdd -> ci
-          } in
-          let perm1 = swap@DA (perm, (swapIdx, i)) in
-          let ci1 = add@AR (ci, 1) in
-          let count1 = write@A (count, (i, ci1)) in
-          -- More permutations available (isDone = 0)
-          (perm1, (count1, 0))
+          nextPermLoop (perm1, (count2, (i1, n)))
       }
   }
 
@@ -213,9 +208,10 @@ main =
       let finalState = fannkuchLoop initState in
       -- Extract results
       let finalRest = snd (snd (snd (snd finalState))) in
+      let permNum = fst finalRest in
       let checksum = fst (snd finalRest) in
       let maxFlips = snd (snd finalRest) in
-      -- Print results
+      -- Print results (matching benchmark format)
       let checksumStr = intToString@C checksum in
       let maxFlipsStr = intToString@C maxFlips in
       let nStr2 = intToString@C n in

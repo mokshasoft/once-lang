@@ -1,4 +1,4 @@
--- | Derived array operations (D042, D044)
+-- | Derived array operations (D042, D044, D046)
 --
 -- Higher-level array operations implemented in Once using
 -- the primitives from I.Linux.Array.
@@ -6,6 +6,9 @@
 -- D044: All operations are PURE (not wrapped in Eff).
 -- Arrays are values. Write operations return the updated array.
 -- QTT handles in-place vs copy-on-write automatically.
+--
+-- D046: Uses generic read/write primitives - compiler generates
+-- inline code based on element type.
 --
 -- Uses recursion (D040) for iteration patterns.
 
@@ -17,20 +20,21 @@ import I.Linux.Arith as AR
 -- Swap operation (pure)
 ------------------------------------------------------------------------
 
--- | Swap elements at two positions in an array (polymorphic)
+-- | Swap elements at two positions in an Int array
 -- swap (array, (i, j)) returns array with array[i] and array[j] swapped
--- Input is nested pair: (Array A * (Int * Int))
--- Works on any element type via primitive families
-swap : Array A * (Int * Int) -> Array A
+-- Input is nested pair: (Array Int * (Int * Int))
+-- Note: Currently Int-specific for primitive family monomorphization.
+-- TODO: Add polymorphic version when type specialization is implemented.
+swap : Array Int * (Int * Int) -> Array Int
 swap = \args ->
   let a = fst args in
   let ij = snd args in
   let i = fst ij in
   let j = snd ij in
-  let vi = read@A (a, i) in
-  let vj = read@A (a, j) in
-  let a1 = write@A (a, (i, vj)) in
-  write@A (a1, (j, vi))
+  let vi = unsafeRead@A (a, i) in
+  let vj = unsafeRead@A (a, j) in
+  let a1 = unsafeWrite@A (a, (i, vj)) in
+  unsafeWrite@A (a1, (j, vi))
 
 ------------------------------------------------------------------------
 -- Reverse prefix operation (pure)
@@ -41,6 +45,9 @@ swap = \args ->
 --
 -- Input: (Array Int * (Int * Int)) = (array, (lo, hi))
 -- Returns: updated array with prefix reversed
+--
+-- Note: Stop when diff <= 1 (0 or 1 elements left). We check this by
+-- first checking if diff == 0, then if diff == 1 via (diff - 1) == 0.
 reversePrefixLoop : Array Int * (Int * Int) -> Array Int
 reversePrefixLoop = \args ->
   let a = fst args in
@@ -51,12 +58,18 @@ reversePrefixLoop = \args ->
   case ifZero@C diff of {
     Left done -> a;
     Right cont ->
-      let lo1 = add@AR (lo, 1) in
-      let hi1 = sub@AR (hi, 1) in
-      let swapArgs = (a, (lo, hi1)) in
-      let a1 = swap swapArgs in
-      let nextArgs = (a1, (lo1, hi1)) in
-      reversePrefixLoop nextArgs
+      -- Also check if diff == 1 (one element left, no swap needed)
+      let diffMinus1 = sub@AR (diff, 1) in
+      case ifZero@C diffMinus1 of {
+        Left oneElement -> a;
+        Right moreThanOne ->
+          let lo1 = add@AR (lo, 1) in
+          let hi1 = sub@AR (hi, 1) in
+          let swapArgs = (a, (lo, hi1)) in
+          let a1 = swap swapArgs in
+          let nextArgs = (a1, (lo1, hi1)) in
+          reversePrefixLoop nextArgs
+      }
   }
 
 -- | Reverse first k elements (pure)
@@ -87,7 +100,7 @@ initRangeLoop = \args ->
     Right cont ->
       let i1 = add@AR (i, 1) in
       let writeArgs = (a, (i, i)) in
-      let a1 = write@A writeArgs in
+      let a1 = unsafeWrite@A writeArgs in
       let nextArgs = (a1, (i1, n)) in
       initRangeLoop nextArgs
   }
@@ -120,10 +133,10 @@ copyLoop = \args ->
   case ifZero@C diff of {
     Left done -> dest;
     Right cont ->
-      let v = read@A (src, i) in
+      let v = unsafeRead@A (src, i) in
       let i1 = add@AR (i, 1) in
       let writeArgs = (dest, (i, v)) in
-      let dest1 = write@A writeArgs in
+      let dest1 = unsafeWrite@A writeArgs in
       let nextArgs = (dest1, (src, (i1, n))) in
       copyLoop nextArgs
   }
@@ -159,7 +172,7 @@ fillLoop = \args ->
     Left done -> a;
     Right cont ->
       let i1 = add@AR (i, 1) in
-      let a1 = write@A (a, (i, value)) in
+      let a1 = unsafeWrite@A (a, (i, value)) in
       fillLoop (a1, (value, (i1, n)))
   }
 
@@ -172,3 +185,40 @@ fill = \args ->
   let value = fst vn in
   let n = snd vn in
   fillLoop (a, (value, (0, n)))
+
+------------------------------------------------------------------------
+-- Rotate operation (pure)
+------------------------------------------------------------------------
+
+-- | Rotate elements: move a[0] to a[k], shift a[1..k] left to a[0..k-1]
+-- Input: (array, (first, (i, k))) where first is the saved first element
+-- Shifts a[i+1] to a[i] until i == k
+rotateLoop : Array Int * (Int * (Int * Int)) -> Array Int
+rotateLoop = \args ->
+  let a = fst args in
+  let rest = snd args in
+  let first = fst rest in
+  let ik = snd rest in
+  let i = fst ik in
+  let k = snd ik in
+  let diff = sub@AR (k, i) in
+  case ifZero@C diff of {
+    Left done ->
+      -- i == k, put first at position k
+      unsafeWrite@A (a, (k, first));
+    Right cont ->
+      -- Shift: a[i] = a[i+1]
+      let i1 = add@AR (i, 1) in
+      let val = unsafeRead@A (a, i1) in
+      let a1 = unsafeWrite@A (a, (i, val)) in
+      rotateLoop (a1, (first, (i1, k)))
+  }
+
+-- | Rotate first k+1 elements: a[0] moves to a[k], others shift left
+-- rotate (array, k) where k is the last position
+rotate : Array Int * Int -> Array Int
+rotate = \args ->
+  let a = fst args in
+  let k = snd args in
+  let first = unsafeRead@A (a, 0) in
+  rotateLoop (a, (first, (0, k)))
