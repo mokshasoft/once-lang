@@ -74,6 +74,13 @@ open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module P
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
 
+-- Import extracted case helpers (non-recursive parts)
+open import Once.Backend.X86.Correct.IR.Case
+  using (CaseContext; make-case-context;
+         stack-inv-preserved-mem-rsp;
+         assemble-case-inl-result; assemble-case-inr-result)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseContext)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -973,9 +980,10 @@ mutual
       prog-for-helper : Program
       prog-for-helper = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper
 
-      -- Need to prove prog ≡ prog-for-helper for subst
-      postulate
-        prog-eq-setup : prog ≡ prog-for-helper
+      -- Use CaseContext for program equality
+      ctx = make-case-context f g prefix suffix
+      prog-eq-setup : prog ≡ prog-for-helper
+      prog-eq-setup = CaseContext.prog-eq-inl-setup ctx
 
       -- Extract helper results using record field access
       s-setup-raw = proj₁ helper-result
@@ -988,20 +996,9 @@ mutual
       exec-setup-converted : exec 4 prog s ≡ just s-setup-raw
       exec-setup-converted = subst (λ p → exec 4 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
 
-      -- StackInvariant is preserved by the 4 setup instructions
-      -- (they only modify r15 and rdi, not memory or rsp)
+      -- StackInvariant preserved: memory and rsp unchanged
       stack-inv-derived : StackInvariant s-setup-raw
-      stack-inv-derived = stack-inv-from-mem-rsp-preserved
-                            (memory s) (readReg (regs s) rsp)
-                            mem-setup-raw rsp-setup-raw stack-inv
-        where
-          postulate
-            stack-inv-from-mem-rsp-preserved :
-              ∀ (m-orig : Word → Maybe Word) (rsp-orig : Word) →
-              memory s-setup-raw ≡ m-orig →
-              readReg (regs s-setup-raw) rsp ≡ rsp-orig →
-              StackInvariant s →
-              StackInvariant s-setup-raw
+      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv
 
       -- Derive rsp>16 from preserved rsp
       rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
@@ -1046,13 +1043,9 @@ mutual
       pc-setup-f : pc s-setup ≡ length prefix-f
       pc-setup-f = trans pc-setup (sym len-prefix-f)
 
-      -- Program equality for f: prog = prefix-f ++ code-f ++ suffix-f
-      -- compile-x86 [ f , g ] = setup ++ code-f ++ mid ++ code-g ++ [end]
-      -- where setup = [load-tag, cmp, jne, load-val]
-      --       mid = [jmp, label, load-val]
-      --       end = label end-label
-      postulate
-        prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      -- Program equality for f from CaseContext
+      prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      prog-eq-f = CaseContext.prog-eq-f ctx
 
       -- Recursive call to f
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
@@ -1233,8 +1226,10 @@ mutual
       prog-for-helper : Program
       prog-for-helper = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper
 
-      postulate
-        prog-eq-setup : prog ≡ prog-for-helper
+      -- Use CaseContext for program equality
+      ctx = make-case-context f g prefix suffix
+      prog-eq-setup : prog ≡ prog-for-helper
+      prog-eq-setup = CaseContext.prog-eq-inr-setup ctx
 
       -- Extract helper results using record field access
       s-setup-raw = proj₁ helper-result
@@ -1254,19 +1249,9 @@ mutual
                        (trans (sym (+-assoc (length prefix +ℕ 3) 2 len-f))
                               (cong (_+ℕ len-f) (+-assoc (length prefix) 3 2)))
 
-      -- StackInvariant preserved (memory and rsp unchanged)
+      -- StackInvariant preserved: memory and rsp unchanged
       stack-inv-derived : StackInvariant s-setup-raw
-      stack-inv-derived = stack-inv-from-mem-rsp-preserved
-                            (memory s) (readReg (regs s) rsp)
-                            mem-setup-raw rsp-setup-raw stack-inv
-        where
-          postulate
-            stack-inv-from-mem-rsp-preserved :
-              ∀ (m-orig : Word → Maybe Word) (rsp-orig : Word) →
-              memory s-setup-raw ≡ m-orig →
-              readReg (regs s-setup-raw) rsp ≡ rsp-orig →
-              StackInvariant s →
-              StackInvariant s-setup-raw
+      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv
 
       -- rsp>16 preserved
       rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
@@ -1377,9 +1362,9 @@ mutual
       pc-right-g : pc s-right ≡ length prefix-g
       pc-right-g = trans pc-right (sym len-prefix-g)
 
-      -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
-      postulate
-        prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+      -- Program equality for g from CaseContext
+      prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+      prog-eq-g = CaseContext.prog-eq-g ctx
 
       -- Recursive call to g
       step-g : ∃[ s1 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
