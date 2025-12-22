@@ -1,4 +1,0 @@
-origin/recusive branch had a lot of proofs
- - is there something we can use on main?
- - Is there some lessons learned from recursive?
- - Is there some lessons learned from latest main?
