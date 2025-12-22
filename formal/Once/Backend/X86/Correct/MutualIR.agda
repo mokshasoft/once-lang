@@ -4146,6 +4146,14 @@ mutual
       r14-s1 : readReg (regs s1) r14 ≡ readReg (regs s-setup) r14
       r14-s1 = ir-r14 r-f
 
+      -- r15 preserved through f execution (from ir-r15 r-f)
+      r15-s1 : readReg (regs s1) r15 ≡ readReg (regs s-setup) r15
+      r15-s1 = ir-r15 r-f
+
+      -- rbp preserved through f execution (from ir-rbp r-f)
+      rbp-s1 : readReg (regs s1) rbp ≡ readReg (regs s-setup) rbp
+      rbp-s1 = ir-rbp r-f
+
       -- r14 in s-setup = rdi in s (from setup)
       r14-s1-is-input : readReg (regs s1) r14 ≡ encode x
       r14-s1-is-input = trans r14-s1 (trans r14-setup rdi-eq)
@@ -4161,6 +4169,11 @@ mutual
       mem-fst-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
       r15-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
       rsp-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
+
+      -- rbp preserved through middle: mov [r15], rax doesn't touch rbp, mov rdi, r14 doesn't touch rbp
+      -- The first instruction only changes memory, the second writes to rdi (not rbp)
+      rbp-mid : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+      rbp-mid = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
 
       -- Convert middle exec to Star
       star-mid-raw : Star (prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid) s1 s2
@@ -4250,6 +4263,34 @@ mutual
       pc3 : pc s3 ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
       pc3 = trans pc3-raw (cong (_+ℕ len-g) len-prefix-g)
 
+      -- rbp preserved through g (from ir-rbp r-g)
+      rbp-s3 : readReg (regs s3) rbp ≡ readReg (regs s2) rbp
+      rbp-s3 = ir-rbp r-g
+
+      -- Full rbp chain: rbp s3 = rbp s-setup = orig-rsp - 24
+      rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
+      rbp-chain = trans rbp-s3 (trans rbp-mid (trans rbp-s1 rbp-setup))
+
+      -- r15 preserved through g (from ir-r15 r-g)
+      r15-s3 : readReg (regs s3) r15 ≡ readReg (regs s2) r15
+      r15-s3 = ir-r15 r-g
+
+      -- Full r15 chain: r15 s3 = r15 s-setup = pair pointer
+      r15-chain : readReg (regs s3) r15 ≡ readReg (regs s-setup) r15
+      r15-chain = trans r15-s3 (trans r15-mid r15-s1)
+
+      -- Memory at r15 contains fst (encode (eval f x)) after g executes
+      -- Proof: mem-fst-stored + ir-mem r-g
+      -- mem-fst-stored : readMem (memory s2) (r15 s2) = just (rax s1)
+      -- ir-mem r-g : readMem (memory s3) (r15 s2) = readMem (memory s2) (r15 s2)
+      mem-fst-s3 : readMem (memory s3) (readReg (regs s3) r15) ≡ just (encode (eval f x))
+      mem-fst-s3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s3) (readReg (regs s2) r15))
+                                (sym r15-s3) refl)
+                         (trans (ir-mem r-g)
+                         (trans (subst (λ addr → readMem (memory s2) addr ≡ readMem (memory s2) (readReg (regs s1) r15))
+                                       (sym r15-mid) refl)
+                         (trans mem-fst-stored (cong just rax1))))
+
       -- ========== Phase 5: Final (6 instructions) ==========
       -- mov [r15+8], rax   - store g's result
       -- mov rax, r15       - return pair pointer
@@ -4273,6 +4314,7 @@ mutual
       pc3-final = trans pc3 (sym len-prefix-final)
 
       -- Postulate the final 6-instruction execution (same as in run-ir-at-offset-pair)
+      -- Extended with memory properties for encode-pair-construct
       postulate
         final-result : ∃[ s-fin ] (exec 6 (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 ≡ just s-fin
                                   × halted s-fin ≡ false
@@ -4281,7 +4323,11 @@ mutual
                                   × readReg (regs s-fin) r14 ≡ readReg (regs s) r14
                                   × readReg (regs s-fin) r15 ≡ readReg (regs s) r15
                                   × StackInvariant s-fin
-                                  × readReg (regs s-fin) rsp > 16)
+                                  × readReg (regs s-fin) rsp > 16
+                                  -- Memory at r15 (fst) is preserved (not written by teardown)
+                                  × readMem (memory s-fin) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15)
+                                  -- Memory at r15+8 (snd) has g's result (first instruction stores it)
+                                  × readMem (memory s-fin) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax))
 
       s-final = proj₁ final-result
       exec-fin = proj₁ (proj₂ final-result)
@@ -4291,7 +4337,9 @@ mutual
       r14-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))
       r15-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))))
       stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
-      rsp>16-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
+      rsp>16-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))))))
+      mem-fst-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))))
+      mem-snd-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))))
 
       -- Program equality for final: prog = prefix-final ++ suffix-g
       -- PROVEN from prog-eq-g using ++-assoc
@@ -4328,12 +4376,33 @@ mutual
                  (trans (cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f))
                  (+-assoc (length prefix) (15 +ℕ len-f) len-g))))))))))
 
-      -- rax-final: need encode (eval ⟨ f , g ⟩ x) = encode (eval f x , eval g x)
-      -- Currently rax = r15 (pair pointer), and [r15] = encode (eval f x), [r15+8] = encode (eval g x)
-      -- The pair encoding axiom should give us this
-      -- rbp-final: pop rbp restores original rbp from stack
+      -- rax-final: PROVEN using encode-pair-construct
+      -- Step 1: rax s-final = r15 s3 (from rax-fin-is-r15)
+      -- Step 2: memory at r15 s3 in s-final = encode (eval f x)
+      -- Step 3: memory at r15 s3 + 8 in s-final = encode (eval g x)
+      -- Step 4: encode-pair-construct gives r15 s3 = encode (eval f x, eval g x)
+
+      -- Memory at r15 in s-final = encode (eval f x)
+      mem-fst-s-final : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (encode (eval f x))
+      mem-fst-s-final = trans mem-fst-final mem-fst-s3
+
+      -- Memory at r15+8 in s-final = encode (eval g x) (from store + rax3)
+      -- mem-snd-final : readMem (memory s-final) (r15 s3 + 8) = just (rax s3)
+      -- rax3 (ir-rax r-g) : rax s3 = encode (eval g x)
+      mem-snd-s-final : readMem (memory s-final) (readReg (regs s3) r15 +ℕ 8) ≡ just (encode (eval g x))
+      mem-snd-s-final = trans mem-snd-final (cong just rax3)
+
+      -- Apply encode-pair-construct: r15 s3 = encode (eval f x, eval g x)
+      r15-is-pair-enc : readReg (regs s3) r15 ≡ encode {A * B} (eval f x , eval g x)
+      r15-is-pair-enc = encode-pair-construct (eval f x) (eval g x) (readReg (regs s3) r15) (memory s-final)
+                        mem-fst-s-final mem-snd-s-final
+
+      -- Final: rax s-final = r15 s3 = encode (eval f x, eval g x) = encode (eval ⟨ f , g ⟩ x)
+      rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
+      rax-final = trans rax-fin-is-r15 r15-is-pair-enc
+
+      -- rbp-final and mem-final: still postulated (pop restores from stack)
       postulate
-        rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
         rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
