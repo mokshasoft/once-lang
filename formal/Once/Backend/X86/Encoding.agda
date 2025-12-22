@@ -32,7 +32,7 @@ open import Once.Memory public
          init-alloc-state; alloc-two-words; alloc-two-words-fst; alloc-two-words-snd;
          n≢n+8; n≢n+suc-m)
 
--- Re-export memory theorems (now PROVEN, not postulates!)
+-- Re-export memory theorems
 open import Once.Memory public
   using (mem-read-write; mem-read-other)
 
@@ -353,8 +353,7 @@ encode-pair-stateful : ∀ {A B : Set} → (A → Word) → (B → Word) →
 encode-pair-stateful enc-a enc-b st (a , b) =
   alloc-pair-stateful st (enc-a a) (enc-b b)
 
--- | THE KEY THEOREM: encode-is-alloc-addr is PROVEN (not postulated!)
--- For stateful encoding, the encode of a pair equals the allocation address.
+-- | Key theorem: encode of a pair equals the allocation address
 encode-is-alloc-addr-pair-PROVEN : ∀ {A B : Set} (enc-a : A → Word) (enc-b : B → Word)
     (st : AllocState) (a : A) (b : B) →
     let (st' , addr) = encode-pair-stateful enc-a enc-b st (a , b)

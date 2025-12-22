@@ -43,9 +43,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 ------------------------------------------------------------------------
 
 -- | Record type for Star-based IR execution result
--- Same properties as run-ir-at-offset but with Star instead of exec-until-pc
--- Added ir-pc for compose chaining (eliminates pc postulates)
--- Added ir-rbp for frame pointer preservation (needed for pair teardown)
+-- Contains all properties needed for proof composition
 record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
@@ -66,7 +64,7 @@ open IRStarResult public
 -- Simple Star proofs (single-step, no recursion)
 ------------------------------------------------------------------------
 
--- | Star-based id execution (no postulates!)
+-- | Star-based id execution
 run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -94,7 +92,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
     }
 
--- | Star-based terminal execution (no postulates!)
+-- | Star-based terminal execution
 run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -121,7 +119,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 =
                        (readReg-writeReg-rax-rsp (regs s) 0)
     }
 
--- | Star-based fold execution (no postulates!)
+-- | Star-based fold execution
 run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -149,7 +147,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
     }
 
--- | Star-based unfold execution (no postulates!)
+-- | Star-based unfold execution
 run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -177,7 +175,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
     }
 
--- | Star-based arr execution (no postulates!)
+-- | Star-based arr execution
 run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -287,9 +285,8 @@ run-fst-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   let prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
   in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' (a , b) (length prefix)
 run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 =
-  let -- Use DERIVED lemma (proven!) instead of postulate
-      mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
-      mem-eq = fst-valid pair-valid  -- From MemoryValid, not Postulates!
+  let mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
+      mem-eq = fst-valid pair-valid
       (s' , step-eq , h' , pc' , rax-eq') = run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
       prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
   in s' , record
@@ -319,9 +316,8 @@ run-snd-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   let prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
   in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' (a , b) (length prefix)
 run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 =
-  let -- Use DERIVED lemma (proven!) instead of postulate
-      mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
-      mem-eq = snd-valid pair-valid  -- From MemoryValid, not Postulates!
+  let mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
+      mem-eq = snd-valid pair-valid
       (s' , step-eq , h' , pc' , rax-eq') = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
       prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
   in s' , record

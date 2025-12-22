@@ -38,11 +38,9 @@ open import Once.Backend.X86.Correct.InitState
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
--- Star for compositional proofs without exec postulates
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
--- MemoryValid for postulate-free encoding proofs
 open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; pair-at; fst-valid; snd-valid;
          InlAt; inl-at; InrAt; inr-at;
@@ -77,7 +75,7 @@ open ≡-Reasoning
 -- Star-based versions for multi-step IR cases
 ------------------------------------------------------------------------
 
--- | Star-based inl execution (Star-native, no postulates except rsp>16')
+-- | Star-based inl execution
 run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -363,7 +361,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     postulate
       rsp>16' : readReg (regs s4) rsp > 16
 
--- | Star-based inr execution (Star-native, no postulates except rsp>16')
+-- | Star-based inr execution
 run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -648,17 +646,12 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
 ------------------------------------------------------------------------
 -- Star-Based Mutual Block
 --
--- This mutual block builds Star proofs directly, using:
--- - star-single (PROVEN) instead of exec-one-step-nonhalt (postulate)
--- - star-trans (PROVEN) instead of exec-chain (postulate)
---
--- Key insight: Star composition is just transitivity, which is proven
--- by structural recursion. No case_of_ abstraction issues.
+-- This mutual block builds Star proofs using star-single and star-trans.
+-- Star composition is just transitivity, proven by structural recursion.
 ------------------------------------------------------------------------
 
 mutual
   -- | Star-based IR execution at arbitrary offset
-  -- This is the postulate-free version of run-ir-at-offset
   run-ir-star-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -702,8 +695,7 @@ mutual
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
 
-  -- | Star-based compose (POSTULATE-FREE!)
-  -- Uses star-trans (PROVEN) instead of exec-chain (postulate)
+  -- | Star-based compose execution
   run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →

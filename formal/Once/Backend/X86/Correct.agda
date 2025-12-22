@@ -199,7 +199,6 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 -- proofs without fuel arithmetic. It executes IR code at any position
 -- in a larger program WITHOUT halting (continues to next instruction).
 --
--- Uses star-trans for composition instead of exec-chain postulates.
 -- Returns IRStarResult with Star proof and all register/memory properties.
 ------------------------------------------------------------------------
 
@@ -330,7 +329,6 @@ run-seq-compose-id-id {A} x s h-false pc-0 rdi-eq = s4 , run-eq , halt-eq , rax-
 -- run-ir-star: Star-based version of IR execution
 --
 -- Delegates directly to run-ir-star-at-offset which returns IRStarResult.
--- No postulates needed - all properties are tracked in the Star-based proofs.
 --
 -- Note: IRStarResult is defined in MutualIR.agda and re-exported from there.
 ------------------------------------------------------------------------
@@ -364,7 +362,6 @@ transfer-star : ∀ (prog : Program) (s : State) →
 transfer-star prog s h-false step-eq = star-single h-false step-eq
 
 -- | Compose two IR computations using Star
--- Uses run-ir-star-at-offset directly - no postulates needed
 compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
@@ -469,8 +466,7 @@ fetch-at-end ir = subst (λ n → fetch (compile-x86 ir) n ≡ nothing)
 -- Proof follows from step definition: when halted=false and fetch=nothing, step sets halted=true
 --
 -- This is tricky to prove directly because step uses with-abstraction.
--- Alias for step-halt-on-fetch-fail (proven above at line ~757)
--- Uses the proven lemma instead of postulate
+-- Alias for step-halt-on-fetch-fail
 step-halts-on-fetch-fail : ∀ (prog : Program) (s : State) →
   halted s ≡ false →
   fetch prog (pc s) ≡ nothing →
@@ -631,9 +627,8 @@ offset-to-generator-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) �
          × readReg (regs s') rax ≡ encode (eval ir x))
 offset-to-generator-star = offset-to-generator
 
--- Helper: generalized generator correctness (used for compose)
+-- | Generalized generator correctness (used for compose)
 -- Running compiled code on state with rdi=encode x produces rax=encode (eval ir x)
--- Now uses Star-based version to eliminate postulates
 run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
