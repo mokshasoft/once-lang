@@ -42,7 +42,8 @@ import D.Array as DA
 -- | Count flips loop: flip prefix until first element is 0
 -- Input: (work, flips) where work is the working array
 -- Returns: (work, flips) with final flip count
-countFlipsLoop : Array Int * Int -> Array Int * Int
+-- D047: Tail-recursive (calls itself in tail position)
+countFlipsLoop : Array Int * Int ->> Array Int * Int
 countFlipsLoop = \args ->
   let work = fst args in
   let flips = snd args in
@@ -78,7 +79,8 @@ countFlips = \args ->
 -- | Rotation-based permutation generation loop
 -- Input: (perm, (count, (i, n)))
 -- Returns: (perm, (count, isDone)) where isDone = 1 if no more perms
-nextPermLoop : Array Int * (Array Int * (Int * Int)) -> Array Int * (Array Int * Int)
+-- D047: Tail-recursive (calls itself in tail position)
+nextPermLoop : Array Int * (Array Int * (Int * Int)) ->> Array Int * (Array Int * Int)
 nextPermLoop = \args ->
   let perm = fst args in
   let rest1 = snd args in
@@ -136,8 +138,9 @@ nextPerm = \args ->
 -- | Main iteration: process all permutations (pure)
 -- Input: state = (perm, (work, (count, (n, (permNum, (checksum, maxFlips))))))
 -- Returns: final state
+-- D047: Tail-recursive (calls itself in tail position)
 fannkuchLoop : Array Int * (Array Int * (Array Int * (Int * (Int * (Int * Int)))))
-            -> Array Int * (Array Int * (Array Int * (Int * (Int * (Int * Int)))))
+           ->> Array Int * (Array Int * (Array Int * (Int * (Int * (Int * Int)))))
 fannkuchLoop = \state ->
   let perm = fst state in
   let rest1 = snd state in

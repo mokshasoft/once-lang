@@ -275,21 +275,24 @@ inferType ctx expr fresh = case expr of
   -- For now, treat as unbound until module resolution is implemented
   EQualified name _modPath -> Left (UnboundVariable name)
 
-  -- Function application: f : A -> B or f : Eff A B, arg : A  ===>  B
-  -- Handles both pure (TArrow) and effectful (TEff) morphisms
+  -- Function application: f : A -> B or f : Eff A B or f : A ->> B, arg : A  ===>  B
+  -- Handles pure (TArrow), effectful (TEff), and tail-recursive (TTailRec) morphisms
   EApp f arg -> do
     (funTy, s1, fresh1) <- inferType ctx f fresh
     (argTy, s2, fresh2) <- inferType ctx arg fresh1
     let (retTy, fresh3) = freshTVar fresh2
     let funTy' = applySubst s2 funTy
-    -- Try to unify with TArrow first, then TEff
+    -- Try to unify with TArrow first, then TTailRec, then TEff
     let tryArrow = unify funTy' (TArrow argTy retTy)
+    let tryTailRec = unify funTy' (TTailRec argTy retTy)  -- D047
     let tryEff = unify funTy' (TEff argTy retTy)
     s3 <- case tryArrow of
       Right s -> Right s
-      Left _ -> case tryEff of
+      Left _ -> case tryTailRec of
         Right s -> Right s
-        Left _ -> tryArrow  -- Report TArrow error (more common case)
+        Left _ -> case tryEff of
+          Right s -> Right s
+          Left _ -> tryArrow  -- Report TArrow error (more common case)
     let finalSubst = composeSubst s3 (composeSubst s2 s1)
     Right (applySubst s3 retTy, finalSubst, fresh3)
 
@@ -757,13 +760,17 @@ inferTypeWithEnv modEnv aliases ctx expr fresh = case expr of
     (argTy, s2, fresh2) <- inferTypeWithEnv modEnv aliases ctx arg fresh1
     let (retTy, fresh3) = freshTVar fresh2
     let funTy' = applySubst s2 funTy
+    -- Try to unify with TArrow first, then TTailRec, then TEff
     let tryArrow = unify funTy' (TArrow argTy retTy)
+    let tryTailRec = unify funTy' (TTailRec argTy retTy)  -- D047
     let tryEff = unify funTy' (TEff argTy retTy)
     s3 <- case tryArrow of
       Right s -> Right s
-      Left _ -> case tryEff of
+      Left _ -> case tryTailRec of
         Right s -> Right s
-        Left _ -> tryArrow
+        Left _ -> case tryEff of
+          Right s -> Right s
+          Left _ -> tryArrow
     let finalSubst = composeSubst s3 (composeSubst s2 s1)
     Right (applySubst s3 retTy, finalSubst, fresh3)
 

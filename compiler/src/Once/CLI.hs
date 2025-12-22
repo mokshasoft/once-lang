@@ -402,6 +402,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
     funcDeclSimple :: Text -> Type -> Text -> Text
     funcDeclSimple n t param = case t of
       TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"
+      TTailRec inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"  -- D047
       TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"  -- D032
       _ -> "void* once_" <> n <> "(void)"
 
@@ -778,6 +779,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
           -- Get return type for casting (handle pair element extraction that returns intptr_t)
           returnType = case t of
             TArrow _ outTy -> outTy
+            TTailRec _ outTy -> outTy  -- D047
             TEff _ outTy -> outTy
             _ -> TUnit
           bodyExpr = generateIRExpr alloc Set.empty returnType body paramName
@@ -797,6 +799,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     funcDeclWithParam :: Text -> Type -> Text -> Text
     funcDeclWithParam n t param = case t of
       TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"
+      TTailRec inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"  -- D047
       TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " " <> param <> ")"  -- D032
       _ -> "void* once_" <> n <> "(void)"
 
@@ -1117,6 +1120,8 @@ generateLibraryAll functions = (header, source)
     funcDecl (name, ty, _, _) = case ty of
       TArrow inTy outTy ->
         libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
+      TTailRec inTy outTy ->  -- D047
+        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
       TEff inTy outTy ->
         libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
       _ -> "/* " <> name <> " has non-function type */"
@@ -1130,6 +1135,10 @@ generateLibraryAll functions = (header, source)
           alloc = localAlloc <|> globalAlloc
       in case ty of
         TArrow inTy outTy ->
+          libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " " <> paramName <> ") {\n" <>
+          "    return " <> libGenerateIRExpr alloc Set.empty body paramName <> ";\n" <>
+          "}"
+        TTailRec inTy outTy ->  -- D047
           libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " " <> paramName <> ") {\n" <>
           "    return " <> libGenerateIRExpr alloc Set.empty body paramName <> ";\n" <>
           "}"
