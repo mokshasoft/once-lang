@@ -1563,8 +1563,10 @@ mutual
       pc-setup-f = trans pc-setup (sym len-prefix-f)
 
       -- Program equality for f: prog = prefix-f ++ code-f ++ suffix-f
-      -- This is a complex equality that requires careful list manipulation
-      -- For now, postulate it (the structure is correct by construction)
+      -- compile-x86 [ f , g ] = setup ++ code-f ++ mid ++ code-g ++ [end]
+      -- where setup = [load-tag, cmp, jne, load-val]
+      --       mid = [jmp, label, load-val]
+      --       end = label end-label
       postulate
         prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
 
