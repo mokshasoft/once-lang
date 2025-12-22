@@ -4465,8 +4465,20 @@ mutual
       code-g = compile-x86 g
       prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
-      -- Postulate the entire execution for now (to be refined later)
-      -- The structure is clear, but the detailed phase proofs need careful alignment
+      -- Case is simpler than pair: no register save/restore, no memory allocation
+      -- Structure for inl:
+      --   Phase 1: Setup (4 instr) - load tag, cmp, jne NOT taken, load value
+      --     - Sets rdi = encode a (value from sum encoding)
+      --     - Doesn't modify rax, r14, r15, rbp, memory
+      --   Phase 2: Execute f - recursive call
+      --     - ir-rax r-f: rax = encode (eval f a)
+      --     - ir-r14/ir-r15/ir-rbp/ir-mem: preserved
+      --   Phase 3: Jump to end (2 instr) - jmp, label
+      --     - Doesn't modify rax, r14, r15, rbp, memory
+      --
+      -- Key insight: rax-final = ir-rax r-f (setup and jump don't touch rax)
+      --
+      -- TODO: Add exec-case-setup-inl-at-4 and exec-case-jump-at-2 helpers
       postulate
         s-final : State
         star-all : Star prog s s-final
@@ -4517,7 +4529,21 @@ mutual
       code-g = compile-x86 g
       prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
-      -- Postulate the entire execution for now
+      -- Case is simpler than pair: no register save/restore, no memory allocation
+      -- Structure for inr:
+      --   Phase 1: Setup (3 instr) - load tag, cmp, jne TAKEN
+      --     - Jumps to right branch label
+      --   Phase 2: Right setup (2 instr) - label, load value
+      --     - Sets rdi = encode b (value from sum encoding)
+      --   Phase 3: Execute g - recursive call
+      --     - ir-rax r-g: rax = encode (eval g b)
+      --     - ir-r14/ir-r15/ir-rbp/ir-mem: preserved
+      --   Phase 4: End label (1 instr)
+      --     - Doesn't modify anything
+      --
+      -- Key insight: rax-final = ir-rax r-g (setup and labels don't touch rax)
+      --
+      -- TODO: Add exec-case-setup-inr-at-5 and exec-case-end-at-1 helpers
       postulate
         s-final : State
         star-all : Star prog s s-final
