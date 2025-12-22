@@ -245,6 +245,50 @@ readReg-writeReg-rsp-r12 : ∀ (rf : RegFile) (v : Word) →
 readReg-writeReg-rsp-r12 rf v = refl
 
 ------------------------------------------------------------------------
+-- r11 Lemmas (scratch register for case tag loading)
+------------------------------------------------------------------------
+
+-- | Reading rdi after writing r11 returns the old value
+readReg-writeReg-r11-rdi : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) rdi ≡ readReg rf rdi
+readReg-writeReg-r11-rdi rf v = refl
+
+-- | Reading rsp after writing r11 returns the old value
+readReg-writeReg-r11-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) rsp ≡ readReg rf rsp
+readReg-writeReg-r11-rsp rf v = refl
+
+-- | Reading r14 after writing r11 returns the old value
+readReg-writeReg-r11-r14 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) r14 ≡ readReg rf r14
+readReg-writeReg-r11-r14 rf v = refl
+
+-- | Reading r15 after writing r11 returns the old value
+readReg-writeReg-r11-r15 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) r15 ≡ readReg rf r15
+readReg-writeReg-r11-r15 rf v = refl
+
+-- | Reading rbp after writing r11 returns the old value
+readReg-writeReg-r11-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) rbp ≡ readReg rf rbp
+readReg-writeReg-r11-rbp rf v = refl
+
+-- | Reading rax after writing r11 returns the old value
+readReg-writeReg-r11-rax : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) rax ≡ readReg rf rax
+readReg-writeReg-r11-rax rf v = refl
+
+-- | Reading r12 after writing r11 returns the old value
+readReg-writeReg-r11-r12 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r11 v) r12 ≡ readReg rf r12
+readReg-writeReg-r11-r12 rf v = refl
+
+-- | Reading r11 after writing rdi returns the old value
+readReg-writeReg-rdi-r11 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rdi v) r11 ≡ readReg rf r11
+readReg-writeReg-rdi-r11 rf v = refl
+
+------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
 

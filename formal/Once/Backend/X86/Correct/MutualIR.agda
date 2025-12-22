@@ -910,8 +910,8 @@ mutual
       prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
       -- Case layout (from CodeGen):
-      --   0: mov r15, [rdi]        ; load tag
-      --   1: cmp r15, 0            ; compare with 0
+      --   0: mov r11, [rdi]        ; load tag into scratch register
+      --   1: cmp r11, 0            ; compare with 0
       --   2: jne (2+len-f)         ; jump NOT taken for inl
       --   3: mov rdi, [rdi+8]      ; load value
       --   4 to 3+len-f: f          ; execute f
@@ -927,12 +927,12 @@ mutual
       end-offset = 2 +ℕ len-g
 
       -- ========== Phase 1: Setup (4 instructions) ==========
-      -- mov r15, [rdi] ; cmp r15, 0 ; jne (not taken) ; mov rdi, [rdi+8]
-      -- After setup: rdi = encode a, r14/r15/rbp/rax/memory unchanged
+      -- mov r11, [rdi] ; cmp r11, 0 ; jne (not taken) ; mov rdi, [rdi+8]
+      -- After setup: rdi = encode a, r14/r15/rbp/rax/memory unchanged (r11 is scratch)
 
-      -- Setup instructions
-      load-tag-instr = mov (reg r15) (mem (base rdi))
-      cmp-tag-instr = cmp (reg r15) (imm 0)
+      -- Setup instructions (uses r11 scratch register for tag)
+      load-tag-instr = mov (reg r11) (mem (base rdi))
+      cmp-tag-instr = cmp (reg r11) (imm 0)
       jne-instr = jne right-offset
       load-val-instr = mov (reg rdi) (mem (base+disp rdi 8))
 
@@ -1007,13 +1007,13 @@ mutual
       rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
       rsp>16-derived = subst (_> 16) (sym rsp-setup-raw) rsp>16
 
-      -- Assemble full setup-result
+      -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       setup-result : ∃[ s-setup ] (exec 4 prog s ≡ just s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 4
                                     × readReg (regs s-setup) rdi ≡ encode a
                                     × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
-                                    × readReg (regs s-setup) r15 ≡ 0
+                                    × readReg (regs s-setup) r15 ≡ readReg (regs s) r15
                                     × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
                                     × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
                                     × memory s-setup ≡ memory s
@@ -1122,19 +1122,10 @@ mutual
       r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
       r14-final = trans r14-jump (trans (ir-r14 r-f) r14-setup)
 
-      -- r15: setup sets it to 0 (tag), then f preserves it from setup, then jump preserves it
-      -- But IRStarResult tracks r15 preservation from input state
-      -- For case, we don't need r15 preserved in the same way as pair
-      -- The original r15 is NOT preserved (it's overwritten with tag)
-      -- But ir-r15 r-f says: r15 s1 = r15 s-setup = 0
-      -- And r15-jump says: r15 s-final = r15 s1
-      -- So r15 s-final = 0, not r15 s
-      -- This is actually fine for ir-r15 requirement... let me check
-      -- ir-r15 needs: readReg (regs s-final) r15 ≡ readReg (regs s) r15
-      -- But setup changes r15 to the tag value!
-      -- This is a problem - the case setup DOES modify r15
-      postulate
-        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+      -- r15 preserved: setup uses r11 for tag (not r15), f preserves r15, jump preserves r15
+      -- Proof: trans r15-jump (trans (ir-r15 r-f) r15-setup)
+      r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+      r15-final = trans r15-jump (trans (ir-r15 r-f) r15-setup)
 
       -- rbp preserved through all phases
       rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
@@ -1196,8 +1187,8 @@ mutual
       prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
       -- Case layout (from CodeGen):
-      --   0: mov r15, [rdi]        ; load tag
-      --   1: cmp r15, 0            ; compare with 0
+      --   0: mov r11, [rdi]        ; load tag into scratch register
+      --   1: cmp r11, 0            ; compare with 0
       --   2: jne (2+len-f)         ; jump TAKEN for inr (tag=1), target = 5+len-f
       --   3: mov rdi, [rdi+8]      ; (skipped)
       --   4 to 3+len-f: f          ; (skipped)
@@ -1215,12 +1206,12 @@ mutual
       end-label = (7 +ℕ len-f) +ℕ len-g
 
       -- ========== Phase 1: Setup (3 instructions) ==========
-      -- mov r15, [rdi] ; cmp r15, 0 ; jne TAKEN
-      -- After: pc = 5 + len-f (at right branch label)
+      -- mov r11, [rdi] ; cmp r11, 0 ; jne TAKEN
+      -- After: pc = 5 + len-f (at right branch label), r15 unchanged
 
-      -- Setup instructions
-      load-tag-instr = mov (reg r15) (mem (base rdi))
-      cmp-tag-instr = cmp (reg r15) (imm 0)
+      -- Setup instructions (uses r11 scratch register for tag)
+      load-tag-instr = mov (reg r11) (mem (base rdi))
+      cmp-tag-instr = cmp (reg r11) (imm 0)
       jne-instr = jne right-offset
 
       -- Suffix for helper: rest of case code after the 3 setup instructions
@@ -1281,13 +1272,13 @@ mutual
       rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
       rsp>16-derived = subst (_> 16) (sym rsp-setup-raw) rsp>16
 
-      -- Assemble full setup-result
+      -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       setup-result : ∃[ s-setup ] (exec 3 prog s ≡ just s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f
                                     × readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
                                     × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
-                                    × readReg (regs s-setup) r15 ≡ 1
+                                    × readReg (regs s-setup) r15 ≡ readReg (regs s) r15
                                     × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
                                     × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
                                     × memory s-setup ≡ memory s
@@ -1454,9 +1445,10 @@ mutual
       r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
       r14-final = trans r14-end (trans (ir-r14 r-g) (trans r14-right r14-setup))
 
-      -- r15: setup sets it to 1 (tag), then preserved through remaining phases
-      postulate
-        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+      -- r15 preserved: setup uses r11 for tag (not r15), then preserved through remaining phases
+      -- Proof: trans r15-end (trans (ir-r15 r-g) (trans r15-right r15-setup))
+      r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+      r15-final = trans r15-end (trans (ir-r15 r-g) (trans r15-right r15-setup))
 
       -- rbp preserved through all phases
       rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp

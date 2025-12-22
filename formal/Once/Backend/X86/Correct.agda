@@ -2117,8 +2117,8 @@ run-compose-id-id {A} s h-false pc-0 = s4 , run-eq , halt-eq , rax-eq
 --   end-offset = 2 + len-g = 3 (PC-relative: pc+1+3 = 5+1+3 = 9)
 --
 -- Generated code for [ id , id ]:
---   0: mov r15, [rdi]       -- r15 := tag (0 for inl)
---   1: cmp r15, 0           -- sets zf := true
+--   0: mov r11, [rdi]       -- r11 := tag (0 for inl) (scratch register)
+--   1: cmp r11, 0           -- sets zf := true
 --   2: jne 3                -- not taken (zf=true), pc := 3 (if taken: pc := 2+1+3 = 6)
 --   3: mov rdi, [rdi+8]     -- rdi := value
 --   4: mov rax, rdi         -- compile-x86 id
@@ -2142,7 +2142,7 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
   where
     prog : List Instr
     prog = compile-x86 {A + A} {A} [ id , id ]
-    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 3 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    -- = mov r11 [rdi] ∷ cmp r11 0 ∷ jne 3 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
     --   jmp 3 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
 
     -- Original values
@@ -2156,13 +2156,13 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     mem-at-rdi-8 : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode a)
     mem-at-rdi-8 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode a)) (sym rdi-enc) val-a
 
-    -- State after step 0: mov r15, [rdi]
+    -- State after step 0: mov r11, [rdi] (scratch register for tag)
     s1 : State
-    s1 = record s { regs = writeReg (regs s) r15 0 ; pc = pc s +ℕ 1 }
+    s1 = record s { regs = writeReg (regs s) r11 0 ; pc = pc s +ℕ 1 }
 
     step1 : step prog s ≡ just s1
     step1 = trans (step-exec-0 _ _ s h-false pc-0)
-                  (execMov-reg-mem-base s r15 rdi 0 mem-at-rdi)
+                  (execMov-reg-mem-base s r11 rdi 0 mem-at-rdi)
 
     h1 : halted s1 ≡ false
     h1 = h-false
@@ -2170,17 +2170,17 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
     pc1 : pc s1 ≡ 1
     pc1 = cong (λ x → x +ℕ 1) pc-0
 
-    -- State after step 1: cmp r15, 0 (r15 = 0, so zf := true)
+    -- State after step 1: cmp r11, 0 (r11 = 0, so zf := true)
     s2 : State
     s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags true false false }
 
-    r15-s1 : readReg (regs s1) r15 ≡ 0
-    r15-s1 = readReg-writeReg-same (regs s) r15 0
+    r11-s1 : readReg (regs s1) r11 ≡ 0
+    r11-s1 = readReg-writeReg-same (regs s) r11 0
 
     step2 : step prog s1 ≡ just s2
-    step2 = trans (step-exec prog s1 (cmp (reg r15) (imm 0)) h1
-                             (subst (λ p → fetch prog p ≡ just (cmp (reg r15) (imm 0))) (sym pc1) refl))
-                  (execCmp-zero prog s1 r15 r15-s1)
+    step2 = trans (step-exec prog s1 (cmp (reg r11) (imm 0)) h1
+                             (subst (λ p → fetch prog p ≡ just (cmp (reg r11) (imm 0))) (sym pc1) refl))
+                  (execCmp-zero prog s1 r11 r11-s1)
 
     h2 : halted s2 ≡ false
     h2 = h-false
@@ -2319,8 +2319,8 @@ run-case-inl-id {A} a s h-false pc-0 rdi-enc tag-0 val-a = s8 , run-eq , halt-eq
 --   right-offset = 2 + len-f = 3 (PC-relative: pc+1+3 = 2+1+3 = 6)
 --
 -- Generated code for [ id , id ]:
---   0: mov r15, [rdi]       -- r15 := tag (1 for inr)
---   1: cmp r15, 0           -- sets zf := false (1 ≠ 0)
+--   0: mov r11, [rdi]       -- r11 := tag (1 for inr) (scratch register)
+--   1: cmp r11, 0           -- sets zf := false (1 ≠ 0)
 --   2: jne 3                -- TAKEN (zf=false), pc := 2+1+3 = 6
 --   6: label 6              -- right-branch label
 --   7: mov rdi, [rdi+8]     -- rdi := value
@@ -2342,7 +2342,7 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
   where
     prog : List Instr
     prog = compile-x86 {A + A} {A} [ id , id ]
-    -- = mov r15 [rdi] ∷ cmp r15 0 ∷ jne 3 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
+    -- = mov r11 [rdi] ∷ cmp r11 0 ∷ jne 3 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷
     --   jmp 3 ∷ label 6 ∷ mov rdi [rdi+8] ∷ mov rax rdi ∷ label 9 ∷ []
 
     -- Original values
@@ -2356,13 +2356,13 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     mem-at-rdi-8 : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode b)
     mem-at-rdi-8 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode b)) (sym rdi-enc) val-b
 
-    -- State after step 0: mov r15, [rdi]
+    -- State after step 0: mov r11, [rdi] (scratch register for tag)
     s1 : State
-    s1 = record s { regs = writeReg (regs s) r15 1 ; pc = pc s +ℕ 1 }
+    s1 = record s { regs = writeReg (regs s) r11 1 ; pc = pc s +ℕ 1 }
 
     step1 : step prog s ≡ just s1
     step1 = trans (step-exec-0 _ _ s h-false pc-0)
-                  (execMov-reg-mem-base s r15 rdi 1 mem-at-rdi)
+                  (execMov-reg-mem-base s r11 rdi 1 mem-at-rdi)
 
     h1 : halted s1 ≡ false
     h1 = h-false
@@ -2370,12 +2370,12 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     pc1 : pc s1 ≡ 1
     pc1 = cong (λ x → x +ℕ 1) pc-0
 
-    -- State after step 1: cmp r15, 0 (r15 = 1, so zf := false, cf := false since 1 >= 0)
+    -- State after step 1: cmp r11, 0 (r11 = 1, so zf := false, cf := false since 1 >= 0)
     s2 : State
     s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags false false false }
 
-    r15-s1 : readReg (regs s1) r15 ≡ 1
-    r15-s1 = readReg-writeReg-same (regs s) r15 1
+    r11-s1 : readReg (regs s1) r11 ≡ 1
+    r11-s1 = readReg-writeReg-same (regs s) r11 1
 
     -- Helper: cmp when values are not equal sets zf = false
     execCmp-neq : ∀ (prog : List Instr) (s : State) (r : Reg) →
@@ -2385,9 +2385,9 @@ run-case-inr-id {A} b s h-false pc-0 rdi-enc tag-1 val-b = s8 , run-eq , halt-eq
     execCmp-neq prog s r eq rewrite eq = refl
 
     step2 : step prog s1 ≡ just s2
-    step2 = trans (step-exec prog s1 (cmp (reg r15) (imm 0)) h1
-                             (subst (λ p → fetch prog p ≡ just (cmp (reg r15) (imm 0))) (sym pc1) refl))
-                  (execCmp-neq prog s1 r15 r15-s1)
+    step2 = trans (step-exec prog s1 (cmp (reg r11) (imm 0)) h1
+                             (subst (λ p → fetch prog p ≡ just (cmp (reg r11) (imm 0))) (sym pc1) refl))
+                  (execCmp-neq prog s1 r11 r11-s1)
 
     h2 : halted s2 ≡ false
     h2 = h-false

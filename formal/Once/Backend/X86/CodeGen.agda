@@ -133,12 +133,13 @@ compile-x86 inr =
 
 -- Case analysis: branch on tag
 -- Jump offsets are PC-relative: target = pc + 1 + offset
+-- Note: Uses r11 (scratch register) for tag to avoid clobbering r15 (callee-save)
 compile-x86 [ f , g ] =
   let len-f = compile-length f
       len-g = compile-length g
       -- Layout:
-      --   0: mov r15, [rdi]
-      --   1: cmp r15, 0
+      --   0: mov r11, [rdi]       ; load tag into scratch register
+      --   1: cmp r11, 0
       --   2: jne right-offset     ; target = 5+len-f, offset = (5+len-f) - 3 = 2+len-f
       --   3: mov rdi, [rdi+8]
       --   4 to 3+|f|: compile-x86 f
@@ -152,10 +153,10 @@ compile-x86 [ f , g ] =
       right-label = 5 +ℕ len-f     -- For label pseudo-instruction
       end-label = (7 +ℕ len-f) +ℕ len-g
   in
-  -- Load tag
-  mov (reg r15) (mem (base rdi)) ∷
+  -- Load tag into r11 (scratch register, doesn't clobber r15)
+  mov (reg r11) (mem (base rdi)) ∷
   -- Compare with 0
-  cmp (reg r15) (imm 0) ∷
+  cmp (reg r11) (imm 0) ∷
   -- Jump to right branch if not zero (PC-relative)
   jne right-offset ∷
   -- Left branch: load value and apply f
