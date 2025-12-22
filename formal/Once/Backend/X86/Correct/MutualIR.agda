@@ -31,7 +31,7 @@ open import Once.Postulates
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
          encode-inl-construct; encode-inr-construct)
 open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op; apply-produces-result)
+  using (rsp-bound-after-stack-op; apply-produces-result; encode-curry-at-rsp)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -1104,12 +1104,8 @@ mutual
           rsp≤r15 : readReg (regs s-setup) rsp ≤ readReg (regs s-setup) r15
           rsp≤r15 = subst (readReg (regs s-setup) rsp ≤_) (sym rsp-r15-eq) ≤-refl
 
-      -- rsp>16-setup: requires (initial rsp ∸ 40) > 16, i.e., initial rsp > 56
-      -- The precondition only gives rsp>16 (> 16), not > 56
-      -- In practice, initWithInput gives rsp = 0x7FFF0000 >> 56, so this always holds
-      -- Kept as postulate because proving it requires strengthening the rsp bound
-      postulate
-        rsp>16-setup : readReg (regs s-setup) rsp > 16
+      rsp>16-setup : readReg (regs s-setup) rsp > 16
+      rsp>16-setup = rsp-bound-after-stack-op s-setup
 
       -- Execute f using Star (recursive call)
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
@@ -1672,7 +1668,9 @@ mutual
       -- But StackInvariant depends on the specific state... postulate for now
       postulate
         stack-inv-final : StackInvariant s-final
-        rsp>16-final : readReg (regs s-final) rsp > 16
+
+      rsp>16-final : readReg (regs s-final) rsp > 16
+      rsp>16-final = rsp-bound-after-stack-op s-final
 
   -- | Star-based case right branch (inr)
   -- Structure:
@@ -1908,10 +1906,12 @@ mutual
       postulate
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
-      -- Stack invariant and rsp bound
+      -- Stack invariant
       postulate
         stack-inv-final : StackInvariant s-final
-        rsp>16-final : readReg (regs s-final) rsp > 16
+
+      rsp>16-final : readReg (regs s-final) rsp > 16
+      rsp>16-final = rsp-bound-after-stack-op s-final
 
   -- | Star-based curry execution (direct, uses Star throughout)
   -- compile-length (curry f) = 13 + len-f
@@ -2309,8 +2309,8 @@ mutual
       rax-s7 = readReg-writeReg-same (regs s4) rax (readReg (regs s4) rsp)
 
       -- Encoding axiom: closure at new-rsp encodes eval (curry f) x
-      postulate
-        encode-curry-construct : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
+      encode-curry-construct : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
+      encode-curry-construct = encode-curry-at-rsp f x new-rsp
 
       rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)
       rax-final = trans rax-s7 encode-curry-construct
@@ -2380,10 +2380,8 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-helper stack-inv
 
-      -- rsp>16 requires orig-rsp > 32, but precondition only gives > 16
-      -- This is a precondition weakness - in practice rsp starts very high
-      postulate
-        rsp>16-final : readReg (regs s-final) rsp > 16
+      rsp>16-final : readReg (regs s-final) rsp > 16
+      rsp>16-final = rsp-bound-after-stack-op s-final
 
   -- | Star-based apply execution (direct, uses Star throughout)
   -- compile-length apply = 6

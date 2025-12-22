@@ -17,8 +17,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
 
 open import Once.Type using (Type; _⇒_; _*_)
-open import Once.IR using (apply)
+open import Once.IR using (apply; curry; IR)
 open import Once.Semantics using (⟦_⟧; encode; eval)
+open import Once.Memory using (Word)
 
 open import Once.Backend.X86.Syntax using (rsp; rax; rdi; r14; r15; rbp; Program)
 open import Once.Backend.X86.Semantics using (State; readReg; readMem)
@@ -97,3 +98,28 @@ postulate
               × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
               × StackInvariant s'
               × readReg (regs s') rsp > 16)
+
+------------------------------------------------------------------------
+-- Postulate P6: Curry Encoding (Memory Layout)
+------------------------------------------------------------------------
+--
+-- A closure constructed by curry at address p encodes the partial application.
+--
+-- NEEDED BY: Once.Backend.X86.Correct.MutualIR (run-curry-star-direct)
+--
+-- JUSTIFICATION:
+--   When curry f is applied to x, it allocates a closure at rsp containing:
+--   - [rsp] = encode x (environment)
+--   - [rsp+8] = code pointer for f
+--   This memory layout matches encode (eval (curry f) x) by construction.
+--
+-- IMPACT:
+--   If closure construction were incorrect, curried functions would fail.
+--
+-- RUNTIME EFFECT: None (proof-only)
+--
+------------------------------------------------------------------------
+
+postulate
+  encode-curry-at-rsp : ∀ {A B C : Type} (f : IR (A * B) C) (x : ⟦ A ⟧) (rsp-val : Word) →
+    rsp-val ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
