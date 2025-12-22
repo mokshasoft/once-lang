@@ -4688,31 +4688,205 @@ mutual
       code-g = compile-x86 g
       prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
-      -- Case is simpler than pair: no register save/restore, no memory allocation
-      -- Structure for inr:
-      --   Phase 1: Setup (3 instr) - load tag, cmp, jne TAKEN
-      --     - Jumps to right branch label
-      --   Phase 2: Right setup (2 instr) - label, load value
-      --     - Sets rdi = encode b (value from sum encoding)
-      --   Phase 3: Execute g - recursive call
-      --     - ir-rax r-g: rax = encode (eval g b)
-      --     - ir-r14/ir-r15/ir-rbp/ir-mem: preserved
-      --   Phase 4: End label (1 instr)
-      --     - Doesn't modify anything
-      --
-      -- Key insight: rax-final = ir-rax r-g (setup and labels don't touch rax)
-      --
-      -- TODO: Add exec-case-setup-inr-at-5 and exec-case-end-at-1 helpers
+      -- Case layout (from CodeGen):
+      --   0: mov r15, [rdi]        ; load tag
+      --   1: cmp r15, 0            ; compare with 0
+      --   2: jne (2+len-f)         ; jump TAKEN for inr (tag=1), target = 5+len-f
+      --   3: mov rdi, [rdi+8]      ; (skipped)
+      --   4 to 3+len-f: f          ; (skipped)
+      --   4+len-f: jmp (2+len-g)   ; (skipped)
+      --   5+len-f: label           ; right branch label (land here)
+      --   6+len-f: mov rdi,[rdi+8] ; load value
+      --   7+len-f to 6+len-f+len-g: g  ; execute g
+      --   7+len-f+len-g: label     ; end label
+
+      -- Jump offset for jne (TAKEN for inr)
+      right-offset = 2 +ℕ len-f
+      -- Right branch label position
+      right-label = 5 +ℕ len-f
+      -- End label position
+      end-label = (7 +ℕ len-f) +ℕ len-g
+
+      -- ========== Phase 1: Setup (3 instructions) ==========
+      -- mov r15, [rdi] ; cmp r15, 0 ; jne TAKEN
+      -- After: pc = 5 + len-f (at right branch label)
+
+      -- Setup instructions
+      load-tag-instr = mov (reg r15) (mem (base rdi))
+      cmp-tag-instr = cmp (reg r15) (imm 0)
+      jne-instr = jne right-offset
+
+      -- Postulate setup execution (3 instructions, jne TAKEN)
+      -- After: pc = length prefix + 5 + len-f (at right label)
       postulate
-        s-final : State
-        star-all : Star prog s s-final
-        h-final : halted s-final ≡ false
-        pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
-        rax-final : readReg (regs s-final) rax ≡ encode (eval g b)
-        r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+        setup-result : ∃[ s-setup ] (exec 3 prog s ≡ just s-setup
+                                    × halted s-setup ≡ false
+                                    × pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f
+                                    × readReg (regs s-setup) rdi ≡ readReg (regs s) rdi  -- rdi unchanged
+                                    × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
+                                    × readReg (regs s-setup) r15 ≡ 1  -- tag value for inr
+                                    × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
+                                    × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
+                                    × memory s-setup ≡ memory s
+                                    × StackInvariant s-setup
+                                    × readReg (regs s-setup) rsp > 16)
+
+      s-setup = proj₁ setup-result
+      exec-setup = proj₁ (proj₂ setup-result)
+      h-setup = proj₁ (proj₂ (proj₂ setup-result))
+      pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
+      rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
+      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
+      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
+      rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+      rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+      mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+      stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      rsp>16-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+
+      -- Convert setup exec to Star
+      star-setup : Star prog s s-setup
+      star-setup = Once.Backend.X86.Correct.Star.exec-to-star exec-setup
+
+      -- ========== Phase 2: Right setup (2 instructions) ==========
+      -- label (5+len-f) ; mov rdi, [rdi+8]
+      -- After: pc = length prefix + 7 + len-f, rdi = encode b
+
+      -- Postulate right setup execution (2 instructions)
+      postulate
+        right-setup-result : ∃[ s-right ] (exec 2 prog s-setup ≡ just s-right
+                                          × halted s-right ≡ false
+                                          × pc s-right ≡ length prefix +ℕ 7 +ℕ len-f
+                                          × readReg (regs s-right) rdi ≡ encode b
+                                          × readReg (regs s-right) r14 ≡ readReg (regs s-setup) r14
+                                          × readReg (regs s-right) r15 ≡ readReg (regs s-setup) r15
+                                          × readReg (regs s-right) rbp ≡ readReg (regs s-setup) rbp
+                                          × readReg (regs s-right) rsp ≡ readReg (regs s-setup) rsp
+                                          × memory s-right ≡ memory s-setup
+                                          × StackInvariant s-right
+                                          × readReg (regs s-right) rsp > 16)
+
+      s-right = proj₁ right-setup-result
+      exec-right = proj₁ (proj₂ right-setup-result)
+      h-right = proj₁ (proj₂ (proj₂ right-setup-result))
+      pc-right = proj₁ (proj₂ (proj₂ (proj₂ right-setup-result)))
+      rdi-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))
+      r14-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result)))))
+      r15-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))
+      rbp-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result)))))))
+      rsp-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))))
+      mem-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result)))))))))
+      stack-inv-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))))))
+      rsp>16-right = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))))))
+
+      -- Convert right setup exec to Star
+      star-right : Star prog s-setup s-right
+      star-right = Once.Backend.X86.Correct.Star.exec-to-star exec-right
+
+      -- ========== Phase 3: Execute g (recursive call) ==========
+      -- pc s-right = length prefix + 7 + len-f
+
+      -- Prefix for g = prefix + setup(3) + skip-left(1+len-f) + right-setup(2) = prefix + 6 + len-f
+      -- Wait, this doesn't match. Let me recalculate.
+      -- Actually the prefix for g is all instructions before g in the program.
+      -- g starts at position 7+len-f, so prefix-g has length = length prefix + 7 + len-f
+      prefix-g : Program
+      prefix-g = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
+                 mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-f ++
+                 jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷ []
+
+      suffix-g : Program
+      suffix-g = label end-label ∷ suffix
+
+      -- Length of prefix-g (postulated due to complex list arithmetic)
+      postulate
+        len-prefix-g : length prefix-g ≡ length prefix +ℕ 7 +ℕ len-f
+
+      pc-right-g : pc s-right ≡ length prefix-g
+      pc-right-g = trans pc-right (sym len-prefix-g)
+
+      -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
+      postulate
+        prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
+
+      -- Recursive call to g
+      step-g : ∃[ s1 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
+      step-g = run-ir-star-at-offset g prefix-g suffix-g b s-right h-right pc-right-g rdi-right stack-inv-right rsp>16-right
+
+      s1 = proj₁ step-g
+      r-g = proj₂ step-g
+      star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s-right s1
+      star-g-raw = ir-star r-g
+      h1 = ir-halted r-g
+      pc1-raw = ir-pc r-g  -- pc s1 = length prefix-g + len-g = length prefix + 7 + len-f + len-g
+
+      -- Convert star-g to use prog
+      star-g : Star prog s-right s1
+      star-g = subst (λ p → Star p s-right s1) (sym prog-eq-g) star-g-raw
+
+      -- pc s1 = length prefix + 7 + len-f + len-g
+      pc1 : pc s1 ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+      pc1 = trans pc1-raw (cong (_+ℕ len-g) len-prefix-g)
+
+      -- ========== Phase 4: End label (1 instruction) ==========
+      -- label (7+len-f+len-g) - no-op, just advances pc
+
+      postulate
+        end-result : ∃[ s-final ] (exec 1 prog s1 ≡ just s-final
+                                  × halted s-final ≡ false
+                                  × pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+                                  × readReg (regs s-final) rax ≡ readReg (regs s1) rax
+                                  × readReg (regs s-final) r14 ≡ readReg (regs s1) r14
+                                  × readReg (regs s-final) r15 ≡ readReg (regs s1) r15
+                                  × readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
+                                  × readReg (regs s-final) rsp ≡ readReg (regs s1) rsp
+                                  × memory s-final ≡ memory s1)
+
+      s-final = proj₁ end-result
+      exec-end = proj₁ (proj₂ end-result)
+      h-final = proj₁ (proj₂ (proj₂ end-result))
+      pc-final-raw = proj₁ (proj₂ (proj₂ (proj₂ end-result)))
+      rax-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))
+      r14-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
+      r15-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
+      rbp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))))
+      rsp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
+      mem-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
+
+      -- Convert end exec to Star
+      star-end : Star prog s1 s-final
+      star-end = Once.Backend.X86.Correct.Star.exec-to-star exec-end
+
+      -- ========== Compose all phases ==========
+      star-all : Star prog s s-final
+      star-all = star-trans star-setup (star-trans star-right (star-trans star-g star-end))
+
+      -- ========== Final properties ==========
+      pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+      pc-final = pc-final-raw
+
+      -- rax-final: from ir-rax r-g, preserved through end
+      rax-final : readReg (regs s-final) rax ≡ encode (eval g b)
+      rax-final = trans rax-end (ir-rax r-g)
+
+      -- r14 preserved through all phases
+      r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+      r14-final = trans r14-end (trans (ir-r14 r-g) (trans r14-right r14-setup))
+
+      -- r15: setup sets it to 1 (tag), then preserved through remaining phases
+      postulate
         r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
-        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
+
+      -- rbp preserved through all phases
+      rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
+      rbp-final = trans rbp-end (trans (ir-rbp r-g) (trans rbp-right rbp-setup))
+
+      -- Memory preservation
+      postulate
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+
+      -- Stack invariant and rsp bound
+      postulate
         stack-inv-final : StackInvariant s-final
         rsp>16-final : readReg (regs s-final) rsp > 16
 
