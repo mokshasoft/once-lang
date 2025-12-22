@@ -29,8 +29,9 @@ open import Once.Postulates
          encode-pair-construct; encode-inl-tag; encode-inl-val;
          encode-inr-tag; encode-inr-val; encode-arr-identity;
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
-         encode-inl-construct; encode-inr-construct;
-         rsp-bound-after-stack-op)
+         encode-inl-construct; encode-inr-construct)
+open import Once.Backend.X86.Postulates
+  using (rsp-bound-after-stack-op; apply-produces-result)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -2395,7 +2396,9 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , record
+    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , stack-inv-final , rsp>16-final) =
+          apply-produces-result prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    in s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
       ; ir-pc = pc-final
@@ -2407,19 +2410,4 @@ mutual
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }
-    where
-      prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
-
-      postulate
-        s-final : State
-        star-all : Star prog s s-final
-        h-final : halted s-final ≡ false
-        pc-final : pc s-final ≡ length prefix +ℕ compile-length (apply {A} {B})
-        rax-final : readReg (regs s-final) rax ≡ encode {B} (eval (apply {A} {B}) x)
-        r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
-        r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
-        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
-        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-        stack-inv-final : StackInvariant s-final
-        rsp>16-final : readReg (regs s-final) rsp > 16
 
