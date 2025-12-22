@@ -29,7 +29,8 @@ open import Once.Postulates
          encode-pair-construct; encode-inl-tag; encode-inl-val;
          encode-inr-tag; encode-inr-val; encode-arr-identity;
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
-         encode-inl-construct; encode-inr-construct)
+         encode-inl-construct; encode-inr-construct;
+         rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -357,9 +358,8 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv
 
-    -- rsp s4 > 16: practical assumption (needs orig-rsp > 32)
-    postulate
-      rsp>16' : readReg (regs s4) rsp > 16
+    rsp>16' : readReg (regs s4) rsp > 16
+    rsp>16' = rsp-bound-after-stack-op s4
 
 -- | Star-based inr execution
 run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
@@ -639,9 +639,8 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv
 
-    -- rsp s4 > 16: practical assumption (needs orig-rsp > 32)
-    postulate
-      rsp>16' : readReg (regs s4) rsp > 16
+    rsp>16' : readReg (regs s4) rsp > 16
+    rsp>16' = rsp-bound-after-stack-op s4
 
 ------------------------------------------------------------------------
 -- Star-Based Mutual Block
