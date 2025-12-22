@@ -1523,21 +1523,85 @@ mutual
       len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
       len-prefix-f = trans (List-length-++ prefix) refl
 
-      -- Postulate setup execution (4 instructions)
-      -- After setup: pc = length prefix + 4, rdi = encode a, halted = false
-      -- r14, r15, rbp, rax preserved (setup only modifies r15 to tag=0, then rdi)
+      -- Suffix for helper: code-f ++ suffix-f so prog-for-helper = prog
+      suffix-for-helper : Program
+      suffix-for-helper = code-f ++ suffix-f
+
+      -- Derive memory preconditions from encode axioms and rdi-eq
+      mem-tag-precond : readMem (memory s) (readReg (regs s) rdi) ≡ just 0
+      mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 0)
+                              (sym rdi-eq) (encode-inl-tag {A} {B} a (memory s))
+
+      mem-val-precond : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode a)
+      mem-val-precond = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode a))
+                              (sym rdi-eq) (encode-inl-val {A} {B} a (memory s))
+
+      -- Call the helper to get the 9 core properties
+      helper-result = exec-case-inl-setup prefix suffix-for-helper right-offset (encode a) s
+                        h-false pc-eq mem-tag-precond mem-val-precond
+
+      -- Program equality: show helper's prog matches actual prog
+      -- helper's prog = prefix ++ [4 setup] ++ suffix-for-helper
+      -- actual prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      -- These are equal because compile-x86 [ f , g ] = [4 setup] ++ code-f ++ [jmp,label,mov,code-g,label]
+      -- and suffix-for-helper = code-f ++ suffix-f = code-f ++ [jmp,label,mov,code-g,label,suffix]
+      prog-for-helper : Program
+      prog-for-helper = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper
+
+      -- Need to prove prog ≡ prog-for-helper for subst
       postulate
-        setup-result : ∃[ s-setup ] (exec 4 prog s ≡ just s-setup
+        prog-eq-setup : prog ≡ prog-for-helper
+
+      -- Extract helper results
+      s-setup-raw = proj₁ helper-result
+      exec-setup-raw = proj₁ (proj₂ helper-result)
+      h-setup-raw = proj₁ (proj₂ (proj₂ helper-result))
+      pc-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ helper-result)))
+      rdi-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))
+      r14-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result)))))
+      r15-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))))
+      rbp-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result)))))))
+      rsp-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))))))
+      mem-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))))))
+
+      -- Convert exec from prog-for-helper to prog
+      exec-setup-converted : exec 4 prog s ≡ just s-setup-raw
+      exec-setup-converted = subst (λ p → exec 4 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
+
+      -- StackInvariant is preserved by the 4 setup instructions
+      -- (they only modify r15 and rdi, not memory or rsp)
+      stack-inv-derived : StackInvariant s-setup-raw
+      stack-inv-derived = stack-inv-from-mem-rsp-preserved
+                            (memory s) (readReg (regs s) rsp)
+                            mem-setup-raw rsp-setup-raw stack-inv
+        where
+          postulate
+            stack-inv-from-mem-rsp-preserved :
+              ∀ (m-orig : Word → Maybe Word) (rsp-orig : Word) →
+              memory s-setup-raw ≡ m-orig →
+              readReg (regs s-setup-raw) rsp ≡ rsp-orig →
+              StackInvariant s →
+              StackInvariant s-setup-raw
+
+      -- Derive rsp>16 from preserved rsp
+      rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
+      rsp>16-derived = subst (_> 16) (sym rsp-setup-raw) rsp>16
+
+      -- Assemble full setup-result
+      setup-result : ∃[ s-setup ] (exec 4 prog s ≡ just s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 4
                                     × readReg (regs s-setup) rdi ≡ encode a
                                     × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
-                                    × readReg (regs s-setup) r15 ≡ 0  -- tag value
+                                    × readReg (regs s-setup) r15 ≡ 0
                                     × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
                                     × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
                                     × memory s-setup ≡ memory s
                                     × StackInvariant s-setup
                                     × readReg (regs s-setup) rsp > 16)
+      setup-result = s-setup-raw , exec-setup-converted , h-setup-raw , pc-setup-raw ,
+                     rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
+                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp>16-derived
 
       s-setup = proj₁ setup-result
       exec-setup = proj₁ (proj₂ setup-result)

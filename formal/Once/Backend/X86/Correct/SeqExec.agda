@@ -946,3 +946,194 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
                    (trans (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi))
                           (cong just rdi-s2))
 
+------------------------------------------------------------------------
+-- Case Setup Helpers (Generalized)
+--
+-- These helpers encapsulate the case dispatch setup:
+--   inl: 4 instructions (load tag, cmp, jne not taken, load value)
+--   inr: 3 instructions (load tag, cmp, jne taken -> jump to right branch)
+------------------------------------------------------------------------
+
+-- | Execute case-inl setup at arbitrary offset
+-- 4 instructions: mov r15 [rdi]; cmp r15 0; jne (not taken); mov rdi [rdi+8]
+--
+-- Preconditions:
+--   - memory at rdi = 0 (tag for inl)
+--   - memory at rdi+8 = val (the value to load)
+--
+-- Postconditions:
+--   - rdi = val
+--   - r15 = 0
+--   - r14, rbp, rsp, rax unchanged
+--   - memory unchanged
+exec-case-inl-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : ℕ) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
+  readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just val →
+  let prog = prefix ++ mov (reg r15) (mem (base rdi)) ∷
+                        cmp (reg r15) (imm 0) ∷
+                        jne jne-offset ∷
+                        mov (reg rdi) (mem (base+disp rdi 8)) ∷ suffix
+  in ∃[ s' ] (exec 4 prog s ≡ just s'
+            × halted s' ≡ false
+            × pc s' ≡ length prefix +ℕ 4
+            × readReg (regs s') rdi ≡ val
+            × readReg (regs s') r14 ≡ readReg (regs s) r14
+            × readReg (regs s') r15 ≡ 0
+            × readReg (regs s') rbp ≡ readReg (regs s) rbp
+            × readReg (regs s') rsp ≡ readReg (regs s) rsp
+            × memory s' ≡ memory s)
+exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
+  s4 , exec-eq , h4 , pc4 , rdi-s4 , r14-s4 , r15-s4 , rbp-s4 , rsp-s4 , mem-s4
+  where
+    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+
+    i0 = mov (reg r15) (mem (base rdi))
+    i1 = cmp (reg r15) (imm 0)
+    i2 = jne jne-offset
+    i3 = mov (reg rdi) (mem (base+disp rdi 8))
+    prog = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ suffix
+
+    orig-rdi = readReg (regs s) rdi
+
+    -- State after step 1: mov r15, [rdi] (loads tag=0)
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) r15 0 ; pc = pc s +ℕ 1 }
+
+    -- State after step 2: cmp r15, 0 (sets ZF=true since r15=0)
+    s2 : State
+    s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags true false false }
+
+    -- State after step 3: jne (not taken since ZF=true)
+    s3 : State
+    s3 = record s2 { pc = pc s2 +ℕ 1 }
+
+    -- State after step 4: mov rdi, [rdi+8] (loads value)
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rdi val ; pc = pc s3 +ℕ 1 }
+
+    -- Fetch proofs
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ i3 ∷ suffix)
+
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ suffix))
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = List-length-++ prefix {i0 ∷ []}
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
+             (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ i3 ∷ suffix))
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ suffix))
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+    len-prefix-2 = List-length-++ prefix {i0 ∷ i1 ∷ []}
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
+             (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 (i3 ∷ suffix))
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ suffix))
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix-3 = List-length-++ prefix {i0 ∷ i1 ∷ i2 ∷ []}
+
+    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3
+             (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 suffix)
+
+    -- Step proofs
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execMov-reg-mem-base s r15 rdi 0 mem-tag)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (_+ℕ 1) pc-eq
+
+    -- r15 in s1 = 0
+    r15-s1 : readReg (regs s1) r15 ≡ 0
+    r15-s1 = readReg-writeReg-same (regs s) r15 0
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execCmp-zero prog s1 r15 r15-s1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    -- ZF in s2 = true (from cmp r15, 0 when r15=0)
+    zf-s2 : zf (flags s2) ≡ true
+    zf-s2 = refl
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execJne-not-taken prog s2 jne-offset zf-s2)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    -- rdi unchanged through s1, s2, s3
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-r15-rdi (regs s) 0
+
+    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
+    rdi-s2 = rdi-s1
+
+    rdi-s3 : readReg (regs s3) rdi ≡ orig-rdi
+    rdi-s3 = rdi-s2
+
+    -- memory at rdi+8 in s3 (unchanged)
+    mem-s3 : readMem (memory s3) (readReg (regs s3) rdi +ℕ 8) ≡ just val
+    mem-s3 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just val) (sym rdi-s3) mem-val
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execMov-reg-mem-disp s3 rdi rdi 8 val mem-s3)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    -- Final register values
+    rdi-s4 : readReg (regs s4) rdi ≡ val
+    rdi-s4 = readReg-writeReg-same (regs s3) rdi val
+
+    r14-s4 : readReg (regs s4) r14 ≡ readReg (regs s) r14
+    r14-s4 = trans (readReg-writeReg-rdi-r14 (regs s3) val)
+             (trans (readReg-writeReg-r15-r14 (regs s) 0) refl)
+
+    r15-s4 : readReg (regs s4) r15 ≡ 0
+    r15-s4 = trans (readReg-writeReg-rdi-r15 (regs s3) val)
+             (trans r15-s1 refl)
+
+    rbp-s4 : readReg (regs s4) rbp ≡ readReg (regs s) rbp
+    rbp-s4 = trans (readReg-writeReg-rdi-rbp (regs s3) val)
+             (trans (readReg-writeReg-r15-rbp (regs s) 0) refl)
+
+    rsp-s4 : readReg (regs s4) rsp ≡ readReg (regs s) rsp
+    rsp-s4 = trans (readReg-writeReg-rdi-rsp (regs s3) val)
+             (trans (readReg-writeReg-r15-rsp (regs s) 0) refl)
+
+    mem-s4 : memory s4 ≡ memory s
+    mem-s4 = refl
+
+    -- Execution proof
+    exec-eq : exec 4 prog s ≡ just s4
+    exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+
