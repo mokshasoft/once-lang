@@ -954,6 +954,32 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 --   inr: 3 instructions (load tag, cmp, jne taken -> jump to right branch)
 ------------------------------------------------------------------------
 
+-- | Result record for case-inl setup (4 instructions, jne NOT taken)
+record CaseInlSetupResult (prog : Program) (s s' : State) (prefix : Program) (val : ℕ) : Set where
+  field
+    exec-eq   : exec 4 prog s ≡ just s'
+    halted-eq : halted s' ≡ false
+    pc-eq     : pc s' ≡ length prefix +ℕ 4
+    rdi-eq    : readReg (regs s') rdi ≡ val
+    r14-eq    : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq    : readReg (regs s') r15 ≡ 0
+    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp
+    mem-eq    : memory s' ≡ memory s
+
+-- | Result record for case-inr setup (3 instructions, jne TAKEN)
+record CaseInrSetupResult (prog : Program) (s s' : State) (prefix : Program) (jne-offset : ℕ) : Set where
+  field
+    exec-eq   : exec 3 prog s ≡ just s'
+    halted-eq : halted s' ≡ false
+    pc-eq     : pc s' ≡ length prefix +ℕ 3 +ℕ jne-offset
+    rdi-eq    : readReg (regs s') rdi ≡ readReg (regs s) rdi  -- unchanged
+    r14-eq    : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq    : readReg (regs s') r15 ≡ 1  -- tag value
+    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp
+    mem-eq    : memory s' ≡ memory s
+
 -- | Execute case-inl setup at arbitrary offset
 -- 4 instructions: mov r15 [rdi]; cmp r15 0; jne (not taken); mov rdi [rdi+8]
 --
@@ -975,17 +1001,11 @@ exec-case-inl-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : �
                         cmp (reg r15) (imm 0) ∷
                         jne jne-offset ∷
                         mov (reg rdi) (mem (base+disp rdi 8)) ∷ suffix
-  in ∃[ s' ] (exec 4 prog s ≡ just s'
-            × halted s' ≡ false
-            × pc s' ≡ length prefix +ℕ 4
-            × readReg (regs s') rdi ≡ val
-            × readReg (regs s') r14 ≡ readReg (regs s) r14
-            × readReg (regs s') r15 ≡ 0
-            × readReg (regs s') rbp ≡ readReg (regs s) rbp
-            × readReg (regs s') rsp ≡ readReg (regs s) rsp
-            × memory s' ≡ memory s)
+  in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
 exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
-  s4 , exec-eq , h4 , pc4 , rdi-s4 , r14-s4 , r15-s4 , rbp-s4 , rsp-s4 , mem-s4
+  s4 , record { exec-eq = exec-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
+              ; r14-eq = r14-s4 ; r15-eq = r15-s4 ; rbp-eq = rbp-s4 ; rsp-eq = rsp-s4
+              ; mem-eq = mem-s4 }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
@@ -1157,17 +1177,11 @@ exec-case-inr-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : Stat
   let prog = prefix ++ mov (reg r15) (mem (base rdi)) ∷
                         cmp (reg r15) (imm 0) ∷
                         jne jne-offset ∷ suffix
-  in ∃[ s' ] (exec 3 prog s ≡ just s'
-            × halted s' ≡ false
-            × pc s' ≡ length prefix +ℕ 3 +ℕ jne-offset  -- jumped
-            × readReg (regs s') rdi ≡ readReg (regs s) rdi  -- unchanged
-            × readReg (regs s') r14 ≡ readReg (regs s) r14
-            × readReg (regs s') r15 ≡ 1  -- tag value
-            × readReg (regs s') rbp ≡ readReg (regs s) rbp
-            × readReg (regs s') rsp ≡ readReg (regs s) rsp
-            × memory s' ≡ memory s)
+  in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
 exec-case-inr-setup prefix suffix jne-offset s h-false pc-eq mem-tag =
-  s3 , exec-eq , h3 , pc3 , rdi-s3 , r14-s3 , r15-s3 , rbp-s3 , rsp-s3 , mem-s3
+  s3 , record { exec-eq = exec-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
+              ; r14-eq = r14-s3 ; r15-eq = r15-s3 ; rbp-eq = rbp-s3 ; rsp-eq = rsp-s3
+              ; mem-eq = mem-s3 }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)

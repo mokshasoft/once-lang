@@ -1552,17 +1552,12 @@ mutual
       postulate
         prog-eq-setup : prog ≡ prog-for-helper
 
-      -- Extract helper results
+      -- Extract helper results using record field access
       s-setup-raw = proj₁ helper-result
-      exec-setup-raw = proj₁ (proj₂ helper-result)
-      h-setup-raw = proj₁ (proj₂ (proj₂ helper-result))
-      pc-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ helper-result)))
-      rdi-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))
-      r14-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result)))))
-      r15-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))))
-      rbp-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result)))))))
-      rsp-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))))))
-      mem-setup-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ helper-result))))))))
+      open CaseInlSetupResult (proj₂ helper-result)
+        renaming (exec-eq to exec-setup-raw; halted-eq to h-setup-raw; pc-eq to pc-setup-raw;
+                  rdi-eq to rdi-setup-raw; r14-eq to r14-setup-raw; r15-eq to r15-setup-raw;
+                  rbp-eq to rbp-setup-raw; rsp-eq to rsp-setup-raw; mem-eq to mem-setup-raw)
 
       -- Convert exec from prog-for-helper to prog
       exec-setup-converted : exec 4 prog s ≡ just s-setup-raw
@@ -1803,20 +1798,79 @@ mutual
       cmp-tag-instr = cmp (reg r15) (imm 0)
       jne-instr = jne right-offset
 
-      -- Postulate setup execution (3 instructions, jne TAKEN)
-      -- After: pc = length prefix + 5 + len-f (at right label)
+      -- Suffix for helper: rest of case code after the 3 setup instructions
+      suffix-for-helper : Program
+      suffix-for-helper = mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-f ++
+                          jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
+                          code-g ++ label end-label ∷ suffix
+
+      -- Derive memory precondition from encode-inr-tag
+      mem-tag-precond : readMem (memory s) (readReg (regs s) rdi) ≡ just 1
+      mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 1)
+                              (sym rdi-eq) (encode-inr-tag {A} {B} b (memory s))
+
+      -- Call the helper
+      helper-result = exec-case-inr-setup prefix suffix-for-helper right-offset s
+                        h-false pc-eq mem-tag-precond
+
+      -- Program equality for helper
+      prog-for-helper : Program
+      prog-for-helper = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper
+
       postulate
-        setup-result : ∃[ s-setup ] (exec 3 prog s ≡ just s-setup
+        prog-eq-setup : prog ≡ prog-for-helper
+
+      -- Extract helper results using record field access
+      s-setup-raw = proj₁ helper-result
+      open CaseInrSetupResult (proj₂ helper-result)
+        renaming (exec-eq to exec-setup-raw; halted-eq to h-setup-raw; pc-eq to pc-setup-raw;
+                  rdi-eq to rdi-setup-raw; r14-eq to r14-setup-raw; r15-eq to r15-setup-raw;
+                  rbp-eq to rbp-setup-raw; rsp-eq to rsp-setup-raw; mem-eq to mem-setup-raw)
+
+      -- Convert exec from prog-for-helper to prog
+      exec-setup-converted : exec 3 prog s ≡ just s-setup-raw
+      exec-setup-converted = subst (λ p → exec 3 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
+
+      -- PC proof: helper gives length prefix + 3 + right-offset = length prefix + 3 + (2 + len-f) = length prefix + 5 + len-f
+      -- (length prefix + 3) + (2 + len-f) = ((length prefix + 3) + 2) + len-f = (length prefix + 5) + len-f
+      pc-setup-proof : pc s-setup-raw ≡ length prefix +ℕ 5 +ℕ len-f
+      pc-setup-proof = trans pc-setup-raw
+                       (trans (sym (+-assoc (length prefix +ℕ 3) 2 len-f))
+                              (cong (_+ℕ len-f) (+-assoc (length prefix) 3 2)))
+
+      -- StackInvariant preserved (memory and rsp unchanged)
+      stack-inv-derived : StackInvariant s-setup-raw
+      stack-inv-derived = stack-inv-from-mem-rsp-preserved
+                            (memory s) (readReg (regs s) rsp)
+                            mem-setup-raw rsp-setup-raw stack-inv
+        where
+          postulate
+            stack-inv-from-mem-rsp-preserved :
+              ∀ (m-orig : Word → Maybe Word) (rsp-orig : Word) →
+              memory s-setup-raw ≡ m-orig →
+              readReg (regs s-setup-raw) rsp ≡ rsp-orig →
+              StackInvariant s →
+              StackInvariant s-setup-raw
+
+      -- rsp>16 preserved
+      rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
+      rsp>16-derived = subst (_> 16) (sym rsp-setup-raw) rsp>16
+
+      -- Assemble full setup-result
+      setup-result : ∃[ s-setup ] (exec 3 prog s ≡ just s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f
-                                    × readReg (regs s-setup) rdi ≡ readReg (regs s) rdi  -- rdi unchanged
+                                    × readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
                                     × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
-                                    × readReg (regs s-setup) r15 ≡ 1  -- tag value for inr
+                                    × readReg (regs s-setup) r15 ≡ 1
                                     × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
                                     × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
                                     × memory s-setup ≡ memory s
                                     × StackInvariant s-setup
                                     × readReg (regs s-setup) rsp > 16)
+      setup-result = s-setup-raw , exec-setup-converted , h-setup-raw , pc-setup-proof ,
+                     rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
+                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp>16-derived
 
       s-setup = proj₁ setup-result
       exec-setup = proj₁ (proj₂ setup-result)
