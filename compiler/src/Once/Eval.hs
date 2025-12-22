@@ -84,3 +84,13 @@ eval (Unfold _) v = Right v
 eval (Let _ e1 e2) v = do
   v1 <- eval e1 v
   eval e2 v1
+
+-- D047: Loop - iterate until Left result
+-- Loop body : A -> B where body : A -> Either B A
+-- VLeft b = exit with b, VRight a = continue with a
+eval (Loop _ body) v = do
+  result <- eval body v
+  case result of
+    VLeft b -> Right b       -- Exit loop
+    VRight a -> eval (Loop "_" body) a  -- Continue with new state
+    _ -> Left (TypeError "loop body must return sum type")

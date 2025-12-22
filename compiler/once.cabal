@@ -52,6 +52,7 @@ library
       Once.Parser
       Once.Quantity
       Once.Syntax
+      Once.TailCall
       Once.Type
       Once.TypeCheck
       Once.Value

@@ -2840,3 +2840,89 @@ a >>> b   =   compose b a   (in IR)
 
 - D032: Arrow-Based Effect System
 - [Effects Proposal](../design/effects-proposal.md)
+
+---
+
+## D047: Tail-Recursive Arrow Syntax (->>)
+
+**Date**: 2025-12-22
+**Status**: Accepted
+
+### Context
+
+Tail-recursive functions are essential for performance but currently compile to deep call stacks because the C backend cannot optimize them (due to statement expressions and struct returns). We need:
+
+1. A way to optimize tail-recursive functions to use loops
+2. A way for programmers to annotate and verify tail-recursion
+
+### Decision
+
+Add `->>` as a tail-recursive arrow type:
+
+```once
+-- Standard recursive (may use stack)
+factorial : Int -> Int
+
+-- Tail-recursive (guaranteed loop optimization)
+countFlipsLoop : Array Int * Int ->> Array Int * Int
+```
+
+### Semantics
+
+A function `f : A ->> B` must be tail-recursive. The compiler:
+
+1. **Verifies** that all recursive calls are in tail position
+2. **Errors** if the function is not actually tail-recursive
+3. **Transforms** to use the `Loop` IR construct
+4. **Generates** efficient `while` loop in C (no stack growth)
+
+### IR Representation
+
+The `Loop` construct is added to IR (orthogonal to the 12 categorical generators):
+
+```haskell
+| Loop Name IR    -- Loop varName body : A -> B
+                  -- where body : A -> Either B A
+```
+
+Semantics: repeatedly apply body until `Left` (exit).
+
+### Why `->>`
+
+- Visually distinct from `->`
+- Suggests "continues" or "iterates"
+- Easy to type (no special characters)
+- Doesn't conflict with existing syntax
+
+### Formal Verification Impact
+
+- **Generator proofs unchanged** - Loop is orthogonal
+- **Loop has standard semantics** - least fixpoint, well-understood
+- **Additional proof obligations** for `->>` functions:
+  - Termination (body eventually produces `Left`)
+  - Partial correctness (result is correct)
+  - Requires loop invariants/variants
+
+The categorical core remains easy to verify; `->>` opts into more complex verification when needed for performance.
+
+### Implementation
+
+1. Parser: recognize `->>` as tail-recursive arrow type
+2. Type checker: track which functions are marked tail-recursive
+3. Elaboration: elaborate normally, then verify tail-recursion
+4. TailCall pass: transform to `Loop` IR construct
+5. Codegen: emit `while` loop for `Loop`
+
+### Consequences
+
+- Programmers can guarantee tail-call optimization
+- Compile-time error if recursion pattern is wrong
+- No stack overflow for properly marked functions
+- Loop construct is internal (not exposed in surface syntax)
+- Clear opt-in: regular `->` doesn't promise optimization
+
+### See Also
+
+- D040: Recursive Function Definitions
+- D041: Remove `while` Generator (Loop is the principled replacement)
+- [Stack Optimization Analysis](../../examples/competitive/STACK_OPTIMIZATION.md)

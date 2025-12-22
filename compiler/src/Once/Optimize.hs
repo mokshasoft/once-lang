@@ -48,6 +48,10 @@ optimizeOnce ir = case ir of
   Pair f g -> simplifyPair (optimizeOnce f) (optimizeOnce g)
   Case f g -> simplifyCase (optimizeOnce f) (optimizeOnce g)
   Curry varName f -> Curry varName (optimizeOnce f)
+  -- D047: Loop - optimize the body
+  Loop varName body -> Loop varName (optimizeOnce body)
+  -- Let - optimize both subexpressions
+  Let x e1 e2 -> Let x (optimizeOnce e1) (optimizeOnce e2)
   -- Leaves: no subterms to optimize
   _ -> ir
 

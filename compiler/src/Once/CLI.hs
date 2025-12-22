@@ -28,6 +28,7 @@ import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
 import Once.Monomorphize (monomorphizeWithContext, extractPrimitiveFamilies, PrimitiveFamilies, applySubstToIR)
 import Once.Optimize (optimize, optimizeWith, OptimizerBackend (..))
+import Once.TailCall (optimizeTailCallsSingle)
 import Once.Parser (parseModule)
 import Once.Syntax (Module (..), Decl (..), Expr, AllocStrategy (..))
 import Once.Type (Type (..))
@@ -159,8 +160,10 @@ runBuild opts = do
                           -- Optimize
                           let opt = optimizeWith (buildOptimizer opts)
                           let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- monoFunctions]
+                          -- D047: Tail-call optimization (transform recursion to loops)
+                          let tailOptFunctions = [(n, t, a, optimizeTailCallsSingle n ir) | (n, t, a, ir) <- optimizedFunctions]
                           -- Generate library with all functions
-                          let (header, source') = generateLibraryAll optimizedFunctions
+                          let (header, source') = generateLibraryAll tailOptFunctions
                               headerPath = outputBase ++ ".h"
                               sourcePath = outputBase ++ ".c"
                           TIO.writeFile headerPath header
@@ -207,6 +210,8 @@ runBuild opts = do
                           -- Optimize all IRs
                           let opt = optimizeWith (buildOptimizer opts)
                           let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- monoFunctions]
+                          -- D047: Tail-call optimization (transform recursion to loops)
+                          let tailOptFunctions = [(n, t, a, optimizeTailCallsSingle n ir) | (n, t, a, ir) <- optimizedFunctions]
 
                           -- For executable, generate C with main() wrapper
                           -- Load interpretation C code from --interp and from imported modules
@@ -221,7 +226,7 @@ runBuild opts = do
                           let sourcePath = outputBase ++ ".c"
                               alloc = mainAlloc <|> buildAlloc opts
                               interpCode = interpCodeLegacy <> "\n" <> importedCode
-                              source' = generateExecutableAll optimizedFunctions alloc primitives interpCode
+                              source' = generateExecutableAll tailOptFunctions alloc primitives interpCode
                           TIO.writeFile sourcePath source'
                           TIO.putStrLn $ "Generated: " <> T.pack sourcePath
                           exitSuccess
@@ -550,6 +555,18 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
             -- If e1 extracts from a pair (Snd/Fst), track x' as potentially holding a pair pointer
             newPairVars = if yieldsPairPointer e1 then Set.insert x' pairVars else pairVars
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr newPairVars e2 x' <> "; })"
+      -- D047: Loop - generate while loop for tail-call optimization
+      -- Loop varName body : A -> B where body : A -> Either B A
+      -- Left = exit with result, Right = continue with new state
+      Once.IR.Loop varName body ->
+        "({ typeof(" <> v <> ") " <> varName <> " = " <> v <> "; " <>
+        "OnceSum _loop_result; " <>
+        "while (1) { " <>
+          "_loop_result = " <> generateIRExpr pairVars body varName <> "; " <>
+          "if (_loop_result.tag == 0) break; " <>
+          varName <> " = _loop_result.value; " <>
+        "} " <>
+        "_loop_result.value; })"
 
     -- Generate string literal based on allocation strategy
     generateStringLit :: Text -> Text
@@ -935,6 +952,16 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
         let e1Code = generateIRExpr alloc pairVars retTy e1 v
             newPairVars = if yieldsPairPointer2 e1 then Set.insert x' pairVars else pairVars
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr alloc newPairVars retTy e2 x' <> "; })"
+      -- D047: Loop - generate while loop for tail-call optimization
+      Once.IR.Loop varName body ->
+        "({ typeof(" <> v <> ") " <> varName <> " = " <> v <> "; " <>
+        "OnceSum _loop_result; " <>
+        "while (1) { " <>
+          "_loop_result = " <> generateIRExpr alloc pairVars retTy body varName <> "; " <>
+          "if (_loop_result.tag == 0) break; " <>
+          varName <> " = _loop_result.value; " <>
+        "} " <>
+        "_loop_result.value; })"
 
     -- Check if type contains TArray/TBuffer (which need special handling due to type erasure)
     needsUnpacking :: Type -> Bool
@@ -1268,6 +1295,16 @@ generateLibraryAll functions = (header, source)
         let e1Code = libGenerateIRExpr alloc pairVars e1 v
             newPairVars = if libYieldsPairPointer e1 then Set.insert x' pairVars else pairVars
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> libGenerateIRExpr alloc newPairVars e2 x' <> "; })"
+      -- D047: Loop - generate while loop for tail-call optimization
+      Once.IR.Loop varName body ->
+        "({ typeof(" <> v <> ") " <> varName <> " = " <> v <> "; " <>
+        "OnceSum _loop_result; " <>
+        "while (1) { " <>
+          "_loop_result = " <> libGenerateIRExpr alloc pairVars body varName <> "; " <>
+          "if (_loop_result.tag == 0) break; " <>
+          varName <> " = _loop_result.value; " <>
+        "} " <>
+        "_loop_result.value; })"
 
     -- Check if type contains TArray/TBuffer (which need special handling due to type erasure)
     libNeedsUnpacking :: Type -> Bool

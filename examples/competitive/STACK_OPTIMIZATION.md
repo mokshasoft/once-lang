@@ -339,6 +339,45 @@ while (1) {
    - Probably not if effects are already in Eff monad
    - Loop body type: `IR (a, s) (Eff (Either b s))`
 
+## Implementation Status (D047)
+
+**Completed:**
+- `Loop` IR construct added to `IR.hs`
+- `TailCall.hs` module created with detection and transformation
+- Loop codegen added to `CLI.hs` (emits `while` loop)
+- Loop evaluation added to `Eval.hs`
+- Optimization pass updated in `Optimize.hs`
+- Pipeline integration in `CLI.hs`
+
+**Blocked on:**
+The transformation is currently **disabled** because `OnceSum.value` is `intptr_t` (64 bits), which cannot hold struct types like `OncePair` (128 bits) or `OnceBuffer`.
+
+**Options to fix:**
+
+1. **Union-based OnceSum** (Recommended):
+   ```c
+   typedef struct {
+     int tag;
+     union {
+       intptr_t i;
+       OncePair pair;
+       OnceBuffer* buf;
+     } value;
+   } OnceSum;
+   ```
+   - Requires updating all OnceSum usage
+   - Increases struct size but avoids heap allocation
+
+2. **Heap-allocate loop state**:
+   - Exit values (Inl) store heap pointer in value
+   - Continue values (Inr) store heap pointer
+   - Requires malloc/free in loop
+
+3. **Use (Bool, State) instead of Either**:
+   - Loop body returns `(done, state)` instead of `Either result state`
+   - Simpler C representation
+   - Doesn't match categorical semantics
+
 ## References
 
 - [Compiling with Continuations](https://www.cambridge.org/core/books/compiling-with-continuations/...) - CPS compilation

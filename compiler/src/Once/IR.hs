@@ -40,7 +40,12 @@ data IR
   | Curry Name IR              -- ^ curry f : A -> (B -> C) (with lambda var name for codegen)
   | Apply Type Type            -- ^ apply : (A -> B) * A -> B
 
-  -- D041: while removed - use recursion with TCO instead
+  -- D047: Loop construct for tail-call optimization
+  -- Loop x body : A -> B where body : A -> Either B A
+  -- Semantics: repeatedly apply body until Left result
+  -- Left b  → exit loop, return b
+  -- Right a → continue with new state a
+  | Loop Name IR              -- ^ loop x body (x is loop var name for codegen)
 
   -- Variables and primitives (for surface syntax elaboration)
   | Var Name                   -- ^ Variable reference (function call)
