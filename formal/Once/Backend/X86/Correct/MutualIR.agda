@@ -59,6 +59,21 @@ open import Once.Backend.X86.Correct.StarBase public
          run-arr-star; run-fst-star; run-snd-star;
          run-fst-star-v; run-snd-star-v)
 
+-- Import extracted compose helpers (non-recursive parts)
+open import Once.Backend.X86.Correct.IR.Compose
+  using (ComposeContext; make-compose-context; TransferResult;
+         exec-compose-transfer; assemble-compose-result)
+open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
+
+-- Import extracted pair helpers (non-recursive parts)
+open import Once.Backend.X86.Correct.IR.Pair
+  using (PairContext; make-pair-context; PairSetupResult; exec-pair-setup;
+         PairMiddleResult; exec-pair-middle; assemble-pair-result)
+open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module PairSetupResult; module PairMiddleResult)
+
+-- Import extracted curry proof (non-recursive, entire function extracted)
+open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -696,6 +711,7 @@ mutual
     run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
 
   -- | Star-based compose execution
+  -- Uses extracted helpers from IR.Compose - only recursive calls remain here
   run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -705,203 +721,33 @@ mutual
     let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
     in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
   run-compose-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s3 , record
-      { ir-star = star-all
-      ; ir-halted = h3
-      ; ir-pc = pc3
-      ; ir-rax = rax3
-      ; ir-r14 = r14-3
-      ; ir-r15 = r15-3
-      ; ir-rbp = rbp-3
-      ; ir-mem = mem-3
-      ; ir-stack-inv = stack-inv-3
-      ; ir-rsp-bound = rsp-3>16
-      }
+    s3 , assemble-compose-result f g prefix suffix x s s1 s2 s3 r1 tr r3 refl
     where
-      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
+      -- Get context for computed values
+      ctx = make-compose-context f g prefix suffix
+      open ComposeContext ctx
 
-      -- Shorthand
-      len-f = compile-length f
-      len-g = compile-length g
-      code-f = compile-x86 f
-      code-g = compile-x86 g
-      transfer = mov (reg rdi) (reg rax)
-      prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
-      suffix-f = transfer ∷ code-g ++ suffix
-      prefix-transfer = prefix ++ code-f
-      prefix-g = prefix ++ code-f ++ transfer ∷ []
-
-      -- Program equalities (from ProgramLemmas)
-      prog-eq-f : prog ≡ prefix ++ code-f ++ suffix-f
-      prog-eq-f = compose-prog-eq prefix code-f code-g suffix transfer
-
-      prog-eq-transfer : prefix ++ code-f ++ suffix-f ≡ prefix-transfer ++ transfer ∷ (code-g ++ suffix)
-      prog-eq-transfer = sym (++-assoc prefix code-f suffix-f)
-
-      prog-eq-g : prefix-transfer ++ transfer ∷ (code-g ++ suffix) ≡ prefix-g ++ code-g ++ suffix
-      prog-eq-g = compose-g-eq prefix code-f code-g suffix transfer
-
-      -- Length computations
-      len-prefix-transfer : length prefix-transfer ≡ length prefix +ℕ len-f
-      len-prefix-transfer = trans (List-length-++ prefix {code-f}) (cong (length prefix +ℕ_) (compile-length-correct f))
-
-      len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f +ℕ 1
-      len-prefix-g = begin
-        length prefix-g
-          ≡⟨ List-length-++ prefix {code-f ++ transfer ∷ []} ⟩
-        length prefix +ℕ length (code-f ++ transfer ∷ [])
-          ≡⟨ cong (length prefix +ℕ_) (List-length-++ code-f {transfer ∷ []}) ⟩
-        length prefix +ℕ (length code-f +ℕ 1)
-          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ 1)) (compile-length-correct f) ⟩
-        length prefix +ℕ (len-f +ℕ 1)
-          ≡⟨ sym (+-assoc (length prefix) len-f 1) ⟩
-        length prefix +ℕ len-f +ℕ 1
-          ∎
-
-      -- Step 1: Execute f using Star (recursive call!)
-      -- Note: We call run-ir-star-at-offset which returns IRStarResult
+      -- Step 1: Execute f (RECURSIVE - must stay in mutual block)
       step-f : ∃[ s1 ] IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
       step-f = run-ir-star-at-offset f prefix suffix-f x s h-false pc-eq rdi-eq stack-inv rsp>16
 
       s1 = proj₁ step-f
       r1 = proj₂ step-f
-      star-f-raw : Star (prefix ++ code-f ++ suffix-f) s s1
-      star-f-raw = ir-star r1
-      h1 = ir-halted r1
-      rax1 : readReg (regs s1) rax ≡ encode (eval f x)
-      rax1 = ir-rax r1
-      r14-1 = ir-r14 r1
-      r15-1 = ir-r15 r1
-      stack-inv-1 = ir-stack-inv r1
-      rsp-1>16 = ir-rsp-bound r1
 
-      -- Convert star-f to use prog (via program equality)
-      star-f : Star prog s s1
-      star-f = subst (λ p → Star p s s1) (sym prog-eq-f) star-f-raw
+      -- Step 2: Execute transfer (extracted helper)
+      tr : TransferResult f g prefix suffix x s s1
+      tr = exec-compose-transfer f g prefix suffix x s s1 r1
 
-      -- pc s1 = length prefix + len-f (from ir-pc r1!)
-      -- ir-pc r1 : pc s1 ≡ length prefix +ℕ compile-length f
-      -- len-f = compile-length f, so this is exactly what we need
-      pc1 : pc s1 ≡ length prefix +ℕ len-f
-      pc1 = ir-pc r1
+      s2 = TransferResult.s2 tr
 
-      pc1-transfer : pc s1 ≡ length prefix-transfer
-      pc1-transfer = trans pc1 (sym len-prefix-transfer)
-
-      -- Step 2: Execute transfer instruction (single step!)
-      step-transfer-result = exec-transfer-at prefix-transfer (code-g ++ suffix) s1 h1 pc1-transfer
-
-      s2 = proj₁ step-transfer-result
-      step-t : step (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 ≡ just s2
-      step-t = proj₁ (proj₂ step-transfer-result)
-      h2 = proj₁ (proj₂ (proj₂ step-transfer-result))
-      pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ step-transfer-result)))
-      rdi2 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ step-transfer-result))))
-
-      -- Star proof for transfer step
-      star-t-raw : Star (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 s2
-      star-t-raw = star-single h1 step-t
-
-      -- Convert to prog via program equalities
-      step-t-prog : step prog s1 ≡ just s2
-      step-t-prog = subst (λ p → step p s1 ≡ just s2) (sym (trans prog-eq-f prog-eq-transfer)) step-t
-
-      star-t : Star prog s1 s2
-      star-t = star-single h1 step-t-prog
-
-      -- rdi s2 = rax s1 = encode (eval f x)
-      rdi2-enc : readReg (regs s2) rdi ≡ encode (eval f x)
-      rdi2-enc = trans rdi2 rax1
-
-      -- pc s2 = length prefix + len-f + 1 = length prefix-g
-      pc2 : pc s2 ≡ length prefix +ℕ len-f +ℕ 1
-      pc2 = trans pc2-raw (cong (_+ℕ 1) len-prefix-transfer)
-
-      pc2-g : pc s2 ≡ length prefix-g
-      pc2-g = trans pc2 (sym len-prefix-g)
-
-      -- Preserve r14, r15, rbp through transfer (writes rdi only)
-      r14-s1-to-s2 = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) rax)
-      r15-s1-to-s2 = readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) rax)
-      rbp-s1-to-s2 = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) rax)
-      rsp-s1-to-s2 = readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) rax)
-
-      -- StackInvariant preserved through transfer
-      stack-inv-2 = stack-inv-preserved-unchanged s1 s2 stack-inv-1 r15-s1-to-s2 rsp-s1-to-s2
-      rsp-2>16 = rsp>16-preserved-unchanged s1 s2 rsp-1>16 rsp-s1-to-s2
-
-      -- Step 3: Execute g using Star (recursive call!)
+      -- Step 3: Execute g (RECURSIVE - must stay in mutual block)
       step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
-      step-g = run-ir-star-at-offset g prefix-g suffix (eval f x) s2 h2 pc2-g rdi2-enc stack-inv-2 rsp-2>16
+      step-g = run-ir-star-at-offset g prefix-g suffix (eval f x) s2
+                 (TransferResult.h2 tr) (TransferResult.pc2-g tr) (TransferResult.rdi2-enc tr)
+                 (TransferResult.stack-inv-2 tr) (TransferResult.rsp-2>16 tr)
 
       s3 = proj₁ step-g
       r3 = proj₂ step-g
-      star-g-raw : Star (prefix-g ++ code-g ++ suffix) s2 s3
-      star-g-raw = ir-star r3
-      h3 = ir-halted r3
-      rax3-raw = ir-rax r3
-      r14-3-from-s2 = ir-r14 r3
-      r15-3-from-s2 = ir-r15 r3
-      mem-3-from-s2 = ir-mem r3
-      stack-inv-3 = ir-stack-inv r3
-      rsp-3>16 = ir-rsp-bound r3
-
-      -- Convert star-g to use prog via program equalities
-      star-g : Star prog s2 s3
-      star-g = subst (λ p → Star p s2 s3) (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) star-g-raw
-
-      -- Compose all three Star proofs using star-trans (PROVEN!)
-      star-all : Star prog s s3
-      star-all = star-trans star-f (star-trans star-t star-g)
-
-      -- Final rax: eval (g ∘ f) x = eval g (eval f x)
-      rax3 : readReg (regs s3) rax ≡ encode (eval (g ∘ f) x)
-      rax3 = rax3-raw  -- eval (g ∘ f) x = eval g (eval f x) by definition
-
-      -- Final pc: length prefix + compile-length (g ∘ f) (from ir-pc r3!)
-      -- ir-pc r3 : pc s3 ≡ length prefix-g + compile-length g
-      -- compile-length (g ∘ f) = compile-length f + 1 + compile-length g = len-f + 1 + len-g
-      pc3 : pc s3 ≡ length prefix +ℕ compile-length (g ∘ f)
-      pc3 = begin
-        pc s3
-          ≡⟨ ir-pc r3 ⟩
-        length prefix-g +ℕ len-g
-          ≡⟨ cong (_+ℕ len-g) len-prefix-g ⟩
-        (length prefix +ℕ len-f +ℕ 1) +ℕ len-g
-          ≡⟨ +-assoc (length prefix +ℕ len-f) 1 len-g ⟩
-        (length prefix +ℕ len-f) +ℕ (1 +ℕ len-g)
-          ≡⟨ +-assoc (length prefix) len-f (1 +ℕ len-g) ⟩
-        length prefix +ℕ (len-f +ℕ (1 +ℕ len-g))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f 1 len-g)) ⟩
-        length prefix +ℕ (len-f +ℕ 1 +ℕ len-g)
-          ∎
-
-      -- r14 preservation through all steps
-      r14-2 = trans r14-s1-to-s2 r14-1
-      r14-3 = trans r14-3-from-s2 r14-2
-
-      -- r15 preservation through all steps
-      r15-2 = trans r15-s1-to-s2 r15-1
-      r15-3 = trans r15-3-from-s2 r15-2
-
-      -- rbp preservation through all steps
-      rbp-1 = ir-rbp r1
-      rbp-3-from-s2 = ir-rbp r3
-      rbp-2 = trans rbp-s1-to-s2 rbp-1
-      rbp-3 = trans rbp-3-from-s2 rbp-2
-
-      -- Memory preservation through all steps
-      mem-1 = ir-mem r1
-      mem-2 : readMem (memory s2) (readReg (regs s) r15) ≡ readMem (memory s1) (readReg (regs s) r15)
-      mem-2 = refl  -- transfer doesn't write memory
-      mem-3-at-s2-r15 = mem-3-from-s2
-      -- Need to convert from s2.r15 to s.r15
-      r15-s2-eq-s = trans r15-s1-to-s2 r15-1
-      mem-3 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      mem-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
-                           r15-s2-eq-s mem-3-at-s2-r15)
-                    (trans mem-2 mem-1)
 
   -- | Star-based pair (POSTULATE-FREE!)
   -- Uses star-trans (PROVEN) and exec-to-star to compose 5 phases:
@@ -919,421 +765,58 @@ mutual
     let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
   run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , record
-      { ir-star = star-all
-      ; ir-halted = h-final
-      ; ir-pc = pc-final
-      ; ir-rax = rax-final
-      ; ir-r14 = r14-final
-      ; ir-r15 = r15-final
-      ; ir-rbp = rbp-final
-      ; ir-mem = mem-final
-      ; ir-stack-inv = stack-inv-final
-      ; ir-rsp-bound = rsp>16-final
-      }
+    s-final , assemble-pair-result f g prefix suffix x s s-setup s1 s2 s3 s-final
+                setup-res r-f mid-res r-g
+                h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
+                stack-inv-final rsp>16-final mem-fst-final mem-snd-final
+                rbp-final mem-final star-fin refl refl
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl)
-      open import Once.Backend.X86.Correct.Star using (exec-to-star; exec-until-pc-to-star)
+      open import Data.Nat.Properties using (+-assoc; +-comm)
+      open import Once.Backend.X86.Correct.Star using (exec-to-star)
 
-      -- Shorthand
-      len-f = compile-length f
-      len-g = compile-length g
-      code-f = compile-x86 f
-      code-g = compile-x86 g
-      prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-
-      -- Setup instructions (7)
-      setup-push-r14 = push (reg r14)
-      setup-push-r15 = push (reg r15)
-      setup-push-rbp = push (reg rbp)
-      setup-frame = mov (reg rbp) (reg rsp)
-      setup-sub = sub (reg rsp) (imm 16)
-      setup-base = mov (reg r15) (reg rsp)
-      setup-save = mov (reg r14) (reg rdi)
-
-      -- Middle instructions (2)
-      store-f-instr = mov (mem (base r15)) (reg rax)
-      restore-input = mov (reg rdi) (reg r14)
-
-      -- Final instructions (6)
-      store-g-instr = mov (mem (base+disp r15 8)) (reg rax)
-      return-pair-instr = mov (reg rax) (reg r15)
-      restore-rsp = mov (reg rsp) (reg rbp)
-      final-pop-rbp = pop rbp
-      final-pop-r15 = pop r15
-      final-pop-r14 = pop r14
-
-      -- Prefix for f (after 7 setup instructions)
-      prefix-f : Program
-      prefix-f = prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []
-
-      -- Inner pair code (after setup)
-      inner-pair : Program
-      inner-pair = code-f ++ store-f-instr ∷ restore-input ∷ code-g ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
-
-      -- Suffix for f
-      suffix-f : Program
-      suffix-f = store-f-instr ∷ restore-input ∷ code-g ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
-
-      -- Prefix for g (after f + 2 middle instructions)
-      prefix-g : Program
-      prefix-g = prefix-f ++ code-f ++ store-f-instr ∷ restore-input ∷ []
-
-      -- Suffix for g
-      suffix-g : Program
-      suffix-g = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
-
-      -- rest for setup
-      rest-for-setup : Program
-      rest-for-setup = inner-pair ++ suffix
-
-      -- Length calculations
-      len-prefix-f : length prefix-f ≡ length prefix +ℕ 7
-      len-prefix-f = List-length-++ prefix
-
-      len-prefix-g : length prefix-g ≡ length prefix +ℕ 9 +ℕ len-f
-      len-prefix-g = begin
-        length prefix-g
-          ≡⟨ List-length-++ prefix-f ⟩
-        length prefix-f +ℕ length (code-f ++ store-f-instr ∷ restore-input ∷ [])
-          ≡⟨ cong (_+ℕ length (code-f ++ store-f-instr ∷ restore-input ∷ [])) len-prefix-f ⟩
-        (length prefix +ℕ 7) +ℕ length (code-f ++ store-f-instr ∷ restore-input ∷ [])
-          ≡⟨ cong ((length prefix +ℕ 7) +ℕ_) (List-length-++ code-f) ⟩
-        (length prefix +ℕ 7) +ℕ (length code-f +ℕ 2)
-          ≡⟨ cong (λ z → (length prefix +ℕ 7) +ℕ (z +ℕ 2)) (compile-length-correct f) ⟩
-        (length prefix +ℕ 7) +ℕ (len-f +ℕ 2)
-          ≡⟨ +-assoc (length prefix) 7 (len-f +ℕ 2) ⟩
-        length prefix +ℕ (7 +ℕ (len-f +ℕ 2))
-          ≡⟨ cong (length prefix +ℕ_) (+-assoc 7 len-f 2) ⟩
-        length prefix +ℕ ((7 +ℕ len-f) +ℕ 2)
-          ≡⟨ cong (λ z → length prefix +ℕ (z +ℕ 2)) (+-comm 7 len-f) ⟩
-        length prefix +ℕ ((len-f +ℕ 7) +ℕ 2)
-          ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 7 2) ⟩
-        length prefix +ℕ (len-f +ℕ 9)
-          ≡⟨ cong (length prefix +ℕ_) (+-comm len-f 9) ⟩
-        length prefix +ℕ (9 +ℕ len-f)
-          ≡⟨ sym (+-assoc (length prefix) 9 len-f) ⟩
-        length prefix +ℕ 9 +ℕ len-f
-          ∎
-
-      -- Program equality for setup phase
-      prog-eq-setup : prog ≡ prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup
-      prog-eq-setup = cong (prefix ++_) refl
+      -- Context and shorthand
+      ctx = make-pair-context f g prefix suffix
+      open PairContext ctx
 
       -- ========== Phase 1: Setup (7 instructions) ==========
-      -- Use exec-pair-setup-at-7 and convert to Star
-      setup-result = exec-pair-setup-at-7 prefix rest-for-setup s h-false pc-eq
+      setup-res = exec-pair-setup f g prefix suffix x s h-false pc-eq rdi-eq
+      s-setup = PairSetupResult.s-setup setup-res
 
-      s-setup = proj₁ setup-result
-      exec-setup = proj₁ (proj₂ setup-result)
-      h-setup = proj₁ (proj₂ (proj₂ setup-result))
-      pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
-      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      rbp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-
-      -- Convert setup exec to Star
-      star-setup-raw : Star (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup) s s-setup
-      star-setup-raw = exec-to-star exec-setup
-
-      star-setup : Star prog s s-setup
-      star-setup = subst (λ p → Star p s s-setup) (sym prog-eq-setup) star-setup-raw
-
-      -- rdi after setup = encode x (input is preserved, r14 = rdi = encode x)
-      rdi-setup-enc : readReg (regs s-setup) rdi ≡ encode x
-      rdi-setup-enc = trans rdi-setup rdi-eq
-
-      -- pc after setup = length prefix + 7 = length prefix-f
-      pc-setup-f : pc s-setup ≡ length prefix-f
-      pc-setup-f = trans pc-setup (sym len-prefix-f)
-
-      -- ========== Phase 2: Execute f ==========
-      -- Need prog equality: prog = prefix-f ++ code-f ++ suffix-f
-      -- PROVEN using list associativity
-
-      -- The final instructions (before suffix)
-      final-nil : Program
-      final-nil = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ []
-
-      final-with-suffix : Program
-      final-with-suffix = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
-
-      -- final-nil ++ suffix = final-with-suffix (by computation)
-      final-suffix-eq : final-nil ++ suffix ≡ final-with-suffix
-      final-suffix-eq = refl
-
-      -- Helper: the part of inner-pair after code-f
-      mid-final-nil : Program
-      mid-final-nil = store-f-instr ∷ restore-input ∷ code-g ++ final-nil
-
-      -- mid-final-nil ++ suffix = suffix-f requires ++-assoc for code-g part
-      mid-final-suffix-eq : mid-final-nil ++ suffix ≡ suffix-f
-      mid-final-suffix-eq = cong (store-f-instr ∷_) (cong (restore-input ∷_)
-                              (trans (++-assoc code-g final-nil suffix)
-                                     (cong (code-g ++_) final-suffix-eq)))
-
-      -- inner-pair = code-f ++ mid-final-nil (by definition)
-      inner-pair-split : inner-pair ≡ code-f ++ mid-final-nil
-      inner-pair-split = refl
-
-      -- rest-for-setup = code-f ++ suffix-f
-      rest-eq : rest-for-setup ≡ code-f ++ suffix-f
-      rest-eq = trans (cong (_++ suffix) inner-pair-split)
-                      (trans (++-assoc code-f mid-final-nil suffix) (cong (code-f ++_) mid-final-suffix-eq))
-
-      -- Setup prefix equality: prefix ++ [7 setup] ++ xs = prefix-f ++ xs
-      prefix-setup-eq : ∀ xs → prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ xs ≡ prefix-f ++ xs
-      prefix-setup-eq xs = sym (++-assoc prefix (setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ []) xs)
-
-      prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
-      prog-eq-f = trans prog-eq-setup (trans (prefix-setup-eq rest-for-setup) (cong (prefix-f ++_) rest-eq))
-
-      -- StackInvariant after setup: rsp = r15 (both = initial rsp - 40)
-      -- So stack-below-r15 (rsp ≤ r15) holds trivially
-      stack-inv-setup : StackInvariant s-setup
-      stack-inv-setup = stack-below-r15 rsp≤r15
-        where
-          -- After setup: rsp = r15 = initial_rsp ∸ 40
-          rsp-r15-eq : readReg (regs s-setup) rsp ≡ readReg (regs s-setup) r15
-          rsp-r15-eq = trans rsp-setup (sym r15-setup)
-
-          -- rsp = r15 implies rsp ≤ r15
-          rsp≤r15 : readReg (regs s-setup) rsp ≤ readReg (regs s-setup) r15
-          rsp≤r15 = subst (readReg (regs s-setup) rsp ≤_) (sym rsp-r15-eq) ≤-refl
-
-      rsp>16-setup : readReg (regs s-setup) rsp > 16
-      rsp>16-setup = rsp-bound-after-stack-op s-setup
-
-      -- Execute f using Star (recursive call)
+      -- ========== Phase 2: Execute f (recursive call) ==========
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
-      step-f = run-ir-star-at-offset f prefix-f suffix-f x s-setup h-setup pc-setup-f rdi-setup-enc stack-inv-setup rsp>16-setup
+      step-f = run-ir-star-at-offset f prefix-f suffix-f x s-setup
+                (PairSetupResult.h-setup setup-res)
+                (PairSetupResult.pc-setup-f setup-res)
+                (PairSetupResult.rdi-setup-enc setup-res)
+                (PairSetupResult.stack-inv-setup setup-res)
+                (PairSetupResult.rsp>16-setup setup-res)
 
       s1 = proj₁ step-f
       r-f = proj₂ step-f
-      star-f-raw : Star (prefix-f ++ code-f ++ suffix-f) s-setup s1
-      star-f-raw = ir-star r-f
-      h1 = ir-halted r-f
-      pc1-raw = ir-pc r-f  -- pc s1 ≡ length prefix-f + compile-length f = length prefix + 7 + len-f
-      rax1 = ir-rax r-f
 
-      -- Convert star-f to use prog
-      star-f : Star prog s-setup s1
-      star-f = subst (λ p → Star p s-setup s1) (sym prog-eq-f) star-f-raw
-
-      -- pc s1 = length prefix + 7 + len-f
+      -- pc s1 for middle phase
       pc1 : pc s1 ≡ length prefix +ℕ 7 +ℕ len-f
-      pc1 = trans pc1-raw (cong (_+ℕ len-f) len-prefix-f)
+      pc1 = trans (ir-pc r-f) (cong (_+ℕ len-f) len-prefix-f)
 
       -- ========== Phase 3: Middle (2 instructions) ==========
-      -- mov [r15], rax   - store f's result
-      -- mov rdi, r14     - restore input for g
+      mid-res = exec-pair-middle f g prefix suffix x s s-setup s1 r-f setup-res refl rdi-eq (ir-halted r-f) pc1
+      s2 = PairMiddleResult.s2 mid-res
 
-      -- Prefix for middle = prefix-f ++ code-f = prefix + 7 + len-f instructions
-      prefix-mid : Program
-      prefix-mid = prefix-f ++ code-f
-
-      -- Rest for middle = code-g ++ final-stuff ++ suffix
-      -- Note: restore-input is already part of exec-pair-middle-at's template
-      rest-mid : Program
-      rest-mid = code-g ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
-
-      -- Length of prefix-mid
-      len-prefix-mid : length prefix-mid ≡ length prefix +ℕ 7 +ℕ len-f
-      len-prefix-mid = trans (List-length-++ prefix-f) (trans (cong (_+ℕ length code-f) len-prefix-f)
-                       (trans (cong ((length prefix +ℕ 7) +ℕ_) (compile-length-correct f)) refl))
-
-      -- pc s1 = length prefix-mid (from pc1 and len-prefix-mid)
-      pc1-mid : pc s1 ≡ length prefix-mid
-      pc1-mid = trans pc1 (sym len-prefix-mid)
-
-      -- Program equality for middle: we need prog = prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
-      -- PROVEN from prog-eq-f using ++-assoc
-
-      -- suffix-f = store-f-instr ∷ restore-input ∷ rest-mid (by definition)
-      suffix-f-eq-rest : suffix-f ≡ store-f-instr ∷ restore-input ∷ rest-mid
-      suffix-f-eq-rest = refl
-
-      prog-eq-mid : prog ≡ prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
-      prog-eq-mid = trans prog-eq-f
-                          (trans (sym (++-assoc prefix-f code-f suffix-f))
-                                 (cong (prefix-mid ++_) suffix-f-eq-rest))
-
-      -- r14 preserved through f execution (from ir-r14 r-f)
-      r14-s1 : readReg (regs s1) r14 ≡ readReg (regs s-setup) r14
-      r14-s1 = ir-r14 r-f
-
-      -- r15 preserved through f execution (from ir-r15 r-f)
-      r15-s1 : readReg (regs s1) r15 ≡ readReg (regs s-setup) r15
-      r15-s1 = ir-r15 r-f
-
-      -- rbp preserved through f execution (from ir-rbp r-f)
-      rbp-s1 : readReg (regs s1) rbp ≡ readReg (regs s-setup) rbp
-      rbp-s1 = ir-rbp r-f
-
-      -- r14 in s-setup = rdi in s (from setup)
-      r14-s1-is-input : readReg (regs s1) r14 ≡ encode x
-      r14-s1-is-input = trans r14-s1 (trans r14-setup rdi-eq)
-
-      -- Execute middle 2 instructions
-      middle-result = exec-pair-middle-at prefix-mid rest-mid s1 h1 pc1-mid
-
-      s2 = proj₁ middle-result
-      exec-mid = proj₁ (proj₂ middle-result)
-      h2 = proj₁ (proj₂ (proj₂ middle-result))
-      pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ middle-result)))
-      rdi2-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
-      mem-fst-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
-      r15-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
-      rsp-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
-
-      -- rbp preserved through middle: mov [r15], rax doesn't touch rbp, mov rdi, r14 doesn't touch rbp
-      -- The first instruction only changes memory, the second writes to rdi (not rbp)
-      rbp-mid : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
-      rbp-mid = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
-
-      -- Convert middle exec to Star
-      star-mid-raw : Star (prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid) s1 s2
-      star-mid-raw = exec-to-star exec-mid
-
-      star-mid : Star prog s1 s2
-      star-mid = subst (λ p → Star p s1 s2) (sym prog-eq-mid) star-mid-raw
-
-      -- rdi s2 = r14 s1 = encode x (input restored for g)
-      rdi2 : readReg (regs s2) rdi ≡ encode x
-      rdi2 = trans rdi2-raw r14-s1-is-input
-
-      -- pc s2 = length prefix-mid + 2 = length prefix + 7 + len-f + 2 = length prefix + 9 + len-f
-      pc2 : pc s2 ≡ length prefix +ℕ 9 +ℕ len-f
-      pc2 = trans pc2-raw (trans (cong (_+ℕ 2) len-prefix-mid)
-            (trans (+-assoc (length prefix +ℕ 7) len-f 2)
-            (trans (cong ((length prefix +ℕ 7) +ℕ_) (+-comm len-f 2))
-            (trans (sym (+-assoc (length prefix +ℕ 7) 2 len-f))
-            (trans (cong (_+ℕ len-f) (+-assoc (length prefix) 7 2)) refl)))))
-
-      -- pc s2 = length prefix-g
-      pc2-g : pc s2 ≡ length prefix-g
-      pc2-g = trans pc2 (sym len-prefix-g)
-
-      -- ========== Phase 4: Execute g ==========
-      -- Program equality: prog = prefix-g ++ code-g ++ suffix-g
-      -- PROVEN from prog-eq-mid using ++-assoc
-
-      -- rest-mid = code-g ++ suffix-g (by definition)
-      rest-mid-eq-g : rest-mid ≡ code-g ++ suffix-g
-      rest-mid-eq-g = refl
-
-      -- prefix-g = prefix-mid ++ [store-f, restore] (by ++-assoc)
-      prefix-g-eq-mid : prefix-g ≡ prefix-mid ++ store-f-instr ∷ restore-input ∷ []
-      prefix-g-eq-mid = sym (++-assoc prefix-f code-f (store-f-instr ∷ restore-input ∷ []))
-
-      -- (store-f ∷ restore ∷ []) ++ xs = store-f ∷ restore ∷ xs
-      cons-flatten : ∀ xs → (store-f-instr ∷ restore-input ∷ []) ++ xs ≡ store-f-instr ∷ restore-input ∷ xs
-      cons-flatten xs = refl
-
-      prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
-      prog-eq-g = begin
-        prog
-          ≡⟨ prog-eq-mid ⟩
-        prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid
-          ≡⟨ cong (prefix-mid ++_) (cong (store-f-instr ∷_) (cong (restore-input ∷_) rest-mid-eq-g)) ⟩
-        prefix-mid ++ store-f-instr ∷ restore-input ∷ (code-g ++ suffix-g)
-          ≡⟨ cong (prefix-mid ++_) (sym (cons-flatten (code-g ++ suffix-g))) ⟩
-        prefix-mid ++ ((store-f-instr ∷ restore-input ∷ []) ++ (code-g ++ suffix-g))
-          ≡⟨ sym (++-assoc prefix-mid (store-f-instr ∷ restore-input ∷ []) (code-g ++ suffix-g)) ⟩
-        (prefix-mid ++ store-f-instr ∷ restore-input ∷ []) ++ (code-g ++ suffix-g)
-          ≡⟨ cong (_++ (code-g ++ suffix-g)) (sym prefix-g-eq-mid) ⟩
-        prefix-g ++ (code-g ++ suffix-g)
-          ∎
-
-      -- StackInvariant and rsp>16 through middle phase
-      -- The middle phase preserves rsp and r15, so invariants are preserved
-      -- r15-mid : readReg (regs s2) r15 ≡ readReg (regs s1) r15
-      -- rsp-mid : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
-
-      -- rsp s2 = rsp s1 (from rsp-mid), and rsp s1 > 16 (from ir-rsp-bound r-f)
-      rsp>16-s2 : readReg (regs s2) rsp > 16
-      rsp>16-s2 = subst (_> 16) (sym rsp-mid) (ir-rsp-bound r-f)
-
-      -- StackInvariant s2: r15 and rsp are preserved from s1
-      -- Use the invariant preservation lemma with r15-mid and rsp-mid
-      stack-inv-s2 : StackInvariant s2
-      stack-inv-s2 = stack-inv-preserved-unchanged s1 s2 (ir-stack-inv r-f) (sym r15-mid) (sym rsp-mid)
-
-      -- Execute g using Star (recursive call)
+      -- ========== Phase 4: Execute g (recursive call) ==========
       step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
-      step-g = run-ir-star-at-offset g prefix-g suffix-g x s2 h2 pc2-g rdi2 stack-inv-s2 rsp>16-s2
+      step-g = run-ir-star-at-offset g prefix-g suffix-g x s2
+                (PairMiddleResult.h2 mid-res)
+                (PairMiddleResult.pc2-g mid-res)
+                (PairMiddleResult.rdi2 mid-res)
+                (PairMiddleResult.stack-inv-s2 mid-res)
+                (PairMiddleResult.rsp>16-s2 mid-res)
 
       s3 = proj₁ step-g
       r-g = proj₂ step-g
-      star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s2 s3
-      star-g-raw = ir-star r-g
-      h3 = ir-halted r-g
-      pc3-raw = ir-pc r-g  -- pc s3 = length prefix-g + len-g
-      rax3 = ir-rax r-g    -- rax s3 = encode (eval g x)
-
-      -- Convert star-g to use prog
-      star-g : Star prog s2 s3
-      star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
-
-      -- pc s3 = length prefix-g + len-g = length prefix + 9 + len-f + len-g
-      pc3 : pc s3 ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
-      pc3 = trans pc3-raw (cong (_+ℕ len-g) len-prefix-g)
-
-      -- rbp preserved through g (from ir-rbp r-g)
-      rbp-s3 : readReg (regs s3) rbp ≡ readReg (regs s2) rbp
-      rbp-s3 = ir-rbp r-g
-
-      -- Full rbp chain: rbp s3 = rbp s-setup = orig-rsp - 24
-      rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
-      rbp-chain = trans rbp-s3 (trans rbp-mid (trans rbp-s1 rbp-setup))
-
-      -- r15 preserved through g (from ir-r15 r-g)
-      r15-s3 : readReg (regs s3) r15 ≡ readReg (regs s2) r15
-      r15-s3 = ir-r15 r-g
-
-      -- Full r15 chain: r15 s3 = r15 s-setup = pair pointer
-      r15-chain : readReg (regs s3) r15 ≡ readReg (regs s-setup) r15
-      r15-chain = trans r15-s3 (trans r15-mid r15-s1)
-
-      -- Memory at r15 contains fst (encode (eval f x)) after g executes
-      -- Proof: mem-fst-stored + ir-mem r-g
-      -- mem-fst-stored : readMem (memory s2) (r15 s2) = just (rax s1)
-      -- ir-mem r-g : readMem (memory s3) (r15 s2) = readMem (memory s2) (r15 s2)
-      mem-fst-s3 : readMem (memory s3) (readReg (regs s3) r15) ≡ just (encode (eval f x))
-      mem-fst-s3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s3) (readReg (regs s2) r15))
-                                (sym r15-s3) refl)
-                         (trans (ir-mem r-g)
-                         (trans (subst (λ addr → readMem (memory s2) addr ≡ readMem (memory s2) (readReg (regs s1) r15))
-                                       (sym r15-mid) refl)
-                         (trans mem-fst-stored (cong just rax1))))
 
       -- ========== Phase 5: Final (6 instructions) ==========
-      -- mov [r15+8], rax   - store g's result
-      -- mov rax, r15       - return pair pointer
-      -- mov rsp, rbp       - restore stack via frame pointer
-      -- pop rbp            - restore rbp
-      -- pop r15            - restore r15
-      -- pop r14            - restore r14
-
-      -- Prefix for final = prefix-g ++ code-g
-      prefix-final : Program
-      prefix-final = prefix-g ++ code-g
-
-      -- Length of prefix-final
-      len-prefix-final : length prefix-final ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
-      len-prefix-final = trans (List-length-++ prefix-g)
-                         (trans (cong (_+ℕ length code-g) len-prefix-g)
-                         (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (compile-length-correct g)))
-
-      -- pc s3 = length prefix-final
-      pc3-final : pc s3 ≡ length prefix-final
-      pc3-final = trans pc3 (sym len-prefix-final)
-
-      -- Postulate the final 6-instruction execution (same as in run-ir-at-offset-pair)
-      -- Extended with memory properties for encode-pair-construct
+      -- Postulate the final 6-instruction execution
       postulate
         final-result : ∃[ s-fin ] (exec 6 (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 ≡ just s-fin
                                   × halted s-fin ≡ false
@@ -1343,9 +826,7 @@ mutual
                                   × readReg (regs s-fin) r15 ≡ readReg (regs s) r15
                                   × StackInvariant s-fin
                                   × readReg (regs s-fin) rsp > 16
-                                  -- Memory at r15 (fst) is preserved (not written by teardown)
                                   × readMem (memory s-fin) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15)
-                                  -- Memory at r15+8 (snd) has g's result (first instruction stores it)
                                   × readMem (memory s-fin) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax))
 
       s-final = proj₁ final-result
@@ -1360,67 +841,11 @@ mutual
       mem-fst-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))))
       mem-snd-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))))
 
-      -- Program equality for final: prog = prefix-final ++ suffix-g
-      -- PROVEN from prog-eq-g using ++-assoc
-      prog-eq-final : prog ≡ prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
-      prog-eq-final = trans prog-eq-g (sym (++-assoc prefix-g code-g suffix-g))
-
-      -- Convert final exec to Star
-      star-fin-raw : Star (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 s-final
-      star-fin-raw = exec-to-star exec-fin
-
+      -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
-      star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) star-fin-raw
+      star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) (exec-to-star exec-fin)
 
-      -- ========== Compose all 5 phases with star-trans ==========
-      -- s →[setup]→ s-setup →[f]→ s1 →[mid]→ s2 →[g]→ s3 →[fin]→ s-final
-      star-all : Star prog s s-final
-      star-all = star-trans star-setup (star-trans star-f (star-trans star-mid (star-trans star-g star-fin)))
-
-      -- ========== Final properties ==========
-
-      -- pc-final = length prefix + compile-length ⟨ f , g ⟩
-      -- compile-length ⟨ f , g ⟩ = (15 + len-f) + len-g
-      -- pc s-final = length prefix-final + 6 = length prefix + 9 + len-f + len-g + 6 = length prefix + 15 + len-f + len-g
-      -- We need: length prefix + 15 + len-f + len-g ≡ length prefix + ((15 + len-f) + len-g)
-      pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-      pc-final = trans pc-fin-raw (trans (cong (_+ℕ 6) len-prefix-final)
-                 (trans (+-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6)
-                 (trans (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6))
-                 (trans (sym (+-assoc (length prefix +ℕ 9 +ℕ len-f) 6 len-g))
-                 (trans (cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 9) len-f 6))
-                 (trans (cong (λ z → (length prefix +ℕ 9 +ℕ z) +ℕ len-g) (+-comm len-f 6))
-                 (trans (cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 9) 6 len-f)))
-                 (trans (cong (λ z → (z +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 9 6))
-                 (trans (cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f))
-                 (+-assoc (length prefix) (15 +ℕ len-f) len-g))))))))))
-
-      -- rax-final: PROVEN using encode-pair-construct
-      -- Step 1: rax s-final = r15 s3 (from rax-fin-is-r15)
-      -- Step 2: memory at r15 s3 in s-final = encode (eval f x)
-      -- Step 3: memory at r15 s3 + 8 in s-final = encode (eval g x)
-      -- Step 4: encode-pair-construct gives r15 s3 = encode (eval f x, eval g x)
-
-      -- Memory at r15 in s-final = encode (eval f x)
-      mem-fst-s-final : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (encode (eval f x))
-      mem-fst-s-final = trans mem-fst-final mem-fst-s3
-
-      -- Memory at r15+8 in s-final = encode (eval g x) (from store + rax3)
-      -- mem-snd-final : readMem (memory s-final) (r15 s3 + 8) = just (rax s3)
-      -- rax3 (ir-rax r-g) : rax s3 = encode (eval g x)
-      mem-snd-s-final : readMem (memory s-final) (readReg (regs s3) r15 +ℕ 8) ≡ just (encode (eval g x))
-      mem-snd-s-final = trans mem-snd-final (cong just rax3)
-
-      -- Apply encode-pair-construct: r15 s3 = encode (eval f x, eval g x)
-      r15-is-pair-enc : readReg (regs s3) r15 ≡ encode {A * B} (eval f x , eval g x)
-      r15-is-pair-enc = encode-pair-construct (eval f x) (eval g x) (readReg (regs s3) r15) (memory s-final)
-                        mem-fst-s-final mem-snd-s-final
-
-      -- Final: rax s-final = r15 s3 = encode (eval f x, eval g x) = encode (eval ⟨ f , g ⟩ x)
-      rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
-      rax-final = trans rax-fin-is-r15 r15-is-pair-enc
-
-      -- rbp-final and mem-final: still postulated (pop restores from stack)
+      -- rbp-final and mem-final: still postulated
       postulate
         rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
         mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
@@ -2051,6 +1476,7 @@ mutual
   -- | Star-based curry execution (direct, uses Star throughout)
   -- compile-length (curry f) = 13 + len-f
   -- Curry creates a closure; only executes 7 instructions (setup + jmp to end label)
+  -- | Star-based curry execution (non-recursive, delegates to extracted module)
   run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -2059,464 +1485,7 @@ mutual
     readReg (regs s) rsp > 16 →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    s-final , record
-      { ir-star = star-all
-      ; ir-halted = h-final
-      ; ir-pc = pc-final
-      ; ir-rax = rax-final
-      ; ir-r14 = r14-final
-      ; ir-r15 = r15-final
-      ; ir-rbp = rbp-final
-      ; ir-mem = mem-final
-      ; ir-stack-inv = stack-inv-final
-      ; ir-rsp-bound = rsp>16-final
-      }
-    where
-      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (+-assoc; +-comm)
-      open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; ⟨_,_⟩◅_)
-
-      len-f = compile-length f
-      prog = prefix ++ compile-x86 (curry f) ++ suffix
-
-      -- Helper values (same as run-ir-at-offset-curry)
-      orig-rsp : Word
-      orig-rsp = readReg (regs s) rsp
-
-      new-rsp : Word
-      new-rsp = orig-rsp ∸ 16
-
-      -- The 7 instructions that actually execute
-      i0 : Instr
-      i0 = sub (reg rsp) (imm 16)
-
-      i1 : Instr
-      i1 = mov (mem (base rsp)) (reg rdi)
-
-      i2 : Instr
-      i2 = lea r9 (rip+disp 4)
-
-      i3 : Instr
-      i3 = mov (mem (base+disp rsp 8)) (reg r9)
-
-      i4 : Instr
-      i4 = mov (reg rax) (reg rsp)
-
-      i5 : Instr
-      i5 = jmp (6 +ℕ len-f)
-
-      i6-label : Instr
-      i6-label = label (12 +ℕ len-f)
-
-      -- State after step 0: sub rsp, 16
-      s1 : State
-      s1 = record s { regs = writeReg (regs s) rsp new-rsp
-                    ; pc = pc s +ℕ 1
-                    ; flags = updateFlags new-rsp orig-rsp }
-
-      -- State after step 1: mov [rsp], rdi
-      s2 : State
-      s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) (readReg (regs s1) rdi)
-                     ; pc = pc s1 +ℕ 1 }
-
-      -- State after step 2: lea r9, [rip+4]
-      s3 : State
-      s3 = record s2 { regs = writeReg (regs s2) r9 (effectiveAddr s2 (rip+disp 4))
-                     ; pc = pc s2 +ℕ 1 }
-
-      -- State after step 3: mov [rsp+8], r9
-      s4 : State
-      s4 = record s3 { memory = writeMem (memory s3) (readReg (regs s3) rsp +ℕ 8) (readReg (regs s3) r9)
-                     ; pc = pc s3 +ℕ 1 }
-
-      -- State after step 4: mov rax, rsp
-      s5 : State
-      s5 = record s4 { regs = writeReg (regs s4) rax (readReg (regs s4) rsp)
-                     ; pc = pc s4 +ℕ 1 }
-
-      -- State after step 5: jmp (6 + len-f)
-      s6 : State
-      s6 = record s5 { pc = pc s5 +ℕ 1 +ℕ (6 +ℕ len-f) }
-
-      -- State after step 6: label (12 + len-f)
-      s7 : State
-      s7 = record s6 { pc = pc s6 +ℕ 1 }
-
-      -- Fetch lemmas
-      fetch0 : fetch prog (length prefix) ≡ just i0
-      fetch0 = fetch-at-prefix-end prefix i0 _
-
-      prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ _
-      prog-eq1 = sym (++-assoc prefix (i0 ∷ []) _)
-
-      len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
-      len-prefix-1 = List-length-++ prefix
-
-      fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
-      fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
-                      (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 _)
-
-      prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ _
-      prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) _)
-
-      len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
-      len-prefix-2 = List-length-++ prefix
-
-      fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
-      fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
-                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 _)
-
-      prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ _
-      prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) _)
-
-      len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
-      len-prefix-3 = List-length-++ prefix
-
-      fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
-      fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3
-                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 _)
-
-      prog-eq4 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ++ _
-      prog-eq4 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) _)
-
-      len-prefix-4 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ≡ length prefix +ℕ 4
-      len-prefix-4 = List-length-++ prefix
-
-      fetch4 : fetch prog (length prefix +ℕ 4) ≡ just i4
-      fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) len-prefix-4
-                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) i4 _)
-
-      prog-eq5 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) ++ _
-      prog-eq5 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) _)
-
-      len-prefix-5 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) ≡ length prefix +ℕ 5
-      len-prefix-5 = List-length-++ prefix
-
-      fetch5 : fetch prog (length prefix +ℕ 5) ≡ just i5
-      fetch5 = subst₂ (λ p n → fetch p n ≡ just i5) (sym prog-eq5) len-prefix-5
-                      (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) i5 _)
-
-      -- For the label, we need fetch at pc s6 = prefix + 12 + len-f
-      -- compile-x86 (curry f) = curry-before-end-label ++ [label (12 + len-f)]
-      -- where curry-before-end-label has 12 + len-f instructions
-
-      -- The instructions before the end label
-      curry-before-end-label : Program
-      curry-before-end-label =
-        i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷  -- 6 setup instructions
-        label 6 ∷                        -- thunk entry
-        sub (reg rsp) (imm 16) ∷         -- thunk setup
-        mov (mem (base rsp)) (reg r12) ∷
-        mov (mem (base+disp rsp 8)) (reg rdi) ∷
-        mov (reg rdi) (reg rsp) ∷
-        compile-x86 f ++                 -- inner function
-        ret ∷ []                         -- return
-
-      -- Length of curry-before-end-label = 12 + len-f
-      len-curry-before : length curry-before-end-label ≡ 12 +ℕ len-f
-      len-curry-before = begin
-        length curry-before-end-label
-          ≡⟨ refl ⟩
-        length (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
-                label 6 ∷ sub (reg rsp) (imm 16) ∷
-                mov (mem (base rsp)) (reg r12) ∷
-                mov (mem (base+disp rsp 8)) (reg rdi) ∷
-                mov (reg rdi) (reg rsp) ∷
-                compile-x86 f ++ ret ∷ [])
-          ≡⟨ refl ⟩
-        11 +ℕ length (compile-x86 f ++ ret ∷ [])
-          ≡⟨ cong (11 +ℕ_) (List-length-++ (compile-x86 f)) ⟩
-        11 +ℕ (length (compile-x86 f) +ℕ 1)
-          ≡⟨ cong (λ z → 11 +ℕ (z +ℕ 1)) (compile-length-correct f) ⟩
-        11 +ℕ (len-f +ℕ 1)
-          ≡⟨ +-assoc 11 len-f 1 ⟩
-        (11 +ℕ len-f) +ℕ 1
-          ≡⟨ cong (_+ℕ 1) (+-comm 11 len-f) ⟩
-        (len-f +ℕ 11) +ℕ 1
-          ≡⟨ +-assoc len-f 11 1 ⟩
-        len-f +ℕ 12
-          ≡⟨ +-comm len-f 12 ⟩
-        12 +ℕ len-f
-          ∎
-
-      -- compile-x86 (curry f) = curry-before-end-label ++ [i6-label]
-      -- Not definitional: needs ++-assoc for the (compile-x86 f ++ ret ∷ []) part
-      curry-code-inner : Program
-      curry-code-inner = compile-x86 f ++ ret ∷ i6-label ∷ []
-
-      curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ ret ∷ []) ++ i6-label ∷ []
-      curry-inner-split = sym (++-assoc (compile-x86 f) (ret ∷ []) (i6-label ∷ []))
-
-      curry-split : compile-x86 (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
-      curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
-                                   label 6 ∷ sub (reg rsp) (imm 16) ∷
-                                   mov (mem (base rsp)) (reg r12) ∷
-                                   mov (mem (base+disp rsp 8)) (reg rdi) ∷
-                                   mov (reg rdi) (reg rsp) ∷ rest) curry-inner-split
-
-      -- The prefix up to the end label
-      prefix-to-end : Program
-      prefix-to-end = prefix ++ curry-before-end-label
-
-      len-prefix-to-end : length prefix-to-end ≡ length prefix +ℕ 12 +ℕ len-f
-      len-prefix-to-end = trans (List-length-++ prefix)
-                           (trans (cong (length prefix +ℕ_) len-curry-before)
-                                  (sym (+-assoc (length prefix) 12 len-f)))
-
-      -- prog = prefix-to-end ++ [i6-label] ++ suffix (modulo associativity)
-      prog-eq-for-fetch6 : prog ≡ prefix-to-end ++ i6-label ∷ suffix
-      prog-eq-for-fetch6 = begin
-        prog
-          ≡⟨ refl ⟩
-        prefix ++ compile-x86 (curry f) ++ suffix
-          ≡⟨ cong (λ z → prefix ++ z ++ suffix) curry-split ⟩
-        prefix ++ (curry-before-end-label ++ i6-label ∷ []) ++ suffix
-          ≡⟨ cong (prefix ++_) (++-assoc curry-before-end-label (i6-label ∷ []) suffix) ⟩
-        prefix ++ curry-before-end-label ++ (i6-label ∷ [] ++ suffix)
-          ≡⟨ sym (++-assoc prefix curry-before-end-label (i6-label ∷ suffix)) ⟩
-        (prefix ++ curry-before-end-label) ++ i6-label ∷ suffix
-          ≡⟨ refl ⟩
-        prefix-to-end ++ i6-label ∷ suffix
-          ∎
-
-      fetch6 : fetch prog (length prefix +ℕ 12 +ℕ len-f) ≡ just i6-label
-      fetch6 = subst₂ (λ p n → fetch p n ≡ just i6-label) (sym prog-eq-for-fetch6) len-prefix-to-end
-                      (fetch-at-prefix-end prefix-to-end i6-label suffix)
-
-      -- Step proofs
-      step0 : step prog s ≡ just s1
-      step0 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
-                    (execSub-reg-imm prog s rsp 16)
-
-      h1 : halted s1 ≡ false
-      h1 = h-false
-
-      pc1 : pc s1 ≡ length prefix +ℕ 1
-      pc1 = cong (λ p → p +ℕ 1) pc-eq
-
-      step1 : step prog s1 ≡ just s2
-      step1 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                    (execMov-mem-base-reg prog s1 rsp rdi)
-
-      h2 : halted s2 ≡ false
-      h2 = h-false
-
-      pc2 : pc s2 ≡ length prefix +ℕ 2
-      pc2 = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
-
-      step2 : step prog s2 ≡ just s3
-      step2 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                    (execLea prog s2 r9 (rip+disp 4))
-
-      h3 : halted s3 ≡ false
-      h3 = h-false
-
-      pc3 : pc s3 ≡ length prefix +ℕ 3
-      pc3 = trans (cong (λ p → p +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
-
-      step3 : step prog s3 ≡ just s4
-      step3 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
-                    (execMov-mem-disp-reg prog s3 rsp r9 8)
-
-      h4 : halted s4 ≡ false
-      h4 = h-false
-
-      pc4 : pc s4 ≡ length prefix +ℕ 4
-      pc4 = trans (cong (λ p → p +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
-
-      step4 : step prog s4 ≡ just s5
-      step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                    (execMov-reg-reg s4 rax rsp)
-
-      h5 : halted s5 ≡ false
-      h5 = h-false
-
-      pc5 : pc s5 ≡ length prefix +ℕ 5
-      pc5 = trans (cong (λ p → p +ℕ 1) pc4) (+-assoc (length prefix) 4 1)
-
-      step5 : step prog s5 ≡ just s6
-      step5 = trans (step-exec prog s5 i5 h5 (subst (λ p → fetch prog p ≡ just i5) (sym pc5) fetch5))
-                    (execJmp prog s5 (6 +ℕ len-f))
-
-      h6 : halted s6 ≡ false
-      h6 = h-false
-
-      -- pc s6 = prefix + 5 + 1 + (6 + len-f) = prefix + 12 + len-f (PROVEN)
-      pc6-correct : pc s6 ≡ length prefix +ℕ 12 +ℕ len-f
-      pc6-correct = begin
-        pc s6
-          ≡⟨ refl ⟩
-        pc s5 +ℕ 1 +ℕ (6 +ℕ len-f)
-          ≡⟨ cong (λ z → z +ℕ 1 +ℕ (6 +ℕ len-f)) pc5 ⟩
-        (length prefix +ℕ 5) +ℕ 1 +ℕ (6 +ℕ len-f)
-          ≡⟨ cong (_+ℕ (6 +ℕ len-f)) (+-assoc (length prefix) 5 1) ⟩
-        (length prefix +ℕ 6) +ℕ (6 +ℕ len-f)
-          ≡⟨ +-assoc (length prefix) 6 (6 +ℕ len-f) ⟩
-        length prefix +ℕ (6 +ℕ (6 +ℕ len-f))
-          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 6 len-f)) ⟩
-        length prefix +ℕ ((6 +ℕ 6) +ℕ len-f)
-          ≡⟨ cong (length prefix +ℕ_) refl ⟩
-        length prefix +ℕ (12 +ℕ len-f)
-          ≡⟨ sym (+-assoc (length prefix) 12 len-f) ⟩
-        length prefix +ℕ 12 +ℕ len-f
-          ∎
-
-      step6 : step prog s6 ≡ just s7
-      step6 = trans (step-exec prog s6 i6-label h6 (subst (λ p → fetch prog p ≡ just i6-label) (sym pc6-correct) fetch6))
-                    (execLabel prog s6 (12 +ℕ len-f))
-
-      h7 : halted s7 ≡ false
-      h7 = h-false
-
-      -- pc s7 = prefix + compile-length (curry f) (PROVEN)
-      pc7 : pc s7 ≡ length prefix +ℕ compile-length (curry f)
-      pc7 = begin
-        pc s7
-          ≡⟨ refl ⟩
-        pc s6 +ℕ 1
-          ≡⟨ cong (_+ℕ 1) pc6-correct ⟩
-        (length prefix +ℕ 12 +ℕ len-f) +ℕ 1
-          ≡⟨ +-assoc (length prefix +ℕ 12) len-f 1 ⟩
-        (length prefix +ℕ 12) +ℕ (len-f +ℕ 1)
-          ≡⟨ cong ((length prefix +ℕ 12) +ℕ_) (+-comm len-f 1) ⟩
-        (length prefix +ℕ 12) +ℕ (1 +ℕ len-f)
-          ≡⟨ sym (+-assoc (length prefix +ℕ 12) 1 len-f) ⟩
-        ((length prefix +ℕ 12) +ℕ 1) +ℕ len-f
-          ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 12 1) ⟩
-        (length prefix +ℕ 13) +ℕ len-f
-          ≡⟨ +-assoc (length prefix) 13 len-f ⟩
-        length prefix +ℕ (13 +ℕ len-f)
-          ≡⟨ refl ⟩  -- compile-length (curry f) = 13 + len-f by definition
-        length prefix +ℕ compile-length (curry f)
-          ∎
-
-      -- ========== BUILD STAR USING COMBINATORS (THE KEY PART!) ==========
-      -- star-all = ⟨ h0, step0 ⟩◅ ⟨ h1, step1 ⟩◅ ... ⟨ h6, step6 ⟩◅ refl*
-      star-all : Star prog s s7
-      star-all = ⟨ h-false , step0 ⟩◅
-                 ⟨ h1 , step1 ⟩◅
-                 ⟨ h2 , step2 ⟩◅
-                 ⟨ h3 , step3 ⟩◅
-                 ⟨ h4 , step4 ⟩◅
-                 ⟨ h5 , step5 ⟩◅
-                 ⟨ h6 , step6 ⟩◅
-                 refl*
-
-      -- Final state is s7
-      s-final : State
-      s-final = s7
-
-      h-final : halted s-final ≡ false
-      h-final = h7
-
-      pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
-      pc-final = pc7
-
-      -- Register preservation through states
-      r14-s1 : readReg (regs s1) r14 ≡ readReg (regs s) r14
-      r14-s1 = readReg-writeReg-rsp-r14 (regs s) new-rsp
-
-      r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
-      r14-final = r14-s1  -- s2-s7 don't modify r14
-
-      r15-s1 : readReg (regs s1) r15 ≡ readReg (regs s) r15
-      r15-s1 = readReg-writeReg-rsp-r15 (regs s) new-rsp
-
-      r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
-      r15-final = r15-s1  -- s2-s7 don't modify r15
-
-      rbp-s1 : readReg (regs s1) rbp ≡ readReg (regs s) rbp
-      rbp-s1 = readReg-writeReg-rsp-rbp (regs s) new-rsp
-
-      rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
-      rbp-final = rbp-s1  -- s2-s7 don't modify rbp
-
-      -- rsp tracking
-      rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
-      rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
-
-      rsp-s7 : readReg (regs s7) rsp ≡ new-rsp
-      rsp-s7 = rsp-s1  -- s2-s7 don't modify rsp
-
-      -- rax in s5 = rsp = new-rsp
-      rax-s7 : readReg (regs s7) rax ≡ new-rsp
-      rax-s7 = readReg-writeReg-same (regs s4) rax (readReg (regs s4) rsp)
-
-      -- Encoding axiom: closure at new-rsp encodes eval (curry f) x
-      encode-curry-construct : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
-      encode-curry-construct = encode-curry-at-rsp f x new-rsp
-
-      rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)
-      rax-final = trans rax-s7 encode-curry-construct
-
-      -- Memory preservation: curry writes to [new-rsp] and [new-rsp+8], not to [r15]
-      -- Uses addr-diff-from-invariant to show addresses don't overlap
-      orig-r15 : Word
-      orig-r15 = readReg (regs s) r15
-
-      addr-diff : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-      addr-diff = addr-diff-from-invariant s stack-inv rsp>16
-
-      -- Memory changes: s2 writes to [new-rsp], s4 writes to [new-rsp+8]
-      -- s1, s3, s5, s6, s7 don't change memory
-      mem-s1-eq : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
-      mem-s1-eq = refl  -- s1 only changes regs
-
-      -- s2 writes to [new-rsp], which ≢ orig-r15
-      mem-s2-eq : readMem (memory s2) orig-r15 ≡ readMem (memory s1) orig-r15
-      mem-s2-eq = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) orig-r15
-                    (readReg (regs s1) rdi) (subst (λ addr → addr ≢ orig-r15) (sym rsp-s1) (proj₁ addr-diff))
-
-      mem-s3-eq : readMem (memory s3) orig-r15 ≡ readMem (memory s2) orig-r15
-      mem-s3-eq = refl  -- s3 only changes regs
-
-      -- s4 writes to [new-rsp + 8], which ≢ orig-r15
-      rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
-      rsp-s3 = rsp-s1  -- rsp unchanged through s2, s3
-
-      mem-s4-eq : readMem (memory s4) orig-r15 ≡ readMem (memory s3) orig-r15
-      mem-s4-eq = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) orig-r15
-                    (readReg (regs s3) r9)
-                    (subst (λ addr → addr +ℕ 8 ≢ orig-r15) (sym rsp-s3) (proj₂ addr-diff))
-
-      mem-s5-eq : readMem (memory s5) orig-r15 ≡ readMem (memory s4) orig-r15
-      mem-s5-eq = refl  -- s5 only changes regs
-
-      mem-s6-eq : readMem (memory s6) orig-r15 ≡ readMem (memory s5) orig-r15
-      mem-s6-eq = refl  -- s6 only changes pc
-
-      mem-s7-eq : readMem (memory s7) orig-r15 ≡ readMem (memory s6) orig-r15
-      mem-s7-eq = refl  -- s7 only changes pc
-
-      mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      mem-final = trans mem-s7-eq (trans mem-s6-eq (trans mem-s5-eq (trans mem-s4-eq
-                    (trans mem-s3-eq (trans mem-s2-eq mem-s1-eq)))))
-
-      -- StackInvariant preservation
-      -- Case analysis: if r15-unused, still r15-unused (r15 preserved)
-      --                if stack-below-r15, new-rsp < orig-rsp ≤ r15, so still holds
-      open import Data.Nat.Properties using (≤-trans; m∸n≤m)
-
-      stack-inv-helper : StackInvariant s → StackInvariant s-final
-      stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-final r15≡0)
-      stack-inv-helper (stack-below-r15 rsp≤r15) = stack-below-r15 new-rsp≤r15
-        where
-          -- new-rsp = orig-rsp - 16 < orig-rsp ≤ r15
-          -- So new-rsp < r15, hence new-rsp ≤ r15
-          new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
-          new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
-          new-rsp≤r15-orig : new-rsp ≤ readReg (regs s) r15
-          new-rsp≤r15-orig = ≤-trans new-rsp≤orig-rsp rsp≤r15
-          -- Convert to s-final coordinates
-          new-rsp≤r15 : readReg (regs s-final) rsp ≤ readReg (regs s-final) r15
-          new-rsp≤r15 = subst₂ _≤_ (sym rsp-s7) (sym r15-final) new-rsp≤r15-orig
-
-      stack-inv-final : StackInvariant s-final
-      stack-inv-final = stack-inv-helper stack-inv
-
-      rsp>16-final : readReg (regs s-final) rsp > 16
-      rsp>16-final = rsp-bound-after-stack-op s-final
+  run-curry-star-direct = run-curry-star
 
   -- | Star-based apply execution (direct, uses Star throughout)
   -- compile-length apply = 6

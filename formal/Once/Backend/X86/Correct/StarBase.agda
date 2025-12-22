@@ -61,6 +61,24 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
 open IRStarResult public
 
 ------------------------------------------------------------------------
+-- IRRunner: Type for the recursive IR execution function
+------------------------------------------------------------------------
+
+-- | Type signature for the recursive IR execution function.
+-- Recursive case handlers (compose, pair, case, curry, apply) take
+-- an IRRunner as a parameter, allowing them to be defined outside
+-- the mutual block. This dramatically reduces compilation time.
+IRRunner : Set
+IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+
+------------------------------------------------------------------------
 -- Simple Star proofs (single-step, no recursion)
 ------------------------------------------------------------------------
 
