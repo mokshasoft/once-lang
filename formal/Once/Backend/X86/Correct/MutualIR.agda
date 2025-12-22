@@ -1819,9 +1819,24 @@ mutual
       suffix-g : Program
       suffix-g = label end-label ∷ suffix
 
-      -- Length of prefix-g (postulated due to complex list arithmetic)
-      postulate
-        len-prefix-g : length prefix-g ≡ length prefix +ℕ 7 +ℕ len-f
+      -- Length of prefix-g
+      -- prefix-g = prefix ++ [4 instrs] ++ code-f ++ [3 instrs]
+      -- length = length prefix + 4 + len-f + 3 = length prefix + 7 + len-f
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ 7 +ℕ len-f
+      len-prefix-g = trans (List-length-++ prefix)
+                     (trans (cong (length prefix +ℕ_) inner-eq)
+                            (sym (+-assoc (length prefix) 7 len-f)))
+        where
+          -- Inner list: 4 cons, then code-f ++ 3 more
+          inner-eq : length (load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
+                            mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-f ++
+                            jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷ [])
+                   ≡ 7 +ℕ len-f
+          inner-eq = trans (cong (4 +ℕ_) (List-length-++ code-f))
+                     (trans (cong (λ n → 4 +ℕ n +ℕ 3) (compile-length-correct f))
+                     (trans (cong (_+ℕ 3) (+-comm 4 len-f))
+                     (trans (+-assoc len-f 4 3)
+                            (+-comm len-f 7))))
 
       pc-right-g : pc s-right ≡ length prefix-g
       pc-right-g = trans pc-right (sym len-prefix-g)
