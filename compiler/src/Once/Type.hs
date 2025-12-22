@@ -30,6 +30,7 @@ data Type
   | TProduct Type Type     -- ^ Product type: A * B
   | TSum Type Type         -- ^ Sum type: A + B
   | TArrow Type Type       -- ^ Function type: A -> B (pure)
+  | TTailRec Type Type     -- ^ Tail-recursive function: A ->> B (D047)
   | TEff Type Type         -- ^ Effectful morphism: Eff A B (see D032)
   | TApp Name [Type]       -- ^ Type constructor application: Maybe A, List Int
   | TFix Type              -- ^ Fixed point type: Fix F (for recursive types)

@@ -137,9 +137,15 @@ parseType :: Parser SType
 parseType = makeTypeExpr
   where
     -- Function arrow is right-associative, lowest precedence
+    -- D047: ->> is tail-recursive arrow
     makeTypeExpr = do
       t <- sumType
-      option t (STArrow t <$> (symbol "->" *> makeTypeExpr))
+      option t (arrowType t)
+
+    arrowType t = choice
+      [ STTailRec t <$> (symbol "->>" *> sumType)       -- tail-recursive: must be final arrow
+      , STArrow t <$> (symbol "->" *> makeTypeExpr)     -- normal arrow: can chain
+      ]
 
     -- Sum type (+) is left-associative
     sumType = chainl1 productType (STSum <$ symbol "+")

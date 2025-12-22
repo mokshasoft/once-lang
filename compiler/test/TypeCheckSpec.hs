@@ -204,6 +204,59 @@ typeCheckTests = testGroup "TypeCheck"
               Right () -> pure ()
               Left err -> assertFailure $ "Type error: " ++ show err
       ]
+
+  -- D047: Tail-recursive arrow tests
+  , testGroup "Tail-recursive arrow (D047)"
+      [ testCase "function with ->> signature type checks" $ do
+          -- A lambda should match ->> signature (TTailRec matches TArrow in structure)
+          let input = T.unlines
+                [ "loop : Int ->> Int"
+                , "loop = id"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+
+      , testCase "->> does NOT unify with -> at signature level" $ do
+          -- If we declare something as ->> but try to use where -> expected, it fails
+          let input = T.unlines
+                [ "tailrec : Int ->> Int"
+                , "tailrec = id"
+                , "usePure : (Int -> Int) -> Int"
+                , "usePure = compose terminal id"
+                , "test : Int -> Int"
+                , "test = usePure tailrec"  -- Error: ->> where -> expected
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> assertFailure "Should fail: ->> should not unify with ->"
+              Left _ -> pure ()  -- expected failure
+
+      , testCase "->> with product input" $ do
+          let input = T.unlines
+                [ "loop : A * Int ->> A"
+                , "loop = fst"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+
+      , testCase "normal arrow returning ->> function" $ do
+          let input = T.unlines
+                [ "makeLoop : A -> Int ->> Int"
+                , "makeLoop = \\x -> id"
+                ]
+          case parseModule input of
+            Left err -> assertFailure $ "Parse error: " ++ show err
+            Right m -> case checkModule m of
+              Right () -> pure ()
+              Left err -> assertFailure $ "Type error: " ++ show err
+      ]
   ]
 
 -- Helper to infer type of an expression

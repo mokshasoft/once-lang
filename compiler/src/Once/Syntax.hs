@@ -89,6 +89,7 @@ data SType
   | STProduct SType SType        -- ^ Product: A * B
   | STSum SType SType            -- ^ Sum: A + B
   | STArrow SType SType          -- ^ Function: A -> B (pure)
+  | STTailRec SType SType        -- ^ Tail-recursive function: A ->> B (D047)
   | STEff SType SType            -- ^ Effectful morphism: Eff A B (see D032)
   | STQuant Quantity SType       -- ^ Quantity annotation: A^1
   | STApp Name [SType]           -- ^ Type application: Maybe A, List Int

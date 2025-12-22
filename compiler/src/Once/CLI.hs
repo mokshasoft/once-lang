@@ -662,6 +662,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
+      TTailRec _ _ -> "void*"  -- D047: TailRec same as Arrow at runtime
       TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
       TApp _ _ -> "void*"
       TFix _ -> "void*"
@@ -1046,6 +1047,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
+      TTailRec _ _ -> "void*"  -- D047: TailRec same as Arrow at runtime
       TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
       TApp _ _ -> "void*"
       TFix _ -> "void*"
@@ -1151,6 +1153,7 @@ generateLibraryAll functions = (header, source)
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
+      TTailRec _ _ -> "void*"  -- D047: TailRec same as Arrow at runtime
       TEff _ _ -> "void*"
       TApp _ _ -> "void*"
       TFix _ -> "void*"

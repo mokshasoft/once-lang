@@ -52,6 +52,28 @@ parserTests = testGroup "Parser"
       , testCase "puts signature" $
           parseType' "String Utf8 -> Unit" @?=
             Right (STArrow (STString Utf8) STUnit)
+
+      -- D047: Tail-recursive arrow syntax
+      -- ->> must be the final arrow (no arrows after it)
+      , testCase "tail-recursive arrow" $
+          parseType' "A ->> B" @?= Right (STTailRec (STVar "A") (STVar "B"))
+
+      , testCase "tail-recursive arrow with concrete types" $
+          parseType' "Int ->> Int" @?= Right (STTailRec STInt STInt)
+
+      , testCase "normal arrow then tail-rec" $
+          -- A -> B ->> C means A -> (B ->> C)
+          parseType' "A -> B ->> C" @?=
+            Right (STArrow (STVar "A") (STTailRec (STVar "B") (STVar "C")))
+
+      , testCase "tail-rec with product result" $
+          parseType' "A ->> B * C" @?=
+            Right (STTailRec (STVar "A") (STProduct (STVar "B") (STVar "C")))
+
+      , testCase "tail-rec with parenthesized arrow result" $
+          -- A ->> (B -> C) is allowed - returns a function
+          parseType' "A ->> (B -> C)" @?=
+            Right (STTailRec (STVar "A") (STArrow (STVar "B") (STVar "C")))
       ]
 
   , testGroup "Expressions"

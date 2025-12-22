@@ -135,6 +135,7 @@ applySubst subst ty = case ty of
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
   TSum a b -> TSum (applySubst subst a) (applySubst subst b)
   TArrow a b -> TArrow (applySubst subst a) (applySubst subst b)
+  TTailRec a b -> TTailRec (applySubst subst a) (applySubst subst b)  -- D047
   TEff a b -> TEff (applySubst subst a) (applySubst subst b)
   TApp name args -> TApp name (map (applySubst subst) args)
   TFix t -> TFix (applySubst subst t)
@@ -158,6 +159,7 @@ occurs name ty = case ty of
   TProduct a b -> occurs name a || occurs name b
   TSum a b -> occurs name a || occurs name b
   TArrow a b -> occurs name a || occurs name b
+  TTailRec a b -> occurs name a || occurs name b  -- D047
   TEff a b -> occurs name a || occurs name b
   TApp _ args -> any (occurs name) args
   TFix t -> occurs name t
@@ -190,6 +192,11 @@ unify t1 t2 = case (t1, t2) of
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
     Right (composeSubst s2 s1)
   (TArrow a1 b1, TArrow a2 b2) -> do
+    s1 <- unify a1 a2
+    s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
+    Right (composeSubst s2 s1)
+  -- D047: TTailRec unifies with TTailRec only (not with TArrow)
+  (TTailRec a1 b1, TTailRec a2 b2) -> do
     s1 <- unify a1 a2
     s2 <- unify (applySubst s1 b1) (applySubst s1 b2)
     Right (composeSubst s2 s1)
@@ -234,6 +241,14 @@ matchesStructure sig inferred = go Map.empty sig inferred /= Nothing
       m' <- go m a1 a2
       go m' b1 b2
     go m (TArrow a1 b1) (TArrow a2 b2) = do
+      m' <- go m a1 a2
+      go m' b1 b2
+    -- D047: TTailRec in signature matches TArrow in inferred
+    -- (TTailRec is a refinement that adds tail-recursion verification)
+    go m (TTailRec a1 b1) (TArrow a2 b2) = do
+      m' <- go m a1 a2
+      go m' b1 b2
+    go m (TTailRec a1 b1) (TTailRec a2 b2) = do
       m' <- go m a1 a2
       go m' b1 b2
     -- TEff matches TEff, but NOT TArrow (D032: effect system)
@@ -448,6 +463,7 @@ convertTypeWithAliases aliases sty = case sty of
   STProduct a b -> TProduct (conv a) (conv b)
   STSum a b -> TSum (conv a) (conv b)
   STArrow a b -> TArrow (conv a) (conv b)
+  STTailRec a b -> TTailRec (conv a) (conv b)  -- D047: tail-recursive arrow
   STEff a b -> TEff (conv a) (conv b)
   STQuant _ t -> conv t  -- quantity tracked separately in context
   STApp name args ->
@@ -480,6 +496,7 @@ substSType subst sty = case sty of
   STProduct a b -> STProduct (substSType subst a) (substSType subst b)
   STSum a b -> STSum (substSType subst a) (substSType subst b)
   STArrow a b -> STArrow (substSType subst a) (substSType subst b)
+  STTailRec a b -> STTailRec (substSType subst a) (substSType subst b)  -- D047
   STEff a b -> STEff (substSType subst a) (substSType subst b)
   STQuant q t -> STQuant q (substSType subst t)
   STApp name args -> STApp name (map (substSType subst) args)
