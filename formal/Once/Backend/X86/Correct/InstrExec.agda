@@ -113,6 +113,13 @@ execCmp-zero : ∀ (prog : List Instr) (s : State) (r : Reg) →
     just (record s { pc = pc s +ℕ 1 ; flags = mkflags true false false })
 execCmp-zero prog s r eq rewrite eq = refl
 
+-- Helper: state after executing cmp (reg r) (imm 0) when r contains 1 (inr tag)
+execCmp-one : ∀ (prog : List Instr) (s : State) (r : Reg) →
+  readReg (regs s) r ≡ 1 →
+  execInstr prog s (cmp (reg r) (imm 0)) ≡
+    just (record s { pc = pc s +ℕ 1 ; flags = mkflags false false false })
+execCmp-one prog s r eq rewrite eq = refl
+
 -- Helper: state after executing jne when ZF = true (not taken)
 execJne-not-taken : ∀ (prog : List Instr) (s : State) (target : ℕ) →
   zf (flags s) ≡ true →
