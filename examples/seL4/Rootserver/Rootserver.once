@@ -1,0 +1,177 @@
+------------------------------------------------------------------------
+-- seL4 Rootserver in Once
+--
+-- The rootserver is the first user-space thread created by seL4.
+-- It owns all initial capabilities and is responsible for:
+-- 1. Parsing BootInfo to discover available resources
+-- 2. Creating kernel objects from untyped memory
+-- 3. Distributing capabilities to child processes
+-- 4. Starting child processes
+--
+-- Writing the rootserver in Once enables formal verification of
+-- this security-critical capability distribution code.
+------------------------------------------------------------------------
+
+import I.seL4.IPC
+import I.seL4.Untyped
+import I.seL4.CNode
+import I.seL4.TCB
+import I.seL4.BootInfo
+
+------------------------------------------------------------------------
+-- Configuration Constants
+------------------------------------------------------------------------
+
+-- Capability slot assignments for our system
+-- These are slots in the rootserver's CNode where we'll place caps
+
+slotEchoEndpoint : Int
+slotEchoEndpoint = 100
+
+slotServerTCB : Int
+slotServerTCB = 101
+
+slotClientTCB : Int
+slotClientTCB = 102
+
+slotServerCNode : Int
+slotServerCNode = 103
+
+slotClientCNode : Int
+slotClientCNode = 104
+
+slotServerVSpace : Int
+slotServerVSpace = 105
+
+slotClientVSpace : Int
+slotClientVSpace = 106
+
+-- Badge for identifying the client in IPC
+clientBadge : Int
+clientBadge = 1
+
+------------------------------------------------------------------------
+-- Helper Functions
+------------------------------------------------------------------------
+
+-- | Find first untyped region large enough for an object
+-- Arguments: (bootinfo, sizeBits, startIndex)
+-- Returns: untyped cap slot or -1 if not found
+findUntyped : Int -> Int -> Int -> Eff Unit Int
+findUntyped bootinfo sizeBits idx =
+  let count = bootinfo_untypedCount@BootInfo bootinfo
+  in let start = bootinfo_untypedStart@BootInfo bootinfo
+  in if idx >= count
+     then pure (-1)
+     else let utDesc = bootinfo_getUntyped@BootInfo (bootinfo, idx)
+          in let (paddr, utSize, isDevice) = utDesc
+             in if isDevice == 0 && utSize >= sizeBits
+                then pure (start + idx)
+                else findUntyped bootinfo sizeBits (idx + 1)
+
+-- | Allocate object from untyped memory
+-- Returns: error code (0 = success)
+allocObject : Int -> Int -> Int -> Int -> Eff Unit Int
+allocObject untypedCap objType sizeBits destSlot =
+  let cnode = seL4_CapInitThreadCNode
+  in let depth = 64  -- seL4_WordBits for 64-bit
+  in seL4_Untyped_Retype@Untyped
+       (untypedCap, objType, sizeBits, cnode, destSlot, depth, 0, 1)
+
+------------------------------------------------------------------------
+-- Main Rootserver Logic
+------------------------------------------------------------------------
+
+main : IO Unit
+main =
+  -- 1. Get BootInfo from kernel
+  let bootinfo = getBootInfo@BootInfo ()
+
+  -- 2. Find untyped memory for creating objects
+  -- We need: 1 endpoint, 2 TCBs, 2 CNodes, 2 VSpaces
+  in let utCap = findUntyped bootinfo 12 0  -- 4KB minimum for endpoint
+
+  in case utCap of
+    (-1) -> terminal ()  -- No suitable untyped found
+    ut ->
+      -- 3. Create endpoint for IPC between server and client
+      let epErr = allocObject ut seL4_EndpointObject@Untyped 4 slotEchoEndpoint
+
+      -- 4. Create TCB for echo server
+      in let tcbErr = allocObject ut seL4_TCBObject@Untyped 12 slotServerTCB
+
+      -- 5. Create TCB for echo client
+      in let tcbErr2 = allocObject ut seL4_TCBObject@Untyped 12 slotClientTCB
+
+      -- 6. Copy endpoint to server's CNode (slot 4)
+      -- Server gets RWG (read, write, grant) rights
+      in let copyErr = seL4_CNode_Copy@CNode
+           ( seL4_CapInitThreadCNode  -- dest root
+           , slotServerCNode          -- dest index (for server's cap)
+           , 64                       -- dest depth
+           , seL4_CapInitThreadCNode  -- src root
+           , slotEchoEndpoint         -- src index
+           , 64                       -- src depth
+           , seL4_AllRights@CNode     -- rights
+           )
+
+      -- 7. Mint badged endpoint to client's CNode (slot 5)
+      -- Client gets badged cap so server can identify messages
+      in let mintErr = seL4_CNode_Mint@CNode
+           ( seL4_CapInitThreadCNode
+           , slotClientCNode
+           , 64
+           , seL4_CapInitThreadCNode
+           , slotEchoEndpoint
+           , 64
+           , seL4_AllRights@CNode
+           , clientBadge
+           )
+
+      -- 8. Configure server TCB
+      in let cfgErr = seL4_TCB_Configure@TCB
+           ( slotServerTCB
+           , 0                        -- fault EP (none)
+           , seL4_CapInitThreadCNode  -- CSpace root
+           , 0                        -- CSpace guard
+           , seL4_CapInitThreadVSpace@BootInfo  -- VSpace root
+           , 0                        -- VSpace data
+           , 0                        -- IPC buffer addr
+           , 0                        -- IPC buffer frame
+           )
+
+      -- 9. Set server priority
+      in let prioErr = seL4_TCB_SetPriority@TCB
+           ( slotServerTCB
+           , seL4_CapInitThreadTCB@BootInfo
+           , 200                      -- priority
+           )
+
+      -- 10. Configure client TCB (similar to server)
+      in let cfgErr2 = seL4_TCB_Configure@TCB
+           ( slotClientTCB
+           , 0
+           , seL4_CapInitThreadCNode
+           , 0
+           , seL4_CapInitThreadVSpace@BootInfo
+           , 0
+           , 0
+           , 0
+           )
+
+      -- 11. Set client priority (lower than server)
+      in let prioErr2 = seL4_TCB_SetPriority@TCB
+           ( slotClientTCB
+           , seL4_CapInitThreadTCB@BootInfo
+           , 150                      -- lower priority
+           )
+
+      -- 12. Resume both threads (start them)
+      in let resumeErr = seL4_TCB_Resume@TCB slotServerTCB
+      in let resumeErr2 = seL4_TCB_Resume@TCB slotClientTCB
+
+      -- 13. Rootserver yields (or could loop handling faults)
+      in let _ = seL4_Yield@IPC ()
+      in terminal ()
+
+------------------------------------------------------------------------

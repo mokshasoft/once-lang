@@ -1,0 +1,86 @@
+------------------------------------------------------------------------
+-- seL4 Echo Client in Once
+--
+-- A simple client that sends messages to the echo server and
+-- receives the replies. Demonstrates:
+-- - Sending IPC with seL4_Call (combined send + wait for reply)
+-- - Verifying echo correctness
+--
+-- The client receives a badged endpoint capability from the rootserver
+-- at a known slot. The badge identifies this client to the server.
+------------------------------------------------------------------------
+
+import I.seL4.IPC
+
+------------------------------------------------------------------------
+-- Configuration
+------------------------------------------------------------------------
+
+-- Endpoint capability slot (set by rootserver)
+-- This endpoint has our badge attached
+clientEndpoint : Int
+clientEndpoint = 5
+
+------------------------------------------------------------------------
+-- Test Data
+------------------------------------------------------------------------
+
+-- Test values to send and verify
+testValue1 : Int
+testValue1 = 42
+
+testValue2 : Int
+testValue2 = 100
+
+testValue3 : Int
+testValue3 = 255
+
+testValue4 : Int
+testValue4 = 1000
+
+------------------------------------------------------------------------
+-- Client Logic
+------------------------------------------------------------------------
+
+-- | Send a test message and verify the echo
+-- Returns: 0 if echo matches, non-zero on mismatch
+testEcho : Int -> Int -> Int -> Int -> Eff Unit Int
+testEcho v1 v2 v3 v4 =
+  -- Build MessageInfo: length = 4 (4 message registers)
+  let msgInfo = 4
+
+  -- Call the server (send + wait for reply)
+  in let result = seL4_Call@IPC (clientEndpoint, msgInfo, v1, v2, v3, v4)
+
+  -- Unpack reply
+  in let (replyInfo, r0, r1, r2, r3) = result
+
+  -- Verify echo
+  in if r0 == v1 && r1 == v2 && r2 == v3 && r3 == v4
+     then pure 0      -- Success
+     else pure 1      -- Mismatch
+
+-- | Run test multiple times
+testLoop : Int -> Eff Unit Int
+testLoop count =
+  if count <= 0
+  then pure 0
+  else let result = testEcho testValue1 testValue2 testValue3 testValue4
+       in case result of
+            0 -> testLoop (count - 1)
+            _ -> pure result  -- Return error
+
+------------------------------------------------------------------------
+-- Main Entry Point
+------------------------------------------------------------------------
+
+main : IO Unit
+main =
+  -- Run 10 echo tests
+  let result = testLoop 10
+
+  -- In a real system, could signal completion or exit
+  -- For now, just terminate
+  in terminal ()
+
+------------------------------------------------------------------------
