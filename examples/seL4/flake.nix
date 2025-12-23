@@ -143,9 +143,9 @@
             cd build
             cmake -G Ninja \
               -DCMAKE_TOOLCHAIN_FILE=../kernel/gcc.cmake \
+              -C ../projects/sel4test/settings.cmake \
               -DPLATFORM=x86_64 \
               -DSIMULATION=TRUE \
-              -DLibSel4FunctionAttributes=public \
               ../projects/sel4test
 
             # Stay in build dir for next phases
@@ -166,7 +166,7 @@
 exec qemu-system-x86_64 \\
   -cpu Nehalem,-vme,+pdpe1gb,-xsave,-xsaveopt,-xsavec,-fsgsbase,-invpcid,enforce \\
   -nographic -serial mon:stdio \\
-  -m size=512M \\
+  -m size=3G \\
   -kernel $out/images/kernel-x86_64-pc99 \\
   -initrd $out/images/sel4test-driver-image-x86_64-pc99
 EOF
