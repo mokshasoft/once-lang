@@ -290,25 +290,6 @@ exec-until-pc-reaches-target target (suc fuel') prog s s' exec-eq h-false with h
 ...     | nothing with () ← exec-eq
 ...     | just s1 = exec-until-pc-reaches-target target fuel' prog s1 s' exec-eq h-false
 
--- | exec-until-pc with sufficient fuel equals exec with exact steps when pc matches
--- This connects exec-until-pc to the regular exec when we know exact step count
--- Precondition: pc s ≢ target (we don't start at the target)
--- This avoids a complex edge case where we'd start at target but execute more steps
---
--- The proof is sound but complex due to Agda's with-clause abstraction creating
--- types that are hard to work with. The lemma states: if exec n prog s gives s'
--- and s' is at target pc (not halted), then exec-until-pc with sufficient fuel
--- also gives s'. This is true because exec-until-pc just adds early stopping at
--- target, and if exec reaches target in n steps, exec-until-pc will too.
-postulate
-  exec-until-pc-to-exec : ∀ (target n fuel : ℕ) (prog : Program) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ false →
-    pc s' ≡ target →
-    fuel ≥ n →
-    pc s ≢ target →     -- Don't start at target
-    exec-until-pc target fuel prog s ≡ just s'
-
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
 fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
@@ -1003,26 +984,8 @@ exec-nine-steps n prog s s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ s₉ step₁ h�
     h₀ = step-implies-not-halted prog s s₁ step₁ h₁
 
 ------------------------------------------------------------------------
--- Fuel and helpers for exec-until-pc conversion
+-- compile-length properties
 ------------------------------------------------------------------------
-
--- | Default fuel for exec-until-pc (sufficiently large for any practical IR)
-runFuel : ℕ
-runFuel = 100000
-
--- | runFuel is at least n for any reasonable n (postulated for simplicity)
-postulate
-  runFuel≥ : ∀ (n : ℕ) → runFuel ≥ n
-
--- | n ≢ n + k for any k > 0 (used to show pc s ≢ target when we don't start at target)
-pc-not-at-target : ∀ {n} (k : ℕ) → k > 0 → n ≢ n +ℕ k
-pc-not-at-target {n} (suc k) _ eq = helper n k eq
-  where
-    suc-inj : ∀ {a b} → suc a ≡ suc b → a ≡ b
-    suc-inj refl = refl
-    helper : ∀ n k → n ≢ n +ℕ suc k
-    helper zero k ()
-    helper (suc n) k eq = helper n k (suc-inj eq)
 
 -- | compile-length is always positive (at least 1)
 -- PROVEN: By structural induction on IR. All base cases are ≥ 1.
@@ -1059,18 +1022,3 @@ compile-length>0 apply = s≤s z≤n
 compile-length>0 fold = s≤s z≤n
 compile-length>0 unfold = s≤s z≤n
 compile-length>0 arr = s≤s z≤n
-
--- | Convert exec proof to exec-until-pc for simple generators
--- Used when compile-length equals actual steps (non-branching generators)
-exec-to-exec-until-pc-simple : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (s s' : State) →
-  exec (compile-length ir) (prefix ++ compile-x86 ir ++ suffix) s ≡ just s' →
-  halted s' ≡ false →
-  pc s' ≡ length prefix +ℕ compile-length ir →
-  pc s ≡ length prefix →
-  exec-until-pc (length prefix +ℕ compile-length ir) runFuel (prefix ++ compile-x86 ir ++ suffix) s ≡ just s'
-exec-to-exec-until-pc-simple {A} {B} ir prefix suffix s s' exec-eq h-eq pc'-eq pc-eq =
-  exec-until-pc-to-exec (length prefix +ℕ compile-length ir) (compile-length ir) runFuel
-    (prefix ++ compile-x86 ir ++ suffix) s s'
-    exec-eq h-eq pc'-eq (runFuel≥ (compile-length ir))
-    (subst (λ p → p ≢ length prefix +ℕ compile-length ir) (sym pc-eq)
-           (pc-not-at-target (compile-length ir) (compile-length>0 ir)))
