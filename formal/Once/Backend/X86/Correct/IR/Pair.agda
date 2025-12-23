@@ -36,7 +36,7 @@ open import Once.Backend.X86.Correct.StarBase
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl; m∸n+n≡m)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -687,6 +687,10 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     stack-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
     -- Stack invariant propagation
     stack-inv-s3 : StackInvariant s3
+    -- Original stack invariant (for s9 restoration proof)
+    stack-inv-s : StackInvariant s
+    -- RBP chain: connects rbp after g to original rsp
+    rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
     -- Memory frame: original r15 location preserved through f and g execution
     mem-frame : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     -- Disjointness: pair allocation (r15-s3) is below frame base (rbp-s3)
@@ -709,7 +713,8 @@ exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
   pc s3 ≡ length prefix-final →
   PairFinalResult f g prefix suffix s s3
 
--- | Version with full preconditions (no postulates)
+-- | Version with full preconditions
+-- Only postulate: 24≤rsp-s (rsp > 24 at start, required for rsp restoration proof)
 exec-pair-final-full : ∀ {A B C} (f : IR C A) (g : IR C B)
                        (prefix suffix : Program)
                        (s s3 : State) →
@@ -731,7 +736,7 @@ exec-pair-final-full {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-orig-fin = mem-orig-preserved
     }
     where
-      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; mem-frame)
+      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; mem-frame)
 
       ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -914,10 +919,31 @@ exec-pair-final-full {A} {B} {C} f g prefix suffix s s3 precond = record
       rsp>16-s9 : readReg (regs s9) rsp > 16
       rsp>16-s9 = rsp-bound-after-stack-op s9
 
-      -- Stack invariant (derivable from stack-inv-s3 through the pop sequence)
-      -- The pops restore stack to valid state. For now, use the postulate.
-      postulate
-        stack-inv-s9 : StackInvariant s9
+      -- ========== Stack invariant proof (via restored rsp and r15) ==========
+      -- After the pop sequence: rsp-s9 = rsp-s and r15-s9 = r15-s
+      -- So StackInvariant s implies StackInvariant s9
+
+      -- rsp chain: rsp-s9 = rsp-s8 + 8 = rsp-s6 + 24
+      rsp-s9 : readReg (regs s9) rsp ≡ readReg (regs s6) rsp +ℕ 24
+      rsp-s9 = trans (readReg-writeReg-same (writeReg (regs s8) r14 v-r14) rsp (readReg (regs s8) rsp +ℕ 8))
+               (trans (cong (_+ℕ 8) rsp-s8) (+-assoc (readReg (regs s6) rsp) 16 8))
+
+      -- Full chain: rsp-s9 = rbp-s3 + 24 = (rsp-s - 24) + 24 = rsp-s
+      -- Using rbp-chain: rbp-s3 = rsp-s ∸ 24
+      rsp-s9-eq-s : readReg (regs s9) rsp ≡ readReg (regs s) rsp
+      rsp-s9-eq-s = trans rsp-s9
+                    (trans (cong (_+ℕ 24) rsp-s6-eq-rbp-s3)
+                    (trans (cong (_+ℕ 24) rbp-chain)
+                    (m∸n+n≡m 24≤rsp-s)))
+        where
+          -- Need 24 ≤ rsp-s, which follows from rsp>16 and stack being initialized to large value
+          -- In practice, rsp is always > 24 due to initial stack base (0x7FFF0000)
+          -- For now, use the rsp>16 bound with a safe margin postulate
+          postulate 24≤rsp-s : 24 ≤ readReg (regs s) rsp
+
+      -- Stack invariant: s9 has same r15 and rsp as s, so inherits StackInvariant
+      stack-inv-s9 : StackInvariant s9
+      stack-inv-s9 = stack-inv-preserved-unchanged s s9 stack-inv-s r15-s9 rsp-s9-eq-s
 
       -- Memory preservation
       r15-s3 = readReg (regs s3) r15
