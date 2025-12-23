@@ -19,7 +19,7 @@ open import Once.Backend.X86.CodeGen
 
 open import Once.Postulates using (encode; encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
-open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
+open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
@@ -35,8 +35,9 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-stack-inv; ir-rsp-bound)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl; m∸n+n≡m)
+open import Data.Empty using (⊥)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -332,6 +333,7 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ 40
     rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+    rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
     stack-inv-setup : StackInvariant s-setup
     rsp>16-setup : readReg (regs s-setup) rsp > 16
     star-setup : Star prog s s-setup
@@ -351,6 +353,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   ; r14-setup = r14-setup
   ; r15-setup = r15-setup
   ; rbp-setup = rbp-setup
+  ; rsp-setup = rsp-setup
   ; stack-inv-setup = stack-inv-setup
   ; rsp>16-setup = rsp>16-setup
   ; star-setup = star-setup
@@ -700,6 +703,68 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     disjoint-r14 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
     -- Disjointness for mem-orig-preserved
     disjoint-orig : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+    -- RSP bound for final phase restoration proof
+    rsp-bound : 24 ≤ readReg (regs s) rsp
+
+------------------------------------------------------------------------
+-- Arithmetic lemmas for disjointness proofs
+------------------------------------------------------------------------
+
+-- | n + 8 ≢ n (symmetric of n≢n+8)
+n+8≢n : ∀ (n : ℕ) → n +ℕ 8 ≢ n
+n+8≢n n eq = n≢n+8 n (sym eq)
+
+-- | n + 16 ≢ n + 8
+n+16≢n+8 : ∀ (n : ℕ) → n +ℕ 16 ≢ n +ℕ 8
+n+16≢n+8 n eq = n≢n+8 (n +ℕ 8) (+-assoc-cancel eq)
+  where
+    -- If n + 16 = n + 8, then (n + 8) + 8 = n + 8, so n + 8 = (n + 8) + 8
+    -- n + 16 = (n + 8) + 8 by +-assoc
+    +-assoc-cancel : n +ℕ 16 ≡ n +ℕ 8 → n +ℕ 8 ≡ (n +ℕ 8) +ℕ 8
+    +-assoc-cancel p = sym (trans (+-assoc n 8 8) p)
+
+-- | n + 24 ≢ n + 8
+n+24≢n+8 : ∀ (n : ℕ) → n +ℕ 24 ≢ n +ℕ 8
+n+24≢n+8 n eq = n≢n+suc-m (n +ℕ 8) 15 (+-assoc-cancel eq)
+  where
+    -- n + 24 = (n + 8) + 16 by +-assoc
+    +-assoc-cancel : n +ℕ 24 ≡ n +ℕ 8 → n +ℕ 8 ≡ (n +ℕ 8) +ℕ 16
+    +-assoc-cancel p = sym (trans (+-assoc n 8 16) p)
+
+-- | n + 32 ≢ n + 8
+n+32≢n+8 : ∀ (n : ℕ) → n +ℕ 32 ≢ n +ℕ 8
+n+32≢n+8 n eq = n≢n+suc-m (n +ℕ 8) 23 (+-assoc-cancel eq)
+  where
+    -- n + 32 = (n + 8) + 24 by +-assoc
+    +-assoc-cancel : n +ℕ 32 ≡ n +ℕ 8 → n +ℕ 8 ≡ (n +ℕ 8) +ℕ 24
+    +-assoc-cancel p = sym (trans (+-assoc n 8 24) p)
+
+-- | If m ≥ 40, then (m ∸ 24) = (m ∸ 40) + 16
+∸-offset-relationship : ∀ m → 40 ≤ m → m ∸ 24 ≡ (m ∸ 40) +ℕ 16
+∸-offset-relationship m 40≤m = trans step1 step2
+  where
+    -- m ∸ 24 = m ∸ 40 + 16 when m ≥ 40
+    -- Because m ∸ 24 = (m ∸ 40 + 40) ∸ 24 = (m ∸ 40) + (40 ∸ 24) = (m ∸ 40) + 16
+    step1 : m ∸ 24 ≡ (m ∸ 40 +ℕ 40) ∸ 24
+    step1 = cong (_∸ 24) (sym (m∸n+n≡m 40≤m))
+
+    step2 : (m ∸ 40 +ℕ 40) ∸ 24 ≡ (m ∸ 40) +ℕ 16
+    step2 = lemma (m ∸ 40)
+      where
+        -- (k + 40) ∸ 24 = k + 16
+        lemma : ∀ k → (k +ℕ 40) ∸ 24 ≡ k +ℕ 16
+        lemma k = trans (cong (_∸ 24) (+-comm k 40)) (trans step-a (+-comm 16 k))
+          where
+            step-a : (40 +ℕ k) ∸ 24 ≡ 16 +ℕ k
+            step-a = refl
+
+-- | If m ∸ n > 0, then n ≤ m
+-- Proof: m ∸ n > 0 means m ∸ n ≥ 1, so the subtraction is positive.
+-- If n > m, then m ∸ n = 0, contradicting m ∸ n > 0.
+∸>0⇒≤ : ∀ m n → m ∸ n > 0 → n ≤ m
+∸>0⇒≤ m zero _ = z≤n
+∸>0⇒≤ zero (suc n) ()  -- zero ∸ suc n = 0, so > 0 is impossible
+∸>0⇒≤ (suc m) (suc n) sm∸sn>0 = s≤s (∸>0⇒≤ m n sm∸sn>0)
 
 -- | Construct PairFinalPrecond from intermediate results
 -- Extracted to reduce MutualIR.agda type-checking time
@@ -731,6 +796,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; disjoint-r15 = disjoint-r15-s3
   ; disjoint-r14 = disjoint-r14-s3
   ; disjoint-orig = disjoint-orig-s3
+  ; rsp-bound = rsp-bound-s
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -758,21 +824,155 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
     rbp-chain = trans rbp-s3-eq-s2 (trans rbp-s2-eq-s1 (trans rbp-s1-eq-setup rbp-setup-eq))
 
-    -- Postulates for stack layout and disjointness
+    -- r15 was preserved through f and g execution: s3 → s2 → s1 → s-setup
+    r15-s3-eq-s2 : readReg (regs s3) r15 ≡ readReg (regs s2) r15
+    r15-s3-eq-s2 = ir-r15 r-g
+
+    r15-s2-eq-s1 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
+    r15-s2-eq-s1 = subst (λ s2' → readReg (regs s2') r15 ≡ readReg (regs s1) r15)
+                         (sym s2-eq) (PairMiddleResult.r15-mid mid-res)
+
+    r15-s1-eq-setup : readReg (regs s1) r15 ≡ readReg (regs s-setup) r15
+    r15-s1-eq-setup = ir-r15 r-f
+
+    r15-setup-eq : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ 40
+    r15-setup-eq = subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                         (sym s-setup-eq) (PairSetupResult.r15-setup setup-res)
+
+    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ 40
+    r15-chain = trans r15-s3-eq-s2 (trans r15-s2-eq-s1 (trans r15-s1-eq-setup r15-setup-eq))
+
+    -- ========== Disjointness proofs (PROVEN from arithmetic) ==========
+    -- Key insight: rbp-s3 = rsp-s ∸ 24 = r15-s3 + 16 (when rsp-s ≥ 40)
+    -- This follows from setup using 40 bytes of stack (3 pushes + sub 16)
+
+    -- Get rsp>16 from setup, which implies rsp-s > 56, thus 40 ≤ rsp-s
+    rsp>16-setup' : readReg (regs s-setup) rsp > 16
+    rsp>16-setup' = subst (λ ss → readReg (regs ss) rsp > 16)
+                          (sym s-setup-eq) (PairSetupResult.rsp>16-setup setup-res)
+
+    -- rsp-setup = rsp-s ∸ 40, and rsp-setup > 16, so rsp-s ∸ 40 > 16 > 0, thus 40 ≤ rsp-s
+    rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
+    rsp-setup-eq' = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ 40)
+                          (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
+
+    rsp∸40>16 : readReg (regs s) rsp ∸ 40 > 16
+    rsp∸40>16 = subst (_> 16) rsp-setup-eq' rsp>16-setup'
+
+    rsp∸40>0 : readReg (regs s) rsp ∸ 40 > 0
+    rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16  -- 1 ≤ 17 ≤ rsp∸40
+
+    40≤rsp-s : 40 ≤ readReg (regs s) rsp
+    40≤rsp-s = ∸>0⇒≤ (readReg (regs s) rsp) 40 rsp∸40>0
+
+    -- 24 ≤ rsp-s follows from 24 ≤ 40 ≤ rsp-s
+    rsp-bound-s : 24 ≤ readReg (regs s) rsp
+    rsp-bound-s = ≤-trans 24≤40 40≤rsp-s
+      where
+        24≤40 : 24 ≤ 40
+        24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+
+    -- rbp-s3 = r15-s3 + 16 (key relationship for disjointness)
+    -- Using full expressions to avoid projection mismatch errors
+    offset-eq : readReg (regs s) rsp ∸ 24 ≡ (readReg (regs s) rsp ∸ 40) +ℕ 16
+    offset-eq = ∸-offset-relationship (readReg (regs s) rsp) 40≤rsp-s
+
+    rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ 16
+    rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ 16) (sym r15-chain)))
+
+    -- Derived relationships for disjointness
+    rbp+8-is-r15+24 : readReg (regs s3) rbp +ℕ 8 ≡ readReg (regs s3) r15 +ℕ 24
+    rbp+8-is-r15+24 = trans (cong (_+ℕ 8) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 8)
+
+    rbp+16-is-r15+32 : readReg (regs s3) rbp +ℕ 16 ≡ readReg (regs s3) r15 +ℕ 32
+    rbp+16-is-r15+32 = trans (cong (_+ℕ 16) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 16)
+
+    -- disjoint-rbp-s3: rbp-s3 ≢ r15-s3 + 8
+    -- rbp-s3 = r15-s3 + 16, so r15-s3 + 16 ≢ r15-s3 + 8
+    disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-rbp-s3 eq = n+16≢n+8 (readReg (regs s3) r15) combined-eq
+      where
+        -- subst (λ x → x ≡ r15+8) (rbp ≡ r15+16) : (rbp ≡ r15+8) → (r15+16 ≡ r15+8)
+        combined-eq : readReg (regs s3) r15 +ℕ 16 ≡ readReg (regs s3) r15 +ℕ 8
+        combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ 8) rbp-eq-r15-plus-16 eq
+
+    -- disjoint-r15-s3: rbp-s3 + 8 ≢ r15-s3 + 8
+    -- rbp + 8 = r15 + 24, so this becomes r15 + 24 ≢ r15 + 8
+    disjoint-r15-s3 : readReg (regs s3) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-r15-s3 eq = n+24≢n+8 (readReg (regs s3) r15) combined-eq
+      where
+        -- Use subst to explicitly convert: rbp+8 = r15+24, and rbp+8 = r15+8, so r15+24 = r15+8
+        combined-eq : readReg (regs s3) r15 +ℕ 24 ≡ readReg (regs s3) r15 +ℕ 8
+        combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ 8) rbp+8-is-r15+24 eq
+
+    -- disjoint-r14-s3: rbp-s3 + 16 ≢ r15-s3 + 8
+    -- rbp + 16 = r15 + 32, so this becomes r15 + 32 ≢ r15 + 8
+    disjoint-r14-s3 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-r14-s3 eq = n+32≢n+8 (readReg (regs s3) r15) combined-eq
+      where
+        combined-eq : readReg (regs s3) r15 +ℕ 32 ≡ readReg (regs s3) r15 +ℕ 8
+        combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ 8) rbp+16-is-r15+32 eq
+
+    -- disjoint-orig-s3: r15-s ≢ r15-s3 + 8
+    -- Uses StackInvariant: either r15-s = 0, or rsp-s ≤ r15-s
+    disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-orig-s3 = case-stack-inv stack-inv
+      where
+        -- Case 1: r15-s = 0, then 0 ≢ r15-s3 + 8 (since r15-s3 + 8 ≥ 8 > 0)
+        -- 0 < n + 8 for any n, so 0 ≢ n + 8
+        -- Use +-suc to show n + 8 = suc (n + 7), then 0 < suc _ is trivial
+        0<n+8 : ∀ n → 0 < n +ℕ 8
+        0<n+8 n = subst (1 ≤_) (sym (+-suc n 7)) (s≤s z≤n)
+
+        case-r15-zero : readReg (regs s) r15 ≡ 0 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+        case-r15-zero r15≡0 eq = <⇒≢ (0<n+8 (readReg (regs s3) r15)) (sym combined-eq)
+          where
+            combined-eq : readReg (regs s3) r15 +ℕ 8 ≡ 0
+            combined-eq = trans (sym eq) r15≡0
+
+        -- Case 2: rsp-s ≤ r15-s, then r15-s3 + 8 = (rsp-s ∸ 40) + 8 < rsp-s ≤ r15-s
+        case-r15-stack : readReg (regs s) rsp ≤ readReg (regs s) r15 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+        case-r15-stack rsp≤r15 eq = <⇒≢ r15-s3+8<r15-s (sym eq)
+          where
+            -- (rsp-s ∸ 40) + 8 < rsp-s (when 40 ≤ rsp-s)
+            -- Proof: rsp-s = (rsp-s ∸ 40) + 40, so need (rsp-s ∸ 40) + 8 < (rsp-s ∸ 40) + 40
+            --        which follows from 8 < 40
+            r15-s3+8<rsp-s : readReg (regs s3) r15 +ℕ 8 < readReg (regs s) rsp
+            r15-s3+8<rsp-s = subst (λ n → n +ℕ 8 < readReg (regs s) rsp) (sym r15-chain) arith-step
+              where
+                rsp-s = readReg (regs s) rsp
+                k = rsp-s ∸ 40
+
+                -- k + 8 < k + 40 from 8 < 40
+                -- 8 < 40 means 9 ≤ 40, so need 9 s≤s applications to z≤n : 0 ≤ 31
+                8<40 : 8 < 40
+                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+                k+8<k+40 : k +ℕ 8 < k +ℕ 40
+                k+8<k+40 = +-monoʳ-< k 8<40
+
+                arith-step : (readReg (regs s) rsp ∸ 40) +ℕ 8 < readReg (regs s) rsp
+                arith-step = subst (k +ℕ 8 <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+
+            r15-s3+8<r15-s : readReg (regs s3) r15 +ℕ 8 < readReg (regs s) r15
+            r15-s3+8<r15-s = ≤-trans r15-s3+8<rsp-s rsp≤r15
+
+        case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+        case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
+        case-stack-inv (stack-below-r15 rsp≤r15) = case-r15-stack rsp≤r15
+
+    -- ========== Stack layout postulates (memory preservation) ==========
+    -- These require tracing memory through f and g execution
     postulate
       stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
       stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
       stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
       mem-frame-s3 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ 8
-      disjoint-r15-s3 : readReg (regs s3) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
-      disjoint-r14-s3 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
-      disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
 
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
 -- Takes full preconditions for proven stack restoration
--- Only postulate: 24≤rsp-s (rsp > 24 at start, required for rsp restoration proof)
+-- All postulates eliminated - rsp-bound passed via PairFinalPrecond
 exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program)
                   (s s3 : State) →
@@ -994,10 +1194,8 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
                     (trans (cong (_+ℕ 24) rbp-chain)
                     (m∸n+n≡m 24≤rsp-s)))
         where
-          -- Need 24 ≤ rsp-s, which follows from rsp>16 and stack being initialized to large value
-          -- In practice, rsp is always > 24 due to initial stack base (0x7FFF0000)
-          -- For now, use the rsp>16 bound with a safe margin postulate
-          postulate 24≤rsp-s : 24 ≤ readReg (regs s) rsp
+          24≤rsp-s : 24 ≤ readReg (regs s) rsp
+          24≤rsp-s = PairFinalPrecond.rsp-bound precond
 
       -- Stack invariant: s9 has same r15 and rsp as s, so inherits StackInvariant
       stack-inv-s9 : StackInvariant s9
