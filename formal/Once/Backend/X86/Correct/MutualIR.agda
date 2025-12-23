@@ -69,7 +69,7 @@ open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
 open import Once.Backend.X86.Correct.IR.Pair
   using (PairContext; make-pair-context; PairSetupResult; exec-pair-setup;
          PairMiddleResult; exec-pair-middle; PairFinalPrecond; PairFinalResult;
-         exec-pair-final; assemble-pair-result)
+         make-pair-final-precond; exec-pair-final; assemble-pair-result)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module PairSetupResult; module PairMiddleResult; module PairFinalResult)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
@@ -827,54 +827,10 @@ mutual
       r-g = proj₂ step-g
 
       -- ========== Phase 5: Final (6 instructions) ==========
-      -- Use extracted exec-pair-final from IR/Pair.agda
-      pc3 : pc s3 ≡ length prefix-final
-      pc3 = trans (ir-pc r-g) (trans (cong (_+ℕ len-g) len-prefix-g) (sym len-prefix-final))
-
-      -- Construct PairFinalPrecond with available properties
-      -- rbp was preserved through f and g execution: s3 → s2 → s1 → s-setup
-      rbp-s3-eq-s2 : readReg (regs s3) rbp ≡ readReg (regs s2) rbp
-      rbp-s3-eq-s2 = ir-rbp r-g
-
-      rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
-      rbp-s2-eq-s1 = PairMiddleResult.rbp-mid mid-res
-
-      rbp-s1-eq-setup : readReg (regs s1) rbp ≡ readReg (regs s-setup) rbp
-      rbp-s1-eq-setup = ir-rbp r-f
-
-      rbp-s3-eq-setup : readReg (regs s3) rbp ≡ readReg (regs s-setup) rbp
-      rbp-s3-eq-setup = trans rbp-s3-eq-s2 (trans rbp-s2-eq-s1 rbp-s1-eq-setup)
-
-      rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
-      rbp-chain = trans rbp-s3-eq-setup (PairSetupResult.rbp-setup setup-res)
-
-      -- Postulate the stack layout and disjointness (requires setup phase memory propagation)
-      postulate
-        stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
-        stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
-        stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
-        mem-frame-s3 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-        disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ 8
-        disjoint-r15-s3 : readReg (regs s3) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
-        disjoint-r14-s3 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
-        disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
-
+      -- Use extracted helpers from IR/Pair.agda
       final-precond : PairFinalPrecond f g prefix suffix s s3
-      final-precond = record
-        { h3 = ir-halted r-g
-        ; pc3 = pc3
-        ; stack-rbp = stack-rbp-s3
-        ; stack-r15 = stack-r15-s3
-        ; stack-r14 = stack-r14-s3
-        ; stack-inv-s3 = ir-stack-inv r-g
-        ; stack-inv-s = stack-inv
-        ; rbp-chain = rbp-chain
-        ; mem-frame = mem-frame-s3
-        ; disjoint-rbp = disjoint-rbp-s3
-        ; disjoint-r15 = disjoint-r15-s3
-        ; disjoint-r14 = disjoint-r14-s3
-        ; disjoint-orig = disjoint-orig-s3
-        }
+      final-precond = make-pair-final-precond f g prefix suffix x s s-setup s1 s2 s3
+                        stack-inv setup-res r-f mid-res r-g refl refl
 
       final-res : PairFinalResult f g prefix suffix s s3
       final-res = exec-pair-final f g prefix suffix s s3 final-precond

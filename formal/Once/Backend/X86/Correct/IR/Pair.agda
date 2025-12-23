@@ -701,6 +701,74 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     -- Disjointness for mem-orig-preserved
     disjoint-orig : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
 
+-- | Construct PairFinalPrecond from intermediate results
+-- Extracted to reduce MutualIR.agda type-checking time
+make-pair-final-precond : ∀ {A B C} (f : IR C A) (g : IR C B)
+                          (prefix suffix : Program) (x : ⟦ C ⟧)
+                          (s s-setup s1 s2 s3 : State)
+                          (stack-inv : StackInvariant s) →
+  let ctx = make-pair-context f g prefix suffix in
+  let open PairContext ctx in
+  (setup-res : PairSetupResult f g prefix suffix x s) →
+  (r-f : IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)) →
+  (mid-res : PairMiddleResult f g prefix suffix x s s-setup s1) →
+  (r-g : IRStarResult g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)) →
+  s-setup ≡ PairSetupResult.s-setup setup-res →
+  s2 ≡ PairMiddleResult.s2 mid-res →
+  PairFinalPrecond f g prefix suffix s s3
+make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
+                        stack-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
+  { h3 = ir-halted r-g
+  ; pc3 = pc3
+  ; stack-rbp = stack-rbp-s3
+  ; stack-r15 = stack-r15-s3
+  ; stack-r14 = stack-r14-s3
+  ; stack-inv-s3 = ir-stack-inv r-g
+  ; stack-inv-s = stack-inv
+  ; rbp-chain = rbp-chain
+  ; mem-frame = mem-frame-s3
+  ; disjoint-rbp = disjoint-rbp-s3
+  ; disjoint-r15 = disjoint-r15-s3
+  ; disjoint-r14 = disjoint-r14-s3
+  ; disjoint-orig = disjoint-orig-s3
+  }
+  where
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
+
+    -- PC at s3 for final phase
+    pc3 : pc s3 ≡ length prefix-final
+    pc3 = trans (ir-pc r-g) (trans (cong (_+ℕ len-g) len-prefix-g) (sym len-prefix-final))
+
+    -- rbp was preserved through f and g execution: s3 → s2 → s1 → s-setup
+    rbp-s3-eq-s2 : readReg (regs s3) rbp ≡ readReg (regs s2) rbp
+    rbp-s3-eq-s2 = ir-rbp r-g
+
+    rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+    rbp-s2-eq-s1 = subst (λ s2' → readReg (regs s2') rbp ≡ readReg (regs s1) rbp)
+                         (sym s2-eq) (PairMiddleResult.rbp-mid mid-res)
+
+    rbp-s1-eq-setup : readReg (regs s1) rbp ≡ readReg (regs s-setup) rbp
+    rbp-s1-eq-setup = ir-rbp r-f
+
+    rbp-setup-eq : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+    rbp-setup-eq = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                         (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
+
+    rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
+    rbp-chain = trans rbp-s3-eq-s2 (trans rbp-s2-eq-s1 (trans rbp-s1-eq-setup rbp-setup-eq))
+
+    -- Postulates for stack layout and disjointness
+    postulate
+      stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
+      stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+      stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+      mem-frame-s3 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ 8
+      disjoint-r15-s3 : readReg (regs s3) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
+      disjoint-r14-s3 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
+      disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
 -- Takes full preconditions for proven stack restoration
