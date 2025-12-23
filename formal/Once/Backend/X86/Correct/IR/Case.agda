@@ -591,9 +591,40 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     -- compile-length [ f , g ] = (8 + len-f) + len-g
     -- pc s3 = ((prefix + 4 + len-f) + 1 + (2 + len-g)) + 1
     --       = prefix + 4 + len-f + 4 + len-g = prefix + 8 + len-f + len-g
-    -- The arithmetic is straightforward but tedious. Postulate for now.
-    postulate
-      pc3 : pc s3 ≡ length prefix +ℕ compile-length [ f , g ]
+    pc3 : pc s3 ≡ length prefix +ℕ compile-length [ f , g ]
+    pc3 = begin
+        pc s3
+      ≡⟨ refl ⟩
+        pc s2 +ℕ 1
+      ≡⟨ cong (_+ℕ 1) refl ⟩
+        (pc s1 +ℕ 1 +ℕ (2 +ℕ len-g)) +ℕ 1
+      ≡⟨ cong (λ x → (x +ℕ 1 +ℕ (2 +ℕ len-g)) +ℕ 1) pc1 ⟩
+        ((length prefix +ℕ 4 +ℕ len-f) +ℕ 1 +ℕ (2 +ℕ len-g)) +ℕ 1
+      ≡⟨ cong (_+ℕ 1) (+-assoc (length prefix +ℕ 4 +ℕ len-f) 1 (2 +ℕ len-g)) ⟩
+        ((length prefix +ℕ 4 +ℕ len-f) +ℕ (1 +ℕ (2 +ℕ len-g))) +ℕ 1
+      ≡⟨ cong (λ n → (length prefix +ℕ 4 +ℕ len-f +ℕ n) +ℕ 1) refl ⟩
+        ((length prefix +ℕ 4 +ℕ len-f) +ℕ (3 +ℕ len-g)) +ℕ 1
+      ≡⟨ +-assoc (length prefix +ℕ 4 +ℕ len-f) (3 +ℕ len-g) 1 ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ ((3 +ℕ len-g) +ℕ 1)
+      ≡⟨ cong ((length prefix +ℕ 4 +ℕ len-f) +ℕ_) (+-comm (3 +ℕ len-g) 1) ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ (1 +ℕ (3 +ℕ len-g))
+      ≡⟨ cong ((length prefix +ℕ 4 +ℕ len-f) +ℕ_) refl ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ (4 +ℕ len-g)
+      ≡⟨ sym (+-assoc (length prefix +ℕ 4 +ℕ len-f) 4 len-g) ⟩
+        ((length prefix +ℕ 4 +ℕ len-f) +ℕ 4) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 4) len-f 4) ⟩
+        ((length prefix +ℕ 4) +ℕ (len-f +ℕ 4)) +ℕ len-g
+      ≡⟨ cong (λ n → (length prefix +ℕ 4 +ℕ n) +ℕ len-g) (+-comm len-f 4) ⟩
+        ((length prefix +ℕ 4) +ℕ (4 +ℕ len-f)) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 4) 4 len-f)) ⟩
+        (((length prefix +ℕ 4) +ℕ 4) +ℕ len-f) +ℕ len-g
+      ≡⟨ cong (λ n → (n +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 4 4) ⟩
+        ((length prefix +ℕ 8) +ℕ len-f) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 8 len-f) ⟩
+        (length prefix +ℕ (8 +ℕ len-f)) +ℕ len-g
+      ≡⟨ +-assoc (length prefix) (8 +ℕ len-f) len-g ⟩
+        length prefix +ℕ ((8 +ℕ len-f) +ℕ len-g)
+      ∎
 
     -- Fetch proofs
     -- jmp-instr is at position length prefix + 4 + len-f in prog
@@ -621,13 +652,56 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     prefix-before-label : Program
     prefix-before-label = prefix-before-jmp ++ jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g
 
-    -- Arithmetic proof - postulate for now
-    postulate
-      len-prefix-before-label : length prefix-before-label ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    -- Length proof using List-length-++ and compile-length-correct
+    len-prefix-before-label : length prefix-before-label ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    len-prefix-before-label = begin
+        length prefix-before-label
+      ≡⟨ refl ⟩
+        length (prefix-before-jmp ++ jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g)
+      ≡⟨ List-length-++ prefix-before-jmp ⟩
+        length prefix-before-jmp +ℕ length (jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g)
+      ≡⟨ cong (length prefix-before-jmp +ℕ_) (cong (3 +ℕ_) (compile-length-correct g)) ⟩
+        length prefix-before-jmp +ℕ (3 +ℕ len-g)
+      ≡⟨ cong (_+ℕ (3 +ℕ len-g)) len-prefix-before-jmp ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ (3 +ℕ len-g)
+      ≡⟨ sym (+-assoc (length prefix +ℕ 4 +ℕ len-f) 3 len-g) ⟩
+        ((length prefix +ℕ 4 +ℕ len-f) +ℕ 3) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 4) len-f 3) ⟩
+        ((length prefix +ℕ 4) +ℕ (len-f +ℕ 3)) +ℕ len-g
+      ≡⟨ cong (λ n → ((length prefix +ℕ 4) +ℕ n) +ℕ len-g) (+-comm len-f 3) ⟩
+        ((length prefix +ℕ 4) +ℕ (3 +ℕ len-f)) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 4) 3 len-f)) ⟩
+        (((length prefix +ℕ 4) +ℕ 3) +ℕ len-f) +ℕ len-g
+      ≡⟨ cong (λ n → (n +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 4 3) ⟩
+        ((length prefix +ℕ 7) +ℕ len-f) +ℕ len-g
+      ∎
 
-    -- Need to show pc s2 = length prefix-before-label
-    postulate
-      pc2-eq-len : pc s2 ≡ length prefix-before-label
+    -- pc s2 = pc s1 + 1 + end-offset = pc s1 + 1 + (2 + len-g)
+    --       = length prefix + 4 + len-f + 1 + 2 + len-g = length prefix + 7 + len-f + len-g
+    pc2-eq-len : pc s2 ≡ length prefix-before-label
+    pc2-eq-len = begin
+        pc s2
+      ≡⟨ refl ⟩
+        pc s1 +ℕ 1 +ℕ (2 +ℕ len-g)
+      ≡⟨ cong (λ x → x +ℕ 1 +ℕ (2 +ℕ len-g)) pc1 ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ 1 +ℕ (2 +ℕ len-g)
+      ≡⟨ +-assoc (length prefix +ℕ 4 +ℕ len-f) 1 (2 +ℕ len-g) ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ (1 +ℕ (2 +ℕ len-g))
+      ≡⟨ cong ((length prefix +ℕ 4 +ℕ len-f) +ℕ_) refl ⟩
+        (length prefix +ℕ 4 +ℕ len-f) +ℕ (3 +ℕ len-g)
+      ≡⟨ sym (+-assoc (length prefix +ℕ 4 +ℕ len-f) 3 len-g) ⟩
+        ((length prefix +ℕ 4 +ℕ len-f) +ℕ 3) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 4) len-f 3) ⟩
+        ((length prefix +ℕ 4) +ℕ (len-f +ℕ 3)) +ℕ len-g
+      ≡⟨ cong (λ n → ((length prefix +ℕ 4) +ℕ n) +ℕ len-g) (+-comm len-f 3) ⟩
+        ((length prefix +ℕ 4) +ℕ (3 +ℕ len-f)) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 4) 3 len-f)) ⟩
+        (((length prefix +ℕ 4) +ℕ 3) +ℕ len-f) +ℕ len-g
+      ≡⟨ cong (λ n → (n +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 4 3) ⟩
+        ((length prefix +ℕ 7) +ℕ len-f) +ℕ len-g
+      ≡⟨ sym len-prefix-before-label ⟩
+        length prefix-before-label
+      ∎
 
     postulate
       prog-eq-label : prog ≡ prefix-before-label ++ end-label-instr ∷ suffix
