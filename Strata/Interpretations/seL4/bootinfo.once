@@ -21,55 +21,59 @@
 -- On most platforms, this is passed in a register or at a fixed address.
 --
 -- Returns: Pointer to seL4_BootInfo
-primitive getBootInfo : Eff Unit Int
+--
+-- Note: This is a pure function - it returns a constant address.
+primitive getBootInfo : Unit -> Int
 
 -- | Get IPC buffer pointer
 --
 -- The rootserver's initial IPC buffer location.
 --
 -- Returns: Pointer to IPC buffer
-primitive getIPCBuffer : Eff Unit Int
+primitive getIPCBuffer : Unit -> Int
 
 ------------------------------------------------------------------------
 -- BootInfo Field Access
 ------------------------------------------------------------------------
 
--- These read fields from the seL4_BootInfo structure
+-- These read fields from the seL4_BootInfo structure.
+-- All are pure functions - they just read from a static structure
+-- that doesn't change after boot.
 
 -- | Get number of untyped caps
 -- Input: bootinfo pointer
 -- Returns: count of untyped memory regions
-primitive bootinfo_untypedCount : Eff Int Int
+primitive bootinfo_untypedCount : Int -> Int
 
 -- | Get start of untyped caps range
 -- Input: bootinfo pointer
 -- Returns: first untyped cap slot
-primitive bootinfo_untypedStart : Eff Int Int
+primitive bootinfo_untypedStart : Int -> Int
 
 -- | Get initial thread's TCB cap slot
 -- Input: bootinfo pointer
 -- Returns: TCB cap slot number
-primitive bootinfo_initThreadTCB : Eff Int Int
+primitive bootinfo_initThreadTCB : Int -> Int
 
 -- | Get initial thread's CNode cap slot
 -- Input: bootinfo pointer
 -- Returns: CNode cap slot number
-primitive bootinfo_initThreadCNode : Eff Int Int
+primitive bootinfo_initThreadCNode : Int -> Int
 
 -- | Get initial thread's VSpace cap slot
 -- Input: bootinfo pointer
 -- Returns: VSpace cap slot number
-primitive bootinfo_initThreadVSpace : Eff Int Int
+primitive bootinfo_initThreadVSpace : Int -> Int
 
 -- | Get number of user image frames
 -- Input: bootinfo pointer
 -- Returns: count of user image frames
-primitive bootinfo_userImageFrames : Eff Int Int
+primitive bootinfo_userImageFrames : Int -> Int
 
 -- | Get domain info pointer
 -- Input: bootinfo pointer
 -- Returns: pointer to seL4_BootInfoDomain
-primitive bootinfo_domainInfo : Eff Int Int
+primitive bootinfo_domainInfo : Int -> Int
 
 ------------------------------------------------------------------------
 -- Untyped Descriptor Access
@@ -85,7 +89,7 @@ primitive bootinfo_domainInfo : Eff Int Int
 --   paddr    : physical address of untyped
 --   sizeBits : log2 of size in bytes
 --   isDevice : 1 if device memory, 0 otherwise
-primitive bootinfo_getUntyped : Eff (Int * Int) (Int * Int * Int)
+primitive bootinfo_getUntyped : (Int * Int) -> (Int * Int * Int)
 
 ------------------------------------------------------------------------
 -- Initial Cap Slots (standard seL4 layout)

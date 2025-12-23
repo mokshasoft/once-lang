@@ -57,23 +57,23 @@ clientBadge = 1
 -- | Find first untyped region large enough for an object
 -- Arguments: (bootinfo, sizeBits, startIndex)
 -- Returns: untyped cap slot or -1 if not found
-findUntyped : Int -> Int -> Int -> Eff Unit Int
+findUntyped : Int -> Int -> Int -> Int
 findUntyped bootinfo sizeBits idx =
   let count = bootinfo_untypedCount@BootInfo bootinfo
   in let start = bootinfo_untypedStart@BootInfo bootinfo
   in if idx >= count
-     then pure (-1)
+     then (-1)
      else let utDesc = bootinfo_getUntyped@BootInfo (bootinfo, idx)
           in let (paddr, utSize, isDevice) = utDesc
              in if isDevice == 0 && utSize >= sizeBits
-                then pure (start + idx)
+                then start + idx
                 else findUntyped bootinfo sizeBits (idx + 1)
 
 -- | Allocate object from untyped memory
 -- Returns: error code (0 = success)
 allocObject : Int -> Int -> Int -> Int -> Eff Unit Int
 allocObject untypedCap objType sizeBits destSlot =
-  let cnode = seL4_CapInitThreadCNode
+  let cnode = seL4_CapInitThreadCNode@BootInfo
   in let depth = 64  -- seL4_WordBits for 64-bit
   in seL4_Untyped_Retype@Untyped
        (untypedCap, objType, sizeBits, cnode, destSlot, depth, 0, 1)
@@ -106,10 +106,10 @@ main =
       -- 6. Copy endpoint to server's CNode (slot 4)
       -- Server gets RWG (read, write, grant) rights
       in let copyErr = seL4_CNode_Copy@CNode
-           ( seL4_CapInitThreadCNode  -- dest root
+           ( seL4_CapInitThreadCNode@BootInfo  -- dest root
            , slotServerCNode          -- dest index (for server's cap)
            , 64                       -- dest depth
-           , seL4_CapInitThreadCNode  -- src root
+           , seL4_CapInitThreadCNode@BootInfo  -- src root
            , slotEchoEndpoint         -- src index
            , 64                       -- src depth
            , seL4_AllRights@CNode     -- rights
@@ -118,10 +118,10 @@ main =
       -- 7. Mint badged endpoint to client's CNode (slot 5)
       -- Client gets badged cap so server can identify messages
       in let mintErr = seL4_CNode_Mint@CNode
-           ( seL4_CapInitThreadCNode
+           ( seL4_CapInitThreadCNode@BootInfo
            , slotClientCNode
            , 64
-           , seL4_CapInitThreadCNode
+           , seL4_CapInitThreadCNode@BootInfo
            , slotEchoEndpoint
            , 64
            , seL4_AllRights@CNode
@@ -132,9 +132,9 @@ main =
       in let cfgErr = seL4_TCB_Configure@TCB
            ( slotServerTCB
            , 0                        -- fault EP (none)
-           , seL4_CapInitThreadCNode  -- CSpace root
+           , seL4_CapInitThreadCNode@BootInfo  -- CSpace root
            , 0                        -- CSpace guard
-           , seL4_CapInitThreadVSpace@BootInfo  -- VSpace root
+           , seL4_CapInitThreadVSpace@BootInfo -- VSpace root
            , 0                        -- VSpace data
            , 0                        -- IPC buffer addr
            , 0                        -- IPC buffer frame
@@ -151,7 +151,7 @@ main =
       in let cfgErr2 = seL4_TCB_Configure@TCB
            ( slotClientTCB
            , 0
-           , seL4_CapInitThreadCNode
+           , seL4_CapInitThreadCNode@BootInfo
            , 0
            , seL4_CapInitThreadVSpace@BootInfo
            , 0
