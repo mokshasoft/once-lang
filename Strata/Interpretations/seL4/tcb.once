@@ -1,0 +1,144 @@
+------------------------------------------------------------------------
+-- seL4 TCB (Thread Control Block) Primitives
+--
+-- TCBs represent threads in seL4. Each TCB has:
+-- - Registers (including program counter)
+-- - CSpace root capability
+-- - VSpace root capability
+-- - IPC buffer
+-- - Fault endpoint
+-- - Priority and scheduling parameters
+--
+-- TCB operations are capability invocations on TCB objects.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- TCB Methods (invocation labels)
+------------------------------------------------------------------------
+
+-- These are method IDs for TCB invocations
+
+------------------------------------------------------------------------
+-- TCB Operations
+------------------------------------------------------------------------
+
+-- | seL4_TCB_Configure - Configure a TCB's address spaces
+--
+-- Arguments:
+--   tcb         : TCB capability
+--   faultEP     : Fault endpoint capability
+--   cspaceRoot  : CSpace root capability
+--   cspaceData  : CSpace root guard (badge)
+--   vspaceRoot  : VSpace root capability
+--   vspaceData  : VSpace data (ASID)
+--   ipcBuffer   : IPC buffer address
+--   ipcBufferFrame : Frame capability for IPC buffer
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_Configure : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
+
+-- | seL4_TCB_SetPriority - Set thread priority
+--
+-- Arguments:
+--   tcb       : TCB capability
+--   authority : TCB to use as authority
+--   priority  : New priority (0-255)
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_SetPriority : Eff (Int * Int * Int) Int
+
+-- | seL4_TCB_SetMCPriority - Set thread max controlled priority
+--
+-- Arguments:
+--   tcb       : TCB capability
+--   authority : TCB to use as authority
+--   mcp       : New MCP value
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_SetMCPriority : Eff (Int * Int * Int) Int
+
+-- | seL4_TCB_SetSchedParams - Set scheduling parameters
+--
+-- Arguments:
+--   tcb       : TCB capability
+--   authority : TCB to use as authority
+--   mcp       : Max controlled priority
+--   priority  : Priority
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_SetSchedParams : Eff (Int * Int * Int * Int) Int
+
+-- | seL4_TCB_SetIPCBuffer - Set IPC buffer
+--
+-- Arguments:
+--   tcb         : TCB capability
+--   ipcBuffer   : IPC buffer address
+--   ipcBufferFrame : Frame capability
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_SetIPCBuffer : Eff (Int * Int * Int) Int
+
+-- | seL4_TCB_SetSpace - Set CSpace and VSpace
+--
+-- Arguments:
+--   tcb        : TCB capability
+--   faultEP    : Fault endpoint
+--   cspaceRoot : CSpace root
+--   cspaceData : CSpace guard
+--   vspaceRoot : VSpace root
+--   vspaceData : VSpace ASID
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_SetSpace : Eff (Int * Int * Int * Int * Int * Int) Int
+
+-- | seL4_TCB_Resume - Resume a suspended thread
+--
+-- Arguments:
+--   tcb : TCB capability
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_Resume : Eff Int Int
+
+-- | seL4_TCB_Suspend - Suspend a thread
+--
+-- Arguments:
+--   tcb : TCB capability
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_Suspend : Eff Int Int
+
+-- | seL4_TCB_WriteRegisters - Write thread registers
+--
+-- Arguments:
+--   tcb    : TCB capability
+--   resume : Resume thread after write (0 or 1)
+--   arch   : Architecture flags
+--   count  : Number of registers
+--   regs   : Pointer to register array
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_WriteRegisters : Eff (Int * Int * Int * Int * Int) Int
+
+-- | seL4_TCB_ReadRegisters - Read thread registers
+--
+-- Arguments:
+--   tcb     : TCB capability
+--   suspend : Suspend thread first (0 or 1)
+--   arch    : Architecture flags
+--   count   : Number of registers
+--   regs    : Pointer to buffer for registers
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_TCB_ReadRegisters : Eff (Int * Int * Int * Int * Int) Int
+
+------------------------------------------------------------------------
+-- Priority Constants
+------------------------------------------------------------------------
+
+seL4_MaxPrio : Int
+seL4_MaxPrio = 255
+
+seL4_MinPrio : Int
+seL4_MinPrio = 0
+
+------------------------------------------------------------------------

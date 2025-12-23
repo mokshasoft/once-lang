@@ -1,0 +1,220 @@
+// ======================================================================
+// seL4 CNode Primitives - ARM64 Implementation
+// ======================================================================
+//
+// CNode operations are capability invocations on CNode objects.
+// They use seL4_Call to invoke the CNode capability with method-specific
+// message formats.
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_SEL4_CNODE_ARM64_DEFINED
+#define ONCE_SEL4_CNODE_ARM64_DEFINED
+
+.equ SEL4_SYS_CALL, -6
+
+// CNode method labels (in MessageInfo)
+// These encode the method ID in the label field
+.equ CNODE_COPY_LABEL,   0x1000   // CNodeCopy method
+.equ CNODE_MINT_LABEL,   0x2000   // CNodeMint method
+.equ CNODE_MOVE_LABEL,   0x3000   // CNodeMove method
+.equ CNODE_DELETE_LABEL, 0x4000   // CNodeDelete method
+.equ CNODE_REVOKE_LABEL, 0x5000   // CNodeRevoke method
+
+// ----------------------------------------------------------------------
+// seL4_CNode_Copy - Copy a capability
+// ----------------------------------------------------------------------
+// Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights)
+// Output: Int (seL4_Error)
+
+.global once_seL4_CNode_Copy
+.type once_seL4_CNode_Copy, %function
+once_seL4_CNode_Copy:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack 7-element tuple
+    ldr     x8, [x0]            // destRoot (invoked cap)
+    ldr     x0, [x0, #8]
+    ldr     x19, [x0]           // destIndex -> mr0
+    ldr     x0, [x0, #8]
+    ldr     x20, [x0]           // destDepth -> mr1
+    ldr     x0, [x0, #8]
+    ldr     x21, [x0]           // srcRoot -> mr2 (extra cap)
+    ldr     x0, [x0, #8]
+    ldr     x22, [x0]           // srcIndex -> mr3
+    ldr     x0, [x0, #8]
+    ldr     x9, [x0]            // srcDepth (in IPC buffer)
+    ldr     x10, [x0, #8]       // rights (in IPC buffer)
+
+    // MessageInfo: label | extraCaps | length
+    // For copy: 1 extra cap (srcRoot), 4 MRs
+    mov     x1, #(CNODE_COPY_LABEL | 0x84)
+
+    mov     x2, x19             // mr0 = destIndex
+    mov     x3, x20             // mr1 = destDepth
+    mov     x4, x21             // mr2 = srcIndex (cap goes via extra caps)
+    mov     x5, x22             // mr3 = srcDepth
+
+    mov     x0, x8              // Invoke destRoot
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12         // Extract error from reply label
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_seL4_CNode_Copy, .-once_seL4_CNode_Copy
+
+// ----------------------------------------------------------------------
+// seL4_CNode_Mint - Copy capability with badge
+// ----------------------------------------------------------------------
+// Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights, badge)
+// Output: Int (seL4_Error)
+
+.global once_seL4_CNode_Mint
+.type once_seL4_CNode_Mint, %function
+once_seL4_CNode_Mint:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack 8-element tuple
+    ldr     x8, [x0]            // destRoot
+    ldr     x0, [x0, #8]
+    ldr     x19, [x0]           // destIndex
+    ldr     x0, [x0, #8]
+    ldr     x20, [x0]           // destDepth
+    ldr     x0, [x0, #8]
+    ldr     x21, [x0]           // srcRoot
+    ldr     x0, [x0, #8]
+    ldr     x22, [x0]           // srcIndex
+    ldr     x0, [x0, #8]
+    ldr     x9, [x0]            // srcDepth
+    ldr     x0, [x0, #8]
+    ldr     x10, [x0]           // rights
+    ldr     x11, [x0, #8]       // badge
+
+    mov     x1, #(CNODE_MINT_LABEL | 0x84)
+    mov     x2, x19
+    mov     x3, x20
+    mov     x4, x22
+    mov     x5, x9
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_seL4_CNode_Mint, .-once_seL4_CNode_Mint
+
+// ----------------------------------------------------------------------
+// seL4_CNode_Move - Move a capability
+// ----------------------------------------------------------------------
+.global once_seL4_CNode_Move
+.type once_seL4_CNode_Move, %function
+once_seL4_CNode_Move:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    ldr     x8, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x19, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x20, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x21, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x22, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x9, [x0]
+    ldr     x10, [x0, #8]
+
+    mov     x1, #(CNODE_MOVE_LABEL | 0x84)
+    mov     x2, x19
+    mov     x3, x20
+    mov     x4, x22
+    mov     x5, x9
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_seL4_CNode_Move, .-once_seL4_CNode_Move
+
+// ----------------------------------------------------------------------
+// seL4_CNode_Delete - Delete a capability
+// ----------------------------------------------------------------------
+// Input: (root, index, depth)
+// Output: Int (seL4_Error)
+
+.global once_seL4_CNode_Delete
+.type once_seL4_CNode_Delete, %function
+once_seL4_CNode_Delete:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack 3-element tuple
+    ldr     x8, [x0]            // root
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]            // index -> mr0
+    ldr     x3, [x0, #8]        // depth -> mr1
+
+    mov     x1, #(CNODE_DELETE_LABEL | 2)  // 2 MRs
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_CNode_Delete, .-once_seL4_CNode_Delete
+
+// ----------------------------------------------------------------------
+// seL4_CNode_Revoke - Revoke derived capabilities
+// ----------------------------------------------------------------------
+.global once_seL4_CNode_Revoke
+.type once_seL4_CNode_Revoke, %function
+once_seL4_CNode_Revoke:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x8, [x0]
+    ldr     x0, [x0, #8]
+    ldr     x2, [x0]
+    ldr     x3, [x0, #8]
+
+    mov     x1, #(CNODE_REVOKE_LABEL | 2)
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_CNode_Revoke, .-once_seL4_CNode_Revoke
+
+#endif // ONCE_SEL4_CNODE_ARM64_DEFINED

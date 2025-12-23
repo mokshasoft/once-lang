@@ -1,0 +1,465 @@
+# ======================================================================
+# seL4 TCB Primitives - x86_64 Implementation
+# ======================================================================
+#
+# TCB operations are capability invocations on TCB objects.
+# They use seL4_Call to invoke the TCB capability.
+#
+# seL4 x86_64 syscall convention:
+#   rdx: Syscall number (-6 for seL4_Call)
+#   rdi: Capability to invoke
+#   rsi: MessageInfo
+#   r10, r8, r9, r15: Message registers 0-3
+#
+# ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_SEL4_TCB_X86_64_DEFINED
+#define ONCE_SEL4_TCB_X86_64_DEFINED
+
+.equ SEL4_SYS_CALL, -6
+
+# TCB method labels
+.equ TCB_READ_REGISTERS_LABEL,   0x0100
+.equ TCB_WRITE_REGISTERS_LABEL,  0x0200
+.equ TCB_COPY_REGISTERS_LABEL,   0x0300
+.equ TCB_CONFIGURE_LABEL,        0x0400
+.equ TCB_SET_PRIORITY_LABEL,     0x0500
+.equ TCB_SET_MCP_LABEL,          0x0600
+.equ TCB_SET_SCHED_PARAMS_LABEL, 0x0700
+.equ TCB_SET_IPC_BUFFER_LABEL,   0x0800
+.equ TCB_SET_SPACE_LABEL,        0x0900
+.equ TCB_SUSPEND_LABEL,          0x0A00
+.equ TCB_RESUME_LABEL,           0x0B00
+
+# ----------------------------------------------------------------------
+# seL4_TCB_Configure - Configure TCB address spaces
+# ----------------------------------------------------------------------
+# Input: (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot, vspaceData, ipcBuffer, ipcBufferFrame)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_Configure
+.type once_seL4_TCB_Configure, @function
+once_seL4_TCB_Configure:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack 8-element tuple
+    mov     (%rdi), %r12        # tcb (invoked cap)
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r13        # faultEP -> extra cap 0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r14        # cspaceRoot -> extra cap 1
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r10        # cspaceData -> mr0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rax        # vspaceRoot -> extra cap 2
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r8         # vspaceData -> mr1
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r9         # ipcBuffer -> mr2
+    mov     8(%rdi), %rcx       # ipcBufferFrame -> extra cap 3
+
+    # MessageInfo: label=TCB_CONFIGURE, extraCaps=4, length=3
+    mov     $(TCB_CONFIGURE_LABEL | 0x203), %rsi
+
+    mov     %r12, %rdi          # Invoke TCB
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_Configure, .-once_seL4_TCB_Configure
+
+# ----------------------------------------------------------------------
+# seL4_TCB_SetPriority - Set thread priority
+# ----------------------------------------------------------------------
+# Input: (tcb, authority, priority)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetPriority
+.type once_seL4_TCB_SetPriority, @function
+once_seL4_TCB_SetPriority:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+
+    # Unpack 3-element tuple
+    mov     (%rdi), %rax        # tcb
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rcx        # authority -> extra cap
+    mov     8(%rdi), %r10       # priority -> mr0
+
+    mov     $(TCB_SET_PRIORITY_LABEL | 0x81), %rsi
+
+    mov     %rax, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_SetPriority, .-once_seL4_TCB_SetPriority
+
+# ----------------------------------------------------------------------
+# seL4_TCB_SetMCPriority - Set max controlled priority
+# ----------------------------------------------------------------------
+# Input: (tcb, authority, mcp)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetMCPriority
+.type once_seL4_TCB_SetMCPriority, @function
+once_seL4_TCB_SetMCPriority:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+
+    mov     (%rdi), %rax
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rcx
+    mov     8(%rdi), %r10
+
+    mov     $(TCB_SET_MCP_LABEL | 0x81), %rsi
+
+    mov     %rax, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_SetMCPriority, .-once_seL4_TCB_SetMCPriority
+
+# ----------------------------------------------------------------------
+# seL4_TCB_SetSchedParams - Set scheduling parameters
+# ----------------------------------------------------------------------
+# Input: (tcb, authority, mcp, priority)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetSchedParams
+.type once_seL4_TCB_SetSchedParams, @function
+once_seL4_TCB_SetSchedParams:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+
+    mov     (%rdi), %rax
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rcx        # authority
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r10        # mcp -> mr0
+    mov     8(%rdi), %r8        # priority -> mr1
+
+    mov     $(TCB_SET_SCHED_PARAMS_LABEL | 0x82), %rsi
+
+    mov     %rax, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_SetSchedParams, .-once_seL4_TCB_SetSchedParams
+
+# ----------------------------------------------------------------------
+# seL4_TCB_SetIPCBuffer - Set IPC buffer
+# ----------------------------------------------------------------------
+# Input: (tcb, ipcBuffer, ipcBufferFrame)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetIPCBuffer
+.type once_seL4_TCB_SetIPCBuffer, @function
+once_seL4_TCB_SetIPCBuffer:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+
+    mov     (%rdi), %rax
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r10        # ipcBuffer -> mr0
+    mov     8(%rdi), %rcx       # ipcBufferFrame -> extra cap
+
+    mov     $(TCB_SET_IPC_BUFFER_LABEL | 0x81), %rsi
+
+    mov     %rax, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_SetIPCBuffer, .-once_seL4_TCB_SetIPCBuffer
+
+# ----------------------------------------------------------------------
+# seL4_TCB_SetSpace - Set CSpace and VSpace
+# ----------------------------------------------------------------------
+# Input: (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot, vspaceData)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetSpace
+.type once_seL4_TCB_SetSpace, @function
+once_seL4_TCB_SetSpace:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    mov     (%rdi), %r12        # tcb
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r13        # faultEP -> extra cap 0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r14        # cspaceRoot -> extra cap 1
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r10        # cspaceData -> mr0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rax        # vspaceRoot -> extra cap 2
+    mov     8(%rdi), %r8        # vspaceData -> mr1
+
+    mov     $(TCB_SET_SPACE_LABEL | 0x182), %rsi
+
+    mov     %r12, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_SetSpace, .-once_seL4_TCB_SetSpace
+
+# ----------------------------------------------------------------------
+# seL4_TCB_Resume - Resume suspended thread
+# ----------------------------------------------------------------------
+# Input: tcb
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_Resume
+.type once_seL4_TCB_Resume, @function
+once_seL4_TCB_Resume:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+
+    mov     %rdi, %rax          # tcb
+
+    mov     $(TCB_RESUME_LABEL), %rsi
+
+    mov     %rax, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_Resume, .-once_seL4_TCB_Resume
+
+# ----------------------------------------------------------------------
+# seL4_TCB_Suspend - Suspend thread
+# ----------------------------------------------------------------------
+# Input: tcb
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_Suspend
+.type once_seL4_TCB_Suspend, @function
+once_seL4_TCB_Suspend:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+
+    mov     %rdi, %rax
+
+    mov     $(TCB_SUSPEND_LABEL), %rsi
+
+    mov     %rax, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_Suspend, .-once_seL4_TCB_Suspend
+
+# ----------------------------------------------------------------------
+# seL4_TCB_WriteRegisters - Write thread registers
+# ----------------------------------------------------------------------
+# Input: (tcb, resume, arch, count, regs)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_WriteRegisters
+.type once_seL4_TCB_WriteRegisters, @function
+once_seL4_TCB_WriteRegisters:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    mov     (%rdi), %r12        # tcb
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r10        # resume -> mr0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r8         # arch -> mr1
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r13        # count
+    mov     8(%rdi), %r14       # regs pointer
+
+    # MessageInfo: label | length
+    mov     $TCB_WRITE_REGISTERS_LABEL, %rsi
+    or      %r13, %rsi
+
+    mov     %r12, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_WriteRegisters, .-once_seL4_TCB_WriteRegisters
+
+# ----------------------------------------------------------------------
+# seL4_TCB_ReadRegisters - Read thread registers
+# ----------------------------------------------------------------------
+# Input: (tcb, suspend, arch, count, regs)
+# Output: Int (seL4_Error)
+
+.global once_seL4_TCB_ReadRegisters
+.type once_seL4_TCB_ReadRegisters, @function
+once_seL4_TCB_ReadRegisters:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    mov     (%rdi), %r12        # tcb
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r10        # suspend -> mr0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r8         # arch -> mr1
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r13        # count
+    mov     8(%rdi), %r14       # regs buffer
+
+    mov     $(TCB_READ_REGISTERS_LABEL | 2), %rsi
+
+    mov     %r12, %rdi
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_TCB_ReadRegisters, .-once_seL4_TCB_ReadRegisters
+
+#endif // ONCE_SEL4_TCB_X86_64_DEFINED

@@ -1,0 +1,404 @@
+// ======================================================================
+// seL4 TCB Primitives - ARM64 Implementation
+// ======================================================================
+//
+// TCB operations are capability invocations on TCB objects.
+// They use seL4_Call to invoke the TCB capability.
+//
+// seL4 ARM64 syscall convention:
+//   x7: Syscall number (-6 for seL4_Call)
+//   x0: Capability to invoke
+//   x1: MessageInfo
+//   x2-x5: Message registers 0-3
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_SEL4_TCB_ARM64_DEFINED
+#define ONCE_SEL4_TCB_ARM64_DEFINED
+
+.equ SEL4_SYS_CALL, -6
+
+// TCB method labels
+.equ TCB_READ_REGISTERS_LABEL,   0x0100
+.equ TCB_WRITE_REGISTERS_LABEL,  0x0200
+.equ TCB_COPY_REGISTERS_LABEL,   0x0300
+.equ TCB_CONFIGURE_LABEL,        0x0400
+.equ TCB_SET_PRIORITY_LABEL,     0x0500
+.equ TCB_SET_MCP_LABEL,          0x0600
+.equ TCB_SET_SCHED_PARAMS_LABEL, 0x0700
+.equ TCB_SET_IPC_BUFFER_LABEL,   0x0800
+.equ TCB_SET_SPACE_LABEL,        0x0900
+.equ TCB_SUSPEND_LABEL,          0x0A00
+.equ TCB_RESUME_LABEL,           0x0B00
+
+// ----------------------------------------------------------------------
+// seL4_TCB_Configure - Configure TCB address spaces
+// ----------------------------------------------------------------------
+// Input: (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot, vspaceData, ipcBuffer, ipcBufferFrame)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_Configure
+.type once_seL4_TCB_Configure, %function
+once_seL4_TCB_Configure:
+    stp     x29, x30, [sp, #-64]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+    stp     x23, x24, [sp, #48]
+
+    // Unpack 8-element tuple
+    ldr     x8, [x0]            // tcb (invoked cap)
+    ldr     x0, [x0, #8]
+
+    ldr     x19, [x0]           // faultEP -> extra cap 0
+    ldr     x0, [x0, #8]
+
+    ldr     x20, [x0]           // cspaceRoot -> extra cap 1
+    ldr     x0, [x0, #8]
+
+    ldr     x21, [x0]           // cspaceData -> mr0
+    ldr     x0, [x0, #8]
+
+    ldr     x22, [x0]           // vspaceRoot -> extra cap 2
+    ldr     x0, [x0, #8]
+
+    ldr     x23, [x0]           // vspaceData -> mr1
+    ldr     x0, [x0, #8]
+
+    ldr     x24, [x0]           // ipcBuffer -> mr2
+    ldr     x9, [x0, #8]        // ipcBufferFrame -> extra cap 3
+
+    // MessageInfo: label=TCB_CONFIGURE, extraCaps=4, length=3
+    // (label << 12) | (extraCaps << 7) | length
+    mov     x1, #(TCB_CONFIGURE_LABEL | 0x203)
+
+    mov     x2, x21             // mr0 = cspaceData
+    mov     x3, x23             // mr1 = vspaceData
+    mov     x4, x24             // mr2 = ipcBuffer
+
+    mov     x0, x8              // Invoke TCB
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x23, x24, [sp, #48]
+    ldp     x29, x30, [sp], #64
+    ret
+.size once_seL4_TCB_Configure, .-once_seL4_TCB_Configure
+
+// ----------------------------------------------------------------------
+// seL4_TCB_SetPriority - Set thread priority
+// ----------------------------------------------------------------------
+// Input: (tcb, authority, priority)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetPriority
+.type once_seL4_TCB_SetPriority, %function
+once_seL4_TCB_SetPriority:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    // Unpack 3-element tuple
+    ldr     x8, [x0]            // tcb
+    ldr     x0, [x0, #8]
+
+    ldr     x9, [x0]            // authority -> extra cap
+    ldr     x2, [x0, #8]        // priority -> mr0
+
+    // MessageInfo: label=SET_PRIORITY, extraCaps=1, length=1
+    mov     x1, #(TCB_SET_PRIORITY_LABEL | 0x81)
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_TCB_SetPriority, .-once_seL4_TCB_SetPriority
+
+// ----------------------------------------------------------------------
+// seL4_TCB_SetMCPriority - Set max controlled priority
+// ----------------------------------------------------------------------
+// Input: (tcb, authority, mcp)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetMCPriority
+.type once_seL4_TCB_SetMCPriority, %function
+once_seL4_TCB_SetMCPriority:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x8, [x0]
+    ldr     x0, [x0, #8]
+
+    ldr     x9, [x0]
+    ldr     x2, [x0, #8]
+
+    mov     x1, #(TCB_SET_MCP_LABEL | 0x81)
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_TCB_SetMCPriority, .-once_seL4_TCB_SetMCPriority
+
+// ----------------------------------------------------------------------
+// seL4_TCB_SetSchedParams - Set scheduling parameters
+// ----------------------------------------------------------------------
+// Input: (tcb, authority, mcp, priority)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetSchedParams
+.type once_seL4_TCB_SetSchedParams, %function
+once_seL4_TCB_SetSchedParams:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x8, [x0]
+    ldr     x0, [x0, #8]
+
+    ldr     x9, [x0]            // authority
+    ldr     x0, [x0, #8]
+
+    ldr     x2, [x0]            // mcp -> mr0
+    ldr     x3, [x0, #8]        // priority -> mr1
+
+    mov     x1, #(TCB_SET_SCHED_PARAMS_LABEL | 0x82)
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_TCB_SetSchedParams, .-once_seL4_TCB_SetSchedParams
+
+// ----------------------------------------------------------------------
+// seL4_TCB_SetIPCBuffer - Set IPC buffer
+// ----------------------------------------------------------------------
+// Input: (tcb, ipcBuffer, ipcBufferFrame)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetIPCBuffer
+.type once_seL4_TCB_SetIPCBuffer, %function
+once_seL4_TCB_SetIPCBuffer:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    ldr     x8, [x0]
+    ldr     x0, [x0, #8]
+
+    ldr     x2, [x0]            // ipcBuffer -> mr0
+    ldr     x9, [x0, #8]        // ipcBufferFrame -> extra cap
+
+    mov     x1, #(TCB_SET_IPC_BUFFER_LABEL | 0x81)
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_TCB_SetIPCBuffer, .-once_seL4_TCB_SetIPCBuffer
+
+// ----------------------------------------------------------------------
+// seL4_TCB_SetSpace - Set CSpace and VSpace
+// ----------------------------------------------------------------------
+// Input: (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot, vspaceData)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_SetSpace
+.type once_seL4_TCB_SetSpace, %function
+once_seL4_TCB_SetSpace:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    ldr     x8, [x0]            // tcb
+    ldr     x0, [x0, #8]
+
+    ldr     x19, [x0]           // faultEP -> extra cap 0
+    ldr     x0, [x0, #8]
+
+    ldr     x20, [x0]           // cspaceRoot -> extra cap 1
+    ldr     x0, [x0, #8]
+
+    ldr     x21, [x0]           // cspaceData -> mr0
+    ldr     x0, [x0, #8]
+
+    ldr     x22, [x0]           // vspaceRoot -> extra cap 2
+    ldr     x9, [x0, #8]        // vspaceData -> mr1
+
+    mov     x1, #(TCB_SET_SPACE_LABEL | 0x182)
+    mov     x2, x21
+    mov     x3, x9
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_seL4_TCB_SetSpace, .-once_seL4_TCB_SetSpace
+
+// ----------------------------------------------------------------------
+// seL4_TCB_Resume - Resume suspended thread
+// ----------------------------------------------------------------------
+// Input: tcb
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_Resume
+.type once_seL4_TCB_Resume, %function
+once_seL4_TCB_Resume:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    mov     x8, x0              // tcb
+
+    mov     x1, #(TCB_RESUME_LABEL)  // No MRs, no extra caps
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_TCB_Resume, .-once_seL4_TCB_Resume
+
+// ----------------------------------------------------------------------
+// seL4_TCB_Suspend - Suspend thread
+// ----------------------------------------------------------------------
+// Input: tcb
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_Suspend
+.type once_seL4_TCB_Suspend, %function
+once_seL4_TCB_Suspend:
+    stp     x29, x30, [sp, #-16]!
+    mov     x29, sp
+
+    mov     x8, x0
+
+    mov     x1, #(TCB_SUSPEND_LABEL)
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x29, x30, [sp], #16
+    ret
+.size once_seL4_TCB_Suspend, .-once_seL4_TCB_Suspend
+
+// ----------------------------------------------------------------------
+// seL4_TCB_WriteRegisters - Write thread registers
+// ----------------------------------------------------------------------
+// Input: (tcb, resume, arch, count, regs)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_WriteRegisters
+.type once_seL4_TCB_WriteRegisters, %function
+once_seL4_TCB_WriteRegisters:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+
+    ldr     x8, [x0]            // tcb
+    ldr     x0, [x0, #8]
+
+    ldr     x19, [x0]           // resume
+    ldr     x0, [x0, #8]
+
+    ldr     x20, [x0]           // arch
+    ldr     x0, [x0, #8]
+
+    ldr     x9, [x0]            // count
+    ldr     x10, [x0, #8]       // regs pointer
+
+    // MessageInfo: label | length (count registers in message)
+    mov     x1, #TCB_WRITE_REGISTERS_LABEL
+    orr     x1, x1, x9          // Add register count
+
+    mov     x2, x19             // mr0 = resume flag
+    mov     x3, x20             // mr1 = arch flags
+    // Additional registers would come from regs array
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_seL4_TCB_WriteRegisters, .-once_seL4_TCB_WriteRegisters
+
+// ----------------------------------------------------------------------
+// seL4_TCB_ReadRegisters - Read thread registers
+// ----------------------------------------------------------------------
+// Input: (tcb, suspend, arch, count, regs)
+// Output: Int (seL4_Error)
+
+.global once_seL4_TCB_ReadRegisters
+.type once_seL4_TCB_ReadRegisters, %function
+once_seL4_TCB_ReadRegisters:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+
+    ldr     x8, [x0]            // tcb
+    ldr     x0, [x0, #8]
+
+    ldr     x19, [x0]           // suspend
+    ldr     x0, [x0, #8]
+
+    ldr     x20, [x0]           // arch
+    ldr     x0, [x0, #8]
+
+    ldr     x9, [x0]            // count
+    ldr     x10, [x0, #8]       // regs pointer
+
+    mov     x1, #TCB_READ_REGISTERS_LABEL
+    orr     x1, x1, #2          // 2 MRs for request
+
+    mov     x2, x19             // mr0 = suspend flag
+    mov     x3, x20             // mr1 = arch flags
+
+    mov     x0, x8
+    mov     x7, #-6
+    svc     #0
+
+    // Reply contains registers - would need to copy to regs buffer
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_seL4_TCB_ReadRegisters, .-once_seL4_TCB_ReadRegisters
+
+#endif // ONCE_SEL4_TCB_ARM64_DEFINED

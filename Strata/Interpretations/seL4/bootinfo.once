@@ -1,0 +1,132 @@
+------------------------------------------------------------------------
+-- seL4 Boot Info Primitives
+--
+-- When seL4 starts, it creates initial kernel objects and hands off
+-- control to the rootserver with a BootInfo structure describing:
+-- - Initial untyped memory regions
+-- - Initial capability slots
+-- - Device memory regions
+-- - Kernel configuration
+--
+-- The BootInfo structure is passed to the rootserver at a known location.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- BootInfo Structure Access
+------------------------------------------------------------------------
+
+-- | Get pointer to seL4_BootInfo structure
+--
+-- The BootInfo pointer is placed at a known location by the kernel.
+-- On most platforms, this is passed in a register or at a fixed address.
+--
+-- Returns: Pointer to seL4_BootInfo
+primitive getBootInfo : Eff Unit Int
+
+-- | Get IPC buffer pointer
+--
+-- The rootserver's initial IPC buffer location.
+--
+-- Returns: Pointer to IPC buffer
+primitive getIPCBuffer : Eff Unit Int
+
+------------------------------------------------------------------------
+-- BootInfo Field Access
+------------------------------------------------------------------------
+
+-- These read fields from the seL4_BootInfo structure
+
+-- | Get number of untyped caps
+-- Input: bootinfo pointer
+-- Returns: count of untyped memory regions
+primitive bootinfo_untypedCount : Eff Int Int
+
+-- | Get start of untyped caps range
+-- Input: bootinfo pointer
+-- Returns: first untyped cap slot
+primitive bootinfo_untypedStart : Eff Int Int
+
+-- | Get initial thread's TCB cap slot
+-- Input: bootinfo pointer
+-- Returns: TCB cap slot number
+primitive bootinfo_initThreadTCB : Eff Int Int
+
+-- | Get initial thread's CNode cap slot
+-- Input: bootinfo pointer
+-- Returns: CNode cap slot number
+primitive bootinfo_initThreadCNode : Eff Int Int
+
+-- | Get initial thread's VSpace cap slot
+-- Input: bootinfo pointer
+-- Returns: VSpace cap slot number
+primitive bootinfo_initThreadVSpace : Eff Int Int
+
+-- | Get number of user image frames
+-- Input: bootinfo pointer
+-- Returns: count of user image frames
+primitive bootinfo_userImageFrames : Eff Int Int
+
+-- | Get domain info pointer
+-- Input: bootinfo pointer
+-- Returns: pointer to seL4_BootInfoDomain
+primitive bootinfo_domainInfo : Eff Int Int
+
+------------------------------------------------------------------------
+-- Untyped Descriptor Access
+------------------------------------------------------------------------
+
+-- | Get untyped descriptor for index
+--
+-- Arguments:
+--   bootinfo : pointer to BootInfo
+--   index    : untyped index (0 to untypedCount-1)
+--
+-- Returns: (paddr, sizeBits, isDevice)
+--   paddr    : physical address of untyped
+--   sizeBits : log2 of size in bytes
+--   isDevice : 1 if device memory, 0 otherwise
+primitive bootinfo_getUntyped : Eff (Int * Int) (Int * Int * Int)
+
+------------------------------------------------------------------------
+-- Initial Cap Slots (standard seL4 layout)
+------------------------------------------------------------------------
+
+-- These are the standard initial capability slot assignments
+
+seL4_CapNull : Int
+seL4_CapNull = 0
+
+seL4_CapInitThreadTCB : Int
+seL4_CapInitThreadTCB = 1
+
+seL4_CapInitThreadCNode : Int
+seL4_CapInitThreadCNode = 2
+
+seL4_CapInitThreadVSpace : Int
+seL4_CapInitThreadVSpace = 3
+
+seL4_CapIRQControl : Int
+seL4_CapIRQControl = 4
+
+seL4_CapASIDControl : Int
+seL4_CapASIDControl = 5
+
+seL4_CapInitThreadASIDPool : Int
+seL4_CapInitThreadASIDPool = 6
+
+seL4_CapIOPortControl : Int
+seL4_CapIOPortControl = 7
+
+seL4_CapIOSpace : Int
+seL4_CapIOSpace = 8
+
+seL4_CapBootInfoFrame : Int
+seL4_CapBootInfoFrame = 9
+
+seL4_CapInitThreadIPCBuffer : Int
+seL4_CapInitThreadIPCBuffer = 10
+
+seL4_CapDomain : Int
+seL4_CapDomain = 11
+
+------------------------------------------------------------------------

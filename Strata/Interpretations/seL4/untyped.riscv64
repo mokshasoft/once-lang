@@ -1,0 +1,96 @@
+// ======================================================================
+// seL4 Untyped Memory Primitives - RISC-V64 Implementation
+// ======================================================================
+//
+// Object invocations in seL4 use the IPC mechanism:
+// 1. Pack method ID and arguments into MessageInfo and message registers
+// 2. Invoke seL4_Call on the capability
+// 3. Unpack result from reply
+//
+// seL4 RISC-V64 syscall convention:
+//   a7: Syscall number (-6 for seL4_Call)
+//   a0: Capability to invoke
+//   a1: MessageInfo
+//   a2-a5: Message registers 0-3
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_SEL4_UNTYPED_RISCV64_DEFINED
+#define ONCE_SEL4_UNTYPED_RISCV64_DEFINED
+
+// seL4_SysCall = -6
+.equ SEL4_SYS_CALL, -6
+
+// ----------------------------------------------------------------------
+// seL4_Untyped_Retype - Create kernel objects from untyped memory
+// ----------------------------------------------------------------------
+// Input: (untyped, objectType, sizeBits, root, nodeIndex, nodeDepth, nodeOffset, numObjects)
+// Output: Int (seL4_Error)
+//
+// This is a capability invocation using seL4_Call.
+
+.global once_seL4_Untyped_Retype
+.type once_seL4_Untyped_Retype, @function
+once_seL4_Untyped_Retype:
+    addi    sp, sp, -48
+    sd      ra, 40(sp)
+    sd      s0, 32(sp)
+    sd      s1, 24(sp)
+    sd      s2, 16(sp)
+    sd      s3, 8(sp)
+    addi    s0, sp, 48
+
+    // Unpack 8-element input tuple:
+    // (untyped, (objectType, (sizeBits, (root, (nodeIndex, (nodeDepth, (nodeOffset, numObjects)))))))
+
+    ld      s1, 0(a0)           // s1 = untyped cap
+    ld      a0, 8(a0)
+
+    ld      s2, 0(a0)           // s2 = objectType -> mr0
+    ld      a0, 8(a0)
+
+    ld      s3, 0(a0)           // s3 = sizeBits -> mr1
+    ld      a0, 8(a0)
+
+    ld      t0, 0(a0)           // t0 = root -> mr2
+    ld      a0, 8(a0)
+
+    ld      t1, 0(a0)           // t1 = nodeIndex -> mr3
+    // Remaining args (would go to IPC buffer in full implementation)
+
+    // Build MessageInfo: (label=0, capsUnwrapped=0, extraCaps=1, length=4)
+    // = (0 << 12) | (0 << 9) | (1 << 7) | 4 = 132
+    li      a1, 132             // MessageInfo
+
+    // Message registers
+    mv      a2, s2              // mr0 = objectType
+    mv      a3, s3              // mr1 = sizeBits
+    mv      a4, t0              // mr2 = root
+    mv      a5, t1              // mr3 = nodeIndex
+
+    // Capability to invoke
+    mv      a0, s1              // a0 = untyped capability
+
+    // Syscall number for seL4_Call
+    li      a7, SEL4_SYS_CALL
+
+    // Trap to kernel
+    ecall
+
+    // On return: a1 has reply MessageInfo
+    // Extract error from MessageInfo label (bits 12+)
+    srli    a0, a1, 12
+
+    ld      s3, 8(sp)
+    ld      s2, 16(sp)
+    ld      s1, 24(sp)
+    ld      s0, 32(sp)
+    ld      ra, 40(sp)
+    addi    sp, sp, 48
+    ret
+.size once_seL4_Untyped_Retype, .-once_seL4_Untyped_Retype
+
+#endif // ONCE_SEL4_UNTYPED_RISCV64_DEFINED

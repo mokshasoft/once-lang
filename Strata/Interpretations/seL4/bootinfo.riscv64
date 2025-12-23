@@ -1,0 +1,186 @@
+// ======================================================================
+// seL4 BootInfo Primitives - RISC-V64 Implementation
+// ======================================================================
+//
+// The rootserver receives BootInfo at a known location.
+// On RISC-V, the BootInfo pointer is typically at a fixed virtual address.
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_SEL4_BOOTINFO_RISCV64_DEFINED
+#define ONCE_SEL4_BOOTINFO_RISCV64_DEFINED
+
+// Known BootInfo location (platform-specific)
+.equ BOOTINFO_ADDR, 0x10000000
+
+// BootInfo structure offsets
+.equ BI_NODE_ID,            0x00
+.equ BI_NUM_NODES,          0x08
+.equ BI_NUM_IOPT_LEVELS,    0x10
+.equ BI_IPC_BUFFER,         0x18
+.equ BI_EMPTY,              0x20
+.equ BI_SHARED_FRAMES,      0x30
+.equ BI_USER_IMAGE_FRAMES,  0x40
+.equ BI_USER_IMAGE_PAGING,  0x50
+.equ BI_IO_SPACE_CAPS,      0x60
+.equ BI_EXTRA_BI_PAGES,     0x70
+.equ BI_INIT_CNODE_SIZE,    0x80
+.equ BI_INIT_DOMAIN,        0x88
+.equ BI_UNTYPED,            0x90
+.equ BI_UNTYPED_LIST,       0xA0
+
+.equ UNTYPED_DESC_SIZE, 16
+
+// ----------------------------------------------------------------------
+// getBootInfo - Get pointer to seL4_BootInfo
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (pointer to BootInfo)
+
+.global once_getBootInfo
+.type once_getBootInfo, @function
+once_getBootInfo:
+    li      a0, BOOTINFO_ADDR
+    ret
+.size once_getBootInfo, .-once_getBootInfo
+
+// ----------------------------------------------------------------------
+// getIPCBuffer - Get IPC buffer pointer
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (pointer to IPC buffer)
+
+.global once_getIPCBuffer
+.type once_getIPCBuffer, @function
+once_getIPCBuffer:
+    li      t0, BOOTINFO_ADDR
+    ld      a0, BI_IPC_BUFFER(t0)
+    ret
+.size once_getIPCBuffer, .-once_getIPCBuffer
+
+// ----------------------------------------------------------------------
+// bootinfo_untypedCount - Get number of untyped caps
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer in a0
+// Output: count
+
+.global once_bootinfo_untypedCount
+.type once_bootinfo_untypedCount, @function
+once_bootinfo_untypedCount:
+    ld      t0, BI_UNTYPED(a0)          // start
+    ld      t1, (BI_UNTYPED + 8)(a0)    // end
+    sub     a0, t1, t0
+    ret
+.size once_bootinfo_untypedCount, .-once_bootinfo_untypedCount
+
+// ----------------------------------------------------------------------
+// bootinfo_untypedStart - Get start of untyped caps range
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer in a0
+// Output: first untyped cap slot
+
+.global once_bootinfo_untypedStart
+.type once_bootinfo_untypedStart, @function
+once_bootinfo_untypedStart:
+    ld      a0, BI_UNTYPED(a0)
+    ret
+.size once_bootinfo_untypedStart, .-once_bootinfo_untypedStart
+
+// ----------------------------------------------------------------------
+// bootinfo_initThreadTCB - Get initial thread's TCB cap slot
+// ----------------------------------------------------------------------
+
+.global once_bootinfo_initThreadTCB
+.type once_bootinfo_initThreadTCB, @function
+once_bootinfo_initThreadTCB:
+    li      a0, 1
+    ret
+.size once_bootinfo_initThreadTCB, .-once_bootinfo_initThreadTCB
+
+// ----------------------------------------------------------------------
+// bootinfo_initThreadCNode - Get initial thread's CNode cap slot
+// ----------------------------------------------------------------------
+
+.global once_bootinfo_initThreadCNode
+.type once_bootinfo_initThreadCNode, @function
+once_bootinfo_initThreadCNode:
+    li      a0, 2
+    ret
+.size once_bootinfo_initThreadCNode, .-once_bootinfo_initThreadCNode
+
+// ----------------------------------------------------------------------
+// bootinfo_initThreadVSpace - Get initial thread's VSpace cap slot
+// ----------------------------------------------------------------------
+
+.global once_bootinfo_initThreadVSpace
+.type once_bootinfo_initThreadVSpace, @function
+once_bootinfo_initThreadVSpace:
+    li      a0, 3
+    ret
+.size once_bootinfo_initThreadVSpace, .-once_bootinfo_initThreadVSpace
+
+// ----------------------------------------------------------------------
+// bootinfo_userImageFrames - Get number of user image frames
+// ----------------------------------------------------------------------
+
+.global once_bootinfo_userImageFrames
+.type once_bootinfo_userImageFrames, @function
+once_bootinfo_userImageFrames:
+    ld      t0, BI_USER_IMAGE_FRAMES(a0)
+    ld      t1, (BI_USER_IMAGE_FRAMES + 8)(a0)
+    sub     a0, t1, t0
+    ret
+.size once_bootinfo_userImageFrames, .-once_bootinfo_userImageFrames
+
+// ----------------------------------------------------------------------
+// bootinfo_domainInfo - Get domain info pointer
+// ----------------------------------------------------------------------
+
+.global once_bootinfo_domainInfo
+.type once_bootinfo_domainInfo, @function
+once_bootinfo_domainInfo:
+    ld      a0, BI_INIT_DOMAIN(a0)
+    ret
+.size once_bootinfo_domainInfo, .-once_bootinfo_domainInfo
+
+// ----------------------------------------------------------------------
+// bootinfo_getUntyped - Get untyped descriptor
+// ----------------------------------------------------------------------
+// Input: (bootinfo, index) tuple in a0
+// Output: (paddr, sizeBits, isDevice) triple
+
+.global once_bootinfo_getUntyped
+.type once_bootinfo_getUntyped, @function
+once_bootinfo_getUntyped:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+    sd      s0, 16(sp)
+    sd      s1, 8(sp)
+    addi    s0, sp, 32
+
+    // Unpack tuple
+    ld      s0, 0(a0)           // bootinfo
+    ld      s1, 8(a0)           // index
+
+    // Calculate address: bootinfo + BI_UNTYPED_LIST + index * UNTYPED_DESC_SIZE
+    li      t0, UNTYPED_DESC_SIZE
+    mul     t1, s1, t0
+    add     t1, s0, t1
+    addi    t1, t1, BI_UNTYPED_LIST
+
+    // Read untyped descriptor
+    ld      a0, 0(t1)           // paddr
+    lbu     a2, 9(t1)           // isDevice
+    lbu     a1, 10(t1)          // sizeBits
+
+    ld      s1, 8(sp)
+    ld      s0, 16(sp)
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    ret
+.size once_bootinfo_getUntyped, .-once_bootinfo_getUntyped
+
+#endif // ONCE_SEL4_BOOTINFO_RISCV64_DEFINED

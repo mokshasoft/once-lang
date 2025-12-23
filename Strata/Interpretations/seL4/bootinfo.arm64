@@ -1,0 +1,230 @@
+// ======================================================================
+// seL4 BootInfo Primitives - ARM64 Implementation
+// ======================================================================
+//
+// The rootserver receives BootInfo in a known location.
+// On ARM64, the BootInfo pointer is typically at a fixed virtual address
+// or passed via a register.
+//
+// seL4_BootInfo structure layout (approximate):
+//   +0x00: nodeID
+//   +0x08: numNodes
+//   +0x10: numIOPTLevels
+//   +0x18: ipcBuffer
+//   +0x20: empty (seL4_SlotRegion)
+//   +0x30: sharedFrames (seL4_SlotRegion)
+//   +0x40: userImageFrames (seL4_SlotRegion)
+//   +0x50: userImagePaging (seL4_SlotRegion)
+//   +0x60: ioSpaceCaps (seL4_SlotRegion)
+//   +0x70: extraBIPages (seL4_SlotRegion)
+//   +0x80: initThreadCNodeSizeBits
+//   +0x88: initThreadDomain
+//   +0x90: untyped (seL4_SlotRegion)
+//   +0xA0: untypedList[] (array of seL4_UntypedDesc)
+//
+// seL4_SlotRegion: { start: Word, end: Word }
+// seL4_UntypedDesc: { paddr: Word, padding: u8, isDevice: u8, sizeBits: u8, padding2: u8 }
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_SEL4_BOOTINFO_ARM64_DEFINED
+#define ONCE_SEL4_BOOTINFO_ARM64_DEFINED
+
+// Known BootInfo location (platform-specific)
+// On seL4/ARM, this is typically at 0x10000000 or similar
+// For QEMU virt, it may be different - this is configured at build time
+.equ BOOTINFO_ADDR, 0x10000000
+
+// BootInfo structure offsets
+.equ BI_NODE_ID,            0x00
+.equ BI_NUM_NODES,          0x08
+.equ BI_NUM_IOPT_LEVELS,    0x10
+.equ BI_IPC_BUFFER,         0x18
+.equ BI_EMPTY,              0x20
+.equ BI_SHARED_FRAMES,      0x30
+.equ BI_USER_IMAGE_FRAMES,  0x40
+.equ BI_USER_IMAGE_PAGING,  0x50
+.equ BI_IO_SPACE_CAPS,      0x60
+.equ BI_EXTRA_BI_PAGES,     0x70
+.equ BI_INIT_CNODE_SIZE,    0x80
+.equ BI_INIT_DOMAIN,        0x88
+.equ BI_UNTYPED,            0x90
+.equ BI_UNTYPED_LIST,       0xA0
+
+// seL4_SlotRegion size
+.equ SLOT_REGION_SIZE, 16
+
+// seL4_UntypedDesc size (padded to 16 bytes)
+.equ UNTYPED_DESC_SIZE, 16
+
+// ----------------------------------------------------------------------
+// getBootInfo - Get pointer to seL4_BootInfo
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (pointer to BootInfo)
+
+.global once_getBootInfo
+.type once_getBootInfo, %function
+once_getBootInfo:
+    // The bootinfo pointer is typically passed to rootserver
+    // or at a known address. For now, return the known address.
+    // In actual seL4, this would be read from where the kernel placed it.
+    ldr     x0, =BOOTINFO_ADDR
+    ret
+.size once_getBootInfo, .-once_getBootInfo
+
+// ----------------------------------------------------------------------
+// getIPCBuffer - Get IPC buffer pointer
+// ----------------------------------------------------------------------
+// Input: Unit (ignored)
+// Output: Int (pointer to IPC buffer)
+
+.global once_getIPCBuffer
+.type once_getIPCBuffer, %function
+once_getIPCBuffer:
+    ldr     x0, =BOOTINFO_ADDR
+    ldr     x0, [x0, #BI_IPC_BUFFER]
+    ret
+.size once_getIPCBuffer, .-once_getIPCBuffer
+
+// ----------------------------------------------------------------------
+// bootinfo_untypedCount - Get number of untyped caps
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: count
+
+.global once_bootinfo_untypedCount
+.type once_bootinfo_untypedCount, %function
+once_bootinfo_untypedCount:
+    // untyped is a SlotRegion at offset BI_UNTYPED
+    // count = end - start
+    ldr     x1, [x0, #BI_UNTYPED]       // start
+    ldr     x2, [x0, #BI_UNTYPED + 8]   // end
+    sub     x0, x2, x1
+    ret
+.size once_bootinfo_untypedCount, .-once_bootinfo_untypedCount
+
+// ----------------------------------------------------------------------
+// bootinfo_untypedStart - Get start of untyped caps range
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: first untyped cap slot
+
+.global once_bootinfo_untypedStart
+.type once_bootinfo_untypedStart, %function
+once_bootinfo_untypedStart:
+    ldr     x0, [x0, #BI_UNTYPED]
+    ret
+.size once_bootinfo_untypedStart, .-once_bootinfo_untypedStart
+
+// ----------------------------------------------------------------------
+// bootinfo_initThreadTCB - Get initial thread's TCB cap slot
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: TCB cap slot (always 1 per seL4 spec)
+
+.global once_bootinfo_initThreadTCB
+.type once_bootinfo_initThreadTCB, %function
+once_bootinfo_initThreadTCB:
+    mov     x0, #1              // seL4_CapInitThreadTCB = 1
+    ret
+.size once_bootinfo_initThreadTCB, .-once_bootinfo_initThreadTCB
+
+// ----------------------------------------------------------------------
+// bootinfo_initThreadCNode - Get initial thread's CNode cap slot
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: CNode cap slot (always 2 per seL4 spec)
+
+.global once_bootinfo_initThreadCNode
+.type once_bootinfo_initThreadCNode, %function
+once_bootinfo_initThreadCNode:
+    mov     x0, #2              // seL4_CapInitThreadCNode = 2
+    ret
+.size once_bootinfo_initThreadCNode, .-once_bootinfo_initThreadCNode
+
+// ----------------------------------------------------------------------
+// bootinfo_initThreadVSpace - Get initial thread's VSpace cap slot
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: VSpace cap slot (always 3 per seL4 spec)
+
+.global once_bootinfo_initThreadVSpace
+.type once_bootinfo_initThreadVSpace, %function
+once_bootinfo_initThreadVSpace:
+    mov     x0, #3              // seL4_CapInitThreadVSpace = 3
+    ret
+.size once_bootinfo_initThreadVSpace, .-once_bootinfo_initThreadVSpace
+
+// ----------------------------------------------------------------------
+// bootinfo_userImageFrames - Get number of user image frames
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: count
+
+.global once_bootinfo_userImageFrames
+.type once_bootinfo_userImageFrames, %function
+once_bootinfo_userImageFrames:
+    ldr     x1, [x0, #BI_USER_IMAGE_FRAMES]
+    ldr     x2, [x0, #BI_USER_IMAGE_FRAMES + 8]
+    sub     x0, x2, x1
+    ret
+.size once_bootinfo_userImageFrames, .-once_bootinfo_userImageFrames
+
+// ----------------------------------------------------------------------
+// bootinfo_domainInfo - Get domain info pointer
+// ----------------------------------------------------------------------
+// Input: bootinfo pointer
+// Output: pointer to domain info
+
+.global once_bootinfo_domainInfo
+.type once_bootinfo_domainInfo, %function
+once_bootinfo_domainInfo:
+    ldr     x0, [x0, #BI_INIT_DOMAIN]
+    ret
+.size once_bootinfo_domainInfo, .-once_bootinfo_domainInfo
+
+// ----------------------------------------------------------------------
+// bootinfo_getUntyped - Get untyped descriptor
+// ----------------------------------------------------------------------
+// Input: (bootinfo, index)
+// Output: (paddr, sizeBits, isDevice) as triple
+
+.global once_bootinfo_getUntyped
+.type once_bootinfo_getUntyped, %function
+once_bootinfo_getUntyped:
+    stp     x29, x30, [sp, #-32]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+
+    // Unpack tuple
+    ldr     x19, [x0]           // bootinfo
+    ldr     x20, [x0, #8]       // index
+
+    // Calculate address: bootinfo + BI_UNTYPED_LIST + index * UNTYPED_DESC_SIZE
+    mov     x0, #UNTYPED_DESC_SIZE
+    mul     x1, x20, x0
+    add     x1, x19, x1
+    add     x1, x1, #BI_UNTYPED_LIST
+
+    // Read untyped descriptor
+    // struct { uint64_t paddr; uint8_t padding; uint8_t isDevice; uint8_t sizeBits; ... }
+    ldr     x2, [x1]            // paddr
+    ldrb    w3, [x1, #9]        // isDevice
+    ldrb    w4, [x1, #10]       // sizeBits
+
+    // Need to allocate and return triple (paddr, sizeBits, isDevice)
+    // For now, return in registers - would need heap allocation for tuple
+    mov     x0, x2              // paddr in x0
+    mov     x1, x4              // sizeBits in x1
+    mov     x2, x3              // isDevice in x2
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x29, x30, [sp], #32
+    ret
+.size once_bootinfo_getUntyped, .-once_bootinfo_getUntyped
+
+#endif // ONCE_SEL4_BOOTINFO_ARM64_DEFINED

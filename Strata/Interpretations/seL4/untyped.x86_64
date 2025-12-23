@@ -1,0 +1,102 @@
+# ======================================================================
+# seL4 Untyped Memory Primitives - x86_64 Implementation
+# ======================================================================
+#
+# Object invocations in seL4 use the IPC mechanism:
+# 1. Pack method ID and arguments into MessageInfo and message registers
+# 2. Invoke seL4_Call on the capability
+# 3. Unpack result from reply
+#
+# seL4 x86_64 syscall convention:
+#   rdx: Syscall number (-6 for seL4_Call)
+#   rdi: Capability to invoke
+#   rsi: MessageInfo
+#   r10, r8, r9, r15: Message registers 0-3
+#
+# ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_SEL4_UNTYPED_X86_64_DEFINED
+#define ONCE_SEL4_UNTYPED_X86_64_DEFINED
+
+# seL4_SysCall = -6
+.equ SEL4_SYS_CALL, -6
+
+# ----------------------------------------------------------------------
+# seL4_Untyped_Retype - Create kernel objects from untyped memory
+# ----------------------------------------------------------------------
+# Input: (untyped, objectType, sizeBits, root, nodeIndex, nodeDepth, nodeOffset, numObjects)
+# Output: Int (seL4_Error)
+#
+# This is a capability invocation using seL4_Call.
+
+.global once_seL4_Untyped_Retype
+.type once_seL4_Untyped_Retype, @function
+once_seL4_Untyped_Retype:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack 8-element input tuple:
+    # (untyped, (objectType, (sizeBits, (root, (nodeIndex, (nodeDepth, (nodeOffset, numObjects)))))))
+
+    mov     (%rdi), %r12        # r12 = untyped cap
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r13        # r13 = objectType -> mr0
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %r14        # r14 = sizeBits -> mr1
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rax        # rax = root -> mr2
+    mov     8(%rdi), %rdi
+
+    mov     (%rdi), %rcx        # rcx = nodeIndex -> mr3
+    mov     8(%rdi), %rdi
+
+    # Remaining args (would go to IPC buffer in full implementation)
+    # For simplified version, we use only first 4 MRs
+
+    # Build MessageInfo: (label=0, capsUnwrapped=0, extraCaps=1, length=4)
+    # = (0 << 12) | (0 << 9) | (1 << 7) | 4 = 132
+    mov     $132, %rsi          # MessageInfo
+
+    # Message registers
+    mov     %r13, %r10          # mr0 = objectType
+    mov     %r14, %r8           # mr1 = sizeBits
+    mov     %rax, %r9           # mr2 = root
+    mov     %rcx, %r15          # mr3 = nodeIndex
+
+    # Capability to invoke
+    mov     %r12, %rdi          # rdi = untyped capability
+
+    # Syscall number for seL4_Call
+    mov     $SEL4_SYS_CALL, %rdx
+
+    # Trap to kernel
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # On return: rsi has reply MessageInfo
+    # Extract error from MessageInfo label (bits 12+)
+    mov     %rsi, %rax
+    shr     $12, %rax
+
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_Untyped_Retype, .-once_seL4_Untyped_Retype
+
+#endif // ONCE_SEL4_UNTYPED_X86_64_DEFINED

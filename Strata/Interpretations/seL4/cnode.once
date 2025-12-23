@@ -1,0 +1,102 @@
+------------------------------------------------------------------------
+-- seL4 CNode (Capability Node) Primitives
+--
+-- CNodes are the capability storage structures in seL4.
+-- They form trees that define a thread's capability space (CSpace).
+--
+-- seL4's capability model:
+-- - Each CNode holds 2^n capability slots
+-- - Capabilities can be copied, moved, minted (with badges), or deleted
+-- - CSpace addressing uses (root, index, depth) triples
+--
+-- CNode operations are capability invocations on CNode objects.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- CNode Methods (invocation labels)
+------------------------------------------------------------------------
+
+-- These are method IDs for CNode invocations
+-- Actual values depend on seL4 configuration
+
+------------------------------------------------------------------------
+-- CNode Operations
+------------------------------------------------------------------------
+
+-- | seL4_CNode_Copy - Copy a capability to another slot
+--
+-- Arguments:
+--   destRoot    : CNode capability for destination
+--   destIndex   : Slot index in destination CNode
+--   destDepth   : Depth for destination addressing
+--   srcRoot     : CNode capability for source
+--   srcIndex    : Slot index in source CNode
+--   srcDepth    : Depth for source addressing
+--   rights      : Capability rights mask
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_CNode_Copy : Eff (Int * Int * Int * Int * Int * Int * Int) Int
+
+-- | seL4_CNode_Mint - Copy capability with a badge
+--
+-- Like Copy, but adds a badge to the new capability.
+-- Badges are used to identify senders in IPC.
+--
+-- Arguments:
+--   destRoot, destIndex, destDepth : Destination CSpace address
+--   srcRoot, srcIndex, srcDepth    : Source CSpace address
+--   rights                         : Capability rights mask
+--   badge                          : Badge value to attach
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_CNode_Mint : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
+
+-- | seL4_CNode_Move - Move a capability (delete from source)
+--
+-- Arguments: Same as Copy
+-- Returns: seL4_Error (0 = success)
+primitive seL4_CNode_Move : Eff (Int * Int * Int * Int * Int * Int * Int) Int
+
+-- | seL4_CNode_Delete - Delete a capability
+--
+-- Arguments:
+--   root   : CNode capability
+--   index  : Slot index to delete
+--   depth  : Depth for addressing
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_CNode_Delete : Eff (Int * Int * Int) Int
+
+-- | seL4_CNode_Revoke - Revoke all derived capabilities
+--
+-- Deletes all capabilities derived from the specified cap.
+--
+-- Arguments:
+--   root   : CNode capability
+--   index  : Slot index
+--   depth  : Depth for addressing
+--
+-- Returns: seL4_Error (0 = success)
+primitive seL4_CNode_Revoke : Eff (Int * Int * Int) Int
+
+------------------------------------------------------------------------
+-- Rights Constants
+------------------------------------------------------------------------
+
+-- Capability rights are a bitmask
+seL4_AllRights : Int
+seL4_AllRights = 15  -- All bits set (Read, Write, Grant, GrantReply)
+
+seL4_CanRead : Int
+seL4_CanRead = 1
+
+seL4_CanWrite : Int
+seL4_CanWrite = 2
+
+seL4_CanGrant : Int
+seL4_CanGrant = 4
+
+seL4_CanGrantReply : Int
+seL4_CanGrantReply = 8
+
+------------------------------------------------------------------------
