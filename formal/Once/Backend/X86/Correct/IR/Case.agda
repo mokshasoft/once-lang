@@ -541,3 +541,87 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
 
     exec-2 : exec 2 prog s1 ≡ just s3
     exec-2 = exec-two-steps-nonhalt prog s1 s2 s3 step1 h2 step2 h3
+
+------------------------------------------------------------------------
+-- CaseEndResult: Result of executing the end label (1 instruction)
+-- Used by inr branch to step through the final label instruction
+------------------------------------------------------------------------
+
+record CaseEndResult {A B C : Type} (f : IR A C) (g : IR B C)
+                     (prefix suffix : Program)
+                     (s1 : State) : Set where
+  constructor case-end-result
+  ctx : CaseContext f g prefix suffix
+  ctx = make-case-context f g prefix suffix
+  open CaseContext ctx public
+
+  field
+    s-final : State
+    exec-end : exec 1 prog s1 ≡ just s-final
+    h-final : halted s-final ≡ false
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    rax-preserved : readReg (regs s-final) rax ≡ readReg (regs s1) rax
+    r14-preserved : readReg (regs s-final) r14 ≡ readReg (regs s1) r14
+    r15-preserved : readReg (regs s-final) r15 ≡ readReg (regs s1) r15
+    rbp-preserved : readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
+    rsp-preserved : readReg (regs s-final) rsp ≡ readReg (regs s1) rsp
+    mem-preserved : memory s-final ≡ memory s1
+
+-- | Execute end label for inr branch (1 instruction)
+-- Precondition: pc s1 = length prefix + 7 + len-f + len-g (at end label)
+exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
+                (prefix suffix : Program)
+                (s1 : State) →
+  let ctx = make-case-context f g prefix suffix in
+  let open CaseContext ctx in
+  halted s1 ≡ false →
+  pc s1 ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g →
+  CaseEndResult f g prefix suffix s1
+exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
+    { s-final = s2
+    ; exec-end = exec-1
+    ; h-final = h2
+    ; pc-final = pc2
+    ; rax-preserved = refl
+    ; r14-preserved = refl
+    ; r15-preserved = refl
+    ; rbp-preserved = refl
+    ; rsp-preserved = refl
+    ; mem-preserved = refl
+    }
+  where
+    ctx = make-case-context f g prefix suffix
+    open CaseContext ctx
+
+    -- State after label end-label
+    s2 : State
+    s2 = record s1 { pc = pc s1 +ℕ 1 }
+
+    h2 : halted s2 ≡ false
+    h2 = h1
+
+    -- PC proof: prefix + 7 + len-f + len-g + 1 = prefix + (8 + len-f) + len-g
+    -- compile-length [ f , g ] = (8 + len-f) + len-g
+    postulate
+      pc2 : pc s2 ≡ length prefix +ℕ compile-length [ f , g ]
+
+    -- Fetch proof: the end label is at position length prefix + 7 + len-f + len-g
+    postulate
+      prog-eq-end : prog ≡ (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++
+                           jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g) ++ end-label-instr ∷ suffix
+      pc1-eq-len : pc s1 ≡ length (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++
+                                   jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g)
+
+    prefix-end = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++
+                 jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g
+
+    fetch1 : fetch prog (pc s1) ≡ just end-label-instr
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just end-label-instr)
+                    (sym prog-eq-end) (sym pc1-eq-len)
+                    (fetch-at-prefix-end prefix-end end-label-instr suffix)
+
+    step1 : step prog s1 ≡ just s2
+    step1 = trans (step-exec prog s1 end-label-instr h1 fetch1) (execLabel prog s1 end-label)
+
+    exec-1 : exec 1 prog s1 ≡ just s2
+    exec-1 = exec-one-step-nonhalt prog s1 s2 step1 h2

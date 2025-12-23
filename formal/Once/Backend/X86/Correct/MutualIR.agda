@@ -79,9 +79,10 @@ open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context;
          CaseJumpResult; exec-case-jump;
+         CaseEndResult; exec-case-end;
          stack-inv-preserved-mem-rsp;
          assemble-case-inl-result; assemble-case-inr-result)
-open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult; module CaseEndResult)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -1372,27 +1373,20 @@ mutual
       -- ========== Phase 4: End label (1 instruction) ==========
       -- label (7+len-f+len-g) - no-op, just advances pc
 
-      postulate
-        end-result : ∃[ s-final ] (exec 1 prog s1 ≡ just s-final
-                                  × halted s-final ≡ false
-                                  × pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
-                                  × readReg (regs s-final) rax ≡ readReg (regs s1) rax
-                                  × readReg (regs s-final) r14 ≡ readReg (regs s1) r14
-                                  × readReg (regs s-final) r15 ≡ readReg (regs s1) r15
-                                  × readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
-                                  × readReg (regs s-final) rsp ≡ readReg (regs s1) rsp
-                                  × memory s-final ≡ memory s1)
+      -- Use the extracted exec-case-end helper
+      end-result : CaseEndResult f g prefix suffix s1
+      end-result = exec-case-end f g prefix suffix s1 h1 pc1
 
-      s-final = proj₁ end-result
-      exec-end = proj₁ (proj₂ end-result)
-      h-final = proj₁ (proj₂ (proj₂ end-result))
-      pc-final-raw = proj₁ (proj₂ (proj₂ (proj₂ end-result)))
-      rax-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))
-      r14-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
-      r15-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
-      rbp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))))
-      rsp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
-      mem-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
+      s-final = CaseEndResult.s-final end-result
+      exec-end = CaseEndResult.exec-end end-result
+      h-final = CaseEndResult.h-final end-result
+      pc-final-raw = CaseEndResult.pc-final end-result
+      rax-end = CaseEndResult.rax-preserved end-result
+      r14-end = CaseEndResult.r14-preserved end-result
+      r15-end = CaseEndResult.r15-preserved end-result
+      rbp-end = CaseEndResult.rbp-preserved end-result
+      rsp-end = CaseEndResult.rsp-preserved end-result
+      mem-end = CaseEndResult.mem-preserved end-result
 
       -- Convert end exec to Star
       star-end : Star prog s1 s-final
