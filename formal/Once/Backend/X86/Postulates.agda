@@ -63,18 +63,31 @@ postulate
 --
 -- NEEDED BY: Once.Backend.X86.Correct.MutualIR (run-apply-star-direct)
 --
--- JUSTIFICATION:
---   The `apply` instruction calls code that was compiled elsewhere (by curry).
---   The closure contains a code pointer to compiled function code and an
---   environment value. When called, this code executes correctly because:
---   1. curry compiled the function with the correct calling convention
---   2. The closure stores encode(env) at the correct offset
---   This is a semantic boundary: we're trusting that separately-compiled
---   code interoperates correctly.
+-- WHY THIS IS HARD TO PROVE:
+--   Apply's `call r15` instruction jumps to a thunk compiled by curry.
+--   The thunk code is NOT in `compile-x86 apply` - it's somewhere in
+--   `prefix` where a previous curry compilation placed it.
 --
--- IMPACT:
---   If closure application were incorrect, higher-order functions would fail.
---   This is fundamental to the semantics of closures.
+--   The proof would need to:
+--   1. Track that the closure's code_ptr points to valid thunk code
+--   2. Know that the thunk code is part of the current program
+--   3. Trace execution through: call → thunk-setup → f → ret
+--
+--   This requires a "closure well-formedness" invariant tracking that
+--   all closures point to valid thunks within the program.
+--
+-- SEMANTIC BOUNDARY:
+--   This postulate captures the calling convention between curry and apply:
+--   - curry stores (encode env, code_ptr) at closure address
+--   - apply loads env→r12, code_ptr→r15, arg→rdi, then calls r15
+--   - thunk pairs (r12, rdi), calls f, returns result in rax
+--   - ret pops return address and jumps back after the call
+--
+-- TO ELIMINATE:
+--   1. Define ClosureWellFormed predicate (code_ptr → valid thunk in prog)
+--   2. Prove curry establishes ClosureWellFormed
+--   3. Prove apply works on well-formed closures
+--   4. Thread this invariant through the proof architecture
 --
 -- RUNTIME EFFECT: None (proof-only)
 --
