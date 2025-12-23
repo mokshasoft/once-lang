@@ -37,7 +37,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂; inspect; [_])
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂; inspect) renaming ([_] to Reveal[_])
 
 ------------------------------------------------------------------------
 -- Exec Lemmas
@@ -91,7 +91,7 @@ step-implies-not-halted prog s s' step-eq h'-eq with halted s | inspect halted s
 -- In true case: step prog s = just s, so step-eq : just s ≡ just s'
 -- This means s ≡ s' (by just-inj). Then halted s' = halted s = true.
 -- But h'-eq says halted s' = false. Contradiction.
-... | true | [ h-eq ] = ⊥-elim (true≢false (trans (sym h-eq) halted-s-is-false))
+... | true | Reveal[ h-eq ] = ⊥-elim (true≢false (trans (sym h-eq) halted-s-is-false))
   where
     -- step-eq : just s ≡ just s', so s ≡ s'
     s≡s' : s ≡ s'
@@ -224,7 +224,7 @@ exec-suc-to-n : ∀ {n prog s s' s1} →
 exec-suc-to-n {n} {prog} {s} {s'} {s1} h-eq step-eq' exec-eq'
   rewrite h-eq | step-on-non-halted {prog} {s} h-eq | step-eq'
   with halted s1 | inspect halted s1
-exec-suc-to-n {n} {prog} {s} {s'} {s1} _ _ exec-eq' | true | [ h1-eq ] with refl ← exec-eq' =
+exec-suc-to-n {n} {prog} {s} {s'} {s1} _ _ exec-eq' | true | Reveal[ h1-eq ] with refl ← exec-eq' =
   exec-n-halted-local n prog s1 h1-eq
 exec-suc-to-n _ _ exec-eq' | false | _ = exec-eq'
 
@@ -1025,8 +1025,40 @@ pc-not-at-target {n} (suc k) _ eq = helper n k eq
     helper (suc n) k eq = helper n k (suc-inj eq)
 
 -- | compile-length is always positive (at least 1)
-postulate
-  compile-length>0 : ∀ {A B} (ir : IR A B) → compile-length ir > 0
+-- PROVEN: By structural induction on IR. All base cases are ≥ 1.
+compile-length>0 : ∀ {A B} (ir : IR A B) → compile-length ir > 0
+compile-length>0 id = s≤s z≤n
+compile-length>0 (g ∘ f) = comp-pos (compile-length f) (compile-length g)
+  where
+    -- n + suc m = suc (n + m) > 0 (definitionally!)
+    n+suc-pos : (n m : ℕ) → n +ℕ suc m > 0
+    n+suc-pos zero m = s≤s z≤n
+    n+suc-pos (suc n) m = s≤s z≤n
+    -- (n + 1) + m > 0 via +-assoc
+    comp-pos : (n m : ℕ) → (n +ℕ 1) +ℕ m > 0
+    comp-pos n m = subst (_> 0) (sym (+-assoc n 1 m)) (n+suc-pos n m)
+compile-length>0 fst = s≤s z≤n
+compile-length>0 snd = s≤s z≤n
+compile-length>0 ⟨ f , g ⟩ = pair-pos (compile-length f) (compile-length g)
+  where
+    pair-pos : (n m : ℕ) → (15 +ℕ n) +ℕ m > 0
+    pair-pos n m = s≤s z≤n
+compile-length>0 inl = s≤s z≤n
+compile-length>0 inr = s≤s z≤n
+compile-length>0 [ f , g ] = case-pos (compile-length f) (compile-length g)
+  where
+    case-pos : (n m : ℕ) → (8 +ℕ n) +ℕ m > 0
+    case-pos n m = s≤s z≤n
+compile-length>0 terminal = s≤s z≤n
+compile-length>0 initial = s≤s z≤n
+compile-length>0 (curry f) = curry-pos (compile-length f)
+  where
+    curry-pos : (n : ℕ) → 13 +ℕ n > 0
+    curry-pos n = s≤s z≤n
+compile-length>0 apply = s≤s z≤n
+compile-length>0 fold = s≤s z≤n
+compile-length>0 unfold = s≤s z≤n
+compile-length>0 arr = s≤s z≤n
 
 -- | Convert exec proof to exec-until-pc for simple generators
 -- Used when compile-length equals actual steps (non-branching generators)
