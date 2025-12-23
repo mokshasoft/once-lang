@@ -78,9 +78,10 @@ open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
 -- Import extracted case helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context;
+         CaseJumpResult; exec-case-jump;
          stack-inv-preserved-mem-rsp;
          assemble-case-inl-result; assemble-case-inr-result)
-open import Once.Backend.X86.Correct.IR.Case using (module CaseContext)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -1063,29 +1064,20 @@ mutual
       -- After: pc = length prefix + 4 + len-f + 2 + len-g + 1 (at end label)
       --      = length prefix + (8 + len-f) + len-g = length prefix + compile-length [ f , g ]
 
-      -- Postulate jump execution (jmp + label = 2 instructions worth of pc advancement)
-      -- Actually the jmp jumps over the right branch, landing at the end label
-      postulate
-        jump-result : ∃[ s-final ] (exec 2 prog s1 ≡ just s-final
-                                   × halted s-final ≡ false
-                                   × pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
-                                   × readReg (regs s-final) rax ≡ readReg (regs s1) rax
-                                   × readReg (regs s-final) r14 ≡ readReg (regs s1) r14
-                                   × readReg (regs s-final) r15 ≡ readReg (regs s1) r15
-                                   × readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
-                                   × readReg (regs s-final) rsp ≡ readReg (regs s1) rsp
-                                   × memory s-final ≡ memory s1)
+      -- Use the extracted exec-case-jump helper
+      jump-result : CaseJumpResult f g prefix suffix s1
+      jump-result = exec-case-jump f g prefix suffix s1 h1 pc1
 
-      s-final = proj₁ jump-result
-      exec-jump = proj₁ (proj₂ jump-result)
-      h-final = proj₁ (proj₂ (proj₂ jump-result))
-      pc-final-raw = proj₁ (proj₂ (proj₂ (proj₂ jump-result)))
-      rax-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))
-      r14-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
-      r15-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))
-      rbp-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))))
-      rsp-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))))
-      mem-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))))
+      s-final = CaseJumpResult.s-final jump-result
+      exec-jump = CaseJumpResult.exec-jump jump-result
+      h-final = CaseJumpResult.h-final jump-result
+      pc-final-raw = CaseJumpResult.pc-final jump-result
+      rax-jump = CaseJumpResult.rax-preserved jump-result
+      r14-jump = CaseJumpResult.r14-preserved jump-result
+      r15-jump = CaseJumpResult.r15-preserved jump-result
+      rbp-jump = CaseJumpResult.rbp-preserved jump-result
+      rsp-jump = CaseJumpResult.rsp-preserved jump-result
+      mem-jump = CaseJumpResult.mem-preserved jump-result
 
       -- Convert jump exec to Star
       star-jump : Star prog s1 s-final
