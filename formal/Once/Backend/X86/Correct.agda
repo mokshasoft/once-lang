@@ -31,7 +31,7 @@ open import Once.Backend.X86.Correct.Star
          exec-to-star; exec-until-pc-to-star;
          StarResult; star-exec; not-halted; rax-correct;
          exec-to-star-result; compose-star-results;
-         star-length; star-to-exec)
+         star-length; star-to-exec; exec-halted-extend)
 
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
@@ -512,16 +512,6 @@ exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
 exec-halted-stable = exec-n-halted
 
 -- | Exec extend for halted states: if exec n reaches halted s', exec (n+m) also gives s'
--- This is the halted version of exec-chain
--- POSTULATED: This is a plumbing postulate. The proof requires pattern matching on
--- exec (suc n') prog s, but the `with` abstraction in exec blocks unification.
--- Semantically: once execution reaches a halted state, further fuel doesn't change the result.
-postulate
-  exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ true →
-    exec (n +ℕ m) prog s ≡ just s'
-
 -- Main bridge: run-ir-star-at-offset with empty suffix implies run-generator
 -- After Star execution completes, one more step halts (fetch fails)
 offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
