@@ -630,7 +630,9 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
       Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> generateIRExpr l (v <> ".value") <> " : " <> generateIRExpr r (v <> ".value") <> ")"
       Once.IR.Initial _ -> v
-      Once.IR.Curry _ _ -> "/* curry not yet implemented */ ((void*)0)"
+      Once.IR.Curry paramName body ->
+        "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
+        generateIRExpr body paramName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'  -- Local variable: just use the name
@@ -813,7 +815,9 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
       Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> generateIRExpr alloc l (v <> ".value") <> " : " <> generateIRExpr alloc r (v <> ".value") <> ")"
       Once.IR.Initial _ -> v
-      Once.IR.Curry _ _ -> "/* curry not yet implemented */ ((void*)0)"
+      Once.IR.Curry paramName body ->
+        "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
+        generateIRExpr alloc body paramName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'
@@ -958,7 +962,9 @@ generateLibraryAll functions = (header, source)
       Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
       Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> libGenerateIRExpr alloc l (v <> ".value") <> " : " <> libGenerateIRExpr alloc r (v <> ".value") <> ")"
       Once.IR.Initial _ -> v
-      Once.IR.Curry _ _ -> "/* curry not yet implemented */ ((void*)0)"
+      Once.IR.Curry paramName body ->
+        "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
+        libGenerateIRExpr alloc body paramName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'

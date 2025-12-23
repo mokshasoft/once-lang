@@ -163,7 +163,12 @@ generateExpr ir var = case ir of
 
   Initial _ -> var  -- Void -> A (unreachable)
 
-  Curry _ _ -> "/* curry not yet implemented */ ((void*)0)"
+  -- Curry x body: bind input to x and evaluate body
+  -- From lambda elaboration: \x -> e becomes Curry x e'
+  -- The body contains LocalVar x references to the parameter
+  Curry paramName body ->
+    "({ typeof(" <> var <> ") " <> paramName <> " = " <> var <> "; " <>
+    generateExpr body paramName <> "; })"
 
   Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
 
