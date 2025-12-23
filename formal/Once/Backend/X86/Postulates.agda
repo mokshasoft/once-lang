@@ -99,27 +99,6 @@ postulate
               × StackInvariant s'
               × readReg (regs s') rsp > 16)
 
-------------------------------------------------------------------------
--- Postulate P6: Curry Encoding (Memory Layout)
-------------------------------------------------------------------------
---
--- A closure constructed by curry at address p encodes the partial application.
---
--- NEEDED BY: Once.Backend.X86.Correct.MutualIR (run-curry-star-direct)
---
--- JUSTIFICATION:
---   When curry f is applied to x, it allocates a closure at rsp containing:
---   - [rsp] = encode x (environment)
---   - [rsp+8] = code pointer for f
---   This memory layout matches encode (eval (curry f) x) by construction.
---
--- IMPACT:
---   If closure construction were incorrect, curried functions would fail.
---
--- RUNTIME EFFECT: None (proof-only)
---
-------------------------------------------------------------------------
-
-postulate
-  encode-curry-at-rsp : ∀ {A B C : Type} (f : IR (A * B) C) (x : ⟦ A ⟧) (rsp-val : Word) →
-    rsp-val ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
+-- NOTE: encode-curry-at-rsp was ELIMINATED
+-- The curry encoding is now derived from encode-closure-construct (in Once.Postulates)
+-- via the proof in Once.Backend.X86.Correct.IR.Curry (lines 468-470)

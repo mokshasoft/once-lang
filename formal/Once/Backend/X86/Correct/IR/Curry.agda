@@ -17,8 +17,8 @@ open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
 open import Once.Backend.X86.CodeGen
 
-open import Once.Postulates using (encode)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; encode-curry-at-rsp)
+open import Once.Postulates using (encode; encode-closure-construct)
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -33,8 +33,8 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-stack-inv; ir-rsp-bound)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; m∸n≤m)
+open import Data.Nat using (ℕ; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; m∸n≤m; m<m+n; 0<1+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -412,9 +412,17 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
     rbp-final = rbp-s1
 
-    -- rsp tracking
+    -- rsp tracking through states
     rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
     rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    -- s2 = mov [rsp], rdi - memory write doesn't change registers
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = rsp-s1
+
+    -- s3 = lea r9, [rip+4] - only changes r9, not rsp
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = trans (readReg-writeReg-r9-rsp (regs s2) (effectiveAddr s2 (rip+disp 4))) rsp-s2
 
     rsp-s7 : readReg (regs s7) rsp ≡ new-rsp
     rsp-s7 = rsp-s1
@@ -423,12 +431,42 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rax-s7 : readReg (regs s7) rax ≡ new-rsp
     rax-s7 = readReg-writeReg-same (regs s4) rax (readReg (regs s4) rsp)
 
-    -- Encoding axiom
-    encode-curry-construct : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
-    encode-curry-construct = encode-curry-at-rsp f x new-rsp
+    -- Show memory at new-rsp contains encode x
+    -- s2 writes (readReg (regs s1) rdi) to (readReg (regs s1) rsp) = new-rsp
+    -- s4 writes to rsp+8, not rsp, so new-rsp is unchanged
+    rdi-s1 : readReg (regs s1) rdi ≡ encode x
+    rdi-s1 = trans (readReg-writeReg-rsp-rdi (regs s) new-rsp) rdi-eq
+
+    mem-at-new-rsp-s2 : readMem (memory s2) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-s2 = trans (readMem-writeMem-same (memory s1) (readReg (regs s1) rsp) (readReg (regs s1) rdi))
+                              (cong just (trans (cong (λ addr → readReg (regs s1) rdi) (sym rsp-s1)) rdi-s1))
+
+    -- s3 doesn't modify memory
+    mem-at-new-rsp-s3 : readMem (memory s3) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-s3 = mem-at-new-rsp-s2
+
+    -- s4 writes to rsp+8, not new-rsp
+    -- Need to show new-rsp ≢ new-rsp + 8
+    -- Proof: new-rsp < new-rsp + 8 (since 8 > 0), therefore new-rsp ≢ new-rsp + 8
+    new-rsp≢new-rsp+8 : new-rsp ≢ new-rsp +ℕ 8
+    new-rsp≢new-rsp+8 = Nat-<⇒≢ (m<m+n new-rsp 0<1+n)
+
+    mem-at-new-rsp-s4 : readMem (memory s4) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-s4 = trans (readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) new-rsp
+                                (readReg (regs s3) r9)
+                                (subst (λ addr → addr +ℕ 8 ≢ new-rsp) (sym rsp-s3) (λ eq → new-rsp≢new-rsp+8 (sym eq))))
+                              mem-at-new-rsp-s3
+
+    -- s5, s6, s7 don't modify memory
+    mem-at-new-rsp-final : readMem (memory s-final) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-final = mem-at-new-rsp-s4
+
+    -- Use encode-closure-construct axiom
+    encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
+    encode-curry-result = encode-closure-construct f x new-rsp (memory s-final) mem-at-new-rsp-final
 
     rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)
-    rax-final = trans rax-s7 encode-curry-construct
+    rax-final = trans rax-s7 encode-curry-result
 
     -- Memory preservation
     orig-r15 : Word
@@ -446,9 +484,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 
     mem-s3-eq : readMem (memory s3) orig-r15 ≡ readMem (memory s2) orig-r15
     mem-s3-eq = refl
-
-    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
-    rsp-s3 = rsp-s1
 
     mem-s4-eq : readMem (memory s4) orig-r15 ≡ readMem (memory s3) orig-r15
     mem-s4-eq = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) orig-r15

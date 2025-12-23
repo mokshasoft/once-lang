@@ -294,6 +294,15 @@ readReg-writeReg-rdi-r11 : ∀ (rf : RegFile) (v : Word) →
 readReg-writeReg-rdi-r11 rf v = refl
 
 ------------------------------------------------------------------------
+-- r9 Lemmas (scratch register for lea address computation)
+------------------------------------------------------------------------
+
+-- | Reading rsp after writing r9 returns the old value
+readReg-writeReg-r9-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r9 v) rsp ≡ readReg rf rsp
+readReg-writeReg-r9-rsp rf v = refl
+
+------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
 

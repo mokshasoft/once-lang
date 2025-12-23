@@ -31,7 +31,7 @@ open import Once.Postulates
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
          encode-inl-construct; encode-inr-construct)
 open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op; apply-produces-result; encode-curry-at-rsp)
+  using (rsp-bound-after-stack-op; apply-produces-result)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
