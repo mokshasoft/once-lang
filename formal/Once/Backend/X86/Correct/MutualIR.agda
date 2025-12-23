@@ -1109,20 +1109,30 @@ mutual
       rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
       rbp-final = trans rbp-jump (trans (ir-rbp r-f) rbp-setup)
 
-      -- Memory preserved through all phases (setup and jump don't modify memory, f preserves at r15 s)
-      -- But we need mem at r15 s, and r15 s ≠ r15 s-setup (since setup changes r15)
-      -- ir-mem r-f: readMem (memory s1) (r15 s-setup) = readMem (memory s-setup) (r15 s-setup)
-      -- This doesn't directly give us preservation at r15 s
-      postulate
-        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      -- Memory preserved through all phases:
+      -- 1. mem-setup: memory s-setup = memory s
+      -- 2. r15-setup: r15 s-setup = r15 s
+      -- 3. ir-mem r-f: readMem (memory s1) (r15 s-setup) = readMem (memory s-setup) (r15 s-setup)
+      -- 4. mem-jump: memory s-final = memory s1
+      -- Chain: readMem (memory s-final) (r15 s)
+      --      = readMem (memory s1) (r15 s)                    (by mem-jump)
+      --      = readMem (memory s1) (r15 s-setup)              (by r15-setup)
+      --      = readMem (memory s-setup) (r15 s-setup)         (by ir-mem r-f)
+      --      = readMem (memory s) (r15 s-setup)               (by mem-setup)
+      --      = readMem (memory s) (r15 s)                     (by r15-setup)
+      mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-final = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-jump)
+                  (trans (cong (λ addr → readMem (memory s1) addr) (sym r15-setup))
+                  (trans (ir-mem r-f)
+                  (trans (cong (λ m → readMem m (readReg (regs s-setup) r15)) mem-setup)
+                         (cong (λ addr → readMem (memory s) addr) r15-setup))))
 
-      -- Stack invariant: rsp is preserved through all phases
-      -- stack-inv-setup gives us StackInvariant s-setup
-      -- ir-stack-inv r-f gives us StackInvariant s1
-      -- rsp-jump says rsp s-final = rsp s1
-      -- But StackInvariant depends on the specific state... postulate for now
-      postulate
-        stack-inv-final : StackInvariant s-final
+      -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
+      -- ir-stack-inv r-f: StackInvariant s1
+      -- mem-jump: memory s-final = memory s1
+      -- rsp-jump: rsp s-final = rsp s1
+      stack-inv-final : StackInvariant s-final
+      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f)
 
       rsp>16-final : readReg (regs s-final) rsp > 16
       rsp>16-final = rsp-bound-after-stack-op s-final
@@ -1417,13 +1427,26 @@ mutual
       rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
       rbp-final = trans rbp-end (trans (ir-rbp r-g) (trans rbp-right rbp-setup))
 
-      -- Memory preservation
-      postulate
-        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      -- Memory preserved through all phases:
+      -- 1. mem-setup: memory s-setup = memory s
+      -- 2. mem-right: memory s-right = memory s-setup
+      -- 3. ir-mem r-g: readMem (memory s1) (r15 s-right) = readMem (memory s-right) (r15 s-right)
+      -- 4. mem-end: memory s-final = memory s1
+      -- And r15 is preserved: r15-setup, r15-right compose to r15 s-right = r15 s
+      r15-right-to-s : readReg (regs s-right) r15 ≡ readReg (regs s) r15
+      r15-right-to-s = trans r15-right r15-setup
 
-      -- Stack invariant
-      postulate
-        stack-inv-final : StackInvariant s-final
+      mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-final = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-end)
+                  (trans (cong (λ addr → readMem (memory s1) addr) (sym r15-right-to-s))
+                  (trans (ir-mem r-g)
+                  (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-right)
+                  (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-setup)
+                         (cong (λ addr → readMem (memory s) addr) r15-right-to-s)))))
+
+      -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
+      stack-inv-final : StackInvariant s-final
+      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g)
 
       rsp>16-final : readReg (regs s-final) rsp > 16
       rsp>16-final = rsp-bound-after-stack-op s-final
