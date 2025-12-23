@@ -29,6 +29,7 @@
           pexpect
           sortedcontainers
           protobuf
+          lxml
         ]);
 
         # Repo tool for seL4
