@@ -12,11 +12,11 @@
 -- this security-critical capability distribution code.
 ------------------------------------------------------------------------
 
-import I.seL4.IPC
-import I.seL4.Untyped
-import I.seL4.CNode
-import I.seL4.TCB
-import I.seL4.BootInfo
+import I.SeL4.IPC
+import I.SeL4.Untyped
+import I.SeL4.CNode
+import I.SeL4.TCB
+import I.SeL4.BootInfo
 
 ------------------------------------------------------------------------
 -- Configuration Constants

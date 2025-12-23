@@ -10,7 +10,7 @@
 -- at a known slot. The badge identifies this client to the server.
 ------------------------------------------------------------------------
 
-import I.seL4.IPC
+import I.SeL4.IPC
 
 ------------------------------------------------------------------------
 -- Configuration

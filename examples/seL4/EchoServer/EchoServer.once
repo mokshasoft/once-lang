@@ -11,7 +11,7 @@
 -- at a known slot (configured during TCB setup).
 ------------------------------------------------------------------------
 
-import I.seL4.IPC
+import I.SeL4.IPC
 
 ------------------------------------------------------------------------
 -- Configuration
