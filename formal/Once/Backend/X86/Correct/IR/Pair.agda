@@ -880,12 +880,58 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 h3 pc3 = record
                        step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9
 
       -- ========== Register preservation proofs ==========
-      -- Postulate register chains to avoid metavariable explosion
-      postulate
-        rax-s9 : readReg (regs s9) rax ≡ readReg (regs s3) r15
-        r14-s9 : readReg (regs s9) r14 ≡ readReg (regs s) r14
-        r15-s9 : readReg (regs s9) r15 ≡ readReg (regs s) r15
-        rbp-s9 : readReg (regs s9) rbp ≡ readReg (regs s) rbp
+      -- Define values written during state transitions for clarity
+      v-r14 : Word
+      v-r14 = readReg (regs s) r14
+
+      v-r15 : Word
+      v-r15 = readReg (regs s) r15
+
+      v-rbp : Word
+      v-rbp = readReg (regs s) rbp
+
+      -- Intermediate register files for clarity
+      rf6-with-rbp : RegFile
+      rf6-with-rbp = writeReg (regs s6) rbp v-rbp
+
+      rf7-with-r15 : RegFile
+      rf7-with-r15 = writeReg (regs s7) r15 v-r15
+
+      rf8-with-r14 : RegFile
+      rf8-with-r14 = writeReg (regs s8) r14 v-r14
+
+      -- rax chain: s9 ← s8 ← s7 ← s6 ← s5 (where rax was set to r15)
+      -- Note: regs s4 = regs s3, regs s5 writes rax
+      rax-s9 : readReg (regs s9) rax ≡ readReg (regs s3) r15
+      rax-s9 = trans (readReg-writeReg-rsp-rax rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (trans (readReg-writeReg-r14-rax (regs s8) v-r14)
+               (trans (readReg-writeReg-rsp-rax rf7-with-r15 (readReg (regs s7) rsp +ℕ 8))
+               (trans (readReg-writeReg-r15-rax (regs s7) v-r15)
+               (trans (readReg-writeReg-rsp-rax rf6-with-rbp (readReg (regs s6) rsp +ℕ 8))
+               (trans (readReg-writeReg-rbp-rax (regs s6) v-rbp)
+               (trans (readReg-writeReg-rsp-rax (regs s5) (readReg (regs s5) rbp))
+               (readReg-writeReg-same (regs s4) rax (readReg (regs s4) r15))))))))
+
+      -- r14 chain: set in s9 to v-r14
+      r14-s9 : readReg (regs s9) r14 ≡ readReg (regs s) r14
+      r14-s9 = trans (readReg-writeReg-rsp-r14 rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (readReg-writeReg-same (regs s8) r14 v-r14)
+
+      -- r15 chain: set in s8, preserved in s9
+      r15-s9 : readReg (regs s9) r15 ≡ readReg (regs s) r15
+      r15-s9 = trans (readReg-writeReg-rsp-r15 rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (trans (readReg-writeReg-r14-r15 (regs s8) v-r14)
+               (trans (readReg-writeReg-rsp-r15 rf7-with-r15 (readReg (regs s7) rsp +ℕ 8))
+               (readReg-writeReg-same (regs s7) r15 v-r15)))
+
+      -- rbp chain: set in s7, preserved in s8, s9
+      rbp-s9 : readReg (regs s9) rbp ≡ readReg (regs s) rbp
+      rbp-s9 = trans (readReg-writeReg-rsp-rbp rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (trans (readReg-writeReg-r14-rbp (regs s8) v-r14)
+               (trans (readReg-writeReg-rsp-rbp rf7-with-r15 (readReg (regs s7) rsp +ℕ 8))
+               (trans (readReg-writeReg-r15-rbp (regs s7) v-r15)
+               (trans (readReg-writeReg-rsp-rbp rf6-with-rbp (readReg (regs s6) rsp +ℕ 8))
+               (readReg-writeReg-same (regs s6) rbp v-rbp)))))
 
       -- ========== Stack invariant ==========
       postulate
@@ -897,8 +943,20 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 h3 pc3 = record
       -- ========== Memory preservation ==========
       r15-s3 = readReg (regs s3) r15
 
-      -- Memory lemmas (postulated - derivable from mem-read-write/mem-read-other)
+      -- Memory stays unchanged from s4 to s9 (only register updates)
+      mem-s9-eq-s4 : memory s9 ≡ memory s4
+      mem-s9-eq-s4 = refl
+
+      -- s4 writes to (r15-s3 + 8), so reading from r15-s3 gives old value
+      mem-fst-preserved : readMem (memory s9) r15-s3 ≡ readMem (memory s3) r15-s3
+      mem-fst-preserved = mem-read-other {memory s3} {r15-s3 +ℕ 8} {r15-s3} {readReg (regs s3) rax}
+                          (λ eq → n≢n+8 r15-s3 (sym eq))
+
+      -- s4 writes rax-s3 to (r15-s3 + 8), so reading from there gives rax-s3
+      mem-snd-stored : readMem (memory s9) (r15-s3 +ℕ 8) ≡ just (readReg (regs s3) rax)
+      mem-snd-stored = mem-read-write {memory s3} {r15-s3 +ℕ 8} {readReg (regs s3) rax}
+
+      -- For original r15 preservation, we need (regs s) r15 ≠ r15-s3 + 8
+      -- This requires stack layout invariant - remains postulated
       postulate
-        mem-fst-preserved : readMem (memory s9) r15-s3 ≡ readMem (memory s3) r15-s3
-        mem-snd-stored : readMem (memory s9) (r15-s3 +ℕ 8) ≡ just (readReg (regs s3) rax)
         mem-orig-preserved : readMem (memory s9) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
