@@ -17,7 +17,7 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
-open import Once.Postulates using (encode)
+open import Once.Postulates using (encode; encode-inr-val)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -625,3 +625,153 @@ exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
 
     exec-1 : exec 1 prog s1 ≡ just s2
     exec-1 = exec-one-step-nonhalt prog s1 s2 step1 h2
+
+------------------------------------------------------------------------
+-- CaseRightSetupResult: Result of executing right branch setup (2 instructions)
+-- Used by inr branch: label (5+len-f) ; mov rdi, [rdi+8]
+------------------------------------------------------------------------
+
+record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
+                            (prefix suffix : Program)
+                            (b : ⟦ B ⟧)
+                            (s-setup : State) : Set where
+  constructor case-right-setup-result
+  ctx : CaseContext f g prefix suffix
+  ctx = make-case-context f g prefix suffix
+  open CaseContext ctx public
+
+  field
+    s-right : State
+    exec-right : exec 2 prog s-setup ≡ just s-right
+    h-right : halted s-right ≡ false
+    pc-right : pc s-right ≡ length prefix +ℕ 7 +ℕ len-f
+    rdi-right : readReg (regs s-right) rdi ≡ encode b
+    r14-preserved : readReg (regs s-right) r14 ≡ readReg (regs s-setup) r14
+    r15-preserved : readReg (regs s-right) r15 ≡ readReg (regs s-setup) r15
+    rbp-preserved : readReg (regs s-right) rbp ≡ readReg (regs s-setup) rbp
+    rsp-preserved : readReg (regs s-right) rsp ≡ readReg (regs s-setup) rsp
+    mem-preserved : memory s-right ≡ memory s-setup
+    stack-inv-right : StackInvariant s-right
+    rsp>16-right : readReg (regs s-right) rsp > 16
+
+-- | Execute right branch setup for inr (2 instructions)
+-- Preconditions:
+--   pc s-setup = length prefix + 5 + len-f (at right label)
+--   rdi s-setup = encode (inr b) (pointing to the sum)
+--   memory contains the sum value with tag=1 at [rdi] and b at [rdi+8]
+exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
+                        (prefix suffix : Program)
+                        (b : ⟦ B ⟧)
+                        (s-setup : State) →
+  let ctx = make-case-context f g prefix suffix in
+  let open CaseContext ctx in
+  halted s-setup ≡ false →
+  pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f →
+  readReg (regs s-setup) rdi ≡ encode {A + B} (inj₂ b) →
+  StackInvariant s-setup →
+  readReg (regs s-setup) rsp > 16 →
+  CaseRightSetupResult f g prefix suffix b s-setup
+exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp>16-setup = record
+    { s-right = s2
+    ; exec-right = exec-2
+    ; h-right = h2
+    ; pc-right = pc2
+    ; rdi-right = rdi2
+    ; r14-preserved = refl
+    ; r15-preserved = refl
+    ; rbp-preserved = refl
+    ; rsp-preserved = refl
+    ; mem-preserved = refl
+    ; stack-inv-right = stack-inv-s2
+    ; rsp>16-right = rsp>16-s2
+    }
+  where
+    ctx = make-case-context f g prefix suffix
+    open CaseContext ctx
+
+    -- State after label instruction (pc + 1)
+    s1 : State
+    s1 = record s-setup { pc = pc s-setup +ℕ 1 }
+
+    -- State after mov rdi, [rdi+8] instruction
+    -- rdi gets the value at [rdi+8], which is encode b (by encode-inr-val)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rdi (encode b)
+                   ; pc = pc s1 +ℕ 1 }
+
+    h1 : halted s1 ≡ false
+    h1 = h-setup
+
+    h2 : halted s2 ≡ false
+    h2 = h1
+
+    -- PC proofs
+    -- pc s1 = pc s-setup + 1 = (prefix + 5 + len-f) + 1 = prefix + 6 + len-f
+    -- pc s2 = pc s1 + 1 = prefix + 7 + len-f
+    postulate
+      pc2 : pc s2 ≡ length prefix +ℕ 7 +ℕ len-f
+
+    -- Key proof: rdi s2 = encode b
+    -- The mov instruction loads from [rdi+8] into rdi
+    -- By encode-inr-val: readMem m (encode (inj₂ b) + 8) = just (encode b)
+    -- Since rdi s-setup = encode (inj₂ b), we have rdi s2 = encode b
+    rdi2 : readReg (regs s2) rdi ≡ encode b
+    rdi2 = readReg-writeReg-same (regs s1) rdi (encode b)
+
+    -- Memory read proof for mov instruction
+    mem-read : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ 8) ≡ just (encode b)
+    mem-read = trans (cong (λ addr → readMem (memory s-setup) (addr +ℕ 8)) rdi-setup)
+                     (encode-inr-val b (memory s-setup))
+
+    -- StackInvariant preserved (memory and rsp unchanged)
+    stack-inv-s2 : StackInvariant s2
+    stack-inv-s2 = stack-inv-preserved-mem-rsp s-setup s2 refl refl stack-inv-setup
+
+    -- rsp > 16 preserved
+    rsp>16-s2 : readReg (regs s2) rsp > 16
+    rsp>16-s2 = rsp>16-setup
+
+    -- Fetch proofs for the two instructions
+    -- Instruction 1: label (5 + len-f) at position prefix + 5 + len-f
+    -- Instruction 2: mov rdi, [rdi+8] at position prefix + 6 + len-f
+
+    postulate
+      prog-eq-right : prog ≡ (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
+                              load-val-instr ∷ code-f ++ jmp-instr ∷ []) ++
+                             right-label-instr ∷ right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
+      pc-setup-eq-len : pc s-setup ≡ length (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
+                                             load-val-instr ∷ code-f ++ jmp-instr ∷ [])
+
+    prefix-right = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
+                   load-val-instr ∷ code-f ++ jmp-instr ∷ []
+
+    fetch1 : fetch prog (pc s-setup) ≡ just right-label-instr
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just right-label-instr)
+                    (sym prog-eq-right) (sym pc-setup-eq-len)
+                    (fetch-at-prefix-end prefix-right right-label-instr _)
+
+    step1 : step prog s-setup ≡ just s1
+    step1 = trans (step-exec prog s-setup right-label-instr h-setup fetch1)
+                  (execLabel prog s-setup (5 +ℕ len-f))
+
+    -- For the mov instruction, we need to show fetch and step
+    postulate
+      prog-eq-mov : prog ≡ (prefix-right ++ right-label-instr ∷ []) ++
+                           right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
+      pc1-eq-len : pc s1 ≡ length (prefix-right ++ right-label-instr ∷ [])
+
+    prefix-mov = prefix-right ++ right-label-instr ∷ []
+
+    fetch2 : fetch prog (pc s1) ≡ just right-load-val-instr
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just right-load-val-instr)
+                    (sym prog-eq-mov) (sym pc1-eq-len)
+                    (fetch-at-prefix-end prefix-mov right-load-val-instr _)
+
+    -- The mov instruction execution
+    -- right-load-val-instr = mov (reg rdi) (mem (base+disp rdi 8))
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 right-load-val-instr h1 fetch2)
+                  (execMov-reg-mem-disp s1 rdi rdi 8 (encode b) mem-read)
+
+    exec-2 : exec 2 prog s-setup ≡ just s2
+    exec-2 = exec-two-steps-nonhalt prog s-setup s1 s2 step1 h1 step2 h2

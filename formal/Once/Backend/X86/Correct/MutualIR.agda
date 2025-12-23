@@ -80,9 +80,10 @@ open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context;
          CaseJumpResult; exec-case-jump;
          CaseEndResult; exec-case-end;
+         CaseRightSetupResult; exec-case-right-setup;
          stack-inv-preserved-mem-rsp;
          assemble-case-inl-result; assemble-case-inr-result)
-open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult; module CaseEndResult)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult; module CaseEndResult; module CaseRightSetupResult)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -1289,32 +1290,27 @@ mutual
       -- label (5+len-f) ; mov rdi, [rdi+8]
       -- After: pc = length prefix + 7 + len-f, rdi = encode b
 
-      -- Postulate right setup execution (2 instructions)
-      postulate
-        right-setup-result : ∃[ s-right ] (exec 2 prog s-setup ≡ just s-right
-                                          × halted s-right ≡ false
-                                          × pc s-right ≡ length prefix +ℕ 7 +ℕ len-f
-                                          × readReg (regs s-right) rdi ≡ encode b
-                                          × readReg (regs s-right) r14 ≡ readReg (regs s-setup) r14
-                                          × readReg (regs s-right) r15 ≡ readReg (regs s-setup) r15
-                                          × readReg (regs s-right) rbp ≡ readReg (regs s-setup) rbp
-                                          × readReg (regs s-right) rsp ≡ readReg (regs s-setup) rsp
-                                          × memory s-right ≡ memory s-setup
-                                          × StackInvariant s-right
-                                          × readReg (regs s-right) rsp > 16)
+      -- Compose rdi proofs: rdi s-setup = rdi s = encode (inj₂ b)
+      rdi-setup-eq : readReg (regs s-setup) rdi ≡ encode {A + B} (inj₂ b)
+      rdi-setup-eq = trans rdi-setup rdi-eq
 
-      s-right = proj₁ right-setup-result
-      exec-right = proj₁ (proj₂ right-setup-result)
-      h-right = proj₁ (proj₂ (proj₂ right-setup-result))
-      pc-right = proj₁ (proj₂ (proj₂ (proj₂ right-setup-result)))
-      rdi-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))
-      r14-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result)))))
-      r15-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))
-      rbp-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result)))))))
-      rsp-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))))
-      mem-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result)))))))))
-      stack-inv-right = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))))))
-      rsp>16-right = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ right-setup-result))))))))))
+      -- Use extracted helper for right setup execution
+      right-setup-result : CaseRightSetupResult f g prefix suffix b s-setup
+      right-setup-result = exec-case-right-setup f g prefix suffix b s-setup
+                             h-setup pc-setup rdi-setup-eq stack-inv-setup rsp>16-setup
+
+      s-right = CaseRightSetupResult.s-right right-setup-result
+      exec-right = CaseRightSetupResult.exec-right right-setup-result
+      h-right = CaseRightSetupResult.h-right right-setup-result
+      pc-right = CaseRightSetupResult.pc-right right-setup-result
+      rdi-right = CaseRightSetupResult.rdi-right right-setup-result
+      r14-right = CaseRightSetupResult.r14-preserved right-setup-result
+      r15-right = CaseRightSetupResult.r15-preserved right-setup-result
+      rbp-right = CaseRightSetupResult.rbp-preserved right-setup-result
+      rsp-right = CaseRightSetupResult.rsp-preserved right-setup-result
+      mem-right = CaseRightSetupResult.mem-preserved right-setup-result
+      stack-inv-right = CaseRightSetupResult.stack-inv-right right-setup-result
+      rsp>16-right = CaseRightSetupResult.rsp>16-right right-setup-result
 
       -- Convert right setup exec to Star
       star-right : Star prog s-setup s-right
