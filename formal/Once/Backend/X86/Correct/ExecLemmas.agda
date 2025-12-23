@@ -43,8 +43,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- Exec Lemmas
 ------------------------------------------------------------------------
 
--- | Import exec-step-helper from Star module (postulated there)
-open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted)
+-- | Import helpers from Star module
+open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted)
 
 -- | Exec returns immediately when step returns halted state
 -- Now requires halted s ≡ false since exec checks halted s first
@@ -65,14 +65,14 @@ exec-on-halted-step n prog s s' h-eq step-eq halt-eq =
 
 -- | Exec continues recursively when step returns non-halted state
 -- Now requires halted s ≡ false since exec checks halted s first
--- POSTULATED: Like exec-step-helper, proving the equality relation requires
--- reducing case_of_ when the scrutinee is abstract.
-postulate
-  exec-on-non-halted-step : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
-    halted s ≡ false →
-    step prog s ≡ just s' →
-    halted s' ≡ false →
-    exec (suc n) prog s ≡ exec n prog s'
+-- PROVEN: Uses rewrite to reduce exec, matching the pattern from exec-step-helper.
+exec-on-non-halted-step : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
+  halted s ≡ false →
+  step prog s ≡ just s' →
+  halted s' ≡ false →
+  exec (suc n) prog s ≡ exec n prog s'
+exec-on-non-halted-step n prog s s' h-false step-eq h'-false
+  rewrite h-false | step-on-non-halted {prog} {s} h-false | step-eq | h'-false = refl
 
 -- | Helper for just-injective
 just-inj : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
@@ -114,16 +114,23 @@ exec-one-step-nonhalt prog s s' step-eq halt-eq =
     h-eq : halted s ≡ false
     h-eq = step-implies-not-halted prog s s' step-eq halt-eq
 
+-- | Auxiliary for exec-one-step: takes halted value explicitly
+-- Using rewrite sym h-eq substitutes halted s with h in the goal
+exec-one-step-aux : ∀ prog (s s' : State) (h : Bool) → h ≡ halted s → step prog s ≡ just s' → exec 1 prog s ≡ just s'
+exec-one-step-aux prog s s' true  h-eq step-eq rewrite sym h-eq = step-eq
+exec-one-step-aux prog s s' false h-eq step-eq
+  rewrite sym h-eq | step-on-non-halted {prog} {s} (sym h-eq) | step-eq with halted s' | inspect halted s'
+... | true  | _ = refl
+... | false | _ = refl
+
 -- | Single-step execution: execute exactly 1 step (works for both halted and non-halted results)
--- POSTULATED: This is a plumbing postulate. Proving it requires matching on halted s,
--- but the `with` abstraction in exec creates goal types like `(exec 1 prog s | false)`
--- that don't unify with our step proofs. Semantically:
+-- PROVEN: By case split on halted s.
 --   - If halted s = true: step prog s = just s, and exec 1 prog s = just s
 --   - If halted s = false: exec-step-helper chains the step to exec 0
-postulate
-  exec-one-step : ∀ (prog : List Instr) (s s' : State) →
-    step prog s ≡ just s' →
-    exec 1 prog s ≡ just s'
+exec-one-step : ∀ (prog : List Instr) (s s' : State) →
+  step prog s ≡ just s' →
+  exec 1 prog s ≡ just s'
+exec-one-step prog s s' step-eq = exec-one-step-aux prog s s' (halted s) refl step-eq
 
 -- | Two-step non-halting execution: execute exactly 2 steps without halting
 exec-two-steps-nonhalt : ∀ (prog : List Instr) (s s1 s2 : State) →
@@ -202,16 +209,33 @@ exec-seven-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 
 true≢false : true ≡ false → ⊥
 true≢false ()
 
+-- | Helper: exec returns s when halted (local copy to avoid circular import)
+exec-n-halted-local : ∀ m prog (s : State) → halted s ≡ true → exec m prog s ≡ just s
+exec-n-halted-local zero _ s _ = refl
+exec-n-halted-local (suc m) prog s h with halted s | h
+... | true | refl = refl
+
+-- | Helper: extract exec n from exec (suc n) when not halted
+exec-suc-to-n : ∀ {n prog s s' s1} →
+  halted s ≡ false →
+  step prog s ≡ just s1 →
+  exec (suc n) prog s ≡ just s' →
+  exec n prog s1 ≡ just s'
+exec-suc-to-n {n} {prog} {s} {s'} {s1} h-eq step-eq' exec-eq'
+  rewrite h-eq | step-on-non-halted {prog} {s} h-eq | step-eq'
+  with halted s1 | inspect halted s1
+exec-suc-to-n {n} {prog} {s} {s'} {s1} _ _ exec-eq' | true | [ h1-eq ] with refl ← exec-eq' =
+  exec-n-halted-local n prog s1 h1-eq
+exec-suc-to-n _ _ exec-eq' | false | _ = exec-eq'
+
 -- | Exec chaining: if exec n produces s' (not halted), then exec m on s' produces s'',
 -- then exec (n + m) produces s''
 -- This is key for composing sub-program executions
 --
--- POSTULATED: This is semantically equivalent to Star's star-trans.
--- With the with-based exec definition, proving this directly requires
--- matching on halted s first, which creates complex with-abstraction issues.
---
--- The right solution is to use Star for composition (star-trans is trivial),
--- then convert back to exec at boundaries using star-to-exec.
+-- POSTULATED: Semantically equivalent to Star's star-trans.
+-- Proving this directly is blocked by Agda's with-abstraction creating complex goal types.
+-- New code should use Star composition (star-trans) instead of exec-chain.
+-- See x86-full-proof-architecture.md for the recommended Star-first approach.
 postulate
   exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
     exec n prog s ≡ just s' →

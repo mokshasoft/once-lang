@@ -17,7 +17,8 @@ open State
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _≟_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _≟_; _≤_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (≤-trans; m≤m+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 open import Relation.Nullary using (yes; no)
 
@@ -254,31 +255,84 @@ exec-on-halted {zero} h refl = refl
 exec-on-halted {suc n} {prog} {s} {s'} h eq with halted s | h
 ... | true | refl = just-injective eq
 
+-- | Helper: exec on halted state returns that state unchanged
+exec-n-halted : ∀ (m : ℕ) (prog : Program) (s : State) →
+                halted s ≡ true →
+                exec m prog s ≡ just s
+exec-n-halted zero _ s _ = refl
+exec-n-halted (suc m) prog s h with halted s | h
+... | true | refl = refl
+
+-- | Helper: step on non-halted state equals step-not-halted
+step-on-non-halted : ∀ {prog s} →
+                     halted s ≡ false →
+                     step prog s ≡ step-not-halted prog s
+step-on-non-halted {prog} {s} h-false with halted s | h-false
+... | false | refl = refl
+
 -- | Helper: exec respects step when not halted
 -- This lemma captures the key property: if halted s = false and step prog s = just s₁,
 -- then exec (suc n) prog s follows from exec n prog s₁.
 --
--- POSTULATED: This is a plumbing postulate. It's semantically true by the definition
--- of exec, but proving it requires reducing case_of_ or with abstractions when the
--- scrutinee (step prog s) is abstract. Neither with nor case_of_ reduces when applied
--- to an abstract term.
---
--- This postulate adds no semantic content - it just connects the exec definition
--- to the step semantics in a way that Agda's reduction can't see.
-postulate
-  exec-step-helper : ∀ {n prog s s₁ s'} →
-                     halted s ≡ false →
-                     step prog s ≡ just s₁ →
-                     exec n prog s₁ ≡ just s' →
-                     exec (suc n) prog s ≡ just s'
+-- PROVEN: Using rewrite to reduce exec (suc n) to exec n after step.
+exec-step-helper : ∀ {n prog s s₁ s'} →
+                   halted s ≡ false →
+                   step prog s ≡ just s₁ →
+                   exec n prog s₁ ≡ just s' →
+                   exec (suc n) prog s ≡ just s'
+exec-step-helper {n} {prog} {s} {s₁} {s'} h-false step-eq rec
+  rewrite h-false | step-on-non-halted {prog} {s} h-false | step-eq
+  with halted s₁ | inspect halted s₁
+... | true  | [ h₁-true ] = trans (sym (exec-n-halted n prog s₁ h₁-true)) rec
+... | false | _ = rec
+
+-- | Helper: Star execution with extra fuel still reaches halted state
+star-to-exec-extend : ∀ {prog s s'} (star : Star prog s s') (m : ℕ) →
+  halted s' ≡ true →
+  exec (star-length star +ℕ m) prog s ≡ just s'
+star-to-exec-extend refl* m halt-eq = exec-n-halted m _ _ halt-eq
+star-to-exec-extend (step* {s' = s₁} h-false step-eq rest) m halt-eq =
+  exec-step-helper h-false step-eq (star-to-exec-extend rest m halt-eq)
 
 -- | Once halted, more fuel doesn't change result
--- POSTULATED: Plumbing postulate - semantically clear but blocked by with abstraction
-postulate
-  exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ true →
-    exec (n +ℕ m) prog s ≡ just s'
+-- PROVEN: Convert to Star, then use star-to-exec-extend.
+exec-halted-extend : ∀ (n m : ℕ) (prog : List Instr) (s s' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ true →
+  exec (n +ℕ m) prog s ≡ just s'
+exec-halted-extend n m prog s s' exec-eq halt-eq =
+  star-to-exec-ge star (n +ℕ m) halt-eq le
+  where
+    star : Star prog s s'
+    star = exec-to-star {n} {prog} {s} {s'} exec-eq
+
+    -- Execute with at least star-length fuel reaches s'
+    star-to-exec-ge : ∀ {prog₁ s₁ s₁'} (star₁ : Star prog₁ s₁ s₁') (k : ℕ) →
+                      halted s₁' ≡ true →
+                      star-length star₁ ≤ k →
+                      exec k prog₁ s₁ ≡ just s₁'
+    star-to-exec-ge refl* k halt-eq₁ _ = exec-n-halted k _ _ halt-eq₁
+    star-to-exec-ge (step* {s' = s₂} h-false step-eq₁ rest) (suc k) halt-eq₁ (s≤s le₁) =
+      exec-step-helper h-false step-eq₁ (star-to-exec-ge rest k halt-eq₁ le₁)
+    star-to-exec-ge (step* _ _ _) zero _ ()
+
+    -- star-length (exec-to-star exec-eq) ≤ n
+    star-length-le-exec : ∀ {n₁ prog₁ s₁ s₁'} (eq : exec n₁ prog₁ s₁ ≡ just s₁') →
+                          star-length (exec-to-star {n₁} {prog₁} {s₁} {s₁'} eq) ≤ n₁
+    star-length-le-exec {zero} refl = z≤n
+    star-length-le-exec {suc n₁} {prog₁} {s₁} eq with halted s₁ | inspect halted s₁
+    star-length-le-exec {suc n₁} refl | true | _ = z≤n
+    star-length-le-exec {suc n₁} {prog₁} {s₁} eq | false | [ h-eq ]
+      with step prog₁ s₁ | inspect (step prog₁) s₁
+    star-length-le-exec {suc n₁} () | false | _ | nothing | _
+    star-length-le-exec {suc n₁} {prog₁} {s₁} eq | false | [ h-eq ] | just s₂ | [ step-eq₁ ]
+      with halted s₂ | inspect halted s₂
+    star-length-le-exec {suc n₁} refl | false | _ | just s₂ | _ | true | _ = s≤s z≤n
+    star-length-le-exec {suc n₁} {prog₁} {s₁} eq | false | _ | just s₂ | _ | false | _ =
+      s≤s (star-length-le-exec {n₁} eq)
+
+    le : star-length star ≤ n +ℕ m
+    le = ≤-trans (star-length-le-exec exec-eq) (m≤m+n n m)
 
 -- | Convert Star to exec with computed fuel
 -- PROVEN: Using exec-step-helper to handle the with abstraction.
