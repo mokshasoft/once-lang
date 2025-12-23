@@ -160,14 +160,15 @@
             mkdir -p $out/{bin,images}
             cp -r build/images/* $out/images/ || true
 
-            # Create simulate script
+            # Create simulate script (multiboot for ELF image)
             cat > $out/bin/simulate << EOF
 #!/bin/sh
 exec qemu-system-x86_64 \\
   -cpu Nehalem,-vme,+pdpe1gb,-xsave,-xsaveopt,-xsavec,-fsgsbase,-invpcid,enforce \\
   -nographic -serial mon:stdio \\
-  -m size=3G \\
-  -kernel $out/images/sel4test-driver-image-x86_64-pc99
+  -m size=512M \\
+  -kernel $out/images/kernel-x86_64-pc99 \\
+  -initrd $out/images/sel4test-driver-image-x86_64-pc99
 EOF
             chmod +x $out/bin/simulate
           '';
