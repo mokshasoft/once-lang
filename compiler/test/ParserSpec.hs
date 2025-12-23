@@ -124,6 +124,24 @@ parserTests = testGroup "Parser"
       , testCase "nested let expressions" $
           parseExpr' "let x = let y = z in y in x" @?=
             Right (ELet "x" (ELet "y" (EVar "z") (EVar "y")) (EVar "x"))
+
+      , testCase "lambda expression" $
+          parseExpr' "\\x -> x" @?= Right (ELam "x" (EVar "x"))
+
+      , testCase "lambda with application in body" $
+          parseExpr' "\\x -> f x" @?=
+            Right (ELam "x" (EApp (EVar "f") (EVar "x")))
+
+      , testCase "nested lambda" $
+          parseExpr' "\\x -> \\y -> x" @?=
+            Right (ELam "x" (ELam "y" (EVar "x")))
+
+      , testCase "pair of integers" $
+          parseExpr' "(1, 2)" @?= Right (EPair (EInt 1) (EInt 2))
+
+      , testCase "nested pair" $
+          parseExpr' "(1, (2, 3))" @?=
+            Right (EPair (EInt 1) (EPair (EInt 2) (EInt 3)))
       ]
 
   , testGroup "Declarations"
@@ -146,6 +164,18 @@ parserTests = testGroup "Parser"
       , testCase "function definition with @stack" $
           parseDecl' "f @stack = id" @?=
             Right (FunDef "f" (Just AllocStack) (EVar "id"))
+
+      , testCase "named parameter (single)" $
+          parseDecl' "identity x = x" @?=
+            Right (FunDef "identity" Nothing (ELam "x" (EVar "x")))
+
+      , testCase "named parameters (multiple)" $
+          parseDecl' "konst x y = x" @?=
+            Right (FunDef "konst" Nothing (ELam "x" (ELam "y" (EVar "x"))))
+
+      , testCase "named parameter with alloc annotation" $
+          parseDecl' "f x @heap = x" @?=
+            Right (FunDef "f" (Just AllocHeap) (ELam "x" (EVar "x")))
       ]
 
   , testGroup "swap.once"

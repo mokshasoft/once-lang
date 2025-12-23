@@ -91,6 +91,52 @@ elaborateTests = testGroup "Elaborate"
             Right other -> assertFailure $ "Wrong IR: " ++ show other
             Left err -> assertFailure $ "Elaboration error: " ++ show err
       ]
+
+  , testGroup "Lambda elaboration"
+      [ testCase "identity lambda elaborates to Curry" $ do
+          let expr = ELam "x" (EVar "x")
+          case elaborate expr of
+            Right (Curry "x" (LocalVar "x")) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "nested lambda elaborates to nested Curry" $ do
+          let expr = ELam "x" (ELam "y" (EVar "x"))
+          case elaborate expr of
+            Right (Curry "x" (Curry "y" (LocalVar "x"))) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "lambda with fst in body" $ do
+          let expr = ELam "p" (EApp (EVar "fst") (EVar "p"))
+          case elaborate expr of
+            Right (Curry "p" (Compose (Fst _ _) (LocalVar "p"))) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+      ]
+
+  , testGroup "Pair literal elaboration"
+      [ testCase "pair of variables" $ do
+          let expr = ELet "a" (EVar "fst") (ELet "b" (EVar "snd") (EPair (EVar "a") (EVar "b")))
+          case elaborate expr of
+            Right (Let "a" (Fst _ _) (Let "b" (Snd _ _) (Pair (LocalVar "a") (LocalVar "b")))) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "pair of integers" $ do
+          let expr = EPair (EInt 1) (EInt 2)
+          case elaborate expr of
+            Right (Pair (Prim "__int_1" _ _) (Prim "__int_2" _ _)) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+
+      , testCase "nested pair" $ do
+          let expr = EPair (EInt 1) (EPair (EInt 2) (EInt 3))
+          case elaborate expr of
+            Right (Pair (Prim "__int_1" _ _) (Pair (Prim "__int_2" _ _) (Prim "__int_3" _ _))) -> pure ()
+            Right other -> assertFailure $ "Wrong IR: " ++ show other
+            Left err -> assertFailure $ "Elaboration error: " ++ show err
+      ]
   ]
 
 placeholder :: Type
