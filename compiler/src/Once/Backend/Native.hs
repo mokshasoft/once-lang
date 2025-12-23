@@ -31,6 +31,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Text.Read (readMaybe)
 
 import qualified Once.IR as H
 import qualified Once.Type as H
@@ -50,6 +51,12 @@ data Target
 ------------------------------------------------------------------------
 -- Helper functions
 ------------------------------------------------------------------------
+
+-- | Parse an integer primitive name like "__int_42" and return the value
+parseIntPrim :: Text -> Maybe Integer
+parseIntPrim name = case T.stripPrefix "__int_" name of
+  Just numText -> readMaybe (T.unpack numText)
+  Nothing -> Nothing
 
 -- | Get the output type of an IR expression
 getOutputType :: H.IR -> Maybe H.Type
@@ -264,9 +271,10 @@ compileFullToX86 ir = genX86 ir
       H.Fold _ -> "    movq %rdi, %rax"
       H.Unfold _ -> "    movq %rdi, %rax"
 
-      -- Primitive: call the interpretation function
-      H.Prim name _ _ ->
-        "    call once_" <> name
+      -- Primitive: inline integer constants, call others
+      H.Prim name _ _ -> case parseIntPrim name of
+        Just n -> "    movq $" <> T.pack (show n) <> ", %rax"
+        Nothing -> "    call once_" <> name
 
       -- Function reference: call it
       H.Var name ->
@@ -344,8 +352,9 @@ compileFullToAArch64 ir = genAArch64 ir
       H.Fold _ -> "    // fold: x0 unchanged"
       H.Unfold _ -> "    // unfold: x0 unchanged"
 
-      H.Prim name _ _ ->
-        "    bl once_" <> name
+      H.Prim name _ _ -> case parseIntPrim name of
+        Just n -> "    mov x0, #" <> T.pack (show n)
+        Nothing -> "    bl once_" <> name
 
       H.Var name ->
         "    bl once_" <> name
@@ -418,8 +427,9 @@ compileFullToRiscV64 ir = genRiscV ir
       H.Fold _ -> "    # fold: a0 unchanged"
       H.Unfold _ -> "    # unfold: a0 unchanged"
 
-      H.Prim name _ _ ->
-        "    call once_" <> name
+      H.Prim name _ _ -> case parseIntPrim name of
+        Just n -> "    li a0, " <> T.pack (show n)
+        Nothing -> "    call once_" <> name
 
       H.Var name ->
         "    call once_" <> name

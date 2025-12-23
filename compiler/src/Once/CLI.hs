@@ -284,32 +284,36 @@ runBuild opts = do
                                   exitSuccess
 
                             nativeTarget -> do
-                              -- Native targets: use verified code generators for categorical IR,
-                              -- Haskell-based codegen for IR with primitives
-                              let (_, _, _, mainIR) = head optimizedFunctions
-                                  hasPrimitives = containsPrimitives mainIR
+                              -- Native targets: generate code for ALL functions
+                              -- Check if any function has primitives (affects codegen choice)
+                              let hasPrimitives = any (\(_, _, _, ir) -> containsPrimitives ir) optimizedFunctions
 
-                              -- Generate assembly code
-                              let asmCode = if hasPrimitives
-                                    then case nativeTarget of
-                                      TargetArm64 -> compileFullToAArch64 mainIR
-                                      TargetX86_64 -> compileFullToX86 mainIR
-                                      TargetRiscV64 -> compileFullToRiscV64 mainIR
-                                      TargetC -> error "unreachable"
-                                    else case (case nativeTarget of
-                                           TargetArm64 -> compileToAArch64 mainIR
-                                           TargetX86_64 -> compileToX86 mainIR
-                                           TargetRiscV64 -> compileToRiscV64 mainIR
-                                           TargetC -> error "unreachable") of
-                                      Just code -> code
-                                      Nothing -> case nativeTarget of
-                                        TargetArm64 -> compileFullToAArch64 mainIR
-                                        TargetX86_64 -> compileFullToX86 mainIR
-                                        TargetRiscV64 -> compileFullToRiscV64 mainIR
-                                        TargetC -> error "unreachable"
+                              -- Generate assembly for each function
+                              let generateFuncAsm :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> (Text, Text)
+                                  generateFuncAsm (name, _, _, ir) =
+                                    let code = if hasPrimitives || containsPrimitives ir
+                                          then case nativeTarget of
+                                            TargetArm64 -> compileFullToAArch64 ir
+                                            TargetX86_64 -> compileFullToX86 ir
+                                            TargetRiscV64 -> compileFullToRiscV64 ir
+                                            TargetC -> error "unreachable"
+                                          else case (case nativeTarget of
+                                                 TargetArm64 -> compileToAArch64 ir
+                                                 TargetX86_64 -> compileToX86 ir
+                                                 TargetRiscV64 -> compileToRiscV64 ir
+                                                 TargetC -> error "unreachable") of
+                                            Just c -> c
+                                            Nothing -> case nativeTarget of
+                                              TargetArm64 -> compileFullToAArch64 ir
+                                              TargetX86_64 -> compileFullToX86 ir
+                                              TargetRiscV64 -> compileFullToRiscV64 ir
+                                              TargetC -> error "unreachable"
+                                    in (name, code)
 
-                              -- Wrap assembly with _start entry point
-                              let wrappedAsm = wrapNativeExe nativeTarget "main" asmCode
+                              let allFuncAsm = map generateFuncAsm optimizedFunctions
+
+                              -- Wrap all functions with _start entry point
+                              let wrappedAsm = wrapNativeExeAll nativeTarget allFuncAsm
                               let asmPath = outputBase ++ ".s"
                                   objPath = outputBase ++ ".o"
                               TIO.writeFile asmPath wrappedAsm
@@ -559,6 +563,94 @@ wrapNativeExe target name body = case target of
     , ".size _start, .-_start"
     ]
   TargetC -> error "wrapNativeExe: TargetC is not a native target"
+
+-- | Generate a single function definition for native target (no header/entry point)
+nativeFuncDef :: Target -> Text -> Text -> Text
+nativeFuncDef target name body = case target of
+  TargetArm64 -> T.unlines
+    [ ".globl once_" <> name
+    , ".type once_" <> name <> ", %function"
+    , "once_" <> name <> ":"
+    , body
+    , "    ret"
+    , ".size once_" <> name <> ", .-once_" <> name
+    ]
+  TargetX86_64 -> T.unlines
+    [ ".globl once_" <> name
+    , ".type once_" <> name <> ", @function"
+    , "once_" <> name <> ":"
+    , body
+    , "    retq"
+    , ".size once_" <> name <> ", .-once_" <> name
+    ]
+  TargetRiscV64 -> T.unlines
+    [ ".globl once_" <> name
+    , ".type once_" <> name <> ", @function"
+    , "once_" <> name <> ":"
+    , body
+    , "    ret"
+    , ".size once_" <> name <> ", .-once_" <> name
+    ]
+  TargetC -> error "nativeFuncDef: TargetC is not a native target"
+
+-- | Wrap multiple function definitions with header and _start entry point
+wrapNativeExeAll :: Target -> [(Text, Text)] -> Text
+wrapNativeExeAll target funcs = case target of
+  TargetArm64 -> T.unlines $
+    [ "// Generated by Once compiler"
+    , ".text"
+    , ""
+    ] ++
+    [ nativeFuncDef target name body | (name, body) <- funcs ] ++
+    [ ""
+    , "// Entry point"
+    , ".globl _start"
+    , ".type _start, %function"
+    , "_start:"
+    , "    mov x0, #0"
+    , "    bl once_main"
+    , "    mov x8, #93"
+    , "    mov x0, #0"
+    , "    svc #0"
+    , ".size _start, .-_start"
+    ]
+  TargetX86_64 -> T.unlines $
+    [ "# Generated by Once compiler"
+    , ".text"
+    , ""
+    ] ++
+    [ nativeFuncDef target name body | (name, body) <- funcs ] ++
+    [ ""
+    , "# Entry point"
+    , ".globl _start"
+    , ".type _start, @function"
+    , "_start:"
+    , "    xorq %rdi, %rdi"
+    , "    call once_main"
+    , "    movq $60, %rax"
+    , "    xorq %rdi, %rdi"
+    , "    syscall"
+    , ".size _start, .-_start"
+    ]
+  TargetRiscV64 -> T.unlines $
+    [ "# Generated by Once compiler"
+    , ".text"
+    , ""
+    ] ++
+    [ nativeFuncDef target name body | (name, body) <- funcs ] ++
+    [ ""
+    , "# Entry point"
+    , ".globl _start"
+    , ".type _start, @function"
+    , "_start:"
+    , "    li a0, 0"
+    , "    call once_main"
+    , "    li a7, 93"
+    , "    li a0, 0"
+    , "    ecall"
+    , ".size _start, .-_start"
+    ]
+  TargetC -> error "wrapNativeExeAll: TargetC is not a native target"
 
 -- | Elaborate all functions, returning elaborated IR or first error
 elaborateAll :: [(Text, Type, Maybe AllocStrategy, Expr)]
