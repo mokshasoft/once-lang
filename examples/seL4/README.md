@@ -41,17 +41,19 @@ The seL4 interpretation files support three architectures:
 
 ### Prerequisites
 
-Enter the development shell:
+Enter the appropriate development shell:
 
 ```bash
-nix develop
+nix develop .#arm64    # For ARM64 development
+nix develop .#riscv64  # For RISC-V development
+nix develop .#x86-64   # For x86-64 development
+nix develop .#full     # All cross-compilers + QEMU
 ```
 
-This provides:
-- Cross-compilers for ARM64, RISC-V64, and x86_64
-- seL4 build tools and dependencies
+Each shell provides:
+- The Once compiler (via stack)
+- Architecture-specific cross-compiler
 - QEMU for simulation
-- The Once compiler
 
 ### Build Steps
 
