@@ -16,7 +16,7 @@ open import Data.Nat using (ℕ; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; [])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 ------------------------------------------------------------------------
 -- Execution Helpers
@@ -164,15 +164,31 @@ execMov-reg-mem prog s dst m v mem-ok with readMem (memory s) (effectiveAddr s m
 ... | just .v | refl = refl
 
 -- Helper: state after executing call reg
+-- New semantics: push return address, jump to target
 execCall-reg : ∀ (prog : List Instr) (s : State) (r : Reg) →
-  execInstr prog s (call (reg r)) ≡
-    just (record s { pc = readReg (regs s) r })
+  let retAddr = pc s +ℕ 1
+      sp = readReg (regs s) rsp
+      newSp = sp ∸ 8
+  in execInstr prog s (call (reg r)) ≡
+    just (record s { regs = writeReg (regs s) rsp newSp
+                   ; memory = writeMem (memory s) newSp retAddr
+                   ; pc = readReg (regs s) r })
 execCall-reg prog s r = refl
 
--- Helper: state after executing ret
-execRet : ∀ (prog : List Instr) (s : State) →
-  execInstr prog s ret ≡ just (record s { halted = true })
-execRet prog s = refl
+-- Helper: state after executing ret (when memory at rsp contains retAddr)
+-- New semantics: pop return address, jump to it
+execRet : ∀ (prog : List Instr) (s : State) (retAddr : Word) →
+  readMem (memory s) (readReg (regs s) rsp) ≡ just retAddr →
+  let sp = readReg (regs s) rsp
+  in execInstr prog s ret ≡
+    just (record s { regs = writeReg (regs s) rsp (sp +ℕ 8)
+                   ; pc = retAddr })
+execRet prog s retAddr mem-eq with readMem (memory s) (readReg (regs s) rsp)
+... | just addr = cong (λ a → just (record s { regs = writeReg (regs s) rsp (readReg (regs s) rsp +ℕ 8) ; pc = a }))
+                       (just-injective mem-eq)
+  where
+    just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
+    just-injective refl = refl
 
 -- Helper: state after executing ud2 (undefined instruction)
 execUd2 : ∀ (prog : List Instr) (s : State) →

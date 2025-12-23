@@ -257,19 +257,26 @@ execInstr prog s (je target) =
 execInstr prog s (jne target) =
   just (record s { pc = if zf (flags s) then pc s + 1 else pc s + 1 + target })
 
--- call and ret: simplified model (would need stack handling)
+-- call: push return address, jump to target
 execInstr prog s (call target) =
   case readOperand s target of λ where
     nothing → nothing
     (just addr) →
-      -- Push return address, jump to target
-      -- Simplified: just update pc
-      just (record s { pc = addr })
+      let retAddr = pc s + 1
+          sp = readReg (regs s) rsp
+          newSp = sp ∸ 8
+      in just (record s { regs = writeReg (regs s) rsp newSp
+                        ; memory = writeMem (memory s) newSp retAddr
+                        ; pc = addr })
 
+-- ret: pop return address, jump to it
 execInstr prog s ret =
-  -- Pop return address and jump
-  -- Simplified: halt execution
-  just (record s { halted = true })
+  case readMem (memory s) (readReg (regs s) rsp) of λ where
+    nothing → nothing
+    (just retAddr) →
+      let sp = readReg (regs s) rsp
+      in just (record s { regs = writeReg (regs s) rsp (sp + 8)
+                        ; pc = retAddr })
 
 execInstr prog s (push src) =
   case readOperand s src of λ where
