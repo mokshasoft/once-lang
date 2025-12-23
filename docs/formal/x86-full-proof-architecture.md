@@ -357,19 +357,154 @@ encode-pair-fst-derived : ... → PairAt a b addr m → readMem m addr ≡ just 
 
 ---
 
+## FUTURE: Whole-Program Proof Architecture
+
+### The Problem with Fragment-Based Proofs
+
+The current architecture proves each IR node works with arbitrary prefix/suffix:
+
+```agda
+run-ir-star-at-offset : ∀ ir prefix suffix x s →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] (Star prog s s' × ...)
+```
+
+This works for most IR nodes, but **fails for curry/apply**:
+
+1. `curry f` embeds thunk code in its compilation
+2. `apply` calls into that thunk via `call r15`
+3. The thunk is NOT in `compile-x86 apply` - it's in `prefix`
+4. The proof can't trace execution through the call
+
+**Current workaround**: `apply-produces-result` postulate (semantic boundary)
+
+### The Solution: Whole-Program Proofs
+
+Instead of proving fragments, prove the whole compiled program:
+
+```agda
+-- New architecture: whole-program correctness
+compile-correct : ∀ (ir : IR A B) (x : ⟦ A ⟧) →
+  let prog = compile-x86 ir
+      s₀ = initState (encode x)
+  in ∃[ s' ] (exec (fuel ir) prog s₀ ≡ just s'
+            × halted s' ≡ true
+            × readReg (regs s') rax ≡ encode (eval ir x))
+```
+
+**Why this works**:
+1. When we have `apply ∘ ⟨ curry f , g ⟩`, the whole program includes curry's thunk
+2. Apply's `call r15` jumps to code that IS in the program
+3. The proof can trace: call → thunk → ret naturally
+4. No need for closure well-formedness invariant
+
+### Implementation Plan
+
+**Phase 1: Add whole-program entry point**
+```agda
+-- In Correct.agda, add:
+whole-program-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+  let prog = compile-x86 ir
+  in run prog (initState (encode x)) produces (encode (eval ir x))
+```
+
+**Phase 2: Restructure internal proofs**
+
+Change `run-ir-star-at-offset` to work within whole-program context:
+
+```agda
+-- Internal helper (knows the whole program)
+run-ir-internal : ∀ {A B} (ir : IR A B) (whole-prog : Program)
+                  (offset : ℕ) (x : ⟦ A ⟧) (s : State) →
+  -- Precondition: ir's code is at offset in whole-prog
+  compile-x86 ir ≡ slice whole-prog offset (compile-length ir) →
+  pc s ≡ offset →
+  ...
+  ∃[ s' ] (Star whole-prog s s' × ...)
+```
+
+**Phase 3: Prove curry/apply without axioms**
+
+For curry:
+- Prove thunk code is embedded at known offset
+- Record thunk-offset in closure (conceptually)
+
+For apply:
+- Load code_ptr from closure
+- Trace `call` into thunk (code_ptr points within whole-prog)
+- Trace thunk execution (uses recursive IH on f)
+- Trace `ret` back to after call
+
+**Phase 4: Remove apply-produces-result postulate**
+
+Once whole-program proofs work, the postulate is eliminated.
+
+### Benefits
+
+| Aspect | Fragment-Based | Whole-Program |
+|--------|---------------|---------------|
+| Curry/Apply | Needs postulate | Natural proof |
+| Recursion | Works | Works |
+| Proof structure | Compositional by fragments | Compositional by IR structure |
+| Code changes | None | None (same codegen) |
+
+### Compatibility with Recursion
+
+Whole-program proofs work naturally with recursion (`fold`/`unfold`):
+
+1. `fold`/`unfold` are identity at runtime (just wrap/unwrap)
+2. Recursive calls go through the same whole-program
+3. Structural induction on IR handles recursive data
+4. No special treatment needed
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `Correct.agda` | Add `whole-program-correct` entry point |
+| `MutualIR.agda` | Restructure to use whole-program context |
+| `Postulates.agda` | Remove `apply-produces-result` |
+| `StarBase.agda` | Add helpers for whole-program reasoning |
+
+### Timeline
+
+This is a significant refactoring but eliminates the last semantic postulate.
+Estimated stages:
+1. Add whole-program entry point (1 session)
+2. Restructure curry proof (1-2 sessions)
+3. Restructure apply proof (1-2 sessions)
+4. Remove postulate, verify (1 session)
+
+---
+
 ## Success Criteria
 
+### Completed
 - [x] `exec-to-star` PROVEN
 - [x] `exec-until-pc-to-star` PROVEN
 - [x] Stage 1: `star-to-exec` ADDED (uses exec-step-helper postulate)
 - [x] Stage 2a: 4 encoding axioms PROVEN (encode-unit, encode-fix-*, encode-arr-identity)
+- [x] `exec-chain` PROVEN via Star
+- [x] `compile-length>0` PROVEN
+- [x] `encode-curry-at-rsp` ELIMINATED (derived from encode-closure-construct)
+- [x] Call/ret semantics FIXED (proper return address handling)
+
+### Remaining (Fragment-Based)
 - [ ] Stage 2b: Remaining 10 encoding axioms (need allocation tracking)
 - [ ] Stage 3: `encode-injective` DERIVED
 - [ ] Stage 4: Correct.agda REFACTORED to use Star
 - [ ] Stage 5: Arithmetic postulates PROVEN
-- [ ] Stage 6: `run-apply-seq` DERIVED
-- [ ] **`make x86` passes** (currently passes, verification is slower)
-- [ ] **Minimal postulates** (reduced encoding axioms from 14 to 10)
+
+### Whole-Program Proof Migration (PRIORITY)
+- [ ] Phase 1: Add `whole-program-correct` entry point
+- [ ] Phase 2: Restructure `run-ir-star-at-offset` to use whole-program context
+- [ ] Phase 3: Prove curry/apply without axioms
+- [ ] Phase 4: Remove `apply-produces-result` postulate
+- [ ] Phase 5: Remove `rsp-bound-after-stack-op` (thread through InitState)
+
+### Final Goal
+- [ ] **`make x86` passes with 0 X86-specific postulates**
+- [ ] **Only semantic axioms remain** (in Once.Postulates: encode-*, memory model)
 
 ---
 
