@@ -1,23 +1,35 @@
 ------------------------------------------------------------------------
--- seL4 Echo Server in Once (Minimal Version)
+-- seL4 Echo Server in Once
 --
--- This demonstrates the seL4_Yield primitive in a loop.
---
--- NOTE: Full IPC functionality requires pair literal support
--- which is not yet implemented. This is a minimal example showing
--- the basic structure of a seL4 server in Once.
+-- A server that receives IPC messages and yields.
+-- Demonstrates pair literals for seL4 syscall arguments.
 ------------------------------------------------------------------------
 
 import I.SeL4.IPC
 
 ------------------------------------------------------------------------
+-- Configuration
+------------------------------------------------------------------------
+
+-- Endpoint capability slot (set by rootserver)
+serverEndpoint : Int
+serverEndpoint = 4
+
+-- Reply capability slot
+replySlot : Int
+replySlot = 0
+
+------------------------------------------------------------------------
 -- Server Loop
 ------------------------------------------------------------------------
 
--- | Minimal server loop that just yields
+-- | Server loop: receive message, yield, repeat
 serverLoop : Eff Unit Unit
 serverLoop =
-  let y = seL4_Yield@IPC ()
+  -- Receive on endpoint (using pair literal for args)
+  let recvResult = seL4_Recv@IPC (serverEndpoint, replySlot)
+  -- Yield and loop
+  in let y = seL4_Yield@IPC ()
   in serverLoop
 
 ------------------------------------------------------------------------

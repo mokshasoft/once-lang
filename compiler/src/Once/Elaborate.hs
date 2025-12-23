@@ -76,11 +76,12 @@ elaborateExpr' locals expr = case expr of
   -- Application: handle generator applications specially
   EApp f arg -> elaborateApp locals f arg
 
-  -- Pair literal: (a, b)
-  EPair _ _ ->
-    -- Pair literal becomes: pair (const a) (const b) applied to unit
-    -- For now, we don't support pair literals in this simple elaborator
-    Left $ UnsupportedExpr "Pair literals not yet supported"
+  -- Pair literal: (a, b) becomes Pair a' b'
+  -- In C: (OncePair){ .fst = a', .snd = b' }
+  EPair a b -> do
+    a' <- elaborateExpr' locals a
+    b' <- elaborateExpr' locals b
+    Right $ Pair a' b'
 
   -- Unit literal
   EUnit -> Right $ Terminal placeholder  -- () elaborates to terminal
@@ -255,8 +256,11 @@ elaborateExprWithEnv modEnv locals expr = case expr of
   -- Application
   EApp f arg -> elaborateAppWithEnv modEnv locals f arg
 
-  -- Pair literal
-  EPair _ _ -> Left $ UnsupportedExpr "Pair literals not yet supported"
+  -- Pair literal: (a, b) becomes Pair a' b'
+  EPair a b -> do
+    a' <- elaborateExprWithEnv modEnv locals a
+    b' <- elaborateExprWithEnv modEnv locals b
+    Right $ Pair a' b'
 
   -- Unit literal
   EUnit -> Right $ Terminal placeholder
