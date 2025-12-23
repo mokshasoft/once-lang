@@ -1,0 +1,159 @@
+// ======================================================================
+// seL4 Notification Primitives - RISC-V64 Implementation
+// ======================================================================
+//
+// Notifications are lightweight signaling objects in seL4.
+// Unlike endpoints, they don't transfer message data - just a word-sized
+// bitmask (the "notification word").
+//
+// Internally, notification operations use the same syscalls as IPC:
+// - seL4_Signal uses seL4_SysSend (-1)
+// - seL4_Wait uses seL4_SysRecv (-3)
+// - seL4_Poll uses seL4_SysNBRecv (-8)
+//
+// The kernel distinguishes notification vs endpoint by the capability type.
+//
+// seL4 RISC-V64 syscall convention:
+//   a0: Capability (notification object)
+//   a1: MessageInfo (zero for notifications)
+//   a7: Syscall number (negative)
+//
+// ======================================================================
+
+.text
+.align 2
+
+#ifndef ONCE_SEL4_NOTIFICATION_RISCV64_DEFINED
+#define ONCE_SEL4_NOTIFICATION_RISCV64_DEFINED
+
+// ======================================================================
+// seL4 Syscall Numbers
+// ======================================================================
+.equ SEL4_SYS_SEND,       -1
+.equ SEL4_SYS_RECV,       -3
+.equ SEL4_SYS_NBRECV,     -8
+
+// ----------------------------------------------------------------------
+// seL4_Signal - Signal a notification object
+// ----------------------------------------------------------------------
+// Input: cap (notification capability)
+// Output: Unit
+//
+// The capability's badge is ORed into the notification word.
+// This is non-blocking - returns immediately.
+
+.global once_seL4_Signal
+.type once_seL4_Signal, @function
+once_seL4_Signal:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+    addi    s0, sp, 16
+
+    // a0 already has the notification capability
+
+    // Zero message info (notifications don't carry message data)
+    li      a1, 0
+
+    // Clear message registers (not used for notifications)
+    li      a2, 0
+    li      a3, 0
+    li      a4, 0
+    li      a5, 0
+
+    // Syscall number for seL4_Send (used for Signal on notification caps)
+    li      a7, SEL4_SYS_SEND
+
+    // Trap to kernel
+    ecall
+
+    // Return Unit
+    li      a0, 0
+
+    ld      s0, 0(sp)
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_seL4_Signal, .-once_seL4_Signal
+
+// ----------------------------------------------------------------------
+// seL4_Wait - Wait for notification (blocking)
+// ----------------------------------------------------------------------
+// Input: (src, reply) as pair
+// - src: Notification capability to wait on
+// - reply: Reply capability (MCS kernel, ignored on master)
+// Output: Int (notification word)
+//
+// Blocks until the notification word is non-zero.
+// Returns and atomically clears the notification word.
+
+.global once_seL4_Wait
+.type once_seL4_Wait, @function
+once_seL4_Wait:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+    addi    s0, sp, 16
+
+    // Unpack input pair: (src, reply)
+    ld      t0, 0(a0)           // t0 = src (notification cap)
+    // [a0+8] = reply cap (not used on master kernel)
+
+    // Set up seL4 registers
+    mv      a0, t0              // a0 = notification capability
+
+    // Syscall number for seL4_Recv (used for Wait on notification caps)
+    li      a7, SEL4_SYS_RECV
+
+    // Trap to kernel
+    ecall
+
+    // On return from notification wait:
+    // a0 = badge (the notification word that was set)
+    // For notifications, this IS the return value we want
+
+    // a0 already has the notification word to return
+
+    ld      s0, 0(sp)
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_seL4_Wait, .-once_seL4_Wait
+
+// ----------------------------------------------------------------------
+// seL4_Poll - Poll notification (non-blocking)
+// ----------------------------------------------------------------------
+// Input: cap (notification capability)
+// Output: Int (notification word, 0 if nothing signaled)
+//
+// Non-blocking check of notification.
+// Returns notification word and clears it, or returns 0.
+
+.global once_seL4_Poll
+.type once_seL4_Poll, @function
+once_seL4_Poll:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+    addi    s0, sp, 16
+
+    // a0 already has the notification capability
+
+    // Syscall number for seL4_NBRecv (used for Poll on notification caps)
+    li      a7, SEL4_SYS_NBRECV
+
+    // Trap to kernel
+    ecall
+
+    // On return:
+    // a0 = badge (notification word, or 0 if nothing signaled)
+
+    // a0 already has the result
+
+    ld      s0, 0(sp)
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size once_seL4_Poll, .-once_seL4_Poll
+
+#endif // ONCE_SEL4_NOTIFICATION_RISCV64_DEFINED

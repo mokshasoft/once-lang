@@ -1,0 +1,512 @@
+# ======================================================================
+# seL4 IPC Primitives - x86_64 Implementation
+# ======================================================================
+#
+# seL4 x86_64 syscall convention (different from Linux!):
+#   rdx: Syscall number (negative for seL4: -1 to -8)
+#   rdi: Capability (destination/source endpoint)
+#   rsi: MessageInfo (packed word)
+#   r10: Message Register 0
+#   r8:  Message Register 1
+#   r9:  Message Register 2
+#   r15: Message Register 3 (callee-saved, must preserve)
+#
+# Syscall invocation:
+#   movq %rsp, %rbx     # Save stack pointer
+#   syscall
+#   movq %rbx, %rsp     # Restore stack pointer
+#
+# On return:
+#   rdi: Badge (for Recv) or unchanged
+#   rsi: MessageInfo (for Recv/Call)
+#   r10, r8, r9, r15: Message Registers 0-3
+#
+# Once calling convention (System V AMD64 ABI):
+#   rdi: First argument (pointer to tuple for multi-arg)
+#   rax: Return value (pointer to tuple for multi-return)
+#   rbx, rbp, r12-r15: Callee-saved registers
+#
+# Once tuple layout (nested pairs):
+#   (a, b, c, d) = (a, (b, (c, d)))
+#   Each pair: [fst: 8 bytes][snd: 8 bytes]
+#
+# ======================================================================
+
+.text
+.align 16
+
+#ifndef ONCE_SEL4_X86_64_DEFINED
+#define ONCE_SEL4_X86_64_DEFINED
+
+# ======================================================================
+# seL4 Syscall Numbers
+# ======================================================================
+.equ SEL4_SYS_SEND,       -1
+.equ SEL4_SYS_NBSEND,     -2
+.equ SEL4_SYS_RECV,       -3
+.equ SEL4_SYS_REPLY,      -4
+.equ SEL4_SYS_REPLYRECV,  -5
+.equ SEL4_SYS_CALL,       -6
+.equ SEL4_SYS_YIELD,      -7
+.equ SEL4_SYS_NBRECV,     -8
+
+# ----------------------------------------------------------------------
+# seL4_Yield - Yield remaining timeslice
+# ----------------------------------------------------------------------
+# Input: Unit (ignored)
+# Output: Unit (returns 0)
+# Simplest syscall - good for testing
+
+.global once_seL4_Yield
+.type once_seL4_Yield, @function
+once_seL4_Yield:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx                # Callee-saved, used for rsp save
+
+    # Syscall number for seL4_Yield
+    mov     $SEL4_SYS_YIELD, %rdx
+
+    # seL4 x86_64 syscall requires saving rsp to rbx
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # Return Unit (0)
+    xor     %eax, %eax
+
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_Yield, .-once_seL4_Yield
+
+# ----------------------------------------------------------------------
+# seL4_Send - Send message to endpoint (blocking)
+# ----------------------------------------------------------------------
+# Input: (cap, msgInfo, mr0, mr1, mr2, mr3) as nested tuple
+# Output: Unit
+
+.global once_seL4_Send
+.type once_seL4_Send, @function
+once_seL4_Send:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx                # For rsp save
+    push    %r15                # Callee-saved, used for mr3
+
+    # Unpack nested tuple: (cap, (msgInfo, (mr0, (mr1, (mr2, mr3)))))
+    # rdi points to first pair
+    mov     (%rdi), %rax        # rax = cap (temp)
+    mov     8(%rdi), %rdi       # rdi = ptr to rest
+
+    mov     (%rdi), %rsi        # rsi = msgInfo
+    mov     8(%rdi), %rdi       # rdi = ptr to rest
+
+    mov     (%rdi), %r10        # r10 = mr0
+    mov     8(%rdi), %rdi       # rdi = ptr to rest
+
+    mov     (%rdi), %r8         # r8 = mr1
+    mov     8(%rdi), %rdi       # rdi = ptr to rest
+
+    mov     (%rdi), %r9         # r9 = mr2
+    mov     8(%rdi), %r15       # r15 = mr3
+
+    # Set up seL4 registers
+    mov     %rax, %rdi          # rdi = capability
+
+    # Syscall number for seL4_Send
+    mov     $SEL4_SYS_SEND, %rdx
+
+    # Trap to kernel
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # Return Unit
+    xor     %eax, %eax
+
+    pop     %r15
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_Send, .-once_seL4_Send
+
+# ----------------------------------------------------------------------
+# seL4_NBSend - Non-blocking send
+# ----------------------------------------------------------------------
+# Same as seL4_Send but with syscall number -2
+
+.global once_seL4_NBSend
+.type once_seL4_NBSend, @function
+once_seL4_NBSend:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r15
+
+    # Unpack tuple (same as seL4_Send)
+    mov     (%rdi), %rax
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %rsi
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r8
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9
+    mov     8(%rdi), %r15
+
+    mov     %rax, %rdi
+
+    # Syscall number for seL4_NBSend
+    mov     $SEL4_SYS_NBSEND, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    xor     %eax, %eax
+
+    pop     %r15
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_NBSend, .-once_seL4_NBSend
+
+# ----------------------------------------------------------------------
+# seL4_Recv - Wait for message on endpoint (blocking)
+# ----------------------------------------------------------------------
+# Input: (src, reply) as pair
+# Output: (badge, msgInfo, mr0, mr1, mr2, mr3) as nested tuple
+#
+# Returns tuple allocated on stack
+
+.global once_seL4_Recv
+.type once_seL4_Recv, @function
+once_seL4_Recv:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack input: (src, reply)
+    mov     (%rdi), %rax        # rax = src (endpoint cap)
+    # [rdi+8] = reply cap (MCS kernel, not used in syscall on master)
+
+    # Set up seL4 registers
+    mov     %rax, %rdi          # rdi = endpoint capability
+
+    # Syscall number for seL4_Recv
+    mov     $SEL4_SYS_RECV, %rdx
+
+    # Trap to kernel
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # On return:
+    # rdi = badge, rsi = msgInfo, r10 = mr0, r8 = mr1, r9 = mr2, r15 = mr3
+
+    # Save return values to callee-saved registers
+    mov     %rdi, %r12          # badge
+    mov     %rsi, %r13          # msgInfo
+    mov     %r10, %r14          # mr0
+    # r8, r9, r15 still have mr1, mr2, mr3
+
+    # Build result tuple on stack
+    # Layout: 6 words = 48 bytes for nested pairs
+    # (badge, (msgInfo, (mr0, (mr1, (mr2, mr3)))))
+    sub     $80, %rsp           # Space for 5 pairs (each 16 bytes)
+
+    # Innermost pair: (mr2, mr3)
+    mov     %r9, 64(%rsp)       # mr2
+    mov     %r15, 72(%rsp)      # mr3
+
+    # (mr1, ptr_to_mr2_mr3)
+    lea     64(%rsp), %rax      # ptr to (mr2, mr3)
+    mov     %r8, 48(%rsp)       # mr1
+    mov     %rax, 56(%rsp)      # ptr
+
+    # (mr0, ptr_to_rest)
+    lea     48(%rsp), %rax
+    mov     %r14, 32(%rsp)      # mr0
+    mov     %rax, 40(%rsp)      # ptr
+
+    # (msgInfo, ptr_to_rest)
+    lea     32(%rsp), %rax
+    mov     %r13, 16(%rsp)      # msgInfo
+    mov     %rax, 24(%rsp)      # ptr
+
+    # (badge, ptr_to_rest)
+    lea     16(%rsp), %rax
+    mov     %r12, 0(%rsp)       # badge
+    mov     %rax, 8(%rsp)       # ptr
+
+    # Return pointer to outermost pair
+    mov     %rsp, %rax
+
+    add     $80, %rsp
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_Recv, .-once_seL4_Recv
+
+# ----------------------------------------------------------------------
+# seL4_NBRecv - Non-blocking receive
+# ----------------------------------------------------------------------
+# Same as seL4_Recv but with syscall number -8
+
+.global once_seL4_NBRecv
+.type once_seL4_NBRecv, @function
+once_seL4_NBRecv:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack input
+    mov     (%rdi), %rax
+    mov     %rax, %rdi
+
+    # seL4_NBRecv
+    mov     $SEL4_SYS_NBRECV, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # Save and build tuple (same as seL4_Recv)
+    mov     %rdi, %r12
+    mov     %rsi, %r13
+    mov     %r10, %r14
+
+    sub     $80, %rsp
+
+    mov     %r9, 64(%rsp)
+    mov     %r15, 72(%rsp)
+
+    lea     64(%rsp), %rax
+    mov     %r8, 48(%rsp)
+    mov     %rax, 56(%rsp)
+
+    lea     48(%rsp), %rax
+    mov     %r14, 32(%rsp)
+    mov     %rax, 40(%rsp)
+
+    lea     32(%rsp), %rax
+    mov     %r13, 16(%rsp)
+    mov     %rax, 24(%rsp)
+
+    lea     16(%rsp), %rax
+    mov     %r12, 0(%rsp)
+    mov     %rax, 8(%rsp)
+
+    mov     %rsp, %rax
+
+    add     $80, %rsp
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_NBRecv, .-once_seL4_NBRecv
+
+# ----------------------------------------------------------------------
+# seL4_Call - RPC-style send and receive
+# ----------------------------------------------------------------------
+# Input: (cap, msgInfo, mr0, mr1, mr2, mr3)
+# Output: (msgInfo, mr0, mr1, mr2, mr3)
+
+.global once_seL4_Call
+.type once_seL4_Call, @function
+once_seL4_Call:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack input tuple
+    mov     (%rdi), %rax        # cap
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %rsi        # msgInfo
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        # mr0
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r8         # mr1
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9         # mr2
+    mov     8(%rdi), %r15       # mr3
+
+    mov     %rax, %rdi          # rdi = cap
+    mov     $SEL4_SYS_CALL, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # Return: rsi=msgInfo, r10=mr0, r8=mr1, r9=mr2, r15=mr3
+    mov     %rsi, %r12          # msgInfo
+    mov     %r10, %r13          # mr0
+    mov     %r8, %r14           # mr1
+    # r9, r15 still have mr2, mr3
+
+    # Build result tuple: (msgInfo, (mr0, (mr1, (mr2, mr3))))
+    sub     $64, %rsp
+
+    mov     %r9, 48(%rsp)       # mr2
+    mov     %r15, 56(%rsp)      # mr3
+
+    lea     48(%rsp), %rax
+    mov     %r14, 32(%rsp)      # mr1
+    mov     %rax, 40(%rsp)
+
+    lea     32(%rsp), %rax
+    mov     %r13, 16(%rsp)      # mr0
+    mov     %rax, 24(%rsp)
+
+    lea     16(%rsp), %rax
+    mov     %r12, 0(%rsp)       # msgInfo
+    mov     %rax, 8(%rsp)
+
+    mov     %rsp, %rax
+
+    add     $64, %rsp
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_Call, .-once_seL4_Call
+
+# ----------------------------------------------------------------------
+# seL4_Reply - Reply to caller
+# ----------------------------------------------------------------------
+# Input: (msgInfo, mr0, mr1, mr2, mr3)
+# Output: Unit
+
+.global once_seL4_Reply
+.type once_seL4_Reply, @function
+once_seL4_Reply:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r15
+
+    # Unpack: (msgInfo, (mr0, (mr1, (mr2, mr3))))
+    mov     (%rdi), %rsi        # msgInfo
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        # mr0
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r8         # mr1
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9         # mr2
+    mov     8(%rdi), %r15       # mr3
+
+    mov     $SEL4_SYS_REPLY, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    xor     %eax, %eax
+
+    pop     %r15
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_Reply, .-once_seL4_Reply
+
+# ----------------------------------------------------------------------
+# seL4_ReplyRecv - Atomic reply and receive
+# ----------------------------------------------------------------------
+# Input: (src, msgInfo, mr0, mr1, mr2, mr3, reply)
+# Output: (badge, msgInfo, mr0, mr1, mr2, mr3)
+
+.global once_seL4_ReplyRecv
+.type once_seL4_ReplyRecv, @function
+once_seL4_ReplyRecv:
+    push    %rbp
+    mov     %rsp, %rbp
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack 7-element tuple
+    mov     (%rdi), %rax        # src (endpoint)
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %rsi        # msgInfo
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r10        # mr0
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r8         # mr1
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r9         # mr2
+    mov     8(%rdi), %rdi
+    mov     (%rdi), %r15        # mr3
+    # Note: reply cap at 8(%rdi) - used by MCS kernel
+
+    mov     %rax, %rdi          # endpoint cap
+    mov     $SEL4_SYS_REPLYRECV, %rdx
+
+    mov     %rsp, %rbx
+    syscall
+    mov     %rbx, %rsp
+
+    # Save results and build return tuple (same as Recv)
+    mov     %rdi, %r12          # badge
+    mov     %rsi, %r13          # msgInfo
+    mov     %r10, %r14          # mr0
+
+    sub     $80, %rsp
+
+    mov     %r9, 64(%rsp)
+    mov     %r15, 72(%rsp)
+
+    lea     64(%rsp), %rax
+    mov     %r8, 48(%rsp)
+    mov     %rax, 56(%rsp)
+
+    lea     48(%rsp), %rax
+    mov     %r14, 32(%rsp)
+    mov     %rax, 40(%rsp)
+
+    lea     32(%rsp), %rax
+    mov     %r13, 16(%rsp)
+    mov     %rax, 24(%rsp)
+
+    lea     16(%rsp), %rax
+    mov     %r12, 0(%rsp)
+    mov     %rax, 8(%rsp)
+
+    mov     %rsp, %rax
+
+    add     $80, %rsp
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    pop     %rbp
+    ret
+.size once_seL4_ReplyRecv, .-once_seL4_ReplyRecv
+
+#endif // ONCE_SEL4_X86_64_DEFINED

@@ -1,0 +1,90 @@
+------------------------------------------------------------------------
+-- seL4 Untyped Memory Primitives
+--
+-- Untyped memory is the raw memory resource in seL4.
+-- All kernel objects are created by retyping untyped memory.
+--
+-- seL4's memory model:
+-- - Untyped capabilities reference raw memory regions
+-- - seL4_Untyped_Retype creates new objects from untyped memory
+-- - Created objects are placed in specified CNode slots
+--
+-- Object Types (seL4_ObjectType enum values):
+--   seL4_UntypedObject       = 0
+--   seL4_TCBObject           = 1
+--   seL4_EndpointObject      = 2
+--   seL4_NotificationObject  = 3
+--   seL4_CapTableObject      = 4  (CNode)
+--   seL4_PageTableObject     = architecture-specific
+--   seL4_PageObject          = architecture-specific
+--   ...
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Object Type Constants
+------------------------------------------------------------------------
+
+seL4_UntypedObject : Int
+seL4_UntypedObject = 0
+
+seL4_TCBObject : Int
+seL4_TCBObject = 1
+
+seL4_EndpointObject : Int
+seL4_EndpointObject = 2
+
+seL4_NotificationObject : Int
+seL4_NotificationObject = 3
+
+seL4_CapTableObject : Int
+seL4_CapTableObject = 4
+
+------------------------------------------------------------------------
+-- Untyped Operations
+------------------------------------------------------------------------
+
+-- | seL4_Untyped_Retype - Create new kernel objects from untyped memory
+--
+-- This is the fundamental object creation operation in seL4.
+-- It reypes (converts) untyped memory into typed kernel objects.
+--
+-- Arguments:
+--   untyped     : Capability to untyped memory
+--   objectType  : Type of object to create (seL4_ObjectType)
+--   sizeBits    : Size of object (log2, for variable-sized objects like CNodes)
+--   root        : CNode capability where new caps will be placed
+--   nodeIndex   : Index in the CNode root
+--   nodeDepth   : Depth for CNode addressing
+--   nodeOffset  : Starting slot in destination CNode
+--   numObjects  : Number of objects to create
+--
+-- Returns: seL4_Error (0 = success)
+--
+-- Note: This is an object invocation, not a syscall.
+-- It internally uses seL4_Call to invoke the Untyped capability.
+primitive seL4_Untyped_Retype : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
+
+------------------------------------------------------------------------
+-- Helper Types for Sizes
+------------------------------------------------------------------------
+
+-- | Size in bits for an Endpoint
+-- Endpoints are fixed size: 4 words = 32 bytes = 2^5 bytes
+seL4_EndpointBits : Int
+seL4_EndpointBits = 4
+
+-- | Size in bits for a Notification
+seL4_NotificationBits : Int
+seL4_NotificationBits = 5
+
+-- | Size in bits for a TCB
+-- TCB size is architecture-dependent, typically 2^10 or 2^11
+seL4_TCBBits : Int
+seL4_TCBBits = 11
+
+-- | Size in bits for a CNode slot
+-- Each slot is 2^4 = 16 bytes
+seL4_SlotBits : Int
+seL4_SlotBits = 4
+
+------------------------------------------------------------------------

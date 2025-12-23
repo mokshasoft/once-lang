@@ -1,0 +1,121 @@
+// ======================================================================
+// seL4 Untyped Memory Primitives - ARM64 Implementation
+// ======================================================================
+//
+// Object invocations in seL4 use the IPC mechanism:
+// 1. Pack method ID and arguments into MessageInfo and message registers
+// 2. Invoke seL4_Call on the capability
+// 3. Unpack result from reply
+//
+// For seL4_Untyped_Retype:
+//   Label (in MessageInfo): UntypedRetype method ID
+//   Message registers contain the invocation arguments
+//
+// Message format for Untyped_Retype (seL4 API):
+//   MR0: objectType
+//   MR1: sizeBits
+//   MR2: root (CNode cap, translated to slot index)
+//   MR3: nodeIndex
+//   MR4: nodeDepth
+//   MR5: nodeOffset (in extra IPC buffer)
+//   MR6: numObjects (in extra IPC buffer)
+//
+// Note: This implementation assumes seL4's standard invocation format.
+// For MCS kernel or different configurations, adjustments may be needed.
+//
+// ======================================================================
+
+.text
+.align 4
+
+#ifndef ONCE_SEL4_UNTYPED_ARM64_DEFINED
+#define ONCE_SEL4_UNTYPED_ARM64_DEFINED
+
+// Method label for Untyped_Retype
+// This is (seL4_UntypedObject << seL4_MsgMethodBits) | UntypedRetypeMethod
+// Typically: (0 << 8) | 0 = 0, but label encoding may vary
+.equ UNTYPED_RETYPE_LABEL, 0
+
+// seL4_SysCall = -6
+.equ SEL4_SYS_CALL, -6
+
+// ----------------------------------------------------------------------
+// seL4_Untyped_Retype - Create kernel objects from untyped memory
+// ----------------------------------------------------------------------
+// Input: (untyped, objectType, sizeBits, root, nodeIndex, nodeDepth, nodeOffset, numObjects)
+// Output: Int (seL4_Error)
+//
+// This is a capability invocation using seL4_Call.
+
+.global once_seL4_Untyped_Retype
+.type once_seL4_Untyped_Retype, %function
+once_seL4_Untyped_Retype:
+    stp     x29, x30, [sp, #-48]!
+    mov     x29, sp
+    stp     x19, x20, [sp, #16]
+    stp     x21, x22, [sp, #32]
+
+    // Unpack 8-element input tuple:
+    // (untyped, (objectType, (sizeBits, (root, (nodeIndex, (nodeDepth, (nodeOffset, numObjects)))))))
+
+    ldr     x8, [x0]            // x8 = untyped cap
+    ldr     x0, [x0, #8]
+
+    ldr     x19, [x0]           // x19 = objectType -> mr0
+    ldr     x0, [x0, #8]
+
+    ldr     x20, [x0]           // x20 = sizeBits -> mr1
+    ldr     x0, [x0, #8]
+
+    ldr     x21, [x0]           // x21 = root -> mr2
+    ldr     x0, [x0, #8]
+
+    ldr     x22, [x0]           // x22 = nodeIndex -> mr3
+    ldr     x0, [x0, #8]
+
+    // Remaining args need IPC buffer for full implementation
+    // For now, we use only first 4 MRs
+    ldr     x9, [x0]            // nodeDepth (would go to IPC buffer)
+    ldr     x0, [x0, #8]
+    ldr     x10, [x0]           // nodeOffset (would go to IPC buffer)
+    ldr     x11, [x0, #8]       // numObjects (would go to IPC buffer)
+
+    // For a simplified implementation, we assume a common case:
+    // - root is the caller's CSpace root
+    // - nodeDepth is seL4_WordBits (64)
+    // - Using first 4 message registers only
+
+    // Build MessageInfo: (label=0, capsUnwrapped=0, extraCaps=1, length=4)
+    // MessageInfo packing: (label << 12) | (capsUnwrapped << 9) | (extraCaps << 7) | length
+    // = (0 << 12) | (0 << 9) | (1 << 7) | 4 = 0x84 = 132
+    mov     x1, #132            // MessageInfo with 4 words, 1 extra cap
+
+    // Message registers
+    mov     x2, x19             // mr0 = objectType
+    mov     x3, x20             // mr1 = sizeBits
+    mov     x4, x21             // mr2 = root (as cap index)
+    mov     x5, x22             // mr3 = nodeIndex
+
+    // Capability to invoke
+    mov     x0, x8              // x0 = untyped capability
+
+    // Syscall number for seL4_Call
+    mov     x7, #-6
+
+    // Trap to kernel
+    svc     #0
+
+    // On return: x0 has error code (from reply msgInfo label)
+    // For Untyped_Retype, label in reply indicates error
+
+    // Extract error from MessageInfo (reply in x1)
+    // Error is in the label field (bits 12+)
+    lsr     x0, x1, #12
+
+    ldp     x19, x20, [sp, #16]
+    ldp     x21, x22, [sp, #32]
+    ldp     x29, x30, [sp], #48
+    ret
+.size once_seL4_Untyped_Retype, .-once_seL4_Untyped_Retype
+
+#endif // ONCE_SEL4_UNTYPED_ARM64_DEFINED
