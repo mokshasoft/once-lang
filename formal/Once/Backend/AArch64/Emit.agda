@@ -129,6 +129,9 @@ instrToText (brk n) = "    brk #" ++ show n
 -- Zero register store (for tag=0 in sums)
 instrToText (str-zr m) = "    str xzr, " ++ memToText m
 
+-- PC-relative address
+instrToText (adr rd n) = "    adr " ++ regToText rd ++ ", .L" ++ show n
+
 -- Labels (pseudo-instruction)
 instrToText (label n) = ".L" ++ show n ++ ":"
 

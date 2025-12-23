@@ -58,6 +58,7 @@ regToText r15 = "%r15"
 memToText : Mem → String
 memToText (base r) = "(" ++ regToText r ++ ")"
 memToText (base+disp r n) = show n ++ "(" ++ regToText r ++ ")"
+memToText (rip+disp n) = ".L" ++ show n ++ "(%rip)"
 
 ------------------------------------------------------------------------
 -- Operand emission

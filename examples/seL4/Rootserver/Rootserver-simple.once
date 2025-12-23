@@ -1,0 +1,115 @@
+------------------------------------------------------------------------
+-- seL4 Rootserver (Simplified)
+--
+-- A minimal rootserver that demonstrates seL4 capability operations.
+------------------------------------------------------------------------
+
+import I.SeL4.IPC
+import I.SeL4.Untyped
+import I.SeL4.CNode
+import I.SeL4.TCB
+import I.SeL4.BootInfo
+
+------------------------------------------------------------------------
+-- Configuration Constants
+------------------------------------------------------------------------
+
+slotEchoEndpoint : Int
+slotEchoEndpoint = 100
+
+slotServerTCB : Int
+slotServerTCB = 101
+
+slotClientTCB : Int
+slotClientTCB = 102
+
+clientBadge : Int
+clientBadge = 1
+
+------------------------------------------------------------------------
+-- Helper
+------------------------------------------------------------------------
+
+-- Infinite yield loop
+yieldLoop : Eff Unit Unit
+yieldLoop =
+  let y = seL4_Yield@IPC ()
+  in yieldLoop
+
+------------------------------------------------------------------------
+-- Main Rootserver Logic
+------------------------------------------------------------------------
+
+setupSystem : Eff Unit Unit
+setupSystem =
+  -- 1. Get BootInfo from kernel
+  let bootinfo = getBootInfo@BootInfo ()
+
+  -- 2. Get the first untyped capability
+  in let utStart = bootinfo_untypedStart@BootInfo bootinfo
+
+  -- 3. Create endpoint for IPC between server and client
+  in let cnode = seL4_CapInitThreadCNode@BootInfo
+  in let depth = 64
+  in let epErr = seL4_Untyped_Retype@Untyped
+       (utStart, seL4_EndpointObject@Untyped, 4, cnode, slotEchoEndpoint, depth, 0, 1)
+
+  -- 4. Create TCB for echo server
+  in let tcbErr = seL4_Untyped_Retype@Untyped
+       (utStart, seL4_TCBObject@Untyped, 12, cnode, slotServerTCB, depth, 0, 1)
+
+  -- 5. Create TCB for echo client
+  in let tcbErr2 = seL4_Untyped_Retype@Untyped
+       (utStart, seL4_TCBObject@Untyped, 12, cnode, slotClientTCB, depth, 0, 1)
+
+  -- 6. Copy endpoint to a slot for the server
+  in let copyErr = seL4_CNode_Copy@CNode
+       ( cnode, 103, 64, cnode, slotEchoEndpoint, 64, seL4_AllRights@CNode )
+
+  -- 7. Mint badged endpoint for client
+  in let mintErr = seL4_CNode_Mint@CNode
+       ( cnode, 104, 64, cnode, slotEchoEndpoint, 64, seL4_AllRights@CNode, clientBadge )
+
+  -- 8. Configure server TCB
+  in let cfgErr = seL4_TCB_Configure@TCB
+       ( slotServerTCB
+       , 0
+       , cnode
+       , 0
+       , seL4_CapInitThreadVSpace@BootInfo
+       , 0
+       , 0
+       , 0
+       )
+
+  -- 9. Set server priority
+  in let prioErr = seL4_TCB_SetPriority@TCB
+       ( slotServerTCB, seL4_CapInitThreadTCB@BootInfo, 200 )
+
+  -- 10. Configure client TCB
+  in let cfgErr2 = seL4_TCB_Configure@TCB
+       ( slotClientTCB
+       , 0
+       , cnode
+       , 0
+       , seL4_CapInitThreadVSpace@BootInfo
+       , 0
+       , 0
+       , 0
+       )
+
+  -- 11. Set client priority
+  in let prioErr2 = seL4_TCB_SetPriority@TCB
+       ( slotClientTCB, seL4_CapInitThreadTCB@BootInfo, 150 )
+
+  -- 12. Resume both threads
+  in let resumeErr = seL4_TCB_Resume@TCB slotServerTCB
+  in let resumeErr2 = seL4_TCB_Resume@TCB slotClientTCB
+
+  -- 13. Rootserver yields forever
+  in yieldLoop
+
+main : IO Unit
+main = setupSystem
+
+------------------------------------------------------------------------

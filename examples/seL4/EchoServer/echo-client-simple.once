@@ -1,0 +1,45 @@
+------------------------------------------------------------------------
+-- seL4 Echo Client (Simplified)
+--
+-- A simple client that sends one message to the echo server.
+------------------------------------------------------------------------
+
+import I.SeL4.IPC
+
+------------------------------------------------------------------------
+-- Configuration
+------------------------------------------------------------------------
+
+clientEndpoint : Int
+clientEndpoint = 5
+
+------------------------------------------------------------------------
+-- Client Logic
+------------------------------------------------------------------------
+
+-- Infinite loop after sending message
+clientLoop : Eff Unit Unit
+clientLoop =
+  let y = seL4_Yield@IPC ()
+  in clientLoop
+
+-- Send a single test message then loop
+sendTestMessage : Eff Unit Unit
+sendTestMessage =
+  let msgInfo = 4
+  in let v1 = 42
+  in let v2 = 100
+  in let v3 = 255
+  in let v4 = 1000
+  in let result = seL4_Call@IPC (clientEndpoint, msgInfo, v1, v2, v3, v4)
+  in let (replyInfo, r0, r1, r2, r3) = result
+  in clientLoop
+
+------------------------------------------------------------------------
+-- Main Entry Point
+------------------------------------------------------------------------
+
+main : IO Unit
+main = sendTestMessage
+
+------------------------------------------------------------------------

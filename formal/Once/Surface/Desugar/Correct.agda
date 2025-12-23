@@ -13,9 +13,10 @@ open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.IR as C
-open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap)
-open import Once.Postulates using (extensionality)
+open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap; Closure; encode)
+open import Once.Postulates using (extensionality; closure-semantics-eq)
 open ⟦Fix⟧ using (unwrap)
+open Closure
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -76,9 +77,13 @@ evalSurface S.terminal _ = tt
 -- Initial
 evalSurface S.initial ()
 
--- Exponential
-evalSurface (S.curry f) a = λ b → evalSurface f (a , b)
-evalSurface S.apply (f , a) = f a
+-- Exponential (with explicit Closure)
+evalSurface (S.curry f) a = record
+  { env-addr  = encode a
+  ; code-ptr  = 0
+  ; semantics = λ b → evalSurface f (a , b)
+  }
+evalSurface S.apply (cl , a) = semantics cl a
 
 -- Recursive types
 evalSurface S.fold x = wrap x
@@ -146,9 +151,14 @@ desugar-correct S.terminal x = refl
 -- Initial
 desugar-correct S.initial ()
 
--- Exponential
-desugar-correct (S.curry f) a = cong (λ h → λ b → h (a , b)) (extensionality (λ p → desugar-correct f p))
-desugar-correct S.apply (f , a) = refl
+-- Exponential (with explicit Closure)
+-- Both eval (curry (desugar f)) and evalSurface (S.curry f) create Closure records.
+-- We prove equality via closure-semantics-eq by showing their semantics are equal.
+desugar-correct (S.curry f) a = closure-semantics-eq
+  (eval (C.curry (desugar f)) a)
+  (evalSurface (S.curry f) a)
+  (extensionality (λ b → desugar-correct f (a , b)))
+desugar-correct S.apply (cl , a) = refl
 
 -- Recursive types
 desugar-correct S.fold x = refl
