@@ -44,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 ------------------------------------------------------------------------
 
 -- | Import helpers from Star module
-open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted)
+open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted; exec-to-star; star-to-exec-chain; star-length-eq-nonhalt; star-length)
 
 -- | Exec returns immediately when step returns halted state
 -- Now requires halted s ≡ false since exec checks halted s first
@@ -232,16 +232,27 @@ exec-suc-to-n _ _ exec-eq' | false | _ = exec-eq'
 -- then exec (n + m) produces s''
 -- This is key for composing sub-program executions
 --
--- POSTULATED: Semantically equivalent to Star's star-trans.
--- Proving this directly is blocked by Agda's with-abstraction creating complex goal types.
--- New code should use Star composition (star-trans) instead of exec-chain.
--- See x86-full-proof-architecture.md for the recommended Star-first approach.
-postulate
-  exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ false →
-    exec m prog s' ≡ just s'' →
-    exec (n +ℕ m) prog s ≡ just s''
+-- PROVEN: Using Star as intermediate representation.
+-- 1. Convert exec n to Star via exec-to-star
+-- 2. star-length-eq-nonhalt shows star-length = n (since halted s' = false)
+-- 3. star-to-exec-chain chains the Star with exec m
+-- 4. Substitute star-length = n to get exec (n + m)
+exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
+  exec n prog s ≡ just s' →
+  halted s' ≡ false →
+  exec m prog s' ≡ just s'' →
+  exec (n +ℕ m) prog s ≡ just s''
+exec-chain n m prog s s' s'' exec-n h-false exec-m =
+  subst (λ k → exec (k +ℕ m) prog s ≡ just s'') len-eq chained
+  where
+    -- Convert to Star
+    star = exec-to-star {n} {prog} {s} {s'} exec-n
+    -- star-length equals n since halted s' = false
+    len-eq : star-length star ≡ n
+    len-eq = star-length-eq-nonhalt {n} {prog} {s} {s'} exec-n h-false
+    -- Chain via Star
+    chained : exec (star-length star +ℕ m) prog s ≡ just s''
+    chained = star-to-exec-chain star h-false m exec-m
 
 ------------------------------------------------------------------------
 -- exec-until-pc lemmas

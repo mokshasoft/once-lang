@@ -352,6 +352,48 @@ star-to-exec-∃ : ∀ {prog s s'} →
 star-to-exec-∃ star h-final = star-length star , star-to-exec star h-final
 
 ------------------------------------------------------------------------
+-- Star chaining with non-halted intermediate state
+--
+-- Key lemma for exec-chain: if Star reaches s' (not halted),
+-- and exec m from s' reaches s'', then exec (star-length + m) reaches s''.
+------------------------------------------------------------------------
+
+-- | Chain Star with additional exec when intermediate state is not halted
+-- This is the core lemma that enables exec-chain via Star.
+star-to-exec-chain : ∀ {prog s s' s''} →
+  (star : Star prog s s') →
+  halted s' ≡ false →
+  (m : ℕ) →
+  exec m prog s' ≡ just s'' →
+  exec (star-length star +ℕ m) prog s ≡ just s''
+star-to-exec-chain refl* h-false m exec-m = exec-m
+star-to-exec-chain (step* {s' = s₁} h-false-s step-eq rest) h-false m exec-m =
+  exec-step-helper h-false-s step-eq (star-to-exec-chain rest h-false m exec-m)
+
+-- | When halted s' = false, star-length equals n exactly
+-- Because no intermediate state can be halted (otherwise s' would be halted too)
+star-length-eq-nonhalt : ∀ {n prog s s'} →
+  (eq : exec n prog s ≡ just s') →
+  halted s' ≡ false →
+  star-length (exec-to-star {n} {prog} {s} {s'} eq) ≡ n
+star-length-eq-nonhalt {zero} refl h-false = refl
+star-length-eq-nonhalt {suc n} {prog} {s} eq h-false with halted s | inspect halted s
+-- If halted s = true, then exec returns s unchanged, so s' = s, but halted s' = false. Contradiction.
+star-length-eq-nonhalt {suc n} refl h-false | true | [ h-true ] with () ← trans (sym h-true) h-false
+-- If halted s = false, step and continue
+star-length-eq-nonhalt {suc n} {prog} {s} eq h-false | false | [ h-eq ]
+  with step prog s | inspect (step prog) s
+star-length-eq-nonhalt {suc n} () h-false | false | _ | nothing | _
+star-length-eq-nonhalt {suc n} {prog} {s} eq h-false | false | [ h-eq ] | just s₁ | [ step-eq ]
+  with halted s₁ | inspect halted s₁
+-- If halted s₁ = true, then exec returns s₁, so s' = s₁ and halted s' = true. Contradiction.
+star-length-eq-nonhalt {suc n} refl h-false | false | _ | just s₁ | _ | true | [ h₁-true ]
+  with () ← trans (sym h₁-true) h-false
+-- If halted s₁ = false, recurse
+star-length-eq-nonhalt {suc n} {prog} {s} eq h-false | false | _ | just s₁ | _ | false | _ =
+  cong suc (star-length-eq-nonhalt {n} eq h-false)
+
+------------------------------------------------------------------------
 -- Usage Pattern: Composing IR proofs with Star
 --
 -- Old approach (fuel arithmetic):
