@@ -47,7 +47,7 @@ optimizeOnce ir = case ir of
   Compose g f -> simplifyCompose (optimizeOnce g) (optimizeOnce f)
   Pair f g -> simplifyPair (optimizeOnce f) (optimizeOnce g)
   Case f g -> simplifyCase (optimizeOnce f) (optimizeOnce g)
-  Curry f -> Curry (optimizeOnce f)
+  Curry x f -> Curry x (optimizeOnce f)
   -- Leaves: no subterms to optimize
   _ -> ir
 

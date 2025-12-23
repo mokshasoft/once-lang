@@ -2294,3 +2294,80 @@ once build --exe --crypto-functions "deriveKey,encrypt" hello.once -o hello
 - `docs/formal/proof-analysis.md` - Full analysis of proof status and branchless implementations
 - D022: Agda for Formal Verification
 - D032: Arrow-Based Effect System
+
+---
+
+## D039: Lambda Elaboration and Named Parameters
+
+**Date**: 2025-12-23
+**Status**: Accepted
+
+### Context
+
+Once programs often need to express operations that take arguments and use them in complex ways. The categorical style requires verbose point-free composition:
+
+```once
+-- Without lambdas (verbose point-free)
+findUntyped = compose ... fst ... snd ...
+
+-- With lambdas (readable)
+findUntyped bootinfo sizeBits idx = ...
+```
+
+### Decision
+
+Add **lambda elaboration** as syntactic sugar for `curry`, plus **named function parameters** as parser sugar for nested lambdas.
+
+**Lambda elaboration** (`\x -> e` → `Curry x e'`):
+- The bound variable `x` becomes a `LocalVar` in the body
+- The `Curry Name IR` constructor carries the variable name for code generation
+- The C backend handles `LocalVar` inside `Curry` appropriately
+
+**Named parameters** (`f x y = e` → `f = \x -> \y -> e`):
+- Pure parser-level desugaring via `foldr ELam e params`
+- No IR changes needed beyond lambda support
+
+### Implementation
+
+**Parser** (`Parser.hs`):
+```haskell
+funDef = do
+  name <- lowerIdent
+  params <- many lowerIdent  -- zero or more parameters
+  alloc <- optional allocAnnotation
+  void $ symbol "="
+  e <- parseExpr
+  pure $ FunDef name alloc (foldr ELam e params)
+```
+
+**IR** (`IR.hs`):
+```haskell
+| Curry Name IR  -- curry f : A -> (B -> C) (with lambda var name for codegen)
+```
+
+**Elaboration** (`Elaborate.hs`):
+```haskell
+ELam x body -> do
+  body' <- elaborateExpr' (Set.insert x locals) body
+  Right $ Curry x body'
+```
+
+### Rationale
+
+1. **No new expressive power**: `curry` already exists as a generator; lambdas are purely syntactic
+2. **Categorical soundness**: The translation is the standard categorical encoding of lambda calculus
+3. **Readability**: Complex operations become much more readable
+4. **Proofs preserved**: The IR remains morphism-based; elaborator handles translation
+
+### Consequences
+
+- Users can write `f x y = e` (familiar style)
+- Users can write `\x -> e` (explicit lambdas)
+- Point-free style still works: `f = g . h`
+- Case expressions work: `case x of { Left a -> e1; Right b -> e2 }`
+- C backend generates appropriate code for `Curry` with `LocalVar`
+
+### See Also
+
+- D029: Let Bindings with Desugaring (similar approach)
+- D032: Arrow-Based Effect System

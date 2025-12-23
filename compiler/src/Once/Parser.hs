@@ -410,12 +410,16 @@ parseDecl = choice
       ty <- parseType
       pure $ TypeSig name ty
 
+    -- | Parse function definition with optional named parameters
+    -- f x y = e  desugars to  f = \x -> \y -> e
     funDef = do
       name <- lowerIdent
+      params <- many lowerIdent  -- zero or more parameters
       alloc <- optional allocAnnotation
       void $ symbol "="
       e <- parseExpr
-      pure $ FunDef name alloc e
+      -- Desugar: f x y = e  →  f = \x -> \y -> e
+      pure $ FunDef name alloc (foldr ELam e params)
 
     allocAnnotation = do
       void $ symbol "@"

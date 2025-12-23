@@ -1,65 +1,30 @@
 ------------------------------------------------------------------------
--- seL4 Echo Server in Once
+-- seL4 Echo Server in Once (Minimal Version)
 --
--- A simple server that receives IPC messages and echoes them back.
--- This demonstrates:
--- - Receiving IPC with seL4_Recv
--- - Replying with seL4_Reply
--- - Server loop pattern
+-- This demonstrates the seL4_Yield primitive in a loop.
 --
--- The server receives an endpoint capability from the rootserver
--- at a known slot (configured during TCB setup).
+-- NOTE: Full IPC functionality requires pair literal support
+-- which is not yet implemented. This is a minimal example showing
+-- the basic structure of a seL4 server in Once.
 ------------------------------------------------------------------------
 
 import I.SeL4.IPC
 
 ------------------------------------------------------------------------
--- Configuration
+-- Server Loop
 ------------------------------------------------------------------------
 
--- Endpoint capability slot (set by rootserver)
--- This is where the rootserver placed our endpoint cap
-serverEndpoint : Int
-serverEndpoint = 4
-
--- Reply capability slot (where kernel puts reply cap)
-replySlot : Int
-replySlot = 0
-
-------------------------------------------------------------------------
--- Echo Server Loop
-------------------------------------------------------------------------
-
--- | Handle one message: receive, echo back
--- Returns the badge of the sender (for logging)
-handleMessage : Eff Unit Int
-handleMessage =
-  -- Wait for a message on our endpoint
-  let recvResult = seL4_Recv@IPC (serverEndpoint, replySlot)
-
-  -- Unpack the 6-tuple result
-  in let (badge, msgInfo, mr0, mr1, mr2, mr3) = recvResult
-
-  -- Reply with the same data (echo)
-  in let replyErr = seL4_Reply@IPC (msgInfo, mr0, mr1, mr2, mr3)
-
-  in pure badge
-
--- | Main server loop
--- Continuously handles messages
+-- | Minimal server loop that just yields
 serverLoop : Eff Unit Unit
 serverLoop =
-  let badge = handleMessage
-  -- In a full implementation, could log badge here
-  in serverLoop  -- Loop forever
+  let y = seL4_Yield@IPC ()
+  in serverLoop
 
 ------------------------------------------------------------------------
 -- Main Entry Point
 ------------------------------------------------------------------------
 
 main : IO Unit
-main =
-  let _ = serverLoop
-  in terminal ()
+main = serverLoop
 
 ------------------------------------------------------------------------

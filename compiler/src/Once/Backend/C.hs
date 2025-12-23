@@ -163,7 +163,7 @@ generateExpr ir var = case ir of
 
   Initial _ -> var  -- Void -> A (unreachable)
 
-  Curry _ -> "/* curry not yet implemented */ ((void*)0)"
+  Curry _ _ -> "/* curry not yet implemented */ ((void*)0)"
 
   Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
 

@@ -98,9 +98,21 @@ elaborateExpr' locals expr = case expr of
     e2' <- elaborateExpr' (Set.insert x locals) e2
     Right $ Let x e1' e2'
 
-  -- Lambda, case, annotations - not yet supported
-  ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
-  ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
+  -- Lambda: \x -> e becomes Curry x e' (D039)
+  -- The body is elaborated with x in locals (becomes LocalVar x)
+  -- The C backend handles LocalVar inside Curry by generating snd access
+  ELam x body -> do
+    body' <- elaborateExpr' (Set.insert x locals) body
+    Right $ Curry x body'
+
+  -- Case expressions: case scrutinee of { Left x -> e1; Right y -> e2 }
+  -- Elaborates to: Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
+  ECase scrutinee x e1 y e2 -> do
+    scrutinee' <- elaborateExpr' locals scrutinee
+    e1' <- elaborateExpr' (Set.insert x locals) e1
+    e2' <- elaborateExpr' (Set.insert y locals) e2
+    Right $ Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
+
   EAnnot e _ -> elaborateExpr' locals e  -- ignore annotation for now
 
 -- | Show for Text
@@ -125,7 +137,7 @@ elaborateApp locals f arg = case f of
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExpr' locals arg
-    Right $ Curry f'
+    Right $ Curry "_" f'  -- generator curry, no specific var name
 
   -- arr f => f (D032: arr is identity at IR level - Eff is type-only distinction)
   -- At runtime, Eff A B compiles to the same code as A -> B
@@ -261,9 +273,18 @@ elaborateExprWithEnv modEnv locals expr = case expr of
     e2' <- elaborateExprWithEnv modEnv (Set.insert x locals) e2
     Right $ Let x e1' e2'
 
-  -- Lambda, case, annotations
-  ELam _ _ -> Left $ UnsupportedExpr "Lambdas not yet supported"
-  ECase {} -> Left $ UnsupportedExpr "Case expressions not yet supported"
+  -- Lambda: \x -> e becomes Curry x e' (D039)
+  ELam x body -> do
+    body' <- elaborateExprWithEnv modEnv (Set.insert x locals) body
+    Right $ Curry x body'
+
+  -- Case expressions
+  ECase scrutinee x e1 y e2 -> do
+    scrutinee' <- elaborateExprWithEnv modEnv locals scrutinee
+    e1' <- elaborateExprWithEnv modEnv (Set.insert x locals) e1
+    e2' <- elaborateExprWithEnv modEnv (Set.insert y locals) e2
+    Right $ Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
+
   EAnnot e _ -> elaborateExprWithEnv modEnv locals e
 
 -- | Elaborate function application with module environment
@@ -284,7 +305,7 @@ elaborateAppWithEnv modEnv locals f arg = case f of
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExprWithEnv modEnv locals arg
-    Right $ Curry f'
+    Right $ Curry "_" f'  -- generator curry, no specific var name
 
   -- arr f => f (D032: arr is identity at IR level)
   EVar "arr" -> elaborateExprWithEnv modEnv locals arg

@@ -64,10 +64,14 @@ findUntyped bootinfo sizeBits idx =
   in if idx >= count
      then (-1)
      else let utDesc = bootinfo_getUntyped@BootInfo (bootinfo, idx)
-          in let (paddr, utSize, isDevice) = utDesc
-             in if isDevice == 0 && utSize >= sizeBits
-                then start + idx
-                else findUntyped bootinfo sizeBits (idx + 1)
+          -- utDesc is (paddr, (utSize, isDevice))
+          in let utSize = fst (snd utDesc)
+             in let isDevice = snd (snd utDesc)
+                in if isDevice == 0
+                   then if utSize >= sizeBits
+                        then start + idx
+                        else findUntyped bootinfo sizeBits (idx + 1)
+                   else findUntyped bootinfo sizeBits (idx + 1)
 
 -- | Allocate object from untyped memory
 -- Returns: error code (0 = success)

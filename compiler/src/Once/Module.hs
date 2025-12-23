@@ -211,11 +211,14 @@ resolveImports env imports = do
 
 -- | Build alias map from imports
 -- import D.Canonical as C -> "C" -> ["Derived", "Canonical"]
+-- import I.SeL4.IPC -> "IPC" -> ["Interpretations", "SeL4", "IPC"]  (implicit alias from last component)
 buildAliasMap :: [Import] -> Map Name ModuleName
 buildAliasMap imports = Map.fromList
   [ (alias, importModule imp)
   | imp <- imports
-  , Just alias <- [importAlias imp]
+  , let alias = case importAlias imp of
+          Just a -> a                        -- Explicit alias: import ... as A
+          Nothing -> last (importModule imp) -- Implicit alias: last component
   ]
 
 -- | Load modules with cycle detection

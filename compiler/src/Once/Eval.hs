@@ -59,7 +59,7 @@ eval (Case _ _) _ = Left (TypeError "case expects a sum value")
 eval (Initial _) _ = Left (TypeError "initial: Void has no values")
 
 -- Exponentials
-eval (Curry f) v = Right (VClosure [(f, v)] f)
+eval (Curry _ f) v = Right (VClosure [(f, v)] f)
 
 eval (Apply _ _) (VPair (VClosure _ body) arg) = eval body (VPair arg arg)
 eval (Apply _ _) _ = Left (TypeError "apply expects (closure, argument) pair")
