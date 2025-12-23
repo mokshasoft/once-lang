@@ -729,7 +729,11 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'  -- Local variable: just use the name
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
-      Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.Prim n' _ _ ->
+        -- Inline integer primitives like __int_42
+        case T.stripPrefix "__int_" n' of
+          Just numStr -> "(void*)" <> numStr
+          Nothing -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit s
       -- Recursive type operations (identity at runtime)
       Once.IR.Fold _ -> v
@@ -883,17 +887,31 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       in generateFuncWithAlloc n t ir alloc
 
     generateFuncWithAlloc :: Text -> Type -> Once.IR.IR -> Maybe AllocStrategy -> Text
-    generateFuncWithAlloc n t ir alloc = T.unlines
-      [ funcDecl n t <> " {"
-      , "    return " <> generateIRExpr alloc ir "x" <> ";"
-      , "}"
-      ]
+    generateFuncWithAlloc n t ir alloc = case t of
+      TArrow _ _ -> T.unlines
+        [ funcDecl n t <> " {"
+        , "    return " <> generateIRExpr alloc ir "x" <> ";"
+        , "}"
+        ]
+      TEff _ _ -> T.unlines
+        [ funcDecl n t <> " {"
+        , "    return " <> generateIRExpr alloc ir "x" <> ";"
+        , "}"
+        ]
+      -- Lift non-function types: generate Unit -> T function
+      _ -> T.unlines
+        [ funcDecl n t <> " {"
+        , "    (void)x;"
+        , "    return " <> generateIRExpr alloc ir "x" <> ";"
+        , "}"
+        ]
 
     funcDecl :: Text -> Type -> Text
     funcDecl n t = case t of
       TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
       TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
-      _ -> "void* once_" <> n <> "(void)"
+      -- Lift non-function types to Unit -> T
+      _ -> "void* once_" <> n <> "(void* x)"
 
     generateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
     generateIRExpr alloc i v = case i of
@@ -914,7 +932,11 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
-      Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.Prim n' _ _ ->
+        -- Inline integer primitives like __int_42
+        case T.stripPrefix "__int_" n' of
+          Just numStr -> "(void*)" <> numStr
+          Nothing -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> generateStringLit alloc s
       Once.IR.Fold _ -> v
       Once.IR.Unfold _ -> v
@@ -1013,7 +1035,8 @@ generateLibraryAll functions = (header, source)
         libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
       TEff inTy outTy ->
         libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
-      _ -> "/* " <> name <> " has non-function type */"
+      -- Lift non-function types to Unit -> T (constants become functions)
+      _ -> "void* once_" <> name <> "(void* x);"
 
     funcDef :: Maybe AllocStrategy -> (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
     funcDef globalAlloc (name, ty, localAlloc, ir) = case ty of
@@ -1025,7 +1048,11 @@ generateLibraryAll functions = (header, source)
         libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
         "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
         "}"
-      _ -> "/* " <> name <> " has non-function type */"
+      -- Lift non-function types: generate Unit -> T function
+      _ -> "void* once_" <> name <> "(void* x) {\n" <>
+        "    (void)x;\n" <>
+        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
+        "}"
 
     libCTypeName :: Type -> Text
     libCTypeName t = case t of
@@ -1061,7 +1088,11 @@ generateLibraryAll functions = (header, source)
       Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'
       Once.IR.FunRef n' -> "(void*)once_" <> n'
-      Once.IR.Prim n' _ _ -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.Prim n' _ _ ->
+        -- Inline integer primitives like __int_42
+        case T.stripPrefix "__int_" n' of
+          Just numStr -> "(void*)" <> numStr
+          Nothing -> "once_" <> n' <> "(" <> v <> ")"
       Once.IR.StringLit s -> libGenerateStringLit alloc s
       Once.IR.Fold _ -> v
       Once.IR.Unfold _ -> v
