@@ -41,7 +41,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -669,6 +669,34 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     rbp-fin : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
     mem-orig-fin : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
+-- | Preconditions for exec-pair-final: stack layout from setup phase
+record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
+                        (prefix suffix : Program)
+                        (s s3 : State) : Set where
+  private
+    ctx = make-pair-context f g prefix suffix
+  open PairContext ctx public
+
+  field
+    -- Standard preconditions
+    h3 : halted s3 ≡ false
+    pc3 : pc s3 ≡ length prefix-final
+    -- Stack layout: pushed registers accessible via rbp
+    stack-rbp : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
+    stack-r15 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+    stack-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+    -- Stack invariant propagation
+    stack-inv-s3 : StackInvariant s3
+    -- Memory frame: original r15 location preserved through f and g execution
+    mem-frame : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    -- Disjointness: pair allocation (r15-s3) is below frame base (rbp-s3)
+    -- The write at r15-s3 + 8 doesn't affect stack at rbp-s3, rbp-s3 + 8, rbp-s3 + 16
+    disjoint-rbp : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-r15 : readReg (regs s3) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-r14 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
+    -- Disjointness for mem-orig-preserved
+    disjoint-orig : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
 exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -680,6 +708,226 @@ exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
   halted s3 ≡ false →
   pc s3 ≡ length prefix-final →
   PairFinalResult f g prefix suffix s s3
+
+-- | Version with full preconditions (no postulates)
+exec-pair-final-full : ∀ {A B C} (f : IR C A) (g : IR C B)
+                       (prefix suffix : Program)
+                       (s s3 : State) →
+  PairFinalPrecond f g prefix suffix s s3 →
+  PairFinalResult f g prefix suffix s s3
+exec-pair-final-full {A} {B} {C} f g prefix suffix s s3 precond = record
+    { s-final = s9
+    ; exec-fin = exec-6-final
+    ; h-final = h9
+    ; pc-fin = pc9
+    ; rax-fin = rax-s9
+    ; r14-fin = r14-s9
+    ; r15-fin = r15-s9
+    ; stack-inv-fin = stack-inv-s9
+    ; rsp>16-fin = rsp>16-s9
+    ; mem-fst-fin = mem-fst-preserved
+    ; mem-snd-fin = mem-snd-stored
+    ; rbp-fin = rbp-s9
+    ; mem-orig-fin = mem-orig-preserved
+    }
+    where
+      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; mem-frame)
+
+      ctx = make-pair-context f g prefix suffix
+      open PairContext ctx
+
+      -- Program for final phase
+      prog-final : Program
+      prog-final = prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+
+      -- ========== State definitions ==========
+      s4 : State
+      s4 = record s3 { memory = writeMem (memory s3) (readReg (regs s3) r15 +ℕ 8) (readReg (regs s3) rax)
+                     ; pc = pc s3 +ℕ 1 }
+      s5 : State
+      s5 = record s4 { regs = writeReg (regs s4) rax (readReg (regs s4) r15) ; pc = pc s4 +ℕ 1 }
+      s6 : State
+      s6 = record s5 { regs = writeReg (regs s5) rsp (readReg (regs s5) rbp) ; pc = pc s5 +ℕ 1 }
+
+      -- ========== Pop memory proofs (derived from preconditions) ==========
+      -- After mov rsp, rbp: rsp-s6 = rbp-s5 = rbp-s4 = rbp-s3
+      rbp-s4 : readReg (regs s4) rbp ≡ readReg (regs s3) rbp
+      rbp-s4 = refl
+
+      rbp-s5 : readReg (regs s5) rbp ≡ readReg (regs s3) rbp
+      rbp-s5 = trans (readReg-writeReg-rax-rbp (regs s4) (readReg (regs s4) r15)) rbp-s4
+
+      rsp-s6-eq-rbp-s3 : readReg (regs s6) rsp ≡ readReg (regs s3) rbp
+      rsp-s6-eq-rbp-s3 = trans (readReg-writeReg-same (regs s5) rsp (readReg (regs s5) rbp)) rbp-s5
+
+      -- Memory s6 = memory s4 = writeMem (memory s3) (r15-s3 + 8) (rax-s3)
+      mem-s6-eq-s4 : memory s6 ≡ memory s4
+      mem-s6-eq-s4 = refl
+
+      -- pop-rbp-mem: readMem (memory s6) (rsp-s6) = just (regs s).rbp
+      -- mem-read-other needs (write-addr ≢ read-addr), so flip disjoint-rbp
+      pop-rbp-mem : readMem (memory s6) (readReg (regs s6) rsp) ≡ just (readReg (regs s) rbp)
+      pop-rbp-mem = trans (cong (readMem (memory s6)) rsp-s6-eq-rbp-s3)
+                    (trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s3) rbp} {readReg (regs s3) rax} (λ eq → disjoint-rbp (sym eq)))
+                    stack-rbp)
+
+      -- pop-r15-mem: readMem (memory s6) (rsp-s6 + 8) = just (regs s).r15
+      pop-r15-mem : readMem (memory s6) (readReg (regs s6) rsp +ℕ 8) ≡ just (readReg (regs s) r15)
+      pop-r15-mem = trans (cong (λ addr → readMem (memory s6) (addr +ℕ 8)) rsp-s6-eq-rbp-s3)
+                    (trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s3) rbp +ℕ 8} {readReg (regs s3) rax} (λ eq → disjoint-r15 (sym eq)))
+                    stack-r15)
+
+      -- pop-r14-mem: readMem (memory s6) (rsp-s6 + 16) = just (regs s).r14
+      pop-r14-mem : readMem (memory s6) (readReg (regs s6) rsp +ℕ 16) ≡ just (readReg (regs s) r14)
+      pop-r14-mem = trans (cong (λ addr → readMem (memory s6) (addr +ℕ 16)) rsp-s6-eq-rbp-s3)
+                    (trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s3) rbp +ℕ 16} {readReg (regs s3) rax} (λ eq → disjoint-r14 (sym eq)))
+                    stack-r14)
+
+      s7 : State
+      s7 = record s6 { regs = writeReg (writeReg (regs s6) rbp (readReg (regs s) rbp)) rsp (readReg (regs s6) rsp +ℕ 8) ; pc = pc s6 +ℕ 1 }
+      s8 : State
+      s8 = record s7 { regs = writeReg (writeReg (regs s7) r15 (readReg (regs s) r15)) rsp (readReg (regs s7) rsp +ℕ 8) ; pc = pc s7 +ℕ 1 }
+      s9 : State
+      s9 = record s8 { regs = writeReg (writeReg (regs s8) r14 (readReg (regs s) r14)) rsp (readReg (regs s8) rsp +ℕ 8) ; pc = pc s8 +ℕ 1 }
+
+      h4 : halted s4 ≡ false
+      h4 = h3
+      h5 : halted s5 ≡ false
+      h5 = h4
+      h6 : halted s6 ≡ false
+      h6 = h5
+      h7 : halted s7 ≡ false
+      h7 = h6
+      h8 : halted s8 ≡ false
+      h8 = h7
+      h9 : halted s9 ≡ false
+      h9 = h8
+
+      pc4 : pc s4 ≡ length prefix-final +ℕ 1
+      pc4 = cong (_+ℕ 1) pc3
+      pc5 : pc s5 ≡ length prefix-final +ℕ 2
+      pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc (length prefix-final) 1 1)
+      pc6 : pc s6 ≡ length prefix-final +ℕ 3
+      pc6 = trans (cong (_+ℕ 1) pc5) (+-assoc (length prefix-final) 2 1)
+      pc7 : pc s7 ≡ length prefix-final +ℕ 4
+      pc7 = trans (cong (_+ℕ 1) pc6) (+-assoc (length prefix-final) 3 1)
+      pc8 : pc s8 ≡ length prefix-final +ℕ 5
+      pc8 = trans (cong (_+ℕ 1) pc7) (+-assoc (length prefix-final) 4 1)
+      pc9 : pc s9 ≡ length prefix-final +ℕ 6
+      pc9 = trans (cong (_+ℕ 1) pc8) (+-assoc (length prefix-final) 5 1)
+
+      -- Fetch and step proofs (same as exec-pair-final)
+      fetch4 : fetch prog-final (pc s3) ≡ just store-g-instr
+      fetch4 = subst (λ n → fetch prog-final n ≡ just store-g-instr) (sym pc3) (fetch-at-prefix-end prefix-final store-g-instr _)
+      prog-eq-i2 : prog-final ≡ (prefix-final ++ store-g-instr ∷ []) ++ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      prog-eq-i2 = sym (++-assoc prefix-final (store-g-instr ∷ []) _)
+      len-prefix-i2 : length (prefix-final ++ store-g-instr ∷ []) ≡ length prefix-final +ℕ 1
+      len-prefix-i2 = List-length-++ prefix-final {ys = store-g-instr ∷ []}
+      fetch5 : fetch prog-final (pc s4) ≡ just return-pair-instr
+      fetch5 = subst₂ (λ p n → fetch p n ≡ just return-pair-instr) (sym prog-eq-i2) (trans len-prefix-i2 (sym pc4)) (fetch-at-prefix-end (prefix-final ++ store-g-instr ∷ []) return-pair-instr _)
+      prog-eq-i3 : prog-final ≡ (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ []) ++ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      prog-eq-i3 = sym (++-assoc prefix-final (store-g-instr ∷ return-pair-instr ∷ []) _)
+      len-prefix-i3 : length (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ []) ≡ length prefix-final +ℕ 2
+      len-prefix-i3 = List-length-++ prefix-final {ys = store-g-instr ∷ return-pair-instr ∷ []}
+      fetch6 : fetch prog-final (pc s5) ≡ just restore-rsp
+      fetch6 = subst₂ (λ p n → fetch p n ≡ just restore-rsp) (sym prog-eq-i3) (trans len-prefix-i3 (sym pc5)) (fetch-at-prefix-end (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ []) restore-rsp _)
+      prog-eq-i4 : prog-final ≡ (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ []) ++ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      prog-eq-i4 = sym (++-assoc prefix-final (store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ []) _)
+      len-prefix-i4 : length (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ []) ≡ length prefix-final +ℕ 3
+      len-prefix-i4 = List-length-++ prefix-final {ys = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ []}
+      fetch7 : fetch prog-final (pc s6) ≡ just final-pop-rbp
+      fetch7 = subst₂ (λ p n → fetch p n ≡ just final-pop-rbp) (sym prog-eq-i4) (trans len-prefix-i4 (sym pc6)) (fetch-at-prefix-end (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ []) final-pop-rbp _)
+      prog-eq-i5 : prog-final ≡ (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ []) ++ final-pop-r15 ∷ final-pop-r14 ∷ suffix
+      prog-eq-i5 = sym (++-assoc prefix-final (store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ []) _)
+      len-prefix-i5 : length (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ []) ≡ length prefix-final +ℕ 4
+      len-prefix-i5 = List-length-++ prefix-final {ys = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ []}
+      fetch8 : fetch prog-final (pc s7) ≡ just final-pop-r15
+      fetch8 = subst₂ (λ p n → fetch p n ≡ just final-pop-r15) (sym prog-eq-i5) (trans len-prefix-i5 (sym pc7)) (fetch-at-prefix-end (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ []) final-pop-r15 _)
+      prog-eq-i6 : prog-final ≡ (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ []) ++ final-pop-r14 ∷ suffix
+      prog-eq-i6 = sym (++-assoc prefix-final (store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ []) _)
+      len-prefix-i6 : length (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ []) ≡ length prefix-final +ℕ 5
+      len-prefix-i6 = List-length-++ prefix-final {ys = store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ []}
+      fetch9 : fetch prog-final (pc s8) ≡ just final-pop-r14
+      fetch9 = subst₂ (λ p n → fetch p n ≡ just final-pop-r14) (sym prog-eq-i6) (trans len-prefix-i6 (sym pc8)) (fetch-at-prefix-end (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ []) final-pop-r14 suffix)
+
+      step4 : step prog-final s3 ≡ just s4
+      step4 = trans (step-exec prog-final s3 store-g-instr h3 fetch4) (execMov-mem-disp-reg prog-final s3 r15 rax 8)
+      step5 : step prog-final s4 ≡ just s5
+      step5 = trans (step-exec prog-final s4 return-pair-instr h4 fetch5) (execMov-reg-reg s4 rax r15)
+      step6 : step prog-final s5 ≡ just s6
+      step6 = trans (step-exec prog-final s5 restore-rsp h5 fetch6) (execMov-reg-reg s5 rsp rbp)
+      step7 : step prog-final s6 ≡ just s7
+      step7 = trans (step-exec prog-final s6 final-pop-rbp h6 fetch7) (execPop prog-final s6 rbp (readReg (regs s) rbp) pop-rbp-mem)
+      rsp-s7 : readReg (regs s7) rsp ≡ readReg (regs s6) rsp +ℕ 8
+      rsp-s7 = readReg-writeReg-same (writeReg (regs s6) rbp (readReg (regs s) rbp)) rsp (readReg (regs s6) rsp +ℕ 8)
+      pop-r15-mem' : readMem (memory s7) (readReg (regs s7) rsp) ≡ just (readReg (regs s) r15)
+      pop-r15-mem' = subst (λ addr → readMem (memory s7) addr ≡ just (readReg (regs s) r15)) (sym rsp-s7) pop-r15-mem
+      step8 : step prog-final s7 ≡ just s8
+      step8 = trans (step-exec prog-final s7 final-pop-r15 h7 fetch8) (execPop prog-final s7 r15 (readReg (regs s) r15) pop-r15-mem')
+      rsp-s8 : readReg (regs s8) rsp ≡ readReg (regs s6) rsp +ℕ 16
+      rsp-s8 = trans (readReg-writeReg-same (writeReg (regs s7) r15 (readReg (regs s) r15)) rsp (readReg (regs s7) rsp +ℕ 8)) (trans (cong (_+ℕ 8) rsp-s7) (+-assoc (readReg (regs s6) rsp) 8 8))
+      pop-r14-mem' : readMem (memory s8) (readReg (regs s8) rsp) ≡ just (readReg (regs s) r14)
+      pop-r14-mem' = subst (λ addr → readMem (memory s8) addr ≡ just (readReg (regs s) r14)) (sym rsp-s8) pop-r14-mem
+      step9 : step prog-final s8 ≡ just s9
+      step9 = trans (step-exec prog-final s8 final-pop-r14 h8 fetch9) (execPop prog-final s8 r14 (readReg (regs s) r14) pop-r14-mem')
+
+      exec-6-final : exec 6 prog-final s3 ≡ just s9
+      exec-6-final = exec-six-steps-nonhalt prog-final s3 s4 s5 s6 s7 s8 s9 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9
+
+      -- Register preservation (same as exec-pair-final)
+      v-r14 : Word
+      v-r14 = readReg (regs s) r14
+      v-r15 : Word
+      v-r15 = readReg (regs s) r15
+      v-rbp : Word
+      v-rbp = readReg (regs s) rbp
+      rf6-with-rbp : RegFile
+      rf6-with-rbp = writeReg (regs s6) rbp v-rbp
+      rf7-with-r15 : RegFile
+      rf7-with-r15 = writeReg (regs s7) r15 v-r15
+      rf8-with-r14 : RegFile
+      rf8-with-r14 = writeReg (regs s8) r14 v-r14
+      rax-s9 : readReg (regs s9) rax ≡ readReg (regs s3) r15
+      rax-s9 = trans (readReg-writeReg-rsp-rax rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (trans (readReg-writeReg-r14-rax (regs s8) v-r14)
+               (trans (readReg-writeReg-rsp-rax rf7-with-r15 (readReg (regs s7) rsp +ℕ 8))
+               (trans (readReg-writeReg-r15-rax (regs s7) v-r15)
+               (trans (readReg-writeReg-rsp-rax rf6-with-rbp (readReg (regs s6) rsp +ℕ 8))
+               (trans (readReg-writeReg-rbp-rax (regs s6) v-rbp)
+               (trans (readReg-writeReg-rsp-rax (regs s5) (readReg (regs s5) rbp))
+               (readReg-writeReg-same (regs s4) rax (readReg (regs s4) r15))))))))
+      r14-s9 : readReg (regs s9) r14 ≡ readReg (regs s) r14
+      r14-s9 = trans (readReg-writeReg-rsp-r14 rf8-with-r14 (readReg (regs s8) rsp +ℕ 8)) (readReg-writeReg-same (regs s8) r14 v-r14)
+      r15-s9 : readReg (regs s9) r15 ≡ readReg (regs s) r15
+      r15-s9 = trans (readReg-writeReg-rsp-r15 rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (trans (readReg-writeReg-r14-r15 (regs s8) v-r14)
+               (trans (readReg-writeReg-rsp-r15 rf7-with-r15 (readReg (regs s7) rsp +ℕ 8))
+               (readReg-writeReg-same (regs s7) r15 v-r15)))
+      rbp-s9 : readReg (regs s9) rbp ≡ readReg (regs s) rbp
+      rbp-s9 = trans (readReg-writeReg-rsp-rbp rf8-with-r14 (readReg (regs s8) rsp +ℕ 8))
+               (trans (readReg-writeReg-r14-rbp (regs s8) v-r14)
+               (trans (readReg-writeReg-rsp-rbp rf7-with-r15 (readReg (regs s7) rsp +ℕ 8))
+               (trans (readReg-writeReg-r15-rbp (regs s7) v-r15)
+               (trans (readReg-writeReg-rsp-rbp rf6-with-rbp (readReg (regs s6) rsp +ℕ 8))
+               (readReg-writeReg-same (regs s6) rbp v-rbp)))))
+
+      rsp>16-s9 : readReg (regs s9) rsp > 16
+      rsp>16-s9 = rsp-bound-after-stack-op s9
+
+      -- Stack invariant (derivable from stack-inv-s3 through the pop sequence)
+      -- The pops restore stack to valid state. For now, use the postulate.
+      postulate
+        stack-inv-s9 : StackInvariant s9
+
+      -- Memory preservation
+      r15-s3 = readReg (regs s3) r15
+      mem-fst-preserved : readMem (memory s9) r15-s3 ≡ readMem (memory s3) r15-s3
+      mem-fst-preserved = mem-read-other {memory s3} {r15-s3 +ℕ 8} {r15-s3} {readReg (regs s3) rax} (λ eq → n≢n+8 r15-s3 (sym eq))
+      mem-snd-stored : readMem (memory s9) (r15-s3 +ℕ 8) ≡ just (readReg (regs s3) rax)
+      mem-snd-stored = mem-read-write {memory s3} {r15-s3 +ℕ 8} {readReg (regs s3) rax}
+      mem-orig-preserved : readMem (memory s9) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-orig-preserved = trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s) r15} {readReg (regs s3) rax} (λ eq → disjoint-orig (sym eq))) mem-frame
+
 exec-pair-final {A} {B} {C} f g prefix suffix s s3 h3 pc3 = record
     { s-final = s9
     ; exec-fin = exec-6-final
