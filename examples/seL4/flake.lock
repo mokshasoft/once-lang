@@ -18,6 +18,40 @@
         "type": "github"
       }
     },
+    "musllibc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1762982116,
+        "narHash": "sha256-7tHS1PZMb9aYgzJyKKGcZOLc5ekLffek7tNHss3VEPQ=",
+        "owner": "seL4",
+        "repo": "musllibc",
+        "rev": "b0005f86fecbd6d0257b15363a5b013446914265",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "musllibc",
+        "rev": "b0005f86fecbd6d0257b15363a5b013446914265",
+        "type": "github"
+      }
+    },
+    "nanopb": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1600684705,
+        "narHash": "sha256-32YU6LfPojvEVA2Z3DRZdGzDkSpAUgo1BueC/pl9qlY=",
+        "owner": "nanopb",
+        "repo": "nanopb",
+        "rev": "1466e6f953835b191a7f5acf0c06c941d4cd33d9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nanopb",
+        "repo": "nanopb",
+        "rev": "1466e6f953835b191a7f5acf0c06c941d4cd33d9",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1735563628,
@@ -37,23 +71,117 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "musllibc": "musllibc",
+        "nanopb": "nanopb",
         "nixpkgs": "nixpkgs",
-        "sel4test-manifest": "sel4test-manifest"
+        "seL4-kernel": "seL4-kernel",
+        "seL4-libs": "seL4-libs",
+        "seL4-tools": "seL4-tools",
+        "sel4_projects_libs": "sel4_projects_libs",
+        "sel4runtime": "sel4runtime",
+        "sel4test": "sel4test",
+        "util_libs": "util_libs"
       }
     },
-    "sel4test-manifest": {
+    "seL4-kernel": {
       "flake": false,
       "locked": {
-        "lastModified": 1766119612,
-        "narHash": "sha256-Caxbmxq23JmuQVAWa4I19ADBomSeOQE7aXUI2nJPqLQ=",
+        "lastModified": 1766026397,
+        "narHash": "sha256-v3dXn2m2iTbDHGd9RFSGU6P+mONvphC5RbP5UTbKPd8=",
         "owner": "seL4",
-        "repo": "sel4test-manifest",
-        "rev": "1421a341f4ce3256d13fc512711346d3fbdf156c",
+        "repo": "seL4",
+        "rev": "78c3b11a02368dadd314e34a61d53853d6a4b2d7",
         "type": "github"
       },
       "original": {
         "owner": "seL4",
-        "repo": "sel4test-manifest",
+        "repo": "seL4",
+        "rev": "78c3b11a02368dadd314e34a61d53853d6a4b2d7",
+        "type": "github"
+      }
+    },
+    "seL4-libs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1753253486,
+        "narHash": "sha256-Fs4dciuwQTUUhtuxd5GQKLeBEmeP3EnhWWePl3EkM7I=",
+        "owner": "seL4",
+        "repo": "seL4_libs",
+        "rev": "2580739bde15ec0dac1bef43a4e313e3752b7692",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "seL4_libs",
+        "rev": "2580739bde15ec0dac1bef43a4e313e3752b7692",
+        "type": "github"
+      }
+    },
+    "seL4-tools": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1765317927,
+        "narHash": "sha256-GwnM8gpypcsjXGODE4c5u/pY/6E9j+70QLkJj0TVviw=",
+        "owner": "seL4",
+        "repo": "seL4_tools",
+        "rev": "fbfc6397803b54a809f1995e844c04877fdde006",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "seL4_tools",
+        "rev": "fbfc6397803b54a809f1995e844c04877fdde006",
+        "type": "github"
+      }
+    },
+    "sel4_projects_libs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1754388189,
+        "narHash": "sha256-WiJuWtDL8w/ZEUq+UzPT3E/BNdds4PhCxkziFqrRq1o=",
+        "owner": "seL4",
+        "repo": "sel4_projects_libs",
+        "rev": "0e06bebf4a3f0c21317c6877e0079f637e021562",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "sel4_projects_libs",
+        "rev": "0e06bebf4a3f0c21317c6877e0079f637e021562",
+        "type": "github"
+      }
+    },
+    "sel4runtime": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1742171608,
+        "narHash": "sha256-7H45pmcJd9e25Jgb52cp8Mj/CciQJzN9hz7HH1PJwYI=",
+        "owner": "seL4",
+        "repo": "sel4runtime",
+        "rev": "86489cf6efab9f314964e79468c036e9035394c7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "sel4runtime",
+        "rev": "86489cf6efab9f314964e79468c036e9035394c7",
+        "type": "github"
+      }
+    },
+    "sel4test": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1764932458,
+        "narHash": "sha256-vzZp6Ww15TRIW2JClQAro7oGZV6bz8L6fhNiHgnp+dU=",
+        "owner": "seL4",
+        "repo": "sel4test",
+        "rev": "0bbb0c6be4e98df98a04b045f98c5a9d272295b2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "sel4test",
+        "rev": "0bbb0c6be4e98df98a04b045f98c5a9d272295b2",
         "type": "github"
       }
     },
@@ -69,6 +197,23 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "util_libs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1765317917,
+        "narHash": "sha256-1Vvso7Y9oZ9LYSd/yTWfdmeS98HBfUE1y7btnHts/fo=",
+        "owner": "seL4",
+        "repo": "util_libs",
+        "rev": "07a7e15b845b08edf91e6d65919aaeef1ae4d5eb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "seL4",
+        "repo": "util_libs",
+        "rev": "07a7e15b845b08edf91e6d65919aaeef1ae4d5eb",
         "type": "github"
       }
     }
