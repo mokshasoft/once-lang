@@ -46,6 +46,16 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- List helpers
+------------------------------------------------------------------------
+
+-- | Key helper: (xs ++ x ∷ []) ++ ys ≡ xs ++ x ∷ ys
+-- This is used for reassociating list concatenations
+snoc-append : ∀ {A : Set} (xs : List A) (x : A) (ys : List A) →
+              (xs ++ x ∷ []) ++ ys ≡ xs ++ x ∷ ys
+snoc-append xs x ys = trans (++-assoc xs (x ∷ []) ys) refl
+
+------------------------------------------------------------------------
 -- Case Context: computed values that don't depend on execution
 ------------------------------------------------------------------------
 
@@ -221,10 +231,7 @@ make-case-context {A} {B} {C} f g prefix suffix = record
 
     -- Program equality proofs
     -- These require showing that different list bracketings are equal
-    -- Key helper: snoc-append (xs ++ x ∷ []) ++ ys ≡ xs ++ x ∷ ys
-    snoc-append : ∀ {A : Set} (xs : List A) (x : A) (ys : List A) →
-                  (xs ++ x ∷ []) ++ ys ≡ xs ++ x ∷ ys
-    snoc-append xs x ys = trans (++-assoc xs (x ∷ []) ys) refl
+    -- Uses module-level snoc-append helper
 
     -- The main rearrangement needed: move suffix inside nested ++
     case-code-suffix : (code-f ++ jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷
@@ -416,9 +423,43 @@ assemble-case-inl-result {A} {B} {C} f g prefix suffix a s s-setup s1 s-final
     rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
     rbp-final = trans rbp-jump (trans (ir-rbp r-f) rbp-setup)
 
-    postulate
-      mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      stack-inv-final : StackInvariant s-final
+    -- mem-final proof chain:
+    -- readMem (memory s-final) addr ≡ readMem (memory s1) addr  (by cong, mem-jump)
+    -- readMem (memory s1) addr = readMem (memory s1) (readReg s-setup r15) = readMem (memory s-setup) (readReg s-setup r15)  (by ir-mem)
+    -- = readMem (memory s-setup) addr  (by cong, r15-setup)
+    -- = readMem (memory s) addr  (by sym mem-s-setup)
+    addr-s : Word
+    addr-s = readReg (regs s) r15
+
+    addr-setup : Word
+    addr-setup = readReg (regs s-setup) r15
+
+    addr-eq : addr-setup ≡ addr-s
+    addr-eq = r15-setup
+
+    mem-final-step1 : readMem (memory s-final) addr-s ≡ readMem (memory s1) addr-s
+    mem-final-step1 = cong (λ m → readMem m addr-s) mem-jump
+
+    mem-final-step2 : readMem (memory s1) addr-s ≡ readMem (memory s1) addr-setup
+    mem-final-step2 = cong (readMem (memory s1)) (sym addr-eq)
+
+    mem-final-step3 : readMem (memory s1) addr-setup ≡ readMem (memory s-setup) addr-setup
+    mem-final-step3 = ir-mem r-f
+
+    mem-final-step4 : readMem (memory s-setup) addr-setup ≡ readMem (memory s-setup) addr-s
+    mem-final-step4 = cong (readMem (memory s-setup)) addr-eq
+
+    mem-final : readMem (memory s-final) addr-s ≡ readMem (memory s) addr-s
+    mem-final = trans mem-final-step1
+                (trans mem-final-step2
+                (trans mem-final-step3
+                (trans mem-final-step4
+                       (sym mem-s-setup))))
+
+    -- stack-inv-final: Use s1 as base (from ir-stack-inv r-f)
+    -- The jump phase preserves r15 and rsp from s1 to s-final
+    stack-inv-final : StackInvariant s-final
+    stack-inv-final = stack-inv-preserved-unchanged s1 s-final (ir-stack-inv r-f) r15-jump rsp-jump
 
     rsp>16-final : readReg (regs s-final) rsp > 16
     rsp>16-final = rsp-bound-after-stack-op s-final
@@ -501,9 +542,17 @@ assemble-case-inr-result {A} {B} {C} f g prefix suffix b s s-setup s-right s1 s-
     rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
     rbp-final = trans rbp-end (trans (ir-rbp r-g) (trans rbp-right rbp-setup))
 
+    -- mem-final: chain through s-final -> s1 -> s-right -> s-setup -> s
+    -- The chain requires memory preservation through each phase
+    -- For now, this is postulated as the explicit memory equalities for
+    -- setup and right-setup phases are not passed in
     postulate
       mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      stack-inv-final : StackInvariant s-final
+
+    -- stack-inv-final: Use s1 as base (from ir-stack-inv r-g)
+    -- The end phase (label instruction) preserves r15 and rsp
+    stack-inv-final : StackInvariant s-final
+    stack-inv-final = stack-inv-preserved-unchanged s1 s-final (ir-stack-inv r-g) r15-end rsp-end
 
     rsp>16-final : readReg (regs s-final) rsp > 16
     rsp>16-final = rsp-bound-after-stack-op s-final
@@ -636,9 +685,19 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
                             (trans (cong (length prefix +ℕ_) (cong (4 +ℕ_) (compile-length-correct f)))
                                    (sym (+-assoc (length prefix) 4 len-f)))
 
-    -- List manipulation proof - tedious but straightforward
-    postulate
-      prog-eq-jmp : prog ≡ prefix-before-jmp ++ jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
+    -- Proof that prefix-f ++ code-f = prefix-before-jmp
+    -- prefix-f = prefix ++ [4 items] ∷ [], so
+    -- prefix-f ++ code-f = (prefix ++ [4 items]) ++ code-f = prefix ++ ([4 items] ++ code-f)
+    --                    = prefix ++ [4 items] ∷ code-f = prefix-before-jmp
+    prefix-f-code-f-eq : prefix-f ++ code-f ≡ prefix-before-jmp
+    prefix-f-code-f-eq = ++-assoc prefix (load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ []) code-f
+
+    -- prog-eq-f gives: prog ≡ prefix-f ++ code-f ++ suffix-f
+    -- We show: prefix-f ++ code-f ++ suffix-f ≡ prefix-before-jmp ++ suffix-f
+    prog-eq-jmp : prog ≡ prefix-before-jmp ++ jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
+    prog-eq-jmp = trans prog-eq-f
+                  (trans (sym (++-assoc prefix-f code-f suffix-f))
+                         (cong (_++ suffix-f) prefix-f-code-f-eq))
 
     fetch1 : fetch prog (pc s1) ≡ just jmp-instr
     fetch1 = subst₂ (λ p n → fetch p n ≡ just jmp-instr)
@@ -703,8 +762,19 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
         length prefix-before-label
       ∎
 
-    postulate
-      prog-eq-label : prog ≡ prefix-before-label ++ end-label-instr ∷ suffix
+    -- Helper: a ∷ b ∷ c ∷ (ys ++ zs) ≡ (a ∷ b ∷ c ∷ ys) ++ zs
+    -- This follows from (a ∷ xs) ++ ys = a ∷ (xs ++ ys)
+    cons3-app-assoc : ∀ {A : Set} (a b c : A) (ys zs : List A) →
+                      a ∷ b ∷ c ∷ (ys ++ zs) ≡ (a ∷ b ∷ c ∷ ys) ++ zs
+    cons3-app-assoc a b c ys zs = refl
+
+    -- From prog-eq-jmp: prog ≡ prefix-before-jmp ++ jmp ∷ rlabel ∷ rload ∷ (code-g ++ end ∷ suffix)
+    -- First use cons3-app-assoc, then ++-assoc
+    prog-eq-label : prog ≡ prefix-before-label ++ end-label-instr ∷ suffix
+    prog-eq-label = trans prog-eq-jmp
+                    (trans (cong (prefix-before-jmp ++_)
+                                 (cons3-app-assoc jmp-instr right-label-instr right-load-val-instr code-g _))
+                           (sym (++-assoc prefix-before-jmp _ _)))
 
     fetch2 : fetch prog (pc s2) ≡ just end-label-instr
     fetch2 = subst₂ (λ p n → fetch p n ≡ just end-label-instr)
@@ -777,18 +847,74 @@ exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
 
     -- PC proof: prefix + 7 + len-f + len-g + 1 = prefix + (8 + len-f) + len-g
     -- compile-length [ f , g ] = (8 + len-f) + len-g
-    postulate
-      pc2 : pc s2 ≡ length prefix +ℕ compile-length [ f , g ]
+    pc2 : pc s2 ≡ length prefix +ℕ compile-length [ f , g ]
+    pc2 = begin
+        pc s2
+      ≡⟨ refl ⟩
+        pc s1 +ℕ 1
+      ≡⟨ cong (_+ℕ 1) pc1 ⟩
+        (length prefix +ℕ 7 +ℕ len-f +ℕ len-g) +ℕ 1
+      ≡⟨ +-assoc (length prefix +ℕ 7 +ℕ len-f) len-g 1 ⟩
+        (length prefix +ℕ 7 +ℕ len-f) +ℕ (len-g +ℕ 1)
+      ≡⟨ cong ((length prefix +ℕ 7 +ℕ len-f) +ℕ_) (+-comm len-g 1) ⟩
+        (length prefix +ℕ 7 +ℕ len-f) +ℕ (1 +ℕ len-g)
+      ≡⟨ sym (+-assoc (length prefix +ℕ 7 +ℕ len-f) 1 len-g) ⟩
+        ((length prefix +ℕ 7 +ℕ len-f) +ℕ 1) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 7) len-f 1) ⟩
+        ((length prefix +ℕ 7) +ℕ (len-f +ℕ 1)) +ℕ len-g
+      ≡⟨ cong (λ n → ((length prefix +ℕ 7) +ℕ n) +ℕ len-g) (+-comm len-f 1) ⟩
+        ((length prefix +ℕ 7) +ℕ (1 +ℕ len-f)) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 7) 1 len-f)) ⟩
+        (((length prefix +ℕ 7) +ℕ 1) +ℕ len-f) +ℕ len-g
+      ≡⟨ cong (λ n → (n +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 7 1) ⟩
+        ((length prefix +ℕ 8) +ℕ len-f) +ℕ len-g
+      ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 8 len-f) ⟩
+        (length prefix +ℕ (8 +ℕ len-f)) +ℕ len-g
+      ≡⟨ +-assoc (length prefix) (8 +ℕ len-f) len-g ⟩
+        length prefix +ℕ ((8 +ℕ len-f) +ℕ len-g)
+      ∎
 
     -- Fetch proof: the end label is at position length prefix + 7 + len-f + len-g
-    postulate
-      prog-eq-end : prog ≡ (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++
-                           jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g) ++ end-label-instr ∷ suffix
-      pc1-eq-len : pc s1 ≡ length (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++
-                                   jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g)
-
     prefix-end = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++
                  jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g
+
+    -- Helper: jmp ∷ rlabel ∷ rload ∷ [] ++ code-g = jmp ∷ rlabel ∷ rload ∷ code-g
+    -- This is just definitional
+    snoc3-app : (jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ []) ++ code-g
+              ≡ jmp-instr ∷ right-label-instr ∷ right-load-val-instr ∷ code-g
+    snoc3-app = refl
+
+    -- prefix-g ++ code-g ≡ prefix-end
+    -- Uses snoc-append pattern for inner list
+    prefix-g-code-g-eq : prefix-g ++ code-g ≡ prefix-end
+    prefix-g-code-g-eq =
+      trans (++-assoc prefix _  code-g)
+            (cong (prefix ++_)
+            (trans (cong (load-tag-instr ∷_)
+                   (cong (cmp-tag-instr ∷_)
+                   (cong (jne-instr ∷_)
+                   (cong (load-val-instr ∷_)
+                   (++-assoc code-f _ code-g)))))
+                   (cong (load-tag-instr ∷_)
+                   (cong (cmp-tag-instr ∷_)
+                   (cong (jne-instr ∷_)
+                   (cong (load-val-instr ∷_)
+                   (cong (code-f ++_) snoc3-app)))))))
+
+    prog-eq-end : prog ≡ prefix-end ++ end-label-instr ∷ suffix
+    prog-eq-end = trans prog-eq-g
+                  (trans (sym (++-assoc prefix-g code-g suffix-g))
+                         (cong (_++ suffix-g) prefix-g-code-g-eq))
+
+    -- pc1 is already the required form, just need to show len prefix-end = prefix + 7 + len-f + len-g
+    len-prefix-end : length prefix-end ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    len-prefix-end = trans (cong length (sym prefix-g-code-g-eq))
+                     (trans (List-length-++ prefix-g)
+                            (trans (cong (length prefix-g +ℕ_) (compile-length-correct g))
+                                   (cong (_+ℕ len-g) len-prefix-g)))
+
+    pc1-eq-len : pc s1 ≡ length prefix-end
+    pc1-eq-len = trans pc1 (sym len-prefix-end)
 
     fetch1 : fetch prog (pc s1) ≡ just end-label-instr
     fetch1 = subst₂ (λ p n → fetch p n ≡ just end-label-instr)
@@ -883,8 +1009,24 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     -- PC proofs
     -- pc s1 = pc s-setup + 1 = (prefix + 5 + len-f) + 1 = prefix + 6 + len-f
     -- pc s2 = pc s1 + 1 = prefix + 7 + len-f
-    postulate
-      pc2 : pc s2 ≡ length prefix +ℕ 7 +ℕ len-f
+    pc2 : pc s2 ≡ length prefix +ℕ 7 +ℕ len-f
+    pc2 = begin
+        pc s2
+      ≡⟨ refl ⟩
+        pc s-setup +ℕ 1 +ℕ 1
+      ≡⟨ cong (λ x → x +ℕ 1 +ℕ 1) pc-setup ⟩
+        (length prefix +ℕ 5 +ℕ len-f) +ℕ 1 +ℕ 1
+      ≡⟨ +-assoc (length prefix +ℕ 5 +ℕ len-f) 1 1 ⟩
+        (length prefix +ℕ 5 +ℕ len-f) +ℕ 2
+      ≡⟨ +-assoc (length prefix +ℕ 5) len-f 2 ⟩
+        (length prefix +ℕ 5) +ℕ (len-f +ℕ 2)
+      ≡⟨ cong ((length prefix +ℕ 5) +ℕ_) (+-comm len-f 2) ⟩
+        (length prefix +ℕ 5) +ℕ (2 +ℕ len-f)
+      ≡⟨ sym (+-assoc (length prefix +ℕ 5) 2 len-f) ⟩
+        ((length prefix +ℕ 5) +ℕ 2) +ℕ len-f
+      ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 5 2) ⟩
+        (length prefix +ℕ 7) +ℕ len-f
+      ∎
 
     -- Key proof: rdi s2 = encode b
     -- The mov instruction loads from [rdi+8] into rdi
@@ -910,15 +1052,56 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     -- Instruction 1: label (5 + len-f) at position prefix + 5 + len-f
     -- Instruction 2: mov rdi, [rdi+8] at position prefix + 6 + len-f
 
-    postulate
-      prog-eq-right : prog ≡ (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
-                              load-val-instr ∷ code-f ++ jmp-instr ∷ []) ++
-                             right-label-instr ∷ right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
-      pc-setup-eq-len : pc s-setup ≡ length (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
-                                             load-val-instr ∷ code-f ++ jmp-instr ∷ [])
-
     prefix-right = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
                    load-val-instr ∷ code-f ++ jmp-instr ∷ []
+
+    rest-right = right-label-instr ∷ right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
+
+    -- Helper: transform code-f ++ jmp ∷ rest into (code-f ++ jmp ∷ []) ++ rest
+    jmp-snoc : code-f ++ jmp-instr ∷ rest-right ≡ (code-f ++ jmp-instr ∷ []) ++ rest-right
+    jmp-snoc = sym (snoc-append code-f jmp-instr rest-right)
+
+    -- Transform the inner nested ++ structure
+    inner-eq : load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++ jmp-instr ∷ rest-right
+             ≡ (load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++ jmp-instr ∷ []) ++ rest-right
+    inner-eq = cong (load-tag-instr ∷_)
+               (cong (cmp-tag-instr ∷_)
+               (cong (jne-instr ∷_)
+               (cong (load-val-instr ∷_) jmp-snoc)))
+
+    prog-eq-right : prog ≡ prefix-right ++ rest-right
+    prog-eq-right = trans prog-eq-inr-setup
+                    (trans (cong (prefix ++_) inner-eq)
+                           (sym (++-assoc prefix _ rest-right)))
+
+    -- Length of prefix-right
+    -- prefix-right = prefix ++ [4 items] ∷ code-f ++ jmp ∷ []
+    -- length = length prefix + 4 + length (code-f ++ jmp ∷ [])
+    --        = length prefix + 4 + (len-f + 1)
+    --        = length prefix + 5 + len-f
+    len-prefix-right : length prefix-right ≡ length prefix +ℕ 5 +ℕ len-f
+    len-prefix-right = begin
+        length prefix-right
+      ≡⟨ List-length-++ prefix ⟩
+        length prefix +ℕ length (load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ code-f ++ jmp-instr ∷ [])
+      ≡⟨ cong (length prefix +ℕ_) (cong (4 +ℕ_) (List-length-++ code-f)) ⟩
+        length prefix +ℕ (4 +ℕ (length code-f +ℕ 1))
+      ≡⟨ cong (length prefix +ℕ_) (cong (λ n → 4 +ℕ (n +ℕ 1)) (compile-length-correct f)) ⟩
+        length prefix +ℕ (4 +ℕ (len-f +ℕ 1))
+      ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 4 len-f 1)) ⟩
+        length prefix +ℕ ((4 +ℕ len-f) +ℕ 1)
+      ≡⟨ cong (length prefix +ℕ_) (cong (_+ℕ 1) (+-comm 4 len-f)) ⟩
+        length prefix +ℕ ((len-f +ℕ 4) +ℕ 1)
+      ≡⟨ cong (length prefix +ℕ_) (+-assoc len-f 4 1) ⟩
+        length prefix +ℕ (len-f +ℕ 5)
+      ≡⟨ cong (length prefix +ℕ_) (+-comm len-f 5) ⟩
+        length prefix +ℕ (5 +ℕ len-f)
+      ≡⟨ sym (+-assoc (length prefix) 5 len-f) ⟩
+        (length prefix +ℕ 5) +ℕ len-f
+      ∎
+
+    pc-setup-eq-len : pc s-setup ≡ length prefix-right
+    pc-setup-eq-len = trans pc-setup (sym len-prefix-right)
 
     fetch1 : fetch prog (pc s-setup) ≡ just right-label-instr
     fetch1 = subst₂ (λ p n → fetch p n ≡ just right-label-instr)
@@ -930,12 +1113,25 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
                   (execLabel prog s-setup (5 +ℕ len-f))
 
     -- For the mov instruction, we need to show fetch and step
-    postulate
-      prog-eq-mov : prog ≡ (prefix-right ++ right-label-instr ∷ []) ++
-                           right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
-      pc1-eq-len : pc s1 ≡ length (prefix-right ++ right-label-instr ∷ [])
-
     prefix-mov = prefix-right ++ right-label-instr ∷ []
+    rest-mov = right-load-val-instr ∷ code-g ++ end-label-instr ∷ suffix
+
+    -- rest-right = right-label ∷ right-load ∷ code-g ++ end ∷ suffix
+    --            = (right-label ∷ []) ++ right-load ∷ code-g ++ end ∷ suffix
+    rest-right-eq : rest-right ≡ (right-label-instr ∷ []) ++ rest-mov
+    rest-right-eq = refl
+
+    prog-eq-mov : prog ≡ prefix-mov ++ rest-mov
+    prog-eq-mov = trans prog-eq-right
+                  (trans (cong (prefix-right ++_) rest-right-eq)
+                         (sym (++-assoc prefix-right _ rest-mov)))
+
+    -- pc s1 = pc s-setup + 1 = length prefix-right + 1 = length prefix-mov
+    len-prefix-mov : length prefix-mov ≡ length prefix-right +ℕ 1
+    len-prefix-mov = List-length-++ prefix-right
+
+    pc1-eq-len : pc s1 ≡ length prefix-mov
+    pc1-eq-len = trans refl (trans (cong (_+ℕ 1) pc-setup-eq-len) (sym len-prefix-mov))
 
     fetch2 : fetch prog (pc s1) ≡ just right-load-val-instr
     fetch2 = subst₂ (λ p n → fetch p n ≡ just right-load-val-instr)
