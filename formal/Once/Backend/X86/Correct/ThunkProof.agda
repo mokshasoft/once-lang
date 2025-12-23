@@ -95,6 +95,41 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 --     :: compile-x86 f :: ret :: label end
 --   The IH on f gives us that compile-x86 f is correct.
 --   We just need to trace the setup and ret around it.
+--
+-- PROOF PLAN (to eliminate this postulate):
+--   1. Create ThunkContext record (like ComposeContext in IR/Compose.agda)
+--      capturing program structure:
+--        prog = prefix ++ curry-code ++ suffix
+--        curry-code = closure-setup ++ thunk-setup ++ compile-x86 f ++ thunk-tail
+--        where closure-setup = [sub,mov,lea,mov,mov,jmp] (6 instr, indices 0-5)
+--              thunk-setup = [label,sub,mov,mov,mov] (5 instr, indices 6-10)
+--              thunk-tail = [ret,label] (2 instr)
+--
+--   2. Prove program equality:
+--        prog ≡ prefix' ++ compile-x86 f ++ suffix'
+--        where prefix' = prefix ++ closure-setup ++ thunk-setup (11 instr)
+--              suffix' = thunk-tail ++ suffix
+--
+--   3. Move curry-thunk-correct into MutualIR.agda mutual block
+--      (or parameterize by IH like a recursion scheme)
+--
+--   4. Trace 5 setup instructions [6-10]:
+--        - label (no-op, pc++)
+--        - sub rsp, 16 (allocate pair)
+--        - mov [rsp], r12 (store env)
+--        - mov [rsp+8], rdi (store arg)
+--        - mov rdi, rsp (rdi = pair address)
+--
+--   5. Call run-ir-star-at-offset f prefix' suffix' (env,arg) s5
+--        where s5 is state after setup
+--        This uses the program equality from step 2
+--
+--   6. Trace ret instruction (pops ret-addr, jumps there)
+--
+--   7. Compose all Star proofs via star-trans
+--
+-- COMPLEXITY: Medium. Similar to compose proof structure.
+-- DEPENDENCIES: Program structure lemmas for curry (like compose-prog-eq).
 ------------------------------------------------------------------------
 
 postulate

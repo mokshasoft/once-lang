@@ -84,6 +84,10 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
 open import Once.Backend.X86.Correct.ThunkProof
   using (curry-thunk-correct; construct-closure-wf)
 
+-- Import apply with well-formedness proof
+open import Once.Backend.X86.Correct.IR.Apply
+  using (run-apply-with-wf; run-apply-star-with-wf)
+
 -- Import extracted case helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context;

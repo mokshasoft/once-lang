@@ -63,18 +63,13 @@ postulate
 --
 -- NEEDED BY: Once.Backend.X86.Correct.MutualIR (run-apply-star-direct)
 --
--- WHY THIS IS HARD TO PROVE:
+-- WHY THIS IS HARD TO PROVE (MODULAR CASE):
 --   Apply's `call r15` instruction jumps to a thunk compiled by curry.
 --   The thunk code is NOT in `compile-x86 apply` - it's somewhere in
 --   `prefix` where a previous curry compilation placed it.
 --
---   The proof would need to:
---   1. Track that the closure's code_ptr points to valid thunk code
---   2. Know that the thunk code is part of the current program
---   3. Trace execution through: call → thunk-setup → f → ret
---
---   This requires a "closure well-formedness" invariant tracking that
---   all closures point to valid thunks within the program.
+--   In the modular proof (run-ir-star-at-offset apply), we don't know
+--   where the closure came from, so we can't prove the thunk is correct.
 --
 -- SEMANTIC BOUNDARY:
 --   This postulate captures the calling convention between curry and apply:
@@ -83,11 +78,33 @@ postulate
 --   - thunk pairs (r12, rdi), calls f, returns result in rax
 --   - ret pops return address and jumps back after the call
 --
--- TO ELIMINATE:
---   1. Define ClosureWellFormed predicate (code_ptr → valid thunk in prog)
---   2. Prove curry establishes ClosureWellFormed
---   3. Prove apply works on well-formed closures
---   4. Thread this invariant through the proof architecture
+-- PROGRESS TOWARD ELIMINATION:
+--   We have built the infrastructure to eliminate this postulate:
+--
+--   1. ClosureWellFormed predicate (ClosureWellFormed.agda)
+--      - Captures that code_ptr points to valid thunk in program
+--      - thunk-correct field proves thunk executes correctly
+--
+--   2. CurryResult establishes ClosureWellFormed (ThunkProof.agda)
+--      - run-curry-star-with-wf produces CurryResult
+--      - closure-wf field provides well-formedness proof
+--
+--   3. run-apply-with-wf uses ClosureWellFormed (IR/Apply.agda)
+--      - Given well-formedness proof, can prove apply correctness
+--      - Uses thunk-correct from ClosureWellFormed
+--
+-- REMAINING WORK:
+--   The modular proof (run-ir-star-at-offset apply) still needs this
+--   postulate because it doesn't have the well-formedness context.
+--
+--   For whole-program proofs where curry and apply are composed,
+--   use run-curry-star-with-wf + run-apply-star-with-wf instead.
+--   This path avoids this postulate entirely.
+--
+--   Full elimination requires tracking well-formedness globally:
+--   - Add AllClosuresWellFormed invariant to proof state
+--   - Every curry call adds to the invariant
+--   - Every apply call consumes from the invariant
 --
 -- RUNTIME EFFECT: None (proof-only)
 --
