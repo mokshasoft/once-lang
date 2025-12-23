@@ -85,7 +85,7 @@ postulate
 --      - Captures that code_ptr points to valid thunk in program
 --      - thunk-correct field proves thunk executes correctly
 --
---   2. CurryResult establishes ClosureWellFormed (ThunkProof.agda)
+--   2. CurryResult establishes ClosureWellFormed (MutualIR.agda)
 --      - run-curry-star-with-wf produces CurryResult
 --      - closure-wf field provides well-formedness proof
 --
@@ -93,18 +93,30 @@ postulate
 --      - Given well-formedness proof, can prove apply correctness
 --      - Uses thunk-correct from ClosureWellFormed
 --
--- REMAINING WORK:
---   The modular proof (run-ir-star-at-offset apply) still needs this
---   postulate because it doesn't have the well-formedness context.
+--   4. ClosureContext infrastructure (ClosureContext.agda) - NEW
+--      - ClosureEntry/ClosureContext: Track closures and their WF proofs
+--      - ApplyMemoryLayout: Memory precondition for apply
+--      - run-apply-with-full-wf: PROVEN apply using WF + memory layout
+--      - CurryOutputWF: What curry produces for threading to apply
+--
+-- ELIMINATION PATH (in progress):
+--   The postulate-free path exists but requires threading:
+--
+--   Step 1: run-curry-star-with-wf → CurryResult with closure-wf ✓
+--   Step 2: Extract CurryOutputWF from CurryResult ✓
+--   Step 3: Thread CurryOutputWF through compose/pair (TODO)
+--   Step 4: run-apply-with-full-wf consumes the WF proof ✓
 --
 --   For whole-program proofs where curry and apply are composed,
---   use run-curry-star-with-wf + run-apply-star-with-wf instead.
+--   use run-curry-star-with-wf + run-apply-with-full-wf instead.
 --   This path avoids this postulate entirely.
 --
---   Full elimination requires tracking well-formedness globally:
---   - Add AllClosuresWellFormed invariant to proof state
---   - Every curry call adds to the invariant
---   - Every apply call consumes from the invariant
+-- REMAINING WORK:
+--   - Extend IRStarResult to carry optional ClosureWellFormed output
+--   - Modify run-curry-star-direct to output ClosureWellFormed
+--   - Modify run-pair-star-direct to track closure WF through pairs
+--   - Modify run-apply-star-direct to require/consume ClosureWellFormed
+--   - Update run-compose-star-direct to thread WF from curry to apply
 --
 -- RUNTIME EFFECT: None (proof-only)
 --
