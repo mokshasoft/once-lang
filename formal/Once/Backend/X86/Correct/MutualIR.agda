@@ -75,6 +75,15 @@ open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module P
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
 
+-- Import closure well-formedness infrastructure for whole-program proofs
+open import Once.Backend.X86.Correct.ClosureWellFormed
+  using (ClosureWellFormed; CurryResult;
+         curry-star; curry-halted; curry-pc; curry-rax;
+         curry-r14; curry-r15; curry-rbp; curry-mem;
+         curry-stack-inv; curry-rsp-bound; closure-wf)
+open import Once.Backend.X86.Correct.ThunkProof
+  using (curry-thunk-correct; construct-closure-wf)
+
 -- Import extracted case helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context;
@@ -1461,6 +1470,54 @@ mutual
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
   run-curry-star-direct = run-curry-star
+
+  -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
+  -- prog = prefix ++ compile-x86 (curry f) ++ suffix
+  -- compile-length (curry f) = 13 + compile-length f ≥ 13
+  -- So |prefix| + 6 < |prefix| + 13 ≤ |prefix ++ compile-x86 (curry f) ++ suffix|
+  postulate
+    thunk-offset-in-bounds : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+      length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
+
+  -- | Star-based curry execution with closure well-formedness proof
+  -- Returns CurryResult which includes ClosureWellFormed for use by apply
+  run-curry-star-with-wf : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    in ∃[ s' ] CurryResult f prog s s' x (length prefix)
+  run-curry-star-with-wf {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+    s' , record
+      { curry-star = ir-star ir-res
+      ; curry-halted = ir-halted ir-res
+      ; curry-pc = ir-pc ir-res
+      ; curry-rax = ir-rax ir-res
+      ; curry-r14 = ir-r14 ir-res
+      ; curry-r15 = ir-r15 ir-res
+      ; curry-rbp = ir-rbp ir-res
+      ; curry-mem = ir-mem ir-res
+      ; curry-stack-inv = ir-stack-inv ir-res
+      ; curry-rsp-bound = ir-rsp-bound ir-res
+      ; closure-wf = wf
+      }
+    where
+      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+
+      -- Get the standard IRStarResult from existing curry proof
+      ir-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+      s' = proj₁ ir-result
+      ir-res = proj₂ ir-result
+
+      -- Thunk offset is offset + 6 (the code-ptr label in curry)
+      thunk-offset = offset +ℕ 6
+
+      -- Build the ClosureWellFormed proof
+      wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+      wf = construct-closure-wf f prefix suffix x (thunk-offset-in-bounds f prefix suffix)
 
   -- | Star-based apply execution (direct, uses Star throughout)
   -- compile-length apply = 6
