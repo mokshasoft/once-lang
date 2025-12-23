@@ -66,3 +66,7 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
 
   -- Void elimination (absurd)
   absurd : ∀ {n} {Γ : Ctx n} {A} → Expr Γ Void → Expr Γ A
+
+  -- Let binding: let x = e1 in e2
+  -- e1 computes a value of type A, e2 uses it (at de Bruijn index 0)
+  let'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr (Γ , A) B → Expr Γ B

@@ -9,6 +9,7 @@ module Once.Parser
 
 import Control.Monad (void)
 import Data.Functor (($>))
+import Data.List (foldl')
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
@@ -19,6 +20,13 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Once.Quantity (Quantity (..))
 import Once.Syntax
 import Once.Type (Encoding (..))
+
+-- | Simple pattern for let bindings
+data Pattern
+  = PVar Name           -- ^ Simple variable: x
+  | PWild               -- ^ Wildcard: _ (discard)
+  | PTuple [Pattern]    -- ^ Tuple pattern: (x, y, z)
+  deriving (Eq, Show)
 
 -- | Parser type
 type Parser = Parsec Void Text
@@ -325,25 +333,63 @@ parseExpr = annotExpr
 
     -- let bindings with semicolon separation:
     --   let x = e1; y = e2 in body
-    -- Desugars to nested lets: let x = e1 in let y = e2 in body
-    -- Single binding also works: let x = e1 in body
+    --   let (a, b, c) = e in body   -- tuple pattern
+    -- Desugars to nested lets with fst/snd projections for tuples
     letExpr = do
       reserved "let"
       bindings <- letBinding `sepBy1` symbol ";"
       reserved "in"
       body <- parseExpr
-      pure $ foldr (\(x, e) acc -> ELet x e acc) body bindings
+      pure $ foldr desugarBinding body bindings
 
-    -- Single binding: x = e
+    -- Single binding: pattern = e
     -- Uses simpleExpr to avoid consuming too much (stops at ; or 'in')
     letBinding = do
-      x <- lowerIdent
+      pat <- pattern_
       void $ symbol "="
       e <- simpleExpr
-      pure (x, e)
+      pure (pat, e)
+
+    -- Parse a pattern (variable, wildcard, or tuple)
+    pattern_ = choice
+      [ PWild <$ symbol "_"   -- Wildcard pattern (discard)
+      , PVar <$> lowerIdent
+      , tuplePattern
+      ]
+
+    -- Parse tuple pattern: (x, y) or (a, b, c, d, ...)
+    tuplePattern = do
+      void $ symbol "("
+      p1 <- pattern_
+      void $ symbol ","
+      rest <- pattern_ `sepBy1` symbol ","
+      void $ symbol ")"
+      pure $ PTuple (p1 : rest)
+
+    -- Desugar pattern binding to nested lets with projections
+    -- let x = e in body  →  ELet x e body
+    -- let _ = e in body  →  body (discard e, but evaluate for effects)
+    -- let (a, b) = e in body  →  let temp = e in let a = fst temp in let b = snd temp in body
+    desugarBinding :: (Pattern, Expr) -> Expr -> Expr
+    desugarBinding (PVar x, e) body = ELet x e body
+    desugarBinding (PWild, _e) body = body  -- Wildcard: discard the value
+    desugarBinding (PTuple pats, e) body =
+      let tempName = "_tuple"
+      in ELet tempName e (desugarTuplePatternLeft tempName pats body)
+
+    -- Desugar tuple pattern with projections for LEFT-nested tuples
+    -- For left-nested tuples: (a, b, c, d) = (((a, b), c), d)
+    desugarTuplePatternLeft :: Name -> [Pattern] -> Expr -> Expr
+    desugarTuplePatternLeft temp pats body =
+      let n = length pats
+          applyFsts k = iterate (EApp (EVar "fst")) (EVar temp) !! k
+          buildProjection idx
+            | idx == 0  = applyFsts (n - 1)  -- First: just fst's
+            | otherwise = EApp (EVar "snd") (applyFsts (n - 1 - idx))  -- Others: fst's then snd
+          bindings = zip pats (map buildProjection [0..])
+      in foldr (\(p, proj) acc -> desugarBinding (p, proj) acc) body bindings
 
     -- Simple expression that doesn't consume ; or 'in'
-    -- This is a workaround - proper solution would be expression with precedence
     simpleExpr = composeExpr
 
     caseExpr = do
@@ -363,15 +409,20 @@ parseExpr = annotExpr
       void $ symbol "}"
       pure $ ECase e x e1 y e2
 
+    -- Parse tuple literals or parenthesized expressions
+    -- (e) = just e (parentheses for grouping)
+    -- (e1, e2) = EPair e1 e2
+    -- (e1, e2, e3) = EPair (EPair e1 e2) e3  -- left-nested to match type A * B * C
     pairOrParens = do
       void $ symbol "("
       e1 <- parseExpr
       choice
         [ do
             void $ symbol ","
-            e2 <- parseExpr
+            rest <- parseExpr `sepBy1` symbol ","
             void $ symbol ")"
-            pure $ EPair e1 e2
+            -- Fold into left-nested pairs: (a, b, c, d) → (((a, b), c), d)
+            pure $ foldl' EPair e1 rest
         , symbol ")" $> e1
         ]
 

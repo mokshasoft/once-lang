@@ -64,7 +64,7 @@ PRIM_THREAD := Once/Primitive/Thread.agda
 SPF := Once/SPF.agda
 
 # Nix develop wrapper: suppress warnings and banner
-NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#default' --command
+NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#agda' --command
 
 # Agda command: discovers standard library path from Nix store
 # The library file is created dynamically to avoid hardcoded paths

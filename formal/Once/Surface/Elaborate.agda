@@ -104,3 +104,9 @@ elaborate unit = terminal
 
 -- Absurd (void elimination)
 elaborate (absurd v) = initial ∘ elaborate v
+
+-- Let binding: let x = e1 in e2
+-- Pairs current environment with computed value, then evaluates e2
+-- ⟨ id , e1 ⟩ : Γ → Γ × A  (extend environment with bound value)
+-- elaborate e2 : Γ × A → B  (e2 in extended context)
+elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩

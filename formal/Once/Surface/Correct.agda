@@ -10,7 +10,7 @@ module Once.Surface.Correct where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics as IR using (⟦_⟧; eval; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let') renaming (_,_ to _▸_)
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate)
 
@@ -127,6 +127,14 @@ mutual
   elaborate-correct ρ unit = refl
   elaborate-correct ρ (absurd v) with evalSurface ρ v
   ... | ()
+  -- Let: elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩
+  -- LHS: evalSurface ρ (let' e1 e2) = evalSurface (evalSurface ρ e1 ∷ ρ) e2
+  -- RHS: eval (e2' ∘ ⟨ id , e1' ⟩) γ = eval e2' (γ , eval e1' γ)
+  --    = evalSurface (evalSurface ρ e1 ∷ ρ) e2  [by IH]
+  elaborate-correct ρ (let' e1 e2) =
+    trans (elaborate-correct (evalSurface ρ e1 ∷ ρ) e2)
+          (cong (λ v → eval (elaborate e2) (interpEnv ρ , v))
+                (elaborate-correct ρ e1))
 
   -- Case dispatch: routes to inl or inr case based on scrutinee value
   case-correct : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)

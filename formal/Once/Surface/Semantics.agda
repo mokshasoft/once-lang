@@ -9,7 +9,7 @@ module Once.Surface.Semantics where
 
 open import Once.Type
 open import Once.Semantics using (⟦_⟧; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let') renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -56,3 +56,5 @@ evalSurface ρ (case' s l r)  with evalSurface ρ s
 ... | inj₂ b                 = evalSurface (b ∷ ρ) r
 evalSurface ρ unit           = tt
 evalSurface ρ (absurd v)     = ⊥-elim (evalSurface ρ v)
+-- Let: evaluate e1, extend environment, evaluate e2
+evalSurface ρ (let' e1 e2)   = evalSurface (evalSurface ρ e1 ∷ ρ) e2
