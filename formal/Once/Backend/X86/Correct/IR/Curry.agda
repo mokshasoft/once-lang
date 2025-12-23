@@ -44,6 +44,30 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- CurryMemoryResult: Memory layout produced by curry
+------------------------------------------------------------------------
+
+-- | Record capturing the memory layout produced by curry
+-- This is what apply needs to look up the closure
+record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
+                         (prog : Program) (s-final : State)
+                         (x : ⟦ A ⟧) (offset : ℕ) : Set where
+  field
+    closure-addr : ℕ
+    code-ptr : ℕ
+    env-addr : ℕ
+    -- rax holds the closure address
+    rax-eq : readReg (regs s-final) rax ≡ closure-addr
+    -- Memory layout of the closure
+    mem-env : readMem (memory s-final) closure-addr ≡ just env-addr
+    mem-cp : readMem (memory s-final) (closure-addr +ℕ 8) ≡ just code-ptr
+    -- Semantic values
+    env-is-encoded : env-addr ≡ encode x
+    code-ptr-is-thunk : code-ptr ≡ offset +ℕ 6
+
+open CurryMemoryResult public
+
+------------------------------------------------------------------------
 -- Main curry proof
 ------------------------------------------------------------------------
 
@@ -54,7 +78,8 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
-  in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+  in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
+             × CurryMemoryResult f prog s' x (length prefix))
 run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
   s-final , record
     { ir-star = star-all
@@ -67,6 +92,15 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-mem = mem-final
     ; ir-stack-inv = stack-inv-final
     ; ir-rsp-bound = rsp>16-final
+    } , record
+    { closure-addr = new-rsp
+    ; code-ptr = thunk-offset
+    ; env-addr = encode x
+    ; rax-eq = rax-s7
+    ; mem-env = mem-at-new-rsp-final
+    ; mem-cp = mem-code-ptr-final
+    ; env-is-encoded = refl
+    ; code-ptr-is-thunk = refl
     }
   where
     len-f = compile-length f
@@ -460,6 +494,47 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     -- s5, s6, s7 don't modify memory
     mem-at-new-rsp-final : readMem (memory s-final) new-rsp ≡ just (encode x)
     mem-at-new-rsp-final = mem-at-new-rsp-s4
+
+    -- Thunk offset: the code-ptr stored in the closure
+    -- The thunk entry label is at index 6 within curry's compiled code
+    thunk-offset : ℕ
+    thunk-offset = length prefix +ℕ 6
+
+    -- effectiveAddr s2 (rip+disp 4) = pc s2 + 4 = (length prefix + 2) + 4 = length prefix + 6
+    r9-value : effectiveAddr s2 (rip+disp 4) ≡ thunk-offset
+    r9-value = begin
+      effectiveAddr s2 (rip+disp 4)
+        ≡⟨ refl ⟩  -- by definition of effectiveAddr for rip+disp
+      pc s2 +ℕ 4
+        ≡⟨ cong (_+ℕ 4) pc2 ⟩
+      (length prefix +ℕ 2) +ℕ 4
+        ≡⟨ +-assoc (length prefix) 2 4 ⟩
+      length prefix +ℕ 6
+        ≡⟨ refl ⟩
+      thunk-offset
+        ∎
+
+    -- r9 in s3 contains the thunk offset
+    r9-s3 : readReg (regs s3) r9 ≡ thunk-offset
+    r9-s3 = trans (readReg-writeReg-same (regs s2) r9 (effectiveAddr s2 (rip+disp 4))) r9-value
+
+    -- s4 writes r9 to [rsp+8], so memory at new-rsp+8 = thunk-offset
+    mem-code-ptr-s4 : readMem (memory s4) (new-rsp +ℕ 8) ≡ just thunk-offset
+    mem-code-ptr-s4 =
+      let rsp-eq : readReg (regs s3) rsp ≡ new-rsp
+          rsp-eq = rsp-s3
+          write-addr = readReg (regs s3) rsp +ℕ 8
+          write-addr-eq : write-addr ≡ new-rsp +ℕ 8
+          write-addr-eq = cong (_+ℕ 8) rsp-eq
+      in trans (subst (λ addr → readMem (writeMem (memory s3) write-addr (readReg (regs s3) r9)) addr ≡
+                                just (readReg (regs s3) r9))
+                      write-addr-eq
+                      (readMem-writeMem-same (memory s3) write-addr (readReg (regs s3) r9)))
+               (cong just r9-s3)
+
+    -- s5, s6, s7 don't modify memory, so code-ptr persists
+    mem-code-ptr-final : readMem (memory s-final) (new-rsp +ℕ 8) ≡ just thunk-offset
+    mem-code-ptr-final = mem-code-ptr-s4
 
     -- Use encode-closure-construct axiom
     encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)

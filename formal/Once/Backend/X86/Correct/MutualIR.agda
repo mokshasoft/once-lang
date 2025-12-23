@@ -73,7 +73,7 @@ open import Once.Backend.X86.Correct.IR.Pair
 open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module PairSetupResult; module PairMiddleResult; module PairFinalResult)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
-open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
+open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult)
 
 -- Import closure well-formedness infrastructure for whole-program proofs
 open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -1474,7 +1474,9 @@ mutual
     readReg (regs s) rsp > 16 →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-  run-curry-star-direct = run-curry-star
+  run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+    let (s' , ir-res , _) = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    in s' , ir-res
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
   -- prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1561,9 +1563,11 @@ mutual
       offset = length prefix
 
       -- Get the standard IRStarResult from existing curry proof
+      -- run-curry-star now returns (s', IRStarResult, CurryMemoryResult)
       ir-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
       s' = proj₁ ir-result
-      ir-res = proj₂ ir-result
+      ir-res = proj₁ (proj₂ ir-result)
+      -- mem-res = proj₂ (proj₂ ir-result)  -- CurryMemoryResult (available if needed)
 
       -- Thunk offset is offset + 6 (the code-ptr label in curry)
       thunk-offset = offset +ℕ 6
