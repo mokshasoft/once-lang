@@ -66,6 +66,7 @@
             libxml2
             cpio
             ubootTools  # for mkimage
+            protobuf    # protoc for nanopb
 
             # QEMU for simulation
             qemu
