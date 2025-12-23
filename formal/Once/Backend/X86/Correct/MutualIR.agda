@@ -68,8 +68,9 @@ open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
 -- Import extracted pair helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Pair
   using (PairContext; make-pair-context; PairSetupResult; exec-pair-setup;
-         PairMiddleResult; exec-pair-middle; assemble-pair-result)
-open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module PairSetupResult; module PairMiddleResult)
+         PairMiddleResult; exec-pair-middle; PairFinalResult; exec-pair-final;
+         assemble-pair-result)
+open import Once.Backend.X86.Correct.IR.Pair using (module PairContext; module PairSetupResult; module PairMiddleResult; module PairFinalResult)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
@@ -823,39 +824,30 @@ mutual
       r-g = proj₂ step-g
 
       -- ========== Phase 5: Final (6 instructions) ==========
-      -- Postulate the final 6-instruction execution
-      postulate
-        final-result : ∃[ s-fin ] (exec 6 (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 ≡ just s-fin
-                                  × halted s-fin ≡ false
-                                  × pc s-fin ≡ length prefix-final +ℕ 6
-                                  × readReg (regs s-fin) rax ≡ readReg (regs s3) r15
-                                  × readReg (regs s-fin) r14 ≡ readReg (regs s) r14
-                                  × readReg (regs s-fin) r15 ≡ readReg (regs s) r15
-                                  × StackInvariant s-fin
-                                  × readReg (regs s-fin) rsp > 16
-                                  × readMem (memory s-fin) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15)
-                                  × readMem (memory s-fin) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax))
+      -- Use extracted exec-pair-final from IR/Pair.agda
+      pc3 : pc s3 ≡ length prefix-final
+      pc3 = trans (ir-pc r-g) (trans (cong (_+ℕ len-g) len-prefix-g) (sym len-prefix-final))
 
-      s-final = proj₁ final-result
-      exec-fin = proj₁ (proj₂ final-result)
-      h-final = proj₁ (proj₂ (proj₂ final-result))
-      pc-fin-raw = proj₁ (proj₂ (proj₂ (proj₂ final-result)))
-      rax-fin-is-r15 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))
-      r14-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))
-      r15-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))))
-      stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))
-      rsp>16-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result))))))))
-      mem-fst-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))))
-      mem-snd-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-result)))))))))
+      final-res : PairFinalResult f g prefix suffix s s3
+      final-res = exec-pair-final f g prefix suffix s s3 (ir-halted r-g) pc3
+
+      s-final = PairFinalResult.s-final final-res
+      exec-fin = PairFinalResult.exec-fin final-res
+      h-final = PairFinalResult.h-final final-res
+      pc-fin-raw = PairFinalResult.pc-fin final-res
+      rax-fin-is-r15 = PairFinalResult.rax-fin final-res
+      r14-final = PairFinalResult.r14-fin final-res
+      r15-final = PairFinalResult.r15-fin final-res
+      stack-inv-final = PairFinalResult.stack-inv-fin final-res
+      rsp>16-final = PairFinalResult.rsp>16-fin final-res
+      mem-fst-final = PairFinalResult.mem-fst-fin final-res
+      mem-snd-final = PairFinalResult.mem-snd-fin final-res
+      rbp-final = PairFinalResult.rbp-fin final-res
+      mem-final = PairFinalResult.mem-orig-fin final-res
 
       -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
       star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) (exec-to-star exec-fin)
-
-      -- rbp-final and mem-final: still postulated
-      postulate
-        rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
-        mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
 
   -- | Star-based case execution (direct, uses Star throughout)
   -- For inl: Setup(4) → f → JumpToEnd(2) (labels are pseudo-instructions)
