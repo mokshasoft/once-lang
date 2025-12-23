@@ -1,0 +1,231 @@
+------------------------------------------------------------------------
+-- Once.Backend.X86.Correct.ClosureContext
+--
+-- Context for tracking closure well-formedness through proofs.
+--
+-- This enables elimination of apply-produces-result postulate by:
+-- 1. Curry adds closures to context with ClosureWellFormed proof
+-- 2. Apply looks up closure from context, uses run-apply-with-wf
+-- 3. Other operations preserve the context
+--
+-- ARCHITECTURE:
+--   The key insight is that apply needs ClosureWellFormed to proceed
+--   without the postulate, and curry produces ClosureWellFormed.
+--   We need to thread this information through compositions.
+--
+--   For a typical program like: apply ∘ ⟨ curry f , id ⟩
+--   1. curry f produces a closure with ClosureWellFormed
+--   2. pair stores the closure address
+--   3. apply needs to find the ClosureWellFormed for that closure
+--
+--   The ClosureContext tracks this connection.
+------------------------------------------------------------------------
+
+module Once.Backend.X86.Correct.ClosureContext where
+
+open import Once.Type
+open import Once.IR
+open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+
+open import Once.Backend.X86.Syntax
+open import Once.Backend.X86.Semantics
+open Once.Backend.X86.Semantics.State
+open import Once.Backend.X86.CodeGen
+
+open import Once.Postulates using (encode)
+open import Once.Backend.X86.Correct.Star
+  using (Star; refl*; step*; star-trans)
+open import Once.Backend.X86.Correct.StackInvariant
+  using (StackInvariant)
+open import Once.Backend.X86.Correct.ClosureWellFormed
+  using (ClosureWellFormed; ThunkResult;
+         code-ptr-valid; thunk-correct;
+         thunk-star; thunk-halted; thunk-rax;
+         thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
+
+open import Data.Bool using (Bool; true; false)
+open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (_≟_)
+open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ-syntax)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (yes; no)
+
+------------------------------------------------------------------------
+-- ClosureEntry: A single closure's well-formedness proof
+------------------------------------------------------------------------
+
+-- | An entry in the closure context
+-- Tracks a closure's runtime representation and its well-formedness proof
+record ClosureEntry (prog : Program) : Set₁ where
+  constructor make-entry
+  field
+    {A} : Type
+    {B} : Type
+    closure-addr : ℕ           -- Runtime address of closure (value of encode closure)
+    code-ptr     : ℕ           -- Runtime code pointer (thunk offset in program)
+    env-addr     : ℕ           -- Encoded environment value
+    semantics    : ⟦ A ⟧ → ⟦ B ⟧   -- Semantic function
+    wf           : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics
+
+open ClosureEntry public
+
+------------------------------------------------------------------------
+-- ClosureContext: Collection of closure well-formedness proofs
+------------------------------------------------------------------------
+
+-- | Context mapping closure addresses to well-formedness proofs
+-- Used to track closures produced by curry for use by apply
+ClosureContext : Program → Set₁
+ClosureContext prog = List (ClosureEntry prog)
+
+-- | Empty context (initial state)
+empty-ctx : ∀ {prog} → ClosureContext prog
+empty-ctx = []
+
+-- | Add a closure to the context
+add-closure : ∀ {prog} → ClosureEntry prog → ClosureContext prog → ClosureContext prog
+add-closure entry ctx = entry ∷ ctx
+
+------------------------------------------------------------------------
+-- Lookup: Find a closure's well-formedness proof by address
+------------------------------------------------------------------------
+
+-- | Lookup result
+data LookupResult {prog : Program} (addr : ℕ) : Set₁ where
+  found : ∀ {A B} (code-ptr env-addr : ℕ) (sem : ⟦ A ⟧ → ⟦ B ⟧)
+        → ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+        → LookupResult addr
+  not-found : LookupResult addr
+
+-- | Look up a closure by its address
+lookup-closure : ∀ {prog} (addr : ℕ) → ClosureContext prog → LookupResult {prog} addr
+lookup-closure addr [] = not-found
+lookup-closure addr (entry ∷ ctx) with addr ≟ closure-addr entry
+... | yes refl = found (code-ptr entry) (env-addr entry) (semantics entry) (wf entry)
+... | no _     = lookup-closure addr ctx
+
+------------------------------------------------------------------------
+-- Type-indexed closure WF tracking
+------------------------------------------------------------------------
+
+-- | ClosureWF indexed by type: captures WF proof only for closure types
+-- For non-closure types, this is just ⊤ (trivially satisfied)
+ClosureWFFor : Type → Program → Set
+ClosureWFFor (A ⇒ B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
+  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+ClosureWFFor (Eff A B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
+  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+ClosureWFFor _ prog = ⊤
+
+-- | For non-closure types, the WF is trivially satisfied
+trivial-closure-wf : ∀ {prog} → ClosureWFFor Unit prog
+trivial-closure-wf = tt
+
+------------------------------------------------------------------------
+-- ApplyInputWF: WF precondition for apply's input
+------------------------------------------------------------------------
+
+-- | WF precondition for apply's input: the closure component must have WF
+-- For apply : IR ((A ⇒ B) * C) B, we need WF for the closure
+ApplyInputWF : ∀ (A B : Type) → Program → Set
+ApplyInputWF A B prog =
+  ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
+  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+
+------------------------------------------------------------------------
+-- Key theorem: apply with WF input and memory layout
+------------------------------------------------------------------------
+
+-- | Memory layout precondition for apply
+-- Captures that the pair (closure, arg) is properly laid out in memory
+record ApplyMemoryLayout {A B : Type} (prog : Program) (s : State)
+                         (closure-addr code-ptr env-addr : ℕ) (arg : ⟦ A ⟧) : Set where
+  field
+    -- Pair layout: rdi points to (closure-addr, encode arg)
+    mem-fst : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr
+    mem-snd : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg)
+    -- Closure layout: closure-addr points to (env-addr, code-ptr)
+    mem-env : readMem (memory s) closure-addr ≡ just env-addr
+    mem-cp  : readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr
+
+open ApplyMemoryLayout public
+
+-- | This is the key theorem that replaces apply-produces-result
+-- When we have a ClosureWellFormed proof AND proper memory layout,
+-- we can prove apply correctness without the postulate.
+--
+-- The proof uses Apply.run-apply-with-wf internally.
+-- This function is the bridge between:
+-- - The modular proof (run-ir-star-at-offset) which doesn't track WF
+-- - The closure-aware proof (run-apply-with-wf) which needs WF
+--
+-- USAGE: When composing curry with apply:
+-- 1. run-curry-star-with-wf produces CurryResult with closure-wf
+-- 2. Track memory layout through composition (pair creates the layout)
+-- 3. Use run-apply-with-full-wf instead of apply-produces-result
+
+-- Import the proven run-apply-with-wf
+open import Once.Backend.X86.Correct.IR.Apply as ApplyProof
+  using (run-apply-with-wf)
+
+run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
+                         (code-ptr env-addr closure-addr : ℕ)
+                         (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+                         (arg : ⟦ A ⟧) (s : State) →
+  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      offset = length prefix
+  in
+  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg →
+  halted s ≡ false →
+  pc s ≡ offset →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  ∃[ s' ] (Star prog s s'
+          × halted s' ≡ false
+          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+          × readReg (regs s') rax ≡ encode {B} (semantics arg)
+          × StackInvariant s'
+          × readReg (regs s') rsp > 16)
+run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp>16 =
+  let (s' , star , h' , pc' , rax' , r14' , rbp' , stack' , rsp') =
+        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp>16
+          (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
+           mem-env mem-layout , mem-cp mem-layout)
+  in s' , star , h' , pc' , rax' , stack' , rsp'
+
+------------------------------------------------------------------------
+-- CurryOutputWF: What curry produces for threading to apply
+------------------------------------------------------------------------
+
+-- | When curry executes, it produces this WF info that can be used by apply
+-- This captures the connection between curry's output and apply's input
+record CurryOutputWF {A B C : Type} (f : IR (A * B) C)
+                     (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) : Set where
+  field
+    code-ptr : ℕ
+    env-addr : ℕ
+    code-ptr-eq : code-ptr ≡ offset +ℕ 6  -- Thunk is at offset+6
+    env-addr-eq : env-addr ≡ encode x      -- Env is encoded input
+    wf : ClosureWellFormed {B} {C} prog code-ptr env-addr (λ b → eval f (x , b))
+
+open CurryOutputWF public
+
+-- | Extract ApplyInputWF from CurryOutputWF
+-- This is the key conversion that enables threading
+curry-output-to-apply-input : ∀ {A B C} (f : IR (A * B) C)
+                              (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) →
+                              CurryOutputWF f prog offset x →
+                              ApplyInputWF B C prog
+curry-output-to-apply-input f prog offset x cow =
+  CurryOutputWF.code-ptr cow ,
+  CurryOutputWF.env-addr cow ,
+  (λ b → eval f (x , b)) ,
+  CurryOutputWF.wf cow
+
