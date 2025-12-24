@@ -141,8 +141,9 @@ executableModeTests = testGroup "executable mode"
 
       TIO.writeFile (dir ++ "/hi.once") hiOnce
 
+      -- Use --save-temps to keep the .c file for inspection
       (exitCode, _, stderr) <- runOnce
-        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
+        ["build", "--exe", "--save-temps", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
       case exitCode of
         ExitFailure _ -> do
@@ -162,6 +163,7 @@ executableModeTests = testGroup "executable mode"
 
       TIO.writeFile (dir ++ "/hi.once") hiOnce
 
+      -- --exe now produces executable directly, no need for separate gcc step
       (compilerCode, _, compilerErr) <- runOnce
         ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
@@ -170,17 +172,9 @@ executableModeTests = testGroup "executable mode"
           removeDirectoryRecursive dir
           assertFailure $ "once build failed: " ++ compilerErr
         ExitSuccess -> do
-          (compileCode, _, compileErr) <- readProcessWithExitCode "gcc"
-            ["-o", dir ++ "/hi", dir ++ "/hi.c"] ""
-
-          case compileCode of
-            ExitFailure _ -> do
-              removeDirectoryRecursive dir
-              assertFailure $ "gcc compile failed: " ++ compileErr
-            ExitSuccess -> do
-              (runCode, _, _) <- readProcessWithExitCode (dir ++ "/hi") [] ""
-              removeDirectoryRecursive dir
-              assertEqual "exit code is 0" ExitSuccess runCode
+          (runCode, _, _) <- readProcessWithExitCode (dir ++ "/hi") [] ""
+          removeDirectoryRecursive dir
+          assertEqual "exit code is 0" ExitSuccess runCode
 
   , testCase "interpretation provides primitives" $ do
       let dir = "/tmp/once_test_prim"
@@ -188,8 +182,9 @@ executableModeTests = testGroup "executable mode"
 
       TIO.writeFile (dir ++ "/hi.once") hiOnce
 
+      -- Use --save-temps to keep the .c file for inspection
       (exitCode, _, stderr) <- runOnce
-        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
+        ["build", "--exe", "--save-temps", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hi.once", "-o", dir ++ "/hi"]
 
       case exitCode of
         ExitFailure _ -> do
@@ -207,6 +202,7 @@ executableModeTests = testGroup "executable mode"
 
       TIO.writeFile (dir ++ "/hello.once") helloOnce
 
+      -- --exe now produces executable directly
       (compilerCode, _, compilerErr) <- runOnce
         ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
@@ -215,18 +211,10 @@ executableModeTests = testGroup "executable mode"
           removeDirectoryRecursive dir
           assertFailure $ "once build failed: " ++ compilerErr
         ExitSuccess -> do
-          (compileCode, _, compileErr) <- readProcessWithExitCode "gcc"
-            ["-o", dir ++ "/hello", dir ++ "/hello.c"] ""
-
-          case compileCode of
-            ExitFailure _ -> do
-              removeDirectoryRecursive dir
-              assertFailure $ "gcc compile failed: " ++ compileErr
-            ExitSuccess -> do
-              (runCode, stdout, _) <- readProcessWithExitCode (dir ++ "/hello") [] ""
-              removeDirectoryRecursive dir
-              assertEqual "exit code is 0" ExitSuccess runCode
-              assertEqual "output is Hello for Once" "Hello for Once\n" stdout
+          (runCode, stdout, _) <- readProcessWithExitCode (dir ++ "/hello") [] ""
+          removeDirectoryRecursive dir
+          assertEqual "exit code is 0" ExitSuccess runCode
+          assertEqual "output is Hello for Once" "Hello for Once\n" stdout
   ]
 
 -- | Tests for allocation strategies
@@ -243,6 +231,7 @@ allocationTests = testGroup "allocation"
               Just strat -> helloOnceWithAlloc strat
         TIO.writeFile (dir ++ "/hello.once") onceSource
 
+        -- --exe now produces executable directly
         let allocArg = maybe [] (\s -> ["--alloc", s]) allocFlag
         (compilerCode, _, compilerErr) <- runOnce $
           ["build", "--exe", "--interp", "../Strata/Interpretations/Linux"] ++ allocArg ++ [dir ++ "/hello.once", "-o", dir ++ "/hello"]
@@ -252,18 +241,11 @@ allocationTests = testGroup "allocation"
             cleanupDir dir
             return $ Left $ "Compiler failed for " ++ show allocFlag ++ ": " ++ compilerErr
           ExitSuccess -> do
-            (gccCode, _, gccErr) <- readProcessWithExitCode "gcc"
-              ["-o", dir ++ "/hello", dir ++ "/hello.c"] ""
-            case gccCode of
-              ExitFailure _ -> do
-                cleanupDir dir
-                return $ Left $ "GCC failed for " ++ show allocFlag ++ ": " ++ gccErr
-              ExitSuccess -> do
-                (runCode, stdout, runErr) <- readProcessWithExitCode (dir ++ "/hello") [] ""
-                cleanupDir dir
-                case runCode of
-                  ExitFailure _ -> return $ Left $ "Run failed for " ++ show allocFlag ++ ": " ++ runErr
-                  ExitSuccess -> return $ Right stdout
+            (runCode, stdout, runErr) <- readProcessWithExitCode (dir ++ "/hello") [] ""
+            cleanupDir dir
+            case runCode of
+              ExitFailure _ -> return $ Left $ "Run failed for " ++ show allocFlag ++ ": " ++ runErr
+              ExitSuccess -> return $ Right stdout
 
       case sequence results of
         Left err -> assertFailure err
@@ -280,8 +262,9 @@ allocationTests = testGroup "allocation"
 
       TIO.writeFile (dir ++ "/hello.once") (helloOnceWithAlloc "stack")
 
+      -- Use --save-temps to inspect the generated C code
       (compilerCode, _, compilerErr) <- runOnce
-        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", "--alloc", "heap", dir ++ "/hello.once", "-o", dir ++ "/hello"]
+        ["build", "--exe", "--save-temps", "--interp", "../Strata/Interpretations/Linux", "--alloc", "heap", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
       case compilerCode of
         ExitFailure _ -> do
@@ -298,16 +281,17 @@ allocationTests = testGroup "allocation"
 
       TIO.writeFile (dir ++ "/hello.once") helloOnceNoAlloc
 
+      -- Use --save-temps to inspect generated C code
       -- Generate with const
       (code1, _, _) <- runOnce
-        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", "--alloc", "const", dir ++ "/hello.once", "-o", dir ++ "/const"]
+        ["build", "--exe", "--save-temps", "--interp", "../Strata/Interpretations/Linux", "--alloc", "const", dir ++ "/hello.once", "-o", dir ++ "/const"]
       constCode <- case code1 of
         ExitSuccess -> TIO.readFile (dir ++ "/const.c")
         _ -> return ""
 
       -- Generate with stack
       (code2, _, _) <- runOnce
-        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", "--alloc", "stack", dir ++ "/hello.once", "-o", dir ++ "/stack"]
+        ["build", "--exe", "--save-temps", "--interp", "../Strata/Interpretations/Linux", "--alloc", "stack", dir ++ "/hello.once", "-o", dir ++ "/stack"]
       stackCode <- case code2 of
         ExitSuccess -> TIO.readFile (dir ++ "/stack.c")
         _ -> return ""
@@ -325,9 +309,9 @@ allocationTests = testGroup "allocation"
 
       TIO.writeFile (dir ++ "/hello.once") (helloOnceWithAlloc "heap")
 
-      -- Generate with heap
+      -- Use --save-temps to inspect generated C code
       (exitCode, _, _) <- runOnce
-        ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/heap"]
+        ["build", "--exe", "--save-temps", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/heap"]
 
       case exitCode of
         ExitFailure _ -> do
@@ -348,7 +332,7 @@ allocationTests = testGroup "allocation"
 
       TIO.writeFile (dir ++ "/hello.once") (helloOnceWithAlloc "heap")
 
-      -- Build
+      -- --exe now produces executable directly
       (compilerCode, _, compilerErr) <- runOnce
         ["build", "--exe", "--interp", "../Strata/Interpretations/Linux", dir ++ "/hello.once", "-o", dir ++ "/hello"]
 
@@ -357,18 +341,9 @@ allocationTests = testGroup "allocation"
           cleanupDir dir
           assertFailure $ "Compiler failed: " ++ compilerErr
         ExitSuccess -> do
-          -- Compile with gcc
-          (gccCode, _, gccErr) <- readProcessWithExitCode "gcc"
-            ["-o", dir ++ "/hello", dir ++ "/hello.c"] ""
-
-          case gccCode of
-            ExitFailure _ -> do
-              cleanupDir dir
-              assertFailure $ "GCC failed: " ++ gccErr
-            ExitSuccess -> do
-              -- Run
-              (runCode, stdout, _) <- readProcessWithExitCode (dir ++ "/hello") [] ""
-              cleanupDir dir
-              assertEqual "exit code" ExitSuccess runCode
-              assertEqual "output" "Hello for Once\n" stdout
+          -- Run directly (no gcc step needed)
+          (runCode, stdout, _) <- readProcessWithExitCode (dir ++ "/hello") [] ""
+          cleanupDir dir
+          assertEqual "exit code" ExitSuccess runCode
+          assertEqual "output" "Hello for Once\n" stdout
   ]

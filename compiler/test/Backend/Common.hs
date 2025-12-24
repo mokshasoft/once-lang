@@ -81,95 +81,98 @@ testPrograms =
   , ("multiFunction", multiFuncOnce, "Func1\nFunc2\n")
   ]
 
--- | Basic hello world
+-- | Basic hello world (using let binding for effect sequencing)
 helloOnce :: T.Text
 helloOnce = T.unlines
   [ "-- hello.once: Hello World for Once"
-  , "primitive puts : Eff (String Utf8) Unit"
+  , "primitive println : Eff (String Utf8) Unit"
+  , "primitive exit0 : Eff Unit Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"Hello for Once\""
+  , "main = let result = println \"Hello for Once\" in exit0"
   ]
 
 -- | Hello without allocation annotation (uses default)
 helloOnceNoAlloc :: T.Text
 helloOnceNoAlloc = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
+  , "primitive exit0 : Eff Unit Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"Hello for Once\""
+  , "main = let result = println \"Hello for Once\" in exit0"
   ]
 
 -- | Hello with explicit allocation strategy
 helloOnceWithAlloc :: String -> T.Text
 helloOnceWithAlloc strat = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
+  , "primitive exit0 : Eff Unit Unit"
   , ""
   , "main : IO Unit"
-  , "main @" <> T.pack strat <> " = compose puts \"Hello for Once\""
+  , "main @" <> T.pack strat <> " = let result = println \"Hello for Once\" in exit0"
   ]
 
 -- | Multiple string literals
 multiStringOnce :: T.Text
 multiStringOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "print3 : IO Unit"
-  , "print3 = compose puts \"Third\""
+  , "print3 = compose println \"Third\""
   , ""
   , "print2 : IO Unit"
-  , "print2 = compose puts \"Second\" . print3"
+  , "print2 = compose println \"Second\" . print3"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"First\" . print2"
+  , "main = compose println \"First\" . print2"
   ]
 
 -- | Empty string (edge case)
 emptyStringOnce :: T.Text
 emptyStringOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"\""
+  , "main = compose println \"\""
   ]
 
 -- | Unicode characters
 unicodeOnce :: T.Text
 unicodeOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"Hello 世 World\""
+  , "main = compose println \"Hello 世 World\""
   ]
 
 -- | Long string (100 x's)
 longStringOnce :: T.Text
 longStringOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"" <> T.replicate 100 "x" <> "\""
+  , "main = compose println \"" <> T.replicate 100 "x" <> "\""
   ]
 
 -- | Escaped characters
 escapedOnce :: T.Text
 escapedOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"Tab:\\tNewline:\\nQuote:\\\"\""
+  , "main = compose println \"Tab:\\tNewline:\\nQuote:\\\"\""
   ]
 
 -- | Nested function calls with strings
 nestedOnce :: T.Text
 nestedOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "inner : IO Unit"
-  , "inner = compose puts \"Inner\""
+  , "inner = compose println \"Inner\""
   , ""
   , "outer : IO Unit"
-  , "outer = compose puts \"Outer\""
+  , "outer = compose println \"Outer\""
   , ""
   , "main : IO Unit"
   , "main = inner . outer"
@@ -178,13 +181,13 @@ nestedOnce = T.unlines
 -- | Multiple functions each with their own string
 multiFuncOnce :: T.Text
 multiFuncOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "func1 : IO Unit"
-  , "func1 = compose puts \"Func1\""
+  , "func1 = compose println \"Func1\""
   , ""
   , "func2 : IO Unit"
-  , "func2 = compose puts \"Func2\""
+  , "func2 = compose println \"Func2\""
   , ""
   , "main : IO Unit"
   , "main = func1 . func2"
@@ -194,19 +197,19 @@ multiFuncOnce = T.unlines
 -- Note: This is a placeholder - actual conditional would need Bool type
 conditionalOnce :: T.Text
 conditionalOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"Branch A\""
+  , "main = compose println \"Branch A\""
   ]
 
 -- | String in product type (placeholder)
 productOnce :: T.Text
 productOnce = T.unlines
-  [ "primitive puts : Eff (String Utf8) Unit"
+  [ "primitive println : Eff (String Utf8) Unit"
   , ""
   , "main : IO Unit"
-  , "main = compose puts \"Left Right\""
+  , "main = compose println \"Left Right\""
   ]
 
 -- | Simple exit program

@@ -65,13 +65,25 @@ generateSource name ty ir = T.unlines
   ]
 
 -- | Generate type definitions needed for a type
+-- These definitions match the interpretation files exactly to avoid conflicts
 typeDefinitions :: Type -> Text
-typeDefinitions ty = T.unlines $ catMaybes
-  [ if needsPair ty then Just "typedef struct { void* fst; void* snd; } OncePair;" else Nothing
-  , if needsSum ty then Just "typedef struct { int tag; void* value; } OnceSum;" else Nothing
-  , if needsBuffer ty then Just "typedef struct { const char* data; size_t len; } OnceBuffer;" else Nothing
-  , if needsString ty then Just "typedef OnceBuffer OnceString;  /* Encoding erased at runtime */" else Nothing
-  ]
+typeDefinitions ty =
+  let typeDefs = catMaybes
+        [ if needsString ty || needsBuffer ty then Just "typedef struct { const char* data; size_t len; } OnceString;" else Nothing
+        , if needsBuffer ty then Just "typedef struct { void* data; size_t len; } OnceBuffer;" else Nothing
+        , if needsPair ty then Just "typedef struct { void* fst; void* snd; } OncePair;" else Nothing
+        , if needsSum ty then Just "typedef struct { int tag; void* value; } OnceSum;" else Nothing
+        ]
+  in if null typeDefs
+     then ""
+     else T.unlines $
+       [ "#include <stddef.h>"
+       , ""
+       , "#ifndef ONCE_TYPES_DEFINED"
+       , "#define ONCE_TYPES_DEFINED"
+       ] ++ typeDefs ++
+       [ "#endif"
+       ]
   where
     needsPair :: Type -> Bool
     needsPair t = case t of

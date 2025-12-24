@@ -904,12 +904,17 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     -- Collect all types from functions and primitives
     allTypes = map (\(_, t, _, _) -> t) functions ++ map snd primitives
 
-    -- Generate type definitions based on what's needed
-    typeDefinitions = T.unlines $ concat
-      [ if any needsPair allTypes then ["typedef struct { void* fst; void* snd; } OncePair;"] else []
-      , if any needsSum allTypes then ["typedef struct { int tag; void* value; } OnceSum;"] else []
-      , if any needsBuffer allTypes then ["typedef struct { const char* data; size_t len; } OnceBuffer;"] else []
-      , if any needsString allTypes then ["typedef OnceBuffer OnceString;"] else []
+    -- Always emit all type definitions with include guard to avoid conflicts with interpretation files
+    typeDefinitions = T.unlines
+      [ "#include <stddef.h>"
+      , ""
+      , "#ifndef ONCE_TYPES_DEFINED"
+      , "#define ONCE_TYPES_DEFINED"
+      , "typedef struct { const char* data; size_t len; } OnceString;"
+      , "typedef struct { void* data; size_t len; } OnceBuffer;"
+      , "typedef struct { void* fst; void* snd; } OncePair;"
+      , "typedef struct { int tag; void* value; } OnceSum;"
+      , "#endif"
       ]
 
     needsPair :: Type -> Bool
