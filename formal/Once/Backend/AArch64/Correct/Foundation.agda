@@ -12,7 +12,7 @@ module Once.Backend.AArch64.Correct.Foundation where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics
+open import Once.Semantics using (⟦_⟧; eval; Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity; module ⟦Fix⟧) public
 open ⟦Fix⟧
 
 open import Once.Backend.AArch64.Syntax
@@ -54,19 +54,17 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 --   Sum:     [tag (8 bytes), value (8 bytes)] where tag=0 for inl, tag=1 for inr
 --   Closure: [env (8 bytes), code_ptr (8 bytes)]
 
-postulate
-  -- | Encode semantic values as machine words
-  encode : ∀ {A} → ⟦ A ⟧ → Word
+-- Note: encode, encode-unit, encode-fix-wrap, encode-fix-unwrap, encode-arr-identity
+-- are now imported from Once.Semantics (they are proven, not postulated!)
 
+postulate
   -- | Memory containing encoded values (for projection/case analysis)
   -- Used in ValidInputState to ensure memory has proper encoding
   encodedMemory : Memory
 
-  -- | Unit encoding
-  encode-unit : encode {Unit} tt ≡ 0
-
   -- | Pair encoding (fst at offset 0, snd at offset 8)
   -- Takes memory parameter for use with arbitrary state memory
+  -- These are memory model axioms - they describe how encoded values are laid out
   encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
     readMem m (encode (a , b)) ≡ just (encode a)
 
@@ -87,19 +85,6 @@ postulate
   encode-inr-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
     readMem m (encode {A + B} (inj₂ b) +ℕ 8) ≡ just (encode b)
 
-  -- | Fix type encoding (identity wrapper at runtime)
-  -- Wrapping doesn't change the encoding
-  encode-fix-wrap : ∀ {F} (x : ⟦ F ⟧) →
-    encode {F} x ≡ encode {Fix F} (wrap x)
-
-  -- Unwrapping doesn't change the encoding
-  encode-fix-unwrap : ∀ {F} (x : ⟦ Fix F ⟧) →
-    encode {Fix F} x ≡ encode {F} (unwrap x)
-
-  -- | Effect type encoding (identity at runtime, per D032)
-  encode-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧) →
-    encode {A ⇒ B} f ≡ encode {Eff A B} f
-
   -- | Pair construction: given properly laid out memory, derive encoding
   encode-pair-construct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
@@ -119,12 +104,12 @@ postulate
     p ≡ encode {A + B} (inj₂ b)
 
   -- | Closure encoding
-  -- If memory at p contains encode a, then p encodes the closure λ b → eval f (a , b)
+  -- If memory at p contains encode a, then p encodes the closure (eval (curry f) a)
   -- This matches Once.Postulates and is the key axiom for curry correctness
   encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
-    p ≡ encode {B ⇒ C} (λ b → eval f (a , b))
+    p ≡ encode {B ⇒ C} (eval (curry f) a)
 
 ------------------------------------------------------------------------
 -- Register/Memory Lemmas (Step 1)
