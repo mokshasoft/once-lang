@@ -27,7 +27,8 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-trans)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
+         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -139,6 +140,9 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
   ; ir-s1 = s1-final
   ; ir-ra = ra-final
   ; ir-sp = sp-final
+  ; ir-mem-sp = mem-sp-final
+  ; ir-mem-sp+8 = mem-sp+8-final
+  ; ir-mem-sp+16 = mem-sp+16-final
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -196,6 +200,38 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     sp-final : readReg (regs sg) sp ≡ readReg (regs s) sp
     sp-final = trans sp-g sp-f
 
+    -- Memory preservation at sp: chain through f and g
+    -- f preserves memory at s.sp, g preserves memory at sf.sp = s.sp
+    mem-sp-f : readMem (memory sf) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
+    mem-sp-f = ir-mem-sp r1
+
+    -- g preserves memory at sf.sp, and sf.sp = s.sp
+    mem-sp-g : readMem (memory sg) (readReg (regs sf) sp) ≡ readMem (memory sf) (readReg (regs sf) sp)
+    mem-sp-g = ir-mem-sp r2
+
+    mem-sp-final : readMem (memory sg) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
+    mem-sp-final = trans (subst (λ a → readMem (memory sg) a ≡ readMem (memory sf) a) sp-f mem-sp-g) mem-sp-f
+
+    -- Memory preservation at sp+8
+    mem-sp+8-f : readMem (memory sf) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
+    mem-sp+8-f = ir-mem-sp+8 r1
+
+    mem-sp+8-g : readMem (memory sg) (readReg (regs sf) sp +ℕ 8) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 8)
+    mem-sp+8-g = ir-mem-sp+8 r2
+
+    mem-sp+8-final : readMem (memory sg) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
+    mem-sp+8-final = trans (subst (λ a → readMem (memory sg) (a +ℕ 8) ≡ readMem (memory sf) (a +ℕ 8)) sp-f mem-sp+8-g) mem-sp+8-f
+
+    -- Memory preservation at sp+16
+    mem-sp+16-f : readMem (memory sf) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
+    mem-sp+16-f = ir-mem-sp+16 r1
+
+    mem-sp+16-g : readMem (memory sg) (readReg (regs sf) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 16)
+    mem-sp+16-g = ir-mem-sp+16 r2
+
+    mem-sp+16-final : readMem (memory sg) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
+    mem-sp+16-final = trans (subst (λ a → readMem (memory sg) (a +ℕ 16) ≡ readMem (memory sf) (a +ℕ 16)) sp-f mem-sp+16-g) mem-sp+16-f
+
 ------------------------------------------------------------------------
 -- Helper for getting f's result in the right program
 ------------------------------------------------------------------------
@@ -216,6 +252,9 @@ transform-f-result {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-s1 = ir-s1 r
   ; ir-ra = ir-ra r
   ; ir-sp = ir-sp r
+  ; ir-mem-sp = ir-mem-sp r
+  ; ir-mem-sp+8 = ir-mem-sp+8 r
+  ; ir-mem-sp+16 = ir-mem-sp+16 r
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -237,6 +276,9 @@ transform-g-result {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-s1 = ir-s1 r
   ; ir-ra = ir-ra r
   ; ir-sp = ir-sp r
+  ; ir-mem-sp = ir-mem-sp r
+  ; ir-mem-sp+8 = ir-mem-sp+8 r
+  ; ir-mem-sp+16 = ir-mem-sp+16 r
   }
   where
     ctx = make-compose-context f g prefix suffix

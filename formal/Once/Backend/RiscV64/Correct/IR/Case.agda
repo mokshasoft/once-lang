@@ -42,7 +42,8 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-trans; star-single)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
+         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16)
 
 open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_) renaming (_+_ to _+ℕ_)
@@ -257,9 +258,10 @@ case-dispatch-left-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × readReg (regs s') t0 ≡ 0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp)
+          × readReg (regs s') sp ≡ readReg (regs s) sp
+          × memory s' ≡ memory s)
 case-dispatch-left-star {A} {B} {C} f g prefix suffix a s h-false pc-eq a0-eq =
-  st3 , star-all , h3 , pc3 , a0-st3 , t0-st3 , s1-st3 , ra-st3 , sp-st3
+  st3 , star-all , h3 , pc3 , a0-st3 , t0-st3 , s1-st3 , ra-st3 , sp-st3 , refl
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -424,9 +426,10 @@ case-dispatch-right-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × readReg (regs s') a0 ≡ encode b
           × readReg (regs s') s1 ≡ readReg (regs s) s1
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp)
+          × readReg (regs s') sp ≡ readReg (regs s) sp
+          × memory s' ≡ memory s)
 case-dispatch-right-star {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-eq =
-  st4 , star-all , h4 , pc4 , a0-st4 , s1-st4 , ra-st4 , sp-st4
+  st4 , star-all , h4 , pc4 , a0-st4 , s1-st4 , ra-st4 , sp-st4 , refl
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -724,9 +727,10 @@ case-left-jump-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × readReg (regs s') a0 ≡ readReg (regs s) a0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp)
+          × readReg (regs s') sp ≡ readReg (regs s) sp
+          × memory s' ≡ memory s)
 case-left-jump-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , ra-st2 , sp-st2
+  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , ra-st2 , sp-st2 , refl
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -976,9 +980,10 @@ case-right-end-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × readReg (regs s') a0 ≡ readReg (regs s) a0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp)
+          × readReg (regs s') sp ≡ readReg (regs s) sp
+          × memory s' ≡ memory s)
 case-right-end-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
-  st1 , star-single h-false step0 , h1 , pc1 , a0-st1 , s1-st1 , ra-st1 , sp-st1
+  st1 , star-single h-false step0 , h1 , pc1 , a0-st1 , s1-st1 , ra-st1 , sp-st1 , refl
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx

@@ -63,6 +63,11 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
     ir-s1      : readReg (regs s') s1 ≡ readReg (regs s) s1  -- s1 preserved
     ir-ra      : readReg (regs s') ra ≡ readReg (regs s) ra  -- ra preserved
     ir-sp      : readReg (regs s') sp ≡ readReg (regs s) sp  -- sp preserved (callee-saved)
+    -- Memory preservation at caller's frame (for pair/case composition)
+    -- These track that memory at the ORIGINAL sp locations is preserved
+    ir-mem-sp    : readMem (memory s') (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
+    ir-mem-sp+8  : readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
+    ir-mem-sp+16 : readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
 
 open IRStarResult public
 
@@ -102,6 +107,9 @@ run-id-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = refl
   ; ir-ra     = refl
   ; ir-sp     = refl
+  ; ir-mem-sp    = refl  -- no memory write
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -131,6 +139,9 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = refl
   ; ir-ra     = refl
   ; ir-sp     = readReg-writeReg-a0-sp (regs s) 0
+  ; ir-mem-sp    = refl  -- no memory write
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ li a0 (+ 0) ∷ suffix
@@ -161,6 +172,9 @@ run-fold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = refl
   ; ir-ra     = refl
   ; ir-sp     = refl
+  ; ir-mem-sp    = refl  -- no memory write
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -190,6 +204,9 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = refl
   ; ir-ra     = refl
   ; ir-sp     = refl
+  ; ir-mem-sp    = refl  -- no memory write
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -219,6 +236,9 @@ run-arr-star {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = refl
   ; ir-ra     = refl
   ; ir-sp     = refl
+  ; ir-mem-sp    = refl  -- no memory write
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -248,6 +268,9 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₁ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₁ x))
   ; ir-sp     = readReg-writeReg-a0-sp (regs s) (encode (proj₁ x))
+  ; ir-mem-sp    = refl  -- no memory write (only read)
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ ld a0 (+ 0) a0 ∷ suffix
@@ -298,6 +321,9 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₂ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₂ x))
   ; ir-sp     = readReg-writeReg-a0-sp (regs s) (encode (proj₂ x))
+  ; ir-mem-sp    = refl  -- no memory write (only read)
+  ; ir-mem-sp+8  = refl
+  ; ir-mem-sp+16 = refl
   }
   where
     prog = prefix ++ ld a0 (+ 8) a0 ∷ suffix
