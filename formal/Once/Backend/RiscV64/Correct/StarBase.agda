@@ -62,7 +62,11 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
     ir-a0      : readReg (regs s') a0 ≡ encode (eval ir x) -- Output in a0
     ir-s1      : readReg (regs s') s1 ≡ readReg (regs s) s1  -- s1 preserved
     ir-ra      : readReg (regs s') ra ≡ readReg (regs s) ra  -- ra preserved
-    ir-sp      : readReg (regs s') sp ≡ readReg (regs s) sp  -- sp preserved (callee-saved)
+    -- SP tracking: Most ops preserve sp (delta=0), but inl/inr/pair allocate stack.
+    -- ir-sp-delta tracks how many bytes were allocated (0, 16, or 24).
+    -- ir-sp proves: sp' + delta = orig-sp (i.e., sp decreased by delta).
+    ir-sp-delta : ℕ  -- Stack bytes allocated (0 for most, 16 for inl/inr, 24 for pair)
+    ir-sp      : readReg (regs s') sp +ℕ ir-sp-delta ≡ readReg (regs s) sp
     -- Memory preservation at caller's frame (for pair/case composition)
     -- These track that memory at the ORIGINAL sp locations is preserved
     -- +24 is needed for pair (allocates 24 bytes, needs orig-sp preserved through IH)
@@ -108,7 +112,8 @@ run-id-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = a0-eq  -- a0 unchanged, eval id x = x
   ; ir-s1     = refl
   ; ir-ra     = refl
-  ; ir-sp     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp     = +-identityʳ _
   ; ir-mem-sp    = refl  -- no memory write
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
@@ -141,7 +146,8 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans (readReg-writeReg-same (regs s) a0 0 (λ ())) (sym encode-unit)
   ; ir-s1     = refl
   ; ir-ra     = refl
-  ; ir-sp     = readReg-writeReg-a0-sp (regs s) 0
+  ; ir-sp-delta = 0
+  ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) 0)
   ; ir-mem-sp    = refl  -- no memory write
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
@@ -175,7 +181,8 @@ run-fold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans a0-eq (encode-fix-wrap x)
   ; ir-s1     = refl
   ; ir-ra     = refl
-  ; ir-sp     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp     = +-identityʳ _
   ; ir-mem-sp    = refl  -- no memory write
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
@@ -208,7 +215,8 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans a0-eq (encode-fix-unwrap x)
   ; ir-s1     = refl
   ; ir-ra     = refl
-  ; ir-sp     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp     = +-identityʳ _
   ; ir-mem-sp    = refl  -- no memory write
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
@@ -241,7 +249,8 @@ run-arr-star {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans a0-eq (encode-arr-identity f)  -- encode {A ⇒ B} f ≡ encode {Eff A B} f
   ; ir-s1     = refl
   ; ir-ra     = refl
-  ; ir-sp     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp     = +-identityʳ _
   ; ir-mem-sp    = refl  -- no memory write
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
@@ -274,7 +283,8 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode (proj₁ x)) (λ ())
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₁ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₁ x))
-  ; ir-sp     = readReg-writeReg-a0-sp (regs s) (encode (proj₁ x))
+  ; ir-sp-delta = 0
+  ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₁ x)))
   ; ir-mem-sp    = refl  -- no memory write (only read)
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
@@ -328,7 +338,8 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode (proj₂ x)) (λ ())
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₂ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₂ x))
-  ; ir-sp     = readReg-writeReg-a0-sp (regs s) (encode (proj₂ x))
+  ; ir-sp-delta = 0
+  ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₂ x)))
   ; ir-mem-sp    = refl  -- no memory write (only read)
   ; ir-mem-sp+8  = refl
   ; ir-mem-sp+16 = refl
