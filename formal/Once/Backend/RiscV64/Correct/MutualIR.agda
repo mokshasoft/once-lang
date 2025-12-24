@@ -68,8 +68,8 @@ open import Once.Backend.RiscV64.Correct.IR.Curry using (run-curry-star)
 open import Once.Backend.RiscV64.Correct.IR.ThunkSetup using (thunk-setup-star-proven)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -288,6 +288,7 @@ mutual
   thunk-setup-star = thunk-setup-star-proven
 
   -- Prove ret instruction tracing
+  -- RISC-V ret is simple: it just sets pc = ra and modifies nothing else
   thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -301,24 +302,43 @@ mutual
             × pc s' ≡ ret-addr
             × readReg (regs s') a0 ≡ readReg (regs s) a0
             × readReg (regs s') s1 ≡ readReg (regs s) s1)
-  -- Postulated for now - requires ret instruction semantics
   thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s h-false pc-eq ra-eq =
-    postulate-thunk-ret f prefix suffix ret-addr s h-false pc-eq ra-eq
+    s' , star-all , h' , pc' , a0' , s1'
     where
+      prog = prefix ++ compile-riscv (curry f) ++ suffix
+      offset = length prefix
+      ret-offset = offset +ℕ 12 +ℕ compile-length f
+
+      -- The ret instruction is at ret-offset in curry
+      -- curry layout: [7 closure setup] [5 thunk setup] [compile-riscv f] [ret] [label end]
+      -- ret is at position 12 + len(f) within curry
       postulate
-        postulate-thunk-ret : ∀ {A B C} (f : IR (A * B) C)
-          (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
-          let prog = prefix ++ compile-riscv (curry f) ++ suffix
-              ret-offset = length prefix +ℕ 12 +ℕ compile-length f
-          in
-          halted s ≡ false →
-          pc s ≡ ret-offset →
-          readReg (regs s) ra ≡ ret-addr →
-          ∃[ s' ] (Star prog s s'
-                  × halted s' ≡ false
-                  × pc s' ≡ ret-addr
-                  × readReg (regs s') a0 ≡ readReg (regs s) a0
-                  × readReg (regs s') s1 ≡ readReg (regs s) s1)
+        fetch-ret : fetch prog ret-offset ≡ just ret
+
+      -- State after ret: pc = ra, everything else unchanged
+      s' : State
+      s' = record s { pc = readReg (regs s) ra }
+
+      -- Step execution using ret semantics
+      step-ret : step prog s ≡ just s'
+      step-ret = trans (step-exec prog s ret h-false (subst (λ p → fetch prog p ≡ just ret) (sym pc-eq) fetch-ret))
+                       (execRet prog s)
+
+      star-all : Star prog s s'
+      star-all = ⟨ h-false , step-ret ⟩◅ refl*
+
+      h' : halted s' ≡ false
+      h' = h-false
+
+      pc' : pc s' ≡ ret-addr
+      pc' = ra-eq
+
+      -- Register preservation (ret doesn't modify any registers, just pc)
+      a0' : readReg (regs s') a0 ≡ readReg (regs s) a0
+      a0' = refl
+
+      s1' : readReg (regs s') s1 ≡ readReg (regs s) s1
+      s1' = refl
 
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: setup tracing → IH on f → ret tracing
@@ -437,10 +457,58 @@ mutual
     where
       offset = length prefix
       prog = prefix ++ compile-riscv (curry f) ++ suffix
+      curry-code = compile-riscv (curry f)
 
       -- code-ptr = offset + 7 < length prog
-      postulate
-        code-ptr-valid-proof : offset +ℕ 7 < length prog
+      -- Proof: length prog = length prefix + length curry-code + length suffix
+      --        length curry-code = 14 + compile-length f ≥ 14
+      --        So offset + 7 < offset + 14 ≤ length prog
+      code-ptr-valid-proof : offset +ℕ 7 < length prog
+      code-ptr-valid-proof = proof
+        where
+          open import Data.Nat.Properties using (<-≤-trans; +-monoʳ-<)
+
+          -- 7 < 14 = 8 ≤ 14
+          seven-lt-fourteen : 7 < 14
+          seven-lt-fourteen = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+
+          -- length curry-code = 14 + compile-length f
+          len-curry : length curry-code ≡ 14 +ℕ compile-length f
+          len-curry = compile-length-correct (curry f)
+
+          -- 14 ≤ 14 + compile-length f
+          fourteen-le-curry : 14 ≤ 14 +ℕ compile-length f
+          fourteen-le-curry = m≤m+n 14 (compile-length f)
+
+          -- 7 < 14 ≤ 14 + compile-length f = length curry-code
+          seven-lt-curry : 7 < length curry-code
+          seven-lt-curry = subst (7 <_) (sym len-curry)
+                            (<-≤-trans seven-lt-fourteen fourteen-le-curry)
+
+          -- length prog = length prefix + length (curry-code ++ suffix)
+          len-prog-eq : length prog ≡ length prefix +ℕ length (curry-code ++ suffix)
+          len-prog-eq = List-length-++ prefix
+
+          -- length (curry-code ++ suffix) = length curry-code + length suffix
+          len-curry-suffix : length (curry-code ++ suffix) ≡ length curry-code +ℕ length suffix
+          len-curry-suffix = List-length-++ curry-code
+
+          -- length curry-code ≤ length curry-code + length suffix = length (curry-code ++ suffix)
+          curry-le-curry-suffix : length curry-code ≤ length (curry-code ++ suffix)
+          curry-le-curry-suffix = subst (length curry-code ≤_) (sym len-curry-suffix)
+                                        (m≤m+n (length curry-code) (length suffix))
+
+          -- 7 < length curry-code ≤ length (curry-code ++ suffix)
+          seven-lt-curry-suffix : 7 < length (curry-code ++ suffix)
+          seven-lt-curry-suffix = <-≤-trans seven-lt-curry curry-le-curry-suffix
+
+          -- Use +-monoʳ-< : i < j → n + i < n + j
+          step1 : offset +ℕ 7 < offset +ℕ length (curry-code ++ suffix)
+          step1 = +-monoʳ-< offset seven-lt-curry-suffix
+
+          -- offset + length (curry-code ++ suffix) = length prog
+          proof : offset +ℕ 7 < length prog
+          proof = subst (offset +ℕ 7 <_) (sym len-prog-eq) step1
 
 ------------------------------------------------------------------------
 -- Top-level entry point
