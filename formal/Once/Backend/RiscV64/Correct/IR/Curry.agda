@@ -75,6 +75,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     ; ir-mem-sp = mem-sp-final
     ; ir-mem-sp+8 = mem-sp+8-final
     ; ir-mem-sp+16 = mem-sp+16-final
+    ; ir-mem-sp+24 = mem-sp+24-final
     }
   where
     len-f = compile-length f
@@ -609,3 +610,4 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
       mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
       mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
       mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
+      mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)

@@ -28,7 +28,7 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
-         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16)
+         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -143,6 +143,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
   ; ir-mem-sp = mem-sp-final
   ; ir-mem-sp+8 = mem-sp+8-final
   ; ir-mem-sp+16 = mem-sp+16-final
+  ; ir-mem-sp+24 = mem-sp+24-final
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -232,6 +233,16 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     mem-sp+16-final : readMem (memory sg) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
     mem-sp+16-final = trans (subst (λ a → readMem (memory sg) (a +ℕ 16) ≡ readMem (memory sf) (a +ℕ 16)) sp-f mem-sp+16-g) mem-sp+16-f
 
+    -- Memory preservation at sp+24
+    mem-sp+24-f : readMem (memory sf) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+    mem-sp+24-f = ir-mem-sp+24 r1
+
+    mem-sp+24-g : readMem (memory sg) (readReg (regs sf) sp +ℕ 24) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 24)
+    mem-sp+24-g = ir-mem-sp+24 r2
+
+    mem-sp+24-final : readMem (memory sg) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+    mem-sp+24-final = trans (subst (λ a → readMem (memory sg) (a +ℕ 24) ≡ readMem (memory sf) (a +ℕ 24)) sp-f mem-sp+24-g) mem-sp+24-f
+
 ------------------------------------------------------------------------
 -- Helper for getting f's result in the right program
 ------------------------------------------------------------------------
@@ -255,6 +266,7 @@ transform-f-result {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-mem-sp = ir-mem-sp r
   ; ir-mem-sp+8 = ir-mem-sp+8 r
   ; ir-mem-sp+16 = ir-mem-sp+16 r
+  ; ir-mem-sp+24 = ir-mem-sp+24 r
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -279,6 +291,7 @@ transform-g-result {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-mem-sp = ir-mem-sp r
   ; ir-mem-sp+8 = ir-mem-sp+8 r
   ; ir-mem-sp+16 = ir-mem-sp+16 r
+  ; ir-mem-sp+24 = ir-mem-sp+24 r
   }
   where
     ctx = make-compose-context f g prefix suffix

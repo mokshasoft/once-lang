@@ -42,7 +42,7 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
-         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16;
+         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
 
@@ -121,6 +121,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ; ir-mem-sp = mem-sp-final
     ; ir-mem-sp+8 = mem-sp+8-final
     ; ir-mem-sp+16 = mem-sp+16-final
+    ; ir-mem-sp+24 = mem-sp+24-final
     }
   where
     prog : Program
@@ -289,6 +290,8 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
       new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
       new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
       new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
+      new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
+      new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
 
     -- Actual write addresses (as used in state definitions)
     write-addr-st2 : ℕ
@@ -362,6 +365,25 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     mem-sp+16-final : readMem (memory st4) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
     mem-sp+16-final = mem-sp+16-st3
 
+    -- Memory at orig-sp + 24 preserved
+    mem-sp+24-st1 : readMem (memory st1) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st1 = refl
+
+    mem-sp+24-st2 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st2 = trans (readMem-writeMem-diff (memory st1) write-addr-st2 (orig-sp +ℕ 24)
+                            (readReg (regs st1) zero)
+                            (λ eq → new-sp≢orig-sp+24 (trans (sym write-addr-st2-eq) eq)))
+                          mem-sp+24-st1
+
+    mem-sp+24-st3 : readMem (memory st3) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 24)
+                            (readReg (regs st2) a0)
+                            (λ eq → new-sp+8≢orig-sp+24 (trans (sym write-addr-st3-eq) eq)))
+                          mem-sp+24-st2
+
+    mem-sp+24-final : readMem (memory st4) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-final = mem-sp+24-st3
+
     -- Memory properties for encode-inl-construct
     mem-tag : readMem (memory st4) new-sp ≡ just 0
     mem-tag = begin
@@ -412,6 +434,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ; ir-mem-sp = mem-sp-final
     ; ir-mem-sp+8 = mem-sp+8-final
     ; ir-mem-sp+16 = mem-sp+16-final
+    ; ir-mem-sp+24 = mem-sp+24-final
     }
   where
     prog : Program
@@ -623,6 +646,8 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
       new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
       new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
       new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
+      new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
+      new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
 
     -- Actual write addresses (as used in state definitions)
     -- st3: sd t0 0(sp) writes tag at sp + 0
@@ -706,6 +731,28 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
 
     mem-sp+16-final : readMem (memory st5) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
     mem-sp+16-final = mem-sp+16-st4
+
+    -- Memory at orig-sp + 24 preserved
+    mem-sp+24-st1 : readMem (memory st1) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st1 = refl
+
+    mem-sp+24-st2 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st2 = refl
+
+    mem-sp+24-st3 : readMem (memory st3) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 24)
+                            (readReg (regs st2) t0)
+                            (λ eq → new-sp≢orig-sp+24 (trans (sym write-addr-st3-eq) eq)))
+                          mem-sp+24-st2
+
+    mem-sp+24-st4 : readMem (memory st4) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-st4 = trans (readMem-writeMem-diff (memory st3) write-addr-st4 (orig-sp +ℕ 24)
+                            (readReg (regs st3) a0)
+                            (λ eq → new-sp+8≢orig-sp+24 (trans (sym write-addr-st4-eq) eq)))
+                          mem-sp+24-st3
+
+    mem-sp+24-final : readMem (memory st5) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-sp+24-final = mem-sp+24-st4
 
     -- Memory properties for encode-inr-construct
     mem-tag : readMem (memory st5) new-sp ≡ just 1
@@ -881,6 +928,7 @@ mutual
       ; ir-mem-sp = mem-sp-final
       ; ir-mem-sp+8 = mem-sp+8-final
       ; ir-mem-sp+16 = mem-sp+16-final
+      ; ir-mem-sp+24 = mem-sp+24-final
       }
     where
       ctx = make-pair-context f g prefix suffix
@@ -1125,6 +1173,7 @@ mutual
         mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
         mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
         mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
+        mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
 
   -- Case helper - proven using dispatch helpers and IH
   run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C)
@@ -1148,6 +1197,7 @@ mutual
       ; ir-mem-sp = mem-sp-final
       ; ir-mem-sp+8 = mem-sp+8-final
       ; ir-mem-sp+16 = mem-sp+16-final
+      ; ir-mem-sp+24 = mem-sp+24-final
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -1295,6 +1345,21 @@ mutual
         readMem (memory s) (readReg (regs s) sp +ℕ 16)
           ∎
 
+      mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+      mem-sp+24-final = begin
+        readMem (memory s-final) (readReg (regs s) sp +ℕ 24)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-jump ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s) sp +ℕ 24)
+          ≡⟨ cong (λ a → readMem (memory s-after-f-raw) (a +ℕ 24)) (sym sp-dispatch) ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s-dispatch) sp +ℕ 24)
+          ≡⟨ ir-mem-sp+24 r-f ⟩
+        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 24)
+          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 24)) sp-dispatch ⟩
+        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 24)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-dispatch ⟩
+        readMem (memory s) (readReg (regs s) sp +ℕ 24)
+          ∎
+
   -- Right path implementation (inj₂ b)
   run-case-star {A} {B} {C} f g prefix suffix (inj₂ b) s h-false pc-eq a0-eq =
     s-final , record
@@ -1308,6 +1373,7 @@ mutual
       ; ir-mem-sp = mem-sp-final
       ; ir-mem-sp+8 = mem-sp+8-final
       ; ir-mem-sp+16 = mem-sp+16-final
+      ; ir-mem-sp+24 = mem-sp+24-final
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -1450,6 +1516,21 @@ mutual
         readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 16)
           ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 16)) mem-dispatch ⟩
         readMem (memory s) (readReg (regs s) sp +ℕ 16)
+          ∎
+
+      mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+      mem-sp+24-final = begin
+        readMem (memory s-final) (readReg (regs s) sp +ℕ 24)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-end ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s) sp +ℕ 24)
+          ≡⟨ cong (λ a → readMem (memory s-after-g-raw) (a +ℕ 24)) (sym sp-dispatch) ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s-dispatch) sp +ℕ 24)
+          ≡⟨ ir-mem-sp+24 r-g ⟩
+        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 24)
+          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 24)) sp-dispatch ⟩
+        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 24)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-dispatch ⟩
+        readMem (memory s) (readReg (regs s) sp +ℕ 24)
           ∎
 
   ------------------------------------------------------------------------
