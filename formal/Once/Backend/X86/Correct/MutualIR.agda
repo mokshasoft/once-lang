@@ -150,7 +150,10 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-    open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans)
+
+    -- RbpInvariant is postulated here; can be threaded through as parameter later
+    postulate rbp-inv : RbpInvariant s
 
     -- The program
     prog : Program
@@ -392,11 +395,74 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
     mem-preserved = mem-s3'
 
-    -- Memory at rbp preserved (stack writes are below rbp)
-    -- POSTULATE: To prove, need rbp ≢ new-rsp and rbp ≢ new-rsp+8 (stack below frame pointer)
-    postulate
-      mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-      mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    -- Memory at rbp preserved (uses RbpInvariant)
+    orig-rbp : Word
+    orig-rbp = readReg (regs s) rbp
+
+    rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
+    rbp-diffs = rbp-addr-diff-from-invariant s rbp-inv rsp>16
+
+    rbp-diff-1 : new-rsp ≢ orig-rbp
+    rbp-diff-1 = proj₁ rbp-diffs
+
+    rbp-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp
+    rbp-diff-2 = proj₂ rbp-diffs
+
+    mem-rbp-s2 : readMem (memory s2) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-rbp-s2 = readMem-writeMem-diff (memory s1) new-rsp orig-rbp 0 rbp-diff-1
+
+    mem-rbp-s3 : readMem (memory s3) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-rbp-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-rbp orig-rdi rbp-diff-2) mem-rbp-s2
+
+    mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp-preserved = mem-rbp-s3
+
+    -- Memory at rbp+8 preserved
+    orig-rbp+8 : Word
+    orig-rbp+8 = orig-rbp +ℕ 8
+
+    -- Derive disjointness for rbp+8 from new-rsp < rbp
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp =
+      let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
+          new-rsp<rsp = ∸-preserves-< ≤-refl rsp>16 (s≤s z≤n)
+      in ≤-trans new-rsp<rsp rsp≤rbp'
+
+    new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
+    new-rsp+8<rbp =
+      let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
+          new-rsp+8<rsp = ∸+<-lemma rsp>16
+      in ≤-trans new-rsp+8<rsp rsp≤rbp'
+
+    -- new-rsp < rbp < rbp+8
+    rbp<rbp+8 : orig-rbp < orig-rbp+8
+    rbp<rbp+8 = n<n+8 orig-rbp
+      where
+        n<n+8 : ∀ n → n < n +ℕ 8
+        n<n+8 zero = s≤s z≤n
+        n<n+8 (suc n) = s≤s (n<n+8 n)
+
+    new-rsp<rbp+8 : new-rsp < orig-rbp+8
+    new-rsp<rbp+8 = <-trans new-rsp<rbp rbp<rbp+8
+
+    rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
+    rbp+8-diff-1 = <⇒≢ new-rsp<rbp+8
+
+    -- new-rsp+8 < rbp < rbp+8
+    new-rsp+8<rbp+8 : (new-rsp +ℕ 8) < orig-rbp+8
+    new-rsp+8<rbp+8 = <-trans new-rsp+8<rbp rbp<rbp+8
+
+    rbp+8-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp+8
+    rbp+8-diff-2 = <⇒≢ new-rsp+8<rbp+8
+
+    mem-rbp+8-s2 : readMem (memory s2) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-rbp+8-s2 = readMem-writeMem-diff (memory s1) new-rsp orig-rbp+8 0 rbp+8-diff-1
+
+    mem-rbp+8-s3 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-rbp+8-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-rbp+8 orig-rdi rbp+8-diff-2) mem-rbp+8-s2
+
+    mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-preserved = mem-rbp+8-s3
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
@@ -443,7 +509,10 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-    open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans)
+
+    -- RbpInvariant is postulated here; can be threaded through as parameter later
+    postulate rbp-inv : RbpInvariant s
 
     -- The program
     prog : Program
@@ -681,11 +750,74 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
     mem-preserved = mem-s3'
 
-    -- Memory at rbp preserved (stack writes are below rbp)
-    -- POSTULATE: To prove, need rbp ≢ new-rsp and rbp ≢ new-rsp+8 (stack below frame pointer)
-    postulate
-      mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-      mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    -- Memory at rbp preserved (uses RbpInvariant)
+    orig-rbp : Word
+    orig-rbp = readReg (regs s) rbp
+
+    rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
+    rbp-diffs = rbp-addr-diff-from-invariant s rbp-inv rsp>16
+
+    rbp-diff-1 : new-rsp ≢ orig-rbp
+    rbp-diff-1 = proj₁ rbp-diffs
+
+    rbp-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp
+    rbp-diff-2 = proj₂ rbp-diffs
+
+    mem-rbp-s2 : readMem (memory s2) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-rbp-s2 = readMem-writeMem-diff (memory s1) new-rsp orig-rbp 1 rbp-diff-1
+
+    mem-rbp-s3 : readMem (memory s3) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-rbp-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-rbp orig-rdi rbp-diff-2) mem-rbp-s2
+
+    mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp-preserved = mem-rbp-s3
+
+    -- Memory at rbp+8 preserved
+    orig-rbp+8 : Word
+    orig-rbp+8 = orig-rbp +ℕ 8
+
+    -- Derive disjointness for rbp+8 from new-rsp < rbp
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp =
+      let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
+          new-rsp<rsp = ∸-preserves-< ≤-refl rsp>16 (s≤s z≤n)
+      in ≤-trans new-rsp<rsp rsp≤rbp'
+
+    new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
+    new-rsp+8<rbp =
+      let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
+          new-rsp+8<rsp = ∸+<-lemma rsp>16
+      in ≤-trans new-rsp+8<rsp rsp≤rbp'
+
+    -- new-rsp < rbp < rbp+8
+    rbp<rbp+8 : orig-rbp < orig-rbp+8
+    rbp<rbp+8 = n<n+8 orig-rbp
+      where
+        n<n+8 : ∀ n → n < n +ℕ 8
+        n<n+8 zero = s≤s z≤n
+        n<n+8 (suc n) = s≤s (n<n+8 n)
+
+    new-rsp<rbp+8 : new-rsp < orig-rbp+8
+    new-rsp<rbp+8 = <-trans new-rsp<rbp rbp<rbp+8
+
+    rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
+    rbp+8-diff-1 = <⇒≢ new-rsp<rbp+8
+
+    -- new-rsp+8 < rbp < rbp+8
+    new-rsp+8<rbp+8 : (new-rsp +ℕ 8) < orig-rbp+8
+    new-rsp+8<rbp+8 = <-trans new-rsp+8<rbp rbp<rbp+8
+
+    rbp+8-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp+8
+    rbp+8-diff-2 = <⇒≢ new-rsp+8<rbp+8
+
+    mem-rbp+8-s2 : readMem (memory s2) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-rbp+8-s2 = readMem-writeMem-diff (memory s1) new-rsp orig-rbp+8 1 rbp+8-diff-1
+
+    mem-rbp+8-s3 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-rbp+8-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-rbp+8 orig-rdi rbp+8-diff-2) mem-rbp+8-s2
+
+    mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-preserved = mem-rbp+8-s3
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15

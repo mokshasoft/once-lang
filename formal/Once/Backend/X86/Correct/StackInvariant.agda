@@ -103,6 +103,63 @@ k+8<k+16 (suc k) = s≤s (k+8<k+16 k)
     16≤m = <⇒≤ m>16
 
 ------------------------------------------------------------------------
+-- RBP Invariant
+------------------------------------------------------------------------
+--
+-- The frame pointer invariant: rsp ≤ rbp
+-- This captures that the current stack pointer is at or below the frame pointer.
+-- In the standard calling convention:
+--   - At function entry, rbp is set to rsp (after push rbp)
+--   - The stack grows downward (rsp decreases)
+--   - So rsp ≤ rbp holds throughout the function
+--
+-- This invariant enables proving that stack writes (at addresses below rsp)
+-- don't overlap with rbp (which is at or above the original rsp).
+
+-- | RBP invariant: rsp ≤ rbp (stack pointer at or below frame pointer)
+record RbpInvariant (s : State) : Set where
+  field
+    rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
+
+open RbpInvariant public
+
+-- | Derive address disjointness from RbpInvariant
+-- If rsp ≤ rbp and rsp > 16, then (rsp - 16) < rsp ≤ rbp, so (rsp - 16) ≢ rbp
+rbp-addr-diff-from-invariant : ∀ (s : State) → RbpInvariant s →
+  readReg (regs s) rsp > 16 →
+  let new-rsp = readReg (regs s) rsp ∸ 16
+      orig-rbp = readReg (regs s) rbp
+  in (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
+rbp-addr-diff-from-invariant s rbp-inv rsp>16 = diff-1 , diff-2
+  where
+    rsp-val = readReg (regs s) rsp
+    rbp-val = readReg (regs s) rbp
+    new-rsp = rsp-val ∸ 16
+
+    rsp≤rbp' : rsp-val ≤ rbp-val
+    rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
+
+    -- new-rsp = rsp - 16 < rsp ≤ rbp, so new-rsp < rbp, hence new-rsp ≢ rbp
+    new-rsp<rsp : new-rsp < rsp-val
+    new-rsp<rsp = ∸-preserves-< ≤-refl rsp>16 (s≤s z≤n)
+
+    new-rsp<rbp : new-rsp < rbp-val
+    new-rsp<rbp = ≤-trans new-rsp<rsp rsp≤rbp'
+
+    diff-1 : new-rsp ≢ rbp-val
+    diff-1 = <⇒≢ new-rsp<rbp
+
+    -- new-rsp + 8 = rsp - 8 < rsp ≤ rbp (when rsp > 16 > 8)
+    new-rsp+8<rsp : (new-rsp +ℕ 8) < rsp-val
+    new-rsp+8<rsp = ∸+<-lemma rsp>16
+
+    new-rsp+8<rbp : (new-rsp +ℕ 8) < rbp-val
+    new-rsp+8<rbp = ≤-trans new-rsp+8<rsp rsp≤rbp'
+
+    diff-2 : (new-rsp +ℕ 8) ≢ rbp-val
+    diff-2 = <⇒≢ new-rsp+8<rbp
+
+------------------------------------------------------------------------
 -- Address disjointness derivation
 ------------------------------------------------------------------------
 
