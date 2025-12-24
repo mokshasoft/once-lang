@@ -57,7 +57,7 @@ compile-length inr = 5             -- addi sp + li + sd + sd + mv
 compile-length [ f , g ] = (6 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1        -- li a0, 0
 compile-length initial = 1         -- ebreak
-compile-length (curry f) = 14 +ℕ compile-length f  -- auipc + addi instead of li
+compile-length (curry f) = 19 +ℕ compile-length f  -- includes frame pointer save/restore
 compile-length apply = 7
 compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
@@ -193,9 +193,10 @@ compile-riscv initial = ebreak ∷ []
 --   3. Executes compile-riscv f
 --
 -- Jump offsets are PC-relative, computed based on compiled code length.
+-- The thunk uses s2 as frame pointer for proper stack cleanup.
 compile-riscv (curry {A} {B} {C} f) =
   let len-f = compile-length f
-      -- Layout (with PC-relative code-ptr via auipc+addi):
+      -- Layout (with PC-relative code-ptr via auipc+addi and frame pointer):
       --   0: addi sp, sp, -16
       --   1: sd a0, 0(sp)          -- store env
       --   2: auipc t0, 0           -- t0 = pc (current instruction index = 2)
@@ -204,23 +205,28 @@ compile-riscv (curry {A} {B} {C} f) =
       --   5: mv a0, sp             -- return closure
       --   6: j +offset             -- jump over thunk (PC-relative)
       --   7: label code-ptr        -- thunk entry
-      --   8: addi sp, sp, -16
-      --   9: sd s0, 0(sp)          -- store env (a)
-      --   10: sd a0, 8(sp)         -- store arg (b)
-      --   11: mv a0, sp            -- a0 = pointer to pair
-      --   12 to 11+|f|: compile-riscv f
-      --   12+|f|: ret
-      --   13+|f|: label end
+      --   8: addi sp, sp, -24      -- allocate: 8 saved-s2 + 16 pair
+      --   9: sd s2, 16(sp)         -- save frame pointer register
+      --   10: mv s2, sp            -- set frame pointer
+      --   11: sd s0, 0(sp)         -- store env (a) at pair.fst
+      --   12: sd a0, 8(sp)         -- store arg (b) at pair.snd
+      --   13: mv a0, sp            -- a0 = pointer to pair
+      --   14 to 13+|f|: compile-riscv f
+      --   14+|f|: mv sp, s2        -- restore sp to frame (cleans up f allocations)
+      --   15+|f|: ld s2, 16(sp)    -- restore s2
+      --   16+|f|: addi sp, sp, 24  -- deallocate
+      --   17+|f|: ret
+      --   18+|f|: label end
       --
-      -- PC-relative offset for j at pos 6 → end at pos 13+|f|:
-      --   offset = (13+|f|) - 6 = 7+|f|
+      -- PC-relative offset for j at pos 6 → end at pos 18+|f|:
+      --   offset = (18+|f|) - 6 = 12+|f|
       --
       -- KEY FIX: code-ptr is now computed at runtime via auipc+addi,
       -- so it correctly points to the thunk even in composed programs
       -- like `apply ∘ ⟨curry f, id⟩`.
-      code-ptr = 7        -- thunk starts at position 7
-      auipc-to-thunk = 5  -- offset from auipc (pos 2) to thunk (pos 7)
-      end-offset = + (7 +ℕ len-f)
+      code-ptr = 7         -- thunk starts at position 7
+      auipc-to-thunk = 5   -- offset from auipc (pos 2) to thunk (pos 7)
+      end-offset = + (12 +ℕ len-f)
   in
   -- Allocate closure on stack
   addi sp sp neg16 ∷
@@ -237,20 +243,30 @@ compile-riscv (curry {A} {B} {C} f) =
   j end-offset ∷
   -- Thunk code: called via apply with b in a0, env in s0
   label code-ptr ∷
-  -- Allocate pair (a, b) on stack
-  addi sp sp neg16 ∷
-  -- Store a (from s0) at [sp]
+  -- Allocate stack frame (24 bytes: 8 for saved-s2, 16 for pair)
+  addi sp sp neg24 ∷
+  -- Save s2 (will use as frame pointer)
+  sd s2 (+ 16) sp ∷
+  -- Set frame pointer
+  mv s2 sp ∷
+  -- Store a (from s0) at pair.fst [sp]
   sd s0 (+ 0) sp ∷
-  -- Store b (from a0) at [sp+8]
+  -- Store b (from a0) at pair.snd [sp+8]
   sd a0 (+ 8) sp ∷
   -- Set a0 = pointer to pair
   mv a0 sp ∷
   -- Execute f on the pair
   compile-riscv f ++
+  -- Restore sp to frame (cleans up any allocations by f)
+  mv sp s2 ∷
+  -- Restore s2
+  ld s2 (+ 16) sp ∷
+  -- Deallocate stack frame
+  addi sp sp (+ 24) ∷
   -- Return (a0 already has result)
   ret ∷
   -- End of thunk
-  label (13 +ℕ len-f) ∷ []
+  label (18 +ℕ len-f) ∷ []
 
 -- Apply: call closure
 -- Input is pair (closure, argument)

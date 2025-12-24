@@ -167,38 +167,46 @@ compile-length-correct ([ f , g ]) =
     (6 +ℕ len-f) +ℕ len-g
   ∎
 
--- Curry: [addi, sd, auipc, addi, sd, mv, j, label, addi, sd, sd, mv] ++ f ++ [ret, label]
--- Length = 12 + len-f + 2 = 14 + len-f
+-- Curry: [addi, sd, auipc, addi, sd, mv, j, label, addi, sd, mv, sd, sd, mv] ++ f ++ [mv, ld, addi, ret, label]
+-- Length = 14 + len-f + 5 = 19 + len-f
 -- Note: auipc+addi replaces li for PC-relative code-ptr computation
+-- Thunk now uses s2 as frame pointer for proper stack cleanup
 compile-length-correct (curry f) =
   let len-f = compile-length f
       ih-f = compile-length-correct f
-      -- Helper: x + 2 = suc (suc x)
-      plus-2 : ∀ x → x +ℕ 2 ≡ suc (suc x)
-      plus-2 x = begin
-          x +ℕ 2
-        ≡⟨ +-suc x 1 ⟩
-          suc (x +ℕ 1)
-        ≡⟨ cong suc (+-suc x 0) ⟩
-          suc (suc (x +ℕ 0))
-        ≡⟨ cong (λ n → suc (suc n)) (+-identityʳ x) ⟩
-          suc (suc x)
+      -- Helper: x + 5 = suc (suc (suc (suc (suc x))))
+      plus-5 : ∀ x → x +ℕ 5 ≡ suc (suc (suc (suc (suc x))))
+      plus-5 x = begin
+          x +ℕ 5
+        ≡⟨ +-suc x 4 ⟩
+          suc (x +ℕ 4)
+        ≡⟨ cong suc (+-suc x 3) ⟩
+          suc (suc (x +ℕ 3))
+        ≡⟨ cong (suc ∘′ suc) (+-suc x 2) ⟩
+          suc (suc (suc (x +ℕ 2)))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc) (+-suc x 1) ⟩
+          suc (suc (suc (suc (x +ℕ 1))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc) (+-suc x 0) ⟩
+          suc (suc (suc (suc (suc (x +ℕ 0)))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (+-identityʳ x) ⟩
+          suc (suc (suc (suc (suc x))))
         ∎
   in begin
     length (compile-riscv (curry f))
   ≡⟨ refl ⟩
-    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
-      (length (compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ [])))))))))))))
-  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))
+    -- 14 fixed instructions before f
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
+      (length (compile-riscv f ++ mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ label (18 +ℕ len-f) ∷ [])))))))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))
           (length-++ (compile-riscv f) _) ⟩
-    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
-      (length (compile-riscv f) +ℕ 2))))))))))))
-  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (n +ℕ 2)))))))))))))
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
+      (length (compile-riscv f) +ℕ 5))))))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (n +ℕ 5)))))))))))))))
           ih-f ⟩
-    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ 2))))))))))))
-  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))
-          (plus-2 len-f) ⟩
-    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc len-f)))))))))))))
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ 5))))))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))
+          (plus-5 len-f) ⟩
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc len-f))))))))))))))))))
   ≡⟨ refl ⟩
-    14 +ℕ len-f
+    19 +ℕ len-f
   ∎
