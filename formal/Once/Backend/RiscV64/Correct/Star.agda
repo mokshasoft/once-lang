@@ -316,6 +316,13 @@ star-length : ∀ {prog s s'} → Star prog s s' → ℕ
 star-length refl* = 0
 star-length (step* _ _ rest) = suc (star-length rest)
 
+-- | Star-length is additive under star-trans
+star-length-trans : ∀ {prog s₁ s₂ s₃}
+                    (p₁ : Star prog s₁ s₂) (p₂ : Star prog s₂ s₃) →
+                    star-length (star-trans p₁ p₂) ≡ star-length p₁ +ℕ star-length p₂
+star-length-trans refl* p₂ = refl
+star-length-trans (step* h step-eq rest) p₂ = cong suc (star-length-trans rest p₂)
+
 -- | Helper: if exec succeeds on a halted state, it returns that state
 exec-on-halted : ∀ {n prog s s'} →
                  halted s ≡ true →
