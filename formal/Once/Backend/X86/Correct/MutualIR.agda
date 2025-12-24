@@ -1633,13 +1633,53 @@ mutual
       f-offset = offset +ℕ 11
 
       -- The 5 thunk setup instructions (at positions 6-10 within curry)
-      i0 = label (offset +ℕ 6)  -- label at thunk entry
+      -- These match the compile-x86 curry definition exactly
+      i0 = label 6  -- label at thunk entry (code-ptr-label = 6)
       i1 = sub (reg rsp) (imm 16)  -- allocate pair
       i2 = mov (mem (base rsp)) (reg r12)  -- store env
       i3 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
       i4 = mov (reg rdi) (reg rsp)  -- rdi = pair address
 
-      -- Fetch lemmas (postulated for program structure)
+      -- Program structure for fetch proofs:
+      -- prog = prefix ++ compile-x86 (curry f) ++ suffix
+      --      = prefix ++ (curry-closure-setup ++ curry-thunk-setup ++ compile-x86 f ++ curry-tail) ++ suffix
+      -- where curry-closure-setup has 6 instructions and curry-thunk-setup starts with label 6
+      --
+      -- For fetch at thunk-offset = offset + 6:
+      -- We need to show the program up to thunk-offset has length = offset + 6
+      -- Then fetch-at-prefix-end gives us the instruction
+
+      len-f = compile-length f
+      end-offset-curry = 6 +ℕ len-f
+
+      -- curry-closure-setup: first 6 instructions of curry (positions 0-5)
+      curry-closure-setup : Program
+      curry-closure-setup =
+        sub (reg rsp) (imm 16) ∷
+        mov (mem (base rsp)) (reg rdi) ∷
+        lea r9 (rip+disp 4) ∷
+        mov (mem (base+disp rsp 8)) (reg r9) ∷
+        mov (reg rax) (reg rsp) ∷
+        jmp end-offset-curry ∷ []
+
+      -- The prefix up to thunk-offset
+      prefix-thunk : Program
+      prefix-thunk = prefix ++ curry-closure-setup
+
+      -- Thunk code after label
+      thunk-after-label : Program
+      thunk-after-label = i1 ∷ i2 ∷ i3 ∷ i4 ∷ compile-x86 f ++ ret ∷ label (12 +ℕ len-f) ∷ []
+
+      -- suffix for first fetch
+      rest0 : Program
+      rest0 = thunk-after-label ++ suffix
+
+      -- Program structure lemma (postulated - provable by expanding compile-x86 curry)
+      postulate
+        prog-is-prefix-thunk : prog ≡ prefix-thunk ++ i0 ∷ rest0
+
+      -- Fetch lemmas (postulated for now - provable using program structure lemmas)
+      -- These are mechanical and can be proven later
       postulate
         fetch0 : fetch prog thunk-offset ≡ just i0
         fetch1 : fetch prog (thunk-offset +ℕ 1) ≡ just i1
