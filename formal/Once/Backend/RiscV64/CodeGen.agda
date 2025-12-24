@@ -34,6 +34,11 @@ open import Data.List using (List; []; _∷_; _++_; length)
 neg16 : ℤ
 neg16 = -[1+ 15 ]  -- Represents -16
 
+-- | Negative offset for stack allocation (24 bytes = 3 words)
+-- Used by pair to save s1 in addition to pair data
+neg24 : ℤ
+neg24 = -[1+ 23 ]  -- Represents -24
+
 ------------------------------------------------------------------------
 -- Compile length calculation
 ------------------------------------------------------------------------
@@ -46,7 +51,7 @@ compile-length id = 1              -- nop (a0 already has the value)
 compile-length (g ∘ f) = compile-length f +ℕ compile-length g  -- no mov needed!
 compile-length fst = 1             -- ld a0, 0(a0)
 compile-length snd = 1             -- ld a0, 8(a0)
-compile-length ⟨ f , g ⟩ = (6 +ℕ compile-length f) +ℕ compile-length g
+compile-length ⟨ f , g ⟩ = (8 +ℕ compile-length f) +ℕ compile-length g  -- 8 = alloc + save-s1 + 2×sd + 2×mv + restore-s1 + mv
 compile-length inl = 4             -- addi sp + sd + sd + mv
 compile-length inr = 5             -- addi sp + li + sd + sd + mv
 compile-length [ f , g ] = (6 +ℕ compile-length f) +ℕ compile-length g
@@ -93,11 +98,14 @@ compile-riscv fst = ld a0 (+ 0) a0 ∷ []
 compile-riscv snd = ld a0 (+ 8) a0 ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
--- Stack layout: [fst (8 bytes), snd (8 bytes)]
+-- Stack layout: [fst (8 bytes), snd (8 bytes), saved-s1 (8 bytes)]
+-- We save s1 because we use it as scratch, but it's callee-saved
 compile-riscv ⟨ f , g ⟩ =
-  -- Allocate 16 bytes on stack
-  addi sp sp neg16 ∷
-  -- Save input in s1 (callee-saved)
+  -- Allocate 24 bytes on stack (16 for pair + 8 for s1)
+  addi sp sp neg24 ∷
+  -- Save original s1 (callee-saved register)
+  sd s1 (+ 16) sp ∷
+  -- Save input in s1 (now we can use it as scratch)
   mv s1 a0 ∷
   -- Compute f (input in a0, output in a0)
   compile-riscv f ++
@@ -109,8 +117,10 @@ compile-riscv ⟨ f , g ⟩ =
   compile-riscv g ++
   -- Store result at [sp + 8]
   sd a0 (+ 8) sp ∷
-  -- Return pointer to pair
-  mv a0 sp ∷ []
+  -- Return pointer to pair (sp points to pair data)
+  mv a0 sp ∷
+  -- Restore original s1
+  ld s1 (+ 16) sp ∷ []
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]

@@ -17,6 +17,7 @@ open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; +-identityʳ)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_; length)
+open import Function using () renaming (_∘_ to _∘′_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -56,59 +57,62 @@ compile-length-correct (g ∘ f) =
   trans (length-++ (compile-riscv f) (compile-riscv g))
         (cong₂ _+ℕ_ (compile-length-correct f) (compile-length-correct g))
 
--- Pair: [addi, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv]
--- Length = 2 + len-f + 2 + len-g + 2 = 6 + len-f + len-g
+-- Pair: [addi, sd, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv, ld]
+-- Length = 3 + len-f + 2 + len-g + 3 = 8 + len-f + len-g
+-- Note: We now save/restore s1 to preserve it as a callee-saved register
 compile-length-correct ⟨ f , g ⟩ =
   let len-f = compile-length f
       len-g = compile-length g
       ih-f = compile-length-correct f
       ih-g = compile-length-correct g
-      -- Arithmetic lemma: 2 + (len-f + (2 + (len-g + 2))) = (6 + len-f) + len-g
-      -- Helper: x + 2 = suc (suc x)
-      plus-2 : ∀ x → x +ℕ 2 ≡ suc (suc x)
-      plus-2 x = begin
-          x +ℕ 2
-        ≡⟨ +-suc x 1 ⟩
-          suc (x +ℕ 1)
-        ≡⟨ cong suc (+-suc x 0) ⟩
-          suc (suc (x +ℕ 0))
-        ≡⟨ cong (λ n → suc (suc n)) (+-identityʳ x) ⟩
-          suc (suc x)
+      -- Helper: x + 3 = suc (suc (suc x))
+      plus-3 : ∀ x → x +ℕ 3 ≡ suc (suc (suc x))
+      plus-3 x = begin
+          x +ℕ 3
+        ≡⟨ +-suc x 2 ⟩
+          suc (x +ℕ 2)
+        ≡⟨ cong suc (+-suc x 1) ⟩
+          suc (suc (x +ℕ 1))
+        ≡⟨ cong (suc ∘′ suc) (+-suc x 0) ⟩
+          suc (suc (suc (x +ℕ 0)))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc) (+-identityʳ x) ⟩
+          suc (suc (suc x))
         ∎
-      arith : suc (suc (len-f +ℕ suc (suc (len-g +ℕ 2)))) ≡ (6 +ℕ len-f) +ℕ len-g
+      -- Arithmetic: 3 + (len-f + (2 + (len-g + 3))) = (8 + len-f) + len-g
+      arith : suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 3))))) ≡ (8 +ℕ len-f) +ℕ len-g
       arith = begin
-          suc (suc (len-f +ℕ suc (suc (len-g +ℕ 2))))
-        ≡⟨ cong (λ n → suc (suc n)) (+-suc len-f (suc (len-g +ℕ 2))) ⟩
-          suc (suc (suc (len-f +ℕ suc (len-g +ℕ 2))))
-        ≡⟨ cong (λ n → suc (suc (suc n))) (+-suc len-f (len-g +ℕ 2)) ⟩
-          suc (suc (suc (suc (len-f +ℕ (len-g +ℕ 2)))))
-        ≡⟨ cong (λ n → suc (suc (suc (suc n)))) (sym (+-assoc len-f len-g 2)) ⟩
-          suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 2))))
-        ≡⟨ cong (λ n → suc (suc (suc (suc n)))) (plus-2 (len-f +ℕ len-g)) ⟩
-          suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))
-        ≡⟨ refl ⟩  -- (6 + len-f) + len-g = suc^6 (len-f + len-g) definitionally
-          (6 +ℕ len-f) +ℕ len-g
+          suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 3)))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc) (+-suc len-f (suc (len-g +ℕ 3))) ⟩
+          suc (suc (suc (suc (len-f +ℕ suc (len-g +ℕ 3)))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc) (+-suc len-f (len-g +ℕ 3)) ⟩
+          suc (suc (suc (suc (suc (len-f +ℕ (len-g +ℕ 3))))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (sym (+-assoc len-f len-g 3)) ⟩
+          suc (suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 3)))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (plus-3 (len-f +ℕ len-g)) ⟩
+          suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))))
+        ≡⟨ refl ⟩  -- (8 + len-f) + len-g = suc^8 (len-f + len-g) definitionally
+          (8 +ℕ len-f) +ℕ len-g
         ∎
   in begin
-    length (addi sp sp neg16 ∷ mv s1 a0 ∷ compile-riscv f ++
+    length (addi sp sp neg24 ∷ sd s1 (+ 16) sp ∷ mv s1 a0 ∷ compile-riscv f ++
             sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
-            sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])
+            sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ [])
   ≡⟨ refl ⟩
-    suc (suc (length (compile-riscv f ++
+    suc (suc (suc (length (compile-riscv f ++
               sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
-              sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])))
-  ≡⟨ cong (λ n → suc (suc n)) (length-++ (compile-riscv f) _) ⟩
-    suc (suc (length (compile-riscv f) +ℕ
+              sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ []))))
+  ≡⟨ cong (suc ∘′ suc ∘′ suc) (length-++ (compile-riscv f) _) ⟩
+    suc (suc (suc (length (compile-riscv f) +ℕ
               length (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
-                      sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])))
-  ≡⟨ cong (λ n → suc (suc (n +ℕ _))) ih-f ⟩
-    suc (suc (len-f +ℕ suc (suc (length (compile-riscv g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ [])))))
-  ≡⟨ cong (λ n → suc (suc (len-f +ℕ suc (suc n)))) (length-++ (compile-riscv g) _) ⟩
-    suc (suc (len-f +ℕ suc (suc (length (compile-riscv g) +ℕ 2))))
-  ≡⟨ cong (λ n → suc (suc (len-f +ℕ suc (suc (n +ℕ 2))))) ih-g ⟩
-    suc (suc (len-f +ℕ suc (suc (len-g +ℕ 2))))
+                      sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ []))))
+  ≡⟨ cong (λ n → suc (suc (suc (n +ℕ _)))) ih-f ⟩
+    suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ []))))))
+  ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc n))))) (length-++ (compile-riscv g) _) ⟩
+    suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g) +ℕ 3)))))
+  ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc (n +ℕ 3)))))) ih-g ⟩
+    suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 3)))))
   ≡⟨ arith ⟩
-    (6 +ℕ len-f) +ℕ len-g
+    (8 +ℕ len-f) +ℕ len-g
   ∎
 
 -- Case: [ld, ld, bne] ++ f ++ [j, label] ++ g ++ [label]

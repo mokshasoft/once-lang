@@ -660,7 +660,9 @@ mutual
       open PairContext ctx
       offset = length prefix
 
-      -- Phase 1: Setup (2 instructions)
+      -- Phase 1: Setup (3 instructions - addi sp, sd s1, mv s1 a0)
+      -- Original s1 is saved to stack at sp+16
+      orig-s1 = readReg (regs s) s1
       setup-result = pair-setup-star f g prefix suffix x s h-false pc-eq a0-eq
       s-setup = proj₁ setup-result
       star-setup = proj₁ (proj₂ setup-result)
@@ -669,7 +671,8 @@ mutual
       a0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
       s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
       sp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      ra-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
+      ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+      mem-s1-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
 
       -- Phase 2: Execute f (IH call)
       -- Program view: prog ≡ prefix-f ++ code-f ++ suffix-f
@@ -694,7 +697,7 @@ mutual
       pc-f-raw : pc s-after-f-raw ≡ length prefix-f +ℕ len-f
       pc-f-raw = ir-pc r-f
 
-      pc-after-f : pc s-after-f-raw ≡ offset +ℕ 2 +ℕ len-f
+      pc-after-f : pc s-after-f-raw ≡ offset +ℕ 3 +ℕ len-f
       pc-after-f = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
 
       -- s1 is preserved through f, so it still holds x
@@ -720,29 +723,30 @@ mutual
 
       -- Phase 4: Execute g (IH call)
       -- Need pc at correct offset for g
+      -- pc-mid produces (offset +ℕ 3 +ℕ len-f) +ℕ 2, need (offset +ℕ 5) +ℕ len-f
       pc-for-g : pc s-mid ≡ length prefix-g
       pc-for-g = begin
         pc s-mid
           ≡⟨ pc-mid ⟩
-        (offset +ℕ 2 +ℕ len-f) +ℕ 2
-          ≡⟨ +-assoc (offset +ℕ 2) len-f 2 ⟩
-        (offset +ℕ 2) +ℕ (len-f +ℕ 2)
-          ≡⟨ +-assoc offset 2 (len-f +ℕ 2) ⟩
-        offset +ℕ (2 +ℕ (len-f +ℕ 2))
-          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 2 len-f 2)) ⟩
-        offset +ℕ ((2 +ℕ len-f) +ℕ 2)
-          ≡⟨ cong (λ z → offset +ℕ (z +ℕ 2)) (+-comm 2 len-f) ⟩
-        offset +ℕ ((len-f +ℕ 2) +ℕ 2)
-          ≡⟨ cong (offset +ℕ_) (+-assoc len-f 2 2) ⟩
-        offset +ℕ (len-f +ℕ 4)
-          ≡⟨ sym (+-assoc offset len-f 4) ⟩
-        (offset +ℕ len-f) +ℕ 4
-          ≡⟨ cong (_+ℕ 4) (+-comm offset len-f) ⟩
-        (len-f +ℕ offset) +ℕ 4
-          ≡⟨ +-assoc len-f offset 4 ⟩
-        len-f +ℕ (offset +ℕ 4)
-          ≡⟨ +-comm len-f (offset +ℕ 4) ⟩
-        (offset +ℕ 4) +ℕ len-f
+        (offset +ℕ 3 +ℕ len-f) +ℕ 2
+          ≡⟨ +-assoc (offset +ℕ 3) len-f 2 ⟩
+        (offset +ℕ 3) +ℕ (len-f +ℕ 2)
+          ≡⟨ +-assoc offset 3 (len-f +ℕ 2) ⟩
+        offset +ℕ (3 +ℕ (len-f +ℕ 2))
+          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 3 len-f 2)) ⟩
+        offset +ℕ ((3 +ℕ len-f) +ℕ 2)
+          ≡⟨ cong (λ z → offset +ℕ (z +ℕ 2)) (+-comm 3 len-f) ⟩
+        offset +ℕ ((len-f +ℕ 3) +ℕ 2)
+          ≡⟨ cong (offset +ℕ_) (+-assoc len-f 3 2) ⟩
+        offset +ℕ (len-f +ℕ 5)
+          ≡⟨ sym (+-assoc offset len-f 5) ⟩
+        (offset +ℕ len-f) +ℕ 5
+          ≡⟨ cong (_+ℕ 5) (+-comm offset len-f) ⟩
+        (len-f +ℕ offset) +ℕ 5
+          ≡⟨ +-assoc len-f offset 5 ⟩
+        len-f +ℕ (offset +ℕ 5)
+          ≡⟨ +-comm len-f (offset +ℕ 5) ⟩
+        (offset +ℕ 5) +ℕ len-f
           ≡⟨ sym len-prefix-g ⟩
         length prefix-g ∎
 
@@ -767,21 +771,23 @@ mutual
       pc-g-raw : pc s-after-g-raw ≡ length prefix-g +ℕ len-g
       pc-g-raw = ir-pc r-g
 
-      pc-after-g : pc s-after-g-raw ≡ offset +ℕ 4 +ℕ len-f +ℕ len-g
+      pc-after-g : pc s-after-g-raw ≡ offset +ℕ 5 +ℕ len-f +ℕ len-g
       pc-after-g = trans pc-g-raw (cong (_+ℕ len-g) len-prefix-g)
 
       -- Memory: sp should still point to our pair location through f and g execution
       -- sp is a callee-saved register, so f and g must preserve it
-      -- The memory at sp should also be preserved (f and g don't clobber it)
+      -- The memory at sp and sp+16 should also be preserved (f and g don't clobber them)
       postulate
         sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
         sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
         mem-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp)
                     ≡ just (encode (eval f x))
+        mem-s1-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp +ℕ 16)
+                       ≡ just orig-s1
 
-      -- Phase 5: Final (2 instructions)
-      final-phase-result = pair-final-star f g prefix suffix x s-mid s-after-g-raw
-                             h-after-g pc-after-g a0-after-g mem-after-g
+      -- Phase 5: Final (3 instructions - sd a0 8(sp), mv a0 sp, ld s1 16(sp))
+      final-phase-result = pair-final-star f g prefix suffix x orig-s1 s-mid s-after-g-raw
+                             h-after-g pc-after-g a0-after-g mem-after-g mem-s1-after-g
       s-final = proj₁ final-phase-result
       star-final-raw = proj₁ (proj₂ final-phase-result)
       h-final = proj₁ (proj₂ (proj₂ final-phase-result))
@@ -802,43 +808,42 @@ mutual
                        (star-trans star-g star-final)))
 
       -- Final pc
-      -- compile-length ⟨ f , g ⟩ = (6 + len-f) + len-g
+      -- compile-length ⟨ f , g ⟩ = (8 + len-f) + len-g
       pc-final : pc s-final ≡ offset +ℕ compile-length ⟨ f , g ⟩
       pc-final = begin
         pc s-final
           ≡⟨ pc-final-raw ⟩
-        (offset +ℕ 4 +ℕ len-f +ℕ len-g) +ℕ 2
-          ≡⟨ +-assoc (offset +ℕ 4 +ℕ len-f) len-g 2 ⟩
-        (offset +ℕ 4 +ℕ len-f) +ℕ (len-g +ℕ 2)
-          ≡⟨ +-assoc (offset +ℕ 4) len-f (len-g +ℕ 2) ⟩
-        (offset +ℕ 4) +ℕ (len-f +ℕ (len-g +ℕ 2))
-          ≡⟨ +-assoc offset 4 (len-f +ℕ (len-g +ℕ 2)) ⟩
-        offset +ℕ (4 +ℕ (len-f +ℕ (len-g +ℕ 2)))
-          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 4 len-f (len-g +ℕ 2))) ⟩
-        offset +ℕ ((4 +ℕ len-f) +ℕ (len-g +ℕ 2))
-          ≡⟨ cong (λ z → offset +ℕ (z +ℕ (len-g +ℕ 2))) (+-comm 4 len-f) ⟩
-        offset +ℕ ((len-f +ℕ 4) +ℕ (len-g +ℕ 2))
-          ≡⟨ cong (offset +ℕ_) (+-assoc len-f 4 (len-g +ℕ 2)) ⟩
-        offset +ℕ (len-f +ℕ (4 +ℕ (len-g +ℕ 2)))
-          ≡⟨ cong (λ z → offset +ℕ (len-f +ℕ z)) (sym (+-assoc 4 len-g 2)) ⟩
-        offset +ℕ (len-f +ℕ ((4 +ℕ len-g) +ℕ 2))
-          ≡⟨ cong (λ z → offset +ℕ (len-f +ℕ (z +ℕ 2))) (+-comm 4 len-g) ⟩
-        offset +ℕ (len-f +ℕ ((len-g +ℕ 4) +ℕ 2))
-          ≡⟨ cong (λ z → offset +ℕ (len-f +ℕ z)) (+-assoc len-g 4 2) ⟩
-        offset +ℕ (len-f +ℕ (len-g +ℕ 6))
-          ≡⟨ cong (offset +ℕ_) (sym (+-assoc len-f len-g 6)) ⟩
-        offset +ℕ ((len-f +ℕ len-g) +ℕ 6)
-          ≡⟨ cong (offset +ℕ_) (+-comm (len-f +ℕ len-g) 6) ⟩
-        offset +ℕ (6 +ℕ (len-f +ℕ len-g))
-          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 6 len-f len-g)) ⟩
-        offset +ℕ ((6 +ℕ len-f) +ℕ len-g)
+        (offset +ℕ 5 +ℕ len-f +ℕ len-g) +ℕ 3
+          ≡⟨ +-assoc (offset +ℕ 5 +ℕ len-f) len-g 3 ⟩
+        (offset +ℕ 5 +ℕ len-f) +ℕ (len-g +ℕ 3)
+          ≡⟨ +-assoc (offset +ℕ 5) len-f (len-g +ℕ 3) ⟩
+        (offset +ℕ 5) +ℕ (len-f +ℕ (len-g +ℕ 3))
+          ≡⟨ +-assoc offset 5 (len-f +ℕ (len-g +ℕ 3)) ⟩
+        offset +ℕ (5 +ℕ (len-f +ℕ (len-g +ℕ 3)))
+          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 5 len-f (len-g +ℕ 3))) ⟩
+        offset +ℕ ((5 +ℕ len-f) +ℕ (len-g +ℕ 3))
+          ≡⟨ cong (λ z → offset +ℕ (z +ℕ (len-g +ℕ 3))) (+-comm 5 len-f) ⟩
+        offset +ℕ ((len-f +ℕ 5) +ℕ (len-g +ℕ 3))
+          ≡⟨ cong (offset +ℕ_) (+-assoc len-f 5 (len-g +ℕ 3)) ⟩
+        offset +ℕ (len-f +ℕ (5 +ℕ (len-g +ℕ 3)))
+          ≡⟨ cong (λ z → offset +ℕ (len-f +ℕ z)) (sym (+-assoc 5 len-g 3)) ⟩
+        offset +ℕ (len-f +ℕ ((5 +ℕ len-g) +ℕ 3))
+          ≡⟨ cong (λ z → offset +ℕ (len-f +ℕ (z +ℕ 3))) (+-comm 5 len-g) ⟩
+        offset +ℕ (len-f +ℕ ((len-g +ℕ 5) +ℕ 3))
+          ≡⟨ cong (λ z → offset +ℕ (len-f +ℕ z)) (+-assoc len-g 5 3) ⟩
+        offset +ℕ (len-f +ℕ (len-g +ℕ 8))
+          ≡⟨ cong (offset +ℕ_) (sym (+-assoc len-f len-g 8)) ⟩
+        offset +ℕ ((len-f +ℕ len-g) +ℕ 8)
+          ≡⟨ cong (offset +ℕ_) (+-comm (len-f +ℕ len-g) 8) ⟩
+        offset +ℕ (8 +ℕ (len-f +ℕ len-g))
+          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 8 len-f len-g)) ⟩
+        offset +ℕ ((8 +ℕ len-f) +ℕ len-g)
           ∎
 
-      -- s1 preservation: pair modifies s1 (mv s1 a0) but the code
-      -- should properly save/restore callee-saved registers
-      -- For now, postulate this property
-      postulate
-        s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
+      -- s1 preservation: pair now properly saves/restores s1
+      -- s1-final-raw says s1 = orig-s1, and orig-s1 = readReg (regs s) s1
+      s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
+      s1-final = s1-final-raw
 
       -- ra preservation: chain through all phases
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
