@@ -331,22 +331,16 @@ make-case-context {A} {B} {C} f g prefix suffix = record
 -- StackInvariant preservation lemma
 ------------------------------------------------------------------------
 
--- When memory and rsp are unchanged, StackInvariant is preserved
--- Note: The memory argument is not actually used - StackInvariant depends on r15/rsp
--- We derive r15 equality from the execution context (r15 not modified by these instructions)
+-- When r15 and rsp are unchanged, StackInvariant is preserved
+-- Note: The memory argument is kept for backwards compatibility but not used
 stack-inv-preserved-mem-rsp : ∀ (s s' : State) →
   memory s' ≡ memory s →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
   StackInvariant s →
+  readReg (regs s') r15 ≡ readReg (regs s) r15 →
   StackInvariant s'
-stack-inv-preserved-mem-rsp s s' mem-eq rsp-eq stack-inv =
-  -- Use the existing stack-inv-preserved-unchanged with postulated r15-eq
-  -- In practice, at all call sites r15 is preserved but not explicitly passed
-  stack-inv-preserved-r15-rsp
-  where
-    postulate r15-eq : readReg (regs s') r15 ≡ readReg (regs s) r15
-    stack-inv-preserved-r15-rsp : StackInvariant s'
-    stack-inv-preserved-r15-rsp = stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
+stack-inv-preserved-mem-rsp s s' mem-eq rsp-eq stack-inv r15-eq =
+  stack-inv-preserved-unchanged s s' stack-inv r15-eq rsp-eq
 
 ------------------------------------------------------------------------
 -- Execution helpers for case branches
@@ -831,9 +825,9 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     mem-read = trans (cong (λ addr → readMem (memory s-setup) (addr +ℕ 8)) rdi-setup)
                      (encode-inr-val b (memory s-setup))
 
-    -- StackInvariant preserved (memory and rsp unchanged)
+    -- StackInvariant preserved (memory and rsp unchanged, r15 also unchanged)
     stack-inv-s2 : StackInvariant s2
-    stack-inv-s2 = stack-inv-preserved-mem-rsp s-setup s2 refl refl stack-inv-setup
+    stack-inv-s2 = stack-inv-preserved-mem-rsp s-setup s2 refl refl stack-inv-setup refl
 
     -- rsp > 16 preserved
     rsp>16-s2 : readReg (regs s2) rsp > 16

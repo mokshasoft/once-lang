@@ -1033,9 +1033,9 @@ mutual
       exec-setup-converted : exec 4 prog s ≡ just s-setup-raw
       exec-setup-converted = subst (λ p → exec 4 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
 
-      -- StackInvariant preserved: memory and rsp unchanged
+      -- StackInvariant preserved: memory, rsp, and r15 unchanged
       stack-inv-derived : StackInvariant s-setup-raw
-      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv
+      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
 
       -- Derive rsp>16 from preserved rsp
       rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
@@ -1170,18 +1170,29 @@ mutual
                   (trans (cong (λ m → readMem m (readReg (regs s-setup) r15)) mem-setup)
                          (cong (λ addr → readMem (memory s) addr) r15-setup))))
 
-      -- Memory at rbp preserved through case execution
-      -- POSTULATE: Chain similar to mem-final but for rbp instead of r15
-      postulate
-        mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-        mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      -- Memory at rbp preserved through case execution (same chain as mem-final)
+      mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp-final = trans (cong (λ m → readMem m (readReg (regs s) rbp)) mem-jump)
+                      (trans (cong (λ addr → readMem (memory s1) addr) (sym rbp-setup))
+                      (trans (ir-mem-rbp r-f)
+                      (trans (cong (λ m → readMem m (readReg (regs s-setup) rbp)) mem-setup)
+                             (cong (λ addr → readMem (memory s) addr) rbp-setup))))
 
-      -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
+      -- Memory at rbp+8 preserved through case execution
+      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ 8)) mem-jump)
+                        (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ 8) rbp-setup)))
+                        (trans (ir-mem-rbp+8 r-f)
+                        (trans (cong (λ m → readMem m (readReg (regs s-setup) rbp +ℕ 8)) mem-setup)
+                               (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ 8) rbp-setup)))))
+
+      -- Stack invariant: preserved from s1 to s-final since memory, rsp, and r15 unchanged
       -- ir-stack-inv r-f: StackInvariant s1
       -- mem-jump: memory s-final = memory s1
       -- rsp-jump: rsp s-final = rsp s1
+      -- r15-jump: r15 s-final = r15 s1
       stack-inv-final : StackInvariant s-final
-      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f)
+      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f) r15-jump
 
       rsp>16-final : readReg (regs s-final) rsp > 16
       rsp>16-final = rsp-bound-after-stack-op s-final
@@ -1295,9 +1306,9 @@ mutual
                        (trans (sym (+-assoc (length prefix +ℕ 3) 2 len-f))
                               (cong (_+ℕ len-f) (+-assoc (length prefix) 3 2)))
 
-      -- StackInvariant preserved: memory and rsp unchanged
+      -- StackInvariant preserved: memory, rsp, and r15 unchanged
       stack-inv-derived : StackInvariant s-setup-raw
-      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv
+      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
 
       -- rsp>16 preserved
       rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
@@ -1490,15 +1501,30 @@ mutual
                   (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-setup)
                          (cong (λ addr → readMem (memory s) addr) r15-right-to-s)))))
 
-      -- Memory at rbp preserved through case execution
-      -- POSTULATE: Chain similar to mem-final but for rbp instead of r15
-      postulate
-        mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-        mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      -- Memory at rbp preserved through case execution (same chain as mem-final)
+      rbp-right-to-s : readReg (regs s-right) rbp ≡ readReg (regs s) rbp
+      rbp-right-to-s = trans rbp-right rbp-setup
 
-      -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
+      mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp-final = trans (cong (λ m → readMem m (readReg (regs s) rbp)) mem-end)
+                      (trans (cong (λ addr → readMem (memory s1) addr) (sym rbp-right-to-s))
+                      (trans (ir-mem-rbp r-g)
+                      (trans (cong (λ m → readMem m (readReg (regs s-right) rbp)) mem-right)
+                      (trans (cong (λ m → readMem m (readReg (regs s-right) rbp)) mem-setup)
+                             (cong (λ addr → readMem (memory s) addr) rbp-right-to-s)))))
+
+      -- Memory at rbp+8 preserved through case execution
+      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ 8)) mem-end)
+                        (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ 8) rbp-right-to-s)))
+                        (trans (ir-mem-rbp+8 r-g)
+                        (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ 8)) mem-right)
+                        (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ 8)) mem-setup)
+                               (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ 8) rbp-right-to-s))))))
+
+      -- Stack invariant: preserved from s1 to s-final since memory, rsp, and r15 unchanged
       stack-inv-final : StackInvariant s-final
-      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g)
+      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g) r15-end
 
       rsp>16-final : readReg (regs s-final) rsp > 16
       rsp>16-final = rsp-bound-after-stack-op s-final
