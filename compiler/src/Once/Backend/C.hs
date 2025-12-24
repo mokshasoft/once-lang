@@ -8,6 +8,7 @@ module Once.Backend.C
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Debug.Trace (trace)
 
 import Once.IR (IR (..))
 import Once.Type (Type (..), Name)
@@ -132,15 +133,35 @@ functionDecl name ty = case ty of
     cTypeName outTy <> " once_" <> name <> "(" <> cTypeName inTy <> " x)"
   _ -> "void* once_" <> name <> "(void)"
 
+-- | Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
+-- This happens when the expression is the result of a previous pair access:
+-- - ".fst" or ".snd" suffix (first level access like _tuple.fst)
+-- - ")->fst" or ")->snd" suffix (deeper level access like ((OncePair*)x)->fst)
+needsPairCast :: Text -> Bool
+needsPairCast var =
+  ".fst" `T.isSuffixOf` var || ".snd" `T.isSuffixOf` var ||
+  ")->fst" `T.isSuffixOf` var || ")->snd" `T.isSuffixOf` var
+
 -- | Generate C expression from IR
 -- The 'var' parameter is the name of the input variable
 generateExpr :: IR -> Text -> Text
-generateExpr ir var = case ir of
+generateExpr ir var = trace ("generateExpr: " ++ take 50 (show ir) ++ " var=" ++ T.unpack var) $ case ir of
   Id _ -> var
 
-  Fst _ _ -> var <> ".fst"
+  -- When accessing nested pairs, the intermediate .fst/.snd returns void*
+  -- which needs to be cast to OncePair* before accessing its members.
+  -- Check for both ".fst"/".snd" (first level) and ")->fst"/")->snd" (deeper levels)
+  Fst _ _ ->
+    trace ("  Fst case hit, var=" ++ T.unpack var ++ " needsCast=" ++ show (needsPairCast var)) $
+    if needsPairCast var
+      then "((OncePair*)" <> var <> ")->fst"
+      else var <> ".fst"
 
-  Snd _ _ -> var <> ".snd"
+  Snd _ _ ->
+    trace ("  Snd case hit, var=" ++ T.unpack var ++ " needsCast=" ++ show (needsPairCast var)) $
+    if needsPairCast var
+      then "((OncePair*)" <> var <> ")->snd"
+      else var <> ".snd"
 
   Pair f g ->
     "(OncePair){ .fst = " <> generateExpr f var <>

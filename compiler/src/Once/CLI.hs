@@ -713,8 +713,16 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
     generateIRExpr :: Once.IR.IR -> Text -> Text
     generateIRExpr i v = case i of
       Once.IR.Id _ -> v
-      Once.IR.Fst _ _ -> v <> ".fst"
-      Once.IR.Snd _ _ -> v <> ".snd"
+      -- When accessing nested pairs, intermediate .fst/.snd returns void*
+      -- which needs to be cast to OncePair* before accessing its members
+      Once.IR.Fst _ _ ->
+        if needsPairCast v
+          then "((OncePair*)" <> v <> ")->fst"
+          else v <> ".fst"
+      Once.IR.Snd _ _ ->
+        if needsPairCast v
+          then "((OncePair*)" <> v <> ")->snd"
+          else v <> ".snd"
       Once.IR.Pair f g -> "(OncePair){ .fst = " <> generateIRExpr f v <> ", .snd = " <> generateIRExpr g v <> " }"
       Once.IR.Compose g f -> generateIRExpr g (generateIRExpr f v)
       Once.IR.Terminal _ -> "((void*)0)"
@@ -744,6 +752,15 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Let x' e1 e2 ->
         let e1Code = generateIRExpr e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr e2 x' <> "; })"
+
+    -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
+    -- This happens when the expression is the result of a previous pair access:
+    -- - ".fst" or ".snd" suffix (first level access like _tuple.fst)
+    -- - ")->fst" or ")->snd" suffix (deeper level access like ((OncePair*)x)->fst)
+    needsPairCast :: Text -> Bool
+    needsPairCast v' =
+      ".fst" `T.isSuffixOf` v' || ".snd" `T.isSuffixOf` v' ||
+      ")->fst" `T.isSuffixOf` v' || ")->snd" `T.isSuffixOf` v'
 
     -- Generate string literal based on allocation strategy
     generateStringLit :: Text -> Text
@@ -916,8 +933,14 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
     generateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
     generateIRExpr alloc i v = case i of
       Once.IR.Id _ -> v
-      Once.IR.Fst _ _ -> v <> ".fst"
-      Once.IR.Snd _ _ -> v <> ".snd"
+      Once.IR.Fst _ _ ->
+        if needsPairCast v
+          then "((OncePair*)" <> v <> ")->fst"
+          else v <> ".fst"
+      Once.IR.Snd _ _ ->
+        if needsPairCast v
+          then "((OncePair*)" <> v <> ")->snd"
+          else v <> ".snd"
       Once.IR.Pair f g -> "(OncePair){ .fst = " <> generateIRExpr alloc f v <> ", .snd = " <> generateIRExpr alloc g v <> " }"
       Once.IR.Compose g f -> generateIRExpr alloc g (generateIRExpr alloc f v)
       Once.IR.Terminal _ -> "((void*)0)"
@@ -991,6 +1014,12 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
       TApp _ _ -> "void*"
       TFix _ -> "void*"
+
+    -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
+    needsPairCast :: Text -> Bool
+    needsPairCast v' =
+      ".fst" `T.isSuffixOf` v' || ".snd" `T.isSuffixOf` v' ||
+      ")->fst" `T.isSuffixOf` v' || ")->snd" `T.isSuffixOf` v'
 
 -- | Generate library header and source for multiple functions (no main required)
 generateLibraryAll :: [(Text, Type, Maybe AllocStrategy, Once.IR.IR)] -> (Text, Text)
@@ -1072,8 +1101,14 @@ generateLibraryAll functions = (header, source)
     libGenerateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
     libGenerateIRExpr alloc ir v = case ir of
       Once.IR.Id _ -> v
-      Once.IR.Fst _ _ -> v <> ".fst"
-      Once.IR.Snd _ _ -> v <> ".snd"
+      Once.IR.Fst _ _ ->
+        if libNeedsPairCast v
+          then "((OncePair*)" <> v <> ")->fst"
+          else v <> ".fst"
+      Once.IR.Snd _ _ ->
+        if libNeedsPairCast v
+          then "((OncePair*)" <> v <> ")->snd"
+          else v <> ".snd"
       Once.IR.Pair f g -> "(OncePair){ .fst = " <> libGenerateIRExpr alloc f v <> ", .snd = " <> libGenerateIRExpr alloc g v <> " }"
       Once.IR.Compose g f -> libGenerateIRExpr alloc g (libGenerateIRExpr alloc f v)
       Once.IR.Terminal _ -> "((void*)0)"
@@ -1122,6 +1157,12 @@ generateLibraryAll functions = (header, source)
           '\\' -> "\\\\"
           '"'  -> "\\\""
           _    -> T.singleton c
+
+    -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
+    libNeedsPairCast :: Text -> Bool
+    libNeedsPairCast v' =
+      ".fst" `T.isSuffixOf` v' || ".snd" `T.isSuffixOf` v' ||
+      ")->fst" `T.isSuffixOf` v' || ")->snd" `T.isSuffixOf` v'
 
 ------------------------------------------------------------------------
 -- Native target interpretation file handling
