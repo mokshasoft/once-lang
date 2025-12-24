@@ -672,10 +672,34 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     h3 : halted st3 ≡ false
     h3 = h-false
 
-    -- Use postulate for pc3 - arithmetic is straightforward but Agda's unifier struggles
-    -- cleanup-offset +ℕ 3 = (length prefix +ℕ (14 +ℕ len-f)) +ℕ 3 = length prefix +ℕ (17 +ℕ len-f) = ret-offset
-    postulate
-      pc3 : pc st3 ≡ ret-offset
+    -- pc st3 = (cleanup-offset + 2) + 1 = cleanup-offset + 3
+    -- cleanup-offset = (length prefix + 14) + len-f  [left assoc]
+    -- ret-offset = (length prefix + 17) + len-f  [left assoc]
+    -- Need: ((length prefix + 14) + len-f) + 3 = (length prefix + 17) + len-f
+    pc3 : pc st3 ≡ ret-offset
+    pc3 = begin
+      pc st3
+        ≡⟨ refl ⟩
+      pc st2 +ℕ 1
+        ≡⟨ cong (_+ℕ 1) pc2 ⟩
+      (cleanup-offset +ℕ 2) +ℕ 1
+        ≡⟨ +-assoc cleanup-offset 2 1 ⟩
+      cleanup-offset +ℕ 3
+        ≡⟨ refl ⟩
+      (length prefix +ℕ 14 +ℕ len-f) +ℕ 3
+        ≡⟨ +-assoc (length prefix +ℕ 14) len-f 3 ⟩
+      (length prefix +ℕ 14) +ℕ (len-f +ℕ 3)
+        ≡⟨ cong ((length prefix +ℕ 14) +ℕ_) (+-comm len-f 3) ⟩
+      (length prefix +ℕ 14) +ℕ (3 +ℕ len-f)
+        ≡⟨ sym (+-assoc (length prefix +ℕ 14) 3 len-f) ⟩
+      ((length prefix +ℕ 14) +ℕ 3) +ℕ len-f
+        ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 14 3) ⟩
+      (length prefix +ℕ (14 +ℕ 3)) +ℕ len-f
+        ≡⟨ refl ⟩
+      (length prefix +ℕ 17) +ℕ len-f
+        ≡⟨ refl ⟩
+      ret-offset
+        ∎
 
     -- Build Star proof
     star-all : Star prog s st3
