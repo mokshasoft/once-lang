@@ -226,8 +226,20 @@ runBuild opts = do
 
                               let allFuncAsm = map generateFuncAsm' optimizedFunctions
 
-                              -- Wrap all functions for library export
-                              let wrappedAsm = wrapNativeLibAll nativeTarget allFuncAsm
+                              -- Load interpretation files for native target
+                              -- Convert target to InterpType for file extension
+                              let targetInterpType = case nativeTarget of
+                                    TargetArm64 -> InterpArm64
+                                    TargetX86_64 -> InterpX86_64
+                                    TargetRiscV64 -> InterpRiscV64
+                                    TargetC -> error "unreachable"
+                              -- Filter explicit interps to only those matching target
+                              let targetInterps = [(t, m) | (t, m) <- buildExplicitInterps opts, t == targetInterpType]
+                              let interpFiles = resolveExplicitInterps strataPath targetInterps
+                              interpCode <- T.concat <$> mapM TIO.readFile interpFiles
+
+                              -- Wrap all functions for library export with interpretation code
+                              let wrappedAsm = interpCode <> "\n" <> wrapNativeLibAll nativeTarget allFuncAsm
                               let asmPath = outputBase ++ ".s"
                               TIO.writeFile asmPath wrappedAsm
                               TIO.putStrLn $ "Generated: " <> T.pack asmPath

@@ -100,6 +100,31 @@
           ls -la $out/
         '';
 
+        # Compile Once files to x86-64 assembly
+        onceCompiledAsm = pkgs.runCommand "once-compiled-asm" {
+          nativeBuildInputs = [ onceCompiler ];
+        } ''
+          mkdir -p $out
+
+          # Compile echo client to x86-64 assembly
+          once build --target x86_64 --strata ${strataDir} \
+            -I:x86_64 I.SeL4.IPC \
+            ${onceEchoClient} -o $out/echo_client 2>&1 || true
+
+          # The compiler outputs .s file
+          if [ -f "$out/echo_client.s" ]; then
+            echo "Generated echo_client.s"
+          elif [ -f "$out/echo_client" ]; then
+            # Sometimes output doesn't have extension
+            mv $out/echo_client $out/echo_client.s
+          fi
+
+          # List what was generated
+          ls -la $out/
+          echo "=== Assembly content ==="
+          cat $out/echo_client.s || true
+        '';
+
         # Combined seL4 source tree (mimics repo manifest structure)
         seL4-src = pkgs.runCommand "seL4-src" {} ''
           mkdir -p $out/{kernel,tools/seL4,projects}
@@ -674,16 +699,277 @@ EOF
           '';
         };
 
+        # seL4 source tree with Once-compiled x86-64 assembly
+        seL4-once-asm-src = pkgs.runCommand "seL4-once-asm-src" {
+          nativeBuildInputs = [ onceCompiler ];
+        } ''
+          mkdir -p $out/{kernel,tools/seL4,projects}
+
+          # Core seL4 kernel
+          cp -r ${seL4-kernel}/* $out/kernel/
+
+          # seL4 tools
+          cp -r ${seL4-tools}/* $out/tools/seL4/
+
+          # Runtime
+          mkdir -p $out/projects/sel4runtime
+          cp -r ${sel4runtime}/* $out/projects/sel4runtime/
+
+          # Libraries
+          mkdir -p $out/projects/seL4_libs
+          cp -r ${seL4-libs}/* $out/projects/seL4_libs/
+
+          mkdir -p $out/projects/util_libs
+          cp -r ${util_libs}/* $out/projects/util_libs/
+
+          mkdir -p $out/projects/sel4_projects_libs
+          cp -r ${sel4_projects_libs}/* $out/projects/sel4_projects_libs/
+
+          # C library
+          mkdir -p $out/projects/musllibc
+          cp -r ${musllibc}/* $out/projects/musllibc/
+
+          # Once Echo project with assembly
+          mkdir -p $out/projects/once-echo/apps/once-echo/src
+          mkdir -p $out/projects/once-echo/apps/once-echo/include
+
+          # Compile Once to x86-64 assembly
+          echo "Compiling Once to x86-64 assembly..."
+          once build --target x86_64 --strata ${strataDir} \
+            -I:x86_64 I.SeL4.IPC \
+            ${onceEchoClient} -o $out/projects/once-echo/apps/once-echo/src/echo_client 2>&1 || true
+
+          # Ensure .s extension
+          if [ -f "$out/projects/once-echo/apps/once-echo/src/echo_client" ]; then
+            mv $out/projects/once-echo/apps/once-echo/src/echo_client \
+               $out/projects/once-echo/apps/once-echo/src/echo_client.s
+          fi
+
+          echo "Generated assembly:"
+          cat $out/projects/once-echo/apps/once-echo/src/echo_client.s || echo "No assembly generated"
+
+          # Add wrapper function so main.c can call echo_client_main
+          cat >> $out/projects/once-echo/apps/once-echo/src/echo_client.s << 'WRAPPER_EOF'
+
+# Wrapper for compatibility with main.c which expects echo_client_main
+.globl echo_client_main
+.type echo_client_main, @function
+echo_client_main:
+    jmp once_main
+.size echo_client_main, .-echo_client_main
+WRAPPER_EOF
+
+          # Copy handwritten C for main and echo_server (not echo_client since we generated it)
+          cp ${./once-echo}/src/main.c $out/projects/once-echo/apps/once-echo/src/
+          cp ${./once-echo}/src/echo_server.c $out/projects/once-echo/apps/once-echo/src/
+          cp ${./once-echo}/src/echo_server.h $out/projects/once-echo/apps/once-echo/src/
+          # Note: NOT copying echo_client.c - using Once-generated assembly instead
+
+          # Create settings.cmake
+          cat > $out/projects/once-echo/settings.cmake << 'SETTINGS_EOF'
+#
+# Once Echo Server settings for seL4 - x86-64 Assembly Edition
+#
+
+cmake_minimum_required(VERSION 3.16.0)
+
+set(project_dir "''${CMAKE_CURRENT_LIST_DIR}/../..")
+file(GLOB project_modules ''${project_dir}/projects/*)
+list(
+    APPEND
+        CMAKE_MODULE_PATH
+        ''${project_dir}/kernel
+        ''${project_dir}/tools/seL4/cmake-tool/helpers/
+        ''${project_dir}/tools/seL4/elfloader-tool/
+        ''${project_modules}
+)
+
+set(SEL4_CONFIG_DEFAULT_ADVANCED ON)
+SETTINGS_EOF
+
+          # Create top-level CMakeLists.txt
+          cat > $out/projects/once-echo/CMakeLists.txt << 'CMAKE_EOF'
+#
+# Once Echo Server for seL4 (x86-64 Assembly Edition)
+#
+
+cmake_minimum_required(VERSION 3.16.0)
+
+include(settings.cmake)
+
+project(once-echo C ASM)
+
+set(RELEASE OFF CACHE BOOL "Performance optimized build")
+set(VERIFICATION OFF CACHE BOOL "Only verification friendly kernel features")
+
+include(application_settings)
+
+correct_platform_strings()
+
+find_package(seL4 REQUIRED)
+sel4_configure_platform_settings()
+
+set(valid_platforms ''${KernelPlatform_all_strings} ''${correct_platform_strings_platform_aliases})
+set_property(CACHE PLATFORM PROPERTY STRINGS ''${valid_platforms})
+if(NOT "''${PLATFORM}" IN_LIST valid_platforms)
+    message(FATAL_ERROR "Invalid PLATFORM selected: \"''${PLATFORM}\"
+Valid platforms are: \"''${valid_platforms}\"")
+endif()
+
+if(SIMULATION)
+    ApplyCommonSimulationSettings(''${KernelSel4Arch})
+endif()
+
+ApplyCommonReleaseVerificationSettings(''${RELEASE} ''${VERIFICATION})
+
+find_package(elfloader-tool REQUIRED)
+
+set(KernelRootCNodeSizeBits 13 CACHE INTERNAL "")
+
+sel4_import_kernel()
+elfloader_import_project()
+
+add_subdirectory(apps/once-echo)
+
+if(SIMULATION)
+    include(simulation)
+    if(KernelSel4ArchX86_64)
+        SetSimulationScriptProperty(MEM_SIZE "3G")
+    endif()
+    GenerateSimulateScript()
+endif()
+CMAKE_EOF
+
+          # Create app CMakeLists.txt - includes both C and ASM files
+          cat > $out/projects/once-echo/apps/once-echo/CMakeLists.txt << 'APP_EOF'
+#
+# Once Echo Server Application (x86-64 Assembly Edition)
+#
+
+cmake_minimum_required(VERSION 3.16.0)
+
+project(once-echo C ASM)
+
+find_package(musllibc REQUIRED)
+find_package(util_libs REQUIRED)
+find_package(seL4_libs REQUIRED)
+
+musllibc_setup_build_environment_with_sel4runtime()
+sel4_import_libsel4()
+util_libs_import_libraries()
+sel4_libs_import_libraries()
+
+# Source files - C and assembly
+file(GLOB c_sources src/*.c)
+file(GLOB asm_sources src/*.s src/*.S)
+
+add_executable(once-echo EXCLUDE_FROM_ALL ''${c_sources} ''${asm_sources})
+
+target_include_directories(once-echo PRIVATE "include" "src")
+
+target_link_libraries(
+    once-echo
+    PUBLIC
+        sel4_autoconf
+        muslc
+        sel4
+        sel4runtime
+        sel4allocman
+        sel4vka
+        sel4utils
+        sel4platsupport
+        sel4muslcsys
+)
+
+target_compile_options(once-echo PRIVATE -Werror -g)
+
+include(rootserver)
+DeclareRootserver(once-echo)
+APP_EOF
+
+          echo "Once-language x86-64 assembly seL4 source tree created."
+          ls -la $out/projects/once-echo/apps/once-echo/src/
+        '';
+
+        # seL4 with Once-compiled x86-64 assembly
+        seL4-once-asm = pkgs.stdenv.mkDerivation {
+          pname = "seL4-once-asm";
+          version = "0.1.0";
+
+          src = seL4-once-asm-src;
+
+          nativeBuildInputs = with pkgs; [
+            cmake
+            ninja
+            pythonEnv
+            dtc
+            libxml2
+            libxml2.bin
+            cpio
+            ubootTools
+            protobuf
+            which
+            bash
+          ];
+
+          postPatch = ''
+            patchShebangs kernel/tools/
+            patchShebangs tools/
+          '';
+
+          configurePhase = ''
+            cp -r $src/* .
+            chmod -R u+w .
+
+            patchShebangs kernel/tools/
+            patchShebangs tools/
+
+            mkdir -p build
+            cd build
+            cmake -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=../kernel/gcc.cmake \
+              -C ../projects/once-echo/settings.cmake \
+              -DPLATFORM=x86_64 \
+              -DSIMULATION=TRUE \
+              ../projects/once-echo
+
+            cd ..
+          '';
+
+          buildPhase = ''
+            ninja -C build
+          '';
+
+          installPhase = ''
+            mkdir -p $out/{bin,images}
+            cp -r build/images/* $out/images/ || true
+
+            cat > $out/bin/simulate << EOF
+#!/bin/sh
+exec qemu-system-x86_64 \\
+  -cpu Nehalem,-vme,+pdpe1gb,-xsave,-xsaveopt,-xsavec,-fsgsbase,-invpcid,enforce \\
+  -nographic -serial mon:stdio \\
+  -m size=3G \\
+  -kernel $out/images/kernel-x86_64-pc99 \\
+  -initrd $out/images/once-echo-image-x86_64-pc99
+EOF
+            chmod +x $out/bin/simulate
+          '';
+        };
+
       in {
         # Packages
         packages = {
           seL4-src = seL4-src;
           seL4-once-src = seL4-once-src;
           seL4-once-lang-src = seL4-once-lang-src;
+          seL4-once-asm-src = seL4-once-asm-src;
           seL4-x86_64 = seL4-x86_64;
           seL4-once-echo = seL4-once-echo;
           seL4-once-lang = seL4-once-lang;
+          seL4-once-asm = seL4-once-asm;
           once-compiled-c = onceCompiledC;
+          once-compiled-asm = onceCompiledAsm;
           default = seL4-once-echo;
         };
 
