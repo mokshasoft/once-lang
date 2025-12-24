@@ -303,6 +303,30 @@ readReg-writeReg-r9-rsp : ∀ (rf : RegFile) (v : Word) →
 readReg-writeReg-r9-rsp rf v = refl
 
 ------------------------------------------------------------------------
+-- Additional r12 Lemmas (used for environment in apply)
+------------------------------------------------------------------------
+
+readReg-writeReg-r12-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r12 v) rsp ≡ readReg rf rsp
+readReg-writeReg-r12-rsp rf v = refl
+
+readReg-writeReg-r12-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf r12 v) rbp ≡ readReg rf rbp
+readReg-writeReg-r12-rbp rf v = refl
+
+------------------------------------------------------------------------
+-- Additional rsi Lemmas (used for argument in apply)
+------------------------------------------------------------------------
+
+readReg-writeReg-rsi-rsp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsi v) rsp ≡ readReg rf rsp
+readReg-writeReg-rsi-rsp rf v = refl
+
+readReg-writeReg-rsi-rbp : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf rsi v) rbp ≡ readReg rf rbp
+readReg-writeReg-rsi-rbp rf v = refl
+
+------------------------------------------------------------------------
 -- Memory Lemmas
 ------------------------------------------------------------------------
 

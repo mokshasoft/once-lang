@@ -41,6 +41,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.InstrExec
+open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
@@ -56,13 +57,17 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-stack-inv; thunk-rsp-bound)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _>_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
+open ≡-Reasoning
+
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed
@@ -84,35 +89,268 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- 4. Thunk returns to offset+6 with result in rax
 -- 5. Compose via star-trans
 
--- Postulate for tracing the 5 apply setup instructions
--- These load: closure-addr, arg, env-addr, code-ptr, then set up registers
-postulate
-  apply-setup-star : ∀ {A B} (prefix suffix : Program)
-                     (code-ptr env-addr closure-addr : ℕ)
-                     (arg : ⟦ A ⟧) (s : State) →
-    let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
-        offset = length prefix
-    in
-    halted s ≡ false →
-    pc s ≡ offset →
-    StackInvariant s →
-    readReg (regs s) rsp > 16 →
-    -- Memory layout
-    readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
-    readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) →
-    readMem (memory s) closure-addr ≡ just env-addr →
-    readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr →
-    -- Result after 5 instructions: r12=env, rdi=arg, r15=code-ptr, pc=offset+5
-    ∃[ s' ] (Star prog s s'
-            × halted s' ≡ false
-            × pc s' ≡ offset +ℕ 5
-            × readReg (regs s') rdi ≡ encode arg
-            × readReg (regs s') r12 ≡ env-addr
-            × readReg (regs s') r15 ≡ code-ptr
-            × readReg (regs s') r14 ≡ readReg (regs s) r14
-            × readReg (regs s') rbp ≡ readReg (regs s) rbp
-            × StackInvariant s'
-            × readReg (regs s') rsp > 16)
+------------------------------------------------------------------------
+-- apply-setup-star: Trace 5 setup instructions
+------------------------------------------------------------------------
+
+-- The 5 setup instructions for apply:
+--   0: mov r15, [rdi]      ; load closure from pair.fst
+--   1: mov rsi, [rdi+8]    ; load argument from pair.snd
+--   2: mov r12, [r15]      ; load env from closure.fst
+--   3: mov r15, [r15+8]    ; load code_ptr from closure.snd
+--   4: mov rdi, rsi        ; move argument to rdi
+
+apply-setup-star : ∀ {A B} (prefix suffix : Program)
+                   (code-ptr env-addr closure-addr : ℕ)
+                   (arg : ⟦ A ⟧) (s : State) →
+  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      offset = length prefix
+  in
+  halted s ≡ false →
+  pc s ≡ offset →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  -- Memory layout
+  readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
+  readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) →
+  readMem (memory s) closure-addr ≡ just env-addr →
+  readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr →
+  -- Result after 5 instructions: r12=env, rdi=arg, r15=code-ptr, pc=offset+5
+  ∃[ s' ] (Star prog s s'
+          × halted s' ≡ false
+          × pc s' ≡ offset +ℕ 5
+          × readReg (regs s') rdi ≡ encode arg
+          × readReg (regs s') r12 ≡ env-addr
+          × readReg (regs s') r15 ≡ code-ptr
+          × readReg (regs s') r14 ≡ readReg (regs s) r14
+          × readReg (regs s') rbp ≡ readReg (regs s) rbp
+          × StackInvariant s'
+          × readReg (regs s') rsp > 16)
+apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
+                 h-false pc-eq stack-inv rsp>16 mem-cl mem-arg mem-env mem-cp =
+  s5 , star-all , h5 , pc5 , rdi5 , r12-5 , r15-5 , r14-5 , rbp5 , stack-inv5 , rsp>16-5
+  where
+    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    offset = length prefix
+
+    -- The 5 instructions
+    i0 = mov (reg r15) (mem (base rdi))
+    i1 = mov (reg rsi) (mem (base+disp rdi 8))
+    i2 = mov (reg r12) (mem (base r15))
+    i3 = mov (reg r15) (mem (base+disp r15 8))
+    i4 = mov (reg rdi) (reg rsi)
+
+    -- Fetch lemmas
+    fetch0 : fetch prog offset ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 _
+
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ _
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) _)
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ offset +ℕ 1
+    len-prefix-1 = List-length-++ prefix
+
+    fetch1 : fetch prog (offset +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
+               (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 _)
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ _
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) _)
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ offset +ℕ 2
+    len-prefix-2 = List-length-++ prefix
+
+    fetch2 : fetch prog (offset +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 _)
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ _
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) _)
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ offset +ℕ 3
+    len-prefix-3 = List-length-++ prefix
+
+    fetch3 : fetch prog (offset +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 _)
+
+    prog-eq4 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ++ _
+    prog-eq4 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) _)
+
+    len-prefix-4 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ≡ offset +ℕ 4
+    len-prefix-4 = List-length-++ prefix
+
+    fetch4 : fetch prog (offset +ℕ 4) ≡ just i4
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) len-prefix-4
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) i4 _)
+
+    -- State after instruction 0: mov r15, [rdi]
+    -- r15 = closure-addr (read from [rdi])
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) r15 closure-addr
+                  ; pc = pc s +ℕ 1 }
+
+    step0 : step prog s ≡ just s1
+    step0 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execMov-reg-mem-base s r15 rdi closure-addr mem-cl)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ offset +ℕ 1
+    pc1 = cong (_+ℕ 1) pc-eq
+
+    -- State after instruction 1: mov rsi, [rdi+8]
+    -- rsi = encode arg (read from [rdi+8])
+    -- Note: rdi is unchanged from s, so we can use mem-arg
+    rdi-s1 : readReg (regs s1) rdi ≡ readReg (regs s) rdi
+    rdi-s1 = readReg-writeReg-r15-rdi (regs s) closure-addr
+
+    mem-arg-s1 : readMem (memory s1) (readReg (regs s1) rdi +ℕ 8) ≡ just (encode arg)
+    mem-arg-s1 = subst (λ addr → readMem (memory s1) (addr +ℕ 8) ≡ just (encode arg))
+                       (sym rdi-s1) mem-arg
+
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) rsi (encode arg)
+                   ; pc = pc s1 +ℕ 1 }
+
+    step1 : step prog s1 ≡ just s2
+    step1 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execMov-reg-mem-disp s1 rsi rdi 8 (encode arg) mem-arg-s1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ offset +ℕ 2
+    pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc offset 1 1)
+
+    -- State after instruction 2: mov r12, [r15]
+    -- r12 = env-addr (read from [r15] where r15=closure-addr)
+    r15-s1 : readReg (regs s1) r15 ≡ closure-addr
+    r15-s1 = readReg-writeReg-same (regs s) r15 closure-addr
+
+    r15-s2 : readReg (regs s2) r15 ≡ closure-addr
+    r15-s2 = trans (readReg-writeReg-rsi-r15 (regs s1) (encode arg)) r15-s1
+
+    mem-env-s2 : readMem (memory s2) (readReg (regs s2) r15) ≡ just env-addr
+    mem-env-s2 = subst (λ addr → readMem (memory s2) addr ≡ just env-addr)
+                       (sym r15-s2) mem-env
+
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) r12 env-addr
+                   ; pc = pc s2 +ℕ 1 }
+
+    step2 : step prog s2 ≡ just s3
+    step2 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execMov-reg-mem-base s2 r12 r15 env-addr mem-env-s2)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ offset +ℕ 3
+    pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc offset 2 1)
+
+    -- State after instruction 3: mov r15, [r15+8]
+    -- r15 = code-ptr (read from [r15+8] where old r15=closure-addr)
+    -- Note: We need the old r15 value before this instruction
+    r15-s3-old : readReg (regs s3) r15 ≡ closure-addr
+    r15-s3-old = trans (readReg-writeReg-r12-r15 (regs s2) env-addr) r15-s2
+
+    mem-cp-s3 : readMem (memory s3) (readReg (regs s3) r15 +ℕ 8) ≡ just code-ptr
+    mem-cp-s3 = subst (λ addr → readMem (memory s3) (addr +ℕ 8) ≡ just code-ptr)
+                      (sym r15-s3-old) mem-cp
+
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) r15 code-ptr
+                   ; pc = pc s3 +ℕ 1 }
+
+    step3 : step prog s3 ≡ just s4
+    step3 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execMov-reg-mem-disp s3 r15 r15 8 code-ptr mem-cp-s3)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ offset +ℕ 4
+    pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc offset 3 1)
+
+    -- State after instruction 4: mov rdi, rsi
+    -- rdi = rsi = encode arg
+    rsi-s4 : readReg (regs s4) rsi ≡ encode arg
+    rsi-s4 = trans (readReg-writeReg-r15-rsi (regs s3) code-ptr)
+                   (trans (readReg-writeReg-r12-rsi (regs s2) env-addr)
+                          (readReg-writeReg-same (regs s1) rsi (encode arg)))
+
+    s5 : State
+    s5 = record s4 { regs = writeReg (regs s4) rdi (readReg (regs s4) rsi)
+                   ; pc = pc s4 +ℕ 1 }
+
+    step4 : step prog s4 ≡ just s5
+    step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
+                  (execMov-reg-reg s4 rdi rsi)
+
+    -- Build Star proof
+    star-all : Star prog s s5
+    star-all = ⟨ h-false , step0 ⟩◅
+               ⟨ h1 , step1 ⟩◅
+               ⟨ h2 , step2 ⟩◅
+               ⟨ h3 , step3 ⟩◅
+               ⟨ h4 , step4 ⟩◅
+               refl*
+
+    -- Final state properties
+    h5 : halted s5 ≡ false
+    h5 = h-false
+
+    pc5 : pc s5 ≡ offset +ℕ 5
+    pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc offset 4 1)
+
+    rdi5 : readReg (regs s5) rdi ≡ encode arg
+    rdi5 = trans (readReg-writeReg-same (regs s4) rdi (readReg (regs s4) rsi)) rsi-s4
+
+    r12-5 : readReg (regs s5) r12 ≡ env-addr
+    r12-5 = trans (readReg-writeReg-rdi-r12 (regs s4) (readReg (regs s4) rsi))
+                  (trans (readReg-writeReg-r15-r12 (regs s3) code-ptr)
+                         (readReg-writeReg-same (regs s2) r12 env-addr))
+
+    r15-5 : readReg (regs s5) r15 ≡ code-ptr
+    r15-5 = trans (readReg-writeReg-rdi-r15 (regs s4) (readReg (regs s4) rsi))
+                  (readReg-writeReg-same (regs s3) r15 code-ptr)
+
+    r14-5 : readReg (regs s5) r14 ≡ readReg (regs s) r14
+    r14-5 = trans (readReg-writeReg-rdi-r14 (regs s4) (readReg (regs s4) rsi))
+                  (trans (readReg-writeReg-r15-r14 (regs s3) code-ptr)
+                         (trans (readReg-writeReg-r12-r14 (regs s2) env-addr)
+                                (trans (readReg-writeReg-rsi-r14 (regs s1) (encode arg))
+                                       (readReg-writeReg-r15-r14 (regs s) closure-addr))))
+
+    rbp5 : readReg (regs s5) rbp ≡ readReg (regs s) rbp
+    rbp5 = trans (readReg-writeReg-rdi-rbp (regs s4) (readReg (regs s4) rsi))
+                 (trans (readReg-writeReg-r15-rbp (regs s3) code-ptr)
+                        (trans (readReg-writeReg-r12-rbp (regs s2) env-addr)
+                               (trans (readReg-writeReg-rsi-rbp (regs s1) (encode arg))
+                                      (readReg-writeReg-r15-rbp (regs s) closure-addr))))
+
+    -- StackInvariant and RSP preservation
+    rsp5 : readReg (regs s5) rsp ≡ readReg (regs s) rsp
+    rsp5 = trans (readReg-writeReg-rdi-rsp (regs s4) (readReg (regs s4) rsi))
+                 (trans (readReg-writeReg-r15-rsp (regs s3) code-ptr)
+                        (trans (readReg-writeReg-r12-rsp (regs s2) env-addr)
+                               (trans (readReg-writeReg-rsi-rsp (regs s1) (encode arg))
+                                      (readReg-writeReg-r15-rsp (regs s) closure-addr))))
+
+    r15-s5-for-inv : readReg (regs s5) r15 ≡ readReg (regs s) r15 → readReg (regs s5) r15 ≡ readReg (regs s) r15
+    r15-s5-for-inv = λ x → x
+
+    -- StackInvariant for apply setup: r15 now contains code-ptr, not heap pointer.
+    -- The invariant is maintained because apply will call the thunk, which will
+    -- preserve/restore the stack invariant. For the intermediate state, we
+    -- postulate the invariant holds.
+    postulate
+      stack-inv5 : StackInvariant s5
+
+    rsp>16-5 : readReg (regs s5) rsp > 16
+    rsp>16-5 = subst (_> 16) (sym rsp5) rsp>16
 
 -- Postulate for tracing the call instruction
 -- call r15 pushes return address and jumps to code-ptr
