@@ -91,6 +91,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-rbp = rbp-final
     ; ir-mem = mem-final
     ; ir-mem-rbp = mem-rbp-final
+    ; ir-mem-rbp+8 = mem-rbp+8-final
     ; ir-stack-inv = stack-inv-final
     ; ir-rsp-bound = rsp>16-final
     } , record
@@ -589,12 +590,13 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-final = trans mem-s7-eq (trans mem-s6-eq (trans mem-s5-eq (trans mem-s4-eq
                   (trans mem-s3-eq (trans mem-s2-eq mem-s1-eq)))))
 
-    -- Memory at rbp preservation
+    -- Memory at rbp and rbp+8 preservation
     -- POSTULATE: To prove this, we need rbp ≢ new-rsp and rbp ≢ new-rsp+8.
     -- In the curry-thunk context, rbp = original frame pointer > rsp > new-rsp,
     -- so the disjointness holds. Would need an RbpInvariant or precondition.
     postulate
       mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
 
     -- StackInvariant preservation
     stack-inv-helper : StackInvariant s → StackInvariant s-final

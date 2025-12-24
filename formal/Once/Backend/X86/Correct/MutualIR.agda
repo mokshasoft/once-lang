@@ -54,7 +54,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-stack-inv; ir-rsp-bound;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star;
          run-fst-star-v; run-snd-star-v)
@@ -144,6 +144,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rbp = rbp-eq
     ; ir-mem = mem-preserved
     ; ir-mem-rbp = mem-rbp-preserved
+    ; ir-mem-rbp+8 = mem-rbp+8-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
@@ -395,6 +396,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     -- POSTULATE: To prove, need rbp ≢ new-rsp and rbp ≢ new-rsp+8 (stack below frame pointer)
     postulate
       mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
@@ -435,6 +437,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-rbp = rbp-eq
     ; ir-mem = mem-preserved
     ; ir-mem-rbp = mem-rbp-preserved
+    ; ir-mem-rbp+8 = mem-rbp+8-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
@@ -682,6 +685,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     -- POSTULATE: To prove, need rbp ≢ new-rsp and rbp ≢ new-rsp+8 (stack below frame pointer)
     postulate
       mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
@@ -813,7 +817,7 @@ mutual
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                 stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                rbp-final mem-final mem-rbp-final star-fin refl refl
+                rbp-final mem-final mem-rbp-final mem-rbp+8-final star-fin refl refl
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm)
@@ -882,6 +886,7 @@ mutual
       rbp-final = PairFinalResult.rbp-fin final-res
       mem-final = PairFinalResult.mem-orig-fin final-res
       mem-rbp-final = PairFinalResult.mem-rbp-fin final-res
+      mem-rbp+8-final = PairFinalResult.mem-rbp+8-fin final-res
 
       -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
@@ -934,6 +939,7 @@ mutual
       ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-mem-rbp = mem-rbp-final
+      ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }
@@ -1168,6 +1174,7 @@ mutual
       -- POSTULATE: Chain similar to mem-final but for rbp instead of r15
       postulate
         mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+        mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
 
       -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
       -- ir-stack-inv r-f: StackInvariant s1
@@ -1204,6 +1211,7 @@ mutual
       ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-mem-rbp = mem-rbp-final
+      ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }
@@ -1486,6 +1494,7 @@ mutual
       -- POSTULATE: Chain similar to mem-final but for rbp instead of r15
       postulate
         mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+        mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
 
       -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
       stack-inv-final : StackInvariant s-final
@@ -2123,7 +2132,7 @@ mutual
         using (ThunkResult; thunk-star; thunk-halted; thunk-rax;
                thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (≤-trans)
+      open import Data.Nat.Properties using (≤-trans; +-comm)
 
       -- From rsp > 16, derive 8 ≤ rsp (for m+[n∸m]≡n)
       8≤17 : 8 ≤ 17
@@ -2483,21 +2492,41 @@ mutual
                                     × readReg (regs s-cleanup) rsp > 16)
       cleanup-star = s-c2 , star-c , h-c2 , pc-c2 , rax-c2 , r14-c2 , r15-c2 , rbp-c2 , stack-inv-c2 , rsp>16-c2
 
-      -- POSTULATE: return address preserved through execution
+      -- Return address preserved through execution
       --
       -- Chain: s → s-after-setup → s-after-f-raw → s-c1 → s-c2
       -- 1. s: mem-ret says memory at s.rsp contains ret-addr
-      -- 2. Setup: writes at s.rsp - 8 (push rbp), disjoint from s.rsp (mem-read-other)
-      --    More writes at s.rsp - 24, etc., all below s.rsp
-      -- 3. f: needs memory frame invariant (writes below frame pointer)
+      -- 2. Setup: writes at s.rsp - 8 (push rbp), disjoint from s.rsp
+      -- 3. f: ir-mem-rbp+8 says memory at (rbp+8 = s.rsp) preserved
       -- 4. Cleanup: mov doesn't write memory, pop reads from s.rsp - 8
       --
-      -- s-c2.rsp = s.rsp (proven as rsp-c2)
-      -- So we need: readMem (memory s-c2) (s.rsp) ≡ just ret-addr
-      --
-      -- To prove, need ir-mem-frame in IRStarResult (see pop-rbp-mem comment)
+      -- Arithmetic: (old-rsp-s ∸ 8) + 8 = old-rsp-s (given 8 ≤ old-rsp-s)
+      rbp+8-eq : readReg (regs s-after-setup) rbp +ℕ 8 ≡ old-rsp-s
+      rbp+8-eq = trans (cong (_+ℕ 8) rbp-setup-addr)
+                       (trans (+-comm (old-rsp-s ∸ 8) 8) (m+[n∸m]≡n 8≤rsp))
+
+      -- Setup preserves memory at s.rsp (writes are at s.rsp - 8 and below)
       postulate
-        mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
+        mem-ret-through-setup : readMem (memory s-after-setup) old-rsp-s ≡ just ret-addr
+
+      -- Memory at s.rsp preserved through f (using ir-mem-rbp+8)
+      mem-ret-through-f : readMem (memory s-after-f-raw) old-rsp-s ≡ just ret-addr
+      mem-ret-through-f = begin
+        readMem (memory s-after-f-raw) old-rsp-s
+          ≡⟨ cong (readMem (memory s-after-f-raw)) (sym rbp+8-eq) ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s-after-setup) rbp +ℕ 8)
+          ≡⟨ ir-mem-rbp+8 r-f ⟩
+        readMem (memory s-after-setup) (readReg (regs s-after-setup) rbp +ℕ 8)
+          ≡⟨ cong (readMem (memory s-after-setup)) rbp+8-eq ⟩
+        readMem (memory s-after-setup) old-rsp-s
+          ≡⟨ mem-ret-through-setup ⟩
+        just ret-addr ∎
+
+      -- Memory preserved through cleanup (mov and pop don't write at old-rsp-s)
+      mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
+      mem-ret-preserved = subst (λ addr → readMem (memory s-c2) addr ≡ just ret-addr)
+                                (sym rsp-c2)
+                                (trans (mem-c1-eq-f old-rsp-s) mem-ret-through-f)
 
       s-after-cleanup = proj₁ cleanup-star
       star-cleanup = proj₁ (proj₂ cleanup-star)
@@ -2588,7 +2617,7 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , mem-rbp-final , stack-inv-final , rsp>16-final) =
+    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , mem-rbp-final , mem-rbp+8-final , stack-inv-final , rsp>16-final) =
           apply-produces-result prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     in s-final , record
       { ir-star = star-all
@@ -2600,6 +2629,7 @@ mutual
       ; ir-rbp = rbp-final
       ; ir-mem = mem-final
       ; ir-mem-rbp = mem-rbp-final
+      ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }

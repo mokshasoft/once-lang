@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -248,6 +248,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-rbp = rbp-3
   ; ir-mem = mem-3
   ; ir-mem-rbp = mem-rbp-3
+  ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
   ; ir-rsp-bound = rsp-3>16
   }
@@ -266,6 +267,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     rbp-1 = ir-rbp r1
     mem-1 = ir-mem r1
     mem-rbp-1 = ir-mem-rbp r1
+    mem-rbp+8-1 = ir-mem-rbp+8 r1
 
     -- From r3
     star-g-raw : Star (prefix-g ++ code-g ++ suffix) s2 s3
@@ -279,6 +281,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     rbp-3-from-s2 = ir-rbp r3
     mem-3-from-s2 = ir-mem r3
     mem-rbp-3-from-s2 = ir-mem-rbp r3
+    mem-rbp+8-3-from-s2 = ir-mem-rbp+8 r3
     stack-inv-3 = ir-stack-inv r3
     rsp-3>16 = ir-rsp-bound r3
 
@@ -346,3 +349,14 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     mem-rbp-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
                              rbp-s2-eq-s mem-rbp-3-from-s2)
                       (trans mem-rbp-2 mem-rbp-1)
+
+    -- Memory at rbp+8 preservation through all steps
+    mem-rbp+8-2 : readMem (memory s2) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s1) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-2 = subst (λ s2'' → readMem (memory s2'') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s1) (readReg (regs s) rbp +ℕ 8))
+                        (sym s2-eq) (mem-s1-to-s2 (readReg (regs s) rbp +ℕ 8))
+    rbp+8-s2-eq-s : readReg (regs s2) rbp +ℕ 8 ≡ readReg (regs s) rbp +ℕ 8
+    rbp+8-s2-eq-s = cong (_+ℕ 8) rbp-s2-eq-s
+    mem-rbp+8-3 : readMem (memory s3) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
+                               rbp+8-s2-eq-s mem-rbp+8-3-from-s2)
+                        (trans mem-rbp+8-2 mem-rbp+8-1)

@@ -139,6 +139,7 @@ postulate
               × readReg (regs s') rbp ≡ readReg (regs s) rbp
               × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
               × readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+              × readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
               × StackInvariant s'
               × readReg (regs s') rsp > 16)
 
