@@ -27,6 +27,7 @@ open import Once.IR
 open import Once.Semantics
 open import Once.Optimize
 open import Once.Category.Laws
+open import Once.Postulates using (closure-semantics-eq)
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
@@ -404,7 +405,11 @@ optimize-once-correct [ f , g ] x =
     lemma (inj₂ b) = optimize-once-correct g b
 optimize-once-correct terminal x = refl
 optimize-once-correct initial ()
-optimize-once-correct (curry f) x = cong (λ h → λ b → h (x , b)) (funext (λ p → optimize-once-correct f p))
+optimize-once-correct (curry f) x =
+  closure-semantics-eq
+    (eval (curry (optimize-once f)) x)
+    (eval (curry f) x)
+    (funext (λ b → optimize-once-correct f (x , b)))
   where
     -- POSTULATE: Function extensionality (see module header for justification)
     postulate funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
