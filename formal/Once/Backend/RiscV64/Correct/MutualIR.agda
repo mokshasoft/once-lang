@@ -706,8 +706,66 @@ mutual
       -- The ret instruction is at ret-offset in curry
       -- curry layout: [7 closure setup] [5 thunk setup] [compile-riscv f] [ret] [label end]
       -- ret is at position 12 + len(f) within curry
-      postulate
-        fetch-ret : fetch prog ret-offset ≡ just ret
+
+      len-f = compile-length f
+
+      -- First 12 instructions of curry (closure setup + thunk setup)
+      curry-prefix-to-12 : Program
+      curry-prefix-to-12 = addi sp sp neg16 ∷       -- 0
+                           sd a0 (+ 0) sp ∷         -- 1
+                           auipc t0 (+ 0) ∷         -- 2
+                           addi t0 t0 (+ 5) ∷       -- 3
+                           sd t0 (+ 8) sp ∷         -- 4
+                           mv a0 sp ∷               -- 5
+                           j (+ (7 +ℕ len-f)) ∷     -- 6
+                           label 7 ∷                -- 7
+                           addi sp sp neg16 ∷       -- 8
+                           sd s0 (+ 0) sp ∷         -- 9
+                           sd a0 (+ 8) sp ∷         -- 10
+                           mv a0 sp ∷               -- 11
+                           []
+
+      -- curry code = curry-prefix-to-12 ++ compile-riscv f ++ ret ∷ label-end ∷ []
+      curry-code-eq : compile-riscv (curry f) ≡
+                      curry-prefix-to-12 ++ compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ []
+      curry-code-eq = refl
+
+      -- Build prefix up to ret
+      prefix-to-ret : Program
+      prefix-to-ret = (prefix ++ curry-prefix-to-12) ++ compile-riscv f
+
+      len-prefix-to-ret : length prefix-to-ret ≡ ret-offset
+      len-prefix-to-ret = begin
+        length prefix-to-ret
+          ≡⟨ List-length-++ (prefix ++ curry-prefix-to-12) ⟩
+        length (prefix ++ curry-prefix-to-12) +ℕ length (compile-riscv f)
+          ≡⟨ cong (_+ℕ length (compile-riscv f)) (List-length-++ prefix) ⟩
+        (offset +ℕ 12) +ℕ length (compile-riscv f)
+          ≡⟨ cong ((offset +ℕ 12) +ℕ_) (compile-length-correct f) ⟩
+        (offset +ℕ 12) +ℕ len-f
+          ∎
+
+      -- Show prog decomposes to prefix-to-ret ++ ret ∷ suffix'
+      prog-eq-ret : prog ≡ prefix-to-ret ++ ret ∷ _
+      prog-eq-ret = begin
+        prog
+          ≡⟨ cong (λ c → prefix ++ c ++ suffix) curry-code-eq ⟩
+        prefix ++ (curry-prefix-to-12 ++ compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ []) ++ suffix
+          ≡⟨ cong (prefix ++_) (++-assoc curry-prefix-to-12 _ suffix) ⟩
+        prefix ++ (curry-prefix-to-12 ++ (compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ []) ++ suffix)
+          ≡⟨ sym (++-assoc prefix curry-prefix-to-12 _) ⟩
+        (prefix ++ curry-prefix-to-12) ++ (compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ []) ++ suffix
+          ≡⟨ cong ((prefix ++ curry-prefix-to-12) ++_) (++-assoc (compile-riscv f) _ suffix) ⟩
+        (prefix ++ curry-prefix-to-12) ++ (compile-riscv f ++ (ret ∷ label (13 +ℕ len-f) ∷ []) ++ suffix)
+          ≡⟨ sym (++-assoc (prefix ++ curry-prefix-to-12) (compile-riscv f) _) ⟩
+        prefix-to-ret ++ (ret ∷ label (13 +ℕ len-f) ∷ []) ++ suffix
+          ≡⟨ refl ⟩
+        prefix-to-ret ++ ret ∷ _
+          ∎
+
+      fetch-ret : fetch prog ret-offset ≡ just ret
+      fetch-ret = subst₂ (λ p n → fetch p n ≡ just ret) (sym prog-eq-ret) len-prefix-to-ret
+                         (fetch-at-prefix-end prefix-to-ret ret _)
 
       -- State after ret: pc = ra, everything else unchanged
       s' : State

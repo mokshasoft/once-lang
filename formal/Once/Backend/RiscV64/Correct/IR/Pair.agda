@@ -46,7 +46,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -294,10 +294,21 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
     orig-sp = readReg (regs s) sp
     new-sp = orig-sp ∸ 16
 
-    -- Fetch lemmas (postulated for program structure)
-    postulate
-      fetch0 : fetch prog offset ≡ just setup-alloc
-      fetch1 : fetch prog (offset +ℕ 1) ≡ just setup-save
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+    -- prog = prefix ++ (setup-alloc ∷ setup-save ∷ rest) ++ suffix
+    --      = prefix ++ setup-alloc ∷ (setup-save ∷ rest ++ suffix)
+    fetch0 : fetch prog offset ≡ just setup-alloc
+    fetch0 = fetch-at-prefix-end prefix setup-alloc _
+
+    prog-eq1 : prog ≡ (prefix ++ setup-alloc ∷ []) ++ _
+    prog-eq1 = sym (++-assoc prefix (setup-alloc ∷ []) _)
+
+    len-prefix-1 : length (prefix ++ setup-alloc ∷ []) ≡ offset +ℕ 1
+    len-prefix-1 = List-length-++ prefix
+
+    fetch1 : fetch prog (offset +ℕ 1) ≡ just setup-save
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just setup-save) (sym prog-eq1) len-prefix-1
+                    (fetch-at-prefix-end (prefix ++ setup-alloc ∷ []) setup-save _)
 
     -- State after step 0: addi sp sp -16
     st1 : State
@@ -391,10 +402,27 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq 
 
     curr-sp = readReg (regs sf) sp
 
-    -- Fetch lemmas
-    postulate
-      fetch-mid0 : fetch prog mid-offset ≡ just middle-store
-      fetch-mid1 : fetch prog (mid-offset +ℕ 1) ≡ just middle-restore
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+    -- prog = prefix-f ++ code-f ++ suffix-f
+    --      = prefix-mid ++ middle-store ∷ middle-restore ∷ rest
+    -- mid-offset = length prefix-mid
+
+    prog-eq-mid : prog ≡ prefix-mid ++ suffix-f
+    prog-eq-mid = trans prog-eq-f (sym (++-assoc prefix-f code-f suffix-f))
+
+    fetch-mid0 : fetch prog mid-offset ≡ just middle-store
+    fetch-mid0 = subst₂ (λ p n → fetch p n ≡ just middle-store) (sym prog-eq-mid) len-prefix-mid
+                        (fetch-at-prefix-end prefix-mid middle-store _)
+
+    prog-eq-mid1 : prog ≡ (prefix-mid ++ middle-store ∷ []) ++ _
+    prog-eq-mid1 = trans prog-eq-mid (sym (++-assoc prefix-mid (middle-store ∷ []) _))
+
+    len-prefix-mid1 : length (prefix-mid ++ middle-store ∷ []) ≡ mid-offset +ℕ 1
+    len-prefix-mid1 = trans (List-length-++ prefix-mid) (cong (_+ℕ 1) len-prefix-mid)
+
+    fetch-mid1 : fetch prog (mid-offset +ℕ 1) ≡ just middle-restore
+    fetch-mid1 = subst₂ (λ p n → fetch p n ≡ just middle-restore) (sym prog-eq-mid1) len-prefix-mid1
+                        (fetch-at-prefix-end (prefix-mid ++ middle-store ∷ []) middle-restore _)
 
     -- State after step 0: sd a0 0(sp)
     st1 : State
@@ -503,10 +531,27 @@ pair-final-star {A} {B} {C} f g prefix suffix x sf sg h-false pc-eq a0-eq mem-f 
     final-offset = length prefix +ℕ 4 +ℕ len-f +ℕ len-g
     curr-sp = readReg (regs sg) sp
 
-    -- Fetch lemmas
-    postulate
-      fetch-final0 : fetch prog final-offset ≡ just final-store
-      fetch-final1 : fetch prog (final-offset +ℕ 1) ≡ just final-result
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+    -- prog = prefix-g ++ code-g ++ suffix-g
+    --      = prefix-final ++ final-store ∷ final-result ∷ suffix
+    -- final-offset = length prefix-final
+
+    prog-eq-final : prog ≡ prefix-final ++ suffix-g
+    prog-eq-final = trans prog-eq-g (sym (++-assoc prefix-g code-g suffix-g))
+
+    fetch-final0 : fetch prog final-offset ≡ just final-store
+    fetch-final0 = subst₂ (λ p n → fetch p n ≡ just final-store) (sym prog-eq-final) len-prefix-final
+                          (fetch-at-prefix-end prefix-final final-store _)
+
+    prog-eq-final1 : prog ≡ (prefix-final ++ final-store ∷ []) ++ _
+    prog-eq-final1 = trans prog-eq-final (sym (++-assoc prefix-final (final-store ∷ []) _))
+
+    len-prefix-final1 : length (prefix-final ++ final-store ∷ []) ≡ final-offset +ℕ 1
+    len-prefix-final1 = trans (List-length-++ prefix-final) (cong (_+ℕ 1) len-prefix-final)
+
+    fetch-final1 : fetch prog (final-offset +ℕ 1) ≡ just final-result
+    fetch-final1 = subst₂ (λ p n → fetch p n ≡ just final-result) (sym prog-eq-final1) len-prefix-final1
+                          (fetch-at-prefix-end (prefix-final ++ final-store ∷ []) final-result _)
 
     -- State after step 0: sd a0 8(sp)
     st1 : State
