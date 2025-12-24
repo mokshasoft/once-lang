@@ -125,14 +125,84 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     len-prefix-to-i0 : length prefix-to-i0 ≡ thunk-offset
     len-prefix-to-i0 = List-length-++ prefix
 
-    -- Fetch lemmas are postulated for program structure
-    -- These can be proven with detailed program layout analysis
-    postulate
-      fetch0 : fetch prog thunk-offset ≡ just i0
-      fetch1 : fetch prog (thunk-offset +ℕ 1) ≡ just i1
-      fetch2 : fetch prog (thunk-offset +ℕ 2) ≡ just i2
-      fetch3 : fetch prog (thunk-offset +ℕ 3) ≡ just i3
-      fetch4 : fetch prog (thunk-offset +ℕ 4) ≡ just i4
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+    -- compile-riscv (curry f) = curry-prefix-to-7 ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ rest
+    -- prog = prefix ++ (curry-prefix-to-7 ++ i0 ∷ ...) ++ suffix
+    --      = (prefix ++ curry-prefix-to-7) ++ i0 ∷ ...
+    --      = prefix-to-i0 ++ i0 ∷ ...
+
+    -- The thunk body after the first 5 setup instructions
+    thunk-body : Program
+    thunk-body = compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ []
+
+    -- Show curry code decomposes properly
+    curry-code-eq : compile-riscv (curry f) ≡
+                    curry-prefix-to-7 ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ thunk-body
+    curry-code-eq = refl
+
+    -- Program structure: prog = prefix-to-i0 ++ i0 ∷ rest
+    prog-eq0 : prog ≡ prefix-to-i0 ++ i0 ∷ _
+    prog-eq0 = trans (cong (λ c → prefix ++ c ++ suffix) curry-code-eq)
+                     (sym (++-assoc prefix curry-prefix-to-7 _))
+
+    fetch0 : fetch prog thunk-offset ≡ just i0
+    fetch0 = subst₂ (λ p n → fetch p n ≡ just i0) (sym prog-eq0) len-prefix-to-i0
+                    (fetch-at-prefix-end prefix-to-i0 i0 _)
+
+    prefix-to-i1 : Program
+    prefix-to-i1 = prefix-to-i0 ++ i0 ∷ []
+
+    prog-eq1 : prog ≡ prefix-to-i1 ++ i1 ∷ _
+    prog-eq1 = trans prog-eq0 (sym (++-assoc prefix-to-i0 (i0 ∷ []) _))
+
+    len-prefix-to-i1 : length prefix-to-i1 ≡ thunk-offset +ℕ 1
+    len-prefix-to-i1 = trans (List-length-++ prefix-to-i0) (cong (_+ℕ 1) len-prefix-to-i0)
+
+    fetch1 : fetch prog (thunk-offset +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-to-i1
+                    (fetch-at-prefix-end prefix-to-i1 i1 _)
+
+    prefix-to-i2 : Program
+    prefix-to-i2 = prefix-to-i1 ++ i1 ∷ []
+
+    prog-eq2 : prog ≡ prefix-to-i2 ++ i2 ∷ _
+    prog-eq2 = trans prog-eq1 (sym (++-assoc prefix-to-i1 (i1 ∷ []) _))
+
+    len-prefix-to-i2 : length prefix-to-i2 ≡ thunk-offset +ℕ 2
+    len-prefix-to-i2 = trans (List-length-++ prefix-to-i1)
+                             (trans (cong (_+ℕ 1) len-prefix-to-i1) (+-assoc thunk-offset 1 1))
+
+    fetch2 : fetch prog (thunk-offset +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-to-i2
+                    (fetch-at-prefix-end prefix-to-i2 i2 _)
+
+    prefix-to-i3 : Program
+    prefix-to-i3 = prefix-to-i2 ++ i2 ∷ []
+
+    prog-eq3 : prog ≡ prefix-to-i3 ++ i3 ∷ _
+    prog-eq3 = trans prog-eq2 (sym (++-assoc prefix-to-i2 (i2 ∷ []) _))
+
+    len-prefix-to-i3 : length prefix-to-i3 ≡ thunk-offset +ℕ 3
+    len-prefix-to-i3 = trans (List-length-++ prefix-to-i2)
+                             (trans (cong (_+ℕ 1) len-prefix-to-i2) (+-assoc thunk-offset 2 1))
+
+    fetch3 : fetch prog (thunk-offset +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-to-i3
+                    (fetch-at-prefix-end prefix-to-i3 i3 _)
+
+    prefix-to-i4 : Program
+    prefix-to-i4 = prefix-to-i3 ++ i3 ∷ []
+
+    prog-eq4 : prog ≡ prefix-to-i4 ++ i4 ∷ _
+    prog-eq4 = trans prog-eq3 (sym (++-assoc prefix-to-i3 (i3 ∷ []) _))
+
+    len-prefix-to-i4 : length prefix-to-i4 ≡ thunk-offset +ℕ 4
+    len-prefix-to-i4 = trans (List-length-++ prefix-to-i3)
+                             (trans (cong (_+ℕ 1) len-prefix-to-i3) (+-assoc thunk-offset 3 1))
+
+    fetch4 : fetch prog (thunk-offset +ℕ 4) ≡ just i4
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) len-prefix-to-i4
+                    (fetch-at-prefix-end prefix-to-i4 i4 _)
 
     -- State after step 0: label 7 (no-op, just pc++)
     st1 : State
