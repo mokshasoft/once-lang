@@ -35,7 +35,8 @@ open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-cor
 open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
+         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -71,6 +72,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     ; ir-s1     = s1-final
     ; ir-ra     = ra-final
     ; ir-sp     = sp-final
+    ; ir-mem-sp = mem-sp-final
+    ; ir-mem-sp+8 = mem-sp+8-final
+    ; ir-mem-sp+16 = mem-sp+16-final
     }
   where
     len-f = compile-length f
@@ -600,3 +604,8 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     -- FIX: Either curry should heap-allocate closures, or pair should save sp in a register.
     postulate
       sp-final : readReg (regs s-final) sp ≡ readReg (regs s) sp
+      -- Memory preservation: curry writes to its own stack frame (sp-16..sp),
+      -- but should preserve memory at caller's frame (original sp and above)
+      mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
+      mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
+      mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
