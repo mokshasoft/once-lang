@@ -103,6 +103,7 @@ test-suite once-test
   other-modules:
       Paths_once
       Backend.C.Spec
+      Backend.X86.Spec
       Backend.Common
       BackendSpec
       ElaborateSpec

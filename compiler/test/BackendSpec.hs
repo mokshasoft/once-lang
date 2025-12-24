@@ -3,8 +3,8 @@ module BackendSpec (backendTests) where
 import Test.Tasty
 
 import Backend.C.Spec (cBackendTests)
+import Backend.X86.Spec (x86BackendTests)
 
 -- | All backend tests
--- Currently only C backend is implemented
 backendTests :: TestTree
-backendTests = testGroup "Backend" [cBackendTests]
+backendTests = testGroup "Backend" [cBackendTests, x86BackendTests]
