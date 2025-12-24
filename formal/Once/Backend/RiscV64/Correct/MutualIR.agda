@@ -59,7 +59,9 @@ open import Once.Backend.RiscV64.Correct.IR.Pair using (module PairContext)
 
 -- Import extracted case helpers
 open import Once.Backend.RiscV64.Correct.IR.Case
-  using (CaseContext; make-case-context)
+  using (CaseContext; make-case-context;
+         case-dispatch-left-star; case-dispatch-right-star;
+         case-left-jump-star; case-right-end-star)
 open import Once.Backend.RiscV64.Correct.IR.Case using (module CaseContext)
 
 -- Import extracted curry proof
@@ -435,15 +437,206 @@ mutual
                      (trans ra-mid
                        (trans ra-after-f ra-setup)))
 
-  -- Case helper (postulated - needs branch execution proof)
-  postulate
-    run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C)
-                    (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
-      halted s ≡ false →
-      pc s ≡ length prefix →
-      readReg (regs s) a0 ≡ encode x →
-      let prog = prefix ++ compile-riscv ([_,_] f g) ++ suffix
-      in ∃[ s' ] IRStarResult ([_,_] f g) prog s s' x (length prefix)
+  -- Case helper - proven using dispatch helpers and IH
+  run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C)
+                  (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) a0 ≡ encode x →
+    let prog = prefix ++ compile-riscv ([_,_] f g) ++ suffix
+    in ∃[ s' ] IRStarResult ([_,_] f g) prog s s' x (length prefix)
+
+  -- Left path implementation (inj₁ a)
+  run-case-star {A} {B} {C} f g prefix suffix (inj₁ a) s h-false pc-eq a0-eq =
+    s-final , record
+      { ir-star = star-all
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-a0 = a0-final
+      ; ir-s1 = s1-final
+      ; ir-ra = ra-final
+      }
+    where
+      ctx = make-case-context f g prefix suffix
+      open CaseContext ctx
+      offset = length prefix
+
+      -- Phase 1: Dispatch (3 instructions, branch NOT taken)
+      dispatch-result = case-dispatch-left-star f g prefix suffix a s h-false pc-eq a0-eq
+      s-dispatch = proj₁ dispatch-result
+      star-dispatch = proj₁ (proj₂ dispatch-result)
+      h-dispatch = proj₁ (proj₂ (proj₂ dispatch-result))
+      pc-dispatch = proj₁ (proj₂ (proj₂ (proj₂ dispatch-result)))
+      a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
+      t0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
+      s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
+      ra-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
+
+      -- Phase 2: Execute f (IH call)
+      -- PC for f: need length prefix-f
+      pc-for-f : pc s-dispatch ≡ length prefix-f
+      pc-for-f = trans pc-dispatch (sym len-prefix-f)
+
+      step-f = run-ir-star-at-offset f prefix-f suffix-f a s-dispatch h-dispatch pc-for-f a0-dispatch
+      s-after-f-raw = proj₁ step-f
+      r-f = proj₂ step-f
+
+      -- Convert f result to use prog
+      star-f-raw : Star (prefix-f ++ code-f ++ suffix-f) s-dispatch s-after-f-raw
+      star-f-raw = ir-star r-f
+
+      star-f : Star prog s-dispatch s-after-f-raw
+      star-f = subst (λ p → Star p s-dispatch s-after-f-raw) (sym prog-eq-f) star-f-raw
+
+      -- Extract f result properties
+      h-after-f = ir-halted r-f
+      a0-after-f = ir-a0 r-f
+      s1-after-f = ir-s1 r-f
+      ra-after-f = ir-ra r-f
+
+      pc-f-raw : pc s-after-f-raw ≡ length prefix-f +ℕ len-f
+      pc-f-raw = ir-pc r-f
+
+      pc-after-f : pc s-after-f-raw ≡ offset +ℕ 3 +ℕ len-f
+      pc-after-f = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
+
+      -- Phase 3: Jump over g (2 instructions)
+      jump-result = case-left-jump-star f g prefix suffix s-after-f-raw h-after-f pc-after-f
+      s-final = proj₁ jump-result
+      star-jump = proj₁ (proj₂ jump-result)
+      h-final = proj₁ (proj₂ (proj₂ jump-result))
+      pc-jump = proj₁ (proj₂ (proj₂ (proj₂ jump-result)))
+      a0-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))
+      s1-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
+      ra-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
+
+      -- Compose all stars
+      star-all : Star prog s s-final
+      star-all = star-trans star-dispatch (star-trans star-f star-jump)
+
+      -- Final pc: offset + 6 + len-f + len-g = offset + compile-length [f,g]
+      -- case-left-jump-star gives: ((offset + 6) + len-f) + len-g
+      -- We need: offset + ((6 + len-f) + len-g)
+      pc-convert : offset +ℕ 6 +ℕ len-f +ℕ len-g ≡ offset +ℕ (6 +ℕ len-f +ℕ len-g)
+      pc-convert = begin
+        offset +ℕ 6 +ℕ len-f +ℕ len-g
+          ≡⟨ +-assoc (offset +ℕ 6) len-f len-g ⟩
+        (offset +ℕ 6) +ℕ (len-f +ℕ len-g)
+          ≡⟨ +-assoc offset 6 (len-f +ℕ len-g) ⟩
+        offset +ℕ (6 +ℕ (len-f +ℕ len-g))
+          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 6 len-f len-g)) ⟩
+        offset +ℕ (6 +ℕ len-f +ℕ len-g)
+          ∎
+
+      pc-final : pc s-final ≡ offset +ℕ compile-length ([_,_] f g)
+      pc-final = trans pc-jump pc-convert
+
+      -- Final a0: eval [f,g] (inj₁ a) = eval f a
+      a0-final : readReg (regs s-final) a0 ≡ encode (eval ([_,_] f g) (inj₁ a))
+      a0-final = trans a0-jump (trans a0-after-f refl)
+
+      -- s1 preservation
+      s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
+      s1-final = trans s1-jump (trans s1-after-f s1-dispatch)
+
+      -- ra preservation
+      ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
+      ra-final = trans ra-jump (trans ra-after-f ra-dispatch)
+
+  -- Right path implementation (inj₂ b)
+  run-case-star {A} {B} {C} f g prefix suffix (inj₂ b) s h-false pc-eq a0-eq =
+    s-final , record
+      { ir-star = star-all
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-a0 = a0-final
+      ; ir-s1 = s1-final
+      ; ir-ra = ra-final
+      }
+    where
+      ctx = make-case-context f g prefix suffix
+      open CaseContext ctx
+      offset = length prefix
+
+      -- Phase 1: Dispatch (4 instructions, branch TAKEN + landing label)
+      dispatch-result = case-dispatch-right-star f g prefix suffix b s h-false pc-eq a0-eq
+      s-dispatch = proj₁ dispatch-result
+      star-dispatch = proj₁ (proj₂ dispatch-result)
+      h-dispatch = proj₁ (proj₂ (proj₂ dispatch-result))
+      pc-dispatch = proj₁ (proj₂ (proj₂ (proj₂ dispatch-result)))
+      a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
+      s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
+      ra-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
+
+      -- Phase 2: Execute g (IH call)
+      pc-for-g : pc s-dispatch ≡ length prefix-g
+      pc-for-g = trans pc-dispatch (sym len-prefix-g)
+
+      step-g = run-ir-star-at-offset g prefix-g suffix-g b s-dispatch h-dispatch pc-for-g a0-dispatch
+      s-after-g-raw = proj₁ step-g
+      r-g = proj₂ step-g
+
+      -- Convert g result to use prog
+      star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s-dispatch s-after-g-raw
+      star-g-raw = ir-star r-g
+
+      star-g : Star prog s-dispatch s-after-g-raw
+      star-g = subst (λ p → Star p s-dispatch s-after-g-raw) (sym prog-eq-g) star-g-raw
+
+      -- Extract g result properties
+      h-after-g = ir-halted r-g
+      a0-after-g = ir-a0 r-g
+      s1-after-g = ir-s1 r-g
+      ra-after-g = ir-ra r-g
+
+      pc-g-raw : pc s-after-g-raw ≡ length prefix-g +ℕ len-g
+      pc-g-raw = ir-pc r-g
+
+      pc-after-g : pc s-after-g-raw ≡ offset +ℕ 5 +ℕ len-f +ℕ len-g
+      pc-after-g = trans pc-g-raw (cong (_+ℕ len-g) len-prefix-g)
+
+      -- Phase 3: Execute end-label (1 instruction)
+      end-result = case-right-end-star f g prefix suffix s-after-g-raw h-after-g pc-after-g
+      s-final = proj₁ end-result
+      star-end = proj₁ (proj₂ end-result)
+      h-final = proj₁ (proj₂ (proj₂ end-result))
+      pc-end = proj₁ (proj₂ (proj₂ (proj₂ end-result)))
+      a0-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))
+      s1-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
+      ra-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
+
+      -- Compose all stars
+      star-all : Star prog s s-final
+      star-all = star-trans star-dispatch (star-trans star-g star-end)
+
+      -- Final pc: offset + 6 + len-f + len-g = offset + compile-length [f,g]
+      -- case-right-end-star gives: ((offset + 6) + len-f) + len-g
+      -- We need: offset + ((6 + len-f) + len-g)
+      pc-convert : offset +ℕ 6 +ℕ len-f +ℕ len-g ≡ offset +ℕ (6 +ℕ len-f +ℕ len-g)
+      pc-convert = begin
+        offset +ℕ 6 +ℕ len-f +ℕ len-g
+          ≡⟨ +-assoc (offset +ℕ 6) len-f len-g ⟩
+        (offset +ℕ 6) +ℕ (len-f +ℕ len-g)
+          ≡⟨ +-assoc offset 6 (len-f +ℕ len-g) ⟩
+        offset +ℕ (6 +ℕ (len-f +ℕ len-g))
+          ≡⟨ cong (offset +ℕ_) (sym (+-assoc 6 len-f len-g)) ⟩
+        offset +ℕ (6 +ℕ len-f +ℕ len-g)
+          ∎
+
+      pc-final : pc s-final ≡ offset +ℕ compile-length ([_,_] f g)
+      pc-final = trans pc-end pc-convert
+
+      -- Final a0: eval [f,g] (inj₂ b) = eval g b
+      a0-final : readReg (regs s-final) a0 ≡ encode (eval ([_,_] f g) (inj₂ b))
+      a0-final = trans a0-end a0-after-g
+
+      -- s1 preservation
+      s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
+      s1-final = trans s1-end (trans s1-after-g s1-dispatch)
+
+      -- ra preservation
+      ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
+      ra-final = trans ra-end (trans ra-after-g ra-dispatch)
 
   ------------------------------------------------------------------------
   -- curry-thunk-correct-impl: Proven version using IH
