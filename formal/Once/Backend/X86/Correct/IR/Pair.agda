@@ -32,7 +32,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound)
 
 open import Data.Bool using (false)
 open import Data.Empty using (⊥)
@@ -430,6 +430,8 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     rsp-mid : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
     -- Memory: fst stored
     mem-fst-stored : readMem (memory s2) (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)
+    -- Memory at rbp preserved (for stack-rbp chain)
+    mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
 
 -- | Execute middle phase
 exec-pair-middle : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -457,6 +459,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
   ; rbp-mid = rbp-mid
   ; rsp-mid = rsp-mid
   ; mem-fst-stored = mem-fst-stored
+  ; mem-rbp-mid = mem-rbp-mid
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -525,6 +528,76 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
 
     stack-inv-s2 : StackInvariant s2
     stack-inv-s2 = stack-inv-preserved-unchanged s1 s2 (ir-stack-inv r-f) (sym r15-mid) (sym rsp-mid)
+
+    -- Memory at [rbp] preserved through middle phase
+    -- Middle writes at [r15], and r15 ≠ rbp (since r15 = rsp-40, rbp = rsp-24)
+    r15-setup-raw : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ 40
+    r15-setup-raw = subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                          (sym s-setup-eq) (PairSetupResult.r15-setup setup-res)
+
+    rbp-setup-raw : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+    rbp-setup-raw = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                          (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
+
+    -- r15 s1 = rsp s - 40
+    r15-s1-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+    r15-s1-eq = trans (ir-r15 r-f) r15-setup-raw
+
+    -- rbp s1 = rsp s - 24
+    rbp-s1-eq : readReg (regs s1) rbp ≡ readReg (regs s) rsp ∸ 24
+    rbp-s1-eq = trans (ir-rbp r-f) rbp-setup-raw
+
+    -- r15 ≠ rbp in s1 (since rsp-40 ≠ rsp-24)
+    -- Key: if rsp - 40 = rsp - 24 with rsp ≥ 40, then (rsp-24) = (rsp-40),
+    -- which means (rsp-40) + 16 = (rsp-40), contradiction via n≢n+suc-m
+    r15-neq-rbp-s1 : readReg (regs s1) r15 ≢ readReg (regs s1) rbp
+    r15-neq-rbp-s1 eq = n≢n+suc-m (rsp-s ∸ 40) 15 contra
+      where
+        rsp-s = readReg (regs s) rsp
+        -- rsp-40 = rsp-24 follows from the equality
+        eq' : rsp-s ∸ 40 ≡ rsp-s ∸ 24
+        eq' = trans (sym r15-s1-eq) (trans eq rbp-s1-eq)
+        -- We have 40 ≤ rsp-s from rsp>16-s2 and rsp-setup = rsp - 40 > 16
+        rsp>16-setup-raw : readReg (regs s-setup) rsp > 16
+        rsp>16-setup-raw = subst (λ ss → readReg (regs ss) rsp > 16)
+                                 (sym s-setup-eq) (PairSetupResult.rsp>16-setup setup-res)
+        rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
+        rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ 40)
+                             (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
+        rsp∸40>16 : rsp-s ∸ 40 > 16
+        rsp∸40>16 = subst (_> 16) rsp-setup-eq rsp>16-setup-raw
+        -- rsp - 24 = (rsp - 40) + 16 when rsp ≥ 40
+        rsp∸40>0 : rsp-s ∸ 40 > 0
+        rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16
+        -- Local definition since ∸>0⇒≤ is defined later in file
+        ∸>0⇒≤-local : ∀ m n → m ∸ n > 0 → n ≤ m
+        ∸>0⇒≤-local m zero _ = z≤n
+        ∸>0⇒≤-local zero (suc n) ()
+        ∸>0⇒≤-local (suc m) (suc n) sm∸sn>0 = s≤s (∸>0⇒≤-local m n sm∸sn>0)
+        40≤rsp : 40 ≤ rsp-s
+        40≤rsp = ∸>0⇒≤-local rsp-s 40 rsp∸40>0
+        -- Local ∸-offset-relationship: m ∸ 24 ≡ (m ∸ 40) + 16 when 40 ≤ m
+        rsp∸24-eq : rsp-s ∸ 24 ≡ (rsp-s ∸ 40) +ℕ 16
+        rsp∸24-eq = trans step1 step2
+          where
+            step1 : rsp-s ∸ 24 ≡ (rsp-s ∸ 40 +ℕ 40) ∸ 24
+            step1 = cong (_∸ 24) (sym (m∸n+n≡m 40≤rsp))
+            step2 : (rsp-s ∸ 40 +ℕ 40) ∸ 24 ≡ (rsp-s ∸ 40) +ℕ 16
+            step2 = lemma (rsp-s ∸ 40)
+              where
+                lemma : ∀ k → (k +ℕ 40) ∸ 24 ≡ k +ℕ 16
+                lemma k = trans (cong (_∸ 24) (+-comm k 40)) (trans step-a (+-comm 16 k))
+                  where
+                    step-a : (40 +ℕ k) ∸ 24 ≡ 16 +ℕ k
+                    step-a = refl
+        -- Now: (rsp-40) = (rsp-24) = (rsp-40) + 16, contradiction
+        contra : rsp-s ∸ 40 ≡ (rsp-s ∸ 40) +ℕ 16
+        contra = trans eq' rsp∸24-eq
+
+    -- Memory preserved via readMem-writeMem-diff
+    mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
+    mem-rbp-mid = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) (readReg (regs s1) rbp)
+                                        (readReg (regs s1) rax) r15-neq-rbp-s1
 
 ------------------------------------------------------------------------
 -- Final Assembly: combine all results into IRStarResult
