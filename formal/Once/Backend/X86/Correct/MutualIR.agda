@@ -99,6 +99,11 @@ open import Once.Backend.X86.Correct.IR.Case
          assemble-case-inl-result; assemble-case-inr-result)
 open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult; module CaseEndResult; module CaseRightSetupResult)
 
+-- Import thunk structure lemmas (fetch proofs for thunk instructions)
+open import Once.Backend.X86.Correct.IR.ThunkStructure
+  using (thunk-i0; thunk-i1; thunk-i2; thunk-i3; thunk-i4;
+         fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -1679,14 +1684,22 @@ mutual
       postulate
         prog-is-prefix-thunk : prog ≡ prefix-thunk ++ i0 ∷ rest0
 
-      -- Fetch lemmas (postulated for now - provable using program structure lemmas)
-      -- These are mechanical and can be proven later
-      postulate
-        fetch0 : fetch prog thunk-offset ≡ just i0
-        fetch1 : fetch prog (thunk-offset +ℕ 1) ≡ just i1
-        fetch2 : fetch prog (thunk-offset +ℕ 2) ≡ just i2
-        fetch3 : fetch prog (thunk-offset +ℕ 3) ≡ just i3
-        fetch4 : fetch prog (thunk-offset +ℕ 4) ≡ just i4
+      -- Fetch lemmas (proven in ThunkStructure module)
+      -- These use the program structure lemmas from ThunkStructure
+      fetch0 : fetch prog thunk-offset ≡ just i0
+      fetch0 = fetch-thunk-i0 f prefix suffix
+
+      fetch1 : fetch prog (thunk-offset +ℕ 1) ≡ just i1
+      fetch1 = fetch-thunk-i1 f prefix suffix
+
+      fetch2 : fetch prog (thunk-offset +ℕ 2) ≡ just i2
+      fetch2 = fetch-thunk-i2 f prefix suffix
+
+      fetch3 : fetch prog (thunk-offset +ℕ 3) ≡ just i3
+      fetch3 = fetch-thunk-i3 f prefix suffix
+
+      fetch4 : fetch prog (thunk-offset +ℕ 4) ≡ just i4
+      fetch4 = fetch-thunk-i4 f prefix suffix
 
       old-rsp = readReg (regs s) rsp
       new-rsp = old-rsp ∸ 16
