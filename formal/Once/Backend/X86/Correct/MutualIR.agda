@@ -1668,22 +1668,6 @@ mutual
         mov (reg rax) (reg rsp) ∷
         jmp end-offset-curry ∷ []
 
-      -- The prefix up to thunk-offset
-      prefix-thunk : Program
-      prefix-thunk = prefix ++ curry-closure-setup
-
-      -- Thunk code after label
-      thunk-after-label : Program
-      thunk-after-label = i1 ∷ i2 ∷ i3 ∷ i4 ∷ compile-x86 f ++ ret ∷ label (12 +ℕ len-f) ∷ []
-
-      -- suffix for first fetch
-      rest0 : Program
-      rest0 = thunk-after-label ++ suffix
-
-      -- Program structure lemma (postulated - provable by expanding compile-x86 curry)
-      postulate
-        prog-is-prefix-thunk : prog ≡ prefix-thunk ++ i0 ∷ rest0
-
       -- Fetch lemmas (proven in ThunkStructure module)
       -- These use the program structure lemmas from ThunkStructure
       fetch0 : fetch prog thunk-offset ≡ just i0
