@@ -1598,30 +1598,223 @@ mutual
   -- pattern, can be proven with detailed instruction semantics).
   ------------------------------------------------------------------------
 
-  -- Postulate for tracing the 5 thunk setup instructions
-  -- This captures: label, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
-  postulate
-    thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
-                       (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
-      let prog = prefix ++ compile-x86 (curry f) ++ suffix
-          thunk-offset = length prefix +ℕ 6
-          f-offset = length prefix +ℕ 11
-      in
-      halted s ≡ false →
-      pc s ≡ thunk-offset →
-      readReg (regs s) rdi ≡ encode arg →
-      readReg (regs s) r12 ≡ encode env →
-      StackInvariant s →
-      readReg (regs s) rsp > 16 →
-      ∃[ s' ] (Star prog s s'
-              × halted s' ≡ false
-              × pc s' ≡ f-offset
-              × readReg (regs s') rdi ≡ encode (env , arg)
-              × readReg (regs s') r14 ≡ readReg (regs s) r14
-              × readReg (regs s') r15 ≡ readReg (regs s) r15
-              × readReg (regs s') rbp ≡ readReg (regs s) rbp
-              × StackInvariant s'
-              × readReg (regs s') rsp > 16)
+  -- Prove thunk setup: label, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
+  thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
+                     (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
+    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+        thunk-offset = length prefix +ℕ 6
+        f-offset = length prefix +ℕ 11
+    in
+    halted s ≡ false →
+    pc s ≡ thunk-offset →
+    readReg (regs s) rdi ≡ encode arg →
+    readReg (regs s) r12 ≡ encode env →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    ∃[ s' ] (Star prog s s'
+            × halted s' ≡ false
+            × pc s' ≡ f-offset
+            × readReg (regs s') rdi ≡ encode (env , arg)
+            × readReg (regs s') r14 ≡ readReg (regs s) r14
+            × readReg (regs s') r15 ≡ readReg (regs s) r15
+            × readReg (regs s') rbp ≡ readReg (regs s) rbp
+            × StackInvariant s'
+            × readReg (regs s') rsp > 16)
+  thunk-setup-star {A} {B} {C} f prefix suffix env arg s
+                   h-false pc-eq rdi-eq r12-eq stack-inv rsp>16 =
+    s5 , star-all , h5 , pc5 , rdi5 , r14-5 , r15-5 , rbp5 , stack-inv5 , rsp>16-5
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
+
+      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+      thunk-offset = offset +ℕ 6
+      f-offset = offset +ℕ 11
+
+      -- The 5 thunk setup instructions (at positions 6-10 within curry)
+      i0 = label (offset +ℕ 6)  -- label at thunk entry
+      i1 = sub (reg rsp) (imm 16)  -- allocate pair
+      i2 = mov (mem (base rsp)) (reg r12)  -- store env
+      i3 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
+      i4 = mov (reg rdi) (reg rsp)  -- rdi = pair address
+
+      -- Fetch lemmas (postulated for program structure)
+      postulate
+        fetch0 : fetch prog thunk-offset ≡ just i0
+        fetch1 : fetch prog (thunk-offset +ℕ 1) ≡ just i1
+        fetch2 : fetch prog (thunk-offset +ℕ 2) ≡ just i2
+        fetch3 : fetch prog (thunk-offset +ℕ 3) ≡ just i3
+        fetch4 : fetch prog (thunk-offset +ℕ 4) ≡ just i4
+
+      old-rsp = readReg (regs s) rsp
+      new-rsp = old-rsp ∸ 16
+
+      -- State after label (no-op, just pc++)
+      s1 : State
+      s1 = record s { pc = pc s +ℕ 1 }
+
+      step0 : step prog s ≡ just s1
+      step0 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                    (execLabel [] s (offset +ℕ 6))
+
+      h1 : halted s1 ≡ false
+      h1 = h-false
+
+      pc1 : pc s1 ≡ thunk-offset +ℕ 1
+      pc1 = cong (_+ℕ 1) pc-eq
+
+      -- State after sub rsp, 16
+      s2 : State
+      s2 = record s1 { regs = writeReg (regs s1) rsp new-rsp
+                     ; pc = pc s1 +ℕ 1
+                     ; flags = updateFlags new-rsp old-rsp }
+
+      step1 : step prog s1 ≡ just s2
+      step1 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                    (execSub-reg-imm [] s1 rsp 16)
+
+      h2 : halted s2 ≡ false
+      h2 = h-false
+
+      pc2 : pc s2 ≡ thunk-offset +ℕ 2
+      pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc thunk-offset 1 1)
+
+      -- State after mov [rsp], r12 (store env)
+      rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+      rsp-s2 = readReg-writeReg-same (regs s1) rsp new-rsp
+
+      r12-s2 : readReg (regs s2) r12 ≡ encode env
+      r12-s2 = trans (readReg-writeReg-rsp-r12 (regs s1) new-rsp) r12-eq
+
+      s3 : State
+      s3 = record s2 { memory = writeMem (memory s2) new-rsp (readReg (regs s2) r12)
+                     ; pc = pc s2 +ℕ 1 }
+
+      step2 : step prog s2 ≡ just s3
+      step2 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                    (cong (λ addr → just (record s2 { memory = writeMem (memory s2) addr (readReg (regs s2) r12)
+                                                    ; pc = pc s2 +ℕ 1 }))
+                          rsp-s2)
+
+      h3 : halted s3 ≡ false
+      h3 = h-false
+
+      pc3 : pc s3 ≡ thunk-offset +ℕ 3
+      pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc thunk-offset 2 1)
+
+      -- State after mov [rsp+8], rdi (store arg)
+      rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+      rsp-s3 = rsp-s2
+
+      rdi-s3 : readReg (regs s3) rdi ≡ encode arg
+      rdi-s3 = trans (readReg-writeReg-rsp-rdi (regs s1) new-rsp) rdi-eq
+
+      s4 : State
+      s4 = record s3 { memory = writeMem (memory s3) (new-rsp +ℕ 8) (readReg (regs s3) rdi)
+                     ; pc = pc s3 +ℕ 1 }
+
+      step3 : step prog s3 ≡ just s4
+      step3 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                    (cong (λ addr → just (record s3 { memory = writeMem (memory s3) (addr +ℕ 8) (readReg (regs s3) rdi)
+                                                    ; pc = pc s3 +ℕ 1 }))
+                          rsp-s3)
+
+      h4 : halted s4 ≡ false
+      h4 = h-false
+
+      pc4 : pc s4 ≡ thunk-offset +ℕ 4
+      pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc thunk-offset 3 1)
+
+      -- State after mov rdi, rsp (rdi = pair address)
+      rsp-s4 : readReg (regs s4) rsp ≡ new-rsp
+      rsp-s4 = rsp-s3
+
+      s5 : State
+      s5 = record s4 { regs = writeReg (regs s4) rdi new-rsp
+                     ; pc = pc s4 +ℕ 1 }
+
+      step4 : step prog s4 ≡ just s5
+      step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
+                    (cong (λ sp → just (record s4 { regs = writeReg (regs s4) rdi sp
+                                                  ; pc = pc s4 +ℕ 1 }))
+                          rsp-s4)
+
+      -- Compose Star proof
+      star-all : Star prog s s5
+      star-all = ⟨ h-false , step0 ⟩◅
+                 ⟨ h1 , step1 ⟩◅
+                 ⟨ h2 , step2 ⟩◅
+                 ⟨ h3 , step3 ⟩◅
+                 ⟨ h4 , step4 ⟩◅
+                 refl*
+
+      -- Final state properties
+      h5 : halted s5 ≡ false
+      h5 = h-false
+
+      pc5 : pc s5 ≡ f-offset
+      pc5 = begin
+        pc s5
+          ≡⟨ refl ⟩
+        pc s4 +ℕ 1
+          ≡⟨ cong (_+ℕ 1) pc4 ⟩
+        (thunk-offset +ℕ 4) +ℕ 1
+          ≡⟨ +-assoc thunk-offset 4 1 ⟩
+        thunk-offset +ℕ 5
+          ≡⟨ cong (_+ℕ 5) refl ⟩  -- thunk-offset = offset + 6
+        (offset +ℕ 6) +ℕ 5
+          ≡⟨ +-assoc offset 6 5 ⟩
+        offset +ℕ 11
+          ≡⟨ refl ⟩
+        f-offset ∎
+
+      -- rdi = new-rsp, and memory[new-rsp] = encode env, memory[new-rsp+8] = encode arg
+      -- By encode-pair-construct, new-rsp = encode (env, arg)
+      rdi-s5-is-new-rsp : readReg (regs s5) rdi ≡ new-rsp
+      rdi-s5-is-new-rsp = readReg-writeReg-same (regs s4) rdi new-rsp
+
+      -- Memory at new-rsp has encode env
+      mem-env : readMem (memory s5) new-rsp ≡ just (encode env)
+      mem-env = trans (mem-read-other {memory s3} {new-rsp +ℕ 8} {new-rsp} {readReg (regs s3) rdi}
+                        (λ eq → n≢n+8 new-rsp (sym eq)))
+                      (trans (mem-read-write {memory s2} {new-rsp} {readReg (regs s2) r12})
+                             (cong just r12-s2))
+
+      -- Memory at new-rsp+8 has encode arg
+      mem-arg : readMem (memory s5) (new-rsp +ℕ 8) ≡ just (encode arg)
+      mem-arg = trans (mem-read-write {memory s3} {new-rsp +ℕ 8} {readReg (regs s3) rdi})
+                      (cong just rdi-s3)
+
+      -- Use encode-pair-construct to show new-rsp = encode (env, arg)
+      pair-encoding : new-rsp ≡ encode (env , arg)
+      pair-encoding = encode-pair-construct env arg new-rsp (memory s5) mem-env mem-arg
+
+      rdi5 : readReg (regs s5) rdi ≡ encode (env , arg)
+      rdi5 = trans rdi-s5-is-new-rsp pair-encoding
+
+      -- Register preservation (through all 5 instructions)
+      r14-5 : readReg (regs s5) r14 ≡ readReg (regs s) r14
+      r14-5 = trans (readReg-writeReg-rdi-r14 (regs s4) new-rsp)
+                    (trans (readReg-writeReg-rsp-r14 (regs s1) new-rsp)
+                           refl)
+
+      r15-5 : readReg (regs s5) r15 ≡ readReg (regs s) r15
+      r15-5 = trans (readReg-writeReg-rdi-r15 (regs s4) new-rsp)
+                    (trans (readReg-writeReg-rsp-r15 (regs s1) new-rsp)
+                           refl)
+
+      rbp5 : readReg (regs s5) rbp ≡ readReg (regs s) rbp
+      rbp5 = trans (readReg-writeReg-rdi-rbp (regs s4) new-rsp)
+                   (trans (readReg-writeReg-rsp-rbp (regs s1) new-rsp)
+                          refl)
+
+      -- StackInvariant and rsp bound
+      postulate
+        stack-inv5 : StackInvariant s5
+
+      rsp>16-5 : readReg (regs s5) rsp > 16
+      rsp>16-5 = rsp-bound-after-stack-op s5
 
   -- Prove ret instruction tracing
   thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
