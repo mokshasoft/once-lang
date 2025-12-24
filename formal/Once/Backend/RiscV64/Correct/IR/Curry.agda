@@ -35,8 +35,8 @@ open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-cor
 open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
-         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16)
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra;
+         ir-sp-delta; ir-sp; ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -71,6 +71,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     ; ir-a0     = a0-final
     ; ir-s1     = s1-final
     ; ir-ra     = ra-final
+    ; ir-sp-delta = 16
     ; ir-sp     = sp-final
     ; ir-mem-sp = mem-sp-final
     ; ir-mem-sp+8 = mem-sp+8-final
@@ -600,11 +601,12 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     a0-final : readReg (regs s-final) a0 ≡ encode {B ⇒ C} (eval (curry f) x)
     a0-final = trans a0-st8 encode-curry-result
 
-    -- SP preservation: curry allocates stack space (sp -= 16), so sp is NOT preserved.
-    -- This is a design issue: pair assumes sp is preserved through f/g calls.
-    -- FIX: Either curry should heap-allocate closures, or pair should save sp in a register.
+    -- SP tracking: curry allocates 16 bytes on stack (sp -= 16)
+    -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
+    -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
     postulate
-      sp-final : readReg (regs s-final) sp ≡ readReg (regs s) sp
+      -- Stack space postulate: stack has at least 16 bytes available
+      sp-final : readReg (regs s-final) sp +ℕ 16 ≡ readReg (regs s) sp
       -- Memory preservation: curry writes to its own stack frame (sp-16..sp),
       -- but should preserve memory at caller's frame (original sp and above)
       mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)

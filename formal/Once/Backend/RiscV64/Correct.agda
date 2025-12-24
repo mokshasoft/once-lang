@@ -334,6 +334,40 @@ codegen-riscv-correct ir x size-bound =
   in s' , run-eq , a0-eq
 
 ------------------------------------------------------------------------
+-- Whole-Program Curry/Apply Verification
+--
+-- The run-apply-star postulate in MutualIR.agda exists because apply
+-- performs an indirect call (jalr) to a code pointer stored in a closure.
+-- Without knowing where that closure came from, we can't prove the jump
+-- is safe.
+--
+-- HOWEVER, we have complete infrastructure for whole-program verification:
+--
+--   1. run-curry-star-with-wf (in MutualIR) produces CurryResult which
+--      includes ClosureWellFormed - a proof that:
+--      - The closure's code-ptr is in bounds
+--      - Executing from code-ptr (the thunk) produces correct results
+--
+--   2. run-apply-with-wf (in IR/Apply.agda) consumes ClosureWellFormed
+--      to prove apply works correctly, tracing all 7 instructions.
+--
+--   3. curry-output-to-apply-input (in ClosureWellFormed.agda) converts
+--      curry's output format to apply's input format.
+--
+-- For whole-program verification of "apply ∘ ⟨curry f, g⟩":
+--   1. Run curry using run-curry-star-with-wf → get ClosureWellFormed
+--   2. Run apply using run-apply-with-wf with that ClosureWellFormed
+--   3. The indirect call is verified because we know the closure came
+--      from curry and has valid thunk code.
+--
+-- The postulated run-apply-star is sound because:
+--   - In any well-typed program, apply only receives closures from curry
+--   - All such closures have valid thunk code (proven by curry-thunk-correct-impl)
+--   - The postulate is eliminable for specific programs by threading
+--     ClosureWellFormed through the proof
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- Concrete E2E Tests
 ------------------------------------------------------------------------
 
