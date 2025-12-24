@@ -72,7 +72,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra)
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;

@@ -42,7 +42,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-trans; star-single)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra)
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
 
 open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_) renaming (_+_ to _+ℕ_)
@@ -256,9 +256,10 @@ case-dispatch-left-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × readReg (regs s') a0 ≡ encode a
           × readReg (regs s') t0 ≡ 0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') sp ≡ readReg (regs s) sp)
 case-dispatch-left-star {A} {B} {C} f g prefix suffix a s h-false pc-eq a0-eq =
-  st3 , star-all , h3 , pc3 , a0-st3 , t0-st3 , s1-st3 , ra-st3
+  st3 , star-all , h3 , pc3 , a0-st3 , t0-st3 , s1-st3 , ra-st3 , sp-st3
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -395,6 +396,16 @@ case-dispatch-left-star {A} {B} {C} f g prefix suffix a s h-false pc-eq a0-eq =
     ra-st3 : readReg (regs st3) ra ≡ readReg (regs s) ra
     ra-st3 = ra-st2
 
+    -- sp preservation: none of the dispatch instructions modify sp
+    sp-st1 : readReg (regs st1) sp ≡ readReg (regs s) sp
+    sp-st1 = readReg-writeReg-t0-sp (regs s) 0
+
+    sp-st2 : readReg (regs st2) sp ≡ readReg (regs s) sp
+    sp-st2 = trans (readReg-writeReg-a0-sp (regs st1) (encode a)) sp-st1
+
+    sp-st3 : readReg (regs st3) sp ≡ readReg (regs s) sp
+    sp-st3 = sp-st2
+
 -- | Right dispatch: for inj₂ b, trace 3 instructions with branch TAKEN
 -- Entry: pc = offset, a0 = encode (inj₂ b)
 -- Exit: pc = offset + 3 + len-f + 2 = offset + 5 + len-f (at right-label), a0 = encode b
@@ -412,9 +423,10 @@ case-dispatch-right-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × pc s' ≡ offset +ℕ 5 +ℕ len-f
           × readReg (regs s') a0 ≡ encode b
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') sp ≡ readReg (regs s) sp)
 case-dispatch-right-star {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-eq =
-  st4 , star-all , h4 , pc4 , a0-st4 , s1-st4 , ra-st4
+  st4 , star-all , h4 , pc4 , a0-st4 , s1-st4 , ra-st4 , sp-st4
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -682,6 +694,19 @@ case-dispatch-right-star {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-eq =
     ra-st4 : readReg (regs st4) ra ≡ readReg (regs s) ra
     ra-st4 = ra-st3
 
+    -- sp preservation: none of the dispatch instructions modify sp
+    sp-st1 : readReg (regs st1) sp ≡ readReg (regs s) sp
+    sp-st1 = readReg-writeReg-t0-sp (regs s) 1
+
+    sp-st2 : readReg (regs st2) sp ≡ readReg (regs s) sp
+    sp-st2 = trans (readReg-writeReg-a0-sp (regs st1) (encode b)) sp-st1
+
+    sp-st3 : readReg (regs st3) sp ≡ readReg (regs s) sp
+    sp-st3 = sp-st2
+
+    sp-st4 : readReg (regs st4) sp ≡ readReg (regs s) sp
+    sp-st4 = sp-st3
+
 -- | Left jump: after executing f on left path, jump over g to end
 -- Entry: pc = offset + 3 + len-f (at left-jump)
 -- Exit: pc = offset + 6 + len-f + len-g (at end-label + 1)
@@ -698,9 +723,10 @@ case-left-jump-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × pc s' ≡ length prefix +ℕ 6 +ℕ len-f +ℕ len-g
           × readReg (regs s') a0 ≡ readReg (regs s) a0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') sp ≡ readReg (regs s) sp)
 case-left-jump-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , ra-st2
+  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , ra-st2 , sp-st2
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -922,6 +948,13 @@ case-left-jump-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
     ra-st2 : readReg (regs st2) ra ≡ readReg (regs s) ra
     ra-st2 = ra-st1
 
+    -- sp preservation: jump and label only modify pc
+    sp-st1 : readReg (regs st1) sp ≡ readReg (regs s) sp
+    sp-st1 = refl
+
+    sp-st2 : readReg (regs st2) sp ≡ readReg (regs s) sp
+    sp-st2 = sp-st1
+
 ------------------------------------------------------------------------
 -- Right end label: execute end-label after g for right path
 ------------------------------------------------------------------------
@@ -942,9 +975,10 @@ case-right-end-star : ∀ {A B C} (f : IR A C) (g : IR B C)
           × pc s' ≡ length prefix +ℕ 6 +ℕ len-f +ℕ len-g
           × readReg (regs s') a0 ≡ readReg (regs s) a0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') sp ≡ readReg (regs s) sp)
 case-right-end-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
-  st1 , star-single h-false step0 , h1 , pc1 , a0-st1 , s1-st1 , ra-st1
+  st1 , star-single h-false step0 , h1 , pc1 , a0-st1 , s1-st1 , ra-st1 , sp-st1
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -1052,3 +1086,7 @@ case-right-end-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
 
     ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
     ra-st1 = refl
+
+    -- sp preservation: label only modifies pc
+    sp-st1 : readReg (regs st1) sp ≡ readReg (regs s) sp
+    sp-st1 = refl

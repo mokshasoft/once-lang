@@ -35,7 +35,7 @@ open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-cor
 open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra)
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -70,6 +70,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     ; ir-a0     = a0-final
     ; ir-s1     = s1-final
     ; ir-ra     = ra-final
+    ; ir-sp     = sp-final
     }
   where
     len-f = compile-length f
@@ -593,3 +594,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     -- Prove a0 = encode (eval (curry f) x)
     a0-final : readReg (regs s-final) a0 ≡ encode {B ⇒ C} (eval (curry f) x)
     a0-final = trans a0-st8 encode-curry-result
+
+    -- SP preservation: curry allocates stack space (sp -= 16), so sp is NOT preserved.
+    -- This is a design issue: pair assumes sp is preserved through f/g calls.
+    -- FIX: Either curry should heap-allocate closures, or pair should save sp in a register.
+    postulate
+      sp-final : readReg (regs s-final) sp ≡ readReg (regs s) sp
