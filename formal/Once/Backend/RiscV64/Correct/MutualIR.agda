@@ -64,6 +64,9 @@ open import Once.Backend.RiscV64.Correct.IR.Case using (module CaseContext)
 -- Import extracted curry proof
 open import Once.Backend.RiscV64.Correct.IR.Curry using (run-curry-star)
 
+-- Import thunk setup proof
+open import Once.Backend.RiscV64.Correct.IR.ThunkSetup using (thunk-setup-star-proven)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
@@ -266,6 +269,7 @@ mutual
   ------------------------------------------------------------------------
 
   -- Prove thunk setup: label, addi sp -16, sd s0, sd a0, mv a0 sp
+  -- Now using the proven version from ThunkSetup module
   thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                      (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -281,27 +285,7 @@ mutual
             × pc s' ≡ f-offset
             × readReg (regs s') a0 ≡ encode (env , arg)
             × readReg (regs s') s1 ≡ readReg (regs s) s1)
-  -- Postulated for now - requires detailed instruction semantics
-  thunk-setup-star {A} {B} {C} f prefix suffix env arg s
-                   h-false pc-eq a0-eq s0-eq =
-    postulate-thunk-setup f prefix suffix env arg s h-false pc-eq a0-eq s0-eq
-    where
-      postulate
-        postulate-thunk-setup : ∀ {A B C} (f : IR (A * B) C)
-          (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
-          let prog = prefix ++ compile-riscv (curry f) ++ suffix
-              thunk-offset = length prefix +ℕ 7
-              f-offset = length prefix +ℕ 12
-          in
-          halted s ≡ false →
-          pc s ≡ thunk-offset →
-          readReg (regs s) a0 ≡ encode arg →
-          readReg (regs s) s0 ≡ encode env →
-          ∃[ s' ] (Star prog s s'
-                  × halted s' ≡ false
-                  × pc s' ≡ f-offset
-                  × readReg (regs s') a0 ≡ encode (env , arg)
-                  × readReg (regs s') s1 ≡ readReg (regs s) s1)
+  thunk-setup-star = thunk-setup-star-proven
 
   -- Prove ret instruction tracing
   thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
