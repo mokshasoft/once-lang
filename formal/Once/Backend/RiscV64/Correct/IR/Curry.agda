@@ -11,11 +11,11 @@
 --   3: addi t0 t0 5        (t0 = offset + 7 = thunk entry)
 --   4: sd t0 8(sp)         (store code_ptr)
 --   5: mv a0 sp            (return closure pointer)
---   6: j (7 + len-f)       (jump to end label)
---   [SKIPPED: positions 7 to 12+len-f = thunk code]
---   13+len-f: label end    (no-op)
+--   6: j (12 + len-f)      (jump to end label)
+--   [SKIPPED: positions 7 to 17+len-f = thunk code + cleanup + ret]
+--   18+len-f: label end    (no-op)
 --
--- After 8 steps: PC = offset + 14 + len-f = offset + compile-length (curry f)
+-- After 8 steps: PC = offset + 19 + len-f = offset + compile-length (curry f)
 ------------------------------------------------------------------------
 
 module Once.Backend.RiscV64.Correct.IR.Curry where
@@ -105,10 +105,10 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     i5 = mv a0 sp
 
     i6 : Instr
-    i6 = j (+ (7 +ℕ len-f))
+    i6 = j (+ (12 +ℕ len-f))
 
     i-end-label : Instr
-    i-end-label = label (13 +ℕ len-f)
+    i-end-label = label (18 +ℕ len-f)
 
     -- State after step 0: addi sp sp -16
     st1 : State
@@ -141,12 +141,12 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     st6 = record st5 { regs = writeReg (regs st5) a0 (readReg (regs st5) sp)
                      ; pc = pc st5 +ℕ 1 }
 
-    -- State after step 6: j (7 + len-f)
-    -- PC jumps from (prefix + 6) to (prefix + 6 + (7 + len-f)) = prefix + 13 + len-f
+    -- State after step 6: j (12 + len-f)
+    -- PC jumps from (prefix + 6) to (prefix + 6 + (12 + len-f)) = prefix + 18 + len-f
     st7 : State
-    st7 = record st6 { pc = pc st6 +ℕ (7 +ℕ len-f) }
+    st7 = record st6 { pc = pc st6 +ℕ (12 +ℕ len-f) }
 
-    -- State after step 7: label (13 + len-f) - just advances PC by 1
+    -- State after step 7: label (18 + len-f) - just advances PC by 1
     st8 : State
     st8 = record st7 { pc = pc st7 +ℕ 1 }
 
@@ -214,56 +214,66 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     fetch6 = subst₂ (λ p n → fetch p n ≡ just i6) (sym prog-eq6) len-prefix-6
                     (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ []) i6 _)
 
-    -- For the end label, we need fetch at pc s7 = prefix + 13 + len-f
-    -- The curry code before the end label is 13 + len-f instructions
+    -- For the end label, we need fetch at pc s7 = prefix + 18 + len-f
+    -- The curry code before the end label is 18 + len-f instructions
     curry-before-end-label : Program
     curry-before-end-label =
-      i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷  -- 7 setup instructions
+      i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷  -- 7 closure setup instructions
       label 7 ∷                              -- thunk entry
-      addi sp sp neg16 ∷                     -- thunk setup
-      sd s0 (+ 0) sp ∷
-      sd a0 (+ 8) sp ∷
-      mv a0 sp ∷
+      addi sp sp neg24 ∷                     -- thunk setup (allocate 24 bytes)
+      sd s2 (+ 16) sp ∷                      -- save frame pointer
+      mv s2 sp ∷                             -- set frame pointer
+      sd s0 (+ 0) sp ∷                       -- store env
+      sd a0 (+ 8) sp ∷                       -- store arg
+      mv a0 sp ∷                             -- a0 = pair
       compile-riscv f ++                     -- inner function
+      mv sp s2 ∷                             -- cleanup: restore sp
+      ld s2 (+ 16) sp ∷                      -- cleanup: restore s2
+      addi sp sp (+ 24) ∷                    -- cleanup: deallocate
       ret ∷ []                               -- return
 
-    len-curry-before : length curry-before-end-label ≡ 13 +ℕ len-f
+    len-curry-before : length curry-before-end-label ≡ 18 +ℕ len-f
     len-curry-before = begin
       length curry-before-end-label
         ≡⟨ refl ⟩
       length (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷
-              label 7 ∷ addi sp sp neg16 ∷
+              label 7 ∷ addi sp sp neg24 ∷
+              sd s2 (+ 16) sp ∷ mv s2 sp ∷
               sd s0 (+ 0) sp ∷ sd a0 (+ 8) sp ∷ mv a0 sp ∷
-              compile-riscv f ++ ret ∷ [])
+              compile-riscv f ++
+              mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ [])
         ≡⟨ refl ⟩
-      12 +ℕ length (compile-riscv f ++ ret ∷ [])
-        ≡⟨ cong (12 +ℕ_) (List-length-++ (compile-riscv f)) ⟩
-      12 +ℕ (length (compile-riscv f) +ℕ 1)
-        ≡⟨ cong (λ z → 12 +ℕ (z +ℕ 1)) (compile-length-correct f) ⟩
-      12 +ℕ (len-f +ℕ 1)
-        ≡⟨ +-assoc 12 len-f 1 ⟩
-      (12 +ℕ len-f) +ℕ 1
-        ≡⟨ cong (_+ℕ 1) (+-comm 12 len-f) ⟩
-      (len-f +ℕ 12) +ℕ 1
-        ≡⟨ +-assoc len-f 12 1 ⟩
-      len-f +ℕ 13
-        ≡⟨ +-comm len-f 13 ⟩
-      13 +ℕ len-f
+      14 +ℕ length (compile-riscv f ++ mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ [])
+        ≡⟨ cong (14 +ℕ_) (List-length-++ (compile-riscv f)) ⟩
+      14 +ℕ (length (compile-riscv f) +ℕ 4)
+        ≡⟨ cong (λ z → 14 +ℕ (z +ℕ 4)) (compile-length-correct f) ⟩
+      14 +ℕ (len-f +ℕ 4)
+        ≡⟨ +-assoc 14 len-f 4 ⟩
+      (14 +ℕ len-f) +ℕ 4
+        ≡⟨ cong (_+ℕ 4) (+-comm 14 len-f) ⟩
+      (len-f +ℕ 14) +ℕ 4
+        ≡⟨ +-assoc len-f 14 4 ⟩
+      len-f +ℕ 18
+        ≡⟨ +-comm len-f 18 ⟩
+      18 +ℕ len-f
         ∎
 
     curry-split : compile-riscv (curry f) ≡ curry-before-end-label ++ i-end-label ∷ []
     curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷
-                                 label 7 ∷ addi sp sp neg16 ∷
+                                 label 7 ∷ addi sp sp neg24 ∷
+                                 sd s2 (+ 16) sp ∷ mv s2 sp ∷
                                  sd s0 (+ 0) sp ∷ sd a0 (+ 8) sp ∷ mv a0 sp ∷ rest)
-                       (sym (++-assoc (compile-riscv f) (ret ∷ []) (i-end-label ∷ [])))
+                       (sym (++-assoc (compile-riscv f)
+                              (mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ [])
+                              (i-end-label ∷ [])))
 
     prefix-to-end : Program
     prefix-to-end = prefix ++ curry-before-end-label
 
-    len-prefix-to-end : length prefix-to-end ≡ length prefix +ℕ 13 +ℕ len-f
+    len-prefix-to-end : length prefix-to-end ≡ length prefix +ℕ 18 +ℕ len-f
     len-prefix-to-end = trans (List-length-++ prefix)
                          (trans (cong (length prefix +ℕ_) len-curry-before)
-                                (sym (+-assoc (length prefix) 13 len-f)))
+                                (sym (+-assoc (length prefix) 18 len-f)))
 
     prog-eq-for-fetch7 : prog ≡ prefix-to-end ++ i-end-label ∷ suffix
     prog-eq-for-fetch7 = begin
@@ -280,7 +290,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
       prefix-to-end ++ i-end-label ∷ suffix
         ∎
 
-    fetch7 : fetch prog (length prefix +ℕ 13 +ℕ len-f) ≡ just i-end-label
+    fetch7 : fetch prog (length prefix +ℕ 18 +ℕ len-f) ≡ just i-end-label
     fetch7 = subst₂ (λ p n → fetch p n ≡ just i-end-label) (sym prog-eq-for-fetch7) len-prefix-to-end
                     (fetch-at-prefix-end prefix-to-end i-end-label suffix)
 
@@ -348,31 +358,31 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
 
     step6 : step prog st6 ≡ just st7
     step6 = trans (step-exec prog st6 i6 h6 (subst (λ p → fetch prog p ≡ just i6) (sym pc6) fetch6))
-                  (execJ prog st6 (7 +ℕ len-f))
+                  (execJ prog st6 (12 +ℕ len-f))
 
     h7 : halted st7 ≡ false
     h7 = h-false
 
-    pc7-correct : pc st7 ≡ length prefix +ℕ 13 +ℕ len-f
+    pc7-correct : pc st7 ≡ length prefix +ℕ 18 +ℕ len-f
     pc7-correct = begin
       pc st7
         ≡⟨ refl ⟩
-      pc st6 +ℕ (7 +ℕ len-f)
-        ≡⟨ cong (λ z → z +ℕ (7 +ℕ len-f)) pc6 ⟩
-      (length prefix +ℕ 6) +ℕ (7 +ℕ len-f)
-        ≡⟨ +-assoc (length prefix) 6 (7 +ℕ len-f) ⟩
-      length prefix +ℕ (6 +ℕ (7 +ℕ len-f))
-        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 7 len-f)) ⟩
-      length prefix +ℕ ((6 +ℕ 7) +ℕ len-f)
+      pc st6 +ℕ (12 +ℕ len-f)
+        ≡⟨ cong (λ z → z +ℕ (12 +ℕ len-f)) pc6 ⟩
+      (length prefix +ℕ 6) +ℕ (12 +ℕ len-f)
+        ≡⟨ +-assoc (length prefix) 6 (12 +ℕ len-f) ⟩
+      length prefix +ℕ (6 +ℕ (12 +ℕ len-f))
+        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 12 len-f)) ⟩
+      length prefix +ℕ ((6 +ℕ 12) +ℕ len-f)
         ≡⟨ cong (length prefix +ℕ_) refl ⟩
-      length prefix +ℕ (13 +ℕ len-f)
-        ≡⟨ sym (+-assoc (length prefix) 13 len-f) ⟩
-      length prefix +ℕ 13 +ℕ len-f
+      length prefix +ℕ (18 +ℕ len-f)
+        ≡⟨ sym (+-assoc (length prefix) 18 len-f) ⟩
+      length prefix +ℕ 18 +ℕ len-f
         ∎
 
     step7 : step prog st7 ≡ just st8
     step7 = trans (step-exec prog st7 i-end-label h7 (subst (λ p → fetch prog p ≡ just i-end-label) (sym pc7-correct) fetch7))
-                  (execLabel prog st7 (13 +ℕ len-f))
+                  (execLabel prog st7 (18 +ℕ len-f))
 
     h8 : halted st8 ≡ false
     h8 = h-false
@@ -383,17 +393,17 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
         ≡⟨ refl ⟩
       pc st7 +ℕ 1
         ≡⟨ cong (_+ℕ 1) pc7-correct ⟩
-      (length prefix +ℕ 13 +ℕ len-f) +ℕ 1
-        ≡⟨ +-assoc (length prefix +ℕ 13) len-f 1 ⟩
-      (length prefix +ℕ 13) +ℕ (len-f +ℕ 1)
-        ≡⟨ cong ((length prefix +ℕ 13) +ℕ_) (+-comm len-f 1) ⟩
-      (length prefix +ℕ 13) +ℕ (1 +ℕ len-f)
-        ≡⟨ sym (+-assoc (length prefix +ℕ 13) 1 len-f) ⟩
-      ((length prefix +ℕ 13) +ℕ 1) +ℕ len-f
-        ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 13 1) ⟩
-      (length prefix +ℕ 14) +ℕ len-f
-        ≡⟨ +-assoc (length prefix) 14 len-f ⟩
-      length prefix +ℕ (14 +ℕ len-f)
+      (length prefix +ℕ 18 +ℕ len-f) +ℕ 1
+        ≡⟨ +-assoc (length prefix +ℕ 18) len-f 1 ⟩
+      (length prefix +ℕ 18) +ℕ (len-f +ℕ 1)
+        ≡⟨ cong ((length prefix +ℕ 18) +ℕ_) (+-comm len-f 1) ⟩
+      (length prefix +ℕ 18) +ℕ (1 +ℕ len-f)
+        ≡⟨ sym (+-assoc (length prefix +ℕ 18) 1 len-f) ⟩
+      ((length prefix +ℕ 18) +ℕ 1) +ℕ len-f
+        ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 18 1) ⟩
+      (length prefix +ℕ 19) +ℕ len-f
+        ≡⟨ +-assoc (length prefix) 19 len-f ⟩
+      length prefix +ℕ (19 +ℕ len-f)
         ≡⟨ refl ⟩
       length prefix +ℕ compile-length (curry f)
         ∎

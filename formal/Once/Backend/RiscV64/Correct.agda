@@ -345,6 +345,6 @@ test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
 test-curry-apply {A} a = codegen-riscv-correct {A} {A} (apply ∘ ⟨ curry fst , id ⟩) a size-bound
   where
     open import Data.Nat.Properties using (m≤m+n)
-    -- compile-length = 31 (pair now uses 8 fixed instructions), so 31 + 1 = 32 ≤ 10000
-    size-bound : 32 ≤ 10000
-    size-bound = m≤m+n 32 9968
+    -- compile-length = 36 (curry now uses 19 for frame pointer), so 36 + 1 = 37 ≤ 10000
+    size-bound : 37 ≤ 10000
+    size-bound = m≤m+n 37 9963

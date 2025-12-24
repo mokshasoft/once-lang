@@ -2,16 +2,22 @@
 -- Once.Backend.RiscV64.Correct.IR.ThunkSetup
 --
 -- Proven thunk setup instruction tracing for RISC-V 64-bit.
--- Traces the 5 thunk setup instructions within curry.
+-- Traces the 7 thunk setup instructions within curry.
 --
 -- Thunk layout within curry (positions 7 onwards):
 --   7: label code-ptr (thunk entry)
---   8: addi sp sp -16 (allocate pair)
---   9: sd s0 0(sp) (store env = a)
---   10: sd a0 8(sp) (store arg = b)
---   11: mv a0 sp (a0 = pair pointer)
---   12 to 11+len-f: compile-riscv f
---   12+len-f: ret
+--   8: addi sp sp -24 (allocate 24 bytes: 8 saved-s2 + 16 pair)
+--   9: sd s2 16(sp) (save frame pointer)
+--   10: mv s2 sp (set frame pointer)
+--   11: sd s0 0(sp) (store env = a at pair.fst)
+--   12: sd a0 8(sp) (store arg = b at pair.snd)
+--   13: mv a0 sp (a0 = pair pointer)
+--   14 to 13+len-f: compile-riscv f
+--   14+len-f: mv sp s2 (restore sp)
+--   15+len-f: ld s2 16(sp) (restore s2)
+--   16+len-f: addi sp sp 24 (deallocate)
+--   17+len-f: ret
+--   18+len-f: label end
 ------------------------------------------------------------------------
 
 module Once.Backend.RiscV64.Correct.IR.ThunkSetup where
@@ -50,14 +56,14 @@ open ≡-Reasoning
 -- Thunk setup proof
 ------------------------------------------------------------------------
 
--- | Prove thunk setup: traces 5 instructions
+-- | Prove thunk setup: traces 7 instructions
 -- Entry: pc = thunk-offset, a0 = encode arg, s0 = encode env
--- Exit: pc = f-offset, a0 = encode (env, arg)
+-- Exit: pc = f-offset, a0 = encode (env, arg), s2 = frame pointer
 thunk-setup-star-proven : ∀ {A B C} (f : IR (A * B) C)
                           (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 7
-      f-offset = length prefix +ℕ 12
+      f-offset = length prefix +ℕ 14
   in
   halted s ≡ false →
   pc s ≡ thunk-offset →
@@ -68,45 +74,52 @@ thunk-setup-star-proven : ∀ {A B C} (f : IR (A * B) C)
           × pc s' ≡ f-offset
           × readReg (regs s') a0 ≡ encode (env , arg)
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 24)  -- s2 = frame pointer
 
 thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
                         h-false pc-eq a0-eq s0-eq =
-  st5 , star-all , h5 , pc5 , a0-final , s1-final , ra-final
+  st7 , star-all , h7 , pc7 , a0-final , s1-final , ra-final , s2-final
   where
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
     offset = length prefix
     thunk-offset = offset +ℕ 7
-    f-offset = offset +ℕ 12
+    f-offset = offset +ℕ 14
 
     -- Helper values
     orig-sp : Word
     orig-sp = readReg (regs s) sp
 
     new-sp : Word
-    new-sp = orig-sp ∸ 16
+    new-sp = orig-sp ∸ 24
 
-    -- The 5 thunk setup instructions (at positions 7-11 within curry)
+    -- The 7 thunk setup instructions (at positions 7-13 within curry)
     i0 : Instr
     i0 = label 7
 
     i1 : Instr
-    i1 = addi sp sp neg16
+    i1 = addi sp sp neg24
 
     i2 : Instr
-    i2 = sd s0 (+ 0) sp
+    i2 = sd s2 (+ 16) sp   -- save s2
 
     i3 : Instr
-    i3 = sd a0 (+ 8) sp
+    i3 = mv s2 sp           -- set frame pointer
 
     i4 : Instr
-    i4 = mv a0 sp
+    i4 = sd s0 (+ 0) sp     -- store env at pair.fst
+
+    i5 : Instr
+    i5 = sd a0 (+ 8) sp     -- store arg at pair.snd
+
+    i6 : Instr
+    i6 = mv a0 sp           -- a0 = pair pointer
 
     -- Fetch lemmas (need to fetch at thunk-offset within curry)
     -- The curry code structure is:
-    --   [6 closure setup] ++ [label 7] ++ [4 thunk setup] ++ [f code] ++ [ret] ++ [label end]
-    -- So positions 7-11 within curry are the thunk setup instructions
+    --   [6 closure setup] ++ [label 7] ++ [6 thunk setup] ++ [f code] ++ [cleanup + ret] ++ [label end]
+    -- So positions 7-13 within curry are the thunk setup instructions
 
     -- Build prefix up to each instruction
     curry-prefix-to-7 : Program
@@ -116,7 +129,7 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
                         addi t0 t0 (+ 5) ∷     -- 3
                         sd t0 (+ 8) sp ∷       -- 4
                         mv a0 sp ∷             -- 5
-                        j (+ (7 +ℕ len-f)) ∷   -- 6
+                        j (+ (12 +ℕ len-f)) ∷  -- 6 (jump offset updated for new layout)
                         []
 
     prefix-to-i0 : Program
@@ -126,18 +139,18 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     len-prefix-to-i0 = List-length-++ prefix
 
     -- Fetch lemmas (proven using fetch-at-prefix-end)
-    -- compile-riscv (curry f) = curry-prefix-to-7 ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ rest
+    -- compile-riscv (curry f) = curry-prefix-to-7 ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ rest
     -- prog = prefix ++ (curry-prefix-to-7 ++ i0 ∷ ...) ++ suffix
     --      = (prefix ++ curry-prefix-to-7) ++ i0 ∷ ...
     --      = prefix-to-i0 ++ i0 ∷ ...
 
-    -- The thunk body after the first 5 setup instructions
+    -- The thunk body after the 7 setup instructions
     thunk-body : Program
-    thunk-body = compile-riscv f ++ ret ∷ label (13 +ℕ len-f) ∷ []
+    thunk-body = compile-riscv f ++ mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ label (18 +ℕ len-f) ∷ []
 
     -- Show curry code decomposes properly
     curry-code-eq : compile-riscv (curry f) ≡
-                    curry-prefix-to-7 ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ thunk-body
+                    curry-prefix-to-7 ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ i6 ∷ thunk-body
     curry-code-eq = refl
 
     -- Program structure: prog = prefix-to-i0 ++ i0 ∷ rest
@@ -204,6 +217,34 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) len-prefix-to-i4
                     (fetch-at-prefix-end prefix-to-i4 i4 _)
 
+    prefix-to-i5 : Program
+    prefix-to-i5 = prefix-to-i4 ++ i4 ∷ []
+
+    prog-eq5 : prog ≡ prefix-to-i5 ++ i5 ∷ _
+    prog-eq5 = trans prog-eq4 (sym (++-assoc prefix-to-i4 (i4 ∷ []) _))
+
+    len-prefix-to-i5 : length prefix-to-i5 ≡ thunk-offset +ℕ 5
+    len-prefix-to-i5 = trans (List-length-++ prefix-to-i4)
+                             (trans (cong (_+ℕ 1) len-prefix-to-i4) (+-assoc thunk-offset 4 1))
+
+    fetch5 : fetch prog (thunk-offset +ℕ 5) ≡ just i5
+    fetch5 = subst₂ (λ p n → fetch p n ≡ just i5) (sym prog-eq5) len-prefix-to-i5
+                    (fetch-at-prefix-end prefix-to-i5 i5 _)
+
+    prefix-to-i6 : Program
+    prefix-to-i6 = prefix-to-i5 ++ i5 ∷ []
+
+    prog-eq6 : prog ≡ prefix-to-i6 ++ i6 ∷ _
+    prog-eq6 = trans prog-eq5 (sym (++-assoc prefix-to-i5 (i5 ∷ []) _))
+
+    len-prefix-to-i6 : length prefix-to-i6 ≡ thunk-offset +ℕ 6
+    len-prefix-to-i6 = trans (List-length-++ prefix-to-i5)
+                             (trans (cong (_+ℕ 1) len-prefix-to-i5) (+-assoc thunk-offset 5 1))
+
+    fetch6 : fetch prog (thunk-offset +ℕ 6) ≡ just i6
+    fetch6 = subst₂ (λ p n → fetch p n ≡ just i6) (sym prog-eq6) len-prefix-to-i6
+                    (fetch-at-prefix-end prefix-to-i6 i6 _)
+
     -- State after step 0: label 7 (no-op, just pc++)
     st1 : State
     st1 = record s { pc = pc s +ℕ 1 }
@@ -218,14 +259,14 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     pc1 : pc st1 ≡ thunk-offset +ℕ 1
     pc1 = cong (λ p → p +ℕ 1) pc-eq
 
-    -- State after step 1: addi sp sp -16
+    -- State after step 1: addi sp sp -24
     st2 : State
     st2 = record st1 { regs = writeReg (regs st1) sp new-sp
                      ; pc = pc st1 +ℕ 1 }
 
     step1 : step prog st1 ≡ just st2
     step1 = trans (step-exec prog st1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                  (execAddiNeg prog st1 sp sp 15)
+                  (execAddiNeg prog st1 sp sp 23)
 
     h2 : halted st2 ≡ false
     h2 = h-false
@@ -233,20 +274,20 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     pc2 : pc st2 ≡ thunk-offset +ℕ 2
     pc2 = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc thunk-offset 1 1)
 
-    -- State after step 2: sd s0 0(sp) - store env at [new-sp]
     sp-st2 : readReg (regs st2) sp ≡ new-sp
     sp-st2 = readReg-writeReg-same (regs st1) sp new-sp (λ ())
 
-    s0-st2 : readReg (regs st2) s0 ≡ encode env
-    s0-st2 = trans (readReg-writeReg-sp-s0 (regs st1) new-sp) s0-eq
+    s2-st2 : readReg (regs st2) s2 ≡ readReg (regs s) s2
+    s2-st2 = readReg-writeReg-sp-s2 (regs st1) new-sp
 
+    -- State after step 2: sd s2 16(sp) - save frame pointer
     st3 : State
-    st3 = record st2 { memory = writeMem (memory st2) (readReg (regs st2) sp +ℕ 0) (readReg (regs st2) s0)
+    st3 = record st2 { memory = writeMem (memory st2) (readReg (regs st2) sp +ℕ 16) (readReg (regs st2) s2)
                      ; pc = pc st2 +ℕ 1 }
 
     step2 : step prog st2 ≡ just st3
     step2 = trans (step-exec prog st2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                  (execSd prog st2 s0 0 sp)
+                  (execSd prog st2 s2 16 sp)
 
     h3 : halted st3 ≡ false
     h3 = h-false
@@ -254,23 +295,17 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     pc3 : pc st3 ≡ thunk-offset +ℕ 3
     pc3 = trans (cong (λ p → p +ℕ 1) pc2) (+-assoc thunk-offset 2 1)
 
-    -- State after step 3: sd a0 8(sp) - store arg at [new-sp + 8]
-    a0-st2 : readReg (regs st2) a0 ≡ encode arg
-    a0-st2 = trans (readReg-writeReg-sp-a0 (regs st1) new-sp) a0-eq
-
-    a0-st3 : readReg (regs st3) a0 ≡ encode arg
-    a0-st3 = a0-st2  -- memory write doesn't change regs
-
     sp-st3 : readReg (regs st3) sp ≡ new-sp
     sp-st3 = sp-st2  -- memory write doesn't change regs
 
+    -- State after step 3: mv s2 sp - set frame pointer
     st4 : State
-    st4 = record st3 { memory = writeMem (memory st3) (readReg (regs st3) sp +ℕ 8) (readReg (regs st3) a0)
+    st4 = record st3 { regs = writeReg (regs st3) s2 (readReg (regs st3) sp)
                      ; pc = pc st3 +ℕ 1 }
 
     step3 : step prog st3 ≡ just st4
     step3 = trans (step-exec prog st3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
-                  (execSd prog st3 a0 8 sp)
+                  (execMv prog st3 s2 sp)
 
     h4 : halted st4 ≡ false
     h4 = h-false
@@ -278,44 +313,100 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     pc4 : pc st4 ≡ thunk-offset +ℕ 4
     pc4 = trans (cong (λ p → p +ℕ 1) pc3) (+-assoc thunk-offset 3 1)
 
-    -- State after step 4: mv a0 sp (a0 = pair pointer)
     sp-st4 : readReg (regs st4) sp ≡ new-sp
-    sp-st4 = sp-st3  -- memory write doesn't change regs
+    sp-st4 = trans (readReg-writeReg-s2-sp (regs st3) (readReg (regs st3) sp)) sp-st3
 
+    s2-st4 : readReg (regs st4) s2 ≡ new-sp
+    s2-st4 = trans (readReg-writeReg-same (regs st3) s2 (readReg (regs st3) sp) (λ ())) sp-st3
+
+    s0-st4 : readReg (regs st4) s0 ≡ encode env
+    s0-st4 = trans (readReg-writeReg-s2-s0 (regs st3) (readReg (regs st3) sp)) s0-eq
+
+    a0-st4 : readReg (regs st4) a0 ≡ encode arg
+    a0-st4 = trans (readReg-writeReg-s2-a0 (regs st3) (readReg (regs st3) sp)) a0-eq
+
+    -- State after step 4: sd s0 0(sp) - store env at [new-sp]
     st5 : State
-    st5 = record st4 { regs = writeReg (regs st4) a0 (readReg (regs st4) sp)
+    st5 = record st4 { memory = writeMem (memory st4) (readReg (regs st4) sp +ℕ 0) (readReg (regs st4) s0)
                      ; pc = pc st4 +ℕ 1 }
 
     step4 : step prog st4 ≡ just st5
     step4 = trans (step-exec prog st4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                  (execMv prog st4 a0 sp)
+                  (execSd prog st4 s0 0 sp)
+
+    h5 : halted st5 ≡ false
+    h5 = h-false
+
+    pc5 : pc st5 ≡ thunk-offset +ℕ 5
+    pc5 = trans (cong (λ p → p +ℕ 1) pc4) (+-assoc thunk-offset 4 1)
+
+    sp-st5 : readReg (regs st5) sp ≡ new-sp
+    sp-st5 = sp-st4  -- memory write doesn't change regs
+
+    s2-st5 : readReg (regs st5) s2 ≡ new-sp
+    s2-st5 = s2-st4  -- memory write doesn't change regs
+
+    a0-st5 : readReg (regs st5) a0 ≡ encode arg
+    a0-st5 = a0-st4  -- memory write doesn't change regs
+
+    -- State after step 5: sd a0 8(sp) - store arg at [new-sp + 8]
+    st6 : State
+    st6 = record st5 { memory = writeMem (memory st5) (readReg (regs st5) sp +ℕ 8) (readReg (regs st5) a0)
+                     ; pc = pc st5 +ℕ 1 }
+
+    step5 : step prog st5 ≡ just st6
+    step5 = trans (step-exec prog st5 i5 h5 (subst (λ p → fetch prog p ≡ just i5) (sym pc5) fetch5))
+                  (execSd prog st5 a0 8 sp)
+
+    h6 : halted st6 ≡ false
+    h6 = h-false
+
+    pc6 : pc st6 ≡ thunk-offset +ℕ 6
+    pc6 = trans (cong (λ p → p +ℕ 1) pc5) (+-assoc thunk-offset 5 1)
+
+    sp-st6 : readReg (regs st6) sp ≡ new-sp
+    sp-st6 = sp-st5  -- memory write doesn't change regs
+
+    s2-st6 : readReg (regs st6) s2 ≡ new-sp
+    s2-st6 = s2-st5  -- memory write doesn't change regs
+
+    -- State after step 6: mv a0 sp (a0 = pair pointer)
+    st7 : State
+    st7 = record st6 { regs = writeReg (regs st6) a0 (readReg (regs st6) sp)
+                     ; pc = pc st6 +ℕ 1 }
+
+    step6 : step prog st6 ≡ just st7
+    step6 = trans (step-exec prog st6 i6 h6 (subst (λ p → fetch prog p ≡ just i6) (sym pc6) fetch6))
+                  (execMv prog st6 a0 sp)
 
     -- Build Star proof
-    star-all : Star prog s st5
+    star-all : Star prog s st7
     star-all = ⟨ h-false , step0 ⟩◅
                ⟨ h1 , step1 ⟩◅
                ⟨ h2 , step2 ⟩◅
                ⟨ h3 , step3 ⟩◅
                ⟨ h4 , step4 ⟩◅
+               ⟨ h5 , step5 ⟩◅
+               ⟨ h6 , step6 ⟩◅
                refl*
 
     -- Final state properties
-    h5 : halted st5 ≡ false
-    h5 = h-false
+    h7 : halted st7 ≡ false
+    h7 = h-false
 
-    pc5 : pc st5 ≡ f-offset
-    pc5 = begin
-      pc st5
+    pc7 : pc st7 ≡ f-offset
+    pc7 = begin
+      pc st7
         ≡⟨ refl ⟩
-      pc st4 +ℕ 1
-        ≡⟨ cong (_+ℕ 1) pc4 ⟩
-      (thunk-offset +ℕ 4) +ℕ 1
-        ≡⟨ +-assoc thunk-offset 4 1 ⟩
-      thunk-offset +ℕ 5
-        ≡⟨ cong (_+ℕ 5) refl ⟩  -- thunk-offset = offset + 7
-      (offset +ℕ 7) +ℕ 5
-        ≡⟨ +-assoc offset 7 5 ⟩
-      offset +ℕ 12
+      pc st6 +ℕ 1
+        ≡⟨ cong (_+ℕ 1) pc6 ⟩
+      (thunk-offset +ℕ 6) +ℕ 1
+        ≡⟨ +-assoc thunk-offset 6 1 ⟩
+      thunk-offset +ℕ 7
+        ≡⟨ cong (_+ℕ 7) refl ⟩  -- thunk-offset = offset + 7
+      (offset +ℕ 7) +ℕ 7
+        ≡⟨ +-assoc offset 7 7 ⟩
+      offset +ℕ 14
         ≡⟨ refl ⟩
       f-offset ∎
 
@@ -330,13 +421,19 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     s1-st3 = s1-st2  -- memory write doesn't change regs
 
     s1-st4 : readReg (regs st4) s1 ≡ readReg (regs s) s1
-    s1-st4 = s1-st3  -- memory write doesn't change regs
+    s1-st4 = trans (readReg-writeReg-s2-s1 (regs st3) (readReg (regs st3) sp)) s1-st3
 
     s1-st5 : readReg (regs st5) s1 ≡ readReg (regs s) s1
-    s1-st5 = trans (readReg-writeReg-a0-s1 (regs st4) (readReg (regs st4) sp)) s1-st4
+    s1-st5 = s1-st4  -- memory write doesn't change regs
 
-    s1-final : readReg (regs st5) s1 ≡ readReg (regs s) s1
-    s1-final = s1-st5
+    s1-st6 : readReg (regs st6) s1 ≡ readReg (regs s) s1
+    s1-st6 = s1-st5  -- memory write doesn't change regs
+
+    s1-st7 : readReg (regs st7) s1 ≡ readReg (regs s) s1
+    s1-st7 = trans (readReg-writeReg-a0-s1 (regs st6) (readReg (regs st6) sp)) s1-st6
+
+    s1-final : readReg (regs st7) s1 ≡ readReg (regs s) s1
+    s1-final = s1-st7
 
     -- Register ra preservation (not touched by any of these instructions)
     ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
@@ -349,66 +446,82 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     ra-st3 = ra-st2  -- memory write doesn't change regs
 
     ra-st4 : readReg (regs st4) ra ≡ readReg (regs s) ra
-    ra-st4 = ra-st3  -- memory write doesn't change regs
+    ra-st4 = trans (readReg-writeReg-s2-ra (regs st3) (readReg (regs st3) sp)) ra-st3
 
     ra-st5 : readReg (regs st5) ra ≡ readReg (regs s) ra
-    ra-st5 = trans (readReg-writeReg-a0-ra (regs st4) (readReg (regs st4) sp)) ra-st4
+    ra-st5 = ra-st4  -- memory write doesn't change regs
 
-    ra-final : readReg (regs st5) ra ≡ readReg (regs s) ra
-    ra-final = ra-st5
+    ra-st6 : readReg (regs st6) ra ≡ readReg (regs s) ra
+    ra-st6 = ra-st5  -- memory write doesn't change regs
+
+    ra-st7 : readReg (regs st7) ra ≡ readReg (regs s) ra
+    ra-st7 = trans (readReg-writeReg-a0-ra (regs st6) (readReg (regs st6) sp)) ra-st6
+
+    ra-final : readReg (regs st7) ra ≡ readReg (regs s) ra
+    ra-final = ra-st7
+
+    -- Register s2 final value (frame pointer = new-sp)
+    s2-st7 : readReg (regs st7) s2 ≡ new-sp
+    s2-st7 = trans (readReg-writeReg-a0-s2 (regs st6) (readReg (regs st6) sp)) s2-st6
+
+    s2-final : readReg (regs st7) s2 ≡ readReg (regs s) sp ∸ 24
+    s2-final = s2-st7
 
     -- Memory tracking for encode-pair-construct
-    -- After step 2: memory[new-sp] = encode env
-    -- After step 3: memory[new-sp + 8] = encode arg
+    -- After step 4: memory[new-sp] = encode env
+    -- After step 5: memory[new-sp + 8] = encode arg
 
-    write-addr-env : readReg (regs st2) sp +ℕ 0 ≡ new-sp
-    write-addr-env = trans (cong (_+ℕ 0) sp-st2) (+-identityʳ new-sp)
+    write-addr-env : readReg (regs st4) sp +ℕ 0 ≡ new-sp
+    write-addr-env = trans (cong (_+ℕ 0) sp-st4) (+-identityʳ new-sp)
 
-    mem-at-new-sp-st3 : readMem (memory st3) new-sp ≡ just (encode env)
-    mem-at-new-sp-st3 =
-      let write-addr = readReg (regs st2) sp +ℕ 0
-          write-val = readReg (regs st2) s0
-          read-at-write = readMem-writeMem-same (memory st2) write-addr write-val
-          read-at-new-sp = subst (λ a → readMem (writeMem (memory st2) write-addr write-val) a ≡ just write-val)
+    s0-st5-val : readReg (regs st4) s0 ≡ encode env
+    s0-st5-val = s0-st4
+
+    mem-at-new-sp-st5 : readMem (memory st5) new-sp ≡ just (encode env)
+    mem-at-new-sp-st5 =
+      let write-addr = readReg (regs st4) sp +ℕ 0
+          write-val = readReg (regs st4) s0
+          read-at-write = readMem-writeMem-same (memory st4) write-addr write-val
+          read-at-new-sp = subst (λ a → readMem (writeMem (memory st4) write-addr write-val) a ≡ just write-val)
                                  write-addr-env read-at-write
-          val-eq = s0-st2
+          val-eq = s0-st5-val
       in trans read-at-new-sp (cong just val-eq)
 
-    -- st4 writes at new-sp + 8, which is ≢ new-sp
+    -- st6 writes at new-sp + 8, which is ≢ new-sp
     new-sp≢new-sp+8 : new-sp ≢ new-sp +ℕ 8
     new-sp≢new-sp+8 = n≢n+suc new-sp 7
 
-    mem-at-new-sp-st4 : readMem (memory st4) new-sp ≡ just (encode env)
-    mem-at-new-sp-st4 = trans (readMem-writeMem-diff (memory st3) (readReg (regs st3) sp +ℕ 8) new-sp
-                                                     (readReg (regs st3) a0)
-                                                     (λ eq → new-sp≢new-sp+8 (trans (sym eq) (cong (_+ℕ 8) sp-st3))))
-                              mem-at-new-sp-st3
+    mem-at-new-sp-st6 : readMem (memory st6) new-sp ≡ just (encode env)
+    mem-at-new-sp-st6 = trans (readMem-writeMem-diff (memory st5) (readReg (regs st5) sp +ℕ 8) new-sp
+                                                     (readReg (regs st5) a0)
+                                                     (λ eq → new-sp≢new-sp+8 (trans (sym eq) (cong (_+ℕ 8) sp-st5))))
+                              mem-at-new-sp-st5
 
-    mem-at-new-sp-st5 : readMem (memory st5) new-sp ≡ just (encode env)
-    mem-at-new-sp-st5 = mem-at-new-sp-st4  -- mv doesn't change memory
+    mem-at-new-sp-st7 : readMem (memory st7) new-sp ≡ just (encode env)
+    mem-at-new-sp-st7 = mem-at-new-sp-st6  -- mv doesn't change memory
 
-    mem-at-new-sp+8-st4 : readMem (memory st4) (new-sp +ℕ 8) ≡ just (encode arg)
-    mem-at-new-sp+8-st4 =
-      let write-addr = readReg (regs st3) sp +ℕ 8
-          write-val = readReg (regs st3) a0
+    mem-at-new-sp+8-st6 : readMem (memory st6) (new-sp +ℕ 8) ≡ just (encode arg)
+    mem-at-new-sp+8-st6 =
+      let write-addr = readReg (regs st5) sp +ℕ 8
+          write-val = readReg (regs st5) a0
           addr-eq : write-addr ≡ new-sp +ℕ 8
-          addr-eq = cong (_+ℕ 8) sp-st3
-          read-at-write = readMem-writeMem-same (memory st3) write-addr write-val
-          read-at-target = subst (λ a → readMem (writeMem (memory st3) write-addr write-val) a ≡ just write-val)
+          addr-eq = cong (_+ℕ 8) sp-st5
+          read-at-write = readMem-writeMem-same (memory st5) write-addr write-val
+          read-at-target = subst (λ a → readMem (writeMem (memory st5) write-addr write-val) a ≡ just write-val)
                                  addr-eq read-at-write
-          val-eq = a0-st3
+          val-eq = a0-st5
       in trans read-at-target (cong just val-eq)
 
-    mem-at-new-sp+8-st5 : readMem (memory st5) (new-sp +ℕ 8) ≡ just (encode arg)
-    mem-at-new-sp+8-st5 = mem-at-new-sp+8-st4  -- mv doesn't change memory
+    mem-at-new-sp+8-st7 : readMem (memory st7) (new-sp +ℕ 8) ≡ just (encode arg)
+    mem-at-new-sp+8-st7 = mem-at-new-sp+8-st6  -- mv doesn't change memory
 
     -- Use encode-pair-construct to show new-sp = encode (env, arg)
     pair-encoding : new-sp ≡ encode (env , arg)
-    pair-encoding = encode-pair-construct env arg new-sp (memory st5) mem-at-new-sp-st5 mem-at-new-sp+8-st5
+    pair-encoding = encode-pair-construct env arg new-sp (memory st7) mem-at-new-sp-st7 mem-at-new-sp+8-st7
 
-    -- a0 in st5 = sp in st4 = new-sp = encode (env, arg)
-    a0-st5-is-new-sp : readReg (regs st5) a0 ≡ new-sp
-    a0-st5-is-new-sp = trans (readReg-writeReg-same (regs st4) a0 (readReg (regs st4) sp) (λ ())) sp-st4
+    -- a0 in st7 = sp in st6 = new-sp = encode (env, arg)
+    a0-st7-is-new-sp : readReg (regs st7) a0 ≡ new-sp
+    a0-st7-is-new-sp = trans (readReg-writeReg-same (regs st6) a0 (readReg (regs st6) sp) (λ ())) sp-st6
 
-    a0-final : readReg (regs st5) a0 ≡ encode (env , arg)
-    a0-final = trans a0-st5-is-new-sp pair-encoding
+    a0-final : readReg (regs st7) a0 ≡ encode (env , arg)
+    a0-final = trans a0-st7-is-new-sp pair-encoding
