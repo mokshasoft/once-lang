@@ -37,6 +37,7 @@ open import Once.Semantics hiding (code-ptr; env-addr; semantics)
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
+open import Once.Backend.RiscV64.Semantics using (effectiveAddr)
 open import Once.Backend.RiscV64.CodeGen
 
 open import Once.Postulates
@@ -79,13 +80,18 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ)
 open import Data.Integer using (ℤ; +_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+
+-- Import step helpers from Foundation
+open import Once.Backend.RiscV64.Correct.Foundation
+  using (step-exec; execLd; execMv; execJalr; execNop; effectiveAddr-zero)
+  renaming (fetch-at-prefix-end to fpe)
 
 ------------------------------------------------------------------------
 -- apply-setup-star: Trace 5 setup instructions (before jalr)
@@ -134,13 +140,49 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     i3 = ld t0 (+ 8) t1
     i4 = mv a0 t2
 
-    -- Fetch proofs (we postulate these for now to avoid type-checker explosion)
-    postulate
-      fetch0 : fetch prog offset ≡ just i0
-      fetch1 : fetch prog (offset +ℕ 1) ≡ just i1
-      fetch2 : fetch prog (offset +ℕ 2) ≡ just i2
-      fetch3 : fetch prog (offset +ℕ 3) ≡ just i3
-      fetch4 : fetch prog (offset +ℕ 4) ≡ just i4
+    -- Fetch proofs
+    fetch0 : fetch prog offset ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 _
+
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ _
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) _)
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ offset +ℕ 1
+    len-prefix-1 = List-length-++ prefix
+
+    fetch1 : fetch prog (offset +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
+               (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 _)
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ _
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) _)
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ offset +ℕ 2
+    len-prefix-2 = List-length-++ prefix
+
+    fetch2 : fetch prog (offset +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 _)
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ _
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) _)
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ offset +ℕ 3
+    len-prefix-3 = List-length-++ prefix
+
+    fetch3 : fetch prog (offset +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 _)
+
+    prog-eq4 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ++ _
+    prog-eq4 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) _)
+
+    len-prefix-4 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) ≡ offset +ℕ 4
+    len-prefix-4 = List-length-++ prefix
+
+    fetch4 : fetch prog (offset +ℕ 4) ≡ just i4
+    fetch4 = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog-eq4) len-prefix-4
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) i4 _)
 
     -- State after instruction 0: ld t1, 0(a0)
     -- t1 = closure-addr (read from [a0])
@@ -148,8 +190,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     s1-st = record s { regs = writeReg (regs s) t1 closure-addr
                      ; pc = pc s +ℕ 1 }
 
-    postulate
-      step0 : step prog s ≡ just s1-st
+    -- mem-cl at offset 0: convert n to n+0
+    mem-cl-0 : readMem (memory s) (readReg (regs s) a0 +ℕ 0) ≡ just closure-addr
+    mem-cl-0 = subst (λ addr → readMem (memory s) addr ≡ just closure-addr)
+                     (sym (+-identityʳ (readReg (regs s) a0))) mem-cl
+
+    step0 : step prog s ≡ just s1-st
+    step0 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execLd prog s t1 0 a0 closure-addr mem-cl-0)
 
     h1 : halted s1-st ≡ false
     h1 = h-false
@@ -167,8 +215,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     st2 = record s1-st { regs = writeReg (regs s1-st) t2 (encode arg)
                        ; pc = pc s1-st +ℕ 1 }
 
-    postulate
-      step1 : step prog s1-st ≡ just st2
+    -- Memory precondition for step1: memory unchanged, a0 unchanged
+    mem-arg-st1 : readMem (memory s1-st) (readReg (regs s1-st) a0 +ℕ 8) ≡ just (encode arg)
+    mem-arg-st1 = subst (λ addr → readMem (memory s) addr ≡ just (encode arg))
+                        (sym (cong (_+ℕ 8) a0-st1)) mem-arg
+
+    step1 : step prog s1-st ≡ just st2
+    step1 = trans (step-exec prog s1-st i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execLd prog s1-st t2 8 a0 (encode arg) mem-arg-st1)
 
     h2 : halted st2 ≡ false
     h2 = h-false
@@ -186,8 +240,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     st3 = record st2 { regs = writeReg (regs st2) s0 env-addr
                      ; pc = pc st2 +ℕ 1 }
 
-    postulate
-      step2 : step prog st2 ≡ just st3
+    -- Memory precondition for step2: t1=closure-addr, read env from [t1]
+    mem-env-st2 : readMem (memory st2) (readReg (regs st2) t1 +ℕ 0) ≡ just env-addr
+    mem-env-st2 = subst (λ addr → readMem (memory s) addr ≡ just env-addr)
+                        (sym (trans (cong (_+ℕ 0) t1-st2) (+-identityʳ closure-addr))) mem-env
+
+    step2 : step prog st2 ≡ just st3
+    step2 = trans (step-exec prog st2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execLd prog st2 s0 0 t1 env-addr mem-env-st2)
 
     h3 : halted st3 ≡ false
     h3 = h-false
@@ -204,8 +264,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     st4 = record st3 { regs = writeReg (regs st3) t0 code-ptr
                      ; pc = pc st3 +ℕ 1 }
 
-    postulate
-      step3 : step prog st3 ≡ just st4
+    -- Memory precondition for step3: t1=closure-addr, read code-ptr from [t1+8]
+    mem-cp-st3 : readMem (memory st3) (readReg (regs st3) t1 +ℕ 8) ≡ just code-ptr
+    mem-cp-st3 = subst (λ addr → readMem (memory s) addr ≡ just code-ptr)
+                       (sym (cong (_+ℕ 8) t1-st3)) mem-cp
+
+    step3 : step prog st3 ≡ just st4
+    step3 = trans (step-exec prog st3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execLd prog st3 t0 8 t1 code-ptr mem-cp-st3)
 
     h4 : halted st4 ≡ false
     h4 = h-false
@@ -224,8 +290,9 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     st5 = record st4 { regs = writeReg (regs st4) a0 (readReg (regs st4) t2)
                      ; pc = pc st4 +ℕ 1 }
 
-    postulate
-      step4 : step prog st4 ≡ just st5
+    step4 : step prog st4 ≡ just st5
+    step4 = trans (step-exec prog st4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
+                  (execMv prog st4 a0 t2)
 
     -- Build Star proof
     star-all : Star prog s st5
@@ -304,8 +371,23 @@ apply-jalr-star {A} {B} prefix suffix code-ptr s h-false pc-eq t0-eq =
     -- The jalr instruction
     i5 = jalr ra t0 (+ 0)
 
-    postulate
-      fetch5 : fetch prog (offset +ℕ 5) ≡ just i5
+    -- Fetch proof for instruction 5 (jalr)
+    -- Program: prefix ++ [ld t1, ld t2, ld s0, ld t0, mv a0 t2, jalr ra t0 0, nop] ++ suffix
+    i0 = ld t1 (+ 0) a0
+    i1 = ld t2 (+ 8) a0
+    i2 = ld s0 (+ 0) t1
+    i3 = ld t0 (+ 8) t1
+    i4 = mv a0 t2
+
+    prog-eq5 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) ++ _
+    prog-eq5 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) _)
+
+    len-prefix-5 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) ≡ offset +ℕ 5
+    len-prefix-5 = List-length-++ prefix
+
+    fetch5 : fetch prog (offset +ℕ 5) ≡ just i5
+    fetch5 = subst₂ (λ p n → fetch p n ≡ just i5) (sym prog-eq5) len-prefix-5
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) i5 _)
 
     -- State after jalr ra, t0, 0
     -- ra = pc + 1 = (offset+5) + 1 = offset+6 = ret-addr
@@ -314,8 +396,18 @@ apply-jalr-star {A} {B} prefix suffix code-ptr s h-false pc-eq t0-eq =
     st1 = record s { regs = writeReg (regs s) ra (pc s +ℕ 1)
                    ; pc = readReg (regs s) t0 }
 
-    postulate
-      step5 : step prog s ≡ just st1
+    -- Intermediate state from execJalr (uses effectiveAddr)
+    st1' : State
+    st1' = record s { regs = writeReg (regs s) ra (pc s +ℕ 1)
+                    ; pc = effectiveAddr (regs s) t0 (+ 0) }
+
+    st1'-eq-st1 : st1' ≡ st1
+    st1'-eq-st1 = cong (λ p → record s { regs = writeReg (regs s) ra (pc s +ℕ 1) ; pc = p })
+                       (effectiveAddr-zero (regs s) t0)
+
+    step5 : step prog s ≡ just st1
+    step5 = trans (step-exec prog s i5 h-false (subst (λ p → fetch prog p ≡ just i5) (sym pc-eq) fetch5))
+                  (trans (execJalr prog s ra t0 (+ 0)) (cong just st1'-eq-st1))
 
     star-all : Star prog s st1
     star-all = ⟨ h-false , step5 ⟩◅ refl*
@@ -365,14 +457,31 @@ apply-nop-star {A} {B} prefix suffix s h-false pc-eq =
 
     i6 = nop
 
-    postulate
-      fetch6 : fetch prog (offset +ℕ 6) ≡ just i6
+    -- Fetch proof for instruction 6 (nop)
+    -- Program: prefix ++ [ld t1, ld t2, ld s0, ld t0, mv, jalr, nop] ++ suffix
+    i0 = ld t1 (+ 0) a0
+    i1 = ld t2 (+ 8) a0
+    i2 = ld s0 (+ 0) t1
+    i3 = ld t0 (+ 8) t1
+    i4 = mv a0 t2
+    i5 = jalr ra t0 (+ 0)
+
+    prog-eq6 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ []) ++ _
+    prog-eq6 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ []) _)
+
+    len-prefix-6 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ []) ≡ offset +ℕ 6
+    len-prefix-6 = List-length-++ prefix
+
+    fetch6 : fetch prog (offset +ℕ 6) ≡ just i6
+    fetch6 = subst₂ (λ p n → fetch p n ≡ just i6) (sym prog-eq6) len-prefix-6
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ []) i6 _)
 
     st1 : State
     st1 = record s { pc = pc s +ℕ 1 }
 
-    postulate
-      step6 : step prog s ≡ just st1
+    step6 : step prog s ≡ just st1
+    step6 = trans (step-exec prog s i6 h-false (subst (λ p → fetch prog p ≡ just i6) (sym pc-eq) fetch6))
+                  (execNop prog s)
 
     star-all : Star prog s st1
     star-all = ⟨ h-false , step6 ⟩◅ refl*
