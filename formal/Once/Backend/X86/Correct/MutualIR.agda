@@ -103,6 +103,7 @@ open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module C
 open import Once.Backend.X86.Correct.IR.ThunkStructure
   using (thunk-i0; thunk-i1; thunk-i2; thunk-i3; thunk-i4;
          fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4)
+  renaming (fetch-ret to TS-fetch-ret)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -1898,11 +1899,9 @@ mutual
       -- curry layout: [6 closure setup] [5 thunk setup] [compile-x86 f] [ret] [label end]
       -- ret is at position 11 + len(f) within curry
 
-      -- Fetch the ret instruction
-      -- This requires showing prog[ret-offset] = ret
-      -- We postulate this for now (program structure lemma)
-      postulate
-        fetch-ret : fetch prog ret-offset ≡ just ret
+      -- Fetch the ret instruction (proven in ThunkStructure)
+      fetch-ret : fetch prog ret-offset ≡ just ret
+      fetch-ret = TS-fetch-ret f prefix suffix
 
       -- State after ret: pc = ret-addr, rsp += 8
       old-rsp = readReg (regs s) rsp
