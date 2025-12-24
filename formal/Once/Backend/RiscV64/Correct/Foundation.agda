@@ -834,6 +834,11 @@ exec-mono n m prog s s' n≤m exec-eq h-true =
 -- These helpers describe the exact behavior of key instructions.
 -- They are essential for step-by-step trace proofs similar to X86.
 
+-- | effectiveAddr with zero offset just reads the register
+effectiveAddr-zero : ∀ (rf : RegFile) (r : Reg) →
+  effectiveAddr rf r (+ 0) ≡ readReg rf r
+effectiveAddr-zero rf r = +-identityʳ (readReg rf r)
+
 -- | What execInstr does for jalr (jump and link register)
 -- jalr rd rs1 offset: rd = pc+1, pc = rs1 + offset
 -- This is the indirect call instruction for closure application.
