@@ -452,8 +452,62 @@ case-dispatch-right-star {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-eq =
     -- Then right-label follows
     --
     -- Proof strategy: Show prog decomposes properly for fetch-at-prefix-end
-    postulate
-      fetch3 : fetch prog (offset +ℕ 3 +ℕ len-f +ℕ 1) ≡ just right-label
+    dispatch-prefix : Program
+    dispatch-prefix = prefix ++ dispatch-tag ∷ dispatch-val ∷ dispatch-branch ∷ []
+
+    prefix-to-right-label : Program
+    prefix-to-right-label = dispatch-prefix ++ code-f ++ left-jump ∷ []
+
+    -- Step 1: Push prefix inside to get dispatch-prefix
+    prog-eq-step1 : prog ≡ dispatch-prefix ++ (code-f ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+    prog-eq-step1 = sym (++-assoc prefix (dispatch-tag ∷ dispatch-val ∷ dispatch-branch ∷ []) _)
+
+    -- Step 2: Push code-f and left-jump inside
+    prog-eq-step2 : dispatch-prefix ++ (code-f ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+                  ≡ prefix-to-right-label ++ (right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+    prog-eq-step2 = begin
+      dispatch-prefix ++ (code-f ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ≡⟨ cong (dispatch-prefix ++_) (++-assoc code-f _ suffix) ⟩
+      dispatch-prefix ++ (code-f ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix)
+        ≡⟨ sym (++-assoc dispatch-prefix code-f _) ⟩
+      (dispatch-prefix ++ code-f) ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ≡⟨ sym (++-assoc (dispatch-prefix ++ code-f) (left-jump ∷ []) _) ⟩
+      ((dispatch-prefix ++ code-f) ++ left-jump ∷ []) ++ (right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ≡⟨ cong (_++ (right-label ∷ code-g ++ end-label ∷ []) ++ suffix)
+                (++-assoc dispatch-prefix code-f (left-jump ∷ [])) ⟩
+      (dispatch-prefix ++ (code-f ++ left-jump ∷ [])) ++ (right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ≡⟨ refl ⟩
+      prefix-to-right-label ++ (right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ∎
+
+    -- Step 3: Final simplification
+    prog-eq-step3 : prefix-to-right-label ++ (right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+                  ≡ prefix-to-right-label ++ right-label ∷ code-g ++ end-label ∷ suffix
+    prog-eq-step3 = cong (prefix-to-right-label ++_) (cong (right-label ∷_) (++-assoc code-g (end-label ∷ []) suffix))
+
+    prog-eq-right-label : prog ≡ prefix-to-right-label ++ right-label ∷ _
+    prog-eq-right-label = trans prog-eq-step1 (trans prog-eq-step2 prog-eq-step3)
+
+    len-prefix-right-label : length prefix-to-right-label ≡ offset +ℕ 3 +ℕ len-f +ℕ 1
+    len-prefix-right-label = begin
+      length prefix-to-right-label
+        ≡⟨ List-length-++ dispatch-prefix ⟩
+      length dispatch-prefix +ℕ length (code-f ++ left-jump ∷ [])
+        ≡⟨ cong (_+ℕ length (code-f ++ left-jump ∷ [])) (List-length-++ prefix) ⟩
+      (offset +ℕ 3) +ℕ length (code-f ++ left-jump ∷ [])
+        ≡⟨ cong ((offset +ℕ 3) +ℕ_) (List-length-++ code-f) ⟩
+      (offset +ℕ 3) +ℕ (length code-f +ℕ 1)
+        ≡⟨ cong ((offset +ℕ 3) +ℕ_) (cong (_+ℕ 1) (compile-length-correct f)) ⟩
+      (offset +ℕ 3) +ℕ (len-f +ℕ 1)
+        ≡⟨ sym (+-assoc (offset +ℕ 3) len-f 1) ⟩
+      ((offset +ℕ 3) +ℕ len-f) +ℕ 1
+        ≡⟨ refl ⟩  -- ((offset +ℕ 3) +ℕ len-f) +ℕ 1 = offset +ℕ 3 +ℕ len-f +ℕ 1 by left assoc
+      offset +ℕ 3 +ℕ len-f +ℕ 1
+        ∎
+
+    fetch3 : fetch prog (offset +ℕ 3 +ℕ len-f +ℕ 1) ≡ just right-label
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just right-label) (sym prog-eq-right-label) len-prefix-right-label
+                    (fetch-at-prefix-end prefix-to-right-label right-label _)
 
     -- State after step 0: ld t0 0(a0) - load tag (1 for inr)
     st1 : State
@@ -653,11 +707,121 @@ case-left-jump-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
     offset = length prefix
     jump-offset = offset +ℕ 3 +ℕ len-f
 
-    -- Fetch lemmas
-    -- end-label is at offset +ℕ 5 +ℕ len-f +ℕ len-g (same as where we land after jump)
-    postulate
-      fetch-jump : fetch prog jump-offset ≡ just left-jump
-      fetch-end : fetch prog (offset +ℕ 5 +ℕ len-f +ℕ len-g) ≡ just end-label
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+
+    -- For fetch-jump: left-jump is at offset + 3 + len-f
+    -- Prefix: prefix ++ dispatch... ∷ [] ++ code-f
+    -- The program structure is: prefix ++ (d0 ∷ d1 ∷ d2 ∷ code-f ++ left-jump ∷ ...) ++ suffix
+    -- We need to show: prog = (prefix ++ d0 ∷ d1 ∷ d2 ∷ [] ++ code-f) ++ left-jump ∷ ...
+
+    dispatch-prefix : Program
+    dispatch-prefix = prefix ++ dispatch-tag ∷ dispatch-val ∷ dispatch-branch ∷ []
+
+    prefix-to-jump : Program
+    prefix-to-jump = dispatch-prefix ++ code-f
+
+    -- First, push prefix in: prefix ++ (d0 ∷ d1 ∷ d2 ∷ code-f ++ rest) ++ suffix
+    --                      = (prefix ++ d0 ∷ d1 ∷ d2 ∷ []) ++ (code-f ++ rest) ++ suffix
+    prog-eq-step1 : prog ≡ dispatch-prefix ++ (code-f ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+    prog-eq-step1 = sym (++-assoc prefix (dispatch-tag ∷ dispatch-val ∷ dispatch-branch ∷ []) _)
+
+    -- Then push code-f in: = (dispatch-prefix ++ code-f) ++ (left-jump ∷ ...) ++ suffix
+    prog-eq-step2 : dispatch-prefix ++ (code-f ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+                  ≡ prefix-to-jump ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+    prog-eq-step2 = begin
+      dispatch-prefix ++ (code-f ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ≡⟨ cong (dispatch-prefix ++_) (++-assoc code-f _ suffix) ⟩
+      dispatch-prefix ++ (code-f ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix)
+        ≡⟨ sym (++-assoc dispatch-prefix code-f _) ⟩
+      (dispatch-prefix ++ code-f) ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ≡⟨ refl ⟩
+      prefix-to-jump ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+        ∎
+
+    -- Finally, combine into: = prefix-to-jump ++ left-jump ∷ (right-label ∷ code-g ++ end-label ∷ suffix)
+    prog-eq-step3 : prefix-to-jump ++ (left-jump ∷ right-label ∷ code-g ++ end-label ∷ []) ++ suffix
+                  ≡ prefix-to-jump ++ left-jump ∷ right-label ∷ code-g ++ end-label ∷ suffix
+    prog-eq-step3 = cong (prefix-to-jump ++_) (cong (left-jump ∷_) (cong (right-label ∷_) (++-assoc code-g (end-label ∷ []) suffix)))
+
+    prog-eq-jump : prog ≡ prefix-to-jump ++ left-jump ∷ _
+    prog-eq-jump = trans prog-eq-step1 (trans prog-eq-step2 prog-eq-step3)
+
+    len-prefix-jump : length prefix-to-jump ≡ jump-offset
+    len-prefix-jump = begin
+      length prefix-to-jump
+        ≡⟨ List-length-++ dispatch-prefix ⟩
+      length dispatch-prefix +ℕ length code-f
+        ≡⟨ cong (_+ℕ length code-f) (List-length-++ prefix) ⟩
+      (offset +ℕ 3) +ℕ length code-f
+        ≡⟨ cong ((offset +ℕ 3) +ℕ_) (compile-length-correct f) ⟩
+      (offset +ℕ 3) +ℕ len-f
+        ≡⟨ refl ⟩  -- (offset +ℕ 3) +ℕ len-f = offset +ℕ 3 +ℕ len-f by left assoc
+      offset +ℕ 3 +ℕ len-f
+        ∎
+
+    fetch-jump : fetch prog jump-offset ≡ just left-jump
+    fetch-jump = subst₂ (λ p n → fetch p n ≡ just left-jump) (sym prog-eq-jump) len-prefix-jump
+                        (fetch-at-prefix-end prefix-to-jump left-jump _)
+
+    -- For fetch-end: end-label is at offset + 5 + len-f + len-g
+    -- Use prog-eq-f from context and transform step by step
+    -- prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+    -- where suffix-f = left-jump ∷ right-label ∷ code-g ++ end-label ∷ suffix
+
+    -- Prefix for end-label fetch: prefix-f ++ code-f ++ left-jump ∷ right-label ∷ code-g
+    prefix-before-end : Program
+    prefix-before-end = (prefix-f ++ code-f) ++ left-jump ∷ right-label ∷ code-g
+
+    -- Combine prefix-f with code-f
+    prefix-f-code-f-eq : prefix-f ++ code-f ≡ (prefix ++ dispatch-tag ∷ dispatch-val ∷ dispatch-branch ∷ []) ++ code-f
+    prefix-f-code-f-eq = refl
+
+    -- The cons3 + ++ associativity helper
+    cons3-app-assoc : ∀ (a b : Instr) (ys zs : Program) →
+                      a ∷ b ∷ (ys ++ zs) ≡ (a ∷ b ∷ ys) ++ zs
+    cons3-app-assoc a b ys zs = refl
+
+    -- From prog-eq-f: prog ≡ prefix-f ++ code-f ++ suffix-f
+    -- suffix-f = left-jump ∷ right-label ∷ code-g ++ end-label ∷ suffix
+    -- which parses as: left-jump ∷ right-label ∷ (code-g ++ end-label ∷ suffix)
+    -- We want: prefix-before-end ++ end-label ∷ suffix
+    prog-eq-end : prog ≡ prefix-before-end ++ end-label ∷ suffix
+    prog-eq-end = trans prog-eq-f
+                  (trans (sym (++-assoc prefix-f code-f suffix-f))
+                  (trans (cong ((prefix-f ++ code-f) ++_)
+                               (cons3-app-assoc left-jump right-label code-g (end-label ∷ suffix)))
+                         (sym (++-assoc (prefix-f ++ code-f) (left-jump ∷ right-label ∷ code-g) (end-label ∷ suffix)))))
+
+    len-prefix-before-end : length prefix-before-end ≡ offset +ℕ 5 +ℕ len-f +ℕ len-g
+    len-prefix-before-end = begin
+      length prefix-before-end
+        ≡⟨ List-length-++ (prefix-f ++ code-f) ⟩
+      length (prefix-f ++ code-f) +ℕ length (left-jump ∷ right-label ∷ code-g)
+        ≡⟨ cong (_+ℕ length (left-jump ∷ right-label ∷ code-g)) (List-length-++ prefix-f) ⟩
+      (length prefix-f +ℕ length code-f) +ℕ length (left-jump ∷ right-label ∷ code-g)
+        ≡⟨ cong (λ x → (x +ℕ length code-f) +ℕ length (left-jump ∷ right-label ∷ code-g)) len-prefix-f ⟩
+      ((offset +ℕ 3) +ℕ length code-f) +ℕ (2 +ℕ length code-g)
+        ≡⟨ cong (λ x → ((offset +ℕ 3) +ℕ x) +ℕ (2 +ℕ length code-g)) (compile-length-correct f) ⟩
+      ((offset +ℕ 3) +ℕ len-f) +ℕ (2 +ℕ length code-g)
+        ≡⟨ cong ((offset +ℕ 3 +ℕ len-f) +ℕ_) (cong (2 +ℕ_) (compile-length-correct g)) ⟩
+      ((offset +ℕ 3) +ℕ len-f) +ℕ (2 +ℕ len-g)
+        ≡⟨ sym (+-assoc (offset +ℕ 3 +ℕ len-f) 2 len-g) ⟩
+      (offset +ℕ 3 +ℕ len-f +ℕ 2) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (+-assoc (offset +ℕ 3) len-f 2) ⟩
+      ((offset +ℕ 3) +ℕ (len-f +ℕ 2)) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (cong ((offset +ℕ 3) +ℕ_) (+-comm len-f 2)) ⟩
+      ((offset +ℕ 3) +ℕ (2 +ℕ len-f)) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (offset +ℕ 3) 2 len-f)) ⟩
+      (offset +ℕ 3 +ℕ 2 +ℕ len-f) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (cong (_+ℕ len-f) (+-assoc offset 3 2)) ⟩
+      (offset +ℕ 5 +ℕ len-f) +ℕ len-g
+        ≡⟨ refl ⟩
+      offset +ℕ 5 +ℕ len-f +ℕ len-g
+        ∎
+
+    fetch-end : fetch prog (offset +ℕ 5 +ℕ len-f +ℕ len-g) ≡ just end-label
+    fetch-end = subst₂ (λ p n → fetch p n ≡ just end-label) (sym prog-eq-end) len-prefix-before-end
+                       (fetch-at-prefix-end prefix-before-end end-label suffix)
 
     -- State after jump: j (+ (2 + len-g))
     -- execJ gives: pc s +ℕ (2 +ℕ len-g) = (offset +ℕ 3 +ℕ len-f) +ℕ (2 +ℕ len-g)
@@ -787,9 +951,61 @@ case-right-end-star {A} {B} {C} f g prefix suffix s h-false pc-eq =
     offset = length prefix
     end-offset = offset +ℕ 5 +ℕ len-f +ℕ len-g
 
-    -- Fetch lemma
-    postulate
-      fetch-end : fetch prog end-offset ≡ just end-label
+    -- Fetch lemma for end-label (proven using fetch-at-prefix-end)
+    -- end-label is at offset + 5 + len-f + len-g
+    -- Use prog-eq-f from context and transform step by step
+
+    -- Prefix for end-label fetch: prefix-f ++ code-f ++ left-jump ∷ right-label ∷ code-g
+    prefix-before-end : Program
+    prefix-before-end = (prefix-f ++ code-f) ++ left-jump ∷ right-label ∷ code-g
+
+    -- The cons3 + ++ associativity helper
+    cons3-app-assoc : ∀ (a b : Instr) (ys zs : Program) →
+                      a ∷ b ∷ (ys ++ zs) ≡ (a ∷ b ∷ ys) ++ zs
+    cons3-app-assoc a b ys zs = refl
+
+    -- From prog-eq-f: prog ≡ prefix-f ++ code-f ++ suffix-f
+    -- suffix-f = left-jump ∷ right-label ∷ code-g ++ end-label ∷ suffix
+    -- We want: prefix-before-end ++ end-label ∷ suffix
+    prog-eq-end : prog ≡ prefix-before-end ++ end-label ∷ suffix
+    prog-eq-end = trans prog-eq-f
+                  (trans (sym (++-assoc prefix-f code-f suffix-f))
+                  (trans (cong ((prefix-f ++ code-f) ++_)
+                               (cons3-app-assoc left-jump right-label code-g (end-label ∷ suffix)))
+                         (sym (++-assoc (prefix-f ++ code-f) (left-jump ∷ right-label ∷ code-g) (end-label ∷ suffix)))))
+
+    len-prefix-before-end : length prefix-before-end ≡ end-offset
+    len-prefix-before-end = begin
+      length prefix-before-end
+        ≡⟨ List-length-++ (prefix-f ++ code-f) ⟩
+      length (prefix-f ++ code-f) +ℕ length (left-jump ∷ right-label ∷ code-g)
+        ≡⟨ cong (_+ℕ length (left-jump ∷ right-label ∷ code-g)) (List-length-++ prefix-f) ⟩
+      (length prefix-f +ℕ length code-f) +ℕ length (left-jump ∷ right-label ∷ code-g)
+        ≡⟨ cong (λ x → (x +ℕ length code-f) +ℕ length (left-jump ∷ right-label ∷ code-g)) len-prefix-f ⟩
+      ((offset +ℕ 3) +ℕ length code-f) +ℕ (2 +ℕ length code-g)
+        ≡⟨ cong (λ x → ((offset +ℕ 3) +ℕ x) +ℕ (2 +ℕ length code-g)) (compile-length-correct f) ⟩
+      ((offset +ℕ 3) +ℕ len-f) +ℕ (2 +ℕ length code-g)
+        ≡⟨ cong ((offset +ℕ 3 +ℕ len-f) +ℕ_) (cong (2 +ℕ_) (compile-length-correct g)) ⟩
+      ((offset +ℕ 3) +ℕ len-f) +ℕ (2 +ℕ len-g)
+        ≡⟨ sym (+-assoc (offset +ℕ 3 +ℕ len-f) 2 len-g) ⟩
+      (offset +ℕ 3 +ℕ len-f +ℕ 2) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (+-assoc (offset +ℕ 3) len-f 2) ⟩
+      ((offset +ℕ 3) +ℕ (len-f +ℕ 2)) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (cong ((offset +ℕ 3) +ℕ_) (+-comm len-f 2)) ⟩
+      ((offset +ℕ 3) +ℕ (2 +ℕ len-f)) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (offset +ℕ 3) 2 len-f)) ⟩
+      (offset +ℕ 3 +ℕ 2 +ℕ len-f) +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) (cong (_+ℕ len-f) (+-assoc offset 3 2)) ⟩
+      (offset +ℕ 5 +ℕ len-f) +ℕ len-g
+        ≡⟨ refl ⟩
+      offset +ℕ 5 +ℕ len-f +ℕ len-g
+        ≡⟨ refl ⟩
+      end-offset
+        ∎
+
+    fetch-end : fetch prog end-offset ≡ just end-label
+    fetch-end = subst₂ (λ p n → fetch p n ≡ just end-label) (sym prog-eq-end) len-prefix-before-end
+                       (fetch-at-prefix-end prefix-before-end end-label suffix)
 
     -- State after end-label (label is a no-op, just pc + 1)
     st1 : State
