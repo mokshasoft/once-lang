@@ -702,6 +702,9 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ 24
     -- Memory frame: original r15 location preserved through f and g execution
     mem-frame : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    -- Memory frame: original rbp and rbp+8 preserved through f and g execution
+    mem-frame-rbp : readMem (memory s3) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-frame-rbp+8 : readMem (memory s3) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     -- Disjointness: pair allocation (r15-s3) is below frame base (rbp-s3)
     -- The write at r15-s3 + 8 doesn't affect stack at rbp-s3, rbp-s3 + 8, rbp-s3 + 16
     disjoint-rbp : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ 8
@@ -709,6 +712,9 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     disjoint-r14 : readReg (regs s3) rbp +ℕ 16 ≢ readReg (regs s3) r15 +ℕ 8
     -- Disjointness for mem-orig-preserved
     disjoint-orig : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+    -- Disjointness for mem-rbp-preserved (original rbp not touched by final write)
+    disjoint-orig-rbp : readReg (regs s) rbp ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-orig-rbp+8 : readReg (regs s) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
     -- RSP bound for final phase restoration proof
     rsp-bound : 24 ≤ readReg (regs s) rsp
 
@@ -802,6 +808,10 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; disjoint-r15 = disjoint-r15-s3
   ; disjoint-r14 = disjoint-r14-s3
   ; disjoint-orig = disjoint-orig-s3
+  ; disjoint-orig-rbp = disjoint-orig-rbp-s3
+  ; disjoint-orig-rbp+8 = disjoint-orig-rbp+8-s3
+  ; mem-frame-rbp = mem-frame-rbp-s3
+  ; mem-frame-rbp+8 = mem-frame-rbp+8-s3
   ; rsp-bound = rsp-bound-s
   }
   where
@@ -967,6 +977,19 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
         case-stack-inv (stack-below-r15 rsp≤r15) = case-r15-stack rsp≤r15
 
+    -- ========== Memory frame preservation (chain through f and g) ==========
+    -- POSTULATE: Requires chaining through f, middle, and g phases with address alignment
+    -- The proof would use ir-mem-rbp from r-f and r-g, plus disjointness for middle phase
+    postulate
+      mem-frame-rbp-s3 : readMem (memory s3) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-frame-rbp+8-s3 : readMem (memory s3) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+
+    -- ========== Disjointness for original rbp ==========
+    -- POSTULATE: Need rbp invariant to prove s.rbp is above stack allocation at s3.r15+8
+    postulate
+      disjoint-orig-rbp-s3 : readReg (regs s) rbp ≢ readReg (regs s3) r15 +ℕ 8
+      disjoint-orig-rbp+8-s3 : readReg (regs s) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
+
     -- ========== Stack layout postulates (memory preservation) ==========
     -- These require tracing memory through f and g execution
     postulate
@@ -1002,7 +1025,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-rbp+8-fin = mem-rbp+8-preserved
     }
     where
-      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; mem-frame)
+      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; disjoint-orig-rbp; disjoint-orig-rbp+8; mem-frame; mem-frame-rbp; mem-frame-rbp+8)
 
       ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -1218,8 +1241,11 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       mem-orig-preserved : readMem (memory s9) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
       mem-orig-preserved = trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s) r15} {readReg (regs s3) rax} (λ eq → disjoint-orig (sym eq))) mem-frame
 
-      -- Memory at original rbp and rbp+8 preserved through final phase
-      -- POSTULATE: Would need mem-frame-rbp in PairFinalPrecond tracking memory at s's rbp through f and g
-      postulate
-        mem-rbp-preserved : readMem (memory s9) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-        mem-rbp+8-preserved : readMem (memory s9) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      -- Memory at original rbp preserved through final phase
+      -- Final write is at r15-s3 + 8, which is disjoint from original rbp
+      mem-rbp-preserved : readMem (memory s9) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp-preserved = trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s) rbp} {readReg (regs s3) rax} (λ eq → disjoint-orig-rbp (sym eq))) mem-frame-rbp
+
+      -- Memory at original rbp+8 preserved through final phase
+      mem-rbp+8-preserved : readMem (memory s9) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      mem-rbp+8-preserved = trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s) rbp +ℕ 8} {readReg (regs s3) rax} (λ eq → disjoint-orig-rbp+8 (sym eq))) mem-frame-rbp+8
