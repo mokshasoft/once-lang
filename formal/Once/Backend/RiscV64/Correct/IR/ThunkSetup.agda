@@ -67,11 +67,12 @@ thunk-setup-star-proven : ∀ {A B C} (f : IR (A * B) C)
           × halted s' ≡ false
           × pc s' ≡ f-offset
           × readReg (regs s') a0 ≡ encode (env , arg)
-          × readReg (regs s') s1 ≡ readReg (regs s) s1)
+          × readReg (regs s') s1 ≡ readReg (regs s) s1
+          × readReg (regs s') ra ≡ readReg (regs s) ra)
 
 thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
                         h-false pc-eq a0-eq s0-eq =
-  st5 , star-all , h5 , pc5 , a0-final , s1-final
+  st5 , star-all , h5 , pc5 , a0-final , s1-final , ra-final
   where
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -266,6 +267,25 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
 
     s1-final : readReg (regs st5) s1 ≡ readReg (regs s) s1
     s1-final = s1-st5
+
+    -- Register ra preservation (not touched by any of these instructions)
+    ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
+    ra-st1 = refl  -- label doesn't change regs
+
+    ra-st2 : readReg (regs st2) ra ≡ readReg (regs s) ra
+    ra-st2 = trans (readReg-writeReg-sp-ra (regs st1) new-sp) ra-st1
+
+    ra-st3 : readReg (regs st3) ra ≡ readReg (regs s) ra
+    ra-st3 = ra-st2  -- memory write doesn't change regs
+
+    ra-st4 : readReg (regs st4) ra ≡ readReg (regs s) ra
+    ra-st4 = ra-st3  -- memory write doesn't change regs
+
+    ra-st5 : readReg (regs st5) ra ≡ readReg (regs s) ra
+    ra-st5 = trans (readReg-writeReg-a0-ra (regs st4) (readReg (regs st4) sp)) ra-st4
+
+    ra-final : readReg (regs st5) ra ≡ readReg (regs s) ra
+    ra-final = ra-st5
 
     -- Memory tracking for encode-pair-construct
     -- After step 2: memory[new-sp] = encode env

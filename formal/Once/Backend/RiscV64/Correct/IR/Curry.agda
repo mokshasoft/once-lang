@@ -35,7 +35,7 @@ open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-cor
 open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1)
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -69,6 +69,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     ; ir-pc     = pc-final
     ; ir-a0     = a0-final
     ; ir-s1     = s1-final
+    ; ir-ra     = ra-final
     }
   where
     len-f = compile-length f
@@ -449,6 +450,34 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
 
     s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
     s1-final = s1-st8
+
+    -- Track ra through states (none of the curry instructions modify ra)
+    ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
+    ra-st1 = readReg-writeReg-sp-ra (regs s) new-sp
+
+    ra-st2 : readReg (regs st2) ra ≡ readReg (regs s) ra
+    ra-st2 = ra-st1  -- memory write doesn't change regs
+
+    ra-st3 : readReg (regs st3) ra ≡ readReg (regs s) ra
+    ra-st3 = trans (readReg-writeReg-t0-ra (regs st2) (pc st2)) ra-st2
+
+    ra-st4 : readReg (regs st4) ra ≡ readReg (regs s) ra
+    ra-st4 = trans (readReg-writeReg-t0-ra (regs st3) (readReg (regs st3) t0 +ℕ 5)) ra-st3
+
+    ra-st5 : readReg (regs st5) ra ≡ readReg (regs s) ra
+    ra-st5 = ra-st4  -- memory write doesn't change regs
+
+    ra-st6 : readReg (regs st6) ra ≡ readReg (regs s) ra
+    ra-st6 = trans (readReg-writeReg-a0-ra (regs st5) (readReg (regs st5) sp)) ra-st5
+
+    ra-st7 : readReg (regs st7) ra ≡ readReg (regs s) ra
+    ra-st7 = ra-st6  -- j only changes pc
+
+    ra-st8 : readReg (regs st8) ra ≡ readReg (regs s) ra
+    ra-st8 = ra-st7  -- label only changes pc
+
+    ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
+    ra-final = ra-st8
 
     -- Track a0 through states
     -- Only st6 modifies a0 (mv a0 sp)

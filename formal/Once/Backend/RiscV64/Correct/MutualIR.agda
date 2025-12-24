@@ -41,7 +41,7 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
 
@@ -284,7 +284,8 @@ mutual
             × halted s' ≡ false
             × pc s' ≡ f-offset
             × readReg (regs s') a0 ≡ encode (env , arg)
-            × readReg (regs s') s1 ≡ readReg (regs s) s1)
+            × readReg (regs s') s1 ≡ readReg (regs s) s1
+            × readReg (regs s') ra ≡ readReg (regs s) ra)
   thunk-setup-star = thunk-setup-star-proven
 
   -- Prove ret instruction tracing
@@ -372,7 +373,8 @@ mutual
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
       pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
       a0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      s1-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
+      s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
+      ra-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
 
       -- Step 2: Call IH on f using program reassociation
       -- Key insight: curry compiles to structured form that we can reassociate
@@ -473,9 +475,9 @@ mutual
       pc-f-converted : pc s-after-f-raw ≡ ret-offset
       pc-f-converted = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
 
-      -- Bridge result - ra preservation needs postulate since IH doesn't track it
-      postulate
-        ra-preserved : readReg (regs s-after-f-raw) ra ≡ ret-addr
+      -- ra preservation: chain through IH and setup
+      ra-preserved : readReg (regs s-after-f-raw) ra ≡ ret-addr
+      ra-preserved = trans (ir-ra r-f) (trans ra-setup ra-eq)
 
       f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
                                  × halted s-f ≡ false
