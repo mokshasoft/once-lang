@@ -68,7 +68,7 @@ open import Once.Backend.RiscV64.Correct.IR.Case using (module CaseContext)
 open import Once.Backend.RiscV64.Correct.IR.Curry using (run-curry-star)
 
 -- Import thunk setup proof
-open import Once.Backend.RiscV64.Correct.IR.ThunkSetup using (thunk-setup-star-proven)
+open import Once.Backend.RiscV64.Correct.IR.ThunkSetup using (thunk-setup-star-proven; thunk-cleanup-star-proven)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
@@ -1374,17 +1374,42 @@ mutual
       pc-f-raw : pc s-after-f-raw ≡ length prefix-f +ℕ compile-length f
       pc-f-raw = ir-pc r-f
 
-      -- After f, PC is at length prefix + 14 + len-f
-      -- But ret-offset is length prefix + 17 + len-f (after cleanup)
-      -- So we need cleanup tracing between f and ret
-      -- For now, using postulate for cleanup (could be proven similar to thunk-setup)
-      postulate
-        pc-f-converted : pc s-after-f-raw ≡ ret-offset
-      -- In full proof: would trace 3 cleanup instructions (mv sp s2, ld s2, addi sp +24)
+      -- After f, PC is at length prefix + 14 + len-f = cleanup-offset
+      -- We need cleanup tracing to get to ret-offset = length prefix + 17 + len-f
+      cleanup-offset = length prefix +ℕ 14 +ℕ len-f
 
-      -- ra preservation: chain through IH and setup
-      ra-preserved : readReg (regs s-after-f-raw) ra ≡ ret-addr
-      ra-preserved = trans (ir-ra r-f) (trans ra-setup ra-eq)
+      pc-f-is-cleanup : pc s-after-f-raw ≡ cleanup-offset
+      pc-f-is-cleanup = trans pc-f-raw (trans (cong (_+ℕ len-f) len-prefix-f) refl)
+
+      -- Step 2.5: Trace cleanup instructions (3 instructions)
+      -- thunk-cleanup-star-proven traces: mv sp s2, ld s2 16(sp), addi sp sp +24
+      cleanup-result = thunk-cleanup-star-proven f prefix suffix s-after-f-raw
+                         (ir-halted r-f) pc-f-is-cleanup
+      s-after-cleanup = proj₁ cleanup-result
+      star-cleanup-raw = proj₁ (proj₂ cleanup-result)
+      h-cleanup = proj₁ (proj₂ (proj₂ cleanup-result))
+      pc-cleanup = proj₁ (proj₂ (proj₂ (proj₂ cleanup-result)))
+      a0-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result))))
+      s1-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result)))))
+      ra-cleanup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result)))))
+
+      -- star-cleanup-raw has type Star (prefix ++ compile-riscv (curry f) ++ suffix) = Star prog
+      -- But we need Star (prefix-f ++ code-f ++ suffix-f) for composition
+      -- prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+      star-cleanup-converted : Star (prefix-f ++ code-f ++ suffix-f) s-after-f-raw s-after-cleanup
+      star-cleanup-converted = subst (λ p → Star p s-after-f-raw s-after-cleanup) prog-eq-f star-cleanup-raw
+
+      -- ra preservation: chain through IH, setup, and cleanup
+      ra-preserved : readReg (regs s-after-cleanup) ra ≡ ret-addr
+      ra-preserved = trans ra-cleanup (trans (ir-ra r-f) (trans ra-setup ra-eq))
+
+      -- Combine f execution and cleanup
+      star-f-and-cleanup : Star (prefix-f ++ code-f ++ suffix-f) s-after-setup s-after-cleanup
+      star-f-and-cleanup = star-trans star-f-raw star-cleanup-converted
+
+      -- Convert to use prog
+      star-f-and-cleanup-prog : Star prog s-after-setup s-after-cleanup
+      star-f-and-cleanup-prog = subst (λ p → Star p s-after-setup s-after-cleanup) (sym prog-eq-f) star-f-and-cleanup
 
       f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
                                  × halted s-f ≡ false
@@ -1392,8 +1417,13 @@ mutual
                                  × readReg (regs s-f) a0 ≡ encode (eval f (env , arg))
                                  × readReg (regs s-f) s1 ≡ readReg (regs s-after-setup) s1
                                  × readReg (regs s-f) ra ≡ ret-addr)
-      f-result-bridge = s-after-f-raw , star-f-converted , ir-halted r-f , pc-f-converted ,
-                        ir-a0 r-f , ir-s1 r-f , ra-preserved
+      f-result-bridge = s-after-cleanup ,
+                        star-f-and-cleanup-prog ,
+                        h-cleanup ,
+                        pc-cleanup ,
+                        trans a0-cleanup (ir-a0 r-f) ,
+                        trans s1-cleanup (ir-s1 r-f) ,
+                        ra-preserved
 
       s-after-f = proj₁ f-result-bridge
       star-f = proj₁ (proj₂ f-result-bridge)
