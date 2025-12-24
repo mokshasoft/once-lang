@@ -454,9 +454,10 @@ pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readReg (regs s') s1 ≡ encode x
           × readReg (regs s') sp ≡ readReg (regs sf) sp
           × readReg (regs s') ra ≡ readReg (regs sf) ra
-          × readMem (memory s') (readReg (regs sf) sp) ≡ just (encode (eval f x)))
+          × readMem (memory s') (readReg (regs sf) sp) ≡ just (encode (eval f x))
+          × readMem (memory s') (readReg (regs sf) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 16))
 pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , ra-st2 , mem-st2
+  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , ra-st2 , mem-st2 , mem-sp+16-st2
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -560,6 +561,19 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq 
 
     mem-st2 : readMem (memory st2) curr-sp ≡ just (encode (eval f x))
     mem-st2 = mem-st1  -- mv doesn't change memory
+
+    -- Memory at sp+16 is preserved (write is at sp+0, not sp+16)
+    -- Use n≢n+suc curr-sp 15 : curr-sp ≢ curr-sp + 16
+    sp+0≢sp+16 : (curr-sp +ℕ 0) ≢ (curr-sp +ℕ 16)
+    sp+0≢sp+16 eq = n≢n+suc curr-sp 15 (trans (sym (+-identityʳ curr-sp)) eq)
+      where open import Data.Nat.Properties using (+-identityʳ)
+
+    mem-sp+16-st1 : readMem (memory st1) (curr-sp +ℕ 16) ≡ readMem (memory sf) (curr-sp +ℕ 16)
+    mem-sp+16-st1 = readMem-writeMem-diff (memory sf) (curr-sp +ℕ 0) (curr-sp +ℕ 16)
+                      (readReg (regs sf) a0) sp+0≢sp+16
+
+    mem-sp+16-st2 : readMem (memory st2) (curr-sp +ℕ 16) ≡ readMem (memory sf) (curr-sp +ℕ 16)
+    mem-sp+16-st2 = mem-sp+16-st1  -- mv doesn't change memory
 
 ------------------------------------------------------------------------
 -- Phase 5: Final - trace 3 instructions
