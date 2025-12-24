@@ -2259,13 +2259,19 @@ mutual
 
       -- For pop rbp, we need memory at rbp to contain the original rbp
       -- This was written during setup's push rbp
-      -- We postulate memory frame preservation through f for now
+      --
+      -- POSTULATE: memory frame preservation through f
+      -- To prove this, we'd need to extend IRStarResult with:
+      --   ir-mem-frame : readMem (memory s') addr ≡ readMem (memory s) addr
+      --                  for all addr >= readReg (regs s) rbp
+      -- This captures that f only writes below its frame pointer.
+      --
+      -- Chain: s → s-after-setup → s-after-f-raw → s-c1
+      -- 1. Setup: push rbp writes s.rbp at s.rsp - 8 (mem-read-write)
+      -- 2. f: preserves memory at s.rsp - 8 (NEEDS FRAME INVARIANT)
+      -- 3. Cleanup mov: doesn't change memory
       postulate
         pop-rbp-mem : readMem (memory s-c1) (readReg (regs s-c1) rsp) ≡ just (readReg (regs s) rbp)
-        -- This holds because:
-        -- 1. s-c1.rsp = s-after-f-raw.rbp = s.rsp - 8
-        -- 2. memory s-c1 = memory s-after-f-raw (mov doesn't change memory)
-        -- 3. memory s-after-f-raw at (s.rsp - 8) = s.rbp (pushed during setup, preserved through f)
 
       -- State after pop rbp
       s-c2 : State
@@ -2362,9 +2368,19 @@ mutual
                                     × readReg (regs s-cleanup) rsp > 16)
       cleanup-star = s-c2 , star-c , h-c2 , pc-c2 , rax-c2 , r14-c2 , r15-c2 , rbp-c2 , stack-inv-c2 , rsp>16-c2
 
-      -- Memory at ret-addr is preserved because:
-      -- 1. s-c2.rsp = s.rsp (proven above as rsp-c2)
-      -- 2. Memory at s.rsp was never modified (setup wrote below, f wrote below, cleanup didn't write)
+      -- POSTULATE: return address preserved through execution
+      --
+      -- Chain: s → s-after-setup → s-after-f-raw → s-c1 → s-c2
+      -- 1. s: mem-ret says memory at s.rsp contains ret-addr
+      -- 2. Setup: writes at s.rsp - 8 (push rbp), disjoint from s.rsp (mem-read-other)
+      --    More writes at s.rsp - 24, etc., all below s.rsp
+      -- 3. f: needs memory frame invariant (writes below frame pointer)
+      -- 4. Cleanup: mov doesn't write memory, pop reads from s.rsp - 8
+      --
+      -- s-c2.rsp = s.rsp (proven as rsp-c2)
+      -- So we need: readMem (memory s-c2) (s.rsp) ≡ just ret-addr
+      --
+      -- To prove, need ir-mem-frame in IRStarResult (see pop-rbp-mem comment)
       postulate
         mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
 
