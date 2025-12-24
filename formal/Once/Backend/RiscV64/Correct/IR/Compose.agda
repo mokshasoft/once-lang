@@ -27,7 +27,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-trans)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra)
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -138,6 +138,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
   ; ir-a0 = a0-g
   ; ir-s1 = s1-final
   ; ir-ra = ra-final
+  ; ir-sp = sp-final
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -187,6 +188,14 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     ra-final : readReg (regs sg) ra ≡ readReg (regs s) ra
     ra-final = trans ra-g ra-f
 
+    -- sp preservation: chain through f and g
+    sp-f : readReg (regs sf) sp ≡ readReg (regs s) sp
+    sp-f = ir-sp r1
+    sp-g : readReg (regs sg) sp ≡ readReg (regs sf) sp
+    sp-g = ir-sp r2
+    sp-final : readReg (regs sg) sp ≡ readReg (regs s) sp
+    sp-final = trans sp-g sp-f
+
 ------------------------------------------------------------------------
 -- Helper for getting f's result in the right program
 ------------------------------------------------------------------------
@@ -206,6 +215,7 @@ transform-f-result {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-a0 = ir-a0 r
   ; ir-s1 = ir-s1 r
   ; ir-ra = ir-ra r
+  ; ir-sp = ir-sp r
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -226,6 +236,7 @@ transform-g-result {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-a0 = ir-a0 r
   ; ir-s1 = ir-s1 r
   ; ir-ra = ir-ra r
+  ; ir-sp = ir-sp r
   }
   where
     ctx = make-compose-context f g prefix suffix

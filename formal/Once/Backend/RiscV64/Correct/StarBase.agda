@@ -62,6 +62,7 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
     ir-a0      : readReg (regs s') a0 ≡ encode (eval ir x) -- Output in a0
     ir-s1      : readReg (regs s') s1 ≡ readReg (regs s) s1  -- s1 preserved
     ir-ra      : readReg (regs s') ra ≡ readReg (regs s) ra  -- ra preserved
+    ir-sp      : readReg (regs s') sp ≡ readReg (regs s) sp  -- sp preserved (callee-saved)
 
 open IRStarResult public
 
@@ -100,6 +101,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = a0-eq  -- a0 unchanged, eval id x = x
   ; ir-s1     = refl
   ; ir-ra     = refl
+  ; ir-sp     = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -128,6 +130,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans (readReg-writeReg-same (regs s) a0 0 (λ ())) (sym encode-unit)
   ; ir-s1     = refl
   ; ir-ra     = refl
+  ; ir-sp     = readReg-writeReg-a0-sp (regs s) 0
   }
   where
     prog = prefix ++ li a0 (+ 0) ∷ suffix
@@ -157,6 +160,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans a0-eq (encode-fix-wrap x)
   ; ir-s1     = refl
   ; ir-ra     = refl
+  ; ir-sp     = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -185,6 +189,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans a0-eq (encode-fix-unwrap x)
   ; ir-s1     = refl
   ; ir-ra     = refl
+  ; ir-sp     = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -213,6 +218,7 @@ run-arr-star {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = trans a0-eq (encode-arr-identity f)  -- encode {A ⇒ B} f ≡ encode {Eff A B} f
   ; ir-s1     = refl
   ; ir-ra     = refl
+  ; ir-sp     = refl
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -241,6 +247,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode (proj₁ x)) (λ ())
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₁ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₁ x))
+  ; ir-sp     = readReg-writeReg-a0-sp (regs s) (encode (proj₁ x))
   }
   where
     prog = prefix ++ ld a0 (+ 0) a0 ∷ suffix
@@ -290,6 +297,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode (proj₂ x)) (λ ())
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₂ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₂ x))
+  ; ir-sp     = readReg-writeReg-a0-sp (regs s) (encode (proj₂ x))
   }
   where
     prog = prefix ++ ld a0 (+ 8) a0 ∷ suffix

@@ -41,7 +41,7 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
 
@@ -116,6 +116,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ; ir-a0 = a0-final
     ; ir-s1 = s1-reg-final
     ; ir-ra = ra-final
+    ; ir-sp = sp-final
     }
   where
     prog : Program
@@ -260,6 +261,10 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ra-final : readReg (regs st4) ra ≡ readReg (regs s) ra
     ra-final = trans (readReg-writeReg-a0-ra (regs st3) (readReg (regs st3) sp)) ra-st1
 
+    -- SP preservation: inl allocates stack space (sp -= 16), so sp is NOT preserved.
+    postulate
+      sp-final : readReg (regs st4) sp ≡ readReg (regs s) sp
+
     -- Memory properties for encode-inl-construct
     mem-tag : readMem (memory st4) new-sp ≡ just 0
     mem-tag = begin
@@ -306,6 +311,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ; ir-a0 = a0-final
     ; ir-s1 = s1-reg-final
     ; ir-ra = ra-final
+    ; ir-sp = sp-final
     }
   where
     prog : Program
@@ -493,6 +499,10 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ra-final : readReg (regs st5) ra ≡ readReg (regs s) ra
     ra-final = trans (readReg-writeReg-a0-ra (regs st4) (readReg (regs st4) sp)) ra-st2
 
+    -- SP preservation: inr allocates stack space (sp -= 16), so sp is NOT preserved.
+    postulate
+      sp-final : readReg (regs st5) sp ≡ readReg (regs s) sp
+
     -- Memory properties for encode-inr-construct
     mem-tag : readMem (memory st5) new-sp ≡ just 1
     mem-tag = begin
@@ -663,6 +673,7 @@ mutual
       ; ir-a0 = a0-final
       ; ir-s1 = s1-final
       ; ir-ra = ra-final
+      ; ir-sp = sp-final
       }
     where
       ctx = make-pair-context f g prefix suffix
@@ -861,6 +872,11 @@ mutual
                      (trans ra-mid
                        (trans ra-after-f ra-setup)))
 
+      -- SP preservation: pair allocates stack space (sp -= 16) and doesn't restore it
+      -- The pair result lives on stack, so sp points to it (sp = orig_sp - 16)
+      postulate
+        sp-final : readReg (regs s-final) sp ≡ readReg (regs s) sp
+
   -- Case helper - proven using dispatch helpers and IH
   run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C)
                   (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
@@ -879,6 +895,7 @@ mutual
       ; ir-a0 = a0-final
       ; ir-s1 = s1-final
       ; ir-ra = ra-final
+      ; ir-sp = sp-final
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -894,7 +911,8 @@ mutual
       a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
       t0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
       s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
-      ra-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
+      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
+      sp-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
 
       -- Phase 2: Execute f (IH call)
       -- PC for f: need length prefix-f
@@ -932,7 +950,8 @@ mutual
       pc-jump = proj₁ (proj₂ (proj₂ (proj₂ jump-result)))
       a0-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))
       s1-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
-      ra-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
+      ra-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))
+      sp-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))
 
       -- Compose all stars
       star-all : Star prog s s-final
@@ -967,6 +986,13 @@ mutual
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
       ra-final = trans ra-jump (trans ra-after-f ra-dispatch)
 
+      -- sp preservation: case doesn't allocate
+      -- Chains through: dispatch (sp unchanged) → f (ir-sp) → jump (sp unchanged)
+      sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-dispatch) sp
+      sp-after-f = ir-sp r-f
+      sp-final : readReg (regs s-final) sp ≡ readReg (regs s) sp
+      sp-final = trans sp-jump (trans sp-after-f sp-dispatch)
+
   -- Right path implementation (inj₂ b)
   run-case-star {A} {B} {C} f g prefix suffix (inj₂ b) s h-false pc-eq a0-eq =
     s-final , record
@@ -976,6 +1002,7 @@ mutual
       ; ir-a0 = a0-final
       ; ir-s1 = s1-final
       ; ir-ra = ra-final
+      ; ir-sp = sp-final
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -990,7 +1017,8 @@ mutual
       pc-dispatch = proj₁ (proj₂ (proj₂ (proj₂ dispatch-result)))
       a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
       s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
-      ra-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
+      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
+      sp-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
 
       -- Phase 2: Execute g (IH call)
       pc-for-g : pc s-dispatch ≡ length prefix-g
@@ -1027,7 +1055,8 @@ mutual
       pc-end = proj₁ (proj₂ (proj₂ (proj₂ end-result)))
       a0-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))
       s1-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
-      ra-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
+      ra-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
+      sp-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
 
       -- Compose all stars
       star-all : Star prog s s-final
@@ -1061,6 +1090,13 @@ mutual
       -- ra preservation
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
       ra-final = trans ra-end (trans ra-after-g ra-dispatch)
+
+      -- sp preservation: case doesn't allocate
+      -- Chains through: dispatch (sp unchanged) → g (ir-sp) → end-label (sp unchanged)
+      sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-dispatch) sp
+      sp-after-g = ir-sp r-g
+      sp-final : readReg (regs s-final) sp ≡ readReg (regs s) sp
+      sp-final = trans sp-end (trans sp-after-g sp-dispatch)
 
   ------------------------------------------------------------------------
   -- curry-thunk-correct-impl: Proven version using IH
