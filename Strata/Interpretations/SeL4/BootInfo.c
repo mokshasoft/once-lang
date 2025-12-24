@@ -1,9 +1,10 @@
-/* seL4 BootInfo Primitives - C Backend Stubs
+/* seL4 BootInfo Primitives - Real Implementation
  *
- * These are stub implementations for the C backend.
- * For actual seL4 usage, use the architecture-specific assembly implementations.
+ * Accesses the actual seL4 BootInfo structure.
  */
 
+#include <sel4/sel4.h>
+#include <sel4platsupport/bootinfo.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -13,113 +14,157 @@ typedef struct { const char* data; size_t len; } OnceString;
 typedef struct { void* data; size_t len; } OnceBuffer;
 #endif
 
-/* Pair type for tuple passing */
 #ifndef ONCE_PAIR_DEFINED
 #define ONCE_PAIR_DEFINED
 typedef struct { void* fst; void* snd; } OncePair;
 #endif
 
-/* Mock BootInfo structure for testing */
-static struct {
-    int64_t untypedCount;
-    int64_t untypedStart;
-    int64_t initThreadTCB;
-    int64_t initThreadCNode;
-    int64_t initThreadVSpace;
-    int64_t userImageFrames;
-    int64_t domainInfo;
-} mock_bootinfo = {
-    .untypedCount = 5,       /* 5 untyped regions */
-    .untypedStart = 20,      /* Untyped caps start at slot 20 */
-    .initThreadTCB = 1,
-    .initThreadCNode = 2,
-    .initThreadVSpace = 3,
-    .userImageFrames = 10,
-    .domainInfo = 0
-};
+/* Thread-local buffer for building tuples */
+static __thread OncePair pack_buf[5];
 
-/* Mock untyped descriptors */
-static struct {
-    int64_t paddr;
-    int64_t sizeBits;
-    int64_t isDevice;
-} mock_untypeds[] = {
-    { 0x10000000, 20, 0 },   /* 1MB RAM at 0x10000000 */
-    { 0x10100000, 18, 0 },   /* 256KB RAM */
-    { 0x10140000, 16, 0 },   /* 64KB RAM */
-    { 0x10150000, 14, 0 },   /* 16KB RAM */
-    { 0x10154000, 12, 0 },   /* 4KB RAM */
-};
+/* Build 3-tuple: ((a, b), c) */
+static OncePair make_tuple3(intptr_t a, intptr_t b, intptr_t c) {
+    pack_buf[0] = (OncePair){ .fst = (void*)a, .snd = (void*)b };
+    pack_buf[1] = (OncePair){ .fst = &pack_buf[0], .snd = (void*)c };
+    return pack_buf[1];
+}
 
-/* Mock IPC buffer address */
-static int64_t mock_ipc_buffer = 0x20000000;
+/* ========================================================================
+ * BootInfo Primitives - Real implementations
+ * ======================================================================== */
 
-/* BootInfo access functions */
-
+/* Get BootInfo pointer from seL4 */
 void* once_getBootInfo(void* x) {
     (void)x;
-    return (void*)&mock_bootinfo;
+    return (void*)platsupport_get_bootinfo();
 }
 
+/* Get IPC buffer address */
 void* once_getIPCBuffer(void* x) {
     (void)x;
-    return (void*)mock_ipc_buffer;
+    return (void*)seL4_GetIPCBuffer();
 }
 
+/* Get count of untyped regions */
 void* once_bootinfo_untypedCount(void* bootinfo) {
-    (void)bootinfo;
-    return (void*)mock_bootinfo.untypedCount;
+    seL4_BootInfo *bi = (seL4_BootInfo*)bootinfo;
+    return (void*)(intptr_t)(bi->untyped.end - bi->untyped.start);
 }
 
+/* Get starting slot of untyped caps */
 void* once_bootinfo_untypedStart(void* bootinfo) {
-    (void)bootinfo;
-    return (void*)mock_bootinfo.untypedStart;
+    seL4_BootInfo *bi = (seL4_BootInfo*)bootinfo;
+    return (void*)(intptr_t)bi->untyped.start;
 }
 
+/* Get initial thread's TCB cap */
 void* once_bootinfo_initThreadTCB(void* bootinfo) {
     (void)bootinfo;
-    return (void*)mock_bootinfo.initThreadTCB;
+    return (void*)(intptr_t)seL4_CapInitThreadTCB;
 }
 
+/* Get initial thread's CNode cap */
 void* once_bootinfo_initThreadCNode(void* bootinfo) {
     (void)bootinfo;
-    return (void*)mock_bootinfo.initThreadCNode;
+    return (void*)(intptr_t)seL4_CapInitThreadCNode;
 }
 
+/* Get initial thread's VSpace cap */
 void* once_bootinfo_initThreadVSpace(void* bootinfo) {
     (void)bootinfo;
-    return (void*)mock_bootinfo.initThreadVSpace;
+    return (void*)(intptr_t)seL4_CapInitThreadVSpace;
 }
 
+/* Get user image frames slot range */
 void* once_bootinfo_userImageFrames(void* bootinfo) {
-    (void)bootinfo;
-    return (void*)mock_bootinfo.userImageFrames;
+    seL4_BootInfo *bi = (seL4_BootInfo*)bootinfo;
+    return (void*)(intptr_t)bi->userImageFrames.start;
 }
 
+/* Get domain info (not commonly used) */
 void* once_bootinfo_domainInfo(void* bootinfo) {
     (void)bootinfo;
-    return (void*)mock_bootinfo.domainInfo;
+    return (void*)0;
 }
 
-/* Helper to build 3-tuple as nested pairs: ((paddr, sizeBits), isDevice) */
-static OncePair make_tuple3(int64_t a, int64_t b, int64_t c) {
-    static OncePair p1, p2;
-    p1 = (OncePair){ .fst = (void*)a, .snd = (void*)b };
-    p2 = (OncePair){ .fst = &p1, .snd = (void*)c };
-    return p2;
-}
-
+/* Get untyped descriptor by index
+ * Args: (bootinfo, index)
+ * Returns: (paddr, (sizeBits, isDevice)) */
 OncePair once_bootinfo_getUntyped(OncePair args) {
-    /* args is (bootinfo, index) */
-    int64_t index = (int64_t)args.snd;
+    seL4_BootInfo *bi = (seL4_BootInfo*)((OncePair*)args.fst)->fst;
+    intptr_t index = (intptr_t)args.snd;
 
-    if (index >= 0 && index < 5) {
+    seL4_Word count = bi->untyped.end - bi->untyped.start;
+    if (index >= 0 && (seL4_Word)index < count) {
+        seL4_UntypedDesc *desc = &bi->untypedList[index];
         return make_tuple3(
-            mock_untypeds[index].paddr,
-            mock_untypeds[index].sizeBits,
-            mock_untypeds[index].isDevice
+            (intptr_t)desc->paddr,
+            (intptr_t)desc->sizeBits,
+            (intptr_t)desc->isDevice
         );
     }
     /* Return invalid for out-of-bounds */
     return make_tuple3(0, 0, 1);  /* isDevice=1 marks as unusable */
+}
+
+/* ========================================================================
+ * Well-known capability constants
+ * ======================================================================== */
+
+void* once_seL4_CapInitThreadTCB(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapInitThreadTCB;
+}
+
+void* once_seL4_CapInitThreadCNode(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapInitThreadCNode;
+}
+
+void* once_seL4_CapInitThreadVSpace(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapInitThreadVSpace;
+}
+
+void* once_seL4_CapNull(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapNull;
+}
+
+void* once_seL4_CapIRQControl(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapIRQControl;
+}
+
+void* once_seL4_CapASIDControl(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapASIDControl;
+}
+
+void* once_seL4_CapASIDPool(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapASIDPool;
+}
+
+void* once_seL4_CapIOPortControl(void* x) {
+    (void)x;
+#ifdef CONFIG_ARCH_X86
+    return (void*)(intptr_t)seL4_CapIOPortControl;
+#else
+    return (void*)0;
+#endif
+}
+
+void* once_seL4_CapIOSpace(void* x) {
+    (void)x;
+#ifdef CONFIG_ARCH_X86
+    return (void*)(intptr_t)seL4_CapIOSpace;
+#else
+    return (void*)0;
+#endif
+}
+
+void* once_seL4_CapDomain(void* x) {
+    (void)x;
+    return (void*)(intptr_t)seL4_CapDomain;
 }
