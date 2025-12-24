@@ -1947,17 +1947,6 @@ mutual
       rsp>16-1 : readReg (regs s1) rsp > 16
       rsp>16-1 = rsp-bound-after-stack-op s1
 
-  -- Program equality: view curry's program for IH on f
-  -- curry f = curry-before ++ compile-x86 f ++ curry-after
-  -- So: prefix ++ curry f ++ suffix = (prefix ++ curry-before) ++ compile-x86 f ++ (curry-after ++ suffix)
-  postulate
-    curry-prog-for-f : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
-      let curry-before = compile-x86 (curry f)  -- First 11 instructions before f
-          curry-after-len = 2                    -- [ret, label] after f
-      in
-      prefix ++ compile-x86 (curry f) ++ suffix ≡
-      prefix ++ compile-x86 (curry f) ++ suffix  -- trivial, but captures the view
-
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: setup tracing → IH on f → ret tracing
   curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
