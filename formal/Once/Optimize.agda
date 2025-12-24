@@ -12,10 +12,11 @@ open import Once.IR
 
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Nat using (ℕ; zero; suc)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.String using (String)
 open import Data.String.Properties using () renaming (_≟_ to _≟String_)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
 
 ------------------------------------------------------------------------
 -- Equality decision for Types (needed for pattern matching)
@@ -172,6 +173,176 @@ Buffer ≟Type (TVar _) = no (λ ())
 ... | no neq   = no (λ { refl → neq refl })
 
 ------------------------------------------------------------------------
+-- Decidable equality for IR (needed for uniqueness optimizations)
+------------------------------------------------------------------------
+
+-- Decidable equality for IR terms of the same type.
+-- Many constructor combinations are type-impossible (e.g., id vs fst
+-- would require A = A * B which is cyclic). Agda's pattern matching
+-- automatically excludes these cases.
+
+mutual
+  _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
+
+  -- Same constructor cases
+  id ≟IR id = yes refl
+  fst ≟IR fst = yes refl
+  snd ≟IR snd = yes refl
+  inl ≟IR inl = yes refl
+  inr ≟IR inr = yes refl
+  terminal ≟IR terminal = yes refl
+  initial ≟IR initial = yes refl
+  apply ≟IR apply = yes refl
+  fold ≟IR fold = yes refl
+  unfold ≟IR unfold = yes refl
+  arr ≟IR arr = yes refl
+
+  -- Recursive constructors - same constructor
+  (curry f) ≟IR (curry g) with f ≟IR g
+  ... | yes refl = yes refl
+  ... | no neq   = no (λ { refl → neq refl })
+
+  ⟨ f , g ⟩ ≟IR ⟨ f' , g' ⟩ with f ≟IR f' | g ≟IR g'
+  ... | yes refl | yes refl = yes refl
+  ... | no neq   | _        = no (λ { refl → neq refl })
+  ... | _        | no neq   = no (λ { refl → neq refl })
+
+  [ f , g ] ≟IR [ f' , g' ] with f ≟IR f' | g ≟IR g'
+  ... | yes refl | yes refl = yes refl
+  ... | no neq   | _        = no (λ { refl → neq refl })
+  ... | _        | no neq   = no (λ { refl → neq refl })
+
+  -- Composition vs composition - need matching intermediate types
+  _≟IR_ {A} {C} (_∘_ {.A} {B} {.C} f g) (_∘_ {.A} {B'} {.C} f' g') with B ≟Type B'
+  ... | no neq = no (λ { refl → neq refl })
+  ... | yes refl with f ≟IR f' | g ≟IR g'
+  ...   | yes refl | yes refl = yes refl
+  ...   | no neq   | _        = no (λ { refl → neq refl })
+  ...   | _        | no neq   = no (λ { refl → neq refl })
+
+  -- Different constructor cases (type-compatible ones)
+  -- Composition vs non-composition
+  id ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR id = no (λ ())
+
+  ⟨ _ , _ ⟩ ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
+
+  [ _ , _ ] ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR [ _ , _ ] = no (λ ())
+
+  (curry _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (curry _) = no (λ ())
+
+  terminal ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR terminal = no (λ ())
+
+  initial ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR initial = no (λ ())
+
+  fst ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR fst = no (λ ())
+
+  snd ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR snd = no (λ ())
+
+  inl ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR inl = no (λ ())
+
+  inr ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR inr = no (λ ())
+
+  apply ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR apply = no (λ ())
+
+  fold ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR fold = no (λ ())
+
+  unfold ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR unfold = no (λ ())
+
+  arr ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR arr = no (λ ())
+
+  -- Remaining type-compatible different-constructor cases
+  id ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  id ≟IR [ _ , _ ] = no (λ ())
+  id ≟IR terminal = no (λ ())
+  id ≟IR initial = no (λ ())
+  id ≟IR (curry _) = no (λ ())
+
+  fst ≟IR snd = no (λ ())
+  fst ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  fst ≟IR terminal = no (λ ())
+  fst ≟IR (curry _) = no (λ ())
+
+  snd ≟IR fst = no (λ ())
+  snd ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  snd ≟IR terminal = no (λ ())
+  snd ≟IR (curry _) = no (λ ())
+  snd ≟IR apply = no (λ ())
+
+  ⟨ _ , _ ⟩ ≟IR id = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR fst = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR snd = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR [ _ , _ ] = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR initial = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR apply = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR unfold = no (λ ())
+
+  inl ≟IR inr = no (λ ())
+  inl ≟IR [ _ , _ ] = no (λ ())
+  inl ≟IR initial = no (λ ())
+
+  inr ≟IR inl = no (λ ())
+  inr ≟IR [ _ , _ ] = no (λ ())
+  inr ≟IR initial = no (λ ())
+
+  [ _ , _ ] ≟IR id = no (λ ())
+  [ _ , _ ] ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  [ _ , _ ] ≟IR inl = no (λ ())
+  [ _ , _ ] ≟IR inr = no (λ ())
+  [ _ , _ ] ≟IR terminal = no (λ ())
+  [ _ , _ ] ≟IR (curry _) = no (λ ())
+  [ _ , _ ] ≟IR fold = no (λ ())
+
+  terminal ≟IR id = no (λ ())
+  terminal ≟IR fst = no (λ ())
+  terminal ≟IR snd = no (λ ())
+  terminal ≟IR [ _ , _ ] = no (λ ())
+  terminal ≟IR initial = no (λ ())
+  terminal ≟IR apply = no (λ ())
+  terminal ≟IR unfold = no (λ ())
+
+  initial ≟IR id = no (λ ())
+  initial ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  initial ≟IR inl = no (λ ())
+  initial ≟IR inr = no (λ ())
+  initial ≟IR terminal = no (λ ())
+  initial ≟IR (curry _) = no (λ ())
+  initial ≟IR fold = no (λ ())
+
+  (curry _) ≟IR id = no (λ ())
+  (curry _) ≟IR fst = no (λ ())
+  (curry _) ≟IR snd = no (λ ())
+  (curry _) ≟IR [ _ , _ ] = no (λ ())
+  (curry _) ≟IR initial = no (λ ())
+  (curry _) ≟IR apply = no (λ ())
+  (curry _) ≟IR unfold = no (λ ())
+
+  apply ≟IR snd = no (λ ())
+  apply ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  apply ≟IR terminal = no (λ ())
+  apply ≟IR (curry _) = no (λ ())
+
+  fold ≟IR [ _ , _ ] = no (λ ())
+  fold ≟IR initial = no (λ ())
+
+  unfold ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  unfold ≟IR terminal = no (λ ())
+  unfold ≟IR (curry _) = no (λ ())
+
+------------------------------------------------------------------------
 -- Optimizer: Single-step rewriting
 ------------------------------------------------------------------------
 
@@ -292,12 +463,23 @@ optimize-compose g f = g ∘ f
 
 -- | Optimize a pair
 --
--- Applies eta law: ⟨ fst , snd ⟩ = id
+-- Applies:
+--   1. Eta law: ⟨ fst , snd ⟩ = id
+--   2. Uniqueness law: ⟨ fst ∘ h , snd ∘ h ⟩ = h
 --
 optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+-- Eta: ⟨ fst , snd ⟩ = id
 optimize-pair (fst {A} {B}) (snd {A'} {B'}) with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
 ... | _        | _        = ⟨ fst , snd ⟩
+-- Uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ = h
+optimize-pair (_∘_ {_} {D} (fst {A} {B}) h) (_∘_ {_} {D'} (snd {A'} {B'}) h')
+  with A ≟Type A' | B ≟Type B' | D ≟Type D'
+... | yes refl | yes refl | yes refl with h ≟IR h'
+...   | yes refl = h                  -- ⟨ fst ∘ h , snd ∘ h ⟩ = h
+...   | no _     = ⟨ fst ∘ h , snd ∘ h' ⟩
+optimize-pair (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩
+-- Default: no simplification
 optimize-pair f g = ⟨ f , g ⟩
 
 ------------------------------------------------------------------------
@@ -306,12 +488,23 @@ optimize-pair f g = ⟨ f , g ⟩
 
 -- | Optimize a case
 --
--- Applies eta law: [ inl , inr ] = id
+-- Applies:
+--   1. Eta law: [ inl , inr ] = id
+--   2. Uniqueness law: [ h ∘ inl , h ∘ inr ] = h
 --
 optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
+-- Eta: [ inl , inr ] = id
 optimize-case (inl {A} {B}) (inr {A'} {B'}) with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
 ... | _        | _        = [ inl , inr ]
+-- Uniqueness: [ h ∘ inl , h ∘ inr ] = h
+optimize-case (_∘_ {_} {D} h (inl {A} {B})) (_∘_ {_} {D'} h' (inr {A'} {B'}))
+  with A ≟Type A' | B ≟Type B' | D ≟Type D'
+... | yes refl | yes refl | yes refl with h ≟IR h'
+...   | yes refl = h                  -- [ h ∘ inl , h ∘ inr ] = h
+...   | no _     = [ h ∘ inl , h' ∘ inr ]
+optimize-case (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) | _ | _ | _ = [ h ∘ inl , h' ∘ inr ]
+-- Default: no simplification
 optimize-case f g = [ f , g ]
 
 ------------------------------------------------------------------------

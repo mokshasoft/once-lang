@@ -310,7 +310,7 @@ optimize-pair-correct (fst {A} {B}) (snd {A'} {B'}) x with A ≟Type A' | B ≟T
 ... | no _     | yes _    = refl
 ... | no _     | no _     = refl
 
--- All other fst cases
+-- All other fst cases (non-snd second argument)
 optimize-pair-correct fst id x = refl
 optimize-pair-correct fst (g ∘ h) x = refl
 optimize-pair-correct fst fst x = refl
@@ -322,9 +322,67 @@ optimize-pair-correct fst (curry g) x = refl
 optimize-pair-correct fst apply x = refl
 optimize-pair-correct fst fold x = refl
 
--- All other cases
+-- Uniqueness: ⟨ fst ∘ h , snd ∘ h' ⟩ cases
+optimize-pair-correct (_∘_ {_} {D} (fst {A} {B}) h) (_∘_ {_} {D'} (snd {A'} {B'}) h') x
+  with A ≟Type A' | B ≟Type B' | D ≟Type D'
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {.B}) h') x
+  | yes refl | yes refl | yes refl with h ≟IR h'
+...   | yes refl = sym (eval-pair-unique h x)  -- Use uniqueness law
+...   | no _     = refl
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {.B}) h') x
+  | yes refl | yes refl | no _  = refl
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {B'}) h') x
+  | yes refl | no _  | _     = refl
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') x
+  | no _  | _     | _     = refl
+
+-- fst ∘ h with non-snd ∘ g' second argument
+optimize-pair-correct (fst ∘ h) id x = refl
+optimize-pair-correct (fst ∘ h) fst x = refl
+optimize-pair-correct (fst ∘ h) snd x = refl
+optimize-pair-correct (fst ∘ h) ⟨ g , g' ⟩ x = refl
+optimize-pair-correct (fst ∘ h) inl x = refl
+optimize-pair-correct (fst ∘ h) inr x = refl
+optimize-pair-correct (fst ∘ h) [ g , g' ] x = refl
+optimize-pair-correct (fst ∘ h) terminal x = refl
+optimize-pair-correct (fst ∘ h) (curry g) x = refl
+optimize-pair-correct (fst ∘ h) apply x = refl
+optimize-pair-correct (fst ∘ h) fold x = refl
+optimize-pair-correct (fst ∘ h) unfold x = refl
+optimize-pair-correct (fst ∘ h) arr x = refl
+-- Non-snd composition
+optimize-pair-correct (fst ∘ h) (id ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (fst ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (inl ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (inr ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ([ f , g ] ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (terminal ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ((f ∘ f') ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (⟨ f , g ⟩ ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ((curry f) ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (apply ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (fold ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (unfold ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (arr ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) (initial ∘ g') x = refl
+
+-- All other cases (non-fst first argument)
 optimize-pair-correct id g x = refl
-optimize-pair-correct (f ∘ h) g x = refl
+optimize-pair-correct (id ∘ h) g x = refl
+optimize-pair-correct (snd ∘ h) g x = refl
+optimize-pair-correct (inl ∘ h) g x = refl
+optimize-pair-correct (inr ∘ h) g x = refl
+optimize-pair-correct ([ f , f' ] ∘ h) g x = refl
+optimize-pair-correct (terminal ∘ h) g x = refl
+optimize-pair-correct ((f ∘ f') ∘ h) g x = refl
+optimize-pair-correct (⟨ f , f' ⟩ ∘ h) g x = refl
+optimize-pair-correct ((curry f) ∘ h) g x = refl
+optimize-pair-correct (apply ∘ h) g x = refl
+optimize-pair-correct (fold ∘ h) g x = refl
+optimize-pair-correct (unfold ∘ h) g x = refl
+optimize-pair-correct (arr ∘ h) g x = refl
+-- initial composition cases
+optimize-pair-correct (initial ∘ h) g x = refl
 optimize-pair-correct snd g x = refl
 optimize-pair-correct ⟨ f , h ⟩ g x = refl
 optimize-pair-correct inl g x = refl
@@ -362,9 +420,70 @@ optimize-case-correct inl initial x = refl
 optimize-case-correct inl apply x = refl
 optimize-case-correct inl unfold x = refl
 
--- All other cases
+-- Uniqueness: [ h ∘ inl , h' ∘ inr ] cases
+optimize-case-correct (_∘_ {_} {D} h (inl {A} {B})) (_∘_ {_} {D'} h' (inr {A'} {B'})) x
+  with A ≟Type A' | B ≟Type B' | D ≟Type D'
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {.B})) x
+  | yes refl | yes refl | yes refl with h ≟IR h'
+...   | yes refl = sym (eval-case-unique h x)  -- Use uniqueness law
+...   | no _     = refl
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {.B})) x
+  | yes refl | yes refl | no _  = refl
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {B'})) x
+  | yes refl | no _  | _     = refl
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) x
+  | no _  | _     | _     = refl
+
+-- h ∘ inl with second arg NOT of form h' ∘ inr
+-- Non-compositions
+optimize-case-correct (h ∘ inl) id x = refl
+optimize-case-correct (h ∘ inl) fst x = refl
+optimize-case-correct (h ∘ inl) snd x = refl
+optimize-case-correct (h ∘ inl) ⟨ g₁ , g₂ ⟩ x = refl
+optimize-case-correct (h ∘ inl) inl x = refl
+optimize-case-correct (h ∘ inl) inr x = refl
+optimize-case-correct (h ∘ inl) [ g₁ , g₂ ] x = refl
+optimize-case-correct (h ∘ inl) terminal x = refl
+optimize-case-correct (h ∘ inl) initial x = refl
+optimize-case-correct (h ∘ inl) (curry g) x = refl
+optimize-case-correct (h ∘ inl) apply x = refl
+optimize-case-correct (h ∘ inl) fold x = refl
+optimize-case-correct (h ∘ inl) unfold x = refl
+optimize-case-correct (h ∘ inl) arr x = refl
+-- Compositions NOT ending in inr
+optimize-case-correct (h ∘ inl) (g ∘ id) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ fst) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ snd) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ (g' ∘ g'')) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ ⟨ g₁ , g₂ ⟩) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ inl) x = refl
+-- g ∘ inr is handled by uniqueness case above
+optimize-case-correct (h ∘ inl) (g ∘ [ g₁ , g₂ ]) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ terminal) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ initial) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ curry g') x = refl
+optimize-case-correct (h ∘ inl) (g ∘ apply) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ fold) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ unfold) x = refl
+optimize-case-correct (h ∘ inl) (g ∘ arr) x = refl
+
+-- All other first arg cases (not inl at end)
+optimize-case-correct (f ∘ id) g x = refl
+optimize-case-correct (f ∘ fst) g x = refl
+optimize-case-correct (f ∘ snd) g x = refl
+optimize-case-correct (f ∘ (f' ∘ f'')) g x = refl
+optimize-case-correct (f ∘ ⟨ f₁ , f₂ ⟩) g x = refl
+-- f ∘ inl is handled above
+optimize-case-correct (f ∘ inr) g x = refl
+optimize-case-correct (f ∘ [ f₁ , f₂ ]) g x = refl
+optimize-case-correct (f ∘ terminal) g x = refl
+optimize-case-correct (f ∘ initial) g x = refl
+optimize-case-correct (f ∘ curry f') g x = refl
+optimize-case-correct (f ∘ apply) g x = refl
+optimize-case-correct (f ∘ fold) g x = refl
+optimize-case-correct (f ∘ unfold) g x = refl
+optimize-case-correct (f ∘ arr) g x = refl
 optimize-case-correct id g x = refl
-optimize-case-correct (f ∘ h) g x = refl
 optimize-case-correct fst g x = refl
 optimize-case-correct snd g x = refl
 optimize-case-correct ⟨ f , h ⟩ g x = refl
