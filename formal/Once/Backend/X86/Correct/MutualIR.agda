@@ -95,8 +95,7 @@ open import Once.Backend.X86.Correct.IR.Case
          CaseJumpResult; exec-case-jump;
          CaseEndResult; exec-case-end;
          CaseRightSetupResult; exec-case-right-setup;
-         stack-inv-preserved-mem-rsp;
-         assemble-case-inl-result; assemble-case-inr-result)
+         stack-inv-preserved-mem-rsp)
 open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module CaseJumpResult; module CaseEndResult; module CaseRightSetupResult)
 
 -- Import thunk structure lemmas (fetch proofs for thunk instructions)
