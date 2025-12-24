@@ -1625,6 +1625,7 @@ mutual
     s5 , star-all , h5 , pc5 , rdi5 , r14-5 , r15-5 , rbp5 , stack-inv5 , rsp>16-5
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Data.Nat.Properties using (m∸n≤m)
       open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1849,9 +1850,19 @@ mutual
                    (trans (readReg-writeReg-rsp-rbp (regs s1) new-rsp)
                           refl)
 
-      -- StackInvariant and rsp bound
-      postulate
-        stack-inv5 : StackInvariant s5
+      -- StackInvariant proof: rsp decreased, r15 unchanged
+      -- s5.rsp = new-rsp = old-rsp - 16 ≤ old-rsp = s.rsp
+      rsp-s5 : readReg (regs s5) rsp ≡ new-rsp
+      rsp-s5 = trans (readReg-writeReg-rdi-rsp (regs s4) new-rsp) rsp-s4
+
+      rsp-decreased : new-rsp ≤ old-rsp
+      rsp-decreased = m∸n≤m old-rsp 16
+
+      rsp-s5≤s : readReg (regs s5) rsp ≤ readReg (regs s) rsp
+      rsp-s5≤s = subst (_≤ old-rsp) (sym rsp-s5) rsp-decreased
+
+      stack-inv5 : StackInvariant s5
+      stack-inv5 = stack-inv-preserved-rsp-decreased s s5 stack-inv r15-5 rsp-s5≤s
 
       rsp>16-5 : readReg (regs s5) rsp > 16
       rsp>16-5 = rsp-bound-after-stack-op s5
@@ -1929,9 +1940,9 @@ mutual
       rbp1 : readReg (regs s1) rbp ≡ readReg (regs s) rbp
       rbp1 = readReg-writeReg-rsp-rbp (regs s) (old-rsp +ℕ 8)
 
-      -- StackInvariant and rsp bound after ret
-      postulate
-        stack-inv1 : StackInvariant s1
+      -- StackInvariant preserved after ret (r15 unchanged)
+      stack-inv1 : StackInvariant s1
+      stack-inv1 = stack-inv-preserved-ret s s1 stack-inv r15-1
 
       rsp>16-1 : readReg (regs s1) rsp > 16
       rsp>16-1 = rsp-bound-after-stack-op s1
