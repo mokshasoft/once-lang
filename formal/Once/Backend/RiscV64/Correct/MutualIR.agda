@@ -70,6 +70,10 @@ open import Once.Backend.RiscV64.Correct.IR.Curry using (run-curry-star)
 -- Import thunk setup proof
 open import Once.Backend.RiscV64.Correct.IR.ThunkSetup using (thunk-setup-star-proven; thunk-cleanup-star-proven)
 
+-- Import apply proof (proven when ClosureWellFormed is available)
+open import Once.Backend.RiscV64.Correct.IR.Apply
+  using (run-apply-with-wf; apply-setup-star; apply-jalr-star; apply-nop-star)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m)
@@ -546,6 +550,11 @@ run-initial-star prefix suffix x s h-false pc-eq a0-eq = ⊥-elim x
 --
 -- This is sound by construction: curry creates closures that apply
 -- can call. Full verification requires tracking closure provenance.
+--
+-- PROVEN ALTERNATIVE: When a ClosureWellFormed proof is available
+-- (from curry's output), use run-apply-with-wf from IR/Apply.agda.
+-- This traces all 7 apply instructions and uses thunk-correct
+-- to verify the indirect call executes correctly.
 ------------------------------------------------------------------------
 
 postulate
