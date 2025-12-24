@@ -2034,6 +2034,14 @@ mutual
         using (ThunkResult; thunk-star; thunk-halted; thunk-rax;
                thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+      open import Data.Nat.Properties using (≤-trans)
+
+      -- From rsp > 16, derive 8 ≤ rsp (for m+[n∸m]≡n)
+      8≤17 : 8 ≤ 17
+      8≤17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+
+      8≤rsp : 8 ≤ readReg (regs s) rsp
+      8≤rsp = ≤-trans 8≤17 rsp>16
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -2199,17 +2207,165 @@ mutual
       -- These restore the stack frame and rbp before ret
       -- The cleanup restores rbp to its ORIGINAL value (from s, before setup)
       -- because setup pushed it and cleanup pops it
-      -- For now we postulate this phase; can be proven similar to other instruction tracing
+
+      -- We need the following for the pop instruction:
+      -- 1. rbp in s-after-f-raw points to the pushed rbp (s.rsp - 8)
+      -- 2. Memory at that address contains s.rbp (pushed during setup)
+      -- 3. Memory at s.rsp contains ret-addr (never modified)
+
+      -- rbp value after f: preserved from setup, which set it to s.rsp - 8
+      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ 8
+      rbp-after-f = trans (ir-rbp r-f) rbp-setup
+
+      -- Fetch cleanup instructions
+      -- fetch-cleanup-i0 proves: fetch prog (length prefix +ℕ 13 +ℕ compile-length f) ≡ just cleanup-i0
+      -- cleanup-offset = length prefix +ℕ 13 +ℕ compile-length f
+      -- These are definitionally equal (both parse as (length prefix +ℕ 13) +ℕ len-f)
+      fetch-c0 : fetch prog cleanup-offset ≡ just cleanup-i0
+      fetch-c0 = fetch-cleanup-i0 f prefix suffix
+
+      -- fetch-cleanup-i1 proves: fetch prog (length prefix +ℕ 14 +ℕ compile-length f) ≡ just cleanup-i1
+      -- cleanup-offset +ℕ 1 = ((length prefix +ℕ 13) +ℕ len-f) +ℕ 1
+      -- We need to show this equals (length prefix +ℕ 14) +ℕ len-f
+      cleanup-offset-plus-1 : cleanup-offset +ℕ 1 ≡ (length prefix +ℕ 14) +ℕ len-f
+      cleanup-offset-plus-1 = trans (+-assoc (length prefix +ℕ 13) len-f 1)
+                                    (trans (cong ((length prefix +ℕ 13) +ℕ_) (+-comm len-f 1))
+                                           (trans (sym (+-assoc (length prefix +ℕ 13) 1 len-f))
+                                                  (cong (_+ℕ len-f) (+-assoc (length prefix) 13 1))))
+
+      fetch-c1 : fetch prog (cleanup-offset +ℕ 1) ≡ just cleanup-i1
+      fetch-c1 = subst (λ n → fetch prog n ≡ just cleanup-i1)
+                       (sym cleanup-offset-plus-1)
+                       (fetch-cleanup-i1 f prefix suffix)
+
+      -- State after mov rsp, rbp
+      old-rsp-s = readReg (regs s) rsp
+      rbp-val = readReg (regs s-after-f-raw) rbp  -- = old-rsp-s ∸ 8
+
+      s-c1 : State
+      s-c1 = record s-after-f-raw { regs = writeReg (regs s-after-f-raw) rsp rbp-val
+                                  ; pc = pc s-after-f-raw +ℕ 1 }
+
+      step-c0 : step prog s-after-f-raw ≡ just s-c1
+      step-c0 = trans (step-exec prog s-after-f-raw cleanup-i0 (ir-halted r-f)
+                        (subst (λ n → fetch prog n ≡ just cleanup-i0) (sym pc-f-at-cleanup) fetch-c0))
+                      (execMov-reg-reg s-after-f-raw rsp rbp)
+
+      h-c1 : halted s-c1 ≡ false
+      h-c1 = ir-halted r-f
+
+      pc-c1 : pc s-c1 ≡ cleanup-offset +ℕ 1
+      pc-c1 = cong (_+ℕ 1) pc-f-at-cleanup
+
+      -- For pop rbp, we need memory at rbp to contain the original rbp
+      -- This was written during setup's push rbp
+      -- We postulate memory frame preservation through f for now
       postulate
-        cleanup-star : ∃[ s-cleanup ] (Star prog s-after-f-raw s-cleanup
-                                      × halted s-cleanup ≡ false
-                                      × pc s-cleanup ≡ ret-offset
-                                      × readReg (regs s-cleanup) rax ≡ readReg (regs s-after-f-raw) rax
-                                      × readReg (regs s-cleanup) r14 ≡ readReg (regs s-after-f-raw) r14
-                                      × readReg (regs s-cleanup) r15 ≡ readReg (regs s-after-f-raw) r15
-                                      × readReg (regs s-cleanup) rbp ≡ readReg (regs s) rbp  -- pop restores ORIGINAL rbp
-                                      × StackInvariant s-cleanup
-                                      × readReg (regs s-cleanup) rsp > 16)
+        pop-rbp-mem : readMem (memory s-c1) (readReg (regs s-c1) rsp) ≡ just (readReg (regs s) rbp)
+        -- This holds because:
+        -- 1. s-c1.rsp = s-after-f-raw.rbp = s.rsp - 8
+        -- 2. memory s-c1 = memory s-after-f-raw (mov doesn't change memory)
+        -- 3. memory s-after-f-raw at (s.rsp - 8) = s.rbp (pushed during setup, preserved through f)
+
+      -- State after pop rbp
+      s-c2 : State
+      s-c2 = record s-c1 { regs = writeReg (writeReg (regs s-c1) rbp (readReg (regs s) rbp))
+                                          rsp (readReg (regs s-c1) rsp +ℕ 8)
+                         ; pc = pc s-c1 +ℕ 1 }
+
+      step-c1 : step prog s-c1 ≡ just s-c2
+      step-c1 = trans (step-exec prog s-c1 cleanup-i1 h-c1
+                        (subst (λ n → fetch prog n ≡ just cleanup-i1) (sym pc-c1) fetch-c1))
+                      (execPop prog s-c1 rbp (readReg (regs s) rbp) pop-rbp-mem)
+
+      h-c2 : halted s-c2 ≡ false
+      h-c2 = h-c1
+
+      -- pc s-c2 = cleanup-offset + 2 = ret-offset
+      -- cleanup-offset = (length prefix +ℕ 13) +ℕ len-f
+      -- ret-offset = (length prefix +ℕ 15) +ℕ len-f
+      -- (length prefix +ℕ 13) +ℕ 2 ≡ length prefix +ℕ 15
+      prefix-13+2 : (length prefix +ℕ 13) +ℕ 2 ≡ length prefix +ℕ 15
+      prefix-13+2 = +-assoc (length prefix) 13 2
+
+      cleanup-plus-2≡ret : cleanup-offset +ℕ 2 ≡ ret-offset
+      cleanup-plus-2≡ret = trans (+-assoc (length prefix +ℕ 13) len-f 2)
+                                 (trans (cong ((length prefix +ℕ 13) +ℕ_) (+-comm len-f 2))
+                                        (trans (sym (+-assoc (length prefix +ℕ 13) 2 len-f))
+                                               (cong (_+ℕ len-f) prefix-13+2)))
+
+      pc-c2 : pc s-c2 ≡ ret-offset
+      pc-c2 = trans (cong (_+ℕ 1) pc-c1)
+                    (trans (+-assoc cleanup-offset 1 1)
+                           cleanup-plus-2≡ret)
+
+      -- rsp after cleanup = (s.rsp - 8) + 8 = s.rsp
+      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 8
+      rsp-c1 = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
+
+      rsp-c2 : readReg (regs s-c2) rsp ≡ old-rsp-s
+      rsp-c2 = trans (readReg-writeReg-same (writeReg (regs s-c1) rbp (readReg (regs s) rbp)) rsp
+                                            (readReg (regs s-c1) rsp +ℕ 8))
+                     (trans (cong (_+ℕ 8) rsp-c1)
+                            (trans (+-comm (old-rsp-s ∸ 8) 8)
+                                   (m+[n∸m]≡n 8≤rsp)))
+
+      -- Register preservation through cleanup (mov rsp rbp doesn't touch rax, r14, r15, and pop rbp doesn't either)
+      -- s-c2.regs = writeReg (writeReg (regs s-c1) rbp orig-rbp) rsp (s-c1.rsp + 8)
+      rsp-val-c2 = readReg (regs s-c1) rsp +ℕ 8
+      orig-rbp = readReg (regs s) rbp
+
+      rax-c2 : readReg (regs s-c2) rax ≡ readReg (regs s-after-f-raw) rax
+      rax-c2 = trans (readReg-writeReg-rsp-rax (writeReg (regs s-c1) rbp orig-rbp) rsp-val-c2)
+                     (trans (readReg-writeReg-rbp-rax (regs s-c1) orig-rbp)
+                            (readReg-writeReg-rsp-rax (regs s-after-f-raw) rbp-val))
+
+      r14-c2 : readReg (regs s-c2) r14 ≡ readReg (regs s-after-f-raw) r14
+      r14-c2 = trans (readReg-writeReg-rsp-r14 (writeReg (regs s-c1) rbp orig-rbp) rsp-val-c2)
+                     (trans (readReg-writeReg-rbp-r14 (regs s-c1) orig-rbp)
+                            (readReg-writeReg-rsp-r14 (regs s-after-f-raw) rbp-val))
+
+      r15-c2 : readReg (regs s-c2) r15 ≡ readReg (regs s-after-f-raw) r15
+      r15-c2 = trans (readReg-writeReg-rsp-r15 (writeReg (regs s-c1) rbp orig-rbp) rsp-val-c2)
+                     (trans (readReg-writeReg-rbp-r15 (regs s-c1) orig-rbp)
+                            (readReg-writeReg-rsp-r15 (regs s-after-f-raw) rbp-val))
+
+      rbp-c2 : readReg (regs s-c2) rbp ≡ readReg (regs s) rbp
+      rbp-c2 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s-c1) rbp orig-rbp) rsp-val-c2)
+                     (readReg-writeReg-same (regs s-c1) rbp orig-rbp)
+
+      -- Star composition
+      star-c : Star prog s-after-f-raw s-c2
+      star-c = ⟨ ir-halted r-f , step-c0 ⟩◅ ⟨ h-c1 , step-c1 ⟩◅ refl*
+
+      -- Stack invariant and rsp bound
+      -- rsp>16-c2 follows from rsp-c2 (rsp restored to original) and rsp>16 (original > 16)
+      rsp>16-c2 : readReg (regs s-c2) rsp > 16
+      rsp>16-c2 = subst (_> 16) (sym rsp-c2) rsp>16
+
+      -- Stack invariant: chain r15 and rsp back to original state
+      -- r15: s → s-after-setup → s-after-f-raw → s-c2
+      r15-s-to-c2 : readReg (regs s-c2) r15 ≡ readReg (regs s) r15
+      r15-s-to-c2 = trans r15-c2 (trans (ir-r15 r-f) r15-setup)
+
+      stack-inv-c2 : StackInvariant s-c2
+      stack-inv-c2 = stack-inv-preserved-unchanged s s-c2 stack-inv r15-s-to-c2 rsp-c2
+
+      cleanup-star : ∃[ s-cleanup ] (Star prog s-after-f-raw s-cleanup
+                                    × halted s-cleanup ≡ false
+                                    × pc s-cleanup ≡ ret-offset
+                                    × readReg (regs s-cleanup) rax ≡ readReg (regs s-after-f-raw) rax
+                                    × readReg (regs s-cleanup) r14 ≡ readReg (regs s-after-f-raw) r14
+                                    × readReg (regs s-cleanup) r15 ≡ readReg (regs s-after-f-raw) r15
+                                    × readReg (regs s-cleanup) rbp ≡ readReg (regs s) rbp
+                                    × StackInvariant s-cleanup
+                                    × readReg (regs s-cleanup) rsp > 16)
+      cleanup-star = s-c2 , star-c , h-c2 , pc-c2 , rax-c2 , r14-c2 , r15-c2 , rbp-c2 , stack-inv-c2 , rsp>16-c2
+
+      -- Memory at ret-addr is preserved because:
+      -- 1. s-c2.rsp = s.rsp (proven above as rsp-c2)
+      -- 2. Memory at s.rsp was never modified (setup wrote below, f wrote below, cleanup didn't write)
+      postulate
         mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
 
       s-after-cleanup = proj₁ cleanup-star
