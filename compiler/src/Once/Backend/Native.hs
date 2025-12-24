@@ -31,6 +31,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
 
 import qualified Once.IR as H
@@ -193,79 +194,89 @@ collectPrimitives ir = case ir of
 -- | Compile any IR to x86-64 assembly (Haskell-based, not verified)
 -- This handles primitives by generating call instructions.
 -- ABI: input in %rdi, output in %rax
+-- Variables are stored on the stack, tracked by environment.
 compileFullToX86 :: H.IR -> Text
-compileFullToX86 ir = genX86 ir
+compileFullToX86 ir = genX86WithEnv Map.empty 0 ir
   where
-    -- Generate x86-64 assembly for IR
+    -- Environment maps variable names to stack offsets (relative to rbp)
+    -- Offset is negative: [rbp-8] is first variable, [rbp-16] is second, etc.
+
+    -- Generate x86-64 assembly with variable environment
     -- Input is in %rdi, output goes to %rax
-    genX86 :: H.IR -> Text
-    genX86 expr = case expr of
+    -- stackDepth tracks current stack usage for new variables
+    genX86WithEnv :: Map.Map Text Int -> Int -> H.IR -> Text
+    genX86WithEnv env depth expr = case expr of
       -- Identity: just move input to output
       H.Id _ -> "    movq %rdi, %rax"
 
       -- Composition: f then g
       H.Compose g f ->
-        genX86 f <> "\n" <>
+        genX86WithEnv env depth f <> "\n" <>
         "    movq %rax, %rdi\n" <>
-        genX86 g
+        genX86WithEnv env depth g
 
-      -- Projections: input is pair (fst in %rdi, snd in %rsi)
-      H.Fst _ _ -> "    movq %rdi, %rax"
-      H.Snd _ _ -> "    movq %rsi, %rax"
+      -- Projections: input is pair pointer, load from memory
+      H.Fst _ _ -> "    movq (%rdi), %rax"
+      H.Snd _ _ -> "    movq 8(%rdi), %rax"
 
-      -- Pair construction: run both branches, combine results
+      -- Pair construction: allocate on stack, compute both
       H.Pair f g ->
-        -- Save input
+        -- Save input and allocate pair
         "    pushq %rdi\n" <>
-        "    pushq %rsi\n" <>
+        "    subq $16, %rsp\n" <>  -- allocate pair space
+        "    movq %rsp, %r15\n" <>  -- r15 = pair address
         -- Compute f
-        genX86 f <> "\n" <>
-        "    pushq %rax\n" <>  -- save f result
+        genX86WithEnv env depth f <> "\n" <>
+        "    movq %rax, (%r15)\n" <>  -- store fst
         -- Restore input, compute g
         "    movq 16(%rsp), %rdi\n" <>
-        "    movq 8(%rsp), %rsi\n" <>
-        genX86 g <> "\n" <>
-        -- Result: (f result, g result) in (%rdi, %rsi) for pair
-        -- But we return in %rax, so we need to pack it
-        -- For simplicity, return f result in %rdi, g result in %rsi
-        "    movq %rax, %rsi\n" <>  -- g result to %rsi
-        "    popq %rdi\n" <>        -- f result to %rdi
-        "    addq $16, %rsp\n" <>   -- clean up saved input
-        "    movq %rdi, %rax"       -- return fst as %rax (caller handles pair)
+        genX86WithEnv env depth g <> "\n" <>
+        "    movq %rax, 8(%r15)\n" <>  -- store snd
+        -- Return pair pointer
+        "    movq %r15, %rax\n" <>
+        "    addq $24, %rsp"  -- clean up (pair + saved rdi)
 
       -- Terminal: return NULL (Unit)
       H.Terminal _ -> "    xorq %rax, %rax"
 
       -- Initial: absurd (from Void) - should never be called
-      H.Initial _ -> "    xorq %rax, %rax"
+      H.Initial _ -> "    ud2"
 
-      -- Sum injection
+      -- Sum injection: allocate tagged value on stack
       H.Inl _ _ ->
-        -- tag=0, value=input
-        "    movq %rdi, %rax"  -- value in rax, tag would be 0
+        "    subq $16, %rsp\n" <>
+        "    movq $0, (%rsp)\n" <>      -- tag = 0
+        "    movq %rdi, 8(%rsp)\n" <>   -- value
+        "    movq %rsp, %rax"           -- return pointer
 
       H.Inr _ _ ->
-        -- tag=1, value=input
-        "    movq %rdi, %rax"  -- value in rax
+        "    subq $16, %rsp\n" <>
+        "    movq $1, (%rsp)\n" <>      -- tag = 1
+        "    movq %rdi, 8(%rsp)\n" <>   -- value
+        "    movq %rsp, %rax"           -- return pointer
 
       -- Case analysis: check tag, branch
       H.Case l r ->
-        -- Input is sum: tag in %rdi, value in %rsi (or similar encoding)
-        -- Simplified: assume tag==0 means left
-        "    testq %rdi, %rdi\n" <>
-        "    jnz .Lcase_right_" <> labelSuffix <> "\n" <>
-        "    movq %rsi, %rdi\n" <>
-        genX86 l <> "\n" <>
-        "    jmp .Lcase_done_" <> labelSuffix <> "\n" <>
-        ".Lcase_right_" <> labelSuffix <> ":\n" <>
-        "    movq %rsi, %rdi\n" <>
-        genX86 r <> "\n" <>
-        ".Lcase_done_" <> labelSuffix <> ":"
-        where labelSuffix = T.pack $ show (hash expr)
+        let labelSuffix = T.pack $ show (hash expr)
+        in "    movq (%rdi), %r11\n" <>       -- load tag
+           "    movq 8(%rdi), %rdi\n" <>       -- load value for branch
+           "    testq %r11, %r11\n" <>
+           "    jnz .Lcase_right_" <> labelSuffix <> "\n" <>
+           genX86WithEnv env depth l <> "\n" <>
+           "    jmp .Lcase_done_" <> labelSuffix <> "\n" <>
+           ".Lcase_right_" <> labelSuffix <> ":\n" <>
+           genX86WithEnv env depth r <> "\n" <>
+           ".Lcase_done_" <> labelSuffix <> ":"
 
-      -- Curry/Apply - simplified
-      H.Curry _ _ -> "    movq %rdi, %rax"
-      H.Apply _ _ -> "    movq %rdi, %rax"
+      -- Curry/Apply - simplified (closures need more work)
+      H.Curry _ body ->
+        -- For now, just evaluate the body with input as pair
+        genX86WithEnv env depth body
+      H.Apply _ _ ->
+        -- Apply closure: load code ptr and call
+        "    movq 8(%rdi), %r11\n" <>  -- code ptr
+        "    movq (%rdi), %rdi\n" <>   -- env/arg
+        "    call *%r11"
 
       -- Fold/Unfold - identity at runtime
       H.Fold _ -> "    movq %rdi, %rax"
@@ -276,13 +287,21 @@ compileFullToX86 ir = genX86 ir
         Just n -> "    movq $" <> T.pack (show n) <> ", %rax"
         Nothing -> "    call once_" <> name
 
-      -- Function reference: call it
+      -- Function reference: call it with current input
       H.Var name ->
         "    call once_" <> name
 
-      -- Local variable - move to output
+      -- Local variable: load from stack using environment
+      -- Variables are stored at positive offsets from current %rsp
+      -- since we push them as we go. We track the depth and variable offset.
       H.LocalVar name ->
-        "    movq " <> name <> ", %rax"
+        case Map.lookup name env of
+          -- Variable is at (depth - offset) from current %rsp
+          -- offset is the depth when variable was stored
+          Just varDepth ->
+            let rspOffset = depth - varDepth
+            in "    movq " <> T.pack (show rspOffset) <> "(%rsp), %rax"
+          Nothing -> "    # ERROR: undefined variable " <> name <> "\n    xorq %rax, %rax"
 
       -- Function pointer
       H.FunRef name ->
@@ -292,11 +311,16 @@ compileFullToX86 ir = genX86 ir
       H.StringLit _ ->
         "    xorq %rax, %rax"  -- return NULL
 
-      -- Let binding
-      H.Let _ e1 e2 ->
-        genX86 e1 <> "\n" <>
-        "    movq %rax, %rdi\n" <>
-        genX86 e2
+      -- Let binding: compute value, store on stack, evaluate body
+      -- Store current depth+8 as the variable's "address" - after push, it's at 0(%rsp)
+      -- but as we push more, it moves to higher offsets
+      H.Let varName e1 e2 ->
+        let newDepth = depth + 8
+            newEnv = Map.insert varName newDepth env  -- store depth AFTER push
+        in genX86WithEnv env depth e1 <> "\n" <>
+           "    pushq %rax\n" <>  -- store value on stack (now at depth+8)
+           genX86WithEnv newEnv newDepth e2 <> "\n" <>
+           "    addq $8, %rsp"    -- pop the variable
 
     -- Simple hash for unique labels
     hash :: H.IR -> Int
