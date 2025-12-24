@@ -554,6 +554,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
   readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15) →
+  readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -562,7 +563,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                     rbp-final mem-final star-fin s2-eq s-setup-eq = record
+                     rbp-final mem-final mem-rbp-final star-fin s2-eq s-setup-eq = record
   { ir-star = star-all
   ; ir-halted = h-final
   ; ir-pc = pc-final
@@ -571,6 +572,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-r15 = r15-final
   ; ir-rbp = rbp-final
   ; ir-mem = mem-final
+  ; ir-mem-rbp = mem-rbp-final
   ; ir-stack-inv = stack-inv-final
   ; ir-rsp-bound = rsp>16-final
   }
@@ -671,6 +673,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-snd-fin : readMem (memory s-final) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax)
     rbp-fin : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
     mem-orig-fin : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-rbp-fin : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
 
 -- | Preconditions for exec-pair-final: stack layout from setup phase
 record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
@@ -992,6 +995,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-snd-fin = mem-snd-stored
     ; rbp-fin = rbp-s9
     ; mem-orig-fin = mem-orig-preserved
+    ; mem-rbp-fin = mem-rbp-preserved
     }
     where
       open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; mem-frame)
@@ -1209,3 +1213,8 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       mem-snd-stored = mem-read-write {memory s3} {r15-s3 +ℕ 8} {readReg (regs s3) rax}
       mem-orig-preserved : readMem (memory s9) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
       mem-orig-preserved = trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s) r15} {readReg (regs s3) rax} (λ eq → disjoint-orig (sym eq))) mem-frame
+
+      -- Memory at original rbp preserved through final phase
+      -- POSTULATE: Would need mem-frame-rbp in PairFinalPrecond tracking memory at s's rbp through f and g
+      postulate
+        mem-rbp-preserved : readMem (memory s9) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)

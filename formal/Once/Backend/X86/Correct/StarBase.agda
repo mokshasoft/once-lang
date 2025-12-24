@@ -55,6 +55,7 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-r15        : readReg (regs s') r15 ≡ readReg (regs s) r15
     ir-rbp        : readReg (regs s') rbp ≡ readReg (regs s) rbp
     ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     ir-stack-inv  : StackInvariant s'
     ir-rsp-bound  : readReg (regs s') rsp > 16
 
@@ -103,6 +104,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -130,6 +132,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) 0
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) 0
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) 0)
                        (readReg-writeReg-rax-rsp (regs s) 0)
@@ -158,6 +161,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -186,6 +190,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -214,6 +219,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -246,6 +252,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -278,6 +285,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -316,6 +324,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))
@@ -347,6 +356,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
     ; ir-mem = refl
+    ; ir-mem-rbp = refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        (readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi))

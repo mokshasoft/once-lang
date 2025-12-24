@@ -143,6 +143,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = r15-eq
     ; ir-rbp = rbp-eq
     ; ir-mem = mem-preserved
+    ; ir-mem-rbp = mem-rbp-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
@@ -390,6 +391,11 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
     mem-preserved = mem-s3'
 
+    -- Memory at rbp preserved (stack writes are below rbp)
+    -- POSTULATE: To prove, need rbp ≢ new-rsp and rbp ≢ new-rsp+8 (stack below frame pointer)
+    postulate
+      mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
     r15-s4-eq = r15-eq
@@ -428,6 +434,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     ; ir-r15 = r15-eq
     ; ir-rbp = rbp-eq
     ; ir-mem = mem-preserved
+    ; ir-mem-rbp = mem-rbp-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     }
@@ -671,6 +678,11 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
     mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
     mem-preserved = mem-s3'
 
+    -- Memory at rbp preserved (stack writes are below rbp)
+    -- POSTULATE: To prove, need rbp ≢ new-rsp and rbp ≢ new-rsp+8 (stack below frame pointer)
+    postulate
+      mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
     r15-s4-eq = r15-eq
@@ -801,7 +813,7 @@ mutual
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                 stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                rbp-final mem-final star-fin refl refl
+                rbp-final mem-final mem-rbp-final star-fin refl refl
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm)
@@ -869,6 +881,7 @@ mutual
       mem-snd-final = PairFinalResult.mem-snd-fin final-res
       rbp-final = PairFinalResult.rbp-fin final-res
       mem-final = PairFinalResult.mem-orig-fin final-res
+      mem-rbp-final = PairFinalResult.mem-rbp-fin final-res
 
       -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
@@ -920,6 +933,7 @@ mutual
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
       ; ir-mem = mem-final
+      ; ir-mem-rbp = mem-rbp-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }
@@ -1150,6 +1164,11 @@ mutual
                   (trans (cong (λ m → readMem m (readReg (regs s-setup) r15)) mem-setup)
                          (cong (λ addr → readMem (memory s) addr) r15-setup))))
 
+      -- Memory at rbp preserved through case execution
+      -- POSTULATE: Chain similar to mem-final but for rbp instead of r15
+      postulate
+        mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+
       -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
       -- ir-stack-inv r-f: StackInvariant s1
       -- mem-jump: memory s-final = memory s1
@@ -1184,6 +1203,7 @@ mutual
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
       ; ir-mem = mem-final
+      ; ir-mem-rbp = mem-rbp-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }
@@ -1461,6 +1481,11 @@ mutual
                   (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-right)
                   (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-setup)
                          (cong (λ addr → readMem (memory s) addr) r15-right-to-s)))))
+
+      -- Memory at rbp preserved through case execution
+      -- POSTULATE: Chain similar to mem-final but for rbp instead of r15
+      postulate
+        mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
 
       -- Stack invariant: preserved from s1 to s-final since memory and rsp unchanged
       stack-inv-final : StackInvariant s-final
@@ -2473,7 +2498,7 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
-    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , stack-inv-final , rsp>16-final) =
+    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , mem-rbp-final , stack-inv-final , rsp>16-final) =
           apply-produces-result prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     in s-final , record
       { ir-star = star-all
@@ -2484,6 +2509,7 @@ mutual
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
       ; ir-mem = mem-final
+      ; ir-mem-rbp = mem-rbp-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       }

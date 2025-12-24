@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-stack-inv; ir-rsp-bound)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -247,6 +247,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-r15 = r15-3
   ; ir-rbp = rbp-3
   ; ir-mem = mem-3
+  ; ir-mem-rbp = mem-rbp-3
   ; ir-stack-inv = stack-inv-3
   ; ir-rsp-bound = rsp-3>16
   }
@@ -264,6 +265,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     r15-1 = ir-r15 r1
     rbp-1 = ir-rbp r1
     mem-1 = ir-mem r1
+    mem-rbp-1 = ir-mem-rbp r1
 
     -- From r3
     star-g-raw : Star (prefix-g ++ code-g ++ suffix) s2 s3
@@ -276,6 +278,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     r15-3-from-s2 = ir-r15 r3
     rbp-3-from-s2 = ir-rbp r3
     mem-3-from-s2 = ir-mem r3
+    mem-rbp-3-from-s2 = ir-mem-rbp r3
     stack-inv-3 = ir-stack-inv r3
     rsp-3>16 = ir-rsp-bound r3
 
@@ -333,3 +336,13 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     mem-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
                          r15-s2-eq-s mem-3-from-s2)
                   (trans mem-2 mem-1)
+
+    -- Memory at rbp preservation through all steps
+    mem-rbp-2 : readMem (memory s2) (readReg (regs s) rbp) ≡ readMem (memory s1) (readReg (regs s) rbp)
+    mem-rbp-2 = subst (λ s2'' → readMem (memory s2'') (readReg (regs s) rbp) ≡ readMem (memory s1) (readReg (regs s) rbp))
+                      (sym s2-eq) (mem-s1-to-s2 (readReg (regs s) rbp))
+    rbp-s2-eq-s = trans rbp-s1-to-s2' rbp-1
+    mem-rbp-3 : readMem (memory s3) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
+                             rbp-s2-eq-s mem-rbp-3-from-s2)
+                      (trans mem-rbp-2 mem-rbp-1)
