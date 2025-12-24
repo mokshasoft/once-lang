@@ -181,32 +181,33 @@ compile-length-correct terminal = refl
 compile-length-correct initial = refl
 compile-length-correct (curry f) = helper
   where
-    -- Structure with RIP-relative addressing:
-    -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ sub ∷ mov ∷ mov ∷ mov ∷ (compile-x86 f ++ ret ∷ label ∷ [])
-    -- Length = 11 + (|f| + 2) = 13 + |f|
+    -- Structure with RIP-relative addressing and frame pointer:
+    -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷ mov ∷
+    -- (compile-x86 f ++ mov ∷ pop ∷ ret ∷ label ∷ [])
+    -- Length = 13 + (|f| + 4) = 17 + |f|
 
     end-lbl : ℕ
-    end-lbl = 12 +ℕ compile-length f
+    end-lbl = 16 +ℕ compile-length f
 
     inner-tail : List Instr
-    inner-tail = ret ∷ label end-lbl ∷ []
+    inner-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ label end-lbl ∷ []
 
-    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 2
-    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 2) (compile-length-correct f))
+    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 4
+    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 4) (compile-length-correct f))
 
-    -- Prove: 11 + (a + 2) = 13 + a
-    arith : ∀ a → 11 +ℕ (a +ℕ 2) ≡ 13 +ℕ a
+    -- Prove: 13 + (a + 4) = 17 + a
+    arith : ∀ a → 13 +ℕ (a +ℕ 4) ≡ 17 +ℕ a
     arith a =
       begin
-        11 +ℕ (a +ℕ 2)
-      ≡⟨ cong (11 +ℕ_) (+-comm a 2) ⟩
-        11 +ℕ (2 +ℕ a)
-      ≡⟨ sym (+-assoc 11 2 a) ⟩
-        13 +ℕ a
+        13 +ℕ (a +ℕ 4)
+      ≡⟨ cong (13 +ℕ_) (+-comm a 4) ⟩
+        13 +ℕ (4 +ℕ a)
+      ≡⟨ sym (+-assoc 13 4 a) ⟩
+        17 +ℕ a
       ∎
 
-    helper : length (compile-x86 (curry f)) ≡ 13 +ℕ compile-length f
-    helper = trans (cong (λ x → 11 +ℕ x) len-inner)
+    helper : length (compile-x86 (curry f)) ≡ 17 +ℕ compile-length f
+    helper = trans (cong (λ x → 13 +ℕ x) len-inner)
                    (arith (compile-length f))
 compile-length-correct apply = refl
 compile-length-correct fold = refl

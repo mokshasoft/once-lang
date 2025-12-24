@@ -1016,7 +1016,7 @@ compile-length>0 terminal = s≤s z≤n
 compile-length>0 initial = s≤s z≤n
 compile-length>0 (curry f) = curry-pos (compile-length f)
   where
-    curry-pos : (n : ℕ) → 13 +ℕ n > 0
+    curry-pos : (n : ℕ) → 17 +ℕ n > 0
     curry-pos n = s≤s z≤n
 compile-length>0 apply = s≤s z≤n
 compile-length>0 fold = s≤s z≤n

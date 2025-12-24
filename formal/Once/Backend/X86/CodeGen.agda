@@ -39,7 +39,7 @@ compile-length inr = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1
 compile-length initial = 1
-compile-length (curry f) = 13 +ℕ compile-length f  -- Added lea for RIP-relative code-ptr
+compile-length (curry f) = 17 +ℕ compile-length f  -- Frame pointer handling in thunk
 compile-length apply = 6
 compile-length fold = 1
 compile-length unfold = 1
@@ -188,25 +188,29 @@ compile-x86 initial = ud2 ∷ []
 -- Jump offsets are PC-relative: target = pc + 1 + offset
 compile-x86 (curry {A} {B} {C} f) =
   let len-f = compile-length f
-      -- Layout (with RIP-relative code-ptr):
+      -- Layout (with RIP-relative code-ptr and frame pointer):
       --   0: sub rsp, 16
       --   1: mov [rsp], rdi
       --   2: lea r9, [rip+4]      -- r9 = pc+4 = 2+4 = 6 (thunk entry)
       --   3: mov [rsp+8], r9
       --   4: mov rax, rsp
-      --   5: jmp end-offset       ; target = 12+len-f, offset = (12+len-f) - 6 = 6+len-f
+      --   5: jmp end-offset       ; target = 16+len-f, offset = (16+len-f) - 6 = 10+len-f
       --   6: label code-ptr
-      --   7: sub rsp, 16
-      --   8: mov [rsp], r12
-      --   9: mov [rsp+8], rdi
-      --   10: mov rdi, rsp
-      --   11 to 10+|f|: compile-x86 f
-      --   11+|f|: ret
-      --   12+|f|: label end
+      --   7: push rbp             -- save frame pointer
+      --   8: mov rbp, rsp         -- set frame pointer
+      --   9: sub rsp, 16          -- allocate pair
+      --   10: mov [rsp], r12      -- store env
+      --   11: mov [rsp+8], rdi    -- store arg
+      --   12: mov rdi, rsp        -- rdi = pair address
+      --   13 to 12+|f|: compile-x86 f
+      --   13+|f|: mov rsp, rbp    -- restore stack (cleans up pair + any f allocations)
+      --   14+|f|: pop rbp         -- restore frame pointer
+      --   15+|f|: ret             -- now pops from correct location
+      --   16+|f|: label end
       code-ptr-label = 6
       rip-offset = 4             -- From instruction 2, offset to reach 6
-      end-offset = 6 +ℕ len-f    -- jmp at pos 5 to reach pos 12+len-f
-      end-label = 12 +ℕ len-f    -- For label pseudo-instruction
+      end-offset = 10 +ℕ len-f   -- jmp at pos 5 to reach pos 16+len-f
+      end-label = 16 +ℕ len-f    -- For label pseudo-instruction
   in
   -- Allocate closure on stack
   sub (reg rsp) (imm 16) ∷
@@ -223,6 +227,9 @@ compile-x86 (curry {A} {B} {C} f) =
   jmp end-offset ∷
   -- Thunk code: called via apply with b in rdi, env in r12
   label code-ptr-label ∷
+  -- Save and set frame pointer (for proper stack cleanup)
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
   -- Allocate pair (a, b) on stack
   sub (reg rsp) (imm 16) ∷
   -- Store a (from r12) at [rsp]
@@ -233,7 +240,11 @@ compile-x86 (curry {A} {B} {C} f) =
   mov (reg rdi) (reg rsp) ∷
   -- Execute f on the pair
   compile-x86 f ++
-  -- Return (rax already has result)
+  -- Restore stack to frame (cleans up pair + any f allocations)
+  mov (reg rsp) (reg rbp) ∷
+  -- Restore frame pointer
+  pop rbp ∷
+  -- Return (rax already has result, stack properly restored)
   ret ∷
   -- End of thunk
   label end-label ∷ []

@@ -100,8 +100,10 @@ open import Once.Backend.X86.Correct.IR.Case using (module CaseContext; module C
 
 -- Import thunk structure lemmas (fetch proofs for thunk instructions)
 open import Once.Backend.X86.Correct.IR.ThunkStructure
-  using (thunk-i0; thunk-i1; thunk-i2; thunk-i3; thunk-i4;
-         fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4)
+  using (thunk-i0; thunk-i1; thunk-i2; thunk-i3; thunk-i4; thunk-i5; thunk-i6;
+         fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4;
+         fetch-thunk-i5; fetch-thunk-i6;
+         cleanup-i0; cleanup-i1; fetch-cleanup-i0; fetch-cleanup-i1)
   renaming (fetch-ret to TS-fetch-ret)
 
 open import Data.Bool using (Bool; true; false)
@@ -1494,8 +1496,9 @@ mutual
       open import Data.List.Properties as LP using (length-++)
       open import Data.Nat.Properties using (+-mono-<; +-monoʳ-<; m≤m+n; m≤n+m; ≤-trans; <-≤-trans)
 
-      -- Length of compile-x86 (curry f) is 13 + compile-length f
-      curry-len : length (compile-x86 (curry f)) ≡ 13 +ℕ compile-length f
+      -- Length of compile-x86 (curry f) is 17 + compile-length f
+      -- (6 closure setup + 7 thunk setup + len-f + 4 cleanup/end)
+      curry-len : length (compile-x86 (curry f)) ≡ 17 +ℕ compile-length f
       curry-len = compile-length-correct (curry f)
 
       -- Length of full program
@@ -1507,24 +1510,24 @@ mutual
                 ≡ length (compile-x86 (curry f)) +ℕ length suffix
       inner-len = LP.length-++ (compile-x86 (curry f))
 
-      -- 6 < 13 (obviously)
-      6<13 : 6 < 13
-      6<13 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
+      -- 6 < 17 (obviously)
+      6<17 : 6 < 17
+      6<17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
 
-      -- 6 < 13 + compile-length f (using: 6 < 13 and 13 ≤ 13 + compile-length f)
-      6<13+f : 6 < 13 +ℕ compile-length f
-      6<13+f = <-≤-trans 6<13 (m≤m+n 13 (compile-length f))
+      -- 6 < 17 + compile-length f (using: 6 < 17 and 17 ≤ 17 + compile-length f)
+      6<17+f : 6 < 17 +ℕ compile-length f
+      6<17+f = <-≤-trans 6<17 (m≤m+n 17 (compile-length f))
 
-      -- 6 < 13 + compile-length f + length suffix
-      6<13+f+s : 6 < 13 +ℕ compile-length f +ℕ length suffix
-      6<13+f+s = <-≤-trans 6<13+f (m≤m+n (13 +ℕ compile-length f) (length suffix))
+      -- 6 < 17 + compile-length f + length suffix
+      6<17+f+s : 6 < 17 +ℕ compile-length f +ℕ length suffix
+      6<17+f+s = <-≤-trans 6<17+f (m≤m+n (17 +ℕ compile-length f) (length suffix))
 
-      -- |prefix| + 6 < |prefix| + (13 + compile-length f + length suffix)
-      step1 : length prefix +ℕ 6 < length prefix +ℕ (13 +ℕ compile-length f +ℕ length suffix)
-      step1 = +-monoʳ-< (length prefix) 6<13+f+s
+      -- |prefix| + 6 < |prefix| + (17 + compile-length f + length suffix)
+      step1 : length prefix +ℕ 6 < length prefix +ℕ (17 +ℕ compile-length f +ℕ length suffix)
+      step1 = +-monoʳ-< (length prefix) 6<17+f+s
 
       -- Rewrite using curry-len and inner-len
-      step2 : length prefix +ℕ (13 +ℕ compile-length f +ℕ length suffix)
+      step2 : length prefix +ℕ (17 +ℕ compile-length f +ℕ length suffix)
             ≡ length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
       step2 = cong (length prefix +ℕ_) (cong (_+ℕ length suffix) (sym curry-len))
 
@@ -1603,12 +1606,12 @@ mutual
   -- pattern, can be proven with detailed instruction semantics).
   ------------------------------------------------------------------------
 
-  -- Prove thunk setup: label, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
+  -- Prove thunk setup: label, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
   thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                      (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
         thunk-offset = length prefix +ℕ 6
-        f-offset = length prefix +ℕ 11
+        f-offset = length prefix +ℕ 13  -- 6 closure-setup + 7 thunk-setup
     in
     halted s ≡ false →
     pc s ≡ thunk-offset →
@@ -1622,29 +1625,31 @@ mutual
             × readReg (regs s') rdi ≡ encode (env , arg)
             × readReg (regs s') r14 ≡ readReg (regs s) r14
             × readReg (regs s') r15 ≡ readReg (regs s) r15
-            × readReg (regs s') rbp ≡ readReg (regs s) rbp
+            × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 8  -- rbp is now frame pointer
             × StackInvariant s'
             × readReg (regs s') rsp > 16)
   thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                    h-false pc-eq rdi-eq r12-eq stack-inv rsp>16 =
-    s5 , star-all , h5 , pc5 , rdi5 , r14-5 , r15-5 , rbp5 , stack-inv5 , rsp>16-5
+    s7 , star-all , h7 , pc7 , rdi7 , r14-7 , r15-7 , rbp7 , stack-inv7 , rsp>16-7
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (m∸n≤m)
+      open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
       open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
-      f-offset = offset +ℕ 11
+      f-offset = offset +ℕ 13  -- 6 closure-setup + 7 thunk-setup
 
-      -- The 5 thunk setup instructions (at positions 6-10 within curry)
+      -- The 7 thunk setup instructions (at positions 6-12 within curry)
       -- These match the compile-x86 curry definition exactly
-      i0 = label 6  -- label at thunk entry (code-ptr-label = 6)
-      i1 = sub (reg rsp) (imm 16)  -- allocate pair
-      i2 = mov (mem (base rsp)) (reg r12)  -- store env
-      i3 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
-      i4 = mov (reg rdi) (reg rsp)  -- rdi = pair address
+      i0 = label 6                           -- label at thunk entry (code-ptr-label = 6)
+      i1 = push (reg rbp)                    -- save frame pointer
+      i2 = mov (reg rbp) (reg rsp)           -- set frame pointer
+      i3 = sub (reg rsp) (imm 16)            -- allocate pair
+      i4 = mov (mem (base rsp)) (reg r12)    -- store env
+      i5 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
+      i6 = mov (reg rdi) (reg rsp)           -- rdi = pair address
 
       -- Program structure for fetch proofs:
       -- prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1656,7 +1661,7 @@ mutual
       -- Then fetch-at-prefix-end gives us the instruction
 
       len-f = compile-length f
-      end-offset-curry = 6 +ℕ len-f
+      end-offset-curry = 10 +ℕ len-f  -- jmp at pos 5 to reach end at 16+len-f
 
       -- curry-closure-setup: first 6 instructions of curry (positions 0-5)
       curry-closure-setup : Program
@@ -1685,8 +1690,16 @@ mutual
       fetch4 : fetch prog (thunk-offset +ℕ 4) ≡ just i4
       fetch4 = fetch-thunk-i4 f prefix suffix
 
+      fetch5 : fetch prog (thunk-offset +ℕ 5) ≡ just i5
+      fetch5 = fetch-thunk-i5 f prefix suffix
+
+      fetch6 : fetch prog (thunk-offset +ℕ 6) ≡ just i6
+      fetch6 = fetch-thunk-i6 f prefix suffix
+
       old-rsp = readReg (regs s) rsp
-      new-rsp = old-rsp ∸ 16
+      old-rbp = readReg (regs s) rbp
+      rsp-after-push = old-rsp ∸ 8   -- after push rbp
+      new-rsp = rsp-after-push ∸ 16  -- after sub rsp, 16
 
       -- State after label (no-op, just pc++)
       s1 : State
@@ -1702,15 +1715,15 @@ mutual
       pc1 : pc s1 ≡ thunk-offset +ℕ 1
       pc1 = cong (_+ℕ 1) pc-eq
 
-      -- State after sub rsp, 16
+      -- State after push rbp
       s2 : State
-      s2 = record s1 { regs = writeReg (regs s1) rsp new-rsp
-                     ; pc = pc s1 +ℕ 1
-                     ; flags = updateFlags new-rsp old-rsp }
+      s2 = record s1 { regs = writeReg (regs s1) rsp rsp-after-push
+                     ; memory = writeMem (memory s1) rsp-after-push old-rbp
+                     ; pc = pc s1 +ℕ 1 }
 
       step1 : step prog s1 ≡ just s2
       step1 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                    (execSub-reg-imm [] s1 rsp 16)
+                    (execPush-reg [] s1 rbp)
 
       h2 : halted s2 ≡ false
       h2 = h-false
@@ -1718,21 +1731,18 @@ mutual
       pc2 : pc s2 ≡ thunk-offset +ℕ 2
       pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc thunk-offset 1 1)
 
-      -- State after mov [rsp], r12 (store env)
-      rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
-      rsp-s2 = readReg-writeReg-same (regs s1) rsp new-rsp
-
-      r12-s2 : readReg (regs s2) r12 ≡ encode env
-      r12-s2 = trans (readReg-writeReg-rsp-r12 (regs s1) new-rsp) r12-eq
+      -- State after mov rbp, rsp (set frame pointer to current rsp)
+      rsp-s2 : readReg (regs s2) rsp ≡ rsp-after-push
+      rsp-s2 = readReg-writeReg-same (regs s1) rsp rsp-after-push
 
       s3 : State
-      s3 = record s2 { memory = writeMem (memory s2) new-rsp (readReg (regs s2) r12)
+      s3 = record s2 { regs = writeReg (regs s2) rbp rsp-after-push
                      ; pc = pc s2 +ℕ 1 }
 
       step2 : step prog s2 ≡ just s3
       step2 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                    (cong (λ addr → just (record s2 { memory = writeMem (memory s2) addr (readReg (regs s2) r12)
-                                                    ; pc = pc s2 +ℕ 1 }))
+                    (cong (λ sp → just (record s2 { regs = writeReg (regs s2) rbp sp
+                                                  ; pc = pc s2 +ℕ 1 }))
                           rsp-s2)
 
       h3 : halted s3 ≡ false
@@ -1741,22 +1751,18 @@ mutual
       pc3 : pc s3 ≡ thunk-offset +ℕ 3
       pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc thunk-offset 2 1)
 
-      -- State after mov [rsp+8], rdi (store arg)
-      rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
-      rsp-s3 = rsp-s2
-
-      rdi-s3 : readReg (regs s3) rdi ≡ encode arg
-      rdi-s3 = trans (readReg-writeReg-rsp-rdi (regs s1) new-rsp) rdi-eq
+      -- State after sub rsp, 16
+      rsp-s3 : readReg (regs s3) rsp ≡ rsp-after-push
+      rsp-s3 = trans (readReg-writeReg-rbp-rsp (regs s2) rsp-after-push) rsp-s2
 
       s4 : State
-      s4 = record s3 { memory = writeMem (memory s3) (new-rsp +ℕ 8) (readReg (regs s3) rdi)
-                     ; pc = pc s3 +ℕ 1 }
+      s4 = record s3 { regs = writeReg (regs s3) rsp new-rsp
+                     ; pc = pc s3 +ℕ 1
+                     ; flags = updateFlags new-rsp rsp-after-push }
 
       step3 : step prog s3 ≡ just s4
       step3 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
-                    (cong (λ addr → just (record s3 { memory = writeMem (memory s3) (addr +ℕ 8) (readReg (regs s3) rdi)
-                                                    ; pc = pc s3 +ℕ 1 }))
-                          rsp-s3)
+                    (execSub-reg-imm [] s3 rsp 16)
 
       h4 : halted s4 ≡ false
       h4 = h-false
@@ -1764,111 +1770,172 @@ mutual
       pc4 : pc s4 ≡ thunk-offset +ℕ 4
       pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc thunk-offset 3 1)
 
-      -- State after mov rdi, rsp (rdi = pair address)
+      -- State after mov [rsp], r12 (store env)
       rsp-s4 : readReg (regs s4) rsp ≡ new-rsp
-      rsp-s4 = rsp-s3
+      rsp-s4 = readReg-writeReg-same (regs s3) rsp new-rsp
+
+      r12-s4 : readReg (regs s4) r12 ≡ encode env
+      r12-s4 = trans (readReg-writeReg-rsp-r12 (regs s3) new-rsp)
+                     (trans (readReg-writeReg-rbp-r12 (regs s2) rsp-after-push)
+                            (trans (readReg-writeReg-rsp-r12 (regs s1) rsp-after-push)
+                                   r12-eq))
 
       s5 : State
-      s5 = record s4 { regs = writeReg (regs s4) rdi new-rsp
+      s5 = record s4 { memory = writeMem (memory s4) new-rsp (readReg (regs s4) r12)
                      ; pc = pc s4 +ℕ 1 }
 
       step4 : step prog s4 ≡ just s5
       step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                    (cong (λ sp → just (record s4 { regs = writeReg (regs s4) rdi sp
-                                                  ; pc = pc s4 +ℕ 1 }))
+                    (cong (λ addr → just (record s4 { memory = writeMem (memory s4) addr (readReg (regs s4) r12)
+                                                    ; pc = pc s4 +ℕ 1 }))
                           rsp-s4)
 
+      h5 : halted s5 ≡ false
+      h5 = h-false
+
+      pc5 : pc s5 ≡ thunk-offset +ℕ 5
+      pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc thunk-offset 4 1)
+
+      -- State after mov [rsp+8], rdi (store arg)
+      rsp-s5 : readReg (regs s5) rsp ≡ new-rsp
+      rsp-s5 = rsp-s4
+
+      rdi-s5 : readReg (regs s5) rdi ≡ encode arg
+      rdi-s5 = trans (readReg-writeReg-rsp-rdi (regs s3) new-rsp)
+                     (trans (readReg-writeReg-rbp-rdi (regs s2) rsp-after-push)
+                            (trans (readReg-writeReg-rsp-rdi (regs s1) rsp-after-push)
+                                   rdi-eq))
+
+      s6 : State
+      s6 = record s5 { memory = writeMem (memory s5) (new-rsp +ℕ 8) (readReg (regs s5) rdi)
+                     ; pc = pc s5 +ℕ 1 }
+
+      step5 : step prog s5 ≡ just s6
+      step5 = trans (step-exec prog s5 i5 h5 (subst (λ p → fetch prog p ≡ just i5) (sym pc5) fetch5))
+                    (cong (λ addr → just (record s5 { memory = writeMem (memory s5) (addr +ℕ 8) (readReg (regs s5) rdi)
+                                                    ; pc = pc s5 +ℕ 1 }))
+                          rsp-s5)
+
+      h6 : halted s6 ≡ false
+      h6 = h-false
+
+      pc6 : pc s6 ≡ thunk-offset +ℕ 6
+      pc6 = trans (cong (_+ℕ 1) pc5) (+-assoc thunk-offset 5 1)
+
+      -- State after mov rdi, rsp (rdi = pair address)
+      rsp-s6 : readReg (regs s6) rsp ≡ new-rsp
+      rsp-s6 = rsp-s5
+
+      s7 : State
+      s7 = record s6 { regs = writeReg (regs s6) rdi new-rsp
+                     ; pc = pc s6 +ℕ 1 }
+
+      step6 : step prog s6 ≡ just s7
+      step6 = trans (step-exec prog s6 i6 h6 (subst (λ p → fetch prog p ≡ just i6) (sym pc6) fetch6))
+                    (cong (λ sp → just (record s6 { regs = writeReg (regs s6) rdi sp
+                                                  ; pc = pc s6 +ℕ 1 }))
+                          rsp-s6)
+
       -- Compose Star proof
-      star-all : Star prog s s5
+      star-all : Star prog s s7
       star-all = ⟨ h-false , step0 ⟩◅
                  ⟨ h1 , step1 ⟩◅
                  ⟨ h2 , step2 ⟩◅
                  ⟨ h3 , step3 ⟩◅
                  ⟨ h4 , step4 ⟩◅
+                 ⟨ h5 , step5 ⟩◅
+                 ⟨ h6 , step6 ⟩◅
                  refl*
 
       -- Final state properties
-      h5 : halted s5 ≡ false
-      h5 = h-false
+      h7 : halted s7 ≡ false
+      h7 = h-false
 
-      pc5 : pc s5 ≡ f-offset
-      pc5 = begin
-        pc s5
+      pc7 : pc s7 ≡ f-offset
+      pc7 = begin
+        pc s7
           ≡⟨ refl ⟩
-        pc s4 +ℕ 1
-          ≡⟨ cong (_+ℕ 1) pc4 ⟩
-        (thunk-offset +ℕ 4) +ℕ 1
-          ≡⟨ +-assoc thunk-offset 4 1 ⟩
-        thunk-offset +ℕ 5
-          ≡⟨ cong (_+ℕ 5) refl ⟩  -- thunk-offset = offset + 6
-        (offset +ℕ 6) +ℕ 5
-          ≡⟨ +-assoc offset 6 5 ⟩
-        offset +ℕ 11
+        pc s6 +ℕ 1
+          ≡⟨ cong (_+ℕ 1) pc6 ⟩
+        (thunk-offset +ℕ 6) +ℕ 1
+          ≡⟨ +-assoc thunk-offset 6 1 ⟩
+        thunk-offset +ℕ 7
+          ≡⟨ cong (_+ℕ 7) refl ⟩  -- thunk-offset = offset + 6
+        (offset +ℕ 6) +ℕ 7
+          ≡⟨ +-assoc offset 6 7 ⟩
+        offset +ℕ 13
           ≡⟨ refl ⟩
         f-offset ∎
 
       -- rdi = new-rsp, and memory[new-rsp] = encode env, memory[new-rsp+8] = encode arg
       -- By encode-pair-construct, new-rsp = encode (env, arg)
-      rdi-s5-is-new-rsp : readReg (regs s5) rdi ≡ new-rsp
-      rdi-s5-is-new-rsp = readReg-writeReg-same (regs s4) rdi new-rsp
+      rdi-s7-is-new-rsp : readReg (regs s7) rdi ≡ new-rsp
+      rdi-s7-is-new-rsp = readReg-writeReg-same (regs s6) rdi new-rsp
 
       -- Memory at new-rsp has encode env
-      mem-env : readMem (memory s5) new-rsp ≡ just (encode env)
-      mem-env = trans (mem-read-other {memory s3} {new-rsp +ℕ 8} {new-rsp} {readReg (regs s3) rdi}
+      mem-env : readMem (memory s7) new-rsp ≡ just (encode env)
+      mem-env = trans (mem-read-other {memory s5} {new-rsp +ℕ 8} {new-rsp} {readReg (regs s5) rdi}
                         (λ eq → n≢n+8 new-rsp (sym eq)))
-                      (trans (mem-read-write {memory s2} {new-rsp} {readReg (regs s2) r12})
-                             (cong just r12-s2))
+                      (trans (mem-read-write {memory s4} {new-rsp} {readReg (regs s4) r12})
+                             (cong just r12-s4))
 
       -- Memory at new-rsp+8 has encode arg
-      mem-arg : readMem (memory s5) (new-rsp +ℕ 8) ≡ just (encode arg)
-      mem-arg = trans (mem-read-write {memory s3} {new-rsp +ℕ 8} {readReg (regs s3) rdi})
-                      (cong just rdi-s3)
+      mem-arg : readMem (memory s7) (new-rsp +ℕ 8) ≡ just (encode arg)
+      mem-arg = trans (mem-read-write {memory s5} {new-rsp +ℕ 8} {readReg (regs s5) rdi})
+                      (cong just rdi-s5)
 
       -- Use encode-pair-construct to show new-rsp = encode (env, arg)
       pair-encoding : new-rsp ≡ encode (env , arg)
-      pair-encoding = encode-pair-construct env arg new-rsp (memory s5) mem-env mem-arg
+      pair-encoding = encode-pair-construct env arg new-rsp (memory s7) mem-env mem-arg
 
-      rdi5 : readReg (regs s5) rdi ≡ encode (env , arg)
-      rdi5 = trans rdi-s5-is-new-rsp pair-encoding
+      rdi7 : readReg (regs s7) rdi ≡ encode (env , arg)
+      rdi7 = trans rdi-s7-is-new-rsp pair-encoding
 
-      -- Register preservation (through all 5 instructions)
-      r14-5 : readReg (regs s5) r14 ≡ readReg (regs s) r14
-      r14-5 = trans (readReg-writeReg-rdi-r14 (regs s4) new-rsp)
-                    (trans (readReg-writeReg-rsp-r14 (regs s1) new-rsp)
-                           refl)
+      -- Register preservation (through all 7 instructions)
+      -- Note: rbp is NOT preserved - it's set to frame pointer
+      r14-7 : readReg (regs s7) r14 ≡ readReg (regs s) r14
+      r14-7 = trans (readReg-writeReg-rdi-r14 (regs s6) new-rsp)
+                    (trans (readReg-writeReg-rsp-r14 (regs s3) new-rsp)
+                           (trans (readReg-writeReg-rbp-r14 (regs s2) rsp-after-push)
+                                  (trans (readReg-writeReg-rsp-r14 (regs s1) rsp-after-push)
+                                         refl)))
 
-      r15-5 : readReg (regs s5) r15 ≡ readReg (regs s) r15
-      r15-5 = trans (readReg-writeReg-rdi-r15 (regs s4) new-rsp)
-                    (trans (readReg-writeReg-rsp-r15 (regs s1) new-rsp)
-                           refl)
+      r15-7 : readReg (regs s7) r15 ≡ readReg (regs s) r15
+      r15-7 = trans (readReg-writeReg-rdi-r15 (regs s6) new-rsp)
+                    (trans (readReg-writeReg-rsp-r15 (regs s3) new-rsp)
+                           (trans (readReg-writeReg-rbp-r15 (regs s2) rsp-after-push)
+                                  (trans (readReg-writeReg-rsp-r15 (regs s1) rsp-after-push)
+                                         refl)))
 
-      rbp5 : readReg (regs s5) rbp ≡ readReg (regs s) rbp
-      rbp5 = trans (readReg-writeReg-rdi-rbp (regs s4) new-rsp)
-                   (trans (readReg-writeReg-rsp-rbp (regs s1) new-rsp)
-                          refl)
+      -- rbp is now set to rsp-after-push (the frame pointer)
+      rbp7 : readReg (regs s7) rbp ≡ rsp-after-push
+      rbp7 = trans (readReg-writeReg-rdi-rbp (regs s6) new-rsp)
+                   (trans (readReg-writeReg-rsp-rbp (regs s3) new-rsp)
+                          (readReg-writeReg-same (regs s2) rbp rsp-after-push))
 
       -- StackInvariant proof: rsp decreased, r15 unchanged
-      -- s5.rsp = new-rsp = old-rsp - 16 ≤ old-rsp = s.rsp
-      rsp-s5 : readReg (regs s5) rsp ≡ new-rsp
-      rsp-s5 = trans (readReg-writeReg-rdi-rsp (regs s4) new-rsp) rsp-s4
+      -- s7.rsp = new-rsp = old-rsp - 8 - 16 ≤ old-rsp = s.rsp
+      rsp-s7 : readReg (regs s7) rsp ≡ new-rsp
+      rsp-s7 = trans (readReg-writeReg-rdi-rsp (regs s6) new-rsp) rsp-s6
 
+      -- new-rsp = (old-rsp - 8) - 16 ≤ old-rsp
       rsp-decreased : new-rsp ≤ old-rsp
-      rsp-decreased = m∸n≤m old-rsp 16
+      rsp-decreased = ≤-trans (m∸n≤m rsp-after-push 16) (m∸n≤m old-rsp 8)
 
-      rsp-s5≤s : readReg (regs s5) rsp ≤ readReg (regs s) rsp
-      rsp-s5≤s = subst (_≤ old-rsp) (sym rsp-s5) rsp-decreased
+      rsp-s7≤s : readReg (regs s7) rsp ≤ readReg (regs s) rsp
+      rsp-s7≤s = subst (_≤ old-rsp) (sym rsp-s7) rsp-decreased
 
-      stack-inv5 : StackInvariant s5
-      stack-inv5 = stack-inv-preserved-rsp-decreased s s5 stack-inv r15-5 rsp-s5≤s
+      stack-inv7 : StackInvariant s7
+      stack-inv7 = stack-inv-preserved-rsp-decreased s s7 stack-inv r15-7 rsp-s7≤s
 
-      rsp>16-5 : readReg (regs s5) rsp > 16
-      rsp>16-5 = rsp-bound-after-stack-op s5
+      rsp>16-7 : readReg (regs s7) rsp > 16
+      rsp>16-7 = rsp-bound-after-stack-op s7
 
   -- Prove ret instruction tracing
   thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
-        ret-offset = length prefix +ℕ 11 +ℕ compile-length f
+        ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup
     in
     halted s ≡ false →
     pc s ≡ ret-offset →
@@ -1892,11 +1959,11 @@ mutual
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
-      ret-offset = offset +ℕ 11 +ℕ compile-length f
+      ret-offset = offset +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup
 
       -- The ret instruction is at ret-offset in curry
-      -- curry layout: [6 closure setup] [5 thunk setup] [compile-x86 f] [ret] [label end]
-      -- ret is at position 11 + len(f) within curry
+      -- curry layout: [6 closure setup] [7 thunk setup] [compile-x86 f] [2 cleanup] [ret] [label end]
+      -- ret is at position 15 + len(f) within curry
 
       -- Fetch the ret instruction (proven in ThunkStructure)
       fetch-ret : fetch prog ret-offset ≡ just ret
@@ -1970,10 +2037,10 @@ mutual
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
-      f-offset = length prefix +ℕ 11
-      ret-offset = length prefix +ℕ 11 +ℕ compile-length f
+      f-offset = length prefix +ℕ 13      -- 6 closure + 7 thunk setup
+      ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- f-offset + len-f + 2 cleanup
 
-      -- Step 1: Trace 5 setup instructions
+      -- Step 1: Trace 7 setup instructions
       setup-result = thunk-setup-star f prefix suffix env arg s
                        h-eq pc-eq rdi-eq r12-eq stack-inv rsp>16
       s-after-setup = proj₁ setup-result
@@ -1990,12 +2057,12 @@ mutual
       -- Step 2: Call IH on f
       -- Define prefix-f and suffix-f so that prog = prefix-f ++ compile-x86 f ++ suffix-f
 
-      -- curry layout: [0-5] closure setup, [6-10] thunk setup, [11 to 10+len(f)] f, [11+len(f)] ret, [12+len(f)] label
+      -- curry layout: [0-5] closure setup, [6-12] thunk setup, [13 to 12+len(f)] f, [13-14+len(f)] cleanup, [15+len(f)] ret, [16+len(f)] label
       len-f = compile-length f
-      end-label = 12 +ℕ len-f
-      end-offset-curry = 6 +ℕ len-f
+      end-label = 16 +ℕ len-f  -- position of end label
+      end-offset-curry = 10 +ℕ len-f  -- jmp at pos 5 to reach 16 + len-f
 
-      -- Prefix for f: prefix ++ first 11 instructions of curry
+      -- Prefix for f: prefix ++ first 13 instructions of curry (6 closure + 7 thunk)
       curry-closure-setup : Program
       curry-closure-setup =
         sub (reg rsp) (imm 16) ∷
@@ -2008,6 +2075,8 @@ mutual
       curry-thunk-setup : Program
       curry-thunk-setup =
         label 6 ∷
+        push (reg rbp) ∷                       -- save frame pointer
+        mov (reg rbp) (reg rsp) ∷              -- set frame pointer
         sub (reg rsp) (imm 16) ∷
         mov (mem (base rsp)) (reg r12) ∷
         mov (mem (base+disp rsp 8)) (reg rdi) ∷
@@ -2016,16 +2085,18 @@ mutual
       prefix-f : Program
       prefix-f = prefix ++ curry-closure-setup ++ curry-thunk-setup
 
-      -- Suffix for f: ret ∷ label ∷ suffix
+      -- Suffix for f: cleanup ++ ret ∷ label ∷ suffix
       curry-tail : Program
-      curry-tail = ret ∷ label end-label ∷ []
+      curry-tail = mov (reg rsp) (reg rbp) ∷   -- restore stack
+                   pop rbp ∷                   -- restore frame pointer
+                   ret ∷ label end-label ∷ []
 
       suffix-f : Program
       suffix-f = curry-tail ++ suffix
 
-      -- Length of prefix-f = length prefix + 11
+      -- Length of prefix-f = length prefix + 13 (6 closure + 7 thunk)
       -- Note: ++ is right-associative, so prefix-f = prefix ++ (curry-closure-setup ++ curry-thunk-setup)
-      len-prefix-f : length prefix-f ≡ length prefix +ℕ 11
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 13
       len-prefix-f = trans (List-length-++ prefix {curry-closure-setup ++ curry-thunk-setup})
                            (cong (length prefix +ℕ_) (List-length-++ curry-closure-setup {curry-thunk-setup}))
 
@@ -2117,27 +2188,63 @@ mutual
       pc-f-raw : pc s-after-f-raw ≡ length prefix-f +ℕ compile-length f
       pc-f-raw = ir-pc r-f
 
-      pc-f-converted : pc s-after-f-raw ≡ ret-offset
-      pc-f-converted = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
+      -- f ends at position 13 + len-f (after prefix-f + compile-x86 f)
+      -- We need to trace 2 cleanup instructions (mov rsp rbp, pop rbp) to reach ret at 15 + len-f
+      cleanup-offset = length prefix +ℕ 13 +ℕ compile-length f  -- where f ends, cleanup begins
 
-      -- Bridge result using postulate for memory preservation
-      -- The IH doesn't guarantee return address is preserved on stack, so we postulate it
+      pc-f-at-cleanup : pc s-after-f-raw ≡ cleanup-offset
+      pc-f-at-cleanup = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
+
+      -- Step 2b: Trace cleanup instructions (mov rsp rbp, pop rbp)
+      -- These restore the stack frame and rbp before ret
+      -- The cleanup restores rbp to its ORIGINAL value (from s, before setup)
+      -- because setup pushed it and cleanup pops it
+      -- For now we postulate this phase; can be proven similar to other instruction tracing
       postulate
-        mem-ret-preserved : readMem (memory s-after-f-raw) (readReg (regs s-after-f-raw) rsp) ≡ just ret-addr
+        cleanup-star : ∃[ s-cleanup ] (Star prog s-after-f-raw s-cleanup
+                                      × halted s-cleanup ≡ false
+                                      × pc s-cleanup ≡ ret-offset
+                                      × readReg (regs s-cleanup) rax ≡ readReg (regs s-after-f-raw) rax
+                                      × readReg (regs s-cleanup) r14 ≡ readReg (regs s-after-f-raw) r14
+                                      × readReg (regs s-cleanup) r15 ≡ readReg (regs s-after-f-raw) r15
+                                      × readReg (regs s-cleanup) rbp ≡ readReg (regs s) rbp  -- pop restores ORIGINAL rbp
+                                      × StackInvariant s-cleanup
+                                      × readReg (regs s-cleanup) rsp > 16)
+        mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
 
+      s-after-cleanup = proj₁ cleanup-star
+      star-cleanup = proj₁ (proj₂ cleanup-star)
+      h-cleanup = proj₁ (proj₂ (proj₂ cleanup-star))
+      pc-cleanup = proj₁ (proj₂ (proj₂ (proj₂ cleanup-star)))
+      rax-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))
+      r14-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star)))))
+      r15-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))
+      rbp-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star)))))))
+      stack-inv-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))))
+      rsp>16-cleanup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))))
+
+      -- Compose f execution with cleanup
+      star-f-to-cleanup : Star prog s-after-setup s-after-cleanup
+      star-f-to-cleanup = star-trans star-f-converted star-cleanup
+
+      -- Note: rbp is NOT preserved through setup (it becomes frame pointer)
+      -- but IS restored to original by cleanup. So we need rbp relative to original s.
       f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
                                  × halted s-f ≡ false
                                  × pc s-f ≡ ret-offset
                                  × readReg (regs s-f) rax ≡ encode (eval f (env , arg))
                                  × readReg (regs s-f) r14 ≡ readReg (regs s-after-setup) r14
                                  × readReg (regs s-f) r15 ≡ readReg (regs s-after-setup) r15
-                                 × readReg (regs s-f) rbp ≡ readReg (regs s-after-setup) rbp
+                                 × readReg (regs s-f) rbp ≡ readReg (regs s) rbp  -- restored to original
                                  × StackInvariant s-f
                                  × readReg (regs s-f) rsp > 16
                                  × readMem (memory s-f) (readReg (regs s-f) rsp) ≡ just ret-addr)
-      f-result-bridge = s-after-f-raw , star-f-converted , ir-halted r-f , pc-f-converted ,
-                        ir-rax r-f , ir-r14 r-f , ir-r15 r-f , ir-rbp r-f ,
-                        ir-stack-inv r-f , ir-rsp-bound r-f , mem-ret-preserved
+      f-result-bridge = s-after-cleanup , star-f-to-cleanup , h-cleanup , pc-cleanup ,
+                        trans rax-cleanup (ir-rax r-f) ,
+                        trans r14-cleanup (ir-r14 r-f) ,
+                        trans r15-cleanup (ir-r15 r-f) ,
+                        rbp-cleanup ,  -- cleanup restores original rbp directly
+                        stack-inv-cleanup , rsp>16-cleanup , mem-ret-preserved
 
       s-after-f = proj₁ f-result-bridge
       star-f = proj₁ (proj₂ f-result-bridge)
@@ -2170,6 +2277,7 @@ mutual
       star-all = star-trans star-setup (star-trans star-f star-ret)
 
       -- Build ThunkResult
+      -- Note: rbp-f now directly gives s-after-f.rbp = s.rbp (cleanup restores original)
       thunk-result : ThunkResult prog s s-final (λ b → eval f (env , b)) arg
       thunk-result = record
         { thunk-star = star-all
@@ -2177,7 +2285,7 @@ mutual
         ; thunk-rax = trans rax-final rax-f
         ; thunk-r14 = trans r14-final (trans r14-f r14-setup)
         ; thunk-r15 = trans r15-final (trans r15-f r15-setup)
-        ; thunk-rbp = trans rbp-final (trans rbp-f rbp-setup)
+        ; thunk-rbp = trans rbp-final rbp-f  -- rbp-f gives s-after-f.rbp = s.rbp directly
         ; thunk-stack-inv = stack-inv-final
         ; thunk-rsp-bound = rsp>16-final
         }

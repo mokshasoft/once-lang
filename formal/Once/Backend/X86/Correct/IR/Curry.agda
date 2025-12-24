@@ -106,6 +106,15 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     len-f = compile-length f
     prog = prefix ++ compile-x86 (curry f) ++ suffix
 
+    -- Key offsets (matching CodeGen.agda layout)
+    -- jmp at pos 5 needs to reach end-label at pos 16+len-f
+    -- offset = target - (pc + 1) = (16+len-f) - 6 = 10+len-f
+    jmp-offset : ℕ
+    jmp-offset = 10 +ℕ len-f
+
+    end-label-pos : ℕ
+    end-label-pos = 16 +ℕ len-f
+
     -- Helper values
     orig-rsp : Word
     orig-rsp = readReg (regs s) rsp
@@ -130,10 +139,10 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     i4 = mov (reg rax) (reg rsp)
 
     i5 : Instr
-    i5 = jmp (6 +ℕ len-f)
+    i5 = jmp jmp-offset
 
     i6-label : Instr
-    i6-label = label (12 +ℕ len-f)
+    i6-label = label end-label-pos
 
     -- State after step 0: sub rsp, 16
     s1 : State
@@ -161,11 +170,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     s5 = record s4 { regs = writeReg (regs s4) rax (readReg (regs s4) rsp)
                    ; pc = pc s4 +ℕ 1 }
 
-    -- State after step 5: jmp (6 + len-f)
+    -- State after step 5: jmp jmp-offset
     s6 : State
-    s6 = record s5 { pc = pc s5 +ℕ 1 +ℕ (6 +ℕ len-f) }
+    s6 = record s5 { pc = pc s5 +ℕ 1 +ℕ jmp-offset }
 
-    -- State after step 6: label (12 + len-f)
+    -- State after step 6: label end-label-pos
     s7 : State
     s7 = record s6 { pc = pc s6 +ℕ 1 }
 
@@ -223,53 +232,61 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     fetch5 = subst₂ (λ p n → fetch p n ≡ just i5) (sym prog-eq5) len-prefix-5
                     (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) i5 _)
 
-    -- For the label, we need fetch at pc s6 = prefix + 12 + len-f
+    -- For the label, we need fetch at pc s6 = prefix + 16 + len-f
+    -- New layout with frame pointer:
+    -- 6 setup + 1 label + 2 frame setup + 4 thunk setup + |f| + 3 cleanup = 16 + |f|
     curry-before-end-label : Program
     curry-before-end-label =
-      i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷  -- 6 setup instructions
+      i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷  -- 6 closure setup instructions
       label 6 ∷                        -- thunk entry
-      sub (reg rsp) (imm 16) ∷         -- thunk setup
+      push (reg rbp) ∷                 -- save frame pointer
+      mov (reg rbp) (reg rsp) ∷        -- set frame pointer
+      sub (reg rsp) (imm 16) ∷         -- allocate pair
       mov (mem (base rsp)) (reg r12) ∷
       mov (mem (base+disp rsp 8)) (reg rdi) ∷
       mov (reg rdi) (reg rsp) ∷
       compile-x86 f ++                 -- inner function
+      mov (reg rsp) (reg rbp) ∷        -- restore stack
+      pop rbp ∷                        -- restore frame pointer
       ret ∷ []                         -- return
 
-    len-curry-before : length curry-before-end-label ≡ 12 +ℕ len-f
+    len-curry-before : length curry-before-end-label ≡ end-label-pos
     len-curry-before = begin
       length curry-before-end-label
         ≡⟨ refl ⟩
       length (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
-              label 6 ∷ sub (reg rsp) (imm 16) ∷
+              label 6 ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
+              sub (reg rsp) (imm 16) ∷
               mov (mem (base rsp)) (reg r12) ∷
               mov (mem (base+disp rsp 8)) (reg rdi) ∷
               mov (reg rdi) (reg rsp) ∷
-              compile-x86 f ++ ret ∷ [])
+              compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ [])
         ≡⟨ refl ⟩
-      11 +ℕ length (compile-x86 f ++ ret ∷ [])
-        ≡⟨ cong (11 +ℕ_) (List-length-++ (compile-x86 f)) ⟩
-      11 +ℕ (length (compile-x86 f) +ℕ 1)
-        ≡⟨ cong (λ z → 11 +ℕ (z +ℕ 1)) (compile-length-correct f) ⟩
-      11 +ℕ (len-f +ℕ 1)
-        ≡⟨ +-assoc 11 len-f 1 ⟩
-      (11 +ℕ len-f) +ℕ 1
-        ≡⟨ cong (_+ℕ 1) (+-comm 11 len-f) ⟩
-      (len-f +ℕ 11) +ℕ 1
-        ≡⟨ +-assoc len-f 11 1 ⟩
-      len-f +ℕ 12
-        ≡⟨ +-comm len-f 12 ⟩
-      12 +ℕ len-f
+      13 +ℕ length (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ [])
+        ≡⟨ cong (13 +ℕ_) (List-length-++ (compile-x86 f)) ⟩
+      13 +ℕ (length (compile-x86 f) +ℕ 3)
+        ≡⟨ cong (λ z → 13 +ℕ (z +ℕ 3)) (compile-length-correct f) ⟩
+      13 +ℕ (len-f +ℕ 3)
+        ≡⟨ +-assoc 13 len-f 3 ⟩
+      (13 +ℕ len-f) +ℕ 3
+        ≡⟨ cong (_+ℕ 3) (+-comm 13 len-f) ⟩
+      (len-f +ℕ 13) +ℕ 3
+        ≡⟨ +-assoc len-f 13 3 ⟩
+      len-f +ℕ 16
+        ≡⟨ +-comm len-f 16 ⟩
+      end-label-pos
         ∎
 
     curry-code-inner : Program
-    curry-code-inner = compile-x86 f ++ ret ∷ i6-label ∷ []
+    curry-code-inner = compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ i6-label ∷ []
 
-    curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ ret ∷ []) ++ i6-label ∷ []
-    curry-inner-split = sym (++-assoc (compile-x86 f) (ret ∷ []) (i6-label ∷ []))
+    curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ []) ++ i6-label ∷ []
+    curry-inner-split = sym (++-assoc (compile-x86 f) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ []) (i6-label ∷ []))
 
     curry-split : compile-x86 (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
     curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
-                                 label 6 ∷ sub (reg rsp) (imm 16) ∷
+                                 label 6 ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
+                                 sub (reg rsp) (imm 16) ∷
                                  mov (mem (base rsp)) (reg r12) ∷
                                  mov (mem (base+disp rsp 8)) (reg rdi) ∷
                                  mov (reg rdi) (reg rsp) ∷ rest) curry-inner-split
@@ -277,10 +294,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     prefix-to-end : Program
     prefix-to-end = prefix ++ curry-before-end-label
 
-    len-prefix-to-end : length prefix-to-end ≡ length prefix +ℕ 12 +ℕ len-f
+    len-prefix-to-end : length prefix-to-end ≡ length prefix +ℕ end-label-pos
     len-prefix-to-end = trans (List-length-++ prefix)
-                         (trans (cong (length prefix +ℕ_) len-curry-before)
-                                (sym (+-assoc (length prefix) 12 len-f)))
+                              (cong (length prefix +ℕ_) len-curry-before)
 
     prog-eq-for-fetch6 : prog ≡ prefix-to-end ++ i6-label ∷ suffix
     prog-eq-for-fetch6 = begin
@@ -297,7 +313,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       prefix-to-end ++ i6-label ∷ suffix
         ∎
 
-    fetch6 : fetch prog (length prefix +ℕ 12 +ℕ len-f) ≡ just i6-label
+    fetch6 : fetch prog (length prefix +ℕ end-label-pos) ≡ just i6-label
     fetch6 = subst₂ (λ p n → fetch p n ≡ just i6-label) (sym prog-eq-for-fetch6) len-prefix-to-end
                     (fetch-at-prefix-end prefix-to-end i6-label suffix)
 
@@ -354,33 +370,31 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 
     step5 : step prog s5 ≡ just s6
     step5 = trans (step-exec prog s5 i5 h5 (subst (λ p → fetch prog p ≡ just i5) (sym pc5) fetch5))
-                  (execJmp prog s5 (6 +ℕ len-f))
+                  (execJmp prog s5 jmp-offset)
 
     h6 : halted s6 ≡ false
     h6 = h-false
 
-    pc6-correct : pc s6 ≡ length prefix +ℕ 12 +ℕ len-f
+    pc6-correct : pc s6 ≡ length prefix +ℕ end-label-pos
     pc6-correct = begin
       pc s6
         ≡⟨ refl ⟩
-      pc s5 +ℕ 1 +ℕ (6 +ℕ len-f)
-        ≡⟨ cong (λ z → z +ℕ 1 +ℕ (6 +ℕ len-f)) pc5 ⟩
-      (length prefix +ℕ 5) +ℕ 1 +ℕ (6 +ℕ len-f)
-        ≡⟨ cong (_+ℕ (6 +ℕ len-f)) (+-assoc (length prefix) 5 1) ⟩
-      (length prefix +ℕ 6) +ℕ (6 +ℕ len-f)
-        ≡⟨ +-assoc (length prefix) 6 (6 +ℕ len-f) ⟩
-      length prefix +ℕ (6 +ℕ (6 +ℕ len-f))
-        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 6 len-f)) ⟩
-      length prefix +ℕ ((6 +ℕ 6) +ℕ len-f)
+      pc s5 +ℕ 1 +ℕ jmp-offset
+        ≡⟨ cong (λ z → z +ℕ 1 +ℕ jmp-offset) pc5 ⟩
+      (length prefix +ℕ 5) +ℕ 1 +ℕ jmp-offset
+        ≡⟨ cong (_+ℕ jmp-offset) (+-assoc (length prefix) 5 1) ⟩
+      (length prefix +ℕ 6) +ℕ jmp-offset
+        ≡⟨ +-assoc (length prefix) 6 jmp-offset ⟩
+      length prefix +ℕ (6 +ℕ jmp-offset)
+        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 10 len-f)) ⟩
+      length prefix +ℕ ((6 +ℕ 10) +ℕ len-f)
         ≡⟨ cong (length prefix +ℕ_) refl ⟩
-      length prefix +ℕ (12 +ℕ len-f)
-        ≡⟨ sym (+-assoc (length prefix) 12 len-f) ⟩
-      length prefix +ℕ 12 +ℕ len-f
+      length prefix +ℕ end-label-pos
         ∎
 
     step6 : step prog s6 ≡ just s7
     step6 = trans (step-exec prog s6 i6-label h6 (subst (λ p → fetch prog p ≡ just i6-label) (sym pc6-correct) fetch6))
-                  (execLabel prog s6 (12 +ℕ len-f))
+                  (execLabel prog s6 end-label-pos)
 
     h7 : halted s7 ≡ false
     h7 = h-false
@@ -391,17 +405,13 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
         ≡⟨ refl ⟩
       pc s6 +ℕ 1
         ≡⟨ cong (_+ℕ 1) pc6-correct ⟩
-      (length prefix +ℕ 12 +ℕ len-f) +ℕ 1
-        ≡⟨ +-assoc (length prefix +ℕ 12) len-f 1 ⟩
-      (length prefix +ℕ 12) +ℕ (len-f +ℕ 1)
-        ≡⟨ cong ((length prefix +ℕ 12) +ℕ_) (+-comm len-f 1) ⟩
-      (length prefix +ℕ 12) +ℕ (1 +ℕ len-f)
-        ≡⟨ sym (+-assoc (length prefix +ℕ 12) 1 len-f) ⟩
-      ((length prefix +ℕ 12) +ℕ 1) +ℕ len-f
-        ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 12 1) ⟩
-      (length prefix +ℕ 13) +ℕ len-f
-        ≡⟨ +-assoc (length prefix) 13 len-f ⟩
-      length prefix +ℕ (13 +ℕ len-f)
+      (length prefix +ℕ end-label-pos) +ℕ 1
+        ≡⟨ +-assoc (length prefix) end-label-pos 1 ⟩
+      length prefix +ℕ (end-label-pos +ℕ 1)
+        ≡⟨ cong (length prefix +ℕ_) (+-comm end-label-pos 1) ⟩
+      length prefix +ℕ (1 +ℕ end-label-pos)
+        ≡⟨ cong (length prefix +ℕ_) refl ⟩
+      length prefix +ℕ (17 +ℕ len-f)
         ≡⟨ refl ⟩
       length prefix +ℕ compile-length (curry f)
         ∎
