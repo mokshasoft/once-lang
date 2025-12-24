@@ -1623,27 +1623,85 @@ mutual
               × StackInvariant s'
               × readReg (regs s') rsp > 16)
 
-  -- Postulate for tracing the ret instruction after f completes
-  postulate
-    thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
-                     (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
-      let prog = prefix ++ compile-x86 (curry f) ++ suffix
-          ret-offset = length prefix +ℕ 11 +ℕ compile-length f
-      in
-      halted s ≡ false →
-      pc s ≡ ret-offset →
-      readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
-      StackInvariant s →
-      readReg (regs s) rsp > 16 →
-      ∃[ s' ] (Star prog s s'
-              × halted s' ≡ false
-              × pc s' ≡ ret-addr
-              × readReg (regs s') rax ≡ readReg (regs s) rax
-              × readReg (regs s') r14 ≡ readReg (regs s) r14
-              × readReg (regs s') r15 ≡ readReg (regs s) r15
-              × readReg (regs s') rbp ≡ readReg (regs s) rbp
-              × StackInvariant s'
-              × readReg (regs s') rsp > 16)
+  -- Prove ret instruction tracing
+  thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
+                   (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
+    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+        ret-offset = length prefix +ℕ 11 +ℕ compile-length f
+    in
+    halted s ≡ false →
+    pc s ≡ ret-offset →
+    readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    ∃[ s' ] (Star prog s s'
+            × halted s' ≡ false
+            × pc s' ≡ ret-addr
+            × readReg (regs s') rax ≡ readReg (regs s) rax
+            × readReg (regs s') r14 ≡ readReg (regs s) r14
+            × readReg (regs s') r15 ≡ readReg (regs s) r15
+            × readReg (regs s') rbp ≡ readReg (regs s) rbp
+            × StackInvariant s'
+            × readReg (regs s') rsp > 16)
+  thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
+                 h-false pc-eq mem-ret stack-inv rsp>16 =
+    s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp>16-1
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+
+      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+      ret-offset = offset +ℕ 11 +ℕ compile-length f
+
+      -- The ret instruction is at ret-offset in curry
+      -- curry layout: [6 closure setup] [5 thunk setup] [compile-x86 f] [ret] [label end]
+      -- ret is at position 11 + len(f) within curry
+
+      -- Fetch the ret instruction
+      -- This requires showing prog[ret-offset] = ret
+      -- We postulate this for now (program structure lemma)
+      postulate
+        fetch-ret : fetch prog ret-offset ≡ just ret
+
+      -- State after ret: pc = ret-addr, rsp += 8
+      old-rsp = readReg (regs s) rsp
+
+      s1 : State
+      s1 = record s { regs = writeReg (regs s) rsp (old-rsp +ℕ 8)
+                    ; pc = ret-addr }
+
+      step-ret : step prog s ≡ just s1
+      step-ret = trans (step-exec prog s ret h-false (subst (λ p → fetch prog p ≡ just ret) (sym pc-eq) fetch-ret))
+                       (execRet [] s ret-addr mem-ret)
+
+      star-all : Star prog s s1
+      star-all = ⟨ h-false , step-ret ⟩◅ refl*
+
+      h1 : halted s1 ≡ false
+      h1 = h-false
+
+      pc1 : pc s1 ≡ ret-addr
+      pc1 = refl
+
+      -- Register preservation (ret only writes rsp)
+      rax1 : readReg (regs s1) rax ≡ readReg (regs s) rax
+      rax1 = readReg-writeReg-rsp-rax (regs s) (old-rsp +ℕ 8)
+
+      r14-1 : readReg (regs s1) r14 ≡ readReg (regs s) r14
+      r14-1 = readReg-writeReg-rsp-r14 (regs s) (old-rsp +ℕ 8)
+
+      r15-1 : readReg (regs s1) r15 ≡ readReg (regs s) r15
+      r15-1 = readReg-writeReg-rsp-r15 (regs s) (old-rsp +ℕ 8)
+
+      rbp1 : readReg (regs s1) rbp ≡ readReg (regs s) rbp
+      rbp1 = readReg-writeReg-rsp-rbp (regs s) (old-rsp +ℕ 8)
+
+      -- StackInvariant and rsp bound after ret
+      postulate
+        stack-inv1 : StackInvariant s1
+
+      rsp>16-1 : readReg (regs s1) rsp > 16
+      rsp>16-1 = rsp-bound-after-stack-op s1
 
   -- Program equality: view curry's program for IH on f
   -- curry f = curry-before ++ compile-x86 f ++ curry-after
