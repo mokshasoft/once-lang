@@ -220,21 +220,42 @@ compileFullToX86 ir = genX86WithEnv Map.empty 0 ir
       H.Snd _ _ -> "    movq 8(%rdi), %rax"
 
       -- Pair construction: allocate on stack, compute both
+      -- Uses callee-saved registers (r14, r15, rbp) to survive nested pairs
+      -- This matches the verified Agda code in Once.Backend.X86.CodeGen
       H.Pair f g ->
-        -- Save input and allocate pair
-        "    pushq %rdi\n" <>
-        "    subq $16, %rsp\n" <>  -- allocate pair space
-        "    movq %rsp, %r15\n" <>  -- r15 = pair address
-        -- Compute f
-        genX86WithEnv env depth f <> "\n" <>
-        "    movq %rax, (%r15)\n" <>  -- store fst
-        -- Restore input, compute g
-        "    movq 16(%rsp), %rdi\n" <>
-        genX86WithEnv env depth g <> "\n" <>
-        "    movq %rax, 8(%r15)\n" <>  -- store snd
+        -- Stack grows by: push r14 (8) + push r15 (8) + push rbp (8) + sub 16 = 40
+        let pairDepth = depth + 40
+        in
+        -- Save callee-saved registers
+        "    pushq %r14\n" <>
+        "    pushq %r15\n" <>
+        "    pushq %rbp\n" <>
+        -- Set frame pointer
+        "    movq %rsp, %rbp\n" <>
+        -- Allocate 16 bytes for pair
+        "    subq $16, %rsp\n" <>
+        -- r15 = stable pair address (survives nested calls)
+        "    movq %rsp, %r15\n" <>
+        -- r14 = saved input (survives nested calls)
+        "    movq %rdi, %r14\n" <>
+        -- Compute f (may allocate more stack, may nest pairs)
+        genX86WithEnv env pairDepth f <> "\n" <>
+        -- Store f result at [r15] (stable address)
+        "    movq %rax, (%r15)\n" <>
+        -- Restore input for g
+        "    movq %r14, %rdi\n" <>
+        -- Compute g (uses same depth - stack restored by f's cleanup)
+        genX86WithEnv env pairDepth g <> "\n" <>
+        -- Store g result at [r15 + 8]
+        "    movq %rax, 8(%r15)\n" <>
         -- Return pair pointer
         "    movq %r15, %rax\n" <>
-        "    addq $24, %rsp"  -- clean up (pair + saved rdi)
+        -- Restore stack to frame base
+        "    movq %rbp, %rsp\n" <>
+        -- Restore callee-saved registers
+        "    popq %rbp\n" <>
+        "    popq %r15\n" <>
+        "    popq %r14"
 
       -- Terminal: return NULL (Unit)
       H.Terminal _ -> "    xorq %rax, %rax"
