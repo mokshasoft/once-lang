@@ -267,11 +267,30 @@ case-dispatch-left-star {A} {B} {C} f g prefix suffix a s h-false pc-eq a0-eq =
     -- Helper: encode address for inl
     inl-addr = encode {A + B} (inj₁ a)
 
-    -- Fetch lemmas
-    postulate
-      fetch0 : fetch prog offset ≡ just dispatch-tag
-      fetch1 : fetch prog (offset +ℕ 1) ≡ just dispatch-val
-      fetch2 : fetch prog (offset +ℕ 2) ≡ just dispatch-branch
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+    -- prog = prefix ++ (dispatch-tag ∷ dispatch-val ∷ dispatch-branch ∷ ...) ++ suffix
+    fetch0 : fetch prog offset ≡ just dispatch-tag
+    fetch0 = fetch-at-prefix-end prefix dispatch-tag _
+
+    prog-eq1 : prog ≡ (prefix ++ dispatch-tag ∷ []) ++ _
+    prog-eq1 = sym (++-assoc prefix (dispatch-tag ∷ []) _)
+
+    len-prefix-1 : length (prefix ++ dispatch-tag ∷ []) ≡ offset +ℕ 1
+    len-prefix-1 = List-length-++ prefix
+
+    fetch1 : fetch prog (offset +ℕ 1) ≡ just dispatch-val
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just dispatch-val) (sym prog-eq1) len-prefix-1
+                    (fetch-at-prefix-end (prefix ++ dispatch-tag ∷ []) dispatch-val _)
+
+    prog-eq2 : prog ≡ (prefix ++ dispatch-tag ∷ dispatch-val ∷ []) ++ _
+    prog-eq2 = sym (++-assoc prefix (dispatch-tag ∷ dispatch-val ∷ []) _)
+
+    len-prefix-2 : length (prefix ++ dispatch-tag ∷ dispatch-val ∷ []) ≡ offset +ℕ 2
+    len-prefix-2 = List-length-++ prefix
+
+    fetch2 : fetch prog (offset +ℕ 2) ≡ just dispatch-branch
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just dispatch-branch) (sym prog-eq2) len-prefix-2
+                    (fetch-at-prefix-end (prefix ++ dispatch-tag ∷ dispatch-val ∷ []) dispatch-branch _)
 
     -- State after step 0: ld t0 0(a0) - load tag (0 for inl)
     st1 : State
@@ -404,11 +423,36 @@ case-dispatch-right-star {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-eq =
     -- Helper: encode address for inr
     inr-addr = encode {A + B} (inj₂ b)
 
-    -- Fetch lemmas
+    -- Fetch lemmas (proven using fetch-at-prefix-end)
+    fetch0 : fetch prog offset ≡ just dispatch-tag
+    fetch0 = fetch-at-prefix-end prefix dispatch-tag _
+
+    prog-eq1 : prog ≡ (prefix ++ dispatch-tag ∷ []) ++ _
+    prog-eq1 = sym (++-assoc prefix (dispatch-tag ∷ []) _)
+
+    len-prefix-1 : length (prefix ++ dispatch-tag ∷ []) ≡ offset +ℕ 1
+    len-prefix-1 = List-length-++ prefix
+
+    fetch1 : fetch prog (offset +ℕ 1) ≡ just dispatch-val
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just dispatch-val) (sym prog-eq1) len-prefix-1
+                    (fetch-at-prefix-end (prefix ++ dispatch-tag ∷ []) dispatch-val _)
+
+    prog-eq2 : prog ≡ (prefix ++ dispatch-tag ∷ dispatch-val ∷ []) ++ _
+    prog-eq2 = sym (++-assoc prefix (dispatch-tag ∷ dispatch-val ∷ []) _)
+
+    len-prefix-2 : length (prefix ++ dispatch-tag ∷ dispatch-val ∷ []) ≡ offset +ℕ 2
+    len-prefix-2 = List-length-++ prefix
+
+    fetch2 : fetch prog (offset +ℕ 2) ≡ just dispatch-branch
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just dispatch-branch) (sym prog-eq2) len-prefix-2
+                    (fetch-at-prefix-end (prefix ++ dispatch-tag ∷ dispatch-val ∷ []) dispatch-branch _)
+
+    -- For right-label: it's at position offset + 3 + len-f + 1 = offset + 4 + len-f
+    -- We need a prefix that's (dispatch instrs) ++ code-f ++ [left-jump]
+    -- Then right-label follows
+    --
+    -- Proof strategy: Show prog decomposes properly for fetch-at-prefix-end
     postulate
-      fetch0 : fetch prog offset ≡ just dispatch-tag
-      fetch1 : fetch prog (offset +ℕ 1) ≡ just dispatch-val
-      fetch2 : fetch prog (offset +ℕ 2) ≡ just dispatch-branch
       fetch3 : fetch prog (offset +ℕ 3 +ℕ len-f +ℕ 1) ≡ just right-label
 
     -- State after step 0: ld t0 0(a0) - load tag (1 for inr)
