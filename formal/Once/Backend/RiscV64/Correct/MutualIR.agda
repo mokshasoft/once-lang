@@ -942,7 +942,8 @@ mutual
       s1-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))
       sp-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))
       ra-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))
-      mem-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))
+      mem-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))
+      mem-sp+16-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))
 
       -- Middle star is already in prog
       star-mid : Star prog s-after-f-raw s-mid
@@ -1001,16 +1002,52 @@ mutual
       pc-after-g : pc s-after-g-raw ≡ offset +ℕ 5 +ℕ len-f +ℕ len-g
       pc-after-g = trans pc-g-raw (cong (_+ℕ len-g) len-prefix-g)
 
-      -- Memory: sp should still point to our pair location through f and g execution
-      -- sp is a callee-saved register, so f and g must preserve it
-      -- The memory at sp and sp+16 should also be preserved (f and g don't clobber them)
-      postulate
-        sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
-        sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
-        mem-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp)
-                    ≡ just (encode (eval f x))
-        mem-s1-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp +ℕ 16)
-                       ≡ just orig-s1
+      -- SP preservation through f and g: use ir-sp from the IH results
+      sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
+      sp-after-f = ir-sp r-f
+
+      sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
+      sp-after-g = ir-sp r-g
+
+      -- Memory preservation: The middle phase writes encode(eval f x) to sp,
+      -- and g preserves memory at sp (via ir-mem-sp from IH).
+      -- Chain: sp-after-g → ir-mem-sp r-g → sp-mid → mem-mid
+      mem-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp)
+                  ≡ just (encode (eval f x))
+      mem-after-g = begin
+        readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp)
+          ≡⟨ cong (readMem (memory s-after-g-raw)) sp-after-g ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s-mid) sp)
+          ≡⟨ ir-mem-sp r-g ⟩
+        readMem (memory s-mid) (readReg (regs s-mid) sp)
+          ≡⟨ cong (readMem (memory s-mid)) sp-mid ⟩
+        readMem (memory s-mid) (readReg (regs s-after-f-raw) sp)
+          ≡⟨ mem-mid ⟩
+        just (encode (eval f x))
+          ∎
+
+      -- s1 was saved at sp+16 during setup and preserved through f/middle/g.
+      -- Chain: sp conversions → ir-mem-sp+16 r-g → mem-sp+16-mid →
+      --        ir-mem-sp+16 r-f → mem-s1-setup
+      mem-s1-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp +ℕ 16)
+                     ≡ just orig-s1
+      mem-s1-after-g = begin
+        readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp +ℕ 16)
+          ≡⟨ cong (λ addr → readMem (memory s-after-g-raw) (addr +ℕ 16)) sp-after-g ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s-mid) sp +ℕ 16)
+          ≡⟨ ir-mem-sp+16 r-g ⟩
+        readMem (memory s-mid) (readReg (regs s-mid) sp +ℕ 16)
+          ≡⟨ cong (λ addr → readMem (memory s-mid) (addr +ℕ 16)) sp-mid ⟩
+        readMem (memory s-mid) (readReg (regs s-after-f-raw) sp +ℕ 16)
+          ≡⟨ mem-sp+16-mid ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s-after-f-raw) sp +ℕ 16)
+          ≡⟨ cong (λ addr → readMem (memory s-after-f-raw) (addr +ℕ 16)) sp-after-f ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s-setup) sp +ℕ 16)
+          ≡⟨ ir-mem-sp+16 r-f ⟩
+        readMem (memory s-setup) (readReg (regs s-setup) sp +ℕ 16)
+          ≡⟨ mem-s1-setup ⟩
+        just orig-s1
+          ∎
 
       -- Phase 5: Final (3 instructions - sd a0 8(sp), mv a0 sp, ld s1 16(sp))
       final-phase-result = pair-final-star f g prefix suffix x orig-s1 s-mid s-after-g-raw
