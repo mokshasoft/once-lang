@@ -27,7 +27,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-trans)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1)
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -137,6 +137,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
   ; ir-pc = pcg
   ; ir-a0 = a0-g
   ; ir-s1 = s1-final
+  ; ir-ra = ra-final
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -147,6 +148,8 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     star-f = ir-star r1
     s1-f : readReg (regs sf) s1 ≡ readReg (regs s) s1
     s1-f = ir-s1 r1
+    ra-f : readReg (regs sf) ra ≡ readReg (regs s) ra
+    ra-f = ir-ra r1
 
     -- From r2 (g result)
     star-g : Star prog sf sg
@@ -157,6 +160,8 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     a0-g = ir-a0 r2
     s1-g : readReg (regs sg) s1 ≡ readReg (regs sf) s1
     s1-g = ir-s1 r2
+    ra-g : readReg (regs sg) ra ≡ readReg (regs sf) ra
+    ra-g = ir-ra r2
 
     -- Compose Star proofs (trivial with Star - just transitivity!)
     star-all : Star prog s sg
@@ -178,6 +183,10 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     s1-final : readReg (regs sg) s1 ≡ readReg (regs s) s1
     s1-final = trans s1-g s1-f
 
+    -- ra preservation: chain through f and g
+    ra-final : readReg (regs sg) ra ≡ readReg (regs s) ra
+    ra-final = trans ra-g ra-f
+
 ------------------------------------------------------------------------
 -- Helper for getting f's result in the right program
 ------------------------------------------------------------------------
@@ -196,6 +205,7 @@ transform-f-result {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-pc = ir-pc r
   ; ir-a0 = ir-a0 r
   ; ir-s1 = ir-s1 r
+  ; ir-ra = ir-ra r
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -215,6 +225,7 @@ transform-g-result {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-pc = ir-pc r
   ; ir-a0 = ir-a0 r
   ; ir-s1 = ir-s1 r
+  ; ir-ra = ir-ra r
   }
   where
     ctx = make-compose-context f g prefix suffix

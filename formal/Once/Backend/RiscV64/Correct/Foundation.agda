@@ -281,6 +281,11 @@ readReg-writeReg-sp-s1 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf sp v) s1 ≡ readReg rf s1
 readReg-writeReg-sp-s1 rf v = refl
 
+-- | Reading ra after writing sp returns the old value
+readReg-writeReg-sp-ra : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf sp v) ra ≡ readReg rf ra
+readReg-writeReg-sp-ra rf v = refl
+
 -- | Reading sp after writing a0 returns the old value
 readReg-writeReg-a0-sp : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf a0 v) sp ≡ readReg rf sp
@@ -936,6 +941,11 @@ readReg-writeReg-t0-s1 rf v = refl
 readReg-writeReg-t0-s0 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf t0 v) s0 ≡ readReg rf s0
 readReg-writeReg-t0-s0 rf v = refl
+
+-- | Reading ra after writing t0 returns the old value
+readReg-writeReg-t0-ra : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf t0 v) ra ≡ readReg rf ra
+readReg-writeReg-t0-ra rf v = refl
 
 ------------------------------------------------------------------------
 -- Register preservation lemmas for t1 (apply proof)
