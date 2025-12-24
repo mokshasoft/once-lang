@@ -1931,6 +1931,7 @@ mutual
       open import Once.Backend.X86.Correct.ClosureWellFormed
         using (ThunkResult; thunk-star; thunk-halted; thunk-rax;
                thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -1952,20 +1953,156 @@ mutual
       rsp>16-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
 
       -- Step 2: Call IH on f
-      -- f-result = run-ir-star-at-offset f prefix-f suffix-f (env , arg) s-after-setup ...
-      -- Note: This is where the IH is used! The program is the same, just viewed differently.
-      -- For now, we postulate the bridging (program view transformation)
+      -- Define prefix-f and suffix-f so that prog = prefix-f ++ compile-x86 f ++ suffix-f
+
+      -- curry layout: [0-5] closure setup, [6-10] thunk setup, [11 to 10+len(f)] f, [11+len(f)] ret, [12+len(f)] label
+      len-f = compile-length f
+      end-label = 12 +ℕ len-f
+      end-offset-curry = 6 +ℕ len-f
+
+      -- Prefix for f: prefix ++ first 11 instructions of curry
+      curry-closure-setup : Program
+      curry-closure-setup =
+        sub (reg rsp) (imm 16) ∷
+        mov (mem (base rsp)) (reg rdi) ∷
+        lea r9 (rip+disp 4) ∷
+        mov (mem (base+disp rsp 8)) (reg r9) ∷
+        mov (reg rax) (reg rsp) ∷
+        jmp end-offset-curry ∷ []
+
+      curry-thunk-setup : Program
+      curry-thunk-setup =
+        label 6 ∷
+        sub (reg rsp) (imm 16) ∷
+        mov (mem (base rsp)) (reg r12) ∷
+        mov (mem (base+disp rsp 8)) (reg rdi) ∷
+        mov (reg rdi) (reg rsp) ∷ []
+
+      prefix-f : Program
+      prefix-f = prefix ++ curry-closure-setup ++ curry-thunk-setup
+
+      -- Suffix for f: ret ∷ label ∷ suffix
+      curry-tail : Program
+      curry-tail = ret ∷ label end-label ∷ []
+
+      suffix-f : Program
+      suffix-f = curry-tail ++ suffix
+
+      -- Length of prefix-f = length prefix + 11
+      -- Note: ++ is right-associative, so prefix-f = prefix ++ (curry-closure-setup ++ curry-thunk-setup)
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 11
+      len-prefix-f = trans (List-length-++ prefix {curry-closure-setup ++ curry-thunk-setup})
+                           (cong (length prefix +ℕ_) (List-length-++ curry-closure-setup {curry-thunk-setup}))
+
+      -- Program equality: prog = prefix-f ++ compile-x86 f ++ suffix-f
+      -- This requires showing curry structure matches
+
+      -- Helper: compile-x86 (curry f) structure equality
+      -- The curry compilation structure is:
+      --   [6 closure setup] ++ [5 thunk setup] ++ compile-x86 f ++ [ret, label end]
+      -- This is definitionally equal since (x ∷ y ∷ ... ∷ []) ++ rest = x ∷ y ∷ ... ∷ rest
+      curry-structure : compile-x86 (curry f) ≡
+                        curry-closure-setup ++ curry-thunk-setup ++ compile-x86 f ++ curry-tail
+      curry-structure = refl
+
+      -- Program equality using curry-structure and list reassociation
+      -- prog = prefix ++ curry-structure ++ suffix
+      --      = prefix ++ (A ++ B ++ f ++ C) ++ suffix
+      --      = (prefix ++ A ++ B) ++ f ++ (C ++ suffix)
+      --      = prefix-f ++ f ++ suffix-f
+      -- Program equality using curry-structure and list reassociation
+      -- ++ is right-associative, so prefix ++ A ++ B = prefix ++ (A ++ B)
+      -- and prefix-f = prefix ++ (curry-closure-setup ++ curry-thunk-setup)
+      -- and suffix-f = curry-tail ++ suffix
+      --
+      -- We need: prefix ++ (A ++ B ++ f ++ D) ++ suffix = (prefix ++ A ++ B) ++ f ++ (D ++ suffix)
+      -- With right-assoc: prefix ++ ((A ++ (B ++ (f ++ D))) ++ suffix) = (prefix ++ (A ++ B)) ++ (f ++ (D ++ suffix))
+      -- This requires multiple applications of ++-assoc
+      prog-eq-f : prog ≡ prefix-f ++ compile-x86 f ++ suffix-f
+      prog-eq-f = trans (cong (λ x → prefix ++ x ++ suffix) curry-structure) prog-reassoc
+        where
+          -- Abbreviations for readability (using unique names to avoid scope clashes)
+          ccs = curry-closure-setup
+          cts = curry-thunk-setup
+          code-f = compile-x86 f
+          cta = curry-tail
+
+          -- The main reassociation proof
+          -- Goal: prefix ++ (ccs ++ cts ++ code-f ++ cta) ++ suffix ≡ (prefix ++ ccs ++ cts) ++ code-f ++ (cta ++ suffix)
+          prog-reassoc : prefix ++ (ccs ++ cts ++ code-f ++ cta) ++ suffix ≡ prefix-f ++ code-f ++ suffix-f
+          prog-reassoc =
+            let -- Step 1: prefix ++ (ccs ++ (cts ++ (code-f ++ cta))) ++ suffix  (this is what we have)
+
+                -- Step 2: Focus on inner (ccs ++ (cts ++ (code-f ++ cta)))
+                inner-assoc1 : ccs ++ (cts ++ (code-f ++ cta)) ≡ (ccs ++ cts) ++ (code-f ++ cta)
+                inner-assoc1 = sym (++-assoc ccs cts (code-f ++ cta))
+
+                -- Step 3: ((ccs ++ cts) ++ (code-f ++ cta)) ++ suffix = (ccs ++ cts) ++ ((code-f ++ cta) ++ suffix)
+                inner-assoc2 : ((ccs ++ cts) ++ (code-f ++ cta)) ++ suffix ≡ (ccs ++ cts) ++ ((code-f ++ cta) ++ suffix)
+                inner-assoc2 = ++-assoc (ccs ++ cts) (code-f ++ cta) suffix
+
+                -- Step 4: (code-f ++ cta) ++ suffix = code-f ++ (cta ++ suffix)
+                inner-assoc3 : (code-f ++ cta) ++ suffix ≡ code-f ++ (cta ++ suffix)
+                inner-assoc3 = ++-assoc code-f cta suffix
+
+                -- Combine steps 2-4 for the inner part
+                inner-combined : (ccs ++ (cts ++ (code-f ++ cta))) ++ suffix ≡ (ccs ++ cts) ++ (code-f ++ (cta ++ suffix))
+                inner-combined = trans (cong (_++ suffix) inner-assoc1)
+                                 (trans inner-assoc2
+                                        (cong ((ccs ++ cts) ++_) inner-assoc3))
+
+                -- Step 5: prefix ++ X = prefix ++ X (applying the inner result)
+                outer-step : prefix ++ ((ccs ++ (cts ++ (code-f ++ cta))) ++ suffix) ≡ prefix ++ ((ccs ++ cts) ++ (code-f ++ (cta ++ suffix)))
+                outer-step = cong (prefix ++_) inner-combined
+
+                -- Step 6: prefix ++ ((ccs ++ cts) ++ X) = (prefix ++ (ccs ++ cts)) ++ X
+                final-assoc : prefix ++ ((ccs ++ cts) ++ (code-f ++ (cta ++ suffix))) ≡ (prefix ++ (ccs ++ cts)) ++ (code-f ++ (cta ++ suffix))
+                final-assoc = sym (++-assoc prefix (ccs ++ cts) (code-f ++ (cta ++ suffix)))
+
+            in trans outer-step final-assoc
+
+      -- Call IH on f
+      pc-setup-f : pc s-after-setup ≡ length prefix-f
+      pc-setup-f = trans pc-setup (sym len-prefix-f)
+
+      step-f : ∃[ s-f ] IRStarResult f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
+      step-f = run-ir-star-at-offset f prefix-f suffix-f (env , arg) s-after-setup
+                 h-setup pc-setup-f rdi-setup stack-inv-setup rsp>16-setup
+
+      s-after-f-raw = proj₁ step-f
+      r-f = proj₂ step-f
+      star-f-raw : Star (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-after-f-raw
+      star-f-raw = ir-star r-f
+
+      -- Convert star-f to use prog
+      star-f-converted : Star prog s-after-setup s-after-f-raw
+      star-f-converted = subst (λ p → Star p s-after-setup s-after-f-raw) (sym prog-eq-f) star-f-raw
+
+      -- Extract properties from IH result
+      pc-f-raw : pc s-after-f-raw ≡ length prefix-f +ℕ compile-length f
+      pc-f-raw = ir-pc r-f
+
+      pc-f-converted : pc s-after-f-raw ≡ ret-offset
+      pc-f-converted = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
+
+      -- Bridge result using postulate for memory preservation
+      -- The IH doesn't guarantee return address is preserved on stack, so we postulate it
       postulate
-        f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
-                                   × halted s-f ≡ false
-                                   × pc s-f ≡ ret-offset
-                                   × readReg (regs s-f) rax ≡ encode (eval f (env , arg))
-                                   × readReg (regs s-f) r14 ≡ readReg (regs s-after-setup) r14
-                                   × readReg (regs s-f) r15 ≡ readReg (regs s-after-setup) r15
-                                   × readReg (regs s-f) rbp ≡ readReg (regs s-after-setup) rbp
-                                   × StackInvariant s-f
-                                   × readReg (regs s-f) rsp > 16
-                                   × readMem (memory s-f) (readReg (regs s-f) rsp) ≡ just ret-addr)
+        mem-ret-preserved : readMem (memory s-after-f-raw) (readReg (regs s-after-f-raw) rsp) ≡ just ret-addr
+
+      f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
+                                 × halted s-f ≡ false
+                                 × pc s-f ≡ ret-offset
+                                 × readReg (regs s-f) rax ≡ encode (eval f (env , arg))
+                                 × readReg (regs s-f) r14 ≡ readReg (regs s-after-setup) r14
+                                 × readReg (regs s-f) r15 ≡ readReg (regs s-after-setup) r15
+                                 × readReg (regs s-f) rbp ≡ readReg (regs s-after-setup) rbp
+                                 × StackInvariant s-f
+                                 × readReg (regs s-f) rsp > 16
+                                 × readMem (memory s-f) (readReg (regs s-f) rsp) ≡ just ret-addr)
+      f-result-bridge = s-after-f-raw , star-f-converted , ir-halted r-f , pc-f-converted ,
+                        ir-rax r-f , ir-r14 r-f , ir-r15 r-f , ir-rbp r-f ,
+                        ir-stack-inv r-f , ir-rsp-bound r-f , mem-ret-preserved
 
       s-after-f = proj₁ f-result-bridge
       star-f = proj₁ (proj₂ f-result-bridge)
