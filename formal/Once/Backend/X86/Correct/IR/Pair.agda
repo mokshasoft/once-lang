@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.StarBase
 open import Data.Bool using (false)
 open import Data.Empty using (⊥)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -985,10 +985,42 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
       mem-frame-rbp+8-s3 : readMem (memory s3) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
 
     -- ========== Disjointness for original rbp ==========
-    -- POSTULATE: Need rbp invariant to prove s.rbp is above stack allocation at s3.r15+8
-    postulate
-      disjoint-orig-rbp-s3 : readReg (regs s) rbp ≢ readReg (regs s3) r15 +ℕ 8
-      disjoint-orig-rbp+8-s3 : readReg (regs s) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
+    -- Uses RbpInvariant: rsp ≤ rbp, so s3.r15+8 < rsp ≤ rbp
+    postulate rbp-inv : RbpInvariant s
+
+    -- Reuse the existing r15-s3+8<rsp-s proof pattern (lines 956-974)
+    -- s3.r15+8 = (rsp-40)+8 < rsp (since 8 < 40, so k+8 < k+40 = rsp)
+    r15-s3+8<rsp-rbp : readReg (regs s3) r15 +ℕ 8 < readReg (regs s) rsp
+    r15-s3+8<rsp-rbp = subst (λ n → n +ℕ 8 < readReg (regs s) rsp) (sym r15-chain) arith-step
+      where
+        rsp-s = readReg (regs s) rsp
+        k = rsp-s ∸ 40
+        8<40 : 8 < 40
+        8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        k+8<k+40 : k +ℕ 8 < k +ℕ 40
+        k+8<k+40 = +-monoʳ-< k 8<40
+        arith-step : (readReg (regs s) rsp ∸ 40) +ℕ 8 < readReg (regs s) rsp
+        arith-step = subst (k +ℕ 8 <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+
+    r15-s3+8<rbp : readReg (regs s3) r15 +ℕ 8 < readReg (regs s) rbp
+    r15-s3+8<rbp = ≤-trans r15-s3+8<rsp-rbp (RbpInvariant.rsp≤rbp rbp-inv)
+
+    disjoint-orig-rbp-s3 : readReg (regs s) rbp ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-orig-rbp-s3 eq = <⇒≢ r15-s3+8<rbp (sym eq)
+
+    -- For rbp+8: r15-s3+8 < rbp < rbp+8, so r15-s3+8 ≢ rbp+8
+    rbp<rbp+8 : readReg (regs s) rbp < readReg (regs s) rbp +ℕ 8
+    rbp<rbp+8 = n<n+8 (readReg (regs s) rbp)
+      where
+        n<n+8 : ∀ n → n < n +ℕ 8
+        n<n+8 zero = s≤s z≤n
+        n<n+8 (suc n) = s≤s (n<n+8 n)
+
+    r15-s3+8<rbp+8 : readReg (regs s3) r15 +ℕ 8 < readReg (regs s) rbp +ℕ 8
+    r15-s3+8<rbp+8 = <-trans r15-s3+8<rbp rbp<rbp+8
+
+    disjoint-orig-rbp+8-s3 : readReg (regs s) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
+    disjoint-orig-rbp+8-s3 eq = <⇒≢ r15-s3+8<rbp+8 (sym eq)
 
     -- ========== Stack layout postulates (memory preservation) ==========
     -- These require tracing memory through f and g execution
