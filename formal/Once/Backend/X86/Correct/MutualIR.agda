@@ -1821,10 +1821,12 @@ mutual
             × StackInvariant s'
             × readReg (regs s') rsp > 16
             -- Key property for pop-rbp-mem: memory at new rbp contains original rbp
-            × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp))
+            × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
+            -- Memory at original rsp is preserved (for return address)
+            × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp))
   thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                    h-false pc-eq rdi-eq r12-eq stack-inv rsp>16 =
-    s7 , star-all , h7 , pc7 , rdi7 , r14-7 , r15-7 , rbp7 , stack-inv7 , rsp>16-7 , mem-at-rbp7
+    s7 , star-all , h7 , pc7 , rdi7 , r14-7 , r15-7 , rbp7 , stack-inv7 , rsp>16-7 , mem-at-rbp7 , mem-old-rsp-preserved
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -2136,25 +2138,109 @@ mutual
       -- Approach: new-rsp < new-rsp + 16 = rsp-after-push (when 16 ≤ rsp-after-push)
       open import Data.Nat.Properties using (m∸n+n≡m; +-monoˡ-<; m<m+n; 0<1+n)
 
-      -- rsp-after-push = old-rsp - 8. Since old-rsp > 16, we have rsp-after-push > 8, hence ≥ 16
-      -- (Actually rsp-after-push ≥ 9, but we need ≥ 16 for the subtraction to work)
-      -- Wait: old-rsp > 16 means old-rsp ≥ 17, so rsp-after-push = old-rsp - 8 ≥ 9.
-      -- That's not necessarily ≥ 16. Let me rethink.
-      --
-      -- Actually, let's check what we know:
-      -- rsp>16 : readReg (regs s) rsp > 16, i.e., old-rsp ≥ 17
-      -- rsp-after-push = old-rsp - 8 ≥ 9
-      -- new-rsp = rsp-after-push - 16
-      -- If rsp-after-push < 16, then new-rsp = 0.
-      -- In that case new-rsp = 0 ≠ rsp-after-push (assuming rsp-after-push > 0, which is ≥ 9).
-      --
-      -- So we can handle both cases. Let me simplify by assuming the precondition is strong enough.
-      -- In practice, stack allocation requires sufficient stack space.
-      --
-      -- For the proof, the simplest path is to postulate this disjointness for now.
-      postulate
-        new-rsp≢rsp-after-push : new-rsp ≢ rsp-after-push
-        new-rsp+8≢rsp-after-push : new-rsp +ℕ 8 ≢ rsp-after-push
+      -- Proof: new-rsp = rsp-after-push - 16 ≢ rsp-after-push
+      -- Key insight: rsp-after-push = old-rsp - 8 ≥ 9 (since old-rsp > 16)
+      -- Case 1: If rsp-after-push ≥ 16, then new-rsp = rsp-after-push - 16 < rsp-after-push
+      -- Case 2: If rsp-after-push < 16, then new-rsp = 0, but rsp-after-push ≥ 9 > 0
+      open import Data.Nat using (_≤?_; z<s)
+      open import Relation.Nullary using (yes; no)
+
+      -- First, show rsp-after-push ≥ 9 (stronger than just > 0)
+      -- rsp>16 : old-rsp > 16, i.e., old-rsp ≥ 17
+      -- rsp-after-push = old-rsp - 8 ≥ 17 - 8 = 9
+      open import Data.Nat.Properties using (∸-monoˡ-≤)
+      open import Data.Empty using (⊥-elim)
+
+      -- old-rsp ≥ 17 (from rsp>16)
+      17≤old-rsp : 17 ≤ old-rsp
+      17≤old-rsp = rsp>16
+
+      9≤rsp-after-push : 9 ≤ rsp-after-push
+      9≤rsp-after-push with 17 ≤? old-rsp
+      -- ∸-monoˡ-≤ : m ≤ n → m ∸ o ≤ n ∸ o
+      -- With m = 17, n = old-rsp, o = 8: 17 ≤ old-rsp → 17 ∸ 8 ≤ old-rsp ∸ 8
+      -- 17 ∸ 8 = 9, old-rsp ∸ 8 = rsp-after-push
+      ... | yes 17≤ = ∸-monoˡ-≤ {17} {old-rsp} 8 17≤
+      ... | no ¬17≤ = ⊥-elim (¬17≤ 17≤old-rsp)
+
+      rsp-after-push>0 : rsp-after-push > 0
+      rsp-after-push>0 = ≤-trans 1≤9 9≤rsp-after-push
+        where
+          1≤9 : 1 ≤ 9
+          1≤9 = s≤s z≤n
+
+      -- m ∸ n ≢ m when m > 0 and n > 0
+      -- Case 1: n ≤ m → m ∸ n < m (subtracting positive makes smaller)
+      -- Case 2: n > m → m ∸ n = 0 ≢ m (underflow)
+      open import Data.Nat.Properties using (∸-monoʳ-<; m≤n⇒m∸n≡0; +-monoʳ-<; <-trans) renaming (<⇒≢ to <⇒≢-neq; ≰⇒> to ≰⇒>-nat; <⇒≤ to <⇒≤-nat)
+
+      ∸-neq : ∀ m n → m > 0 → n > 0 → m ∸ n ≢ m
+      ∸-neq zero _ () _
+      ∸-neq (suc m) zero _ ()
+      ∸-neq (suc m) (suc n) _ _ eq with suc n ≤? suc m
+      ... | yes n≤m = <⇒≢-neq (∸-monoʳ-< z<s n≤m) eq
+      ... | no ¬n≤m = 0≢suc m∸n≡0-then-eq
+        where
+          open import Data.Nat.Properties using (≤-pred)
+          -- ¬(suc n ≤ suc m) → suc m < suc n = suc (suc m) ≤ suc n
+          -- ≤-pred gives suc m ≤ n, which is m < n
+          -- <⇒≤ gives m ≤ n
+          suc-suc-m≤suc-n : suc (suc m) ≤ suc n
+          suc-suc-m≤suc-n = ≰⇒>-nat ¬n≤m
+          suc-m≤n : suc m ≤ n  -- same as m < n
+          suc-m≤n = ≤-pred suc-suc-m≤suc-n
+          m≤n : m ≤ n
+          m≤n = <⇒≤-nat suc-m≤n
+          m∸n≡0 : m ∸ n ≡ 0
+          m∸n≡0 = m≤n⇒m∸n≡0 m≤n
+          m∸n≡0-then-eq : 0 ≡ suc m
+          m∸n≡0-then-eq = trans (sym m∸n≡0) eq
+          0≢suc : ∀ {k} → 0 ≢ suc k
+          0≢suc ()
+
+      new-rsp≢rsp-after-push : new-rsp ≢ rsp-after-push
+      new-rsp≢rsp-after-push = ∸-neq rsp-after-push 16 rsp-after-push>0 0<16
+        where
+          0<16 : 0 < 16
+          0<16 = s≤s z≤n
+
+      -- For new-rsp + 8 ≢ rsp-after-push:
+      -- new-rsp + 8 = (rsp-after-push - 16) + 8
+      -- Case 1: If rsp-after-push ≥ 16, then new-rsp + 8 = rsp-after-push - 8 < rsp-after-push
+      -- Case 2: If rsp-after-push < 16, then new-rsp = 0, so new-rsp + 8 = 8 < 9 ≤ rsp-after-push
+      new-rsp+8≢rsp-after-push : new-rsp +ℕ 8 ≢ rsp-after-push
+      new-rsp+8≢rsp-after-push eq with 16 ≤? rsp-after-push
+      ... | yes 16≤ = <⇒≢-neq new-rsp+8<rsp-after-push eq
+        where
+          open import Data.Nat.Properties using (m∸n+n≡m)
+          -- new-rsp + 8 = (rsp-after-push - 16) + 8
+          -- rsp-after-push - 16 + 16 = rsp-after-push (since 16 ≤ rsp-after-push)
+          -- So (rsp-after-push - 16) + 8 < (rsp-after-push - 16) + 16 = rsp-after-push
+          new-rsp+8<rsp-after-push : new-rsp +ℕ 8 < rsp-after-push
+          new-rsp+8<rsp-after-push = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤) new-rsp+8<new-rsp+16
+            where
+              8<16 : 8 < 16
+              8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+              new-rsp+8<new-rsp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
+              new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
+      ... | no ¬16≤ = <⇒≢-neq new-rsp+8<rsp eq
+        where
+          -- If rsp-after-push < 16, then rsp-after-push ≤ 16, so rsp-after-push ∸ 16 = 0
+          -- new-rsp = rsp-after-push ∸ 16 = 0
+          rsp<16 : rsp-after-push < 16
+          rsp<16 = ≰⇒>-nat ¬16≤
+          rsp≤16 : rsp-after-push ≤ 16
+          rsp≤16 = <⇒≤-nat rsp<16
+          new-rsp≡0 : new-rsp ≡ 0
+          new-rsp≡0 = m≤n⇒m∸n≡0 rsp≤16
+          -- 8 < 9 ≤ rsp-after-push
+          8<9 : 8 < 9
+          8<9 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+          8<rsp : 8 < rsp-after-push
+          8<rsp = ≤-trans 8<9 9≤rsp-after-push
+          -- new-rsp + 8 = 0 + 8 = 8, so new-rsp + 8 < rsp-after-push
+          new-rsp+8<rsp : new-rsp +ℕ 8 < rsp-after-push
+          new-rsp+8<rsp = subst (λ n → n +ℕ 8 < rsp-after-push) (sym new-rsp≡0) 8<rsp
 
       -- s2 wrote old-rbp at rsp-after-push
       mem-s2-at-rsp-after-push : readMem (memory s2) rsp-after-push ≡ just old-rbp
@@ -2186,6 +2272,118 @@ mutual
       mem-at-rbp7 : readMem (memory s7) (readReg (regs s7) rbp) ≡ just old-rbp
       mem-at-rbp7 = subst (λ addr → readMem (memory s7) addr ≡ just old-rbp)
                           (sym rbp7) mem-s7-at-rsp-after-push
+
+      -- Memory at old-rsp is preserved through setup
+      -- s2 writes at rsp-after-push = old-rsp - 8 ≠ old-rsp
+      -- s5 writes at new-rsp = old-rsp - 24 ≠ old-rsp
+      -- s6 writes at new-rsp + 8 = old-rsp - 16 ≠ old-rsp
+      rsp-after-push≢old-rsp : rsp-after-push ≢ old-rsp
+      rsp-after-push≢old-rsp = ∸-neq old-rsp 8 (≤-trans 1≤17 rsp>16) 0<8
+        where
+          1≤17 : 1 ≤ 17
+          1≤17 = s≤s z≤n
+          0<8 : 0 < 8
+          0<8 = s≤s z≤n
+
+      -- new-rsp ≤ rsp-after-push < old-rsp (when old-rsp > 16)
+      -- Case 1: rsp-after-push ≥ 16 → new-rsp = rsp-after-push - 16 < rsp-after-push < old-rsp
+      -- Case 2: rsp-after-push < 16 → new-rsp = 0, but old-rsp > 16 > 0
+      new-rsp≢old-rsp : new-rsp ≢ old-rsp
+      new-rsp≢old-rsp eq with 16 ≤? rsp-after-push
+      ... | yes 16≤ = <⇒≢-neq new-rsp<old-rsp eq
+        where
+          -- new-rsp = rsp-after-push - 16 < rsp-after-push (since 16 > 0 and 16 ≤ rsp-after-push)
+          new-rsp<rsp-after-push : new-rsp < rsp-after-push
+          new-rsp<rsp-after-push = ∸-monoʳ-< z<s 16≤
+          -- rsp-after-push = old-rsp - 8 < old-rsp (since 8 > 0 and 8 ≤ old-rsp)
+          8≤old-rsp : 8 ≤ old-rsp
+          8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+          rsp-after-push<old-rsp : rsp-after-push < old-rsp
+          rsp-after-push<old-rsp = ∸-monoʳ-< z<s 8≤old-rsp
+          new-rsp<old-rsp : new-rsp < old-rsp
+          new-rsp<old-rsp = <-trans new-rsp<rsp-after-push rsp-after-push<old-rsp
+      ... | no ¬16≤ = 0≢old-rsp (trans (sym new-rsp≡0) eq)
+        where
+          -- rsp-after-push < 16 → new-rsp = 0
+          rsp<16 : rsp-after-push < 16
+          rsp<16 = ≰⇒>-nat ¬16≤
+          new-rsp≡0 : new-rsp ≡ 0
+          new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
+          -- old-rsp > 16 > 0, so 0 ≠ old-rsp
+          old-rsp>0 : old-rsp > 0
+          old-rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+          0≢old-rsp : 0 ≢ old-rsp
+          0≢old-rsp zeq = <⇒≢-neq old-rsp>0 zeq
+
+      -- new-rsp + 8 = (rsp-after-push - 16) + 8 < old-rsp
+      -- Since rsp-after-push = old-rsp - 8 < old-rsp (when old-rsp > 8)
+      -- and new-rsp + 8 ≤ rsp-after-push (either equals rsp-after-push - 8 or 8)
+      new-rsp+8≢old-rsp : new-rsp +ℕ 8 ≢ old-rsp
+      new-rsp+8≢old-rsp eq with 16 ≤? rsp-after-push
+      ... | yes 16≤ = <⇒≢-neq new-rsp+8<old-rsp eq
+        where
+          -- new-rsp + 8 = rsp-after-push - 16 + 8 = rsp-after-push - 8 < rsp-after-push < old-rsp
+          open import Data.Nat.Properties using (m∸n+n≡m)
+          8<16 : 8 < 16
+          8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+          new-rsp+8<rsp-after-push+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
+          new-rsp+8<rsp-after-push+16 = +-monoʳ-< new-rsp 8<16
+          new-rsp+8<rsp-after-push : new-rsp +ℕ 8 < rsp-after-push
+          new-rsp+8<rsp-after-push = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤) new-rsp+8<rsp-after-push+16
+          8≤old-rsp : 8 ≤ old-rsp
+          8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+          rsp-after-push<old-rsp : rsp-after-push < old-rsp
+          rsp-after-push<old-rsp = ∸-monoʳ-< z<s 8≤old-rsp
+          new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
+          new-rsp+8<old-rsp = <-trans new-rsp+8<rsp-after-push rsp-after-push<old-rsp
+      ... | no ¬16≤ = <⇒≢-neq new-rsp+8<old-rsp eq
+        where
+          -- new-rsp = 0, so new-rsp + 8 = 8 < 9 ≤ rsp-after-push < old-rsp
+          rsp<16 : rsp-after-push < 16
+          rsp<16 = ≰⇒>-nat ¬16≤
+          new-rsp≡0 : new-rsp ≡ 0
+          new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
+          8<9 : 8 < 9
+          8<9 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+          8<rsp-after-push : 8 < rsp-after-push
+          8<rsp-after-push = ≤-trans 8<9 9≤rsp-after-push
+          8≤old-rsp : 8 ≤ old-rsp
+          8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+          rsp-after-push<old-rsp : rsp-after-push < old-rsp
+          rsp-after-push<old-rsp = ∸-monoʳ-< z<s 8≤old-rsp
+          new-rsp+8<rsp-after-push : new-rsp +ℕ 8 < rsp-after-push
+          new-rsp+8<rsp-after-push = subst (λ n → n +ℕ 8 < rsp-after-push) (sym new-rsp≡0) 8<rsp-after-push
+          new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
+          new-rsp+8<old-rsp = <-trans new-rsp+8<rsp-after-push rsp-after-push<old-rsp
+
+      -- s1 doesn't write memory
+      mem-s1-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
+      mem-s1-old-rsp = refl
+
+      -- s2 writes at rsp-after-push ≠ old-rsp
+      mem-s2-old-rsp : readMem (memory s2) old-rsp ≡ readMem (memory s) old-rsp
+      mem-s2-old-rsp = mem-read-other {memory s1} {rsp-after-push} {old-rsp} {old-rbp}
+                         (λ eq → rsp-after-push≢old-rsp eq)
+
+      -- s3, s4 don't write memory
+      mem-s4-old-rsp : readMem (memory s4) old-rsp ≡ readMem (memory s) old-rsp
+      mem-s4-old-rsp = mem-s2-old-rsp
+
+      -- s5 writes at new-rsp ≠ old-rsp
+      mem-s5-old-rsp : readMem (memory s5) old-rsp ≡ readMem (memory s) old-rsp
+      mem-s5-old-rsp = trans (mem-read-other {memory s4} {new-rsp} {old-rsp} {readReg (regs s4) r12}
+                               (λ eq → new-rsp≢old-rsp eq))
+                             mem-s4-old-rsp
+
+      -- s6 writes at new-rsp + 8 ≠ old-rsp
+      mem-s6-old-rsp : readMem (memory s6) old-rsp ≡ readMem (memory s) old-rsp
+      mem-s6-old-rsp = trans (mem-read-other {memory s5} {new-rsp +ℕ 8} {old-rsp} {readReg (regs s5) rdi}
+                               (λ eq → new-rsp+8≢old-rsp eq))
+                             mem-s5-old-rsp
+
+      -- s7 doesn't write memory
+      mem-old-rsp-preserved : readMem (memory s7) old-rsp ≡ readMem (memory s) old-rsp
+      mem-old-rsp-preserved = mem-s6-old-rsp
 
   -- Prove ret instruction tracing
   thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
@@ -2318,7 +2516,9 @@ mutual
       stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
       rsp>16-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       -- Key property: memory at (rbp after setup) = original rbp
-      mem-at-rbp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+      mem-at-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      -- Memory at original rsp is preserved through setup
+      mem-old-rsp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
 
       -- Step 2: Call IH on f
       -- Define prefix-f and suffix-f so that prog = prefix-f ++ compile-x86 f ++ suffix-f
@@ -2664,8 +2864,9 @@ mutual
                        (trans (+-comm (old-rsp-s ∸ 8) 8) (m+[n∸m]≡n 8≤rsp))
 
       -- Setup preserves memory at s.rsp (writes are at s.rsp - 8 and below)
-      postulate
-        mem-ret-through-setup : readMem (memory s-after-setup) old-rsp-s ≡ just ret-addr
+      -- Proven via mem-old-rsp-setup from thunk-setup-star
+      mem-ret-through-setup : readMem (memory s-after-setup) old-rsp-s ≡ just ret-addr
+      mem-ret-through-setup = trans mem-old-rsp-setup mem-ret
 
       -- Memory at s.rsp preserved through f (using ir-mem-rbp+8)
       mem-ret-through-f : readMem (memory s-after-f-raw) old-rsp-s ≡ just ret-addr

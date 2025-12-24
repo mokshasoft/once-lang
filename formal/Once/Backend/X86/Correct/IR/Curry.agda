@@ -33,8 +33,8 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-stack-inv; ir-rsp-bound)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; m∸n≤m; m<m+n; 0<1+n) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat using (ℕ; suc; _∸_; _>_; _≤_; _<_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -591,12 +591,129 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
                   (trans mem-s3-eq (trans mem-s2-eq mem-s1-eq)))))
 
     -- Memory at rbp and rbp+8 preservation
-    -- POSTULATE: To prove this, we need rbp ≢ new-rsp and rbp ≢ new-rsp+8.
-    -- In the curry-thunk context, rbp = original frame pointer > rsp > new-rsp,
-    -- so the disjointness holds. Would need an RbpInvariant or precondition.
-    postulate
-      mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    -- Proved via RbpInvariant: rsp ≤ rbp, so new-rsp = rsp-16 < rsp ≤ rbp
+    orig-rbp : Word
+    orig-rbp = readReg (regs s) rbp
+
+    -- RbpInvariant: s.rsp ≤ s.rbp (stack pointer at or below frame pointer)
+    postulate rbp-inv : RbpInvariant s
+
+    -- new-rsp < rbp: since new-rsp = rsp - 16 < rsp ≤ rbp
+    -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
+    -- With o = 0, n = 16, m = orig-rsp: 0 < 16 → 16 ≤ orig-rsp → orig-rsp ∸ 16 < orig-rsp
+    16≤orig-rsp : 16 ≤ orig-rsp
+    16≤orig-rsp = <⇒≤ rsp>16
+
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp = ≤-trans new-rsp<orig-rsp (RbpInvariant.rsp≤rbp rbp-inv)
+      where
+        new-rsp<orig-rsp : new-rsp < orig-rsp
+        new-rsp<orig-rsp = ∸-monoʳ-< 0<16 16≤orig-rsp
+          where
+            0<16 : 0 < 16
+            0<16 = m<m+n 0 0<1+n
+
+    -- For new-rsp + 8 < rbp:
+    -- new-rsp + 8 < orig-rsp (since 8 < 16 and 16 ≤ orig-rsp)
+    -- orig-rsp ≤ rbp (from RbpInvariant)
+    -- Therefore new-rsp + 8 < rbp
+    new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
+    new-rsp+8<rbp = ≤-trans new-rsp+8<orig-rsp (RbpInvariant.rsp≤rbp rbp-inv)
+      where
+        -- (rsp - 16) + 8 < rsp when 8 < 16 and 16 ≤ rsp
+        -- Using ∸-monoʳ-< with o=0, n=8: 0 < 8 → 8 ≤ m → m ∸ 8 < m
+        -- But we have (rsp - 16) + 8, not rsp - 8
+        -- Key: (rsp - 16) + 8 < (rsp - 16) + 16 = rsp (when rsp ≥ 16)
+        8<16 : 8 < 16
+        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        new-rsp+8<new-rsp+16 : (new-rsp +ℕ 8) < (new-rsp +ℕ 16)
+        new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
+        new-rsp+16≡orig-rsp : (new-rsp +ℕ 16) ≡ orig-rsp
+        new-rsp+16≡orig-rsp = m∸n+n≡m 16≤orig-rsp
+        new-rsp+8<orig-rsp : (new-rsp +ℕ 8) < orig-rsp
+        new-rsp+8<orig-rsp = subst ((new-rsp +ℕ 8) <_) new-rsp+16≡orig-rsp new-rsp+8<new-rsp+16
+
+    -- Disjointness: new-rsp ≢ rbp and new-rsp+8 ≢ rbp
+    rbp-diff-1 : new-rsp ≢ orig-rbp
+    rbp-diff-1 eq = Nat-<⇒≢ new-rsp<rbp eq
+
+    rbp-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp
+    rbp-diff-2 eq = Nat-<⇒≢ new-rsp+8<rbp eq
+
+    -- Chain memory preservation through all states
+    mem-rbp-s1 : readMem (memory s1) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-rbp-s1 = refl
+
+    mem-rbp-s2 : readMem (memory s2) orig-rbp ≡ readMem (memory s1) orig-rbp
+    mem-rbp-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) orig-rbp
+                   (readReg (regs s1) rdi) (subst (λ addr → addr ≢ orig-rbp) (sym rsp-s1) rbp-diff-1)
+
+    mem-rbp-s3 : readMem (memory s3) orig-rbp ≡ readMem (memory s2) orig-rbp
+    mem-rbp-s3 = refl
+
+    mem-rbp-s4 : readMem (memory s4) orig-rbp ≡ readMem (memory s3) orig-rbp
+    mem-rbp-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) orig-rbp
+                   (readReg (regs s3) r9)
+                   (subst (λ addr → addr +ℕ 8 ≢ orig-rbp) (sym rsp-s3) rbp-diff-2)
+
+    mem-rbp-s5 : readMem (memory s5) orig-rbp ≡ readMem (memory s4) orig-rbp
+    mem-rbp-s5 = refl
+
+    mem-rbp-s6 : readMem (memory s6) orig-rbp ≡ readMem (memory s5) orig-rbp
+    mem-rbp-s6 = refl
+
+    mem-rbp-s7 : readMem (memory s7) orig-rbp ≡ readMem (memory s6) orig-rbp
+    mem-rbp-s7 = refl
+
+    mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp-final = trans mem-rbp-s7 (trans mem-rbp-s6 (trans mem-rbp-s5 (trans mem-rbp-s4
+                      (trans mem-rbp-s3 (trans mem-rbp-s2 mem-rbp-s1)))))
+
+    -- Similarly for rbp+8
+    orig-rbp+8 : Word
+    orig-rbp+8 = readReg (regs s) rbp +ℕ 8
+
+    -- new-rsp < rbp ≤ rbp+8, so new-rsp < rbp+8
+    -- new-rsp<rbp : suc new-rsp ≤ rbp, and rbp ≤ rbp+8, gives suc new-rsp ≤ rbp+8
+    new-rsp<rbp+8 : new-rsp < orig-rbp+8
+    new-rsp<rbp+8 = ≤-trans new-rsp<rbp (m≤m+n orig-rbp 8)
+
+    new-rsp+8<rbp+8 : (new-rsp +ℕ 8) < orig-rbp+8
+    new-rsp+8<rbp+8 = ≤-trans new-rsp+8<rbp (m≤m+n orig-rbp 8)
+
+    rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
+    rbp+8-diff-1 eq = Nat-<⇒≢ new-rsp<rbp+8 eq
+
+    rbp+8-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp+8
+    rbp+8-diff-2 eq = Nat-<⇒≢ new-rsp+8<rbp+8 eq
+
+    mem-rbp+8-s1 : readMem (memory s1) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-rbp+8-s1 = refl
+
+    mem-rbp+8-s2 : readMem (memory s2) orig-rbp+8 ≡ readMem (memory s1) orig-rbp+8
+    mem-rbp+8-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) orig-rbp+8
+                     (readReg (regs s1) rdi) (subst (λ addr → addr ≢ orig-rbp+8) (sym rsp-s1) rbp+8-diff-1)
+
+    mem-rbp+8-s3 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s2) orig-rbp+8
+    mem-rbp+8-s3 = refl
+
+    mem-rbp+8-s4 : readMem (memory s4) orig-rbp+8 ≡ readMem (memory s3) orig-rbp+8
+    mem-rbp+8-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) orig-rbp+8
+                     (readReg (regs s3) r9)
+                     (subst (λ addr → addr +ℕ 8 ≢ orig-rbp+8) (sym rsp-s3) rbp+8-diff-2)
+
+    mem-rbp+8-s5 : readMem (memory s5) orig-rbp+8 ≡ readMem (memory s4) orig-rbp+8
+    mem-rbp+8-s5 = refl
+
+    mem-rbp+8-s6 : readMem (memory s6) orig-rbp+8 ≡ readMem (memory s5) orig-rbp+8
+    mem-rbp+8-s6 = refl
+
+    mem-rbp+8-s7 : readMem (memory s7) orig-rbp+8 ≡ readMem (memory s6) orig-rbp+8
+    mem-rbp+8-s7 = refl
+
+    mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-final = trans mem-rbp+8-s7 (trans mem-rbp+8-s6 (trans mem-rbp+8-s5 (trans mem-rbp+8-s4
+                        (trans mem-rbp+8-s3 (trans mem-rbp+8-s2 mem-rbp+8-s1)))))
 
     -- StackInvariant preservation
     stack-inv-helper : StackInvariant s → StackInvariant s-final
