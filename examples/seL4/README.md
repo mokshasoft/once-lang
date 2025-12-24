@@ -98,6 +98,37 @@ Each shell provides:
      -o build/rootserver.elf build/rootserver.c
    ```
 
+### Native Assembly Generation
+
+The Once compiler can generate native assembly instead of C for tighter
+integration and smaller code size. Use `--target` to select the architecture:
+
+```bash
+# Generate x86-64 assembly (library mode)
+stack exec -- once build \
+  --target x86_64 \
+  --strata ../Strata \
+  -I:x86_64 I.SeL4.IPC \
+  ../examples/seL4/EchoServer/echo-client-simple.once \
+  -o ../examples/seL4/build/echo-client
+
+# This generates echo-client.s (assembly file)
+```
+
+Supported targets:
+- `x86_64` - x86-64 assembly (AT&T syntax for GNU assembler)
+- `arm64` - ARM64/AArch64 assembly
+- `riscv64` - RISC-V 64-bit assembly
+- `c` - C code (default, most complete)
+
+The native targets use interpretation files with matching extensions:
+- `-I:x86_64 I.SeL4.IPC` uses `Strata/Interpretations/SeL4/IPC.x86_64`
+- `-I:C I.SeL4.IPC` uses `Strata/Interpretations/SeL4/IPC.c`
+
+**Note:** The native assembly generators support let-bindings, integer
+constants, and function calls. For full language support (strings, complex
+closures), use the C backend.
+
 ## Running in QEMU
 
 Use the simulation scripts:
