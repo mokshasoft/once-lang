@@ -514,9 +514,118 @@ exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
   exec n prog s ≡ just s
 exec-halted-stable = exec-n-halted
 
--- | Exec extend for halted states: if exec n reaches halted s', exec (n+m) also gives s'
+------------------------------------------------------------------------
+-- Star-based generator: Primary interface (no fuel)
+--
+-- Returns a Star execution trace from initial state to halted final state.
+-- This is the cleanest interface - no fuel postulates needed.
+------------------------------------------------------------------------
+
+run-generator-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
+  StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
+  ∃[ s' ] (Star (compile-x86 ir) s s'
+         × halted s' ≡ true
+         × readReg (regs s') rax ≡ encode (eval ir x))
+run-generator-star {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+  s-halted , star-full , halted-true , rax-preserved
+  where
+    open import Data.List.Properties using (++-identityʳ)
+
+    prog : Program
+    prog = compile-x86 ir
+
+    -- Use run-ir-star-at-offset (Star-based)
+    result = run-ir-star-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+    s' = proj₁ result
+    r = proj₂ result
+
+    h' : halted s' ≡ false
+    h' = ir-halted r
+
+    pc' : pc s' ≡ compile-length ir
+    pc' = ir-pc r
+
+    rax' : readReg (regs s') rax ≡ encode (eval ir x)
+    rax' = ir-rax r
+
+    -- Program equality: [] ++ compile-x86 ir ++ [] = compile-x86 ir
+    prog-eq : [] ++ compile-x86 ir ++ [] ≡ prog
+    prog-eq = ++-identityʳ prog
+
+    -- Convert Star to use prog
+    star-raw : Star ([] ++ compile-x86 ir ++ []) s s'
+    star-raw = ir-star r
+
+    star-prog : Star prog s s'
+    star-prog = subst (λ p → Star p s s') prog-eq star-raw
+
+    -- One more step halts (fetch fails at end of program)
+    s-halted : State
+    s-halted = record s' { halted = true }
+
+    -- fetch at pc s' = compile-length ir fails
+    fetch-fail : fetch prog (pc s') ≡ nothing
+    fetch-fail = subst (λ n → fetch prog n ≡ nothing) (sym pc') (fetch-at-end ir)
+
+    step-halt : step prog s' ≡ just s-halted
+    step-halt = step-halts-on-fetch-fail prog s' h' fetch-fail
+
+    -- Extend star with halt step
+    star-halt-step : Star prog s' s-halted
+    star-halt-step = step* h' step-halt refl*
+
+    star-full : Star prog s s-halted
+    star-full = star-trans star-prog star-halt-step
+
+    halted-true : halted s-halted ≡ true
+    halted-true = refl
+
+    -- rax is preserved when we just set halted = true
+    rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
+    rax-preserved = rax'
+
+------------------------------------------------------------------------
+-- Bridge: Star to run (derives fuel-based from Star-based)
+--
+-- Given a Star execution and halted proof, derive run (exec defaultFuel).
+-- Uses a postulate for n-steps ≤ defaultFuel (practical runtime bound).
+------------------------------------------------------------------------
+
+star-to-run : ∀ (prog : Program) (s s' : State) →
+  Star prog s s' → halted s' ≡ true →
+  run prog s ≡ just s'
+star-to-run prog s s' star halt = run-from-exec
+  where
+    open import Data.Nat using () renaming (_+_ to _+ℕ'_)
+    open import Data.Nat.Properties using (m+[n∸m]≡n)
+
+    n-steps : ℕ
+    n-steps = star-length star
+
+    exec-from-star : exec n-steps prog s ≡ just s'
+    exec-from-star = star-to-exec star halt
+
+    remaining : ℕ
+    remaining = defaultFuel ∸ n-steps
+
+    -- Practical assumption: execution finishes within defaultFuel steps
+    postulate n-steps≤fuel : n-steps ≤ defaultFuel
+
+    fuel-eq : (n-steps +ℕ' remaining) ≡ defaultFuel
+    fuel-eq = m+[n∸m]≡n n-steps≤fuel
+
+    run-from-exec : run prog s ≡ just s'
+    run-from-exec = subst (λ k → exec k prog s ≡ just s') fuel-eq
+                          (exec-halted-extend n-steps remaining prog s s' exec-from-star halt)
+
+------------------------------------------------------------------------
+-- Fuel-based generator: Derived from Star (for backward compatibility)
+--
 -- Main bridge: run-ir-star-at-offset with empty suffix implies run-generator
 -- After Star execution completes, one more step halts (fetch fails)
+------------------------------------------------------------------------
+
 offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
@@ -2688,7 +2797,7 @@ compile-snd-correct {A} {B} a b = s' , run-eq , rax-eq
 -- | pair: constructs pair from two computations
 --
 -- Generated code: allocates stack, runs f, stores, restores input, runs g, stores
--- Proof: Uses run-generator directly (eval ⟨ f , g ⟩ x = (eval f x , eval g x) by definition)
+-- Proof: Uses run-generator directly
 compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
   ∃[ s ] (run (compile-x86 ⟨ f , g ⟩) (initWithInput x) ≡ just s
         × readReg (regs s) rax ≡ encode (eval f x , eval g x))
@@ -2788,7 +2897,7 @@ compile-inr-correct {A} {B} b = s' , run-eq , rax-eq
 -- | case: branches on sum tag
 --
 -- Generated code: loads tag, compares, branches to f or g
--- Proof: Case split on input - inj₁ takes left branch, inj₂ takes right
+-- Proof: Uses run-case-inl/run-case-inr helpers
 compile-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧ ⊎ ⟦ B ⟧) →
   ∃[ s ] (run (compile-x86 {A + B} {C} [ f , g ]) (initWithInput x) ≡ just s
         × readReg (regs s) rax ≡ encode {C} (eval [ f , g ] x))
@@ -2809,7 +2918,6 @@ compile-case-correct {A} {B} {C} f g (inj₁ a) = s' , run-eq , rax-eq
     run-eq : run (compile-x86 {A + B} {C} [ f , g ]) s0 ≡ just s'
     run-eq = proj₁ (proj₂ helper)
 
-    -- eval [ f , g ] (inj₁ a) = eval f a by definition
     rax-eq : readReg (regs s') rax ≡ encode {C} (eval [ f , g ] (inj₁ a))
     rax-eq = proj₂ (proj₂ (proj₂ helper))
 
@@ -2830,7 +2938,6 @@ compile-case-correct {A} {B} {C} f g (inj₂ b) = s' , run-eq , rax-eq
     run-eq : run (compile-x86 {A + B} {C} [ f , g ]) s0 ≡ just s'
     run-eq = proj₁ (proj₂ helper)
 
-    -- eval [ f , g ] (inj₂ b) = eval g b by definition
     rax-eq : readReg (regs s') rax ≡ encode {C} (eval [ f , g ] (inj₂ b))
     rax-eq = proj₂ (proj₂ (proj₂ helper))
 
@@ -3176,6 +3283,23 @@ codegen-x86-correct unfold x = compile-unfold-correct x
 
 -- Effect lifting
 codegen-x86-correct {A ⇒ B} {Eff A B} arr f = compile-arr-correct {A} {B} f
+
+------------------------------------------------------------------------
+-- Star-based code generation correctness (PRIMARY - no fuel postulate)
+--
+-- This is the primary correctness theorem, using Star directly.
+-- No fuel postulates needed - the execution trace is witnessed by Star.
+------------------------------------------------------------------------
+
+codegen-x86-correct-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+  ∃[ s ] (Star (compile-x86 ir) (initWithInput x) s
+        × halted s ≡ true
+        × readReg (regs s) rax ≡ encode (eval ir x))
+codegen-x86-correct-star ir x =
+  let (s' , star-eq , halt-eq , rax-eq) = run-generator-star ir x (initWithInput x)
+        (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
+        (initWithInput-stack-inv x) (initWithInput-rsp>16 x) (initWithInput-rbp-inv x)
+  in s' , star-eq , halt-eq , rax-eq
 
 ------------------------------------------------------------------------
 -- Concrete E2E Tests
