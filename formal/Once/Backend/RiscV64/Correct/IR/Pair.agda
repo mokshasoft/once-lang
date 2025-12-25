@@ -603,9 +603,10 @@ pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × pc s' ≡ final-offset +ℕ 3
           × readReg (regs s') a0 ≡ encode (eval f x , eval g x)
           × readReg (regs s') s1 ≡ orig-s1
-          × readReg (regs s') ra ≡ readReg (regs sg) ra)
+          × readReg (regs s') ra ≡ readReg (regs sg) ra
+          × readReg (regs s') sp ≡ readReg (regs sg) sp)
 pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 sf sg h-false pc-eq a0-eq mem-f mem-s1 =
-  st3 , star-all , h3 , pc3 , a0-final , s1-st3 , ra-st3
+  st3 , star-all , h3 , pc3 , a0-final , s1-st3 , ra-st3 , sp-st3
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -730,6 +731,10 @@ pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 sf sg h-false pc-eq a0-e
 
     ra-st3 : readReg (regs st3) ra ≡ readReg (regs sg) ra
     ra-st3 = trans (readReg-writeReg-s1-ra (regs st2) orig-s1) ra-st2
+
+    -- sp tracking through all states
+    sp-st3 : readReg (regs st3) sp ≡ readReg (regs sg) sp
+    sp-st3 = trans (readReg-writeReg-s1-sp (regs st2) orig-s1) sp-st2
 
     -- s1 gets the value orig-s1 directly from writeReg
     s1-st3 : readReg (regs st3) s1 ≡ orig-s1
