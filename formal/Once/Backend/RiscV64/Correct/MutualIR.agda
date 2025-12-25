@@ -661,28 +661,50 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     -- SP tracking: inr allocates 16 bytes on stack (sp -= 16)
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
+
+    -- Stack space precondition (will be threaded through in Phase 6)
     postulate
-      sp-final : readReg (regs st5) sp +ℕ 16 ≡ readReg (regs s) sp
+      stack-space : 16 ≤ orig-sp
+
+    sp-final : readReg (regs st5) sp +ℕ 16 ≡ readReg (regs s) sp
+    sp-final = trans (cong (_+ℕ 16) sp-st4) (m∸n+n≡m stack-space)
 
     -- Memory preservation: inr writes at new-sp and new-sp + 8 (16 and 8 bytes BELOW orig-sp).
     -- Memory at orig-sp and above is preserved because write addresses are disjoint.
-    -- These require orig-sp > 0 (realistic for any valid stack pointer).
     --
-    -- Address disjointness: new-sp = orig-sp ∸ 16, so for orig-sp ≥ 16:
-    --   new-sp ≢ orig-sp (since 16 ≢ 0)
-    --   new-sp + 8 ≢ orig-sp (since 8 ≢ 0)
-    --   new-sp ≢ orig-sp + 8, + 16 (since 24 ≢ 0, 32 ≢ 0)
-    --   new-sp + 8 ≢ orig-sp + 8, + 16 (since 16 ≢ 0, 24 ≢ 0)
-    postulate
-      -- Address disjointness (requires orig-sp ≥ 16 for monus to work correctly)
-      new-sp≢orig-sp : new-sp ≢ orig-sp
-      new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
-      new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
-      new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
-      new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
-      new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
-      new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
-      new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+    -- Address disjointness using monus lemmas from Foundation
+
+    0<16 : 0 < 16
+    0<16 = z<s
+
+    8<16 : 8 < 16
+    8<16 = s<s (s<s (s<s (s<s (s<s (s<s (s<s (s<s z<s)))))))
+
+    -- All 8 disjointness lemmas
+    new-sp≢orig-sp : new-sp ≢ orig-sp
+    new-sp≢orig-sp = monus-neq-self 16 orig-sp stack-space 0<16
+
+    new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
+    new-sp≢orig-sp+8 = monus-neq-plus 16 orig-sp 8 stack-space 0<16
+
+    new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
+    new-sp≢orig-sp+16 = monus-neq-plus 16 orig-sp 16 stack-space 0<16
+
+    new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
+    new-sp≢orig-sp+24 = monus-neq-plus 16 orig-sp 24 stack-space 0<16
+
+    new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
+    new-sp+8≢orig-sp eq = monus-plus-neq-plus 16 orig-sp 8 0 stack-space 8<16
+      (trans eq (sym (+-identityʳ orig-sp)))
+
+    new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
+    new-sp+8≢orig-sp+8 = monus-plus-neq-plus 16 orig-sp 8 8 stack-space 8<16
+
+    new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
+    new-sp+8≢orig-sp+16 = monus-plus-neq-plus 16 orig-sp 8 16 stack-space 8<16
+
+    new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+    new-sp+8≢orig-sp+24 = monus-plus-neq-plus 16 orig-sp 8 24 stack-space 8<16
 
     -- Actual write addresses (as used in state definitions)
     -- st3: sd t0 0(sp) writes tag at sp + 0
