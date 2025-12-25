@@ -76,7 +76,7 @@ open import Once.Backend.RiscV64.Correct.IR.Apply
   using (run-apply-with-wf; apply-setup-star; apply-jalr-star; apply-nop-star)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -270,28 +270,63 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     -- SP tracking: inl allocates 16 bytes on stack (sp -= 16)
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
+
+    -- Stack space precondition (will be threaded through in Phase 6)
     postulate
-      sp-final : readReg (regs st4) sp +ℕ 16 ≡ readReg (regs s) sp
+      stack-space : 16 ≤ orig-sp
+
+    sp-final : readReg (regs st4) sp +ℕ 16 ≡ readReg (regs s) sp
+    sp-final = trans (cong (_+ℕ 16) sp-st3) (m∸n+n≡m stack-space)
 
     -- Memory preservation: inl writes at new-sp and new-sp + 8 (16 and 8 bytes BELOW orig-sp).
     -- Memory at orig-sp and above is preserved because write addresses are disjoint.
-    -- These require orig-sp > 0 (realistic for any valid stack pointer).
     --
     -- Address disjointness: new-sp = orig-sp ∸ 16, so for orig-sp ≥ 16:
     --   new-sp ≢ orig-sp (since 16 ≢ 0)
     --   new-sp + 8 ≢ orig-sp (since 8 ≢ 0)
-    --   new-sp ≢ orig-sp + 8, + 16 (since 24 ≢ 0, 32 ≢ 0)
-    --   new-sp + 8 ≢ orig-sp + 8, + 16 (since 16 ≢ 0, 24 ≢ 0)
-    postulate
-      -- Address disjointness (requires orig-sp ≥ 16 for monus to work correctly)
-      new-sp≢orig-sp : new-sp ≢ orig-sp
-      new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
-      new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
-      new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
-      new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
-      new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
-      new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
-      new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+    --   new-sp ≢ orig-sp + 8, + 16, + 24 (always true when orig-sp ≥ 16)
+    --   new-sp + 8 ≢ orig-sp + 8, + 16, + 24 (always true when orig-sp ≥ 16)
+    --
+    -- All 8 disjointness lemmas proven using monus-plus-neq-plus with n=16
+
+    -- Helper: 0 < 16 and 8 < 16 for the monus lemmas
+    0<16 : 0 < 16
+    0<16 = z<s
+
+    -- 8 < 16 = suc 8 ≤ 16 = 9 ≤ 16
+    -- Need 8 applications of s<s then z<s
+    8<16 : 8 < 16
+    8<16 = s<s (s<s (s<s (s<s (s<s (s<s (s<s (s<s z<s)))))))
+
+    -- All 8 disjointness lemmas
+    -- Use monus-neq-self and monus-neq-plus when LHS offset is 0
+    -- Use monus-plus-neq-plus when LHS has +8
+
+    new-sp≢orig-sp : new-sp ≢ orig-sp
+    new-sp≢orig-sp = monus-neq-self 16 orig-sp stack-space 0<16
+
+    new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
+    new-sp≢orig-sp+8 = monus-neq-plus 16 orig-sp 8 stack-space 0<16
+
+    new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
+    new-sp≢orig-sp+16 = monus-neq-plus 16 orig-sp 16 stack-space 0<16
+
+    new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
+    new-sp≢orig-sp+24 = monus-neq-plus 16 orig-sp 24 stack-space 0<16
+
+    -- For new-sp+8 cases, need to convert orig-sp to (orig-sp +ℕ 0) on RHS
+    new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
+    new-sp+8≢orig-sp eq = monus-plus-neq-plus 16 orig-sp 8 0 stack-space 8<16
+      (trans eq (sym (+-identityʳ orig-sp)))
+
+    new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
+    new-sp+8≢orig-sp+8 = monus-plus-neq-plus 16 orig-sp 8 8 stack-space 8<16
+
+    new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
+    new-sp+8≢orig-sp+16 = monus-plus-neq-plus 16 orig-sp 8 16 stack-space 8<16
+
+    new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+    new-sp+8≢orig-sp+24 = monus-plus-neq-plus 16 orig-sp 8 24 stack-space 8<16
 
     -- Actual write addresses (as used in state definitions)
     write-addr-st2 : ℕ
