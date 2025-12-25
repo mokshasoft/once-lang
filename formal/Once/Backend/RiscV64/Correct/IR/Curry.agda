@@ -42,8 +42,8 @@ open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; suc; _∸_; _≤_; _<_; z<s; s<s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n+n≡m)
+open import Data.Nat using (ℕ; suc; _∸_; _≤_; z≤n; s≤s; _<_; z<s; s<s) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n+n≡m; ≤-trans)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -61,9 +61,10 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
+  24 ≤ readReg (regs s) sp →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
   in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
   s-final , record
     { ir-star   = star-all
     ; ir-halted = h-final
@@ -643,9 +644,12 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
 
-    -- Stack space precondition (will be threaded through in Phase 6)
-    postulate
-      stack-space : 16 ≤ orig-sp
+    -- Stack space: derived from sp-bound (24 ≤ orig-sp) since 16 ≤ 24
+    16≤24 : 16 ≤ 24
+    16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+
+    stack-space : 16 ≤ orig-sp
+    stack-space = ≤-trans 16≤24 sp-bound
 
     sp-final : readReg (regs s-final) sp +ℕ 16 ≡ readReg (regs s) sp
     sp-final = trans (cong (_+ℕ 16) sp-st8) (m∸n+n≡m stack-space)
