@@ -363,8 +363,16 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
 
+    -- Derive rsp > 24 from rsp > 40 (from postulate)
+    rsp>24 : readReg (regs s) rsp > 24
+    rsp>24 = ≤-trans 25≤41 (rsp-bound-after-stack-op s)
+      where
+        open import Data.Nat.Properties using (≤-trans)
+        25≤41 : 25 ≤ 41
+        25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+
     -- Execute 7 setup instructions
-    setup-result = exec-pair-setup-at-7 prefix rest-for-setup s h-false pc-eq
+    setup-result = exec-pair-setup-at-7 prefix rest-for-setup s h-false pc-eq rsp>24
 
     s-setup = proj₁ setup-result
     exec-setup = proj₁ (proj₂ setup-result)
@@ -374,7 +382,11 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
     r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
     rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-    rbp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+    rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+    -- New memory proofs (currently unused but available)
+    -- mem-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+    -- mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+    -- mem-r14-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
 
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     r14-setup = r14-setup-raw
@@ -403,7 +415,11 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
         rsp≤r15 = subst (readReg (regs s-setup) rsp ≤_) (sym rsp-r15-eq) ≤-refl
 
     rsp>16-setup : readReg (regs s-setup) rsp > 16
-    rsp>16-setup = rsp-bound-after-stack-op s-setup
+    rsp>16-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
+      where
+        open import Data.Nat.Properties using (≤-trans)
+        17≤41 : 17 ≤ 41
+        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
 ------------------------------------------------------------------------
 -- Middle Result: state after 2 middle instructions (store f result, restore input)
@@ -1319,7 +1335,11 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
                (readReg-writeReg-same (regs s6) rbp v-rbp)))))
 
       rsp>16-s9 : readReg (regs s9) rsp > 16
-      rsp>16-s9 = rsp-bound-after-stack-op s9
+      rsp>16-s9 = ≤-trans 17≤41 (rsp-bound-after-stack-op s9)
+        where
+          open import Data.Nat.Properties using (≤-trans)
+          17≤41 : 17 ≤ 41
+          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
       -- ========== Stack invariant proof (via restored rsp and r15) ==========
       -- After the pop sequence: rsp-s9 = rsp-s and r15-s9 = r15-s

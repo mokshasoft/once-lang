@@ -733,7 +733,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     stack-inv-final = stack-inv-helper stack-inv
 
     rsp>16-final : readReg (regs s-final) rsp > 16
-    rsp>16-final = rsp-bound-after-stack-op s-final
+    rsp>16-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+      where
+        open import Data.Nat.Properties using (≤-trans)
+        17≤41 : 17 ≤ 41
+        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
     -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv-final : RbpInvariant s-final

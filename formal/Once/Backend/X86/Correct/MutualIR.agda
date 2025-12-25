@@ -498,7 +498,10 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     stack-inv' = stack-inv-helper stack-inv
 
     rsp>16' : readReg (regs s4) rsp > 16
-    rsp>16' = rsp-bound-after-stack-op s4
+    rsp>16' = ≤-trans 17≤41 (rsp-bound-after-stack-op s4)
+      where
+        17≤41 : 17 ≤ 41
+        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
     -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv' : RbpInvariant s4
@@ -865,7 +868,10 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     stack-inv' = stack-inv-helper stack-inv
 
     rsp>16' : readReg (regs s4) rsp > 16
-    rsp>16' = rsp-bound-after-stack-op s4
+    rsp>16' = ≤-trans 17≤41 (rsp-bound-after-stack-op s4)
+      where
+        17≤41 : 17 ≤ 41
+        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
     -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv' : RbpInvariant s4
@@ -1428,7 +1434,11 @@ mutual
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f) r15-jump
 
       rsp>16-final : readReg (regs s-final) rsp > 16
-      rsp>16-final = rsp-bound-after-stack-op s-final
+      rsp>16-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+        where
+          open import Data.Nat.Properties using (≤-trans)
+          17≤41 : 17 ≤ 41
+          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
       -- RbpInvariant preserved: from ir-rbp-inv r-f through jump (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
@@ -1773,7 +1783,11 @@ mutual
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g) r15-end
 
       rsp>16-final : readReg (regs s-final) rsp > 16
-      rsp>16-final = rsp-bound-after-stack-op s-final
+      rsp>16-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+        where
+          open import Data.Nat.Properties using (≤-trans)
+          17≤41 : 17 ≤ 41
+          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
       -- RbpInvariant preserved: from ir-rbp-inv r-g through end (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
@@ -2246,7 +2260,11 @@ mutual
       stack-inv7 = stack-inv-preserved-rsp-decreased s s7 stack-inv r15-7 rsp-s7≤s
 
       rsp>16-7 : readReg (regs s7) rsp > 16
-      rsp>16-7 = rsp-bound-after-stack-op s7
+      rsp>16-7 = ≤-trans 17≤41 (rsp-bound-after-stack-op s7)
+        where
+          open import Data.Nat.Properties using (≤-trans)
+          17≤41 : 17 ≤ 41
+          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
       -- Memory at rbp contains original rbp (from push rbp in s2)
       -- s2 wrote old-rbp at rsp-after-push (= old-rsp - 8)
@@ -2592,7 +2610,11 @@ mutual
       stack-inv1 = stack-inv-preserved-ret s s1 stack-inv r15-1
 
       rsp>16-1 : readReg (regs s1) rsp > 16
-      rsp>16-1 = rsp-bound-after-stack-op s1
+      rsp>16-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
+        where
+          open import Data.Nat.Properties using (≤-trans)
+          17≤41 : 17 ≤ 41
+          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: setup tracing → IH on f → ret tracing

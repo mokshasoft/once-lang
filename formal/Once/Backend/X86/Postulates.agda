@@ -53,7 +53,9 @@ open import Once.Backend.X86.CodeGen using (compile-x86; compile-length)
 ------------------------------------------------------------------------
 
 postulate
-  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > 16
+  -- Changed from > 16 to > 40 to support memory layout proofs
+  -- Pair setup subtracts 40 from rsp (3 pushes × 8 + sub 16)
+  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > 40
 
 ------------------------------------------------------------------------
 -- Postulate P5: Closure Application (Semantic Boundary)

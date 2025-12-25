@@ -57,7 +57,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-stack-inv; thunk-rsp-bound)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -464,7 +464,11 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     -- and subtracting 8, we get new-rsp > 8. For new-rsp > 16 we need
     -- old rsp > 24. We postulate the runtime guarantee.
     rsp>16-1 : readReg (regs s1) rsp > 16
-    rsp>16-1 = rsp-bound-after-stack-op s1
+    rsp>16-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
+      where
+        open import Data.Nat.Properties using (≤-trans)
+        17≤41 : 17 ≤ 41
+        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
 -- | run-apply-with-wf-impl: Implementation using targeted postulates
 run-apply-with-wf : ∀ {A B} (prefix suffix : Program)

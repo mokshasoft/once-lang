@@ -10,6 +10,7 @@ module Once.Backend.X86.Correct.SeqExec where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+open import Once.Memory using (mem-read-write; mem-read-other)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
@@ -41,6 +42,34 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
+-- Arithmetic lemmas for stack slot address proofs
+-- These are needed because rsp > 24 ensures the subtractions don't underflow
+-- Note: _+_ is defined by recursion on the first argument, so we use +-comm
+-- We match on the proof to ensure complete coverage
+
+-- (x ∸ 24) + 8 ≡ x ∸ 16 when x > 24
+-- Matching on the proof ensures x = suc^25 n for some n
+∸24+8≡∸16 : ∀ m → m > 24 → (m ∸ 24) +ℕ 8 ≡ m ∸ 16
+∸24+8≡∸16 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) =
+  trans (+-comm (suc n) 8) refl
+
+-- (x ∸ 24) + 16 ≡ x ∸ 8 when x > 24
+∸24+16≡∸8 : ∀ m → m > 24 → (m ∸ 24) +ℕ 16 ≡ m ∸ 8
+∸24+16≡∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) =
+  trans (+-comm (suc n) 16) refl
+
+-- m ∸ 16 ≢ m ∸ 8 when m > 16
+∸16≢∸8 : ∀ m → m > 16 → m ∸ 16 ≢ m ∸ 8
+∸16≢∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))) ()
+
+-- m ∸ 24 ≢ m ∸ 8 when m > 24
+∸24≢∸8 : ∀ m → m > 24 → m ∸ 24 ≢ m ∸ 8
+∸24≢∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) ()
+
+-- m ∸ 24 ≢ m ∸ 16 when m > 24
+∸24≢∸16 : ∀ m → m > 24 → m ∸ 24 ≢ m ∸ 16
+∸24≢∸16 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) ()
+
 -- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
 -- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
 --
@@ -54,6 +83,7 @@ open ≡-Reasoning
 exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
+  readReg (regs s) rsp > 24 →   -- Need rsp > 24 to prove memory disjointness
   ∃[ s' ] (exec 7 (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 7
@@ -61,8 +91,12 @@ exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
          × readReg (regs s') rdi ≡ readReg (regs s) rdi
          × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
-         × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24)
-exec-pair-setup-at-7 prefix rest s h-false pc-eq = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq
+         × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24
+         -- Memory proofs: stack slots contain saved registers
+         × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
+         × readMem (memory s') (readReg (regs s') rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+         × readMem (memory s') (readReg (regs s') rbp +ℕ 16) ≡ just (readReg (regs s) r14))
+exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq , mem-rbp-eq , mem-r15-eq , mem-r14-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -338,6 +372,153 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq = s7 , exec-eq , h7 , pc7 , r14
 
     rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ 24
     rbp-eq = trans (readReg-writeReg-r14-rbp (regs s6) (readReg (regs s6) rdi)) rbp-s6
+
+    -- Memory proofs: stack slots contain saved registers
+    -- The memory layout after setup is:
+    --   [orig-rsp - 8]  = orig-r14  (pushed at step 1)
+    --   [orig-rsp - 16] = orig-r15  (pushed at step 2)
+    --   [orig-rsp - 24] = orig-rbp  (pushed at step 3)
+    -- After step 4: rbp = orig-rsp - 24, so:
+    --   [rbp]     = orig-rbp   (at orig-rsp - 24)
+    --   [rbp + 8] = orig-r15   (at orig-rsp - 16)
+    --   [rbp + 16] = orig-r14  (at orig-rsp - 8)
+
+    -- Address where step 3 writes: (orig-rsp - 16) - 8 = orig-rsp - 24
+    write-addr-s3 : readReg (regs s2) rsp ∸ 8 ≡ orig-rsp ∸ 24
+    write-addr-s3 = trans (cong (_∸ 8) rsp-s2) (∸-+-assoc orig-rsp 16 8)
+
+    -- Memory after step 3: push rbp wrote orig-rbp to [orig-rsp - 24]
+    -- Steps 4-7 don't write to memory (only mov/sub instructions)
+    mem-s3-at-rbp : readMem (memory s3) (orig-rsp ∸ 24) ≡ just orig-rbp
+    mem-s3-at-rbp = begin
+        readMem (memory s3) (orig-rsp ∸ 24)
+      ≡⟨⟩
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 24)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 24)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 24)
+      ≡⟨ cong (λ v → readMem (writeMem (memory s2) (orig-rsp ∸ 24) v) (orig-rsp ∸ 24)) rbp-s2 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ 24) orig-rbp) (orig-rsp ∸ 24)
+      ≡⟨ mem-read-write {memory s2} {orig-rsp ∸ 24} {orig-rbp} ⟩
+        just orig-rbp
+      ∎
+
+    -- Address where step 2 writes: (orig-rsp - 8) - 8 = orig-rsp - 16
+    write-addr-s2 : readReg (regs s1) rsp ∸ 8 ≡ orig-rsp ∸ 16
+    write-addr-s2 = trans (cong (_∸ 8) rsp-s1) (∸-+-assoc orig-rsp 8 8)
+
+    -- Memory after step 2: push r15 wrote orig-r15 to [orig-rsp - 16]
+    mem-s2-at-r15slot : readMem (memory s2) (orig-rsp ∸ 16) ≡ just orig-r15
+    mem-s2-at-r15slot = begin
+        readMem (memory s2) (orig-rsp ∸ 16)
+      ≡⟨⟩
+        readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)) (orig-rsp ∸ 16)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ 16)) write-addr-s2 ⟩
+        readMem (writeMem (memory s1) (orig-rsp ∸ 16) (readReg (regs s1) r15)) (orig-rsp ∸ 16)
+      ≡⟨ cong (λ v → readMem (writeMem (memory s1) (orig-rsp ∸ 16) v) (orig-rsp ∸ 16)) r15-s1 ⟩
+        readMem (writeMem (memory s1) (orig-rsp ∸ 16) orig-r15) (orig-rsp ∸ 16)
+      ≡⟨ mem-read-write {memory s1} {orig-rsp ∸ 16} {orig-r15} ⟩
+        just orig-r15
+      ∎
+
+    -- Memory after step 1: push r14 wrote orig-r14 to [orig-rsp - 8]
+    -- s1.memory = writeMem (memory s) (orig-rsp ∸ 8) orig-r14
+    mem-s1-at-r14slot : readMem (memory s1) (orig-rsp ∸ 8) ≡ just orig-r14
+    mem-s1-at-r14slot = begin
+        readMem (memory s1) (orig-rsp ∸ 8)
+      ≡⟨⟩  -- by definition of s1
+        readMem (writeMem (memory s) (orig-rsp ∸ 8) orig-r14) (orig-rsp ∸ 8)
+      ≡⟨ mem-read-write {memory s} {orig-rsp ∸ 8} {orig-r14} ⟩
+        just orig-r14
+      ∎
+
+    -- Memory is unchanged from s3 to s7 (steps 4-7 only modify registers)
+    -- s4 = mov rbp, rsp (register only), s5 = sub rsp, 16 (register only)
+    -- s6 = mov r15, rsp (register only), s7 = mov r14, rdi (register only)
+    mem-s7-eq-s3 : memory s7 ≡ memory s3
+    mem-s7-eq-s3 = refl
+
+    -- Chain: s3's [orig-rsp - 24] preserved through s4-s7
+    -- Need to show push r15 and push rbp didn't overwrite [orig-rsp - 8]
+    -- [orig-rsp - 16] ≢ [orig-rsp - 8] and [orig-rsp - 24] ≢ [orig-rsp - 8]
+
+    -- Memory at [orig-rsp - 8] in s2 (after push r15 at step 2)
+    -- push r15 wrote to [orig-rsp - 16], not [orig-rsp - 8]
+    -- s2.memory = writeMem (memory s1) (orig-rsp ∸ 16) orig-r15 (by write-addr-s2 and r15-s1)
+    -- Derive rsp > 16 from rsp-gt-24 for the ∸16≢∸8 lemma
+    -- rsp > 24 means 25 ≤ rsp, we need rsp > 16 which is 17 ≤ rsp
+    -- Use ≤-trans with 17 ≤ 25 and 25 ≤ rsp
+    rsp-gt-16 : orig-rsp > 16
+    rsp-gt-16 = ≤-trans 17≤25 rsp-gt-24
+      where
+        open import Data.Nat.Properties using (≤-trans)
+        17≤25 : 17 ≤ 25
+        17≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+    mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ 8) ≡ just orig-r14
+    mem-s2-at-r14slot = begin
+        readMem (memory s2) (orig-rsp ∸ 8)
+      ≡⟨⟩
+        readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)) (orig-rsp ∸ 8)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ 8)) write-addr-s2 ⟩
+        readMem (writeMem (memory s1) (orig-rsp ∸ 16) (readReg (regs s1) r15)) (orig-rsp ∸ 8)
+      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ 16} {orig-rsp ∸ 8} {readReg (regs s1) r15} (∸16≢∸8 orig-rsp rsp-gt-16) ⟩
+        readMem (memory s1) (orig-rsp ∸ 8)
+      ≡⟨ mem-s1-at-r14slot ⟩
+        just orig-r14
+      ∎
+
+    -- Memory at [orig-rsp - 8] in s3 (after push rbp at step 3)
+    -- push rbp wrote to [orig-rsp - 24], not [orig-rsp - 8]
+    mem-s3-at-r14slot : readMem (memory s3) (orig-rsp ∸ 8) ≡ just orig-r14
+    mem-s3-at-r14slot = begin
+        readMem (memory s3) (orig-rsp ∸ 8)
+      ≡⟨⟩
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 8)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 8)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 8)
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 8} {readReg (regs s2) rbp} (∸24≢∸8 orig-rsp rsp-gt-24) ⟩
+        readMem (memory s2) (orig-rsp ∸ 8)
+      ≡⟨ mem-s2-at-r14slot ⟩
+        just orig-r14
+      ∎
+
+    -- Memory at [orig-rsp - 16] in s3 (after push rbp at step 3)
+    -- push rbp wrote to [orig-rsp - 24], not [orig-rsp - 16]
+    mem-s3-at-r15slot : readMem (memory s3) (orig-rsp ∸ 16) ≡ just orig-r15
+    mem-s3-at-r15slot = begin
+        readMem (memory s3) (orig-rsp ∸ 16)
+      ≡⟨⟩
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 16)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 16)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 16)
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 16} {readReg (regs s2) rbp} (∸24≢∸16 orig-rsp rsp-gt-24) ⟩
+        readMem (memory s2) (orig-rsp ∸ 16)
+      ≡⟨ mem-s2-at-r15slot ⟩
+        just orig-r15
+      ∎
+
+    -- Final memory proofs in s7 (memory unchanged from s3)
+    -- [rbp] = [orig-rsp - 24] = orig-rbp
+    mem-rbp-eq : readMem (memory s7) (readReg (regs s7) rbp) ≡ just orig-rbp
+    mem-rbp-eq = subst (λ addr → readMem (memory s7) addr ≡ just orig-rbp) (sym rbp-eq) mem-s3-at-rbp
+
+    -- [rbp + 8] = [orig-rsp - 16] = orig-r15
+    -- We need to show: (orig-rsp ∸ 24) + 8 ≡ orig-rsp ∸ 16
+    mem-r15-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ 8) ≡ just orig-r15
+    mem-r15-eq = subst (λ addr → readMem (memory s7) (addr +ℕ 8) ≡ just orig-r15)
+                       (sym rbp-eq)
+                       (subst (λ a → readMem (memory s7) a ≡ just orig-r15)
+                              (sym (∸24+8≡∸16 orig-rsp rsp-gt-24))
+                              mem-s3-at-r15slot)
+
+    -- [rbp + 16] = [orig-rsp - 8] = orig-r14
+    -- We need to show: (orig-rsp ∸ 24) + 16 ≡ orig-rsp ∸ 8
+    mem-r14-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ 16) ≡ just orig-r14
+    mem-r14-eq = subst (λ addr → readMem (memory s7) (addr +ℕ 16) ≡ just orig-r14)
+                       (sym rbp-eq)
+                       (subst (λ a → readMem (memory s7) a ≡ just orig-r14)
+                              (sym (∸24+16≡∸8 orig-rsp rsp-gt-24))
+                              mem-s3-at-r14slot)
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
 -- Used for phase 3 of pair construction - storing f's result and restoring input
