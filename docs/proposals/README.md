@@ -24,3 +24,4 @@ For smaller decisions, use the [Decision Log](../compiler/decision-log.md) inste
 | OCP | Title | Status |
 |-----|-------|--------|
 | 0000 | Template | N/A |
+| 0001 | [Orthogonal Arithmetic Compiler](OCP-0001-arithmetic-compiler.md) | Draft |
