@@ -1024,7 +1024,14 @@ mutual
       sp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
       s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
       ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      mem-s1-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+      mem-s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+      -- Memory preservation at orig-sp and above from setup phase
+      mem-setup-orig-sp = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      mem-setup-orig-sp+8 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+      mem-setup-orig-sp+16 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
+      mem-setup-orig-sp+24 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
+      -- Original sp for memory preservation chaining
+      orig-sp = readReg (regs s) sp
 
       -- Phase 2: Execute f (IH call)
       -- Program view: prog ≡ prefix-f ++ code-f ++ suffix-f
@@ -1069,7 +1076,12 @@ mutual
       s2-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))
       ra-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))
       mem-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))
-      mem-sp+16-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))
+      mem-sp+16-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))))
+      -- Memory preservation at orig-sp and above from middle phase
+      mem-mid-orig-sp = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))))
+      mem-mid-orig-sp+8 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))))))
+      mem-mid-orig-sp+16 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))))))
+      mem-mid-orig-sp+24 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))))))
 
       -- Middle star is already in prog
       star-mid : Star prog s-after-f-raw s-mid
@@ -1187,7 +1199,7 @@ mutual
           ∎
 
       -- Phase 5: Final (3 instructions - sd a0 8(sp), mv a0 sp, ld s1 16(sp))
-      final-phase-result = pair-final-star f g prefix suffix x orig-s1 s-mid s-after-g-raw
+      final-phase-result = pair-final-star f g prefix suffix x orig-s1 orig-sp s-mid s-after-g-raw
                              h-after-g pc-after-g a0-after-g mem-after-g mem-s1-after-g
       s-final = proj₁ final-phase-result
       star-final-raw = proj₁ (proj₂ final-phase-result)
@@ -1197,7 +1209,12 @@ mutual
       s1-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))
       s2-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))
       ra-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))
-      sp-final-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))
+      sp-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))))
+      -- Memory preservation at orig-sp and above from final phase
+      mem-final-orig-sp = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))))
+      mem-final-orig-sp+8 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))))))
+      mem-final-orig-sp+16 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))))))
+      mem-final-orig-sp+24 = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))))))
 
       -- Final star is already in prog
       star-final : Star prog s-after-g-raw s-final
@@ -1307,11 +1324,40 @@ mutual
 
       -- Memory preservation: pair writes at new-sp, new-sp+8, new-sp+16 (its own frame)
       -- so memory at original sp and above is preserved.
+      -- Chain through: setup → f → middle → g → final
+
+      -- Address conversions: s-setup.sp + 24 = orig-sp and s-mid.sp + 24 = orig-sp
+      s-setup-sp+24-eq-orig-sp : readReg (regs s-setup) sp +ℕ 24 ≡ orig-sp
+      s-setup-sp+24-eq-orig-sp = trans (cong (_+ℕ 24) sp-setup) (m∸n+n≡m stack-space)
+
+      s-mid-sp+24-eq-orig-sp : readReg (regs s-mid) sp +ℕ 24 ≡ orig-sp
+      s-mid-sp+24-eq-orig-sp = trans (cong (_+ℕ 24) sp-mid)
+                                 (trans (cong (_+ℕ 24) sp-after-f) s-setup-sp+24-eq-orig-sp)
+
+      -- Chain for mem-sp-final at orig-sp
+      mem-sp-final : readMem (memory s-final) orig-sp ≡ readMem (memory s) orig-sp
+      mem-sp-final = trans mem-final-orig-sp
+                       (trans (subst (λ a → readMem (memory s-after-g-raw) a ≡ readMem (memory s-mid) a)
+                                     s-mid-sp+24-eq-orig-sp (ir-mem-sp+24 r-g))
+                         (trans mem-mid-orig-sp
+                           (trans (subst (λ a → readMem (memory s-after-f-raw) a ≡ readMem (memory s-setup) a)
+                                         s-setup-sp+24-eq-orig-sp (ir-mem-sp+24 r-f))
+                                  mem-setup-orig-sp)))
+
+      -- Address conversions for orig-sp+8
+      s-setup-sp+32-eq-orig-sp+8 : readReg (regs s-setup) sp +ℕ 32 ≡ orig-sp +ℕ 8
+      s-setup-sp+32-eq-orig-sp+8 = trans (sym (+-assoc (readReg (regs s-setup) sp) 24 8))
+                                    (cong (_+ℕ 8) s-setup-sp+24-eq-orig-sp)
+
+      s-mid-sp+32-eq-orig-sp+8 : readReg (regs s-mid) sp +ℕ 32 ≡ orig-sp +ℕ 8
+      s-mid-sp+32-eq-orig-sp+8 = trans (sym (+-assoc (readReg (regs s-mid) sp) 24 8))
+                                   (cong (_+ℕ 8) s-mid-sp+24-eq-orig-sp)
+
+      -- For now, use simplified postulates that can be proven with more arithmetic
       postulate
-        mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-        mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-        mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-        mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+        mem-sp+8-final : readMem (memory s-final) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
+        mem-sp+16-final : readMem (memory s-final) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
+        mem-sp+24-final : readMem (memory s-final) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
 
   -- Case helper - proven using dispatch helpers and IH
   run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C)
