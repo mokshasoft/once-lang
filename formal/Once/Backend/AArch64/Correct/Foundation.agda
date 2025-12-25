@@ -219,6 +219,16 @@ readReg-writeReg-x0-x21 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x0 v) x21 ≡ readReg rf x21
 readReg-writeReg-x0-x21 rf v = refl
 
+-- | Cross-register preservation: writing x0 doesn't affect x29 (frame pointer)
+readReg-writeReg-x0-x29 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x0 v) x29 ≡ readReg rf x29
+readReg-writeReg-x0-x29 rf v = refl
+
+-- | Cross-register preservation: writing x0 doesn't affect x30 (link register)
+readReg-writeReg-x0-x30 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x0 v) x30 ≡ readReg rf x30
+readReg-writeReg-x0-x30 rf v = refl
+
 -- | Cross-register preservation: writing x9 doesn't affect x21
 readReg-writeReg-x9-x21 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x9 v) x21 ≡ readReg rf x21
@@ -264,6 +274,42 @@ readReg-writeReg-x30-x20 rf v = refl
 readReg-writeReg-x30-x21 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x30 v) x21 ≡ readReg rf x21
 readReg-writeReg-x30-x21 rf v = refl
+
+-- | Cross-register preservation for x29 (frame pointer)
+-- Writing x0 doesn't affect x29
+readReg-writeReg-x29-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x0 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x0 rf v = refl
+
+-- Writing x9 doesn't affect x29
+readReg-writeReg-x29-x9 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x9 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x9 rf v = refl
+
+-- Writing x10 doesn't affect x29
+readReg-writeReg-x29-x10 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x10 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x10 rf v = refl
+
+-- Writing x19 doesn't affect x29
+readReg-writeReg-x29-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x19 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x19 rf v = refl
+
+-- Writing x20 doesn't affect x29
+readReg-writeReg-x29-x20 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x20 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x20 rf v = refl
+
+-- Writing x21 doesn't affect x29
+readReg-writeReg-x29-x21 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x21 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x21 rf v = refl
+
+-- Writing x30 doesn't affect x29
+readReg-writeReg-x29-x30 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x30 v) x29 ≡ readReg rf x29
+readReg-writeReg-x29-x30 rf v = refl
 
 -- | Cross-register preservation for x10 (used by apply to hold arg)
 -- Writing x10 doesn't affect x0
@@ -707,27 +753,9 @@ exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
     exec-recurse-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
     exec-recurse-case = trans lhs-unfold ih
 
--- | After executing first part, continue to second part
--- If exec n on prog1++prog2 reaches state s' with pc at end of prog1,
--- then continuing execution is like running prog2 from adjusted state.
--- Postulated - requires pc offset adjustment reasoning.
-postulate
-  exec-concat-continue : ∀ (n m : ℕ) (prog1 prog2 : Program) (s s' s'' : State) →
-    exec n (prog1 ++ prog2) s ≡ just s' →
-    halted s' ≡ false →
-    pc s' ≡ length prog1 →
-    exec m prog2 (record s' { pc = 0 }) ≡ just s'' →
-    exec (n +ℕ m) (prog1 ++ prog2) s ≡ just (record s'' { pc = pc s'' +ℕ length prog1 })
-
--- | Alternative formulation: running concatenated program
--- This is useful for the composition proof where we run f, then nop, then g.
-postulate
-  run-concat-seq : ∀ (prog1 prog2 : Program) (s s' s'' : State) →
-    run prog1 s ≡ just s' →
-    halted s' ≡ false →
-    pc s' ≡ length prog1 →
-    run prog2 (record s' { pc = 0 }) ≡ just s'' →
-    run (prog1 ++ prog2) s ≡ just (record s'' { pc = pc s'' +ℕ length prog1 })
+-- NOTE: exec-concat-continue and run-concat-seq postulates were REMOVED.
+-- They were fuel-based lemmas no longer needed with Star-based proofs.
+-- The Star approach uses star-trans for composition, avoiding fuel arithmetic.
 
 ------------------------------------------------------------------------
 -- Well-Founded IR Correctness (Mutual Recursion Structure)
