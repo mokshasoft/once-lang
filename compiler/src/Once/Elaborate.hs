@@ -61,6 +61,8 @@ elaborateExpr' locals expr = case expr of
   EVar "pair" -> Right $ Var "pair"        -- needs 2 args
   EVar "curry" -> Right $ Var "curry"      -- needs 1 arg
   EVar "arr" -> Right $ Var "arr"          -- needs 1 arg (D032: lift pure to effectful)
+  EVar "effCompose" -> Right $ Var "effCompose"  -- needs 2 args (D032: Kleisli composition)
+  EVar "pure" -> Right $ Var "pure"              -- needs 1 arg (D032: lift value to effect)
 
   -- Check if variable is a local binding from let
   EVar name | Set.member name locals -> Right $ LocalVar name
@@ -135,6 +137,12 @@ elaborateApp locals f arg = case f of
     f' <- elaborateExpr' locals arg
     Right $ Compose g' f'
 
+  -- effCompose g f => Compose g' f' (D032: Eff is type-only, same IR as compose)
+  EApp (EVar "effCompose") g -> do
+    g' <- elaborateExpr' locals g
+    f' <- elaborateExpr' locals arg
+    Right $ Compose g' f'
+
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExpr' locals arg
@@ -143,6 +151,9 @@ elaborateApp locals f arg = case f of
   -- arr f => f (D032: arr is identity at IR level - Eff is type-only distinction)
   -- At runtime, Eff A B compiles to the same code as A -> B
   EVar "arr" -> elaborateExpr' locals arg
+
+  -- pure x => x (D032: values already act as constant morphisms in C backend)
+  EVar "pure" -> elaborateExpr' locals arg
 
   -- case branches - not yet
   EApp (EVar "case") _ -> Left $ UnsupportedExpr "Case not yet supported"
@@ -184,7 +195,9 @@ isGenerator :: Name -> Bool
 isGenerator name = name `elem`
   [ "id", "compose", "fst", "snd", "pair", "inl", "inr", "case"
   , "terminal", "initial", "curry", "apply", "fold", "unfold"
-  , "arr"  -- D032: arrow generator for lifting pure to effectful
+  , "arr"         -- D032: arrow generator for lifting pure to effectful
+  , "effCompose"  -- D032: Kleisli composition for Eff
+  , "pure"        -- D032: lift value to constant effect
   ]
 
 -- | Placeholder type for type inference to fill in later
@@ -233,6 +246,8 @@ elaborateExprWithEnv modEnv locals expr = case expr of
   EVar "pair" -> Right $ Var "pair"
   EVar "curry" -> Right $ Var "curry"
   EVar "arr" -> Right $ Var "arr"
+  EVar "effCompose" -> Right $ Var "effCompose"
+  EVar "pure" -> Right $ Var "pure"
 
   -- Check if variable is a local binding from let
   EVar name | Set.member name locals -> Right $ LocalVar name
@@ -307,6 +322,12 @@ elaborateAppWithEnv modEnv locals f arg = case f of
     f' <- elaborateExprWithEnv modEnv locals arg
     Right $ Compose g' f'
 
+  -- effCompose g f => Compose g' f' (D032: Eff is type-only, same IR as compose)
+  EApp (EVar "effCompose") g -> do
+    g' <- elaborateExprWithEnv modEnv locals g
+    f' <- elaborateExprWithEnv modEnv locals arg
+    Right $ Compose g' f'
+
   -- curry f => Curry f'
   EVar "curry" -> do
     f' <- elaborateExprWithEnv modEnv locals arg
@@ -314,6 +335,9 @@ elaborateAppWithEnv modEnv locals f arg = case f of
 
   -- arr f => f (D032: arr is identity at IR level)
   EVar "arr" -> elaborateExprWithEnv modEnv locals arg
+
+  -- pure x => x (D032: values already act as constant morphisms in C backend)
+  EVar "pure" -> elaborateExprWithEnv modEnv locals arg
 
   -- case branches
   EApp (EVar "case") _ -> Left $ UnsupportedExpr "Case not yet supported"
