@@ -25,13 +25,14 @@ open import Once.Backend.AArch64.Correct.CompileLength using (compile-length-cor
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; initWithInput; initWithInput-x0; initWithInput-halted;
-         initWithInput-pc; step-end-of-program; readReg-writeReg-x0-x21)
+         initWithInput-pc; step-end-of-program; readReg-writeReg-x0-x21;
+         readReg-writeReg-x0-x29)
 open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.AArch64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-x0)
 open import Once.Backend.AArch64.Correct.StackInvariant
-  using (StackInvariant; x21-unused)
+  using (StackInvariant; X29Invariant; x21-unused; x29-unused)
 open import Once.Backend.AArch64.Correct.MutualIR
   using (run-ir-star-at-offset)
 
@@ -55,10 +56,20 @@ initWithInput-x21 : ∀ {A : Type} (x : ⟦ A ⟧) →
   readReg (regs (initWithInput x)) x21 ≡ 0
 initWithInput-x21 x = readReg-writeReg-x0-x21 emptyRegFile (encode x)
 
+-- | Initial state has x29 = 0
+initWithInput-x29 : ∀ {A : Type} (x : ⟦ A ⟧) →
+  readReg (regs (initWithInput x)) x29 ≡ 0
+initWithInput-x29 x = readReg-writeReg-x0-x29 emptyRegFile (encode x)
+
 -- | Initial state satisfies StackInvariant (via x21 = 0)
 initWithInput-stack-inv : ∀ {A : Type} (x : ⟦ A ⟧) →
   StackInvariant (initWithInput x)
 initWithInput-stack-inv x = x21-unused (initWithInput-x21 x)
+
+-- | Initial state satisfies X29Invariant (via x29 = 0)
+initWithInput-x29-inv : ∀ {A : Type} (x : ⟦ A ⟧) →
+  X29Invariant (initWithInput x)
+initWithInput-x29-inv x = x29-unused (initWithInput-x29 x)
 
 -- | Initial SP is 8192, which is > 16
 initWithInput-sp : ∀ {A : Type} (x : ⟦ A ⟧) →
@@ -150,6 +161,9 @@ codegen-aarch64-correct {A} {B} ir x =
       stack-inv : StackInvariant s₀
       stack-inv = initWithInput-stack-inv x
 
+      x29-inv : X29Invariant s₀
+      x29-inv = initWithInput-x29-inv x
+
       sp>16 : readSP (regs s₀) > 16
       sp>16 = initWithInput-sp-bound x
 
@@ -159,7 +173,7 @@ codegen-aarch64-correct {A} {B} ir x =
       prog-eq = ++-identityʳ prog
 
       (s' , result) = run-ir-star-at-offset ir [] [] x s₀
-                        h-false pc-at-start x0-eq stack-inv sp>16
+                        h-false pc-at-start x0-eq stack-inv x29-inv sp>16
 
       -- Reindex result to work with prog
       result' : IRStarResult ir prog s₀ s' x 0
