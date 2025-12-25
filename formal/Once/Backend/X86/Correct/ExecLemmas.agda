@@ -254,20 +254,6 @@ exec-chain n m prog s s' s'' exec-n h-false exec-m =
     chained : exec (star-length star +ℕ m) prog s ≡ just s''
     chained = star-to-exec-chain star h-false m exec-m
 
-------------------------------------------------------------------------
--- exec-until-pc lemmas
-------------------------------------------------------------------------
-
--- | If we're already at target pc, exec-until-pc returns immediately
-exec-until-pc-at-target : ∀ (target fuel : ℕ) (prog : Program) (s : State) →
-  halted s ≡ false →
-  pc s ≡ target →
-  exec-until-pc target (suc fuel) prog s ≡ just s
-exec-until-pc-at-target target fuel prog s h-false pc-eq
-  rewrite h-false with pc s ≟ target
-exec-until-pc-at-target target fuel prog s h-false pc-eq | yes _ = refl
-exec-until-pc-at-target target fuel prog s h-false pc-eq | no pc≢target = ⊥-elim (pc≢target pc-eq)
-
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
 fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
@@ -896,68 +882,6 @@ exec-five-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ s₅ 
   exec (suc (suc (suc (suc (suc n))))) prog s ≡ just s₅
 exec-five-steps n prog s s₁ s₂ s₃ s₄ s₅ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ =
   exec-step-helper h₀ step₁ (exec-four-steps n prog s₁ s₂ s₃ s₄ s₅ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 6 steps with final halt
-exec-six-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ s₅ s₆ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ false →
-  step prog s₃ ≡ just s₄ → halted s₄ ≡ false →
-  step prog s₄ ≡ just s₅ → halted s₅ ≡ false →
-  step prog s₅ ≡ just s₆ → halted s₆ ≡ true →
-  exec (suc (suc (suc (suc (suc (suc n)))))) prog s ≡ just s₆
-exec-six-steps n prog s s₁ s₂ s₃ s₄ s₅ s₆ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ =
-  exec-step-helper h₀ step₁ (exec-five-steps n prog s₁ s₂ s₃ s₄ s₅ s₆ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 7 steps with final halt
-exec-seven-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ s₅ s₆ s₇ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ false →
-  step prog s₃ ≡ just s₄ → halted s₄ ≡ false →
-  step prog s₄ ≡ just s₅ → halted s₅ ≡ false →
-  step prog s₅ ≡ just s₆ → halted s₆ ≡ false →
-  step prog s₆ ≡ just s₇ → halted s₇ ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc n))))))) prog s ≡ just s₇
-exec-seven-steps n prog s s₁ s₂ s₃ s₄ s₅ s₆ s₇ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ step₇ h₇ =
-  exec-step-helper h₀ step₁ (exec-six-steps n prog s₁ s₂ s₃ s₄ s₅ s₆ s₇ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ step₇ h₇)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 8 steps with final halt
-exec-eight-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ false →
-  step prog s₃ ≡ just s₄ → halted s₄ ≡ false →
-  step prog s₄ ≡ just s₅ → halted s₅ ≡ false →
-  step prog s₅ ≡ just s₆ → halted s₆ ≡ false →
-  step prog s₆ ≡ just s₇ → halted s₇ ≡ false →
-  step prog s₇ ≡ just s₈ → halted s₈ ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc (suc n)))))))) prog s ≡ just s₈
-exec-eight-steps n prog s s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ step₇ h₇ step₈ h₈ =
-  exec-step-helper h₀ step₁ (exec-seven-steps n prog s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ step₇ h₇ step₈ h₈)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 9 steps with final halt
-exec-nine-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ s₉ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ false →
-  step prog s₃ ≡ just s₄ → halted s₄ ≡ false →
-  step prog s₄ ≡ just s₅ → halted s₅ ≡ false →
-  step prog s₅ ≡ just s₆ → halted s₆ ≡ false →
-  step prog s₆ ≡ just s₇ → halted s₇ ≡ false →
-  step prog s₇ ≡ just s₈ → halted s₈ ≡ false →
-  step prog s₈ ≡ just s₉ → halted s₉ ≡ true →
-  exec (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))) prog s ≡ just s₉
-exec-nine-steps n prog s s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ s₉ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ step₇ h₇ step₈ h₈ step₉ h₉ =
-  exec-step-helper h₀ step₁ (exec-eight-steps n prog s₁ s₂ s₃ s₄ s₅ s₆ s₇ s₈ s₉ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ step₆ h₆ step₇ h₇ step₈ h₈ step₉ h₉)
   where
     h₀ = step-implies-not-halted prog s s₁ step₁ h₁
 
