@@ -44,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 ------------------------------------------------------------------------
 
 -- | Import helpers from Star module
-open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted; exec-to-star; star-to-exec-chain; star-length-eq-nonhalt; star-length)
+open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted)
 
 -- | Exec returns immediately when step returns halted state
 -- Now requires halted s ≡ false since exec checks halted s first
@@ -204,32 +204,6 @@ exec-seven-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 
   trans (exec-on-non-halted-step 6 prog s s1 h0 step1 h1)
         (exec-six-steps-nonhalt prog s1 s2 s3 s4 s5 s6 s7 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7)
   where h0 = step-implies-not-halted prog s s1 step1 h1
-
--- | Exec chaining: if exec n produces s' (not halted), then exec m on s' produces s'',
--- then exec (n + m) produces s''
--- This is key for composing sub-program executions
---
--- PROVEN: Using Star as intermediate representation.
--- 1. Convert exec n to Star via exec-to-star
--- 2. star-length-eq-nonhalt shows star-length = n (since halted s' = false)
--- 3. star-to-exec-chain chains the Star with exec m
--- 4. Substitute star-length = n to get exec (n + m)
-exec-chain : ∀ (n m : ℕ) (prog : List Instr) (s s' s'' : State) →
-  exec n prog s ≡ just s' →
-  halted s' ≡ false →
-  exec m prog s' ≡ just s'' →
-  exec (n +ℕ m) prog s ≡ just s''
-exec-chain n m prog s s' s'' exec-n h-false exec-m =
-  subst (λ k → exec (k +ℕ m) prog s ≡ just s'') len-eq chained
-  where
-    -- Convert to Star
-    star = exec-to-star {n} {prog} {s} {s'} exec-n
-    -- star-length equals n since halted s' = false
-    len-eq : star-length star ≡ n
-    len-eq = star-length-eq-nonhalt {n} {prog} {s} {s'} exec-n h-false
-    -- Chain via Star
-    chained : exec (star-length star +ℕ m) prog s ≡ just s''
-    chained = star-to-exec-chain star h-false m exec-m
 
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i

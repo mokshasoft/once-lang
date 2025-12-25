@@ -30,8 +30,7 @@ open import Once.Backend.X86.Correct.Star
          _◅◅_; ⟨_,_⟩◅_; star-step2; star-step3; star-step4;
          exec-to-star; exec-until-pc-to-star;
          StarResult; star-exec; not-halted; rax-correct;
-         exec-to-star-result; compose-star-results;
-         star-length; star-to-exec; exec-halted-extend)
+         exec-to-star-result; compose-star-results)
 
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
@@ -361,29 +360,6 @@ step-halts-on-fetch-fail : ∀ (prog : Program) (s : State) →
   fetch prog (pc s) ≡ nothing →
   step prog s ≡ just (record s { halted = true })
 step-halts-on-fetch-fail = step-halt-on-fetch-fail
-
--- Helper: n + 1 ≡ suc n (by commutativity and definition)
-n+1≡sucn : ∀ n → n +ℕ 1 ≡ suc n
-n+1≡sucn zero = refl
-n+1≡sucn (suc n) = cong suc (n+1≡sucn n)
-
--- Lemma: exec (n+1) = exec n followed by one step
--- Semantically: if we've executed n steps to reach s' (non-halted),
--- and one more step from s' gives s'', then n+1 steps gives s''.
--- Proof: Use exec-chain with m=1 and exec-one-step
-exec-suc : ∀ (n : ℕ) (prog : Program) (s s' : State) →
-  exec n prog s ≡ just s' →
-  halted s' ≡ false →
-  (s'' : State) → step prog s' ≡ just s'' →
-  exec (suc n) prog s ≡ just s''
-exec-suc n prog s s' exec-n h-false s'' step-eq =
-  let exec-1 : exec 1 prog s' ≡ just s''
-      exec-1 = exec-one-step prog s' s'' step-eq
-      -- exec-chain gives: exec (n + 1) prog s ≡ just s''
-      chain-result : exec (n +ℕ 1) prog s ≡ just s''
-      chain-result = exec-chain n 1 prog s s' s'' exec-n h-false exec-1
-  -- Convert n + 1 to suc n
-  in subst (λ k → exec k prog s ≡ just s'') (n+1≡sucn n) chain-result
 
 -- Lemma: When halted, step returns the same state
 step-halted-stable : ∀ (prog : Program) (s : State) →
