@@ -9,6 +9,11 @@
 -- The blr instruction performs an indirect call to code at an arbitrary
 -- location (the thunk created by curry). This requires whole-program
 -- reasoning that the local execution model cannot provide.
+--
+-- HOWEVER: With ClosureWellFormed threading from curry to apply,
+-- we can eliminate the postulate in whole-program proofs. See
+-- ClosureWellFormed.agda for the Star-based alternative that uses
+-- the well-formedness proof provided by curry.
 ------------------------------------------------------------------------
 
 module Once.Backend.AArch64.Correct.IR.Apply where
@@ -24,6 +29,15 @@ open import Once.Backend.AArch64.Semantics using (Word)
 open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation using (encode; encodedMemory)
+
+-- | Re-export Star-based types from ClosureWellFormed
+-- These are the preferred types for whole-program proofs
+open import Once.Backend.AArch64.Correct.ClosureWellFormed public
+  using ( ThunkResult
+        ; ClosureWellFormed
+        ; ApplyWithWFResult
+        ; run-apply-with-wf
+        )
 
 open import Data.Bool using (false; true)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
@@ -189,8 +203,11 @@ record ApplyResult {A B : Type}
 open ApplyResult public
 
 ------------------------------------------------------------------------
--- Thunk Execution
+-- Thunk Execution (Legacy/Exec-based)
 ------------------------------------------------------------------------
+--
+-- NOTE: This is the legacy exec-based ThunkResult. For Star-based
+-- proofs, use the ThunkResult from ClosureWellFormed (re-exported above).
 --
 -- After blr jumps to the thunk, the thunk code executes:
 --   sub-sp 16           ; allocate pair on stack
@@ -207,9 +224,9 @@ open ApplyResult public
 --   x0 = encode (eval f (env, arg))
 --   Then ret returns to x30 (instruction after blr)
 
-record ThunkResult {A B C : Type} (f : IR (A * B) C)
-                   (env : ⟦ A ⟧) (arg : ⟦ B ⟧)
-                   (s s-after : State) : Set where
+record ThunkResultExec {A B C : Type} (f : IR (A * B) C)
+                       (env : ⟦ A ⟧) (arg : ⟦ B ⟧)
+                       (s s-after : State) : Set where
   field
     -- Execution completed
     thunk-exec : ∃[ n ] (exec n (compile-aarch64 f) s ≡ just s-after)
@@ -220,7 +237,7 @@ record ThunkResult {A B C : Type} (f : IR (A * B) C)
     -- x0 contains result
     thunk-x0 : readReg (regs s-after) x0 ≡ encode (eval f (env , arg))
 
-open ThunkResult public
+open ThunkResultExec public
 
 ------------------------------------------------------------------------
 -- run-thunk-at-offset postulate

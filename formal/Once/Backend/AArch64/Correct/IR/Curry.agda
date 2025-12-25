@@ -4,6 +4,9 @@
 -- Helper records and functions for curry proofs.
 -- Extracts non-recursive parts to reduce mutual block compilation time.
 -- The recursive calls stay in MutualIR.agda.
+--
+-- For Star-based proofs with well-formedness threading, see
+-- ClosureWellFormed.agda which defines CurryResult with closure-wf field.
 ------------------------------------------------------------------------
 
 module Once.Backend.AArch64.Correct.IR.Curry where
@@ -19,6 +22,14 @@ open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation using (encode)
 open import Once.Backend.AArch64.Correct.CompileLength using (compile-length-correct)
+
+-- | Re-export Star-based types from ClosureWellFormed
+-- These are the preferred types for whole-program proofs with well-formedness threading
+open import Once.Backend.AArch64.Correct.ClosureWellFormed public
+  using ( ClosureWellFormed
+        ; ThunkResult
+        ; CurryResult
+        )
 
 open import Data.Bool using (false; true)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
@@ -219,10 +230,12 @@ open CurryFinalResult public
 --   - x0  = argument
 -- And constructs a pair (env, arg) before calling f.
 
--- | Closure well-formedness: tracks that a closure points to valid thunk code
--- This is used to connect curry (producer) with apply (consumer)
-record ClosureWellFormed {A B C : Type} (f : IR (A * B) C)
-                         (closure-ptr : ℕ) (prog : Program) : Set where
+-- | Legacy closure well-formedness (simple fetch check)
+-- NOTE: For Star-based proofs, use ClosureWellFormed from
+-- ClosureWellFormed.agda which has thunk-correct field for
+-- full execution tracking.
+record ClosureWellFormedSimple {A B C : Type} (f : IR (A * B) C)
+                               (closure-ptr : ℕ) (prog : Program) : Set where
   field
     -- The closure contains the correct code pointer
     closure-code-ptr : ℕ
@@ -230,7 +243,7 @@ record ClosureWellFormed {A B C : Type} (f : IR (A * B) C)
     thunk-at-code-ptr : fetch prog closure-code-ptr ≡ just (label 6)
     -- (More fields would be needed for full thunk correctness)
 
-open ClosureWellFormed public
+open ClosureWellFormedSimple public
 
 ------------------------------------------------------------------------
 -- Arithmetic Lemmas

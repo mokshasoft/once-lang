@@ -48,12 +48,23 @@ open import Once.Backend.AArch64.Correct.IR.Case
   using (CaseContext; mkCaseContext)
 open import Once.Backend.AArch64.Correct.IR.Curry
   using (CurryContext; mkCurryContext;
-         CurryFinalResult; ClosureWellFormed;
+         CurryFinalResult;
          arith-curry-pc-final)
 open import Once.Backend.AArch64.Correct.IR.Apply
   using (ApplyContext; mkApplyContext;
          ApplySetupResult; run-ir-at-offset-apply;
          closure-code-ptr; closure-env)
+
+-- | Re-export ClosureWellFormed types for whole-program proofs
+-- These enable eliminating the apply postulate by threading well-formedness
+-- from curry (producer) to apply (consumer)
+open import Once.Backend.AArch64.Correct.ClosureWellFormed public
+  using ( ClosureWellFormed
+        ; ThunkResult
+        ; CurryResult
+        ; ApplyWithWFResult
+        ; run-apply-with-wf
+        )
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_) renaming (_+_ to _+ℕ_)
@@ -305,6 +316,11 @@ mutual
           in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
 
   -- | Star-based curry execution
+  --
+  -- This version returns IRStarResult (uniform type for all IR terms).
+  -- For proofs that need ClosureWellFormed threading, use CurryResult
+  -- from ClosureWellFormed which includes a closure-wf field proving
+  -- the produced closure is well-formed.
   run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -314,8 +330,9 @@ mutual
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
-    -- Curry is non-recursive: creates closure, jumps over thunk
-    -- Postulated because we need detailed instruction execution proofs
+    -- Curry is non-recursive: creates closure, jumps over thunk.
+    -- For well-formedness threading, use CurryResult which includes
+    -- a ClosureWellFormed proof for the produced closure.
     curry-postulate f prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
     where
       postulate
@@ -330,7 +347,13 @@ mutual
           in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
 
   -- | Star-based apply execution
-  -- Uses model limitation postulate from IR.Apply
+  --
+  -- This version uses a postulate because we don't have ClosureWellFormed
+  -- threading in the uniform IRStarResult approach.
+  --
+  -- For whole-program proofs that can eliminate the postulate, use
+  -- run-apply-with-wf from ClosureWellFormed which takes a
+  -- ClosureWellFormed proof (produced by curry) as input.
   run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -340,7 +363,9 @@ mutual
     let prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
-    -- Apply is fundamentally postulated due to indirect call semantics
+    -- Apply is postulated here because IRStarResult doesn't carry
+    -- ClosureWellFormed. For proofs that thread well-formedness,
+    -- use run-apply-with-wf instead.
     apply-postulate {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
     where
       postulate
