@@ -34,11 +34,12 @@ open import Once.Optimize using (optimize)
 open import Once.Optimize.Correct using (optimize-correct)
 open import Once.Compile using (compile)
 open import Once.Backend.AArch64.Syntax using (x0)
-open import Once.Backend.AArch64.Semantics using (State; run; readReg)
-open Once.Backend.AArch64.Semantics.State
+open import Once.Backend.AArch64.Semantics using (State; readReg)
+open Once.Backend.AArch64.Semantics.State using (halted; regs)
 open import Once.Backend.AArch64.CodeGen using (compile-aarch64)
-open import Once.Backend.AArch64.Correct using (codegen-aarch64-correct; initWithInput; encode)
+open import Once.Backend.AArch64.Correct.CorrectBridge using (codegen-aarch64-correct; initWithInput; encode; Star)
 
+open import Data.Bool using (true)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality
@@ -78,12 +79,15 @@ compile-preserves-semantics ir x =
 -- For any Core IR term, the generated code when executed yields
 -- the encoded semantic value in x0.
 --
--- This is re-exported from Once.Backend.AArch64.Correct.
--- Currently postulated; proofs to be filled in (Phase B).
+-- This is PROVEN (not postulated!) using Star-based proofs.
+-- Star relation provides reflexive-transitive closure without fuel.
 --
 codegen-correct : ∀ {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-aarch64 ir) (initWithInput x) ≡ just s
-        × readReg (regs s) x0 ≡ encode (eval ir x))
+  let prog = compile-aarch64 ir
+      s₀ = initWithInput x
+  in ∃[ s ] (Star prog s₀ s
+           × halted s ≡ true
+           × readReg (regs s) x0 ≡ encode (eval ir x))
 codegen-correct = codegen-aarch64-correct
 
 ------------------------------------------------------------------------
@@ -94,25 +98,28 @@ codegen-correct = codegen-aarch64-correct
 -- code produces the same result as evaluating the source program.
 --
 -- More precisely: there exists a final machine state such that:
---   1. Running the generated code reaches that state
+--   1. Star execution from init reaches halted state
 --   2. The x0 register contains the encoded result of source evaluation
 --
 -- COMPOSITION:
 --   compile-preserves-semantics : eval (compile ir) x ≡ evalSurface ir x
---   codegen-correct            : run asm init ≡ just s ∧ x0 = encode (eval core x)
+--   codegen-correct            : Star prog s₀ s ∧ halted s ∧ x0 = encode (eval core x)
 --
 -- Together: x0 = encode (evalSurface ir x)
 --
 compilation-correct-aarch64 : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-aarch64 (compile ir)) (initWithInput x) ≡ just s
-        × readReg (regs s) x0 ≡ encode (evalSurface ir x))
+  let prog = compile-aarch64 (compile ir)
+      s₀ = initWithInput x
+  in ∃[ s ] (Star prog s₀ s
+           × halted s ≡ true
+           × readReg (regs s) x0 ≡ encode (evalSurface ir x))
 compilation-correct-aarch64 ir x =
   let
     -- Step 1: Core IR from compilation
     core = compile ir
 
-    -- Step 2: Code generation correctness for the Core IR
-    (s , run-eq , x0-eq) = codegen-aarch64-correct core x
+    -- Step 2: Code generation correctness for the Core IR (Star-based!)
+    (s , star-proof , halted-eq , x0-eq) = codegen-aarch64-correct core x
 
     -- Step 3: Link semantic equivalence
     -- eval core x ≡ evalSurface ir x
@@ -124,7 +131,7 @@ compilation-correct-aarch64 ir x =
     x0-surface-eq : readReg (regs s) x0 ≡ encode (evalSurface ir x)
     x0-surface-eq = trans x0-eq (cong encode semantics-eq)
 
-  in s , run-eq , x0-surface-eq
+  in s , star-proof , halted-eq , x0-surface-eq
 
 ------------------------------------------------------------------------
 -- Summary of Trusted Assumptions
@@ -167,7 +174,8 @@ compilation-correct-aarch64 ir x =
 --
 -- The theorem compilation-correct-aarch64 guarantees:
 --
--- 1. The generated AArch64 code TERMINATES (reaches a final state s)
+-- 1. Star execution reaches a HALTED state s (program terminates)
+--    Star is the reflexive-transitive closure - no fuel needed!
 --
 -- 2. The result in register x0 EQUALS the encoded source semantics:
 --      readReg s x0 ≡ encode (evalSurface ir x)
