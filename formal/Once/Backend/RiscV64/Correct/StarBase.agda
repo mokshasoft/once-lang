@@ -388,9 +388,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- Export everything for use in MutualIR and other modules
 ------------------------------------------------------------------------
 
--- Re-export Star infrastructure
+-- Re-export Star infrastructure (fuel-free: no exec-to-star, star-to-exec, etc.)
 open import Once.Backend.RiscV64.Correct.Star public
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_; _◅◅_;
-         star-step2; star-step3; star-step4; star-step5;
-         exec-to-star; star-to-exec; star-to-exec-∃;
-         star-to-exec-chain; exec-halted-extend; star-length)
+         star-step2; star-step3; star-step4; star-step5)
