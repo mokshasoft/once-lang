@@ -330,10 +330,78 @@ readReg-writeReg-s0-sp rf v = refl
 -- Memory Lemmas
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-suc; m∸n+n≡m)
+open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-suc; m∸n+n≡m; m≤m+n; <-≤-trans; +-monoʳ-<)
+open import Data.Nat using (z<s; s<s) -- _<_ already imported above
 
 -- Memory read/write lemmas now imported from Once.Backend.Common.Memory:
 --   readMem-writeMem-same, readMem-writeMem-diff, n≢n+suc
+
+------------------------------------------------------------------------
+-- Stack Address Disjointness Lemmas
+--
+-- For proving that stack writes at new-sp don't interfere with
+-- memory at orig-sp and above. Key insight:
+--   new-sp = orig-sp ∸ n (where n = 16 for inl/inr)
+--   When n ≤ orig-sp and n > 0: new-sp < orig-sp ≤ orig-sp + k
+--   Therefore new-sp ≢ orig-sp + k
+------------------------------------------------------------------------
+
+-- | Core lemma: (m ∸ n) + k ≢ m + j when n ≤ m, n > 0
+-- This proves disjointness between write addresses (below orig-sp)
+-- and preserved addresses (at or above orig-sp).
+--
+-- Case 1: new-sp ≢ orig-sp (k=0, j=0): (m ∸ n) ≢ m since n > 0
+-- Case 2: new-sp + 8 ≢ orig-sp (k=8, j=0): (m ∸ n) + 8 ≢ m when n > 8
+-- Case 3: new-sp ≢ orig-sp + 8 (k=0, j=8): (m ∸ n) ≢ m + 8
+--
+-- General form for the proofs we need:
+-- Proof: (m ∸ n) + n = m, and n > 0, so (m ∸ n) < (m ∸ n) + n = m
+
+-- Helper: m ∸ n ≤ m
+m∸n≤m : ∀ (m n : ℕ) → m ∸ n ≤ m
+m∸n≤m m zero = ≤-refl
+  where open import Data.Nat.Properties using (≤-refl)
+m∸n≤m zero (suc n) = Data.Nat.z≤n
+m∸n≤m (suc m) (suc n) = m≤n⇒m≤1+n (m∸n≤m m n)
+  where open import Data.Nat.Properties using (m≤n⇒m≤1+n)
+
+monus-lt-plus : ∀ (n m : ℕ) → n ≤ m → 0 < n → (m ∸ n) < m
+monus-lt-plus (suc n) zero () _
+monus-lt-plus (suc n) (suc m) _ _ = s<s (m∸n≤m m n)
+
+-- | When x < y, x ≢ y
+<-to-≢ : ∀ {x y : ℕ} → x < y → x ≢ y
+<-to-≢ (s<s p) refl = <-to-≢ p refl
+
+-- | Core disjointness: (m ∸ n) ≢ m when n ≤ m and n > 0
+monus-neq-self : ∀ (n m : ℕ) → n ≤ m → 0 < n → (m ∸ n) ≢ m
+monus-neq-self n m n≤m 0<n = <-to-≢ (monus-lt-plus n m n≤m 0<n)
+
+-- | (m ∸ n) ≢ m + k for any k when n ≤ m and n > 0
+monus-neq-plus : ∀ (n m k : ℕ) → n ≤ m → 0 < n → (m ∸ n) ≢ (m +ℕ k)
+monus-neq-plus n m k n≤m 0<n eq = <-to-≢ (<-≤-trans lt-m m≤m+k) eq
+  where
+    lt-m : (m ∸ n) < m
+    lt-m = monus-lt-plus n m n≤m 0<n
+    m≤m+k : m ≤ m +ℕ k
+    m≤m+k = m≤m+n m k
+
+-- | (m ∸ n) + offset ≢ m + k when n > offset (the common case for our proofs)
+-- For inl/inr: n = 16, offset ∈ {0, 8}, k ∈ {0, 8, 16, 24}
+-- We have: (orig-sp ∸ 16) + offset ≢ orig-sp + k
+monus-plus-neq-plus : ∀ (n m offset k : ℕ) → n ≤ m → offset < n → ((m ∸ n) +ℕ offset) ≢ (m +ℕ k)
+monus-plus-neq-plus n m offset k n≤m offset-lt-n eq = <-to-≢ goal eq
+  where
+    -- (m ∸ n) + offset < (m ∸ n) + n = m ≤ m + k
+    -- First: (m ∸ n) + offset < m (since offset < n and (m ∸ n) + n = m)
+    step1 : ((m ∸ n) +ℕ offset) < ((m ∸ n) +ℕ n)
+    step1 = +-monoʳ-< (m ∸ n) offset-lt-n
+    step2 : ((m ∸ n) +ℕ n) ≡ m
+    step2 = m∸n+n≡m n≤m
+    step3 : ((m ∸ n) +ℕ offset) < m
+    step3 = subst (((m ∸ n) +ℕ offset) <_) step2 step1
+    goal : ((m ∸ n) +ℕ offset) < (m +ℕ k)
+    goal = <-≤-trans step3 (m≤m+n m k)
 
 ------------------------------------------------------------------------
 -- Fetch and Step Lemmas
