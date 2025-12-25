@@ -2,14 +2,14 @@
 --
 -- Demonstrates:
 --   - Minimal executable (just exits with status 0)
---   - Primitives (exit0 from linux interpretation)
+--   - Module imports (I.Linux.Syscalls)
 --   - No string handling, no I/O beyond exit
 --
 -- Build and run:
---   once build --exe --interp=linux examples/hi.once -o hi
---   ./hi && echo "Success!"
+--   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/hi.once -o ../.build/hi
+--   ../.build/hi && echo "Success!"
 
-primitive exit0 : Eff Unit Unit
+import I.Linux.Syscalls as S
 
 main : IO Unit
-main = exit0
+main = exit0@S

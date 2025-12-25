@@ -1,15 +1,23 @@
 -- hello.once: Hello World for Once
 --
 -- Demonstrates:
---   - String literals with encoding (String Utf8)
---   - Primitives (println from linux File interpretation)
+--   - Effect composition using let bindings
+--   - Module imports (I.Linux.File, I.Linux.Syscalls)
 --   - Executable mode (main : IO Unit)
 --
+-- Note: Once uses categorical composition. The >>> operator for
+-- effect composition is planned but not yet implemented. For now,
+-- we use let bindings to sequence effects.
+--
 -- Build and run:
---   once build --exe --interp=linux examples/hello.once -o hello
---   ./hello
+--   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/hello.once -o ../.build/hello
+--   ../.build/hello
 
-primitive println : Eff (String Utf8) Unit
+import I.Linux.File as F
 
+-- Use effCompose and pure to compose effects with values
+-- pure "Hello" : Eff Unit (String Utf8) - constant effect producing the string
+-- println@F : Eff (String Utf8) Unit - prints the string
+-- effCompose println (pure "Hello") : Eff Unit Unit
 main : IO Unit
-main = compose println "Hello for Once"
+main = effCompose (println@F) (pure "Hello for Once")

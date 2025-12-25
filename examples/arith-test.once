@@ -1,13 +1,14 @@
--- arith-test.once: Test arithmetic primitives
+-- arith-test.once: Test arithmetic primitives (Int and Float)
 --
 -- Build:
 --   cd compiler && stack exec -- once build --exe \
---     --strata ../Strata ../examples/arith-test.once -o ../.build/arith-test
---   gcc -o ../.build/arith-test ../.build/arith-test.c
+--     --strata ../Strata \
+--     ../examples/arith-test.once -o ../.build/arith-test
 --   ../.build/arith-test
 
 import I.Linux.Syscalls as S
-import I.Linux.Arith as A
+import I.Math.Int as I
+import I.Math.Float as F
 
 -- Verify imports work - exit cleanly
 main : IO Unit

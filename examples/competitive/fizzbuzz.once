@@ -16,7 +16,7 @@
 --   ../.build/fizzbuzz
 
 import I.Linux.File as F
-import I.Linux.Arith as A
+import I.Math.Int as A
 import I.Linux.Control as C
 import I.Linux.Syscalls as S
 

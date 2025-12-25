@@ -9,19 +9,19 @@
 --   let x = e1; y = e2 in body
 --
 -- Build and run:
---   cd compiler && stack exec -- once build --exe --interp ../Strata/Interpretations/Linux ../examples/let-test.once -o ../.build/let-test
+--   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/let-test.once -o ../.build/let-test
 --   ../.build/let-test
 
-primitive println : Eff (String Utf8) Unit
+import I.Linux.File as F
 
 -- Test: single binding
 test_single : IO Unit
-test_single = let msg = "Single binding works!" in compose println msg
+test_single = let msg = "Single binding works!" in effCompose (println@F) (pure msg)
 
 -- Test: multiple bindings (semicolon separated)
 -- Later bindings can reference earlier ones
 test_multi : IO Unit
-test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in compose println target
+test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in effCompose (println@F) (pure target)
 
 -- Main runs the multi-binding test
 main : IO Unit

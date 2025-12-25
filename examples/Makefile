@@ -30,10 +30,13 @@ all: c native
 	@echo "All tests passed!"
 
 # C backend tests
-c: $(BUILD)/hi-c $(BUILD)/hello-c
+c: $(BUILD)/hi-c $(BUILD)/hello-c $(BUILD)/let-test-c $(BUILD)/arith-test-c $(BUILD)/fizzbuzz-c
 	@echo "Running C backend tests..."
 	$(BUILD)/hi-c && echo "hi-c: PASS"
 	$(BUILD)/hello-c && echo "hello-c: PASS"
+	$(BUILD)/let-test-c && echo "let-test-c: PASS"
+	$(BUILD)/arith-test-c && echo "arith-test-c: PASS"
+	$(BUILD)/fizzbuzz-c && echo "fizzbuzz-c: PASS"
 	@echo "C backend tests passed!"
 
 $(BUILD)/hi-c: hi.once
@@ -43,6 +46,18 @@ $(BUILD)/hi-c: hi.once
 $(BUILD)/hello-c: hello.once
 	@mkdir -p $(BUILD)
 	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/hello.once -o $(BUILD)/hello-c
+
+$(BUILD)/let-test-c: let-test.once
+	@mkdir -p $(BUILD)
+	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/let-test.once -o $(BUILD)/let-test-c
+
+$(BUILD)/arith-test-c: arith-test.once
+	@mkdir -p $(BUILD)
+	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/arith-test.once -o $(BUILD)/arith-test-c
+
+$(BUILD)/fizzbuzz-c: competitive/fizzbuzz.once
+	@mkdir -p $(BUILD)
+	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/competitive/fizzbuzz.once -o $(BUILD)/fizzbuzz-c
 
 # Native x86_64 tests (runs on host)
 native: $(BUILD)/hi-x86_64
@@ -78,6 +93,6 @@ $(BUILD)/hi-riscv64: hi.once
 	$(ONCE) build --exe --target riscv64 -I:riscv64 I.Linux.Syscalls --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-riscv64
 
 clean:
-	rm -f $(BUILD)/hi-c $(BUILD)/hello-c
+	rm -f $(BUILD)/hi-c $(BUILD)/hello-c $(BUILD)/let-test-c $(BUILD)/arith-test-c $(BUILD)/fizzbuzz-c
 	rm -f $(BUILD)/hi-x86_64 $(BUILD)/hi-arm64 $(BUILD)/hi-riscv64
 	rm -f $(BUILD)/*.s $(BUILD)/*.o
