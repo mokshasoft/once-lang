@@ -35,7 +35,7 @@ open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-cor
 open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
          ir-sp-delta; ir-sp; ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
 
 open import Once.Backend.Common.Memory
@@ -70,6 +70,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     ; ir-pc     = pc-final
     ; ir-a0     = a0-final
     ; ir-s1     = s1-final
+    ; ir-s2     = s2-final
     ; ir-ra     = ra-final
     ; ir-sp-delta = 16
     ; ir-sp     = sp-final
@@ -467,6 +468,34 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
 
     s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
     s1-final = s1-st8
+
+    -- Track s2 through states (none of the curry instructions modify s2)
+    s2-st1 : readReg (regs st1) s2 ≡ readReg (regs s) s2
+    s2-st1 = readReg-writeReg-sp-s2 (regs s) new-sp
+
+    s2-st2 : readReg (regs st2) s2 ≡ readReg (regs s) s2
+    s2-st2 = s2-st1  -- memory write doesn't change regs
+
+    s2-st3 : readReg (regs st3) s2 ≡ readReg (regs s) s2
+    s2-st3 = trans (readReg-writeReg-t0-s2 (regs st2) (pc st2)) s2-st2
+
+    s2-st4 : readReg (regs st4) s2 ≡ readReg (regs s) s2
+    s2-st4 = trans (readReg-writeReg-t0-s2 (regs st3) (readReg (regs st3) t0 +ℕ 5)) s2-st3
+
+    s2-st5 : readReg (regs st5) s2 ≡ readReg (regs s) s2
+    s2-st5 = s2-st4  -- memory write doesn't change regs
+
+    s2-st6 : readReg (regs st6) s2 ≡ readReg (regs s) s2
+    s2-st6 = trans (readReg-writeReg-a0-s2 (regs st5) (readReg (regs st5) sp)) s2-st5
+
+    s2-st7 : readReg (regs st7) s2 ≡ readReg (regs s) s2
+    s2-st7 = s2-st6  -- j only changes pc
+
+    s2-st8 : readReg (regs st8) s2 ≡ readReg (regs s) s2
+    s2-st8 = s2-st7  -- label only changes pc
+
+    s2-final : readReg (regs s-final) s2 ≡ readReg (regs s) s2
+    s2-final = s2-st8
 
     -- Track ra through states (none of the curry instructions modify ra)
     ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra

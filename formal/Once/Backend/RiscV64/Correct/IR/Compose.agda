@@ -27,7 +27,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-trans)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp-delta; ir-sp;
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
          ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
 
 open import Data.Bool using (false)
@@ -138,6 +138,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
   ; ir-pc = pcg
   ; ir-a0 = a0-g
   ; ir-s1 = s1-final
+  ; ir-s2 = s2-final
   ; ir-ra = ra-final
   ; ir-sp-delta = ir-sp-delta r1 +ℕ ir-sp-delta r2
   ; ir-sp = sp-final
@@ -155,6 +156,8 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     star-f = ir-star r1
     s1-f : readReg (regs sf) s1 ≡ readReg (regs s) s1
     s1-f = ir-s1 r1
+    s2-f : readReg (regs sf) s2 ≡ readReg (regs s) s2
+    s2-f = ir-s2 r1
     ra-f : readReg (regs sf) ra ≡ readReg (regs s) ra
     ra-f = ir-ra r1
 
@@ -167,6 +170,8 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     a0-g = ir-a0 r2
     s1-g : readReg (regs sg) s1 ≡ readReg (regs sf) s1
     s1-g = ir-s1 r2
+    s2-g : readReg (regs sg) s2 ≡ readReg (regs sf) s2
+    s2-g = ir-s2 r2
     ra-g : readReg (regs sg) ra ≡ readReg (regs sf) ra
     ra-g = ir-ra r2
 
@@ -189,6 +194,10 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = record
     -- s1 preservation: chain through f and g
     s1-final : readReg (regs sg) s1 ≡ readReg (regs s) s1
     s1-final = trans s1-g s1-f
+
+    -- s2 preservation: chain through f and g
+    s2-final : readReg (regs sg) s2 ≡ readReg (regs s) s2
+    s2-final = trans s2-g s2-f
 
     -- ra preservation: chain through f and g
     ra-final : readReg (regs sg) ra ≡ readReg (regs s) ra
@@ -245,6 +254,7 @@ transform-f-result {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-pc = ir-pc r
   ; ir-a0 = ir-a0 r
   ; ir-s1 = ir-s1 r
+  ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
   ; ir-sp = ir-sp r
   ; ir-mem-sp = ir-mem-sp r
@@ -270,6 +280,7 @@ transform-g-result {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-pc = ir-pc r
   ; ir-a0 = ir-a0 r
   ; ir-s1 = ir-s1 r
+  ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
   ; ir-sp = ir-sp r
   ; ir-mem-sp = ir-mem-sp r
