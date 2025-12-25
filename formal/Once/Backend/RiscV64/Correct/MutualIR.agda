@@ -77,7 +77,7 @@ open import Once.Backend.RiscV64.Correct.IR.Apply
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -1051,12 +1051,20 @@ mutual
       pc-after-g : pc s-after-g-raw ≡ offset +ℕ 5 +ℕ len-f +ℕ len-g
       pc-after-g = trans pc-g-raw (cong (_+ℕ len-g) len-prefix-g)
 
-      -- SP tracking through f and g: with deltas
-      -- f: sp-after-f + delta_f = sp-setup
-      -- g: sp-after-g + delta_g = sp-mid
-      -- For memory proofs, we need to convert addresses between states.
-      -- The actual memory preservation still holds because writes happen below sp.
-      -- We postulate the sp relationships needed for memory address conversions.
+      -- SP tracking through f and g:
+      -- The IRStarResult gives us: sp-after + delta = sp-before
+      --
+      -- LIMITATION: The current pair code generation assumes f and g don't allocate
+      -- permanent stack space (ir-sp-delta = 0). This is because:
+      --   - pair-middle writes to current sp after f
+      --   - pair-final reads from current sp after g
+      --   - If f or g allocate stack, these addresses differ!
+      --
+      -- This limitation affects nested pairs: pair ⟨ pair ⟨ a , b ⟩ , c ⟩ would fail
+      -- because the inner pair allocates 24 bytes.
+      --
+      -- Fix would require: save frame pointer in s2 before f, use s2 for all stores/loads.
+      -- For now, we postulate the sp preservation (sound when delta = 0).
       postulate
         sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
         sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
@@ -1110,7 +1118,8 @@ mutual
       pc-final-raw = proj₁ (proj₂ (proj₂ (proj₂ final-phase-result)))
       a0-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))
       s1-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))
-      ra-final-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))
+      ra-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))
+      sp-final-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))
 
       -- Final star is already in prog
       star-final : Star prog s-after-g-raw s-final
@@ -1171,10 +1180,48 @@ mutual
       -- SP tracking: pair allocates 24 bytes + f's delta + g's delta
       -- With ir-sp-delta = 24 + delta_f + delta_g:
       --   sp_final + (24 + delta_f + delta_g) = sp_s
+      -- Proof chains through all phases:
+      --   sp-final-raw → ir-sp r-g → sp-mid → ir-sp r-f → sp-setup → m∸n+n≡m
+      delta-f = ir-sp-delta r-f
+      delta-g = ir-sp-delta r-g
+
+      -- Stack space assumption: sp has enough room for 24-byte frame
+      postulate
+        stack-space : 24 ≤ readReg (regs s) sp
+
+      sp-final : readReg (regs s-final) sp +ℕ (24 +ℕ delta-f +ℕ delta-g) ≡ readReg (regs s) sp
+      sp-final = begin
+        readReg (regs s-final) sp +ℕ (24 +ℕ delta-f +ℕ delta-g)
+          ≡⟨ cong (_+ℕ (24 +ℕ delta-f +ℕ delta-g)) sp-final-raw ⟩
+        readReg (regs s-after-g-raw) sp +ℕ (24 +ℕ delta-f +ℕ delta-g)
+          -- Rearrange: (24 + delta-f) + delta-g → delta-g + (delta-f + 24)
+          -- Step 1: (24 + delta-f) + delta-g → delta-g + (24 + delta-f)
+          ≡⟨ cong (readReg (regs s-after-g-raw) sp +ℕ_)
+                  (+-comm (24 +ℕ delta-f) delta-g) ⟩
+        readReg (regs s-after-g-raw) sp +ℕ (delta-g +ℕ (24 +ℕ delta-f))
+          -- Step 2: delta-g + (24 + delta-f) → delta-g + (delta-f + 24)
+          ≡⟨ cong (λ x → readReg (regs s-after-g-raw) sp +ℕ (delta-g +ℕ x))
+                  (+-comm 24 delta-f) ⟩
+        readReg (regs s-after-g-raw) sp +ℕ (delta-g +ℕ (delta-f +ℕ 24))
+          ≡⟨ sym (+-assoc (readReg (regs s-after-g-raw) sp) delta-g (delta-f +ℕ 24)) ⟩
+        (readReg (regs s-after-g-raw) sp +ℕ delta-g) +ℕ (delta-f +ℕ 24)
+          ≡⟨ cong (_+ℕ (delta-f +ℕ 24)) (ir-sp r-g) ⟩
+        readReg (regs s-mid) sp +ℕ (delta-f +ℕ 24)
+          ≡⟨ cong (_+ℕ (delta-f +ℕ 24)) sp-mid ⟩
+        readReg (regs s-after-f-raw) sp +ℕ (delta-f +ℕ 24)
+          ≡⟨ sym (+-assoc (readReg (regs s-after-f-raw) sp) delta-f 24) ⟩
+        (readReg (regs s-after-f-raw) sp +ℕ delta-f) +ℕ 24
+          ≡⟨ cong (_+ℕ 24) (ir-sp r-f) ⟩
+        readReg (regs s-setup) sp +ℕ 24
+          ≡⟨ cong (_+ℕ 24) sp-setup ⟩
+        (readReg (regs s) sp ∸ 24) +ℕ 24
+          ≡⟨ m∸n+n≡m stack-space ⟩
+        readReg (regs s) sp
+          ∎
+
       -- Memory preservation: pair writes at new-sp, new-sp+8, new-sp+16 (its own frame)
       -- so memory at original sp and above is preserved.
       postulate
-        sp-final : readReg (regs s-final) sp +ℕ (24 +ℕ ir-sp-delta r-f +ℕ ir-sp-delta r-g) ≡ readReg (regs s) sp
         mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
         mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
         mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
