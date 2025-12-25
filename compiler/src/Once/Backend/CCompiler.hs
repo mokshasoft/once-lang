@@ -65,7 +65,7 @@ compile :: [FilePath] -> FilePath -> IO (Either CCompilerError FilePath)
 compile cFiles output = do
   cc <- getCompiler
   cflags <- getCFlags
-  let args = cflags ++ cFiles ++ ["-o", output]
+  let args = cflags ++ cFiles ++ ["-o", output, "-lm"]  -- -lm for math functions
   result <- try $ readProcessWithExitCode cc args ""
   case result of
     Left (e :: IOException) ->
@@ -95,7 +95,7 @@ linkWithCC :: [FilePath] -> FilePath -> IO (Either CCompilerError FilePath)
 linkWithCC objFiles output = do
   cc <- getCompiler
   cflags <- getCFlags
-  let args = cflags ++ objFiles ++ ["-o", output]
+  let args = cflags ++ objFiles ++ ["-o", output, "-lm"]  -- -lm for math functions
   result <- try $ readProcessWithExitCode cc args ""
   case result of
     Left (e :: IOException) ->
