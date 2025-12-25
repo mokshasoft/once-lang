@@ -268,28 +268,6 @@ exec-until-pc-at-target target fuel prog s h-false pc-eq
 exec-until-pc-at-target target fuel prog s h-false pc-eq | yes _ = refl
 exec-until-pc-at-target target fuel prog s h-false pc-eq | no pc≢target = ⊥-elim (pc≢target pc-eq)
 
--- | Key lemma: if exec-until-pc succeeds with halted = false, then pc = target
--- This is the main correctness property we need for branching proofs
-exec-until-pc-reaches-target : ∀ (target fuel : ℕ) (prog : Program) (s s' : State) →
-  exec-until-pc target fuel prog s ≡ just s' →
-  halted s' ≡ false →
-  pc s' ≡ target
--- Base case: fuel = 0, returns s unchanged
-exec-until-pc-reaches-target target zero prog s s' exec-eq h-false with refl ← exec-eq =
-  -- s' = s, need pc s = target, but we only know halted s' = false
-  -- This case can only succeed if pc s = target already (otherwise we'd need more fuel)
-  -- For now, leave as postulate (would need fuel lower bound)
-  postulate-pc-at-fuel-zero
-  where postulate postulate-pc-at-fuel-zero : pc s ≡ target
--- Inductive case: fuel = suc fuel'
-exec-until-pc-reaches-target target (suc fuel') prog s s' exec-eq h-false with halted s in eq-halt
-... | true with refl ← exec-eq = ⊥-elim (true≢false (trans (sym eq-halt) h-false))
-... | false with pc s ≟ target
-...   | yes pc-eq with refl ← exec-eq = pc-eq
-...   | no _ with step prog s in eq-step
-...     | nothing with () ← exec-eq
-...     | just s1 = exec-until-pc-reaches-target target fuel' prog s1 s' exec-eq h-false
-
 -- | Fetching at the end of a prefix returns the first element of suffix
 -- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
 fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
