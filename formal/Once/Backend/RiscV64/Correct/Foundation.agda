@@ -61,7 +61,7 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; s≤s; _≟_; _≥_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s; _≟_; _≥_) renaming (_+_ to _+ℕ_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -330,7 +330,7 @@ readReg-writeReg-s0-sp rf v = refl
 -- Memory Lemmas
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-suc)
+open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-suc; m∸n+n≡m)
 
 -- Memory read/write lemmas now imported from Once.Backend.Common.Memory:
 --   readMem-writeMem-same, readMem-writeMem-diff, n≢n+suc
@@ -501,60 +501,6 @@ step-at-offset prefix i suffix s h-false pc-eq =
            (sym pc-eq) (fetch-at-prefix-end prefix i suffix))
 
 ------------------------------------------------------------------------
--- exec-until-pc lemmas
-------------------------------------------------------------------------
-
--- | If we're already at target pc, exec-until-pc returns immediately
-exec-until-pc-at-target : ∀ (target fuel : ℕ) (prog : Program) (s : State) →
-  halted s ≡ false →
-  pc s ≡ target →
-  exec-until-pc target (suc fuel) prog s ≡ just s
-exec-until-pc-at-target target fuel prog s h-false pc-eq
-  rewrite h-false with pc s ≟ target
-... | yes _ = refl
-... | no pc≢target = ⊥-elim (pc≢target pc-eq)
-
--- | Key lemma: if exec-until-pc succeeds with halted = false, then pc = target
--- This is the main correctness property we need for branching proofs
-exec-until-pc-reaches-target : ∀ (target fuel : ℕ) (prog : Program) (s s' : State) →
-  exec-until-pc target fuel prog s ≡ just s' →
-  halted s' ≡ false →
-  pc s' ≡ target
--- Base case: fuel = 0, returns s unchanged
-exec-until-pc-reaches-target target zero prog s s' exec-eq h-false with refl ← exec-eq =
-  -- s' = s, need pc s = target, but we only know halted s' = false
-  -- This case can only succeed if pc s = target already (otherwise we'd need more fuel)
-  -- For now, leave as postulate (would need fuel lower bound)
-  postulate-pc-at-fuel-zero
-  where postulate postulate-pc-at-fuel-zero : pc s ≡ target
--- Inductive case: fuel = suc fuel'
-exec-until-pc-reaches-target target (suc fuel') prog s s' exec-eq h-false with halted s in eq-halt
-... | true with refl ← exec-eq = ⊥-elim (true≢false (trans (sym eq-halt) h-false))
-... | false with pc s ≟ target
-...   | yes pc-eq with refl ← exec-eq = pc-eq
-...   | no _ with step prog s in eq-step
-...     | nothing with () ← exec-eq
-...     | just sNext = exec-until-pc-reaches-target target fuel' prog sNext s' exec-eq h-false
-
--- | exec-until-pc with sufficient fuel equals exec with exact steps when pc matches
--- This connects exec-until-pc to the regular exec when we know exact step count
--- Precondition: pc s ≢ target (we don't start at the target)
---
--- The proof is sound but complex due to Agda's with-clause abstraction creating
--- types that are hard to work with. The lemma states: if exec n prog s gives s'
--- and s' is at target pc (not halted), then exec-until-pc with sufficient fuel
--- also gives s'. This is true because exec-until-pc just adds early stopping at
--- target, and if exec reaches target in n steps, exec-until-pc will too.
-postulate
-  exec-until-pc-to-exec : ∀ (target n fuel : ℕ) (prog : Program) (s s' : State) →
-    exec n prog s ≡ just s' →
-    halted s' ≡ false →
-    pc s' ≡ target →
-    fuel ≥ n →
-    pc s ≢ target →     -- Don't start at target
-    exec-until-pc target fuel prog s ≡ just s'
-
-------------------------------------------------------------------------
 -- Instruction execution lemmas
 ------------------------------------------------------------------------
 
@@ -593,156 +539,8 @@ execInstr-nop : ∀ (prog : Program) (s : State) →
 execInstr-nop prog s = refl
 
 ------------------------------------------------------------------------
--- exec-concat-left and helper lemmas
+-- Halted state lemmas (needed for exec-mono)
 ------------------------------------------------------------------------
---
--- These lemmas prove that executing a prefix program gives the same
--- result as executing the full concatenated program, as long as the
--- PC stays within the prefix. This is critical for composition proofs.
-
--- | If pc < length prog, fetch prog pc succeeds
-fetch-succeeds : ∀ (prog : Program) (n : ℕ) → n < length prog →
-  ∃[ instr ] (fetch prog n ≡ just instr)
-fetch-succeeds [] n ()
-fetch-succeeds (x ∷ xs) zero pf = x , refl
-fetch-succeeds (x ∷ xs) (suc n) (s≤s pf) = fetch-succeeds xs n pf
-
--- | execInstr doesn't depend on code after current instruction
--- The prog argument is only used for jalr which reads from registers, not from prog.
--- In RISC-V, like AArch64 and x86, the program is unused in instruction execution.
-execInstr-prog-irrelevant : ∀ (prog1 prog2 : Program) (s : State) (instr : Instr) →
-  execInstr prog1 s instr ≡ execInstr (prog1 ++ prog2) s instr
-execInstr-prog-irrelevant prog1 prog2 s instr = refl  -- prog is unused in execInstr
-
--- | step on prog equals execInstr when halted=false and fetch succeeds
-step-unfold : ∀ (prog : Program) (s : State) (instr : Instr) →
-  halted s ≡ false →
-  fetch prog (pc s) ≡ just instr →
-  step prog s ≡ execInstr prog s instr
-step-unfold prog s instr refl fetch-eq with fetch prog (pc s) | fetch-eq
-... | just .instr | refl = refl
-
--- | step produces same result when pc < length prog1
--- Proof: Both step calls see halted s = false, both fetch the same instruction
--- (by fetch-append-left), and execInstr gives same result (prog argument unused).
-step-concat-left : ∀ (prog1 prog2 : Program) (s : State) →
-  halted s ≡ false →
-  pc s < length prog1 →
-  step (prog1 ++ prog2) s ≡ step prog1 s
-step-concat-left prog1 prog2 s h-false pc-bound =
-  let (instr , fetch-eq) = fetch-succeeds prog1 (pc s) pc-bound
-      fetch-concat-eq = trans (fetch-append-left prog1 prog2 (pc s) pc-bound) fetch-eq
-      -- step prog1 s = execInstr prog1 s instr
-      step1-eq : step prog1 s ≡ execInstr prog1 s instr
-      step1-eq = step-unfold prog1 s instr h-false fetch-eq
-      -- step (prog1 ++ prog2) s = execInstr (prog1 ++ prog2) s instr
-      step-concat-eq : step (prog1 ++ prog2) s ≡ execInstr (prog1 ++ prog2) s instr
-      step-concat-eq = step-unfold (prog1 ++ prog2) s instr h-false fetch-concat-eq
-      -- execInstr prog1 s instr = execInstr (prog1 ++ prog2) s instr
-      exec-eq : execInstr prog1 s instr ≡ execInstr (prog1 ++ prog2) s instr
-      exec-eq = execInstr-prog-irrelevant prog1 prog2 s instr
-  in trans step-concat-eq (trans (sym exec-eq) (sym step1-eq))
-
--- | Unfold exec (suc n) when step succeeds and halted is false
--- exec (suc n) prog s = exec n prog s₁ when step prog s = just s₁ and halted s₁ = false
-exec-suc-step : ∀ (n : ℕ) (prog : Program) (s s₁ : State) →
-  halted s ≡ false →
-  step prog s ≡ just s₁ →
-  halted s₁ ≡ false →
-  exec (suc n) prog s ≡ exec n prog s₁
-exec-suc-step n prog s s₁ refl step-eq halt-eq
-  with step prog s | step-eq
-... | just .s₁ | refl with halted s₁ | halt-eq
-...   | false | refl = refl
-
--- | Unfold exec (suc n) when step succeeds and halted is true
--- exec (suc n) prog s = just s₁ when step prog s = just s₁ and halted s₁ = true
-exec-suc-halt : ∀ (n : ℕ) (prog : Program) (s s₁ : State) →
-  halted s ≡ false →
-  step prog s ≡ just s₁ →
-  halted s₁ ≡ true →
-  exec (suc n) prog s ≡ just s₁
-exec-suc-halt n prog s s₁ refl step-eq halt-eq
-  with step prog s | step-eq
-... | just .s₁ | refl with halted s₁ | halt-eq
-...   | true | refl = refl
-
--- | Main lemma: execution matches while pc stays strictly within prog1
--- This is critical for composition proofs: we can execute a sub-program
--- and the result is the same whether we execute just the sub-program or
--- the full concatenated program.
-exec-concat-left : ∀ (n : ℕ) (prog1 prog2 : Program) (s s' : State) →
-  halted s ≡ false →
-  exec n prog1 s ≡ just s' →
-  (halted s' ≡ false → pc s' < length prog1) →  -- If not halted, still in bounds
-  exec n (prog1 ++ prog2) s ≡ just s'
-
--- Base case: n = 0
-exec-concat-left zero prog1 prog2 s .s h-false refl _ = refl
-
--- Inductive case: n = suc n'
-exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
-  with step prog1 s in step-eq
-... | nothing with exec (suc n') prog1 s | exec-eq
-...   | ._ | ()  -- exec can't succeed if step fails
-exec-concat-left (suc n') prog1 prog2 s s' h-false exec-eq pc-inv
-    | just s₁ with halted s₁ in halt-eq
--- s₁ is halted: exec returns s₁ = s'
-...   | true = exec-halt-case
-  where
-    postulate
-      pc-in-bounds : pc s < length prog1
-      -- Extracting s' = s₁ from exec-eq when halted
-      s'-is-s₁ : s' ≡ s₁
-
-    step-concat-eq : step (prog1 ++ prog2) s ≡ just s₁
-    step-concat-eq = trans (step-concat-left prog1 prog2 s h-false pc-in-bounds) step-eq
-
-    exec-halt-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
-    exec-halt-case = subst (λ x → exec (suc n') (prog1 ++ prog2) s ≡ just x)
-                           (sym s'-is-s₁)
-                           (exec-suc-halt n' (prog1 ++ prog2) s s₁ h-false step-concat-eq halt-eq)
--- s₁ is not halted: recurse
-...   | false = exec-recurse-case
-  where
-    postulate
-      pc-s-bound : pc s < length prog1
-      pc-s₁-inv : halted s' ≡ false → pc s' < length prog1
-      exec-n'-eq : exec n' prog1 s₁ ≡ just s'
-
-    step-concat-eq : step (prog1 ++ prog2) s ≡ just s₁
-    step-concat-eq = trans (step-concat-left prog1 prog2 s h-false pc-s-bound) step-eq
-
-    -- Unfold LHS: exec (suc n') (prog1 ++ prog2) s = exec n' (prog1 ++ prog2) s₁
-    lhs-unfold : exec (suc n') (prog1 ++ prog2) s ≡ exec n' (prog1 ++ prog2) s₁
-    lhs-unfold = exec-suc-step n' (prog1 ++ prog2) s s₁ h-false step-concat-eq halt-eq
-
-    -- IH: exec n' (prog1 ++ prog2) s₁ = just s'
-    ih : exec n' (prog1 ++ prog2) s₁ ≡ just s'
-    ih = exec-concat-left n' prog1 prog2 s₁ s' halt-eq exec-n'-eq pc-s₁-inv
-
-    exec-recurse-case : exec (suc n') (prog1 ++ prog2) s ≡ just s'
-    exec-recurse-case = trans lhs-unfold ih
-
-------------------------------------------------------------------------
--- Halted state lemmas
-------------------------------------------------------------------------
---
--- These lemmas prove that once execution reaches a halted state,
--- additional execution steps don't change the result. This is critical
--- for proving that run (with large fuel) gives the same result as
--- exec (with exact step count).
-
-open import Data.Nat.Properties using (m∸n+n≡m)
-open import Data.Nat using (_≤_; z≤n)
-
--- | If already halted, exec returns the state unchanged
-exec-halted : ∀ (n : ℕ) (prog : Program) (s : State) →
-  halted s ≡ true → exec n prog s ≡ just s
-exec-halted zero prog s h = refl
-exec-halted (suc n) prog s h with halted s | h
-... | true | refl with halted s
-...   | true = refl
 
 -- | step on a halted state returns the same state
 step-halted : ∀ (prog : Program) (s : State) →
@@ -750,10 +548,6 @@ step-halted : ∀ (prog : Program) (s : State) →
   step prog s ≡ just s
 step-halted prog s h-true with halted s | h-true
 ... | true | refl = refl
-
--- | exec 0 always returns initial state
-exec-0 : ∀ (prog : Program) (s : State) → exec 0 prog s ≡ just s
-exec-0 prog s = refl
 
 -- | exec (suc n) on a halted state returns the same state
 exec-suc-halted : ∀ (n : ℕ) (prog : Program) (s : State) →
