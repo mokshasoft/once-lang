@@ -184,6 +184,11 @@ readReg-writeReg-x9-x30 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x9 v) x30 ≡ readReg rf x30
 readReg-writeReg-x9-x30 rf v = refl
 
+-- | Cross-register preservation: writing x9 doesn't affect x29
+readReg-writeReg-x9-x29 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf x9 v) x29 ≡ readReg rf x29
+readReg-writeReg-x9-x29 rf v = refl
+
 -- | Cross-register preservation: writing x20 doesn't affect x0
 readReg-writeReg-x20-x0 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf x20 v) x0 ≡ readReg rf x0
@@ -425,6 +430,11 @@ readSP-writeSP rf v = refl
 readMem-writeMem-diff-8 : ∀ (m : Memory) (addr : Word) (v : Word) →
   readMem (writeMem m addr v) (addr +ℕ 8) ≡ readMem m (addr +ℕ 8)
 readMem-writeMem-diff-8 m addr v = readMem-writeMem-diff m addr (addr +ℕ 8) v (n+8≢n addr)
+
+-- | Corollary: reading at addr after writing at addr+8 is unchanged
+readMem-writeMem-diff-8-rev : ∀ (m : Memory) (addr : Word) (v : Word) →
+  readMem (writeMem m (addr +ℕ 8) v) addr ≡ readMem m addr
+readMem-writeMem-diff-8-rev m addr v = readMem-writeMem-diff m (addr +ℕ 8) addr v (n≢n+8 addr)
 
 ------------------------------------------------------------------------
 -- Step 2: Fetch/Execution Helpers
