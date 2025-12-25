@@ -150,6 +150,7 @@ record TransferResult {A B C : Type} (f : IR A B) (g : IR B C)
     r14-s1-to-s2 : readReg (regs s2) r14 ≡ readReg (regs s1) r14
     r15-s1-to-s2 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
     rbp-s1-to-s2 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+    rsp-s1-to-s2 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
     -- Memory preservation (transfer doesn't write memory)
     mem-s1-to-s2 : ∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
@@ -171,6 +172,7 @@ exec-compose-transfer {A} {B} {C} f g prefix suffix x s s1 r1 = record
   ; r14-s1-to-s2 = r14-s1-to-s2
   ; r15-s1-to-s2 = r15-s1-to-s2
   ; rbp-s1-to-s2 = rbp-s1-to-s2
+  ; rsp-s1-to-s2 = rsp-s1-to-s2
   ; mem-s1-to-s2 = λ _ → refl  -- transfer doesn't write memory
   }
   where

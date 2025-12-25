@@ -124,23 +124,19 @@ open ≡-Reasoning
 -- RbpInvariant preservation helper
 ------------------------------------------------------------------------
 
--- RbpInvariant is preserved through IR execution when rbp is unchanged
--- and rsp stays bounded (which is ensured by ir-rsp-bound)
+-- RbpInvariant is preserved through IR execution when rsp and rbp are unchanged
+-- Uses ir-rbp-inv from IRStarResult and register preservation from transfer
 rbp-inv-preserved-through-ir : ∀ (s s1 s2 : State) →
   RbpInvariant s →
   ∀ {A B} {ir : IR A B} {prog x offset} →
   IRStarResult ir prog s s1 x offset →
-  readReg (regs s2) rbp ≡ readReg (regs s) rbp →
+  readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
+  readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
   RbpInvariant s2
-rbp-inv-preserved-through-ir s s1 s2 rbp-inv {ir = ir} r rbp2-eq = record
-  { rsp≤rbp = rsp2≤rbp2 }
-  where
-    open import Data.Nat.Properties using (≤-trans)
-    -- s2.rbp = s.rbp (by rbp2-eq)
-    -- s.rsp ≤ s.rbp (from rbp-inv)
-    -- s2.rsp > 16 (from ir-rsp-bound or rsp-bound-after-stack-op)
-    -- We postulate the rsp relationship for now
-    postulate rsp2≤rbp2 : readReg (regs s2) rsp ≤ readReg (regs s2) rbp
+rbp-inv-preserved-through-ir s s1 s2 _ {ir = ir} r rsp2-eq rbp2-eq =
+  -- s1 has RbpInvariant from ir-rbp-inv r
+  -- s2 has same rsp and rbp as s1, so RbpInvariant is preserved
+  Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s2 (ir-rbp-inv r) rsp2-eq rbp2-eq
 
 ------------------------------------------------------------------------
 -- Star-based versions for multi-step IR cases
@@ -969,12 +965,15 @@ mutual
       s2 = TransferResult.s2 tr
 
       -- RbpInvariant preserved: rbp unchanged (ir-rbp), rsp may change but invariant maintained
-      -- s2.rbp = s1.rbp (from rbp-s1-to-s2) = s.rbp (from ir-rbp r1)
-      rbp-s2-eq-s : readReg (regs s2) rbp ≡ readReg (regs s) rbp
-      rbp-s2-eq-s = trans (TransferResult.rbp-s1-to-s2 tr) (ir-rbp r1)
+      -- Register preservation from transfer
+      rsp-s2-eq-s1 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+      rsp-s2-eq-s1 = TransferResult.rsp-s1-to-s2 tr
+
+      rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+      rbp-s2-eq-s1 = TransferResult.rbp-s1-to-s2 tr
 
       rbp-inv-2 : RbpInvariant s2
-      rbp-inv-2 = rbp-inv-preserved-through-ir s s1 s2 rbp-inv r1 rbp-s2-eq-s
+      rbp-inv-2 = rbp-inv-preserved-through-ir s s1 s2 rbp-inv r1 rsp-s2-eq-s1 rbp-s2-eq-s1
 
       -- Step 3: Execute g (RECURSIVE - must stay in mutual block)
       step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
@@ -3111,8 +3110,8 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , mem-rbp-final , mem-rbp+8-final , stack-inv-final , rsp>16-final) =
-          apply-produces-result prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    let (s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , mem-final , mem-rbp-final , mem-rbp+8-final , stack-inv-final , rsp>16-final , rbp-inv-final) =
+          apply-produces-result prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     in s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -3126,10 +3125,6 @@ mutual
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
-      -- apply-produces-result doesn't provide RbpInvariant, but apply restores
-      -- the stack frame so rsp ≤ rbp is maintained. This relies on the postulate.
-      ; ir-rbp-inv = postulate-rbp-inv-apply s-final
+      ; ir-rbp-inv = rbp-inv-final
       }
-    where
-      postulate postulate-rbp-inv-apply : ∀ (s' : State) → RbpInvariant s'
 

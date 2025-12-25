@@ -26,7 +26,7 @@ open import Once.Backend.X86.Semantics using (State; readReg; readMem)
 open import Once.Backend.X86.Semantics using () renaming (module State to St)
 open St using (regs; memory; halted; pc)
 open import Once.Backend.X86.Correct.Star using (Star)
-open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant)
+open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.CodeGen using (compile-x86; compile-length)
 
 ------------------------------------------------------------------------
@@ -129,6 +129,7 @@ postulate
     readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
+    RbpInvariant s →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] (Star prog s s'
               × halted s' ≡ false
@@ -141,7 +142,8 @@ postulate
               × readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
               × readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
               × StackInvariant s'
-              × readReg (regs s') rsp > 16)
+              × readReg (regs s') rsp > 16
+              × RbpInvariant s')
 
 -- NOTE: encode-curry-at-rsp was ELIMINATED
 -- The curry encoding is now derived from encode-closure-construct (in Once.Postulates)
