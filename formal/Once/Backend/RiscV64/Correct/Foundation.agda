@@ -61,7 +61,7 @@ open import Once.Postulates public
         )
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s; _≟_; _≥_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; z≤n; s≤s; _≟_; _≥_) renaming (_+_ to _+ℕ_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -126,6 +126,14 @@ initWithInput-halted x = refl
 -- | Initial state has pc = 0 (proven from definition)
 initWithInput-pc : ∀ {A} (x : ⟦ A ⟧) → pc (initWithInput x) ≡ 0
 initWithInput-pc x = refl
+
+-- | Initial stack pointer value
+initWithInput-sp : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) sp ≡ 0x7FFF0000
+initWithInput-sp x = refl
+
+-- | Initial state has adequate stack (24 ≤ sp)
+initWithInput-sp-bound : ∀ {A} (x : ⟦ A ⟧) → 24 ≤ readReg (regs (initWithInput x)) sp
+initWithInput-sp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
 
 ------------------------------------------------------------------------
 -- Execution Helpers
