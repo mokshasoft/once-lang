@@ -61,6 +61,7 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
     ir-pc      : pc s' ≡ offset +ℕ compile-length ir      -- PC advanced correctly
     ir-a0      : readReg (regs s') a0 ≡ encode (eval ir x) -- Output in a0
     ir-s1      : readReg (regs s') s1 ≡ readReg (regs s) s1  -- s1 preserved
+    ir-s2      : readReg (regs s') s2 ≡ readReg (regs s) s2  -- s2 preserved (for pair frame pointer)
     ir-ra      : readReg (regs s') ra ≡ readReg (regs s) ra  -- ra preserved
     -- SP tracking: Most ops preserve sp (delta=0), but inl/inr/pair allocate stack.
     -- ir-sp-delta tracks how many bytes were allocated (0, 16, or 24).
@@ -111,6 +112,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = a0-eq  -- a0 unchanged, eval id x = x
   ; ir-s1     = refl
+  ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
@@ -145,6 +147,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = trans (readReg-writeReg-same (regs s) a0 0 (λ ())) (sym encode-unit)
   ; ir-s1     = refl
+  ; ir-s2     = readReg-writeReg-a0-s2 (regs s) 0
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) 0)
@@ -180,6 +183,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = trans a0-eq (encode-fix-wrap x)
   ; ir-s1     = refl
+  ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
@@ -214,6 +218,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = trans a0-eq (encode-fix-unwrap x)
   ; ir-s1     = refl
+  ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
@@ -248,6 +253,7 @@ run-arr-star {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = trans a0-eq (encode-arr-identity f)  -- encode {A ⇒ B} f ≡ encode {Eff A B} f
   ; ir-s1     = refl
+  ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
@@ -282,6 +288,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode (proj₁ x)) (λ ())
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₁ x))
+  ; ir-s2     = readReg-writeReg-a0-s2 (regs s) (encode (proj₁ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₁ x))
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₁ x)))
@@ -337,6 +344,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-pc     = cong (_+ℕ 1) pc-eq
   ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode (proj₂ x)) (λ ())
   ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode (proj₂ x))
+  ; ir-s2     = readReg-writeReg-a0-s2 (regs s) (encode (proj₂ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₂ x))
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₂ x)))

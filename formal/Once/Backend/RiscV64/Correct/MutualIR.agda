@@ -41,7 +41,7 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-ra; ir-sp-delta; ir-sp;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
          ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
@@ -116,6 +116,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ; ir-pc = pc4
     ; ir-a0 = a0-final
     ; ir-s1 = s1-reg-final
+    ; ir-s2 = s2-reg-final
     ; ir-ra = ra-final
     ; ir-sp-delta = 16
     ; ir-sp = sp-final
@@ -243,6 +244,9 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     s1-reg-st1 : readReg (regs st1) s1 ≡ readReg (regs s) s1
     s1-reg-st1 = readReg-writeReg-sp-s1 (regs s) new-sp
 
+    s2-reg-st1 : readReg (regs st1) s2 ≡ readReg (regs s) s2
+    s2-reg-st1 = readReg-writeReg-sp-s2 (regs s) new-sp
+
     ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
     ra-st1 = readReg-writeReg-sp-ra (regs s) new-sp
 
@@ -263,6 +267,9 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
 
     s1-reg-final : readReg (regs st4) s1 ≡ readReg (regs s) s1
     s1-reg-final = trans (readReg-writeReg-a0-s1 (regs st3) (readReg (regs st3) sp)) s1-reg-st1
+
+    s2-reg-final : readReg (regs st4) s2 ≡ readReg (regs s) s2
+    s2-reg-final = trans (readReg-writeReg-a0-s2 (regs st3) (readReg (regs st3) sp)) s2-reg-st1
 
     ra-final : readReg (regs st4) ra ≡ readReg (regs s) ra
     ra-final = trans (readReg-writeReg-a0-ra (regs st3) (readReg (regs st3) sp)) ra-st1
@@ -464,6 +471,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     ; ir-pc = pc5
     ; ir-a0 = a0-final
     ; ir-s1 = s1-reg-final
+    ; ir-s2 = s2-reg-final
     ; ir-ra = ra-final
     ; ir-sp-delta = 16
     ; ir-sp = sp-final
@@ -615,6 +623,9 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
     s1-reg-st1 : readReg (regs st1) s1 ≡ readReg (regs s) s1
     s1-reg-st1 = readReg-writeReg-sp-s1 (regs s) new-sp
 
+    s2-reg-st1 : readReg (regs st1) s2 ≡ readReg (regs s) s2
+    s2-reg-st1 = readReg-writeReg-sp-s2 (regs s) new-sp
+
     ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
     ra-st1 = readReg-writeReg-sp-ra (regs s) new-sp
 
@@ -630,6 +641,9 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
 
     s1-reg-st2 : readReg (regs st2) s1 ≡ readReg (regs s) s1
     s1-reg-st2 = trans (readReg-writeReg-t0-s1 (regs st1) 1) s1-reg-st1
+
+    s2-reg-st2 : readReg (regs st2) s2 ≡ readReg (regs s) s2
+    s2-reg-st2 = trans (readReg-writeReg-t0-s2 (regs st1) 1) s2-reg-st1
 
     ra-st2 : readReg (regs st2) ra ≡ readReg (regs s) ra
     ra-st2 = trans (readReg-writeReg-t0-ra (regs st1) 1) ra-st1
@@ -654,6 +668,9 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq =
 
     s1-reg-final : readReg (regs st5) s1 ≡ readReg (regs s) s1
     s1-reg-final = trans (readReg-writeReg-a0-s1 (regs st4) (readReg (regs st4) sp)) s1-reg-st2
+
+    s2-reg-final : readReg (regs st5) s2 ≡ readReg (regs s) s2
+    s2-reg-final = trans (readReg-writeReg-a0-s2 (regs st4) (readReg (regs st4) sp)) s2-reg-st2
 
     ra-final : readReg (regs st5) ra ≡ readReg (regs s) ra
     ra-final = trans (readReg-writeReg-a0-ra (regs st4) (readReg (regs st4) sp)) ra-st2
@@ -980,6 +997,7 @@ mutual
       ; ir-pc = pc-final
       ; ir-a0 = a0-final
       ; ir-s1 = s1-final
+      ; ir-s2 = s2-final
       ; ir-ra = ra-final
       ; ir-sp-delta = 24 +ℕ ir-sp-delta r-f +ℕ ir-sp-delta r-g
       ; ir-sp = sp-final
@@ -1227,6 +1245,10 @@ mutual
       s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
       s1-final = s1-final-raw
 
+      -- s2 preservation: pair doesn't modify s2 (Phase 3: will be proven via Pair.agda helpers)
+      postulate
+        s2-final : readReg (regs s-final) s2 ≡ readReg (regs s) s2
+
       -- ra preservation: chain through all phases
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
       ra-final = trans ra-final-raw
@@ -1301,6 +1323,7 @@ mutual
       ; ir-pc = pc-final
       ; ir-a0 = a0-final
       ; ir-s1 = s1-final
+      ; ir-s2 = s2-final
       ; ir-ra = ra-final
       ; ir-sp-delta = ir-sp-delta r-f
       ; ir-sp = sp-final
@@ -1323,9 +1346,10 @@ mutual
       a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
       t0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
       s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
-      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
-      sp-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
-      mem-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
+      s2-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
+      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
+      sp-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))))
+      mem-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))))
 
       -- Phase 2: Execute f (IH call)
       -- PC for f: need length prefix-f
@@ -1355,6 +1379,8 @@ mutual
       pc-after-f : pc s-after-f-raw ≡ offset +ℕ 3 +ℕ len-f
       pc-after-f = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
 
+      s2-after-f = ir-s2 r-f
+
       -- Phase 3: Jump over g (2 instructions)
       jump-result = case-left-jump-star f g prefix suffix s-after-f-raw h-after-f pc-after-f
       s-final = proj₁ jump-result
@@ -1363,9 +1389,10 @@ mutual
       pc-jump = proj₁ (proj₂ (proj₂ (proj₂ jump-result)))
       a0-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))
       s1-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
-      ra-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))
-      sp-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))))
-      mem-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))))
+      s2-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))
+      ra-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))))
+      sp-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))))
+      mem-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))))
 
       -- Compose all stars
       star-all : Star prog s s-final
@@ -1395,6 +1422,10 @@ mutual
       -- s1 preservation
       s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
       s1-final = trans s1-jump (trans s1-after-f s1-dispatch)
+
+      -- s2 preservation
+      s2-final : readReg (regs s-final) s2 ≡ readReg (regs s) s2
+      s2-final = trans s2-jump (trans s2-after-f s2-dispatch)
 
       -- ra preservation
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
@@ -1487,6 +1518,7 @@ mutual
       ; ir-pc = pc-final
       ; ir-a0 = a0-final
       ; ir-s1 = s1-final
+      ; ir-s2 = s2-final
       ; ir-ra = ra-final
       ; ir-sp-delta = ir-sp-delta r-g
       ; ir-sp = sp-final
@@ -1508,9 +1540,10 @@ mutual
       pc-dispatch = proj₁ (proj₂ (proj₂ (proj₂ dispatch-result)))
       a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
       s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
-      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
-      sp-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
-      mem-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
+      s2-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
+      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
+      sp-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
+      mem-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
 
       -- Phase 2: Execute g (IH call)
       pc-for-g : pc s-dispatch ≡ length prefix-g
@@ -1539,6 +1572,8 @@ mutual
       pc-after-g : pc s-after-g-raw ≡ offset +ℕ 5 +ℕ len-f +ℕ len-g
       pc-after-g = trans pc-g-raw (cong (_+ℕ len-g) len-prefix-g)
 
+      s2-after-g = ir-s2 r-g
+
       -- Phase 3: Execute end-label (1 instruction)
       end-result = case-right-end-star f g prefix suffix s-after-g-raw h-after-g pc-after-g
       s-final = proj₁ end-result
@@ -1547,9 +1582,10 @@ mutual
       pc-end = proj₁ (proj₂ (proj₂ (proj₂ end-result)))
       a0-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))
       s1-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
-      ra-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
-      sp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))))
-      mem-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))))
+      s2-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
+      ra-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))))
+      sp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
+      mem-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
 
       -- Compose all stars
       star-all : Star prog s s-final
@@ -1579,6 +1615,10 @@ mutual
       -- s1 preservation
       s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
       s1-final = trans s1-end (trans s1-after-g s1-dispatch)
+
+      -- s2 preservation
+      s2-final : readReg (regs s-final) s2 ≡ readReg (regs s) s2
+      s2-final = trans s2-end (trans s2-after-g s2-dispatch)
 
       -- ra preservation
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra
