@@ -66,6 +66,11 @@ open import Once.Backend.AArch64.Correct.ClosureWellFormed public
         ; run-apply-with-wf
         )
 
+-- | Import centralized postulates
+-- These are backend-specific axioms that are documented and justified
+open import Once.Backend.AArch64.Postulates
+  using (sp-bound-after-stack-op; apply-produces-result)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ)
@@ -348,7 +353,8 @@ mutual
 
   -- | Star-based apply execution
   --
-  -- This version uses a postulate because we don't have ClosureWellFormed
+  -- Uses the centralized apply-produces-result postulate from Postulates.agda.
+  -- The postulate is needed because we don't have ClosureWellFormed
   -- threading in the uniform IRStarResult approach.
   --
   -- For whole-program proofs that can eliminate the postulate, use
@@ -363,21 +369,25 @@ mutual
     let prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
-    -- Apply is postulated here because IRStarResult doesn't carry
-    -- ClosureWellFormed. For proofs that thread well-formedness,
-    -- use run-apply-with-wf instead.
-    apply-postulate {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
-    where
-      postulate
-        apply-postulate : ∀ {A B}
-          (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
-          halted s ≡ false →
-          pc s ≡ length prefix →
-          readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
-          StackInvariant s →
-          readSP (regs s) > 16 →
-          let prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
-          in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
+    -- Use centralized postulate and wrap result in IRStarResult
+    let (s' , star-pf , halted-pf , pc-pf , x0-pf , x20-pf , x21-pf , x29-pf , x30-pf ,
+         mem-x21-pf , mem-x29-pf , mem-x29+8-pf , stack-inv' , sp>16') =
+           apply-produces-result {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+    in s' , record
+      { ir-star = star-pf
+      ; ir-halted = halted-pf
+      ; ir-pc = pc-pf
+      ; ir-x0 = x0-pf
+      ; ir-x20 = x20-pf
+      ; ir-x21 = x21-pf
+      ; ir-x29 = x29-pf
+      ; ir-x30 = x30-pf
+      ; ir-mem-x21 = mem-x21-pf
+      ; ir-mem-x29 = mem-x29-pf
+      ; ir-mem-x29+8 = mem-x29+8-pf
+      ; ir-stack-inv = stack-inv'
+      ; ir-sp-bound = sp>16'
+      }
 
 ------------------------------------------------------------------------
 -- Main theorem: codegen correctness
