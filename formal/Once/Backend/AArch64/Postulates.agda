@@ -10,7 +10,7 @@
 module Once.Backend.AArch64.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; length; _++_)
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -125,6 +125,7 @@ postulate
               × readReg (regs s') x21 ≡ readReg (regs s) x21
               × readReg (regs s') x29 ≡ readReg (regs s) x29
               × readReg (regs s') x30 ≡ readReg (regs s) x30
+              × readSP (regs s') ≤ readSP (regs s)
               × readMem (memory s') (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
               × readMem (memory s') (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
               × readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)

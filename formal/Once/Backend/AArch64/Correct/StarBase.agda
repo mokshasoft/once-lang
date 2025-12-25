@@ -27,7 +27,7 @@ open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (just)
@@ -59,6 +59,8 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-x21        : readReg (regs s') x21 ≡ readReg (regs s) x21
     ir-x29        : readReg (regs s') x29 ≡ readReg (regs s) x29
     ir-x30        : readReg (regs s') x30 ≡ readReg (regs s) x30
+    -- SP preservation (stack grows down, so sp' ≤ sp)
+    ir-sp         : readSP (regs s') ≤ readSP (regs s)
 
     -- Memory preservation
     -- Memory at x21 (pair context pointer)

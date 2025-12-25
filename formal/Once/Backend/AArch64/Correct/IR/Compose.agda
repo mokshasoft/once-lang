@@ -173,9 +173,21 @@ mkComposeContext {A} {B} {C} f g prefix suffix = record
 
     -- prog-eq-g: prefix-g ++ code-g ++ suffix ≡ prog
     -- prefix-g = prefix ++ code-f ++ nop ∷ []
-    -- Complex list associativity proof; using postulate for now
-    postulate
-      the-prog-eq-g : the-prefix-g ++ the-code-g ++ suffix ≡ the-prog
+    -- Proof: associativity + nop ∷ [] ++ code-g = nop ∷ code-g
+    the-prog-eq-g : the-prefix-g ++ the-code-g ++ suffix ≡ the-prog
+    the-prog-eq-g = begin
+      (prefix ++ the-code-f ++ nop ∷ []) ++ the-code-g ++ suffix
+        ≡⟨ ++-assoc prefix (the-code-f ++ nop ∷ []) _ ⟩
+      prefix ++ (the-code-f ++ nop ∷ []) ++ the-code-g ++ suffix
+        ≡⟨ cong (prefix ++_) (++-assoc the-code-f (nop ∷ []) _) ⟩
+      prefix ++ the-code-f ++ (nop ∷ []) ++ the-code-g ++ suffix
+        ≡⟨ refl ⟩  -- (nop ∷ []) ++ xs = nop ∷ xs
+      prefix ++ the-code-f ++ nop ∷ the-code-g ++ suffix
+        ≡⟨ cong (prefix ++_) (sym (++-assoc the-code-f (nop ∷ the-code-g) suffix)) ⟩
+      prefix ++ (the-code-f ++ nop ∷ the-code-g) ++ suffix
+        ≡⟨ refl ⟩  -- compile-aarch64 (g ∘ f) = code-f ++ nop ∷ code-g
+      the-prog
+      ∎
 
 ------------------------------------------------------------------------
 -- Compose Phase Results
