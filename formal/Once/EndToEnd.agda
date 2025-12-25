@@ -35,11 +35,12 @@ open import Once.Compile using (compile)
 -- x86-64 backend
 open import Once.Backend.X86.Syntax using (rax)
 open import Once.Backend.X86.Semantics as X86 using ()
-  renaming (State to X86State; run to runX86; readReg to readRegX86)
-open X86.State renaming (regs to regsX86)
+  renaming (State to X86State; readReg to readRegX86)
+open X86.State renaming (regs to regsX86; halted to haltedX86)
 open import Once.Backend.X86.CodeGen using (compile-x86)
 open import Once.Backend.X86.Correct as X86Correct using (codegen-x86-correct)
   renaming (initWithInput to initWithInputX86; encode to encodeX86)
+open import Once.Backend.X86.Correct.Star using (Star)
 
 -- RISC-V 64 backend
 open import Once.Backend.RiscV64.Syntax as RV64Syntax using (a0)
@@ -86,10 +87,11 @@ compile-preserves-semantics ir x =
 -- | Code generation produces x86-64 code that computes the correct result.
 --
 -- For any Core IR term, the generated code when executed yields
--- the encoded semantic value in rax.
+-- the encoded semantic value in rax. The execution trace is witnessed by Star.
 --
 codegen-correct-x86 : ∀ {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (runX86 (compile-x86 ir) (initWithInputX86 x) ≡ just s
+  ∃[ s ] (Star (compile-x86 ir) (initWithInputX86 x) s
+        × haltedX86 s ≡ true
         × readRegX86 (regsX86 s) rax ≡ encodeX86 (eval ir x))
 codegen-correct-x86 = codegen-x86-correct
 
@@ -117,17 +119,19 @@ codegen-correct-riscv = codegen-riscv-correct
 -- code produces the same result as evaluating the source program.
 --
 -- More precisely: there exists a final machine state such that:
---   1. Running the generated code reaches that state
---   2. The rax register contains the encoded result of source evaluation
+--   1. Execution reaches that state (witnessed by Star trace)
+--   2. The machine is halted
+--   3. The rax register contains the encoded result of source evaluation
 --
 -- COMPOSITION:
 --   compile-preserves-semantics : eval (compile ir) x ≡ evalSurface ir x
---   codegen-correct-x86        : run asm init ≡ just s ∧ rax = encode (eval core x)
+--   codegen-correct-x86        : Star asm init s ∧ halted ∧ rax = encode (eval core x)
 --
 -- Together: rax = encode (evalSurface ir x)
 --
 compilation-correct-x86 : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (runX86 (compile-x86 (compile ir)) (initWithInputX86 x) ≡ just s
+  ∃[ s ] (Star (compile-x86 (compile ir)) (initWithInputX86 x) s
+        × haltedX86 s ≡ true
         × readRegX86 (regsX86 s) rax ≡ encodeX86 (evalSurface ir x))
 compilation-correct-x86 ir x =
   let
@@ -135,7 +139,7 @@ compilation-correct-x86 ir x =
     core = compile ir
 
     -- Step 2: Code generation correctness for the Core IR
-    (s , run-eq , rax-eq) = codegen-x86-correct core x
+    (s , star-eq , halt-eq , rax-eq) = codegen-x86-correct core x
 
     -- Step 3: Link semantic equivalence
     -- eval core x ≡ evalSurface ir x
@@ -147,11 +151,12 @@ compilation-correct-x86 ir x =
     rax-surface-eq : readRegX86 (regsX86 s) rax ≡ encodeX86 (evalSurface ir x)
     rax-surface-eq = trans rax-eq (cong encodeX86 semantics-eq)
 
-  in s , run-eq , rax-surface-eq
+  in s , star-eq , halt-eq , rax-surface-eq
 
 -- | Legacy alias for backwards compatibility
 compilation-correct : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (runX86 (compile-x86 (compile ir)) (initWithInputX86 x) ≡ just s
+  ∃[ s ] (Star (compile-x86 (compile ir)) (initWithInputX86 x) s
+        × haltedX86 s ≡ true
         × readRegX86 (regsX86 s) rax ≡ encodeX86 (evalSurface ir x))
 compilation-correct = compilation-correct-x86
 
