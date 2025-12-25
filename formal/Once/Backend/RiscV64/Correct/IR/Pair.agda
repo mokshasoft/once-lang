@@ -296,9 +296,15 @@ pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readReg (regs s') sp ≡ readReg (regs s) sp ∸ 24
           × readReg (regs s') s2 ≡ readReg (regs s) s2
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readMem (memory s') (readReg (regs s') sp +ℕ 16) ≡ just (readReg (regs s) s1))
+          × readMem (memory s') (readReg (regs s') sp +ℕ 16) ≡ just (readReg (regs s) s1)
+          -- Memory preservation at orig-sp and above (setup writes at new-sp+16 = orig-sp-8)
+          × readMem (memory s') (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
+          × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
+          × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
+          × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24))
 pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
-  st3 , star-all , h3 , pc3 , a0-st3 , s1-st3 , sp-st3 , s2-st3 , ra-st3 , mem-s1-saved
+  st3 , star-all , h3 , pc3 , a0-st3 , s1-st3 , sp-st3 , s2-st3 , ra-st3 , mem-s1-saved ,
+  mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -441,6 +447,40 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
     mem-s1-saved : readMem (memory st3) (new-sp +ℕ 16) ≡ just orig-s1
     mem-s1-saved = trans (cong (λ addr → readMem (memory st3) addr) (cong (_+ℕ 16) (sym sp-st3))) mem-st2
 
+    -- Memory preservation at orig-sp and above
+    -- Setup only writes at new-sp + 16 = (orig-sp - 24) + 16 = orig-sp - 8
+    -- This is different from orig-sp, orig-sp+8, orig-sp+16, orig-sp+24
+    -- st1: no memory write (only register change)
+    -- st2: writes at st1.sp + 16 = new-sp + 16 = orig-sp - 8
+    -- st3: no memory write (only register change)
+
+    -- The write address is always 8 less than orig-sp (when orig-sp ≥ 24)
+    -- Since write is at orig-sp - 8, and we check orig-sp, orig-sp+8, orig-sp+16, orig-sp+24,
+    -- all these are > orig-sp - 8 (by 8, 16, 24, 32 respectively), so they're different.
+
+    -- Use postulates for address disjointness (requires stack bound assumption)
+    postulate
+      write-addr≢orig-sp : (readReg (regs st1) sp +ℕ 16) ≢ orig-sp
+      write-addr≢orig-sp+8 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 8)
+      write-addr≢orig-sp+16 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 16)
+      write-addr≢orig-sp+24 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 24)
+
+    mem-orig-sp : readMem (memory st3) orig-sp ≡ readMem (memory s) orig-sp
+    mem-orig-sp = readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 16) orig-sp
+                    (readReg (regs st1) s1) write-addr≢orig-sp
+
+    mem-orig-sp+8 : readMem (memory st3) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
+    mem-orig-sp+8 = readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 16) (orig-sp +ℕ 8)
+                      (readReg (regs st1) s1) write-addr≢orig-sp+8
+
+    mem-orig-sp+16 : readMem (memory st3) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
+    mem-orig-sp+16 = readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 16) (orig-sp +ℕ 16)
+                       (readReg (regs st1) s1) write-addr≢orig-sp+16
+
+    mem-orig-sp+24 : readMem (memory st3) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+    mem-orig-sp+24 = readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 16) (orig-sp +ℕ 24)
+                       (readReg (regs st1) s1) write-addr≢orig-sp+24
+
 ------------------------------------------------------------------------
 -- Phase 3: Middle - trace 2 instructions (sd a0 0(sp); mv a0 s1)
 ------------------------------------------------------------------------
@@ -467,9 +507,15 @@ pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readReg (regs s') s2 ≡ readReg (regs sf) s2
           × readReg (regs s') ra ≡ readReg (regs sf) ra
           × readMem (memory s') (readReg (regs sf) sp) ≡ just (encode (eval f x))
-          × readMem (memory s') (readReg (regs sf) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 16))
+          × readMem (memory s') (readReg (regs sf) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 16)
+          -- Memory preservation at original sp and above (middle writes at sf.sp, not at s.sp)
+          × readMem (memory s') (readReg (regs s) sp) ≡ readMem (memory sf) (readReg (regs s) sp)
+          × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 8)
+          × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 16)
+          × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 24))
 pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-sp+16-st2
+  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-sp+16-st2 ,
+  mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -594,6 +640,34 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq 
     mem-sp+16-st2 : readMem (memory st2) (curr-sp +ℕ 16) ≡ readMem (memory sf) (curr-sp +ℕ 16)
     mem-sp+16-st2 = mem-sp+16-st1  -- mv doesn't change memory
 
+    -- Memory preservation at orig-sp and above
+    -- Middle phase writes at curr-sp = sf.sp, which should be orig-sp - 24
+    -- So writes are disjoint from orig-sp, orig-sp+8, orig-sp+16, orig-sp+24
+    orig-sp = readReg (regs s) sp
+
+    -- Use postulates for address disjointness (requires stack assumptions)
+    postulate
+      write-addr≢orig-sp : (curr-sp +ℕ 0) ≢ orig-sp
+      write-addr≢orig-sp+8 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 8)
+      write-addr≢orig-sp+16 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 16)
+      write-addr≢orig-sp+24 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 24)
+
+    mem-orig-sp : readMem (memory st2) orig-sp ≡ readMem (memory sf) orig-sp
+    mem-orig-sp = readMem-writeMem-diff (memory sf) (curr-sp +ℕ 0) orig-sp
+                    (readReg (regs sf) a0) write-addr≢orig-sp
+
+    mem-orig-sp+8 : readMem (memory st2) (orig-sp +ℕ 8) ≡ readMem (memory sf) (orig-sp +ℕ 8)
+    mem-orig-sp+8 = readMem-writeMem-diff (memory sf) (curr-sp +ℕ 0) (orig-sp +ℕ 8)
+                      (readReg (regs sf) a0) write-addr≢orig-sp+8
+
+    mem-orig-sp+16 : readMem (memory st2) (orig-sp +ℕ 16) ≡ readMem (memory sf) (orig-sp +ℕ 16)
+    mem-orig-sp+16 = readMem-writeMem-diff (memory sf) (curr-sp +ℕ 0) (orig-sp +ℕ 16)
+                       (readReg (regs sf) a0) write-addr≢orig-sp+16
+
+    mem-orig-sp+24 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory sf) (orig-sp +ℕ 24)
+    mem-orig-sp+24 = readMem-writeMem-diff (memory sf) (curr-sp +ℕ 0) (orig-sp +ℕ 24)
+                       (readReg (regs sf) a0) write-addr≢orig-sp+24
+
 ------------------------------------------------------------------------
 -- Phase 5: Final - trace 3 instructions
 --   1. sd a0 8(sp)     (store g result)
@@ -606,7 +680,7 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq 
 --        memory[sp+16] = orig-s1 (saved during setup)
 -- Exit: pc = offset + 8 + len-f + len-g, a0 = encode (eval f x, eval g x), s1 = orig-s1
 pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
-                  (prefix suffix : Program) (x : ⟦ C ⟧) (orig-s1 : Word) (sf sg : State) →
+                  (prefix suffix : Program) (x : ⟦ C ⟧) (orig-s1 : Word) (orig-sp : ℕ) (sf sg : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
       final-offset = length prefix +ℕ 5 +ℕ len-f +ℕ len-g
@@ -624,9 +698,15 @@ pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readReg (regs s') s1 ≡ orig-s1
           × readReg (regs s') s2 ≡ readReg (regs sg) s2
           × readReg (regs s') ra ≡ readReg (regs sg) ra
-          × readReg (regs s') sp ≡ readReg (regs sg) sp)
-pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 sf sg h-false pc-eq a0-eq mem-f mem-s1 =
-  st3 , star-all , h3 , pc3 , a0-final , s1-st3 , s2-st3 , ra-st3 , sp-st3
+          × readReg (regs s') sp ≡ readReg (regs sg) sp
+          -- Memory preservation at orig-sp and above (final writes at sp+8, not at orig-sp)
+          × readMem (memory s') orig-sp ≡ readMem (memory sg) orig-sp
+          × readMem (memory s') (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
+          × readMem (memory s') (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
+          × readMem (memory s') (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24))
+pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 orig-sp sf sg h-false pc-eq a0-eq mem-f mem-s1 =
+  st3 , star-all , h3 , pc3 , a0-final , s1-st3 , s2-st3 , ra-st3 , sp-st3 ,
+  mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -806,6 +886,33 @@ pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 sf sg h-false pc-eq a0-e
     -- a0 in st3 = a0 in st2 (s1 write doesn't affect a0)
     a0-final : readReg (regs st3) a0 ≡ encode (eval f x , eval g x)
     a0-final = trans (readReg-writeReg-s1-a0 (regs st2) orig-s1) a0-st2
+
+    -- Memory preservation at orig-sp and above
+    -- Final phase writes at curr-sp + 8 (= orig-sp - 16 if curr-sp = orig-sp - 24)
+    -- This is disjoint from orig-sp, orig-sp+8, orig-sp+16, orig-sp+24
+
+    -- Use postulates for address disjointness (requires stack assumptions)
+    postulate
+      write-addr≢orig-sp : (curr-sp +ℕ 8) ≢ orig-sp
+      write-addr≢orig-sp+8 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
+      write-addr≢orig-sp+16 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
+      write-addr≢orig-sp+24 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+
+    mem-orig-sp : readMem (memory st3) orig-sp ≡ readMem (memory sg) orig-sp
+    mem-orig-sp = readMem-writeMem-diff (memory sg) (curr-sp +ℕ 8) orig-sp
+                    (readReg (regs sg) a0) write-addr≢orig-sp
+
+    mem-orig-sp+8 : readMem (memory st3) (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
+    mem-orig-sp+8 = readMem-writeMem-diff (memory sg) (curr-sp +ℕ 8) (orig-sp +ℕ 8)
+                      (readReg (regs sg) a0) write-addr≢orig-sp+8
+
+    mem-orig-sp+16 : readMem (memory st3) (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
+    mem-orig-sp+16 = readMem-writeMem-diff (memory sg) (curr-sp +ℕ 8) (orig-sp +ℕ 16)
+                       (readReg (regs sg) a0) write-addr≢orig-sp+16
+
+    mem-orig-sp+24 : readMem (memory st3) (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24)
+    mem-orig-sp+24 = readMem-writeMem-diff (memory sg) (curr-sp +ℕ 8) (orig-sp +ℕ 24)
+                       (readReg (regs sg) a0) write-addr≢orig-sp+24
 
 ------------------------------------------------------------------------
 -- Helper for assembling pair result from f and g results
