@@ -1022,8 +1022,9 @@ mutual
       a0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
       s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
       sp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      mem-s1-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+      s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+      ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+      mem-s1-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
 
       -- Phase 2: Execute f (IH call)
       -- Program view: prog ≡ prefix-f ++ code-f ++ suffix-f
@@ -1065,9 +1066,10 @@ mutual
       a0-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))
       s1-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))
       sp-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))
-      ra-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))
-      mem-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))
-      mem-sp+16-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))
+      s2-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))
+      ra-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result))))))))
+      mem-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))
+      mem-sp+16-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ mid-result)))))))))
 
       -- Middle star is already in prog
       star-mid : Star prog s-after-f-raw s-mid
@@ -1193,8 +1195,9 @@ mutual
       pc-final-raw = proj₁ (proj₂ (proj₂ (proj₂ final-phase-result)))
       a0-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))
       s1-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))
-      ra-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))
-      sp-final-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))
+      s2-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result))))))
+      ra-final-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))
+      sp-final-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase-result)))))))
 
       -- Final star is already in prog
       star-final : Star prog s-after-g-raw s-final
@@ -1245,9 +1248,13 @@ mutual
       s1-final : readReg (regs s-final) s1 ≡ readReg (regs s) s1
       s1-final = s1-final-raw
 
-      -- s2 preservation: pair doesn't modify s2 (Phase 3: will be proven via Pair.agda helpers)
-      postulate
-        s2-final : readReg (regs s-final) s2 ≡ readReg (regs s) s2
+      -- s2 preservation: chain through all phases
+      -- setup → f → middle → g → final
+      s2-after-f = ir-s2 r-f
+      s2-after-g = ir-s2 r-g
+
+      s2-final : readReg (regs s-final) s2 ≡ readReg (regs s) s2
+      s2-final = trans s2-final-raw (trans s2-after-g (trans s2-mid (trans s2-after-f s2-setup)))
 
       -- ra preservation: chain through all phases
       ra-final : readReg (regs s-final) ra ≡ readReg (regs s) ra

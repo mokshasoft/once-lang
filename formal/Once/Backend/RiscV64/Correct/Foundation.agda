@@ -311,6 +311,11 @@ readReg-writeReg-s1-ra : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf s1 v) ra ≡ readReg rf ra
 readReg-writeReg-s1-ra rf v = refl
 
+-- | Reading s2 after writing s1 returns the old value
+readReg-writeReg-s1-s2 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeReg rf s1 v) s2 ≡ readReg rf s2
+readReg-writeReg-s1-s2 rf v = refl
+
 -- | Reading s0 after writing sp returns the old value
 readReg-writeReg-sp-s0 : ∀ (rf : RegFile) (v : Word) →
   readReg (writeReg rf sp v) s0 ≡ readReg rf s0

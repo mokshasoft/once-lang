@@ -294,10 +294,11 @@ pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readReg (regs s') a0 ≡ encode x
           × readReg (regs s') s1 ≡ encode x
           × readReg (regs s') sp ≡ readReg (regs s) sp ∸ 24
+          × readReg (regs s') s2 ≡ readReg (regs s) s2
           × readReg (regs s') ra ≡ readReg (regs s) ra
           × readMem (memory s') (readReg (regs s') sp +ℕ 16) ≡ just (readReg (regs s) s1))
 pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
-  st3 , star-all , h3 , pc3 , a0-st3 , s1-st3 , sp-st3 , ra-st3 , mem-s1-saved
+  st3 , star-all , h3 , pc3 , a0-st3 , s1-st3 , sp-st3 , s2-st3 , ra-st3 , mem-s1-saved
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -412,6 +413,16 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
     sp-st3 : readReg (regs st3) sp ≡ new-sp
     sp-st3 = trans (readReg-writeReg-s1-sp (regs st2) (readReg (regs st2) a0)) sp-st2
 
+    -- s2 preservation: none of the setup instructions modify s2
+    s2-st1 : readReg (regs st1) s2 ≡ readReg (regs s) s2
+    s2-st1 = readReg-writeReg-sp-s2 (regs s) new-sp
+
+    s2-st2 : readReg (regs st2) s2 ≡ readReg (regs s) s2
+    s2-st2 = s2-st1  -- memory write doesn't change regs
+
+    s2-st3 : readReg (regs st3) s2 ≡ readReg (regs s) s2
+    s2-st3 = trans (readReg-writeReg-s1-s2 (regs st2) (readReg (regs st2) a0)) s2-st2
+
     ra-st1 : readReg (regs st1) ra ≡ readReg (regs s) ra
     ra-st1 = readReg-writeReg-sp-ra (regs s) new-sp
 
@@ -453,11 +464,12 @@ pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readReg (regs s') a0 ≡ encode x
           × readReg (regs s') s1 ≡ encode x
           × readReg (regs s') sp ≡ readReg (regs sf) sp
+          × readReg (regs s') s2 ≡ readReg (regs sf) s2
           × readReg (regs s') ra ≡ readReg (regs sf) ra
           × readMem (memory s') (readReg (regs sf) sp) ≡ just (encode (eval f x))
           × readMem (memory s') (readReg (regs sf) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) sp +ℕ 16))
 pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , ra-st2 , mem-st2 , mem-sp+16-st2
+  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-sp+16-st2
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -545,6 +557,13 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq 
     ra-st2 : readReg (regs st2) ra ≡ readReg (regs sf) ra
     ra-st2 = trans (readReg-writeReg-a0-ra (regs st1) (readReg (regs st1) s1)) ra-st1
 
+    -- s2 preservation: middle instructions don't modify s2
+    s2-st1 : readReg (regs st1) s2 ≡ readReg (regs sf) s2
+    s2-st1 = refl  -- memory write doesn't change regs
+
+    s2-st2 : readReg (regs st2) s2 ≡ readReg (regs sf) s2
+    s2-st2 = trans (readReg-writeReg-a0-s2 (regs st1) (readReg (regs st1) s1)) s2-st1
+
     -- Memory tracking
     mem-write-addr : curr-sp +ℕ 0 ≡ curr-sp
     mem-write-addr = +-identityʳ curr-sp
@@ -603,10 +622,11 @@ pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × pc s' ≡ final-offset +ℕ 3
           × readReg (regs s') a0 ≡ encode (eval f x , eval g x)
           × readReg (regs s') s1 ≡ orig-s1
+          × readReg (regs s') s2 ≡ readReg (regs sg) s2
           × readReg (regs s') ra ≡ readReg (regs sg) ra
           × readReg (regs s') sp ≡ readReg (regs sg) sp)
 pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 sf sg h-false pc-eq a0-eq mem-f mem-s1 =
-  st3 , star-all , h3 , pc3 , a0-final , s1-st3 , ra-st3 , sp-st3
+  st3 , star-all , h3 , pc3 , a0-final , s1-st3 , s2-st3 , ra-st3 , sp-st3
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -735,6 +755,16 @@ pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 sf sg h-false pc-eq a0-e
     -- sp tracking through all states
     sp-st3 : readReg (regs st3) sp ≡ readReg (regs sg) sp
     sp-st3 = trans (readReg-writeReg-s1-sp (regs st2) orig-s1) sp-st2
+
+    -- s2 preservation: final instructions don't modify s2
+    s2-st1 : readReg (regs st1) s2 ≡ readReg (regs sg) s2
+    s2-st1 = refl  -- memory write doesn't change regs
+
+    s2-st2 : readReg (regs st2) s2 ≡ readReg (regs sg) s2
+    s2-st2 = trans (readReg-writeReg-a0-s2 (regs st1) (readReg (regs st1) sp)) s2-st1
+
+    s2-st3 : readReg (regs st3) s2 ≡ readReg (regs sg) s2
+    s2-st3 = trans (readReg-writeReg-s1-s2 (regs st2) orig-s1) s2-st2
 
     -- s1 gets the value orig-s1 directly from writeReg
     s1-st3 : readReg (regs st3) s1 ≡ orig-s1
