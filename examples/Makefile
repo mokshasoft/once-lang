@@ -67,7 +67,7 @@ native: $(BUILD)/hi-x86_64
 
 $(BUILD)/hi-x86_64: hi.once
 	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target x86_64 -I:x86_64 I.Linux.Syscalls --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-x86_64
+	$(ONCE) build --exe --target x86_64 --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-x86_64
 
 # Native cross-compilation tests (requires qemu + cross-compilers)
 # Run with: nix develop ..#default --command make native-qemu
@@ -85,12 +85,12 @@ native-riscv64: $(BUILD)/hi-riscv64
 $(BUILD)/hi-arm64: hi.once
 	@mkdir -p $(BUILD)
 	CC=aarch64-linux-gnu-gcc LD=aarch64-linux-gnu-ld \
-	$(ONCE) build --exe --target arm64 -I:arm64 I.Linux.Syscalls --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-arm64
+	$(ONCE) build --exe --target arm64 --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-arm64
 
 $(BUILD)/hi-riscv64: hi.once
 	@mkdir -p $(BUILD)
 	CC=riscv64-linux-gnu-gcc LD=riscv64-linux-gnu-ld \
-	$(ONCE) build --exe --target riscv64 -I:riscv64 I.Linux.Syscalls --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-riscv64
+	$(ONCE) build --exe --target riscv64 --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-riscv64
 
 clean:
 	rm -f $(BUILD)/hi-c $(BUILD)/hello-c $(BUILD)/let-test-c $(BUILD)/arith-test-c $(BUILD)/fizzbuzz-c
