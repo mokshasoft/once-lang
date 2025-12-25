@@ -609,12 +609,91 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     len-curry-before : length curry-before-cleanup ≡ 14 +ℕ len-f
     len-curry-before = cong (14 +ℕ_) (compile-length-correct f)
 
-    -- For fetch proofs, we need to show prog has the right structure
-    -- Use postulates for now - can be proven with careful list associativity
-    postulate
-      fetch0 : fetch prog cleanup-offset ≡ just i0
-      fetch1 : fetch prog (cleanup-offset +ℕ 1) ≡ just i1
-      fetch2 : fetch prog (cleanup-offset +ℕ 2) ≡ just i2
+    -- For fetch proofs, we use fetch-at-prefix-end
+    -- prog = prefix ++ curry-code ++ suffix
+    --      = prefix ++ (curry-before-cleanup ++ cleanup-and-tail) ++ suffix
+    --      = (prefix ++ curry-before-cleanup) ++ cleanup-and-tail ++ suffix
+    -- length (prefix ++ curry-before-cleanup) = cleanup-offset
+
+    prefix-to-cleanup : Program
+    prefix-to-cleanup = prefix ++ curry-before-cleanup
+
+    len-prefix-to-cleanup : length prefix-to-cleanup ≡ cleanup-offset
+    len-prefix-to-cleanup = begin
+      length prefix-to-cleanup
+        ≡⟨ List-length-++ prefix ⟩
+      length prefix +ℕ length curry-before-cleanup
+        ≡⟨ cong (length prefix +ℕ_) len-curry-before ⟩
+      length prefix +ℕ (14 +ℕ len-f)
+        ≡⟨ sym (+-assoc (length prefix) 14 len-f) ⟩
+      (length prefix +ℕ 14) +ℕ len-f
+        ≡⟨ cong (_+ℕ len-f) (+-comm (length prefix) 14) ⟩
+      (14 +ℕ length prefix) +ℕ len-f
+        ≡⟨ +-assoc 14 (length prefix) len-f ⟩
+      14 +ℕ (length prefix +ℕ len-f)
+        ≡⟨ cong (14 +ℕ_) (+-comm (length prefix) len-f) ⟩
+      14 +ℕ (len-f +ℕ length prefix)
+        ≡⟨ sym (+-assoc 14 len-f (length prefix)) ⟩
+      (14 +ℕ len-f) +ℕ length prefix
+        ≡⟨ +-comm (14 +ℕ len-f) (length prefix) ⟩
+      length prefix +ℕ (14 +ℕ len-f)
+        ≡⟨ sym (+-assoc (length prefix) 14 len-f) ⟩
+      cleanup-offset
+        ∎
+
+    -- Show prog has the right structure for fetch-at-prefix-end
+    prog-eq-for-fetch : prog ≡ prefix-to-cleanup ++ cleanup-and-tail ++ suffix
+    prog-eq-for-fetch = begin
+      prog
+        ≡⟨ refl ⟩
+      prefix ++ curry-code ++ suffix
+        ≡⟨ cong (λ c → prefix ++ c ++ suffix) curry-split ⟩
+      prefix ++ (curry-before-cleanup ++ cleanup-and-tail) ++ suffix
+        ≡⟨ cong (prefix ++_) (++-assoc curry-before-cleanup cleanup-and-tail suffix) ⟩
+      prefix ++ curry-before-cleanup ++ (cleanup-and-tail ++ suffix)
+        ≡⟨ sym (++-assoc prefix curry-before-cleanup (cleanup-and-tail ++ suffix)) ⟩
+      (prefix ++ curry-before-cleanup) ++ (cleanup-and-tail ++ suffix)
+        ≡⟨ refl ⟩
+      prefix-to-cleanup ++ cleanup-and-tail ++ suffix
+        ∎
+
+    -- cleanup-and-tail = i0 ∷ i1 ∷ i2 ∷ ret ∷ label (18 +ℕ len-f) ∷ []
+    -- cleanup-and-tail ++ suffix has the structure i0 ∷ (i1 ∷ i2 ∷ ret ∷ label ... ∷ suffix)
+    -- So fetch-at-prefix-end works with the right suffix
+
+    fetch0 : fetch prog cleanup-offset ≡ just i0
+    fetch0 = subst₂ (λ p n → fetch p n ≡ just i0) (sym prog-eq-for-fetch) len-prefix-to-cleanup
+                    (fetch-at-prefix-end prefix-to-cleanup i0 (i1 ∷ i2 ∷ ret ∷ label (18 +ℕ len-f) ∷ suffix))
+
+    -- For fetch1: need prefix-to-cleanup ++ i0 ∷ []
+    prefix-to-i1 : Program
+    prefix-to-i1 = prefix-to-cleanup ++ i0 ∷ []
+
+    len-prefix-to-i1 : length prefix-to-i1 ≡ cleanup-offset +ℕ 1
+    len-prefix-to-i1 = trans (List-length-++ prefix-to-cleanup) (cong (_+ℕ 1) len-prefix-to-cleanup)
+
+    prog-eq-for-fetch1 : prog ≡ prefix-to-i1 ++ (i1 ∷ i2 ∷ ret ∷ label (18 +ℕ len-f) ∷ suffix)
+    prog-eq-for-fetch1 = trans prog-eq-for-fetch (sym (++-assoc prefix-to-cleanup (i0 ∷ []) _))
+
+    fetch1 : fetch prog (cleanup-offset +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq-for-fetch1) len-prefix-to-i1
+                    (fetch-at-prefix-end prefix-to-i1 i1 (i2 ∷ ret ∷ label (18 +ℕ len-f) ∷ suffix))
+
+    -- For fetch2: need prefix-to-cleanup ++ i0 ∷ i1 ∷ []
+    prefix-to-i2 : Program
+    prefix-to-i2 = prefix-to-i1 ++ i1 ∷ []
+
+    len-prefix-to-i2 : length prefix-to-i2 ≡ cleanup-offset +ℕ 2
+    len-prefix-to-i2 = trans (List-length-++ prefix-to-i1)
+                             (trans (cong (_+ℕ 1) len-prefix-to-i1)
+                                    (+-assoc cleanup-offset 1 1))
+
+    prog-eq-for-fetch2 : prog ≡ prefix-to-i2 ++ (i2 ∷ ret ∷ label (18 +ℕ len-f) ∷ suffix)
+    prog-eq-for-fetch2 = trans prog-eq-for-fetch1 (sym (++-assoc prefix-to-i1 (i1 ∷ []) _))
+
+    fetch2 : fetch prog (cleanup-offset +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq-for-fetch2) len-prefix-to-i2
+                    (fetch-at-prefix-end prefix-to-i2 i2 (ret ∷ label (18 +ℕ len-f) ∷ suffix))
 
     -- State after step 0: mv sp s2 (restore sp to frame pointer)
     st1 : State
