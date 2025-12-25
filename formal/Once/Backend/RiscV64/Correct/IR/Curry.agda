@@ -42,8 +42,8 @@ open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; suc; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ)
+open import Data.Nat using (ℕ; suc; _∸_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n+n≡m)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -530,6 +530,15 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     sp-st5 : readReg (regs st5) sp ≡ new-sp
     sp-st5 = sp-st4
 
+    sp-st6 : readReg (regs st6) sp ≡ new-sp
+    sp-st6 = trans (readReg-writeReg-a0-sp (regs st5) (readReg (regs st5) sp)) sp-st5
+
+    sp-st7 : readReg (regs st7) sp ≡ new-sp
+    sp-st7 = sp-st6  -- j only changes pc
+
+    sp-st8 : readReg (regs st8) sp ≡ new-sp
+    sp-st8 = sp-st7  -- label only changes pc
+
     -- a0 in st6 = sp in st5 = new-sp
     a0-st6 : readReg (regs st6) a0 ≡ new-sp
     a0-st6 = trans (readReg-writeReg-same (regs st5) a0 (readReg (regs st5) sp) (λ ())) sp-st5
@@ -604,11 +613,17 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq =
     -- SP tracking: curry allocates 16 bytes on stack (sp -= 16)
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
+
+    -- Stack space precondition (will be threaded through in Phase 6)
     postulate
-      -- Stack space postulate: stack has at least 16 bytes available
-      sp-final : readReg (regs s-final) sp +ℕ 16 ≡ readReg (regs s) sp
-      -- Memory preservation: curry writes to its own stack frame (sp-16..sp),
-      -- but should preserve memory at caller's frame (original sp and above)
+      stack-space : 16 ≤ orig-sp
+
+    sp-final : readReg (regs s-final) sp +ℕ 16 ≡ readReg (regs s) sp
+    sp-final = trans (cong (_+ℕ 16) sp-st8) (m∸n+n≡m stack-space)
+
+    -- Memory preservation: curry writes to its own stack frame (sp-16..sp),
+    -- but should preserve memory at caller's frame (original sp and above)
+    postulate
       mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
       mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
       mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
