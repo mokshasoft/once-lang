@@ -340,6 +340,7 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) 
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
+    RbpInvariant s →
     ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
 run-ir-star = run-ir-star-at-offset
 
@@ -368,16 +369,17 @@ compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : S
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
+    RbpInvariant s →
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 =
+compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , star-proof , h-final , rax-final
   where
     open import Data.List.Properties using (++-identityʳ)
 
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
+    result = run-ir-star-at-offset (g ∘ f) [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
     s-final = proj₁ result
     r = proj₂ result
     h-final = ir-halted r
@@ -410,13 +412,14 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
+    RbpInvariant s →
     ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-run-ir-star-compose-internal {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+run-ir-star-compose-internal {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
+    result = run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     s-final = proj₁ result
     r = proj₂ result
   in
@@ -516,11 +519,11 @@ exec-halted-stable = exec-n-halted
 -- After Star execution completes, one more step halts (fetch fails)
 offset-to-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
-  StackInvariant s → readReg (regs s) rsp > 16 →
+  StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
   ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
-offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
+offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
   s-halted , run-eq , halted-true , rax-preserved
   where
     open import Data.List.Properties using (++-identityʳ)
@@ -529,7 +532,7 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
     prog = compile-x86 ir
 
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16
+    result = run-ir-star-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
     s' = proj₁ result
     r = proj₂ result
 
@@ -611,7 +614,7 @@ offset-to-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 =
 
 offset-to-generator-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
-  StackInvariant s → readReg (regs s) rsp > 16 →
+  StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
   ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
@@ -625,6 +628,7 @@ run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  RbpInvariant s →
   ∃[ s' ] (run (compile-x86 ir) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
@@ -643,6 +647,7 @@ run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : St
   readReg (regs s0) rdi ≡ encode x →
   StackInvariant s0 →
   readReg (regs s0) rsp > 16 →
+  RbpInvariant s0 →
   -- After running f: exists s1 with rax = encode (eval f x)
   (∃[ s1 ] (run (compile-x86 f) s0 ≡ just s1
           × halted s1 ≡ true
@@ -651,8 +656,8 @@ run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : St
   ∃[ s2 ] (run (compile-x86 (g ∘ f)) s0 ≡ just s2
          × halted s2 ≡ true
          × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
-run-seq-compose {A} {B} {C} f g x s0 h-false pc-0 rdi-eq stack-inv rsp>16 _ =
-  run-generator (g ∘ f) x s0 h-false pc-0 rdi-eq stack-inv rsp>16
+run-seq-compose {A} {B} {C} f g x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv _ =
+  run-generator (g ∘ f) x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
 
 ------------------------------------------------------------------------
 -- Proven base cases for run-generator
@@ -990,11 +995,12 @@ run-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (a : ⟦ A ⟧) (s : State)
   readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  RbpInvariant s →
   ∃[ s' ] (run (compile-x86 {A + B} {C} [ f , g ]) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval f a))
-run-case-inl {A} {B} {C} f g a s h-false pc-0 rdi-eq stack-inv rsp>16 =
-  run-generator [ f , g ] (inj₁ a) s h-false pc-0 rdi-eq stack-inv rsp>16
+run-case-inl {A} {B} {C} f g a s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+  run-generator [ f , g ] (inj₁ a) s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
 
 -- Helper: case sequence with inj₂ input (right branch)
 -- When tag=1, loads value, applies g, jumps to end
@@ -1005,11 +1011,12 @@ run-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (b : ⟦ B ⟧) (s : State)
   readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  RbpInvariant s →
   ∃[ s' ] (run (compile-x86 {A + B} {C} [ f , g ]) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval g b))
-run-case-inr {A} {B} {C} f g b s h-false pc-0 rdi-eq stack-inv rsp>16 =
-  run-generator [ f , g ] (inj₂ b) s h-false pc-0 rdi-eq stack-inv rsp>16
+run-case-inr {A} {B} {C} f g b s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+  run-generator [ f , g ] (inj₂ b) s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
 
 -- Helper: curry sequence
 -- Creates closure [env, code_ptr] where env = input a and code_ptr points to thunk
@@ -2688,7 +2695,7 @@ compile-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧) →
 compile-pair-correct {A} {B} {C} f g x =
   let (s' , run-eq , _ , rax-eq) = run-generator ⟨ f , g ⟩ x (initWithInput x)
                                      (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
-                                     (initWithInput-stack-inv x) (initWithInput-rsp>16 x)
+                                     (initWithInput-stack-inv x) (initWithInput-rsp>16 x) (initWithInput-rbp-inv x)
   in s' , run-eq , rax-eq
 
 -- | inl: creates left injection
@@ -2794,7 +2801,7 @@ compile-case-correct {A} {B} {C} f g (inj₁ a) = s' , run-eq , rax-eq
                     × halted s' ≡ true
                     × readReg (regs s') rax ≡ encode (eval f a))
     helper = run-case-inl f g a s0 (initWithInput-halted {A + B} (inj₁ a)) (initWithInput-pc {A + B} (inj₁ a)) (initWithInput-rdi (inj₁ a))
-                                   (initWithInput-stack-inv {A + B} (inj₁ a)) (initWithInput-rsp>16 {A + B} (inj₁ a))
+                                   (initWithInput-stack-inv {A + B} (inj₁ a)) (initWithInput-rsp>16 {A + B} (inj₁ a)) (initWithInput-rbp-inv (inj₁ a))
 
     s' : State
     s' = proj₁ helper
@@ -2815,7 +2822,7 @@ compile-case-correct {A} {B} {C} f g (inj₂ b) = s' , run-eq , rax-eq
                     × halted s' ≡ true
                     × readReg (regs s') rax ≡ encode (eval g b))
     helper = run-case-inr f g b s0 (initWithInput-halted {A + B} (inj₂ b)) (initWithInput-pc {A + B} (inj₂ b)) (initWithInput-rdi (inj₂ b))
-                                   (initWithInput-stack-inv {A + B} (inj₂ b)) (initWithInput-rsp>16 {A + B} (inj₂ b))
+                                   (initWithInput-stack-inv {A + B} (inj₂ b)) (initWithInput-rsp>16 {A + B} (inj₂ b)) (initWithInput-rbp-inv (inj₂ b))
 
     s' : State
     s' = proj₁ helper
@@ -2847,14 +2854,14 @@ compile-compose-correct {A} {B} {C} g f x = s' , run-eq , rax-eq
                       × halted s1 ≡ true
                       × readReg (regs s1) rax ≡ encode (eval f x))
     f-result = run-generator f x s0 (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
-                             (initWithInput-stack-inv x) (initWithInput-rsp>16 x)
+                             (initWithInput-stack-inv x) (initWithInput-rsp>16 x) (initWithInput-rbp-inv x)
 
     -- Use sequential composition helper with explicit x
     helper : ∃[ s2 ] (run (compile-x86 (g ∘ f)) s0 ≡ just s2
                     × halted s2 ≡ true
                     × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
     helper = run-seq-compose f g x s0 (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
-                             (initWithInput-stack-inv x) (initWithInput-rsp>16 x) f-result
+                             (initWithInput-stack-inv x) (initWithInput-rsp>16 x) (initWithInput-rbp-inv x) f-result
 
     s' : State
     s' = proj₁ helper

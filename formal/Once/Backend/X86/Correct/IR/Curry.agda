@@ -77,10 +77,11 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   s-final , record
     { ir-star = star-all
     ; ir-halted = h-final
@@ -94,6 +95,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-mem-rbp+8 = mem-rbp+8-final
     ; ir-stack-inv = stack-inv-final
     ; ir-rsp-bound = rsp>16-final
+    ; ir-rbp-inv = rbp-inv-final
     } , record
     { closure-addr = new-rsp
     ; code-ptr = thunk-offset
@@ -596,7 +598,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     orig-rbp = readReg (regs s) rbp
 
     -- RbpInvariant: s.rsp ≤ s.rbp (stack pointer at or below frame pointer)
-    postulate rbp-inv : RbpInvariant s
+    -- (rbp-inv is now a parameter to run-curry-star)
 
     -- new-rsp < rbp: since new-rsp = rsp - 16 < rsp ≤ rbp
     -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
@@ -732,3 +734,16 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 
     rsp>16-final : readReg (regs s-final) rsp > 16
     rsp>16-final = rsp-bound-after-stack-op s-final
+
+    -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
+    rbp-inv-final : RbpInvariant s-final
+    rbp-inv-final = record { rsp≤rbp = new-rsp≤rbp-final }
+      where
+        new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
+        new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
+        orig-rsp≤orig-rbp : orig-rsp ≤ readReg (regs s) rbp
+        orig-rsp≤orig-rbp = RbpInvariant.rsp≤rbp rbp-inv
+        new-rsp≤orig-rbp : new-rsp ≤ readReg (regs s) rbp
+        new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
+        new-rsp≤rbp-final : readReg (regs s-final) rsp ≤ readReg (regs s-final) rbp
+        new-rsp≤rbp-final = subst₂ _≤_ (sym rsp-s7) (sym rbp-final) new-rsp≤orig-rbp

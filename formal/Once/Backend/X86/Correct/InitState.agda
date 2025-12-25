@@ -38,13 +38,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 --
 -- We set up the state with:
 --   - rdi = encode x (input)
---   - rsp = large value (stack pointer)
+--   - rsp = rbp = large value (stack pointer = frame pointer at entry)
 --   - pc = 0
 --   - halted = false
 --   - Memory contains encoded representation of x (postulated)
 initWithInput : ∀ {A} → ⟦ A ⟧ → State
 initWithInput {A} x = mkstate
-  (writeReg (writeReg emptyRegFile rdi (encode x)) rsp stackBase)
+  (writeReg (writeReg (writeReg emptyRegFile rdi (encode x)) rsp stackBase) rbp stackBase)
   encodedMemory
   initFlags
   0

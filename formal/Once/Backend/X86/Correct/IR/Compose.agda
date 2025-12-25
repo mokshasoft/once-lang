@@ -251,6 +251,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
   ; ir-rsp-bound = rsp-3>16
+  ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   }
   where
     ctx = make-compose-context f g prefix suffix

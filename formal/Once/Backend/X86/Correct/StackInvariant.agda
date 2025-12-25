@@ -52,6 +52,9 @@ initWithInput-rsp>16 {A} x = stackBase>16
     stackBase>16 : 17 ≤ 0x7FFF0000
     stackBase>16 = m≤m+n 17 2147418095
 
+-- Forward declaration: RbpInvariant is defined below
+-- initWithInput-rbp-inv is defined after RbpInvariant
+
 ------------------------------------------------------------------------
 -- Helper lemmas
 ------------------------------------------------------------------------
@@ -122,6 +125,10 @@ record RbpInvariant (s : State) : Set where
     rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
 
 open RbpInvariant public
+
+-- | Initial state satisfies RbpInvariant (rsp = rbp = stackBase)
+initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
+initWithInput-rbp-inv x = record { rsp≤rbp = ≤-refl }
 
 -- | Derive address disjointness from RbpInvariant
 -- If rsp ≤ rbp and rsp > 16, then (rsp - 16) < rsp ≤ rbp, so (rsp - 16) ≢ rbp

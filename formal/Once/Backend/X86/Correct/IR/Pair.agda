@@ -32,7 +32,8 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv;
+         rbp-inv-preserved-unchanged)
 
 open import Data.Bool using (false)
 open import Data.Empty using (⊥)
@@ -632,12 +633,15 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
+  RbpInvariant s →
+  readReg (regs s-final) rsp ≡ readReg (regs s) rsp →
   IRStarResult ⟨ f , g ⟩ prog s s-final x (length prefix)
 assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                     rbp-final mem-final mem-rbp-final mem-rbp+8-final star-fin s2-eq s-setup-eq = record
+                     rbp-final mem-final mem-rbp-final mem-rbp+8-final star-fin s2-eq s-setup-eq
+                     rbp-inv rsp-final = record
   { ir-star = star-all
   ; ir-halted = h-final
   ; ir-pc = pc-final
@@ -650,6 +654,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
   ; ir-rsp-bound = rsp>16-final
+  ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -744,6 +749,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     r15-fin : readReg (regs s-final) r15 ≡ readReg (regs s) r15
     stack-inv-fin : StackInvariant s-final
     rsp>16-fin : readReg (regs s-final) rsp > 16
+    rsp-fin : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
     mem-fst-fin : readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15)
     mem-snd-fin : readMem (memory s-final) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax)
     rbp-fin : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
@@ -856,7 +862,8 @@ n+32≢n+8 n eq = n≢n+suc-m (n +ℕ 8) 23 (+-assoc-cancel eq)
 make-pair-final-precond : ∀ {A B C} (f : IR C A) (g : IR C B)
                           (prefix suffix : Program) (x : ⟦ C ⟧)
                           (s s-setup s1 s2 s3 : State)
-                          (stack-inv : StackInvariant s) →
+                          (stack-inv : StackInvariant s)
+                          (rbp-inv : RbpInvariant s) →
   let ctx = make-pair-context f g prefix suffix in
   let open PairContext ctx in
   (setup-res : PairSetupResult f g prefix suffix x s) →
@@ -867,7 +874,7 @@ make-pair-final-precond : ∀ {A B C} (f : IR C A) (g : IR C B)
   s2 ≡ PairMiddleResult.s2 mid-res →
   PairFinalPrecond f g prefix suffix s s3
 make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
-                        stack-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
+                        stack-inv rbp-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
   { h3 = ir-halted r-g
   ; pc3 = pc3
   ; stack-rbp = stack-rbp-s3
@@ -1059,7 +1066,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
 
     -- ========== Disjointness for original rbp ==========
     -- Uses RbpInvariant: rsp ≤ rbp, so s3.r15+8 < rsp ≤ rbp
-    postulate rbp-inv : RbpInvariant s
+    -- rbp-inv is now a parameter (no postulate needed)
 
     -- Reuse the existing r15-s3+8<rsp-s proof pattern (lines 956-974)
     -- s3.r15+8 = (rsp-40)+8 < rsp (since 8 < 40, so k+8 < k+40 = rsp)
@@ -1122,6 +1129,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     ; r15-fin = r15-s9
     ; stack-inv-fin = stack-inv-s9
     ; rsp>16-fin = rsp>16-s9
+    ; rsp-fin = rsp-s9-eq-s
     ; mem-fst-fin = mem-fst-preserved
     ; mem-snd-fin = mem-snd-stored
     ; rbp-fin = rbp-s9
