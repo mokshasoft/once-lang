@@ -64,6 +64,9 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     -- Memory at rbp+8 preserved (where ret-addr is stored in thunk context)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    -- Memory above frame preserved (for caller's rbp in pair proofs)
+    -- Any address strictly above rbp is not touched by IR execution
+    ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-stack-inv  : StackInvariant s'
     ir-rsp-bound  : readReg (regs s') rsp > 16
     -- RbpInvariant preserved: rsp s' ≤ rbp s' (needed for memory disjointness)
@@ -135,6 +138,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv 
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- id doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -167,6 +171,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- terminal doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) 0)
                        rsp-eq
@@ -200,6 +205,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-in
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- fold doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -233,6 +239,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- unfold doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -266,6 +273,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 rb
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- arr doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -303,6 +311,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- fst doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -340,6 +349,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- snd doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -383,6 +393,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- fst-v doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -419,6 +430,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- snd-v doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -1202,6 +1214,7 @@ record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-stack-inv  : StackInvariant s'
     ir-rsp-bound  : readReg (regs s') rsp > 16
     ir-rbp-inv    : RbpInvariant s'
@@ -1225,6 +1238,7 @@ convert-to-stateful ir prog s s' x offset res = record
   ; ir-mem       = IRStarResult.ir-mem res
   ; ir-mem-rbp   = IRStarResult.ir-mem-rbp res
   ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 res
+  ; ir-mem-above = IRStarResult.ir-mem-above res
   ; ir-stack-inv = IRStarResult.ir-stack-inv res
   ; ir-rsp-bound = IRStarResult.ir-rsp-bound res
   ; ir-rbp-inv   = IRStarResult.ir-rbp-inv res

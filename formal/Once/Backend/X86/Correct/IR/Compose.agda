@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -254,6 +254,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-stack-inv = stack-inv-3
   ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
+  ; ir-mem-above = mem-above-3
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -363,3 +364,21 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     mem-rbp+8-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
                                rbp+8-s2-eq-s mem-rbp+8-3-from-s2)
                         (trans mem-rbp+8-2 mem-rbp+8-1)
+
+    -- Memory above rbp preservation through all steps
+    mem-above-3 : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-above-3 addr addr>rbp =
+      let -- Convert addr > s.rbp to addr > s2.rbp via rbp-s2-eq-s
+          addr>rbp-s2 : addr > readReg (regs s2) rbp
+          addr>rbp-s2 = subst (addr >_) (sym rbp-s2-eq-s) addr>rbp
+          -- Memory from s2 to s3 via r3.ir-mem-above
+          mem-s2-to-s3 : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s2-to-s3 = ir-mem-above r3 addr addr>rbp-s2
+          -- Memory from s1 to s2 via transfer (mem-s1-to-s2 preserves all memory)
+          mem-s1-to-s2-addr : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s1-to-s2-addr = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                                    (sym s2-eq) (mem-s1-to-s2 addr)
+          -- Memory from s to s1 via r1.ir-mem-above
+          mem-s-to-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s-to-s1 = ir-mem-above r1 addr addr>rbp
+      in trans mem-s2-to-s3 (trans mem-s1-to-s2-addr mem-s-to-s1)

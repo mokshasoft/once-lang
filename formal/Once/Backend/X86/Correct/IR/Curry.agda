@@ -34,7 +34,7 @@ open import Once.Backend.X86.Correct.StarBase
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; suc; _∸_; _>_; _≤_; _<_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -96,6 +96,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-stack-inv = stack-inv-final
     ; ir-rsp-bound = rsp>16-final
     ; ir-rbp-inv = rbp-inv-final
+    ; ir-mem-above = mem-above-final
     } , record
     { closure-addr = new-rsp
     ; code-ptr = thunk-offset
@@ -751,3 +752,41 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
         new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
         new-rsp≤rbp-final : readReg (regs s-final) rsp ≤ readReg (regs s-final) rbp
         new-rsp≤rbp-final = subst₂ _≤_ (sym rsp-s7) (sym rbp-final) new-rsp≤orig-rbp
+
+    -- Memory above rbp preserved through all states
+    -- Curry writes only at new-rsp (s2) and new-rsp+8 (s4), both < rbp
+    mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-above-final addr addr>rbp =
+      let -- new-rsp < rbp < addr, so new-rsp ≢ addr
+          addr>new-rsp : addr > new-rsp
+          addr>new-rsp = <-trans new-rsp<rbp addr>rbp
+          diff-new-rsp : new-rsp ≢ addr
+          diff-new-rsp = Nat-<⇒≢ addr>new-rsp
+          -- new-rsp+8 < rbp < addr, so (new-rsp+8) ≢ addr
+          addr>new-rsp+8 : addr > (new-rsp +ℕ 8)
+          addr>new-rsp+8 = <-trans new-rsp+8<rbp addr>rbp
+          diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ addr
+          diff-new-rsp+8 = Nat-<⇒≢ addr>new-rsp+8
+          -- Chain through all states
+          -- s1: no memory change
+          mem-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s1 = refl
+          -- s2: writes at new-rsp (rsp s1 = new-rsp), but addr ≢ new-rsp
+          mem-s2 : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) addr
+                     (readReg (regs s1) rdi) (subst (λ x → x ≢ addr) (sym rsp-s1) diff-new-rsp)
+          -- s3: no memory change
+          mem-s3 : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s3 = refl
+          -- s4: writes at new-rsp+8 (rsp s3 = new-rsp), but addr ≢ new-rsp+8
+          mem-s4 : readMem (memory s4) addr ≡ readMem (memory s3) addr
+          mem-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) addr
+                     (readReg (regs s3) r9) (subst (λ x → (x +ℕ 8) ≢ addr) (sym rsp-s3) diff-new-rsp+8)
+          -- s5, s6, s7: no memory changes
+          mem-s5 : readMem (memory s5) addr ≡ readMem (memory s4) addr
+          mem-s5 = refl
+          mem-s6 : readMem (memory s6) addr ≡ readMem (memory s5) addr
+          mem-s6 = refl
+          mem-s7 : readMem (memory s7) addr ≡ readMem (memory s6) addr
+          mem-s7 = refl
+      in trans mem-s7 (trans mem-s6 (trans mem-s5 (trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1)))))

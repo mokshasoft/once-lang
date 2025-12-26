@@ -32,7 +32,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above;
          rbp-inv-preserved-unchanged)
 
 open import Data.Bool using (false)
@@ -646,6 +646,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15) →
   readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
   readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8) →
+  (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -656,7 +657,8 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                     rbp-final mem-final mem-rbp-final mem-rbp+8-final star-fin s2-eq s-setup-eq
+                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final
+                     star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
   { ir-star = star-all
   ; ir-halted = h-final
@@ -671,6 +673,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-stack-inv = stack-inv-final
   ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
+  ; ir-mem-above = mem-above-final
   }
   where
     ctx = make-pair-context f g prefix suffix
