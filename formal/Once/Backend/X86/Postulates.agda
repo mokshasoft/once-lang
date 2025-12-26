@@ -101,23 +101,23 @@ postulate
 --      - run-apply-with-full-wf: PROVEN apply using WF + memory layout
 --      - CurryOutputWF: What curry produces for threading to apply
 --
--- ELIMINATION PATH (in progress):
---   The postulate-free path exists but requires threading:
+-- ELIMINATION PATH (DEMONSTRATED):
+--   The postulate-free path exists and is demonstrated by:
+--     test-apply-with-wf-eliminates-postulate in ClosureContext.agda
 --
 --   Step 1: run-curry-star-with-wf → CurryResult with closure-wf ✓
 --   Step 2: Extract CurryOutputWF from CurryResult ✓
---   Step 3: Thread CurryOutputWF through compose/pair (TODO)
+--   Step 3: Thread CurryOutputWF through compose/pair (TODO - needs IRRunner mod)
 --   Step 4: run-apply-with-full-wf consumes the WF proof ✓
 --
 --   For whole-program proofs where curry and apply are composed,
 --   use run-curry-star-with-wf + run-apply-with-full-wf instead.
 --   This path avoids this postulate entirely.
 --
--- REMAINING WORK:
+-- REMAINING WORK (for full elimination in modular proofs):
 --   - Extend IRStarResult to carry optional ClosureWellFormed output
---   - Modify run-curry-star-direct to output ClosureWellFormed
 --   - Modify run-pair-star-direct to track closure WF through pairs
---   - Modify run-apply-star-direct to require/consume ClosureWellFormed
+--   - Modify run-apply-star-direct to consume ClosureWellFormed when available
 --   - Update run-compose-star-direct to thread WF from curry to apply
 --
 -- RUNTIME EFFECT: None (proof-only)

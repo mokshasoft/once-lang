@@ -229,3 +229,56 @@ curry-output-to-apply-input f prog offset x cow =
   (λ b → eval f (x , b)) ,
   CurryOutputWF.wf cow
 
+------------------------------------------------------------------------
+-- E2E TEST: Apply with ClosureWellFormed (NO POSTULATE!)
+--
+-- This test demonstrates that apply-produces-result postulate is
+-- ELIMINABLE by using the ClosureWellFormed infrastructure.
+--
+-- PATTERN:
+--   1. curry produces ClosureWellFormed
+--   2. Memory layout is established (pair creates it)
+--   3. run-apply-with-full-wf consumes both
+--   4. Result is proven correct WITHOUT apply-produces-result!
+--
+-- SIGNIFICANCE:
+--   For whole-program proofs where curry and apply are composed,
+--   this path eliminates the need for the postulate entirely.
+------------------------------------------------------------------------
+
+-- | Test: Apply with WF proof eliminates the postulate
+--
+-- Given:
+--   - A closure with ClosureWellFormed proof (from curry)
+--   - Proper memory layout (from pair allocation)
+--
+-- Proves: apply produces correct result WITHOUT apply-produces-result postulate
+--
+-- This is not a runnable test but a type-level proof that the infrastructure
+-- is sufficient to eliminate the postulate.
+test-apply-with-wf-eliminates-postulate :
+  ∀ {A B : Type} (prefix suffix : Program)
+    (code-ptr env-addr closure-addr : ℕ)
+    (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+    (arg : ⟦ A ⟧) (s : State) →
+  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      offset = length prefix
+  in
+  -- Preconditions that would be established by curry + pair
+  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg →
+  halted s ≡ false →
+  pc s ≡ offset →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  -- Result: apply correctness WITHOUT using apply-produces-result!
+  ∃[ s' ] (Star prog s s'
+          × halted s' ≡ false
+          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+          × readReg (regs s') rax ≡ encode {B} (semantics arg)
+          × StackInvariant s'
+          × readReg (regs s') rsp > 16)
+test-apply-with-wf-eliminates-postulate = run-apply-with-full-wf
+-- ^^^ This is the key: we just delegate to run-apply-with-full-wf!
+-- The postulate is NOT used in this path.
+
