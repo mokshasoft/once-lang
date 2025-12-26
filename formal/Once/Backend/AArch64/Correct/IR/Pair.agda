@@ -19,6 +19,8 @@ open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; encode-pair-construct; encodedMemory)
+open import Once.Backend.AArch64.Correct.CompileLength
+  using (compile-length-correct)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
@@ -96,6 +98,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 
 -- | Pre-computed values for pair proof
 -- Extracting these avoids recomputation and makes the proof modular
+-- Following the X86 pattern with intermediate structures for program equality proofs
 record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) : Set where
   field
@@ -108,18 +111,43 @@ record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
     code-g : Program
     prog : Program
 
-    -- Pair code structure
-    pair-code : Program
-    pair-rest : Program
+    -- Setup instructions (3)
+    setup-sub : Instr
+    setup-mov-sp : Instr
+    setup-save : Instr
+
+    -- Middle instructions (2)
+    store-f-instr : Instr
+    restore-input : Instr
+
+    -- Final instructions (2)
+    store-g-instr : Instr
+    return-pair-instr : Instr
+
+    -- Intermediate structures for program equality proofs
+    inner-pair : Program      -- code after setup, before suffix
+    rest-for-setup : Program  -- inner-pair ++ suffix
+    final-nil : Program       -- store-g, return-pair
+    mid-final-nil : Program   -- mid + code-g + final-nil
 
     -- Phase prefixes/suffixes
     prefix-f : Program  -- prefix for f execution
     suffix-f : Program  -- suffix for f execution
     prefix-g : Program  -- prefix for g execution
     suffix-g : Program  -- suffix for g execution
+    prefix-mid : Program  -- prefix-f ++ code-f
 
     -- Stack pointer after allocation
     sp₁ : Word  -- sp - 16 (pair slot)
+
+    -- Length equalities
+    len-prefix-f : length prefix-f ≡ length prefix +ℕ 3
+    len-prefix-g : length prefix-g ≡ length prefix +ℕ 5 +ℕ len-f
+
+    -- Program equalities (key for Star proof composition)
+    prog-eq-setup : prog ≡ prefix ++ setup-sub ∷ setup-mov-sp ∷ setup-save ∷ rest-for-setup
+    prog-eq-f : prog ≡ prefix-f ++ code-f ++ suffix-f
+    prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
 
 open PairContext public
 
@@ -127,19 +155,195 @@ open PairContext public
 mkPairContext : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                 (prefix suffix : Program) (s : State) → PairContext f g prefix suffix
 mkPairContext {A} {B} {C} f g prefix suffix s = record
-  { len-f = compile-length f
-  ; len-g = compile-length g
-  ; code-f = compile-aarch64 f
-  ; code-g = compile-aarch64 g
-  ; prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
-  ; pair-code = compile-aarch64 ⟨ f , g ⟩
-  ; pair-rest = compile-aarch64 ⟨ f , g ⟩ ++ suffix
-  ; prefix-f = prefix ++ sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ []
-  ; suffix-f = str x0 (base x21) ∷ mov x0 (reg x20) ∷ compile-aarch64 g ++ str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ suffix
-  ; prefix-g = prefix ++ sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ compile-aarch64 f ++ str x0 (base x21) ∷ mov x0 (reg x20) ∷ []
-  ; suffix-g = str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ suffix
+  { len-f = the-len-f
+  ; len-g = the-len-g
+  ; code-f = the-code-f
+  ; code-g = the-code-g
+  ; prog = the-prog
+  ; setup-sub = the-setup-sub
+  ; setup-mov-sp = the-setup-mov-sp
+  ; setup-save = the-setup-save
+  ; store-f-instr = the-store-f-instr
+  ; restore-input = the-restore-input
+  ; store-g-instr = the-store-g-instr
+  ; return-pair-instr = the-return-pair-instr
+  ; inner-pair = the-inner-pair
+  ; rest-for-setup = the-rest-for-setup
+  ; final-nil = the-final-nil
+  ; mid-final-nil = the-mid-final-nil
+  ; prefix-f = the-prefix-f
+  ; suffix-f = the-suffix-f
+  ; prefix-g = the-prefix-g
+  ; suffix-g = the-suffix-g
+  ; prefix-mid = the-prefix-mid
   ; sp₁ = readSP (regs s) ∸ 16
+  ; len-prefix-f = the-len-prefix-f
+  ; len-prefix-g = the-len-prefix-g
+  ; prog-eq-setup = the-prog-eq-setup
+  ; prog-eq-f = the-prog-eq-f
+  ; prog-eq-g = the-prog-eq-g
   }
+  where
+    the-len-f = compile-length f
+    the-len-g = compile-length g
+    the-code-f = compile-aarch64 f
+    the-code-g = compile-aarch64 g
+    the-prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
+
+    -- Setup instructions
+    the-setup-sub = sub-sp 16
+    the-setup-mov-sp = mov-from-sp x21
+    the-setup-save = mov x20 (reg x0)
+
+    -- Middle instructions
+    the-store-f-instr = str x0 (base x21)
+    the-restore-input = mov x0 (reg x20)
+
+    -- Final instructions
+    the-store-g-instr = str x0 (base+imm x21 8)
+    the-return-pair-instr = mov x0 (reg x21)
+
+    -- Intermediate structures
+    the-final-nil : Program
+    the-final-nil = the-store-g-instr ∷ the-return-pair-instr ∷ []
+
+    the-mid-final-nil : Program
+    the-mid-final-nil = the-store-f-instr ∷ the-restore-input ∷ the-code-g ++ the-final-nil
+
+    the-inner-pair : Program
+    the-inner-pair = the-code-f ++ the-mid-final-nil
+
+    the-rest-for-setup : Program
+    the-rest-for-setup = the-inner-pair ++ suffix
+
+    -- Phase prefixes/suffixes
+    the-prefix-f : Program
+    the-prefix-f = prefix ++ the-setup-sub ∷ the-setup-mov-sp ∷ the-setup-save ∷ []
+
+    the-suffix-f : Program
+    the-suffix-f = the-store-f-instr ∷ the-restore-input ∷ the-code-g ++ the-final-nil ++ suffix
+
+    the-prefix-g : Program
+    the-prefix-g = the-prefix-f ++ the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ []
+
+    the-suffix-g : Program
+    the-suffix-g = the-store-g-instr ∷ the-return-pair-instr ∷ suffix
+
+    the-prefix-mid : Program
+    the-prefix-mid = the-prefix-f ++ the-code-f
+
+    -- Length proof for prefix-f
+    the-len-prefix-f : length the-prefix-f ≡ length prefix +ℕ 3
+    the-len-prefix-f = length-++ prefix (the-setup-sub ∷ the-setup-mov-sp ∷ the-setup-save ∷ [])
+
+    -- Length proof for prefix-g
+    the-len-prefix-g : length the-prefix-g ≡ length prefix +ℕ 5 +ℕ the-len-f
+    the-len-prefix-g = begin
+      length the-prefix-g
+        ≡⟨ refl ⟩
+      length (the-prefix-f ++ the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ [])
+        ≡⟨ length-++ the-prefix-f (the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ []) ⟩
+      length the-prefix-f +ℕ length (the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ [])
+        ≡⟨ cong (_+ℕ length (the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ [])) the-len-prefix-f ⟩
+      (length prefix +ℕ 3) +ℕ length (the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ [])
+        ≡⟨ cong ((length prefix +ℕ 3) +ℕ_) (length-++ the-code-f (the-store-f-instr ∷ the-restore-input ∷ [])) ⟩
+      (length prefix +ℕ 3) +ℕ (length the-code-f +ℕ 2)
+        ≡⟨ cong (λ n → (length prefix +ℕ 3) +ℕ (n +ℕ 2)) (compile-length-correct f) ⟩
+      (length prefix +ℕ 3) +ℕ (the-len-f +ℕ 2)
+        ≡⟨ sym (+-assoc (length prefix +ℕ 3) the-len-f 2) ⟩
+      ((length prefix +ℕ 3) +ℕ the-len-f) +ℕ 2
+        ≡⟨ cong (_+ℕ 2) (+-assoc (length prefix) 3 the-len-f) ⟩
+      (length prefix +ℕ (3 +ℕ the-len-f)) +ℕ 2
+        ≡⟨ cong (λ n → (length prefix +ℕ n) +ℕ 2) (+-comm 3 the-len-f) ⟩
+      (length prefix +ℕ (the-len-f +ℕ 3)) +ℕ 2
+        ≡⟨ cong (_+ℕ 2) (sym (+-assoc (length prefix) the-len-f 3)) ⟩
+      ((length prefix +ℕ the-len-f) +ℕ 3) +ℕ 2
+        ≡⟨ +-assoc (length prefix +ℕ the-len-f) 3 2 ⟩
+      (length prefix +ℕ the-len-f) +ℕ 5
+        ≡⟨ cong (_+ℕ 5) (+-comm (length prefix) the-len-f) ⟩
+      (the-len-f +ℕ length prefix) +ℕ 5
+        ≡⟨ +-assoc the-len-f (length prefix) 5 ⟩
+      the-len-f +ℕ (length prefix +ℕ 5)
+        ≡⟨ +-comm the-len-f (length prefix +ℕ 5) ⟩
+      (length prefix +ℕ 5) +ℕ the-len-f
+        ≡⟨ cong (_+ℕ the-len-f) (+-comm (length prefix) 5) ⟩
+      (5 +ℕ length prefix) +ℕ the-len-f
+        ≡⟨ +-assoc 5 (length prefix) the-len-f ⟩
+      5 +ℕ (length prefix +ℕ the-len-f)
+        ≡⟨ cong (5 +ℕ_) (+-comm (length prefix) the-len-f) ⟩
+      5 +ℕ (the-len-f +ℕ length prefix)
+        ≡⟨ sym (+-assoc 5 the-len-f (length prefix)) ⟩
+      (5 +ℕ the-len-f) +ℕ length prefix
+        ≡⟨ +-comm (5 +ℕ the-len-f) (length prefix) ⟩
+      length prefix +ℕ (5 +ℕ the-len-f)
+        ≡⟨ sym (+-assoc (length prefix) 5 the-len-f) ⟩
+      length prefix +ℕ 5 +ℕ the-len-f
+      ∎
+
+    -- Program equality: the-prog ≡ prefix ++ setup ++ the-rest-for-setup
+    -- This is definitionally true because compile-aarch64 ⟨ f , g ⟩ ++ suffix
+    -- equals the-setup-sub ∷ the-setup-mov-sp ∷ the-setup-save ∷ the-inner-pair ++ suffix
+    the-prog-eq-setup : the-prog ≡ prefix ++ the-setup-sub ∷ the-setup-mov-sp ∷ the-setup-save ∷ the-rest-for-setup
+    the-prog-eq-setup = cong (prefix ++_) refl
+
+    -- Helper lemmas for the-prog-eq-f and the-prog-eq-g
+    suffix-f-eq-rest : the-suffix-f ≡ the-store-f-instr ∷ the-restore-input ∷ the-code-g ++ the-final-nil ++ suffix
+    suffix-f-eq-rest = refl
+
+    final-suffix-eq : the-final-nil ++ suffix ≡ the-suffix-g
+    final-suffix-eq = refl
+
+    mid-final-suffix-eq : the-mid-final-nil ++ suffix ≡ the-suffix-f
+    mid-final-suffix-eq = cong (the-store-f-instr ∷_) (cong (the-restore-input ∷_)
+                            (trans (++-assoc the-code-g the-final-nil suffix)
+                                   (cong (the-code-g ++_) final-suffix-eq)))
+
+    inner-pair-split : the-inner-pair ≡ the-code-f ++ the-mid-final-nil
+    inner-pair-split = refl
+
+    rest-eq : the-rest-for-setup ≡ the-code-f ++ the-suffix-f
+    rest-eq = trans (cong (_++ suffix) inner-pair-split)
+                    (trans (++-assoc the-code-f the-mid-final-nil suffix)
+                           (cong (the-code-f ++_) mid-final-suffix-eq))
+
+    prefix-setup-eq : ∀ xs → prefix ++ the-setup-sub ∷ the-setup-mov-sp ∷ the-setup-save ∷ xs ≡ the-prefix-f ++ xs
+    prefix-setup-eq xs = sym (++-assoc prefix (the-setup-sub ∷ the-setup-mov-sp ∷ the-setup-save ∷ []) xs)
+
+    -- the-prog-eq-f: the-prog ≡ the-prefix-f ++ the-code-f ++ the-suffix-f
+    the-prog-eq-f : the-prog ≡ the-prefix-f ++ the-code-f ++ the-suffix-f
+    the-prog-eq-f = trans the-prog-eq-setup (trans (prefix-setup-eq the-rest-for-setup) (cong (the-prefix-f ++_) rest-eq))
+
+    -- Helper for the-prog-eq-g
+    rest-mid-eq-g : the-code-g ++ the-final-nil ++ suffix ≡ the-code-g ++ the-suffix-g
+    rest-mid-eq-g = cong (the-code-g ++_) final-suffix-eq
+
+    prefix-g-eq-mid : the-prefix-g ≡ the-prefix-mid ++ the-store-f-instr ∷ the-restore-input ∷ []
+    prefix-g-eq-mid = sym (++-assoc the-prefix-f the-code-f (the-store-f-instr ∷ the-restore-input ∷ []))
+
+    cons-flatten : ∀ xs → (the-store-f-instr ∷ the-restore-input ∷ []) ++ xs ≡ the-store-f-instr ∷ the-restore-input ∷ xs
+    cons-flatten xs = refl
+
+    -- the-prog-eq-g: the-prog ≡ the-prefix-g ++ the-code-g ++ the-suffix-g
+    the-prog-eq-g : the-prog ≡ the-prefix-g ++ the-code-g ++ the-suffix-g
+    the-prog-eq-g = begin
+      the-prog
+        ≡⟨ the-prog-eq-f ⟩
+      the-prefix-f ++ the-code-f ++ the-suffix-f
+        ≡⟨ cong (the-prefix-f ++_) (cong (the-code-f ++_) suffix-f-eq-rest) ⟩
+      the-prefix-f ++ the-code-f ++ the-store-f-instr ∷ the-restore-input ∷ the-code-g ++ the-final-nil ++ suffix
+        ≡⟨ sym (++-assoc the-prefix-f the-code-f _) ⟩
+      (the-prefix-f ++ the-code-f) ++ the-store-f-instr ∷ the-restore-input ∷ the-code-g ++ the-final-nil ++ suffix
+        ≡⟨ refl ⟩
+      the-prefix-mid ++ the-store-f-instr ∷ the-restore-input ∷ the-code-g ++ the-final-nil ++ suffix
+        ≡⟨ cong (the-prefix-mid ++_) (cong (the-store-f-instr ∷_) (cong (the-restore-input ∷_) rest-mid-eq-g)) ⟩
+      the-prefix-mid ++ the-store-f-instr ∷ the-restore-input ∷ (the-code-g ++ the-suffix-g)
+        ≡⟨ cong (the-prefix-mid ++_) (sym (cons-flatten (the-code-g ++ the-suffix-g))) ⟩
+      the-prefix-mid ++ ((the-store-f-instr ∷ the-restore-input ∷ []) ++ (the-code-g ++ the-suffix-g))
+        ≡⟨ sym (++-assoc the-prefix-mid (the-store-f-instr ∷ the-restore-input ∷ []) (the-code-g ++ the-suffix-g)) ⟩
+      (the-prefix-mid ++ the-store-f-instr ∷ the-restore-input ∷ []) ++ (the-code-g ++ the-suffix-g)
+        ≡⟨ cong (_++ (the-code-g ++ the-suffix-g)) (sym prefix-g-eq-mid) ⟩
+      the-prefix-g ++ (the-code-g ++ the-suffix-g)
+      ∎
 
 ------------------------------------------------------------------------
 -- Phase Result Records
