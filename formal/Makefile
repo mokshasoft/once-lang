@@ -70,6 +70,7 @@ ARITH_SEMANTICS := Once/Arith/Semantics.agda
 ARITH_X86_SYNTAX := Once/Arith/Backend/X86/Syntax.agda
 ARITH_X86_CODEGEN := Once/Arith/Backend/X86/CodeGen.agda
 ARITH_X86_CORRECT := Once/Arith/Backend/X86/Correct.agda
+ARITH_BOUNDARY := Once/Arith/Boundary.agda
 
 # Nix develop wrapper: suppress warnings and banner
 NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#agda' --command
@@ -221,11 +222,17 @@ arith:
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_SYNTAX)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CODEGEN)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
 
 .PHONY: arith-correct
 arith-correct:
 	@echo "Type-checking arithmetic correctness proof only..."
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+
+.PHONY: arith-boundary
+arith-boundary:
+	@echo "Type-checking arithmetic boundary proof only..."
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
 
 .PHONY: malonzo
 malonzo:
