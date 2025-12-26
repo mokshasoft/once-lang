@@ -1251,3 +1251,97 @@ make-pair-validity : ∀ {addr-f addr-g addr-pair : Word} {s' : State} →
   readMem (memory s') (addr-pair +ℕ 8) ≡ just addr-g →
   PairAtS addr-f addr-g addr-pair (memory s')
 make-pair-validity = pair-stores-create-validity
+
+------------------------------------------------------------------------
+-- Stateful Case: Consumer of InlAtS/InrAtS validity
+--
+-- Case is a "consumer" of sum validity. Instead of using the
+-- encode-inl-tag/encode-inr-tag postulates to read the tag from
+-- memory, we use InlAtS/InrAtS which already contains the memory proofs.
+--
+-- Pattern:
+--   1. Take InlAtS addr-val addr-sum (memory s) as input
+--   2. Extract tag-valid: readMem (memory s) addr-sum ≡ just 0
+--   3. Extract val-valid: readMem (memory s) (addr-sum + 8) ≡ just addr-val
+--   4. Use these to execute case dispatch without postulates
+------------------------------------------------------------------------
+
+-- | Extract tag memory proof from InlAtS
+-- This replaces the encode-inl-tag postulate
+inl-tag-from-validity : ∀ {addr-val addr-sum : Word} {m : Memory} →
+  InlAtS addr-val addr-sum m →
+  readMem m addr-sum ≡ just 0
+inl-tag-from-validity v = tag-valid-inl-s v
+  where
+    open import Once.Backend.X86.Correct.MemoryValid using (tag-valid-inl-s)
+
+-- | Extract value memory proof from InlAtS
+-- This replaces the encode-inl-val postulate (gives address not encode)
+inl-val-from-validity : ∀ {addr-val addr-sum : Word} {m : Memory} →
+  InlAtS addr-val addr-sum m →
+  readMem m (addr-sum +ℕ 8) ≡ just addr-val
+inl-val-from-validity v = val-valid-inl-s v
+  where
+    open import Once.Backend.X86.Correct.MemoryValid using (val-valid-inl-s)
+
+-- | Extract tag memory proof from InrAtS
+-- This replaces the encode-inr-tag postulate
+inr-tag-from-validity : ∀ {addr-val addr-sum : Word} {m : Memory} →
+  InrAtS addr-val addr-sum m →
+  readMem m addr-sum ≡ just 1
+inr-tag-from-validity v = tag-valid-inr-s v
+  where
+    open import Once.Backend.X86.Correct.MemoryValid using (tag-valid-inr-s)
+
+-- | Extract value memory proof from InrAtS
+-- This replaces the encode-inr-val postulate (gives address not encode)
+inr-val-from-validity : ∀ {addr-val addr-sum : Word} {m : Memory} →
+  InrAtS addr-val addr-sum m →
+  readMem m (addr-sum +ℕ 8) ≡ just addr-val
+inr-val-from-validity v = val-valid-inr-s v
+  where
+    open import Once.Backend.X86.Correct.MemoryValid using (val-valid-inr-s)
+
+-- | Stateful case result for left branch
+-- Returns the output address from running f
+record CaseInlResultS (prog : Program) (s s' : State)
+                      (addr-out : Word) (offset len-case : ℕ) : Set where
+  field
+    star       : Star prog s s'
+    halted'    : halted s' ≡ false
+    pc'        : pc s' ≡ offset +ℕ len-case
+    rax-eq     : readReg (regs s') rax ≡ addr-out
+    r14-eq     : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq     : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-eq     : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    mem-r15    : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    stack-inv  : StackInvariant s'
+    rsp-bound  : readReg (regs s') rsp > 16
+    rbp-inv    : RbpInvariant s'
+
+-- | Stateful case result for right branch
+-- Returns the output address from running g
+record CaseInrResultS (prog : Program) (s s' : State)
+                      (addr-out : Word) (offset len-case : ℕ) : Set where
+  field
+    star       : Star prog s s'
+    halted'    : halted s' ≡ false
+    pc'        : pc s' ≡ offset +ℕ len-case
+    rax-eq     : readReg (regs s') rax ≡ addr-out
+    r14-eq     : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq     : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-eq     : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    mem-r15    : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    stack-inv  : StackInvariant s'
+    rsp-bound  : readReg (regs s') rsp > 16
+    rbp-inv    : RbpInvariant s'
+
+-- | Union type for case result (either inl or inr branch was taken)
+data CaseResultS (prog : Program) (s s' : State)
+                 (addr-out : Word) (offset len-case : ℕ) : Set where
+  case-inl : CaseInlResultS prog s s' addr-out offset len-case → CaseResultS prog s s' addr-out offset len-case
+  case-inr : CaseInrResultS prog s s' addr-out offset len-case → CaseResultS prog s s' addr-out offset len-case
