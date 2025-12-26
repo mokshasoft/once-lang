@@ -1459,3 +1459,212 @@ test-fst-stateful {A} {B} a b = s' , star-out , halted-out , rax-out
 
     rax-out : readReg (regs s') rax ≡ addr-a
     rax-out = FstSndResultS.rax-eq fst-res
+
+-- | Stateful snd correctness: NO ENCODING POSTULATES!
+-- Symmetric to test-fst-stateful, extracts second component.
+test-snd-stateful : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  let init-heap = alloc-state emptyMemory 0x80000000
+      (addr-a , st₁) = encode-s {A} a init-heap
+      (addr-b , st₂) = encode-s {B} b st₁
+      result = initWithInputStateful {A * B} (a , b)
+      s0 = state result
+      addr-pair = input-addr result
+  in ∃[ s' ] (Star (compile-x86 {A * B} {B} snd) s0 s'
+            × halted s' ≡ false
+            × readReg (regs s') rax ≡ addr-b)
+test-snd-stateful {A} {B} a b = s' , star-out , halted-out , rax-out
+  where
+    init-heap : AllocState
+    init-heap = alloc-state emptyMemory 0x80000000
+
+    addr-a : Word
+    addr-a = proj₁ (encode-s {A} a init-heap)
+
+    st₁ : AllocState
+    st₁ = proj₂ (encode-s {A} a init-heap)
+
+    addr-b : Word
+    addr-b = proj₁ (encode-s {B} b st₁)
+
+    result : InitResult (A * B)
+    result = initWithInputStateful {A * B} (a , b)
+
+    s0 : State
+    s0 = state result
+
+    addr-pair : Word
+    addr-pair = input-addr result
+
+    pair-valid' : PairAtS addr-a addr-b addr-pair (memory s0)
+    pair-valid' = initWithInputStateful-pair-valid a b
+
+    h-false' : halted s0 ≡ false
+    h-false' = initWithInputStateful-halted (a , b)
+
+    pc-eq' : pc s0 ≡ 0
+    pc-eq' = initWithInputStateful-pc (a , b)
+
+    rdi-eq' : readReg (regs s0) rdi ≡ addr-pair
+    rdi-eq' = InitResult.rdi-eq result
+
+    stack-inv' : StackInvariant s0
+    stack-inv' = initWithInputStateful-stack-inv (a , b)
+
+    rsp>16' : readReg (regs s0) rsp > 16
+    rsp>16' = initWithInputStateful-rsp>16 (a , b)
+
+    rbp-inv' : RbpInvariant s0
+    rbp-inv' = initWithInputStateful-rbp-inv (a , b)
+
+    -- Run snd statefully (NO POSTULATES!)
+    snd-result = run-snd-star-s {A} {B} [] [] addr-pair addr-a addr-b s0
+                   h-false' pc-eq' rdi-eq' pair-valid' stack-inv' rsp>16' rbp-inv'
+
+    s' : State
+    s' = proj₁ snd-result
+
+    snd-res : FstSndResultS (compile-x86 {A * B} {B} snd) s0 s' addr-b 0
+    snd-res = proj₂ snd-result
+
+    star-out : Star (compile-x86 {A * B} {B} snd) s0 s'
+    star-out = subst (λ p → Star p s0 s') (++-identityʳ _) (FstSndResultS.star snd-res)
+
+    halted-out : halted s' ≡ false
+    halted-out = FstSndResultS.halted' snd-res
+
+    rax-out : readReg (regs s') rax ≡ addr-b
+    rax-out = FstSndResultS.rax-eq snd-res
+
+------------------------------------------------------------------------
+-- Producer Tests: inl and inr create validity
+--
+-- Unlike fst/snd which CONSUME validity, inl/inr PRODUCE it.
+-- The test shows that running inl/inr creates InlAtS/InrAtS.
+------------------------------------------------------------------------
+
+open import Once.Backend.X86.Correct.InitState
+  using (initWithInputStateful-inl-valid; initWithInputStateful-inr-valid)
+
+-- | Stateful inl correctness: PRODUCES InlAtS validity
+-- Shows that inl creates proper sum memory layout without postulates.
+test-inl-stateful : ∀ {A B : Type} (a : ⟦ A ⟧) →
+  let result = initWithInputStateful {A} a
+      s0 = state result
+      addr-a = input-addr result
+      new-rsp = readReg (regs s0) rsp ∸ 16
+  in ∃[ s' ] (Star (compile-x86 {A} {A + B} inl) s0 s'
+            × halted s' ≡ false
+            × readReg (regs s') rax ≡ new-rsp
+            × InlAtS addr-a new-rsp (memory s'))
+test-inl-stateful {A} {B} a = s' , star-out , halted-out , rax-out , inl-valid-out
+  where
+    result : InitResult A
+    result = initWithInputStateful {A} a
+
+    s0 : State
+    s0 = state result
+
+    addr-a : Word
+    addr-a = input-addr result
+
+    h-false' : halted s0 ≡ false
+    h-false' = initWithInputStateful-halted a
+
+    pc-eq' : pc s0 ≡ 0
+    pc-eq' = initWithInputStateful-pc a
+
+    rdi-eq' : readReg (regs s0) rdi ≡ addr-a
+    rdi-eq' = InitResult.rdi-eq result
+
+    stack-inv' : StackInvariant s0
+    stack-inv' = initWithInputStateful-stack-inv a
+
+    rsp>16' : readReg (regs s0) rsp > 16
+    rsp>16' = initWithInputStateful-rsp>16 a
+
+    rbp-inv' : RbpInvariant s0
+    rbp-inv' = initWithInputStateful-rbp-inv a
+
+    -- Run inl statefully - PRODUCES InlAtS!
+    inl-result = run-inl-star-s {A} {B} [] [] addr-a s0
+                   h-false' pc-eq' rdi-eq' stack-inv' rsp>16' rbp-inv'
+
+    s' : State
+    s' = proj₁ inl-result
+
+    inl-res : InlResultS (compile-x86 {A} {A + B} inl) s0 s' addr-a (readReg (regs s0) rsp ∸ 16) 0
+    inl-res = proj₂ inl-result
+
+    star-out : Star (compile-x86 {A} {A + B} inl) s0 s'
+    star-out = subst (λ p → Star p s0 s') (++-identityʳ _) (InlResultS.star inl-res)
+
+    halted-out : halted s' ≡ false
+    halted-out = InlResultS.halted' inl-res
+
+    rax-out : readReg (regs s') rax ≡ readReg (regs s0) rsp ∸ 16
+    rax-out = InlResultS.rax-eq inl-res
+
+    inl-valid-out : InlAtS addr-a (readReg (regs s0) rsp ∸ 16) (memory s')
+    inl-valid-out = InlResultS.inl-valid inl-res
+
+-- | Stateful inr correctness: PRODUCES InrAtS validity
+-- Shows that inr creates proper sum memory layout without postulates.
+test-inr-stateful : ∀ {A B : Type} (b : ⟦ B ⟧) →
+  let result = initWithInputStateful {B} b
+      s0 = state result
+      addr-b = input-addr result
+      new-rsp = readReg (regs s0) rsp ∸ 16
+  in ∃[ s' ] (Star (compile-x86 {B} {A + B} inr) s0 s'
+            × halted s' ≡ false
+            × readReg (regs s') rax ≡ new-rsp
+            × InrAtS addr-b new-rsp (memory s'))
+test-inr-stateful {A} {B} b = s' , star-out , halted-out , rax-out , inr-valid-out
+  where
+    result : InitResult B
+    result = initWithInputStateful {B} b
+
+    s0 : State
+    s0 = state result
+
+    addr-b : Word
+    addr-b = input-addr result
+
+    h-false' : halted s0 ≡ false
+    h-false' = initWithInputStateful-halted b
+
+    pc-eq' : pc s0 ≡ 0
+    pc-eq' = initWithInputStateful-pc b
+
+    rdi-eq' : readReg (regs s0) rdi ≡ addr-b
+    rdi-eq' = InitResult.rdi-eq result
+
+    stack-inv' : StackInvariant s0
+    stack-inv' = initWithInputStateful-stack-inv b
+
+    rsp>16' : readReg (regs s0) rsp > 16
+    rsp>16' = initWithInputStateful-rsp>16 b
+
+    rbp-inv' : RbpInvariant s0
+    rbp-inv' = initWithInputStateful-rbp-inv b
+
+    -- Run inr statefully - PRODUCES InrAtS!
+    inr-result = run-inr-star-s {A} {B} [] [] addr-b s0
+                   h-false' pc-eq' rdi-eq' stack-inv' rsp>16' rbp-inv'
+
+    s' : State
+    s' = proj₁ inr-result
+
+    inr-res : InrResultS (compile-x86 {B} {A + B} inr) s0 s' addr-b (readReg (regs s0) rsp ∸ 16) 0
+    inr-res = proj₂ inr-result
+
+    star-out : Star (compile-x86 {B} {A + B} inr) s0 s'
+    star-out = subst (λ p → Star p s0 s') (++-identityʳ _) (InrResultS.star inr-res)
+
+    halted-out : halted s' ≡ false
+    halted-out = InrResultS.halted' inr-res
+
+    rax-out : readReg (regs s') rax ≡ readReg (regs s0) rsp ∸ 16
+    rax-out = InrResultS.rax-eq inr-res
+
+    inr-valid-out : InrAtS addr-b (readReg (regs s0) rsp ∸ 16) (memory s')
+    inr-valid-out = InrResultS.inr-valid inr-res
