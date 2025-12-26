@@ -30,9 +30,10 @@ open import Once.Memory
   renaming (mem to alloc-mem)
 import Once.Memory as Mem
 
--- Import validity predicates
+-- Import validity predicates (both abstract and stateful versions)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (PairAt; pair-at; InlAt; inl-at; InrAt; inr-at)
+  using (PairAt; pair-at; InlAt; inl-at; InrAt; inr-at;
+         PairAtS; pair-at-s; InlAtS; inl-at-s; InrAtS; inr-at-s)
 
 -- Keep old encode for backwards compatibility during transition
 open import Once.Postulates
@@ -172,40 +173,9 @@ initWithInputStateful-pc : ∀ {A} (x : ⟦ A ⟧) →
   pc (state (initWithInputStateful x)) ≡ 0
 initWithInputStateful-pc x = refl
 
-------------------------------------------------------------------------
--- Stateful Validity Predicates
---
--- These are like PairAt/InlAt/InrAt but use explicit addresses instead
--- of the abstract `encode`. This allows proving validity from
--- stateful encoding theorems without circular reference to postulates.
-------------------------------------------------------------------------
-
+-- Additional imports for validity lemmas
 open import Data.Maybe using (just)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
-
--- | Pair validity with explicit component addresses
--- Memory at addr-pair contains [addr-a, addr-b]
-record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
-  constructor pair-at-s
-  field
-    fst-valid : readMem m addr-pair ≡ just addr-a
-    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
-
--- | Left sum validity with explicit value address
--- Memory at addr-sum contains [0, addr-val]
-record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inl-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 0
-    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
-
--- | Right sum validity with explicit value address
--- Memory at addr-sum contains [1, addr-val]
-record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inr-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 1
-    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
 
 ------------------------------------------------------------------------
 -- Input Validity Lemmas

@@ -520,6 +520,97 @@ run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' ,
     rax-eq : readReg (regs s') rax ≡ encode b
     rax-eq = readReg-writeReg-same (regs s) rax (encode b)
 
+------------------------------------------------------------------------
+-- Stateful fst/snd: use explicit addresses instead of encode
+--
+-- These versions eliminate the dependency on encoding postulates by:
+-- 1. Taking explicit addresses (addr-pair, addr-a, addr-b) instead of values
+-- 2. Taking memory layout preconditions instead of encoding axioms
+-- 3. Returning explicit addresses instead of encode results
+------------------------------------------------------------------------
+
+-- | Execute fst at offset with EXPLICIT addresses (stateful, no encode)
+-- Precondition: memory at addr-pair contains addr-a
+-- Result: rax = addr-a
+run-fst-at-offset-s : ∀ {A B : Type} (prefix suffix : Program)
+    (addr-pair addr-a : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-pair →
+  readMem (memory s) addr-pair ≡ just addr-a →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ addr-a)
+run-fst-at-offset-s {A} {B} prefix suffix addr-pair addr-a s h-false pc-eq rdi-eq mem-eq =
+  s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax addr-a
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (mem (base rdi)))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (mem (base rdi))))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (mem (base rdi))) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (mem (base rdi))) h-false fetch-eq)
+                    (execMov-reg-mem-base s rax rdi addr-a
+                      (trans (cong (λ addr → readMem (memory s) addr) rdi-eq) mem-eq))
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ addr-a
+    rax-eq = readReg-writeReg-same (regs s) rax addr-a
+
+-- | Execute snd at offset with EXPLICIT addresses (stateful, no encode)
+-- Precondition: memory at addr-pair+8 contains addr-b
+-- Result: rax = addr-b
+run-snd-at-offset-s : ∀ {A B : Type} (prefix suffix : Program)
+    (addr-pair addr-b : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-pair →
+  readMem (memory s) (addr-pair +ℕ 8) ≡ just addr-b →
+  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rax ≡ addr-b)
+run-snd-at-offset-s {A} {B} prefix suffix addr-pair addr-b s h-false pc-eq rdi-eq mem-eq =
+  s' , step-eq , h' , pc' , rax-eq
+  where
+    prog : Program
+    prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax addr-b
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (mem (base+disp rdi 8)))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (mem (base+disp rdi 8))))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (mem (base+disp rdi 8))) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (mem (base+disp rdi 8))) h-false fetch-eq)
+                    (execMov-reg-mem-disp s rax rdi 8 addr-b
+                      (trans (cong (λ addr → readMem (memory s) (addr +ℕ 8)) rdi-eq) mem-eq))
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rax-eq : readReg (regs s') rax ≡ addr-b
+    rax-eq = readReg-writeReg-same (regs s) rax addr-b
+
 -- | Execute mov rdi, rax at arbitrary offset (transfer result to input register)
 -- This is the glue instruction between composed programs
 run-mov-rdi-rax-at-offset : ∀ (prefix suffix : Program) (s : State) →

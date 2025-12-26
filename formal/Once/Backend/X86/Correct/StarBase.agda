@@ -29,7 +29,8 @@ open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpIn
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (PairAt; fst-valid; snd-valid)
+  using (PairAt; fst-valid; snd-valid;
+         PairAtS; fst-valid-s; snd-valid-s)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -418,4 +419,110 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    }
+
+------------------------------------------------------------------------
+-- Stateful Star proofs: No encode dependency at all
+--
+-- These versions use explicit addresses and PairAtS (stateful validity).
+-- The key difference from run-*-star-v:
+-- 1. Values are represented by explicit addresses, not ⟦ A ⟧
+-- 2. PairAtS uses addresses instead of encode
+-- 3. Result is rax = addr, not rax = encode val
+--
+-- This breaks ALL dependency on the abstract encode function.
+------------------------------------------------------------------------
+
+-- | Stateful result record for fst/snd operations
+-- Captures the key properties without encode dependency
+record FstSndResultS (prog : Program) (s s' : State) (addr-result : Word) (offset : ℕ) : Set where
+  field
+    star       : Star prog s s'
+    halted'    : halted s' ≡ false
+    pc'        : pc s' ≡ offset +ℕ 1
+    rax-eq     : readReg (regs s') rax ≡ addr-result
+    r14-eq     : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq     : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-eq     : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    mem-r15    : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    stack-inv  : StackInvariant s'
+    rsp-bound  : readReg (regs s') rsp > 16
+    rbp-inv    : RbpInvariant s'
+
+open FstSndResultS public
+
+-- | Fully stateful fst: uses PairAtS with explicit addresses (NO encode!)
+run-fst-star-s : ∀ {A B : Type} (prefix suffix : Program)
+    (addr-pair addr-a addr-b : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-pair →
+  PairAtS addr-a addr-b addr-pair (memory s) →  -- Stateful validity (PROVEN, no postulates)
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+  in ∃[ s' ] FstSndResultS prog s s' addr-a (length prefix)
+run-fst-star-s {A} {B} prefix suffix addr-pair addr-a addr-b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 rbp-inv =
+  let mem-eq : readMem (memory s) addr-pair ≡ just addr-a
+      mem-eq = fst-valid-s pair-valid
+      (s' , step-eq , h' , pc' , rax-eq') = run-fst-at-offset-s {A} {B} prefix suffix addr-pair addr-a s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) addr-a
+      rbp-eq = readReg-writeReg-rax-rbp (regs s) addr-a
+  in s' , record
+    { star = star-single h-false step-eq
+    ; halted' = h'
+    ; pc' = pc'
+    ; rax-eq = rax-eq'
+    ; r14-eq = readReg-writeReg-rax-r14 (regs s) addr-a
+    ; r15-eq = readReg-writeReg-rax-r15 (regs s) addr-a
+    ; rbp-eq = rbp-eq
+    ; mem-r15 = refl
+    ; mem-rbp = refl
+    ; mem-rbp+8 = refl
+    ; stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                    (readReg-writeReg-rax-r15 (regs s) addr-a)
+                    rsp-eq
+    ; rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
+    ; rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    }
+
+-- | Fully stateful snd: uses PairAtS with explicit addresses (NO encode!)
+run-snd-star-s : ∀ {A B : Type} (prefix suffix : Program)
+    (addr-pair addr-a addr-b : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-pair →
+  PairAtS addr-a addr-b addr-pair (memory s) →  -- Stateful validity (PROVEN, no postulates)
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+  in ∃[ s' ] FstSndResultS prog s s' addr-b (length prefix)
+run-snd-star-s {A} {B} prefix suffix addr-pair addr-a addr-b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 rbp-inv =
+  let mem-eq : readMem (memory s) (addr-pair +ℕ 8) ≡ just addr-b
+      mem-eq = snd-valid-s pair-valid
+      (s' , step-eq , h' , pc' , rax-eq') = run-snd-at-offset-s {A} {B} prefix suffix addr-pair addr-b s h-false pc-eq rdi-eq mem-eq
+      prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) addr-b
+      rbp-eq = readReg-writeReg-rax-rbp (regs s) addr-b
+  in s' , record
+    { star = star-single h-false step-eq
+    ; halted' = h'
+    ; pc' = pc'
+    ; rax-eq = rax-eq'
+    ; r14-eq = readReg-writeReg-rax-r14 (regs s) addr-b
+    ; r15-eq = readReg-writeReg-rax-r15 (regs s) addr-b
+    ; rbp-eq = rbp-eq
+    ; mem-r15 = refl
+    ; mem-rbp = refl
+    ; mem-rbp+8 = refl
+    ; stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                    (readReg-writeReg-rax-r15 (regs s) addr-b)
+                    rsp-eq
+    ; rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
+    ; rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     }

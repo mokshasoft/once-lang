@@ -61,6 +61,44 @@ record InrAt {A B : Type} (b : ⟦ B ⟧) (addr : Word) (m : Memory) : Set where
 open InrAt public
 
 ------------------------------------------------------------------------
+-- Stateful Validity Predicates (no reference to abstract encode)
+--
+-- These predicates use explicit addresses instead of the abstract
+-- `encode` function. This breaks the circular dependency on postulates
+-- and allows validity to be proven from stateful allocation theorems.
+------------------------------------------------------------------------
+
+-- | Pair validity with explicit component addresses
+-- Memory at addr-pair contains [addr-a, addr-b]
+record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
+  constructor pair-at-s
+  field
+    fst-valid : readMem m addr-pair ≡ just addr-a
+    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
+
+open PairAtS public using () renaming (fst-valid to fst-valid-s; snd-valid to snd-valid-s)
+
+-- | Left sum validity with explicit value address
+-- Memory at addr-sum contains [0, addr-val]
+record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
+  constructor inl-at-s
+  field
+    tag-valid : readMem m addr-sum ≡ just 0
+    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+
+open InlAtS public using () renaming (tag-valid to tag-valid-inl-s; val-valid to val-valid-inl-s)
+
+-- | Right sum validity with explicit value address
+-- Memory at addr-sum contains [1, addr-val]
+record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
+  constructor inr-at-s
+  field
+    tag-valid : readMem m addr-sum ≡ just 1
+    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+
+open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
+
+------------------------------------------------------------------------
 -- Creating validity proofs from allocation
 ------------------------------------------------------------------------
 
