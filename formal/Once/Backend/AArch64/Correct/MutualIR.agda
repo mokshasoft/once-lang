@@ -93,8 +93,13 @@ open CaseContext
             prog-eq-f to case-prog-eq-f; prog-eq-g to case-prog-eq-g)
 open import Once.Backend.AArch64.Correct.IR.Curry
   using (CurryContext; mkCurryContext;
+         CurryStep1Result; CurryStep5Result; CurryStep6Result;
          CurryFinalResult;
-         arith-curry-pc-final)
+         arith-curry-pc-final; arith-curry-before-label)
+open CurryContext
+  renaming (prog to curry-prog; code-f to curry-code-f;
+            code-ptr to curry-code-ptr; end-label to curry-end-label;
+            setup-instrs to curry-setup-instrs; thunk-instrs to curry-thunk-instrs)
 open import Once.Backend.AArch64.Correct.IR.Apply
   using (ApplyContext; mkApplyContext;
          ApplySetupResult; run-ir-at-offset-apply;
@@ -1510,10 +1515,27 @@ mutual
 
   -- | Star-based curry execution
   --
-  -- This version returns IRStarResult (uniform type for all IR terms).
-  -- For proofs that need ClosureWellFormed threading, use CurryResult
-  -- from ClosureWellFormed which includes a closure-wf field proving
-  -- the produced closure is well-formed.
+  -- Curry is non-recursive: creates closure, jumps over thunk code.
+  -- The code generator produces (12 + |f| instructions total):
+  --   0: sub-sp 16           ; allocate closure on stack
+  --   1: str x0 [sp]         ; store env (captured value x)
+  --   2: adr x9 4            ; compute code-ptr = pc + 4
+  --   3: str x9 [sp+8]       ; store code pointer in closure
+  --   4: mov-from-sp x0      ; return closure pointer in x0
+  --   5: b end-label         ; jump over thunk (to position 11+|f|)
+  --   6: label code-ptr      ; thunk entry point (NOT executed by curry)
+  --   7-9: thunk setup       ; (NOT executed by curry)
+  --   10 to 9+|f|: code-f    ; (NOT executed by curry)
+  --   10+|f|: ret            ; (NOT executed by curry)
+  --   11+|f|: label end      ; end of curry (position after jump)
+  --
+  -- Actual curry execution: only 7 steps (setup + jump + label)
+  --   Steps 0-5: Setup closure
+  --   Step 6: b jumps to end-label (skips thunk)
+  --   Step 7: label end (increments PC to 12+|f|)
+  --
+  -- For proofs needing ClosureWellFormed threading, use CurryResult
+  -- from ClosureWellFormed which includes a closure-wf field.
   run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1524,22 +1546,26 @@ mutual
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    -- Curry is non-recursive: creates closure, jumps over thunk.
-    -- For well-formedness threading, use CurryResult which includes
-    -- a ClosureWellFormed proof for the produced closure.
-    curry-postulate f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+    s-final , curry-result
     where
+      -- The full program
+      prog : Program
+      prog = prefix ++ compile-aarch64 (curry f) ++ suffix
+
+      -- Create context for helper lemmas
+      ctx : CurryContext f prefix suffix
+      ctx = mkCurryContext f prefix suffix
+
+      -- Postulate the result - full proof requires:
+      -- 1. Execute 6 setup instructions (allocate, store env, compute code-ptr,
+      --    store code-ptr, mov closure to x0, branch to end)
+      -- 2. Execute end label (increments PC)
+      -- 3. Build Star proof via star-trans
+      -- 4. Prove closure encoding equals eval (curry f) x
+      -- 5. Prove all IRStarResult fields (registers, memory, invariants)
       postulate
-        curry-postulate : ∀ {A B C} (f : IR (A * B) C)
-          (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
-          halted s ≡ false →
-          pc s ≡ length prefix →
-          readReg (regs s) x0 ≡ encode x →
-          StackInvariant s →
-          X29Invariant s →
-          readSP (regs s) > 16 →
-          let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
-          in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+        s-final : State
+        curry-result : IRStarResult (curry f) prog s s-final x (length prefix)
 
   -- | Star-based apply execution
   --
