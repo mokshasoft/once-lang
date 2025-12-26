@@ -18,15 +18,22 @@ open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; encodedMemory; encode-unit; encode-pair-fst; encode-pair-snd;
+         encode-pair-construct;
          encode-arr-identity; encode-fix-wrap; encode-fix-unwrap;
          encode-inl-construct; encode-inr-construct;
          readReg-writeReg-same; readReg-writeReg-x0-x20; readReg-writeReg-x0-x21;
          readReg-writeReg-x0-x29; readReg-writeReg-x0-x30;
          readReg-writeReg-x9-x0; readReg-writeReg-x9-x20; readReg-writeReg-x9-x21;
          readReg-writeReg-x9-x29; readReg-writeReg-x9-x30;
-         readReg-writeSP; readSP-writeReg;
+         readReg-writeReg-x20-x0; readReg-writeReg-x20-x21;
+         readReg-writeReg-x20-x29; readReg-writeReg-x20-x30;
+         readReg-writeReg-x21-x0; readReg-writeReg-x21-x20;
+         readReg-writeReg-x21-x29; readReg-writeReg-x21-x30;
+         readReg-writeReg-x29-x20; readReg-writeReg-x29-x21;
+         readReg-writeReg-x30-x20; readReg-writeReg-x30-x21;
+         readReg-writeSP; readSP-writeReg; readSP-writeSP;
          exec-chain; step-instr; fetch-append-right; fetch-at-prefix-end;
-         execInstr-nop; execInstr-mov-imm; execInstr-ldr-success;
+         execInstr-nop; execInstr-mov-imm; execInstr-mov-reg; execInstr-ldr-success;
          execInstr-sub-sp; execInstr-str-zr; execInstr-str; execInstr-mov-from-sp;
          readMem-writeMem-same; readMem-writeMem-diff-8; readMem-writeMem-diff-8-rev)
 -- Import propositional readMem-writeMem-diff directly from Memory.agda
@@ -37,7 +44,7 @@ open import Once.Backend.AArch64.Correct.FetchStep
 open import Once.Backend.AArch64.Correct.CompileLength
   using (compile-length-correct; length-++)
 open import Once.Backend.AArch64.Correct.StackInvariant
-  using (StackInvariant; X29Invariant; x29-unused; sp-below-x29;
+  using (StackInvariant; X29Invariant; x29-unused; sp-below-x29; stack-below-x21;
          stack-inv-preserved-unchanged; sp>16-preserved-unchanged;
          stack-inv-preserved-sp-decreased;
          addr-diff-from-invariant; x29-addr-diff-extended;
@@ -64,7 +71,15 @@ open import Once.Backend.AArch64.Correct.IR.Compose
             len-prefix-g to compose-len-prefix-g)
 open import Once.Backend.AArch64.Correct.IR.Pair
   using (PairContext; mkPairContext;
-         PairSetupResult; PairMiddleResult; PairFinalResult)
+         PairSetupResult; PairMiddleResult; PairFinalResult;
+         arith-pc-final)
+open PairContext
+  hiding (len-f; len-g)
+  renaming (prog to pair-prog; code-f to pair-code-f; code-g to pair-code-g;
+            prefix-f to pair-prefix-f; suffix-f to pair-suffix-f;
+            prefix-g to pair-prefix-g; suffix-g to pair-suffix-g;
+            len-prefix-f to pair-len-prefix-f; len-prefix-g to pair-len-prefix-g;
+            prog-eq-f to pair-prog-eq-f; prog-eq-g to pair-prog-eq-g)
 open import Once.Backend.AArch64.Correct.IR.Case
   using (CaseContext; mkCaseContext)
 open import Once.Backend.AArch64.Correct.IR.Curry
@@ -1399,6 +1414,10 @@ mutual
         ∎
 
   -- | Star-based pair execution
+  -- Structure: setup (3) + code-f + middle (2) + code-g + final (2)
+  -- Setup: sub-sp 16, mov-from-sp x21, mov x20 x0
+  -- Middle: str x0 [x21], mov x0 x20
+  -- Final: str x0 [x21+8], mov x0 x21
   run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1409,25 +1428,28 @@ mutual
     let prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
   run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    -- Postulated for now - full proof requires:
-    -- 1. Execute setup (7 instructions)
-    -- 2. Execute f (recursive)
-    -- 3. Execute middle (2 instructions)
-    -- 4. Execute g (recursive)
-    -- 5. Execute final (6 instructions)
-    pair-postulate f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+    -- The detailed proof requires slow type-checking due to complex proof terms.
+    -- Using postulate for the result to verify overall structure compiles.
+    s-final , pair-result
     where
+      -- The full program
+      prog : Program
+      prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
+
+      -- Postulate the result for now to verify overall structure compiles.
+      -- The detailed proof causes very slow type-checking due to complex proof term normalization.
+      -- TODO: Once performance issues are resolved, the proof follows this structure:
+      -- 1. Setup (3 instructions): sub-sp 16, mov-from-sp x21, mov x20 x0
+      -- 2. Execute f recursively
+      -- 3. Middle (2 instructions): str x0 [x21], mov x0 x20
+      -- 4. Execute g recursively
+      -- 5. Final (2 instructions): str x0 [x21+8], mov x0 x21
+      -- 6. Build Star proof via star-trans
+      -- 7. Prove all IRStarResult fields
       postulate
-        pair-postulate : ∀ {A B C} (f : IR C A) (g : IR C B)
-          (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
-          halted s ≡ false →
-          pc s ≡ length prefix →
-          readReg (regs s) x0 ≡ encode x →
-          StackInvariant s →
-          X29Invariant s →
-          readSP (regs s) > 16 →
-          let prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
-          in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
+        s-final : State
+        pair-result : IRStarResult ⟨ f , g ⟩ prog s s-final x (length prefix)
+
 
   -- | Star-based case execution
   run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
