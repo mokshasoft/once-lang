@@ -24,7 +24,7 @@ open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; ≤-refl)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+open import Data.List.Properties using (++-assoc; ++-identityʳ) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Maybe using (just)
@@ -209,12 +209,154 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
           7 +ℕ the-len-f
           ∎
 
+    -- Intermediate structures for program equality proofs
+    -- Following Pair.agda pattern: define structures that match code generator output
+
+    -- Post-f code: i4 ∷ i5 ∷ i6 ∷ code-g ++ i7 ∷ []
+    the-post-f : Program
+    the-post-f = the-branch-end ∷ the-right-label-instr ∷ the-load-val-right ∷ the-code-g ++ the-end-label-instr ∷ []
+
+    -- Inner case: i0 ∷ i1 ∷ i2 ∷ i3 ∷ code-f ++ post-f
+    the-inner-case : Program
+    the-inner-case = the-load-tag-instr ∷ the-cmp-instr ∷ the-bne-instr ∷ the-load-val-left ∷ the-code-f ++ the-post-f
+
+    -- rest-for-f: inner-case ++ suffix
+    the-rest-for-f : Program
+    the-rest-for-f = the-inner-case ++ suffix
+
+    -- Setup part (first 4 instructions)
+    the-setup-left : Program
+    the-setup-left = the-load-tag-instr ∷ the-cmp-instr ∷ the-bne-instr ∷ the-load-val-left ∷ []
+
+    -- Helper: prog = prefix ++ inner-case ++ suffix
+    prog-eq-inner : the-prog ≡ prefix ++ the-inner-case ++ suffix
+    prog-eq-inner = cong (prefix ++_) refl
+
+    -- Helper: suffix-f relates to post-f
+    -- Note: suffix-f = i4 ∷ i5 ∷ i6 ∷ code-g ++ (i7 ∷ suffix)
+    --       post-f   = i4 ∷ i5 ∷ i6 ∷ code-g ++ (i7 ∷ [])
+    --       post-f ++ suffix = i4 ∷ i5 ∷ i6 ∷ (code-g ++ i7 ∷ []) ++ suffix
+    --                        = i4 ∷ i5 ∷ i6 ∷ code-g ++ (i7 ∷ []) ++ suffix   via ++-assoc
+    --                        = i4 ∷ i5 ∷ i6 ∷ code-g ++ (i7 ∷ suffix)         by (i7 ∷ []) ++ suffix = i7 ∷ suffix
+    suffix-f-eq-post : the-suffix-f ≡ the-post-f ++ suffix
+    suffix-f-eq-post = sym (cong (the-branch-end ∷_) (cong (the-right-label-instr ∷_)
+                       (cong (the-load-val-right ∷_) inner-eq)))
+      where
+        -- (code-g ++ i7 ∷ []) ++ suffix ≡ code-g ++ (i7 ∷ suffix)
+        inner-eq : (the-code-g ++ the-end-label-instr ∷ []) ++ suffix ≡ the-code-g ++ the-end-label-instr ∷ suffix
+        inner-eq = ++-assoc the-code-g (the-end-label-instr ∷ []) suffix
+
+    -- Helper: inner-case = setup-left ++ code-f ++ post-f
+    inner-case-split : the-inner-case ≡ the-setup-left ++ the-code-f ++ the-post-f
+    inner-case-split = sym (++-assoc the-setup-left the-code-f the-post-f)
+
+    -- Helper: prefix ++ setup-left ++ xs = prefix-f ++ xs
+    prefix-setup-eq : ∀ xs → prefix ++ the-setup-left ++ xs ≡ the-prefix-f ++ xs
+    prefix-setup-eq xs = sym (++-assoc prefix the-setup-left xs)
+
     -- Program equality for f branch
-    -- These are complex list associativity proofs.
-    -- Using postulates for now; will be proven via detailed list manipulation.
-    postulate
-      the-prog-eq-f : the-prog ≡ the-prefix-f ++ the-code-f ++ the-suffix-f
-      the-prog-eq-g : the-prog ≡ the-prefix-g ++ the-code-g ++ the-suffix-g
+    the-prog-eq-f : the-prog ≡ the-prefix-f ++ the-code-f ++ the-suffix-f
+    the-prog-eq-f = begin
+      the-prog
+        ≡⟨ prog-eq-inner ⟩
+      prefix ++ the-inner-case ++ suffix
+        ≡⟨ cong (prefix ++_) (cong (_++ suffix) inner-case-split) ⟩
+      prefix ++ (the-setup-left ++ the-code-f ++ the-post-f) ++ suffix
+        ≡⟨ cong (prefix ++_) (++-assoc (the-setup-left ++ the-code-f) the-post-f suffix) ⟩
+      prefix ++ ((the-setup-left ++ the-code-f) ++ (the-post-f ++ suffix))
+        ≡⟨ cong (prefix ++_) (cong ((the-setup-left ++ the-code-f) ++_) (sym suffix-f-eq-post)) ⟩
+      prefix ++ ((the-setup-left ++ the-code-f) ++ the-suffix-f)
+        ≡⟨ cong (prefix ++_) (sym (++-assoc the-setup-left the-code-f the-suffix-f)) ⟩
+      prefix ++ (the-setup-left ++ (the-code-f ++ the-suffix-f))
+        ≡⟨ sym (++-assoc prefix the-setup-left (the-code-f ++ the-suffix-f)) ⟩
+      (prefix ++ the-setup-left) ++ (the-code-f ++ the-suffix-f)
+        ≡⟨ refl ⟩
+      the-prefix-f ++ (the-code-f ++ the-suffix-f)
+      ∎
+
+    -- For g branch: need prefix-g = prefix-f ++ code-f ++ [i4, i5, i6]
+    -- suffix-g = i7 ∷ suffix
+
+    -- Helper: post-f = i4 ∷ i5 ∷ i6 ∷ code-g ++ i7 ∷ []
+    -- Middle between f and g: [i4, i5, i6]
+    the-mid-g : Program
+    the-mid-g = the-branch-end ∷ the-right-label-instr ∷ the-load-val-right ∷ []
+
+    -- Helper: post-f ++ suffix = mid-g ++ code-g ++ suffix-g
+    -- Note: post-f ends with i7 ∷ [], while suffix-g = i7 ∷ suffix
+    -- So we need to include suffix on LHS to get equality
+    post-f-suffix-eq : the-post-f ++ suffix ≡ the-mid-g ++ the-code-g ++ the-suffix-g
+    post-f-suffix-eq = begin
+      the-post-f ++ suffix
+        ≡⟨ refl ⟩
+      (the-branch-end ∷ the-right-label-instr ∷ the-load-val-right ∷ the-code-g ++ the-end-label-instr ∷ []) ++ suffix
+        ≡⟨ cong (the-branch-end ∷_) (cong (the-right-label-instr ∷_) (cong (the-load-val-right ∷_)
+           (++-assoc the-code-g (the-end-label-instr ∷ []) suffix))) ⟩
+      the-branch-end ∷ the-right-label-instr ∷ the-load-val-right ∷ the-code-g ++ (the-end-label-instr ∷ suffix)
+        ≡⟨ sym (++-assoc the-mid-g the-code-g (the-end-label-instr ∷ suffix)) ⟩
+      (the-mid-g ++ the-code-g) ++ (the-end-label-instr ∷ suffix)
+        ≡⟨ ++-assoc the-mid-g the-code-g (the-end-label-instr ∷ suffix) ⟩
+      the-mid-g ++ the-code-g ++ the-suffix-g
+      ∎
+
+    -- Helper: prefix-g = prefix-f ++ code-f ++ mid-g
+    -- Key insight: setup-left ++ code-f ++ mid-g = i0 ∷ ... ∷ i3 ∷ code-f ++ i4 ∷ ... ∷ []
+    -- by computation (++ on concrete list reduces)
+    prefix-g-expand : the-prefix-g ≡ the-prefix-f ++ the-code-f ++ the-mid-g
+    prefix-g-expand = begin
+      the-prefix-g
+        ≡⟨ refl ⟩
+      -- the-prefix-g expands to:
+      -- prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ code-f ++ i4 ∷ i5 ∷ i6 ∷ []
+      -- which equals prefix ++ (setup-left ++ code-f ++ mid-g) by computation
+      prefix ++ the-setup-left ++ the-code-f ++ the-mid-g
+        ≡⟨ sym (++-assoc prefix the-setup-left (the-code-f ++ the-mid-g)) ⟩
+      (prefix ++ the-setup-left) ++ (the-code-f ++ the-mid-g)
+        ≡⟨ refl ⟩
+      the-prefix-f ++ (the-code-f ++ the-mid-g)
+        ≡⟨ sym (++-assoc the-prefix-f the-code-f the-mid-g) ⟩
+      (the-prefix-f ++ the-code-f) ++ the-mid-g
+        ≡⟨ ++-assoc the-prefix-f the-code-f the-mid-g ⟩
+      the-prefix-f ++ the-code-f ++ the-mid-g
+      ∎
+
+    -- Program equality for g branch
+    -- Goal: the-prog ≡ the-prefix-g ++ the-code-g ++ the-suffix-g
+    -- where the-prefix-g = the-prefix-f ++ the-code-f ++ the-mid-g
+    the-prog-eq-g : the-prog ≡ the-prefix-g ++ the-code-g ++ the-suffix-g
+    the-prog-eq-g = begin
+      the-prog
+        ≡⟨ the-prog-eq-f ⟩
+      the-prefix-f ++ (the-code-f ++ the-suffix-f)
+        ≡⟨ cong (the-prefix-f ++_) (cong (the-code-f ++_) suffix-f-eq-post) ⟩
+      the-prefix-f ++ (the-code-f ++ (the-post-f ++ suffix))
+        ≡⟨ cong (the-prefix-f ++_) (cong (the-code-f ++_) post-f-suffix-eq) ⟩
+      the-prefix-f ++ (the-code-f ++ (the-mid-g ++ the-code-g ++ the-suffix-g))
+        -- Now we need to reassociate to get (prefix-f ++ code-f ++ mid-g) ++ code-g ++ suffix-g
+        -- Step 1: Push code-f inside: code-f ++ (mid-g ++ (code-g ++ suffix-g))
+        ≡⟨ cong (the-prefix-f ++_) (cong (the-code-f ++_) (sym (++-assoc the-mid-g the-code-g the-suffix-g))) ⟩
+      the-prefix-f ++ (the-code-f ++ ((the-mid-g ++ the-code-g) ++ the-suffix-g))
+        ≡⟨ cong (the-prefix-f ++_) (cong (the-code-f ++_) (++-assoc the-mid-g the-code-g the-suffix-g)) ⟩
+      the-prefix-f ++ (the-code-f ++ (the-mid-g ++ (the-code-g ++ the-suffix-g)))
+        -- Step 2: Reassociate code-f ++ mid-g
+        ≡⟨ cong (the-prefix-f ++_) (sym (++-assoc the-code-f the-mid-g (the-code-g ++ the-suffix-g))) ⟩
+      the-prefix-f ++ ((the-code-f ++ the-mid-g) ++ (the-code-g ++ the-suffix-g))
+        -- Step 3: Push prefix-f in
+        ≡⟨ sym (++-assoc the-prefix-f (the-code-f ++ the-mid-g) (the-code-g ++ the-suffix-g)) ⟩
+      (the-prefix-f ++ (the-code-f ++ the-mid-g)) ++ (the-code-g ++ the-suffix-g)
+        -- Step 4: Reassociate prefix-f ++ code-f ++ mid-g
+        ≡⟨ cong (_++ (the-code-g ++ the-suffix-g)) (sym (++-assoc the-prefix-f the-code-f the-mid-g)) ⟩
+      ((the-prefix-f ++ the-code-f) ++ the-mid-g) ++ (the-code-g ++ the-suffix-g)
+        ≡⟨ cong (_++ (the-code-g ++ the-suffix-g)) (++-assoc the-prefix-f the-code-f the-mid-g) ⟩
+      (the-prefix-f ++ (the-code-f ++ the-mid-g)) ++ (the-code-g ++ the-suffix-g)
+        -- Now apply prefix-g-expand
+        ≡⟨ cong (_++ (the-code-g ++ the-suffix-g)) (sym prefix-g-expand) ⟩
+      the-prefix-g ++ (the-code-g ++ the-suffix-g)
+        ≡⟨ sym (++-assoc the-prefix-g the-code-g the-suffix-g) ⟩
+      (the-prefix-g ++ the-code-g) ++ the-suffix-g
+        ≡⟨ ++-assoc the-prefix-g the-code-g the-suffix-g ⟩
+      the-prefix-g ++ the-code-g ++ the-suffix-g
+      ∎
 
 ------------------------------------------------------------------------
 -- Case Setup Results: intermediate state after setup instructions
