@@ -27,10 +27,11 @@ open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpInvariant; stack-inv-preserved-unchanged; rsp>16-preserved-unchanged)
 open import Once.Backend.X86.Correct.Star
-  using (Star; refl*; step*; star-trans; star-single)
+  using (Star; refl*; step*; star-trans; star-single; star-step4)
 open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; fst-valid; snd-valid;
-         PairAtS; fst-valid-s; snd-valid-s)
+         PairAtS; fst-valid-s; snd-valid-s;
+         InlAtS; inl-at-s; InrAtS; inr-at-s)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -526,3 +527,50 @@ run-snd-star-s {A} {B} prefix suffix addr-pair addr-a addr-b s h-false pc-eq rdi
     ; rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     }
+
+------------------------------------------------------------------------
+-- Stateful Inl/Inr proofs: Produce validity as output
+--
+-- inl and inr ALLOCATE in memory. The stateful versions:
+-- 1. Take input address instead of encode x
+-- 2. Return output address (allocation address)
+-- 3. Return InlAtS/InrAtS validity evidence (PROVEN from memory writes)
+--
+-- This is the "producer" pattern: allocation creates validity.
+------------------------------------------------------------------------
+
+-- | Stateful result record for inl/inr operations
+-- Captures allocation result with validity proof
+record InlResultS (prog : Program) (s s' : State)
+                  (addr-in addr-out : Word) (offset : ℕ) : Set where
+  field
+    star       : Star prog s s'
+    halted'    : halted s' ≡ false
+    pc'        : pc s' ≡ offset +ℕ 4  -- inl is 4 instructions
+    rax-eq     : readReg (regs s') rax ≡ addr-out
+    inl-valid  : InlAtS addr-in addr-out (memory s')  -- PRODUCED validity
+    r14-eq     : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq     : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-eq     : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    stack-inv  : StackInvariant s'
+    rsp-bound  : readReg (regs s') rsp > 16
+    rbp-inv    : RbpInvariant s'
+
+open InlResultS public using (inl-valid)
+
+record InrResultS (prog : Program) (s s' : State)
+                  (addr-in addr-out : Word) (offset : ℕ) : Set where
+  field
+    star       : Star prog s s'
+    halted'    : halted s' ≡ false
+    pc'        : pc s' ≡ offset +ℕ 4  -- inr is 4 instructions
+    rax-eq     : readReg (regs s') rax ≡ addr-out
+    inr-valid  : InrAtS addr-in addr-out (memory s')  -- PRODUCED validity
+    r14-eq     : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq     : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-eq     : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    stack-inv  : StackInvariant s'
+    rsp-bound  : readReg (regs s') rsp > 16
+    rbp-inv    : RbpInvariant s'
+
+open InrResultS public using (inr-valid)
