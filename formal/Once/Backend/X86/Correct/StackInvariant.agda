@@ -15,7 +15,8 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
 -- Import initWithInput from InitState module
-open import Once.Backend.X86.Correct.InitState using (initWithInput)
+open import Once.Backend.X86.Correct.InitState
+  using (initWithInput; initWithInputStateful; InitResult; state; input-addr)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; m∸n≤m; m∸n+n≡m; <⇒≤; +-comm; m+n∸n≡m)
@@ -129,6 +130,34 @@ open RbpInvariant public
 -- | Initial state satisfies RbpInvariant (rsp = rbp = stackBase)
 initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
 initWithInput-rbp-inv x = record { rsp≤rbp = ≤-refl }
+
+------------------------------------------------------------------------
+-- Stateful Initial State Invariants
+--
+-- These mirror the lemmas for initWithInput but for initWithInputStateful.
+-- The proofs are identical since the register setup is the same.
+------------------------------------------------------------------------
+
+-- | Helper: r15 is 0 in the stateful initial state
+private
+  r15-is-zero-s : ∀ {A} (x : ⟦ A ⟧) →
+    readReg (regs (state (initWithInputStateful x))) r15 ≡ 0
+  r15-is-zero-s x = refl
+
+-- | Stateful initial state satisfies StackInvariant (r15 = 0)
+initWithInputStateful-stack-inv : ∀ {A} (x : ⟦ A ⟧) →
+  StackInvariant (state (initWithInputStateful x))
+initWithInputStateful-stack-inv x = r15-unused (r15-is-zero-s x)
+
+-- | Stateful initial state has rsp > 16
+initWithInputStateful-rsp>16 : ∀ {A} (x : ⟦ A ⟧) →
+  readReg (regs (state (initWithInputStateful x))) rsp > 16
+initWithInputStateful-rsp>16 x = m≤m+n 17 2147418095  -- stackBase = 0x7FFF0000
+
+-- | Stateful initial state satisfies RbpInvariant (rsp = rbp)
+initWithInputStateful-rbp-inv : ∀ {A} (x : ⟦ A ⟧) →
+  RbpInvariant (state (initWithInputStateful x))
+initWithInputStateful-rbp-inv x = record { rsp≤rbp = ≤-refl }
 
 -- | Derive address disjointness from RbpInvariant
 -- If rsp ≤ rbp and rsp > 16, then (rsp - 16) < rsp ≤ rbp, so (rsp - 16) ≢ rbp

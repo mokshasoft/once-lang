@@ -1345,3 +1345,117 @@ data CaseResultS (prog : Program) (s s' : State)
                  (addr-out : Word) (offset len-case : ℕ) : Set where
   case-inl : CaseInlResultS prog s s' addr-out offset len-case → CaseResultS prog s s' addr-out offset len-case
   case-inr : CaseInrResultS prog s s' addr-out offset len-case → CaseResultS prog s s' addr-out offset len-case
+
+------------------------------------------------------------------------
+-- END-TO-END STATEFUL PROOFS
+--
+-- These theorems demonstrate the complete stateful pattern:
+-- 1. Use initWithInputStateful (proper memory allocation)
+-- 2. Get validity from proven allocation theorems (no postulates!)
+-- 3. Run stateful IR execution
+-- 4. Produce result as address with validity evidence
+--
+-- This is the foundation for eliminating all encoding postulates.
+------------------------------------------------------------------------
+
+open import Once.StatefulEncoding using (encode-s)
+open import Once.Memory using (AllocState; alloc-state)
+  renaming (mem to alloc-mem)
+open import Once.Backend.X86.Correct.InitState
+  using (initWithInputStateful; InitResult; state; input-addr;
+         initWithInputStateful-pair-valid;
+         initWithInputStateful-halted; initWithInputStateful-pc)
+open import Once.Backend.X86.Correct.StackInvariant
+  using (initWithInputStateful-stack-inv; initWithInputStateful-rsp>16;
+         initWithInputStateful-rbp-inv)
+open import Data.List.Properties using (++-identityʳ)
+
+-- | Stateful fst correctness: NO ENCODING POSTULATES!
+--
+-- This theorem proves fst correctness using only:
+--   1. initWithInputStateful: Properly allocates pair in memory
+--   2. initWithInputStateful-pair-valid: PROVEN validity from StatefulEncoding
+--   3. run-fst-star-s: Stateful execution using validity
+--
+-- The result is an address (addr-a) where the first component lives,
+-- not an abstract "encode a". The validity predicate proves the memory
+-- layout is correct.
+--
+-- This demonstrates the complete elimination of encode-pair-fst postulate.
+test-fst-stateful : ∀ {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  let init-heap = alloc-state emptyMemory 0x80000000
+      (addr-a , st₁) = encode-s {A} a init-heap
+      (addr-b , st₂) = encode-s {B} b st₁
+      result = initWithInputStateful {A * B} (a , b)
+      s0 = state result
+      addr-pair = input-addr result
+      pair-valid = initWithInputStateful-pair-valid a b
+  in ∃[ s' ] (Star (compile-x86 {A * B} {A} fst) s0 s'
+            × halted s' ≡ false
+            × readReg (regs s') rax ≡ addr-a)
+test-fst-stateful {A} {B} a b = s' , star-out , halted-out , rax-out
+  where
+    -- Setup from initWithInputStateful
+    init-heap : AllocState
+    init-heap = alloc-state emptyMemory 0x80000000
+
+    addr-a : Word
+    addr-a = proj₁ (encode-s {A} a init-heap)
+
+    st₁ : AllocState
+    st₁ = proj₂ (encode-s {A} a init-heap)
+
+    addr-b : Word
+    addr-b = proj₁ (encode-s {B} b st₁)
+
+    result : InitResult (A * B)
+    result = initWithInputStateful {A * B} (a , b)
+
+    s0 : State
+    s0 = state result
+
+    addr-pair : Word
+    addr-pair = input-addr result
+
+    -- Validity from PROVEN allocation (no postulates!)
+    pair-valid' : PairAtS addr-a addr-b addr-pair (memory s0)
+    pair-valid' = initWithInputStateful-pair-valid a b
+
+    -- Preconditions for run-fst-star-s
+    h-false' : halted s0 ≡ false
+    h-false' = initWithInputStateful-halted (a , b)
+
+    pc-eq' : pc s0 ≡ 0
+    pc-eq' = initWithInputStateful-pc (a , b)
+
+    rdi-eq' : readReg (regs s0) rdi ≡ addr-pair
+    rdi-eq' = InitResult.rdi-eq result
+
+    stack-inv' : StackInvariant s0
+    stack-inv' = initWithInputStateful-stack-inv (a , b)
+
+    rsp>16' : readReg (regs s0) rsp > 16
+    rsp>16' = initWithInputStateful-rsp>16 (a , b)
+
+    rbp-inv' : RbpInvariant s0
+    rbp-inv' = initWithInputStateful-rbp-inv (a , b)
+
+    -- Run fst statefully (NO POSTULATES!)
+    fst-result = run-fst-star-s {A} {B} [] [] addr-pair addr-a addr-b s0
+                   h-false' pc-eq' rdi-eq' pair-valid' stack-inv' rsp>16' rbp-inv'
+
+    s' : State
+    s' = proj₁ fst-result
+
+    fst-res : FstSndResultS (compile-x86 {A * B} {A} fst) s0 s' addr-a 0
+    fst-res = proj₂ fst-result
+
+    -- Extract results
+    star-out : Star (compile-x86 {A * B} {A} fst) s0 s'
+    star-out = subst (λ p → Star p s0 s') (++-identityʳ _) (FstSndResultS.star fst-res)
+
+    halted-out : halted s' ≡ false
+    halted-out = FstSndResultS.halted' fst-res
+
+    rax-out : readReg (regs s') rax ≡ addr-a
+    rax-out = FstSndResultS.rax-eq fst-res
