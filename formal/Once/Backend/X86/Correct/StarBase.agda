@@ -1668,3 +1668,44 @@ test-inr-stateful {A} {B} b = s' , star-out , halted-out , rax-out , inr-valid-o
 
     inr-valid-out : InrAtS addr-b (readReg (regs s0) rsp ∸ 16) (memory s')
     inr-valid-out = InrResultS.inr-valid inr-res
+
+------------------------------------------------------------------------
+-- SUMMARY: Stateful Proof Coverage
+------------------------------------------------------------------------
+--
+-- This module demonstrates complete postulate-free verification for
+-- base IR operations using the "stateful validity" pattern.
+--
+-- PATTERN:
+--   Producers (inl, inr, pair) → create validity predicates from memory writes
+--   Consumers (fst, snd, case) → use validity predicates instead of encode postulates
+--
+-- PROVEN (no encoding postulates):
+--   ✓ fst - uses PairAtS, eliminates encode-pair-fst postulate
+--   ✓ snd - uses PairAtS, eliminates encode-pair-snd postulate
+--   ✓ inl - produces InlAtS from memory writes (no encode-inl-construct)
+--   ✓ inr - produces InrAtS from memory writes (no encode-inr-construct)
+--
+-- E2E TESTS (complete producer→consumer chains):
+--   ✓ test-fst-stateful - pair input → fst extraction (NO postulates)
+--   ✓ test-snd-stateful - pair input → snd extraction (NO postulates)
+--   ✓ test-inl-stateful - value input → inl creation (NO postulates)
+--   ✓ test-inr-stateful - value input → inr creation (NO postulates)
+--
+-- REMAINING (require IRRunner threading):
+--   • pair producer - needs to thread validity from sub-IR results
+--   • case consumer - needs to thread validity to sub-IR branches
+--   • compose - needs to thread validity between composed IRs
+--
+-- PATH TO FULL ELIMINATION:
+--   1. Modify IRRunner to return IRStarResultS (with addresses, not encode)
+--   2. Thread validity through compose/pair/case in MutualIR.agda
+--   3. Remove encoding postulates from Once/Postulates.agda
+--
+-- KEY FILES:
+--   • StatefulEncoding.agda - encode-s with PROVEN memory theorems
+--   • InitState.agda - initWithInputStateful with proper allocation
+--   • MemoryValid.agda - PairAtS, InlAtS, InrAtS predicates
+--   • StarBase.agda - stateful versions (run-*-star-s) and E2E tests
+--
+------------------------------------------------------------------------
