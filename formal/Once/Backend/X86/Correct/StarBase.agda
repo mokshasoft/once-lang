@@ -1126,3 +1126,128 @@ run-inr-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp
         new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
         new-rsp≤rbp : readReg (regs s4) rsp ≤ readReg (regs s4) rbp
         new-rsp≤rbp = subst₂ _≤_ (sym rsp-s4-eq) (sym rbp-preserved) new-rsp≤orig-rbp
+
+------------------------------------------------------------------------
+-- Stateful Pair Result: Produces PairAtS validity
+--
+-- Pair operations store two addresses at consecutive memory locations:
+--   - memory[addr-pair] = addr-f (first component)
+--   - memory[addr-pair + 8] = addr-g (second component)
+--
+-- This creates PairAtS validity directly from the memory writes,
+-- without needing the encode-pair-construct postulate.
+------------------------------------------------------------------------
+
+-- | Stateful result record for pair operations
+-- Captures that pair's store operations create valid pair memory layout
+record PairResultS (prog : Program) (s s' : State)
+                   (addr-f addr-g addr-pair : Word) (offset len-pair : ℕ) : Set where
+  field
+    star       : Star prog s s'
+    halted'    : halted s' ≡ false
+    pc'        : pc s' ≡ offset +ℕ len-pair
+    rax-eq     : readReg (regs s') rax ≡ addr-pair
+    pair-valid : PairAtS addr-f addr-g addr-pair (memory s')  -- PRODUCED validity
+    r14-eq     : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-eq     : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-eq     : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    mem-r15    : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    stack-inv  : StackInvariant s'
+    rsp-bound  : readReg (regs s') rsp > 16
+    rbp-inv    : RbpInvariant s'
+
+open PairResultS public using (pair-valid)
+
+-- | Key lemma: Two stores create PairAtS validity
+--
+-- Given:
+--   - mem-fst : readMem m addr-pair ≡ just addr-f
+--   - mem-snd : readMem m (addr-pair + 8) ≡ just addr-g
+--
+-- Produces:
+--   PairAtS addr-f addr-g addr-pair m
+--
+-- This is the "producer" side of pair validity - we construct
+-- the validity predicate directly from proven memory contents.
+pair-stores-create-validity : ∀ {addr-f addr-g addr-pair : Word} {m : Memory} →
+  readMem m addr-pair ≡ just addr-f →
+  readMem m (addr-pair +ℕ 8) ≡ just addr-g →
+  PairAtS addr-f addr-g addr-pair m
+pair-stores-create-validity mem-fst mem-snd = pair-at-s mem-fst mem-snd
+  where
+    open import Once.Backend.X86.Correct.MemoryValid using (pair-at-s)
+
+------------------------------------------------------------------------
+-- Stateful IRStarResult: Result with addresses instead of encode
+--
+-- This is the stateful counterpart to IRStarResult. Instead of
+-- using `encode (eval ir x)` for the rax result, it uses an
+-- explicit address. Validity of that address is tracked separately.
+------------------------------------------------------------------------
+
+-- | Stateful IR execution result record
+-- Like IRStarResult but with explicit address instead of encode
+record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
+                     (s s' : State) (addr-out : Word) (offset : ℕ) : Set where
+  field
+    ir-star       : Star prog s s'
+    ir-halted     : halted s' ≡ false
+    ir-pc         : pc s' ≡ offset +ℕ compile-length ir
+    ir-rax-s      : readReg (regs s') rax ≡ addr-out  -- Address, not encode!
+    ir-r14        : readReg (regs s') r14 ≡ readReg (regs s) r14
+    ir-r15        : readReg (regs s') r15 ≡ readReg (regs s) r15
+    ir-rbp        : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    ir-stack-inv  : StackInvariant s'
+    ir-rsp-bound  : readReg (regs s') rsp > 16
+    ir-rbp-inv    : RbpInvariant s'
+
+open IRStarResultS public
+
+-- | Convert IRStarResult to IRStarResultS
+-- This allows gradual migration to stateful proofs
+convert-to-stateful : ∀ {A B : Type} (ir : IR A B) (prog : Program)
+                      (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
+  IRStarResult ir prog s s' x offset →
+  IRStarResultS ir prog s s' (encode (eval ir x)) offset
+convert-to-stateful ir prog s s' x offset res = record
+  { ir-star      = IRStarResult.ir-star res
+  ; ir-halted    = IRStarResult.ir-halted res
+  ; ir-pc        = IRStarResult.ir-pc res
+  ; ir-rax-s     = IRStarResult.ir-rax res
+  ; ir-r14       = IRStarResult.ir-r14 res
+  ; ir-r15       = IRStarResult.ir-r15 res
+  ; ir-rbp       = IRStarResult.ir-rbp res
+  ; ir-mem       = IRStarResult.ir-mem res
+  ; ir-mem-rbp   = IRStarResult.ir-mem-rbp res
+  ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 res
+  ; ir-stack-inv = IRStarResult.ir-stack-inv res
+  ; ir-rsp-bound = IRStarResult.ir-rsp-bound res
+  ; ir-rbp-inv   = IRStarResult.ir-rbp-inv res
+  }
+
+------------------------------------------------------------------------
+-- Stateful Pair Assembly: Produce PairAtS from sub-IR results
+--
+-- This function shows how to produce PairResultS from stateful
+-- sub-IR results. It's the key step for eliminating encode-pair-construct.
+--
+-- Pattern:
+--   1. Run f → get addr-f in rax
+--   2. Store addr-f at [r15] (middle phase)
+--   3. Run g → get addr-g in rax
+--   4. Store addr-g at [r15+8] (final phase)
+--   5. Return r15 with PairAtS addr-f addr-g r15 memory
+------------------------------------------------------------------------
+
+-- | Simple assembly: given memory proofs, construct PairAtS
+-- This is used when we have the final state and memory layout proven
+make-pair-validity : ∀ {addr-f addr-g addr-pair : Word} {s' : State} →
+  readMem (memory s') addr-pair ≡ just addr-f →
+  readMem (memory s') (addr-pair +ℕ 8) ≡ just addr-g →
+  PairAtS addr-f addr-g addr-pair (memory s')
+make-pair-validity = pair-stores-create-validity
