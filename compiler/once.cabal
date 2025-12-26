@@ -39,6 +39,7 @@ library
   import: shared
   exposed-modules:
       Lib
+      Once.Arith.CodeGen.C
       Once.Arith.IR
       Once.Arith.Recognize
       Once.Backend.Assembler
@@ -351,6 +352,7 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      Arith.Spec
       Backend.C.Spec
       Backend.X86.Spec
       Backend.Common
