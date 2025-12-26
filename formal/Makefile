@@ -63,6 +63,13 @@ PRIM_IO := Once/Primitive/IO.agda
 PRIM_THREAD := Once/Primitive/Thread.agda
 SPF := Once/SPF.agda
 
+# Arithmetic compiler (OCP-0001)
+ARITH_TYPE := Once/Arith/Type.agda
+ARITH_IR := Once/Arith/IR.agda
+ARITH_SEMANTICS := Once/Arith/Semantics.agda
+ARITH_X86_SYNTAX := Once/Arith/Backend/X86/Syntax.agda
+ARITH_X86_CODEGEN := Once/Arith/Backend/X86/CodeGen.agda
+
 # Nix develop wrapper: suppress warnings and banner
 NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#agda' --command
 
@@ -203,6 +210,15 @@ primitives:
 spf:
 	@echo "Type-checking strictly positive functors..."
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(SPF)'
+
+.PHONY: arith
+arith:
+	@echo "Type-checking arithmetic compiler (OCP-0001)..."
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_TYPE)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_IR)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_SEMANTICS)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_SYNTAX)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CODEGEN)'
 
 .PHONY: malonzo
 malonzo:

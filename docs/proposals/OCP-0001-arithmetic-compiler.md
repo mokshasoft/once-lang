@@ -1,8 +1,10 @@
 # OCP-0001: Orthogonal Arithmetic Compiler
 
 **Author:** [TBD]
-**Status:** Draft
+**Status:** Accepted
 **Created:** 2025-12-25
+**Accepted:** 2025-12-26
+**Decision:** D040
 
 ---
 

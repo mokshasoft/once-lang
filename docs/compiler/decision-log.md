@@ -2371,3 +2371,128 @@ ELam x body -> do
 
 - D029: Let Bindings with Desugaring (similar approach)
 - D032: Arrow-Based Effect System
+
+---
+
+## D040: Orthogonal Arithmetic Compiler (Separate ArithIR)
+
+**Date**: 2025-12-26
+**Status**: Accepted
+
+### Context
+
+OCP-0001 proposes an arithmetic compiler for efficient numeric computation. The goal is baremetal arithmetic performance with control flow using natural transformations.
+
+Two approaches were considered:
+1. **Embedded in IR**: Add arithmetic (Add, Mul, etc.) as generators
+2. **Separate ArithIR**: Two parallel IRs with natural transformation interface
+
+### Decision
+
+Use **Separate ArithIR** — two orthogonal IRs with a natural transformation boundary.
+
+```
+Source → Parse → Elaborate → IR
+                              ↓
+                    ┌─────────┴─────────┐
+                    ↓                   ↓
+            Arithmetic IR         Control Flow IR
+            (expressions)         (generators)
+                    ↓                   ↓
+            Register alloc        Current codegen
+                    ↓                   ↓
+                    └─────────┬─────────┘
+                              ↓
+                          Assembly
+```
+
+### Rationale
+
+**1. Categorical purity**
+
+The 12 generators capture CCC structure (products, coproducts, exponentials). Arithmetic is operations on base types — conceptually orthogonal to structural operations.
+
+**2. Performance**
+
+Embedded approach forces stack allocation for intermediate values through `pair`. For `a*b + c*d`:
+- **Embedded**: ~40+ instructions with memory traffic (pair allocates 16 bytes per intermediate, compose moves values through stack)
+- **Separate ArithIR**: ~5 register-only instructions (direct register allocation across the expression)
+
+Example with embedded generators:
+```
+a + b  →  compose add (pair (prim "a") (prim "b"))
+```
+This generates: stack allocation for pair, two stores, load pair ptr, load both elements, add.
+
+Example with separate ArithIR:
+```asm
+mov  eax, [a]
+add  eax, [b]    ; 2 instructions, register-only
+```
+
+**3. Linearity (QTT)**
+
+Arithmetic linearity reduces to counting variable occurrences. Separate ArithIR uses context splitting:
+
+```agda
+data ArithIR : Ctx → NumType → Set where
+  Add : ArithIR Γ τ → ArithIR Δ τ → ArithIR (Γ ⊕ Δ) τ
+```
+
+The context split (Γ ⊕ Δ) enforces linearity: a variable can only appear in one subexpression unless it's ω. This is cleaner than tracking through generator composition.
+
+**4. Proof modularity**
+
+Arithmetic has no closures, no branches, no stack frames. Isolated proofs are simpler:
+- Arithmetic correctness: standard expression compilation (well-understood)
+- Generator correctness: existing proofs unchanged
+- Boundary: simple composition proof
+
+MutualIR.agda (3152 lines) stays focused on generator mutual recursion.
+
+**5. Natural transformation interface**
+
+The boundary between control flow and arithmetic IS a natural transformation — aligns perfectly with project philosophy. The `arith` constructor embeds arithmetic expressions in the generator IR:
+
+```agda
+arith : ∀ {Γ τ} → ArithIR Γ τ → IR (Env Γ) (NumToType τ)
+```
+
+### Scope
+
+**Included:**
+- Integer types: i8, i16, i32, i64 (full range)
+- Float types: f32, f64
+- Operations: Add, Sub, Mul, Div, Mod, Neg, comparisons (Lt, Eq)
+- Register allocation for expressions
+- Formal correctness proofs in Agda
+- x86-64 backend (GPRs for integers, SSE/XMM for floats)
+
+**Deferred:**
+- SIMD/vectorization
+- Complex optimizations (CSE, strength reduction)
+- AArch64/RISC-V backends (follow same pattern)
+
+### Trade-offs
+
+| Aspect | Pro | Con |
+|--------|-----|-----|
+| Performance | Baremetal for arithmetic | - |
+| Proof complexity | Simpler isolated proofs | Boundary proof required |
+| Code organization | Clear separation of concerns | Two IRs to maintain |
+| Linearity tracking | Clean context splitting | Must define arithmetic context |
+| Categorical structure | Generators stay pure CCC | Arithmetic outside CCC |
+
+### Consequences
+
+- New `formal/Once/Arith/` directory with Type, IR, Semantics, Backend
+- `arith` constructor added to `IR.agda`
+- Register allocation within arithmetic expressions
+- Boundary proof: `eval (arith e ∘ f) x ≡ eval-arith e (eval f x)`
+- Haskell compiler gains ArithIR recognition and codegen
+
+### See Also
+
+- OCP-0001: Orthogonal Arithmetic Compiler (proposal)
+- D022: Agda for Formal Verification
+- D038: Multiple Generator Implementation Profiles
