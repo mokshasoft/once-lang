@@ -39,6 +39,8 @@ library
   import: shared
   exposed-modules:
       Lib
+      Once.Arith.IR
+      Once.Arith.Recognize
       Once.Backend.Assembler
       Once.Backend.C
       Once.Backend.CCompiler
