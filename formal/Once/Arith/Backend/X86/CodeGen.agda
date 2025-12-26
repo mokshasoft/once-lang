@@ -454,3 +454,17 @@ compile-arith {_} {F64} e with compile-float e refl initAlloc
 -- | Length of generated code
 code-length : ArithProgram → ℕ
 code-length = length
+
+------------------------------------------------------------------------
+-- Compilation characterization lemmas (for correctness proofs)
+------------------------------------------------------------------------
+
+-- | Characterize compile-arith for integer literals
+-- compile-arith (Lit n) = [movI r8 (immI n), movI rax (regI r8)]
+compile-lit-int-char : ∀ {τ} (n : ⟦ τ ⟧N) (p : isInteger τ ≡ true) →
+  compile-arith (Lit n) ≡
+    intI (movI r8 (immI (toℤ p n))) ∷ intI (movI rax (regI r8)) ∷ []
+compile-lit-int-char {I8}  n refl = refl
+compile-lit-int-char {I16} n refl = refl
+compile-lit-int-char {I32} n refl = refl
+compile-lit-int-char {I64} n refl = refl

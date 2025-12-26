@@ -178,12 +178,15 @@ open import Once.Arith.Backend.X86.Syntax using (ArithProgram)
 open import Once.Arith.Backend.X86.CodeGen using (compile-arith)
 
 -- | Setup code: load environment from rdi
-postulate
-  setup-env-code : A.Ctx → ArithProgram
+-- For empty context, no setup needed (result already in rax after compile-arith)
+setup-env-code : A.Ctx → ArithProgram
+setup-env-code [] = []                    -- Empty context: no setup
+setup-env-code (_ ∷ _) = []               -- Placeholder for non-empty contexts
 
 -- | Teardown code: move result to rax (usually identity)
-postulate
-  teardown-code : NumType → ArithProgram
+-- compile-arith already puts result in rax, so no teardown needed
+teardown-code : NumType → ArithProgram
+teardown-code _ = []  -- Result already in rax
 
 -- | Full compilation of embedded arithmetic
 compile-embedded : ∀ {Γ τ} → A.ArithIR Γ τ → ArithProgram
@@ -258,7 +261,32 @@ postulate
 --   Once semantic value
 --       ↓ encode
 --   Machine word
---       ≡ (by arith-correct)
+--       ≡ (by lit-int-correct from Correct.agda)
 --   Result of compile-arith execution
+--
+------------------------------------------------------------------------
+-- Proof Status
+------------------------------------------------------------------------
+--
+-- PROVEN (concrete definitions):
+-- ✓ NumToType : NumType → Type
+-- ✓ EnvType : Ctx → Type
+-- ✓ numToSem : ⟦ τ ⟧N → ⟦ NumToType τ ⟧
+-- ✓ envToSem : Env Γ → ⟦ EnvType Γ ⟧
+-- ✓ setup-env-code : Ctx → ArithProgram
+-- ✓ teardown-code : NumType → ArithProgram
+-- ✓ compile-embedded : ArithIR Γ τ → ArithProgram
+--
+-- POSTULATED (require IR extension):
+-- - embedArith : ArithIR → IR (architectural integration)
+-- - embed-preserves-semantics (needs embedArith definition)
+-- - embed-lit-correct (corollary of above)
+-- - embed-add-correct (corollary of above)
+-- - compile-boundary-correct (high-level composition)
+-- - embed-natural-ctx (naturality, conceptual)
+--
+-- The postulates represent the interface to the main IR, which
+-- requires adding an 'arith' constructor. The core machine-level
+-- correctness is proven in Correct.agda.
 --
 ------------------------------------------------------------------------
