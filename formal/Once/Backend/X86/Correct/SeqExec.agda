@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.ExecLemmas
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -95,8 +95,10 @@ exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
          -- Memory proofs: stack slots contain saved registers
          × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
          × readMem (memory s') (readReg (regs s') rbp +ℕ 8) ≡ just (readReg (regs s) r15)
-         × readMem (memory s') (readReg (regs s') rbp +ℕ 16) ≡ just (readReg (regs s) r14))
-exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq , mem-rbp-eq , mem-r15-eq , mem-r14-eq
+         × readMem (memory s') (readReg (regs s') rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+         -- Memory preservation: addresses >= orig-rsp are unchanged (writes are below rsp)
+         × (∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr))
+exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq , mem-rbp-eq , mem-r15-eq , mem-r14-eq , mem-above-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -519,6 +521,92 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r14)
                               (sym (∸24+16≡∸8 orig-rsp rsp-gt-24))
                               mem-s3-at-r14slot)
+
+    -- Memory preservation: addresses >= orig-rsp are unchanged
+    -- Writes happen at orig-rsp - 8, orig-rsp - 16, orig-rsp - 24 (all < orig-rsp)
+    -- Steps 4-7 don't write memory
+    mem-above-eq : ∀ addr → addr ≥ orig-rsp → readMem (memory s7) addr ≡ readMem (memory s) addr
+    mem-above-eq addr addr≥rsp = trans mem-s7-s3 (trans mem-s3-s2 (trans mem-s2-s1 mem-s1-s))
+      where
+        open import Data.Nat.Properties using (≤-trans; <-≤-trans; ∸-monoʳ-<; <⇒≤)
+
+        -- All write addresses are < orig-rsp, hence ≠ addr
+        write1 = orig-rsp ∸ 8    -- step 1 write address
+        write2 = orig-rsp ∸ 16   -- step 2 write address
+        write3 = orig-rsp ∸ 24   -- step 3 write address
+
+        -- orig-rsp > 8 (derived from rsp > 24)
+        rsp-gt-8 : orig-rsp > 8
+        rsp-gt-8 = ≤-trans 9≤25 rsp-gt-24
+          where
+            9≤25 : 9 ≤ 25
+            9≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+        -- 0 < 8 (needed for ∸-monoʳ-<)
+        0<8 : 0 < 8
+        0<8 = s≤s z≤n
+
+        -- 0 < 16 (needed for ∸-monoʳ-<)
+        0<16 : 0 < 16
+        0<16 = s≤s z≤n
+
+        -- 0 < 24 (needed for ∸-monoʳ-<)
+        0<24 : 0 < 24
+        0<24 = s≤s z≤n
+
+        -- 8 ≤ orig-rsp
+        8≤rsp : 8 ≤ orig-rsp
+        8≤rsp = <⇒≤ rsp-gt-8
+
+        -- 16 ≤ orig-rsp
+        16≤rsp : 16 ≤ orig-rsp
+        16≤rsp = <⇒≤ rsp-gt-16
+
+        -- 24 ≤ orig-rsp
+        24≤rsp : 24 ≤ orig-rsp
+        24≤rsp = <⇒≤ rsp-gt-24
+
+        -- write1 < orig-rsp (using ∸-monoʳ-<)
+        write1<rsp : write1 < orig-rsp
+        write1<rsp = ∸-monoʳ-< 0<8 8≤rsp
+
+        -- write2 < orig-rsp
+        write2<rsp : write2 < orig-rsp
+        write2<rsp = ∸-monoʳ-< 0<16 16≤rsp
+
+        -- write3 < orig-rsp
+        write3<rsp : write3 < orig-rsp
+        write3<rsp = ∸-monoʳ-< 0<24 24≤rsp
+
+        -- addr ≠ write1 (because write1 < orig-rsp ≤ addr)
+        addr≢write1 : addr ≢ write1
+        addr≢write1 eq = <-irrefl refl (<-≤-trans (subst (_< orig-rsp) (sym eq) write1<rsp) addr≥rsp)
+
+        -- addr ≠ write2
+        addr≢write2 : addr ≢ write2
+        addr≢write2 eq = <-irrefl refl (<-≤-trans (subst (_< orig-rsp) (sym eq) write2<rsp) addr≥rsp)
+
+        -- addr ≠ write3
+        addr≢write3 : addr ≢ write3
+        addr≢write3 eq = <-irrefl refl (<-≤-trans (subst (_< orig-rsp) (sym eq) write3<rsp) addr≥rsp)
+
+        -- Memory s7 = s3 (steps 4-7 are register-only)
+        mem-s7-s3 : readMem (memory s7) addr ≡ readMem (memory s3) addr
+        mem-s7-s3 = refl
+
+        -- Memory s3: step 3 wrote at write3, which ≠ addr
+        mem-s3-s2 : readMem (memory s3) addr ≡ readMem (memory s2) addr
+        mem-s3-s2 = trans (cong (λ a → readMem (writeMem (memory s2) a (readReg (regs s2) rbp)) addr) write-addr-s3)
+                          (mem-read-other {memory s2} {write3} {addr} {readReg (regs s2) rbp} (λ eq → addr≢write3 (sym eq)))
+
+        -- Memory s2: step 2 wrote at write2, which ≠ addr
+        mem-s2-s1 : readMem (memory s2) addr ≡ readMem (memory s1) addr
+        mem-s2-s1 = trans (cong (λ a → readMem (writeMem (memory s1) a (readReg (regs s1) r15)) addr) write-addr-s2)
+                          (mem-read-other {memory s1} {write2} {addr} {readReg (regs s1) r15} (λ eq → addr≢write2 (sym eq)))
+
+        -- Memory s1: step 1 wrote at write1, which ≠ addr
+        mem-s1-s : readMem (memory s1) addr ≡ readMem (memory s) addr
+        mem-s1-s = mem-read-other {memory s} {write1} {addr} {orig-r14} (λ eq → addr≢write1 (sym eq))
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
 -- Used for phase 3 of pair construction - storing f's result and restoring input
