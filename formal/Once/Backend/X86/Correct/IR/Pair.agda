@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.StarBase
 
 open import Data.Bool using (false)
 open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -338,6 +338,8 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     stack-inv-setup : StackInvariant s-setup
     rsp>16-setup : readReg (regs s-setup) rsp > 16
     star-setup : Star prog s s-setup
+    -- Memory above orig-rsp is preserved (all writes happen below rsp)
+    mem-above-rsp-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase and compute all properties
 exec-pair-setup : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -358,6 +360,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   ; stack-inv-setup = stack-inv-setup
   ; rsp>16-setup = rsp>16-setup
   ; star-setup = star-setup
+  ; mem-above-rsp-setup = mem-above-eq-raw
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -383,10 +386,12 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
     rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
     rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-    -- New memory proofs (currently unused but available)
+    -- Stack slot memory proofs (currently unused but available)
     -- mem-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
     -- mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-    -- mem-r14-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+    -- mem-r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+    -- Memory preservation for addresses >= orig-rsp
+    mem-above-eq-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
 
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     r14-setup = r14-setup-raw
