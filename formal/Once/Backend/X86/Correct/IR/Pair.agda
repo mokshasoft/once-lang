@@ -454,6 +454,8 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-fst-stored : readMem (memory s2) (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)
     -- Memory at rbp preserved (for stack-rbp chain)
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
+    -- Memory preservation: addresses ≠ r15 are unchanged
+    mem-above-r15-mid : ∀ addr → addr ≢ readReg (regs s1) r15 → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute middle phase
 exec-pair-middle : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -482,6 +484,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
   ; rsp-mid = rsp-mid
   ; mem-fst-stored = mem-fst-stored
   ; mem-rbp-mid = mem-rbp-mid
+  ; mem-above-r15-mid = mem-above-mid-raw
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -516,7 +519,9 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     rdi2-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
     mem-fst-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
     r15-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
-    rsp-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
+    rsp-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))
+    -- Memory preservation at addresses ≠ r15
+    mem-above-mid-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))
 
     -- rbp preserved: mov [r15], rax doesn't touch rbp, mov rdi, r14 doesn't touch rbp
     r14-mid = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) r14)

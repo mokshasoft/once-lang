@@ -622,8 +622,10 @@ exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
          × readReg (regs s') rdi ≡ readReg (regs s) r14
          × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax)
          × readReg (regs s') r15 ≡ readReg (regs s) r15
-         × readReg (regs s') rsp ≡ readReg (regs s) rsp)
-exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq , r15-eq , rsp-eq
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp
+         -- Memory preservation: addresses ≠ r15 are unchanged (only r15 is written)
+         × (∀ addr → addr ≢ readReg (regs s) r15 → readMem (memory s') addr ≡ readMem (memory s) addr))
+exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq , r15-eq , rsp-eq , mem-above-eq
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -716,6 +718,12 @@ exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , 
     mem-eq : readMem (memory s-final) (readReg (regs s-final) r15) ≡ just (readReg (regs s) rax)
     mem-eq = trans (cong (readMem (memory s-final)) r15-eq)
                    (readMem-writeMem-same (memory s) (readReg (regs s) r15) (readReg (regs s) rax))
+
+    -- Memory preservation: only write is at r15, so other addresses are preserved
+    -- s1.memory = writeMem (memory s) r15 rax
+    -- s-final.memory = s1.memory (mov rdi, r14 is register-only)
+    mem-above-eq : ∀ addr → addr ≢ readReg (regs s) r15 → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-above-eq addr addr≢r15 = mem-read-other {memory s} {readReg (regs s) r15} {addr} {readReg (regs s) rax} (λ eq → addr≢r15 (sym eq))
 
 -- NOTE: exec-pair-final-at was removed - it was dead code with an outdated
 -- instruction sequence (used add rsp, 16 instead of mov rsp, rbp).
