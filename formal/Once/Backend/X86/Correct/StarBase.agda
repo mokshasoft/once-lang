@@ -856,3 +856,273 @@ run-inl-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp
         new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
         new-rsp≤rbp : readReg (regs s4) rsp ≤ readReg (regs s4) rbp
         new-rsp≤rbp = subst₂ _≤_ (sym rsp-s4-eq) (sym rbp-preserved) new-rsp≤orig-rbp
+
+------------------------------------------------------------------------
+-- run-inr-star-s: Stateful inr proof producing InrAtS validity
+------------------------------------------------------------------------
+
+-- | Stateful inr: produces InrAtS validity from memory writes
+--
+-- Similar to run-inl-star-s but writes tag=1 instead of tag=0.
+-- NO encode-inr-construct postulate needed!
+run-inr-star-s : ∀ {A B : Type} (prefix suffix : Program) (addr-x : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 {B} {A + B} inr ++ suffix
+      addr-out = readReg (regs s) rsp ∸ 16
+  in ∃[ s' ] InrResultS prog s s' addr-x addr-out (length prefix)
+run-inr-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    s4 , record
+    { star = star-proof
+    ; halted' = h4
+    ; pc' = pc4
+    ; rax-eq = rax-eq-inr
+    ; inr-valid = inr-valid-proof
+    ; r14-eq = r14-preserved
+    ; r15-eq = r15-preserved
+    ; rbp-eq = rbp-preserved
+    ; stack-inv = stack-inv'
+    ; rsp-bound = rsp>16'
+    ; rbp-inv = rbp-inv'
+    }
+  where
+    -- The program
+    prog : Program
+    prog = prefix ++ compile-x86 {B} {A + B} inr ++ suffix
+
+    -- The 4 instructions of inr
+    i0 : Instr
+    i0 = sub (reg rsp) (imm 16)
+    i1 : Instr
+    i1 = mov (mem (base rsp)) (imm 1)  -- Tag = 1 for inr
+    i2 : Instr
+    i2 = mov (mem (base+disp rsp 8)) (reg rdi)
+    i3 : Instr
+    i3 = mov (reg rax) (reg rsp)
+
+    -- Original register values
+    orig-rsp : Word
+    orig-rsp = readReg (regs s) rsp
+    new-rsp : Word
+    new-rsp = orig-rsp ∸ 16
+
+    -- State after step 1: sub rsp, 16
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) rsp new-rsp
+                  ; pc = pc s +ℕ 1
+                  ; flags = updateFlags new-rsp orig-rsp }
+
+    -- State after step 2: mov [rsp], 1
+    s2 : State
+    s2 = record s1 { memory = writeMem (memory s1) (readReg (regs s1) rsp) 1
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- State after step 3: mov [rsp+8], rdi
+    s3 : State
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+                   ; pc = pc s2 +ℕ 1 }
+
+    -- State after step 4: mov rax, rsp
+    s4 : State
+    s4 = record s3 { regs = writeReg (regs s3) rax (readReg (regs s3) rsp)
+                   ; pc = pc s3 +ℕ 1 }
+
+    -- Fetch lemmas
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ i3 ∷ suffix)
+
+    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix
+    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ suffix))
+
+    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
+    len-prefix-1 = length-++ prefix (i0 ∷ [])
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
+               (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ i3 ∷ suffix))
+
+    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix
+    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ suffix))
+
+    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
+    len-prefix-2 = length-++ prefix (i0 ∷ i1 ∷ [])
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 (i3 ∷ suffix))
+
+    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix
+    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ suffix))
+
+    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
+    len-prefix-3 = length-++ prefix (i0 ∷ i1 ∷ i2 ∷ [])
+
+    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3
+               (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 suffix)
+
+    -- Step proofs
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
+                  (execSub-reg-imm prog s rsp 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (λ p → p +ℕ 1) pc-eq
+
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
+                  (execMov-mem-base-imm prog s1 rsp 1)
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
+                  (execMov-mem-disp-reg prog s2 rsp rdi 8)
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    pc3 : pc s3 ≡ length prefix +ℕ 3
+    pc3 = trans (cong (λ p → p +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+    step4 : step prog s3 ≡ just s4
+    step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
+                  (execMov-reg-reg s3 rax rsp)
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    pc4 : pc s4 ≡ length prefix +ℕ 4
+    pc4 = trans (cong (λ p → p +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+    -- Star proof (4 steps)
+    star-proof : Star prog s s4
+    star-proof = star-step4 h-false step1 h1 step2 h2 step3 h3 step4
+
+    -- Track rsp through states
+    rsp-s1 : readReg (regs s1) rsp ≡ new-rsp
+    rsp-s1 = readReg-writeReg-same (regs s) rsp new-rsp
+
+    rsp-s2 : readReg (regs s2) rsp ≡ new-rsp
+    rsp-s2 = rsp-s1
+
+    rsp-s3 : readReg (regs s3) rsp ≡ new-rsp
+    rsp-s3 = rsp-s2
+
+    rdi-s2 : readReg (regs s2) rdi ≡ addr-x
+    rdi-s2 = trans (readReg-writeReg-rsp-rdi (regs s) new-rsp) rdi-eq
+
+    -- Address disjoint: new-rsp + 8 ≠ new-rsp
+    addr-disjoint : new-rsp +ℕ 8 ≢ new-rsp
+    addr-disjoint eq = n≢n+suc new-rsp 7 (sym eq)
+
+    -- rax = new-rsp (the output address)
+    rax-s4-eq : readReg (regs s4) rax ≡ readReg (regs s3) rsp
+    rax-s4-eq = readReg-writeReg-same (regs s3) rax (readReg (regs s3) rsp)
+
+    rax-eq-inr : readReg (regs s4) rax ≡ new-rsp
+    rax-eq-inr = trans rax-s4-eq rsp-s3
+
+    -- Memory proofs: tag=1 at new-rsp, value at new-rsp+8
+    -- In s2: we wrote 1 to memory at new-rsp
+    mem-tag-s2 : readMem (memory s2) new-rsp ≡ just 1
+    mem-tag-s2 = subst (λ addr → readMem (writeMem (memory s1) addr 1) new-rsp ≡ just 1)
+                       (sym rsp-s1)
+                       (readMem-writeMem-same (memory s1) new-rsp 1)
+
+    -- In s3: we wrote value to new-rsp+8, tag at new-rsp preserved
+    mem-tag-s3 : readMem (memory s3) new-rsp ≡ just 1
+    mem-tag-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) new-rsp ≡
+                                        readMem (memory s2) new-rsp)
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi)
+                                                     addr-disjoint))
+                       mem-tag-s2
+
+    mem-val-s3 : readMem (memory s3) (new-rsp +ℕ 8) ≡ just addr-x
+    mem-val-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) (new-rsp +ℕ 8) ≡
+                                        just (readReg (regs s2) rdi))
+                              (sym (cong (_+ℕ 8) rsp-s2))
+                              (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi)))
+                       (cong just rdi-s2)
+
+    -- s4 has same memory as s3 (only regs changed)
+    mem-tag-s4 : readMem (memory s4) new-rsp ≡ just 1
+    mem-tag-s4 = mem-tag-s3
+
+    mem-val-s4 : readMem (memory s4) (new-rsp +ℕ 8) ≡ just addr-x
+    mem-val-s4 = mem-val-s3
+
+    -- THE KEY: Construct InrAtS validity directly from memory proofs!
+    -- NO encode-inr-construct postulate needed!
+    inr-valid-proof : InrAtS addr-x new-rsp (memory s4)
+    inr-valid-proof = inr-at-s mem-tag-s4 mem-val-s4
+
+    -- r14 preserved
+    r14-preserved : readReg (regs s4) r14 ≡ readReg (regs s) r14
+    r14-preserved = trans (readReg-writeReg-rax-r14 (regs s3) (readReg (regs s3) rsp))
+                          (readReg-writeReg-rsp-r14 (regs s) new-rsp)
+
+    -- r15 preserved
+    r15-preserved : readReg (regs s4) r15 ≡ readReg (regs s) r15
+    r15-preserved = trans (readReg-writeReg-rax-r15 (regs s3) (readReg (regs s3) rsp))
+                          (readReg-writeReg-rsp-r15 (regs s) new-rsp)
+
+    -- rbp preserved
+    rbp-preserved : readReg (regs s4) rbp ≡ readReg (regs s) rbp
+    rbp-preserved = trans (readReg-writeReg-rax-rbp (regs s3) (readReg (regs s3) rsp))
+                          (readReg-writeReg-rsp-rbp (regs s) new-rsp)
+
+    -- Stack invariant preserved (using helper pattern)
+    rsp-s4-eq : readReg (regs s4) rsp ≡ new-rsp
+    rsp-s4-eq = trans (readReg-writeReg-rax-rsp (regs s3) (readReg (regs s3) rsp))
+                       refl
+
+    r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
+    r15-s4-eq = r15-preserved
+
+    stack-inv-helper : StackInvariant s → StackInvariant s4
+    stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-s4-eq r15≡0)
+    stack-inv-helper (stack-below-r15 rsp≤r15) =
+      stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-s4-eq)
+                               (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+
+    stack-inv' : StackInvariant s4
+    stack-inv' = stack-inv-helper stack-inv
+
+    -- rsp > 16
+    open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
+    open import Data.Nat using (z≤n; s≤s)
+
+    rsp>16' : readReg (regs s4) rsp > 16
+    rsp>16' = ≤-trans 17≤41 (rsp-bound-after-stack-op s4)
+      where
+        17≤41 : 17 ≤ 41
+        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+    -- RbpInvariant
+    orig-rbp : Word
+    orig-rbp = readReg (regs s) rbp
+
+    rbp-inv' : RbpInvariant s4
+    rbp-inv' = record { rsp≤rbp = new-rsp≤rbp }
+      where
+        new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
+        new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
+        orig-rsp≤orig-rbp : orig-rsp ≤ orig-rbp
+        orig-rsp≤orig-rbp = RbpInvariant.rsp≤rbp rbp-inv
+        new-rsp≤orig-rbp : new-rsp ≤ orig-rbp
+        new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
+        new-rsp≤rbp : readReg (regs s4) rsp ≤ readReg (regs s4) rbp
+        new-rsp≤rbp = subst₂ _≤_ (sym rsp-s4-eq) (sym rbp-preserved) new-rsp≤orig-rbp
