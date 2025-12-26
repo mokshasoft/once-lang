@@ -102,8 +102,12 @@ open CurryContext
             setup-instrs to curry-setup-instrs; thunk-instrs to curry-thunk-instrs)
 open import Once.Backend.AArch64.Correct.IR.Apply
   using (ApplyContext; mkApplyContext;
-         ApplySetupResult; run-ir-at-offset-apply;
-         closure-code-ptr; closure-env)
+         ApplySetupResult; ApplyResult;
+         run-ir-at-offset-apply;
+         closure-code-ptr; closure-env;
+         compile-length-apply)
+open ApplyContext
+  renaming (prog to apply-prog; apply-code to apply-apply-code)
 
 -- | Re-export ClosureWellFormed types for whole-program proofs
 -- These enable eliminating the apply postulate by threading well-formedness
@@ -1569,9 +1573,24 @@ mutual
 
   -- | Star-based apply execution
   --
-  -- Uses the centralized apply-produces-result postulate from Postulates.agda.
-  -- The postulate is needed because we don't have ClosureWellFormed
-  -- threading in the uniform IRStarResult approach.
+  -- Apply uses a CENTRALIZED POSTULATE from Postulates.agda because the
+  -- `blr` instruction performs an indirect call that requires whole-program
+  -- reasoning beyond the local execution model.
+  --
+  -- The code generator produces (6 instructions):
+  --   0: ldr x9 [x0]           ; load closure from pair.fst
+  --   1: ldr x10 [x0+8]        ; load argument from pair.snd
+  --   2: ldr x19 [x9]          ; load env from closure.fst
+  --   3: ldr x9 [x9+8]         ; load code-ptr from closure.snd
+  --   4: mov x0 x10            ; argument → x0
+  --   5: blr x9                ; INDIRECT CALL to thunk at code-ptr
+  --
+  -- WHY POSTULATED (Model Limitation):
+  --   - blr x9 jumps to code at closure.code-ptr (created by curry)
+  --   - The thunk code is NOT part of apply's 6 instructions
+  --   - The thunk executes f on (env, arg), then ret returns here
+  --   - This requires knowing the thunk code exists at code-ptr
+  --   - Local execution model cannot reason about arbitrary jumps
   --
   -- For whole-program proofs that can eliminate the postulate, use
   -- run-apply-with-wf from ClosureWellFormed which takes a
@@ -1587,6 +1606,7 @@ mutual
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Use centralized postulate and wrap result in IRStarResult
+    -- Pattern matching in let destructures the tuple cleanly
     let (s' , star-pf , halted-pf , pc-pf , x0-pf , x20-pf , x21-pf , x29-pf , x30-pf , sp-pf ,
          mem-x21-pf , mem-x29-pf , mem-x29+8-pf , stack-inv' , sp>16') =
            apply-produces-result {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
