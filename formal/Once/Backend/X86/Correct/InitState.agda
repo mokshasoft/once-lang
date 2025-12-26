@@ -20,11 +20,19 @@ open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
 
 -- Import stateful encoding (replaces postulated encode)
-open import Once.StatefulEncoding using (encode-s)
+open import Once.StatefulEncoding
+  using (encode-s;
+         encode-pair-fst-thm; encode-pair-snd-thm;
+         encode-inl-tag-thm; encode-inl-val-thm;
+         encode-inr-tag-thm; encode-inr-val-thm)
 open import Once.Memory
   using (AllocState; alloc-state; heap-ptr; init-alloc-state)
   renaming (mem to alloc-mem)
 import Once.Memory as Mem
+
+-- Import validity predicates
+open import Once.Backend.X86.Correct.MemoryValid
+  using (PairAt; pair-at; InlAt; inl-at; InrAt; inr-at)
 
 -- Keep old encode for backwards compatibility during transition
 open import Once.Postulates
@@ -32,6 +40,7 @@ open import Once.Postulates
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
@@ -162,3 +171,98 @@ initWithInputStateful-halted x = refl
 initWithInputStateful-pc : ∀ {A} (x : ⟦ A ⟧) →
   pc (state (initWithInputStateful x)) ≡ 0
 initWithInputStateful-pc x = refl
+
+------------------------------------------------------------------------
+-- Stateful Validity Predicates
+--
+-- These are like PairAt/InlAt/InrAt but use explicit addresses instead
+-- of the abstract `encode`. This allows proving validity from
+-- stateful encoding theorems without circular reference to postulates.
+------------------------------------------------------------------------
+
+open import Data.Maybe using (just)
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
+
+-- | Pair validity with explicit component addresses
+-- Memory at addr-pair contains [addr-a, addr-b]
+record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
+  constructor pair-at-s
+  field
+    fst-valid : readMem m addr-pair ≡ just addr-a
+    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
+
+-- | Left sum validity with explicit value address
+-- Memory at addr-sum contains [0, addr-val]
+record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
+  constructor inl-at-s
+  field
+    tag-valid : readMem m addr-sum ≡ just 0
+    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+
+-- | Right sum validity with explicit value address
+-- Memory at addr-sum contains [1, addr-val]
+record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
+  constructor inr-at-s
+  field
+    tag-valid : readMem m addr-sum ≡ just 1
+    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+
+------------------------------------------------------------------------
+-- Input Validity Lemmas
+--
+-- These lemmas prove that when initWithInputStateful allocates a
+-- compound value, the memory satisfies the stateful validity predicate.
+-- PROVEN from StatefulEncoding theorems - no postulates!
+------------------------------------------------------------------------
+
+-- | For pair inputs, the initial memory satisfies PairAtS
+initWithInputStateful-pair-valid : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  let init-heap = alloc-state emptyMemory 0x80000000
+      (addr-a , st₁) = encode-s {A} a init-heap
+      (addr-b , st₂) = encode-s {B} b st₁
+      result = initWithInputStateful {A * B} (a , b)
+      m = memory (state result)
+      addr-pair = input-addr result
+  in PairAtS addr-a addr-b addr-pair m
+initWithInputStateful-pair-valid {A} {B} a b = pair-at-s fst-valid snd-valid
+  where
+    init-heap : AllocState
+    init-heap = alloc-state emptyMemory 0x80000000
+
+    -- PROVEN from StatefulEncoding theorems
+    fst-valid = encode-pair-fst-thm {A} {B} a b init-heap
+    snd-valid = encode-pair-snd-thm {A} {B} a b init-heap
+
+-- | For left sum inputs, the initial memory satisfies InlAtS
+initWithInputStateful-inl-valid : ∀ {A B} (a : ⟦ A ⟧) →
+  let init-heap = alloc-state emptyMemory 0x80000000
+      (addr-a , st₁) = encode-s {A} a init-heap
+      result = initWithInputStateful {A + B} (inj₁ a)
+      m = memory (state result)
+      addr-sum = input-addr result
+  in InlAtS addr-a addr-sum m
+initWithInputStateful-inl-valid {A} {B} a = inl-at-s tag-valid val-valid
+  where
+    init-heap : AllocState
+    init-heap = alloc-state emptyMemory 0x80000000
+
+    -- PROVEN from StatefulEncoding theorems
+    tag-valid = encode-inl-tag-thm {A} {B} a init-heap
+    val-valid = encode-inl-val-thm {A} {B} a init-heap
+
+-- | For right sum inputs, the initial memory satisfies InrAtS
+initWithInputStateful-inr-valid : ∀ {A B} (b : ⟦ B ⟧) →
+  let init-heap = alloc-state emptyMemory 0x80000000
+      (addr-b , st₁) = encode-s {B} b init-heap
+      result = initWithInputStateful {A + B} (inj₂ b)
+      m = memory (state result)
+      addr-sum = input-addr result
+  in InrAtS addr-b addr-sum m
+initWithInputStateful-inr-valid {A} {B} b = inr-at-s tag-valid val-valid
+  where
+    init-heap : AllocState
+    init-heap = alloc-state emptyMemory 0x80000000
+
+    -- PROVEN from StatefulEncoding theorems
+    tag-valid = encode-inr-tag-thm {A} {B} b init-heap
+    val-valid = encode-inr-val-thm {A} {B} b init-heap
