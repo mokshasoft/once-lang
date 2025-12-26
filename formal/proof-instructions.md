@@ -17,14 +17,21 @@ The only acceptable postulates are semantic axioms in `Once/Postulates.agda`:
 
 These are clearly identified, centralized, and auditable.
 
-### 3. Star-Based Proofs
-Use the Star relation for execution proofs:
+### 3. Star-Based Proofs (Mandatory)
+**All proofs must use the Star relation.** Refactor any fuel-based proofs to Star.
+
+Fuel-based proofs (exec, exec-chain, step counting) inevitably lead to
+unprovable lemmas and postulates. Star-based proofs compose cleanly and
+the stars always align.
+
+Use these combinators:
 - `star-single` - lift a single step to Star
 - `star-trans` - compose two Star proofs
 - `star-stepN` - chain N steps directly
 - `⟨ h , step ⟩◅ rest` - build step chains
 
-Star eliminates fuel arithmetic entirely.
+Star eliminates fuel arithmetic entirely. No step counting, no fuel
+management, just transitivity.
 
 ### 4. No Meta-Comments
 Do not write comments like:
@@ -55,6 +62,38 @@ let (s1 , res-f) = run-ir-star-at-offset f ...
     (s2 , res-g) = run-ir-star-at-offset g ...
 in star-trans (ir-star res-f) (ir-star res-g)
 ```
+
+## Git Workflow
+
+Run git commands separately:
+```bash
+git add <files>
+git commit -m "message"
+git push origin master
+```
+
+**Commit often.** Small, focused commits are easier to review and bisect.
+
+## Architecture
+
+Follow the patterns established for x86. When adding new backends or proof
+modules, study the x86 structure first and maintain consistency.
+
+## Type Checking
+
+For single file type checks:
+```bash
+timeout 300 make agda MODULE=Once/Backend/X86/Correct/IR/Pair
+```
+
+For full type checks:
+```bash
+timeout 900 make x86
+```
+
+**If type checking times out, refactor.** Long compile times indicate the
+proof structure needs simplification. Split large modules, reduce dependencies,
+or restructure proofs to compile faster.
 
 ## When Stuck
 
