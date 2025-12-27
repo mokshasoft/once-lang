@@ -25,8 +25,8 @@ data T_Type_4
   = C_Unit_6 | C_Void_8 | C__'42'__10 T_Type_4 T_Type_4 |
     C__'43'__12 T_Type_4 T_Type_4 | C__'8658'__14 T_Type_4 T_Type_4 |
     C_Eff_16 T_Type_4 T_Type_4 | C_Fix_18 T_Type_4 | C_Int_20 |
-    C_Str_22 | C_Buffer_24 |
-    C_TVar_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_Float_22 | C_Str_24 | C_Buffer_26 |
+    C_TVar_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.Type.IO
-d_IO_28 :: T_Type_4 -> T_Type_4
-d_IO_28 v0 = coe C_Eff_16 (coe C_Unit_6) (coe v0)
+d_IO_30 :: T_Type_4 -> T_Type_4
+d_IO_30 v0 = coe C_Eff_16 (coe C_Unit_6) (coe v0)

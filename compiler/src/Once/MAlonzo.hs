@@ -60,8 +60,8 @@ canConvertType t = case t of
   H.TEff a b      -> canConvertType a && canConvertType b
   H.TFix f        -> canConvertType f
   H.TVar n        -> True
+  H.TFloat        -> True   -- Float now in MAlonzo
   -- Cannot convert these
-  H.TFloat        -> False  -- Float not in MAlonzo
   H.TString _     -> False  -- MAlonzo has Str without encoding
   H.TApp _ _      -> False  -- Type applications not in MAlonzo
 
@@ -73,7 +73,7 @@ optimizeMAlonzo :: H.IR -> H.IR
 optimizeMAlonzo ir
   | canConvertIR ir =
       let mIR = toMAlonzoIR ir
-          mOptimized = M.d_optimize_1126 (getInputType ir) (getOutputType ir) mIR
+          mOptimized = M.d_optimize_1146 (getInputType ir) (getOutputType ir) mIR
       in fromMAlonzoIR mOptimized
   | otherwise = ir
 
@@ -83,15 +83,15 @@ toMAlonzoType t = case t of
   H.TUnit        -> M.C_Unit_6
   H.TVoid        -> M.C_Void_8
   H.TInt         -> M.C_Int_20
-  H.TBuffer      -> M.C_Buffer_24
+  H.TFloat       -> M.C_Float_22
+  H.TBuffer      -> M.C_Buffer_26
   H.TProduct a b -> M.C__'42'__10 (toMAlonzoType a) (toMAlonzoType b)
   H.TSum a b     -> M.C__'43'__12 (toMAlonzoType a) (toMAlonzoType b)
   H.TArrow a b   -> M.C__'8658'__14 (toMAlonzoType a) (toMAlonzoType b)
   H.TEff a b     -> M.C_Eff_16 (toMAlonzoType a) (toMAlonzoType b)
   H.TFix f       -> M.C_Fix_18 (toMAlonzoType f)
-  H.TVar n       -> M.C_TVar_26 n  -- MAlonzo uses Text directly
+  H.TVar n       -> M.C_TVar_28 n  -- MAlonzo uses Text directly
   -- These should not occur (checked by canConvertType)
-  H.TFloat       -> error "MAlonzo: TFloat not supported"
   H.TString _    -> error "MAlonzo: TString not supported"
   H.TApp _ _     -> error "MAlonzo: TApp not supported"
 
@@ -101,14 +101,15 @@ fromMAlonzoType t = case t of
   M.C_Unit_6         -> H.TUnit
   M.C_Void_8         -> H.TVoid
   M.C_Int_20         -> H.TInt
-  M.C_Str_22         -> H.TString H.Utf8  -- Default to UTF-8
-  M.C_Buffer_24      -> H.TBuffer
+  M.C_Float_22       -> H.TFloat
+  M.C_Str_24         -> H.TString H.Utf8  -- Default to UTF-8
+  M.C_Buffer_26      -> H.TBuffer
   M.C__'42'__10 a b  -> H.TProduct (fromMAlonzoType a) (fromMAlonzoType b)
   M.C__'43'__12 a b  -> H.TSum (fromMAlonzoType a) (fromMAlonzoType b)
   M.C__'8658'__14 a b -> H.TArrow (fromMAlonzoType a) (fromMAlonzoType b)
   M.C_Eff_16 a b     -> H.TEff (fromMAlonzoType a) (fromMAlonzoType b)
   M.C_Fix_18 f       -> H.TFix (fromMAlonzoType f)
-  M.C_TVar_26 n      -> H.TVar n  -- MAlonzo uses Text directly
+  M.C_TVar_28 n      -> H.TVar n  -- MAlonzo uses Text directly
 
 -- | Convert Haskell IR to MAlonzo IR
 toMAlonzoIR :: H.IR -> M.T_IR_4
