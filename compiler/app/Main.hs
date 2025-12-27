@@ -33,6 +33,7 @@ data BuildConfig = BuildConfig
   , bcSaveTemps  :: Bool
   , bcExplicit   :: [(InterpType, String)]  -- -I:TYPE MODULE
   , bcAutoRes    :: Maybe [InterpType]      -- -A:PRIORITY
+  , bcArith      :: Bool                    -- --arith flag
   , bcInput      :: Maybe String
   }
 
@@ -48,6 +49,7 @@ defaultBuildConfig = BuildConfig
   , bcSaveTemps = False
   , bcExplicit  = []
   , bcAutoRes   = Nothing
+  , bcArith     = False
   , bcInput     = Nothing
   }
 
@@ -70,6 +72,7 @@ parseBuild args = go args defaultBuildConfig
         , buildSaveTemps = bcSaveTemps cfg
         , buildExplicitInterps = bcExplicit cfg
         , buildAutoResolve = bcAutoRes cfg
+        , buildArith = bcArith cfg
         }
     go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }
     go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
@@ -86,6 +89,7 @@ parseBuild args = go args defaultBuildConfig
       Just opt -> go rest cfg { bcOptimizer = opt }
       Nothing -> Nothing  -- invalid optimizer
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
+    go ("--arith" : rest) cfg = go rest cfg { bcArith = True }
     -- Parse -I:TYPE MODULE
     go (x : modPath : rest) cfg
       | "-I:" `isPrefixOf` x =
@@ -154,6 +158,7 @@ usage = do
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports (default: auto-detect)"
   TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
   TIO.putStrLn "  --optimizer BACKEND Optimizer to use (haskell|malonzo) [default: haskell]"
+  TIO.putStrLn "  --arith             Enable arithmetic compiler for pure numeric expressions"
   TIO.putStrLn ""
   TIO.putStrLn "Interpretation resolution:"
   TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:C I.Linux.Syscalls)"
