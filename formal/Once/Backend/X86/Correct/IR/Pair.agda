@@ -785,6 +785,8 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-orig-fin : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     mem-rbp-fin : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     mem-rbp+8-fin : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    -- Memory preservation: addresses ≠ r15-s3 + 8 are unchanged (only write is at r15-s3+8)
+    mem-above-r15+8-fin : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ 8 → readMem (memory s-final) addr ≡ readMem (memory s3) addr
 
 -- | Preconditions for exec-pair-final: stack layout from setup phase
 record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
@@ -1165,6 +1167,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-orig-fin = mem-orig-preserved
     ; mem-rbp-fin = mem-rbp-preserved
     ; mem-rbp+8-fin = mem-rbp+8-preserved
+    ; mem-above-r15+8-fin = mem-above-r15+8-proof
     }
     where
       open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; disjoint-orig-rbp; disjoint-orig-rbp+8; mem-frame; mem-frame-rbp; mem-frame-rbp+8)
@@ -1395,3 +1398,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       -- Memory at original rbp+8 preserved through final phase
       mem-rbp+8-preserved : readMem (memory s9) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
       mem-rbp+8-preserved = trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {readReg (regs s) rbp +ℕ 8} {readReg (regs s3) rax} (λ eq → disjoint-orig-rbp+8 (sym eq))) mem-frame-rbp+8
+
+      -- Memory preservation: addresses ≠ r15-s3 + 8 are unchanged (only write is at r15-s3+8)
+      mem-above-r15+8-proof : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ 8 → readMem (memory s9) addr ≡ readMem (memory s3) addr
+      mem-above-r15+8-proof addr addr≢r15+8 = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {addr} {readReg (regs s3) rax} (λ eq → addr≢r15+8 (sym eq))

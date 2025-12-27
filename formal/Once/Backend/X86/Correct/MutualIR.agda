@@ -1143,11 +1143,184 @@ mutual
       mem-rbp+8-final = PairFinalResult.mem-rbp+8-fin final-res
 
       -- Memory above original rbp is preserved through all phases
-      -- POSTULATE: Requires adding mem-above-* fields to PairSetupResult, PairMiddleResult, PairFinalResult
-      -- The proof chains through setup/f/middle/g/final phases, each preserving memory above s.rbp
-      -- All writes in pair happen at addresses < s.rsp ≤ s.rbp, so addr > s.rbp is preserved
-      postulate
-        mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      -- Chain through: setup → f → middle → g → final
+      -- For addr > s.rbp, we have addr > s.rbp ≥ s.rsp (RbpInvariant), so:
+      --   addr ≥ s.rsp → setup preserves (writes at rsp-8, rsp-16, rsp-24, rsp-40)
+      --   addr > s-setup.rbp = s.rsp - 24 → f preserves (ir-mem-above)
+      --   addr ≠ s1.r15 = s.rsp - 40 → middle preserves (writes only at r15)
+      --   addr > s2.rbp = s.rsp - 24 → g preserves (ir-mem-above)
+      --   addr ≠ s3.r15 + 8 = s.rsp - 32 → final preserves (writes only at r15+8)
+      mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-above-final addr addr>rbp = mem-chain
+        where
+          open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl; m∸n≤m)
+          open import Data.Nat using (s≤s; z≤n)
+          open import Relation.Binary.PropositionalEquality using (trans)
+
+          orig-rsp = readReg (regs s) rsp
+          orig-rbp = readReg (regs s) rbp
+
+          -- From RbpInvariant: rsp ≤ rbp, and addr > rbp, so addr > rbp ≥ rsp
+          addr≥rsp : addr ≥ orig-rsp
+          addr≥rsp = ≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp)
+
+          -- Phase 1: Setup preserves memory at addr (addr ≥ rsp, writes are < rsp)
+          mem-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-setup = PairSetupResult.mem-above-rsp-setup setup-res addr addr≥rsp
+
+          -- For f/g phases: addr > s-setup.rbp = rsp - 24
+          -- Since addr ≥ rsp > rsp - 24 (when rsp ≥ 1), we have addr > rsp - 24
+          setup-rbp = readReg (regs s-setup) rbp
+          setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ 24
+          setup-rbp-eq = PairSetupResult.rbp-setup setup-res
+
+          -- rsp > 16 (from precondition), so rsp ≥ 17, thus rsp - 24 < rsp ≤ addr
+          rsp∸24<rsp : orig-rsp ∸ 24 < orig-rsp
+          rsp∸24<rsp = m∸n<m orig-rsp 24 rsp>0 24>0
+            where
+              rsp>0 : orig-rsp > 0
+              rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+              24>0 : 24 > 0
+              24>0 = s≤s z≤n
+              -- m ∸ n < m when m > 0 and n > 0
+              -- Proof: (suc m') ∸ (suc n') = m' ∸ n' ≤ m' < suc m'
+              m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+              m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+          addr>setup-rbp : addr > setup-rbp
+          addr>setup-rbp = subst (addr >_) (sym setup-rbp-eq) rsp∸24<addr
+            where
+              open import Data.Nat.Properties using (<-trans)
+              -- rsp ∸ 24 < rsp ≤ rbp < addr
+              rsp∸24<rbp : orig-rsp ∸ 24 < orig-rbp
+              rsp∸24<rbp = <-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)
+              rsp∸24<addr : orig-rsp ∸ 24 < addr
+              rsp∸24<addr = <-trans rsp∸24<rbp addr>rbp
+
+          -- Phase 2: f preserves memory at addr (addr > s-setup.rbp)
+          mem-f : readMem (memory s1) addr ≡ readMem (memory s-setup) addr
+          mem-f = ir-mem-above r-f addr addr>setup-rbp
+
+          -- For middle: addr ≠ s1.r15 = rsp - 40
+          -- Since addr ≥ rsp > rsp - 40, we have addr ≠ rsp - 40
+          s1-r15 = readReg (regs s1) r15
+          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ 40
+          s1-r15-eq = trans (ir-r15 r-f) (PairSetupResult.r15-setup setup-res)
+
+          rsp∸40<rsp : orig-rsp ∸ 40 < orig-rsp
+          rsp∸40<rsp = m∸n<m orig-rsp 40 rsp>0 40>0
+            where
+              rsp>0 : orig-rsp > 0
+              rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+              40>0 : 40 > 0
+              40>0 = s≤s z≤n
+              m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+              m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+          addr≢s1-r15 : addr ≢ s1-r15
+          addr≢s1-r15 eq = Data.Nat.Properties.<⇒≢ s1-r15<addr (sym eq)
+            where
+              s1-r15<addr : s1-r15 < addr
+              s1-r15<addr = subst (_< addr) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp addr≥rsp)
+
+          -- Phase 3: Middle preserves memory at addr (addr ≠ s1.r15)
+          mem-mid : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-mid = PairMiddleResult.mem-above-r15-mid mid-res addr addr≢s1-r15
+
+          -- For g phase: addr > s2.rbp = s1.rbp = s-setup.rbp (rbp preserved through f and middle)
+          s2-rbp = readReg (regs s2) rbp
+          s2-rbp-eq : s2-rbp ≡ orig-rsp ∸ 24
+          s2-rbp-eq = trans (PairMiddleResult.rbp-mid mid-res) (trans (ir-rbp r-f) setup-rbp-eq)
+
+          addr>s2-rbp : addr > s2-rbp
+          addr>s2-rbp = subst (addr >_) (sym s2-rbp-eq) rsp∸24<addr
+            where
+              open import Data.Nat.Properties using (<-trans)
+              rsp∸24<rbp : orig-rsp ∸ 24 < orig-rbp
+              rsp∸24<rbp = <-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)
+              rsp∸24<addr : orig-rsp ∸ 24 < addr
+              rsp∸24<addr = <-trans rsp∸24<rbp addr>rbp
+
+          -- Phase 4: g preserves memory at addr (addr > s2.rbp)
+          mem-g : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-g = ir-mem-above r-g addr addr>s2-rbp
+
+          -- For final: addr ≠ s3.r15 + 8 = (rsp - 40) + 8 = rsp - 32
+          -- Since addr ≥ rsp > rsp - 32, we have addr ≠ rsp - 32
+          s3-r15 = readReg (regs s3) r15
+          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ 40
+          s3-r15-eq = trans (ir-r15 r-g) (trans (PairMiddleResult.r15-mid mid-res) (trans (ir-r15 r-f) (PairSetupResult.r15-setup setup-res)))
+
+          -- rsp - 32 < rsp (when rsp > 0)
+          rsp∸32<rsp : orig-rsp ∸ 32 < orig-rsp
+          rsp∸32<rsp = m∸n<m orig-rsp 32 rsp>0 32>0
+            where
+              rsp>0 : orig-rsp > 0
+              rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+              32>0 : 32 > 0
+              32>0 = s≤s z≤n
+              m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+              m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+          -- (rsp - 40) + 8 = rsp - 32 when rsp ≥ 40
+          -- More precisely: we need addr ≠ s3-r15 + 8
+          addr≢s3-r15+8 : addr ≢ s3-r15 +ℕ 8
+          addr≢s3-r15+8 eq = Data.Nat.Properties.<⇒≢ s3-r15+8<addr (sym eq)
+            where
+              -- s3-r15 + 8 = (rsp - 40) + 8 < rsp when rsp > 16
+              -- Arithmetic lemma: (m ∸ 40) + 8 < m when m > 16
+              -- Case analysis:
+              --   When m < 40: (m ∸ 40) + 8 = 0 + 8 = 8 < m (since m > 16 > 8)
+              --   When m ≥ 40: (m ∸ 40) + 8 = m - 32 < m (since 32 > 0)
+              s3-r15+8<rsp : s3-r15 +ℕ 8 < orig-rsp
+              s3-r15+8<rsp = subst (λ r → r +ℕ 8 < orig-rsp) (sym s3-r15-eq) arith
+                where
+                  open import Data.Nat.Properties using (m≤n⇒m∸n≡0; ≰⇒>)
+                  open import Data.Nat using (_≤?_)
+                  arith : orig-rsp ∸ 40 +ℕ 8 < orig-rsp
+                  arith with 40 ≤? orig-rsp
+                  -- Case rsp < 40: (rsp - 40) + 8 = 0 + 8 = 8 < rsp (since rsp > 16)
+                  ... | no 40>rsp = subst (_< orig-rsp) (sym 0+8≡8) 8<rsp
+                    where
+                      rsp<40 : orig-rsp < 40
+                      rsp<40 = ≰⇒> 40>rsp
+                      rsp∸40≡0 : orig-rsp ∸ 40 ≡ 0
+                      rsp∸40≡0 = m≤n⇒m∸n≡0 (<⇒≤ rsp<40)
+                      0+8≡8 : orig-rsp ∸ 40 +ℕ 8 ≡ 8
+                      0+8≡8 = cong (_+ℕ 8) rsp∸40≡0
+                      8<rsp : 8 < orig-rsp
+                      8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+                  -- Case rsp ≥ 40: (rsp - 40) + 8 = rsp - 32 < rsp
+                  ... | yes 40≤rsp = subst (_< orig-rsp) (sym m∸40+8≡m∸32) rsp∸32<rsp
+                    where
+                      open import Data.Nat.Properties using (m∸n+n≡m; m+n∸n≡m; +-assoc; +-comm)
+                      -- Let k = rsp - 40, so rsp = k + 40 (by m∸n+n≡m)
+                      -- LHS = k + 8
+                      -- RHS = (k + 40) - 32 = ((k + 8) + 32) - 32 = k + 8 (by m+n∸n≡m)
+                      k = orig-rsp ∸ 40
+                      -- k + 40 = k + 8 + 32 = (k + 8) + 32
+                      k+40≡k+8+32 : k +ℕ 40 ≡ (k +ℕ 8) +ℕ 32
+                      k+40≡k+8+32 = trans (cong (k +ℕ_) refl)
+                                         (sym (+-assoc k 8 32))
+                      -- (k + 40) - 32 = ((k + 8) + 32) - 32 = k + 8
+                      k+40∸32≡k+8 : (k +ℕ 40) ∸ 32 ≡ k +ℕ 8
+                      k+40∸32≡k+8 = trans (cong (_∸ 32) k+40≡k+8+32) (m+n∸n≡m (k +ℕ 8) 32)
+                      m∸40+8≡m∸32 : orig-rsp ∸ 40 +ℕ 8 ≡ orig-rsp ∸ 32
+                      m∸40+8≡m∸32 =
+                        let step1 : orig-rsp ∸ 32 ≡ (k +ℕ 40) ∸ 32
+                            step1 = cong (_∸ 32) (sym (m∸n+n≡m 40≤rsp))
+                        in sym (trans step1 k+40∸32≡k+8)
+
+              s3-r15+8<addr : s3-r15 +ℕ 8 < addr
+              s3-r15+8<addr = <-≤-trans s3-r15+8<rsp addr≥rsp
+
+          -- Phase 5: Final preserves memory at addr (addr ≠ s3.r15 + 8)
+          mem-final-phase : readMem (memory s-final) addr ≡ readMem (memory s3) addr
+          mem-final-phase = PairFinalResult.mem-above-r15+8-fin final-res addr addr≢s3-r15+8
+
+          -- Chain all phases together
+          mem-chain : readMem (memory s-final) addr ≡ readMem (memory s) addr
+          mem-chain = trans mem-final-phase (trans mem-g (trans mem-mid (trans mem-f mem-setup)))
 
       -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
