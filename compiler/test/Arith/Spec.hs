@@ -9,7 +9,10 @@ import qualified Data.Text as T
 import qualified Data.Set as Set
 
 import Once.Arith.IR
+import Once.Arith.Recognize
 import Once.Arith.CodeGen.C
+import Once.IR (IR (..))
+import Once.Type (Type (..))
 import Once.Arith.Backend.X86.Syntax
 import Once.Arith.Backend.X86.CodeGen
 import Once.Arith.Backend.X86.Emit
@@ -50,6 +53,57 @@ arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
       , testCase "freeVars of binary op" $
           freeVars (AAdd (AVar "x" I64) (AVar "y" I64))
             @?= Set.fromList [("x", I64), ("y", I64)]
+      ]
+  , testGroup "IR Recognition"
+      [ testCase "recognize Id TInt as input variable" $
+          recognizeArith (Id TInt) @?= Just (AVar "_input" I64)
+      , testCase "recognize Id TFloat as input variable" $
+          recognizeArith (Id TFloat) @?= Just (AVar "_input" F64)
+      , testCase "recognize integer literal" $
+          recognizeArith (Prim "__int_42" TUnit TInt) @?= Just (ALitInt I64 42)
+      , testCase "recognize negative integer literal" $
+          recognizeArith (Prim "__int_-5" TUnit TInt) @?= Just (ALitInt I64 (-5))
+      , testCase "recognize float literal" $
+          recognizeArith (Prim "__float_3.14" TUnit TFloat) @?= Just (ALitFloat F64 3.14)
+      , testCase "recognize addition" $
+          let ir = Compose (Prim "__add_i64" (TProduct TInt TInt) TInt)
+                           (Pair (Id TInt) (Id TInt))
+          in recognizeArith ir @?= Just (AAdd (AVar "_input" I64) (AVar "_input" I64))
+      , testCase "recognize subtraction" $
+          let ir = Compose (Prim "__sub_i64" (TProduct TInt TInt) TInt)
+                           (Pair (Id TInt) (Prim "__int_1" TUnit TInt))
+          in recognizeArith ir @?= Just (ASub (AVar "_input" I64) (ALitInt I64 1))
+      , testCase "recognize multiplication" $
+          let ir = Compose (Prim "__mul_i64" (TProduct TInt TInt) TInt)
+                           (Pair (Prim "__int_2" TUnit TInt) (Id TInt))
+          in recognizeArith ir @?= Just (AMul (ALitInt I64 2) (AVar "_input" I64))
+      , testCase "recognize negation" $
+          let ir = Compose (Prim "__neg_i64" TInt TInt) (Id TInt)
+          in recognizeArith ir @?= Just (ANeg (AVar "_input" I64))
+      , testCase "recognize comparison lt" $
+          let ir = Compose (Prim "__lt_i64" (TProduct TInt TInt) TInt)
+                           (Pair (Id TInt) (Prim "__int_0" TUnit TInt))
+          in recognizeArith ir @?= Just (ACmp CmpLt (AVar "_input" I64) (ALitInt I64 0))
+      , testCase "recognize Fst projection" $
+          recognizeArith (Fst TInt TFloat) @?= Just (AVar "_input.fst" I64)
+      , testCase "recognize Snd projection" $
+          recognizeArith (Snd TFloat TInt) @?= Just (AVar "_input.snd" I64)
+      , testCase "reject Case (branching)" $
+          recognizeArith (Case (Id TInt) (Id TInt)) @?= Nothing
+      , testCase "reject Curry (closures)" $
+          recognizeArith (Curry "_" (Id TInt)) @?= Nothing
+      , testCase "isArithPrim __add_i64" $
+          isArithPrim "__add_i64" @?= True
+      , testCase "isArithPrim __mul_f64" $
+          isArithPrim "__mul_f64" @?= True
+      , testCase "isArithPrim unknown" $
+          isArithPrim "__print" @?= False
+      , testCase "isArithType TInt" $
+          isArithType TInt @?= True
+      , testCase "isArithType TFloat" $
+          isArithType TFloat @?= True
+      , testCase "isArithType TUnit" $
+          isArithType TUnit @?= False
       ]
   , testGroup "C code generation"
       [ testCase "literal int" $
