@@ -37,6 +37,20 @@ import Text.Read (readMaybe)
 import qualified Once.IR as H
 import qualified Once.Type as H
 
+-- MAlonzo verified code generators
+import qualified MAlonzo.Code.Once.IR as M
+import qualified MAlonzo.Code.Once.Type as M
+import qualified MAlonzo.Code.Once.Backend.X86.CodeGen as MX86
+import qualified MAlonzo.Code.Once.Backend.X86.Emit as MX86Emit
+import qualified MAlonzo.Code.Once.Backend.AArch64.CodeGen as MAArch64
+import qualified MAlonzo.Code.Once.Backend.AArch64.Emit as MAArch64Emit
+import qualified MAlonzo.Code.Once.Backend.RiscV64.CodeGen as MRiscV
+import qualified MAlonzo.Code.Once.Backend.RiscV64.Emit as MRiscVEmit
+
+-- Import MAlonzo bridge functions
+import Once.MAlonzo (canConvertIR, toMAlonzoType, toMAlonzoIR)
+import qualified Once.MAlonzo as MBridge (getInputType, getOutputType)
+
 ------------------------------------------------------------------------
 -- Target enumeration
 ------------------------------------------------------------------------
@@ -117,23 +131,50 @@ getInputType ir = case ir of
   H.StringLit _ -> Just H.TUnit
 
 ------------------------------------------------------------------------
--- Compilation functions (verified - currently stubbed)
+-- Compilation functions (verified via MAlonzo extraction)
 ------------------------------------------------------------------------
 
--- | Compile Haskell IR to AArch64 assembly text (verified)
--- Returns Nothing - MAlonzo modules need to be generated
-compileToAArch64 :: H.IR -> Maybe Text
-compileToAArch64 _ = Nothing  -- TODO: run `cd formal && make malonzo`
-
 -- | Compile Haskell IR to x86-64 assembly text (verified)
--- Returns Nothing - MAlonzo modules need to be generated
+--
+-- Uses MAlonzo-extracted code from formal Agda proofs.
+-- Returns Nothing if IR contains primitives or other non-categorical constructs.
 compileToX86 :: H.IR -> Maybe Text
-compileToX86 _ = Nothing  -- TODO: run `cd formal && make malonzo`
+compileToX86 ir
+  | canConvertIR ir =
+      let mInTy  = MBridge.getInputType ir
+          mOutTy = MBridge.getOutputType ir
+          mIR    = toMAlonzoIR ir
+          instrs = MX86.d_compile'45'x86_32 mInTy mOutTy mIR
+      in Just $ MX86Emit.d_programToText_76 instrs
+  | otherwise = Nothing
+
+-- | Compile Haskell IR to AArch64 assembly text (verified)
+--
+-- Uses MAlonzo-extracted code from formal Agda proofs.
+-- Returns Nothing if IR contains primitives or other non-categorical constructs.
+compileToAArch64 :: H.IR -> Maybe Text
+compileToAArch64 ir
+  | canConvertIR ir =
+      let mInTy  = MBridge.getInputType ir
+          mOutTy = MBridge.getOutputType ir
+          mIR    = toMAlonzoIR ir
+          instrs = MAArch64.d_compile'45'aarch64_32 mInTy mOutTy mIR
+      in Just $ MAArch64Emit.d_programToText_104 instrs
+  | otherwise = Nothing
 
 -- | Compile Haskell IR to RISC-V 64-bit assembly text (verified)
--- Returns Nothing - MAlonzo modules need to be generated
+--
+-- Uses MAlonzo-extracted code from formal Agda proofs.
+-- Returns Nothing if IR contains primitives or other non-categorical constructs.
 compileToRiscV64 :: H.IR -> Maybe Text
-compileToRiscV64 _ = Nothing  -- TODO: run `cd formal && make malonzo`
+compileToRiscV64 ir
+  | canConvertIR ir =
+      let mInTy  = MBridge.getInputType ir
+          mOutTy = MBridge.getOutputType ir
+          mIR    = toMAlonzoIR ir
+          instrs = MRiscV.d_compile'45'riscv_34 mInTy mOutTy mIR
+      in Just $ MRiscVEmit.d_programToText_278 instrs
+  | otherwise = Nothing
 
 ------------------------------------------------------------------------
 -- IR Analysis

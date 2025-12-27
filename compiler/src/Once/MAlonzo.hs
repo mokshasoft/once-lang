@@ -6,6 +6,11 @@ module Once.MAlonzo
   ( -- * Optimization
     optimizeMAlonzo
   , canConvertIR
+    -- * Conversion functions (for native backends)
+  , toMAlonzoType
+  , toMAlonzoIR
+  , getInputType
+  , getOutputType
   ) where
 
 import qualified Once.IR as H
