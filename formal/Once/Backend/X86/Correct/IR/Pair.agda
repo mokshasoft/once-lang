@@ -1089,11 +1089,157 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-stack-inv (stack-below-r15 rsp≤r15) = case-r15-stack rsp≤r15
 
     -- ========== Memory frame preservation (chain through f and g) ==========
-    -- POSTULATE: Requires chaining through f, middle, and g phases with address alignment
-    -- The proof would use ir-mem-rbp from r-f and r-g, plus disjointness for middle phase
-    postulate
-      mem-frame-rbp-s3 : readMem (memory s3) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-      mem-frame-rbp+8-s3 : readMem (memory s3) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    -- PROVEN: Chain through 4 phases using ir-mem-above and mem-above-* fields
+    -- Key: orig-rbp ≥ s.rsp > all write addresses (s.rsp-8, s.rsp-40, etc.)
+
+    -- Original rbp from s
+    orig-rbp : ℕ
+    orig-rbp = readReg (regs s) rbp
+
+    -- From RbpInvariant: s.rsp ≤ s.rbp
+    orig-rbp≥rsp : orig-rbp ≥ readReg (regs s) rsp
+    orig-rbp≥rsp = RbpInvariant.rsp≤rbp rbp-inv
+
+    -- orig-rbp > s-setup.rbp (= s.rsp - 24)
+    -- Proof: s.rsp - 24 < s.rsp ≤ s.rbp
+    orig-rbp>setup-rbp : orig-rbp > readReg (regs s-setup) rbp
+    orig-rbp>setup-rbp = subst (orig-rbp >_) (sym rbp-setup-eq-for-proof) rsp∸24<rbp
+      where
+        rbp-setup-eq-for-proof : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+        rbp-setup-eq-for-proof = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                                       (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
+        -- rsp - 24 < rsp ≤ rbp
+        rsp∸24<rsp : readReg (regs s) rsp ∸ 24 < readReg (regs s) rsp
+        rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 rsp>0-for-proof 24>0-for-proof
+          where
+            -- From 40≤rsp-s we get rsp ≥ 40 > 0
+            rsp>0-for-proof : readReg (regs s) rsp > 0
+            rsp>0-for-proof = ≤-trans (s≤s z≤n) 40≤rsp-s
+            24>0-for-proof : 24 > 0
+            24>0-for-proof = s≤s z≤n
+            m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-helper (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        rsp∸24<rbp : readReg (regs s) rsp ∸ 24 < orig-rbp
+        rsp∸24<rbp = <-≤-trans rsp∸24<rsp orig-rbp≥rsp
+          where open import Data.Nat.Properties using (<-≤-trans)
+
+    -- orig-rbp ≠ s1.r15 (= s.rsp - 40)
+    -- Proof: s.rsp - 40 < s.rsp ≤ s.rbp
+    orig-rbp≢s1-r15 : orig-rbp ≢ readReg (regs s1) r15
+    orig-rbp≢s1-r15 eq = Data.Nat.Properties.<⇒≢ r15-s1<rbp (sym eq)
+      where
+        open import Data.Nat.Properties using (<-≤-trans)
+        r15-s1-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+        r15-s1-eq = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                                              (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
+        rsp∸40<rsp : readReg (regs s) rsp ∸ 40 < readReg (regs s) rsp
+        rsp∸40<rsp = m∸n<m-helper2 (readReg (regs s) rsp) 40 rsp>0-for-proof2 40>0-for-proof
+          where
+            rsp>0-for-proof2 : readReg (regs s) rsp > 0
+            rsp>0-for-proof2 = ≤-trans (s≤s z≤n) 40≤rsp-s
+            40>0-for-proof : 40 > 0
+            40>0-for-proof = s≤s z≤n
+            m∸n<m-helper2 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-helper2 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        rsp∸40<rbp : readReg (regs s) rsp ∸ 40 < orig-rbp
+        rsp∸40<rbp = <-≤-trans rsp∸40<rsp orig-rbp≥rsp
+        r15-s1<rbp : readReg (regs s1) r15 < orig-rbp
+        r15-s1<rbp = subst (_< orig-rbp) (sym r15-s1-eq) rsp∸40<rbp
+
+    -- orig-rbp > s2.rbp (= s1.rbp = s-setup.rbp)
+    orig-rbp>s2-rbp : orig-rbp > readReg (regs s2) rbp
+    orig-rbp>s2-rbp = subst (orig-rbp >_) (sym rbp-s2-chain) orig-rbp>setup-rbp
+      where
+        rbp-s2-chain : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
+        rbp-s2-chain = trans rbp-s2-eq-s1 rbp-s1-eq-setup
+
+    -- Chain: s3 → s2 (g) → s1 (middle) → s-setup (f) → s (setup)
+    mem-frame-rbp-s3 : readMem (memory s3) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-frame-rbp-s3 = trans mem-g (trans mem-mid (trans mem-f mem-setup))
+      where
+        -- Phase 1: Setup preserves (orig-rbp ≥ s.rsp, setup writes below rsp)
+        mem-setup : readMem (memory s-setup) orig-rbp ≡ readMem (memory s) orig-rbp
+        mem-setup = subst (λ ss → readMem (memory ss) orig-rbp ≡ readMem (memory s) orig-rbp)
+                          (sym s-setup-eq)
+                          (PairSetupResult.mem-above-rsp-setup setup-res orig-rbp orig-rbp≥rsp)
+        -- Phase 2: f execution preserves (orig-rbp > s-setup.rbp)
+        mem-f : readMem (memory s1) orig-rbp ≡ readMem (memory s-setup) orig-rbp
+        mem-f = ir-mem-above r-f orig-rbp orig-rbp>setup-rbp
+        -- Phase 3: Middle preserves (orig-rbp ≠ s1.r15)
+        mem-mid : readMem (memory s2) orig-rbp ≡ readMem (memory s1) orig-rbp
+        mem-mid = subst (λ s2' → readMem (memory s2') orig-rbp ≡ readMem (memory s1) orig-rbp)
+                        (sym s2-eq)
+                        (PairMiddleResult.mem-above-r15-mid mid-res orig-rbp orig-rbp≢s1-r15)
+        -- Phase 4: g execution preserves (orig-rbp > s2.rbp)
+        mem-g : readMem (memory s3) orig-rbp ≡ readMem (memory s2) orig-rbp
+        mem-g = ir-mem-above r-g orig-rbp orig-rbp>s2-rbp
+
+    -- Same proof for orig-rbp + 8
+    orig-rbp+8 : ℕ
+    orig-rbp+8 = orig-rbp +ℕ 8
+
+    -- orig-rbp+8 > s-setup.rbp (since orig-rbp > s-setup.rbp and +8 makes it larger)
+    orig-rbp+8>setup-rbp : orig-rbp+8 > readReg (regs s-setup) rbp
+    orig-rbp+8>setup-rbp = <-trans orig-rbp>setup-rbp rbp<rbp+8-proof
+      where
+        rbp<rbp+8-proof : orig-rbp < orig-rbp+8
+        rbp<rbp+8-proof = n<n+8-helper orig-rbp
+          where
+            n<n+8-helper : ∀ n → n < n +ℕ 8
+            n<n+8-helper zero = s≤s z≤n
+            n<n+8-helper (suc n) = s≤s (n<n+8-helper n)
+
+    orig-rbp+8≢s1-r15 : orig-rbp+8 ≢ readReg (regs s1) r15
+    orig-rbp+8≢s1-r15 eq = Data.Nat.Properties.<⇒≢ r15-s1<rbp+8 (sym eq)
+      where
+        r15-s1<rbp+8 : readReg (regs s1) r15 < orig-rbp+8
+        r15-s1<rbp+8 = <-trans (subst (_< orig-rbp) (sym r15-s1-eq-for-proof)
+                               ((<-≤-trans rsp∸40<rsp-for-proof orig-rbp≥rsp)))
+                               rbp<rbp+8-for-proof
+          where
+            open import Data.Nat.Properties using (<-≤-trans)
+            r15-s1-eq-for-proof : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+            r15-s1-eq-for-proof = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                                                            (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
+            rsp∸40<rsp-for-proof : readReg (regs s) rsp ∸ 40 < readReg (regs s) rsp
+            rsp∸40<rsp-for-proof = m∸n<m-helper3 (readReg (regs s) rsp) 40
+                                     (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+              where
+                m∸n<m-helper3 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+                m∸n<m-helper3 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+            rbp<rbp+8-for-proof : orig-rbp < orig-rbp+8
+            rbp<rbp+8-for-proof = n<n+8-helper2 orig-rbp
+              where
+                n<n+8-helper2 : ∀ n → n < n +ℕ 8
+                n<n+8-helper2 zero = s≤s z≤n
+                n<n+8-helper2 (suc n) = s≤s (n<n+8-helper2 n)
+
+    orig-rbp+8>s2-rbp : orig-rbp+8 > readReg (regs s2) rbp
+    orig-rbp+8>s2-rbp = subst (orig-rbp+8 >_) (sym rbp-s2-chain-for-proof) orig-rbp+8>setup-rbp
+      where
+        rbp-s2-chain-for-proof : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
+        rbp-s2-chain-for-proof = trans rbp-s2-eq-s1 rbp-s1-eq-setup
+
+    mem-frame-rbp+8-s3 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-frame-rbp+8-s3 = trans mem-g+8 (trans mem-mid+8 (trans mem-f+8 mem-setup+8))
+      where
+        mem-setup+8 : readMem (memory s-setup) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+        mem-setup+8 = subst (λ ss → readMem (memory ss) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8)
+                            (sym s-setup-eq)
+                            (PairSetupResult.mem-above-rsp-setup setup-res orig-rbp+8
+                              (≤-trans orig-rbp≥rsp (m≤m+n-helper orig-rbp 8)))
+          where
+            m≤m+n-helper : ∀ m n → m ≤ m +ℕ n
+            m≤m+n-helper zero n = z≤n
+            m≤m+n-helper (suc m) n = s≤s (m≤m+n-helper m n)
+        mem-f+8 : readMem (memory s1) orig-rbp+8 ≡ readMem (memory s-setup) orig-rbp+8
+        mem-f+8 = ir-mem-above r-f orig-rbp+8 orig-rbp+8>setup-rbp
+        mem-mid+8 : readMem (memory s2) orig-rbp+8 ≡ readMem (memory s1) orig-rbp+8
+        mem-mid+8 = subst (λ s2' → readMem (memory s2') orig-rbp+8 ≡ readMem (memory s1) orig-rbp+8)
+                          (sym s2-eq)
+                          (PairMiddleResult.mem-above-r15-mid mid-res orig-rbp+8 orig-rbp+8≢s1-r15)
+        mem-g+8 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s2) orig-rbp+8
+        mem-g+8 = ir-mem-above r-g orig-rbp+8 orig-rbp+8>s2-rbp
 
     -- ========== Disjointness for original rbp ==========
     -- Uses RbpInvariant: rsp ≤ rbp, so s3.r15+8 < rsp ≤ rbp
