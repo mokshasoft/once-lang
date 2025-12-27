@@ -23,6 +23,7 @@ open import Data.String using (String)
 --
 -- Additional base types for practical programming:
 -- - Int is machine integers
+-- - Float is IEEE 754 double-precision floats
 -- - Str is UTF-8 strings
 -- - Buffer is raw byte buffers
 -- - TVar is a type variable (for polymorphism)
@@ -38,6 +39,7 @@ data Type : Set where
   Fix    : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
   -- Base types for practical programming
   Int    : Type                    -- Machine integers
+  Float  : Type                    -- IEEE 754 double-precision floats
   Str    : Type                    -- UTF-8 strings
   Buffer : Type                    -- Raw byte buffers
   TVar   : String → Type           -- Type variable (polymorphism)

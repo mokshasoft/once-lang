@@ -20,7 +20,7 @@
 
 module Once.Arith.Boundary where
 
-open import Once.Type as T using (Type; Int; Unit; _*_)
+open import Once.Type as T using (Type; Int; Float; Unit; _*_)
 open import Once.IR
 open import Once.Semantics as S using (⟦_⟧; eval; encode)
 
@@ -42,18 +42,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- | Map arithmetic numeric types to Once types
 --
--- Currently Once.Type only has Int (machine integers).
--- Floats are represented as Int for now (IEEE 754 encoding).
---
--- Future: Add Float type to Once.Type for proper float support.
+-- Integer types (I8, I16, I32, I64) map to Int.
+-- Float types (F32, F64) map to Float.
 --
 NumToType : NumType → Type
 NumToType I8  = Int
 NumToType I16 = Int
 NumToType I32 = Int
 NumToType I64 = Int
-NumToType F32 = Int   -- Placeholder: encode as Int (IEEE 754 bits)
-NumToType F64 = Int   -- Placeholder: encode as Int (IEEE 754 bits)
+NumToType F32 = T.Float
+NumToType F64 = T.Float
 
 ------------------------------------------------------------------------
 -- Context Mapping: Arith.Ctx → Once.Type (as product)
@@ -76,16 +74,16 @@ EnvType (b ∷ bs) = NumToType (A.Binding.type b) T.* EnvType bs
 
 -- | Convert arithmetic value to Once semantic value
 --
--- Since all NumTypes map to Int, and Int interprets to ℤ,
--- this is essentially an identity for integers.
+-- Integer NumTypes map to Int (ℤ), float NumTypes map to Float.
+-- Both are identity functions since the semantic interpretations match.
 --
 numToSem : ∀ τ → N.⟦ τ ⟧N → S.⟦ NumToType τ ⟧
 numToSem I8  n = n
 numToSem I16 n = n
 numToSem I32 n = n
 numToSem I64 n = n
-numToSem F32 f = + 0   -- Placeholder: would need proper Float → ℤ encoding
-numToSem F64 f = + 0   -- Placeholder: would need proper Float → ℤ encoding
+numToSem F32 f = f
+numToSem F64 f = f
 
 -- | Convert arithmetic environment to Once semantic product
 --

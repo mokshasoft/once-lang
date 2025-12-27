@@ -20,6 +20,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Data.Integer using (ℤ)
+open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
 
@@ -109,6 +110,7 @@ mutual
   ⟦ Fix F ⟧    = ⟦Fix⟧ ⟦ F ⟧
   -- Base types
   ⟦ Int ⟧      = ℤ
+  ⟦ Float ⟧    = AgdaFloat
   ⟦ Str ⟧      = String
   ⟦ Buffer ⟧   = String           -- Simplified: use String for bytes
   ⟦ TVar _ ⟧   = ⊤                 -- Type variables: use Unit as placeholder
@@ -141,6 +143,7 @@ postulate
   encode-inr-addr  : ∀ {A B : Type} → ⟦ B ⟧ → Word              -- Right sum allocation address
   encode-closure-addr : ∀ {A B : Type} → Closure A B → Word     -- Closure allocation address
   encode-int       : ℤ → Word                                    -- Integer encoding
+  encode-float     : AgdaFloat → Word                            -- Float encoding (IEEE 754 bits)
   encode-str       : String → Word                               -- String encoding
   encode-buffer    : String → Word                               -- Buffer encoding
 
@@ -158,6 +161,7 @@ encode {A ⇒ B} cl = encode-closure-addr cl                -- Needs allocation
 encode {Eff A B} cl = encode-closure-addr cl              -- Same as ⇒ (CONCRETE!)
 encode {Fix F} (wrap x) = encode {F} x                    -- Identity (CONCRETE!)
 encode {Int} n = encode-int n                             -- Primitive
+encode {Float} f = encode-float f                         -- Primitive (IEEE 754 bits)
 encode {Str} s = encode-str s                             -- Primitive
 encode {Buffer} b = encode-buffer b                       -- Primitive
 encode {TVar _} _ = 0                                     -- Placeholder

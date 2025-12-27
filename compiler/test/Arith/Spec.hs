@@ -76,6 +76,14 @@ arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
           arithToC (ACmp CmpLt (AVar "x" I32) (AVar "y" I32)) @?= "(x < y)"
       , testCase "comparison eq" $
           arithToC (ACmp CmpEq (AVar "a" I64) (ALitInt I64 0)) @?= "(a == 0)"
+      , testCase "float comparison le" $
+          arithToC (ACmp CmpLe (AVar "x" F64) (AVar "y" F64)) @?= "(x <= y)"
+      , testCase "float comparison gt" $
+          arithToC (ACmp CmpGt (AVar "x" F32) (AVar "y" F32)) @?= "(x > y)"
+      , testCase "float comparison ge" $
+          arithToC (ACmp CmpGe (AVar "x" F64) (ALitFloat F64 0.0)) @?= "(x >= 0.0)"
+      , testCase "float comparison ne" $
+          arithToC (ACmp CmpNe (AVar "a" F64) (AVar "b" F64)) @?= "(a != b)"
       , testCase "nested expression" $
           arithToC (AAdd (AMul (AVar "a" I64) (AVar "b" I64))
                          (AMul (AVar "c" I64) (AVar "d" I64)))

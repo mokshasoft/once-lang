@@ -91,6 +91,7 @@ encode-s {Fix F} (wrap x) st = encode-s {F} x st
 
 -- Base types: placeholder (would need proper encoding)
 encode-s {Int} _ st = (0 , st)
+encode-s {Float} _ st = (0 , st)
 encode-s {Str} _ st = (0 , st)
 encode-s {Buffer} _ st = (0 , st)
 encode-s {TVar _} _ st = (0 , st)

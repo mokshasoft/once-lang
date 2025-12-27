@@ -153,16 +153,22 @@ arithPrimOp name = case name of
   "__le_i16" -> Just OpLe
   "__le_i32" -> Just OpLe
   "__le_i64" -> Just OpLe
+  "__le_f32" -> Just OpLe
+  "__le_f64" -> Just OpLe
 
   "__gt_i8"  -> Just OpGt
   "__gt_i16" -> Just OpGt
   "__gt_i32" -> Just OpGt
   "__gt_i64" -> Just OpGt
+  "__gt_f32" -> Just OpGt
+  "__gt_f64" -> Just OpGt
 
   "__ge_i8"  -> Just OpGe
   "__ge_i16" -> Just OpGe
   "__ge_i32" -> Just OpGe
   "__ge_i64" -> Just OpGe
+  "__ge_f32" -> Just OpGe
+  "__ge_f64" -> Just OpGe
 
   "__eq_i8"  -> Just OpEq
   "__eq_i16" -> Just OpEq
@@ -175,6 +181,8 @@ arithPrimOp name = case name of
   "__ne_i16" -> Just OpNe
   "__ne_i32" -> Just OpNe
   "__ne_i64" -> Just OpNe
+  "__ne_f32" -> Just OpNe
+  "__ne_f64" -> Just OpNe
 
   _ -> Nothing
 

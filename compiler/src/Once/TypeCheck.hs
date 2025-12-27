@@ -124,6 +124,7 @@ applySubst subst ty = case ty of
   TUnit -> TUnit
   TVoid -> TVoid
   TInt -> TInt
+  TFloat -> TFloat
   TBuffer -> TBuffer
   TString enc -> TString enc
   TProduct a b -> TProduct (applySubst subst a) (applySubst subst b)
@@ -144,6 +145,7 @@ occurs name ty = case ty of
   TUnit -> False
   TVoid -> False
   TInt -> False
+  TFloat -> False
   TBuffer -> False
   TString _ -> False
   TProduct a b -> occurs name a || occurs name b
@@ -168,6 +170,7 @@ unify t1 t2 = case (t1, t2) of
   (TUnit, TUnit) -> Right emptySubst
   (TVoid, TVoid) -> Right emptySubst
   (TInt, TInt) -> Right emptySubst
+  (TFloat, TFloat) -> Right emptySubst
   (TBuffer, TBuffer) -> Right emptySubst
   (TString e1, TString e2) | e1 == e2 -> Right emptySubst
   (TProduct a1 b1, TProduct a2 b2) -> do
