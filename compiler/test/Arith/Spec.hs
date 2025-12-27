@@ -16,6 +16,9 @@ import Once.Arith.Backend.X86.Emit
 import qualified Once.Arith.Backend.AArch64.Syntax as A64
 import qualified Once.Arith.Backend.AArch64.CodeGen as A64
 import qualified Once.Arith.Backend.AArch64.Emit as A64
+import qualified Once.Arith.Backend.RiscV.Syntax as RV
+import qualified Once.Arith.Backend.RiscV.CodeGen as RV
+import qualified Once.Arith.Backend.RiscV.Emit as RV
 
 arithTests :: TestTree
 arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
@@ -246,5 +249,90 @@ arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
           A64.fpRegName A64.D0 @?= "d0"
       , testCase "fpRegNameS D0" $
           A64.fpRegNameS A64.D0 @?= "s0"
+      ]
+  , testGroup "RISC-V code generation"
+      [ testCase "literal generates li" $
+          let prog = RV.compileArith (ALitInt I64 42)
+          in length prog @?= 2  -- li t0, mv a0
+      , testCase "addition generates add instruction" $
+          let prog = RV.compileArith (AAdd (ALitInt I64 1) (ALitInt I64 2))
+              hasAdd = any isRVAdd prog
+              isRVAdd (RV.IntI (RV.Add _ _ _)) = True
+              isRVAdd _ = False
+          in hasAdd @?= True
+      , testCase "subtraction generates sub instruction" $
+          let prog = RV.compileArith (ASub (ALitInt I64 10) (ALitInt I64 3))
+              hasSub = any isRVSub prog
+              isRVSub (RV.IntI (RV.Sub _ _ _)) = True
+              isRVSub _ = False
+          in hasSub @?= True
+      , testCase "multiplication generates mul instruction" $
+          let prog = RV.compileArith (AMul (ALitInt I64 5) (ALitInt I64 6))
+              hasMul = any isRVMul prog
+              isRVMul (RV.IntI (RV.Mul _ _ _)) = True
+              isRVMul _ = False
+          in hasMul @?= True
+      , testCase "division generates div instruction" $
+          let prog = RV.compileArith (ADiv (ALitInt I64 100) (ALitInt I64 10))
+              hasDiv = any isRVDiv prog
+              isRVDiv (RV.IntI (RV.Div _ _ _)) = True
+              isRVDiv _ = False
+          in hasDiv @?= True
+      , testCase "modulo generates rem instruction" $
+          let prog = RV.compileArith (AMod (ALitInt I64 17) (ALitInt I64 5))
+              hasRem = any isRVRem prog
+              isRVRem (RV.IntI (RV.Rem _ _ _)) = True
+              isRVRem _ = False
+          in hasRem @?= True
+      , testCase "negation generates neg instruction" $
+          let prog = RV.compileArith (ANeg (ALitInt I64 7))
+              hasNeg = any isRVNeg prog
+              isRVNeg (RV.IntI (RV.Neg _ _)) = True
+              isRVNeg _ = False
+          in hasNeg @?= True
+      ]
+  , testGroup "RISC-V assembly emission"
+      [ testCase "li instruction format" $
+          RV.emitIntInstr (RV.Li RV.X10 42) @?= "    li a0, 42"
+      , testCase "mv instruction format" $
+          RV.emitIntInstr (RV.Mv RV.X10 RV.X5) @?= "    mv a0, t0"
+      , testCase "add instruction format" $
+          RV.emitIntInstr (RV.Add RV.X10 RV.X5 RV.X6) @?= "    add a0, t0, t1"
+      , testCase "addi instruction format" $
+          RV.emitIntInstr (RV.Addi RV.X10 RV.X5 100) @?= "    addi a0, t0, 100"
+      , testCase "sub instruction format" $
+          RV.emitIntInstr (RV.Sub RV.X10 RV.X5 RV.X6) @?= "    sub a0, t0, t1"
+      , testCase "mul instruction format" $
+          RV.emitIntInstr (RV.Mul RV.X10 RV.X5 RV.X6) @?= "    mul a0, t0, t1"
+      , testCase "div instruction format" $
+          RV.emitIntInstr (RV.Div RV.X10 RV.X5 RV.X6) @?= "    div a0, t0, t1"
+      , testCase "rem instruction format" $
+          RV.emitIntInstr (RV.Rem RV.X10 RV.X5 RV.X6) @?= "    rem a0, t0, t1"
+      , testCase "neg instruction format" $
+          RV.emitIntInstr (RV.Neg RV.X10 RV.X5) @?= "    neg a0, t0"
+      , testCase "fadd.d instruction format" $
+          RV.emitFPInstr (RV.FaddD RV.F10 RV.F0 RV.F1) @?= "    fadd.d fa0, ft0, ft1"
+      , testCase "fmul.d instruction format" $
+          RV.emitFPInstr (RV.FmulD RV.F10 RV.F0 RV.F1) @?= "    fmul.d fa0, ft0, ft1"
+      , testCase "fneg.d instruction format" $
+          RV.emitFPInstr (RV.FnegD RV.F10 RV.F0) @?= "    fneg.d fa0, ft0"
+      , testCase "full program emission" $
+          let prog = RV.compileArith (ALitInt I64 42)
+              asm = RV.emitProgram prog
+          in T.isInfixOf "li" asm @?= True
+      ]
+  , testGroup "RISC-V register names"
+      [ testCase "gprName X0 (zero)" $
+          RV.gprName RV.X0 @?= "zero"
+      , testCase "gprName X5 (t0)" $
+          RV.gprName RV.X5 @?= "t0"
+      , testCase "gprName X10 (a0)" $
+          RV.gprName RV.X10 @?= "a0"
+      , testCase "gprName X28 (t3)" $
+          RV.gprName RV.X28 @?= "t3"
+      , testCase "fpRegName F0 (ft0)" $
+          RV.fpRegName RV.F0 @?= "ft0"
+      , testCase "fpRegName F10 (fa0)" $
+          RV.fpRegName RV.F10 @?= "fa0"
       ]
   ]
