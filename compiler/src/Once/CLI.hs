@@ -275,14 +275,17 @@ runBuild opts = do
                           case target of
                             TargetC -> do
                               -- For executable, generate C with main() wrapper
-                              -- Load interpretation C code from --interp (legacy)
-                              interpCodeLegacy <- case buildInterp opts of
-                                Nothing -> pure ""
-                                Just interpPath -> loadInterpretationCode interpPath
-
                               -- Collect target-specific files from imported interpretation modules
                               let importedTargetFiles = collectTargetFiles modEnv
                               importedCode <- T.concat <$> mapM TIO.readFile importedTargetFiles
+
+                              -- Load interpretation C code from --interp (legacy)
+                              -- Only use --interp if no modules provided target files (avoid duplicates)
+                              interpCodeLegacy <- if not (null importedTargetFiles)
+                                then pure ""  -- Modules provide interpretation, skip --interp
+                                else case buildInterp opts of
+                                  Nothing -> pure ""
+                                  Just interpPath -> loadInterpretationCode interpPath
 
                               -- Resolve and load explicit interpretation files from -I:TYPE MODULE
                               let explicitFiles = resolveExplicitInterps strataPath (buildExplicitInterps opts)
@@ -857,9 +860,11 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       TVar _ -> "void*"
       TUnit -> "void*"
       TVoid -> "void"
-      TInt -> "int"
+      TInt -> "int64_t"
       TFloat -> "double"
+      TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
+      TArray _ -> "OnceBuffer"  -- D040: Array erases to Buffer
       TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
@@ -1060,9 +1065,11 @@ generateExecutableAll functions defaultAlloc primitives interpCode = T.unlines
       TVar _ -> "void*"
       TUnit -> "void*"
       TVoid -> "void"
-      TInt -> "int"
+      TInt -> "int64_t"
       TFloat -> "double"
+      TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
+      TArray _ -> "OnceBuffer"  -- D040: Array erases to Buffer
       TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
@@ -1144,9 +1151,11 @@ generateLibraryAll functions = (header, source)
       TVar _ -> "void*"
       TUnit -> "void*"
       TVoid -> "void"
-      TInt -> "int"
+      TInt -> "int64_t"
       TFloat -> "double"
+      TByte -> "uint8_t"
       TBuffer -> "OnceBuffer"
+      TArray _ -> "OnceBuffer"  -- D040: Array erases to Buffer
       TString _ -> "OnceString"
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"

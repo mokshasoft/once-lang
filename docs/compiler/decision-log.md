@@ -2371,3 +2371,103 @@ ELam x body -> do
 
 - D029: Let Bindings with Desugaring (similar approach)
 - D032: Arrow-Based Effect System
+
+---
+
+## D040: Byte Type and Parameterized Arrays
+
+**Date**: 2025-12-27
+**Status**: Accepted
+
+### Context
+
+Once needs low-level primitive types for systems programming:
+- **Byte**: For raw memory manipulation, network protocols, file formats
+- **Array A**: For typed indexed collections (not just raw buffers)
+
+Previously, `Buffer` was the only way to work with bytes, but it's untyped and requires manual offset calculations.
+
+### Decision
+
+1. **Add `Byte` type**: Unsigned 8-bit integer (0-255)
+   - `TByte` in Type.hs, `STByte` in Syntax.hs
+   - Compiles to `uint8_t` in C
+
+2. **Add `Array A` parameterized type**: Typed array indexed by element type
+   - `TArray Type` in Type.hs, `STArray SType` in Syntax.hs
+   - Erases to `OnceBuffer` at runtime (like `String Enc` erases to buffer)
+   - `Array Int`, `Array Float`, `Array Byte` all work
+
+3. **Pure array semantics**:
+   - `unsafeRead : Array A * Int -> A` (pure)
+   - `unsafeWrite : Array A * (Int * A) -> Array A` (pure, returns array)
+   - Arrays are values; mutation is computation, not I/O
+   - QTT controls if write is in-place (linear) or copy (non-linear)
+
+4. **Use `int64_t` for Int**: Changed from `int` to `int64_t` for proper 64-bit integers
+
+### Rationale
+
+**Type erasure for Array**: Like `String Utf8` erases encoding at runtime, `Array Int` erases element type. The compiler knows the element size from the type parameter and generates appropriate indexing code inline.
+
+**Pure array operations**: Following the insight that "arrays should be treated like Ints - pure to the programmer." Just as incrementing an integer appears pure despite modifying a register, writing to an array appears pure despite modifying memory. The type system (via QTT quantities) controls whether the operation is in-place or requires copying.
+
+### Implementation
+
+**Type.hs**:
+```haskell
+data Type
+  = ...
+  | TByte                  -- Byte type (unsigned 8-bit)
+  | TArray Type            -- Array type with element type
+  ...
+```
+
+**Parser.hs**:
+```haskell
+-- Add to reserved words
+[ ..., "Byte", "Array", ...]
+
+-- Array type parsing
+arrayType = reserved "Array" >> STArray <$> simpleType
+```
+
+**Backend/C.hs**:
+```haskell
+cTypeName ty = case ty of
+  TInt -> "int64_t"
+  TByte -> "uint8_t"
+  TArray _ -> "OnceBuffer"  -- erases to Buffer
+  ...
+```
+
+5. **Inline codegen for array operations**:
+   - `unsafeRead : Array A * Int -> A` generates `((T*)array.data)[index]`
+   - `unsafeWrite : Array A * (Int * A) -> Array A` generates inline assignment
+   - `length : Array A -> Int` generates `array.len / sizeof(T)`
+   - Element type `T` is extracted from `TArray A` at compile time
+
+### Consequences
+
+- `Byte` available as primitive type alongside `Int`, `Float`
+- `Array Int`, `Array Float`, `Array Byte` provide typed arrays
+- Arrays are pure values; mutation semantics controlled by QTT
+- Integers are now proper 64-bit (`int64_t`)
+- Array operations generate inline C code, no function call overhead
+
+### Files Changed
+
+- `compiler/src/Once/Type.hs`: TByte, TArray
+- `compiler/src/Once/Syntax.hs`: STByte, STArray
+- `compiler/src/Once/Parser.hs`: Byte/Array parsing
+- `compiler/src/Once/TypeCheck.hs`: TByte/TArray handling
+- `compiler/src/Once/Elaborate.hs`: STByte/STArray conversion
+- `compiler/src/Once/Backend/C.hs`: C type generation, array inline codegen
+- `compiler/src/Once/CLI.hs`: cTypeName updates, interpretation loading fix
+- `Strata/Interpretations/Linux/Array.once`: Array operation declarations
+- `Strata/Interpretations/Linux/Array.c`: Bulk operations (memcpy, memset)
+- `Strata/Interpretations/Linux/Array.x86_64`: x86-64 assembly for bulk ops
+
+### See Also
+
+- D032: Arrow-Based Effect System (effect handling)

@@ -1,0 +1,48 @@
+-- | Array operations for indexed data structures (D040)
+--
+-- Provides type-safe indexed read/write access to arrays.
+-- Array A is a typed wrapper around Buffer that erases to Buffer at runtime.
+--
+-- Array operations are PURE (not wrapped in Eff).
+-- Arrays are values. Mutation is computation, not I/O.
+-- QTT quantities control whether mutation is in-place (^1) or copy-on-write (^w).
+--
+-- Generic operations (read, write, length) work for any primitive element type.
+-- Future: compiler can generate inline code based on element type.
+--
+-- Indices are element indices (0, 1, 2, ...) not byte offsets.
+-- Element size is determined by the element type.
+
+------------------------------------------------------------------------
+-- Generic Array Operations
+------------------------------------------------------------------------
+
+-- | Read element at index (pure, UNSAFE - no bounds checking)
+-- Works for any primitive element type (Int, Float, Byte).
+-- Compiler generates inline code based on element type.
+-- Caller must ensure 0 <= index < length.
+primitive unsafeRead : Array A * Int -> A
+
+-- | Write element at index (pure, UNSAFE - no bounds checking)
+-- Works for any primitive element type (Int, Float, Byte).
+-- Returns the same array (for chaining). QTT determines if in-place or copy.
+-- Signature uses (arr, (idx, val)) for ergonomic calling convention.
+-- Caller must ensure 0 <= index < length.
+primitive unsafeWrite : Array A * (Int * A) -> Array A
+
+-- | Get array length (in elements, not bytes)
+-- Works for any primitive element type (Int, Float, Byte).
+-- Compiler generates inline code: buffer_len / element_size.
+primitive length : Array A -> Int
+
+------------------------------------------------------------------------
+-- Bulk Operations (pure, work on raw buffers)
+------------------------------------------------------------------------
+
+-- | Copy bytes between arrays (pure, returns destination array)
+-- memcpy (dest, destOffset, src, srcOffset, count)
+primitive memcpy : Array Byte * Int * Array Byte * Int * Int -> Array Byte
+
+-- | Fill array with byte value (pure, returns updated array)
+-- memset (array, offset, value, count)
+primitive memset : Array Byte * Int * Int * Int -> Array Byte

@@ -32,8 +32,9 @@ generateHeader name ty = T.unlines $
   [ "#ifndef ONCE_" <> T.toUpper name <> "_H"
   , "#define ONCE_" <> T.toUpper name <> "_H"
   , ""
+  , "#include <stdint.h>"  -- Always include for int64_t, uint8_t
   ] ++
-  (if needsStddef ty then ["#include <stddef.h>", ""] else []) ++
+  (if needsStddef ty then ["#include <stddef.h>", ""] else [""]) ++
   [ "/* Type definitions */"
   , typeDefinitions ty
   , ""
@@ -43,10 +44,11 @@ generateHeader name ty = T.unlines $
   , "#endif"
   ]
   where
-    -- Need stddef.h for size_t (used by Buffer/String)
+    -- Need stddef.h for size_t (used by Buffer/String/Array)
     needsStddef :: Type -> Bool
     needsStddef t = case t of
       TBuffer -> True
+      TArray _ -> True  -- D040: Array erases to Buffer
       TString _ -> True
       TProduct a b -> needsStddef a || needsStddef b
       TSum a b -> needsStddef a || needsStddef b
@@ -104,6 +106,7 @@ typeDefinitions ty =
     needsBuffer :: Type -> Bool
     needsBuffer t = case t of
       TBuffer -> True
+      TArray _ -> True   -- D040: Array erases to Buffer
       TString _ -> True  -- String needs Buffer typedef first
       TProduct a b -> needsBuffer a || needsBuffer b
       TSum a b -> needsBuffer a || needsBuffer b
@@ -126,9 +129,11 @@ cTypeName ty = case ty of
   TVar _ -> "void*"
   TUnit -> "void*"  -- Unit represented as NULL
   TVoid -> "void"
-  TInt -> "int"
+  TInt -> "int64_t"
   TFloat -> "double"  -- Double-precision floating point
+  TByte -> "uint8_t"  -- Unsigned 8-bit byte
   TBuffer -> "OnceBuffer"
+  TArray _ -> "OnceBuffer"   -- D040: Array erases to Buffer at runtime
   TString _ -> "OnceString"  -- Encoding erased at runtime
   TProduct _ _ -> "OncePair"
   TSum _ _ -> "OnceSum"
@@ -136,6 +141,14 @@ cTypeName ty = case ty of
   TEff _ _ -> "void*"    -- D032: Effectful morphisms same as functions at runtime
   TApp _ _ -> "void*"    -- Type applications (polymorphic, boxed)
   TFix _ -> "void*"      -- Fixed-point types (recursive, boxed)
+
+-- | Get C sizeof expression for a type (D046: for array element size calculation)
+cSizeof :: Type -> Text
+cSizeof ty = case ty of
+  TInt -> "sizeof(int64_t)"
+  TFloat -> "sizeof(double)"
+  TByte -> "sizeof(uint8_t)"
+  _ -> "sizeof(void*)"  -- Pointers for complex types
 
 -- | Generate function declaration
 functionDecl :: Name -> Type -> Text
@@ -212,7 +225,54 @@ generateExpr ir var = trace ("generateExpr: " ++ take 50 (show ir) ++ " var=" ++
 
   FunRef n -> "(void*)once_" <> n  -- Function reference (pointer, not call)
 
-  Prim n _ _ -> "once_" <> n <> "(" <> var <> ")"
+  -- D046: Inline codegen for array primitives
+  -- These operations are generated inline based on element type
+  Prim n inTy outTy -> case n of
+    -- unsafeRead : Array A * Int -> A
+    -- Generates: ((elemType*)array.data)[index]
+    "unsafeRead" -> case inTy of
+      TProduct (TArray elemTy) TInt ->
+        let elemC = cTypeName elemTy
+            -- Input is (Array, Int) pair: var.fst = array, var.snd = index
+            arrData = if needsPairCast var
+                      then "((OncePair*)" <> var <> ")->fst"
+                      else var <> ".fst"
+            arrIdx = if needsPairCast var
+                     then "((OncePair*)" <> var <> ")->snd"
+                     else var <> ".snd"
+        in "((" <> elemC <> "*)((OnceBuffer*)" <> arrData <> ")->data)[(int64_t)" <> arrIdx <> "]"
+      _ -> "once_" <> n <> "(" <> var <> ")"  -- Fallback
+
+    -- unsafeWrite : Array A * (Int * A) -> Array A
+    -- Generates: (array.data[index] = value, array)
+    "unsafeWrite" -> case inTy of
+      TProduct (TArray elemTy) (TProduct TInt _) ->
+        let elemC = cTypeName elemTy
+            -- Input is (Array, (Int, Value)) pair
+            arrData = if needsPairCast var
+                      then "((OncePair*)" <> var <> ")->fst"
+                      else var <> ".fst"
+            idxVal = if needsPairCast var
+                     then "((OncePair*)" <> var <> ")->snd"
+                     else var <> ".snd"
+            -- idxVal is a pointer to (Int, Value) pair
+            idx = "((OncePair*)" <> idxVal <> ")->fst"
+            val = "((OncePair*)" <> idxVal <> ")->snd"
+        in "({ OnceBuffer* _arr = (OnceBuffer*)" <> arrData <> "; " <>
+           "((" <> elemC <> "*)_arr->data)[(int64_t)" <> idx <> "] = (" <> elemC <> ")" <> val <> "; " <>
+           "*_arr; })"
+      _ -> "once_" <> n <> "(" <> var <> ")"  -- Fallback
+
+    -- length : Array A -> Int
+    -- Generates: array.len / sizeof(elemType)
+    "length" -> case inTy of
+      TArray elemTy ->
+        let elemSize = cSizeof elemTy
+        in "((int64_t)(((OnceBuffer*)" <> var <> ")->len / " <> elemSize <> "))"
+      _ -> "once_" <> n <> "(" <> var <> ")"  -- Fallback
+
+    -- Default: call the C function
+    _ -> "once_" <> n <> "(" <> var <> ")"
 
   StringLit s ->
     -- String literals are constant morphisms: Unit -> String Utf8

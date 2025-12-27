@@ -79,7 +79,9 @@ data SType
   | STVoid                       -- ^ Void type: Void
   | STInt                        -- ^ Integer type: Int
   | STFloat                      -- ^ Floating-point type: Float
+  | STByte                       -- ^ Byte type: Byte (unsigned 8-bit, 0-255)
   | STBuffer                     -- ^ Buffer type: Buffer
+  | STArray SType                -- ^ Array type: Array Int, Array Float (D040)
   | STString Encoding            -- ^ String type with encoding: String Utf8
   | STProduct SType SType        -- ^ Product: A * B
   | STSum SType SType            -- ^ Sum: A + B

@@ -62,7 +62,7 @@ reservedWords :: [Text]
 reservedWords =
   -- Keywords
   [ "of", "Left", "Right"
-  , "Unit", "Void", "Int", "Float", "Buffer", "String"
+  , "Unit", "Void", "Int", "Float", "Byte", "Buffer", "Array", "String"
   , "Utf8", "Utf16", "Ascii"
   , "primitive"
   , "type", "Fix"             -- Type aliases and fixed points
@@ -109,7 +109,7 @@ typeVar = lexeme $ try $ do
   c <- upperChar
   cs <- many (alphaNumChar <|> char '_' <|> char '\'')
   let name = T.pack (c : cs)
-  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Float", "Eff", "IO", "Fix"]
+  if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "Array", "String", "Utf8", "Utf16", "Ascii", "Int", "Float", "Byte", "Eff", "IO", "Fix"]
     then fail $ "Reserved type: " ++ T.unpack name
     else pure name
 
@@ -175,7 +175,9 @@ parseType = makeTypeExpr
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
       , STFloat <$ reserved "Float"
+      , STByte <$ reserved "Byte"
       , STBuffer <$ reserved "Buffer"
+      , arrayType
       , stringType
       , fixType
       , effType     -- Eff A B (effectful morphism, D032)
@@ -218,12 +220,19 @@ parseType = makeTypeExpr
       , STVoid <$ reserved "Void"
       , STInt <$ reserved "Int"
       , STFloat <$ reserved "Float"
+      , STByte <$ reserved "Byte"
       , STBuffer <$ reserved "Buffer"
+      , arrayType
       , stringType
       , fixType
       , STVar <$> typeVar
       , parens parseType
       ]
+
+    -- Array A (typed array, D040)
+    arrayType = do
+      reserved "Array"
+      STArray <$> simpleType
 
     -- String with optional encoding: "String Utf8", "String Ascii", or just "String" (defaults to Utf8)
     stringType = do

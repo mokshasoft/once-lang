@@ -212,7 +212,9 @@ elaborateType sty = case sty of
   STVoid -> TVoid
   STInt -> TInt
   STFloat -> TFloat
+  STByte -> TByte
   STBuffer -> TBuffer
+  STArray t -> TArray (elaborateType t)
   STString enc -> TString enc
   STProduct a b -> TProduct (elaborateType a) (elaborateType b)
   STSum a b -> TSum (elaborateType a) (elaborateType b)

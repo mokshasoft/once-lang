@@ -1,0 +1,111 @@
+/* Array bulk operations for Once (D040)
+ *
+ * x86-64 implementation of Array.once bulk operations.
+ *
+ * Generic array operations (unsafeRead, unsafeWrite, length) need
+ * type-specific implementations or compiler inline codegen.
+ * This file provides only the byte-level bulk operations.
+ *
+ * For pairs: rdi = fst, rsi = snd
+ * Nested pairs: fst points to another OncePair struct
+ * OnceBuffer: { void* data; size_t len; } passed as two registers
+ */
+
+.text
+
+/*========================================================================
+ * memcpy: Copy bytes between arrays (pure, returns destination)
+ *
+ * Input: (dest, destOff, src, srcOff, count)
+ *        Nested: ((((dest, destOff), src), srcOff), count)
+ *
+ * dest, src are OnceBuffer (16 bytes each)
+ *========================================================================*/
+
+.globl once_memcpy
+.type once_memcpy, @function
+once_memcpy:
+    push    %rbx
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # Unpack nested pairs: ((((dest, destOff), src), srcOff), count)
+    # rdi = fst = pointer to ((((dest, destOff), src), srcOff)
+    # rsi = snd = count
+    mov     %rsi, %r15              # r15 = count
+
+    mov     (%rdi), %rax            # rax = fst = pointer to (((dest, destOff), src)
+    mov     8(%rdi), %r14           # r14 = snd = srcOff
+
+    mov     (%rax), %rcx            # rcx = fst = pointer to ((dest, destOff)
+    mov     8(%rax), %r13           # r13 = pointer to src OnceBuffer
+    mov     (%r13), %r13            # r13 = src.data
+
+    mov     (%rcx), %rbx            # rbx = fst = pointer to (dest)
+    mov     8(%rcx), %r12           # r12 = snd = destOff
+
+    # rbx points to dest OnceBuffer
+    mov     (%rbx), %rdi            # rdi = dest.data
+    add     %r12, %rdi              # rdi = dest.data + destOff
+
+    mov     %r13, %rsi              # rsi = src.data
+    add     %r14, %rsi              # rsi = src.data + srcOff
+
+    mov     %r15, %rdx              # rdx = count
+
+    # Call memmove (safer than memcpy for overlapping regions)
+    call    memmove@PLT
+
+    # Return dest OnceBuffer (same as input)
+    mov     %rbx, %rax
+
+    pop     %r15
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %rbx
+    ret
+.size once_memcpy, .-once_memcpy
+
+
+/*========================================================================
+ * memset: Fill array region with byte value (pure, returns array)
+ *
+ * Input: (array, offset, value, count)
+ *        Nested: (((array, offset), value), count)
+ *========================================================================*/
+
+.globl once_memset
+.type once_memset, @function
+once_memset:
+    push    %rbx
+    push    %r12
+
+    # Unpack nested pairs: (((array, offset), value), count)
+    # rdi = fst = pointer to ((array, offset), value)
+    # rsi = snd = count
+    mov     %rsi, %r12              # r12 = count
+
+    mov     (%rdi), %rax            # rax = fst = pointer to (array, offset)
+    mov     8(%rdi), %rsi           # rsi = snd = value
+
+    mov     (%rax), %rbx            # rbx = fst = pointer to array OnceBuffer
+    mov     8(%rax), %rcx           # rcx = snd = offset
+
+    mov     (%rbx), %rdi            # rdi = array.data
+    add     %rcx, %rdi              # rdi = array.data + offset
+
+    # rsi already has value
+    mov     %r12, %rdx              # rdx = count
+
+    call    memset@PLT
+
+    # Return array OnceBuffer (same as input)
+    mov     %rbx, %rax
+
+    pop     %r12
+    pop     %rbx
+    ret
+.size once_memset, .-once_memset
