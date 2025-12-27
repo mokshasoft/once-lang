@@ -71,7 +71,8 @@ open import Once.Backend.AArch64.Correct.IR.Compose
             len-prefix-g to compose-len-prefix-g)
 open import Once.Backend.AArch64.Correct.IR.Pair
   using (PairContext; mkPairContext;
-         PairSetupResult; PairMiddleResult; PairFinalResult)
+         PairSetupResult; PairMiddleResult; PairFinalResult;
+         exec-pair-setup; exec-pair-middle)
 open PairContext
   hiding (len-f; len-g)
   renaming (prog to pair-prog; code-f to pair-code-f; code-g to pair-code-g;
@@ -79,6 +80,7 @@ open PairContext
             prefix-g to pair-prefix-g; suffix-g to pair-suffix-g;
             len-prefix-f to pair-len-prefix-f; len-prefix-g to pair-len-prefix-g;
             prog-eq-f to pair-prog-eq-f; prog-eq-g to pair-prog-eq-g)
+-- Note: PairSetupResult is accessed via qualified names to avoid clashing
 open import Once.Backend.AArch64.Correct.IR.Case
   using (CaseContext; mkCaseContext;
          CaseInlSetupResult; CaseInrSetupResult;
@@ -1481,33 +1483,65 @@ mutual
       new-sp = readSP (regs s) ∸ 16
 
       ------------------------------------------------------------------------
-      -- Phase 1: Setup (3 instructions) - POSTULATED for now
+      -- Phase 1: Setup (3 instructions)
       -- sub-sp 16, mov-from-sp x21, mov x20 x0
+      -- Uses exec-pair-setup from Pair.agda
       ------------------------------------------------------------------------
 
-      -- After setup, we have:
-      --   SP = original SP - 16
-      --   x21 = new-sp (pair pointer)
-      --   x20 = encode x (saved input)
-      --   x0 = encode x (unchanged)
-      --   PC = length prefix + 3
+      -- Call exec-pair-setup to execute the 3 setup instructions
+      setup-result = exec-pair-setup f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
 
-      postulate
-        s-setup : State
-        star-setup : Star prog s s-setup
-        setup-halted : halted s-setup ≡ false
-        setup-pc : pc s-setup ≡ length prefix +ℕ 3
-        setup-x0 : readReg (regs s-setup) x0 ≡ encode x
-        setup-x20 : readReg (regs s-setup) x20 ≡ encode x
-        setup-x21 : readReg (regs s-setup) x21 ≡ new-sp
-        setup-x29 : readReg (regs s-setup) x29 ≡ readReg (regs s) x29
-        setup-x30 : readReg (regs s-setup) x30 ≡ readReg (regs s) x30
-        setup-sp : readSP (regs s-setup) ≡ new-sp
-        setup-stack-inv : StackInvariant s-setup
-        setup-x29-inv : X29Invariant s-setup
-        setup-sp>16 : readSP (regs s-setup) > 16
-        setup-mem-x29 : readMem (memory s-setup) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
-        setup-mem-x29+8 : readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+      s-setup : State
+      s-setup = proj₁ setup-result
+
+      setup-res : PairSetupResult f g prefix suffix ctx s s-setup x
+      setup-res = proj₂ setup-result
+
+      -- Extract Star proof (prog ctx ≡ prog definitionally)
+      star-setup : Star prog s s-setup
+      star-setup = PairSetupResult.setup-star setup-res
+
+      -- Extract state properties
+      setup-halted : halted s-setup ≡ false
+      setup-halted = PairSetupResult.setup-halted setup-res
+
+      -- PC: length (prefix-f ctx) = length prefix + 3
+      setup-pc : pc s-setup ≡ length prefix +ℕ 3
+      setup-pc = trans (PairSetupResult.setup-pc setup-res) (pair-len-prefix-f ctx)
+
+      setup-x0 : readReg (regs s-setup) x0 ≡ encode x
+      setup-x0 = PairSetupResult.setup-x0 setup-res
+
+      setup-x20 : readReg (regs s-setup) x20 ≡ encode x
+      setup-x20 = PairSetupResult.setup-x20 setup-res
+
+      -- x21 = sp₁ ctx = readSP (regs s) ∸ 16 = new-sp (definitionally)
+      setup-x21 : readReg (regs s-setup) x21 ≡ new-sp
+      setup-x21 = PairSetupResult.setup-x21 setup-res
+
+      setup-x29 : readReg (regs s-setup) x29 ≡ readReg (regs s) x29
+      setup-x29 = PairSetupResult.setup-x29 setup-res
+
+      setup-x30 : readReg (regs s-setup) x30 ≡ readReg (regs s) x30
+      setup-x30 = PairSetupResult.setup-x30 setup-res
+
+      setup-sp : readSP (regs s-setup) ≡ new-sp
+      setup-sp = PairSetupResult.setup-sp setup-res
+
+      setup-stack-inv : StackInvariant s-setup
+      setup-stack-inv = PairSetupResult.setup-stack-inv setup-res
+
+      setup-x29-inv : X29Invariant s-setup
+      setup-x29-inv = PairSetupResult.setup-x29-inv setup-res
+
+      setup-sp>16 : readSP (regs s-setup) > 16
+      setup-sp>16 = PairSetupResult.setup-sp>16 setup-res
+
+      setup-mem-x29 : readMem (memory s-setup) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+      setup-mem-x29 = PairSetupResult.setup-mem-x29 setup-res
+
+      setup-mem-x29+8 : readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+      setup-mem-x29+8 = PairSetupResult.setup-mem-x29+8 setup-res
 
       ------------------------------------------------------------------------
       -- Phase 2: Execute f recursively
@@ -1547,25 +1581,80 @@ mutual
       res-f = subst (λ p → IRStarResult f p s-setup s-f x (length (pair-prefix-f ctx))) prog-f-eq res-f-raw
 
       ------------------------------------------------------------------------
-      -- Phase 3: Middle (2 instructions) - POSTULATED for now
+      -- Phase 3: Middle (2 instructions)
       -- str x0 [x21], mov x0 x20
+      -- Uses exec-pair-middle from Pair.agda
       ------------------------------------------------------------------------
 
+      -- Preconditions for exec-pair-middle:
+      -- x20 in s-f = encode x (preserved from setup through f)
+      x20-s-f : readReg (regs s-f) x20 ≡ encode x
+      x20-s-f = trans (ir-x20 res-f) setup-x20
+
+      -- x21 in s-f = new-sp (preserved from setup through f)
+      x21-s-f : readReg (regs s-f) x21 ≡ new-sp
+      x21-s-f = trans (ir-x21 res-f) setup-x21
+
+      -- X29Invariant for s-f (POSTULATED - need to add to IRStarResult)
       postulate
-        s-mid : State
-        star-mid : Star prog s-f s-mid
-        mid-halted : halted s-mid ≡ false
-        mid-pc : pc s-mid ≡ length prefix +ℕ 5 +ℕ compile-length f
-        mid-x0 : readReg (regs s-mid) x0 ≡ encode x  -- restored from x20
-        mid-x20 : readReg (regs s-mid) x20 ≡ readReg (regs s-f) x20
-        mid-x21 : readReg (regs s-mid) x21 ≡ readReg (regs s-f) x21
-        mid-x29 : readReg (regs s-mid) x29 ≡ readReg (regs s-f) x29
-        mid-x30 : readReg (regs s-mid) x30 ≡ readReg (regs s-f) x30
-        mid-sp : readSP (regs s-mid) ≡ readSP (regs s-f)
-        mid-stack-inv : StackInvariant s-mid
-        mid-x29-inv : X29Invariant s-mid
-        mid-sp>16 : readSP (regs s-mid) > 16
-        mid-mem-fst : readMem (memory s-mid) new-sp ≡ just (encode (eval f x))
+        x29-inv-s-f : X29Invariant s-f
+
+      -- Call exec-pair-middle
+      mid-result = exec-pair-middle f g prefix suffix x s s-f
+                     (ir-halted res-f)
+                     (ir-pc res-f)
+                     (ir-x0 res-f)
+                     x20-s-f
+                     x21-s-f
+                     (ir-stack-inv res-f)
+                     x29-inv-s-f
+                     (ir-sp-bound res-f)
+
+      s-mid : State
+      s-mid = proj₁ mid-result
+
+      mid-res : PairMiddleResult f g prefix suffix ctx s-f s-mid x
+      mid-res = proj₂ mid-result
+
+      -- Extract properties from PairMiddleResult
+      star-mid : Star prog s-f s-mid
+      star-mid = PairMiddleResult.mid-star mid-res
+
+      mid-halted : halted s-mid ≡ false
+      mid-halted = PairMiddleResult.mid-halted mid-res
+
+      mid-pc : pc s-mid ≡ length prefix +ℕ 5 +ℕ compile-length f
+      mid-pc = trans (PairMiddleResult.mid-pc mid-res) (pair-len-prefix-g ctx)
+
+      mid-x0 : readReg (regs s-mid) x0 ≡ encode x
+      mid-x0 = PairMiddleResult.mid-x0 mid-res
+
+      mid-x20 : readReg (regs s-mid) x20 ≡ readReg (regs s-f) x20
+      mid-x20 = PairMiddleResult.mid-x20 mid-res
+
+      mid-x21 : readReg (regs s-mid) x21 ≡ readReg (regs s-f) x21
+      mid-x21 = PairMiddleResult.mid-x21 mid-res
+
+      mid-x29 : readReg (regs s-mid) x29 ≡ readReg (regs s-f) x29
+      mid-x29 = PairMiddleResult.mid-x29 mid-res
+
+      mid-x30 : readReg (regs s-mid) x30 ≡ readReg (regs s-f) x30
+      mid-x30 = PairMiddleResult.mid-x30 mid-res
+
+      mid-sp : readSP (regs s-mid) ≡ readSP (regs s-f)
+      mid-sp = PairMiddleResult.mid-sp mid-res
+
+      mid-stack-inv : StackInvariant s-mid
+      mid-stack-inv = PairMiddleResult.mid-stack-inv mid-res
+
+      mid-x29-inv : X29Invariant s-mid
+      mid-x29-inv = PairMiddleResult.mid-x29-inv mid-res
+
+      mid-sp>16 : readSP (regs s-mid) > 16
+      mid-sp>16 = PairMiddleResult.mid-sp>16 mid-res
+
+      mid-mem-fst : readMem (memory s-mid) new-sp ≡ just (encode (eval f x))
+      mid-mem-fst = PairMiddleResult.mid-mem-fst mid-res
 
       ------------------------------------------------------------------------
       -- Phase 4: Execute g recursively

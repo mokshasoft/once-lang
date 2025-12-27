@@ -18,18 +18,35 @@ open Once.Backend.AArch64.Semantics.State
 open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation
-  using (encode; encode-pair-construct; encodedMemory)
+  using (encode; encode-pair-construct; encodedMemory;
+         execInstr-sub-sp; execInstr-mov-from-sp; execInstr-mov-reg; execInstr-str;
+         step-instr; readReg-writeSP; readSP-writeReg; readReg-writeReg-same;
+         readReg-writeReg-x0-x20; readReg-writeReg-x0-x21;
+         readReg-writeReg-x0-x29; readReg-writeReg-x0-x30;
+         readReg-writeReg-x20-x0; readReg-writeReg-x20-x21;
+         readReg-writeReg-x20-x29; readReg-writeReg-x20-x30;
+         readReg-writeReg-x21-x0; readReg-writeReg-x21-x20;
+         readReg-writeReg-x21-x29; readReg-writeReg-x21-x30;
+         readMem-writeMem-same; readMem-writeMem-diff-8)
 open import Once.Backend.AArch64.Correct.CompileLength
   using (compile-length-correct)
+open import Once.Backend.AArch64.Correct.FetchStep
+  using (fetch-append-skip)
+open import Once.Backend.Common.Fetch
+  using (fetch-append-right)
+open import Once.Backend.AArch64.Correct.Star
+  using (Star; refl*; step*; star-single; star-trans)
+open import Once.Backend.AArch64.Correct.StackInvariant
+  using (StackInvariant; X29Invariant)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-identityʳ)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -356,8 +373,8 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
                        (ctx : PairContext f g prefix suffix)
                        (s s-after : State) (x : ⟦ C ⟧) : Set where
   field
-    -- Execution reached s-after
-    setup-exec : exec 3 (prog ctx) s ≡ just s-after
+    -- Star proof from s to s-after
+    setup-star : Star (prog ctx) s s-after
 
     -- Not halted
     setup-halted : halted s-after ≡ false
@@ -374,22 +391,39 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     -- x21 holds pair pointer (sp after allocation)
     setup-x21 : readReg (regs s-after) x21 ≡ sp₁ ctx
 
+    -- x29, x30 preserved
+    setup-x29 : readReg (regs s-after) x29 ≡ readReg (regs s) x29
+    setup-x30 : readReg (regs s-after) x30 ≡ readReg (regs s) x30
+
+    -- SP after allocation
+    setup-sp : readSP (regs s-after) ≡ sp₁ ctx
+
+    -- Memory preserved at x29, x29+8
+    setup-mem-x29 : readMem (memory s-after) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    setup-mem-x29+8 : readMem (memory s-after) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants preserved
+    setup-stack-inv : StackInvariant s-after
+    setup-x29-inv : X29Invariant s-after
+    setup-sp>16 : readSP (regs s-after) > 16
+
 open PairSetupResult public
 
--- | Result after middle phase (after f execution + store + restore)
--- Run f, then: str x0, [x21] ; mov x0, x20
+-- | Result after middle phase (2 instructions after f execution)
+-- str x0 [x21] ; mov x0 x20
+-- Note: s-f is state after f execution, s-after is state after middle phase
 record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program)
                         (ctx : PairContext f g prefix suffix)
-                        (s-setup s-after : State) (x : ⟦ C ⟧) : Set where
+                        (s-f s-after : State) (x : ⟦ C ⟧) : Set where
   field
-    -- Execution from s-setup to s-after
-    mid-exec : exec (len-f ctx +ℕ 2) (prog ctx) s-setup ≡ just s-after
+    -- Star proof from s-f to s-after
+    mid-star : Star (prog ctx) s-f s-after
 
     -- Not halted
     mid-halted : halted s-after ≡ false
 
-    -- PC at correct offset
+    -- PC at correct offset (prefix + 3 + len-f + 2 = prefix + 5 + len-f)
     mid-pc : pc s-after ≡ length (prefix-g ctx)
 
     -- x0 restored to input for g
@@ -398,8 +432,23 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     -- Memory at pair.fst contains f result
     mid-mem-fst : readMem (memory s-after) (sp₁ ctx) ≡ just (encode (eval f x))
 
-    -- x21 still holds pair pointer
-    mid-x21 : readReg (regs s-after) x21 ≡ sp₁ ctx
+    -- Register preservation
+    mid-x20 : readReg (regs s-after) x20 ≡ readReg (regs s-f) x20
+    mid-x21 : readReg (regs s-after) x21 ≡ readReg (regs s-f) x21
+    mid-x29 : readReg (regs s-after) x29 ≡ readReg (regs s-f) x29
+    mid-x30 : readReg (regs s-after) x30 ≡ readReg (regs s-f) x30
+    mid-sp : readSP (regs s-after) ≡ readSP (regs s-f)
+
+    -- Memory preservation for frame
+    mid-mem-x29 : readMem (memory s-after) (readReg (regs s-f) x29)
+                ≡ readMem (memory s-f) (readReg (regs s-f) x29)
+    mid-mem-x29+8 : readMem (memory s-after) (readReg (regs s-f) x29 +ℕ 8)
+                  ≡ readMem (memory s-f) (readReg (regs s-f) x29 +ℕ 8)
+
+    -- Invariants preserved
+    mid-stack-inv : StackInvariant s-after
+    mid-x29-inv : X29Invariant s-after
+    mid-sp>16 : readSP (regs s-after) > 16
 
 open PairMiddleResult public
 
@@ -438,3 +487,429 @@ len-prefix-f-eq : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                   let ctx = mkPairContext f g prefix suffix s
                   in length (prefix-f ctx) ≡ length prefix +ℕ 3
 len-prefix-f-eq f g prefix suffix s = length-++ prefix (sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ [])
+
+------------------------------------------------------------------------
+-- Setup Phase Execution
+--
+-- Executes the 3 setup instructions and produces a PairSetupResult.
+-- Instructions: sub-sp 16 ; mov-from-sp x21 ; mov x20, x0
+------------------------------------------------------------------------
+
+-- | Execute the setup phase for pair
+-- This is a helper that runs outside the mutual block to avoid
+-- slow type-checking in MutualIR.agda
+exec-pair-setup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+                  (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) x0 ≡ encode x →
+  StackInvariant s →
+  X29Invariant s →
+  readSP (regs s) > 16 →
+  let ctx = mkPairContext f g prefix suffix s
+  in ∃[ s-after ] PairSetupResult f g prefix suffix ctx s s-after x
+exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  s3 , record
+    { setup-star = star-proof
+    ; setup-halted = h3
+    ; setup-pc = pc3
+    ; setup-x0 = x0-s3
+    ; setup-x20 = x20-s3
+    ; setup-x21 = x21-s3
+    ; setup-x29 = x29-s3
+    ; setup-x30 = x30-s3
+    ; setup-sp = sp-s3
+    ; setup-mem-x29 = mem-x29-s3
+    ; setup-mem-x29+8 = mem-x29+8-s3
+    ; setup-stack-inv = stack-inv-s3
+    ; setup-x29-inv = x29-inv-s3
+    ; setup-sp>16 = sp>16-s3
+    }
+  where
+    ctx = mkPairContext f g prefix suffix s
+    the-prog = prog ctx
+    new-sp = sp₁ ctx  -- = readSP (regs s) ∸ 16
+    orig-x0 = readReg (regs s) x0
+
+    -- The 3 setup instructions
+    i0 = sub-sp 16
+    i1 = mov-from-sp x21
+    i2 = mov x20 (reg x0)
+
+    -- Intermediate states
+    -- After sub-sp 16: SP = new-sp, PC = pc+1
+    s1 : State
+    s1 = record s { regs = writeSP (regs s) new-sp ; pc = pc s +ℕ 1 }
+
+    -- After mov-from-sp x21: x21 = new-sp, PC = pc+2
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) x21 new-sp ; pc = pc s1 +ℕ 1 }
+
+    -- After mov x20 (reg x0): x20 = orig-x0, PC = pc+3
+    s3 : State
+    s3 = record s2 { regs = writeReg (regs s2) x20 orig-x0 ; pc = pc s2 +ℕ 1 }
+
+    -- Fetch lemmas using fetch-append-right directly
+    -- the-prog = prefix ++ (i0 ∷ i1 ∷ i2 ∷ inner-pair ctx ++ suffix)
+    -- fetch-append-right: fetch (xs ++ ys) (length xs +ℕ n) ≡ fetch ys n
+    the-suffix = i0 ∷ i1 ∷ i2 ∷ inner-pair ctx ++ suffix
+
+    fetch0 : fetch the-prog (length prefix) ≡ just i0
+    fetch0 = subst (λ n → fetch the-prog n ≡ just i0)
+                   (+-identityʳ (length prefix))
+                   (fetch-append-right prefix the-suffix 0)
+
+    fetch1 : fetch the-prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = fetch-append-right prefix the-suffix 1
+
+    fetch2 : fetch the-prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = fetch-append-right prefix the-suffix 2
+
+    -- Step proofs
+    step0 : step the-prog s ≡ just s1
+    step0 = step-instr the-prog s s1 i0 h-false
+              (subst (λ n → fetch the-prog n ≡ just i0) (sym pc-eq) fetch0)
+              (execInstr-sub-sp the-prog s 16)
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ length prefix +ℕ 1
+    pc1 = cong (_+ℕ 1) pc-eq
+
+    step1 : step the-prog s1 ≡ just s2
+    step1 = step-instr the-prog s1 s2 i1 h1
+              (subst (λ n → fetch the-prog n ≡ just i1) (sym pc1) fetch1)
+              (execInstr-mov-from-sp the-prog s1 x21)
+
+    h2 : halted s2 ≡ false
+    h2 = h1
+
+    pc2 : pc s2 ≡ length prefix +ℕ 2
+    pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+    -- For step2, we need readOperand s2 (reg x0) = orig-x0
+    -- x0 in s2 is unchanged from s (only SP and x21 changed)
+    x0-s2 : readReg (regs s2) x0 ≡ orig-x0
+    x0-s2 = trans (readReg-writeReg-x21-x0 (regs s1) new-sp)
+                  (readReg-writeSP (regs s) x0 new-sp)
+
+    step2 : step the-prog s2 ≡ just s3
+    step2 = step-instr the-prog s2 s3 i2 h2
+              (subst (λ n → fetch the-prog n ≡ just i2) (sym pc2) fetch2)
+              (execInstr-mov-reg the-prog s2 x20 x0)
+
+    -- Star proof
+    star01 : Star the-prog s s1
+    star01 = star-single h-false step0
+    star12 : Star the-prog s1 s2
+    star12 = star-single h1 step1
+    star23 : Star the-prog s2 s3
+    star23 = star-single h2 step2
+    star-proof : Star the-prog s s3
+    star-proof = star-trans (star-trans star01 star12) star23
+
+    -- Final state properties
+    h3 : halted s3 ≡ false
+    h3 = h2
+
+    pc3 : pc s3 ≡ length (prefix-f ctx)
+    pc3 = trans (cong (_+ℕ 1) pc2)
+                (trans (+-assoc (length prefix) 2 1)
+                       (sym (len-prefix-f ctx)))
+
+    -- x0 in s3: unchanged through all 3 instructions (only SP, x21, x20 changed)
+    x0-s3 : readReg (regs s3) x0 ≡ encode x
+    x0-s3 = trans (readReg-writeReg-x20-x0 (regs s2) orig-x0)
+                  (trans x0-s2 x0-eq)
+
+    -- x20 in s3: was just written
+    x20-s3 : readReg (regs s3) x20 ≡ encode x
+    x20-s3 = trans (readReg-writeReg-same (regs s2) x20 orig-x0) x0-eq
+
+    -- x21 in s3: preserved from s2
+    x21-s3 : readReg (regs s3) x21 ≡ sp₁ ctx
+    x21-s3 = trans (readReg-writeReg-x20-x21 (regs s2) orig-x0)
+                   (readReg-writeReg-same (regs s1) x21 new-sp)
+
+    -- x29, x30 preserved (callee-saved, not modified by these instructions)
+    x29-s3 : readReg (regs s3) x29 ≡ readReg (regs s) x29
+    x29-s3 = trans (readReg-writeReg-x20-x29 (regs s2) orig-x0)
+                   (trans (readReg-writeReg-x21-x29 (regs s1) new-sp)
+                          (readReg-writeSP (regs s) x29 new-sp))
+
+    x30-s3 : readReg (regs s3) x30 ≡ readReg (regs s) x30
+    x30-s3 = trans (readReg-writeReg-x20-x30 (regs s2) orig-x0)
+                   (trans (readReg-writeReg-x21-x30 (regs s1) new-sp)
+                          (readReg-writeSP (regs s) x30 new-sp))
+
+    -- SP in s3: unchanged from s1 (mov-from-sp and mov don't change SP)
+    sp-s3 : readSP (regs s3) ≡ sp₁ ctx
+    sp-s3 = refl  -- SP not changed after s1
+
+    -- Memory preservation (no memory writes in setup)
+    mem-x29-s3 : readMem (memory s3) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    mem-x29-s3 = refl  -- Memory unchanged
+
+    mem-x29+8-s3 : readMem (memory s3) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+    mem-x29+8-s3 = refl  -- Memory unchanged
+
+    -- Invariants - POSTULATED for now (need invariant preservation lemmas)
+    postulate
+      stack-inv-s3 : StackInvariant s3
+      x29-inv-s3 : X29Invariant s3
+      sp>16-s3 : readSP (regs s3) > 16
+
+------------------------------------------------------------------------
+-- Middle Phase Execution
+--
+-- Executes the 2 middle instructions after f and produces a PairMiddleResult.
+-- Instructions: str x0 [x21] ; mov x0 x20
+------------------------------------------------------------------------
+
+-- | Execute the middle phase for pair
+-- After executing f, we store f's result and restore input for g.
+-- Preconditions from state s-f (after f):
+--   - x0 contains encode (eval f x) (f's result)
+--   - x20 contains encode x (saved input from setup)
+--   - x21 contains new-sp (pair pointer from setup)
+--   - pc = length prefix + 3 + compile-length f
+exec-pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+                   (prefix suffix : Program) (x : ⟦ C ⟧) (s-init s-f : State) →
+  let ctx = mkPairContext f g prefix suffix s-init
+  in halted s-f ≡ false →
+     pc s-f ≡ length (prefix-f ctx) +ℕ compile-length f →
+     readReg (regs s-f) x0 ≡ encode (eval f x) →
+     readReg (regs s-f) x20 ≡ encode x →
+     readReg (regs s-f) x21 ≡ sp₁ ctx →
+     StackInvariant s-f →
+     X29Invariant s-f →
+     readSP (regs s-f) > 16 →
+     ∃[ s-mid ] PairMiddleResult f g prefix suffix ctx s-f s-mid x
+exec-pair-middle {A} {B} {C} f g prefix suffix x s-init s-f h-false pc-eq x0-eq x20-eq x21-eq stack-inv x29-inv sp>16 =
+  s2 , record
+    { mid-star = star-proof
+    ; mid-halted = h2
+    ; mid-pc = pc2
+    ; mid-x0 = x0-s2
+    ; mid-mem-fst = mem-fst-s2
+    ; mid-x20 = x20-s2
+    ; mid-x21 = x21-s2
+    ; mid-x29 = x29-s2
+    ; mid-x30 = x30-s2
+    ; mid-sp = sp-s2
+    ; mid-mem-x29 = mem-x29-s2
+    ; mid-mem-x29+8 = mem-x29+8-s2
+    ; mid-stack-inv = stack-inv-s2
+    ; mid-x29-inv = x29-inv-s2
+    ; mid-sp>16 = sp>16-s2
+    }
+  where
+    ctx = mkPairContext f g prefix suffix s-init
+    the-prog = prog ctx
+    new-sp = sp₁ ctx
+
+    -- The 2 middle instructions
+    i0 = str x0 (base x21)
+    i1 = mov x0 (reg x20)
+
+    -- Current x0 value (f's result)
+    f-result = readReg (regs s-f) x0
+
+    -- State after str x0 [x21]: memory at x21 gets f's result
+    s1 : State
+    s1 = record s-f { memory = writeMem (memory s-f) (readReg (regs s-f) x21) f-result
+                    ; pc = pc s-f +ℕ 1 }
+
+    -- State after mov x0 x20: x0 gets x20's value (encode x)
+    s2 : State
+    s2 = record s1 { regs = writeReg (regs s1) x0 (readReg (regs s-f) x20)
+                   ; pc = pc s1 +ℕ 1 }
+
+    -- Compute suffix for fetch
+    -- prog = prefix ++ setup ++ code-f ++ [str, mov] ++ code-g ++ final ++ suffix
+    -- At pc = length prefix + 3 + len-f, we're at the str instruction
+
+    -- PC in terms of length prefix-f + compile-length f
+    pc-offset : pc s-f ≡ length prefix +ℕ 3 +ℕ compile-length f
+    pc-offset = trans pc-eq (cong (_+ℕ compile-length f) (len-prefix-f ctx))
+
+    -- The middle instructions and rest
+    mid-suffix = i0 ∷ i1 ∷ compile-aarch64 g ++ str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ suffix
+
+    -- The prefix up to the middle phase
+    mid-prefix = prefix ++ sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ compile-aarch64 f
+
+    -- Program equality: the-prog ≡ mid-prefix ++ mid-suffix
+    -- Need to prove this via ++-assoc manipulations
+    prog-eq-mid : the-prog ≡ mid-prefix ++ mid-suffix
+    prog-eq-mid = prog-eq-mid-proof
+      where
+        -- compile-aarch64 ⟨ f , g ⟩ structure
+        pair-code = compile-aarch64 ⟨ f , g ⟩
+
+        postulate
+          prog-eq-mid-proof : the-prog ≡ mid-prefix ++ mid-suffix
+
+    -- Length of mid-prefix
+    len-mid-prefix : length mid-prefix ≡ length prefix +ℕ 3 +ℕ compile-length f
+    len-mid-prefix = begin
+      length mid-prefix
+        ≡⟨ length-++ prefix (sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ compile-aarch64 f) ⟩
+      length prefix +ℕ length (sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ compile-aarch64 f)
+        ≡⟨ cong (length prefix +ℕ_) (cong (3 +ℕ_) (compile-length-correct f)) ⟩
+      length prefix +ℕ (3 +ℕ compile-length f)
+        ≡⟨ sym (+-assoc (length prefix) 3 (compile-length f)) ⟩
+      length prefix +ℕ 3 +ℕ compile-length f
+      ∎
+
+    -- Fetch lemmas using program equality
+    -- fetch-append-right gives: fetch (xs ++ ys) (length xs + n) ≡ fetch ys n
+    fetch0-base : fetch (mid-prefix ++ mid-suffix) (length mid-prefix +ℕ 0) ≡ just i0
+    fetch0-base = fetch-append-right mid-prefix mid-suffix 0
+
+    fetch0-at-len : fetch (mid-prefix ++ mid-suffix) (length mid-prefix) ≡ just i0
+    fetch0-at-len = subst (λ n → fetch (mid-prefix ++ mid-suffix) n ≡ just i0)
+                          (+-identityʳ (length mid-prefix)) fetch0-base
+
+    fetch0-at-offset : fetch (mid-prefix ++ mid-suffix) (length prefix +ℕ 3 +ℕ compile-length f) ≡ just i0
+    fetch0-at-offset = subst (λ n → fetch (mid-prefix ++ mid-suffix) n ≡ just i0)
+                             len-mid-prefix fetch0-at-len
+
+    fetch0-prog : fetch the-prog (length prefix +ℕ 3 +ℕ compile-length f) ≡ just i0
+    fetch0-prog = subst (λ p → fetch p (length prefix +ℕ 3 +ℕ compile-length f) ≡ just i0)
+                        (sym prog-eq-mid) fetch0-at-offset
+
+    fetch0 : fetch the-prog (pc s-f) ≡ just i0
+    fetch0 = subst (λ n → fetch the-prog n ≡ just i0) (sym pc-offset) fetch0-prog
+
+    fetch1-base : fetch (mid-prefix ++ mid-suffix) (length mid-prefix +ℕ 1) ≡ just i1
+    fetch1-base = fetch-append-right mid-prefix mid-suffix 1
+
+    fetch1-at-offset : fetch (mid-prefix ++ mid-suffix) (length prefix +ℕ 3 +ℕ compile-length f +ℕ 1) ≡ just i1
+    fetch1-at-offset = subst (λ n → fetch (mid-prefix ++ mid-suffix) (n +ℕ 1) ≡ just i1)
+                             len-mid-prefix fetch1-base
+
+    fetch1-prog : fetch the-prog (length prefix +ℕ 3 +ℕ compile-length f +ℕ 1) ≡ just i1
+    fetch1-prog = subst (λ p → fetch p (length prefix +ℕ 3 +ℕ compile-length f +ℕ 1) ≡ just i1)
+                        (sym prog-eq-mid) fetch1-at-offset
+
+    fetch1 : fetch the-prog (pc s-f +ℕ 1) ≡ just i1
+    fetch1 = subst (λ n → fetch the-prog (n +ℕ 1) ≡ just i1) (sym pc-offset) fetch1-prog
+
+    -- Step proofs
+    step0 : step the-prog s-f ≡ just s1
+    step0 = step-instr the-prog s-f s1 i0 h-false fetch0 (execInstr-str the-prog s-f x0 (base x21))
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    pc1 : pc s1 ≡ pc s-f +ℕ 1
+    pc1 = refl
+
+    step1 : step the-prog s1 ≡ just s2
+    step1 = step-instr the-prog s1 s2 i1 h1
+              (subst (λ n → fetch the-prog n ≡ just i1) (sym pc1) fetch1)
+              (execInstr-mov-reg the-prog s1 x0 x20)
+
+    -- Star proof
+    star01 : Star the-prog s-f s1
+    star01 = star-single h-false step0
+    star12 : Star the-prog s1 s2
+    star12 = star-single h1 step1
+    star-proof : Star the-prog s-f s2
+    star-proof = star-trans star01 star12
+
+    -- Final state properties
+    h2 : halted s2 ≡ false
+    h2 = h1
+
+    -- PC: pc s-f + 2 = length prefix + 3 + len-f + 2 = length prefix + 5 + len-f = length prefix-g
+    pc2 : pc s2 ≡ length (prefix-g ctx)
+    pc2 = begin
+      pc s2
+        ≡⟨ refl ⟩
+      pc s1 +ℕ 1
+        ≡⟨ cong (_+ℕ 1) pc1 ⟩
+      (pc s-f +ℕ 1) +ℕ 1
+        ≡⟨ +-assoc (pc s-f) 1 1 ⟩
+      pc s-f +ℕ 2
+        ≡⟨ cong (_+ℕ 2) pc-eq ⟩
+      (length (prefix-f ctx) +ℕ compile-length f) +ℕ 2
+        ≡⟨ cong (λ n → (n +ℕ compile-length f) +ℕ 2) (len-prefix-f ctx) ⟩
+      ((length prefix +ℕ 3) +ℕ compile-length f) +ℕ 2
+        ≡⟨ +-assoc (length prefix +ℕ 3) (compile-length f) 2 ⟩
+      (length prefix +ℕ 3) +ℕ (compile-length f +ℕ 2)
+        ≡⟨ cong ((length prefix +ℕ 3) +ℕ_) (+-comm (compile-length f) 2) ⟩
+      (length prefix +ℕ 3) +ℕ (2 +ℕ compile-length f)
+        ≡⟨ sym (+-assoc (length prefix +ℕ 3) 2 (compile-length f)) ⟩
+      ((length prefix +ℕ 3) +ℕ 2) +ℕ compile-length f
+        ≡⟨ cong (_+ℕ compile-length f) (+-assoc (length prefix) 3 2) ⟩
+      (length prefix +ℕ 5) +ℕ compile-length f
+        ≡⟨ refl ⟩
+      length prefix +ℕ 5 +ℕ compile-length f
+        ≡⟨ sym (len-prefix-g ctx) ⟩
+      length (prefix-g ctx)
+      ∎
+
+    -- x0 in s2: was just written with x20's value from s-f
+    -- But writeReg changes regs of s1, not s-f. Need to trace x20 through s1.
+    -- In s1, only memory changed, regs unchanged from s-f.
+    x20-s1 : readReg (regs s1) x20 ≡ readReg (regs s-f) x20
+    x20-s1 = refl  -- Memory write doesn't change regs
+
+    x0-s2 : readReg (regs s2) x0 ≡ encode x
+    x0-s2 = trans (readReg-writeReg-same (regs s1) x0 (readReg (regs s-f) x20))
+                  (trans x20-s1 x20-eq)
+
+    -- Memory at pair.fst (new-sp) = f's result
+    -- s1's memory has writeMem at x21, which is new-sp
+    -- s2's memory is unchanged from s1 (mov doesn't write memory)
+    addr-is-new-sp : readReg (regs s-f) x21 ≡ new-sp
+    addr-is-new-sp = x21-eq
+
+    -- memory s1 has write at x21 (which equals new-sp by x21-eq)
+    -- Reading at new-sp after writing at new-sp gives just f-result
+    mem-s1-fst : readMem (memory s1) new-sp ≡ just f-result
+    mem-s1-fst = subst (λ addr → readMem (writeMem (memory s-f) addr f-result) new-sp ≡ just f-result)
+                       (sym x21-eq)
+                       (readMem-writeMem-same (memory s-f) new-sp f-result)
+
+    mem-s2-is-s1 : memory s2 ≡ memory s1
+    mem-s2-is-s1 = refl  -- mov doesn't write memory
+
+    mem-fst-s2 : readMem (memory s2) (sp₁ ctx) ≡ just (encode (eval f x))
+    mem-fst-s2 = trans mem-s1-fst (cong just x0-eq)
+
+    -- Register preservation
+    x20-s2 : readReg (regs s2) x20 ≡ readReg (regs s-f) x20
+    x20-s2 = trans (readReg-writeReg-x0-x20 (regs s1) (readReg (regs s-f) x20)) x20-s1
+
+    x21-s2 : readReg (regs s2) x21 ≡ readReg (regs s-f) x21
+    x21-s2 = trans (readReg-writeReg-x0-x21 (regs s1) (readReg (regs s-f) x20)) refl
+
+    x29-s2 : readReg (regs s2) x29 ≡ readReg (regs s-f) x29
+    x29-s2 = trans (readReg-writeReg-x0-x29 (regs s1) (readReg (regs s-f) x20)) refl
+
+    x30-s2 : readReg (regs s2) x30 ≡ readReg (regs s-f) x30
+    x30-s2 = trans (readReg-writeReg-x0-x30 (regs s1) (readReg (regs s-f) x20)) refl
+
+    sp-s2 : readSP (regs s2) ≡ readSP (regs s-f)
+    sp-s2 = trans (readSP-writeReg (regs s1) x0 (readReg (regs s-f) x20)) refl
+
+    -- Memory preservation at x29, x29+8
+    -- s1 writes to x21 (new-sp), s2 doesn't write memory
+    -- Need to prove x29 address ≠ new-sp
+    mem-x29-s2 : readMem (memory s2) (readReg (regs s-f) x29) ≡ readMem (memory s-f) (readReg (regs s-f) x29)
+    mem-x29-s2 = postulate-mem-x29  -- Needs disjointness proof
+      where postulate postulate-mem-x29 : readMem (memory s2) (readReg (regs s-f) x29) ≡ readMem (memory s-f) (readReg (regs s-f) x29)
+
+    mem-x29+8-s2 : readMem (memory s2) (readReg (regs s-f) x29 +ℕ 8) ≡ readMem (memory s-f) (readReg (regs s-f) x29 +ℕ 8)
+    mem-x29+8-s2 = postulate-mem-x29+8  -- Needs disjointness proof
+      where postulate postulate-mem-x29+8 : readMem (memory s2) (readReg (regs s-f) x29 +ℕ 8) ≡ readMem (memory s-f) (readReg (regs s-f) x29 +ℕ 8)
+
+    -- Invariants - POSTULATED for now
+    postulate
+      stack-inv-s2 : StackInvariant s2
+      x29-inv-s2 : X29Invariant s2
+      sp>16-s2 : readSP (regs s2) > 16
