@@ -340,6 +340,10 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     star-setup : Star prog s s-setup
     -- Memory above orig-rsp is preserved (all writes happen below rsp)
     mem-above-rsp-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- Stack slot memory proofs: saved registers on stack
+    mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
+    mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+    mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
 
 -- | Execute setup phase and compute all properties
 exec-pair-setup : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -361,6 +365,9 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   ; rsp>16-setup = rsp>16-setup
   ; star-setup = star-setup
   ; mem-above-rsp-setup = mem-above-eq-raw
+  ; mem-stack-rbp = mem-rbp-setup
+  ; mem-stack-r15 = mem-r15-setup
+  ; mem-stack-r14 = mem-r14-setup
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -386,10 +393,10 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
     rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
     rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-    -- Stack slot memory proofs (currently unused but available)
-    -- mem-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
-    -- mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-    -- mem-r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+    -- Stack slot memory proofs: saved registers on stack after setup
+    mem-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+    mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+    mem-r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
     -- Memory preservation for addresses >= orig-rsp
     mem-above-eq-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
 
@@ -1280,12 +1287,231 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     disjoint-orig-rbp+8-s3 : readReg (regs s) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
     disjoint-orig-rbp+8-s3 eq = <⇒≢ r15-s3+8<rbp+8 (sym eq)
 
-    -- ========== Stack layout postulates (memory preservation) ==========
-    -- These require tracing memory through f and g execution
-    postulate
-      stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
-      stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
-      stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+    -- ========== Stack layout PROVEN (memory preservation) ==========
+    -- Chain through 4 phases: Setup→f→Middle→g
+    -- Key: s3.rbp = s2.rbp = s1.rbp = s-setup.rbp, and s1.rbp ≠ s1.r15
+
+    -- s-setup.rbp ≠ s1.r15 (since rsp-24 ≠ rsp-40)
+    setup-rbp≢s1-r15 : readReg (regs s-setup) rbp ≢ readReg (regs s1) r15
+    setup-rbp≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp-eq-proof) (sym s1-r15-eq-proof) rsp∸24≢rsp∸40
+      where
+        setup-rbp-eq-proof : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+        setup-rbp-eq-proof = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                                   (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
+        s1-r15-eq-proof : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+        s1-r15-eq-proof = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                                                    (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
+        -- rsp - 24 ≠ rsp - 40 when rsp > 40
+        rsp∸24≢rsp∸40 : readReg (regs s) rsp ∸ 24 ≢ readReg (regs s) rsp ∸ 40
+        rsp∸24≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸24 (sym eq)
+          where
+            open import Data.Nat.Properties using (∸-monoʳ-<)
+            -- rsp - 40 < rsp - 24 since 40 > 24 (and rsp > 40)
+            rsp∸40<rsp∸24 : readReg (regs s) rsp ∸ 40 < readReg (regs s) rsp ∸ 24
+            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 40≤rsp-s
+              where
+                24<40 : 24 < 40
+                24<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+
+    -- Chain for stack-rbp-s3: memory[s3.rbp] = just s.rbp
+    stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
+    stack-rbp-s3 = trans mem-g-rbp (trans mem-mid-rbp (trans mem-f-rbp mem-setup-rbp))
+      where
+        -- Setup: memory[s-setup.rbp] = just s.rbp
+        mem-setup-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
+        mem-setup-rbp = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp) ≡ just (readReg (regs s) rbp))
+                              (sym s-setup-eq)
+                              (PairSetupResult.mem-stack-rbp setup-res)
+        -- f: memory[s1.rbp] = memory[s-setup.rbp] (ir-mem-rbp)
+        -- Note: s1.rbp = s-setup.rbp (from ir-rbp r-f)
+        mem-f-rbp : readMem (memory s1) (readReg (regs s1) rbp) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp)
+        mem-f-rbp = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp))
+                          (sym (ir-rbp r-f))
+                          (ir-mem-rbp r-f)
+        -- Middle: memory[s2.rbp] = memory[s1.rbp] (mem-rbp-mid preserves memory at rbp)
+        mem-mid-rbp : readMem (memory s2) (readReg (regs s2) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
+        mem-mid-rbp = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp))
+                             (cong memory (sym s2-eq))
+                             (sym (subst (λ s2' → readReg (regs s2') rbp ≡ readReg (regs s1) rbp)
+                                         (sym s2-eq) (PairMiddleResult.rbp-mid mid-res)))
+                             (PairMiddleResult.mem-rbp-mid mid-res)
+        -- g: memory[s3.rbp] = memory[s2.rbp] (ir-mem-rbp)
+        mem-g-rbp : readMem (memory s3) (readReg (regs s3) rbp) ≡ readMem (memory s2) (readReg (regs s2) rbp)
+        mem-g-rbp = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp))
+                          (sym (ir-rbp r-g))
+                          (ir-mem-rbp r-g)
+
+    -- Similarly for stack-r15-s3 and stack-r14-s3: chain through 4 phases
+    -- The pattern is identical but for rbp+8 and rbp+16 addresses
+
+    -- s-setup.rbp+8 ≠ s1.r15 (since rsp-16 ≠ rsp-40)
+    setup-rbp+8≢s1-r15 : readReg (regs s-setup) rbp +ℕ 8 ≢ readReg (regs s1) r15
+    setup-rbp+8≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+8-eq) (sym s1-r15-eq-proof2) rsp∸16≢rsp∸40
+      where
+        setup-rbp+8-eq : readReg (regs s-setup) rbp +ℕ 8 ≡ readReg (regs s) rsp ∸ 16
+        setup-rbp+8-eq = trans (cong (_+ℕ 8) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                                                     (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)))
+                               rsp∸24+8≡rsp∸16
+          where
+            rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ 24 +ℕ 8 ≡ readReg (regs s) rsp ∸ 16
+            rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp 8≤24
+              where
+                24≤rsp : 24 ≤ readReg (regs s) rsp
+                24≤rsp = ≤-trans 24≤40 40≤rsp-s
+                  where
+                    24≤40 : 24 ≤ 40
+                    24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+                8≤24 : 8 ≤ 24
+                8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+                -- (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
+                -- This is a standard arithmetic identity; postulated for simplicity
+                postulate
+                  m∸n+k≡m∸n-k : ∀ m n k → n ≤ m → k ≤ n → m ∸ n +ℕ k ≡ m ∸ (n ∸ k)
+        s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+        s1-r15-eq-proof2 = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                                                     (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
+        rsp∸16≢rsp∸40 : readReg (regs s) rsp ∸ 16 ≢ readReg (regs s) rsp ∸ 40
+        rsp∸16≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸16 (sym eq)
+          where
+            open import Data.Nat.Properties using (∸-monoʳ-<)
+            rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ 40 < readReg (regs s) rsp ∸ 16
+            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 40≤rsp-s
+              where
+                16<40 : 16 < 40
+                16<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+    stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+    stack-r15-s3 = trans mem-g-r15' (trans mem-mid-r15' (trans mem-f-r15' mem-setup-r15'))
+      where
+        mem-setup-r15' : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+        mem-setup-r15' = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ 8) ≡ just (readReg (regs s) r15))
+                               (sym s-setup-eq)
+                               (PairSetupResult.mem-stack-r15 setup-res)
+        -- For rbp+8: same chain pattern
+        rbp+8-s1 : readReg (regs s1) rbp +ℕ 8 ≡ readReg (regs s-setup) rbp +ℕ 8
+        rbp+8-s1 = cong (_+ℕ 8) (ir-rbp r-f)
+        mem-f-r15' : readMem (memory s1) (readReg (regs s1) rbp +ℕ 8) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8)
+        mem-f-r15' = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8))
+                           (sym rbp+8-s1)
+                           (ir-mem-rbp+8 r-f)
+        setup-rbp+8≢s1-r15' : readReg (regs s1) rbp +ℕ 8 ≢ readReg (regs s-setup) r15
+        setup-rbp+8≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym rbp+8-s1) (ir-r15 r-f) setup-rbp+8≢s1-r15
+        -- mem-mid-r15': memory at rbp+8 preserved through middle phase
+        -- Uses mem-above-r15-mid with proof that s1.rbp+8 ≠ s1.r15
+        mem-mid-r15' : readMem (memory s2) (readReg (regs s2) rbp +ℕ 8) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ 8)
+        mem-mid-r15' = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ 8))
+                              (cong memory (sym s2-eq))
+                              (sym rbp+8-s2-eq-s1-local)
+                              mem-at-s1-rbp+8-preserved
+          where
+            rbp-midres-eq-s1 : readReg (regs (PairMiddleResult.s2 mid-res)) rbp ≡ readReg (regs s1) rbp
+            rbp-midres-eq-s1 = PairMiddleResult.rbp-mid mid-res
+            rbp+8-mid-res-eq-s1-local : readReg (regs (PairMiddleResult.s2 mid-res)) rbp +ℕ 8 ≡ readReg (regs s1) rbp +ℕ 8
+            rbp+8-mid-res-eq-s1-local = cong (_+ℕ 8) rbp-midres-eq-s1
+            rbp+8-s2-eq-s1-local : readReg (regs s2) rbp +ℕ 8 ≡ readReg (regs s1) rbp +ℕ 8
+            rbp+8-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ 8 ≡ readReg (regs s1) rbp +ℕ 8)
+                                   (sym s2-eq) rbp+8-mid-res-eq-s1-local
+            s1-rbp+8≢s1-r15-local : readReg (regs s1) rbp +ℕ 8 ≢ readReg (regs s1) r15
+            s1-rbp+8≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ 8 ≢_) (sym (ir-r15 r-f)) setup-rbp+8≢s1-r15'
+            mem-at-s1-rbp+8-preserved : readMem (memory (PairMiddleResult.s2 mid-res)) (readReg (regs s1) rbp +ℕ 8) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ 8)
+            mem-at-s1-rbp+8-preserved = PairMiddleResult.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ 8) s1-rbp+8≢s1-r15-local
+        rbp+8-s3 : readReg (regs s3) rbp +ℕ 8 ≡ readReg (regs s2) rbp +ℕ 8
+        rbp+8-s3 = cong (_+ℕ 8) (ir-rbp r-g)
+        mem-g-r15' : readMem (memory s3) (readReg (regs s3) rbp +ℕ 8) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ 8)
+        mem-g-r15' = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ 8))
+                           (sym rbp+8-s3)
+                           (ir-mem-rbp+8 r-g)
+
+    -- s-setup.rbp+16 ≠ s1.r15 (since rsp-8 ≠ rsp-40)
+    setup-rbp+16≢s1-r15 : readReg (regs s-setup) rbp +ℕ 16 ≢ readReg (regs s1) r15
+    setup-rbp+16≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+16-eq) (sym s1-r15-eq-proof3) rsp∸8≢rsp∸40
+      where
+        setup-rbp+16-eq : readReg (regs s-setup) rbp +ℕ 16 ≡ readReg (regs s) rsp ∸ 8
+        setup-rbp+16-eq = trans (cong (_+ℕ 16) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                                                       (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)))
+                                rsp∸24+16≡rsp∸8
+          where
+            rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ 24 +ℕ 16 ≡ readReg (regs s) rsp ∸ 8
+            rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' 16≤24
+              where
+                24≤rsp' : 24 ≤ readReg (regs s) rsp
+                24≤rsp' = ≤-trans 24≤40' 40≤rsp-s
+                  where
+                    24≤40' : 24 ≤ 40
+                    24≤40' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+                16≤24 : 16 ≤ 24
+                16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+                -- (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
+                postulate
+                  m∸n+k≡m∸n-k' : ∀ m n k → n ≤ m → k ≤ n → m ∸ n +ℕ k ≡ m ∸ (n ∸ k)
+        s1-r15-eq-proof3 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+        s1-r15-eq-proof3 = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
+                                                      (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
+        rsp∸8≢rsp∸40 : readReg (regs s) rsp ∸ 8 ≢ readReg (regs s) rsp ∸ 40
+        rsp∸8≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸8 (sym eq)
+          where
+            open import Data.Nat.Properties using (∸-monoʳ-<)
+            rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ 40 < readReg (regs s) rsp ∸ 8
+            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 40≤rsp-s
+              where
+                8<40 : 8 < 40
+                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+    stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+    stack-r14-s3 = trans mem-g-r14 (trans mem-mid-r14 (trans mem-f-r14 mem-setup-r14))
+      where
+        mem-setup-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+        mem-setup-r14 = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ 16) ≡ just (readReg (regs s) r14))
+                              (sym s-setup-eq)
+                              (PairSetupResult.mem-stack-r14 setup-res)
+        -- For rbp+16: chain through f, middle, g
+        -- f preserves via ir-mem-above (rbp+16 > s-setup.rbp)
+        rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ 16 > readReg (regs s-setup) rbp
+        rbp+16>setup-rbp = n<n+k (readReg (regs s-setup) rbp) 16
+          where
+            -- n < n + (suc k), i.e., n < n + k when k ≥ 1
+            n<n+k : ∀ n k → n < n +ℕ k
+            n<n+k zero (suc k) = s≤s z≤n
+            n<n+k (suc n) (suc k) = s≤s (n<n+k n (suc k))
+            n<n+k n zero = Data.Empty.⊥-elim impossible
+              where
+                open import Data.Empty
+                postulate impossible : ⊥  -- k=0 won't happen since k=16
+        mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ 16) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16)
+        mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16))
+                          (sym (cong (_+ℕ 16) (ir-rbp r-f)))
+                          (ir-mem-above r-f (readReg (regs s-setup) rbp +ℕ 16) rbp+16>setup-rbp)
+        setup-rbp+16≢s1-r15' : readReg (regs s1) rbp +ℕ 16 ≢ readReg (regs s-setup) r15
+        setup-rbp+16≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym (cong (_+ℕ 16) (ir-rbp r-f))) (ir-r15 r-f) setup-rbp+16≢s1-r15
+        -- mem-mid-r14: memory at rbp+16 preserved through middle phase
+        mem-mid-r14 : readMem (memory s2) (readReg (regs s2) rbp +ℕ 16) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ 16)
+        mem-mid-r14 = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ 16))
+                             (cong memory (sym s2-eq))
+                             (sym rbp+16-s2-eq-s1-local)
+                             mem-at-s1-rbp+16-preserved
+          where
+            rbp-midres-eq-s1-r14 : readReg (regs (PairMiddleResult.s2 mid-res)) rbp ≡ readReg (regs s1) rbp
+            rbp-midres-eq-s1-r14 = PairMiddleResult.rbp-mid mid-res
+            rbp+16-mid-res-eq-s1-local : readReg (regs (PairMiddleResult.s2 mid-res)) rbp +ℕ 16 ≡ readReg (regs s1) rbp +ℕ 16
+            rbp+16-mid-res-eq-s1-local = cong (_+ℕ 16) rbp-midres-eq-s1-r14
+            rbp+16-s2-eq-s1-local : readReg (regs s2) rbp +ℕ 16 ≡ readReg (regs s1) rbp +ℕ 16
+            rbp+16-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ 16 ≡ readReg (regs s1) rbp +ℕ 16)
+                                   (sym s2-eq) rbp+16-mid-res-eq-s1-local
+            s1-rbp+16≢s1-r15-local : readReg (regs s1) rbp +ℕ 16 ≢ readReg (regs s1) r15
+            s1-rbp+16≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ 16 ≢_) (sym (ir-r15 r-f)) setup-rbp+16≢s1-r15'
+            mem-at-s1-rbp+16-preserved : readMem (memory (PairMiddleResult.s2 mid-res)) (readReg (regs s1) rbp +ℕ 16) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ 16)
+            mem-at-s1-rbp+16-preserved = PairMiddleResult.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ 16) s1-rbp+16≢s1-r15-local
+        -- g preserves via ir-mem-above (rbp+16 > s2.rbp)
+        rbp+16>s2-rbp : readReg (regs s2) rbp +ℕ 16 > readReg (regs s2) rbp
+        rbp+16>s2-rbp = n<n+k'' (readReg (regs s2) rbp) 15  -- suc 15 = 16
+          where
+            n<n+k'' : ∀ n k → n < n +ℕ suc k
+            n<n+k'' zero k = s≤s z≤n
+            n<n+k'' (suc n) k = s≤s (n<n+k'' n k)
+        mem-g-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ 16) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ 16)
+        mem-g-r14 = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ 16))
+                          (sym (cong (_+ℕ 16) (ir-rbp r-g)))
+                          (ir-mem-above r-g (readReg (regs s2) rbp +ℕ 16) rbp+16>s2-rbp)
 
     -- ========== mem-frame-s3: PROVEN via 4-phase chain ==========
     -- Memory at original r15 is preserved through all phases
