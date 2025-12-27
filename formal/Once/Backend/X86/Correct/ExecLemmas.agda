@@ -263,14 +263,14 @@ run-id-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State)
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A} {A} id ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (id {_} {A}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode x)
 run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A} {A} id ++ suffix
+    prog = prefix ++ compile-x86 (id {_} {A}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -298,14 +298,14 @@ run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' 
 run-terminal-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A} {Unit} terminal ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (terminal {_} {A}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode {Unit} tt)
 run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A} {Unit} terminal ++ suffix
+    prog = prefix ++ compile-x86 (terminal {_} {A}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax 0
@@ -335,14 +335,14 @@ run-fold-at-offset : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : Stat
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  ∃[ s' ] (step (prefix ++ compile-x86 {F} {Fix F} fold ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (fold {_} {F}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (wrap x))
 run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {F} {Fix F} fold ++ suffix
+    prog = prefix ++ compile-x86 (fold {_} {F}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -373,14 +373,14 @@ run-unfold-at-offset : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s 
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  ∃[ s' ] (step (prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (unfold {_} {F}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
-         × readReg (regs s') rax ≡ encode (eval {Fix F} {F} unfold x))
+         × readReg (regs s') rax ≡ encode (eval unfold x))
 run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {Fix F} {F} unfold ++ suffix
+    prog = prefix ++ compile-x86 (unfold {_} {F}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -401,7 +401,7 @@ run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq ,
     pc' = cong (λ p → p +ℕ 1) pc-eq
 
     -- eval unfold x = unwrap x, encode (unwrap x) = encode x by encode-fix-unwrap
-    rax-eq : readReg (regs s') rax ≡ encode (eval {Fix F} {F} unfold x)
+    rax-eq : readReg (regs s') rax ≡ encode (eval unfold x)
     rax-eq = trans (readReg-writeReg-same (regs s) rax (readReg (regs s) rdi))
                    (trans rdi-eq (encode-fix-unwrap x))
 
@@ -413,14 +413,14 @@ run-arr-at-offset : ∀ {A B} (prefix suffix : Program) (f : ⟦ A ⇒ B ⟧) (s
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode {A ⇒ B} f →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (arr {_} {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode {Eff A B} f)
 run-arr-at-offset {A} {B} prefix suffix f s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A ⇒ B} {Eff A B} arr ++ suffix
+    prog = prefix ++ compile-x86 (arr {_} {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -452,14 +452,14 @@ run-fst-at-offset : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode (a , b) →
   readMem (memory s) (encode (a , b)) ≡ just (encode a) →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (fst {_} {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode a)
 run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+    prog = prefix ++ compile-x86 (fst {_} {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (encode a)
@@ -490,14 +490,14 @@ run-snd-at-offset : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode (a , b) →
   readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b) →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (snd {_} {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode b)
 run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+    prog = prefix ++ compile-x86 (snd {_} {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (encode b)
@@ -539,7 +539,7 @@ run-fst-at-offset-s : ∀ {A B : Type} (prefix suffix : Program)
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ addr-pair →
   readMem (memory s) addr-pair ≡ just addr-a →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {A} fst ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (fst {_} {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ addr-a)
@@ -547,7 +547,7 @@ run-fst-at-offset-s {A} {B} prefix suffix addr-pair addr-a s h-false pc-eq rdi-e
   s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A * B} {A} fst ++ suffix
+    prog = prefix ++ compile-x86 (fst {_} {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax addr-a
@@ -580,7 +580,7 @@ run-snd-at-offset-s : ∀ {A B : Type} (prefix suffix : Program)
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ addr-pair →
   readMem (memory s) (addr-pair +ℕ 8) ≡ just addr-b →
-  ∃[ s' ] (step (prefix ++ compile-x86 {A * B} {B} snd ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-x86 (snd {_} {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ addr-b)
@@ -588,7 +588,7 @@ run-snd-at-offset-s {A} {B} prefix suffix addr-pair addr-b s h-false pc-eq rdi-e
   s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 {A * B} {B} snd ++ suffix
+    prog = prefix ++ compile-x86 (snd {_} {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax addr-b
@@ -719,7 +719,7 @@ exec-five-steps n prog s s₁ s₂ s₃ s₄ s₅ step₁ h₁ step₂ h₂ step
 
 -- | compile-length is always positive (at least 1)
 -- PROVEN: By structural induction on IR. All base cases are ≥ 1.
-compile-length>0 : ∀ {A B} (ir : IR A B) → compile-length ir > 0
+compile-length>0 : ∀ {i A B} (ir : IR i A B) → compile-length ir > 0
 compile-length>0 id = s≤s z≤n
 compile-length>0 (g ∘ f) = comp-pos (compile-length f) (compile-length g)
   where

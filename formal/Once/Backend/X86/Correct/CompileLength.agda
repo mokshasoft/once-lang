@@ -35,7 +35,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 
 -- | compile-length correctly computes the length of compile-x86
 -- This is essential for proving fetch lemmas at computed positions
-compile-length-correct : ∀ {A B} (ir : IR A B) →
+compile-length-correct : ∀ {i A B} (ir : IR i A B) →
   length (compile-x86 ir) ≡ compile-length ir
 compile-length-correct id = refl
 compile-length-correct (g ∘ f) = helper

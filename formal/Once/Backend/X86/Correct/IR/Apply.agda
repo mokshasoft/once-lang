@@ -26,6 +26,7 @@
 
 module Once.Backend.X86.Correct.IR.Apply where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -105,7 +106,7 @@ open import Once.Backend.X86.Encoding using (mem-read-write)
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr : ℕ)
                    (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
   halted s ≡ false →
@@ -132,7 +133,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
                  h-false pc-eq stack-inv rsp>16 mem-cl mem-arg mem-env mem-cp =
   s5 , star-all , h5 , pc5 , rdi5 , r12-5 , r15-5 , r14-5 , rbp5 , stack-inv5 , rsp>16-5
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
     offset = length prefix
 
     -- The 5 instructions
@@ -357,7 +358,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
 -- Prove call instruction: pushes return address and jumps to code-ptr
 apply-call-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
       offset = length prefix
       ret-addr = offset +ℕ 6
   in
@@ -380,7 +381,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv rsp>16 =
   s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 6
 
@@ -476,7 +477,7 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (code-ptr env-addr : ℕ)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                     (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
@@ -491,7 +492,7 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
     readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+          × pc s' ≡ offset +ℕ compile-length (apply {_} {A} {B})
           × readReg (regs s') rax ≡ encode (semantics arg)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
@@ -501,7 +502,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                   wf h-eq pc-eq stack-inv rsp>16 (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
   s-final , star-all , h-final , pc-final , rax-final , r14-final , rbp-final , stack-inv-final , rsp>16-final
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 6
 
@@ -576,7 +577,7 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
                          (code-ptr env-addr : ℕ)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →

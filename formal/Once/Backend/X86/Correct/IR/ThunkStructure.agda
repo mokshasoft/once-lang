@@ -11,6 +11,7 @@
 
 module Once.Backend.X86.Correct.IR.ThunkStructure where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -39,7 +40,7 @@ open ≡-Reasoning
 ------------------------------------------------------------------------
 
 -- The first 6 instructions of curry (closure setup, positions 0-5)
-curry-closure-setup : ∀ {A B C} (f : IR (A * B) C) → Program
+curry-closure-setup : ∀ {i A B C} (f : IR i (A * B) C) → Program
 curry-closure-setup {A} {B} {C} f =
   let len-f = compile-length f
       -- jmp at pos 5 needs to reach end-label at pos 16+len-f
@@ -88,7 +89,7 @@ curry-thunk-setup : Program
 curry-thunk-setup = thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ thunk-i5 ∷ thunk-i6 ∷ []
 
 -- The curry tail (cleanup + ret + end label)
-curry-tail : ∀ {A B C} (f : IR (A * B) C) → Program
+curry-tail : ∀ {i A B C} (f : IR i (A * B) C) → Program
 curry-tail {A} {B} {C} f =
   let len-f = compile-length f
       end-label-pos = 16 +ℕ len-f
@@ -98,7 +99,7 @@ curry-tail {A} {B} {C} f =
 -- Curry structure theorem: compile-x86 (curry f) has the expected form
 ------------------------------------------------------------------------
 
-curry-structure : ∀ {A B C} (f : IR (A * B) C) →
+curry-structure : ∀ {i A B C} (f : IR i (A * B) C) →
   compile-x86 (curry f) ≡
   curry-closure-setup f ++ curry-thunk-setup ++ compile-x86 f ++ curry-tail f
 curry-structure f = refl
@@ -107,14 +108,14 @@ curry-structure f = refl
 -- Length lemmas
 ------------------------------------------------------------------------
 
-curry-closure-setup-length : ∀ {A B C} (f : IR (A * B) C) →
+curry-closure-setup-length : ∀ {i A B C} (f : IR i (A * B) C) →
   length (curry-closure-setup f) ≡ 6
 curry-closure-setup-length f = refl
 
 curry-thunk-setup-length : length curry-thunk-setup ≡ 7
 curry-thunk-setup-length = refl
 
-curry-tail-length : ∀ {A B C} (f : IR (A * B) C) →
+curry-tail-length : ∀ {i A B C} (f : IR i (A * B) C) →
   length (curry-tail f) ≡ 4
 curry-tail-length f = refl
 
@@ -126,7 +127,7 @@ curry-tail-length f = refl
 ------------------------------------------------------------------------
 
 -- Program equality: prog can be viewed as having the thunk at offset + 6
-thunk-prog-structure : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-thunk = prefix ++ ccs
@@ -174,12 +175,12 @@ thunk-prog-structure {A} {B} {C} f prefix suffix =
   in trans (trans step1 step2) step4
 
 -- Length of prefix up to thunk
-prefix-thunk-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-thunk-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f) ≡ length prefix +ℕ 6
 prefix-thunk-length f prefix = List-length-++ prefix
 
 -- Fetch thunk instruction i0 (label 6)
-fetch-thunk-i0 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i0 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -203,7 +204,7 @@ fetch-thunk-i0 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-thunk thunk-i0 thunk-after-i0))
 
 -- Program structure for i1: prog = (prefix ++ ccs ++ [i0]) ++ i1 ∷ rest
-thunk-prog-structure-i1 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-i1 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-i1 = prefix ++ ccs ++ thunk-i0 ∷ []
@@ -221,14 +222,14 @@ thunk-prog-structure-i1 {A} {B} {C} f prefix suffix =
       step2 = cong (_++ rest) (++-assoc prefix ccs (thunk-i0 ∷ []))
   in trans base (trans step1 step2)
 
-prefix-i1-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-i1-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ thunk-i0 ∷ []) ≡ length prefix +ℕ 7
 prefix-i1-length f prefix =
   trans (List-length-++ prefix {curry-closure-setup f ++ thunk-i0 ∷ []})
         (cong (length prefix +ℕ_) refl)
 
 -- Fetch thunk instruction i1 (push rbp)
-fetch-thunk-i1 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i1 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -256,7 +257,7 @@ fetch-thunk-i1 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-i1 thunk-i1 thunk-after-i1))
 
 -- Program structure for i2
-thunk-prog-structure-i2 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-i2 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-i2 = prefix ++ ccs ++ thunk-i0 ∷ thunk-i1 ∷ []
@@ -275,14 +276,14 @@ thunk-prog-structure-i2 {A} {B} {C} f prefix suffix =
       step2 = cong (_++ rest) (++-assoc prefix (ccs ++ thunk-i0 ∷ []) (thunk-i1 ∷ []))
   in trans base (trans step1 step2)
 
-prefix-i2-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-i2-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ []) ≡ length prefix +ℕ 8
 prefix-i2-length f prefix =
   trans (List-length-++ prefix {curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ []})
         (cong (length prefix +ℕ_) refl)
 
 -- Fetch thunk instruction i2 (mov rbp, rsp)
-fetch-thunk-i2 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i2 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -310,7 +311,7 @@ fetch-thunk-i2 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-i2 thunk-i2 thunk-after-i2))
 
 -- Program structure for i3
-thunk-prog-structure-i3 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-i3 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-i3 = prefix ++ ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ []
@@ -328,14 +329,14 @@ thunk-prog-structure-i3 {A} {B} {C} f prefix suffix =
       step2 = cong (_++ rest) (++-assoc prefix (ccs ++ thunk-i0 ∷ thunk-i1 ∷ []) (thunk-i2 ∷ []))
   in trans base (trans step1 step2)
 
-prefix-i3-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-i3-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ []) ≡ length prefix +ℕ 9
 prefix-i3-length f prefix =
   trans (List-length-++ prefix {curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ []})
         (cong (length prefix +ℕ_) refl)
 
 -- Fetch thunk instruction i3 (sub rsp, 16)
-fetch-thunk-i3 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i3 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -362,7 +363,7 @@ fetch-thunk-i3 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-i3 thunk-i3 thunk-after-i3))
 
 -- Program structure for i4
-thunk-prog-structure-i4 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-i4 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-i4 = prefix ++ ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ []
@@ -380,14 +381,14 @@ thunk-prog-structure-i4 {A} {B} {C} f prefix suffix =
       step2 = cong (_++ rest) (++-assoc prefix (ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ []) (thunk-i3 ∷ []))
   in trans base (trans step1 step2)
 
-prefix-i4-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-i4-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ []) ≡ length prefix +ℕ 10
 prefix-i4-length f prefix =
   trans (List-length-++ prefix {curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ []})
         (cong (length prefix +ℕ_) refl)
 
 -- Fetch thunk instruction i4 (mov [rsp], r12)
-fetch-thunk-i4 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i4 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -414,7 +415,7 @@ fetch-thunk-i4 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-i4 thunk-i4 thunk-after-i4))
 
 -- Program structure for i5
-thunk-prog-structure-i5 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-i5 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-i5 = prefix ++ ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ []
@@ -432,14 +433,14 @@ thunk-prog-structure-i5 {A} {B} {C} f prefix suffix =
       step2 = cong (_++ rest) (++-assoc prefix (ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ []) (thunk-i4 ∷ []))
   in trans base (trans step1 step2)
 
-prefix-i5-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-i5-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ []) ≡ length prefix +ℕ 11
 prefix-i5-length f prefix =
   trans (List-length-++ prefix {curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ []})
         (cong (length prefix +ℕ_) refl)
 
 -- Fetch thunk instruction i5 (mov [rsp+8], rdi)
-fetch-thunk-i5 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i5 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -466,7 +467,7 @@ fetch-thunk-i5 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-i5 thunk-i5 thunk-after-i5))
 
 -- Program structure for i6
-thunk-prog-structure-i6 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-i6 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-i6 = prefix ++ ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ thunk-i5 ∷ []
@@ -484,14 +485,14 @@ thunk-prog-structure-i6 {A} {B} {C} f prefix suffix =
       step2 = cong (_++ rest) (++-assoc prefix (ccs ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ []) (thunk-i5 ∷ []))
   in trans base (trans step1 step2)
 
-prefix-i6-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-i6-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ thunk-i5 ∷ []) ≡ length prefix +ℕ 12
 prefix-i6-length f prefix =
   trans (List-length-++ prefix {curry-closure-setup f ++ thunk-i0 ∷ thunk-i1 ∷ thunk-i2 ∷ thunk-i3 ∷ thunk-i4 ∷ thunk-i5 ∷ []})
         (cong (length prefix +ℕ_) refl)
 
 -- Fetch thunk instruction i6 (mov rdi, rsp)
-fetch-thunk-i6 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-thunk-i6 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
   in
@@ -530,7 +531,7 @@ fetch-thunk-i6 {A} {B} {C} f prefix suffix =
 -- Program structure for ret
 -- curry-tail f = mov rsp rbp ∷ pop rbp ∷ ret ∷ label (16+len-f) ∷ []
 -- So ret is at offset 2 within curry-tail
-thunk-prog-structure-ret : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-ret : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       len-f = compile-length f
@@ -650,7 +651,7 @@ thunk-prog-structure-ret {A} {B} {C} f prefix suffix =
 
 -- Helper: length of ccs ++ cts ++ code-f = 13 + compile-length f
 -- (6 closure-setup + 7 thunk-setup + len-f)
-curry-prefix-length : ∀ {A B C} (f : IR (A * B) C) →
+curry-prefix-length : ∀ {i A B C} (f : IR i (A * B) C) →
   length (curry-closure-setup f ++ curry-thunk-setup ++ compile-x86 f) ≡
   13 +ℕ compile-length f
 curry-prefix-length {A} {B} {C} f =
@@ -672,7 +673,7 @@ curry-prefix-length {A} {B} {C} f =
   in trans step1 (trans step2 (trans step3 step4))
 
 -- Full prefix-ret includes cleanup instructions: 13 + len-f + 2 = 15 + len-f
-prefix-ret-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-ret-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ curry-thunk-setup ++ compile-x86 f ++
           mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) ≡
   length prefix +ℕ 15 +ℕ compile-length f
@@ -698,7 +699,7 @@ prefix-ret-length {A} {B} {C} f prefix =
   ∎
 
 -- Fetch ret instruction (now at offset 15 + len-f, not 11 + len-f)
-fetch-ret : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-ret : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in
   fetch prog (length prefix +ℕ 15 +ℕ compile-length f) ≡ just ret
@@ -736,7 +737,7 @@ cleanup-i1 = pop rbp
 ------------------------------------------------------------------------
 
 -- Program structure placing cleanup-i0 (mov rsp rbp) at position 13 + len-f
-thunk-prog-structure-cleanup-i0 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-cleanup-i0 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-cleanup = prefix ++ ccs ++ curry-thunk-setup ++ compile-x86 f
@@ -808,7 +809,7 @@ thunk-prog-structure-cleanup-i0 {A} {B} {C} f prefix suffix =
   in trans step1 (trans step2 (trans step3 (trans step4 step5)))
 
 -- Length: prefix ++ ccs ++ cts ++ code-f has length (length prefix) + 13 + len-f
-prefix-cleanup-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-cleanup-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ curry-thunk-setup ++ compile-x86 f) ≡
   length prefix +ℕ 13 +ℕ compile-length f
 prefix-cleanup-length {A} {B} {C} f prefix =
@@ -823,7 +824,7 @@ prefix-cleanup-length {A} {B} {C} f prefix =
   ∎
 
 -- Fetch cleanup-i0 (mov rsp rbp) at position 13 + len-f
-fetch-cleanup-i0 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-cleanup-i0 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in
   fetch prog (length prefix +ℕ 13 +ℕ compile-length f) ≡ just cleanup-i0
@@ -846,7 +847,7 @@ fetch-cleanup-i0 {A} {B} {C} f prefix suffix =
                   (fetch-at-prefix-end prefix-cleanup cleanup-i0 after-cleanup-i0))
 
 -- Program structure placing cleanup-i1 (pop rbp) at position 14 + len-f
-thunk-prog-structure-cleanup-i1 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+thunk-prog-structure-cleanup-i1 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ccs = curry-closure-setup f
       prefix-cleanup-i1 = prefix ++ ccs ++ curry-thunk-setup ++ compile-x86 f ++ cleanup-i0 ∷ []
@@ -901,7 +902,7 @@ thunk-prog-structure-cleanup-i1 {A} {B} {C} f prefix suffix =
 
 -- Length: prefix ++ ccs ++ cts ++ code-f ++ [cleanup-i0] has length (length prefix) + 14 + len-f
 -- Note: ++ is right-associative, so we split at prefix first
-prefix-cleanup-i1-length : ∀ {A B C} (f : IR (A * B) C) (prefix : Program) →
+prefix-cleanup-i1-length : ∀ {i A B C} (f : IR i (A * B) C) (prefix : Program) →
   length (prefix ++ curry-closure-setup f ++ curry-thunk-setup ++ compile-x86 f ++ cleanup-i0 ∷ []) ≡
   length prefix +ℕ 14 +ℕ compile-length f
 prefix-cleanup-i1-length {A} {B} {C} f prefix =
@@ -949,7 +950,7 @@ prefix-cleanup-i1-length {A} {B} {C} f prefix =
   ∎
 
 -- Fetch cleanup-i1 (pop rbp) at position 14 + len-f
-fetch-cleanup-i1 : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+fetch-cleanup-i1 : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in
   fetch prog (length prefix +ℕ 14 +ℕ compile-length f) ≡ just cleanup-i1

@@ -8,6 +8,7 @@
 
 module Once.Backend.X86.Correct.IR.Curry where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -50,7 +51,7 @@ open ≡-Reasoning
 
 -- | Record capturing the memory layout produced by curry
 -- This is what apply needs to look up the closure
-record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
+record CurryMemoryResult {i : Size} {A B C : Type} (f : IR i (A * B) C)
                          (prog : Program) (s-final : State)
                          (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
@@ -72,7 +73,7 @@ open CurryMemoryResult public
 -- Main curry proof
 ------------------------------------------------------------------------
 
-run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -82,7 +83,7 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   s-final , record
     { ir-star = star-all
     ; ir-halted = h-final
@@ -553,7 +554,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-code-ptr-final = mem-code-ptr-s4
 
     -- Use encode-closure-construct axiom
-    encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval {A} {B ⇒ C} (curry f) x)
+    encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval (curry f) x)
     encode-curry-result = encode-closure-construct f x new-rsp (memory s-final) mem-at-new-rsp-final
 
     rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)

@@ -9,6 +9,7 @@
 
 module Once.Backend.X86.Correct.IR.Case where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -60,7 +61,7 @@ snoc-append xs x ys = trans (++-assoc xs (x ∷ []) ys) refl
 -- Case Context: computed values that don't depend on execution
 ------------------------------------------------------------------------
 
-record CaseContext {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseContext {i : Size} {A B C : Type} (f : IR i A C) (g : IR i B C)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -119,9 +120,9 @@ record CaseContext {A B C : Type} (f : IR A C) (g : IR B C)
     prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
 
 -- | Compute the case context
-make-case-context : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) →
+make-case-context : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) →
   CaseContext f g prefix suffix
-make-case-context {A} {B} {C} f g prefix suffix = record
+make-case-context {i} {A} {B} {C} f g prefix suffix = record
   { len-f = len-f
   ; len-g = len-g
   ; code-f = code-f
@@ -349,7 +350,7 @@ stack-inv-preserved-mem-rsp s s' mem-eq rsp-eq stack-inv r15-eq =
 
 -- | Result of executing jump phase for inl branch (jmp + label = 2 instructions)
 -- After f, we execute: jmp (2+len-g) ; label end-label
-record CaseJumpResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseJumpResult {i : Size} {A B C : Type} (f : IR i A C) (g : IR i B C)
                       (prefix suffix : Program)
                       (s1 : State) : Set where
   private
@@ -370,7 +371,7 @@ record CaseJumpResult {A B C : Type} (f : IR A C) (g : IR B C)
 
 -- | Execute jump phase for inl branch
 -- Precondition: pc s1 = length prefix + 4 + len-f (after f finishes)
-exec-case-jump : ∀ {A B C} (f : IR A C) (g : IR B C)
+exec-case-jump : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
                  (prefix suffix : Program)
                  (s1 : State) →
   let ctx = make-case-context f g prefix suffix in
@@ -378,7 +379,7 @@ exec-case-jump : ∀ {A B C} (f : IR A C) (g : IR B C)
   halted s1 ≡ false →
   pc s1 ≡ length prefix +ℕ 4 +ℕ len-f →
   CaseJumpResult f g prefix suffix s1
-exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
+exec-case-jump {i} {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s3
     ; exec-jump = exec-2
     ; h-final = h3
@@ -578,7 +579,7 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
 -- Used by inr branch to step through the final label instruction
 ------------------------------------------------------------------------
 
-record CaseEndResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseEndResult {i : Size} {A B C : Type} (f : IR i A C) (g : IR i B C)
                      (prefix suffix : Program)
                      (s1 : State) : Set where
   constructor case-end-result
@@ -600,7 +601,7 @@ record CaseEndResult {A B C : Type} (f : IR A C) (g : IR B C)
 
 -- | Execute end label for inr branch (1 instruction)
 -- Precondition: pc s1 = length prefix + 7 + len-f + len-g (at end label)
-exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
+exec-case-end : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
                 (prefix suffix : Program)
                 (s1 : State) →
   let ctx = make-case-context f g prefix suffix in
@@ -608,7 +609,7 @@ exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
   halted s1 ≡ false →
   pc s1 ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g →
   CaseEndResult f g prefix suffix s1
-exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
+exec-case-end {i} {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s2
     ; exec-end = exec-1
     ; h-final = h2
@@ -718,7 +719,7 @@ exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
 -- Used by inr branch: label (5+len-f) ; mov rdi, [rdi+8]
 ------------------------------------------------------------------------
 
-record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseRightSetupResult {i : Size} {A B C : Type} (f : IR i A C) (g : IR i B C)
                             (prefix suffix : Program)
                             (b : ⟦ B ⟧)
                             (s-setup : State) : Set where
@@ -746,7 +747,7 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
 --   pc s-setup = length prefix + 5 + len-f (at right label)
 --   rdi s-setup = encode (inr b) (pointing to the sum)
 --   memory contains the sum value with tag=1 at [rdi] and b at [rdi+8]
-exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
+exec-case-right-setup : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
                         (prefix suffix : Program)
                         (b : ⟦ B ⟧)
                         (s-setup : State) →
@@ -758,7 +759,7 @@ exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
   StackInvariant s-setup →
   readReg (regs s-setup) rsp > 16 →
   CaseRightSetupResult f g prefix suffix b s-setup
-exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp>16-setup = record
+exec-case-right-setup {i} {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp>16-setup = record
     { s-right = s2
     ; exec-right = exec-2
     ; h-right = h2

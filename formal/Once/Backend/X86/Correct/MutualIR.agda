@@ -7,6 +7,7 @@
 
 module Once.Backend.X86.Correct.MutualIR where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -137,7 +138,7 @@ open ≡-Reasoning
 -- Uses ir-rbp-inv from IRStarResult and register preservation from transfer
 rbp-inv-preserved-through-ir : ∀ (s s1 s2 : State) →
   RbpInvariant s →
-  ∀ {A B} {ir : IR A B} {prog x offset} →
+  ∀ {i A B} {ir : IR i A B} {prog x offset} →
   IRStarResult ir prog s s1 x offset →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
   readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
@@ -159,7 +160,7 @@ rbp-inv-preserved-through-ir s s1 s2 _ {ir = ir} r rsp2-eq rbp2-eq =
 
 mutual
   -- | Star-based IR execution at arbitrary offset
-  run-ir-star-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-ir-star-at-offset : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -197,15 +198,15 @@ mutual
   run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-pair-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    run-case-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    run-curry-star-direct f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    run-apply-star-direct prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
 
   -- | Star-based compose execution
   -- Uses extracted helpers from IR.Compose - only recursive calls remain here
-  run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-compose-star-direct : ∀ {i A B C} (f : IR i A B) (g : IR i B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -214,7 +215,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
     in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
-  run-compose-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-compose-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s3 , assemble-compose-result f g prefix suffix x s s1 s2 s3 r1 tr r3 refl
     where
       -- Get context for computed values
@@ -261,7 +262,7 @@ mutual
   -- Phase 3: 2 middle instructions
   -- Phase 4: Execute g (recursive)
   -- Phase 5: 6 final instructions
-  run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  run-pair-star-direct : ∀ {i A B C} (f : IR i C A) (g : IR i C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -270,7 +271,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-  run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-pair-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , assemble-pair-result f g prefix suffix x s s-setup s1 s2 s3 s-final
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
@@ -573,7 +574,7 @@ mutual
   -- For inl: Setup(4) → f → JumpToEnd(2) (labels are pseudo-instructions)
   -- For inr: Setup(3) → Jump(1) → LoadVal(1) → g → Label(1)
   -- compile-length [ f , g ] = (8 + len-f) + len-g
-  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+  run-case-star-direct : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -582,7 +583,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-case-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     with x
   ... | inj₁ a = run-case-star-direct-inl f g prefix suffix a s h-false pc-eq rdi-eq-inl stack-inv rsp>16 rbp-inv
     where
@@ -598,7 +599,7 @@ mutual
   --   Phase 1: Setup - 4 instructions (mov r15 [rdi], cmp, jne not taken, mov rdi [rdi+8])
   --   Phase 2: Execute f - recursive Star call
   --   Phase 3: Jump to end - 2 instructions (jmp, label)
-  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+  run-case-star-direct-inl : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
@@ -607,7 +608,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {A} {B} {C} f g prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-case-star-direct-inl {i} {A} {B} {C} f g prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -905,7 +906,7 @@ mutual
   --   Phase 2: Right branch setup - 2 instructions (label, mov rdi [rdi+8])
   --   Phase 3: Execute g - recursive Star call
   --   Phase 4: End label - 1 instruction
-  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
+  run-case-star-direct-inr : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
@@ -914,7 +915,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b) (length prefix)
-  run-case-star-direct-inr {A} {B} {C} f g prefix suffix b s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-case-star-direct-inr {i} {A} {B} {C} f g prefix suffix b s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -1263,7 +1264,7 @@ mutual
   -- compile-length (curry f) = 13 + len-f
   -- Curry creates a closure; only executes 7 instructions (setup + jmp to end label)
   -- | Star-based curry execution (non-recursive, delegates to extracted module)
-  run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-curry-star-direct : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -1272,7 +1273,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-curry-star-direct {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     let (s' , ir-res , _) = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     in s' , ir-res
 
@@ -1280,9 +1281,9 @@ mutual
   -- prog = prefix ++ compile-x86 (curry f) ++ suffix
   -- compile-length (curry f) = 13 + compile-length f ≥ 13
   -- So |prefix| + 6 < |prefix| + 13 ≤ |prefix ++ compile-x86 (curry f) ++ suffix|
-  thunk-offset-in-bounds : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
+  thunk-offset-in-bounds : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) →
     length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
-  thunk-offset-in-bounds {A} {B} {C} f prefix suffix = goal
+  thunk-offset-in-bounds {i} {A} {B} {C} f prefix suffix = goal
     where
       open import Data.List.Properties as LP using (length-++)
       open import Data.Nat.Properties using (+-mono-<; +-monoʳ-<; m≤m+n; m≤n+m; ≤-trans; <-≤-trans)
@@ -1335,7 +1336,7 @@ mutual
 
   -- | Star-based curry execution with closure well-formedness proof
   -- Returns CurryResult which includes ClosureWellFormed for use by apply
-  run-curry-star-with-wf : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-curry-star-with-wf : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -1344,7 +1345,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
-  run-curry-star-with-wf {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-curry-star-with-wf {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s' , record
       { curry-star = ir-star ir-res
       ; curry-halted = ir-halted ir-res
@@ -1401,7 +1402,7 @@ mutual
 
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: setup tracing → IH on f → ret tracing
-  curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
+  curry-thunk-correct-impl : ∀ {i A B C} (f : IR i (A * B) C)
                              (prefix suffix : Program) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1416,7 +1417,7 @@ mutual
     readReg (regs s) rsp > 16 →
     ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
-  curry-thunk-correct-impl {A} {B} {C} f prefix suffix env arg s ret-addr
+  curry-thunk-correct-impl {i} {A} {B} {C} f prefix suffix env arg s ret-addr
                            h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp>16 =
     s-final , thunk-result , pc-final
     where
@@ -1905,16 +1906,16 @@ mutual
 
   -- | Star-based apply execution (direct, uses Star throughout)
   -- compile-length apply = 6
-  run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+  run-apply-star-direct : ∀ {i A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
-    in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    let prog = prefix ++ compile-x86 (apply {i} {A} {B}) ++ suffix
+    in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
+  run-apply-star-direct {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
