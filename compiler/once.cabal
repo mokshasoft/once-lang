@@ -39,6 +39,9 @@ library
   import: shared
   exposed-modules:
       Lib
+      Once.Arith.Backend.X86.CodeGen
+      Once.Arith.Backend.X86.Emit
+      Once.Arith.Backend.X86.Syntax
       Once.Arith.CodeGen.C
       Once.Arith.IR
       Once.Arith.Recognize

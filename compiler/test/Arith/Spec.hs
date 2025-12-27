@@ -10,6 +10,9 @@ import qualified Data.Set as Set
 
 import Once.Arith.IR
 import Once.Arith.CodeGen.C
+import Once.Arith.Backend.X86.Syntax
+import Once.Arith.Backend.X86.CodeGen
+import Once.Arith.Backend.X86.Emit
 
 arithTests :: TestTree
 arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
@@ -85,5 +88,89 @@ arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
           numTypeToC F32 @?= "float"
       , testCase "F64 -> double" $
           numTypeToC F64 @?= "double"
+      ]
+  , testGroup "x86-64 code generation"
+      [ testCase "literal generates mov" $
+          let prog = compileArith (ALitInt I64 42)
+          in length prog @?= 2  -- mov to r8, mov to rax
+      , testCase "literal value in mov instruction" $
+          let prog = compileArith (ALitInt I64 42)
+          in case prog of
+               [IntI (MovI R8 (ImmI 42)), IntI (MovI RAX (RegI R8))] -> return ()
+               _ -> assertFailure $ "Unexpected: " ++ show prog
+      , testCase "addition generates 3 instructions" $
+          let prog = compileArith (AAdd (ALitInt I64 1) (ALitInt I64 2))
+          in length prog @?= 4  -- mov r8, mov r9, add, mov rax
+      , testCase "subtraction generates sub instruction" $
+          let prog = compileArith (ASub (ALitInt I64 10) (ALitInt I64 3))
+              hasSubI = any isSubI prog
+              isSubI (IntI (SubI _ _)) = True
+              isSubI _ = False
+          in hasSubI @?= True
+      , testCase "multiplication generates imul instruction" $
+          let prog = compileArith (AMul (ALitInt I64 5) (ALitInt I64 6))
+              hasIMulI = any isIMulI prog
+              isIMulI (IntI (IMulI _ _)) = True
+              isIMulI _ = False
+          in hasIMulI @?= True
+      , testCase "negation generates neg instruction" $
+          let prog = compileArith (ANeg (ALitInt I64 7))
+              hasNegI = any isNegI prog
+              isNegI (IntI (NegI _)) = True
+              isNegI _ = False
+          in hasNegI @?= True
+      , testCase "division generates idiv instruction" $
+          let prog = compileArith (ADiv (ALitInt I64 100) (ALitInt I64 10))
+              hasIDivI = any isIDivI prog
+              isIDivI (IntI (IDivI _)) = True
+              isIDivI _ = False
+          in hasIDivI @?= True
+      , testCase "nested expression" $
+          let x = ALitInt I64 2
+              expr = AAdd (AMul x x) (ALitInt I64 1)  -- 2*2 + 1
+              prog = compileArith expr
+          in length prog > 0 @?= True
+      ]
+  , testGroup "x86-64 assembly emission"
+      [ testCase "mov instruction format" $
+          emitIntInstr (MovI RAX (ImmI 42)) @?= "    movq $42, %rax"
+      , testCase "add instruction format" $
+          emitIntInstr (AddI R8 (RegI R9)) @?= "    addq %r9, %r8"
+      , testCase "sub instruction format" $
+          emitIntInstr (SubI RBX (ImmI 1)) @?= "    subq $1, %rbx"
+      , testCase "imul instruction format" $
+          emitIntInstr (IMulI RAX (RegI RCX)) @?= "    imulq %rcx, %rax"
+      , testCase "neg instruction format" $
+          emitIntInstr (NegI RDX) @?= "    negq %rdx"
+      , testCase "cqo instruction format" $
+          emitIntInstr Cqo @?= "    cqo"
+      , testCase "idiv instruction format" $
+          emitIntInstr (IDivI (RegI R10)) @?= "    idivq %r10"
+      , testCase "memory operand format" $
+          emitIntInstr (MovI RAX (MemI (Base RDI))) @?= "    movq (%rdi), %rax"
+      , testCase "memory with displacement" $
+          emitIntInstr (MovI RAX (MemI (BaseDisp RSI 8))) @?= "    movq 8(%rsi), %rax"
+      , testCase "float movsd format" $
+          emitFloatInstr (Movsd XMM0 (RegF XMM1)) @?= "    movsd %xmm1, %xmm0"
+      , testCase "float addsd format" $
+          emitFloatInstr (Addsd XMM0 (RegF XMM1)) @?= "    addsd %xmm1, %xmm0"
+      , testCase "full program emission" $
+          let prog = compileArith (ALitInt I64 42)
+              asm = emitProgram prog
+          in T.isInfixOf "movq" asm @?= True
+      ]
+  , testGroup "x86-64 register names"
+      [ testCase "gprName RAX" $
+          gprName RAX @?= "rax"
+      , testCase "gprName R11" $
+          gprName R11 @?= "r11"
+      , testCase "gprName32 RAX" $
+          gprName32 RAX @?= "eax"
+      , testCase "gprName32 R8" $
+          gprName32 R8 @?= "r8d"
+      , testCase "xmmName XMM0" $
+          xmmName XMM0 @?= "xmm0"
+      , testCase "xmmName XMM15" $
+          xmmName XMM15 @?= "xmm15"
       ]
   ]
