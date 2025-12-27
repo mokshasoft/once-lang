@@ -9,7 +9,11 @@
 -- inr: addi sp sp -16; li t0 1; sd t0 0(sp); sd a0 8(sp); mv a0 sp
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.IR.Injection where
+
+open import Size
 
 open import Once.Type
 open import Once.IR
@@ -52,14 +56,14 @@ open import Relation.Binary.PropositionalEquality.Properties
 open ≡-Reasoning
 
 -- | Star-based inl execution
-run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-inl-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
   24 ≤ readReg (regs s) sp →
-  let prog = prefix ++ compile-riscv {A} {A + B} inl ++ suffix
-  in ∃[ s' ] IRStarResult {A} {A + B} inl prog s s' x (length prefix)
-run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  let prog = prefix ++ compile-riscv (inl {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inl {i} {A} {B}) prog s s' x (length prefix)
+run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
   st4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -77,7 +81,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     }
   where
     prog : Program
-    prog = prefix ++ compile-riscv {A} {A + B} inl ++ suffix
+    prog = prefix ++ compile-riscv (inl {i} {A} {B}) ++ suffix
 
     offset = length prefix
 
@@ -411,14 +415,14 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     a0-final = trans a0-st4 (encode-inl-construct x new-sp (memory st4) mem-tag mem-val)
 
 -- | Star-based inr execution
-run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+run-inr-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
   24 ≤ readReg (regs s) sp →
-  let prog = prefix ++ compile-riscv {B} {A + B} inr ++ suffix
-  in ∃[ s' ] IRStarResult {B} {A + B} inr prog s s' x (length prefix)
-run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  let prog = prefix ++ compile-riscv (inr {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inr {i} {A} {B}) prog s s' x (length prefix)
+run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
   st5 , record
     { ir-star = star-proof
     ; ir-halted = h5
@@ -436,7 +440,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     }
   where
     prog : Program
-    prog = prefix ++ compile-riscv {B} {A + B} inr ++ suffix
+    prog = prefix ++ compile-riscv (inr {i} {A} {B}) ++ suffix
 
     offset = length prefix
 

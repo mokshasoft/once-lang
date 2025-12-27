@@ -28,7 +28,11 @@
 --   - a0 unchanged
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.IR.Apply where
+
+open import Size
 
 open import Once.Type
 open import Once.IR
@@ -108,7 +112,7 @@ open import Once.Backend.RiscV64.Correct.Foundation
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr : ℕ)
                    (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
   halted s ≡ false →
@@ -131,7 +135,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
                  h-false pc-eq mem-cl mem-arg mem-env mem-cp =
   st5 , star-all , h5 , pc5 , a0-5 , s0-5 , t0-5 , s1-5 , ra-5
   where
-    prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
     offset = length prefix
 
     -- The 5 instructions
@@ -347,7 +351,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
 
 apply-jalr-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
-  let prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
       offset = length prefix
       ret-addr = offset +ℕ 6
   in
@@ -365,7 +369,7 @@ apply-jalr-star : ∀ {A B} (prefix suffix : Program)
 apply-jalr-star {A} {B} prefix suffix code-ptr s h-false pc-eq t0-eq =
   st1 , star-all , h1 , pc1 , ra1 , a0-1 , s0-1 , s1-1
   where
-    prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 6
 
@@ -440,7 +444,7 @@ apply-jalr-star {A} {B} prefix suffix code-ptr s h-false pc-eq t0-eq =
 ------------------------------------------------------------------------
 
 apply-nop-star : ∀ {A B} (prefix suffix : Program) (s : State) →
-  let prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
   halted s ≡ false →
@@ -453,7 +457,7 @@ apply-nop-star : ∀ {A B} (prefix suffix : Program) (s : State) →
 apply-nop-star {A} {B} prefix suffix s h-false pc-eq =
   st1 , star-all , h1 , pc1 , a0-1 , s1-1
   where
-    prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
     offset = length prefix
 
     i6 = nop
@@ -517,7 +521,7 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (code-ptr env-addr : ℕ)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                     (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
@@ -530,14 +534,14 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
     readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+          × pc s' ≡ offset +ℕ compile-length (apply {_} {A} {B})
           × readReg (regs s') a0 ≡ encode (semantics arg)
           × readReg (regs s') s1 ≡ readReg (regs s) s1)
 run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                   wf h-eq pc-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
   s-final , star-all , h-final , pc-final , a0-final , s1-final
   where
-    prog = prefix ++ compile-riscv (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 6
 

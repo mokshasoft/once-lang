@@ -7,15 +7,20 @@
 --
 -- Key data types defined here:
 --   - IRStarResult: Result of executing IR with Star semantics
---   - IRRunner: Type signature for the recursive IR executor
+--   - IRRunner: Type signature for the recursive IR executor (sized)
 --
 -- Adapted from x86-64 backend, simplified for RISC-V:
 --   - a0 is both input AND output (no rdi/rax distinction)
 --   - Only s1 needs to be preserved (simpler than x86's r14/r15/rbp)
+--
+-- Uses sized types to enable modular termination proofs.
 ------------------------------------------------------------------------
+
+{-# OPTIONS --sized-types #-}
 
 module Once.Backend.RiscV64.Correct.StarBase where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics
@@ -53,7 +58,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- RISC-V simplification: a0 is BOTH input and output!
 ------------------------------------------------------------------------
 
-record IRStarResult {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
+record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program) (s s' : State)
                     (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     ir-star    : Star prog s s'                           -- Execution reaches s'
@@ -79,18 +84,22 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
 open IRStarResult public
 
 ------------------------------------------------------------------------
--- IRRunner: Type signature for recursive IR executor
+-- IRRunner: Type signature for recursive IR executor (sized)
 --
 -- This type allows us to pass the recursive function as a parameter
 -- to helper functions, enabling extraction from the mutual block.
+--
+-- The Size parameter enables termination checking across modules:
+-- - IRRunner i can only be called on IR j A B where j < i
+-- - This is enforced via Size< constraints in helper functions
 ------------------------------------------------------------------------
 
-IRRunner : Set
-IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
-           halted s ≡ false →
-           pc s ≡ length prefix →
-           readReg (regs s) a0 ≡ encode x →
-           ∃[ s' ] IRStarResult ir (prefix ++ compile-riscv ir ++ suffix) s s' x (length prefix)
+IRRunner : Size → Set
+IRRunner i = ∀ {j : Size< i} {A B} (ir : IR j A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+             halted s ≡ false →
+             pc s ≡ length prefix →
+             readReg (regs s) a0 ≡ encode x →
+             ∃[ s' ] IRStarResult ir (prefix ++ compile-riscv ir ++ suffix) s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- Base case: id (nop)
@@ -101,12 +110,12 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
 -- a0 unchanged, eval id x = x
 ------------------------------------------------------------------------
 
-run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-id-star : ∀ {i A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] IRStarResult (id {A}) (prefix ++ compile-riscv (id {A}) ++ suffix) s s' x (length prefix)
-run-id-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (id {i} {A}) (prefix ++ compile-riscv (id {i} {A}) ++ suffix) s s' x (length prefix)
+run-id-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq
@@ -136,12 +145,12 @@ run-id-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 = 0 = encode tt (by encode-unit)
 ------------------------------------------------------------------------
 
-run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-terminal-star : ∀ {i A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] IRStarResult (terminal {A}) (prefix ++ compile-riscv (terminal {A}) ++ suffix) s s' x (length prefix)
-run-terminal-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (terminal {i} {A}) (prefix ++ compile-riscv (terminal {i} {A}) ++ suffix) s s' x (length prefix)
+run-terminal-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq
@@ -172,12 +181,12 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 unchanged, encode x ≡ encode (wrap x) by encode-fix-wrap
 ------------------------------------------------------------------------
 
-run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+run-fold-star : ∀ {i F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] IRStarResult (fold {F}) (prefix ++ compile-riscv (fold {F}) ++ suffix) s s' x (length prefix)
-run-fold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (fold {i} {F}) (prefix ++ compile-riscv (fold {i} {F}) ++ suffix) s s' x (length prefix)
+run-fold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq
@@ -207,12 +216,12 @@ run-fold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 unchanged, encode x ≡ encode (unwrap x) by encode-fix-unwrap
 ------------------------------------------------------------------------
 
-run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+run-unfold-star : ∀ {i F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] IRStarResult (unfold {F}) (prefix ++ compile-riscv (unfold {F}) ++ suffix) s s' x (length prefix)
-run-unfold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (unfold {i} {F}) (prefix ++ compile-riscv (unfold {i} {F}) ++ suffix) s s' x (length prefix)
+run-unfold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq
@@ -242,12 +251,12 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 unchanged, encode {A ⇒ B} f ≡ encode {Eff A B} f by encode-arr-identity
 ------------------------------------------------------------------------
 
-run-arr-star : ∀ {A B} (prefix suffix : Program) (f : ⟦ A ⇒ B ⟧) (s : State) →
+run-arr-star : ∀ {i A B} (prefix suffix : Program) (f : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode {A ⇒ B} f →
-  ∃[ s' ] IRStarResult (arr {A} {B}) (prefix ++ compile-riscv (arr {A} {B}) ++ suffix) s s' f (length prefix)
-run-arr-star {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (arr {i} {A} {B}) (prefix ++ compile-riscv (arr {i} {A} {B}) ++ suffix) s s' f (length prefix)
+run-arr-star {i} {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq
@@ -277,12 +286,12 @@ run-arr-star {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
 -- After ld: a0 = memory[a0] = encode (proj₁ x)
 ------------------------------------------------------------------------
 
-run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-fst-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] IRStarResult (fst {A} {B}) (prefix ++ compile-riscv (fst {A} {B}) ++ suffix) s s' x (length prefix)
-run-fst-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (fst {i} {A} {B}) (prefix ++ compile-riscv (fst {i} {A} {B}) ++ suffix) s s' x (length prefix)
+run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq
@@ -333,12 +342,12 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- After ld: a0 = memory[a0+8] = encode (proj₂ x)
 ------------------------------------------------------------------------
 
-run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-snd-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  ∃[ s' ] IRStarResult (snd {A} {B}) (prefix ++ compile-riscv (snd {A} {B}) ++ suffix) s s' x (length prefix)
-run-snd-star {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
+  ∃[ s' ] IRStarResult (snd {i} {A} {B}) (prefix ++ compile-riscv (snd {i} {A} {B}) ++ suffix) s s' x (length prefix)
+run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   { ir-star   = star-single h-false step-eq
   ; ir-halted = h-false
   ; ir-pc     = cong (_+ℕ 1) pc-eq

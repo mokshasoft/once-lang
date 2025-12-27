@@ -16,7 +16,11 @@
 -- Note: s1 is saved/restored to preserve it as a callee-saved register
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.IR.Pair where
+
+open import Size
 
 open import Once.Type
 open import Once.IR
@@ -56,7 +60,7 @@ open ≡-Reasoning
 -- Pair Context: computed values that don't depend on execution
 ------------------------------------------------------------------------
 
-record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
+record PairContext {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -101,9 +105,9 @@ record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
     prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
 
 -- | Compute the pair context
-make-pair-context : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) →
+make-pair-context : ∀ {i A B C} (f : IR i C A) (g : IR i C B) (prefix suffix : Program) →
   PairContext f g prefix suffix
-make-pair-context {A} {B} {C} f g prefix suffix = record
+make-pair-context {_} {A} {B} {C} f g prefix suffix = record
   { len-f = len-f
   ; len-g = len-g
   ; code-f = code-f
@@ -279,7 +283,7 @@ make-pair-context {A} {B} {C} f g prefix suffix = record
 -- | Setup phase: allocate pair space, save s1, copy input to s1
 -- Entry: pc = offset, a0 = encode x, s1 = original-s1
 -- Exit: pc = offset + 3, sp = sp - 24, s1 = encode x, mem[sp+16] = original-s1
-pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
+pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -302,7 +306,7 @@ pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
           × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
           × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24))
-pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
+pair-setup-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
   st3 , star-all , h3 , pc3 , a0-st3 , s1-st3 , sp-st3 , s2-st3 , ra-st3 , mem-s1-saved ,
   mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
@@ -488,7 +492,7 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
 -- | Middle phase: store f result and restore original input
 -- Entry: pc = offset + 3 + len-f, a0 = encode (eval f x), s1 = encode x
 -- Exit: pc = offset + 5 + len-f, a0 = encode x, memory[sp] = encode (eval f x)
-pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
+pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧) (s sf : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -513,7 +517,7 @@ pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 8)
           × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 16)
           × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 24))
-pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq =
+pair-middle-star {_} {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq =
   st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-sp+16-st2 ,
   mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
@@ -679,7 +683,7 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq 
 -- Entry: pc = offset + 5 + len-f + len-g, a0 = encode (eval g x)
 --        memory[sp+16] = orig-s1 (saved during setup)
 -- Exit: pc = offset + 8 + len-f + len-g, a0 = encode (eval f x, eval g x), s1 = orig-s1
-pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
+pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (orig-s1 : Word) (orig-sp : ℕ) (sf sg : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -704,7 +708,7 @@ pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
           × readMem (memory s') (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
           × readMem (memory s') (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
           × readMem (memory s') (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24))
-pair-final-star {A} {B} {C} f g prefix suffix x orig-s1 orig-sp sf sg h-false pc-eq a0-eq mem-f mem-s1 =
+pair-final-star {_} {A} {B} {C} f g prefix suffix x orig-s1 orig-sp sf sg h-false pc-eq a0-eq mem-f mem-s1 =
   st3 , star-all , h3 , pc3 , a0-final , s1-st3 , s2-st3 , ra-st3 , sp-st3 ,
   mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where

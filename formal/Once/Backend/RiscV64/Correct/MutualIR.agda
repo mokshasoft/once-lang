@@ -10,10 +10,15 @@
 --
 -- NEW: curry-thunk-correct-impl replaces curry-thunk-correct postulate
 -- by using the IH (run-ir-star-at-offset) to prove thunk correctness.
+--
+-- Uses sized types to enable modular extraction of helper functions.
 ------------------------------------------------------------------------
+
+{-# OPTIONS --sized-types #-}
 
 module Once.Backend.RiscV64.Correct.MutualIR where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics
@@ -104,12 +109,12 @@ open ≡-Reasoning
 -- This should never be called since Void has no inhabitants.
 ------------------------------------------------------------------------
 
-run-initial-star : ∀ {A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
+run-initial-star : ∀ {i A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  let prog = prefix ++ compile-riscv {Void} {A} initial ++ suffix
-  in ∃[ s' ] IRStarResult {Void} {A} initial prog s s' x (length prefix)
+  let prog = prefix ++ compile-riscv (initial {i} {A}) ++ suffix
+  in ∃[ s' ] IRStarResult (initial {i} {A}) prog s s' x (length prefix)
 run-initial-star prefix suffix x s h-false pc-eq a0-eq = ⊥-elim x
 
 ------------------------------------------------------------------------
@@ -130,12 +135,12 @@ run-initial-star prefix suffix x s h-false pc-eq a0-eq = ⊥-elim x
 ------------------------------------------------------------------------
 
 postulate
-  run-apply-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+  run-apply-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} x →
-    let prog = prefix ++ compile-riscv {(A ⇒ B) * A} {B} apply ++ suffix
-    in ∃[ s' ] IRStarResult {(A ⇒ B) * A} {B} apply prog s s' x (length prefix)
+    let prog = prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix
+    in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- Main mutual block: run-ir-star-at-offset
@@ -145,9 +150,10 @@ postulate
 ------------------------------------------------------------------------
 
 mutual
-  -- | Star-based IR execution at arbitrary offset
+  -- | Star-based IR execution at arbitrary offset (sized for termination)
   -- Stack-space precondition: 24 ≤ sp ensures enough stack for all IR nodes
-  run-ir-star-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  -- Size parameter i enables termination checking across module boundaries
+  run-ir-star-at-offset : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
@@ -227,7 +233,7 @@ mutual
     run-case-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Pair helper - proven using phase helpers and IH
-  run-pair-star : ∀ {A B C} (f : IR C A) (g : IR C B)
+  run-pair-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -235,7 +241,7 @@ mutual
     24 ≤ readReg (regs s) sp →
     let prog = prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-  run-pair-star {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-pair-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -611,7 +617,7 @@ mutual
         mem-sp+24-final : readMem (memory s-final) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
 
   -- Case helper - proven using dispatch helpers and IH
-  run-case-star : ∀ {A B C} (f : IR A C) (g : IR B C)
+  run-case-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
                   (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -621,7 +627,7 @@ mutual
     in ∃[ s' ] IRStarResult ([_,_] f g) prog s s' x (length prefix)
 
   -- Left path implementation (inj₁ a)
-  run-case-star {A} {B} {C} f g prefix suffix (inj₁ a) s h-false pc-eq a0-eq sp-bound =
+  run-case-star {_} {A} {B} {C} f g prefix suffix (inj₁ a) s h-false pc-eq a0-eq sp-bound =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -820,7 +826,7 @@ mutual
           ∎
 
   -- Right path implementation (inj₂ b)
-  run-case-star {A} {B} {C} f g prefix suffix (inj₂ b) s h-false pc-eq a0-eq sp-bound =
+  run-case-star {_} {A} {B} {C} f g prefix suffix (inj₂ b) s h-false pc-eq a0-eq sp-bound =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -1045,7 +1051,7 @@ mutual
 
   -- Prove thunk setup: 7 instructions (label, addi sp -24, sd s2, mv s2, sd s0, sd a0, mv a0)
   -- Now using the proven version from ThunkSetup module
-  thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
+  thunk-setup-star : ∀ {i A B C} (f : IR i (A * B) C)
                      (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
         thunk-offset = length prefix +ℕ 7
@@ -1067,7 +1073,7 @@ mutual
   -- Prove ret instruction tracing (after cleanup)
   -- The thunk cleanup does: mv sp s2, ld s2 16(sp), addi sp sp 24, ret
   -- We prove just the ret here; cleanup is traced separately or postulated
-  thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
+  thunk-ret-star : ∀ {i A B C} (f : IR i (A * B) C)
                    (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
         ret-offset = length prefix +ℕ 17 +ℕ compile-length f
@@ -1080,7 +1086,7 @@ mutual
             × pc s' ≡ ret-addr
             × readReg (regs s') a0 ≡ readReg (regs s) a0
             × readReg (regs s') s1 ≡ readReg (regs s) s1)
-  thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s h-false pc-eq ra-eq =
+  thunk-ret-star {_} {A} {B} {C} f prefix suffix ret-addr s h-false pc-eq ra-eq =
     s' , star-all , h' , pc' , a0' , s1'
     where
       prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -1204,7 +1210,7 @@ mutual
 
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: setup tracing → IH on f → ret tracing
-  curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
+  curry-thunk-correct-impl : ∀ {i A B C} (f : IR i (A * B) C)
                              (prefix suffix : Program) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -1217,7 +1223,7 @@ mutual
     readReg (regs s) ra ≡ ret-addr →
     ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
-  curry-thunk-correct-impl {A} {B} {C} f prefix suffix env arg s ret-addr
+  curry-thunk-correct-impl {_} {A} {B} {C} f prefix suffix env arg s ret-addr
                            h-eq pc-eq a0-eq s0-eq ra-eq =
     s-final , thunk-result , pc-final
     where
@@ -1434,7 +1440,7 @@ mutual
     using (CurryResult; curry-star; curry-halted; curry-pc; curry-a0; curry-s1; closure-wf)
   open import Data.Nat using (_<_)
 
-  run-curry-star-with-wf : ∀ {A B C} (f : IR (A * B) C)
+  run-curry-star-with-wf : ∀ {i A B C} (f : IR i (A * B) C)
                            (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1444,7 +1450,7 @@ mutual
         offset = length prefix
     in ∃[ s' ] CurryResult f prog s s' x offset
 
-  run-curry-star-with-wf {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-curry-star-with-wf {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
     let (s' , result) = run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
         offset = length prefix
         prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -1522,7 +1528,7 @@ mutual
 ------------------------------------------------------------------------
 
 -- | Execute IR starting at position 0
-run-ir-star : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+run-ir-star : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →

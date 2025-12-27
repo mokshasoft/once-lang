@@ -16,8 +16,11 @@
 --   - ra = return address (set by jalr)
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.ClosureWellFormed where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -114,7 +117,7 @@ open ClosureWellFormed public
 -- - a0 = closure address (new-sp)
 -- - [closure] = env-addr = encode x
 -- - [closure+8] = code-ptr = offset + 7
-record CurryResult {A B C : Type} (f : IR (A * B) C)
+record CurryResult {i : Size} {A B C : Type} (f : IR i (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                    (offset : ℕ) : Set where
   field
@@ -162,7 +165,7 @@ open ApplyMemoryLayout public
 
 -- | When curry executes, it produces this WF info that can be used by apply
 -- This captures the connection between curry's output and apply's input
-record CurryOutputWF {A B C : Type} (f : IR (A * B) C)
+record CurryOutputWF {i : Size} {A B C : Type} (f : IR i (A * B) C)
                      (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) : Set where
   field
     code-ptr : ℕ
@@ -180,7 +183,7 @@ ApplyInputWF A B prog =
   ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
   ClosureWellFormed {A} {B} prog code-ptr env-addr sem
 
-curry-output-to-apply-input : ∀ {A B C} (f : IR (A * B) C)
+curry-output-to-apply-input : ∀ {i A B C} (f : IR i (A * B) C)
                               (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) →
                               CurryOutputWF f prog offset x →
                               ApplyInputWF B C prog

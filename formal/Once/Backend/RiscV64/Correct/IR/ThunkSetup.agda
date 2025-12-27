@@ -20,7 +20,11 @@
 --   18+len-f: label end
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.IR.ThunkSetup where
+
+open import Size
 
 open import Once.Type
 open import Once.IR
@@ -59,7 +63,7 @@ open ≡-Reasoning
 -- | Prove thunk setup: traces 7 instructions
 -- Entry: pc = thunk-offset, a0 = encode arg, s0 = encode env
 -- Exit: pc = f-offset, a0 = encode (env, arg), s2 = frame pointer
-thunk-setup-star-proven : ∀ {A B C} (f : IR (A * B) C)
+thunk-setup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
                           (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 7
@@ -538,7 +542,7 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
 --   14+len-f: mv sp s2 (restore sp to frame pointer)
 --   15+len-f: ld s2 16(sp) (restore s2 from saved location)
 --   16+len-f: addi sp sp +24 (deallocate stack frame)
-thunk-cleanup-star-proven : ∀ {A B C} (f : IR (A * B) C)
+thunk-cleanup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
                              (prefix suffix : Program) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       len-f = compile-length f

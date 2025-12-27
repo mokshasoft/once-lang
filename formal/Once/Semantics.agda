@@ -5,8 +5,11 @@
 -- Interprets types as Agda Sets and IR morphisms as Agda functions.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Semantics where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Memory using (Word; AllocState; alloc-state; mem; heap-ptr)
@@ -188,9 +191,11 @@ encode-arr-identity cl = refl
 -- Maps IR morphisms to Agda functions.
 -- This is the morphism mapping of a functor from Once's CCC to Set.
 --
--- eval : IR A B → (⟦ A ⟧ → ⟦ B ⟧)
+-- eval : IR i A B → (⟦ A ⟧ → ⟦ B ⟧)
 --
-eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+-- The size parameter i is implicit and inferred from the IR structure.
+--
+eval : ∀ {i A B} → IR i A B → ⟦ A ⟧ → ⟦ B ⟧
 
 -- Category structure
 eval id x              = x

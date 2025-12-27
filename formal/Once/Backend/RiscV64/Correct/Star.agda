@@ -10,7 +10,11 @@
 -- Adapted from x86-64 backend.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.Star where
+
+open import Size
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics

@@ -19,6 +19,8 @@
 --
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -283,7 +285,7 @@ postulate
   -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a
   -- NOTE: With explicit Closure record, this may become derivable from env-addr field
-  encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+  encode-closure-construct : ∀ {i A B C} (f : IR i (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
     p ≡ encode {B ⇒ C} (eval (curry f) a)

@@ -13,6 +13,8 @@
 --   - x0 (zero) is hardwired to 0
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Backend.RiscV64.Correct.Foundation where
 
 open import Once.Type

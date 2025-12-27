@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.TypeSystem.Soundness
 --
@@ -19,6 +20,8 @@
 ------------------------------------------------------------------------
 
 module Once.TypeSystem.Soundness where
+
+open import Size
 
 open import Once.Type
 open import Once.IR
@@ -51,7 +54,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 --
 -- This is trivially true by eval's type, but we can state it explicitly.
 --
-type-preservation : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧) → ⟦ B ⟧
+type-preservation : ∀ {i A B} (f : IR i A B) (x : ⟦ A ⟧) → ⟦ B ⟧
 type-preservation f x = eval f x
 
 -- | Typed derivations and IR terms have the same semantics
@@ -86,7 +89,7 @@ typed-semantics d x = refl
 --
 -- As a type, we state: for all f and x, there exists a result.
 --
-progress : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧) → ⟦ B ⟧
+progress : ∀ {i A B} (f : IR i A B) (x : ⟦ A ⟧) → ⟦ B ⟧
 progress = eval
 
 ------------------------------------------------------------------------
@@ -107,7 +110,7 @@ progress = eval
 --
 -- Soundness theorem: If IR A B, then ⟦ A ⟧ → ⟦ B ⟧
 --
-soundness : ∀ {A B} → IR A B → (⟦ A ⟧ → ⟦ B ⟧)
+soundness : ∀ {i A B} → IR i A B → (⟦ A ⟧ → ⟦ B ⟧)
 soundness = eval
 
 ------------------------------------------------------------------------
@@ -154,6 +157,6 @@ canonical-sum (inj₂ b) = inj₂ (b , refl)
 --
 -- This is true by definition but stated explicitly for documentation.
 --
-compositionality : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
+compositionality : ∀ {A B C} (g : IR ∞ B C) (f : IR ∞ A B) (x : ⟦ A ⟧)
                  → eval (g ∘ f) x ≡ eval g (eval f x)
 compositionality g f x = refl
