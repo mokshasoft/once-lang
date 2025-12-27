@@ -71,8 +71,7 @@ open import Once.Backend.AArch64.Correct.IR.Compose
             len-prefix-g to compose-len-prefix-g)
 open import Once.Backend.AArch64.Correct.IR.Pair
   using (PairContext; mkPairContext;
-         PairSetupResult; PairMiddleResult; PairFinalResult;
-         arith-pc-final)
+         PairSetupResult; PairMiddleResult; PairFinalResult)
 open PairContext
   hiding (len-f; len-g)
   renaming (prog to pair-prog; code-f to pair-code-f; code-g to pair-code-g;
@@ -1446,27 +1445,216 @@ mutual
     let prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
   run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    -- The detailed proof requires slow type-checking due to complex proof terms.
-    -- Using postulate for the result to verify overall structure compiles.
-    s-final , pair-result
+    -- Full proof structure:
+    -- 1. Setup (3 instructions): sub-sp 16, mov-from-sp x21, mov x20 x0
+    -- 2. Execute f recursively
+    -- 3. Middle (2 instructions): str x0 [x21], mov x0 x20
+    -- 4. Execute g recursively
+    -- 5. Final (2 instructions): str x0 [x21+8], mov x0 x21
+    -- 6. Build Star proof via star-trans
+    -- 7. Prove all IRStarResult fields
+    s-final , record
+      { ir-star = star-full
+      ; ir-halted = halted-final
+      ; ir-pc = pc-final
+      ; ir-x0 = x0-final
+      ; ir-x20 = x20-final
+      ; ir-x21 = x21-final
+      ; ir-x29 = x29-final
+      ; ir-x30 = x30-final
+      ; ir-sp = sp-final
+      ; ir-mem-x21 = mem-x21-final
+      ; ir-mem-x29 = mem-x29-final
+      ; ir-mem-x29+8 = mem-x29+8-final
+      ; ir-stack-inv = stack-inv-final
+      ; ir-sp-bound = sp-bound-final
+      }
     where
       -- The full program
       prog : Program
       prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
 
-      -- Postulate the result for now to verify overall structure compiles.
-      -- The detailed proof causes very slow type-checking due to complex proof term normalization.
-      -- TODO: Once performance issues are resolved, the proof follows this structure:
-      -- 1. Setup (3 instructions): sub-sp 16, mov-from-sp x21, mov x20 x0
-      -- 2. Execute f recursively
-      -- 3. Middle (2 instructions): str x0 [x21], mov x0 x20
-      -- 4. Execute g recursively
-      -- 5. Final (2 instructions): str x0 [x21+8], mov x0 x21
-      -- 6. Build Star proof via star-trans
-      -- 7. Prove all IRStarResult fields
+      -- Build context
+      ctx = mkPairContext f g prefix suffix s
+
+      -- New SP after allocation (pair pointer)
+      new-sp = readSP (regs s) ∸ 16
+
+      ------------------------------------------------------------------------
+      -- Phase 1: Setup (3 instructions) - POSTULATED for now
+      -- sub-sp 16, mov-from-sp x21, mov x20 x0
+      ------------------------------------------------------------------------
+
+      -- After setup, we have:
+      --   SP = original SP - 16
+      --   x21 = new-sp (pair pointer)
+      --   x20 = encode x (saved input)
+      --   x0 = encode x (unchanged)
+      --   PC = length prefix + 3
+
+      postulate
+        s-setup : State
+        star-setup : Star prog s s-setup
+        setup-halted : halted s-setup ≡ false
+        setup-pc : pc s-setup ≡ length prefix +ℕ 3
+        setup-x0 : readReg (regs s-setup) x0 ≡ encode x
+        setup-x20 : readReg (regs s-setup) x20 ≡ encode x
+        setup-x21 : readReg (regs s-setup) x21 ≡ new-sp
+        setup-x29 : readReg (regs s-setup) x29 ≡ readReg (regs s) x29
+        setup-x30 : readReg (regs s-setup) x30 ≡ readReg (regs s) x30
+        setup-sp : readSP (regs s-setup) ≡ new-sp
+        setup-stack-inv : StackInvariant s-setup
+        setup-x29-inv : X29Invariant s-setup
+        setup-sp>16 : readSP (regs s-setup) > 16
+        setup-mem-x29 : readMem (memory s-setup) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+        setup-mem-x29+8 : readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+      ------------------------------------------------------------------------
+      -- Phase 2: Execute f recursively
+      ------------------------------------------------------------------------
+
+      -- Program for f: use prog-eq-f from context
+      -- prog-eq-f ctx proves: pair-prog ctx ≡ prefix-f ++ code-f ++ suffix-f
+      -- We need: prog-f ≡ prog, but pair-prog ctx = prog definitionally
+      -- So use sym to flip the direction
+      prog-f : Program
+      prog-f = pair-prefix-f ctx ++ pair-code-f ctx ++ pair-suffix-f ctx
+
+      prog-f-eq : prog-f ≡ prog
+      prog-f-eq = sym (pair-prog-eq-f ctx)
+
+      -- Length of prefix-f
+      len-pf : length (pair-prefix-f ctx) ≡ length prefix +ℕ 3
+      len-pf = pair-len-prefix-f ctx
+
+      -- PC matches prefix-f length
+      pc-for-f : pc s-setup ≡ length (pair-prefix-f ctx)
+      pc-for-f = trans setup-pc (sym len-pf)
+
+      -- Recursive call for f
+      f-result : ∃[ s' ] IRStarResult f prog-f s-setup s' x (length (pair-prefix-f ctx))
+      f-result = run-ir-star-at-offset f (pair-prefix-f ctx) (pair-suffix-f ctx) x s-setup
+                   setup-halted pc-for-f setup-x0 setup-stack-inv setup-x29-inv setup-sp>16
+
+      s-f : State
+      s-f = proj₁ f-result
+
+      res-f-raw : IRStarResult f prog-f s-setup s-f x (length (pair-prefix-f ctx))
+      res-f-raw = proj₂ f-result
+
+      -- Reindex f's result to work with prog
+      res-f : IRStarResult f prog s-setup s-f x (length (pair-prefix-f ctx))
+      res-f = subst (λ p → IRStarResult f p s-setup s-f x (length (pair-prefix-f ctx))) prog-f-eq res-f-raw
+
+      ------------------------------------------------------------------------
+      -- Phase 3: Middle (2 instructions) - POSTULATED for now
+      -- str x0 [x21], mov x0 x20
+      ------------------------------------------------------------------------
+
+      postulate
+        s-mid : State
+        star-mid : Star prog s-f s-mid
+        mid-halted : halted s-mid ≡ false
+        mid-pc : pc s-mid ≡ length prefix +ℕ 5 +ℕ compile-length f
+        mid-x0 : readReg (regs s-mid) x0 ≡ encode x  -- restored from x20
+        mid-x20 : readReg (regs s-mid) x20 ≡ readReg (regs s-f) x20
+        mid-x21 : readReg (regs s-mid) x21 ≡ readReg (regs s-f) x21
+        mid-x29 : readReg (regs s-mid) x29 ≡ readReg (regs s-f) x29
+        mid-x30 : readReg (regs s-mid) x30 ≡ readReg (regs s-f) x30
+        mid-sp : readSP (regs s-mid) ≡ readSP (regs s-f)
+        mid-stack-inv : StackInvariant s-mid
+        mid-x29-inv : X29Invariant s-mid
+        mid-sp>16 : readSP (regs s-mid) > 16
+        mid-mem-fst : readMem (memory s-mid) new-sp ≡ just (encode (eval f x))
+
+      ------------------------------------------------------------------------
+      -- Phase 4: Execute g recursively
+      ------------------------------------------------------------------------
+
+      -- Program for g: use prog-eq-g from context
+      -- Same pattern as prog-f, use sym to flip direction
+      prog-g : Program
+      prog-g = pair-prefix-g ctx ++ pair-code-g ctx ++ pair-suffix-g ctx
+
+      prog-g-eq : prog-g ≡ prog
+      prog-g-eq = sym (pair-prog-eq-g ctx)
+
+      -- Length of prefix-g
+      len-pg : length (pair-prefix-g ctx) ≡ length prefix +ℕ 5 +ℕ compile-length f
+      len-pg = pair-len-prefix-g ctx
+
+      -- PC matches prefix-g length
+      pc-for-g : pc s-mid ≡ length (pair-prefix-g ctx)
+      pc-for-g = trans mid-pc (sym len-pg)
+
+      -- Recursive call for g
+      g-result : ∃[ s' ] IRStarResult g prog-g s-mid s' x (length (pair-prefix-g ctx))
+      g-result = run-ir-star-at-offset g (pair-prefix-g ctx) (pair-suffix-g ctx) x s-mid
+                   mid-halted pc-for-g mid-x0 mid-stack-inv mid-x29-inv mid-sp>16
+
+      s-g : State
+      s-g = proj₁ g-result
+
+      res-g-raw : IRStarResult g prog-g s-mid s-g x (length (pair-prefix-g ctx))
+      res-g-raw = proj₂ g-result
+
+      -- Reindex g's result to work with prog
+      res-g : IRStarResult g prog s-mid s-g x (length (pair-prefix-g ctx))
+      res-g = subst (λ p → IRStarResult g p s-mid s-g x (length (pair-prefix-g ctx))) prog-g-eq res-g-raw
+
+      ------------------------------------------------------------------------
+      -- Phase 5: Final (2 instructions) - POSTULATED for now
+      -- str x0 [x21+8], mov x0 x21
+      ------------------------------------------------------------------------
+
       postulate
         s-final : State
-        pair-result : IRStarResult ⟨ f , g ⟩ prog s s-final x (length prefix)
+        star-final : Star prog s-g s-final
+        -- Memory has both results stored
+        final-mem-fst : readMem (memory s-final) new-sp ≡ just (encode (eval f x))
+        final-mem-snd : readMem (memory s-final) (new-sp +ℕ 8) ≡ just (encode (eval g x))
+
+      ------------------------------------------------------------------------
+      -- Compose all Star proofs
+      ------------------------------------------------------------------------
+
+      star-full : Star prog s s-final
+      star-full = star-trans (star-trans (star-trans (star-trans star-setup (ir-star res-f)) star-mid) (ir-star res-g)) star-final
+
+      ------------------------------------------------------------------------
+      -- Final state properties
+      ------------------------------------------------------------------------
+
+      -- PC at end
+      postulate
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+
+      -- x0 is pair pointer which encodes (eval f x, eval g x)
+      -- encode-pair-construct: a b p m (mem-fst) (mem-snd) → p ≡ encode (a, b)
+      -- We have x0-is-new-sp : x0 ≡ new-sp, so trans gives us x0 ≡ encode (...)
+      x0-final : readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
+      x0-final = trans x0-is-new-sp pair-encoding
+        where
+          postulate x0-is-new-sp : readReg (regs s-final) x0 ≡ new-sp
+          pair-encoding : new-sp ≡ encode (eval ⟨ f , g ⟩ x)
+          pair-encoding = encode-pair-construct (eval f x) (eval g x) new-sp (memory s-final) final-mem-fst final-mem-snd
+
+      -- Final state properties (halted, stack invariant, sp bound)
+      postulate
+        halted-final : halted s-final ≡ false
+        stack-inv-final : StackInvariant s-final
+        sp-bound-final : readSP (regs s-final) > 16
+
+      -- Register preservation (chain through all phases)
+      postulate
+        x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+        x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+        x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+        x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+        sp-final : readSP (regs s-final) ≤ readSP (regs s)
+        mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+        mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+        mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
 
 
   -- | Star-based case execution
