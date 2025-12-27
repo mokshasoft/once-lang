@@ -1010,7 +1010,13 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
         "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
         generateIRExpr alloc body paramName <> "; })"
       Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
-      Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
+      Once.IR.Var n' ->
+        -- When --arith is enabled, try to inline arithmetic primitives
+        if arithMode
+          then case inlineArithPrim n' v of
+            Just expr -> expr
+            Nothing -> "once_" <> n' <> "(" <> v <> ")"
+          else "once_" <> n' <> "(" <> v <> ")"
       Once.IR.LocalVar n' -> n'
       Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
       Once.IR.Prim n' _ _ ->
@@ -1296,89 +1302,169 @@ assembleInterpFiles target asmFiles outputBase = do
 -- Unary ops expect input as a single value (-v)
 inlineArithPrim :: Text -> Text -> Maybe Text
 inlineArithPrim primName v = case primName of
-  -- Addition
-  "__add_i8"  -> Just $ parens (fstOf v <> " + " <> sndOf v)
-  "__add_i16" -> Just $ parens (fstOf v <> " + " <> sndOf v)
-  "__add_i32" -> Just $ parens (fstOf v <> " + " <> sndOf v)
-  "__add_i64" -> Just $ parens (fstOf v <> " + " <> sndOf v)
-  "__add_f32" -> Just $ parens (fstOf v <> " + " <> sndOf v)
-  "__add_f64" -> Just $ parens (fstOf v <> " + " <> sndOf v)
+  -- Addition (with and without __ prefix)
+  -- Results cast to (void*) to maintain type compatibility with OncePair
+  "__add_i8"  -> Just $ voidPtr (fstI8 v <> " + " <> sndI8 v)
+  "__add_i16" -> Just $ voidPtr (fstI16 v <> " + " <> sndI16 v)
+  "__add_i32" -> Just $ voidPtr (fstI32 v <> " + " <> sndI32 v)
+  "__add_i64" -> Just $ voidPtr (fstI64 v <> " + " <> sndI64 v)
+  "__add_f32" -> Just $ voidPtr (fstF32 v <> " + " <> sndF32 v)
+  "__add_f64" -> Just $ voidPtr (fstF64 v <> " + " <> sndF64 v)
+  "add_i8"  -> Just $ voidPtr (fstI8 v <> " + " <> sndI8 v)
+  "add_i16" -> Just $ voidPtr (fstI16 v <> " + " <> sndI16 v)
+  "add_i32" -> Just $ voidPtr (fstI32 v <> " + " <> sndI32 v)
+  "add_i64" -> Just $ voidPtr (fstI64 v <> " + " <> sndI64 v)
+  "add_f32" -> Just $ voidPtr (fstF32 v <> " + " <> sndF32 v)
+  "add_f64" -> Just $ voidPtr (fstF64 v <> " + " <> sndF64 v)
 
   -- Subtraction
-  "__sub_i8"  -> Just $ parens (fstOf v <> " - " <> sndOf v)
-  "__sub_i16" -> Just $ parens (fstOf v <> " - " <> sndOf v)
-  "__sub_i32" -> Just $ parens (fstOf v <> " - " <> sndOf v)
-  "__sub_i64" -> Just $ parens (fstOf v <> " - " <> sndOf v)
-  "__sub_f32" -> Just $ parens (fstOf v <> " - " <> sndOf v)
-  "__sub_f64" -> Just $ parens (fstOf v <> " - " <> sndOf v)
+  "__sub_i8"  -> Just $ voidPtr (fstI8 v <> " - " <> sndI8 v)
+  "__sub_i16" -> Just $ voidPtr (fstI16 v <> " - " <> sndI16 v)
+  "__sub_i32" -> Just $ voidPtr (fstI32 v <> " - " <> sndI32 v)
+  "__sub_i64" -> Just $ voidPtr (fstI64 v <> " - " <> sndI64 v)
+  "__sub_f32" -> Just $ voidPtr (fstF32 v <> " - " <> sndF32 v)
+  "__sub_f64" -> Just $ voidPtr (fstF64 v <> " - " <> sndF64 v)
+  "sub_i8"  -> Just $ voidPtr (fstI8 v <> " - " <> sndI8 v)
+  "sub_i16" -> Just $ voidPtr (fstI16 v <> " - " <> sndI16 v)
+  "sub_i32" -> Just $ voidPtr (fstI32 v <> " - " <> sndI32 v)
+  "sub_i64" -> Just $ voidPtr (fstI64 v <> " - " <> sndI64 v)
+  "sub_f32" -> Just $ voidPtr (fstF32 v <> " - " <> sndF32 v)
+  "sub_f64" -> Just $ voidPtr (fstF64 v <> " - " <> sndF64 v)
 
   -- Multiplication
-  "__mul_i8"  -> Just $ parens (fstOf v <> " * " <> sndOf v)
-  "__mul_i16" -> Just $ parens (fstOf v <> " * " <> sndOf v)
-  "__mul_i32" -> Just $ parens (fstOf v <> " * " <> sndOf v)
-  "__mul_i64" -> Just $ parens (fstOf v <> " * " <> sndOf v)
-  "__mul_f32" -> Just $ parens (fstOf v <> " * " <> sndOf v)
-  "__mul_f64" -> Just $ parens (fstOf v <> " * " <> sndOf v)
+  "__mul_i8"  -> Just $ voidPtr (fstI8 v <> " * " <> sndI8 v)
+  "__mul_i16" -> Just $ voidPtr (fstI16 v <> " * " <> sndI16 v)
+  "__mul_i32" -> Just $ voidPtr (fstI32 v <> " * " <> sndI32 v)
+  "__mul_i64" -> Just $ voidPtr (fstI64 v <> " * " <> sndI64 v)
+  "__mul_f32" -> Just $ voidPtr (fstF32 v <> " * " <> sndF32 v)
+  "__mul_f64" -> Just $ voidPtr (fstF64 v <> " * " <> sndF64 v)
+  "mul_i8"  -> Just $ voidPtr (fstI8 v <> " * " <> sndI8 v)
+  "mul_i16" -> Just $ voidPtr (fstI16 v <> " * " <> sndI16 v)
+  "mul_i32" -> Just $ voidPtr (fstI32 v <> " * " <> sndI32 v)
+  "mul_i64" -> Just $ voidPtr (fstI64 v <> " * " <> sndI64 v)
+  "mul_f32" -> Just $ voidPtr (fstF32 v <> " * " <> sndF32 v)
+  "mul_f64" -> Just $ voidPtr (fstF64 v <> " * " <> sndF64 v)
 
   -- Division
-  "__div_i8"  -> Just $ parens (fstOf v <> " / " <> sndOf v)
-  "__div_i16" -> Just $ parens (fstOf v <> " / " <> sndOf v)
-  "__div_i32" -> Just $ parens (fstOf v <> " / " <> sndOf v)
-  "__div_i64" -> Just $ parens (fstOf v <> " / " <> sndOf v)
-  "__div_f32" -> Just $ parens (fstOf v <> " / " <> sndOf v)
-  "__div_f64" -> Just $ parens (fstOf v <> " / " <> sndOf v)
+  "__div_i8"  -> Just $ voidPtr (fstI8 v <> " / " <> sndI8 v)
+  "__div_i16" -> Just $ voidPtr (fstI16 v <> " / " <> sndI16 v)
+  "__div_i32" -> Just $ voidPtr (fstI32 v <> " / " <> sndI32 v)
+  "__div_i64" -> Just $ voidPtr (fstI64 v <> " / " <> sndI64 v)
+  "__div_f32" -> Just $ voidPtr (fstF32 v <> " / " <> sndF32 v)
+  "__div_f64" -> Just $ voidPtr (fstF64 v <> " / " <> sndF64 v)
+  "div_i8"  -> Just $ voidPtr (fstI8 v <> " / " <> sndI8 v)
+  "div_i16" -> Just $ voidPtr (fstI16 v <> " / " <> sndI16 v)
+  "div_i32" -> Just $ voidPtr (fstI32 v <> " / " <> sndI32 v)
+  "div_i64" -> Just $ voidPtr (fstI64 v <> " / " <> sndI64 v)
+  "div_f32" -> Just $ voidPtr (fstF32 v <> " / " <> sndF32 v)
+  "div_f64" -> Just $ voidPtr (fstF64 v <> " / " <> sndF64 v)
 
   -- Modulo (integers only)
-  "__mod_i8"  -> Just $ parens (fstOf v <> " % " <> sndOf v)
-  "__mod_i16" -> Just $ parens (fstOf v <> " % " <> sndOf v)
-  "__mod_i32" -> Just $ parens (fstOf v <> " % " <> sndOf v)
-  "__mod_i64" -> Just $ parens (fstOf v <> " % " <> sndOf v)
+  "__mod_i8"  -> Just $ voidPtr (fstI8 v <> " % " <> sndI8 v)
+  "__mod_i16" -> Just $ voidPtr (fstI16 v <> " % " <> sndI16 v)
+  "__mod_i32" -> Just $ voidPtr (fstI32 v <> " % " <> sndI32 v)
+  "__mod_i64" -> Just $ voidPtr (fstI64 v <> " % " <> sndI64 v)
+  "mod_i8"  -> Just $ voidPtr (fstI8 v <> " % " <> sndI8 v)
+  "mod_i16" -> Just $ voidPtr (fstI16 v <> " % " <> sndI16 v)
+  "mod_i32" -> Just $ voidPtr (fstI32 v <> " % " <> sndI32 v)
+  "mod_i64" -> Just $ voidPtr (fstI64 v <> " % " <> sndI64 v)
 
-  -- Negation (unary)
-  "__neg_i8"  -> Just $ parens ("-" <> v)
-  "__neg_i16" -> Just $ parens ("-" <> v)
-  "__neg_i32" -> Just $ parens ("-" <> v)
-  "__neg_i64" -> Just $ parens ("-" <> v)
-  "__neg_f32" -> Just $ parens ("-" <> v)
-  "__neg_f64" -> Just $ parens ("-" <> v)
+  -- Negation (unary) - cast void* to appropriate type, wrap result
+  "__neg_i8"  -> Just $ voidPtr ("-(int8_t)(long)" <> v)
+  "__neg_i16" -> Just $ voidPtr ("-(int16_t)(long)" <> v)
+  "__neg_i32" -> Just $ voidPtr ("-(int32_t)(long)" <> v)
+  "__neg_i64" -> Just $ voidPtr ("-(int64_t)(long)" <> v)
+  "__neg_f32" -> Just $ voidPtr ("-*(float*)&" <> v)
+  "__neg_f64" -> Just $ voidPtr ("-*(double*)&" <> v)
+  "neg_i8"  -> Just $ voidPtr ("-(int8_t)(long)" <> v)
+  "neg_i16" -> Just $ voidPtr ("-(int16_t)(long)" <> v)
+  "neg_i32" -> Just $ voidPtr ("-(int32_t)(long)" <> v)
+  "neg_i64" -> Just $ voidPtr ("-(int64_t)(long)" <> v)
+  "neg_f32" -> Just $ voidPtr ("-*(float*)&" <> v)
+  "neg_f64" -> Just $ voidPtr ("-*(double*)&" <> v)
 
-  -- Comparisons
-  "__lt_i8"  -> Just $ parens (fstOf v <> " < " <> sndOf v)
-  "__lt_i16" -> Just $ parens (fstOf v <> " < " <> sndOf v)
-  "__lt_i32" -> Just $ parens (fstOf v <> " < " <> sndOf v)
-  "__lt_i64" -> Just $ parens (fstOf v <> " < " <> sndOf v)
-  "__lt_f32" -> Just $ parens (fstOf v <> " < " <> sndOf v)
-  "__lt_f64" -> Just $ parens (fstOf v <> " < " <> sndOf v)
+  -- Comparisons (return int, wrapped to void*)
+  "__lt_i8"  -> Just $ voidPtr (fstI8 v <> " < " <> sndI8 v)
+  "__lt_i16" -> Just $ voidPtr (fstI16 v <> " < " <> sndI16 v)
+  "__lt_i32" -> Just $ voidPtr (fstI32 v <> " < " <> sndI32 v)
+  "__lt_i64" -> Just $ voidPtr (fstI64 v <> " < " <> sndI64 v)
+  "__lt_f32" -> Just $ voidPtr (fstF32 v <> " < " <> sndF32 v)
+  "__lt_f64" -> Just $ voidPtr (fstF64 v <> " < " <> sndF64 v)
+  "lt_i8"  -> Just $ voidPtr (fstI8 v <> " < " <> sndI8 v)
+  "lt_i16" -> Just $ voidPtr (fstI16 v <> " < " <> sndI16 v)
+  "lt_i32" -> Just $ voidPtr (fstI32 v <> " < " <> sndI32 v)
+  "lt_i64" -> Just $ voidPtr (fstI64 v <> " < " <> sndI64 v)
+  "lt_f32" -> Just $ voidPtr (fstF32 v <> " < " <> sndF32 v)
+  "lt_f64" -> Just $ voidPtr (fstF64 v <> " < " <> sndF64 v)
 
-  "__le_i8"  -> Just $ parens (fstOf v <> " <= " <> sndOf v)
-  "__le_i16" -> Just $ parens (fstOf v <> " <= " <> sndOf v)
-  "__le_i32" -> Just $ parens (fstOf v <> " <= " <> sndOf v)
-  "__le_i64" -> Just $ parens (fstOf v <> " <= " <> sndOf v)
+  "__le_i8"  -> Just $ voidPtr (fstI8 v <> " <= " <> sndI8 v)
+  "__le_i16" -> Just $ voidPtr (fstI16 v <> " <= " <> sndI16 v)
+  "__le_i32" -> Just $ voidPtr (fstI32 v <> " <= " <> sndI32 v)
+  "__le_i64" -> Just $ voidPtr (fstI64 v <> " <= " <> sndI64 v)
+  "le_i8"  -> Just $ voidPtr (fstI8 v <> " <= " <> sndI8 v)
+  "le_i16" -> Just $ voidPtr (fstI16 v <> " <= " <> sndI16 v)
+  "le_i32" -> Just $ voidPtr (fstI32 v <> " <= " <> sndI32 v)
+  "le_i64" -> Just $ voidPtr (fstI64 v <> " <= " <> sndI64 v)
 
-  "__gt_i8"  -> Just $ parens (fstOf v <> " > " <> sndOf v)
-  "__gt_i16" -> Just $ parens (fstOf v <> " > " <> sndOf v)
-  "__gt_i32" -> Just $ parens (fstOf v <> " > " <> sndOf v)
-  "__gt_i64" -> Just $ parens (fstOf v <> " > " <> sndOf v)
+  "__gt_i8"  -> Just $ voidPtr (fstI8 v <> " > " <> sndI8 v)
+  "__gt_i16" -> Just $ voidPtr (fstI16 v <> " > " <> sndI16 v)
+  "__gt_i32" -> Just $ voidPtr (fstI32 v <> " > " <> sndI32 v)
+  "__gt_i64" -> Just $ voidPtr (fstI64 v <> " > " <> sndI64 v)
+  "gt_i8"  -> Just $ voidPtr (fstI8 v <> " > " <> sndI8 v)
+  "gt_i16" -> Just $ voidPtr (fstI16 v <> " > " <> sndI16 v)
+  "gt_i32" -> Just $ voidPtr (fstI32 v <> " > " <> sndI32 v)
+  "gt_i64" -> Just $ voidPtr (fstI64 v <> " > " <> sndI64 v)
 
-  "__ge_i8"  -> Just $ parens (fstOf v <> " >= " <> sndOf v)
-  "__ge_i16" -> Just $ parens (fstOf v <> " >= " <> sndOf v)
-  "__ge_i32" -> Just $ parens (fstOf v <> " >= " <> sndOf v)
-  "__ge_i64" -> Just $ parens (fstOf v <> " >= " <> sndOf v)
+  "__ge_i8"  -> Just $ voidPtr (fstI8 v <> " >= " <> sndI8 v)
+  "__ge_i16" -> Just $ voidPtr (fstI16 v <> " >= " <> sndI16 v)
+  "__ge_i32" -> Just $ voidPtr (fstI32 v <> " >= " <> sndI32 v)
+  "__ge_i64" -> Just $ voidPtr (fstI64 v <> " >= " <> sndI64 v)
+  "ge_i8"  -> Just $ voidPtr (fstI8 v <> " >= " <> sndI8 v)
+  "ge_i16" -> Just $ voidPtr (fstI16 v <> " >= " <> sndI16 v)
+  "ge_i32" -> Just $ voidPtr (fstI32 v <> " >= " <> sndI32 v)
+  "ge_i64" -> Just $ voidPtr (fstI64 v <> " >= " <> sndI64 v)
 
-  "__eq_i8"  -> Just $ parens (fstOf v <> " == " <> sndOf v)
-  "__eq_i16" -> Just $ parens (fstOf v <> " == " <> sndOf v)
-  "__eq_i32" -> Just $ parens (fstOf v <> " == " <> sndOf v)
-  "__eq_i64" -> Just $ parens (fstOf v <> " == " <> sndOf v)
-  "__eq_f32" -> Just $ parens (fstOf v <> " == " <> sndOf v)
-  "__eq_f64" -> Just $ parens (fstOf v <> " == " <> sndOf v)
+  "__eq_i8"  -> Just $ voidPtr (fstI8 v <> " == " <> sndI8 v)
+  "__eq_i16" -> Just $ voidPtr (fstI16 v <> " == " <> sndI16 v)
+  "__eq_i32" -> Just $ voidPtr (fstI32 v <> " == " <> sndI32 v)
+  "__eq_i64" -> Just $ voidPtr (fstI64 v <> " == " <> sndI64 v)
+  "__eq_f32" -> Just $ voidPtr (fstF32 v <> " == " <> sndF32 v)
+  "__eq_f64" -> Just $ voidPtr (fstF64 v <> " == " <> sndF64 v)
+  "eq_i8"  -> Just $ voidPtr (fstI8 v <> " == " <> sndI8 v)
+  "eq_i16" -> Just $ voidPtr (fstI16 v <> " == " <> sndI16 v)
+  "eq_i32" -> Just $ voidPtr (fstI32 v <> " == " <> sndI32 v)
+  "eq_i64" -> Just $ voidPtr (fstI64 v <> " == " <> sndI64 v)
+  "eq_f32" -> Just $ voidPtr (fstF32 v <> " == " <> sndF32 v)
+  "eq_f64" -> Just $ voidPtr (fstF64 v <> " == " <> sndF64 v)
 
-  "__ne_i8"  -> Just $ parens (fstOf v <> " != " <> sndOf v)
-  "__ne_i16" -> Just $ parens (fstOf v <> " != " <> sndOf v)
-  "__ne_i32" -> Just $ parens (fstOf v <> " != " <> sndOf v)
-  "__ne_i64" -> Just $ parens (fstOf v <> " != " <> sndOf v)
+  "__ne_i8"  -> Just $ voidPtr (fstI8 v <> " != " <> sndI8 v)
+  "__ne_i16" -> Just $ voidPtr (fstI16 v <> " != " <> sndI16 v)
+  "__ne_i32" -> Just $ voidPtr (fstI32 v <> " != " <> sndI32 v)
+  "__ne_i64" -> Just $ voidPtr (fstI64 v <> " != " <> sndI64 v)
+  "ne_i8"  -> Just $ voidPtr (fstI8 v <> " != " <> sndI8 v)
+  "ne_i16" -> Just $ voidPtr (fstI16 v <> " != " <> sndI16 v)
+  "ne_i32" -> Just $ voidPtr (fstI32 v <> " != " <> sndI32 v)
+  "ne_i64" -> Just $ voidPtr (fstI64 v <> " != " <> sndI64 v)
 
   _ -> Nothing
   where
     parens t = "(" <> t <> ")"
+    -- Cast result to void* for storage in OncePair
+    voidPtr t = "(void*)(" <> t <> ")"
+    -- Cast void* to integer type
+    fstI8 x = "(int8_t)(long)" <> x <> ".fst"
+    sndI8 x = "(int8_t)(long)" <> x <> ".snd"
+    fstI16 x = "(int16_t)(long)" <> x <> ".fst"
+    sndI16 x = "(int16_t)(long)" <> x <> ".snd"
+    fstI32 x = "(int32_t)(long)" <> x <> ".fst"
+    sndI32 x = "(int32_t)(long)" <> x <> ".snd"
+    fstI64 x = "(int64_t)(long)" <> x <> ".fst"
+    sndI64 x = "(int64_t)(long)" <> x <> ".snd"
+    -- For floats, we need to pass by value (stored directly in void* as bits)
+    fstF32 x = "*(float*)&" <> x <> ".fst"
+    sndF32 x = "*(float*)&" <> x <> ".snd"
+    fstF64 x = "*(double*)&" <> x <> ".fst"
+    sndF64 x = "*(double*)&" <> x <> ".snd"
+    -- Old generic accessors (kept for reference)
     fstOf x = x <> ".fst"
     sndOf x = x <> ".snd"

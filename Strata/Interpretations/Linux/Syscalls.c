@@ -53,8 +53,8 @@ void* once_exit0(void* x) {
     return NULL;
 }
 
-void* once_exit(int64_t x) {
-    exit((int)x);
+void* once_exit(void* x) {
+    exit((int)(long)x);
     return NULL;
 }
 

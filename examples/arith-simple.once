@@ -1,0 +1,10 @@
+-- Simple arithmetic test for --arith flag
+-- This program computes: (3 + 5) * 2 = 16 and exits with that code
+
+import I.Linux.Syscalls as S
+
+primitive add_i64 : Int * Int -> Int
+primitive mul_i64 : Int * Int -> Int
+
+main : IO Unit
+main = effCompose (exit@S) (pure (mul_i64 (add_i64 (3, 5), 2)))
