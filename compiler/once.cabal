@@ -42,6 +42,9 @@ library
       Once.Arith.Backend.X86.CodeGen
       Once.Arith.Backend.X86.Emit
       Once.Arith.Backend.X86.Syntax
+      Once.Arith.Backend.AArch64.CodeGen
+      Once.Arith.Backend.AArch64.Emit
+      Once.Arith.Backend.AArch64.Syntax
       Once.Arith.CodeGen.C
       Once.Arith.IR
       Once.Arith.Recognize

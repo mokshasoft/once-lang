@@ -13,6 +13,9 @@ import Once.Arith.CodeGen.C
 import Once.Arith.Backend.X86.Syntax
 import Once.Arith.Backend.X86.CodeGen
 import Once.Arith.Backend.X86.Emit
+import qualified Once.Arith.Backend.AArch64.Syntax as A64
+import qualified Once.Arith.Backend.AArch64.CodeGen as A64
+import qualified Once.Arith.Backend.AArch64.Emit as A64
 
 arithTests :: TestTree
 arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
@@ -172,5 +175,76 @@ arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
           xmmName XMM0 @?= "xmm0"
       , testCase "xmmName XMM15" $
           xmmName XMM15 @?= "xmm15"
+      ]
+  , testGroup "AArch64 code generation"
+      [ testCase "literal generates movz" $
+          let prog = A64.compileArith (ALitInt I64 42)
+          in length prog @?= 2  -- movz x9, mov x0
+      , testCase "addition generates add instruction" $
+          let prog = A64.compileArith (AAdd (ALitInt I64 1) (ALitInt I64 2))
+              hasAdd = any isA64Add prog
+              isA64Add (A64.IntI (A64.Add _ _ _)) = True
+              isA64Add _ = False
+          in hasAdd @?= True
+      , testCase "subtraction generates sub instruction" $
+          let prog = A64.compileArith (ASub (ALitInt I64 10) (ALitInt I64 3))
+              hasSub = any isA64Sub prog
+              isA64Sub (A64.IntI (A64.Sub _ _ _)) = True
+              isA64Sub _ = False
+          in hasSub @?= True
+      , testCase "multiplication generates mul instruction" $
+          let prog = A64.compileArith (AMul (ALitInt I64 5) (ALitInt I64 6))
+              hasMul = any isA64Mul prog
+              isA64Mul (A64.IntI (A64.Mul _ _ _)) = True
+              isA64Mul _ = False
+          in hasMul @?= True
+      , testCase "division generates sdiv instruction" $
+          let prog = A64.compileArith (ADiv (ALitInt I64 100) (ALitInt I64 10))
+              hasSdiv = any isA64Sdiv prog
+              isA64Sdiv (A64.IntI (A64.Sdiv _ _ _)) = True
+              isA64Sdiv _ = False
+          in hasSdiv @?= True
+      , testCase "negation generates neg instruction" $
+          let prog = A64.compileArith (ANeg (ALitInt I64 7))
+              hasNeg = any isA64Neg prog
+              isA64Neg (A64.IntI (A64.Neg _ _)) = True
+              isA64Neg _ = False
+          in hasNeg @?= True
+      ]
+  , testGroup "AArch64 assembly emission"
+      [ testCase "movz instruction format" $
+          A64.emitIntInstr (A64.Movz A64.X0 42 0) @?= "    movz x0, #42"
+      , testCase "movz with shift" $
+          A64.emitIntInstr (A64.Movz A64.X1 0xFFFF 16) @?= "    movz x1, #65535, lsl #16"
+      , testCase "add instruction format" $
+          A64.emitIntInstr (A64.Add A64.X0 A64.X1 (A64.RegOp A64.X2)) @?= "    add x0, x1, x2"
+      , testCase "add immediate format" $
+          A64.emitIntInstr (A64.Add A64.X0 A64.X1 (A64.ImmOp 42)) @?= "    add x0, x1, #42"
+      , testCase "sub instruction format" $
+          A64.emitIntInstr (A64.Sub A64.X3 A64.X4 (A64.RegOp A64.X5)) @?= "    sub x3, x4, x5"
+      , testCase "mul instruction format" $
+          A64.emitIntInstr (A64.Mul A64.X0 A64.X1 A64.X2) @?= "    mul x0, x1, x2"
+      , testCase "sdiv instruction format" $
+          A64.emitIntInstr (A64.Sdiv A64.X0 A64.X1 A64.X2) @?= "    sdiv x0, x1, x2"
+      , testCase "neg instruction format" $
+          A64.emitIntInstr (A64.Neg A64.X0 A64.X1) @?= "    neg x0, x1"
+      , testCase "fadd instruction format" $
+          A64.emitFPInstr (A64.Fadd A64.D0 A64.D1 A64.D2) @?= "    fadd d0, d1, d2"
+      , testCase "full program emission" $
+          let prog = A64.compileArith (ALitInt I64 42)
+              asm = A64.emitProgram prog
+          in T.isInfixOf "movz" asm @?= True
+      ]
+  , testGroup "AArch64 register names"
+      [ testCase "gprName X0" $
+          A64.gprName A64.X0 @?= "x0"
+      , testCase "gprName X15" $
+          A64.gprName A64.X15 @?= "x15"
+      , testCase "gprName32 X0" $
+          A64.gprName32 A64.X0 @?= "w0"
+      , testCase "fpRegName D0" $
+          A64.fpRegName A64.D0 @?= "d0"
+      , testCase "fpRegNameS D0" $
+          A64.fpRegNameS A64.D0 @?= "s0"
       ]
   ]
