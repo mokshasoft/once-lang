@@ -265,7 +265,7 @@ mutual
       -- Phase 1: Setup (3 instructions - addi sp, sd s1, mv s1 a0)
       -- Original s1 is saved to stack at sp+16
       orig-s1 = readReg (regs s) s1
-      setup-result = pair-setup-star f g prefix suffix x s h-false pc-eq a0-eq
+      setup-result = pair-setup-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
       s-setup = proj₁ setup-result
       star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -317,9 +317,18 @@ mutual
       s1-after-f-is-x : readReg (regs s-after-f-raw) s1 ≡ encode x
       s1-after-f-is-x = trans s1-after-f s1-setup
 
+      -- SP tracking: postulate that f preserves sp (sound when delta_f = 0)
+      -- This is a limitation: nested pairs would fail. See detailed comment below.
+      postulate
+        sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
+
       -- Phase 3: Middle (2 instructions)
+      -- Need sp relation: sp after f = sp_orig - 24
+      sp-after-f-rel : readReg (regs s-after-f-raw) sp ≡ readReg (regs s) sp ∸ 24
+      sp-after-f-rel = trans sp-after-f sp-setup
+
       mid-result = pair-middle-star f g prefix suffix x s s-after-f-raw
-                     h-after-f pc-after-f a0-after-f s1-after-f-is-x
+                     h-after-f pc-after-f a0-after-f s1-after-f-is-x sp-bound sp-after-f-rel
       s-mid = proj₁ mid-result
       star-mid-raw = proj₁ (proj₂ mid-result)
       h-mid = proj₁ (proj₂ (proj₂ mid-result))
@@ -412,7 +421,6 @@ mutual
       -- Fix would require: save frame pointer in s2 before f, use s2 for all stores/loads.
       -- For now, we postulate the sp preservation (sound when delta = 0).
       postulate
-        sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
         sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
 
       -- Memory preservation: The middle phase writes encode(eval f x) to sp,
@@ -456,8 +464,17 @@ mutual
           ∎
 
       -- Phase 5: Final (3 instructions - sd a0 8(sp), mv a0 sp, ld s1 16(sp))
+      -- Need sp relation: sp after g = orig-sp - 24
+      -- Chain: sp-after-g → sp-mid → sp-after-f → sp-setup
+      sp-mid-rel : readReg (regs s-mid) sp ≡ orig-sp ∸ 24
+      sp-mid-rel = trans sp-mid (trans sp-after-f sp-setup)
+
+      sp-after-g-rel : readReg (regs s-after-g-raw) sp ≡ orig-sp ∸ 24
+      sp-after-g-rel = trans sp-after-g sp-mid-rel
+
       final-phase-result = pair-final-star f g prefix suffix x orig-s1 orig-sp s-mid s-after-g-raw
                              h-after-g pc-after-g a0-after-g mem-after-g mem-s1-after-g
+                             sp-bound sp-after-g-rel
       s-final = proj₁ final-phase-result
       star-final-raw = proj₁ (proj₂ final-phase-result)
       h-final = proj₁ (proj₂ (proj₂ final-phase-result))
