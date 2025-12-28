@@ -18,6 +18,7 @@ open import Data.String using (String)
 open import Data.String.Properties using () renaming (_≟_ to _≟String_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
+open import Size using (Size; ∞)
 
 ------------------------------------------------------------------------
 -- Equality decision for Types (needed for pattern matching)
@@ -183,7 +184,7 @@ Buffer ≟Type (TVar _) = no (λ ())
 -- automatically excludes these cases.
 
 mutual
-  _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
+  _≟IR_ : ∀ {A B} → (f g : IR ∞ A B) → Dec (f ≡ g)
 
   -- Same constructor cases
   id ≟IR id = yes refl
@@ -214,7 +215,7 @@ mutual
   ... | _        | no neq   = no (λ { refl → neq refl })
 
   -- Composition vs composition - need matching intermediate types
-  _≟IR_ {A} {C} (_∘_ {.A} {B} {.C} f g) (_∘_ {.A} {B'} {.C} f' g') with B ≟Type B'
+  _≟IR_ {A} {C} (_∘_ {_} {.A} {B} {.C} f g) (_∘_ {_} {.A} {B'} {.C} f' g') with B ≟Type B'
   ... | no neq = no (λ { refl → neq refl })
   ... | yes refl with f ≟IR f' | g ≟IR g'
   ...   | yes refl | yes refl = yes refl
@@ -355,7 +356,7 @@ mutual
 -- Note: We avoid overlapping patterns to get definitional equalities in proofs.
 -- Each constructor is handled explicitly.
 --
-optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+optimize-compose : ∀ {A B C} → IR ∞ B C → IR ∞ A B → IR ∞ A C
 
 -- Left identity: id ∘ f = f (always applies when left arg is id)
 optimize-compose id f = f
@@ -468,18 +469,18 @@ optimize-compose g f = g ∘ f
 --   1. Eta law: ⟨ fst , snd ⟩ = id
 --   2. Uniqueness law: ⟨ fst ∘ h , snd ∘ h ⟩ = h
 --
-optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+optimize-pair : ∀ {A B C} → IR ∞ C A → IR ∞ C B → IR ∞ C (A * B)
 -- Eta: ⟨ fst , snd ⟩ = id
-optimize-pair (fst {A} {B}) (snd {A'} {B'}) with A ≟Type A' | B ≟Type B'
+optimize-pair (fst {_} {A} {B}) (snd {_} {A'} {B'}) with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
 ... | _        | _        = ⟨ fst , snd ⟩
 -- Uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ = h
-optimize-pair (_∘_ {_} {D} (fst {A} {B}) h) (_∘_ {_} {D'} (snd {A'} {B'}) h')
+optimize-pair (_∘_ {_} {_} {D} {_} (fst {_} {A} {B}) h) (_∘_ {_} {_} {D'} {_} (snd {_} {A'} {B'}) h')
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
 ... | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = h                  -- ⟨ fst ∘ h , snd ∘ h ⟩ = h
 ...   | no _     = ⟨ fst ∘ h , snd ∘ h' ⟩
-optimize-pair (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩
+optimize-pair (_∘_ (fst {_} {A} {B}) h) (_∘_ (snd {_} {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩
 -- Default: no simplification
 optimize-pair f g = ⟨ f , g ⟩
 
@@ -493,18 +494,18 @@ optimize-pair f g = ⟨ f , g ⟩
 --   1. Eta law: [ inl , inr ] = id
 --   2. Uniqueness law: [ h ∘ inl , h ∘ inr ] = h
 --
-optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
+optimize-case : ∀ {A B C} → IR ∞ A C → IR ∞ B C → IR ∞ (A + B) C
 -- Eta: [ inl , inr ] = id
-optimize-case (inl {A} {B}) (inr {A'} {B'}) with A ≟Type A' | B ≟Type B'
+optimize-case (inl {_} {A} {B}) (inr {_} {A'} {B'}) with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
 ... | _        | _        = [ inl , inr ]
 -- Uniqueness: [ h ∘ inl , h ∘ inr ] = h
-optimize-case (_∘_ {_} {D} h (inl {A} {B})) (_∘_ {_} {D'} h' (inr {A'} {B'}))
+optimize-case (_∘_ {_} {_} {D} {_} h (inl {_} {A} {B})) (_∘_ {_} {_} {D'} {_} h' (inr {_} {A'} {B'}))
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
 ... | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = h                  -- [ h ∘ inl , h ∘ inr ] = h
 ...   | no _     = [ h ∘ inl , h' ∘ inr ]
-optimize-case (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) | _ | _ | _ = [ h ∘ inl , h' ∘ inr ]
+optimize-case (_∘_ h (inl {_} {A} {B})) (_∘_ h' (inr {_} {A'} {B'})) | _ | _ | _ = [ h ∘ inl , h' ∘ inr ]
 -- Default: no simplification
 optimize-case f g = [ f , g ]
 
@@ -516,7 +517,7 @@ optimize-case f g = [ f , g ]
 --
 -- Recursively optimize all subterms, then apply simplifications.
 --
-optimize-once : ∀ {A B} → IR A B → IR A B
+optimize-once : ∀ {A B} → IR ∞ A B → IR ∞ A B
 optimize-once id = id
 optimize-once (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
 optimize-once fst = fst
@@ -542,7 +543,7 @@ optimize-once arr = arr
 -- Applies optimize-once repeatedly up to n times.
 -- In practice, a small bound (e.g., 10) is sufficient.
 --
-optimize-n : ∀ {A B} → ℕ → IR A B → IR A B
+optimize-n : ∀ {A B} → ℕ → IR ∞ A B → IR ∞ A B
 optimize-n zero ir = ir
 optimize-n (suc n) ir = optimize-n n (optimize-once ir)
 
@@ -551,5 +552,5 @@ optimize-n (suc n) ir = optimize-n n (optimize-once ir)
 -- Uses a fixed bound of 10 iterations.
 -- This is sufficient for most practical programs.
 --
-optimize : ∀ {A B} → IR A B → IR A B
+optimize : ∀ {A B} → IR ∞ A B → IR ∞ A B
 optimize = optimize-n 10

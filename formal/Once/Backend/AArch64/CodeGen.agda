@@ -30,7 +30,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 
 -- | Calculate the number of instructions generated for an IR morphism
 -- This is needed for computing jump targets in case analysis and curry.
-compile-length : ∀ {A B} → IR A B → ℕ
+compile-length : ∀ {i A B} → IR i A B → ℕ
 
 -- id: 1 nop (x0 already contains input and output)
 compile-length id = 1
@@ -81,7 +81,7 @@ compile-length arr = 1
 
 -- | Generate AArch64 code for an IR morphism
 --
--- compile-aarch64 : IR A B → Program
+-- compile-aarch64 : IR i A B → Program
 --
 -- The generated code:
 --   - Expects input in x0
@@ -89,7 +89,7 @@ compile-length arr = 1
 --   - May use stack for intermediate allocations
 --   - Preserves callee-saved registers (x19-x28)
 --
-compile-aarch64 : ∀ {A B} → IR A B → Program
+compile-aarch64 : ∀ {i A B} → IR i A B → Program
 
 -- Identity: x0 already contains input, output in x0
 -- We emit nop for uniformity (could be empty)

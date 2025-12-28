@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.StackInvariant
 --

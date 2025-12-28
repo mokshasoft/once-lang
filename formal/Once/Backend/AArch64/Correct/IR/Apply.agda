@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.IR.Apply
 --
@@ -103,7 +104,7 @@ mkApplyContext {A} {B} prefix suffix = record
   ; apply-code = the-apply-code
   }
   where
-    the-apply-code = compile-aarch64 (apply {A} {B})
+    the-apply-code = compile-aarch64 (apply {_} {A} {B})
     the-prog = prefix ++ the-apply-code ++ suffix
 
 ------------------------------------------------------------------------
@@ -126,10 +127,10 @@ postulate
 
   -- Closure encoding axioms: reading from encoded closure yields components
   encode-closure-code-ptr : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) →
-    readMem encodedMemory (encode {A ⇒ B} closure +ℕ 8) ≡ just (closure-code-ptr {A} {B} closure)
+    readMem encodedMemory (encode {A ⇒ B} closure +ℕ 8) ≡ just (closure-code-ptr closure)
 
   encode-closure-env : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) →
-    readMem encodedMemory (encode {A ⇒ B} closure) ≡ just (closure-env {A} {B} closure)
+    readMem encodedMemory (encode {A ⇒ B} closure) ≡ just (closure-env closure)
 
 ------------------------------------------------------------------------
 -- Apply Setup Result
@@ -155,10 +156,10 @@ record ApplySetupResult {A B : Type}
     setup-halted : halted s-after ≡ false
 
     -- PC jumped to thunk entry
-    setup-pc : pc s-after ≡ closure-code-ptr {A} {B} closure
+    setup-pc : pc s-after ≡ closure-code-ptr closure
 
     -- x19 holds environment
-    setup-x19 : readReg (regs s-after) x19 ≡ closure-env {A} {B} closure
+    setup-x19 : readReg (regs s-after) x19 ≡ closure-env closure
 
     -- x0 holds argument
     setup-x0 : readReg (regs s-after) x0 ≡ encode arg
@@ -194,7 +195,7 @@ record ApplyResult {A B : Type}
     apply-pc : pc s-final ≡ length prefix +ℕ 6
 
     -- x0 contains result of applying closure to argument
-    apply-x0 : readReg (regs s-final) x0 ≡ encode {B} (eval (apply {A} {B}) x)
+    apply-x0 : readReg (regs s-final) x0 ≡ encode {B} (eval (apply {_} {A} {B}) x)
 
     -- Callee-saved registers preserved
     apply-x20 : readReg (regs s-final) x20 ≡ readReg (regs s) x20
@@ -224,7 +225,7 @@ open ApplyResult public
 --   x0 = encode (eval f (env, arg))
 --   Then ret returns to x30 (instruction after blr)
 
-record ThunkResultExec {A B C : Type} (f : IR (A * B) C)
+record ThunkResultExec {i} {A B C : Type} (f : IR i (A * B) C)
                        (env : ⟦ A ⟧) (arg : ⟦ B ⟧)
                        (s s-after : State) : Set where
   field
@@ -248,7 +249,7 @@ open ThunkResultExec public
 -- which would create a cyclic dependency from this helper module.
 
 postulate
-  run-thunk-at-offset : ∀ {A B C} (f : IR (A * B) C)
+  run-thunk-at-offset : ∀ {i} {A B C} (f : IR i (A * B) C)
     (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -281,10 +282,10 @@ postulate
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
-    ∃[ s' ] (exec (compile-length (apply {A} {B})) (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix) s ≡ just s'
+    ∃[ s' ] (exec (compile-length (apply {_} {A} {B})) (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix) s ≡ just s'
            × halted s' ≡ false
-           × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
-           × readReg (regs s') x0 ≡ encode {B} (eval (apply {A} {B}) x)
+           × pc s' ≡ length prefix +ℕ compile-length (apply {_} {A} {B})
+           × readReg (regs s') x0 ≡ encode {B} (eval (apply {_} {A} {B}) x)
            × readReg (regs s') x20 ≡ readReg (regs s) x20
            × readReg (regs s') x21 ≡ readReg (regs s) x21)
 
@@ -293,6 +294,6 @@ postulate
 ------------------------------------------------------------------------
 
 -- | compile-length apply = 6
-compile-length-apply : ∀ {A B : Type} → compile-length (apply {A} {B}) ≡ 6
+compile-length-apply : ∀ {A B : Type} → compile-length (apply {_} {A} {B}) ≡ 6
 compile-length-apply = refl
 

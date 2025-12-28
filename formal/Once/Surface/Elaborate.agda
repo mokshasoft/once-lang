@@ -12,6 +12,7 @@ open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
 
+open import Size using (Size; ∞)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 
@@ -31,12 +32,12 @@ open import Data.Fin using (Fin)
 -- Given context (Γ, A), index 0 projects A (using snd),
 -- index n+1 projects from Γ (using fst then recursing).
 --
-proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⟦ Γ ⟧ᶜ (lookup Γ i)
+proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ∞ ⟦ Γ ⟧ᶜ (lookup Γ i)
 proj {Γ = Γ , A} Fin.zero    = snd
 proj {Γ = Γ , A} (Fin.suc i) = proj i ∘ fst
 
 -- | Helper: swap product components
-swap' : ∀ {X Y} → IR (X * Y) (Y * X)
+swap' : ∀ {X Y} → IR ∞ (X * Y) (Y * X)
 swap' = ⟨ snd , fst ⟩
 
 -- | Distribute environment over sum (distributivity isomorphism)
@@ -48,19 +49,19 @@ swap' = ⟨ snd , fst ⟩
 -- 2. Case on sum, currying the injection to capture Γ
 -- 3. Apply to reconstruct result
 --
-distribute : ∀ {Γ A B} → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
+distribute : ∀ {Γ A B} → IR ∞ (Γ * (A + B)) ((Γ * A) + (Γ * B))
 distribute {Γ} {A} {B} = distrib' ∘ swap'
   where
-    curryInlSwap : IR A (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryInlSwap : IR ∞ A (Γ ⇒ ((Γ * A) + (Γ * B)))
     curryInlSwap = curry (inl ∘ swap')
 
-    curryInrSwap : IR B (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryInrSwap : IR ∞ B (Γ ⇒ ((Γ * A) + (Γ * B)))
     curryInrSwap = curry (inr ∘ swap')
 
-    curryDistrib : IR (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryDistrib : IR ∞ (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
     curryDistrib = [ curryInlSwap , curryInrSwap ]
 
-    distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
+    distrib' : IR ∞ ((A + B) * Γ) ((Γ * A) + (Γ * B))
     distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩
 
 -- | Elaborate surface expression to IR
@@ -71,7 +72,7 @@ distribute {Γ} {A} {B} = distrib' ∘ swap'
 -- Key insight: lambdas extend the environment (product), variables
 -- project from the environment, and applications compose appropriately.
 --
-elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ⟦ Γ ⟧ᶜ A
+elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ∞ ⟦ Γ ⟧ᶜ A
 
 -- Variable: project from environment
 elaborate (var i) = proj i

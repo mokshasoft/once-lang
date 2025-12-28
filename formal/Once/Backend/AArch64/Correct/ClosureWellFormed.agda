@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.ClosureWellFormed
 --
@@ -129,7 +130,7 @@ open ClosureWellFormed public
 -- - x0 = closure address (new-sp after sub-sp 16)
 -- - [closure]   = env-addr = encode x
 -- - [closure+8] = code-ptr = offset + 6
-record CurryResult {A B C : Type} (f : IR (A * B) C)
+record CurryResult {i} {A B C : Type} (f : IR i (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                    (offset : ℕ) : Set where
   field
@@ -187,7 +188,7 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
   field
     apply-star      : Star prog s s'
     apply-halted    : halted s' ≡ false
-    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {_} {A} {B})
     apply-x0        : readReg (regs s') x0 ≡ encode (Closure.semantics cl a)
     apply-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
     apply-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
@@ -222,7 +223,7 @@ postulate
                       (cl : Closure A B) (a : ⟦ A ⟧) (s : State)
                       (code-ptr env-addr : ℕ) →
     ClosureWellFormed {A} {B}
-      (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix)
+      (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix)
       code-ptr env-addr (Closure.semantics cl) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -230,5 +231,5 @@ postulate
     StackInvariant s →
     readSP (regs s) > 16 →
     ∃[ s' ] ApplyWithWFResult
-              (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix)
+              (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix)
               s s' cl a (length prefix)

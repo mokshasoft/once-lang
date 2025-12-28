@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.CorrectBridge
 --
@@ -134,13 +135,13 @@ star-add-halt {prog} {s} {s'} star h-false pc-at-end =
 -- Proven using:
 --   1. run-ir-star-at-offset from MutualIR.agda
 --   2. star-add-halt to reach halted state
-codegen-aarch64-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) →
+codegen-aarch64-correct : ∀ {i} {A B : Type} (ir : IR i A B) (x : ⟦ A ⟧) →
   let prog = compile-aarch64 ir
       s₀ = initWithInput x
   in ∃[ s ] (Star prog s₀ s
            × halted s ≡ true
            × readReg (regs s) x0 ≡ encode (eval ir x))
-codegen-aarch64-correct {A} {B} ir x =
+codegen-aarch64-correct {i} {A} {B} ir x =
   let s₀ = initWithInput x
       prog = compile-aarch64 ir
 

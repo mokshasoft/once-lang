@@ -40,6 +40,7 @@ open Once.Backend.AArch64.Semantics.State using (halted; regs)
 open import Once.Backend.AArch64.CodeGen using (compile-aarch64)
 open import Once.Backend.AArch64.Correct.CorrectBridge using (codegen-aarch64-correct; initWithInput; encode; Star)
 
+open import Size using (Size; ∞)
 open import Data.Bool using (true)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -83,7 +84,7 @@ compile-preserves-semantics ir x =
 -- This is PROVEN (not postulated!) using Star-based proofs.
 -- Star relation provides reflexive-transitive closure without fuel.
 --
-codegen-correct : ∀ {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
+codegen-correct : ∀ {i} {A B} (ir : Core.IR i A B) (x : ⟦ A ⟧) →
   let prog = compile-aarch64 ir
       s₀ = initWithInput x
   in ∃[ s ] (Star prog s₀ s

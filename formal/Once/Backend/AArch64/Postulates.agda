@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Postulates
 --
@@ -116,11 +117,11 @@ postulate
     readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
     StackInvariant s →
     readSP (regs s) > 16 →
-    let prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
+    let prog = prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix
     in ∃[ s' ] (Star prog s s'
               × halted s' ≡ false
-              × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
-              × readReg (regs s') x0 ≡ encode {B} (eval (apply {A} {B}) x)
+              × pc s' ≡ length prefix +ℕ compile-length (apply {_} {A} {B})
+              × readReg (regs s') x0 ≡ encode {B} (eval (apply {_} {A} {B}) x)
               × readReg (regs s') x20 ≡ readReg (regs s) x20
               × readReg (regs s') x21 ≡ readReg (regs s) x21
               × readReg (regs s') x29 ≡ readReg (regs s) x29

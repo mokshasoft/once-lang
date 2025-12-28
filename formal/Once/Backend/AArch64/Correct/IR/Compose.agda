@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.IR.Compose
 --
@@ -54,7 +55,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --
 -- Total: (len-f + 1) + len-g = compile-length (g ∘ f)
 
-record ComposeContext {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeContext {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
                       (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -91,9 +92,9 @@ record ComposeContext {A B C : Type} (f : IR A B) (g : IR B C)
 open ComposeContext public
 
 -- | Construct ComposeContext from IR terms and prefix/suffix
-mkComposeContext : ∀ {A B C : Type} (f : IR A B) (g : IR B C)
+mkComposeContext : ∀ {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
                    (prefix suffix : Program) → ComposeContext f g prefix suffix
-mkComposeContext {A} {B} {C} f g prefix suffix = record
+mkComposeContext {_} {A} {B} {C} f g prefix suffix = record
   { len-f = the-len-f
   ; len-g = the-len-g
   ; code-f = the-code-f
@@ -194,7 +195,7 @@ mkComposeContext {A} {B} {C} f g prefix suffix = record
 ------------------------------------------------------------------------
 
 -- | Result after executing f (first phase)
-record ComposeFResult {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeFResult {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
                       (prefix suffix : Program)
                       (ctx : ComposeContext f g prefix suffix)
                       (s s-after : State) (x : ⟦ A ⟧) : Set where
@@ -218,7 +219,7 @@ record ComposeFResult {A B C : Type} (f : IR A B) (g : IR B C)
 open ComposeFResult public
 
 -- | Result after executing nop (middle phase)
-record ComposeNopResult {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeNopResult {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
                         (prefix suffix : Program)
                         (ctx : ComposeContext f g prefix suffix)
                         (s-f s-after : State) (x : ⟦ A ⟧) : Set where
@@ -242,7 +243,7 @@ record ComposeNopResult {A B C : Type} (f : IR A B) (g : IR B C)
 open ComposeNopResult public
 
 -- | Result after executing g (final phase)
-record ComposeGResult {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeGResult {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
                       (prefix suffix : Program)
                       (ctx : ComposeContext f g prefix suffix)
                       (s-nop s-final : State) (x : ⟦ A ⟧) : Set where
@@ -271,7 +272,7 @@ open ComposeGResult public
 
 -- | (len-f + 1) + len-g = compile-length (g ∘ f)
 -- This is immediate from the definition of compile-length for compose
-arith-compose-total : ∀ {A B C : Type} (f : IR A B) (g : IR B C) →
+arith-compose-total : ∀ {i} {A B C : Type} (f : IR i A B) (g : IR i B C) →
   (compile-length f +ℕ 1) +ℕ compile-length g ≡ compile-length (g ∘ f)
 arith-compose-total f g = refl
 

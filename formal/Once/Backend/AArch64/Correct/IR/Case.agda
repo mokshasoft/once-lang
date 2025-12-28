@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.IR.Case
 --
@@ -62,7 +63,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --   7+|f| to 6+|f|+|g|: code-g  -- execute g
 --   7+|f|+|g|: label        -- end label
 
-record CaseContext {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseContext {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -107,7 +108,7 @@ record CaseContext {A B C : Type} (f : IR A C) (g : IR B C)
 open CaseContext public
 
 -- | Construct CaseContext from IR terms and prefix/suffix
-mkCaseContext : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+mkCaseContext : ∀ {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
                 (prefix suffix : Program) → CaseContext f g prefix suffix
 mkCaseContext {A} {B} {C} f g prefix suffix = record
   { len-f = the-len-f
@@ -364,7 +365,7 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
 
 -- | Result after setup for inl branch (4 instructions)
 -- ldr x9, [x0] ; cmp x9, #0 ; b.ne right ; ldr x0, [x0, #8]
-record CaseInlSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseInlSetupResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
                           (prefix suffix : Program)
                           (ctx : CaseContext f g prefix suffix)
                           (s s-after : State) (a : ⟦ A ⟧) : Set where
@@ -385,7 +386,7 @@ open CaseInlSetupResult public
 
 -- | Result after setup for inr branch (7 + |f| instructions to reach g)
 -- Need to skip through the inl branch code
-record CaseInrSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseInrSetupResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
                           (prefix suffix : Program)
                           (ctx : CaseContext f g prefix suffix)
                           (s s-after : State) (b : ⟦ B ⟧) : Set where
@@ -409,7 +410,7 @@ open CaseInrSetupResult public
 ------------------------------------------------------------------------
 
 -- | Result after executing f for inl case
-record CaseInlFinalResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseInlFinalResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
                           (prefix suffix : Program)
                           (ctx : CaseContext f g prefix suffix)
                           (s-setup s-final : State) (a : ⟦ A ⟧) : Set where
@@ -429,7 +430,7 @@ record CaseInlFinalResult {A B C : Type} (f : IR A C) (g : IR B C)
 open CaseInlFinalResult public
 
 -- | Result after executing g for inr case
-record CaseInrFinalResult {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseInrFinalResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
                           (prefix suffix : Program)
                           (ctx : CaseContext f g prefix suffix)
                           (s-setup s-final : State) (b : ⟦ B ⟧) : Set where

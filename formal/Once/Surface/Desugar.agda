@@ -14,6 +14,7 @@ open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; Prim)
 open import Once.IR as C
 
+open import Size using (Size; ∞)
 open import Data.String using (String)
 
 ------------------------------------------------------------------------
@@ -53,7 +54,7 @@ open import Data.String using (String)
 --
 ------------------------------------------------------------------------
 postulate
-  prim : ∀ {A B} → String → C.IR A B
+  prim : ∀ {A B} → String → C.IR ∞ A B
 
 ------------------------------------------------------------------------
 -- Desugar transformation
@@ -66,7 +67,7 @@ postulate
 -- 2. Expands Let to composition + pairing
 -- 3. Converts Prim to Core's prim
 --
-desugar : ∀ {A B} → SurfaceIR A B → C.IR A B
+desugar : ∀ {A B} → SurfaceIR A B → C.IR ∞ A B
 
 -- Category structure
 desugar S.id = C.id

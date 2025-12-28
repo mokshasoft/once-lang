@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.IR.Pair
 --
@@ -116,7 +117,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 -- | Pre-computed values for pair proof
 -- Extracting these avoids recomputation and makes the proof modular
 -- Following the X86 pattern with intermediate structures for program equality proofs
-record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
+record PairContext {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -169,7 +170,7 @@ record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
 open PairContext public
 
 -- | Construct PairContext from IR terms and prefix/suffix
-mkPairContext : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+mkPairContext : ∀ {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                 (prefix suffix : Program) (s : State) → PairContext f g prefix suffix
 mkPairContext {A} {B} {C} f g prefix suffix s = record
   { len-f = the-len-f
@@ -368,7 +369,7 @@ mkPairContext {A} {B} {C} f g prefix suffix s = record
 
 -- | Result after setup phase (3 instructions)
 -- sub-sp 16 ; mov-from-sp x21 ; mov x20, x0
-record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
+record PairSetupResult {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                        (prefix suffix : Program)
                        (ctx : PairContext f g prefix suffix)
                        (s s-after : State) (x : ⟦ C ⟧) : Set where
@@ -412,7 +413,7 @@ open PairSetupResult public
 -- | Result after middle phase (2 instructions after f execution)
 -- str x0 [x21] ; mov x0 x20
 -- Note: s-f is state after f execution, s-after is state after middle phase
-record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
+record PairMiddleResult {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                         (prefix suffix : Program)
                         (ctx : PairContext f g prefix suffix)
                         (s-f s-after : State) (x : ⟦ C ⟧) : Set where
@@ -454,7 +455,7 @@ open PairMiddleResult public
 
 -- | Result after final phase (after g execution + store + return)
 -- Run g, then: str x0, [x21+8] ; mov x0, x21
-record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
+record PairFinalResult {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                        (prefix suffix : Program)
                        (ctx : PairContext f g prefix suffix)
                        (s-mid s-final : State) (x : ⟦ C ⟧) : Set where
@@ -482,7 +483,7 @@ open PairFinalResult public
 ------------------------------------------------------------------------
 
 -- | Length of prefix-f = length prefix + 3
-len-prefix-f-eq : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+len-prefix-f-eq : ∀ {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (s : State) →
                   let ctx = mkPairContext f g prefix suffix s
                   in length (prefix-f ctx) ≡ length prefix +ℕ 3
@@ -498,7 +499,7 @@ len-prefix-f-eq f g prefix suffix s = length-++ prefix (sub-sp 16 ∷ mov-from-s
 -- | Execute the setup phase for pair
 -- This is a helper that runs outside the mutual block to avoid
 -- slow type-checking in MutualIR.agda
-exec-pair-setup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+exec-pair-setup : ∀ {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -674,7 +675,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv 
 --   - x20 contains encode x (saved input from setup)
 --   - x21 contains new-sp (pair pointer from setup)
 --   - pc = length prefix + 3 + compile-length f
-exec-pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+exec-pair-middle : ∀ {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧) (s-init s-f : State) →
   let ctx = mkPairContext f g prefix suffix s-init
   in halted s-f ≡ false →

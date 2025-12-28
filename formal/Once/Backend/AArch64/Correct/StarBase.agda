@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.StarBase
 --
@@ -45,7 +46,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- - Uses x20, x21 as callee-saved context (not r14, r15)
 -- - Uses x29 as frame pointer (not rbp)
 -- - Uses SP functions (readSP) for stack pointer
-record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
+record IRStarResult {i} {A B : Type} (ir : IR i A B) (prog : Program)
                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     -- Execution
@@ -88,7 +89,7 @@ open IRStarResult public
 -- an IRRunner as a parameter, allowing them to be defined outside
 -- the mutual block. This dramatically reduces compilation time.
 IRRunner : Set
-IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+IRRunner = ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
@@ -103,8 +104,8 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
 
 -- | Combine two Star proofs when PC and register conditions align
 -- This is the key composition lemma for sequential IR execution
-combine-star-results : ∀ {A B C : Type}
-  (f : IR A B) (g : IR B C)
+combine-star-results : ∀ {i} {A B C : Type}
+  (f : IR i A B) (g : IR i B C)
   (prog : Program) (s₀ s₁ s₂ : State)
   (x : ⟦ A ⟧) (offset : ℕ) →
   IRStarResult f prog s₀ s₁ x offset →

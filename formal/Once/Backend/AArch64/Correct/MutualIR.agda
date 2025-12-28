@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.AArch64.Correct.MutualIR
 --
@@ -151,15 +152,15 @@ open ≡-Reasoning
 -- | Star-based id execution
 -- compile-aarch64 id = nop ∷ []
 -- eval id x = x, so x0 is unchanged
-run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-id-star : ∀ {i} {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {A} {A} id ++ suffix
-  in ∃[ s' ] IRStarResult {A} {A} id prog s s' x (length prefix)
-run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (id {i} {A}) ++ suffix
+  in ∃[ s' ] IRStarResult (id {i} {A}) prog s s' x (length prefix)
+run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       -- The result state: only PC changes
       s' = record s { pc = pc s +ℕ 1 }
@@ -184,7 +185,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       h'-false = h-false
 
       -- pc s' = pc s + 1 = length prefix + 1 = length prefix + compile-length id
-      pc'-eq : pc s' ≡ length prefix +ℕ compile-length {A} {A} id
+      pc'-eq : pc s' ≡ length prefix +ℕ compile-length {_} {A} {A} id
       pc'-eq = cong (λ p → p +ℕ 1) pc-eq
 
       -- x0 unchanged (nop doesn't touch registers)
@@ -201,7 +202,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
       -- Build the result
-      result : IRStarResult {A} {A} id prog s s' x (length prefix)
+      result : IRStarResult {_} {A} {A} id prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h'-false
@@ -224,14 +225,14 @@ run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 -- | Star-based terminal execution
 -- compile-aarch64 terminal = mov x0 (imm 0) ∷ []
 -- eval terminal x = tt, encode tt = 0
-run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-terminal-star : ∀ {i} {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {A} {Unit} terminal ++ suffix
-  in ∃[ s' ] IRStarResult {A} {Unit} terminal prog s s' x (length prefix)
-run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (terminal {i} {A}) ++ suffix
+  in ∃[ s' ] IRStarResult (terminal {i} {A}) prog s s' x (length prefix)
+run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
   let prog = prefix ++ mov x0 (imm 0) ∷ suffix
       s' = record s { regs = writeReg (regs s) x0 0 ; pc = pc s +ℕ 1 }
 
@@ -254,7 +255,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
-      result : IRStarResult {A} {Unit} terminal prog s s' x (length prefix)
+      result : IRStarResult {_} {A} {Unit} terminal prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -277,15 +278,15 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
 -- | Star-based fold execution
 -- compile-aarch64 fold = nop ∷ []
 -- eval fold x = wrap x, encode (wrap x) = encode x (by encode-fix-wrap)
-run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+run-fold-star : ∀ {i} {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {F} {Fix F} fold ++ suffix
-  in ∃[ s' ] IRStarResult {F} {Fix F} fold prog s s' x (length prefix)
-run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (fold {i} {F}) ++ suffix
+  in ∃[ s' ] IRStarResult (fold {i} {F}) prog s s' x (length prefix)
+run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -308,7 +309,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       x0'-eq : readReg (regs s') x0 ≡ encode (eval fold x)
       x0'-eq = trans x0-eq (sym (encode-fix-wrap x))
 
-      result : IRStarResult {F} {Fix F} fold prog s s' x (length prefix)
+      result : IRStarResult {_} {F} {Fix F} fold prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -331,15 +332,15 @@ run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 -- | Star-based unfold execution
 -- compile-aarch64 unfold = nop ∷ []
 -- eval unfold (wrap x) = x, encode x = encode (wrap x) (by encode-fix-unwrap)
-run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+run-unfold-star : ∀ {i} {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {Fix F} {F} unfold ++ suffix
-  in ∃[ s' ] IRStarResult {Fix F} {F} unfold prog s s' x (length prefix)
-run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (unfold {i} {F}) ++ suffix
+  in ∃[ s' ] IRStarResult (unfold {i} {F}) prog s s' x (length prefix)
+run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -362,7 +363,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       x0'-eq : readReg (regs s') x0 ≡ encode (eval unfold x)
       x0'-eq = trans x0-eq (sym (encode-fix-unwrap x))
 
-      result : IRStarResult {Fix F} {F} unfold prog s s' x (length prefix)
+      result : IRStarResult {_} {Fix F} {F} unfold prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -385,15 +386,15 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 -- | Star-based arr execution
 -- compile-aarch64 arr = nop ∷ []
 -- eval arr fn = fn (as Eff), encode (fn as Eff) = encode fn (by encode-arr-identity)
-run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
+run-arr-star : ∀ {i} {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode {A ⇒ B} fn →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {A ⇒ B} {Eff A B} arr ++ suffix
-  in ∃[ s' ] IRStarResult {A ⇒ B} {Eff A B} arr prog s s' fn (length prefix)
-run-arr-star {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (arr {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (arr {i} {A} {B}) prog s s' fn (length prefix)
+run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -414,10 +415,10 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 =
 
       -- eval arr fn = fn (as Eff A B), encode preserves by encode-arr-identity
       -- Note: eval arr fn = fn (same value, different type annotation)
-      x0'-eq : readReg (regs s') x0 ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr fn)
+      x0'-eq : readReg (regs s') x0 ≡ encode {Eff A B} (eval {_} {A ⇒ B} {Eff A B} arr fn)
       x0'-eq = trans x0-eq (sym (encode-arr-identity {A} {B} fn))
 
-      result : IRStarResult {A ⇒ B} {Eff A B} arr prog s s' fn (length prefix)
+      result : IRStarResult {_} {A ⇒ B} {Eff A B} arr prog s s' fn (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -440,15 +441,15 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 =
 -- | Star-based fst execution
 -- compile-aarch64 fst = ldr x0 (base x0) ∷ []
 -- Loads first component from pair pointer
-run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-fst-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {A * B} {A} fst ++ suffix
-  in ∃[ s' ] IRStarResult {A * B} {A} fst prog s s' x (length prefix)
-run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (fst {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (fst {i} {A} {B}) prog s s' x (length prefix)
+run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
   let prog = prefix ++ ldr x0 (base x0) ∷ suffix
       a = proj₁ x
       b = proj₂ x
@@ -485,7 +486,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
-      result : IRStarResult {A * B} {A} fst prog s s' x (length prefix)
+      result : IRStarResult {_} {A * B} {A} fst prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -508,15 +509,15 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 -- | Star-based snd execution
 -- compile-aarch64 snd = ldr x0 (base+imm x0 8) ∷ []
 -- Loads second component from pair pointer + 8
-run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-snd-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {A * B} {B} snd ++ suffix
-  in ∃[ s' ] IRStarResult {A * B} {B} snd prog s s' x (length prefix)
-run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (snd {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (snd {i} {A} {B}) prog s s' x (length prefix)
+run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
   let prog = prefix ++ ldr x0 (base+imm x0 8) ∷ suffix
       a = proj₁ x
       b = proj₂ x
@@ -553,7 +554,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
-      result : IRStarResult {A * B} {B} snd prog s s' x (length prefix)
+      result : IRStarResult {_} {A * B} {B} snd prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -577,16 +578,16 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 -- compile-aarch64 inl generates 4 instructions:
 --   sub-sp 16, str-zr (sp+imm 0), str x0 (sp+imm 8), mov-from-sp x0
 -- Result: stack-allocated sum with tag=0, value=x, returned in x0
-run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-inl-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {A} {A + B} inl ++ suffix
-  in ∃[ s' ] IRStarResult {A} {A + B} inl prog s s' x (length prefix)
-run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (inl {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inl {i} {A} {B}) prog s s' x (length prefix)
+run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -606,7 +607,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
   where
     -- The program
     prog : Program
-    prog = prefix ++ compile-aarch64 {A} {A + B} inl ++ suffix
+    prog = prefix ++ compile-aarch64 {_} {A} {A + B} inl ++ suffix
 
     -- The 4 instructions of inl
     i0 : Instr
@@ -745,7 +746,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
     h4 : halted s4 ≡ false
     h4 = h3
 
-    pc4 : pc s4 ≡ length prefix +ℕ compile-length (inl {A} {B})
+    pc4 : pc s4 ≡ length prefix +ℕ compile-length (inl {_} {A} {B})
     pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc (length prefix) 3 1)
 
     -- Memory contains tag=0 at new-sp and value at new-sp+8
@@ -774,7 +775,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
     x0-s4 : readReg (regs s4) x0 ≡ new-sp
     x0-s4 = readReg-writeReg-same (regs s3) x0 new-sp
 
-    x0-final : readReg (regs s4) x0 ≡ encode (eval {A} {A + B} inl x)
+    x0-final : readReg (regs s4) x0 ≡ encode (eval {_} {A} {A + B} inl x)
     x0-final = trans x0-s4 x0-is-encode-inl
 
     -- Register preservation (x20, x21, x29, x30)
@@ -860,16 +861,16 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
 -- compile-aarch64 inr generates 5 instructions:
 --   sub-sp 16, mov x9 (imm 1), str x9 (sp+imm 0), str x0 (sp+imm 8), mov-from-sp x0
 -- Result: stack-allocated sum with tag=1, value=x, returned in x0
-run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+run-inr-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 {B} {A + B} inr ++ suffix
-  in ∃[ s' ] IRStarResult {B} {A + B} inr prog s s' x (length prefix)
-run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (inr {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inr {i} {A} {B}) prog s s' x (length prefix)
+run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s5 , record
     { ir-star = star-proof
     ; ir-halted = h5
@@ -889,7 +890,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
   where
     -- The program
     prog : Program
-    prog = prefix ++ compile-aarch64 {B} {A + B} inr ++ suffix
+    prog = prefix ++ compile-aarch64 {_} {B} {A + B} inr ++ suffix
 
     -- The 5 instructions of inr
     i0 : Instr
@@ -1065,7 +1066,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
     h5 : halted s5 ≡ false
     h5 = h4
 
-    pc5 : pc s5 ≡ length prefix +ℕ compile-length (inr {A} {B})
+    pc5 : pc s5 ≡ length prefix +ℕ compile-length (inr {_} {A} {B})
     pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc (length prefix) 4 1)
 
     -- Memory contains tag=1 at new-sp and value at new-sp+8
@@ -1094,7 +1095,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
     x0-s5 : readReg (regs s5) x0 ≡ new-sp
     x0-s5 = readReg-writeReg-same (regs s4) x0 new-sp
 
-    x0-final : readReg (regs s5) x0 ≡ encode (eval {B} {A + B} inr x)
+    x0-final : readReg (regs s5) x0 ≡ encode (eval {_} {B} {A + B} inr x)
     x0-final = trans x0-s5 x0-is-encode-inr
 
     -- Register preservation (x20, x21, x29, x30)
@@ -1193,7 +1194,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
 
 mutual
   -- | Star-based IR execution at arbitrary offset
-  run-ir-star-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-ir-star-at-offset : ∀ {i} {A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1204,45 +1205,45 @@ mutual
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
   -- Base cases: delegate to Star helper functions
-  run-ir-star-at-offset (id {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
-  run-ir-star-at-offset (terminal {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv sp>16
-  run-ir-star-at-offset (fold {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
-  run-ir-star-at-offset (unfold {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
-  run-ir-star-at-offset (arr {A} {B}) prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-arr-star {A} {B} prefix suffix f s h-false pc-eq x0-eq stack-inv sp>16
-  run-ir-star-at-offset (fst {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
-  run-ir-star-at-offset (snd {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
-  run-ir-star-at-offset (inl {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (inr {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (initial {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-ir-star-at-offset (id {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-id-star {_} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (terminal {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-terminal-star {_} {A} prefix suffix x s h-false pc-eq stack-inv sp>16
+  run-ir-star-at-offset (fold {_} {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-fold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (unfold {_} {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-unfold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (arr {_} {A} {B}) prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-arr-star {_} {A} {B} prefix suffix f s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (fst {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-fst-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (snd {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-snd-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (inl {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-inl-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (inr {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-inr-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (initial {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     ⊥-elim x  -- Void has no inhabitants
 
   -- Recursive cases: use Star-based composition
-  run-ir-star-at-offset (_∘_ {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-ir-star-at-offset (_∘_ {_} {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-compose-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-ir-star-at-offset (⟨_,_⟩ {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-pair-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset ([_,_] {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-case-star-direct {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (curry {_} {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-curry-star-direct {_} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-apply-star-direct {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
 
   -- | Star-based compose execution
   -- Uses extracted helpers from IR.Compose - only recursive calls remain here
   --
   -- Structure: compile-aarch64 (g ∘ f) = compile-aarch64 f ++ nop ∷ compile-aarch64 g
   -- Execution: (1) execute f, (2) execute nop, (3) execute g
-  run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-compose-star-direct : ∀ {i} {A B C} (f : IR i A B) (g : IR i B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1251,7 +1252,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
     in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
-  run-compose-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-compose-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , record
       { ir-star = star-full
       ; ir-halted = ir-halted res-g
@@ -1437,7 +1438,7 @@ mutual
   -- Setup: sub-sp 16, mov-from-sp x21, mov x20 x0
   -- Middle: str x0 [x21], mov x0 x20
   -- Final: str x0 [x21+8], mov x0 x21
-  run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  run-pair-star-direct : ∀ {i} {A B C} (f : IR i C A) (g : IR i C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1446,7 +1447,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-  run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-pair-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Full proof structure:
     -- 1. Setup (3 instructions): sub-sp 16, mov-from-sp x21, mov x20 x0
     -- 2. Execute f recursively
@@ -1756,7 +1757,7 @@ mutual
   --   5+|f| to 6+|f|: label + load value for inr
   --   7+|f| to 6+|f|+|g|: code-g (skipped if inl)
   --   7+|f|+|g|: end label
-  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+  run-case-star-direct : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1765,7 +1766,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-case-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Use Data.Sum case analysis to dispatch on inl vs inr
     -- Pattern matching on x directly causes Agda splitting issues with abstract types
     s-final , case-result
@@ -1817,7 +1818,7 @@ mutual
   --
   -- For proofs needing ClosureWellFormed threading, use CurryResult
   -- from ClosureWellFormed which includes a closure-wf field.
-  run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-curry-star-direct : ∀ {i} {A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1826,7 +1827,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-curry-star-direct {i} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , curry-result
     where
       -- The full program
@@ -1872,16 +1873,16 @@ mutual
   -- For whole-program proofs that can eliminate the postulate, use
   -- run-apply-with-wf from ClosureWellFormed which takes a
   -- ClosureWellFormed proof (produced by curry) as input.
-  run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+  run-apply-star-direct : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
     StackInvariant s →
     X29Invariant s →
     readSP (regs s) > 16 →
-    let prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
-    in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    let prog = prefix ++ compile-aarch64 (apply {i} {A} {B}) ++ suffix
+    in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
+  run-apply-star-direct {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Use centralized postulate and wrap result in IRStarResult
     -- Pattern matching in let destructures the tuple cleanly
     let (s' , star-pf , halted-pf , pc-pf , x0-pf , x20-pf , x21-pf , x29-pf , x30-pf , sp-pf ,
@@ -1910,7 +1911,7 @@ mutual
 
 -- | The main correctness theorem: for any IR term and input,
 -- executing the compiled code produces the semantically correct result.
-codegen-aarch64-star-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+codegen-aarch64-star-correct : ∀ {i} {A B : Type} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) x0 ≡ encode x →
