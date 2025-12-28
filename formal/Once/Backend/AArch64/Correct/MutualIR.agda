@@ -1890,16 +1890,70 @@ mutual
       ctx : CurryContext f prefix suffix
       ctx = mkCurryContext f prefix suffix
 
-      -- Postulate the result - full proof requires:
-      -- 1. Execute 6 setup instructions (allocate, store env, compute code-ptr,
-      --    store code-ptr, mov closure to x0, branch to end)
-      -- 2. Execute end label (increments PC)
-      -- 3. Build Star proof via star-trans
-      -- 4. Prove closure encoding equals eval (curry f) x
-      -- 5. Prove all IRStarResult fields (registers, memory, invariants)
+      -- Key values
+      the-len-f : ℕ
+      the-len-f = compile-length f
+      orig-sp : Word
+      orig-sp = readSP (regs s)
+      new-sp : Word
+      new-sp = orig-sp ∸ 16
+      end-lbl : ℕ
+      end-lbl = 11 +ℕ the-len-f
+
+      -- The 7 curry instructions we execute (not the thunk code)
+      -- Positions 0-5: setup, Position 5: branch, Position end-lbl: label
+      i0 i1 i2 i3 i4 i5 : Instr
+      i0 = sub-sp 16              -- allocate closure
+      i1 = str x0 (sp+imm 0)      -- store env
+      i2 = adr x9 4               -- code-ptr = pc + 4
+      i3 = str x9 (sp+imm 8)      -- store code-ptr
+      i4 = mov-from-sp x0         -- return closure ptr
+      i5 = b end-lbl              -- jump over thunk
+
+      -- Postulate: After executing the 7 steps (0-5 setup + branch to end-label + end-label)
+      -- the final state has these properties
       postulate
         s-final : State
-        curry-result : IRStarResult (curry f) prog s s-final x (length prefix)
+        -- Star proof exists
+        star-proof : Star prog s s-final
+        -- State properties
+        halted-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
+        -- Closure encoding: new-sp points to closure with (env, code-ptr)
+        x0-final : readReg (regs s-final) x0 ≡ encode {B ⇒ C} (eval (curry f) x)
+        -- Register preservation (callee-saved)
+        x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+        x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+        x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+        x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+        sp-final : readSP (regs s-final) ≤ readSP (regs s)
+        -- Memory preservation
+        mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+        mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+        mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        -- Invariants
+        stack-inv-final : StackInvariant s-final
+        x29-inv-final : X29Invariant s-final
+        sp>16-final : readSP (regs s-final) > 16
+
+      curry-result : IRStarResult (curry f) prog s s-final x (length prefix)
+      curry-result = record
+        { ir-star = star-proof
+        ; ir-halted = halted-final
+        ; ir-pc = pc-final
+        ; ir-x0 = x0-final
+        ; ir-x20 = x20-final
+        ; ir-x21 = x21-final
+        ; ir-x29 = x29-final
+        ; ir-x30 = x30-final
+        ; ir-sp = sp-final
+        ; ir-mem-x21 = mem-x21-final
+        ; ir-mem-x29 = mem-x29-final
+        ; ir-mem-x29+8 = mem-x29+8-final
+        ; ir-stack-inv = stack-inv-final
+        ; ir-x29-inv = x29-inv-final
+        ; ir-sp-bound = sp>16-final
+        }
 
   -- | Star-based apply execution
   --
