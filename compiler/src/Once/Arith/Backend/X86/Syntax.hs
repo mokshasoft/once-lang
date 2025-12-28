@@ -173,6 +173,10 @@ data IntInstr
   -- Division: idiv uses rdx:rax / src
   | Cqo                           -- ^ sign-extend rax to rdx:rax
   | IDivI IntOperand              -- ^ idiv src (rdx:rax / src)
+
+  -- Stack operations (for register spilling)
+  | PushI GPReg                   -- ^ push src (rsp -= 8; [rsp] = src)
+  | PopI GPReg                    -- ^ pop dst (dst = [rsp]; rsp += 8)
   deriving (Eq, Show)
 
 ------------------------------------------------------------------------

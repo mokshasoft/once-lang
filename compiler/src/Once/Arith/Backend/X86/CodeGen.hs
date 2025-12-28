@@ -42,40 +42,77 @@ availableGPRs = [R8, R9, R10, R11, RBX]
 availableXMMs :: [XMMReg]
 availableXMMs = [XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7]
 
--- | Register allocation state
+-- | Register allocation state with spill support
 data AllocState = AllocState
-  { nextGPR :: !Int           -- ^ Index into availableGPRs
-  , nextXMM :: !Int           -- ^ Index into availableXMMs
-  , varMap  :: Map Text GPReg -- ^ Variable to register mapping
+  { freeGPRs    :: [GPReg]        -- ^ Available GPRs
+  , usedGPRs    :: [GPReg]        -- ^ In-use GPRs (most recent first)
+  , spilledGPRs :: [GPReg]        -- ^ Spilled GPRs (in spill order)
+  , freeXMMs    :: [XMMReg]       -- ^ Available XMMs
+  , usedXMMs    :: [XMMReg]       -- ^ In-use XMMs
+  , spilledXMMs :: [XMMReg]       -- ^ Spilled XMMs
+  , varMap      :: Map Text GPReg -- ^ Variable to register mapping
   } deriving (Eq, Show)
 
 -- | Initial allocation state
 initAlloc :: AllocState
-initAlloc = AllocState 0 0 Map.empty
+initAlloc = AllocState
+  { freeGPRs    = availableGPRs
+  , usedGPRs    = []
+  , spilledGPRs = []
+  , freeXMMs    = availableXMMs
+  , usedXMMs    = []
+  , spilledXMMs = []
+  , varMap      = Map.empty
+  }
 
--- | Get the nth GPR (wrapping if needed)
-getGPR :: Int -> GPReg
-getGPR n = availableGPRs !! (n `mod` length availableGPRs)
+-- | Allocate a GPR, spilling if necessary
+-- Returns (register, spill code if needed, updated state)
+allocGPR :: AllocState -> (GPReg, [ArithInstr], AllocState)
+allocGPR st@AllocState{..} = case freeGPRs of
+  (r:rs) -> (r, [], st { freeGPRs = rs, usedGPRs = r : usedGPRs })
+  [] -> case usedGPRs of
+    (r:rs) ->
+      -- Spill the oldest used register
+      let spillCode = [IntI (PushI r)]
+      in (r, spillCode, st { usedGPRs = r : rs, spilledGPRs = r : spilledGPRs })
+    [] -> error "allocGPR: no registers at all (shouldn't happen)"
 
--- | Get the nth XMM
-getXMM :: Int -> XMMReg
-getXMM n = availableXMMs !! (n `mod` length availableXMMs)
+-- | Allocate a GPR without spill code (for simple cases)
+allocGPRSimple :: AllocState -> (GPReg, AllocState)
+allocGPRSimple st = let (r, _, st') = allocGPR st in (r, st')
 
--- | Allocate a GPR
-allocGPR :: AllocState -> (GPReg, AllocState)
-allocGPR st@AllocState{..} = (getGPR nextGPR, st { nextGPR = nextGPR + 1 })
+-- | Allocate an XMM, spilling if necessary
+allocXMM :: AllocState -> (XMMReg, [ArithInstr], AllocState)
+allocXMM st@AllocState{..} = case freeXMMs of
+  (r:rs) -> (r, [], st { freeXMMs = rs, usedXMMs = r : usedXMMs })
+  [] -> case usedXMMs of
+    (r:rs) ->
+      -- For XMM spill, we need to use sub rsp, 16; movdqu [rsp], xmm
+      -- Simplified: just error for now (XMM spill is more complex)
+      error "XMM register spill not yet implemented"
+    [] -> error "allocXMM: no registers at all"
 
--- | Allocate an XMM
-allocXMM :: AllocState -> (XMMReg, AllocState)
-allocXMM st@AllocState{..} = (getXMM nextXMM, st { nextXMM = nextXMM + 1 })
+-- | Allocate an XMM without spill code
+allocXMMSimple :: AllocState -> (XMMReg, AllocState)
+allocXMMSimple st = let (r, _, st') = allocXMM st in (r, st')
 
--- | Free a GPR (decrement counter)
+-- | Free a GPR (return to available pool)
 freeGPR :: AllocState -> AllocState
-freeGPR st@AllocState{..} = st { nextGPR = max 0 (nextGPR - 1) }
+freeGPR st@AllocState{..} = case usedGPRs of
+  (r:rs) -> st { freeGPRs = r : freeGPRs, usedGPRs = rs }
+  [] -> st  -- Nothing to free
 
 -- | Free an XMM
 freeXMM :: AllocState -> AllocState
-freeXMM st@AllocState{..} = st { nextXMM = max 0 (nextXMM - 1) }
+freeXMM st@AllocState{..} = case usedXMMs of
+  (r:rs) -> st { freeXMMs = r : freeXMMs, usedXMMs = rs }
+  [] -> st
+
+-- | Generate code to restore all spilled registers
+restoreSpilled :: AllocState -> [ArithInstr]
+restoreSpilled AllocState{..} =
+  -- Pop in reverse order of spilling
+  map (IntI . PopI) (reverse spilledGPRs)
 
 ------------------------------------------------------------------------
 -- Code generation results
@@ -104,9 +141,9 @@ compileInt :: ArithIR -> AllocState -> IntResult
 
 -- Literal: load immediate into fresh register
 compileInt (ALitInt _ n) st =
-  let (r, st') = allocGPR st
+  let (r, spillCode, st') = allocGPR st
   in IntResult
-       { intCode   = [IntI (MovI r (ImmI (fromInteger n)))]
+       { intCode   = spillCode ++ [IntI (MovI r (ImmI (fromInteger n)))]
        , intResult = r
        , intState  = st'
        }
@@ -116,11 +153,11 @@ compileInt (AVar name _) st =
   case Map.lookup name (varMap st) of
     Just r  -> IntResult [] r st  -- Already in register
     Nothing ->
-      let (r, st') = allocGPR st
+      let (r, spillCode, st') = allocGPR st
           -- Placeholder: variables would be loaded from stack/memory
           -- For now, just allocate a register (caller must set it up)
       in IntResult
-           { intCode   = [IntI (MovI r (MemI (Base RDI)))]
+           { intCode   = spillCode ++ [IntI (MovI r (MemI (Base RDI)))]
            , intResult = r
            , intState  = st' { varMap = Map.insert name r (varMap st') }
            }
@@ -228,8 +265,8 @@ compileFloat :: ArithIR -> AllocState -> FloatResult
 -- Float literal: load IEEE 754 bits to GPR, then movq to XMM
 -- x86-64 can't mov immediate directly to XMM, so we go through a GPR
 compileFloat (ALitFloat ty d) st =
-  let (xr, st') = allocXMM st
-      (gr, st'') = allocGPR st'
+  let (xr, xSpill, st') = allocXMM st
+      (gr, gSpill, st'') = allocGPR st'
       -- Convert float to IEEE 754 bit representation
       bits :: Int64
       bits = case ty of
@@ -237,7 +274,8 @@ compileFloat (ALitFloat ty d) st =
         F64 -> fromIntegral (castDoubleToWord64 d)
         _   -> error "compileFloat: not a float type"
       -- Load bits to GPR, then move to XMM
-      instrs = [ IntI (MovI gr (ImmI bits))
+      instrs = xSpill ++ gSpill ++
+               [ IntI (MovI gr (ImmI bits))
                , FloatI (MovqToXMM xr gr)
                ]
   in FloatResult
@@ -248,13 +286,13 @@ compileFloat (ALitFloat ty d) st =
 
 -- Variable
 compileFloat (AVar _ ty) st =
-  let (r, st') = allocXMM st
+  let (r, spillCode, st') = allocXMM st
       instr = case ty of
         F32 -> FloatI (Movss r (MemF (Base RDI)))
         F64 -> FloatI (Movsd r (MemF (Base RDI)))
         _   -> error "compileFloat: not a float type"
   in FloatResult
-       { floatCode   = [instr]
+       { floatCode   = spillCode ++ [instr]
        , floatResult = r
        , floatState  = st'
        }

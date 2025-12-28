@@ -49,6 +49,10 @@ emitIntInstr Cqo =
   "    cqo"
 emitIntInstr (IDivI src) =
   T.concat ["    idivq ", emitIntOp src]
+emitIntInstr (PushI src) =
+  T.concat ["    pushq ", emitGPR src]
+emitIntInstr (PopI dst) =
+  T.concat ["    popq ", emitGPR dst]
 
 -- | Emit a GPR register name (AT&T: %reg)
 emitGPR :: GPReg -> Text

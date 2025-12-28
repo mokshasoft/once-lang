@@ -50,6 +50,12 @@ emitIntInstr (Rem rd rs1 rs2) =
 emitIntInstr (Neg rd rs) =
   "    neg " <> gprName rd <> ", " <> gprName rs
 
+-- Stack operations (for register spilling)
+emitIntInstr (Sd rs base offset) =
+  "    sd " <> gprName rs <> ", " <> T.pack (show offset) <> "(" <> gprName base <> ")"
+emitIntInstr (Ld rd base offset) =
+  "    ld " <> gprName rd <> ", " <> T.pack (show offset) <> "(" <> gprName base <> ")"
+
 ------------------------------------------------------------------------
 -- Floating-point Instruction Emission
 ------------------------------------------------------------------------

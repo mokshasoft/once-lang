@@ -43,40 +43,71 @@ availableGPRs = [X9, X10, X11, X12, X13, X14, X15]
 availableFPs :: [FPReg]
 availableFPs = [D16, D17, D18, D19, D20, D21, D22, D23]
 
--- | Register allocation state
+-- | Register allocation state with spill support
 data AllocState = AllocState
-  { nextGPR :: !Int           -- ^ Index into availableGPRs
-  , nextFP  :: !Int           -- ^ Index into availableFPs
-  , varMap  :: Map Text GPReg -- ^ Variable to register mapping
+  { freeGPRs    :: [GPReg]        -- ^ Available GPRs
+  , usedGPRs    :: [GPReg]        -- ^ In-use GPRs (most recent first)
+  , spilledGPRs :: [GPReg]        -- ^ Spilled GPRs (in spill order)
+  , freeFPs     :: [FPReg]        -- ^ Available FP registers
+  , usedFPs     :: [FPReg]        -- ^ In-use FP registers
+  , spilledFPs  :: [FPReg]        -- ^ Spilled FP registers
+  , varMap      :: Map Text GPReg -- ^ Variable to register mapping
   } deriving (Eq, Show)
 
 -- | Initial allocation state
 initAlloc :: AllocState
-initAlloc = AllocState 0 0 Map.empty
+initAlloc = AllocState
+  { freeGPRs    = availableGPRs
+  , usedGPRs    = []
+  , spilledGPRs = []
+  , freeFPs     = availableFPs
+  , usedFPs     = []
+  , spilledFPs  = []
+  , varMap      = Map.empty
+  }
 
--- | Get the nth GPR (wrapping if needed)
-getGPR :: Int -> GPReg
-getGPR n = availableGPRs !! (n `mod` length availableGPRs)
+-- | Allocate a GPR, spilling if necessary
+-- Returns (register, spill code if needed, updated state)
+allocGPR :: AllocState -> (GPReg, [ArithInstr], AllocState)
+allocGPR st@AllocState{..} = case freeGPRs of
+  (r:rs) -> (r, [], st { freeGPRs = rs, usedGPRs = r : usedGPRs })
+  [] -> case usedGPRs of
+    (r:rs) ->
+      -- Spill the oldest used register (16-byte aligned on AArch64)
+      let spillCode = [IntI (StrPre r 16)]
+      in (r, spillCode, st { usedGPRs = r : rs, spilledGPRs = r : spilledGPRs })
+    [] -> error "allocGPR: no registers at all (shouldn't happen)"
 
--- | Get the nth FP register
-getFP :: Int -> FPReg
-getFP n = availableFPs !! (n `mod` length availableFPs)
+-- | Allocate a GPR without spill code (for simple cases)
+allocGPRSimple :: AllocState -> (GPReg, AllocState)
+allocGPRSimple st = let (r, _, st') = allocGPR st in (r, st')
 
--- | Allocate a GPR
-allocGPR :: AllocState -> (GPReg, AllocState)
-allocGPR st@AllocState{..} = (getGPR nextGPR, st { nextGPR = nextGPR + 1 })
+-- | Allocate an FP register, spilling if necessary
+allocFP :: AllocState -> (FPReg, [ArithInstr], AllocState)
+allocFP st@AllocState{..} = case freeFPs of
+  (r:rs) -> (r, [], st { freeFPs = rs, usedFPs = r : usedFPs })
+  [] -> case usedFPs of
+    (_:_) ->
+      -- FP spill is more complex (need str d, [sp, #-16]!)
+      -- For now, error out
+      error "FP register spill not yet implemented"
+    [] -> error "allocFP: no registers at all"
 
--- | Allocate an FP register
-allocFP :: AllocState -> (FPReg, AllocState)
-allocFP st@AllocState{..} = (getFP nextFP, st { nextFP = nextFP + 1 })
+-- | Allocate an FP register without spill code
+allocFPSimple :: AllocState -> (FPReg, AllocState)
+allocFPSimple st = let (r, _, st') = allocFP st in (r, st')
 
--- | Free a GPR (decrement counter)
+-- | Free a GPR (return to available pool)
 freeGPR :: AllocState -> AllocState
-freeGPR st@AllocState{..} = st { nextGPR = max 0 (nextGPR - 1) }
+freeGPR st@AllocState{..} = case usedGPRs of
+  (r:rs) -> st { freeGPRs = r : freeGPRs, usedGPRs = rs }
+  [] -> st  -- Nothing to free
 
 -- | Free an FP register
 freeFP :: AllocState -> AllocState
-freeFP st@AllocState{..} = st { nextFP = max 0 (nextFP - 1) }
+freeFP st@AllocState{..} = case usedFPs of
+  (r:rs) -> st { freeFPs = r : freeFPs, usedFPs = rs }
+  [] -> st
 
 ------------------------------------------------------------------------
 -- Code generation results
@@ -129,9 +160,9 @@ compileInt :: ArithIR -> AllocState -> IntResult
 
 -- Literal: load immediate into fresh register
 compileInt (ALitInt _ n) st =
-  let (r, st') = allocGPR st
+  let (r, spillCode, st') = allocGPR st
   in IntResult
-       { intCode   = loadImm64 r (fromInteger n)
+       { intCode   = spillCode ++ loadImm64 r (fromInteger n)
        , intResult = r
        , intState  = st'
        }
@@ -141,9 +172,9 @@ compileInt (AVar name _) st =
   case Map.lookup name (varMap st) of
     Just r  -> IntResult [] r st
     Nothing ->
-      let (r, st') = allocGPR st
+      let (r, spillCode, st') = allocGPR st
       in IntResult
-           { intCode   = [IntI (Mov r (RegOp X0))]  -- Placeholder
+           { intCode   = spillCode ++ [IntI (Mov r (RegOp X0))]  -- Placeholder
            , intResult = r
            , intState  = st' { varMap = Map.insert name r (varMap st') }
            }
@@ -207,13 +238,13 @@ compileInt (AMod e1 e2) st =
       res2 = compileInt e2 (intState res1)
       r1 = intResult res1
       r2 = intResult res2
-      (rTmp, st') = allocGPR (intState res2)
+      (rTmp, spillCode, st') = allocGPR (intState res2)
       modCode =
         [ IntI (Sdiv rTmp r1 r2)      -- tmp = a / b
         , IntI (Msub r1 rTmp r2 r1)   -- r1 = r1 - tmp * r2 = a - (a/b)*b
         ]
   in IntResult
-       { intCode   = intCode res1 ++ intCode res2 ++ modCode
+       { intCode   = intCode res1 ++ intCode res2 ++ spillCode ++ modCode
        , intResult = r1
        , intState  = freeGPR (freeGPR st')
        }
@@ -243,8 +274,8 @@ compileFloat :: ArithIR -> AllocState -> FloatResult
 
 -- Float literal: load IEEE 754 bits to GPR, then fmov to FP register
 compileFloat (ALitFloat ty d) st =
-  let (fr, st') = allocFP st
-      (gr, st'') = allocGPR st'
+  let (fr, fpSpill, st') = allocFP st
+      (gr, gpSpill, st'') = allocGPR st'
       -- Convert float to IEEE 754 bit representation
       bits :: Int64
       bits = case ty of
@@ -255,16 +286,16 @@ compileFloat (ALitFloat ty d) st =
       loadInstrs = loadImm64 gr bits
       fmovInstr = FPI (FmovFromGPR fr gr)
   in FloatResult
-       { floatCode   = loadInstrs ++ [fmovInstr]
+       { floatCode   = fpSpill ++ gpSpill ++ loadInstrs ++ [fmovInstr]
        , floatResult = fr
        , floatState  = st''
        }
 
 -- Variable
 compileFloat (AVar _ _) st =
-  let (r, st') = allocFP st
+  let (r, spillCode, st') = allocFP st
   in FloatResult
-       { floatCode   = [FPI (Fmov r (FPRegOp D0))]  -- Placeholder
+       { floatCode   = spillCode ++ [FPI (Fmov r (FPRegOp D0))]  -- Placeholder
        , floatResult = r
        , floatState  = st'
        }

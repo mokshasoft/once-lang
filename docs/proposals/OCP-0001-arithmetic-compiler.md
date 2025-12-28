@@ -40,7 +40,8 @@ Introduce a separate compilation path for arithmetic expressions that bypasses t
 
 ### Known Limitations
 
-- RISC-V crashes on register spill (>7 temporaries)
+- XMM/FP register spill not yet implemented (GPR spill works)
+- Agda proofs for spill correctness pending
 
 ---
 

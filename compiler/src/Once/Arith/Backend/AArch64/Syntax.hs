@@ -221,6 +221,10 @@ data IntInstr
   | Sdiv GPReg GPReg GPReg         -- ^ sdiv dst, src1, src2 (signed divide)
   | Msub GPReg GPReg GPReg GPReg   -- ^ msub dst, mul1, mul2, acc (dst = acc - mul1*mul2)
   | Neg GPReg GPReg                -- ^ neg dst, src
+
+  -- Stack operations (for register spilling)
+  | StrPre GPReg Int               -- ^ str xn, [sp, #-imm]! (pre-decrement store)
+  | LdrPost GPReg Int              -- ^ ldr xn, [sp], #imm (post-increment load)
   deriving (Eq, Show)
 
 ------------------------------------------------------------------------

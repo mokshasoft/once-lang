@@ -76,6 +76,12 @@ emitIntInstr (Msub dst mul1 mul2 acc) =
 emitIntInstr (Neg dst src) =
   T.concat ["    neg ", emitGPR dst, ", ", emitGPR src]
 
+-- Stack operations (for register spilling)
+emitIntInstr (StrPre reg offset) =
+  T.concat ["    str ", emitGPR reg, ", [sp, #-", T.pack (show offset), "]!"]
+emitIntInstr (LdrPost reg offset) =
+  T.concat ["    ldr ", emitGPR reg, ", [sp], #", T.pack (show offset)]
+
 -- | Emit a GPR register name
 emitGPR :: GPReg -> Text
 emitGPR r = T.pack (gprName r)

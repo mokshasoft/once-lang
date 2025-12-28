@@ -19,11 +19,6 @@ import Once.Arith.Backend.RiscV.Syntax
 -- Register Allocation State
 ------------------------------------------------------------------------
 
-data AllocState = AllocState
-  { nextGPR :: [GPReg]   -- ^ Available general-purpose registers
-  , nextFP  :: [FPReg]   -- ^ Available floating-point registers
-  } deriving (Show)
-
 -- | Available temporary GPRs: t0-t6 (X5-X7, X28-X31)
 availableGPRs :: [GPReg]
 availableGPRs = [X5, X6, X7, X28, X29, X30, X31]
@@ -32,8 +27,66 @@ availableGPRs = [X5, X6, X7, X28, X29, X30, X31]
 availableFPs :: [FPReg]
 availableFPs = [F0, F1, F2, F3, F4, F5, F6, F7]
 
+-- | Register allocation state with spill support
+data AllocState = AllocState
+  { freeGPRs    :: [GPReg]   -- ^ Available general-purpose registers
+  , usedGPRs    :: [GPReg]   -- ^ In-use GPRs (most recent first)
+  , spilledGPRs :: [GPReg]   -- ^ Spilled GPRs (in spill order)
+  , spillOffset :: Int64     -- ^ Current stack offset for spills
+  , freeFPs     :: [FPReg]   -- ^ Available floating-point registers
+  , usedFPs     :: [FPReg]   -- ^ In-use FP registers
+  , spilledFPs  :: [FPReg]   -- ^ Spilled FP registers
+  } deriving (Show)
+
 initAllocState :: AllocState
-initAllocState = AllocState availableGPRs availableFPs
+initAllocState = AllocState
+  { freeGPRs    = availableGPRs
+  , usedGPRs    = []
+  , spilledGPRs = []
+  , spillOffset = 0
+  , freeFPs     = availableFPs
+  , usedFPs     = []
+  , spilledFPs  = []
+  }
+
+-- | Allocate a GPR, spilling if necessary
+-- Returns (register, spill code if needed, updated state)
+allocGPR :: AllocState -> (GPReg, [ArithInstr], AllocState)
+allocGPR st@AllocState{..} = case freeGPRs of
+  (r:rs) -> (r, [], st { freeGPRs = rs, usedGPRs = r : usedGPRs })
+  [] -> case usedGPRs of
+    (r:rs) ->
+      -- Spill: decrement sp, store register
+      let newOffset = spillOffset - 8
+          spillCode = [ IntI (Addi X2 X2 (-8))  -- addi sp, sp, -8
+                      , IntI (Sd r X2 0)        -- sd reg, 0(sp)
+                      ]
+      in (r, spillCode, st { usedGPRs = r : rs
+                           , spilledGPRs = r : spilledGPRs
+                           , spillOffset = newOffset })
+    [] -> error "allocGPR: no registers at all (shouldn't happen)"
+
+-- | Allocate an FP register, spilling if necessary
+allocFP :: AllocState -> (FPReg, [ArithInstr], AllocState)
+allocFP st@AllocState{..} = case freeFPs of
+  (r:rs) -> (r, [], st { freeFPs = rs, usedFPs = r : usedFPs })
+  [] -> case usedFPs of
+    (_:_) ->
+      -- FP spill is more complex, error for now
+      error "FP register spill not yet implemented"
+    [] -> error "allocFP: no registers at all"
+
+-- | Free a GPR (return to available pool)
+freeGPR :: AllocState -> AllocState
+freeGPR st@AllocState{..} = case usedGPRs of
+  (r:rs) -> st { freeGPRs = r : freeGPRs, usedGPRs = rs }
+  [] -> st  -- Nothing to free
+
+-- | Free an FP register
+freeFP :: AllocState -> AllocState
+freeFP st@AllocState{..} = case usedFPs of
+  (r:rs) -> st { freeFPs = r : freeFPs, usedFPs = rs }
+  [] -> st
 
 ------------------------------------------------------------------------
 -- Result Destination
@@ -62,38 +115,35 @@ compileArith expr = prog ++ [moveToResult]
 
 -- | Compile an expression, returning the destination register
 compileExpr :: ArithIR -> AllocState -> (ArithProgram, Either GPReg FPReg, AllocState)
-compileExpr (ALitInt ty n) st@AllocState{..} =
-  case nextGPR of
-    (r:rs) ->
-      let prog = [IntI $ Li r (fromIntegral n)]
-      in (prog, Left r, st { nextGPR = rs })
-    [] -> error "Register spill not implemented"
 
-compileExpr (ALitFloat ty d) st@AllocState{..} =
+compileExpr (ALitInt _ n) st =
+  let (r, spillCode, st') = allocGPR st
+      prog = spillCode ++ [IntI $ Li r (fromIntegral n)]
+  in (prog, Left r, st')
+
+compileExpr (ALitFloat ty d) st =
   -- Load IEEE 754 bits to GPR, then fmv.d.x to FP register
-  case (nextGPR, nextFP) of
-    (g:gs, f:fs) ->
-      let bits :: Int64
-          bits = case ty of
-            F32 -> fromIntegral (castFloatToWord32 (realToFrac d))
-            F64 -> fromIntegral (castDoubleToWord64 d)
-            _   -> error "compileExpr: not a float type"
-          prog = [ IntI $ Li g bits
-                 , FPI $ FmvDX f g  -- fmv.d.x moves int64 to FP reg
-                 ]
-      in (prog, Right f, st { nextGPR = gs, nextFP = fs })
-    _ -> error "Register spill not implemented"
+  let (f, fpSpill, st') = allocFP st
+      (g, gpSpill, st'') = allocGPR st'
+      bits :: Int64
+      bits = case ty of
+        F32 -> fromIntegral (castFloatToWord32 (realToFrac d))
+        F64 -> fromIntegral (castDoubleToWord64 d)
+        _   -> error "compileExpr: not a float type"
+      prog = fpSpill ++ gpSpill ++
+             [ IntI $ Li g bits
+             , FPI $ FmvDX f g  -- fmv.d.x moves int64 to FP reg
+             ]
+  in (prog, Right f, st'')
 
-compileExpr (AVar name ty) st@AllocState{..} =
+compileExpr (AVar _ ty) st =
   -- Variables would be loaded from memory/environment
   -- Placeholder: allocate a register
   if isFloat ty
-    then case nextFP of
-      (r:rs) -> ([], Right r, st { nextFP = rs })
-      [] -> error "Register spill not implemented"
-    else case nextGPR of
-      (r:rs) -> ([], Left r, st { nextGPR = rs })
-      [] -> error "Register spill not implemented"
+    then let (r, spillCode, st') = allocFP st
+         in (spillCode, Right r, st')
+    else let (r, spillCode, st') = allocGPR st
+         in (spillCode, Left r, st')
 
 compileExpr (AAdd e1 e2) st = compileBinOp e1 e2 st mkAdd mkFadd
   where
@@ -146,10 +196,10 @@ compileBinOp e1 e2 st intOp fpOp =
     (Left r1, Left r2) ->
       -- Result goes in r1, freeing r2
       let instr = intOp r1 r1 r2
-      in (prog1 ++ prog2 ++ [instr], Left r1, st2 { nextGPR = r2 : nextGPR st2 })
+      in (prog1 ++ prog2 ++ [instr], Left r1, freeGPR st2)
     (Right f1, Right f2) ->
       let instr = fpOp f1 f1 f2
-      in (prog1 ++ prog2 ++ [instr], Right f1, st2 { nextFP = f2 : nextFP st2 })
+      in (prog1 ++ prog2 ++ [instr], Right f1, freeFP st2)
     _ -> error "Type mismatch in binary operation"
 
 compileBinOpInt :: ArithIR -> ArithIR -> AllocState
@@ -159,7 +209,7 @@ compileBinOpInt e1 e2 st intOp =
   let (prog1, Left r1, st1) = compileExpr e1 st
       (prog2, Left r2, st2) = compileExpr e2 st1
       instr = intOp r1 r1 r2
-  in (prog1 ++ prog2 ++ [instr], Left r1, st2 { nextGPR = r2 : nextGPR st2 })
+  in (prog1 ++ prog2 ++ [instr], Left r1, freeGPR st2)
 
 ------------------------------------------------------------------------
 -- Unary Operation Helpers

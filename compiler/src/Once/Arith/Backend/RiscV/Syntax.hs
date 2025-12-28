@@ -93,6 +93,9 @@ data IntInstr
   | Div GPReg GPReg GPReg             -- ^ div rd, rs1, rs2 (M extension)
   | Rem GPReg GPReg GPReg             -- ^ rem rd, rs1, rs2 (M extension)
   | Neg GPReg GPReg                   -- ^ neg rd, rs (pseudo: sub rd, x0, rs)
+  -- Stack operations (for register spilling)
+  | Sd GPReg GPReg Int64              -- ^ sd rs, offset(base) - store doubleword
+  | Ld GPReg GPReg Int64              -- ^ ld rd, offset(base) - load doubleword
   deriving (Eq, Show)
 
 ------------------------------------------------------------------------
