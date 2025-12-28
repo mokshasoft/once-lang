@@ -25,7 +25,7 @@ open import Once.IR
 
 open import Once.Backend.RiscV64.Syntax
 
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 
@@ -65,6 +65,65 @@ compile-length apply = 7
 compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
 compile-length arr = 1             -- nop (identity)
+
+------------------------------------------------------------------------
+-- Stack allocation analysis
+------------------------------------------------------------------------
+
+-- | StackDelta: Net stack bytes allocated after IR completes
+--
+-- This is a static upper bound on ir-sp-delta from IRStarResult.
+-- Used to compute StackDepth for nested operations.
+--
+-- Key insight: operations that produce pointers (pair, inl, inr, curry)
+-- leave stack allocated. Others restore sp before returning.
+--
+StackDelta : ∀ {i A B} → IR i A B → ℕ
+StackDelta id = 0
+StackDelta (f ∘ g) = StackDelta f +ℕ StackDelta g
+StackDelta fst = 0
+StackDelta snd = 0
+StackDelta ⟨ f , g ⟩ = 24 +ℕ StackDelta f +ℕ StackDelta g  -- 24 bytes for pair struct
+StackDelta inl = 16
+StackDelta inr = 16
+StackDelta [ f , g ] = StackDelta f ⊔ StackDelta g  -- only one branch runs
+StackDelta terminal = 0
+StackDelta initial = 0
+StackDelta (curry f) = 16  -- closure allocation; thunk cleans up after itself
+StackDelta apply = 0       -- thunk deallocates its frame
+StackDelta fold = 0
+StackDelta unfold = 0
+StackDelta arr = 0
+
+-- | StackDepth: Maximum stack depth needed at any point during execution
+--
+-- Precondition: StackDepth ir ≤ sp ensures enough stack space.
+--
+-- For pair ⟨ f , g ⟩:
+--   - Allocates 24 bytes, then runs f and g with sp' = sp - 24
+--   - f and g each need their own depth, plus 24 margin for nested ops
+--   - So: 24 (alloc) + 24 (margin) + max(StackDepth f, StackDepth g)
+--
+-- For compose (f ∘ g):
+--   - Runs f first, then g with sp' = sp - StackDelta f
+--   - Need: max(StackDepth f, StackDelta f + StackDepth g)
+--
+StackDepth : ∀ {i A B} → IR i A B → ℕ
+StackDepth id = 0
+StackDepth (f ∘ g) = StackDepth f ⊔ (StackDelta f +ℕ StackDepth g)
+StackDepth fst = 0
+StackDepth snd = 0
+StackDepth ⟨ f , g ⟩ = 48 +ℕ (StackDepth f ⊔ StackDepth g)  -- 24 alloc + 24 margin
+StackDepth inl = 16
+StackDepth inr = 16
+StackDepth [ f , g ] = StackDepth f ⊔ StackDepth g
+StackDepth terminal = 0
+StackDepth initial = 0
+StackDepth (curry f) = 16 +ℕ StackDepth f  -- curry + thunk needs f's depth
+StackDepth apply = 24  -- thunk frame; actual f depth unknown statically
+StackDepth fold = 0
+StackDepth unfold = 0
+StackDepth arr = 0
 
 ------------------------------------------------------------------------
 -- Code generation

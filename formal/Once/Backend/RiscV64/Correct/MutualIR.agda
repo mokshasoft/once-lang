@@ -27,6 +27,7 @@ open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
 open import Once.Backend.RiscV64.CodeGen
+  using (compile-riscv; compile-length; StackDelta; StackDepth; neg16; neg24)
 
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
