@@ -57,6 +57,9 @@ arithToCExpr expr = case expr of
   -- Comparisons - return int (0 or 1) in C
   ACmp op e1 e2 -> parens $ arithToCExpr e1 <> cmpOpToC op <> arithToCExpr e2
 
+  -- Type conversion/promotion (OCP-0002)
+  AConv targetTy e -> parens $ "(" <> numTypeToC targetTy <> ")" <> arithToCExpr e
+
 -- | Wrap in parentheses
 parens :: Text -> Text
 parens t = "(" <> t <> ")"

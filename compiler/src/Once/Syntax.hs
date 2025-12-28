@@ -5,6 +5,9 @@ module Once.Syntax
   , Import (..)
     -- * Expressions
   , Expr (..)
+    -- * Operators
+  , BinOp (..)
+  , UnaryOp (..)
     -- * Types
   , SType (..)
     -- * Allocation
@@ -54,6 +57,31 @@ data Decl
   | TypeAlias Name [Name] SType               -- ^ Type alias: type Name A B = Type
   deriving (Eq, Show)
 
+-- | Binary operators for infix syntax (OCP-0002)
+--
+-- Precedence (high to low):
+--   7: *, /, %  (multiplicative)
+--   6: +, -     (additive)
+--   4: <, <=, >, >=, ==, !=  (comparison)
+data BinOp
+  = OpAdd   -- ^ Addition: a + b
+  | OpSub   -- ^ Subtraction: a - b
+  | OpMul   -- ^ Multiplication: a * b
+  | OpDiv   -- ^ Division: a / b
+  | OpMod   -- ^ Modulo: a % b
+  | OpLt    -- ^ Less than: a < b
+  | OpLe    -- ^ Less or equal: a <= b
+  | OpGt    -- ^ Greater than: a > b
+  | OpGe    -- ^ Greater or equal: a >= b
+  | OpEq    -- ^ Equal: a == b
+  | OpNe    -- ^ Not equal: a != b
+  deriving (Eq, Show)
+
+-- | Unary operators
+data UnaryOp
+  = OpNeg   -- ^ Negation: -x
+  deriving (Eq, Show)
+
 -- | Surface syntax expressions (before elaboration to IR)
 --
 -- Generators (fst, snd, pair, etc.) are represented as EVar with
@@ -70,6 +98,8 @@ data Expr
   | EInt Integer                    -- ^ Integer literal: 0, 1, 42, ...
   | EStringLit Text                 -- ^ String literal: "hello"
   | EAnnot Expr SType               -- ^ Type annotation: (e : T)
+  | EBinOp BinOp Expr Expr          -- ^ Binary operator: a + b, x * y, etc.
+  | EUnaryOp UnaryOp Expr           -- ^ Unary operator: -x
   deriving (Eq, Show)
 
 -- | Surface syntax types

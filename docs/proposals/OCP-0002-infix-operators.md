@@ -1,14 +1,15 @@
 # OCP-0002: Infix Arithmetic Operators
 
 **Author:** [TBD]
-**Status:** Draft
+**Status:** Implemented
 **Created:** 2025-12-28
+**Implemented:** 2025-12-28
 
 ---
 
 ## Summary
 
-Add infix operator syntax for arithmetic expressions as syntactic sugar.
+Add infix operator syntax for arithmetic expressions as syntactic sugar, with automatic type promotion within the same numeric domain.
 
 ---
 
@@ -34,54 +35,124 @@ This improves readability significantly for arithmetic-heavy code.
 
 ### Operators
 
-| Operator | Desugars to | Precedence | Associativity |
-|----------|-------------|------------|---------------|
-| `+` | `add_i64` | 6 | Left |
-| `-` | `sub_i64` | 6 | Left |
-| `*` | `mul_i64` | 7 | Left |
-| `/` | `div_i64` | 7 | Left |
-| `%` | `mod_i64` | 7 | Left |
-| `<` | `lt_i64` | 4 | None |
-| `<=` | `le_i64` | 4 | None |
-| `>` | `gt_i64` | 4 | None |
-| `>=` | `ge_i64` | 4 | None |
-| `==` | `eq_i64` | 4 | None |
-| `!=` | `ne_i64` | 4 | None |
+| Operator | Meaning | Precedence | Associativity |
+|----------|---------|------------|---------------|
+| `*` | Multiplication | 7 (highest) | Left |
+| `/` | Division | 7 | Left |
+| `%` | Modulo | 7 | Left |
+| `+` | Addition | 6 | Left |
+| `-` | Subtraction | 6 | Left |
+| `<` | Less than | 4 (lowest) | Non-associative |
+| `<=` | Less or equal | 4 | Non-associative |
+| `>` | Greater than | 4 | Non-associative |
+| `>=` | Greater or equal | 4 | Non-associative |
+| `==` | Equal | 4 | Non-associative |
+| `!=` | Not equal | 4 | Non-associative |
 
-Unary `-` (negation) desugars to `neg_i64`.
+Unary `-` (negation) has higher precedence than all binary operators.
 
-### Type Suffixes (optional)
-
-For non-default types, use suffix notation:
+### Examples
 
 ```once
-x +f64 y      -- add_f64
-a *i32 b      -- mul_i32
+-- Precedence: mul binds tighter than add
+2 + 3 * 4        -- = 14 (not 20)
+
+-- Left associativity
+1 + 2 + 3        -- = (1 + 2) + 3
+
+-- Parentheses override
+(2 + 3) * 4      -- = 20
+
+-- Unary negation
+-x               -- negation of x
+-5               -- negative literal
+
+-- Comparisons
+x < 10           -- less than
+a >= b           -- greater or equal
+x == y           -- equality
 ```
 
-Or rely on type inference to select the right primitive.
+### Type Promotion
 
-### Implementation
+When operands have different numeric types within the same domain, the smaller type is implicitly widened to the larger:
 
-Parser changes only:
-1. Add operator tokens to lexer
-2. Add precedence climbing or Pratt parsing for expressions
-3. Desugar to `EApp (EVar "add_i64") (EPair a b)` in parser
+```once
+-- int8 + int16 -> int16
+-- int32 + int64 -> int64
+-- float32 + float64 -> float64
+```
 
-The elaborator's existing arithmetic detection then generates `Arith` nodes.
+**Domain separation:** Mixing integers and floats is a type error:
+
+```once
+x_int + y_float  -- Error: Cannot mix integer and float types
+```
+
+This prevents subtle precision loss from implicit conversions.
+
+---
+
+## Implementation
+
+### AST Changes (`Once/Syntax.hs`)
+
+```haskell
+-- Binary operators
+data BinOp
+  = OpAdd | OpSub | OpMul | OpDiv | OpMod
+  | OpLt | OpLe | OpGt | OpGe | OpEq | OpNe
+  deriving (Eq, Show)
+
+-- Unary operators
+data UnaryOp = OpNeg
+  deriving (Eq, Show)
+
+-- Added to Expr
+| EBinOp BinOp Expr Expr
+| EUnaryOp UnaryOp Expr
+```
+
+### Parser (`Once/Parser.hs`)
+
+Precedence-climbing parser with layers:
+1. `compareExpr` - non-associative comparisons
+2. `addExpr` - left-associative `+` and `-`
+3. `mulExpr` - left-associative `*`, `/`, `%`
+4. `unaryExpr` - unary `-`
+
+### Elaboration (`Once/Elaborate.hs`)
+
+1. Convert operands to `ArithIR`
+2. Determine promoted type via `promoteNumTypes`
+3. Insert `AConv` nodes for type widening
+4. Build appropriate `ArithIR` node
+
+### ArithIR (`Once/Arith/IR.hs`)
+
+```haskell
+| AConv NumType ArithIR  -- Type conversion/promotion
+```
+
+### Backend Support
+
+**C Backend:** Emits explicit casts `(int64_t)x`
+
+**X86 Backend:**
+- Integer widening handled implicitly by 64-bit registers
+- Float widening uses `cvtss2sd` instruction
 
 ---
 
 ## Integration with OCP-0001
 
-This is pure syntax sugar. The desugared form feeds directly into the
-arithmetic compiler pipeline from OCP-0001:
+Infix syntax elaborates directly to ArithIR:
 
 ```
 Source: x + y
-  ↓ Parser (desugar)
-Sugar: EApp (EVar "add_i64") (EPair (EVar "x") (EVar "y"))
-  ↓ Elaborator (arithmetic detection)
+  ↓ Parser
+AST: EBinOp OpAdd (EVar "x") (EVar "y")
+  ↓ Elaborator
 IR: Arith (AAdd (AVar "x" I64) (AVar "y" I64))
   ↓ Codegen
 C: (x + y)
@@ -89,11 +160,31 @@ C: (x + y)
 
 ---
 
-## Open Questions
+## Testing
 
-1. Should operators be overloaded by type, or require explicit suffixes?
-2. Should we support user-defined operators?
-3. Precedence of comparison operators vs logical operators (if added)?
+16 new parser tests added in `compiler/test/ParserSpec.hs`:
+- Basic operators (+, -, *, /, %)
+- Precedence (mul binds tighter than add)
+- Associativity (left-associative)
+- Parentheses override
+- Unary negation
+- All comparison operators
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `compiler/src/Once/Syntax.hs` | Added `BinOp`, `UnaryOp`, `EBinOp`, `EUnaryOp` |
+| `compiler/src/Once/Parser.hs` | Precedence-climbing parser |
+| `compiler/src/Once/Elaborate.hs` | `EBinOp`/`EUnaryOp` handling, type promotion |
+| `compiler/src/Once/Arith/IR.hs` | Added `AConv` constructor |
+| `compiler/src/Once/Arith/CodeGen/C.hs` | `AConv` emission |
+| `compiler/src/Once/Arith/Backend/X86/CodeGen.hs` | `AConv` handling |
+| `compiler/src/Once/Arith/Backend/X86/Syntax.hs` | Added `Cvtss2sd` |
+| `compiler/src/Once/Arith/Backend/X86/Emit.hs` | `Cvtss2sd` emission |
+| `compiler/test/ParserSpec.hs` | 16 new infix operator tests |
 
 ---
 

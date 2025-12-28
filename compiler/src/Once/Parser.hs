@@ -253,6 +253,16 @@ chainl1 p op = do
 -- -----------------------------------------------------------------------------
 
 -- | Parse an expression
+--
+-- Precedence (low to high):
+--   1. Type annotation (:)
+--   2. Composition (.)
+--   3. Comparison (<, <=, >, >=, ==, !=) - non-associative
+--   4. Additive (+, -) - left-associative
+--   5. Multiplicative (*, /, %) - left-associative
+--   6. Unary negation (-)
+--   7. Application
+--
 parseExpr :: Parser Expr
 parseExpr = annotExpr
   where
@@ -263,12 +273,59 @@ parseExpr = annotExpr
     -- Composition with . is right-associative (like Haskell)
     -- f . g . h = f . (g . h)
     composeExpr = do
-      e <- appExpr
+      e <- compareExpr
       option e (do
         void $ symbol "."
         e2 <- composeExpr
         -- Desugar f . g to compose f g
         pure $ EApp (EApp (EVar "compose") e) e2)
+
+    -- Comparison operators (non-associative, lowest arithmetic precedence)
+    -- a < b < c is a parse error (non-associative)
+    compareExpr = do
+      e1 <- addExpr
+      option e1 $ do
+        op <- compareOp
+        e2 <- addExpr
+        pure $ EBinOp op e1 e2
+
+    compareOp :: Parser BinOp
+    compareOp = choice
+      [ OpLe <$ try (symbol "<=")  -- try to handle <= vs <
+      , OpGe <$ try (symbol ">=")  -- try to handle >= vs >
+      , OpEq <$ try (symbol "==")
+      , OpNe <$ try (symbol "!=")
+      , OpLt <$ symbol "<"
+      , OpGt <$ symbol ">"
+      ]
+
+    -- Additive operators (left-associative)
+    -- Note: we use addOp which excludes unary - context
+    addExpr = chainl1 mulExpr addOp
+
+    addOp :: Parser (Expr -> Expr -> Expr)
+    addOp = choice
+      [ (\l r -> EBinOp OpAdd l r) <$ symbol "+"
+      , (\l r -> EBinOp OpSub l r) <$ symbol "-"
+      ]
+
+    -- Multiplicative operators (left-associative)
+    mulExpr = chainl1 unaryExpr mulOp
+
+    mulOp :: Parser (Expr -> Expr -> Expr)
+    mulOp = choice
+      [ (\l r -> EBinOp OpMul l r) <$ symbol "*"
+      , (\l r -> EBinOp OpDiv l r) <$ symbol "/"
+      , (\l r -> EBinOp OpMod l r) <$ symbol "%"
+      ]
+
+    -- Unary negation (higher precedence than binary operators)
+    unaryExpr = choice
+      [ do void $ symbol "-"
+           e <- unaryExpr
+           pure $ EUnaryOp OpNeg e
+      , appExpr
+      ]
 
     -- Application is left-associative
     -- But don't consume identifiers that start a new declaration (name : Type)

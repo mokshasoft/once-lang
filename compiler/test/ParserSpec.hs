@@ -144,6 +144,63 @@ parserTests = testGroup "Parser"
             Right (EPair (EInt 1) (EPair (EInt 2) (EInt 3)))
       ]
 
+  , testGroup "Infix operators (OCP-0002)"
+      [ testCase "addition" $
+          parseExpr' "3 + 5" @?= Right (EBinOp OpAdd (EInt 3) (EInt 5))
+
+      , testCase "subtraction" $
+          parseExpr' "10 - 3" @?= Right (EBinOp OpSub (EInt 10) (EInt 3))
+
+      , testCase "multiplication" $
+          parseExpr' "4 * 5" @?= Right (EBinOp OpMul (EInt 4) (EInt 5))
+
+      , testCase "division" $
+          parseExpr' "20 / 4" @?= Right (EBinOp OpDiv (EInt 20) (EInt 4))
+
+      , testCase "modulo" $
+          parseExpr' "17 % 5" @?= Right (EBinOp OpMod (EInt 17) (EInt 5))
+
+      , testCase "mul binds tighter than add" $
+          parseExpr' "2 + 3 * 4" @?=
+            Right (EBinOp OpAdd (EInt 2) (EBinOp OpMul (EInt 3) (EInt 4)))
+
+      , testCase "parentheses override precedence" $
+          parseExpr' "(2 + 3) * 4" @?=
+            Right (EBinOp OpMul (EBinOp OpAdd (EInt 2) (EInt 3)) (EInt 4))
+
+      , testCase "left associativity of addition" $
+          parseExpr' "1 + 2 + 3" @?=
+            Right (EBinOp OpAdd (EBinOp OpAdd (EInt 1) (EInt 2)) (EInt 3))
+
+      , testCase "unary negation" $
+          parseExpr' "-x" @?= Right (EUnaryOp OpNeg (EVar "x"))
+
+      , testCase "negation of literal" $
+          parseExpr' "-5" @?= Right (EUnaryOp OpNeg (EInt 5))
+
+      , testCase "less than comparison" $
+          parseExpr' "x < 10" @?= Right (EBinOp OpLt (EVar "x") (EInt 10))
+
+      , testCase "greater or equal comparison" $
+          parseExpr' "a >= b" @?= Right (EBinOp OpGe (EVar "a") (EVar "b"))
+
+      , testCase "equality comparison" $
+          parseExpr' "x == y" @?= Right (EBinOp OpEq (EVar "x") (EVar "y"))
+
+      , testCase "inequality comparison" $
+          parseExpr' "a != b" @?= Right (EBinOp OpNe (EVar "a") (EVar "b"))
+
+      , testCase "comparison has lower precedence than add" $
+          parseExpr' "x + 1 < y" @?=
+            Right (EBinOp OpLt (EBinOp OpAdd (EVar "x") (EInt 1)) (EVar "y"))
+
+      , testCase "complex expression" $
+          parseExpr' "a * b + c * d" @?=
+            Right (EBinOp OpAdd
+                    (EBinOp OpMul (EVar "a") (EVar "b"))
+                    (EBinOp OpMul (EVar "c") (EVar "d")))
+      ]
+
   , testGroup "Declarations"
       [ testCase "type signature" $
           parseDecl' "swap : A * B -> B * A" @?=

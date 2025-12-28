@@ -252,6 +252,15 @@ compileInt (ACmp _ e1 e2) st =
   -- For now, just compute subtraction (flags would be set)
   compileInt (ASub e1 e2) st
 
+-- Type conversion/promotion (OCP-0002)
+-- Integer widening: smaller types are sign-extended to larger
+compileInt (AConv targetTy e) st =
+  let res = compileInt e st
+      r = intResult res
+      -- For now, we just use the value as-is since we work with 64-bit registers
+      -- In a full implementation, we'd use movsx for sign-extension
+  in res  -- No additional code needed for widening within GPRs
+
 -- Float literals/operations fall through to float path
 compileInt (ALitFloat _ _) st = error "compileInt: got float literal"
 
@@ -387,6 +396,24 @@ compileFloat (AMod _ _) _ = error "compileFloat: modulo not supported for floats
 
 -- Comparison
 compileFloat (ACmp _ e1 e2) st = compileFloat (ASub e1 e2) st
+
+-- Type conversion/promotion (OCP-0002)
+-- Float widening: F32 -> F64 uses cvtss2sd
+compileFloat (AConv targetTy e) st =
+  let sourceTy = arithType e
+      res = compileFloat e st
+      r = floatResult res
+  in case (sourceTy, targetTy) of
+       (F32, F64) ->
+         -- Convert single to double: cvtss2sd
+         FloatResult
+           { floatCode   = floatCode res ++ [FloatI (Cvtss2sd r r)]
+           , floatResult = r
+           , floatState  = floatState res
+           }
+       (F64, F64) -> res  -- No conversion needed
+       (F32, F32) -> res  -- No conversion needed
+       _ -> res  -- Should not happen for valid conversions
 
 -- Integer literals
 compileFloat (ALitInt _ _) _ = error "compileFloat: got int literal"

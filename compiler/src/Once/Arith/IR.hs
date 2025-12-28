@@ -96,6 +96,10 @@ data ArithIR
   -- | Comparison (returns Bool = Unit + Unit for control flow)
   | ACmp CmpOp ArithIR ArithIR
 
+  -- | Type conversion/promotion (OCP-0002)
+  -- Widens a value to a larger type within the same domain
+  | AConv NumType ArithIR
+
   deriving (Eq, Show)
 
 -- | Comparison operators
@@ -122,6 +126,7 @@ arithType (ADiv e _)      = arithType e
 arithType (AMod e _)      = arithType e
 arithType (ANeg e)        = arithType e
 arithType (ACmp _ e _)    = arithType e  -- Comparison type is based on operands
+arithType (AConv t _)     = t            -- Conversion produces target type
 
 -- | Get free variables in an arithmetic expression
 --
@@ -137,3 +142,4 @@ freeVars (ADiv e1 e2)    = freeVars e1 `Set.union` freeVars e2
 freeVars (AMod e1 e2)    = freeVars e1 `Set.union` freeVars e2
 freeVars (ANeg e)        = freeVars e
 freeVars (ACmp _ e1 e2)  = freeVars e1 `Set.union` freeVars e2
+freeVars (AConv _ e)     = freeVars e

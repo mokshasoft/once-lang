@@ -11,10 +11,10 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 
 import Once.IR (IR (..))
-import Once.Syntax (Expr (..), SType (..), Name, Decl (..), ModuleName)
+import Once.Syntax (Expr (..), SType (..), Name, Decl (..), ModuleName, BinOp (..), UnaryOp (..))
 import Once.Type (Type (..))
 import Once.Module (ModuleEnv, lookupQualified, DeclInfo (..), ModuleError)
-import Once.Arith.IR (ArithIR (..), NumType (..), CmpOp (..))
+import Once.Arith.IR (ArithIR (..), NumType (..), CmpOp (..), bitwidth, isFloat)
 
 -- | Elaboration errors
 data ElabError
@@ -118,6 +118,35 @@ elaborateExpr' locals expr = case expr of
     Right $ Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
 
   EAnnot e _ -> elaborateExpr' locals e  -- ignore annotation for now
+
+  -- Binary operators (OCP-0002): a + b, x * y, etc.
+  EBinOp op a b -> do
+    case (toArithIR locals a, toArithIR locals b) of
+      (Just a', Just b') ->
+        -- Both operands are arithmetic - build ArithIR directly
+        let t1 = arithType a'
+            t2 = arithType b'
+        in case promoteNumTypes t1 t2 of
+          Left err -> Left $ TypeMismatch err
+          Right resultTy ->
+            let a'' = promoteIfNeeded t1 resultTy a'
+                b'' = promoteIfNeeded t2 resultTy b'
+            in Right $ Arith (binOpToArith op a'' b'')
+      _ -> do
+        -- Fallback to categorical IR
+        a' <- elaborateExpr' locals a
+        b' <- elaborateExpr' locals b
+        -- Desugar to primitive call with default I64 type
+        let primName = binOpToPrimName op I64
+        Right $ Compose (Var primName) (Pair a' b')
+
+  -- Unary operators (OCP-0002): -x
+  EUnaryOp OpNeg e -> do
+    case toArithIR locals e of
+      Just e' -> Right $ Arith (ANeg e')
+      Nothing -> do
+        e' <- elaborateExpr' locals e
+        Right $ Compose (Var "neg_i64") e'
 
 -- | Show for Text
 tshow :: Show a => a -> Name
@@ -381,6 +410,24 @@ toArithIR locals expr = case expr of
           Just $ binOpMake op a' b'
         _ -> Nothing
 
+  -- Infix binary operators (OCP-0002): a + b, x * y, etc.
+  EBinOp op a b -> do
+    a' <- toArithIR locals a
+    b' <- toArithIR locals b
+    let t1 = arithType a'
+        t2 = arithType b'
+    case promoteNumTypes t1 t2 of
+      Left _ -> Nothing  -- Type mismatch - can't be pure arithmetic
+      Right resultTy ->
+        let a'' = promoteIfNeeded t1 resultTy a'
+            b'' = promoteIfNeeded t2 resultTy b'
+        in Just $ binOpToArith op a'' b''
+
+  -- Unary negation (OCP-0002): -x
+  EUnaryOp OpNeg e -> do
+    e' <- toArithIR locals e
+    Just $ ANeg e'
+
   _ -> Nothing
 
 -- | Check if expression can be compiled as pure arithmetic
@@ -388,6 +435,71 @@ isArithExpr :: Set Name -> Expr -> Bool
 isArithExpr locals expr = case toArithIR locals expr of
   Just _  -> True
   Nothing -> False
+
+------------------------------------------------------------------------
+-- Type promotion for infix operators (OCP-0002)
+------------------------------------------------------------------------
+
+-- | Get the type of an ArithIR expression
+arithType :: ArithIR -> NumType
+arithType (ALitInt t _) = t
+arithType (ALitFloat t _) = t
+arithType (AVar _ t) = t
+arithType (AAdd a _) = arithType a
+arithType (ASub a _) = arithType a
+arithType (AMul a _) = arithType a
+arithType (ADiv a _) = arithType a
+arithType (AMod a _) = arithType a
+arithType (ANeg a) = arithType a
+arithType (ACmp _ a _) = arithType a  -- Comparison result is same type
+arithType (AConv t _) = t
+
+-- | Determine the promoted type for two numeric types
+--
+-- Rules:
+-- 1. Same domain required: int+int or float+float
+-- 2. Within domain: promote to wider type
+-- 3. Error on cross-domain (int+float)
+promoteNumTypes :: NumType -> NumType -> Either String NumType
+promoteNumTypes t1 t2
+  | isFloat t1 /= isFloat t2 = Left "Cannot mix integer and float types in arithmetic"
+  | otherwise = Right (if bitwidth t1 >= bitwidth t2 then t1 else t2)
+
+-- | Insert AConv if types differ
+promoteIfNeeded :: NumType -> NumType -> ArithIR -> ArithIR
+promoteIfNeeded fromTy toTy expr
+  | fromTy == toTy = expr
+  | otherwise = AConv toTy expr
+
+-- | Convert BinOp to ArithIR constructor
+binOpToArith :: BinOp -> ArithIR -> ArithIR -> ArithIR
+binOpToArith OpAdd = AAdd
+binOpToArith OpSub = ASub
+binOpToArith OpMul = AMul
+binOpToArith OpDiv = ADiv
+binOpToArith OpMod = AMod
+binOpToArith OpLt  = ACmp CmpLt
+binOpToArith OpLe  = ACmp CmpLe
+binOpToArith OpGt  = ACmp CmpGt
+binOpToArith OpGe  = ACmp CmpGe
+binOpToArith OpEq  = ACmp CmpEq
+binOpToArith OpNe  = ACmp CmpNe
+
+-- | Convert BinOp to primitive name (for fallback when not pure arithmetic)
+binOpToPrimName :: BinOp -> NumType -> Name
+binOpToPrimName OpAdd I64 = "add_i64"
+binOpToPrimName OpSub I64 = "sub_i64"
+binOpToPrimName OpMul I64 = "mul_i64"
+binOpToPrimName OpDiv I64 = "div_i64"
+binOpToPrimName OpMod I64 = "mod_i64"
+binOpToPrimName OpLt  I64 = "lt_i64"
+binOpToPrimName OpLe  I64 = "le_i64"
+binOpToPrimName OpGt  I64 = "gt_i64"
+binOpToPrimName OpGe  I64 = "ge_i64"
+binOpToPrimName OpEq  I64 = "eq_i64"
+binOpToPrimName OpNe  I64 = "ne_i64"
+-- Default to I64 for other types (type checker will refine later)
+binOpToPrimName op _ = binOpToPrimName op I64
 
 -- | Placeholder type for type inference to fill in later
 placeholder :: Type
@@ -495,6 +607,32 @@ elaborateExprWithEnv modEnv locals expr = case expr of
     Right $ Compose (Case (Curry x e1') (Curry y e2')) scrutinee'
 
   EAnnot e _ -> elaborateExprWithEnv modEnv locals e
+
+  -- Binary operators (OCP-0002): a + b, x * y, etc.
+  EBinOp op a b -> do
+    case (toArithIR locals a, toArithIR locals b) of
+      (Just a', Just b') ->
+        let t1 = arithType a'
+            t2 = arithType b'
+        in case promoteNumTypes t1 t2 of
+          Left err -> Left $ TypeMismatch err
+          Right resultTy ->
+            let a'' = promoteIfNeeded t1 resultTy a'
+                b'' = promoteIfNeeded t2 resultTy b'
+            in Right $ Arith (binOpToArith op a'' b'')
+      _ -> do
+        a' <- elaborateExprWithEnv modEnv locals a
+        b' <- elaborateExprWithEnv modEnv locals b
+        let primName = binOpToPrimName op I64
+        Right $ Compose (Var primName) (Pair a' b')
+
+  -- Unary operators (OCP-0002): -x
+  EUnaryOp OpNeg e -> do
+    case toArithIR locals e of
+      Just e' -> Right $ Arith (ANeg e')
+      Nothing -> do
+        e' <- elaborateExprWithEnv modEnv locals e
+        Right $ Compose (Var "neg_i64") e'
 
 -- | Elaborate function application with module environment
 elaborateAppWithEnv :: ModuleEnv -> Set Name -> Expr -> Expr -> Either ElabError IR

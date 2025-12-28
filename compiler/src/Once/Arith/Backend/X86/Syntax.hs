@@ -205,6 +205,9 @@ data FloatInstr
   -- Negation (xor with sign bit)
   | Xorps XMMReg XMMReg           -- ^ xorps dst, src (32-bit)
   | Xorpd XMMReg XMMReg           -- ^ xorpd dst, src (64-bit)
+
+  -- Type conversion (OCP-0002)
+  | Cvtss2sd XMMReg XMMReg        -- ^ cvtss2sd dst, src (F32 -> F64)
   deriving (Eq, Show)
 
 ------------------------------------------------------------------------
