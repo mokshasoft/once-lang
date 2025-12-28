@@ -27,7 +27,7 @@ open import Once.Backend.AArch64.Semantics using (State; readReg; readSP; readMe
 open import Once.Backend.AArch64.Semantics using () renaming (module State to St)
 open St using (regs; memory; halted; pc)
 open import Once.Backend.AArch64.Correct.Star using (Star)
-open import Once.Backend.AArch64.Correct.StackInvariant using (StackInvariant)
+open import Once.Backend.AArch64.Correct.StackInvariant using (StackInvariant; X29Invariant)
 open import Once.Backend.AArch64.CodeGen using (compile-aarch64; compile-length)
 
 ------------------------------------------------------------------------
@@ -131,6 +131,7 @@ postulate
               × readMem (memory s') (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
               × readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
               × StackInvariant s'
+              × X29Invariant s'
               × readSP (regs s') > 16)
 
 ------------------------------------------------------------------------
