@@ -236,6 +236,17 @@ execIntInstr s (popI dst) =
   in record s { gpr-file = writeGPR (gpr-file s) dst v
               ; stack = s'
               ; apc = apc s + 1 }
+-- Comparison instructions (simplified: just increment pc, result in dst)
+execIntInstr s (cmpI _ _) =
+  -- Compare sets flags (not modeled here); just increment pc
+  record s { apc = apc s + 1 }
+execIntInstr s (setccI _ dst) =
+  -- Set dst to 0 or 1 based on condition (simplified: always set to 0)
+  record s { gpr-file = writeGPR (gpr-file s) dst (+ 0)
+           ; apc = apc s + 1 }
+execIntInstr s (movzxI dst _) =
+  -- Zero-extend (simplified: just pass through value)
+  record s { apc = apc s + 1 }
 
 -- | Execute a float instruction (simplified - using ℤ as placeholder)
 execFloatInstr : ArithState → FloatInstr → ArithState
@@ -594,6 +605,9 @@ prog-length (i ∷ is) s =
     exec-instr-pc s (intI cqo)         = refl
     exec-instr-pc s (intI (pushI _))   = refl
     exec-instr-pc s (intI (popI _))    = refl
+    exec-instr-pc s (intI (cmpI _ _))  = refl
+    exec-instr-pc s (intI (setccI _ _)) = refl
+    exec-instr-pc s (intI (movzxI _ _)) = refl
     exec-instr-pc s (floatI (movss _ _)) = refl
     exec-instr-pc s (floatI (movsd _ _)) = refl
     exec-instr-pc s (floatI (addss _ _)) = refl

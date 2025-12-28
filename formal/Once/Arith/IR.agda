@@ -129,39 +129,6 @@ data ArithIR : Ctx → NumType → Set where
   Cmp : ∀ {Γ Δ τ} → CmpOp → ArithIR Γ τ → ArithIR Δ τ → ArithIR (Γ ⊕ Δ) τ
 
 ------------------------------------------------------------------------
--- Comparison operations (return Bool)
-------------------------------------------------------------------------
-
--- | Bool type for comparisons
--- In the full system, Bool = Unit + Unit. Here we use a simple encoding.
-data BoolType : Set where
-  BoolT : BoolType
-
--- | Comparison IR: produces a boolean from numeric inputs
---
--- These operations return to control flow via the boundary.
--- The result feeds into generator IR (case analysis).
---
-data CmpIR : Ctx → Set where
-  -- | Less than
-  Lt : ∀ {Γ Δ τ} → ArithIR Γ τ → ArithIR Δ τ → CmpIR (Γ ⊕ Δ)
-
-  -- | Equal
-  Eq : ∀ {Γ Δ τ} → ArithIR Γ τ → ArithIR Δ τ → CmpIR (Γ ⊕ Δ)
-
-  -- | Less than or equal
-  Le : ∀ {Γ Δ τ} → ArithIR Γ τ → ArithIR Δ τ → CmpIR (Γ ⊕ Δ)
-
-  -- | Greater than
-  Gt : ∀ {Γ Δ τ} → ArithIR Γ τ → ArithIR Δ τ → CmpIR (Γ ⊕ Δ)
-
-  -- | Greater than or equal
-  Ge : ∀ {Γ Δ τ} → ArithIR Γ τ → ArithIR Δ τ → CmpIR (Γ ⊕ Δ)
-
-  -- | Not equal
-  Ne : ∀ {Γ Δ τ} → ArithIR Γ τ → ArithIR Δ τ → CmpIR (Γ ⊕ Δ)
-
-------------------------------------------------------------------------
 -- Expression size (for complexity analysis)
 ------------------------------------------------------------------------
 
@@ -176,15 +143,6 @@ size (Div e₁ e₂)   = 1 + size e₁ + size e₂
 size (Mod e₁ e₂)   = 1 + size e₁ + size e₂
 size (Neg e)       = 1 + size e
 size (Cmp _ e₁ e₂) = 1 + size e₁ + size e₂
-
--- | Size of a comparison expression
-size-cmp : ∀ {Γ} → CmpIR Γ → ℕ
-size-cmp (Lt e₁ e₂) = 1 + size e₁ + size e₂
-size-cmp (Eq e₁ e₂) = 1 + size e₁ + size e₂
-size-cmp (Le e₁ e₂) = 1 + size e₁ + size e₂
-size-cmp (Gt e₁ e₂) = 1 + size e₁ + size e₂
-size-cmp (Ge e₁ e₂) = 1 + size e₁ + size e₂
-size-cmp (Ne e₁ e₂) = 1 + size e₁ + size e₂
 
 ------------------------------------------------------------------------
 -- Variable count (for register allocation)

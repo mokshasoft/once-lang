@@ -101,6 +101,19 @@ data FloatOperand : Set where
   memF : ArithMem → FloatOperand
 
 ------------------------------------------------------------------------
+-- Condition codes (for comparisons)
+------------------------------------------------------------------------
+
+-- | x86-64 condition codes for setcc/jcc instructions
+data CondCode : Set where
+  cc-e  : CondCode    -- Equal (ZF=1)
+  cc-ne : CondCode    -- Not equal (ZF=0)
+  cc-l  : CondCode    -- Less than (signed: SF≠OF)
+  cc-le : CondCode    -- Less or equal (signed: ZF=1 or SF≠OF)
+  cc-g  : CondCode    -- Greater than (signed: ZF=0 and SF=OF)
+  cc-ge : CondCode    -- Greater or equal (signed: SF=OF)
+
+------------------------------------------------------------------------
 -- Integer arithmetic instructions
 ------------------------------------------------------------------------
 
@@ -127,6 +140,11 @@ data IntInstr : Set where
   -- Stack operations (for register spilling)
   pushI  : GPReg → IntInstr                      -- push src (rsp -= 8; [rsp] = src)
   popI   : GPReg → IntInstr                      -- pop dst (dst = [rsp]; rsp += 8)
+
+  -- Comparison
+  cmpI   : GPReg → IntOperand → IntInstr         -- cmp dst, src (sets flags)
+  setccI : CondCode → GPReg → IntInstr           -- setcc dst (set low byte to 0/1)
+  movzxI : GPReg → GPReg → IntInstr              -- movzx dst, src (zero-extend byte)
 
 ------------------------------------------------------------------------
 -- Floating-point arithmetic instructions (SSE)

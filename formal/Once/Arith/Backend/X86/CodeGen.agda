@@ -119,6 +119,19 @@ toℤ {I32} refl n = n
 toℤ {I64} refl n = n
 
 ------------------------------------------------------------------------
+-- Comparison operator mapping
+------------------------------------------------------------------------
+
+-- | Map ArithIR CmpOp to x86-64 condition codes
+cmpOpToCondCode : CmpOp → CondCode
+cmpOpToCondCode CmpLt = cc-l
+cmpOpToCondCode CmpLe = cc-le
+cmpOpToCondCode CmpGt = cc-g
+cmpOpToCondCode CmpGe = cc-ge
+cmpOpToCondCode CmpEq = cc-e
+cmpOpToCondCode CmpNe = cc-ne
+
+------------------------------------------------------------------------
 -- Integer code generation
 ------------------------------------------------------------------------
 
@@ -219,16 +232,17 @@ compile-int (Neg e) p st =
        r
        (IntResult.state res)
 
--- Comparison: compute subtraction (sets flags), result is 0/1 placeholder
--- Full implementation would use setcc instructions based on flags.
--- For now, just compute the subtraction (matches Haskell backend).
-compile-int (Cmp {_} {_} {τ} _ e₁ e₂) p st =
+-- Comparison: compare operands, set condition code, zero-extend result
+compile-int (Cmp {_} {_} {τ} op e₁ e₂) p st =
   let res₁ = compile-int e₁ p st
       res₂ = compile-int e₂ p (IntResult.state res₁)
       r₁ = IntResult.result res₁
       r₂ = IntResult.result res₂
-      -- Placeholder: just compute difference (real impl would use cmp + setcc)
-      cmpCode = intI (subI r₁ (regI r₂)) ∷ []
+      cc = cmpOpToCondCode op
+      -- cmp r₁, r₂; setcc r₁; movzx r₁, r₁ (zero-extend byte to 64-bit)
+      cmpCode = intI (cmpI r₁ (regI r₂)) ∷
+                intI (setccI cc r₁) ∷
+                intI (movzxI r₁ r₁) ∷ []
   in mkIntResult
        (IntResult.code res₁ ++ IntResult.code res₂ ++ cmpCode)
        r₁

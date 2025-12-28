@@ -110,6 +110,19 @@ data FPOperand : Set where
   fpRegOp : FPReg → FPOperand
 
 ------------------------------------------------------------------------
+-- Condition codes (for comparisons)
+------------------------------------------------------------------------
+
+-- | AArch64 condition codes for cset/csel/b.cc instructions
+data Cond : Set where
+  cond-eq : Cond    -- Equal (Z=1)
+  cond-ne : Cond    -- Not equal (Z=0)
+  cond-lt : Cond    -- Signed less than (N≠V)
+  cond-le : Cond    -- Signed less or equal (Z=1 or N≠V)
+  cond-gt : Cond    -- Signed greater than (Z=0 and N=V)
+  cond-ge : Cond    -- Signed greater or equal (N=V)
+
+------------------------------------------------------------------------
 -- Integer arithmetic instructions
 ------------------------------------------------------------------------
 
@@ -126,6 +139,9 @@ data IntInstr : Set where
   -- Stack operations (for register spilling)
   strPre  : GPReg → ℕ → IntInstr     -- str xn, [sp, #-imm]! (pre-decrement)
   ldrPost : GPReg → ℕ → IntInstr     -- ldr xn, [sp], #imm (post-increment)
+  -- Comparison
+  cmp     : GPReg → Operand → IntInstr  -- cmp rn, op (sets flags)
+  cset    : GPReg → Cond → IntInstr     -- cset rd, cc (rd = cc ? 1 : 0)
 
 ------------------------------------------------------------------------
 -- Floating-point arithmetic instructions

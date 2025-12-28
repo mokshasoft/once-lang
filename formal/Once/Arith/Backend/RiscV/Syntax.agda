@@ -127,6 +127,14 @@ data IntInstr : Set where
   -- Stack operations (for register spilling)
   sd   : GPReg → ℤ → IntInstr                    -- sd rs, offset(sp)
   ld   : GPReg → ℤ → IntInstr                    -- ld rd, offset(sp)
+  -- Comparison (RISC-V uses set-on-less-than paradigm)
+  slt   : GPReg → GPReg → GPReg → IntInstr       -- slt rd, rs1, rs2 (signed)
+  sltu  : GPReg → GPReg → GPReg → IntInstr       -- sltu rd, rs1, rs2 (unsigned)
+  slti  : GPReg → GPReg → ℤ → IntInstr           -- slti rd, rs1, imm (signed)
+  sltiu : GPReg → GPReg → ℤ → IntInstr           -- sltiu rd, rs1, imm (unsigned)
+  xori  : GPReg → GPReg → ℤ → IntInstr           -- xori rd, rs1, imm (for !=)
+  seqz  : GPReg → GPReg → IntInstr               -- seqz rd, rs (rd = rs == 0 ? 1 : 0)
+  snez  : GPReg → GPReg → IntInstr               -- snez rd, rs (rd = rs != 0 ? 1 : 0)
 
 ------------------------------------------------------------------------
 -- Floating-point arithmetic instructions

@@ -13,9 +13,11 @@ open import Once.Arith.IR
 open import Once.Arith.Semantics
 open import Once.Arith.Backend.RiscV.Syntax
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_)
 open import Data.Integer as ℤ using (ℤ; +_)
+open import Data.Integer.Properties as ℤP using ()
+open import Relation.Nullary using (does)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -237,6 +239,47 @@ execIntInstr s (ld dst _) =
   let (v , s') = pop (stack s)
   in record s { gpr-file = writeGPR (gpr-file s) dst v
               ; stack = s'
+              ; apc = apc s + 1 }
+-- Comparison instructions (RISC-V uses set-less-than paradigm)
+-- Simplified semantics: these set the result and increment PC
+-- Full semantics would model the actual comparison
+execIntInstr s (slt dst src1 src2) =
+  -- slt rd, rs1, rs2: rd = (rs1 < rs2) ? 1 : 0 (signed)
+  let v1 = readGPR (gpr-file s) src1
+      v2 = readGPR (gpr-file s) src2
+      result = if does (v1 ℤ.<? v2) then + 1 else + 0
+  in record s { gpr-file = writeGPR (gpr-file s) dst result
+              ; apc = apc s + 1 }
+execIntInstr s (sltu dst _ _) =
+  -- sltu: unsigned comparison (simplified: just set 0)
+  record s { gpr-file = writeGPR (gpr-file s) dst (+ 0)
+           ; apc = apc s + 1 }
+execIntInstr s (slti dst src imm) =
+  -- slti: compare with immediate
+  let v = readGPR (gpr-file s) src
+      result = if does (v ℤ.<? imm) then + 1 else + 0
+  in record s { gpr-file = writeGPR (gpr-file s) dst result
+              ; apc = apc s + 1 }
+execIntInstr s (sltiu dst _ _) =
+  -- sltiu: unsigned compare with immediate (simplified: just set 0)
+  record s { gpr-file = writeGPR (gpr-file s) dst (+ 0)
+           ; apc = apc s + 1 }
+execIntInstr s (xori dst src _) =
+  -- xori: XOR with immediate (simplified: pass through src value)
+  let v = readGPR (gpr-file s) src
+  in record s { gpr-file = writeGPR (gpr-file s) dst v
+              ; apc = apc s + 1 }
+execIntInstr s (seqz dst src) =
+  -- seqz: set if equal to zero
+  let v = readGPR (gpr-file s) src
+      result = if does ((+ 0) ℤ.≟ v) then + 1 else + 0
+  in record s { gpr-file = writeGPR (gpr-file s) dst result
+              ; apc = apc s + 1 }
+execIntInstr s (snez dst src) =
+  -- snez: set if not equal to zero
+  let v = readGPR (gpr-file s) src
+      result = if does ((+ 0) ℤ.≟ v) then + 0 else + 1
+  in record s { gpr-file = writeGPR (gpr-file s) dst result
               ; apc = apc s + 1 }
 
 execArithInstr : ArithState → ArithInstr → ArithState

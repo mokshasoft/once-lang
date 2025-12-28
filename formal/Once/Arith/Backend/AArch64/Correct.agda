@@ -245,6 +245,14 @@ execIntInstr s (ldrPost dst _) =
   in record s { gpr-file = writeGPR (gpr-file s) dst v
               ; stack = s'
               ; apc = apc s + 1 }
+-- Comparison instructions
+execIntInstr s (cmp _ _) =
+  -- Compare sets flags (not modeled here); just increment pc
+  record s { apc = apc s + 1 }
+execIntInstr s (cset dst _) =
+  -- Set dst to 0 or 1 based on condition (simplified: always set to 0)
+  record s { gpr-file = writeGPR (gpr-file s) dst (+ 0)
+           ; apc = apc s + 1 }
 
 execArithInstr : ArithState → ArithInstr → ArithState
 execArithInstr s (intI i) = execIntInstr s i

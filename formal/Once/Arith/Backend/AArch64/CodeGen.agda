@@ -100,6 +100,19 @@ toℤ {I32} refl n = n
 toℤ {I64} refl n = n
 
 ------------------------------------------------------------------------
+-- Comparison operator mapping
+------------------------------------------------------------------------
+
+-- | Map ArithIR CmpOp to AArch64 condition codes
+cmpOpToCond : CmpOp → Cond
+cmpOpToCond CmpLt = cond-lt
+cmpOpToCond CmpLe = cond-le
+cmpOpToCond CmpGt = cond-gt
+cmpOpToCond CmpGe = cond-ge
+cmpOpToCond CmpEq = cond-eq
+cmpOpToCond CmpNe = cond-ne
+
+------------------------------------------------------------------------
 -- Integer code generation
 ------------------------------------------------------------------------
 
@@ -185,13 +198,16 @@ compile-int (Neg e) p st =
        r
        (IntResult.state res)
 
--- Comparison: compute subtraction (placeholder)
-compile-int (Cmp {_} {_} {τ} _ e₁ e₂) p st =
+-- Comparison: compare operands, set condition code to result register
+compile-int (Cmp {_} {_} {τ} op e₁ e₂) p st =
   let res₁ = compile-int e₁ p st
       res₂ = compile-int e₂ p (IntResult.state res₁)
       r₁ = IntResult.result res₁
       r₂ = IntResult.result res₂
-      cmpCode = intI (sub r₁ r₁ (regOp r₂)) ∷ []
+      cc = cmpOpToCond op
+      -- cmp r₁, r₂; cset r₁, cc
+      cmpCode = intI (cmp r₁ (regOp r₂)) ∷
+                intI (cset r₁ cc) ∷ []
   in mkIntResult
        (IntResult.code res₁ ++ IntResult.code res₂ ++ cmpCode)
        r₁

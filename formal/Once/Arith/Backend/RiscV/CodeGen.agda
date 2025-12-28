@@ -28,6 +28,28 @@ toℤ {I32} refl n = n
 toℤ {I64} refl n = n
 
 ------------------------------------------------------------------------
+-- Comparison code generation helpers
+------------------------------------------------------------------------
+
+-- | Generate code for comparison, result in rd (0 or 1)
+-- RISC-V uses slt-based comparisons, no flags register
+--
+-- CmpLt: slt rd, r1, r2
+-- CmpGe: slt rd, r1, r2; xori rd, rd, 1 (invert)
+-- CmpGt: slt rd, r2, r1 (swap operands)
+-- CmpLe: slt rd, r2, r1; xori rd, rd, 1 (swap + invert)
+-- CmpEq: sub rd, r1, r2; seqz rd, rd
+-- CmpNe: sub rd, r1, r2; snez rd, rd
+--
+compileCompare : CmpOp → GPReg → GPReg → GPReg → List ArithInstr
+compileCompare CmpLt rd r1 r2 = intI (slt rd r1 r2) ∷ []
+compileCompare CmpGe rd r1 r2 = intI (slt rd r1 r2) ∷ intI (xori rd rd (+ 1)) ∷ []
+compileCompare CmpGt rd r1 r2 = intI (slt rd r2 r1) ∷ []
+compileCompare CmpLe rd r1 r2 = intI (slt rd r2 r1) ∷ intI (xori rd rd (+ 1)) ∷ []
+compileCompare CmpEq rd r1 r2 = intI (sub rd r1 r2) ∷ intI (seqz rd rd) ∷ []
+compileCompare CmpNe rd r1 r2 = intI (sub rd r1 r2) ∷ intI (snez rd rd) ∷ []
+
+------------------------------------------------------------------------
 -- Code Generation (simplified for proofs)
 ------------------------------------------------------------------------
 
@@ -80,11 +102,12 @@ compile-arith (Neg e) =
   let prog = compile-arith e
   in prog ++ intI (neg x5 x5) ∷ intI (mv x10 x5) ∷ []
 
--- Comparison: compute subtraction (placeholder for setting flags)
-compile-arith (Cmp _ e1 e2) =
+-- Comparison: use RISC-V slt-based comparison
+compile-arith (Cmp op e1 e2) =
   let prog1 = compile-arith e1
       prog2 = compile-arith e2
-  in prog1 ++ prog2 ++ intI (sub x5 x5 x6) ∷ intI (mv x10 x5) ∷ []
+      cmpCode = compileCompare op x5 x5 x6
+  in prog1 ++ prog2 ++ cmpCode ++ intI (mv x10 x5) ∷ []
 
 ------------------------------------------------------------------------
 -- Characterization Lemmas
