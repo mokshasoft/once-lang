@@ -184,6 +184,7 @@ data FloatInstr
   -- Data movement
   = Movss XMMReg FloatOperand     -- ^ movss dst, src (32-bit)
   | Movsd XMMReg FloatOperand     -- ^ movsd dst, src (64-bit)
+  | MovqToXMM XMMReg GPReg        -- ^ movq xmm, r64 (load 64-bit int to xmm)
 
   -- Single-precision (32-bit float)
   | Addss XMMReg FloatOperand     -- ^ addss dst, src

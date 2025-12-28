@@ -101,6 +101,7 @@ data IntInstr
 
 data FPInstr
   = FmvD FPReg FPReg                  -- ^ fmv.d rd, rs (pseudo: fsgnj.d rd, rs, rs)
+  | FmvDX FPReg GPReg                 -- ^ fmv.d.x rd, rs (move int64 to fp reg)
   | FaddD FPReg FPReg FPReg           -- ^ fadd.d rd, rs1, rs2
   | FsubD FPReg FPReg FPReg           -- ^ fsub.d rd, rs1, rs2
   | FmulD FPReg FPReg FPReg           -- ^ fmul.d rd, rs1, rs2

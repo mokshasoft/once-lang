@@ -58,6 +58,8 @@ emitIntInstr (Neg rd rs) =
 emitFPInstr :: FPInstr -> Text
 emitFPInstr (FmvD rd rs) =
   "    fmv.d " <> fpRegName rd <> ", " <> fpRegName rs
+emitFPInstr (FmvDX rd rs) =
+  "    fmv.d.x " <> fpRegName rd <> ", " <> gprName rs
 emitFPInstr (FaddD rd rs1 rs2) =
   "    fadd.d " <> fpRegName rd <> ", " <> fpRegName rs1 <> ", " <> fpRegName rs2
 emitFPInstr (FsubD rd rs1 rs2) =

@@ -20,8 +20,10 @@ module Once.Arith.Backend.X86.CodeGen
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Int (Int64)
+import Data.Word (Word64, Word32)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import GHC.Float (castDoubleToWord64, castFloatToWord32)
 
 import Once.Arith.IR
 import Once.Arith.Backend.X86.Syntax
@@ -223,20 +225,25 @@ compileInt (ALitFloat _ _) st = error "compileInt: got float literal"
 -- | Compile a floating-point arithmetic expression
 compileFloat :: ArithIR -> AllocState -> FloatResult
 
--- Float literal: need to load from memory (x86 can't mov imm to xmm)
--- For simplicity, we'll use a placeholder
+-- Float literal: load IEEE 754 bits to GPR, then movq to XMM
+-- x86-64 can't mov immediate directly to XMM, so we go through a GPR
 compileFloat (ALitFloat ty d) st =
-  let (r, st') = allocXMM st
-      -- In practice, float literals are loaded from .rodata
-      -- We emit a placeholder memory load
-      instr = case ty of
-        F32 -> FloatI (Movss r (MemF (Base RDI)))  -- Placeholder
-        F64 -> FloatI (Movsd r (MemF (Base RDI)))  -- Placeholder
+  let (xr, st') = allocXMM st
+      (gr, st'') = allocGPR st'
+      -- Convert float to IEEE 754 bit representation
+      bits :: Int64
+      bits = case ty of
+        F32 -> fromIntegral (castFloatToWord32 (realToFrac d))
+        F64 -> fromIntegral (castDoubleToWord64 d)
         _   -> error "compileFloat: not a float type"
+      -- Load bits to GPR, then move to XMM
+      instrs = [ IntI (MovI gr (ImmI bits))
+               , FloatI (MovqToXMM xr gr)
+               ]
   in FloatResult
-       { floatCode   = [instr]
-       , floatResult = r
-       , floatState  = st'
+       { floatCode   = instrs
+       , floatResult = xr
+       , floatState  = st''
        }
 
 -- Variable

@@ -9,6 +9,8 @@ module Once.Arith.Backend.RiscV.CodeGen
   ) where
 
 import Data.Int (Int64)
+import Data.Word (Word64, Word32)
+import GHC.Float (castDoubleToWord64, castFloatToWord32)
 
 import Once.Arith.IR
 import Once.Arith.Backend.RiscV.Syntax
@@ -68,15 +70,16 @@ compileExpr (ALitInt ty n) st@AllocState{..} =
     [] -> error "Register spill not implemented"
 
 compileExpr (ALitFloat ty d) st@AllocState{..} =
-  -- For floats, we need to load via memory or use integer registers
-  -- Simplified: use li to load bits then move to FP reg
-  -- In real code, we'd use a constant pool
+  -- Load IEEE 754 bits to GPR, then fmv.d.x to FP register
   case (nextGPR, nextFP) of
     (g:gs, f:fs) ->
-      let bits = floatToInt64 ty d
+      let bits :: Int64
+          bits = case ty of
+            F32 -> fromIntegral (castFloatToWord32 (realToFrac d))
+            F64 -> fromIntegral (castDoubleToWord64 d)
+            _   -> error "compileExpr: not a float type"
           prog = [ IntI $ Li g bits
-                 -- fmv.d.x would move from int to float reg
-                 -- Simplified: assume the value is already in FP reg
+                 , FPI $ FmvDX f g  -- fmv.d.x moves int64 to FP reg
                  ]
       in (prog, Right f, st { nextGPR = gs, nextFP = fs })
     _ -> error "Register spill not implemented"
@@ -176,9 +179,3 @@ compileUnaryOp e st intOp fpOp =
       let instr = fpOp f f
       in (prog ++ [instr], Right f, st')
 
-------------------------------------------------------------------------
--- Float Conversion (placeholder)
-------------------------------------------------------------------------
-
-floatToInt64 :: NumType -> Double -> Int64
-floatToInt64 _ _ = 0  -- Placeholder - would use bit manipulation

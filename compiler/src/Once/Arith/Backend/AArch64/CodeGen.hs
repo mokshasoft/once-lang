@@ -19,9 +19,11 @@ module Once.Arith.Backend.AArch64.CodeGen
 
 import Data.Text (Text)
 import Data.Int (Int64)
+import Data.Word (Word64, Word32)
 import Data.Bits ((.&.), shiftR)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import GHC.Float (castDoubleToWord64, castFloatToWord32)
 
 import Once.Arith.IR
 import Once.Arith.Backend.AArch64.Syntax
@@ -239,13 +241,23 @@ compileInt (ALitFloat _ _) _ = error "compileInt: got float literal"
 -- | Compile a floating-point arithmetic expression
 compileFloat :: ArithIR -> AllocState -> FloatResult
 
--- Float literal (would need memory load in practice)
-compileFloat (ALitFloat _ _) st =
-  let (r, st') = allocFP st
+-- Float literal: load IEEE 754 bits to GPR, then fmov to FP register
+compileFloat (ALitFloat ty d) st =
+  let (fr, st') = allocFP st
+      (gr, st'') = allocGPR st'
+      -- Convert float to IEEE 754 bit representation
+      bits :: Int64
+      bits = case ty of
+        F32 -> fromIntegral (castFloatToWord32 (realToFrac d))
+        F64 -> fromIntegral (castDoubleToWord64 d)
+        _   -> error "compileFloat: not a float type"
+      -- Load bits to GPR, then fmov to FP register
+      loadInstrs = loadImm64 gr bits
+      fmovInstr = FPI (FmovFromGPR fr gr)
   in FloatResult
-       { floatCode   = [FPI (Fmov r (FPRegOp D0))]  -- Placeholder
-       , floatResult = r
-       , floatState  = st'
+       { floatCode   = loadInstrs ++ [fmovInstr]
+       , floatResult = fr
+       , floatState  = st''
        }
 
 -- Variable

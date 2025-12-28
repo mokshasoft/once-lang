@@ -95,6 +95,8 @@ emitFloatInstr (Xorps dst src) =
   T.concat ["    xorps ", emitXMM src, ", ", emitXMM dst]
 emitFloatInstr (Xorpd dst src) =
   T.concat ["    xorpd ", emitXMM src, ", ", emitXMM dst]
+emitFloatInstr (MovqToXMM xmm gpr) =
+  T.concat ["    movq ", emitGPR gpr, ", ", emitXMM xmm]
 
 -- | Emit an XMM register name
 emitXMM :: XMMReg -> Text

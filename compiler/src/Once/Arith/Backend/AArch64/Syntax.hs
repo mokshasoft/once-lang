@@ -231,6 +231,7 @@ data IntInstr
 data FPInstr
   -- Data movement
   = Fmov FPReg FPOperand           -- ^ fmov dst, src
+  | FmovFromGPR FPReg GPReg        -- ^ fmov dst, xn (move 64-bit int to FP)
 
   -- Double-precision (64-bit)
   | Fadd FPReg FPReg FPReg         -- ^ fadd dst, src1, src2

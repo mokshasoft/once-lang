@@ -90,6 +90,8 @@ emitFPInstr :: FPInstr -> Text
 -- Data movement
 emitFPInstr (Fmov dst (FPRegOp src)) =
   T.concat ["    fmov ", emitFP dst, ", ", emitFP src]
+emitFPInstr (FmovFromGPR dst gpr) =
+  T.concat ["    fmov ", emitFP dst, ", ", emitGPR gpr]
 
 -- Double-precision
 emitFPInstr (Fadd dst src1 src2) =

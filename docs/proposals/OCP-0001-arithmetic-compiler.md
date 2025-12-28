@@ -40,7 +40,6 @@ Introduce a separate compilation path for arithmetic expressions that bypasses t
 
 ### Known Limitations
 
-- Float literals in native backends use placeholder encoding
 - RISC-V crashes on register spill (>7 temporaries)
 
 ---
