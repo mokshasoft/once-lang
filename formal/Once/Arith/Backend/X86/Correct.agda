@@ -302,6 +302,11 @@ execFloatInstr s (movqToXMM dst src) =
   -- Move 64-bit value from GPR to XMM
   record s { xmm-file = writeXMM (xmm-file s) dst (readGPR (gpr-file s) src)
            ; apc = apc s + 1 }
+-- Type conversion (OCP-0002)
+execFloatInstr s (cvtss2sd dst src) =
+  -- Convert F32 to F64 (simplified: identity since both represented as ℤ)
+  record s { xmm-file = writeXMM (xmm-file s) dst (readXMM (xmm-file s) src)
+           ; apc = apc s + 1 }
 
 -- | Execute one arithmetic instruction
 execArithInstr : ArithState → ArithInstr → ArithState
@@ -633,6 +638,7 @@ prog-length (i ∷ is) s =
     exec-instr-pc s (floatI (xorps _ _)) = refl
     exec-instr-pc s (floatI (xorpd _ _)) = refl
     exec-instr-pc s (floatI (movqToXMM _ _)) = refl
+    exec-instr-pc s (floatI (cvtss2sd _ _)) = refl
 
 ------------------------------------------------------------------------
 -- Termination (PROVEN)

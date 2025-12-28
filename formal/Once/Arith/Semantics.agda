@@ -167,6 +167,56 @@ cmpApply CmpEq τ x y = eq τ x y
 cmpApply CmpNe τ x y = Data.Bool.not (eq τ x y)
 
 ------------------------------------------------------------------------
+-- Type conversion (OCP-0002)
+------------------------------------------------------------------------
+
+-- | Convert a value from one numeric type to another
+-- For integers: this is identity (ℤ → ℤ)
+-- For floats: this is identity (Float → Float)
+-- Cross-domain conversion (int ↔ float) is a type error at the source level
+convert : ∀ (τ₁ τ₂ : NumType) → ⟦ τ₁ ⟧N → ⟦ τ₂ ⟧N
+-- Integer to integer: identity (all are ℤ)
+convert I8  I8  n = n
+convert I8  I16 n = n
+convert I8  I32 n = n
+convert I8  I64 n = n
+convert I16 I8  n = n
+convert I16 I16 n = n
+convert I16 I32 n = n
+convert I16 I64 n = n
+convert I32 I8  n = n
+convert I32 I16 n = n
+convert I32 I32 n = n
+convert I32 I64 n = n
+convert I64 I8  n = n
+convert I64 I16 n = n
+convert I64 I32 n = n
+convert I64 I64 n = n
+-- Float to float: identity (all are Float)
+convert F32 F32 n = n
+convert F32 F64 n = n
+convert F64 F32 n = n
+convert F64 F64 n = n
+-- Cross-domain: not allowed at source level, but we need totality
+-- Return 0 for int→float, 0.0 for float→int
+convert I8  F32 _ = 0.0
+convert I8  F64 _ = 0.0
+convert I16 F32 _ = 0.0
+convert I16 F64 _ = 0.0
+convert I32 F32 _ = 0.0
+convert I32 F64 _ = 0.0
+convert I64 F32 _ = 0.0
+convert I64 F64 _ = 0.0
+convert F32 I8  _ = + 0
+convert F32 I16 _ = + 0
+convert F32 I32 _ = + 0
+convert F32 I64 _ = + 0
+convert F64 I8  _ = + 0
+convert F64 I16 _ = + 0
+convert F64 I32 _ = + 0
+convert F64 I64 _ = + 0
+
+------------------------------------------------------------------------
 -- Expression evaluation
 ------------------------------------------------------------------------
 
@@ -216,6 +266,9 @@ eval-arith (Cmp {Γ} {Δ} {τ} op e₁ e₂) env =
       v₁ = eval-arith e₁ env₁
       v₂ = eval-arith e₂ env₂
   in boolToNum τ (cmpApply op τ v₁ v₂)
+
+-- Type conversion: evaluate operand and convert to target type
+eval-arith (Conv {_} {τ₁} τ₂ e) env = convert τ₁ τ₂ (eval-arith e env)
 
 ------------------------------------------------------------------------
 -- Semantic properties (for proofs)

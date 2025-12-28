@@ -152,6 +152,8 @@ data FPInstr : Set where
   fmulS : FPReg → FPReg → FPReg → FPInstr        -- fmul.s rd, rs1, rs2
   fdivS : FPReg → FPReg → FPReg → FPInstr        -- fdiv.s rd, rs1, rs2
   fnegS : FPReg → FPReg → FPInstr                -- fneg.s rd, rs
+  -- Type conversion (OCP-0002)
+  fcvtDS : FPReg → FPReg → FPInstr               -- fcvt.d.s rd, rs (F32 → F64)
 
 ------------------------------------------------------------------------
 -- Unified arithmetic instruction

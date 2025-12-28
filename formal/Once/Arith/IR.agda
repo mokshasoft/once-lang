@@ -128,6 +128,11 @@ data ArithIR : Ctx → NumType → Set where
   -- Semantically, this returns Bool; the boundary handles conversion.
   Cmp : ∀ {Γ Δ τ} → CmpOp → ArithIR Γ τ → ArithIR Δ τ → ArithIR (Γ ⊕ Δ) τ
 
+  -- | Type conversion: widen to a larger type (OCP-0002)
+  -- Used for implicit type promotion: int8 + int16 → int16
+  -- The source and target must be in the same domain (both int or both float)
+  Conv : ∀ {Γ τ₁} → (τ₂ : NumType) → ArithIR Γ τ₁ → ArithIR Γ τ₂
+
 ------------------------------------------------------------------------
 -- Expression size (for complexity analysis)
 ------------------------------------------------------------------------
@@ -143,6 +148,7 @@ size (Div e₁ e₂)   = 1 + size e₁ + size e₂
 size (Mod e₁ e₂)   = 1 + size e₁ + size e₂
 size (Neg e)       = 1 + size e
 size (Cmp _ e₁ e₂) = 1 + size e₁ + size e₂
+size (Conv _ e)    = 1 + size e
 
 ------------------------------------------------------------------------
 -- Variable count (for register allocation)
@@ -159,3 +165,4 @@ varCount (Div e₁ e₂)   = varCount e₁ + varCount e₂
 varCount (Mod e₁ e₂)   = varCount e₁ + varCount e₂
 varCount (Neg e)       = varCount e
 varCount (Cmp _ e₁ e₂) = varCount e₁ + varCount e₂
+varCount (Conv _ e)    = varCount e

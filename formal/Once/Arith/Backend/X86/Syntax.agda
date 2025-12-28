@@ -181,6 +181,9 @@ data FloatInstr : Set where
   -- GPR to XMM transfer (for loading constants)
   movqToXMM : XMMReg → GPReg → FloatInstr         -- movq xmm, gpr (64-bit transfer)
 
+  -- Type conversion (OCP-0002)
+  cvtss2sd : XMMReg → XMMReg → FloatInstr         -- cvtss2sd dst, src (F32 → F64)
+
 ------------------------------------------------------------------------
 -- Unified arithmetic instruction
 ------------------------------------------------------------------------

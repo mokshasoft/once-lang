@@ -70,6 +70,12 @@ ARITH_SEMANTICS := Once/Arith/Semantics.agda
 ARITH_X86_SYNTAX := Once/Arith/Backend/X86/Syntax.agda
 ARITH_X86_CODEGEN := Once/Arith/Backend/X86/CodeGen.agda
 ARITH_X86_CORRECT := Once/Arith/Backend/X86/Correct.agda
+ARITH_AARCH64_SYNTAX := Once/Arith/Backend/AArch64/Syntax.agda
+ARITH_AARCH64_CODEGEN := Once/Arith/Backend/AArch64/CodeGen.agda
+ARITH_AARCH64_CORRECT := Once/Arith/Backend/AArch64/Correct.agda
+ARITH_RISCV_SYNTAX := Once/Arith/Backend/RiscV/Syntax.agda
+ARITH_RISCV_CODEGEN := Once/Arith/Backend/RiscV/CodeGen.agda
+ARITH_RISCV_CORRECT := Once/Arith/Backend/RiscV/Correct.agda
 ARITH_BOUNDARY := Once/Arith/Boundary.agda
 ARITH_EMIT := Once/Arith/Backend/Emit.agda
 
@@ -223,6 +229,12 @@ arith:
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_SYNTAX)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CODEGEN)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_AARCH64_SYNTAX)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CODEGEN)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CORRECT)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_RISCV_SYNTAX)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_RISCV_CODEGEN)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_RISCV_CORRECT)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
 
 .PHONY: arith-correct

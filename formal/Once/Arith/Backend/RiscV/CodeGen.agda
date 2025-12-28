@@ -13,7 +13,7 @@ open import Once.Arith.IR
 open import Once.Arith.Backend.RiscV.Syntax
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Integer as ℤ using (ℤ; +_)
+open import Data.Integer as ℤ using (ℤ) renaming (+_ to ℤ+)
 open import Data.List using (List; []; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -43,9 +43,9 @@ toℤ {I64} refl n = n
 --
 compileCompare : CmpOp → GPReg → GPReg → GPReg → List ArithInstr
 compileCompare CmpLt rd r1 r2 = intI (slt rd r1 r2) ∷ []
-compileCompare CmpGe rd r1 r2 = intI (slt rd r1 r2) ∷ intI (xori rd rd (+ 1)) ∷ []
+compileCompare CmpGe rd r1 r2 = intI (slt rd r1 r2) ∷ intI (xori rd rd (ℤ+ 1)) ∷ []
 compileCompare CmpGt rd r1 r2 = intI (slt rd r2 r1) ∷ []
-compileCompare CmpLe rd r1 r2 = intI (slt rd r2 r1) ∷ intI (xori rd rd (+ 1)) ∷ []
+compileCompare CmpLe rd r1 r2 = intI (slt rd r2 r1) ∷ intI (xori rd rd (ℤ+ 1)) ∷ []
 compileCompare CmpEq rd r1 r2 = intI (sub rd r1 r2) ∷ intI (seqz rd rd) ∷ []
 compileCompare CmpNe rd r1 r2 = intI (sub rd r1 r2) ∷ intI (snez rd rd) ∷ []
 
@@ -108,6 +108,50 @@ compile-arith (Cmp op e1 e2) =
       prog2 = compile-arith e2
       cmpCode = compileCompare op x5 x5 x6
   in prog1 ++ prog2 ++ cmpCode ++ intI (mv x10 x5) ∷ []
+
+-- Type conversion (OCP-0002)
+-- Integer widening is implicit (all use 64-bit registers)
+-- Float widening uses fcvt.d.s
+-- Integer source with integer target: identity
+compile-arith (Conv {_} {I8}  I8  e) = compile-arith e
+compile-arith (Conv {_} {I8}  I16 e) = compile-arith e
+compile-arith (Conv {_} {I8}  I32 e) = compile-arith e
+compile-arith (Conv {_} {I8}  I64 e) = compile-arith e
+compile-arith (Conv {_} {I16} I8  e) = compile-arith e
+compile-arith (Conv {_} {I16} I16 e) = compile-arith e
+compile-arith (Conv {_} {I16} I32 e) = compile-arith e
+compile-arith (Conv {_} {I16} I64 e) = compile-arith e
+compile-arith (Conv {_} {I32} I8  e) = compile-arith e
+compile-arith (Conv {_} {I32} I16 e) = compile-arith e
+compile-arith (Conv {_} {I32} I32 e) = compile-arith e
+compile-arith (Conv {_} {I32} I64 e) = compile-arith e
+compile-arith (Conv {_} {I64} I8  e) = compile-arith e
+compile-arith (Conv {_} {I64} I16 e) = compile-arith e
+compile-arith (Conv {_} {I64} I32 e) = compile-arith e
+compile-arith (Conv {_} {I64} I64 e) = compile-arith e
+-- Float source with integer target: cross-domain (return 0)
+compile-arith (Conv {_} {F32} I8  e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F32} I16 e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F32} I32 e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F32} I64 e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F64} I8  e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F64} I16 e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F64} I32 e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+compile-arith (Conv {_} {F64} I64 e) = intI (li x5 (ℤ+ 0)) ∷ intI (mv x10 x5) ∷ []
+-- Integer source with float target: cross-domain (return 0)
+compile-arith (Conv {_} {I8}  F32 e) = []
+compile-arith (Conv {_} {I8}  F64 e) = []
+compile-arith (Conv {_} {I16} F32 e) = []
+compile-arith (Conv {_} {I16} F64 e) = []
+compile-arith (Conv {_} {I32} F32 e) = []
+compile-arith (Conv {_} {I32} F64 e) = []
+compile-arith (Conv {_} {I64} F32 e) = []
+compile-arith (Conv {_} {I64} F64 e) = []
+-- Float to float conversions
+compile-arith (Conv {_} {F32} F32 e) = compile-arith e
+compile-arith (Conv {_} {F32} F64 e) = compile-arith e ++ fpI (fcvtDS f0 f0) ∷ []
+compile-arith (Conv {_} {F64} F32 e) = compile-arith e
+compile-arith (Conv {_} {F64} F64 e) = compile-arith e
 
 ------------------------------------------------------------------------
 -- Characterization Lemmas
