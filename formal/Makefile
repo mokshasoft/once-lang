@@ -71,6 +71,7 @@ ARITH_X86_SYNTAX := Once/Arith/Backend/X86/Syntax.agda
 ARITH_X86_CODEGEN := Once/Arith/Backend/X86/CodeGen.agda
 ARITH_X86_CORRECT := Once/Arith/Backend/X86/Correct.agda
 ARITH_BOUNDARY := Once/Arith/Boundary.agda
+ARITH_EMIT := Once/Arith/Backend/Emit.agda
 
 # Nix develop wrapper: suppress warnings and banner
 NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#agda' --command
@@ -264,6 +265,24 @@ malonzo-codegen:
 	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "  - Core IR/Type modules copied"
 	@echo "Done. Verified code generators in compiler/src/MAlonzo/Code/Once/Backend/"
+
+.PHONY: malonzo-arith
+malonzo-arith:
+	@echo "Extracting verified arithmetic backends via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_EMIT)'
+	@echo "Copying MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/X86
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/AArch64
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/RiscV
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/X86/*.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/X86/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/AArch64/*.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/AArch64/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/RiscV/*.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/RiscV/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/Emit.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/ 2>/dev/null || true
+	@# Copy dependencies
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Type.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/IR.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
+	@echo "Done. Verified arithmetic backends in compiler/src/MAlonzo/Code/Once/Arith/Backend/"
 
 .PHONY: clean
 clean:
