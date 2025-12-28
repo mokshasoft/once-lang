@@ -45,8 +45,8 @@ open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m+n∸n≡m; m∸n+n≡m; ≤-trans; m≤m+n)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -55,6 +55,150 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
+
+------------------------------------------------------------------------
+-- Address Disjointness Lemmas
+--
+-- Key insight for pair memory preservation:
+-- Setup allocates 24 bytes by doing sp' = sp - 24.
+-- Writes occur at sp' + k for k ∈ {0, 8, 16} = orig-sp - {24, 16, 8}.
+-- These are all strictly less than orig-sp.
+-- Therefore they're disjoint from orig-sp + k for any k ≥ 0.
+------------------------------------------------------------------------
+
+-- Helper: m < n → m ≢ n
+<-implies-≢ : ∀ {m n} → suc m ≤ n → m ≢ n
+<-implies-≢ {zero} {zero} () _
+<-implies-≢ {zero} {suc n} _ ()
+<-implies-≢ {suc m} {suc n} (s≤s p) eq = <-implies-≢ p (suc-injective eq)
+  where
+    suc-injective : ∀ {a b} → suc a ≡ suc b → a ≡ b
+    suc-injective refl = refl
+
+-- Helper: (sp ∸ 24) + 16 ≡ sp ∸ 8 when sp ≥ 24
+-- But actually we need: (sp ∸ 24) + 16 < sp when sp ≥ 24
+-- Key: sp - 24 + 16 = sp - 8, and sp - 8 < sp (for sp > 8)
+
+-- When sp ≥ 24, we have new-sp = sp - 24, and write-addr = new-sp + 16 = sp - 8.
+-- We need: sp - 8 ≢ sp, sp + 8, sp + 16, sp + 24
+-- All follow from sp - 8 < sp (when sp ≥ 8).
+
+-- Lemma: n ∸ k + k ≡ n when k ≤ n (re-exports from Data.Nat.Properties as m∸n+n≡m)
+
+-- Key insight: when 24 ≤ n, any address n - k (for k ≥ 8) is strictly less than n.
+-- We only need the inequality, not the exact arithmetic.
+
+-- Helper: (n ∸ 24) + 16 < (n ∸ 24) + 24 = n when n ≥ 24
+-- So (n ∸ 24) + 16 < n, hence ≢ n + k for any k ≥ 0
+setup-addr-lt-orig : ∀ n → 24 ≤ n → suc ((n ∸ 24) +ℕ 16) ≤ n
+setup-addr-lt-orig n n≥24 =
+  let restored : (n ∸ 24) +ℕ 24 ≡ n
+      restored = m∸n+n≡m n≥24
+      -- suc ((n ∸ 24) + 16) ≤ (n ∸ 24) + 24
+      -- i.e., (n ∸ 24) + 17 ≤ (n ∸ 24) + 24
+      step1 : suc ((n ∸ 24) +ℕ 16) ≤ (n ∸ 24) +ℕ 24
+      step1 = lemma (n ∸ 24)
+  in subst (λ x → suc ((n ∸ 24) +ℕ 16) ≤ x) restored step1
+  where
+    -- suc (m + 16) ≤ m + 24, i.e., m + 17 ≤ m + 24
+    lemma : ∀ m → suc (m +ℕ 16) ≤ (m +ℕ 24)
+    lemma zero = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    lemma (suc m) = s≤s (lemma m)
+
+-- Main lemmas for setup phase: write at new-sp + 16 ≢ orig-sp + k
+setup-write-addr≢orig-sp : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 16 ≢ orig-sp
+setup-write-addr≢orig-sp n n≥24 = <-implies-≢ (setup-addr-lt-orig n n≥24)
+
+setup-write-addr≢orig-sp+8 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 16 ≢ orig-sp +ℕ 8
+setup-write-addr≢orig-sp+8 n n≥24 =
+  <-implies-≢ (≤-trans (setup-addr-lt-orig n n≥24) (m≤m+n n 8))
+
+setup-write-addr≢orig-sp+16 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 16 ≢ orig-sp +ℕ 16
+setup-write-addr≢orig-sp+16 n n≥24 =
+  <-implies-≢ (≤-trans (setup-addr-lt-orig n n≥24) (m≤m+n n 16))
+
+setup-write-addr≢orig-sp+24 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 16 ≢ orig-sp +ℕ 24
+setup-write-addr≢orig-sp+24 n n≥24 =
+  <-implies-≢ (≤-trans (setup-addr-lt-orig n n≥24) (m≤m+n n 24))
+
+-- Middle phase lemmas: write at (orig-sp ∸ 24) + 0 = orig-sp - 24
+-- When n ≥ 24, n - 24 < n, so n - 24 ≢ n + k for any k ≥ 0
+
+-- Lemma: suc (n ∸ 24) ≤ n when 24 ≤ n
+-- Proof: suc (n ∸ 24) ≤ (n ∸ 24) + 24 = n
+sp-minus-24-lt-sp : ∀ n → 24 ≤ n → suc (n ∸ 24) ≤ n
+sp-minus-24-lt-sp n n≥24 =
+  let restored : (n ∸ 24) +ℕ 24 ≡ n
+      restored = m∸n+n≡m n≥24
+      -- suc (n ∸ 24) ≤ (n ∸ 24) + 24, i.e., (n ∸ 24) + 1 ≤ (n ∸ 24) + 24
+      step1 : suc (n ∸ 24) ≤ (n ∸ 24) +ℕ 24
+      step1 = lemma (n ∸ 24)
+  in subst (λ x → suc (n ∸ 24) ≤ x) restored step1
+  where
+    -- suc m ≤ m + 24
+    lemma : ∀ m → suc m ≤ (m +ℕ 24)
+    lemma zero = s≤s z≤n
+    lemma (suc m) = s≤s (lemma m)
+
+middle-write-addr≢orig-sp : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  orig-sp ∸ 24 ≢ orig-sp
+middle-write-addr≢orig-sp n n≥24 = <-implies-≢ (sp-minus-24-lt-sp n n≥24)
+
+middle-write-addr≢orig-sp+8 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  orig-sp ∸ 24 ≢ orig-sp +ℕ 8
+middle-write-addr≢orig-sp+8 n n≥24 eq =
+  <-implies-≢ (≤-trans (sp-minus-24-lt-sp n n≥24) (m≤m+n n 8)) eq
+
+middle-write-addr≢orig-sp+16 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  orig-sp ∸ 24 ≢ orig-sp +ℕ 16
+middle-write-addr≢orig-sp+16 n n≥24 eq =
+  <-implies-≢ (≤-trans (sp-minus-24-lt-sp n n≥24) (m≤m+n n 16)) eq
+
+middle-write-addr≢orig-sp+24 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  orig-sp ∸ 24 ≢ orig-sp +ℕ 24
+middle-write-addr≢orig-sp+24 n n≥24 eq =
+  <-implies-≢ (≤-trans (sp-minus-24-lt-sp n n≥24) (m≤m+n n 24)) eq
+
+-- Final phase lemmas: write at (orig-sp ∸ 24) + 8 ≢ orig-sp + k
+-- When n ≥ 24, (n ∸ 24) + 8 < n, so it's ≢ n + k for any k ≥ 0
+
+-- Helper: (n ∸ 24) + 8 < (n ∸ 24) + 24 = n when n ≥ 24
+final-addr-lt-orig : ∀ n → 24 ≤ n → suc ((n ∸ 24) +ℕ 8) ≤ n
+final-addr-lt-orig n n≥24 =
+  let restored : (n ∸ 24) +ℕ 24 ≡ n
+      restored = m∸n+n≡m n≥24
+      -- suc ((n ∸ 24) + 8) ≤ (n ∸ 24) + 24
+      step1 : suc ((n ∸ 24) +ℕ 8) ≤ (n ∸ 24) +ℕ 24
+      step1 = lemma (n ∸ 24)
+  in subst (λ x → suc ((n ∸ 24) +ℕ 8) ≤ x) restored step1
+  where
+    -- suc (m + 8) ≤ m + 24, i.e., m + 9 ≤ m + 24
+    lemma : ∀ m → suc (m +ℕ 8) ≤ (m +ℕ 24)
+    lemma zero = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    lemma (suc m) = s≤s (lemma m)
+
+final-write-addr≢orig-sp : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 8 ≢ orig-sp
+final-write-addr≢orig-sp n n≥24 = <-implies-≢ (final-addr-lt-orig n n≥24)
+
+final-write-addr≢orig-sp+8 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 8 ≢ orig-sp +ℕ 8
+final-write-addr≢orig-sp+8 n n≥24 =
+  <-implies-≢ (≤-trans (final-addr-lt-orig n n≥24) (m≤m+n n 8))
+
+final-write-addr≢orig-sp+16 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 8 ≢ orig-sp +ℕ 16
+final-write-addr≢orig-sp+16 n n≥24 =
+  <-implies-≢ (≤-trans (final-addr-lt-orig n n≥24) (m≤m+n n 16))
+
+final-write-addr≢orig-sp+24 : ∀ (orig-sp : ℕ) → 24 ≤ orig-sp →
+  (orig-sp ∸ 24) +ℕ 8 ≢ orig-sp +ℕ 24
+final-write-addr≢orig-sp+24 n n≥24 =
+  <-implies-≢ (≤-trans (final-addr-lt-orig n n≥24) (m≤m+n n 24))
 
 ------------------------------------------------------------------------
 -- Pair Context: computed values that don't depend on execution
@@ -281,7 +425,7 @@ make-pair-context {_} {A} {B} {C} f g prefix suffix = record
 ------------------------------------------------------------------------
 
 -- | Setup phase: allocate pair space, save s1, copy input to s1
--- Entry: pc = offset, a0 = encode x, s1 = original-s1
+-- Entry: pc = offset, a0 = encode x, s1 = original-s1, 24 ≤ sp
 -- Exit: pc = offset + 3, sp = sp - 24, s1 = encode x, mem[sp+16] = original-s1
 pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
@@ -292,6 +436,7 @@ pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   halted s ≡ false →
   pc s ≡ offset →
   readReg (regs s) a0 ≡ encode x →
+  24 ≤ readReg (regs s) sp →  -- Stack bound precondition
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ 3
@@ -306,7 +451,7 @@ pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
           × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
           × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
           × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24))
-pair-setup-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
+pair-setup-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
   st3 , star-all , h3 , pc3 , a0-st3 , s1-st3 , sp-st3 , s2-st3 , ra-st3 , mem-s1-saved ,
   mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
@@ -462,12 +607,26 @@ pair-setup-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
     -- Since write is at orig-sp - 8, and we check orig-sp, orig-sp+8, orig-sp+16, orig-sp+24,
     -- all these are > orig-sp - 8 (by 8, 16, 24, 32 respectively), so they're different.
 
-    -- Use postulates for address disjointness (requires stack bound assumption)
-    postulate
-      write-addr≢orig-sp : (readReg (regs st1) sp +ℕ 16) ≢ orig-sp
-      write-addr≢orig-sp+8 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 8)
-      write-addr≢orig-sp+16 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 16)
-      write-addr≢orig-sp+24 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 24)
+    -- Proven address disjointness using setup-write-addr≢* lemmas
+    -- Key: st1.sp = new-sp = orig-sp ∸ 24, and we have sp-bound : 24 ≤ orig-sp
+    write-addr-eq : readReg (regs st1) sp +ℕ 16 ≡ (orig-sp ∸ 24) +ℕ 16
+    write-addr-eq = cong (_+ℕ 16) sp-st1
+
+    write-addr≢orig-sp : (readReg (regs st1) sp +ℕ 16) ≢ orig-sp
+    write-addr≢orig-sp eq = setup-write-addr≢orig-sp orig-sp sp-bound
+                              (trans (sym write-addr-eq) eq)
+
+    write-addr≢orig-sp+8 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 8)
+    write-addr≢orig-sp+8 eq = setup-write-addr≢orig-sp+8 orig-sp sp-bound
+                                (trans (sym write-addr-eq) eq)
+
+    write-addr≢orig-sp+16 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 16)
+    write-addr≢orig-sp+16 eq = setup-write-addr≢orig-sp+16 orig-sp sp-bound
+                                 (trans (sym write-addr-eq) eq)
+
+    write-addr≢orig-sp+24 : (readReg (regs st1) sp +ℕ 16) ≢ (orig-sp +ℕ 24)
+    write-addr≢orig-sp+24 eq = setup-write-addr≢orig-sp+24 orig-sp sp-bound
+                                 (trans (sym write-addr-eq) eq)
 
     mem-orig-sp : readMem (memory st3) orig-sp ≡ readMem (memory s) orig-sp
     mem-orig-sp = readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 16) orig-sp
@@ -491,6 +650,7 @@ pair-setup-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq =
 
 -- | Middle phase: store f result and restore original input
 -- Entry: pc = offset + 3 + len-f, a0 = encode (eval f x), s1 = encode x
+--        curr-sp = orig-sp ∸ 24, 24 ≤ orig-sp
 -- Exit: pc = offset + 5 + len-f, a0 = encode x, memory[sp] = encode (eval f x)
 pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧) (s sf : State) →
@@ -502,6 +662,8 @@ pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   pc sf ≡ mid-offset →
   readReg (regs sf) a0 ≡ encode (eval f x) →
   readReg (regs sf) s1 ≡ encode x →
+  24 ≤ readReg (regs s) sp →  -- Stack bound precondition
+  readReg (regs sf) sp ≡ readReg (regs s) sp ∸ 24 →  -- Relationship from setup
   ∃[ s' ] (Star prog sf s'
           × halted s' ≡ false
           × pc s' ≡ mid-offset +ℕ 2
@@ -517,7 +679,7 @@ pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
           × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 8)
           × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 16)
           × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory sf) (readReg (regs s) sp +ℕ 24))
-pair-middle-star {_} {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq =
+pair-middle-star {_} {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1-eq sp-bound curr-sp-eq =
   st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-sp+16-st2 ,
   mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
@@ -645,16 +807,33 @@ pair-middle-star {_} {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1
     mem-sp+16-st2 = mem-sp+16-st1  -- mv doesn't change memory
 
     -- Memory preservation at orig-sp and above
-    -- Middle phase writes at curr-sp = sf.sp, which should be orig-sp - 24
+    -- Middle phase writes at curr-sp = sf.sp = orig-sp - 24
     -- So writes are disjoint from orig-sp, orig-sp+8, orig-sp+16, orig-sp+24
     orig-sp = readReg (regs s) sp
 
-    -- Use postulates for address disjointness (requires stack assumptions)
-    postulate
-      write-addr≢orig-sp : (curr-sp +ℕ 0) ≢ orig-sp
-      write-addr≢orig-sp+8 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 8)
-      write-addr≢orig-sp+16 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 16)
-      write-addr≢orig-sp+24 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 24)
+    -- Proven address disjointness using middle-write-addr≢* lemmas
+    -- Key: curr-sp = orig-sp ∸ 24 (from curr-sp-eq), and write is at curr-sp + 0 = curr-sp
+    write-addr-is-curr-sp : curr-sp +ℕ 0 ≡ curr-sp
+    write-addr-is-curr-sp = +-identityʳ curr-sp
+
+    write-addr-is-orig-sp-minus-24 : curr-sp +ℕ 0 ≡ orig-sp ∸ 24
+    write-addr-is-orig-sp-minus-24 = trans write-addr-is-curr-sp curr-sp-eq
+
+    write-addr≢orig-sp : (curr-sp +ℕ 0) ≢ orig-sp
+    write-addr≢orig-sp eq = middle-write-addr≢orig-sp orig-sp sp-bound
+                              (trans (sym write-addr-is-orig-sp-minus-24) eq)
+
+    write-addr≢orig-sp+8 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 8)
+    write-addr≢orig-sp+8 eq = middle-write-addr≢orig-sp+8 orig-sp sp-bound
+                                (trans (sym write-addr-is-orig-sp-minus-24) eq)
+
+    write-addr≢orig-sp+16 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 16)
+    write-addr≢orig-sp+16 eq = middle-write-addr≢orig-sp+16 orig-sp sp-bound
+                                 (trans (sym write-addr-is-orig-sp-minus-24) eq)
+
+    write-addr≢orig-sp+24 : (curr-sp +ℕ 0) ≢ (orig-sp +ℕ 24)
+    write-addr≢orig-sp+24 eq = middle-write-addr≢orig-sp+24 orig-sp sp-bound
+                                 (trans (sym write-addr-is-orig-sp-minus-24) eq)
 
     mem-orig-sp : readMem (memory st2) orig-sp ≡ readMem (memory sf) orig-sp
     mem-orig-sp = readMem-writeMem-diff (memory sf) (curr-sp +ℕ 0) orig-sp
@@ -682,6 +861,7 @@ pair-middle-star {_} {A} {B} {C} f g prefix suffix x s sf h-false pc-eq a0-eq s1
 -- | Final phase: store g result, return pair pointer, restore s1
 -- Entry: pc = offset + 5 + len-f + len-g, a0 = encode (eval g x)
 --        memory[sp+16] = orig-s1 (saved during setup)
+--        24 ≤ orig-sp, curr-sp = orig-sp ∸ 24
 -- Exit: pc = offset + 8 + len-f + len-g, a0 = encode (eval f x, eval g x), s1 = orig-s1
 pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (orig-s1 : Word) (orig-sp : ℕ) (sf sg : State) →
@@ -695,6 +875,8 @@ pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   readReg (regs sg) a0 ≡ encode (eval g x) →
   readMem (memory sg) curr-sp ≡ just (encode (eval f x)) →
   readMem (memory sg) (curr-sp +ℕ 16) ≡ just orig-s1 →
+  24 ≤ orig-sp →  -- Stack bound precondition
+  readReg (regs sg) sp ≡ orig-sp ∸ 24 →  -- Relationship from setup
   ∃[ s' ] (Star prog sg s'
           × halted s' ≡ false
           × pc s' ≡ final-offset +ℕ 3
@@ -708,7 +890,7 @@ pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
           × readMem (memory s') (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
           × readMem (memory s') (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
           × readMem (memory s') (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24))
-pair-final-star {_} {A} {B} {C} f g prefix suffix x orig-s1 orig-sp sf sg h-false pc-eq a0-eq mem-f mem-s1 =
+pair-final-star {_} {A} {B} {C} f g prefix suffix x orig-s1 orig-sp sf sg h-false pc-eq a0-eq mem-f mem-s1 sp-bound curr-sp-eq =
   st3 , star-all , h3 , pc3 , a0-final , s1-st3 , s2-st3 , ra-st3 , sp-st3 ,
   mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24
   where
@@ -895,12 +1077,25 @@ pair-final-star {_} {A} {B} {C} f g prefix suffix x orig-s1 orig-sp sf sg h-fals
     -- Final phase writes at curr-sp + 8 (= orig-sp - 16 if curr-sp = orig-sp - 24)
     -- This is disjoint from orig-sp, orig-sp+8, orig-sp+16, orig-sp+24
 
-    -- Use postulates for address disjointness (requires stack assumptions)
-    postulate
-      write-addr≢orig-sp : (curr-sp +ℕ 8) ≢ orig-sp
-      write-addr≢orig-sp+8 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
-      write-addr≢orig-sp+16 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
-      write-addr≢orig-sp+24 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+    -- Proven address disjointness using sp-bound and curr-sp-eq
+    write-addr-eq : curr-sp +ℕ 8 ≡ (orig-sp ∸ 24) +ℕ 8
+    write-addr-eq = cong (_+ℕ 8) curr-sp-eq
+
+    write-addr≢orig-sp : (curr-sp +ℕ 8) ≢ orig-sp
+    write-addr≢orig-sp eq = final-write-addr≢orig-sp orig-sp sp-bound
+                              (trans (sym write-addr-eq) eq)
+
+    write-addr≢orig-sp+8 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
+    write-addr≢orig-sp+8 eq = final-write-addr≢orig-sp+8 orig-sp sp-bound
+                                (trans (sym write-addr-eq) eq)
+
+    write-addr≢orig-sp+16 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
+    write-addr≢orig-sp+16 eq = final-write-addr≢orig-sp+16 orig-sp sp-bound
+                                 (trans (sym write-addr-eq) eq)
+
+    write-addr≢orig-sp+24 : (curr-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
+    write-addr≢orig-sp+24 eq = final-write-addr≢orig-sp+24 orig-sp sp-bound
+                                 (trans (sym write-addr-eq) eq)
 
     mem-orig-sp : readMem (memory st3) orig-sp ≡ readMem (memory sg) orig-sp
     mem-orig-sp = readMem-writeMem-diff (memory sg) (curr-sp +ℕ 8) orig-sp
