@@ -18,8 +18,11 @@
 --   - The embedding preserves semantics (eval ∘ embed = eval-arith)
 ------------------------------------------------------------------------
 
+{-# OPTIONS --sized-types #-}
+
 module Once.Arith.Boundary where
 
+open import Size
 open import Once.Type as T using (Type; Int; Float; Unit; _*_)
 open import Once.IR
 open import Once.Semantics as S using (⟦_⟧; eval; encode)
@@ -113,7 +116,7 @@ envToSem (v AS.∷ᵉ env) = (numToSem _ v , envToSem env)
 
 postulate
   -- | The embedding function (implemented in compiler)
-  embedArith : ∀ {Γ τ} → A.ArithIR Γ τ → IR (EnvType Γ) (NumToType τ)
+  embedArith : ∀ {i Γ τ} → A.ArithIR Γ τ → IR i (EnvType Γ) (NumToType τ)
 
 ------------------------------------------------------------------------
 -- Semantic Preservation Theorem
