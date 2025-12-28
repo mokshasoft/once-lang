@@ -178,6 +178,9 @@ data FloatInstr : Set where
   xorps  : XMMReg → XMMReg → FloatInstr           -- xorps dst, src (32-bit)
   xorpd  : XMMReg → XMMReg → FloatInstr           -- xorpd dst, src (64-bit)
 
+  -- GPR to XMM transfer (for loading constants)
+  movqToXMM : XMMReg → GPReg → FloatInstr         -- movq xmm, gpr (64-bit transfer)
+
 ------------------------------------------------------------------------
 -- Unified arithmetic instruction
 ------------------------------------------------------------------------

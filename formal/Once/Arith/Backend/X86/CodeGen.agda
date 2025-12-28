@@ -14,7 +14,7 @@ open import Once.Arith.IR
 open import Once.Arith.Backend.X86.Syntax
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_)
-open import Data.Integer using (ℤ)
+open import Data.Integer using (ℤ) renaming (+_ to ℤ+)
 open import Data.List using (List; []; _∷_; _++_; length; reverse)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -428,26 +428,45 @@ compile-float (Mod {_} {_} {I16} _ _) () _
 compile-float (Mod {_} {_} {I32} _ _) () _
 compile-float (Mod {_} {_} {I64} _ _) () _
 
--- Negation for F32 (xor with sign mask)
+-- Negation for F32 (xor with sign mask 0x80000000)
 compile-float (Neg {_} {F32} e) p st =
   let res = compile-float e p st
       r = FloatResult.result res
-      -- Negation via xorps with sign mask (placeholder: would need constant pool)
-      negCode = floatI (xorps r r) ∷ []  -- Placeholder
+      st₁ = FloatResult.state res
+      -- Allocate temp registers for sign mask
+      (gTmp , st₂) = allocGPR st₁
+      (xTmp , st₃) = allocXMM st₂
+      -- Sign mask for F32: 0x80000000 = 2^31 (flips sign bit)
+      signMask32 : ℤ
+      signMask32 = ℤ+ 2147483648
+      -- Load mask to GPR, transfer to XMM, xor with value
+      negCode = intI (movI gTmp (immI signMask32)) ∷
+                floatI (movqToXMM xTmp gTmp) ∷
+                floatI (xorps r xTmp) ∷ []
   in mkFloatResult
        (FloatResult.code res ++ negCode)
        r
-       (FloatResult.state res)
+       (freeXMM (freeGPR st₃))
 
--- Negation for F64
+-- Negation for F64 (xor with sign mask 0x8000000000000000)
 compile-float (Neg {_} {F64} e) p st =
   let res = compile-float e p st
       r = FloatResult.result res
-      negCode = floatI (xorpd r r) ∷ []  -- Placeholder
+      st₁ = FloatResult.state res
+      -- Allocate temp registers for sign mask
+      (gTmp , st₂) = allocGPR st₁
+      (xTmp , st₃) = allocXMM st₂
+      -- Sign mask for F64: 0x8000000000000000 = 2^63 (flips sign bit)
+      signMask64 : ℤ
+      signMask64 = ℤ+ 9223372036854775808
+      -- Load mask to GPR, transfer to XMM, xor with value
+      negCode = intI (movI gTmp (immI signMask64)) ∷
+                floatI (movqToXMM xTmp gTmp) ∷
+                floatI (xorpd r xTmp) ∷ []
   in mkFloatResult
        (FloatResult.code res ++ negCode)
        r
-       (FloatResult.state res)
+       (freeXMM (freeGPR st₃))
 
 compile-float (Neg {_} {I8}  _) () _
 compile-float (Neg {_} {I16} _) () _

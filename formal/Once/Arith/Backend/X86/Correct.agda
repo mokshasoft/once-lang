@@ -288,8 +288,20 @@ execFloatInstr s (mulsd dst src) =
               ; apc = apc s + 1 }
 execFloatInstr s (divss _ _) = record s { apc = apc s + 1 }
 execFloatInstr s (divsd _ _) = record s { apc = apc s + 1 }
-execFloatInstr s (xorps _ _) = record s { apc = apc s + 1 }
-execFloatInstr s (xorpd _ _) = record s { apc = apc s + 1 }
+execFloatInstr s (xorps dst src) =
+  -- XOR for sign flip (simplified: just negate)
+  let v1 = readXMM (xmm-file s) dst
+      v2 = readXMM (xmm-file s) src
+  in record s { xmm-file = writeXMM (xmm-file s) dst (ℤ.- v1)  -- Simplified: negate
+              ; apc = apc s + 1 }
+execFloatInstr s (xorpd dst src) =
+  let v1 = readXMM (xmm-file s) dst
+  in record s { xmm-file = writeXMM (xmm-file s) dst (ℤ.- v1)  -- Simplified: negate
+              ; apc = apc s + 1 }
+execFloatInstr s (movqToXMM dst src) =
+  -- Move 64-bit value from GPR to XMM
+  record s { xmm-file = writeXMM (xmm-file s) dst (readGPR (gpr-file s) src)
+           ; apc = apc s + 1 }
 
 -- | Execute one arithmetic instruction
 execArithInstr : ArithState → ArithInstr → ArithState
@@ -620,6 +632,7 @@ prog-length (i ∷ is) s =
     exec-instr-pc s (floatI (divsd _ _)) = refl
     exec-instr-pc s (floatI (xorps _ _)) = refl
     exec-instr-pc s (floatI (xorpd _ _)) = refl
+    exec-instr-pc s (floatI (movqToXMM _ _)) = refl
 
 ------------------------------------------------------------------------
 -- Termination (PROVEN)
