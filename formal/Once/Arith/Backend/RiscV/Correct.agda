@@ -144,6 +144,23 @@ readGPR-writeGPR-same rf x30 v = refl
 readGPR-writeGPR-same rf x31 v = refl
 
 ------------------------------------------------------------------------
+-- Stack (for register spilling)
+------------------------------------------------------------------------
+
+Stack : Set
+Stack = List ℤ
+
+emptyStack : Stack
+emptyStack = []
+
+push : ℤ → Stack → Stack
+push v s = v ∷ s
+
+pop : Stack → ℤ × Stack
+pop [] = (+ 0) , []
+pop (v ∷ s) = v , s
+
+------------------------------------------------------------------------
 -- Machine State
 ------------------------------------------------------------------------
 
@@ -158,12 +175,23 @@ record ArithState : Set where
   constructor mkArithState
   field
     gpr-file : GPRFile
+    stack    : Stack
     apc      : ℕ
 
 open ArithState public
 
 initArithState : ArithState
-initArithState = mkArithState emptyGPR 0
+initArithState = mkArithState emptyGPR emptyStack 0
+
+------------------------------------------------------------------------
+-- Stack Preservation Lemmas (PROVEN)
+------------------------------------------------------------------------
+
+pop-push-same : ∀ (v : ℤ) (s : Stack) → Data.Product.proj₁ (pop (push v s)) ≡ v
+pop-push-same v s = refl
+
+pop-push-stack : ∀ (v : ℤ) (s : Stack) → Data.Product.proj₂ (pop (push v s)) ≡ s
+pop-push-stack v s = refl
 
 ------------------------------------------------------------------------
 -- Instruction Semantics
@@ -201,6 +229,15 @@ execIntInstr s (neg dst src) =
   let v = readGPR (gpr-file s) src
   in record s { gpr-file = writeGPR (gpr-file s) dst (ℤ.- v)
               ; apc = apc s + 1 }
+execIntInstr s (sd src _) =
+  let v = readGPR (gpr-file s) src
+  in record s { stack = push v (stack s)
+              ; apc = apc s + 1 }
+execIntInstr s (ld dst _) =
+  let (v , s') = pop (stack s)
+  in record s { gpr-file = writeGPR (gpr-file s) dst v
+              ; stack = s'
+              ; apc = apc s + 1 }
 
 execArithInstr : ArithState → ArithInstr → ArithState
 execArithInstr s (intI i) = execIntInstr s i
@@ -235,3 +272,37 @@ lit-int-correct {I8}  n refl = refl
 lit-int-correct {I16} n refl = refl
 lit-int-correct {I32} n refl = refl
 lit-int-correct {I64} n refl = refl
+
+------------------------------------------------------------------------
+-- Spill-Reload Correctness (PROVEN)
+------------------------------------------------------------------------
+
+-- | Spilling and reloading the same register restores the original value.
+-- This is the key lemma for register spill correctness:
+--   sd a0, 0(sp)    ; spill a0 to stack
+--   ld a0, 0(sp)    ; reload a0 from stack
+-- After these two instructions, a0 has its original value.
+spill-reload-same-reg : ∀ (r : GPReg) (s : ArithState) →
+  let s1 = execArithInstr s (intI (sd r (+ 0)))
+      s2 = execArithInstr s1 (intI (ld r (+ 0)))
+  in readGPR (gpr-file s2) r ≡ readGPR (gpr-file s) r
+spill-reload-same-reg r s =
+  let v = readGPR (gpr-file s) r
+  in readGPR-writeGPR-same (gpr-file s) r v
+
+-- | After spill-reload, the stack is restored to its original state.
+spill-reload-stack : ∀ (r : GPReg) (s : ArithState) →
+  let s1 = execArithInstr s (intI (sd r (+ 0)))
+      s2 = execArithInstr s1 (intI (ld r (+ 0)))
+  in stack s2 ≡ stack s
+spill-reload-stack r s = refl
+
+-- | Spilling one register and reloading to a different register
+-- copies the value from the source to the destination.
+spill-reload-diff-reg : ∀ (r1 r2 : GPReg) (s : ArithState) →
+  let s1 = execArithInstr s (intI (sd r1 (+ 0)))
+      s2 = execArithInstr s1 (intI (ld r2 (+ 0)))
+  in readGPR (gpr-file s2) r2 ≡ readGPR (gpr-file s) r1
+spill-reload-diff-reg r1 r2 s =
+  let v = readGPR (gpr-file s) r1
+  in readGPR-writeGPR-same (gpr-file s) r2 v

@@ -126,15 +126,39 @@ writeXMM rf xmm14 v = record rf { get-xmm14 = v }
 writeXMM rf xmm15 v = record rf { get-xmm15 = v }
 
 ------------------------------------------------------------------------
+-- Stack (for register spilling)
+------------------------------------------------------------------------
+
+-- | Stack is a list of integers (LIFO)
+-- The head of the list is the top of the stack
+Stack : Set
+Stack = List ℤ
+
+-- | Empty stack
+emptyStack : Stack
+emptyStack = []
+
+-- | Push a value onto the stack
+push : ℤ → Stack → Stack
+push v s = v ∷ s
+
+-- | Pop a value from the stack (returns value and new stack)
+-- Returns (+ 0) if stack is empty (undefined behavior in real x86)
+pop : Stack → ℤ × Stack
+pop [] = (+ 0) , []           -- Underflow: return 0
+pop (v ∷ s) = v , s
+
+------------------------------------------------------------------------
 -- Machine State
 ------------------------------------------------------------------------
 
--- | Arithmetic machine state
+-- | Arithmetic machine state (with stack for spilling)
 record ArithState : Set where
   constructor mkArithState
   field
     gpr-file : GPRFile
     xmm-file : XMMFile
+    stack    : Stack      -- Stack for register spilling
     apc      : ℕ          -- Program counter
 
 open ArithState public
@@ -148,9 +172,9 @@ emptyXMM : XMMFile
 emptyXMM = mkXMMFile (+ 0) (+ 0) (+ 0) (+ 0) (+ 0) (+ 0) (+ 0) (+ 0)
                      (+ 0) (+ 0) (+ 0) (+ 0) (+ 0) (+ 0) (+ 0) (+ 0)
 
--- | Initial state
+-- | Initial state (with empty stack)
 initArithState : ArithState
-initArithState = mkArithState emptyGPR emptyXMM 0
+initArithState = mkArithState emptyGPR emptyXMM emptyStack 0
 
 ------------------------------------------------------------------------
 -- Operand Evaluation
@@ -202,6 +226,16 @@ execIntInstr s (negI dst) =
 execIntInstr s cqo =
   -- Sign-extend rax into rdx:rax (simplified)
   record s { apc = apc s + 1 }
+-- Stack operations for register spilling
+execIntInstr s (pushI src) =
+  let v = readGPR (gpr-file s) src
+  in record s { stack = push v (stack s)
+              ; apc = apc s + 1 }
+execIntInstr s (popI dst) =
+  let (v , s') = pop (stack s)
+  in record s { gpr-file = writeGPR (gpr-file s) dst v
+              ; stack = s'
+              ; apc = apc s + 1 }
 
 -- | Execute a float instruction (simplified - using ℤ as placeholder)
 execFloatInstr : ArithState → FloatInstr → ArithState
@@ -306,6 +340,86 @@ readXMM-writeXMM-same rf xmm12 v = refl
 readXMM-writeXMM-same rf xmm13 v = refl
 readXMM-writeXMM-same rf xmm14 v = refl
 readXMM-writeXMM-same rf xmm15 v = refl
+
+------------------------------------------------------------------------
+-- Stack Preservation Lemmas (PROVEN)
+------------------------------------------------------------------------
+
+-- | Push-pop preserves value: pop after push returns the pushed value
+pop-push-same : ∀ (v : ℤ) (s : Stack) → proj₁ (pop (push v s)) ≡ v
+pop-push-same v s = refl
+
+-- | Pop after push returns original stack
+pop-push-stack : ∀ (v : ℤ) (s : Stack) → proj₂ (pop (push v s)) ≡ s
+pop-push-stack v s = refl
+
+------------------------------------------------------------------------
+-- Spill-Reload Correctness (PROVEN)
+------------------------------------------------------------------------
+
+-- | Core spill-reload lemma: push followed by pop restores register value
+--
+-- After executing: push r; pop r
+-- The register r contains its original value and stack is unchanged.
+--
+spill-reload-same-reg : ∀ (r : GPReg) (s : ArithState) →
+  let s1 = execArithInstr s (intI (pushI r))
+      s2 = execArithInstr s1 (intI (popI r))
+  in readGPR (gpr-file s2) r ≡ readGPR (gpr-file s) r
+spill-reload-same-reg r s =
+  begin
+    readGPR (gpr-file s2) r
+  ≡⟨ refl ⟩
+    readGPR (writeGPR (gpr-file s1) r (proj₁ (pop (stack s1)))) r
+  ≡⟨ readGPR-writeGPR-same (gpr-file s1) r (proj₁ (pop (stack s1))) ⟩
+    proj₁ (pop (stack s1))
+  ≡⟨ refl ⟩
+    proj₁ (pop (push (readGPR (gpr-file s) r) (stack s)))
+  ≡⟨ pop-push-same (readGPR (gpr-file s) r) (stack s) ⟩
+    readGPR (gpr-file s) r
+  ∎
+  where
+    open ≡-Reasoning
+    s1 = execArithInstr s (intI (pushI r))
+    s2 = execArithInstr s1 (intI (popI r))
+
+-- | Spill-reload preserves stack: push-pop sequence restores original stack
+spill-reload-stack : ∀ (r : GPReg) (s : ArithState) →
+  let s1 = execArithInstr s (intI (pushI r))
+      s2 = execArithInstr s1 (intI (popI r))
+  in stack s2 ≡ stack s
+spill-reload-stack r s =
+  begin
+    stack s2
+  ≡⟨ refl ⟩
+    proj₂ (pop (stack s1))
+  ≡⟨ refl ⟩
+    proj₂ (pop (push (readGPR (gpr-file s) r) (stack s)))
+  ≡⟨ pop-push-stack (readGPR (gpr-file s) r) (stack s) ⟩
+    stack s
+  ∎
+  where
+    open ≡-Reasoning
+    s1 = execArithInstr s (intI (pushI r))
+    s2 = execArithInstr s1 (intI (popI r))
+
+-- | Spill to different register: push r1; pop r2 sets r2 to r1's value
+spill-reload-diff-reg : ∀ (r1 r2 : GPReg) (s : ArithState) →
+  let s1 = execArithInstr s (intI (pushI r1))
+      s2 = execArithInstr s1 (intI (popI r2))
+  in readGPR (gpr-file s2) r2 ≡ readGPR (gpr-file s) r1
+spill-reload-diff-reg r1 r2 s =
+  begin
+    readGPR (gpr-file s2) r2
+  ≡⟨ readGPR-writeGPR-same (gpr-file s1) r2 (proj₁ (pop (stack s1))) ⟩
+    proj₁ (pop (stack s1))
+  ≡⟨ pop-push-same (readGPR (gpr-file s) r1) (stack s) ⟩
+    readGPR (gpr-file s) r1
+  ∎
+  where
+    open ≡-Reasoning
+    s1 = execArithInstr s (intI (pushI r1))
+    s2 = execArithInstr s1 (intI (popI r2))
 
 ------------------------------------------------------------------------
 -- Instruction Correctness Lemmas (PROVEN)
@@ -478,6 +592,8 @@ prog-length (i ∷ is) s =
     exec-instr-pc s (intI (idivI _))   = refl
     exec-instr-pc s (intI (negI _))    = refl
     exec-instr-pc s (intI cqo)         = refl
+    exec-instr-pc s (intI (pushI _))   = refl
+    exec-instr-pc s (intI (popI _))    = refl
     exec-instr-pc s (floatI (movss _ _)) = refl
     exec-instr-pc s (floatI (movsd _ _)) = refl
     exec-instr-pc s (floatI (addss _ _)) = refl
@@ -506,14 +622,29 @@ arith-terminates prog s = execArithProg prog s , refl
 ------------------------------------------------------------------------
 
 -- PROVEN (by refl or structural induction):
+--
+-- Register file lemmas:
 -- ✓ readGPR-writeGPR-same
 -- ✓ readXMM-writeXMM-same
+--
+-- Stack lemmas:
+-- ✓ pop-push-same (push then pop returns the value)
+-- ✓ pop-push-stack (push then pop restores stack)
+--
+-- Spill-reload lemmas (register spilling correctness):
+-- ✓ spill-reload-same-reg (push r; pop r restores r)
+-- ✓ spill-reload-stack (push; pop restores stack)
+-- ✓ spill-reload-diff-reg (push r1; pop r2 copies r1 to r2)
+--
+-- Instruction lemmas:
 -- ✓ mov-imm-correct
 -- ✓ mov-reg-correct
 -- ✓ add-reg-correct
 -- ✓ sub-reg-correct
 -- ✓ mul-reg-correct
 -- ✓ neg-correct
+--
+-- Execution lemmas:
 -- ✓ exec-nil
 -- ✓ exec-single
 -- ✓ exec-append

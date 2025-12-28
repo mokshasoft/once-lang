@@ -124,6 +124,9 @@ data IntInstr : Set where
   div  : GPReg → GPReg → GPReg → IntInstr        -- div rd, rs1, rs2
   rem  : GPReg → GPReg → GPReg → IntInstr        -- rem rd, rs1, rs2
   neg  : GPReg → GPReg → IntInstr                -- neg rd, rs (pseudo)
+  -- Stack operations (for register spilling)
+  sd   : GPReg → ℤ → IntInstr                    -- sd rs, offset(sp)
+  ld   : GPReg → ℤ → IntInstr                    -- ld rd, offset(sp)
 
 ------------------------------------------------------------------------
 -- Floating-point arithmetic instructions

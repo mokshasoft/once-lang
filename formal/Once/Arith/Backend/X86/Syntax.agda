@@ -124,6 +124,10 @@ data IntInstr : Set where
   cqo    : IntInstr                              -- sign-extend rax to rdx:rax
   idivI  : IntOperand → IntInstr                 -- idiv src (rdx:rax / src)
 
+  -- Stack operations (for register spilling)
+  pushI  : GPReg → IntInstr                      -- push src (rsp -= 8; [rsp] = src)
+  popI   : GPReg → IntInstr                      -- pop dst (dst = [rsp]; rsp += 8)
+
 ------------------------------------------------------------------------
 -- Floating-point arithmetic instructions (SSE)
 ------------------------------------------------------------------------

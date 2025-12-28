@@ -123,6 +123,9 @@ data IntInstr : Set where
   sdiv  : GPReg → GPReg → GPReg → IntInstr
   msub  : GPReg → GPReg → GPReg → GPReg → IntInstr
   neg   : GPReg → GPReg → IntInstr
+  -- Stack operations (for register spilling)
+  strPre  : GPReg → ℕ → IntInstr     -- str xn, [sp, #-imm]! (pre-decrement)
+  ldrPost : GPReg → ℕ → IntInstr     -- ldr xn, [sp], #imm (post-increment)
 
 ------------------------------------------------------------------------
 -- Floating-point arithmetic instructions

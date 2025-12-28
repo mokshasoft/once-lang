@@ -80,9 +80,6 @@ compile-arith (Neg e) =
   let prog = compile-arith e
   in prog ++ intI (neg x5 x5) ∷ intI (mv x10 x5) ∷ []
 
-compile-arith (Lt e1 e2) = compile-arith e1 ++ compile-arith e2
-compile-arith (Eq e1 e2) = compile-arith e1 ++ compile-arith e2
-
 ------------------------------------------------------------------------
 -- Characterization Lemmas
 ------------------------------------------------------------------------
