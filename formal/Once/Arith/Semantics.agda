@@ -121,6 +121,51 @@ neg I64 = ℤ.-_
 neg F32 = F.-_
 neg F64 = F.-_
 
+-- | Less than comparison for each numeric type
+-- Use 'does' to extract Bool from Dec
+lt : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → Bool
+lt I8  = λ x y → does (x ℤ.<? y)
+lt I16 = λ x y → does (x ℤ.<? y)
+lt I32 = λ x y → does (x ℤ.<? y)
+lt I64 = λ x y → does (x ℤ.<? y)
+lt F32 = F._<ᵇ_
+lt F64 = F._<ᵇ_
+
+-- | Equality comparison for each numeric type
+-- Uses absolute difference = 0 for integers
+eq : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → Bool
+eq I8  = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
+eq I16 = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
+eq I32 = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
+eq I64 = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
+eq F32 = F._≡ᵇ_
+eq F64 = F._≡ᵇ_
+
+-- | Convert Bool to numeric type (0 for false, 1 for true)
+-- This is how comparisons are encoded in machine registers.
+boolToNum : ∀ τ → Bool → ⟦ τ ⟧N
+boolToNum I8  false = + 0
+boolToNum I8  true  = + 1
+boolToNum I16 false = + 0
+boolToNum I16 true  = + 1
+boolToNum I32 false = + 0
+boolToNum I32 true  = + 1
+boolToNum I64 false = + 0
+boolToNum I64 true  = + 1
+boolToNum F32 false = 0.0
+boolToNum F32 true  = 1.0
+boolToNum F64 false = 0.0
+boolToNum F64 true  = 1.0
+
+-- | Apply comparison operator
+cmpApply : CmpOp → ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → Bool
+cmpApply CmpLt τ x y = lt τ x y
+cmpApply CmpLe τ x y = lt τ x y Data.Bool.∨ eq τ x y
+cmpApply CmpGt τ x y = lt τ y x
+cmpApply CmpGe τ x y = lt τ y x Data.Bool.∨ eq τ x y
+cmpApply CmpEq τ x y = eq τ x y
+cmpApply CmpNe τ x y = Data.Bool.not (eq τ x y)
+
 ------------------------------------------------------------------------
 -- Expression evaluation
 ------------------------------------------------------------------------
@@ -165,31 +210,18 @@ eval-arith (Mod {Γ} {Δ} {τ} e₁ e₂) env =
 -- Negation: use same environment
 eval-arith (Neg {_} {τ} e) env = neg τ (eval-arith e env)
 
+-- Comparison: evaluate both operands, compare, return 0/1
+eval-arith (Cmp {Γ} {Δ} {τ} op e₁ e₂) env =
+  let (env₁ , env₂) = splitEnv {Γ} {Δ} env
+      v₁ = eval-arith e₁ env₁
+      v₂ = eval-arith e₂ env₂
+  in boolToNum τ (cmpApply op τ v₁ v₂)
+
 ------------------------------------------------------------------------
--- Comparison evaluation
+-- Legacy CmpIR evaluation (backward compatibility)
 ------------------------------------------------------------------------
 
--- | Less than comparison for each numeric type
--- Use 'does' to extract Bool from Dec
-lt : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → Bool
-lt I8  = λ x y → does (x ℤ.<? y)
-lt I16 = λ x y → does (x ℤ.<? y)
-lt I32 = λ x y → does (x ℤ.<? y)
-lt I64 = λ x y → does (x ℤ.<? y)
-lt F32 = F._<ᵇ_
-lt F64 = F._<ᵇ_
-
--- | Equality comparison for each numeric type
--- Uses absolute difference = 0 for integers
-eq : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → Bool
-eq I8  = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
-eq I16 = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
-eq I32 = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
-eq I64 = λ x y → ℕ._≡ᵇ_ (∣ x ℤ.- y ∣) 0
-eq F32 = F._≡ᵇ_
-eq F64 = F._≡ᵇ_
-
--- | Evaluate a comparison expression
+-- | Evaluate a comparison expression (legacy CmpIR type)
 eval-cmp : ∀ {Γ} → CmpIR Γ → Env Γ → Bool
 
 eval-cmp (Lt {Γ} {Δ} {τ} e₁ e₂) env =

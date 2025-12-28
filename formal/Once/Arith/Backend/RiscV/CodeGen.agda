@@ -80,6 +80,12 @@ compile-arith (Neg e) =
   let prog = compile-arith e
   in prog ++ intI (neg x5 x5) ∷ intI (mv x10 x5) ∷ []
 
+-- Comparison: compute subtraction (placeholder for setting flags)
+compile-arith (Cmp _ e1 e2) =
+  let prog1 = compile-arith e1
+      prog2 = compile-arith e2
+  in prog1 ++ prog2 ++ intI (sub x5 x5 x6) ∷ intI (mv x10 x5) ∷ []
+
 ------------------------------------------------------------------------
 -- Characterization Lemmas
 ------------------------------------------------------------------------

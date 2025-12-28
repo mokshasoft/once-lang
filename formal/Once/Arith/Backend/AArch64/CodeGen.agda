@@ -185,6 +185,18 @@ compile-int (Neg e) p st =
        r
        (IntResult.state res)
 
+-- Comparison: compute subtraction (placeholder)
+compile-int (Cmp {_} {_} {τ} _ e₁ e₂) p st =
+  let res₁ = compile-int e₁ p st
+      res₂ = compile-int e₂ p (IntResult.state res₁)
+      r₁ = IntResult.result res₁
+      r₂ = IntResult.result res₂
+      cmpCode = intI (sub r₁ r₁ (regOp r₂)) ∷ []
+  in mkIntResult
+       (IntResult.code res₁ ++ IntResult.code res₂ ++ cmpCode)
+       r₁
+       (freeGPR (IntResult.state res₂))
+
 ------------------------------------------------------------------------
 -- Float code generation
 ------------------------------------------------------------------------
@@ -331,6 +343,31 @@ compile-float (Neg {_} {I8}  _) () _
 compile-float (Neg {_} {I16} _) () _
 compile-float (Neg {_} {I32} _) () _
 compile-float (Neg {_} {I64} _) () _
+
+-- Comparison for F32
+compile-float (Cmp {_} {_} {F32} _ e₁ e₂) p st =
+  let res₁ = compile-float e₁ p st
+      res₂ = compile-float e₂ p (FloatResult.state res₁)
+      r₁ = FloatResult.result res₁
+      r₂ = FloatResult.result res₂
+  in mkFloatResult
+       (FloatResult.code res₁ ++ FloatResult.code res₂ ++ (fpI (fsubS r₁ r₁ r₂) ∷ []))
+       r₁ (freeFP (FloatResult.state res₂))
+
+-- Comparison for F64
+compile-float (Cmp {_} {_} {F64} _ e₁ e₂) p st =
+  let res₁ = compile-float e₁ p st
+      res₂ = compile-float e₂ p (FloatResult.state res₁)
+      r₁ = FloatResult.result res₁
+      r₂ = FloatResult.result res₂
+  in mkFloatResult
+       (FloatResult.code res₁ ++ FloatResult.code res₂ ++ (fpI (fsub r₁ r₁ r₂) ∷ []))
+       r₁ (freeFP (FloatResult.state res₂))
+
+compile-float (Cmp {_} {_} {I8}  _ _ _) () _
+compile-float (Cmp {_} {_} {I16} _ _ _) () _
+compile-float (Cmp {_} {_} {I32} _ _ _) () _
+compile-float (Cmp {_} {_} {I64} _ _ _) () _
 
 ------------------------------------------------------------------------
 -- Entry point

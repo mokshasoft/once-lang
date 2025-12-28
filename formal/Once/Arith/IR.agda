@@ -70,6 +70,19 @@ lookup-type : ∀ {b Γ} → b ∈ Γ → NumType
 lookup-type {b} _ = Binding.type b
 
 ------------------------------------------------------------------------
+-- Comparison operators
+------------------------------------------------------------------------
+
+-- | Comparison operators (matches Haskell CmpOp)
+data CmpOp : Set where
+  CmpLt : CmpOp   -- ^ Less than
+  CmpLe : CmpOp   -- ^ Less than or equal
+  CmpGt : CmpOp   -- ^ Greater than
+  CmpGe : CmpOp   -- ^ Greater than or equal
+  CmpEq : CmpOp   -- ^ Equal
+  CmpNe : CmpOp   -- ^ Not equal
+
+------------------------------------------------------------------------
 -- Arithmetic IR
 ------------------------------------------------------------------------
 
@@ -110,6 +123,11 @@ data ArithIR : Ctx → NumType → Set where
   -- | Negation: uses same context (unary operation)
   Neg : ∀ {Γ τ} → ArithIR Γ τ → ArithIR Γ τ
 
+  -- | Comparison: returns 0 or 1 (Bool encoded as integer)
+  -- Note: The result type is kept as τ to match Haskell's arithType.
+  -- Semantically, this returns Bool; the boundary handles conversion.
+  Cmp : ∀ {Γ Δ τ} → CmpOp → ArithIR Γ τ → ArithIR Δ τ → ArithIR (Γ ⊕ Δ) τ
+
 ------------------------------------------------------------------------
 -- Comparison operations (return Bool)
 ------------------------------------------------------------------------
@@ -149,14 +167,15 @@ data CmpIR : Ctx → Set where
 
 -- | Size of an arithmetic expression (number of nodes)
 size : ∀ {Γ τ} → ArithIR Γ τ → ℕ
-size (Lit _)     = 1
-size (Var _)     = 1
-size (Add e₁ e₂) = 1 + size e₁ + size e₂
-size (Sub e₁ e₂) = 1 + size e₁ + size e₂
-size (Mul e₁ e₂) = 1 + size e₁ + size e₂
-size (Div e₁ e₂) = 1 + size e₁ + size e₂
-size (Mod e₁ e₂) = 1 + size e₁ + size e₂
-size (Neg e)     = 1 + size e
+size (Lit _)       = 1
+size (Var _)       = 1
+size (Add e₁ e₂)   = 1 + size e₁ + size e₂
+size (Sub e₁ e₂)   = 1 + size e₁ + size e₂
+size (Mul e₁ e₂)   = 1 + size e₁ + size e₂
+size (Div e₁ e₂)   = 1 + size e₁ + size e₂
+size (Mod e₁ e₂)   = 1 + size e₁ + size e₂
+size (Neg e)       = 1 + size e
+size (Cmp _ e₁ e₂) = 1 + size e₁ + size e₂
 
 -- | Size of a comparison expression
 size-cmp : ∀ {Γ} → CmpIR Γ → ℕ
@@ -173,11 +192,12 @@ size-cmp (Ne e₁ e₂) = 1 + size e₁ + size e₂
 
 -- | Number of variables in an expression
 varCount : ∀ {Γ τ} → ArithIR Γ τ → ℕ
-varCount (Lit _)     = 0
-varCount (Var _)     = 1
-varCount (Add e₁ e₂) = varCount e₁ + varCount e₂
-varCount (Sub e₁ e₂) = varCount e₁ + varCount e₂
-varCount (Mul e₁ e₂) = varCount e₁ + varCount e₂
-varCount (Div e₁ e₂) = varCount e₁ + varCount e₂
-varCount (Mod e₁ e₂) = varCount e₁ + varCount e₂
-varCount (Neg e)     = varCount e
+varCount (Lit _)       = 0
+varCount (Var _)       = 1
+varCount (Add e₁ e₂)   = varCount e₁ + varCount e₂
+varCount (Sub e₁ e₂)   = varCount e₁ + varCount e₂
+varCount (Mul e₁ e₂)   = varCount e₁ + varCount e₂
+varCount (Div e₁ e₂)   = varCount e₁ + varCount e₂
+varCount (Mod e₁ e₂)   = varCount e₁ + varCount e₂
+varCount (Neg e)       = varCount e
+varCount (Cmp _ e₁ e₂) = varCount e₁ + varCount e₂
