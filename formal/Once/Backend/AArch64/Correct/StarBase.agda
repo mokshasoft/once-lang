@@ -76,6 +76,7 @@ record IRStarResult {i} {A B : Type} (ir : IR i A B) (prog : Program)
 
     -- Invariants
     ir-stack-inv  : StackInvariant s'
+    ir-x29-inv    : X29Invariant s'
     ir-sp-bound   : readSP (regs s') > 16
 
 open IRStarResult public
@@ -94,6 +95,7 @@ IRRunner = ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧)
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)

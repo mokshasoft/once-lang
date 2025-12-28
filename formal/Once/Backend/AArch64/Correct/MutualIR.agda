@@ -58,7 +58,7 @@ open import Once.Backend.AArch64.Correct.StarBase public
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-x0;
          ir-x20; ir-x21; ir-x29; ir-x30; ir-sp;
          ir-mem-x21; ir-mem-x29; ir-mem-x29+8;
-         ir-stack-inv; ir-sp-bound;
+         ir-stack-inv; ir-x29-inv; ir-sp-bound;
          IRRunner; combine-star-results)
 
 -- Import extracted IR helper modules (non-recursive parts)
@@ -157,10 +157,11 @@ run-id-star : ∀ {i} {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) 
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (id {i} {A}) ++ suffix
   in ∃[ s' ] IRStarResult (id {i} {A}) prog s s' x (length prefix)
-run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       -- The result state: only PC changes
       s' = record s { pc = pc s +ℕ 1 }
@@ -197,6 +198,10 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       stack-inv' : StackInvariant s'
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv refl refl
 
+      -- X29Invariant preserved (sp and x29 unchanged)
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv refl refl
+
       -- sp>16 preserved (sp unchanged)
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
@@ -217,6 +222,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -229,10 +235,11 @@ run-terminal-star : ∀ {i} {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : S
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (terminal {i} {A}) ++ suffix
   in ∃[ s' ] IRStarResult (terminal {i} {A}) prog s s' x (length prefix)
-run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
+run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ mov x0 (imm 0) ∷ suffix
       s' = record s { regs = writeReg (regs s) x0 0 ; pc = pc s +ℕ 1 }
 
@@ -252,6 +259,10 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv
                      (readReg-writeReg-x0-x21 (regs s) 0) refl
 
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv
+                   (readReg-writeReg-x0-x29 (regs s) 0) refl
+
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
@@ -270,6 +281,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv sp>16 =
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -283,10 +295,11 @@ run-fold-star : ∀ {i} {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (fold {i} {F}) ++ suffix
   in ∃[ s' ] IRStarResult (fold {i} {F}) prog s s' x (length prefix)
-run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -301,6 +314,9 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 
       stack-inv' : StackInvariant s'
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv refl refl
+
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv refl refl
 
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
@@ -324,6 +340,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -337,10 +354,11 @@ run-unfold-star : ∀ {i} {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s :
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (unfold {i} {F}) ++ suffix
   in ∃[ s' ] IRStarResult (unfold {i} {F}) prog s s' x (length prefix)
-run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -355,6 +373,9 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
 
       stack-inv' : StackInvariant s'
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv refl refl
+
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv refl refl
 
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
@@ -378,6 +399,7 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -391,10 +413,11 @@ run-arr-star : ∀ {i} {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode {A ⇒ B} fn →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (arr {i} {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (arr {i} {A} {B}) prog s s' fn (length prefix)
-run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 =
+run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -409,6 +432,9 @@ run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 
 
       stack-inv' : StackInvariant s'
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv refl refl
+
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv refl refl
 
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
@@ -433,6 +459,7 @@ run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv sp>16 
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -446,10 +473,11 @@ run-fst-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : 
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (fst {i} {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (fst {i} {A} {B}) prog s s' x (length prefix)
-run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ ldr x0 (base x0) ∷ suffix
       a = proj₁ x
       b = proj₂ x
@@ -483,6 +511,10 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv
                      (readReg-writeReg-x0-x21 (regs s) (encode a)) refl
 
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv
+                   (readReg-writeReg-x0-x29 (regs s) (encode a)) refl
+
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
@@ -501,6 +533,7 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -514,10 +547,11 @@ run-snd-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : 
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
+  X29Invariant s →
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (snd {i} {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (snd {i} {A} {B}) prog s s' x (length prefix)
-run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ ldr x0 (base+imm x0 8) ∷ suffix
       a = proj₁ x
       b = proj₂ x
@@ -551,6 +585,10 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
       stack-inv' = stack-inv-preserved-unchanged s s' stack-inv
                      (readReg-writeReg-x0-x21 (regs s) (encode b)) refl
 
+      x29-inv' : X29Invariant s'
+      x29-inv' = x29-inv-preserved-unchanged s s' x29-inv
+                   (readReg-writeReg-x0-x29 (regs s) (encode b)) refl
+
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
@@ -569,6 +607,7 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
         ; ir-mem-x29 = refl
         ; ir-mem-x29+8 = refl
         ; ir-stack-inv = stack-inv'
+        ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
         }
 
@@ -602,6 +641,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     ; ir-mem-x29 = mem-x29-eq
     ; ir-mem-x29+8 = mem-x29+8-eq
     ; ir-stack-inv = stack-inv'
+    ; ir-x29-inv = x29-inv'
     ; ir-sp-bound = sp>16'
     }
   where
@@ -854,6 +894,10 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     stack-inv' = stack-inv-preserved-sp-decreased s s4 stack-inv x21-eq
                    (subst₂ _≤_ sp-s4 refl (m∸n≤m orig-sp 16))
 
+    x29-inv' : X29Invariant s4
+    x29-inv' = x29-inv-preserved-sp-decreased s s4 x29-inv x29-eq
+                 (subst₂ _≤_ sp-s4 refl (m∸n≤m orig-sp 16))
+
     sp>16' : readSP (regs s4) > 16
     sp>16' = sp-bound-after-stack-op s4
 
@@ -885,6 +929,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     ; ir-mem-x29 = mem-x29-eq
     ; ir-mem-x29+8 = mem-x29+8-eq
     ; ir-stack-inv = stack-inv'
+    ; ir-x29-inv = x29-inv'
     ; ir-sp-bound = sp>16'
     }
   where
@@ -1182,6 +1227,10 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     stack-inv' = stack-inv-preserved-sp-decreased s s5 stack-inv x21-eq
                    (subst₂ _≤_ sp-s5 refl (m∸n≤m orig-sp 16))
 
+    x29-inv' : X29Invariant s5
+    x29-inv' = x29-inv-preserved-sp-decreased s s5 x29-inv x29-eq
+                 (subst₂ _≤_ sp-s5 refl (m∸n≤m orig-sp 16))
+
     sp>16' : readSP (regs s5) > 16
     sp>16' = sp-bound-after-stack-op s5
 
@@ -1206,19 +1255,19 @@ mutual
 
   -- Base cases: delegate to Star helper functions
   run-ir-star-at-offset (id {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-id-star {_} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+    run-id-star {_} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (terminal {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-terminal-star {_} {A} prefix suffix x s h-false pc-eq stack-inv sp>16
+    run-terminal-star {_} {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (fold {_} {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-fold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+    run-fold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (unfold {_} {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-unfold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+    run-unfold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (arr {_} {A} {B}) prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-arr-star {_} {A} {B} prefix suffix f s h-false pc-eq x0-eq stack-inv sp>16
+    run-arr-star {_} {A} {B} prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (fst {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-fst-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+    run-fst-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (snd {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-snd-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+    run-snd-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (inl {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-inl-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (inr {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
@@ -1277,6 +1326,7 @@ mutual
                                     (cong (_+ℕ 8) (ir-x29 res-f)) (ir-mem-x29+8 res-g))
                             (ir-mem-x29+8 res-f)
       ; ir-stack-inv = ir-stack-inv res-g
+      ; ir-x29-inv = ir-x29-inv res-g
       ; ir-sp-bound = ir-sp-bound res-g
       }
     where
@@ -1470,6 +1520,7 @@ mutual
       ; ir-mem-x29 = mem-x29-final
       ; ir-mem-x29+8 = mem-x29+8-final
       ; ir-stack-inv = stack-inv-final
+      ; ir-x29-inv = x29-inv-final
       ; ir-sp-bound = sp-bound-final
       }
     where
@@ -1733,6 +1784,7 @@ mutual
       postulate
         halted-final : halted s-final ≡ false
         stack-inv-final : StackInvariant s-final
+        x29-inv-final : X29Invariant s-final
         sp-bound-final : readSP (regs s-final) > 16
 
       -- Register preservation (chain through all phases)
@@ -1886,7 +1938,7 @@ mutual
     -- Use centralized postulate and wrap result in IRStarResult
     -- Pattern matching in let destructures the tuple cleanly
     let (s' , star-pf , halted-pf , pc-pf , x0-pf , x20-pf , x21-pf , x29-pf , x30-pf , sp-pf ,
-         mem-x21-pf , mem-x29-pf , mem-x29+8-pf , stack-inv' , sp>16') =
+         mem-x21-pf , mem-x29-pf , mem-x29+8-pf , stack-inv' , x29-inv' , sp>16') =
            apply-produces-result {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
     in s' , record
       { ir-star = star-pf
@@ -1902,6 +1954,7 @@ mutual
       ; ir-mem-x29 = mem-x29-pf
       ; ir-mem-x29+8 = mem-x29+8-pf
       ; ir-stack-inv = stack-inv'
+      ; ir-x29-inv = x29-inv'
       ; ir-sp-bound = sp>16'
       }
 
