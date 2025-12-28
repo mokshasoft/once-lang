@@ -14,6 +14,7 @@ import Once.IR (IR (..))
 import Once.Syntax (Expr (..), SType (..), Name, Decl (..), ModuleName)
 import Once.Type (Type (..))
 import Once.Module (ModuleEnv, lookupQualified, DeclInfo (..), ModuleError)
+import Once.Arith.IR (ArithIR (..), NumType (..), CmpOp (..))
 
 -- | Elaboration errors
 data ElabError
@@ -125,6 +126,34 @@ tshow = T.pack . show
 -- | Elaborate function application
 elaborateApp :: Set Name -> Expr -> Expr -> Either ElabError IR
 elaborateApp locals f arg = case f of
+  -- Check for arithmetic primitive first (OCP-0001)
+  EVar name
+    | Just op <- binaryArithPrim name
+    -> case arg of
+        EPair a b ->
+          case (toArithIR locals a, toArithIR locals b) of
+            (Just a', Just b') -> Right $ Arith (binOpMake op a' b')
+            _ -> do
+              -- Fallback to categorical IR if sub-expressions aren't arithmetic
+              a' <- elaborateExpr' locals a
+              b' <- elaborateExpr' locals b
+              Right $ Compose (Var name) (Pair a' b')
+        _ -> do
+          -- Non-pair argument, fall through to normal elaboration
+          f' <- elaborateExpr' locals (EVar name)
+          arg' <- elaborateArg locals arg
+          Right $ Compose f' arg'
+
+  -- Unary arithmetic primitive
+  EVar name
+    | Just op <- unaryArithPrim name
+    -> case toArithIR locals arg of
+        Just arg' -> Right $ Arith (unaryOpMake op arg')
+        Nothing -> do
+          f' <- elaborateExpr' locals (EVar name)
+          arg' <- elaborateExpr' locals arg
+          Right $ Compose f' arg'
+
   -- pair f g => Pair f' g'
   EApp (EVar "pair") f1 -> do
     f1' <- elaborateExpr' locals f1
@@ -199,6 +228,166 @@ isGenerator name = name `elem`
   , "effCompose"  -- D032: Kleisli composition for Eff
   , "pure"        -- D032: lift value to constant effect
   ]
+
+------------------------------------------------------------------------
+-- Arithmetic recognition at sugar level (OCP-0001)
+------------------------------------------------------------------------
+
+-- | Binary arithmetic operation info
+data BinaryArithOp = BinaryArithOp
+  { binOpMake :: ArithIR -> ArithIR -> ArithIR
+  , binOpType :: NumType
+  }
+
+-- | Unary arithmetic operation info
+data UnaryArithOp = UnaryArithOp
+  { unaryOpMake :: ArithIR -> ArithIR
+  , unaryOpType :: NumType
+  }
+
+-- | Recognize binary arithmetic primitive names
+--
+-- Pattern: add_i64, mul_f32, lt_i8, etc.
+binaryArithPrim :: Name -> Maybe BinaryArithOp
+binaryArithPrim name = case name of
+  -- Integer add
+  "add_i8"  -> Just $ BinaryArithOp AAdd I8
+  "add_i16" -> Just $ BinaryArithOp AAdd I16
+  "add_i32" -> Just $ BinaryArithOp AAdd I32
+  "add_i64" -> Just $ BinaryArithOp AAdd I64
+  "add_f32" -> Just $ BinaryArithOp AAdd F32
+  "add_f64" -> Just $ BinaryArithOp AAdd F64
+
+  -- Subtract
+  "sub_i8"  -> Just $ BinaryArithOp ASub I8
+  "sub_i16" -> Just $ BinaryArithOp ASub I16
+  "sub_i32" -> Just $ BinaryArithOp ASub I32
+  "sub_i64" -> Just $ BinaryArithOp ASub I64
+  "sub_f32" -> Just $ BinaryArithOp ASub F32
+  "sub_f64" -> Just $ BinaryArithOp ASub F64
+
+  -- Multiply
+  "mul_i8"  -> Just $ BinaryArithOp AMul I8
+  "mul_i16" -> Just $ BinaryArithOp AMul I16
+  "mul_i32" -> Just $ BinaryArithOp AMul I32
+  "mul_i64" -> Just $ BinaryArithOp AMul I64
+  "mul_f32" -> Just $ BinaryArithOp AMul F32
+  "mul_f64" -> Just $ BinaryArithOp AMul F64
+
+  -- Divide
+  "div_i8"  -> Just $ BinaryArithOp ADiv I8
+  "div_i16" -> Just $ BinaryArithOp ADiv I16
+  "div_i32" -> Just $ BinaryArithOp ADiv I32
+  "div_i64" -> Just $ BinaryArithOp ADiv I64
+  "div_f32" -> Just $ BinaryArithOp ADiv F32
+  "div_f64" -> Just $ BinaryArithOp ADiv F64
+
+  -- Modulo (integer only)
+  "mod_i8"  -> Just $ BinaryArithOp AMod I8
+  "mod_i16" -> Just $ BinaryArithOp AMod I16
+  "mod_i32" -> Just $ BinaryArithOp AMod I32
+  "mod_i64" -> Just $ BinaryArithOp AMod I64
+
+  -- Comparisons
+  "lt_i8"  -> Just $ BinaryArithOp (ACmp CmpLt) I8
+  "lt_i16" -> Just $ BinaryArithOp (ACmp CmpLt) I16
+  "lt_i32" -> Just $ BinaryArithOp (ACmp CmpLt) I32
+  "lt_i64" -> Just $ BinaryArithOp (ACmp CmpLt) I64
+  "lt_f32" -> Just $ BinaryArithOp (ACmp CmpLt) F32
+  "lt_f64" -> Just $ BinaryArithOp (ACmp CmpLt) F64
+
+  "le_i8"  -> Just $ BinaryArithOp (ACmp CmpLe) I8
+  "le_i16" -> Just $ BinaryArithOp (ACmp CmpLe) I16
+  "le_i32" -> Just $ BinaryArithOp (ACmp CmpLe) I32
+  "le_i64" -> Just $ BinaryArithOp (ACmp CmpLe) I64
+  "le_f32" -> Just $ BinaryArithOp (ACmp CmpLe) F32
+  "le_f64" -> Just $ BinaryArithOp (ACmp CmpLe) F64
+
+  "gt_i8"  -> Just $ BinaryArithOp (ACmp CmpGt) I8
+  "gt_i16" -> Just $ BinaryArithOp (ACmp CmpGt) I16
+  "gt_i32" -> Just $ BinaryArithOp (ACmp CmpGt) I32
+  "gt_i64" -> Just $ BinaryArithOp (ACmp CmpGt) I64
+  "gt_f32" -> Just $ BinaryArithOp (ACmp CmpGt) F32
+  "gt_f64" -> Just $ BinaryArithOp (ACmp CmpGt) F64
+
+  "ge_i8"  -> Just $ BinaryArithOp (ACmp CmpGe) I8
+  "ge_i16" -> Just $ BinaryArithOp (ACmp CmpGe) I16
+  "ge_i32" -> Just $ BinaryArithOp (ACmp CmpGe) I32
+  "ge_i64" -> Just $ BinaryArithOp (ACmp CmpGe) I64
+  "ge_f32" -> Just $ BinaryArithOp (ACmp CmpGe) F32
+  "ge_f64" -> Just $ BinaryArithOp (ACmp CmpGe) F64
+
+  "eq_i8"  -> Just $ BinaryArithOp (ACmp CmpEq) I8
+  "eq_i16" -> Just $ BinaryArithOp (ACmp CmpEq) I16
+  "eq_i32" -> Just $ BinaryArithOp (ACmp CmpEq) I32
+  "eq_i64" -> Just $ BinaryArithOp (ACmp CmpEq) I64
+  "eq_f32" -> Just $ BinaryArithOp (ACmp CmpEq) F32
+  "eq_f64" -> Just $ BinaryArithOp (ACmp CmpEq) F64
+
+  "ne_i8"  -> Just $ BinaryArithOp (ACmp CmpNe) I8
+  "ne_i16" -> Just $ BinaryArithOp (ACmp CmpNe) I16
+  "ne_i32" -> Just $ BinaryArithOp (ACmp CmpNe) I32
+  "ne_i64" -> Just $ BinaryArithOp (ACmp CmpNe) I64
+  "ne_f32" -> Just $ BinaryArithOp (ACmp CmpNe) F32
+  "ne_f64" -> Just $ BinaryArithOp (ACmp CmpNe) F64
+
+  _ -> Nothing
+
+-- | Recognize unary arithmetic primitive names
+unaryArithPrim :: Name -> Maybe UnaryArithOp
+unaryArithPrim name = case name of
+  "neg_i8"  -> Just $ UnaryArithOp ANeg I8
+  "neg_i16" -> Just $ UnaryArithOp ANeg I16
+  "neg_i32" -> Just $ UnaryArithOp ANeg I32
+  "neg_i64" -> Just $ UnaryArithOp ANeg I64
+  "neg_f32" -> Just $ UnaryArithOp ANeg F32
+  "neg_f64" -> Just $ UnaryArithOp ANeg F64
+  _ -> Nothing
+
+-- | Try to elaborate an expression to ArithIR
+--
+-- Returns Nothing if the expression contains non-arithmetic constructs
+toArithIR :: Set Name -> Expr -> Maybe ArithIR
+toArithIR locals expr = case expr of
+  -- Integer literal
+  EInt n -> Just $ ALitInt I64 n
+
+  -- Variables (locals become AVar)
+  EVar name
+    | Set.member name locals -> Just $ AVar name I64
+
+  -- Application of arithmetic primitive to pair
+  EApp (EVar name) (EPair a b)
+    | Just op <- binaryArithPrim name
+    -> do
+        a' <- toArithIR locals a
+        b' <- toArithIR locals b
+        Just $ binOpMake op a' b'
+
+  -- Application of unary arithmetic primitive
+  EApp (EVar name) arg
+    | Just op <- unaryArithPrim name
+    -> do
+        arg' <- toArithIR locals arg
+        Just $ unaryOpMake op arg'
+
+  -- Nested binary arithmetic: add_i64 (mul_i64 (x, y), z)
+  EApp (EVar name) arg
+    | Just op <- binaryArithPrim name
+    -> case arg of
+        EPair a b -> do
+          a' <- toArithIR locals a
+          b' <- toArithIR locals b
+          Just $ binOpMake op a' b'
+        _ -> Nothing
+
+  _ -> Nothing
+
+-- | Check if expression can be compiled as pure arithmetic
+isArithExpr :: Set Name -> Expr -> Bool
+isArithExpr locals expr = case toArithIR locals expr of
+  Just _  -> True
+  Nothing -> False
 
 -- | Placeholder type for type inference to fill in later
 placeholder :: Type
@@ -310,6 +499,33 @@ elaborateExprWithEnv modEnv locals expr = case expr of
 -- | Elaborate function application with module environment
 elaborateAppWithEnv :: ModuleEnv -> Set Name -> Expr -> Expr -> Either ElabError IR
 elaborateAppWithEnv modEnv locals f arg = case f of
+  -- Check for arithmetic primitive first (OCP-0001)
+  EVar name
+    | Just op <- binaryArithPrim name
+    -> case arg of
+        EPair a b ->
+          case (toArithIR locals a, toArithIR locals b) of
+            (Just a', Just b') -> Right $ Arith (binOpMake op a' b')
+            _ -> do
+              -- Fallback to categorical IR if sub-expressions aren't arithmetic
+              a' <- elaborateExprWithEnv modEnv locals a
+              b' <- elaborateExprWithEnv modEnv locals b
+              Right $ Compose (Var name) (Pair a' b')
+        _ -> do
+          f' <- elaborateExprWithEnv modEnv locals (EVar name)
+          arg' <- elaborateArgWithEnv modEnv locals arg
+          Right $ Compose f' arg'
+
+  -- Unary arithmetic primitive
+  EVar name
+    | Just op <- unaryArithPrim name
+    -> case toArithIR locals arg of
+        Just arg' -> Right $ Arith (unaryOpMake op arg')
+        Nothing -> do
+          f' <- elaborateExprWithEnv modEnv locals (EVar name)
+          arg' <- elaborateExprWithEnv modEnv locals arg
+          Right $ Compose f' arg'
+
   -- pair f g => Pair f' g'
   EApp (EVar "pair") f1 -> do
     f1' <- elaborateExprWithEnv modEnv locals f1

@@ -13,7 +13,7 @@ import Once.IR (IR)
 -- - VPair: product
 -- - VLeft/VRight: coproduct (sum)
 -- - VClosure: exponential (function)
--- - VInt/VString: primitive base types
+-- - VInt/VFloat/VString: primitive base types
 data Value
   = VUnit                      -- ^ Unit value (terminal)
   | VPair Value Value          -- ^ Pair value: (a, b)
@@ -21,5 +21,6 @@ data Value
   | VRight Value               -- ^ Right injection: inr b
   | VClosure [(IR, Value)] IR  -- ^ Closure: captured environment + body
   | VInt Integer               -- ^ Integer value
+  | VFloat Double              -- ^ Float value (OCP-0001)
   | VString Text               -- ^ String value (Utf8)
   deriving (Eq, Show)

@@ -5,6 +5,7 @@ module Once.IR
 import Data.Text (Text)
 
 import Once.Type (Type, Name)
+import Once.Arith.IR (ArithIR)
 
 -- | Intermediate representation: the 12 categorical generators
 --
@@ -58,5 +59,9 @@ data IR
   -- Categorically: let x = e1 in e2 ≡ (λx. e2) e1
   -- But at runtime we generate explicit local variables for efficiency
   | Let Name IR IR             -- ^ let x = e1 in e2
+
+  -- Arithmetic expressions (OCP-0001)
+  -- Pure arithmetic recognized at elaboration time for efficient register-based codegen
+  | Arith ArithIR              -- ^ Arithmetic expression tree
 
   deriving (Eq, Show)

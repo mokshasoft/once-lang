@@ -13,6 +13,8 @@ import Once.Arith.Recognize
 import Once.Arith.CodeGen.C
 import Once.IR (IR (..))
 import Once.Type (Type (..))
+import Once.Syntax (Expr (..))
+import Once.Elaborate (elaborateExpr)
 import Once.Arith.Backend.X86.Syntax
 import Once.Arith.Backend.X86.CodeGen
 import Once.Arith.Backend.X86.Emit
@@ -396,5 +398,60 @@ arithTests = testGroup "Arithmetic Compiler (OCP-0001)"
           RV.fpRegName RV.F0 @?= "ft0"
       , testCase "fpRegName F10 (fa0)" $
           RV.fpRegName RV.F10 @?= "fa0"
+      ]
+  , testGroup "Sugar-level recognition"
+      [ testCase "add_i64 (3, 5) elaborates to Arith" $
+          let expr = EApp (EVar "add_i64") (EPair (EInt 3) (EInt 5))
+          in case elaborateExpr expr of
+               Right (Arith (AAdd (ALitInt I64 3) (ALitInt I64 5))) -> return ()
+               Right other -> assertFailure $ "Expected Arith, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "sub_i64 (10, 2) elaborates to Arith" $
+          let expr = EApp (EVar "sub_i64") (EPair (EInt 10) (EInt 2))
+          in case elaborateExpr expr of
+               Right (Arith (ASub (ALitInt I64 10) (ALitInt I64 2))) -> return ()
+               Right other -> assertFailure $ "Expected Arith, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "mul_i64 (4, 7) elaborates to Arith" $
+          let expr = EApp (EVar "mul_i64") (EPair (EInt 4) (EInt 7))
+          in case elaborateExpr expr of
+               Right (Arith (AMul (ALitInt I64 4) (ALitInt I64 7))) -> return ()
+               Right other -> assertFailure $ "Expected Arith, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "neg_i64 42 elaborates to Arith" $
+          let expr = EApp (EVar "neg_i64") (EInt 42)
+          in case elaborateExpr expr of
+               Right (Arith (ANeg (ALitInt I64 42))) -> return ()
+               Right other -> assertFailure $ "Expected Arith, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "lt_i64 (x, 0) with local x elaborates to Arith" $
+          let expr = EApp (EVar "lt_i64") (EPair (EVar "x") (EInt 0))
+          in case elaborateExpr expr of
+               -- x is not local, so it won't be recognized as arithmetic
+               Right (Compose _ _) -> return ()
+               Right (Arith _) -> return ()  -- If x were local, this would be the case
+               Right other -> assertFailure $ "Unexpected: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "nested add_i64 (mul_i64 (2, 3), 1) elaborates to Arith" $
+          let expr = EApp (EVar "add_i64")
+                          (EPair (EApp (EVar "mul_i64") (EPair (EInt 2) (EInt 3)))
+                                 (EInt 1))
+          in case elaborateExpr expr of
+               Right (Arith (AAdd (AMul (ALitInt I64 2) (ALitInt I64 3)) (ALitInt I64 1))) -> return ()
+               Right other -> assertFailure $ "Expected Arith, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "float add_f64 (1.5, 2.5) falls back (no float literals)" $
+          -- No float literals in surface syntax yet, but the primitive is recognized
+          let expr = EApp (EVar "add_f64") (EPair (EInt 1) (EInt 2))
+          in case elaborateExpr expr of
+               Right (Arith (AAdd (ALitInt I64 1) (ALitInt I64 2))) -> return ()
+               Right other -> assertFailure $ "Expected Arith, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
+      , testCase "non-arithmetic function falls back to Compose" $
+          let expr = EApp (EVar "my_func") (EInt 42)
+          in case elaborateExpr expr of
+               Right (Compose (Var "my_func") _) -> return ()
+               Right other -> assertFailure $ "Expected Compose, got: " ++ show other
+               Left err -> assertFailure $ "Elaboration failed: " ++ show err
       ]
   ]

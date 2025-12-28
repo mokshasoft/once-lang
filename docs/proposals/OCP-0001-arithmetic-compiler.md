@@ -23,6 +23,8 @@ Introduce a separate compilation path for arithmetic expressions that bypasses t
 |-----------|--------|----------|
 | ArithIR data type | ✓ | `compiler/src/Once/Arith/IR.hs` |
 | NumType (I8-I64, F32, F64) | ✓ | `compiler/src/Once/Arith/IR.hs` |
+| `Arith` constructor in IR | ✓ | `compiler/src/Once/IR.hs` |
+| Sugar-level recognition | ✓ | `compiler/src/Once/Elaborate.hs` |
 | Recognition from main IR | ✓ | `compiler/src/Once/Arith/Recognize.hs` |
 | C backend (`--arith`) | ✓ | `compiler/src/Once/Arith/CodeGen/C.hs` |
 | x86-64 native backend | ✓ | `compiler/src/Once/Arith/Backend/X86/` |
@@ -34,13 +36,12 @@ Introduce a separate compilation path for arithmetic expressions that bypasses t
 | Agda correctness proofs | ✓ | `formal/Once/Arith/Backend/X86/Correct.agda` |
 | Boundary proofs | ✓ | `formal/Once/Arith/Boundary.agda` |
 | Float type in proofs | ✓ | `formal/Once/Type.agda` |
-| Test coverage | ✓ | `compiler/test/Arith/Spec.hs` (300 tests) |
+| Test coverage | ✓ | `compiler/test/Arith/Spec.hs` (308 tests) |
 
 ### Known Limitations
 
 - Float literals in native backends use placeholder encoding
 - RISC-V crashes on register spill (>7 temporaries)
-- Complex chained compositions not yet recognized
 
 ---
 
@@ -76,27 +77,34 @@ Instead of threading through `compose`, `pair`, etc.
 
 ### Two Orthogonal Compilers
 
+Arithmetic expressions are recognized at elaboration time and embedded directly
+in the IR using the `Arith ArithIR` constructor:
+
 ```
-Source → Parse → Elaborate → IR
-                              ↓
-                    ┌─────────┴─────────┐
-                    ↓                   ↓
-            Arithmetic IR         Control Flow IR
-            (expressions)         (generators)
-                    ↓                   ↓
-            Register alloc        Current codegen
-                    ↓                   ↓
-                    └─────────┬─────────┘
-                              ↓
-                          Assembly
+Source → Parse → Elaborate → IR (with embedded ArithIR)
+                                      ↓
+                    ┌─────────────────┴─────────────────┐
+                    ↓                                   ↓
+            Arith nodes                          Other IR nodes
+            (ArithIR tree)                       (12 generators)
+                    ↓                                   ↓
+            Direct C expr /                     Current codegen
+            Register alloc                      (stack-based)
+                    ↓                                   ↓
+                    └─────────────────┬─────────────────┘
+                                      ↓
+                                  Assembly
 ```
+
+The elaborator recognizes calls to arithmetic primitives like `add_i64 (x, y)`
+and generates `Arith (AAdd ...)` instead of `Compose (Var "add_i64") (Pair ...)`.
 
 ### File Structure
 
 ```
 compiler/src/Once/Arith/
 ├── IR.hs              # ArithIR data type, NumType
-├── Recognize.hs       # Pattern matching: IR → Maybe ArithIR
+├── Recognize.hs       # Pattern matching: IR → Maybe ArithIR (fallback)
 ├── CodeGen/
 │   └── C.hs           # ArithIR → C expressions
 └── Backend/

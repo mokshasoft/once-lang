@@ -25,6 +25,7 @@ import System.FilePath (takeBaseName, takeDirectory, (</>))
 
 import Once.Backend.C (generateC, CModule (..))
 import Once.Arith.Recognize (isArithPrim)
+import Once.Arith.CodeGen.C (arithToC)
 import Once.Backend.CCompiler as CC
 import Once.Backend.Native
   ( compileToAArch64, compileToX86, compileToRiscV64
@@ -803,6 +804,8 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
       Once.IR.Let x' e1 e2 ->
         let e1Code = generateIRExpr e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr e2 x' <> "; })"
+      -- Arithmetic expression (OCP-0001)
+      Once.IR.Arith arithExpr -> arithToC arithExpr
 
     -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
     -- This happens when the expression is the result of a previous pair access:
@@ -1036,6 +1039,8 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
       Once.IR.Let x' e1 e2 ->
         let e1Code = generateIRExpr alloc e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr alloc e2 x' <> "; })"
+      -- Arithmetic expression (OCP-0001)
+      Once.IR.Arith arithExpr -> arithToC arithExpr
 
     generateStringLit :: Maybe AllocStrategy -> Text -> Text
     generateStringLit alloc s =
@@ -1206,6 +1211,8 @@ generateLibraryAll functions = (header, source)
       Once.IR.Let x' e1 e2 ->
         let e1Code = libGenerateIRExpr alloc e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> libGenerateIRExpr alloc e2 x' <> "; })"
+      -- Arithmetic expression (OCP-0001)
+      Once.IR.Arith arithExpr -> arithToC arithExpr
 
     libGenerateStringLit :: Maybe AllocStrategy -> Text -> Text
     libGenerateStringLit alloc s =
