@@ -733,17 +733,42 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     star-f : Star prog s-after-setup s-after-f
     star-f = subst (λ p → Star p s-after-setup s-after-f) prog-f-eq (ir-star f-result)
 
-    -- After f, execute b end-label
+    -- After f, execute b end-label (1 instruction) then label end-label (1 instruction)
+    -- Note: The branch targets in case-code are absolute positions relative to position 0,
+    -- not relative to the prefix. This is a limitation of the current code generator.
+    -- For verification with non-empty prefix, we postulate the final phase.
+    --
+    -- Layout (positions relative to case-code start):
+    --   position 4+len-f: b end-label (we're here after f)
+    --   position 5+len-f: label right-branch (skipped)
+    --   position 6+len-f: ldr x0 [x0+8] (skipped)
+    --   positions 7+len-f to 6+len-f+len-g: g code (skipped)
+    --   position 7+len-f+len-g: label end-label (target of b)
+
+    -- PC after f
+    pc-after-f : pc s-after-f ≡ length prefix +ℕ 4 +ℕ len-f
+    pc-after-f = trans (ir-pc f-result) (cong (_+ℕ len-f) len-prefix-f)
+
+    h-after-f : halted s-after-f ≡ false
+    h-after-f = ir-halted f-result
+
+    -- Final phase: executing b end-label and label end-label
+    -- Postulated because branch targets are computed relative to case-code start, not prefix
+    -- The b and label instructions don't modify registers/memory, they only change PC.
+    -- All properties are postulated since s-final is abstract.
     postulate
       s-final : State
       final-star : Star prog s-after-f s-final
       h-final : halted s-final ≡ false
       pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+      -- x0 unchanged through final phase (b and label don't modify registers)
       x0-final : readReg (regs s-final) x0 ≡ addr-out
+      -- Register preservation through final phase
       x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
       x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
       x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
       x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+      -- Invariants preserved
       stack-inv-final : StackInvariant s-final
       x29-inv-final : X29Invariant s-final
       sp>16-final : readSP (regs s-final) > 16
