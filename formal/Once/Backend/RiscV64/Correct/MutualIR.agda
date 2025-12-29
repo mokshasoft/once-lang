@@ -377,11 +377,7 @@ mutual
       ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
       mem-s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       mem-s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      mem-orig-sp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
-      mem-orig-sp+8-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
-      mem-orig-sp+16-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))))
-      mem-orig-sp+24-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))))
-      mem-orig-sp+32-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))))
+      mem-preserved-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
 
       -- PC for f: offset + 5 = length prefix-f
       pc-for-f : pc s-setup ≡ length prefix-f
@@ -442,11 +438,7 @@ mutual
       mem-f-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))
       mem-s2+16-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))))))
       mem-s2+24-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))
-      mem-orig-sp-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))))))))
-      mem-orig-sp+8-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))))
-      mem-orig-sp+16-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))))))))))
-      mem-orig-sp+24-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))))))
-      mem-orig-sp+32-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))))))
+      mem-preserved-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))
 
       -- =====================================================================
       -- Phase 4: Execute g with IH
@@ -704,11 +696,7 @@ mutual
       s2-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))
       ra-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase)))))))
       sp-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))
-      mem-orig-sp-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase)))))))))
-      mem-orig-sp+8-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))))
-      mem-orig-sp+16-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase)))))))))))
-      mem-orig-sp+24-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))))))
-      mem-orig-sp+32-final = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))))))
+      mem-preserved-final' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))
 
       -- =====================================================================
       -- Assemble final result
@@ -875,9 +863,92 @@ mutual
             (trans step9 step10))))))))
 
       -- Memory preserved at orig-sp and above
+      -- Chain through all 5 phases: s → s-setup → sf → s-mid → sg → s-final
       mem-preserved-final : (n : ℕ) → readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
-      mem-preserved-final n = postulate-mem-preserved n  -- TODO: chain through all phases
-        where postulate postulate-mem-preserved : (n : ℕ) → readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+      mem-preserved-final n =
+        let
+          -- Phase 1: s → s-setup (setup preserves at orig-sp + n)
+          step1 : readMem (memory s-setup) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          step1 = mem-preserved-setup n
+
+          -- Phase 2: s-setup → sf (f preserves at s-setup.sp + k for any k)
+          -- Key: orig-sp + n = s-setup.sp + (32 + n) since s-setup.sp = orig-sp - 32
+          addr-as-setup-offset : orig-sp +ℕ n ≡ readReg (regs s-setup) sp +ℕ (32 +ℕ n)
+          addr-as-setup-offset =
+            let
+              -- orig-sp = (orig-sp - 32) + 32
+              step-a : orig-sp ≡ (orig-sp ∸ 32) +ℕ 32
+              step-a = sym (m∸n+n≡m 32≤sp)
+              -- orig-sp + n = ((orig-sp - 32) + 32) + n
+              step-b : orig-sp +ℕ n ≡ ((orig-sp ∸ 32) +ℕ 32) +ℕ n
+              step-b = cong (_+ℕ n) step-a
+              -- ((orig-sp - 32) + 32) + n = (orig-sp - 32) + (32 + n)
+              step-c : ((orig-sp ∸ 32) +ℕ 32) +ℕ n ≡ (orig-sp ∸ 32) +ℕ (32 +ℕ n)
+              step-c = +-assoc (orig-sp ∸ 32) 32 n
+              -- (orig-sp - 32) = s-setup.sp
+              step-d : (orig-sp ∸ 32) +ℕ (32 +ℕ n) ≡ readReg (regs s-setup) sp +ℕ (32 +ℕ n)
+              step-d = cong (_+ℕ (32 +ℕ n)) (sym sp-setup)
+            in trans step-b (trans step-c step-d)
+
+          step2' : readMem (memory sf) (readReg (regs s-setup) sp +ℕ (32 +ℕ n))
+                 ≡ readMem (memory s-setup) (readReg (regs s-setup) sp +ℕ (32 +ℕ n))
+          step2' = ir-mem-preserved rf (32 +ℕ n)
+
+          step2 : readMem (memory sf) (orig-sp +ℕ n) ≡ readMem (memory s-setup) (orig-sp +ℕ n)
+          step2 = trans (cong (readMem (memory sf)) addr-as-setup-offset)
+                    (trans step2' (cong (readMem (memory s-setup)) (sym addr-as-setup-offset)))
+
+          -- Phase 3: sf → s-mid (middle preserves at orig-sp + n)
+          step3 : readMem (memory s-mid) (orig-sp +ℕ n) ≡ readMem (memory sf) (orig-sp +ℕ n)
+          step3 = mem-preserved-mid n
+
+          -- Phase 4: s-mid → sg (g preserves at s-mid.sp + k for any k)
+          -- Key: orig-sp + n = s-mid.sp + (delta-f + 32 + n) since s-mid.sp = sf.sp and sf.sp + delta-f = orig-sp - 32
+          addr-as-mid-offset : orig-sp +ℕ n ≡ readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32 +ℕ n)
+          addr-as-mid-offset =
+            let
+              -- sf.sp + ir-sp-delta rf = s-setup.sp = orig-sp - 32
+              sf-sp-eq : readReg (regs sf) sp +ℕ ir-sp-delta rf ≡ orig-sp ∸ 32
+              sf-sp-eq = trans (ir-sp rf) sp-setup
+              -- s-mid.sp = sf.sp
+              mid-sp-eq : readReg (regs s-mid) sp ≡ readReg (regs sf) sp
+              mid-sp-eq = sp-mid
+              -- orig-sp = (orig-sp - 32) + 32
+              orig-from-monus : orig-sp ≡ (orig-sp ∸ 32) +ℕ 32
+              orig-from-monus = sym (m∸n+n≡m 32≤sp)
+              -- orig-sp = (sf.sp + delta) + 32
+              orig-as-sf : orig-sp ≡ (readReg (regs sf) sp +ℕ ir-sp-delta rf) +ℕ 32
+              orig-as-sf = trans orig-from-monus (cong (_+ℕ 32) (sym sf-sp-eq))
+              -- (sf.sp + delta) + 32 = sf.sp + (delta + 32)
+              reassoc-sf : (readReg (regs sf) sp +ℕ ir-sp-delta rf) +ℕ 32 ≡ readReg (regs sf) sp +ℕ (ir-sp-delta rf +ℕ 32)
+              reassoc-sf = +-assoc (readReg (regs sf) sp) (ir-sp-delta rf) 32
+              -- sf.sp + (delta + 32) = s-mid.sp + (delta + 32)
+              sf-to-mid : readReg (regs sf) sp +ℕ (ir-sp-delta rf +ℕ 32) ≡ readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32)
+              sf-to-mid = cong (_+ℕ (ir-sp-delta rf +ℕ 32)) (sym mid-sp-eq)
+              -- orig-sp = s-mid.sp + (delta + 32)
+              orig-as-mid : orig-sp ≡ readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32)
+              orig-as-mid = trans orig-as-sf (trans reassoc-sf sf-to-mid)
+              -- orig-sp + n = (s-mid.sp + (delta + 32)) + n
+              step-a : orig-sp +ℕ n ≡ (readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32)) +ℕ n
+              step-a = cong (_+ℕ n) orig-as-mid
+              -- (s-mid.sp + (delta + 32)) + n = s-mid.sp + ((delta + 32) + n)
+              step-b : (readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32)) +ℕ n ≡ readReg (regs s-mid) sp +ℕ ((ir-sp-delta rf +ℕ 32) +ℕ n)
+              step-b = +-assoc (readReg (regs s-mid) sp) (ir-sp-delta rf +ℕ 32) n
+            in trans step-a step-b
+
+          step4' : readMem (memory sg) (readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32 +ℕ n))
+                 ≡ readMem (memory s-mid) (readReg (regs s-mid) sp +ℕ (ir-sp-delta rf +ℕ 32 +ℕ n))
+          step4' = ir-mem-preserved rg (ir-sp-delta rf +ℕ 32 +ℕ n)
+
+          step4 : readMem (memory sg) (orig-sp +ℕ n) ≡ readMem (memory s-mid) (orig-sp +ℕ n)
+          step4 = trans (cong (readMem (memory sg)) addr-as-mid-offset)
+                    (trans step4' (cong (readMem (memory s-mid)) (sym addr-as-mid-offset)))
+
+          -- Phase 5: sg → s-final (final preserves at orig-sp + n)
+          step5 : readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory sg) (orig-sp +ℕ n)
+          step5 = mem-preserved-final' n
+
+        in trans step5 (trans step4 (trans step3 (trans step2 step1)))
 
       -- Output well-formedness for pair
       -- Convert ir-output-wf from subprogram-indexed to prog-indexed

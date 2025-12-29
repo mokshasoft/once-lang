@@ -163,6 +163,17 @@ setup-write-s2-addr≢orig-sp+32 : ∀ (orig-sp : ℕ) → 32 ≤ orig-sp →
 setup-write-s2-addr≢orig-sp+32 n n≥32 =
   <-implies-≢ (≤-trans (setup-s2-addr-lt-orig n n≥32) (m≤m+n n 32))
 
+-- Generic helpers for arbitrary offset k
+setup-write-s1-addr≢orig-sp+any : ∀ (orig-sp k : ℕ) → 32 ≤ orig-sp →
+  (orig-sp ∸ 32) +ℕ 16 ≢ orig-sp +ℕ k
+setup-write-s1-addr≢orig-sp+any n k n≥32 =
+  <-implies-≢ (≤-trans (setup-s1-addr-lt-orig n n≥32) (m≤m+n n k))
+
+setup-write-s2-addr≢orig-sp+any : ∀ (orig-sp k : ℕ) → 32 ≤ orig-sp →
+  (orig-sp ∸ 32) +ℕ 24 ≢ orig-sp +ℕ k
+setup-write-s2-addr≢orig-sp+any n k n≥32 =
+  <-implies-≢ (≤-trans (setup-s2-addr-lt-orig n n≥32) (m≤m+n n k))
+
 -- Middle phase lemmas: write at frame + 0 = orig-sp - 32
 -- When n ≥ 32, n - 32 < n, so n - 32 ≢ n + k for any k ≥ 0
 
@@ -204,6 +215,12 @@ middle-write-addr≢orig-sp+32 : ∀ (orig-sp : ℕ) → 32 ≤ orig-sp →
 middle-write-addr≢orig-sp+32 n n≥32 eq =
   <-implies-≢ (≤-trans (sp-minus-32-lt-sp n n≥32) (m≤m+n n 32)) eq
 
+-- Generic helper for middle phase: write at (orig-sp - 32) ≢ orig-sp + k for any k
+middle-write-addr≢orig-sp+any : ∀ (orig-sp k : ℕ) → 32 ≤ orig-sp →
+  orig-sp ∸ 32 ≢ orig-sp +ℕ k
+middle-write-addr≢orig-sp+any n k n≥32 eq =
+  <-implies-≢ (≤-trans (sp-minus-32-lt-sp n n≥32) (m≤m+n n k)) eq
+
 -- Final phase lemmas: write at frame + 8 = (orig-sp ∸ 32) + 8 ≢ orig-sp + k
 -- When n ≥ 32, (n ∸ 32) + 8 < n, so it's ≢ n + k for any k ≥ 0
 
@@ -244,6 +261,12 @@ final-write-addr≢orig-sp+32 : ∀ (orig-sp : ℕ) → 32 ≤ orig-sp →
   (orig-sp ∸ 32) +ℕ 8 ≢ orig-sp +ℕ 32
 final-write-addr≢orig-sp+32 n n≥32 =
   <-implies-≢ (≤-trans (final-addr-lt-orig n n≥32) (m≤m+n n 32))
+
+-- Generic helper for final phase: write at (orig-sp - 32) + 8 ≢ orig-sp + k for any k
+final-write-addr≢orig-sp+any : ∀ (orig-sp k : ℕ) → 32 ≤ orig-sp →
+  (orig-sp ∸ 32) +ℕ 8 ≢ orig-sp +ℕ k
+final-write-addr≢orig-sp+any n k n≥32 =
+  <-implies-≢ (≤-trans (final-addr-lt-orig n n≥32) (m≤m+n n k))
 
 ------------------------------------------------------------------------
 -- Pair Context: computed values that don't depend on execution
@@ -511,16 +534,11 @@ pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
           × readReg (regs s') ra ≡ readReg (regs s) ra
           × readMem (memory s') (readReg (regs s') s2 +ℕ 16) ≡ just (readReg (regs s) s1)
           × readMem (memory s') (readReg (regs s') s2 +ℕ 24) ≡ just (readReg (regs s) s2)
-          -- Memory preservation at orig-sp and above
-          × readMem (memory s') (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-          × readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-          × readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-          × readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
-          × readMem (memory s') (readReg (regs s) sp +ℕ 32) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 32))
+          -- Memory preservation at orig-sp and above (generic: for any n)
+          × (∀ n → readMem (memory s') (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)))
 pair-setup-star {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
   st5 , star-all , h5 , pc5 , a0-st5 , s1-st5 , sp-st5 , s2-st5 , ra-st5 ,
-  mem-s1-saved , mem-s2-saved ,
-  mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24 , mem-orig-sp+32
+  mem-s1-saved , mem-s2-saved , mem-preserved-generic
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -773,101 +791,36 @@ pair-setup-star {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bou
     mem-s2-saved = subst (λ addr → readMem (memory st5) (addr +ℕ 24) ≡ just orig-s2-val)
                          (sym s2-st5) mem-s2-at-st3
 
-    -- Memory preservation at orig-sp and above
+    -- Memory preservation at orig-sp and above (generic for any n)
     -- All writes are at new-sp+16 and new-sp+24, which are both < orig-sp
-    -- using the address disjointness lemmas
+    -- using the generic address disjointness lemmas
 
     -- st1: memory same as s (addi doesn't change memory)
     -- st2: wrote at new-sp+24
     -- st3: wrote at new-sp+16
     -- st4, st5: memory same as st3 (mv doesn't change memory)
 
-    mem-orig-sp-at-st1 : readMem (memory st1) orig-sp-val ≡ readMem (memory s) orig-sp-val
-    mem-orig-sp-at-st1 = refl
+    mem-preserved-generic : ∀ n → readMem (memory st5) (orig-sp-val +ℕ n) ≡ readMem (memory s) (orig-sp-val +ℕ n)
+    mem-preserved-generic n =
+      let
+        -- Writes at new-sp+24 and new-sp+16 are disjoint from orig-sp+n
+        write-s2-addr≢ : (new-sp +ℕ 24) ≢ (orig-sp-val +ℕ n)
+        write-s2-addr≢ = setup-write-s2-addr≢orig-sp+any orig-sp-val n sp-bound
 
-    -- Write at new-sp+24 ≢ orig-sp
-    write-s2-addr≢orig-sp : (new-sp +ℕ 24) ≢ orig-sp-val
-    write-s2-addr≢orig-sp = setup-write-s2-addr≢orig-sp orig-sp-val sp-bound
+        write-s1-addr≢ : (new-sp +ℕ 16) ≢ (orig-sp-val +ℕ n)
+        write-s1-addr≢ = setup-write-s1-addr≢orig-sp+any orig-sp-val n sp-bound
 
-    mem-orig-sp-at-st2 : readMem (memory st2) orig-sp-val ≡ readMem (memory s) orig-sp-val
-    mem-orig-sp-at-st2 = trans (readMem-writeMem-diff (memory st1) (new-sp +ℕ 24) orig-sp-val orig-s2-val write-s2-addr≢orig-sp)
-                               mem-orig-sp-at-st1
+        -- st1 has same memory as s (addi doesn't change memory)
+        -- st2 wrote at new-sp+24, which is ≢ orig-sp+n
+        mem-at-st2 : readMem (memory st2) (orig-sp-val +ℕ n) ≡ readMem (memory s) (orig-sp-val +ℕ n)
+        mem-at-st2 = readMem-writeMem-diff (memory st1) (new-sp +ℕ 24) (orig-sp-val +ℕ n) orig-s2-val write-s2-addr≢
 
-    -- Write at new-sp+16 ≢ orig-sp
-    write-s1-addr≢orig-sp : (new-sp +ℕ 16) ≢ orig-sp-val
-    write-s1-addr≢orig-sp = setup-write-s1-addr≢orig-sp orig-sp-val sp-bound
+        -- st3 wrote at new-sp+16, which is ≢ orig-sp+n
+        mem-at-st3 : readMem (memory st3) (orig-sp-val +ℕ n) ≡ readMem (memory s) (orig-sp-val +ℕ n)
+        mem-at-st3 = trans (readMem-writeMem-diff (memory st2) (new-sp +ℕ 16) (orig-sp-val +ℕ n) orig-s1-val write-s1-addr≢)
+                           mem-at-st2
 
-    mem-orig-sp-at-st3 : readMem (memory st3) orig-sp-val ≡ readMem (memory s) orig-sp-val
-    mem-orig-sp-at-st3 = trans (readMem-writeMem-diff (memory st2) (new-sp +ℕ 16) orig-sp-val orig-s1-val write-s1-addr≢orig-sp)
-                               mem-orig-sp-at-st2
-
-    mem-orig-sp : readMem (memory st5) orig-sp-val ≡ readMem (memory s) orig-sp-val
-    mem-orig-sp = mem-orig-sp-at-st3
-
-    -- Similar for orig-sp+8, +16, +24, +32
-    write-s2-addr≢orig-sp+8 : (new-sp +ℕ 24) ≢ (orig-sp-val +ℕ 8)
-    write-s2-addr≢orig-sp+8 = setup-write-s2-addr≢orig-sp+8 orig-sp-val sp-bound
-
-    write-s1-addr≢orig-sp+8 : (new-sp +ℕ 16) ≢ (orig-sp-val +ℕ 8)
-    write-s1-addr≢orig-sp+8 = setup-write-s1-addr≢orig-sp+8 orig-sp-val sp-bound
-
-    mem-orig-sp+8-at-st2 : readMem (memory st2) (orig-sp-val +ℕ 8) ≡ readMem (memory s) (orig-sp-val +ℕ 8)
-    mem-orig-sp+8-at-st2 = readMem-writeMem-diff (memory st1) (new-sp +ℕ 24) (orig-sp-val +ℕ 8) orig-s2-val write-s2-addr≢orig-sp+8
-
-    mem-orig-sp+8-at-st3 : readMem (memory st3) (orig-sp-val +ℕ 8) ≡ readMem (memory s) (orig-sp-val +ℕ 8)
-    mem-orig-sp+8-at-st3 = trans (readMem-writeMem-diff (memory st2) (new-sp +ℕ 16) (orig-sp-val +ℕ 8) orig-s1-val write-s1-addr≢orig-sp+8)
-                                 mem-orig-sp+8-at-st2
-
-    mem-orig-sp+8 : readMem (memory st5) (orig-sp-val +ℕ 8) ≡ readMem (memory s) (orig-sp-val +ℕ 8)
-    mem-orig-sp+8 = mem-orig-sp+8-at-st3
-
-    write-s2-addr≢orig-sp+16 : (new-sp +ℕ 24) ≢ (orig-sp-val +ℕ 16)
-    write-s2-addr≢orig-sp+16 = setup-write-s2-addr≢orig-sp+16 orig-sp-val sp-bound
-
-    write-s1-addr≢orig-sp+16 : (new-sp +ℕ 16) ≢ (orig-sp-val +ℕ 16)
-    write-s1-addr≢orig-sp+16 = setup-write-s1-addr≢orig-sp+16 orig-sp-val sp-bound
-
-    mem-orig-sp+16-at-st2 : readMem (memory st2) (orig-sp-val +ℕ 16) ≡ readMem (memory s) (orig-sp-val +ℕ 16)
-    mem-orig-sp+16-at-st2 = readMem-writeMem-diff (memory st1) (new-sp +ℕ 24) (orig-sp-val +ℕ 16) orig-s2-val write-s2-addr≢orig-sp+16
-
-    mem-orig-sp+16-at-st3 : readMem (memory st3) (orig-sp-val +ℕ 16) ≡ readMem (memory s) (orig-sp-val +ℕ 16)
-    mem-orig-sp+16-at-st3 = trans (readMem-writeMem-diff (memory st2) (new-sp +ℕ 16) (orig-sp-val +ℕ 16) orig-s1-val write-s1-addr≢orig-sp+16)
-                                  mem-orig-sp+16-at-st2
-
-    mem-orig-sp+16 : readMem (memory st5) (orig-sp-val +ℕ 16) ≡ readMem (memory s) (orig-sp-val +ℕ 16)
-    mem-orig-sp+16 = mem-orig-sp+16-at-st3
-
-    write-s2-addr≢orig-sp+24 : (new-sp +ℕ 24) ≢ (orig-sp-val +ℕ 24)
-    write-s2-addr≢orig-sp+24 = setup-write-s2-addr≢orig-sp+24 orig-sp-val sp-bound
-
-    write-s1-addr≢orig-sp+24 : (new-sp +ℕ 16) ≢ (orig-sp-val +ℕ 24)
-    write-s1-addr≢orig-sp+24 = setup-write-s1-addr≢orig-sp+24 orig-sp-val sp-bound
-
-    mem-orig-sp+24-at-st2 : readMem (memory st2) (orig-sp-val +ℕ 24) ≡ readMem (memory s) (orig-sp-val +ℕ 24)
-    mem-orig-sp+24-at-st2 = readMem-writeMem-diff (memory st1) (new-sp +ℕ 24) (orig-sp-val +ℕ 24) orig-s2-val write-s2-addr≢orig-sp+24
-
-    mem-orig-sp+24-at-st3 : readMem (memory st3) (orig-sp-val +ℕ 24) ≡ readMem (memory s) (orig-sp-val +ℕ 24)
-    mem-orig-sp+24-at-st3 = trans (readMem-writeMem-diff (memory st2) (new-sp +ℕ 16) (orig-sp-val +ℕ 24) orig-s1-val write-s1-addr≢orig-sp+24)
-                                  mem-orig-sp+24-at-st2
-
-    mem-orig-sp+24 : readMem (memory st5) (orig-sp-val +ℕ 24) ≡ readMem (memory s) (orig-sp-val +ℕ 24)
-    mem-orig-sp+24 = mem-orig-sp+24-at-st3
-
-    write-s2-addr≢orig-sp+32 : (new-sp +ℕ 24) ≢ (orig-sp-val +ℕ 32)
-    write-s2-addr≢orig-sp+32 = setup-write-s2-addr≢orig-sp+32 orig-sp-val sp-bound
-
-    write-s1-addr≢orig-sp+32 : (new-sp +ℕ 16) ≢ (orig-sp-val +ℕ 32)
-    write-s1-addr≢orig-sp+32 = setup-write-s1-addr≢orig-sp+32 orig-sp-val sp-bound
-
-    mem-orig-sp+32-at-st2 : readMem (memory st2) (orig-sp-val +ℕ 32) ≡ readMem (memory s) (orig-sp-val +ℕ 32)
-    mem-orig-sp+32-at-st2 = readMem-writeMem-diff (memory st1) (new-sp +ℕ 24) (orig-sp-val +ℕ 32) orig-s2-val write-s2-addr≢orig-sp+32
-
-    mem-orig-sp+32-at-st3 : readMem (memory st3) (orig-sp-val +ℕ 32) ≡ readMem (memory s) (orig-sp-val +ℕ 32)
-    mem-orig-sp+32-at-st3 = trans (readMem-writeMem-diff (memory st2) (new-sp +ℕ 16) (orig-sp-val +ℕ 32) orig-s1-val write-s1-addr≢orig-sp+32)
-                                  mem-orig-sp+32-at-st2
-
-    mem-orig-sp+32 : readMem (memory st5) (orig-sp-val +ℕ 32) ≡ readMem (memory s) (orig-sp-val +ℕ 32)
-    mem-orig-sp+32 = mem-orig-sp+32-at-st3
+      in mem-at-st3  -- st4, st5 have same memory as st3 (mv doesn't change memory)
 
 ------------------------------------------------------------------------
 -- Phase 3: Middle - trace 2 instructions (sd a0 0(s2); mv a0 s1)
@@ -902,15 +855,11 @@ pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
           × readMem (memory s') (readReg (regs sf) s2) ≡ just (encode (eval f x))  -- store at frame pointer
           × readMem (memory s') (readReg (regs sf) s2 +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) s2 +ℕ 16)
           × readMem (memory s') (readReg (regs sf) s2 +ℕ 24) ≡ readMem (memory sf) (readReg (regs sf) s2 +ℕ 24)
-          -- Memory preservation at original sp and above (middle writes at s2, which is below orig-sp)
-          × readMem (memory s') orig-sp ≡ readMem (memory sf) orig-sp
-          × readMem (memory s') (orig-sp +ℕ 8) ≡ readMem (memory sf) (orig-sp +ℕ 8)
-          × readMem (memory s') (orig-sp +ℕ 16) ≡ readMem (memory sf) (orig-sp +ℕ 16)
-          × readMem (memory s') (orig-sp +ℕ 24) ≡ readMem (memory sf) (orig-sp +ℕ 24)
-          × readMem (memory s') (orig-sp +ℕ 32) ≡ readMem (memory sf) (orig-sp +ℕ 32))
+          -- Memory preservation at original sp and above (generic: for any n)
+          × (∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory sf) (orig-sp +ℕ n)))
 pair-middle-star {_} {A} {B} {C} f g prefix suffix x orig-sp sf h-false pc-eq a0-eq s1-eq sp-bound frame-ptr-eq =
   st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-s2+16-st2 , mem-s2+24-st2 ,
-  mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24 , mem-orig-sp+32
+  mem-preserved-generic
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -1046,11 +995,11 @@ pair-middle-star {_} {A} {B} {C} f g prefix suffix x orig-sp sf h-false pc-eq a0
     mem-s2+24-st2 : readMem (memory st2) (frame-ptr +ℕ 24) ≡ readMem (memory sf) (frame-ptr +ℕ 24)
     mem-s2+24-st2 = mem-s2+24-st1  -- mv doesn't change memory
 
-    -- Memory preservation at orig-sp and above
+    -- Memory preservation at orig-sp and above (generic for any n)
     -- Middle phase writes at frame-ptr = s2 = orig-sp - 32
-    -- So writes are disjoint from orig-sp, orig-sp+8, orig-sp+16, orig-sp+24, orig-sp+32
+    -- So writes are disjoint from orig-sp + n for any n
 
-    -- Proven address disjointness using middle-write-addr≢* lemmas
+    -- Proven address disjointness using middle-write-addr≢orig-sp+any lemma
     -- Key: frame-ptr = orig-sp ∸ 32 (from frame-ptr-eq), and write is at frame-ptr + 0 = frame-ptr
     write-addr-is-frame-ptr : frame-ptr +ℕ 0 ≡ frame-ptr
     write-addr-is-frame-ptr = +-identityʳ frame-ptr
@@ -1058,45 +1007,14 @@ pair-middle-star {_} {A} {B} {C} f g prefix suffix x orig-sp sf h-false pc-eq a0
     write-addr-is-orig-sp-minus-32 : frame-ptr +ℕ 0 ≡ orig-sp ∸ 32
     write-addr-is-orig-sp-minus-32 = trans write-addr-is-frame-ptr frame-ptr-eq
 
-    write-addr≢orig-sp : (frame-ptr +ℕ 0) ≢ orig-sp
-    write-addr≢orig-sp eq = middle-write-addr≢orig-sp orig-sp sp-bound
-                              (trans (sym write-addr-is-orig-sp-minus-32) eq)
-
-    write-addr≢orig-sp+8 : (frame-ptr +ℕ 0) ≢ (orig-sp +ℕ 8)
-    write-addr≢orig-sp+8 eq = middle-write-addr≢orig-sp+8 orig-sp sp-bound
-                                (trans (sym write-addr-is-orig-sp-minus-32) eq)
-
-    write-addr≢orig-sp+16 : (frame-ptr +ℕ 0) ≢ (orig-sp +ℕ 16)
-    write-addr≢orig-sp+16 eq = middle-write-addr≢orig-sp+16 orig-sp sp-bound
-                                 (trans (sym write-addr-is-orig-sp-minus-32) eq)
-
-    write-addr≢orig-sp+24 : (frame-ptr +ℕ 0) ≢ (orig-sp +ℕ 24)
-    write-addr≢orig-sp+24 eq = middle-write-addr≢orig-sp+24 orig-sp sp-bound
-                                 (trans (sym write-addr-is-orig-sp-minus-32) eq)
-
-    write-addr≢orig-sp+32 : (frame-ptr +ℕ 0) ≢ (orig-sp +ℕ 32)
-    write-addr≢orig-sp+32 eq = middle-write-addr≢orig-sp+32 orig-sp sp-bound
-                                 (trans (sym write-addr-is-orig-sp-minus-32) eq)
-
-    mem-orig-sp : readMem (memory st2) orig-sp ≡ readMem (memory sf) orig-sp
-    mem-orig-sp = readMem-writeMem-diff (memory sf) (frame-ptr +ℕ 0) orig-sp
-                    (readReg (regs sf) a0) write-addr≢orig-sp
-
-    mem-orig-sp+8 : readMem (memory st2) (orig-sp +ℕ 8) ≡ readMem (memory sf) (orig-sp +ℕ 8)
-    mem-orig-sp+8 = readMem-writeMem-diff (memory sf) (frame-ptr +ℕ 0) (orig-sp +ℕ 8)
-                      (readReg (regs sf) a0) write-addr≢orig-sp+8
-
-    mem-orig-sp+16 : readMem (memory st2) (orig-sp +ℕ 16) ≡ readMem (memory sf) (orig-sp +ℕ 16)
-    mem-orig-sp+16 = readMem-writeMem-diff (memory sf) (frame-ptr +ℕ 0) (orig-sp +ℕ 16)
-                       (readReg (regs sf) a0) write-addr≢orig-sp+16
-
-    mem-orig-sp+24 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory sf) (orig-sp +ℕ 24)
-    mem-orig-sp+24 = readMem-writeMem-diff (memory sf) (frame-ptr +ℕ 0) (orig-sp +ℕ 24)
-                       (readReg (regs sf) a0) write-addr≢orig-sp+24
-
-    mem-orig-sp+32 : readMem (memory st2) (orig-sp +ℕ 32) ≡ readMem (memory sf) (orig-sp +ℕ 32)
-    mem-orig-sp+32 = readMem-writeMem-diff (memory sf) (frame-ptr +ℕ 0) (orig-sp +ℕ 32)
-                       (readReg (regs sf) a0) write-addr≢orig-sp+32
+    mem-preserved-generic : ∀ n → readMem (memory st2) (orig-sp +ℕ n) ≡ readMem (memory sf) (orig-sp +ℕ n)
+    mem-preserved-generic n =
+      let
+        write-addr≢ : (frame-ptr +ℕ 0) ≢ (orig-sp +ℕ n)
+        write-addr≢ eq = middle-write-addr≢orig-sp+any orig-sp n sp-bound
+                           (trans (sym write-addr-is-orig-sp-minus-32) eq)
+      in readMem-writeMem-diff (memory sf) (frame-ptr +ℕ 0) (orig-sp +ℕ n)
+           (readReg (regs sf) a0) write-addr≢
 
 ------------------------------------------------------------------------
 -- Phase 5: Final - trace 5 instructions (frame pointer approach)
@@ -1140,15 +1058,10 @@ pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
           × readReg (regs s') s2 ≡ orig-s2  -- s2 is restored!
           × readReg (regs s') ra ≡ readReg (regs sg) ra
           × readReg (regs s') sp ≡ readReg (regs sg) sp
-          -- Memory preservation at orig-sp and above (final writes at s2+8, not at orig-sp)
-          × readMem (memory s') orig-sp ≡ readMem (memory sg) orig-sp
-          × readMem (memory s') (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
-          × readMem (memory s') (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
-          × readMem (memory s') (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24)
-          × readMem (memory s') (orig-sp +ℕ 32) ≡ readMem (memory sg) (orig-sp +ℕ 32))
+          -- Memory preservation at orig-sp and above (generic: for any n)
+          × (∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory sg) (orig-sp +ℕ n)))
 pair-final-star {i} {A} {B} {C} f g prefix suffix x orig-s1 orig-s2 orig-sp sg h-false pc-eq a0-eq mem-f mem-s1 mem-s2 sp-bound frame-ptr-eq =
-  st5 , star-all , h5 , pc5 , a0-st5 , s1-st5 , s2-st5 , ra-st5 , sp-st5 ,
-  mem-orig-sp , mem-orig-sp+8 , mem-orig-sp+16 , mem-orig-sp+24 , mem-orig-sp+32
+  st5 , star-all , h5 , pc5 , a0-st5 , s1-st5 , s2-st5 , ra-st5 , sp-st5 , mem-preserved-generic
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -1418,66 +1331,23 @@ pair-final-star {i} {A} {B} {C} f g prefix suffix x orig-s1 orig-s2 orig-sp sg h
     sp-st5 : readReg (regs st5) sp ≡ readReg (regs sg) sp
     sp-st5 = trans (readReg-writeReg-s2-sp (regs st4) (readReg (regs st4) t0)) sp-st4
 
-    -- Memory preservation at orig-sp and above
+    -- Memory preservation at orig-sp and above (generic for any n)
     -- The only write is at frame-ptr + 8 = (orig-sp - 32) + 8, which is < orig-sp
     -- frame-ptr = orig-sp - 32 (from frame-ptr-eq)
     frame-ptr-is-orig-sp-32 : frame-ptr ≡ orig-sp ∸ 32
     frame-ptr-is-orig-sp-32 = frame-ptr-eq
 
-    write-addr≢orig-sp : (frame-ptr +ℕ 8) ≢ orig-sp
-    write-addr≢orig-sp = subst (λ x → (x +ℕ 8) ≢ orig-sp) (sym frame-ptr-is-orig-sp-32)
-                           (final-write-addr≢orig-sp orig-sp sp-bound)
+    mem-preserved-generic : ∀ n → readMem (memory st5) (orig-sp +ℕ n) ≡ readMem (memory sg) (orig-sp +ℕ n)
+    mem-preserved-generic n =
+      let
+        write-addr≢ : (frame-ptr +ℕ 8) ≢ (orig-sp +ℕ n)
+        write-addr≢ = subst (λ x → (x +ℕ 8) ≢ (orig-sp +ℕ n)) (sym frame-ptr-is-orig-sp-32)
+                        (final-write-addr≢orig-sp+any orig-sp n sp-bound)
 
-    write-addr≢orig-sp+8 : (frame-ptr +ℕ 8) ≢ (orig-sp +ℕ 8)
-    write-addr≢orig-sp+8 = subst (λ x → (x +ℕ 8) ≢ (orig-sp +ℕ 8)) (sym frame-ptr-is-orig-sp-32)
-                             (final-write-addr≢orig-sp+8 orig-sp sp-bound)
-
-    write-addr≢orig-sp+16 : (frame-ptr +ℕ 8) ≢ (orig-sp +ℕ 16)
-    write-addr≢orig-sp+16 = subst (λ x → (x +ℕ 8) ≢ (orig-sp +ℕ 16)) (sym frame-ptr-is-orig-sp-32)
-                              (final-write-addr≢orig-sp+16 orig-sp sp-bound)
-
-    write-addr≢orig-sp+24 : (frame-ptr +ℕ 8) ≢ (orig-sp +ℕ 24)
-    write-addr≢orig-sp+24 = subst (λ x → (x +ℕ 8) ≢ (orig-sp +ℕ 24)) (sym frame-ptr-is-orig-sp-32)
-                              (final-write-addr≢orig-sp+24 orig-sp sp-bound)
-
-    write-addr≢orig-sp+32 : (frame-ptr +ℕ 8) ≢ (orig-sp +ℕ 32)
-    write-addr≢orig-sp+32 = subst (λ x → (x +ℕ 8) ≢ (orig-sp +ℕ 32)) (sym frame-ptr-is-orig-sp-32)
-                              (final-write-addr≢orig-sp+32 orig-sp sp-bound)
-
-    mem-orig-sp-st1 : readMem (memory st1) orig-sp ≡ readMem (memory sg) orig-sp
-    mem-orig-sp-st1 = readMem-writeMem-diff (memory sg) (frame-ptr +ℕ 8) orig-sp
-                        (readReg (regs sg) a0) write-addr≢orig-sp
-
-    mem-orig-sp : readMem (memory st5) orig-sp ≡ readMem (memory sg) orig-sp
-    mem-orig-sp = mem-orig-sp-st1
-
-    mem-orig-sp+8-st1 : readMem (memory st1) (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
-    mem-orig-sp+8-st1 = readMem-writeMem-diff (memory sg) (frame-ptr +ℕ 8) (orig-sp +ℕ 8)
-                          (readReg (regs sg) a0) write-addr≢orig-sp+8
-
-    mem-orig-sp+8 : readMem (memory st5) (orig-sp +ℕ 8) ≡ readMem (memory sg) (orig-sp +ℕ 8)
-    mem-orig-sp+8 = mem-orig-sp+8-st1
-
-    mem-orig-sp+16-st1 : readMem (memory st1) (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
-    mem-orig-sp+16-st1 = readMem-writeMem-diff (memory sg) (frame-ptr +ℕ 8) (orig-sp +ℕ 16)
-                           (readReg (regs sg) a0) write-addr≢orig-sp+16
-
-    mem-orig-sp+16 : readMem (memory st5) (orig-sp +ℕ 16) ≡ readMem (memory sg) (orig-sp +ℕ 16)
-    mem-orig-sp+16 = mem-orig-sp+16-st1
-
-    mem-orig-sp+24-st1 : readMem (memory st1) (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24)
-    mem-orig-sp+24-st1 = readMem-writeMem-diff (memory sg) (frame-ptr +ℕ 8) (orig-sp +ℕ 24)
-                           (readReg (regs sg) a0) write-addr≢orig-sp+24
-
-    mem-orig-sp+24 : readMem (memory st5) (orig-sp +ℕ 24) ≡ readMem (memory sg) (orig-sp +ℕ 24)
-    mem-orig-sp+24 = mem-orig-sp+24-st1
-
-    mem-orig-sp+32-st1 : readMem (memory st1) (orig-sp +ℕ 32) ≡ readMem (memory sg) (orig-sp +ℕ 32)
-    mem-orig-sp+32-st1 = readMem-writeMem-diff (memory sg) (frame-ptr +ℕ 8) (orig-sp +ℕ 32)
-                           (readReg (regs sg) a0) write-addr≢orig-sp+32
-
-    mem-orig-sp+32 : readMem (memory st5) (orig-sp +ℕ 32) ≡ readMem (memory sg) (orig-sp +ℕ 32)
-    mem-orig-sp+32 = mem-orig-sp+32-st1
+        mem-at-st1 : readMem (memory st1) (orig-sp +ℕ n) ≡ readMem (memory sg) (orig-sp +ℕ n)
+        mem-at-st1 = readMem-writeMem-diff (memory sg) (frame-ptr +ℕ 8) (orig-sp +ℕ n)
+                       (readReg (regs sg) a0) write-addr≢
+      in mem-at-st1  -- st2-st5 don't modify memory (loads and register moves)
 
 ------------------------------------------------------------------------
 -- Helper for assembling pair result from f and g results
