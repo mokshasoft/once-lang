@@ -314,12 +314,18 @@ typecheck-verified:
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_CONTEXT)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_ERROR)'
 
-.PHONY: typecheck-full
-typecheck-full: typecheck-verified
+# Core type checker modules (inference + soundness, no extraction yet)
+.PHONY: typecheck-core
+typecheck-core: typecheck-verified
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_UNIFY)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_INFER)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RESOLVE)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_SOUND)'
+	@echo "Core type checker type-checks successfully!"
+
+# Full type checker with scope resolution and extraction entry point
+.PHONY: typecheck-full
+typecheck-full: typecheck-core
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RESOLVE)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_MAIN)'
 	@echo "Verified type checker type-checks successfully!"
 

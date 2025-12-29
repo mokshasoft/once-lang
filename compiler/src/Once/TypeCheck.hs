@@ -20,7 +20,7 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text
 
-import Once.Syntax (Module (..), Decl (..), Expr (..), SType (..), Name, ModuleName)
+import Once.Syntax (Module (..), Decl (..), Expr (..), SType (..), Name, ModuleName, BinOp (..), UnaryOp (..))
 import Once.Type (Type (..), Encoding (..))
 import Once.Quantity (Quantity (..))
 import Once.Module (ModuleEnv (..), lookupQualified, DeclInfo (..), ModuleError, emptyModuleEnv, expandAbbreviations, resolveAlias)
@@ -314,6 +314,35 @@ inferType ctx expr fresh = case expr of
     s2 <- unify expectedTy inferredTy
     Right (applySubst s2 inferredTy, composeSubst s2 s1, fresh1)
 
+  -- Binary operators (OCP-0002): both operands must be Int
+  EBinOp op a b -> do
+    (tyA, s1, fresh1) <- inferType ctx a fresh
+    (tyB, s2, fresh2) <- inferType ctx b fresh1
+    let tyA' = applySubst s2 tyA
+    s3 <- unify tyA' TInt
+    s4 <- unify (applySubst s3 tyB) TInt
+    let finalSubst = composeSubst s4 (composeSubst s3 (composeSubst s2 s1))
+    -- Comparison operators return Bool (encoded as Unit + Unit)
+    -- Arithmetic operators return Int
+    let resultTy = if isComparisonOp op then TSum TUnit TUnit else TInt
+    Right (resultTy, finalSubst, fresh2)
+
+  -- Unary operators (OCP-0002): operand must be Int
+  EUnaryOp OpNeg e -> do
+    (tyE, s1, fresh1) <- inferType ctx e fresh
+    s2 <- unify tyE TInt
+    Right (TInt, composeSubst s2 s1, fresh1)
+
+-- | Check if a binary operator is a comparison
+isComparisonOp :: BinOp -> Bool
+isComparisonOp OpLt = True
+isComparisonOp OpLe = True
+isComparisonOp OpGt = True
+isComparisonOp OpGe = True
+isComparisonOp OpEq = True
+isComparisonOp OpNe = True
+isComparisonOp _ = False
+
 -- | Get the type of a generator (with fresh type variables)
 generatorType :: Name -> Fresh -> Maybe (Type, Fresh)
 generatorType name fresh = case name of
@@ -575,6 +604,8 @@ countUsage expr = case expr of
   EInt _ -> emptyUsage
   EStringLit _ -> emptyUsage
   EAnnot e _ -> countUsage e
+  EBinOp _ a b -> mergeUsage (countUsage a) (countUsage b)
+  EUnaryOp _ e -> countUsage e
 
 -- | Max of two usages (for case branches - conservative)
 maxUsage :: Usage -> Usage -> Usage
@@ -617,6 +648,8 @@ validateLambdaUsage expr = case expr of
   EInt _ -> Right ()
   EStringLit _ -> Right ()
   EAnnot e _ -> validateLambdaUsage e
+  EBinOp _ a b -> validateLambdaUsage a >> validateLambdaUsage b
+  EUnaryOp _ e -> validateLambdaUsage e
 
 ------------------------------------------------------------------------
 -- Module-aware type checking
@@ -738,3 +771,20 @@ inferTypeWithEnv modEnv aliases ctx expr fresh = case expr of
     (inferredTy, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx e fresh
     s2 <- unify (applySubst s1 expectedTy) inferredTy
     Right (applySubst s2 inferredTy, composeSubst s2 s1, fresh1)
+
+  -- Binary operators (OCP-0002): both operands must be Int
+  EBinOp op a b -> do
+    (tyA, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx a fresh
+    (tyB, s2, fresh2) <- inferTypeWithEnv modEnv aliases ctx b fresh1
+    let tyA' = applySubst s2 tyA
+    s3 <- unify tyA' TInt
+    s4 <- unify (applySubst s3 tyB) TInt
+    let finalSubst = composeSubst s4 (composeSubst s3 (composeSubst s2 s1))
+    let resultTy = if isComparisonOp op then TSum TUnit TUnit else TInt
+    Right (resultTy, finalSubst, fresh2)
+
+  -- Unary operators (OCP-0002): operand must be Int
+  EUnaryOp OpNeg e -> do
+    (tyE, s1, fresh1) <- inferTypeWithEnv modEnv aliases ctx e fresh
+    s2 <- unify tyE TInt
+    Right (TInt, composeSubst s2 s1, fresh1)

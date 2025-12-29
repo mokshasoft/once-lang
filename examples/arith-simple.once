@@ -1,10 +1,17 @@
--- Simple arithmetic test for --arith flag
--- This program computes: (3 + 5) * 2 = 16 and exits with that code
+-- arith-simple.once: Simple arithmetic test for --arith flag
+--
+-- Demonstrates infix operators with correct precedence.
+-- Computes: 3 + 5 * 2 = 3 + 10 = 13 and exits with that code.
+--
+-- Build and run:
+--   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/arith-simple.once -o ../.build/arith-simple
+--   ../.build/arith-simple; echo "Exit code: $?"
+--
+-- With --arith flag (uses native arithmetic compiler):
+--   cd compiler && stack exec -- once build --exe --arith --strata ../Strata ../examples/arith-simple.once -o ../.build/arith-simple
+--   ../.build/arith-simple; echo "Exit code: $?"
 
 import I.Linux.Syscalls as S
 
-primitive add_i64 : Int * Int -> Int
-primitive mul_i64 : Int * Int -> Int
-
 main : IO Unit
-main = effCompose (exit@S) (pure (mul_i64 (add_i64 (3, 5), 2)))
+main = effCompose (exit@S) (pure (3 + 5 * 2))
