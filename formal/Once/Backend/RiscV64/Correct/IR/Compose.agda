@@ -31,7 +31,7 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
-         ir-mem-preserved)
+         ir-mem-preserved; ir-output-wf)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
@@ -146,6 +146,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = reco
   ; ir-sp-delta = ir-sp-delta r1 +ℕ ir-sp-delta r2
   ; ir-sp = sp-final
   ; ir-mem-preserved = mem-preserved-final
+  ; ir-output-wf = ir-output-wf r2  -- g's output WF is the compose output WF
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -264,12 +265,15 @@ transform-f-result {_} {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-s1 = ir-s1 r
   ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
+  ; ir-sp-delta = ir-sp-delta r
   ; ir-sp = ir-sp r
   ; ir-mem-preserved = ir-mem-preserved r
+  ; ir-output-wf = subst (ClosuresWF B) (sym prog-eq-f) (ir-output-wf r)
   }
   where
     ctx = make-compose-context f g prefix suffix
     open ComposeContext ctx
+    open import Once.Backend.RiscV64.Correct.ClosureWellFormed using (ClosuresWF)
 
 -- | Transform an IRStarResult for g in (prefix-g ++ code-g ++ suffix)
 --   to one in prog
@@ -287,9 +291,12 @@ transform-g-result {_} {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-s1 = ir-s1 r
   ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
+  ; ir-sp-delta = ir-sp-delta r
   ; ir-sp = ir-sp r
   ; ir-mem-preserved = ir-mem-preserved r
+  ; ir-output-wf = subst (ClosuresWF C) (sym (trans prog-eq-f prog-eq-g)) (ir-output-wf r)
   }
   where
     ctx = make-compose-context f g prefix suffix
     open ComposeContext ctx
+    open import Once.Backend.RiscV64.Correct.ClosureWellFormed using (ClosuresWF)

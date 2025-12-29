@@ -34,7 +34,9 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-step4; star-step5)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
-         ir-sp-delta; ir-sp; ir-mem-preserved)
+         ir-sp-delta; ir-sp; ir-mem-preserved; ir-output-wf)
+open import Once.Backend.RiscV64.Correct.ClosureWellFormed
+  using (ClosuresWF; trivialWF)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -75,6 +77,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     ; ir-sp-delta = 16
     ; ir-sp = sp-final
     ; ir-mem-preserved = mem-preserved-final
+    ; ir-output-wf = trivialWF (A + B) prog
     }
   where
     prog : Program
@@ -354,6 +357,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     ; ir-sp-delta = 16
     ; ir-sp = sp-final
     ; ir-mem-preserved = mem-preserved-final
+    ; ir-output-wf = trivialWF (A + B) prog
     }
   where
     prog : Program

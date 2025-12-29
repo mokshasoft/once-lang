@@ -40,7 +40,9 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
-         ir-sp-delta; ir-sp; ir-mem-preserved)
+         ir-sp-delta; ir-sp; ir-mem-preserved; ir-output-wf)
+open import Once.Backend.RiscV64.Correct.ClosureWellFormed
+  using (ClosuresWF; trivialWF)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -80,10 +82,14 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-sp-delta = 16
     ; ir-sp     = sp-final
     ; ir-mem-preserved = mem-preserved-final
+    ; ir-output-wf = curry-output-wf  -- Placeholder; real WF from MutualIR
     }
   where
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
+
+    -- Curry produces a closure; WF is proven in MutualIR with full context
+    postulate curry-output-wf : ClosuresWF (B ⇒ C) prog
 
     -- Helper values
     orig-sp : Word

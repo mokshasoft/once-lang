@@ -43,12 +43,13 @@ open import Once.Backend.RiscV64.Correct.Star
          star-step2; star-step3; star-step4; star-step5)
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult; code-ptr-valid; thunk-correct;
-         thunk-star; thunk-halted; thunk-a0; thunk-s1)
+         thunk-star; thunk-halted; thunk-a0; thunk-s1;
+         ClosuresWF; trivialWF; pairWF)
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
-         ir-mem-preserved;
+         ir-mem-preserved; ir-output-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
 
@@ -255,6 +256,7 @@ mutual
       ; ir-sp-delta = 24 +ℕ ir-sp-delta r-f +ℕ ir-sp-delta r-g
       ; ir-sp = sp-final
       ; ir-mem-preserved = mem-preserved-final
+      ; ir-output-wf = output-wf
       }
     where
       ctx = make-pair-context f g prefix suffix
@@ -656,6 +658,16 @@ mutual
             mem-mid-at-orig-sp+n : readMem (memory s-mid) (orig-sp +ℕ n) ≡ readMem (memory s-after-f-raw) (orig-sp +ℕ n)
             mem-final-at-orig-sp+n : readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory s-after-g-raw) (orig-sp +ℕ n)
 
+      -- Output WF: combine f and g output WFs with proper program subst
+      wf-f : ClosuresWF A prog
+      wf-f = subst (ClosuresWF A) (sym prog-eq-f) (ir-output-wf r-f)
+
+      wf-g : ClosuresWF B prog
+      wf-g = subst (ClosuresWF B) (sym prog-eq-g) (ir-output-wf r-g)
+
+      output-wf : ClosuresWF (A * B) prog
+      output-wf = pairWF wf-f wf-g
+
   -- Case helper - proven using dispatch helpers and IH
   run-case-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
                   (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
@@ -679,6 +691,7 @@ mutual
       ; ir-sp-delta = ir-sp-delta r-f
       ; ir-sp = sp-final
       ; ir-mem-preserved = mem-preserved-final
+      ; ir-output-wf = output-wf
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -817,6 +830,10 @@ mutual
         readMem (memory s) (readReg (regs s) sp +ℕ n)
           ∎
 
+      -- Output WF: comes from f's output (left path)
+      output-wf : ClosuresWF C prog
+      output-wf = subst (ClosuresWF C) (sym prog-eq-f) (ir-output-wf r-f)
+
   -- Right path implementation (inj₂ b)
   run-case-star {_} {A} {B} {C} f g prefix suffix (inj₂ b) s h-false pc-eq a0-eq sp-bound =
     s-final , record
@@ -830,6 +847,7 @@ mutual
       ; ir-sp-delta = ir-sp-delta r-g
       ; ir-sp = sp-final
       ; ir-mem-preserved = mem-preserved-final
+      ; ir-output-wf = output-wf
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -964,6 +982,10 @@ mutual
           ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ n)) mem-dispatch ⟩
         readMem (memory s) (readReg (regs s) sp +ℕ n)
           ∎
+
+      -- Output WF: comes from g's output (right path)
+      output-wf : ClosuresWF C prog
+      output-wf = subst (ClosuresWF C) (sym prog-eq-g) (ir-output-wf r-g)
 
   ------------------------------------------------------------------------
   -- curry-thunk-correct-impl: Proven version using IH
