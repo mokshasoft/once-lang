@@ -68,6 +68,7 @@ library
       Once.Syntax
       Once.Type
       Once.TypeCheck
+      Once.TypeCheck.Verified
       Once.Value
   other-modules:
       Paths_once
@@ -260,6 +261,13 @@ library
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Type
+      MAlonzo.Code.Once.TypeCheck
+      MAlonzo.Code.Once.TypeCheck.Context
+      MAlonzo.Code.Once.TypeCheck.Error
+      MAlonzo.Code.Once.TypeCheck.Infer
+      MAlonzo.Code.Once.TypeCheck.Raw
+      MAlonzo.Code.Once.TypeCheck.Sound
+      MAlonzo.Code.Once.TypeCheck.Unify
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw
