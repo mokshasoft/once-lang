@@ -8,51 +8,29 @@
 
 module Once.Backend.X86.Correct.IR.Inl where
 
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
-
--- Import common memory helper lemmas
-open import Once.Backend.Common.Memory
-  using (≡ᵇ-refl; n≢n+suc)
-
-open import Once.Postulates
-  using (encode; encode-inl-construct)
-open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op)
-open import Once.Backend.X86.Correct.RegisterLemmas
-open import Once.Backend.X86.Correct.FetchStep
+open import Once.Backend.Common.Memory using (n≢n+suc)
+open import Once.Postulates using (encode-inl-construct)
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
-
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above)
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
-open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Maybe using (Maybe; just; nothing)
 open import Function using (case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ)
+open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 

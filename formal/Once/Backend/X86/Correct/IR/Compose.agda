@@ -9,21 +9,13 @@
 
 module Once.Backend.X86.Correct.IR.Compose where
 
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen
-
 open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
-
-open import Once.Postulates using (encode)
-open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
@@ -34,14 +26,9 @@ open import Once.Backend.X86.Correct.StarBase
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above)
 
-open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
-open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 

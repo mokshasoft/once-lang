@@ -11,27 +11,18 @@
 
 module Once.Backend.X86.Correct.IR.ThunkStructure where
 
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open import Once.Backend.X86.CodeGen
 open import Once.Backend.X86.Correct.CompileLength using (compile-length-correct)
-
-open import Once.Backend.Common.Fetch using (fetch)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 
-open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
-open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; module ≡-Reasoning)
+open import Relation.Binary.PropositionalEquality using (module ≡-Reasoning)
 open ≡-Reasoning
 
 ------------------------------------------------------------------------

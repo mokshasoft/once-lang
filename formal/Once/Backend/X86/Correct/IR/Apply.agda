@@ -26,23 +26,14 @@
 
 module Once.Backend.X86.Correct.IR.Apply where
 
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
-
-open import Once.Postulates
-  using (encode; encode-pair-fst; encode-pair-snd)
-open import Once.Backend.X86.Correct.RegisterLemmas
-open import Once.Backend.X86.Correct.FetchStep
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
+open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.Star
@@ -58,19 +49,12 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-r14; thunk-r15; thunk-rbp;
          thunk-stack-inv; thunk-rsp-bound)
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans)
-open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
-
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
-open import Once.Backend.X86.Encoding using (mem-read-write)
 
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed

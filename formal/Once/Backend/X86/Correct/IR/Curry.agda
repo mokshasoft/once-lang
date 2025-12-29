@@ -8,23 +8,14 @@
 
 module Once.Backend.X86.Correct.IR.Curry where
 
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
-
-open import Once.Postulates using (encode; encode-closure-construct)
+open import Once.Postulates using (encode-closure-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
-open import Once.Backend.X86.Correct.RegisterLemmas
-open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
@@ -34,14 +25,10 @@ open import Once.Backend.X86.Correct.StarBase
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-stack-inv; ir-rsp-bound)
 
-open import Data.Bool using (false)
-open import Data.Nat using (ℕ; suc; _∸_; _>_; _≤_; _<_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
-open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
