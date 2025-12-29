@@ -77,6 +77,10 @@ open import Once.Backend.AArch64.Correct.IR.StatefulConsumers public
   using (run-fst-star-s; run-snd-star-s;
          CaseResultS; run-case-inl-star-s; run-case-inr-star-s)
 
+-- Import stateful compose (extracted to reduce compile time)
+open import Once.Backend.AArch64.Correct.IR.StatefulCompose public
+  using (run-compose-star-s)
+
 -- Import extracted IR helper modules (non-recursive parts)
 open import Once.Backend.AArch64.Correct.IR.Compose
   using (ComposeContext; mkComposeContext;
