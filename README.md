@@ -74,23 +74,19 @@ Quantities are **inferred by default**, with optional annotations for guarantees
 
 ### Prerequisites
 
-- **Nix** (recommended) or **Stack** for building
+- **Nix** (required) for building the compiler
 - **GCC** for compiling generated C code
 
-### Build with Nix
+### Build the Compiler
+
+The Once compiler is built using Nix:
 
 ```bash
 nix build
 ./result/bin/once build --help
 ```
 
-### Build with Stack
-
-```bash
-cd compiler
-stack build
-stack exec -- once build --help
-```
+**Note:** While the project includes `stack.yaml` for Stack users, building with Stack may encounter toolchain conflicts in Nix environments (especially on macOS). The recommended and tested build method is `nix build`, which handles all dependencies and toolchain configuration automatically.
 
 ### Hello World
 
@@ -103,11 +99,8 @@ main : Unit -> Unit
 main = puts "Hello for Once"
 EOF
 
-# Compile (using Nix)
+# Compile with the Once compiler
 ./result/bin/once build --exe --interp Strata/Interpretations/Linux hello.once -o hello
-
-# Or with Stack
-stack exec -- once build --exe --interp ../Strata/Interpretations/Linux hello.once -o hello
 
 # Compile the generated C and run
 gcc -o hello hello.c
