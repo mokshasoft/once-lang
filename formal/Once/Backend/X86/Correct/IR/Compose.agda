@@ -22,9 +22,9 @@ open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult;
+  using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-rbp-inv; ir-closure-wf)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
@@ -244,6 +244,7 @@ assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 
   ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   ; ir-mem-above = mem-above-3
+  ; ir-closure-wf = closure-wf-3  -- Prefer g's closure (executed last)
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -277,6 +278,10 @@ assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 
     mem-rbp+8-3-from-s2 = ir-mem-rbp+8 r3
     stack-inv-3 = ir-stack-inv r3
     rsp-3>16 = ir-rsp-bound r3
+    closure-wf-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix)
+    closure-wf-raw = ir-closure-wf r3
+    closure-wf-3 : ClosureWFOutput prog
+    closure-wf-3 = subst ClosureWFOutput (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) closure-wf-raw
 
     -- Convert star-t from s2' to s2 (they're equal)
     -- s2-eq : s2 ≡ s2', so sym s2-eq : s2' ≡ s2

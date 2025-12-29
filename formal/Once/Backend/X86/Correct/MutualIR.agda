@@ -55,8 +55,9 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Re-export StarBase for backwards compatibility
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above;
+  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
+         ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star;
          run-fst-star-v; run-snd-star-v)
