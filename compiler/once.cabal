@@ -39,17 +39,7 @@ library
   import: shared
   exposed-modules:
       Lib
-      Once.Arith.Backend.X86.CodeGen
-      Once.Arith.Backend.X86.Emit
-      Once.Arith.Backend.X86.Syntax
-      Once.Arith.Backend.AArch64.CodeGen
-      Once.Arith.Backend.AArch64.Emit
-      Once.Arith.Backend.AArch64.Syntax
-      Once.Arith.Backend.RiscV.CodeGen
-      Once.Arith.Backend.RiscV.Emit
-      Once.Arith.Backend.RiscV.Syntax
       Once.Arith.CodeGen.C
-      Once.Arith.IR
       Once.Arith.Recognize
       Once.Backend.Assembler
       Once.Backend.C
@@ -71,6 +61,9 @@ library
       Once.TypeCheck.Verified
       Once.Elaborate.Verified
       Once.Value
+      MAlonzo.RTE
+      MAlonzo.Code.Once.Arith.IR
+      MAlonzo.Code.Once.Arith.Type
   other-modules:
       Paths_once
       MAlonzo.Code.Agda.Builtin.Bool
@@ -332,7 +325,6 @@ library
       MAlonzo.Code.Relation.Unary
       MAlonzo.Code.Relation.Unary.PredicateTransformer
       MAlonzo.Code.Relation.Unary.Properties
-      MAlonzo.RTE
       MAlonzo.RTE.Float
   autogen-modules:
       Paths_once

@@ -3,9 +3,12 @@ module Once.Eval
   , EvalError (..)
   ) where
 
+import Unsafe.Coerce (unsafeCoerce)
+
 import Once.IR (IR (..))
 import Once.Value (Value (..))
-import Once.Arith.IR (ArithIR (..), NumType (..), CmpOp (..))
+import qualified MAlonzo.Code.Once.Arith.IR as MA
+import qualified MAlonzo.Code.Once.Arith.Type as MT
 
 -- | Evaluation errors
 data EvalError
@@ -87,53 +90,77 @@ eval (Let _ e1 e2) v = do
   eval e2 v1
 
 -- Arithmetic expression (OCP-0001)
--- Evaluates ArithIR directly and returns VInt for the result
-eval (Arith arithExpr) v = evalArith arithExpr v
+-- Evaluates MAlonzo ArithIR directly and returns VInt/VFloat for the result
+eval (Arith numTy arithExpr) v = evalArith numTy arithExpr v
 
--- | Evaluate an arithmetic expression
-evalArith :: ArithIR -> Value -> Either EvalError Value
-evalArith expr v = case expr of
-  ALitInt _ n -> Right (VInt n)
-  ALitFloat _ f -> Right (VFloat f)
-  AVar "_input" _ -> valueToInt v
-  AVar name _ -> Left (UnboundVariable ("arith var: " ++ show name))
-  AAdd e1 e2 -> binOp (+) e1 e2 v
-  ASub e1 e2 -> binOp (-) e1 e2 v
-  AMul e1 e2 -> binOp (*) e1 e2 v
-  ADiv e1 e2 -> binOp div e1 e2 v
-  AMod e1 e2 -> binOp mod e1 e2 v
-  ANeg e -> do
-    val <- evalArith e v
+-- | Check if NumType is floating point
+isFloatType :: MT.T_NumType_6 -> Bool
+isFloatType MT.C_F32_16 = True
+isFloatType MT.C_F64_18 = True
+isFloatType _           = False
+
+-- | Evaluate an arithmetic expression (MAlonzo types)
+evalArith :: MT.T_NumType_6 -> MA.T_ArithIR_72 -> Value -> Either EvalError Value
+evalArith numTy expr v = case expr of
+  -- Literal: extract value from AgdaAny based on type
+  MA.C_Lit_76 val
+    | isFloatType numTy ->
+        let f = unsafeCoerce val :: Double
+        in Right (VFloat f)
+    | otherwise ->
+        let n = unsafeCoerce val :: Integer
+        in Right (VInt n)
+
+  -- Variable reference (ignore proof)
+  MA.C_Var_84 name _ -> valueToArith v
+
+  -- Binary operations (ignore contexts)
+  MA.C_Add_92 _ _ e1 e2 -> binOp (+) e1 e2 v
+  MA.C_Sub_100 _ _ e1 e2 -> binOp (-) e1 e2 v
+  MA.C_Mul_108 _ _ e1 e2 -> binOp (*) e1 e2 v
+  MA.C_Div_116 _ _ e1 e2 -> binOp div e1 e2 v
+  MA.C_Mod_124 _ _ e1 e2 -> binOp mod e1 e2 v
+
+  -- Unary negation
+  MA.C_Neg_130 e -> do
+    val <- evalArith numTy e v
     case val of
       VInt n -> Right (VInt (negate n))
       VFloat f -> Right (VFloat (negate f))
       _ -> Left (TypeError "neg expects numeric value")
-  ACmp op e1 e2 -> cmpOp op e1 e2 v
+
+  -- Comparison
+  MA.C_Cmp_138 _ _ op e1 e2 -> cmpOp op e1 e2 v
+
+  -- Type conversion
+  MA.C_Conv_146 _ e -> evalArith numTy e v
+
   where
-    binOp :: (Integer -> Integer -> Integer) -> ArithIR -> ArithIR -> Value -> Either EvalError Value
+    binOp :: (Integer -> Integer -> Integer) -> MA.T_ArithIR_72 -> MA.T_ArithIR_72 -> Value -> Either EvalError Value
     binOp f e1 e2 input = do
-      v1 <- evalArith e1 input
-      v2 <- evalArith e2 input
+      v1 <- evalArith numTy e1 input
+      v2 <- evalArith numTy e2 input
       case (v1, v2) of
         (VInt n1, VInt n2) -> Right (VInt (f n1 n2))
         _ -> Left (TypeError "binary op expects integer values")
 
-    cmpOp :: CmpOp -> ArithIR -> ArithIR -> Value -> Either EvalError Value
+    cmpOp :: MA.T_CmpOp_58 -> MA.T_ArithIR_72 -> MA.T_ArithIR_72 -> Value -> Either EvalError Value
     cmpOp op e1 e2 input = do
-      v1 <- evalArith e1 input
-      v2 <- evalArith e2 input
+      v1 <- evalArith numTy e1 input
+      v2 <- evalArith numTy e2 input
       case (v1, v2) of
         (VInt n1, VInt n2) ->
           let cmpFn = case op of
-                CmpLt -> (<)
-                CmpLe -> (<=)
-                CmpGt -> (>)
-                CmpGe -> (>=)
-                CmpEq -> (==)
-                CmpNe -> (/=)
+                MA.C_CmpLt_60 -> (<)
+                MA.C_CmpLe_62 -> (<=)
+                MA.C_CmpGt_64 -> (>)
+                MA.C_CmpGe_66 -> (>=)
+                MA.C_CmpEq_68 -> (==)
+                MA.C_CmpNe_70 -> (/=)
           in Right (VInt (if cmpFn n1 n2 then 1 else 0))
         _ -> Left (TypeError "comparison expects integer values")
 
-    valueToInt :: Value -> Either EvalError Value
-    valueToInt (VInt n) = Right (VInt n)
-    valueToInt _ = Left (TypeError "expected integer value")
+    valueToArith :: Value -> Either EvalError Value
+    valueToArith (VInt n) = Right (VInt n)
+    valueToArith (VFloat f) = Right (VFloat f)
+    valueToArith _ = Left (TypeError "expected numeric value")

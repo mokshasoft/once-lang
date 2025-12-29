@@ -13,14 +13,19 @@ module Once.Arith.Recognize
     -- * Primitive mappings
   , arithPrimOp
   , ArithOp (..)
+    -- * Re-exports from MAlonzo
+  , MA.T_ArithIR_72
+  , MT.T_NumType_6
   ) where
 
 import Data.Text (Text)
 import qualified Data.Text as T
 
+import MAlonzo.RTE (coe)
 import Once.IR (IR (..))
 import Once.Type (Type (..), Name)
-import Once.Arith.IR
+import qualified MAlonzo.Code.Once.Arith.IR as MA
+import qualified MAlonzo.Code.Once.Arith.Type as MT
 
 -- | Arithmetic operation classification
 data ArithOp
@@ -46,7 +51,7 @@ isArithType _      = False
 
 -- | Attempt to recognize an IR expression as pure arithmetic
 --
--- Returns @Just arithIR@ if the expression is pure arithmetic,
+-- Returns @Just (numType, arithIR)@ if the expression is pure arithmetic,
 -- @Nothing@ if it contains non-arithmetic operations (branching,
 -- effects, closures, etc.)
 --
@@ -56,28 +61,28 @@ isArithType _      = False
 -- 3. No internal branching (no Case)
 -- 4. No effects (no Eff types)
 -- 5. No closures (no Curry/Apply)
-recognizeArith :: IR -> Maybe ArithIR
+recognizeArith :: IR -> Maybe (MT.T_NumType_6, MA.T_ArithIR_72)
 recognizeArith ir = recognizeWithInput "_input" ir
 
 -- | Recognize arithmetic with a named input variable
-recognizeWithInput :: Text -> IR -> Maybe ArithIR
+recognizeWithInput :: Text -> IR -> Maybe (MT.T_NumType_6, MA.T_ArithIR_72)
 recognizeWithInput inputName ir = case ir of
   -- Identity on numeric type = input variable
   Id ty
     | Just numTy <- typeToNumType ty
-    -> Just $ AVar inputName numTy
+    -> Just (numTy, MA.C_Var_84 inputName MA.C_here_40)
 
   -- Integer literals encoded as primitives
   Prim name _ outTy
     | Just n <- parseIntLit name
     , Just numTy <- typeToNumType outTy
-    -> Just $ ALitInt numTy n
+    -> Just (numTy, MA.C_Lit_76 (coe n))
 
   -- Float literals encoded as primitives
   Prim name _ outTy
     | Just f <- parseFloatLit name
     , Just numTy <- typeToNumType outTy
-    -> Just $ ALitFloat numTy f
+    -> Just (numTy, MA.C_Lit_76 (coe f))
 
   -- Binary operation: op ∘ ⟨left, right⟩
   -- Pattern: Compose (Prim op _ _) (Pair left right)
@@ -85,9 +90,9 @@ recognizeWithInput inputName ir = case ir of
     | Just op <- arithPrimOp opName
     , Just numTy <- typeToNumType outTy
     -> do
-        leftArith <- recognizeWithInput inputName left
-        rightArith <- recognizeWithInput inputName right
-        Just $ makeBinaryOp op leftArith rightArith
+        (_, leftArith) <- recognizeWithInput inputName left
+        (_, rightArith) <- recognizeWithInput inputName right
+        Just (numTy, makeBinaryOp op leftArith rightArith)
 
   -- Unary operation: op ∘ expr
   -- Pattern: Compose (Prim op inTy outTy) expr where inTy is not a product
@@ -96,8 +101,8 @@ recognizeWithInput inputName ir = case ir of
     , not (isProductType inTy)
     , Just numTy <- typeToNumType outTy
     -> do
-        exprArith <- recognizeWithInput inputName expr
-        Just $ ANeg exprArith
+        (_, exprArith) <- recognizeWithInput inputName expr
+        Just (numTy, MA.C_Neg_130 exprArith)
 
   -- Composition of arithmetic expressions
   -- General case: f ∘ g where both are arithmetic
@@ -105,32 +110,32 @@ recognizeWithInput inputName ir = case ir of
     -- If f is an arith primitive expecting product input, need Pair
     -- Otherwise, it's chained arithmetic
     case f of
-      Prim opName (TProduct _ _) outTy
+      Prim opName (TProduct _ _) _
         | Just _ <- arithPrimOp opName
         -> Nothing  -- Binary ops need explicit Pair; handled above
 
       _ -> do
         -- g computes input for f
-        gArith <- recognizeWithInput inputName g
+        _ <- recognizeWithInput inputName g
         -- But f expects gArith as input... this is complex
         -- For now, only handle simple cases
         Nothing
 
   -- Projections on pair input
-  Fst a b
+  Fst a _
     | Just numTy <- typeToNumType a
-    -> Just $ AVar (inputName <> ".fst") numTy
+    -> Just (numTy, MA.C_Var_84 (inputName <> ".fst") MA.C_here_40)
 
-  Snd a b
+  Snd _ b
     | Just numTy <- typeToNumType b
-    -> Just $ AVar (inputName <> ".snd") numTy
+    -> Just (numTy, MA.C_Var_84 (inputName <> ".snd") MA.C_here_40)
 
   -- Terminal (Unit) - not arithmetic
   Terminal _ -> Nothing
 
   -- Local variable reference
   LocalVar name
-    -> Just $ AVar name I64  -- Assume I64 for now; needs type info
+    -> Just (MT.C_I64_14, MA.C_Var_84 name MA.C_here_40)  -- Assume I64 for now
 
   -- Not arithmetic
   _ -> Nothing
@@ -141,20 +146,23 @@ isProductType (TProduct _ _) = True
 isProductType _              = False
 
 -- | Create a binary arithmetic operation
-makeBinaryOp :: ArithOp -> ArithIR -> ArithIR -> ArithIR
+-- Uses empty contexts (erased at runtime in MAlonzo)
+makeBinaryOp :: ArithOp -> MA.T_ArithIR_72 -> MA.T_ArithIR_72 -> MA.T_ArithIR_72
 makeBinaryOp op left right = case op of
-  OpAdd -> AAdd left right
-  OpSub -> ASub left right
-  OpMul -> AMul left right
-  OpDiv -> ADiv left right
-  OpMod -> AMod left right
-  OpNeg -> ANeg left  -- Shouldn't happen for binary
-  OpLt  -> ACmp CmpLt left right
-  OpLe  -> ACmp CmpLe left right
-  OpGt  -> ACmp CmpGt left right
-  OpGe  -> ACmp CmpGe left right
-  OpEq  -> ACmp CmpEq left right
-  OpNe  -> ACmp CmpNe left right
+  OpAdd -> MA.C_Add_92 emptyCtx emptyCtx left right
+  OpSub -> MA.C_Sub_100 emptyCtx emptyCtx left right
+  OpMul -> MA.C_Mul_108 emptyCtx emptyCtx left right
+  OpDiv -> MA.C_Div_116 emptyCtx emptyCtx left right
+  OpMod -> MA.C_Mod_124 emptyCtx emptyCtx left right
+  OpNeg -> MA.C_Neg_130 left  -- Shouldn't happen for binary
+  OpLt  -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpLt_60 left right
+  OpLe  -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpLe_62 left right
+  OpGt  -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpGt_64 left right
+  OpGe  -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpGe_66 left right
+  OpEq  -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpEq_68 left right
+  OpNe  -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpNe_70 left right
+  where
+    emptyCtx = MA.d_'8709'_20
 
 -- | Check if a primitive name is an arithmetic operation
 isArithPrim :: Name -> Bool
@@ -251,10 +259,10 @@ arithPrimOp name = case name of
 
   _ -> Nothing
 
--- | Convert Once Type to NumType
-typeToNumType :: Type -> Maybe NumType
-typeToNumType TInt   = Just I64  -- Default Int is 64-bit
-typeToNumType TFloat = Just F64  -- Default Float is 64-bit
+-- | Convert Once Type to MAlonzo NumType
+typeToNumType :: Type -> Maybe MT.T_NumType_6
+typeToNumType TInt   = Just MT.C_I64_14  -- Default Int is 64-bit
+typeToNumType TFloat = Just MT.C_F64_18  -- Default Float is 64-bit
 typeToNumType _      = Nothing
 
 -- | Parse integer literal from primitive name

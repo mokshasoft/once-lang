@@ -10,11 +10,27 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Text as T
 
+import MAlonzo.RTE (coe)
 import Once.IR (IR (..))
 import Once.Syntax (Expr (..), SType (..), Name, Decl (..), ModuleName, BinOp (..), UnaryOp (..))
 import Once.Type (Type (..))
 import Once.Module (ModuleEnv, lookupQualified, DeclInfo (..), ModuleError)
-import Once.Arith.IR (ArithIR (..), NumType (..), CmpOp (..), bitwidth, isFloat)
+import qualified MAlonzo.Code.Once.Arith.IR as MA
+import qualified MAlonzo.Code.Once.Arith.Type as MT
+
+-- | Helper: empty context for MAlonzo ArithIR (erased at runtime)
+emptyCtx :: [MA.T_Binding_6]
+emptyCtx = MA.d_'8709'_20
+
+-- | Helper: check if NumType is float
+isFloat :: MT.T_NumType_6 -> Bool
+isFloat MT.C_F32_16 = True
+isFloat MT.C_F64_18 = True
+isFloat _           = False
+
+-- | Helper: get bitwidth of NumType
+bitwidth :: MT.T_NumType_6 -> Integer
+bitwidth = MT.d_bitwidth_20
 
 -- | Elaboration errors
 data ElabError
@@ -122,28 +138,26 @@ elaborateExpr' locals expr = case expr of
   -- Binary operators (OCP-0002): a + b, x * y, etc.
   EBinOp op a b -> do
     case (toArithIR locals a, toArithIR locals b) of
-      (Just a', Just b') ->
+      (Just (t1, a'), Just (t2, b')) ->
         -- Both operands are arithmetic - build ArithIR directly
-        let t1 = arithType a'
-            t2 = arithType b'
-        in case promoteNumTypes t1 t2 of
+        case promoteNumTypes t1 t2 of
           Left err -> Left $ TypeMismatch err
           Right resultTy ->
             let a'' = promoteIfNeeded t1 resultTy a'
                 b'' = promoteIfNeeded t2 resultTy b'
-            in Right $ Arith (binOpToArith op a'' b'')
+            in Right $ Arith resultTy (binOpToArith op a'' b'')
       _ -> do
         -- Fallback to categorical IR
         a' <- elaborateExpr' locals a
         b' <- elaborateExpr' locals b
         -- Desugar to primitive call with default I64 type
-        let primName = binOpToPrimName op I64
+        let primName = binOpToPrimName op MT.C_I64_14
         Right $ Compose (Var primName) (Pair a' b')
 
   -- Unary operators (OCP-0002): -x
   EUnaryOp OpNeg e -> do
     case toArithIR locals e of
-      Just e' -> Right $ Arith (ANeg e')
+      Just (t, e') -> Right $ Arith t (MA.C_Neg_130 e')
       Nothing -> do
         e' <- elaborateExpr' locals e
         Right $ Compose (Var "neg_i64") e'
@@ -161,7 +175,7 @@ elaborateApp locals f arg = case f of
     -> case arg of
         EPair a b ->
           case (toArithIR locals a, toArithIR locals b) of
-            (Just a', Just b') -> Right $ Arith (binOpMake op a' b')
+            (Just (_, a'), Just (_, b')) -> Right $ Arith (binOpType op) (binOpMake op a' b')
             _ -> do
               -- Fallback to categorical IR if sub-expressions aren't arithmetic
               a' <- elaborateExpr' locals a
@@ -177,7 +191,7 @@ elaborateApp locals f arg = case f of
   EVar name
     | Just op <- unaryArithPrim name
     -> case toArithIR locals arg of
-        Just arg' -> Right $ Arith (unaryOpMake op arg')
+        Just (_, arg') -> Right $ Arith (unaryOpType op) (unaryOpMake op arg')
         Nothing -> do
           f' <- elaborateExpr' locals (EVar name)
           arg' <- elaborateExpr' locals arg
@@ -264,14 +278,14 @@ isGenerator name = name `elem`
 
 -- | Binary arithmetic operation info
 data BinaryArithOp = BinaryArithOp
-  { binOpMake :: ArithIR -> ArithIR -> ArithIR
-  , binOpType :: NumType
+  { binOpMake :: MA.T_ArithIR_72 -> MA.T_ArithIR_72 -> MA.T_ArithIR_72
+  , binOpType :: MT.T_NumType_6
   }
 
 -- | Unary arithmetic operation info
 data UnaryArithOp = UnaryArithOp
-  { unaryOpMake :: ArithIR -> ArithIR
-  , unaryOpType :: NumType
+  { unaryOpMake :: MA.T_ArithIR_72 -> MA.T_ArithIR_72
+  , unaryOpType :: MT.T_NumType_6
   }
 
 -- | Recognize binary arithmetic primitive names
@@ -280,153 +294,160 @@ data UnaryArithOp = UnaryArithOp
 binaryArithPrim :: Name -> Maybe BinaryArithOp
 binaryArithPrim name = case name of
   -- Integer add
-  "add_i8"  -> Just $ BinaryArithOp AAdd I8
-  "add_i16" -> Just $ BinaryArithOp AAdd I16
-  "add_i32" -> Just $ BinaryArithOp AAdd I32
-  "add_i64" -> Just $ BinaryArithOp AAdd I64
-  "add_f32" -> Just $ BinaryArithOp AAdd F32
-  "add_f64" -> Just $ BinaryArithOp AAdd F64
+  "add_i8"  -> Just $ BinaryArithOp maAdd MT.C_I8_8
+  "add_i16" -> Just $ BinaryArithOp maAdd MT.C_I16_10
+  "add_i32" -> Just $ BinaryArithOp maAdd MT.C_I32_12
+  "add_i64" -> Just $ BinaryArithOp maAdd MT.C_I64_14
+  "add_f32" -> Just $ BinaryArithOp maAdd MT.C_F32_16
+  "add_f64" -> Just $ BinaryArithOp maAdd MT.C_F64_18
 
   -- Subtract
-  "sub_i8"  -> Just $ BinaryArithOp ASub I8
-  "sub_i16" -> Just $ BinaryArithOp ASub I16
-  "sub_i32" -> Just $ BinaryArithOp ASub I32
-  "sub_i64" -> Just $ BinaryArithOp ASub I64
-  "sub_f32" -> Just $ BinaryArithOp ASub F32
-  "sub_f64" -> Just $ BinaryArithOp ASub F64
+  "sub_i8"  -> Just $ BinaryArithOp maSub MT.C_I8_8
+  "sub_i16" -> Just $ BinaryArithOp maSub MT.C_I16_10
+  "sub_i32" -> Just $ BinaryArithOp maSub MT.C_I32_12
+  "sub_i64" -> Just $ BinaryArithOp maSub MT.C_I64_14
+  "sub_f32" -> Just $ BinaryArithOp maSub MT.C_F32_16
+  "sub_f64" -> Just $ BinaryArithOp maSub MT.C_F64_18
 
   -- Multiply
-  "mul_i8"  -> Just $ BinaryArithOp AMul I8
-  "mul_i16" -> Just $ BinaryArithOp AMul I16
-  "mul_i32" -> Just $ BinaryArithOp AMul I32
-  "mul_i64" -> Just $ BinaryArithOp AMul I64
-  "mul_f32" -> Just $ BinaryArithOp AMul F32
-  "mul_f64" -> Just $ BinaryArithOp AMul F64
+  "mul_i8"  -> Just $ BinaryArithOp maMul MT.C_I8_8
+  "mul_i16" -> Just $ BinaryArithOp maMul MT.C_I16_10
+  "mul_i32" -> Just $ BinaryArithOp maMul MT.C_I32_12
+  "mul_i64" -> Just $ BinaryArithOp maMul MT.C_I64_14
+  "mul_f32" -> Just $ BinaryArithOp maMul MT.C_F32_16
+  "mul_f64" -> Just $ BinaryArithOp maMul MT.C_F64_18
 
   -- Divide
-  "div_i8"  -> Just $ BinaryArithOp ADiv I8
-  "div_i16" -> Just $ BinaryArithOp ADiv I16
-  "div_i32" -> Just $ BinaryArithOp ADiv I32
-  "div_i64" -> Just $ BinaryArithOp ADiv I64
-  "div_f32" -> Just $ BinaryArithOp ADiv F32
-  "div_f64" -> Just $ BinaryArithOp ADiv F64
+  "div_i8"  -> Just $ BinaryArithOp maDiv MT.C_I8_8
+  "div_i16" -> Just $ BinaryArithOp maDiv MT.C_I16_10
+  "div_i32" -> Just $ BinaryArithOp maDiv MT.C_I32_12
+  "div_i64" -> Just $ BinaryArithOp maDiv MT.C_I64_14
+  "div_f32" -> Just $ BinaryArithOp maDiv MT.C_F32_16
+  "div_f64" -> Just $ BinaryArithOp maDiv MT.C_F64_18
 
   -- Modulo (integer only)
-  "mod_i8"  -> Just $ BinaryArithOp AMod I8
-  "mod_i16" -> Just $ BinaryArithOp AMod I16
-  "mod_i32" -> Just $ BinaryArithOp AMod I32
-  "mod_i64" -> Just $ BinaryArithOp AMod I64
+  "mod_i8"  -> Just $ BinaryArithOp maMod MT.C_I8_8
+  "mod_i16" -> Just $ BinaryArithOp maMod MT.C_I16_10
+  "mod_i32" -> Just $ BinaryArithOp maMod MT.C_I32_12
+  "mod_i64" -> Just $ BinaryArithOp maMod MT.C_I64_14
 
   -- Comparisons
-  "lt_i8"  -> Just $ BinaryArithOp (ACmp CmpLt) I8
-  "lt_i16" -> Just $ BinaryArithOp (ACmp CmpLt) I16
-  "lt_i32" -> Just $ BinaryArithOp (ACmp CmpLt) I32
-  "lt_i64" -> Just $ BinaryArithOp (ACmp CmpLt) I64
-  "lt_f32" -> Just $ BinaryArithOp (ACmp CmpLt) F32
-  "lt_f64" -> Just $ BinaryArithOp (ACmp CmpLt) F64
+  "lt_i8"  -> Just $ BinaryArithOp (maCmp MA.C_CmpLt_60) MT.C_I8_8
+  "lt_i16" -> Just $ BinaryArithOp (maCmp MA.C_CmpLt_60) MT.C_I16_10
+  "lt_i32" -> Just $ BinaryArithOp (maCmp MA.C_CmpLt_60) MT.C_I32_12
+  "lt_i64" -> Just $ BinaryArithOp (maCmp MA.C_CmpLt_60) MT.C_I64_14
+  "lt_f32" -> Just $ BinaryArithOp (maCmp MA.C_CmpLt_60) MT.C_F32_16
+  "lt_f64" -> Just $ BinaryArithOp (maCmp MA.C_CmpLt_60) MT.C_F64_18
 
-  "le_i8"  -> Just $ BinaryArithOp (ACmp CmpLe) I8
-  "le_i16" -> Just $ BinaryArithOp (ACmp CmpLe) I16
-  "le_i32" -> Just $ BinaryArithOp (ACmp CmpLe) I32
-  "le_i64" -> Just $ BinaryArithOp (ACmp CmpLe) I64
-  "le_f32" -> Just $ BinaryArithOp (ACmp CmpLe) F32
-  "le_f64" -> Just $ BinaryArithOp (ACmp CmpLe) F64
+  "le_i8"  -> Just $ BinaryArithOp (maCmp MA.C_CmpLe_62) MT.C_I8_8
+  "le_i16" -> Just $ BinaryArithOp (maCmp MA.C_CmpLe_62) MT.C_I16_10
+  "le_i32" -> Just $ BinaryArithOp (maCmp MA.C_CmpLe_62) MT.C_I32_12
+  "le_i64" -> Just $ BinaryArithOp (maCmp MA.C_CmpLe_62) MT.C_I64_14
+  "le_f32" -> Just $ BinaryArithOp (maCmp MA.C_CmpLe_62) MT.C_F32_16
+  "le_f64" -> Just $ BinaryArithOp (maCmp MA.C_CmpLe_62) MT.C_F64_18
 
-  "gt_i8"  -> Just $ BinaryArithOp (ACmp CmpGt) I8
-  "gt_i16" -> Just $ BinaryArithOp (ACmp CmpGt) I16
-  "gt_i32" -> Just $ BinaryArithOp (ACmp CmpGt) I32
-  "gt_i64" -> Just $ BinaryArithOp (ACmp CmpGt) I64
-  "gt_f32" -> Just $ BinaryArithOp (ACmp CmpGt) F32
-  "gt_f64" -> Just $ BinaryArithOp (ACmp CmpGt) F64
+  "gt_i8"  -> Just $ BinaryArithOp (maCmp MA.C_CmpGt_64) MT.C_I8_8
+  "gt_i16" -> Just $ BinaryArithOp (maCmp MA.C_CmpGt_64) MT.C_I16_10
+  "gt_i32" -> Just $ BinaryArithOp (maCmp MA.C_CmpGt_64) MT.C_I32_12
+  "gt_i64" -> Just $ BinaryArithOp (maCmp MA.C_CmpGt_64) MT.C_I64_14
+  "gt_f32" -> Just $ BinaryArithOp (maCmp MA.C_CmpGt_64) MT.C_F32_16
+  "gt_f64" -> Just $ BinaryArithOp (maCmp MA.C_CmpGt_64) MT.C_F64_18
 
-  "ge_i8"  -> Just $ BinaryArithOp (ACmp CmpGe) I8
-  "ge_i16" -> Just $ BinaryArithOp (ACmp CmpGe) I16
-  "ge_i32" -> Just $ BinaryArithOp (ACmp CmpGe) I32
-  "ge_i64" -> Just $ BinaryArithOp (ACmp CmpGe) I64
-  "ge_f32" -> Just $ BinaryArithOp (ACmp CmpGe) F32
-  "ge_f64" -> Just $ BinaryArithOp (ACmp CmpGe) F64
+  "ge_i8"  -> Just $ BinaryArithOp (maCmp MA.C_CmpGe_66) MT.C_I8_8
+  "ge_i16" -> Just $ BinaryArithOp (maCmp MA.C_CmpGe_66) MT.C_I16_10
+  "ge_i32" -> Just $ BinaryArithOp (maCmp MA.C_CmpGe_66) MT.C_I32_12
+  "ge_i64" -> Just $ BinaryArithOp (maCmp MA.C_CmpGe_66) MT.C_I64_14
+  "ge_f32" -> Just $ BinaryArithOp (maCmp MA.C_CmpGe_66) MT.C_F32_16
+  "ge_f64" -> Just $ BinaryArithOp (maCmp MA.C_CmpGe_66) MT.C_F64_18
 
-  "eq_i8"  -> Just $ BinaryArithOp (ACmp CmpEq) I8
-  "eq_i16" -> Just $ BinaryArithOp (ACmp CmpEq) I16
-  "eq_i32" -> Just $ BinaryArithOp (ACmp CmpEq) I32
-  "eq_i64" -> Just $ BinaryArithOp (ACmp CmpEq) I64
-  "eq_f32" -> Just $ BinaryArithOp (ACmp CmpEq) F32
-  "eq_f64" -> Just $ BinaryArithOp (ACmp CmpEq) F64
+  "eq_i8"  -> Just $ BinaryArithOp (maCmp MA.C_CmpEq_68) MT.C_I8_8
+  "eq_i16" -> Just $ BinaryArithOp (maCmp MA.C_CmpEq_68) MT.C_I16_10
+  "eq_i32" -> Just $ BinaryArithOp (maCmp MA.C_CmpEq_68) MT.C_I32_12
+  "eq_i64" -> Just $ BinaryArithOp (maCmp MA.C_CmpEq_68) MT.C_I64_14
+  "eq_f32" -> Just $ BinaryArithOp (maCmp MA.C_CmpEq_68) MT.C_F32_16
+  "eq_f64" -> Just $ BinaryArithOp (maCmp MA.C_CmpEq_68) MT.C_F64_18
 
-  "ne_i8"  -> Just $ BinaryArithOp (ACmp CmpNe) I8
-  "ne_i16" -> Just $ BinaryArithOp (ACmp CmpNe) I16
-  "ne_i32" -> Just $ BinaryArithOp (ACmp CmpNe) I32
-  "ne_i64" -> Just $ BinaryArithOp (ACmp CmpNe) I64
-  "ne_f32" -> Just $ BinaryArithOp (ACmp CmpNe) F32
-  "ne_f64" -> Just $ BinaryArithOp (ACmp CmpNe) F64
+  "ne_i8"  -> Just $ BinaryArithOp (maCmp MA.C_CmpNe_70) MT.C_I8_8
+  "ne_i16" -> Just $ BinaryArithOp (maCmp MA.C_CmpNe_70) MT.C_I16_10
+  "ne_i32" -> Just $ BinaryArithOp (maCmp MA.C_CmpNe_70) MT.C_I32_12
+  "ne_i64" -> Just $ BinaryArithOp (maCmp MA.C_CmpNe_70) MT.C_I64_14
+  "ne_f32" -> Just $ BinaryArithOp (maCmp MA.C_CmpNe_70) MT.C_F32_16
+  "ne_f64" -> Just $ BinaryArithOp (maCmp MA.C_CmpNe_70) MT.C_F64_18
 
   _ -> Nothing
+  where
+    -- Helper functions for MAlonzo ArithIR constructors with empty contexts
+    maAdd e1 e2 = MA.C_Add_92 emptyCtx emptyCtx e1 e2
+    maSub e1 e2 = MA.C_Sub_100 emptyCtx emptyCtx e1 e2
+    maMul e1 e2 = MA.C_Mul_108 emptyCtx emptyCtx e1 e2
+    maDiv e1 e2 = MA.C_Div_116 emptyCtx emptyCtx e1 e2
+    maMod e1 e2 = MA.C_Mod_124 emptyCtx emptyCtx e1 e2
+    maCmp op e1 e2 = MA.C_Cmp_138 emptyCtx emptyCtx op e1 e2
 
 -- | Recognize unary arithmetic primitive names
 unaryArithPrim :: Name -> Maybe UnaryArithOp
 unaryArithPrim name = case name of
-  "neg_i8"  -> Just $ UnaryArithOp ANeg I8
-  "neg_i16" -> Just $ UnaryArithOp ANeg I16
-  "neg_i32" -> Just $ UnaryArithOp ANeg I32
-  "neg_i64" -> Just $ UnaryArithOp ANeg I64
-  "neg_f32" -> Just $ UnaryArithOp ANeg F32
-  "neg_f64" -> Just $ UnaryArithOp ANeg F64
+  "neg_i8"  -> Just $ UnaryArithOp MA.C_Neg_130 MT.C_I8_8
+  "neg_i16" -> Just $ UnaryArithOp MA.C_Neg_130 MT.C_I16_10
+  "neg_i32" -> Just $ UnaryArithOp MA.C_Neg_130 MT.C_I32_12
+  "neg_i64" -> Just $ UnaryArithOp MA.C_Neg_130 MT.C_I64_14
+  "neg_f32" -> Just $ UnaryArithOp MA.C_Neg_130 MT.C_F32_16
+  "neg_f64" -> Just $ UnaryArithOp MA.C_Neg_130 MT.C_F64_18
   _ -> Nothing
 
 -- | Try to elaborate an expression to ArithIR
 --
 -- Returns Nothing if the expression contains non-arithmetic constructs
-toArithIR :: Set Name -> Expr -> Maybe ArithIR
+-- Returns Just (numType, arithIR) for pure arithmetic expressions
+toArithIR :: Set Name -> Expr -> Maybe (MT.T_NumType_6, MA.T_ArithIR_72)
 toArithIR locals expr = case expr of
   -- Integer literal
-  EInt n -> Just $ ALitInt I64 n
+  EInt n -> Just (MT.C_I64_14, MA.C_Lit_76 (coe n))
 
-  -- Variables (locals become AVar)
+  -- Variables (locals become Var)
   EVar name
-    | Set.member name locals -> Just $ AVar name I64
+    | Set.member name locals -> Just (MT.C_I64_14, MA.C_Var_84 name MA.C_here_40)
 
   -- Application of arithmetic primitive to pair
   EApp (EVar name) (EPair a b)
     | Just op <- binaryArithPrim name
     -> do
-        a' <- toArithIR locals a
-        b' <- toArithIR locals b
-        Just $ binOpMake op a' b'
+        (_, a') <- toArithIR locals a
+        (_, b') <- toArithIR locals b
+        Just (binOpType op, binOpMake op a' b')
 
   -- Application of unary arithmetic primitive
   EApp (EVar name) arg
     | Just op <- unaryArithPrim name
     -> do
-        arg' <- toArithIR locals arg
-        Just $ unaryOpMake op arg'
+        (_, arg') <- toArithIR locals arg
+        Just (unaryOpType op, unaryOpMake op arg')
 
   -- Nested binary arithmetic: add_i64 (mul_i64 (x, y), z)
   EApp (EVar name) arg
     | Just op <- binaryArithPrim name
     -> case arg of
         EPair a b -> do
-          a' <- toArithIR locals a
-          b' <- toArithIR locals b
-          Just $ binOpMake op a' b'
+          (_, a') <- toArithIR locals a
+          (_, b') <- toArithIR locals b
+          Just (binOpType op, binOpMake op a' b')
         _ -> Nothing
 
   -- Infix binary operators (OCP-0002): a + b, x * y, etc.
   EBinOp op a b -> do
-    a' <- toArithIR locals a
-    b' <- toArithIR locals b
-    let t1 = arithType a'
-        t2 = arithType b'
+    (t1, a') <- toArithIR locals a
+    (t2, b') <- toArithIR locals b
     case promoteNumTypes t1 t2 of
       Left _ -> Nothing  -- Type mismatch - can't be pure arithmetic
       Right resultTy ->
         let a'' = promoteIfNeeded t1 resultTy a'
             b'' = promoteIfNeeded t2 resultTy b'
-        in Just $ binOpToArith op a'' b''
+        in Just (resultTy, binOpToArith op a'' b'')
 
   -- Unary negation (OCP-0002): -x
   EUnaryOp OpNeg e -> do
-    e' <- toArithIR locals e
-    Just $ ANeg e'
+    (t, e') <- toArithIR locals e
+    Just (t, MA.C_Neg_130 e')
 
   _ -> Nothing
 
@@ -440,66 +461,62 @@ isArithExpr locals expr = case toArithIR locals expr of
 -- Type promotion for infix operators (OCP-0002)
 ------------------------------------------------------------------------
 
--- | Get the type of an ArithIR expression
-arithType :: ArithIR -> NumType
-arithType (ALitInt t _) = t
-arithType (ALitFloat t _) = t
-arithType (AVar _ t) = t
-arithType (AAdd a _) = arithType a
-arithType (ASub a _) = arithType a
-arithType (AMul a _) = arithType a
-arithType (ADiv a _) = arithType a
-arithType (AMod a _) = arithType a
-arithType (ANeg a) = arithType a
-arithType (ACmp _ a _) = arithType a  -- Comparison result is same type
-arithType (AConv t _) = t
-
 -- | Determine the promoted type for two numeric types
 --
 -- Rules:
 -- 1. Same domain required: int+int or float+float
 -- 2. Within domain: promote to wider type
 -- 3. Error on cross-domain (int+float)
-promoteNumTypes :: NumType -> NumType -> Either String NumType
+promoteNumTypes :: MT.T_NumType_6 -> MT.T_NumType_6 -> Either String MT.T_NumType_6
 promoteNumTypes t1 t2
   | isFloat t1 /= isFloat t2 = Left "Cannot mix integer and float types in arithmetic"
   | otherwise = Right (if bitwidth t1 >= bitwidth t2 then t1 else t2)
 
--- | Insert AConv if types differ
-promoteIfNeeded :: NumType -> NumType -> ArithIR -> ArithIR
+-- | Insert Conv if types differ
+promoteIfNeeded :: MT.T_NumType_6 -> MT.T_NumType_6 -> MA.T_ArithIR_72 -> MA.T_ArithIR_72
 promoteIfNeeded fromTy toTy expr
-  | fromTy == toTy = expr
-  | otherwise = AConv toTy expr
+  | numTypeEq fromTy toTy = expr
+  | otherwise = MA.C_Conv_146 toTy expr
+
+-- | Check NumType equality (MAlonzo types lack Eq instance)
+numTypeEq :: MT.T_NumType_6 -> MT.T_NumType_6 -> Bool
+numTypeEq MT.C_I8_8   MT.C_I8_8   = True
+numTypeEq MT.C_I16_10 MT.C_I16_10 = True
+numTypeEq MT.C_I32_12 MT.C_I32_12 = True
+numTypeEq MT.C_I64_14 MT.C_I64_14 = True
+numTypeEq MT.C_F32_16 MT.C_F32_16 = True
+numTypeEq MT.C_F64_18 MT.C_F64_18 = True
+numTypeEq _           _           = False
 
 -- | Convert BinOp to ArithIR constructor
-binOpToArith :: BinOp -> ArithIR -> ArithIR -> ArithIR
-binOpToArith OpAdd = AAdd
-binOpToArith OpSub = ASub
-binOpToArith OpMul = AMul
-binOpToArith OpDiv = ADiv
-binOpToArith OpMod = AMod
-binOpToArith OpLt  = ACmp CmpLt
-binOpToArith OpLe  = ACmp CmpLe
-binOpToArith OpGt  = ACmp CmpGt
-binOpToArith OpGe  = ACmp CmpGe
-binOpToArith OpEq  = ACmp CmpEq
-binOpToArith OpNe  = ACmp CmpNe
+binOpToArith :: BinOp -> MA.T_ArithIR_72 -> MA.T_ArithIR_72 -> MA.T_ArithIR_72
+binOpToArith OpAdd = \e1 e2 -> MA.C_Add_92 emptyCtx emptyCtx e1 e2
+binOpToArith OpSub = \e1 e2 -> MA.C_Sub_100 emptyCtx emptyCtx e1 e2
+binOpToArith OpMul = \e1 e2 -> MA.C_Mul_108 emptyCtx emptyCtx e1 e2
+binOpToArith OpDiv = \e1 e2 -> MA.C_Div_116 emptyCtx emptyCtx e1 e2
+binOpToArith OpMod = \e1 e2 -> MA.C_Mod_124 emptyCtx emptyCtx e1 e2
+binOpToArith OpLt  = \e1 e2 -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpLt_60 e1 e2
+binOpToArith OpLe  = \e1 e2 -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpLe_62 e1 e2
+binOpToArith OpGt  = \e1 e2 -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpGt_64 e1 e2
+binOpToArith OpGe  = \e1 e2 -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpGe_66 e1 e2
+binOpToArith OpEq  = \e1 e2 -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpEq_68 e1 e2
+binOpToArith OpNe  = \e1 e2 -> MA.C_Cmp_138 emptyCtx emptyCtx MA.C_CmpNe_70 e1 e2
 
 -- | Convert BinOp to primitive name (for fallback when not pure arithmetic)
-binOpToPrimName :: BinOp -> NumType -> Name
-binOpToPrimName OpAdd I64 = "add_i64"
-binOpToPrimName OpSub I64 = "sub_i64"
-binOpToPrimName OpMul I64 = "mul_i64"
-binOpToPrimName OpDiv I64 = "div_i64"
-binOpToPrimName OpMod I64 = "mod_i64"
-binOpToPrimName OpLt  I64 = "lt_i64"
-binOpToPrimName OpLe  I64 = "le_i64"
-binOpToPrimName OpGt  I64 = "gt_i64"
-binOpToPrimName OpGe  I64 = "ge_i64"
-binOpToPrimName OpEq  I64 = "eq_i64"
-binOpToPrimName OpNe  I64 = "ne_i64"
+binOpToPrimName :: BinOp -> MT.T_NumType_6 -> Name
+binOpToPrimName OpAdd MT.C_I64_14 = "add_i64"
+binOpToPrimName OpSub MT.C_I64_14 = "sub_i64"
+binOpToPrimName OpMul MT.C_I64_14 = "mul_i64"
+binOpToPrimName OpDiv MT.C_I64_14 = "div_i64"
+binOpToPrimName OpMod MT.C_I64_14 = "mod_i64"
+binOpToPrimName OpLt  MT.C_I64_14 = "lt_i64"
+binOpToPrimName OpLe  MT.C_I64_14 = "le_i64"
+binOpToPrimName OpGt  MT.C_I64_14 = "gt_i64"
+binOpToPrimName OpGe  MT.C_I64_14 = "ge_i64"
+binOpToPrimName OpEq  MT.C_I64_14 = "eq_i64"
+binOpToPrimName OpNe  MT.C_I64_14 = "ne_i64"
 -- Default to I64 for other types (type checker will refine later)
-binOpToPrimName op _ = binOpToPrimName op I64
+binOpToPrimName op _ = binOpToPrimName op MT.C_I64_14
 
 -- | Placeholder type for type inference to fill in later
 placeholder :: Type
@@ -611,25 +628,23 @@ elaborateExprWithEnv modEnv locals expr = case expr of
   -- Binary operators (OCP-0002): a + b, x * y, etc.
   EBinOp op a b -> do
     case (toArithIR locals a, toArithIR locals b) of
-      (Just a', Just b') ->
-        let t1 = arithType a'
-            t2 = arithType b'
-        in case promoteNumTypes t1 t2 of
+      (Just (t1, a'), Just (t2, b')) ->
+        case promoteNumTypes t1 t2 of
           Left err -> Left $ TypeMismatch err
           Right resultTy ->
             let a'' = promoteIfNeeded t1 resultTy a'
                 b'' = promoteIfNeeded t2 resultTy b'
-            in Right $ Arith (binOpToArith op a'' b'')
+            in Right $ Arith resultTy (binOpToArith op a'' b'')
       _ -> do
         a' <- elaborateExprWithEnv modEnv locals a
         b' <- elaborateExprWithEnv modEnv locals b
-        let primName = binOpToPrimName op I64
+        let primName = binOpToPrimName op MT.C_I64_14
         Right $ Compose (Var primName) (Pair a' b')
 
   -- Unary operators (OCP-0002): -x
   EUnaryOp OpNeg e -> do
     case toArithIR locals e of
-      Just e' -> Right $ Arith (ANeg e')
+      Just (t, e') -> Right $ Arith t (MA.C_Neg_130 e')
       Nothing -> do
         e' <- elaborateExprWithEnv modEnv locals e
         Right $ Compose (Var "neg_i64") e'
@@ -643,7 +658,7 @@ elaborateAppWithEnv modEnv locals f arg = case f of
     -> case arg of
         EPair a b ->
           case (toArithIR locals a, toArithIR locals b) of
-            (Just a', Just b') -> Right $ Arith (binOpMake op a' b')
+            (Just (_, a'), Just (_, b')) -> Right $ Arith (binOpType op) (binOpMake op a' b')
             _ -> do
               -- Fallback to categorical IR if sub-expressions aren't arithmetic
               a' <- elaborateExprWithEnv modEnv locals a
@@ -658,7 +673,7 @@ elaborateAppWithEnv modEnv locals f arg = case f of
   EVar name
     | Just op <- unaryArithPrim name
     -> case toArithIR locals arg of
-        Just arg' -> Right $ Arith (unaryOpMake op arg')
+        Just (_, arg') -> Right $ Arith (unaryOpType op) (unaryOpMake op arg')
         Nothing -> do
           f' <- elaborateExprWithEnv modEnv locals (EVar name)
           arg' <- elaborateExprWithEnv modEnv locals arg

@@ -805,7 +805,7 @@ generateExecutable name ty ir alloc primitives interpCode = T.unlines
         let e1Code = generateIRExpr e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr e2 x' <> "; })"
       -- Arithmetic expression (OCP-0001)
-      Once.IR.Arith arithExpr -> arithToC arithExpr
+      Once.IR.Arith numTy arithExpr -> arithToC numTy arithExpr
 
     -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
     -- This happens when the expression is the result of a previous pair access:
@@ -1040,7 +1040,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
         let e1Code = generateIRExpr alloc e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr alloc e2 x' <> "; })"
       -- Arithmetic expression (OCP-0001)
-      Once.IR.Arith arithExpr -> arithToC arithExpr
+      Once.IR.Arith numTy arithExpr -> arithToC numTy arithExpr
 
     generateStringLit :: Maybe AllocStrategy -> Text -> Text
     generateStringLit alloc s =
@@ -1212,7 +1212,7 @@ generateLibraryAll functions = (header, source)
         let e1Code = libGenerateIRExpr alloc e1 v
         in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> libGenerateIRExpr alloc e2 x' <> "; })"
       -- Arithmetic expression (OCP-0001)
-      Once.IR.Arith arithExpr -> arithToC arithExpr
+      Once.IR.Arith numTy arithExpr -> arithToC numTy arithExpr
 
     libGenerateStringLit :: Maybe AllocStrategy -> Text -> Text
     libGenerateStringLit alloc s =

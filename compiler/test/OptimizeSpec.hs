@@ -27,58 +27,87 @@ tA, tB :: Type
 tA = TVar "A"
 tB = TVar "B"
 
+-- | IR comparison for testing (since IR doesn't have Eq)
+irMatches :: IR -> IR -> Bool
+irMatches (Id t1) (Id t2) = t1 == t2
+irMatches (Compose g1 f1) (Compose g2 f2) = irMatches g1 g2 && irMatches f1 f2
+irMatches (Fst a1 b1) (Fst a2 b2) = a1 == a2 && b1 == b2
+irMatches (Snd a1 b1) (Snd a2 b2) = a1 == a2 && b1 == b2
+irMatches (Pair a1 b1) (Pair a2 b2) = irMatches a1 a2 && irMatches b1 b2
+irMatches (Terminal t1) (Terminal t2) = t1 == t2
+irMatches (Inl a1 b1) (Inl a2 b2) = a1 == a2 && b1 == b2
+irMatches (Inr a1 b1) (Inr a2 b2) = a1 == a2 && b1 == b2
+irMatches (Case a1 b1) (Case a2 b2) = irMatches a1 a2 && irMatches b1 b2
+irMatches _ _ = False
+
+-- | Assert IR equality for testing
+assertIREqual :: String -> IR -> IR -> Assertion
+assertIREqual msg expected actual =
+  assertBool (msg ++ ": IR mismatch") (irMatches expected actual)
+
 optimizeTests :: TestTree
 optimizeTests = testGroup "Optimize"
   [ testGroup "Identity elimination"
       [ testCase "f ∘ id = f" $
-          optimize (Compose (Fst tA tB) (Id (TProduct tA tB)))
-            @?= Fst tA tB
+          assertIREqual "f ∘ id = f"
+            (Fst tA tB)
+            (optimize (Compose (Fst tA tB) (Id (TProduct tA tB))))
 
       , testCase "id ∘ f = f" $
-          optimize (Compose (Id tA) (Fst tA tB))
-            @?= Fst tA tB
+          assertIREqual "id ∘ f = f"
+            (Fst tA tB)
+            (optimize (Compose (Id tA) (Fst tA tB)))
 
       , testCase "id ∘ id = id" $
-          optimize (Compose (Id tA) (Id tA))
-            @?= Id tA
+          assertIREqual "id ∘ id = id"
+            (Id tA)
+            (optimize (Compose (Id tA) (Id tA)))
       ]
 
   , testGroup "Product laws"
       [ testCase "fst ∘ pair f g = f" $
-          optimize (Compose (Fst tA tB) (Pair (Id tA) (Terminal tA)))
-            @?= Id tA
+          assertIREqual "fst ∘ pair f g = f"
+            (Id tA)
+            (optimize (Compose (Fst tA tB) (Pair (Id tA) (Terminal tA))))
 
       , testCase "snd ∘ pair f g = g" $
-          optimize (Compose (Snd tA tB) (Pair (Id tA) (Terminal tA)))
-            @?= Terminal tA
+          assertIREqual "snd ∘ pair f g = g"
+            (Terminal tA)
+            (optimize (Compose (Snd tA tB) (Pair (Id tA) (Terminal tA))))
 
       , testCase "pair fst snd = id" $
-          optimize (Pair (Fst tA tB) (Snd tA tB))
-            @?= Id (TProduct tA tB)
+          assertIREqual "pair fst snd = id"
+            (Id (TProduct tA tB))
+            (optimize (Pair (Fst tA tB) (Snd tA tB)))
       ]
 
   , testGroup "Coproduct laws"
       [ testCase "case f g ∘ inl = f" $
-          optimize (Compose (Case (Id tA) (Terminal tB)) (Inl tA tB))
-            @?= Id tA
+          assertIREqual "case f g ∘ inl = f"
+            (Id tA)
+            (optimize (Compose (Case (Id tA) (Terminal tB)) (Inl tA tB)))
 
       , testCase "case f g ∘ inr = g" $
-          optimize (Compose (Case (Terminal tA) (Id tB)) (Inr tA tB))
-            @?= Id tB
+          assertIREqual "case f g ∘ inr = g"
+            (Id tB)
+            (optimize (Compose (Case (Terminal tA) (Id tB)) (Inr tA tB)))
 
       , testCase "case inl inr = id" $
-          optimize (Case (Inl tA tB) (Inr tA tB))
-            @?= Id (TSum tA tB)
+          assertIREqual "case inl inr = id"
+            (Id (TSum tA tB))
+            (optimize (Case (Inl tA tB) (Inr tA tB)))
       ]
 
   , testGroup "Nested optimizations"
       [ testCase "id ∘ (fst ∘ pair f g) = f" $
-          optimize (Compose (Id tA) (Compose (Fst tA tB) (Pair (Id tA) (Terminal tA))))
-            @?= Id tA
+          assertIREqual "id ∘ (fst ∘ pair f g) = f"
+            (Id tA)
+            (optimize (Compose (Id tA) (Compose (Fst tA tB) (Pair (Id tA) (Terminal tA)))))
 
       , testCase "(fst ∘ pair f g) ∘ id = f" $
-          optimize (Compose (Compose (Fst tA tB) (Pair (Id tA) (Terminal tA))) (Id tA))
-            @?= Id tA
+          assertIREqual "(fst ∘ pair f g) ∘ id = f"
+            (Id tA)
+            (optimize (Compose (Compose (Fst tA tB) (Pair (Id tA) (Terminal tA))) (Id tA)))
       ]
 
   , testGroup "Semantics preservation"

@@ -12,6 +12,7 @@ import Debug.Trace (trace)
 
 import Once.IR (IR (..))
 import Once.Type (Type (..), Name)
+import Once.Arith.CodeGen.C (arithToC)
 
 -- | Generated C module (header + source)
 data CModule = CModule
@@ -158,7 +159,7 @@ needsPairCast var =
 -- | Generate C expression from IR
 -- The 'var' parameter is the name of the input variable
 generateExpr :: IR -> Text -> Text
-generateExpr ir var = trace ("generateExpr: " ++ take 50 (show ir) ++ " var=" ++ T.unpack var) $ case ir of
+generateExpr ir var = trace ("generateExpr: var=" ++ T.unpack var) $ case ir of
   Id _ -> var
 
   -- When accessing nested pairs, the intermediate .fst/.snd returns void*
@@ -231,6 +232,9 @@ generateExpr ir var = trace ("generateExpr: " ++ take 50 (show ir) ++ " var=" ++
   Let x e1 e2 ->
     let e1Code = generateExpr e1 var
     in "({ typeof(" <> e1Code <> ") " <> x <> " = " <> e1Code <> "; " <> generateExpr e2 x <> "; })"
+
+  -- Arithmetic expressions (OCP-0001): generate C arithmetic directly
+  Arith numTy arithIR -> arithToC numTy arithIR
 
 -- | Convert Text to C string literal (with escaping)
 cStringLiteral :: Text -> Text

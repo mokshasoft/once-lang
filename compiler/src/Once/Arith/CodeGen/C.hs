@@ -9,6 +9,8 @@
 -- The key benefit is that arithmetic expressions bypass the categorical
 -- generator machinery and compile directly to C expressions, which the
 -- C compiler can then optimize with its own register allocator.
+--
+-- Uses MAlonzo-extracted types from verified Agda proofs (OCP-0004).
 module Once.Arith.CodeGen.C
   ( -- * Code generation
     arithToC
@@ -19,93 +21,102 @@ module Once.Arith.CodeGen.C
 
 import Data.Text (Text)
 import qualified Data.Text as T
+import Unsafe.Coerce (unsafeCoerce)
 
-import Once.Arith.IR
+import qualified MAlonzo.Code.Once.Arith.IR as MA
+import qualified MAlonzo.Code.Once.Arith.Type as MT
 
 -- | Generate a complete C expression from ArithIR
 --
 -- The result is a C expression string that can be used directly
 -- in assignments, return statements, or as subexpressions.
-arithToC :: ArithIR -> Text
-arithToC = arithToCExpr
+-- Takes NumType to know how to interpret literals.
+arithToC :: MT.T_NumType_6 -> MA.T_ArithIR_72 -> Text
+arithToC numTy = arithToCExpr numTy
 
 -- | Generate C expression with proper parenthesization
-arithToCExpr :: ArithIR -> Text
-arithToCExpr expr = case expr of
-  -- Literals
-  ALitInt _ n
-    | n < 0     -> "(" <> T.pack (show n) <> ")"
-    | otherwise -> T.pack (show n)
+arithToCExpr :: MT.T_NumType_6 -> MA.T_ArithIR_72 -> Text
+arithToCExpr numTy expr = case expr of
+  -- Literals - extract value from AgdaAny based on type
+  MA.C_Lit_76 val
+    | isFloatType numTy ->
+        let f = unsafeCoerce val :: Double
+        in if f < 0 then "(" <> T.pack (show f) <> ")" else T.pack (show f)
+    | otherwise ->
+        let n = unsafeCoerce val :: Integer
+        in if n < 0 then "(" <> T.pack (show n) <> ")" else T.pack (show n)
 
-  ALitFloat _ f
-    | f < 0     -> "(" <> T.pack (show f) <> ")"
-    | otherwise -> T.pack (show f)
+  -- Variable reference (ignore proof)
+  MA.C_Var_84 name _ -> name
 
-  -- Variable reference
-  AVar name _ -> name
-
-  -- Binary operations - parenthesize for safety
-  AAdd e1 e2 -> parens $ arithToCExpr e1 <> " + " <> arithToCExpr e2
-  ASub e1 e2 -> parens $ arithToCExpr e1 <> " - " <> arithToCExpr e2
-  AMul e1 e2 -> parens $ arithToCExpr e1 <> " * " <> arithToCExpr e2
-  ADiv e1 e2 -> parens $ arithToCExpr e1 <> " / " <> arithToCExpr e2
-  AMod e1 e2 -> parens $ arithToCExpr e1 <> " % " <> arithToCExpr e2
+  -- Binary operations (ignore contexts) - parenthesize for safety
+  MA.C_Add_92 _ _ e1 e2 -> parens $ arithToCExpr numTy e1 <> " + " <> arithToCExpr numTy e2
+  MA.C_Sub_100 _ _ e1 e2 -> parens $ arithToCExpr numTy e1 <> " - " <> arithToCExpr numTy e2
+  MA.C_Mul_108 _ _ e1 e2 -> parens $ arithToCExpr numTy e1 <> " * " <> arithToCExpr numTy e2
+  MA.C_Div_116 _ _ e1 e2 -> parens $ arithToCExpr numTy e1 <> " / " <> arithToCExpr numTy e2
+  MA.C_Mod_124 _ _ e1 e2 -> parens $ arithToCExpr numTy e1 <> " % " <> arithToCExpr numTy e2
 
   -- Unary negation
-  ANeg e -> parens $ "-" <> arithToCExpr e
+  MA.C_Neg_130 e -> parens $ "-" <> arithToCExpr numTy e
 
   -- Comparisons - return int (0 or 1) in C
-  ACmp op e1 e2 -> parens $ arithToCExpr e1 <> cmpOpToC op <> arithToCExpr e2
+  MA.C_Cmp_138 _ _ op e1 e2 -> parens $ arithToCExpr numTy e1 <> cmpOpToC op <> arithToCExpr numTy e2
 
   -- Type conversion/promotion (OCP-0002)
-  AConv targetTy e -> parens $ "(" <> numTypeToC targetTy <> ")" <> arithToCExpr e
+  MA.C_Conv_146 targetTy e -> parens $ "(" <> numTypeToC targetTy <> ")" <> arithToCExpr numTy e
 
 -- | Wrap in parentheses
 parens :: Text -> Text
 parens t = "(" <> t <> ")"
 
+-- | Check if NumType is a floating-point type
+isFloatType :: MT.T_NumType_6 -> Bool
+isFloatType MT.C_F32_16 = True
+isFloatType MT.C_F64_18 = True
+isFloatType _           = False
+
 -- | Convert comparison operator to C
-cmpOpToC :: CmpOp -> Text
-cmpOpToC CmpLt = " < "
-cmpOpToC CmpLe = " <= "
-cmpOpToC CmpGt = " > "
-cmpOpToC CmpGe = " >= "
-cmpOpToC CmpEq = " == "
-cmpOpToC CmpNe = " != "
+cmpOpToC :: MA.T_CmpOp_58 -> Text
+cmpOpToC MA.C_CmpLt_60 = " < "
+cmpOpToC MA.C_CmpLe_62 = " <= "
+cmpOpToC MA.C_CmpGt_64 = " > "
+cmpOpToC MA.C_CmpGe_66 = " >= "
+cmpOpToC MA.C_CmpEq_68 = " == "
+cmpOpToC MA.C_CmpNe_70 = " != "
 
 -- | Convert NumType to C type name
-numTypeToC :: NumType -> Text
-numTypeToC I8  = "int8_t"
-numTypeToC I16 = "int16_t"
-numTypeToC I32 = "int32_t"
-numTypeToC I64 = "int64_t"
-numTypeToC F32 = "float"
-numTypeToC F64 = "double"
+numTypeToC :: MT.T_NumType_6 -> Text
+numTypeToC MT.C_I8_8   = "int8_t"
+numTypeToC MT.C_I16_10 = "int16_t"
+numTypeToC MT.C_I32_12 = "int32_t"
+numTypeToC MT.C_I64_14 = "int64_t"
+numTypeToC MT.C_F32_16 = "float"
+numTypeToC MT.C_F64_18 = "double"
 
 -- | Generate C type declaration for a numeric type
 -- Includes necessary headers
-numTypeToCDecl :: NumType -> Text
+numTypeToCDecl :: MT.T_NumType_6 -> Text
 numTypeToCDecl t = case t of
-  I8  -> "int8_t"   -- requires <stdint.h>
-  I16 -> "int16_t"
-  I32 -> "int32_t"
-  I64 -> "int64_t"
-  F32 -> "float"
-  F64 -> "double"
+  MT.C_I8_8   -> "int8_t"   -- requires <stdint.h>
+  MT.C_I16_10 -> "int16_t"
+  MT.C_I32_12 -> "int32_t"
+  MT.C_I64_14 -> "int64_t"
+  MT.C_F32_16 -> "float"
+  MT.C_F64_18 -> "double"
 
 -- | Check if we need stdint.h for this type
-needsStdint :: NumType -> Bool
-needsStdint I8  = True
-needsStdint I16 = True
-needsStdint I32 = True
-needsStdint I64 = True
-needsStdint _   = False
+needsStdint :: MT.T_NumType_6 -> Bool
+needsStdint MT.C_I8_8   = True
+needsStdint MT.C_I16_10 = True
+needsStdint MT.C_I32_12 = True
+needsStdint MT.C_I64_14 = True
+needsStdint _           = False
 
 -- | Generate a C function that computes an arithmetic expression
 --
 -- Example:
 -- @
--- arithToCFunction "compute" I64 [("x", I64), ("y", I64)] (AAdd (AVar "x" I64) (AVar "y" I64))
+-- arithToCFunction "compute" I64 [("x", I64), ("y", I64)] (Add ...)
 -- @
 -- generates:
 -- @
@@ -113,10 +124,10 @@ needsStdint _   = False
 --     return (x + y);
 -- }
 -- @
-arithToCFunction :: Text -> NumType -> [(Text, NumType)] -> ArithIR -> Text
+arithToCFunction :: Text -> MT.T_NumType_6 -> [(Text, MT.T_NumType_6)] -> MA.T_ArithIR_72 -> Text
 arithToCFunction name retTy params body = T.unlines
   [ numTypeToC retTy <> " " <> name <> "(" <> paramList <> ") {"
-  , "    return " <> arithToCExpr body <> ";"
+  , "    return " <> arithToCExpr retTy body <> ";"
   , "}"
   ]
   where

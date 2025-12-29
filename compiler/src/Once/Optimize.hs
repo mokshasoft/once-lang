@@ -38,7 +38,33 @@ optimizeWithMAlonzo ir
 optimize :: IR -> IR
 optimize ir =
   let ir' = optimizeOnce ir
-  in if ir' == ir then ir else optimize ir'
+  in if irEq ir' ir then ir else optimize ir'
+
+-- | Structural equality for IR (Arith is always considered equal to itself for optimization)
+-- This is needed because MAlonzo types don't have Eq instances
+irEq :: IR -> IR -> Bool
+irEq (Id t1) (Id t2) = t1 == t2
+irEq (Compose g1 f1) (Compose g2 f2) = irEq g1 g2 && irEq f1 f2
+irEq (Fst a1 b1) (Fst a2 b2) = a1 == a2 && b1 == b2
+irEq (Snd a1 b1) (Snd a2 b2) = a1 == a2 && b1 == b2
+irEq (Pair f1 g1) (Pair f2 g2) = irEq f1 f2 && irEq g1 g2
+irEq (Terminal t1) (Terminal t2) = t1 == t2
+irEq (Inl a1 b1) (Inl a2 b2) = a1 == a2 && b1 == b2
+irEq (Inr a1 b1) (Inr a2 b2) = a1 == a2 && b1 == b2
+irEq (Case f1 g1) (Case f2 g2) = irEq f1 f2 && irEq g1 g2
+irEq (Initial t1) (Initial t2) = t1 == t2
+irEq (Curry n1 f1) (Curry n2 f2) = n1 == n2 && irEq f1 f2
+irEq (Apply a1 b1) (Apply a2 b2) = a1 == a2 && b1 == b2
+irEq (Var n1) (Var n2) = n1 == n2
+irEq (LocalVar n1) (LocalVar n2) = n1 == n2
+irEq (FunRef n1) (FunRef n2) = n1 == n2
+irEq (Prim n1 i1 o1) (Prim n2 i2 o2) = n1 == n2 && i1 == i2 && o1 == o2
+irEq (StringLit s1) (StringLit s2) = s1 == s2
+irEq (Fold t1) (Fold t2) = t1 == t2
+irEq (Unfold t1) (Unfold t2) = t1 == t2
+irEq (Let n1 e1 b1) (Let n2 e2 b2) = n1 == n2 && irEq e1 e2 && irEq b1 b2
+irEq (Arith _ _) (Arith _ _) = True  -- MAlonzo types can't be compared, assume same for optimization
+irEq _ _ = False
 
 -- | Apply one pass of optimization rules
 optimizeOnce :: IR -> IR

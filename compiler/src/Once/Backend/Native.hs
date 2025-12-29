@@ -101,6 +101,7 @@ getOutputType ir = case ir of
   H.LocalVar _ -> Nothing
   H.FunRef _ -> Nothing
   H.StringLit _ -> Just (H.TString H.Utf8)
+  H.Arith _ _ -> Just H.TInt  -- Arithmetic returns Int
 
 -- | Get the input type of an IR expression
 getInputType :: H.IR -> Maybe H.Type
@@ -129,6 +130,7 @@ getInputType ir = case ir of
   H.LocalVar _ -> Nothing
   H.FunRef _ -> Nothing
   H.StringLit _ -> Just H.TUnit
+  H.Arith _ _ -> Just H.TUnit  -- Arithmetic has trivial input
 
 ------------------------------------------------------------------------
 -- Compilation functions (verified via MAlonzo extraction)
@@ -203,6 +205,7 @@ containsPrimitives ir = case ir of
   H.FunRef _ -> True
   H.StringLit _ -> True  -- String literals need special handling
   H.Let _ e1 e2 -> containsPrimitives e1 || containsPrimitives e2
+  H.Arith _ _ -> False  -- Arithmetic is self-contained
 
 -- | Collect all primitive names used in IR
 collectPrimitives :: H.IR -> Set Text
@@ -227,6 +230,7 @@ collectPrimitives ir = case ir of
   H.FunRef name -> Set.singleton name
   H.StringLit _ -> Set.empty
   H.Let _ e1 e2 -> collectPrimitives e1 `Set.union` collectPrimitives e2
+  H.Arith _ _ -> Set.empty  -- Arithmetic has no primitives
 
 ------------------------------------------------------------------------
 -- Full IR Compilation (Haskell-based, supports primitives)
@@ -384,9 +388,35 @@ compileFullToX86 ir = genX86WithEnv Map.empty 0 ir
            genX86WithEnv newEnv newDepth e2 <> "\n" <>
            "    addq $8, %rsp"    -- pop the variable
 
-    -- Simple hash for unique labels
+      -- Arithmetic expression: handled separately via C backend
+      H.Arith _ _ -> "    # arith: handled via C backend"
+
+    -- Simple hash for unique labels (no Show needed)
     hash :: H.IR -> Int
-    hash = length . show
+    hash = irHash
+      where
+        irHash ir = case ir of
+          H.Id _ -> 1
+          H.Compose g f -> irHash g * 31 + irHash f
+          H.Fst _ _ -> 2
+          H.Snd _ _ -> 3
+          H.Pair a b -> irHash a * 17 + irHash b + 4
+          H.Terminal _ -> 5
+          H.Inl _ _ -> 6
+          H.Inr _ _ -> 7
+          H.Case a b -> irHash a * 23 + irHash b + 8
+          H.Initial _ -> 9
+          H.Curry _ f -> irHash f + 10
+          H.Apply _ _ -> 11
+          H.Var _ -> 12
+          H.LocalVar _ -> 13
+          H.FunRef _ -> 14
+          H.Prim _ _ _ -> 15
+          H.StringLit _ -> 16
+          H.Fold _ -> 17
+          H.Unfold _ -> 18
+          H.Let _ e b -> irHash e * 29 + irHash b + 19
+          H.Arith _ _ -> 20  -- MAlonzo types, use constant
 
 -- | Compile any IR to AArch64 assembly (Haskell-based, not verified)
 -- ABI: input in x0, output in x0
@@ -457,8 +487,34 @@ compileFullToAArch64 ir = genAArch64 ir
         genAArch64 e1 <> "\n" <>
         genAArch64 e2
 
+      H.Arith _ _ -> "    // arith: handled separately"
+
+    -- Simple hash for unique labels (no Show needed)
     hash :: H.IR -> Int
-    hash = length . show
+    hash = irHash
+      where
+        irHash i = case i of
+          H.Id _ -> 1
+          H.Compose g f -> irHash g * 31 + irHash f
+          H.Fst _ _ -> 2
+          H.Snd _ _ -> 3
+          H.Pair a b -> irHash a * 17 + irHash b + 4
+          H.Terminal _ -> 5
+          H.Inl _ _ -> 6
+          H.Inr _ _ -> 7
+          H.Case a b -> irHash a * 23 + irHash b + 8
+          H.Initial _ -> 9
+          H.Curry _ f -> irHash f + 10
+          H.Apply _ _ -> 11
+          H.Var _ -> 12
+          H.LocalVar _ -> 13
+          H.FunRef _ -> 14
+          H.Prim _ _ _ -> 15
+          H.StringLit _ -> 16
+          H.Fold _ -> 17
+          H.Unfold _ -> 18
+          H.Let _ e b -> irHash e * 29 + irHash b + 19
+          H.Arith _ _ -> 20
 
 -- | Compile any IR to RISC-V 64 assembly (Haskell-based, not verified)
 -- ABI: input in a0, output in a0
@@ -531,5 +587,31 @@ compileFullToRiscV64 ir = genRiscV ir
         genRiscV e1 <> "\n" <>
         genRiscV e2
 
+      H.Arith _ _ -> "    # arith: handled separately"
+
+    -- Simple hash for unique labels (no Show needed)
     hash :: H.IR -> Int
-    hash = length . show
+    hash = irHash
+      where
+        irHash i = case i of
+          H.Id _ -> 1
+          H.Compose g f -> irHash g * 31 + irHash f
+          H.Fst _ _ -> 2
+          H.Snd _ _ -> 3
+          H.Pair a b -> irHash a * 17 + irHash b + 4
+          H.Terminal _ -> 5
+          H.Inl _ _ -> 6
+          H.Inr _ _ -> 7
+          H.Case a b -> irHash a * 23 + irHash b + 8
+          H.Initial _ -> 9
+          H.Curry _ f -> irHash f + 10
+          H.Apply _ _ -> 11
+          H.Var _ -> 12
+          H.LocalVar _ -> 13
+          H.FunRef _ -> 14
+          H.Prim _ _ _ -> 15
+          H.StringLit _ -> 16
+          H.Fold _ -> 17
+          H.Unfold _ -> 18
+          H.Let _ e b -> irHash e * 29 + irHash b + 19
+          H.Arith _ _ -> 20

@@ -5,7 +5,8 @@ module Once.IR
 import Data.Text (Text)
 
 import Once.Type (Type, Name)
-import Once.Arith.IR (ArithIR)
+import qualified MAlonzo.Code.Once.Arith.IR as MA
+import qualified MAlonzo.Code.Once.Arith.Type as MT
 
 -- | Intermediate representation: the 12 categorical generators
 --
@@ -62,6 +63,6 @@ data IR
 
   -- Arithmetic expressions (OCP-0001)
   -- Pure arithmetic recognized at elaboration time for efficient register-based codegen
-  | Arith ArithIR              -- ^ Arithmetic expression tree
-
-  deriving (Eq, Show)
+  -- Uses MAlonzo-extracted types from verified Agda proofs
+  | Arith MT.T_NumType_6 MA.T_ArithIR_72  -- ^ Arithmetic: result type + expression tree
+  -- Note: No Eq/Show due to MAlonzo types containing AgdaAny
