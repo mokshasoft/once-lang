@@ -92,18 +92,19 @@ lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A} {B} {C} {D} {E} {F} {G} {H}
 -- Type-level context extension for generalized exchange
 ------------------------------------------------------------------------
 
--- | Extend a context with multiple types (builds nested contexts)
--- This enables the generalized exchangeN implementation
-extendMany : ∀ {n} (m : ℕ) → SCtx n → Vec Type m → SCtx (m Nat.+ n)
-extendMany {n} zero Γ [] = subst SCtx (+-identityʳ n) Γ
-extendMany (suc m) Γ (A ∷ As) = subst SCtx (+-suc m _) (extendMany m (Γ S, A) As)
+-- | Extend a context with a vector of types
+-- Builds Γ S, types[0] S, types[1] S, ... S, types[m-1]
+-- Size increases by m
+extendMany : ∀ {n m} → SCtx n → Vec Type m → SCtx (n Nat.+ m)
+extendMany {n} Γ [] = subst SCtx (sym (Nat.+-identityʳ n)) Γ
+extendMany Γ (A ∷ As) = subst SCtx (Nat.+-suc _ _) (extendMany (Γ S, A) As)
 
--- | Generalized lookup lemma for arbitrary depth
--- Relates lookup in base context to lookup in extended context
-lookup-extendMany : ∀ {n} (m : ℕ) (Γ : SCtx n) (types : Vec Type m) (i : Fin n)
-                  → lookup Γ i ≡ lookup (extendMany m Γ types) (i ↑ˡ m)
-lookup-extendMany zero Γ [] i = {!!}  -- Need to handle subst
-lookup-extendMany (suc m) Γ (A ∷ As) i = {!!}  -- Inductive case
+-- TODO: Generalized lookup lemma for arbitrary depth
+-- Will be needed for variable case in exchangeN
+-- lookup-extendMany : ∀ {n} (m : ℕ) (Γ : SCtx n) (types : Vec Type m) (i : Fin n)
+--                   → lookup Γ i ≡ lookup (extendMany m Γ types) (shift by m)
+-- lookup-extendMany zero Γ [] i = refl
+-- lookup-extendMany (suc m) Γ (A ∷ As) i = ...
 
 -- | Weaken and Exchange are mutually recursive
 --
@@ -286,7 +287,7 @@ mutual
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.var (suc (suc (suc (suc (suc (suc (suc i)))))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc (suc i)))))))))
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.lam {A = ArgType} e) =
-    Surface.lam (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ ArgType ∷ []) e)
+    Surface.lam (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ ArgType ∷ []) e)
   exchange₇ (Surface.app f x) = Surface.app (exchange₇ f) (exchange₇ x)
   exchange₇ (Surface.pair a b) = Surface.pair (exchange₇ a) (exchange₇ b)
   exchange₇ (Surface.fst' p) = Surface.fst' (exchange₇ p)
@@ -295,44 +296,44 @@ mutual
   exchange₇ (Surface.inr' b) = Surface.inr' (exchange₇ b)
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.case' {A = SumArgL} {B = SumArgR} s l r) =
     Surface.case' (exchange₇ s)
-                  (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgL ∷ []) l)
-                  (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgR ∷ []) r)
+                  (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgL ∷ []) l)
+                  (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgR ∷ []) r)
   exchange₇ Surface.unit = Surface.unit
   exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.let' {A = LetType} e₁ e₂) =
-    Surface.let' (exchange₇ e₁) (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ LetType ∷ []) e₂)
+    Surface.let' (exchange₇ e₁) (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ LetType ∷ []) e₂)
 
   -- | Generalized exchange for arbitrary depth
-  -- Inserts type A before a sequence of types in the context
+  -- Inserts type A at bottom of context, before a sequence of types
   -- The depth parameter is only used for the type signature; recursion is on expression structure
-  exchangeN : ∀ {n} (depth : ℕ) {Γ : SCtx n} {A Result : Type} (types : Vec Type depth)
-            → SExpr (extendMany depth Γ types) Result
-            → SExpr (extendMany depth (Γ S, A) types) Result
+  exchangeN : ∀ {n depth} {Γ : SCtx n} {A Result : Type} (types : Vec Type depth)
+            → SExpr (extendMany Γ types) Result
+            → SExpr (extendMany (Γ S, A) types) Result
   -- Base case: no types to skip, just insert A at top
-  exchangeN zero {Γ} {A} [] e = subst (λ Γ' → SExpr Γ' _) (sym (+-identityʳ _)) (weaken (subst (λ Γ' → SExpr Γ' _) (+-identityʳ _) e))
+  exchangeN {Γ = Γ} {A = A} [] e = {!!}  -- Need to handle subst from extendMany
   -- Recursive case: skip first type B, process the rest
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.var zero) = Surface.var zero
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.var (suc zero)) = Surface.var (suc zero)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.var zero) = Surface.var zero
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.var (suc zero)) = Surface.var (suc zero)
   -- Variables 2 and beyond: need to shift if they reference Γ
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.var (suc (suc i))) = {!!}  -- TODO: handle variable shifting
-  exchangeN (suc d) {Γ} {A} {Result} (B ∷ types) (Surface.lam {A = ArgType} e) = {!!}  -- TODO: extend types vec
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.app e₁ e₂) =
-    Surface.app (exchangeN (suc d) (B ∷ types) e₁) (exchangeN (suc d) (B ∷ types) e₂)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.pair e₁ e₂) =
-    Surface.pair (exchangeN (suc d) (B ∷ types) e₁) (exchangeN (suc d) (B ∷ types) e₂)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.fst' e) =
-    Surface.fst' (exchangeN (suc d) (B ∷ types) e)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.snd' e) =
-    Surface.snd' (exchangeN (suc d) (B ∷ types) e)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.inl' e) =
-    Surface.inl' (exchangeN (suc d) (B ∷ types) e)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.inr' e) =
-    Surface.inr' (exchangeN (suc d) (B ∷ types) e)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.case' s l r) = {!!}  -- TODO: extend types vec for branches
-  exchangeN (suc d) {Γ} {A} (B ∷ types) Surface.unit = Surface.unit
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.absurd v) =
-    Surface.absurd (exchangeN (suc d) (B ∷ types) v)
-  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.let' e₁ e₂) = {!!}  -- TODO: extend types vec for e₂
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.var (suc (suc i))) = {!!}  -- TODO: handle variable shifting
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.lam {A = ArgType} e) = {!!}  -- TODO: extend types vec
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.app e₁ e₂) =
+    Surface.app (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.pair e₁ e₂) =
+    Surface.pair (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.fst' e) =
+    Surface.fst' (exchangeN (B ∷ types) e)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.snd' e) =
+    Surface.snd' (exchangeN (B ∷ types) e)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.inl' e) =
+    Surface.inl' (exchangeN (B ∷ types) e)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.inr' e) =
+    Surface.inr' (exchangeN (B ∷ types) e)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.case' s l r) = {!!}  -- TODO: extend types vec for branches
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) Surface.unit = Surface.unit
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.absurd v) =
+    Surface.absurd (exchangeN (B ∷ types) v)
+  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.let' e₁ e₂) = {!!}  -- TODO: extend types vec for e₂
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
@@ -596,7 +597,7 @@ inferElab ctx (Raw.RPair a b) with inferElab ctx a
 ... | failure err = failure err
 ... | success A aExpr with inferElab ctx b
 ...   | failure err = failure err
-...   | success B bExpr = success (A * B) (Surface.pair aExpr bExpr)
+...   | success B bExpr = success (A Once.Type.* B) (Surface.pair aExpr bExpr)
 
 -- Unit
 inferElab ctx Raw.RUnit = success Unit Surface.unit
@@ -613,7 +614,7 @@ inferElab ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElab ctx scrut)
   where
     inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
     inferCase (failure err) = failure err
-    inferCase (success (A + B) scrutExpr) = inferLeft (inferElab (extendNamedCtx ctx xL A) eL)
+    inferCase (success (A Once.Type.+ B) scrutExpr) = inferLeft (inferElab (extendNamedCtx ctx xL A) eL)
       where
         inferLeft : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))
                   → InferElabResult (NamedCtx.debruijn ctx)

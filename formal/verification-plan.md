@@ -70,27 +70,65 @@ postulate
 
 ## Implementation Plan
 
-### Phase 1: Eliminate `exchange₆` Postulate (1-2 weeks)
+### Phase 1: Eliminate Exchange Postulate via Dependent Types (1-2 weeks)
 
-**Goal**: Zero inline postulates in TypeCheck/Elaborate
+**Goal**: Zero inline postulates in TypeCheck/Elaborate using generalized `exchangeN`
+
+**Decision: Dependent Types Approach (Option C)**
+
+After extending the mechanical pattern from depth 6 → 8, we determined that **only a fully generalized solution enables verification of arbitrary Once programs**:
+
+- ❌ **Option A** (Accept exchange₈ as axiom): Violates proof-instructions.md Principle 1, fails for programs with 8+ nested binders
+- ❌ **Option B** (Continue pattern to depth 10-12): Eventually hits limit, doesn't address root cause
+- ✅ **Option C** (Generalized exchangeN): Handles **any** nesting depth, zero postulates, truly arbitrary
+
+**Why This is Essential:**
+
+Programs with deep nesting are legitimate and can occur via:
+- Nested pattern matching + closures
+- Infix operators creating multiple curried parameters
+- Complex combinator-based code
+
+The goal of "full end-to-end verification of arbitrary Once programs" requires handling **unbounded** nesting depth.
+
+**Implementation Approach:**
+
+Type-level infrastructure:
+```agda
+extendMany : ∀ {n} (m : ℕ) → SCtx n → Vec Type m → SCtx (m Nat.+ n)
+exchangeN : ∀ {n} (depth : ℕ) {Γ : SCtx n} {A Result : Type} (types : Vec Type depth)
+          → SExpr (extendMany depth Γ types) Result
+          → SExpr (extendMany depth (Γ S, A) types) Result
+```
+
+Breakthrough: `extendMany` builds nested contexts at the type level, enabling arbitrary-depth manipulation without explicit nesting levels.
 
 **Tasks**:
 
-1. **Design generalized exchange**
-   - Research well-founded recursion on context depth
-   - Design `exchangeN : ℕ → ...` for arbitrary depth
-   - Prove termination
+1. **✅ Design type-level infrastructure** (DONE)
+   - `extendMany` to build nested contexts from Vec
+   - `exchangeN` signature with dependent types
+   - Integrated into mutual block with weaken/exchange
 
-2. **Implement generalized exchange**
-   - Replace `exchange` through `exchange₆` with single `exchangeN`
-   - Prove all 11 Surface.Syntax constructor cases
-   - Update `weaken` to use `exchangeN`
+2. **🔄 Fix operator ambiguities** (IN PROGRESS)
+   - ~50 instances of `Data.Nat._+_/_*_` vs `Once.Type._+_/_*_` conflicts
+   - Systematic disambiguation with qualified names
 
-3. **Remove postulate and meta-comments**
-   - Delete postulate block (lines 220-225)
-   - Remove justifying comments (per proof-instructions.md Principle 4)
+3. **Complete exchangeN implementation**
+   - Fill holes: variable shifting (needs lookup-extendMany)
+   - Binder cases: lam, case, let (extend types vector)
+   - Prove lookup-extendMany lemma
 
-4. **Type-check**
+4. **Replace exchange₀ through exchange₇**
+   - Use `exchangeN` throughout weaken/exchange functions
+   - Remove manual exchange implementations
+
+5. **Remove postulate and comments**
+   - Delete exchange₈ postulate
+   - Remove TERMINATING pragma once termination proven
+   - Clean up meta-comments
+
+6. **Type-check**
    ```bash
    cd formal
    timeout 300 make agda MODULE=Once/TypeCheck/Elaborate
@@ -98,7 +136,7 @@ postulate
 
 **Files**: `formal/Once/TypeCheck/Elaborate.agda`
 
-**Success**: Zero postulates, type-checks without timeout
+**Success**: Zero postulates, handles arbitrary nesting depth, type-checks without timeout
 
 ---
 
