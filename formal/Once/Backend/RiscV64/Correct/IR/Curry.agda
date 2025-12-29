@@ -40,7 +40,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
-         ir-sp-delta; ir-sp; ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
+         ir-sp-delta; ir-sp; ir-mem-preserved)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -79,10 +79,7 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-ra     = ra-final
     ; ir-sp-delta = 16
     ; ir-sp     = sp-final
-    ; ir-mem-sp = mem-sp-final
-    ; ir-mem-sp+8 = mem-sp+8-final
-    ; ir-mem-sp+16 = mem-sp+16-final
-    ; ir-mem-sp+24 = mem-sp+24-final
+    ; ir-mem-preserved = mem-preserved-final
     }
   where
     len-f = compile-length f
@@ -673,117 +670,37 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     8<16 : 8 < 16
     8<16 = s<s (s<s (s<s (s<s (s<s (s<s (s<s (s<s z<s)))))))
 
-    -- Address disjointness: new-sp and new-sp+8 are both disjoint from orig-sp+k
-    -- Since new-sp = orig-sp ∸ 16, and 16 > 0, new-sp < orig-sp ≤ orig-sp + k
+    -- Universal disjointness lemmas
+    -- new-sp = orig-sp - 16 < orig-sp ≤ orig-sp + n for all n
+    new-sp≢orig-sp+n : ∀ n → new-sp ≢ (orig-sp +ℕ n)
+    new-sp≢orig-sp+n 0 = λ eq → monus-neq-self 16 orig-sp stack-space 0<16
+                                  (trans eq (+-identityʳ orig-sp))
+    new-sp≢orig-sp+n (suc n) = monus-neq-plus 16 orig-sp (suc n) stack-space 0<16
 
-    new-sp≢orig-sp : new-sp ≢ orig-sp
-    new-sp≢orig-sp = monus-neq-self 16 orig-sp stack-space 0<16
+    -- new-sp + 8 = orig-sp - 8 < orig-sp ≤ orig-sp + n for all n
+    new-sp+8≢orig-sp+n : ∀ n → (new-sp +ℕ 8) ≢ (orig-sp +ℕ n)
+    new-sp+8≢orig-sp+n n = monus-plus-neq-plus 16 orig-sp 8 n stack-space 8<16
 
-    new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
-    new-sp≢orig-sp+8 = monus-neq-plus 16 orig-sp 8 stack-space 0<16
-
-    new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
-    new-sp≢orig-sp+16 = monus-neq-plus 16 orig-sp 16 stack-space 0<16
-
-    new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
-    new-sp≢orig-sp+24 = monus-neq-plus 16 orig-sp 24 stack-space 0<16
-
-    -- new-sp + 8 disjointness (8 < 16, so we can use monus-plus-neq-plus)
-    new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
-    new-sp+8≢orig-sp eq = monus-plus-neq-plus 16 orig-sp 8 0 stack-space 8<16 (trans eq (sym (+-identityʳ orig-sp)))
-
-    new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
-    new-sp+8≢orig-sp+8 = monus-plus-neq-plus 16 orig-sp 8 8 stack-space 8<16
-
-    new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
-    new-sp+8≢orig-sp+16 = monus-plus-neq-plus 16 orig-sp 8 16 stack-space 8<16
-
-    new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
-    new-sp+8≢orig-sp+24 = monus-plus-neq-plus 16 orig-sp 8 24 stack-space 8<16
-
-    -- Memory tracking through states
-    -- st1: only changes regs, memory preserved
-    mem-st1-eq : memory st1 ≡ memory s
-    mem-st1-eq = refl
-
-    -- st2 writes at new-sp, disjoint from orig-sp and above
-    mem-st2-at-orig-sp : readMem (memory st2) orig-sp ≡ readMem (memory s) orig-sp
-    mem-st2-at-orig-sp =
-      trans (readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 0) orig-sp
-              (readReg (regs st1) a0)
-              (λ eq → new-sp≢orig-sp (trans (sym (trans (cong (_+ℕ 0) sp-st1) (+-identityʳ new-sp))) eq)))
-            refl
-
-    mem-st2-at-orig-sp+8 : readMem (memory st2) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-st2-at-orig-sp+8 =
-      trans (readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 0) (orig-sp +ℕ 8)
-              (readReg (regs st1) a0)
-              (λ eq → new-sp≢orig-sp+8 (trans (sym (trans (cong (_+ℕ 0) sp-st1) (+-identityʳ new-sp))) eq)))
-            refl
-
-    mem-st2-at-orig-sp+16 : readMem (memory st2) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-st2-at-orig-sp+16 =
-      trans (readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 0) (orig-sp +ℕ 16)
-              (readReg (regs st1) a0)
-              (λ eq → new-sp≢orig-sp+16 (trans (sym (trans (cong (_+ℕ 0) sp-st1) (+-identityʳ new-sp))) eq)))
-            refl
-
-    mem-st2-at-orig-sp+24 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-st2-at-orig-sp+24 =
-      trans (readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 0) (orig-sp +ℕ 24)
-              (readReg (regs st1) a0)
-              (λ eq → new-sp≢orig-sp+24 (trans (sym (trans (cong (_+ℕ 0) sp-st1) (+-identityʳ new-sp))) eq)))
-            refl
-
-    -- st3, st4: only change regs, memory preserved
-    mem-st3-eq : memory st3 ≡ memory st2
-    mem-st3-eq = refl
-
-    mem-st4-eq : memory st4 ≡ memory st2
-    mem-st4-eq = refl
-
-    -- st5 writes at new-sp + 8, disjoint from orig-sp and above
-    mem-st5-at-orig-sp : readMem (memory st5) orig-sp ≡ readMem (memory s) orig-sp
-    mem-st5-at-orig-sp =
-      trans (readMem-writeMem-diff (memory st4) (readReg (regs st4) sp +ℕ 8) orig-sp
-              (readReg (regs st4) t0)
-              (λ eq → new-sp+8≢orig-sp (trans (cong (_+ℕ 8) sp-st4) eq)))
-            mem-st2-at-orig-sp
-
-    mem-st5-at-orig-sp+8 : readMem (memory st5) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-st5-at-orig-sp+8 =
-      trans (readMem-writeMem-diff (memory st4) (readReg (regs st4) sp +ℕ 8) (orig-sp +ℕ 8)
-              (readReg (regs st4) t0)
-              (λ eq → new-sp+8≢orig-sp+8 (trans (cong (_+ℕ 8) sp-st4) eq)))
-            mem-st2-at-orig-sp+8
-
-    mem-st5-at-orig-sp+16 : readMem (memory st5) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-st5-at-orig-sp+16 =
-      trans (readMem-writeMem-diff (memory st4) (readReg (regs st4) sp +ℕ 8) (orig-sp +ℕ 16)
-              (readReg (regs st4) t0)
-              (λ eq → new-sp+8≢orig-sp+16 (trans (cong (_+ℕ 8) sp-st4) eq)))
-            mem-st2-at-orig-sp+16
-
-    mem-st5-at-orig-sp+24 : readMem (memory st5) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-st5-at-orig-sp+24 =
-      trans (readMem-writeMem-diff (memory st4) (readReg (regs st4) sp +ℕ 8) (orig-sp +ℕ 24)
-              (readReg (regs st4) t0)
-              (λ eq → new-sp+8≢orig-sp+24 (trans (cong (_+ℕ 8) sp-st4) eq)))
-            mem-st2-at-orig-sp+24
-
-    -- st6, st7, st8: only change regs or pc, memory preserved
-    mem-final-eq : memory s-final ≡ memory st5
-    mem-final-eq = refl
-
-    -- Final memory preservation proofs
-    mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-    mem-sp-final = mem-st5-at-orig-sp
-
-    mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-    mem-sp+8-final = mem-st5-at-orig-sp+8
-
-    mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-    mem-sp+16-final = mem-st5-at-orig-sp+16
-
-    mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
-    mem-sp+24-final = mem-st5-at-orig-sp+24
+    -- Universal memory preservation at orig-sp + n for all n
+    -- st1: only changes regs. st2 writes at new-sp. st3-st4: only change regs.
+    -- st5 writes at new-sp + 8. st6-st8: only change regs/pc.
+    -- Both write addresses are below orig-sp, so memory at orig-sp + n is preserved.
+    mem-preserved-final : ∀ n → readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+    mem-preserved-final n =
+      let -- st1: only changes regs
+          mem-st1 : readMem (memory st1) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st1 = refl
+          -- st2 writes at new-sp (disjoint from orig-sp + n)
+          mem-st2 : readMem (memory st2) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st2 = trans (readMem-writeMem-diff (memory st1) (readReg (regs st1) sp +ℕ 0) (orig-sp +ℕ n)
+                            (readReg (regs st1) a0)
+                            (λ eq → new-sp≢orig-sp+n n (trans (sym (trans (cong (_+ℕ 0) sp-st1) (+-identityʳ new-sp))) eq)))
+                          mem-st1
+          -- st3, st4: only change regs (memory st4 ≡ memory st2)
+          -- st5 writes at new-sp + 8 (disjoint from orig-sp + n)
+          mem-st5 : readMem (memory st5) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st5 = trans (readMem-writeMem-diff (memory st4) (readReg (regs st4) sp +ℕ 8) (orig-sp +ℕ n)
+                            (readReg (regs st4) t0)
+                            (λ eq → new-sp+8≢orig-sp+n n (trans (cong (_+ℕ 8) sp-st4) eq)))
+                          mem-st2
+      in mem-st5  -- memory s-final ≡ memory st5

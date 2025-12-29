@@ -34,7 +34,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-step4; star-step5)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
-         ir-sp-delta; ir-sp; ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
+         ir-sp-delta; ir-sp; ir-mem-preserved)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -74,10 +74,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     ; ir-ra = ra-final
     ; ir-sp-delta = 16
     ; ir-sp = sp-final
-    ; ir-mem-sp = mem-sp-final
-    ; ir-mem-sp+8 = mem-sp+8-final
-    ; ir-mem-sp+16 = mem-sp+16-final
-    ; ir-mem-sp+24 = mem-sp+24-final
+    ; ir-mem-preserved = mem-preserved-final
     }
   where
     prog : Program
@@ -262,35 +259,16 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     8<16 : 8 < 16
     8<16 = s<s (s<s (s<s (s<s (s<s (s<s (s<s (s<s z<s)))))))
 
-    -- All 8 disjointness lemmas
-    -- Use monus-neq-self and monus-neq-plus when LHS offset is 0
-    -- Use monus-plus-neq-plus when LHS has +8
+    -- Universal disjointness lemmas (replace 8 specific lemmas with 2 universal ones)
+    -- new-sp = orig-sp - 16 < orig-sp ≤ orig-sp + n for all n
+    new-sp≢orig-sp+n : ∀ n → new-sp ≢ (orig-sp +ℕ n)
+    new-sp≢orig-sp+n 0 = λ eq → monus-neq-self 16 orig-sp stack-space 0<16
+                                  (trans eq (+-identityʳ orig-sp))
+    new-sp≢orig-sp+n (suc n) = monus-neq-plus 16 orig-sp (suc n) stack-space 0<16
 
-    new-sp≢orig-sp : new-sp ≢ orig-sp
-    new-sp≢orig-sp = monus-neq-self 16 orig-sp stack-space 0<16
-
-    new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
-    new-sp≢orig-sp+8 = monus-neq-plus 16 orig-sp 8 stack-space 0<16
-
-    new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
-    new-sp≢orig-sp+16 = monus-neq-plus 16 orig-sp 16 stack-space 0<16
-
-    new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
-    new-sp≢orig-sp+24 = monus-neq-plus 16 orig-sp 24 stack-space 0<16
-
-    -- For new-sp+8 cases, need to convert orig-sp to (orig-sp +ℕ 0) on RHS
-    new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
-    new-sp+8≢orig-sp eq = monus-plus-neq-plus 16 orig-sp 8 0 stack-space 8<16
-      (trans eq (sym (+-identityʳ orig-sp)))
-
-    new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
-    new-sp+8≢orig-sp+8 = monus-plus-neq-plus 16 orig-sp 8 8 stack-space 8<16
-
-    new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
-    new-sp+8≢orig-sp+16 = monus-plus-neq-plus 16 orig-sp 8 16 stack-space 8<16
-
-    new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
-    new-sp+8≢orig-sp+24 = monus-plus-neq-plus 16 orig-sp 8 24 stack-space 8<16
+    -- new-sp + 8 = orig-sp - 8 < orig-sp ≤ orig-sp + n for all n
+    new-sp+8≢orig-sp+n : ∀ n → (new-sp +ℕ 8) ≢ (orig-sp +ℕ n)
+    new-sp+8≢orig-sp+n n = monus-plus-neq-plus 16 orig-sp 8 n stack-space 8<16
 
     -- Actual write addresses (as used in state definitions)
     write-addr-st2 : ℕ
@@ -306,82 +284,24 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     write-addr-st3-eq : write-addr-st3 ≡ new-sp +ℕ 8
     write-addr-st3-eq = cong (_+ℕ 8) sp-st2
 
-    -- Memory at orig-sp preserved: st1 doesn't write memory, st2 writes at write-addr-st2,
-    -- st3 writes at write-addr-st3, st4 doesn't write memory.
-    mem-sp-st1 : readMem (memory st1) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st1 = refl  -- st1 only changes regs, not memory
-
-    mem-sp-st2 : readMem (memory st2) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st2 = trans (readMem-writeMem-diff (memory st1) write-addr-st2 orig-sp
-                         (readReg (regs st1) zero)
-                         (λ eq → new-sp≢orig-sp (trans (sym write-addr-st2-eq) eq)))
-                       mem-sp-st1
-
-    mem-sp-st3 : readMem (memory st3) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 orig-sp
-                         (readReg (regs st2) a0)
-                         (λ eq → new-sp+8≢orig-sp (trans (sym write-addr-st3-eq) eq)))
-                       mem-sp-st2
-
-    mem-sp-final : readMem (memory st4) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-final = mem-sp-st3  -- st4 only changes regs
-
-    -- Memory at orig-sp + 8 preserved
-    mem-sp+8-st1 : readMem (memory st1) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st1 = refl
-
-    mem-sp+8-st2 : readMem (memory st2) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st2 = trans (readMem-writeMem-diff (memory st1) write-addr-st2 (orig-sp +ℕ 8)
-                           (readReg (regs st1) zero)
-                           (λ eq → new-sp≢orig-sp+8 (trans (sym write-addr-st2-eq) eq)))
-                         mem-sp+8-st1
-
-    mem-sp+8-st3 : readMem (memory st3) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 8)
-                           (readReg (regs st2) a0)
-                           (λ eq → new-sp+8≢orig-sp+8 (trans (sym write-addr-st3-eq) eq)))
-                         mem-sp+8-st2
-
-    mem-sp+8-final : readMem (memory st4) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-final = mem-sp+8-st3
-
-    -- Memory at orig-sp + 16 preserved
-    mem-sp+16-st1 : readMem (memory st1) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st1 = refl
-
-    mem-sp+16-st2 : readMem (memory st2) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st2 = trans (readMem-writeMem-diff (memory st1) write-addr-st2 (orig-sp +ℕ 16)
+    -- Universal memory preservation at orig-sp + n for all n
+    -- st1 doesn't write memory, st2 writes at new-sp, st3 writes at new-sp+8, st4 doesn't write
+    -- Both write addresses are below orig-sp, so memory at orig-sp + n is preserved
+    mem-preserved-final : ∀ n → readMem (memory st4) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+    mem-preserved-final n =
+      let mem-st1 : readMem (memory st1) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st1 = refl  -- st1 only changes regs
+          mem-st2 : readMem (memory st2) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st2 = trans (readMem-writeMem-diff (memory st1) write-addr-st2 (orig-sp +ℕ n)
                             (readReg (regs st1) zero)
-                            (λ eq → new-sp≢orig-sp+16 (trans (sym write-addr-st2-eq) eq)))
-                          mem-sp+16-st1
-
-    mem-sp+16-st3 : readMem (memory st3) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 16)
+                            (λ eq → new-sp≢orig-sp+n n (trans (sym write-addr-st2-eq) eq)))
+                          mem-st1
+          mem-st3 : readMem (memory st3) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ n)
                             (readReg (regs st2) a0)
-                            (λ eq → new-sp+8≢orig-sp+16 (trans (sym write-addr-st3-eq) eq)))
-                          mem-sp+16-st2
-
-    mem-sp+16-final : readMem (memory st4) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-final = mem-sp+16-st3
-
-    -- Memory at orig-sp + 24 preserved
-    mem-sp+24-st1 : readMem (memory st1) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st1 = refl
-
-    mem-sp+24-st2 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st2 = trans (readMem-writeMem-diff (memory st1) write-addr-st2 (orig-sp +ℕ 24)
-                            (readReg (regs st1) zero)
-                            (λ eq → new-sp≢orig-sp+24 (trans (sym write-addr-st2-eq) eq)))
-                          mem-sp+24-st1
-
-    mem-sp+24-st3 : readMem (memory st3) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 24)
-                            (readReg (regs st2) a0)
-                            (λ eq → new-sp+8≢orig-sp+24 (trans (sym write-addr-st3-eq) eq)))
-                          mem-sp+24-st2
-
-    mem-sp+24-final : readMem (memory st4) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-final = mem-sp+24-st3
+                            (λ eq → new-sp+8≢orig-sp+n n (trans (sym write-addr-st3-eq) eq)))
+                          mem-st2
+      in mem-st3  -- st4 only changes regs
 
     -- Memory properties for encode-inl-construct
     mem-tag : readMem (memory st4) new-sp ≡ just 0
@@ -433,10 +353,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     ; ir-ra = ra-final
     ; ir-sp-delta = 16
     ; ir-sp = sp-final
-    ; ir-mem-sp = mem-sp-final
-    ; ir-mem-sp+8 = mem-sp+8-final
-    ; ir-mem-sp+16 = mem-sp+16-final
-    ; ir-mem-sp+24 = mem-sp+24-final
+    ; ir-mem-preserved = mem-preserved-final
     }
   where
     prog : Program
@@ -658,31 +575,14 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     8<16 : 8 < 16
     8<16 = s<s (s<s (s<s (s<s (s<s (s<s (s<s (s<s z<s)))))))
 
-    -- All 8 disjointness lemmas
-    new-sp≢orig-sp : new-sp ≢ orig-sp
-    new-sp≢orig-sp = monus-neq-self 16 orig-sp stack-space 0<16
+    -- Universal disjointness lemmas
+    new-sp≢orig-sp+n : ∀ n → new-sp ≢ (orig-sp +ℕ n)
+    new-sp≢orig-sp+n 0 = λ eq → monus-neq-self 16 orig-sp stack-space 0<16
+                                  (trans eq (+-identityʳ orig-sp))
+    new-sp≢orig-sp+n (suc n) = monus-neq-plus 16 orig-sp (suc n) stack-space 0<16
 
-    new-sp≢orig-sp+8 : new-sp ≢ (orig-sp +ℕ 8)
-    new-sp≢orig-sp+8 = monus-neq-plus 16 orig-sp 8 stack-space 0<16
-
-    new-sp≢orig-sp+16 : new-sp ≢ (orig-sp +ℕ 16)
-    new-sp≢orig-sp+16 = monus-neq-plus 16 orig-sp 16 stack-space 0<16
-
-    new-sp≢orig-sp+24 : new-sp ≢ (orig-sp +ℕ 24)
-    new-sp≢orig-sp+24 = monus-neq-plus 16 orig-sp 24 stack-space 0<16
-
-    new-sp+8≢orig-sp : (new-sp +ℕ 8) ≢ orig-sp
-    new-sp+8≢orig-sp eq = monus-plus-neq-plus 16 orig-sp 8 0 stack-space 8<16
-      (trans eq (sym (+-identityʳ orig-sp)))
-
-    new-sp+8≢orig-sp+8 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 8)
-    new-sp+8≢orig-sp+8 = monus-plus-neq-plus 16 orig-sp 8 8 stack-space 8<16
-
-    new-sp+8≢orig-sp+16 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 16)
-    new-sp+8≢orig-sp+16 = monus-plus-neq-plus 16 orig-sp 8 16 stack-space 8<16
-
-    new-sp+8≢orig-sp+24 : (new-sp +ℕ 8) ≢ (orig-sp +ℕ 24)
-    new-sp+8≢orig-sp+24 = monus-plus-neq-plus 16 orig-sp 8 24 stack-space 8<16
+    new-sp+8≢orig-sp+n : ∀ n → (new-sp +ℕ 8) ≢ (orig-sp +ℕ n)
+    new-sp+8≢orig-sp+n n = monus-plus-neq-plus 16 orig-sp 8 n stack-space 8<16
 
     -- Actual write addresses (as used in state definitions)
     -- st3: sd t0 0(sp) writes tag at sp + 0
@@ -700,94 +600,25 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     write-addr-st4-eq : write-addr-st4 ≡ new-sp +ℕ 8
     write-addr-st4-eq = cong (_+ℕ 8) sp-st3
 
-    -- Memory at orig-sp preserved: st1, st2 don't write memory,
-    -- st3 writes at write-addr-st3, st4 writes at write-addr-st4, st5 doesn't write memory.
-    mem-sp-st1 : readMem (memory st1) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st1 = refl  -- st1 only changes regs (addi)
-
-    mem-sp-st2 : readMem (memory st2) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st2 = refl  -- st2 only changes regs (li)
-
-    mem-sp-st3 : readMem (memory st3) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 orig-sp
-                         (readReg (regs st2) t0)
-                         (λ eq → new-sp≢orig-sp (trans (sym write-addr-st3-eq) eq)))
-                       mem-sp-st2
-
-    mem-sp-st4 : readMem (memory st4) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-st4 = trans (readMem-writeMem-diff (memory st3) write-addr-st4 orig-sp
-                         (readReg (regs st3) a0)
-                         (λ eq → new-sp+8≢orig-sp (trans (sym write-addr-st4-eq) eq)))
-                       mem-sp-st3
-
-    mem-sp-final : readMem (memory st5) orig-sp ≡ readMem (memory s) orig-sp
-    mem-sp-final = mem-sp-st4  -- st5 only changes regs (mv)
-
-    -- Memory at orig-sp + 8 preserved
-    mem-sp+8-st1 : readMem (memory st1) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st1 = refl
-
-    mem-sp+8-st2 : readMem (memory st2) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st2 = refl
-
-    mem-sp+8-st3 : readMem (memory st3) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 8)
-                           (readReg (regs st2) t0)
-                           (λ eq → new-sp≢orig-sp+8 (trans (sym write-addr-st3-eq) eq)))
-                         mem-sp+8-st2
-
-    mem-sp+8-st4 : readMem (memory st4) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-st4 = trans (readMem-writeMem-diff (memory st3) write-addr-st4 (orig-sp +ℕ 8)
-                           (readReg (regs st3) a0)
-                           (λ eq → new-sp+8≢orig-sp+8 (trans (sym write-addr-st4-eq) eq)))
-                         mem-sp+8-st3
-
-    mem-sp+8-final : readMem (memory st5) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-    mem-sp+8-final = mem-sp+8-st4
-
-    -- Memory at orig-sp + 16 preserved
-    mem-sp+16-st1 : readMem (memory st1) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st1 = refl
-
-    mem-sp+16-st2 : readMem (memory st2) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st2 = refl
-
-    mem-sp+16-st3 : readMem (memory st3) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 16)
+    -- Universal memory preservation at orig-sp + n for all n
+    -- st1, st2 don't write memory, st3 writes at new-sp, st4 writes at new-sp+8, st5 doesn't write
+    mem-preserved-final : ∀ n → readMem (memory st5) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+    mem-preserved-final n =
+      let mem-st1 : readMem (memory st1) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st1 = refl  -- st1 only changes regs (addi)
+          mem-st2 : readMem (memory st2) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st2 = refl  -- st2 only changes regs (li)
+          mem-st3 : readMem (memory st3) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ n)
                             (readReg (regs st2) t0)
-                            (λ eq → new-sp≢orig-sp+16 (trans (sym write-addr-st3-eq) eq)))
-                          mem-sp+16-st2
-
-    mem-sp+16-st4 : readMem (memory st4) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-st4 = trans (readMem-writeMem-diff (memory st3) write-addr-st4 (orig-sp +ℕ 16)
+                            (λ eq → new-sp≢orig-sp+n n (trans (sym write-addr-st3-eq) eq)))
+                          mem-st2
+          mem-st4 : readMem (memory st4) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+          mem-st4 = trans (readMem-writeMem-diff (memory st3) write-addr-st4 (orig-sp +ℕ n)
                             (readReg (regs st3) a0)
-                            (λ eq → new-sp+8≢orig-sp+16 (trans (sym write-addr-st4-eq) eq)))
-                          mem-sp+16-st3
-
-    mem-sp+16-final : readMem (memory st5) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-    mem-sp+16-final = mem-sp+16-st4
-
-    -- Memory at orig-sp + 24 preserved
-    mem-sp+24-st1 : readMem (memory st1) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st1 = refl
-
-    mem-sp+24-st2 : readMem (memory st2) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st2 = refl
-
-    mem-sp+24-st3 : readMem (memory st3) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st3 = trans (readMem-writeMem-diff (memory st2) write-addr-st3 (orig-sp +ℕ 24)
-                            (readReg (regs st2) t0)
-                            (λ eq → new-sp≢orig-sp+24 (trans (sym write-addr-st3-eq) eq)))
-                          mem-sp+24-st2
-
-    mem-sp+24-st4 : readMem (memory st4) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-st4 = trans (readMem-writeMem-diff (memory st3) write-addr-st4 (orig-sp +ℕ 24)
-                            (readReg (regs st3) a0)
-                            (λ eq → new-sp+8≢orig-sp+24 (trans (sym write-addr-st4-eq) eq)))
-                          mem-sp+24-st3
-
-    mem-sp+24-final : readMem (memory st5) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
-    mem-sp+24-final = mem-sp+24-st4
+                            (λ eq → new-sp+8≢orig-sp+n n (trans (sym write-addr-st4-eq) eq)))
+                          mem-st3
+      in mem-st4  -- st5 only changes regs (mv)
 
     -- Memory properties for encode-inr-construct
     mem-tag : readMem (memory st5) new-sp ≡ just 1

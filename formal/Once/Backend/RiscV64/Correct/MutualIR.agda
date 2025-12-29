@@ -48,7 +48,7 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
-         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24;
+         ir-mem-preserved;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
 
@@ -142,6 +142,7 @@ postulate
     readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} x →
     let prog = prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
+
 
 ------------------------------------------------------------------------
 -- Main mutual block: run-ir-star-at-offset
@@ -253,10 +254,7 @@ mutual
       ; ir-ra = ra-final
       ; ir-sp-delta = 24 +ℕ ir-sp-delta r-f +ℕ ir-sp-delta r-g
       ; ir-sp = sp-final
-      ; ir-mem-sp = mem-sp-final
-      ; ir-mem-sp+8 = mem-sp+8-final
-      ; ir-mem-sp+16 = mem-sp+16-final
-      ; ir-mem-sp+24 = mem-sp+24-final
+      ; ir-mem-preserved = mem-preserved-final
       }
     where
       ctx = make-pair-context f g prefix suffix
@@ -425,15 +423,19 @@ mutual
         sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
 
       -- Memory preservation: The middle phase writes encode(eval f x) to sp,
-      -- and g preserves memory at sp (via ir-mem-sp from IH).
-      -- Chain: sp-after-g → ir-mem-sp r-g → sp-mid → mem-mid
+      -- and g preserves memory at sp (via ir-mem-preserved from IH).
+      -- Chain: sp-after-g → ir-mem-preserved r-g 0 → sp-mid → mem-mid
       mem-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp)
                   ≡ just (encode (eval f x))
       mem-after-g = begin
         readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp)
           ≡⟨ cong (readMem (memory s-after-g-raw)) sp-after-g ⟩
         readMem (memory s-after-g-raw) (readReg (regs s-mid) sp)
-          ≡⟨ ir-mem-sp r-g ⟩
+          ≡⟨ cong (readMem (memory s-after-g-raw)) (sym (+-identityʳ (readReg (regs s-mid) sp))) ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s-mid) sp +ℕ 0)
+          ≡⟨ ir-mem-preserved r-g 0 ⟩
+        readMem (memory s-mid) (readReg (regs s-mid) sp +ℕ 0)
+          ≡⟨ cong (readMem (memory s-mid)) (+-identityʳ (readReg (regs s-mid) sp)) ⟩
         readMem (memory s-mid) (readReg (regs s-mid) sp)
           ≡⟨ cong (readMem (memory s-mid)) sp-mid ⟩
         readMem (memory s-mid) (readReg (regs s-after-f-raw) sp)
@@ -442,15 +444,15 @@ mutual
           ∎
 
       -- s1 was saved at sp+16 during setup and preserved through f/middle/g.
-      -- Chain: sp conversions → ir-mem-sp+16 r-g → mem-sp+16-mid →
-      --        ir-mem-sp+16 r-f → mem-s1-setup
+      -- Chain: sp conversions → ir-mem-preserved r-g 16 → mem-sp+16-mid →
+      --        ir-mem-preserved r-f 16 → mem-s1-setup
       mem-s1-after-g : readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp +ℕ 16)
                      ≡ just orig-s1
       mem-s1-after-g = begin
         readMem (memory s-after-g-raw) (readReg (regs s-after-g-raw) sp +ℕ 16)
           ≡⟨ cong (λ addr → readMem (memory s-after-g-raw) (addr +ℕ 16)) sp-after-g ⟩
         readMem (memory s-after-g-raw) (readReg (regs s-mid) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r-g ⟩
+          ≡⟨ ir-mem-preserved r-g 16 ⟩
         readMem (memory s-mid) (readReg (regs s-mid) sp +ℕ 16)
           ≡⟨ cong (λ addr → readMem (memory s-mid) (addr +ℕ 16)) sp-mid ⟩
         readMem (memory s-mid) (readReg (regs s-after-f-raw) sp +ℕ 16)
@@ -458,7 +460,7 @@ mutual
         readMem (memory s-after-f-raw) (readReg (regs s-after-f-raw) sp +ℕ 16)
           ≡⟨ cong (λ addr → readMem (memory s-after-f-raw) (addr +ℕ 16)) sp-after-f ⟩
         readMem (memory s-after-f-raw) (readReg (regs s-setup) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r-f ⟩
+          ≡⟨ ir-mem-preserved r-f 16 ⟩
         readMem (memory s-setup) (readReg (regs s-setup) sp +ℕ 16)
           ≡⟨ mem-s1-setup ⟩
         just orig-s1
@@ -609,30 +611,50 @@ mutual
       s-mid-sp+24-eq-orig-sp = trans (cong (_+ℕ 24) sp-mid)
                                  (trans (cong (_+ℕ 24) sp-after-f) s-setup-sp+24-eq-orig-sp)
 
-      -- Chain for mem-sp-final at orig-sp
-      mem-sp-final : readMem (memory s-final) orig-sp ≡ readMem (memory s) orig-sp
-      mem-sp-final = trans mem-final-orig-sp
-                       (trans (subst (λ a → readMem (memory s-after-g-raw) a ≡ readMem (memory s-mid) a)
-                                     s-mid-sp+24-eq-orig-sp (ir-mem-sp+24 r-g))
-                         (trans mem-mid-orig-sp
-                           (trans (subst (λ a → readMem (memory s-after-f-raw) a ≡ readMem (memory s-setup) a)
-                                         s-setup-sp+24-eq-orig-sp (ir-mem-sp+24 r-f))
-                                  mem-setup-orig-sp)))
-
-      -- Address conversions for orig-sp+8
-      s-setup-sp+32-eq-orig-sp+8 : readReg (regs s-setup) sp +ℕ 32 ≡ orig-sp +ℕ 8
-      s-setup-sp+32-eq-orig-sp+8 = trans (sym (+-assoc (readReg (regs s-setup) sp) 24 8))
-                                    (cong (_+ℕ 8) s-setup-sp+24-eq-orig-sp)
-
-      s-mid-sp+32-eq-orig-sp+8 : readReg (regs s-mid) sp +ℕ 32 ≡ orig-sp +ℕ 8
-      s-mid-sp+32-eq-orig-sp+8 = trans (sym (+-assoc (readReg (regs s-mid) sp) 24 8))
-                                   (cong (_+ℕ 8) s-mid-sp+24-eq-orig-sp)
-
-      -- For now, use simplified postulates that can be proven with more arithmetic
-      postulate
-        mem-sp+8-final : readMem (memory s-final) (orig-sp +ℕ 8) ≡ readMem (memory s) (orig-sp +ℕ 8)
-        mem-sp+16-final : readMem (memory s-final) (orig-sp +ℕ 16) ≡ readMem (memory s) (orig-sp +ℕ 16)
-        mem-sp+24-final : readMem (memory s-final) (orig-sp +ℕ 24) ≡ readMem (memory s) (orig-sp +ℕ 24)
+      -- Universal memory preservation: orig-sp + n is preserved for all n
+      -- Chain through: final → g → middle → f → setup
+      -- Key: s-setup.sp + 24 = orig-sp, s-mid.sp + 24 = orig-sp
+      -- So orig-sp + n = s-setup.sp + (24 + n) = s-mid.sp + (24 + n)
+      mem-preserved-final : ∀ n → readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+      mem-preserved-final n =
+        let -- Address conversion: orig-sp + n = s-setup.sp + (24 + n)
+            -- s-setup-sp+24-eq-orig-sp : s-setup.sp + 24 = orig-sp
+            -- So orig-sp + n = (s-setup.sp + 24) + n = s-setup.sp + (24 + n)
+            addr-eq-setup : orig-sp +ℕ n ≡ readReg (regs s-setup) sp +ℕ (24 +ℕ n)
+            addr-eq-setup = trans (cong (_+ℕ n) (sym s-setup-sp+24-eq-orig-sp))
+                              (+-assoc (readReg (regs s-setup) sp) 24 n)
+            -- Address conversion: orig-sp + n = s-mid.sp + (24 + n)
+            addr-eq-mid : orig-sp +ℕ n ≡ readReg (regs s-mid) sp +ℕ (24 +ℕ n)
+            addr-eq-mid = trans (cong (_+ℕ n) (sym s-mid-sp+24-eq-orig-sp))
+                            (+-assoc (readReg (regs s-mid) sp) 24 n)
+        in begin
+          readMem (memory s-final) (orig-sp +ℕ n)
+            ≡⟨ mem-final-at-orig-sp+n ⟩
+          readMem (memory s-after-g-raw) (orig-sp +ℕ n)
+            ≡⟨ cong (readMem (memory s-after-g-raw)) addr-eq-mid ⟩
+          readMem (memory s-after-g-raw) (readReg (regs s-mid) sp +ℕ (24 +ℕ n))
+            ≡⟨ ir-mem-preserved r-g (24 +ℕ n) ⟩
+          readMem (memory s-mid) (readReg (regs s-mid) sp +ℕ (24 +ℕ n))
+            ≡⟨ cong (readMem (memory s-mid)) (sym addr-eq-mid) ⟩
+          readMem (memory s-mid) (orig-sp +ℕ n)
+            ≡⟨ mem-mid-at-orig-sp+n ⟩
+          readMem (memory s-after-f-raw) (orig-sp +ℕ n)
+            ≡⟨ cong (readMem (memory s-after-f-raw)) addr-eq-setup ⟩
+          readMem (memory s-after-f-raw) (readReg (regs s-setup) sp +ℕ (24 +ℕ n))
+            ≡⟨ ir-mem-preserved r-f (24 +ℕ n) ⟩
+          readMem (memory s-setup) (readReg (regs s-setup) sp +ℕ (24 +ℕ n))
+            ≡⟨ cong (readMem (memory s-setup)) (sym addr-eq-setup) ⟩
+          readMem (memory s-setup) (orig-sp +ℕ n)
+            ≡⟨ mem-setup-at-orig-sp+n ⟩
+          readMem (memory s) (orig-sp +ℕ n)
+            ∎
+        where
+          -- Setup/Middle/Final phases only write to new-sp + {0, 8, 16} which are < orig-sp
+          -- So memory at orig-sp + n is preserved for all n ≥ 0
+          postulate
+            mem-setup-at-orig-sp+n : readMem (memory s-setup) (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+            mem-mid-at-orig-sp+n : readMem (memory s-mid) (orig-sp +ℕ n) ≡ readMem (memory s-after-f-raw) (orig-sp +ℕ n)
+            mem-final-at-orig-sp+n : readMem (memory s-final) (orig-sp +ℕ n) ≡ readMem (memory s-after-g-raw) (orig-sp +ℕ n)
 
   -- Case helper - proven using dispatch helpers and IH
   run-case-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
@@ -656,10 +678,7 @@ mutual
       ; ir-ra = ra-final
       ; ir-sp-delta = ir-sp-delta r-f
       ; ir-sp = sp-final
-      ; ir-mem-sp = mem-sp-final
-      ; ir-mem-sp+8 = mem-sp+8-final
-      ; ir-mem-sp+16 = mem-sp+16-final
-      ; ir-mem-sp+24 = mem-sp+24-final
+      ; ir-mem-preserved = mem-preserved-final
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -781,66 +800,21 @@ mutual
           ∎
 
       -- Memory preservation: case doesn't allocate or write memory directly
-      -- Chains through: dispatch (mem unchanged) → f (ir-mem-sp) → jump (mem unchanged)
+      -- Chains through: dispatch (mem unchanged) → f (ir-mem-preserved) → jump (mem unchanged)
       -- The key is that dispatch and jump don't write memory, and f preserves caller's frame
-      mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-      mem-sp-final = begin
-        readMem (memory s-final) (readReg (regs s) sp)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp)) mem-jump ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s) sp)
-          ≡⟨ cong (readMem (memory s-after-f-raw)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s-dispatch) sp)
-          ≡⟨ ir-mem-sp r-f ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp)
-          ≡⟨ cong (readMem (memory s-dispatch)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp)
-          ∎
-
-      mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-      mem-sp+8-final = begin
-        readMem (memory s-final) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 8)) mem-jump ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ a → readMem (memory s-after-f-raw) (a +ℕ 8)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s-dispatch) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r-f ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 8)
-          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 8)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 8)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 8)
-          ∎
-
-      mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-      mem-sp+16-final = begin
-        readMem (memory s-final) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 16)) mem-jump ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ a → readMem (memory s-after-f-raw) (a +ℕ 16)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s-dispatch) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r-f ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 16)
-          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 16)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 16)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 16)
-          ∎
-
-      mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
-      mem-sp+24-final = begin
-        readMem (memory s-final) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-jump ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ a → readMem (memory s-after-f-raw) (a +ℕ 24)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s-dispatch) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r-f ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 24)
-          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 24)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 24)
+      mem-preserved-final : ∀ n → readMem (memory s-final) (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)
+      mem-preserved-final n = begin
+        readMem (memory s-final) (readReg (regs s) sp +ℕ n)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ n)) mem-jump ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s) sp +ℕ n)
+          ≡⟨ cong (λ a → readMem (memory s-after-f-raw) (a +ℕ n)) (sym sp-dispatch) ⟩
+        readMem (memory s-after-f-raw) (readReg (regs s-dispatch) sp +ℕ n)
+          ≡⟨ ir-mem-preserved r-f n ⟩
+        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ n)
+          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ n)) sp-dispatch ⟩
+        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ n)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ n)) mem-dispatch ⟩
+        readMem (memory s) (readReg (regs s) sp +ℕ n)
           ∎
 
   -- Right path implementation (inj₂ b)
@@ -855,10 +829,7 @@ mutual
       ; ir-ra = ra-final
       ; ir-sp-delta = ir-sp-delta r-g
       ; ir-sp = sp-final
-      ; ir-mem-sp = mem-sp-final
-      ; ir-mem-sp+8 = mem-sp+8-final
-      ; ir-mem-sp+16 = mem-sp+16-final
-      ; ir-mem-sp+24 = mem-sp+24-final
+      ; ir-mem-preserved = mem-preserved-final
       }
     where
       ctx = make-case-context f g prefix suffix
@@ -978,65 +949,20 @@ mutual
           ∎
 
       -- Memory preservation: case doesn't allocate or write memory directly
-      -- Chains through: dispatch (mem unchanged) → g (ir-mem-sp) → end-label (mem unchanged)
-      mem-sp-final : readMem (memory s-final) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-      mem-sp-final = begin
-        readMem (memory s-final) (readReg (regs s) sp)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp)) mem-end ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s) sp)
-          ≡⟨ cong (readMem (memory s-after-g-raw)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s-dispatch) sp)
-          ≡⟨ ir-mem-sp r-g ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp)
-          ≡⟨ cong (readMem (memory s-dispatch)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp)
-          ∎
-
-      mem-sp+8-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-      mem-sp+8-final = begin
-        readMem (memory s-final) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 8)) mem-end ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ a → readMem (memory s-after-g-raw) (a +ℕ 8)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s-dispatch) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r-g ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 8)
-          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 8)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 8)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 8)
-          ∎
-
-      mem-sp+16-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-      mem-sp+16-final = begin
-        readMem (memory s-final) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 16)) mem-end ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ a → readMem (memory s-after-g-raw) (a +ℕ 16)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s-dispatch) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r-g ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 16)
-          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 16)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 16)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 16)
-          ∎
-
-      mem-sp+24-final : readMem (memory s-final) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
-      mem-sp+24-final = begin
-        readMem (memory s-final) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-end ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ a → readMem (memory s-after-g-raw) (a +ℕ 24)) (sym sp-dispatch) ⟩
-        readMem (memory s-after-g-raw) (readReg (regs s-dispatch) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r-g ⟩
-        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ 24)
-          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ 24)) sp-dispatch ⟩
-        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ 24)) mem-dispatch ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 24)
+      -- Chains through: dispatch (mem unchanged) → g (ir-mem-preserved) → end-label (mem unchanged)
+      mem-preserved-final : ∀ n → readMem (memory s-final) (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)
+      mem-preserved-final n = begin
+        readMem (memory s-final) (readReg (regs s) sp +ℕ n)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ n)) mem-end ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s) sp +ℕ n)
+          ≡⟨ cong (λ a → readMem (memory s-after-g-raw) (a +ℕ n)) (sym sp-dispatch) ⟩
+        readMem (memory s-after-g-raw) (readReg (regs s-dispatch) sp +ℕ n)
+          ≡⟨ ir-mem-preserved r-g n ⟩
+        readMem (memory s-dispatch) (readReg (regs s-dispatch) sp +ℕ n)
+          ≡⟨ cong (λ a → readMem (memory s-dispatch) (a +ℕ n)) sp-dispatch ⟩
+        readMem (memory s-dispatch) (readReg (regs s) sp +ℕ n)
+          ≡⟨ cong (λ m → readMem m (readReg (regs s) sp +ℕ n)) mem-dispatch ⟩
+        readMem (memory s) (readReg (regs s) sp +ℕ n)
           ∎
 
   ------------------------------------------------------------------------
@@ -1085,7 +1011,9 @@ mutual
             × readReg (regs s') a0 ≡ encode (env , arg)
             × readReg (regs s') s1 ≡ readReg (regs s) s1
             × readReg (regs s') ra ≡ readReg (regs s) ra
-            × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 24)  -- s2 = frame pointer
+            × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 24  -- s2 = frame pointer
+            × readReg (regs s') sp ≡ readReg (regs s) sp ∸ 24  -- sp = new-sp
+            × readMem (memory s') (readReg (regs s) sp ∸ 24 +ℕ 16) ≡ just (readReg (regs s) s2))  -- saved s2
   thunk-setup-star = thunk-setup-star-proven
 
   -- Prove ret instruction tracing (after cleanup)
@@ -1260,7 +1188,17 @@ mutual
       a0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
       s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
       ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      -- s2-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))  -- frame pointer
+      s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))  -- frame pointer
+      sp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))  -- sp = new-sp
+      mem-s2-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))  -- saved s2
+
+      -- saved-s2-value is the original s2 at thunk entry
+      saved-s2-value : Word
+      saved-s2-value = readReg (regs s) s2
+
+      -- new-sp = frame pointer
+      new-sp : Word
+      new-sp = readReg (regs s) sp ∸ 24
 
       -- Step 2: Call IH on f using program reassociation
       -- Key insight: curry compiles to structured form that we can reassociate
@@ -1373,15 +1311,48 @@ mutual
 
       -- Step 2.5: Trace cleanup instructions (3 instructions)
       -- thunk-cleanup-star-proven traces: mv sp s2, ld s2 16(sp), addi sp sp +24
-      cleanup-result = thunk-cleanup-star-proven f prefix suffix s-after-f-raw
-                         (ir-halted r-f) pc-f-is-cleanup
+
+      -- Memory preservation through f:
+      -- Thunk setup: memory at new-sp + 16 = saved-s2-value
+      -- After f: s-after-f-raw.s2 = s-after-setup.s2 = new-sp (f preserves s2)
+      -- f preserves memory at its caller's sp + n, which is s-after-setup.sp + n = new-sp + n
+      -- So memory at new-sp + 16 is preserved through f
+
+      -- s-after-f-raw.s2 = s-after-setup.s2 = new-sp (f preserves s2, setup sets s2 = new-sp)
+      s2-after-f : readReg (regs s-after-f-raw) s2 ≡ new-sp
+      s2-after-f = trans (ir-s2 r-f) s2-setup
+
+      -- s-after-setup.sp = new-sp (from thunk setup)
+      sp-after-setup : readReg (regs s-after-setup) sp ≡ new-sp
+      sp-after-setup = sp-setup  -- thunk setup returns sp = new-sp
+
+      -- Memory at new-sp + 16 is preserved through f (ir-mem-preserved at offset 16)
+      -- Chain: convert new-sp to s-after-setup.sp → ir-mem-preserved → convert back
+      mem-preserved-through-f : readMem (memory s-after-f-raw) (new-sp +ℕ 16) ≡ readMem (memory s-after-setup) (new-sp +ℕ 16)
+      mem-preserved-through-f = trans (cong (λ addr → readMem (memory s-after-f-raw) (addr +ℕ 16)) (sym sp-after-setup))
+                                      (trans (ir-mem-preserved r-f 16)
+                                             (cong (λ addr → readMem (memory s-after-setup) (addr +ℕ 16)) sp-after-setup))
+
+      -- Chain: memory at new-sp + 16 = saved-s2-value (from setup, preserved through f)
+      mem-s2-after-f : readMem (memory s-after-f-raw) (new-sp +ℕ 16) ≡ just saved-s2-value
+      mem-s2-after-f = trans mem-preserved-through-f mem-s2-setup
+
+      -- Cleanup precondition: memory at s-after-f-raw.s2 + 16 = saved-s2-value
+      -- Since s-after-f-raw.s2 = new-sp, this is exactly mem-s2-after-f
+      mem-s2-precond : readMem (memory s-after-f-raw) (readReg (regs s-after-f-raw) s2 +ℕ 16) ≡ just saved-s2-value
+      mem-s2-precond = subst (λ addr → readMem (memory s-after-f-raw) (addr +ℕ 16) ≡ just saved-s2-value)
+                             (sym s2-after-f) mem-s2-after-f
+
+      cleanup-result = thunk-cleanup-star-proven f prefix suffix saved-s2-value s-after-f-raw
+                         (ir-halted r-f) pc-f-is-cleanup mem-s2-precond
       s-after-cleanup = proj₁ cleanup-result
       star-cleanup-raw = proj₁ (proj₂ cleanup-result)
       h-cleanup = proj₁ (proj₂ (proj₂ cleanup-result))
       pc-cleanup = proj₁ (proj₂ (proj₂ (proj₂ cleanup-result)))
       a0-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result))))
       s1-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result)))))
-      ra-cleanup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result)))))
+      ra-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result))))))
+      s2-cleanup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-result))))))
 
       -- star-cleanup-raw has type Star (prefix ++ compile-riscv (curry f) ++ suffix) = Star prog
       -- But we need Star (prefix-f ++ code-f ++ suffix-f) for composition

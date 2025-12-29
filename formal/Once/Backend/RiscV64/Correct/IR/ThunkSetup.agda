@@ -79,11 +79,13 @@ thunk-setup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
           × readReg (regs s') a0 ≡ encode (env , arg)
           × readReg (regs s') s1 ≡ readReg (regs s) s1
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 24)  -- s2 = frame pointer
+          × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 24  -- s2 = frame pointer
+          × readReg (regs s') sp ≡ readReg (regs s) sp ∸ 24  -- sp = new-sp
+          × readMem (memory s') (readReg (regs s) sp ∸ 24 +ℕ 16) ≡ just (readReg (regs s) s2))  -- saved s2
 
 thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
                         h-false pc-eq a0-eq s0-eq =
-  st7 , star-all , h7 , pc7 , a0-final , s1-final , ra-final , s2-final
+  st7 , star-all , h7 , pc7 , a0-final , s1-final , ra-final , s2-final , sp-final , mem-s2-saved
   where
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -519,6 +521,54 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     mem-at-new-sp+8-st7 : readMem (memory st7) (new-sp +ℕ 8) ≡ just (encode arg)
     mem-at-new-sp+8-st7 = mem-at-new-sp+8-st6  -- mv doesn't change memory
 
+    -- Memory tracking for saved s2 (saved at step 2: sd s2 16(sp))
+    -- At st3, we wrote original s2 to new-sp + 16
+    mem-at-new-sp+16-st3 : readMem (memory st3) (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)
+    mem-at-new-sp+16-st3 =
+      let write-addr = readReg (regs st2) sp +ℕ 16
+          write-val = readReg (regs st2) s2
+          addr-eq : write-addr ≡ new-sp +ℕ 16
+          addr-eq = cong (_+ℕ 16) sp-st2
+          val-eq : write-val ≡ readReg (regs s) s2
+          val-eq = s2-st2  -- s2 unchanged at st2
+          read-at-write = readMem-writeMem-same (memory st2) write-addr write-val
+          read-at-target = subst (λ a → readMem (writeMem (memory st2) write-addr write-val) a ≡ just write-val)
+                                 addr-eq read-at-write
+      in trans read-at-target (cong just val-eq)
+
+    -- st4: mv s2 sp doesn't change memory
+    mem-at-new-sp+16-st4 : readMem (memory st4) (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)
+    mem-at-new-sp+16-st4 = mem-at-new-sp+16-st3
+
+    -- st5: sd s0 0(sp) writes to new-sp, not new-sp+16
+    new-sp≢new-sp+16 : new-sp ≢ new-sp +ℕ 16
+    new-sp≢new-sp+16 = n≢n+suc new-sp 15
+
+    mem-at-new-sp+16-st5 : readMem (memory st5) (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)
+    mem-at-new-sp+16-st5 = trans (readMem-writeMem-diff (memory st4) (readReg (regs st4) sp +ℕ 0) (new-sp +ℕ 16)
+                                                         (readReg (regs st4) s0)
+                                                         (λ eq → new-sp≢new-sp+16 (trans (sym (trans (cong (_+ℕ 0) sp-st4) (+-identityʳ new-sp))) eq)))
+                                mem-at-new-sp+16-st4
+
+    -- st6: sd a0 8(sp) writes to new-sp+8, not new-sp+16
+    -- (new-sp + 8) + 8 ≡ new-sp + 16 via associativity
+    new-sp+8≢new-sp+16 : (new-sp +ℕ 8) ≢ (new-sp +ℕ 16)
+    new-sp+8≢new-sp+16 = subst (λ x → (new-sp +ℕ 8) ≢ x) (+-assoc new-sp 8 8) (n≢n+suc (new-sp +ℕ 8) 7)
+
+    mem-at-new-sp+16-st6 : readMem (memory st6) (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)
+    mem-at-new-sp+16-st6 = trans (readMem-writeMem-diff (memory st5) (readReg (regs st5) sp +ℕ 8) (new-sp +ℕ 16)
+                                                         (readReg (regs st5) a0)
+                                                         (λ eq → new-sp+8≢new-sp+16 (trans (cong (_+ℕ 8) sp-st5) eq)))
+                                mem-at-new-sp+16-st5
+
+    -- st7: mv a0 sp doesn't change memory
+    mem-at-new-sp+16-st7 : readMem (memory st7) (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)
+    mem-at-new-sp+16-st7 = mem-at-new-sp+16-st6
+
+    -- Final: memory at new-sp + 16 contains original s2
+    mem-s2-saved : readMem (memory st7) (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)
+    mem-s2-saved = mem-at-new-sp+16-st7
+
     -- Use encode-pair-construct to show new-sp = encode (env, arg)
     pair-encoding : new-sp ≡ encode (env , arg)
     pair-encoding = encode-pair-construct env arg new-sp (memory st7) mem-at-new-sp-st7 mem-at-new-sp+8-st7
@@ -529,6 +579,13 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
 
     a0-final : readReg (regs st7) a0 ≡ encode (env , arg)
     a0-final = trans a0-st7-is-new-sp pair-encoding
+
+    -- sp tracking: mv a0 sp doesn't change sp
+    sp-st7 : readReg (regs st7) sp ≡ new-sp
+    sp-st7 = trans (readReg-writeReg-a0-sp (regs st6) (readReg (regs st6) sp)) sp-st6
+
+    sp-final : readReg (regs st7) sp ≡ new-sp
+    sp-final = sp-st7
 
 ------------------------------------------------------------------------
 -- Thunk cleanup proof
@@ -542,8 +599,11 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
 --   14+len-f: mv sp s2 (restore sp to frame pointer)
 --   15+len-f: ld s2 16(sp) (restore s2 from saved location)
 --   16+len-f: addi sp sp +24 (deallocate stack frame)
+--
+-- Takes saved-s2-value as precondition: memory at frame-pointer+16 contains this value
+-- Returns: s2 gets restored to saved-s2-value
 thunk-cleanup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
-                             (prefix suffix : Program) (s : State) →
+                             (prefix suffix : Program) (saved-s2-value : Word) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       len-f = compile-length f
       cleanup-offset = length prefix +ℕ 14 +ℕ len-f
@@ -551,15 +611,17 @@ thunk-cleanup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
   in
   halted s ≡ false →
   pc s ≡ cleanup-offset →
+  readMem (memory s) (readReg (regs s) s2 +ℕ 16) ≡ just saved-s2-value →  -- precondition: saved s2
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ ret-offset
           × readReg (regs s') a0 ≡ readReg (regs s) a0
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') s2 ≡ saved-s2-value)  -- s2 restored
 
-thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
-  st3 , star-all , h3 , pc3 , a0-final , s1-final , ra-final
+thunk-cleanup-star-proven {A} {B} {C} f prefix suffix saved-s2-value s h-false pc-eq mem-s2-precond =
+  st3 , star-all , h3 , pc3 , a0-final , s1-final , ra-final , s2-final
   where
     -- Use same names as type signature's let-bindings
     len-f = compile-length f
@@ -715,24 +777,24 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     pc1 = cong (_+ℕ 1) pc-eq
 
     -- For ld s2, we need to know memory at sp+16 has saved s2
-    -- We'll need this as a precondition or use a postulate for now
-    -- The saved s2 value should be at (readReg (regs st1) sp) + 16
+    -- This is now provided as precondition: mem-s2-precond
 
     sp-st1 : readReg (regs st1) sp ≡ readReg (regs s) s2
     sp-st1 = readReg-writeReg-same (regs s) sp (readReg (regs s) s2) (λ ())
 
-    -- For now, postulate the memory read for the saved s2
-    postulate
-      mem-s2-saved : readMem (memory st1) (readReg (regs st1) sp +ℕ 16) ≡ just (readReg (regs s) s2 +ℕ 24)
+    -- Derive memory fact: st1.memory = s.memory (mv doesn't change memory)
+    -- and st1.sp = s.s2, so readMem (memory st1) (st1.sp + 16) = readMem (memory s) (s.s2 + 16)
+    mem-s2-saved : readMem (memory st1) (readReg (regs st1) sp +ℕ 16) ≡ just saved-s2-value
+    mem-s2-saved = trans (cong (λ addr → readMem (memory s) (addr +ℕ 16)) sp-st1) mem-s2-precond
 
     -- State after step 1: ld s2 16(sp)
     st2 : State
-    st2 = record st1 { regs = writeReg (regs st1) s2 (readReg (regs s) s2 +ℕ 24)
+    st2 = record st1 { regs = writeReg (regs st1) s2 saved-s2-value
                      ; pc = pc st1 +ℕ 1 }
 
     step1 : step prog st1 ≡ just st2
     step1 = trans (step-exec prog st1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                  (execInstr-ld-success prog st1 s2 sp (+ 16) (readReg (regs s) s2 +ℕ 24) mem-s2-saved)
+                  (execInstr-ld-success prog st1 s2 sp (+ 16) saved-s2-value mem-s2-saved)
 
     h2 : halted st2 ≡ false
     h2 = h-false
@@ -741,7 +803,7 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc cleanup-offset 1 1)
 
     sp-st2 : readReg (regs st2) sp ≡ readReg (regs s) s2
-    sp-st2 = trans (readReg-writeReg-s2-sp (regs st1) (readReg (regs s) s2 +ℕ 24)) sp-st1
+    sp-st2 = trans (readReg-writeReg-s2-sp (regs st1) saved-s2-value) sp-st1
 
     -- State after step 2: addi sp sp +24 (deallocate)
     st3 : State
@@ -797,7 +859,7 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     a0-st1 = readReg-writeReg-sp-a0 (regs s) (readReg (regs s) s2)
 
     a0-st2 : readReg (regs st2) a0 ≡ readReg (regs s) a0
-    a0-st2 = trans (readReg-writeReg-s2-a0 (regs st1) (readReg (regs s) s2 +ℕ 24)) a0-st1
+    a0-st2 = trans (readReg-writeReg-s2-a0 (regs st1) saved-s2-value) a0-st1
 
     a0-final : readReg (regs st3) a0 ≡ readReg (regs s) a0
     a0-final = trans (readReg-writeReg-sp-a0 (regs st2) (readReg (regs st2) sp +ℕ 24)) a0-st2
@@ -807,7 +869,7 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     s1-st1 = readReg-writeReg-sp-s1 (regs s) (readReg (regs s) s2)
 
     s1-st2 : readReg (regs st2) s1 ≡ readReg (regs s) s1
-    s1-st2 = trans (readReg-writeReg-s2-s1 (regs st1) (readReg (regs s) s2 +ℕ 24)) s1-st1
+    s1-st2 = trans (readReg-writeReg-s2-s1 (regs st1) saved-s2-value) s1-st1
 
     s1-final : readReg (regs st3) s1 ≡ readReg (regs s) s1
     s1-final = trans (readReg-writeReg-sp-s1 (regs st2) (readReg (regs st2) sp +ℕ 24)) s1-st2
@@ -817,7 +879,17 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix s h-false pc-eq =
     ra-st1 = readReg-writeReg-sp-ra (regs s) (readReg (regs s) s2)
 
     ra-st2 : readReg (regs st2) ra ≡ readReg (regs s) ra
-    ra-st2 = trans (readReg-writeReg-s2-ra (regs st1) (readReg (regs s) s2 +ℕ 24)) ra-st1
+    ra-st2 = trans (readReg-writeReg-s2-ra (regs st1) saved-s2-value) ra-st1
 
     ra-final : readReg (regs st3) ra ≡ readReg (regs s) ra
     ra-final = trans (readReg-writeReg-sp-ra (regs st2) (readReg (regs st2) sp +ℕ 24)) ra-st2
+
+    -- s2 is restored to saved-s2-value
+    s2-st2 : readReg (regs st2) s2 ≡ saved-s2-value
+    s2-st2 = readReg-writeReg-same (regs st1) s2 saved-s2-value (λ ())
+
+    s2-st3 : readReg (regs st3) s2 ≡ saved-s2-value
+    s2-st3 = trans (readReg-writeReg-sp-s2 (regs st2) (readReg (regs st2) sp +ℕ 24)) s2-st2
+
+    s2-final : readReg (regs st3) s2 ≡ saved-s2-value
+    s2-final = s2-st3

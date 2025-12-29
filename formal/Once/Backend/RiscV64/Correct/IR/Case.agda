@@ -47,7 +47,7 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp;
-         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16)
+         ir-mem-preserved; ir-sp-delta)
 
 open import Data.Bool using (Bool; true; false; _∧_; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_) renaming (_+_ to _+ℕ_)

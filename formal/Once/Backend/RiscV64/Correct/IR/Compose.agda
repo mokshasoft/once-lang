@@ -31,12 +31,11 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
-         ir-mem-sp; ir-mem-sp+8; ir-mem-sp+16; ir-mem-sp+24)
+         ir-mem-preserved)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; _≟_)
-open import Relation.Nullary using (yes; no)
+open import Data.Nat.Properties using (+-assoc; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -146,10 +145,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = reco
   ; ir-ra = ra-final
   ; ir-sp-delta = ir-sp-delta r1 +ℕ ir-sp-delta r2
   ; ir-sp = sp-final
-  ; ir-mem-sp = mem-sp-final
-  ; ir-mem-sp+8 = mem-sp+8-final
-  ; ir-mem-sp+16 = mem-sp+16-final
-  ; ir-mem-sp+24 = mem-sp+24-final
+  ; ir-mem-preserved = mem-preserved-final
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -227,206 +223,26 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = reco
       readReg (regs s) sp
         ∎
 
-    -- Memory preservation at sp and above
-    -- Key: s.sp = sf.sp + delta-f (from ir-sp r1)
-    -- When delta-f = 0: sf.sp = s.sp, chain ir-mem-sp r2 + ir-mem-sp r1
-    -- When delta-f = 8: s.sp = sf.sp + 8, use ir-mem-sp+8 r2 + ir-mem-sp r1
-    -- etc.
-
-    -- Helper: derive sf.sp relation from ir-sp r1 and specific delta value
-    sf-sp-plus-delta : readReg (regs sf) sp +ℕ delta-f ≡ readReg (regs s) sp
-    sf-sp-plus-delta = ir-sp r1
-
-    -- Memory preservation at s.sp: case analysis on delta-f
-    mem-sp-final : readMem (memory sg) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-    mem-sp-final with delta-f ≟ 0
-    ... | yes delta-is-0 =
-      -- delta-f = 0, so sf.sp + 0 = s.sp, thus sf.sp = s.sp
-      let sf-sp-eq : readReg (regs sf) sp ≡ readReg (regs s) sp
-          sf-sp-eq = trans (sym (+-identityʳ (readReg (regs sf) sp)))
-                           (subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-0 sf-sp-plus-delta)
-      in begin
-        readMem (memory sg) (readReg (regs s) sp)
-          ≡⟨ cong (readMem (memory sg)) (sym sf-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp)
-          ≡⟨ ir-mem-sp r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp)
-          ≡⟨ cong (readMem (memory sf)) sf-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp)
-          ≡⟨ ir-mem-sp r1 ⟩
-        readMem (memory s) (readReg (regs s) sp)
-          ∎
-    ... | no _ with delta-f ≟ 8
-    ... | yes delta-is-8 =
-      -- delta-f = 8, so sf.sp + 8 = s.sp
-      let s-sp-eq : readReg (regs sf) sp +ℕ 8 ≡ readReg (regs s) sp
-          s-sp-eq = subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-8 sf-sp-plus-delta
-      in begin
-        readMem (memory sg) (readReg (regs s) sp)
-          ≡⟨ cong (readMem (memory sg)) (sym s-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 8)
-          ≡⟨ cong (readMem (memory sf)) s-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp)
-          ≡⟨ ir-mem-sp r1 ⟩
-        readMem (memory s) (readReg (regs s) sp)
-          ∎
-    ... | no _ with delta-f ≟ 16
-    ... | yes delta-is-16 =
-      let s-sp-eq : readReg (regs sf) sp +ℕ 16 ≡ readReg (regs s) sp
-          s-sp-eq = subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-16 sf-sp-plus-delta
-      in begin
-        readMem (memory sg) (readReg (regs s) sp)
-          ≡⟨ cong (readMem (memory sg)) (sym s-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 16)
-          ≡⟨ cong (readMem (memory sf)) s-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp)
-          ≡⟨ ir-mem-sp r1 ⟩
-        readMem (memory s) (readReg (regs s) sp)
-          ∎
-    ... | no _ with delta-f ≟ 24
-    ... | yes delta-is-24 =
-      let s-sp-eq : readReg (regs sf) sp +ℕ 24 ≡ readReg (regs s) sp
-          s-sp-eq = subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-24 sf-sp-plus-delta
-      in begin
-        readMem (memory sg) (readReg (regs s) sp)
-          ≡⟨ cong (readMem (memory sg)) (sym s-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ cong (readMem (memory sf)) s-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp)
-          ≡⟨ ir-mem-sp r1 ⟩
-        readMem (memory s) (readReg (regs s) sp)
-          ∎
-    ... | no _ = mem-sp-fallback
-      where
-        -- Fallback for delta > 24: this requires g to preserve memory at s.sp
-        -- which is at sf.sp + delta-f, where delta-f > 24.
-        -- Current IRStarResult only tracks memory preservation up to sf.sp + 24.
-        -- For deeply nested constructs, this would need additional infrastructure.
-        postulate mem-sp-fallback : readMem (memory sg) (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-
-    -- Similarly for +8, +16, +24 (chain through corresponding fields)
-    mem-sp+8-final : readMem (memory sg) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-    mem-sp+8-final with delta-f ≟ 0
-    ... | yes delta-is-0 =
-      let sf-sp-eq : readReg (regs sf) sp ≡ readReg (regs s) sp
-          sf-sp-eq = trans (sym (+-identityʳ (readReg (regs sf) sp)))
-                           (subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-0 sf-sp-plus-delta)
-      in begin
-        readMem (memory sg) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (λ x → readMem (memory sg) (x +ℕ 8)) (sym sf-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 8)
-          ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 8)) sf-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r1 ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 8)
-          ∎
-    ... | no _ with delta-f ≟ 8
-    ... | yes delta-is-8 =
-      let s-sp-eq : readReg (regs sf) sp +ℕ 8 ≡ readReg (regs s) sp
-          s-sp-eq = subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-8 sf-sp-plus-delta
-      in begin
-        readMem (memory sg) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (readMem (memory sg)) (cong (_+ℕ 8) (sym s-sp-eq)) ⟩
-        readMem (memory sg) ((readReg (regs sf) sp +ℕ 8) +ℕ 8)
-          ≡⟨ cong (readMem (memory sg)) (+-assoc (readReg (regs sf) sp) 8 8) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 16)
-          ≡⟨ cong (readMem (memory sf)) (sym (+-assoc (readReg (regs sf) sp) 8 8)) ⟩
-        readMem (memory sf) ((readReg (regs sf) sp +ℕ 8) +ℕ 8)
-          ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 8)) s-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r1 ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 8)
-          ∎
-    ... | no _ with delta-f ≟ 16
-    ... | yes delta-is-16 =
-      let s-sp-eq : readReg (regs sf) sp +ℕ 16 ≡ readReg (regs s) sp
-          s-sp-eq = subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-16 sf-sp-plus-delta
-      in begin
-        readMem (memory sg) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ cong (readMem (memory sg)) (cong (_+ℕ 8) (sym s-sp-eq)) ⟩
-        readMem (memory sg) ((readReg (regs sf) sp +ℕ 16) +ℕ 8)
-          ≡⟨ cong (readMem (memory sg)) (+-assoc (readReg (regs sf) sp) 16 8) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ cong (readMem (memory sf)) (sym (+-assoc (readReg (regs sf) sp) 16 8)) ⟩
-        readMem (memory sf) ((readReg (regs sf) sp +ℕ 16) +ℕ 8)
-          ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 8)) s-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp +ℕ 8)
-          ≡⟨ ir-mem-sp+8 r1 ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 8)
-          ∎
-    ... | no _ = mem-sp+8-fallback
-      where postulate mem-sp+8-fallback : readMem (memory sg) (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-
-    mem-sp+16-final : readMem (memory sg) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-    mem-sp+16-final with delta-f ≟ 0
-    ... | yes delta-is-0 =
-      let sf-sp-eq : readReg (regs sf) sp ≡ readReg (regs s) sp
-          sf-sp-eq = trans (sym (+-identityʳ (readReg (regs sf) sp)))
-                           (subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-0 sf-sp-plus-delta)
-      in begin
-        readMem (memory sg) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (λ x → readMem (memory sg) (x +ℕ 16)) (sym sf-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 16)
-          ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 16)) sf-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r1 ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 16)
-          ∎
-    ... | no _ with delta-f ≟ 8
-    ... | yes delta-is-8 =
-      let s-sp-eq : readReg (regs sf) sp +ℕ 8 ≡ readReg (regs s) sp
-          s-sp-eq = subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-8 sf-sp-plus-delta
-      in begin
-        readMem (memory sg) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ cong (readMem (memory sg)) (cong (_+ℕ 16) (sym s-sp-eq)) ⟩
-        readMem (memory sg) ((readReg (regs sf) sp +ℕ 8) +ℕ 16)
-          ≡⟨ cong (readMem (memory sg)) (+-assoc (readReg (regs sf) sp) 8 16) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ cong (readMem (memory sf)) (sym (+-assoc (readReg (regs sf) sp) 8 16)) ⟩
-        readMem (memory sf) ((readReg (regs sf) sp +ℕ 8) +ℕ 16)
-          ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 16)) s-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp +ℕ 16)
-          ≡⟨ ir-mem-sp+16 r1 ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 16)
-          ∎
-    ... | no _ = mem-sp+16-fallback
-      where postulate mem-sp+16-fallback : readMem (memory sg) (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-
-    mem-sp+24-final : readMem (memory sg) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
-    mem-sp+24-final with delta-f ≟ 0
-    ... | yes delta-is-0 =
-      let sf-sp-eq : readReg (regs sf) sp ≡ readReg (regs s) sp
-          sf-sp-eq = trans (sym (+-identityʳ (readReg (regs sf) sp)))
-                           (subst (λ d → readReg (regs sf) sp +ℕ d ≡ readReg (regs s) sp) delta-is-0 sf-sp-plus-delta)
-      in begin
-        readMem (memory sg) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ cong (λ x → readMem (memory sg) (x +ℕ 24)) (sym sf-sp-eq) ⟩
-        readMem (memory sg) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r2 ⟩
-        readMem (memory sf) (readReg (regs sf) sp +ℕ 24)
-          ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 24)) sf-sp-eq ⟩
-        readMem (memory sf) (readReg (regs s) sp +ℕ 24)
-          ≡⟨ ir-mem-sp+24 r1 ⟩
-        readMem (memory s) (readReg (regs s) sp +ℕ 24)
-          ∎
-    ... | no _ = mem-sp+24-fallback
-      where postulate mem-sp+24-fallback : readMem (memory sg) (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+    -- Memory preservation at sp and above (universally quantified)
+    -- Key insight: s.sp = sf.sp + delta-f (from ir-sp r1)
+    -- So s.sp + n = sf.sp + (delta-f + n)
+    -- Chain: ir-mem-preserved r2 (delta-f + n) then ir-mem-preserved r1 n
+    mem-preserved-final : ∀ n → readMem (memory sg) (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)
+    mem-preserved-final n = begin
+      readMem (memory sg) (readReg (regs s) sp +ℕ n)
+        ≡⟨ cong (readMem (memory sg)) (sym (cong (_+ℕ n) (ir-sp r1))) ⟩
+      readMem (memory sg) ((readReg (regs sf) sp +ℕ delta-f) +ℕ n)
+        ≡⟨ cong (readMem (memory sg)) (+-assoc (readReg (regs sf) sp) delta-f n) ⟩
+      readMem (memory sg) (readReg (regs sf) sp +ℕ (delta-f +ℕ n))
+        ≡⟨ ir-mem-preserved r2 (delta-f +ℕ n) ⟩
+      readMem (memory sf) (readReg (regs sf) sp +ℕ (delta-f +ℕ n))
+        ≡⟨ cong (readMem (memory sf)) (sym (+-assoc (readReg (regs sf) sp) delta-f n)) ⟩
+      readMem (memory sf) ((readReg (regs sf) sp +ℕ delta-f) +ℕ n)
+        ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ n)) (ir-sp r1) ⟩
+      readMem (memory sf) (readReg (regs s) sp +ℕ n)
+        ≡⟨ ir-mem-preserved r1 n ⟩
+      readMem (memory s) (readReg (regs s) sp +ℕ n)
+        ∎
 
 ------------------------------------------------------------------------
 -- Helper for getting f's result in the right program
@@ -449,10 +265,7 @@ transform-f-result {_} {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
   ; ir-sp = ir-sp r
-  ; ir-mem-sp = ir-mem-sp r
-  ; ir-mem-sp+8 = ir-mem-sp+8 r
-  ; ir-mem-sp+16 = ir-mem-sp+16 r
-  ; ir-mem-sp+24 = ir-mem-sp+24 r
+  ; ir-mem-preserved = ir-mem-preserved r
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -475,10 +288,7 @@ transform-g-result {_} {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
   ; ir-sp = ir-sp r
-  ; ir-mem-sp = ir-mem-sp r
-  ; ir-mem-sp+8 = ir-mem-sp+8 r
-  ; ir-mem-sp+16 = ir-mem-sp+16 r
-  ; ir-mem-sp+24 = ir-mem-sp+24 r
+  ; ir-mem-preserved = ir-mem-preserved r
   }
   where
     ctx = make-compose-context f g prefix suffix

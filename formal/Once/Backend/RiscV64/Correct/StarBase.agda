@@ -73,13 +73,10 @@ record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program) (s 
     -- ir-sp proves: sp' + delta = orig-sp (i.e., sp decreased by delta).
     ir-sp-delta : ℕ  -- Stack bytes allocated (0 for most, 16 for inl/inr, 24 for pair)
     ir-sp      : readReg (regs s') sp +ℕ ir-sp-delta ≡ readReg (regs s) sp
-    -- Memory preservation at caller's frame (for pair/case composition)
-    -- These track that memory at the ORIGINAL sp locations is preserved
-    -- +24 is needed for pair (allocates 24 bytes, needs orig-sp preserved through IH)
-    ir-mem-sp    : readMem (memory s') (readReg (regs s) sp) ≡ readMem (memory s) (readReg (regs s) sp)
-    ir-mem-sp+8  : readMem (memory s') (readReg (regs s) sp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 8)
-    ir-mem-sp+16 : readMem (memory s') (readReg (regs s) sp +ℕ 16) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 16)
-    ir-mem-sp+24 : readMem (memory s') (readReg (regs s) sp +ℕ 24) ≡ readMem (memory s) (readReg (regs s) sp +ℕ 24)
+    -- Memory preservation at caller's frame (universally quantified)
+    -- For ANY offset n from original sp, memory is preserved.
+    -- This handles arbitrarily deep nesting (pair, case, etc.)
+    ir-mem-preserved : ∀ n → readMem (memory s') (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)
 
 open IRStarResult public
 
@@ -125,10 +122,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
-  ; ir-mem-sp    = refl  -- no memory write
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -160,10 +154,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) 0)
-  ; ir-mem-sp    = refl  -- no memory write
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write
   }
   where
     prog = prefix ++ li a0 (+ 0) ∷ suffix
@@ -196,10 +187,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
-  ; ir-mem-sp    = refl  -- no memory write
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -231,10 +219,7 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
-  ; ir-mem-sp    = refl  -- no memory write
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -266,10 +251,7 @@ run-arr-star {i} {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = refl
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
-  ; ir-mem-sp    = refl  -- no memory write
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -301,10 +283,7 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₁ x))
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₁ x)))
-  ; ir-mem-sp    = refl  -- no memory write (only read)
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write (only read)
   }
   where
     prog = prefix ++ ld a0 (+ 0) a0 ∷ suffix
@@ -357,10 +336,7 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₂ x))
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₂ x)))
-  ; ir-mem-sp    = refl  -- no memory write (only read)
-  ; ir-mem-sp+8  = refl
-  ; ir-mem-sp+16 = refl
-  ; ir-mem-sp+24 = refl
+  ; ir-mem-preserved = λ n → refl  -- no memory write (only read)
   }
   where
     prog = prefix ++ ld a0 (+ 8) a0 ∷ suffix
