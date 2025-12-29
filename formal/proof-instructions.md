@@ -1,4 +1,50 @@
-# Proof Instructions for Once X86 Backend
+# Proof Instructions for Once Formal Verification
+
+## The Prime Directive: No Shortcuts
+
+**The goal is complete end-to-end verification with zero unjustified postulates.**
+
+Every shortcut, workaround, or "temporary" postulate is technical debt that
+compounds. What seems like a small compromise inevitably leads to more
+postulates, spec gaps, and eventually an unverifiable system.
+
+### The Fundamental Principle
+
+> **If the specification cannot be proven, fix the implementation.**
+
+When a proof fails, there are only two valid responses:
+1. **The implementation is wrong** → Fix the code generator
+2. **The specification is wrong** → Fix the specification
+
+There is NO third option of "add a postulate and move on."
+
+### Example: Register Preservation
+
+If IRStarResult requires x20/x21 preservation but pair/curry/case modify them:
+
+❌ **WRONG approach (shortcut):**
+- Add postulates claiming preservation (they're false)
+- Remove preservation from IRStarResult (hides the problem)
+- Add "preconditions" that make false claims trivially true
+
+✅ **RIGHT approach (principled):**
+- Recognize the code generator violates the ARM64 ABI
+- Fix CodeGen.agda to save/restore x20/x21 properly
+- The proofs then work because the claims are TRUE
+
+### Why This Matters
+
+Shortcuts accumulate:
+1. One postulate leads to another to work around its limitations
+2. Proof complexity grows as workarounds interact
+3. Eventually the system becomes unverifiable
+4. The original "small" shortcut caused systemic failure
+
+The principled approach pays off:
+1. Each proof is solid because it proves true facts
+2. Proofs compose cleanly
+3. The system remains verifiable as it grows
+4. Full E2E verification becomes achievable
 
 ## Core Principles
 
@@ -7,8 +53,9 @@ Every `postulate` block in proof files (Correct.agda, MutualIR.agda, etc.)
 represents unfinished work. The goal is zero inline postulates.
 
 If you cannot prove something:
+- **Change the implementation** - make the code do what the spec says
 - **Change the abstraction** - add preconditions, strengthen invariants
-- **Do not add postulates** - postulates hide bugs
+- **Do not add postulates** - postulates hide bugs and block verification
 
 ### 2. Semantic Axioms in Postulates.agda
 The only acceptable postulates are semantic axioms in `Once/Postulates.agda`:
