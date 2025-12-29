@@ -135,13 +135,14 @@ data Instr : Set where
   -- Comparison (sets PSTATE.NZCV flags)
   cmp    : Reg → Operand → Instr          -- cmp xN, xM/#imm
 
-  -- Conditional branches (check PSTATE.NZCV)
-  b      : ℕ → Instr                      -- b label (unconditional branch)
-  b-eq   : ℕ → Instr                      -- b.eq label (branch if equal, Z=1)
-  b-ne   : ℕ → Instr                      -- b.ne label (branch if not equal, Z=0)
+  -- Branches (PC-relative offsets for position-independent code)
+  -- Semantics: PC' = PC + offset (offset is forward distance in instructions)
+  b      : ℕ → Instr                      -- b +offset (unconditional branch)
+  b-eq   : ℕ → Instr                      -- b.eq +offset (branch if equal, Z=1)
+  b-ne   : ℕ → Instr                      -- b.ne +offset (branch if not equal, Z=0)
 
-  -- Subroutine calls
-  bl     : ℕ → Instr                      -- bl label (branch with link, sets x30)
+  -- Subroutine calls (PC-relative)
+  bl     : ℕ → Instr                      -- bl +offset (branch with link, sets x30)
   blr    : Reg → Instr                    -- blr xN (branch to register with link)
   ret    : Instr                          -- ret (return via x30)
 

@@ -310,22 +310,25 @@ execInstr prog s (cmp src1 src2) with readOperand s src2
   in just (record s { pstate = updatePSTATE v1 v2
                     ; pc = pc s + 1 })
 
--- b label (unconditional branch)
-execInstr prog s (b target) =
-  just (record s { pc = target })
+-- b +offset (unconditional PC-relative branch)
+-- PC' = PC + offset (position-independent: works regardless of embedding offset)
+execInstr prog s (b offset) =
+  just (record s { pc = pc s + offset })
 
--- b.eq label (branch if equal, Z=1)
-execInstr prog s (b-eq target) =
-  just (record s { pc = if Z (pstate s) then target else pc s + 1 })
+-- b.eq +offset (branch if equal, Z=1)
+-- If Z=1: PC' = PC + offset, else PC' = PC + 1 (fall through)
+execInstr prog s (b-eq offset) =
+  just (record s { pc = if Z (pstate s) then pc s + offset else pc s + 1 })
 
--- b.ne label (branch if not equal, Z=0)
-execInstr prog s (b-ne target) =
-  just (record s { pc = if Z (pstate s) then pc s + 1 else target })
+-- b.ne +offset (branch if not equal, Z=0)
+-- If Z=0: PC' = PC + offset, else PC' = PC + 1 (fall through)
+execInstr prog s (b-ne offset) =
+  just (record s { pc = if Z (pstate s) then pc s + 1 else pc s + offset })
 
--- bl label (branch with link - saves return address to x30)
-execInstr prog s (bl target) =
+-- bl +offset (branch with link - PC-relative, saves return address to x30)
+execInstr prog s (bl offset) =
   just (record s { regs = writeReg (regs s) x30 (pc s + 1)
-                 ; pc = target })
+                 ; pc = pc s + offset })
 
 -- blr xN (branch to register with link)
 execInstr prog s (blr r) =

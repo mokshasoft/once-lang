@@ -942,22 +942,25 @@ execInstr-cmp-imm : ∀ (prog : Program) (s : State) (src : Reg) (n : ℕ) →
     just (record s { pstate = updatePSTATE (readReg (regs s) src) n ; pc = pc s +ℕ 1 })
 execInstr-cmp-imm prog s src n = refl
 
--- | What execInstr does for b (unconditional branch)
-execInstr-b : ∀ (prog : Program) (s : State) (target : ℕ) →
-  execInstr prog s (b target) ≡ just (record s { pc = target })
-execInstr-b prog s target = refl
+-- | What execInstr does for b (unconditional PC-relative branch)
+-- PC' = PC + offset (position-independent)
+execInstr-b : ∀ (prog : Program) (s : State) (offset : ℕ) →
+  execInstr prog s (b offset) ≡ just (record s { pc = pc s +ℕ offset })
+execInstr-b prog s offset = refl
 
--- | What execInstr does for b.ne (branch if not equal)
-execInstr-b-ne : ∀ (prog : Program) (s : State) (target : ℕ) →
-  execInstr prog s (b-ne target) ≡
-    just (record s { pc = if Z (pstate s) then pc s +ℕ 1 else target })
-execInstr-b-ne prog s target = refl
+-- | What execInstr does for b.ne (branch if not equal, PC-relative)
+-- If Z=0: PC' = PC + offset, else PC' = PC + 1
+execInstr-b-ne : ∀ (prog : Program) (s : State) (offset : ℕ) →
+  execInstr prog s (b-ne offset) ≡
+    just (record s { pc = if Z (pstate s) then pc s +ℕ 1 else pc s +ℕ offset })
+execInstr-b-ne prog s offset = refl
 
--- | What execInstr does for b.eq (branch if equal)
-execInstr-b-eq : ∀ (prog : Program) (s : State) (target : ℕ) →
-  execInstr prog s (b-eq target) ≡
-    just (record s { pc = if Z (pstate s) then target else pc s +ℕ 1 })
-execInstr-b-eq prog s target = refl
+-- | What execInstr does for b.eq (branch if equal, PC-relative)
+-- If Z=1: PC' = PC + offset, else PC' = PC + 1
+execInstr-b-eq : ∀ (prog : Program) (s : State) (offset : ℕ) →
+  execInstr prog s (b-eq offset) ≡
+    just (record s { pc = if Z (pstate s) then pc s +ℕ offset else pc s +ℕ 1 })
+execInstr-b-eq prog s offset = refl
 
 -- | What execInstr does for add-sp
 execInstr-add-sp : ∀ (prog : Program) (s : State) (n : ℕ) →
@@ -995,11 +998,12 @@ execInstr-ret : ∀ (prog : Program) (s : State) →
   execInstr prog s ret ≡ just (record s { halted = true })
 execInstr-ret prog s = refl
 
--- | What execInstr does for bl (branch and link)
-execInstr-bl : ∀ (prog : Program) (s : State) (target : ℕ) →
-  execInstr prog s (bl target) ≡
-    just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1) ; pc = target })
-execInstr-bl prog s target = refl
+-- | What execInstr does for bl (branch and link, PC-relative)
+-- Saves return address to x30, then PC' = PC + offset
+execInstr-bl : ∀ (prog : Program) (s : State) (offset : ℕ) →
+  execInstr prog s (bl offset) ≡
+    just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1) ; pc = pc s +ℕ offset })
+execInstr-bl prog s offset = refl
 
 -- | What execInstr does for adr (PC-relative address)
 -- adr computes the absolute address: dst = PC + offset
