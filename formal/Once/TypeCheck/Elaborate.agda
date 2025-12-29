@@ -77,6 +77,11 @@ lookup-suc-suc-suc-suc-suc-suc-suc : ∀ {n} {Γ : SCtx n} {A B C D E F G : Type
 lookup-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A} {B} {C} {D} {E} {F} {G} i =
   trans (lookup-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} i) (lookup-suc {Γ = (((((Γ S, A) S, B) S, C) S, D) S, E) S, F} {A = G} (suc (suc (suc (suc (suc (suc i)))))))
 
+lookup-suc-suc-suc-suc-suc-suc-suc-suc : ∀ {n} {Γ : SCtx n} {A B C D E F G H : Type} (i : Fin n)
+                                       → lookup Γ i ≡ lookup ((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) (suc (suc (suc (suc (suc (suc (suc (suc i))))))))
+lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A} {B} {C} {D} {E} {F} {G} {H} i =
+  trans (lookup-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} i) (lookup-suc {Γ = ((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G} {A = H} (suc (suc (suc (suc (suc (suc (suc i))))))))
+
 -- | Weaken and Exchange are mutually recursive
 --
 -- weaken : insert type at position 0 (top)
@@ -245,10 +250,34 @@ mutual
   exchange₆ (Surface.absurd v) = Surface.absurd (exchange₆ v)
   exchange₆ (Surface.let' e₁ e₂) = Surface.let' (exchange₆ e₁) (exchange₇ e₂)
 
+  exchange₇ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I : Type}
+            → SExpr (((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
+            → SExpr ((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
+  exchange₇ (Surface.var zero) = Surface.var zero
+  exchange₇ (Surface.var (suc zero)) = Surface.var (suc zero)
+  exchange₇ (Surface.var (suc (suc zero))) = Surface.var (suc (suc zero))
+  exchange₇ (Surface.var (suc (suc (suc zero)))) = Surface.var (suc (suc (suc zero)))
+  exchange₇ (Surface.var (suc (suc (suc (suc zero))))) = Surface.var (suc (suc (suc (suc zero))))
+  exchange₇ (Surface.var (suc (suc (suc (suc (suc zero)))))) = Surface.var (suc (suc (suc (suc (suc zero)))))
+  exchange₇ (Surface.var (suc (suc (suc (suc (suc (suc zero))))))) = Surface.var (suc (suc (suc (suc (suc (suc zero))))))
+  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.var (suc (suc (suc (suc (suc (suc (suc i)))))))) =
+    subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc (suc i)))))))))
+  exchange₇ (Surface.lam e) = Surface.lam (exchange₈ e)
+  exchange₇ (Surface.app f x) = Surface.app (exchange₇ f) (exchange₇ x)
+  exchange₇ (Surface.pair a b) = Surface.pair (exchange₇ a) (exchange₇ b)
+  exchange₇ (Surface.fst' p) = Surface.fst' (exchange₇ p)
+  exchange₇ (Surface.snd' p) = Surface.snd' (exchange₇ p)
+  exchange₇ (Surface.inl' a) = Surface.inl' (exchange₇ a)
+  exchange₇ (Surface.inr' b) = Surface.inr' (exchange₇ b)
+  exchange₇ (Surface.case' s l r) = Surface.case' (exchange₇ s) (exchange₈ l) (exchange₈ r)
+  exchange₇ Surface.unit = Surface.unit
+  exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
+  exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchange₈ e₂)
+
   postulate
-    exchange₇ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I : Type}
-              → SExpr (((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
-              → SExpr ((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
+    exchange₈ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I J : Type}
+              → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
+              → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)

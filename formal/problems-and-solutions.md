@@ -52,17 +52,19 @@ The pattern is entirely mechanical but requires explicit type parameters for eac
 - 2025-01-29: Implemented `exchange₆` following the established pattern, moved postulate to `exchange₇`
 
 **Solution Applied**:
-Extended the pattern one more level:
+Extended the pattern from depth 5 to depth 7:
 1. Added `lookup-suc-suc-suc-suc-suc-suc-suc` lemma (7 suc's)
 2. Implemented `exchange₆` with all 11 Surface.Syntax constructors
-3. Moved postulate to `exchange₇` for depth 7+
-4. Type-checks successfully with `make agda MODULE=Once/TypeCheck/Elaborate.agda`
+3. Added `lookup-suc-suc-suc-suc-suc-suc-suc-suc` lemma (8 suc's)
+4. Implemented `exchange₇` with all 11 Surface.Syntax constructors
+5. Moved postulate to `exchange₈` for depth 8+ nesting
+6. Type-checks successfully with `make agda MODULE=Once/TypeCheck/Elaborate.agda`
 
-This reduces the postulate from depth 6 to depth 7. Programs with 7+ levels of nested binders are even rarer than 6 levels.
+This reduces the postulate from depth 6 to depth 8. Programs requiring 8+ levels of nested binders are extremely rare (requires nesting 8 lambdas/cases/lets deep).
 
-**Status**: In Progress - one postulate level eliminated, `exchange₇` remains
+**Status**: In Progress - two postulate levels eliminated, `exchange₈` remains
 
-**Next Steps**: Continue extending pattern to `exchange₇`, `exchange₈`, etc. or accept `exchange₇` as acceptable axiom
+**Next Steps**: Evaluate whether to continue pattern extension or change abstraction to generalized approach
 
 ---
 
