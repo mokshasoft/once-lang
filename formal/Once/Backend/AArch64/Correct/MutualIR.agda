@@ -59,7 +59,18 @@ open import Once.Backend.AArch64.Correct.StarBase public
          ir-x20; ir-x21; ir-x29; ir-x30; ir-sp;
          ir-mem-x21; ir-mem-x29; ir-mem-x29+8;
          ir-stack-inv; ir-x29-inv; ir-sp-bound;
-         IRRunner; combine-star-results)
+         IRRunner; combine-star-results;
+         -- Stateful versions
+         IRStarResultS; ir-x0-s; convert-to-stateful; IRRunnerS)
+
+-- Import MemoryValid for stateful validity predicates
+open import Once.Backend.AArch64.Correct.MemoryValid
+  using (PairAtS; InlAtS; InrAtS;
+         alloc-inl-creates-valid-s; alloc-inr-creates-valid-s)
+
+-- Import stateful producers (extracted to reduce compile time)
+open import Once.Backend.AArch64.Correct.IR.StatefulProducers public
+  using (run-inl-star-s; run-inr-star-s)
 
 -- Import extracted IR helper modules (non-recursive parts)
 open import Once.Backend.AArch64.Correct.IR.Compose
