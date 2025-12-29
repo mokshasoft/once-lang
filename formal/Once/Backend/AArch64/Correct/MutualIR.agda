@@ -1831,7 +1831,7 @@ mutual
       ctx : CaseContext f g prefix suffix
       ctx = mkCaseContext f g prefix suffix
 
-      -- Postulate the result - full proof requires case analysis:
+      -- Postulate: After executing case (dispatch on inl/inr + execute f or g)
       -- For inl a:
       --   1. Execute 4 setup instructions (load tag=0, compare, branch-not-taken, load value)
       --   2. Execute f recursively via run-ir-star-at-offset
@@ -1842,10 +1842,47 @@ mutual
       --   3. Execute 3 more setup (label, load value)
       --   4. Execute g recursively via run-ir-star-at-offset
       --   5. Execute end label
-      -- Then build Star proof via star-trans and prove all IRStarResult fields
       postulate
         s-final : State
-        case-result : IRStarResult [ f , g ] prog s s-final x (length prefix)
+        -- Star proof exists
+        star-proof : Star prog s s-final
+        -- State properties
+        halted-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+        x0-final : readReg (regs s-final) x0 ≡ encode (eval [ f , g ] x)
+        -- Register preservation
+        x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+        x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+        x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+        x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+        sp-final : readSP (regs s-final) ≤ readSP (regs s)
+        -- Memory preservation
+        mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+        mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+        mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        -- Invariants
+        stack-inv-final : StackInvariant s-final
+        x29-inv-final : X29Invariant s-final
+        sp>16-final : readSP (regs s-final) > 16
+
+      case-result : IRStarResult [ f , g ] prog s s-final x (length prefix)
+      case-result = record
+        { ir-star = star-proof
+        ; ir-halted = halted-final
+        ; ir-pc = pc-final
+        ; ir-x0 = x0-final
+        ; ir-x20 = x20-final
+        ; ir-x21 = x21-final
+        ; ir-x29 = x29-final
+        ; ir-x30 = x30-final
+        ; ir-sp = sp-final
+        ; ir-mem-x21 = mem-x21-final
+        ; ir-mem-x29 = mem-x29-final
+        ; ir-mem-x29+8 = mem-x29+8-final
+        ; ir-stack-inv = stack-inv-final
+        ; ir-x29-inv = x29-inv-final
+        ; ir-sp-bound = sp>16-final
+        }
 
   -- | Star-based curry execution
   --
