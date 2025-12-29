@@ -62,9 +62,32 @@ Extended the pattern from depth 5 to depth 7:
 
 This reduces the postulate from depth 6 to depth 8. Programs requiring 8+ levels of nested binders are extremely rare (requires nesting 8 lambdas/cases/lets deep).
 
-**Status**: In Progress - two postulate levels eliminated, `exchange₈` remains
+**Status**: In Progress - two postulate levels eliminated, `exchange₈` remains at depth 8
 
-**Next Steps**: Evaluate whether to continue pattern extension or change abstraction to generalized approach
+**Decision Point**:
+Three options for completing this:
+
+**Option A: Accept exchange₈ as axiom**
+- Depth 8+ nesting is extremely rare (would need 8 nested lambdas/cases/lets)
+- Pragmatic: covers virtually all real programs
+- Violates proof-instructions.md Principle 1 (no inline postulates)
+- Not aligned with goal of "full end-to-end verification of arbitrary Once programs"
+
+**Option B: Continue mechanical pattern to depth 10-12**
+- Extend pattern: exchange₈, exchange₉, exchange₁₀, etc.
+- Each level adds ~30 lines of boilerplate
+- Eventually still hits a postulate limit
+- Doesn't address root cause
+
+**Option C: Change abstraction (RECOMMENDED)**
+- Generalized approach with parameterized depth
+- Use Vec or similar to handle arbitrary context depths
+- Well-founded recursion or sized types for termination
+- Eliminates ALL exchange postulates
+- Aligned with proof-instructions.md "change the abstraction" principle
+- Aligned with goal of arbitrary program verification
+
+**Recommendation**: Pursue Option C (generalized approach)
 
 ---
 
