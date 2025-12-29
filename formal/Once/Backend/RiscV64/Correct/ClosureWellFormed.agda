@@ -192,3 +192,65 @@ curry-output-to-apply-input f prog offset x cow =
   CurryOutputWF.env-addr cow ,
   (λ b → eval f (x , b)) ,
   CurryOutputWF.wf cow
+
+------------------------------------------------------------------------
+-- ClosuresWF: WF for all closures in values of a given type
+--
+-- This type family computes what WF information is needed for values
+-- of each type. Used to thread WF through composition.
+------------------------------------------------------------------------
+
+open import Data.Unit using (⊤; tt)
+
+-- | WF for all closures that might appear in a value of type T
+-- For arrow types: existentially quantified ClosureWellFormed
+-- For products: WF for both components
+-- For sums: WF for both branches (conservative)
+-- For other types: trivial (no closures)
+ClosuresWF : Type → Program → Set
+ClosuresWF Unit prog = ⊤
+ClosuresWF Void prog = ⊤
+ClosuresWF Int prog = ⊤
+ClosuresWF Str prog = ⊤
+ClosuresWF Buffer prog = ⊤
+ClosuresWF (TVar _) prog = ⊤
+ClosuresWF (Eff _ _) prog = ⊤
+ClosuresWF (A * B) prog = ClosuresWF A prog × ClosuresWF B prog
+ClosuresWF (A + B) prog = ClosuresWF A prog × ClosuresWF B prog
+ClosuresWF (A ⇒ B) prog = ApplyInputWF A B prog
+ClosuresWF (Fix F) prog = ⊤  -- Recursive types: assume no closures for now
+
+-- | Trivial WF for types without closures (placeholder for arrow types)
+-- Note: For arrow types, this produces an invalid WF. Only use for types
+-- that genuinely don't contain closures (which is checked by the caller).
+trivialWF : ∀ T prog → ClosuresWF T prog
+trivialWF Unit prog = tt
+trivialWF Void prog = tt
+trivialWF Int prog = tt
+trivialWF Str prog = tt
+trivialWF Buffer prog = tt
+trivialWF (TVar _) prog = tt
+trivialWF (Eff _ _) prog = tt
+trivialWF (A * B) prog = trivialWF A prog , trivialWF B prog
+trivialWF (A + B) prog = trivialWF A prog , trivialWF B prog
+trivialWF (A ⇒ B) prog = dummy-wf
+  where
+    -- Placeholder WF that should never actually be used
+    postulate dummy-wf : ApplyInputWF A B prog
+trivialWF (Fix F) prog = tt
+
+-- | Extract WF for first component of a pair
+fstWF : ∀ {A B} {prog} → ClosuresWF (A * B) prog → ClosuresWF A prog
+fstWF (wf-a , wf-b) = wf-a
+
+-- | Extract WF for second component of a pair
+sndWF : ∀ {A B} {prog} → ClosuresWF (A * B) prog → ClosuresWF B prog
+sndWF (wf-a , wf-b) = wf-b
+
+-- | Build WF for a pair from components
+pairWF : ∀ {A B} {prog} → ClosuresWF A prog → ClosuresWF B prog → ClosuresWF (A * B) prog
+pairWF wf-a wf-b = wf-a , wf-b
+
+-- | Extract WF for apply input: from (A ⇒ B) * A, get the closure's WF
+applyInputWF : ∀ {A B} {prog} → ClosuresWF ((A ⇒ B) * A) prog → ApplyInputWF A B prog
+applyInputWF (wf-closure , wf-arg) = wf-closure

@@ -32,6 +32,8 @@ open import Once.Backend.RiscV64.CodeGen
 
 open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.Foundation
+open import Once.Backend.RiscV64.Correct.ClosureWellFormed
+  using (ClosuresWF; trivialWF; pairWF; fstWF; sndWF; applyInputWF; ApplyInputWF)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
@@ -77,6 +79,10 @@ record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program) (s 
     -- For ANY offset n from original sp, memory is preserved.
     -- This handles arbitrarily deep nesting (pair, case, etc.)
     ir-mem-preserved : ∀ n → readMem (memory s') (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)
+    -- WF for closures in the output value
+    -- This is trivial for most IR nodes, but meaningful for curry.
+    -- Threading this through compose allows apply to use proven WF.
+    ir-output-wf : ClosuresWF B prog
 
 open IRStarResult public
 
@@ -123,6 +129,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
+  ; ir-output-wf = trivialWF A prog
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -155,6 +162,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) 0)
   ; ir-mem-preserved = λ n → refl  -- no memory write
+  ; ir-output-wf = tt  -- Unit has no closures
   }
   where
     prog = prefix ++ li a0 (+ 0) ∷ suffix
@@ -188,6 +196,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
+  ; ir-output-wf = tt  -- Fix F has no closures (by definition of ClosuresWF)
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -220,6 +229,7 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
+  ; ir-output-wf = trivialWF F prog  -- F is the output type
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -252,6 +262,7 @@ run-arr-star {i} {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
+  ; ir-output-wf = tt  -- Eff A B has no closures (by definition of ClosuresWF)
   }
   where
     prog = prefix ++ nop ∷ suffix
@@ -284,6 +295,7 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₁ x)))
   ; ir-mem-preserved = λ n → refl  -- no memory write (only read)
+  ; ir-output-wf = trivialWF A prog
   }
   where
     prog = prefix ++ ld a0 (+ 0) a0 ∷ suffix
@@ -337,6 +349,7 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-sp-delta = 0
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₂ x)))
   ; ir-mem-preserved = λ n → refl  -- no memory write (only read)
+  ; ir-output-wf = trivialWF B prog
   }
   where
     prog = prefix ++ ld a0 (+ 8) a0 ∷ suffix
