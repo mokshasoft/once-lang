@@ -21,9 +21,9 @@ open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult;
+  using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
@@ -86,6 +86,7 @@ run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-in
     ; ir-rsp-bound = rsp>16-final
     ; ir-rbp-inv = rbp-inv-final
     ; ir-mem-above = mem-above-final
+    ; ir-closure-wf = no-closure  -- TODO: curry should produce has-closure with ClosureWellFormed proof
     } , record
     { closure-addr = new-rsp
     ; code-ptr = thunk-offset

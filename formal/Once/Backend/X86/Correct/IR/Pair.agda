@@ -25,9 +25,9 @@ open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; exec-to-star)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult;
+  using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 
 open import Data.Nat using (_>_; _≥_)
@@ -681,6 +681,7 @@ assemble-pair-result {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fi
   ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
+  ; ir-closure-wf = closure-wf-final  -- Prefer g's closure (executed last)
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -704,6 +705,13 @@ assemble-pair-result {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fi
     star-g-raw = ir-star r-g
     star-g : Star prog s2 s3
     star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
+
+    -- Closure WF: prefer g's closure (executed last), could fall back to f's
+    -- For now, just use g's closure (handles ⟨anything, curry⟩ case)
+    closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix-g)
+    closure-wf-g-raw = ir-closure-wf r-g
+    closure-wf-final : ClosureWFOutput prog
+    closure-wf-final = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
 
     -- Compose all 5 phases
     star-all : Star prog s s-final

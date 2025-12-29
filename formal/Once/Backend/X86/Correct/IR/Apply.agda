@@ -39,9 +39,9 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult;
+  using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-stack-inv; ir-rsp-bound)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -610,12 +610,12 @@ run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 ------------------------------------------------------------------------
 
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult)
+  using (IRStarResult; ClosureWFOutput; no-closure)
   renaming (ir-star to ir-star'; ir-halted to ir-halted'; ir-pc to ir-pc';
             ir-rax to ir-rax'; ir-r14 to ir-r14'; ir-r15 to ir-r15'; ir-rbp to ir-rbp';
             ir-mem to ir-mem'; ir-mem-rbp to ir-mem-rbp'; ir-mem-rbp+8 to ir-mem-rbp+8';
             ir-mem-above to ir-mem-above'; ir-stack-inv to ir-stack-inv';
-            ir-rsp-bound to ir-rsp-bound'; ir-rbp-inv to ir-rbp-inv')
+            ir-rsp-bound to ir-rsp-bound'; ir-rbp-inv to ir-rbp-inv'; ir-closure-wf to ir-closure-wf')
 open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
 run-apply-to-ir-result : ∀ {A B} (prefix suffix : Program)
@@ -656,6 +656,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-stack-inv = stack'
     ; ir-rsp-bound = rsp'
     ; ir-rbp-inv = rbp-inv-post  -- LOCAL POSTULATE
+    ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }
   where
     open import Once.Semantics using (Closure)

@@ -24,8 +24,9 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above)
+  using (IRStarResult; ClosureWFOutput; no-closure;
+         ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -60,6 +61,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     ; ir-rbp-inv = rbp-inv'
+    ; ir-closure-wf = no-closure  -- inl doesn't produce a closure
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
