@@ -355,8 +355,47 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
                     h-false pc-eq x0-eq inl-valid stack-inv x29-inv sp>16 run-f =
   s-final , addr-out , case-result
   where
+    -- Code structure (defined first for use in case-code)
+    len-f : ℕ
+    len-f = compile-length f
+
+    len-g : ℕ
+    len-g = compile-length g
+
+    right-branch : ℕ
+    right-branch = 5 +ℕ len-f
+
+    end-label : ℕ
+    end-label = (7 +ℕ len-f) +ℕ len-g
+
+    -- Explicit expansion of compile-aarch64 [ f , g ]
+    -- This is needed because the ++ structure in compile-aarch64 doesn't match
+    -- the structure we need for fetch proofs
+    case-code : Program
+    case-code =
+      ldr x9 (base x0) ∷
+      cmp x9 (imm 0) ∷
+      b-ne right-branch ∷
+      ldr x0 (base+imm x0 8) ∷
+      compile-aarch64 f ++
+      b end-label ∷
+      label right-branch ∷
+      ldr x0 (base+imm x0 8) ∷
+      compile-aarch64 g ++
+      label end-label ∷ []
+
+    case-code-eq : case-code ≡ compile-aarch64 [ f , g ]
+    case-code-eq = refl
+
     prog : Program
     prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
+
+    -- Alternative prog using explicit case-code
+    prog' : Program
+    prog' = prefix ++ case-code ++ suffix
+
+    prog'-eq-prog : prog' ≡ prog
+    prog'-eq-prog = cong (λ c → prefix ++ c ++ suffix) case-code-eq
 
     -- Use validity to prove tag = 0
     tag-is-0 : readMem (memory s) addr-sum ≡ just 0
@@ -373,19 +412,6 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     --   ldr x0 [x0+8]    -- load value (= addr-val)
     --   <f code>         -- execute f
     --   b end            -- jump to end
-
-    -- Code structure
-    len-f : ℕ
-    len-f = compile-length f
-
-    len-g : ℕ
-    len-g = compile-length g
-
-    right-branch : ℕ
-    right-branch = 5 +ℕ len-f
-
-    end-label : ℕ
-    end-label = (7 +ℕ len-f) +ℕ len-g
 
     -- Instructions
     i0 : Instr
@@ -440,13 +466,6 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     s-after-setup : State
     s-after-setup = record s3 { regs = writeReg (regs s3) x0 addr-val ; pc = pc s3 +ℕ 1 }
 
-    -- Postulate the step proofs and star (instruction-level details)
-    postulate
-      setup-star : Star prog s s-after-setup
-
-    h-setup : halted s-after-setup ≡ false
-    h-setup = h-false
-
     -- PC progression: s → s1 → s2 → s3 → s-after-setup
     pc-s1 : pc s1 ≡ length prefix +ℕ 1
     pc-s1 = cong (_+ℕ 1) pc-eq
@@ -457,6 +476,156 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     pc-s3 : pc s3 ≡ length prefix +ℕ 3
     pc-s3 = trans (cong (_+ℕ 1) pc-s2) (+-assoc (length prefix) 2 1)
 
+    -- The inner part of case-code (after first 4 instructions)
+    -- This structure matches the definitional expansion of compile-aarch64 [ f , g ]
+    case-inner : Program
+    case-inner = compile-aarch64 f ++ b end-label ∷ label right-branch ∷
+                 ldr x0 (base+imm x0 8) ∷ compile-aarch64 g ++ label end-label ∷ []
+
+    -- Code after first 4 instructions (matches definitional structure)
+    -- case-code = i0 ∷ i1 ∷ i2 ∷ i3 ∷ case-inner
+    -- case-code ++ suffix = i0 ∷ i1 ∷ i2 ∷ i3 ∷ (case-inner ++ suffix)
+    rest-after-i0 : Program
+    rest-after-i0 = i1 ∷ i2 ∷ i3 ∷ (case-inner ++ suffix)
+
+    rest-after-i1 : Program
+    rest-after-i1 = i2 ∷ i3 ∷ (case-inner ++ suffix)
+
+    rest-after-i2 : Program
+    rest-after-i2 = i3 ∷ (case-inner ++ suffix)
+
+    rest-after-i3 : Program
+    rest-after-i3 = case-inner ++ suffix
+
+    -- Program structure: prog' = prefix ++ i0 ∷ rest-after-i0
+    -- This is definitionally true because case-code = i0 ∷ i1 ∷ i2 ∷ i3 ∷ case-inner
+    -- and (i0 ∷ X) ++ suffix = i0 ∷ (X ++ suffix)
+    prog'-is-prefix-i0-rest : prog' ≡ prefix ++ i0 ∷ rest-after-i0
+    prog'-is-prefix-i0-rest = refl
+
+    -- Fetch proofs work on prog' first, then convert to prog
+    fetch0' : fetch prog' (length prefix) ≡ just i0
+    fetch0' = fetch-at-prefix-end prefix i0 rest-after-i0
+
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = subst (λ p → fetch p (length prefix) ≡ just i0) prog'-eq-prog fetch0'
+
+    -- For fetch1: prog' = (prefix ++ i0 ∷ []) ++ i1 ∷ rest-after-i1
+    prefix1 : Program
+    prefix1 = prefix ++ i0 ∷ []
+
+    prog'-eq-1 : prog' ≡ prefix1 ++ i1 ∷ rest-after-i1
+    prog'-eq-1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ rest-after-i1))
+
+    len-prefix1 : length prefix1 ≡ length prefix +ℕ 1
+    len-prefix1 = length-++ prefix
+
+    fetch1'-helper : fetch (prefix1 ++ i1 ∷ rest-after-i1) (length prefix1) ≡ just i1
+    fetch1'-helper = fetch-at-prefix-end prefix1 i1 rest-after-i1
+
+    fetch1' : fetch prog' (length prefix +ℕ 1) ≡ just i1
+    fetch1' = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog'-eq-1) len-prefix1 fetch1'-helper
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst (λ p → fetch p (length prefix +ℕ 1) ≡ just i1) prog'-eq-prog fetch1'
+
+    -- For fetch2: prog' = (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ rest-after-i2
+    prefix2 : Program
+    prefix2 = prefix ++ i0 ∷ i1 ∷ []
+
+    prog'-eq-2 : prog' ≡ prefix2 ++ i2 ∷ rest-after-i2
+    prog'-eq-2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ rest-after-i2))
+
+    len-prefix2 : length prefix2 ≡ length prefix +ℕ 2
+    len-prefix2 = length-++ prefix
+
+    fetch2'-helper : fetch (prefix2 ++ i2 ∷ rest-after-i2) (length prefix2) ≡ just i2
+    fetch2'-helper = fetch-at-prefix-end prefix2 i2 rest-after-i2
+
+    fetch2' : fetch prog' (length prefix +ℕ 2) ≡ just i2
+    fetch2' = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog'-eq-2) len-prefix2 fetch2'-helper
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst (λ p → fetch p (length prefix +ℕ 2) ≡ just i2) prog'-eq-prog fetch2'
+
+    -- For fetch3: prog' = (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ rest-after-i3
+    prefix3 : Program
+    prefix3 = prefix ++ i0 ∷ i1 ∷ i2 ∷ []
+
+    prog'-eq-3 : prog' ≡ prefix3 ++ i3 ∷ rest-after-i3
+    prog'-eq-3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ rest-after-i3))
+
+    len-prefix3 : length prefix3 ≡ length prefix +ℕ 3
+    len-prefix3 = length-++ prefix
+
+    fetch3'-helper : fetch (prefix3 ++ i3 ∷ rest-after-i3) (length prefix3) ≡ just i3
+    fetch3'-helper = fetch-at-prefix-end prefix3 i3 rest-after-i3
+
+    fetch3' : fetch prog' (length prefix +ℕ 3) ≡ just i3
+    fetch3' = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog'-eq-3) len-prefix3 fetch3'-helper
+
+    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+    fetch3 = subst (λ p → fetch p (length prefix +ℕ 3) ≡ just i3) prog'-eq-prog fetch3'
+
+    -- Execution proofs
+    exec0 : execInstr prog s i0 ≡ just s1
+    exec0 = execInstr-ldr-success prog s x9 (base x0) 0 mem-tag
+
+    step0 : step prog s ≡ just s1
+    step0 = step-instr prog s s1 i0 h-false
+              (subst (λ n → fetch prog n ≡ just i0) (sym pc-eq) fetch0)
+              exec0
+
+    exec1 : execInstr prog s1 i1 ≡ just s2
+    exec1 = execInstr-cmp-imm prog s1 x9 0
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    step1 : step prog s1 ≡ just s2
+    step1 = step-instr prog s1 s2 i1 h1
+              (subst (λ n → fetch prog n ≡ just i1) (sym pc-s1) fetch1)
+              exec1
+
+    -- b.ne with Z = true means NOT taken, pc = pc + 1
+    exec2 : execInstr prog s2 i2 ≡ just s3
+    exec2 = execInstr-b-ne prog s2 right-branch
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    step2 : step prog s2 ≡ just s3
+    step2 = step-instr prog s2 s3 i2 h2
+              (subst (λ n → fetch prog n ≡ just i2) (sym pc-s2) fetch2)
+              exec2
+
+    exec3 : execInstr prog s3 i3 ≡ just s-after-setup
+    exec3 = execInstr-ldr-success prog s3 x0 (base+imm x0 8) addr-val mem-val
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    step3 : step prog s3 ≡ just s-after-setup
+    step3 = step-instr prog s3 s-after-setup i3 h3
+              (subst (λ n → fetch prog n ≡ just i3) (sym pc-s3) fetch3)
+              exec3
+
+    -- Build Star from 4 steps
+    star01 : Star prog s s1
+    star01 = star-single h-false step0
+    star12 : Star prog s1 s2
+    star12 = star-single h1 step1
+    star23 : Star prog s2 s3
+    star23 = star-single h2 step2
+    star34 : Star prog s3 s-after-setup
+    star34 = star-single h3 step3
+
+    setup-star : Star prog s s-after-setup
+    setup-star = star-trans (star-trans (star-trans star01 star12) star23) star34
+
+    h-setup : halted s-after-setup ≡ false
+    h-setup = h-false
+
     pc-setup : pc s-after-setup ≡ length prefix +ℕ 4
     pc-setup = trans (cong (_+ℕ 1) pc-s3) (+-assoc (length prefix) 3 1)
 
@@ -464,11 +633,25 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     x0-setup = readReg-writeReg-same (regs s3) x0 addr-val
 
     -- Register preservation through setup (only x9 and x0 modified)
-    postulate
-      x20-setup : readReg (regs s-after-setup) x20 ≡ readReg (regs s) x20
-      x21-setup : readReg (regs s-after-setup) x21 ≡ readReg (regs s) x21
-      x29-setup : readReg (regs s-after-setup) x29 ≡ readReg (regs s) x29
-      x30-setup : readReg (regs s-after-setup) x30 ≡ readReg (regs s) x30
+    -- Chain: regs s-after-setup = writeReg (regs s3) x0 addr-val
+    --        regs s3 = regs s2 = regs s1 = writeReg (regs s) x9 0
+    -- So: regs s-after-setup = writeReg (writeReg (regs s) x9 0) x0 addr-val
+
+    x20-setup : readReg (regs s-after-setup) x20 ≡ readReg (regs s) x20
+    x20-setup = trans (readReg-writeReg-x0-x20 (regs s3) addr-val)
+                      (readReg-writeReg-x9-x20 (regs s) 0)
+
+    x21-setup : readReg (regs s-after-setup) x21 ≡ readReg (regs s) x21
+    x21-setup = trans (readReg-writeReg-x0-x21 (regs s3) addr-val)
+                      (readReg-writeReg-x9-x21 (regs s) 0)
+
+    x29-setup : readReg (regs s-after-setup) x29 ≡ readReg (regs s) x29
+    x29-setup = trans (readReg-writeReg-x0-x29 (regs s3) addr-val)
+                      (readReg-writeReg-x9-x29 (regs s) 0)
+
+    x30-setup : readReg (regs s-after-setup) x30 ≡ readReg (regs s) x30
+    x30-setup = trans (readReg-writeReg-x0-x30 (regs s3) addr-val)
+                      (readReg-writeReg-x9-x30 (regs s) 0)
 
     stack-inv-setup : StackInvariant s-after-setup
     stack-inv-setup = stack-inv-preserved-unchanged s s-after-setup stack-inv x21-setup refl
@@ -487,10 +670,49 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     suffix-f : Program
     suffix-f = b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ compile-aarch64 g ++ label end-label ∷ suffix
 
+    -- Length of prefix-f
+    len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
+    len-prefix-f = length-++ prefix
+
     -- Prove program equality for f call
-    postulate
-      prog-f-eq : prefix-f ++ compile-aarch64 f ++ suffix-f ≡ prog
-      len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
+    -- suffix-f and (right-branch-code ++ suffix) are propositionally equal via ++-assoc
+    right-branch-code : Program
+    right-branch-code = b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷
+                        compile-aarch64 g ++ label end-label ∷ []
+
+    -- suffix-f = right-branch-code ++ suffix (propositionally, via associativity)
+    -- suffix-f inner: compile-aarch64 g ++ (label end-label ∷ suffix)
+    -- right-branch-code inner: compile-aarch64 g ++ (label end-label ∷ [])
+    -- right-branch-code ++ suffix inner: (compile-aarch64 g ++ (label end-label ∷ [])) ++ suffix
+    -- We need: compile-aarch64 g ++ (label end-label ∷ suffix) = (compile-aarch64 g ++ (label end-label ∷ [])) ++ suffix
+    -- This is sym (++-assoc ...)
+    suffix-f-eq : suffix-f ≡ right-branch-code ++ suffix
+    suffix-f-eq = cong (λ xs → b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ xs)
+                       (sym (++-assoc (compile-aarch64 g) (label end-label ∷ []) suffix))
+
+    -- case-inner = compile-aarch64 f ++ right-branch-code
+    case-inner-eq : case-inner ≡ compile-aarch64 f ++ right-branch-code
+    case-inner-eq = refl
+
+    -- compile-aarch64 f ++ suffix-f = case-inner ++ suffix
+    f-suffix-eq : compile-aarch64 f ++ suffix-f ≡ case-inner ++ suffix
+    f-suffix-eq = trans (cong (compile-aarch64 f ++_) suffix-f-eq)
+                        (sym (++-assoc (compile-aarch64 f) right-branch-code suffix))
+
+    -- prefix-f ++ compile-aarch64 f ++ suffix-f = prefix ++ (i0 ∷ i1 ∷ i2 ∷ i3 ∷ (case-inner ++ suffix))
+    prog-f-step1 : prefix-f ++ (compile-aarch64 f ++ suffix-f) ≡ prefix ++ (i0 ∷ i1 ∷ i2 ∷ i3 ∷ (case-inner ++ suffix))
+    prog-f-step1 = trans (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ i3 ∷ []) (compile-aarch64 f ++ suffix-f))
+                         (cong (prefix ++_) (cong (λ xs → i0 ∷ i1 ∷ i2 ∷ i3 ∷ xs) f-suffix-eq))
+
+    -- And prefix ++ (i0 ∷ i1 ∷ i2 ∷ i3 ∷ (case-inner ++ suffix)) = prog'
+    prog-f-step2 : prefix ++ (i0 ∷ i1 ∷ i2 ∷ i3 ∷ (case-inner ++ suffix)) ≡ prog'
+    prog-f-step2 = refl
+
+    prog-f-eq' : prefix-f ++ compile-aarch64 f ++ suffix-f ≡ prog'
+    prog-f-eq' = trans prog-f-step1 prog-f-step2
+
+    prog-f-eq : prefix-f ++ compile-aarch64 f ++ suffix-f ≡ prog
+    prog-f-eq = trans prog-f-eq' prog'-eq-prog
 
     -- Call run-f with s-after-setup
     f-result-raw : ∃[ s' ] ∃[ addr-out ] IRStarResultS f (prefix-f ++ compile-aarch64 f ++ suffix-f) s-after-setup s' addr-out (length prefix-f)
