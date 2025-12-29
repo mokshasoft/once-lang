@@ -116,10 +116,18 @@ postulate
 --   This path avoids this postulate entirely.
 --
 -- REMAINING WORK (for full elimination in modular proofs):
---   - Extend IRStarResult to carry optional ClosureWellFormed output
+--   ✓ Extend IRStarResult to carry optional ClosureWellFormed output (ClosureWFOutput in StarBase)
+--   ✓ Add run-apply-to-ir-result that uses ClosureWellFormed (IR/Apply.agda)
+--   - Thread ClosureWFOutput through run-compose-star-direct
 --   - Modify run-pair-star-direct to track closure WF through pairs
---   - Modify run-apply-star-direct to consume ClosureWellFormed when available
---   - Update run-compose-star-direct to thread WF from curry to apply
+--   - Replace apply-produces-result usage with run-apply-to-ir-result
+--
+-- NOTE: run-apply-to-ir-result uses targeted local postulates for:
+--   - r15 preservation (apply uses r15 for code-ptr)
+--   - Memory preservation at r15/rbp/rbp+8
+--   - RbpInvariant
+-- These are more specific than this blanket postulate and can be proven
+-- by detailed instruction tracing.
 --
 -- RUNTIME EFFECT: None (proof-only)
 --
