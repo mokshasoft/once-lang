@@ -15,14 +15,18 @@ module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _≟_; _++_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_)
+open import Data.Nat.Properties using (≤-refl; n<1+n)
 open import Data.Fin using (Fin; zero; suc)
+open import Data.Vec using (Vec; []; _∷_; tail) renaming (lookup to Vec-lookup)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; trans; sym)
+open import Induction.WellFounded using (Acc; acc; WfRec)
+open import Data.Nat.Induction using (<-wellFounded)
 
 open import Size using (Size; ∞)
 open import Once.Type
@@ -278,6 +282,11 @@ mutual
     exchange₈ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I J : Type}
               → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
               → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
+
+-- TODO: Fully generalized exchangeN with dependent types
+-- See formal/problems-and-solutions.md for design discussion
+-- Challenge: Type signature must construct nested contexts at type level
+-- Requires: Type-level function to build Γ S, A₁ S, A₂ S, ... S, Aₙ for arbitrary n
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)

@@ -81,13 +81,33 @@ Three options for completing this:
 
 **Option C: Change abstraction (RECOMMENDED)**
 - Generalized approach with parameterized depth
-- Use Vec or similar to handle arbitrary context depths
-- Well-founded recursion or sized types for termination
+- Use **dependent types** with depth as type-level index
+- Define type-level function to construct nested contexts
+- Well-founded recursion on ℕ for termination
 - Eliminates ALL exchange postulates
 - Aligned with proof-instructions.md "change the abstraction" principle
 - Aligned with goal of arbitrary program verification
 
-**Recommendation**: Pursue Option C (generalized approach)
+**Design Approach**:
+1. Define `extendCtx : ℕ → SCtx n → Vec Type m → SCtx (n + m)` to build nested contexts
+2. Define generalized `lookup-suc^n` with depth parameter
+3. Define `exchangeN : (depth : ℕ) → ...` parameterized by depth
+4. Prove termination using well-founded recursion on depth
+
+**Recommendation**: Pursue Option C with dependent types (depth-indexed approach)
+
+**Implementation Progress** (2025-01-29):
+- Started implementing generalized exchangeN using well-founded recursion
+- Added necessary imports: Data.Vec, Induction.WellFounded, Data.Nat.Induction
+- Created skeleton of exchangeN-impl with Acc accessibility predicate
+- **Blocked**: Type signature for exchangeN needs to properly express dependent context construction
+- **Challenge**: The type of the result depends on the depth parameter - need to construct nested context types at the type level
+
+**Next Steps**:
+1. Define type-level helper to construct `Γ S, A₁ S, A₂ S, ... S, Aₙ` for arbitrary n
+2. Define generalized lookup lemma indexed by depth
+3. Implement exchangeN body that actually performs variable shifting
+4. OR: Continue mechanical pattern to depth 10-12 as interim solution while designing full generalization
 
 ---
 
