@@ -75,17 +75,21 @@ record CaseContext {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
     code-g : Program
     prog : Program
 
-    -- Jump targets
-    right-branch : ℕ
+    -- PC-relative branch offsets
+    right-offset : ℕ            -- b-ne jumps forward by this
+    end-offset : ℕ              -- b jumps forward by this
+
+    -- Label positions (for label instructions)
+    right-label : ℕ
     end-label : ℕ
 
     -- Individual instructions
     load-tag-instr : Instr      -- ldr x9, [x0]
     cmp-instr : Instr           -- cmp x9, #0
-    bne-instr : Instr           -- b.ne right-branch
+    bne-instr : Instr           -- b.ne right-offset (PC-relative)
     load-val-left : Instr       -- ldr x0, [x0, #8]
-    branch-end : Instr          -- b end
-    right-label-instr : Instr   -- label right-branch
+    branch-end : Instr          -- b end-offset (PC-relative)
+    right-label-instr : Instr   -- label right-label
     load-val-right : Instr      -- ldr x0, [x0, #8]
     end-label-instr : Instr     -- label end
 
@@ -116,7 +120,9 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
   ; code-f = the-code-f
   ; code-g = the-code-g
   ; prog = the-prog
-  ; right-branch = the-right-branch
+  ; right-offset = the-right-offset
+  ; end-offset = the-end-offset
+  ; right-label = the-right-label
   ; end-label = the-end-label
   ; load-tag-instr = the-load-tag-instr
   ; cmp-instr = the-cmp-instr
@@ -142,17 +148,21 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
     the-code-g = compile-aarch64 g
     the-prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
 
-    -- Jump targets
-    the-right-branch = 5 +ℕ the-len-f
+    -- PC-relative offsets for branches
+    the-right-offset = 3 +ℕ the-len-f    -- b-ne jumps forward by this
+    the-end-offset = 3 +ℕ the-len-g      -- b jumps forward by this
+
+    -- Label positions (for label pseudo-instructions)
+    the-right-label = 5 +ℕ the-len-f
     the-end-label = (7 +ℕ the-len-f) +ℕ the-len-g
 
-    -- Instructions
+    -- Instructions (now using PC-relative offsets)
     the-load-tag-instr = ldr x9 (base x0)
     the-cmp-instr = cmp x9 (imm 0)
-    the-bne-instr = b-ne the-right-branch
+    the-bne-instr = b-ne the-right-offset      -- PC-relative
     the-load-val-left = ldr x0 (base+imm x0 8)
-    the-branch-end = b the-end-label
-    the-right-label-instr = label the-right-branch
+    the-branch-end = b the-end-offset          -- PC-relative
+    the-right-label-instr = label the-right-label
     the-load-val-right = ldr x0 (base+imm x0 8)
     the-end-label-instr = label the-end-label
 

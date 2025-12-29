@@ -362,8 +362,16 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     len-g : ℕ
     len-g = compile-length g
 
-    right-branch : ℕ
-    right-branch = 5 +ℕ len-f
+    -- PC-relative offsets for branches
+    right-offset : ℕ
+    right-offset = 3 +ℕ len-f    -- b-ne jumps forward by this amount
+
+    end-offset : ℕ
+    end-offset = 3 +ℕ len-g      -- b jumps forward by this amount
+
+    -- Label markers (not used as branch targets anymore)
+    right-label : ℕ
+    right-label = 5 +ℕ len-f
 
     end-label : ℕ
     end-label = (7 +ℕ len-f) +ℕ len-g
@@ -375,11 +383,11 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     case-code =
       ldr x9 (base x0) ∷
       cmp x9 (imm 0) ∷
-      b-ne right-branch ∷
+      b-ne right-offset ∷
       ldr x0 (base+imm x0 8) ∷
       compile-aarch64 f ++
-      b end-label ∷
-      label right-branch ∷
+      b end-offset ∷
+      label right-label ∷
       ldr x0 (base+imm x0 8) ∷
       compile-aarch64 g ++
       label end-label ∷ []
@@ -421,7 +429,7 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     i1 = cmp x9 (imm 0)
 
     i2 : Instr
-    i2 = b-ne right-branch
+    i2 = b-ne right-offset
 
     i3 : Instr
     i3 = ldr x0 (base+imm x0 8)
@@ -479,7 +487,7 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     -- The inner part of case-code (after first 4 instructions)
     -- This structure matches the definitional expansion of compile-aarch64 [ f , g ]
     case-inner : Program
-    case-inner = compile-aarch64 f ++ b end-label ∷ label right-branch ∷
+    case-inner = compile-aarch64 f ++ b end-offset ∷ label right-label ∷
                  ldr x0 (base+imm x0 8) ∷ compile-aarch64 g ++ label end-label ∷ []
 
     -- Code after first 4 instructions (matches definitional structure)
@@ -588,8 +596,9 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
               exec1
 
     -- b.ne with Z = true means NOT taken, pc = pc + 1
+    -- With PC-relative branches: if Z then pc+1 else pc+offset
     exec2 : execInstr prog s2 i2 ≡ just s3
-    exec2 = execInstr-b-ne prog s2 right-branch
+    exec2 = execInstr-b-ne prog s2 right-offset
 
     h2 : halted s2 ≡ false
     h2 = h-false
@@ -666,9 +675,9 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     prefix-f : Program
     prefix-f = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []
 
-    -- Suffix for f: b end-label ∷ right-branch-code ++ suffix
+    -- Suffix for f: b end-offset ∷ right-branch-code ++ suffix
     suffix-f : Program
-    suffix-f = b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ compile-aarch64 g ++ label end-label ∷ suffix
+    suffix-f = b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ compile-aarch64 g ++ label end-label ∷ suffix
 
     -- Length of prefix-f
     len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
@@ -677,7 +686,7 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     -- Prove program equality for f call
     -- suffix-f and (right-branch-code ++ suffix) are propositionally equal via ++-assoc
     right-branch-code : Program
-    right-branch-code = b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷
+    right-branch-code = b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷
                         compile-aarch64 g ++ label end-label ∷ []
 
     -- suffix-f = right-branch-code ++ suffix (propositionally, via associativity)
@@ -687,7 +696,7 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     -- We need: compile-aarch64 g ++ (label end-label ∷ suffix) = (compile-aarch64 g ++ (label end-label ∷ [])) ++ suffix
     -- This is sym (++-assoc ...)
     suffix-f-eq : suffix-f ≡ right-branch-code ++ suffix
-    suffix-f-eq = cong (λ xs → b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ xs)
+    suffix-f-eq = cong (λ xs → b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ xs)
                        (sym (++-assoc (compile-aarch64 g) (label end-label ∷ []) suffix))
 
     -- case-inner = compile-aarch64 f ++ right-branch-code
@@ -733,14 +742,14 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     star-f : Star prog s-after-setup s-after-f
     star-f = subst (λ p → Star p s-after-setup s-after-f) prog-f-eq (ir-star f-result)
 
-    -- After f, execute b end-label (1 instruction) then label end-label (1 instruction)
-    -- Note: The branch targets in case-code are absolute positions relative to position 0,
-    -- not relative to the prefix. This is a limitation of the current code generator.
-    -- For verification with non-empty prefix, we postulate the final phase.
+    -- After f, execute b end-offset (1 instruction) then label end-label (1 instruction)
+    -- With PC-relative branches, the b instruction uses offset instead of absolute target:
+    --   b end-offset jumps PC + end-offset = (4+len-f) + (3+len-g) = 7+len-f+len-g
+    -- This correctly lands on label end-label regardless of prefix length.
     --
     -- Layout (positions relative to case-code start):
-    --   position 4+len-f: b end-label (we're here after f)
-    --   position 5+len-f: label right-branch (skipped)
+    --   position 4+len-f: b end-offset (we're here after f), jumps forward by 3+len-g
+    --   position 5+len-f: label right-label (skipped)
     --   position 6+len-f: ldr x0 [x0+8] (skipped)
     --   positions 7+len-f to 6+len-f+len-g: g code (skipped)
     --   position 7+len-f+len-g: label end-label (target of b)
@@ -752,8 +761,8 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     h-after-f : halted s-after-f ≡ false
     h-after-f = ir-halted f-result
 
-    -- Final phase: executing b end-label and label end-label
-    -- Postulated because branch targets are computed relative to case-code start, not prefix
+    -- Final phase: executing b end-offset and label end-label
+    -- With PC-relative branches, this is now provable without postulates.
     -- The b and label instructions don't modify registers/memory, they only change PC.
     -- All properties are postulated since s-final is abstract.
     postulate
@@ -845,17 +854,27 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
     len-g : ℕ
     len-g = compile-length g
 
-    right-branch : ℕ
-    right-branch = 5 +ℕ len-f
+    -- PC-relative offsets for branches
+    right-offset : ℕ
+    right-offset = 3 +ℕ len-f    -- b-ne jumps forward by this amount
+
+    end-offset : ℕ
+    end-offset = 3 +ℕ len-g      -- b jumps forward by this amount
+
+    -- Label markers
+    right-label : ℕ
+    right-label = 5 +ℕ len-f
 
     end-label : ℕ
     end-label = (7 +ℕ len-f) +ℕ len-g
 
     -- For inr, b.ne IS taken (because tag = 1 ≠ 0)
-    -- We jump directly to right-branch, then load value, then execute g
+    -- With PC-relative branches: b.ne at position 2 jumps PC + right-offset
+    --   = (prefix + 2) + (3 + len-f) = prefix + 5 + len-f = prefix + right-label
+    -- We then load value and execute g
 
     -- For now, use postulates for the complex phases
-    -- For inr: execute ldr, cmp, b.ne (taken to right-branch), label, ldr
+    -- For inr: execute ldr, cmp, b.ne (taken), label, ldr
     -- That's 5 instructions executed, ending at PC = prefix + 7 + |f|
     postulate
       s-after-setup : State
@@ -869,9 +888,9 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
 
     -- Prefix for g: prefix ++ all code before g
     prefix-g : Program
-    prefix-g = prefix ++ ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-branch ∷
-               ldr x0 (base+imm x0 8) ∷ compile-aarch64 f ++ b end-label ∷
-               label right-branch ∷ ldr x0 (base+imm x0 8) ∷ []
+    prefix-g = prefix ++ ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-offset ∷
+               ldr x0 (base+imm x0 8) ∷ compile-aarch64 f ++ b end-offset ∷
+               label right-label ∷ ldr x0 (base+imm x0 8) ∷ []
 
     -- Suffix for g: label end ∷ suffix
     suffix-g : Program

@@ -61,7 +61,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --   2: adr x9 4            ; compute code-ptr = pc + 4
 --   3: str x9 [sp+8]       ; store code pointer
 --   4: mov-from-sp x0      ; return closure pointer
---   5: b end-label         ; jump over thunk (11 + |f|)
+--   5: b +end-offset        ; jump over thunk (PC-relative: 6 + |f|)
 --   6: label code-ptr      ; thunk entry point
 --   7: sub-sp 16           ; thunk: allocate pair
 --   8: stp x19 x0 [sp]     ; thunk: store (env, arg)
@@ -91,9 +91,10 @@ record CurryContext {i} {A B C : Type} (f : IR i (A * B) C)
     code-f : Program
     prog : Program
 
-    -- Labels
-    code-ptr : ℕ      -- = 6 (thunk entry point)
-    end-label : ℕ     -- = 11 + len-f
+    -- PC-relative offset and labels
+    end-offset : ℕ    -- = 6 + len-f (b jumps forward by this)
+    code-ptr : ℕ      -- = 6 (thunk entry point, used for label)
+    end-label : ℕ     -- = 11 + len-f (used for label)
 
     -- Closure layout (at new-sp):
     --   [new-sp]     = env (captured value x)
@@ -121,6 +122,7 @@ mkCurryContext {A} {B} {C} f prefix suffix = record
   { len-f = the-len-f
   ; code-f = the-code-f
   ; prog = the-prog
+  ; end-offset = the-end-offset
   ; code-ptr = 6
   ; end-label = the-end-label
   ; setup-instrs = the-setup-instrs
@@ -133,12 +135,15 @@ mkCurryContext {A} {B} {C} f prefix suffix = record
     the-len-f = compile-length f
     the-code-f = compile-aarch64 f
     the-prog = prefix ++ compile-aarch64 (curry f) ++ suffix
+    -- PC-relative offset: b at position 5 jumps to end at 11+len-f
+    -- offset = (11 + len-f) - 5 = 6 + len-f
+    the-end-offset = 6 +ℕ the-len-f
     the-end-label = 11 +ℕ the-len-f
 
-    -- Setup: allocate closure and store env/code-ptr
+    -- Setup: allocate closure and store env/code-ptr (uses PC-relative b)
     the-setup-instrs : Program
     the-setup-instrs = sub-sp 16 ∷ str x0 (sp+imm 0) ∷ adr x9 4 ∷
-                       str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b the-end-label ∷ []
+                       str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b the-end-offset ∷ []
 
     -- Thunk: entry point through ret (not executed by curry)
     the-thunk-instrs : Program
@@ -148,7 +153,7 @@ mkCurryContext {A} {B} {C} f prefix suffix = record
     -- Fixed prefix (positions 0-9)
     the-curry-fixed-prefix : Program
     the-curry-fixed-prefix = sub-sp 16 ∷ str x0 (sp+imm 0) ∷ adr x9 4 ∷
-                             str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b the-end-label ∷
+                             str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b the-end-offset ∷
                              label 6 ∷ sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷
                              mov-from-sp x0 ∷ []
 
@@ -184,13 +189,14 @@ record CurryStep5Result {i} {A B C : Type} (f : IR i (A * B) C)
 
 open CurryStep5Result public
 
--- | State after step 6: b end-label (pc jumps to end-label)
+-- | State after step 6: b end-offset (pc = pc + end-offset = 5 + (6+len-f) = 11+len-f)
+-- With PC-relative branches: new pc = 5 + end-offset = 5 + 6 + len-f = 11 + len-f = end-label
 record CurryStep6Result {i} {A B C : Type} (f : IR i (A * B) C)
                         (ctx : CurryContext f [] [])
                         (s s6 : State) (x : ⟦ A ⟧) : Set where
   field
     step6-halted : halted s6 ≡ false
-    step6-pc : pc s6 ≡ end-label ctx
+    step6-pc : pc s6 ≡ end-label ctx  -- = 11 + len-f (via PC + end-offset)
     -- x0 unchanged (b doesn't modify registers)
     step6-x0 : readReg (regs s6) x0 ≡ readSP (regs s) ∸ 16
 

@@ -174,6 +174,11 @@ compile-length-correct ⟨ f , g ⟩ =
      (trans (cong (λ x → 5 +ℕ (length prog-f +ℕ (2 +ℕ x))) step4) combine)))
 
 -- case: 8 + |f| + |g|
+-- CodeGen uses PC-relative offsets:
+--   right-offset = 3 +ℕ len-f (b-ne jumps forward by this)
+--   end-offset = 3 +ℕ len-g (b jumps forward by this)
+--   right-label = 5 +ℕ len-f (label marker)
+--   end-label = (7 +ℕ len-f) +ℕ len-g (label marker)
 compile-length-correct [ f , g ] =
   let len-f = compile-length f
       len-g = compile-length g
@@ -181,23 +186,25 @@ compile-length-correct [ f , g ] =
       IHg = compile-length-correct g
       prog-f = compile-aarch64 f
       prog-g = compile-aarch64 g
-      right-branch = 5 +ℕ len-f
+      right-offset = 3 +ℕ len-f
+      end-offset = 3 +ℕ len-g
+      right-label = 5 +ℕ len-f
       end-label = (7 +ℕ len-f) +ℕ len-g
-      step1 : length (ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-branch ∷
+      step1 : length (ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-offset ∷
                      ldr x0 (base+imm x0 8) ∷ prog-f ++
-                     b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                     b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
                      label end-label ∷ []) ≡
               4 +ℕ length (prog-f ++
-                          b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                          b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
                           label end-label ∷ [])
       step1 = refl
       step2 : length (prog-f ++
-                     b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+                     b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
                      label end-label ∷ []) ≡
-              length prog-f +ℕ length (b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+              length prog-f +ℕ length (b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
                                        label end-label ∷ [])
       step2 = length-++ prog-f _
-      step3 : length (b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
+      step3 : length (b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ prog-g ++
                      label end-label ∷ []) ≡
               3 +ℕ length (prog-g ++ label end-label ∷ [])
       step3 = refl
@@ -212,14 +219,21 @@ compile-length-correct [ f , g ] =
      (trans (cong (λ x → 4 +ℕ (length prog-f +ℕ (3 +ℕ x))) step4) combine)))
 
 -- curry: 12 + |f|
+-- CodeGen uses PC-relative offsets:
+--   thunk-offset = 4 (adr computes PC + 4)
+--   end-offset = 6 +ℕ len-f (b jumps forward by this)
+--   code-ptr = 6 (label marker for thunk entry)
+--   end-label = 11 +ℕ len-f (label marker)
 compile-length-correct (curry f) =
   let len-f = compile-length f
       IHf = compile-length-correct f
       prog-f = compile-aarch64 f
+      thunk-offset = 4
       code-ptr = 6
+      end-offset = 6 +ℕ len-f
       end-label = 11 +ℕ len-f
-      step1 : length (sub-sp 16 ∷ str x0 (sp+imm 0) ∷ mov x9 (imm code-ptr) ∷
-                     str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b end-label ∷
+      step1 : length (sub-sp 16 ∷ str x0 (sp+imm 0) ∷ adr x9 thunk-offset ∷
+                     str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b end-offset ∷
                      label code-ptr ∷ sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷ mov-from-sp x0 ∷
                      prog-f ++ ret ∷ label end-label ∷ []) ≡
               10 +ℕ length (prog-f ++ ret ∷ label end-label ∷ [])

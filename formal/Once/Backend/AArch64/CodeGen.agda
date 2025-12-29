@@ -165,36 +165,42 @@ compile-aarch64 inr =
   mov-from-sp x0 ∷ []            -- x0 = sp (return pointer to sum)
 
 -- Case analysis: branch on tag
--- Jump targets are computed based on compiled code lengths
+-- Branch offsets are PC-relative for position-independent code
 compile-aarch64 [ f , g ] =
   let len-f = compile-length f
       len-g = compile-length g
-      -- Layout:
+      -- Layout (positions relative to start of case code):
       --   0: ldr x9, [x0]         -- load tag
       --   1: cmp x9, #0           -- compare with 0
-      --   2: b.ne right-branch    -- branch if not zero
+      --   2: b.ne +right-offset   -- branch if not zero (PC-relative)
       --   3: ldr x0, [x0, #8]     -- load value for left case
       --   4 to 3+|f|: compile-aarch64 f
-      --   4+|f|: b end            -- skip right branch
-      --   5+|f|: label            -- right-branch
+      --   4+|f|: b +end-offset    -- skip right branch (PC-relative)
+      --   5+|f|: label            -- right-branch target
       --   6+|f|: ldr x0, [x0, #8] -- load value for right case
       --   7+|f| to 6+|f|+|g|: compile-aarch64 g
-      --   7+|f|+|g|: label        -- end
-      right-branch = 5 +ℕ len-f
+      --   7+|f|+|g|: label        -- end target
+      --
+      -- PC-relative offsets:
+      --   At position 2, to reach 5+len-f: offset = (5+len-f) - 2 = 3+len-f
+      --   At position 4+len-f, to reach 7+len-f+len-g: offset = (7+len-f+len-g) - (4+len-f) = 3+len-g
+      right-offset = 3 +ℕ len-f      -- b.ne jumps forward by this amount
+      end-offset = 3 +ℕ len-g        -- b jumps forward by this amount
+      right-label = 5 +ℕ len-f       -- label marker only (not used as target)
       end-label = (7 +ℕ len-f) +ℕ len-g
   in
   -- Load tag into x9
   ldr x9 (base x0) ∷
   -- Compare with 0
   cmp x9 (imm 0) ∷
-  -- Jump to right branch if not zero
-  b-ne right-branch ∷
+  -- Jump to right branch if not zero (PC-relative: PC + offset)
+  b-ne right-offset ∷
   -- Left branch: load value and apply f
   ldr x0 (base+imm x0 8) ∷
   compile-aarch64 f ++
-  b end-label ∷
+  b end-offset ∷
   -- Right branch: load value and apply g
-  label right-branch ∷
+  label right-label ∷
   ldr x0 (base+imm x0 8) ∷
   compile-aarch64 g ++
   label end-label ∷ []
@@ -216,13 +222,13 @@ compile-aarch64 initial = brk 0 ∷ []
 --   3. Executes compile-aarch64 f
 compile-aarch64 (curry {A} {B} {C} f) =
   let len-f = compile-length f
-      -- Layout:
+      -- Layout (positions relative to start of curry code):
       --   0: sub sp, sp, #16
       --   1: str x0, [sp]         -- store env (input a)
       --   2: adr x9, #4           -- code-ptr = PC + 4 = 2 + 4 = 6 (thunk entry)
       --   3: str x9, [sp+8]       -- store code pointer
       --   4: mov-from-sp x0       -- x0 = sp (closure pointer)
-      --   5: b end                -- jump over thunk
+      --   5: b +end-offset        -- jump over thunk (PC-relative)
       --   6: label code-ptr       -- thunk entry point
       --   7: sub sp, sp, #16      -- allocate pair
       --   8: stp x19, x0, [sp]    -- store (env, arg) as pair
@@ -236,9 +242,13 @@ compile-aarch64 (curry {A} {B} {C} f) =
       -- The thunk is always at position N + 4 (4 instructions after adr).
       -- This makes the code-ptr ABSOLUTE and correct regardless of where
       -- curry appears in the larger program.
-      thunk-offset = 4   -- offset from adr instruction to thunk entry
-      code-ptr = 6       -- used only for label name
-      end-label = 11 +ℕ len-f
+      --
+      -- PC-relative offset for b:
+      --   At position 5, to reach 11+len-f: offset = (11+len-f) - 5 = 6+len-f
+      thunk-offset = 4           -- offset from adr instruction to thunk entry
+      code-ptr = 6               -- used only for label name
+      end-offset = 6 +ℕ len-f    -- b jumps forward by this amount
+      end-label = 11 +ℕ len-f    -- label marker only (not used as target)
   in
   -- Allocate closure on stack
   sub-sp 16 ∷
@@ -249,8 +259,8 @@ compile-aarch64 (curry {A} {B} {C} f) =
   str x9 (sp+imm 8) ∷
   -- Return closure pointer (sp → x0)
   mov-from-sp x0 ∷
-  -- Jump over the thunk code
-  b end-label ∷
+  -- Jump over the thunk code (PC-relative: PC + offset)
+  b end-offset ∷
   -- Thunk code: called via apply with b in x0, env in x19
   label code-ptr ∷
   -- Allocate pair (a, b) on stack
