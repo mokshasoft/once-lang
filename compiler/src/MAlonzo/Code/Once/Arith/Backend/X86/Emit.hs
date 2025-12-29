@@ -437,25 +437,35 @@ d_floatInstrToText_86 v0
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (", " :: Data.Text.Text) (d_xmmToText_22 (coe v1))))
+      MAlonzo.Code.Once.Arith.Backend.X86.Syntax.C_cvtss2sd_218 v1 v2
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             ("    cvtss2sd " :: Data.Text.Text)
+             (coe
+                MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                (d_xmmToText_22 (coe v2))
+                (coe
+                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                   (", " :: Data.Text.Text) (d_xmmToText_22 (coe v1))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86.Emit.instrToText
-d_instrToText_140 ::
-  MAlonzo.Code.Once.Arith.Backend.X86.Syntax.T_ArithInstr_218 ->
+d_instrToText_144 ::
+  MAlonzo.Code.Once.Arith.Backend.X86.Syntax.T_ArithInstr_220 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instrToText_140 v0
+d_instrToText_144 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Arith.Backend.X86.Syntax.C_intI_220 v1
+      MAlonzo.Code.Once.Arith.Backend.X86.Syntax.C_intI_222 v1
         -> coe d_intInstrToText_48 (coe v1)
-      MAlonzo.Code.Once.Arith.Backend.X86.Syntax.C_floatI_222 v1
+      MAlonzo.Code.Once.Arith.Backend.X86.Syntax.C_floatI_224 v1
         -> coe d_floatInstrToText_86 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86.Emit.emitProgram
-d_emitProgram_146 ::
-  [MAlonzo.Code.Once.Arith.Backend.X86.Syntax.T_ArithInstr_218] ->
+d_emitProgram_150 ::
+  [MAlonzo.Code.Once.Arith.Backend.X86.Syntax.T_ArithInstr_220] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_emitProgram_146 v0
+d_emitProgram_150 v0
   = coe
       d_unlines_10
       (coe
-         MAlonzo.Code.Data.List.Base.du_map_22 (coe d_instrToText_140)
+         MAlonzo.Code.Data.List.Base.du_map_22 (coe d_instrToText_144)
          (coe v0))

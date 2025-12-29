@@ -306,6 +306,26 @@ malonzo-arith:
 	@cp _build/malonzo/MAlonzo/Code/Once/Arith/IR.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
 	@echo "Done. Verified arithmetic backends in compiler/src/MAlonzo/Code/Once/Arith/Backend/"
 
+.PHONY: malonzo-arith-codegen
+malonzo-arith-codegen:
+	@echo "Extracting verified arithmetic code generators via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_X86_CODEGEN)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_AARCH64_CODEGEN)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_RISCV_CODEGEN)'
+	@echo "Copying MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/X86
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/AArch64
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/RiscV
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/X86/*.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/X86/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/AArch64/*.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/AArch64/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Backend/RiscV/*.hs ../compiler/src/MAlonzo/Code/Once/Arith/Backend/RiscV/ 2>/dev/null || true
+	@# Copy IR and dependencies
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Type.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/IR.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Semantics.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
+	@echo "Done. Verified code generators in compiler/src/MAlonzo/Code/Once/Arith/Backend/"
+
 # Verified type checker (OCP-0003)
 .PHONY: typecheck-verified
 typecheck-verified:

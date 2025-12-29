@@ -76,11 +76,12 @@ data T_FPInstr_196
     C_fsubS_212 T_FPReg_76 T_FPReg_76 T_FPReg_76 |
     C_fmulS_214 T_FPReg_76 T_FPReg_76 T_FPReg_76 |
     C_fdivS_216 T_FPReg_76 T_FPReg_76 T_FPReg_76 |
-    C_fnegS_218 T_FPReg_76 T_FPReg_76
+    C_fnegS_218 T_FPReg_76 T_FPReg_76 |
+    C_fcvtDS_220 T_FPReg_76 T_FPReg_76
 -- Once.Arith.Backend.RiscV.Syntax.ArithInstr
-d_ArithInstr_220 = ()
-data T_ArithInstr_220
-  = C_intI_222 T_IntInstr_158 | C_fpI_224 T_FPInstr_196
+d_ArithInstr_222 = ()
+data T_ArithInstr_222
+  = C_intI_224 T_IntInstr_158 | C_fpI_226 T_FPInstr_196
 -- Once.Arith.Backend.RiscV.Syntax.ArithProgram
-d_ArithProgram_226 :: ()
-d_ArithProgram_226 = erased
+d_ArithProgram_228 :: ()
+d_ArithProgram_228 = erased

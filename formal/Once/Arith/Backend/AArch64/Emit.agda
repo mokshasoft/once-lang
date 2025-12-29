@@ -219,6 +219,9 @@ fpInstrToText (fdivS dst src1 src2) =
   "    fdiv " ++ fpToTextS dst ++ ", " ++ fpToTextS src1 ++ ", " ++ fpToTextS src2
 fpInstrToText (fnegS dst src) =
   "    fneg " ++ fpToTextS dst ++ ", " ++ fpToTextS src
+-- Type conversion
+fpInstrToText (fcvtSD dst src) =
+  "    fcvt " ++ fpToText dst ++ ", " ++ fpToTextS src
 
 ------------------------------------------------------------------------
 -- Unified instruction emission

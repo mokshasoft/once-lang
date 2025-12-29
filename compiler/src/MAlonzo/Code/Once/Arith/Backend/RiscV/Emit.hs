@@ -614,25 +614,35 @@ d_fpInstrToText_118 v0
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (", " :: Data.Text.Text) (d_fpToText_20 (coe v2))))
+      MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.C_fcvtDS_220 v1 v2
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             ("    fcvt.d.s " :: Data.Text.Text)
+             (coe
+                MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                (d_fpToText_20 (coe v1))
+                (coe
+                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                   (", " :: Data.Text.Text) (d_fpToText_20 (coe v2))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.RiscV.Emit.instrToText
-d_instrToText_180 ::
-  MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.T_ArithInstr_220 ->
+d_instrToText_184 ::
+  MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.T_ArithInstr_222 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instrToText_180 v0
+d_instrToText_184 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.C_intI_222 v1
+      MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.C_intI_224 v1
         -> coe d_intInstrToText_22 (coe v1)
-      MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.C_fpI_224 v1
+      MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.C_fpI_226 v1
         -> coe d_fpInstrToText_118 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.RiscV.Emit.emitProgram
-d_emitProgram_186 ::
-  [MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.T_ArithInstr_220] ->
+d_emitProgram_190 ::
+  [MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.T_ArithInstr_222] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_emitProgram_186 v0
+d_emitProgram_190 v0
   = coe
       d_unlines_10
       (coe
-         MAlonzo.Code.Data.List.Base.du_map_22 (coe d_instrToText_180)
+         MAlonzo.Code.Data.List.Base.du_map_22 (coe d_instrToText_184)
          (coe v0))

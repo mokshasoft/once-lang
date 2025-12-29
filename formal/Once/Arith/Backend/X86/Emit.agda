@@ -186,6 +186,9 @@ floatInstrToText (xorpd dst src) =
 -- GPR to XMM
 floatInstrToText (movqToXMM dst src) =
   "    movq " ++ gprToText src ++ ", " ++ xmmToText dst
+-- Type conversion
+floatInstrToText (cvtss2sd dst src) =
+  "    cvtss2sd " ++ xmmToText src ++ ", " ++ xmmToText dst
 
 ------------------------------------------------------------------------
 -- Unified instruction emission

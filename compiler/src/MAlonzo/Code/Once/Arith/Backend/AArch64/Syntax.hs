@@ -78,11 +78,12 @@ data T_FPInstr_198
     C_fsubS_214 T_FPReg_74 T_FPReg_74 T_FPReg_74 |
     C_fmulS_216 T_FPReg_74 T_FPReg_74 T_FPReg_74 |
     C_fdivS_218 T_FPReg_74 T_FPReg_74 T_FPReg_74 |
-    C_fnegS_220 T_FPReg_74 T_FPReg_74
+    C_fnegS_220 T_FPReg_74 T_FPReg_74 |
+    C_fcvtSD_222 T_FPReg_74 T_FPReg_74
 -- Once.Arith.Backend.AArch64.Syntax.ArithInstr
-d_ArithInstr_222 = ()
-data T_ArithInstr_222
-  = C_intI_224 T_IntInstr_170 | C_fpI_226 T_FPInstr_198
+d_ArithInstr_224 = ()
+data T_ArithInstr_224
+  = C_intI_226 T_IntInstr_170 | C_fpI_228 T_FPInstr_198
 -- Once.Arith.Backend.AArch64.Syntax.ArithProgram
-d_ArithProgram_228 :: ()
-d_ArithProgram_228 = erased
+d_ArithProgram_230 :: ()
+d_ArithProgram_230 = erased

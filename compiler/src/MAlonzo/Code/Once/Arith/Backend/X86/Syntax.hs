@@ -91,11 +91,12 @@ data T_FloatInstr_190
     C_divsd_210 T_XMMReg_90 T_FloatOperand_144 |
     C_xorps_212 T_XMMReg_90 T_XMMReg_90 |
     C_xorpd_214 T_XMMReg_90 T_XMMReg_90 |
-    C_movqToXMM_216 T_XMMReg_90 T_GPReg_10
+    C_movqToXMM_216 T_XMMReg_90 T_GPReg_10 |
+    C_cvtss2sd_218 T_XMMReg_90 T_XMMReg_90
 -- Once.Arith.Backend.X86.Syntax.ArithInstr
-d_ArithInstr_218 = ()
-data T_ArithInstr_218
-  = C_intI_220 T_IntInstr_164 | C_floatI_222 T_FloatInstr_190
+d_ArithInstr_220 = ()
+data T_ArithInstr_220
+  = C_intI_222 T_IntInstr_164 | C_floatI_224 T_FloatInstr_190
 -- Once.Arith.Backend.X86.Syntax.ArithProgram
-d_ArithProgram_224 :: ()
-d_ArithProgram_224 = erased
+d_ArithProgram_226 :: ()
+d_ArithProgram_226 = erased

@@ -173,6 +173,9 @@ fpInstrToText (fdivS rd rs1 rs2) =
   "    fdiv.s " ++ fpToText rd ++ ", " ++ fpToText rs1 ++ ", " ++ fpToText rs2
 fpInstrToText (fnegS rd rs) =
   "    fneg.s " ++ fpToText rd ++ ", " ++ fpToText rs
+-- Type conversion
+fpInstrToText (fcvtDS rd rs) =
+  "    fcvt.d.s " ++ fpToText rd ++ ", " ++ fpToText rs
 
 ------------------------------------------------------------------------
 -- Unified instruction emission

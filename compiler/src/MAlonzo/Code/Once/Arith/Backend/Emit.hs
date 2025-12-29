@@ -27,20 +27,20 @@ import qualified MAlonzo.Code.Once.Arith.Backend.X86.Syntax
 
 -- Once.Arith.Backend.Emit.emitX86
 d_emitX86_8 ::
-  [MAlonzo.Code.Once.Arith.Backend.X86.Syntax.T_ArithInstr_218] ->
+  [MAlonzo.Code.Once.Arith.Backend.X86.Syntax.T_ArithInstr_220] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emitX86_8
-  = coe MAlonzo.Code.Once.Arith.Backend.X86.Emit.d_emitProgram_146
+  = coe MAlonzo.Code.Once.Arith.Backend.X86.Emit.d_emitProgram_150
 -- Once.Arith.Backend.Emit.emitAArch64
 d_emitAArch64_10 ::
-  [MAlonzo.Code.Once.Arith.Backend.AArch64.Syntax.T_ArithInstr_222] ->
+  [MAlonzo.Code.Once.Arith.Backend.AArch64.Syntax.T_ArithInstr_224] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emitAArch64_10
   = coe
-      MAlonzo.Code.Once.Arith.Backend.AArch64.Emit.d_emitProgram_174
+      MAlonzo.Code.Once.Arith.Backend.AArch64.Emit.d_emitProgram_178
 -- Once.Arith.Backend.Emit.emitRiscV
 d_emitRiscV_12 ::
-  [MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.T_ArithInstr_220] ->
+  [MAlonzo.Code.Once.Arith.Backend.RiscV.Syntax.T_ArithInstr_222] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emitRiscV_12
-  = coe MAlonzo.Code.Once.Arith.Backend.RiscV.Emit.d_emitProgram_186
+  = coe MAlonzo.Code.Once.Arith.Backend.RiscV.Emit.d_emitProgram_190
