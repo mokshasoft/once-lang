@@ -9,25 +9,18 @@
 
 module Once.Backend.X86.Correct.IR.Pair where
 
+-- Import consolidated Foundation module
+-- Hide n≢n+8 and n+8≢n since we use propositional versions from X86.Encoding
+open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen
-
-open import Once.Postulates using (encode; encode-pair-construct)
+open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
-open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.FetchStep
-open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; exec-to-star)
@@ -37,15 +30,10 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above;
          rbp-inv-preserved-unchanged)
 
-open import Data.Bool using (false)
-open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_; _≥_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans)
-open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂; cong)
+open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 

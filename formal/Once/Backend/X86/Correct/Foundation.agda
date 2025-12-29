@@ -13,12 +13,11 @@
 
 module Once.Backend.X86.Correct.Foundation where
 
-open import Once.Type
-open import Once.IR
+open import Once.Type public
+open import Once.IR public
 open import Once.Semantics
-  using (⟦_⟧; eval; Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity; module ⟦Fix⟧)
+  using (⟦_⟧; eval; Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity; wrap)
   public
-open ⟦Fix⟧
 
 open import Once.Backend.X86.Syntax public
 open import Once.Backend.X86.Semantics public

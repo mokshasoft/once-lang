@@ -9,23 +9,12 @@
 
 module Once.Backend.X86.Correct.StarBase where
 
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
+
+-- Additional imports not in Foundation
 open import Size
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen
-
-open import Once.Postulates
-  using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
-         encode-arr-identity; encode-fix-unwrap; encode-fix-wrap)
-open import Once.Backend.X86.Correct.RegisterLemmas
-open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; stack-below-r15; RbpInvariant; stack-inv-preserved-unchanged; rsp>16-preserved-unchanged)
 open import Once.Backend.X86.Correct.Star
@@ -36,15 +25,13 @@ open import Once.Backend.X86.Correct.MemoryValid
          InlAtS; inl-at-s; InrAtS; inr-at-s)
 
 open import Once.Backend.Common.Memory using (n≢n+suc)
+open import Once.Postulates
+  using (encode-pair-fst; encode-pair-snd; encode-fix-unwrap; encode-fix-wrap)
 
-open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_; _∸_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; ≤-trans; m∸n≤m)
-open import Data.List using (List; _∷_; []; _++_; length)
 open import Data.List.Properties using (++-assoc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 
 ------------------------------------------------------------------------
 -- IRStarResult: Result type for Star-based IR execution

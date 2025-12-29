@@ -3,49 +3,29 @@
 -- Once.Backend.X86.Correct.ExecLemmas
 --
 -- Execution lemmas for x86-64 code generation proofs.
--- Level 2 - depends on FetchStep, InstrExec, RegisterLemmas.
+-- Level 2 - depends on Foundation (which includes FetchStep, InstrExec, RegisterLemmas).
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.ExecLemmas where
 
-open import Once.Type
-open import Once.Semantics  -- Word is from X86.Semantics
-open import Once.IR
+-- Import consolidated Foundation module
+open import Once.Backend.X86.Correct.Foundation
 
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
+-- Import helpers from Star module (exec-step-helper re-exported publicly)
+open import Once.Backend.X86.Correct.Star
+  using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted)
+  public
 
--- Import from other Correct modules
-open import Once.Backend.X86.Correct.FetchStep
-open import Once.Backend.X86.Correct.InstrExec
-open import Once.Backend.X86.Correct.RegisterLemmas
-open import Once.Backend.X86.Correct.Star using (exec-step-helper) public
-
--- Import encoding axioms
-open import Once.Postulates
-  using (encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
-
-open import Data.Nat using (ℕ; zero; suc; _≟_; _∸_; _≥_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+-- Additional imports not in Foundation
+open import Data.Nat using (_≟_; _≥_; _>_)
 open import Data.Nat.Properties using (∸-+-assoc; +-assoc; +-comm)
-open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Data.Product using (∃-syntax; _×_; _,_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false)
-open import Data.Unit using (tt)
-open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂; inspect) renaming ([_] to Reveal[_])
+open import Relation.Binary.PropositionalEquality using (_≢_; cong₂; subst₂) renaming ([_] to Reveal[_])
 
 ------------------------------------------------------------------------
 -- Exec Lemmas
 ------------------------------------------------------------------------
-
--- | Import helpers from Star module
-open import Once.Backend.X86.Correct.Star using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted)
 
 -- | Exec returns immediately when step returns halted state
 -- Now requires halted s ≡ false since exec checks halted s first
@@ -100,8 +80,7 @@ step-implies-not-halted prog s s' step-eq h'-eq with halted s | inspect halted s
     -- halted s ≡ halted s' ≡ false
     halted-s-is-false : halted s ≡ false
     halted-s-is-false = trans (cong halted s≡s') h'-eq
-    true≢false : true ≡ false → ⊥
-    true≢false ()
+    -- true≢false provided by Foundation
 
 -- | Single-step non-halting execution: execute exactly 1 step without halting
 -- Key lemma for sub-program execution where we don't want to halt
