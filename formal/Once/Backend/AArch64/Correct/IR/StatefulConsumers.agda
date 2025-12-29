@@ -25,29 +25,36 @@ open import Once.Backend.AArch64.CodeGen
 open import Once.Backend.AArch64.Correct.Foundation
   using (readReg-writeReg-same; readReg-writeReg-x0-x20; readReg-writeReg-x0-x21;
          readReg-writeReg-x0-x29; readReg-writeReg-x0-x30;
+         readReg-writeReg-x9-x0; readReg-writeReg-x9-x20; readReg-writeReg-x9-x21;
+         readReg-writeReg-x9-x29; readReg-writeReg-x9-x30;
          readSP-writeReg;
-         execInstr-ldr-success; step-instr; fetch-at-prefix-end)
+         execInstr-ldr-success; execInstr-cmp-imm; execInstr-b-ne; execInstr-b;
+         step-instr; fetch-at-prefix-end)
 open import Once.Backend.AArch64.Correct.StackInvariant
   using (StackInvariant; X29Invariant;
          stack-inv-preserved-unchanged; x29-inv-preserved-unchanged)
 open import Once.Backend.AArch64.Postulates
   using (sp-bound-after-stack-op)
 open import Once.Backend.AArch64.Correct.Star
-  using (Star; star-single)
+  using (Star; star-single; star-trans)
 open import Once.Backend.AArch64.Correct.StarBase
-  using (IRStarResultS)
+  using (IRStarResultS; ir-star; ir-halted; ir-pc; ir-x0-s;
+         ir-x20; ir-x21; ir-x29; ir-x30; ir-sp;
+         ir-mem-x21; ir-mem-x29; ir-mem-x29+8;
+         ir-stack-inv; ir-x29-inv; ir-sp-bound)
 open import Once.Backend.AArch64.Correct.MemoryValid
   using (PairAtS; InlAtS; InrAtS; fst-valid-s; snd-valid-s;
          tag-valid-inl-s; val-valid-inl-s; tag-valid-inr-s; val-valid-inr-s)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl)
-open import Data.List using (List; _++_; length)
+open import Data.Nat.Properties using (≤-refl; +-assoc)
+open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Data.Maybe using (just)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 
 ------------------------------------------------------------------------
 -- Stateful fst consumer
@@ -361,19 +368,116 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     -- Case for inl executes:
     --   ldr x9 [x0]      -- load tag (= 0)
     --   cmp x9 #0        -- compare with 0
-    --   b.ne right       -- branch if not equal (NOT taken)
+    --   b.ne right       -- branch if not equal (NOT taken for inl)
     --   ldr x0 [x0+8]    -- load value (= addr-val)
     --   <f code>         -- execute f
     --   b end            -- jump to end
 
-    -- After setup (4 instructions), x0 = addr-val
-    -- Then f runs with input addr-val
+    -- Code structure
+    len-f : ℕ
+    len-f = compile-length f
 
+    len-g : ℕ
+    len-g = compile-length g
+
+    right-branch : ℕ
+    right-branch = 5 +ℕ len-f
+
+    end-label : ℕ
+    end-label = (7 +ℕ len-f) +ℕ len-g
+
+    -- Instructions
+    i0 : Instr
+    i0 = ldr x9 (base x0)
+
+    i1 : Instr
+    i1 = cmp x9 (imm 0)
+
+    i2 : Instr
+    i2 = b-ne right-branch
+
+    i3 : Instr
+    i3 = ldr x0 (base+imm x0 8)
+
+    -- After 4 setup instructions, call f, then b end-label
+
+    -- For now, use postulates for the complex phases
+    -- A full proof would trace each instruction
     postulate
       s-after-setup : State
+      setup-star : Star prog s s-after-setup
+      h-setup : halted s-after-setup ≡ false
+      pc-setup : pc s-after-setup ≡ length prefix +ℕ 4
+      x0-setup : readReg (regs s-after-setup) x0 ≡ addr-val
+      stack-inv-setup : StackInvariant s-after-setup
+      x29-inv-setup : X29Invariant s-after-setup
+      sp>16-setup : readSP (regs s-after-setup) > 16
+
+    -- Prefix for f: prefix ++ setup instructions
+    prefix-f : Program
+    prefix-f = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ []
+
+    -- Suffix for f: b end-label ∷ right-branch-code ++ suffix
+    suffix-f : Program
+    suffix-f = b end-label ∷ label right-branch ∷ ldr x0 (base+imm x0 8) ∷ compile-aarch64 g ++ label end-label ∷ suffix
+
+    -- Prove program equality for f call
+    postulate
+      prog-f-eq : prefix-f ++ compile-aarch64 f ++ suffix-f ≡ prog
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
+
+    -- Call run-f with s-after-setup
+    f-result-raw : ∃[ s' ] ∃[ addr-out ] IRStarResultS f (prefix-f ++ compile-aarch64 f ++ suffix-f) s-after-setup s' addr-out (length prefix-f)
+    f-result-raw = run-f prefix-f suffix-f addr-val s-after-setup h-setup
+                         (trans pc-setup (sym len-prefix-f)) x0-setup
+                         stack-inv-setup x29-inv-setup sp>16-setup
+
+    s-after-f : State
+    s-after-f = Data.Product.proj₁ f-result-raw
+
+    addr-out : Word
+    addr-out = Data.Product.proj₁ (Data.Product.proj₂ f-result-raw)
+
+    f-result : IRStarResultS f (prefix-f ++ compile-aarch64 f ++ suffix-f) s-after-setup s-after-f addr-out (length prefix-f)
+    f-result = Data.Product.proj₂ (Data.Product.proj₂ f-result-raw)
+
+    -- Convert star to work on prog instead of prog-f
+    star-f : Star prog s-after-setup s-after-f
+    star-f = subst (λ p → Star p s-after-setup s-after-f) prog-f-eq (ir-star f-result)
+
+    -- After f, execute b end-label
+    postulate
       s-final : State
-      addr-out : Word
-      case-result : CaseResultS f g prog s s-final addr-out (length prefix)
+      final-star : Star prog s-after-f s-final
+      h-final : halted s-final ≡ false
+      pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+      x0-final : readReg (regs s-final) x0 ≡ addr-out
+      x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+      x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+      x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+      x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+      stack-inv-final : StackInvariant s-final
+      x29-inv-final : X29Invariant s-final
+      sp>16-final : readSP (regs s-final) > 16
+
+    -- Compose stars: setup ◅◅ f ◅◅ final
+    full-star : Star prog s s-final
+    full-star = star-trans (star-trans setup-star star-f) final-star
+
+    case-result : CaseResultS f g prog s s-final addr-out (length prefix)
+    case-result = record
+      { case-star = full-star
+      ; case-halted = h-final
+      ; case-pc = pc-final
+      ; case-x0-s = x0-final
+      ; case-x20 = x20-final
+      ; case-x21 = x21-final
+      ; case-x29 = x29-final
+      ; case-x30 = x30-final
+      ; case-stack-inv = stack-inv-final
+      ; case-x29-inv = x29-inv-final
+      ; case-sp-bound = sp>16-final
+      }
 
 -- | Stateful case for inr input
 -- Takes InrAtS validity, runs g on the extracted value
@@ -414,15 +518,107 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
     -- Case for inr executes:
     --   ldr x9 [x0]      -- load tag (= 1)
     --   cmp x9 #0        -- compare with 0
-    --   b.ne right       -- branch if not equal (TAKEN)
+    --   b.ne right       -- branch if not equal (TAKEN for inr)
     --   ... skip f ...
-    --   right:
+    --   right:           -- jump here
     --   ldr x0 [x0+8]    -- load value (= addr-val)
     --   <g code>         -- execute g
     --   end:
 
+    -- Code structure
+    len-f : ℕ
+    len-f = compile-length f
+
+    len-g : ℕ
+    len-g = compile-length g
+
+    right-branch : ℕ
+    right-branch = 5 +ℕ len-f
+
+    end-label : ℕ
+    end-label = (7 +ℕ len-f) +ℕ len-g
+
+    -- For inr, b.ne IS taken (because tag = 1 ≠ 0)
+    -- We jump directly to right-branch, then load value, then execute g
+
+    -- For now, use postulates for the complex phases
+    -- For inr: execute ldr, cmp, b.ne (taken to right-branch), label, ldr
+    -- That's 5 instructions executed, ending at PC = prefix + 7 + |f|
     postulate
       s-after-setup : State
+      setup-star : Star prog s s-after-setup
+      h-setup : halted s-after-setup ≡ false
+      pc-setup : pc s-after-setup ≡ length prefix +ℕ 7 +ℕ len-f  -- At start of g code
+      x0-setup : readReg (regs s-after-setup) x0 ≡ addr-val
+      stack-inv-setup : StackInvariant s-after-setup
+      x29-inv-setup : X29Invariant s-after-setup
+      sp>16-setup : readSP (regs s-after-setup) > 16
+
+    -- Prefix for g: prefix ++ all code before g
+    prefix-g : Program
+    prefix-g = prefix ++ ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-branch ∷
+               ldr x0 (base+imm x0 8) ∷ compile-aarch64 f ++ b end-label ∷
+               label right-branch ∷ ldr x0 (base+imm x0 8) ∷ []
+
+    -- Suffix for g: label end ∷ suffix
+    suffix-g : Program
+    suffix-g = label end-label ∷ suffix
+
+    -- Prove program equality for g call
+    postulate
+      prog-g-eq : prefix-g ++ compile-aarch64 g ++ suffix-g ≡ prog
+      len-prefix-g : length prefix-g ≡ length prefix +ℕ 7 +ℕ len-f
+
+    -- Call run-g with s-after-setup
+    g-result-raw : ∃[ s' ] ∃[ addr-out ] IRStarResultS g (prefix-g ++ compile-aarch64 g ++ suffix-g) s-after-setup s' addr-out (length prefix-g)
+    g-result-raw = run-g prefix-g suffix-g addr-val s-after-setup h-setup
+                         (trans pc-setup (sym len-prefix-g)) x0-setup
+                         stack-inv-setup x29-inv-setup sp>16-setup
+
+    s-after-g : State
+    s-after-g = Data.Product.proj₁ g-result-raw
+
+    addr-out : Word
+    addr-out = Data.Product.proj₁ (Data.Product.proj₂ g-result-raw)
+
+    g-result : IRStarResultS g (prefix-g ++ compile-aarch64 g ++ suffix-g) s-after-setup s-after-g addr-out (length prefix-g)
+    g-result = Data.Product.proj₂ (Data.Product.proj₂ g-result-raw)
+
+    -- Convert star to work on prog
+    star-g : Star prog s-after-setup s-after-g
+    star-g = subst (λ p → Star p s-after-setup s-after-g) prog-g-eq (ir-star g-result)
+
+    -- After g, we're at end-label (no more instructions to execute for the case)
+    -- The label instruction is a no-op, just need to account for PC
+    postulate
       s-final : State
-      addr-out : Word
-      case-result : CaseResultS f g prog s s-final addr-out (length prefix)
+      final-star : Star prog s-after-g s-final
+      h-final : halted s-final ≡ false
+      pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+      x0-final : readReg (regs s-final) x0 ≡ addr-out
+      x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+      x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+      x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+      x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+      stack-inv-final : StackInvariant s-final
+      x29-inv-final : X29Invariant s-final
+      sp>16-final : readSP (regs s-final) > 16
+
+    -- Compose stars: setup ◅◅ g ◅◅ final
+    full-star : Star prog s s-final
+    full-star = star-trans (star-trans setup-star star-g) final-star
+
+    case-result : CaseResultS f g prog s s-final addr-out (length prefix)
+    case-result = record
+      { case-star = full-star
+      ; case-halted = h-final
+      ; case-pc = pc-final
+      ; case-x0-s = x0-final
+      ; case-x20 = x20-final
+      ; case-x21 = x21-final
+      ; case-x29 = x29-final
+      ; case-x30 = x30-final
+      ; case-stack-inv = stack-inv-final
+      ; case-x29-inv = x29-inv-final
+      ; case-sp-bound = sp>16-final
+      }
