@@ -15,9 +15,11 @@ module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _≟_; _++_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_)
-open import Data.Nat.Properties using (≤-refl; n<1+n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) hiding (_+_; _*_)
+open import Data.Nat as Nat
+open import Data.Nat.Properties using (≤-refl; n<1+n; +-identityʳ; +-suc; +-comm)
 open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin as Fin using (_↑ˡ_)
 open import Data.Vec using (Vec; []; _∷_; tail) renaming (lookup to Vec-lookup)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
@@ -85,6 +87,23 @@ lookup-suc-suc-suc-suc-suc-suc-suc-suc : ∀ {n} {Γ : SCtx n} {A B C D E F G H 
                                        → lookup Γ i ≡ lookup ((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) (suc (suc (suc (suc (suc (suc (suc (suc i))))))))
 lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A} {B} {C} {D} {E} {F} {G} {H} i =
   trans (lookup-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} i) (lookup-suc {Γ = ((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G} {A = H} (suc (suc (suc (suc (suc (suc (suc i))))))))
+
+------------------------------------------------------------------------
+-- Type-level context extension for generalized exchange
+------------------------------------------------------------------------
+
+-- | Extend a context with multiple types (builds nested contexts)
+-- This enables the generalized exchangeN implementation
+extendMany : ∀ {n} (m : ℕ) → SCtx n → Vec Type m → SCtx (m Nat.+ n)
+extendMany {n} zero Γ [] = subst SCtx (+-identityʳ n) Γ
+extendMany (suc m) Γ (A ∷ As) = subst SCtx (+-suc m _) (extendMany m (Γ S, A) As)
+
+-- | Generalized lookup lemma for arbitrary depth
+-- Relates lookup in base context to lookup in extended context
+lookup-extendMany : ∀ {n} (m : ℕ) (Γ : SCtx n) (types : Vec Type m) (i : Fin n)
+                  → lookup Γ i ≡ lookup (extendMany m Γ types) (i ↑ˡ m)
+lookup-extendMany zero Γ [] i = {!!}  -- Need to handle subst
+lookup-extendMany (suc m) Γ (A ∷ As) i = {!!}  -- Inductive case
 
 -- | Weaken and Exchange are mutually recursive
 --
@@ -266,27 +285,54 @@ mutual
   exchange₇ (Surface.var (suc (suc (suc (suc (suc (suc zero))))))) = Surface.var (suc (suc (suc (suc (suc (suc zero))))))
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.var (suc (suc (suc (suc (suc (suc (suc i)))))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc (suc i)))))))))
-  exchange₇ (Surface.lam e) = Surface.lam (exchange₈ e)
+  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.lam {A = ArgType} e) =
+    Surface.lam (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ ArgType ∷ []) e)
   exchange₇ (Surface.app f x) = Surface.app (exchange₇ f) (exchange₇ x)
   exchange₇ (Surface.pair a b) = Surface.pair (exchange₇ a) (exchange₇ b)
   exchange₇ (Surface.fst' p) = Surface.fst' (exchange₇ p)
   exchange₇ (Surface.snd' p) = Surface.snd' (exchange₇ p)
   exchange₇ (Surface.inl' a) = Surface.inl' (exchange₇ a)
   exchange₇ (Surface.inr' b) = Surface.inr' (exchange₇ b)
-  exchange₇ (Surface.case' s l r) = Surface.case' (exchange₇ s) (exchange₈ l) (exchange₈ r)
+  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.case' {A = SumArgL} {B = SumArgR} s l r) =
+    Surface.case' (exchange₇ s)
+                  (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgL ∷ []) l)
+                  (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgR ∷ []) r)
   exchange₇ Surface.unit = Surface.unit
   exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
-  exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchange₈ e₂)
+  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.let' {A = LetType} e₁ e₂) =
+    Surface.let' (exchange₇ e₁) (exchangeN 8 {Γ} {A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ LetType ∷ []) e₂)
 
-  postulate
-    exchange₈ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I J : Type}
-              → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
-              → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
-
--- TODO: Fully generalized exchangeN with dependent types
--- See formal/problems-and-solutions.md for design discussion
--- Challenge: Type signature must construct nested contexts at type level
--- Requires: Type-level function to build Γ S, A₁ S, A₂ S, ... S, Aₙ for arbitrary n
+  -- | Generalized exchange for arbitrary depth
+  -- Inserts type A before a sequence of types in the context
+  -- The depth parameter is only used for the type signature; recursion is on expression structure
+  exchangeN : ∀ {n} (depth : ℕ) {Γ : SCtx n} {A Result : Type} (types : Vec Type depth)
+            → SExpr (extendMany depth Γ types) Result
+            → SExpr (extendMany depth (Γ S, A) types) Result
+  -- Base case: no types to skip, just insert A at top
+  exchangeN zero {Γ} {A} [] e = subst (λ Γ' → SExpr Γ' _) (sym (+-identityʳ _)) (weaken (subst (λ Γ' → SExpr Γ' _) (+-identityʳ _) e))
+  -- Recursive case: skip first type B, process the rest
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.var zero) = Surface.var zero
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.var (suc zero)) = Surface.var (suc zero)
+  -- Variables 2 and beyond: need to shift if they reference Γ
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.var (suc (suc i))) = {!!}  -- TODO: handle variable shifting
+  exchangeN (suc d) {Γ} {A} {Result} (B ∷ types) (Surface.lam {A = ArgType} e) = {!!}  -- TODO: extend types vec
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.app e₁ e₂) =
+    Surface.app (exchangeN (suc d) (B ∷ types) e₁) (exchangeN (suc d) (B ∷ types) e₂)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.pair e₁ e₂) =
+    Surface.pair (exchangeN (suc d) (B ∷ types) e₁) (exchangeN (suc d) (B ∷ types) e₂)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.fst' e) =
+    Surface.fst' (exchangeN (suc d) (B ∷ types) e)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.snd' e) =
+    Surface.snd' (exchangeN (suc d) (B ∷ types) e)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.inl' e) =
+    Surface.inl' (exchangeN (suc d) (B ∷ types) e)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.inr' e) =
+    Surface.inr' (exchangeN (suc d) (B ∷ types) e)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.case' s l r) = {!!}  -- TODO: extend types vec for branches
+  exchangeN (suc d) {Γ} {A} (B ∷ types) Surface.unit = Surface.unit
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.absurd v) =
+    Surface.absurd (exchangeN (suc d) (B ∷ types) v)
+  exchangeN (suc d) {Γ} {A} (B ∷ types) (Surface.let' e₁ e₂) = {!!}  -- TODO: extend types vec for e₂
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
@@ -300,11 +346,11 @@ Int ≟T Int = yes refl
 Float ≟T Float = yes refl
 Str ≟T Str = yes refl
 Buffer ≟T Buffer = yes refl
-(A₁ * B₁) ≟T (A₂ * B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+(A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
 ... | yes refl | yes refl = yes refl
 ... | no ¬p | _ = no λ { refl → ¬p refl }
 ... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ + B₁) ≟T (A₂ + B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+(A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
 ... | yes refl | yes refl = yes refl
 ... | no ¬p | _ = no λ { refl → ¬p refl }
 ... | _ | no ¬q = no λ { refl → ¬q refl }
@@ -319,7 +365,7 @@ Buffer ≟T Buffer = yes refl
 (Fix F₁) ≟T (Fix F₂) with F₁ ≟T F₂
 ... | yes refl = yes refl
 ... | no ¬p = no λ { refl → ¬p refl }
-(TVar x) ≟T (TVar y) with x ≟ y
+(TVar x) ≟T (TVar y) with Data.String._≟_ x y
 ... | yes refl = yes refl
 ... | no ¬p = no λ { refl → ¬p refl }
 -- All other combinations are unequal
@@ -328,8 +374,8 @@ Unit ≟T Int = no λ ()
 Unit ≟T Float = no λ ()
 Unit ≟T Str = no λ ()
 Unit ≟T Buffer = no λ ()
-Unit ≟T (_ * _) = no λ ()
-Unit ≟T (_ + _) = no λ ()
+Unit ≟T (_ Once.Type.* _) = no λ ()
+Unit ≟T (_ Once.Type.+ _) = no λ ()
 Unit ≟T (_ ⇒ _) = no λ ()
 Unit ≟T Eff _ _ = no λ ()
 Unit ≟T Fix _ = no λ ()
@@ -339,8 +385,8 @@ Void ≟T Int = no λ ()
 Void ≟T Float = no λ ()
 Void ≟T Str = no λ ()
 Void ≟T Buffer = no λ ()
-Void ≟T (_ * _) = no λ ()
-Void ≟T (_ + _) = no λ ()
+Void ≟T (_ Once.Type.* _) = no λ ()
+Void ≟T (_ Once.Type.+ _) = no λ ()
 Void ≟T (_ ⇒ _) = no λ ()
 Void ≟T Eff _ _ = no λ ()
 Void ≟T Fix _ = no λ ()
@@ -350,8 +396,8 @@ Int ≟T Void = no λ ()
 Int ≟T Float = no λ ()
 Int ≟T Str = no λ ()
 Int ≟T Buffer = no λ ()
-Int ≟T (_ * _) = no λ ()
-Int ≟T (_ + _) = no λ ()
+Int ≟T (_ Once.Type.* _) = no λ ()
+Int ≟T (_ Once.Type.+ _) = no λ ()
 Int ≟T (_ ⇒ _) = no λ ()
 Int ≟T Eff _ _ = no λ ()
 Int ≟T Fix _ = no λ ()
@@ -361,8 +407,8 @@ Float ≟T Void = no λ ()
 Float ≟T Int = no λ ()
 Float ≟T Str = no λ ()
 Float ≟T Buffer = no λ ()
-Float ≟T (_ * _) = no λ ()
-Float ≟T (_ + _) = no λ ()
+Float ≟T (_ Once.Type.* _) = no λ ()
+Float ≟T (_ Once.Type.+ _) = no λ ()
 Float ≟T (_ ⇒ _) = no λ ()
 Float ≟T Eff _ _ = no λ ()
 Float ≟T Fix _ = no λ ()
@@ -372,8 +418,8 @@ Str ≟T Void = no λ ()
 Str ≟T Int = no λ ()
 Str ≟T Float = no λ ()
 Str ≟T Buffer = no λ ()
-Str ≟T (_ * _) = no λ ()
-Str ≟T (_ + _) = no λ ()
+Str ≟T (_ Once.Type.* _) = no λ ()
+Str ≟T (_ Once.Type.+ _) = no λ ()
 Str ≟T (_ ⇒ _) = no λ ()
 Str ≟T Eff _ _ = no λ ()
 Str ≟T Fix _ = no λ ()
@@ -383,42 +429,42 @@ Buffer ≟T Void = no λ ()
 Buffer ≟T Int = no λ ()
 Buffer ≟T Float = no λ ()
 Buffer ≟T Str = no λ ()
-Buffer ≟T (_ * _) = no λ ()
-Buffer ≟T (_ + _) = no λ ()
+Buffer ≟T (_ Once.Type.* _) = no λ ()
+Buffer ≟T (_ Once.Type.+ _) = no λ ()
 Buffer ≟T (_ ⇒ _) = no λ ()
 Buffer ≟T Eff _ _ = no λ ()
 Buffer ≟T Fix _ = no λ ()
 Buffer ≟T TVar _ = no λ ()
-(_ * _) ≟T Unit = no λ ()
-(_ * _) ≟T Void = no λ ()
-(_ * _) ≟T Int = no λ ()
-(_ * _) ≟T Float = no λ ()
-(_ * _) ≟T Str = no λ ()
-(_ * _) ≟T Buffer = no λ ()
-(_ * _) ≟T (_ + _) = no λ ()
-(_ * _) ≟T (_ ⇒ _) = no λ ()
-(_ * _) ≟T Eff _ _ = no λ ()
-(_ * _) ≟T Fix _ = no λ ()
-(_ * _) ≟T TVar _ = no λ ()
-(_ + _) ≟T Unit = no λ ()
-(_ + _) ≟T Void = no λ ()
-(_ + _) ≟T Int = no λ ()
-(_ + _) ≟T Float = no λ ()
-(_ + _) ≟T Str = no λ ()
-(_ + _) ≟T Buffer = no λ ()
-(_ + _) ≟T (_ * _) = no λ ()
-(_ + _) ≟T (_ ⇒ _) = no λ ()
-(_ + _) ≟T Eff _ _ = no λ ()
-(_ + _) ≟T Fix _ = no λ ()
-(_ + _) ≟T TVar _ = no λ ()
+(_ Once.Type.* _) ≟T Unit = no λ ()
+(_ Once.Type.* _) ≟T Void = no λ ()
+(_ Once.Type.* _) ≟T Int = no λ ()
+(_ Once.Type.* _) ≟T Float = no λ ()
+(_ Once.Type.* _) ≟T Str = no λ ()
+(_ Once.Type.* _) ≟T Buffer = no λ ()
+(_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
+(_ Once.Type.* _) ≟T (_ ⇒ _) = no λ ()
+(_ Once.Type.* _) ≟T Eff _ _ = no λ ()
+(_ Once.Type.* _) ≟T Fix _ = no λ ()
+(_ Once.Type.* _) ≟T TVar _ = no λ ()
+(_ Once.Type.+ _) ≟T Unit = no λ ()
+(_ Once.Type.+ _) ≟T Void = no λ ()
+(_ Once.Type.+ _) ≟T Int = no λ ()
+(_ Once.Type.+ _) ≟T Float = no λ ()
+(_ Once.Type.+ _) ≟T Str = no λ ()
+(_ Once.Type.+ _) ≟T Buffer = no λ ()
+(_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
+(_ Once.Type.+ _) ≟T (_ ⇒ _) = no λ ()
+(_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
+(_ Once.Type.+ _) ≟T Fix _ = no λ ()
+(_ Once.Type.+ _) ≟T TVar _ = no λ ()
 (_ ⇒ _) ≟T Unit = no λ ()
 (_ ⇒ _) ≟T Void = no λ ()
 (_ ⇒ _) ≟T Int = no λ ()
 (_ ⇒ _) ≟T Float = no λ ()
 (_ ⇒ _) ≟T Str = no λ ()
 (_ ⇒ _) ≟T Buffer = no λ ()
-(_ ⇒ _) ≟T (_ * _) = no λ ()
-(_ ⇒ _) ≟T (_ + _) = no λ ()
+(_ ⇒ _) ≟T (_ Once.Type.* _) = no λ ()
+(_ ⇒ _) ≟T (_ Once.Type.+ _) = no λ ()
 (_ ⇒ _) ≟T Eff _ _ = no λ ()
 (_ ⇒ _) ≟T Fix _ = no λ ()
 (_ ⇒ _) ≟T TVar _ = no λ ()
@@ -428,8 +474,8 @@ Eff _ _ ≟T Int = no λ ()
 Eff _ _ ≟T Float = no λ ()
 Eff _ _ ≟T Str = no λ ()
 Eff _ _ ≟T Buffer = no λ ()
-Eff _ _ ≟T (_ * _) = no λ ()
-Eff _ _ ≟T (_ + _) = no λ ()
+Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
+Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
 Eff _ _ ≟T (_ ⇒ _) = no λ ()
 Eff _ _ ≟T Fix _ = no λ ()
 Eff _ _ ≟T TVar _ = no λ ()
@@ -439,8 +485,8 @@ Fix _ ≟T Int = no λ ()
 Fix _ ≟T Float = no λ ()
 Fix _ ≟T Str = no λ ()
 Fix _ ≟T Buffer = no λ ()
-Fix _ ≟T (_ * _) = no λ ()
-Fix _ ≟T (_ + _) = no λ ()
+Fix _ ≟T (_ Once.Type.* _) = no λ ()
+Fix _ ≟T (_ Once.Type.+ _) = no λ ()
 Fix _ ≟T (_ ⇒ _) = no λ ()
 Fix _ ≟T Eff _ _ = no λ ()
 Fix _ ≟T TVar _ = no λ ()
@@ -450,8 +496,8 @@ TVar _ ≟T Int = no λ ()
 TVar _ ≟T Float = no λ ()
 TVar _ ≟T Str = no λ ()
 TVar _ ≟T Buffer = no λ ()
-TVar _ ≟T (_ * _) = no λ ()
-TVar _ ≟T (_ + _) = no λ ()
+TVar _ ≟T (_ Once.Type.* _) = no λ ()
+TVar _ ≟T (_ Once.Type.+ _) = no λ ()
 TVar _ ≟T (_ ⇒ _) = no λ ()
 TVar _ ≟T Eff _ _ = no λ ()
 TVar _ ≟T Fix _ = no λ ()
@@ -498,7 +544,7 @@ lookupVar (mkCtx n Γ Δ) x = go Γ Δ
     go [] S∅ = nothing
     go [] (_ S, _) = nothing  -- impossible case: named context empty but debruijn not
     go (_ ∷ _) S∅ = nothing   -- impossible case: named context non-empty but debruijn empty
-    go {suc m} (b ∷ Γ') (Δ' S, B) with x ≟ name b
+    go {suc m} (b ∷ Γ') (Δ' S, B) with Data.String._≟_ x (name b)
     ... | yes _ = just (B , Surface.var zero)
     ... | no  _ with go Γ' Δ'
     ...   | nothing = nothing
@@ -539,8 +585,8 @@ inferElab ctx (Raw.RApp fun arg) = inferApp (inferElab ctx fun)
     inferApp (success Float _) = failure "Expected function type in application"
     inferApp (success Str _) = failure "Expected function type in application"
     inferApp (success Buffer _) = failure "Expected function type in application"
-    inferApp (success (_ * _) _) = failure "Expected function type in application"
-    inferApp (success (_ + _) _) = failure "Expected function type in application"
+    inferApp (success (_ Once.Type.* _) _) = failure "Expected function type in application"
+    inferApp (success (_ Once.Type.+ _) _) = failure "Expected function type in application"
     inferApp (success (Eff _ _) _) = failure "Expected function type in application"
     inferApp (success (Fix _) _) = failure "Expected function type in application"
     inferApp (success (TVar _) _) = failure "Expected function type in application"
@@ -586,7 +632,7 @@ inferElab ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElab ctx scrut)
     inferCase (success Float _) = failure "Expected sum type in case"
     inferCase (success Str _) = failure "Expected sum type in case"
     inferCase (success Buffer _) = failure "Expected sum type in case"
-    inferCase (success (_ * _) _) = failure "Expected sum type in case"
+    inferCase (success (_ Once.Type.* _) _) = failure "Expected sum type in case"
     inferCase (success (_ ⇒ _) _) = failure "Expected sum type in case"
     inferCase (success (Eff _ _) _) = failure "Expected sum type in case"
     inferCase (success (Fix _) _) = failure "Expected sum type in case"

@@ -262,6 +262,7 @@ library
       MAlonzo.Code.Once.Type
       MAlonzo.Code.Once.TypeCheck
       MAlonzo.Code.Once.TypeCheck.Context
+      MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Infer
       MAlonzo.Code.Once.TypeCheck.Raw

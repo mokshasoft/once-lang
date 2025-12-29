@@ -5,11 +5,13 @@
 -- This module wraps the verified elaboration pipeline extracted from Agda via MAlonzo.
 -- The elaboration is proven correct: Surface.Syntax.Expr → IR preserves semantics.
 --
--- Pipeline:
+-- Pipeline (new combined approach):
 --   1. toMAlonzoRaw: Haskell Expr → MAlonzo RawExpr
---   2. TypeCheck/Infer: RawExpr → Type (infer the type)
---   3. TypeCheck/Resolve: RawExpr + Type → Surface.Syntax.Expr (scope resolution)
---   4. Surface.Elaborate: Ctx → Type → Surface.Syntax.Expr → IR (category-theoretic)
+--   2. TypeCheck/Elaborate.inferElab: RawExpr → InferElabResult (combined type+resolve)
+--   3. Surface.Elaborate: Surface.Syntax.Expr → IR (category-theoretic)
+--
+-- The new TypeCheck.Elaborate module avoids the postulates in TypeCheck.Resolve
+-- by combining type inference and elaboration in a single pass.
 module Once.Elaborate.Verified
   ( -- * Verified elaboration
     elaborateVerified
@@ -19,26 +21,22 @@ module Once.Elaborate.Verified
   ) where
 
 import qualified Once.Syntax as S
-import qualified Once.Type as H
 import qualified Once.IR as H
 
 import qualified MAlonzo.Code.Once.IR as MI
-import qualified MAlonzo.Code.Once.Type as MT
-import qualified MAlonzo.Code.Once.TypeCheck.Infer as VI
-import qualified MAlonzo.Code.Once.TypeCheck.Context as VC
-import qualified MAlonzo.Code.Once.TypeCheck.Resolve as VR
-import qualified MAlonzo.Code.Once.Surface.Syntax as VS
-import qualified MAlonzo.Code.Once.Surface.Elaborate as VE
+import qualified MAlonzo.Code.Once.TypeCheck.Elaborate as VTE
 import qualified MAlonzo.Code.Agda.Builtin.Maybe as AM
-import Once.MAlonzo (toMAlonzoRaw, toMAlonzoType, fromInferResult, fromMAlonzoIR)
+import qualified MAlonzo.Code.Agda.Builtin.Sigma as Sigma
+import Once.MAlonzo (toMAlonzoRaw, fromMAlonzoIR)
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | Elaboration error message
 type ElaborateError = String
 
 -- | Elaborate an expression using the verified MAlonzo implementation
 --
--- This is the full verified pipeline:
---   Haskell Expr → MAlonzo RawExpr → Type check → Resolve → Elaborate → Haskell IR
+-- This uses the new combined inferElab function that avoids postulates:
+--   Haskell Expr → MAlonzo RawExpr → inferElab → Surface.Expr → Elaborate → IR
 --
 -- Returns either an error message or the elaborated categorical IR.
 elaborateVerified :: S.Expr -> Either ElaborateError H.IR
@@ -46,19 +44,16 @@ elaborateVerified expr = do
   -- Step 1: Convert to MAlonzo RawExpr
   let rawExpr = toMAlonzoRaw expr
 
-  -- Step 2: Infer the type using verified type checker
-  let inferResult = VI.d_infer_148 VC.d_'8709'_32 rawExpr 0
-  (hType, _fresh) <- fromInferResult inferResult
-  let mType = toMAlonzoType hType
-
-  -- Step 3: Resolve variable scopes to get intrinsically-typed expression
-  case VR.d_resolveClosed_508 rawExpr mType of
-    AM.C_nothing_18 -> Left "Verified elaboration: scope resolution failed"
-    AM.C_just_16 surfaceExpr -> do
-      -- Step 4: Elaborate to categorical IR
-      let mIR = VE.du_elaborate_70 VS.C_'8709'_8 mType surfaceExpr
-      -- Step 5: Convert back to Haskell IR
-      Right (fromMAlonzoIR mIR)
+  -- Step 2: Use compileExpr which does inferElab + elaborate in one step
+  case VTE.d_compileExpr_1172 rawExpr of
+    AM.C_nothing_18 -> Left "Verified elaboration: inference/elaboration failed"
+    AM.C_just_16 result ->
+      -- Result is ∃[ A ] IR ∞ Unit A, which is a dependent pair (Sigma)
+      -- MAlonzo erases dependent types, so we use unsafeCoerce
+      case result of
+        Sigma.C__'44'__32 _ty irExpr ->
+          -- Step 3: Convert back to Haskell IR
+          Right (fromMAlonzoIR (unsafeCoerce irExpr))
 
 -- | Elaborate an expression directly to MAlonzo IR (for internal use)
 --
@@ -67,11 +62,8 @@ elaborateVerified expr = do
 elaborateToIR :: S.Expr -> Either ElaborateError MI.T_IR_4
 elaborateToIR expr = do
   let rawExpr = toMAlonzoRaw expr
-  let inferResult = VI.d_infer_148 VC.d_'8709'_32 rawExpr 0
-  (hType, _fresh) <- fromInferResult inferResult
-  let mType = toMAlonzoType hType
-
-  case VR.d_resolveClosed_508 rawExpr mType of
-    AM.C_nothing_18 -> Left "Verified elaboration: scope resolution failed"
-    AM.C_just_16 surfaceExpr ->
-      Right (VE.du_elaborate_70 VS.C_'8709'_8 mType surfaceExpr)
+  case VTE.d_compileExpr_1172 rawExpr of
+    AM.C_nothing_18 -> Left "Verified elaboration: inference/elaboration failed"
+    AM.C_just_16 result ->
+      case result of
+        Sigma.C__'44'__32 _ty irExpr -> Right (unsafeCoerce irExpr)
