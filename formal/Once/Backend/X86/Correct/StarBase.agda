@@ -17,6 +17,7 @@ open import Size
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; stack-below-r15; RbpInvariant; stack-inv-preserved-unchanged; rsp>16-preserved-unchanged)
+open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
 open import Once.Backend.X86.Correct.MemoryValid
@@ -84,6 +85,42 @@ IRRunner i = ∀ {j : Size< i} {A B} (ir : IR j A B) (prefix suffix : Program) (
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- ClosureWFOutput: Optional closure well-formedness produced by curry
+------------------------------------------------------------------------
+
+-- | When an IR term produces a closure (curry), this captures its WF proof.
+-- For other IR terms, this will be Nothing.
+--
+-- The existential quantification allows us to hide the closure's types
+-- when threading through compose/pair.
+data ClosureWFOutput (prog : Program) : Set₁ where
+  no-closure : ClosureWFOutput prog
+  has-closure : ∀ {A B : Type}
+                (code-ptr env-addr : ℕ)
+                (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+                (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics) →
+                ClosureWFOutput prog
+
+------------------------------------------------------------------------
+-- IRRunnerWithWF: Extended runner that tracks closure WF
+------------------------------------------------------------------------
+
+-- | Like IRRunner, but also returns optional ClosureWFOutput.
+-- This enables threading WF proofs from curry through to apply.
+IRRunnerWithWF : Size → Set₁
+IRRunnerWithWF i = ∀ {j : Size< i} {A B} (ir : IR j A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] (IRStarResult ir prog s s' x (length prefix)
+             × ClosureWFOutput prog)  -- Output WF context
 
 ------------------------------------------------------------------------
 -- RbpInvariant preservation helper
