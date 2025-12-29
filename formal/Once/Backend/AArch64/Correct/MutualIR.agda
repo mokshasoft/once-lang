@@ -1826,7 +1826,18 @@ mutual
         x29-inv-final : X29Invariant s-final
         sp-bound-final : readSP (regs s-final) > 16
 
-      -- Register preservation (chain through all phases)
+      -- Register preservation through Phase 5
+      -- Phase 5: str doesn't modify regs, mov x0 only modifies x0
+      -- x20, x21: NOT preserved - pair setup modifies them (spec gap)
+      -- x29, x30: PRESERVED - setup preserves them, chain through all phases
+      --
+      -- Proof structure (for x29/x30):
+      --   s → s-setup (setup-x29 preserves)
+      --   s-setup → s-f (ir-x29 res-f preserves)
+      --   s-f → s-mid (mid-x29 preserves)
+      --   s-mid → s-g (ir-x29 res-g preserves)
+      --   s-g → s5 (str doesn't modify regs)
+      --   s5 → s-final (mov x0 doesn't affect x29)
       postulate
         x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
         x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
