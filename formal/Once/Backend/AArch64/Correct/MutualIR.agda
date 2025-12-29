@@ -1647,9 +1647,9 @@ mutual
       x21-s-f : readReg (regs s-f) x21 ≡ new-sp
       x21-s-f = trans (ir-x21 res-f) setup-x21
 
-      -- X29Invariant for s-f (POSTULATED - need to add to IRStarResult)
-      postulate
-        x29-inv-s-f : X29Invariant s-f
+      -- X29Invariant for s-f (from IRStarResult)
+      x29-inv-s-f : X29Invariant s-f
+      x29-inv-s-f = ir-x29-inv res-f
 
       -- Call exec-pair-middle
       mid-result = exec-pair-middle f g prefix suffix x s s-f
@@ -1744,16 +1744,50 @@ mutual
       res-g = subst (λ p → IRStarResult g p s-mid s-g x (length (pair-prefix-g ctx))) prog-g-eq res-g-raw
 
       ------------------------------------------------------------------------
-      -- Phase 5: Final (2 instructions) - POSTULATED for now
+      -- Phase 5: Final (2 instructions)
       -- str x0 [x21+8], mov x0 x21
       ------------------------------------------------------------------------
 
+      -- The 2 final instructions
+      i6 : Instr
+      i6 = str x0 (base+imm x21 8)   -- store g's result at [x21+8]
+      i7 : Instr
+      i7 = mov x0 (reg x21)          -- x0 = x21 = new-sp
+
+      -- x21 value in s-g (chain through all phases)
+      x21-s-g : readReg (regs s-g) x21 ≡ new-sp
+      x21-s-g = trans (ir-x21 res-g) (trans mid-x21 (trans (ir-x21 res-f) setup-x21))
+
+      -- x0 value in s-g
+      x0-s-g : readReg (regs s-g) x0 ≡ encode (eval g x)
+      x0-s-g = ir-x0 res-g
+
+      -- PC after g: length prefix-g + compile-length g
+      pc-s-g : pc s-g ≡ length (pair-prefix-g ctx) +ℕ compile-length g
+      pc-s-g = ir-pc res-g
+
+      -- State after step 1: str x0 [x21+8]
+      -- Writes x0 (encode (eval g x)) at x21+8 = new-sp+8
+      s5 : State
+      s5 = record s-g { memory = writeMem (memory s-g) (new-sp +ℕ 8) (encode (eval g x)) ; pc = pc s-g +ℕ 1 }
+
+      -- State after step 2: mov x0 x21
+      -- x0 = x21 = new-sp
+      s-final : State
+      s-final = record s5 { regs = writeReg (regs s5) x0 new-sp ; pc = pc s5 +ℕ 1 }
+
+      -- Memory has both results stored
+      -- fst: preserved from s-mid through g and final instructions
       postulate
-        s-final : State
-        star-final : Star prog s-g s-final
-        -- Memory has both results stored
         final-mem-fst : readMem (memory s-final) new-sp ≡ just (encode (eval f x))
-        final-mem-snd : readMem (memory s-final) (new-sp +ℕ 8) ≡ just (encode (eval g x))
+
+      -- snd: written by str x0 [x21+8] in s5, preserved through mov
+      final-mem-snd : readMem (memory s-final) (new-sp +ℕ 8) ≡ just (encode (eval g x))
+      final-mem-snd = readMem-writeMem-same (memory s-g) (new-sp +ℕ 8) (encode (eval g x))
+
+      -- Star proof: 2 steps from s-g to s-final
+      postulate
+        star-final : Star prog s-g s-final
 
       ------------------------------------------------------------------------
       -- Compose all Star proofs
@@ -1772,17 +1806,22 @@ mutual
 
       -- x0 is pair pointer which encodes (eval f x, eval g x)
       -- encode-pair-construct: a b p m (mem-fst) (mem-snd) → p ≡ encode (a, b)
-      -- We have x0-is-new-sp : x0 ≡ new-sp, so trans gives us x0 ≡ encode (...)
+      -- s-final has x0 = new-sp (from mov x0 x21 instruction)
+      x0-is-new-sp : readReg (regs s-final) x0 ≡ new-sp
+      x0-is-new-sp = readReg-writeReg-same (regs s5) x0 new-sp
+
       x0-final : readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
       x0-final = trans x0-is-new-sp pair-encoding
         where
-          postulate x0-is-new-sp : readReg (regs s-final) x0 ≡ new-sp
           pair-encoding : new-sp ≡ encode (eval ⟨ f , g ⟩ x)
           pair-encoding = encode-pair-construct (eval f x) (eval g x) new-sp (memory s-final) final-mem-fst final-mem-snd
 
-      -- Final state properties (halted, stack invariant, sp bound)
+      -- halted: unchanged through Phase 5 (only memory and regs change)
+      halted-final : halted s-final ≡ false
+      halted-final = ir-halted res-g
+
+      -- Final state properties (stack invariant, sp bound)
       postulate
-        halted-final : halted s-final ≡ false
         stack-inv-final : StackInvariant s-final
         x29-inv-final : X29Invariant s-final
         sp-bound-final : readSP (regs s-final) > 16
