@@ -79,6 +79,16 @@ ARITH_RISCV_CORRECT := Once/Arith/Backend/RiscV/Correct.agda
 ARITH_BOUNDARY := Once/Arith/Boundary.agda
 ARITH_EMIT := Once/Arith/Backend/Emit.agda
 
+# Verified type checker (OCP-0003)
+TYPECHECK_RAW := Once/TypeCheck/Raw.agda
+TYPECHECK_CONTEXT := Once/TypeCheck/Context.agda
+TYPECHECK_ERROR := Once/TypeCheck/Error.agda
+TYPECHECK_UNIFY := Once/TypeCheck/Unify.agda
+TYPECHECK_INFER := Once/TypeCheck/Infer.agda
+TYPECHECK_RESOLVE := Once/TypeCheck/Resolve.agda
+TYPECHECK_SOUND := Once/TypeCheck/Sound.agda
+TYPECHECK_MAIN := Once/TypeCheck.agda
+
 # Nix develop wrapper: suppress warnings and banner
 NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#agda' --command
 
@@ -295,6 +305,34 @@ malonzo-arith:
 	@cp _build/malonzo/MAlonzo/Code/Once/Arith/Type.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
 	@cp _build/malonzo/MAlonzo/Code/Once/Arith/IR.hs ../compiler/src/MAlonzo/Code/Once/Arith/ 2>/dev/null || true
 	@echo "Done. Verified arithmetic backends in compiler/src/MAlonzo/Code/Once/Arith/Backend/"
+
+# Verified type checker (OCP-0003)
+.PHONY: typecheck-verified
+typecheck-verified:
+	@echo "Type-checking verified type checker (OCP-0003)..."
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RAW)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_CONTEXT)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_ERROR)'
+
+.PHONY: typecheck-full
+typecheck-full: typecheck-verified
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_UNIFY)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_INFER)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RESOLVE)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_SOUND)'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_MAIN)'
+	@echo "Verified type checker type-checks successfully!"
+
+.PHONY: malonzo-typecheck
+malonzo-typecheck:
+	@echo "Extracting verified type checker via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
+	@echo "Copying MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/TypeCheck
+	@cp -r _build/malonzo/MAlonzo/Code/Once/TypeCheck/* ../compiler/src/MAlonzo/Code/Once/TypeCheck/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/TypeCheck.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "Done. Verified type checker in compiler/src/MAlonzo/Code/Once/TypeCheck/"
 
 .PHONY: clean
 clean:
