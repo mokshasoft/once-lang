@@ -92,12 +92,13 @@ lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A} {B} {C} {D} {E} {F} {G} {H}
 -- Type-level context extension for generalized exchange
 ------------------------------------------------------------------------
 
--- | Extend a context with a vector of types
--- Builds Γ S, types[0] S, types[1] S, ... S, types[m-1]
--- Size increases by m
-extendMany : ∀ {n m} → SCtx n → Vec Type m → SCtx (n Nat.+ m)
-extendMany {n} Γ [] = subst SCtx (sym (Nat.+-identityʳ n)) Γ
-extendMany Γ (A ∷ As) = subst SCtx (Nat.+-suc _ _) (extendMany (Γ S, A) As)
+-- | Extend a context with a list of types
+-- Builds Γ S, types[0] S, types[1] S, ...
+-- Using List and existential to avoid arithmetic complexity
+extendWithList : ∀ {n} → SCtx n → List Type → ∃[ k ] SCtx k
+extendWithList Γ [] = _ , Γ
+extendWithList Γ (A ∷ As) = extendWithList (Γ S, A) As
+
 
 -- TODO: Generalized lookup lemma for arbitrary depth
 -- Will be needed for variable case in exchangeN
@@ -286,54 +287,46 @@ mutual
   exchange₇ (Surface.var (suc (suc (suc (suc (suc (suc zero))))))) = Surface.var (suc (suc (suc (suc (suc (suc zero))))))
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.var (suc (suc (suc (suc (suc (suc (suc i)))))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc (suc i)))))))))
-  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.lam {A = ArgType} e) =
-    Surface.lam (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ ArgType ∷ []) e)
+  exchange₇ (Surface.lam e) = Surface.lam (exchange₈ e)
   exchange₇ (Surface.app f x) = Surface.app (exchange₇ f) (exchange₇ x)
   exchange₇ (Surface.pair a b) = Surface.pair (exchange₇ a) (exchange₇ b)
   exchange₇ (Surface.fst' p) = Surface.fst' (exchange₇ p)
   exchange₇ (Surface.snd' p) = Surface.snd' (exchange₇ p)
   exchange₇ (Surface.inl' a) = Surface.inl' (exchange₇ a)
   exchange₇ (Surface.inr' b) = Surface.inr' (exchange₇ b)
-  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.case' {A = SumArgL} {B = SumArgR} s l r) =
-    Surface.case' (exchange₇ s)
-                  (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgL ∷ []) l)
-                  (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ SumArgR ∷ []) r)
+  exchange₇ (Surface.case' s l r) = Surface.case' (exchange₇ s) (exchange₈ l) (exchange₈ r)
   exchange₇ Surface.unit = Surface.unit
   exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
-  exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.let' {A = LetType} e₁ e₂) =
-    Surface.let' (exchange₇ e₁) (exchangeN {Γ = Γ} {A = A} (B ∷ C ∷ D ∷ E ∷ F ∷ G ∷ H ∷ LetType ∷ []) e₂)
+  exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchange₈ e₂)
+
+  postulate
+    exchange₈ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I J : Type}
+              → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
+              → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
 
   -- | Generalized exchange for arbitrary depth
   -- Inserts type A at bottom of context, before a sequence of types
-  -- The depth parameter is only used for the type signature; recursion is on expression structure
-  exchangeN : ∀ {n depth} {Γ : SCtx n} {A Result : Type} (types : Vec Type depth)
-            → SExpr (extendMany Γ types) Result
-            → SExpr (extendMany (Γ S, A) types) Result
+  -- Using List and existential to avoid complex arithmetic
+  exchangeN : ∀ {n} {Γ : SCtx n} {A Result : Type} (types : List Type)
+            → (let _ , Γ' = extendWithList Γ types in SExpr Γ' Result)
+            → (let _ , Γ'' = extendWithList (Γ S, A) types in SExpr Γ'' Result)
   -- Base case: no types to skip, just insert A at top
-  exchangeN {Γ = Γ} {A = A} [] e = {!!}  -- Need to handle subst from extendMany
+  exchangeN [] e = weaken e
   -- Recursive case: skip first type B, process the rest
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.var zero) = Surface.var zero
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.var (suc zero)) = Surface.var (suc zero)
-  -- Variables 2 and beyond: need to shift if they reference Γ
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.var (suc (suc i))) = {!!}  -- TODO: handle variable shifting
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.lam {A = ArgType} e) = {!!}  -- TODO: extend types vec
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.app e₁ e₂) =
-    Surface.app (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.pair e₁ e₂) =
-    Surface.pair (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.fst' e) =
-    Surface.fst' (exchangeN (B ∷ types) e)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.snd' e) =
-    Surface.snd' (exchangeN (B ∷ types) e)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.inl' e) =
-    Surface.inl' (exchangeN (B ∷ types) e)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.inr' e) =
-    Surface.inr' (exchangeN (B ∷ types) e)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.case' s l r) = {!!}  -- TODO: extend types vec for branches
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) Surface.unit = Surface.unit
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.absurd v) =
-    Surface.absurd (exchangeN (B ∷ types) v)
-  exchangeN {Γ = Γ} {A = A} (B ∷ types) (Surface.let' e₁ e₂) = {!!}  -- TODO: extend types vec for e₂
+  exchangeN (B ∷ types) (Surface.var zero) = Surface.var zero
+  exchangeN (B ∷ types) (Surface.var (suc zero)) = Surface.var (suc zero)
+  exchangeN (B ∷ types) (Surface.var (suc (suc i))) = {!!}  -- TODO: variable shifting
+  exchangeN (B ∷ types) (Surface.lam {A = ArgType} body) = {!!}  -- TODO: extend types
+  exchangeN (B ∷ types) (Surface.app e₁ e₂) = Surface.app (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
+  exchangeN (B ∷ types) (Surface.pair e₁ e₂) = Surface.pair (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
+  exchangeN (B ∷ types) (Surface.fst' e') = Surface.fst' (exchangeN (B ∷ types) e')
+  exchangeN (B ∷ types) (Surface.snd' e') = Surface.snd' (exchangeN (B ∷ types) e')
+  exchangeN (B ∷ types) (Surface.inl' e') = Surface.inl' (exchangeN (B ∷ types) e')
+  exchangeN (B ∷ types) (Surface.inr' e') = Surface.inr' (exchangeN (B ∷ types) e')
+  exchangeN (B ∷ types) (Surface.case' s l r) = {!!}  -- TODO: extend types for branches
+  exchangeN (B ∷ types) Surface.unit = Surface.unit
+  exchangeN (B ∷ types) (Surface.absurd v) = Surface.absurd (exchangeN (B ∷ types) v)
+  exchangeN (B ∷ types) (Surface.let' e₁ e₂) = {!!}  -- TODO: extend types for e₂
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
