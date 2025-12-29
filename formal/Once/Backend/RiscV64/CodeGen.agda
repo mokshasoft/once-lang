@@ -80,7 +80,7 @@ compile-length arr = 1             -- nop (identity)
 --
 StackDelta : ∀ {i A B} → IR i A B → ℕ
 StackDelta id = 0
-StackDelta (f ∘ g) = StackDelta f +ℕ StackDelta g
+StackDelta (g ∘ f) = StackDelta f +ℕ StackDelta g  -- f runs first, then g
 StackDelta fst = 0
 StackDelta snd = 0
 StackDelta ⟨ f , g ⟩ = 24 +ℕ StackDelta f +ℕ StackDelta g  -- 24 bytes for pair struct
@@ -110,7 +110,7 @@ StackDelta arr = 0
 --
 StackDepth : ∀ {i A B} → IR i A B → ℕ
 StackDepth id = 0
-StackDepth (f ∘ g) = StackDepth f ⊔ (StackDelta f +ℕ StackDepth g)
+StackDepth (g ∘ f) = StackDepth f ⊔ (StackDelta f +ℕ StackDepth g)  -- f runs first
 StackDepth fst = 0
 StackDepth snd = 0
 StackDepth ⟨ f , g ⟩ = 48 +ℕ (StackDepth f ⊔ StackDepth g)  -- 24 alloc + 24 margin

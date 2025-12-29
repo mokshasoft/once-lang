@@ -88,8 +88,8 @@ open import Once.Backend.RiscV64.Correct.IR.Injection
   using (run-inl-star; run-inr-star)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m; ≤-trans)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m; ≤-trans; m≤m⊔n; m≤n⊔m; ∸-monoˡ-≤; m+n∸n≡m)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -156,6 +156,7 @@ postulate
 mutual
   -- | Star-based IR execution at arbitrary offset (sized for termination)
   -- Stack-space precondition: 24 ≤ sp ensures enough stack for all IR nodes
+  -- TODO: Refine to StackDepth ir ≤ sp for more precise bounds
   -- Size parameter i enables termination checking across module boundaries
   run-ir-star-at-offset : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -201,32 +202,34 @@ mutual
 
   -- Compose: use extracted context helpers (needs to pass sp-bound through)
   run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
-    let ctx = make-compose-context f g prefix suffix
-        open ComposeContext ctx
+    sg , assemble-compose-result f g prefix suffix x s sf sg rf' rg'
+    where
+      ctx = make-compose-context f g prefix suffix
+      open ComposeContext ctx
 
-        -- Step 1: Execute f
-        (sf , rf) = run-ir-star-at-offset f prefix suffix-f x s h-false pc-eq a0-eq sp-bound
-        rf' = transform-f-result f g prefix suffix x s sf rf
+      -- Step 1: Execute f
+      step-f = run-ir-star-at-offset f prefix suffix-f x s h-false pc-eq a0-eq sp-bound
+      sf = proj₁ step-f
+      rf = proj₂ step-f
+      rf' = transform-f-result f g prefix suffix x s sf rf
 
-        -- Step 2: Execute g (no transfer needed - a0 already has result!)
-        a0-after-f : readReg (regs sf) a0 ≡ encode (eval f x)
-        a0-after-f = ir-a0 rf
+      -- Step 2: Execute g (no transfer needed - a0 already has result!)
+      a0-after-f : readReg (regs sf) a0 ≡ encode (eval f x)
+      a0-after-f = ir-a0 rf
 
-        -- PC conversion: ir-pc rf gives pc sf ≡ length prefix +ℕ compile-length f
-        -- We need pc sf ≡ length prefix-g where length prefix-g = length prefix +ℕ len-f
-        pc-for-g : pc sf ≡ length prefix-g
-        pc-for-g = trans (ir-pc rf) (sym len-prefix-g)
+      -- PC conversion
+      pc-for-g : pc sf ≡ length prefix-g
+      pc-for-g = trans (ir-pc rf) (sym len-prefix-g)
 
-        -- SP bound for g: f may allocate stack (delta > 0), so sp' = sp - delta.
-        -- To prove 24 ≤ sp' we'd need 24 + delta ≤ sp.
-        -- This requires stack depth analysis; for now use postulate.
-        postulate sp-bound-for-g : 24 ≤ readReg (regs sf) sp
+      -- SP bound for g: f may change sp, need 24 ≤ sf.sp
+      -- TODO: Prove from ir-sp and StackDelta relationship
+      postulate sp-bound-for-g : 24 ≤ readReg (regs sf) sp
 
-        (sg , rg) = run-ir-star-at-offset g prefix-g suffix (eval f x) sf
-                      (ir-halted rf) pc-for-g a0-after-f sp-bound-for-g
-        rg' = transform-g-result f g prefix suffix x sf sg rg
-
-    in sg , assemble-compose-result f g prefix suffix x s sf sg rf' rg'
+      step-g = run-ir-star-at-offset g prefix-g suffix (eval f x) sf
+                 (ir-halted rf) pc-for-g a0-after-f sp-bound-for-g
+      sg = proj₁ step-g
+      rg = proj₂ step-g
+      rg' = transform-g-result f g prefix suffix x sf sg rg
 
   -- Pair: use extracted context helpers (needs stack-space)
   run-ir-star-at-offset ⟨ f , g ⟩ prefix suffix x s h-false pc-eq a0-eq sp-bound =
