@@ -625,6 +625,7 @@ mutual
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
+      ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -786,6 +787,12 @@ mutual
       star-f : Star prog s-setup s1
       star-f = subst (λ p → Star p s-setup s1) (sym prog-eq-f) star-f-raw
 
+      -- Convert closure-wf from f to use prog
+      closure-wf-f-raw : ClosureWFOutput (prefix-f ++ code-f ++ suffix-f)
+      closure-wf-f-raw = ir-closure-wf r-f
+      closure-wf-final : ClosureWFOutput prog
+      closure-wf-final = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
+
       -- pc s1 = length prefix + 4 + len-f
       pc1 : pc s1 ≡ length prefix +ℕ 4 +ℕ len-f
       pc1 = trans pc1-raw (cong (_+ℕ len-f) len-prefix-f)
@@ -932,6 +939,7 @@ mutual
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
+      ; ir-closure-wf = closure-wf-final  -- Thread through g (inr branch)
       }
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -1146,6 +1154,12 @@ mutual
       -- Convert star-g to use prog
       star-g : Star prog s-right s1
       star-g = subst (λ p → Star p s-right s1) (sym prog-eq-g) star-g-raw
+
+      -- Convert closure-wf from g to use prog
+      closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix-g)
+      closure-wf-g-raw = ir-closure-wf r-g
+      closure-wf-final : ClosureWFOutput prog
+      closure-wf-final = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
 
       -- pc s1 = length prefix + 7 + len-f + len-g
       pc1 : pc s1 ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
@@ -1932,6 +1946,7 @@ mutual
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
+      ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
       }
     where
       open import Data.Product using (proj₁; proj₂)
