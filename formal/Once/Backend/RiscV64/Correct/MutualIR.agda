@@ -126,6 +126,23 @@ cancel-+-left (suc n) (s≤s p) = cancel-+-left n p
 ∸-antimonoʳ-≤ {suc m} {suc n} (suc o) (s≤s p) = ∸-antimonoʳ-≤ o p
 
 ------------------------------------------------------------------------
+-- Helper lemmas for sp preservation when ir-sp-delta = 0
+------------------------------------------------------------------------
+
+-- If n ≤ 0, then n = 0 (for ℕ)
+n≤0⇒n≡0 : ∀ {n} → n ≤ 0 → n ≡ 0
+n≤0⇒n≡0 z≤n = refl
+
+-- Derive sp-after = sp-before from ir-sp equation when delta = 0
+-- From ir-sp: sp-after + delta = sp-before
+-- When delta = 0: sp-after + 0 = sp-before, so sp-after = sp-before
+sp-preserved-from-delta-zero : ∀ {sp-after sp-before delta} →
+  sp-after +ℕ delta ≡ sp-before → delta ≡ 0 → sp-after ≡ sp-before
+sp-preserved-from-delta-zero {sp-after} ir-sp-eq delta-zero =
+  trans (sym (+-identityʳ sp-after))
+        (trans (cong (sp-after +ℕ_) (sym delta-zero)) ir-sp-eq)
+
+------------------------------------------------------------------------
 -- Star-based initial (void elimination)
 --
 -- compile-riscv initial = ebreak ∷ []
@@ -291,23 +308,38 @@ mutual
       rg' = transform-g-result f g prefix suffix x sf sg rg
 
   -- Pair: use extracted context helpers (needs stack-space)
+  -- LIMITATION: Pair proof requires StackDelta f = 0 and StackDelta g = 0.
+  -- This is satisfied by simple IR (id, terminal, fold, unfold, arr, fst, snd, apply)
+  -- but NOT by inl, inr, curry, or nested pairs. Those would require frame pointer approach.
   run-ir-star-at-offset ⟨ f , g ⟩ prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-pair-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
+      pair-delta-f-zero pair-delta-g-zero
+    where
+      -- Document the limitation: f and g must not permanently allocate stack
+      postulate
+        pair-delta-f-zero : StackDelta f ≡ 0
+        pair-delta-g-zero : StackDelta g ≡ 0
 
   -- Case: use extracted context helpers
   run-ir-star-at-offset ([_,_] f g) prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-case-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Pair helper - proven using phase helpers and IH
+  -- Preconditions: StackDelta f = 0 and StackDelta g = 0
+  -- This ensures f and g don't permanently allocate stack, which is required
+  -- because pair-middle writes to sp-after-f and pair-final reads from sp-after-g.
+  -- If f or g allocated stack, these addresses would differ.
   run-pair-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
     StackDepth ⟨ f , g ⟩ ≤ readReg (regs s) sp →
+    StackDelta f ≡ 0 →
+    StackDelta g ≡ 0 →
     let prog = prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-  run-pair-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-pair-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound delta-f-zero delta-g-zero =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -420,10 +452,15 @@ mutual
       s1-after-f-is-x : readReg (regs s-after-f-raw) s1 ≡ encode x
       s1-after-f-is-x = trans s1-after-f s1-setup
 
-      -- SP tracking: postulate that f preserves sp (sound when delta_f = 0)
-      -- This is a limitation: nested pairs would fail. See detailed comment below.
-      postulate
-        sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
+      -- SP tracking: f preserves sp because StackDelta f = 0 implies ir-sp-delta r-f = 0
+      -- From ir-sp-delta-leq: ir-sp-delta r-f ≤ StackDelta f = 0, so ir-sp-delta r-f = 0
+      delta-f-is-zero : ir-sp-delta r-f ≡ 0
+      delta-f-is-zero = n≤0⇒n≡0 (subst (ir-sp-delta r-f ≤_) delta-f-zero (ir-sp-delta-leq r-f))
+
+      -- From ir-sp r-f: sp-after + delta = sp-before
+      -- When delta = 0: sp-after = sp-before
+      sp-after-f : readReg (regs s-after-f-raw) sp ≡ readReg (regs s-setup) sp
+      sp-after-f = sp-preserved-from-delta-zero (ir-sp r-f) delta-f-is-zero
 
       -- Phase 3: Middle (2 instructions)
       -- Need sp relation: sp after f = sp_orig - 24
@@ -546,20 +583,14 @@ mutual
 
       -- SP tracking through f and g:
       -- The IRStarResult gives us: sp-after + delta = sp-before
-      --
-      -- LIMITATION: The current pair code generation assumes f and g don't allocate
-      -- permanent stack space (ir-sp-delta = 0). This is because:
-      --   - pair-middle writes to current sp after f
-      --   - pair-final reads from current sp after g
-      --   - If f or g allocate stack, these addresses differ!
-      --
-      -- This limitation affects nested pairs: pair ⟨ pair ⟨ a , b ⟩ , c ⟩ would fail
-      -- because the inner pair allocates 24 bytes.
-      --
-      -- Fix would require: save frame pointer in s2 before f, use s2 for all stores/loads.
-      -- For now, we postulate the sp preservation (sound when delta = 0).
-      postulate
-        sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
+      -- SP tracking: g preserves sp because StackDelta g = 0 implies ir-sp-delta r-g = 0
+      -- This ensures pair-middle write address = pair-final read address.
+      -- (See preconditions: StackDelta f = 0 and StackDelta g = 0)
+      delta-g-is-zero : ir-sp-delta r-g ≡ 0
+      delta-g-is-zero = n≤0⇒n≡0 (subst (ir-sp-delta r-g ≤_) delta-g-zero (ir-sp-delta-leq r-g))
+
+      sp-after-g : readReg (regs s-after-g-raw) sp ≡ readReg (regs s-mid) sp
+      sp-after-g = sp-preserved-from-delta-zero (ir-sp r-g) delta-g-is-zero
 
       -- Memory preservation: The middle phase writes encode(eval f x) to sp,
       -- and g preserves memory at sp (via ir-mem-preserved from IH).
