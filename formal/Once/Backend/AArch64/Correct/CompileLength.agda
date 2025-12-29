@@ -30,28 +30,29 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 -- Arithmetic helpers (moved to top level)
 ------------------------------------------------------------------------
 
--- | 3 + (m + (2 + (n + 2))) = (7 + m) + n
-arith-pair : ∀ m n → 3 +ℕ (m +ℕ (2 +ℕ (n +ℕ 2))) ≡ (7 +ℕ m) +ℕ n
+-- | 5 + (m + (2 + (n + 4))) = (11 + m) + n
+-- For pair: 5 setup + |f| + 2 middle + |g| + 4 final = 11 + |f| + |g|
+arith-pair : ∀ m n → 5 +ℕ (m +ℕ (2 +ℕ (n +ℕ 4))) ≡ (11 +ℕ m) +ℕ n
 arith-pair m n =
-  3 +ℕ (m +ℕ (2 +ℕ (n +ℕ 2)))
-    ≡⟨ cong (3 +ℕ_) (sym (+-assoc m 2 (n +ℕ 2))) ⟩
-  3 +ℕ ((m +ℕ 2) +ℕ (n +ℕ 2))
-    ≡⟨ cong (λ x → 3 +ℕ (x +ℕ (n +ℕ 2))) (+-comm m 2) ⟩
-  3 +ℕ ((2 +ℕ m) +ℕ (n +ℕ 2))
-    ≡⟨ sym (+-assoc 3 (2 +ℕ m) (n +ℕ 2)) ⟩
-  (3 +ℕ (2 +ℕ m)) +ℕ (n +ℕ 2)
-    ≡⟨ cong (_+ℕ (n +ℕ 2)) (sym (+-assoc 3 2 m)) ⟩
-  (5 +ℕ m) +ℕ (n +ℕ 2)
-    ≡⟨ cong ((5 +ℕ m) +ℕ_) (+-comm n 2) ⟩
-  (5 +ℕ m) +ℕ (2 +ℕ n)
-    ≡⟨ sym (+-assoc (5 +ℕ m) 2 n) ⟩
-  ((5 +ℕ m) +ℕ 2) +ℕ n
-    ≡⟨ cong (_+ℕ n) (+-assoc 5 m 2) ⟩
-  (5 +ℕ (m +ℕ 2)) +ℕ n
-    ≡⟨ cong (λ x → (5 +ℕ x) +ℕ n) (+-comm m 2) ⟩
-  (5 +ℕ (2 +ℕ m)) +ℕ n
-    ≡⟨ cong (_+ℕ n) (sym (+-assoc 5 2 m)) ⟩
-  (7 +ℕ m) +ℕ n
+  5 +ℕ (m +ℕ (2 +ℕ (n +ℕ 4)))
+    ≡⟨ cong (5 +ℕ_) (sym (+-assoc m 2 (n +ℕ 4))) ⟩
+  5 +ℕ ((m +ℕ 2) +ℕ (n +ℕ 4))
+    ≡⟨ cong (λ x → 5 +ℕ (x +ℕ (n +ℕ 4))) (+-comm m 2) ⟩
+  5 +ℕ ((2 +ℕ m) +ℕ (n +ℕ 4))
+    ≡⟨ sym (+-assoc 5 (2 +ℕ m) (n +ℕ 4)) ⟩
+  (5 +ℕ (2 +ℕ m)) +ℕ (n +ℕ 4)
+    ≡⟨ cong (_+ℕ (n +ℕ 4)) (sym (+-assoc 5 2 m)) ⟩
+  (7 +ℕ m) +ℕ (n +ℕ 4)
+    ≡⟨ cong ((7 +ℕ m) +ℕ_) (+-comm n 4) ⟩
+  (7 +ℕ m) +ℕ (4 +ℕ n)
+    ≡⟨ sym (+-assoc (7 +ℕ m) 4 n) ⟩
+  ((7 +ℕ m) +ℕ 4) +ℕ n
+    ≡⟨ cong (_+ℕ n) (+-assoc 7 m 4) ⟩
+  (7 +ℕ (m +ℕ 4)) +ℕ n
+    ≡⟨ cong (λ x → (7 +ℕ x) +ℕ n) (+-comm m 4) ⟩
+  (7 +ℕ (4 +ℕ m)) +ℕ n
+    ≡⟨ cong (_+ℕ n) (sym (+-assoc 7 4 m)) ⟩
+  (11 +ℕ m) +ℕ n
   ∎
 
 -- | 4 + (m + (3 + (n + 1))) = (8 + m) + n
@@ -124,7 +125,11 @@ compile-length-correct (g ∘ f) =
                      (sym (+-assoc len-f 1 len-g)))
   in trans step1 (trans (cong (length (compile-aarch64 f) +ℕ_) step2) step3)
 
--- pair: 7 + |f| + |g|
+-- pair: 11 + |f| + |g|
+-- New layout: 5 setup + |f| + 2 middle + |g| + 4 final
+-- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0 (5)
+-- Middle: str x0 [x21], mov x0 x20 (2)
+-- Final: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16 (4)
 compile-length-correct ⟨ f , g ⟩ =
   let len-f = compile-length f
       len-g = compile-length g
@@ -132,33 +137,41 @@ compile-length-correct ⟨ f , g ⟩ =
       IHg = compile-length-correct g
       prog-f = compile-aarch64 f
       prog-g = compile-aarch64 g
-      step1 : length (sub-sp 16 ∷ mov-from-sp x21 ∷ mov x20 (reg x0) ∷ prog-f ++
+      step1 : length (sub-sp 32 ∷ stp x20 x21 (sp+imm 0) ∷ mov-from-sp x9 ∷
+                     add x21 x9 (imm 16) ∷ mov x20 (reg x0) ∷ prog-f ++
                      str x0 (base x21) ∷ mov x0 (reg x20) ∷ prog-g ++
-                     str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ []) ≡
-              3 +ℕ length (prog-f ++
+                     str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                     ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ []) ≡
+              5 +ℕ length (prog-f ++
                           str x0 (base x21) ∷ mov x0 (reg x20) ∷ prog-g ++
-                          str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ [])
+                          str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                          ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ [])
       step1 = refl
       step2 : length (prog-f ++
                      str x0 (base x21) ∷ mov x0 (reg x20) ∷ prog-g ++
-                     str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ []) ≡
+                     str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                     ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ []) ≡
               length prog-f +ℕ length (str x0 (base x21) ∷ mov x0 (reg x20) ∷ prog-g ++
-                                       str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ [])
+                                       str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                                       ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ [])
       step2 = length-++ prog-f _
       step3 : length (str x0 (base x21) ∷ mov x0 (reg x20) ∷ prog-g ++
-                     str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ []) ≡
-              2 +ℕ length (prog-g ++ str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ [])
+                     str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                     ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ []) ≡
+              2 +ℕ length (prog-g ++ str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                          ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ [])
       step3 = refl
-      step4 : length (prog-g ++ str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷ []) ≡
-              length prog-g +ℕ 2
+      step4 : length (prog-g ++ str x0 (base+imm x21 8) ∷ mov x0 (reg x21) ∷
+                     ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ []) ≡
+              length prog-g +ℕ 4
       step4 = trans (length-++ prog-g _) refl
-      combine : 3 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 2))) ≡ (7 +ℕ len-f) +ℕ len-g
-      combine = trans (cong (λ x → 3 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 2)))) IHf)
-               (trans (cong (λ x → 3 +ℕ (len-f +ℕ (2 +ℕ (x +ℕ 2)))) IHg)
+      combine : 5 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 4))) ≡ (11 +ℕ len-f) +ℕ len-g
+      combine = trans (cong (λ x → 5 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 4)))) IHf)
+               (trans (cong (λ x → 5 +ℕ (len-f +ℕ (2 +ℕ (x +ℕ 4)))) IHg)
                       (arith-pair len-f len-g))
-  in trans step1 (trans (cong (3 +ℕ_) step2)
-     (trans (cong (λ x → 3 +ℕ (length prog-f +ℕ x)) step3)
-     (trans (cong (λ x → 3 +ℕ (length prog-f +ℕ (2 +ℕ x))) step4) combine)))
+  in trans step1 (trans (cong (5 +ℕ_) step2)
+     (trans (cong (λ x → 5 +ℕ (length prog-f +ℕ x)) step3)
+     (trans (cong (λ x → 5 +ℕ (length prog-f +ℕ (2 +ℕ x))) step4) combine)))
 
 -- case: 8 + |f| + |g|
 compile-length-correct [ f , g ] =
