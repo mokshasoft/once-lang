@@ -42,9 +42,11 @@ compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
 
--- pair: sub sp + mov x21 + mov x20 + f + str + mov x0 + g + str + mov x0
--- 7 instructions + |f| + |g|
-compile-length ⟨ f , g ⟩ = (7 +ℕ compile-length f) +ℕ compile-length g
+-- pair: 11 instructions + |f| + |g|
+-- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0 (5)
+-- After f: str x0 [x21], mov x0 x20 (2)
+-- After g: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16 (4)
+compile-length ⟨ f , g ⟩ = (11 +ℕ compile-length f) +ℕ compile-length g
 
 -- inl: sub sp + str-zr + str + mov = 4 instructions
 compile-length inl = 4
@@ -110,28 +112,41 @@ compile-aarch64 fst = ldr x0 (base x0) ∷ []
 compile-aarch64 snd = ldr x0 (base+imm x0 8) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
--- Stack layout: [fst (8 bytes), snd (8 bytes)]
--- We use x21 (callee-saved) for pair pointer (like X86's r15)
+-- Stack layout after setup:
+--   [sp+0]  = saved x20 (8 bytes)
+--   [sp+8]  = saved x21 (8 bytes)
+--   [sp+16] = pair.fst (8 bytes)
+--   [sp+24] = pair.snd (8 bytes)
+--
+-- We use x21 (callee-saved) for pair pointer
 -- We use x20 (callee-saved) to preserve input across sub-computations
+-- Per ARM64 ABI, we must save/restore callee-saved registers we use
 compile-aarch64 ⟨ f , g ⟩ =
-  -- Allocate 16 bytes on stack (must be 16-byte aligned)
-  sub-sp 16 ∷
-  -- Save pair pointer in x21 (callee-saved, allows memory frame preservation proofs)
-  mov-from-sp x21 ∷
-  -- Save input in x20 (callee-saved)
+  -- Allocate 32 bytes: 16 for saved regs, 16 for pair data
+  sub-sp 32 ∷
+  -- Save x20, x21 (callee-saved registers we'll modify)
+  stp x20 x21 (sp+imm 0) ∷
+  -- Compute pair base address: x21 = sp + 16
+  mov-from-sp x9 ∷
+  add x21 x9 (imm 16) ∷
+  -- Save input in x20
   mov x20 (reg x0) ∷
   -- Compute f
   compile-aarch64 f ++
-  -- Store result at [x21] (the pair base)
+  -- Store result at [x21] (pair.fst)
   str x0 (base x21) ∷
   -- Restore input from x20
   mov x0 (reg x20) ∷
   -- Compute g
   compile-aarch64 g ++
-  -- Store result at [x21 + 8]
+  -- Store result at [x21 + 8] (pair.snd)
   str x0 (base+imm x21 8) ∷
   -- Return pointer to pair
-  mov x0 (reg x21) ∷ []
+  mov x0 (reg x21) ∷
+  -- Restore x20, x21 (callee-saved registers)
+  ldp x20 x21 (sp+imm 0) ∷
+  -- Deallocate saved register space (pair data remains on stack)
+  add-sp 16 ∷ []
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
