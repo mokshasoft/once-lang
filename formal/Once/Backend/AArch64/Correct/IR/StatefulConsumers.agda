@@ -20,6 +20,7 @@ open import Once.Semantics using (⟦_⟧)
 open import Once.Backend.AArch64.Syntax
 open import Once.Backend.AArch64.Semantics
 open State
+open PSTATE using (Z)
 open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation
@@ -46,7 +47,7 @@ open import Once.Backend.AArch64.Correct.MemoryValid
   using (PairAtS; InlAtS; InrAtS; fst-valid-s; snd-valid-s;
          tag-valid-inl-s; val-valid-inl-s; tag-valid-inr-s; val-valid-inr-s)
 
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; +-assoc)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -401,17 +402,82 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
 
     -- After 4 setup instructions, call f, then b end-label
 
-    -- For now, use postulates for the complex phases
-    -- A full proof would trace each instruction
+    -- States after each instruction
+    -- s0 = s (initial)
+    -- s1: after ldr x9 [x0] - x9 = tag = 0
+    -- s2: after cmp x9 #0 - Z = true (0 == 0)
+    -- s3: after b.ne - NOT taken, pc increments (Z = true)
+    -- s4: after ldr x0 [x0+8] - x0 = addr-val
+
+    -- Prove effective address for first ldr
+    eff-addr-tag : readReg (regs s) x0 ≡ addr-sum
+    eff-addr-tag = x0-eq
+
+    mem-tag : readMem (memory s) (readReg (regs s) x0) ≡ just 0
+    mem-tag = trans (cong (readMem (memory s)) x0-eq) tag-is-0
+
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) x9 0 ; pc = pc s +ℕ 1 }
+
+    s2 : State
+    s2 = record s1 { pstate = updatePSTATE 0 0 ; pc = pc s1 +ℕ 1 }
+
+    -- After cmp 0 0, Z flag = true (0 ≡ᵇ 0 = true)
+    z-flag-true : Z (pstate s2) ≡ true
+    z-flag-true = refl  -- 0 ≡ᵇ 0 = true by computation
+
+    s3 : State
+    s3 = record s2 { pc = pc s2 +ℕ 1 }  -- b.ne NOT taken since Z = true
+
+    -- For ldr x0 [x0+8], we need to show memory at addr-sum+8 = addr-val
+    -- But x0 in s3 still equals addr-sum (only x9 was modified)
+    x0-s3 : readReg (regs s3) x0 ≡ addr-sum
+    x0-s3 = trans (readReg-writeReg-x9-x0 (regs s) 0) x0-eq
+
+    mem-val : readMem (memory s3) (readReg (regs s3) x0 +ℕ 8) ≡ just addr-val
+    mem-val = trans (cong (λ a → readMem (memory s) (a +ℕ 8)) x0-s3) val-addr
+
+    s-after-setup : State
+    s-after-setup = record s3 { regs = writeReg (regs s3) x0 addr-val ; pc = pc s3 +ℕ 1 }
+
+    -- Postulate the step proofs and star (instruction-level details)
     postulate
-      s-after-setup : State
       setup-star : Star prog s s-after-setup
-      h-setup : halted s-after-setup ≡ false
-      pc-setup : pc s-after-setup ≡ length prefix +ℕ 4
-      x0-setup : readReg (regs s-after-setup) x0 ≡ addr-val
-      stack-inv-setup : StackInvariant s-after-setup
-      x29-inv-setup : X29Invariant s-after-setup
-      sp>16-setup : readSP (regs s-after-setup) > 16
+
+    h-setup : halted s-after-setup ≡ false
+    h-setup = h-false
+
+    -- PC progression: s → s1 → s2 → s3 → s-after-setup
+    pc-s1 : pc s1 ≡ length prefix +ℕ 1
+    pc-s1 = cong (_+ℕ 1) pc-eq
+
+    pc-s2 : pc s2 ≡ length prefix +ℕ 2
+    pc-s2 = trans (cong (_+ℕ 1) pc-s1) (+-assoc (length prefix) 1 1)
+
+    pc-s3 : pc s3 ≡ length prefix +ℕ 3
+    pc-s3 = trans (cong (_+ℕ 1) pc-s2) (+-assoc (length prefix) 2 1)
+
+    pc-setup : pc s-after-setup ≡ length prefix +ℕ 4
+    pc-setup = trans (cong (_+ℕ 1) pc-s3) (+-assoc (length prefix) 3 1)
+
+    x0-setup : readReg (regs s-after-setup) x0 ≡ addr-val
+    x0-setup = readReg-writeReg-same (regs s3) x0 addr-val
+
+    -- Register preservation through setup (only x9 and x0 modified)
+    postulate
+      x20-setup : readReg (regs s-after-setup) x20 ≡ readReg (regs s) x20
+      x21-setup : readReg (regs s-after-setup) x21 ≡ readReg (regs s) x21
+      x29-setup : readReg (regs s-after-setup) x29 ≡ readReg (regs s) x29
+      x30-setup : readReg (regs s-after-setup) x30 ≡ readReg (regs s) x30
+
+    stack-inv-setup : StackInvariant s-after-setup
+    stack-inv-setup = stack-inv-preserved-unchanged s s-after-setup stack-inv x21-setup refl
+
+    x29-inv-setup : X29Invariant s-after-setup
+    x29-inv-setup = x29-inv-preserved-unchanged s s-after-setup x29-inv x29-setup refl
+
+    sp>16-setup : readSP (regs s-after-setup) > 16
+    sp>16-setup = sp-bound-after-stack-op s-after-setup
 
     -- Prefix for f: prefix ++ setup instructions
     prefix-f : Program
