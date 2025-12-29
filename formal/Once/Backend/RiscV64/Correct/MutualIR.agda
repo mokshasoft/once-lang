@@ -90,7 +90,7 @@ open import Once.Backend.RiscV64.Correct.IR.Injection
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s; _⊔_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m; ≤-trans; m≤m⊔n; m≤n⊔m; ∸-monoˡ-≤; m+n∸n≡m; ≤-refl; +-mono-≤)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m; ≤-trans; m≤m⊔n; m≤n⊔m; m+n∸n≡m; ≤-refl; +-mono-≤; +-monoʳ-≤)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -104,6 +104,26 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Binary.PropositionalEquality.Properties
   using (module ≡-Reasoning)
 open ≡-Reasoning
+
+------------------------------------------------------------------------
+-- Helper lemma for left-cancellation of addition in inequalities
+-- If n + m ≤ n + o, then m ≤ o
+------------------------------------------------------------------------
+
+cancel-+-left : ∀ n {m o} → n +ℕ m ≤ n +ℕ o → m ≤ o
+cancel-+-left zero p = p
+cancel-+-left (suc n) (s≤s p) = cancel-+-left n p
+
+------------------------------------------------------------------------
+-- Helper lemma: monus is antitone in second argument
+-- If m ≤ n, then o ∸ n ≤ o ∸ m
+------------------------------------------------------------------------
+
+∸-antimonoʳ-≤ : ∀ {m n} o → m ≤ n → o ∸ n ≤ o ∸ m
+∸-antimonoʳ-≤ {.zero} {zero} zero z≤n = z≤n
+∸-antimonoʳ-≤ {m} {suc n} zero _ = z≤n
+∸-antimonoʳ-≤ {.zero} {n} (suc o) z≤n = m∸n≤m (suc o) n
+∸-antimonoʳ-≤ {suc m} {suc n} (suc o) (s≤s p) = ∸-antimonoʳ-≤ o p
 
 ------------------------------------------------------------------------
 -- Star-based initial (void elimination)
@@ -157,13 +177,13 @@ postulate
 mutual
   -- | Star-based IR execution at arbitrary offset (sized for termination)
   -- Stack-space precondition: 24 ≤ sp ensures enough stack for all IR nodes
-  -- TODO: Refine to StackDepth ir ≤ sp for more precise bounds
+  -- StackDepth ir ≤ sp ensures sufficient stack space for ir and all nested operations
   -- Size parameter i enables termination checking across module boundaries
   run-ir-star-at-offset : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
-    24 ≤ readReg (regs s) sp →
+    StackDepth ir ≤ readReg (regs s) sp →
     let prog = prefix ++ compile-riscv ir ++ suffix
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
@@ -194,8 +214,13 @@ mutual
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
   -- Curry: delegate to extracted proof and build WF inline
+  -- StackDepth (curry f) = 16 + StackDepth f, but curry only allocates 16 bytes
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
-    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
+    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound-16
+    where
+      -- Derive 16 ≤ sp from 16 + StackDepth f ≤ sp
+      sp-bound-16 : 16 ≤ readReg (regs s) sp
+      sp-bound-16 = ≤-trans (m≤m+n 16 (StackDepth f)) sp-bound
 
   -- Apply: postulated (requires whole-program analysis)
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq a0-eq _ =
@@ -208,8 +233,13 @@ mutual
       ctx = make-compose-context f g prefix suffix
       open ComposeContext ctx
 
+      -- SP bound for f: StackDepth f ≤ StackDepth (g ∘ f) ≤ sp
+      -- Since StackDepth (g ∘ f) = StackDepth f ⊔ (StackDelta f + StackDepth g)
+      sp-bound-for-f : StackDepth f ≤ readReg (regs s) sp
+      sp-bound-for-f = ≤-trans (m≤m⊔n (StackDepth f) (StackDelta f +ℕ StackDepth g)) sp-bound
+
       -- Step 1: Execute f
-      step-f = run-ir-star-at-offset f prefix suffix-f x s h-false pc-eq a0-eq sp-bound
+      step-f = run-ir-star-at-offset f prefix suffix-f x s h-false pc-eq a0-eq sp-bound-for-f
       sf = proj₁ step-f
       rf = proj₂ step-f
       rf' = transform-f-result f g prefix suffix x s sf rf
@@ -222,9 +252,37 @@ mutual
       pc-for-g : pc sf ≡ length prefix-g
       pc-for-g = trans (ir-pc rf) (sym len-prefix-g)
 
-      -- SP bound for g: f may change sp, need 24 ≤ sf.sp
-      -- TODO: Prove from ir-sp and StackDelta relationship
-      postulate sp-bound-for-g : 24 ≤ readReg (regs sf) sp
+      -- SP bound for g: Derive StackDepth g ≤ sf.sp from:
+      --   1. StackDelta f + StackDepth g ≤ StackDepth (g ∘ f) ≤ s.sp  (from m≤n⊔m)
+      --   2. sf.sp + delta_f = s.sp (from ir-sp)
+      --   3. delta_f ≤ StackDelta f (from ir-sp-delta-leq)
+      -- Chain: StackDelta f + StackDepth g ≤ sf.sp + delta_f ≤ sf.sp + StackDelta f
+      -- Then use +-cancelˡ-≤ to get StackDepth g ≤ sf.sp
+
+      -- StackDelta f + StackDepth g ≤ s.sp
+      compose-bound : StackDelta f +ℕ StackDepth g ≤ readReg (regs s) sp
+      compose-bound = ≤-trans (m≤n⊔m (StackDepth f) (StackDelta f +ℕ StackDepth g)) sp-bound
+
+      -- sf.sp + delta_f = s.sp, rearranged: s.sp = sf.sp + delta_f
+      -- So: StackDelta f + StackDepth g ≤ sf.sp + delta_f
+      bound-rhs : StackDelta f +ℕ StackDepth g ≤ readReg (regs sf) sp +ℕ ir-sp-delta rf
+      bound-rhs = subst (StackDelta f +ℕ StackDepth g ≤_) (sym (ir-sp rf)) compose-bound
+
+      -- sf.sp + delta_f ≤ sf.sp + StackDelta f (using +-monoʳ-≤)
+      step1-g : readReg (regs sf) sp +ℕ ir-sp-delta rf ≤ readReg (regs sf) sp +ℕ StackDelta f
+      step1-g = +-monoʳ-≤ (readReg (regs sf) sp) (ir-sp-delta-leq rf)
+
+      -- sf.sp + StackDelta f = StackDelta f + sf.sp (by commutativity)
+      step2-g : readReg (regs sf) sp +ℕ ir-sp-delta rf ≤ StackDelta f +ℕ readReg (regs sf) sp
+      step2-g = subst (readReg (regs sf) sp +ℕ ir-sp-delta rf ≤_)
+                  (+-comm (readReg (regs sf) sp) (StackDelta f)) step1-g
+
+      -- Chain: StackDelta f + StackDepth g ≤ StackDelta f + sf.sp
+      bound-chain : StackDelta f +ℕ StackDepth g ≤ StackDelta f +ℕ readReg (regs sf) sp
+      bound-chain = ≤-trans bound-rhs step2-g
+
+      sp-bound-for-g : StackDepth g ≤ readReg (regs sf) sp
+      sp-bound-for-g = cancel-+-left (StackDelta f) bound-chain
 
       step-g = run-ir-star-at-offset g prefix-g suffix (eval f x) sf
                  (ir-halted rf) pc-for-g a0-after-f sp-bound-for-g
@@ -246,7 +304,7 @@ mutual
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
-    24 ≤ readReg (regs s) sp →
+    StackDepth ⟨ f , g ⟩ ≤ readReg (regs s) sp →
     let prog = prefix ++ compile-riscv ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
   run-pair-star {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
@@ -272,7 +330,16 @@ mutual
       -- Phase 1: Setup (3 instructions - addi sp, sd s1, mv s1 a0)
       -- Original s1 is saved to stack at sp+16
       orig-s1 = readReg (regs s) s1
-      setup-result = pair-setup-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
+
+      -- Derive 24 ≤ sp from StackDepth ⟨ f , g ⟩ ≤ sp
+      -- Since StackDepth ⟨ f , g ⟩ = 48 + (StackDepth f ⊔ StackDepth g) ≥ 48 ≥ 24
+      sp-bound-24 : 24 ≤ readReg (regs s) sp
+      sp-bound-24 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))) pair-depth-bound
+        where
+          pair-depth-bound : 48 +ℕ (StackDepth f ⊔ StackDepth g) ≤ readReg (regs s) sp
+          pair-depth-bound = sp-bound
+
+      setup-result = pair-setup-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound-24
       s-setup = proj₁ setup-result
       star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -293,9 +360,38 @@ mutual
 
       -- Phase 2: Execute f (IH call)
       -- Program view: prog ≡ prefix-f ++ code-f ++ suffix-f
-      -- Note: f runs with new-sp = orig-sp - 24. For 24 ≤ new-sp, need 48 ≤ orig-sp.
-      -- TODO: Stack depth analysis for proper nested bounds.
-      postulate sp-bound-for-f : 24 ≤ readReg (regs s-setup) sp
+      -- Derive StackDepth f ≤ s-setup.sp from StackDepth ⟨ f , g ⟩ ≤ s.sp:
+      --   StackDepth f ≤ StackDepth f ⊔ StackDepth g ≤ s.sp - 48 ≤ s.sp - 24 = s-setup.sp
+      sp-bound-for-f : StackDepth f ≤ readReg (regs s-setup) sp
+      sp-bound-for-f = subst (StackDepth f ≤_) (sym sp-setup) sp-bound-inner
+        where
+          -- StackDepth f ≤ StackDepth f ⊔ StackDepth g
+          f-leq-max : StackDepth f ≤ StackDepth f ⊔ StackDepth g
+          f-leq-max = m≤m⊔n (StackDepth f) (StackDepth g)
+          -- From sp-bound: 48 + (StackDepth f ⊔ StackDepth g) ≤ s.sp
+          -- So StackDepth f ⊔ StackDepth g ≤ s.sp ∸ 48 ≤ s.sp ∸ 24
+          max-leq-setup : StackDepth f ⊔ StackDepth g ≤ readReg (regs s) sp ∸ 24
+          max-leq-setup = ≤-trans max-leq-minus48 sp-∸48-leq-∸24
+            where
+              -- 24 ≤ 48
+              24≤48 : 24 ≤ 48
+              24≤48 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+              -- sp ∸ 48 ≤ sp ∸ 24 (antitone in second arg)
+              sp-∸48-leq-∸24 : readReg (regs s) sp ∸ 48 ≤ readReg (regs s) sp ∸ 24
+              sp-∸48-leq-∸24 = ∸-antimonoʳ-≤ (readReg (regs s) sp) 24≤48
+              -- 48 ≤ s.sp (follows from sp-bound since 48 + X ≤ s.sp)
+              48≤sp : 48 ≤ readReg (regs s) sp
+              48≤sp = ≤-trans (m≤m+n 48 (StackDepth f ⊔ StackDepth g)) sp-bound
+              -- StackDepth f ⊔ StackDepth g ≤ s.sp ∸ 48
+              -- m∸n+n≡m gives (sp ∸ 48) + 48 ≡ sp, but we need 48 + (sp ∸ 48) ≡ sp
+              monus-eq : 48 +ℕ (readReg (regs s) sp ∸ 48) ≡ readReg (regs s) sp
+              monus-eq = trans (+-comm 48 (readReg (regs s) sp ∸ 48)) (m∸n+n≡m 48≤sp)
+              max-leq-minus48 : StackDepth f ⊔ StackDepth g ≤ readReg (regs s) sp ∸ 48
+              max-leq-minus48 = cancel-+-left 48 (subst (48 +ℕ (StackDepth f ⊔ StackDepth g) ≤_)
+                                  (sym monus-eq) sp-bound)
+          sp-bound-inner : StackDepth f ≤ readReg (regs s) sp ∸ 24
+          sp-bound-inner = ≤-trans f-leq-max max-leq-setup
+
       step-f = run-ir-star-at-offset f prefix-f suffix-f x s-setup h-setup
                  (trans pc-setup (sym len-prefix-f)) a0-setup sp-bound-for-f
       s-after-f-raw = proj₁ step-f
@@ -335,7 +431,7 @@ mutual
       sp-after-f-rel = trans sp-after-f sp-setup
 
       mid-result = pair-middle-star f g prefix suffix x s s-after-f-raw
-                     h-after-f pc-after-f a0-after-f s1-after-f-is-x sp-bound sp-after-f-rel
+                     h-after-f pc-after-f a0-after-f s1-after-f-is-x sp-bound-24 sp-after-f-rel
       s-mid = proj₁ mid-result
       star-mid-raw = proj₁ (proj₂ mid-result)
       h-mid = proj₁ (proj₂ (proj₂ mid-result))
@@ -386,9 +482,40 @@ mutual
           ≡⟨ sym len-prefix-g ⟩
         length prefix-g ∎
 
-      -- Note: g runs with s-mid's sp (should equal new-sp if sp preserved by f)
-      -- TODO: Stack depth analysis for proper nested bounds.
-      postulate sp-bound-for-g : 24 ≤ readReg (regs s-mid) sp
+      -- SP bound for g: StackDepth g ≤ s-mid.sp
+      -- Since s-mid.sp = s.sp - 24 (via sp-mid), we derive from StackDepth ⟨ f , g ⟩ ≤ s.sp:
+      --   StackDepth g ≤ StackDepth f ⊔ StackDepth g ≤ s.sp - 48 ≤ s.sp - 24 = s-mid.sp
+      sp-bound-for-g : StackDepth g ≤ readReg (regs s-mid) sp
+      sp-bound-for-g = subst (StackDepth g ≤_) (sym sp-mid-rel) sp-bound-inner
+        where
+          -- s-mid.sp = s.sp - 24 (from sp-mid and sp-after-f-rel)
+          sp-mid-rel : readReg (regs s-mid) sp ≡ readReg (regs s) sp ∸ 24
+          sp-mid-rel = trans sp-mid sp-after-f-rel
+          -- StackDepth g ≤ StackDepth f ⊔ StackDepth g
+          g-leq-max : StackDepth g ≤ StackDepth f ⊔ StackDepth g
+          g-leq-max = m≤n⊔m (StackDepth f) (StackDepth g)
+          -- From sp-bound: 48 + (StackDepth f ⊔ StackDepth g) ≤ s.sp
+          -- So StackDepth f ⊔ StackDepth g ≤ s.sp ∸ 48 ≤ s.sp ∸ 24
+          max-leq-setup : StackDepth f ⊔ StackDepth g ≤ readReg (regs s) sp ∸ 24
+          max-leq-setup = ≤-trans max-leq-minus48 sp-∸48-leq-∸24
+            where
+              -- 24 ≤ 48
+              24≤48 : 24 ≤ 48
+              24≤48 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+              -- sp ∸ 48 ≤ sp ∸ 24 (antitone in second arg)
+              sp-∸48-leq-∸24 : readReg (regs s) sp ∸ 48 ≤ readReg (regs s) sp ∸ 24
+              sp-∸48-leq-∸24 = ∸-antimonoʳ-≤ (readReg (regs s) sp) 24≤48
+              48≤sp : 48 ≤ readReg (regs s) sp
+              48≤sp = ≤-trans (m≤m+n 48 (StackDepth f ⊔ StackDepth g)) sp-bound
+              -- m∸n+n≡m gives (sp ∸ 48) + 48 ≡ sp, but we need 48 + (sp ∸ 48) ≡ sp
+              monus-eq : 48 +ℕ (readReg (regs s) sp ∸ 48) ≡ readReg (regs s) sp
+              monus-eq = trans (+-comm 48 (readReg (regs s) sp ∸ 48)) (m∸n+n≡m 48≤sp)
+              max-leq-minus48 : StackDepth f ⊔ StackDepth g ≤ readReg (regs s) sp ∸ 48
+              max-leq-minus48 = cancel-+-left 48 (subst (48 +ℕ (StackDepth f ⊔ StackDepth g) ≤_)
+                                  (sym monus-eq) sp-bound)
+          sp-bound-inner : StackDepth g ≤ readReg (regs s) sp ∸ 24
+          sp-bound-inner = ≤-trans g-leq-max max-leq-setup
+
       step-g = run-ir-star-at-offset g prefix-g suffix-g x s-mid h-mid
                  pc-for-g a0-mid sp-bound-for-g
       s-after-g-raw = proj₁ step-g
@@ -489,7 +616,7 @@ mutual
 
       final-phase-result = pair-final-star f g prefix suffix x orig-s1 orig-sp s-mid s-after-g-raw
                              h-after-g pc-after-g a0-after-g mem-after-g mem-s1-after-g
-                             sp-bound sp-after-g-rel
+                             sp-bound-24 sp-after-g-rel
       s-final = proj₁ final-phase-result
       star-final-raw = proj₁ (proj₂ final-phase-result)
       h-final = proj₁ (proj₂ (proj₂ final-phase-result))
@@ -577,9 +704,9 @@ mutual
       delta-f = ir-sp-delta r-f
       delta-g = ir-sp-delta r-g
 
-      -- Stack space: provided as precondition (24 ≤ sp)
+      -- Stack space: derived from StackDepth bound (24 ≤ 48 ≤ StackDepth ⟨ f , g ⟩ ≤ sp)
       stack-space : 24 ≤ readReg (regs s) sp
-      stack-space = sp-bound
+      stack-space = sp-bound-24
 
       sp-final : readReg (regs s-final) sp +ℕ (24 +ℕ delta-f +ℕ delta-g) ≡ readReg (regs s) sp
       sp-final = begin
@@ -684,7 +811,7 @@ mutual
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
-    24 ≤ readReg (regs s) sp →
+    StackDepth ([ f , g ]) ≤ readReg (regs s) sp →
     let prog = prefix ++ compile-riscv ([_,_] f g) ++ suffix
     in ∃[ s' ] IRStarResult ([_,_] f g) prog s s' x (length prefix)
 
@@ -728,9 +855,10 @@ mutual
       pc-for-f : pc s-dispatch ≡ length prefix-f
       pc-for-f = trans pc-dispatch (sym len-prefix-f)
 
-      -- sp-bound for f: dispatch preserves sp, so 24 ≤ sp s-dispatch
-      sp-bound-f : 24 ≤ readReg (regs s-dispatch) sp
-      sp-bound-f = subst (24 ≤_) (sym sp-dispatch) sp-bound
+      -- sp-bound for f: StackDepth f ≤ StackDepth f ⊔ StackDepth g = StackDepth ([ f , g ]) ≤ sp
+      -- dispatch preserves sp, so StackDepth f ≤ s-dispatch.sp
+      sp-bound-f : StackDepth f ≤ readReg (regs s-dispatch) sp
+      sp-bound-f = subst (StackDepth f ≤_) (sym sp-dispatch) (≤-trans (m≤m⊔n (StackDepth f) (StackDepth g)) sp-bound)
 
       step-f = run-ir-star-at-offset f prefix-f suffix-f a s-dispatch h-dispatch pc-for-f a0-dispatch sp-bound-f
       s-after-f-raw = proj₁ step-f
@@ -887,9 +1015,10 @@ mutual
       pc-for-g : pc s-dispatch ≡ length prefix-g
       pc-for-g = trans pc-dispatch (sym len-prefix-g)
 
-      -- sp-bound for g: dispatch preserves sp, so 24 ≤ sp s-dispatch
-      sp-bound-g : 24 ≤ readReg (regs s-dispatch) sp
-      sp-bound-g = subst (24 ≤_) (sym sp-dispatch) sp-bound
+      -- sp-bound for g: StackDepth g ≤ StackDepth f ⊔ StackDepth g = StackDepth ([ f , g ]) ≤ sp
+      -- dispatch preserves sp, so StackDepth g ≤ s-dispatch.sp
+      sp-bound-g : StackDepth g ≤ readReg (regs s-dispatch) sp
+      sp-bound-g = subst (StackDepth g ≤_) (sym sp-dispatch) (≤-trans (m≤n⊔m (StackDepth f) (StackDepth g)) sp-bound)
 
       step-g = run-ir-star-at-offset g prefix-g suffix-g b s-dispatch h-dispatch pc-for-g a0-dispatch sp-bound-g
       s-after-g-raw = proj₁ step-g
@@ -1323,9 +1452,9 @@ mutual
       pc-setup-f : pc s-after-setup ≡ length prefix-f
       pc-setup-f = trans pc-setup (sym len-prefix-f)
 
-      -- SP bound for f: thunk setup allocates 16 bytes, need 24 + 16 = 40 ≤ orig-sp
-      -- This requires stronger precondition tracking; use postulate for now
-      postulate sp-bound-for-f : 24 ≤ readReg (regs s-after-setup) sp
+      -- SP bound for f: thunk setup allocates 24 bytes, need StackDepth f ≤ sp-after-setup
+      -- This requires sp-bound precondition for curry-thunk-correct-impl; use postulate for now
+      postulate sp-bound-for-f : StackDepth f ≤ readReg (regs s-after-setup) sp
 
       step-f : ∃[ s-f ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f = run-ir-star-at-offset f prefix-f suffix-f (env , arg) s-after-setup
@@ -1476,7 +1605,7 @@ mutual
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
-    24 ≤ readReg (regs s) sp →
+    16 ≤ readReg (regs s) sp →
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
         offset = length prefix
     in ∃[ s' ] CurryResult f prog s s' x offset
@@ -1563,7 +1692,7 @@ run-ir-star : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →
-  24 ≤ readReg (regs s) sp →
+  StackDepth ir ≤ readReg (regs s) sp →
   ∃[ s' ] IRStarResult ir (compile-riscv ir) s s' x 0
 run-ir-star ir x s h-false pc-eq a0-eq sp-bound =
   subst (λ prog → ∃[ s' ] IRStarResult ir prog s s' x 0)

@@ -62,7 +62,7 @@ run-inl-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State)
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  24 ≤ readReg (regs s) sp →
+  16 ≤ readReg (regs s) sp →  -- StackDepth inl = 16
   let prog = prefix ++ compile-riscv (inl {i} {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (inl {i} {A} {B}) prog s s' x (length prefix)
 run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
@@ -233,12 +233,9 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
 
-    -- Stack space: derived from sp-bound (24 ≤ orig-sp) since 16 ≤ 24
-    16≤24 : 16 ≤ 24
-    16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
-
+    -- Stack space: directly from sp-bound (16 ≤ orig-sp)
     stack-space : 16 ≤ orig-sp
-    stack-space = ≤-trans 16≤24 sp-bound
+    stack-space = sp-bound
 
     sp-final : readReg (regs st4) sp +ℕ 16 ≡ readReg (regs s) sp
     sp-final = trans (cong (_+ℕ 16) sp-st3) (m∸n+n≡m stack-space)
@@ -343,7 +340,7 @@ run-inr-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State)
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  24 ≤ readReg (regs s) sp →
+  16 ≤ readReg (regs s) sp →  -- StackDepth inr = 16
   let prog = prefix ++ compile-riscv (inr {i} {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (inr {i} {A} {B}) prog s s' x (length prefix)
 run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
@@ -560,12 +557,9 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
 
-    -- Stack space: derived from sp-bound (24 ≤ orig-sp) since 16 ≤ 24
-    16≤24 : 16 ≤ 24
-    16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
-
+    -- Stack space: directly from sp-bound (16 ≤ orig-sp)
     stack-space : 16 ≤ orig-sp
-    stack-space = ≤-trans 16≤24 sp-bound
+    stack-space = sp-bound
 
     sp-final : readReg (regs st5) sp +ℕ 16 ≡ readReg (regs s) sp
     sp-final = trans (cong (_+ℕ 16) sp-st4) (m∸n+n≡m stack-space)

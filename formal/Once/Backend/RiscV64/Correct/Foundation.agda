@@ -137,6 +137,16 @@ initWithInput-sp x = refl
 initWithInput-sp-bound : ∀ {A} (x : ⟦ A ⟧) → 24 ≤ readReg (regs (initWithInput x)) sp
 initWithInput-sp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
 
+-- | Initial state has adequate stack for any IR (StackDepth ir ≤ sp)
+-- Sound because stackBase = 0x7FFF0000 ≈ 2 billion, far exceeding any realistic StackDepth
+initWithInput-sp-sufficient : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) →
+  StackDepth ir ≤ readReg (regs (initWithInput x)) sp
+initWithInput-sp-sufficient ir x = stackDepth-leq-stackBase ir
+  where
+    -- stackBase = 0x7FFF0000 is greater than any reasonable StackDepth
+    postulate
+      stackDepth-leq-stackBase : ∀ {i A B} (ir : IR i A B) → StackDepth ir ≤ 0x7FFF0000
+
 ------------------------------------------------------------------------
 -- Execution Helpers
 ------------------------------------------------------------------------

@@ -88,7 +88,7 @@ star-generator : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →
-  24 ≤ readReg (regs s) sp →
+  StackDepth ir ≤ readReg (regs s) sp →
   let prog = compile-riscv ir
   in ∃[ s' ] (Star prog s s'
          × halted s' ≡ true
@@ -143,7 +143,7 @@ star-id-correct : ∀ {i A} (x : ⟦ A ⟧) →
         × readReg (regs s) a0 ≡ encode x)
 star-id-correct {i} {A} x =
   star-generator (id {i} {A}) x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient id x)
 
 star-terminal-correct : ∀ {i A} (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-riscv (terminal {i} {A})) (initWithInput x) s
@@ -151,7 +151,7 @@ star-terminal-correct : ∀ {i A} (x : ⟦ A ⟧) →
         × readReg (regs s) a0 ≡ encode {Unit} tt)
 star-terminal-correct {i} {A} x =
   star-generator (terminal {i} {A}) x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient terminal x)
 
 star-fold-correct : ∀ {i F} (x : ⟦ F ⟧) →
   ∃[ s ] (Star (compile-riscv (fold {i} {F})) (initWithInput x) s
@@ -159,7 +159,7 @@ star-fold-correct : ∀ {i F} (x : ⟦ F ⟧) →
         × readReg (regs s) a0 ≡ encode (wrap x))
 star-fold-correct {i} {F} x =
   star-generator (fold {i} {F}) x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient fold x)
 
 star-unfold-correct : ∀ {i F} (x : ⟦ Fix F ⟧) →
   ∃[ s ] (Star (compile-riscv (unfold {i} {F})) (initWithInput x) s
@@ -167,7 +167,7 @@ star-unfold-correct : ∀ {i F} (x : ⟦ Fix F ⟧) →
         × readReg (regs s) a0 ≡ encode (unwrap x))
 star-unfold-correct {i} {F} x =
   star-generator (unfold {i} {F}) x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient unfold x)
 
 star-arr-correct : ∀ {i A B} (f : ⟦ A ⇒ B ⟧) →
   ∃[ s ] (Star (compile-riscv (arr {i} {A} {B})) (initWithInput {A ⇒ B} f) s
@@ -175,7 +175,7 @@ star-arr-correct : ∀ {i A B} (f : ⟦ A ⇒ B ⟧) →
         × readReg (regs s) a0 ≡ encode {Eff A B} (eval (arr {i} {A} {B}) f))
 star-arr-correct {i} {A} {B} f =
   star-generator (arr {i} {A} {B}) f (initWithInput {A ⇒ B} f)
-    (initWithInput-halted {A ⇒ B} f) (initWithInput-pc {A ⇒ B} f) (initWithInput-a0 {A ⇒ B} f) (initWithInput-sp-bound {A ⇒ B} f)
+    (initWithInput-halted {A ⇒ B} f) (initWithInput-pc {A ⇒ B} f) (initWithInput-a0 {A ⇒ B} f) (initWithInput-sp-sufficient arr f)
 
 star-inl-correct : ∀ {i A B} (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-riscv (inl {i} {A} {B})) (initWithInput {A} x) s
@@ -183,7 +183,7 @@ star-inl-correct : ∀ {i A B} (x : ⟦ A ⟧) →
         × readReg (regs s) a0 ≡ encode {A + B} (inj₁ x))
 star-inl-correct {i} {A} {B} x =
   star-generator (inl {i} {A} {B}) x (initWithInput {A} x)
-    (initWithInput-halted {A} x) (initWithInput-pc {A} x) (initWithInput-a0 {A} x) (initWithInput-sp-bound {A} x)
+    (initWithInput-halted {A} x) (initWithInput-pc {A} x) (initWithInput-a0 {A} x) (initWithInput-sp-sufficient (inl {i} {A} {B}) x)
 
 star-inr-correct : ∀ {i A B} (x : ⟦ B ⟧) →
   ∃[ s ] (Star (compile-riscv (inr {i} {A} {B})) (initWithInput {B} x) s
@@ -191,7 +191,7 @@ star-inr-correct : ∀ {i A B} (x : ⟦ B ⟧) →
         × readReg (regs s) a0 ≡ encode {A + B} (inj₂ x))
 star-inr-correct {i} {A} {B} x =
   star-generator (inr {i} {A} {B}) x (initWithInput {B} x)
-    (initWithInput-halted {B} x) (initWithInput-pc {B} x) (initWithInput-a0 {B} x) (initWithInput-sp-bound {B} x)
+    (initWithInput-halted {B} x) (initWithInput-pc {B} x) (initWithInput-a0 {B} x) (initWithInput-sp-sufficient (inr {i} {A} {B}) x)
 
 star-fst-correct : ∀ {i A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
   ∃[ s ] (Star (compile-riscv (fst {i} {A} {B})) (initWithInput (a , b)) s
@@ -199,7 +199,7 @@ star-fst-correct : ∀ {i A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
         × readReg (regs s) a0 ≡ encode a)
 star-fst-correct {i} {A} {B} a b =
   star-generator (fst {i} {A} {B}) (a , b) (initWithInput (a , b))
-    (initWithInput-halted (a , b)) (initWithInput-pc (a , b)) (initWithInput-a0 (a , b)) (initWithInput-sp-bound (a , b))
+    (initWithInput-halted (a , b)) (initWithInput-pc (a , b)) (initWithInput-a0 (a , b)) (initWithInput-sp-sufficient fst (a , b))
 
 star-snd-correct : ∀ {i A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
   ∃[ s ] (Star (compile-riscv (snd {i} {A} {B})) (initWithInput (a , b)) s
@@ -207,7 +207,7 @@ star-snd-correct : ∀ {i A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
         × readReg (regs s) a0 ≡ encode b)
 star-snd-correct {i} {A} {B} a b =
   star-generator (snd {i} {A} {B}) (a , b) (initWithInput (a , b))
-    (initWithInput-halted (a , b)) (initWithInput-pc (a , b)) (initWithInput-a0 (a , b)) (initWithInput-sp-bound (a , b))
+    (initWithInput-halted (a , b)) (initWithInput-pc (a , b)) (initWithInput-a0 (a , b)) (initWithInput-sp-sufficient snd (a , b))
 
 star-curry-correct : ∀ {i A B C} (f : IR i (A * B) C) (a : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-riscv (curry f)) (initWithInput {A} a) s
@@ -215,7 +215,7 @@ star-curry-correct : ∀ {i A B C} (f : IR i (A * B) C) (a : ⟦ A ⟧) →
         × readReg (regs s) a0 ≡ encode {B ⇒ C} (eval (curry f) a))
 star-curry-correct {i} {A} {B} {C} f a =
   star-generator (curry f) a (initWithInput {A} a)
-    (initWithInput-halted {A} a) (initWithInput-pc {A} a) (initWithInput-a0 {A} a) (initWithInput-sp-bound {A} a)
+    (initWithInput-halted {A} a) (initWithInput-pc {A} a) (initWithInput-a0 {A} a) (initWithInput-sp-sufficient (curry f) a)
 
 star-compose-correct : ∀ {i A B C} (g : IR i B C) (f : IR i A B) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-riscv (g ∘ f)) (initWithInput x) s
@@ -223,7 +223,7 @@ star-compose-correct : ∀ {i A B C} (g : IR i B C) (f : IR i A B) (x : ⟦ A �
         × readReg (regs s) a0 ≡ encode (eval (g ∘ f) x))
 star-compose-correct {i} {A} {B} {C} g f x =
   star-generator (g ∘ f) x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient (g ∘ f) x)
 
 star-pair-correct : ∀ {i A B C} (f : IR i C A) (g : IR i C B) (x : ⟦ C ⟧) →
   ∃[ s ] (Star (compile-riscv ⟨ f , g ⟩) (initWithInput x) s
@@ -231,7 +231,7 @@ star-pair-correct : ∀ {i A B C} (f : IR i C A) (g : IR i C B) (x : ⟦ C ⟧) 
         × readReg (regs s) a0 ≡ encode (eval ⟨ f , g ⟩ x))
 star-pair-correct {i} {A} {B} {C} f g x =
   star-generator ⟨ f , g ⟩ x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient ⟨ f , g ⟩ x)
 
 star-case-correct : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (x : ⟦ A + B ⟧) →
   ∃[ s ] (Star (compile-riscv ([_,_] f g)) (initWithInput x) s
@@ -239,7 +239,7 @@ star-case-correct : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (x : ⟦ A + B �
         × readReg (regs s) a0 ≡ encode (eval ([_,_] f g) x))
 star-case-correct {i} {A} {B} {C} f g x =
   star-generator ([_,_] f g) x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient ([ f , g ]) x)
 
 star-apply-correct : ∀ {i A B} (f : ⟦ A ⇒ B ⟧) (a : ⟦ A ⟧) →
   let input : ⟦ (A ⇒ B) * A ⟧
@@ -251,7 +251,7 @@ star-apply-correct {i} {A} {B} f a =
   let input : ⟦ (A ⇒ B) * A ⟧
       input = (f , a)
   in star-generator (apply {i} {A} {B}) input (initWithInput {(A ⇒ B) * A} input)
-       (initWithInput-halted {(A ⇒ B) * A} input) (initWithInput-pc {(A ⇒ B) * A} input) (initWithInput-a0 {(A ⇒ B) * A} input) (initWithInput-sp-bound {(A ⇒ B) * A} input)
+       (initWithInput-halted {(A ⇒ B) * A} input) (initWithInput-pc {(A ⇒ B) * A} input) (initWithInput-a0 {(A ⇒ B) * A} input) (initWithInput-sp-sufficient apply input)
 
 ------------------------------------------------------------------------
 -- Main Correctness Theorem (Star-based, fuel-free)
@@ -267,7 +267,7 @@ star-codegen-correct : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) →
         × readReg (regs s) a0 ≡ encode (eval ir x))
 star-codegen-correct ir x =
   star-generator ir x (initWithInput x)
-    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-bound x)
+    (initWithInput-halted x) (initWithInput-pc x) (initWithInput-a0 x) (initWithInput-sp-sufficient ir x)
 
 ------------------------------------------------------------------------
 -- Whole-Program Curry/Apply Verification
