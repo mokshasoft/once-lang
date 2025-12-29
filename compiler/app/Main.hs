@@ -34,6 +34,7 @@ data BuildConfig = BuildConfig
   , bcExplicit   :: [(InterpType, String)]  -- -I:TYPE MODULE
   , bcAutoRes    :: Maybe [InterpType]      -- -A:PRIORITY
   , bcArith      :: Bool                    -- --arith flag
+  , bcVerified   :: Bool                    -- --verified flag (OCP-0004)
   , bcInput      :: Maybe String
   }
 
@@ -50,6 +51,7 @@ defaultBuildConfig = BuildConfig
   , bcExplicit  = []
   , bcAutoRes   = Nothing
   , bcArith     = False
+  , bcVerified  = False
   , bcInput     = Nothing
   }
 
@@ -73,6 +75,7 @@ parseBuild args = go args defaultBuildConfig
         , buildExplicitInterps = bcExplicit cfg
         , buildAutoResolve = bcAutoRes cfg
         , buildArith = bcArith cfg
+        , buildVerified = bcVerified cfg
         }
     go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }
     go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
@@ -90,6 +93,7 @@ parseBuild args = go args defaultBuildConfig
       Nothing -> Nothing  -- invalid optimizer
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--arith" : rest) cfg = go rest cfg { bcArith = True }
+    go ("--verified" : rest) cfg = go rest cfg { bcVerified = True }
     -- Parse -I:TYPE MODULE
     go (x : modPath : rest) cfg
       | "-I:" `isPrefixOf` x =
@@ -159,6 +163,7 @@ usage = do
   TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
   TIO.putStrLn "  --optimizer BACKEND Optimizer to use (haskell|malonzo) [default: haskell]"
   TIO.putStrLn "  --arith             Enable arithmetic compiler for pure numeric expressions"
+  TIO.putStrLn "  --verified          Use verified (MAlonzo) elaboration with fallback"
   TIO.putStrLn ""
   TIO.putStrLn "Interpretation resolution:"
   TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:C I.Linux.Syscalls)"

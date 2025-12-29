@@ -13,6 +13,7 @@ module Once.CLI
   ) where
 
 import Control.Applicative ((<|>))
+import Control.Exception (try, SomeException)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -33,7 +34,8 @@ import Once.Backend.Native
   , containsPrimitives, collectPrimitives
   )
 import qualified Once.Backend.Assembler as Asm
-import Once.Elaborate (elaborate, elaborateWithEnv)
+import Once.Elaborate (elaborate, elaborateWithEnv, ElabError)
+import qualified Once.Elaborate.Verified as EV
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
 import Once.Optimize (optimize, optimizeWith, OptimizerBackend (..))
@@ -115,6 +117,7 @@ data BuildOptions = BuildOptions
   , buildExplicitInterps :: [(InterpType, String)]  -- ^ Explicit interpretations: -I:TYPE MODULE
   , buildAutoResolve :: Maybe [InterpType]          -- ^ Auto-resolve priority: -A:TYPE:TYPE:...
   , buildArith :: Bool                  -- ^ Enable arithmetic compiler for pure numeric expressions
+  , buildVerified :: Bool               -- ^ Use verified (MAlonzo) elaboration with fallback (OCP-0004)
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -178,8 +181,11 @@ runBuild opts = do
                       TIO.putStrLn "Error: No functions found"
                       exitFailure
                     _ -> do
-                      -- Elaborate all functions
-                      case elaborateAllWithEnv modEnv allFunctions of
+                      -- Elaborate all functions (use verified if enabled)
+                      elaborateResult <- if buildVerified opts
+                                         then elaborateAllVerified modEnv allFunctions
+                                         else pure (elaborateAllWithEnv modEnv allFunctions)
+                      case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
                           exitFailure
@@ -263,9 +269,12 @@ runBuild opts = do
                           TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
                           exitFailure
 
-                      -- Elaborate all functions to IR (with module environment)
+                      -- Elaborate all functions to IR (use verified if enabled)
                       let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-                      case elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions) of
+                      elaborateResult <- if buildVerified opts
+                                         then elaborateAllVerified modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
+                                         else pure (elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions))
+                      case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
                           exitFailure
@@ -726,6 +735,33 @@ elaborateAllWithEnv env ((name, ty, alloc, expr):rest) =
     Right ir -> case elaborateAllWithEnv env rest of
       Left err -> Left err
       Right irs -> Right ((name, ty, alloc, ir) : irs)
+
+-- | Elaborate all functions with verified elaboration and fallback (OCP-0004)
+--
+-- For each function, tries verified (MAlonzo) elaboration first.
+-- If that fails (including MAlonzo runtime errors), falls back to standard Haskell elaboration.
+-- This provides correctness guarantees where the verified elaboration succeeds.
+elaborateAllVerified :: ModuleEnv
+                     -> [(Text, Type, Maybe AllocStrategy, Expr)]
+                     -> IO (Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)])
+elaborateAllVerified _ [] = pure (Right [])
+elaborateAllVerified env ((name, ty, alloc, expr):rest) = do
+  -- Try verified elaboration, catching any exceptions (e.g., from MAlonzo postulates)
+  verifiedResult <- try (pure $! EV.elaborateVerified expr) :: IO (Either SomeException (Either String Once.IR.IR))
+  let ir = case verifiedResult of
+             Right (Right verifiedIR) -> Right verifiedIR  -- Verified succeeded
+             _ ->
+               -- Fallback to standard Haskell elaboration (verified failed or threw exception)
+               case elaborateWithEnv env expr of
+                 Left err -> Left (show err)
+                 Right fallbackIR -> Right fallbackIR
+  case ir of
+    Left err -> pure (Left err)
+    Right irValue -> do
+      restResult <- elaborateAllVerified env rest
+      pure $ case restResult of
+        Left err -> Left err
+        Right irs -> Right ((name, ty, alloc, irValue) : irs)
 
 -- | Generate C code for an executable (with main function)
 -- The allocation strategy affects how buffer/string outputs are allocated
