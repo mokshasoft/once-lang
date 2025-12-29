@@ -23,9 +23,15 @@ open State
 open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation
-  using (readReg-writeReg-same; execInstr-ldr-success)
+  using (readReg-writeReg-same; readReg-writeReg-x0-x20; readReg-writeReg-x0-x21;
+         readReg-writeReg-x0-x29; readReg-writeReg-x0-x30;
+         readSP-writeReg;
+         execInstr-ldr-success; step-instr; fetch-at-prefix-end)
 open import Once.Backend.AArch64.Correct.StackInvariant
-  using (StackInvariant; X29Invariant)
+  using (StackInvariant; X29Invariant;
+         stack-inv-preserved-unchanged; x29-inv-preserved-unchanged)
+open import Once.Backend.AArch64.Postulates
+  using (sp-bound-after-stack-op)
 open import Once.Backend.AArch64.Correct.Star
   using (Star; star-single)
 open import Once.Backend.AArch64.Correct.StarBase
@@ -41,7 +47,7 @@ open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Data.Maybe using (just)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 ------------------------------------------------------------------------
 -- Stateful fst consumer
@@ -82,10 +88,37 @@ run-fst-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
     s1 : State
     s1 = record s { regs = writeReg (regs s) x0 addr-a ; pc = pc s +ℕ 1 }
 
-    -- Execution proof
-    postulate
-      star-proof : Star prog s s1
-      h1 : halted s1 ≡ false
+    -- The instruction: ldr x0 (base x0)
+    i0 : Instr
+    i0 = ldr x0 (base x0)
+
+    -- Fetch proof
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 suffix
+
+    -- Effective address for ldr x0 [x0] is readReg x0 = addr-pair
+    -- The load succeeds because mem-at-pair says readMem addr-pair = just addr-a
+    eff-addr : readReg (regs s) x0 ≡ addr-pair
+    eff-addr = x0-eq
+
+    mem-load : readMem (memory s) (readReg (regs s) x0) ≡ just addr-a
+    mem-load = trans (cong (readMem (memory s)) x0-eq) mem-at-pair
+
+    exec0 : execInstr prog s i0 ≡ just s1
+    exec0 = execInstr-ldr-success prog s x0 (base x0) addr-a mem-load
+
+    step0 : step prog s ≡ just s1
+    step0 = step-instr prog s s1 i0 h-false
+              (subst (λ n → fetch prog n ≡ just i0) (sym pc-eq) fetch0)
+              exec0
+
+    -- Build Star from single step (PROVEN!)
+    star-proof : Star prog s s1
+    star-proof = star-single h-false step0
+
+    -- Final state properties (PROVEN!)
+    h1 : halted s1 ≡ false
+    h1 = h-false
 
     pc1 : pc s1 ≡ length prefix +ℕ 1
     pc1 = cong (_+ℕ 1) pc-eq
@@ -93,18 +126,38 @@ run-fst-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
     x0-s1 : readReg (regs s1) x0 ≡ addr-a
     x0-s1 = readReg-writeReg-same (regs s) x0 addr-a
 
-    -- Register preservation (fst only modifies x0)
-    postulate
-      x20-eq : readReg (regs s1) x20 ≡ readReg (regs s) x20
-      x21-eq : readReg (regs s1) x21 ≡ readReg (regs s) x21
-      x29-eq : readReg (regs s1) x29 ≡ readReg (regs s) x29
-      x30-eq : readReg (regs s1) x30 ≡ readReg (regs s) x30
-      mem-x21-eq : readMem (memory s1) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
-      mem-x29-eq : readMem (memory s1) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
-      mem-x29+8-eq : readMem (memory s1) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-      stack-inv' : StackInvariant s1
-      x29-inv' : X29Invariant s1
-      sp>16' : readSP (regs s1) > 16
+    -- Register preservation (fst only modifies x0, PROVEN!)
+    x20-eq : readReg (regs s1) x20 ≡ readReg (regs s) x20
+    x20-eq = readReg-writeReg-x0-x20 (regs s) addr-a
+
+    x21-eq : readReg (regs s1) x21 ≡ readReg (regs s) x21
+    x21-eq = readReg-writeReg-x0-x21 (regs s) addr-a
+
+    x29-eq : readReg (regs s1) x29 ≡ readReg (regs s) x29
+    x29-eq = readReg-writeReg-x0-x29 (regs s) addr-a
+
+    x30-eq : readReg (regs s1) x30 ≡ readReg (regs s) x30
+    x30-eq = readReg-writeReg-x0-x30 (regs s) addr-a
+
+    -- Memory unchanged (ldr doesn't write memory)
+    mem-x21-eq : readMem (memory s1) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+    mem-x21-eq = refl
+
+    mem-x29-eq : readMem (memory s1) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    mem-x29-eq = refl
+
+    mem-x29+8-eq : readMem (memory s1) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+    mem-x29+8-eq = refl
+
+    -- Invariant preservation (PROVEN!)
+    stack-inv' : StackInvariant s1
+    stack-inv' = stack-inv-preserved-unchanged s s1 stack-inv x21-eq refl
+
+    x29-inv' : X29Invariant s1
+    x29-inv' = x29-inv-preserved-unchanged s s1 x29-inv x29-eq refl
+
+    sp>16' : readSP (regs s1) > 16
+    sp>16' = sp-bound-after-stack-op s1
 
     result-s : IRStarResultS (fst {i} {A} {B}) prog s s1 addr-a (length prefix)
     result-s = record
@@ -157,10 +210,34 @@ run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
     s1 : State
     s1 = record s { regs = writeReg (regs s) x0 addr-b ; pc = pc s +ℕ 1 }
 
-    -- Execution proof
-    postulate
-      star-proof : Star prog s s1
-      h1 : halted s1 ≡ false
+    -- The instruction: ldr x0 (base+imm x0 8)
+    i0 : Instr
+    i0 = ldr x0 (base+imm x0 8)
+
+    -- Fetch proof
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = fetch-at-prefix-end prefix i0 suffix
+
+    -- Effective address for ldr x0 [x0+8] is readReg x0 + 8 = addr-pair + 8
+    -- The load succeeds because mem-at-pair+8 says readMem (addr-pair+8) = just addr-b
+    mem-load : readMem (memory s) (readReg (regs s) x0 +ℕ 8) ≡ just addr-b
+    mem-load = trans (cong (λ a → readMem (memory s) (a +ℕ 8)) x0-eq) mem-at-pair+8
+
+    exec0 : execInstr prog s i0 ≡ just s1
+    exec0 = execInstr-ldr-success prog s x0 (base+imm x0 8) addr-b mem-load
+
+    step0 : step prog s ≡ just s1
+    step0 = step-instr prog s s1 i0 h-false
+              (subst (λ n → fetch prog n ≡ just i0) (sym pc-eq) fetch0)
+              exec0
+
+    -- Build Star from single step (PROVEN!)
+    star-proof : Star prog s s1
+    star-proof = star-single h-false step0
+
+    -- Final state properties (PROVEN!)
+    h1 : halted s1 ≡ false
+    h1 = h-false
 
     pc1 : pc s1 ≡ length prefix +ℕ 1
     pc1 = cong (_+ℕ 1) pc-eq
@@ -168,18 +245,38 @@ run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
     x0-s1 : readReg (regs s1) x0 ≡ addr-b
     x0-s1 = readReg-writeReg-same (regs s) x0 addr-b
 
-    -- Register preservation
-    postulate
-      x20-eq : readReg (regs s1) x20 ≡ readReg (regs s) x20
-      x21-eq : readReg (regs s1) x21 ≡ readReg (regs s) x21
-      x29-eq : readReg (regs s1) x29 ≡ readReg (regs s) x29
-      x30-eq : readReg (regs s1) x30 ≡ readReg (regs s) x30
-      mem-x21-eq : readMem (memory s1) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
-      mem-x29-eq : readMem (memory s1) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
-      mem-x29+8-eq : readMem (memory s1) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-      stack-inv' : StackInvariant s1
-      x29-inv' : X29Invariant s1
-      sp>16' : readSP (regs s1) > 16
+    -- Register preservation (snd only modifies x0, PROVEN!)
+    x20-eq : readReg (regs s1) x20 ≡ readReg (regs s) x20
+    x20-eq = readReg-writeReg-x0-x20 (regs s) addr-b
+
+    x21-eq : readReg (regs s1) x21 ≡ readReg (regs s) x21
+    x21-eq = readReg-writeReg-x0-x21 (regs s) addr-b
+
+    x29-eq : readReg (regs s1) x29 ≡ readReg (regs s) x29
+    x29-eq = readReg-writeReg-x0-x29 (regs s) addr-b
+
+    x30-eq : readReg (regs s1) x30 ≡ readReg (regs s) x30
+    x30-eq = readReg-writeReg-x0-x30 (regs s) addr-b
+
+    -- Memory unchanged (ldr doesn't write memory)
+    mem-x21-eq : readMem (memory s1) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+    mem-x21-eq = refl
+
+    mem-x29-eq : readMem (memory s1) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    mem-x29-eq = refl
+
+    mem-x29+8-eq : readMem (memory s1) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+    mem-x29+8-eq = refl
+
+    -- Invariant preservation (PROVEN!)
+    stack-inv' : StackInvariant s1
+    stack-inv' = stack-inv-preserved-unchanged s s1 stack-inv x21-eq refl
+
+    x29-inv' : X29Invariant s1
+    x29-inv' = x29-inv-preserved-unchanged s s1 x29-inv x29-eq refl
+
+    sp>16' : readSP (regs s1) > 16
+    sp>16' = sp-bound-after-stack-op s1
 
     result-s : IRStarResultS (snd {i} {A} {B}) prog s s1 addr-b (length prefix)
     result-s = record
