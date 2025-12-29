@@ -38,9 +38,14 @@ neg16 : ℤ
 neg16 = -[1+ 15 ]  -- Represents -16
 
 -- | Negative offset for stack allocation (24 bytes = 3 words)
--- Used by pair to save s1 in addition to pair data
+-- Used by curry thunk frame
 neg24 : ℤ
 neg24 = -[1+ 23 ]  -- Represents -24
+
+-- | Negative offset for stack allocation (32 bytes = 4 words)
+-- Used by pair: 16 for pair data + 8 for s1 + 8 for s2 (frame pointer)
+neg32 : ℤ
+neg32 = -[1+ 31 ]  -- Represents -32
 
 ------------------------------------------------------------------------
 -- Compile length calculation
@@ -54,7 +59,7 @@ compile-length id = 1              -- nop (a0 already has the value)
 compile-length (g ∘ f) = compile-length f +ℕ compile-length g  -- no mov needed!
 compile-length fst = 1             -- ld a0, 0(a0)
 compile-length snd = 1             -- ld a0, 8(a0)
-compile-length ⟨ f , g ⟩ = (8 +ℕ compile-length f) +ℕ compile-length g  -- 8 = alloc + save-s1 + 2×sd + 2×mv + restore-s1 + mv
+compile-length ⟨ f , g ⟩ = (12 +ℕ compile-length f) +ℕ compile-length g  -- 12 = frame pointer approach (5 setup + 2 middle + 5 final)
 compile-length inl = 4             -- addi sp + sd + sd + mv
 compile-length inr = 5             -- addi sp + li + sd + sd + mv
 compile-length [ f , g ] = (6 +ℕ compile-length f) +ℕ compile-length g
@@ -83,7 +88,7 @@ StackDelta id = 0
 StackDelta (g ∘ f) = StackDelta f +ℕ StackDelta g  -- f runs first, then g
 StackDelta fst = 0
 StackDelta snd = 0
-StackDelta ⟨ f , g ⟩ = 24 +ℕ StackDelta f +ℕ StackDelta g  -- 24 bytes for pair struct
+StackDelta ⟨ f , g ⟩ = 32 +ℕ StackDelta f +ℕ StackDelta g  -- 32 bytes: 16 pair + 8 s1 + 8 s2
 StackDelta inl = 16
 StackDelta inr = 16
 StackDelta [ f , g ] = StackDelta f ⊔ StackDelta g  -- only one branch runs
@@ -113,7 +118,7 @@ StackDepth id = 0
 StackDepth (g ∘ f) = StackDepth f ⊔ (StackDelta f +ℕ StackDepth g)  -- f runs first
 StackDepth fst = 0
 StackDepth snd = 0
-StackDepth ⟨ f , g ⟩ = 48 +ℕ (StackDepth f ⊔ StackDepth g)  -- 24 alloc + 24 margin
+StackDepth ⟨ f , g ⟩ = 32 +ℕ (StackDepth f ⊔ (StackDelta f +ℕ StackDepth g))  -- frame pointer approach
 StackDepth inl = 16
 StackDepth inr = 16
 StackDepth [ f , g ] = StackDepth f ⊔ StackDepth g
@@ -159,30 +164,41 @@ compile-riscv fst = ld a0 (+ 0) a0 ∷ []
 -- Second projection: load from offset 8 of pair pointer
 compile-riscv snd = ld a0 (+ 8) a0 ∷ []
 
--- Pairing: allocate pair on stack, compute both components
--- Stack layout: [fst (8 bytes), snd (8 bytes), saved-s1 (8 bytes)]
--- We save s1 because we use it as scratch, but it's callee-saved
+-- Pairing: allocate pair on stack using frame pointer approach
+-- Stack layout: [fst (8 bytes), snd (8 bytes), saved-s1 (8 bytes), saved-s2 (8 bytes)]
+-- We use s2 as frame pointer to allow f and g to allocate arbitrary stack.
+-- Stores/loads for pair data are relative to s2, not sp.
 compile-riscv ⟨ f , g ⟩ =
-  -- Allocate 24 bytes on stack (16 for pair + 8 for s1)
-  addi sp sp neg24 ∷
+  -- Setup (5 instructions):
+  -- Allocate 32 bytes (16 for pair + 8 for s1 + 8 for s2)
+  addi sp sp neg32 ∷
+  -- Save original s2 (will use as frame pointer)
+  sd s2 (+ 24) sp ∷
   -- Save original s1 (callee-saved register)
   sd s1 (+ 16) sp ∷
-  -- Save input in s1 (now we can use it as scratch)
+  -- Set frame pointer s2 = sp (points to pair data area)
+  mv s2 sp ∷
+  -- Save input in s1
   mv s1 a0 ∷
-  -- Compute f (input in a0, output in a0)
+  -- Compute f (input in a0, output in a0, sp may change)
   compile-riscv f ++
-  -- Store result at [sp]
-  sd a0 (+ 0) sp ∷
+  -- Middle (2 instructions):
+  -- Store f result at [s2] (frame pointer, not sp!)
+  sd a0 (+ 0) s2 ∷
   -- Restore input
   mv a0 s1 ∷
-  -- Compute g (input in a0, output in a0)
+  -- Compute g (input in a0, output in a0, sp may change)
   compile-riscv g ++
-  -- Store result at [sp + 8]
-  sd a0 (+ 8) sp ∷
-  -- Return pointer to pair (sp points to pair data)
-  mv a0 sp ∷
-  -- Restore original s1
-  ld s1 (+ 16) sp ∷ []
+  -- Final (5 instructions):
+  -- Store g result at [s2 + 8] (frame pointer, not sp!)
+  sd a0 (+ 8) s2 ∷
+  -- Return pointer to pair (s2 points to pair data)
+  mv a0 s2 ∷
+  -- Restore original s1 from frame
+  ld s1 (+ 16) s2 ∷
+  -- Restore s2 from frame (use t0 as temp since we're reading from s2)
+  ld t0 (+ 24) s2 ∷
+  mv s2 t0 ∷ []
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]

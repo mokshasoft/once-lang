@@ -61,62 +61,66 @@ compile-length-correct (g ∘ f) =
   trans (length-++ (compile-riscv f) (compile-riscv g))
         (cong₂ _+ℕ_ (compile-length-correct f) (compile-length-correct g))
 
--- Pair: [addi, sd, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv, ld]
--- Length = 3 + len-f + 2 + len-g + 3 = 8 + len-f + len-g
--- Note: We now save/restore s1 to preserve it as a callee-saved register
+-- Pair with frame pointer: [addi, sd, sd, mv, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv, ld, ld, mv]
+-- Length = 5 + len-f + 2 + len-g + 5 = 12 + len-f + len-g
+-- Note: We save/restore both s1 and s2 (frame pointer) for callee-save compliance
 compile-length-correct ⟨ f , g ⟩ =
   let len-f = compile-length f
       len-g = compile-length g
       ih-f = compile-length-correct f
       ih-g = compile-length-correct g
-      -- Helper: x + 3 = suc (suc (suc x))
-      plus-3 : ∀ x → x +ℕ 3 ≡ suc (suc (suc x))
-      plus-3 x = begin
-          x +ℕ 3
-        ≡⟨ +-suc x 2 ⟩
-          suc (x +ℕ 2)
-        ≡⟨ cong suc (+-suc x 1) ⟩
-          suc (suc (x +ℕ 1))
-        ≡⟨ cong (suc ∘′ suc) (+-suc x 0) ⟩
-          suc (suc (suc (x +ℕ 0)))
-        ≡⟨ cong (suc ∘′ suc ∘′ suc) (+-identityʳ x) ⟩
-          suc (suc (suc x))
+      -- Helper: x + 5 = suc^5 x
+      plus-5 : ∀ x → x +ℕ 5 ≡ suc (suc (suc (suc (suc x))))
+      plus-5 x = begin
+          x +ℕ 5
+        ≡⟨ +-suc x 4 ⟩
+          suc (x +ℕ 4)
+        ≡⟨ cong suc (+-suc x 3) ⟩
+          suc (suc (x +ℕ 3))
+        ≡⟨ cong (suc ∘′ suc) (+-suc x 2) ⟩
+          suc (suc (suc (x +ℕ 2)))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc) (+-suc x 1) ⟩
+          suc (suc (suc (suc (x +ℕ 1))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc) (+-suc x 0) ⟩
+          suc (suc (suc (suc (suc (x +ℕ 0)))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (+-identityʳ x) ⟩
+          suc (suc (suc (suc (suc x))))
         ∎
-      -- Arithmetic: 3 + (len-f + (2 + (len-g + 3))) = (8 + len-f) + len-g
-      arith : suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 3))))) ≡ (8 +ℕ len-f) +ℕ len-g
+      -- Arithmetic: 5 + (len-f + (2 + (len-g + 5))) = (12 + len-f) + len-g
+      arith : suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5))))))) ≡ (12 +ℕ len-f) +ℕ len-g
       arith = begin
-          suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 3)))))
-        ≡⟨ cong (suc ∘′ suc ∘′ suc) (+-suc len-f (suc (len-g +ℕ 3))) ⟩
-          suc (suc (suc (suc (len-f +ℕ suc (len-g +ℕ 3)))))
-        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc) (+-suc len-f (len-g +ℕ 3)) ⟩
-          suc (suc (suc (suc (suc (len-f +ℕ (len-g +ℕ 3))))))
-        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (sym (+-assoc len-f len-g 3)) ⟩
-          suc (suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 3)))))
-        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (plus-3 (len-f +ℕ len-g)) ⟩
-          suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))))
-        ≡⟨ refl ⟩  -- (8 + len-f) + len-g = suc^8 (len-f + len-g) definitionally
-          (8 +ℕ len-f) +ℕ len-g
+          suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5)))))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (+-suc len-f (suc (len-g +ℕ 5))) ⟩
+          suc (suc (suc (suc (suc (suc (len-f +ℕ suc (len-g +ℕ 5)))))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (+-suc len-f (len-g +ℕ 5)) ⟩
+          suc (suc (suc (suc (suc (suc (suc (len-f +ℕ (len-g +ℕ 5))))))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (sym (+-assoc len-f len-g 5)) ⟩
+          suc (suc (suc (suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 5)))))))
+        ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (plus-5 (len-f +ℕ len-g)) ⟩
+          suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))))))))
+        ≡⟨ refl ⟩  -- (12 + len-f) + len-g = suc^12 (len-f + len-g) definitionally
+          (12 +ℕ len-f) +ℕ len-g
         ∎
   in begin
-    length (addi sp sp neg24 ∷ sd s1 (+ 16) sp ∷ mv s1 a0 ∷ compile-riscv f ++
-            sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
-            sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ [])
+    length (addi sp sp neg32 ∷ sd s2 (+ 24) sp ∷ sd s1 (+ 16) sp ∷ mv s2 sp ∷ mv s1 a0 ∷ compile-riscv f ++
+            sd a0 (+ 0) s2 ∷ mv a0 s1 ∷ compile-riscv g ++
+            sd a0 (+ 8) s2 ∷ mv a0 s2 ∷ ld s1 (+ 16) s2 ∷ ld t0 (+ 24) s2 ∷ mv s2 t0 ∷ [])
   ≡⟨ refl ⟩
-    suc (suc (suc (length (compile-riscv f ++
-              sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
-              sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ []))))
-  ≡⟨ cong (suc ∘′ suc ∘′ suc) (length-++ (compile-riscv f) _) ⟩
-    suc (suc (suc (length (compile-riscv f) +ℕ
-              length (sd a0 (+ 0) sp ∷ mv a0 s1 ∷ compile-riscv g ++
-                      sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ []))))
-  ≡⟨ cong (λ n → suc (suc (suc (n +ℕ _)))) ih-f ⟩
-    suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g ++ sd a0 (+ 8) sp ∷ mv a0 sp ∷ ld s1 (+ 16) sp ∷ []))))))
-  ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc n))))) (length-++ (compile-riscv g) _) ⟩
-    suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g) +ℕ 3)))))
-  ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc (n +ℕ 3)))))) ih-g ⟩
-    suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 3)))))
+    suc (suc (suc (suc (suc (length (compile-riscv f ++
+              sd a0 (+ 0) s2 ∷ mv a0 s1 ∷ compile-riscv g ++
+              sd a0 (+ 8) s2 ∷ mv a0 s2 ∷ ld s1 (+ 16) s2 ∷ ld t0 (+ 24) s2 ∷ mv s2 t0 ∷ []))))))
+  ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (length-++ (compile-riscv f) _) ⟩
+    suc (suc (suc (suc (suc (length (compile-riscv f) +ℕ
+              length (sd a0 (+ 0) s2 ∷ mv a0 s1 ∷ compile-riscv g ++
+                      sd a0 (+ 8) s2 ∷ mv a0 s2 ∷ ld s1 (+ 16) s2 ∷ ld t0 (+ 24) s2 ∷ mv s2 t0 ∷ []))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (n +ℕ _)))))) ih-f ⟩
+    suc (suc (suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g ++ sd a0 (+ 8) s2 ∷ mv a0 s2 ∷ ld s1 (+ 16) s2 ∷ ld t0 (+ 24) s2 ∷ mv s2 t0 ∷ []))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (len-f +ℕ suc (suc n))))))) (length-++ (compile-riscv g) _) ⟩
+    suc (suc (suc (suc (suc (len-f +ℕ suc (suc (length (compile-riscv g) +ℕ 5)))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (len-f +ℕ suc (suc (n +ℕ 5)))))))) ih-g ⟩
+    suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5)))))))
   ≡⟨ arith ⟩
-    (8 +ℕ len-f) +ℕ len-g
+    (12 +ℕ len-f) +ℕ len-g
   ∎
 
 -- Case: [ld, ld, bne] ++ f ++ [j, label] ++ g ++ [label]
