@@ -97,17 +97,44 @@ Three options for completing this:
 **Recommendation**: Pursue Option C with dependent types (depth-indexed approach)
 
 **Implementation Progress** (2025-01-29):
-- Started implementing generalized exchangeN using well-founded recursion
-- Added necessary imports: Data.Vec, Induction.WellFounded, Data.Nat.Induction
-- Created skeleton of exchangeN-impl with Acc accessibility predicate
-- **Blocked**: Type signature for exchangeN needs to properly express dependent context construction
-- **Challenge**: The type of the result depends on the depth parameter - need to construct nested context types at the type level
+- Extended mechanical pattern from depth 6 → 8 (exchange₇ implemented, postulate at exchange₈)
+- Explored three generalization approaches:
 
-**Next Steps**:
-1. Define type-level helper to construct `Γ S, A₁ S, A₂ S, ... S, Aₙ` for arbitrary n
-2. Define generalized lookup lemma indexed by depth
-3. Implement exchangeN body that actually performs variable shifting
-4. OR: Continue mechanical pattern to depth 10-12 as interim solution while designing full generalization
+**Attempt 1: Vec with type-level arithmetic `n + m`**
+- Defined `extendMany : SCtx n → Vec Type m → SCtx (n + m)`
+- Issue: `subst SCtx (sym (+-identityʳ n)) Γ` creates complex types
+- Rewrites don't eliminate subst, blocking pattern matching
+- Status: Blocked on subst complexity
+
+**Attempt 2: Rewrite-based simplification**
+- Used `rewrite +-identityʳ n | +-suc n m` to eliminate arithmetic
+- Base case works: `exchangeN [] e rewrite ... = weaken e`
+- Issue: Subst from extendMany persists even after rewrite
+- Recursive cases still blocked on arithmetic
+- Status: Blocked by interaction of rewrite + subst
+
+**Attempt 3: Existential with List (avoiding arithmetic)**
+- Defined `extendWithList : SCtx n → List Type → ∃[k] SCtx k`
+- Signature: `exchangeN : (types : List Type) → (let _ , Γ' = extendWithList Γ types in SExpr Γ' Result) → ...`
+- Base case works cleanly
+- Issue: Variable pattern matching requires exact size exposed for `Fin k`, but existential hides it
+- Unification error: `suc n ≟ extendWithList Γ (B ∷ types) .proj₁`
+- Status: **Blocked - fundamental issue with existential approach**
+
+**Key Insight**:
+Variable indices (`Fin`) require exact context sizes at the type level. The existential `∃[k] SCtx k` hides the size, breaking pattern matching on variables. Any working solution must expose sizes explicitly.
+
+**Current State**:
+- exchange₀-₇ proven + postulate exchange₈ (depth 8)
+- Covers 7+ nested binders (handles virtually all real programs)
+- Satisfies current verification needs
+- Full generalization requires solving the size/arithmetic exposure problem
+
+**Next Steps** (future work):
+1. Research indexed families or view patterns for size management
+2. Study similar problems in other dependently-typed developments (e.g., Agda stdlib Vec operations)
+3. Consider if proof-by-reflection could help with arithmetic normalization
+4. OR: Accept exchange₈ as practical limit and proceed with rest of verification
 
 ---
 
