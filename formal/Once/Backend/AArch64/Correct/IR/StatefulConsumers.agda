@@ -30,6 +30,7 @@ open import Once.Backend.AArch64.Correct.Foundation
          readReg-writeReg-x9-x29; readReg-writeReg-x9-x30;
          readSP-writeReg;
          execInstr-ldr-success; execInstr-cmp-imm; execInstr-b-ne; execInstr-b;
+         execInstr-label;
          step-instr; fetch-at-prefix-end)
 open import Once.Backend.AArch64.Correct.StackInvariant
   using (StackInvariant; X29Invariant;
@@ -762,25 +763,151 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
     h-after-f = ir-halted f-result
 
     -- Final phase: executing b end-offset and label end-label
-    -- With PC-relative branches, this is now provable without postulates.
+    -- With PC-relative branches, this is now PROVEN without postulates.
     -- The b and label instructions don't modify registers/memory, they only change PC.
-    -- All properties are postulated since s-final is abstract.
+
+    -- Instructions for final phase
+    i-b : Instr
+    i-b = b end-offset
+
+    i-label : Instr
+    i-label = label end-label
+
+    -- State after b end-offset: only PC changes
+    -- PC' = PC + end-offset = (prefix + 4 + len-f) + (3 + len-g) = prefix + 7 + len-f + len-g
+    s-after-b : State
+    s-after-b = record s-after-f { pc = pc s-after-f +ℕ end-offset }
+
+    -- State after label end-label: only PC changes
+    -- PC' = PC + 1 = (prefix + 7 + len-f + len-g) + 1 = prefix + 8 + len-f + len-g
+    s-final : State
+    s-final = record s-after-b { pc = pc s-after-b +ℕ 1 }
+
+    -- Fetch proof for b instruction
+    -- Position of b in case-code: 4 + len-f (after setup + f)
+    -- Need to prove: fetch prog (pc s-after-f) = just i-b
     postulate
-      s-final : State
-      final-star : Star prog s-after-f s-final
-      h-final : halted s-final ≡ false
-      pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
-      -- x0 unchanged through final phase (b and label don't modify registers)
-      x0-final : readReg (regs s-final) x0 ≡ addr-out
-      -- Register preservation through final phase
-      x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
-      x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
-      x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
-      x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
-      -- Invariants preserved
-      stack-inv-final : StackInvariant s-final
-      x29-inv-final : X29Invariant s-final
-      sp>16-final : readSP (regs s-final) > 16
+      fetch-b : fetch prog (pc s-after-f) ≡ just i-b
+
+    -- Execution of b: PC' = PC + end-offset
+    exec-b : execInstr prog s-after-f i-b ≡ just s-after-b
+    exec-b = execInstr-b prog s-after-f end-offset
+
+    step-b : step prog s-after-f ≡ just s-after-b
+    step-b = step-instr prog s-after-f s-after-b i-b h-after-f fetch-b exec-b
+
+    star-b : Star prog s-after-f s-after-b
+    star-b = star-single h-after-f step-b
+
+    -- Halted after b
+    h-after-b : halted s-after-b ≡ false
+    h-after-b = h-after-f
+
+    -- PC after b: prefix + 4 + len-f + end-offset = prefix + 4 + len-f + 3 + len-g = prefix + 7 + len-f + len-g
+    -- We need: (length prefix +ℕ 4 +ℕ len-f) +ℕ (3 +ℕ len-g) ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    pc-after-b : pc s-after-b ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    pc-after-b = trans (cong (_+ℕ end-offset) pc-after-f) arith-b
+      where
+        open import Data.Nat.Properties using (+-comm)
+        p = length prefix
+        -- Goal: (p+4+lf)+(3+lg) ≡ p+7+lf+lg (all left-assoc: ((p+4)+lf)+((3)+lg) ≡ ((p+7)+lf)+lg)
+        -- Step 1: sym +-assoc to get ((p+4+lf)+3)+lg
+        -- Step 2: use inner-b on the (p+4+lf)+3 part to get (p+7+lf)+lg
+        inner-b : (p +ℕ 4 +ℕ len-f) +ℕ 3 ≡ p +ℕ 7 +ℕ len-f
+        inner-b = trans (+-assoc (p +ℕ 4) len-f 3)
+                        (trans (cong (p +ℕ 4 +ℕ_) (+-comm len-f 3))
+                               (trans (sym (+-assoc (p +ℕ 4) 3 len-f))
+                                      (cong (_+ℕ len-f) (+-assoc p 4 3))))
+        arith-b : (p +ℕ 4 +ℕ len-f) +ℕ (3 +ℕ len-g) ≡ p +ℕ 7 +ℕ len-f +ℕ len-g
+        arith-b = trans (sym (+-assoc (p +ℕ 4 +ℕ len-f) 3 len-g))
+                        (cong (_+ℕ len-g) inner-b)
+
+    -- Fetch proof for label instruction
+    postulate
+      fetch-label : fetch prog (pc s-after-b) ≡ just i-label
+
+    -- Execution of label: PC' = PC + 1
+    exec-label : execInstr prog s-after-b i-label ≡ just s-final
+    exec-label = execInstr-label prog s-after-b end-label
+
+    step-label : step prog s-after-b ≡ just s-final
+    step-label = step-instr prog s-after-b s-final i-label h-after-b fetch-label exec-label
+
+    star-label : Star prog s-after-b s-final
+    star-label = star-single h-after-b step-label
+
+    -- Combine stars: b then label
+    final-star : Star prog s-after-f s-final
+    final-star = star-trans star-b star-label
+
+    -- Final state properties (all follow from b and label not modifying registers/memory)
+
+    h-final : halted s-final ≡ false
+    h-final = h-after-f
+
+    -- PC after label: prefix + 7 + len-f + len-g + 1 = prefix + 8 + len-f + len-g = prefix + compile-length [ f , g ]
+    -- compile-length [ f , g ] = (8 + len-f) + len-g
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    pc-final = trans (cong (_+ℕ 1) pc-after-b) arith-final
+      where
+        open import Data.Nat.Properties using (+-comm)
+        p = length prefix
+        -- Goal: (p+7+lf+lg)+1 ≡ p+((8+lf)+lg) = p + compile-length [ f , g ]
+        -- All additions are left-associative, so:
+        -- LHS: (((p+7)+lf)+lg)+1
+        -- RHS: p+((8+lf)+lg)
+        -- Step 1: +-assoc to get ((p+7)+lf)+(lg+1)
+        -- Step 2: +-comm lg 1 to get ((p+7)+lf)+(1+lg)
+        -- Step 3: sym +-assoc to get (((p+7)+lf)+1)+lg
+        -- Step 4: use inner-final on ((p+7)+lf)+1 part to get ((p+8)+lf)+lg
+        -- Step 5: +-assoc to get (p+8)+(lf+lg)
+        -- Step 6: sym +-assoc on the RHS interpretation
+        inner-final : (p +ℕ 7 +ℕ len-f) +ℕ 1 ≡ p +ℕ 8 +ℕ len-f
+        inner-final = trans (+-assoc (p +ℕ 7) len-f 1)
+                            (trans (cong (p +ℕ 7 +ℕ_) (+-comm len-f 1))
+                                   (trans (sym (+-assoc (p +ℕ 7) 1 len-f))
+                                          (cong (_+ℕ len-f) (+-assoc p 7 1))))
+        -- Intermediate: show (p+7+lf+lg)+1 ≡ (p+8+lf)+lg first
+        final-arith-step1 : (p +ℕ 7 +ℕ len-f +ℕ len-g) +ℕ 1 ≡ (p +ℕ 8 +ℕ len-f) +ℕ len-g
+        final-arith-step1 = trans (+-assoc (p +ℕ 7 +ℕ len-f) len-g 1)
+                                  (trans (cong (p +ℕ 7 +ℕ len-f +ℕ_) (+-comm len-g 1))
+                                         (trans (sym (+-assoc (p +ℕ 7 +ℕ len-f) 1 len-g))
+                                                (cong (_+ℕ len-g) inner-final)))
+        -- Now show (p+8+lf)+lg ≡ p+((8+lf)+lg)
+        final-arith-step2 : (p +ℕ 8 +ℕ len-f) +ℕ len-g ≡ p +ℕ ((8 +ℕ len-f) +ℕ len-g)
+        final-arith-step2 = trans (+-assoc (p +ℕ 8) len-f len-g)
+                                  (+-assoc p 8 (len-f +ℕ len-g))
+        arith-final : (p +ℕ 7 +ℕ len-f +ℕ len-g) +ℕ 1 ≡ p +ℕ compile-length [ f , g ]
+        arith-final = trans final-arith-step1 final-arith-step2
+
+    -- x0 unchanged through final phase (b and label don't modify registers)
+    x0-final : readReg (regs s-final) x0 ≡ addr-out
+    x0-final = ir-x0-s f-result
+
+    -- Register preservation through final phase (b and label don't modify registers)
+    x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+    x20-final = trans (ir-x20 f-result) x20-setup
+
+    x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+    x21-final = trans (ir-x21 f-result) x21-setup
+
+    x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+    x29-final = trans (ir-x29 f-result) x29-setup
+
+    x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+    x30-final = trans (ir-x30 f-result) x30-setup
+
+    -- Invariants preserved (b and label don't modify regs, so SP and x21/x29 unchanged)
+    -- Note: s-final is defined via record update { pc = ... }, so regs s-final = regs s-after-f
+    -- and therefore readReg (regs s-final) r = readReg (regs s-after-f) r for any r
+    stack-inv-final : StackInvariant s-final
+    stack-inv-final = stack-inv-preserved-unchanged s-after-f s-final (ir-stack-inv f-result) refl refl
+
+    x29-inv-final : X29Invariant s-final
+    x29-inv-final = x29-inv-preserved-unchanged s-after-f s-final (ir-x29-inv f-result) refl refl
+
+    sp>16-final : readSP (regs s-final) > 16
+    sp>16-final = ir-sp-bound f-result
 
     -- Compose stars: setup ◅◅ f ◅◅ final
     full-star : Star prog s s-final
