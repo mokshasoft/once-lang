@@ -35,13 +35,30 @@ open import Data.List.Properties using (++-assoc)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 
 ------------------------------------------------------------------------
+-- ClosureWFOutput: Optional closure well-formedness produced by curry
+------------------------------------------------------------------------
+
+-- | When an IR term produces a closure (curry), this captures its WF proof.
+-- For other IR terms, this will be no-closure.
+--
+-- The existential quantification allows us to hide the closure's types
+-- when threading through compose/pair.
+data ClosureWFOutput (prog : Program) : Set₁ where
+  no-closure : ClosureWFOutput prog
+  has-closure : ∀ {A B : Type}
+                (code-ptr env-addr : ℕ)
+                (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+                (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics) →
+                ClosureWFOutput prog
+
+------------------------------------------------------------------------
 -- IRStarResult: Result type for Star-based IR execution
 ------------------------------------------------------------------------
 
 -- | Record type for Star-based IR execution result
 -- Contains all properties needed for proof composition
 record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program)
-                    (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
+                    (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
   field
     ir-star       : Star prog s s'
     ir-halted     : halted s' ≡ false
@@ -61,6 +78,8 @@ record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program)
     ir-rsp-bound  : readReg (regs s') rsp > 16
     -- RbpInvariant preserved: rsp s' ≤ rbp s' (needed for memory disjointness)
     ir-rbp-inv    : RbpInvariant s'
+    -- Optional closure well-formedness (produced by curry, consumed by apply)
+    ir-closure-wf : ClosureWFOutput prog
 
 open IRStarResult public
 
@@ -76,7 +95,7 @@ open IRStarResult public
 -- The Size parameter enables termination checking across modules:
 -- - IRRunner i can only be called on IR j A B where j < i
 -- - This is enforced via Size< constraints in helper functions
-IRRunner : Size → Set
+IRRunner : Size → Set₁
 IRRunner i = ∀ {j : Size< i} {A B} (ir : IR j A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -85,23 +104,6 @@ IRRunner i = ∀ {j : Size< i} {A B} (ir : IR j A B) (prefix suffix : Program) (
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
-
-------------------------------------------------------------------------
--- ClosureWFOutput: Optional closure well-formedness produced by curry
-------------------------------------------------------------------------
-
--- | When an IR term produces a closure (curry), this captures its WF proof.
--- For other IR terms, this will be Nothing.
---
--- The existential quantification allows us to hide the closure's types
--- when threading through compose/pair.
-data ClosureWFOutput (prog : Program) : Set₁ where
-  no-closure : ClosureWFOutput prog
-  has-closure : ∀ {A B : Type}
-                (code-ptr env-addr : ℕ)
-                (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics) →
-                ClosureWFOutput prog
 
 ------------------------------------------------------------------------
 -- IRRunnerWithWF: Extended runner that tracks closure WF
@@ -174,6 +176,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- id doesn't produce a closure
     }
 
 -- | Star-based terminal execution
@@ -207,6 +210,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-i
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- terminal doesn't produce a closure
     }
 
 -- | Star-based fold execution
@@ -241,6 +245,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rb
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- fold doesn't produce a closure
     }
 
 -- | Star-based unfold execution
@@ -275,6 +280,7 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- unfold doesn't produce a closure
     }
 
 -- | Star-based arr execution
@@ -309,6 +315,7 @@ run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>1
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- arr doesn't produce a closure
     }
 
 -- | Star-based fst execution (uses encode-pair-fst axiom)
@@ -347,6 +354,7 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- fst doesn't produce a closure
     }
 
 -- | Star-based snd execution (uses encode-pair-snd axiom)
@@ -385,6 +393,7 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- snd doesn't produce a closure
     }
 
 ------------------------------------------------------------------------
@@ -429,6 +438,7 @@ run-fst-star-v {i} {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid s
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- fst-v doesn't produce a closure
     }
 
 -- | Postulate-free snd: uses PairAt validity instead of axiom
@@ -466,6 +476,7 @@ run-snd-star-v {i} {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid s
                        rsp-eq
     ; ir-rsp-bound = rsp>16-preserved-unchanged s s' rsp>16 rsp-eq
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure  -- snd-v doesn't produce a closure
     }
 
 ------------------------------------------------------------------------
