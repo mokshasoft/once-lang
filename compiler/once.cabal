@@ -69,6 +69,7 @@ library
       Once.Type
       Once.TypeCheck
       Once.TypeCheck.Verified
+      Once.Elaborate.Verified
       Once.Value
   other-modules:
       Paths_once
@@ -81,6 +82,7 @@ library
       MAlonzo.Code.Agda.Builtin.Maybe
       MAlonzo.Code.Agda.Builtin.Nat
       MAlonzo.Code.Agda.Builtin.Sigma
+      MAlonzo.Code.Agda.Builtin.Size
       MAlonzo.Code.Agda.Builtin.String
       MAlonzo.Code.Agda.Builtin.String.Properties
       MAlonzo.Code.Agda.Builtin.Unit
@@ -261,6 +263,7 @@ library
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Surface.Desugar
+      MAlonzo.Code.Once.Surface.Elaborate
       MAlonzo.Code.Once.Surface.IR
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Type

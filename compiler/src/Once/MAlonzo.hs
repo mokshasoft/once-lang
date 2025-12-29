@@ -10,6 +10,7 @@ module Once.MAlonzo
   , toMAlonzoType
   , fromMAlonzoType
   , toMAlonzoIR
+  , fromMAlonzoIR
   , getInputType
   , getOutputType
     -- * Type checking bridge (OCP-0004)
@@ -134,20 +135,20 @@ fromMAlonzoType t = case t of
 -- | Convert Haskell IR to MAlonzo IR
 toMAlonzoIR :: H.IR -> M.T_IR_4
 toMAlonzoIR ir = case ir of
-  H.Id _            -> M.C_id_8
-  H.Compose g f     -> M.C__'8728'__16 (getMiddleType g f) (toMAlonzoIR g) (toMAlonzoIR f)
-  H.Fst _ _         -> M.C_fst_22
-  H.Snd _ _         -> M.C_snd_28
-  H.Pair f g        -> M.C_'10216'_'44'_'10217'_36 (toMAlonzoIR f) (toMAlonzoIR g)
-  H.Terminal _      -> M.C_terminal_60
-  H.Inl _ _         -> M.C_inl_42
-  H.Inr _ _         -> M.C_inr_48
-  H.Case f g        -> M.C_'91'_'44'_'93'_56 (toMAlonzoIR f) (toMAlonzoIR g)
-  H.Initial _       -> M.C_initial_64
-  H.Curry _ f       -> M.C_curry_72 (toMAlonzoIR f)
-  H.Apply _ _       -> M.C_apply_78
-  H.Fold _          -> M.C_fold_82
-  H.Unfold _        -> M.C_unfold_86
+  H.Id _            -> M.C_id_10
+  H.Compose g f     -> M.C__'8728'__20 (getMiddleType g f) (toMAlonzoIR g) (toMAlonzoIR f)
+  H.Fst _ _         -> M.C_fst_28
+  H.Snd _ _         -> M.C_snd_36
+  H.Pair f g        -> M.C_'10216'_'44'_'10217'_46 (toMAlonzoIR f) (toMAlonzoIR g)
+  H.Terminal _      -> M.C_terminal_78
+  H.Inl _ _         -> M.C_inl_54
+  H.Inr _ _         -> M.C_inr_62
+  H.Case f g        -> M.C_'91'_'44'_'93'_72 (toMAlonzoIR f) (toMAlonzoIR g)
+  H.Initial _       -> M.C_initial_84
+  H.Curry _ f       -> M.C_curry_94 (toMAlonzoIR f)
+  H.Apply _ _       -> M.C_apply_102
+  H.Fold _          -> M.C_fold_108
+  H.Unfold _        -> M.C_unfold_114
   -- These should not occur (checked by canConvertIR)
   H.Var _           -> error "MAlonzo: Var not supported"
   H.LocalVar _      -> error "MAlonzo: LocalVar not supported"
@@ -162,21 +163,21 @@ toMAlonzoIR ir = case ir of
 -- This is fine because the optimizer preserves types.
 fromMAlonzoIR :: M.T_IR_4 -> H.IR
 fromMAlonzoIR ir = case ir of
-  M.C_id_8                      -> H.Id placeholder
-  M.C__'8728'__16 _ g f         -> H.Compose (fromMAlonzoIR g) (fromMAlonzoIR f)
-  M.C_fst_22                    -> H.Fst placeholder placeholder
-  M.C_snd_28                    -> H.Snd placeholder placeholder
-  M.C_'10216'_'44'_'10217'_36 f g -> H.Pair (fromMAlonzoIR f) (fromMAlonzoIR g)
-  M.C_terminal_60               -> H.Terminal placeholder
-  M.C_inl_42                    -> H.Inl placeholder placeholder
-  M.C_inr_48                    -> H.Inr placeholder placeholder
-  M.C_'91'_'44'_'93'_56 f g     -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
-  M.C_initial_64                -> H.Initial placeholder
-  M.C_curry_72 f                -> H.Curry "_" (fromMAlonzoIR f)
-  M.C_apply_78                  -> H.Apply placeholder placeholder
-  M.C_fold_82                   -> H.Fold placeholder
-  M.C_unfold_86                 -> H.Unfold placeholder
-  M.C_arr_92                    -> error "MAlonzo: arr not supported in compiler IR"
+  M.C_id_10                       -> H.Id placeholder
+  M.C__'8728'__20 _ g f           -> H.Compose (fromMAlonzoIR g) (fromMAlonzoIR f)
+  M.C_fst_28                      -> H.Fst placeholder placeholder
+  M.C_snd_36                      -> H.Snd placeholder placeholder
+  M.C_'10216'_'44'_'10217'_46 f g -> H.Pair (fromMAlonzoIR f) (fromMAlonzoIR g)
+  M.C_terminal_78                 -> H.Terminal placeholder
+  M.C_inl_54                      -> H.Inl placeholder placeholder
+  M.C_inr_62                      -> H.Inr placeholder placeholder
+  M.C_'91'_'44'_'93'_72 f g       -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
+  M.C_initial_84                  -> H.Initial placeholder
+  M.C_curry_94 f                  -> H.Curry "_" (fromMAlonzoIR f)
+  M.C_apply_102                   -> H.Apply placeholder placeholder
+  M.C_fold_108                    -> H.Fold placeholder
+  M.C_unfold_114                  -> H.Unfold placeholder
+  M.C_arr_122                     -> error "MAlonzo: arr not supported in compiler IR"
   where
     placeholder = H.TUnit  -- Type info is erased, use placeholder
 

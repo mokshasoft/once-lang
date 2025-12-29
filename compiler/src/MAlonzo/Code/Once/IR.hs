@@ -17,14 +17,20 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Size
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.IR.IR
-d_IR_4 a0 a1 = ()
+d_IR_4 a0 a1 a2 = ()
 data T_IR_4
-  = C_id_8 |
-    C__'8728'__16 MAlonzo.Code.Once.Type.T_Type_4 T_IR_4 T_IR_4 |
-    C_fst_22 | C_snd_28 | C_'10216'_'44'_'10217'_36 T_IR_4 T_IR_4 |
-    C_inl_42 | C_inr_48 | C_'91'_'44'_'93'_56 T_IR_4 T_IR_4 |
-    C_terminal_60 | C_initial_64 | C_curry_72 T_IR_4 | C_apply_78 |
-    C_fold_82 | C_unfold_86 | C_arr_92
+  = C_id_10 |
+    C__'8728'__20 MAlonzo.Code.Once.Type.T_Type_4 T_IR_4 T_IR_4 |
+    C_fst_28 | C_snd_36 | C_'10216'_'44'_'10217'_46 T_IR_4 T_IR_4 |
+    C_inl_54 | C_inr_62 | C_'91'_'44'_'93'_72 T_IR_4 T_IR_4 |
+    C_terminal_78 | C_initial_84 | C_curry_94 T_IR_4 | C_apply_102 |
+    C_fold_108 | C_unfold_114 | C_arr_122
+-- Once.IR.IR∞
+d_IR'8734'_124 ::
+  MAlonzo.Code.Once.Type.T_Type_4 ->
+  MAlonzo.Code.Once.Type.T_Type_4 -> ()
+d_IR'8734'_124 = erased

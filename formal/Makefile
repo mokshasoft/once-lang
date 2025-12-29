@@ -340,6 +340,16 @@ malonzo-typecheck:
 	@cp _build/malonzo/MAlonzo/Code/Once/TypeCheck.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Verified type checker in compiler/src/MAlonzo/Code/Once/TypeCheck/"
 
+.PHONY: malonzo-elaborate
+malonzo-elaborate:
+	@echo "Extracting Surface.Elaborate via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ELABORATE)'
+	@echo "Copying MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Surface
+	@cp -r _build/malonzo/MAlonzo/Code/Once/Surface/* ../compiler/src/MAlonzo/Code/Once/Surface/ 2>/dev/null || true
+	@echo "Done. Surface.Elaborate in compiler/src/MAlonzo/Code/Once/Surface/"
+
 .PHONY: clean
 clean:
 	rm -rf _build
