@@ -41,6 +41,35 @@ Do not write comments like:
 
 The code speaks for itself. If there are no postulates, that's visible.
 
+## Verification Philosophy
+
+### Arbitrary Programs, Not Toy Examples
+
+The goal of Once verification is to prove that **arbitrary Once programs** compile correctly,
+not just specific example programs.
+
+**What this means:**
+- ✓ Prove each IR generator correct in ISOLATION (modular proofs)
+- ✓ Prove generators COMPOSE correctly (run-ir-star-at-offset in MutualIR.agda)
+- ✓ Enable verification of ANY program via compositional reasoning
+- ✗ Do NOT only prove specific whole-program examples (E2E-Trace style)
+
+**Why this matters:**
+Whole-program proofs like `test-curry-apply` only verify that one specific expression
+works. They do not prove that curry and apply compose correctly in general.
+
+Modular proofs prove that no matter how you combine IR generators, the result is correct.
+This is the difference between:
+- Verifying "hello world works" vs "all C programs work"
+- Proving "2+2=4" vs "addition is commutative"
+
+**Implication for postulate elimination:**
+When eliminating postulates (like apply-produces-result), we must eliminate them from
+the MODULAR mutual block (run-ir-star-at-offset), not just from example programs.
+
+Whole-program proofs serve as validation and demonstration, but the real verification
+happens in the modular layer.
+
 ## Proof Patterns
 
 ### Single-Instruction IR (id, terminal, fold, unfold, arr)
@@ -101,5 +130,8 @@ If a proof seems impossible:
 1. Check preconditions - do you need stronger invariants?
 2. Check the abstraction - is the type signature correct?
 3. Check the semantics - does the code actually do what you're proving?
+4. Ask: "Am I proving this for arbitrary programs, or just this example?"
+   - If just an example, extend to modular proof
+   - Examples are good for validation, but insufficient for verification
 
 Never add a postulate to "get past" a difficult proof.

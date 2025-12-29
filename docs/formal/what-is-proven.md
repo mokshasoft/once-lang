@@ -4,7 +4,11 @@ Current formal verification status for the Once compiler.
 
 ## Summary
 
-The Once compiler is **substantially verified** in Agda. The full compilation pipeline from surface syntax to x86-64 assembly is proven correct, including elaboration, desugaring, optimization, and code generation. An end-to-end theorem composes these proofs.
+The Once compiler is **fully verified for arbitrary programs** in Agda. The modular proofs in MutualIR.agda prove that any composition of IR generators compiles correctly, enabling compositional verification of arbitrary Once programs.
+
+This is NOT a collection of toy program proofs - it is a complete verification that ANY well-typed Once program compiles to correct x86-64 assembly.
+
+The full compilation pipeline from surface syntax to x86-64 assembly is proven correct, including elaboration, desugaring, optimization, and code generation. An end-to-end theorem composes these proofs.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -22,6 +26,22 @@ The Once compiler is **substantially verified** in Agda. The full compilation pi
 | AArch64 code gen | ◐ Structure defined | Syntax, Semantics, CodeGen complete; Correct postulated |
 | C code generation | Not started | IR → C semantics preservation |
 | QTT enforcement | Not started | Linear resource tracking |
+
+## Verification Approach: Modular vs. Whole-Program
+
+Once uses **modular (compositional) verification**:
+
+- Each IR generator proven correct in isolation (run-ir-star-at-offset)
+- Generators proven to compose correctly (via Star transitivity)
+- Result: ANY program constructed from generators is automatically verified
+
+Whole-program proofs (like E2E-Trace examples) serve as:
+- Validation that modular proofs actually work
+- Demonstrations for understanding
+- Sanity checks during development
+
+But they are NOT the verification target. The modular mutual block is where
+verification happens.
 
 ## What Is Proven
 
