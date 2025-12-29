@@ -40,7 +40,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
-         ir-sp-delta; ir-sp; ir-mem-preserved; ir-output-wf)
+         ir-sp-delta; ir-sp-delta-leq; ir-sp; ir-mem-preserved; ir-output-wf)
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosuresWF; trivialWF)
 
@@ -49,7 +49,7 @@ open import Once.Backend.Common.Memory
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; suc; _∸_; _≤_; z≤n; s≤s; _<_; z<s; s<s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n+n≡m; ≤-trans)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n+n≡m; ≤-trans; ≤-refl)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -80,6 +80,7 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-s2     = s2-final
     ; ir-ra     = ra-final
     ; ir-sp-delta = 16
+    ; ir-sp-delta-leq = ≤-refl
     ; ir-sp     = sp-final
     ; ir-mem-preserved = mem-preserved-final
     ; ir-output-wf = curry-output-wf  -- Placeholder; real WF from MutualIR

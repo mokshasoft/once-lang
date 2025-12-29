@@ -34,7 +34,7 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-step4; star-step5)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
-         ir-sp-delta; ir-sp; ir-mem-preserved; ir-output-wf)
+         ir-sp-delta; ir-sp-delta-leq; ir-sp; ir-mem-preserved; ir-output-wf)
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosuresWF; trivialWF)
 
@@ -43,7 +43,7 @@ open import Once.Backend.Common.Memory
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; m∸n+n≡m; ≤-trans)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; m∸n+n≡m; ≤-trans; ≤-refl)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -75,6 +75,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     ; ir-s2 = s2-reg-final
     ; ir-ra = ra-final
     ; ir-sp-delta = 16
+    ; ir-sp-delta-leq = ≤-refl
     ; ir-sp = sp-final
     ; ir-mem-preserved = mem-preserved-final
     ; ir-output-wf = trivialWF (A + B) prog
@@ -355,6 +356,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq sp-bound =
     ; ir-s2 = s2-reg-final
     ; ir-ra = ra-final
     ; ir-sp-delta = 16
+    ; ir-sp-delta-leq = ≤-refl
     ; ir-sp = sp-final
     ; ir-mem-preserved = mem-preserved-final
     ; ir-output-wf = trivialWF (A + B) prog

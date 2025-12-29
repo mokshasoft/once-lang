@@ -49,7 +49,8 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
+         ir-sp-delta; ir-sp-delta-leq; ir-sp;
          ir-mem-preserved; ir-output-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star)
@@ -89,7 +90,7 @@ open import Once.Backend.RiscV64.Correct.IR.Injection
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s; _⊔_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m; ≤-trans; m≤m⊔n; m≤n⊔m; ∸-monoˡ-≤; m+n∸n≡m)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; +-monoˡ-<; m≤m+n; m≤n+m; m∸n+n≡m; ≤-trans; m≤m⊔n; m≤n⊔m; ∸-monoˡ-≤; m+n∸n≡m; ≤-refl; +-mono-≤)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -258,6 +259,7 @@ mutual
       ; ir-s2 = s2-final
       ; ir-ra = ra-final
       ; ir-sp-delta = 24 +ℕ ir-sp-delta r-f +ℕ ir-sp-delta r-g
+      ; ir-sp-delta-leq = sp-delta-leq
       ; ir-sp = sp-final
       ; ir-mem-preserved = mem-preserved-final
       ; ir-output-wf = output-wf
@@ -391,6 +393,10 @@ mutual
                  pc-for-g a0-mid sp-bound-for-g
       s-after-g-raw = proj₁ step-g
       r-g = proj₂ step-g
+
+      -- Stack delta proof: 24 + delta_f + delta_g ≤ 24 + StackDelta f + StackDelta g
+      sp-delta-leq : 24 +ℕ ir-sp-delta r-f +ℕ ir-sp-delta r-g ≤ StackDelta ⟨ f , g ⟩
+      sp-delta-leq = +-mono-≤ (+-mono-≤ ≤-refl (ir-sp-delta-leq r-f)) (ir-sp-delta-leq r-g)
 
       -- Convert g result to use prog
       star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s-mid s-after-g-raw
@@ -693,6 +699,7 @@ mutual
       ; ir-s2 = s2-final
       ; ir-ra = ra-final
       ; ir-sp-delta = ir-sp-delta r-f
+      ; ir-sp-delta-leq = sp-delta-leq
       ; ir-sp = sp-final
       ; ir-mem-preserved = mem-preserved-final
       ; ir-output-wf = output-wf
@@ -728,6 +735,10 @@ mutual
       step-f = run-ir-star-at-offset f prefix-f suffix-f a s-dispatch h-dispatch pc-for-f a0-dispatch sp-bound-f
       s-after-f-raw = proj₁ step-f
       r-f = proj₂ step-f
+
+      -- Stack delta proof: delta_f ≤ max(StackDelta f, StackDelta g)
+      sp-delta-leq : ir-sp-delta r-f ≤ StackDelta ([ f , g ])
+      sp-delta-leq = ≤-trans (ir-sp-delta-leq r-f) (m≤m⊔n (StackDelta f) (StackDelta g))
 
       -- Convert f result to use prog
       star-f-raw : Star (prefix-f ++ code-f ++ suffix-f) s-dispatch s-after-f-raw
@@ -849,6 +860,7 @@ mutual
       ; ir-s2 = s2-final
       ; ir-ra = ra-final
       ; ir-sp-delta = ir-sp-delta r-g
+      ; ir-sp-delta-leq = sp-delta-leq
       ; ir-sp = sp-final
       ; ir-mem-preserved = mem-preserved-final
       ; ir-output-wf = output-wf
@@ -882,6 +894,10 @@ mutual
       step-g = run-ir-star-at-offset g prefix-g suffix-g b s-dispatch h-dispatch pc-for-g a0-dispatch sp-bound-g
       s-after-g-raw = proj₁ step-g
       r-g = proj₂ step-g
+
+      -- Stack delta proof: delta_g ≤ max(StackDelta f, StackDelta g)
+      sp-delta-leq : ir-sp-delta r-g ≤ StackDelta ([ f , g ])
+      sp-delta-leq = ≤-trans (ir-sp-delta-leq r-g) (m≤n⊔m (StackDelta f) (StackDelta g))
 
       -- Convert g result to use prog
       star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s-dispatch s-after-g-raw

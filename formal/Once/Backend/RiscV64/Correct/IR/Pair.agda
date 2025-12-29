@@ -39,7 +39,7 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp;
-         ir-mem-preserved; ir-sp-delta)
+         ir-mem-preserved; ir-sp-delta; ir-sp-delta-leq)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)

@@ -36,8 +36,8 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosuresWF; trivialWF; pairWF; fstWF; sndWF; applyInputWF; ApplyInputWF)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm; ≤-refl)
 open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++)
@@ -73,7 +73,10 @@ record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program) (s 
     -- SP tracking: Most ops preserve sp (delta=0), but inl/inr/pair allocate stack.
     -- ir-sp-delta tracks how many bytes were allocated (0, 16, or 24).
     -- ir-sp proves: sp' + delta = orig-sp (i.e., sp decreased by delta).
+    -- ir-sp-delta-leq proves delta is bounded by static StackDelta computation.
+    -- Note: For case, only one branch runs, so runtime delta ≤ max(delta_f, delta_g).
     ir-sp-delta : ℕ  -- Stack bytes allocated (0 for most, 16 for inl/inr, 24 for pair)
+    ir-sp-delta-leq : ir-sp-delta ≤ StackDelta ir  -- Bounded by static computation
     ir-sp      : readReg (regs s') sp +ℕ ir-sp-delta ≡ readReg (regs s) sp
     -- Memory preservation at caller's frame (universally quantified)
     -- For ANY offset n from original sp, memory is preserved.
@@ -127,6 +130,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
   ; ir-output-wf = trivialWF A prog
@@ -160,6 +164,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = readReg-writeReg-a0-s2 (regs s) 0
   ; ir-ra     = refl
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) 0)
   ; ir-mem-preserved = λ n → refl  -- no memory write
   ; ir-output-wf = tt  -- Unit has no closures
@@ -194,6 +199,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
   ; ir-output-wf = tt  -- Fix F has no closures (by definition of ClosuresWF)
@@ -227,6 +233,7 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
   ; ir-output-wf = trivialWF F prog  -- F is the output type
@@ -260,6 +267,7 @@ run-arr-star {i} {A} {B} prefix suffix f s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = refl
   ; ir-ra     = refl
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = +-identityʳ _
   ; ir-mem-preserved = λ n → refl  -- no memory write
   ; ir-output-wf = tt  -- Eff A B has no closures (by definition of ClosuresWF)
@@ -293,6 +301,7 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = readReg-writeReg-a0-s2 (regs s) (encode (proj₁ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₁ x))
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₁ x)))
   ; ir-mem-preserved = λ n → refl  -- no memory write (only read)
   ; ir-output-wf = trivialWF A prog
@@ -347,6 +356,7 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
   ; ir-s2     = readReg-writeReg-a0-s2 (regs s) (encode (proj₂ x))
   ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode (proj₂ x))
   ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
   ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode (proj₂ x)))
   ; ir-mem-preserved = λ n → refl  -- no memory write (only read)
   ; ir-output-wf = trivialWF B prog

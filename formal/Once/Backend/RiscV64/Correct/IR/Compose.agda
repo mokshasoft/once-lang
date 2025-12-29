@@ -30,17 +30,17 @@ open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-trans)
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult;
-         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp;
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra; ir-sp-delta; ir-sp-delta-leq; ir-sp;
          ir-mem-preserved; ir-output-wf)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-mono-≤)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -144,6 +144,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = reco
   ; ir-s2 = s2-final
   ; ir-ra = ra-final
   ; ir-sp-delta = ir-sp-delta r1 +ℕ ir-sp-delta r2
+  ; ir-sp-delta-leq = sp-delta-leq
   ; ir-sp = sp-final
   ; ir-mem-preserved = mem-preserved-final
   ; ir-output-wf = ir-output-wf r2  -- g's output WF is the compose output WF
@@ -151,6 +152,10 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = reco
   where
     ctx = make-compose-context f g prefix suffix
     open ComposeContext ctx
+
+    -- Stack delta: ir-sp-delta ≤ StackDelta (g ∘ f) = StackDelta f + StackDelta g
+    sp-delta-leq : ir-sp-delta r1 +ℕ ir-sp-delta r2 ≤ StackDelta (g ∘ f)
+    sp-delta-leq = +-mono-≤ (ir-sp-delta-leq r1) (ir-sp-delta-leq r2)
 
     -- From r1 (f result)
     star-f : Star prog s sf
@@ -266,6 +271,7 @@ transform-f-result {_} {A} {B} {C} f g prefix suffix x s sf r = record
   ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
   ; ir-sp-delta = ir-sp-delta r
+  ; ir-sp-delta-leq = ir-sp-delta-leq r
   ; ir-sp = ir-sp r
   ; ir-mem-preserved = ir-mem-preserved r
   ; ir-output-wf = subst (ClosuresWF B) (sym prog-eq-f) (ir-output-wf r)
@@ -292,6 +298,7 @@ transform-g-result {_} {A} {B} {C} f g prefix suffix x sf sg r = record
   ; ir-s2 = ir-s2 r
   ; ir-ra = ir-ra r
   ; ir-sp-delta = ir-sp-delta r
+  ; ir-sp-delta-leq = ir-sp-delta-leq r
   ; ir-sp = ir-sp r
   ; ir-mem-preserved = ir-mem-preserved r
   ; ir-output-wf = subst (ClosuresWF C) (sym (trans prog-eq-f prog-eq-g)) (ir-output-wf r)
