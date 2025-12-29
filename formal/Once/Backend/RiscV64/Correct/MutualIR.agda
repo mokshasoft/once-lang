@@ -44,7 +44,8 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult; code-ptr-valid; thunk-correct;
          thunk-star; thunk-halted; thunk-a0; thunk-s1;
-         ClosuresWF; trivialWF; pairWF)
+         ClosuresWF; trivialWF; pairWF;
+         CurryResult; closure-wf)
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
@@ -190,7 +191,7 @@ mutual
   run-ir-star-at-offset initial prefix suffix x s h-false pc-eq a0-eq _ =
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
-  -- Curry: delegate to extracted proof (needs stack-space)
+  -- Curry: delegate to extracted proof and build WF inline
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
 
