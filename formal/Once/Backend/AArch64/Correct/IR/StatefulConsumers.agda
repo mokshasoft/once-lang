@@ -1535,8 +1535,59 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
     s-final = record s-after-g { pc = pc s-after-g +ℕ 1 }
 
     -- Fetch proof for label instruction
+    -- Position: length prefix + 7 + len-f + len-g (from pc-after-g)
+    -- The prefix before the final label is everything except suffix
+
+    -- prefix-final = prefix ++ case-code-without-final-label
+    -- = prefix ++ i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b ∷ i3 ∷ i4 ∷ code-g
+    prefix-final : Program
+    prefix-final = prefix ++ ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-offset ∷
+                   ldr x0 (base+imm x0 8) ∷ code-f ++ b end-offset ∷
+                   label right-label ∷ ldr x0 (base+imm x0 8) ∷ code-g
+
+    -- rest-final = suffix
+    rest-final : Program
+    rest-final = suffix
+
+    -- Length of inner: 7 + len-f + len-g
+    -- = 4 + (len-f + 3 + len-g) via inner list structure
+    len-inner-final : length (ldr x9 (base x0) ∷ cmp x9 (imm 0) ∷ b-ne right-offset ∷
+                              ldr x0 (base+imm x0 8) ∷ code-f ++ b end-offset ∷
+                              label right-label ∷ ldr x0 (base+imm x0 8) ∷ code-g) ≡ 7 +ℕ len-f +ℕ len-g
+    len-inner-final = trans (cong (4 +ℕ_) len-after-4) arith-7
+      where
+        -- After 4 conses: code-f ++ b ∷ label ∷ ldr ∷ code-g
+        len-after-4 : length (code-f ++ b end-offset ∷ label right-label ∷ ldr x0 (base+imm x0 8) ∷ code-g) ≡ len-f +ℕ 3 +ℕ len-g
+        len-after-4 = trans (length-++ code-f)
+                            (trans (cong (length code-f +ℕ_) (cong (3 +ℕ_) (compile-length-correct g)))
+                                   (trans (cong (_+ℕ (3 +ℕ len-g)) (compile-length-correct f))
+                                          (sym (+-assoc len-f 3 len-g))))
+        -- 4 + (len-f + 3 + len-g) = 7 + len-f + len-g
+        arith-7 : 4 +ℕ (len-f +ℕ 3 +ℕ len-g) ≡ 7 +ℕ len-f +ℕ len-g
+        arith-7 = trans (sym (+-assoc 4 (len-f +ℕ 3) len-g))
+                        (cong (_+ℕ len-g) (trans (cong (4 +ℕ_) (+-comm len-f 3))
+                                                  (sym (+-assoc 4 3 len-f))))
+
+    -- Length of prefix-final = length prefix + 7 + len-f + len-g
+    len-prefix-final : length prefix-final ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    len-prefix-final = trans (length-++ prefix)
+                              (trans (cong (length prefix +ℕ_) len-inner-final)
+                                     (trans (sym (+-assoc (length prefix) (7 +ℕ len-f) len-g))
+                                            (cong (_+ℕ len-g) (sym (+-assoc (length prefix) 7 len-f)))))
+
+    -- Program structure (list associativity - mechanical)
     postulate
-      fetch-label-inr : fetch prog (pc s-after-g) ≡ just i-label
+      prog'-eq-final : prog' ≡ prefix-final ++ i-label ∷ rest-final
+
+    fetch-label-inr'-helper : fetch (prefix-final ++ i-label ∷ rest-final) (length prefix-final) ≡ just i-label
+    fetch-label-inr'-helper = fetch-at-prefix-end prefix-final i-label rest-final
+
+    fetch-label-inr' : fetch prog' (length prefix +ℕ 7 +ℕ len-f +ℕ len-g) ≡ just i-label
+    fetch-label-inr' = subst₂ (λ p n → fetch p n ≡ just i-label) (sym prog'-eq-final) len-prefix-final fetch-label-inr'-helper
+
+    fetch-label-inr : fetch prog (pc s-after-g) ≡ just i-label
+    fetch-label-inr = subst (λ n → fetch prog n ≡ just i-label) (sym pc-after-g)
+                            (subst (λ p → fetch p (length prefix +ℕ 7 +ℕ len-f +ℕ len-g) ≡ just i-label) prog'-eq-prog fetch-label-inr')
 
     -- Execution of label: PC' = PC + 1
     exec-label : execInstr prog s-after-g i-label ≡ just s-final
