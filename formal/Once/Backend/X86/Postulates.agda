@@ -115,12 +115,36 @@ postulate
 --   use run-curry-star-with-wf + run-apply-with-full-wf instead.
 --   This path avoids this postulate entirely.
 --
--- REMAINING WORK (for full elimination in modular proofs):
+-- STATUS OF MODULAR ELIMINATION (as of Phase 1.3):
 --   ✓ Extend IRStarResult to carry optional ClosureWellFormed output (ClosureWFOutput in StarBase)
+--   ✓ Thread ClosureWFOutput through run-compose-star-direct
+--   ✓ Thread ClosureWFOutput through run-pair-star-direct
+--   ✓ Thread ClosureWFOutput through run-case-star-direct (inl/inr branches)
 --   ✓ Add run-apply-to-ir-result that uses ClosureWellFormed (IR/Apply.agda)
---   - Thread ClosureWFOutput through run-compose-star-direct
---   - Modify run-pair-star-direct to track closure WF through pairs
---   - Replace apply-produces-result usage with run-apply-to-ir-result
+--
+-- ARCHITECTURAL LIMITATION DISCOVERED:
+--   Constructing ClosureWellFormed proofs inside the modular mutual block
+--   (run-ir-star-at-offset) causes severe compilation performance degradation.
+--
+--   Reason: The WF proof requires curry-thunk-correct-impl, a complex proof
+--   that uses the IH. Including this in run-curry-star-direct causes Agda's
+--   type-checker to repeatedly expand/normalize large proof terms, breaking
+--   the mutual block's compilation performance model.
+--
+--   Threading infrastructure works fine (data threading is cheap), but proof
+--   construction is too expensive for the modular context.
+--
+-- MODULAR PROOF STATUS:
+--   - run-curry-star uses no-closure (no WF construction)
+--   - apply-produces-result postulate REMAINS in modular proofs
+--   - This is an architectural decision, not a temporary limitation
+--
+-- WHOLE-PROGRAM PROOF ALTERNATIVE (POSTULATE-FREE):
+--   For proofs where curry and apply are composed in the same program,
+--   use the specialized functions:
+--   - run-curry-star-with-wf (constructs WF outside mutual block)
+--   - run-apply-with-full-wf (consumes WF proof)
+--   These avoid this postulate entirely while maintaining performance.
 --
 -- NOTE: run-apply-to-ir-result uses targeted local postulates for:
 --   - r15 preservation (apply uses r15 for code-ptr)
