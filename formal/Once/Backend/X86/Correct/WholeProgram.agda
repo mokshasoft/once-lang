@@ -46,7 +46,7 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
-         ir-rbp-inv; ir-closure-wf)
+         ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged)
 
 -- Import closure infrastructure
 open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -59,7 +59,10 @@ open import Once.Backend.X86.Correct.ClosureContext
 
 -- Import modular runner for delegation
 open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star-at-offset; run-curry-star-with-wf)
+  using (run-ir-star-at-offset; thunk-offset-in-bounds; curry-thunk-correct-impl)
+
+-- Import curry proof
+open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -120,18 +123,39 @@ from-modular r = record
   }
 
 ------------------------------------------------------------------------
--- Whole-program runner
+-- Whole-program runner with curry WF production
 ------------------------------------------------------------------------
+
+-- | Convert IRStarResult with closure WF to WholeProgramResult
+-- Used for curry case: adds has-closure WF to the result
+-- The closure types (ClA, ClB) may differ from the IR types (A, B)
+from-modular-with-wf : ∀ {i A B} {ir : IR i A B} {prog s s' x offset}
+  {ClA ClB : Type} {code-ptr env-addr : ℕ} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
+  IRStarResult ir prog s s' x offset →
+  ClosureWellFormed {ClA} {ClB} prog code-ptr env-addr sem →
+  WholeProgramResult ir prog s s' x offset
+from-modular-with-wf r wf = record
+  { wp-star = ir-star r
+  ; wp-halted = ir-halted r
+  ; wp-pc = ir-pc r
+  ; wp-rax = ir-rax r
+  ; wp-r14 = ir-r14 r
+  ; wp-r15 = ir-r15 r
+  ; wp-rbp = ir-rbp r
+  ; wp-stack-inv = ir-stack-inv r
+  ; wp-rsp-bound = ir-rsp-bound r
+  ; wp-rbp-inv = ir-rbp-inv r
+  ; wp-closure-wf = has-closure _ _ _ wf  -- KEY: produce WF!
+  }
 
 -- | Run IR with closure WF tracking for whole-program proofs
 --
 -- This is the main entry point for whole-program verification.
--- For most IR terms, it delegates to the modular runner.
--- For curry: uses run-curry-star-with-wf to produce WF
--- For apply: when WF available, uses postulate-free path
+-- For curry: uses run-curry-star-with-wf to produce has-closure WF
+-- For other IR terms: delegates to the modular runner
 --
--- TODO: Currently delegates entirely to modular runner.
--- Next step: Override curry and apply cases to use WF-aware variants.
+-- Phase 1: curry produces WF
+-- Phase 2 (TODO): apply consumes WF when available
 run-ir-star-whole-program : ∀ {i A B} (ir : IR i A B)
   (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
@@ -143,6 +167,28 @@ run-ir-star-whole-program : ∀ {i A B} (ir : IR i A B)
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] WholeProgramResult ir prog s s' x (length prefix)
+
+-- Curry case: produce has-closure WF
+-- Note: curry : {i} {A} {B} {C} → IR i (A * B) C → IR (↑ i) A (B ⇒ C)
+run-ir-star-whole-program (curry {_} {A} {B} {C} f) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
+  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+      thunk-offset = offset +ℕ 6
+      -- Get IRStarResult from run-curry-star
+      (s' , ir-res , _) = run-curry-star f prefix suffix x s
+                            h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+      -- Build ClosureWellFormed proof
+      -- f : IR _ (A * B) C, so closure semantics is ⟦ B ⟧ → ⟦ C ⟧
+      wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+      wf = record
+        { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
+        ; thunk-correct = λ arg s₁ ret-addr h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp>16₁ →
+            curry-thunk-correct-impl f prefix suffix x arg s₁ ret-addr
+              h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp>16₁
+        }
+  in s' , from-modular-with-wf ir-res wf
+
+-- All other cases: delegate to modular runner
 run-ir-star-whole-program ir prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
   let (s' , modular-result) = run-ir-star-at-offset ir prefix suffix x s
                                 h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
