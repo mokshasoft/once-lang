@@ -44,6 +44,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-star; thunk-halted; thunk-rax;
          thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
 
+open import Size using (Size; ∞)
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (_≟_)
@@ -178,7 +179,7 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
                          (code-ptr env-addr closure-addr : ℕ)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {∞} {A} {B}) ++ suffix
       offset = length prefix
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
@@ -189,7 +190,7 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
   readReg (regs s) rsp > 16 →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+          × pc s' ≡ offset +ℕ compile-length (apply {∞} {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
@@ -207,7 +208,7 @@ run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
 
 -- | When curry executes, it produces this WF info that can be used by apply
 -- This captures the connection between curry's output and apply's input
-record CurryOutputWF {A B C : Type} (f : IR (A * B) C)
+record CurryOutputWF {i : Size} {A B C : Type} (f : IR i (A * B) C)
                      (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) : Set where
   field
     code-ptr : ℕ
@@ -220,7 +221,7 @@ open CurryOutputWF public
 
 -- | Extract ApplyInputWF from CurryOutputWF
 -- This is the key conversion that enables threading
-curry-output-to-apply-input : ∀ {A B C} (f : IR (A * B) C)
+curry-output-to-apply-input : ∀ {i A B C} (f : IR i (A * B) C)
                               (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) →
                               CurryOutputWF f prog offset x →
                               ApplyInputWF B C prog
@@ -262,7 +263,7 @@ test-apply-with-wf-eliminates-postulate :
     (code-ptr env-addr closure-addr : ℕ)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {∞} {A} {B}) ++ suffix
       offset = length prefix
   in
   -- Preconditions that would be established by curry + pair
@@ -275,7 +276,7 @@ test-apply-with-wf-eliminates-postulate :
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+          × pc s' ≡ offset +ℕ compile-length (apply {∞} {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
