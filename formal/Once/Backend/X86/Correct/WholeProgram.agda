@@ -4,21 +4,35 @@
 --
 -- Whole-program proof runner for closed Once programs.
 --
--- This module provides run-ir-star-whole-program which:
--- 1. Uses run-curry-star-with-wf to produce ClosureWellFormed
--- 2. Uses run-apply-with-full-wf when WF is available
--- 3. Eliminates apply-produces-result postulate for closed programs
+-- CURRENT STATUS:
+--   ✓ curry: produces has-closure WF (postulate-free)
+--   ○ apply: uses postulate (needs memory layout from pair)
+--   ○ pair: delegates to modular (needs to produce memory layout)
 --
 -- ARCHITECTURE:
 --   For closed programs, every apply consumes a closure from some curry.
---   By tracking ClosureWFOutput through composition, we can prove apply
---   correct without the postulate.
+--   The typical pattern is: apply ∘ ⟨curry f, g⟩
 --
---   The key insight is that closed programs have this structure:
---     apply . <curry f, g>   -- apply gets closure from curry
+--   Curry produces:
+--     - ClosureWellFormed: proves thunk at code-ptr is correct
+--     - CurryMemoryResult: memory layout (closure-addr, env-addr, code-ptr)
 --
---   Threading WF from curry to apply through pair enables postulate-free
---   verification.
+--   Pair produces:
+--     - Memory layout: (fst-result, snd-result) at pair-addr
+--     - For apply: memory[rdi] = closure-addr, memory[rdi+8] = arg
+--
+--   Apply needs (for run-apply-with-full-wf):
+--     1. ClosureWellFormed from curry
+--     2. Memory layout: closure-addr, env-addr, code-ptr locations
+--
+-- REMAINING WORK FOR POSTULATE-FREE APPLY:
+--   1. Pair case: produce memory layout showing where it stored things
+--   2. Prove closure memory preserved through pair (closure-addr, env, code-ptr)
+--   3. Apply case: consume WF + memory layout, use run-apply-with-full-wf
+--
+-- The infrastructure exists (ClosureWellFormed, CurryMemoryResult,
+-- run-apply-with-full-wf). The remaining work is threading memory
+-- preservation proofs through pair execution.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.WholeProgram where
