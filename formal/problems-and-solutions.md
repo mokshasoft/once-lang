@@ -124,17 +124,116 @@ Three options for completing this:
 **Key Insight**:
 Variable indices (`Fin`) require exact context sizes at the type level. The existential `∃[k] SCtx k` hides the size, breaking pattern matching on variables. Any working solution must expose sizes explicitly.
 
-**Current State**:
-- exchange₀-₇ proven + postulate exchange₈ (depth 8)
-- Covers 7+ nested binders (handles virtually all real programs)
-- Satisfies current verification needs
-- Full generalization requires solving the size/arithmetic exposure problem
+**Implementation Progress** (2025-12-29):
 
-**Next Steps** (future work):
-1. Research indexed families or view patterns for size management
-2. Study similar problems in other dependently-typed developments (e.g., Agda stdlib Vec operations)
-3. Consider if proof-by-reflection could help with arithmetic normalization
-4. OR: Accept exchange₈ as practical limit and proceed with rest of verification
+**✅ Completed Infrastructure**:
+```agda
+-- Build nested context from Vec of types
+extendMany : ∀ {n} → SCtx n → (m : ℕ) → Vec Type m → SCtx (n Nat.+ m)
+extendMany {n} Γ zero [] rewrite +-identityʳ n = Γ
+extendMany {n} Γ (suc m) (A ∷ As) rewrite +-suc n m = extendMany (Γ S, A) m As
+
+-- Lookup lemma: variables from base context get shifted
+lookup-extendMany : ∀ {n} (Γ : SCtx n) (depth : ℕ) (types : Vec Type depth) (i : Fin n)
+                  → ∃[ j ] (lookup Γ i ≡ lookup (extendMany Γ depth types) j)
+lookup-extendMany {n} Γ zero [] i rewrite +-identityʳ n = i , refl
+lookup-extendMany {n} Γ (suc depth) (A ∷ As) i
+  rewrite +-suc n depth
+  with lookup-extendMany (Γ S, A) depth As (suc i)
+... | j , prf = j , trans (lookup-suc i) prf
+
+-- Generalized exchange signature
+exchangeN : ∀ {n} {Γ : SCtx n} {A Result : Type} (depth : ℕ) (types : Vec Type depth)
+          → SExpr (extendMany Γ depth types) Result
+          → SExpr (extendMany (Γ S, A) depth types) Result
+```
+
+**✅ Depth 0 Case Working**:
+```agda
+exchangeN {n} {Γ} zero [] e
+  rewrite +-identityʳ n | +-identityʳ (suc n)
+  = weaken e
+```
+
+**❌ BLOCKED: Depths 1+ Implementation**
+
+**Root Cause - Agda Type System Limitation**:
+
+When attempting to implement depth 1:
+```agda
+exchangeN {n} {Γ} {A} {Result} (suc zero) (B ∷ []) e
+  rewrite +-identityʳ (suc n)
+  rewrite +-suc n zero
+  rewrite +-identityʳ (suc (suc n))
+  rewrite +-suc (suc n) zero
+  = exchange e
+```
+
+**Error from Agda**:
+```
+suc (n Nat.+ 0) != lhs of type ℕ
+when checking that the type of the generated with function is well-formed
+```
+
+**Technical Analysis**:
+
+The `rewrite` mechanism in Agda:
+1. Transforms the goal type by substituting equal terms
+2. Creates a "with-abstraction" to expose the equality
+3. This abstraction introduces fresh variables (like `lhs`)
+
+When combining:
+- **Type-level arithmetic**: `SCtx (n Nat.+ m)` with indexed types
+- **Multiple rewrites**: `+-identityʳ`, `+-suc` transforming sizes
+- **GADT pattern matching**: Need to match on `SExpr` constructors
+
+The rewritten types become "opaque" to the pattern matcher. Agda cannot unify the transformed index `suc (n Nat.+ 0)` with the fresh variable `lhs` introduced by the with-abstraction, even though they're provably equal.
+
+**Why This Is Fundamental**:
+
+1. **Intrinsically-typed representation**: `SExpr (Γ : SCtx n) (A : Type)` embeds sizes in types
+2. **Pattern matching on Fin requires exact sizes**: `var zero : SExpr (Γ S, A) A` only type-checks when context size is exactly `suc n`
+3. **Rewrite hides structure**: After rewrite, Agda sees `SExpr (Γ | lhs | proof)` instead of `SExpr (Γ S, A)`
+4. **Ill-typed with-abstraction**: The generated with-function has types that don't align after transformation
+
+**Attempted Solutions** (All Failed):
+
+1. **Vec with helper function** (lines 322-341, first attempt):
+   - Used `where` clause to separate rewrite from pattern matching
+   - Result: Helper function still sees rewritten types, same error
+
+2. **Direct pattern matching** (lines 317-374, second attempt):
+   - Pattern match on each constructor before applying rewrites
+   - Result: Can't pattern match before rewrite - index mismatch error
+
+3. **Delegation with arithmetic alignment** (lines 320-326, third attempt):
+   - Apply all necessary rewrites, then delegate to existing `exchange`
+   - Result: Ill-typed with-abstraction - rewrites create incompatible types
+
+4. **Previous: Existential types** (documented earlier):
+   - Hide sizes with `∃[k] SCtx k`
+   - Result: Can't pattern match on `Fin k` when `k` is hidden
+
+**Current Status** (2025-12-29):
+- File: `formal/Once/TypeCheck/Elaborate.agda` lines 304-332
+- Infrastructure: Complete and correct (extendMany, lookup-extendMany proven)
+- Depth 0: Working (delegates to weaken)
+- Depths 1-8+: Holes (compilation succeeds with holes, type-checks as incomplete)
+- Manual exchange₀-₇: Still present and working
+
+**Theoretical Options**:
+
+1. **Proof-by-Reflection**: Use Agda's reflection mechanism to normalize arithmetic at compile-time
+2. **Inspect Idiom**: Use Agda's `inspect` to preserve equality information through pattern matching
+3. **View Patterns**: Define custom view to expose structure after arithmetic rewrites
+4. **Extrinsic Typing**: Transform untyped terms, prove typing separately (abandons intrinsic approach)
+5. **Sized Types**: Use Agda's sized types instead of arithmetic on ℕ (may not help with context extension)
+6. **Manual Proofs**: Transport terms through equality proofs instead of rewrite (complex, unclear if better)
+
+**Status**: **BLOCKED** - Requires either:
+- Advanced Agda technique we haven't discovered
+- External expertise (Agda mailing list, experts)
+- Fundamental change in approach (extrinsic types, abandoning generalization)
 
 ---
 

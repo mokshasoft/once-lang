@@ -105,38 +105,60 @@ Breakthrough: `extendMany` builds nested contexts at the type level, enabling ar
 
 **Tasks**:
 
-1. **✅ Design type-level infrastructure** (DONE)
-   - `extendMany` to build nested contexts from Vec
-   - `exchangeN` signature with dependent types
-   - Integrated into mutual block with weaken/exchange
+1. **✅ Design type-level infrastructure** (COMPLETED)
+   - `extendMany : SCtx n → ℕ → Vec Type m → SCtx (n Nat.+ m)` implemented with correct arithmetic
+   - `lookup-extendMany` lemma for variable shifting implemented
+   - `exchangeN` signature with dependent types defined
 
-2. **🔄 Fix operator ambiguities** (IN PROGRESS)
-   - ~50 instances of `Data.Nat._+_/_*_` vs `Once.Type._+_/_*_` conflicts
-   - Systematic disambiguation with qualified names
+2. **✅ Fix operator ambiguities** (COMPLETED)
+   - All `Data.Nat._+_/_*_` vs `Once.Type._+_/_*_` conflicts resolved
+   - Systematic disambiguation with qualified names throughout
 
-3. **Complete exchangeN implementation**
-   - Fill holes: variable shifting (needs lookup-extendMany)
-   - Binder cases: lam, case, let (extend types vector)
-   - Prove lookup-extendMany lemma
+3. **⚠️ Complete exchangeN implementation** (BLOCKED - Technical Challenge)
+   - **Status**: Infrastructure in place, implementation blocked by Agda type system limitations
+   - **Issue**: Combination of type-level arithmetic, rewrite clauses, and pattern matching on intrinsically-typed GADTs creates ill-typed with-abstractions
+   - **Error**: "suc (n Nat.+ 0) != lhs of type ℕ when checking that the type of the generated with function is well-formed"
+   - **Current**: Depth 0 (weaken) working, depths 1-8+ have holes
 
-4. **Replace exchange₀ through exchange₇**
-   - Use `exchangeN` throughout weaken/exchange functions
-   - Remove manual exchange implementations
+   **Technical Blocker**:
+   The `rewrite` mechanism changes goal types in ways that Agda's pattern matcher cannot see through when matching on intrinsically-typed expressions. This appears to be a fundamental limitation of current Agda when combining:
+   - Indexed types with arithmetic (Fin, SCtx)
+   - Rewrite clauses for arithmetic properties
+   - GADT-style pattern matching
 
-5. **Remove postulate and comments**
-   - Delete exchange₈ postulate
-   - Remove TERMINATING pragma once termination proven
-   - Clean up meta-comments
+   **Options to Resolve**:
+   - Research Agda techniques: view patterns, inspect idiom, or proof-by-reflection
+   - Consult Agda experts on handling arithmetic in indexed types
+   - Alternative: Use extrinsically-typed approach for exchange transformation
+   - Alternative: Accept depth 7 limit (exchange₇) as practical bound
+
+4. **PENDING: Replace exchange₀ through exchange₇** (depends on task 3)
+
+5. **PENDING: Remove postulate and comments** (depends on task 3)
 
 6. **Type-check**
    ```bash
    cd formal
    timeout 300 make agda MODULE=Once/TypeCheck/Elaborate
    ```
+   **Current Status**: Compiles with holes in exchangeN (depths 1-8+)
 
-**Files**: `formal/Once/TypeCheck/Elaborate.agda`
+**Files**: `formal/Once/TypeCheck/Elaborate.agda`, `formal/problems-and-solutions.md`
 
-**Success**: Zero postulates, handles arbitrary nesting depth, type-checks without timeout
+**CRITICAL BLOCKER**: Agda type system limitation with rewrite + GADT pattern matching
+
+The implementation is blocked by what appears to be a fundamental limitation when combining:
+- Type-level arithmetic in indexed types (`SCtx (n Nat.+ m)`)
+- Multiple `rewrite` clauses for arithmetic normalization
+- Pattern matching on intrinsically-typed GADTs (`SExpr`)
+
+See `formal/problems-and-solutions.md` Problem 1 for full technical analysis.
+
+**Decision Point**: This blocker requires choosing a path forward:
+1. Research advanced Agda techniques (proof-by-reflection, inspect idiom, view patterns)
+2. Seek external expertise (Agda mailing list, community experts)
+3. Change approach (extrinsic typing, abandon full generalization)
+4. Accept practical limit (exchange₇ at depth 7 - violates "arbitrary depth" goal)
 
 ---
 
