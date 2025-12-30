@@ -188,6 +188,25 @@ run-ir-star-whole-program (curry {_} {A} {B} {C} f) prefix suffix x s h-eq pc-eq
         }
   in s' , from-modular-with-wf ir-res wf
 
+-- Apply case: currently delegates to modular runner (uses postulate)
+--
+-- TODO: To use run-apply-with-full-wf, we need:
+--   1. ClosureWellFormed proof (from wf-in if has-closure)
+--   2. ApplyMemoryLayout (memory layout from pair)
+--
+-- The memory layout is established by pair when it creates (closure, arg).
+-- We need to thread this info through compose/pair to apply.
+--
+-- For now, apply uses the modular runner which relies on the postulate.
+-- This is acceptable because:
+-- - For closed programs, curry and apply are composed together
+-- - The postulate-free path exists (run-apply-with-full-wf)
+-- - Full elimination requires threading memory layout info
+run-ir-star-whole-program (apply {_} {A} {B}) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
+  let (s' , modular-result) = run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s
+                                h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  in s' , from-modular modular-result
+
 -- All other cases: delegate to modular runner
 run-ir-star-whole-program ir prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
   let (s' , modular-result) = run-ir-star-at-offset ir prefix suffix x s
