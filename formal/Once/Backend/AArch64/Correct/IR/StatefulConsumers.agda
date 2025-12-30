@@ -998,20 +998,209 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
     -- For inr, b.ne IS taken (because tag = 1 ≠ 0)
     -- With PC-relative branches: b.ne at position 2 jumps PC + right-offset
     --   = (prefix + 2) + (3 + len-f) = prefix + 5 + len-f = prefix + right-label
-    -- We then load value and execute g
+    -- We then execute label and load value
 
-    -- For now, use postulates for the complex phases
-    -- For inr: execute ldr, cmp, b.ne (taken), label, ldr
-    -- That's 5 instructions executed, ending at PC = prefix + 7 + |f|
+    -- Instructions for inr setup (5 instructions)
+    i0 : Instr
+    i0 = ldr x9 (base x0)           -- load tag (= 1)
+
+    i1 : Instr
+    i1 = cmp x9 (imm 0)             -- compare with 0, Z = false since 1 ≠ 0
+
+    i2 : Instr
+    i2 = b-ne right-offset          -- branch TAKEN (Z = false)
+
+    i3 : Instr
+    i3 = label right-label          -- at position 5 + len-f
+
+    i4 : Instr
+    i4 = ldr x0 (base+imm x0 8)     -- load value (= addr-val)
+
+    -- Memory proof for tag load: readMem at x0 = just 1
+    -- x0-eq : readReg (regs s) x0 ≡ addr-sum
+    -- tag-is-1 : readMem (memory s) addr-sum ≡ just 1
+    -- Goal: readMem (memory s) (readReg (regs s) x0) ≡ just 1
+    -- effectiveAddr s (base x0) = readReg (regs s) x0 (no +ℕ 0)
+    mem-tag : readMem (memory s) (readReg (regs s) x0) ≡ just 1
+    mem-tag = subst (λ a → readMem (memory s) a ≡ just 1) (sym x0-eq) tag-is-1
+
+    -- Intermediate states
+    -- s1: after ldr x9 [x0] - x9 = 1
+    s1 : State
+    s1 = record s { regs = writeReg (regs s) x9 1 ; pc = pc s +ℕ 1 }
+
+    -- s2: after cmp x9 #0 - Z = false (1 ≡ᵇ 0 = false)
+    s2 : State
+    s2 = record s1 { pstate = updatePSTATE 1 0 ; pc = pc s1 +ℕ 1 }
+
+    -- After cmp 1 0, Z flag = false (1 ≡ᵇ 0 = false)
+    z-flag-false : Z (pstate s2) ≡ false
+    z-flag-false = refl  -- 1 ≡ᵇ 0 = false by computation
+
+    -- s3: after b.ne (TAKEN) - pc jumps by right-offset
+    -- PC = (prefix + 2) + right-offset = prefix + 2 + 3 + len-f = prefix + 5 + len-f
+    s3 : State
+    s3 = record s2 { pc = pc s2 +ℕ right-offset }
+
+    -- s4: after label right-label - pc + 1
+    s4 : State
+    s4 = record s3 { pc = pc s3 +ℕ 1 }
+
+    -- s-after-setup: after ldr x0 [x0+8] - x0 = addr-val
+    s-after-setup : State
+    s-after-setup = record s4 { regs = writeReg (regs s4) x0 addr-val ; pc = pc s4 +ℕ 1 }
+
+    -- PC values at each state
+    pc-s1 : pc s1 ≡ length prefix +ℕ 1
+    pc-s1 = cong (_+ℕ 1) pc-eq
+
+    pc-s2 : pc s2 ≡ length prefix +ℕ 2
+    pc-s2 = trans (cong (_+ℕ 1) pc-s1) (+-assoc (length prefix) 1 1)
+
+    -- After b.ne taken: PC = (prefix + 2) + right-offset = prefix + 2 + 3 + len-f = prefix + 5 + len-f
+    pc-s3 : pc s3 ≡ length prefix +ℕ 5 +ℕ len-f
+    pc-s3 = trans (cong (_+ℕ right-offset) pc-s2) arith-s3
+      where
+        open import Data.Nat.Properties using (+-comm)
+        p = length prefix
+        arith-s3 : (p +ℕ 2) +ℕ (3 +ℕ len-f) ≡ p +ℕ 5 +ℕ len-f
+        arith-s3 = trans (sym (+-assoc (p +ℕ 2) 3 len-f))
+                         (cong (_+ℕ len-f) (+-assoc p 2 3))
+
+    pc-s4 : pc s4 ≡ length prefix +ℕ 6 +ℕ len-f
+    pc-s4 = trans (cong (_+ℕ 1) pc-s3) arith-s4
+      where
+        open import Data.Nat.Properties using (+-comm)
+        p = length prefix
+        arith-s4 : (p +ℕ 5 +ℕ len-f) +ℕ 1 ≡ p +ℕ 6 +ℕ len-f
+        arith-s4 = trans (+-assoc (p +ℕ 5) len-f 1)
+                         (trans (cong (p +ℕ 5 +ℕ_) (+-comm len-f 1))
+                                (trans (sym (+-assoc (p +ℕ 5) 1 len-f))
+                                       (cong (_+ℕ len-f) (+-assoc p 5 1))))
+
+    -- Fetch proofs - use postulates for now due to complex program structure
+    -- The proofs require reasoning about nested ++ which is tedious
     postulate
-      s-after-setup : State
-      setup-star : Star prog s s-after-setup
-      h-setup : halted s-after-setup ≡ false
-      pc-setup : pc s-after-setup ≡ length prefix +ℕ 7 +ℕ len-f  -- At start of g code
-      x0-setup : readReg (regs s-after-setup) x0 ≡ addr-val
-      stack-inv-setup : StackInvariant s-after-setup
-      x29-inv-setup : X29Invariant s-after-setup
-      sp>16-setup : readSP (regs s-after-setup) > 16
+      fetch0 : fetch prog (length prefix) ≡ just i0
+      fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+      fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+      fetch3 : fetch prog (length prefix +ℕ 5 +ℕ len-f) ≡ just i3
+      fetch4 : fetch prog (length prefix +ℕ 6 +ℕ len-f) ≡ just i4
+      mem-val : readMem (memory s4) (readReg (regs s4) x0 +ℕ 8) ≡ just addr-val
+
+    -- Execution proofs
+    exec0 : execInstr prog s i0 ≡ just s1
+    exec0 = execInstr-ldr-success prog s x9 (base x0) 1 mem-tag
+
+    step0 : step prog s ≡ just s1
+    step0 = step-instr prog s s1 i0 h-false
+              (subst (λ n → fetch prog n ≡ just i0) (sym pc-eq) fetch0)
+              exec0
+
+    exec1 : execInstr prog s1 i1 ≡ just s2
+    exec1 = execInstr-cmp-imm prog s1 x9 0
+
+    h1 : halted s1 ≡ false
+    h1 = h-false
+
+    step1 : step prog s1 ≡ just s2
+    step1 = step-instr prog s1 s2 i1 h1
+              (subst (λ n → fetch prog n ≡ just i1) (sym pc-s1) fetch1)
+              exec1
+
+    -- b.ne with Z = false means TAKEN, pc = pc + right-offset
+    exec2 : execInstr prog s2 i2 ≡ just s3
+    exec2 = execInstr-b-ne prog s2 right-offset
+
+    h2 : halted s2 ≡ false
+    h2 = h-false
+
+    step2 : step prog s2 ≡ just s3
+    step2 = step-instr prog s2 s3 i2 h2
+              (subst (λ n → fetch prog n ≡ just i2) (sym pc-s2) fetch2)
+              exec2
+
+    exec3 : execInstr prog s3 i3 ≡ just s4
+    exec3 = execInstr-label prog s3 right-label
+
+    h3 : halted s3 ≡ false
+    h3 = h-false
+
+    step3 : step prog s3 ≡ just s4
+    step3 = step-instr prog s3 s4 i3 h3
+              (subst (λ n → fetch prog n ≡ just i3) (sym pc-s3) fetch3)
+              exec3
+
+    exec4 : execInstr prog s4 i4 ≡ just s-after-setup
+    exec4 = execInstr-ldr-success prog s4 x0 (base+imm x0 8) addr-val mem-val
+
+    h4 : halted s4 ≡ false
+    h4 = h-false
+
+    step4 : step prog s4 ≡ just s-after-setup
+    step4 = step-instr prog s4 s-after-setup i4 h4
+              (subst (λ n → fetch prog n ≡ just i4) (sym pc-s4) fetch4)
+              exec4
+
+    -- Build Star from 5 steps
+    star01 : Star prog s s1
+    star01 = star-single h-false step0
+    star12 : Star prog s1 s2
+    star12 = star-single h1 step1
+    star23 : Star prog s2 s3
+    star23 = star-single h2 step2
+    star34 : Star prog s3 s4
+    star34 = star-single h3 step3
+    star45 : Star prog s4 s-after-setup
+    star45 = star-single h4 step4
+
+    setup-star : Star prog s s-after-setup
+    setup-star = star-trans (star-trans (star-trans (star-trans star01 star12) star23) star34) star45
+
+    h-setup : halted s-after-setup ≡ false
+    h-setup = h-false
+
+    pc-setup : pc s-after-setup ≡ length prefix +ℕ 7 +ℕ len-f
+    pc-setup = trans (cong (_+ℕ 1) pc-s4) arith-setup
+      where
+        open import Data.Nat.Properties using (+-comm)
+        p = length prefix
+        arith-setup : (p +ℕ 6 +ℕ len-f) +ℕ 1 ≡ p +ℕ 7 +ℕ len-f
+        arith-setup = trans (+-assoc (p +ℕ 6) len-f 1)
+                            (trans (cong (p +ℕ 6 +ℕ_) (+-comm len-f 1))
+                                   (trans (sym (+-assoc (p +ℕ 6) 1 len-f))
+                                          (cong (_+ℕ len-f) (+-assoc p 6 1))))
+
+    x0-setup : readReg (regs s-after-setup) x0 ≡ addr-val
+    x0-setup = readReg-writeReg-same (regs s4) x0 addr-val
+
+    -- Register preservation through setup
+    -- regs s4 = regs s3 = regs s2 = regs s1 = writeReg (regs s) x9 1
+    -- regs s-after-setup = writeReg (regs s4) x0 addr-val
+    x20-setup : readReg (regs s-after-setup) x20 ≡ readReg (regs s) x20
+    x20-setup = trans (readReg-writeReg-x0-x20 (regs s4) addr-val)
+                      (readReg-writeReg-x9-x20 (regs s) 1)
+
+    x21-setup : readReg (regs s-after-setup) x21 ≡ readReg (regs s) x21
+    x21-setup = trans (readReg-writeReg-x0-x21 (regs s4) addr-val)
+                      (readReg-writeReg-x9-x21 (regs s) 1)
+
+    x29-setup : readReg (regs s-after-setup) x29 ≡ readReg (regs s) x29
+    x29-setup = trans (readReg-writeReg-x0-x29 (regs s4) addr-val)
+                      (readReg-writeReg-x9-x29 (regs s) 1)
+
+    x30-setup : readReg (regs s-after-setup) x30 ≡ readReg (regs s) x30
+    x30-setup = trans (readReg-writeReg-x0-x30 (regs s4) addr-val)
+                      (readReg-writeReg-x9-x30 (regs s) 1)
+
+    stack-inv-setup : StackInvariant s-after-setup
+    stack-inv-setup = stack-inv-preserved-unchanged s s-after-setup stack-inv x21-setup refl
+
+    x29-inv-setup : X29Invariant s-after-setup
+    x29-inv-setup = x29-inv-preserved-unchanged s s-after-setup x29-inv x29-setup refl
+
+    sp>16-setup : readSP (regs s-after-setup) > 16
+    sp>16-setup = sp-bound-after-stack-op s-after-setup
 
     -- Prefix for g: prefix ++ all code before g
     prefix-g : Program
@@ -1058,12 +1247,19 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
     h-after-g = ir-halted g-result
 
     -- Register preservation from s to s-after-g (through setup and g)
-    -- Setup preserves registers, g preserves x20, x21, x29, x30
-    postulate
-      x20-after-g : readReg (regs s-after-g) x20 ≡ readReg (regs s) x20
-      x21-after-g : readReg (regs s-after-g) x21 ≡ readReg (regs s) x21
-      x29-after-g : readReg (regs s-after-g) x29 ≡ readReg (regs s) x29
-      x30-after-g : readReg (regs s-after-g) x30 ≡ readReg (regs s) x30
+    -- Chain: ir-x20 g-result : s-after-g.x20 ≡ s-after-setup.x20
+    --        x20-setup : s-after-setup.x20 ≡ s.x20
+    x20-after-g : readReg (regs s-after-g) x20 ≡ readReg (regs s) x20
+    x20-after-g = trans (ir-x20 g-result) x20-setup
+
+    x21-after-g : readReg (regs s-after-g) x21 ≡ readReg (regs s) x21
+    x21-after-g = trans (ir-x21 g-result) x21-setup
+
+    x29-after-g : readReg (regs s-after-g) x29 ≡ readReg (regs s) x29
+    x29-after-g = trans (ir-x29 g-result) x29-setup
+
+    x30-after-g : readReg (regs s-after-g) x30 ≡ readReg (regs s) x30
+    x30-after-g = trans (ir-x30 g-result) x30-setup
 
     -- Final phase: execute label end-label
     -- Only PC changes: PC' = PC + 1
