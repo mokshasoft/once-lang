@@ -1047,21 +1047,101 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
     star-g : Star prog s-after-setup s-after-g
     star-g = subst (λ p → Star p s-after-setup s-after-g) prog-g-eq (ir-star g-result)
 
-    -- After g, we're at end-label (no more instructions to execute for the case)
-    -- The label instruction is a no-op, just need to account for PC
+    -- After g, we're at end-label position, execute label instruction
+    -- The label instruction only increments PC by 1
+
+    -- PC after g: length prefix-g + len-g = (length prefix + 7 + len-f) + len-g
+    pc-after-g : pc s-after-g ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g
+    pc-after-g = trans (ir-pc g-result) (cong (_+ℕ len-g) len-prefix-g)
+
+    h-after-g : halted s-after-g ≡ false
+    h-after-g = ir-halted g-result
+
+    -- Register preservation from s to s-after-g (through setup and g)
+    -- Setup preserves registers, g preserves x20, x21, x29, x30
     postulate
-      s-final : State
-      final-star : Star prog s-after-g s-final
-      h-final : halted s-final ≡ false
-      pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
-      x0-final : readReg (regs s-final) x0 ≡ addr-out
-      x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
-      x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
-      x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
-      x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
-      stack-inv-final : StackInvariant s-final
-      x29-inv-final : X29Invariant s-final
-      sp>16-final : readSP (regs s-final) > 16
+      x20-after-g : readReg (regs s-after-g) x20 ≡ readReg (regs s) x20
+      x21-after-g : readReg (regs s-after-g) x21 ≡ readReg (regs s) x21
+      x29-after-g : readReg (regs s-after-g) x29 ≡ readReg (regs s) x29
+      x30-after-g : readReg (regs s-after-g) x30 ≡ readReg (regs s) x30
+
+    -- Final phase: execute label end-label
+    -- Only PC changes: PC' = PC + 1
+
+    i-label : Instr
+    i-label = label end-label
+
+    -- State after label: only PC changes
+    s-final : State
+    s-final = record s-after-g { pc = pc s-after-g +ℕ 1 }
+
+    -- Fetch proof for label instruction
+    postulate
+      fetch-label-inr : fetch prog (pc s-after-g) ≡ just i-label
+
+    -- Execution of label: PC' = PC + 1
+    exec-label : execInstr prog s-after-g i-label ≡ just s-final
+    exec-label = execInstr-label prog s-after-g end-label
+
+    step-label : step prog s-after-g ≡ just s-final
+    step-label = step-instr prog s-after-g s-final i-label h-after-g fetch-label-inr exec-label
+
+    final-star : Star prog s-after-g s-final
+    final-star = star-single h-after-g step-label
+
+    -- Final state properties
+    h-final : halted s-final ≡ false
+    h-final = h-after-g
+
+    -- PC after label: (prefix + 7 + len-f + len-g) + 1 = prefix + 8 + len-f + len-g = prefix + compile-length [ f , g ]
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    pc-final = trans (cong (_+ℕ 1) pc-after-g) arith-final
+      where
+        open import Data.Nat.Properties using (+-comm)
+        p = length prefix
+        -- Goal: (p+7+lf+lg)+1 ≡ p+((8+lf)+lg) = p + compile-length [ f , g ]
+        inner-final : (p +ℕ 7 +ℕ len-f) +ℕ 1 ≡ p +ℕ 8 +ℕ len-f
+        inner-final = trans (+-assoc (p +ℕ 7) len-f 1)
+                            (trans (cong (p +ℕ 7 +ℕ_) (+-comm len-f 1))
+                                   (trans (sym (+-assoc (p +ℕ 7) 1 len-f))
+                                          (cong (_+ℕ len-f) (+-assoc p 7 1))))
+        final-step1 : (p +ℕ 7 +ℕ len-f +ℕ len-g) +ℕ 1 ≡ (p +ℕ 8 +ℕ len-f) +ℕ len-g
+        final-step1 = trans (+-assoc (p +ℕ 7 +ℕ len-f) len-g 1)
+                            (trans (cong (p +ℕ 7 +ℕ len-f +ℕ_) (+-comm len-g 1))
+                                   (trans (sym (+-assoc (p +ℕ 7 +ℕ len-f) 1 len-g))
+                                          (cong (_+ℕ len-g) inner-final)))
+        final-step2 : (p +ℕ 8 +ℕ len-f) +ℕ len-g ≡ p +ℕ ((8 +ℕ len-f) +ℕ len-g)
+        final-step2 = trans (+-assoc (p +ℕ 8) len-f len-g)
+                            (+-assoc p 8 (len-f +ℕ len-g))
+        arith-final : (p +ℕ 7 +ℕ len-f +ℕ len-g) +ℕ 1 ≡ p +ℕ compile-length [ f , g ]
+        arith-final = trans final-step1 final-step2
+
+    -- x0 unchanged through final phase (label doesn't modify registers)
+    x0-final : readReg (regs s-final) x0 ≡ addr-out
+    x0-final = ir-x0-s g-result
+
+    -- Register preservation through final phase
+    x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+    x20-final = x20-after-g
+
+    x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+    x21-final = x21-after-g
+
+    x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+    x29-final = x29-after-g
+
+    x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+    x30-final = x30-after-g
+
+    -- Invariants preserved (label doesn't modify regs, so SP and x21/x29 unchanged)
+    stack-inv-final : StackInvariant s-final
+    stack-inv-final = stack-inv-preserved-unchanged s-after-g s-final (ir-stack-inv g-result) refl refl
+
+    x29-inv-final : X29Invariant s-final
+    x29-inv-final = x29-inv-preserved-unchanged s-after-g s-final (ir-x29-inv g-result) refl refl
+
+    sp>16-final : readSP (regs s-final) > 16
+    sp>16-final = ir-sp-bound g-result
 
     -- Compose stars: setup ◅◅ g ◅◅ final
     full-star : Star prog s s-final
