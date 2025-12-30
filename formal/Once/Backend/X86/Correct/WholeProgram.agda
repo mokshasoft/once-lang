@@ -61,14 +61,16 @@ open import Once.Backend.X86.Correct.ClosureContext
 open import Once.Backend.X86.Correct.MutualIR as Modular
   using (run-ir-star-at-offset; thunk-offset-in-bounds; curry-thunk-correct-impl)
 
--- Import curry proof
-open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star)
+-- Import curry proof with memory result
+open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult)
+open import Once.Backend.X86.Correct.IR.Curry using (closure-addr; code-ptr; env-addr; rax-eq; mem-env; mem-cp)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Maybe using (just)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
@@ -121,6 +123,22 @@ from-modular r = record
   ; wp-rbp-inv = ir-rbp-inv r
   ; wp-closure-wf = ir-closure-wf r
   }
+
+------------------------------------------------------------------------
+-- ClosureOutput: Combined WF and memory layout from curry
+------------------------------------------------------------------------
+
+-- | Optional closure memory layout (produced by curry, consumed by apply)
+-- This tracks both the WF proof and the memory addresses for apply
+data ClosureMemoryOutput (prog : Program) (m : Memory) : Set where
+  no-closure-mem : ClosureMemoryOutput prog m
+  has-closure-mem : ∀ {A B : Type}
+    (closure-addr code-ptr env-addr : ℕ)
+    (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+    (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics)
+    (mem-env-valid : readMem m closure-addr ≡ just env-addr)
+    (mem-cp-valid : readMem m (closure-addr +ℕ 8) ≡ just code-ptr) →
+    ClosureMemoryOutput prog m
 
 ------------------------------------------------------------------------
 -- Whole-program runner with curry WF production
