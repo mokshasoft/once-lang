@@ -222,6 +222,7 @@ ClosuresWF : Type → Program → Set
 ClosuresWF Unit prog = ⊤
 ClosuresWF Void prog = ⊤
 ClosuresWF Int prog = ⊤
+ClosuresWF Float prog = ⊤
 ClosuresWF Str prog = ⊤
 ClosuresWF Buffer prog = ⊤
 ClosuresWF (TVar _) prog = ⊤
@@ -238,6 +239,7 @@ trivialWF : ∀ T prog → ClosuresWF T prog
 trivialWF Unit prog = tt
 trivialWF Void prog = tt
 trivialWF Int prog = tt
+trivialWF Float prog = tt
 trivialWF Str prog = tt
 trivialWF Buffer prog = tt
 trivialWF (TVar _) prog = tt
