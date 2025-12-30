@@ -1,0 +1,6 @@
+-- Test case: depth 7 (maximum proven depth, should NOT warn)
+-- Seven nested lambdas that use all variables
+
+main : Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int
+main = \a -> \b -> \c -> \d -> \e -> \f -> \g ->
+  a + b + c + d + e + f + g

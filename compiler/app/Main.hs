@@ -34,7 +34,6 @@ data BuildConfig = BuildConfig
   , bcExplicit   :: [(InterpType, String)]  -- -I:TYPE MODULE
   , bcAutoRes    :: Maybe [InterpType]      -- -A:PRIORITY
   , bcArith      :: Bool                    -- --arith flag
-  , bcVerified   :: Bool                    -- --verified flag (OCP-0004)
   , bcInput      :: Maybe String
   }
 
@@ -51,7 +50,6 @@ defaultBuildConfig = BuildConfig
   , bcExplicit  = []
   , bcAutoRes   = Nothing
   , bcArith     = False
-  , bcVerified  = False
   , bcInput     = Nothing
   }
 
@@ -75,7 +73,6 @@ parseBuild args = go args defaultBuildConfig
         , buildExplicitInterps = bcExplicit cfg
         , buildAutoResolve = bcAutoRes cfg
         , buildArith = bcArith cfg
-        , buildVerified = bcVerified cfg
         }
     go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }
     go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
@@ -93,7 +90,6 @@ parseBuild args = go args defaultBuildConfig
       Nothing -> Nothing  -- invalid optimizer
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--arith" : rest) cfg = go rest cfg { bcArith = True }
-    go ("--verified" : rest) cfg = go rest cfg { bcVerified = True }
     -- Parse -I:TYPE MODULE
     go (x : modPath : rest) cfg
       | "-I:" `isPrefixOf` x =

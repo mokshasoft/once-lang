@@ -1,0 +1,5 @@
+-- Test case: depth 8 (exceeds proven limit, SHOULD warn)
+-- Eight nested lambdas - no explicit type signature to let inference work
+
+deepNest = \a -> \b -> \c -> \d -> \e -> \f -> \g -> \h ->
+  (a, (b, (c, (d, (e, (f, (g, h)))))))

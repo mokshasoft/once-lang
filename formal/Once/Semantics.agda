@@ -20,6 +20,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Data.Integer using (ℤ)
+import Data.Integer as Int
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)

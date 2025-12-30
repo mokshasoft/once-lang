@@ -47,7 +47,6 @@ library
       Once.Backend.Native
       Once.Backend.X86
       Once.CLI
-      Once.Elaborate
       Once.Eval
       Once.IR
       Once.MAlonzo

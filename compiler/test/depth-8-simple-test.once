@@ -1,0 +1,7 @@
+-- Test: 8 nested lambdas (should warn about depth > 7)
+depth8 : Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> (Int, (Int, (Int, (Int, (Int, (Int, (Int, Int)))))))
+depth8 = \a -> \b -> \c -> \d -> \e -> \f -> \g -> \h -> 
+  (a, (b, (c, (d, (e, (f, (g, h)))))))
+
+main : IO Unit
+main = pure ()

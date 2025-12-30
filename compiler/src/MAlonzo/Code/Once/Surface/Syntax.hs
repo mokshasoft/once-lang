@@ -17,8 +17,10 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.Surface.Syntax.Ctx
 d_Ctx_6 a0 = ()
@@ -57,4 +59,8 @@ data T_Expr_28
     C_case''_118 MAlonzo.Code.Once.Type.T_Type_4
                  MAlonzo.Code.Once.Type.T_Type_4 T_Expr_28 T_Expr_28 T_Expr_28 |
     C_unit_124 | C_absurd_132 T_Expr_28 |
-    C_let''_142 MAlonzo.Code.Once.Type.T_Type_4 T_Expr_28 T_Expr_28
+    C_let''_142 MAlonzo.Code.Once.Type.T_Type_4 T_Expr_28 T_Expr_28 |
+    C_int_148 Integer |
+    C_binop_156 MAlonzo.Code.Once.TypeCheck.Raw.T_BinOp_6 T_Expr_28
+                T_Expr_28 |
+    C_builtin_164 MAlonzo.Code.Agda.Builtin.String.T_String_6

@@ -1,0 +1,5 @@
+-- Test case: depth 7 (maximum proven depth, should NOT warn)
+-- Seven nested lambdas using identity
+
+depth7 : A -> B -> C -> D -> E -> F -> G -> A
+depth7 = \a -> \b -> \c -> \d -> \e -> \f -> \g -> a

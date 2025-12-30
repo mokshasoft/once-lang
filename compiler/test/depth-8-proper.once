@@ -1,0 +1,10 @@
+-- Test case: depth 8 (exceeds proven limit, SHOULD warn)
+-- Helper function with 8 nested lambdas
+
+addEight : Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int
+addEight = \a -> \b -> \c -> \d -> \e -> \f -> \g -> \h ->
+  a + b + c + d + e + f + g + h
+
+-- Main for executable mode
+main : IO Unit
+main = pure ()

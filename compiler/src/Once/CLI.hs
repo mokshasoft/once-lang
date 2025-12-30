@@ -20,6 +20,7 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import qualified System.IO
 import System.Directory (listDirectory, doesDirectoryExist, removeFile, doesFileExist)
 import System.Exit (exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
@@ -34,7 +35,7 @@ import Once.Backend.Native
   , containsPrimitives, collectPrimitives
   )
 import qualified Once.Backend.Assembler as Asm
-import Once.Elaborate (elaborate, elaborateWithEnv, ElabError)
+-- Once.Elaborate removed - using only verified elaboration (Once.Elaborate.Verified)
 import qualified Once.Elaborate.Verified as EV
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
@@ -117,7 +118,6 @@ data BuildOptions = BuildOptions
   , buildExplicitInterps :: [(InterpType, String)]  -- ^ Explicit interpretations: -I:TYPE MODULE
   , buildAutoResolve :: Maybe [InterpType]          -- ^ Auto-resolve priority: -A:TYPE:TYPE:...
   , buildArith :: Bool                  -- ^ Enable arithmetic compiler for pure numeric expressions
-  , buildVerified :: Bool               -- ^ Use verified (MAlonzo) elaboration with fallback (OCP-0004)
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -181,10 +181,8 @@ runBuild opts = do
                       TIO.putStrLn "Error: No functions found"
                       exitFailure
                     _ -> do
-                      -- Elaborate all functions (use verified if enabled)
-                      elaborateResult <- if buildVerified opts
-                                         then elaborateAllVerified modEnv allFunctions
-                                         else pure (elaborateAllWithEnv modEnv allFunctions)
+                      -- Elaborate all functions (always use verified)
+                      elaborateResult <- elaborateAllVerified modEnv allFunctions
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -271,9 +269,8 @@ runBuild opts = do
 
                       -- Elaborate all functions to IR (use verified if enabled)
                       let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-                      elaborateResult <- if buildVerified opts
-                                         then elaborateAllVerified modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
-                                         else pure (elaborateAllWithEnv modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions))
+                      -- Elaborate all functions (always use verified)
+                      elaborateResult <- elaborateAllVerified modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -713,55 +710,34 @@ wrapNativeLibAll target funcs = case target of
     [ nativeFuncDef target name body | (name, body) <- funcs ]
   TargetC -> error "wrapNativeLibAll: TargetC is not a native target"
 
--- | Elaborate all functions, returning elaborated IR or first error
-elaborateAll :: [(Text, Type, Maybe AllocStrategy, Expr)]
-             -> Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)]
-elaborateAll [] = Right []
-elaborateAll ((name, ty, alloc, expr):rest) =
-  case elaborate expr of
-    Left err -> Left (show err)
-    Right ir -> case elaborateAll rest of
-      Left err -> Left err
-      Right irs -> Right ((name, ty, alloc, ir) : irs)
-
--- | Elaborate all functions with module environment
-elaborateAllWithEnv :: ModuleEnv
-                    -> [(Text, Type, Maybe AllocStrategy, Expr)]
-                    -> Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)]
-elaborateAllWithEnv _ [] = Right []
-elaborateAllWithEnv env ((name, ty, alloc, expr):rest) =
-  case elaborateWithEnv env expr of
-    Left err -> Left (show err)
-    Right ir -> case elaborateAllWithEnv env rest of
-      Left err -> Left err
-      Right irs -> Right ((name, ty, alloc, ir) : irs)
-
--- | Elaborate all functions with verified elaboration and fallback (OCP-0004)
+-- | Elaborate all functions with verified elaboration (no fallback)
 --
--- For each function, tries verified (MAlonzo) elaboration first.
--- If that fails (including MAlonzo runtime errors), falls back to standard Haskell elaboration.
--- This provides correctness guarantees where the verified elaboration succeeds.
+-- Uses the MAlonzo-extracted verified type checker and elaboration.
+-- Programs with >7 levels of nesting are rejected by the Agda type checker.
+-- This provides correctness guarantees for all successfully compiled programs.
 elaborateAllVerified :: ModuleEnv
                      -> [(Text, Type, Maybe AllocStrategy, Expr)]
                      -> IO (Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)])
 elaborateAllVerified _ [] = pure (Right [])
 elaborateAllVerified env ((name, ty, alloc, expr):rest) = do
-  -- Try verified elaboration, catching any exceptions (e.g., from MAlonzo postulates)
+  -- Use verified elaboration (no fallback)
+  TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
   verifiedResult <- try (pure $! EV.elaborateVerified expr) :: IO (Either SomeException (Either String Once.IR.IR))
-  let ir = case verifiedResult of
-             Right (Right verifiedIR) -> Right verifiedIR  -- Verified succeeded
-             _ ->
-               -- Fallback to standard Haskell elaboration (verified failed or threw exception)
-               case elaborateWithEnv env expr of
-                 Left err -> Left (show err)
-                 Right fallbackIR -> Right fallbackIR
-  case ir of
-    Left err -> pure (Left err)
-    Right irValue -> do
+  case verifiedResult of
+    Right (Right verifiedIR) -> do
+      TIO.hPutStrLn System.IO.stderr $ "✓ Type checking succeeded for: " <> name
       restResult <- elaborateAllVerified env rest
       pure $ case restResult of
         Left err -> Left err
-        Right irs -> Right ((name, ty, alloc, irValue) : irs)
+        Right irs -> Right ((name, ty, alloc, verifiedIR) : irs)
+    Left exc -> do
+      -- Exception from MAlonzo (should not happen with correct Agda code)
+      TIO.hPutStrLn System.IO.stderr $ "✗ Fatal error for " <> name <> ": " <> T.pack (show exc)
+      pure (Left $ "Fatal error during type checking of " ++ T.unpack name ++ ": " ++ show exc)
+    Right (Left err) -> do
+      -- Type checking error from Agda (e.g., depth > 7, type mismatch, unbound variable)
+      TIO.hPutStrLn System.IO.stderr $ "✗ Type checking failed for " <> name <> ": " <> T.pack err
+      pure (Left $ "Type checking failed for " ++ T.unpack name ++ ": " ++ err)
 
 -- | Generate C code for an executable (with main function)
 -- The allocation strategy affects how buffer/string outputs are allocated

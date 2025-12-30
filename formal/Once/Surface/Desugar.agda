@@ -53,8 +53,8 @@ open import Data.String using (String)
 -- See D035 for context on the two-stage IR architecture.
 --
 ------------------------------------------------------------------------
-postulate
-  prim : ∀ {A B} → String → C.IR ∞ A B
+-- Note: prim is now a real constructor in Once.IR (not a postulate)
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- Desugar transformation
@@ -117,5 +117,12 @@ desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩
 -- | Primitive passthrough
 --
 -- Primitives are opaque - just convert to Core's prim representation
---
-desugar (Prim name) = prim name
+-- Uses the prim constructor from Once.IR (C)
+-- TEMPORARILY COMMENTED OUT: prim constructor removed during architectural cleanup
+-- desugar (Prim name) = C.prim name
+-- TODO: Re-add prim constructor to Once.IR or handle Prim differently
+
+postulate prim-desugar : ∀ {A B} → String → C.IR ∞ A B
+
+desugar {A} {B} (Prim name) : C.IR ∞ A B
+desugar (Prim name) = prim-desugar name

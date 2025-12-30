@@ -1,0 +1,16 @@
+-- Test: 8 nested lambdas using only categorical combinators (should warn)
+-- Returns nested pairs to avoid linear unused errors
+
+depth8cat : Unit -> Unit -> Unit -> Unit -> Unit -> Unit -> Unit -> Unit -> 
+            (Unit, (Unit, (Unit, (Unit, (Unit, (Unit, (Unit, Unit)))))))
+depth8cat = \a -> \b -> \c -> \d -> \e -> \f -> \g -> \h ->
+  let p1 = (g, h) in
+  let p2 = (f, p1) in
+  let p3 = (e, p2) in
+  let p4 = (d, p3) in
+  let p5 = (c, p4) in
+  let p6 = (b, p5) in
+  (a, p6)
+
+main : IO Unit  
+main = pure ()

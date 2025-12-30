@@ -15,9 +15,10 @@ module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _≟_; _++_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_) hiding (_+_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≤?_; _⊔_) hiding (_+_; _*_)
 open import Data.Nat as Nat
 open import Data.Nat.Properties using (≤-refl; n<1+n; +-identityʳ; +-suc; +-comm)
+open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Fin as Fin using (_↑ˡ_)
 open import Data.Vec using (Vec; []; _∷_; tail) renaming (lookup to Vec-lookup)
@@ -33,7 +34,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Size using (Size; ∞)
 open import Once.Type
 open import Once.IR as IR
-open import Once.TypeCheck.Raw using (RawExpr; BinOp; UnaryOp)
+open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; Quantity; Binding; mkBinding; name; type)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
@@ -199,6 +200,7 @@ mutual
   exchange₂ Surface.unit = Surface.unit
   exchange₂ (Surface.absurd v) = Surface.absurd (exchange₂ v)
   exchange₂ (Surface.let' e₁ e₂) = Surface.let' (exchange₂ e₁) (exchange₃ e₂)
+  -- Primitives don't capture variables
 
   -- | Exchange at depth 3: insert A at position 3
   exchange₃ : ∀ {n} {Γ : SCtx n} {A B C D E : Type}
@@ -219,6 +221,7 @@ mutual
   exchange₃ Surface.unit = Surface.unit
   exchange₃ (Surface.absurd v) = Surface.absurd (exchange₃ v)
   exchange₃ (Surface.let' e₁ e₂) = Surface.let' (exchange₃ e₁) (exchange₄ e₂)
+  -- Primitives don't capture variables
 
   -- | Exchange at depth 4 (for deeply nested expressions)
   -- In practice, 4 levels of nesting handles most programs
@@ -242,6 +245,7 @@ mutual
   exchange₄ Surface.unit = Surface.unit
   exchange₄ (Surface.absurd v) = Surface.absurd (exchange₄ v)
   exchange₄ (Surface.let' e₁ e₂) = Surface.let' (exchange₄ e₁) (exchange₅ e₂)
+  -- Primitives don't capture variables
 
   -- | Exchange at depth 5 (practical limit)
   -- Deeper nesting is rare; at depth 6+ we recurse back to exchange
@@ -269,6 +273,7 @@ mutual
   exchange₅ Surface.unit = Surface.unit
   exchange₅ (Surface.absurd v) = Surface.absurd (exchange₅ v)
   exchange₅ (Surface.let' e₁ e₂) = Surface.let' (exchange₅ e₁) (exchange₆ e₂)
+  -- Primitives don't capture variables
 
   exchange₆ : ∀ {n} {Γ : SCtx n} {A B C D E F G H : Type}
             → SExpr ((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) H
@@ -292,6 +297,7 @@ mutual
   exchange₆ Surface.unit = Surface.unit
   exchange₆ (Surface.absurd v) = Surface.absurd (exchange₆ v)
   exchange₆ (Surface.let' e₁ e₂) = Surface.let' (exchange₆ e₁) (exchange₇ e₂)
+  -- Primitives don't capture variables
 
   exchange₇ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I : Type}
             → SExpr (((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
@@ -316,6 +322,8 @@ mutual
   exchange₇ Surface.unit = Surface.unit
   exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
   exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchange₈ e₂)
+  -- Primitives don't capture variables
+  -- Primitives don't capture variables, so they're unchanged by exchange
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
@@ -539,25 +547,25 @@ lookupVar (mkCtx n Γ Δ) x = go Γ Δ
 ------------------------------------------------------------------------
 
 {-# TERMINATING #-}
-inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+inferElabImpl : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 
 -- Variable: look up in context (depth 0 - no nesting)
-inferElab ctx (Raw.RVar x) with lookupVar ctx x
+inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
 ... | just (A , se) = success A se 0
 ... | nothing = failure ("Unbound variable: " ++ x)
 
 -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
-inferElab ctx (Raw.RLam x body) with inferElab (extendNamedCtx ctx x (TVar "α")) body
+inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
 ... | failure err = failure err
 ... | success B bodyExpr bodyDepth = success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth)
 
 -- Application: infer function, check it's a function type, infer arg, check types match
 -- (depth = max of function and argument depths)
-inferElab ctx (Raw.RApp fun arg) = inferApp (inferElab ctx fun)
+inferElabImpl ctx (Raw.RApp fun arg) = inferApp (inferElabImpl ctx fun)
   where
     inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
     inferApp (failure err) = failure err
-    inferApp (success (A ⇒ B) funExpr funDepth) = inferArg (inferElab ctx arg)
+    inferApp (success (A ⇒ B) funExpr funDepth) = inferArg (inferElabImpl ctx arg)
       where
         inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
         inferArg (failure err) = failure err
@@ -577,33 +585,33 @@ inferElab ctx (Raw.RApp fun arg) = inferApp (inferElab ctx fun)
     inferApp (success (TVar _) _ _) = failure "Expected function type in application"
 
 -- Pair (depth = max of both elements)
-inferElab ctx (Raw.RPair a b) with inferElab ctx a
+inferElabImpl ctx (Raw.RPair a b) with inferElabImpl ctx a
 ... | failure err = failure err
-... | success A aExpr aDepth with inferElab ctx b
+... | success A aExpr aDepth with inferElabImpl ctx b
 ...   | failure err = failure err
 ...   | success B bExpr bDepth = success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth)
 
 -- Unit (depth 0 - no nesting)
-inferElab ctx Raw.RUnit = success Unit Surface.unit 0
+inferElabImpl ctx Raw.RUnit = success Unit Surface.unit 0
 
 -- Let binding (depth = max(e₁, e₂ + 1) since e₂ is under binder)
-inferElab ctx (Raw.RLet x e₁ e₂) with inferElab ctx e₁
+inferElabImpl ctx (Raw.RLet x e₁ e₂) with inferElabImpl ctx e₁
 ... | failure err = failure err
-... | success A e₁Expr e₁Depth with inferElab (extendNamedCtx ctx x A) e₂
+... | success A e₁Expr e₁Depth with inferElabImpl (extendNamedCtx ctx x A) e₂
 ...   | failure err = failure err
 ...   | success B e₂Expr e₂Depth = success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth)
 
 -- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
-inferElab ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElab ctx scrut)
+inferElabImpl ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
   where
     inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
     inferCase (failure err) = failure err
-    inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth) = inferLeft (inferElab (extendNamedCtx ctx xL A) eL)
+    inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth) = inferLeft (inferElabImpl (extendNamedCtx ctx xL A) eL)
       where
         inferLeft : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))
                   → InferElabResult (NamedCtx.debruijn ctx)
         inferLeft (failure err) = failure err
-        inferLeft (success C₁ eLExpr eLDepth) = inferRight (inferElab (extendNamedCtx ctx xR B) eR)
+        inferLeft (success C₁ eLExpr eLDepth) = inferRight (inferElabImpl (extendNamedCtx ctx xR B) eR)
           where
             inferRight : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xR B))
                        → InferElabResult (NamedCtx.debruijn ctx)
@@ -624,19 +632,41 @@ inferElab ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElab ctx scrut)
     inferCase (success (TVar _) _ _) = failure "Expected sum type in case"
 
 -- Integer literal: not in Surface.Syntax
-inferElab _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
+inferElabImpl _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
 
 -- String literal: not in Surface.Syntax
-inferElab _ (Raw.RStringLit _) = failure "String literals not supported in verified elaboration"
+inferElabImpl _ (Raw.RStringLit _) = failure "String literals not supported in verified elaboration"
 
 -- Type annotation: just elaborate the inner expression
-inferElab ctx (Raw.RAnnot e _) = inferElab ctx e
+inferElabImpl ctx (Raw.RAnnot e _) = inferElabImpl ctx e
 
 -- Binary operators: not in Surface.Syntax
-inferElab _ (Raw.RBinOp _ _ _) = failure "Binary operators not supported in verified elaboration"
+inferElabImpl _ (Raw.RBinOp _ _ _) = failure "Binary operators not supported in verified elaboration"
 
 -- Unary operators: not in Surface.Syntax
-inferElab _ (Raw.RUnaryOp _ _) = failure "Unary operators not supported in verified elaboration"
+inferElabImpl _ (Raw.RUnaryOp _ _) = failure "Unary operators not supported in verified elaboration"
+
+------------------------------------------------------------------------
+-- Depth-Checked Inference (Public Interface)
+------------------------------------------------------------------------
+
+-- | Type inference with depth limit enforcement
+--
+-- This is the public interface that enforces the depth ≤ 7 constraint.
+-- Programs exceeding this limit are rejected with a clear error message.
+--
+-- RATIONALE: The exchange functions (used for context manipulation) are
+-- proven correct only up to exchange₇. See docs/formal/full-verification-compiler-stack.md
+--
+inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+inferElab ctx rawExpr with inferElabImpl ctx rawExpr
+... | failure err = failure err
+... | success ty expr depth with depth ≤? 7
+...   | yes _ = success ty expr depth
+...   | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
+                       "  Depth encountered: " ++ showℕ depth ++ "\n" ++
+                       "  Proven depth limit: 7\n" ++
+                       "  Please refactor to reduce nesting of λ/case/let expressions.")
 
 ------------------------------------------------------------------------
 -- Top-level Compilation

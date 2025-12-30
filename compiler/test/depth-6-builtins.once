@@ -1,0 +1,6 @@
+-- Test program with 6 levels of nesting
+-- This should compile successfully
+
+-- Depth 6: Six nested lambdas
+test6 : Unit -> Unit -> Unit -> Unit -> Unit -> Unit -> (Unit * (Unit * (Unit * (Unit * (Unit * Unit)))))
+test6 = \a1 -> \a2 -> \a3 -> \a4 -> \a5 -> \a6 -> (a1, (a2, (a3, (a4, (a5, a6)))))

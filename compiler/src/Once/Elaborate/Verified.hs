@@ -10,8 +10,8 @@
 --   2. TypeCheck/Elaborate.inferElab: RawExpr → InferElabResult (combined type+resolve)
 --   3. Surface.Elaborate: Surface.Syntax.Expr → IR (category-theoretic)
 --
--- The new TypeCheck.Elaborate module avoids the postulates in TypeCheck.Resolve
--- by combining type inference and elaboration in a single pass.
+-- The new TypeCheck.Elaborate module combines type inference and elaboration in a single pass
+-- and enforces a depth limit of 7 nested binders (proven correctness bound).
 module Once.Elaborate.Verified
   ( -- * Verified elaboration
     elaborateVerified
@@ -25,8 +25,8 @@ import qualified Once.IR as H
 
 import qualified MAlonzo.Code.Once.IR as MI
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate as VTE
-import qualified MAlonzo.Code.Agda.Builtin.Maybe as AM
-import qualified MAlonzo.Code.Agda.Builtin.Sigma as Sigma
+import qualified MAlonzo.Code.Once.Surface.Elaborate as VSE
+import qualified MAlonzo.Code.Once.Surface.Syntax as VSS
 import Once.MAlonzo (toMAlonzoRaw, fromMAlonzoIR)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -35,35 +35,42 @@ type ElaborateError = String
 
 -- | Elaborate an expression using the verified MAlonzo implementation
 --
--- This uses the new combined inferElab function that avoids postulates:
+-- This uses the inferElab function with depth checking (depth ≤ 7):
 --   Haskell Expr → MAlonzo RawExpr → inferElab → Surface.Expr → Elaborate → IR
 --
 -- Returns either an error message or the elaborated categorical IR.
+-- Programs with >7 levels of nesting are rejected by the Agda type checker.
 elaborateVerified :: S.Expr -> Either ElaborateError H.IR
 elaborateVerified expr = do
   -- Step 1: Convert to MAlonzo RawExpr
   let rawExpr = toMAlonzoRaw expr
 
-  -- Step 2: Use compileExpr which does inferElab + elaborate in one step
-  case VTE.d_compileExpr_1172 rawExpr of
-    AM.C_nothing_18 -> Left "Verified elaboration: inference/elaboration failed"
-    AM.C_just_16 result ->
-      -- Result is ∃[ A ] IR ∞ Unit A, which is a dependent pair (Sigma)
-      -- MAlonzo erases dependent types, so we use unsafeCoerce
-      case result of
-        Sigma.C__'44'__32 _ty irExpr ->
-          -- Step 3: Convert back to Haskell IR
-          Right (fromMAlonzoIR (unsafeCoerce irExpr))
+  -- Step 2: Run type inference/elaboration to get Surface.Expr
+  -- Note: inferElab now rejects depth > 7 with a clear error message
+  case VTE.d_inferElab_1442 VTE.d_emptyCtx_1012 rawExpr of
+    VTE.C_failure_994 errMsg ->
+      Left $ "Type checking failed: " ++ show errMsg
+    VTE.C_success_992 ty surfaceExpr depth ->
+      let irExpr = VSE.du_elaborate_70
+                     (VSS.C_'8709'_8)  -- Empty context
+                     ty
+                     surfaceExpr
+      in Right (fromMAlonzoIR (unsafeCoerce irExpr))
 
 -- | Elaborate an expression directly to MAlonzo IR (for internal use)
 --
 -- This skips the Haskell IR conversion, useful when the result will
 -- be passed directly to other MAlonzo modules.
+-- Programs with >7 levels of nesting are rejected by the Agda type checker.
 elaborateToIR :: S.Expr -> Either ElaborateError MI.T_IR_4
 elaborateToIR expr = do
   let rawExpr = toMAlonzoRaw expr
-  case VTE.d_compileExpr_1172 rawExpr of
-    AM.C_nothing_18 -> Left "Verified elaboration: inference/elaboration failed"
-    AM.C_just_16 result ->
-      case result of
-        Sigma.C__'44'__32 _ty irExpr -> Right (unsafeCoerce irExpr)
+  case VTE.d_inferElab_1442 VTE.d_emptyCtx_1012 rawExpr of
+    VTE.C_failure_994 errMsg ->
+      Left $ "Type checking failed: " ++ show errMsg
+    VTE.C_success_992 ty surfaceExpr depth ->
+      let irExpr = VSE.du_elaborate_70
+                     (VSS.C_'8709'_8)
+                     ty
+                     surfaceExpr
+      in Right (unsafeCoerce irExpr)

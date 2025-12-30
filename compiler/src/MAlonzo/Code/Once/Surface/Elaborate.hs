@@ -299,4 +299,24 @@ du_elaborate_70 v0 v1 v2
                 MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_46
                 (coe MAlonzo.Code.Once.IR.C_id_10)
                 (coe du_elaborate_70 (coe v0) (coe v5) (coe v7)))
+      MAlonzo.Code.Once.Surface.Syntax.C_int_148 v5
+        -> coe MAlonzo.Code.Once.IR.C_intLit_128 v5
+      MAlonzo.Code.Once.Surface.Syntax.C_binop_156 v6 v7 v8
+        -> coe
+             MAlonzo.Code.Once.IR.C__'8728'__20
+             (coe
+                MAlonzo.Code.Once.Type.C__'42'__10
+                (coe MAlonzo.Code.Once.Type.C_Int_20)
+                (coe MAlonzo.Code.Once.Type.C_Int_20))
+             (coe MAlonzo.Code.Once.IR.C_binOp_134 v6)
+             (coe
+                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_46
+                (coe
+                   du_elaborate_70 (coe v0) (coe MAlonzo.Code.Once.Type.C_Int_20)
+                   (coe v7))
+                (coe
+                   du_elaborate_70 (coe v0) (coe MAlonzo.Code.Once.Type.C_Int_20)
+                   (coe v8)))
+      MAlonzo.Code.Once.Surface.Syntax.C_builtin_164 v6
+        -> coe MAlonzo.Code.Once.IR.C_prim_142 v6
       _ -> MAlonzo.RTE.mazUnreachableError

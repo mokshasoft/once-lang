@@ -1,0 +1,6 @@
+-- Test case: depth 8 (exceeds proven limit, SHOULD warn)
+-- Eight nested lambdas that use all variables
+
+main : Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int
+main = \a -> \b -> \c -> \d -> \e -> \f -> \g -> \h ->
+  a + b + c + d + e + f + g + h
