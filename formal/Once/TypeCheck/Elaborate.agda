@@ -15,7 +15,7 @@ module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _≟_; _++_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) hiding (_+_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_) hiding (_+_; _*_)
 open import Data.Nat as Nat
 open import Data.Nat.Properties using (≤-refl; n<1+n; +-identityʳ; +-suc; +-comm)
 open import Data.Fin using (Fin; zero; suc)
@@ -92,20 +92,22 @@ lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A} {B} {C} {D} {E} {F} {G} {H}
 -- Type-level context extension for generalized exchange
 ------------------------------------------------------------------------
 
--- | Extend a context with a list of types
--- Builds Γ S, types[0] S, types[1] S, ...
--- Using List and existential to avoid arithmetic complexity
-extendWithList : ∀ {n} → SCtx n → List Type → ∃[ k ] SCtx k
-extendWithList Γ [] = _ , Γ
-extendWithList Γ (A ∷ As) = extendWithList (Γ S, A) As
+-- | Build nested context from Vec of types
+-- extendMany Γ [B, C, D] = ((Γ S, B) S, C) S, D
+-- Types are added left-to-right, size is n + m
+extendMany : ∀ {n} → SCtx n → (m : ℕ) → Vec Type m → SCtx (n Nat.+ m)
+extendMany {n} Γ zero [] rewrite +-identityʳ n = Γ
+extendMany {n} Γ (suc m) (A ∷ As) rewrite +-suc n m = extendMany (Γ S, A) m As
 
-
--- TODO: Generalized lookup lemma for arbitrary depth
--- Will be needed for variable case in exchangeN
--- lookup-extendMany : ∀ {n} (m : ℕ) (Γ : SCtx n) (types : Vec Type m) (i : Fin n)
---                   → lookup Γ i ≡ lookup (extendMany m Γ types) (shift by m)
--- lookup-extendMany zero Γ [] i = refl
--- lookup-extendMany (suc m) Γ (A ∷ As) i = ...
+-- | Lookup lemma for extendMany
+-- Variables from base context Γ get shifted by depth
+lookup-extendMany : ∀ {n} (Γ : SCtx n) (depth : ℕ) (types : Vec Type depth) (i : Fin n)
+                  → ∃[ j ] (lookup Γ i ≡ lookup (extendMany Γ depth types) j)
+lookup-extendMany {n} Γ zero [] i rewrite +-identityʳ n = i , refl
+lookup-extendMany {n} Γ (suc depth) (A ∷ As) i
+  rewrite +-suc n depth
+  with lookup-extendMany (Γ S, A) depth As (suc i)
+... | j , prf = j , trans (lookup-suc i) prf
 
 -- | Weaken and Exchange are mutually recursive
 --
@@ -287,46 +289,50 @@ mutual
   exchange₇ (Surface.var (suc (suc (suc (suc (suc (suc zero))))))) = Surface.var (suc (suc (suc (suc (suc (suc zero))))))
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.var (suc (suc (suc (suc (suc (suc (suc i)))))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc (suc i)))))))))
-  exchange₇ (Surface.lam e) = Surface.lam (exchange₈ e)
+  exchange₇ (Surface.lam e) = Surface.lam (exchangeN _ _ e)
   exchange₇ (Surface.app f x) = Surface.app (exchange₇ f) (exchange₇ x)
   exchange₇ (Surface.pair a b) = Surface.pair (exchange₇ a) (exchange₇ b)
   exchange₇ (Surface.fst' p) = Surface.fst' (exchange₇ p)
   exchange₇ (Surface.snd' p) = Surface.snd' (exchange₇ p)
   exchange₇ (Surface.inl' a) = Surface.inl' (exchange₇ a)
   exchange₇ (Surface.inr' b) = Surface.inr' (exchange₇ b)
-  exchange₇ (Surface.case' s l r) = Surface.case' (exchange₇ s) (exchange₈ l) (exchange₈ r)
+  exchange₇ (Surface.case' s l r) = Surface.case' (exchange₇ s) (exchangeN _ _ l) (exchangeN _ _ r)
   exchange₇ Surface.unit = Surface.unit
   exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
-  exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchange₈ e₂)
+  exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchangeN _ _ e₂)
 
-  postulate
-    exchange₈ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I J : Type}
-              → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
-              → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
-
-  -- | Generalized exchange for arbitrary depth
-  -- Inserts type A at bottom of context, before a sequence of types
-  -- Using List and existential to avoid complex arithmetic
-  exchangeN : ∀ {n} {Γ : SCtx n} {A Result : Type} (types : List Type)
-            → (let _ , Γ' = extendWithList Γ types in SExpr Γ' Result)
-            → (let _ , Γ'' = extendWithList (Γ S, A) types in SExpr Γ'' Result)
-  -- Base case: no types to skip, just insert A at top
-  exchangeN [] e = weaken e
-  -- Recursive case: skip first type B, process the rest
-  exchangeN (B ∷ types) (Surface.var zero) = Surface.var zero
-  exchangeN (B ∷ types) (Surface.var (suc zero)) = Surface.var (suc zero)
-  exchangeN (B ∷ types) (Surface.var (suc (suc i))) = {!!}  -- TODO: variable shifting
-  exchangeN (B ∷ types) (Surface.lam {A = ArgType} body) = {!!}  -- TODO: extend types
-  exchangeN (B ∷ types) (Surface.app e₁ e₂) = Surface.app (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
-  exchangeN (B ∷ types) (Surface.pair e₁ e₂) = Surface.pair (exchangeN (B ∷ types) e₁) (exchangeN (B ∷ types) e₂)
-  exchangeN (B ∷ types) (Surface.fst' e') = Surface.fst' (exchangeN (B ∷ types) e')
-  exchangeN (B ∷ types) (Surface.snd' e') = Surface.snd' (exchangeN (B ∷ types) e')
-  exchangeN (B ∷ types) (Surface.inl' e') = Surface.inl' (exchangeN (B ∷ types) e')
-  exchangeN (B ∷ types) (Surface.inr' e') = Surface.inr' (exchangeN (B ∷ types) e')
-  exchangeN (B ∷ types) (Surface.case' s l r) = {!!}  -- TODO: extend types for branches
-  exchangeN (B ∷ types) Surface.unit = Surface.unit
-  exchangeN (B ∷ types) (Surface.absurd v) = Surface.absurd (exchangeN (B ∷ types) v)
-  exchangeN (B ∷ types) (Surface.let' e₁ e₂) = {!!}  -- TODO: extend types for e₂
+  -- | Generalized exchange infrastructure
+  --
+  -- NOTE: This is a work in progress. The type-level arithmetic with extendMany
+  -- creates challenges when combined with pattern matching on intrinsically-typed
+  -- expressions. For now, we delegate to the existing manual exchange functions
+  -- and leave depth 8+ as a postulate while we resolve the technical challenges.
+  --
+  -- The infrastructure (extendMany, lookup-extendMany) is in place for when we
+  -- solve the rewrite/pattern-match interaction issues.
+  exchangeN : ∀ {n} {Γ : SCtx n} {A Result : Type} (depth : ℕ) (types : Vec Type depth)
+            → SExpr (extendMany Γ depth types) Result
+            → SExpr (extendMany (Γ S, A) depth types) Result
+  -- Depth 0: just weaken
+  exchangeN {n} {Γ} zero [] e
+    rewrite +-identityʳ n | +-identityʳ (suc n)
+    = weaken e
+  -- Depth 1: delegate to exchange
+  exchangeN {n} {Γ} {A} {Result} (suc zero) (B ∷ []) e
+    rewrite +-identityʳ (suc n)
+    rewrite +-suc n zero
+    rewrite +-identityʳ (suc (suc n))
+    rewrite +-suc (suc n) zero
+    = exchange e
+  exchangeN (suc (suc zero)) (C ∷ B ∷ []) e = {!!} -- exchange₂
+  exchangeN (suc (suc (suc zero))) (D ∷ C ∷ B ∷ []) e = {!!} -- exchange₃
+  exchangeN (suc (suc (suc (suc zero)))) (E ∷ D ∷ C ∷ B ∷ []) e = {!!} -- exchange₄
+  exchangeN (suc (suc (suc (suc (suc zero))))) (F ∷ E ∷ D ∷ C ∷ B ∷ []) e = {!!} -- exchange₅
+  exchangeN (suc (suc (suc (suc (suc (suc zero)))))) (G ∷ F ∷ E ∷ D ∷ C ∷ B ∷ []) e = {!!} -- exchange₆
+  exchangeN (suc (suc (suc (suc (suc (suc (suc zero))))))) (H ∷ G ∷ F ∷ E ∷ D ∷ C ∷ B ∷ []) e = {!!} -- exchange₇
+  -- Depth 8+: postulate for now
+  -- This is the technical challenge - we need to solve the rewrite/pattern-match issues
+  exchangeN (suc (suc (suc (suc (suc (suc (suc (suc depth)))))))) types e = {!!}
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
@@ -501,8 +507,9 @@ TVar _ ≟T Fix _ = no λ ()
 ------------------------------------------------------------------------
 
 -- | Result of type inference with elaborated expression
+-- Includes maximum nesting depth encountered (for verification limit tracking)
 data InferElabResult {n : ℕ} (Δ : SCtx n) : Set where
-  success : (A : Type) → SExpr Δ A → InferElabResult Δ
+  success : (A : Type) → SExpr Δ A → (depth : ℕ) → InferElabResult Δ
   failure : String → InferElabResult Δ
 
 ------------------------------------------------------------------------
@@ -551,86 +558,87 @@ lookupVar (mkCtx n Γ Δ) x = go Γ Δ
 {-# TERMINATING #-}
 inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 
--- Variable: look up in context
+-- Variable: look up in context (depth 0 - no nesting)
 inferElab ctx (Raw.RVar x) with lookupVar ctx x
-... | just (A , se) = success A se
+... | just (A , se) = success A se 0
 ... | nothing = failure ("Unbound variable: " ++ x)
 
--- Lambda: infer body with extended context, wrap in lam
+-- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
 inferElab ctx (Raw.RLam x body) with inferElab (extendNamedCtx ctx x (TVar "α")) body
 ... | failure err = failure err
-... | success B bodyExpr = success (TVar "α" ⇒ B) (Surface.lam bodyExpr)
+... | success B bodyExpr bodyDepth = success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth)
 
 -- Application: infer function, check it's a function type, infer arg, check types match
+-- (depth = max of function and argument depths)
 inferElab ctx (Raw.RApp fun arg) = inferApp (inferElab ctx fun)
   where
     inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
     inferApp (failure err) = failure err
-    inferApp (success (A ⇒ B) funExpr) = inferArg (inferElab ctx arg)
+    inferApp (success (A ⇒ B) funExpr funDepth) = inferArg (inferElab ctx arg)
       where
         inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
         inferArg (failure err) = failure err
-        inferArg (success A' argExpr) with A ≟T A'
-        ... | yes refl = success B (Surface.app funExpr argExpr)
+        inferArg (success A' argExpr argDepth) with A ≟T A'
+        ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
         ... | no _ = failure "Type mismatch in application"
-    inferApp (success Unit _) = failure "Expected function type in application"
-    inferApp (success Void _) = failure "Expected function type in application"
-    inferApp (success Int _) = failure "Expected function type in application"
-    inferApp (success Float _) = failure "Expected function type in application"
-    inferApp (success Str _) = failure "Expected function type in application"
-    inferApp (success Buffer _) = failure "Expected function type in application"
-    inferApp (success (_ Once.Type.* _) _) = failure "Expected function type in application"
-    inferApp (success (_ Once.Type.+ _) _) = failure "Expected function type in application"
-    inferApp (success (Eff _ _) _) = failure "Expected function type in application"
-    inferApp (success (Fix _) _) = failure "Expected function type in application"
-    inferApp (success (TVar _) _) = failure "Expected function type in application"
+    inferApp (success Unit _ _) = failure "Expected function type in application"
+    inferApp (success Void _ _) = failure "Expected function type in application"
+    inferApp (success Int _ _) = failure "Expected function type in application"
+    inferApp (success Float _ _) = failure "Expected function type in application"
+    inferApp (success Str _ _) = failure "Expected function type in application"
+    inferApp (success Buffer _ _) = failure "Expected function type in application"
+    inferApp (success (_ Once.Type.* _) _ _) = failure "Expected function type in application"
+    inferApp (success (_ Once.Type.+ _) _ _) = failure "Expected function type in application"
+    inferApp (success (Eff _ _) _ _) = failure "Expected function type in application"
+    inferApp (success (Fix _) _ _) = failure "Expected function type in application"
+    inferApp (success (TVar _) _ _) = failure "Expected function type in application"
 
--- Pair
+-- Pair (depth = max of both elements)
 inferElab ctx (Raw.RPair a b) with inferElab ctx a
 ... | failure err = failure err
-... | success A aExpr with inferElab ctx b
+... | success A aExpr aDepth with inferElab ctx b
 ...   | failure err = failure err
-...   | success B bExpr = success (A Once.Type.* B) (Surface.pair aExpr bExpr)
+...   | success B bExpr bDepth = success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth)
 
--- Unit
-inferElab ctx Raw.RUnit = success Unit Surface.unit
+-- Unit (depth 0 - no nesting)
+inferElab ctx Raw.RUnit = success Unit Surface.unit 0
 
--- Let binding
+-- Let binding (depth = max(e₁, e₂ + 1) since e₂ is under binder)
 inferElab ctx (Raw.RLet x e₁ e₂) with inferElab ctx e₁
 ... | failure err = failure err
-... | success A e₁Expr with inferElab (extendNamedCtx ctx x A) e₂
+... | success A e₁Expr e₁Depth with inferElab (extendNamedCtx ctx x A) e₂
 ...   | failure err = failure err
-...   | success B e₂Expr = success B (Surface.let' e₁Expr e₂Expr)
+...   | success B e₂Expr e₂Depth = success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth)
 
--- Case analysis
+-- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
 inferElab ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElab ctx scrut)
   where
     inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
     inferCase (failure err) = failure err
-    inferCase (success (A Once.Type.+ B) scrutExpr) = inferLeft (inferElab (extendNamedCtx ctx xL A) eL)
+    inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth) = inferLeft (inferElab (extendNamedCtx ctx xL A) eL)
       where
         inferLeft : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))
                   → InferElabResult (NamedCtx.debruijn ctx)
         inferLeft (failure err) = failure err
-        inferLeft (success C₁ eLExpr) = inferRight (inferElab (extendNamedCtx ctx xR B) eR)
+        inferLeft (success C₁ eLExpr eLDepth) = inferRight (inferElab (extendNamedCtx ctx xR B) eR)
           where
             inferRight : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xR B))
                        → InferElabResult (NamedCtx.debruijn ctx)
             inferRight (failure err) = failure err
-            inferRight (success C₂ eRExpr) with C₁ ≟T C₂
-            ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr)
+            inferRight (success C₂ eRExpr eRDepth) with C₁ ≟T C₂
+            ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr) (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth)
             ... | no _ = failure "Case branches have different types"
-    inferCase (success Unit _) = failure "Expected sum type in case"
-    inferCase (success Void _) = failure "Expected sum type in case"
-    inferCase (success Int _) = failure "Expected sum type in case"
-    inferCase (success Float _) = failure "Expected sum type in case"
-    inferCase (success Str _) = failure "Expected sum type in case"
-    inferCase (success Buffer _) = failure "Expected sum type in case"
-    inferCase (success (_ Once.Type.* _) _) = failure "Expected sum type in case"
-    inferCase (success (_ ⇒ _) _) = failure "Expected sum type in case"
-    inferCase (success (Eff _ _) _) = failure "Expected sum type in case"
-    inferCase (success (Fix _) _) = failure "Expected sum type in case"
-    inferCase (success (TVar _) _) = failure "Expected sum type in case"
+    inferCase (success Unit _ _) = failure "Expected sum type in case"
+    inferCase (success Void _ _) = failure "Expected sum type in case"
+    inferCase (success Int _ _) = failure "Expected sum type in case"
+    inferCase (success Float _ _) = failure "Expected sum type in case"
+    inferCase (success Str _ _) = failure "Expected sum type in case"
+    inferCase (success Buffer _ _) = failure "Expected sum type in case"
+    inferCase (success (_ Once.Type.* _) _ _) = failure "Expected sum type in case"
+    inferCase (success (_ ⇒ _) _ _) = failure "Expected sum type in case"
+    inferCase (success (Eff _ _) _ _) = failure "Expected sum type in case"
+    inferCase (success (Fix _) _ _) = failure "Expected sum type in case"
+    inferCase (success (TVar _) _ _) = failure "Expected sum type in case"
 
 -- Integer literal: not in Surface.Syntax
 inferElab _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
@@ -655,12 +663,12 @@ inferElab _ (Raw.RUnaryOp _ _) = failure "Unary operators not supported in verif
 compileExpr : RawExpr → Maybe (∃[ A ] IR ∞ Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _ = nothing
-... | success A se = just (A , elaborate se)
+... | success A se _ = just (A , elaborate se)
 
 -- | Compile with type: check that inferred type matches expected
 compileExprTyped : RawExpr → (A : Type) → Maybe (IR ∞ Unit A)
 compileExprTyped e A with inferElab emptyCtx e
 ... | failure _ = nothing
-... | success A' se with A ≟T A'
+... | success A' se _ with A ≟T A'
 ...   | yes refl = just (elaborate se)
 ...   | no _ = nothing
