@@ -19,7 +19,7 @@ open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; encodedMemory; encode-unit; encode-pair-fst; encode-pair-snd;
-         encode-pair-construct;
+         encode-pair-construct; encode-closure-construct;
          encode-arr-identity; encode-fix-wrap; encode-fix-unwrap;
          encode-inl-construct; encode-inr-construct;
          readReg-writeReg-same; readReg-writeReg-x0-x20; readReg-writeReg-x0-x21;
@@ -36,6 +36,7 @@ open import Once.Backend.AArch64.Correct.Foundation
          exec-chain; step-instr; fetch-append-right; fetch-at-prefix-end;
          execInstr-nop; execInstr-mov-imm; execInstr-mov-reg; execInstr-ldr-success;
          execInstr-sub-sp; execInstr-str-zr; execInstr-str; execInstr-mov-from-sp;
+         execInstr-adr; execInstr-b; execInstr-label;
          readMem-writeMem-same; readMem-writeMem-diff-8; readMem-writeMem-diff-8-rev)
 -- Import propositional readMem-writeMem-diff directly from Memory.agda
 -- (Foundation.agda's version is the boolean one renamed)
@@ -1936,39 +1937,375 @@ mutual
 
       -- The 7 curry instructions we execute (not the thunk code)
       -- Positions 0-5: setup, Position 5: branch, Position end-lbl: label
-      i0 i1 i2 i3 i4 i5 : Instr
+      i0 i1 i2 i3 i4 i5 i-label : Instr
       i0 = sub-sp 16              -- allocate closure
       i1 = str x0 (sp+imm 0)      -- store env
       i2 = adr x9 4               -- code-ptr = pc + 4
       i3 = str x9 (sp+imm 8)      -- store code-ptr
       i4 = mov-from-sp x0         -- return closure ptr
-      i5 = b end-lbl              -- jump over thunk
+      i5 = b (6 +ℕ the-len-f)     -- jump over thunk (PC-relative)
+      i-label = label end-lbl     -- end marker
 
-      -- Postulate: After executing the 7 steps (0-5 setup + branch to end-label + end-label)
-      -- the final state has these properties
+      ------------------------------------------------------------------------
+      -- Step 0: sub-sp 16 (allocate closure on stack)
+      ------------------------------------------------------------------------
+      s1 : State
+      s1 = record s { regs = writeSP (regs s) new-sp ; pc = pc s +ℕ 1 }
+
+      -- Fetch i0 at position (length prefix)
+      -- compile-aarch64 (curry f) = sub-sp 16 ∷ rest-curry
+      rest-curry-0 : Program
+      rest-curry-0 = str x0 (sp+imm 0) ∷ adr x9 4 ∷ str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷
+                     b (6 +ℕ the-len-f) ∷ label 6 ∷ sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷
+                     mov-from-sp x0 ∷ compile-aarch64 f ++ ret ∷ label end-lbl ∷ []
+
+      fetch0 : fetch prog (length prefix) ≡ just i0
+      fetch0 = fetch-at-prefix-end prefix i0 (rest-curry-0 ++ suffix)
+
+      exec0 : execInstr prog s i0 ≡ just s1
+      exec0 = execInstr-sub-sp prog s 16
+
+      step0 : step prog s ≡ just s1
+      step0 = step-instr prog s s1 i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0) exec0
+
+      star0 : Star prog s s1
+      star0 = star-single h-false step0
+
+      -- Properties of s1
+      h1 : halted s1 ≡ false
+      h1 = h-false  -- halted preserved from s
+
+      pc1 : pc s1 ≡ length prefix +ℕ 1
+      pc1 = cong (_+ℕ 1) pc-eq
+
+      sp1 : readSP (regs s1) ≡ new-sp
+      sp1 = readSP-writeSP (regs s) new-sp
+
+      x0-s1 : readReg (regs s1) x0 ≡ encode x
+      x0-s1 = trans (readReg-writeSP (regs s) x0 new-sp) x0-eq
+
+      ------------------------------------------------------------------------
+      -- Step 1: str x0 [sp+0] (store env at new-sp)
+      ------------------------------------------------------------------------
+      -- Note: effectiveAddr s1 (sp+imm 0) = readSP (regs s1) + 0 = new-sp + 0 (definitionally!)
+      s2 : State
+      s2 = record s1 { memory = writeMem (memory s1) (new-sp +ℕ 0) (readReg (regs s1) x0) ; pc = pc s1 +ℕ 1 }
+
+      -- Fetch proofs (mechanical list operations, postulated to reduce compile time)
       postulate
-        s-final : State
-        -- Star proof exists
-        star-proof : Star prog s s-final
-        -- State properties
-        halted-final : halted s-final ≡ false
-        pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
-        -- Closure encoding: new-sp points to closure with (env, code-ptr)
-        x0-final : readReg (regs s-final) x0 ≡ encode {B ⇒ C} (eval (curry f) x)
-        -- Register preservation (callee-saved)
-        x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
-        x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
-        x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
-        x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
-        sp-final : readSP (regs s-final) ≤ readSP (regs s)
-        -- Memory preservation
+        fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+        fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+        fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
+        fetch4 : fetch prog (length prefix +ℕ 4) ≡ just i4
+        fetch5 : fetch prog (length prefix +ℕ 5) ≡ just i5
+
+      fetch1' : fetch prog (pc s1) ≡ just i1
+      fetch1' = subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1
+
+      exec1 : execInstr prog s1 i1 ≡ just s2
+      exec1 = execInstr-str prog s1 x0 (sp+imm 0)
+
+      step1 : step prog s1 ≡ just s2
+      step1 = step-instr prog s1 s2 i1 h1 fetch1' exec1
+
+      star1 : Star prog s1 s2
+      star1 = star-single h1 step1
+
+      -- Properties of s2
+      h2 : halted s2 ≡ false
+      h2 = h1  -- halted preserved from s1
+
+      pc2 : pc s2 ≡ length prefix +ℕ 2
+      pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc (length prefix) 1 1)
+
+      sp2 : readSP (regs s2) ≡ new-sp
+      sp2 = sp1  -- regs unchanged
+
+      -- Memory at new-sp contains encode x
+      -- s2.memory = writeMem s1.memory (new-sp + 0) (readReg s1 x0)
+      -- Read at new-sp: use +-identityʳ to show new-sp+0 ≡ new-sp for read position
+      mem-env : readMem (memory s2) new-sp ≡ just (encode x)
+      mem-env = trans (subst (λ a → readMem (writeMem (memory s1) (new-sp +ℕ 0) (readReg (regs s1) x0)) a
+                                  ≡ just (readReg (regs s1) x0))
+                             (+-identityʳ new-sp)
+                             (readMem-writeMem-same (memory s1) (new-sp +ℕ 0) (readReg (regs s1) x0)))
+                      (cong just x0-s1)
+
+      ------------------------------------------------------------------------
+      -- Step 2: adr x9 4 (compute code-ptr = pc + 4)
+      ------------------------------------------------------------------------
+      -- adr x9 4 computes x9 = PC + 4 = (length prefix + 2) + 4 = length prefix + 6
+      thunk-offset : ℕ
+      thunk-offset = length prefix +ℕ 6
+
+      s3 : State
+      s3 = record s2 { regs = writeReg (regs s2) x9 (pc s2 +ℕ 4) ; pc = pc s2 +ℕ 1 }
+
+      fetch2' : fetch prog (pc s2) ≡ just i2
+      fetch2' = subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2
+
+      exec2 : execInstr prog s2 i2 ≡ just s3
+      exec2 = execInstr-adr prog s2 x9 4
+
+      step2 : step prog s2 ≡ just s3
+      step2 = step-instr prog s2 s3 i2 h2 fetch2' exec2
+
+      star2 : Star prog s2 s3
+      star2 = star-single h2 step2
+
+      -- Properties of s3
+      h3 : halted s3 ≡ false
+      h3 = h2  -- halted preserved from s2
+
+      pc3 : pc s3 ≡ length prefix +ℕ 3
+      pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc (length prefix) 2 1)
+
+      sp3 : readSP (regs s3) ≡ new-sp
+      sp3 = trans (readSP-writeReg (regs s2) x9 (pc s2 +ℕ 4)) sp2
+
+      -- x9 in s3 = thunk-offset
+      x9-s3 : readReg (regs s3) x9 ≡ thunk-offset
+      x9-s3 = trans (readReg-writeReg-same (regs s2) x9 (pc s2 +ℕ 4))
+                    (trans (cong (_+ℕ 4) pc2) (+-assoc (length prefix) 2 4))
+
+      ------------------------------------------------------------------------
+      -- Step 3: str x9 [sp+8] (store code-ptr at new-sp+8)
+      ------------------------------------------------------------------------
+      -- Note: effectiveAddr s3 (sp+imm 8) = readSP (regs s3) + 8 = new-sp + 8 (definitionally via sp3)
+      s4 : State
+      s4 = record s3 { memory = writeMem (memory s3) (new-sp +ℕ 8) (readReg (regs s3) x9) ; pc = pc s3 +ℕ 1 }
+
+      fetch3' : fetch prog (pc s3) ≡ just i3
+      fetch3' = subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3
+
+      -- effectiveAddr for sp+imm 8: readSP (regs s3) + 8 = new-sp + 8
+      effAddr3 : effectiveAddr s3 (sp+imm 8) ≡ new-sp +ℕ 8
+      effAddr3 = cong (_+ℕ 8) sp3
+
+      exec3 : execInstr prog s3 i3 ≡ just s4
+      exec3 = execInstr-str prog s3 x9 (sp+imm 8)
+
+      step3 : step prog s3 ≡ just s4
+      step3 = step-instr prog s3 s4 i3 h3 fetch3' exec3
+
+      star3 : Star prog s3 s4
+      star3 = star-single h3 step3
+
+      -- Properties of s4
+      h4 : halted s4 ≡ false
+      h4 = h3  -- halted preserved from s3
+
+      pc4 : pc s4 ≡ length prefix +ℕ 4
+      pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc (length prefix) 3 1)
+
+      sp4 : readSP (regs s4) ≡ new-sp
+      sp4 = sp3  -- regs unchanged by str
+
+      ------------------------------------------------------------------------
+      -- Step 4: mov-from-sp x0 (return closure pointer in x0)
+      ------------------------------------------------------------------------
+      s5 : State
+      s5 = record s4 { regs = writeReg (regs s4) x0 (readSP (regs s4)) ; pc = pc s4 +ℕ 1 }
+
+      fetch4' : fetch prog (pc s4) ≡ just i4
+      fetch4' = subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4
+
+      exec4 : execInstr prog s4 i4 ≡ just s5
+      exec4 = execInstr-mov-from-sp prog s4 x0
+
+      step4 : step prog s4 ≡ just s5
+      step4 = step-instr prog s4 s5 i4 h4 fetch4' exec4
+
+      star4 : Star prog s4 s5
+      star4 = star-single h4 step4
+
+      -- Properties of s5
+      h5 : halted s5 ≡ false
+      h5 = h4  -- halted preserved from s4
+
+      pc5 : pc s5 ≡ length prefix +ℕ 5
+      pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc (length prefix) 4 1)
+
+      -- x0 in s5 = new-sp (closure pointer)
+      x0-s5 : readReg (regs s5) x0 ≡ new-sp
+      x0-s5 = trans (readReg-writeReg-same (regs s4) x0 (readSP (regs s4))) sp4
+
+      ------------------------------------------------------------------------
+      -- Step 5: b (6+len-f) (jump over thunk to end-label)
+      ------------------------------------------------------------------------
+      -- PC-relative: new pc = pc + offset = (length prefix + 5) + (6 + len-f) = length prefix + 11 + len-f
+      s6 : State
+      s6 = record s5 { pc = pc s5 +ℕ (6 +ℕ the-len-f) }
+
+      fetch5' : fetch prog (pc s5) ≡ just i5
+      fetch5' = subst (λ p → fetch prog p ≡ just i5) (sym pc5) fetch5
+
+      exec5 : execInstr prog s5 i5 ≡ just s6
+      exec5 = execInstr-b prog s5 (6 +ℕ the-len-f)
+
+      step5 : step prog s5 ≡ just s6
+      step5 = step-instr prog s5 s6 i5 h5 fetch5' exec5
+
+      star5 : Star prog s5 s6
+      star5 = star-single h5 step5
+
+      -- Properties of s6
+      h6 : halted s6 ≡ false
+      h6 = h5  -- halted preserved from s5
+
+      -- pc s6 = (length prefix + 5) + (6 + len-f) = length prefix + 11 + len-f
+      pc6 : pc s6 ≡ length prefix +ℕ 11 +ℕ the-len-f
+      pc6 = begin
+        pc s6
+          ≡⟨ refl ⟩
+        pc s5 +ℕ (6 +ℕ the-len-f)
+          ≡⟨ cong (_+ℕ (6 +ℕ the-len-f)) pc5 ⟩
+        (length prefix +ℕ 5) +ℕ (6 +ℕ the-len-f)
+          ≡⟨ +-assoc (length prefix) 5 (6 +ℕ the-len-f) ⟩
+        length prefix +ℕ (5 +ℕ (6 +ℕ the-len-f))
+          ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 5 6 the-len-f)) ⟩
+        length prefix +ℕ ((5 +ℕ 6) +ℕ the-len-f)
+          ≡⟨ refl ⟩
+        length prefix +ℕ (11 +ℕ the-len-f)
+          ≡⟨ sym (+-assoc (length prefix) 11 the-len-f) ⟩
+        length prefix +ℕ 11 +ℕ the-len-f
+          ∎
+
+      ------------------------------------------------------------------------
+      -- Step 6: label end-lbl (end marker, increments PC by 1)
+      ------------------------------------------------------------------------
+      s-final : State
+      s-final = record s6 { pc = pc s6 +ℕ 1 }
+
+      -- Fetch label at position (length prefix + 11 + len-f)
+      -- The label is at position 11 + len-f within curry's code
+      postulate
+        fetch-label : fetch prog (length prefix +ℕ 11 +ℕ the-len-f) ≡ just i-label
+
+      fetch-label' : fetch prog (pc s6) ≡ just i-label
+      fetch-label' = subst (λ p → fetch prog p ≡ just i-label) (sym pc6) fetch-label
+
+      exec-label : execInstr prog s6 i-label ≡ just s-final
+      exec-label = execInstr-label prog s6 end-lbl
+
+      step-label : step prog s6 ≡ just s-final
+      step-label = step-instr prog s6 s-final i-label h6 fetch-label' exec-label
+
+      star-label : Star prog s6 s-final
+      star-label = star-single h6 step-label
+
+      ------------------------------------------------------------------------
+      -- Compose all Star proofs
+      ------------------------------------------------------------------------
+      star-proof : Star prog s s-final
+      star-proof = star-trans star0 (star-trans star1 (star-trans star2
+                     (star-trans star3 (star-trans star4 (star-trans star5 star-label)))))
+
+      ------------------------------------------------------------------------
+      -- Final state properties
+      ------------------------------------------------------------------------
+      halted-final : halted s-final ≡ false
+      halted-final = h6  -- halted preserved from s6
+
+      -- pc s-final = (length prefix + 11 + len-f) + 1 = length prefix + 12 + len-f
+      pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
+      pc-final = begin
+        pc s-final
+          ≡⟨ refl ⟩
+        pc s6 +ℕ 1
+          ≡⟨ cong (_+ℕ 1) pc6 ⟩
+        (length prefix +ℕ 11 +ℕ the-len-f) +ℕ 1
+          ≡⟨ +-assoc (length prefix +ℕ 11) the-len-f 1 ⟩
+        (length prefix +ℕ 11) +ℕ (the-len-f +ℕ 1)
+          ≡⟨ cong ((length prefix +ℕ 11) +ℕ_) (+-comm the-len-f 1) ⟩
+        (length prefix +ℕ 11) +ℕ (1 +ℕ the-len-f)
+          ≡⟨ sym (+-assoc (length prefix +ℕ 11) 1 the-len-f) ⟩
+        (length prefix +ℕ 11 +ℕ 1) +ℕ the-len-f
+          ≡⟨ cong (_+ℕ the-len-f) (+-assoc (length prefix) 11 1) ⟩
+        (length prefix +ℕ 12) +ℕ the-len-f
+          ≡⟨ +-assoc (length prefix) 12 the-len-f ⟩
+        length prefix +ℕ (12 +ℕ the-len-f)
+          ≡⟨ refl ⟩
+        length prefix +ℕ compile-length (curry f)
+          ∎
+
+      -- Memory at new-sp still contains encode x (preserved through s3-s-final)
+      -- s3 and s4 write to new-sp+8, not new-sp
+      -- s5, s6, s-final don't modify memory
+      mem-env-final : readMem (memory s-final) new-sp ≡ just (encode x)
+      mem-env-final = trans
+        (trans (trans (trans mem-s4-env mem-s5-env) mem-s6-env) mem-sfinal-env)
+        mem-env
+        where
+          mem-s4-env : readMem (memory s-final) new-sp ≡ readMem (memory s4) new-sp
+          mem-s4-env = refl  -- memory unchanged s4 → s5 → s6 → s-final
+
+          mem-s5-env : readMem (memory s4) new-sp ≡ readMem (memory s3) new-sp
+          mem-s5-env = readMem-writeMem-diff-8-rev (memory s3) new-sp (readReg (regs s3) x9)
+
+          mem-s6-env : readMem (memory s3) new-sp ≡ readMem (memory s2) new-sp
+          mem-s6-env = refl  -- memory unchanged in s3 (adr doesn't write memory)
+
+          mem-sfinal-env : readMem (memory s2) new-sp ≡ readMem (memory s2) new-sp
+          mem-sfinal-env = refl
+
+      -- Use encode-closure-construct to derive that new-sp = encode (eval (curry f) x)
+      encode-curry-result : new-sp ≡ encode {B ⇒ C} (eval (curry f) x)
+      encode-curry-result = encode-closure-construct f x new-sp (memory s-final) mem-env-final
+
+      -- x0 in s-final = new-sp = encode (eval (curry f) x)
+      x0-final : readReg (regs s-final) x0 ≡ encode {B ⇒ C} (eval (curry f) x)
+      x0-final = trans x0-sfinal-eq encode-curry-result
+        where
+          -- x0 unchanged from s5 through s-final (b and label don't modify registers)
+          x0-sfinal-eq : readReg (regs s-final) x0 ≡ new-sp
+          x0-sfinal-eq = x0-s5
+
+      -- Register preservation: x20, x21, x29, x30 unchanged
+      x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+      x20-final = trans (readReg-writeReg-x0-x20 (regs s4) (readSP (regs s4)))
+                   (trans (readReg-writeReg-x9-x20 (regs s2) (pc s2 +ℕ 4))
+                     (trans (readReg-writeSP (regs s) x20 new-sp) refl))
+
+      x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+      x21-final = trans (readReg-writeReg-x0-x21 (regs s4) (readSP (regs s4)))
+                   (trans (readReg-writeReg-x9-x21 (regs s2) (pc s2 +ℕ 4))
+                     (trans (readReg-writeSP (regs s) x21 new-sp) refl))
+
+      x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+      x29-final = trans (readReg-writeReg-x0-x29 (regs s4) (readSP (regs s4)))
+                   (trans (readReg-writeReg-x9-x29 (regs s2) (pc s2 +ℕ 4))
+                     (trans (readReg-writeSP (regs s) x29 new-sp) refl))
+
+      x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+      x30-final = trans (readReg-writeReg-x0-x30 (regs s4) (readSP (regs s4)))
+                   (trans (readReg-writeReg-x9-x30 (regs s2) (pc s2 +ℕ 4))
+                     (trans (readReg-writeSP (regs s) x30 new-sp) refl))
+
+      -- SP preservation: new-sp = orig-sp - 16 ≤ orig-sp
+      sp-final : readSP (regs s-final) ≤ readSP (regs s)
+      sp-final = subst₂ _≤_ sp-sfinal-eq refl (m∸n≤m orig-sp 16)
+        where
+          sp-sfinal-eq : readSP (regs s-final) ≡ new-sp
+          sp-sfinal-eq = trans (readSP-writeReg (regs s4) x0 (readSP (regs s4)))
+                           (trans (readSP-writeReg (regs s2) x9 (pc s2 +ℕ 4)) sp2)
+
+      -- Memory preservation: addresses at x21, x29, x29+8 unchanged
+      -- Curry only writes to new-sp and new-sp+8, which are below the original sp
+      postulate
         mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
         mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
         mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-        -- Invariants
-        stack-inv-final : StackInvariant s-final
-        x29-inv-final : X29Invariant s-final
-        sp>16-final : readSP (regs s-final) > 16
+
+      -- Invariants: use sp-bound-after-stack-op for sp>16
+      stack-inv-final : StackInvariant s-final
+      stack-inv-final = stack-inv-preserved-sp-decreased s s-final stack-inv x21-final sp-final
+
+      x29-inv-final : X29Invariant s-final
+      x29-inv-final = x29-inv-preserved-sp-decreased s s-final x29-inv x29-final sp-final
+
+      sp>16-final : readSP (regs s-final) > 16
+      sp>16-final = sp-bound-after-stack-op s-final
 
       curry-result : IRStarResult (curry f) prog s s-final x (length prefix)
       curry-result = record
