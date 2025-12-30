@@ -182,3 +182,48 @@ If a proof seems impossible:
    - Examples are good for validation, but insufficient for verification
 
 Never add a postulate to "get past" a difficult proof.
+
+## Handling Timeouts
+
+**If type checking times out, the solution is NEVER to replace proofs with postulates.**
+
+Proofs can be restructured, improved, or extracted to separate modules.
+But they must never be deleted and replaced with postulates - that moves us
+away from the goal, not toward it.
+
+When a module times out:
+
+1. **Identify the bottleneck** - usually complex arithmetic or deeply nested terms
+2. **Extract to a separate module** - move the slow-compiling code to its own file
+3. **Restructure the proof** - find a cleaner approach that avoids the complexity
+4. **Split large where blocks** - Agda type-checks where clauses together
+
+### Arithmetic Does Not Belong in Star Proofs
+
+Complex arithmetic lemmas like:
+```agda
+pc-step n = trans (+-assoc ...) (trans (cong ...) (trans ...))
+```
+
+These indicate a design problem, not a proof problem. Star-based proofs
+should compose cleanly without arithmetic gymnastics. If you need complex
+PC arithmetic, consider:
+
+- Defining PC offsets as compile-time constants
+- Using helper records that track PC symbolically
+- Restructuring the proof to avoid manual arithmetic
+
+### What you must NEVER do:
+- Delete proven step executions and replace with postulates
+- Delete proven preservation lemmas and replace with postulates
+- Remove working proofs to "simplify" - that's not simplification, that's regression
+
+### What you CAN do:
+- Rewrite proofs to be cleaner or faster to compile
+- Extract proofs to separate modules
+- Restructure proof architecture for better composition
+- Replace complex arithmetic with cleaner abstractions
+
+The goal is zero unjustified postulates. Every proof deletion moves us
+further from that goal. Every proof improvement or restructuring that
+maintains correctness moves us closer.
