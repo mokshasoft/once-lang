@@ -265,6 +265,14 @@ malonzo:
 	@echo "Generated Haskell files in _build/malonzo/"
 	@echo "Entry point: MAlonzo.Code.Once.Compile"
 
+.PHONY: malonzo-typecheck
+malonzo-typecheck:
+	@echo "Extracting verified type checker via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
+	@echo "Generated Haskell files in _build/malonzo/"
+	@echo "Entry point: MAlonzo.Code.Once.TypeCheck"
+
 .PHONY: emit
 emit:
 	@echo "Type-checking assembly emission modules..."
