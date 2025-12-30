@@ -5,3 +5,6 @@ result
 # Agda build artifacts
 formal/_build/
 *.agdai
+
+# Reference code
+.refs
