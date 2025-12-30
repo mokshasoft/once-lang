@@ -294,51 +294,16 @@ arith-pair = solve 2 (λ a b → con 2 :+ (a :+ (con 2 :+ (b :+ con 2)))
 
 **Quick check**: Before trying `refl`, look at every `+` in your expression. If ANY has an abstract variable as its first (left) argument, `refl` won't work.
 
-### Use arithmetic lemmas for large number comparisons (CRITICAL for performance!)
+### Arithmetic lemmas for large number comparisons
 
-**Problem**: Proving `17 ≤ 2147418112` (or similar large number comparisons) by structural induction is infeasible - Agda would need billions of reduction steps.
+**Note**: This technique does not follow the Star-based approach and should only be used when necessary for large constant comparisons.
 
-**Solution**: Use `m≤m+n` from `Data.Nat.Properties` which proves `m ≤ m + n` for ANY `n` in O(1):
+For proofs like `17 ≤ 2147418112`, use `m≤m+n` from `Data.Nat.Properties` instead of structural induction:
 
 ```agda
-open import Data.Nat.Properties using (m≤m+n)
-
--- BAD: Would take forever (structural induction on 2147418112)
--- stackBase>16 : 17 ≤ 0x7FFF0000
--- stackBase>16 = s≤s (s≤s ... z≤n)  -- 17 nested s≤s, then normalize RHS
-
--- GOOD: O(1) proof using arithmetic lemma
--- Key insight: 0x7FFF0000 = 2147418112 = 17 + 2147418095
 stackBase>16 : 17 ≤ 0x7FFF0000
-stackBase>16 = m≤m+n 17 2147418095  -- Instant!
+stackBase>16 = m≤m+n 17 2147418095  -- O(1), not billions of s≤s steps
 ```
-
-**Why it works**:
-1. `m≤m+n` proves `m ≤ m + n` without inspecting `n`
-2. Agda computes `17 + 2147418095 = 2147418112 = 0x7FFF0000` (equality by normalization)
-3. So `m≤m+n 17 2147418095` has type `17 ≤ 0x7FFF0000`
-
-**Other useful arithmetic lemmas**:
-- `m≤n+m` : `m ≤ n + m`
-- `m≤m*n` : `m ≤ m * n` (when n ≥ 1)
-- `m<m+n` : `m < m + suc n`
-- `≤-trans` : Chain inequalities
-
-**TODO: Audit codebase for this pattern**. Any proof involving:
-- Large constants (addresses, stack sizes, fuel values)
-- Comparisons like `n > 16`, `n ≤ 10000`, `addr₁ ≢ addr₂`
-
-...should use arithmetic lemmas instead of structural induction. This can dramatically speed up type-checking.
-
-**Example applications**:
-- Stack base comparisons: `rsp > 16` where `rsp` starts at `0x7FFF0000`
-- Fuel bounds: `compile-length ir ≤ 10000`
-- Address disjointness: proving `addr₁ ≢ addr₂` via `addr₁ < addr₂`
-
-**Files to audit**:
-- `Once/Backend/X86/Correct.agda` - main x86 proofs
-- `Once/Backend/AArch64/Correct.agda` - AArch64 proofs (when proven)
-- Any file using `s≤s`/`z≤n` chains with constants > 100
 
 ### Use `mutual` for mutually recursive proofs
 
@@ -381,6 +346,50 @@ postulate
 ```
 
 This is provable in Cubical Agda if a constructive proof is needed.
+
+## Typechecker Performance
+
+### Replace deeply nested tuple projections with records
+
+**Problem**: Functions returning many values as nested tuples cause typechecker resource exhaustion. Deeply nested `proj₁`/`proj₂` chains (10+ levels) create exponential unification work.
+
+**Symptom**: Typechecking crashes with memory exhaustion or hangs indefinitely, even though the code is correct.
+
+**Solution**: Define record types for multi-value returns and use record field access instead of projections.
+
+```agda
+-- BAD: 11 nested projections, crashes typechecker
+pair-setup-star : ... → State × Star × halted-pf × pc-pf × a0-pf × s1-pf × sp-pf × s2-pf × ra-pf × mem-s1-pf × mem-s2-pf
+
+-- Extracting values requires deep projection chains:
+s-setup = proj₁ setup-result
+star-setup = proj₁ (proj₂ setup-result)
+mem-s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+
+-- GOOD: Record type, efficient typechecking
+record PairSetupResult (prog : Program) (s s' : State) ... : Set where
+  field
+    star-setup   : Star prog s s'
+    h-setup      : halted s' ≡ false
+    pc-setup     : pc s' ≡ offset +ℕ 5
+    a0-setup     : readReg (regs s') a0 ≡ x-enc
+    -- ... remaining fields
+
+-- Clean field access via module:
+private module SetupR = PairSetupResult (proj₂ setup-result)
+star-setup = SetupR.star-setup
+h-setup = SetupR.h-setup
+```
+
+**When to apply**: Any helper function returning 6+ values should use a record. The RISC-V MutualIR refactoring replaced ~80 nested projections across Pair.agda and Case.agda, reducing typechecking from "crashes" to ~60 seconds.
+
+### Timeout guidelines
+
+From `proof-instructions.md`:
+- Single file: `timeout 300 make agda MODULE=Once/Backend/X86/Correct/IR/Pair`
+- Full backend: `timeout 900 make riscv`
+
+**If typechecking times out, refactor.** Long compile times indicate the proof structure needs simplification.
 
 ## Build System
 

@@ -64,15 +64,21 @@ open import Once.Backend.RiscV64.Correct.IR.Compose using (module ComposeContext
 -- Import extracted pair helpers
 open import Once.Backend.RiscV64.Correct.IR.Pair
   using (PairContext; make-pair-context;
+         PairSetupResult; PairMiddleResult; PairFinalResult;
          pair-setup-star; pair-middle-star; pair-final-star)
-open import Once.Backend.RiscV64.Correct.IR.Pair using (module PairContext)
+open import Once.Backend.RiscV64.Correct.IR.Pair
+  using (module PairContext; module PairSetupResult; module PairMiddleResult; module PairFinalResult)
 
 -- Import extracted case helpers
 open import Once.Backend.RiscV64.Correct.IR.Case
   using (CaseContext; make-case-context;
+         CaseDispatchLeftResult; CaseDispatchRightResult;
+         CaseLeftJumpResult; CaseRightEndResult;
          case-dispatch-left-star; case-dispatch-right-star;
          case-left-jump-star; case-right-end-star)
-open import Once.Backend.RiscV64.Correct.IR.Case using (module CaseContext)
+open import Once.Backend.RiscV64.Correct.IR.Case
+  using (module CaseContext; module CaseDispatchLeftResult; module CaseDispatchRightResult;
+         module CaseLeftJumpResult; module CaseRightEndResult)
 
 -- Import extracted curry proof
 open import Once.Backend.RiscV64.Correct.IR.Curry using (run-curry-star)
@@ -238,6 +244,8 @@ mutual
 
   -- Curry: use run-curry-star from IR/Curry.agda
   -- StackDepth (curry f) = 16 + StackDepth f, but curry only allocates 16 bytes
+  -- TODO: Replace curry-output-wf postulate with proven WF from run-curry-star-with-wf
+  --       This requires refactoring to avoid type-checking timeout.
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound-16
     where
@@ -373,17 +381,18 @@ mutual
       -- =====================================================================
       setup-result = pair-setup-star f g prefix suffix x s h-false pc-eq a0-eq 32≤sp
       s-setup = proj₁ setup-result
-      star-setup = proj₁ (proj₂ setup-result)
-      h-setup = proj₁ (proj₂ (proj₂ setup-result))
-      pc-setup' = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
-      a0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-      sp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      mem-s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
-      mem-s2-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      mem-preserved-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      private module SetupR = PairSetupResult (proj₂ setup-result)
+      star-setup = SetupR.star-setup
+      h-setup = SetupR.h-setup
+      pc-setup' = SetupR.pc-setup
+      a0-setup = SetupR.a0-setup
+      s1-setup = SetupR.s1-setup
+      sp-setup = SetupR.sp-setup
+      s2-setup = SetupR.s2-setup
+      ra-setup = SetupR.ra-setup
+      mem-s1-setup = SetupR.mem-s1-setup
+      mem-s2-setup = SetupR.mem-s2-setup
+      mem-preserved-setup = SetupR.mem-preserved-setup
 
       -- PC for f: offset + 5 = length prefix-f
       pc-for-f : pc s-setup ≡ length prefix-f
@@ -433,18 +442,19 @@ mutual
       middle-result = pair-middle-star f g prefix suffix x orig-sp sf (ir-halted rf) pc-for-mid
                         (ir-a0 rf) s1-sf 32≤sp s2-sf
       s-mid = proj₁ middle-result
-      star-mid = proj₁ (proj₂ middle-result)
-      h-mid = proj₁ (proj₂ (proj₂ middle-result))
-      pc-mid' = proj₁ (proj₂ (proj₂ (proj₂ middle-result)))
-      a0-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
-      s1-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
-      sp-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
-      s2-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))
-      ra-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))))
-      mem-f-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))
-      mem-s2+16-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))))))
-      mem-s2+24-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))
-      mem-preserved-mid = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))))))
+      private module MiddleR = PairMiddleResult (proj₂ middle-result)
+      star-mid = MiddleR.star-mid
+      h-mid = MiddleR.h-mid
+      pc-mid' = MiddleR.pc-mid
+      a0-mid = MiddleR.a0-mid
+      s1-mid = MiddleR.s1-mid
+      sp-mid = MiddleR.sp-mid
+      s2-mid = MiddleR.s2-mid
+      ra-mid = MiddleR.ra-mid
+      mem-f-stored = MiddleR.mem-f-stored
+      mem-s2+16-mid = MiddleR.mem-s2+16-mid
+      mem-s2+24-mid = MiddleR.mem-s2+24-mid
+      mem-preserved-mid = MiddleR.mem-preserved-mid
 
       -- =====================================================================
       -- Phase 4: Execute g with IH
@@ -694,15 +704,16 @@ mutual
       final-phase = pair-final-star f g prefix suffix x orig-s1 orig-s2 orig-sp sg (ir-halted rg)
                        pc-for-final a0-sg mem-frame-sg mem-s1-sg mem-s2-sg 32≤sp s2-sg
       s-final = proj₁ final-phase
-      star-final = proj₁ (proj₂ final-phase)
-      h-final = proj₁ (proj₂ (proj₂ final-phase))
-      pc-final' = proj₁ (proj₂ (proj₂ (proj₂ final-phase)))
-      a0-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))
-      s1-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase)))))
-      s2-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))
-      ra-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase)))))))
-      sp-final' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))
-      mem-preserved-final' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ final-phase))))))))
+      private module FinalR = PairFinalResult (proj₂ final-phase)
+      star-final = FinalR.star-final
+      h-final = FinalR.h-final
+      pc-final' = FinalR.pc-final
+      a0-final' = FinalR.a0-final
+      s1-final' = FinalR.s1-final
+      s2-final' = FinalR.s2-final
+      ra-final' = FinalR.ra-final
+      sp-final' = FinalR.sp-final
+      mem-preserved-final' = FinalR.mem-preserved-final
 
       -- =====================================================================
       -- Assemble final result
@@ -1001,16 +1012,17 @@ mutual
       -- Phase 1: Dispatch (3 instructions, branch NOT taken)
       dispatch-result = case-dispatch-left-star f g prefix suffix a s h-false pc-eq a0-eq
       s-dispatch = proj₁ dispatch-result
-      star-dispatch = proj₁ (proj₂ dispatch-result)
-      h-dispatch = proj₁ (proj₂ (proj₂ dispatch-result))
-      pc-dispatch = proj₁ (proj₂ (proj₂ (proj₂ dispatch-result)))
-      a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
-      t0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
-      s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
-      s2-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
-      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
-      sp-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))))
-      mem-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))))
+      private module DispatchLR = CaseDispatchLeftResult (proj₂ dispatch-result)
+      star-dispatch = DispatchLR.star-dispatch
+      h-dispatch = DispatchLR.h-dispatch
+      pc-dispatch = DispatchLR.pc-dispatch
+      a0-dispatch = DispatchLR.a0-dispatch
+      t0-dispatch = DispatchLR.t0-dispatch
+      s1-dispatch = DispatchLR.s1-dispatch
+      s2-dispatch = DispatchLR.s2-dispatch
+      ra-dispatch = DispatchLR.ra-dispatch
+      sp-dispatch = DispatchLR.sp-dispatch
+      mem-dispatch = DispatchLR.mem-dispatch
 
       -- Phase 2: Execute f (IH call)
       -- PC for f: need length prefix-f
@@ -1054,15 +1066,16 @@ mutual
       -- Phase 3: Jump over g (2 instructions)
       jump-result = case-left-jump-star f g prefix suffix s-after-f-raw h-after-f pc-after-f
       s-final = proj₁ jump-result
-      star-jump = proj₁ (proj₂ jump-result)
-      h-final = proj₁ (proj₂ (proj₂ jump-result))
-      pc-jump = proj₁ (proj₂ (proj₂ (proj₂ jump-result)))
-      a0-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))
-      s1-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))
-      s2-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))
-      ra-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result)))))))
-      sp-jump = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))))
-      mem-jump = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jump-result))))))))
+      private module JumpR = CaseLeftJumpResult (proj₂ jump-result)
+      star-jump = JumpR.star-jump
+      h-final = JumpR.h-jump
+      pc-jump = JumpR.pc-jump
+      a0-jump = JumpR.a0-jump
+      s1-jump = JumpR.s1-jump
+      s2-jump = JumpR.s2-jump
+      ra-jump = JumpR.ra-jump
+      sp-jump = JumpR.sp-jump
+      mem-jump = JumpR.mem-jump
 
       -- Compose all stars
       star-all : Star prog s s-final
@@ -1163,15 +1176,16 @@ mutual
       -- Phase 1: Dispatch (4 instructions, branch TAKEN + landing label)
       dispatch-result = case-dispatch-right-star f g prefix suffix b s h-false pc-eq a0-eq
       s-dispatch = proj₁ dispatch-result
-      star-dispatch = proj₁ (proj₂ dispatch-result)
-      h-dispatch = proj₁ (proj₂ (proj₂ dispatch-result))
-      pc-dispatch = proj₁ (proj₂ (proj₂ (proj₂ dispatch-result)))
-      a0-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))
-      s1-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))
-      s2-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))
-      ra-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result)))))))
-      sp-dispatch = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
-      mem-dispatch = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ dispatch-result))))))))
+      private module DispatchRR = CaseDispatchRightResult (proj₂ dispatch-result)
+      star-dispatch = DispatchRR.star-dispatch
+      h-dispatch = DispatchRR.h-dispatch
+      pc-dispatch = DispatchRR.pc-dispatch
+      a0-dispatch = DispatchRR.a0-dispatch
+      s1-dispatch = DispatchRR.s1-dispatch
+      s2-dispatch = DispatchRR.s2-dispatch
+      ra-dispatch = DispatchRR.ra-dispatch
+      sp-dispatch = DispatchRR.sp-dispatch
+      mem-dispatch = DispatchRR.mem-dispatch
 
       -- Phase 2: Execute g (IH call)
       pc-for-g : pc s-dispatch ≡ length prefix-g
@@ -1214,15 +1228,16 @@ mutual
       -- Phase 3: Execute end-label (1 instruction)
       end-result = case-right-end-star f g prefix suffix s-after-g-raw h-after-g pc-after-g
       s-final = proj₁ end-result
-      star-end = proj₁ (proj₂ end-result)
-      h-final = proj₁ (proj₂ (proj₂ end-result))
-      pc-end = proj₁ (proj₂ (proj₂ (proj₂ end-result)))
-      a0-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))
-      s1-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))
-      s2-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))
-      ra-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result)))))))
-      sp-end = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
-      mem-end = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ end-result))))))))
+      private module EndR = CaseRightEndResult (proj₂ end-result)
+      star-end = EndR.star-end
+      h-final = EndR.h-end
+      pc-end = EndR.pc-end
+      a0-end = EndR.a0-end
+      s1-end = EndR.s1-end
+      s2-end = EndR.s2-end
+      ra-end = EndR.ra-end
+      sp-end = EndR.sp-end
+      mem-end = EndR.mem-end
 
       -- Compose all stars
       star-all : Star prog s s-final

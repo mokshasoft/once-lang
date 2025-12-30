@@ -63,6 +63,77 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- Result Records for Case Phases
+--
+-- These records replace nested tuple returns to improve typechecking
+-- performance. Using records allows Agda to handle field access more
+-- efficiently than deeply nested proj₁/proj₂ chains.
+------------------------------------------------------------------------
+
+-- | Result of case-dispatch-left-star: 3 instructions for left path dispatch
+-- Entry: a0 = encode (inj₁ a), branch NOT taken (tag=0)
+-- Exit: a0 = encode a, t0 = 0, pc advanced by 3
+record CaseDispatchLeftResult (prog : Program) (s s' : State)
+                              (offset : ℕ) (a-enc : Word)
+                              (orig-s1 orig-s2 orig-ra : Word) (orig-sp : ℕ) : Set where
+  field
+    star-dispatch : Star prog s s'
+    h-dispatch    : halted s' ≡ false
+    pc-dispatch   : pc s' ≡ offset +ℕ 3
+    a0-dispatch   : readReg (regs s') a0 ≡ a-enc
+    t0-dispatch   : readReg (regs s') t0 ≡ 0
+    s1-dispatch   : readReg (regs s') s1 ≡ orig-s1
+    s2-dispatch   : readReg (regs s') s2 ≡ orig-s2
+    ra-dispatch   : readReg (regs s') ra ≡ orig-ra
+    sp-dispatch   : readReg (regs s') sp ≡ orig-sp
+    mem-dispatch  : memory s' ≡ memory s
+
+-- | Result of case-dispatch-right-star: 4-5 instructions for right path dispatch
+-- Entry: a0 = encode (inj₂ b), branch TAKEN (tag≠0)
+-- Exit: a0 = encode b, pc jumps to right branch
+record CaseDispatchRightResult (prog : Program) (s s' : State)
+                               (target-pc : ℕ) (b-enc : Word)
+                               (orig-s1 orig-s2 orig-ra : Word) (orig-sp : ℕ) : Set where
+  field
+    star-dispatch : Star prog s s'
+    h-dispatch    : halted s' ≡ false
+    pc-dispatch   : pc s' ≡ target-pc
+    a0-dispatch   : readReg (regs s') a0 ≡ b-enc
+    s1-dispatch   : readReg (regs s') s1 ≡ orig-s1
+    s2-dispatch   : readReg (regs s') s2 ≡ orig-s2
+    ra-dispatch   : readReg (regs s') ra ≡ orig-ra
+    sp-dispatch   : readReg (regs s') sp ≡ orig-sp
+    mem-dispatch  : memory s' ≡ memory s
+
+-- | Result of case-left-jump-star: jump past g after f completes
+record CaseLeftJumpResult (prog : Program) (s s' : State)
+                          (target-pc : ℕ) : Set where
+  field
+    star-jump  : Star prog s s'
+    h-jump     : halted s' ≡ false
+    pc-jump    : pc s' ≡ target-pc
+    a0-jump    : readReg (regs s') a0 ≡ readReg (regs s) a0
+    s1-jump    : readReg (regs s') s1 ≡ readReg (regs s) s1
+    s2-jump    : readReg (regs s') s2 ≡ readReg (regs s) s2
+    ra-jump    : readReg (regs s') ra ≡ readReg (regs s) ra
+    sp-jump    : readReg (regs s') sp ≡ readReg (regs s) sp
+    mem-jump   : memory s' ≡ memory s
+
+-- | Result of case-right-end-star: nop at end of right path
+record CaseRightEndResult (prog : Program) (s s' : State)
+                          (target-pc : ℕ) : Set where
+  field
+    star-end  : Star prog s s'
+    h-end     : halted s' ≡ false
+    pc-end    : pc s' ≡ target-pc
+    a0-end    : readReg (regs s') a0 ≡ readReg (regs s) a0
+    s1-end    : readReg (regs s') s1 ≡ readReg (regs s) s1
+    s2-end    : readReg (regs s') s2 ≡ readReg (regs s) s2
+    ra-end    : readReg (regs s') ra ≡ readReg (regs s) ra
+    sp-end    : readReg (regs s') sp ≡ readReg (regs s) sp
+    mem-end   : memory s' ≡ memory s
+
+------------------------------------------------------------------------
 -- Helper: snoc-append pushes ++ into snoc lists
 ------------------------------------------------------------------------
 
@@ -255,18 +326,22 @@ case-dispatch-left-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
   halted s ≡ false →
   pc s ≡ offset →
   readReg (regs s) a0 ≡ encode {A + B} (inj₁ a) →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ offset +ℕ 3
-          × readReg (regs s') a0 ≡ encode a
-          × readReg (regs s') t0 ≡ 0
-          × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') s2 ≡ readReg (regs s) s2
-          × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp
-          × memory s' ≡ memory s)
+  ∃[ s' ] CaseDispatchLeftResult prog s s' offset (encode a)
+            (readReg (regs s) s1) (readReg (regs s) s2) (readReg (regs s) ra)
+            (readReg (regs s) sp)
 case-dispatch-left-star {_} {A} {B} {C} f g prefix suffix a s h-false pc-eq a0-eq =
-  st3 , star-all , h3 , pc3 , a0-st3 , t0-st3 , s1-st3 , s2-st3 , ra-st3 , sp-st3 , refl
+  st3 , record
+    { star-dispatch = star-all
+    ; h-dispatch = h3
+    ; pc-dispatch = pc3
+    ; a0-dispatch = a0-st3
+    ; t0-dispatch = t0-st3
+    ; s1-dispatch = s1-st3
+    ; s2-dispatch = s2-st3
+    ; ra-dispatch = ra-st3
+    ; sp-dispatch = sp-st3
+    ; mem-dispatch = refl
+    }
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -434,17 +509,21 @@ case-dispatch-right-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
   halted s ≡ false →
   pc s ≡ offset →
   readReg (regs s) a0 ≡ encode {A + B} (inj₂ b) →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ offset +ℕ 5 +ℕ len-f
-          × readReg (regs s') a0 ≡ encode b
-          × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') s2 ≡ readReg (regs s) s2
-          × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp
-          × memory s' ≡ memory s)
+  ∃[ s' ] CaseDispatchRightResult prog s s' (offset +ℕ 5 +ℕ len-f) (encode b)
+            (readReg (regs s) s1) (readReg (regs s) s2) (readReg (regs s) ra)
+            (readReg (regs s) sp)
 case-dispatch-right-star {_} {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-eq =
-  st4 , star-all , h4 , pc4 , a0-st4 , s1-st4 , s2-st4 , ra-st4 , sp-st4 , refl
+  st4 , record
+    { star-dispatch = star-all
+    ; h-dispatch = h4
+    ; pc-dispatch = pc4
+    ; a0-dispatch = a0-st4
+    ; s1-dispatch = s1-st4
+    ; s2-dispatch = s2-st4
+    ; ra-dispatch = ra-st4
+    ; sp-dispatch = sp-st4
+    ; mem-dispatch = refl
+    }
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -748,17 +827,19 @@ case-left-jump-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
   in
   halted s ≡ false →
   pc s ≡ jump-offset →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ length prefix +ℕ 6 +ℕ len-f +ℕ len-g
-          × readReg (regs s') a0 ≡ readReg (regs s) a0
-          × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') s2 ≡ readReg (regs s) s2
-          × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp
-          × memory s' ≡ memory s)
+  ∃[ s' ] CaseLeftJumpResult prog s s' (length prefix +ℕ 6 +ℕ len-f +ℕ len-g)
 case-left-jump-star {_} {A} {B} {C} f g prefix suffix s h-false pc-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , s2-st2 , ra-st2 , sp-st2 , refl
+  st2 , record
+    { star-jump = star-all
+    ; h-jump = h2
+    ; pc-jump = pc2
+    ; a0-jump = a0-st2
+    ; s1-jump = s1-st2
+    ; s2-jump = s2-st2
+    ; ra-jump = ra-st2
+    ; sp-jump = sp-st2
+    ; mem-jump = refl
+    }
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx
@@ -1008,17 +1089,19 @@ case-right-end-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
   in
   halted s ≡ false →
   pc s ≡ end-offset →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ length prefix +ℕ 6 +ℕ len-f +ℕ len-g
-          × readReg (regs s') a0 ≡ readReg (regs s) a0
-          × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') s2 ≡ readReg (regs s) s2
-          × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') sp ≡ readReg (regs s) sp
-          × memory s' ≡ memory s)
+  ∃[ s' ] CaseRightEndResult prog s s' (length prefix +ℕ 6 +ℕ len-f +ℕ len-g)
 case-right-end-star {_} {A} {B} {C} f g prefix suffix s h-false pc-eq =
-  st1 , star-single h-false step0 , h1 , pc1 , a0-st1 , s1-st1 , s2-st1 , ra-st1 , sp-st1 , refl
+  st1 , record
+    { star-end = star-single h-false step0
+    ; h-end = h1
+    ; pc-end = pc1
+    ; a0-end = a0-st1
+    ; s1-end = s1-st1
+    ; s2-end = s2-st1
+    ; ra-end = ra-st1
+    ; sp-end = sp-st1
+    ; mem-end = refl
+    }
   where
     ctx = make-case-context f g prefix suffix
     open CaseContext ctx

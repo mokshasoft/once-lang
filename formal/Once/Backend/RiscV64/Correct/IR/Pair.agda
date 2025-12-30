@@ -58,6 +58,67 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- Result Records for Pair Phases
+--
+-- These records replace nested tuple returns to improve typechecking
+-- performance. Using records allows Agda to handle field access more
+-- efficiently than deeply nested proj₁/proj₂ chains.
+------------------------------------------------------------------------
+
+-- | Result of pair-setup-star: 5 instructions executed
+-- Entry: pc = offset, a0 = encode x, 32 ≤ sp
+-- Exit: pc = offset + 5, sp = orig-sp - 32, s1 = encode x, s2 = frame pointer
+record PairSetupResult (prog : Program) (s s' : State)
+                       (offset : ℕ) (x-enc orig-s1 orig-s2 orig-ra : Word) (orig-sp : ℕ) : Set where
+  field
+    star-setup    : Star prog s s'
+    h-setup       : halted s' ≡ false
+    pc-setup      : pc s' ≡ offset +ℕ 5
+    a0-setup      : readReg (regs s') a0 ≡ x-enc
+    s1-setup      : readReg (regs s') s1 ≡ x-enc
+    sp-setup      : readReg (regs s') sp ≡ orig-sp ∸ 32
+    s2-setup      : readReg (regs s') s2 ≡ orig-sp ∸ 32
+    ra-setup      : readReg (regs s') ra ≡ orig-ra
+    mem-s1-setup  : readMem (memory s') (readReg (regs s') s2 +ℕ 16) ≡ just orig-s1
+    mem-s2-setup  : readMem (memory s') (readReg (regs s') s2 +ℕ 24) ≡ just orig-s2
+    mem-preserved-setup : ∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory s) (orig-sp +ℕ n)
+
+-- | Result of pair-middle-star: 2 instructions executed
+-- Stores f's result at frame pointer, restores x to a0
+record PairMiddleResult (prog : Program) (sf s' : State)
+                        (mid-offset : ℕ) (x-enc f-result-enc : Word)
+                        (orig-sp : ℕ) : Set where
+  field
+    star-mid        : Star prog sf s'
+    h-mid           : halted s' ≡ false
+    pc-mid          : pc s' ≡ mid-offset +ℕ 2
+    a0-mid          : readReg (regs s') a0 ≡ x-enc
+    s1-mid          : readReg (regs s') s1 ≡ x-enc
+    sp-mid          : readReg (regs s') sp ≡ readReg (regs sf) sp
+    s2-mid          : readReg (regs s') s2 ≡ readReg (regs sf) s2
+    ra-mid          : readReg (regs s') ra ≡ readReg (regs sf) ra
+    mem-f-stored    : readMem (memory s') (readReg (regs sf) s2) ≡ just f-result-enc
+    mem-s2+16-mid   : readMem (memory s') (readReg (regs sf) s2 +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) s2 +ℕ 16)
+    mem-s2+24-mid   : readMem (memory s') (readReg (regs sf) s2 +ℕ 24) ≡ readMem (memory sf) (readReg (regs sf) s2 +ℕ 24)
+    mem-preserved-mid : ∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory sf) (orig-sp +ℕ n)
+
+-- | Result of pair-final-star: 5 instructions executed
+-- Stores g's result, constructs pair, restores s1 and s2
+record PairFinalResult (prog : Program) (sg s' : State)
+                       (final-offset : ℕ) (pair-enc orig-s1 orig-s2 : Word)
+                       (orig-sp : ℕ) : Set where
+  field
+    star-final      : Star prog sg s'
+    h-final         : halted s' ≡ false
+    pc-final        : pc s' ≡ final-offset +ℕ 5
+    a0-final        : readReg (regs s') a0 ≡ pair-enc
+    s1-final        : readReg (regs s') s1 ≡ orig-s1
+    s2-final        : readReg (regs s') s2 ≡ orig-s2
+    ra-final        : readReg (regs s') ra ≡ readReg (regs sg) ra
+    sp-final        : readReg (regs s') sp ≡ readReg (regs sg) sp
+    mem-preserved-final : ∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory sg) (orig-sp +ℕ n)
+
+------------------------------------------------------------------------
 -- Address Disjointness Lemmas
 --
 -- Key insight for pair memory preservation with frame pointer approach:
@@ -524,21 +585,23 @@ pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   pc s ≡ offset →
   readReg (regs s) a0 ≡ encode x →
   32 ≤ readReg (regs s) sp →  -- Stack bound precondition
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ offset +ℕ 5
-          × readReg (regs s') a0 ≡ encode x
-          × readReg (regs s') s1 ≡ encode x
-          × readReg (regs s') sp ≡ readReg (regs s) sp ∸ 32
-          × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 32  -- s2 = frame pointer
-          × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readMem (memory s') (readReg (regs s') s2 +ℕ 16) ≡ just (readReg (regs s) s1)
-          × readMem (memory s') (readReg (regs s') s2 +ℕ 24) ≡ just (readReg (regs s) s2)
-          -- Memory preservation at orig-sp and above (generic: for any n)
-          × (∀ n → readMem (memory s') (readReg (regs s) sp +ℕ n) ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)))
+  ∃[ s' ] PairSetupResult prog s s' offset (encode x)
+            (readReg (regs s) s1) (readReg (regs s) s2) (readReg (regs s) ra)
+            (readReg (regs s) sp)
 pair-setup-star {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bound =
-  st5 , star-all , h5 , pc5 , a0-st5 , s1-st5 , sp-st5 , s2-st5 , ra-st5 ,
-  mem-s1-saved , mem-s2-saved , mem-preserved-generic
+  st5 , record
+    { star-setup = star-all
+    ; h-setup = h5
+    ; pc-setup = pc5
+    ; a0-setup = a0-st5
+    ; s1-setup = s1-st5
+    ; sp-setup = sp-st5
+    ; s2-setup = s2-st5
+    ; ra-setup = ra-st5
+    ; mem-s1-setup = mem-s1-saved
+    ; mem-s2-setup = mem-s2-saved
+    ; mem-preserved-setup = mem-preserved-generic
+    }
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -836,7 +899,6 @@ pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
       mid-offset = length prefix +ℕ 5 +ℕ len-f
-      frame-ptr = readReg (regs sf) s2  -- frame pointer
   in
   halted sf ≡ false →
   pc sf ≡ mid-offset →
@@ -844,22 +906,22 @@ pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   readReg (regs sf) s1 ≡ encode x →
   32 ≤ orig-sp →  -- Stack bound precondition
   readReg (regs sf) s2 ≡ orig-sp ∸ 32 →  -- s2 = frame pointer
-  ∃[ s' ] (Star prog sf s'
-          × halted s' ≡ false
-          × pc s' ≡ mid-offset +ℕ 2
-          × readReg (regs s') a0 ≡ encode x
-          × readReg (regs s') s1 ≡ encode x
-          × readReg (regs s') sp ≡ readReg (regs sf) sp
-          × readReg (regs s') s2 ≡ readReg (regs sf) s2
-          × readReg (regs s') ra ≡ readReg (regs sf) ra
-          × readMem (memory s') (readReg (regs sf) s2) ≡ just (encode (eval f x))  -- store at frame pointer
-          × readMem (memory s') (readReg (regs sf) s2 +ℕ 16) ≡ readMem (memory sf) (readReg (regs sf) s2 +ℕ 16)
-          × readMem (memory s') (readReg (regs sf) s2 +ℕ 24) ≡ readMem (memory sf) (readReg (regs sf) s2 +ℕ 24)
-          -- Memory preservation at original sp and above (generic: for any n)
-          × (∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory sf) (orig-sp +ℕ n)))
+  ∃[ s' ] PairMiddleResult prog sf s' mid-offset (encode x) (encode (eval f x)) orig-sp
 pair-middle-star {_} {A} {B} {C} f g prefix suffix x orig-sp sf h-false pc-eq a0-eq s1-eq sp-bound frame-ptr-eq =
-  st2 , star-all , h2 , pc2 , a0-st2 , s1-st2 , sp-st2 , s2-st2 , ra-st2 , mem-st2 , mem-s2+16-st2 , mem-s2+24-st2 ,
-  mem-preserved-generic
+  st2 , record
+    { star-mid = star-all
+    ; h-mid = h2
+    ; pc-mid = pc2
+    ; a0-mid = a0-st2
+    ; s1-mid = s1-st2
+    ; sp-mid = sp-st2
+    ; s2-mid = s2-st2
+    ; ra-mid = ra-st2
+    ; mem-f-stored = mem-st2
+    ; mem-s2+16-mid = mem-s2+16-st2
+    ; mem-s2+24-mid = mem-s2+24-st2
+    ; mem-preserved-mid = mem-preserved-generic
+    }
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -1050,18 +1112,20 @@ pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   readMem (memory sg) (frame-ptr +ℕ 24) ≡ just orig-s2 →  -- saved s2
   32 ≤ orig-sp →  -- Stack bound precondition
   readReg (regs sg) s2 ≡ orig-sp ∸ 32 →  -- s2 = frame pointer
-  ∃[ s' ] (Star prog sg s'
-          × halted s' ≡ false
-          × pc s' ≡ final-offset +ℕ 5
-          × readReg (regs s') a0 ≡ encode (eval f x , eval g x)
-          × readReg (regs s') s1 ≡ orig-s1
-          × readReg (regs s') s2 ≡ orig-s2  -- s2 is restored!
-          × readReg (regs s') ra ≡ readReg (regs sg) ra
-          × readReg (regs s') sp ≡ readReg (regs sg) sp
-          -- Memory preservation at orig-sp and above (generic: for any n)
-          × (∀ n → readMem (memory s') (orig-sp +ℕ n) ≡ readMem (memory sg) (orig-sp +ℕ n)))
+  ∃[ s' ] PairFinalResult prog sg s' final-offset
+            (encode (eval f x , eval g x)) orig-s1 orig-s2 orig-sp
 pair-final-star {i} {A} {B} {C} f g prefix suffix x orig-s1 orig-s2 orig-sp sg h-false pc-eq a0-eq mem-f mem-s1 mem-s2 sp-bound frame-ptr-eq =
-  st5 , star-all , h5 , pc5 , a0-st5 , s1-st5 , s2-st5 , ra-st5 , sp-st5 , mem-preserved-generic
+  st5 , record
+    { star-final = star-all
+    ; h-final = h5
+    ; pc-final = pc5
+    ; a0-final = a0-st5
+    ; s1-final = s1-st5
+    ; s2-final = s2-st5
+    ; ra-final = ra-st5
+    ; sp-final = sp-st5
+    ; mem-preserved-final = mem-preserved-generic
+    }
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
