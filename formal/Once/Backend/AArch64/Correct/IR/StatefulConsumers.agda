@@ -47,10 +47,12 @@ open import Once.Backend.AArch64.Correct.StarBase
 open import Once.Backend.AArch64.Correct.MemoryValid
   using (PairAtS; InlAtS; InrAtS; fst-valid-s; snd-valid-s;
          tag-valid-inl-s; val-valid-inl-s; tag-valid-inr-s; val-valid-inr-s)
+open import Once.Backend.AArch64.Correct.CompileLength
+  using (compile-length-correct)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; +-assoc)
+open import Data.Nat.Properties using (≤-refl; +-assoc; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
@@ -1078,15 +1080,185 @@ run-case-inr-star-s f g prefix suffix addr-val addr-sum s
                                 (trans (sym (+-assoc (p +ℕ 5) 1 len-f))
                                        (cong (_+ℕ len-f) (+-assoc p 5 1))))
 
-    -- Fetch proofs - use postulates for now due to complex program structure
-    -- The proofs require reasoning about nested ++ which is tedious
+    -- Program structure for fetch proofs
+    -- compile-aarch64 [ f , g ] has this structure:
+    --   i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b ∷ i3 ∷ i4 ∷ code-g ++ end-label ∷ []
+    -- where ldr-left = ldr x0 (base+imm x0 8) (for inl path, skipped by inr)
+
+    ldr-left : Instr
+    ldr-left = ldr x0 (base+imm x0 8)
+
+    code-f : Program
+    code-f = compile-aarch64 f
+
+    code-g : Program
+    code-g = compile-aarch64 g
+
+    -- Inner code after the first 3 instructions
+    -- Matches structure: ldr-left ∷ code-f ++ b ∷ i3 ∷ i4 ∷ code-g ++ end-label ∷ []
+    case-inner-3 : Program
+    case-inner-3 = ldr-left ∷ code-f ++ b end-offset ∷ i3 ∷ i4 ∷ code-g ++ label end-label ∷ []
+
+    -- The case code = i0 ∷ i1 ∷ i2 ∷ case-inner-3
+    -- prog' = prefix ++ (i0 ∷ i1 ∷ i2 ∷ case-inner-3) ++ suffix
+    -- By (x ∷ xs) ++ ys = x ∷ (xs ++ ys):
+    --   = prefix ++ i0 ∷ ((i1 ∷ i2 ∷ case-inner-3) ++ suffix)
+
+    -- rest-after-* must include ++ suffix at the right level
+    rest-after-i0 : Program
+    rest-after-i0 = (i1 ∷ i2 ∷ case-inner-3) ++ suffix
+
+    rest-after-i1 : Program
+    rest-after-i1 = (i2 ∷ case-inner-3) ++ suffix
+
+    rest-after-i2 : Program
+    rest-after-i2 = case-inner-3 ++ suffix
+
+    -- For positions after the b.ne jump (positions 5+len-f onwards)
+    -- These are within case-inner-3, after skipping ldr-left and code-f and b
+    rest-after-i3 : Program
+    rest-after-i3 = (i4 ∷ code-g ++ label end-label ∷ []) ++ suffix
+
+    rest-after-i4 : Program
+    rest-after-i4 = (code-g ++ label end-label ∷ []) ++ suffix
+
+    -- prog' is definitionally equal to prog
+    prog' : Program
+    prog' = prefix ++ (i0 ∷ i1 ∷ i2 ∷ case-inner-3) ++ suffix
+
+    prog'-eq-prog : prog' ≡ prog
+    prog'-eq-prog = refl
+
+    -- prog' structure proofs
+    prog'-is-prefix-i0-rest : prog' ≡ prefix ++ i0 ∷ rest-after-i0
+    prog'-is-prefix-i0-rest = refl
+
+    -- fetch0 at position length prefix
+    fetch0' : fetch prog' (length prefix) ≡ just i0
+    fetch0' = fetch-at-prefix-end prefix i0 rest-after-i0
+
+    fetch0 : fetch prog (length prefix) ≡ just i0
+    fetch0 = subst (λ p → fetch p (length prefix) ≡ just i0) prog'-eq-prog fetch0'
+
+    -- fetch1 at position length prefix + 1
+    prefix1 : Program
+    prefix1 = prefix ++ i0 ∷ []
+
+    prog'-eq-1 : prog' ≡ prefix1 ++ i1 ∷ rest-after-i1
+    prog'-eq-1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ rest-after-i1))
+
+    len-prefix1 : length prefix1 ≡ length prefix +ℕ 1
+    len-prefix1 = length-++ prefix
+
+    fetch1'-helper : fetch (prefix1 ++ i1 ∷ rest-after-i1) (length prefix1) ≡ just i1
+    fetch1'-helper = fetch-at-prefix-end prefix1 i1 rest-after-i1
+
+    fetch1' : fetch prog' (length prefix +ℕ 1) ≡ just i1
+    fetch1' = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog'-eq-1) len-prefix1 fetch1'-helper
+
+    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
+    fetch1 = subst (λ p → fetch p (length prefix +ℕ 1) ≡ just i1) prog'-eq-prog fetch1'
+
+    -- fetch2 at position length prefix + 2
+    prefix2 : Program
+    prefix2 = prefix ++ i0 ∷ i1 ∷ []
+
+    prog'-eq-2 : prog' ≡ prefix2 ++ i2 ∷ rest-after-i2
+    prog'-eq-2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ rest-after-i2))
+
+    len-prefix2 : length prefix2 ≡ length prefix +ℕ 2
+    len-prefix2 = length-++ prefix
+
+    fetch2'-helper : fetch (prefix2 ++ i2 ∷ rest-after-i2) (length prefix2) ≡ just i2
+    fetch2'-helper = fetch-at-prefix-end prefix2 i2 rest-after-i2
+
+    fetch2' : fetch prog' (length prefix +ℕ 2) ≡ just i2
+    fetch2' = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog'-eq-2) len-prefix2 fetch2'-helper
+
+    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
+    fetch2 = subst (λ p → fetch p (length prefix +ℕ 2) ≡ just i2) prog'-eq-prog fetch2'
+
+    -- fetch3 at position length prefix + 5 + len-f (where b.ne lands)
+    -- Need prefix of length prefix + 5 + len-f
+    -- That's: prefix ++ i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b end-offset ∷ []
+    prefix3 : Program
+    prefix3 = prefix ++ i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b end-offset ∷ []
+
+    -- Length of prefix3 = length prefix + 5 + len-f
+    -- The inner list is: i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b ∷ []
+    -- = 4 + (len-f + 1) = 4 + (1 + len-f) = 5 + len-f
+    len-inner3 : length (i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b end-offset ∷ []) ≡ 5 +ℕ len-f
+    len-inner3 = cong (4 +ℕ_) (trans (length-++ code-f)
+                                      (trans (cong (_+ℕ 1) (compile-length-correct f))
+                                             (+-comm len-f 1)))
+
+    len-prefix3 : length prefix3 ≡ length prefix +ℕ 5 +ℕ len-f
+    len-prefix3 = trans (length-++ prefix)
+                        (trans (cong (length prefix +ℕ_) len-inner3)
+                               (sym (+-assoc (length prefix) 5 len-f)))
+
+    -- List associativity (mechanical - just list manipulation)
     postulate
-      fetch0 : fetch prog (length prefix) ≡ just i0
-      fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
-      fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
-      fetch3 : fetch prog (length prefix +ℕ 5 +ℕ len-f) ≡ just i3
-      fetch4 : fetch prog (length prefix +ℕ 6 +ℕ len-f) ≡ just i4
-      mem-val : readMem (memory s4) (readReg (regs s4) x0 +ℕ 8) ≡ just addr-val
+      prog'-eq-3 : prog' ≡ prefix3 ++ i3 ∷ rest-after-i3
+
+    fetch3'-helper : fetch (prefix3 ++ i3 ∷ rest-after-i3) (length prefix3) ≡ just i3
+    fetch3'-helper = fetch-at-prefix-end prefix3 i3 rest-after-i3
+
+    fetch3' : fetch prog' (length prefix +ℕ 5 +ℕ len-f) ≡ just i3
+    fetch3' = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog'-eq-3) len-prefix3 fetch3'-helper
+
+    fetch3 : fetch prog (length prefix +ℕ 5 +ℕ len-f) ≡ just i3
+    fetch3 = subst (λ p → fetch p (length prefix +ℕ 5 +ℕ len-f) ≡ just i3) prog'-eq-prog fetch3'
+
+    -- fetch4 at position length prefix + 6 + len-f
+    prefix4 : Program
+    prefix4 = prefix ++ i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b end-offset ∷ i3 ∷ []
+
+    -- Inner list: i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b ∷ i3 ∷ []
+    -- = 4 + length (code-f ++ b ∷ i3 ∷ [])
+    -- = 4 + len-f + 2 = 6 + len-f
+    len-inner4 : length (i0 ∷ i1 ∷ i2 ∷ ldr-left ∷ code-f ++ b end-offset ∷ i3 ∷ []) ≡ 6 +ℕ len-f
+    len-inner4 = cong (4 +ℕ_) (trans (length-++ code-f)
+                                      (trans (cong (_+ℕ 2) (compile-length-correct f))
+                                             (+-comm len-f 2)))
+
+    len-prefix4 : length prefix4 ≡ length prefix +ℕ 6 +ℕ len-f
+    len-prefix4 = trans (length-++ prefix)
+                        (trans (cong (length prefix +ℕ_) len-inner4)
+                               (sym (+-assoc (length prefix) 6 len-f)))
+
+    -- List associativity (mechanical - just list manipulation)
+    postulate
+      prog'-eq-4 : prog' ≡ prefix4 ++ i4 ∷ rest-after-i4
+
+    fetch4'-helper : fetch (prefix4 ++ i4 ∷ rest-after-i4) (length prefix4) ≡ just i4
+    fetch4'-helper = fetch-at-prefix-end prefix4 i4 rest-after-i4
+
+    fetch4' : fetch prog' (length prefix +ℕ 6 +ℕ len-f) ≡ just i4
+    fetch4' = subst₂ (λ p n → fetch p n ≡ just i4) (sym prog'-eq-4) len-prefix4 fetch4'-helper
+
+    fetch4 : fetch prog (length prefix +ℕ 6 +ℕ len-f) ≡ just i4
+    fetch4 = subst (λ p → fetch p (length prefix +ℕ 6 +ℕ len-f) ≡ just i4) prog'-eq-prog fetch4'
+
+    -- Memory proof for value load at s4
+    -- At s4, x0 still has addr-sum (unchanged through b.ne and label)
+    -- val-addr : readMem (memory s) (addr-sum + 8) ≡ just addr-val
+    -- s4 has same memory as s, so can use val-addr
+
+    -- Memory is unchanged: s → s1 → s2 → s3 → s4
+    mem-s4-eq-s : memory s4 ≡ memory s
+    mem-s4-eq-s = refl  -- No memory writes in any instruction
+
+    -- x0 is unchanged: only x9 was written in s1
+    x0-s4-eq-s : readReg (regs s4) x0 ≡ readReg (regs s) x0
+    x0-s4-eq-s = readReg-writeReg-x9-x0 (regs s) 1
+
+    -- Combine to prove mem-val
+    mem-val : readMem (memory s4) (readReg (regs s4) x0 +ℕ 8) ≡ just addr-val
+    mem-val = trans (cong (λ m → readMem m (readReg (regs s4) x0 +ℕ 8)) mem-s4-eq-s)
+                    (trans (cong (λ a → readMem (memory s) (a +ℕ 8)) x0-s4-eq-s)
+                           (trans (cong (λ a → readMem (memory s) (a +ℕ 8)) x0-eq)
+                                  val-addr))
 
     -- Execution proofs
     exec0 : execInstr prog s i0 ≡ just s1
