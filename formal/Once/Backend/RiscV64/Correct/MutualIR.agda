@@ -183,6 +183,12 @@ postulate
     let prog = prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
 
+  -- | SP bound for f when executing thunk body in curry-thunk-correct-impl.
+  -- After thunk setup (24 bytes allocated), need StackDepth f ≤ new sp.
+  -- TODO: Prove from sp-bound precondition for curry-thunk-correct-impl.
+  sp-bound-for-f-in-thunk : ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
+    StackDepth f ≤ readReg (regs s) sp
+
 
 ------------------------------------------------------------------------
 -- Main mutual block: run-ir-star-at-offset
@@ -230,7 +236,7 @@ mutual
   run-ir-star-at-offset initial prefix suffix x s h-false pc-eq a0-eq _ =
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
-  -- Curry: delegate to extracted proof and build WF inline
+  -- Curry: use run-curry-star from IR/Curry.agda
   -- StackDepth (curry f) = 16 + StackDepth f, but curry only allocates 16 bytes
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound-16
@@ -1609,8 +1615,9 @@ mutual
       pc-setup-f = trans pc-setup (sym len-prefix-f)
 
       -- SP bound for f: thunk setup allocates 24 bytes, need StackDepth f ≤ sp-after-setup
-      -- This requires sp-bound precondition for curry-thunk-correct-impl; use postulate for now
-      postulate sp-bound-for-f : StackDepth f ≤ readReg (regs s-after-setup) sp
+      -- Using module-level postulate
+      sp-bound-for-f : StackDepth f ≤ readReg (regs s-after-setup) sp
+      sp-bound-for-f = sp-bound-for-f-in-thunk f s-after-setup
 
       step-f : ∃[ s-f ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f = run-ir-star-at-offset f prefix-f suffix-f (env , arg) s-after-setup

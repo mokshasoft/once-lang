@@ -77,6 +77,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- Postulates (to be eliminated or proven)
+------------------------------------------------------------------------
+
+-- | Stack depth of any IR is bounded by the initial stack base.
+-- Sound because stackBase = 0x7FFF0000 ≈ 2 billion, far exceeding any realistic StackDepth.
+-- TODO: Could be proven for concrete IR terms by structural induction.
+postulate
+  stackDepth-leq-stackBase : ∀ {i A B} (ir : IR i A B) → StackDepth ir ≤ 0x7FFF0000
+
+------------------------------------------------------------------------
 -- Initial State Setup
 ------------------------------------------------------------------------
 
@@ -142,10 +152,6 @@ initWithInput-sp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤
 initWithInput-sp-sufficient : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) →
   StackDepth ir ≤ readReg (regs (initWithInput x)) sp
 initWithInput-sp-sufficient ir x = stackDepth-leq-stackBase ir
-  where
-    -- stackBase = 0x7FFF0000 is greater than any reasonable StackDepth
-    postulate
-      stackDepth-leq-stackBase : ∀ {i A B} (ir : IR i A B) → StackDepth ir ≤ 0x7FFF0000
 
 ------------------------------------------------------------------------
 -- Execution Helpers

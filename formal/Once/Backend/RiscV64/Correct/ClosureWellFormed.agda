@@ -194,6 +194,17 @@ curry-output-to-apply-input f prog offset x cow =
   CurryOutputWF.wf cow
 
 ------------------------------------------------------------------------
+-- Postulates (to be eliminated)
+------------------------------------------------------------------------
+
+-- | Placeholder WF for arrow types in trivialWF.
+-- This should never be called in practice - trivialWF should only be used
+-- for types that don't contain closures. Arrow types require proper WF
+-- from curry's output.
+postulate
+  dummy-wf-for-arrow : ∀ {A B : Type} (prog : Program) → ApplyInputWF A B prog
+
+------------------------------------------------------------------------
 -- ClosuresWF: WF for all closures in values of a given type
 --
 -- This type family computes what WF information is needed for values
@@ -233,10 +244,7 @@ trivialWF (TVar _) prog = tt
 trivialWF (Eff _ _) prog = tt
 trivialWF (A * B) prog = trivialWF A prog , trivialWF B prog
 trivialWF (A + B) prog = trivialWF A prog , trivialWF B prog
-trivialWF (A ⇒ B) prog = dummy-wf
-  where
-    -- Placeholder WF that should never actually be used
-    postulate dummy-wf : ApplyInputWF A B prog
+trivialWF (A ⇒ B) prog = dummy-wf-for-arrow prog
 trivialWF (Fix F) prog = tt
 
 -- | Extract WF for first component of a pair

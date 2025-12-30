@@ -60,6 +60,17 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- Postulates (to be eliminated)
+------------------------------------------------------------------------
+
+-- | Curry produces a closure; WF is proven in MutualIR with full context.
+-- This postulate is used as a placeholder because the full proof requires
+-- access to the mutual block's curry-thunk-correct-impl.
+-- TODO: Eliminate by threading WF from run-curry-star-with-wf in MutualIR.
+postulate
+  curry-output-wf : ∀ {B C : Type} (prog : Program) → ClosuresWF (B ⇒ C) prog
+
+------------------------------------------------------------------------
 -- Main curry proof
 ------------------------------------------------------------------------
 
@@ -83,14 +94,11 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-sp-delta-leq = ≤-refl
     ; ir-sp     = sp-final
     ; ir-mem-preserved = mem-preserved-final
-    ; ir-output-wf = curry-output-wf  -- Placeholder; real WF from MutualIR
+    ; ir-output-wf = curry-output-wf {B = B} {C = C} prog  -- Module-level postulate
     }
   where
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
-
-    -- Curry produces a closure; WF is proven in MutualIR with full context
-    postulate curry-output-wf : ClosuresWF (B ⇒ C) prog
 
     -- Helper values
     orig-sp : Word
