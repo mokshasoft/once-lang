@@ -36,6 +36,9 @@ open import Once.Postulates
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
          encode-inl-construct; encode-inr-construct)
 
+open import Once.Backend.RiscV64.Postulates
+  using (run-apply-star; sp-bound-for-f-in-thunk)
+
 open import Once.Backend.RiscV64.Correct.Foundation
 open import Once.Backend.RiscV64.Correct.CompileLength
 open import Once.Backend.RiscV64.Correct.Star
@@ -165,38 +168,11 @@ run-initial-star : ∀ {i A} (prefix suffix : Program) (x : ⟦ Void ⟧) (s : S
 run-initial-star prefix suffix x s h-false pc-eq a0-eq = ⊥-elim x
 
 ------------------------------------------------------------------------
--- Apply postulate
---
--- Apply requires whole-program analysis because:
--- 1. jalr jumps to a code pointer stored in the closure
--- 2. We need to know that code pointer points to valid thunk code
--- 3. The thunk was created by curry, which is proven separately
---
--- This is sound by construction: curry creates closures that apply
--- can call. Full verification requires tracking closure provenance.
---
--- PROVEN ALTERNATIVE: When a ClosureWellFormed proof is available
--- (from curry's output), use run-apply-with-wf from IR/Apply.agda.
--- This traces all 7 apply instructions and uses thunk-correct
--- to verify the indirect call executes correctly.
+-- Apply and stack bound postulates now in Once.Backend.RiscV64.Postulates
+-- See that module for detailed documentation and justification.
 ------------------------------------------------------------------------
 
-postulate
-  run-apply-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} x →
-    let prog = prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix
-    in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
 
-  -- | SP bound for f when executing thunk body in curry-thunk-correct-impl.
-  -- After thunk setup (24 bytes allocated), need StackDepth f ≤ new sp.
-  -- TODO: Prove from sp-bound precondition for curry-thunk-correct-impl.
-  sp-bound-for-f-in-thunk : ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
-    StackDepth f ≤ readReg (regs s) sp
-
-
-------------------------------------------------------------------------
 -- Main mutual block: run-ir-star-at-offset
 --
 -- This builds Star proofs using star-single and star-trans.

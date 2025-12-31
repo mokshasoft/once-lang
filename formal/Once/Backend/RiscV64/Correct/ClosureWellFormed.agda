@@ -229,7 +229,7 @@ ClosuresWF (TVar _) prog = ⊤
 ClosuresWF (Eff _ _) prog = ⊤
 ClosuresWF (A * B) prog = ClosuresWF A prog × ClosuresWF B prog
 ClosuresWF (A + B) prog = ClosuresWF A prog × ClosuresWF B prog
-ClosuresWF (A ⇒ B) prog = ApplyInputWF A B prog
+ClosuresWF (A ⇒[ _ ] B) prog = ApplyInputWF A B prog  -- Pattern match on actual constructor
 ClosuresWF (Fix F) prog = ⊤  -- Recursive types: assume no closures for now
 
 -- | Trivial WF for types without closures (placeholder for arrow types)
@@ -246,7 +246,7 @@ trivialWF (TVar _) prog = tt
 trivialWF (Eff _ _) prog = tt
 trivialWF (A * B) prog = trivialWF A prog , trivialWF B prog
 trivialWF (A + B) prog = trivialWF A prog , trivialWF B prog
-trivialWF (A ⇒ B) prog = dummy-wf-for-arrow prog
+trivialWF (A ⇒[ _ ] B) prog = dummy-wf-for-arrow prog  -- Pattern match on actual constructor
 trivialWF (Fix F) prog = tt
 
 -- | Extract WF for first component of a pair
