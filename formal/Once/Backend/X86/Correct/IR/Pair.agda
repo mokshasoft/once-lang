@@ -1463,16 +1463,12 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- For rbp+16: chain through f, middle, g
         -- f preserves via ir-mem-above (rbp+16 > s-setup.rbp)
         rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ 16 > readReg (regs s-setup) rbp
-        rbp+16>setup-rbp = n<n+k (readReg (regs s-setup) rbp) 16
+        rbp+16>setup-rbp = n<n+k (readReg (regs s-setup) rbp) 15  -- suc 15 = 16
           where
-            -- n < n + (suc k), i.e., n < n + k when k ≥ 1
-            n<n+k : ∀ n k → n < n +ℕ k
-            n<n+k zero (suc k) = s≤s z≤n
-            n<n+k (suc n) (suc k) = s≤s (n<n+k n (suc k))
-            n<n+k n zero = Data.Empty.⊥-elim impossible
-              where
-                open import Data.Empty
-                postulate impossible : ⊥  -- k=0 won't happen since k=16
+            -- n < n + suc k (always holds since suc k ≥ 1)
+            n<n+k : ∀ n k → n < n +ℕ suc k
+            n<n+k zero k = s≤s z≤n
+            n<n+k (suc n) k = s≤s (n<n+k n k)
         mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ 16) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16)
         mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16))
                           (sym (cong (_+ℕ 16) (ir-rbp r-f)))
