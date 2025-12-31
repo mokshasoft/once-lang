@@ -961,11 +961,463 @@ elaborateDecl name ty expr =
 
 ---
 
-**Status**: ❌ NOT STARTED
+**Status**: 🔄 IN PROGRESS (Steps 1-4 complete as of 2025-12-31)
 
 **Dependencies**: Phase 3.5 (built-in generators) completed
 
-**Blocks**: Phase 4 (integration testing with real programs)
+**Blocks**: Phase 3.7 (QTT), Phase 4 (integration testing)
+
+---
+
+### Phase 3.7: Quantitative Type Theory (QTT) with Usage Tracking
+
+**Motivation**:
+
+Quantitative Type Theory provides fine-grained resource tracking with usage grades (0/1/ω):
+- **0**: Erased (compile-time only, zero runtime cost)
+- **1**: Linear (used exactly once, enforce resource safety)
+- **ω**: Unrestricted (used any number of times)
+
+**Why QTT Aligns Perfectly with Bidirectional**:
+1. **Both are local**: QTT usage checking is local to each judgment, just like bidirectional checking
+2. **Natural extension**: We already thread context through checking/inference modes
+3. **Incompatible with HM**: Global constraint solving doesn't work with local usage tracking
+4. **Future-proof**: QTT + dependent types = full linear dependent type theory
+
+**Use Cases**:
+- **Resource safety**: File handles, network sockets, memory (use exactly once, then release)
+- **Zero-cost abstractions**: Erase proofs and type-level computation (grade 0)
+- **Borrowing semantics**: Linear references for safe in-place mutation
+- **Protocol enforcement**: Session types, state machines (linear transitions)
+
+---
+
+**Problem Statement**:
+
+Current type system treats all variables as unrestricted (can be used 0+ times). This prevents:
+- Compile-time resource tracking (files, memory, locks must be managed at runtime)
+- Enforcing single-use semantics (linearity violations caught only at runtime)
+- Zero-cost erasure (all values exist at runtime, even proofs)
+
+**Example Limitation**:
+```once
+-- Current: all variables unrestricted
+duplicate : Int -> (Int * Int)
+duplicate x = (x, x)  -- OK: x used twice
+
+close : File -> Unit
+close f = closeImpl f
+
+bad : File -> (Unit * Unit)
+bad f = (close f, close f)  -- BUG: f used twice, but type system allows it!
+```
+
+**Goal**: Extend type system with quantities to track usage and catch errors at compile time.
+
+---
+
+**Implementation Plan**:
+
+**Step 1: Extend Types with Quantities**
+
+Add quantity annotations to function types:
+
+```agda
+-- In formal/Once/Type.agda
+
+-- | Usage quantities (grades)
+data Quantity : Set where
+  Zero  : Quantity  -- 0: Erased (compile-time only)
+  One   : Quantity  -- 1: Linear (used exactly once)
+  Many  : Quantity  -- ω: Unrestricted (used 0+ times)
+
+-- | Quantity algebra
+_+q_ : Quantity → Quantity → Quantity
+Zero  +q q     = q
+One   +q Zero  = One
+One   +q One   = Many
+One   +q Many  = Many
+Many  +q _     = Many
+
+_*q_ : Quantity → Quantity → Quantity
+Zero  *q _     = Zero
+_     *q Zero  = Zero
+One   *q q     = q
+q     *q One   = q
+Many  *q Many  = Many
+
+-- | Extend Type with graded function arrow
+data Type : Set where
+  Unit   : Type
+  Void   : Type
+  _*_    : Type → Type → Type
+  _+_    : Type → Type → Type
+  _⇒[_]_ : Type → Quantity → Type → Type  -- NEW: graded arrow
+  Eff    : Type → Type → Type
+  Fix    : Type → Type
+  Int    : Type
+  Float  : Type
+  Str    : Type
+  Buffer : Type
+  TVar   : String → Type
+
+-- | Smart constructors for common cases
+_⊸_ : Type → Type → Type  -- Linear arrow
+A ⊸ B = A ⇒[ One ] B
+
+_→_ : Type → Type → Type  -- Unrestricted arrow
+A → B = A ⇒[ Many ] B
+
+_⇒₀_ : Type → Type → Type  -- Erased arrow
+A ⇒₀ B = A ⇒[ Zero ] B
+```
+
+**Files to Modify**:
+- `formal/Once/Type.agda` - Add `Quantity` and graded arrows
+- `formal/Once/TypeCheck/Elaborate.agda` - Update type equality to handle quantities
+
+**Verification**: Type-check `Once.Type` module
+
+---
+
+**Step 2: Extend Context with Usage Tracking**
+
+Add usage information to the context:
+
+```agda
+-- In formal/Once/TypeCheck/Elaborate.agda
+
+-- | Extend NamedCtx with usage tracking
+record NamedCtx : Set where
+  constructor mkCtx
+  field
+    size         : ℕ
+    named        : Ctx
+    debruijn     : SCtx size
+    freshCounter : ℕ
+    usage        : Vec Quantity size  -- NEW: track usage of each variable
+
+-- | Empty context (no variables)
+emptyCtx : NamedCtx
+emptyCtx = mkCtx 0 ∅ S∅ 0 []
+
+-- | Extend context with a binding
+extendNamedCtx : NamedCtx → String → Type → NamedCtx
+extendNamedCtx (mkCtx n Γ Δ fresh usage) x A =
+  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh (Zero ∷ usage)
+
+-- | Mark variable as used (update usage)
+useVar : NamedCtx → Fin (NamedCtx.size ctx) → Quantity → Maybe NamedCtx
+useVar (mkCtx n Γ Δ fresh usage) i q =
+  let currentUsage = Vec-lookup usage i
+      newUsage = currentUsage +q q
+  in if newUsage ≤q q  -- Check usage constraint
+     then just (mkCtx n Γ Δ fresh (Vec-update usage i newUsage))
+     else nothing  -- Usage violation!
+
+-- | Subusaging (usage subsumption)
+_≤q_ : Quantity → Quantity → Bool
+Zero  ≤q _     = true
+One   ≤q One   = true
+One   ≤q Many  = true
+Many  ≤q Many  = true
+_     ≤q _     = false
+```
+
+**Context Splitting for Linear Resources**:
+
+```agda
+-- | Split context for linear resources
+-- Used in pair, case, etc. where both branches use variables
+splitCtx : NamedCtx → Quantity → (NamedCtx × NamedCtx)
+splitCtx (mkCtx n Γ Δ fresh usage) q =
+  let leftUsage  = map (_*q q) usage
+      rightUsage = map (_*q q) usage
+  in ( mkCtx n Γ Δ fresh leftUsage
+     , mkCtx n Γ Δ fresh rightUsage
+     )
+
+-- | Merge contexts (add usage)
+mergeCtx : NamedCtx → NamedCtx → Maybe NamedCtx
+mergeCtx (mkCtx n Γ Δ fresh usage₁) (mkCtx _ _ _ _ usage₂) =
+  let mergedUsage = zipWith _+q_ usage₁ usage₂
+  in just (mkCtx n Γ Δ fresh mergedUsage)
+```
+
+**Files to Modify**:
+- `formal/Once/TypeCheck/Elaborate.agda` - Add usage tracking to `NamedCtx`
+- `formal/Once/TypeCheck/Context.agda` - Usage operations
+
+**Verification**: Type-check context operations
+
+---
+
+**Step 3: Implement Bidirectional QTT Rules**
+
+Update checking/inference modes to track usage:
+
+```agda
+-- | Inference result now includes usage context
+data InferElabResult {n : ℕ} (Δ : SCtx n) : Set where
+  success : (A : Type) → SExpr Δ A → (depth : ℕ) → (fresh : ℕ)
+          → (usage : Vec Quantity n)  -- NEW: usage information
+          → InferElabResult Δ
+  failure : String → InferElabResult Δ
+
+-- | Variable lookup: mark as used with given quantity
+inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
+... | just (A , se , fresh') =
+    -- Mark variable as used (quantity from type)
+    case useVar ctx (varIndex x) (quantityOf A) of
+      just ctx' → success A se 0 fresh' (NamedCtx.usage ctx')
+      nothing   → failure ("Variable " ++ x ++ " used more than allowed")
+... | nothing = failure ("Unbound variable: " ++ x)
+
+-- | Lambda: check body with extended context
+checkElabImpl ctx (Raw.RLam x body) (A ⇒[ q ] B) =
+  let ctx' = extendNamedCtx ctx x A
+  in case checkElabImpl ctx' body B of
+       success bodyExpr depth fresh' usage' →
+         -- Check that parameter was used with correct quantity
+         let paramUsage = Vec-lookup usage' zero
+         in if paramUsage ≤q q
+            then success (Surface.lam bodyExpr) (suc depth) fresh' (tail usage')
+            else failure ("Parameter " ++ x ++ " used with wrong quantity")
+       failure err → failure err
+
+-- | Application: thread usage through function and argument
+inferElabImpl ctx (Raw.RApp fun arg) = inferApp (inferElabImpl ctx fun)
+  where
+    inferApp (success (A ⇒[ q ] B) funExpr funDepth funFresh funUsage) =
+      -- Update context with function's usage before checking argument
+      let ctx' = updateUsage ctx funUsage
+      in case checkElabImpl ctx' arg A of
+           success argExpr argDepth argFresh argUsage →
+             -- Merge usage from function and argument
+             case mergeUsage funUsage argUsage of
+               just usage' → success B (Surface.app funExpr argExpr)
+                                    (funDepth ⊔ argDepth) argFresh usage'
+               nothing → failure "Conflicting usage requirements"
+           failure err → failure err
+```
+
+**Files to Modify**:
+- `formal/Once/TypeCheck/Elaborate.agda` - Update all checking/inference rules
+
+**Verification**: Type-check updated elaboration rules
+
+---
+
+**Step 4: Add Subusaging (Usage Subsumption)**
+
+Allow using unrestricted (ω) where linear (1) is expected:
+
+```agda
+-- | Subusaging judgment
+data _≤ᵤ_ : Quantity → Quantity → Set where
+  ≤ᵤ-refl  : ∀ {q} → q ≤ᵤ q
+  ≤ᵤ-zero  : ∀ {q} → Zero ≤ᵤ q
+  ≤ᵤ-one   : One ≤ᵤ Many
+  ≤ᵤ-trans : ∀ {p q r} → p ≤ᵤ q → q ≤ᵤ r → p ≤ᵤ r
+
+-- | Apply subusaging in checking mode
+checkElabImpl ctx expr A with inferElabImpl ctx expr
+... | failure err = failure err
+... | success B expr' depth fresh usage with A ≟T B
+...   | yes refl = success expr' depth fresh usage  -- Types equal
+...   | no _     with canSubsume A B  -- Try subusaging
+...     | yes (q₁ ≤ᵤ q₂) = success (coerce expr') depth fresh usage
+...     | no _            = failure "Type mismatch"
+
+-- | Check if types differ only in usage
+canSubsume : Type → Type → Maybe (∃[ q₁ ] ∃[ q₂ ] q₁ ≤ᵤ q₂)
+canSubsume (A₁ ⇒[ q₁ ] B₁) (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+... | yes refl | yes refl with q₁ ≤? q₂
+...   | yes prf = just (q₁ , q₂ , prf)
+...   | no _    = nothing
+canSubsume _ _ = nothing
+```
+
+**Files to Modify**:
+- `formal/Once/TypeCheck/Subusage.agda` (NEW) - Subusaging rules and proofs
+
+**Verification**: Prove subusaging transitivity and reflexivity
+
+---
+
+**Step 5: Verify QTT Properties**
+
+Prove key properties:
+
+```agda
+-- In formal/Once/TypeCheck/QTT/Properties.agda (NEW)
+
+-- | Usage preservation: well-typed programs use resources correctly
+postulate
+  usage-preservation : ∀ {Γ A e usage}
+    → checkElabImpl Γ e A ≡ success expr depth fresh usage
+    → usageCorrect Γ usage
+
+-- | Soundness: if checking succeeds, elaborated program respects quantities
+postulate
+  qtt-soundness : ∀ {Γ A e}
+    → checkElabImpl Γ e A ≡ success expr depth fresh usage
+    → ⟦ expr ⟧ respects usage
+
+-- | Linearity: linear variables used exactly once
+postulate
+  linearity : ∀ {Γ x A e}
+    → lookupCtx Γ x ≡ just (A , One)
+    → checkElabImpl Γ e B ≡ success expr _ _ usage
+    → Vec-lookup usage x ≡ One
+
+-- | Erasure: zero-usage variables don't appear in elaborated term
+postulate
+  erasure : ∀ {Γ x A e}
+    → lookupCtx Γ x ≡ just (A , Zero)
+    → checkElabImpl Γ e B ≡ success expr _ _ usage
+    → ¬ (x appears-in expr)
+```
+
+**Files to Create**:
+- `formal/Once/TypeCheck/QTT/Properties.agda` - Usage preservation proofs
+- `formal/Once/TypeCheck/QTT/Soundness.agda` - QTT soundness theorem
+
+**Verification**: Type-check all property modules, prove or postulate theorems
+
+---
+
+**Step 6: MAlonzo Extraction**
+
+Extract QTT-extended type checker to Haskell:
+
+```bash
+cd formal
+make malonzo-typecheck  # Extract Once.TypeCheck module
+```
+
+**Generated Files**:
+- `compiler/src/MAlonzo/Code/Once/TypeCheck/Elaborate.hs` - With QTT constructors
+- `compiler/src/MAlonzo/Code/Once/Type.hs` - With `Quantity` datatype
+
+**Verification**:
+- Check that extraction succeeds without errors
+- Verify generated Haskell code compiles
+- Inspect constructors for `Quantity`, graded arrows
+
+---
+
+**Step 7: Compiler Integration**
+
+Update Haskell wrapper to handle QTT:
+
+```haskell
+-- In compiler/src/Once/Elaborate/Verified.hs
+
+import qualified MAlonzo.Code.Once.TypeCheck.Elaborate as VTE
+import qualified MAlonzo.Code.Once.Type as VT
+
+-- | Elaborate with QTT tracking
+elaborateVerified :: S.Expr -> Either ElaborateError H.IR
+elaborateVerified expr = do
+  let rawExpr = toMAlonzoRaw expr
+  case VTE.d_inferElab_xxxx emptyCtx rawExpr of
+    VTE.C_failure_xxxx errMsg ->
+      Left $ "Type checking failed: " ++ show errMsg
+    VTE.C_success_xxxx ty surfaceExpr depth fresh usage ->
+      -- Check for usage violations
+      case checkUsageViolations usage of
+        Just err -> Left $ "Usage error: " ++ err
+        Nothing ->
+          let irExpr = elaborate surfaceExpr
+          in Right (fromMAlonzoIR irExpr)
+
+-- | Check for linear resource violations
+checkUsageViolations :: [VT.Quantity] -> Maybe String
+checkUsageViolations usage =
+  -- All linear variables should be used exactly once
+  -- All erased variables should be used zero times
+  -- Report first violation
+  ...
+```
+
+**Files to Modify**:
+- `compiler/src/Once/Elaborate/Verified.hs` - Handle QTT constructors
+- `compiler/src/Once/MAlonzo.hs` - Conversion for `Quantity`
+
+**Verification**: Compiler builds and links successfully
+
+---
+
+**Step 8: Testing**
+
+Create test cases for QTT features:
+
+```once
+-- Test: Linear function (use exactly once)
+consume : File ⊸ Unit
+consume f = close f  -- OK: f used once
+
+-- Test: Attempt to use linear variable twice (should fail)
+consumeTwice : File ⊸ (Unit * Unit)
+consumeTwice f = (close f, close f)  -- ERROR: f used twice
+
+-- Test: Unrestricted function (use multiple times)
+duplicate : Int → (Int * Int)
+duplicate x = (x, x)  -- OK: x is unrestricted
+
+-- Test: Erased proof (compile-time only)
+withProof : (n : Int) → (IsPositive n)⁰ → Int
+withProof n prf = n + 1  -- prf erased at runtime
+
+-- Test: Subusaging (use unrestricted as linear)
+useAsLinear : (Int → Int) → Int
+useAsLinear f = f 42  -- OK: unrestricted can be used linearly
+```
+
+**Test Files**:
+- `compiler/test/qtt-linear.once` - Linear resource tests
+- `compiler/test/qtt-unrestricted.once` - Unrestricted variable tests
+- `compiler/test/qtt-erased.once` - Erasure tests
+- `compiler/test/qtt-violations.once` - Expected failures
+
+**Verification**:
+- All valid QTT programs compile
+- All invalid programs rejected with clear error messages
+- Usage violations caught at type-checking time
+
+---
+
+**Timeline Estimate**:
+
+- **Step 1** (Types + Quantities): 1-2 days
+- **Step 2** (Context + Usage): 2-3 days
+- **Step 3** (Bidirectional QTT): 3-4 days
+- **Step 4** (Subusaging): 1-2 days
+- **Step 5** (Verification): 2-3 days (postulates initially, proofs later)
+- **Step 6** (MAlonzo): 1 day
+- **Step 7** (Integration): 1-2 days
+- **Step 8** (Testing): 1-2 days
+
+**Total**: 2-3 weeks
+
+**Why QTT Works Well with Bidirectional**:
+- Both systems reason **locally** (no global constraint solving)
+- Usage checking happens **during** type checking (not after)
+- Context threading we built for fresh counters extends naturally to usage tracking
+- Checking mode is perfect for enforcing usage constraints
+
+---
+
+**Status**: ❌ NOT STARTED
+
+**Dependencies**: Phase 3.6 (bidirectional type checking) completed
+
+**Blocks**: None (can be done alongside Phase 3.5 modules)
+
+**Optional**: Can implement Phase 3.5 (modules) first, then add QTT. Or do in parallel.
+
+---
 
 ### Phase 4 (Integration Testing - Real Programs)
 - ❌ All programs in `examples/` compile successfully (or documented as depth >7)
