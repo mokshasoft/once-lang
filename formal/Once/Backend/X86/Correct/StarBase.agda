@@ -1268,6 +1268,7 @@ record IRStarResultS {i : Size} {A B : Type} (ir : IR i A B) (prog : Program)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
     ir-stack-inv  : StackInvariant s'
     ir-rsp-bound  : readReg (regs s') rsp > 16
     ir-rbp-inv    : RbpInvariant s'
@@ -1292,6 +1293,7 @@ convert-to-stateful ir prog s s' x offset res = record
   ; ir-mem-rbp   = IRStarResult.ir-mem-rbp res
   ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 res
   ; ir-mem-above = IRStarResult.ir-mem-above res
+  ; ir-mem-at-0  = IRStarResult.ir-mem-at-0 res
   ; ir-stack-inv = IRStarResult.ir-stack-inv res
   ; ir-rsp-bound = IRStarResult.ir-rsp-bound res
   ; ir-rbp-inv   = IRStarResult.ir-rbp-inv res

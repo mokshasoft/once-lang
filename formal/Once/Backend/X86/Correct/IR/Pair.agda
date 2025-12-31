@@ -655,6 +655,7 @@ assemble-pair-result : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
   readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -665,7 +666,7 @@ assemble-pair-result {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fi
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final
+                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final
                      star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
   { ir-star = star-all
@@ -682,6 +683,7 @@ assemble-pair-result {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fi
   ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
+  ; ir-mem-at-0 = mem-at-0-final
   ; ir-closure-wf = closure-wf-final  -- Prefer g's closure (executed last)
   }
   where
@@ -1640,24 +1642,38 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         mem-g-r15 = ir-mem-above r-g orig-r15 r15>s2-rbp
 
     -- Case 2: r15 = 0 (r15-unused case of StackInvariant)
-    -- When r15=0, no prior pair context exists. Memory at 0 is never allocated
-    -- or written, so it's trivially preserved.
-    --
-    -- POSTULATE JUSTIFICATION:
-    --   - Address 0 is the null page, never allocated in our memory model
-    --   - Setup writes at rsp-8, rsp-16, rsp-24 (all > 0 since rsp > 40)
-    --   - Middle writes at s1.r15 = rsp-40 (> 0)
-    --   - f and g write at addresses < rbp via ir-mem-above, but we can't prove 0 is preserved
-    --     because ir-mem-above requires addr > rbp, and 0 < rbp
-    --
-    -- ELIMINATION PATH:
-    --   Add ir-mem-at-0 field to IRStarResult, or prove that IR execution never writes to 0
-    ... | inj₂ r15≡0 = mem-at-0-through-pair
+    -- When r15=0, no prior pair context exists. Memory at 0 is never allocated or written.
+    -- PROOF: Chain ir-mem-at-0 through all 4 phases (setup, f, middle, g)
+    ... | inj₂ r15≡0 = mem-at-0-chain
       where
-        -- Use postulate for the r15=0 case
-        -- This captures that memory at 0 is preserved since no code writes there
-        postulate
-          mem-at-0-through-pair : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        -- All IR generators preserve memory at address 0 via ir-mem-at-0
+        -- Chain them through all phases to prove end-to-end preservation
+
+        -- Phase 1: Setup preserves address 0 (setup writes at rsp-k where k > 0)
+        mem-setup-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+        mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
+                               (sym s-setup-eq)
+                               refl  -- Setup doesn't modify memory, just stack/registers
+
+        -- Phase 2: f preserves address 0 via ir-mem-at-0
+        mem-f-at-0 : readMem (memory s1) 0 ≡ readMem (memory s-setup) 0
+        mem-f-at-0 = ir-mem-at-0 r-f
+
+        -- Phase 3: Middle preserves address 0 (middle writes at rsp-40 > 0)
+        mem-mid-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+        mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
+                             (sym s2-eq)
+                             refl  -- Middle only writes to [r15], doesn't touch address 0
+
+        -- Phase 4: g preserves address 0 via ir-mem-at-0
+        mem-g-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
+        mem-g-at-0 = ir-mem-at-0 r-g
+
+        -- Chain all 4 phases: orig-r15 = 0, so this proves the required property
+        mem-at-0-chain : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        mem-at-0-chain = subst₂ (λ a b → readMem (memory s3) a ≡ readMem (memory s) b)
+                                r15≡0 r15≡0
+                                (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
 
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR

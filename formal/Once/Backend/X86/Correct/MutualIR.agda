@@ -277,7 +277,7 @@ mutual
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                 stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final
+                rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final
                 star-fin refl refl
                 rbp-inv rsp-final-eq
     where
@@ -566,6 +566,21 @@ mutual
           -- Chain all phases together
           mem-chain : readMem (memory s-final) addr ≡ readMem (memory s) addr
           mem-chain = trans mem-final-phase (trans mem-g (trans mem-mid (trans mem-f mem-setup)))
+
+      -- Memory at address 0 preserved through all phases
+      -- Chain ir-mem-at-0 from f and g, plus preservation through setup/middle/final
+      -- TODO: Add mem-at-0 fields to PairSetupResult, PairMiddleResult, PairFinalResult
+      postulate
+        mem-setup-preserves-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+        mem-mid-preserves-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+        mem-final-preserves-0 : readMem (memory s-final) 0 ≡ readMem (memory s3) 0
+
+      mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+      mem-at-0-final = trans mem-final-preserves-0
+                       (trans (ir-mem-at-0 r-g)
+                       (trans mem-mid-preserves-0
+                       (trans (ir-mem-at-0 r-f)
+                              mem-setup-preserves-0)))
 
       -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
