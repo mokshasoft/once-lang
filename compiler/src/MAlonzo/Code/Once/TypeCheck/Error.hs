@@ -20,34 +20,33 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.TypeCheck.Context
 
 -- Once.TypeCheck.Error.TypeError
 d_TypeError_6 = ()
 data T_TypeError_6
   = C_UnboundVariable_8 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_TypeMismatch_10 MAlonzo.Code.Once.Type.T_Type_4
-                      MAlonzo.Code.Once.Type.T_Type_4 |
-    C_NotAFunction_12 MAlonzo.Code.Once.Type.T_Type_4 |
-    C_NotAProduct_14 MAlonzo.Code.Once.Type.T_Type_4 |
-    C_NotASum_16 MAlonzo.Code.Once.Type.T_Type_4 |
+    C_TypeMismatch_10 MAlonzo.Code.Once.Type.T_Type_32
+                      MAlonzo.Code.Once.Type.T_Type_32 |
+    C_NotAFunction_12 MAlonzo.Code.Once.Type.T_Type_32 |
+    C_NotAProduct_14 MAlonzo.Code.Once.Type.T_Type_32 |
+    C_NotASum_16 MAlonzo.Code.Once.Type.T_Type_32 |
     C_OccursCheck_18 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                     MAlonzo.Code.Once.Type.T_Type_4 |
-    C_UnificationError_20 MAlonzo.Code.Once.Type.T_Type_4
-                          MAlonzo.Code.Once.Type.T_Type_4 |
+                     MAlonzo.Code.Once.Type.T_Type_32 |
+    C_UnificationError_20 MAlonzo.Code.Once.Type.T_Type_32
+                          MAlonzo.Code.Once.Type.T_Type_32 |
     C_ArityMismatch_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
                        Integer Integer |
-    C_SignatureMismatch_24 MAlonzo.Code.Once.Type.T_Type_4
-                           MAlonzo.Code.Once.Type.T_Type_4 |
+    C_SignatureMismatch_24 MAlonzo.Code.Once.Type.T_Type_32
+                           MAlonzo.Code.Once.Type.T_Type_32 |
     C_LinearUsedMultiple_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                             Integer |
     C_LinearUnused_28 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_ErasedUsedAtRuntime_30 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_QuantityMismatch_32 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                          MAlonzo.Code.Once.TypeCheck.Context.T_Quantity_6
-                          MAlonzo.Code.Once.TypeCheck.Context.T_Quantity_6 |
-    C_ArithNonInteger_34 MAlonzo.Code.Once.Type.T_Type_4 |
-    C_CompareNonInteger_36 MAlonzo.Code.Once.Type.T_Type_4
+                          MAlonzo.Code.Once.Type.T_Quantity_4
+                          MAlonzo.Code.Once.Type.T_Quantity_4 |
+    C_ArithNonInteger_34 MAlonzo.Code.Once.Type.T_Type_32 |
+    C_CompareNonInteger_36 MAlonzo.Code.Once.Type.T_Type_32
 -- Once.TypeCheck.Error.errorMessage
 d_errorMessage_38 ::
   T_TypeError_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6

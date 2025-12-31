@@ -21,10 +21,10 @@ open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒_; Eff; Fix; TVar)
+open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; Fix; TVar; Quantity; Zero; One; Many; _≤q_)
 open import Once.TypeCheck.Raw using (RawExpr; BinOp; UnaryOp; isComparisonOp)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Context using (Ctx; ∅; Quantity; Binding; mkBinding; name; type)
+open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.TypeCheck.Error using (TypeError; UnboundVariable)
 
@@ -83,7 +83,7 @@ Str ≟T Str = true
 Buffer ≟T Buffer = true
 (A₁ * B₁) ≟T (A₂ * B₂) = (A₁ ≟T A₂) ∧ (B₁ ≟T B₂)
 (A₁ + B₁) ≟T (A₂ + B₂) = (A₁ ≟T A₂) ∧ (B₁ ≟T B₂)
-(A₁ ⇒ B₁) ≟T (A₂ ⇒ B₂) = (A₁ ≟T A₂) ∧ (B₁ ≟T B₂)
+(A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) = (q₁ ≤q q₂) ∧ (q₂ ≤q q₁) ∧ (A₁ ≟T A₂) ∧ (B₁ ≟T B₂)
 (Eff A₁ B₁) ≟T (Eff A₂ B₂) = (A₁ ≟T A₂) ∧ (B₁ ≟T B₂)
 (Fix F₁) ≟T (Fix F₂) = F₁ ≟T F₂
 (TVar x) ≟T (TVar y) with x ≟ y
@@ -128,8 +128,8 @@ resolve {n} Γ Δ match (Raw.RVar x) A with lookupNamedIdx x Γ
                           → CtxMatch Γ n Δ → String → (A : Type) → Fin n
                           → Maybe (SExpr Δ A)
 
--- Lambda resolution
-resolve Γ Δ match (Raw.RLam x body) (A ⇒ B) with resolve (extendCtx Γ x A) (Δ S, A) (match-extend match) body B
+-- Lambda resolution (only supports unrestricted/Many quantity for now)
+resolve Γ Δ match (Raw.RLam x body) (A ⇒[ Many ] B) with resolve (extendCtx Γ x A) (Δ S, A) (match-extend match) body B
 ... | just se = just (Surface.lam se)
 ... | nothing = nothing
 resolve _ _ _ (Raw.RLam _ _) _ = nothing

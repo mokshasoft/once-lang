@@ -19,10 +19,10 @@ open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒_; Eff; Fix; TVar)
+open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; Fix; TVar; Quantity; Zero; One; Many)
 open import Once.TypeCheck.Raw using (RawExpr; BinOp; UnaryOp; isComparisonOp)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Context using (Ctx; ∅; lookup; LookupResult; found; notFound; Quantity; Omega)
+open import Once.TypeCheck.Context using (Ctx; ∅; lookup; LookupResult; found; notFound)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.TypeCheck.Error using (TypeError)
 open import Once.TypeCheck.Unify using (Subst; emptySubst; applySubst; composeSubst; unify; UnifyResult; unified; failed)
@@ -129,7 +129,7 @@ applySubst-empty Str = refl
 applySubst-empty Buffer = refl
 applySubst-empty (A * B) = cong₂ _*_ (applySubst-empty A) (applySubst-empty B)
 applySubst-empty (A + B) = cong₂ _+_ (applySubst-empty A) (applySubst-empty B)
-applySubst-empty (A ⇒ B) = cong₂ _⇒_ (applySubst-empty A) (applySubst-empty B)
+applySubst-empty (A ⇒[ q ] B) = cong₂ (λ A' B' → A' ⇒[ q ] B') (applySubst-empty A) (applySubst-empty B)
 applySubst-empty (Eff A B) = cong₂ Eff (applySubst-empty A) (applySubst-empty B)
 applySubst-empty (Fix F) = cong Fix (applySubst-empty F)
 applySubst-empty (TVar x) = refl

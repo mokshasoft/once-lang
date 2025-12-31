@@ -27,69 +27,72 @@ import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
--- Once.TypeCheck.Context.Quantity
-d_Quantity_6 = ()
-data T_Quantity_6 = C_Zero_8 | C_One_10 | C_Omega_12
 -- Once.TypeCheck.Context.Binding
-d_Binding_14 = ()
-data T_Binding_14
-  = C_mkBinding_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                   MAlonzo.Code.Once.Type.T_Type_4 T_Quantity_6
+d_Binding_6 = ()
+data T_Binding_6
+  = C_mkBinding_20 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                   MAlonzo.Code.Once.Type.T_Type_32
+                   MAlonzo.Code.Once.Type.T_Quantity_4
 -- Once.TypeCheck.Context.Binding.name
-d_name_22 ::
-  T_Binding_14 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_name_22 v0
+d_name_14 ::
+  T_Binding_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_name_14 v0
   = case coe v0 of
-      C_mkBinding_28 v1 v2 v3 -> coe v1
+      C_mkBinding_20 v1 v2 v3 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.Binding.type
-d_type_24 :: T_Binding_14 -> MAlonzo.Code.Once.Type.T_Type_4
-d_type_24 v0
+d_type_16 :: T_Binding_6 -> MAlonzo.Code.Once.Type.T_Type_32
+d_type_16 v0
   = case coe v0 of
-      C_mkBinding_28 v1 v2 v3 -> coe v2
+      C_mkBinding_20 v1 v2 v3 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.Binding.quantity
-d_quantity_26 :: T_Binding_14 -> T_Quantity_6
-d_quantity_26 v0
+d_quantity_18 :: T_Binding_6 -> MAlonzo.Code.Once.Type.T_Quantity_4
+d_quantity_18 v0
   = case coe v0 of
-      C_mkBinding_28 v1 v2 v3 -> coe v3
+      C_mkBinding_20 v1 v2 v3 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.Ctx
-d_Ctx_30 :: ()
-d_Ctx_30 = erased
+d_Ctx_22 :: ()
+d_Ctx_22 = erased
 -- Once.TypeCheck.Context.∅
-d_'8709'_32 :: [T_Binding_14]
-d_'8709'_32 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+d_'8709'_24 :: [T_Binding_6]
+d_'8709'_24 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
 -- Once.TypeCheck.Context._,_∷_
-d__'44'_'8759'__34 ::
-  [T_Binding_14] ->
+d__'44'_'8759'__26 ::
+  [T_Binding_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_4 -> [T_Binding_14]
-d__'44'_'8759'__34 v0 v1 v2
+  MAlonzo.Code.Once.Type.T_Type_32 -> [T_Binding_6]
+d__'44'_'8759'__26 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-      (coe C_mkBinding_28 (coe v1) (coe v2) (coe C_Omega_12)) (coe v0)
+      (coe
+         C_mkBinding_20 (coe v1) (coe v2)
+         (coe MAlonzo.Code.Once.Type.C_Many_10))
+      (coe v0)
 -- Once.TypeCheck.Context._,_∷_^_
-d__'44'_'8759'_'94'__42 ::
-  [T_Binding_14] ->
+d__'44'_'8759'_'94'__34 ::
+  [T_Binding_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_4 -> T_Quantity_6 -> [T_Binding_14]
-d__'44'_'8759'_'94'__42 v0 v1 v2 v3
+  MAlonzo.Code.Once.Type.T_Type_32 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 -> [T_Binding_6]
+d__'44'_'8759'_'94'__34 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-      (coe C_mkBinding_28 (coe v1) (coe v2) (coe v3)) (coe v0)
+      (coe C_mkBinding_20 (coe v1) (coe v2) (coe v3)) (coe v0)
 -- Once.TypeCheck.Context.LookupResult
-d_LookupResult_52 = ()
-data T_LookupResult_52
-  = C_found_60 MAlonzo.Code.Once.Type.T_Type_4 T_Quantity_6 Integer |
-    C_notFound_62
+d_LookupResult_44 = ()
+data T_LookupResult_44
+  = C_found_52 MAlonzo.Code.Once.Type.T_Type_32
+               MAlonzo.Code.Once.Type.T_Quantity_4 Integer |
+    C_notFound_54
 -- Once.TypeCheck.Context.lookup
-d_lookup_64 ::
+d_lookup_56 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [T_Binding_14] -> T_LookupResult_52
-d_lookup_64 v0 v1
+  [T_Binding_6] -> T_LookupResult_44
+d_lookup_56 v0 v1
   = case coe v1 of
-      [] -> coe C_notFound_62
+      [] -> coe C_notFound_54
       (:) v2 v3
         -> let v4
                  = coe
@@ -101,7 +104,7 @@ d_lookup_64 v0 v1
                           (coe v0))
                      (coe
                         MAlonzo.Code.Data.String.Properties.d__'8776''63'__28 (coe v0)
-                        (coe d_name_22 (coe v2))) in
+                        (coe d_name_14 (coe v2))) in
            coe
              (case coe v4 of
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
@@ -109,60 +112,60 @@ d_lookup_64 v0 v1
                        then coe
                               seq (coe v6)
                               (coe
-                                 C_found_60 (coe d_type_24 (coe v2)) (coe d_quantity_26 (coe v2))
+                                 C_found_52 (coe d_type_16 (coe v2)) (coe d_quantity_18 (coe v2))
                                  (coe (0 :: Integer)))
                        else coe
                               seq (coe v6)
-                              (let v7 = d_lookup_64 (coe v0) (coe v3) in
+                              (let v7 = d_lookup_56 (coe v0) (coe v3) in
                                coe
                                  (case coe v7 of
-                                    C_found_60 v8 v9 v10
+                                    C_found_52 v8 v9 v10
                                       -> coe
-                                           C_found_60 (coe v8) (coe v9)
+                                           C_found_52 (coe v8) (coe v9)
                                            (coe addInt (coe (1 :: Integer)) (coe v10))
-                                    C_notFound_62 -> coe v7
+                                    C_notFound_54 -> coe v7
                                     _ -> MAlonzo.RTE.mazUnreachableError))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.isBound
-d_isBound_112 ::
+d_isBound_104 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [T_Binding_14] -> Bool
-d_isBound_112 v0 v1
-  = let v2 = d_lookup_64 (coe v0) (coe v1) in
+  [T_Binding_6] -> Bool
+d_isBound_104 v0 v1
+  = let v2 = d_lookup_56 (coe v0) (coe v1) in
     coe
       (case coe v2 of
-         C_found_60 v3 v4 v5 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_notFound_62 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+         C_found_52 v3 v4 v5 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+         C_notFound_54 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.TypeCheck.Context.ctxLength
-d_ctxLength_130 :: [T_Binding_14] -> Integer
-d_ctxLength_130 = coe MAlonzo.Code.Data.List.Base.du_length_268
+d_ctxLength_122 :: [T_Binding_6] -> Integer
+d_ctxLength_122 = coe MAlonzo.Code.Data.List.Base.du_length_268
 -- Once.TypeCheck.Context.names
-d_names_132 ::
-  [T_Binding_14] -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_names_132 v0
+d_names_124 ::
+  [T_Binding_6] -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_names_124 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe d_name_22 (coe v1)) (coe d_names_132 (coe v2))
+             (coe d_name_14 (coe v1)) (coe d_names_124 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context._∈_at_⦂_
-d__'8712'_at_'10626'__140 a0 a1 a2 a3 = ()
-data T__'8712'_at_'10626'__140
-  = C_here_150 | C_there_164 T__'8712'_at_'10626'__140
+d__'8712'_at_'10626'__132 a0 a1 a2 a3 = ()
+data T__'8712'_at_'10626'__132
+  = C_here_142 | C_there_156 T__'8712'_at_'10626'__132
 -- Once.TypeCheck.Context.lookupWithEvidence
-d_lookupWithEvidence_174 ::
+d_lookupWithEvidence_166 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [T_Binding_14] -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_lookupWithEvidence_174 v0 v1
+  [T_Binding_6] -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_lookupWithEvidence_166 v0 v1
   = case coe v1 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v2 v3
         -> case coe v2 of
-             C_mkBinding_28 v4 v5 v6
+             C_mkBinding_20 v4 v5 v6
                -> let v7
                         = coe
                             MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -186,10 +189,10 @@ d_lookupWithEvidence_174 v0 v1
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                                            (coe
                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                              (coe (0 :: Integer)) (coe C_here_150))))
+                                              (coe (0 :: Integer)) (coe C_here_142))))
                               else coe
                                      seq (coe v9)
-                                     (let v10 = d_lookupWithEvidence_174 (coe v0) (coe v3) in
+                                     (let v10 = d_lookupWithEvidence_166 (coe v0) (coe v3) in
                                       coe
                                         (case coe v10 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
@@ -207,7 +210,7 @@ d_lookupWithEvidence_174 v0 v1
                                                                       (coe
                                                                          addInt (coe (1 :: Integer))
                                                                          (coe v14))
-                                                                      (coe C_there_164 v15)))
+                                                                      (coe C_there_156 v15)))
                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v10
@@ -216,13 +219,13 @@ d_lookupWithEvidence_174 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.ctxTypes
-d_ctxTypes_242 ::
-  [T_Binding_14] -> [MAlonzo.Code.Once.Type.T_Type_4]
-d_ctxTypes_242 v0
+d_ctxTypes_234 ::
+  [T_Binding_6] -> [MAlonzo.Code.Once.Type.T_Type_32]
+d_ctxTypes_234 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe d_type_24 (coe v1)) (coe d_ctxTypes_242 (coe v2))
+             (coe d_type_16 (coe v1)) (coe d_ctxTypes_234 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError

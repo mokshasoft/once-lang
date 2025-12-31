@@ -19,10 +19,10 @@ open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒_; Eff; Fix; TVar)
+open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; Fix; TVar; Quantity; Zero; One; Many)
 open import Once.TypeCheck.Raw using (RawExpr; BinOp; UnaryOp; isComparisonOp)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Context using (Ctx; ∅; lookup; LookupResult; found; notFound; Quantity; Omega)
+open import Once.TypeCheck.Context using (Ctx; ∅; lookup; LookupResult; found; notFound)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 open import Once.TypeCheck.Error using (TypeError; UnboundVariable; TypeMismatch; NotAFunction;
                                          ArithNonInteger; CompareNonInteger)

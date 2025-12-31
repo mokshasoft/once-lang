@@ -29,15 +29,15 @@ d_typeCheck_4 ::
 d_typeCheck_4 v0
   = coe
       MAlonzo.Code.Once.TypeCheck.Infer.d_infer_148
-      (coe MAlonzo.Code.Once.TypeCheck.Context.d_'8709'_32) (coe v0)
+      (coe MAlonzo.Code.Once.TypeCheck.Context.d_'8709'_24) (coe v0)
       (coe (0 :: Integer))
 -- Once.TypeCheck.typeCheckAgainst
 d_typeCheckAgainst_8 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Type.T_Type_4 ->
+  MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.TypeCheck.Infer.T_InferResult_142
 d_typeCheckAgainst_8 v0 v1
   = coe
       MAlonzo.Code.Once.TypeCheck.Infer.d_check_1340
-      (coe MAlonzo.Code.Once.TypeCheck.Context.d_'8709'_32) (coe v0)
+      (coe MAlonzo.Code.Once.TypeCheck.Context.d_'8709'_24) (coe v0)
       (coe v1) (coe (0 :: Integer))

@@ -29,7 +29,10 @@ open import Once.TypeCheck.Raw public
 open import Once.TypeCheck.Context public
   using (Ctx; ∅; _,_∷_; lookup; LookupResult; found; notFound)
   using (Binding; mkBinding; name; type; quantity)
-  using (Quantity; Zero; One; Omega)
+
+-- Quantities (from Once.Type)
+open import Once.Type public
+  using (Quantity; Zero; One; Many)
 
 -- Type errors
 open import Once.TypeCheck.Error public
