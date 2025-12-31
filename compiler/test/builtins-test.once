@@ -1,0 +1,13 @@
+-- Test built-in categorical generators with polymorphism
+
+testId : Unit -> Unit
+testId = id
+
+testFst : (Unit * Unit) -> Unit
+testFst = fst
+
+testSnd : (Unit * Unit) -> Unit
+testSnd = snd
+
+main : IO Unit
+main = pure ()

@@ -1,6 +1,10 @@
--- Test program with 6 levels of nesting
--- This should compile successfully
+-- Test depth 6 with built-ins
+nested6 : Unit -> Unit -> Unit -> Unit -> Unit -> Unit -> Unit
+nested6 = \a -> \b -> \c -> \d -> \e -> \f ->
+  let x = pair a b in
+  let y = pair c d in
+  let z = pair e f in
+  fst x
 
--- Depth 6: Six nested lambdas
-test6 : Unit -> Unit -> Unit -> Unit -> Unit -> Unit -> (Unit * (Unit * (Unit * (Unit * (Unit * Unit)))))
-test6 = \a1 -> \a2 -> \a3 -> \a4 -> \a5 -> \a6 -> (a1, (a2, (a3, (a4, (a5, a6)))))
+main : IO Unit
+main = pure ()
