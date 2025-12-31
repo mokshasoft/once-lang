@@ -1,0 +1,6 @@
+-- qtt-use-both.once: Function that uses both parameters
+--
+-- Both parameters are used exactly once
+
+testUseBoth : Unit -> Unit -> (Unit * Unit)
+testUseBoth = \x -> \y -> (x, y)

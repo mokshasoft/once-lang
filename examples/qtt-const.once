@@ -1,0 +1,6 @@
+-- qtt-const.once: Constant function (erased parameter)
+--
+-- The second parameter is not used, should be inferred as erased
+
+testConst : Unit -> Unit -> Unit
+testConst = \x -> \y -> x

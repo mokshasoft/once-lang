@@ -1,0 +1,6 @@
+-- qtt-duplicate.once: Function that duplicates a parameter
+--
+-- Parameter x is used twice - should require unrestricted (Many) quantity
+
+testDuplicate : Unit -> (Unit * Unit)
+testDuplicate = \x -> (x, x)

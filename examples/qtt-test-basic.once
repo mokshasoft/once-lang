@@ -1,0 +1,31 @@
+-- qtt-test-basic.once: Basic QTT functionality tests
+--
+-- Tests that the QTT type checker correctly handles:
+-- - Functions that use parameters (inferred as Many/One)
+-- - Simple expressions
+--
+-- Build with verified elaboration:
+--   cd compiler && stack exec -- once build --verified ../examples/qtt-test-basic.once
+
+-- Identity function: uses parameter exactly once
+-- Type checker should infer this as linear (One) or unrestricted (Many)
+testId : Unit -> Unit
+testId = \x -> x
+
+-- Constant function: doesn't use parameter
+-- Type checker should infer parameter as erased (Zero)
+testConst : Unit -> Unit -> Unit
+testConst = \x -> \y -> x
+
+-- Duplicating function: uses parameter twice
+-- Type checker should infer parameter as unrestricted (Many)
+testDup : Unit -> (Unit * Unit)
+testDup = \x -> (x, x)
+
+-- Composition: uses both parameters
+testComp : (Unit -> Unit) -> (Unit -> Unit) -> Unit -> Unit
+testComp = \f -> \g -> \x -> f (g x)
+
+-- Simple let binding
+testLet : Unit -> Unit
+testLet = \x -> let y = x in y
