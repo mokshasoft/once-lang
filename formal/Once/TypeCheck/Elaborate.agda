@@ -523,20 +523,109 @@ data CheckElabResult {n : ℕ} (Δ : SCtx n) (A : Type) : Set where
 ------------------------------------------------------------------------
 
 -- | A named context paired with its de Bruijn representation
+-- Includes a fresh counter for generating unique type variables during instantiation
 record NamedCtx : Set where
   constructor mkCtx
   field
-    size     : ℕ
-    named    : Ctx
-    debruijn : SCtx size
+    size        : ℕ
+    named       : Ctx
+    debruijn    : SCtx size
+    freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
 
 -- | Empty context
 emptyCtx : NamedCtx
-emptyCtx = mkCtx 0 ∅ S∅
+emptyCtx = mkCtx 0 ∅ S∅ 0
 
--- | Extend context with a new binding
+-- | Extend context with a new binding (preserves fresh counter)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A)
+extendNamedCtx (mkCtx n Γ Δ fresh) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh
+
+-- | Bump fresh counter (for generating new type variables)
+bumpFresh : NamedCtx → NamedCtx
+bumpFresh (mkCtx n Γ Δ fresh) = mkCtx n Γ Δ (suc fresh)
+
+-- | Generate fresh type variable name
+freshTVar : ℕ → String
+freshTVar n = "α" ++ showℕ n
+
+------------------------------------------------------------------------
+-- Type Substitution and Instantiation
+------------------------------------------------------------------------
+
+-- | Substitution: mapping from type variable names to types
+-- For now, we use a simple association list representation
+Subst : Set
+Subst = List (String × Type)
+
+-- | Empty substitution
+emptySubst : Subst
+emptySubst = []
+
+-- | Extend substitution with a new binding
+extendSubst : Subst → String → Type → Subst
+extendSubst σ x A = (x , A) ∷ σ
+
+-- | Look up type variable in substitution
+lookupSubst : Subst → String → Maybe Type
+lookupSubst [] _ = nothing
+lookupSubst ((x , A) ∷ σ) y with x Data.String.≟ y
+... | yes _ = just A
+... | no  _ = lookupSubst σ y
+
+-- | Apply substitution to a type
+applySubst : Subst → Type → Type
+applySubst σ Unit = Unit
+applySubst σ Void = Void
+applySubst σ Int = Int
+applySubst σ Float = Float
+applySubst σ Str = Str
+applySubst σ Buffer = Buffer
+applySubst σ (A Once.Type.* B) = applySubst σ A Once.Type.* applySubst σ B
+applySubst σ (A Once.Type.+ B) = applySubst σ A Once.Type.+ applySubst σ B
+applySubst σ (A ⇒ B) = applySubst σ A ⇒ applySubst σ B
+applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
+applySubst σ (Fix A) = Fix (applySubst σ A)
+applySubst σ (TVar x) with lookupSubst σ x
+... | just A = A
+... | nothing = TVar x  -- Unbound type variable remains
+
+-- | Instantiate a polymorphic type with fresh type variables
+-- Collects all distinct TVar names and substitutes them with fresh variables
+instantiate : Type → ℕ → Type × ℕ
+instantiate ty counter = go ty counter emptySubst
+  where
+    go : Type → ℕ → Subst → Type × ℕ
+    go Unit n σ = Unit , n
+    go Void n σ = Void , n
+    go Int n σ = Int , n
+    go Float n σ = Float , n
+    go Str n σ = Str , n
+    go Buffer n σ = Buffer , n
+    go (A Once.Type.* B) n σ =
+      let (A' , n') = go A n σ
+          (B' , n'') = go B n' σ
+      in (A' Once.Type.* B') , n''
+    go (A Once.Type.+ B) n σ =
+      let (A' , n') = go A n σ
+          (B' , n'') = go B n' σ
+      in (A' Once.Type.+ B') , n''
+    go (A ⇒ B) n σ =
+      let (A' , n') = go A n σ
+          (B' , n'') = go B n' σ
+      in (A' ⇒ B') , n''
+    go (Eff A B) n σ =
+      let (A' , n') = go A n σ
+          (B' , n'') = go B n' σ
+      in Eff A' B' , n''
+    go (Fix A) n σ =
+      let (A' , n') = go A n σ
+      in Fix A' , n'
+    go (TVar x) n σ with lookupSubst σ x
+    ... | just A = A , n  -- Already instantiated
+    ... | nothing =
+        let fresh = TVar (freshTVar n)
+            σ' = extendSubst σ x fresh
+        in fresh , suc n
 
 ------------------------------------------------------------------------
 -- Built-in Categorical Generators
@@ -549,47 +638,69 @@ extendNamedCtx (mkCtx n Γ Δ) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A)
 --
 -- They are available in all programs without explicit import.
 --
-builtinType : String → Maybe (∃[ A ] Surface.Expr S∅ A)
-builtinType "id"  = just (TVar "a" ⇒ TVar "a" , Surface.lam (Surface.var zero))
-builtinType "fst" = just ((TVar "a" Once.Type.* TVar "b") ⇒ TVar "a" , Surface.lam (Surface.fst' (Surface.var zero)))
-builtinType "snd" = just ((TVar "a" Once.Type.* TVar "b") ⇒ TVar "b" , Surface.lam (Surface.snd' (Surface.var zero)))
-builtinType "inl" = just (TVar "a" ⇒ (TVar "a" Once.Type.+ TVar "b") , Surface.lam (Surface.inl' (Surface.var zero)))
-builtinType "inr" = just (TVar "b" ⇒ (TVar "a" Once.Type.+ TVar "b") , Surface.lam (Surface.inr' (Surface.var zero)))
-builtinType "unit" = just (Unit , Surface.unit)
+-- Takes a fresh counter and returns instantiated type + expression + new counter
+builtinType : String → ℕ → Maybe (∃[ A ] (Surface.Expr S∅ A × ℕ))
+builtinType "id" n =
+  let a = TVar (freshTVar n)
+  in just (a ⇒ a , Surface.lam (Surface.var zero) , suc n)
+builtinType "fst" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just ((a Once.Type.* b) ⇒ a , Surface.lam (Surface.fst' (Surface.var zero)) , suc (suc n))
+builtinType "snd" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just ((a Once.Type.* b) ⇒ b , Surface.lam (Surface.snd' (Surface.var zero)) , suc (suc n))
+builtinType "inl" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just (a ⇒ (a Once.Type.+ b) , Surface.lam (Surface.inl' (Surface.var zero)) , suc (suc n))
+builtinType "inr" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just (b ⇒ (a Once.Type.+ b) , Surface.lam (Surface.inr' (Surface.var zero)) , suc (suc n))
+builtinType "unit" n = just (Unit , Surface.unit , n)
 -- pair (fork/⟨_,_⟩): (A -> B) -> (A -> C) -> A -> (B * C)
 -- pair = λf. λg. λx. (f x, g x)
-builtinType "pair" = just ((TVar "a" ⇒ TVar "b") ⇒ (TVar "a" ⇒ TVar "c") ⇒ TVar "a" ⇒ (TVar "b" Once.Type.* TVar "c") ,
-                          Surface.lam (Surface.lam (Surface.lam
-                            (Surface.pair
-                              (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))
-                              (Surface.app (Surface.var (suc zero)) (Surface.var zero))))))
+builtinType "pair" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+      c = TVar (freshTVar (suc (suc n)))
+  in just ((a ⇒ b) ⇒ (a ⇒ c) ⇒ a ⇒ (b Once.Type.* c) ,
+          Surface.lam (Surface.lam (Surface.lam
+            (Surface.pair
+              (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))
+              (Surface.app (Surface.var (suc zero)) (Surface.var zero))))) ,
+          suc (suc (suc n)))
 -- Note: compose, curry, apply, fold, unfold can be added similarly
 -- TODO: Add remaining generators as needed
-builtinType _ = nothing
+builtinType _ _ = nothing
 
 ------------------------------------------------------------------------
--- Variable Lookup with Weakening
+-- Variable Lookup with Weakening and Instantiation
 ------------------------------------------------------------------------
 
 -- | Look up a variable by name and return its de Bruijn indexed expression
 --
 -- First checks the local context, then falls back to built-in generators.
+-- For built-in polymorphic functions, instantiates type variables with fresh names.
+-- Returns the looked-up type/expr and the updated fresh counter.
 --
 lookupVar : (ctx : NamedCtx) → String
-          → Maybe (∃[ A ] SExpr (NamedCtx.debruijn ctx) A)
-lookupVar (mkCtx n Γ Δ) x = go Γ Δ
+          → Maybe (∃[ A ] (SExpr (NamedCtx.debruijn ctx) A × ℕ))
+lookupVar (mkCtx n Γ Δ fresh) x = go Γ Δ fresh
   where
-    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] SExpr Δ' A)
-    go [] S∅ with builtinType x
-    ... | just (A , se) = just (A , weakenFromEmpty se)  -- Weaken from ∅ to Δ
+    go : ∀ {m} → Ctx → (Δ' : SCtx m) → ℕ → Maybe (∃[ A ] (SExpr Δ' A × ℕ))
+    go [] S∅ freshCtr with builtinType x freshCtr
+    ... | just (instTy , se , freshCtr') = just (instTy , weakenFromEmpty se , freshCtr')
     ... | nothing = nothing
-    go [] (_ S, _) = nothing  -- impossible case: named context empty but debruijn not
-    go (_ ∷ _) S∅ = nothing   -- impossible case: named context non-empty but debruijn empty
-    go {suc m} (b ∷ Γ') (Δ' S, B) with Data.String._≟_ x (name b)
-    ... | yes _ = just (B , Surface.var zero)
-    ... | no  _ with go Γ' Δ'
+    go [] (_ S, _) _ = nothing  -- impossible case: named context empty but debruijn not
+    go (_ ∷ _) S∅ _ = nothing   -- impossible case: named context non-empty but debruijn empty
+    go {suc m} (b ∷ Γ') (Δ' S, B) freshCtr with Data.String._≟_ x (name b)
+    ... | yes _ = just (B , Surface.var zero , freshCtr)  -- Local var: no instantiation needed
+    ... | no  _ with go Γ' Δ' freshCtr
     ...   | nothing = nothing
-    ...   | just (A , se) = just (A , weaken se)
+    ...   | just (A , se , freshCtr') = just (A , weaken se , freshCtr')
 
 ------------------------------------------------------------------------
 -- Bidirectional Type Checking: Inference and Checking Modes
@@ -622,8 +733,9 @@ mutual
   inferElabImpl : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 
   -- Variable: look up in context (depth 0 - no nesting)
+  -- TODO: Thread updated fresh counter through type checker (Step 4)
   inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
-  ... | just (A , se) = success A se 0
+  ... | just (A , se , fresh') = success A se 0
   ... | nothing = failure ("Unbound variable: " ++ x)
 
   -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
