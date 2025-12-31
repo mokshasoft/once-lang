@@ -386,7 +386,7 @@ h-setup = SetupR.h-setup
 ### Timeout guidelines
 
 From `proof-instructions.md`:
-- Single file: `timeout 300 make agda MODULE=Once/Backend/X86/Correct/IR/Pair`
+- Single file: `timeout 300 make agda MODULE=Once/Backend/X86/Correct/IR/Pair.agda`
 - Full backend: `timeout 900 make riscv`
 
 **If typechecking times out, refactor.** Long compile times indicate the proof structure needs simplification.

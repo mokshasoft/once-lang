@@ -159,7 +159,7 @@ modules, study the x86 structure first and maintain consistency.
 
 For single file type checks:
 ```bash
-timeout 300 make agda MODULE=Once/Backend/X86/Correct/IR/Pair
+timeout 300 make agda MODULE=Once/Backend/X86/Correct/IR/Pair.agda
 ```
 
 For full type checks:
