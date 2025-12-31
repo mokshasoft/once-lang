@@ -1654,15 +1654,19 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           mem-setup-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
           mem-mid-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
 
+        -- Phase 2: f preserves address 0 via ir-mem-at-0
+        mem-f-at-0 : readMem (memory s1) 0 ≡ readMem (memory s-setup) 0
+        mem-f-at-0 = ir-mem-at-0 r-f
+
         -- Phase 4: g preserves address 0 via ir-mem-at-0
         mem-g-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
         mem-g-at-0 = ir-mem-at-0 r-g
 
         -- Chain all 4 phases: orig-r15 = 0, so this proves the required property
         mem-at-0-chain : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        mem-at-0-chain = subst₂ (λ a b → readMem (memory s3) a ≡ readMem (memory s) b)
-                                r15≡0 r15≡0
-                                (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
+        mem-at-0-chain = subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s) addr)
+                               r15≡0
+                               (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
 
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR

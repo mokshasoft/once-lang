@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
@@ -86,6 +86,7 @@ run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-in
     ; ir-rsp-bound = rsp>16-final
     ; ir-rbp-inv = rbp-inv-final
     ; ir-mem-above = mem-above-final
+    ; ir-mem-at-0 = mem-at-0-final
     ; ir-closure-wf = no-closure  -- TODO: curry should produce has-closure with ClosureWellFormed proof
     } , record
     { closure-addr = new-rsp
@@ -780,3 +781,24 @@ run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-in
           mem-s7 : readMem (memory s7) addr ≡ readMem (memory s6) addr
           mem-s7 = refl
       in trans mem-s7 (trans mem-s6 (trans mem-s5 (trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1)))))
+
+    -- Memory at 0 preserved through all states
+    -- Curry writes at new-rsp and new-rsp+8, both > 0 when rsp > 16
+    -- TODO: Prove 0<new-rsp and 0<new-rsp+8 from rsp>16 to eliminate postulates
+    mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+    mem-at-0-final =
+      let postulate
+            0<new-rsp : 0 < new-rsp
+            0<new-rsp+8 : 0 < (new-rsp +ℕ 8)
+          diff-new-rsp : new-rsp ≢ 0
+          diff-new-rsp = Nat-<⇒≢ 0<new-rsp
+          diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ 0
+          diff-new-rsp+8 = Nat-<⇒≢ 0<new-rsp+8
+          -- Chain through all states
+          mem-s2 : readMem (memory s2) 0 ≡ readMem (memory s) 0
+          mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) 0
+                     (readReg (regs s1) rdi) (subst (λ x → x ≢ 0) (sym rsp-s1) diff-new-rsp)
+          mem-s4 : readMem (memory s4) 0 ≡ readMem (memory s2) 0
+          mem-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) 0
+                     (readReg (regs s3) r9) (subst (λ x → (x +ℕ 8) ≢ 0) (sym rsp-s3) diff-new-rsp+8)
+      in trans mem-s4 mem-s2
