@@ -503,14 +503,20 @@ TVar _ ≟T Eff _ _ = no λ ()
 TVar _ ≟T Fix _ = no λ ()
 
 ------------------------------------------------------------------------
--- Combined Inference + Elaboration Result
+-- Bidirectional Type Checking Results
 ------------------------------------------------------------------------
 
--- | Result of type inference with elaborated expression
+-- | Result of type inference (compute the type)
 -- Includes maximum nesting depth encountered (for verification limit tracking)
 data InferElabResult {n : ℕ} (Δ : SCtx n) : Set where
   success : (A : Type) → SExpr Δ A → (depth : ℕ) → InferElabResult Δ
   failure : String → InferElabResult Δ
+
+-- | Result of type checking (verify against expected type)
+-- The type is known, so we only return the expression and depth
+data CheckElabResult {n : ℕ} (Δ : SCtx n) (A : Type) : Set where
+  success : SExpr Δ A → (depth : ℕ) → CheckElabResult Δ A
+  failure : String → CheckElabResult Δ A
 
 ------------------------------------------------------------------------
 -- Named Context with de Bruijn Correspondence
@@ -586,108 +592,131 @@ lookupVar (mkCtx n Γ Δ) x = go Γ Δ
     ...   | just (A , se) = just (A , weaken se)
 
 ------------------------------------------------------------------------
--- Combined Inference + Elaboration
+-- Bidirectional Type Checking: Inference and Checking Modes
 ------------------------------------------------------------------------
 
 {-# TERMINATING #-}
-inferElabImpl : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+mutual
+  -- | Type checking mode: verify expression has expected type
+  -- This is the "checking" judgment: Γ ⊢ e ⇐ A
+  checkElabImpl : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
 
--- Variable: look up in context (depth 0 - no nesting)
-inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
-... | just (A , se) = success A se 0
-... | nothing = failure ("Unbound variable: " ++ x)
+  -- Lambda with function type: check body against result type
+  checkElabImpl ctx (Raw.RLam x body) (A ⇒ B) with checkElabImpl (extendNamedCtx ctx x A) body B
+  ... | success bodyExpr depth = success (Surface.lam bodyExpr) (suc depth)
+  ... | failure err = failure err
 
--- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
-inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
-... | failure err = failure err
-... | success B bodyExpr bodyDepth = success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth)
+  -- Lambda with non-function type: error
+  checkElabImpl ctx (Raw.RLam _ _) ty =
+    failure "Lambda requires function type"
 
--- Application: infer function, check it's a function type, infer arg, check types match
--- (depth = max of function and argument depths)
-inferElabImpl ctx (Raw.RApp fun arg) = inferApp (inferElabImpl ctx fun)
-  where
-    inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
-    inferApp (failure err) = failure err
-    inferApp (success (A ⇒ B) funExpr funDepth) = inferArg (inferElabImpl ctx arg)
-      where
-        inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
-        inferArg (failure err) = failure err
-        inferArg (success A' argExpr argDepth) with A ≟T A'
-        ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
-        ... | no _ = failure "Type mismatch in application"
-    inferApp (success Unit _ _) = failure "Expected function type in application"
-    inferApp (success Void _ _) = failure "Expected function type in application"
-    inferApp (success Int _ _) = failure "Expected function type in application"
-    inferApp (success Float _ _) = failure "Expected function type in application"
-    inferApp (success Str _ _) = failure "Expected function type in application"
-    inferApp (success Buffer _ _) = failure "Expected function type in application"
-    inferApp (success (_ Once.Type.* _) _ _) = failure "Expected function type in application"
-    inferApp (success (_ Once.Type.+ _) _ _) = failure "Expected function type in application"
-    inferApp (success (Eff _ _) _ _) = failure "Expected function type in application"
-    inferApp (success (Fix _) _ _) = failure "Expected function type in application"
-    inferApp (success (TVar _) _ _) = failure "Expected function type in application"
+  -- Default: fall back to inference and check equality
+  checkElabImpl ctx expr expectedType with inferElabImpl ctx expr
+  ... | failure err = failure err
+  ... | success inferredType expr depth with inferredType ≟T expectedType
+  ...   | yes refl = success expr depth
+  ...   | no _     = failure "Type mismatch in checking mode"
 
--- Pair (depth = max of both elements)
-inferElabImpl ctx (Raw.RPair a b) with inferElabImpl ctx a
-... | failure err = failure err
-... | success A aExpr aDepth with inferElabImpl ctx b
-...   | failure err = failure err
-...   | success B bExpr bDepth = success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth)
+  -- | Type inference mode: compute the type
+  -- This is the "inference" judgment: Γ ⊢ e ⇒ A
+  inferElabImpl : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 
--- Unit (depth 0 - no nesting)
-inferElabImpl ctx Raw.RUnit = success Unit Surface.unit 0
+  -- Variable: look up in context (depth 0 - no nesting)
+  inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
+  ... | just (A , se) = success A se 0
+  ... | nothing = failure ("Unbound variable: " ++ x)
 
--- Let binding (depth = max(e₁, e₂ + 1) since e₂ is under binder)
-inferElabImpl ctx (Raw.RLet x e₁ e₂) with inferElabImpl ctx e₁
-... | failure err = failure err
-... | success A e₁Expr e₁Depth with inferElabImpl (extendNamedCtx ctx x A) e₂
-...   | failure err = failure err
-...   | success B e₂Expr e₂Depth = success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth)
+  -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
+  inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
+  ... | failure err = failure err
+  ... | success B bodyExpr bodyDepth = success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth)
 
--- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
-inferElabImpl ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
-  where
-    inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
-    inferCase (failure err) = failure err
-    inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth) = inferLeft (inferElabImpl (extendNamedCtx ctx xL A) eL)
-      where
-        inferLeft : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))
-                  → InferElabResult (NamedCtx.debruijn ctx)
-        inferLeft (failure err) = failure err
-        inferLeft (success C₁ eLExpr eLDepth) = inferRight (inferElabImpl (extendNamedCtx ctx xR B) eR)
-          where
-            inferRight : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xR B))
-                       → InferElabResult (NamedCtx.debruijn ctx)
-            inferRight (failure err) = failure err
-            inferRight (success C₂ eRExpr eRDepth) with C₁ ≟T C₂
-            ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr) (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth)
-            ... | no _ = failure "Case branches have different types"
-    inferCase (success Unit _ _) = failure "Expected sum type in case"
-    inferCase (success Void _ _) = failure "Expected sum type in case"
-    inferCase (success Int _ _) = failure "Expected sum type in case"
-    inferCase (success Float _ _) = failure "Expected sum type in case"
-    inferCase (success Str _ _) = failure "Expected sum type in case"
-    inferCase (success Buffer _ _) = failure "Expected sum type in case"
-    inferCase (success (_ Once.Type.* _) _ _) = failure "Expected sum type in case"
-    inferCase (success (_ ⇒ _) _ _) = failure "Expected sum type in case"
-    inferCase (success (Eff _ _) _ _) = failure "Expected sum type in case"
-    inferCase (success (Fix _) _ _) = failure "Expected sum type in case"
-    inferCase (success (TVar _) _ _) = failure "Expected sum type in case"
+  -- Application: infer function, check it's a function type, infer arg, check types match
+  -- (depth = max of function and argument depths)
+  inferElabImpl ctx (Raw.RApp fun arg) = inferApp (inferElabImpl ctx fun)
+    where
+      inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+      inferApp (failure err) = failure err
+      inferApp (success (A ⇒ B) funExpr funDepth) = inferArg (inferElabImpl ctx arg)
+        where
+          inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+          inferArg (failure err) = failure err
+          inferArg (success A' argExpr argDepth) with A ≟T A'
+          ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
+          ... | no _ = failure "Type mismatch in application"
+      inferApp (success Unit _ _) = failure "Expected function type in application"
+      inferApp (success Void _ _) = failure "Expected function type in application"
+      inferApp (success Int _ _) = failure "Expected function type in application"
+      inferApp (success Float _ _) = failure "Expected function type in application"
+      inferApp (success Str _ _) = failure "Expected function type in application"
+      inferApp (success Buffer _ _) = failure "Expected function type in application"
+      inferApp (success (_ Once.Type.* _) _ _) = failure "Expected function type in application"
+      inferApp (success (_ Once.Type.+ _) _ _) = failure "Expected function type in application"
+      inferApp (success (Eff _ _) _ _) = failure "Expected function type in application"
+      inferApp (success (Fix _) _ _) = failure "Expected function type in application"
+      inferApp (success (TVar _) _ _) = failure "Expected function type in application"
 
--- Integer literal: not in Surface.Syntax
-inferElabImpl _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
+  -- Pair (depth = max of both elements)
+  inferElabImpl ctx (Raw.RPair a b) with inferElabImpl ctx a
+  ... | failure err = failure err
+  ... | success A aExpr aDepth with inferElabImpl ctx b
+  ...   | failure err = failure err
+  ...   | success B bExpr bDepth = success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth)
 
--- String literal: not in Surface.Syntax
-inferElabImpl _ (Raw.RStringLit _) = failure "String literals not supported in verified elaboration"
+  -- Unit (depth 0 - no nesting)
+  inferElabImpl ctx Raw.RUnit = success Unit Surface.unit 0
 
--- Type annotation: just elaborate the inner expression
-inferElabImpl ctx (Raw.RAnnot e _) = inferElabImpl ctx e
+  -- Let binding (depth = max(e₁, e₂ + 1) since e₂ is under binder)
+  inferElabImpl ctx (Raw.RLet x e₁ e₂) with inferElabImpl ctx e₁
+  ... | failure err = failure err
+  ... | success A e₁Expr e₁Depth with inferElabImpl (extendNamedCtx ctx x A) e₂
+  ...   | failure err = failure err
+  ...   | success B e₂Expr e₂Depth = success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth)
 
--- Binary operators: not in Surface.Syntax
-inferElabImpl _ (Raw.RBinOp _ _ _) = failure "Binary operators not supported in verified elaboration"
+  -- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
+  inferElabImpl ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
+    where
+      inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+      inferCase (failure err) = failure err
+      inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth) = inferLeft (inferElabImpl (extendNamedCtx ctx xL A) eL)
+        where
+          inferLeft : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))
+                    → InferElabResult (NamedCtx.debruijn ctx)
+          inferLeft (failure err) = failure err
+          inferLeft (success C₁ eLExpr eLDepth) = inferRight (inferElabImpl (extendNamedCtx ctx xR B) eR)
+            where
+              inferRight : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xR B))
+                         → InferElabResult (NamedCtx.debruijn ctx)
+              inferRight (failure err) = failure err
+              inferRight (success C₂ eRExpr eRDepth) with C₁ ≟T C₂
+              ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr) (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth)
+              ... | no _ = failure "Case branches have different types"
+      inferCase (success Unit _ _) = failure "Expected sum type in case"
+      inferCase (success Void _ _) = failure "Expected sum type in case"
+      inferCase (success Int _ _) = failure "Expected sum type in case"
+      inferCase (success Float _ _) = failure "Expected sum type in case"
+      inferCase (success Str _ _) = failure "Expected sum type in case"
+      inferCase (success Buffer _ _) = failure "Expected sum type in case"
+      inferCase (success (_ Once.Type.* _) _ _) = failure "Expected sum type in case"
+      inferCase (success (_ ⇒ _) _ _) = failure "Expected sum type in case"
+      inferCase (success (Eff _ _) _ _) = failure "Expected sum type in case"
+      inferCase (success (Fix _) _ _) = failure "Expected sum type in case"
+      inferCase (success (TVar _) _ _) = failure "Expected sum type in case"
 
--- Unary operators: not in Surface.Syntax
-inferElabImpl _ (Raw.RUnaryOp _ _) = failure "Unary operators not supported in verified elaboration"
+  -- Integer literal: not in Surface.Syntax
+  inferElabImpl _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
+
+  -- String literal: not in Surface.Syntax
+  inferElabImpl _ (Raw.RStringLit _) = failure "String literals not supported in verified elaboration"
+
+  -- Type annotation: just elaborate the inner expression
+  inferElabImpl ctx (Raw.RAnnot e _) = inferElabImpl ctx e
+
+  -- Binary operators: not in Surface.Syntax
+  inferElabImpl _ (Raw.RBinOp _ _ _) = failure "Binary operators not supported in verified elaboration"
+
+  -- Unary operators: not in Surface.Syntax
+  inferElabImpl _ (Raw.RUnaryOp _ _) = failure "Unary operators not supported in verified elaboration"
 
 ------------------------------------------------------------------------
 -- Depth-Checked Inference (Public Interface)

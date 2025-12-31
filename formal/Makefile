@@ -87,6 +87,7 @@ TYPECHECK_UNIFY := Once/TypeCheck/Unify.agda
 TYPECHECK_INFER := Once/TypeCheck/Infer.agda
 TYPECHECK_RESOLVE := Once/TypeCheck/Resolve.agda
 TYPECHECK_SOUND := Once/TypeCheck/Sound.agda
+TYPECHECK_ELABORATE := Once/TypeCheck/Elaborate.agda
 TYPECHECK_MAIN := Once/TypeCheck.agda
 
 # Nix develop wrapper: suppress warnings and banner
@@ -356,6 +357,13 @@ typecheck-full: typecheck-core
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RESOLVE)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_MAIN)'
 	@echo "Verified type checker type-checks successfully!"
+
+# Fast target for checking just the Elaborate module (for quick iteration)
+.PHONY: typecheck-elaborate
+typecheck-elaborate:
+	@echo "Type-checking TypeCheck.Elaborate module..."
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_ELABORATE)'
+	@echo "TypeCheck.Elaborate type-checks successfully!"
 
 .PHONY: malonzo-typecheck
 malonzo-typecheck:
