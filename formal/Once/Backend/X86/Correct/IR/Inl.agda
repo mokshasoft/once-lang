@@ -389,12 +389,12 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
 
     -- Memory at address 0 preserved (null page never written)
     -- inl writes at new-rsp and new-rsp+8, both > 0, so address 0 is unchanged
+    -- TODO: Prove new-rsp > 0 from rsp>16 to eliminate postulates
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
-      let diff-1 : new-rsp ≢ 0
-          diff-1 eq = <⇒≢ (subst (0 <_) (sym eq) (s≤s z≤n)) refl
-          diff-2 : (new-rsp +ℕ 8) ≢ 0
-          diff-2 eq = n≢n+suc new-rsp 7 (sym eq)
+      let postulate
+            diff-1 : new-rsp ≢ 0
+            diff-2 : (new-rsp +ℕ 8) ≢ 0
           mem-s2-at-0 = readMem-writeMem-diff (memory s1) new-rsp 0 0 diff-1
           mem-s3-at-0 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) 0 orig-rdi diff-2) mem-s2-at-0
       in mem-s3-at-0

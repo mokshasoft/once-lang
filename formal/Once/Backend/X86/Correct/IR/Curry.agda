@@ -791,9 +791,9 @@ run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-in
             0<new-rsp : 0 < new-rsp
             0<new-rsp+8 : 0 < (new-rsp +ℕ 8)
           diff-new-rsp : new-rsp ≢ 0
-          diff-new-rsp = Nat-<⇒≢ 0<new-rsp
+          diff-new-rsp eq = Nat-<⇒≢ 0<new-rsp (sym eq)
           diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ 0
-          diff-new-rsp+8 = Nat-<⇒≢ 0<new-rsp+8
+          diff-new-rsp+8 eq = Nat-<⇒≢ 0<new-rsp+8 (sym eq)
           -- Chain through all states
           mem-s2 : readMem (memory s2) 0 ≡ readMem (memory s) 0
           mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) 0
