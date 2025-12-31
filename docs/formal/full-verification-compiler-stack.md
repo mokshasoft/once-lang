@@ -137,9 +137,11 @@ The depth field counts maximum nesting of binders:
 
 ---
 
-## Decision Log Entry
+## Decision Log
 
-**Decision**: Accept depth limit of 7 for verified type checking
+---
+
+### Decision 1: Accept depth limit of 7 for verified type checking
 
 **Date**: 2025-12-30
 
@@ -192,6 +194,84 @@ The Once compiler uses exchange functions (exchange₀ through exchange₇) for 
 **Precedent**:
 
 This approach follows the precedent set by other verified systems, which often have documented resource bounds that are proven properties rather than arbitrary limitations.
+
+---
+
+### Decision 2: Use Bidirectional Type Checking (Not Hindley-Milner)
+
+**Date**: 2025-12-31
+
+**Context**:
+
+The current type checker uses syntactic equality (`≟T`) which doesn't support polymorphism. When typing `pair snd fst`, the `TVar "a"` in different functions are incorrectly treated as the same variable, causing "Type mismatch in application" errors.
+
+Two approaches were considered:
+1. **Hindley-Milner**: Global constraint-based unification (like Haskell)
+2. **Bidirectional**: Local checking/inference with explicit signatures
+
+**Decision**:
+
+Implement **bidirectional type checking with local inference** (Option 2).
+
+**Rationale**:
+
+1. **Future-proof for dependent types**: Bidirectional naturally extends to Π/Σ types. Hindley-Milner hits a wall with dependent types and would require complete replacement.
+
+2. **Compatible with QTT**: Quantitative Type Theory (usage grades 0/1/ω) requires bidirectional checking. Grade propagation is inherently local, not global. Hindley-Milner + QTT is fundamentally incompatible.
+
+3. **Simpler implementation**: Bidirectional has two modes (check/infer) that work locally. Hindley-Milner requires global constraint solving, occurs checks, and complex generalization.
+
+4. **Aligns with Once philosophy**:
+   - "Types guide, don't carry meaning" (D007) → Signatures required for verification
+   - "Explicit over implicit" → Top-level signatures make types explicit
+   - Bidirectional enforces signatures as first-class design elements
+   - Hindley-Milner encourages optional signatures (weaker guidance)
+
+5. **Matches current practice**: All Once examples already have top-level signatures:
+   ```once
+   identity : Unit -> Unit
+   swap : Pair A B -> Pair B A
+   ```
+   Bidirectional leverages these; doesn't require MORE annotations.
+
+6. **Modern Haskell is moving away from pure HM**: GADTs, TypeApplications, RankNTypes all require bidirectional checking. GHC now uses bidirectional with HM as a subsystem.
+
+**Trade-offs Accepted**:
+
+- Top-level signatures required (but already current practice)
+- Local inference for lambdas/lets (matches user expectations)
+- Cannot infer polymorphic types without signatures (acceptable trade for future-proofing)
+
+**Alternatives Considered**:
+
+1. **Hindley-Milner with unification**:
+   - ❌ Doesn't extend to dependent types (architectural dead-end)
+   - ❌ Incompatible with QTT grading
+   - ❌ More complex than bidirectional
+   - ❌ Would require complete rewrite for Phase 2 (dependent types)
+
+2. **No polymorphism**:
+   - ❌ Can't type basic functions like `id`, `pair`
+   - ❌ Makes categorical generators unusable
+
+3. **System F style explicit type application**:
+   - ✅ Works, but more verbose than bidirectional
+   - ❌ Requires `id @Int x` syntax everywhere
+   - ❌ Bidirectional can infer most applications
+
+**Impact**:
+
+- Type checker will have two modes: `checkElabImpl` and `inferElabImpl`
+- Top-level definitions must have type signatures (no change from current)
+- Local bindings (let, λ) use inference (no annotations needed)
+- Polymorphic applications like `pair snd fst` will type-check correctly
+- Foundation ready for dependent types (Π/Σ) and QTT integration
+
+**References**:
+
+- Once design philosophy: `docs/design/type-system.md` (D007)
+- Dependent types roadmap: `docs/design/dependent-types-options.md`
+- QTT requires bidirectional: Idris2, Granule implementations
 
 ---
 
@@ -587,11 +667,14 @@ stack exec -- once build --help | grep verified
 - Cross-module references: `Foo.bar` or just `bar` if imported
 - This is not optional - arbitrary programs with imports MUST work
 
-### Phase 3.6 (MAJOR: Implement Proper Polymorphism)
+### Phase 3.6: Implement Bidirectional Type Checking with Polymorphism
+
+**Decision**: See Decision Log Entry 2 (above) - Bidirectional chosen over Hindley-Milner
 
 **Problem Statement**:
+
 Current type checker uses syntactic equality (`≟T`) which doesn't support polymorphism.
-When using `pair snd fst`, the `TVar "a"` in different functions are incorrectly treated as the same variable.
+When typing `pair snd fst`, the `TVar "a"` in different functions are incorrectly treated as the same variable.
 
 **Current Limitation**:
 ```agda
@@ -604,118 +687,275 @@ testPairExists : ((Unit -> Unit) -> (Unit -> Unit) -> Unit -> (Unit * Unit))
 testPairExists = pair
 ```
 
-**Root Cause**: No instantiation of polymorphic types. The type system needs:
-1. Type schemes with explicit quantification: `∀ a b. a → b`
-2. Instantiation: Replace bound variables with fresh ones when using polymorphic functions
-3. Unification: Solve type equations (e.g., `?X → ?Y` unifies with `Int → Bool`)
+**Root Cause**: Current type checker only has inference mode (`inferElabImpl`), no checking mode. Cannot handle polymorphic instantiation.
+
+---
 
 **Implementation Plan**:
 
-**Step 1: Add Type Schemes**
-```agda
--- Extend Type with quantification
-data TypeScheme : Set where
-  Mono : Type → TypeScheme                    -- Monomorphic type
-  Poly : List String → Type → TypeScheme      -- ∀ vars. type
+**Step 0: Document Decision (THIS STEP)**
 
--- Update builtinType to return schemes:
-builtinType : String → Maybe (∃[ σ ] (TypeScheme × Surface.Expr S∅ ???))
-builtinType "id"  = just (Poly ("a" ∷ []) (TVar "a" ⇒ TVar "a") , ...)
-builtinType "fst" = just (Poly ("a" ∷ "b" ∷ []) ((TVar "a" * TVar "b") ⇒ TVar "a") , ...)
+Add Decision Log Entry 2 explaining:
+- Why bidirectional over Hindley-Milner
+- Alignment with Once philosophy (explicit, types guide)
+- Future-proofing for dependent types and QTT
+
+Status: ✅ **COMPLETE**
+
+---
+
+**Step 1: Add Bidirectional Modes**
+
+Split current `inferElabImpl` into two mutually recursive modes:
+
+```agda
+-- Inference mode: compute the type
+inferElabImpl : NamedCtx → RawExpr → InferResult
+
+-- Checking mode: verify against expected type
+checkElabImpl : NamedCtx → RawExpr → Type → CheckResult
+
+data InferResult : Set where
+  success : (ty : Type) → (expr : SurfaceExpr) → (depth : ℕ) → InferResult
+  failure : String → InferResult
+
+data CheckResult : Set where
+  success : (expr : SurfaceExpr) → (depth : ℕ) → CheckResult
+  failure : String → CheckResult
 ```
 
-**Step 2: Implement Substitution**
+**Mode alternation**:
+- Lambda: Check mode (given function type, check body)
+- Application: Infer function, check argument
+- Variables: Infer from context
+- Let: Infer binding, check/infer body
+- Annotations: Switch from infer to check
+
+---
+
+**Step 2: Handle Polymorphic Variables (Instantiation)**
+
+When looking up polymorphic built-ins, instantiate type variables:
+
 ```agda
--- Type substitution: [TVar x ↦ T]
+-- Current builtinType returns monomorphic type with free variables:
+builtinType "id" = just (TVar "a" ⇒ TVar "a" , Surface.lam (Surface.var zero))
+
+-- Problem: 'a' is shared across all uses
+
+-- Solution: Add instantiation context
+data PolyType : Set where
+  monotype : Type → PolyType
+  polytype : List String → Type → PolyType
+
+builtinPolyType : String → Maybe (∃[ σ ] (PolyType × Surface.Expr S∅ ???))
+builtinPolyType "id"  = just (polytype ("a" ∷ []) (TVar "a" ⇒ TVar "a") , ...)
+builtinPolyType "fst" = just (polytype ("a" ∷ "b" ∷ []) ((TVar "a" * TVar "b") ⇒ TVar "a") , ...)
+
+-- Instantiate with fresh variables when looking up:
+instantiate : PolyType → NamedCtx → (Type × NamedCtx)
+instantiate (monotype A) ctx = (A , ctx)
+instantiate (polytype vars A) ctx =
+  let freshVars = map (λ v → v ++ "#" ++ show (freshCounter ctx)) vars
+      σ = zip vars (map TVar freshVars)
+      A' = substType σ A
+      ctx' = bumpCounter ctx
+  in (A' , ctx')
+
+-- Usage in lookupVar:
+lookupVar ctx x with builtinPolyType x
+... | just (σ , expr) =
+    let (ty , ctx') = instantiate σ ctx
+    in just (ty , weakenFromEmpty expr , ctx')
+```
+
+---
+
+**Step 3: Implement Substitution Infrastructure**
+
+```agda
+-- Type substitution
 Subst : Set
 Subst = List (String × Type)
 
 -- Apply substitution to type
-applySubst : Subst → Type → Type
-applySubst σ (TVar x) = lookup x σ (default: TVar x)
-applySubst σ (A ⇒ B) = applySubst σ A ⇒ applySubst σ B
-applySubst σ (A * B) = applySubst σ A * applySubst σ B
--- ... etc
+substType : Subst → Type → Type
+substType σ (TVar x) = lookupSubst x σ (default: TVar x)
+substType σ (A ⇒ B) = substType σ A ⇒ substType σ B
+substType σ (A * B) = substType σ A * substType σ B
+substType σ (A + B) = substType σ A + substType σ B
+substType σ Unit = Unit
+substType σ Void = Void
+substType σ Int = Int
+substType σ Float = Float
+substType σ Str = Str
+substType σ Buffer = Buffer
+substType σ (Eff A B) = Eff (substType σ A) (substType σ B)
+substType σ (Fix F) = Fix (substType σ F)
+
+-- Properties needed for proofs:
+postulate
+  subst-id : ∀ A → substType [] A ≡ A
+  subst-compose : ∀ σ₁ σ₂ A → substType (σ₂ ∘ σ₁) A ≡ substType σ₂ (substType σ₁ A)
 ```
 
-**Step 3: Unification Algorithm**
+---
+
+**Step 4: Update Type Checker to Use Bidirectional**
+
+**Application (infer function, check argument)**:
 ```agda
--- Unify two types, return substitution or failure
-unify : Type → Type → Maybe Subst
-unify (TVar x) T = just [(x , T)]                    -- Bind variable
-unify T (TVar y) = just [(y , T)]                    -- Symmetric
-unify (A₁ ⇒ B₁) (A₂ ⇒ B₂) = do
-  σ₁ ← unify A₁ A₂
-  σ₂ ← unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
-  return (σ₂ ∘ σ₁)                                   -- Compose substitutions
-unify Unit Unit = just []
-unify (A₁ * B₁) (A₂ * B₂) = ...                     -- Similar
--- ... all type constructors
-unify _ _ = nothing                                  -- Mismatch
+-- Current (inference only):
+inferElabImpl ctx (RApp fun arg) = inferApp (inferElabImpl ctx fun)
+  where
+    inferApp (success (A ⇒ B) funExpr funDepth) =
+      inferArg (inferElabImpl ctx arg)
+      where
+        inferArg (success A' argExpr argDepth) with A ≟T A'
+        ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
+        ... | no _ = failure "Type mismatch in application"
+
+-- Bidirectional (check argument against expected type):
+inferElabImpl ctx (RApp fun arg) = inferApp (inferElabImpl ctx fun)
+  where
+    inferApp (success (A ⇒ B) funExpr funDepth) =
+      case checkElabImpl ctx arg A of
+        success argExpr argDepth → success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
+        failure err → failure err
 ```
 
-**Step 4: Instantiation**
+**Lambda (switch to checking)**:
 ```agda
--- Instantiate a type scheme with fresh type variables
-instantiate : TypeScheme → NamedCtx → (Type × NamedCtx)
-instantiate (Mono A) ctx = (A , ctx)
-instantiate (Poly vars A) ctx =
-  let fresh = generateFreshVars (length vars) (freshCounter ctx)
-      σ = zip vars fresh
-      A' = applySubst σ A
-      ctx' = bumpFreshCounter (length vars) ctx
-  in (A' , ctx')
+-- Inference mode for lambda: infer from annotation or fail
+inferElabImpl ctx (RLam x body) = failure "Cannot infer type of lambda without annotation"
+
+-- Checking mode for lambda: given function type, check body
+checkElabImpl ctx (RLam x body) (A ⇒ B) =
+  let ctx' = extendNamedCtx ctx x A
+  in case checkElabImpl ctx' body B of
+       success bodyExpr depth → success (Surface.lam bodyExpr) (suc depth)
+       failure err → failure err
+checkElabImpl ctx (RLam _ _) ty = failure ("Expected function type, got: " ++ show ty)
 ```
 
-**Step 5: Update Type Checker**
+**Type annotations (mode switching)**:
 ```agda
--- Instead of:
-inferArg (success A' argExpr argDepth) with A ≟T A'
-... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
-... | no _ = failure "Type mismatch in application"
-
--- Use unification:
-inferArg (success A' argExpr argDepth) with unify A A'
-... | just σ = success (applySubst σ B) (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
-... | nothing = failure ("Type mismatch: expected " ++ show A ++ ", got " ++ show A')
+-- User can provide type annotation to switch from infer to check
+inferElabImpl ctx (RAnnot expr ty) =
+  case checkElabImpl ctx expr ty of
+    success expr' depth → success ty expr' depth
+    failure err → failure err
 ```
 
-**Step 6: Generalization (Let-Polymorphism)**
+---
+
+**Step 5: Extend NamedCtx with Fresh Counter**
+
 ```agda
--- For let bindings: generalize free type variables
-generalize : NamedCtx → Type → TypeScheme
-generalize ctx A =
-  let freeVars = ftv A \\ ftv (contextTypes ctx)  -- Variables not in context
-  in if null freeVars
-     then Mono A
-     else Poly freeVars A
+record NamedCtx : Set where
+  constructor mkCtx
+  field
+    size         : ℕ
+    named        : Ctx
+    debruijn     : SCtx size
+    freshCounter : ℕ  -- For generating fresh type variables
+
+emptyCtx : NamedCtx
+emptyCtx = mkCtx 0 ∅ S∅ 0
+
+bumpCounter : NamedCtx → NamedCtx
+bumpCounter (mkCtx n Γ Δ ctr) = mkCtx n Γ Δ (suc ctr)
 ```
+
+---
+
+**Step 6: Update Top-Level to Require Signatures**
+
+```agda
+-- Current: try to infer type
+elaborateDecl : RawDecl → Either Error (Name × Type × IR)
+
+-- New: require type signature (already current practice!)
+elaborateDecl : Name → Type → RawExpr → Either Error (Name × IR)
+elaborateDecl name ty expr =
+  case checkElabImpl emptyCtx expr ty of
+    success surfaceExpr depth →
+      Right (name , elaborate surfaceExpr)
+    failure err →
+      Left ("Type checking failed for " ++ name ++ ": " ++ err)
+```
+
+---
 
 **Files to Modify**:
-- `formal/Once/Type.agda` - Add TypeScheme, Subst, applySubst
-- `formal/Once/TypeCheck/Elaborate.agda` - Add unify, instantiate, generalize, update inferElabImpl
-- `formal/Once/TypeCheck/Unify.agda` - NEW: Unification algorithm with correctness proofs
-- `formal/Once/TypeCheck/Subst.agda` - NEW: Substitution infrastructure with properties
+
+1. **formal/Once/TypeCheck/Elaborate.agda**:
+   - Add `PolyType` datatype
+   - Add `CheckResult` datatype
+   - Add `freshCounter` to `NamedCtx`
+   - Implement `checkElabImpl` (new checking mode)
+   - Update `inferElabImpl` to use checking for arguments
+   - Implement `instantiate` for polymorphic built-ins
+   - Implement `substType` for type substitution
+
+2. **formal/Once/TypeCheck/Subst.agda** (NEW):
+   - Substitution infrastructure
+   - Properties: `subst-id`, `subst-compose`
+   - Lemmas for type preservation
+
+3. **compiler/src/Once/Elaborate/Verified.hs**:
+   - Update to match new MAlonzo constructor names
+   - Handle `CheckResult` vs `InferResult`
+
+---
 
 **Verification Requirements**:
-- Prove unification is sound and complete (most general unifier)
-- Prove substitution composition is associative
-- Prove instantiation preserves type well-formedness
-- Prove generalization is principal (most general type)
+
+- Prove type preservation: `checkElabImpl ctx e A` → `⊢ e : A`
+- Prove completeness: if `⊢ e : A` then `checkElabImpl ctx e A` succeeds
+- Prove substitution preserves types
+- Prove instantiation produces well-formed types
+
+---
 
 **Success Criteria**:
-- ✅ `diagonal = pair id id` type-checks
-- ✅ `swap = pair snd fst` type-checks
+
+- ✅ `diagonal : Unit → (Unit * Unit); diagonal = pair id id` type-checks
+- ✅ `swap : Pair A B → Pair B A; swap = pair snd fst` type-checks
 - ✅ examples/categorical.once compiles
 - ✅ examples/type-alias-test.once compiles
 - ✅ All existing depth tests still pass
+- ✅ Top-level signatures required (no change from current practice)
+- ✅ Local bindings (let, λ args) don't need annotations
 
-**Estimated Effort**: 2-3 weeks
-- Week 1: Infrastructure (TypeScheme, Subst, unify algorithm)
-- Week 2: Integration (update type checker, instantiate built-ins)
-- Week 3: Proofs (unification correctness, substitution properties)
+---
 
-**Status**: ❌ NOT STARTED - Major change required
+**Estimated Effort**: 1.5-2 weeks
+
+- **Week 1** (8-10 days):
+  - Days 1-2: Implement `checkElabImpl` mode for basic constructs
+  - Days 3-4: Add `PolyType` and `instantiate` for built-ins
+  - Days 5-6: Implement type substitution infrastructure
+  - Days 7-8: Update inference mode to use checking
+  - Days 9-10: Integration and testing
+
+- **Week 2** (3-4 days):
+  - Days 1-2: Verification proofs (type preservation, completeness)
+  - Days 3-4: MAlonzo extraction and compiler integration
+
+**Why faster than Hindley-Milner?**
+- No global constraint solving
+- No occurs check
+- No complex generalization
+- Simpler algorithm, more local reasoning
+
+---
+
+**Status**: ❌ NOT STARTED
+
+**Dependencies**: Phase 3.5 (built-in generators) completed
+
+**Blocks**: Phase 4 (integration testing with real programs)
 
 ### Phase 4 (Integration Testing - Real Programs)
 - ❌ All programs in `examples/` compile successfully (or documented as depth >7)
