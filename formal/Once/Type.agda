@@ -87,6 +87,12 @@ One   ≤q Many  = true
 Many  ≤q Many  = true
 _     ≤q _     = false
 
+-- | Show function for Quantity (for error messages)
+showQuantity : Quantity → String
+showQuantity Zero = "0"
+showQuantity One  = "1"
+showQuantity Many = "ω"
+
 ------------------------------------------------------------------------
 -- Types
 ------------------------------------------------------------------------

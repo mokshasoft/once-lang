@@ -33,12 +33,13 @@ open import Data.Nat.Induction using (<-wellFounded)
 
 open import Size using (Size; ∞)
 open import Once.Type
+open Once.Type using (showQuantity) public
 open import Once.IR as IR
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity; lookupUsage; tailUsage)
+open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity; lookupUsage; tailUsage; _≤ᵘ?_)
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Elaborate as Elab using (elaborate; ⟦_⟧ᶜ)
 open import Once.Postulates using (coerceQuantity)
@@ -758,12 +759,16 @@ mutual
 
   -- Lambda with function type: check body against result type
   -- For now, only support unrestricted (Many) arrows in Surface syntax
-  -- QTT: Drop the parameter from usage vector (bound in lambda)
-  -- Usage checking (parameter usage ≤ Many) happens in Step 5 (subusaging)
+  -- QTT: Validate parameter usage respects declared quantity, then drop from usage vector
   checkElabImpl ctx (Raw.RLam x body) (A ⇒[ Many ] B) with checkElabImpl (extendNamedCtx ctx x A) body B
-  ... | success bodyExpr depth fresh' usage' =
-          success (Surface.lam bodyExpr) (suc depth) fresh' (tailUsage usage')
   ... | failure err = failure err
+  ... | success bodyExpr depth fresh' usage' =
+          -- Check parameter usage ≤ declared quantity (Many)
+          let paramUsage = lookupUsage usage' zero
+          in if paramUsage ≤q Many
+             then success (Surface.lam bodyExpr) (suc depth) fresh' (tailUsage usage')
+             else failure ("Parameter '" ++ x ++ "' used with quantity " ++ showQuantity paramUsage ++
+                          " but declared with quantity " ++ showQuantity Many)
 
   -- Lambda with linear or erased arrow: not yet supported
   checkElabImpl ctx (Raw.RLam _ _) (A ⇒[ One ] B) =
@@ -799,12 +804,17 @@ mutual
                     success A se 0 fresh' zeroUsage
 
   -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
-  -- QTT: Drop the parameter from the usage vector (it's bound in the lambda)
-  -- Usage checking (parameter usage ≤ declared quantity) happens in Step 5 (subusaging)
+  -- QTT: Validate parameter usage respects Many (inferred lambdas are unrestricted),
+  --      then drop parameter from usage vector
   inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
   ... | failure err = failure err
   ... | success B bodyExpr bodyDepth fresh' usage' =
-        success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh' (tailUsage usage')
+        -- Inferred lambdas have Many quantity, check parameter usage ≤ Many
+        let paramUsage = lookupUsage usage' zero
+        in if paramUsage ≤q Many
+           then success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh' (tailUsage usage')
+           else failure ("Lambda parameter '" ++ x ++ "' used with quantity " ++ showQuantity paramUsage ++
+                        " but inferred lambdas require ≤ " ++ showQuantity Many)
 
   -- Application: infer function, check it's a function type, infer arg, check types match
   -- (depth = max of function and argument depths, thread fresh counter through)

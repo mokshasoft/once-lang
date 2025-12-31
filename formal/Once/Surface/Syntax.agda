@@ -11,6 +11,7 @@ open import Once.Type
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
+open import Data.Bool using (Bool; true; _∧_)
 
 -- | Typing context (de Bruijn indexed with quantities)
 --
@@ -96,6 +97,12 @@ _≤ᵘ_ : ∀ {n} → Usage n → Ctx n → Set
     open import Data.Bool using (true)
     open import Relation.Binary.PropositionalEquality using (_≡_)
     open import Data.Product using (_×_)
+
+-- | Boolean version of subusaging check (for validation)
+-- Returns true if all usages respect declared quantities
+_≤ᵘ?_ : ∀ {n} → Usage n → Ctx n → Bool
+[] ≤ᵘ? ∅ = true
+(q ∷ ψ) ≤ᵘ? (Γ , A ^ q') = (q ≤q q') ∧ (ψ ≤ᵘ? Γ)
 
 -- | Lookup quantity at specific index in usage vector
 lookupUsage : ∀ {n} → Usage n → Fin n → Quantity
