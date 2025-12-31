@@ -637,6 +637,7 @@ mutual
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-mem-above = mem-above-final
+      ; ir-mem-at-0 = mem-at-0-final
       ; ir-stack-inv = stack-inv-final
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
@@ -923,6 +924,18 @@ mutual
       rbp-inv-final : RbpInvariant s-final
       rbp-inv-final = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s-final (ir-rbp-inv r-f) rsp-jump rbp-jump
 
+      -- Memory at 0 preserved: setup/jump don't modify memory, chain through f
+      mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+      mem-at-0-final = trans mem-at-0-jump (trans (ir-mem-at-0 r-f) mem-at-0-setup)
+        where
+          mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+          mem-at-0-setup = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
+                                 (sym s-setup-eq) refl
+
+          mem-at-0-jump : readMem (memory s-final) 0 ≡ readMem (memory s1) 0
+          mem-at-0-jump = subst (λ m → readMem m 0 ≡ readMem (memory s1) 0)
+                                (sym mem-jump) refl
+
   -- | Star-based case right branch (inr)
   -- Structure:
   --   Phase 1: Setup - 3 instructions (mov r15 [rdi], cmp, jne taken)
@@ -954,6 +967,7 @@ mutual
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
+      ; ir-mem-at-0 = mem-at-0-final
       ; ir-closure-wf = closure-wf-final  -- Thread through g (inr branch)
       }
     where
@@ -1289,6 +1303,19 @@ mutual
            (trans (ir-mem-above r-g addr addr>rbp-right)
            (trans (cong (λ m → readMem m addr) mem-right)
                   (cong (λ m → readMem m addr) mem-setup)))
+
+      -- Memory at 0 preserved: setup/right-setup/end don't modify memory, chain through g
+      mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+      mem-at-0-final = trans mem-at-0-end (trans (ir-mem-at-0 r-g) (trans mem-at-0-right mem-at-0-setup))
+        where
+          mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+          mem-at-0-setup = cong (λ m → readMem m 0) mem-setup
+
+          mem-at-0-right : readMem (memory s-right) 0 ≡ readMem (memory s-setup) 0
+          mem-at-0-right = cong (λ m → readMem m 0) mem-right
+
+          mem-at-0-end : readMem (memory s-final) 0 ≡ readMem (memory s1) 0
+          mem-at-0-end = cong (λ m → readMem m 0) mem-end
 
   -- | Star-based curry execution (direct, uses Star throughout)
   -- compile-length (curry f) = 13 + len-f
