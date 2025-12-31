@@ -38,7 +38,7 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity)
+open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity; lookupUsage; tailUsage)
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Elaborate as Elab using (elaborate; ⟦_⟧ᶜ)
 open import Once.Postulates using (coerceQuantity)
@@ -569,6 +569,25 @@ freshTVar : ℕ → String
 freshTVar n = "α" ++ showℕ n
 
 ------------------------------------------------------------------------
+-- Helper: Find de Bruijn index of a variable by name
+------------------------------------------------------------------------
+
+-- | Find the de Bruijn index of a variable by name in the named context
+-- Returns nothing if the variable is not found (it's a built-in)
+findVarIndex : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx))
+findVarIndex (mkCtx n Γ Δ fresh) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (Fin m)
+    go [] S∅ = nothing  -- Variable not found in context (must be built-in)
+    go [] (_ S, _ ^ _) = nothing  -- Impossible: named empty but debruijn not
+    go (_ ∷ _) S∅ = nothing  -- Impossible: named non-empty but debruijn empty
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ q) with Data.String._≟_ x (name b)
+    ... | yes _ = just zero  -- Found at position 0
+    ... | no  _ with go Γ' Δ'
+    ...   | nothing = nothing
+    ...   | just i  = just (suc i)  -- Found at position suc i
+
+------------------------------------------------------------------------
 -- Type Substitution and Instantiation
 ------------------------------------------------------------------------
 
@@ -739,11 +758,11 @@ mutual
 
   -- Lambda with function type: check body against result type
   -- For now, only support unrestricted (Many) arrows in Surface syntax
+  -- QTT: Drop the parameter from usage vector (bound in lambda)
+  -- Usage checking (parameter usage ≤ Many) happens in Step 5 (subusaging)
   checkElabImpl ctx (Raw.RLam x body) (A ⇒[ Many ] B) with checkElabImpl (extendNamedCtx ctx x A) body B
   ... | success bodyExpr depth fresh' usage' =
-          -- TODO (QTT): Check parameter usage matches quantity
-          -- Should verify: usage'[0] ≤q Many
-          success (Surface.lam bodyExpr) (suc depth) fresh' zeroUsage  -- TODO: return tail usage'
+          success (Surface.lam bodyExpr) (suc depth) fresh' (tailUsage usage')
   ... | failure err = failure err
 
   -- Lambda with linear or erased arrow: not yet supported
@@ -768,22 +787,28 @@ mutual
   inferElabImpl : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 
   -- Variable: look up in context (depth 0 - no nesting)
-  -- TODO (QTT): Mark variable as used with its declared quantity
+  -- For local variables, mark as used with their declared quantity
+  -- For built-ins, usage is zero (they have no free variables)
   inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
-  ... | just (A , se , fresh') = success A se 0 fresh' zeroUsage  -- TODO: singleUse i q
   ... | nothing = failure ("Unbound variable: " ++ x)
+  ... | just (A , se , fresh') with findVarIndex ctx x
+  ...   | just i  = -- Local variable: mark as used with declared quantity
+                    let q = lookupQuantity (NamedCtx.debruijn ctx) i
+                    in success A se 0 fresh' (singleUse i q)
+  ...   | nothing = -- Built-in: no usage (weakened from empty context)
+                    success A se 0 fresh' zeroUsage
 
   -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
-  -- TODO (QTT): Check parameter usage, drop from usage vector
+  -- QTT: Drop the parameter from the usage vector (it's bound in the lambda)
+  -- Usage checking (parameter usage ≤ declared quantity) happens in Step 5 (subusaging)
   inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
   ... | failure err = failure err
   ... | success B bodyExpr bodyDepth fresh' usage' =
-        -- TODO: Check usage'[0] and return tail usage'
-        success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh' zeroUsage
+        success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh' (tailUsage usage')
 
   -- Application: infer function, check it's a function type, infer arg, check types match
   -- (depth = max of function and argument depths, thread fresh counter through)
-  -- TODO (QTT): Combine usage from function and argument (usageFun +ᵘ usageArg)
+  -- QTT: Both function and argument contribute to usage, so combine with +ᵘ
   inferElabImpl ctx (Raw.RApp fun arg) = inferApp (inferElabImpl ctx fun)
     where
       inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
@@ -797,7 +822,7 @@ mutual
           inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
           inferArg (failure err) = failure err
           inferArg (success A' argExpr argDepth argFresh usageArg) with A ≟T A'
-          ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth) argFresh zeroUsage  -- TODO: usageFun +ᵘ usageArg
+          ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
           ... | no _ = failure "Type mismatch in application"
 
       -- Linear and erased arrows not yet supported
@@ -816,7 +841,7 @@ mutual
       inferApp (success (TVar _) _ _ _ _) = failure "Expected function type in application"
 
   -- Pair (depth = max of both elements, thread fresh counter)
-  -- TODO (QTT): Combine usage from both components (usage1 +ᵘ usage2)
+  -- QTT: Both components contribute to usage, so combine with +ᵘ
   inferElabImpl ctx (Raw.RPair a b) with inferElabImpl ctx a
   ... | failure err = failure err
   ... | success A aExpr aDepth aFresh usage1 with inferElabImpl (bumpFresh' ctx aFresh) b
@@ -825,14 +850,14 @@ mutual
       bumpFresh' (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
   ...   | failure err = failure err
   ...   | success B bExpr bDepth bFresh usage2 =
-        success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth) bFresh zeroUsage  -- TODO: usage1 +ᵘ usage2
+        success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth) bFresh (usage1 +ᵘ usage2)
 
   -- Unit (depth 0 - no nesting, preserve fresh counter)
   -- Unit doesn't use any variables, so usage is zero
   inferElabImpl ctx Raw.RUnit = success Unit Surface.unit 0 (NamedCtx.freshCounter ctx) zeroUsage
 
   -- Let binding (depth = max(e₁, e₂ + 1) since e₂ is under binder, thread fresh counter)
-  -- TODO (QTT): Combine usage from e₁ and e₂ (usage1 +ᵘ tail usage2)
+  -- QTT: Combine usage from binding and body (drop bound variable from body usage)
   inferElabImpl ctx (Raw.RLet x e₁ e₂) with inferElabImpl ctx e₁
   ... | failure err = failure err
   ... | success A e₁Expr e₁Depth e₁Fresh usage1 with inferElabImpl (extendNamedCtx' ctx x A e₁Fresh) e₂
@@ -841,10 +866,10 @@ mutual
       extendNamedCtx' (mkCtx n Γ Δ _) y B fresh = mkCtx (suc n) (extendCtx Γ y B) (Δ S, B) fresh
   ...   | failure err = failure err
   ...   | success B e₂Expr e₂Depth e₂Fresh usage2 =
-        success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth) e₂Fresh zeroUsage  -- TODO: usage1 +ᵘ tail usage2
+        success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth) e₂Fresh (usage1 +ᵘ tailUsage usage2)
 
   -- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
-  -- TODO (QTT): Combine usage from all three parts (usageScr +ᵘ tail usageL +ᵘ tail usageR)
+  -- QTT: Combine usage from scrutinee and both branches (drop bound variables from branches)
   inferElabImpl ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
     where
       extendCtx' : NamedCtx → String → Type → ℕ → NamedCtx
@@ -864,7 +889,8 @@ mutual
               inferRight (failure err) = failure err
               inferRight (success C₂ eRExpr eRDepth eRFresh usageR) with C₁ ≟T C₂
               ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr)
-                                       (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth) eRFresh zeroUsage  -- TODO: usageScr +ᵘ tail usageL +ᵘ tail usageR
+                                       (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth) eRFresh
+                                       (usageScr +ᵘ tailUsage usageL +ᵘ tailUsage usageR)
               ... | no _ = failure "Case branches have different types"
       inferCase (success Unit _ _ _ _) = failure "Expected sum type in case"
       inferCase (success Void _ _ _ _) = failure "Expected sum type in case"

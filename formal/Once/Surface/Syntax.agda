@@ -97,6 +97,15 @@ _≤ᵘ_ : ∀ {n} → Usage n → Ctx n → Set
     open import Relation.Binary.PropositionalEquality using (_≡_)
     open import Data.Product using (_×_)
 
+-- | Lookup quantity at specific index in usage vector
+lookupUsage : ∀ {n} → Usage n → Fin n → Quantity
+lookupUsage (q ∷ ψ) Fin.zero    = q
+lookupUsage (q ∷ ψ) (Fin.suc i) = lookupUsage ψ i
+
+-- | Drop first element from usage vector (for removing bound variable)
+tailUsage : ∀ {n} → Usage (ℕ.suc n) → Usage n
+tailUsage (q ∷ ψ) = ψ
+
 -- | Surface expressions (well-typed by construction)
 --
 -- Expr Γ A represents a well-typed expression of type A in context Γ.
