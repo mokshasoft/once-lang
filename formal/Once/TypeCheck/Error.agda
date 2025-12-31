@@ -12,8 +12,7 @@ module Once.TypeCheck.Error where
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
 
-open import Once.Type using (Type)
-open import Once.TypeCheck.Context using (Quantity)
+open import Once.Type using (Type; Quantity)
 
 ------------------------------------------------------------------------
 -- Type Errors

@@ -18,7 +18,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒_; Eff; Fix; TVar)
+open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; Fix; TVar; Quantity)
 open import Once.TypeCheck.Error using (TypeError; OccursCheck; UnificationError; Result; ok; fail)
 
 ------------------------------------------------------------------------
@@ -58,7 +58,7 @@ applySubst σ Str = Str
 applySubst σ Buffer = Buffer
 applySubst σ (A * B) = applySubst σ A * applySubst σ B
 applySubst σ (A + B) = applySubst σ A + applySubst σ B
-applySubst σ (A ⇒ B) = applySubst σ A ⇒ applySubst σ B
+applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
 applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
 applySubst σ (Fix F) = Fix (applySubst σ F)
 applySubst σ (TVar x) with lookupSubst x σ
@@ -84,7 +84,7 @@ occurs x Str = false
 occurs x Buffer = false
 occurs x (A * B) = occurs x A ∨ occurs x B
 occurs x (A + B) = occurs x A ∨ occurs x B
-occurs x (A ⇒ B) = occurs x A ∨ occurs x B
+occurs x (A ⇒[ q ] B) = occurs x A ∨ occurs x B
 occurs x (Eff A B) = occurs x A ∨ occurs x B
 occurs x (Fix F) = occurs x F
 occurs x (TVar y) with x ≟ y
@@ -144,8 +144,8 @@ unify (A₁ + B₁) (A₂ + B₂) with unify A₁ A₂
 ...   | failed err = failed err
 ...   | unified σ₂ = unified (composeSubst σ₂ σ₁)
 
--- Function types
-unify (A₁ ⇒ B₁) (A₂ ⇒ B₂) with unify A₁ A₂
+-- Function types (graded arrows)
+unify (A₁ ⇒[ q₁ ] B₁) (A₂ ⇒[ q₂ ] B₂) with unify A₁ A₂
 ... | failed err = failed err
 ... | unified σ₁ with unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
 ...   | failed err = failed err
