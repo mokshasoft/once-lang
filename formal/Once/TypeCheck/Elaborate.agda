@@ -759,8 +759,8 @@ mutual
   -- Default: fall back to inference and check equality
   checkElabImpl ctx expr expectedType with inferElabImpl ctx expr
   ... | failure err = failure err
-  ... | success inferredType expr depth fresh' with inferredType ≟T expectedType
-  ...   | yes refl = success expr depth fresh'
+  ... | success inferredType expr depth fresh' usage' with inferredType ≟T expectedType
+  ...   | yes refl = success expr depth fresh' usage'
   ...   | no _     = failure "Type mismatch in checking mode"
 
   -- | Type inference mode: compute the type
@@ -768,72 +768,83 @@ mutual
   inferElabImpl : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 
   -- Variable: look up in context (depth 0 - no nesting)
+  -- TODO (QTT): Mark variable as used with its declared quantity
   inferElabImpl ctx (Raw.RVar x) with lookupVar ctx x
-  ... | just (A , se , fresh') = success A se 0 fresh'
+  ... | just (A , se , fresh') = success A se 0 fresh' zeroUsage  -- TODO: singleUse i q
   ... | nothing = failure ("Unbound variable: " ++ x)
 
   -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
+  -- TODO (QTT): Check parameter usage, drop from usage vector
   inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
   ... | failure err = failure err
-  ... | success B bodyExpr bodyDepth fresh' = success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh'
+  ... | success B bodyExpr bodyDepth fresh' usage' =
+        -- TODO: Check usage'[0] and return tail usage'
+        success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh' zeroUsage
 
   -- Application: infer function, check it's a function type, infer arg, check types match
   -- (depth = max of function and argument depths, thread fresh counter through)
+  -- TODO (QTT): Combine usage from function and argument (usageFun +ᵘ usageArg)
   inferElabImpl ctx (Raw.RApp fun arg) = inferApp (inferElabImpl ctx fun)
     where
       inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
       inferApp (failure err) = failure err
       -- For now, only support unrestricted (Many) arrows in Surface syntax
-      inferApp (success (A ⇒[ Many ] B) funExpr funDepth funFresh) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
+      inferApp (success (A ⇒[ Many ] B) funExpr funDepth funFresh usageFun) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
         where
           bumpFreshTo : NamedCtx → ℕ → NamedCtx
           bumpFreshTo (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
 
           inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
           inferArg (failure err) = failure err
-          inferArg (success A' argExpr argDepth argFresh) with A ≟T A'
-          ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth) argFresh
+          inferArg (success A' argExpr argDepth argFresh usageArg) with A ≟T A'
+          ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth) argFresh zeroUsage  -- TODO: usageFun +ᵘ usageArg
           ... | no _ = failure "Type mismatch in application"
 
       -- Linear and erased arrows not yet supported
-      inferApp (success (_ ⇒[ One ] _) _ _ _) = failure "Linear functions not yet supported in Surface syntax"
-      inferApp (success (_ ⇒[ Zero ] _) _ _ _) = failure "Erased functions not yet supported in Surface syntax"
-      inferApp (success Unit _ _ _) = failure "Expected function type in application"
-      inferApp (success Void _ _ _) = failure "Expected function type in application"
-      inferApp (success Int _ _ _) = failure "Expected function type in application"
-      inferApp (success Float _ _ _) = failure "Expected function type in application"
-      inferApp (success Str _ _ _) = failure "Expected function type in application"
-      inferApp (success Buffer _ _ _) = failure "Expected function type in application"
-      inferApp (success (_ Once.Type.* _) _ _ _) = failure "Expected function type in application"
-      inferApp (success (_ Once.Type.+ _) _ _ _) = failure "Expected function type in application"
-      inferApp (success (Eff _ _) _ _ _) = failure "Expected function type in application"
-      inferApp (success (Fix _) _ _ _) = failure "Expected function type in application"
-      inferApp (success (TVar _) _ _ _) = failure "Expected function type in application"
+      inferApp (success (_ ⇒[ One ] _) _ _ _ _) = failure "Linear functions not yet supported in Surface syntax"
+      inferApp (success (_ ⇒[ Zero ] _) _ _ _ _) = failure "Erased functions not yet supported in Surface syntax"
+      inferApp (success Unit _ _ _ _) = failure "Expected function type in application"
+      inferApp (success Void _ _ _ _) = failure "Expected function type in application"
+      inferApp (success Int _ _ _ _) = failure "Expected function type in application"
+      inferApp (success Float _ _ _ _) = failure "Expected function type in application"
+      inferApp (success Str _ _ _ _) = failure "Expected function type in application"
+      inferApp (success Buffer _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (_ Once.Type.* _) _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (_ Once.Type.+ _) _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (Eff _ _) _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (Fix _) _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (TVar _) _ _ _ _) = failure "Expected function type in application"
 
   -- Pair (depth = max of both elements, thread fresh counter)
+  -- TODO (QTT): Combine usage from both components (usage1 +ᵘ usage2)
   inferElabImpl ctx (Raw.RPair a b) with inferElabImpl ctx a
   ... | failure err = failure err
-  ... | success A aExpr aDepth aFresh with inferElabImpl (bumpFresh' ctx aFresh) b
+  ... | success A aExpr aDepth aFresh usage1 with inferElabImpl (bumpFresh' ctx aFresh) b
     where
       bumpFresh' : NamedCtx → ℕ → NamedCtx
       bumpFresh' (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
   ...   | failure err = failure err
-  ...   | success B bExpr bDepth bFresh = success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth) bFresh
+  ...   | success B bExpr bDepth bFresh usage2 =
+        success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth) bFresh zeroUsage  -- TODO: usage1 +ᵘ usage2
 
   -- Unit (depth 0 - no nesting, preserve fresh counter)
-  inferElabImpl ctx Raw.RUnit = success Unit Surface.unit 0 (NamedCtx.freshCounter ctx)
+  -- Unit doesn't use any variables, so usage is zero
+  inferElabImpl ctx Raw.RUnit = success Unit Surface.unit 0 (NamedCtx.freshCounter ctx) zeroUsage
 
   -- Let binding (depth = max(e₁, e₂ + 1) since e₂ is under binder, thread fresh counter)
+  -- TODO (QTT): Combine usage from e₁ and e₂ (usage1 +ᵘ tail usage2)
   inferElabImpl ctx (Raw.RLet x e₁ e₂) with inferElabImpl ctx e₁
   ... | failure err = failure err
-  ... | success A e₁Expr e₁Depth e₁Fresh with inferElabImpl (extendNamedCtx' ctx x A e₁Fresh) e₂
+  ... | success A e₁Expr e₁Depth e₁Fresh usage1 with inferElabImpl (extendNamedCtx' ctx x A e₁Fresh) e₂
     where
       extendNamedCtx' : NamedCtx → String → Type → ℕ → NamedCtx
       extendNamedCtx' (mkCtx n Γ Δ _) y B fresh = mkCtx (suc n) (extendCtx Γ y B) (Δ S, B) fresh
   ...   | failure err = failure err
-  ...   | success B e₂Expr e₂Depth e₂Fresh = success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth) e₂Fresh
+  ...   | success B e₂Expr e₂Depth e₂Fresh usage2 =
+        success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth) e₂Fresh zeroUsage  -- TODO: usage1 +ᵘ tail usage2
 
   -- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
+  -- TODO (QTT): Combine usage from all three parts (usageScr +ᵘ tail usageL +ᵘ tail usageR)
   inferElabImpl ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
     where
       extendCtx' : NamedCtx → String → Type → ℕ → NamedCtx
@@ -841,30 +852,31 @@ mutual
 
       inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
       inferCase (failure err) = failure err
-      inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth scrutFresh) = inferLeft (inferElabImpl (extendCtx' ctx xL A scrutFresh) eL)
+      inferCase (success (A Once.Type.+ B) scrutExpr scrutDepth scrutFresh usageScr) = inferLeft (inferElabImpl (extendCtx' ctx xL A scrutFresh) eL)
         where
           inferLeft : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))
                     → InferElabResult (NamedCtx.debruijn ctx)
           inferLeft (failure err) = failure err
-          inferLeft (success C₁ eLExpr eLDepth eLFresh) = inferRight (inferElabImpl (extendCtx' ctx xR B eLFresh) eR)
+          inferLeft (success C₁ eLExpr eLDepth eLFresh usageL) = inferRight (inferElabImpl (extendCtx' ctx xR B eLFresh) eR)
             where
               inferRight : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xR B))
                          → InferElabResult (NamedCtx.debruijn ctx)
               inferRight (failure err) = failure err
-              inferRight (success C₂ eRExpr eRDepth eRFresh) with C₁ ≟T C₂
-              ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr) (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth) eRFresh
+              inferRight (success C₂ eRExpr eRDepth eRFresh usageR) with C₁ ≟T C₂
+              ... | yes refl = success C₁ (Surface.case' scrutExpr eLExpr eRExpr)
+                                       (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth) eRFresh zeroUsage  -- TODO: usageScr +ᵘ tail usageL +ᵘ tail usageR
               ... | no _ = failure "Case branches have different types"
-      inferCase (success Unit _ _ _) = failure "Expected sum type in case"
-      inferCase (success Void _ _ _) = failure "Expected sum type in case"
-      inferCase (success Int _ _ _) = failure "Expected sum type in case"
-      inferCase (success Float _ _ _) = failure "Expected sum type in case"
-      inferCase (success Str _ _ _) = failure "Expected sum type in case"
-      inferCase (success Buffer _ _ _) = failure "Expected sum type in case"
-      inferCase (success (_ Once.Type.* _) _ _ _) = failure "Expected sum type in case"
-      inferCase (success (_ ⇒[ _ ] _) _ _ _) = failure "Expected sum type in case"
-      inferCase (success (Eff _ _) _ _ _) = failure "Expected sum type in case"
-      inferCase (success (Fix _) _ _ _) = failure "Expected sum type in case"
-      inferCase (success (TVar _) _ _ _) = failure "Expected sum type in case"
+      inferCase (success Unit _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success Void _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success Int _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success Float _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success Str _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success Buffer _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (_ Once.Type.* _) _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (_ ⇒[ _ ] _) _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (Eff _ _) _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (Fix _) _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (TVar _) _ _ _ _) = failure "Expected sum type in case"
 
   -- Integer literal: not in Surface.Syntax
   inferElabImpl _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
@@ -896,8 +908,8 @@ mutual
 inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
 inferElab ctx rawExpr with inferElabImpl ctx rawExpr
 ... | failure err = failure err
-... | success ty expr depth fresh with depth ≤? 7
-...   | yes _ = success ty expr depth fresh
+... | success ty expr depth fresh usage with depth ≤? 7
+...   | yes _ = success ty expr depth fresh usage
 ...   | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
                        "  Depth encountered: " ++ showℕ depth ++ "\n" ++
                        "  Proven depth limit: 7\n" ++
@@ -911,8 +923,8 @@ inferElab ctx rawExpr with inferElabImpl ctx rawExpr
 checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
 checkElab ctx expr ty with checkElabImpl ctx expr ty
 ... | failure err = failure err
-... | success expr' depth fresh with depth ≤? 7
-...   | yes _ = success expr' depth fresh
+... | success expr' depth fresh usage with depth ≤? 7
+...   | yes _ = success expr' depth fresh usage
 ...   | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
                        "  Depth encountered: " ++ showℕ depth ++ "\n" ++
                        "  Proven depth limit: 7\n" ++
@@ -927,7 +939,7 @@ checkElab ctx expr ty with checkElabImpl ctx expr ty
 compileExprTyped : RawExpr → (A : Type) → Maybe (IR ∞ Unit A)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _ = nothing
-... | success se _ _ = just (elaborate se)
+... | success se _ _ _ = just (elaborate se)
 
 -- | Compile without type signature (FALLBACK - uses inference mode)
 --
@@ -941,4 +953,4 @@ compileExprTyped e A with checkElab emptyCtx e A
 compileExpr : RawExpr → Maybe (∃[ A ] IR ∞ Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _ = nothing
-... | success A se _ _ = just (A , elaborate se)
+... | success A se _ _ _ = just (A , elaborate se)

@@ -104,6 +104,18 @@ evalSurface (S.Prim name) x = evalPrim name x
 -- Correctness theorem
 ------------------------------------------------------------------------
 
+-- | Primitive correctness postulate
+--
+-- Primitives evaluate identically in both representations.
+-- Since prim constructor was removed from Core IR and we use prim-desugar postulate,
+-- we postulate correctness directly.
+--
+-- TEMPORARILY POSTULATED: Until prim is re-added to Core IR
+--
+postulate
+  desugar-correct-prim : ∀ {A B} (name : String) (x : ⟦ A ⟧)
+                       → eval (prim-desugar {A} {B} name) x ≡ evalPrim {A} {B} name x
+
 -- | Desugar preserves semantics
 --
 -- For any Surface IR term, evaluating the desugared Core IR
@@ -168,10 +180,6 @@ desugar-correct S.unfold x = refl
 -- Effects
 desugar-correct S.arr f = refl
 
-------------------------------------------------------------------------
--- The interesting cases: Let and Prim
-------------------------------------------------------------------------
-
 -- | Let binding correctness
 --
 -- desugar (Let e1 e2) = desugar e2 ∘ ⟨ id , desugar e1 ⟩
@@ -200,15 +208,5 @@ desugar-correct (S.Let e1 e2) x =
       ∎
   where open Relation.Binary.PropositionalEquality.≡-Reasoning
 
--- | Primitive correctness
---
--- Primitives evaluate identically in both representations.
--- This follows from the postulate that Core's prim and Surface's Prim
--- both use evalPrim.
---
-desugar-correct (S.Prim name) x = prim-eval-eq name x
-  where
-    -- We need to postulate that Core's prim evaluates the same as evalPrim
-    postulate
-      prim-eval-eq : ∀ {A B} (name : String) (x : ⟦ A ⟧)
-                   → eval (prim {A} {B} name) x ≡ evalPrim {A} {B} name x
+-- | Primitive correctness (uses postulate from above)
+desugar-correct (S.Prim name) x = desugar-correct-prim name x

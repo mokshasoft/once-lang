@@ -56,6 +56,9 @@ open import Data.String using (String)
 -- Note: prim is now a real constructor in Once.IR (not a postulate)
 ------------------------------------------------------------------------
 
+-- Postulate for primitive desugaring (must be before desugar function)
+postulate prim-desugar : ∀ {A B} → String → C.IR ∞ A B
+
 ------------------------------------------------------------------------
 -- Desugar transformation
 ------------------------------------------------------------------------
@@ -98,10 +101,6 @@ desugar S.unfold = C.unfold
 -- Effects
 desugar S.arr = C.arr
 
-------------------------------------------------------------------------
--- Surface-only constructs: the interesting cases
-------------------------------------------------------------------------
-
 -- | Let binding desugaring
 --
 -- let x = e1 in e2   desugars to   e2 ∘ ⟨ id , e1 ⟩
@@ -117,12 +116,8 @@ desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩
 -- | Primitive passthrough
 --
 -- Primitives are opaque - just convert to Core's prim representation
--- Uses the prim constructor from Once.IR (C)
--- TEMPORARILY COMMENTED OUT: prim constructor removed during architectural cleanup
--- desugar (Prim name) = C.prim name
+-- Uses prim-desugar postulate (defined at top of module)
+-- TEMPORARILY USING POSTULATE: prim constructor removed during architectural cleanup
 -- TODO: Re-add prim constructor to Once.IR or handle Prim differently
-
-postulate prim-desugar : ∀ {A B} → String → C.IR ∞ A B
-
-desugar {A} {B} (Prim name) : C.IR ∞ A B
+--
 desugar (Prim name) = prim-desugar name
