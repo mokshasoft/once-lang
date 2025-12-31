@@ -1,8 +1,10 @@
 # QTT Testing Results
 
+**Status**: ✅ Complete (2025-12-31)
+
 ## Overview
 
-Phase 3.7 QTT integration is complete and working. The compiler now has two type checkers with different quantity semantics.
+Phase 3.7 QTT integration is complete and working. The compiler now uses the MAlonzo-extracted verified type checker with full QTT support (Zero/One/Many quantities).
 
 ## Type Checker Comparison
 
@@ -102,28 +104,31 @@ S.STArrow a b -> M.C__'8658''91'_'93'__42 (toMAlonzoTypeFromSType a) M.C_Many_10
    - Can't write `\^0 x -> e` (erased) or `\^1 x -> e` (linear)
    - Future: Add syntax like `\0 x -> e`, `\1 x -> e`, `\ω x -> e`
 
-2. **Type Checker Mismatch**:
-   - Haskell checker: linear-by-default
-   - MAlonzo checker: unrestricted-by-default
-   - Users should use `--verified` for full QTT semantics
+2. **Historical Note - Type Checker Mismatch** (RESOLVED):
+   - Previously: Haskell checker was linear-by-default, MAlonzo was unrestricted-by-default
+   - Now: Only MAlonzo verified type checker is used (unrestricted-by-default)
+   - Unverified Haskell type checker has been removed
 
-3. **Backend Temporarily Disabled**:
-   - Native code generators (.bak files)
-   - Will re-enable after QTT backend support
+3. **Backend Code Generators**:
+   - Native backend generators were temporarily disabled during QTT integration
+   - Backup files have been removed (added *.bak to .gitignore)
+   - Will re-enable native backends in future work
 
 ## Usage Recommendations
 
-### For Full QTT (recommended):
+**Note**: As of 2025-12-31, the `--verified` flag has been removed. The compiler now ALWAYS uses the MAlonzo-extracted verified type checker with QTT support.
+
+### Build Programs:
 
 ```bash
-# Use verified elaboration with MAlonzo
-once build --verified myprogram.once
+# All programs now use verified elaboration automatically
+once build myprogram.once
 ```
 
-### For Strict Linear Typing:
+### Type Check Only:
 
 ```bash
-# Use Haskell type checker
+# Type checking also uses verified type checker
 once check myprogram.once
 ```
 

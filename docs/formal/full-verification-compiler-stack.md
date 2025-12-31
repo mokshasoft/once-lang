@@ -1,12 +1,12 @@
 # Full Verification: Compiler Stack via MAlonzo Extraction
 
-**Status**: In Progress
-**Date**: 2025-12-30
-**Goal**: Remove the `--verified` flag by having all type checking and elaboration modules generated from MAlonzo-extracted Agda code
+**Status**: ✅ Complete
+**Date**: 2025-12-31
+**Goal**: ✅ Achieved - All type checking and elaboration modules now use MAlonzo-extracted Agda code
 
 ## Executive Summary
 
-This document describes the plan to achieve a fully verified compiler implementation for the Once language, focusing on type checking and elaboration. The approach uses Agda proofs extracted to Haskell via MAlonzo, ensuring semantic correctness of the compilation pipeline.
+This document describes the fully verified compiler implementation for the Once language, focusing on type checking and elaboration. The approach uses Agda proofs extracted to Haskell via MAlonzo, ensuring semantic correctness of the compilation pipeline.
 
 **Scope**:
 - **IN SCOPE**: Type checking, elaboration, Surface → IR, ArithIR compilation
@@ -14,15 +14,21 @@ This document describes the plan to achieve a fully verified compiler implementa
 - **Rationale**: Verification focuses on semantic correctness of compilation, not system interfacing
 
 **Current Status** (2025-12-31):
-- ✅ Verified type checker working with depth limit ≤7 (Phases 0-3 complete)
-- ✅ Built-in categorical generators implemented (Phase 3.5 partial)
-- ✅ Bidirectional approach chosen over Hindley-Milner (Decision 2)
-- ✅ Module imports and bidirectional polymorphism complete (Phases 3.5-3.6)
-- 🔄 QTT infrastructure in progress (Phase 3.7 Steps 1-2 complete, Step 3 in progress)
+- ✅ Verified type checker working (depth limit ≤7 as proven constraint)
+- ✅ `--verified` flag removed - compiler now ALWAYS uses MAlonzo-extracted type checker
+- ✅ Built-in categorical generators implemented
+- ✅ Bidirectional type checking with polymorphism
+- ✅ Module imports and qualified name resolution (ModuleEnv)
+- ✅ QTT (Quantitative Type Theory) integration complete
+  - Zero/One/Many quantities
+  - Usage tracking in type checking
+  - Graded arrows with explicit quantity parameters
+  - Subusaging validation
 
 **Key Architectural Decisions**:
 1. **Depth ≤7 constraint**: Pragmatic verification bound (proven property, not limitation)
 2. **Bidirectional type checking**: Future-proof for dependent types, QTT compatible, simpler than HM
+3. **QTT semantics**: MAlonzo type checker defaults lambdas to Many (unrestricted) for practicality
 
 ---
 
@@ -67,11 +73,11 @@ These modules handle system interfacing and orchestration:
 
 ---
 
-## Current State: The --verified Flag
+## ✅ RESOLVED: The --verified Flag Has Been Removed
 
-### Implementation
+### Previous State (Before 2025-12-31)
 
-Located in `compiler/src/Once/Compile.hs`:
+The compiler previously had two type checking paths:
 
 ```haskell
 if opts_verified opts
@@ -79,27 +85,28 @@ if opts_verified opts
   else elaborate expr          -- Use handwritten Haskell type checker
 ```
 
-With fallback logic:
+With fallback logic that defeated verification guarantees.
+
+### Current State (After 2025-12-31)
+
+**The `--verified` flag has been completely removed.** The compiler now ALWAYS uses the MAlonzo-extracted verified type checker:
 
 ```haskell
-case elaborateVerified expr of
-  Right ir -> return ir
-  Left err -> do
-    hPutStrLn stderr $ "Verified elaboration failed, falling back: " ++ err
-    return $ elaborate expr  -- Fallback to unverified
+-- compiler/src/Once/CLI.hs
+elaborateAllVerified :: ModuleEnv -> [(Name, Type, AllocStrategy, Expr)] -> IO (Either String [(Name, Type, AllocStrategy, IR)])
+elaborateAllVerified _ [] = pure (Right [])
+elaborateAllVerified env ((name, ty, alloc, expr):rest) = do
+  verifiedResult <- try (pure $! EV.elaborateVerified expr)
+  case verifiedResult of
+    Right (Right verifiedIR) -> ...
+    Left err -> throwIO err  -- No fallback, fail with error
 ```
 
-### Problem
-
-This creates a two-path architecture:
-1. **Verified path**: Uses MAlonzo-extracted modules (opt-in via `--verified`)
-2. **Unverified path**: Uses handwritten Haskell type checker (default)
-
-**Issues**:
-- Code duplication (two type checkers to maintain)
-- Fallback defeats the purpose of verification
-- Default path is unverified
-- Contradicts goal of "all modules from MAlonzo"
+**Key Changes**:
+- ✅ Unverified Haskell type checker (`Once.Elaborate`) removed entirely
+- ✅ No fallback logic - compilation fails if verification fails
+- ✅ All programs are now verified during type checking
+- ✅ `--verified` flag removed from CLI parser and help text
 
 ---
 

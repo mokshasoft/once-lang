@@ -166,7 +166,6 @@ usage = do
   TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
   TIO.putStrLn "  --optimizer BACKEND Optimizer to use (haskell|malonzo) [default: haskell]"
   TIO.putStrLn "  --arith             Enable arithmetic compiler for pure numeric expressions"
-  TIO.putStrLn "  --verified          Use verified (MAlonzo) elaboration with fallback"
   TIO.putStrLn ""
   TIO.putStrLn "Interpretation resolution:"
   TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:C I.Linux.Syscalls)"

@@ -8,3 +8,6 @@ formal/_build/
 
 # Reference code
 .refs
+
+# Manual backups
+*.bak
