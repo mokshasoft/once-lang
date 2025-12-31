@@ -140,14 +140,14 @@ parseCheck args = go args Nothing Nothing
   where
     go :: [String] -> Maybe String -> Maybe String -> Maybe Command
     go [] _ Nothing = Nothing  -- no input file
-    go [] strata (Just input) = Just $ Check CheckOptions
+    go [] strataPath (Just input) = Just $ Check CheckOptions
       { checkInput = input
-      , checkStrata = strata
+      , checkStrata = strataPath
       }
-    go ("--strata" : s : rest) strata input = go rest (Just s) input
-    go (x : rest) strata input = case x of
+    go ("--strata" : s : rest) _ inputPath = go rest (Just s) inputPath
+    go (x : rest) strataPath inputPath = case x of
       ('-':_) -> Nothing  -- unknown flag
-      _ -> go rest strata (Just x)  -- treat as input file
+      _ -> go rest strataPath (Just x)  -- treat as input file
 
 -- | Print usage information
 usage :: IO ()
