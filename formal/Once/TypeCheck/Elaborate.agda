@@ -868,16 +868,38 @@ inferElab ctx rawExpr with inferElabImpl ctx rawExpr
 -- Top-level Compilation
 ------------------------------------------------------------------------
 
--- | Compile a closed expression: infer+elaborate, then elaborate to IR
+-- | Checking mode with depth limit (helper for top-level compilation)
+checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
+checkElab ctx expr ty with checkElabImpl ctx expr ty
+... | failure err = failure err
+... | success expr' depth fresh with depth ≤? 7
+...   | yes _ = success expr' depth fresh
+...   | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
+                       "  Depth encountered: " ++ showℕ depth ++ "\n" ++
+                       "  Proven depth limit: 7\n" ++
+                       "  Please refactor to reduce nesting of λ/case/let expressions.")
+
+-- | Compile with type signature (PRIMARY INTERFACE - uses checking mode)
+--
+-- This is the recommended way to compile Once programs, as all top-level
+-- declarations should have type signatures (Once philosophy: explicit > implicit).
+--
+-- Uses bidirectional checking mode for better error messages and polymorphism.
+compileExprTyped : RawExpr → (A : Type) → Maybe (IR ∞ Unit A)
+compileExprTyped e A with checkElab emptyCtx e A
+... | failure _ = nothing
+... | success se _ _ = just (elaborate se)
+
+-- | Compile without type signature (FALLBACK - uses inference mode)
+--
+-- This is provided for compatibility, but users should prefer compileExprTyped
+-- with explicit type signatures. Inference-only mode has limitations:
+-- - Cannot handle all polymorphic cases
+-- - Less helpful error messages
+-- - May fail where checking succeeds
+--
+-- Once philosophy: Types guide, signatures required.
 compileExpr : RawExpr → Maybe (∃[ A ] IR ∞ Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _ = nothing
 ... | success A se _ _ = just (A , elaborate se)
-
--- | Compile with type: check that inferred type matches expected
-compileExprTyped : RawExpr → (A : Type) → Maybe (IR ∞ Unit A)
-compileExprTyped e A with inferElab emptyCtx e
-... | failure _ = nothing
-... | success A' se _ _ with A ≟T A'
-...   | yes refl = just (elaborate se)
-...   | no _ = nothing
