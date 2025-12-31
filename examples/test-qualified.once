@@ -1,0 +1,10 @@
+-- test-qualified.once: Test qualified name resolution with ModuleEnv
+--
+-- This tests that the check command properly resolves qualified imports
+
+-- Import with simple alias
+import I.Linux.Syscalls as S
+
+-- Function using qualified name
+testExit : IO Unit
+testExit = exit0@S

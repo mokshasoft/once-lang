@@ -136,11 +136,18 @@ parseAllocStrategy s = case s of
 
 -- | Parse check command arguments
 parseCheck :: [String] -> Maybe Command
-parseCheck args = case args of
-  [input] -> Just $ Check CheckOptions
-    { checkInput = input
-    }
-  _ -> Nothing
+parseCheck args = go args Nothing Nothing
+  where
+    go :: [String] -> Maybe String -> Maybe String -> Maybe Command
+    go [] _ Nothing = Nothing  -- no input file
+    go [] strata (Just input) = Just $ Check CheckOptions
+      { checkInput = input
+      , checkStrata = strata
+      }
+    go ("--strata" : s : rest) strata input = go rest (Just s) input
+    go (x : rest) strata input = case x of
+      ('-':_) -> Nothing  -- unknown flag
+      _ -> go rest strata (Just x)  -- treat as input file
 
 -- | Print usage information
 usage :: IO ()
@@ -172,7 +179,10 @@ usage = do
   TIO.putStrLn "  --interp PATH       (deprecated) Use interpretation from PATH"
   TIO.putStrLn ""
   TIO.putStrLn "Other commands:"
-  TIO.putStrLn "  check <file.once>   Type check only"
+  TIO.putStrLn "  check [--strata PATH] <file.once>   Type check only"
+  TIO.putStrLn ""
+  TIO.putStrLn "Check options:"
+  TIO.putStrLn "  --strata PATH       Path to Strata directory for imports (default: auto-detect)"
   TIO.putStrLn ""
   TIO.putStrLn "Import abbreviations:"
   TIO.putStrLn "  I. -> Interpretations.  (e.g., import I.Linux.Syscalls)"

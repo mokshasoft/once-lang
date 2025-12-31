@@ -122,7 +122,8 @@ data BuildOptions = BuildOptions
 
 -- | Options for the check command
 data CheckOptions = CheckOptions
-  { checkInput :: FilePath
+  { checkInput  :: FilePath
+  , checkStrata :: Maybe FilePath  -- ^ Optional Strata directory path
   } deriving (Eq, Show)
 
 -- | Run the CLI with a command
@@ -438,6 +439,23 @@ runCheck :: CheckOptions -> IO ()
 runCheck opts = do
   let inputPath = checkInput opts
 
+  -- Determine Strata path (for resolving imports)
+  strataPath <- case checkStrata opts of
+    Just path -> pure path
+    Nothing -> do
+      -- Try relative to input file
+      let inputDir = takeDirectory inputPath
+          relativePath = inputDir </> "Strata"
+      exists1 <- doesDirectoryExist relativePath
+      if exists1
+        then pure relativePath
+        else do
+          -- Try in current directory
+          exists2 <- doesDirectoryExist "Strata"
+          pure $ if exists2 then "Strata" else relativePath
+
+  let targetExt = ".c"  -- Default to C for type checking (doesn't affect checks)
+
   -- Read input file
   source <- TIO.readFile inputPath
 
@@ -447,14 +465,22 @@ runCheck opts = do
       TIO.putStrLn $ "Parse error: " <> T.pack (show err)
       exitFailure
     Right m -> do
-      -- Type check
-      case checkModule m of
-        Left err -> do
-          TIO.putStrLn $ "Type error: " <> T.pack (show err)
+      -- Resolve imports (load all imported modules for qualified name resolution)
+      let initialEnv = emptyModuleEnv strataPath targetExt
+      resolveResult <- resolveImports initialEnv (moduleImports m)
+      case resolveResult of
+        Left modErr -> do
+          TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
-        Right () -> do
-          TIO.putStrLn "OK"
-          exitSuccess
+        Right modEnv -> do
+          -- Type check with module environment
+          case checkModuleWithEnv modEnv m of
+            Left err -> do
+              TIO.putStrLn $ "Type error: " <> T.pack (show err)
+              exitFailure
+            Right () -> do
+              TIO.putStrLn "OK"
+              exitSuccess
 
 -- | Load all C code from an interpretation directory
 -- Concatenates all .c files found in the directory
