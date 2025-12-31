@@ -1664,9 +1664,9 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
 
         -- Chain all 4 phases: orig-r15 = 0, so this proves the required property
         mem-at-0-chain : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        mem-at-0-chain = subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s) addr)
-                               r15≡0
-                               (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
+        mem-at-0-chain = trans (cong (readMem (memory s3)) r15≡0)
+                         (trans (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
+                                (cong (readMem (memory s)) (sym r15≡0)))
 
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR

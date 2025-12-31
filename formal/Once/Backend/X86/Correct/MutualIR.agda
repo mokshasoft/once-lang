@@ -1988,6 +1988,7 @@ mutual
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
+      ; ir-mem-at-0 = mem-at-0-final
       ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
       }
     where
@@ -2022,4 +2023,5 @@ mutual
       -- POSTULATE: Apply execution preserves memory above rbp
       postulate
         mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+        mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
 
