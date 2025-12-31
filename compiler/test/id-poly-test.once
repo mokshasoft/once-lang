@@ -1,0 +1,7 @@
+-- Test if id works polymorphically
+
+testIdUnit : Unit -> Unit
+testIdUnit = id
+
+testIdPair : (Unit * Unit) -> (Unit * Unit)
+testIdPair = id

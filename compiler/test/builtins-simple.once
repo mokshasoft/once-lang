@@ -1,0 +1,21 @@
+-- Test built-in categorical generators without IO
+-- These should be available without explicit import
+
+testId : Unit -> Unit
+testId = id
+
+testFst : (Unit * Unit) -> Unit
+testFst = fst
+
+testSnd : (Unit * Unit) -> Unit
+testSnd = snd
+
+testInl : Unit -> (Unit + Unit)
+testInl = inl
+
+testInr : Unit -> (Unit + Unit)
+testInr = inr
+
+-- Compose built-ins
+testCompose : (Unit * Unit) -> Unit
+testCompose = \p -> fst (id p)

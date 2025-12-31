@@ -15,7 +15,7 @@ module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _≟_; _++_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≤?_; _⊔_) hiding (_+_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≤?_; _⊔_)
 open import Data.Nat as Nat
 open import Data.Nat.Properties using (≤-refl; n<1+n; +-identityʳ; +-suc; +-comm)
 open import Data.Nat.Show renaming (show to showℕ)
@@ -140,6 +140,15 @@ postulate
 --
 {-# TERMINATING #-}
 mutual
+  -- | Weaken from empty context to arbitrary context
+  --
+  -- Built-in expressions have no free variables, so we can weaken them
+  -- from ∅ to any context Γ by repeatedly applying weaken.
+  --
+  weakenFromEmpty : ∀ {n} {Γ : SCtx n} {A : Type} → SExpr S∅ A → SExpr Γ A
+  weakenFromEmpty {Γ = S∅} e = e
+  weakenFromEmpty {Γ = Γ S, B} e = weaken (weakenFromEmpty {Γ = Γ} e)
+
   -- | Weaken: add type A at top of context
   weaken : ∀ {n} {Γ : SCtx n} {A B : Type} → SExpr Γ B → SExpr (Γ S, A) B
   weaken {Γ = Γ} {A = A} (Surface.var i) =
@@ -524,16 +533,50 @@ extendNamedCtx : NamedCtx → String → Type → NamedCtx
 extendNamedCtx (mkCtx n Γ Δ) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A)
 
 ------------------------------------------------------------------------
+-- Built-in Categorical Generators
+------------------------------------------------------------------------
+
+-- | Built-in categorical generators (implicitly imported)
+--
+-- These are the fundamental vocabulary of the categorical language:
+-- identity, composition, products, coproducts, exponentials, etc.
+--
+-- They are available in all programs without explicit import.
+--
+builtinType : String → Maybe (∃[ A ] Surface.Expr S∅ A)
+builtinType "id"  = just (TVar "a" ⇒ TVar "a" , Surface.lam (Surface.var zero))
+builtinType "fst" = just ((TVar "a" Once.Type.* TVar "b") ⇒ TVar "a" , Surface.lam (Surface.fst' (Surface.var zero)))
+builtinType "snd" = just ((TVar "a" Once.Type.* TVar "b") ⇒ TVar "b" , Surface.lam (Surface.snd' (Surface.var zero)))
+builtinType "inl" = just (TVar "a" ⇒ (TVar "a" Once.Type.+ TVar "b") , Surface.lam (Surface.inl' (Surface.var zero)))
+builtinType "inr" = just (TVar "b" ⇒ (TVar "a" Once.Type.+ TVar "b") , Surface.lam (Surface.inr' (Surface.var zero)))
+builtinType "unit" = just (Unit , Surface.unit)
+-- pair (fork/⟨_,_⟩): (A -> B) -> (A -> C) -> A -> (B * C)
+-- pair = λf. λg. λx. (f x, g x)
+builtinType "pair" = just ((TVar "a" ⇒ TVar "b") ⇒ (TVar "a" ⇒ TVar "c") ⇒ TVar "a" ⇒ (TVar "b" Once.Type.* TVar "c") ,
+                          Surface.lam (Surface.lam (Surface.lam
+                            (Surface.pair
+                              (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))
+                              (Surface.app (Surface.var (suc zero)) (Surface.var zero))))))
+-- Note: compose, curry, apply, fold, unfold can be added similarly
+-- TODO: Add remaining generators as needed
+builtinType _ = nothing
+
+------------------------------------------------------------------------
 -- Variable Lookup with Weakening
 ------------------------------------------------------------------------
 
 -- | Look up a variable by name and return its de Bruijn indexed expression
+--
+-- First checks the local context, then falls back to built-in generators.
+--
 lookupVar : (ctx : NamedCtx) → String
           → Maybe (∃[ A ] SExpr (NamedCtx.debruijn ctx) A)
 lookupVar (mkCtx n Γ Δ) x = go Γ Δ
   where
     go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] SExpr Δ' A)
-    go [] S∅ = nothing
+    go [] S∅ with builtinType x
+    ... | just (A , se) = just (A , weakenFromEmpty se)  -- Weaken from ∅ to Δ
+    ... | nothing = nothing
     go [] (_ S, _) = nothing  -- impossible case: named context empty but debruijn not
     go (_ ∷ _) S∅ = nothing   -- impossible case: named context non-empty but debruijn empty
     go {suc m} (b ∷ Γ') (Δ' S, B) with Data.String._≟_ x (name b)

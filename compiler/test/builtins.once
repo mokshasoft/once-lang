@@ -1,0 +1,20 @@
+-- Test built-in categorical generators
+-- These should be available without explicit import
+
+testId : Unit -> Unit
+testId = id
+
+testFst : (Unit * Unit) -> Unit
+testFst = fst
+
+testSnd : (Unit * Unit) -> Unit
+testSnd = snd
+
+testInl : Unit -> (Unit + Unit)
+testInl = inl
+
+testInr : Unit -> (Unit + Unit)
+testInr = inr
+
+main : IO Unit
+main = pure ()

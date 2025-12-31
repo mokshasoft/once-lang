@@ -1,0 +1,9 @@
+-- Test pair built-in with explicit types
+
+-- First, test that pair exists and type-checks in isolation
+-- testPairPartial : (Unit -> Unit) -> ((Unit -> Unit) -> Unit -> (Unit * Unit))
+-- testPairPartial f = pair f
+
+-- Simpler: just check if pair is recognized
+testPairExists : ((Unit -> Unit) -> (Unit -> Unit) -> Unit -> (Unit * Unit))
+testPairExists = pair
