@@ -13,6 +13,16 @@ This document describes the plan to achieve a fully verified compiler implementa
 - **OUT OF SCOPE**: C code generation backends, CLI modules, file I/O orchestration
 - **Rationale**: Verification focuses on semantic correctness of compilation, not system interfacing
 
+**Current Status** (2025-12-31):
+- ✅ Verified type checker working with depth limit ≤7 (Phases 0-3 complete)
+- ✅ Built-in categorical generators implemented (Phase 3.5 partial)
+- ✅ Bidirectional approach chosen over Hindley-Milner (Decision 2)
+- 🔄 Module imports and bidirectional polymorphism in progress (Phases 3.5-3.6)
+
+**Key Architectural Decisions**:
+1. **Depth ≤7 constraint**: Pragmatic verification bound (proven property, not limitation)
+2. **Bidirectional type checking**: Future-proof for dependent types, QTT compatible, simpler than HM
+
 ---
 
 ## Architecture Overview
@@ -1102,21 +1112,54 @@ lookupVar ctx x with lookupInContext ctx x
 
 ## Timeline
 
-- **Phase 0**: 30 minutes (✅ complete)
+- **Phase 0**: 30 minutes (✅ complete - documentation)
 - **Phase 1**: 2-3 hours (✅ complete - reverts)
 - **Phase 2**: 3-4 hours (✅ complete - depth bound implementation)
 - **Phase 3**: 1-2 hours (✅ complete - depth testing)
-- **Phase 3.5**: 2-3 hours (❌ TODO - restore built-in categorical functions)
-- **Phase 4**: 4-6 hours (❌ TODO - integration testing with examples/ and seL4/)
+- **Phase 3.5**: 4-6 hours (🔄 in progress - built-in categorical functions)
+  - ✅ Built-in generators implementation (commit 7c3c1d9)
+  - ✅ Decision documentation (commit 27d1fde)
+  - ❌ Module import integration (TODO)
+- **Phase 3.6**: 1.5-2 weeks (❌ TODO - bidirectional type checking with polymorphism)
+  - Step 0: ✅ Decision documented (commit 27d1fde)
+  - Steps 1-6: Implementation (8-10 days + 3-4 days proofs)
+- **Phase 4**: 1-2 days (❌ TODO - integration testing with examples/ and seL4/)
 - **Phase 5**: 20-30 hours (⬜ future work - prove exchange₈-₁₅, optional)
 
-**Total for Phases 0-4**: 2-3 days (Phases 3.5-4 remaining)
+**Total for Phases 0-3**: ✅ Complete (depth ≤7 verified type checker working)
+**Total for Phase 3.5-3.6**: 2-3 weeks (bidirectional + module imports)
+**Total for Phase 4**: 1-2 days (integration testing)
 **Total for Phase 5**: 1 week (optional, future work)
 
 ---
 
 ## Conclusion
 
-This plan provides a pragmatic path to full verification of the Once compiler's type checking and elaboration pipeline. By accepting a depth limit of 7 as a proven constraint, we can achieve full MAlonzo extraction immediately while leaving the door open for future proof work to remove the limit.
+This plan provides a pragmatic path to full verification of the Once compiler's type checking and elaboration pipeline through MAlonzo-extracted Agda code.
 
-The approach follows the precedent of other verified systems (CompCert, seL4) which have documented resource bounds as proven properties. Users get strong correctness guarantees today, with a clear path to unrestricted verification in the future.
+**Key Decisions**:
+
+1. **Depth Limit of 7** (Decision 1): Pragmatic verification constraint that covers real programs. Following precedent of CompCert and seL4, this is a documented proven property, not a limitation.
+
+2. **Bidirectional Type Checking** (Decision 2): Chosen over Hindley-Milner for:
+   - Future-proofing: Natural extension to dependent types (Π/Σ)
+   - QTT compatibility: Graded types require local checking
+   - Philosophy alignment: Explicit signatures, types guide (not carry meaning)
+   - Simplicity: Local reasoning, no global constraint solving
+
+**Current Status** (as of 2025-12-31):
+
+- ✅ Phases 0-3 complete: Verified type checker with depth ≤7 working
+- 🔄 Phase 3.5 in progress: Built-in generators implemented, module imports remaining
+- ❌ Phase 3.6 planned: Bidirectional polymorphism (1.5-2 weeks)
+- ❌ Phase 4 planned: Integration testing with real programs
+
+**Path Forward**:
+
+The bidirectional approach provides a **solid foundation** that:
+- Works today with simple polymorphism (built-in generators)
+- Extends naturally to dependent types (Phase 2 of dependent-types roadmap)
+- Integrates with QTT grading (quantitative resource tracking)
+- Requires no architectural rework as features are added
+
+This architectural choice ensures Once can evolve from a simple categorical language to a full dependent type system **without throwing away the type checker**.
