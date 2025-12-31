@@ -154,7 +154,7 @@ open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; m∸n≤m;
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -1256,6 +1256,13 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     sp>16' = sp-bound-after-stack-op s5
 
 ------------------------------------------------------------------------
+-- Sum Dispatch Helper
+--
+-- Pattern matching on ⟦ A + B ⟧ = ⟦ A ⟧ ⊎ ⟦ B ⟧ must be done outside
+-- the mutual block due to Agda limitations with abstract types.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- Star-Based Mutual Block
 --
 -- This mutual block builds Star proofs using star-single and star-trans.
@@ -1817,58 +1824,232 @@ mutual
     let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
   run-case-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    -- Use Data.Sum case analysis to dispatch on inl vs inr
-    -- Pattern matching on x directly causes Agda splitting issues with abstract types
-    s-final , case-result
+    case-sum {C = ResultType}
+      (λ a → run-case-star-direct-inl f g prefix suffix a s h-false pc-eq stack-inv x29-inv sp>16)
+      (λ b-val → run-case-star-direct-inr f g prefix suffix b-val s h-false pc-eq stack-inv x29-inv sp>16)
+      x
     where
-      -- The full program
-      prog : Program
+      prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
+      ResultType : ⟦ A + B ⟧ → Set
+      ResultType y = ∃[ s' ] IRStarResult [ f , g ] prog s s' y (length prefix)
+
+  -- | Star-based case left branch (inl)
+  -- Structure:
+  --   Phase 1: Setup - 4 instructions (ldr x9 [x0], cmp, b.ne not taken, ldr x0 [x0+8])
+  --   Phase 2: Execute f - recursive Star call
+  --   Phase 3: Jump to end - 2 instructions (b, label)
+  run-case-star-direct-inl : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    StackInvariant s →
+    X29Invariant s →
+    readSP (regs s) > 16 →
+    let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
+    in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
+  run-case-star-direct-inl {i} {A} {B} {C} f g prefix suffix a s h-false pc-eq stack-inv x29-inv sp>16 =
+    s-final , case-inl-result
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+
       prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
 
-      -- Create context for helper lemmas
+      -- Create context for helper lemmas (provides len-f, len-g, code-f, code-g, etc.)
       ctx : CaseContext f g prefix suffix
       ctx = mkCaseContext f g prefix suffix
 
-      -- Postulate: After executing case (dispatch on inl/inr + execute f or g)
-      -- For inl a:
-      --   1. Execute 4 setup instructions (load tag=0, compare, branch-not-taken, load value)
-      --   2. Execute f recursively via run-ir-star-at-offset
-      --   3. Execute branch to end (skip over inr code)
-      -- For inr b:
-      --   1. Execute 3 setup instructions (load tag=1, compare, branch-taken)
-      --   2. Skip over f code (PC jumps to right-branch label)
-      --   3. Execute 3 more setup (label, load value)
-      --   4. Execute g recursively via run-ir-star-at-offset
-      --   5. Execute end label
+      -- ========== Phase 1: Setup (4 instructions) ==========
+      -- ldr x9 [x0] ; cmp x9 0 ; b.ne (not taken) ; ldr x0 [x0+8]
+      -- After setup: x0 = encode a
+
+      -- Postulated setup result (to be proven using step lemmas)
+      postulate
+        s-setup : State
+        star-setup : Star prog s s-setup
+        h-setup : halted s-setup ≡ false
+        pc-setup : pc s-setup ≡ length prefix +ℕ 4
+        x0-setup : readReg (regs s-setup) x0 ≡ encode a
+        x20-setup : readReg (regs s-setup) x20 ≡ readReg (regs s) x20
+        x21-setup : readReg (regs s-setup) x21 ≡ readReg (regs s) x21
+        x29-setup : readReg (regs s-setup) x29 ≡ readReg (regs s) x29
+        x30-setup : readReg (regs s-setup) x30 ≡ readReg (regs s) x30
+        sp-setup : readSP (regs s-setup) ≡ readSP (regs s)
+        mem-setup : memory s-setup ≡ memory s
+        stack-inv-setup : StackInvariant s-setup
+        x29-inv-setup : X29Invariant s-setup
+        sp>16-setup : readSP (regs s-setup) > 16
+
+      -- ========== Phase 2: Execute f (recursive call) ==========
+
+      -- Program equality for f from CaseContext
+      prog-eq-f' : prog ≡ case-prefix-f ctx ++ case-code-f ctx ++ case-suffix-f ctx
+      prog-eq-f' = case-prog-eq-f ctx
+
+      -- pc-setup matches length prefix-f
+      pc-setup-f : pc s-setup ≡ length (case-prefix-f ctx)
+      pc-setup-f = trans pc-setup (sym (case-len-prefix-f ctx))
+
+      -- Recursive call to f
+      step-f : ∃[ s1 ] IRStarResult f (case-prefix-f ctx ++ case-code-f ctx ++ case-suffix-f ctx) s-setup s1 a (length (case-prefix-f ctx))
+      step-f = run-ir-star-at-offset f (case-prefix-f ctx) (case-suffix-f ctx) a s-setup h-setup pc-setup-f x0-setup stack-inv-setup x29-inv-setup sp>16-setup
+
+      s1 = proj₁ step-f
+      r-f = proj₂ step-f
+
+      -- Convert star-f to use prog
+      star-f-raw : Star (case-prefix-f ctx ++ case-code-f ctx ++ case-suffix-f ctx) s-setup s1
+      star-f-raw = ir-star r-f
+
+      star-f : Star prog s-setup s1
+      star-f = subst (λ p → Star p s-setup s1) (sym prog-eq-f') star-f-raw
+
+      h1 = ir-halted r-f
+
+      -- ========== Phase 3: Jump to end (2 instructions: b, label) ==========
+      -- b end-offset ; label end
+      -- Skips over the inr branch code
+
       postulate
         s-final : State
-        -- Star proof exists
-        star-proof : Star prog s s-final
-        -- State properties
-        halted-final : halted s-final ≡ false
+        star-final : Star prog s1 s-final
+        h-final : halted s-final ≡ false
         pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
-        x0-final : readReg (regs s-final) x0 ≡ encode (eval [ f , g ] x)
-        -- Register preservation
+        x0-final : readReg (regs s-final) x0 ≡ encode (eval f a)
         x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
         x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
         x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
         x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
         sp-final : readSP (regs s-final) ≤ readSP (regs s)
-        -- Memory preservation
         mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
         mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
         mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-        -- Invariants
         stack-inv-final : StackInvariant s-final
         x29-inv-final : X29Invariant s-final
         sp>16-final : readSP (regs s-final) > 16
 
-      case-result : IRStarResult [ f , g ] prog s s-final x (length prefix)
-      case-result = record
-        { ir-star = star-proof
-        ; ir-halted = halted-final
+      -- Compose all phases
+      star-all : Star prog s s-final
+      star-all = star-trans (star-trans star-setup star-f) star-final
+
+      case-inl-result : IRStarResult [ f , g ] prog s s-final (inj₁ a) (length prefix)
+      case-inl-result = record
+        { ir-star = star-all
+        ; ir-halted = h-final
         ; ir-pc = pc-final
-        ; ir-x0 = x0-final
+        ; ir-x0 = x0-final  -- eval [ f , g ] (inj₁ a) = eval f a
+        ; ir-x20 = x20-final
+        ; ir-x21 = x21-final
+        ; ir-x29 = x29-final
+        ; ir-x30 = x30-final
+        ; ir-sp = sp-final
+        ; ir-mem-x21 = mem-x21-final
+        ; ir-mem-x29 = mem-x29-final
+        ; ir-mem-x29+8 = mem-x29+8-final
+        ; ir-stack-inv = stack-inv-final
+        ; ir-x29-inv = x29-inv-final
+        ; ir-sp-bound = sp>16-final
+        }
+
+  -- | Star-based case right branch (inr)
+  -- Structure:
+  --   Phase 1: Setup - 3 instructions (ldr x9 [x0], cmp, b.ne TAKEN)
+  --   Phase 2: Skip to right label + load value - 2 instructions (label, ldr x0 [x0+8])
+  --   Phase 3: Execute g - recursive Star call
+  --   Phase 4: End label - 1 instruction
+  run-case-star-direct-inr : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (b-input : ⟦ B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    StackInvariant s →
+    X29Invariant s →
+    readSP (regs s) > 16 →
+    let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
+    in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b-input) (length prefix)
+  run-case-star-direct-inr {i} {A} {B} {C} f g prefix suffix b-input s h-false pc-eq stack-inv x29-inv sp>16 =
+    s-final , case-inr-result
+    where
+      open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
+
+      prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
+
+      -- Create context for helper lemmas (provides len-f, len-g, code-f, code-g, etc.)
+      ctx : CaseContext f g prefix suffix
+      ctx = mkCaseContext f g prefix suffix
+
+      -- ========== Phase 1+2: Setup to reach g (jump to right + load value) ==========
+      -- ldr x9 [x0] ; cmp x9 0 ; b.ne TAKEN (jumps to label) ; label ; ldr x0 [x0+8]
+      -- After setup: x0 = encode b, pc = 7 + len-f ctx
+
+      postulate
+        s-setup : State
+        star-setup : Star prog s s-setup
+        h-setup : halted s-setup ≡ false
+        pc-setup : pc s-setup ≡ length prefix +ℕ (7 +ℕ len-f ctx)
+        x0-setup : readReg (regs s-setup) x0 ≡ encode b-input
+        x20-setup : readReg (regs s-setup) x20 ≡ readReg (regs s) x20
+        x21-setup : readReg (regs s-setup) x21 ≡ readReg (regs s) x21
+        x29-setup : readReg (regs s-setup) x29 ≡ readReg (regs s) x29
+        x30-setup : readReg (regs s-setup) x30 ≡ readReg (regs s) x30
+        sp-setup : readSP (regs s-setup) ≡ readSP (regs s)
+        mem-setup : memory s-setup ≡ memory s
+        stack-inv-setup : StackInvariant s-setup
+        x29-inv-setup : X29Invariant s-setup
+        sp>16-setup : readSP (regs s-setup) > 16
+
+      -- ========== Phase 3: Execute g (recursive call) ==========
+
+      -- Program equality for g from CaseContext
+      prog-eq-g' : prog ≡ case-prefix-g ctx ++ case-code-g ctx ++ case-suffix-g ctx
+      prog-eq-g' = case-prog-eq-g ctx
+
+      -- pc-setup matches length prefix-g
+      pc-setup-g : pc s-setup ≡ length (case-prefix-g ctx)
+      pc-setup-g = trans pc-setup (sym (case-len-prefix-g ctx))
+
+      -- Recursive call to g
+      step-g : ∃[ s1 ] IRStarResult g (case-prefix-g ctx ++ case-code-g ctx ++ case-suffix-g ctx) s-setup s1 b-input (length (case-prefix-g ctx))
+      step-g = run-ir-star-at-offset g (case-prefix-g ctx) (case-suffix-g ctx) b-input s-setup h-setup pc-setup-g x0-setup stack-inv-setup x29-inv-setup sp>16-setup
+
+      s1 = proj₁ step-g
+      r-g = proj₂ step-g
+
+      -- Convert star-g to use prog
+      star-g-raw : Star (case-prefix-g ctx ++ case-code-g ctx ++ case-suffix-g ctx) s-setup s1
+      star-g-raw = ir-star r-g
+
+      star-g : Star prog s-setup s1
+      star-g = subst (λ p → Star p s-setup s1) (sym prog-eq-g') star-g-raw
+
+      h1 = ir-halted r-g
+
+      -- ========== Phase 4: End label (1 instruction) ==========
+
+      postulate
+        s-final : State
+        star-final : Star prog s1 s-final
+        h-final : halted s-final ≡ false
+        pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+        x0-final : readReg (regs s-final) x0 ≡ encode (eval g b-input)
+        x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+        x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+        x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+        x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+        sp-final : readSP (regs s-final) ≤ readSP (regs s)
+        mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+        mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+        mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        stack-inv-final : StackInvariant s-final
+        x29-inv-final : X29Invariant s-final
+        sp>16-final : readSP (regs s-final) > 16
+
+      -- Compose all phases
+      star-all : Star prog s s-final
+      star-all = star-trans (star-trans star-setup star-g) star-final
+
+      case-inr-result : IRStarResult [ f , g ] prog s s-final (inj₂ b-input) (length prefix)
+      case-inr-result = record
+        { ir-star = star-all
+        ; ir-halted = h-final
+        ; ir-pc = pc-final
+        ; ir-x0 = x0-final  -- eval [ f , g ] (inj₂ b-input) = eval g b-input
         ; ir-x20 = x20-final
         ; ir-x21 = x21-final
         ; ir-x29 = x29-final
