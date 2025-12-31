@@ -929,8 +929,8 @@ mutual
       mem-at-0-final = trans mem-at-0-jump (trans (ir-mem-at-0 r-f) mem-at-0-setup)
         where
           mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-          mem-at-0-setup = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
-                                 (sym s-setup-eq) refl
+          mem-at-0-setup = subst (λ m → readMem m 0 ≡ readMem (memory s) 0)
+                                 (sym mem-setup) refl
 
           mem-at-0-jump : readMem (memory s-final) 0 ≡ readMem (memory s1) 0
           mem-at-0-jump = subst (λ m → readMem m 0 ≡ readMem (memory s1) 0)

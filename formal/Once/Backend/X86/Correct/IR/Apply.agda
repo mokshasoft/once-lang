@@ -604,6 +604,7 @@ run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 --   - Memory preservation at r15/rbp/rbp+8
 --   - RbpInvariant
 --   - Memory above rbp
+--   - Memory at address 0 (null page never written)
 --
 -- NOTE: This is progress toward full elimination. The local postulates
 -- are more targeted than apply-produces-result.
@@ -653,6 +654,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-mem-rbp = mem-rbp-post  -- LOCAL POSTULATE
     ; ir-mem-rbp+8 = mem-rbp+8-post  -- LOCAL POSTULATE
     ; ir-mem-above = mem-above-post  -- LOCAL POSTULATE
+    ; ir-mem-at-0 = mem-at-0-post  -- LOCAL POSTULATE
     ; ir-stack-inv = stack'
     ; ir-rsp-bound = rsp'
     ; ir-rbp-inv = rbp-inv-post  -- LOCAL POSTULATE
@@ -691,4 +693,5 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
       mem-rbp-post : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
       mem-rbp+8-post : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
       mem-above-post : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+      mem-at-0-post : readMem (memory s') 0 ≡ readMem (memory s) 0
       rbp-inv-post : RbpInvariant s'
