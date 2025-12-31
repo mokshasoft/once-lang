@@ -24,8 +24,8 @@ open import Data.Fin using (Fin)
 -- We use left-nested products so newest binding is easiest to access.
 --
 ⟦_⟧ᶜ : ∀ {n} → Ctx n → Type
-⟦ ∅ ⟧ᶜ     = Unit
-⟦ Γ , A ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
+⟦ ∅ ⟧ᶜ         = Unit
+⟦ Γ , A ^ q ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
 
 -- | Project variable from environment (de Bruijn index 0 = rightmost)
 --
@@ -33,8 +33,8 @@ open import Data.Fin using (Fin)
 -- index n+1 projects from Γ (using fst then recursing).
 --
 proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ∞ ⟦ Γ ⟧ᶜ (lookup Γ i)
-proj {Γ = Γ , A} Fin.zero    = snd
-proj {Γ = Γ , A} (Fin.suc i) = proj i ∘ fst
+proj {Γ = Γ , A ^ q} Fin.zero    = snd
+proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
 
 -- | Helper: swap product components
 swap' : ∀ {X Y} → IR ∞ (X * Y) (Y * X)

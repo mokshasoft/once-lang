@@ -36,11 +36,12 @@ open import Once.Type
 open import Once.IR as IR
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Context using (Ctx; ∅; Quantity; Binding; mkBinding; name; type)
+open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookup)
-  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_)
+open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity)
+  renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Elaborate as Elab using (elaborate; ⟦_⟧ᶜ)
+open import Once.Postulates using (coerceQuantity)
 
 ------------------------------------------------------------------------
 -- Weakening for Surface Expressions
@@ -49,8 +50,8 @@ open import Once.Surface.Elaborate as Elab using (elaborate; ⟦_⟧ᶜ)
 -- | Key lemma: lookup is preserved under suc
 lookup-suc : ∀ {n} {Γ : SCtx n} {A : Type} (i : Fin n)
            → lookup Γ i ≡ lookup (Γ S, A) (suc i)
-lookup-suc {Γ = Γ S, _} zero = refl
-lookup-suc {Γ = Γ S, B} {A = A} (suc i) = lookup-suc {Γ = Γ} {A = A} i
+lookup-suc {Γ = Γ S, _ ^ _} zero = refl
+lookup-suc {Γ = Γ S, B ^ q} {A = A} (suc i) = lookup-suc {Γ = Γ} {A = A} i
 
 -- | Lookup is preserved under double suc (for exchange)
 lookup-suc-suc : ∀ {n} {Γ : SCtx n} {A B : Type} (i : Fin n)
@@ -147,9 +148,13 @@ mutual
   --
   weakenFromEmpty : ∀ {n} {Γ : SCtx n} {A : Type} → SExpr S∅ A → SExpr Γ A
   weakenFromEmpty {Γ = S∅} e = e
-  weakenFromEmpty {Γ = Γ S, B} e = weaken (weakenFromEmpty {Γ = Γ} e)
+  weakenFromEmpty {Γ = Γ S, B ^ Many} e = weaken (weakenFromEmpty {Γ = Γ} e)
+  -- For non-Many quantities, coerce (Step 2: infrastructure only, actual tracking in Step 3)
+  weakenFromEmpty {Γ = Γ S, B ^ q} e = coerceQuantity (weaken (weakenFromEmpty {Γ = Γ} e))
 
-  -- | Weaken: add type A at top of context
+  -- | Weaken: add type A (with unrestricted quantity) at top of context
+  --  For Step 2, all variables default to Many (unrestricted)
+  --  Step 3 will implement quantity-aware weakening
   weaken : ∀ {n} {Γ : SCtx n} {A B : Type} → SExpr Γ B → SExpr (Γ S, A) B
   weaken {Γ = Γ} {A = A} (Surface.var i) =
     subst (SExpr _) (lookup-suc {Γ = Γ} {A = A} i) (Surface.var (suc i))
@@ -354,10 +359,11 @@ Buffer ≟T Buffer = yes refl
 ... | yes refl | yes refl = yes refl
 ... | no ¬p | _ = no λ { refl → ¬p refl }
 ... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ ⇒ B₁) ≟T (A₂ ⇒ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
+(A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | q₁ ≟q q₂ | B₁ ≟T B₂
+... | yes refl | yes refl | yes refl = yes refl
+... | no ¬p | _ | _ = no λ { refl → ¬p refl }
+... | _ | no ¬q | _ = no λ { refl → ¬q refl }
+... | _ | _ | no ¬r = no λ { refl → ¬r refl }
 (Eff A₁ B₁) ≟T (Eff A₂ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
 ... | yes refl | yes refl = yes refl
 ... | no ¬p | _ = no λ { refl → ¬p refl }
@@ -376,7 +382,7 @@ Unit ≟T Str = no λ ()
 Unit ≟T Buffer = no λ ()
 Unit ≟T (_ Once.Type.* _) = no λ ()
 Unit ≟T (_ Once.Type.+ _) = no λ ()
-Unit ≟T (_ ⇒ _) = no λ ()
+Unit ≟T (_ ⇒[ _ ] _) = no λ ()
 Unit ≟T Eff _ _ = no λ ()
 Unit ≟T Fix _ = no λ ()
 Unit ≟T TVar _ = no λ ()
@@ -387,7 +393,7 @@ Void ≟T Str = no λ ()
 Void ≟T Buffer = no λ ()
 Void ≟T (_ Once.Type.* _) = no λ ()
 Void ≟T (_ Once.Type.+ _) = no λ ()
-Void ≟T (_ ⇒ _) = no λ ()
+Void ≟T (_ ⇒[ _ ] _) = no λ ()
 Void ≟T Eff _ _ = no λ ()
 Void ≟T Fix _ = no λ ()
 Void ≟T TVar _ = no λ ()
@@ -398,7 +404,7 @@ Int ≟T Str = no λ ()
 Int ≟T Buffer = no λ ()
 Int ≟T (_ Once.Type.* _) = no λ ()
 Int ≟T (_ Once.Type.+ _) = no λ ()
-Int ≟T (_ ⇒ _) = no λ ()
+Int ≟T (_ ⇒[ _ ] _) = no λ ()
 Int ≟T Eff _ _ = no λ ()
 Int ≟T Fix _ = no λ ()
 Int ≟T TVar _ = no λ ()
@@ -409,7 +415,7 @@ Float ≟T Str = no λ ()
 Float ≟T Buffer = no λ ()
 Float ≟T (_ Once.Type.* _) = no λ ()
 Float ≟T (_ Once.Type.+ _) = no λ ()
-Float ≟T (_ ⇒ _) = no λ ()
+Float ≟T (_ ⇒[ _ ] _) = no λ ()
 Float ≟T Eff _ _ = no λ ()
 Float ≟T Fix _ = no λ ()
 Float ≟T TVar _ = no λ ()
@@ -420,7 +426,7 @@ Str ≟T Float = no λ ()
 Str ≟T Buffer = no λ ()
 Str ≟T (_ Once.Type.* _) = no λ ()
 Str ≟T (_ Once.Type.+ _) = no λ ()
-Str ≟T (_ ⇒ _) = no λ ()
+Str ≟T (_ ⇒[ _ ] _) = no λ ()
 Str ≟T Eff _ _ = no λ ()
 Str ≟T Fix _ = no λ ()
 Str ≟T TVar _ = no λ ()
@@ -431,7 +437,7 @@ Buffer ≟T Float = no λ ()
 Buffer ≟T Str = no λ ()
 Buffer ≟T (_ Once.Type.* _) = no λ ()
 Buffer ≟T (_ Once.Type.+ _) = no λ ()
-Buffer ≟T (_ ⇒ _) = no λ ()
+Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
 Buffer ≟T Eff _ _ = no λ ()
 Buffer ≟T Fix _ = no λ ()
 Buffer ≟T TVar _ = no λ ()
@@ -442,7 +448,7 @@ Buffer ≟T TVar _ = no λ ()
 (_ Once.Type.* _) ≟T Str = no λ ()
 (_ Once.Type.* _) ≟T Buffer = no λ ()
 (_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
-(_ Once.Type.* _) ≟T (_ ⇒ _) = no λ ()
+(_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
 (_ Once.Type.* _) ≟T Eff _ _ = no λ ()
 (_ Once.Type.* _) ≟T Fix _ = no λ ()
 (_ Once.Type.* _) ≟T TVar _ = no λ ()
@@ -453,21 +459,21 @@ Buffer ≟T TVar _ = no λ ()
 (_ Once.Type.+ _) ≟T Str = no λ ()
 (_ Once.Type.+ _) ≟T Buffer = no λ ()
 (_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
-(_ Once.Type.+ _) ≟T (_ ⇒ _) = no λ ()
+(_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
 (_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
 (_ Once.Type.+ _) ≟T Fix _ = no λ ()
 (_ Once.Type.+ _) ≟T TVar _ = no λ ()
-(_ ⇒ _) ≟T Unit = no λ ()
-(_ ⇒ _) ≟T Void = no λ ()
-(_ ⇒ _) ≟T Int = no λ ()
-(_ ⇒ _) ≟T Float = no λ ()
-(_ ⇒ _) ≟T Str = no λ ()
-(_ ⇒ _) ≟T Buffer = no λ ()
-(_ ⇒ _) ≟T (_ Once.Type.* _) = no λ ()
-(_ ⇒ _) ≟T (_ Once.Type.+ _) = no λ ()
-(_ ⇒ _) ≟T Eff _ _ = no λ ()
-(_ ⇒ _) ≟T Fix _ = no λ ()
-(_ ⇒ _) ≟T TVar _ = no λ ()
+(_ ⇒[ _ ] _) ≟T Unit = no λ ()
+(_ ⇒[ _ ] _) ≟T Void = no λ ()
+(_ ⇒[ _ ] _) ≟T Int = no λ ()
+(_ ⇒[ _ ] _) ≟T Float = no λ ()
+(_ ⇒[ _ ] _) ≟T Str = no λ ()
+(_ ⇒[ _ ] _) ≟T Buffer = no λ ()
+(_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
+(_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
+(_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
+(_ ⇒[ _ ] _) ≟T Fix _ = no λ ()
+(_ ⇒[ _ ] _) ≟T TVar _ = no λ ()
 Eff _ _ ≟T Unit = no λ ()
 Eff _ _ ≟T Void = no λ ()
 Eff _ _ ≟T Int = no λ ()
@@ -476,7 +482,7 @@ Eff _ _ ≟T Str = no λ ()
 Eff _ _ ≟T Buffer = no λ ()
 Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
 Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
-Eff _ _ ≟T (_ ⇒ _) = no λ ()
+Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
 Eff _ _ ≟T Fix _ = no λ ()
 Eff _ _ ≟T TVar _ = no λ ()
 Fix _ ≟T Unit = no λ ()
@@ -487,7 +493,7 @@ Fix _ ≟T Str = no λ ()
 Fix _ ≟T Buffer = no λ ()
 Fix _ ≟T (_ Once.Type.* _) = no λ ()
 Fix _ ≟T (_ Once.Type.+ _) = no λ ()
-Fix _ ≟T (_ ⇒ _) = no λ ()
+Fix _ ≟T (_ ⇒[ _ ] _) = no λ ()
 Fix _ ≟T Eff _ _ = no λ ()
 Fix _ ≟T TVar _ = no λ ()
 TVar _ ≟T Unit = no λ ()
@@ -498,7 +504,7 @@ TVar _ ≟T Str = no λ ()
 TVar _ ≟T Buffer = no λ ()
 TVar _ ≟T (_ Once.Type.* _) = no λ ()
 TVar _ ≟T (_ Once.Type.+ _) = no λ ()
-TVar _ ≟T (_ ⇒ _) = no λ ()
+TVar _ ≟T (_ ⇒[ _ ] _) = no λ ()
 TVar _ ≟T Eff _ _ = no λ ()
 TVar _ ≟T Fix _ = no λ ()
 
@@ -507,17 +513,30 @@ TVar _ ≟T Fix _ = no λ ()
 ------------------------------------------------------------------------
 
 -- | Result of type inference (compute the type)
--- Includes maximum nesting depth encountered (for verification limit tracking)
--- and updated fresh counter (for polymorphic instantiation)
+-- Includes:
+--   - Maximum nesting depth encountered (for verification limit tracking)
+--   - Updated fresh counter (for polymorphic instantiation)
+--   - Usage vector (for QTT - tracks how variables were used)
 data InferElabResult {n : ℕ} (Δ : SCtx n) : Set where
-  success : (A : Type) → SExpr Δ A → (depth : ℕ) → (fresh : ℕ) → InferElabResult Δ
+  success : (A : Type) → SExpr Δ A → (depth : ℕ) → (fresh : ℕ)
+          → (usage : Surface.Usage n)  -- NEW: QTT usage tracking
+          → InferElabResult Δ
   failure : String → InferElabResult Δ
 
 -- | Result of type checking (verify against expected type)
--- The type is known, so we only return the expression, depth, and fresh counter
+-- The type is known, so we only return the expression, depth, fresh counter, and usage
 data CheckElabResult {n : ℕ} (Δ : SCtx n) (A : Type) : Set where
-  success : SExpr Δ A → (depth : ℕ) → (fresh : ℕ) → CheckElabResult Δ A
+  success : SExpr Δ A → (depth : ℕ) → (fresh : ℕ)
+          → (usage : Surface.Usage n)  -- NEW: QTT usage tracking
+          → CheckElabResult Δ A
   failure : String → CheckElabResult Δ A
+
+------------------------------------------------------------------------
+-- QTT Usage Helpers
+------------------------------------------------------------------------
+
+-- Import usage operations from Surface.Syntax
+open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_) public
 
 ------------------------------------------------------------------------
 -- Named Context with de Bruijn Correspondence
@@ -583,7 +602,7 @@ applySubst σ Str = Str
 applySubst σ Buffer = Buffer
 applySubst σ (A Once.Type.* B) = applySubst σ A Once.Type.* applySubst σ B
 applySubst σ (A Once.Type.+ B) = applySubst σ A Once.Type.+ applySubst σ B
-applySubst σ (A ⇒ B) = applySubst σ A ⇒ applySubst σ B
+applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
 applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
 applySubst σ (Fix A) = Fix (applySubst σ A)
 applySubst σ (TVar x) with lookupSubst σ x
@@ -610,10 +629,10 @@ instantiate ty counter = go ty counter emptySubst
       let (A' , n') = go A n σ
           (B' , n'') = go B n' σ
       in (A' Once.Type.+ B') , n''
-    go (A ⇒ B) n σ =
+    go (A ⇒[ q ] B) n σ =
       let (A' , n') = go A n σ
           (B' , n'') = go B n' σ
-      in (A' ⇒ B') , n''
+      in (A' ⇒[ q ] B') , n''
     go (Eff A B) n σ =
       let (A' , n') = go A n σ
           (B' , n'') = go B n' σ
@@ -695,13 +714,18 @@ lookupVar (mkCtx n Γ Δ fresh) x = go Γ Δ fresh
     go [] S∅ freshCtr with builtinType x freshCtr
     ... | just (instTy , se , freshCtr') = just (instTy , weakenFromEmpty se , freshCtr')
     ... | nothing = nothing
-    go [] (_ S, _) _ = nothing  -- impossible case: named context empty but debruijn not
+    go [] (_ S, _ ^ _) _ = nothing  -- impossible case: named context empty but debruijn not
     go (_ ∷ _) S∅ _ = nothing   -- impossible case: named context non-empty but debruijn empty
-    go {suc m} (b ∷ Γ') (Δ' S, B) freshCtr with Data.String._≟_ x (name b)
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ Many) freshCtr with Data.String._≟_ x (name b)
     ... | yes _ = just (B , Surface.var zero , freshCtr)  -- Local var: no instantiation needed
     ... | no  _ with go Γ' Δ' freshCtr
     ...   | nothing = nothing
     ...   | just (A , se , freshCtr') = just (A , weaken se , freshCtr')
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ q) freshCtr with Data.String._≟_ x (name b)
+    ... | yes _ = just (B , Surface.var zero , freshCtr)  -- Local var: no instantiation needed
+    ... | no  _ with go Γ' Δ' freshCtr
+    ...   | nothing = nothing
+    ...   | just (A , se , freshCtr') = just (A , coerceQuantity (weaken se) , freshCtr')
 
 ------------------------------------------------------------------------
 -- Bidirectional Type Checking: Inference and Checking Modes
@@ -714,9 +738,19 @@ mutual
   checkElabImpl : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
 
   -- Lambda with function type: check body against result type
-  checkElabImpl ctx (Raw.RLam x body) (A ⇒ B) with checkElabImpl (extendNamedCtx ctx x A) body B
-  ... | success bodyExpr depth fresh' = success (Surface.lam bodyExpr) (suc depth) fresh'
+  -- For now, only support unrestricted (Many) arrows in Surface syntax
+  checkElabImpl ctx (Raw.RLam x body) (A ⇒[ Many ] B) with checkElabImpl (extendNamedCtx ctx x A) body B
+  ... | success bodyExpr depth fresh' usage' =
+          -- TODO (QTT): Check parameter usage matches quantity
+          -- Should verify: usage'[0] ≤q Many
+          success (Surface.lam bodyExpr) (suc depth) fresh' zeroUsage  -- TODO: return tail usage'
   ... | failure err = failure err
+
+  -- Lambda with linear or erased arrow: not yet supported
+  checkElabImpl ctx (Raw.RLam _ _) (A ⇒[ One ] B) =
+    failure "Linear functions not yet supported in Surface syntax"
+  checkElabImpl ctx (Raw.RLam _ _) (A ⇒[ Zero ] B) =
+    failure "Erased functions not yet supported in Surface syntax"
 
   -- Lambda with non-function type: error
   checkElabImpl ctx (Raw.RLam _ _) ty =
@@ -749,7 +783,8 @@ mutual
     where
       inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
       inferApp (failure err) = failure err
-      inferApp (success (A ⇒ B) funExpr funDepth funFresh) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
+      -- For now, only support unrestricted (Many) arrows in Surface syntax
+      inferApp (success (A ⇒[ Many ] B) funExpr funDepth funFresh) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
         where
           bumpFreshTo : NamedCtx → ℕ → NamedCtx
           bumpFreshTo (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
@@ -759,6 +794,10 @@ mutual
           inferArg (success A' argExpr argDepth argFresh) with A ≟T A'
           ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth) argFresh
           ... | no _ = failure "Type mismatch in application"
+
+      -- Linear and erased arrows not yet supported
+      inferApp (success (_ ⇒[ One ] _) _ _ _) = failure "Linear functions not yet supported in Surface syntax"
+      inferApp (success (_ ⇒[ Zero ] _) _ _ _) = failure "Erased functions not yet supported in Surface syntax"
       inferApp (success Unit _ _ _) = failure "Expected function type in application"
       inferApp (success Void _ _ _) = failure "Expected function type in application"
       inferApp (success Int _ _ _) = failure "Expected function type in application"
@@ -822,7 +861,7 @@ mutual
       inferCase (success Str _ _ _) = failure "Expected sum type in case"
       inferCase (success Buffer _ _ _) = failure "Expected sum type in case"
       inferCase (success (_ Once.Type.* _) _ _ _) = failure "Expected sum type in case"
-      inferCase (success (_ ⇒ _) _ _ _) = failure "Expected sum type in case"
+      inferCase (success (_ ⇒[ _ ] _) _ _ _) = failure "Expected sum type in case"
       inferCase (success (Eff _ _) _ _ _) = failure "Expected sum type in case"
       inferCase (success (Fix _) _ _ _) = failure "Expected sum type in case"
       inferCase (success (TVar _) _ _ _) = failure "Expected sum type in case"

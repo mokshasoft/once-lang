@@ -18,18 +18,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type)
-
-------------------------------------------------------------------------
--- Quantity (for linear types, QTT)
-------------------------------------------------------------------------
-
--- | Usage quantity for linear type checking
--- Mirrors Once.Quantity from Haskell
-data Quantity : Set where
-  Zero  : Quantity   -- Erased at runtime (compile-time only)
-  One   : Quantity   -- Used exactly once (linear)
-  Omega : Quantity   -- Unrestricted usage
+open import Once.Type using (Type; Quantity; Zero; One; Many)
 
 ------------------------------------------------------------------------
 -- Bindings
@@ -59,9 +48,9 @@ Ctx = List Binding
 ∅ = []
 
 -- | Extend context with a new binding
--- Default to unrestricted (Omega) usage
+-- Default to unrestricted (Many) usage
 _,_∷_ : Ctx → String → Type → Ctx
-Γ , x ∷ A = mkBinding x A Omega ∷ Γ
+Γ , x ∷ A = mkBinding x A Many ∷ Γ
 
 -- | Extend context with quantity
 _,_∷_^_ : Ctx → String → Type → Quantity → Ctx

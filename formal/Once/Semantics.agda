@@ -102,19 +102,19 @@ mutual
       semantics : ⟦ A ⟧ → ⟦ B ⟧  -- Actual function behavior
 
   ⟦_⟧ : Type → Set
-  ⟦ Unit ⟧     = ⊤
-  ⟦ Void ⟧     = ⊥
-  ⟦ A * B ⟧    = ⟦ A ⟧ × ⟦ B ⟧
-  ⟦ A + B ⟧    = ⟦ A ⟧ ⊎ ⟦ B ⟧
-  ⟦ A ⇒ B ⟧    = Closure A B     -- Now explicit closure!
-  ⟦ Eff A B ⟧  = Closure A B     -- D032: Same as pure function
-  ⟦ Fix F ⟧    = ⟦Fix⟧ ⟦ F ⟧
+  ⟦ Unit ⟧         = ⊤
+  ⟦ Void ⟧         = ⊥
+  ⟦ A * B ⟧        = ⟦ A ⟧ × ⟦ B ⟧
+  ⟦ A + B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
+  ⟦ A ⇒[ q ] B ⟧   = Closure A B     -- Quantity erased at runtime
+  ⟦ Eff A B ⟧      = Closure A B     -- D032: Same as pure function
+  ⟦ Fix F ⟧        = ⟦Fix⟧ ⟦ F ⟧
   -- Base types
-  ⟦ Int ⟧      = ℤ
-  ⟦ Float ⟧    = AgdaFloat
-  ⟦ Str ⟧      = String
-  ⟦ Buffer ⟧   = String           -- Simplified: use String for bytes
-  ⟦ TVar _ ⟧   = ⊤                 -- Type variables: use Unit as placeholder
+  ⟦ Int ⟧          = ℤ
+  ⟦ Float ⟧        = AgdaFloat
+  ⟦ Str ⟧          = String
+  ⟦ Buffer ⟧       = String           -- Simplified: use String for bytes
+  ⟦ TVar _ ⟧       = ⊤                 -- Type variables: use Unit as placeholder
 
 open Closure public
 
@@ -153,19 +153,19 @@ postulate
 -- The recursion terminates because types are finite structures.
 {-# TERMINATING #-}
 encode : ∀ {A} → ⟦ A ⟧ → Word
-encode {Unit} tt = 0                                      -- Unit → 0 (CONCRETE!)
-encode {Void} ()                                          -- Void has no values
-encode {A * B} (a , b) = encode-pair-addr {A} {B} a b     -- Needs allocation
-encode {A + B} (inj₁ a) = encode-inl-addr {A} {B} a       -- Needs allocation
-encode {A + B} (inj₂ b) = encode-inr-addr {A} {B} b       -- Needs allocation
-encode {A ⇒ B} cl = encode-closure-addr cl                -- Needs allocation
-encode {Eff A B} cl = encode-closure-addr cl              -- Same as ⇒ (CONCRETE!)
-encode {Fix F} (wrap x) = encode {F} x                    -- Identity (CONCRETE!)
-encode {Int} n = encode-int n                             -- Primitive
-encode {Float} f = encode-float f                         -- Primitive (IEEE 754 bits)
-encode {Str} s = encode-str s                             -- Primitive
-encode {Buffer} b = encode-buffer b                       -- Primitive
-encode {TVar _} _ = 0                                     -- Placeholder
+encode {Unit} tt = 0                                          -- Unit → 0 (CONCRETE!)
+encode {Void} ()                                              -- Void has no values
+encode {A * B} (a , b) = encode-pair-addr {A} {B} a b         -- Needs allocation
+encode {A + B} (inj₁ a) = encode-inl-addr {A} {B} a           -- Needs allocation
+encode {A + B} (inj₂ b) = encode-inr-addr {A} {B} b           -- Needs allocation
+encode {A ⇒[ q ] B} cl = encode-closure-addr cl               -- Quantity erased
+encode {Eff A B} cl = encode-closure-addr cl                  -- Same as ⇒ (CONCRETE!)
+encode {Fix F} (wrap x) = encode {F} x                        -- Identity (CONCRETE!)
+encode {Int} n = encode-int n                                 -- Primitive
+encode {Float} f = encode-float f                             -- Primitive (IEEE 754 bits)
+encode {Str} s = encode-str s                                 -- Primitive
+encode {Buffer} b = encode-buffer b                           -- Primitive
+encode {TVar _} _ = 0                                         -- Placeholder
 
 ------------------------------------------------------------------------
 -- PROVEN Encoding Properties (now refl!)

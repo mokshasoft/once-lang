@@ -17,7 +17,8 @@ This document describes the plan to achieve a fully verified compiler implementa
 - ✅ Verified type checker working with depth limit ≤7 (Phases 0-3 complete)
 - ✅ Built-in categorical generators implemented (Phase 3.5 partial)
 - ✅ Bidirectional approach chosen over Hindley-Milner (Decision 2)
-- 🔄 Module imports and bidirectional polymorphism in progress (Phases 3.5-3.6)
+- ✅ Module imports and bidirectional polymorphism complete (Phases 3.5-3.6)
+- 🔄 QTT infrastructure in progress (Phase 3.7 Steps 1-2 complete, Step 3 in progress)
 
 **Key Architectural Decisions**:
 1. **Depth ≤7 constraint**: Pragmatic verification bound (proven property, not limitation)
@@ -974,9 +975,11 @@ elaborateDecl name ty expr =
 **Motivation**:
 
 Quantitative Type Theory provides fine-grained resource tracking with usage grades (0/1/ω):
-- **0**: Erased (compile-time only, zero runtime cost)
-- **1**: Linear (used exactly once, enforce resource safety)
-- **ω**: Unrestricted (used any number of times)
+- **0** (`^0`): Erased (compile-time only, zero runtime cost)
+- **1** (`^1`): Linear (used exactly once, enforce resource safety)
+- **ω** (`^w`): Unrestricted (used any number of times)
+
+**Surface Syntax**: Quantities annotate types: `File^1`, `Config^0`, `String^w` (or just `String` for unrestricted)
 
 **Why QTT Aligns Perfectly with Bidirectional**:
 1. **Both are local**: QTT usage checking is local to each judgment, just like bidirectional checking
@@ -989,6 +992,87 @@ Quantitative Type Theory provides fine-grained resource tracking with usage grad
 - **Zero-cost abstractions**: Erase proofs and type-level computation (grade 0)
 - **Borrowing semantics**: Linear references for safe in-place mutation
 - **Protocol enforcement**: Session types, state machines (linear transitions)
+
+---
+
+**Design Philosophy: Inference with Optional Enforcement**
+
+**IMPORTANT**: Once supports BOTH inference-based optimization AND optional linearity enforcement.
+
+**Traditional QTT Approach** (e.g., Idris 2):
+- Programmer must choose: `f : A ⊸ B` (linear) vs `f : A → B` (unrestricted)
+- Type checker enforces usage matches annotation
+- **Problem**: Splits ecosystem into linear/non-linear variants, forces premature decisions
+
+**Once's Approach** (Best of Both Worlds):
+
+1. **Automatic Optimization (Default)**:
+   - Programmer writes: `f : A → B` (unrestricted)
+   - Compiler **infers** actual usage during type checking
+   - Backend optimizes based on observed patterns
+   - **Zero programmer burden**: Just write natural code
+
+2. **Optional Safety (When Needed)**:
+   - Programmer writes: `f : A ⊸ B` (linear)
+   - Compiler **enforces** linear usage, rejects violations
+   - **Use for**: Resource safety, protocol enforcement, documentation
+
+**Example (Automatic Optimization)**:
+```once
+// User writes unrestricted type (no annotations)
+map : (A -> B) -> List A -> List B
+map f xs = case xs of
+  Nil -> Nil
+  Cons y ys -> Cons (f y) (map f ys)
+
+// Compiler infers:
+// - f: used Many times (passed to recursive call) → must copy/share
+// - y: used Once (only in 'f y') → can move, no copy needed
+// - ys: used Once (only in recursive call) → can move, no copy needed
+
+// Backend applies optimizations automatically:
+// - Move 'y' to 'f y' (linear optimization)
+// - Move 'ys' to recursive call (linear optimization)
+// - Copy 'f' for recursion (unrestricted handling)
+```
+
+**Benefits**:
+1. **Single prelude**: No split between linear/non-linear libraries
+2. **Zero burden**: Programmers write natural code, compiler optimizes
+3. **Progressive enhancement**: Can add linear annotations for critical sections if desired
+4. **Best of both worlds**: Automatic optimization + optional verification
+
+**Example (Optional Enforcement)**:
+```once
+// Programmer adds quantity annotations for safety
+open : String -> File^1
+close : File^1 -> Unit
+
+bad : File^1 -> Unit
+bad f =
+  let _ = close f in
+  close f  -- ERROR: f used twice, but type says use exactly once!
+
+// Quantity annotations:
+//   Type^0  - Erased (compile-time only, zero runtime cost)
+//   Type^1  - Linear (must use exactly once)
+//   Type^w  - Unrestricted (can use any number of times, ω)
+//   Type    - Default to ^w (unrestricted), infer actual usage
+```
+
+**Implementation Strategy**:
+- Usage vectors track actual usage during type checking (Step 3)
+- Usage information preserved through IR and codegen
+- Backend decisions use usage info for optimization
+- Quantity annotations (`^1`, `^0`, `^w`) available for documentation/enforcement when needed
+
+**Surface Syntax Design**:
+- **Quantities on types**: `File^1` (linear File), not on arrows
+- **ASCII-friendly**: `^0`, `^1`, `^w` (for omega ω)
+- **Optional**: Omit quantity = unrestricted type, inferred usage for optimization
+- **Internal representation**: Maps to `A ⇒[ q ] B` in Agda formalization
+
+This approach is inspired by how modern compilers (like Rust's borrow checker) analyze usage patterns, but without forcing syntax changes on the programmer.
 
 ---
 

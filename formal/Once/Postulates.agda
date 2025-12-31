@@ -291,7 +291,62 @@ postulate
     p ≡ encode {B ⇒ C} (eval (curry f) a)
 
 ------------------------------------------------------------------------
--- Postulate P3: x86-64 Execution Helpers (in Once.Backend.X86.Correct)
+-- Postulate P3: QTT Quantity Erasure (Coercion)
+------------------------------------------------------------------------
+--
+-- Expressions can be coerced between contexts that differ only in
+-- quantity annotations (0/1/ω). This reflects the QTT erasure property:
+-- quantities are compile-time annotations that don't affect runtime
+-- semantics.
+--
+-- NEEDED BY: Once.TypeCheck.Elaborate (weakening and context manipulation)
+--
+-- JUSTIFICATION:
+--   Quantitative Type Theory (QTT) is designed with an erasure property:
+--   quantities track compile-time resource usage but are erased before
+--   execution. Two expressions that differ only in their context's
+--   quantity annotations have identical runtime behavior.
+--
+--   Example: λx.x has the same semantics whether x is:
+--     - Linear (used exactly once)
+--     - Unrestricted (used 0+ times)
+--     - Erased (compile-time only)
+--
+--   The actual usage checking happens during type checking (Step 3).
+--   This postulate allows infrastructure code to adjust quantities
+--   without affecting semantics.
+--
+--   DESIGN NOTE (Inference-Based QTT):
+--   Once uses QTT for optimization inference rather than enforcement.
+--   The compiler infers actual usage patterns and optimizes accordingly,
+--   without requiring programmers to write explicit linearity annotations.
+--   This postulate enables that flexibility: we can adjust quantity
+--   annotations during analysis without changing program semantics.
+--
+-- IMPACT:
+--   If quantity erasure were false, then QTT would affect runtime
+--   semantics, which violates the design. Programs would behave
+--   differently based on linearity annotations, breaking parametricity.
+--
+-- ELIMINATION PLAN:
+--   Step 3 will implement proper usage tracking that computes correct
+--   quantities during type checking. This postulate is temporary
+--   infrastructure to allow Step 2 (adding quantity-aware contexts)
+--   without implementing full QTT rules yet.
+--
+-- RUNTIME EFFECT: None (quantities are erased)
+--
+------------------------------------------------------------------------
+
+open import Once.Surface.Syntax as Surface using ()
+  renaming (Ctx to SCtx; Expr to SExpr; _,_^_ to _S,_^_)
+
+postulate
+  coerceQuantity : ∀ {n} {Γ : SCtx n} {A B : Type} {q q' : Quantity}
+                 → SExpr (_S,_^_ Γ A q) B → SExpr (_S,_^_ Γ A q') B
+
+------------------------------------------------------------------------
+-- Postulate P4: x86-64 Execution Helpers (in Once.Backend.X86.Correct)
 ------------------------------------------------------------------------
 --
 -- The x86-64 backend has additional postulates for instruction execution:
