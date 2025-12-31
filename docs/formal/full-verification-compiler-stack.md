@@ -572,13 +572,6 @@ stack exec -- once build --help | grep verified
 - ✅ Polymorphism works with explicit types: `testPairExists = pair`
 
 **Remaining Work**:
-- ❌ **Fix type inference for polymorphic higher-order applications**
-  - Current issue: `pair snd fst` fails with "Type mismatch in application"
-  - Root cause: Type variable instantiation/unification for polymorphic built-ins
-  - Examples that fail: `diagonal = pair id id`, `swap = pair snd fst`
-  - This is NOT a new regression - old unverified elaborator skipped type checking entirely
-  - **Priority**: HIGH - needed for categorical.once and type-alias-test.once
-
 - ❌ **CRITICAL**: Module imports - resolve imported names from other modules
   - Need ModuleEnv integration in type checker
   - `import I.Linux.File as F` should make F's exports available
@@ -590,10 +583,139 @@ stack exec -- once build --help | grep verified
 
 **Key Requirements**:
 - Built-in categorical functions (id, compose, fst, snd, curry, apply, inl, inr, fold, unfold, etc.)
-- Type inference must handle polymorphic applications correctly
 - Module imports: `import Foo` should make Foo's exports available
 - Cross-module references: `Foo.bar` or just `bar` if imported
 - This is not optional - arbitrary programs with imports MUST work
+
+### Phase 3.6 (MAJOR: Implement Proper Polymorphism)
+
+**Problem Statement**:
+Current type checker uses syntactic equality (`≟T`) which doesn't support polymorphism.
+When using `pair snd fst`, the `TVar "a"` in different functions are incorrectly treated as the same variable.
+
+**Current Limitation**:
+```agda
+-- This fails:
+diagonal = pair id id      -- Error: Type mismatch
+swap = pair snd fst        -- Error: Type mismatch
+
+-- But this works (explicit type):
+testPairExists : ((Unit -> Unit) -> (Unit -> Unit) -> Unit -> (Unit * Unit))
+testPairExists = pair
+```
+
+**Root Cause**: No instantiation of polymorphic types. The type system needs:
+1. Type schemes with explicit quantification: `∀ a b. a → b`
+2. Instantiation: Replace bound variables with fresh ones when using polymorphic functions
+3. Unification: Solve type equations (e.g., `?X → ?Y` unifies with `Int → Bool`)
+
+**Implementation Plan**:
+
+**Step 1: Add Type Schemes**
+```agda
+-- Extend Type with quantification
+data TypeScheme : Set where
+  Mono : Type → TypeScheme                    -- Monomorphic type
+  Poly : List String → Type → TypeScheme      -- ∀ vars. type
+
+-- Update builtinType to return schemes:
+builtinType : String → Maybe (∃[ σ ] (TypeScheme × Surface.Expr S∅ ???))
+builtinType "id"  = just (Poly ("a" ∷ []) (TVar "a" ⇒ TVar "a") , ...)
+builtinType "fst" = just (Poly ("a" ∷ "b" ∷ []) ((TVar "a" * TVar "b") ⇒ TVar "a") , ...)
+```
+
+**Step 2: Implement Substitution**
+```agda
+-- Type substitution: [TVar x ↦ T]
+Subst : Set
+Subst = List (String × Type)
+
+-- Apply substitution to type
+applySubst : Subst → Type → Type
+applySubst σ (TVar x) = lookup x σ (default: TVar x)
+applySubst σ (A ⇒ B) = applySubst σ A ⇒ applySubst σ B
+applySubst σ (A * B) = applySubst σ A * applySubst σ B
+-- ... etc
+```
+
+**Step 3: Unification Algorithm**
+```agda
+-- Unify two types, return substitution or failure
+unify : Type → Type → Maybe Subst
+unify (TVar x) T = just [(x , T)]                    -- Bind variable
+unify T (TVar y) = just [(y , T)]                    -- Symmetric
+unify (A₁ ⇒ B₁) (A₂ ⇒ B₂) = do
+  σ₁ ← unify A₁ A₂
+  σ₂ ← unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
+  return (σ₂ ∘ σ₁)                                   -- Compose substitutions
+unify Unit Unit = just []
+unify (A₁ * B₁) (A₂ * B₂) = ...                     -- Similar
+-- ... all type constructors
+unify _ _ = nothing                                  -- Mismatch
+```
+
+**Step 4: Instantiation**
+```agda
+-- Instantiate a type scheme with fresh type variables
+instantiate : TypeScheme → NamedCtx → (Type × NamedCtx)
+instantiate (Mono A) ctx = (A , ctx)
+instantiate (Poly vars A) ctx =
+  let fresh = generateFreshVars (length vars) (freshCounter ctx)
+      σ = zip vars fresh
+      A' = applySubst σ A
+      ctx' = bumpFreshCounter (length vars) ctx
+  in (A' , ctx')
+```
+
+**Step 5: Update Type Checker**
+```agda
+-- Instead of:
+inferArg (success A' argExpr argDepth) with A ≟T A'
+... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
+... | no _ = failure "Type mismatch in application"
+
+-- Use unification:
+inferArg (success A' argExpr argDepth) with unify A A'
+... | just σ = success (applySubst σ B) (Surface.app funExpr argExpr) (funDepth ⊔ argDepth)
+... | nothing = failure ("Type mismatch: expected " ++ show A ++ ", got " ++ show A')
+```
+
+**Step 6: Generalization (Let-Polymorphism)**
+```agda
+-- For let bindings: generalize free type variables
+generalize : NamedCtx → Type → TypeScheme
+generalize ctx A =
+  let freeVars = ftv A \\ ftv (contextTypes ctx)  -- Variables not in context
+  in if null freeVars
+     then Mono A
+     else Poly freeVars A
+```
+
+**Files to Modify**:
+- `formal/Once/Type.agda` - Add TypeScheme, Subst, applySubst
+- `formal/Once/TypeCheck/Elaborate.agda` - Add unify, instantiate, generalize, update inferElabImpl
+- `formal/Once/TypeCheck/Unify.agda` - NEW: Unification algorithm with correctness proofs
+- `formal/Once/TypeCheck/Subst.agda` - NEW: Substitution infrastructure with properties
+
+**Verification Requirements**:
+- Prove unification is sound and complete (most general unifier)
+- Prove substitution composition is associative
+- Prove instantiation preserves type well-formedness
+- Prove generalization is principal (most general type)
+
+**Success Criteria**:
+- ✅ `diagonal = pair id id` type-checks
+- ✅ `swap = pair snd fst` type-checks
+- ✅ examples/categorical.once compiles
+- ✅ examples/type-alias-test.once compiles
+- ✅ All existing depth tests still pass
+
+**Estimated Effort**: 2-3 weeks
+- Week 1: Infrastructure (TypeScheme, Subst, unify algorithm)
+- Week 2: Integration (update type checker, instantiate built-ins)
+- Week 3: Proofs (unification correctness, substitution properties)
+
+**Status**: ❌ NOT STARTED - Major change required
 
 ### Phase 4 (Integration Testing - Real Programs)
 - ❌ All programs in `examples/` compile successfully (or documented as depth >7)
