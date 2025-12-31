@@ -28,7 +28,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 
 open import Data.Nat using (_>_; _≥_)

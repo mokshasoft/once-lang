@@ -24,7 +24,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-rbp-inv; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-rbp-inv; ir-closure-wf)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
@@ -244,6 +244,7 @@ assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 
   ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   ; ir-mem-above = mem-above-3
+  ; ir-mem-at-0 = mem-at-0-3
   ; ir-closure-wf = closure-wf-3  -- Prefer g's closure (executed last)
   }
   where
@@ -376,3 +377,18 @@ assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 
           mem-s-to-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
           mem-s-to-s1 = ir-mem-above r1 addr addr>rbp
       in trans mem-s2-to-s3 (trans mem-s1-to-s2-addr mem-s-to-s1)
+
+    -- Memory at address 0 preservation through all steps (compose of sub-proofs)
+    mem-at-0-3 : readMem (memory s3) 0 ≡ readMem (memory s) 0
+    mem-at-0-3 =
+      let -- Memory from s2 to s3 via r3.ir-mem-at-0
+          mem-s2-to-s3-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
+          mem-s2-to-s3-at-0 = ir-mem-at-0 r3
+          -- Memory from s1 to s2 via transfer (preserves all memory including 0)
+          mem-s1-to-s2-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+          mem-s1-to-s2-at-0 = subst (λ s2'' → readMem (memory s2'') 0 ≡ readMem (memory s1) 0)
+                                    (sym s2-eq) (mem-s1-to-s2 0)
+          -- Memory from s to s1 via r1.ir-mem-at-0
+          mem-s-to-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
+          mem-s-to-s1-at-0 = ir-mem-at-0 r1
+      in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
