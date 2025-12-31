@@ -128,9 +128,9 @@ resolve {n} Γ Δ match (Raw.RVar x) A with lookupNamedIdx x Γ
                           → CtxMatch Γ n Δ → String → (A : Type) → Fin n
                           → Maybe (SExpr Δ A)
 
--- Lambda resolution (only supports unrestricted/Many quantity for now)
-resolve Γ Δ match (Raw.RLam x body) (A ⇒[ Many ] B) with resolve (extendCtx Γ x A) (Δ S, A) (match-extend match) body B
-... | just se = just (Surface.lam se)
+-- Lambda resolution (supports all quantities: Zero/One/Many)
+resolve Γ Δ match (Raw.RLam x body) (A ⇒[ q ] B) with resolve (extendCtx Γ x A) (Δ S, A) (match-extend match) body B
+... | just se = just (Surface.lam q se)
 ... | nothing = nothing
 resolve _ _ _ (Raw.RLam _ _) _ = nothing
 

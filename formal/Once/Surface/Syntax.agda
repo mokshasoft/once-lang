@@ -122,11 +122,12 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   -- Variable reference (de Bruijn index)
   var   : ∀ {n} {Γ : Ctx n} (i : Fin n) → Expr Γ (lookup Γ i)
 
-  -- Lambda abstraction: λx.e becomes lam e where x is index 0
-  lam   : ∀ {n} {Γ : Ctx n} {A B} → Expr (Γ , A) B → Expr Γ (A ⇒ B)
+  -- Lambda abstraction with quantity annotation
+  -- lam q e represents λ^q x. e where q is the usage quantity for x
+  lam   : ∀ {n} {Γ : Ctx n} {A B} (q : Quantity) → Expr (Γ , A) B → Expr Γ (A ⇒[ q ] B)
 
   -- Application
-  app   : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A ⇒ B) → Expr Γ A → Expr Γ B
+  app   : ∀ {n} {Γ : Ctx n} {A B} {q : Quantity} → Expr Γ (A ⇒[ q ] B) → Expr Γ A → Expr Γ B
 
   -- Pair introduction
   pair  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr Γ B → Expr Γ (A * B)

@@ -47,11 +47,11 @@ elaborateVerified expr = do
 
   -- Step 2: Run type inference/elaboration to get Surface.Expr
   -- Note: inferElab now rejects depth > 7 with a clear error message
-  case VTE.d_inferElab_1470 VTE.d_emptyCtx_1028 rawExpr of
-    VTE.C_failure_1010 errMsg ->
+  case VTE.d_inferElab_2352 VTE.d_emptyCtx_1118 rawExpr of
+    VTE.C_failure_1072 errMsg ->
       Left $ "Type checking failed: " ++ show errMsg
-    VTE.C_success_1008 ty surfaceExpr depth ->
-      let irExpr = VSE.du_elaborate_70
+    VTE.C_success_1070 ty surfaceExpr _fresh _depth _usage ->
+      let irExpr = VSE.du_elaborate_76
                      (VSS.C_'8709'_8)  -- Empty context
                      ty
                      surfaceExpr
@@ -65,11 +65,11 @@ elaborateVerified expr = do
 elaborateToIR :: S.Expr -> Either ElaborateError MI.T_IR_4
 elaborateToIR expr = do
   let rawExpr = toMAlonzoRaw expr
-  case VTE.d_inferElab_1470 VTE.d_emptyCtx_1028 rawExpr of
-    VTE.C_failure_1010 errMsg ->
+  case VTE.d_inferElab_2352 VTE.d_emptyCtx_1118 rawExpr of
+    VTE.C_failure_1072 errMsg ->
       Left $ "Type checking failed: " ++ show errMsg
-    VTE.C_success_1008 ty surfaceExpr depth ->
-      let irExpr = VSE.du_elaborate_70
+    VTE.C_success_1070 ty surfaceExpr _fresh _depth _usage ->
+      let irExpr = VSE.du_elaborate_76
                      (VSS.C_'8709'_8)
                      ty
                      surfaceExpr

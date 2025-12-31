@@ -36,7 +36,7 @@ typeCheckVerified :: S.Expr -> Either TypeCheckError H.Type
 typeCheckVerified expr = do
   let rawExpr = toMAlonzoRaw expr
   -- Run the verified type checker with empty context and fresh counter 0
-  let result = VI.d_infer_148 VC.d_'8709'_32 rawExpr 0
+  let result = VI.d_infer_148 VC.d_'8709'_24 rawExpr 0
   case fromInferResult result of
     Left err -> Left err
     Right (ty, _fresh) -> Right ty
@@ -48,5 +48,5 @@ typeCheckVerified expr = do
 inferTypeVerified :: S.Expr -> Either TypeCheckError (H.Type, Integer)
 inferTypeVerified expr = do
   let rawExpr = toMAlonzoRaw expr
-  let result = VI.d_infer_148 VC.d_'8709'_32 rawExpr 0
+  let result = VI.d_infer_148 VC.d_'8709'_24 rawExpr 0
   fromInferResult result

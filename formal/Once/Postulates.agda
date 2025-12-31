@@ -100,6 +100,44 @@ postulate
                          c1 ≡ c2
 
 ------------------------------------------------------------------------
+-- Postulate P1c: Arrow Quantity Coercion for IR
+------------------------------------------------------------------------
+--
+-- IR arrows are ungraded (always unrestricted/Many). When elaborating
+-- Surface syntax with graded arrows to IR, we need to coerce the
+-- quantity annotation on arrow types.
+--
+-- NEEDED BY: Once.Surface.Elaborate (elaborate for graded lambdas)
+--
+-- JUSTIFICATION:
+--   Quantities are erased at runtime - they only exist for static
+--   type checking. All IR arrows have the same runtime representation
+--   regardless of their quantity annotation in the type.
+--
+--   The actual quantity enforcement happens during type checking
+--   (in Once.TypeCheck.Elaborate), not during elaboration to IR.
+--
+-- IMPACT:
+--   If this were false, we couldn't compile linear or erased functions
+--   to the ungraded IR. But since quantities are compile-time only,
+--   this coercion is semantically valid.
+--
+-- RUNTIME EFFECT: None (quantities are erased)
+--
+------------------------------------------------------------------------
+
+open import Size using (Size)
+
+postulate
+  coerceIRArrow : ∀ {i Γ A B q q'} → IR i Γ (A ⇒[ q ] B) → IR i Γ (A ⇒[ q' ] B)
+
+  -- Coercion preserves evaluation semantics
+  -- Since quantities are erased at runtime, coercing the arrow type
+  -- doesn't change the function's behavior
+  coerceIRArrow-preserves-eval : ∀ {i Γ A B q q'} (f : IR i Γ (A ⇒[ q ] B)) (γ : ⟦ Γ ⟧) →
+    eval (coerceIRArrow {q' = q'} f) γ ≡ eval f γ
+
+------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics
 ------------------------------------------------------------------------
 --

@@ -3,9 +3,9 @@
 -- This module provides the interface for the verified MAlonzo optimizer
 -- and type checker. Code is extracted from formally verified Agda proofs via MAlonzo.
 module Once.MAlonzo
-  ( -- * Optimization
-    optimizeMAlonzo
-  , canConvertIR
+  ( -- * Optimization (temporarily disabled for QTT integration)
+    -- optimizeMAlonzo
+    canConvertIR
     -- * Conversion functions (for native backends)
   , toMAlonzoType
   , fromMAlonzoType
@@ -30,7 +30,7 @@ import qualified Once.Type as H
 
 import qualified MAlonzo.Code.Once.IR as M
 import qualified MAlonzo.Code.Once.Type as M
-import qualified MAlonzo.Code.Once.Optimize as M
+-- import qualified MAlonzo.Code.Once.Optimize as M  -- Temporarily disabled for QTT integration
 import qualified MAlonzo.Code.Once.TypeCheck.Raw as MR
 import qualified MAlonzo.Code.Once.TypeCheck.Infer as MI
 import qualified MAlonzo.Code.Once.TypeCheck.Error as ME
@@ -87,50 +87,48 @@ canConvertType t = case t of
   H.TApp _ _      -> False  -- Type applications not in MAlonzo
 
 -- | Optimize using MAlonzo (verified) optimizer
---
--- Converts IR to MAlonzo format, runs the verified optimizer,
--- then converts back. Returns input unchanged if conversion fails.
-optimizeMAlonzo :: H.IR -> H.IR
-optimizeMAlonzo ir
-  | canConvertIR ir =
-      let mIR = toMAlonzoIR ir
-          mOptimized = M.d_optimize_1146 (getInputType ir) (getOutputType ir) mIR
-      in fromMAlonzoIR mOptimized
-  | otherwise = ir
+-- Temporarily disabled for QTT integration
+-- optimizeMAlonzo :: H.IR -> H.IR
+-- optimizeMAlonzo ir
+--   | canConvertIR ir =
+--       let mIR = toMAlonzoIR ir
+--           mOptimized = M.d_optimize_1146 (getInputType ir) (getOutputType ir) mIR
+--       in fromMAlonzoIR mOptimized
+--   | otherwise = ir
 
 -- | Convert Haskell Type to MAlonzo Type
-toMAlonzoType :: H.Type -> M.T_Type_4
+toMAlonzoType :: H.Type -> M.T_Type_32
 toMAlonzoType t = case t of
-  H.TUnit        -> M.C_Unit_6
-  H.TVoid        -> M.C_Void_8
-  H.TInt         -> M.C_Int_20
-  H.TFloat       -> M.C_Float_22
-  H.TBuffer      -> M.C_Buffer_26
-  H.TProduct a b -> M.C__'42'__10 (toMAlonzoType a) (toMAlonzoType b)
-  H.TSum a b     -> M.C__'43'__12 (toMAlonzoType a) (toMAlonzoType b)
-  H.TArrow a b   -> M.C__'8658'__14 (toMAlonzoType a) (toMAlonzoType b)
-  H.TEff a b     -> M.C_Eff_16 (toMAlonzoType a) (toMAlonzoType b)
-  H.TFix f       -> M.C_Fix_18 (toMAlonzoType f)
-  H.TVar n       -> M.C_TVar_28 n  -- MAlonzo uses Text directly
+  H.TUnit        -> M.C_Unit_34
+  H.TVoid        -> M.C_Void_36
+  H.TInt         -> M.C_Int_48
+  H.TFloat       -> M.C_Float_50
+  H.TBuffer      -> M.C_Buffer_54
+  H.TProduct a b -> M.C__'42'__38 (toMAlonzoType a) (toMAlonzoType b)
+  H.TSum a b     -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)
+  H.TArrow a b   -> M.C__'8658''91'_'93'__42 (toMAlonzoType a) M.C_Many_10 (toMAlonzoType b)  -- Default to Many for unrestricted arrows
+  H.TEff a b     -> M.C_Eff_44 (toMAlonzoType a) (toMAlonzoType b)
+  H.TFix f       -> M.C_Fix_46 (toMAlonzoType f)
+  H.TVar n       -> M.C_TVar_56 n  -- MAlonzo uses Text directly
   -- These should not occur (checked by canConvertType)
   H.TString _    -> error "MAlonzo: TString not supported"
   H.TApp _ _     -> error "MAlonzo: TApp not supported"
 
 -- | Convert MAlonzo Type to Haskell Type
-fromMAlonzoType :: M.T_Type_4 -> H.Type
+fromMAlonzoType :: M.T_Type_32 -> H.Type
 fromMAlonzoType t = case t of
-  M.C_Unit_6         -> H.TUnit
-  M.C_Void_8         -> H.TVoid
-  M.C_Int_20         -> H.TInt
-  M.C_Float_22       -> H.TFloat
-  M.C_Str_24         -> H.TString H.Utf8  -- Default to UTF-8
-  M.C_Buffer_26      -> H.TBuffer
-  M.C__'42'__10 a b  -> H.TProduct (fromMAlonzoType a) (fromMAlonzoType b)
-  M.C__'43'__12 a b  -> H.TSum (fromMAlonzoType a) (fromMAlonzoType b)
-  M.C__'8658'__14 a b -> H.TArrow (fromMAlonzoType a) (fromMAlonzoType b)
-  M.C_Eff_16 a b     -> H.TEff (fromMAlonzoType a) (fromMAlonzoType b)
-  M.C_Fix_18 f       -> H.TFix (fromMAlonzoType f)
-  M.C_TVar_28 n      -> H.TVar n  -- MAlonzo uses Text directly
+  M.C_Unit_34         -> H.TUnit
+  M.C_Void_36         -> H.TVoid
+  M.C_Int_48          -> H.TInt
+  M.C_Float_50        -> H.TFloat
+  M.C_Str_52          -> H.TString H.Utf8  -- Default to UTF-8
+  M.C_Buffer_54       -> H.TBuffer
+  M.C__'42'__38 a b   -> H.TProduct (fromMAlonzoType a) (fromMAlonzoType b)
+  M.C__'43'__40 a b   -> H.TSum (fromMAlonzoType a) (fromMAlonzoType b)
+  M.C__'8658''91'_'93'__42 a _q b -> H.TArrow (fromMAlonzoType a) (fromMAlonzoType b)  -- Ignore quantity
+  M.C_Eff_44 a b      -> H.TEff (fromMAlonzoType a) (fromMAlonzoType b)
+  M.C_Fix_46 f        -> H.TFix (fromMAlonzoType f)
+  M.C_TVar_56 n       -> H.TVar n  -- MAlonzo uses Text directly
 
 -- | Convert Haskell IR to MAlonzo IR
 toMAlonzoIR :: H.IR -> M.T_IR_4
@@ -182,45 +180,45 @@ fromMAlonzoIR ir = case ir of
     placeholder = H.TUnit  -- Type info is erased, use placeholder
 
 -- | Get input type of an IR expression
-getInputType :: H.IR -> M.T_Type_4
+getInputType :: H.IR -> M.T_Type_32
 getInputType ir = case ir of
   H.Id t            -> toMAlonzoType t
-  H.Fst a b         -> M.C__'42'__10 (toMAlonzoType a) (toMAlonzoType b)
-  H.Snd a b         -> M.C__'42'__10 (toMAlonzoType a) (toMAlonzoType b)
+  H.Fst a b         -> M.C__'42'__38 (toMAlonzoType a) (toMAlonzoType b)
+  H.Snd a b         -> M.C__'42'__38 (toMAlonzoType a) (toMAlonzoType b)
   H.Inl a _         -> toMAlonzoType a
   H.Inr _ b         -> toMAlonzoType b
   H.Terminal t      -> toMAlonzoType t
-  H.Initial _       -> M.C_Void_8
-  H.Apply a b       -> M.C__'42'__10 (M.C__'8658'__14 (toMAlonzoType a) (toMAlonzoType b)) (toMAlonzoType a)
+  H.Initial _       -> M.C_Void_36
+  H.Apply a b       -> M.C__'42'__38 (M.C__'8658''91'_'93'__42 (toMAlonzoType a) M.C_Many_10 (toMAlonzoType b)) (toMAlonzoType a)
   H.Fold t          -> toMAlonzoType t  -- F (Fix F)
-  H.Unfold t        -> M.C_Fix_18 (toMAlonzoType t)
+  H.Unfold t        -> M.C_Fix_46 (toMAlonzoType t)
   H.Compose _ f     -> getInputType f
   H.Pair f _        -> getInputType f
-  H.Case f _        -> M.C__'43'__12 (getInputType f) M.C_Unit_6  -- Approximation
+  H.Case f _        -> M.C__'43'__40 (getInputType f) M.C_Unit_34  -- Approximation
   H.Curry _ f       -> getInputType f  -- Approximation
-  _                 -> M.C_Unit_6  -- Fallback
+  _                 -> M.C_Unit_34  -- Fallback
 
 -- | Get output type of an IR expression
-getOutputType :: H.IR -> M.T_Type_4
+getOutputType :: H.IR -> M.T_Type_32
 getOutputType ir = case ir of
   H.Id t            -> toMAlonzoType t
   H.Fst a _         -> toMAlonzoType a
   H.Snd _ b         -> toMAlonzoType b
-  H.Inl a b         -> M.C__'43'__12 (toMAlonzoType a) (toMAlonzoType b)
-  H.Inr a b         -> M.C__'43'__12 (toMAlonzoType a) (toMAlonzoType b)
-  H.Terminal _      -> M.C_Unit_6
+  H.Inl a b         -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)
+  H.Inr a b         -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)
+  H.Terminal _      -> M.C_Unit_34
   H.Initial t       -> toMAlonzoType t
   H.Apply _ b       -> toMAlonzoType b
-  H.Fold t          -> M.C_Fix_18 (toMAlonzoType t)
+  H.Fold t          -> M.C_Fix_46 (toMAlonzoType t)
   H.Unfold t        -> toMAlonzoType t  -- F (Fix F)
   H.Compose g _     -> getOutputType g
-  H.Pair f g        -> M.C__'42'__10 (getOutputType f) (getOutputType g)
+  H.Pair f g        -> M.C__'42'__38 (getOutputType f) (getOutputType g)
   H.Case f _        -> getOutputType f
   H.Curry _ f       -> getOutputType f  -- Approximation
-  _                 -> M.C_Unit_6  -- Fallback
+  _                 -> M.C_Unit_34  -- Fallback
 
 -- | Get middle type for composition (output of f, input of g)
-getMiddleType :: H.IR -> H.IR -> M.T_Type_4
+getMiddleType :: H.IR -> H.IR -> M.T_Type_32
 getMiddleType _ f = getOutputType f
 
 ------------------------------------------------------------------------
@@ -271,20 +269,20 @@ toMAlonzoUnaryOp :: S.UnaryOp -> MR.T_UnaryOp_30
 toMAlonzoUnaryOp S.OpNeg = MR.C_OpNeg_32
 
 -- | Convert surface type to MAlonzo Type
-toMAlonzoTypeFromSType :: S.SType -> M.T_Type_4
+toMAlonzoTypeFromSType :: S.SType -> M.T_Type_32
 toMAlonzoTypeFromSType sty = case sty of
-  S.STVar name     -> M.C_TVar_28 name
-  S.STUnit         -> M.C_Unit_6
-  S.STVoid         -> M.C_Void_8
-  S.STInt          -> M.C_Int_20
-  S.STFloat        -> M.C_Float_22
-  S.STBuffer       -> M.C_Buffer_26
-  S.STString _     -> M.C_Str_24  -- MAlonzo doesn't track encoding
-  S.STProduct a b  -> M.C__'42'__10 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STSum a b      -> M.C__'43'__12 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STArrow a b    -> M.C__'8658'__14 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STEff a b      -> M.C_Eff_16 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STFix f        -> M.C_Fix_18 (toMAlonzoTypeFromSType f)
+  S.STVar name     -> M.C_TVar_56 name
+  S.STUnit         -> M.C_Unit_34
+  S.STVoid         -> M.C_Void_36
+  S.STInt          -> M.C_Int_48
+  S.STFloat        -> M.C_Float_50
+  S.STBuffer       -> M.C_Buffer_54
+  S.STString _     -> M.C_Str_52  -- MAlonzo doesn't track encoding
+  S.STProduct a b  -> M.C__'42'__38 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
+  S.STSum a b      -> M.C__'43'__40 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
+  S.STArrow a b    -> M.C__'8658''91'_'93'__42 (toMAlonzoTypeFromSType a) M.C_Many_10 (toMAlonzoTypeFromSType b)  -- Default to Many
+  S.STEff a b      -> M.C_Eff_44 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
+  S.STFix f        -> M.C_Fix_46 (toMAlonzoTypeFromSType f)
   S.STQuant _ t    -> toMAlonzoTypeFromSType t  -- Ignore quantity annotation
   S.STApp _ _      -> error "MAlonzo: STApp not supported"
 

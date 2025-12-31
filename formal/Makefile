@@ -6,6 +6,7 @@
 # Usage:
 #   make          - Type-check all Agda files
 #   make check    - Same as above
+#   make frontend - Type-check frontend only (skip backend generators)
 #   make laws     - Type-check categorical laws only
 #   make surface  - Type-check surface syntax elaboration only
 #   make surfaceir - Type-check surface IR and desugar (D035)
@@ -17,6 +18,7 @@
 #   make endtoend-aarch64 - Type-check end-to-end compilation theorem (AArch64)
 #   make primitives - Type-check primitive specifications
 #   make malonzo  - Generate Haskell via MAlonzo (D035)
+#   make malonzo-core - Extract core modules (Type, IR, Semantics, Memory)
 #   make clean    - Remove Agda build artifacts
 #   make agda MODULE=Once/Path/To/File.agda - Type-check a single module
 
@@ -107,6 +109,10 @@ all: check
 .PHONY: check
 check: postulates laws surface surfaceir optimize common x86 aarch64 endtoend endtoend-aarch64 primitives spf
 	@echo "All proofs type-check successfully!"
+
+.PHONY: frontend
+frontend: postulates laws surface surfaceir optimize common
+	@echo "Frontend proofs type-check successfully (backends skipped)!"
 
 .PHONY: postulates
 postulates:
@@ -385,6 +391,24 @@ malonzo-elaborate:
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Surface
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Surface/* ../compiler/src/MAlonzo/Code/Once/Surface/ 2>/dev/null || true
 	@echo "Done. Surface.Elaborate in compiler/src/MAlonzo/Code/Once/Surface/"
+
+.PHONY: malonzo-core
+malonzo-core:
+	@echo "Extracting core modules (Type, IR, Semantics, Memory, Postulates) via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Type.agda'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/IR.agda'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Semantics.agda'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Memory.agda'
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Postulates.agda'
+	@echo "Copying core modules to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once
+	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Semantics.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Memory.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
 
 .PHONY: clean
 clean:

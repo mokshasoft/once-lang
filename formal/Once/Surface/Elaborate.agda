@@ -11,6 +11,7 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
+open import Once.Postulates using (coerceIRArrow)
 
 open import Size using (Size; ∞)
 open import Data.Nat using (ℕ)
@@ -77,12 +78,15 @@ elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ∞ ⟦ Γ ⟧ᶜ A
 -- Variable: project from environment
 elaborate (var i) = proj i
 
--- Lambda: λx.e becomes curry of (elaborate e)
+-- Lambda: λ^q x.e becomes curry of (elaborate e)
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
-elaborate (lam e) = curry (elaborate e)
+-- IR curry always produces (A ⇒ B), so we coerce to (A ⇒[ q ] B)
+-- The quantity q is enforced during type checking, not during elaboration
+elaborate (lam q e) = coerceIRArrow (curry (elaborate e))
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
-elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩
+-- IR's apply only works with unrestricted arrows, so coerce to Many
+elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩

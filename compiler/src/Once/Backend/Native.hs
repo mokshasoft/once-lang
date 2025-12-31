@@ -38,14 +38,15 @@ import qualified Once.IR as H
 import qualified Once.Type as H
 
 -- MAlonzo verified code generators
+-- NOTE: Backend generators temporarily disabled for QTT integration
 import qualified MAlonzo.Code.Once.IR as M
 import qualified MAlonzo.Code.Once.Type as M
-import qualified MAlonzo.Code.Once.Backend.X86.CodeGen as MX86
-import qualified MAlonzo.Code.Once.Backend.X86.Emit as MX86Emit
-import qualified MAlonzo.Code.Once.Backend.AArch64.CodeGen as MAArch64
-import qualified MAlonzo.Code.Once.Backend.AArch64.Emit as MAArch64Emit
-import qualified MAlonzo.Code.Once.Backend.RiscV64.CodeGen as MRiscV
-import qualified MAlonzo.Code.Once.Backend.RiscV64.Emit as MRiscVEmit
+-- import qualified MAlonzo.Code.Once.Backend.X86.CodeGen as MX86
+-- import qualified MAlonzo.Code.Once.Backend.X86.Emit as MX86Emit
+-- import qualified MAlonzo.Code.Once.Backend.AArch64.CodeGen as MAArch64
+-- import qualified MAlonzo.Code.Once.Backend.AArch64.Emit as MAArch64Emit
+-- import qualified MAlonzo.Code.Once.Backend.RiscV64.CodeGen as MRiscV
+-- import qualified MAlonzo.Code.Once.Backend.RiscV64.Emit as MRiscVEmit
 
 -- Import MAlonzo bridge functions
 import Once.MAlonzo (canConvertIR, toMAlonzoType, toMAlonzoIR)
@@ -140,43 +141,52 @@ getInputType ir = case ir of
 --
 -- Uses MAlonzo-extracted code from formal Agda proofs.
 -- Returns Nothing if IR contains primitives or other non-categorical constructs.
+--
+-- NOTE: Temporarily disabled for QTT integration
 compileToX86 :: H.IR -> Maybe Text
-compileToX86 ir
-  | canConvertIR ir =
-      let mInTy  = MBridge.getInputType ir
-          mOutTy = MBridge.getOutputType ir
-          mIR    = toMAlonzoIR ir
-          instrs = MX86.d_compile'45'x86_32 mInTy mOutTy mIR
-      in Just $ MX86Emit.d_programToText_76 instrs
-  | otherwise = Nothing
+compileToX86 _ir = Nothing  -- Backend generators disabled for QTT integration
+  -- TODO: Re-enable after QTT integration complete
+  -- | canConvertIR ir =
+  --     let mInTy  = MBridge.getInputType ir
+  --         mOutTy = MBridge.getOutputType ir
+  --         mIR    = toMAlonzoIR ir
+  --         instrs = MX86.d_compile'45'x86_32 mInTy mOutTy mIR
+  --     in Just $ MX86Emit.d_programToText_76 instrs
+  -- | otherwise = Nothing
 
 -- | Compile Haskell IR to AArch64 assembly text (verified)
 --
 -- Uses MAlonzo-extracted code from formal Agda proofs.
 -- Returns Nothing if IR contains primitives or other non-categorical constructs.
+--
+-- NOTE: Temporarily disabled for QTT integration
 compileToAArch64 :: H.IR -> Maybe Text
-compileToAArch64 ir
-  | canConvertIR ir =
-      let mInTy  = MBridge.getInputType ir
-          mOutTy = MBridge.getOutputType ir
-          mIR    = toMAlonzoIR ir
-          instrs = MAArch64.d_compile'45'aarch64_32 mInTy mOutTy mIR
-      in Just $ MAArch64Emit.d_programToText_104 instrs
-  | otherwise = Nothing
+compileToAArch64 _ir = Nothing  -- Backend generators disabled for QTT integration
+  -- TODO: Re-enable after QTT integration complete
+  -- | canConvertIR ir =
+  --     let mInTy  = MBridge.getInputType ir
+  --         mOutTy = MBridge.getOutputType ir
+  --         mIR    = toMAlonzoIR ir
+  --         instrs = MAArch64.d_compile'45'aarch64_32 mInTy mOutTy mIR
+  --     in Just $ MAArch64Emit.d_programToText_104 instrs
+  -- | otherwise = Nothing
 
 -- | Compile Haskell IR to RISC-V 64-bit assembly text (verified)
 --
 -- Uses MAlonzo-extracted code from formal Agda proofs.
 -- Returns Nothing if IR contains primitives or other non-categorical constructs.
+--
+-- NOTE: Temporarily disabled for QTT integration
 compileToRiscV64 :: H.IR -> Maybe Text
-compileToRiscV64 ir
-  | canConvertIR ir =
-      let mInTy  = MBridge.getInputType ir
-          mOutTy = MBridge.getOutputType ir
-          mIR    = toMAlonzoIR ir
-          instrs = MRiscV.d_compile'45'riscv_34 mInTy mOutTy mIR
-      in Just $ MRiscVEmit.d_programToText_278 instrs
-  | otherwise = Nothing
+compileToRiscV64 _ir = Nothing  -- Backend generators disabled for QTT integration
+  -- TODO: Re-enable after QTT integration complete
+  -- | canConvertIR ir =
+  --     let mInTy  = MBridge.getInputType ir
+  --         mOutTy = MBridge.getOutputType ir
+  --         mIR    = toMAlonzoIR ir
+  --         instrs = MRiscV.d_compile'45'riscv_34 mInTy mOutTy mIR
+  --     in Just $ MRiscVEmit.d_programToText_278 instrs
+  -- | otherwise = Nothing
 
 ------------------------------------------------------------------------
 -- IR Analysis

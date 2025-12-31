@@ -159,7 +159,7 @@ mutual
   weaken : ∀ {n} {Γ : SCtx n} {A B : Type} → SExpr Γ B → SExpr (Γ S, A) B
   weaken {Γ = Γ} {A = A} (Surface.var i) =
     subst (SExpr _) (lookup-suc {Γ = Γ} {A = A} i) (Surface.var (suc i))
-  weaken (Surface.lam e) = Surface.lam (exchange e)
+  weaken (Surface.lam q e) = Surface.lam q (exchange e)
   weaken (Surface.app f x) = Surface.app (weaken f) (weaken x)
   weaken (Surface.pair a b) = Surface.pair (weaken a) (weaken b)
   weaken (Surface.fst' p) = Surface.fst' (weaken p)
@@ -181,7 +181,7 @@ mutual
   exchange (Surface.var zero) = Surface.var zero  -- B stays at position 0
   exchange {Γ = Γ} {A = A} {B = B} (Surface.var (suc i)) =
     subst (SExpr _) (lookup-suc-suc {Γ = Γ} {A = A} {B = B} i) (Surface.var (suc (suc i)))
-  exchange (Surface.lam e) = Surface.lam (exchange₂ e)
+  exchange (Surface.lam q e) = Surface.lam q (exchange₂ e)
   exchange (Surface.app f x) = Surface.app (exchange f) (exchange x)
   exchange (Surface.pair a b) = Surface.pair (exchange a) (exchange b)
   exchange (Surface.fst' p) = Surface.fst' (exchange p)
@@ -204,7 +204,7 @@ mutual
   exchange₂ (Surface.var (suc zero)) = Surface.var (suc zero)  -- B stays at 1
   exchange₂ {Γ = Γ} {A = A} {B = B} {C = C} (Surface.var (suc (suc i))) =
     subst (SExpr _) (lookup-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} i) (Surface.var (suc (suc (suc i))))
-  exchange₂ (Surface.lam e) = Surface.lam (exchange₃ e)
+  exchange₂ (Surface.lam q e) = Surface.lam q (exchange₃ e)
   exchange₂ (Surface.app f x) = Surface.app (exchange₂ f) (exchange₂ x)
   exchange₂ (Surface.pair a b) = Surface.pair (exchange₂ a) (exchange₂ b)
   exchange₂ (Surface.fst' p) = Surface.fst' (exchange₂ p)
@@ -225,7 +225,7 @@ mutual
   exchange₃ (Surface.var (suc (suc zero))) = Surface.var (suc (suc zero))
   exchange₃ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} (Surface.var (suc (suc (suc i)))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} i) (Surface.var (suc (suc (suc (suc i)))))
-  exchange₃ (Surface.lam e) = Surface.lam (exchange₄ e)
+  exchange₃ (Surface.lam q e) = Surface.lam q (exchange₄ e)
   exchange₃ (Surface.app f x) = Surface.app (exchange₃ f) (exchange₃ x)
   exchange₃ (Surface.pair a b) = Surface.pair (exchange₃ a) (exchange₃ b)
   exchange₃ (Surface.fst' p) = Surface.fst' (exchange₃ p)
@@ -249,7 +249,7 @@ mutual
   exchange₄ (Surface.var (suc (suc (suc zero)))) = Surface.var (suc (suc (suc zero)))
   exchange₄ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} (Surface.var (suc (suc (suc (suc i))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} i) (Surface.var (suc (suc (suc (suc (suc i))))))
-  exchange₄ (Surface.lam e) = Surface.lam (exchange₅ e)
+  exchange₄ (Surface.lam q e) = Surface.lam q (exchange₅ e)
   exchange₄ (Surface.app f x) = Surface.app (exchange₄ f) (exchange₄ x)
   exchange₄ (Surface.pair a b) = Surface.pair (exchange₄ a) (exchange₄ b)
   exchange₄ (Surface.fst' p) = Surface.fst' (exchange₄ p)
@@ -277,7 +277,7 @@ mutual
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} i) (Surface.var (suc (suc (suc (suc (suc (suc i)))))))
   -- For binders at depth 5, we need depth 6. Since the pattern repeats,
   -- we implement exchange₆ separately (outside mutual block).
-  exchange₅ (Surface.lam e) = Surface.lam (exchange₆ e)
+  exchange₅ (Surface.lam q e) = Surface.lam q (exchange₆ e)
   exchange₅ (Surface.app f x) = Surface.app (exchange₅ f) (exchange₅ x)
   exchange₅ (Surface.pair a b) = Surface.pair (exchange₅ a) (exchange₅ b)
   exchange₅ (Surface.fst' p) = Surface.fst' (exchange₅ p)
@@ -301,7 +301,7 @@ mutual
   exchange₆ (Surface.var (suc (suc (suc (suc (suc zero)))))) = Surface.var (suc (suc (suc (suc (suc zero)))))
   exchange₆ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} (Surface.var (suc (suc (suc (suc (suc (suc i))))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc i))))))))
-  exchange₆ (Surface.lam e) = Surface.lam (exchange₇ e)
+  exchange₆ (Surface.lam q e) = Surface.lam q (exchange₇ e)
   exchange₆ (Surface.app f x) = Surface.app (exchange₆ f) (exchange₆ x)
   exchange₆ (Surface.pair a b) = Surface.pair (exchange₆ a) (exchange₆ b)
   exchange₆ (Surface.fst' p) = Surface.fst' (exchange₆ p)
@@ -326,7 +326,7 @@ mutual
   exchange₇ (Surface.var (suc (suc (suc (suc (suc (suc zero))))))) = Surface.var (suc (suc (suc (suc (suc (suc zero))))))
   exchange₇ {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} (Surface.var (suc (suc (suc (suc (suc (suc (suc i)))))))) =
     subst (SExpr _) (lookup-suc-suc-suc-suc-suc-suc-suc-suc {Γ = Γ} {A = A} {B = B} {C = C} {D = D} {E = E} {F = F} {G = G} {H = H} i) (Surface.var (suc (suc (suc (suc (suc (suc (suc (suc i)))))))))
-  exchange₇ (Surface.lam e) = Surface.lam (exchange₈ e)
+  exchange₇ (Surface.lam q e) = Surface.lam q (exchange₈ e)
   exchange₇ (Surface.app f x) = Surface.app (exchange₇ f) (exchange₇ x)
   exchange₇ (Surface.pair a b) = Surface.pair (exchange₇ a) (exchange₇ b)
   exchange₇ (Surface.fst' p) = Surface.fst' (exchange₇ p)
@@ -682,23 +682,23 @@ instantiate ty counter = go ty counter emptySubst
 builtinType : String → ℕ → Maybe (∃[ A ] (Surface.Expr S∅ A × ℕ))
 builtinType "id" n =
   let a = TVar (freshTVar n)
-  in just (a ⇒ a , Surface.lam (Surface.var zero) , suc n)
+  in just (a ⇒ a , Surface.lam Many (Surface.var zero) , suc n)
 builtinType "fst" n =
   let a = TVar (freshTVar n)
       b = TVar (freshTVar (suc n))
-  in just ((a Once.Type.* b) ⇒ a , Surface.lam (Surface.fst' (Surface.var zero)) , suc (suc n))
+  in just ((a Once.Type.* b) ⇒ a , Surface.lam Many (Surface.fst' (Surface.var zero)) , suc (suc n))
 builtinType "snd" n =
   let a = TVar (freshTVar n)
       b = TVar (freshTVar (suc n))
-  in just ((a Once.Type.* b) ⇒ b , Surface.lam (Surface.snd' (Surface.var zero)) , suc (suc n))
+  in just ((a Once.Type.* b) ⇒ b , Surface.lam Many (Surface.snd' (Surface.var zero)) , suc (suc n))
 builtinType "inl" n =
   let a = TVar (freshTVar n)
       b = TVar (freshTVar (suc n))
-  in just (a ⇒ (a Once.Type.+ b) , Surface.lam (Surface.inl' (Surface.var zero)) , suc (suc n))
+  in just (a ⇒ (a Once.Type.+ b) , Surface.lam Many (Surface.inl' (Surface.var zero)) , suc (suc n))
 builtinType "inr" n =
   let a = TVar (freshTVar n)
       b = TVar (freshTVar (suc n))
-  in just (b ⇒ (a Once.Type.+ b) , Surface.lam (Surface.inr' (Surface.var zero)) , suc (suc n))
+  in just (b ⇒ (a Once.Type.+ b) , Surface.lam Many (Surface.inr' (Surface.var zero)) , suc (suc n))
 builtinType "unit" n = just (Unit , Surface.unit , n)
 -- pair (fork/⟨_,_⟩): (A -> B) -> (A -> C) -> A -> (B * C)
 -- pair = λf. λg. λx. (f x, g x)
@@ -707,7 +707,7 @@ builtinType "pair" n =
       b = TVar (freshTVar (suc n))
       c = TVar (freshTVar (suc (suc n)))
   in just ((a ⇒ b) ⇒ (a ⇒ c) ⇒ a ⇒ (b Once.Type.* c) ,
-          Surface.lam (Surface.lam (Surface.lam
+          Surface.lam Many (Surface.lam Many (Surface.lam Many
             (Surface.pair
               (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))
               (Surface.app (Surface.var (suc zero)) (Surface.var zero))))) ,
@@ -758,23 +758,16 @@ mutual
   checkElabImpl : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
 
   -- Lambda with function type: check body against result type
-  -- For now, only support unrestricted (Many) arrows in Surface syntax
   -- QTT: Validate parameter usage respects declared quantity, then drop from usage vector
-  checkElabImpl ctx (Raw.RLam x body) (A ⇒[ Many ] B) with checkElabImpl (extendNamedCtx ctx x A) body B
+  checkElabImpl ctx (Raw.RLam x body) (A ⇒[ q ] B) with checkElabImpl (extendNamedCtx ctx x A) body B
   ... | failure err = failure err
   ... | success bodyExpr depth fresh' usage' =
-          -- Check parameter usage ≤ declared quantity (Many)
+          -- Check parameter usage ≤ declared quantity
           let paramUsage = lookupUsage usage' zero
-          in if paramUsage ≤q Many
-             then success (Surface.lam bodyExpr) (suc depth) fresh' (tailUsage usage')
+          in if paramUsage ≤q q
+             then success (Surface.lam q bodyExpr) (suc depth) fresh' (tailUsage usage')
              else failure ("Parameter '" ++ x ++ "' used with quantity " ++ showQuantity paramUsage ++
-                          " but declared with quantity " ++ showQuantity Many)
-
-  -- Lambda with linear or erased arrow: not yet supported
-  checkElabImpl ctx (Raw.RLam _ _) (A ⇒[ One ] B) =
-    failure "Linear functions not yet supported in Surface syntax"
-  checkElabImpl ctx (Raw.RLam _ _) (A ⇒[ Zero ] B) =
-    failure "Erased functions not yet supported in Surface syntax"
+                          " but declared with quantity " ++ showQuantity q)
 
   -- Lambda with non-function type: error
   checkElabImpl ctx (Raw.RLam _ _) ty =
@@ -809,12 +802,12 @@ mutual
   inferElabImpl ctx (Raw.RLam x body) with inferElabImpl (extendNamedCtx ctx x (TVar "α")) body
   ... | failure err = failure err
   ... | success B bodyExpr bodyDepth fresh' usage' =
-        -- Inferred lambdas have Many quantity, check parameter usage ≤ Many
+        -- Inferred lambdas default to Many quantity (unrestricted)
         let paramUsage = lookupUsage usage' zero
         in if paramUsage ≤q Many
-           then success (TVar "α" ⇒ B) (Surface.lam bodyExpr) (suc bodyDepth) fresh' (tailUsage usage')
+           then success (TVar "α" ⇒ B) (Surface.lam Many bodyExpr) (suc bodyDepth) fresh' (tailUsage usage')
            else failure ("Lambda parameter '" ++ x ++ "' used with quantity " ++ showQuantity paramUsage ++
-                        " but inferred lambdas require ≤ " ++ showQuantity Many)
+                        " but inferred lambdas default to " ++ showQuantity Many)
 
   -- Application: infer function, check it's a function type, infer arg, check types match
   -- (depth = max of function and argument depths, thread fresh counter through)
@@ -823,8 +816,8 @@ mutual
     where
       inferApp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
       inferApp (failure err) = failure err
-      -- For now, only support unrestricted (Many) arrows in Surface syntax
-      inferApp (success (A ⇒[ Many ] B) funExpr funDepth funFresh usageFun) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
+      -- Support all quantities (Zero/One/Many) for function arrows
+      inferApp (success (A ⇒[ q ] B) funExpr funDepth funFresh usageFun) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
         where
           bumpFreshTo : NamedCtx → ℕ → NamedCtx
           bumpFreshTo (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
@@ -834,10 +827,6 @@ mutual
           inferArg (success A' argExpr argDepth argFresh usageArg) with A ≟T A'
           ... | yes refl = success B (Surface.app funExpr argExpr) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
           ... | no _ = failure "Type mismatch in application"
-
-      -- Linear and erased arrows not yet supported
-      inferApp (success (_ ⇒[ One ] _) _ _ _ _) = failure "Linear functions not yet supported in Surface syntax"
-      inferApp (success (_ ⇒[ Zero ] _) _ _ _ _) = failure "Erased functions not yet supported in Surface syntax"
       inferApp (success Unit _ _ _ _) = failure "Expected function type in application"
       inferApp (success Void _ _ _ _) = failure "Expected function type in application"
       inferApp (success Int _ _ _ _) = failure "Expected function type in application"

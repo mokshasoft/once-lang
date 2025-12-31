@@ -29,10 +29,13 @@ optimizeWith MAlonzoOptimizer = optimizeWithMAlonzo
 -- - Does not contain Var, LocalVar, FunRef, or StringLit
 --
 -- For IR that cannot be converted, falls back to the Haskell optimizer.
+--
+-- NOTE: MAlonzo optimizer temporarily disabled for QTT integration
 optimizeWithMAlonzo :: IR -> IR
-optimizeWithMAlonzo ir
-  | M.canConvertIR ir = M.optimizeMAlonzo ir
-  | otherwise = optimize ir  -- Fallback to Haskell
+optimizeWithMAlonzo ir = optimize ir  -- Always use Haskell optimizer for now
+  -- TODO: Re-enable MAlonzo optimizer after QTT integration complete
+  -- | M.canConvertIR ir = M.optimizeMAlonzo ir
+  -- | otherwise = optimize ir
 
 -- | Optimize IR by applying categorical rewrite rules until fixed point
 optimize :: IR -> IR

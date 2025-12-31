@@ -44,7 +44,8 @@ evalSurface : ∀ {n} {Γ : Ctx n} {A} → Env Γ → Expr Γ A → ⟦ A ⟧
 
 evalSurface ρ (var i)        = envLookup ρ i
 -- Create explicit Closure for lambda (env-addr and code-ptr are placeholders)
-evalSurface ρ (lam e)        = record { env-addr = 0; code-ptr = 0; semantics = λ a → evalSurface (a ∷ ρ) e }
+-- Quantity q is ignored in semantics (type-level only)
+evalSurface ρ (lam q e)      = record { env-addr = 0; code-ptr = 0; semantics = λ a → evalSurface (a ∷ ρ) e }
 -- Apply closure using semantics field
 evalSurface ρ (app f x)      = Closure.semantics (evalSurface ρ f) (evalSurface ρ x)
 evalSurface ρ (pair a b)     = (evalSurface ρ a , evalSurface ρ b)
