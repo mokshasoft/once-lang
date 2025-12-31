@@ -19,6 +19,7 @@ open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
+open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k')
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
@@ -1362,9 +1363,7 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 8≤24 : 8 ≤ 24
                 8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
                 -- (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
-                -- This is a standard arithmetic identity; postulated for simplicity
-                postulate
-                  m∸n+k≡m∸n-k : ∀ m n k → n ≤ m → k ≤ n → m ∸ n +ℕ k ≡ m ∸ (n ∸ k)
+                -- Standard arithmetic identity; now proven in Arithmetic.agda
         s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
         s1-r15-eq-proof2 = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
                                                      (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
@@ -1440,8 +1439,7 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 16≤24 : 16 ≤ 24
                 16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
                 -- (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
-                postulate
-                  m∸n+k≡m∸n-k' : ∀ m n k → n ≤ m → k ≤ n → m ∸ n +ℕ k ≡ m ∸ (n ∸ k)
+                -- Now proven in Arithmetic.agda
         s1-r15-eq-proof3 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
         s1-r15-eq-proof3 = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ 40)
                                                       (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
