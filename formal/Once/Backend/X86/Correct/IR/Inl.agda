@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -58,6 +58,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     ; ir-mem-rbp = mem-rbp-preserved
     ; ir-mem-rbp+8 = mem-rbp+8-preserved
     ; ir-mem-above = mem-above-preserved
+    ; ir-mem-at-0 = mem-at-0-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-rsp-bound = rsp>16'
     ; ir-rbp-inv = rbp-inv'
@@ -385,6 +386,18 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
           mem-s2-above = readMem-writeMem-diff (memory s1) new-rsp addr 0 diff-1
           mem-s3-above = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) addr orig-rdi diff-2) mem-s2-above
       in mem-s3-above
+
+    -- Memory at address 0 preserved (null page never written)
+    -- inl writes at new-rsp and new-rsp+8, both > 0, so address 0 is unchanged
+    mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
+    mem-at-0-preserved =
+      let diff-1 : new-rsp ≢ 0
+          diff-1 eq = <⇒≢ (subst (0 <_) (sym eq) (s≤s z≤n)) refl
+          diff-2 : (new-rsp +ℕ 8) ≢ 0
+          diff-2 eq = n≢n+suc new-rsp 7 (sym eq)
+          mem-s2-at-0 = readMem-writeMem-diff (memory s1) new-rsp 0 0 diff-1
+          mem-s3-at-0 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) 0 orig-rdi diff-2) mem-s2-at-0
+      in mem-s3-at-0
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
