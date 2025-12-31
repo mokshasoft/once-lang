@@ -562,17 +562,35 @@ stack exec -- once build --help | grep verified
 - ✅ `once build --help` has no --verified flag
 
 ### Phase 3.5 (CRITICAL: Restore Built-in Functions & Module Support)
-- ❌ Implement `builtinType` function for categorical generators (id, fst, snd, inl, inr, etc.)
-- ❌ Update `lookupVar` to fallback to built-ins when variable not in local context
-- ❌ **CRITICAL**: Ensure module imports work - imported functions must be accessible
-- ❌ **CRITICAL**: ModuleEnv integration - resolve imported names from other modules
-- ❌ Test with simple programs using built-in functions
+
+**Completed (commit 7c3c1d9)**:
+- ✅ Implement `builtinType` function for categorical generators (id, fst, snd, inl, inr, unit, pair)
+- ✅ Update `lookupVar` to fallback to built-ins when variable not in local context
+- ✅ Add `weakenFromEmpty` helper for context transformation
+- ✅ Extract via MAlonzo and rebuild compiler
+- ✅ Test simple built-in uses: id, fst, snd work correctly
+- ✅ Polymorphism works with explicit types: `testPairExists = pair`
+
+**Remaining Work**:
+- ❌ **Fix type inference for polymorphic higher-order applications**
+  - Current issue: `pair snd fst` fails with "Type mismatch in application"
+  - Root cause: Type variable instantiation/unification for polymorphic built-ins
+  - Examples that fail: `diagonal = pair id id`, `swap = pair snd fst`
+  - This is NOT a new regression - old unverified elaborator skipped type checking entirely
+  - **Priority**: HIGH - needed for categorical.once and type-alias-test.once
+
+- ❌ **CRITICAL**: Module imports - resolve imported names from other modules
+  - Need ModuleEnv integration in type checker
+  - `import I.Linux.File as F` should make F's exports available
+  - Cross-module references: `println@F` or qualified names
+  - **Priority**: HIGH - needed for hello.once, hi.once, arith-test.once
+
 - ❌ Test with programs using module imports
-- ❌ Extract via MAlonzo and rebuild compiler
-- ❌ **STATUS**: MUST BE COMPLETED before Phase 4
+- ❌ **STATUS**: IN PROGRESS
 
 **Key Requirements**:
 - Built-in categorical functions (id, compose, fst, snd, curry, apply, inl, inr, fold, unfold, etc.)
+- Type inference must handle polymorphic applications correctly
 - Module imports: `import Foo` should make Foo's exports available
 - Cross-module references: `Foo.bar` or just `bar` if imported
 - This is not optional - arbitrary programs with imports MUST work
