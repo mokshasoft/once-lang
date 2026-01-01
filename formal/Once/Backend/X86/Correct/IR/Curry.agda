@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf)
 
 open import Data.Nat using (_>_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n; ∸-monoˡ-≤; +-monoˡ-<) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -784,12 +784,24 @@ run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-in
 
     -- Memory at 0 preserved through all states
     -- Curry writes at new-rsp and new-rsp+8, both > 0 when rsp > 16
-    -- TODO: Prove 0<new-rsp and 0<new-rsp+8 from rsp>16 to eliminate postulates
+    -- Proof: rsp > 16 implies new-rsp = rsp - 16 > 0
     mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
     mem-at-0-final =
-      let postulate
-            0<new-rsp : 0 < new-rsp
-            0<new-rsp+8 : 0 < (new-rsp +ℕ 8)
+      let -- Prove rsp > 16 implies rsp ∸ 16 > 0
+          17≤rsp : 17 ≤ orig-rsp
+          17≤rsp = rsp>16
+
+          -- By monus monotonicity: 17 ≤ rsp implies 17 ∸ 16 ≤ rsp ∸ 16
+          1≤new-rsp : 1 ≤ new-rsp
+          1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ 16 17≤rsp)
+
+          0<new-rsp : 0 < new-rsp
+          0<new-rsp = 1≤new-rsp
+
+          -- new-rsp ≥ 1, so new-rsp + 8 ≥ 9 > 0
+          0<new-rsp+8 : 0 < (new-rsp +ℕ 8)
+          0<new-rsp+8 = <-trans (s≤s z≤n) (+-monoˡ-< 8 0<new-rsp)
+
           diff-new-rsp : new-rsp ≢ 0
           diff-new-rsp eq = Nat-<⇒≢ 0<new-rsp (sym eq)
           diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ 0

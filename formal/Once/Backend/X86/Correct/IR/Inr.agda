@@ -65,7 +65,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans; ∸-monoˡ-≤; +-monoˡ-<)
 
     -- The program
     prog : Program
@@ -383,12 +383,30 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
 
     -- Memory at address 0 preserved (null page never written)
     -- inr writes at new-rsp and new-rsp+8, both > 0, so address 0 is unchanged
-    -- TODO: Prove new-rsp > 0 from rsp>16 to eliminate postulates
+    -- Proof: rsp > 16 implies new-rsp = rsp - 16 > 0
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
-      let postulate
-            diff-1 : new-rsp ≢ 0
-            diff-2 : (new-rsp +ℕ 8) ≢ 0
+      let -- Prove rsp > 16 implies rsp ∸ 16 > 0
+          17≤rsp : 17 ≤ orig-rsp
+          17≤rsp = rsp>16
+
+          -- By monus monotonicity: 17 ≤ rsp implies 17 ∸ 16 ≤ rsp ∸ 16
+          1≤new-rsp : 1 ≤ new-rsp
+          1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ 16 17≤rsp)
+
+          new-rsp>0 : new-rsp > 0
+          new-rsp>0 = 1≤new-rsp
+
+          diff-1 : new-rsp ≢ 0
+          diff-1 eq = <⇒≢ new-rsp>0 (sym eq)
+
+          -- new-rsp ≥ 1, so new-rsp + 8 ≥ 9 > 0
+          new-rsp+8>0 : (new-rsp +ℕ 8) > 0
+          new-rsp+8>0 = <-trans (s≤s z≤n) (+-monoˡ-< 8 new-rsp>0)
+
+          diff-2 : (new-rsp +ℕ 8) ≢ 0
+          diff-2 eq = <⇒≢ new-rsp+8>0 (sym eq)
+
           mem-s2-at-0 = readMem-writeMem-diff (memory s1) new-rsp 0 1 diff-1
           mem-s3-at-0 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) 0 orig-rdi diff-2) mem-s2-at-0
       in mem-s3-at-0
