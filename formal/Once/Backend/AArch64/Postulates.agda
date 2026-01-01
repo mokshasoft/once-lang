@@ -12,7 +12,7 @@ module Once.Backend.AArch64.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; length; _++_)
+open import Data.List using (List; length; _++_; _∷_; [])
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
@@ -22,12 +22,13 @@ open import Once.IR using (apply; curry; IR)
 open import Once.Semantics using (⟦_⟧; encode; eval)
 open import Once.Memory using (Word)
 
-open import Once.Backend.AArch64.Syntax using (x0; x19; x20; x21; x29; x30; Program)
-open import Once.Backend.AArch64.Semantics using (State; readReg; readSP; readMem)
+open import Once.Backend.AArch64.Syntax using (x0; x19; x20; x21; x29; x30; Program; sub-sp; stp; sp+imm; mov-from-sp; ret)
+open import Once.Backend.AArch64.Semantics using (State; readReg; readSP; readMem; exec)
 open import Once.Backend.AArch64.Semantics using () renaming (module State to St)
 open St using (regs; memory; halted; pc)
 open import Once.Backend.AArch64.Correct.Star using (Star)
 open import Once.Backend.AArch64.Correct.StackInvariant using (StackInvariant; X29Invariant)
+open import Once.Backend.AArch64.Correct.ClosureWellFormed using (ThunkResult)
 open import Once.Backend.AArch64.CodeGen using (compile-aarch64; compile-length)
 
 ------------------------------------------------------------------------
@@ -56,6 +57,106 @@ open import Once.Backend.AArch64.CodeGen using (compile-aarch64; compile-length)
 
 postulate
   sp-bound-after-stack-op : ∀ (s : State) → readSP (regs s) > 16
+
+------------------------------------------------------------------------
+-- Postulate P6: Curry Thunk Correctness
+------------------------------------------------------------------------
+--
+-- The thunk code embedded in a curry-created closure executes correctly.
+--
+-- NEEDED BY: Once.Backend.AArch64.Correct.ThunkProof (construct-closure-wf)
+--            Once.Backend.AArch64.Correct.MutualIR (run-curry-star-direct)
+--
+-- JUSTIFICATION:
+--   The thunk is compiled code within curry's output:
+--     curry f = [setup] ++ [branch] ++ [thunk-code] ++ [end-label]
+--   where thunk-code = [label, sub-sp, stp, mov-from-sp] ++ compile-aarch64 f ++ [ret]
+--
+--   The thunk correctness can be proven by:
+--   1. Tracing 4 setup instructions (Star steps)
+--   2. Calling run-ir-star-at-offset on f (the IH from the mutual block)
+--   3. Tracing ret instruction
+--   4. Composing via star-trans
+--
+--   This postulate is targeted: it's about the thunk only, not all of curry.
+--   It can be eliminated by proving the above strategy in the mutual block.
+--
+-- ELIMINATION PATH:
+--   In the mutual block (MutualIR.agda), add a helper that:
+--   - Takes the state at thunk entry (pc = code-ptr, x19 = env, x0 = arg, x30 = return addr)
+--   - Traces 4 thunk setup instructions using Star
+--   - Calls run-ir-star-at-offset f with appropriate prefix/suffix
+--   - Traces ret instruction
+--   - Returns ThunkResult via star-trans composition
+--
+-- RUNTIME EFFECT: None (proof-only)
+--
+------------------------------------------------------------------------
+
+postulate
+  curry-thunk-correct : ∀ {i} {A B C} (f : IR i (A * B) C)
+                        (prefix suffix : Program) (env : ⟦ A ⟧)
+                        (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
+    let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
+        thunk-offset = length prefix +ℕ 6  -- code-ptr label is at offset 6
+    in
+    halted s ≡ false →
+    pc s ≡ thunk-offset →
+    readReg (regs s) x0 ≡ encode arg →
+    readReg (regs s) x19 ≡ encode env →
+    readReg (regs s) x30 ≡ ret-addr →  -- Return address in link register
+    StackInvariant s →
+    readSP (regs s) > 16 →
+    ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
+            × pc s' ≡ ret-addr)
+
+------------------------------------------------------------------------
+-- Postulate P7: Thunk Execution at Offset
+------------------------------------------------------------------------
+--
+-- Execute thunk code with arbitrary prefix/suffix in the program.
+--
+-- NEEDED BY: Once.Backend.AArch64.Correct.IR.Apply (helper module)
+--
+-- JUSTIFICATION:
+--   This captures execution of the standalone thunk code:
+--     [label, sub-sp 16, stp x19 x0 [sp], mov-from-sp x0] ++
+--     compile-aarch64 f ++ [ret]
+--
+--   Proving this requires calling run-ir-star-at-offset on f,
+--   which is defined in the mutual block (MutualIR.agda).
+--   IR/Apply.agda is a helper module extracted to reduce mutual
+--   block compilation time, so it cannot call back into the mutual block.
+--
+--   This creates a cyclic dependency:
+--   - MutualIR needs IR/Apply for type definitions
+--   - run-thunk-at-offset needs MutualIR for run-ir-star-at-offset
+--
+-- ELIMINATION PATH:
+--   Move this proof into the mutual block where run-ir-star-at-offset
+--   is available. The proof follows the same pattern as curry-thunk-correct:
+--   1. Trace 4 setup instructions
+--   2. Call run-ir-star-at-offset on f
+--   3. Trace ret instruction
+--   4. Compose via star-trans
+--
+-- RUNTIME EFFECT: None (proof-only)
+--
+------------------------------------------------------------------------
+
+postulate
+  run-thunk-at-offset : ∀ {i} {A B C} (f : IR i (A * B) C)
+    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) x19 ≡ encode {A} env →
+    readReg (regs s) x0 ≡ encode {B} arg →
+    let thunk-code = sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷
+                     mov-from-sp x0 ∷ compile-aarch64 f ++ ret ∷ []
+        thunk-len = 4 +ℕ compile-length f
+    in ∃[ s' ] (exec thunk-len (prefix ++ thunk-code ++ suffix) s ≡ just s'
+              × halted s' ≡ false
+              × readReg (regs s') x0 ≡ encode {C} (eval f (env , arg)))
 
 ------------------------------------------------------------------------
 -- Postulate P5: Closure Application (Semantic Boundary)

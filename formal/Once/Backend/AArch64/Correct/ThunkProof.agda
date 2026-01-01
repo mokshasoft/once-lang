@@ -79,57 +79,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
-------------------------------------------------------------------------
--- Postulate: thunk correctness
---
--- This captures that the thunk executes correctly.
--- TO PROVE: Use run-ir-star-at-offset on f from within the mutual block.
---
--- JUSTIFICATION:
---   The thunk is compiled by curry and contains compile-aarch64 f.
---   In a whole-program context, the thunk is part of the same program
---   that the IH (run-ir-star-at-offset) applies to.
---   The proof would:
---   1. Trace 4 setup instructions (Star steps)
---   2. Call run-ir-star-at-offset on f
---   3. Trace ret instruction
---   4. Compose via star-trans
---
--- This postulate is more targeted than apply-produces-result because:
---   - It's about the thunk only, not all of apply
---   - It can be proven once curry's structure is understood
---   - It doesn't cross compilation boundaries (thunk is in curry's output)
---
--- KEY INSIGHT:
---   The thunk code is:
---     label 6 :: sub-sp 16 :: stp x19 x0 [sp] :: mov-from-sp x0
---     :: compile-aarch64 f :: ret :: label end
---   The IH on f gives us that compile-aarch64 f is correct.
---   We just need to trace the setup and ret around it.
---
--- AArch64-SPECIFIC:
---   - x19 holds env (not r12)
---   - x0 holds arg (not rdi)
---   - x30 holds return address (not stack)
---   - stp stores pair to stack (not two separate mov instructions)
-------------------------------------------------------------------------
-
-postulate
-  curry-thunk-correct : ∀ {A B C} (f : IR (A * B) C)
-                        (prefix suffix : Program) (env : ⟦ A ⟧)
-                        (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
-    let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
-        thunk-offset = length prefix +ℕ 6  -- code-ptr label is at offset 6
-    in
-    halted s ≡ false →
-    pc s ≡ thunk-offset →
-    readReg (regs s) x0 ≡ encode arg →
-    readReg (regs s) x19 ≡ encode env →
-    readReg (regs s) x30 ≡ ret-addr →  -- Return address in link register
-    StackInvariant s →
-    readSP (regs s) > 16 →
-    ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
-            × pc s' ≡ ret-addr)
+-- Import curry-thunk-correct from centralized Postulates module
+open import Once.Backend.AArch64.Postulates using (curry-thunk-correct)
 
 ------------------------------------------------------------------------
 -- construct-closure-wf: Build ClosureWellFormed from curry context
@@ -142,7 +93,7 @@ postulate
 -- The thunk at code-ptr is correct by curry-thunk-correct.
 ------------------------------------------------------------------------
 
-construct-closure-wf : ∀ {A B C} (f : IR (A * B) C)
+construct-closure-wf : ∀ {i} {A B C} (f : IR i (A * B) C)
                        (prefix suffix : Program) (env : ⟦ A ⟧) →
   let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6

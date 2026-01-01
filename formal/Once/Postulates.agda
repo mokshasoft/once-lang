@@ -318,7 +318,17 @@ postulate
     readMem m (p +ℕ 8) ≡ just (encode b) →
     p ≡ encode {A * B} (a , b)
 
-  -- FUTURE: Need ClosureAtS validity predicate
+  -- ELIMINABLE: Need ClosureAtS validity predicate (similar to PairAtS)
+  -- Encoding preserves closure structure
+  -- A closure is encoded as a pointer to [env-addr, code-ptr]
+  -- These accessors extract the components from an encoded closure
+  encode-closure-env : ∀ {A B} (closure : ⟦ A ⇒ B ⟧) (m : Memory) →
+    readMem m (encode {A ⇒ B} closure) ≡ just (Closure.env-addr closure)
+
+  encode-closure-code-ptr : ∀ {A B} (closure : ⟦ A ⇒ B ⟧) (m : Memory) →
+    readMem m ((encode {A ⇒ B} closure) +ℕ 8) ≡ just (Closure.code-ptr closure)
+
+  -- ELIMINABLE: ClosureAtS produces closures directly from memory writes
   -- Encoding construction for closures (functions):
   -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a

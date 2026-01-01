@@ -126,8 +126,6 @@ open CurryContext
 open import Once.Backend.AArch64.Correct.IR.Apply
   using (ApplyContext; mkApplyContext;
          ApplySetupResult; ApplyResult;
-         run-ir-at-offset-apply;
-         closure-code-ptr; closure-env;
          compile-length-apply)
 open ApplyContext
   renaming (prog to apply-prog; apply-code to apply-apply-code)
