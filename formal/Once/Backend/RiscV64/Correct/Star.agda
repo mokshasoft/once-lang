@@ -29,116 +29,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (yes; no)
 
 ------------------------------------------------------------------------
--- Star Relation
+-- Import Common Star Infrastructure
 ------------------------------------------------------------------------
 
--- | Reflexive-transitive closure of the step function.
---
--- Star prog s s' means: starting from state s, executing program prog
--- reaches state s' in zero or more steps.
---
--- This eliminates fuel management - we don't care HOW MANY steps,
--- just that execution reaches the target state.
-
-data Star (prog : Program) : State → State → Set where
-  -- | Zero steps: already at target (reflexivity)
-  refl* : ∀ {s} → Star prog s s
-
-  -- | One or more steps: take one step, then continue
-  step* : ∀ {s s' s''} →
-          halted s ≡ false →
-          step prog s ≡ just s' →
-          Star prog s' s'' →
-          Star prog s s''
+-- Import the common Star definition and properties.
+-- This includes: Star data type, star-trans, star-single, infix operators,
+-- helper combinators (star-step2 through star-step6), and _⟶*_ notation.
+open import Once.Backend.Common.Star Program State halted step public
 
 ------------------------------------------------------------------------
--- Star Properties
-------------------------------------------------------------------------
-
--- | Transitivity of star
--- If prog takes us from s₁ to s₂, and from s₂ to s₃, then from s₁ to s₃
-star-trans : ∀ {prog s₁ s₂ s₃} →
-             Star prog s₁ s₂ →
-             Star prog s₂ s₃ →
-             Star prog s₁ s₃
-star-trans refl* p₂ = p₂
-star-trans (step* h step-eq p₁) p₂ = step* h step-eq (star-trans p₁ p₂)
-
--- | Single step lifts to star
-star-single : ∀ {prog s s'} →
-              halted s ≡ false →
-              step prog s ≡ just s' →
-              Star prog s s'
-star-single h step-eq = step* h step-eq refl*
-
-------------------------------------------------------------------------
--- Step Chaining Combinators
---
--- These make building long chains of steps readable:
---   star-all = step-0 ◅ step-1 ◅ step-2 ◅ ... ◅ step-n ◅ refl*
---
--- Compare to the old approach with nested exec-chain-2 calls!
-------------------------------------------------------------------------
-
--- | Prepend a single step to a Star (snoc-style chaining)
--- Usage: star-single h₁ step₁ ◅◅ star-rest
-infixr 5 _◅◅_
-_◅◅_ : ∀ {prog s s' s''} →
-       Star prog s s' →
-       Star prog s' s'' →
-       Star prog s s''
-_◅◅_ = star-trans
-
--- | Build Star from step proof and continuation
--- Usage: ⟨ h , step-eq ⟩◅ star-rest
-infixr 5 ⟨_,_⟩◅_
-⟨_,_⟩◅_ : ∀ {prog s s' s''} →
-          halted s ≡ false →
-          step prog s ≡ just s' →
-          Star prog s' s'' →
-          Star prog s s''
-⟨ h , step-eq ⟩◅ rest = step* h step-eq rest
-
--- | Chain 2 steps
-star-step2 : ∀ {prog s₀ s₁ s₂} →
-    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
-    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
-    Star prog s₀ s₂
-star-step2 h₀ step₀ h₁ step₁ =
-  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ refl*
-
--- | Chain 3 steps
-star-step3 : ∀ {prog s₀ s₁ s₂ s₃} →
-    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
-    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
-    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
-    Star prog s₀ s₃
-star-step3 h₀ step₀ h₁ step₁ h₂ step₂ =
-  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ refl*
-
--- | Chain 4 steps
-star-step4 : ∀ {prog s₀ s₁ s₂ s₃ s₄} →
-    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
-    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
-    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
-    halted s₃ ≡ false → step prog s₃ ≡ just s₄ →
-    Star prog s₀ s₄
-star-step4 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ =
-  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ refl*
-
--- | Chain 5 steps
-star-step5 : ∀ {prog s₀ s₁ s₂ s₃ s₄ s₅} →
-    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
-    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
-    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
-    halted s₃ ≡ false → step prog s₃ ≡ just s₄ →
-    halted s₄ ≡ false → step prog s₄ ≡ just s₅ →
-    Star prog s₀ s₅
-star-step5 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ h₄ step₄ =
-  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ ⟨ h₄ , step₄ ⟩◅ refl*
-
-------------------------------------------------------------------------
--- Bridge Lemmas
+-- RISC-V64-Specific Bridge Lemmas
 --
 -- These connect the fuel-based execution (exec, exec-until-pc) to Star.
 -- Both exec and exec-until-pc check `halted s` FIRST, so pattern matching
@@ -241,15 +141,6 @@ exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} eq | false | [ h-eq ] 
 exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} () | false | _ | no _ | nothing | _
 exec-until-pc-to-star {target} {suc fuel} {prog} {s} {s'} eq | false | [ h-eq ] | no _ | just s₁ | [ step-eq ]
   = step* h-eq step-eq (exec-until-pc-to-star {target} {fuel} {prog} {s₁} {s'} eq)
-
-------------------------------------------------------------------------
--- Export infix syntax
-------------------------------------------------------------------------
-
--- Infix operator for Star (optional, for readability)
-infix 4 _⟶*_
-_⟶*_ : Program → State → State → Set
-prog ⟶* s = Star prog s
 
 ------------------------------------------------------------------------
 -- StarResult: Execution result with Star instead of exec
