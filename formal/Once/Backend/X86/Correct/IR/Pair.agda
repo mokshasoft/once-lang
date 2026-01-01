@@ -638,9 +638,32 @@ exec-pair-middle {i} {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res 
 
     -- Memory at address 0 is preserved through middle phase
     -- Middle writes at [r15], and r15 = rsp-40 > 16, so r15 ≠ 0
-    -- TODO: Prove that r15 ≠ 0 from rsp > 40 (since r15 = rsp - 40)
-    postulate
-      mem-at-0-mid-proof : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+    -- Proof: r15 = rsp - 40 and rsp - 40 > 0 (from rsp - 40 > 16), so r15 ≠ 0
+    r15-neq-0 : readReg (regs s1) r15 ≢ 0
+    r15-neq-0 eq = Nat-<⇒≢ r15>0 (sym eq)
+      where
+        -- rsp - 40 > 16 from setup
+        rsp∸40>16 : readReg (regs s) rsp ∸ 40 > 16
+        rsp∸40>16 = subst (_> 16) rsp-setup-eq rsp>16-setup-raw
+          where
+            rsp>16-setup-raw : readReg (regs s-setup) rsp > 16
+            rsp>16-setup-raw = subst (λ ss → readReg (regs ss) rsp > 16)
+                                     (sym s-setup-eq) (PairSetupResult.rsp>16-setup setup-res)
+            rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
+            rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ 40)
+                                 (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
+
+        -- Therefore rsp - 40 > 0
+        rsp∸40>0 : readReg (regs s) rsp ∸ 40 > 0
+        rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16
+
+        -- r15 = rsp - 40, so r15 > 0
+        r15>0 : readReg (regs s1) r15 > 0
+        r15>0 = subst (_> 0) (sym r15-s1-eq) rsp∸40>0
+
+    mem-at-0-mid-proof : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+    mem-at-0-mid-proof = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) 0
+                                                (readReg (regs s1) rax) r15-neq-0
 
 ------------------------------------------------------------------------
 -- Final Assembly: combine all results into IRStarResult
