@@ -493,3 +493,133 @@ The x86-64 backend correctness proof now contains only one postulate: `encodedMe
 3. **Instruction-level tracing works** - Sequential execution lemmas are manageable
 4. **Record fields > postulates** - Move to PairSetupResult/PairMiddleResult improved structure
 
+
+## Remaining Postulates and Path to Full Elimination
+
+### Current Status Summary
+
+**Mechanical IR Correctness Postulates**: ✅ 100% ELIMINATED (18/18)
+
+**Remaining Postulates by Category**:
+
+#### 1. Foundational Infrastructure (3 postulates)
+- `encodedMemory` (Foundation.agda:89) - Initial memory state assumption
+- `rsp-bound-after-stack-op` (X86.Postulates:56) - Runtime stack space assumption  
+- `apply-produces-result` (X86.Postulates:125) - Modular reasoning only (NOT needed for closed programs)
+
+#### 2. Encoding Axioms (10 postulates - ELIMINABLE)
+Located in Once.Postulates (lines 228-291):
+- `encode-pair-fst`, `encode-pair-snd` - Pair projection axioms
+- `encode-inl-tag`, `encode-inl-val` - Left sum projection axioms
+- `encode-inr-tag`, `encode-inr-val` - Right sum projection axioms
+- `encode-inl-construct`, `encode-inr-construct` - Sum construction axioms
+- `encode-pair-construct` - Pair construction axiom
+- `encode-closure-construct` - Closure construction axiom
+
+#### 3. Proof-Only Extensionality (2 postulates)
+- `extensionality` (Once.Postulates:69) - Function extensionality (standard math axiom)
+- `closure-semantics-eq` (Once.Postulates:98) - Closure equality (derived from funext)
+
+**Total**: 15 postulates (10 eliminable, 5 foundational/standard)
+
+---
+
+### Encoding Postulate Elimination Strategy
+
+#### Infrastructure: Stateful Validity Predicates
+
+The encoding postulates can be eliminated using **stateful validity predicates** defined in `Once.Backend.X86.Correct.MemoryValid.agda`:
+
+```agda
+-- Instead of: encode (a, b) points to [encode a, encode b]
+-- Use explicit addresses:
+record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
+  constructor pair-at-s
+  field
+    fst-valid : readMem m addr-pair ≡ just addr-a
+    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
+
+-- Similar for InlAtS, InrAtS
+```
+
+**Key Insight** (MemoryValid.agda:7-13):
+> The encoding axioms claim to hold for ANY memory m. This is too strong.
+> They should only hold for memory where values were properly allocated.
+> Stateful validity predicates track actual addresses instead of using
+> the abstract `encode` function, breaking the circular dependency.
+
+#### Working Examples (StarBase.agda)
+
+Four complete E2E tests demonstrate postulate-free proofs:
+
+1. **test-fst-stateful** (lines 1454-1531) - Eliminates `encode-pair-fst`
+   - Creates pair input using `encode-s` stateful allocator
+   - Runs `fst` generator with `run-fst-star-s`
+   - Proves result equals first component WITHOUT encoding postulates
+
+2. **test-snd-stateful** (lines 1533-1607) - Eliminates `encode-pair-snd`
+   - Symmetric to fst, extracts second component
+
+3. **test-inl-stateful** (lines 1619-1672) - Eliminates inl encoding postulates
+   - Creates left sum, proves `InlAtS` validity from memory writes
+
+4. **test-inr-stateful** (lines 1681-1734) - Eliminates inr encoding postulates
+   - Creates right sum, proves `InrAtS` validity from memory writes
+
+#### Path to Full Elimination (Once.Postulates:223-227)
+
+```
+1. Thread IRStarResultS through IRRunner in MutualIR.agda
+2. Replace encode-based proofs with validity-based proofs
+3. Remove encoding postulates
+```
+
+**Current Blocker**: Need to thread stateful validity through the mutual IR runner framework. The tests show this works for individual generators; the next step is integrating into the mutual recursion structure.
+
+**Estimated Effort**: 4-6 weeks
+- Week 1-2: Define `IRStarResultS` with validity predicates
+- Week 2-4: Thread through `IRRunner` in MutualIR.agda
+- Week 4-5: Update all IR generator proofs (pair, compose, etc.)
+- Week 5-6: Verify complete programs build successfully, remove postulates
+
+---
+
+### Final Postulate Count After Encoding Elimination
+
+After completing the stateful validity threading:
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Mechanical IR Correctness | 0 | ✅ Eliminated |
+| Encoding Axioms | 0 | ✅ Eliminated (via stateful validity) |
+| Foundational Infrastructure | 3 | Permanent (runtime assumptions) |
+| Standard Math Axioms | 2 | Permanent (funext + closure eq) |
+| **TOTAL** | **5** | **Minimal assumption base** |
+
+The 5 remaining postulates would all be either:
+- Standard mathematical axioms (funext) 
+- Fundamental runtime assumptions (stack space, initial memory)
+- Modular reasoning only (not needed for closed programs)
+
+This represents a **minimal trusted base** for the verification, with all mechanical proof obligations fully discharged.
+
+---
+
+### Key Architectural Decisions
+
+1. **Stateful vs. Abstract Encoding**: The shift from abstract `encode` to explicit addresses is the key breakthrough that enables postulate elimination.
+
+2. **Mutual Recursion Trade-off**: Threading validity proofs through mutual blocks has performance implications (proof term size), but is necessary for full elimination.
+
+3. **Closed vs. Open Programs**: The `apply-produces-result` postulate is only needed for modular reasoning about open program fragments. Whole-program verification of closed Once programs uses the `ClosureWellFormed` infrastructure and requires NO apply postulate.
+
+---
+
+### References
+
+- **Stateful Validity Predicates**: `Once.Backend.X86.Correct.MemoryValid.agda`
+- **Working E2E Tests**: `Once.Backend.X86.Correct.StarBase.agda` (lines 1453-1763)
+- **Encoding Postulates**: `Once.Postulates.agda` (lines 228-291)
+- **Infrastructure Postulates**: `Once.Backend.X86.Postulates.agda`
+- **Elimination Documentation**: `Once.Postulates.agda` (lines 213-227)
+
