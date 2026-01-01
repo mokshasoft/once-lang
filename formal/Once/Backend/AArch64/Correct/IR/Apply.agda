@@ -112,25 +112,15 @@ mkApplyContext {A} {B} prefix suffix = record
 ------------------------------------------------------------------------
 --
 -- A closure created by curry has this memory layout:
---   [closure-ptr]     = env (captured value, encoded)
+--   [closure-ptr]     = env-addr (captured environment address)
 --   [closure-ptr + 8] = code-ptr (address of thunk entry)
 --
--- These postulates extract fields from an encoded closure.
--- They are semantic axioms that depend on the encoding scheme.
-
-postulate
-  -- Extract code-ptr from encoded closure
-  closure-code-ptr : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
-
-  -- Extract env from encoded closure
-  closure-env : ∀ {A B : Type} → ⟦ A ⇒ B ⟧ → Word
-
-  -- Closure encoding axioms: reading from encoded closure yields components
-  encode-closure-code-ptr : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) →
-    readMem encodedMemory (encode {A ⇒ B} closure +ℕ 8) ≡ just (closure-code-ptr closure)
-
-  encode-closure-env : ∀ {A B : Type} (closure : ⟦ A ⇒ B ⟧) →
-    readMem encodedMemory (encode {A ⇒ B} closure) ≡ just (closure-env closure)
+-- The Closure record (from Once.Semantics) has these fields directly:
+--   - Closure.env-addr : Word
+--   - Closure.code-ptr : Word
+--
+-- The encoding axioms (encode-closure-env, encode-closure-code-ptr)
+-- are now in Once.Postulates alongside other encoding axioms.
 
 ------------------------------------------------------------------------
 -- Apply Setup Result
@@ -138,8 +128,8 @@ postulate
 --
 -- Result after executing apply's 6 setup instructions.
 -- After execution:
---   pc = closure-code-ptr (thunk entry)
---   x19 = closure-env (environment for thunk)
+--   pc = Closure.code-ptr (thunk entry)
+--   x19 = Closure.env-addr (environment for thunk)
 --   x0 = arg (argument for thunk)
 --   x30 = return address (after blr)
 --   halted = false (blr doesn't halt)
@@ -156,10 +146,10 @@ record ApplySetupResult {A B : Type}
     setup-halted : halted s-after ≡ false
 
     -- PC jumped to thunk entry
-    setup-pc : pc s-after ≡ closure-code-ptr closure
+    setup-pc : pc s-after ≡ Closure.code-ptr closure
 
     -- x19 holds environment
-    setup-x19 : readReg (regs s-after) x19 ≡ closure-env closure
+    setup-x19 : readReg (regs s-after) x19 ≡ Closure.env-addr closure
 
     -- x0 holds argument
     setup-x0 : readReg (regs s-after) x0 ≡ encode arg
@@ -241,53 +231,32 @@ record ThunkResultExec {i} {A B C : Type} (f : IR i (A * B) C)
 open ThunkResultExec public
 
 ------------------------------------------------------------------------
--- run-thunk-at-offset postulate
+-- Import run-thunk-at-offset from centralized Postulates
 ------------------------------------------------------------------------
 --
 -- This postulate captures thunk execution with proper prefix/suffix.
--- It's postulated because proving it requires the recursive IR proof
--- which would create a cyclic dependency from this helper module.
+-- It's in Postulates because proving it requires run-ir-star-at-offset
+-- from the mutual block, creating a cyclic dependency if defined here.
 
-postulate
-  run-thunk-at-offset : ∀ {i} {A B C} (f : IR i (A * B) C)
-    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) x19 ≡ encode {A} env →
-    readReg (regs s) x0 ≡ encode {B} arg →
-    let thunk-code = sub-sp 16 ∷ stp x19 x0 (sp+imm 0) ∷ mov-from-sp x0 ∷
-                     compile-aarch64 f ++ ret ∷ []
-        thunk-len = 4 +ℕ compile-length f
-    in ∃[ s' ] (exec thunk-len (prefix ++ thunk-code ++ suffix) s ≡ just s'
-              × halted s' ≡ true
-              × readReg (regs s') x0 ≡ encode {C} (eval f (env , arg)))
+open import Once.Backend.AArch64.Postulates using (run-thunk-at-offset)
 
 ------------------------------------------------------------------------
 -- Main Apply Postulate
 ------------------------------------------------------------------------
 --
--- The complete apply proof is postulated because:
--- 1. blr performs indirect call to thunk code at arbitrary location
--- 2. The thunk code is NOT in apply's 6 instructions
--- 3. ret in thunk returns to instruction after blr
--- 4. This requires whole-program reasoning beyond local execution model
+-- NOTE: The main apply postulate (apply-produces-result) is now in
+-- Once.Backend.AArch64.Postulates. It provides a Star-based proof
+-- with complete register and memory preservation guarantees.
 --
--- The postulate is mathematically justified: we're asserting that
+-- For apply proofs, import from Postulates:
+--   open import Once.Backend.AArch64.Postulates using (apply-produces-result)
+--
+-- For whole-program proofs with closure well-formedness, use:
+--   run-apply-with-wf (from ClosureWellFormed, re-exported above)
+--
+-- The apply postulate is mathematically justified: we're asserting that
 -- the AArch64 semantics correctly implement function application
 -- when closures are properly formed by curry.
-
-postulate
-  run-ir-at-offset-apply : ∀ {A B} (prefix suffix : Program)
-    (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
-    ∃[ s' ] (exec (compile-length (apply {_} {A} {B})) (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix) s ≡ just s'
-           × halted s' ≡ false
-           × pc s' ≡ length prefix +ℕ compile-length (apply {_} {A} {B})
-           × readReg (regs s') x0 ≡ encode {B} (eval (apply {_} {A} {B}) x)
-           × readReg (regs s') x20 ≡ readReg (regs s) x20
-           × readReg (regs s') x21 ≡ readReg (regs s) x21)
 
 ------------------------------------------------------------------------
 -- Arithmetic Lemma
