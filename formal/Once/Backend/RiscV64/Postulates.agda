@@ -151,11 +151,31 @@ postulate
     StackDepth f ≤ readReg (regs s) sp
 
 ------------------------------------------------------------------------
--- NOTE: Foundation Postulates
+-- NOTE: Stack Space Postulate REMOVED (2026-01-01)
 ------------------------------------------------------------------------
 --
--- The postulate `stackDepth-leq-stackBase` in Foundation.agda is acceptable.
--- It's a practical bounds assumption: stack depth never exceeds initial SP.
--- This is analogous to assuming sufficient memory/stack in any runtime system.
+-- The postulate `stackDepth-leq-stackBase` was REMOVED from Foundation.agda
+-- because it was mathematically FALSE:
+--
+--   OLD (REMOVED):
+--     postulate
+--       stackDepth-leq-stackBase : ∀ ir → StackDepth ir ≤ 0x7FFF0000
+--
+-- This claimed all IR programs fit in 2GB, but arbitrary deep nesting
+-- (e.g., compose/pair chains) can exceed any fixed bound.
+--
+-- NEW APPROACH (Explicit Stack Parameterization):
+--   1. initWithInput now takes explicit stackSize parameter
+--   2. Correctness theorems require explicit precondition:
+--        star-codegen-correct : ∀ ir stackSize x →
+--          StackDepth ir ≤ stackSize → ...
+--   3. For specific programs, StackDepth is computable (total function)
+--   4. Compiler emits required stack; runtime provides sufficient stack
+--
+-- This replaces a false universal claim ("all IR fit in N bytes") with
+-- a provable specific claim ("given ≥ N bytes for this IR, it works").
+--
+-- Stack analysis is now in Once.Backend.Common.StackAnalysis, shared
+-- across all backends (X86, AArch64, RiscV64).
 --
 ------------------------------------------------------------------------

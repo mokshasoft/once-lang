@@ -77,14 +77,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
--- Postulates (to be eliminated or proven)
+-- Stack Size Configuration
 ------------------------------------------------------------------------
 
--- | Stack depth of any IR is bounded by the initial stack base.
--- Sound because stackBase = 0x7FFF0000 ≈ 2 billion, far exceeding any realistic StackDepth.
--- TODO: Could be proven for concrete IR terms by structural induction.
-postulate
-  stackDepth-leq-stackBase : ∀ {i A B} (ir : IR i A B) → StackDepth ir ≤ 0x7FFF0000
+-- NOTE: The false postulate `stackDepth-leq-stackBase` was REMOVED.
+-- It claimed all IR programs fit in 2GB, which is mathematically false.
+--
+-- The new approach: initWithInput is parameterized by stack size,
+-- making stack requirements an explicit precondition rather than
+-- a universal (false) claim.
 
 ------------------------------------------------------------------------
 -- Initial State Setup
@@ -98,25 +99,25 @@ postulate
 --   - Other registers initialized to 0
 --   - Stack pointer set appropriately
 
--- | Initial state with input value (concrete definition)
+-- | Initial state with input value (parameterized by stack size)
 --
 -- We set up the state with:
 --   - a0 = encode x (input AND output register)
---   - sp = large value (stack pointer)
+--   - sp = stackSize (provided by caller)
 --   - pc = 0
 --   - halted = false
 --   - Memory contains encoded representation of x (postulated)
-initWithInput : ∀ {A} → ⟦ A ⟧ → State
-initWithInput {A} x = mkstate
-  (writeReg (writeReg emptyRegFile a0 (encode x)) sp stackBase)
+--
+-- The stack size is now an explicit parameter, allowing correctness
+-- to be proven for any sufficient stack rather than assuming a
+-- universal bound.
+initWithInput : (stackSize : ℕ) → ∀ {A} → ⟦ A ⟧ → State
+initWithInput stackSize {A} x = mkstate
+  (writeReg (writeReg emptyRegFile a0 (encode x)) sp stackSize)
   encodedMemory
   0
   false
   where
-    -- Stack starts at a high address
-    stackBase : Word
-    stackBase = 0x7FFF0000
-
     -- Memory containing encoded values
     -- The encoding postulates in Once.Postulates already assert that
     -- reading from memory at encode addresses returns the correct components.
@@ -127,31 +128,29 @@ initWithInput {A} x = mkstate
 --
 -- Note: Unlike x86 where rdi has input and rax has output,
 -- RISC-V uses a0 for BOTH input and output!
-initWithInput-a0 : ∀ {A} (x : ⟦ A ⟧) →
-  readReg (regs (initWithInput x)) a0 ≡ encode x
-initWithInput-a0 x = refl
+initWithInput-a0 : ∀ stackSize {A} (x : ⟦ A ⟧) →
+  readReg (regs (initWithInput stackSize x)) a0 ≡ encode x
+initWithInput-a0 stackSize x = refl
 
 -- | Initial state is not halted (proven from definition)
-initWithInput-halted : ∀ {A} (x : ⟦ A ⟧) → halted (initWithInput x) ≡ false
-initWithInput-halted x = refl
+initWithInput-halted : ∀ stackSize {A} (x : ⟦ A ⟧) → halted (initWithInput stackSize x) ≡ false
+initWithInput-halted stackSize x = refl
 
 -- | Initial state has pc = 0 (proven from definition)
-initWithInput-pc : ∀ {A} (x : ⟦ A ⟧) → pc (initWithInput x) ≡ 0
-initWithInput-pc x = refl
+initWithInput-pc : ∀ stackSize {A} (x : ⟦ A ⟧) → pc (initWithInput stackSize x) ≡ 0
+initWithInput-pc stackSize x = refl
 
--- | Initial stack pointer value
-initWithInput-sp : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) sp ≡ 0x7FFF0000
-initWithInput-sp x = refl
-
--- | Initial state has adequate stack (24 ≤ sp)
-initWithInput-sp-bound : ∀ {A} (x : ⟦ A ⟧) → 24 ≤ readReg (regs (initWithInput x)) sp
-initWithInput-sp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+-- | Initial stack pointer value (returns the provided stack size)
+initWithInput-sp : ∀ stackSize {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput stackSize x)) sp ≡ stackSize
+initWithInput-sp stackSize x = refl
 
 -- | Initial state has adequate stack for any IR (StackDepth ir ≤ sp)
--- Sound because stackBase = 0x7FFF0000 ≈ 2 billion, far exceeding any realistic StackDepth
-initWithInput-sp-sufficient : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) →
-  StackDepth ir ≤ readReg (regs (initWithInput x)) sp
-initWithInput-sp-sufficient ir x = stackDepth-leq-stackBase ir
+-- This is now a trivial lemma - it just restates the precondition.
+-- The caller must prove StackDepth ir ≤ stackSize before calling this.
+initWithInput-sp-sufficient : ∀ {i A B} (ir : IR i A B) (stackSize : ℕ) {A'} (x : ⟦ A' ⟧) →
+  StackDepth ir ≤ stackSize →
+  StackDepth ir ≤ readReg (regs (initWithInput stackSize x)) sp
+initWithInput-sp-sufficient ir stackSize x prf = prf
 
 ------------------------------------------------------------------------
 -- Execution Helpers

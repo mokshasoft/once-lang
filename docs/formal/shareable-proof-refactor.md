@@ -326,6 +326,164 @@ RiscV64.Star
 
 ---
 
+## Stack Analysis Extraction
+
+### Background: The False Postulate Problem
+
+**Date**: 2026-01-01
+
+All three backends had a similar postulate claiming universal stack bounds:
+
+```agda
+-- RiscV64 (Foundation.agda):
+postulate
+  stackDepth-leq-stackBase : ∀ ir → StackDepth ir ≤ 0x7FFF0000
+
+-- Similar postulates in X86 and AArch64
+```
+
+**Problem**: This postulate is **mathematically FALSE**. Any fixed bound can be exceeded by sufficiently deep nesting (compose chains, nested pairs, etc.). The bound `0x7FFF0000` (2GB) came from an arbitrary choice of initial stack pointer.
+
+**Insight**: If different backends require different postulates, the postulate abstraction is wrong. The correct abstraction should be: *given sufficient stack for a specific program, execution succeeds*.
+
+### The New Approach: Parameterized Stack Correctness
+
+**Key Realization**: `StackDepth` is a **computable total function**. For any specific IR term, we can compute its exact stack requirements.
+
+**Solution**:
+1. Remove false universal postulate
+2. Parameterize `initWithInput` by stack size
+3. Make correctness theorems require explicit precondition
+4. Extract stack analysis logic to Common module
+
+### Phase 1: Common Stack Analysis Infrastructure ✓
+
+**File**: `Once/Backend/Common/StackAnalysis.agda` (~138 lines)
+
+**Approach**: Module parameterization by backend-specific allocation sizes
+
+```agda
+module Once.Backend.Common.StackAnalysis
+  (pair-frame : ℕ)    -- Bytes allocated for pair ⟨ f , g ⟩
+  (inl-frame : ℕ)     -- Bytes allocated for left injection
+  (inr-frame : ℕ)     -- Bytes allocated for right injection
+  (curry-frame : ℕ)   -- Bytes allocated for curry closure
+  (apply-frame : ℕ)   -- Conservative bound for apply thunk
+  where
+```
+
+**Content**:
+- **StackDelta**: Net stack allocation after IR completes
+- **StackDepth**: Maximum stack depth during execution
+
+**Key Properties**:
+- Both are total functions (computable for any IR)
+- No universal bounds needed
+- Backend-agnostic logic, architecture-specific sizes
+
+**RiscV64 allocation sizes**:
+```agda
+open import Once.Backend.Common.StackAnalysis
+  32   -- pair-frame (16 data + 8 s1 + 8 s2 frame pointer)
+  16   -- inl-frame
+  16   -- inr-frame
+  16   -- curry-frame
+  24   -- apply-frame (conservative bound)
+  public
+```
+
+### Phase 2: Refactor RiscV64 Stack Analysis ✓
+
+**Files Modified**:
+
+1. **Once/Backend/RiscV64/CodeGen.agda**
+   - Removed ~55 lines (StackDelta/StackDepth definitions)
+   - Added import of Common.StackAnalysis with RiscV64 sizes
+   - **Reduction**: ~55 lines
+
+2. **Once/Backend/RiscV64/Correct/Foundation.agda**
+   - Removed `stackDepth-leq-stackBase` postulate
+   - Parameterized `initWithInput` by stack size:
+     ```agda
+     -- OLD:
+     initWithInput : ∀ {A} → ⟦ A ⟧ → State
+
+     -- NEW:
+     initWithInput : (stackSize : ℕ) → ∀ {A} → ⟦ A ⟧ → State
+     ```
+   - Updated all helper lemmas to take `stackSize` parameter
+   - Made `initWithInput-sp-sufficient` trivial (no postulate needed)
+
+3. **Once/Backend/RiscV64/Correct.agda**
+   - Updated main correctness theorem:
+     ```agda
+     star-codegen-correct : ∀ ir (stackSize : ℕ) x →
+       StackDepth ir ≤ stackSize →  -- Explicit precondition
+       ∃[ s ] (Star (compile-riscv ir) (initWithInput stackSize x) s
+             × halted s ≡ true
+             × readReg (regs s) a0 ≡ encode (eval ir x))
+     ```
+   - Removed old test theorems that would require false universal postulate
+   - Kept `star-id-correct` as example with new stack-parameterized signature
+
+4. **Once/Backend/RiscV64/Postulates.agda**
+   - Updated documentation noting the removed postulate
+   - Explained new approach with explicit stack parameterization
+
+**Total reduction**: ~55 lines (StackDelta/StackDepth duplicated code)
+
+**Status**: ✓ Completed (RiscV64)
+
+### Benefits of the New Approach
+
+**Correctness**:
+- ✓ No false universal claims
+- ✓ Provable for specific programs
+- ✓ Makes stack requirements explicit and computable
+
+**Practical Use**:
+```agda
+-- For a specific program, compute required stack:
+let required = StackDepth myProgram  -- Computes to finite ℕ
+    provided = required + 1024       -- Add safety margin
+    proof : StackDepth myProgram ≤ provided
+    proof = auto-prove ...
+in star-codegen-correct myProgram provided x proof
+```
+
+**Runtime Model**:
+1. Compiler computes `StackDepth ir` for each program
+2. Compiler emits required stack size in binary metadata
+3. Runtime provides sufficient stack or rejects program
+4. Correctness theorem: "given ≥ N bytes, execution succeeds"
+
+**Code Sharing**:
+- ~55 lines eliminated per backend (RiscV64 done)
+- X86 and AArch64 have similar StackDelta/StackDepth (pending extraction)
+- Single source of truth for stack analysis logic
+
+### Future Work: X86 and AArch64
+
+**Expected reductions**:
+- X86: ~50 lines (StackDelta/StackDepth in CodeGen.agda)
+- AArch64: ~50 lines (StackDelta/StackDepth in CodeGen.agda)
+
+**Dependencies to update**:
+- X86/Correct/Foundation.agda (remove postulate, parameterize initWithInput)
+- AArch64/Correct/Foundation.agda (remove postulate, parameterize initWithInput)
+- X86/Correct.agda (update theorem signatures)
+- AArch64/Correct.agda (update theorem signatures)
+- X86/Postulates.agda (update documentation)
+- AArch64/Postulates.agda (update documentation)
+
+**Different allocation sizes** (to be verified):
+- X86 uses different calling conventions (stack-based vs register-based)
+- AArch64 uses different frame sizes (AArch64 ABI)
+
+**Status**: Documented, not yet executed
+
+---
+
 ## Lessons Learned
 
 ### What Worked Well

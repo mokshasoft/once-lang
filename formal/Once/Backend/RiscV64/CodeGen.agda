@@ -30,6 +30,28 @@ open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 
 ------------------------------------------------------------------------
+-- Import Common Stack Analysis
+------------------------------------------------------------------------
+
+-- Import the common stack analysis infrastructure with RiscV64-specific
+-- allocation sizes. This eliminates ~55 lines of duplicated code and
+-- makes stack analysis shareable across backends.
+--
+-- RiscV64 allocation sizes:
+--   - pair-frame: 32 bytes (16 pair data + 8 s1 + 8 s2 frame pointer)
+--   - inl-frame: 16 bytes (tag + value)
+--   - inr-frame: 16 bytes (tag + value)
+--   - curry-frame: 16 bytes (closure allocation: env + code-ptr)
+--   - apply-frame: 24 bytes (conservative bound for thunk frame)
+open import Once.Backend.Common.StackAnalysis
+  32   -- pair-frame
+  16   -- inl-frame
+  16   -- inr-frame
+  16   -- curry-frame
+  24   -- apply-frame
+  public
+
+------------------------------------------------------------------------
 -- Offset constants
 ------------------------------------------------------------------------
 
@@ -71,64 +93,8 @@ compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
 compile-length arr = 1             -- nop (identity)
 
-------------------------------------------------------------------------
--- Stack allocation analysis
-------------------------------------------------------------------------
-
--- | StackDelta: Net stack bytes allocated after IR completes
---
--- This is a static upper bound on ir-sp-delta from IRStarResult.
--- Used to compute StackDepth for nested operations.
---
--- Key insight: operations that produce pointers (pair, inl, inr, curry)
--- leave stack allocated. Others restore sp before returning.
---
-StackDelta : ∀ {i A B} → IR i A B → ℕ
-StackDelta id = 0
-StackDelta (g ∘ f) = StackDelta f +ℕ StackDelta g  -- f runs first, then g
-StackDelta fst = 0
-StackDelta snd = 0
-StackDelta ⟨ f , g ⟩ = 32 +ℕ StackDelta f +ℕ StackDelta g  -- 32 bytes: 16 pair + 8 s1 + 8 s2
-StackDelta inl = 16
-StackDelta inr = 16
-StackDelta [ f , g ] = StackDelta f ⊔ StackDelta g  -- only one branch runs
-StackDelta terminal = 0
-StackDelta initial = 0
-StackDelta (curry f) = 16  -- closure allocation; thunk cleans up after itself
-StackDelta apply = 0       -- thunk deallocates its frame
-StackDelta fold = 0
-StackDelta unfold = 0
-StackDelta arr = 0
-
--- | StackDepth: Maximum stack depth needed at any point during execution
---
--- Precondition: StackDepth ir ≤ sp ensures enough stack space.
---
--- For pair ⟨ f , g ⟩:
---   - Allocates 24 bytes, then runs f and g with sp' = sp - 24
---   - f and g each need their own depth, plus 24 margin for nested ops
---   - So: 24 (alloc) + 24 (margin) + max(StackDepth f, StackDepth g)
---
--- For compose (f ∘ g):
---   - Runs f first, then g with sp' = sp - StackDelta f
---   - Need: max(StackDepth f, StackDelta f + StackDepth g)
---
-StackDepth : ∀ {i A B} → IR i A B → ℕ
-StackDepth id = 0
-StackDepth (g ∘ f) = StackDepth f ⊔ (StackDelta f +ℕ StackDepth g)  -- f runs first
-StackDepth fst = 0
-StackDepth snd = 0
-StackDepth ⟨ f , g ⟩ = 32 +ℕ (StackDepth f ⊔ (StackDelta f +ℕ StackDepth g))  -- frame pointer approach
-StackDepth inl = 16
-StackDepth inr = 16
-StackDepth [ f , g ] = StackDepth f ⊔ StackDepth g
-StackDepth terminal = 0
-StackDepth initial = 0
-StackDepth (curry f) = 16 +ℕ StackDepth f  -- curry + thunk needs f's depth
-StackDepth apply = 24  -- thunk frame; actual f depth unknown statically
-StackDepth fold = 0
-StackDepth unfold = 0
-StackDepth arr = 0
+-- NOTE: StackDelta and StackDepth are now imported from
+-- Once.Backend.Common.StackAnalysis (see import above)
 
 ------------------------------------------------------------------------
 -- Code generation
