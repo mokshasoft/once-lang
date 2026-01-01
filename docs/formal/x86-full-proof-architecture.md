@@ -404,3 +404,118 @@ Star is the "native" abstraction for execution proofs. Fuel-based exec is an imp
 - **Decision Log**: `docs/compiler/decision-log.md` (D022: Agda, D032: Arrow effects)
 - **Proof Analysis**: `docs/formal/proof-analysis.md` (Apply unprovability analysis)
 - **What Is Proven**: `docs/formal/what-is-proven.md`
+
+## Mechanical Postulate Elimination Progress
+
+**Status**: 7 of 18 IR correctness postulates eliminated (39% reduction)
+**Commits**: e4ab0bf (6 postulates), 7cd788b (1 postulate)
+
+### Techniques Developed
+
+#### 1. Stack Pointer Arithmetic Pattern ✅ (6 eliminated)
+
+**Key Lemma**: `∸-monoˡ-≤ : ∀ o {m n} → m ≤ n → m ∸ o ≤ n ∸ o`
+
+**Proof Pattern**:
+```agda
+-- Given: rsp > 16, new-rsp = rsp ∸ 16
+-- Prove: new-rsp ≠ 0
+
+17≤rsp : 17 ≤ rsp
+17≤rsp = rsp>16
+
+1≤new-rsp : 1 ≤ new-rsp  
+1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ 16 17≤rsp)
+
+diff : new-rsp ≠ 0
+diff = <⇒≢ (≤-trans (s≤s z≤n) 1≤new-rsp) ∘ sym
+```
+
+**Eliminated From**:
+- IR/Inl.agda: 2 postulates (new-rsp ≠ 0, new-rsp + 8 ≠ 0)
+- IR/Inr.agda: 2 postulates (same pattern)
+- IR/Curry.agda: 2 postulates (same pattern)
+
+**Key Insight**: Stack pointer bounds (rsp > n) + monus monotonicity = powerful inequality proofs
+
+#### 2. Memory Preservation Through Single Write ✅ (1 eliminated)
+
+**Key Lemma**: `readMem-writeMem-diff`
+
+**Proof Pattern**:
+```agda
+-- Prove memory at 0 unchanged when writing to addr
+-- where addr = rsp ∸ n and rsp > n
+
+addr-neq-0 : addr ≠ 0
+addr-neq-0 = <⇒≢ addr>0 ∘ sym
+  where
+    addr>0 : addr > 0
+    addr>0 = subst (_> 0) (sym addr-eq) rsp∸n>0
+
+mem-at-0-preserved : readMem (memory s') 0 ≡ readMem (memory s) 0
+mem-at-0-preserved = readMem-writeMem-diff mem addr 0 val addr-neq-0
+```
+
+**Eliminated From**:
+- IR/Pair.agda: `mem-at-0-mid-proof` (middle phase write preservation)
+
+**Key Insight**: Can reuse rsp > n proofs to show stack addresses ≠ 0
+
+### Remaining Mechanical Postulates (11 total)
+
+#### Easy: SeqExec Extension (1 postulate)
+
+**IR/Pair.agda** - `mem-at-0-setup-proof`:
+- **Challenge**: Setup writes to 3 addresses (rsp-24, rsp-16, rsp-8)
+- **Approach**: Extend `exec-pair-setup-at-7` postcondition
+- **Effort**: Moderate (modify SeqExec.agda, ~50 lines)
+
+#### Medium: StackInvariant Analysis (3 postulates)
+
+**IR/Apply.agda**:
+- `stack-inv5`: StackInvariant after apply setup
+- `stack-inv1`: StackInvariant after call instruction
+
+**StackInvariant.agda**:
+- `postulate-stack-below-r15-ret`: Preservation through ret
+
+**Approach**: Analyze StackInvariant constructors and prove preservation
+**Effort**: Significant (understand invariant semantics, ~200 lines total)
+
+#### Hard: Thunk Execution Tracing (7 postulates)
+
+**IR/Apply.agda** - memory/register preservation through thunk:
+- `r15-post`, `mem-r15-post`, `mem-rbp-post`, `mem-rbp+8-post`
+- `mem-above-post`, `mem-at-0-post`, `rbp-inv-post`
+
+**Approach**: Use ClosureWellFormed.ThunkResult framework
+**Effort**: Major (trace through curry thunk execution, ~500 lines)
+
+### Elimination Statistics
+
+| Module | Initial | Eliminated | Remaining | % Complete |
+|--------|---------|------------|-----------|------------|
+| IR/Inl.agda | 2 | 2 | 0 | 100% ✅ |
+| IR/Inr.agda | 2 | 2 | 0 | 100% ✅ |
+| IR/Curry.agda | 2 | 2 | 0 | 100% ✅ |
+| IR/Pair.agda | 2 | 1 | 1 | 50% |
+| IR/Apply.agda | 9 | 0 | 9 | 0% |
+| StackInvariant.agda | 1 | 0 | 1 | 0% |
+| **TOTAL** | **18** | **7** | **11** | **39%** |
+
+### Next Priority Actions
+
+1. **Pair setup mem-at-0** (1 week) - Extend SeqExec postcondition
+2. **StackInvariant preservation** (2 weeks) - Prove invariant through key instructions
+3. **Apply thunk tracing** (3-4 weeks) - Major undertaking, use ClosureWellFormed
+
+**Estimated time to zero mechanical postulates**: 6-8 weeks of focused work
+
+### Key Lessons Learned
+
+1. **Monus arithmetic is well-supported** - Data.Nat.Properties has all needed lemmas
+2. **Stack bounds are powerful** - rsp > n enables many disequality proofs
+3. **Instruction-level tracing works** - Sequential execution lemmas are manageable
+4. **Record fields > postulates** - Move to PairSetupResult/PairMiddleResult improved structure
+
