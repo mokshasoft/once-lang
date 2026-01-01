@@ -32,7 +32,7 @@ open import Once.Backend.X86.Correct.StarBase
          rbp-inv-preserved-unchanged)
 
 open import Data.Nat using (_>_; _≥_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -335,6 +335,8 @@ record PairSetupResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
     mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+    -- Null page preservation (address 0 is never written)
+    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
 
 -- | Execute setup phase and compute all properties
 exec-pair-setup : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
@@ -359,6 +361,7 @@ exec-pair-setup {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = rec
   ; mem-stack-rbp = mem-rbp-setup
   ; mem-stack-r15 = mem-r15-setup
   ; mem-stack-r14 = mem-r14-setup
+  ; mem-at-0-setup = mem-at-0-setup-proof
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -424,6 +427,12 @@ exec-pair-setup {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = rec
         17≤41 : 17 ≤ 41
         17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
+    -- Memory at address 0 is preserved through setup
+    -- Setup only writes to stack addresses (rsp-24, rsp-16, rsp-8) which are > 40, never to 0
+    -- TODO: Prove this by showing exec-pair-setup-at-7 preserves memory at addresses < rsp-24
+    postulate
+      mem-at-0-setup-proof : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+
 ------------------------------------------------------------------------
 -- Middle Result: state after 2 middle instructions (store f result, restore input)
 ------------------------------------------------------------------------
@@ -454,6 +463,8 @@ record PairMiddleResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
     -- Memory preservation: addresses ≠ r15 are unchanged
     mem-above-r15-mid : ∀ addr → addr ≢ readReg (regs s1) r15 → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    -- Null page preservation (address 0 is never written)
+    mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
 
 -- | Execute middle phase
 exec-pair-middle : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
@@ -483,6 +494,7 @@ exec-pair-middle {i} {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res 
   ; mem-fst-stored = mem-fst-stored
   ; mem-rbp-mid = mem-rbp-mid
   ; mem-above-r15-mid = mem-above-mid-raw
+  ; mem-at-0-mid = mem-at-0-mid-proof
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -623,6 +635,12 @@ exec-pair-middle {i} {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res 
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
     mem-rbp-mid = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) (readReg (regs s1) rbp)
                                         (readReg (regs s1) rax) r15-neq-rbp-s1
+
+    -- Memory at address 0 is preserved through middle phase
+    -- Middle writes at [r15], and r15 = rsp-40 > 16, so r15 ≠ 0
+    -- TODO: Prove that r15 ≠ 0 from rsp > 40 (since r15 = rsp - 40)
+    postulate
+      mem-at-0-mid-proof : readMem (memory s2) 0 ≡ readMem (memory s1) 0
 
 ------------------------------------------------------------------------
 -- Final Assembly: combine all results into IRStarResult
@@ -1649,14 +1667,21 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- All IR generators preserve memory at address 0 via ir-mem-at-0
         -- Chain them through all phases to prove end-to-end preservation
 
-        -- TODO: Add mem-at-0 fields to PairSetupResult and PairMiddleResult to eliminate these postulates
-        postulate
-          mem-setup-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-          mem-mid-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+        -- Phase 1: Setup preserves address 0
+        mem-setup-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+        mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
+                               (sym s-setup-eq)
+                               (PairSetupResult.mem-at-0-setup setup-res)
 
         -- Phase 2: f preserves address 0 via ir-mem-at-0
         mem-f-at-0 : readMem (memory s1) 0 ≡ readMem (memory s-setup) 0
         mem-f-at-0 = ir-mem-at-0 r-f
+
+        -- Phase 3: Middle preserves address 0
+        mem-mid-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+        mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
+                             (sym s2-eq)
+                             (PairMiddleResult.mem-at-0-mid mid-res)
 
         -- Phase 4: g preserves address 0 via ir-mem-at-0
         mem-g-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
