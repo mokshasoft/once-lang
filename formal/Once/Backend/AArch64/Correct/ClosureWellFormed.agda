@@ -49,6 +49,7 @@ open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.List.Properties using (++-assoc; length-++)
+open import Data.Nat.Properties using (+-assoc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong; cong₂)
@@ -264,15 +265,22 @@ open ApplyWithWFResult public
 -- These helpers prove that (n + 1) + 1 = n + 2, etc.
 -- Needed for PC arithmetic in run-apply-with-wf
 --
--- NOTE: These are postulated due to an Agda parsing issue with pattern matching.
--- They are trivially provable by induction: base case is refl, inductive case
--- applies cong suc to the IH. The arithmetic is sound.
-postulate
-  plus1plus1eq2 : ∀ n → (n +ℕ 1) +ℕ 1 ≡ n +ℕ 2
-  plus1plus1plus1eq3 : ∀ n → ((n +ℕ 1) +ℕ 1) +ℕ 1 ≡ n +ℕ 3
-  plus1plus1plus1plus1eq4 : ∀ n → (((n +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1 ≡ n +ℕ 4
-  plus1plus1plus1plus1plus1eq5 : ∀ n → ((((n +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1 ≡ n +ℕ 5
-  plus5plus1eq6 : ∀ n → (n +ℕ 5) +ℕ 1 ≡ n +ℕ 6
+-- These helpers prove that (n + 1) + 1 = n + 2, etc., using associativity
+-- of addition. Each proof uses +-assoc to reorganize nested additions.
+plus1plus1eq2 : ∀ n → (n +ℕ 1) +ℕ 1 ≡ n +ℕ 2
+plus1plus1eq2 n = +-assoc n 1 1
+
+plus1plus1plus1eq3 : ∀ n → ((n +ℕ 1) +ℕ 1) +ℕ 1 ≡ n +ℕ 3
+plus1plus1plus1eq3 n = trans (+-assoc (n +ℕ 1) 1 1) (+-assoc n 1 2)
+
+plus1plus1plus1plus1eq4 : ∀ n → (((n +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1 ≡ n +ℕ 4
+plus1plus1plus1plus1eq4 n = trans (trans (+-assoc ((n +ℕ 1) +ℕ 1) 1 1) (+-assoc (n +ℕ 1) 1 2)) (+-assoc n 1 3)
+
+plus1plus1plus1plus1plus1eq5 : ∀ n → ((((n +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1) +ℕ 1 ≡ n +ℕ 5
+plus1plus1plus1plus1plus1eq5 n = trans (trans (trans (+-assoc (((n +ℕ 1) +ℕ 1) +ℕ 1) 1 1) (+-assoc ((n +ℕ 1) +ℕ 1) 1 2)) (+-assoc (n +ℕ 1) 1 3)) (+-assoc n 1 4)
+
+plus5plus1eq6 : ∀ n → (n +ℕ 5) +ℕ 1 ≡ n +ℕ 6
+plus5plus1eq6 n = +-assoc n 5 1
 
 -- Helper: StackInvariant preservation when x21 and sp are preserved
 -- This is trivially provable by case analysis on the StackInvariant data type
