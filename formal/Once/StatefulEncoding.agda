@@ -160,14 +160,14 @@ encode-inr-val-thm {A} {B} b st =
   in alloc-two-words-snd st₁ 1 addr-b
 
 -- | Closure env: reading base returns env-addr
-encode-closure-env-thm : ∀ {A q B} (cl : Closure (A ⇒[ q ] B)) (st : AllocState) →
-  let (addr-cl , st') = encode-s {A ⇒[ q ] B} cl st
+encode-closure-env-thm : ∀ {A B} (cl : Closure A B) (st : AllocState) →
+  let (addr-cl , st') = encode-s {A ⇒ B} cl st
   in readMem (mem st') addr-cl ≡ just (Closure.env-addr cl)
 encode-closure-env-thm cl st = alloc-two-words-fst st (Closure.env-addr cl) (Closure.code-ptr cl)
 
 -- | Closure code: reading base+8 returns code-ptr
-encode-closure-code-thm : ∀ {A q B} (cl : Closure (A ⇒[ q ] B)) (st : AllocState) →
-  let (addr-cl , st') = encode-s {A ⇒[ q ] B} cl st
+encode-closure-code-thm : ∀ {A B} (cl : Closure A B) (st : AllocState) →
+  let (addr-cl , st') = encode-s {A ⇒ B} cl st
   in readMem (mem st') (addr-cl +ℕ 8) ≡ just (Closure.code-ptr cl)
 encode-closure-code-thm cl st = alloc-two-words-snd st (Closure.env-addr cl) (Closure.code-ptr cl)
 
