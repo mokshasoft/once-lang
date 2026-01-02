@@ -252,22 +252,400 @@ run-compose-star-direct f g prefix suffix x s ... =
    - Why does AArch64 need nop?
    - **Investigate and likely remove**
 
-## Roadmap to Completion
+## Migration to Fuel-Free Star-Based Proofs
 
-### Priority 1: 🔴 Fix Postulate Discipline
+**Status**: 🔵 PLANNED (2026-01-02)
+**Based on**: RISC-V successful modernization (2026-01-01)
+**Timeline**: 3-4 weeks core, 6-9 weeks complete
+
+### Executive Summary: The RISC-V Blueprint
+
+RISC-V completed a comprehensive modernization on 2026-01-01, eliminating fuel-based proofs and adopting Common.Star and Common.StackAnalysis infrastructure. Key discoveries:
+
+1. **curry-frame = 16 was WRONG** - Should be 24! (Found via frame size verification)
+2. **Universal stack bounds are FALSE** - Replaced with explicit preconditions
+3. **Common infrastructure saves ~165 lines** - Star (~115) + StackAnalysis (~50)
+4. **Star is mandatory** - Fuel-based proofs inevitably fail
+
+**AArch64 will follow this proven blueprint.**
+
+### Phase 0: Update Architecture Documentation ✅
+
+**Status**: This section
+**Timeline**: 1 day
+
+Document the complete migration plan with lessons learned, comparison tables, and success criteria.
+
+### Phase 1: Import Common.Star Infrastructure
+
+**Timeline**: 1-2 days
+**Risk**: LOW (RISC-V validates this works)
+**Expected Reduction**: ~115 lines
+
+**Files to modify**:
+- `formal/Once/Backend/AArch64/Correct/Star.agda`
+- Dependent files: `StarBase.agda`, `MutualIR.agda`, `ClosureWellFormed.agda`
+
+**Changes**:
+```agda
+-- REMOVE: Lines defining Star data type, core properties
+-- ADD:
+open import Once.Backend.Common.Star Program State halted step public
+
+-- KEEP: Architecture-specific bridge lemmas
+exec-to-star : ...
+star-to-exec : ...
+```
+
+**Validation**: `timeout 300 make agda MODULE=Once/Backend/AArch64/Correct/Star.agda`
+
+### Phase 2: Integrate Common.StackAnalysis & Prove Frame Sizes
+
+**Timeline**: 2-3 days
+**Risk**: MEDIUM (may discover curry-frame is wrong like RISC-V)
+**Expected Reduction**: ~50 lines
+**Critical Discovery Expected**: curry-frame verification
+
+**Files to create**:
+- `formal/Once/Backend/AArch64/Correct/AArch64FrameProof.agda` (NEW)
+
+**Changes**:
+
+1. **Create AArch64FrameProof.agda** - Prove allocation sizes from instruction sequences:
+```agda
+-- Prove from instruction: sub sp sp #32
+pair-frame-value : ℕ
+pair-frame-value = 32
+
+-- CRITICAL: Verify if 16 or 24 (RISC-V found 16 was WRONG!)
+curry-frame-value : ℕ
+curry-frame-value = ? -- Prove from actual curry thunk setup
+
+inl-frame-value : ℕ
+inl-frame-value = 16
+```
+
+2. **Update CodeGen.agda**:
+```agda
+open import Once.Backend.AArch64.Correct.AArch64FrameProof
+open import Once.Backend.Common.StackAnalysis
+  pair-frame-value   -- 32 (PROVEN!)
+  inl-frame-value    -- 16 (PROVEN!)
+  inl-frame-value    -- 16 (same as inl)
+  curry-frame-value  -- ?? (PROVEN! - verify actual value)
+  24                 -- apply-frame (TODO: prove later)
+  public
+```
+
+3. **Update Foundation.agda** - Stack space explicit parameterization:
+```agda
+-- OLD (FALSE universal claim):
+-- postulate stackDepth-leq-stackBase : ∀ ir → StackDepth ir ≤ N
+
+-- NEW (explicit precondition):
+initWithInput : (stackSize : ℕ) → ⟦ A ⟧ → State
+
+star-codegen-correct : ∀ ir (stackSize : ℕ) x →
+  StackDepth ir ≤ stackSize →  -- Explicit precondition
+  ∃[ s ] (Star (compile-aarch64 ir) (initWithInput stackSize x) s × ...)
+```
+
+**Validation**: `timeout 300 make aarch64`
+
+**Why This Matters**: RISC-V discovered `curry-frame = 16` was wrong (should be 24). Proving from code generation catches these bugs instead of computing wrong stack bounds silently.
+
+### Phase 3: Convert Fuel-Based Proofs to Star
+
+**Timeline**: 1 week
+**Risk**: MEDIUM (requires restructuring proofs)
+**Files**: 4 files with exec usage
+
+**Priority order**:
+1. `formal/Once/Backend/AArch64/Correct/IR/Compose.agda` (core composition)
+2. `formal/Once/Backend/AArch64/Correct/IR/Apply.agda` (12 exec uses)
+3. `formal/Once/Backend/AArch64/Correct/IR/Case.agda` (branching)
+4. `formal/Once/Backend/AArch64/Correct/Foundation.agda` (cleanup)
+
+**Pattern for conversion**:
+```agda
+-- OLD (fuel-based - FAILS on complex proofs):
+helper : ∀ n → exec n prog s ≡ just s' → ...
+helper n exec-eq = ... complex fuel arithmetic ...
+
+-- NEW (Star-based - ALWAYS WORKS):
+helper : ∀ → Star prog s s' → ...
+helper star-proof = ... use star-trans (trivial!) ...
+```
+
+**Star combinators**:
+- `star-step2-6` for fixed instruction sequences
+- `⟨ h , step-eq ⟩◅ rest` to build step chains
+- `star-trans` to compose (replaces ALL fuel arithmetic)
+
+**Validation after each file**: `timeout 300 make agda MODULE=Once/Backend/AArch64/Correct/IR/[File].agda`
+
+### Phase 4: Centralize Postulates
+
+**Timeline**: 2-3 days
+**Risk**: LOW (mostly moving code)
+**Target**: Only Postulates.agda and Foundation.agda have postulates
+
+**Current violations** (5 files):
+1. `Postulates.agda` - ✅ OK (semantic axioms)
+2. `Foundation.agda` - ✅ OK (encodedMemory)
+3. `ThunkProof.agda` - ❌ BAD (curry-thunk-correct)
+4. `IR/Apply.agda` - ❌ BAD (3 postulates)
+5. `ClosureWellFormed.agda` - ❌ BAD (5+ postulates)
+
+**Actions**:
+1. **Audit**: `grep -r "^postulate$" formal/Once/Backend/AArch64/Correct/`
+2. **For each scattered postulate**:
+   - If semantic axiom → Move to Postulates.agda with documentation
+   - If provable → Prove using mutual block IH
+   - If cyclic dependency → Restructure to eliminate cycle
+3. **Specific moves**:
+   - `curry-thunk-correct` → Move to mutual block (RISC-V pattern)
+   - IR/Apply postulates → Move to mutual block where run-ir-star-at-offset available
+   - ClosureWellFormed arithmetic helpers → Keep (trivially provable, OK)
+
+**Validation**: `grep -r "^postulate$" formal/Once/Backend/AArch64/Correct/ | wc -l` should be ≤2
+
+**Principle** (from proof-instructions.md): NO inline postulates in proof files. Only semantic axioms in Postulates.agda.
+
+### Phase 5: Complete Frame Size Proofs
+
+**Timeline**: 1 week
+**Risk**: MEDIUM (may discover wrong values)
+
+**Priority order**:
+
+1. **pair-frame** (HIGH PRIORITY)
+   - Currently: 32 bytes
+   - Prove from: `sub sp sp #32`
+
+2. **curry-frame** (CRITICAL - May Reveal Bug!)
+   - Currently: Unknown (hardcoded 16?)
+   - RISC-V: Was 16, SHOULD BE 24
+   - Prove from curry thunk setup instructions
+   - **This may reveal AArch64 has same bug**
+
+3. **inl-frame / inr-frame** (MEDIUM PRIORITY)
+   - Currently: 16 bytes each
+   - Prove from injection code generators
+
+4. **apply-frame** (LOW PRIORITY)
+   - Currently: Unknown
+   - May be redundant with curry-frame
+   - Prove from thunk invocation
+
+**Pattern** (from RISC-V CurryFrameProof.agda):
+```agda
+curry-frame-correct : curry-setup-reduces-sp-by curry-frame-value
+curry-frame-correct = prove-from-instruction (sub sp sp #curry-frame-value)
+```
+
+**Validation**: `timeout 300 make agda MODULE=Once/Backend/AArch64/Correct/AArch64FrameProof.agda`
+
+### Phase 6: Investigate nop Removal (OPTIONAL)
+
+**Timeline**: 3-5 days
+**Risk**: LOW-MEDIUM (might discover constraint)
+**Architectural Investigation**: Why nop when x0 = x0?
+
+**Current**:
+```agda
+compile-aarch64 (g ∘ f) = compile-aarch64 f ++ [nop] ++ compile-aarch64 g
+```
+
+**Question**: x0 is both input and output (like RISC-V a0). Why nop?
+
+**Investigation**:
+1. Review RISC-V compose: `compile-riscv (g ∘ f) = f ++ g` (NO transfer!)
+2. Verify AArch64 register convention (x0 input = x0 output)
+3. If nop unnecessary:
+   - Update CodeGen: `compile-aarch64 (g ∘ f) = f ++ g`
+   - Simplify proofs (2 program equalities instead of 3)
+4. If necessary, document architectural reason
+
+**Benefits**:
+- 1 fewer instruction per compose (performance)
+- Simpler proofs
+- Aligns with RISC-V cleaner architecture
+
+### Phase 7: Prove Curry/Apply (OPTIONAL, ADVANCED)
+
+**Timeline**: 2-4 weeks
+**Risk**: HIGH (complex closure protocol)
+**Note**: May remain as semantic axioms (acceptable)
+
+**Approach** (following RISC-V pattern):
+
+1. **curry-thunk-correct** - Move proof into mutual block:
+   - Trace 4 thunk setup instructions using Star
+   - Call run-ir-star-at-offset on f (the IH)
+   - Trace ret instruction
+   - Compose via star-trans
+
+2. **run-thunk-at-offset** - Same pattern
+
+3. **apply-produces-result** - Two paths:
+   - **PATH 1** (Modular): Keep as semantic axiom (X86/RISC-V also have this)
+   - **PATH 2** (Whole-program): Thread ClosureWellFormed through compose/pair
+
+### Key Insights from RISC-V Migration
+
+#### 1. False Universal Claims are Mathematically Wrong
+
+**WRONG** (RISC-V eliminated this):
+```agda
+postulate stackDepth-leq-stackBase : ∀ ir → StackDepth ir ≤ 0x7FFF0000
+-- FALSE: Arbitrary deep nesting can exceed ANY fixed bound
+```
+
+**RIGHT** (RISC-V's solution):
+```agda
+star-codegen-correct : ∀ ir (stackSize : ℕ) x →
+  StackDepth ir ≤ stackSize →  -- Specific precondition for THIS program
+  ...
+-- TRUE: StackDepth is computable for any specific IR
+```
+
+**Insight**: Replace false universal claims with provable specific claims.
+
+#### 2. Proven Constants Catch Bugs
+
+**RISC-V Discovery** (2026-01-01):
+- Hardcoded `curry-frame = 16` was WRONG
+- Actual value from code generation: 24
+- Silent bug would compute incorrect stack bounds
+
+**Solution**: Prove from code generation
+```agda
+curry-frame-value : ℕ
+curry-frame-value = 24  -- Derived from: addi sp sp neg24
+```
+
+**Benefit**: If code gen changes, proofs break (compile error) instead of silent bugs.
+
+#### 3. Star is Mandatory
+
+**From proof-instructions.md**:
+- ALL proofs MUST use Star
+- Fuel-based proofs inevitably lead to unprovable lemmas
+- Star eliminates fuel arithmetic entirely
+
+**Pattern**: "Compose high, convert at boundaries"
+- Build proofs using Star internally
+- Compose using `star-trans` (trivial!)
+- Convert to `exec` only at final theorem boundaries
+
+#### 4. Postulate Discipline is Critical
+
+**From proof-instructions.md**:
+- ONLY semantic axioms in `Once/Postulates.agda`
+- NO inline postulates in proof files
+- All assumptions centralized and auditable
+
+**RISC-V Violation** (still being fixed):
+- `run-apply-star` postulate in MutualIR.agda (line 184)
+- Violates discipline
+
+**AArch64 Current**: 5 files with postulates (❌ WORSE than RISC-V)
+
+### Current State vs Target State
+
+| Component | Current AArch64 | Target (Post-Migration) | RISC-V Status |
+|-----------|-----------------|-------------------------|---------------|
+| **Star** | Own 371-line implementation | Import Common.Star + ~250 lines bridge | ✓ Using Common.Star |
+| **StackAnalysis** | Duplicate definitions? | Import Common.StackAnalysis | ✓ Using Common.StackAnalysis |
+| **Frame sizes** | Hardcoded parameters | Proven from code gen | ✓ curry-frame proven (24) |
+| **Stack space** | Runtime bound postulate | Explicit stackSize param | ✓ Explicit parameterization |
+| **Postulate files** | 5 files | 1-2 files | 4 files (still being fixed) |
+| **Execution proofs** | Mix of Star + fuel | 100% Star-based | 100% Star-based |
+| **Compose transfer** | nop (unclear why) | Investigate removal | None (a0 = a0) |
+
+**Code Reduction**: ~165 lines of duplicate code eliminated
+
+### Generator Completeness
+
+| Generator | AArch64 Current | AArch64 Target | RISC-V |
+|-----------|-----------------|----------------|--------|
+| **id, fold, unfold, arr, terminal** | ✅ Proven | ✅ Proven | ✅ Proven |
+| **fst, snd** | ⚠️ Partial | ✅ Proven | ✅ Proven |
+| **inl, inr** | ⚠️ Partial | ✅ Proven | ✅ Proven |
+| **compose** | ❌ Postulated | ✅ Proven | ✅ Proven |
+| **pair** | ❌ Postulated | ✅ Proven | ✅ Proven (1420 lines!) |
+| **case** | ❌ Postulated | ✅ Proven | ❌ Postulated |
+| **curry** | ❌ Postulated | ⚠️ Semantic axiom | ❌ Postulated |
+| **apply** | ❌ Postulated | ⚠️ Semantic axiom | ❌ Postulated |
+
+**Target**: 11/15 generators proven (73%), matching RISC-V with better postulate discipline
+
+### Success Criteria
+
+**Completion Checklist**:
+1. ✅ AArch64 imports Common.Star and Common.StackAnalysis
+2. ✅ All postulates in Postulates.agda (except Foundation encodedMemory)
+3. ✅ Frame sizes proven from code generation (pair, inl, inr, curry)
+4. ✅ Stack space uses explicit stackSize parameter (no false universal bounds)
+5. ✅ All proofs use Star (zero fuel-based exec in IR/*)
+6. ✅ Postulate count ≤ 4 semantic axioms (matching/exceeding RISC-V)
+7. ✅ `timeout 300 make aarch64` passes
+8. ✅ This architecture document updated with "Migration Complete"
+
+**Timeline Summary**:
+- **Core modernization** (Phases 0-5): 3-4 weeks
+- **With optional phases** (Phases 6-7): 6-9 weeks
+- **Expected state**: Clean architecture, proven frame sizes, ~165 lines saved
+
+### Lessons Learned to Apply
+
+1. **Arithmetic Proofs Eliminate Postulates**: Use standard library lemmas (`+-≤-to-∸`) to derive stack bounds
+2. **Parameterization Over Postulation**: Explicit preconditions are provable; universal claims can be false
+3. **Code Generation Verification**: Prove constants from actual instructions to catch bugs
+4. **Star Transitivity is Free**: No fuel arithmetic, just structural recursion
+5. **Centralization Enables Auditing**: Scattered postulates hide assumptions
+
+### References
+
+**RISC-V Migration** (Validated Blueprint):
+- `docs/formal/shareable-proof-refactor.md` - Stack space elimination, frame verification
+- `docs/formal/riscv64-full-proof-architecture.md` - Current state
+
+**Common Infrastructure** (Production Ready):
+- `formal/Once/Backend/Common/Star.agda` (~174 lines)
+- `formal/Once/Backend/Common/StackAnalysis.agda` (~143 lines)
+
+**Proof Principles** (Mandatory Reading):
+- `formal/proof-instructions.md` - Prime Directive, Star mandatory, postulate discipline
+
+---
+
+## Roadmap to Completion (SUPERSEDED - See Migration Plan Above)
+
+**Note**: The migration plan above supersedes this roadmap. Priorities are now:
+1. Phase 1: Import Common.Star (1-2 days)
+2. Phase 2: StackAnalysis + frame proofs (2-3 days)
+3. Phase 3: Convert to Star (1 week)
+4. Phase 4: Centralize postulates (2-3 days)
+5. Phase 5: Complete frame proofs (1 week)
+
+The old priorities below remain valid but are now integrated into the phases above.
+
+### Priority 1: 🔴 Fix Postulate Discipline (NOW IN PHASE 4)
 
 **Target**: Move all non-semantic postulates to proper locations or prove them
 
 **Actions**:
-1. **curry-thunk-correct** (ThunkProof.agda:117) → Prove using X86 pattern
-2. **closure-code-ptr** (IR/Apply.agda:121) → Derive from encode-closure-construct
-3. **run-thunk-at-offset** (IR/Apply.agda:251) → Prove using recursive IH
-4. **run-ir-at-offset-apply** (IR/Apply.agda:279) → Prove or move to Postulates.agda
-5. **run-apply-with-wf** (ClosureWellFormed.agda:221) → Prove using well-formedness invariants
+1. **curry-thunk-correct** (ThunkProof.agda:117) → Prove using mutual block IH (Phase 7)
+2. **closure-code-ptr** (IR/Apply.agda:121) → Derive from encode-closure-construct (Phase 4)
+3. **run-thunk-at-offset** (IR/Apply.agda:251) → Prove using recursive IH (Phase 7)
+4. **run-ir-at-offset-apply** (IR/Apply.agda:279) → Prove or move to Postulates.agda (Phase 4)
+5. **run-apply-with-wf** (ClosureWellFormed.agda:221) → Prove using well-formedness invariants (Phase 7)
 
 **Timeline**: High priority - violates proof-instructions.md principles
 
-### Priority 2: 🟠 Extract Helper Functions
+### Priority 2: 🟠 Extract Helper Functions (STILL VALID)
 
 **Target**: Extract inline record construction to helpers (like X86)
 
@@ -283,7 +661,7 @@ run-compose-star-direct f g prefix suffix x s ... =
 
 **Timeline**: Medium priority - improves maintainability
 
-### Priority 3: 🟡 Investigate nop Removal
+### Priority 3: 🟡 Investigate nop Removal (NOW IN PHASE 6)
 
 **Target**: Determine if nop in compose can be eliminated
 
@@ -300,7 +678,7 @@ run-compose-star-direct f g prefix suffix x s ... =
 
 **Timeline**: Low priority - optimization
 
-### Priority 4: 🟢 Complete Remaining Generators
+### Priority 4: 🟢 Complete Remaining Generators (ONGOING)
 
 **Target**: Prove all 15 generators
 
