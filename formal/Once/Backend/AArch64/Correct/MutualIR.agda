@@ -105,8 +105,7 @@ open PairContext
 -- Note: PairSetupResult is accessed via qualified names to avoid clashing
 open import Once.Backend.AArch64.Correct.IR.Case
   using (CaseContext; mkCaseContext;
-         CaseInlSetupResult; CaseInrSetupResult;
-         CaseInlFinalResult; CaseInrFinalResult;
+         assemble-case-inl-result; assemble-case-inr-result;
          arith-case-inr-setup; arith-case-inl-pc)
 open CaseContext
   renaming (prog to case-prog; code-f to case-code-f; code-g to case-code-g;
