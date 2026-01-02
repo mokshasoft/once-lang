@@ -58,7 +58,7 @@ When encountering duplication or postulates:
 |---------|--------------|--------------|-------------------|
 | `curry-output-wf` | Arch-specific postulate | Bridge pattern in MutualIR eliminates it | Priority 1 ✓ |
 | `sp-bound-for-f-in-thunk` | Universal postulate (false) | Explicit stack preconditions | Priority 1 ✓ |
-| `run-apply-star` | Arch-specific postulate | **TODO**: Eliminate or generalize to Common | Priority 3 → 1 or 2 |
+| `run-apply-star` | Arch-specific postulate (Priority 3) | Generalized to `Once.Backend.Common.ApplyPostulate` | Priority 2 ✓ |
 | `StackAnalysis` | Duplicated in X86/AArch64/RiscV64 | Moved to Common | Priority 1 ✓ |
 | `ClosureWellFormed` | Considered for Common | Kept arch-specific (calling conventions differ) | Priority 2 (justified) |
 

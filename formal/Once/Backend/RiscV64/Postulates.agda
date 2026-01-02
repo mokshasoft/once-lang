@@ -2,8 +2,12 @@
 ------------------------------------------------------------------------
 -- Once.Backend.RiscV64.Postulates
 --
--- RISC-V64-specific postulates. Separated from Once.Postulates to avoid
--- cyclic imports with RISC-V64 modules.
+-- RISC-V64-specific postulates instantiated from common backend modules.
+--
+-- STATUS: Generalized to Priority 2 (2026-01-02)
+--   - run-apply-star follows Once.Backend.Common.ApplyPostulate pattern
+--   - Shared semantic specification across all backends (X86, AArch64, RiscV64)
+--   - Documentation-based generalization (parameterization not feasible due to Size constraints)
 --
 -- See Once.Postulates for documentation format and checklist.
 ------------------------------------------------------------------------
@@ -21,97 +25,51 @@ open import Once.Type using (Type; _⇒_; _*_)
 open import Once.IR using (apply; IR)
 open import Once.Semantics using (⟦_⟧; encode)
 
-open import Once.Backend.RiscV64.Syntax using (a0; sp; Program)
-open import Once.Backend.RiscV64.Semantics using (State; readReg)
+open import Once.Backend.RiscV64.Syntax using (a0; sp; Program; Reg)
+open import Once.Backend.RiscV64.Semantics using (State; readReg; RegFile)
 open import Once.Backend.RiscV64.Semantics using () renaming (module State to St)
 open St using (regs; halted; pc)
 open import Once.Backend.RiscV64.CodeGen using (compile-riscv; StackDepth)
 open import Once.Backend.RiscV64.Correct.StarBase using (IRStarResult)
 
-------------------------------------------------------------------------
--- Postulate R1: Closure Application (Semantic Axiom)
-------------------------------------------------------------------------
---
--- Executing `apply` on a closure produces the correct result.
---
--- SCOPE: This is a SEMANTIC AXIOM about the curry/apply calling convention.
---        It states that closures created by curry can be successfully invoked
---        by apply, producing the expected result.
---
--- NEEDED BY: Once.Backend.RiscV64.Correct.MutualIR (run-ir-star-at-offset for apply)
---
--- ========================================================================
--- JUSTIFICATION: Why This is a Semantic Boundary
--- ========================================================================
---
--- The `apply` generator compiles to code that performs an indirect call:
---   1. Load closure from a0 (pair containing env + code pointer)
---   2. Extract environment pointer → s0
---   3. Extract code pointer → temporary register
---   4. Extract argument from pair
---   5. jalr to code pointer (indirect call to curry thunk)
---
--- The curry thunk code is NOT part of the apply instruction sequence.
--- When proving apply in isolation (at an arbitrary program offset), the
--- thunk code doesn't exist in the local context.
---
--- Therefore, we cannot prove that the indirect call produces the correct
--- result without reasoning about the entire program containing both the
--- curry generator (which created the thunk) and the apply generator.
---
--- This postulate axiomatizes the curry/apply calling convention:
---   - curry creates a closure: (encoded-env, thunk-code-ptr)
---   - apply loads env → s0, extracts arg, calls thunk
---   - thunk pairs (s0, arg), calls f, returns result in a0
---
--- ========================================================================
--- VERIFICATION STRATEGY: Two Proof Paths
--- ========================================================================
---
--- PATH 1: Whole-Program Proofs (POSTULATE-FREE)
---   For closed programs where every apply has a corresponding curry:
---   1. run-curry-star-with-wf produces ClosureWellFormed proof
---   2. Thread WF proof through compose/pair/case
---   3. run-apply-with-wf consumes the WF proof (IR/Apply.agda)
---   4. Result: Zero postulates needed for closed programs
---
--- PATH 2: Modular Proofs (USES THIS POSTULATE)
---   For open program fragments or modular reasoning:
---   1. Apply may receive closures from external sources
---   2. Cannot construct ClosureWellFormed without curry context
---   3. This axiom captures the calling convention semantics
---
--- ========================================================================
--- VALIDATION
--- ========================================================================
---
--- This postulate can be validated through:
---   1. End-to-end trace proofs (e.g., apply ∘ ⟨curry fst, id⟩)
---   2. Inspection of generated assembly
---   3. Whole-program proofs using ClosureWellFormed threading
---
--- See formal/Once/Backend/RiscV64/Examples/CurryApplyTrace.agda (when created)
--- for step-by-step validation that the curry/apply protocol works.
---
--- ARCHITECTURAL NOTE:
---   RISC-V uses s0 for the environment pointer (not preserved across IR nodes).
---   This is part of the closed-world curry/apply contract, not the general
---   RISC-V LP64 ABI. The closure protocol is:
---     - s0: Environment pointer (set by apply, used by thunk)
---     - a0: Both input (closure+arg pair) and output (result)
---     - s1, s2, ra: Preserved (callee-saved per LP64 ABI)
---
--- RUNTIME EFFECT: None (proof-only - captures semantic calling convention)
---
-------------------------------------------------------------------------
-
+-- Reference the common apply postulate pattern documentation
+-- (See Once.Backend.Common.ApplyPostulate for detailed documentation)
 postulate
   run-apply-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} x →
-    let prog = prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix
-    in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
+    ∃[ s' ] IRStarResult (apply {i} {A} {B})
+                         (prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix)
+                         s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- Postulate R1: Closure Application (Semantic Axiom)
+------------------------------------------------------------------------
+--
+-- GENERALIZED (Priority 2): Follows Once.Backend.Common.ApplyPostulate pattern
+--
+-- Executing `apply` on a closure produces the correct result.
+--
+-- SCOPE: Backend-agnostic SEMANTIC AXIOM about the curry/apply calling convention.
+--        Documentation shared across all backends (X86, AArch64, RiscV64).
+--
+-- NEEDED BY: Once.Backend.RiscV64.Correct.MutualIR (run-ir-star-at-offset for apply)
+--
+-- RISC-V64 IMPLEMENTATION DETAILS:
+--   - s0: Environment pointer (set by apply, used by thunk)
+--   - a0: Both input (closure+arg pair) and output (result)
+--   - s1, s2, ra: Preserved (callee-saved per LP64 ABI)
+--
+-- See Once.Backend.Common.ApplyPostulate for full documentation including:
+--   - Semantic boundary justification
+--   - Two proof paths (whole-program vs modular)
+--   - Validation strategies
+--   - Why not parameterized (Size constraints)
+--
+-- RUNTIME EFFECT: None (proof-only - captures semantic calling convention)
+--
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- Postulate R2: Stack Bound for Curry Thunk Execution
