@@ -25,6 +25,31 @@ open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 
 ------------------------------------------------------------------------
+-- Import Common Stack Analysis
+------------------------------------------------------------------------
+
+-- Import the common stack analysis infrastructure with AArch64-specific
+-- allocation sizes. This eliminates duplicate code and makes stack
+-- analysis shareable across backends.
+--
+-- AArch64 allocation sizes (all 16 bytes - simpler than RISC-V!):
+--   - pair-frame: 16 bytes (net: sub-sp 32, then add-sp 16 for saved regs)
+--   - inl-frame: 16 bytes (sub-sp 16 at line 154)
+--   - inr-frame: 16 bytes (sub-sp 16 at line 161)
+--   - curry-frame: 16 bytes (sub-sp 16 at line 254 for closure)
+--   - apply-frame: 16 bytes (conservative bound for thunk's pair allocation)
+--
+-- TODO (Phase 5): Create AArch64FrameProof.agda to prove these values
+-- from the actual instruction sequences (like RISC-V's CurryFrameProof).
+open import Once.Backend.Common.StackAnalysis
+  16  -- pair-frame (TODO: prove from code generation)
+  16  -- inl-frame (TODO: prove from code generation)
+  16  -- inr-frame (TODO: prove from code generation)
+  16  -- curry-frame (TODO: prove from code generation)
+  16  -- apply-frame (TODO: prove from code generation)
+  public
+
+------------------------------------------------------------------------
 -- Compile length calculation
 ------------------------------------------------------------------------
 
