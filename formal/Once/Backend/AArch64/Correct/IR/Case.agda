@@ -9,6 +9,7 @@
 
 module Once.Backend.AArch64.Correct.IR.Case where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -20,10 +21,13 @@ open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation using (encode)
 open import Once.Backend.AArch64.Correct.CompileLength using (compile-length-correct)
+open import Once.Backend.AArch64.Correct.Star using (Star; star-trans)
+open import Once.Backend.AArch64.Correct.StarBase using (IRStarResultS)
+open import Once.Backend.AArch64.Correct.StackInvariant using (StackInvariant; X29Invariant)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; ≤-refl)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; ≤-refl; ≤-trans; ≤-reflexive)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc; ++-identityʳ) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -370,94 +374,376 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
       ∎
 
 ------------------------------------------------------------------------
--- Case Setup Results: intermediate state after setup instructions
+-- Case Result Assembly: combine setup, branch, and cleanup results
+--
+-- AArch64 case has two execution paths:
+--   inl: setup (4 instr) → f → jump (1 instr) → end label (1 instr)
+--   inr: setup (7+|f| instr to reach g) → g → end label (1 instr)
 ------------------------------------------------------------------------
 
--- | Result after setup for inl branch (4 instructions)
--- ldr x9, [x0] ; cmp x9, #0 ; b.ne right ; ldr x0, [x0, #8]
-record CaseInlSetupResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
-                          (prefix suffix : Program)
-                          (ctx : CaseContext f g prefix suffix)
-                          (s s-after : State) (a : ⟦ A ⟧) : Set where
-  field
-    -- Execution reached s-after
-    setup-exec : exec 4 (prog ctx) s ≡ just s-after
+-- | Assemble the final case result for inl branch
+--
+-- Given:
+--   res-f : IRStarResultS f prog s-setup sf addr-out (length prefix-f)
+--   star-jump : Star prog sf s-final  (b end + label execution)
+-- Produce:
+--   Full case result with proper PC and invariants
+--
+-- The inl path executes:
+--   1. Setup (4 instructions): load tag, cmp, b.ne (not taken), load left value
+--   2. Execute f
+--   3. Jump to end (2 instructions): b end-offset, label end
+assemble-case-inl-result : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C)
+                           (prefix suffix : Program) (addr-val : Word)
+                           (s s-setup sf s-final : State) →
+  let ctx = mkCaseContext f g prefix suffix
+      theProg = CaseContext.prog ctx
+      thePrefixF = CaseContext.prefix-f ctx
+      theLen-f = CaseContext.len-f ctx
+  in
+  -- Setup result (Star from s to s-setup for 4 instructions)
+  (star-setup : Star theProg s s-setup) →
+  (h-setup : halted s-setup ≡ false) →
+  (pc-setup : pc s-setup ≡ length thePrefixF) →
+  (x0-setup : readReg (regs s-setup) x0 ≡ addr-val) →
+  (x20-setup : readReg (regs s-setup) x20 ≡ readReg (regs s) x20) →
+  (x21-setup : readReg (regs s-setup) x21 ≡ readReg (regs s) x21) →
+  (x29-setup : readReg (regs s-setup) x29 ≡ readReg (regs s) x29) →
+  (x30-setup : readReg (regs s-setup) x30 ≡ readReg (regs s) x30) →
+  (sp-setup : readSP (regs s-setup) ≤ readSP (regs s)) →
+  (mem-x21-setup : readMem (memory s-setup) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)) →
+  (mem-x29-setup : readMem (memory s-setup) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)) →
+  (mem-x29+8-setup : readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)) →
+  -- f execution result
+  (res-f : IRStarResultS f theProg s-setup sf addr-val (length thePrefixF)) →
+  -- Jump and label result (Star from sf to s-final for 2 instructions)
+  (star-jump : Star theProg sf s-final) →
+  (h-jump : halted s-final ≡ false) →
+  (pc-jump : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]) →
+  (x0-jump : readReg (regs s-final) x0 ≡ readReg (regs sf) x0) →
+  (x20-jump : readReg (regs s-final) x20 ≡ readReg (regs sf) x20) →
+  (x21-jump : readReg (regs s-final) x21 ≡ readReg (regs sf) x21) →
+  (x29-jump : readReg (regs s-final) x29 ≡ readReg (regs sf) x29) →
+  (x30-jump : readReg (regs s-final) x30 ≡ readReg (regs sf) x30) →
+  (sp-jump : readSP (regs s-final) ≤ readSP (regs sf)) →
+  (mem-x21-jump : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory sf) addr) →
+  (mem-x29-jump : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory sf) addr) →
+  (stack-inv-jump : StackInvariant s-final) →
+  (x29-inv-jump : X29Invariant s-final) →
+  (sp>16-jump : readSP (regs s-final) > 16) →
+  -- Result: Full case execution
+  ∃[ addr-out ] (IRStarResultS [ f , g ] theProg s s-final addr-out (length prefix) ×
+                 readReg (regs s-final) x0 ≡ addr-out)
+assemble-case-inl-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sf s-final
+  star-setup h-setup pc-setup x0-setup x20-setup x21-setup x29-setup x30-setup sp-setup mem-x21-setup mem-x29-setup mem-x29+8-setup
+  res-f star-jump h-jump pc-jump x0-jump x20-jump x21-jump x29-jump x30-jump sp-jump mem-x21-jump mem-x29-jump stack-inv-jump x29-inv-jump sp>16-jump =
+  addr-out , result , refl
+  where
+    ctx = mkCaseContext f g prefix suffix
+    theProg = CaseContext.prog ctx
+    theLen-f = CaseContext.len-f ctx
+    theLen-g = CaseContext.len-g ctx
+    thePrefixF = CaseContext.prefix-f ctx
+    open IRStarResultS
 
-    -- Not halted
-    setup-halted : halted s-after ≡ false
+    -- Extract results from f
+    star-f : Star theProg s-setup sf
+    star-f = ir-star res-f
 
-    -- PC at start of f code
-    setup-pc : pc s-after ≡ length (prefix-f ctx)
+    addr-out : Word
+    addr-out = readReg (regs s-final) x0
 
-    -- x0 contains value from sum (unpacked)
-    setup-x0 : readReg (regs s-after) x0 ≡ encode a
+    -- Compose stars: setup → f → jump
+    star-setup-f : Star theProg s sf
+    star-setup-f = star-trans star-setup star-f
 
-open CaseInlSetupResult public
+    star-all : Star theProg s s-final
+    star-all = star-trans star-setup-f star-jump
 
--- | Result after setup for inr branch (7 + |f| instructions to reach g)
--- Need to skip through the inl branch code
-record CaseInrSetupResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
-                          (prefix suffix : Program)
-                          (ctx : CaseContext f g prefix suffix)
-                          (s s-after : State) (b : ⟦ B ⟧) : Set where
-  field
-    -- Execution reached s-after (3 setup + skip f code + 3 more setup = 7 + |f|)
-    setup-exec : exec (7 +ℕ len-f ctx) (prog ctx) s ≡ just s-after
+    -- Chain register preservation: x20
+    x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+    x20-final = trans x20-jump (trans (ir-x20 res-f) x20-setup)
 
-    -- Not halted
-    setup-halted : halted s-after ≡ false
+    -- Chain register preservation: x21
+    x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+    x21-final = trans x21-jump (trans (ir-x21 res-f) x21-setup)
 
-    -- PC at start of g code
-    setup-pc : pc s-after ≡ length (prefix-g ctx)
+    -- Chain register preservation: x29
+    x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+    x29-final = trans x29-jump (trans (ir-x29 res-f) x29-setup)
 
-    -- x0 contains value from sum (unpacked)
-    setup-x0 : readReg (regs s-after) x0 ≡ encode b
+    -- Chain register preservation: x30
+    x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+    x30-final = trans x30-jump (trans (ir-x30 res-f) x30-setup)
 
-open CaseInrSetupResult public
+    -- Chain sp preservation
+    sp-final : readSP (regs s-final) ≤ readSP (regs s)
+    sp-final = ≤-trans sp-jump (≤-trans (ir-sp res-f) sp-setup)
 
-------------------------------------------------------------------------
--- Case Final Results: state after executing the branch
-------------------------------------------------------------------------
+    -- Chain memory preservation at x21
+    mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+    mem-x21-final = begin
+      readMem (memory s-final) (readReg (regs s) x21)
+        ≡⟨ cong (readMem (memory s-final)) (sym x21-final) ⟩
+      readMem (memory s-final) (readReg (regs s-final) x21)
+        ≡⟨ cong (readMem (memory s-final)) x21-jump ⟩
+      readMem (memory s-final) (readReg (regs sf) x21)
+        ≡⟨ mem-x21-jump (readReg (regs sf) x21) ⟩
+      readMem (memory sf) (readReg (regs sf) x21)
+        ≡⟨ cong (readMem (memory sf)) (ir-x21 res-f) ⟩
+      readMem (memory sf) (readReg (regs s-setup) x21)
+        ≡⟨ ir-mem-x21 res-f ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) x21)
+        ≡⟨ cong (readMem (memory s-setup)) x21-setup ⟩
+      readMem (memory s-setup) (readReg (regs s) x21)
+        ≡⟨ mem-x21-setup ⟩
+      readMem (memory s) (readReg (regs s) x21)
+        ∎
 
--- | Result after executing f for inl case
-record CaseInlFinalResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
-                          (prefix suffix : Program)
-                          (ctx : CaseContext f g prefix suffix)
-                          (s-setup s-final : State) (a : ⟦ A ⟧) : Set where
-  field
-    -- Execution from setup to final (|f| + 1 for branch)
-    final-exec : exec (len-f ctx +ℕ 1) (prog ctx) s-setup ≡ just s-final
+    -- Chain memory preservation at x29
+    mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    mem-x29-final = begin
+      readMem (memory s-final) (readReg (regs s) x29)
+        ≡⟨ cong (readMem (memory s-final)) (sym x29-final) ⟩
+      readMem (memory s-final) (readReg (regs s-final) x29)
+        ≡⟨ cong (readMem (memory s-final)) x29-jump ⟩
+      readMem (memory s-final) (readReg (regs sf) x29)
+        ≡⟨ mem-x29-jump (readReg (regs sf) x29) ⟩
+      readMem (memory sf) (readReg (regs sf) x29)
+        ≡⟨ cong (readMem (memory sf)) (ir-x29 res-f) ⟩
+      readMem (memory sf) (readReg (regs s-setup) x29)
+        ≡⟨ ir-mem-x29 res-f ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) x29)
+        ≡⟨ cong (readMem (memory s-setup)) x29-setup ⟩
+      readMem (memory s-setup) (readReg (regs s) x29)
+        ≡⟨ mem-x29-setup ⟩
+      readMem (memory s) (readReg (regs s) x29)
+        ∎
 
-    -- Not halted
-    final-halted : halted s-final ≡ false
+    -- Chain memory preservation at x29+8
+    mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+    mem-x29+8-final = begin
+      readMem (memory s-final) (readReg (regs s) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory s-final) (x +ℕ 8)) (sym x29-final) ⟩
+      readMem (memory s-final) (readReg (regs s-final) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory s-final) (x +ℕ 8)) x29-jump ⟩
+      readMem (memory s-final) (readReg (regs sf) x29 +ℕ 8)
+        ≡⟨ mem-x29-jump (readReg (regs sf) x29 +ℕ 8) ⟩
+      readMem (memory sf) (readReg (regs sf) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 8)) (ir-x29 res-f) ⟩
+      readMem (memory sf) (readReg (regs s-setup) x29 +ℕ 8)
+        ≡⟨ ir-mem-x29+8 res-f ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory s-setup) (x +ℕ 8)) x29-setup ⟩
+      readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8)
+        ≡⟨ mem-x29+8-setup ⟩
+      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        ∎
 
-    -- PC at end of case code
-    final-pc : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    -- x0 contains addr-out
+    x0-final : readReg (regs s-final) x0 ≡ addr-out
+    x0-final = refl
 
-    -- x0 is result
-    final-x0 : readReg (regs s-final) x0 ≡ encode (eval f a)
+    result : IRStarResultS [ f , g ] theProg s s-final addr-out (length prefix)
+    result = record
+      { ir-star = star-all
+      ; ir-halted = h-jump
+      ; ir-pc = pc-jump
+      ; ir-x0-s = x0-final
+      ; ir-x20 = x20-final
+      ; ir-x21 = x21-final
+      ; ir-x29 = x29-final
+      ; ir-x30 = x30-final
+      ; ir-sp = sp-final
+      ; ir-mem-x21 = mem-x21-final
+      ; ir-mem-x29 = mem-x29-final
+      ; ir-mem-x29+8 = mem-x29+8-final
+      ; ir-stack-inv = stack-inv-jump
+      ; ir-x29-inv = x29-inv-jump
+      ; ir-sp-bound = sp>16-jump
+      }
 
-open CaseInlFinalResult public
+-- | Assemble the final case result for inr branch
+--
+-- Given:
+--   res-g : IRStarResultS g prog s-setup sg addr-out (length prefix-g)
+--   star-label : Star prog sg s-final  (label execution)
+-- Produce:
+--   Full case result with proper PC and invariants
+--
+-- The inr path executes:
+--   1. Setup (7+|f| instructions): load tag, cmp, b.ne (taken), skip f code, reach right label, load right value
+--   2. Execute g
+--   3. End label (1 instruction)
+assemble-case-inr-result : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C)
+                           (prefix suffix : Program) (addr-val : Word)
+                           (s s-setup sg s-final : State) →
+  let ctx = mkCaseContext f g prefix suffix
+      theProg = CaseContext.prog ctx
+      thePrefixG = CaseContext.prefix-g ctx
+      theLen-g = CaseContext.len-g ctx
+  in
+  -- Setup result (Star from s to s-setup)
+  (star-setup : Star theProg s s-setup) →
+  (h-setup : halted s-setup ≡ false) →
+  (pc-setup : pc s-setup ≡ length thePrefixG) →
+  (x0-setup : readReg (regs s-setup) x0 ≡ addr-val) →
+  (x20-setup : readReg (regs s-setup) x20 ≡ readReg (regs s) x20) →
+  (x21-setup : readReg (regs s-setup) x21 ≡ readReg (regs s) x21) →
+  (x29-setup : readReg (regs s-setup) x29 ≡ readReg (regs s) x29) →
+  (x30-setup : readReg (regs s-setup) x30 ≡ readReg (regs s) x30) →
+  (sp-setup : readSP (regs s-setup) ≤ readSP (regs s)) →
+  (mem-x21-setup : readMem (memory s-setup) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)) →
+  (mem-x29-setup : readMem (memory s-setup) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)) →
+  (mem-x29+8-setup : readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)) →
+  -- g execution result
+  (res-g : IRStarResultS g theProg s-setup sg addr-val (length thePrefixG)) →
+  -- Label result (Star from sg to s-final for 1 instruction)
+  (star-label : Star theProg sg s-final) →
+  (h-label : halted s-final ≡ false) →
+  (pc-label : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]) →
+  (x0-label : readReg (regs s-final) x0 ≡ readReg (regs sg) x0) →
+  (x20-label : readReg (regs s-final) x20 ≡ readReg (regs sg) x20) →
+  (x21-label : readReg (regs s-final) x21 ≡ readReg (regs sg) x21) →
+  (x29-label : readReg (regs s-final) x29 ≡ readReg (regs sg) x29) →
+  (x30-label : readReg (regs s-final) x30 ≡ readReg (regs sg) x30) →
+  (sp-label : readSP (regs s-final) ≤ readSP (regs sg)) →
+  (mem-x21-label : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory sg) addr) →
+  (mem-x29-label : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory sg) addr) →
+  (stack-inv-label : StackInvariant s-final) →
+  (x29-inv-label : X29Invariant s-final) →
+  (sp>16-label : readSP (regs s-final) > 16) →
+  -- Result: Full case execution
+  ∃[ addr-out ] (IRStarResultS [ f , g ] theProg s s-final addr-out (length prefix) ×
+                 readReg (regs s-final) x0 ≡ addr-out)
+assemble-case-inr-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sg s-final
+  star-setup h-setup pc-setup x0-setup x20-setup x21-setup x29-setup x30-setup sp-setup mem-x21-setup mem-x29-setup mem-x29+8-setup
+  res-g star-label h-label pc-label x0-label x20-label x21-label x29-label x30-label sp-label mem-x21-label mem-x29-label stack-inv-label x29-inv-label sp>16-label =
+  addr-out , result , refl
+  where
+    ctx = mkCaseContext f g prefix suffix
+    theProg = CaseContext.prog ctx
+    theLen-f = CaseContext.len-f ctx
+    theLen-g = CaseContext.len-g ctx
+    thePrefixG = CaseContext.prefix-g ctx
+    open IRStarResultS
 
--- | Result after executing g for inr case
-record CaseInrFinalResult {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
-                          (prefix suffix : Program)
-                          (ctx : CaseContext f g prefix suffix)
-                          (s-setup s-final : State) (b : ⟦ B ⟧) : Set where
-  field
-    -- Execution from setup to final (|g| + 1 for label)
-    final-exec : exec (len-g ctx +ℕ 1) (prog ctx) s-setup ≡ just s-final
+    -- Extract results from g
+    star-g : Star theProg s-setup sg
+    star-g = ir-star res-g
 
-    -- Not halted
-    final-halted : halted s-final ≡ false
+    addr-out : Word
+    addr-out = readReg (regs s-final) x0
 
-    -- PC at end of case code
-    final-pc : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    -- Compose stars: setup → g → label
+    star-setup-g : Star theProg s sg
+    star-setup-g = star-trans star-setup star-g
 
-    -- x0 is result
-    final-x0 : readReg (regs s-final) x0 ≡ encode (eval g b)
+    star-all : Star theProg s s-final
+    star-all = star-trans star-setup-g star-label
 
-open CaseInrFinalResult public
+    -- Chain register preservation: x20
+    x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
+    x20-final = trans x20-label (trans (ir-x20 res-g) x20-setup)
+
+    -- Chain register preservation: x21
+    x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
+    x21-final = trans x21-label (trans (ir-x21 res-g) x21-setup)
+
+    -- Chain register preservation: x29
+    x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
+    x29-final = trans x29-label (trans (ir-x29 res-g) x29-setup)
+
+    -- Chain register preservation: x30
+    x30-final : readReg (regs s-final) x30 ≡ readReg (regs s) x30
+    x30-final = trans x30-label (trans (ir-x30 res-g) x30-setup)
+
+    -- Chain sp preservation
+    sp-final : readSP (regs s-final) ≤ readSP (regs s)
+    sp-final = ≤-trans sp-label (≤-trans (ir-sp res-g) sp-setup)
+
+    -- Chain memory preservation at x21
+    mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+    mem-x21-final = begin
+      readMem (memory s-final) (readReg (regs s) x21)
+        ≡⟨ cong (readMem (memory s-final)) (sym x21-final) ⟩
+      readMem (memory s-final) (readReg (regs s-final) x21)
+        ≡⟨ cong (readMem (memory s-final)) x21-label ⟩
+      readMem (memory s-final) (readReg (regs sg) x21)
+        ≡⟨ mem-x21-label (readReg (regs sg) x21) ⟩
+      readMem (memory sg) (readReg (regs sg) x21)
+        ≡⟨ cong (readMem (memory sg)) (ir-x21 res-g) ⟩
+      readMem (memory sg) (readReg (regs s-setup) x21)
+        ≡⟨ ir-mem-x21 res-g ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) x21)
+        ≡⟨ cong (readMem (memory s-setup)) x21-setup ⟩
+      readMem (memory s-setup) (readReg (regs s) x21)
+        ≡⟨ mem-x21-setup ⟩
+      readMem (memory s) (readReg (regs s) x21)
+        ∎
+
+    -- Chain memory preservation at x29
+    mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    mem-x29-final = begin
+      readMem (memory s-final) (readReg (regs s) x29)
+        ≡⟨ cong (readMem (memory s-final)) (sym x29-final) ⟩
+      readMem (memory s-final) (readReg (regs s-final) x29)
+        ≡⟨ cong (readMem (memory s-final)) x29-label ⟩
+      readMem (memory s-final) (readReg (regs sg) x29)
+        ≡⟨ mem-x29-label (readReg (regs sg) x29) ⟩
+      readMem (memory sg) (readReg (regs sg) x29)
+        ≡⟨ cong (readMem (memory sg)) (ir-x29 res-g) ⟩
+      readMem (memory sg) (readReg (regs s-setup) x29)
+        ≡⟨ ir-mem-x29 res-g ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) x29)
+        ≡⟨ cong (readMem (memory s-setup)) x29-setup ⟩
+      readMem (memory s-setup) (readReg (regs s) x29)
+        ≡⟨ mem-x29-setup ⟩
+      readMem (memory s) (readReg (regs s) x29)
+        ∎
+
+    -- Chain memory preservation at x29+8
+    mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+    mem-x29+8-final = begin
+      readMem (memory s-final) (readReg (regs s) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory s-final) (x +ℕ 8)) (sym x29-final) ⟩
+      readMem (memory s-final) (readReg (regs s-final) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory s-final) (x +ℕ 8)) x29-label ⟩
+      readMem (memory s-final) (readReg (regs sg) x29 +ℕ 8)
+        ≡⟨ mem-x29-label (readReg (regs sg) x29 +ℕ 8) ⟩
+      readMem (memory sg) (readReg (regs sg) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory sg) (x +ℕ 8)) (ir-x29 res-g) ⟩
+      readMem (memory sg) (readReg (regs s-setup) x29 +ℕ 8)
+        ≡⟨ ir-mem-x29+8 res-g ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory s-setup) (x +ℕ 8)) x29-setup ⟩
+      readMem (memory s-setup) (readReg (regs s) x29 +ℕ 8)
+        ≡⟨ mem-x29+8-setup ⟩
+      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        ∎
+
+    -- x0 contains addr-out
+    x0-final : readReg (regs s-final) x0 ≡ addr-out
+    x0-final = refl
+
+    result : IRStarResultS [ f , g ] theProg s s-final addr-out (length prefix)
+    result = record
+      { ir-star = star-all
+      ; ir-halted = h-label
+      ; ir-pc = pc-label
+      ; ir-x0-s = x0-final
+      ; ir-x20 = x20-final
+      ; ir-x21 = x21-final
+      ; ir-x29 = x29-final
+      ; ir-x30 = x30-final
+      ; ir-sp = sp-final
+      ; ir-mem-x21 = mem-x21-final
+      ; ir-mem-x29 = mem-x29-final
+      ; ir-mem-x29+8 = mem-x29+8-final
+      ; ir-stack-inv = stack-inv-label
+      ; ir-x29-inv = x29-inv-label
+      ; ir-sp-bound = sp>16-label
+      }
 
 ------------------------------------------------------------------------
 -- Arithmetic Lemmas
