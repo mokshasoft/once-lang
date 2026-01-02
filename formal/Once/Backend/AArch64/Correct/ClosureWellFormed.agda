@@ -444,7 +444,7 @@ run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
 
     -- PC proof for s-2: pc s-2 = pc s-1 + 1 = (pc s + 1) + 1 = length prefix + 2
     pc-s2' : pc s-2 ≡ length prefix +ℕ 2
-    pc-s2' rewrite sym pc-eq = plus1plus1eq2 (pc s)
+    pc-s2' = trans (cong (_+ℕ 1) pc-s1') (plus1plus1eq2 (length prefix))
 
     len-eq-2 : length (prefix ++ ldr x9 (base x0) ∷ ldr x10 (base+imm x0 8) ∷ []) ≡ length prefix +ℕ 2
     len-eq-2 = trans (length-++ prefix {ldr x9 (base x0) ∷ ldr x10 (base+imm x0 8) ∷ []}) refl
