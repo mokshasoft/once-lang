@@ -31,7 +31,7 @@ open import Once.Backend.AArch64.CodeGen
 open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.AArch64.Correct.StackInvariant
-  using (StackInvariant)
+  using (StackInvariant; x21-unused; stack-below-x21)
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; encode-pair-fst; encode-pair-snd;
@@ -46,7 +46,7 @@ open import Once.Postulates
   using (encode-closure-env; encode-closure-code-ptr)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Nat.Properties using (+-assoc)
@@ -277,12 +277,15 @@ plus5plus1eq6 : ∀ n → (n +ℕ 5) +ℕ 1 ≡ n +ℕ 6
 plus5plus1eq6 n = +-assoc n 5 1
 
 -- Helper: StackInvariant preservation when x21 and sp are preserved
--- This is trivially provable by case analysis on the StackInvariant data type
-postulate
-  preserve-stack-inv : ∀ {s s'} →
-    readReg (regs s') x21 ≡ readReg (regs s) x21 →
-    readSP (regs s') ≡ readSP (regs s) →
-    StackInvariant s → StackInvariant s'
+-- Proof by case analysis on the StackInvariant data type
+preserve-stack-inv : ∀ {s s'} →
+  readReg (regs s') x21 ≡ readReg (regs s) x21 →
+  readSP (regs s') ≡ readSP (regs s) →
+  StackInvariant s → StackInvariant s'
+preserve-stack-inv x21-eq sp-eq (x21-unused x21≡0) =
+  x21-unused (trans x21-eq x21≡0)
+preserve-stack-inv x21-eq sp-eq (stack-below-x21 sp≤x21) =
+  stack-below-x21 (subst₂ _≤_ (sym sp-eq) (sym x21-eq) sp≤x21)
 
 -- NOTE: Memory preservation postulates removed (2026-01-02) following RISC-V pattern.
 -- RISC-V has NO memory preservation postulates because it uses ApplyMemoryLayout
