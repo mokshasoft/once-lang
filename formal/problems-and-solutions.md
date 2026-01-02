@@ -7,6 +7,77 @@ This document tracks problems encountered and solutions applied during full comp
 
 ---
 
+## Refactoring Principles
+
+This section documents the high-level principles guiding our verification and refactoring work.
+
+### Priority Order for Postulates
+
+When encountering postulates (axioms without proofs), apply solutions in this priority order:
+
+**1. ELIMINATE (Best)** - Prove the property, remove the postulate entirely
+   - Example: `curry-output-wf` eliminated using `run-curry-star-proven` bridge pattern
+   - Example: `sp-bound-for-f-in-thunk` eliminated with explicit stack preconditions
+   - Goal: Zero postulates in actual execution paths
+
+**2. GENERALIZE (Acceptable)** - Move to `Once.Backend.Common.*` for all architectures
+   - Create `BackendInterface` with parameterized types (State, Program, registers)
+   - Single source of truth for universal properties
+   - Reduces duplication across X86/AArch64/RiscV64
+   - Use when: Property is universal but architecture types differ
+
+**3. ARCH-SPECIFIC (Worst)** - Keep separate postulates per backend
+   - Only as last resort when generalization is too complex
+   - Current state we're moving away from
+   - Indicates incomplete refactoring
+
+### Priority Order for Implementations
+
+**1. GENERALIZE (Best)** - Shared implementation in `Once.Backend.Common.*`
+   - Example: `StackAnalysis` (shared across all backends)
+   - Example: `Star` execution relation (parameterized over instruction type)
+   - Reduces duplication, ensures consistency
+
+**2. ARCH-SPECIFIC (Fallback)** - Separate implementations per backend
+   - Use when: Calling conventions differ fundamentally
+   - Use when: Type system complexity makes parameterization impractical
+   - Example: `ClosureWellFormed` (different return address handling: stack vs link register vs ra)
+   - Example: Register-specific operations (rax/x0/a0, rsp/sp/sp)
+
+### Decision Framework
+
+When encountering duplication or postulates:
+
+1. **Can we prove it?** → Eliminate postulate (Priority 1)
+2. **Is it semantically universal?** → Generalize to Common (Priority 2 for postulates, 1 for implementations)
+3. **Are arch differences fundamental?** → Keep arch-specific (last resort)
+
+### Examples Applied
+
+| Problem | Old Approach | New Approach | Priority Achieved |
+|---------|--------------|--------------|-------------------|
+| `curry-output-wf` | Arch-specific postulate | Bridge pattern in MutualIR eliminates it | Priority 1 ✓ |
+| `sp-bound-for-f-in-thunk` | Universal postulate (false) | Explicit stack preconditions | Priority 1 ✓ |
+| `run-apply-star` | Arch-specific postulate | **TODO**: Eliminate or generalize to Common | Priority 3 → 1 or 2 |
+| `StackAnalysis` | Duplicated in X86/AArch64/RiscV64 | Moved to Common | Priority 1 ✓ |
+| `ClosureWellFormed` | Considered for Common | Kept arch-specific (calling conventions differ) | Priority 2 (justified) |
+
+### Arbitrary Programs Consideration
+
+**Goal**: Verify arbitrary programs, not just closed/simple ones
+
+- Whole-program proofs eliminate postulates for closed programs
+- Modular boundaries may require axioms (e.g., FFI, external closures)
+- Prefer: Eliminate postulates within compiled program boundaries
+- Accept: Axioms only at true external boundaries (FFI, dynamic loading)
+
+This ensures we can verify:
+- Complex programs with deep nesting
+- Compositional verification (module-by-module)
+- Programs with higher-order functions from external sources
+
+---
+
 ## Problem 1: `exchange₆` Postulate in TypeCheck/Elaborate
 
 **File**: `formal/Once/TypeCheck/Elaborate.agda:220-225`
