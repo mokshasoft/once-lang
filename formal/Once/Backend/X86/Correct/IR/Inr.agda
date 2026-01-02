@@ -24,7 +24,8 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ClosureWFOutput; no-closure; ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
+  using (IRStarResult; ClosureWFOutput; no-closure;
+         ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
@@ -65,13 +66,13 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans; ∸-monoˡ-≤; +-monoˡ-<)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans; m+n∸n≡m; +-comm; m∸n+n≡m; ∸-monoˡ-<; +-monoˡ-<; ∸-monoˡ-≤; ≤-reflexive; m≤n⇒m∸n≡0; <⇒≱)
 
     -- The program
     prog : Program
     prog = prefix ++ compile-x86 (inr {i} {A} {B}) ++ suffix
 
-    -- The 4 instructions of inr (same as inl but tag = 1)
+    -- The 4 instructions of inr
     i0 : Instr
     i0 = sub (reg rsp) (imm 16)
     i1 : Instr
@@ -257,11 +258,11 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     mem-val-encoded : readMem (memory s4) (new-rsp +ℕ 8) ≡ just (encode x)
     mem-val-encoded = trans mem-val-s4 (cong just orig-rdi-is-encode-x)
 
-    rax-is-encode-inr : new-rsp ≡ encode {A + B} (inj₂ x)
-    rax-is-encode-inr = encode-inr-construct x new-rsp (memory s4) mem-tag-s4 mem-val-encoded
+    rax-is-encode-inl : new-rsp ≡ encode {A + B} (inj₂ x)
+    rax-is-encode-inl = encode-inr-construct x new-rsp (memory s4) mem-tag-s4 mem-val-encoded
 
     rax-eq : readReg (regs s4) rax ≡ encode (eval (inr {i} {A} {B}) x)
-    rax-eq = trans rax-s4 rax-is-encode-inr
+    rax-eq = trans rax-s4 rax-is-encode-inl
 
     -- r14 preserved
     r14-eq : readReg (regs s4) r14 ≡ readReg (regs s) r14
@@ -274,6 +275,10 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
                    (readReg-writeReg-rsp-r15 (regs s) new-rsp)
 
     -- rbp preserved: none of the 4 instructions modify rbp
+    -- s1: writeReg rsp (doesn't touch rbp)
+    -- s2: memory write (doesn't change regs)
+    -- s3: memory write (doesn't change regs)
+    -- s4: writeReg rax (doesn't touch rbp)
     rbp-eq : readReg (regs s4) rbp ≡ readReg (regs s) rbp
     rbp-eq = trans (readReg-writeReg-rax-rbp (regs s3) (readReg (regs s3) rsp))
                    (readReg-writeReg-rsp-rbp (regs s) new-rsp)
@@ -373,6 +378,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     mem-rbp+8-preserved = mem-rbp+8-s3
 
     -- Memory above rbp preserved (for caller's frame)
+    -- Any address > rbp is also > new-rsp and > new-rsp+8, so memory is unchanged
     mem-above-preserved : ∀ addr → addr > orig-rbp → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-above-preserved addr addr>rbp =
       let diff-1 = λ eq → <⇒≢ (<-trans new-rsp<rbp addr>rbp) eq
@@ -387,6 +393,8 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
       let -- Prove rsp > 16 implies rsp ∸ 16 > 0
+          --  rsp > 16 means 17 ≤ rsp
+          --  So rsp ∸ 16 ≥ 17 ∸ 16 = 1 > 0
           17≤rsp : 17 ≤ orig-rsp
           17≤rsp = rsp>16
 

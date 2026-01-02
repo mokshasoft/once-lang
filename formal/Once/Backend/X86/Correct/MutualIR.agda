@@ -47,6 +47,7 @@ open import Once.Backend.X86.Correct.Star
          star-step2; star-step3; star-step4)
 open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; pair-at; fst-valid; snd-valid;
+         PairAtS; pair-at-s;
          InlAt; inl-at; InrAt; inr-at;
          encode-pair-fst-derived; encode-pair-snd-derived;
          encode-inl-tag-derived; encode-inl-val-derived;
@@ -64,7 +65,11 @@ open import Once.Backend.X86.Correct.StarBase public
          -- Stateful runners for encoding postulate elimination
          run-id-star-s; run-terminal-star-s; run-fold-star-s; run-unfold-star-s;
          run-arr-star-s; run-fst-star-s; run-snd-star-s;
-         run-inl-star-s; run-inr-star-s)
+         run-inl-star-s; run-inr-star-s;
+         -- Result records
+         FstSndResultS;
+         -- Conversion function
+         convert-to-stateful)
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Id
@@ -77,6 +82,10 @@ open import Once.Backend.X86.Correct.IR.Unfold
   using () renaming (run-unfold-star-s to run-unfold-s-ir)
 open import Once.Backend.X86.Correct.IR.Arr
   using () renaming (run-arr-star-s to run-arr-s-ir)
+open import Once.Backend.X86.Correct.IR.Inl
+  using (run-inl-star)
+open import Once.Backend.X86.Correct.IR.Inr
+  using (run-inr-star)
 
 -- Import extracted compose helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Compose
@@ -260,19 +269,30 @@ mutual
     let (s' , res) = run-arr-s-ir {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
     in addr-in , s' , res  -- arr is identity at runtime (Eff = Closure)
 
-  -- TODO: fst/snd/inl/inr need memory reads to extract component addresses
-  -- Will implement these after base cases work
+  -- fst/snd: simple delegation following RISC-V pattern
   run-ir-star-at-offset-s (fst {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: read component addresses from memory, then use run-fst-star-s
+    let (s' , res) = run-fst-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 fst ++ suffix
+        res-s = convert-to-stateful fst prog s s' x (length prefix) res
+    in encode (proj₁ x) , s' , res-s
 
   run-ir-star-at-offset-s (snd {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: read component addresses from memory, then use run-snd-star-s
+    let (s' , res) = run-snd-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 snd ++ suffix
+        res-s = convert-to-stateful snd prog s s' x (length prefix) res
+    in encode (proj₂ x) , s' , res-s
 
   run-ir-star-at-offset-s (inl {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: allocate and construct inl in memory
+    let (s' , res) = run-inl-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 inl ++ suffix
+        res-s = convert-to-stateful inl prog s s' x (length prefix) res
+    in encode (inj₁ x) , s' , res-s
 
   run-ir-star-at-offset-s (inr {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: allocate and construct inr in memory
+    let (s' , res) = run-inr-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 inr ++ suffix
+        res-s = convert-to-stateful inr prog s s' x (length prefix) res
+    in encode (inj₂ x) , s' , res-s
 
   run-ir-star-at-offset-s (initial {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     ⊥-elim x
@@ -288,7 +308,10 @@ mutual
     {!!}  -- TODO: implement stateful case
 
   run-ir-star-at-offset-s (curry {A} {B} {C} f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: implement stateful curry
+    let (s' , (res , mem-res)) = run-curry-star f prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 (curry f) ++ suffix
+        res-s = convert-to-stateful (curry f) prog s s' x (length prefix) res
+    in encode-closure-addr (eval (curry f) x) , s' , res-s
 
   run-ir-star-at-offset-s (apply {_} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     {!!}  -- TODO: implement stateful apply
