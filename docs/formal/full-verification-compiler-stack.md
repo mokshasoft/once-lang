@@ -1706,3 +1706,315 @@ The bidirectional approach provides a **solid foundation** that:
 - Requires no architectural rework as features are added
 
 This architectural choice ensures Once can evolve from a simple categorical language to a full dependent type system **without throwing away the type checker**.
+
+---
+
+## Devil's Advocate: Verification Gaps Analysis
+
+**Purpose**: Honest assessment of what IS and ISN'T verified to set realistic expectations.
+
+### CORRECTED Understanding (What We Actually Have)
+
+**Common Misconceptions** ❌:
+- ~~"The Haskell compiler isn't extracted"~~ → **FALSE**: Type checker and elaboration ARE extracted via MAlonzo
+- ~~"You verify C code"~~ → **FALSE**: C is out of scope (prototyping only), we verify assembly
+- ~~"No extraction like CompCert"~~ → **FALSE**: We DO extract, just not the CLI/orchestration layer
+
+**Actual Status** ✅:
+- MAlonzo extraction: `Once.TypeCheck.Elaborate`, `Once.Surface.Elaborate`, `Once.Arith.Backend.X86.CodeGen`
+- Verified: Type checking, Surface → IR elaboration, ArithIR → x86-64 assembly
+- Out of scope (intentionally): C codegen (prototype-only), CLI, file I/O, parser
+
+---
+
+### Gap 1: Backend Compilation (IR → Assembly) - IN PROGRESS ✅
+
+**Status**: x86-64 ArithIR complete, **CCC IR → Assembly is the current work**
+
+**What's proven**:
+- ✅ ArithIR → x86-64: `formal/Once/Arith/Backend/X86/CodeGen.agda` + `Semantics.agda`
+- ✅ Extraction working: MAlonzo generates Haskell from these proofs
+
+**What's missing (THIS IS WHAT WE'RE FIXING)**:
+- ❌ CCC IR → AArch64 assembly (in progress - Phase 5 complete, Phase 6-7 remain)
+- ❌ CCC IR → x86-64 assembly (exists but with postulates)
+- ❌ CCC IR → RISC-V assembly (exists but with postulates)
+
+**Impact**: Can't claim end-to-end verification from Surface → Assembly until backend proofs are complete.
+
+**Current work**: The AArch64 migration (Phases 0-5 completed) is EXACTLY addressing this gap!
+
+---
+
+### Gap 2: Memory Encoding Postulates (Eliminable!) ⚠️
+
+**From** `Once/Postulates.agda:266-340`:
+
+**12+ postulates** for value encoding in memory:
+```agda
+postulate
+  encode-pair-fst       : readMem m (encode (a , b)) ≡ just (encode a)
+  encode-pair-snd       : readMem m (encode (a , b) + 8) ≡ just (encode b)
+  encode-inl-tag        : readMem m (encode (inj₁ a)) ≡ just 0
+  encode-inl-val        : ...
+  encode-inr-tag        : ...
+  encode-inr-val        : ...
+  encode-*-construct    : ... (6 more)
+```
+
+**Good news**: Your own documentation (lines 252-264 of Postulates.agda) shows these are **ELIMINABLE**:
+
+> "PATH TO FULL ELIMINATION:
+>  1. Thread IRStarResultS through IRRunner in MutualIR.agda
+>  2. Replace encode-based proofs with validity-based proofs
+>  3. Remove these postulates"
+
+**x86-64 already has working examples** (lines 256-259):
+- `run-fst-star-s`, `run-snd-star-s`: Eliminate `encode-pair-*`
+- `run-inl-star-s`, `run-inr-star-s`: Eliminate `encode-*-construct`
+- `test-fst/snd/inl/inr-stateful`: Complete E2E proofs with NO postulates
+
+**Status**: Proof-of-concept exists, needs to be integrated into all backends.
+
+---
+
+### Gap 3: Instruction Execution Helpers (Per-Backend) - ELIMINABLE! ✅
+
+**From** `Once/Postulates.agda:397-435`:
+
+Each backend postulates 15+ instruction sequence behaviors:
+- `run-single-mov`, `run-single-mov-imm`, `run-single-mov-mem-base`
+- `run-inl-seq`, `run-inr-seq`
+- `run-case-inl/inr`
+- `run-pair-seq`, `run-curry-seq`, `run-apply-seq`
+
+**CRITICAL INSIGHT**: These postulates are **NOT fundamental requirements**!
+
+**Two verification paths**:
+
+1. **Whole-Program Analysis** (ZERO postulates for closed programs):
+   - Thread `ClosureWellFormed` proofs through IR combinators
+   - `curry f` produces WF proof → `apply` consumes it
+   - Example: `apply ∘ ⟨curry fst, id⟩` → **fully verified, no axioms**
+   - Like CompCert's C→assembly phase (fully verified)
+
+2. **Modular Analysis** (Postulates only at FFI boundaries):
+   - For external closures from FFI, dynamic loading, separate compilation
+   - Postulate: "FFI-returned closures satisfy calling convention"
+   - Like CompCert's assembly semantics (axiomatized at boundary)
+
+**Why curry/apply is special**:
+- Only IR generator that performs **indirect calls** via code pointers
+- All others (compose, pair, case, fst, snd, etc.) have direct calls or no calls
+- This is universal in verified compilers (CompCert, CakeML, Cogent all axiomatize closures/function pointers)
+
+**Path to elimination** (for closed programs):
+1. Implement `ClosureWellFormed` predicate tracking
+2. Thread WF proofs through all IR combinators
+3. Replace `run-apply-star` postulate with `run-apply-with-wf` (consumes WF proof)
+4. Result: **ZERO postulates for pure Once code**
+
+**Current status**:
+- x86-64: Some WF threading exists (see `Once/Backend/X86/Correct/StarBase.agda`)
+- AArch64: Foundation ready (Phase 1-5 complete)
+- RISC-V: `run-apply-with-wf` pattern established
+
+**For pure Once programs**: Can achieve CompCert-level verification (zero axioms for compilation)
+**For FFI programs**: One axiom at boundary (like all verified compilers)
+
+**Estimated effort**:
+- Whole-program path: 2-4 weeks per backend (WF threading + proof integration)
+- Result: Postulate-free verification of closed programs!
+
+---
+
+### Gap 4: Fixed Point Semantics (S1) - Known Limitation ⚠️
+
+**From** `Once/Postulates.agda:141-178`:
+
+> "The current interpretation of Fix F uses a simple newtype wrapper...
+> This models Fix F ≅ F, but the correct equation should be:
+> Fix F ≅ F[Fix F / X] (F with recursive occurrences substituted)"
+
+**Impact**:
+- Programs using `Nat`, `List`, or any recursive datatypes are **not fully verified**
+- `fold/unfold` proofs are trivially `refl`, not actual recursive semantics
+
+**Workarounds** (from Postulates.agda:169-174):
+- Option 1: Universe of strictly positive functors
+- Option 2: Sized types (Agda already has this!)
+- Option 3: Well-founded recursion
+- Option 4: QIITs (Quotient Inductive-Inductive Types)
+
+**Status**: Documented semantic gap, not a postulate. Fixing requires foundational changes to type interpretation.
+
+---
+
+### Gap 5: Surface Language Coverage 🟡
+
+**What's verified**: Core Surface language (`var`, `lam`, `app`, `pair`, `fst'`, `snd'`, `inl'`, `inr'`, `case'`, `let'`)
+
+**Relies on postulates**:
+- **P1**: Function extensionality (standard assumption, considered safe)
+- **P1b**: Closure equality based on semantics (reasonable for semantic proofs)
+- **P1c**: Arrow quantity coercion (quantities erased at runtime)
+- **P3**: QTT quantity erasure (part of QTT design)
+
+**Not covered** (future work):
+- Full effects system (`Eff` monad semantics) - partial only
+- I/O operations - out of scope (interface to external world)
+- FFI to C - out of scope (C unverified)
+- Module system - Phase 3.5 in progress
+
+**Assessment**: Postulates P1/P1b/P1c/P3 are standard type theory assumptions, not serious gaps.
+
+---
+
+### Gap 6: No End-to-End Extraction of Backend ❌
+
+**What's extracted**:
+- ✅ Type checker: `Once.TypeCheck.Elaborate` → `MAlonzo/Code/Once/TypeCheck/Elaborate.hs`
+- ✅ Surface elaboration: `Once.Surface.Elaborate` → MAlonzo
+- ✅ ArithIR codegen: `Once.Arith.Backend.X86.CodeGen` → MAlonzo
+
+**What's NOT extracted (yet)**:
+- ❌ CCC IR → Assembly compilation (AArch64/x86-64/RISC-V)
+- ❌ Backend orchestration (intentionally unverified - "glue code")
+
+**Why**: Backend compilation is the current work-in-progress (our AArch64 migration!).
+
+**Path forward**: Once backend proofs are complete (Gap 1), extract to MAlonzo.
+
+---
+
+## Comparison to Verified Compilers (CORRECTED)
+
+| Property | CompCert | CakeML | Once (Current) | Once (Target) |
+|----------|----------|---------|----------------|---------------|
+| **Verified Components** |
+| Parsing | ❌ | ✅ | ❌ (out of scope) | ❌ (out of scope) |
+| Type checking | ❌ (assumes correct) | ✅ | ✅ (MAlonzo) | ✅ |
+| Elaboration | ✅ | ✅ | ✅ (MAlonzo) | ✅ |
+| Optimization passes | ✅ | ✅ | ❌ (IR is CCC - no optimizations yet) | 🟡 (categorical laws) |
+| Backend (IR → Assembly) | ✅ | ✅ | 🔄 (in progress) | ✅ |
+| Runtime system | Partial | ✅ | ❌ | ❌ (out of scope) |
+| Assembler | ❌ (assumes correct) | ✅ | ❌ (assumes correct) | ❌ |
+| **Extraction** |
+| Compiler extracted | ✅ (Coq → OCaml) | ✅ (HOL → CakeML) | 🔄 (Agda → Haskell, partial) | ✅ |
+| End-to-end theorem | ✅ | ✅ | ❌ (not yet) | ✅ |
+| **Postulates** |
+| In core proofs | Minimal | None | ~30 (eliminable) | 0-5 (only P1/P1b/P1c) |
+| Recursive types | ✅ | ✅ | ❌ (Gap S1) | ✅ (future) |
+
+**Key Insight**: Once is a **work-in-progress** toward full verification, not a finished product like CompCert/CakeML.
+
+**Honest Assessment**:
+- **Surface → IR**: ✅ Comparable to CakeML (extracted, proven correct)
+- **IR → Assembly**: 🔄 In progress (Gap 1, our current work!)
+- **Postulates**: ✅ Eliminable via ClosureWellFormed threading (Gaps 2, 3 have proven elimination paths)
+  - Pure programs: Can achieve **ZERO postulates** (whole-program analysis)
+  - FFI programs: **One axiom at boundary** (like CompCert's assembly semantics)
+- **Recursive types**: ❌ Known gap (S1), fixable with engineering effort
+
+---
+
+## What CAN We Claim?
+
+**✅ TRUE CLAIMS**:
+1. **Type checking is fully verified** (MAlonzo-extracted from proven Agda code)
+2. **Surface → IR elaboration is proven correct** (`Once.Surface.Correct.agda`)
+3. **Arithmetic compilation (ArithIR → x86-64) is proven** (MAlonzo-extracted)
+4. **Compiler ALWAYS uses verified type checker** (no fallback since 2025-12-31)
+5. **Depth ≤7 programs are fully type-checked with proven correctness**
+
+**❌ FALSE CLAIMS (Don't say these!)**:
+1. ~~"End-to-end verification from source to binary"~~ → Not yet (Gap 1)
+2. ~~"All postulates eliminated"~~ → 30+ remain (Gap 2, 3)
+3. ~~"Recursive types fully verified"~~ → Known semantic gap (Gap 4/S1)
+4. ~~"Comparable to CompCert/CakeML"~~ → Getting there, but not yet
+
+**🟡 ASPIRATIONAL (Path forward)**:
+1. **Backend IR → Assembly verification** (Gap 1) → AArch64 Phases 6-7 + extract other backends
+2. **Eliminate memory encoding postulates** (Gap 2) → Use validity predicates (x86 proof-of-concept exists)
+3. **Implement ClosureWellFormed threading** (Gap 3) → **Achieve ZERO postulates for pure programs!**
+   - Thread WF proofs through IR combinators (2-4 weeks/backend)
+   - Result: Closed programs verified with no axioms (like CompCert's C→assembly)
+   - FFI: One axiom at boundary (like CompCert's assembly semantics)
+4. **Fix recursive type semantics** (Gap 4/S1) → Use sized types or strictly positive functors
+
+**Target timeline**:
+- Pure programs: 6-12 months to **CompCert-level verification** (zero axioms!)
+- FFI programs: Same timeline + **one axiom at FFI boundary** (standard for verified compilers)
+
+---
+
+## Honest Marketing Statement
+
+**What Once Has Today** (2025-01-02):
+
+> "Once features a **MAlonzo-extracted verified type checker and elaborator**, ensuring type-correct programs are proven to preserve semantics through Surface → IR compilation. The type system supports **bidirectional type checking with QTT (Quantitative Type Theory)** for resource tracking and optimization.
+>
+> **Arithmetic compilation** (ArithIR → x86-64) is fully verified and extracted via MAlonzo.
+>
+> **Backend compilation** (CCC IR → Assembly for AArch64/x86-64/RISC-V) is under active development with formal correctness proofs in progress. Current backend code generation works correctly but relies on ~30 postulates for instruction semantics and memory encoding, with documented paths to elimination.
+>
+> Programs are accepted only if they pass the verified type checker (depth ≤7 constraint, provably correct bound). **No unverified fallback paths exist** - compilation either succeeds with verification guarantees or fails with clear errors.
+>
+> **Limitations**: Recursive type semantics (Nat, List) are not fully verified (documented semantic gap S1). C code generation is for prototyping only (assembly backends are the verified targets). CLI and I/O orchestration are intentionally unverified.
+>
+> **Comparison to verified compilers**: Once provides stronger type-checking verification than CompCert (which assumes correct types), but does not yet match CompCert's complete backend verification. We're actively closing this gap."
+
+---
+
+## Conclusion: Honest Path Forward
+
+**Current State** (2026-01-02):
+- **Verified**: Type checking (✅), Surface → IR elaboration (✅), ArithIR → x86-64 (✅)
+- **In Progress**: CCC IR → Assembly backends (🔄 AArch64 Phase 5 complete!)
+- **Known Gaps**: 30+ postulates (eliminable), recursive type semantics (fixable)
+
+**Next 6-12 Months**:
+1. **Complete AArch64 backend proofs** (Phases 6-7) + extract to MAlonzo
+2. **Port proven patterns to x86-64 and RISC-V**
+3. **Eliminate memory encoding postulates** (use x86 validity predicate approach)
+4. **Prove instruction execution helpers** (step-by-step semantics)
+5. **Fix recursive type semantics** (sized types or strictly positive functors)
+
+**Long-term Vision**:
+- Full CompCert-level backend verification
+- End-to-end theorem: `Surface program p` → `Assembly program asm` with `⟦ p ⟧ ≡ ⟦ asm ⟧`
+- **Zero unproven postulates for pure programs** (via ClosureWellFormed threading)
+- **One axiom at FFI boundary** (like CompCert) - standard for verified compilers
+- Dependent types + QTT for full verification of effectful, resource-aware programs
+
+---
+
+## Key Insight from Whole-Program vs Modular Analysis
+
+**The critical discovery**: The ~30 postulates for instruction execution (Gap 3) are **NOT fundamental requirements**!
+
+**Two verification strategies**:
+
+| Strategy | Scope | Postulates | Use Case |
+|----------|-------|------------|----------|
+| **Whole-Program** | Closed programs | **ZERO** | Pure Once programs (like CompCert C→assembly) |
+| **Modular** | Open programs | **One at FFI** | External closures, dynamic loading, separate compilation |
+
+**Why this matters**:
+- For **pure Once programs**: Can achieve CompCert-level verification with no axioms!
+- For **FFI programs**: One axiom at boundary (same as CompCert's assembly semantics)
+- The choice is a **design decision**, not a fundamental limitation
+
+**Implementation**: Thread `ClosureWellFormed` proofs through IR combinators:
+```
+curry f → produces WF proof
+pair    → threads WF proof
+apply   → consumes WF proof
+Result: Fully verified, no postulates!
+```
+
+**This is the path to full verification of arbitrary Once programs** (within the closed-program assumption or with FFI boundary axioms).
+
+---
+
+**The work is real, the gaps are documented, and the path forward is clear.**
