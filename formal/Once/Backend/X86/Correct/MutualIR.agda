@@ -55,12 +55,16 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Re-export StarBase for backwards compatibility
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star;
-         run-fst-star-v; run-snd-star-v)
+         run-fst-star-v; run-snd-star-v;
+         -- Stateful runners for encoding postulate elimination
+         run-id-star-s; run-terminal-star-s; run-fold-star-s; run-unfold-star-s;
+         run-arr-star-s; run-fst-star-s; run-snd-star-s;
+         run-inl-star-s; run-inr-star-s)
 
 -- Import extracted compose helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Compose
@@ -204,6 +208,78 @@ mutual
     run-curry-star-direct f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-apply-star-direct prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+
+  ------------------------------------------------------------------------
+  -- Stateful Star-Based Runner (encoding postulate elimination)
+  ------------------------------------------------------------------------
+
+  -- | Stateful IR execution - returns address instead of using encode
+  -- This enables encoding postulate elimination by tracking explicit memory addresses
+  run-ir-star-at-offset-s : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program)
+      (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ addr-in →
+    encode x ≡ addr-in →  -- Semantic value matches input address
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 ir ++ suffix
+    in ∃[ addr-out ] ∃[ s' ] IRStarResultS ir prog s s' addr-out (length prefix)
+
+  -- Base cases: delegate to stateful runners
+  run-ir-star-at-offset-s (id {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res) = run-id-star-s {A} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    in addr-in , s' , res
+
+  run-ir-star-at-offset-s (terminal {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res) = run-terminal-star-s {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
+    in 0 , s' , res  -- terminal returns 0 (unit encoding)
+
+  run-ir-star-at-offset-s (fold {F}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res) = run-fold-star-s {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    in addr-in , s' , res  -- fold is identity at runtime
+
+  run-ir-star-at-offset-s (unfold {F}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res) = run-unfold-star-s {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    in addr-in , s' , res  -- unfold is identity at runtime
+
+  run-ir-star-at-offset-s (arr {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res) = run-arr-star-s {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    in addr-in , s' , res  -- arr is identity at runtime (Eff = Closure)
+
+  -- TODO: fst/snd/inl/inr need memory reads to extract component addresses
+  -- Will implement these after base cases work
+  run-ir-star-at-offset-s (fst {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: read component addresses from memory, then use run-fst-star-s
+
+  run-ir-star-at-offset-s (snd {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: read component addresses from memory, then use run-snd-star-s
+
+  run-ir-star-at-offset-s (inl {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: allocate and construct inl in memory
+
+  run-ir-star-at-offset-s (inr {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: allocate and construct inr in memory
+
+  run-ir-star-at-offset-s (initial {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    ⊥-elim x
+
+  -- Recursive cases: stub for now (will implement after base cases work)
+  run-ir-star-at-offset-s (_∘_ {A} {B} {C} g f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: implement stateful compose
+
+  run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: implement stateful pair
+
+  run-ir-star-at-offset-s ([_,_] {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: implement stateful case
+
+  run-ir-star-at-offset-s (curry {A} {B} {C} f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: implement stateful curry
+
+  run-ir-star-at-offset-s (apply {_} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    {!!}  -- TODO: implement stateful apply
 
   -- | Star-based compose execution
   -- Uses extracted helpers from IR.Compose - only recursive calls remain here

@@ -1300,6 +1300,101 @@ convert-to-stateful ir prog s s' x offset res = record
   }
 
 ------------------------------------------------------------------------
+-- Stateful Runners for Simple Base Cases
+--
+-- For simple IR generators (id, terminal, fold, unfold, arr) that don't
+-- access memory or use encoding postulates, we can simply wrap the
+-- existing encode-based runners with convert-to-stateful.
+------------------------------------------------------------------------
+
+-- | Stateful id runner: input address = output address
+run-id-star-s : ∀ {i : Size} {A : Type} (prefix suffix : Program)
+    (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-in →
+  encode x ≡ addr-in →  -- Caller provides semantic value matching address
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (id {i} {A}) ++ suffix
+  in ∃[ s' ] IRStarResultS (id {i} {A}) prog s s' addr-in (length prefix)
+run-id-star-s {i} {A} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-id-star {i} {A} prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+      prog = prefix ++ compile-x86 (id {i} {A}) ++ suffix
+      res-s = convert-to-stateful (id {i} {A}) prog s s' x (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (id {i} {A}) prog s s' addr (length prefix)) enc-eq res-s
+
+-- | Stateful terminal runner: output address = 0 (unit encoding)
+run-terminal-star-s : ∀ {i : Size} {A : Type} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (terminal {i} {A}) ++ suffix
+  in ∃[ s' ] IRStarResultS (terminal {i} {A}) prog s s' 0 (length prefix)
+run-terminal-star-s {i} {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
+  in s' , convert-to-stateful (terminal {i} {A}) _ s s' x _ res
+
+-- | Stateful fold runner: input address = output address (Fix ≅ A)
+run-fold-star-s : ∀ {i F} (prefix suffix : Program)
+    (addr-in : Word) (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-in →
+  encode x ≡ addr-in →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (fold {i} {F}) ++ suffix
+  in ∃[ s' ] IRStarResultS (fold {i} {F}) prog s s' addr-in (length prefix)
+run-fold-star-s {i} {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-fold-star {i} {F} prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+      prog = prefix ++ compile-x86 (fold {i} {F}) ++ suffix
+      res-s = convert-to-stateful (fold {i} {F}) prog s s' x (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (fold {i} {F}) prog s s' addr (length prefix)) enc-eq res-s
+
+-- | Stateful unfold runner: input address = output address (Fix ≅ A)
+run-unfold-star-s : ∀ {i F} (prefix suffix : Program)
+    (addr-in : Word) (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-in →
+  encode x ≡ addr-in →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (unfold {i} {F}) ++ suffix
+  in ∃[ s' ] IRStarResultS (unfold {i} {F}) prog s s' addr-in (length prefix)
+run-unfold-star-s {i} {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-unfold-star {i} {F} prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+      prog = prefix ++ compile-x86 (unfold {i} {F}) ++ suffix
+      res-s = convert-to-stateful (unfold {i} {F}) prog s s' x (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (unfold {i} {F}) prog s s' addr (length prefix)) enc-eq res-s
+
+-- | Stateful arr runner: input address = output address (Eff ≅ Closure)
+run-arr-star-s : ∀ {i : Size} {A B : Type} (prefix suffix : Program)
+    (addr-in : Word) (x : ⟦ A ⇒ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-in →
+  encode {A ⇒ B} x ≡ addr-in →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (arr {i} {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultS (arr {i} {A} {B}) prog s s' addr-in (length prefix)
+run-arr-star-s {i} {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let x-typed : ⟦ A ⇒ B ⟧
+      x-typed = x
+      (s' , res) = run-arr-star {i} {A} {B} prefix suffix x-typed s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+      prog = prefix ++ compile-x86 (arr {i} {A} {B}) ++ suffix
+      res-s = convert-to-stateful (arr {i} {A} {B}) prog s s' x-typed (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (arr {i} {A} {B}) prog s s' addr (length prefix)) enc-eq res-s
+
+------------------------------------------------------------------------
 -- Stateful Pair Assembly: Produce PairAtS from sub-IR results
 --
 -- This function shows how to produce PairResultS from stateful
