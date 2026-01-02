@@ -30,6 +30,15 @@ open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_; _++_; length)
 
 ------------------------------------------------------------------------
+-- Import Proven Frame Sizes
+------------------------------------------------------------------------
+
+-- Import proven curry-frame value instead of hardcoding it.
+-- This eliminates the risk of mismatched constants (we had 16, should be 24!).
+open import Once.Backend.RiscV64.Correct.CurryFrameProof
+  using (curry-frame-value)
+
+------------------------------------------------------------------------
 -- Import Common Stack Analysis
 ------------------------------------------------------------------------
 
@@ -41,14 +50,14 @@ open import Data.List using (List; []; _∷_; _++_; length)
 --   - pair-frame: 32 bytes (16 pair data + 8 s1 + 8 s2 frame pointer)
 --   - inl-frame: 16 bytes (tag + value)
 --   - inr-frame: 16 bytes (tag + value)
---   - curry-frame: 16 bytes (closure allocation: env + code-ptr)
+--   - curry-frame: 24 bytes (PROVEN from ThunkSetup.agda instruction sequence)
 --   - apply-frame: 24 bytes (conservative bound for thunk frame)
 open import Once.Backend.Common.StackAnalysis
-  32   -- pair-frame
-  16   -- inl-frame
-  16   -- inr-frame
-  16   -- curry-frame
-  24   -- apply-frame
+  32                 -- pair-frame (TODO: prove from code generation)
+  16                 -- inl-frame (TODO: prove from code generation)
+  16                 -- inr-frame (TODO: prove from code generation)
+  curry-frame-value  -- curry-frame (PROVEN!)
+  24                 -- apply-frame (TODO: prove from code generation)
   public
 
 ------------------------------------------------------------------------

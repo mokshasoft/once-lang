@@ -117,38 +117,28 @@ postulate
 -- Postulate R2: Stack Bound for Curry Thunk Execution
 ------------------------------------------------------------------------
 --
--- After curry thunk setup allocates 24 bytes, the remaining stack space
--- is sufficient for executing the closure body f.
+-- STATUS: ELIMINATED! (2026-01-02)
 --
--- NEEDED BY: Once.Backend.RiscV64.Correct.ClosureWellFormed
---            (curry-thunk-correct-impl)
+-- This postulate claimed:
+--   ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
+--     StackDepth f ≤ readReg (regs s) sp
 --
--- JUSTIFICATION:
---   The curry thunk setup allocates 24 bytes (saved s2 + pair allocation).
---   For the thunk to execute f safely, we need:
---     StackDepth f ≤ (original sp - 24)
+-- This was a FALSE universal claim (claimed ANY IR f fits in ANY sp).
 --
---   This should be derivable from the precondition that StackDepth curry ≤ sp,
---   since:
---     StackDepth (curry f) = 24 + StackDepth f  (by definition)
+-- SOLUTION: Thread explicit stack preconditions through proof chain:
+--   1. curry-thunk-correct-impl now requires: StackDepth (curry f) ≤ sp
+--   2. Arithmetic proof derives: StackDepth f ≤ sp - curry-frame-value
+--   3. curry-frame-value = 24 (proven from ThunkSetup.agda instructions)
+--   4. No postulate needed!
 --
---   Therefore:
---     24 + StackDepth f ≤ sp
---     StackDepth f ≤ sp - 24
+-- See:
+--   - Once/Backend/RiscV64/Correct/CurryFrameProof.agda (proves curry-frame = 24)
+--   - Once/Backend/RiscV64/Correct/MutualIR.agda lines 1621-1650 (arithmetic proof)
+--   - Once/Backend/RiscV64/Correct/ClosureWellFormed.agda (stack-requirement parameter)
 --
---   TODO: Prove this using arithmetic on the precondition.
---         May require Data.Nat.Solver for the arithmetic manipulation.
---
--- CURRENT STATUS: Postulated temporarily
--- PRIORITY: Should be proven (straightforward arithmetic)
---
--- RUNTIME EFFECT: Assumes sufficient stack space (standard assumption)
---
+-- This follows the same pattern as eliminating stackDepth-leq-stackBase:
+--   Replace false universal claims with explicit preconditions.
 ------------------------------------------------------------------------
-
-postulate
-  sp-bound-for-f-in-thunk : ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
-    StackDepth f ≤ readReg (regs s) sp
 
 ------------------------------------------------------------------------
 -- NOTE: Stack Space Postulate REMOVED (2026-01-01)

@@ -36,7 +36,7 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Postulates using (encode)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _<_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -83,21 +83,29 @@ open ThunkResult public
 -- 1. Closure.code-ptr in semantics is 0 (placeholder)
 -- 2. The actual code-ptr comes from compilation (offset + 7)
 -- 3. Apply reads these from memory, not from the semantic record
+--
+-- NEW: stack-requirement parameter (2026-01-02)
+--   The thunk requires this many bytes of stack to execute successfully.
+--   For curry-generated closures, this is StackDepth (curry f).
+--   This replaces the false universal postulate sp-bound-for-f-in-thunk.
 record ClosureWellFormed {A B : Type} (prog : Program)
                          (code-ptr : ℕ) (env-addr : ℕ)
-                         (semantics : ⟦ A ⟧ → ⟦ B ⟧) : Set where
+                         (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+                         (stack-requirement : ℕ) : Set where
   field
     -- The code-ptr is within the program bounds
     code-ptr-valid : code-ptr < length prog
 
     -- Executing from code-ptr produces correct result for any input
     -- ret-addr: the return address (set by jalr in ra, jumped to by ret)
+    -- stack-bound: proof that sufficient stack is available (NEW)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) →
       halted s ≡ false →
       pc s ≡ code-ptr →
       readReg (regs s) a0 ≡ encode a →
       readReg (regs s) s0 ≡ env-addr →
       readReg (regs s) ra ≡ ret-addr →  -- Return address in ra
+      stack-requirement ≤ readReg (regs s) sp →  -- Stack precondition (NEW)
       ∃[ s' ] (ThunkResult prog s s' semantics a
               × pc s' ≡ ret-addr)
 
@@ -134,10 +142,12 @@ record CurryResult {i : Size} {A B C : Type} (f : IR i (A * B) C)
     --       semantics = Closure.semantics (eval (curry f) x) = λ b → eval f (x , b)
     --       code-ptr = offset + 7 (thunk entry in program)
     --       env-addr = encode x (captured value)
+    --       stack-requirement = StackDepth (curry f) (includes thunk allocation + body execution)
     closure-wf : ClosureWellFormed {B} {C} prog
                    (offset +ℕ 7)           -- code-ptr: thunk at offset+7
                    (encode x)              -- env-addr: encoded captured value
                    (λ b → eval f (x , b))  -- semantics: partial application
+                   (StackDepth (curry f))  -- stack-requirement: proven from code generation
 
 open CurryResult public
 
@@ -170,9 +180,10 @@ record CurryOutputWF {i : Size} {A B C : Type} (f : IR i (A * B) C)
   field
     code-ptr : ℕ
     env-addr : ℕ
+    stack-req : ℕ  -- Stack requirement for thunk execution
     code-ptr-eq : code-ptr ≡ offset +ℕ 7  -- Thunk is at offset+7
     env-addr-eq : env-addr ≡ encode x      -- Env is encoded input
-    wf : ClosureWellFormed {B} {C} prog code-ptr env-addr (λ b → eval f (x , b))
+    wf : ClosureWellFormed {B} {C} prog code-ptr env-addr (λ b → eval f (x , b)) stack-req
 
 open CurryOutputWF public
 
@@ -180,8 +191,8 @@ open CurryOutputWF public
 -- This is the key conversion that enables threading
 ApplyInputWF : ∀ (A B : Type) → Program → Set
 ApplyInputWF A B prog =
-  ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
-  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+  ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ] ∃[ stack-req ]
+  ClosureWellFormed {A} {B} prog code-ptr env-addr sem stack-req
 
 curry-output-to-apply-input : ∀ {i A B C} (f : IR i (A * B) C)
                               (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) →
@@ -191,6 +202,7 @@ curry-output-to-apply-input f prog offset x cow =
   CurryOutputWF.code-ptr cow ,
   CurryOutputWF.env-addr cow ,
   (λ b → eval f (x , b)) ,
+  CurryOutputWF.stack-req cow ,
   CurryOutputWF.wf cow
 
 ------------------------------------------------------------------------

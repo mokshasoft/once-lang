@@ -28,6 +28,8 @@ open import Once.Backend.RiscV64.Semantics
 open State
 open import Once.Backend.RiscV64.CodeGen
   using (compile-riscv; compile-length; StackDelta; StackDepth; neg16; neg24)
+open import Once.Backend.RiscV64.Correct.CurryFrameProof
+  using (curry-frame-value)
 
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
@@ -37,7 +39,7 @@ open import Once.Postulates
          encode-inl-construct; encode-inr-construct)
 
 open import Once.Backend.RiscV64.Postulates
-  using (run-apply-star; sp-bound-for-f-in-thunk)
+  using (run-apply-star)  -- sp-bound-for-f-in-thunk ELIMINATED! (2026-01-02)
 
 open import Once.Backend.RiscV64.Correct.Foundation
 open import Once.Backend.RiscV64.Correct.CompileLength
@@ -135,6 +137,16 @@ cancel-+-left (suc n) (s≤s p) = cancel-+-left n p
 ∸-antimonoʳ-≤ {suc m} {suc n} (suc o) (s≤s p) = ∸-antimonoʳ-≤ o p
 
 ------------------------------------------------------------------------
+-- Helper lemma: subtract from both sides of inequality
+-- If m + n ≤ o, then n ≤ o ∸ m
+------------------------------------------------------------------------
+
++-≤-to-∸ : ∀ m {n o} → m +ℕ n ≤ o → n ≤ o ∸ m
++-≤-to-∸ zero {n} {o} p = p
++-≤-to-∸ (suc m) {n} {zero} ()
++-≤-to-∸ (suc m) {n} {suc o} (s≤s p) = +-≤-to-∸ m p
+
+------------------------------------------------------------------------
 -- Helper lemmas for sp preservation when ir-sp-delta = 0
 ------------------------------------------------------------------------
 
@@ -219,15 +231,11 @@ mutual
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
   -- Curry: use run-curry-star from IR/Curry.agda
-  -- StackDepth (curry f) = 16 + StackDepth f, but curry only allocates 16 bytes
+  -- StackDepth (curry f) = curry-frame-value + StackDepth f (24 + StackDepth f)
   -- TODO: Replace curry-output-wf postulate with proven WF from run-curry-star-with-wf
   --       This requires refactoring to avoid type-checking timeout.
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
-    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound-16
-    where
-      -- Derive 16 ≤ sp from 16 + StackDepth f ≤ sp
-      sp-bound-16 : 16 ≤ readReg (regs s) sp
-      sp-bound-16 = ≤-trans (m≤m+n 16 (StackDepth f)) sp-bound
+    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Apply: postulated (requires whole-program analysis)
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq a0-eq _ =
@@ -1491,10 +1499,11 @@ mutual
     readReg (regs s) a0 ≡ encode arg →
     readReg (regs s) s0 ≡ encode env →
     readReg (regs s) ra ≡ ret-addr →
+    StackDepth (curry f) ≤ readReg (regs s) sp →  -- Stack precondition (NEW)
     ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {_} {A} {B} {C} f prefix suffix env arg s ret-addr
-                           h-eq pc-eq a0-eq s0-eq ra-eq =
+                           h-eq pc-eq a0-eq s0-eq ra-eq stack-bound =
     s-final , thunk-result , pc-final
     where
       prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -1605,10 +1614,36 @@ mutual
       pc-setup-f : pc s-after-setup ≡ length prefix-f
       pc-setup-f = trans pc-setup (sym len-prefix-f)
 
-      -- SP bound for f: thunk setup allocates 24 bytes, need StackDepth f ≤ sp-after-setup
-      -- Using module-level postulate
+      -- SP bound for f: prove using arithmetic instead of postulate
+      -- We have:
+      --   1. stack-bound : StackDepth (curry f) ≤ readReg (regs s) sp
+      --   2. StackDepth (curry f) = curry-frame-value + StackDepth f (by StackAnalysis definition)
+      --   3. curry-frame-value = 24 (proven in CurryFrameProof)
+      --   4. sp-setup : readReg (regs s-after-setup) sp ≡ readReg (regs s) sp ∸ 24
+      -- Therefore:
+      --   curry-frame-value + StackDepth f ≤ readReg (regs s) sp  (substituting #2 into #1)
+      --   StackDepth f ≤ readReg (regs s) sp ∸ curry-frame-value  (+-≤-to-∸)
+      --   StackDepth f ≤ readReg (regs s) sp ∸ 24                 (#3)
+      --   StackDepth f ≤ readReg (regs s-after-setup) sp          (#4)
+
+      orig-sp : Word
+      orig-sp = readReg (regs s) sp
+
+      -- Step 1: Expand StackDepth (curry f) definition (from StackAnalysis)
+      stack-bound-expanded : curry-frame-value +ℕ StackDepth f ≤ orig-sp
+      stack-bound-expanded = stack-bound  -- StackDepth (curry f) = curry-frame-value + StackDepth f by definition
+
+      -- Step 2: Use arithmetic to derive StackDepth f ≤ orig-sp ∸ curry-frame-value
+      sp-bound-after-subtract : StackDepth f ≤ orig-sp ∸ curry-frame-value
+      sp-bound-after-subtract = +-≤-to-∸ curry-frame-value stack-bound-expanded
+
+      -- Step 3: curry-frame-value = 24 (proven constant), so ∸ curry-frame-value = ∸ 24
+      sp-bound-after-24 : StackDepth f ≤ orig-sp ∸ 24
+      sp-bound-after-24 = sp-bound-after-subtract  -- curry-frame-value = 24 by definition
+
+      -- Step 4: sp-setup proves new-sp = orig-sp ∸ 24, and readReg (regs s-after-setup) sp = new-sp
       sp-bound-for-f : StackDepth f ≤ readReg (regs s-after-setup) sp
-      sp-bound-for-f = sp-bound-for-f-in-thunk f s-after-setup
+      sp-bound-for-f = subst (λ x → StackDepth f ≤ x) (sym sp-setup) sp-bound-after-24
 
       step-f : ∃[ s-f ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f = run-ir-star-at-offset f prefix-f suffix-f (env , arg) s-after-setup
@@ -1759,7 +1794,7 @@ mutual
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
-    16 ≤ readReg (regs s) sp →
+    StackDepth (curry f) ≤ readReg (regs s) sp →  -- Updated: use StackDepth instead of hardcoded 16
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
         offset = length prefix
     in ∃[ s' ] CurryResult f prog s s' x offset
@@ -1776,9 +1811,9 @@ mutual
       ; curry-s1     = ir-s1 result
       ; closure-wf   = record
           { code-ptr-valid = code-ptr-valid-proof
-          ; thunk-correct  = λ arg s' ret-addr h-eq' pc-eq' a0-eq' s0-eq' ra-eq' →
-              curry-thunk-correct-impl f prefix suffix x arg s' ret-addr
-                h-eq' pc-eq' a0-eq' s0-eq' ra-eq'
+          ; thunk-correct  = λ arg s'' ret-addr h-eq' pc-eq' a0-eq' s0-eq' ra-eq' stack-bound →
+              curry-thunk-correct-impl f prefix suffix x arg s'' ret-addr
+                h-eq' pc-eq' a0-eq' s0-eq' ra-eq' stack-bound
           }
       }
     where

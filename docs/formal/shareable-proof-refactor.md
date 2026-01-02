@@ -484,6 +484,194 @@ in star-codegen-correct myProgram provided x proof
 
 ---
 
+## Frame Size Verification (Future Work)
+
+### Background: The Hardcoded Constants Problem
+
+**Date**: 2026-01-01
+
+**Discovery**: While eliminating the `sp-bound-for-f-in-thunk` postulate, we discovered that `curry-frame = 16` was **incorrect** - the curry thunk actually allocates 24 bytes!
+
+This revealed a broader issue: **all frame sizes are currently hardcoded parameters** with no verification:
+
+```agda
+open import Once.Backend.Common.StackAnalysis
+  32   -- pair-frame (hardcoded!)
+  16   -- inl-frame (hardcoded!)
+  16   -- inr-frame (hardcoded!)
+  16   -- curry-frame (WRONG! Should be 24)
+  24   -- apply-frame (hardcoded!)
+```
+
+**Root Cause**: These are parameters to make StackAnalysis reusable across backends, but there's no proof they match the actual code generation.
+
+**Risk**: If we got curry-frame wrong (16 vs 24), what else might be wrong?
+
+### The Solution: Prove Frame Sizes from Code Generation
+
+Instead of hardcoding, **calculate frame sizes from the actual instruction sequences**:
+
+#### Example: curry-frame
+
+**Current (wrong):**
+```agda
+16  -- curry-frame (arbitrary parameter)
+```
+
+**New (proven):**
+```agda
+-- Prove from actual instructions
+curry-setup-allocates-16 : curry setup allocates 16-byte closure
+curry-thunk-allocates-24 : curry thunk allocates 24-byte frame
+
+curry-frame-value : ℕ
+curry-frame-value = 24  -- Maximum (accounts for thunk)
+
+curry-frame-correct :
+  curry-setup-allocates-16 →
+  curry-thunk-allocates-24 →
+  curry-frame-value ≡ 24
+```
+
+### Implementation Plan (Future Work)
+
+**Priority Order** (based on risk of being wrong):
+
+1. **curry-frame** ✓ IN PROGRESS (fixing sp-bound-for-f-in-thunk postulate)
+   - Prove setup allocates 16
+   - Prove thunk allocates 24
+   - Use proven value 24
+
+2. **pair-frame** (High Priority)
+   - Currently: 32 bytes
+   - Should prove: 16 (pair data) + 8 (s1) + 8 (s2)
+   - Verify from pair code generator
+
+3. **inl-frame / inr-frame** (Medium Priority)
+   - Currently: 16 bytes each
+   - Should prove: tag + value layout
+   - Verify from injection code generators
+
+4. **apply-frame** (Low Priority)
+   - Currently: 24 bytes
+   - Actually used for thunk frame (same as curry-frame)
+   - May be redundant with curry-frame
+
+### Benefits
+
+1. **Correctness**: Catch errors like curry-frame = 16 (should be 24)
+2. **Documentation**: Code generation and stack analysis stay in sync
+3. **Maintainability**: If code gen changes, proofs break (not silent bugs)
+4. **Trust**: No "magic numbers" - all values proven from first principles
+
+### Approach for Each Frame Size
+
+For each frame size:
+1. Locate code generator (in CodeGen.agda or IR/*.agda)
+2. Identify allocation instructions (e.g., `addi sp sp -N`)
+3. Write lemma proving allocation size
+4. Replace parameter with proven value
+5. Add verification that parameter matches proven value
+
+### Status
+
+- **curry-frame**: ✓ COMPLETED (2026-01-02) - Proven from ThunkSetup.agda instructions
+- **others**: DOCUMENTED, awaiting implementation
+
+---
+
+## Postulate Elimination: sp-bound-for-f-in-thunk (2026-01-02)
+
+### The Problem
+
+**Postulate R2** in `Once/Backend/RiscV64/Postulates.agda` claimed:
+```agda
+postulate
+  sp-bound-for-f-in-thunk : ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
+    StackDepth f ≤ readReg (regs s) sp
+```
+
+This was a **FALSE universal claim** - it claimed ANY IR `f` fits in ANY stack pointer `sp`.
+
+### Root Cause
+
+This postulate existed because:
+1. curry-thunk-correct-impl needed to prove `StackDepth f ≤ sp-after-thunk-setup`
+2. Thunk setup allocates 24 bytes, so `sp-after-thunk-setup = orig-sp - 24`
+3. Without arithmetic, couldn't derive `StackDepth f ≤ orig-sp - 24` from preconditions
+4. **Mistake**: curry-frame was hardcoded as 16 (should be 24!)
+
+### The Solution
+
+**Three-part fix:**
+
+1. **Prove curry-frame = 24** (Once/Backend/RiscV64/Correct/CurryFrameProof.agda)
+   - Extract allocation size from `addi sp sp -24` instruction in ThunkSetup.agda
+   - Define `curry-frame-value : ℕ` with proven value 24
+   - Use in CodeGen.agda instead of hardcoded parameter
+
+2. **Add stack precondition to curry-thunk-correct-impl**
+   - Require: `StackDepth (curry f) ≤ readReg (regs s) sp`
+   - Expand: `curry-frame-value + StackDepth f ≤ orig-sp` (StackAnalysis definition)
+   - Derive: `StackDepth f ≤ orig-sp - 24` using arithmetic helper `+-≤-to-∸`
+   - Conclude: `StackDepth f ≤ sp-after-setup` (since `sp-after-setup = orig-sp - 24`)
+
+3. **Thread precondition through proof chain**
+   - Update ClosureWellFormed with stack-requirement parameter
+   - Update CurryResult to specify `StackDepth (curry f)` as requirement
+   - Update run-curry-star and run-curry-star-with-wf signatures
+   - Pass stack bound through curry-thunk-correct-impl call
+
+### Arithmetic Proof (MutualIR.agda lines 1621-1650)
+
+```agda
+-- Given: StackDepth (curry f) ≤ orig-sp
+-- Expand: curry-frame-value + StackDepth f ≤ orig-sp
+-- Given: curry-frame-value = 24
+-- Therefore: 24 + StackDepth f ≤ orig-sp
+-- Derive: StackDepth f ≤ orig-sp - 24 (using +-≤-to-∸)
+-- Given: sp-after-setup = orig-sp - 24
+-- Therefore: StackDepth f ≤ sp-after-setup ✓
+```
+
+### Files Modified
+
+1. `Once/Backend/RiscV64/Correct/CurryFrameProof.agda` (NEW)
+   - Defines curry-frame-value = 24
+   - Documents derivation from ThunkSetup instructions
+
+2. `Once/Backend/RiscV64/CodeGen.agda`
+   - Import curry-frame-value from CurryFrameProof
+   - Replace `16 -- curry-frame` with `curry-frame-value -- curry-frame (PROVEN!)`
+
+3. `Once/Backend/RiscV64/Correct/MutualIR.agda`
+   - Add curry-frame-value import
+   - Add `+-≤-to-∸` arithmetic helper lemma
+   - Add stack precondition to curry-thunk-correct-impl signature
+   - Replace postulate usage with arithmetic proof (lines 1621-1650)
+   - Update run-curry-star-with-wf to use `StackDepth (curry f)` instead of `16`
+
+4. `Once/Backend/RiscV64/Correct/ClosureWellFormed.agda`
+   - Add stack-requirement parameter to ClosureWellFormed record
+   - Add stack precondition to thunk-correct field
+   - Update CurryResult.closure-wf to pass `StackDepth (curry f)`
+
+5. `Once/Backend/RiscV64/Correct/IR/Curry.agda`
+   - Update run-curry-star to use `StackDepth (curry f)` instead of hardcoded `16`
+
+6. `Once/Backend/RiscV64/Postulates.agda`
+   - Remove sp-bound-for-f-in-thunk postulate
+   - Document elimination with references to solution
+
+### Impact
+
+- **Postulates**: RiscV64 reduced from 4 to 3
+- **Correctness**: Replaced false universal claim with explicit threading
+- **Maintainability**: curry-frame now proven from code generation
+- **Pattern**: Follows same approach as stack space postulate elimination
+
+---
+
 ## Lessons Learned
 
 ### What Worked Well

@@ -52,24 +52,30 @@ open import Once.Backend.RiscV64.Correct.Foundation
         ; readReg-writeReg-t1-a0
         ; readReg-writeReg-t1-s1
         ; readReg-writeReg-t1-ra
+        ; readReg-writeReg-t1-sp
         ; readReg-writeReg-t2-t1
         ; readReg-writeReg-t2-s1
         ; readReg-writeReg-t2-ra
+        ; readReg-writeReg-t2-sp
         ; readReg-writeReg-s0-t1
         ; readReg-writeReg-s0-t2
         ; readReg-writeReg-s0-s1
         ; readReg-writeReg-s0-ra
+        ; readReg-writeReg-s0-sp
         ; readReg-writeReg-t0-t2
         ; readReg-writeReg-t0-s0
         ; readReg-writeReg-t0-s1
         ; readReg-writeReg-t0-ra
+        ; readReg-writeReg-t0-sp
         ; readReg-writeReg-a0-s0
         ; readReg-writeReg-a0-t0
         ; readReg-writeReg-a0-s1
         ; readReg-writeReg-a0-ra
+        ; readReg-writeReg-a0-sp
         ; readReg-writeReg-ra-a0
         ; readReg-writeReg-ra-s0
         ; readReg-writeReg-ra-s1
+        ; readReg-writeReg-ra-sp
         )
 open import Once.Backend.RiscV64.Correct.CompileLength hiding (length-++)
 open import Once.Backend.RiscV64.Correct.Star
@@ -84,7 +90,7 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
          thunk-star; thunk-halted; thunk-a0; thunk-s1)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ)
 open import Data.Integer using (ℤ; +_)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -130,10 +136,11 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') s0 ≡ env-addr
           × readReg (regs s') t0 ≡ code-ptr
           × readReg (regs s') s1 ≡ readReg (regs s) s1
-          × readReg (regs s') ra ≡ readReg (regs s) ra)
+          × readReg (regs s') ra ≡ readReg (regs s) ra
+          × readReg (regs s') sp ≡ readReg (regs s) sp)
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
                  h-false pc-eq mem-cl mem-arg mem-env mem-cp =
-  st5 , star-all , h5 , pc5 , a0-5 , s0-5 , t0-5 , s1-5 , ra-5
+  st5 , star-all , h5 , pc5 , a0-5 , s0-5 , t0-5 , s1-5 , ra-5 , sp-5
   where
     prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
     offset = length prefix
@@ -341,6 +348,13 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
                                (trans (readReg-writeReg-t2-ra (regs s1-st) (encode arg))
                                       (readReg-writeReg-t1-ra (regs s) closure-addr))))
 
+    sp-5 : readReg (regs st5) sp ≡ readReg (regs s) sp
+    sp-5 = trans (readReg-writeReg-a0-sp (regs st4) (readReg (regs st4) t2))
+                 (trans (readReg-writeReg-t0-sp (regs st3) code-ptr)
+                        (trans (readReg-writeReg-s0-sp (regs st2) env-addr)
+                               (trans (readReg-writeReg-t2-sp (regs s1-st) (encode arg))
+                                      (readReg-writeReg-t1-sp (regs s) closure-addr))))
+
 ------------------------------------------------------------------------
 -- apply-jalr-star: Trace jalr instruction (call thunk)
 ------------------------------------------------------------------------
@@ -365,9 +379,10 @@ apply-jalr-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') ra ≡ ret-addr
           × readReg (regs s') a0 ≡ readReg (regs s) a0
           × readReg (regs s') s0 ≡ readReg (regs s) s0
-          × readReg (regs s') s1 ≡ readReg (regs s) s1)
+          × readReg (regs s') s1 ≡ readReg (regs s) s1
+          × readReg (regs s') sp ≡ readReg (regs s) sp)
 apply-jalr-star {A} {B} prefix suffix code-ptr s h-false pc-eq t0-eq =
-  st1 , star-all , h1 , pc1 , ra1 , a0-1 , s0-1 , s1-1
+  st1 , star-all , h1 , pc1 , ra1 , a0-1 , s0-1 , s1-1 , sp-1
   where
     prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
     offset = length prefix
@@ -438,6 +453,9 @@ apply-jalr-star {A} {B} prefix suffix code-ptr s h-false pc-eq t0-eq =
 
     s1-1 : readReg (regs st1) s1 ≡ readReg (regs s) s1
     s1-1 = readReg-writeReg-ra-s1 (regs s) (pc s +ℕ 1)
+
+    sp-1 : readReg (regs st1) sp ≡ readReg (regs s) sp
+    sp-1 = readReg-writeReg-ra-sp (regs s) (pc s +ℕ 1)
 
 ------------------------------------------------------------------------
 -- apply-nop-star: Trace final nop instruction
@@ -520,13 +538,15 @@ apply-nop-star {A} {B} prefix suffix s h-false pc-eq =
 run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (code-ptr env-addr : ℕ)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+                    (stack-requirement : ℕ)
                     (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
       offset = length prefix
   in
-  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
+  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics stack-requirement →
   halted s ≡ false →
   pc s ≡ offset →
+  stack-requirement ≤ readReg (regs s) sp →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) a0) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) a0 +ℕ 8) ≡ just (encode arg) ×
@@ -537,8 +557,8 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
           × pc s' ≡ offset +ℕ compile-length (apply {_} {A} {B})
           × readReg (regs s') a0 ≡ encode (semantics arg)
           × readReg (regs s') s1 ≡ readReg (regs s) s1)
-run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
-                  wf h-eq pc-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
+run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics stack-requirement arg s
+                  wf h-eq pc-eq sp-bound (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
   s-final , star-all , h-final , pc-final , a0-final , s1-final
   where
     prog = prefix ++ compile-riscv (apply {_} {A} {B}) ++ suffix
@@ -556,7 +576,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     s0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
     t0-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
     s1-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-    ra-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+    ra-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+    sp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
 
     -- Step 2: Trace jalr instruction
     jalr-result = apply-jalr-star {A} {B} prefix suffix code-ptr s-setup
@@ -568,7 +589,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ra-jalr = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ jalr-result))))
     a0-jalr = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jalr-result)))))
     s0-jalr = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jalr-result))))))
-    s1-jalr = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jalr-result))))))
+    s1-jalr = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jalr-result)))))))
+    sp-jalr = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ jalr-result)))))))
 
     -- Prepare thunk preconditions
     a0-for-thunk : readReg (regs s-jalr) a0 ≡ encode arg
@@ -577,9 +599,16 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     s0-for-thunk : readReg (regs s-jalr) s0 ≡ env-addr
     s0-for-thunk = trans s0-jalr s0-setup
 
+    -- sp is preserved through setup and jalr, so stack bound still holds
+    sp-for-thunk : readReg (regs s-jalr) sp ≡ readReg (regs s) sp
+    sp-for-thunk = trans sp-jalr sp-setup
+
+    sp-bound-for-thunk : stack-requirement ≤ readReg (regs s-jalr) sp
+    sp-bound-for-thunk = subst (λ x → stack-requirement ≤ x) (sym sp-for-thunk) sp-bound
+
     -- Step 3: Use thunk-correct from ClosureWellFormed
     thunk-result = thunk-correct wf arg s-jalr ret-addr
-                     h-jalr pc-jalr a0-for-thunk s0-for-thunk ra-jalr
+                     h-jalr pc-jalr a0-for-thunk s0-for-thunk ra-jalr sp-bound-for-thunk
     s-thunk = proj₁ thunk-result
     thunk-res = proj₁ (proj₂ thunk-result)
     pc-thunk = proj₂ (proj₂ thunk-result)

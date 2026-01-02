@@ -78,7 +78,7 @@ run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
-  16 ≤ readReg (regs s) sp →  -- Curry allocates 16 bytes for closure
+  StackDepth (curry f) ≤ readReg (regs s) sp →  -- Stack precondition (uses StackDepth, not hardcoded 16!)
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
   in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
 run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
@@ -91,7 +91,7 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-s2     = s2-final
     ; ir-ra     = ra-final
     ; ir-sp-delta = 16
-    ; ir-sp-delta-leq = ≤-refl
+    ; ir-sp-delta-leq = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))) -- 16 ≤ 24
     ; ir-sp     = sp-final
     ; ir-mem-preserved = mem-preserved-final
     ; ir-output-wf = curry-output-wf {B = B} {C = C} prog  -- Module-level postulate
@@ -660,9 +660,12 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     -- With ir-sp-delta = 16, we need: new-sp + 16 ≡ orig-sp
     -- This is (orig-sp ∸ 16) + 16 ≡ orig-sp, which holds when 16 ≤ orig-sp
 
-    -- Stack space: directly from sp-bound (16 ≤ orig-sp)
+    -- Stack space: derive 16 ≤ orig-sp from sp-bound
+    -- We have: StackDepth (curry f) ≤ orig-sp
+    -- Since: StackDepth (curry f) = curry-frame-value + StackDepth f = 24 + StackDepth f ≥ 24
+    -- And: 24 ≥ 16, therefore: 16 ≤ StackDepth (curry f) ≤ orig-sp
     stack-space : 16 ≤ orig-sp
-    stack-space = sp-bound
+    stack-space = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))) sp-bound
 
     sp-final : readReg (regs s-final) sp +ℕ 16 ≡ readReg (regs s) sp
     sp-final = trans (cong (_+ℕ 16) sp-st8) (m∸n+n≡m stack-space)
