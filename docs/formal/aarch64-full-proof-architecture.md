@@ -356,15 +356,22 @@ star-codegen-correct : ∀ ir (stackSize : ℕ) x →
 
 ### Phase 3: Convert Fuel-Based Proofs to Star
 
-**Timeline**: 1 week
-**Risk**: MEDIUM (requires restructuring proofs)
-**Files**: 4 files with exec usage
+**Timeline**: 1-2 weeks
+**Risk**: MEDIUM (requires restructuring ~4,779 lines of proof code)
+**Status**: IN PROGRESS (migration guide created)
 
-**Priority order**:
-1. `formal/Once/Backend/AArch64/Correct/IR/Compose.agda` (core composition)
-2. `formal/Once/Backend/AArch64/Correct/IR/Apply.agda` (12 exec uses)
-3. `formal/Once/Backend/AArch64/Correct/IR/Case.agda` (branching)
-4. `formal/Once/Backend/AArch64/Correct/Foundation.agda` (cleanup)
+**📖 See detailed guide**: [`docs/arch/aarch64-phase3-migration-guide.md`](../../arch/aarch64-phase3-migration-guide.md)
+
+**Files to Convert** (8 modules total):
+1. `formal/Once/Backend/AArch64/Correct/IR/StatefulCompose.agda` (170 lines) - Start here!
+2. `formal/Once/Backend/AArch64/Correct/IR/Apply.agda` (268 lines)
+3. `formal/Once/Backend/AArch64/Correct/IR/Compose.agda` (306 lines) - Core pattern
+4. `formal/Once/Backend/AArch64/Correct/IR/Curry.agda` (309 lines)
+5. `formal/Once/Backend/AArch64/Correct/IR/Case.agda` (510 lines)
+6. `formal/Once/Backend/AArch64/Correct/IR/StatefulProducers.agda` (630 lines)
+7. `formal/Once/Backend/AArch64/Correct/IR/Pair.agda` (913 lines)
+8. `formal/Once/Backend/AArch64/Correct/IR/StatefulConsumers.agda` (1673 lines)
+9. `formal/Once/Backend/AArch64/Correct/Foundation.agda` (cleanup fuel-based lemmas)
 
 **Pattern for conversion**:
 ```agda
