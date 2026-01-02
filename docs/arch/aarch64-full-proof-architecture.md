@@ -2,8 +2,8 @@
 
 **Status**: Implementation in Progress
 **Created**: 2026-01-02
-**Updated**: 2026-01-02 (Clarified scope: generator correctness, not program verification)
-**Goal**: Prove AArch64 code generators correct for closed Once programs (CompCert-level verification)
+**Updated**: 2026-01-02 (Removed incorrect Closed/Open split)
+**Goal**: Prove AArch64 code generators correct for arbitrary Once programs (CompCert-level verification)
 
 ## Executive Summary
 
@@ -17,8 +17,7 @@ This document describes proving the correctness of AArch64 code generation for p
 
 | What We're Proving | Postulates | Scope |
 |-------------------|------------|-------|
-| **AArch64 Code Generators** | **1 runtime assumption** | Pure Once IR → AArch64 machine code |
-| ~~Open/FFI Programs~~ | ~~Future~~ | ~~Interpretation interface specifications (separate)~~ |
+| **AArch64 Code Generators** | **1 runtime assumption** | All Once IR → AArch64 machine code |
 
 **Key Insight**: The ~4 postulates in `Once.Backend.AArch64.Postulates` are **NOT fundamental requirements**! By threading `ClosureWellFormed` proofs through IR combinators, we can eliminate all proof obligations and prove generator correctness with only 1 runtime assumption (`sp-bound-after-stack-op`).
 
@@ -47,25 +46,22 @@ This document describes proving the correctness of AArch64 code generation for p
    - **Type**: Runtime guarantee
    - **Status**: Standard assumption (like CompCert's memory axioms)
    - **Justification**: Stack pointer remains > 16 after operations
-   - **Required in**: Both Closed and Open tracks
+   - **Keep**: Required for all programs
 
 2. **curry-thunk-correct** (line 97)
    - **Type**: Proof obligation
    - **Status**: **Eliminable** by proving in mutual block
    - **Path**: Call `run-ir-star-at-offset` recursively on embedded f
-   - **Required in**: Open only (Closed proves it)
 
 3. **run-thunk-at-offset** (line 148)
    - **Type**: Proof obligation
    - **Status**: **Eliminable** by moving to mutual block
    - **Path**: Call `run-ir-star-at-offset` recursively
-   - **Required in**: Open only (Closed proves it)
 
 4. **apply-produces-result** (line 215)
-   - **Type**: Semantic boundary
+   - **Type**: Proof obligation
    - **Status**: **Eliminable** via ClosureWellFormed threading
    - **Path**: Use `run-apply-with-wf` when WF proof available
-   - **Required in**: Open only (Closed uses WF threading)
 
 **In Proof Modules** (2 "postulates"):
 
@@ -153,77 +149,45 @@ run-apply-with-wf : ... → ClosureWellFormed ... → ApplyWithWFResult ...
 
 ## Directory Structure
 
-### Proposed Layout
+### Current Layout
 
 ```
 formal/Once/Backend/AArch64/
-├── CodeGen.agda                    # Unchanged
-├── Semantics.agda                  # Unchanged
-├── Syntax.agda                     # Unchanged
+├── CodeGen.agda                    # Code generation for IR → AArch64
+├── Semantics.agda                  # AArch64 machine semantics
+├── Syntax.agda                     # AArch64 instruction syntax
+├── Postulates.agda                 # Runtime guarantees (sp-bound) + proof obligations (to eliminate)
 │
-├── Postulates/
-│   ├── Open.agda                   # FFI boundary axioms (2 postulates)
-│   │                               # - sp-bound-after-stack-op
-│   │                               # - apply-produces-result
-│   └── Encoding.agda               # Re-export from Once.Postulates
-│
-├── Correct/
-│   ├── Common/                     # Shared infrastructure (ZERO postulates!)
-│   │   ├── Star.agda               # Star relation (from Common.Star)
-│   │   ├── StarBase.agda           # IRStarResult record type
-│   │   ├── StackInvariant.agda     # Stack/x29 invariants + preservation lemmas
-│   │   ├── FrameProofs.agda        # PROVEN frame sizes (lines 124-145)
-│   │   ├── ClosureWellFormed.agda  # WF infrastructure + run-apply-with-wf
-│   │   ├── ThunkProof.agda         # Thunk execution helpers
-│   │   ├── MemoryValid.agda        # Memory validity predicates
-│   │   ├── Foundation.agda         # Low-level instruction lemmas
-│   │   ├── FetchStep.agda          # Fetch-decode-execute step lemmas
-│   │   ├── CompileLength.agda      # compile-length arithmetic
-│   │   └── CorrectBridge.agda      # Bridge between Semantics and Correct
-│   │
-│   ├── Closed/                     # Zero-postulate proofs
-│   │   ├── IR/
-│   │   │   ├── Curry.agda          # Re-export CurryResult from Common
-│   │   │   ├── Apply.agda          # Re-export ApplyWithWFResult from Common
-│   │   │   ├── Pair.agda           # PairResult with WF threading
-│   │   │   ├── Compose.agda        # ComposeResult with WF threading
-│   │   │   ├── Case.agda           # CaseResult with WF threading
-│   │   │   ├── StatefulProducers.agda
-│   │   │   ├── StatefulConsumers.agda
-│   │   │   └── StatefulCompose.agda
-│   │   │
-│   │   ├── MutualIR.agda           # ZERO postulates! (except sp-bound runtime)
-│   │   │                           # - Proves thunks in mutual block
-│   │   │                           # - Threads ClosureWellFormed
-│   │   │                           # - run-curry produces CurryResult
-│   │   │                           # - run-apply uses run-apply-with-wf
-│   │   │
-│   │   └── Examples.agda           # Example closed programs (apply ∘ ⟨curry fst, id⟩)
-│   │
-│   └── Open/                       # FFI-boundary axioms
-│       ├── IR/
-│       │   ├── Curry.agda          # Simpler: no WF field
-│       │   ├── Apply.agda          # Uses apply-produces-result postulate
-│       │   ├── Pair.agda           # Simpler: no WF threading
-│       │   ├── Compose.agda        # Simpler: no WF threading
-│       │   ├── Case.agda           # Simpler: no WF threading
-│       │   ├── StatefulProducers.agda
-│       │   ├── StatefulConsumers.agda
-│       │   └── StatefulCompose.agda
-│       │
-│       └── MutualIR.agda           # 2 FFI axioms (sp-bound, apply-produces-result)
-│                                   # - run-curry produces IRStarResult
-│                                   # - run-apply uses apply-produces-result
-│
-└── (Current files remain for backward compatibility during migration)
-    ├── Postulates.agda             # Will be superseded by Postulates/Open.agda
-    ├── Correct/
-    │   ├── Star.agda               # Will move to Common/
-    │   ├── StarBase.agda           # Will move to Common/
-    │   ├── ClosureWellFormed.agda  # Will move to Common/
-    │   ├── MutualIR.agda           # Current modular proof (like Open/)
-    │   └── IR/...                  # Current IR helpers
+└── Correct/                        # Correctness proofs
+    ├── Star.agda                   # Star relation (reflexive-transitive closure)
+    ├── StarBase.agda               # IRStarResult record type
+    ├── StackInvariant.agda         # Stack/x29 invariants + preservation lemmas
+    ├── FrameProofs.agda            # PROVEN frame sizes (all 16 bytes in AArch64)
+    ├── ClosureWellFormed.agda      # WF infrastructure + run-apply-with-wf
+    ├── ThunkProof.agda             # Thunk execution helpers
+    ├── MemoryValid.agda            # Memory validity predicates
+    ├── Foundation.agda             # Low-level instruction lemmas
+    ├── FetchStep.agda              # Fetch-decode-execute step lemmas
+    ├── CompileLength.agda          # compile-length arithmetic
+    ├── CorrectBridge.agda          # Bridge between Semantics and Correct
+    ├── MutualIR.agda               # Main mutual block for IR correctness
+    │
+    └── IR/                         # Per-combinator proof modules
+        ├── Curry.agda              # Curry correctness
+        ├── Apply.agda              # Apply correctness
+        ├── Pair.agda               # Pair correctness
+        ├── Compose.agda            # Compose correctness
+        ├── Case.agda               # Case correctness
+        ├── StatefulProducers.agda  # Terminal, inl, inr
+        ├── StatefulConsumers.agda  # Fst, snd, case branches
+        └── StatefulCompose.agda    # Stateful composition
 ```
+
+**Key Points**:
+- **Single verification track** for ALL Once programs (no "Closed vs Open" split)
+- **ClosureWellFormed threading** eliminates proof obligations
+- **MutualIR.agda** contains the main recursive proof structure
+- **Target**: 1 postulate (sp-bound runtime guarantee)
 
 ---
 
@@ -385,7 +349,7 @@ Phase N: <Brief description>
 - Bullet points for key changes
 - Type-check status: ✅ Success
 
-Part of Closed/Open verification split implementation.
+Part of AArch64 generator verification for arbitrary Once programs.
 ```
 
 **Example**:
