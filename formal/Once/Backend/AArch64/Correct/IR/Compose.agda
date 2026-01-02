@@ -9,6 +9,7 @@
 
 module Once.Backend.AArch64.Correct.IR.Compose where
 
+open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -20,10 +21,13 @@ open import Once.Backend.AArch64.CodeGen
 
 open import Once.Backend.AArch64.Correct.Foundation using (encode)
 open import Once.Backend.AArch64.Correct.CompileLength using (compile-length-correct)
+open import Once.Backend.AArch64.Correct.Star using (Star; star-trans)
+open import Once.Backend.AArch64.Correct.StarBase using (IRStarResultS)
+open import Once.Backend.AArch64.Correct.StackInvariant using (StackInvariant; X29Invariant)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl; ≤-trans; ≤-reflexive)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -191,80 +195,209 @@ mkComposeContext {_} {A} {B} {C} f g prefix suffix = record
       ∎
 
 ------------------------------------------------------------------------
--- Compose Phase Results
+-- Compose Result Assembly: combine f, nop, and g results into final result
+--
+-- AArch64 has a nop between f and g, so we compose 3 stars: f → nop → g
 ------------------------------------------------------------------------
 
--- | Result after executing f (first phase)
-record ComposeFResult {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
-                      (prefix suffix : Program)
-                      (ctx : ComposeContext f g prefix suffix)
-                      (s s-after : State) (x : ⟦ A ⟧) : Set where
-  field
-    -- Execution reached s-after
-    f-exec : exec (len-f ctx) (prog ctx) s ≡ just s-after
+-- | Assemble the final compose result from f, nop, and g results
+--
+-- Given:
+--   res-f : IRStarResultS f prog s sf addr-in (length prefix)
+--   star-nop : Star prog sf s-nop  (nop execution)
+--   res-g : IRStarResultS g prog s-nop sg addr-out (length prefix-g)
+-- Produce:
+--   IRStarResultS (g ∘ f) prog s sg addr-out (length prefix)
+--
+-- Key differences from RISC-V:
+--   1. 3-way star composition (f → nop → g) instead of 2-way
+--   2. Uses IRStarResultS (not IRStarResult) with StackInvariant
+--   3. Uses readSP instead of readReg sp
+--   4. Chains memory invariants (ir-mem-x21, ir-mem-x29, ir-mem-x29+8)
+assemble-compose-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+                          (prefix suffix : Program) (addr-in : Word)
+                          (s sf s-nop sg : State) →
+  let ctx = mkComposeContext f g prefix suffix
+      theProg = ComposeContext.prog ctx
+      thePrefixG = ComposeContext.prefix-g ctx
+  in
+  (res-f : IRStarResultS f theProg s sf addr-in (length prefix)) →
+  (star-nop : Star theProg sf s-nop) →
+  (res-g : IRStarResultS g theProg s-nop sg addr-in (length thePrefixG)) →
+  -- Nop register preservation properties
+  (nop-x20 : readReg (regs s-nop) x20 ≡ readReg (regs sf) x20) →
+  (nop-x21 : readReg (regs s-nop) x21 ≡ readReg (regs sf) x21) →
+  (nop-x29 : readReg (regs s-nop) x29 ≡ readReg (regs sf) x29) →
+  (nop-x30 : readReg (regs s-nop) x30 ≡ readReg (regs sf) x30) →
+  (nop-sp : readSP (regs s-nop) ≡ readSP (regs sf)) →
+  -- Nop memory preservation properties
+  (nop-mem-x21 : ∀ addr → readMem (memory s-nop) addr ≡ readMem (memory sf) addr) →
+  (nop-mem-x29 : ∀ addr → readMem (memory s-nop) addr ≡ readMem (memory sf) addr) →
+  IRStarResultS (g ∘ f) theProg s sg addr-in (length prefix)
+assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s sf s-nop sg
+  res-f star-nop res-g nop-x20 nop-x21 nop-x29 nop-x30 nop-sp nop-mem-x21 nop-mem-x29 = record
+  { ir-star = star-all
+  ; ir-halted = hg
+  ; ir-pc = pcg
+  ; ir-x0-s = x0-g
+  ; ir-x20 = x20-final
+  ; ir-x21 = x21-final
+  ; ir-x29 = x29-final
+  ; ir-x30 = x30-final
+  ; ir-sp = sp-final
+  ; ir-mem-x21 = mem-x21-final
+  ; ir-mem-x29 = mem-x29-final
+  ; ir-mem-x29+8 = mem-x29+8-final
+  ; ir-stack-inv = IRStarResultS.ir-stack-inv res-g
+  ; ir-x29-inv = IRStarResultS.ir-x29-inv res-g
+  ; ir-sp-bound = IRStarResultS.ir-sp-bound res-g
+  }
+  where
+    ctx = mkComposeContext f g prefix suffix
+    theProg = ComposeContext.prog ctx
+    theLen-f = ComposeContext.len-f ctx
+    theLen-g = ComposeContext.len-g ctx
+    thePrefix-g = ComposeContext.prefix-g ctx
+    theLen-prefix-g = ComposeContext.len-prefix-g ctx
+    open IRStarResultS
 
-    -- Not halted
-    f-halted : halted s-after ≡ false
+    -- From res-f (f result)
+    star-f : Star theProg s sf
+    star-f = ir-star res-f
+    x20-f : readReg (regs sf) x20 ≡ readReg (regs s) x20
+    x20-f = ir-x20 res-f
+    x21-f : readReg (regs sf) x21 ≡ readReg (regs s) x21
+    x21-f = ir-x21 res-f
+    x29-f : readReg (regs sf) x29 ≡ readReg (regs s) x29
+    x29-f = ir-x29 res-f
+    x30-f : readReg (regs sf) x30 ≡ readReg (regs s) x30
+    x30-f = ir-x30 res-f
 
-    -- PC at correct offset (after f code)
-    f-pc : pc s-after ≡ length prefix +ℕ len-f ctx
+    -- From res-g (g result)
+    star-g : Star theProg s-nop sg
+    star-g = ir-star res-g
+    hg : halted sg ≡ false
+    hg = ir-halted res-g
+    x0-g : readReg (regs sg) x0 ≡ addr-in
+    x0-g = ir-x0-s res-g
+    x20-g : readReg (regs sg) x20 ≡ readReg (regs s-nop) x20
+    x20-g = ir-x20 res-g
+    x21-g : readReg (regs sg) x21 ≡ readReg (regs s-nop) x21
+    x21-g = ir-x21 res-g
+    x29-g : readReg (regs sg) x29 ≡ readReg (regs s-nop) x29
+    x29-g = ir-x29 res-g
+    x30-g : readReg (regs sg) x30 ≡ readReg (regs s-nop) x30
+    x30-g = ir-x30 res-g
 
-    -- x0 contains f's result
-    f-x0 : readReg (regs s-after) x0 ≡ encode (eval f x)
+    -- Compose Star proofs (3-way: f → nop → g)
+    star-f-nop : Star theProg s s-nop
+    star-f-nop = star-trans star-f star-nop
 
-    -- Callee-saved registers preserved
-    f-x20 : readReg (regs s-after) x20 ≡ readReg (regs s) x20
-    f-x21 : readReg (regs s-after) x21 ≡ readReg (regs s) x21
+    star-all : Star theProg s sg
+    star-all = star-trans star-f-nop star-g
 
-open ComposeFResult public
+    -- Final pc
+    pcg : pc sg ≡ length prefix +ℕ compile-length (g ∘ f)
+    pcg = begin
+      pc sg
+        ≡⟨ ir-pc res-g ⟩
+      length thePrefix-g +ℕ theLen-g
+        ≡⟨ cong (_+ℕ theLen-g) theLen-prefix-g ⟩
+      (length prefix +ℕ theLen-f +ℕ 1) +ℕ theLen-g
+        ≡⟨ cong (_+ℕ theLen-g) (+-assoc (length prefix) theLen-f 1) ⟩
+      (length prefix +ℕ (theLen-f +ℕ 1)) +ℕ theLen-g
+        ≡⟨ +-assoc (length prefix) (theLen-f +ℕ 1) theLen-g ⟩
+      length prefix +ℕ ((theLen-f +ℕ 1) +ℕ theLen-g)
+        ≡⟨ refl ⟩  -- compile-length (g ∘ f) = (theLen-f + 1) + theLen-g
+      length prefix +ℕ compile-length (g ∘ f)
+        ∎
 
--- | Result after executing nop (middle phase)
-record ComposeNopResult {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
-                        (prefix suffix : Program)
-                        (ctx : ComposeContext f g prefix suffix)
-                        (s-f s-after : State) (x : ⟦ A ⟧) : Set where
-  field
-    -- Execution reached s-after
-    nop-exec : exec 1 (prog ctx) s-f ≡ just s-after
+    -- x20 preservation: chain through f, nop, and g
+    x20-final : readReg (regs sg) x20 ≡ readReg (regs s) x20
+    x20-final = trans x20-g (trans nop-x20 x20-f)
 
-    -- Not halted
-    nop-halted : halted s-after ≡ false
+    -- x21 preservation: chain through f, nop, and g
+    x21-final : readReg (regs sg) x21 ≡ readReg (regs s) x21
+    x21-final = trans x21-g (trans nop-x21 x21-f)
 
-    -- PC at correct offset (after nop)
-    nop-pc : pc s-after ≡ length prefix +ℕ len-f ctx +ℕ 1
+    -- x29 preservation: chain through f, nop, and g
+    x29-final : readReg (regs sg) x29 ≡ readReg (regs s) x29
+    x29-final = trans x29-g (trans nop-x29 x29-f)
 
-    -- x0 unchanged (still has f's result)
-    nop-x0 : readReg (regs s-after) x0 ≡ readReg (regs s-f) x0
+    -- x30 preservation: chain through f, nop, and g
+    x30-final : readReg (regs sg) x30 ≡ readReg (regs s) x30
+    x30-final = trans x30-g (trans nop-x30 x30-f)
 
-    -- Callee-saved registers preserved
-    nop-x20 : readReg (regs s-after) x20 ≡ readReg (regs s-f) x20
-    nop-x21 : readReg (regs s-after) x21 ≡ readReg (regs s-f) x21
+    -- sp preservation: chain through f, nop, and g
+    sp-final : readSP (regs sg) ≤ readSP (regs s)
+    sp-final =
+      let sp-g-nop : readSP (regs sg) ≤ readSP (regs s-nop)
+          sp-g-nop = ir-sp res-g
+          sp-nop-f : readSP (regs s-nop) ≡ readSP (regs sf)
+          sp-nop-f = nop-sp
+          sp-f-s : readSP (regs sf) ≤ readSP (regs s)
+          sp-f-s = ir-sp res-f
+      in ≤-trans sp-g-nop (≤-trans (≤-reflexive sp-nop-f) sp-f-s)
 
-open ComposeNopResult public
+    -- Memory preservation at x21
+    mem-x21-final : readMem (memory sg) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+    mem-x21-final = begin
+      readMem (memory sg) (readReg (regs s) x21)
+        ≡⟨ cong (readMem (memory sg)) (sym x21-final) ⟩
+      readMem (memory sg) (readReg (regs sg) x21)
+        ≡⟨ cong (readMem (memory sg)) x21-g ⟩
+      readMem (memory sg) (readReg (regs s-nop) x21)
+        ≡⟨ ir-mem-x21 res-g ⟩
+      readMem (memory s-nop) (readReg (regs s-nop) x21)
+        ≡⟨ nop-mem-x21 (readReg (regs s-nop) x21) ⟩
+      readMem (memory sf) (readReg (regs s-nop) x21)
+        ≡⟨ cong (readMem (memory sf)) nop-x21 ⟩
+      readMem (memory sf) (readReg (regs sf) x21)
+        ≡⟨ cong (readMem (memory sf)) x21-f ⟩
+      readMem (memory sf) (readReg (regs s) x21)
+        ≡⟨ ir-mem-x21 res-f ⟩
+      readMem (memory s) (readReg (regs s) x21)
+        ∎
 
--- | Result after executing g (final phase)
-record ComposeGResult {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
-                      (prefix suffix : Program)
-                      (ctx : ComposeContext f g prefix suffix)
-                      (s-nop s-final : State) (x : ⟦ A ⟧) : Set where
-  field
-    -- Execution reached s-final
-    g-exec : exec (len-g ctx) (prog ctx) s-nop ≡ just s-final
+    -- Memory preservation at x29
+    mem-x29-final : readMem (memory sg) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+    mem-x29-final = begin
+      readMem (memory sg) (readReg (regs s) x29)
+        ≡⟨ cong (readMem (memory sg)) (sym x29-final) ⟩
+      readMem (memory sg) (readReg (regs sg) x29)
+        ≡⟨ cong (readMem (memory sg)) x29-g ⟩
+      readMem (memory sg) (readReg (regs s-nop) x29)
+        ≡⟨ ir-mem-x29 res-g ⟩
+      readMem (memory s-nop) (readReg (regs s-nop) x29)
+        ≡⟨ nop-mem-x29 (readReg (regs s-nop) x29) ⟩
+      readMem (memory sf) (readReg (regs s-nop) x29)
+        ≡⟨ cong (readMem (memory sf)) nop-x29 ⟩
+      readMem (memory sf) (readReg (regs sf) x29)
+        ≡⟨ cong (readMem (memory sf)) x29-f ⟩
+      readMem (memory sf) (readReg (regs s) x29)
+        ≡⟨ ir-mem-x29 res-f ⟩
+      readMem (memory s) (readReg (regs s) x29)
+        ∎
 
-    -- Not halted
-    g-halted : halted s-final ≡ false
-
-    -- PC at correct offset (end of compose)
-    g-pc : pc s-final ≡ length prefix +ℕ compile-length (g ∘ f)
-
-    -- x0 contains g's result (which is eval (g ∘ f) x)
-    g-x0 : readReg (regs s-final) x0 ≡ encode (eval (g ∘ f) x)
-
-    -- Callee-saved registers preserved
-    g-x20 : readReg (regs s-final) x20 ≡ readReg (regs s-nop) x20
-    g-x21 : readReg (regs s-final) x21 ≡ readReg (regs s-nop) x21
-
-open ComposeGResult public
+    -- Memory preservation at x29+8
+    mem-x29+8-final : readMem (memory sg) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+    mem-x29+8-final = begin
+      readMem (memory sg) (readReg (regs s) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory sg) (x +ℕ 8)) (sym x29-final) ⟩
+      readMem (memory sg) (readReg (regs sg) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory sg) (x +ℕ 8)) x29-g ⟩
+      readMem (memory sg) (readReg (regs s-nop) x29 +ℕ 8)
+        ≡⟨ ir-mem-x29+8 res-g ⟩
+      readMem (memory s-nop) (readReg (regs s-nop) x29 +ℕ 8)
+        ≡⟨ nop-mem-x29 (readReg (regs s-nop) x29 +ℕ 8) ⟩
+      readMem (memory sf) (readReg (regs s-nop) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 8)) nop-x29 ⟩
+      readMem (memory sf) (readReg (regs sf) x29 +ℕ 8)
+        ≡⟨ cong (λ x → readMem (memory sf) (x +ℕ 8)) x29-f ⟩
+      readMem (memory sf) (readReg (regs s) x29 +ℕ 8)
+        ≡⟨ ir-mem-x29+8 res-f ⟩
+      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        ∎
 
 ------------------------------------------------------------------------
 -- Arithmetic Lemmas

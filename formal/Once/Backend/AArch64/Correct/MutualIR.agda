@@ -85,7 +85,7 @@ open import Once.Backend.AArch64.Correct.IR.StatefulCompose public
 -- Import extracted IR helper modules (non-recursive parts)
 open import Once.Backend.AArch64.Correct.IR.Compose
   using (ComposeContext; mkComposeContext;
-         ComposeFResult; ComposeNopResult; ComposeGResult;
+         assemble-compose-result;
          arith-compose-total; arith-compose-pc)
 open import Once.Backend.AArch64.Correct.IR.Compose
   using (prog-eq-f; prog-eq-nop; prog-eq-g)
