@@ -230,12 +230,12 @@ mutual
   run-ir-star-at-offset initial prefix suffix x s h-false pc-eq a0-eq _ =
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
-  -- Curry: use run-curry-star from IR/Curry.agda
+  -- Curry: use run-curry-star-proven (PROVEN WF - no postulate!)
   -- StackDepth (curry f) = curry-frame-value + StackDepth f (24 + StackDepth f)
-  -- TODO: Replace curry-output-wf postulate with proven WF from run-curry-star-with-wf
-  --       This requires refactoring to avoid type-checking timeout.
+  -- Uses run-curry-star-proven which extracts the ClosureWellFormed proof
+  -- from run-curry-star-with-wf, eliminating the curry-output-wf postulate.
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
-    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
+    run-curry-star-proven f prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Apply: postulated (requires whole-program analysis)
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq a0-eq _ =
@@ -1789,6 +1789,7 @@ mutual
     using (CurryResult; curry-star; curry-halted; curry-pc; curry-a0; curry-s1; closure-wf)
   open import Data.Nat using (_<_)
 
+  -- Return type: (CurryResult, IRStarResult) to avoid duplicating proofs
   run-curry-star-with-wf : ∀ {i A B C} (f : IR i (A * B) C)
                            (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -1797,25 +1798,26 @@ mutual
     StackDepth (curry f) ≤ readReg (regs s) sp →  -- Updated: use StackDepth instead of hardcoded 16
     let prog = prefix ++ compile-riscv (curry f) ++ suffix
         offset = length prefix
-    in ∃[ s' ] CurryResult f prog s s' x offset
+    in ∃[ s' ] (CurryResult f prog s s' x offset × IRStarResult (curry f) prog s s' x offset)
 
   run-curry-star-with-wf {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
     let (s' , result) = run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
         offset = length prefix
         prog = prefix ++ compile-riscv (curry f) ++ suffix
-    in s' , record
-      { curry-star   = ir-star result
-      ; curry-halted = ir-halted result
-      ; curry-pc     = ir-pc result
-      ; curry-a0     = ir-a0 result
-      ; curry-s1     = ir-s1 result
-      ; closure-wf   = record
-          { code-ptr-valid = code-ptr-valid-proof
-          ; thunk-correct  = λ arg s'' ret-addr h-eq' pc-eq' a0-eq' s0-eq' ra-eq' stack-bound →
-              curry-thunk-correct-impl f prefix suffix x arg s'' ret-addr
-                h-eq' pc-eq' a0-eq' s0-eq' ra-eq' stack-bound
+        curry-res = record
+          { curry-star   = ir-star result
+          ; curry-halted = ir-halted result
+          ; curry-pc     = ir-pc result
+          ; curry-a0     = ir-a0 result
+          ; curry-s1     = ir-s1 result
+          ; closure-wf   = record
+              { code-ptr-valid = code-ptr-valid-proof
+              ; thunk-correct  = λ arg s'' ret-addr h-eq' pc-eq' a0-eq' s0-eq' ra-eq' stack-bound →
+                  curry-thunk-correct-impl f prefix suffix x arg s'' ret-addr
+                    h-eq' pc-eq' a0-eq' s0-eq' ra-eq' stack-bound
+              }
           }
-      }
+    in s' , (curry-res , result)
     where
       offset = length prefix
       prog = prefix ++ compile-riscv (curry f) ++ suffix
@@ -1871,6 +1873,53 @@ mutual
           -- offset + length (curry-code ++ suffix) = length prog
           proof : offset +ℕ 7 < length prog
           proof = subst (offset +ℕ 7 <_) (sym len-prog-eq) step1
+
+  ------------------------------------------------------------------------
+  -- run-curry-star-proven: Curry with proven WF (eliminates postulate)
+  ------------------------------------------------------------------------
+
+  -- | Execute curry and return IRStarResult with PROVEN closure WF.
+  -- This function bridges the gap between run-curry-star-with-wf (which has
+  -- the proof) and run-ir-star-at-offset (which needs IRStarResult).
+  --
+  -- Key: Extracts closure-wf from CurryResult and packages it as ClosuresWF.
+  run-curry-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
+                          (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) a0 ≡ encode x →
+    StackDepth (curry f) ≤ readReg (regs s) sp →
+    let prog = prefix ++ compile-riscv (curry f) ++ suffix
+    in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+
+  run-curry-star-proven {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
+    let (s' , (curry-res , ir-result)) = run-curry-star-with-wf f prefix suffix x s h-false pc-eq a0-eq sp-bound
+        prog = prefix ++ compile-riscv (curry f) ++ suffix
+        offset = length prefix
+
+        -- Extract the ClosureWellFormed proof from CurryResult (no duplication!)
+        wf-proof : ClosureWellFormed {B} {C} prog (offset +ℕ 7) (encode x)
+                                     (λ b → eval f (x , b)) (StackDepth (curry f))
+        wf-proof = CurryResult.closure-wf curry-res
+
+        -- Package it as ClosuresWF (B ⇒ C) prog = ApplyInputWF B C prog
+        output-wf : ClosuresWF (B ⇒ C) prog
+        output-wf = (offset +ℕ 7) , encode x , (λ b → eval f (x , b)) , StackDepth (curry f) , wf-proof
+
+    in s' , record
+      { ir-star          = IRStarResult.ir-star ir-result
+      ; ir-halted        = IRStarResult.ir-halted ir-result
+      ; ir-pc            = IRStarResult.ir-pc ir-result
+      ; ir-a0            = IRStarResult.ir-a0 ir-result
+      ; ir-s1            = IRStarResult.ir-s1 ir-result
+      ; ir-s2            = IRStarResult.ir-s2 ir-result
+      ; ir-ra            = IRStarResult.ir-ra ir-result
+      ; ir-sp-delta      = IRStarResult.ir-sp-delta ir-result
+      ; ir-sp-delta-leq  = IRStarResult.ir-sp-delta-leq ir-result
+      ; ir-sp            = IRStarResult.ir-sp ir-result
+      ; ir-mem-preserved = IRStarResult.ir-mem-preserved ir-result
+      ; ir-output-wf     = output-wf  -- PROVEN! No postulate needed!
+      }
 
 ------------------------------------------------------------------------
 -- Top-level entry point

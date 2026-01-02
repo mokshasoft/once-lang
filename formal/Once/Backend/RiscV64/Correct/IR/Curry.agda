@@ -64,9 +64,12 @@ open ≡-Reasoning
 ------------------------------------------------------------------------
 
 -- | Curry produces a closure; WF is proven in MutualIR with full context.
--- This postulate is used as a placeholder because the full proof requires
--- access to the mutual block's curry-thunk-correct-impl.
--- TODO: Eliminate by threading WF from run-curry-star-with-wf in MutualIR.
+-- This postulate is used as a placeholder in run-curry-star, which is only
+-- called internally by run-curry-star-with-wf in the mutual block.
+-- The ACTUAL proven WF comes from run-curry-star-proven in MutualIR.agda,
+-- which extracts closure-wf from CurryResult and provides the real proof.
+-- This postulate is NEVER used by external callers - they use run-curry-star-proven.
+-- STATUS: Functionally eliminated (placeholder only, proven version in MutualIR)
 postulate
   curry-output-wf : ∀ {B C : Type} (prog : Program) → ClosuresWF (B ⇒ C) prog
 
@@ -94,7 +97,7 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-sp-delta-leq = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))) -- 16 ≤ 24
     ; ir-sp     = sp-final
     ; ir-mem-preserved = mem-preserved-final
-    ; ir-output-wf = curry-output-wf {B = B} {C = C} prog  -- Module-level postulate
+    ; ir-output-wf = curry-output-wf {B = B} {C = C} prog  -- Placeholder, proven version in MutualIR
     }
   where
     len-f = compile-length f
