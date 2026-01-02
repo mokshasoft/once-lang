@@ -66,6 +66,18 @@ open import Once.Backend.X86.Correct.StarBase public
          run-arr-star-s; run-fst-star-s; run-snd-star-s;
          run-inl-star-s; run-inr-star-s)
 
+-- Import extracted IR base case modules
+open import Once.Backend.X86.Correct.IR.Id
+  using () renaming (run-id-star-s to run-id-s-ir)
+open import Once.Backend.X86.Correct.IR.Terminal
+  using () renaming (run-terminal-star-s to run-terminal-s-ir)
+open import Once.Backend.X86.Correct.IR.Fold
+  using () renaming (run-fold-star-s to run-fold-s-ir)
+open import Once.Backend.X86.Correct.IR.Unfold
+  using () renaming (run-unfold-star-s to run-unfold-s-ir)
+open import Once.Backend.X86.Correct.IR.Arr
+  using () renaming (run-arr-star-s to run-arr-s-ir)
+
 -- Import extracted compose helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Compose
   using (ComposeContext; make-compose-context; TransferResult;
@@ -227,25 +239,25 @@ mutual
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ addr-out ] ∃[ s' ] IRStarResultS ir prog s s' addr-out (length prefix)
 
-  -- Base cases: delegate to stateful runners
+  -- Base cases: delegate to extracted IR modules
   run-ir-star-at-offset-s (id {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-id-star-s {A} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    let (s' , res) = run-id-s-ir {A} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
     in addr-in , s' , res
 
   run-ir-star-at-offset-s (terminal {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-terminal-star-s {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
+    let (s' , res) = run-terminal-s-ir {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
     in 0 , s' , res  -- terminal returns 0 (unit encoding)
 
   run-ir-star-at-offset-s (fold {F}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-fold-star-s {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    let (s' , res) = run-fold-s-ir {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
     in addr-in , s' , res  -- fold is identity at runtime
 
   run-ir-star-at-offset-s (unfold {F}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-unfold-star-s {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    let (s' , res) = run-unfold-s-ir {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
     in addr-in , s' , res  -- unfold is identity at runtime
 
   run-ir-star-at-offset-s (arr {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-arr-star-s {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+    let (s' , res) = run-arr-s-ir {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
     in addr-in , s' , res  -- arr is identity at runtime (Eff = Closure)
 
   -- TODO: fst/snd/inl/inr need memory reads to extract component addresses
