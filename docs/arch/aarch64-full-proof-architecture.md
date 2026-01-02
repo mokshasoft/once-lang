@@ -1,19 +1,26 @@
-# AArch64 Full Proof Architecture: Closed vs Open Verification
+# AArch64 Code Generator Correctness Proof
 
 **Status**: Implementation in Progress
 **Created**: 2026-01-02
-**Goal**: Achieve ZERO postulates for closed Once programs (CompCert-level verification)
+**Updated**: 2026-01-02 (Clarified scope: generator correctness, not program verification)
+**Goal**: Prove AArch64 code generators correct for closed Once programs (CompCert-level verification)
 
 ## Executive Summary
 
-This document describes the architectural split of AArch64 correctness proofs into two verification tracks:
+This document describes proving the correctness of AArch64 code generation for pure Once IR terms.
 
-| Track | Scope | Postulates | Use Case |
-|-------|-------|------------|----------|
-| **Closed** | Whole-program analysis | **ZERO** | Pure Once programs (like CompCert C→assembly) |
-| **Open** | Modular analysis | **2 FFI axioms** | External closures, dynamic loading, separate compilation |
+**Fundamental Distinction**:
+- **Code Generator Correctness**: Proving `∀ IR term f, compile(f) behaves like eval(f)` - This is what we're doing
+- **Program Verification**: Verifying specific programs with FFI/Interpretations - Future work, separate concern
 
-**Key Insight**: The ~4 postulates in `Once.Backend.AArch64.Postulates` are **NOT fundamental requirements**! By threading `ClosureWellFormed` proofs through IR combinators, closed programs can achieve zero postulates.
+**Goal**: Prove the code generators correct with **ZERO postulates** (except runtime bounds like stack space).
+
+| What We're Proving | Postulates | Scope |
+|-------------------|------------|-------|
+| **AArch64 Code Generators** | **1 runtime assumption** | Pure Once IR → AArch64 machine code |
+| ~~Open/FFI Programs~~ | ~~Future~~ | ~~Interpretation interface specifications (separate)~~ |
+
+**Key Insight**: The ~4 postulates in `Once.Backend.AArch64.Postulates` are **NOT fundamental requirements**! By threading `ClosureWellFormed` proofs through IR combinators, we can eliminate all proof obligations and prove generator correctness with only 1 runtime assumption (`sp-bound-after-stack-op`).
 
 ---
 
@@ -72,33 +79,55 @@ This document describes the architectural split of AArch64 correctness proofs in
 
 **Total Actual Postulates**: 4 (in Postulates.agda) + 1 (preserve-stack-inv) = **5**
 
-**Path to Zero for Closed Programs**:
-- Prove `preserve-stack-inv` (trivial, 5 lines)
+**Path to Zero Postulates** (Generator Correctness):
+- ✅ Prove `preserve-stack-inv` (trivial, 5 lines) - **DONE Phase 1**
 - Move thunk proofs to mutual block (eliminates curry-thunk-correct, run-thunk-at-offset)
 - Thread ClosureWellFormed through curry → pair/compose → apply (eliminates apply-produces-result)
-- Keep `sp-bound-after-stack-op` as runtime assumption (like CompCert)
+- Keep `sp-bound-after-stack-op` as runtime assumption (like CompCert's memory axioms)
 
-**Result**: **1 runtime axiom** (sp-bound) for Closed track = CompCert-level verification
+**Result**: **1 runtime axiom** (sp-bound) = CompCert-level verification for code generators
 
 ---
 
-## Verification Strategies
+## What We're Proving: Generator Correctness
 
-### Closed Track: Whole-Program Analysis
+**Goal**: For all pure Once IR terms, prove the generated AArch64 code is semantically correct.
 
-**Scope**: Pure Once programs where all closures are created within the program
+```agda
+∀ (IR term f : IR i A B) (input : ⟦ A ⟧),
+  executing compile-aarch64(f) on encode(input)
+  produces encode(eval f input)
+```
+
+**Scope**: Pure Once IR combinators
+- id, compose (∘), fst, snd, pair ⟨_,_⟩
+- inl, inr, case [_,_]
+- terminal, initial
+- curry, apply
+- fold, unfold, arr
 
 **Example Programs**:
 ```agda
--- All closures created by curry within the program
+-- All these are pure IR terms with proven code generation
 apply ∘ ⟨curry fst, id⟩           -- Type: (A * B) * C → A
 apply ∘ ⟨curry (snd ∘ fst), id⟩   -- Type: ((A * B) * C) * D → B
+[ inl, inr ∘ snd ] ∘ fst          -- Type: (A + B) * C → (A + B)
 ```
+
+**Not in Scope** (separate verification concern):
+- Programs with FFI/Interpretations (need interface specifications)
+- Specific program verification (composition of generator correctness + program properties)
+
+---
+
+## Proof Strategy: ClosureWellFormed Threading
+
+**The Core Idea**: Thread well-formedness proofs through IR combinators
 
 **Verification Strategy**:
 1. **curry** produces `CurryResult` with `closure-wf : ClosureWellFormed` field
 2. **compose/pair** thread the `closure-wf` proof through combinators
-3. **apply** consumes `closure-wf` via `run-apply-with-wf` (zero postulates!)
+3. **apply** consumes `closure-wf` via `run-apply-with-wf` (zero proof obligations!)
 
 **Proof Structure**:
 ```agda
@@ -110,51 +139,15 @@ run-curry-star-direct : ... → CurryResult f prog s s' x offset
 run-pair-star-direct : ... → PairResult f g prog s s' x offset
   where PairResult contains: pair-wf-fst : Maybe (ClosureWellFormed ...)
 
--- apply consumes WF proof
+-- apply consumes WF proof (NO POSTULATES!)
 run-apply-with-wf : ... → ClosureWellFormed ... → ApplyWithWFResult ...
-  -- NO postulates needed!
 ```
 
-**Postulate Count**: **1** (sp-bound-after-stack-op runtime assumption)
+**Result**: All 3 proof obligations (curry-thunk-correct, run-thunk-at-offset, apply-produces-result) **eliminated**.
 
-**Comparison**: Equivalent to CompCert's C→assembly phase (fully verified, axiomatized runtime)
+**Final Postulate Count**: **1** (sp-bound-after-stack-op runtime assumption)
 
----
-
-### Open Track: Modular Analysis
-
-**Scope**: Programs with external closures (FFI, dynamic loading, separate compilation)
-
-**Example Programs**:
-```agda
--- Closure from FFI (created outside Once)
-ffi-callback : Foreign (A ⇒ B)
-
--- Apply to FFI closure
-apply-to-external : IR ∞ (Foreign (A ⇒ B) * A) B
-apply-to-external = apply
-```
-
-**Verification Strategy**:
-- Axiomatize at FFI boundary: "External closures satisfy calling convention"
-- Simpler proofs: no WF threading needed
-- Use `apply-produces-result` postulate for all `apply` calls
-
-**Proof Structure**:
-```agda
--- curry produces IRStarResult (no WF field)
-run-curry-star-direct : ... → IRStarResult (curry f) prog s s' x offset
-
--- apply uses postulate
-run-apply-star-direct : ... → IRStarResult apply prog s s' x offset
-  where proof uses: apply-produces-result postulate
-```
-
-**Postulate Count**: **2**
-1. `sp-bound-after-stack-op` (runtime)
-2. `apply-produces-result` (FFI boundary)
-
-**Comparison**: Similar to CompCert's assembly semantics (axiomatized at boundary)
+**Comparison**: Equivalent to CompCert's C→assembly phase (fully verified modulo runtime axioms)
 
 ---
 
@@ -431,77 +424,64 @@ preserve-stack-inv x21-eq sp-eq (stack-below-x21 sp≤x21) =
 
 ---
 
-### Phase 2: Create Directory Structure (15 min)
+### Phase 2: Eliminate Postulates in MutualIR.agda (1-2 weeks)
 
-**Actions**:
-1. Create `formal/Once/Backend/AArch64/Postulates/` directory
-2. Create `formal/Once/Backend/AArch64/Correct/Common/` directory
-3. Create `formal/Once/Backend/AArch64/Correct/Closed/` directory
-4. Create `formal/Once/Backend/AArch64/Correct/Open/` directory
+**Goal**: Prove all 3 proof obligations, leaving only 1 runtime assumption
 
-**Files to Move to Common/**:
-- Star.agda
-- StarBase.agda
-- StackInvariant.agda
-- FrameProofs.agda
-- ClosureWellFormed.agda
-- ThunkProof.agda
-- Foundation.agda
-- MemoryValid.agda
-- FetchStep.agda
-- CompileLength.agda
-- CorrectBridge.agda
+**Current Postulates to Eliminate**:
+1. curry-thunk-correct (line 97 of Postulates.agda)
+2. run-thunk-at-offset (line 148 of Postulates.agda)
+3. apply-produces-result (line 215 of Postulates.agda)
 
-**Files to Create**:
-- `Postulates/Open.agda` - Re-export 2 FFI axioms
-- `Closed/IR/*.agda` - Copy from current IR/, modify for WF threading
-- `Closed/MutualIR.agda` - Zero-postulate mutual block
-- `Open/IR/*.agda` - Copy from current IR/, simpler
-- `Open/MutualIR.agda` - FFI-axiom mutual block
+**Keep**: sp-bound-after-stack-op (runtime guarantee)
 
 ---
 
-### Phase 3: Implement Closed/MutualIR.agda (4-6 hours)
+**Step 2.1: Make run-curry produce CurryResult (2-3 days)**
 
-**Goal**: Zero-postulate (except sp-bound runtime) mutual block
+**File**: `formal/Once/Backend/AArch64/Correct/MutualIR.agda`
 
-**Key Changes**:
+Currently `run-curry-star-direct` returns `IRStarResult`. Change to `CurryResult` with `closure-wf` field:
 
-**3.1: Remove postulate imports**
 ```agda
--- REMOVE:
--- open import Once.Backend.AArch64.Postulates
+record CurryResult {i A B C} (f : IR i (A * B) C) prog s s' x offset : Set where
+  field
+    -- All IRStarResult fields
+    ir-star : Star prog s s'
+    ir-halted : halted s' ≡ false
+    ir-pc : pc s' ≡ offset +ℕ compile-length (curry f)
+    ir-x0 : readReg (regs s') x0 ≡ encode (eval (curry f) x)
+    -- ... all register/memory preservation fields ...
 
--- KEEP:
-open import Once.Backend.AArch64.Correct.Common.Star
-open import Once.Backend.AArch64.Correct.Common.ClosureWellFormed
-open import Once.Backend.AArch64.Correct.Common.StackInvariant
--- Import sp-bound-after-stack-op from Postulates/Open
--- (This is the ONLY postulate allowed)
+    -- NEW: Well-formedness proof for created closure
+    closure-wf : ClosureWellFormed prog (readReg (regs s') x0) x ...
 ```
 
-**3.2: Make run-curry-star-direct produce CurryResult**
+---
 
-Currently returns `IRStarResult`. Change to `CurryResult` with `closure-wf` field.
+**Step 2.2: Prove thunk execution in mutual block (3-4 days)**
 
-**3.3: Prove thunk execution in mutual block**
+Add `run-thunk-in-mutual` to the mutual block:
 
-Add:
 ```agda
 run-thunk-in-mutual : ∀ {i A B C} (f : IR i (A * B) C) ... →
   ThunkResult prog s s' (λ b → eval f (env , b)) arg
-run-thunk-in-mutual f ... = ...
-  -- Trace 4 setup instructions
-  -- RECURSIVE CALL: run-ir-star-at-offset f
-  -- Trace ret instruction
-  -- Compose via star-trans
+run-thunk-in-mutual f prefix suffix env arg s ... = ...
+  -- 1. Trace 4 setup instructions (sub-sp, stp, mov-from-sp)
+  -- 2. RECURSIVE CALL: run-ir-star-at-offset f
+  --    (available because we're in the mutual block!)
+  -- 3. Trace ret instruction
+  -- 4. Compose via star-trans
 ```
 
 This **eliminates** `curry-thunk-correct` and `run-thunk-at-offset` postulates!
 
-**3.4: Thread ClosureWellFormed through pair/compose**
+---
 
-Extend result records:
+**Step 2.3: Thread ClosureWellFormed through pair/compose (2-3 days)**
+
+Extend result records to carry WF proofs:
+
 ```agda
 record PairResult ... where
   field
@@ -524,51 +504,54 @@ run-apply-star-direct ... nothing =
 
 ---
 
-### Phase 4: Implement Open/MutualIR.agda (2 hours)
+---
 
-**Goal**: Simpler modular proofs with 2 FFI axioms
+**Step 2.4: Use run-apply-with-wf (1-2 days)**
 
-**Approach**: Copy current `MutualIR.agda`, import from `Postulates/Open.agda`
+Modify `run-ir-star-at-offset` for `apply`:
 
-**Key Differences from Closed**:
-- No WF threading (simpler)
-- `run-curry` returns `IRStarResult` (no `closure-wf` field)
-- `run-apply` uses `apply-produces-result` postulate
+```agda
+run-ir-star-at-offset apply prefix suffix x s ... with extract-wf-from-context
+  -- If closure has WF proof (from threading), use it!
+  ... | just closure-wf → run-apply-with-wf ... closure-wf  -- NO postulate!
+  -- Otherwise: would need apply-produces-result, but shouldn't happen in pure IR
+  ... | nothing → ⊥-elim (no-unproven-closures-in-pure-ir ...)
+```
+
+This **eliminates** `apply-produces-result` postulate for pure IR terms!
+
+**Result**: Only 1 postulate remains (`sp-bound-after-stack-op` runtime assumption)
 
 ---
 
-### Phase 5: Add Makefile Targets (30 min)
+### Phase 3: Write Example Proofs (1-2 days)
 
-**File**: `formal/Makefile`
+**Goal**: Demonstrate generator correctness with concrete examples
 
-```makefile
-.PHONY: aarch64-closed
-aarch64-closed:
-	@echo "Type-checking AArch64 closed program verification (ZERO postulates)..."
-	$(AGDA) Once/Backend/AArch64/Correct/Closed/MutualIR.agda
-	@$(call check-postulates,Once/Backend/AArch64/Correct/Closed)
-	@$(call check-postulates,Once/Backend/AArch64/Correct/Common)
-	@echo "✅ AArch64 closed verification complete: ZERO postulates!"
+**File**: `formal/Once/Backend/AArch64/Correct/Examples.agda`
 
-.PHONY: aarch64-open
-aarch64-open:
-	@echo "Type-checking AArch64 open program verification..."
-	$(AGDA) Once/Backend/AArch64/Correct/Open/MutualIR.agda
-	@echo "✅ AArch64 open verification complete (2 FFI axioms)"
-
-.PHONY: aarch64
-aarch64: aarch64-closed aarch64-open
-
-define check-postulates
-	@echo "Checking for postulates in $(1)..."
-	@POSTULATE_COUNT=$$(find $(1) -name "*.agda" -exec grep -l "^postulate$$" {} \; 2>/dev/null | wc -l | tr -d ' '); \
-	if [ "$$POSTULATE_COUNT" -ne 0 ]; then \
-		echo "❌ ERROR: Found postulates in $(1)!"; \
-		find $(1) -name "*.agda" -exec grep -Hn "^postulate$$" {} \;; \
-		exit 1; \
-	fi
-endef
+Example programs to verify:
+```agda
+-- Example 1: apply ∘ ⟨curry fst, id⟩
+-- Example 2: [ inl, inr ∘ snd ] ∘ fst
+-- Example 3: apply ∘ ⟨curry (snd ∘ fst), snd⟩
 ```
+
+Each example proves: `∀ input, compile(prog) on input produces eval(prog input)`
+
+---
+
+### Phase 4: Validation (1-2 hours)
+
+**Actions**:
+1. Type-check full backend: `make aarch64`
+2. Count postulates: Should find only `sp-bound-after-stack-op`
+3. Update documentation with final postulate count
+
+**Success Criteria**:
+- ✅ All files type-check
+- ✅ Only 1 postulate in entire AArch64 backend (sp-bound)
+- ✅ Examples compile and verify
 
 ---
 
