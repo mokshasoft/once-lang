@@ -24,7 +24,8 @@
 module Once.Backend.AArch64.Correct.FrameProofs where
 
 open import Data.Nat using (ℕ; _∸_; _≤_; _≥_) renaming (_+_ to _+ℕ_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Nat.Properties using (m∸n+n≡m; +-∸-assoc; ≤-trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Backend.AArch64.Semantics
 open Once.Backend.AArch64.Semantics.State
@@ -104,19 +105,44 @@ apply-frame-value = 16
 -- Correctness proofs: operations allocate the declared frame sizes
 ------------------------------------------------------------------------
 
+-- Helper: 16 ≤ 32
+private
+  16≤32 : 16 ≤ 32
+  16≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+    where open import Data.Nat using (z≤n; s≤s)
+
 -- | Arithmetic lemma for pair frame proof
 --
--- States: (n ∸ 32) + 16 ≡ n ∸ 16 when n ≥ 32
+-- Proves: (n ∸ 32) + 16 ≡ n ∸ 16 when n ≥ 32
 --
--- This is obviously true arithmetically:
---   When n ≥ 32: (n - 32) + 16 = n - 16  ✓
---
--- Postulated for simplicity. In practice, stack pointers are always >> 32,
--- so the precondition is always satisfied by runtime invariants.
---
--- TODO (Optional): Prove using monus lemmas from Data.Nat.Properties if needed.
-postulate
-  monus-add-lemma : ∀ (n : ℕ) → n ≥ 32 → (n ∸ 32) +ℕ 16 ≡ n ∸ 16
+-- Proof strategy:
+--   1. Since n ≥ 32, we have (n ∸ 32) + 32 ≡ n (by m∸n+n≡m)
+--   2. Apply _∸ 16 to both sides: ((n ∸ 32) + 32) ∸ 16 ≡ n ∸ 16
+--   3. Use +-∸-assoc: (n ∸ 32) + (32 ∸ 16) ≡ n ∸ 16
+--   4. Since 32 ∸ 16 = 16: (n ∸ 32) + 16 ≡ n ∸ 16
+monus-add-lemma : ∀ (n : ℕ) → n ≥ 32 → (n ∸ 32) +ℕ 16 ≡ n ∸ 16
+monus-add-lemma n n≥32 =
+  let -- Step 1: (n ∸ 32) + 32 ≡ n
+      -- m∸n+n≡m has implicit params, just pass the proof
+      step1 : (n ∸ 32) +ℕ 32 ≡ n
+      step1 = m∸n+n≡m n≥32
+
+      -- Step 2: ((n ∸ 32) + 32) ∸ 16 ≡ n ∸ 16
+      step2 : ((n ∸ 32) +ℕ 32) ∸ 16 ≡ n ∸ 16
+      step2 = cong (_∸ 16) step1
+
+      -- Step 3: (n ∸ 32) + (32 ∸ 16) ≡ ((n ∸ 32) + 32) ∸ 16
+      -- Using +-∸-assoc: (m + n) ∸ o ≡ m + (n ∸ o)
+      -- With m = (n ∸ 32), n = 32, o = 16
+      step3 : (n ∸ 32) +ℕ (32 ∸ 16) ≡ ((n ∸ 32) +ℕ 32) ∸ 16
+      step3 = sym (+-∸-assoc (n ∸ 32) {32} {16} 16≤32)
+
+      -- Step 4: 32 ∸ 16 = 16, so simplify
+      step4 : 32 ∸ 16 ≡ 16
+      step4 = refl
+
+      -- Combine steps
+  in trans (cong ((n ∸ 32) +ℕ_) step4) (trans step3 step2)
 
 -- | Proves pair's net sp reduction is pair-frame-value
 --
