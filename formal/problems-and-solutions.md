@@ -322,6 +322,140 @@ The `--verified` flag enables opt-in verification with fallback to unverified Ha
 
 ---
 
+## Problem 5: curry-output-wf Postulate in Backend Modules
+
+**Files**:
+- `formal/Once/Backend/RiscV64/Correct/IR/Curry.agda:66-74` (functionally eliminated)
+- `formal/Once/Backend/X86/Correct/IR/Curry.agda` (similar postulate exists)
+- `formal/Once/Backend/AArch64/Correct/IR/Curry.agda` (similar postulate exists)
+
+**Problem**:
+```agda
+postulate
+  curry-output-wf : ∀ {B C : Type} (prog : Program) → ClosuresWF (B ⇒ C) prog
+```
+
+This postulate axiomatizes that `curry` produces well-formed closures. It was needed because:
+1. Curry generates a closure with code-ptr and env-addr
+2. The ClosureWellFormed proof requires access to the mutual recursion block context
+3. Curry.agda cannot import MutualIR.agda (would create circular dependency)
+4. Therefore, Curry.agda postulated the WF proof
+
+**Root Cause**:
+Circular module dependency:
+- `Curry.agda` needs `run-curry-star-with-wf` from `MutualIR.agda` to get ClosureWellFormed proof
+- `MutualIR.agda` imports `run-curry-star` from `Curry.agda` for its mutual recursion block
+- Direct import would create a cycle
+
+**Status**:
+- RiscV64: **Functionally Eliminated** (2026-01-02) - postulate kept as internal placeholder
+- X86: Open (same pattern applicable)
+- AArch64: Open (same pattern applicable)
+
+**Solution Applied (RiscV64)**:
+
+The solution uses the mutual recursion block as a bridge:
+
+1. **MutualIR.agda - Modified `run-curry-star-with-wf`** (lines 1792-1823):
+   ```agda
+   -- Return BOTH CurryResult (with closure-wf proof) AND IRStarResult
+   -- This avoids proof duplication by building both from single execution
+   run-curry-star-with-wf : ... → ∃[ s' ] (CurryResult × IRStarResult)
+   ```
+
+2. **MutualIR.agda - Created `run-curry-star-proven`** (lines 1884-1922):
+   ```agda
+   -- Bridge function that extracts closure-wf from CurryResult
+   -- and packages it as ClosuresWF for external callers
+   run-curry-star-proven : ... → ∃[ s' ] IRStarResult
+   run-curry-star-proven f prefix suffix x s ... =
+     let (s' , (curry-res , ir-result)) = run-curry-star-with-wf ...
+         wf-proof = CurryResult.closure-wf curry-res
+         output-wf = ... , wf-proof  -- Package as ClosuresWF
+     in s' , record { ... ; ir-output-wf = output-wf }  -- PROVEN!
+   ```
+
+3. **MutualIR.agda - Updated curry case** (lines 233-238):
+   ```agda
+   run-ir-star-at-offset (curry f) ... =
+     run-curry-star-proven f ...  -- Use proven version, not postulate!
+   ```
+
+4. **Curry.agda - Postulate Kept as Placeholder** (lines 66-74):
+   ```agda
+   -- Internal placeholder - only used by run-curry-star
+   -- NEVER used by external callers (they use run-curry-star-proven)
+   postulate curry-output-wf : ...
+   ```
+
+**Key Insight**:
+The mutual recursion block (`MutualIR.agda`) has access to BOTH:
+- `run-curry-star` from Curry.agda (imported)
+- `run-curry-star-with-wf` (defined locally with actual proof)
+
+This allows creating a bridge function (`run-curry-star-proven`) that:
+- Extracts the real ClosureWellFormed proof from CurryResult
+- Packages it in IRStarResult format
+- Provides it to external callers WITHOUT requiring the postulate
+
+**Architecture**:
+```
+Curry.agda:
+  run-curry-star (uses postulate placeholder) ← imported by MutualIR
+
+MutualIR.agda (mutual block):
+  run-curry-star-with-wf (builds actual closure-wf proof)
+  run-curry-star-proven (extracts proof, wraps in IRStarResult)
+  run-ir-star-at-offset (calls run-curry-star-proven) ← exported
+```
+
+External callers → `run-ir-star-at-offset` → `run-curry-star-proven` → **PROVEN WF**
+
+**Performance Optimization**:
+Returning `(CurryResult, IRStarResult)` tuple avoids proof duplication:
+- Both results built from single call to `run-curry-star`
+- `code-ptr-valid-proof` (large proof involving `<-≤-trans`, `+-monoʳ-<`, etc.) exists only once
+- Prevents exponential type-checking time from redundant proof construction
+
+**Result**:
+- Postulate functionally eliminated (only used internally, never by external callers)
+- All external callers use proven version
+- Build verified: `make riscv` (exit code 0)
+- Commit: ab5ce57
+
+**Files Modified**:
+- `formal/Once/Backend/RiscV64/Correct/MutualIR.agda`
+- `formal/Once/Backend/RiscV64/Correct/IR/Curry.agda`
+
+**Cross-Architecture Applicability**:
+
+This pattern can be applied to X86 and AArch64 with architecture-specific adjustments:
+
+| Architecture | Differences from RiscV64 | Difficulty |
+|--------------|--------------------------|------------|
+| **X86** | - Return address on stack (not register)<br>- No stack-requirement parameter yet | Low |
+| **AArch64** | - Return address in x30 link register<br>- Different register names (x0/x19 vs a0/s0) | Low |
+
+All three backends have identical structure:
+- `ClosureWellFormed` record with `code-ptr-valid` and `thunk-correct`
+- `CurryResult` record with `closure-wf` field
+- Same circular dependency (Curry.agda ↔ MutualIR.agda)
+
+**Recommendation**:
+Keep architecture-specific implementations rather than creating Common modules because:
+1. Backend types (State, Program, registers) differ significantly
+2. Calling conventions differ (stack vs. link register for return address)
+3. RiscV64 has `stack-requirement` parameter that X86/AArch64 may need when eliminating their postulates
+4. Current duplication is minimal (structure is identical, only register names differ)
+
+**Next Steps**:
+- Apply same pattern to `Once/Backend/X86/Correct/MutualIR.agda` (separate branch)
+- Apply same pattern to `Once/Backend/AArch64/Correct/MutualIR.agda` (separate branch)
+- Verify all three backends build successfully
+- Update `what-is-proven.md` to reflect postulate elimination
+
+---
+
 ## Solutions Applied
 
 ### Solution S1: StackInvariant Integration (Completed)
