@@ -206,12 +206,6 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
     apply-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
     apply-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
     apply-x29       : readReg (regs s') x29 ≡ readReg (regs s) x29
-    apply-mem-x21   : readMem (memory s') (readReg (regs s) x21) ≡
-                      readMem (memory s) (readReg (regs s) x21)
-    apply-mem-x29   : readMem (memory s') (readReg (regs s) x29) ≡
-                      readMem (memory s) (readReg (regs s) x29)
-    apply-mem-x29+8 : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
-                      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
     apply-stack-inv : StackInvariant s'
     apply-sp-bound  : readSP (regs s') > 16
 
@@ -290,25 +284,10 @@ postulate
     readSP (regs s') ≡ readSP (regs s) →
     StackInvariant s → StackInvariant s'
 
--- Helper: Memory preservation at specific addresses through thunk execution
--- The thunk allocates stack space and stores (env, arg) pair, but does not
--- modify memory at x21, x29, or x29+8 (which are the saved stack locations).
--- This is provable by analyzing the thunk code, but requires extending ThunkResult.
-postulate
-  thunk-preserves-mem-x21 : ∀ {A B prog s s' f a} →
-    ThunkResult {A} {B} prog s s' f a →
-    readReg (regs s') x21 ≡ readReg (regs s) x21 →
-    readMem (memory s') (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
-
-  thunk-preserves-mem-x29 : ∀ {A B prog s s' f a} →
-    ThunkResult {A} {B} prog s s' f a →
-    readReg (regs s') x29 ≡ readReg (regs s) x29 →
-    readMem (memory s') (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
-
-  thunk-preserves-mem-x29+8 : ∀ {A B prog s s' f a} →
-    ThunkResult {A} {B} prog s s' f a →
-    readReg (regs s') x29 ≡ readReg (regs s) x29 →
-    readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+-- NOTE: Memory preservation postulates removed (2026-01-02) following RISC-V pattern.
+-- RISC-V has NO memory preservation postulates because it uses ApplyMemoryLayout
+-- (precondition) instead of ApplyWithWFResult's postcondition pattern.
+-- The 3 apply-mem-* fields were NEVER USED outside this file, so they were unnecessary.
 
 ------------------------------------------------------------------------
 
@@ -344,9 +323,6 @@ run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
     ; apply-x20       = x20-final
     ; apply-x21       = x21-final
     ; apply-x29       = x29-final
-    ; apply-mem-x21   = mem-x21-final
-    ; apply-mem-x29   = mem-x29-final
-    ; apply-mem-x29+8 = mem-x29+8-final
     ; apply-stack-inv = ThunkResult.thunk-stack-inv thunk-res
     ; apply-sp-bound  = ThunkResult.thunk-sp-bound thunk-res
     }
@@ -776,32 +752,3 @@ run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
 
     x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
     x29-final = trans (ThunkResult.thunk-x29 thunk-res) x29-s6
-
-    -- Memory preservation through apply setup (apply instructions don't store to memory)
-    mem-s6-eq : memory s-6 ≡ memory s
-    mem-s6-eq = refl  -- Definitional: apply instructions (loads, mov, blr) preserve memory
-
-    -- Memory preservation for x21 location (apply setup + thunk must preserve)
-    mem-x21-s6 : readMem (memory s-6) (readReg (regs s) x21) ≡
-                 readMem (memory s) (readReg (regs s) x21)
-    mem-x21-s6 = cong (λ m → readMem m (readReg (regs s) x21)) mem-s6-eq
-
-    mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡
-                    readMem (memory s) (readReg (regs s) x21)
-    mem-x21-final = trans (thunk-preserves-mem-x21 thunk-res x21-final) mem-x21-s6
-
-    mem-x29-s6 : readMem (memory s-6) (readReg (regs s) x29) ≡
-                 readMem (memory s) (readReg (regs s) x29)
-    mem-x29-s6 = cong (λ m → readMem m (readReg (regs s) x29)) mem-s6-eq
-
-    mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡
-                    readMem (memory s) (readReg (regs s) x29)
-    mem-x29-final = trans (thunk-preserves-mem-x29 thunk-res x29-final) mem-x29-s6
-
-    mem-x29+8-s6 : readMem (memory s-6) (readReg (regs s) x29 +ℕ 8) ≡
-                   readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-    mem-x29+8-s6 = cong (λ m → readMem m (readReg (regs s) x29 +ℕ 8)) mem-s6-eq
-
-    mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡
-                      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-    mem-x29+8-final = trans (thunk-preserves-mem-x29+8 thunk-res x29-final) mem-x29+8-s6
