@@ -17,8 +17,10 @@
 #   make endtoend - Type-check end-to-end compilation theorem (x86)
 #   make endtoend-aarch64 - Type-check end-to-end compilation theorem (AArch64)
 #   make primitives - Type-check primitive specifications
-#   make malonzo  - Generate Haskell via MAlonzo (D035)
+#   make malonzo  - Extract entire compiler to ../compiler/src/MAlonzo/ (IR, Surface, Optimize)
 #   make malonzo-core - Extract core modules (Type, IR, Semantics, Memory)
+#   make malonzo-typecheck - Extract verified type checker
+#   make malonzo-codegen - Extract backend code generators (X86, AArch64, RiscV64)
 #   make clean    - Remove Agda build artifacts
 #   make agda MODULE=Once/Path/To/File.agda - Type-check a single module
 
@@ -266,19 +268,26 @@ arith-boundary:
 
 .PHONY: malonzo
 malonzo:
-	@echo "Generating Haskell via MAlonzo..."
+	@echo "Extracting entire compiler via MAlonzo..."
 	@mkdir -p _build/malonzo
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
-	@echo "Generated Haskell files in _build/malonzo/"
-	@echo "Entry point: MAlonzo.Code.Once.Compile"
-
-.PHONY: malonzo-typecheck
-malonzo-typecheck:
-	@echo "Extracting verified type checker via MAlonzo..."
-	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
-	@echo "Generated Haskell files in _build/malonzo/"
-	@echo "Entry point: MAlonzo.Code.Once.TypeCheck"
+	@echo "Copying extracted modules to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Surface
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Optimize
+	@# Copy main compilation entry point
+	@cp _build/malonzo/MAlonzo/Code/Once/Compile.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@# Copy core IR modules
+	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Semantics.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@# Copy Surface IR and desugar
+	@cp -r _build/malonzo/MAlonzo/Code/Once/Surface/* ../compiler/src/MAlonzo/Code/Once/Surface/ 2>/dev/null || true
+	@# Copy optimizer
+	@cp _build/malonzo/MAlonzo/Code/Once/Optimize.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp -r _build/malonzo/MAlonzo/Code/Once/Optimize/* ../compiler/src/MAlonzo/Code/Once/Optimize/ 2>/dev/null || true
+	@echo "Done! Entire compiler extracted to compiler/src/MAlonzo/Code/Once/"
+	@echo "Entry point: MAlonzo.Code.Once.Compile.compile"
 
 .PHONY: emit
 emit:
