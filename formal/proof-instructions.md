@@ -171,6 +171,50 @@ timeout 900 make x86
 proof structure needs simplification. Split large modules, reduce dependencies,
 or restructure proofs to compile faster.
 
+## MAlonzo Extraction
+
+The verified compiler components are extracted to Haskell via Agda's MAlonzo backend:
+
+```bash
+cd formal
+
+# Extract entire compiler (IR, Surface, Optimizer, Type system)
+make malonzo
+
+# Extract specific components:
+make malonzo-core        # Type, IR, Semantics, Memory
+make malonzo-typecheck   # Verified type checker
+make malonzo-codegen     # Backend code generators (X86, AArch64, RiscV64)
+```
+
+### What Gets Extracted
+
+The `make malonzo` target extracts and copies to `../compiler/src/MAlonzo/Code/Once/`:
+- **Core IR**: All 13 generators (id, compose, fst, snd, pair, inl, inr, case, terminal, initial, curry, apply, fold, unfold, arr)
+- **Surface IR**: Surface language with Let/Prim constructs
+- **Desugar**: Surface → Core IR transformation
+- **Optimizer**: Pattern-based optimizations (~190KB of optimization rules)
+- **Type System**: QTT-based type definitions
+- **Semantics**: Denotational semantics and encoding
+
+### Entry Point
+
+```haskell
+-- Main compilation function in MAlonzo.Code.Once.Compile
+compile :: SurfaceIR A B → IR ∞ A B
+compile = optimize . desugar
+```
+
+### Workflow
+
+1. **Develop in Agda**: Write verified code in `formal/Once/*.agda`
+2. **Type-check**: `make x86` or `make riscv` to verify proofs
+3. **Extract**: `make malonzo` to generate Haskell modules
+4. **Integrate**: Extracted modules are automatically copied to `compiler/src/MAlonzo/`
+
+The extracted Haskell code is the **single source of truth** for the compiler's core logic.
+All IR generators, optimizations, and transformations come from verified Agda code.
+
 ## When Stuck
 
 If a proof seems impossible:
