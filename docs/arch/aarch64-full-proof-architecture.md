@@ -375,6 +375,41 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program) (cl : Closure A B) (a : 
 
 ## Implementation Roadmap
 
+### Git Workflow
+
+**IMPORTANT**: Each phase should have exactly ONE git commit.
+
+**Commit Process**:
+1. Run `git add <files>` as a separate command
+2. Run `git commit -m "..."` as a separate command
+3. Do NOT combine `git add` and `git commit` in a single command
+
+**Commit Message Format**:
+```
+Phase N: <Brief description>
+
+<Detailed explanation of changes>
+- Bullet points for key changes
+- Type-check status: ✅ Success
+
+Part of Closed/Open verification split implementation.
+```
+
+**Example**:
+```bash
+git add formal/Once/Backend/AArch64/Correct/ClosureWellFormed.agda
+git commit -m "Phase 1: Prove preserve-stack-inv lemma
+
+Replace postulate with actual proof by pattern matching.
+- Added _≤_ import to Data.Nat
+- Case x21-unused: chain equalities via trans
+- Case stack-below-x21: use subst₂
+
+Type-check: ✅ Success"
+```
+
+---
+
 ### Phase 1: Prove Trivial Lemmas (30 min)
 
 **File**: `formal/Once/Backend/AArch64/Correct/ClosureWellFormed.agda`
