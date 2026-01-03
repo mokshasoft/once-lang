@@ -27,6 +27,8 @@ open import Once.Backend.AArch64.Correct.StackInvariant
   using (StackInvariant; X29Invariant)
 open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
+open import Once.Backend.AArch64.Correct.MemoryValid
+  using (PairAtS)
 
 open import Size using (Size)
 open import Data.Bool using (false)
@@ -204,3 +206,98 @@ IRRunnerS = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (addr-in : Word) (
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 ir ++ suffix
   in ∃[ s' ] ∃[ addr-out ] IRStarResultS ir prog s s' addr-out (length prefix)
+
+------------------------------------------------------------------------
+-- PairResultS: Stateful result for pair combinator
+------------------------------------------------------------------------
+--
+-- The pair ⟨ f , g ⟩ executes both f and g on input x, then
+-- creates a pair (res-f, res-g) at pair-addr.
+--
+-- Key addresses:
+-- 1. addr-f: Result of executing f
+-- 2. addr-g: Result of executing g
+-- 3. pair-addr: The pair [addr-f, addr-g]
+--
+-- The pair-addr is returned in x0.
+record PairResultS {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
+                   (prog : Program) (s s' : State)
+                   (addr-f addr-g pair-addr : Word) (offset : ℕ) : Set where
+  field
+    -- Standard execution properties
+    pair-star      : Star prog s s'
+    pair-halted    : halted s' ≡ false
+    pair-pc        : pc s' ≡ offset +ℕ compile-length ⟨ f , g ⟩
+
+    -- Explicit pair address in x0
+    pair-x0-s      : readReg (regs s') x0 ≡ pair-addr
+
+    -- Register preservation
+    pair-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
+    pair-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
+    pair-x29       : readReg (regs s') x29 ≡ readReg (regs s) x29
+    pair-x30       : readReg (regs s') x30 ≡ readReg (regs s) x30
+    pair-sp        : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    pair-mem-x21   : readMem (memory s') (readReg (regs s) x21) ≡
+                     readMem (memory s) (readReg (regs s) x21)
+    pair-mem-x29   : readMem (memory s') (readReg (regs s) x29) ≡
+                     readMem (memory s) (readReg (regs s) x29)
+    pair-mem-x29+8 : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                     readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    pair-stack-inv : StackInvariant s'
+    pair-x29-inv   : X29Invariant s'
+    pair-sp-bound  : readSP (regs s') > 16
+
+    -- Stateful validity: pair exists at pair-addr
+    pair-valid     : PairAtS addr-f addr-g pair-addr (memory s')
+
+open PairResultS public
+
+------------------------------------------------------------------------
+-- ComposeResultS: Stateful result for compose combinator
+------------------------------------------------------------------------
+--
+-- The composition (g ∘ f) executes f first, then g on f's result.
+--
+-- Key addresses:
+-- 1. addr-mid: Intermediate result from f (input to g)
+-- 2. addr-out: Final result from g
+--
+-- The addr-out is returned in x0.
+record ComposeResultS {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
+                      (prog : Program) (s s' : State)
+                      (addr-mid addr-out : Word) (offset : ℕ) : Set where
+  field
+    -- Standard execution properties
+    compose-star      : Star prog s s'
+    compose-halted    : halted s' ≡ false
+    compose-pc        : pc s' ≡ offset +ℕ compile-length (g ∘ f)
+
+    -- Explicit output address in x0
+    compose-x0-s      : readReg (regs s') x0 ≡ addr-out
+
+    -- Register preservation
+    compose-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
+    compose-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
+    compose-x29       : readReg (regs s') x29 ≡ readReg (regs s) x29
+    compose-x30       : readReg (regs s') x30 ≡ readReg (regs s) x30
+    compose-sp        : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    compose-mem-x21   : readMem (memory s') (readReg (regs s) x21) ≡
+                        readMem (memory s) (readReg (regs s) x21)
+    compose-mem-x29   : readMem (memory s') (readReg (regs s) x29) ≡
+                        readMem (memory s) (readReg (regs s) x29)
+    compose-mem-x29+8 : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                        readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    compose-stack-inv : StackInvariant s'
+    compose-x29-inv   : X29Invariant s'
+    compose-sp-bound  : readSP (regs s') > 16
+
+open ComposeResultS public
