@@ -541,6 +541,133 @@ Keep architecture-specific implementations rather than creating Common modules b
 
 ---
 
+## Problem 6: `apply-produces-result` Postulate - Validation vs Verification
+
+**Files**:
+- `formal/Once/Backend/X86/Postulates.agda:125-146` (apply-produces-result)
+- `formal/Once/Backend/X86/Correct/MutualIR.agda` (uses postulate in modular path)
+- `formal/Once/Backend/X86/Correct/WholeProgram.agda` (incomplete whole-program path)
+
+**Problem**:
+
+Currently we have TWO parallel proof architectures for curry/apply:
+
+1. **Modular Path** (`run-ir-star-at-offset` in MutualIR.agda): VALIDATION
+   - Proves `∀ {i A B} (ir : IR i A B) → ...` for ANY IR ✓
+   - Uses `apply-produces-result` POSTULATE for the `apply` case ✗
+   - **Current status**: Complete but uses postulate (validation, not verification)
+
+2. **Whole-Program Path** (WholeProgram.agda): TRUE VERIFICATION
+   - Proves correctness for closed Once programs
+   - NO `apply-produces-result` postulate needed! ✓
+   - Uses `ClosureWellFormed` threading through composition
+   - **Current status**: INCOMPLETE (missing memory layout threading)
+
+**Why This Matters**:
+
+The goal is to verify **arbitrary Once programs compile correctly** (compiler correctness).
+Once programs are CLOSED (all curry/apply pairs are composed together), so we should
+use the whole-program path which requires ZERO postulates.
+
+The modular path with `apply-produces-result` is a workaround for "open programs"
+(library code that receives closures from outside), which is NOT our verification target.
+
+**Infrastructure Status** (from `WholeProgram.agda:7-35`):
+
+✓ **Complete**:
+- `ClosureWellFormed` predicate (proves closure memory structure)
+- `run-curry-star-with-wf` (curry produces `ClosureWellFormed` proof)
+- `run-apply-with-full-wf` (apply consumes `ClosureWellFormed` proof)
+- Base curry/apply proofs
+
+○ **Incomplete** (BLOCKING true verification):
+- Pair case: doesn't produce memory layout showing where things are stored
+- Compose case: doesn't thread `ClosureWellFormed` from f to g
+- Case case: doesn't thread `ClosureWellFormed` through branches
+
+**From Postulates.agda:73-89** (documentation states clearly):
+
+```
+VERIFICATION STRATEGY: WHOLE-PROGRAM PROOFS FOR CLOSED PROGRAMS
+
+The verification goal is to prove correctness of arbitrary closed Once
+programs. In closed programs:
+  - Every `apply` consumes a closure created by some `curry`
+  - The curry and apply are always composed together
+  - ClosureWellFormed proofs flow naturally through composition
+
+This means: NO POSTULATE NEEDED for closed program verification.
+```
+
+**Solution Path (Priority 1 - ELIMINATE)**:
+
+Complete the whole-program path in `WholeProgram.agda`:
+
+1. **Extend pair proof** to produce memory layout:
+   ```agda
+   run-pair-star-wf : ... → produces PairMemoryLayout + preserves ClosureWellFormed
+   ```
+
+2. **Extend compose proof** to thread `ClosureWellFormed`:
+   ```agda
+   run-compose-star-wf : ... → threads ClosureWellFormed from f to g
+   ```
+
+3. **Extend case proof** similarly for both branches
+
+4. **Create `run-whole-program`**:
+   ```agda
+   run-whole-program : ∀ {i A B} (ir : IR i A B) → ...
+     -- Pattern match on ALL IR constructors
+     -- Thread ClosureWellFormed through composition
+     -- Use run-apply-with-full-wf for apply case (NO POSTULATE!)
+   ```
+
+5. **Replace modular path** usage with whole-program path as default
+
+**What NOT to Remove** (Critical Infrastructure):
+
+Do NOT remove:
+- ✓ `run-curry-star` - base curry proof
+- ✓ `run-apply-star` - base apply proof
+- ✓ `ClosureWellFormed` - essential predicate
+- ✓ `run-curry-star-with-wf` - curry with WF proof
+- ✓ `run-apply-with-full-wf` - apply consuming WF proof
+- ✓ Individual generator proofs (compose, pair, case, etc.)
+
+These are all ESSENTIAL for the solution!
+
+**What to Remove** (After completing solution):
+
+Only remove:
+- ✗ `apply-produces-result` postulate in Postulates.agda
+- ✗ Modular path usage that depends on this postulate
+- ✗ Any validation-only test cases
+
+**Impact**:
+
+**Before** (current - validation):
+- Works for any IR compositionally
+- Uses 1 postulate for apply
+- Status: Validation (not verification)
+
+**After** (true verification):
+- Works for any closed Once program compositionally
+- ZERO postulates for curry/apply
+- Status: True compiler correctness verification
+
+**Estimated Effort**: Medium (3-5 days)
+- Infrastructure exists, just needs completion
+- Pattern already proven in isolated test cases
+- Main work: threading memory layout through composition
+
+**Files to Modify**:
+- `formal/Once/Backend/X86/Correct/WholeProgram.agda` (complete)
+- `formal/Once/Backend/X86/Correct/MutualIR.agda` (switch to whole-program)
+- `formal/Once/Backend/X86/Postulates.agda` (remove postulate)
+
+---
+
 ## Solutions Applied
 
 ### Solution S1: Stateful Proof Architecture (x86-64, Completed)
