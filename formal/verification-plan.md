@@ -14,10 +14,14 @@ Verify the complete compilation pipeline from **RawExpr (parser output) to x86-6
 **Out of Scope**:
 - CLI/Parser (Haskell, unverified by design)
 - C backend (IR → C generation)
-- **Generator correctness proofs** (id, compose, pair, fst, snd, inl, inr, case, curry, apply, etc.) - **ALREADY PROVEN**, do NOT modify Backend/X86/Correct.agda generator proofs
-- Backend mechanical postulates - generator-level implementation details, out of scope
 
-**Important**: Work on layers ABOVE generators. Types between arithmetic IR and generators remain separate (not unified).
+**Backend Status**:
+- **x86-64**: Core generators proven with **stateful proofs** (ZERO encoding postulates)
+- **RISC-V**: Core generators proven with non-stateful proofs (requires encoding postulates)
+- **AArch64**: In progress
+
+**Important**: x86-64 uses stateful proof architecture (`IRStarResultS` + validity predicates)
+to eliminate ALL encoding postulates. This is the RECOMMENDED approach for all backends.
 
 ## Current Status
 

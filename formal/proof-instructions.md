@@ -152,8 +152,56 @@ git push origin master
 
 ## Architecture
 
-Follow the patterns established for x86. When adding new backends or proof
-modules, study the x86 structure first and maintain consistency.
+Follow the patterns established for x86-64. When adding new backends or proof
+modules, study the x86-64 structure first and maintain consistency.
+
+### Backend Proof Architecture: Stateful Proofs for Zero Postulates
+
+The x86-64 backend uses **stateful proofs** to eliminate ALL encoding postulates.
+This is the RECOMMENDED approach for all backend verification.
+
+**Two Result Types**:
+
+1. **IRStarResult** (non-stateful, used internally):
+   ```agda
+   record IRStarResult where
+     field
+       ir-rax : readReg (regs s') rax ≡ encode (eval ir x)  -- Depends on encode!
+   ```
+
+2. **IRStarResultS** (stateful, used by external callers):
+   ```agda
+   record IRStarResultS where
+     field
+       ir-rax-s : readReg (regs s') rax ≡ addr-out  -- Explicit address, NO encode!
+   ```
+
+**Why Stateful Proofs Win**:
+
+- **Zero encoding postulates**: Non-stateful proofs require 10+ postulates about
+  `encode` behavior (encode-pair-fst/snd, encode-inl/inr-*, encode-closure-*)
+- **Explicit memory layout**: Validity predicates (`PairAtS`, `InlAtS`, `InrAtS`,
+  `ClosureAtS`) prove actual memory structure instead of assuming it
+- **Clean composition**: Use `convert-to-stateful` to bridge internal (non-stateful)
+  to external (stateful) interfaces
+
+**Pattern**:
+```agda
+run-ir-star-s : ... → ∃[ s' ] IRStarResultS ir prog s s' addr-out offset
+run-ir-star-s ... =
+  let (s' , res) = run-ir-star ...  -- Non-stateful proof
+      res-s = convert-to-stateful ir prog s s' x offset res  -- Convert
+  in s' , subst (λ addr → IRStarResultS ...) enc-eq res-s
+```
+
+**Result**: Complete E2E proofs with ZERO encoding postulates.
+
+**Reference**: See `Once/Backend/X86/Correct/StarBase.agda` for implementation,
+`Once/Postulates.agda:252-340` for documentation of eliminated postulates.
+
+**Historical Note**: x86-64 evolved from RISC-V's non-stateful approach specifically
+to eliminate encoding postulates. RISC-V backend still uses non-stateful proofs
+and requires all encoding postulates.
 
 ## Type Checking
 
