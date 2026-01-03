@@ -22,9 +22,10 @@ open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ClosureWFOutput; no-closure;
+  using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-rbp-inv; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-rbp-inv; ir-closure-wf;
+         ir-rax-s)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
@@ -199,6 +200,105 @@ exec-compose-transfer {i} {A} {B} {C} f g prefix suffix x s s1 r1 = record
 
     rdi2-enc : readReg (regs s2) rdi ≡ encode (eval f x)
     rdi2-enc = trans rdi2 rax1
+
+    pc2 : pc s2 ≡ length prefix +ℕ len-f +ℕ 1
+    pc2 = trans pc2-raw (cong (_+ℕ 1) len-prefix-transfer)
+
+    pc2-g : pc s2 ≡ length prefix-g
+    pc2-g = trans pc2 (sym len-prefix-g)
+
+    -- Register preservation through transfer (writes rdi only)
+    r14-s1-to-s2 = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) rax)
+    r15-s1-to-s2 = readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) rax)
+    rbp-s1-to-s2 = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) rax)
+    rsp-s1-to-s2 = readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) rax)
+
+    stack-inv-2 = stack-inv-preserved-unchanged s1 s2 stack-inv-1 r15-s1-to-s2 rsp-s1-to-s2
+    rsp-2>16 = rsp>16-preserved-unchanged s1 s2 rsp-1>16 rsp-s1-to-s2
+
+------------------------------------------------------------------------
+-- Transfer Step Result (Stateful): transfer with addresses only
+------------------------------------------------------------------------
+
+record TransferResultS {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
+                       (prefix suffix : Program) (addr-f-out : Word)
+                       (s s1 : State) : Set where
+  private
+    ctx = make-compose-context f g prefix suffix
+  open ComposeContext ctx
+
+  field
+    s2 : State
+    h2 : halted s2 ≡ false
+    pc2-g : pc s2 ≡ length prefix-g
+    rdi2-addr : readReg (regs s2) rdi ≡ addr-f-out
+    stack-inv-2 : StackInvariant s2
+    rsp-2>16 : readReg (regs s2) rsp > 16
+    star-t : Star prog s1 s2
+    -- Register preservation from s1 to s2
+    r14-s1-to-s2 : readReg (regs s2) r14 ≡ readReg (regs s1) r14
+    r15-s1-to-s2 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
+    rbp-s1-to-s2 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+    rsp-s1-to-s2 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+    -- Memory preservation (transfer doesn't write memory)
+    mem-s1-to-s2 : ∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
+
+-- | Execute the transfer instruction (stateful version - works with addresses)
+exec-compose-transfer-s : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+                          (prefix suffix : Program) (addr-f-out : Word) (s s1 : State) →
+  let ctx = make-compose-context f g prefix suffix in
+  let open ComposeContext ctx in
+  (r1-s : IRStarResultS f (prefix ++ code-f ++ suffix-f) s s1 addr-f-out (length prefix)) →
+  TransferResultS f g prefix suffix addr-f-out s s1
+exec-compose-transfer-s {i} {A} {B} {C} f g prefix suffix addr-f-out s s1 r1-s = record
+  { s2 = s2
+  ; h2 = h2
+  ; pc2-g = pc2-g
+  ; rdi2-addr = rdi2-addr
+  ; stack-inv-2 = stack-inv-2
+  ; rsp-2>16 = rsp-2>16
+  ; star-t = star-t
+  ; r14-s1-to-s2 = r14-s1-to-s2
+  ; r15-s1-to-s2 = r15-s1-to-s2
+  ; rbp-s1-to-s2 = rbp-s1-to-s2
+  ; rsp-s1-to-s2 = rsp-s1-to-s2
+  ; mem-s1-to-s2 = λ _ → refl  -- transfer doesn't write memory
+  }
+  where
+    ctx = make-compose-context f g prefix suffix
+    open ComposeContext ctx
+
+    h1 = IRStarResultS.ir-halted r1-s
+    rax1 : readReg (regs s1) rax ≡ addr-f-out
+    rax1 = IRStarResultS.ir-rax-s r1-s
+    stack-inv-1 = IRStarResultS.ir-stack-inv r1-s
+    rsp-1>16 = IRStarResultS.ir-rsp-bound r1-s
+
+    pc1 : pc s1 ≡ length prefix +ℕ compile-length f
+    pc1 = IRStarResultS.ir-pc r1-s
+
+    pc1-transfer : pc s1 ≡ length prefix-transfer
+    pc1-transfer = trans pc1 (sym len-prefix-transfer)
+
+    -- Execute transfer instruction
+    step-transfer-result = exec-transfer-at prefix-transfer (code-g ++ suffix) s1 h1 pc1-transfer
+
+    s2 = proj₁ step-transfer-result
+    step-t : step (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 ≡ just s2
+    step-t = proj₁ (proj₂ step-transfer-result)
+    h2 = proj₁ (proj₂ (proj₂ step-transfer-result))
+    pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ step-transfer-result)))
+    rdi2 = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ step-transfer-result))))
+
+    -- Star proof for transfer
+    step-t-prog : step prog s1 ≡ just s2
+    step-t-prog = subst (λ p → step p s1 ≡ just s2) (sym (trans prog-eq-f prog-eq-transfer)) step-t
+
+    star-t : Star prog s1 s2
+    star-t = star-single h1 step-t-prog
+
+    rdi2-addr : readReg (regs s2) rdi ≡ addr-f-out
+    rdi2-addr = trans rdi2 rax1
 
     pc2 : pc s2 ≡ length prefix +ℕ len-f +ℕ 1
     pc2 = trans pc2-raw (cong (_+ℕ 1) len-prefix-transfer)
@@ -391,4 +491,168 @@ assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 
           -- Memory from s to s1 via r1.ir-mem-at-0
           mem-s-to-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
           mem-s-to-s1-at-0 = ir-mem-at-0 r1
+      in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
+
+------------------------------------------------------------------------
+-- Final Assembly (Stateful): combine all stateful results
+------------------------------------------------------------------------
+
+-- | Assemble the final compose result from stateful pieces (no semantic values)
+assemble-compose-result-s : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+                            (prefix suffix : Program) (addr-f-out addr-g-out : Word) (s s1 s2 s3 : State) →
+  let ctx = make-compose-context f g prefix suffix in
+  let open ComposeContext ctx in
+  (r1-s : IRStarResultS f (prefix ++ code-f ++ suffix-f) s s1 addr-f-out (length prefix)) →
+  (tr-s : TransferResultS f g prefix suffix addr-f-out s s1) →
+  (r3-s : IRStarResultS g (prefix-g ++ code-g ++ suffix) s2 s3 addr-g-out (length prefix-g)) →
+  s2 ≡ TransferResultS.s2 tr-s →
+  IRStarResultS (g ∘ f) prog s s3 addr-g-out (length prefix)
+assemble-compose-result-s {i} {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s s1 s2 s3 r1-s tr-s r3-s s2-eq = record
+  { ir-star = star-all
+  ; ir-halted = h3
+  ; ir-pc = pc3
+  ; ir-rax-s = rax3-s
+  ; ir-r14 = r14-3
+  ; ir-r15 = r15-3
+  ; ir-rbp = rbp-3
+  ; ir-mem = mem-3
+  ; ir-mem-rbp = mem-rbp-3
+  ; ir-mem-rbp+8 = mem-rbp+8-3
+  ; ir-stack-inv = stack-inv-3
+  ; ir-rsp-bound = rsp-3>16
+  ; ir-rbp-inv = IRStarResultS.ir-rbp-inv r3-s
+  ; ir-mem-above = mem-above-3
+  ; ir-mem-at-0 = mem-at-0-3
+  }
+  where
+    ctx = make-compose-context f g prefix suffix
+    open ComposeContext ctx
+    open TransferResultS tr-s renaming (s2 to s2')
+
+    -- From r1-s
+    star-f-raw : Star (prefix ++ code-f ++ suffix-f) s s1
+    star-f-raw = IRStarResultS.ir-star r1-s
+    star-f : Star prog s s1
+    star-f = subst (λ p → Star p s s1) (sym prog-eq-f) star-f-raw
+    r14-1 = IRStarResultS.ir-r14 r1-s
+    r15-1 = IRStarResultS.ir-r15 r1-s
+    rbp-1 = IRStarResultS.ir-rbp r1-s
+    mem-1 = IRStarResultS.ir-mem r1-s
+    mem-rbp-1 = IRStarResultS.ir-mem-rbp r1-s
+    mem-rbp+8-1 = IRStarResultS.ir-mem-rbp+8 r1-s
+
+    -- From r3-s
+    star-g-raw : Star (prefix-g ++ code-g ++ suffix) s2 s3
+    star-g-raw = IRStarResultS.ir-star r3-s
+    star-g : Star prog s2 s3
+    star-g = subst (λ p → Star p s2 s3) (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) star-g-raw
+    h3 = IRStarResultS.ir-halted r3-s
+    rax3-s-raw = ir-rax-s r3-s
+    r14-3-from-s2 = IRStarResultS.ir-r14 r3-s
+    r15-3-from-s2 = IRStarResultS.ir-r15 r3-s
+    rbp-3-from-s2 = IRStarResultS.ir-rbp r3-s
+    mem-3-from-s2 = IRStarResultS.ir-mem r3-s
+    mem-rbp-3-from-s2 = IRStarResultS.ir-mem-rbp r3-s
+    mem-rbp+8-3-from-s2 = IRStarResultS.ir-mem-rbp+8 r3-s
+    stack-inv-3 = IRStarResultS.ir-stack-inv r3-s
+    rsp-3>16 = IRStarResultS.ir-rsp-bound r3-s
+
+    -- Convert star-t from s2' to s2 (they're equal)
+    star-t' : Star prog s1 s2
+    star-t' = subst (λ s2'' → Star prog s1 s2'') (sym s2-eq) star-t
+
+    -- Compose all Star proofs
+    star-all : Star prog s s3
+    star-all = star-trans star-f (star-trans star-t' star-g)
+
+    -- Final rax (compose output = g's output address)
+    rax3-s : readReg (regs s3) rax ≡ addr-g-out
+    rax3-s = rax3-s-raw
+
+    -- Final pc
+    pc3 : pc s3 ≡ length prefix +ℕ compile-length (g ∘ f)
+    pc3 = begin
+      pc s3
+        ≡⟨ IRStarResultS.ir-pc r3-s ⟩
+      length prefix-g +ℕ len-g
+        ≡⟨ cong (_+ℕ len-g) len-prefix-g ⟩
+      (length prefix +ℕ len-f +ℕ 1) +ℕ len-g
+        ≡⟨ +-assoc (length prefix +ℕ len-f) 1 len-g ⟩
+      (length prefix +ℕ len-f) +ℕ (1 +ℕ len-g)
+        ≡⟨ +-assoc (length prefix) len-f (1 +ℕ len-g) ⟩
+      length prefix +ℕ (len-f +ℕ (1 +ℕ len-g))
+        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc len-f 1 len-g)) ⟩
+      length prefix +ℕ (len-f +ℕ 1 +ℕ len-g)
+        ∎
+
+    -- r14 preservation through all steps
+    r14-s1-to-s2' = subst (λ s2'' → readReg (regs s2'') r14 ≡ readReg (regs s1) r14) (sym s2-eq) r14-s1-to-s2
+    r14-2 = trans r14-s1-to-s2' r14-1
+    r14-3 = trans r14-3-from-s2 r14-2
+
+    -- r15 preservation through all steps
+    r15-s1-to-s2' = subst (λ s2'' → readReg (regs s2'') r15 ≡ readReg (regs s1) r15) (sym s2-eq) r15-s1-to-s2
+    r15-2 = trans r15-s1-to-s2' r15-1
+    r15-3 = trans r15-3-from-s2 r15-2
+
+    -- rbp preservation through all steps
+    rbp-s1-to-s2' = subst (λ s2'' → readReg (regs s2'') rbp ≡ readReg (regs s1) rbp) (sym s2-eq) rbp-s1-to-s2
+    rbp-2 = trans rbp-s1-to-s2' rbp-1
+    rbp-3 = trans rbp-3-from-s2 rbp-2
+
+    -- Memory preservation through all steps
+    mem-2 : readMem (memory s2) (readReg (regs s) r15) ≡ readMem (memory s1) (readReg (regs s) r15)
+    mem-2 = subst (λ s2'' → readMem (memory s2'') (readReg (regs s) r15) ≡ readMem (memory s1) (readReg (regs s) r15))
+                  (sym s2-eq) (mem-s1-to-s2 (readReg (regs s) r15))
+    r15-s2-eq-s = trans r15-s1-to-s2' r15-1
+    mem-3 : readMem (memory s3) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
+                         r15-s2-eq-s mem-3-from-s2)
+                  (trans mem-2 mem-1)
+
+    -- Memory at rbp preservation through all steps
+    mem-rbp-2 : readMem (memory s2) (readReg (regs s) rbp) ≡ readMem (memory s1) (readReg (regs s) rbp)
+    mem-rbp-2 = subst (λ s2'' → readMem (memory s2'') (readReg (regs s) rbp) ≡ readMem (memory s1) (readReg (regs s) rbp))
+                      (sym s2-eq) (mem-s1-to-s2 (readReg (regs s) rbp))
+    rbp-s2-eq-s = trans rbp-s1-to-s2' rbp-1
+    mem-rbp-3 : readMem (memory s3) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
+                             rbp-s2-eq-s mem-rbp-3-from-s2)
+                      (trans mem-rbp-2 mem-rbp-1)
+
+    -- Memory at rbp+8 preservation through all steps
+    mem-rbp+8-2 : readMem (memory s2) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s1) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-2 = subst (λ s2'' → readMem (memory s2'') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s1) (readReg (regs s) rbp +ℕ 8))
+                        (sym s2-eq) (mem-s1-to-s2 (readReg (regs s) rbp +ℕ 8))
+    rbp+8-s2-eq-s : readReg (regs s2) rbp +ℕ 8 ≡ readReg (regs s) rbp +ℕ 8
+    rbp+8-s2-eq-s = cong (_+ℕ 8) rbp-s2-eq-s
+    mem-rbp+8-3 : readMem (memory s3) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-3 = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s2) addr)
+                               rbp+8-s2-eq-s mem-rbp+8-3-from-s2)
+                        (trans mem-rbp+8-2 mem-rbp+8-1)
+
+    -- Memory above rbp preservation through all steps
+    mem-above-3 : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-above-3 addr addr>rbp =
+      let addr>rbp-s2 : addr > readReg (regs s2) rbp
+          addr>rbp-s2 = subst (addr >_) (sym rbp-s2-eq-s) addr>rbp
+          mem-s2-to-s3 : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s2-to-s3 = IRStarResultS.ir-mem-above r3-s addr addr>rbp-s2
+          mem-s1-to-s2-addr : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s1-to-s2-addr = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                                    (sym s2-eq) (mem-s1-to-s2 addr)
+          mem-s-to-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s-to-s1 = IRStarResultS.ir-mem-above r1-s addr addr>rbp
+      in trans mem-s2-to-s3 (trans mem-s1-to-s2-addr mem-s-to-s1)
+
+    -- Memory at address 0 preservation through all steps
+    mem-at-0-3 : readMem (memory s3) 0 ≡ readMem (memory s) 0
+    mem-at-0-3 =
+      let mem-s2-to-s3-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
+          mem-s2-to-s3-at-0 = IRStarResultS.ir-mem-at-0 r3-s
+          mem-s1-to-s2-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+          mem-s1-to-s2-at-0 = subst (λ s2'' → readMem (memory s2'') 0 ≡ readMem (memory s1) 0)
+                                    (sym s2-eq) (mem-s1-to-s2 0)
+          mem-s-to-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
+          mem-s-to-s1-at-0 = IRStarResultS.ir-mem-at-0 r1-s
       in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
