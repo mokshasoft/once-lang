@@ -54,7 +54,8 @@ open import Once.Backend.RiscV64.Correct.ClosureWellFormed
 
 -- Re-export StarBase for backwards compatibility
 open import Once.Backend.RiscV64.Correct.StarBase public
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
+  using (IRStarResult; IRStarResultS; convert-to-stateful;
+         ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
          ir-sp-delta; ir-sp-delta-leq; ir-sp;
          ir-mem-preserved; ir-output-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
@@ -98,6 +99,18 @@ open import Once.Backend.RiscV64.Correct.IR.Apply
 -- Import injection proofs (extracted to reduce module size)
 open import Once.Backend.RiscV64.Correct.IR.Injection
   using (run-inl-star; run-inr-star)
+
+-- Import extracted IR modules (following X86 pattern)
+open import Once.Backend.RiscV64.Correct.IR.Id
+  using (run-id-star-s)
+open import Once.Backend.RiscV64.Correct.IR.Terminal
+  using (run-terminal-star-s)
+open import Once.Backend.RiscV64.Correct.IR.Fold
+  using (run-fold-star-s)
+open import Once.Backend.RiscV64.Correct.IR.Unfold
+  using (run-unfold-star-s)
+open import Once.Backend.RiscV64.Correct.IR.Arr
+  using (run-arr-star-s)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; s≤s; z≤n; s<s; z<s; _⊔_) renaming (_+_ to _+ℕ_)
@@ -184,6 +197,28 @@ run-initial-star prefix suffix x s h-false pc-eq a0-eq = ⊥-elim x
 -- See that module for detailed documentation and justification.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- TEMPORARY BRIDGE: Connect stateful execution to semantic evaluation
+--
+-- This postulate connects IRStarResultS (explicit address tracking) to
+-- the semantic evaluator (eval). It allows stateful proofs to make
+-- progress on recursive IR constructs (compose, pair, case, etc.)
+-- without requiring the full encoding infrastructure inline.
+--
+-- This will be eliminated once we:
+--  1. Prove correctness at the end-to-end level (whole programs)
+--  2. Establish PairAtS/InlAtS/InrAtS validity predicates
+--  3. Complete the stateful migration for all IR constructs
+--
+-- Following X86 backend pattern (see X86/Correct/MutualIR.agda:191-197)
+------------------------------------------------------------------------
+postulate
+  irresults-preserves-eval : ∀ {i A B} (ir : IR i A B) (prog : Program) (s s' : State)
+                               (addr-in addr-out : Word) (x : ⟦ A ⟧) (offset : ℕ) →
+    IRStarResultS ir prog s s' addr-out offset →
+    encode x ≡ addr-in →
+    readReg (regs s) a0 ≡ addr-in →
+    encode (eval ir x) ≡ addr-out
 
 -- Main mutual block: run-ir-star-at-offset
 --
@@ -313,6 +348,12 @@ mutual
   -- Case: use extracted context helpers
   run-ir-star-at-offset ([_,_] f g) prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-case-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
+
+  ------------------------------------------------------------------------
+  -- TODO: Add stateful runner (run-ir-star-at-offset-s) after extracting
+  -- more IR modules. The stub implementation causes termination checker
+  -- issues with the large mutual block. See X86/Correct/MutualIR.agda.
+  ------------------------------------------------------------------------
 
   -- Pair helper - proven using phase helpers and IH with frame pointer approach
   -- Frame pointer (s2) allows f and g to use arbitrary stack space.
