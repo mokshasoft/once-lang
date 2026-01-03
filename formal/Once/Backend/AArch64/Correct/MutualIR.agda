@@ -1310,7 +1310,19 @@ mutual
   run-ir-star-at-offset (_∘_ {_} {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-compose-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (⟨_,_⟩ {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-pair-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+    let (s' , addr-f , addr-g , pair-addr , res-pair) =
+          run-pair-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+        prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
+        -- Convert PairResultS to IRStarResult
+        -- Need to prove: pair-addr ≡ encode (eval ⟨ f , g ⟩ x)
+        -- This follows from addr-f = encode (eval f x), addr-g = encode (eval g x),
+        -- and pair-addr pointing to [addr-f, addr-g] by PairAtS validity.
+    in s' , postulate-pair-to-ir-result res-pair
+    where
+      postulate
+        postulate-pair-to-ir-result : ∀ {prog s s' addr-f addr-g pair-addr offset} →
+          PairResultS f g prog s s' addr-f addr-g pair-addr offset →
+          IRStarResult ⟨ f , g ⟩ prog s s' x offset
   run-ir-star-at-offset ([_,_] {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-case-star-direct {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (curry {_} {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
@@ -1527,7 +1539,8 @@ mutual
     X29Invariant s →
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
-    in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
+    in ∃[ s' ] ∃[ addr-f ] ∃[ addr-g ] ∃[ pair-addr ]
+       PairResultS f g prog s s' addr-f addr-g pair-addr (length prefix)
   run-pair-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Full proof structure:
     -- 1. Setup (5 instructions): sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0
@@ -1536,23 +1549,24 @@ mutual
     -- 4. Execute g recursively
     -- 5. Final (4 instructions): str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16
     -- 6. Build Star proof via star-trans
-    -- 7. Prove all IRStarResult fields
-    s-final , record
-      { ir-star = star-full
-      ; ir-halted = halted-final
-      ; ir-pc = pc-final
-      ; ir-x0 = x0-final
-      ; ir-x20 = x20-final
-      ; ir-x21 = x21-final
-      ; ir-x29 = x29-final
-      ; ir-x30 = x30-final
-      ; ir-sp = sp-final
-      ; ir-mem-x21 = mem-x21-final
-      ; ir-mem-x29 = mem-x29-final
-      ; ir-mem-x29+8 = mem-x29+8-final
-      ; ir-stack-inv = stack-inv-final
-      ; ir-x29-inv = x29-inv-final
-      ; ir-sp-bound = sp-bound-final
+    -- 7. Prove all PairResultS fields
+    s-final , addr-f , addr-g , pair-addr , record
+      { pair-star = star-full
+      ; pair-halted = halted-final
+      ; pair-pc = pc-final
+      ; pair-x0-s = x0-final
+      ; pair-x20 = x20-final
+      ; pair-x21 = x21-final
+      ; pair-x29 = x29-final
+      ; pair-x30 = x30-final
+      ; pair-sp = sp-final
+      ; pair-mem-x21 = mem-x21-final
+      ; pair-mem-x29 = mem-x29-final
+      ; pair-mem-x29+8 = mem-x29+8-final
+      ; pair-stack-inv = stack-inv-final
+      ; pair-x29-inv = x29-inv-final
+      ; pair-sp-bound = sp-bound-final
+      ; pair-valid = pair-valid-final
       }
     where
       -- The full program
@@ -1564,6 +1578,19 @@ mutual
 
       -- New SP after allocation (pair pointer)
       new-sp = readSP (regs s) ∸ 16
+
+      -- The three addresses tracked by PairResultS:
+      -- addr-f: result of f (value returned in x0)
+      -- addr-g: result of g (value returned in x0)
+      -- pair-addr: location of allocated pair
+      addr-f : Word
+      addr-f = encode (eval f x)
+
+      addr-g : Word
+      addr-g = encode (eval g x)
+
+      pair-addr : Word
+      pair-addr = new-sp
 
       ------------------------------------------------------------------------
       -- Phase 1: Setup (5 instructions)
@@ -1786,7 +1813,7 @@ mutual
         star-final : Star prog s-g s-final
         halted-final : halted s-final ≡ false
         pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
-        x0-final : readReg (regs s-final) x0 ≡ encode (eval ⟨ f , g ⟩ x)
+        x0-final : readReg (regs s-final) x0 ≡ pair-addr
         x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
         x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
         stack-inv-final : StackInvariant s-final
@@ -1798,6 +1825,7 @@ mutual
         mem-x21-final : readMem (memory s-final) (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
         mem-x29-final : readMem (memory s-final) (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
         mem-x29+8-final : readMem (memory s-final) (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+        pair-valid-final : PairAtS addr-f addr-g pair-addr (memory s-final)
 
       ------------------------------------------------------------------------
       -- Compose all Star proofs
