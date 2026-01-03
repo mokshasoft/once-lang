@@ -301,3 +301,96 @@ record ComposeResultS {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
     compose-sp-bound  : readSP (regs s') > 16
 
 open ComposeResultS public
+
+------------------------------------------------------------------------
+-- CaseResultS: Stateful result for case combinator
+------------------------------------------------------------------------
+--
+-- The case [f, g] performs case analysis on sum type A + B:
+--   - If input is inj₁ a, execute f and return result
+--   - If input is inj₂ b, execute g and return result
+--
+-- Key address:
+-- 1. addr-out: The result from whichever branch was taken
+--
+-- The addr-out is returned in x0.
+record CaseResultS {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
+                   (prog : Program) (s s' : State)
+                   (addr-out : Word) (offset : ℕ) : Set where
+  field
+    -- Standard execution properties
+    case-star      : Star prog s s'
+    case-halted    : halted s' ≡ false
+    case-pc        : pc s' ≡ offset +ℕ compile-length [ f , g ]
+
+    -- Explicit output address in x0
+    case-x0-s      : readReg (regs s') x0 ≡ addr-out
+
+    -- Register preservation
+    case-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
+    case-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
+    case-x29       : readReg (regs s') x29 ≡ readReg (regs s) x29
+    case-x30       : readReg (regs s') x30 ≡ readReg (regs s) x30
+    case-sp        : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    case-mem-x21   : readMem (memory s') (readReg (regs s) x21) ≡
+                     readMem (memory s) (readReg (regs s) x21)
+    case-mem-x29   : readMem (memory s') (readReg (regs s) x29) ≡
+                     readMem (memory s) (readReg (regs s) x29)
+    case-mem-x29+8 : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                     readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    case-stack-inv : StackInvariant s'
+    case-x29-inv   : X29Invariant s'
+    case-sp-bound  : readSP (regs s') > 16
+
+open CaseResultS public
+
+------------------------------------------------------------------------
+-- ApplyResultS: Stateful result for apply combinator
+------------------------------------------------------------------------
+--
+-- The apply operation takes a closure and an argument, calls the
+-- closure's code pointer with the argument, and returns the result.
+--
+-- Key addresses:
+-- 1. closure-addr: The closure being applied
+-- 2. arg-addr: The argument to the closure
+-- 3. addr-out: The final result from the closure
+--
+-- The addr-out is returned in x0.
+record ApplyResultS {i} {A B : Type}
+                    (prog : Program) (s s' : State)
+                    (closure-addr arg-addr addr-out : Word) (offset : ℕ) : Set where
+  field
+    -- Standard execution properties
+    apply-star      : Star prog s s'
+    apply-halted    : halted s' ≡ false
+    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {i} {A} {B})
+
+    -- Explicit output address in x0
+    apply-x0-s      : readReg (regs s') x0 ≡ addr-out
+
+    -- Register preservation
+    apply-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
+    apply-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
+    apply-x29       : readReg (regs s') x29 ≡ readReg (regs s) x29
+    apply-x30       : readReg (regs s') x30 ≡ readReg (regs s) x30
+    apply-sp        : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    apply-mem-x21   : readMem (memory s') (readReg (regs s) x21) ≡
+                      readMem (memory s) (readReg (regs s) x21)
+    apply-mem-x29   : readMem (memory s') (readReg (regs s) x29) ≡
+                      readMem (memory s) (readReg (regs s) x29)
+    apply-mem-x29+8 : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    apply-stack-inv : StackInvariant s'
+    apply-x29-inv   : X29Invariant s'
+    apply-sp-bound  : readSP (regs s') > 16
+
+open ApplyResultS public
