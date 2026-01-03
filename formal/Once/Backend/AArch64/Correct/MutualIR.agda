@@ -64,7 +64,8 @@ open import Once.Backend.AArch64.Correct.StarBase public
          ir-stack-inv; ir-x29-inv; ir-sp-bound;
          IRRunner; combine-star-results;
          -- Stateful versions
-         IRStarResultS; ir-x0-s; convert-to-stateful; IRRunnerS)
+         IRStarResultS; ir-x0-s; convert-to-stateful; IRRunnerS;
+         PairResultS; ComposeResultS)
 
 -- Import MemoryValid for stateful validity predicates
 open import Once.Backend.AArch64.Correct.MemoryValid
