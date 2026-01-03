@@ -270,42 +270,51 @@ mutual
     in addr-in , s' , res  -- arr is identity at runtime (Eff = Closure)
 
   -- fst/snd: simple delegation following RISC-V pattern
-  run-ir-star-at-offset-s (fst {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (fst {i} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-fst-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 fst ++ suffix
-        res-s = convert-to-stateful fst prog s s' x (length prefix) res
+        prog = prefix ++ compile-x86 (fst {i} {A} {B}) ++ suffix
+        res-s = convert-to-stateful (fst {i} {A} {B}) prog s s' x (length prefix) res
     in encode (proj₁ x) , s' , res-s
 
-  run-ir-star-at-offset-s (snd {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (snd {i} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-snd-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 snd ++ suffix
-        res-s = convert-to-stateful snd prog s s' x (length prefix) res
+        prog = prefix ++ compile-x86 (snd {i} {A} {B}) ++ suffix
+        res-s = convert-to-stateful (snd {i} {A} {B}) prog s s' x (length prefix) res
     in encode (proj₂ x) , s' , res-s
 
-  run-ir-star-at-offset-s (inl {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (inl {i} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-inl-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 inl ++ suffix
-        res-s = convert-to-stateful inl prog s s' x (length prefix) res
+        prog = prefix ++ compile-x86 (inl {i} {A} {B}) ++ suffix
+        res-s = convert-to-stateful (inl {i} {A} {B}) prog s s' x (length prefix) res
     in encode (inj₁ x) , s' , res-s
 
-  run-ir-star-at-offset-s (inr {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (inr {i} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-inr-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 inr ++ suffix
-        res-s = convert-to-stateful inr prog s s' x (length prefix) res
+        prog = prefix ++ compile-x86 (inr {i} {A} {B}) ++ suffix
+        res-s = convert-to-stateful (inr {i} {A} {B}) prog s s' x (length prefix) res
     in encode (inj₂ x) , s' , res-s
 
   run-ir-star-at-offset-s (initial {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     ⊥-elim x
 
-  -- Recursive cases: stub for now (will implement after base cases work)
+  -- Recursive cases: delegate to *-star-direct functions
   run-ir-star-at-offset-s (_∘_ {A} {B} {C} g f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: implement stateful compose
+    let (s' , res) = run-compose-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 (_∘_ g f) ++ suffix
+        res-s = convert-to-stateful (_∘_ g f) prog s s' x (length prefix) res
+    in encode (eval (_∘_ g f) x) , s' , res-s
 
   run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: implement stateful pair
+    let (s' , res) = run-pair-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 (⟨ f , g ⟩) ++ suffix
+        res-s = convert-to-stateful (⟨ f , g ⟩) prog s s' x (length prefix) res
+    in encode (eval (⟨ f , g ⟩) x) , s' , res-s
 
   run-ir-star-at-offset-s ([_,_] {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: implement stateful case
+    let (s' , res) = run-case-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 ([ f , g ]) ++ suffix
+        res-s = convert-to-stateful ([ f , g ]) prog s s' x (length prefix) res
+    in encode (eval ([ f , g ]) x) , s' , res-s
 
   run-ir-star-at-offset-s (curry {A} {B} {C} f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , (res , mem-res)) = run-curry-star f prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
@@ -314,7 +323,10 @@ mutual
     in encode-closure-addr (eval (curry f) x) , s' , res-s
 
   run-ir-star-at-offset-s (apply {_} {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    {!!}  -- TODO: implement stateful apply
+    let (s' , res) = run-apply-star-direct prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
+        res-s = convert-to-stateful (apply {_} {A} {B}) prog s s' x (length prefix) res
+    in encode (eval (apply {_} {A} {B}) x) , s' , res-s
 
   -- | Star-based compose execution
   -- Uses extracted helpers from IR.Compose - only recursive calls remain here
