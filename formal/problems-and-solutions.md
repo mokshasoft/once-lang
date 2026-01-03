@@ -64,19 +64,31 @@ When encountering duplication or postulates:
 | `StackAnalysis` | Duplicated in X86/AArch64/RiscV64 | Moved to Common | Priority 1 ✓ |
 | `ClosureWellFormed` | Considered for Common | Kept arch-specific (calling conventions differ) | Priority 2 (justified) |
 
-### Arbitrary Programs Consideration
+### Verification Scope: Compiler Correctness for Arbitrary Programs
 
-**Goal**: Verify arbitrary programs, not just closed/simple ones
+**Goal**: Verify the **compiler** is correct for ANY program using ANY combination of IR generators
 
-- Whole-program proofs eliminate postulates for closed programs
-- Modular boundaries may require axioms (e.g., FFI, external closures)
-- Prefer: Eliminate postulates within compiled program boundaries
-- Accept: Axioms only at true external boundaries (FFI, dynamic loading)
+**What we prove**:
+- The Once compiler correctly translates programs to machine code
+- For ANY combination of generators (curry + apply + compose + ...), composition is correct
+- If an Once program type-checks, it compiles correctly
 
-This ensures we can verify:
-- Complex programs with deep nesting
-- Compositional verification (module-by-module)
-- Programs with higher-order functions from external sources
+**What we do NOT prove**:
+- Whether specific Once programs produce correct results (that's program verification, not compiler verification)
+
+**Compositional approach**:
+- Prove each generator correct in isolation (modular proofs)
+- Prove generators compose correctly (MutualIR.agda)
+- Result: Compiler works for ALL type-correct programs
+
+**Postulate strategy**:
+- Prefer: Eliminate postulates in modular composition proofs (zero internal postulates)
+- Accept: Axioms only at true external boundaries (FFI, dynamic loading, syscalls)
+
+This compositional approach ensures:
+- Complex programs with deep nesting compile correctly
+- Programs with higher-order functions compile correctly
+- ANY combination of generators compiles correctly
 
 ---
 

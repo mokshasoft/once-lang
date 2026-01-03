@@ -90,32 +90,54 @@ The code speaks for itself. If there are no postulates, that's visible.
 
 ## Verification Philosophy
 
-### Arbitrary Programs, Not Toy Examples
+### What We're Proving: Compiler Correctness for Arbitrary Programs
 
-The goal of Once verification is to prove that **arbitrary Once programs** compile correctly,
-not just specific example programs.
+Once verification proves **compiler correctness**, not program correctness.
+
+**The Goal:**
+> For ANY Once program that type-checks, prove the compiled machine code faithfully
+> implements the IR semantics.
+
+**Compiler Correctness** (What we prove):
+- The Once compiler correctly translates programs to machine code
+- For ANY combination of IR generators, the composition is correct
+- If your Once program type-checks, it compiles correctly
+
+**Program Correctness** (NOT our job):
+- Whether a specific Once program produces the right answer
+- Example: "This sorting algorithm actually sorts"
+- That's about the program's logic, not the compiler
+
+### Compositional Verification: Prove Once, Use Everywhere
 
 **What this means:**
-- ✓ Prove each IR generator correct in ISOLATION (modular proofs)
+- ✓ Prove EACH IR generator correct in isolation (id, compose, curry, apply, etc.)
 - ✓ Prove generators COMPOSE correctly (run-ir-star-at-offset in MutualIR.agda)
-- ✓ Enable verification of ANY program via compositional reasoning
-- ✗ Do NOT only prove specific whole-program examples (E2E-Trace style)
+- ✓ Result: ANY program using ANY COMBINATION of generators compiles correctly
 
-**Why this matters:**
-Whole-program proofs like `test-curry-apply` only verify that one specific expression
-works. They do not prove that curry and apply compose correctly in general.
+**Why this works:**
+```
+Prove: curry is correct
+Prove: apply is correct
+Prove: compose is correct
+Prove: They compose correctly
+→ ANY program using ANY combination of curry, apply, compose, etc. compiles correctly
+```
 
-Modular proofs prove that no matter how you combine IR generators, the result is correct.
 This is the difference between:
-- Verifying "hello world works" vs "all C programs work"
+- Verifying "hello world compiles" vs "the compiler works for all programs"
 - Proving "2+2=4" vs "addition is commutative"
+- Testing one example vs verifying the general case
+
+**Whole-program proofs are validation:**
+End-to-end proofs like `test-curry-apply` demonstrate the system works,
+but they don't prove compiler correctness for arbitrary programs.
+Only modular proofs with composition do that.
 
 **Implication for postulate elimination:**
 When eliminating postulates (like apply-produces-result), we must eliminate them from
 the MODULAR mutual block (run-ir-star-at-offset), not just from example programs.
-
-Whole-program proofs serve as validation and demonstration, but the real verification
-happens in the modular layer.
+The modular layer is where we prove arbitrary program correctness.
 
 ## Proof Patterns
 
