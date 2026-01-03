@@ -800,3 +800,161 @@ The goal is to prove **arbitrary Once programs** compile correctly, not just spe
 - **X86 Architecture**: `docs/formal/x86-full-proof-architecture.md` - Reference implementation
 - **RISC-V Architecture**: `docs/formal/riscv64-full-proof-architecture.md` - Clean register model
 - **Decision Log**: `docs/compiler/decision-log.md` (D022: Agda, D032: Arrow effects)
+
+---
+
+# FINALIZATION PLAN SUMMARY
+
+## Executive Summary
+
+**Goal**: Complete AArch64 backend using X86-64's stateful proof architecture, following existing migration plan (Phases 1-7 above)
+
+**Current State**: 8/15 generators proven (53%), migration plan documented, needs execution
+
+**Only Acceptable Postulate**: `sp-bound-after-stack-op` (stack pointer bounds - runtime property)
+
+**Status**: Migration plan complete (see above), ready for execution following X86-64/RISC-V proven patterns
+
+## CRITICAL: The Wrong Path to Avoid
+
+### ❌ DO NOT Use `apply-produces-result` or Modular Reasoning
+
+**Why this is the WRONG PATH**:
+
+1. **Not needed for closed programs**: Our verification goal is arbitrary **closed Once programs** (RawExpr → machine code), NOT open program fragments
+
+2. **Modular reasoning is a rabbit hole**: This postulate exists for hypothetical modular reasoning about open program fragments where closures come from unknown sources. We do NOT verify open fragments.
+
+3. **ClosureWellFormed eliminates the need**: Whole-program proofs of closed Once programs use the `ClosureWellFormed` infrastructure which tracks closure creation and application through compose/pair.
+
+4. **X86-64 already documented why**: From `X86.Postulates.agda` lines 107-122 - apply postulate NOT needed for closed programs
+
+**The RIGHT path**: Follow existing migration plan (Phases 1-7 above) which adopts X86-64's stateful proof architecture with `ClosureWellFormed` for whole-program proofs.
+
+## Current Status
+
+### Generators: 8/15 Proven (53%)
+
+**✅ PROVEN**: Trivial generators (id, fold, unfold, arr, terminal)
+
+**⚠️ PARTIAL**: fst, snd, inl, inr (stateful versions exist, integration pending)
+
+**❌ REMAINING**: compose, pair, case (postulated), curry, apply
+
+### Critical Issues
+
+1. **Scattered postulates** - 5 files (ThunkProof, IR/Apply, ClosureWellFormed) - VIOLATES proof-instructions.md
+2. **Inline record construction** - MutualIR.agda bloated (1,700+ lines)
+3. **Mysterious nop in compose** - x0 is input AND output (like RISC-V), why nop?
+
+## Execution Order (Following Migration Plan Above)
+
+### Phase 0: ✅ COMPLETE
+Migration plan documented above (Phases 1-7)
+
+### Phase 1: Import Common.Star (1-2 days) - NEXT
+Follow RISC-V proven pattern, ~115 lines reduction
+
+### Phase 2: StackAnalysis + Frame Proofs (2-3 days)
+**CRITICAL**: May discover curry-frame is wrong (like RISC-V found 16→24)
+
+### Phase 3: Convert to 100% Star (1-2 weeks)
+Convert 8 modules (~4,779 lines) from fuel-based to Star-based proofs
+
+### Phase 4: Centralize Postulates (2-3 days) - CRITICAL
+Move all postulates to Postulates.agda, fix violations
+
+### Phase 5: Complete Frame Proofs (1 week)
+Prove pair-frame, curry-frame, inl-frame, inr-frame from code generation
+
+### Phase 6: Investigate nop Removal (OPTIONAL, 3-5 days)
+x0=x0 like RISC-V, nop likely unnecessary
+
+### Phase 7: Prove Curry/Apply (OPTIONAL, 2-4 weeks)
+Use ClosureWellFormed, may remain as semantic axioms
+
+## Final Postulate Count Target
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Runtime Properties | 1 | `sp-bound-after-stack-op` (PERMANENT) |
+| Encoding Postulates | 0 | ✅ ELIMINATED via stateful proofs (X86 pattern) |
+| Modular Reasoning | 0 | ✅ NOT NEEDED for closed programs |
+| Standard Math Axioms | 2 | funext + closure-eq (PERMANENT) |
+| **TOTAL FOR CLOSED PROGRAMS** | **3** | **Minimal trusted base** |
+
+## Build Commands
+
+```bash
+cd formal
+
+# Parallel builds (RECOMMENDED)
+make -j4 aarch64              # Full backend
+make -j4 aarch64-correct      # Correctness proofs only
+
+# Individual modules
+timeout 300 make agda MODULE=Once/Backend/AArch64/Correct/MutualIR.agda
+timeout 300 make agda MODULE=Once/Backend/AArch64/Correct/StarBase.agda
+
+# Quick validation
+make -j4 aarch64-star         # Star.agda only
+
+# Full validation
+make -j4 aarch64 && echo "SUCCESS: AArch64 backend fully proven"
+```
+
+## Timeline
+
+Following the detailed migration plan (Phases 1-7 above):
+
+- **Core modernization** (Phases 1-5): 3-4 weeks
+- **With optional phases** (Phases 6-7): 6-9 weeks
+- **Expected state**: Clean architecture, proven frame sizes, ~165 lines saved, ZERO encoding postulates
+
+## Success Criteria
+
+**Completion Checklist** (matching migration plan above):
+1. ✅ AArch64 imports Common.Star and Common.StackAnalysis
+2. ✅ All postulates in Postulates.agda (except Foundation encodedMemory)
+3. ✅ Frame sizes proven from code generation (pair, inl, inr, curry)
+4. ✅ Stack space uses explicit stackSize parameter (no false universal bounds)
+5. ✅ All proofs use Star (zero fuel-based exec in IR/*)
+6. ✅ Postulate count ≤ 4 semantic axioms (matching/exceeding RISC-V)
+7. ✅ 15/15 generators proven or documented as semantic axioms
+8. ✅ ZERO encoding postulates (following X86 pattern)
+9. ✅ `make -j4 aarch64` passes
+10. ✅ Documentation updated
+11. ✅ ONLY `sp-bound-after-stack-op` runtime postulate remains
+
+**Final State**: AArch64 backend with ZERO encoding postulates, following proven X86-64/RISC-V patterns.
+
+## Key References
+
+- **Detailed Migration Plan**: See Phases 1-7 above (lines 259-628 of this file)
+- **X86 Stateful Infrastructure** (Proven pattern to follow):
+  - `Once.Backend.X86.Correct.MemoryValid.agda` - Validity predicates
+  - `Once.Backend.X86.Correct.StarBase.agda` - E2E stateful tests (lines 1453-1763)
+- **X86 Apply Discussion**: `Once.Backend.X86.Postulates.agda` (lines 107-122) - Why apply postulate NOT needed
+- **RISC-V Migration Success**: `docs/formal/architecture/riscv64-backend-verification-plan.md` - Proven blueprint
+- **Proof Instructions**: `formal/proof-instructions.md` - Principle 1 (No Inline Postulates), Star mandatory
+
+## Action Items for Parallel Work
+
+Since you requested plans for parallel work across all three backends, the priorities are:
+
+**IMMEDIATE (this week)**:
+- **X86-64**: Begin Phase 1 of stateful migration (IRStarResultS threading)
+- **RISC-V**: Fix MutualIR.agda postulate violation (Priority 1, 2-3 days)
+- **AArch64**: Begin Phase 1 (Import Common.Star, 1-2 days)
+
+**SHORT TERM (next 2 weeks)**:
+- **X86-64**: Complete Phase 1, start Phase 2 (E2E update)
+- **RISC-V**: Begin Phase 2a (Create stateful infrastructure)
+- **AArch64**: Complete Phases 1-2 (Common.Star + StackAnalysis)
+
+**MEDIUM TERM (weeks 3-6)**:
+- **X86-64**: Complete all 4 phases, achieve ZERO encoding postulates
+- **RISC-V**: Complete Phases 2b-2c, Priority 3 (generators)
+- **AArch64**: Execute Phase 3 (convert to Star), Phase 4 (centralize postulates)
+
+All three backends converge on the same target: ZERO encoding postulates, ONLY `sp-bound-after-stack-op` runtime postulate, using stateful proof architecture.

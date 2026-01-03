@@ -489,3 +489,372 @@ RISC-V demonstrates that **simpler is better**:
 - **X86 Architecture**: `docs/formal/x86-full-proof-architecture.md` - Reference implementation
 - **AArch64 Architecture**: `docs/formal/aarch64-full-proof-architecture.md` - Similar register model
 - **Decision Log**: `docs/compiler/decision-log.md` (D022: Agda, D032: Arrow effects)
+
+---
+
+# FINALIZATION PLAN: Stateful Proofs + Postulate Cleanup
+
+## Executive Summary
+
+**Goal**: Complete RISC-V backend generator proofs using X86-64's stateful proof architecture, eliminate encoding postulates, fix postulate discipline violations.
+
+**Current State**: 11/15 generators proven (73%), excellent architecture (cleanest register model, no transfer overhead), but has encoding postulates and postulate discipline violations
+
+**Only Acceptable Postulate**: `sp-bound-after-stack-op` (stack pointer bounds - runtime property, RISC-V equivalent of X86's `rsp-bound-after-stack-op`)
+
+**Status**: Excellent foundation with best-in-class architecture, ready for migration to stateful proofs following X86-64 proven pattern
+
+## CRITICAL: The Wrong Path to Avoid
+
+### ❌ DO NOT Use `apply-produces-result` or Modular Reasoning
+
+**Why this is the WRONG PATH**:
+
+1. **Not needed for closed programs**: Our verification goal is arbitrary **closed Once programs** (RawExpr → machine code), NOT open program fragments
+
+2. **Modular reasoning is a rabbit hole**: This postulate exists for hypothetical modular reasoning about open program fragments where closures come from unknown sources. We do NOT verify open fragments.
+
+3. **ClosureWellFormed eliminates the need**: Whole-program proofs of closed Once programs use the `ClosureWellFormed` infrastructure which tracks closure creation and application through compose/pair. Every `apply` in a closed program consumes a closure created by some `curry`, and the proofs flow naturally through composition.
+
+4. **X86-64 already documented why**: From `X86.Postulates.agda` lines 107-122:
+   ```agda
+   -- VERIFICATION STRATEGY: WHOLE-PROGRAM PROOFS FOR CLOSED PROGRAMS
+   -- The verification goal is to prove correctness of arbitrary closed Once
+   -- programs. In closed programs:
+   --   - Every `apply` consumes a closure created by some `curry`
+   --   - The curry and apply are always composed together
+   --   - ClosureWellFormed proofs flow naturally through composition
+   --
+   -- This means: NO POSTULATE NEEDED for closed program verification.
+   ```
+
+**What happens if we go down this path**:
+- We accept postulates we don't need
+- We abandon the whole-program verification strategy
+- We violate proof-instructions.md Principle 1 (No Inline Postulates)
+- We fail to achieve true compiler correctness for arbitrary Once programs
+
+**The RIGHT path**: Follow X86-64's stateful proof architecture with `ClosureWellFormed` infrastructure for whole-program proofs.
+
+## Current Status (Detailed)
+
+### Generators: 11/15 Proven (73%)
+
+**✅ PROVEN (11 generators)**:
+- Trivial (5): id, fold, unfold, arr, terminal
+- Projections (2): fst, snd
+- Injections (2): inl, inr (combined in IR/Injection.agda - excellent!)
+- Compound (2): compose (NO transfer instruction!), pair (1,420 lines, ZERO postulates!)
+
+**❌ REMAINING (4 generators)**:
+- case (needs Star infrastructure, following X86 pattern)
+- curry (has curry-output-wf postulate)
+- apply (has run-apply-star postulate in MutualIR - CRITICAL VIOLATION)
+
+### Architecture Strengths (Best in Class!)
+
+**⭐ RISC-V has the CLEANEST architecture**:
+1. **No transfer overhead**: `compile-riscv (g ∘ f) = f ++ g` (just concatenate!)
+2. **Simplest register model**: a0 for input AND output
+3. **Sophisticated stack tracking**: SP-delta with provable static bounds
+4. **Pair fully proven**: 1,420 lines, ZERO postulates (only backend to achieve this!)
+5. **Most concise**: 13 files, 10,092 lines (smallest codebase)
+
+**Future backends should follow RISC-V patterns, not X86!**
+
+### Postulates: Current Inventory and Violations
+
+**Category 1: Runtime Properties (ACCEPTABLE)**:
+- ✅ `stackDepth-leq-stackBase` (Foundation.agda:86) - Stack space assumption
+  - **Note**: Should be renamed to `sp-bound-after-stack-op` to match X86 naming
+  - **Status**: Permanent - runtime property
+
+**Category 2: CRITICAL VIOLATIONS (Must Fix Immediately)**:
+- ❌ `run-apply-star` (MutualIR.agda:184) - **SEVERE VIOLATION**
+  - **Problem**: Postulate in mutual recursion block violates proof-instructions.md
+  - **Should be**: In Backend/RiscV64/Postulates.agda if semantic axiom, OR proven using IH
+  - **Priority**: CRITICAL - fix immediately
+
+**Category 3: Closure Well-Formedness (Should Prove)**:
+- ❌ `curry-output-wf` (IR/Curry.agda:70) - Prove closure is well-formed after curry
+- ❌ `dummy-wf-for-arrow` (ClosureWellFormed.agda:204) - Prove or remove
+
+**Category 4: Encoding Postulates (ELIMINABLE with stateful proofs)**:
+- RISC-V currently uses non-stateful approach with encoding postulates
+- **Solution**: Migrate to X86-64's stateful proof architecture (IRStarResultS)
+- **Evidence**: X86 has ZERO encoding postulates using this approach
+
+**Current Total**: ~4-5 files with postulates (VIOLATION - should be 1-2 max)
+
+## Finalization Strategy: Multi-Phase Approach
+
+### Priority 1: Fix Postulate Discipline (IMMEDIATE - 2-3 days)
+
+**CRITICAL**: Move `run-apply-star` out of MutualIR.agda
+
+**Problem**: Violates proof-instructions.md Principle 1 (No Inline Postulates)
+
+**Options**:
+
+**Option A (If semantic axiom)**:
+1. Create `formal/Once/Backend/RiscV64/Correct/Postulates.agda`
+2. Move `run-apply-star` there with full documentation
+3. Document why it's a semantic boundary (like X86's apply-produces-result)
+4. **BUT NOTE**: Even X86's apply-produces-result is NOT needed for closed programs!
+
+**Option B (If provable - RECOMMENDED)**:
+1. Prove using mutual recursion IH (like curry)
+2. Use ClosureWellFormed infrastructure
+3. Pattern from X86: curry proves closure creation, apply uses well-formedness
+
+**Validation**:
+```bash
+cd formal
+grep -r "^postulate$" Once/Backend/RiscV64/Correct/MutualIR.agda  # Should find 0
+make -j4 riscv64
+```
+
+**Success**: ZERO postulates in MutualIR.agda, all postulates in Postulates.agda
+
+### Priority 2: Migrate to Stateful Proof Architecture (2-3 weeks)
+
+**Goal**: Follow X86-64's proven pattern to eliminate encoding postulates
+
+**Pattern**: Use IRStarResultS with validity predicates instead of abstract encode
+
+**Phase 2a: Create Stateful Infrastructure (1 week)**
+
+**Files to create**:
+- `formal/Once/Backend/RiscV64/Correct/MemoryValid.agda` - Validity predicates
+- `formal/Once/Backend/RiscV64/Correct/Postulates.agda` - Centralized postulates
+
+**Pattern (from X86)**:
+```agda
+-- MemoryValid.agda: Explicit addresses instead of abstract encode
+record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
+  field
+    fst-valid : readMem m addr-pair ≡ just addr-a
+    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
+
+record InlAtS (tag addr-val addr-sum : Word) (m : Memory) : Set where
+  field
+    tag-valid : readMem m addr-sum ≡ just tag
+    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+```
+
+**Validation**:
+```bash
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/MemoryValid.agda
+```
+
+**Phase 2b: Define IRStarResultS (1 week)**
+
+**File to modify**: `formal/Once/Backend/RiscV64/Correct/StarBase.agda`
+
+**Pattern**:
+```agda
+record IRStarResultS where
+  field
+    -- Standard Star execution
+    ir-star : Star prog s s'
+    ir-halted : halted s' ≡ false
+    ir-pc : pc s' ≡ offset +ℕ compile-length ir
+
+    -- Register preservation (RISC-V specific)
+    ir-s1, ir-s2, ir-ra : ... preservation ...
+
+    -- SP-delta tracking (RISC-V's sophisticated approach - KEEP THIS!)
+    ir-sp-delta : ℕ
+    ir-sp-delta-leq : ir-sp-delta ≤ StackDelta ir
+    ir-sp : readReg (regs s') sp +ℕ ir-sp-delta ≡ readReg (regs s) sp
+
+    -- NEW: Validity predicates instead of encode
+    ir-output-valid : PairAtS addr-a addr-b a0 (memory s')
+                    ∨ InlAtS tag addr a0 (memory s')
+                    ∨ InrAtS tag addr a0 (memory s')
+                    ∨ a0 ≡ encode-primitive val
+
+    -- Memory preservation (RISC-V's universal quantification - KEEP THIS!)
+    ir-mem-preserved : ∀ n → readMem (memory s') (readReg (regs s) sp +ℕ n)
+                           ≡ readMem (memory s) (readReg (regs s) sp +ℕ n)
+```
+
+**Key insight**: Keep RISC-V's superior SP-delta and universal memory preservation!
+
+**Phase 2c: Thread Through MutualIR (1 week)**
+
+**Files to modify**:
+- `formal/Once/Backend/RiscV64/Correct/MutualIR.agda`
+- `formal/Once/Backend/RiscV64/Correct/IR/*.agda`
+
+**Pattern (internal interface)**:
+```agda
+run-ir-star-at-offset : ∀ ir prefix suffix x s ... →
+  IRStarResultS ir prefix suffix x s  -- Now stateful
+
+-- Generators build validity proofs from memory operations
+run-pair-star-direct : ... →
+  let (addr-a, s-a) = allocate-pair-fst ...
+      (addr-b, s-b) = allocate-pair-snd ...
+      fst-valid = prove-from-write ...
+      snd-valid = prove-from-write ...
+  in record { ir-output-valid = pair-at-s fst-valid snd-valid ; ... }
+```
+
+**External interface (convert-to-stateful bridge)**:
+```agda
+-- External: uses encode for compatibility
+run-ir-star : ∀ ir x s → IRStarResult
+run-ir-star ir x s =
+  let res-s = run-ir-star-at-offset ir [] [] x s ...
+  in convert-to-encode res-s
+
+convert-to-encode : IRStarResultS → IRStarResult
+-- Derive encode from validity predicates
+```
+
+**Validation**:
+```bash
+cd formal
+
+# Individual generators (parallel)
+make -j4 agda MODULE=Once/Backend/RiscV64/Correct/IR/Pair.agda
+make -j4 agda MODULE=Once/Backend/RiscV64/Correct/IR/Compose.agda
+
+# Mutual block
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/MutualIR.agda
+
+# Full backend
+make -j4 riscv64
+```
+
+### Priority 3: Complete Remaining Generators (1-2 weeks)
+
+**case generator** (Following X86 pattern):
+- Study X86 case proof (IR/Case.agda)
+- Adapt to RISC-V's cleaner architecture (no transfer!)
+- Use Star composition (star-trans)
+
+**curry generator**:
+- Prove curry-output-wf using closure construction
+- Pattern from X86: track closure structure through memory operations
+
+**apply generator** (After fixing MutualIR postulate):
+- If semantic axiom: Document in Postulates.agda with clear scope
+- If provable: Use ClosureWellFormed infrastructure
+
+**Validation for each**:
+```bash
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/IR/Case.agda
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/IR/Curry.agda
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/IR/Apply.agda
+```
+
+### Priority 4: Eliminate Encoding Postulates (1 day)
+
+**After stateful migration complete**:
+
+1. Verify encoding postulates unused:
+   ```bash
+   cd formal
+   grep -r "encode-pair-fst" Once/Backend/RiscV64/  # Should find 0
+   # ... check all encoding postulates
+   ```
+
+2. Remove from dependency on Once.Postulates encoding axioms
+
+3. Document ZERO encoding postulates achievement
+
+**Validation**:
+```bash
+make -j4 riscv64 && echo "SUCCESS: RISC-V with ZERO encoding postulates"
+```
+
+## Timeline
+
+- **Priority 1** (Postulate discipline): 2-3 days (IMMEDIATE)
+- **Priority 2** (Stateful migration): 2-3 weeks
+  - Phase 2a (Infrastructure): 1 week
+  - Phase 2b (IRStarResultS): 1 week
+  - Phase 2c (Thread through): 1 week
+- **Priority 3** (Complete generators): 1-2 weeks
+- **Priority 4** (Eliminate encoding postulates): 1 day
+
+**Total**: 4-6 weeks for complete finalization
+
+## Final Postulate Count
+
+After completing this finalization plan:
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Runtime Properties | 1 | `sp-bound-after-stack-op` (PERMANENT) |
+| Encoding Postulates | 0 | ✅ ELIMINATED via stateful proofs |
+| Modular Reasoning | 0 | ✅ NOT NEEDED for closed programs |
+| Standard Math Axioms | 2 | funext + closure-eq (PERMANENT) |
+| **TOTAL FOR CLOSED PROGRAMS** | **3** | **Minimal trusted base** |
+
+**Key point**: Same minimal trusted base as X86-64 with superior architecture!
+
+## Build Commands
+
+```bash
+cd formal
+
+# Parallel builds (RECOMMENDED - RISC-V is fastest backend!)
+make -j4 riscv64                # Full backend
+make -j4 riscv-correct          # Correctness proofs only
+
+# Individual modules (for debugging)
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/MutualIR.agda
+timeout 300 make agda MODULE=Once/Backend/RiscV64/Correct/StarBase.agda
+
+# Quick validation
+make -j4 riscv-star             # Star.agda only
+
+# Full validation
+make -j4 riscv64 && echo "SUCCESS: RISC-V backend fully proven"
+```
+
+## Success Criteria
+
+**Completion Checklist**:
+1. ✅ ZERO postulates in MutualIR.agda (moved to Postulates.agda or proven)
+2. ✅ All postulates centralized in Backend/RiscV64/Correct/Postulates.agda
+3. ✅ IRStarResultS with validity predicates defined
+4. ✅ All generators use stateful proofs internally
+5. ✅ External interface maintains encode compatibility via convert-to-stateful
+6. ✅ 15/15 generators proven (case, curry, apply completed)
+7. ✅ ZERO encoding postulates (following X86 pattern)
+8. ✅ SP-delta tracking preserved (RISC-V's superior approach)
+9. ✅ `make -j4 riscv64` passes
+10. ✅ Documentation updated
+11. ✅ ONLY `sp-bound-after-stack-op` runtime postulate remains
+
+**Final State**: RISC-V backend with ZERO encoding postulates, cleanest architecture, serving as the model for future backends.
+
+## Why RISC-V Will Be The Reference After Finalization
+
+**Current**: X86-64 is reference (most mature, proven patterns)
+
+**After finalization**: RISC-V should become reference because:
+
+1. ⭐ **No transfer overhead**: Simplest possible codegen
+2. ⭐ **Cleanest register model**: a0 = input = output
+3. ⭐ **Superior stack tracking**: SP-delta with static bounds
+4. ⭐ **Most concise**: Smallest codebase (10,092 lines vs X86's 16,486)
+5. ⭐ **Pair fully proven**: Only backend with ZERO postulates in pair proof
+6. ⭐ **Combined injection**: Better organization (Injection.agda vs separate Inl/Inr)
+
+**Recommendation**: After finalization, new backends (WebAssembly, LLVM IR) should follow RISC-V patterns, not X86.
+
+## References
+
+- **X86 Stateful Infrastructure** (Proven pattern to follow):
+  - `Once.Backend.X86.Correct.MemoryValid.agda` - Validity predicates
+  - `Once.Backend.X86.Correct.StarBase.agda` - E2E stateful tests (lines 1453-1763)
+- **X86 Apply Discussion**: `Once.Backend.X86.Postulates.agda` (lines 107-122) - Why apply postulate NOT needed
+- **Proof Instructions**: `formal/proof-instructions.md` - Principle 1 (No Inline Postulates), Star mandatory
+- **Current RISC-V Files**:
+  - `formal/Once/Backend/RiscV64/Correct/MutualIR.agda` - FIX run-apply-star postulate (line 184)
+  - `formal/Once/Backend/RiscV64/Correct/IR/Pair.agda` - EXCELLENT example (1420 lines, zero postulates)
