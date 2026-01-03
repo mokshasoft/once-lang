@@ -33,9 +33,9 @@ The actively maintained documentation for verification work:
 
 Detailed architecture documentation for each backend:
 
-- **[x86-full-proof-architecture.md](architecture/x86-full-proof-architecture.md)** - x86-64 stateful proof architecture (RECOMMENDED approach)
-- **[aarch64-full-proof-architecture.md](architecture/aarch64-full-proof-architecture.md)** - AArch64 backend architecture (in progress)
-- **[riscv64-full-proof-architecture.md](architecture/riscv64-full-proof-architecture.md)** - RISC-V backend architecture (non-stateful)
+- **[x86-64-backend-verification-plan.md](architecture/x86-64-backend-verification-plan.md)** - x86-64 stateful proof architecture (RECOMMENDED approach)
+- **[aarch64-backend-verification-plan.md](architecture/aarch64-backend-verification-plan.md)** - AArch64 backend architecture (in progress)
+- **[riscv64-backend-verification-plan.md](architecture/riscv64-backend-verification-plan.md)** - RISC-V backend architecture (non-stateful)
 
 ### `guides/` - How-To Guides and Examples
 
@@ -79,7 +79,7 @@ Documentation from specific verification sessions:
 
 1. **New to Once verification?** Start with [proof-instructions.md](core/proof-instructions.md)
 2. **Working on a task?** Check [problems-and-solutions.md](core/problems-and-solutions.md) for current priorities
-3. **Implementing a new backend?** Use [x86-full-proof-architecture.md](architecture/x86-full-proof-architecture.md) as the reference
+3. **Implementing a new backend?** Use [x86-64-backend-verification-plan.md](architecture/x86-64-backend-verification-plan.md) as the reference
 4. **Checking verification status?** See [what-is-proven.md](core/what-is-proven.md)
 
 ## Key Principles
