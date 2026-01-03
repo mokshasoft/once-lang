@@ -231,14 +231,14 @@ record ThunkResultExec {i} {A B C : Type} (f : IR (A * B) C)
 open ThunkResultExec public
 
 ------------------------------------------------------------------------
--- Import run-thunk-at-offset from centralized Postulates
+-- Phase 3: Eliminated run-thunk-at-offset postulate
 ------------------------------------------------------------------------
 --
--- This postulate captures thunk execution with proper prefix/suffix.
--- It's in Postulates because proving it requires run-ir-star-at-offset
--- from the mutual block, creating a cyclic dependency if defined here.
-
-open import Once.Backend.AArch64.Postulates using (run-thunk-at-offset)
+-- This postulate was imported but never used in Apply.agda.
+-- The actual thunk execution proof is provided by curry-thunk-correct-impl
+-- in MutualIR.agda, which is used via ThunkProof.agda.
+--
+-- Eliminated in Phase 3 of postulate cleanup.
 
 ------------------------------------------------------------------------
 -- Main Apply Postulate

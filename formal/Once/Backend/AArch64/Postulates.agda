@@ -59,40 +59,36 @@ postulate
   sp-bound-after-stack-op : ∀ (s : State) → readSP (regs s) > 16
 
 ------------------------------------------------------------------------
--- Postulate P6: Curry Thunk Correctness
+-- ELIMINATED P6: Curry Thunk Correctness
 ------------------------------------------------------------------------
+--
+-- STATUS: ✓ ELIMINATED in Phase 3
 --
 -- The thunk code embedded in a curry-created closure executes correctly.
 --
--- NEEDED BY: Once.Backend.AArch64.Correct.ThunkProof (construct-closure-wf)
---            Once.Backend.AArch64.Correct.MutualIR (run-curry-star-direct)
+-- PREVIOUSLY NEEDED BY:
+--   - Once.Backend.AArch64.Correct.ThunkProof (construct-closure-wf)
+--   - Once.Backend.AArch64.Correct.MutualIR (run-curry-star-direct)
 --
--- JUSTIFICATION:
---   The thunk is compiled code within curry's output:
---     curry f = [setup] ++ [branch] ++ [thunk-code] ++ [end-label]
---   where thunk-code = [label, sub-sp, stp, mov-from-sp] ++ compile-aarch64 f ++ [ret]
+-- ELIMINATION:
+--   Replaced by curry-thunk-correct-impl in MutualIR.agda (line ~2606).
+--   This implementation exists in the mutual block with access to the IH
+--   (run-ir-star-at-offset), and follows the strategy outlined below.
 --
---   The thunk correctness can be proven by:
---   1. Tracing 4 setup instructions (Star steps)
---   2. Calling run-ir-star-at-offset on f (the IH from the mutual block)
---   3. Tracing ret instruction
---   4. Composing via star-trans
+-- PROOF STRATEGY (now implemented):
+--   1. Trace 4 thunk setup instructions using Star steps
+--   2. Call run-ir-star-at-offset on f (the IH from mutual block)
+--   3. Trace ret instruction
+--   4. Compose via star-trans to produce ThunkResult
 --
---   This postulate is targeted: it's about the thunk only, not all of curry.
---   It can be eliminated by proving the above strategy in the mutual block.
---
--- ELIMINATION PATH:
---   In the mutual block (MutualIR.agda), add a helper that:
---   - Takes the state at thunk entry (pc = code-ptr, x19 = env, x0 = arg, x30 = return addr)
---   - Traces 4 thunk setup instructions using Star
---   - Calls run-ir-star-at-offset f with appropriate prefix/suffix
---   - Traces ret instruction
---   - Returns ThunkResult via star-trans composition
---
--- RUNTIME EFFECT: None (proof-only)
+-- USAGE:
+--   Import curry-thunk-correct-impl from MutualIR instead:
+--     open import Once.Backend.AArch64.Correct.MutualIR using (curry-thunk-correct-impl)
 --
 ------------------------------------------------------------------------
 
+-- POSTULATE ELIMINATED - use curry-thunk-correct-impl from MutualIR.agda
+{-
 postulate
   curry-thunk-correct : ∀ {i} {A B C} (f : IR (A * B) C)
                         (prefix suffix : Program) (env : ⟦ A ⟧)
@@ -109,41 +105,38 @@ postulate
     readSP (regs s) > 16 →
     ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
+-}
 
 ------------------------------------------------------------------------
--- Postulate P7: Thunk Execution at Offset
+-- ELIMINATED P7: Thunk Execution at Offset
 ------------------------------------------------------------------------
+--
+-- STATUS: ✓ ELIMINATED in Phase 3
 --
 -- Execute thunk code with arbitrary prefix/suffix in the program.
 --
--- NEEDED BY: Once.Backend.AArch64.Correct.IR.Apply (helper module)
+-- PREVIOUSLY NEEDED BY:
+--   - Once.Backend.AArch64.Correct.IR.Apply (but was imported, never used)
 --
--- JUSTIFICATION:
---   This captures execution of the standalone thunk code:
---     [label, sub-sp 16, stp x19 x0 [sp], mov-from-sp x0] ++
---     compile-aarch64 f ++ [ret]
+-- ELIMINATION:
+--   This postulate was imported in Apply.agda but never actually called.
+--   The actual thunk execution proof is provided by curry-thunk-correct-impl
+--   in MutualIR.agda, which is used via ThunkProof.agda's construct-closure-wf.
 --
---   Proving this requires calling run-ir-star-at-offset on f,
---   which is defined in the mutual block (MutualIR.agda).
---   IR/Apply.agda is a helper module extracted to reduce mutual
---   block compilation time, so it cannot call back into the mutual block.
---
---   This creates a cyclic dependency:
---   - MutualIR needs IR/Apply for type definitions
---   - run-thunk-at-offset needs MutualIR for run-ir-star-at-offset
---
--- ELIMINATION PATH:
---   Move this proof into the mutual block where run-ir-star-at-offset
---   is available. The proof follows the same pattern as curry-thunk-correct:
---   1. Trace 4 setup instructions
---   2. Call run-ir-star-at-offset on f
+-- PROOF STRATEGY (implemented via curry-thunk-correct-impl):
+--   1. Trace 4 thunk setup instructions using Star
+--   2. Call run-ir-star-at-offset on f (IH from mutual block)
 --   3. Trace ret instruction
 --   4. Compose via star-trans
 --
--- RUNTIME EFFECT: None (proof-only)
+-- NOTE:
+--   If standalone thunk execution is ever needed outside of curry context,
+--   curry-thunk-correct-impl can be adapted or a new wrapper added to MutualIR.
 --
 ------------------------------------------------------------------------
 
+-- POSTULATE ELIMINATED - was unused, covered by curry-thunk-correct-impl
+{-
 postulate
   run-thunk-at-offset : ∀ {i} {A B C} (f : IR (A * B) C)
     (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
@@ -157,6 +150,7 @@ postulate
     in ∃[ s' ] (exec thunk-len (prefix ++ thunk-code ++ suffix) s ≡ just s'
               × halted s' ≡ false
               × readReg (regs s') x0 ≡ encode {C} (eval f (env , arg)))
+-}
 
 ------------------------------------------------------------------------
 -- Postulate P5: Closure Application (Semantic Boundary)

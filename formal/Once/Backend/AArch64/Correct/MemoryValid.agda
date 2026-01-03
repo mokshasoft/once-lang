@@ -102,6 +102,16 @@ record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
 
 open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
 
+-- | Closure validity with explicit component addresses
+-- Memory at addr-closure contains [env-val, code-ptr]
+-- This is the same structure as PairAtS, but with semantic meaning for closures
+record ClosureAtS (env-val code-ptr addr-closure : Word) (m : Memory) : Set where
+  constructor closure-at-s
+  field
+    is-pair : PairAtS env-val code-ptr addr-closure m
+
+open ClosureAtS public using (is-pair)
+
 ------------------------------------------------------------------------
 -- Creating validity proofs from allocation
 ------------------------------------------------------------------------

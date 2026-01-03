@@ -79,8 +79,9 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
--- Import curry-thunk-correct from centralized Postulates module
-open import Once.Backend.AArch64.Postulates using (curry-thunk-correct)
+-- Import curry-thunk-correct-impl from MutualIR (proven in mutual block)
+-- Phase 3: Eliminated curry-thunk-correct postulate by using the implementation
+open import Once.Backend.AArch64.Correct.MutualIR using (curry-thunk-correct-impl)
 
 ------------------------------------------------------------------------
 -- construct-closure-wf: Build ClosureWellFormed from curry context
@@ -90,7 +91,9 @@ open import Once.Backend.AArch64.Postulates using (curry-thunk-correct)
 --   - [closure] = encode env
 --   - [closure+8] = code-ptr = offset + 6
 --
--- The thunk at code-ptr is correct by curry-thunk-correct.
+-- The thunk at code-ptr is correct by curry-thunk-correct-impl.
+-- The implementation returns exactly the type expected by thunk-correct:
+--   ∃[ s' ] (ThunkResult prog s s' semantics arg × pc s' ≡ ret-addr)
 ------------------------------------------------------------------------
 
 construct-closure-wf : ∀ {i} {A B C} (f : IR (A * B) C)
@@ -108,12 +111,6 @@ construct-closure-wf {A} {B} {C} f prefix suffix env thunk-in-bounds =
   record
     { code-ptr-valid = thunk-in-bounds
     ; thunk-correct = λ arg s ret-addr h-eq pc-eq x0-eq x19-eq x30-eq stack-inv sp>16 →
-        curry-thunk-correct f prefix suffix env arg s ret-addr
-          h-eq
-          pc-eq
-          x0-eq
-          x19-eq
-          x30-eq
-          stack-inv
-          sp>16
+        curry-thunk-correct-impl f prefix suffix env arg s ret-addr
+                                  h-eq pc-eq x0-eq x19-eq x30-eq stack-inv sp>16
     }
