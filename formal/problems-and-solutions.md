@@ -566,11 +566,23 @@ Currently we have TWO parallel proof architectures for curry/apply:
 **Why This Matters**:
 
 The goal is to verify **arbitrary Once programs compile correctly** (compiler correctness).
-Once programs are CLOSED (all curry/apply pairs are composed together), so we should
-use the whole-program path which requires ZERO postulates.
 
-The modular path with `apply-produces-result` is a workaround for "open programs"
-(library code that receives closures from outside), which is NOT our verification target.
+**Q: Do we still need curry/apply proofs for closed programs?**
+**A: YES!** Arbitrary Once programs can create and use closures (lambda functions).
+To prove the compiler works for ALL type-correct programs, we must prove curry
+(closure creation) and apply (closure calls) compile correctly.
+
+**Q: What does "closed" eliminate?**
+**A: The POSTULATE!** In closed programs, every apply calls a closure created by
+curry in the same program. This lets us thread `ClosureWellFormed` proofs through
+composition, eliminating the `apply-produces-result` postulate entirely.
+
+**Open programs** would require proving apply works on arbitrary external closures
+(not created by this program), which needs the stronger postulate. That's NOT our
+verification target.
+
+**Closed programs** (our target) mean: All curry/apply pairs are composed together
+in the same program, so we can prove correctness with ZERO postulates.
 
 **Infrastructure Status** (from `WholeProgram.agda:7-35`):
 
