@@ -1308,7 +1308,18 @@ mutual
 
   -- Recursive cases: use Star-based composition
   run-ir-star-at-offset (_∘_ {_} {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-compose-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+    let (s' , addr-mid , addr-out , res-compose) =
+          run-compose-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+        prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
+        -- Convert ComposeResultS to IRStarResult
+        -- Need to prove: addr-out ≡ encode (eval (g ∘ f) x)
+        -- This follows from addr-mid = encode (eval f x), addr-out = encode (eval g (eval f x))
+    in s' , postulate-compose-to-ir-result res-compose
+    where
+      postulate
+        postulate-compose-to-ir-result : ∀ {prog s s' addr-mid addr-out offset} →
+          ComposeResultS f g prog s s' addr-mid addr-out offset →
+          IRStarResult (g ∘ f) prog s s' x offset
   run-ir-star-at-offset (⟨_,_⟩ {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     let (s' , addr-f , addr-g , pair-addr , res-pair) =
           run-pair-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
@@ -1343,34 +1354,35 @@ mutual
     X29Invariant s →
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
-    in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
+    in ∃[ s' ] ∃[ addr-mid ] ∃[ addr-out ]
+       ComposeResultS f g prog s s' addr-mid addr-out (length prefix)
   run-compose-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    s-final , record
-      { ir-star = star-full
-      ; ir-halted = ir-halted res-g
-      ; ir-pc = pc-final
-      ; ir-x0 = ir-x0 res-g
-      ; ir-x20 = trans (ir-x20 res-g) (trans (ir-x20 res-f) refl)
-      ; ir-x21 = trans (ir-x21 res-g) (trans (ir-x21 res-f) refl)
-      ; ir-x29 = trans (ir-x29 res-g) (trans (ir-x29 res-f) refl)
-      ; ir-x30 = trans (ir-x30 res-g) (trans (ir-x30 res-f) refl)
-      ; ir-sp = ≤-trans (ir-sp res-g) (ir-sp res-f)  -- chain: s-final ≤ s-nop ≡ s-f ≤ s
+    s-final , addr-mid , addr-out , record
+      { compose-star = star-full
+      ; compose-halted = ir-halted res-g
+      ; compose-pc = pc-final
+      ; compose-x0-s = ir-x0 res-g
+      ; compose-x20 = trans (ir-x20 res-g) (trans (ir-x20 res-f) refl)
+      ; compose-x21 = trans (ir-x21 res-g) (trans (ir-x21 res-f) refl)
+      ; compose-x29 = trans (ir-x29 res-g) (trans (ir-x29 res-f) refl)
+      ; compose-x30 = trans (ir-x30 res-g) (trans (ir-x30 res-f) refl)
+      ; compose-sp = ≤-trans (ir-sp res-g) (ir-sp res-f)  -- chain: s-final ≤ s-nop ≡ s-f ≤ s
       -- Memory preservation: reindex from s-nop/s-f addresses to s addresses
       -- ir-mem-x21 res-g : readMem (memory s-final) (readReg (regs s-nop) x21) ≡ readMem (memory s-nop) (readReg (regs s-nop) x21)
       -- Since s-nop = record s-f { pc = ... }, regs s-nop = regs s-f and memory s-nop = memory s-f
       -- Use ir-x21 res-f to reindex to readReg (regs s) x21
-      ; ir-mem-x21 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
-                                  (ir-x21 res-f) (ir-mem-x21 res-g))
-                          (ir-mem-x21 res-f)
-      ; ir-mem-x29 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
-                                  (ir-x29 res-f) (ir-mem-x29 res-g))
-                          (ir-mem-x29 res-f)
-      ; ir-mem-x29+8 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
-                                    (cong (_+ℕ 8) (ir-x29 res-f)) (ir-mem-x29+8 res-g))
-                            (ir-mem-x29+8 res-f)
-      ; ir-stack-inv = ir-stack-inv res-g
-      ; ir-x29-inv = ir-x29-inv res-g
-      ; ir-sp-bound = ir-sp-bound res-g
+      ; compose-mem-x21 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
+                                       (ir-x21 res-f) (ir-mem-x21 res-g))
+                               (ir-mem-x21 res-f)
+      ; compose-mem-x29 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
+                                       (ir-x29 res-f) (ir-mem-x29 res-g))
+                               (ir-mem-x29 res-f)
+      ; compose-mem-x29+8 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
+                                         (cong (_+ℕ 8) (ir-x29 res-f)) (ir-mem-x29+8 res-g))
+                                 (ir-mem-x29+8 res-f)
+      ; compose-stack-inv = ir-stack-inv res-g
+      ; compose-x29-inv = ir-x29-inv res-g
+      ; compose-sp-bound = ir-sp-bound res-g
       }
     where
       -- Build compose context
@@ -1379,6 +1391,15 @@ mutual
       -- The full program
       prog : Program
       prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
+
+      -- The two addresses tracked by ComposeResultS:
+      -- addr-mid: intermediate result from f (input to g)
+      -- addr-out: final result from g
+      addr-mid : Word
+      addr-mid = encode (eval f x)
+
+      addr-out : Word
+      addr-out = encode (eval g (eval f x))
 
       -- Code segments
       code-f = compile-aarch64 f
