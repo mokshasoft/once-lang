@@ -388,6 +388,202 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
                     (execInstr-ld-success prog s a0 a0 (+ 8) (encode b) mem-read)
 
 ------------------------------------------------------------------------
+-- IRStarResultS: Stateful result type with explicit output address
+--
+-- This is the key to eliminating encoding postulates:
+-- - Instead of ir-a0 : readReg a0 ≡ encode (eval ir x)
+-- - We have ir-a0-s : readReg a0 ≡ addr-out
+-- - The addr-out is the explicit memory address where the result is stored
+--
+-- This enables proofs using memory allocation lemmas instead of axioms.
+------------------------------------------------------------------------
+
+record IRStarResultS {i : Size} {A B : Type} (ir : IR i A B) (prog : Program)
+                     (s s' : State) (addr-out : Word) (offset : ℕ) : Set where
+  field
+    ir-star       : Star prog s s'
+    ir-halted     : halted s' ≡ false
+    ir-pc         : pc s' ≡ offset +ℕ compile-length ir
+    ir-a0-s       : readReg (regs s') a0 ≡ addr-out  -- Address, not encode!
+    ir-s1         : readReg (regs s') s1 ≡ readReg (regs s) s1
+    ir-s2         : readReg (regs s') s2 ≡ readReg (regs s) s2
+    ir-ra         : readReg (regs s') ra ≡ readReg (regs s) ra
+    ir-sp-delta   : ℕ
+    ir-sp-delta-leq : ir-sp-delta ≤ StackDelta ir
+    ir-sp         : readReg (regs s') sp +ℕ ir-sp-delta ≡ readReg (regs s) sp
+    ir-mem-preserved : ∀ n → readMem (memory s') (readReg (regs s) sp +ℕ n) ≡
+                             readMem (memory s) (readReg (regs s) sp +ℕ n)
+    ir-output-wf  : ClosuresWF B prog
+
+------------------------------------------------------------------------
+-- Conversion bridge: IRStarResult → IRStarResultS
+--
+-- This allows gradual migration: we can convert existing proofs to
+-- stateful form using encode (eval ir x) as the address.
+------------------------------------------------------------------------
+
+convert-to-stateful : ∀ {i} {A B} (ir : IR i A B) (prog : Program) (s s' : State)
+                      (x : ⟦ A ⟧) (offset : ℕ) →
+  IRStarResult ir prog s s' x offset →
+  IRStarResultS ir prog s s' (encode (eval ir x)) offset
+convert-to-stateful ir prog s s' x offset res = record
+  { ir-star       = IRStarResult.ir-star res
+  ; ir-halted     = IRStarResult.ir-halted res
+  ; ir-pc         = IRStarResult.ir-pc res
+  ; ir-a0-s       = IRStarResult.ir-a0 res  -- encode (eval ir x)
+  ; ir-s1         = IRStarResult.ir-s1 res
+  ; ir-s2         = IRStarResult.ir-s2 res
+  ; ir-ra         = IRStarResult.ir-ra res
+  ; ir-sp-delta   = IRStarResult.ir-sp-delta res
+  ; ir-sp-delta-leq = IRStarResult.ir-sp-delta-leq res
+  ; ir-sp         = IRStarResult.ir-sp res
+  ; ir-mem-preserved = IRStarResult.ir-mem-preserved res
+  ; ir-output-wf  = IRStarResult.ir-output-wf res
+  }
+
+------------------------------------------------------------------------
+-- Stateful wrappers for base cases
+--
+-- These are direct stateful versions that don't go through IRStarResult.
+-- The key insight: for simple cases, addr-in = addr-out.
+------------------------------------------------------------------------
+
+-- Base case: id (stateful)
+-- Input address = output address (no transformation)
+run-id-star-s : ∀ {i A} (prefix suffix : Program) (addr-in : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) a0 ≡ addr-in →
+  ∃[ s' ] IRStarResultS (id {i} {A}) (prefix ++ compile-riscv (id {i} {A}) ++ suffix) s s' addr-in (length prefix)
+run-id-star-s {i} {A} prefix suffix addr-in s h-false pc-eq a0-eq = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0-s   = a0-eq  -- a0 unchanged
+  ; ir-s1     = refl
+  ; ir-s2     = refl
+  ; ir-ra     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = +-identityʳ _
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = trivialWF A prog
+  }
+  where
+    prog = prefix ++ nop ∷ suffix
+    s' = record s { pc = pc s +ℕ 1 }
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix nop suffix s h-false pc-eq) (execNop prog s)
+
+-- Base case: terminal (stateful)
+-- Output address = 0 (unit encoding)
+run-terminal-star-s : ∀ {i A} (prefix suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] IRStarResultS (terminal {i} {A}) (prefix ++ compile-riscv (terminal {i} {A}) ++ suffix) s s' 0 (length prefix)
+run-terminal-star-s {i} {A} prefix suffix s h-false pc-eq = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0-s   = readReg-writeReg-same (regs s) a0 0 (λ ())
+  ; ir-s1     = refl
+  ; ir-s2     = readReg-writeReg-a0-s2 (regs s) 0
+  ; ir-ra     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) 0)
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = tt
+  }
+  where
+    prog = prefix ++ li a0 (+ 0) ∷ suffix
+    s' = record s { regs = writeReg (regs s) a0 0 ; pc = pc s +ℕ 1 }
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix (li a0 (+ 0)) suffix s h-false pc-eq)
+                    (execLi prog s a0 0)
+
+-- Base case: fold (stateful)
+-- Input address = output address (runtime nop)
+run-fold-star-s : ∀ {i F} (prefix suffix : Program) (addr-in : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) a0 ≡ addr-in →
+  ∃[ s' ] IRStarResultS (fold {i} {F}) (prefix ++ compile-riscv (fold {i} {F}) ++ suffix) s s' addr-in (length prefix)
+run-fold-star-s {i} {F} prefix suffix addr-in s h-false pc-eq a0-eq = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0-s   = a0-eq  -- a0 unchanged
+  ; ir-s1     = refl
+  ; ir-s2     = refl
+  ; ir-ra     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = +-identityʳ _
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = tt
+  }
+  where
+    prog = prefix ++ nop ∷ suffix
+    s' = record s { pc = pc s +ℕ 1 }
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix nop suffix s h-false pc-eq) (execNop prog s)
+
+-- Base case: unfold (stateful)
+-- Input address = output address (runtime nop)
+run-unfold-star-s : ∀ {i F} (prefix suffix : Program) (addr-in : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) a0 ≡ addr-in →
+  ∃[ s' ] IRStarResultS (unfold {i} {F}) (prefix ++ compile-riscv (unfold {i} {F}) ++ suffix) s s' addr-in (length prefix)
+run-unfold-star-s {i} {F} prefix suffix addr-in s h-false pc-eq a0-eq = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0-s   = a0-eq  -- a0 unchanged
+  ; ir-s1     = refl
+  ; ir-s2     = refl
+  ; ir-ra     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = +-identityʳ _
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = trivialWF F prog
+  }
+  where
+    prog = prefix ++ nop ∷ suffix
+    s' = record s { pc = pc s +ℕ 1 }
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix nop suffix s h-false pc-eq) (execNop prog s)
+
+-- Base case: arr (stateful)
+-- Input address = output address (runtime nop)
+run-arr-star-s : ∀ {i A B} (prefix suffix : Program) (addr-in : Word) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) a0 ≡ addr-in →
+  ∃[ s' ] IRStarResultS (arr {i} {A} {B}) (prefix ++ compile-riscv (arr {i} {A} {B}) ++ suffix) s s' addr-in (length prefix)
+run-arr-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq a0-eq = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0-s   = a0-eq  -- a0 unchanged
+  ; ir-s1     = refl
+  ; ir-s2     = refl
+  ; ir-ra     = refl
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = +-identityʳ _
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = tt
+  }
+  where
+    prog = prefix ++ nop ∷ suffix
+    s' = record s { pc = pc s +ℕ 1 }
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-at-offset prefix nop suffix s h-false pc-eq) (execNop prog s)
+
+------------------------------------------------------------------------
 -- Notes on Composing IRStarResults
 --
 -- Key benefit of Star: composition is trivial (just transitivity)!
