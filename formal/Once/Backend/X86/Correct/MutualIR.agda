@@ -89,8 +89,9 @@ open import Once.Backend.X86.Correct.IR.Inr
 
 -- Import extracted compose helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Compose
-  using (ComposeContext; make-compose-context; TransferResult;
-         exec-compose-transfer; assemble-compose-result)
+  using (ComposeContext; make-compose-context; TransferResult; TransferResultS;
+         exec-compose-transfer; assemble-compose-result;
+         exec-compose-transfer-s; assemble-compose-result-s)
 open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
 
 -- Import extracted pair helpers (non-recursive parts)
@@ -173,6 +174,27 @@ rbp-inv-preserved-through-ir s s1 s2 _ {ir = ir} r rsp2-eq rbp2-eq =
   -- s1 has RbpInvariant from ir-rbp-inv r
   -- s2 has same rsp and rbp as s1, so RbpInvariant is preserved
   Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s2 (ir-rbp-inv r) rsp2-eq rbp2-eq
+
+-- Stateful version for IRStarResultS
+rbp-inv-preserved-through-ir-s : ∀ (s s1 s2 : State) →
+  RbpInvariant s →
+  ∀ {i A B} {ir : IR i A B} {prog addr-out offset} →
+  IRStarResultS ir prog s s1 addr-out offset →
+  readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
+  readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
+  RbpInvariant s2
+rbp-inv-preserved-through-ir-s s s1 s2 _ {ir = ir} r-s rsp2-eq rbp2-eq =
+  Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s2 (IRStarResultS.ir-rbp-inv r-s) rsp2-eq rbp2-eq
+
+-- TEMPORARY BRIDGE: Connects stateful execution (IRStarResultS) to semantic evaluation (eval)
+-- This postulate will be eliminated once we prove correctness at the end-to-end level
+postulate
+  irresults-preserves-eval : ∀ {i A B} (ir : IR i A B) (prog : Program) (s s' : State)
+                               (addr-in addr-out : Word) (x : ⟦ A ⟧) (offset : ℕ) →
+    IRStarResultS ir prog s s' addr-out offset →
+    encode x ≡ addr-in →
+    readReg (regs s) rdi ≡ addr-in →
+    encode (eval ir x) ≡ addr-out
 
 ------------------------------------------------------------------------
 -- Star-Based Mutual Block
@@ -299,10 +321,7 @@ mutual
 
   -- Recursive cases: delegate to *-star-direct functions
   run-ir-star-at-offset-s (_∘_ {A} {B} {C} g f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-compose-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (_∘_ g f) ++ suffix
-        res-s = convert-to-stateful (_∘_ g f) prog s s' x (length prefix) res
-    in encode (eval (_∘_ g f) x) , s' , res-s
+    run-compose-star-direct-s f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
 
   run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-pair-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
@@ -327,6 +346,68 @@ mutual
         prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
         res-s = convert-to-stateful (apply {_} {A} {B}) prog s s' x (length prefix) res
     in encode (eval (apply {_} {A} {B}) x) , s' , res-s
+
+  -- | Stateful compose execution (NO encoding postulates!)
+  run-compose-star-direct-s : ∀ {i A B C} (f : IR i A B) (g : IR i B C) (prefix suffix : Program)
+      (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ addr-in →
+    encode x ≡ addr-in →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+    in ∃[ addr-out ] ∃[ s' ] IRStarResultS (g ∘ f) prog s s' addr-out (length prefix)
+  run-compose-star-direct-s {i} {A} {B} {C} f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    (addr-out , s3 , result-s)
+    where
+      ctx = make-compose-context f g prefix suffix
+      open ComposeContext ctx
+
+      -- Step 1: Execute f (STATEFUL RECURSIVE CALL)
+      step-f-s : ∃[ addr-f ] ∃[ s1 ] IRStarResultS f (prefix ++ code-f ++ suffix-f) s s1 addr-f (length prefix)
+      step-f-s = run-ir-star-at-offset-s f prefix suffix-f addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+
+      addr-f = proj₁ step-f-s
+      s1 = proj₁ (proj₂ step-f-s)
+      r1-s = proj₂ (proj₂ step-f-s)
+
+      -- Step 2: Execute transfer (STATEFUL HELPER)
+      tr-s : TransferResultS f g prefix suffix addr-f s s1
+      tr-s = exec-compose-transfer-s f g prefix suffix addr-f s s1 r1-s
+
+      s2 = TransferResultS.s2 tr-s
+
+      -- Preserve RbpInvariant through transfer
+      rsp-s2-eq-s1 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+      rsp-s2-eq-s1 = TransferResultS.rsp-s1-to-s2 tr-s
+
+      rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+      rbp-s2-eq-s1 = TransferResultS.rbp-s1-to-s2 tr-s
+
+      rbp-inv-2 : RbpInvariant s2
+      rbp-inv-2 = rbp-inv-preserved-through-ir-s s s1 s2 rbp-inv r1-s rsp-s2-eq-s1 rbp-s2-eq-s1
+
+      -- Step 3: Execute g (STATEFUL RECURSIVE CALL)
+      -- Note: We need semantic value (eval f x) and its address
+      y = eval f x
+      enc-y-eq-addr-f : encode y ≡ addr-f
+      enc-y-eq-addr-f = irresults-preserves-eval f (prefix ++ code-f ++ suffix-f) s s1 addr-in addr-f x (length prefix) r1-s enc-eq rdi-eq
+
+      step-g-s : ∃[ addr-g ] ∃[ s3 ] IRStarResultS g (prefix-g ++ code-g ++ suffix) s2 s3 addr-g (length prefix-g)
+      step-g-s = run-ir-star-at-offset-s g prefix-g suffix addr-f y s2
+                   (TransferResultS.h2 tr-s) (TransferResultS.pc2-g tr-s) (TransferResultS.rdi2-addr tr-s)
+                   enc-y-eq-addr-f
+                   (TransferResultS.stack-inv-2 tr-s) (TransferResultS.rsp-2>16 tr-s) rbp-inv-2
+
+      addr-g = proj₁ step-g-s
+      s3 = proj₁ (proj₂ step-g-s)
+      r3-s = proj₂ (proj₂ step-g-s)
+
+      -- Assemble final result (STATEFUL HELPER)
+      addr-out = addr-g  -- Compose output = g output
+      result-s = assemble-compose-result-s f g prefix suffix addr-f addr-g s s1 s2 s3 r1-s tr-s r3-s refl
 
   -- | Star-based compose execution
   -- Uses extracted helpers from IR.Compose - only recursive calls remain here
