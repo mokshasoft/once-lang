@@ -35,7 +35,7 @@ to eliminate ALL encoding postulates. This is the RECOMMENDED approach for all b
 | Optimization | ✓ Proven | 0 |
 | Arithmetic compiler (OCP-0001) | ✓ Proven | 0 |
 | **TypeCheck/Elaborate** | **In Progress** | **1** (exchange₆) |
-| x86-64 generators | ✓ Proven | N/A (out of scope) |
+| x86-64 generators | ✓ Proven | 0 (stateful proofs) |
 | End-to-end (SurfaceIR→x86) | ✓ Proven | 0 |
 | **End-to-end (RawExpr→x86)** | **TODO** | Needs TypeCheck integration |
 
@@ -358,9 +358,9 @@ timeout 900 make x86
 
 ## Notes
 
-- **Generator proofs OUT OF SCOPE** - Already proven, do NOT modify
-- **Work ABOVE generators** - TypeCheck, Surface, optimization layers
-- **Arithmetic compiler IN SCOPE** - Integration with main pipeline
+- **Backend generator proofs COMPLETE** - x86-64 backend fully proven with stateful architecture (see Backend Status above)
+- **Current work: TypeCheck layer** - Eliminating exchange₆ postulate
+- **Arithmetic compiler** - Integration with main pipeline
 - **Keep types separate** - Do not unify arithmetic IR and generator IR
 - C backend out of scope
 - CLI/Parser unverified by design
