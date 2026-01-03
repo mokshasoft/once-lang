@@ -338,8 +338,8 @@ execInstr prog s (blr r) =
 
 -- ret (return via x30)
 execInstr prog s ret =
-  -- Simplified: halt execution (in full model would jump to x30)
-  just (record s { halted = true })
+  let target = readReg (regs s) x30
+  in just (record s { pc = target })
 
 -- sub sp, sp, #imm
 execInstr prog s (sub-sp n) =

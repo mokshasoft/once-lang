@@ -403,6 +403,31 @@ readReg-writeSP rf x28 v = refl
 readReg-writeSP rf x29 v = refl
 readReg-writeSP rf x30 v = refl
 
+-- | Specialized versions for common registers
+readReg-writeSP-x0 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeSP rf v) x0 ≡ readReg rf x0
+readReg-writeSP-x0 rf v = readReg-writeSP rf x0 v
+
+readReg-writeSP-x19 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeSP rf v) x19 ≡ readReg rf x19
+readReg-writeSP-x19 rf v = readReg-writeSP rf x19 v
+
+readReg-writeSP-x20 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeSP rf v) x20 ≡ readReg rf x20
+readReg-writeSP-x20 rf v = readReg-writeSP rf x20 v
+
+readReg-writeSP-x21 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeSP rf v) x21 ≡ readReg rf x21
+readReg-writeSP-x21 rf v = readReg-writeSP rf x21 v
+
+readReg-writeSP-x29 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeSP rf v) x29 ≡ readReg rf x29
+readReg-writeSP-x29 rf v = readReg-writeSP rf x29 v
+
+readReg-writeSP-x30 : ∀ (rf : RegFile) (v : Word) →
+  readReg (writeSP rf v) x30 ≡ readReg rf x30
+readReg-writeSP-x30 rf v = readReg-writeSP rf x30 v
+
 -- | Writing register doesn't affect SP
 readSP-writeReg : ∀ (rf : RegFile) (r : Reg) (v : Word) →
   readSP (writeReg rf r v) ≡ readSP rf
@@ -993,9 +1018,9 @@ execInstr-blr : ∀ (prog : Program) (s : State) (r : Reg) →
     just (record s { regs = writeReg (regs s) x30 (pc s +ℕ 1) ; pc = readReg (regs s) r })
 execInstr-blr prog s r = refl
 
--- | What execInstr does for ret (return - sets halted)
+-- | What execInstr does for ret (return via x30)
 execInstr-ret : ∀ (prog : Program) (s : State) →
-  execInstr prog s ret ≡ just (record s { halted = true })
+  execInstr prog s ret ≡ just (record s { pc = readReg (regs s) x30 })
 execInstr-ret prog s = refl
 
 -- | What execInstr does for bl (branch and link, PC-relative)
@@ -1218,10 +1243,10 @@ blr-x30-is-return s r = readReg-writeReg-same (regs s) x30 (pc s +ℕ 1)
 ------------------------------------------------------------------------
 
 -- | Step a ret instruction at arbitrary offset
--- ret sets halted = true (it's how we model function return)
+-- ret jumps to the address in x30 (link register)
 step-ret-at-offset : ∀ (prefix : Program) (suffix : Program) (s : State) →
   halted s ≡ false → pc s ≡ length prefix →
-  step (prefix ++ ret ∷ suffix) s ≡ just (record s { halted = true })
+  step (prefix ++ ret ∷ suffix) s ≡ just (record s { pc = readReg (regs s) x30 })
 step-ret-at-offset prefix suffix s h-false pc-eq =
   trans (step-at-offset prefix ret suffix s h-false pc-eq)
         (execInstr-ret (prefix ++ ret ∷ suffix) s)
