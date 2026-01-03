@@ -42,6 +42,10 @@ open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-single; star-trans)
 open import Once.Backend.AArch64.Correct.StackInvariant
   using (StackInvariant; X29Invariant)
+open import Once.Backend.AArch64.Correct.MemoryValid
+  using (PairAtS)
+open import Once.Backend.AArch64.Correct.StarBase
+  using (IRStarResultS)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
@@ -506,6 +510,65 @@ record PairFinalResult {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
     final-x21 : readReg (regs s-final) x21 ≡ readReg (regs s-init) x21
 
 open PairFinalResult public
+
+------------------------------------------------------------------------
+-- PairResultS: Stateful version with explicit addresses and validity
+------------------------------------------------------------------------
+
+-- | Stateful pair result with explicit addresses
+-- Like PairFinalResult but with explicit component addresses and validity predicates.
+-- This enables proving pair correctness without encode-pair-construct postulate.
+--
+-- Key differences:
+-- 1. Returns explicit addresses for pair components
+-- 2. Includes PairAtS validity proof
+-- 3. Optionally threads ClosureWellFormedS from components (if they produce closures)
+record PairResultS {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
+                   (prefix suffix : Program)
+                   (ctx : PairContext f g prefix suffix)
+                   (s s' : State) (addr-in : Word) : Set where
+  field
+    -- All IRStarResultS fields for composition
+    pair-star       : Star (prog ctx) s s'
+    pair-halted     : halted s' ≡ false
+    pair-pc         : pc s' ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+
+    -- Explicit pair component addresses
+    pair-addr-fst   : Word
+    pair-addr-snd   : Word
+    pair-addr       : Word
+
+    -- x0 contains pair address
+    pair-x0-s       : readReg (regs s') x0 ≡ pair-addr
+
+    -- Register preservation
+    pair-x20        : readReg (regs s') x20 ≡ readReg (regs s) x20
+    pair-x21        : readReg (regs s') x21 ≡ readReg (regs s) x21
+    pair-x29        : readReg (regs s') x29 ≡ readReg (regs s) x29
+    pair-x30        : readReg (regs s') x30 ≡ readReg (regs s) x30
+    pair-sp         : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    pair-mem-x21    : readMem (memory s') (readReg (regs s) x21) ≡
+                      readMem (memory s) (readReg (regs s) x21)
+    pair-mem-x29    : readMem (memory s') (readReg (regs s) x29) ≡
+                      readMem (memory s) (readReg (regs s) x29)
+    pair-mem-x29+8  : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    pair-stack-inv  : StackInvariant s'
+    pair-x29-inv    : X29Invariant s'
+    pair-sp-bound   : readSP (regs s') > 16
+
+    -- Stateful validity: pair exists at pair-addr
+    pair-valid-s    : PairAtS pair-addr-fst pair-addr-snd pair-addr (memory s')
+
+    -- Phase 1: WF threading is optional and postulated
+    -- In Phase 2, we'll implement actual WF propagation from curry results
+    -- For now, this is a placeholder to enable the type structure
+
+open PairResultS public
 
 ------------------------------------------------------------------------
 -- Length Lemmas

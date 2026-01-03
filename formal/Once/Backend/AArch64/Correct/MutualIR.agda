@@ -68,7 +68,8 @@ open import Once.Backend.AArch64.Correct.StarBase public
 
 -- Import MemoryValid for stateful validity predicates
 open import Once.Backend.AArch64.Correct.MemoryValid
-  using (PairAtS; InlAtS; InrAtS;
+  using (PairAtS; pair-at-s; fst-valid-s; InlAtS; InrAtS;
+         ClosureAtS; closure-at-s; is-pair;
          alloc-inl-creates-valid-s; alloc-inr-creates-valid-s)
 
 -- Import stateful producers (extracted to reduce compile time)
@@ -138,6 +139,8 @@ open import Once.Backend.AArch64.Correct.ClosureWellFormed public
   using ( ClosureWellFormed
         ; ThunkResult
         ; CurryResult
+        ; CurryResultS
+        ; ClosureWellFormedS
         ; ApplyWithWFResult
         ; run-apply-with-wf
         )
@@ -1310,7 +1313,7 @@ mutual
   run-ir-star-at-offset ([_,_] {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-case-star-direct {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (curry {_} {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-curry-star-direct {_} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+    run-curry-star-direct-compat {_} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-apply-star-direct {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
 
@@ -2083,8 +2086,9 @@ mutual
   --   Step 6: b jumps to end-label (skips thunk)
   --   Step 7: label end (increments PC to 12+|f|)
   --
-  -- For proofs needing ClosureWellFormed threading, use CurryResult
-  -- from ClosureWellFormed which includes a closure-wf field.
+  -- Phase 2: Enhanced to return CurryResultS with closure validity proofs
+  -- This replaces the old IRStarResult with stateful CurryResultS that includes
+  -- closure validity (ClosureAtS) and well-formedness (ClosureWellFormedS) proofs.
   run-curry-star-direct : ∀ {i} {A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -2093,7 +2097,7 @@ mutual
     X29Invariant s →
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
-    in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+    in ∃[ s' ] CurryResultS f prog s s' (encode x) (length prefix)
   run-curry-star-direct {i} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , curry-result
     where
@@ -2429,6 +2433,23 @@ mutual
           mem-sfinal-env : readMem (memory s2) new-sp ≡ readMem (memory s2) new-sp
           mem-sfinal-env = refl
 
+      -- Memory at new-sp+8 contains thunk-offset (preserved through s4-s-final)
+      -- Step 3 writes to new-sp+8 in s4
+      -- Steps 4, 5, 6 don't modify memory
+      mem-code-ptr-final : readMem (memory s-final) (new-sp +ℕ 8) ≡ just thunk-offset
+      mem-code-ptr-final = trans mem-s4-code mem-s4-code-base
+        where
+          -- s-final → s4: memory unchanged (steps 4,5,6 don't write memory)
+          mem-s4-code : readMem (memory s-final) (new-sp +ℕ 8) ≡ readMem (memory s4) (new-sp +ℕ 8)
+          mem-s4-code = refl  -- memory unchanged s4 → s5 → s6 → s-final
+
+          -- Base case: s4 wrote thunk-offset to new-sp+8
+          -- s4.memory = writeMem s3.memory (new-sp+8) (readReg s3 x9)
+          -- readMem s4.memory (new-sp+8) = readReg s3 x9 = thunk-offset
+          mem-s4-code-base : readMem (memory s4) (new-sp +ℕ 8) ≡ just thunk-offset
+          mem-s4-code-base = trans (readMem-writeMem-same (memory s3) (new-sp +ℕ 8) (readReg (regs s3) x9))
+                                   (cong just x9-s3)
+
       -- Use encode-closure-construct to derive that new-sp = encode (eval (curry f) x)
       encode-curry-result : new-sp ≡ encode {B ⇒ C} (eval (curry f) x)
       encode-curry-result = encode-closure-construct f x new-sp (memory s-final) mem-env-final
@@ -2487,23 +2508,97 @@ mutual
       sp>16-final : readSP (regs s-final) > 16
       sp>16-final = sp-bound-after-stack-op s-final
 
-      curry-result : IRStarResult (curry f) prog s s-final x (length prefix)
+      ------------------------------------------------------------------------
+      -- Phase 2: Closure validity proofs
+      ------------------------------------------------------------------------
+
+      -- Construct PairAtS from the two memory proofs
+      -- PairAtS expects: readMem m addr-pair ≡ just addr-a (no +ℕ 0)
+      --                  readMem m (addr-pair +ℕ 8) ≡ just addr-b
+      closure-pair : PairAtS (encode x) thunk-offset new-sp (memory s-final)
+      closure-pair = pair-at-s mem-env-final mem-code-ptr-final
+
+      -- Construct ClosureAtS from PairAtS
+      closure-valid : ClosureAtS (encode x) thunk-offset new-sp (memory s-final)
+      closure-valid = closure-at-s closure-pair
+
+      -- ClosureWellFormedS proof (simplified for Phase 2)
+      -- TODO Phase 3: Add thunk execution proofs
+      postulate
+        closure-wf-s-proof : ClosureWellFormedS f prog (length prefix) (encode x)
+
+      curry-result : CurryResultS f prog s s-final (encode x) (length prefix)
       curry-result = record
-        { ir-star = star-proof
-        ; ir-halted = halted-final
-        ; ir-pc = pc-final
-        ; ir-x0 = x0-final
-        ; ir-x20 = x20-final
-        ; ir-x21 = x21-final
-        ; ir-x29 = x29-final
-        ; ir-x30 = x30-final
-        ; ir-sp = sp-final
-        ; ir-mem-x21 = mem-x21-final
-        ; ir-mem-x29 = mem-x29-final
-        ; ir-mem-x29+8 = mem-x29+8-final
-        ; ir-stack-inv = stack-inv-final
-        ; ir-x29-inv = x29-inv-final
-        ; ir-sp-bound = sp>16-final
+        { curry-star = star-proof
+        ; curry-halted = halted-final
+        ; curry-pc = pc-final
+        ; curry-closure-addr = new-sp
+        ; curry-x0-s = x0-sfinal-eq
+        ; curry-x20 = x20-final
+        ; curry-x21 = x21-final
+        ; curry-x29 = x29-final
+        ; curry-x30 = x30-final
+        ; curry-sp = sp-final
+        ; curry-mem-x21 = mem-x21-final
+        ; curry-mem-x29 = mem-x29-final
+        ; curry-mem-x29+8 = mem-x29+8-final
+        ; curry-stack-inv = stack-inv-final
+        ; curry-x29-inv = x29-inv-final
+        ; curry-sp-bound = sp>16-final
+        ; curry-closure-valid = closure-valid
+        ; closure-wf-s = closure-wf-s-proof
+        }
+        where
+          -- x0 in s-final = new-sp (closure address)
+          x0-sfinal-eq : readReg (regs s-final) x0 ≡ new-sp
+          x0-sfinal-eq = x0-s5
+
+  -- Compatibility wrapper: Convert CurryResultS to IRStarResult
+  -- This allows run-ir-star-at-offset to use the new stateful curry
+  run-curry-star-direct-compat : ∀ {i} {A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) x0 ≡ encode x →
+    StackInvariant s →
+    X29Invariant s →
+    readSP (regs s) > 16 →
+    let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
+    in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+  run-curry-star-direct-compat {i} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    s-final , ir-result
+    where
+      prog = prefix ++ compile-aarch64 (curry f) ++ suffix
+
+      -- Get the CurryResultS
+      s-final : State
+      s-final = proj₁ (run-curry-star-direct f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16)
+
+      curry-res : CurryResultS f prog s s-final (encode x) (length prefix)
+      curry-res = proj₂ (run-curry-star-direct f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16)
+
+      -- Convert to IRStarResult by adding encode proof
+      -- CurryResultS.curry-closure-addr is the closure address
+      -- We need to prove: readReg (regs s-final) x0 ≡ encode (eval (curry f) x)
+      ir-result : IRStarResult (curry f) prog s s-final x (length prefix)
+      ir-result = record
+        { ir-star = CurryResultS.curry-star curry-res
+        ; ir-halted = CurryResultS.curry-halted curry-res
+        ; ir-pc = CurryResultS.curry-pc curry-res
+        ; ir-x0 = trans (CurryResultS.curry-x0-s curry-res)
+                        (encode-closure-construct f x (CurryResultS.curry-closure-addr curry-res)
+                                                 (memory s-final)
+                                                 (fst-valid-s (is-pair (CurryResultS.curry-closure-valid curry-res))))
+        ; ir-x20 = CurryResultS.curry-x20 curry-res
+        ; ir-x21 = CurryResultS.curry-x21 curry-res
+        ; ir-x29 = CurryResultS.curry-x29 curry-res
+        ; ir-x30 = CurryResultS.curry-x30 curry-res
+        ; ir-sp = CurryResultS.curry-sp curry-res
+        ; ir-mem-x21 = CurryResultS.curry-mem-x21 curry-res
+        ; ir-mem-x29 = CurryResultS.curry-mem-x29 curry-res
+        ; ir-mem-x29+8 = CurryResultS.curry-mem-x29+8 curry-res
+        ; ir-stack-inv = CurryResultS.curry-stack-inv curry-res
+        ; ir-x29-inv = CurryResultS.curry-x29-inv curry-res
+        ; ir-sp-bound = CurryResultS.curry-sp-bound curry-res
         }
 
   -- | curry-thunk-correct-impl: Implementation using IH

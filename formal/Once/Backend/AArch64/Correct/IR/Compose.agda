@@ -24,6 +24,8 @@ open import Once.Backend.AArch64.Correct.CompileLength using (compile-length-cor
 open import Once.Backend.AArch64.Correct.Star using (Star; star-trans)
 open import Once.Backend.AArch64.Correct.StarBase using (IRStarResultS)
 open import Once.Backend.AArch64.Correct.StackInvariant using (StackInvariant; X29Invariant)
+open import Once.Backend.AArch64.Correct.MemoryValid using (ClosureAtS)
+open import Once.Backend.AArch64.Correct.ClosureWellFormed using (ClosureWellFormedS)
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _>_; _≤_) renaming (_+_ to _+ℕ_)
@@ -437,3 +439,51 @@ arith-compose-pc p len-f len-g = begin
     ≡⟨ +-assoc p (len-f +ℕ 1) len-g ⟩
   p +ℕ ((len-f +ℕ 1) +ℕ len-g)
   ∎
+
+------------------------------------------------------------------------
+-- ComposeResultS: Stateful version with optional WF threading
+------------------------------------------------------------------------
+
+-- | Stateful compose result with optional closure well-formedness
+-- Like assemble-compose-result but includes optional ClosureWellFormedS.
+-- This threads well-formedness from g (or f if g doesn't produce a closure).
+--
+-- Key differences:
+-- 1. Returns explicit address (not encode)
+-- 2. Optionally threads ClosureWellFormedS if g produces a closure
+-- 3. Matches IRStarResultS structure for uniform composition
+record ComposeResultS {i A B C} (f : IR i A B) (g : IR i B C)
+                      (prefix suffix : Program)
+                      (s s' : State) (addr-out : Word) : Set where
+  field
+    -- All IRStarResultS fields
+    compose-star       : Star (prefix ++ compile-aarch64 (g ∘ f) ++ suffix) s s'
+    compose-halted     : halted s' ≡ false
+    compose-pc         : pc s' ≡ length prefix +ℕ compile-length (g ∘ f)
+    compose-x0-s       : readReg (regs s') x0 ≡ addr-out
+
+    -- Register preservation
+    compose-x20        : readReg (regs s') x20 ≡ readReg (regs s) x20
+    compose-x21        : readReg (regs s') x21 ≡ readReg (regs s) x21
+    compose-x29        : readReg (regs s') x29 ≡ readReg (regs s) x29
+    compose-x30        : readReg (regs s') x30 ≡ readReg (regs s) x30
+    compose-sp         : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    compose-mem-x21    : readMem (memory s') (readReg (regs s) x21) ≡
+                         readMem (memory s) (readReg (regs s) x21)
+    compose-mem-x29    : readMem (memory s') (readReg (regs s) x29) ≡
+                         readMem (memory s) (readReg (regs s) x29)
+    compose-mem-x29+8  : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                         readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    compose-stack-inv  : StackInvariant s'
+    compose-x29-inv    : X29Invariant s'
+    compose-sp-bound   : readSP (regs s') > 16
+
+    -- Phase 1: WF threading is optional and postulated
+    -- In Phase 2, we'll implement actual WF propagation if g produces a closure
+    -- For now, this is a placeholder to enable the type structure
+
+open ComposeResultS public

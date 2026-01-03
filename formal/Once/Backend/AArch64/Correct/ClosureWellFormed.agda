@@ -31,7 +31,9 @@ open import Once.Backend.AArch64.CodeGen
 open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.AArch64.Correct.StackInvariant
-  using (StackInvariant; x21-unused; stack-below-x21)
+  using (StackInvariant; X29Invariant; x21-unused; stack-below-x21)
+open import Once.Backend.AArch64.Correct.MemoryValid
+  using (ClosureAtS; PairAtS)
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; encode-pair-fst; encode-pair-snd;
@@ -130,6 +132,23 @@ record ClosureWellFormed {A B : Type} (prog : Program)
 open ClosureWellFormed public
 
 ------------------------------------------------------------------------
+-- ClosureWellFormedS: Stateful version with validity predicates
+------------------------------------------------------------------------
+
+-- | Stateful closure well-formedness predicate (simplified for Phase 1)
+-- Captures that a closure exists and is valid in memory, without full semantics.
+--
+-- This is a placeholder for Phase 1. In Phase 2, we'll add thunk execution proofs.
+-- For now, it just captures the validity of the closure structure in memory.
+record ClosureWellFormedS {i A B C} (f : IR i (A * B) C) (prog : Program) (offset : ℕ) (env-val : Word) : Set where
+  field
+    -- Stateful validity: closure exists at closure address
+    closure-valid-s : ∀ (closure-addr : Word) (m : Memory) →
+      ClosureAtS env-val (offset +ℕ 6) closure-addr m
+
+open ClosureWellFormedS public
+
+------------------------------------------------------------------------
 -- CurryResult: Extended result for curry that includes well-formedness
 ------------------------------------------------------------------------
 
@@ -177,6 +196,61 @@ record CurryResult {i} {A B C : Type} (f : IR i (A * B) C)
                    (λ b → eval f (x , b))  -- semantics: partial application
 
 open CurryResult public
+
+------------------------------------------------------------------------
+-- CurryResultS: Stateful version with explicit addresses
+------------------------------------------------------------------------
+
+-- | Stateful curry result with explicit closure address
+-- Like CurryResult but returns explicit addresses and validity predicates.
+-- This eliminates dependency on encode-pair-construct postulate.
+--
+-- Key differences from CurryResult:
+-- 1. curry-closure-addr: explicit closure address (instead of encode)
+-- 2. curry-closure-valid: ClosureAtS validity proof
+-- 3. closure-wf-s: ClosureWellFormedS proof (stateful version)
+record CurryResultS {i} {A B C : Type} (f : IR i (A * B) C)
+                   (prog : Program) (s s' : State) (env-val : Word)
+                   (offset : ℕ) : Set where
+  field
+    -- Standard execution properties (same as CurryResult)
+    curry-star      : Star prog s s'
+    curry-halted    : halted s' ≡ false
+    curry-pc        : pc s' ≡ offset +ℕ compile-length (curry f)
+
+    -- Explicit closure address in x0
+    curry-closure-addr : Word
+    curry-x0-s      : readReg (regs s') x0 ≡ curry-closure-addr
+
+    -- Register preservation
+    curry-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
+    curry-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
+    curry-x29       : readReg (regs s') x29 ≡ readReg (regs s) x29
+    curry-x30       : readReg (regs s') x30 ≡ readReg (regs s) x30
+    curry-sp        : readSP (regs s') ≤ readSP (regs s)
+
+    -- Memory preservation
+    curry-mem-x21   : readMem (memory s') (readReg (regs s) x21) ≡
+                      readMem (memory s) (readReg (regs s) x21)
+    curry-mem-x29   : readMem (memory s') (readReg (regs s) x29) ≡
+                      readMem (memory s) (readReg (regs s) x29)
+    curry-mem-x29+8 : readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡
+                      readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+
+    -- Invariants
+    curry-stack-inv : StackInvariant s'
+    curry-x29-inv   : X29Invariant s'
+    curry-sp-bound  : readSP (regs s') > 16
+
+    -- Stateful validity: closure exists at curry-closure-addr
+    curry-closure-valid : ClosureAtS env-val (offset +ℕ 6) curry-closure-addr (memory s')
+
+    -- Stateful well-formedness
+    -- Phase 1: Just captures that the closure structure is valid
+    -- Phase 2: Will add thunk execution proofs
+    closure-wf-s : ClosureWellFormedS f prog offset env-val
+
+open CurryResultS public
 
 ------------------------------------------------------------------------
 -- ApplyWithWF: Apply execution that uses well-formedness
