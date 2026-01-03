@@ -2,8 +2,20 @@
 
 **Status**: Implementation in Progress
 **Created**: 2026-01-02
-**Updated**: 2026-01-02 (Removed incorrect Closed/Open split)
+**Updated**: 2026-01-03 (Phase 0 complete - architecture pivot)
 **Goal**: Prove AArch64 code generators correct for arbitrary Once programs (CompCert-level verification)
+
+## Recent Progress (2026-01-03)
+
+**Phase 0 Complete** (Architectural Cleanup):
+- ✅ Removed incorrect "Closed/Open" directory split (commit fac95d7)
+- ✅ Updated architecture to focus on generator correctness, not program verification (commit 6db4fc7)
+- ✅ Clarified scope: Verifying the COMPILER for ALL programs, not individual program properties
+- ✅ Documented postulate elimination path using ClosureWellFormed threading
+
+**Current State**: 5 postulates total
+- 1 runtime assumption (sp-bound-after-stack-op) - **keep**
+- 4 proof obligations - **eliminable** via Star-based proofs in mutual block
 
 ## Executive Summary
 
