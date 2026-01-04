@@ -64,9 +64,32 @@ rbp-inv-preserved-through-ir-s s s1 s2 _ {ir = ir} r-s rsp2-eq rbp2-eq =
 -- Abstract dispatcher signatures (to be implemented concretely later)
 ------------------------------------------------------------------------
 
+-- | CORE CORRECTNESS THEOREM (currently postulated)
+-- This is the fundamental correctness property: stateful execution produces
+-- an address that encodes the correct semantic value.
+--
+-- Statement: If IRStarResultS proves that executing IR `ir` with input at addr-in
+-- produces output at addr-out, then addr-out must encode the semantic evaluation result.
+--
+-- To eliminate this postulate, we need to prove compiler correctness for ALL IR constructs:
+--   - Base cases: Id, Terminal (literals)
+--   - Type constructors: Fold, Unfold, Arr, Inl, Inr, Curry
+--   - Combinators: Compose (f ∘ g), Pair ⟨f, g⟩, Case [f, g]
+--
+-- Proof strategy:
+--   1. Prove for each base case (Id trivial, Terminal uses encode postulates)
+--   2. Prove for each type constructor (structural properties of encoding)
+--   3. Prove for combinators by INDUCTION:
+--      - Compose: Assumes correctness for f and g, proves for (g ∘ f)
+--      - Pair: Assumes correctness for f and g, proves for ⟨f, g⟩
+--      - Case: Assumes correctness for f and g, proves for [f, g]
+--   4. Complete proof by structural induction on IR
+--
+-- Current status: Used as bridge in Compose (line 105 of MutualIR/Compose.agda)
+-- to connect f's output address to g's input semantic value.
+--
+-- Dependencies: Requires encode postulates for primitive types to be proven first.
 postulate
-  -- TEMPORARY BRIDGE: Connects stateful execution (IRStarResultS) to semantic evaluation (eval)
-  -- This postulate will be eliminated once we prove correctness at the end-to-end level
   irresults-preserves-eval : ∀ {A B} (ir : IR A B) (prog : Program) (s s' : State)
                                (addr-in addr-out : Word) (x : ⟦ A ⟧) (offset : ℕ) →
     IRStarResultS ir prog s s' addr-out offset →
