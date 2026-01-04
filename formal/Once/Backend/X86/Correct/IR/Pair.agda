@@ -2237,37 +2237,56 @@ exec-pair-final-s {A} {B} {C} f g prefix suffix s s3 addr-f addr-g precond rax-e
 -- This is a mechanical proof that chains together the memory preservation from each phase
 -- but requires careful reasoning about register values across phase boundaries.
 
--- Helper postulates for relating addr > rbp(s) to each phase's memory guarantees
+-- Helper lemmas for relating addr > rbp(s) to each phase's memory guarantees
+-- These break down the complex memory preservation proof into manageable pieces
+
+-- Phase 1: addr > rbp(s) ⟹ addr ≥ rsp(s)
+-- Proof: RbpInvariant gives rsp ≤ rbp. So rsp ≤ rbp < addr by transitivity.
+addr>rbp⇒addr≥rsp : ∀ (s : State) (addr : Word) →
+  RbpInvariant s →
+  addr > readReg (regs s) rbp →
+  addr ≥ readReg (regs s) rsp
+addr>rbp⇒addr≥rsp s addr rbp-inv addr>rbp =
+  ≤-trans (rsp≤rbp rbp-inv) (<⇒≤ addr>rbp)
+
+-- Phase 2: addr > rbp(s) ⟹ addr > rbp(s-setup)
+-- Proof: rbp(s-setup) = rbp(s) - 24, so rbp(s-setup) ≤ rbp(s) < addr.
+addr>rbp⇒addr>rbp-setup : ∀ (s s-setup : State) (addr : Word) →
+  readReg (regs s-setup) rbp ≡ readReg (regs s) rbp ∸ 24 →
+  addr > readReg (regs s) rbp →
+  addr > readReg (regs s-setup) rbp
+addr>rbp⇒addr>rbp-setup s s-setup addr rbp-eq addr>rbp =
+  subst (_< addr) (sym rbp-eq) (≤-trans (s≤s (m∸n≤m (readReg (regs s) rbp) 24)) addr>rbp)
+
+-- Phase 3: addr > rbp(s) ⟹ addr ≢ r15(s1)
+-- Proof: r15(s1) = r15(s) (preserved), r15(s) ≤ rbp(s), addr > rbp(s).
+-- So r15(s1) ≤ rbp(s) < addr, thus r15(s1) < addr, thus r15(s1) ≢ addr.
+addr>rbp⇒addr≢r15 : ∀ (s s1 : State) (addr : Word) →
+  readReg (regs s1) r15 ≡ readReg (regs s) r15 →
+  readReg (regs s) r15 ≤ readReg (regs s) rbp →
+  addr > readReg (regs s) rbp →
+  addr ≢ readReg (regs s1) r15
+addr>rbp⇒addr≢r15 s s1 addr r15-eq r15≤rbp addr>rbp neq =
+  <⇒≢ r15<addr (trans (sym r15-eq) (sym neq))
+  where
+    r15<addr : readReg (regs s) r15 < addr
+    r15<addr = ≤-trans (s≤s r15≤rbp) addr>rbp
+
+-- Phase 4: addr > rbp(s) ⟹ addr > rbp(s2)
+-- Proof: Identical to Phase 2 (rbp(s2) = rbp(s) - 24)
+addr>rbp⇒addr>rbp-s2 : ∀ (s s2 : State) (addr : Word) →
+  readReg (regs s2) rbp ≡ readReg (regs s) rbp ∸ 24 →
+  addr > readReg (regs s) rbp →
+  addr > readReg (regs s2) rbp
+addr>rbp⇒addr>rbp-s2 s s2 addr rbp-eq addr>rbp =
+  subst (_< addr) (sym rbp-eq) (≤-trans (s≤s (m∸n≤m (readReg (regs s) rbp) 24)) addr>rbp)
+
+-- Phase 5: addr > rbp(s) ⟹ addr ≢ addr-pair + 8
+-- This requires heap/stack separation. Since addr is on stack (> rbp)
+-- and addr-pair is on heap (allocated via alloc-pair), they are in different regions.
+-- Stack addresses are high (near 0x7FFF0000), heap addresses are low.
+-- FOR NOW: Keep as postulate pending a general heap/stack separation invariant
 postulate
-  -- Phase 1: addr > rbp(s) ⟹ addr ≥ rsp(s) (since rsp ≤ rbp from StackInvariant)
-  addr>rbp⇒addr≥rsp : ∀ (s : State) (addr : Word) →
-    StackInvariant s →
-    addr > readReg (regs s) rbp →
-    addr ≥ readReg (regs s) rsp
-
-  -- Phase 2: addr > rbp(s) ⟹ addr > rbp(s-setup) (rbp changes by -24 in setup)
-  -- Requires: readReg (regs s-setup) rbp ≡ readReg (regs s) rbp - 24
-  addr>rbp⇒addr>rbp-setup : ∀ (s s-setup : State) (addr : Word) →
-    readReg (regs s-setup) rbp ≡ readReg (regs s) rbp ∸ 24 →
-    addr > readReg (regs s) rbp →
-    addr > readReg (regs s-setup) rbp
-
-  -- Phase 3: addr > rbp(s) ⟹ addr ≢ r15(s1) (r15 points below rbp)
-  -- Requires: r15 preserved and initially points below rbp
-  addr>rbp⇒addr≢r15 : ∀ (s s1 : State) (addr : Word) →
-    readReg (regs s1) r15 ≡ readReg (regs s) r15 →
-    readReg (regs s) r15 ≤ readReg (regs s) rbp →
-    addr > readReg (regs s) rbp →
-    addr ≢ readReg (regs s1) r15
-
-  -- Phase 4: addr > rbp(s) ⟹ addr > rbp(s2) (rbp preserved through middle phase)
-  addr>rbp⇒addr>rbp-s2 : ∀ (s s2 : State) (addr : Word) →
-    readReg (regs s2) rbp ≡ readReg (regs s) rbp ∸ 24 →
-    addr > readReg (regs s) rbp →
-    addr > readReg (regs s2) rbp
-
-  -- Phase 5: addr > rbp(s) ⟹ addr ≢ addr-pair + 8 (pair allocated on heap, below stack)
-  -- Requires: addr-pair points to heap memory, which is far from stack
   addr>rbp⇒addr≢pair+8 : ∀ (s : State) (addr addr-pair : Word) →
     addr > readReg (regs s) rbp →
     addr ≢ addr-pair +ℕ 8
