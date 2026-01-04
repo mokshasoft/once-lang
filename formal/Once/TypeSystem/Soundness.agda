@@ -54,7 +54,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 --
 -- This is trivially true by eval's type, but we can state it explicitly.
 --
-type-preservation : ∀ {i A B} (f : IR i A B) (x : ⟦ A ⟧) → ⟦ B ⟧
+type-preservation : ∀ {i A B} (f : IR A B) (x : ⟦ A ⟧) → ⟦ B ⟧
 type-preservation f x = eval f x
 
 -- | Typed derivations and IR terms have the same semantics
@@ -89,7 +89,7 @@ typed-semantics d x = refl
 --
 -- As a type, we state: for all f and x, there exists a result.
 --
-progress : ∀ {i A B} (f : IR i A B) (x : ⟦ A ⟧) → ⟦ B ⟧
+progress : ∀ {i A B} (f : IR A B) (x : ⟦ A ⟧) → ⟦ B ⟧
 progress = eval
 
 ------------------------------------------------------------------------
@@ -110,7 +110,7 @@ progress = eval
 --
 -- Soundness theorem: If IR A B, then ⟦ A ⟧ → ⟦ B ⟧
 --
-soundness : ∀ {i A B} → IR i A B → (⟦ A ⟧ → ⟦ B ⟧)
+soundness : ∀ {A B} → IR A B → (⟦ A ⟧ → ⟦ B ⟧)
 soundness = eval
 
 ------------------------------------------------------------------------

@@ -143,7 +143,7 @@ open ClosureWellFormed public
 -- - x0 = closure address (new-sp after sub-sp 16)
 -- - [closure]   = env-addr = encode x
 -- - [closure+8] = code-ptr = offset + 6
-record CurryResult {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryResult {i} {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                    (offset : ℕ) : Set where
   field

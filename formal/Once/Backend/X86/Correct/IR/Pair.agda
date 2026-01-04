@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.IR.Pair
 --
@@ -14,7 +13,6 @@ module Once.Backend.X86.Correct.IR.Pair where
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
 
 -- Additional imports not in Foundation
-open import Size
 open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
@@ -43,7 +41,7 @@ open ≡-Reasoning
 -- Pair Context: computed values that don't depend on execution
 ------------------------------------------------------------------------
 
-record PairContext {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -101,9 +99,9 @@ record PairContext {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     prog-eq-final : prog ≡ prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
 
 -- | Compute the pair context
-make-pair-context : ∀ {i A B C} (f : IR i C A) (g : IR i C B) (prefix suffix : Program) →
+make-pair-context : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) →
   PairContext f g prefix suffix
-make-pair-context {i} {A} {B} {C} f g prefix suffix = record
+make-pair-context {A} {B} {C} f g prefix suffix = record
   { len-f = len-f
   ; len-g = len-g
   ; code-f = code-f
@@ -311,7 +309,7 @@ make-pair-context {i} {A} {B} {C} f g prefix suffix = record
 -- Setup Result: state after 7 setup instructions
 ------------------------------------------------------------------------
 
-record PairSetupResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
                        (prefix suffix : Program) (x : ⟦ C ⟧)
                        (s : State) : Set where
   private
@@ -340,13 +338,13 @@ record PairSetupResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
 
 -- | Execute setup phase and compute all properties
-exec-pair-setup : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+exec-pair-setup : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   PairSetupResult f g prefix suffix x s
-exec-pair-setup {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
+exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   { s-setup = s-setup
   ; h-setup = h-setup
   ; pc-setup-f = pc-setup-f
@@ -438,7 +436,7 @@ exec-pair-setup {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = rec
 -- Middle Result: state after 2 middle instructions (store f result, restore input)
 ------------------------------------------------------------------------
 
-record PairMiddleResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program) (x : ⟦ C ⟧)
                         (s s-setup s1 : State) : Set where
   private
@@ -468,7 +466,7 @@ record PairMiddleResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
 
 -- | Execute middle phase
-exec-pair-middle : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+exec-pair-middle : ∀ {A B C} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧)
                    (s s-setup s1 : State) →
   let ctx = make-pair-context f g prefix suffix in
@@ -480,7 +478,7 @@ exec-pair-middle : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   halted s1 ≡ false →
   pc s1 ≡ length prefix +ℕ 7 +ℕ len-f →
   PairMiddleResult f g prefix suffix x s s-setup s1
-exec-pair-middle {i} {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-setup-eq rdi-eq h1 pc1 = record
+exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-setup-eq rdi-eq h1 pc1 = record
   { s2 = s2
   ; h2 = h2
   ; pc2-g = pc2-g
@@ -673,7 +671,7 @@ exec-pair-middle {i} {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res 
 -- | Assemble the final pair result from the pieces
 -- Note: This still requires postulates for final-result and rbp-final/mem-final
 -- Those will be addressed in Phase 2 of the plan
-assemble-pair-result : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
                        (prefix suffix : Program) (x : ⟦ C ⟧)
                        (s s-setup s1 s2 s3 s-final : State) →
   let ctx = make-pair-context f g prefix suffix in
@@ -704,7 +702,7 @@ assemble-pair-result : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   RbpInvariant s →
   readReg (regs s-final) rsp ≡ readReg (regs s) rsp →
   IRStarResult ⟨ f , g ⟩ prog s s-final x (length prefix)
-assemble-pair-result {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
+assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp>16-final mem-fst-final mem-snd-final
@@ -811,7 +809,7 @@ assemble-pair-result {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fi
 -- Final Result: state after 6 final instructions
 ------------------------------------------------------------------------
 
-record PairFinalResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
                        (prefix suffix : Program)
                        (s s3 : State) : Set where
   private
@@ -839,7 +837,7 @@ record PairFinalResult {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-above-r15+8-fin : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ 8 → readMem (memory s-final) addr ≡ readMem (memory s3) addr
 
 -- | Preconditions for exec-pair-final: stack layout from setup phase
-record PairFinalPrecond {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program)
                         (s s3 : State) : Set where
   private
@@ -940,7 +938,7 @@ n+32≢n+8 n eq = n≢n+suc-m (n +ℕ 8) 23 (+-assoc-cancel eq)
 
 -- | Construct PairFinalPrecond from intermediate results
 -- Extracted to reduce MutualIR.agda type-checking time
-make-pair-final-precond : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+make-pair-final-precond : ∀ {A B C} (f : IR C A) (g : IR C B)
                           (prefix suffix : Program) (x : ⟦ C ⟧)
                           (s s-setup s1 s2 s3 : State)
                           (stack-inv : StackInvariant s)
@@ -954,7 +952,7 @@ make-pair-final-precond : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   s-setup ≡ PairSetupResult.s-setup setup-res →
   s2 ≡ PairMiddleResult.s2 mid-res →
   PairFinalPrecond f g prefix suffix s s3
-make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
+make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                         stack-inv rbp-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
   { h3 = ir-halted r-g
   ; pc3 = pc3
@@ -1721,12 +1719,12 @@ make-pair-final-precond {i} {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
 -- Takes full preconditions for proven stack restoration
 -- All postulates eliminated - rsp-bound passed via PairFinalPrecond
-exec-pair-final : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program)
                   (s s3 : State) →
   PairFinalPrecond f g prefix suffix s s3 →
   PairFinalResult f g prefix suffix s s3
-exec-pair-final {i} {A} {B} {C} f g prefix suffix s s3 precond = record
+exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     { s-final = s9
     ; exec-fin = exec-6-final
     ; h-final = h9
@@ -1984,7 +1982,7 @@ exec-pair-final {i} {A} {B} {C} f g prefix suffix s s3 precond = record
 ------------------------------------------------------------------------
 
 -- | Setup phase result (stateful): no semantic value parameter
-record PairSetupResultS {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairSetupResultS {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program) (addr-in : Word)
                         (s : State) : Set where
   private
@@ -2013,13 +2011,13 @@ record PairSetupResultS {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
 
 -- | Execute setup phase (stateful version)
-exec-pair-setup-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+exec-pair-setup-s : ∀ {A B C} (f : IR C A) (g : IR C B)
                     (prefix suffix : Program) (addr-in : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ addr-in →
   PairSetupResultS f g prefix suffix addr-in s
-exec-pair-setup-s {i} {A} {B} {C} f g prefix suffix addr-in s h-false pc-eq rdi-eq = record
+exec-pair-setup-s {A} {B} {C} f g prefix suffix addr-in s h-false pc-eq rdi-eq = record
   { s-setup = s-setup
   ; h-setup = h-setup
   ; pc-setup-f = pc-setup-f
@@ -2053,7 +2051,7 @@ exec-pair-setup-s {i} {A} {B} {C} f g prefix suffix addr-in s h-false pc-eq rdi-
     rdi-setup-addr-proof = trans rdi-setup-enc (sym addr-eq-encode)
 
 -- | Middle phase result (stateful): tracks addr-f from f's execution
-record PairMiddleResultS {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairMiddleResultS {A B C : Type} (f : IR C A) (g : IR C B)
                          (prefix suffix : Program) (addr-in : Word)
                          (s s-setup s1 : State) : Set where
   private
@@ -2085,7 +2083,7 @@ record PairMiddleResultS {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
 
 -- | Execute middle phase (stateful version)
-exec-pair-middle-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+exec-pair-middle-s : ∀ {A B C} (f : IR C A) (g : IR C B)
                      (prefix suffix : Program) (addr-in : Word)
                      (s s-setup s1 : State) →
   let ctx = make-pair-context f g prefix suffix in
@@ -2099,7 +2097,7 @@ exec-pair-middle-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   pc s1 ≡ length prefix +ℕ 7 +ℕ len-f →
   readReg (regs s1) rax ≡ addr-f →
   PairMiddleResultS f g prefix suffix addr-in s s-setup s1
-exec-pair-middle-s {i} {A} {B} {C} f g prefix suffix addr-in s s-setup s1 addr-f r-f-s setup-res s-setup-eq rdi-eq h1 pc1 rax1 = record
+exec-pair-middle-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 addr-f r-f-s setup-res s-setup-eq rdi-eq h1 pc1 rax1 = record
   { addr-f = addr-f
   ; s2 = s2
   ; h2 = h2
@@ -2146,7 +2144,7 @@ exec-pair-middle-s {i} {A} {B} {C} f g prefix suffix addr-in s s-setup s1 addr-f
     mem-fst-stored = trans (PairMiddleResult.mem-fst-stored mid-res) (cong just rax1)
 
 -- | Final phase result (stateful): includes PairAtS validity
-record PairFinalResultS {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairFinalResultS {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program)
                         (addr-f addr-g addr-pair : Word)
                         (s s3 : State) : Set where
@@ -2175,7 +2173,7 @@ record PairFinalResultS {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     pair-valid : PairAtS addr-f addr-g addr-pair (memory s-final)
 
 -- | Execute final phase (stateful version)
-exec-pair-final-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+exec-pair-final-s : ∀ {A B C} (f : IR C A) (g : IR C B)
                     (prefix suffix : Program)
                     (s s3 : State) →
   (addr-f addr-g : Word) →
@@ -2183,7 +2181,7 @@ exec-pair-final-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   readReg (regs s3) rax ≡ addr-g →
   readMem (memory s3) (readReg (regs s3) r15) ≡ just addr-f →
   ∃[ addr-pair ] PairFinalResultS f g prefix suffix addr-f addr-g addr-pair s s3
-exec-pair-final-s {i} {A} {B} {C} f g prefix suffix s s3 addr-f addr-g precond rax-eq mem-fst = (addr-pair , record
+exec-pair-final-s {A} {B} {C} f g prefix suffix s s3 addr-f addr-g precond rax-eq mem-fst = (addr-pair , record
   { s-final = s-final
   ; exec-fin = exec-fin
   ; h-final = h-final
@@ -2249,7 +2247,7 @@ postulate
   0≠n+8 : ∀ (n : Word) → 0 ≢ n +ℕ 8
 
 -- | Assemble complete pair result (stateful version)
-assemble-pair-result-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+assemble-pair-result-s : ∀ {A B C} (f : IR C A) (g : IR C B)
                          (prefix suffix : Program)
                          (addr-in : Word)
                          (s s-setup s1 s2 s3 : State) →
@@ -2267,7 +2265,7 @@ assemble-pair-result-s : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
   s2 ≡ PairMiddleResultS.s2 mid-res →
   RbpInvariant s →
   IRStarResultS ⟨ f , g ⟩ prog s (PairFinalResultS.s-final final-res) addr-pair (length prefix)
-assemble-pair-result-s {i} {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 setup-res addr-f r-f-s mid-res addr-g r-g-s addr-pair final-res s-setup-eq s2-eq rbp-inv = record
+assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 setup-res addr-f r-f-s mid-res addr-g r-g-s addr-pair final-res s-setup-eq s2-eq rbp-inv = record
   { ir-star = star-total
   ; ir-halted = h-final
   ; ir-pc = pc-final

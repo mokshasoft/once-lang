@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.Foundation
 --
@@ -97,7 +96,7 @@ postulate
 
 -- | State transformation predicate
 -- Captures what running an IR term does to the state.
-IRCorrectAt : ∀ {i} {A B : Type} → IR i A B → ⟦ A ⟧ → State → State → Set
+IRCorrectAt : ∀ {A B : Type} → IR A B → ⟦ A ⟧ → State → State → Set
 IRCorrectAt ir x s s' =
   run (compile-x86 ir) s ≡ just s'
   × halted s' ≡ true
@@ -113,8 +112,8 @@ ValidInputState x s =
 
 -- | The main correctness property we want to prove for each IR term
 -- This will be proven by mutual recursion on IR structure.
-IRCorrect : ∀ {i} {A B : Type} → IR i A B → Set
-IRCorrect {_} {A} {B} ir = ∀ (x : ⟦ A ⟧) (s : State) →
+IRCorrect : ∀ {A B : Type} → IR A B → Set
+IRCorrect {A} {B} ir = ∀ (x : ⟦ A ⟧) (s : State) →
   ValidInputState x s →
   ∃[ s' ] IRCorrectAt ir x s s'
 

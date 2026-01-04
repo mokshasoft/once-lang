@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.CodeGen
 --
@@ -28,7 +27,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 
 -- | Calculate the number of instructions generated for an IR morphism
 -- This is needed for computing jump targets in case analysis and curry.
-compile-length : ∀ {i A B} → IR i A B → ℕ
+compile-length : ∀ {A B} → IR A B → ℕ
 
 compile-length id = 1
 compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
@@ -52,7 +51,7 @@ compile-length arr = 1
 
 -- | Generate x86-64 code for an IR morphism
 --
--- compile-x86 : IR i A B → Program
+-- compile-x86 : IR A B → Program
 --
 -- The generated code:
 --   - Expects input in rdi
@@ -60,7 +59,7 @@ compile-length arr = 1
 --   - May use stack for intermediate allocations
 --   - Preserves callee-saved registers
 --
-compile-x86 : ∀ {i A B} → IR i A B → Program
+compile-x86 : ∀ {A B} → IR A B → Program
 
 -- Identity: just move input to output
 compile-x86 id = mov (reg rax) (reg rdi) ∷ []

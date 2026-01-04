@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Postulates
 --
@@ -130,11 +129,11 @@ postulate
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix
+    let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] (Star prog s s'
               × halted s' ≡ false
-              × pc s' ≡ length prefix +ℕ compile-length (apply {_} {A} {B})
-              × readReg (regs s') rax ≡ encode {B} (eval (apply {_} {A} {B}) x)
+              × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
+              × readReg (regs s') rax ≡ encode {B} (eval (apply {A} {B}) x)
               × readReg (regs s') r14 ≡ readReg (regs s) r14
               × readReg (regs s') r15 ≡ readReg (regs s) r15
               × readReg (regs s') rbp ≡ readReg (regs s) rbp

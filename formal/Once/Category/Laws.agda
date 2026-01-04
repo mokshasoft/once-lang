@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 
 ------------------------------------------------------------------------
 -- Once.Category.Laws
@@ -9,7 +8,6 @@
 
 module Once.Category.Laws where
 
-open import Size
 
 open import Once.Type
 open import Once.IR

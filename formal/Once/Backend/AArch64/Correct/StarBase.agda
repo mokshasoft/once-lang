@@ -48,7 +48,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- - Uses x20, x21 as callee-saved context (not r14, r15)
 -- - Uses x29 as frame pointer (not rbp)
 -- - Uses SP functions (readSP) for stack pointer
-record IRStarResult {i} {A B : Type} (ir : IR i A B) (prog : Program)
+record IRStarResult {i} {A B : Type} (ir : IR A B) (prog : Program)
                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     -- Execution
@@ -92,7 +92,7 @@ open IRStarResult public
 -- an IRRunner as a parameter, allowing them to be defined outside
 -- the mutual block. This dramatically reduces compilation time.
 IRRunner : Set
-IRRunner = ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
@@ -109,7 +109,7 @@ IRRunner = ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧)
 -- | Combine two Star proofs when PC and register conditions align
 -- This is the key composition lemma for sequential IR execution
 combine-star-results : ∀ {i} {A B C : Type}
-  (f : IR i A B) (g : IR i B C)
+  (f : IR A B) (g : IR B C)
   (prog : Program) (s₀ s₁ s₂ : State)
   (x : ⟦ A ⟧) (offset : ℕ) →
   IRStarResult f prog s₀ s₁ x offset →
@@ -132,7 +132,7 @@ combine-star-results f g prog s₀ s₁ s₂ x offset res-f pc-eq x0-eq res-g =
 --
 -- Key difference: ir-x0-s returns the raw address, and validity
 -- (PairAtS, InlAtS, InrAtS) is tracked separately at the call site.
-record IRStarResultS {i} {A B : Type} (ir : IR i A B) (prog : Program)
+record IRStarResultS {i} {A B : Type} (ir : IR A B) (prog : Program)
                      (s s' : State) (addr-out : Word) (offset : ℕ) : Set where
   field
     -- Execution
@@ -166,7 +166,7 @@ open IRStarResultS public
 
 -- | Convert IRStarResult to IRStarResultS
 -- This allows gradual migration to stateful proofs
-convert-to-stateful : ∀ {i : Size} {A B : Type} (ir : IR i A B) (prog : Program)
+convert-to-stateful : ∀ {i : Size} {A B : Type} (ir : IR A B) (prog : Program)
                       (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
   IRStarResult ir prog s s' x offset →
   IRStarResultS ir prog s s' (encode (eval ir x)) offset
@@ -195,7 +195,7 @@ convert-to-stateful ir prog s s' x offset res = record
 -- | Type signature for stateful IR execution.
 -- Returns explicit address instead of encode.
 IRRunnerS : Set
-IRRunnerS = ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (addr-in : Word) (s : State) →
+IRRunnerS = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (addr-in : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ addr-in →

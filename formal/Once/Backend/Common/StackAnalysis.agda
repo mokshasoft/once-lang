@@ -63,7 +63,7 @@ module Once.Backend.Common.StackAnalysis
 --   - StackDelta ⟨ f , g ⟩ = pair-frame + StackDelta f + StackDelta g
 --   - StackDelta (f ∘ g) = StackDelta f + StackDelta g (f runs first)
 --
-StackDelta : ∀ {i A B} → IR i A B → ℕ
+StackDelta : ∀ {A B} → IR A B → ℕ
 StackDelta id = 0
 StackDelta (g ∘ f) = StackDelta f +ℕ StackDelta g  -- f runs first, then g
 StackDelta fst = 0
@@ -103,7 +103,7 @@ StackDelta arr = 0
 -- The StackDepth is COMPUTABLE for any concrete IR term, making stack
 -- requirements an explicit, provable property rather than an assumption.
 --
-StackDepth : ∀ {i A B} → IR i A B → ℕ
+StackDepth : ∀ {A B} → IR A B → ℕ
 StackDepth id = 0
 StackDepth (g ∘ f) = StackDepth f ⊔ (StackDelta f +ℕ StackDepth g)  -- f first
 StackDepth fst = 0

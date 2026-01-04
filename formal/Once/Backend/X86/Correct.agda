@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct
 --
@@ -15,7 +14,6 @@
 
 module Once.Backend.X86.Correct where
 
-open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)  -- Hide clashing names
@@ -221,7 +219,7 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 ------------------------------------------------------------------------
 
 -- | Star-based IR execution at arbitrary offset
-run-ir-star : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -250,7 +248,7 @@ transfer-star : ∀ (prog : Program) (s : State) →
 transfer-star prog s h-false step-eq = star-single h-false step-eq
 
 -- | Compose two IR computations using Star
-compose-with-star : ∀ {i A B C} (f : IR i A B) (g : IR i B C) (x : ⟦ A ⟧) (s : State) →
+compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
     readReg (regs s) rdi ≡ encode x →
@@ -292,7 +290,7 @@ compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-i
 
 -- | Detailed Star-based compose showing the 3-step composition
 -- Uses run-ir-star-at-offset directly - no fuel conversion needed
-run-ir-star-compose-internal : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -345,7 +343,7 @@ fetch-at-length (x ∷ xs) = fetch-at-length xs
 
 -- Lemma: At pc = compile-length ir with program = compile-x86 ir, fetch fails
 -- Because compile-length ir = length (compile-x86 ir), there's nothing to fetch
-fetch-at-end : ∀ {i A B} (ir : IR i A B) →
+fetch-at-end : ∀ {A B} (ir : IR A B) →
   fetch (compile-x86 ir) (compile-length ir) ≡ nothing
 fetch-at-end ir = subst (λ n → fetch (compile-x86 ir) n ≡ nothing)
                         (compile-length-correct ir)
@@ -385,7 +383,7 @@ exec-halted-stable = exec-n-halted
 -- This is the cleanest interface - no fuel postulates needed.
 ------------------------------------------------------------------------
 
-run-generator : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
+run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
   ∃[ s' ] (Star (compile-x86 ir) s s'
@@ -456,7 +454,7 @@ run-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
 -- Now derived from run-generator directly
 ------------------------------------------------------------------------
 
-run-seq-compose : ∀ {i A B C} (f : IR i A B) (g : IR i B C) (x : ⟦ A ⟧) (s0 : State) →
+run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : State) →
   halted s0 ≡ false →
   pc s0 ≡ 0 →
   readReg (regs s0) rdi ≡ encode x →
@@ -477,7 +475,7 @@ run-seq-compose {A} {B} {C} f g x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-in
 -- The execution trace is witnessed by Star (reflexive-transitive closure).
 ------------------------------------------------------------------------
 
-codegen-x86-correct : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) →
+codegen-x86-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 ir) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval ir x))
@@ -496,50 +494,50 @@ codegen-x86-correct ir x =
 -- Input: any value x
 -- Expected: x
 test-id : ∀ {A} (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (id {∞} {A})) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 (id {A})) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode x)
-test-id {A} x = codegen-x86-correct (id {∞} {A}) x
+test-id {A} x = codegen-x86-correct (id {A}) x
 
 -- | Test 2: First projection
 -- IR: fst
 -- Input: (a, b)
 -- Expected: a
 test-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (Star (compile-x86 (fst {∞} {A} {B})) (initWithInput (a , b)) s
+  ∃[ s ] (Star (compile-x86 (fst  {A} {B})) (initWithInput (a , b)) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode a)
-test-fst {A} {B} a b = codegen-x86-correct (fst {∞} {A} {B}) (a , b)
+test-fst {A} {B} a b = codegen-x86-correct (fst  {A} {B}) (a , b)
 
 -- | Test 3: Composition (fst after pairing)
 -- IR: fst ∘ ⟨id, id⟩
 -- Input: x
 -- Expected: x (creates pair (x,x), extracts first = x)
 test-fst-pair : ∀ {A} (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (fst {∞} {A} {A} ∘ ⟨ id {∞} {A} , id {∞} {A} ⟩)) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode x)
-test-fst-pair {A} x = codegen-x86-correct (fst {∞} {A} {A} ∘ ⟨ id {∞} {A} , id {∞} {A} ⟩) x
+test-fst-pair {A} x = codegen-x86-correct (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩) x
 
 -- | Test 4: Case analysis
 -- IR: [ id , id ]
 -- Input: inl a or inr b
 -- Expected: a or b (identity on sum)
 test-case-id : ∀ {A} (x : ⟦ A ⟧ ⊎ ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 [ id {∞} {A} , id {∞} {A} ]) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 [ id  {A} , id  {A} ]) (initWithInput x) s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval [ id {∞} {A} , id {∞} {A} ] x))
-test-case-id {A} x = codegen-x86-correct [ id {∞} {A} , id {∞} {A} ] x
+        × readReg (regs s) rax ≡ encode (eval [ id  {A} , id  {A} ] x))
+test-case-id {A} x = codegen-x86-correct [ id  {A} , id  {A} ] x
 
 -- | Test 5: Curry creates closure
 -- IR: curry fst
 -- Input: a
 -- Expected: closure that takes b and returns a
 test-curry : ∀ {A B} (a : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (curry (fst {∞} {A} {B}))) (initWithInput a) s
+  ∃[ s ] (Star (compile-x86 (curry (fst  {A} {B}))) (initWithInput a) s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry (fst {∞} {A} {B})) a))
-test-curry {A} {B} a = codegen-x86-correct (curry (fst {∞} {A} {B})) a
+        × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry (fst  {A} {B})) a))
+test-curry {A} {B} a = codegen-x86-correct (curry (fst  {A} {B})) a
 
 -- | Test 6: TRUE E2E - Curry + Apply composed
 -- IR: apply ∘ ⟨curry fst, id⟩
@@ -552,10 +550,10 @@ test-curry {A} {B} a = codegen-x86-correct (curry (fst {∞} {A} {B})) a
 -- When apply calls the closure, it jumps to the thunk WITHIN THE SAME PROGRAM.
 -- With RIP-relative addressing, the code-ptr is computed correctly.
 test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply {∞} {A} {A} ∘ ⟨ curry (fst {∞} {A} {A}) , id {∞} {A} ⟩)) (initWithInput a) s
+  ∃[ s ] (Star (compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩)) (initWithInput a) s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval (apply {∞} {A} {A} ∘ ⟨ curry (fst {∞} {A} {A}) , id {∞} {A} ⟩) a))
-test-curry-apply {A} a = codegen-x86-correct (apply {∞} {A} {A} ∘ ⟨ curry (fst {∞} {A} {A}) , id {∞} {A} ⟩) a
+        × readReg (regs s) rax ≡ encode (eval (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a))
+test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a
 
 ------------------------------------------------------------------------
 -- E2E Summary
@@ -626,7 +624,7 @@ test-curry-apply {A} a = codegen-x86-correct (apply {∞} {A} {A} ∘ ⟨ curry 
 
 -- | Compiled program for curry ∘ ⟨curry fst, id⟩
 curry-apply-prog : {A : Type} → Program
-curry-apply-prog {A} = compile-x86 (apply {∞} {A} {A} ∘ ⟨ curry (fst {∞} {A} {A}) , id {∞} {A} ⟩)
+curry-apply-prog {A} = compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩)
 
 -- | Program length
 curry-apply-len : {A : Type} → ℕ
@@ -683,11 +681,11 @@ lea-computes-thunk = refl
 -- code generation level.
 --
 -- Semantically: eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a, b) = eval f (a, b)
-curry-apply-composition : ∀ {i A B C} (f : IR i (A * B) C) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ fst , snd ⟩)) (initWithInput (a , b)) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (a , b)))
-curry-apply-composition {i} {A} {B} {C} f a b =
+curry-apply-composition {A} {B} {C} f a b =
   -- This follows directly from codegen-x86-correct
   -- The key is that eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a,b) = eval f (a,b)
   -- by the categorical curry-apply law (proven in Once.Category.Laws)
@@ -699,7 +697,7 @@ curry-apply-composition {i} {A} {B} {C} f a b =
 -- `apply ∘ ⟨curry f, g⟩` applies the closure (curry f x) to (g x).
 --
 -- Semantically: eval (apply ∘ ⟨curry f, g⟩) x = eval f (x, eval g x)
-curry-apply-any-g : ∀ {A B C} (f : IR ∞ (A * B) C) (g : IR ∞ A B) (x : ⟦ A ⟧) →
+curry-apply-any-g : ∀ {A B C} (f : IR (A * B) C) (g : IR A B) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , g ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (x , eval g x)))
@@ -712,7 +710,7 @@ curry-apply-any-g {A} {B} {C} f g x =
 -- This is the pattern proven step-by-step in E2E-Trace below.
 --
 -- Semantically: eval (apply ∘ ⟨curry f, id⟩) x = eval f (x, x)
-curry-apply-id : ∀ {A C} (f : IR ∞ (A * A) C) (x : ⟦ A ⟧) →
+curry-apply-id : ∀ {A C} (f : IR (A * A) C) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , id ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (x , x)))
@@ -724,7 +722,7 @@ curry-apply-id {A} {C} f x =
 -- Shows curry works with a constant captured value:
 -- `apply ∘ ⟨curry f ∘ terminal, id⟩` where f : IR (Unit * A) B
 -- The closure captures unit (empty environment) and applies to the input.
-curry-apply-const-env : ∀ {A B} (f : IR ∞ (Unit * A) B) (x : ⟦ A ⟧) →
+curry-apply-const-env : ∀ {A B} (f : IR (Unit * A) B) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ terminal , id ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (tt , x)))

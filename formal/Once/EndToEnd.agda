@@ -94,7 +94,7 @@ compile-preserves-semantics ir x =
 -- For any Core IR term, the generated code when executed yields
 -- the encoded semantic value in rax. The execution trace is witnessed by Star.
 --
-codegen-correct-x86 : ∀ {i} {A B} (ir : Core.IR i A B) (x : ⟦ A ⟧) →
+codegen-correct-x86 : ∀ {i} {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 ir) (initWithInputX86 x) s
         × haltedX86 s ≡ true
         × readRegX86 (regsX86 s) rax ≡ encodeX86 (eval ir x))
@@ -109,7 +109,7 @@ codegen-correct-x86 = codegen-x86-correct
 -- For any Core IR term, the generated code when executed yields
 -- the encoded semantic value in a0. The execution trace is witnessed by Star.
 --
-codegen-correct-riscv : ∀ {i} {A B} (ir : Core.IR i A B) (x : ⟦ A ⟧) →
+codegen-correct-riscv : ∀ {i} {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
   ∃[ s ] (StarRV64 (compile-riscv ir) (initWithInputRV64 x) s
         × haltedRV64 s ≡ true
         × readRegRV64 (regsRV64 s) a0 ≡ encodeRV64 (eval ir x))

@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.ClosureWellFormed
 --
@@ -14,7 +13,6 @@
 
 module Once.Backend.X86.Correct.ClosureWellFormed where
 
-open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -115,7 +113,7 @@ open ClosureWellFormed public
 -- - rax = closure address (new-rsp)
 -- - [closure] = env-addr = encode x
 -- - [closure+8] = code-ptr = offset + 6
-record CurryResult {i : Size} {A B C : Type} (f : IR i (A * B) C)
+record CurryResult {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                    (offset : ℕ) : Set where
   field
@@ -166,7 +164,7 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
   field
     apply-star     : Star prog s s'
     apply-halted   : halted s' ≡ false
-    apply-pc       : pc s' ≡ offset +ℕ compile-length (apply {_} {A} {B})
+    apply-pc       : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
     apply-rax      : readReg (regs s') rax ≡ encode (Closure.semantics cl a)
     apply-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     apply-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
@@ -193,12 +191,12 @@ open ApplyWithWFResult public
 --
 -- run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
 --                     (cl : Closure A B) (a : ⟦ A ⟧) (s : State) →
---   ClosureWellFormed (prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix) cl →
+--   ClosureWellFormed (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) cl →
 --   halted s ≡ false →
 --   pc s ≡ length prefix →
 --   readReg (regs s) rdi ≡ encode (cl , a) →
 --   StackInvariant s →
 --   readReg (regs s) rsp > 16 →
---   ∃[ s' ] ApplyWithWFResult (prefix ++ compile-x86 (apply {_} {A} {B}) ++ suffix)
+--   ∃[ s' ] ApplyWithWFResult (prefix ++ compile-x86 (apply {A} {B}) ++ suffix)
 --                              s s' cl a (length prefix)
 -- run-apply-with-wf = ?

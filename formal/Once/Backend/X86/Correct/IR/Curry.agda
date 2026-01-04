@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.IR.Curry
 --
@@ -12,7 +11,6 @@ module Once.Backend.X86.Correct.IR.Curry where
 open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
-open import Size
 open import Once.Postulates using (encode-closure-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -38,7 +36,7 @@ open ≡-Reasoning
 
 -- | Record capturing the memory layout produced by curry
 -- This is what apply needs to look up the closure
-record CurryMemoryResult {i : Size} {A B C : Type} (f : IR i (A * B) C)
+record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
                          (prog : Program) (s-final : State)
                          (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
@@ -60,7 +58,7 @@ open CurryMemoryResult public
 -- Main curry proof
 ------------------------------------------------------------------------
 
-run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -70,7 +68,7 @@ run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {i} {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   s-final , record
     { ir-star = star-all
     ; ir-halted = h-final

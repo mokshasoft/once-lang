@@ -78,7 +78,7 @@ postulate
 -- STATUS: ELIMINATED! (2026-01-02)
 --
 -- This postulate claimed:
---   ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
+--   ∀ {i A B C} (f : IR (A * B) C) (s : State) →
 --     StackDepth f ≤ readReg (regs s) sp
 --
 -- This was a FALSE universal claim (claimed ANY IR f fits in ANY sp).

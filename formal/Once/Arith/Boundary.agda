@@ -116,7 +116,7 @@ envToSem (v AS.∷ᵉ env) = (numToSem _ v , envToSem env)
 
 postulate
   -- | The embedding function (implemented in compiler)
-  embedArith : ∀ {i Γ τ} → A.ArithIR Γ τ → IR i (EnvType Γ) (NumToType τ)
+  embedArith : ∀ {i Γ τ} → A.ArithIR Γ τ → IR (EnvType Γ) (NumToType τ)
 
 ------------------------------------------------------------------------
 -- Semantic Preservation Theorem

@@ -40,7 +40,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 
 -- | compile-length correctly computes the length of compile-riscv
 -- This is essential for proving fetch lemmas at computed positions
-compile-length-correct : ∀ {i A B} (ir : IR i A B) →
+compile-length-correct : ∀ {A B} (ir : IR A B) →
   length (compile-riscv ir) ≡ compile-length ir
 
 -- Base cases: direct computation

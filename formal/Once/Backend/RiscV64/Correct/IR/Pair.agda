@@ -338,7 +338,7 @@ final-write-addr≢orig-sp+any n k n≥32 =
 --   Final (5):  sd a0 8(s2); mv a0 s2; ld s1 16(s2); ld t0 24(s2); mv s2 t0
 ------------------------------------------------------------------------
 
-record PairContext {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairContext {i : Size} {A B C : Type} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -387,7 +387,7 @@ record PairContext {i : Size} {A B C : Type} (f : IR i C A) (g : IR i C B)
     prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
 
 -- | Compute the pair context
-make-pair-context : ∀ {i A B C} (f : IR i C A) (g : IR i C B) (prefix suffix : Program) →
+make-pair-context : ∀ {i A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) →
   PairContext f g prefix suffix
 make-pair-context {_} {A} {B} {C} f g prefix suffix = record
   { len-f = len-f
@@ -575,7 +575,7 @@ make-pair-context {_} {A} {B} {C} f g prefix suffix = record
 -- Entry: pc = offset, a0 = encode x, 32 ≤ sp
 -- Exit: pc = offset + 5, sp = orig-sp - 32, s1 = encode x, s2 = frame pointer
 --       mem[s2+16] = orig-s1, mem[s2+24] = orig-s2
-pair-setup-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+pair-setup-star : ∀ {i A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -894,7 +894,7 @@ pair-setup-star {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq a0-eq sp-bou
 -- Entry: pc = offset + 5 + len-f, a0 = encode (eval f x), s1 = encode x
 --        s2 = frame pointer (orig-sp ∸ 32), 32 ≤ orig-sp
 -- Exit: pc = offset + 7 + len-f, a0 = encode x, memory[s2] = encode (eval f x)
-pair-middle-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+pair-middle-star : ∀ {i A B C} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧) (orig-sp : ℕ) (sf : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -1096,7 +1096,7 @@ pair-middle-star {_} {A} {B} {C} f g prefix suffix x orig-sp sf h-false pc-eq a0
 --        32 ≤ orig-sp
 -- Exit: pc = offset + 12 + len-f + len-g, a0 = encode (eval f x, eval g x)
 --       s1 = orig-s1, s2 = orig-s2
-pair-final-star : ∀ {i A B C} (f : IR i C A) (g : IR i C B)
+pair-final-star : ∀ {i A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (orig-s1 orig-s2 : Word) (orig-sp : ℕ) (sg : State) →
   let ctx = make-pair-context f g prefix suffix
       open PairContext ctx

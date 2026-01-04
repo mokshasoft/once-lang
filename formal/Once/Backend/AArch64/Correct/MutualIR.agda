@@ -1270,7 +1270,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 
 mutual
   -- | Star-based IR execution at arbitrary offset
-  run-ir-star-at-offset : ∀ {i} {A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-ir-star-at-offset : ∀ {i} {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1319,7 +1319,7 @@ mutual
   --
   -- Structure: compile-aarch64 (g ∘ f) = compile-aarch64 f ++ nop ∷ compile-aarch64 g
   -- Execution: (1) execute f, (2) execute nop, (3) execute g
-  run-compose-star-direct : ∀ {i} {A B C} (f : IR i A B) (g : IR i B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-compose-star-direct : ∀ {i} {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1515,7 +1515,7 @@ mutual
   -- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0
   -- Middle: str x0 [x21], mov x0 x20
   -- Final: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16
-  run-pair-star-direct : ∀ {i} {A B C} (f : IR i C A) (g : IR i C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  run-pair-star-direct : ∀ {i} {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1813,7 +1813,7 @@ mutual
   --   5+|f| to 6+|f|: label + load value for inr
   --   7+|f| to 6+|f|+|g|: code-g (skipped if inl)
   --   7+|f|+|g|: end label
-  run-case-star-direct : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+  run-case-star-direct : ∀ {i} {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1837,7 +1837,7 @@ mutual
   --   Phase 1: Setup - 4 instructions (ldr x9 [x0], cmp, b.ne not taken, ldr x0 [x0+8])
   --   Phase 2: Execute f - recursive Star call
   --   Phase 3: Jump to end - 2 instructions (b, label)
-  run-case-star-direct-inl : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+  run-case-star-direct-inl : ∀ {i A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     StackInvariant s →
@@ -1954,7 +1954,7 @@ mutual
   --   Phase 2: Skip to right label + load value - 2 instructions (label, ldr x0 [x0+8])
   --   Phase 3: Execute g - recursive Star call
   --   Phase 4: End label - 1 instruction
-  run-case-star-direct-inr : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) (b-input : ⟦ B ⟧) (s : State) →
+  run-case-star-direct-inr : ∀ {i A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b-input : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     StackInvariant s →
@@ -2085,7 +2085,7 @@ mutual
   --
   -- For proofs needing ClosureWellFormed threading, use CurryResult
   -- from ClosureWellFormed which includes a closure-wf field.
-  run-curry-star-direct : ∀ {i} {A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-curry-star-direct : ∀ {i} {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -2508,7 +2508,7 @@ mutual
 
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: thunk setup tracing (4 instrs) → IH on f → ret tracing
-  curry-thunk-correct-impl : ∀ {i A B C} (f : IR i (A * B) C)
+  curry-thunk-correct-impl : ∀ {i A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
@@ -2849,7 +2849,7 @@ mutual
 
 -- | The main correctness theorem: for any IR term and input,
 -- executing the compiled code produces the semantically correct result.
-codegen-aarch64-star-correct : ∀ {i} {A B : Type} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
+codegen-aarch64-star-correct : ∀ {i} {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) x0 ≡ encode x →

@@ -67,7 +67,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --   7+|f| to 6+|f|+|g|: code-g  -- execute g
 --   7+|f|+|g|: label        -- end label
 
-record CaseContext {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
+record CaseContext {i} {A B C : Type} (f : IR A C) (g : IR B C)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -116,7 +116,7 @@ record CaseContext {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
 open CaseContext public
 
 -- | Construct CaseContext from IR terms and prefix/suffix
-mkCaseContext : ∀ {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
+mkCaseContext : ∀ {i} {A B C : Type} (f : IR A C) (g : IR B C)
                 (prefix suffix : Program) → CaseContext f g prefix suffix
 mkCaseContext {A} {B} {C} f g prefix suffix = record
   { len-f = the-len-f
@@ -393,7 +393,7 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
 --   1. Setup (4 instructions): load tag, cmp, b.ne (not taken), load left value
 --   2. Execute f
 --   3. Jump to end (2 instructions): b end-offset, label end
-assemble-case-inl-result : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C)
+assemble-case-inl-result : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
                            (prefix suffix : Program) (addr-val : Word)
                            (s s-setup sf s-final : State) →
   let ctx = mkCaseContext f g prefix suffix
@@ -575,7 +575,7 @@ assemble-case-inl-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sf
 --   1. Setup (7+|f| instructions): load tag, cmp, b.ne (taken), skip f code, reach right label, load right value
 --   2. Execute g
 --   3. End label (1 instruction)
-assemble-case-inr-result : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C)
+assemble-case-inr-result : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
                            (prefix suffix : Program) (addr-val : Word)
                            (s s-setup sg s-final : State) →
   let ctx = mkCaseContext f g prefix suffix

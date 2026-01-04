@@ -145,7 +145,7 @@ snoc-append xs x ys = trans (++-assoc xs (x ∷ []) ys) refl
 -- Case Context: computed values that don't depend on execution
 ------------------------------------------------------------------------
 
-record CaseContext {i : Size} {A B C : Type} (f : IR i A C) (g : IR i B C)
+record CaseContext {i : Size} {A B C : Type} (f : IR A C) (g : IR B C)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -184,7 +184,7 @@ record CaseContext {i : Size} {A B C : Type} (f : IR i A C) (g : IR i B C)
     prog-eq-g : prog ≡ prefix-g ++ code-g ++ suffix-g
 
 -- | Compute the case context
-make-case-context : ∀ {i A B C} (f : IR i A C) (g : IR i B C) (prefix suffix : Program) →
+make-case-context : ∀ {i A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) →
   CaseContext f g prefix suffix
 make-case-context {_} {A} {B} {C} f g prefix suffix = record
   { len-f = len-f
@@ -317,7 +317,7 @@ make-case-context {_} {A} {B} {C} f g prefix suffix = record
 -- | Left dispatch: for inj₁ a, trace 3 instructions with branch NOT taken
 -- Entry: pc = offset, a0 = encode (inj₁ a)
 -- Exit: pc = offset + 3, a0 = encode a, t0 = 0
-case-dispatch-left-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
+case-dispatch-left-star : ∀ {i A B C} (f : IR A C) (g : IR B C)
                           (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
   let ctx = make-case-context f g prefix suffix
       open CaseContext ctx
@@ -500,7 +500,7 @@ case-dispatch-left-star {_} {A} {B} {C} f g prefix suffix a s h-false pc-eq a0-e
 -- | Right dispatch: for inj₂ b, trace 3 instructions with branch TAKEN
 -- Entry: pc = offset, a0 = encode (inj₂ b)
 -- Exit: pc = offset + 3 + len-f + 2 = offset + 5 + len-f (at right-label), a0 = encode b
-case-dispatch-right-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
+case-dispatch-right-star : ∀ {i A B C} (f : IR A C) (g : IR B C)
                            (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
   let ctx = make-case-context f g prefix suffix
       open CaseContext ctx
@@ -819,7 +819,7 @@ case-dispatch-right-star {_} {A} {B} {C} f g prefix suffix b s h-false pc-eq a0-
 -- | Left jump: after executing f on left path, jump over g to end
 -- Entry: pc = offset + 3 + len-f (at left-jump)
 -- Exit: pc = offset + 6 + len-f + len-g (at end-label + 1)
-case-left-jump-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
+case-left-jump-star : ∀ {i A B C} (f : IR A C) (g : IR B C)
                       (prefix suffix : Program) (s : State) →
   let ctx = make-case-context f g prefix suffix
       open CaseContext ctx
@@ -1081,7 +1081,7 @@ case-left-jump-star {_} {A} {B} {C} f g prefix suffix s h-false pc-eq =
 -- | Right end: after executing g on right path, execute end-label
 -- Entry: pc = offset + 5 + len-f + len-g (at end-label)
 -- Exit: pc = offset + 6 + len-f + len-g (after end-label)
-case-right-end-star : ∀ {i A B C} (f : IR i A C) (g : IR i B C)
+case-right-end-star : ∀ {i A B C} (f : IR A C) (g : IR B C)
                       (prefix suffix : Program) (s : State) →
   let ctx = make-case-context f g prefix suffix
       open CaseContext ctx

@@ -63,7 +63,7 @@ open ≡-Reasoning
 -- | Prove thunk setup: traces 7 instructions
 -- Entry: pc = thunk-offset, a0 = encode arg, s0 = encode env
 -- Exit: pc = f-offset, a0 = encode (env, arg), s2 = frame pointer
-thunk-setup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
+thunk-setup-star-proven : ∀ {i A B C} (f : IR (A * B) C)
                           (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 7
@@ -602,7 +602,7 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
 --
 -- Takes saved-s2-value as precondition: memory at frame-pointer+16 contains this value
 -- Returns: s2 gets restored to saved-s2-value
-thunk-cleanup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
+thunk-cleanup-star-proven : ∀ {i A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (saved-s2-value : Word) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       len-f = compile-length f
