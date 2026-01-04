@@ -2236,6 +2236,42 @@ exec-pair-final-s {A} {B} {C} f g prefix suffix s s3 addr-f addr-g precond rax-e
 -- each phase's different memory guarantees (above-rsp, above-rbp, not-equal-to-r15, etc.)
 -- This is a mechanical proof that chains together the memory preservation from each phase
 -- but requires careful reasoning about register values across phase boundaries.
+
+-- Helper postulates for relating addr > rbp(s) to each phase's memory guarantees
+postulate
+  -- Phase 1: addr > rbp(s) ⟹ addr ≥ rsp(s) (since rsp ≤ rbp from StackInvariant)
+  addr>rbp⇒addr≥rsp : ∀ (s : State) (addr : Word) →
+    StackInvariant s →
+    addr > readReg (regs s) rbp →
+    addr ≥ readReg (regs s) rsp
+
+  -- Phase 2: addr > rbp(s) ⟹ addr > rbp(s-setup) (rbp changes by -24 in setup)
+  -- Requires: readReg (regs s-setup) rbp ≡ readReg (regs s) rbp - 24
+  addr>rbp⇒addr>rbp-setup : ∀ (s s-setup : State) (addr : Word) →
+    readReg (regs s-setup) rbp ≡ readReg (regs s) rbp ∸ 24 →
+    addr > readReg (regs s) rbp →
+    addr > readReg (regs s-setup) rbp
+
+  -- Phase 3: addr > rbp(s) ⟹ addr ≢ r15(s1) (r15 points below rbp)
+  -- Requires: r15 preserved and initially points below rbp
+  addr>rbp⇒addr≢r15 : ∀ (s s1 : State) (addr : Word) →
+    readReg (regs s1) r15 ≡ readReg (regs s) r15 →
+    readReg (regs s) r15 ≤ readReg (regs s) rbp →
+    addr > readReg (regs s) rbp →
+    addr ≢ readReg (regs s1) r15
+
+  -- Phase 4: addr > rbp(s) ⟹ addr > rbp(s2) (rbp preserved through middle phase)
+  addr>rbp⇒addr>rbp-s2 : ∀ (s s2 : State) (addr : Word) →
+    readReg (regs s2) rbp ≡ readReg (regs s) rbp ∸ 24 →
+    addr > readReg (regs s) rbp →
+    addr > readReg (regs s2) rbp
+
+  -- Phase 5: addr > rbp(s) ⟹ addr ≢ addr-pair + 8 (pair allocated on heap, below stack)
+  -- Requires: addr-pair points to heap memory, which is far from stack
+  addr>rbp⇒addr≢pair+8 : ∀ (s : State) (addr addr-pair : Word) →
+    addr > readReg (regs s) rbp →
+    addr ≢ addr-pair +ℕ 8
+
 postulate
   pair-mem-above-rbp-chain : ∀ (s s-final : State) (addr : Word) →
     addr > readReg (regs s) rbp →
