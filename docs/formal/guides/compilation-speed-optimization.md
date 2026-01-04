@@ -77,6 +77,17 @@ mutual
 - Manual inspection confirms termination (each recursive call is on a strict subterm)
 - Sized types provide no runtime guarantees, only compile-time checking
 
+#### Formal Termination Justification
+
+**NEW**: Termination is now formally proven in a separate orthogonal module!
+
+See `formal/Once/Backend/Termination.agda` and [`formal/docs/formal/guides/orthogonal-termination-proof.md`](../../formal/docs/formal/guides/orthogonal-termination-proof.md) for:
+- Well-founded recursion proof on IR structure size
+- Architecture-independent proof (shared by all backends)
+- Abstract + concrete theorem (reusable for any IR processor)
+
+This provides rigorous formal justification for the `{-# TERMINATING #-}` pragma while keeping the main correctness proofs clean and fast to compile.
+
 #### Implementation Steps
 
 1. Add `{-# TERMINATING #-}` pragma before mutual block
