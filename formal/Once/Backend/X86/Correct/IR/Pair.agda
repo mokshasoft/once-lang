@@ -2242,9 +2242,11 @@ postulate
     readMem (memory s-final) addr ≡ readMem (memory s) addr
 
 -- | Simple arithmetic fact: 0 ≠ n + 8 for any natural n
--- This is trivially true but Agda requires explicit proof
-postulate
-  0≠n+8 : ∀ (n : Word) → 0 ≢ n +ℕ 8
+-- Proof: 8 + n = suc (suc ... suc n ...), and 0 < suc m for any m
+0≠n+8 : ∀ (n : Word) → 0 ≢ n +ℕ 8
+0≠n+8 n rewrite +-comm n 8 = Nat-<⇒≢ (s≤s z≤n)
+  where
+    open import Data.Nat using (z≤n; s≤s)
 
 -- | Assemble complete pair result (stateful version)
 assemble-pair-result-s : ∀ {A B C} (f : IR C A) (g : IR C B)

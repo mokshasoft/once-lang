@@ -69,7 +69,7 @@ mutual
     let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
     in ∃[ addr-out ] ∃[ s' ] IRStarResultS (g ∘ f) prog s s' addr-out (length prefix)
   run-compose-star-direct-s {A} {B} {C} f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    (addr-out , s3 , result-s)
+    (addr-out , (s3 , result-s))
     where
       ctx = make-compose-context f g prefix suffix
       open ComposeContext ctx
