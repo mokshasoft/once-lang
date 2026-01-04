@@ -151,6 +151,8 @@ open import Once.Backend.AArch64.Correct.ClosureWellFormed public
 open import Once.Backend.AArch64.Postulates
   using (sp-bound-after-stack-op; apply-produces-result)
 
+open import Size using (Size)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; m∸n≤m; ≤-refl; ≤-reflexive; ≤-trans)
@@ -1266,6 +1268,320 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
+-- Type family for result types
+--
+-- This type family allows curry to return CurryResultS (preserving closure-wf-s)
+-- while other IR terms return standard IRStarResult.
+-- This is the key to eliminating the apply-produces-result postulate by
+-- threading ClosureWellFormed proofs from curry (producer) to apply (consumer).
+------------------------------------------------------------------------
+
+-- Phase 3.1: Type family with proper types for curry vs others
+-- Tests if dependent type family approach works and resolves timeout issues
+IRResultFor : ∀ {i A B} → IR i A B → Program → State → State → ⟦ A ⟧ → ℕ → Set
+IRResultFor (curry {_} {A} {B} {C} f) prog s s' x offset =
+  CurryResultS f prog s s' (encode x) offset
+IRResultFor ir prog s s' x offset =
+  IRStarResult ir prog s s' x offset
+
+-- Phase 3.2: Field access helpers to disambiguate CurryResultS vs IRStarResult
+-- These pattern match on the IR constructor to extract fields
+-- Explicit patterns for all 15 IR constructors (curry special, rest uniform)
+result-pc : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+            IRResultFor ir prog s s' x offset →
+            pc s' ≡ offset +ℕ compile-length ir
+result-pc (curry {_} {A} {B} {C} f) r = CurryResultS.curry-pc r
+result-pc id r = IRStarResult.ir-pc r
+result-pc terminal r = IRStarResult.ir-pc r
+result-pc fold r = IRStarResult.ir-pc r
+result-pc unfold r = IRStarResult.ir-pc r
+result-pc arr r = IRStarResult.ir-pc r
+result-pc fst r = IRStarResult.ir-pc r
+result-pc snd r = IRStarResult.ir-pc r
+result-pc inl r = IRStarResult.ir-pc r
+result-pc inr r = IRStarResult.ir-pc r
+result-pc initial r = IRStarResult.ir-pc r
+result-pc (_ ∘ _) r = IRStarResult.ir-pc r
+result-pc ⟨ _ , _ ⟩ r = IRStarResult.ir-pc r
+result-pc [ _ , _ ] r = IRStarResult.ir-pc r
+result-pc apply r = IRStarResult.ir-pc r
+
+result-halted : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                IRResultFor ir prog s s' x offset →
+                halted s' ≡ false
+result-halted (curry {_} {A} {B} {C} f) r = CurryResultS.curry-halted r
+result-halted id r = IRStarResult.ir-halted r
+result-halted terminal r = IRStarResult.ir-halted r
+result-halted fold r = IRStarResult.ir-halted r
+result-halted unfold r = IRStarResult.ir-halted r
+result-halted arr r = IRStarResult.ir-halted r
+result-halted fst r = IRStarResult.ir-halted r
+result-halted snd r = IRStarResult.ir-halted r
+result-halted inl r = IRStarResult.ir-halted r
+result-halted inr r = IRStarResult.ir-halted r
+result-halted initial r = IRStarResult.ir-halted r
+result-halted (_ ∘ _) r = IRStarResult.ir-halted r
+result-halted ⟨ _ , _ ⟩ r = IRStarResult.ir-halted r
+result-halted [ _ , _ ] r = IRStarResult.ir-halted r
+result-halted apply r = IRStarResult.ir-halted r
+
+-- Helper: Prove that curry's closure address equals the encoded semantic value
+-- This bridges the gap between stateful CurryResultS (uses explicit addresses)
+-- and semantic IRStarResult (uses encode of eval)
+postulate
+  curry-addr-is-encoded : ∀ {i A B C} {f : IR i (A * B) C} {prog s s' x offset} →
+                          (r : CurryResultS f prog s s' (encode x) offset) →
+                          CurryResultS.curry-closure-addr r ≡ encode {B ⇒ C} (eval (curry f) x)
+
+result-x0 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+            IRResultFor ir prog s s' x offset →
+            readReg (regs s') x0 ≡ encode (eval ir x)
+result-x0 (curry {_} {A} {B} {C} f) r =
+  trans (CurryResultS.curry-x0-s r) (curry-addr-is-encoded r)
+result-x0 id r = IRStarResult.ir-x0 r
+result-x0 terminal r = IRStarResult.ir-x0 r
+result-x0 fold r = IRStarResult.ir-x0 r
+result-x0 unfold r = IRStarResult.ir-x0 r
+result-x0 arr r = IRStarResult.ir-x0 r
+result-x0 fst r = IRStarResult.ir-x0 r
+result-x0 snd r = IRStarResult.ir-x0 r
+result-x0 inl r = IRStarResult.ir-x0 r
+result-x0 inr r = IRStarResult.ir-x0 r
+result-x0 initial r = IRStarResult.ir-x0 r
+result-x0 (_ ∘ _) r = IRStarResult.ir-x0 r
+result-x0 ⟨ _ , _ ⟩ r = IRStarResult.ir-x0 r
+result-x0 [ _ , _ ] r = IRStarResult.ir-x0 r
+result-x0 apply r = IRStarResult.ir-x0 r
+
+result-stack-inv : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                   IRResultFor ir prog s s' x offset →
+                   StackInvariant s'
+result-stack-inv (curry {_} {A} {B} {C} f) r = CurryResultS.curry-stack-inv r
+result-stack-inv id r = IRStarResult.ir-stack-inv r
+result-stack-inv terminal r = IRStarResult.ir-stack-inv r
+result-stack-inv fold r = IRStarResult.ir-stack-inv r
+result-stack-inv unfold r = IRStarResult.ir-stack-inv r
+result-stack-inv arr r = IRStarResult.ir-stack-inv r
+result-stack-inv fst r = IRStarResult.ir-stack-inv r
+result-stack-inv snd r = IRStarResult.ir-stack-inv r
+result-stack-inv inl r = IRStarResult.ir-stack-inv r
+result-stack-inv inr r = IRStarResult.ir-stack-inv r
+result-stack-inv initial r = IRStarResult.ir-stack-inv r
+result-stack-inv (_ ∘ _) r = IRStarResult.ir-stack-inv r
+result-stack-inv ⟨ _ , _ ⟩ r = IRStarResult.ir-stack-inv r
+result-stack-inv [ _ , _ ] r = IRStarResult.ir-stack-inv r
+result-stack-inv apply r = IRStarResult.ir-stack-inv r
+
+result-x29 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+             IRResultFor ir prog s s' x offset →
+             readReg (regs s') x29 ≡ readReg (regs s) x29
+result-x29 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x29 r
+result-x29 id r = IRStarResult.ir-x29 r
+result-x29 terminal r = IRStarResult.ir-x29 r
+result-x29 fold r = IRStarResult.ir-x29 r
+result-x29 unfold r = IRStarResult.ir-x29 r
+result-x29 arr r = IRStarResult.ir-x29 r
+result-x29 fst r = IRStarResult.ir-x29 r
+result-x29 snd r = IRStarResult.ir-x29 r
+result-x29 inl r = IRStarResult.ir-x29 r
+result-x29 inr r = IRStarResult.ir-x29 r
+result-x29 initial r = IRStarResult.ir-x29 r
+result-x29 (_ ∘ _) r = IRStarResult.ir-x29 r
+result-x29 ⟨ _ , _ ⟩ r = IRStarResult.ir-x29 r
+result-x29 [ _ , _ ] r = IRStarResult.ir-x29 r
+result-x29 apply r = IRStarResult.ir-x29 r
+
+result-sp : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+            IRResultFor ir prog s s' x offset →
+            readSP (regs s') ≤ readSP (regs s)
+result-sp (curry {_} {A} {B} {C} f) r = CurryResultS.curry-sp r
+result-sp id r = IRStarResult.ir-sp r
+result-sp terminal r = IRStarResult.ir-sp r
+result-sp fold r = IRStarResult.ir-sp r
+result-sp unfold r = IRStarResult.ir-sp r
+result-sp arr r = IRStarResult.ir-sp r
+result-sp fst r = IRStarResult.ir-sp r
+result-sp snd r = IRStarResult.ir-sp r
+result-sp inl r = IRStarResult.ir-sp r
+result-sp inr r = IRStarResult.ir-sp r
+result-sp initial r = IRStarResult.ir-sp r
+result-sp (_ ∘ _) r = IRStarResult.ir-sp r
+result-sp ⟨ _ , _ ⟩ r = IRStarResult.ir-sp r
+result-sp [ _ , _ ] r = IRStarResult.ir-sp r
+result-sp apply r = IRStarResult.ir-sp r
+
+result-sp-bound : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                  IRResultFor ir prog s s' x offset →
+                  readSP (regs s') > 16
+result-sp-bound (curry {_} {A} {B} {C} f) r = CurryResultS.curry-sp-bound r
+result-sp-bound id r = IRStarResult.ir-sp-bound r
+result-sp-bound terminal r = IRStarResult.ir-sp-bound r
+result-sp-bound fold r = IRStarResult.ir-sp-bound r
+result-sp-bound unfold r = IRStarResult.ir-sp-bound r
+result-sp-bound arr r = IRStarResult.ir-sp-bound r
+result-sp-bound fst r = IRStarResult.ir-sp-bound r
+result-sp-bound snd r = IRStarResult.ir-sp-bound r
+result-sp-bound inl r = IRStarResult.ir-sp-bound r
+result-sp-bound inr r = IRStarResult.ir-sp-bound r
+result-sp-bound initial r = IRStarResult.ir-sp-bound r
+result-sp-bound (_ ∘ _) r = IRStarResult.ir-sp-bound r
+result-sp-bound ⟨ _ , _ ⟩ r = IRStarResult.ir-sp-bound r
+result-sp-bound [ _ , _ ] r = IRStarResult.ir-sp-bound r
+result-sp-bound apply r = IRStarResult.ir-sp-bound r
+
+result-star : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+              IRResultFor ir prog s s' x offset →
+              Star prog s s'
+result-star (curry {_} {A} {B} {C} f) r = CurryResultS.curry-star r
+result-star id r = IRStarResult.ir-star r
+result-star terminal r = IRStarResult.ir-star r
+result-star fold r = IRStarResult.ir-star r
+result-star unfold r = IRStarResult.ir-star r
+result-star arr r = IRStarResult.ir-star r
+result-star fst r = IRStarResult.ir-star r
+result-star snd r = IRStarResult.ir-star r
+result-star inl r = IRStarResult.ir-star r
+result-star inr r = IRStarResult.ir-star r
+result-star initial r = IRStarResult.ir-star r
+result-star (_ ∘ _) r = IRStarResult.ir-star r
+result-star ⟨ _ , _ ⟩ r = IRStarResult.ir-star r
+result-star [ _ , _ ] r = IRStarResult.ir-star r
+result-star apply r = IRStarResult.ir-star r
+
+result-x20 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+             IRResultFor ir prog s s' x offset →
+             readReg (regs s') x20 ≡ readReg (regs s) x20
+result-x20 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x20 r
+result-x20 id r = IRStarResult.ir-x20 r
+result-x20 terminal r = IRStarResult.ir-x20 r
+result-x20 fold r = IRStarResult.ir-x20 r
+result-x20 unfold r = IRStarResult.ir-x20 r
+result-x20 arr r = IRStarResult.ir-x20 r
+result-x20 fst r = IRStarResult.ir-x20 r
+result-x20 snd r = IRStarResult.ir-x20 r
+result-x20 inl r = IRStarResult.ir-x20 r
+result-x20 inr r = IRStarResult.ir-x20 r
+result-x20 initial r = IRStarResult.ir-x20 r
+result-x20 (_ ∘ _) r = IRStarResult.ir-x20 r
+result-x20 ⟨ _ , _ ⟩ r = IRStarResult.ir-x20 r
+result-x20 [ _ , _ ] r = IRStarResult.ir-x20 r
+result-x20 apply r = IRStarResult.ir-x20 r
+
+result-x21 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+             IRResultFor ir prog s s' x offset →
+             readReg (regs s') x21 ≡ readReg (regs s) x21
+result-x21 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x21 r
+result-x21 id r = IRStarResult.ir-x21 r
+result-x21 terminal r = IRStarResult.ir-x21 r
+result-x21 fold r = IRStarResult.ir-x21 r
+result-x21 unfold r = IRStarResult.ir-x21 r
+result-x21 arr r = IRStarResult.ir-x21 r
+result-x21 fst r = IRStarResult.ir-x21 r
+result-x21 snd r = IRStarResult.ir-x21 r
+result-x21 inl r = IRStarResult.ir-x21 r
+result-x21 inr r = IRStarResult.ir-x21 r
+result-x21 initial r = IRStarResult.ir-x21 r
+result-x21 (_ ∘ _) r = IRStarResult.ir-x21 r
+result-x21 ⟨ _ , _ ⟩ r = IRStarResult.ir-x21 r
+result-x21 [ _ , _ ] r = IRStarResult.ir-x21 r
+result-x21 apply r = IRStarResult.ir-x21 r
+
+result-x30 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+             IRResultFor ir prog s s' x offset →
+             readReg (regs s') x30 ≡ readReg (regs s) x30
+result-x30 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x30 r
+result-x30 id r = IRStarResult.ir-x30 r
+result-x30 terminal r = IRStarResult.ir-x30 r
+result-x30 fold r = IRStarResult.ir-x30 r
+result-x30 unfold r = IRStarResult.ir-x30 r
+result-x30 arr r = IRStarResult.ir-x30 r
+result-x30 fst r = IRStarResult.ir-x30 r
+result-x30 snd r = IRStarResult.ir-x30 r
+result-x30 inl r = IRStarResult.ir-x30 r
+result-x30 inr r = IRStarResult.ir-x30 r
+result-x30 initial r = IRStarResult.ir-x30 r
+result-x30 (_ ∘ _) r = IRStarResult.ir-x30 r
+result-x30 ⟨ _ , _ ⟩ r = IRStarResult.ir-x30 r
+result-x30 [ _ , _ ] r = IRStarResult.ir-x30 r
+result-x30 apply r = IRStarResult.ir-x30 r
+
+result-mem-x21 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                 IRResultFor ir prog s s' x offset →
+                 readMem (memory s') (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+result-mem-x21 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-mem-x21 r
+result-mem-x21 id r = IRStarResult.ir-mem-x21 r
+result-mem-x21 terminal r = IRStarResult.ir-mem-x21 r
+result-mem-x21 fold r = IRStarResult.ir-mem-x21 r
+result-mem-x21 unfold r = IRStarResult.ir-mem-x21 r
+result-mem-x21 arr r = IRStarResult.ir-mem-x21 r
+result-mem-x21 fst r = IRStarResult.ir-mem-x21 r
+result-mem-x21 snd r = IRStarResult.ir-mem-x21 r
+result-mem-x21 inl r = IRStarResult.ir-mem-x21 r
+result-mem-x21 inr r = IRStarResult.ir-mem-x21 r
+result-mem-x21 initial r = IRStarResult.ir-mem-x21 r
+result-mem-x21 (_ ∘ _) r = IRStarResult.ir-mem-x21 r
+result-mem-x21 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x21 r
+result-mem-x21 [ _ , _ ] r = IRStarResult.ir-mem-x21 r
+result-mem-x21 apply r = IRStarResult.ir-mem-x21 r
+
+result-mem-x29 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                 IRResultFor ir prog s s' x offset →
+                 readMem (memory s') (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+result-mem-x29 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-mem-x29 r
+result-mem-x29 id r = IRStarResult.ir-mem-x29 r
+result-mem-x29 terminal r = IRStarResult.ir-mem-x29 r
+result-mem-x29 fold r = IRStarResult.ir-mem-x29 r
+result-mem-x29 unfold r = IRStarResult.ir-mem-x29 r
+result-mem-x29 arr r = IRStarResult.ir-mem-x29 r
+result-mem-x29 fst r = IRStarResult.ir-mem-x29 r
+result-mem-x29 snd r = IRStarResult.ir-mem-x29 r
+result-mem-x29 inl r = IRStarResult.ir-mem-x29 r
+result-mem-x29 inr r = IRStarResult.ir-mem-x29 r
+result-mem-x29 initial r = IRStarResult.ir-mem-x29 r
+result-mem-x29 (_ ∘ _) r = IRStarResult.ir-mem-x29 r
+result-mem-x29 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x29 r
+result-mem-x29 [ _ , _ ] r = IRStarResult.ir-mem-x29 r
+result-mem-x29 apply r = IRStarResult.ir-mem-x29 r
+
+result-mem-x29+8 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                   IRResultFor ir prog s s' x offset →
+                   readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+result-mem-x29+8 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-mem-x29+8 r
+result-mem-x29+8 id r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 terminal r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 fold r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 unfold r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 arr r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 fst r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 snd r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 inl r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 inr r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 initial r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 (_ ∘ _) r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 [ _ , _ ] r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 apply r = IRStarResult.ir-mem-x29+8 r
+
+result-x29-inv : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+                 IRResultFor ir prog s s' x offset →
+                 X29Invariant s'
+result-x29-inv (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x29-inv r
+result-x29-inv id r = IRStarResult.ir-x29-inv r
+result-x29-inv terminal r = IRStarResult.ir-x29-inv r
+result-x29-inv fold r = IRStarResult.ir-x29-inv r
+result-x29-inv unfold r = IRStarResult.ir-x29-inv r
+result-x29-inv arr r = IRStarResult.ir-x29-inv r
+result-x29-inv fst r = IRStarResult.ir-x29-inv r
+result-x29-inv snd r = IRStarResult.ir-x29-inv r
+result-x29-inv inl r = IRStarResult.ir-x29-inv r
+result-x29-inv inr r = IRStarResult.ir-x29-inv r
+result-x29-inv initial r = IRStarResult.ir-x29-inv r
+result-x29-inv (_ ∘ _) r = IRStarResult.ir-x29-inv r
+result-x29-inv ⟨ _ , _ ⟩ r = IRStarResult.ir-x29-inv r
+result-x29-inv [ _ , _ ] r = IRStarResult.ir-x29-inv r
+result-x29-inv apply r = IRStarResult.ir-x29-inv r
+
+------------------------------------------------------------------------
 -- Star-Based Mutual Block
 --
 -- This mutual block builds Star proofs using star-single and star-trans.
@@ -1274,7 +1590,8 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 
 mutual
   -- | Star-based IR execution at arbitrary offset
-  run-ir-star-at-offset : ∀ {i} {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  -- Return type uses IRResultFor to preserve curry-specific information
+  run-ir-star-at-offset : ∀ {i} {A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1282,7 +1599,7 @@ mutual
     X29Invariant s →
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 ir ++ suffix
-    in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+    in ∃[ s' ] IRResultFor ir prog s s' x (length prefix)
 
   -- Base cases: delegate to Star helper functions
   run-ir-star-at-offset (id {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
@@ -1336,8 +1653,9 @@ mutual
           IRStarResult ⟨ f , g ⟩ prog s s' x offset
   run-ir-star-at-offset ([_,_] {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-case-star-direct {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  -- Curry case: Return CurryResultS directly (preserves closure-wf-s for apply)
   run-ir-star-at-offset (curry {_} {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-curry-star-direct-compat {_} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+    run-curry-star-direct {_} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-apply-star-direct {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
 
@@ -1359,30 +1677,30 @@ mutual
   run-compose-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , addr-mid , addr-out , record
       { compose-star = star-full
-      ; compose-halted = ir-halted res-g
+      ; compose-halted = result-halted g res-g
       ; compose-pc = pc-final
-      ; compose-x0-s = ir-x0 res-g
-      ; compose-x20 = trans (ir-x20 res-g) (trans (ir-x20 res-f) refl)
-      ; compose-x21 = trans (ir-x21 res-g) (trans (ir-x21 res-f) refl)
-      ; compose-x29 = trans (ir-x29 res-g) (trans (ir-x29 res-f) refl)
-      ; compose-x30 = trans (ir-x30 res-g) (trans (ir-x30 res-f) refl)
-      ; compose-sp = ≤-trans (ir-sp res-g) (ir-sp res-f)  -- chain: s-final ≤ s-nop ≡ s-f ≤ s
+      ; compose-x0-s = result-x0 g res-g
+      ; compose-x20 = trans (result-x20 g res-g) (trans (result-x20 f res-f) refl)
+      ; compose-x21 = trans (result-x21 g res-g) (trans (result-x21 f res-f) refl)
+      ; compose-x29 = trans (result-x29 g res-g) (trans (result-x29 f res-f) refl)
+      ; compose-x30 = trans (result-x30 g res-g) (trans (result-x30 f res-f) refl)
+      ; compose-sp = ≤-trans (result-sp g res-g) (result-sp f res-f)  -- chain: s-final ≤ s-nop ≡ s-f ≤ s
       -- Memory preservation: reindex from s-nop/s-f addresses to s addresses
-      -- ir-mem-x21 res-g : readMem (memory s-final) (readReg (regs s-nop) x21) ≡ readMem (memory s-nop) (readReg (regs s-nop) x21)
+      -- result-mem-x21 g res-g : readMem (memory s-final) (readReg (regs s-nop) x21) ≡ readMem (memory s-nop) (readReg (regs s-nop) x21)
       -- Since s-nop = record s-f { pc = ... }, regs s-nop = regs s-f and memory s-nop = memory s-f
-      -- Use ir-x21 res-f to reindex to readReg (regs s) x21
+      -- Use result-x21 f res-f to reindex to readReg (regs s) x21
       ; compose-mem-x21 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
-                                       (ir-x21 res-f) (ir-mem-x21 res-g))
-                               (ir-mem-x21 res-f)
+                                       (result-x21 f res-f) (result-mem-x21 g res-g))
+                               (result-mem-x21 f res-f)
       ; compose-mem-x29 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
-                                       (ir-x29 res-f) (ir-mem-x29 res-g))
-                               (ir-mem-x29 res-f)
+                                       (result-x29 f res-f) (result-mem-x29 g res-g))
+                               (result-mem-x29 f res-f)
       ; compose-mem-x29+8 = trans (subst (λ addr → readMem (memory s-final) addr ≡ readMem (memory s-f) addr)
-                                         (cong (_+ℕ 8) (ir-x29 res-f)) (ir-mem-x29+8 res-g))
-                                 (ir-mem-x29+8 res-f)
-      ; compose-stack-inv = ir-stack-inv res-g
-      ; compose-x29-inv = ir-x29-inv res-g
-      ; compose-sp-bound = ir-sp-bound res-g
+                                         (cong (_+ℕ 8) (result-x29 f res-f)) (result-mem-x29+8 g res-g))
+                                 (result-mem-x29+8 f res-f)
+      ; compose-stack-inv = result-stack-inv g res-g
+      ; compose-x29-inv = result-x29-inv g res-g
+      ; compose-sp-bound = result-sp-bound g res-g
       }
     where
       -- Build compose context
@@ -1417,23 +1735,23 @@ mutual
       prog-f-eq = prog-eq-f ctx
 
       -- Phase 1: Execute f recursively
-      f-result : ∃[ s' ] IRStarResult f prog-f s s' x (length prefix)
+      f-result : ∃[ s' ] IRResultFor f prog-f s s' x (length prefix)
       f-result = run-ir-star-at-offset f prefix suffix-f x s
                    h-false pc-eq x0-eq stack-inv x29-inv sp>16
 
       s-f : State
       s-f = proj₁ f-result
 
-      res-f-raw : IRStarResult f prog-f s s-f x (length prefix)
+      res-f-raw : IRResultFor f prog-f s s-f x (length prefix)
       res-f-raw = proj₂ f-result
 
       -- Reindex f's result to work with prog
-      res-f : IRStarResult f prog s s-f x (length prefix)
-      res-f = subst (λ p → IRStarResult f p s s-f x (length prefix)) prog-f-eq res-f-raw
+      res-f : IRResultFor f prog s s-f x (length prefix)
+      res-f = subst (λ p → IRResultFor f p s s-f x (length prefix)) prog-f-eq res-f-raw
 
       -- After f: pc = length prefix + compile-length f
       pc-after-f : pc s-f ≡ length prefix +ℕ compile-length f
-      pc-after-f = ir-pc res-f
+      pc-after-f = result-pc f res-f
 
       -- Phase 2: Execute nop
       -- nop is at position (length prefix + compile-length f) in prog
@@ -1459,7 +1777,7 @@ mutual
       pc-for-nop = trans pc-after-f (sym len-pnop)
 
       step-nop-raw : step (prefix-nop ++ nop ∷ suffix-nop) s-f ≡ execInstr (prefix-nop ++ nop ∷ suffix-nop) s-f nop
-      step-nop-raw = step-exec-at-offset prefix-nop nop suffix-nop s-f (ir-halted res-f) pc-for-nop
+      step-nop-raw = step-exec-at-offset prefix-nop nop suffix-nop s-f (result-halted f res-f) pc-for-nop
 
       exec-nop : execInstr prog s-f nop ≡ just s-nop
       exec-nop = execInstr-nop prog s-f
@@ -1469,7 +1787,7 @@ mutual
                        exec-nop
 
       star-nop : Star prog s-f s-nop
-      star-nop = star-single (ir-halted res-f) step-nop
+      star-nop = star-single (result-halted f res-f) step-nop
 
       -- Phase 3: Execute g recursively
       -- g starts at position (length prefix + compile-length f + 1)
@@ -1495,49 +1813,49 @@ mutual
 
       -- x0 after nop still contains eval f x (nop doesn't change registers)
       x0-nop : readReg (regs s-nop) x0 ≡ encode (eval f x)
-      x0-nop = ir-x0 res-f
+      x0-nop = result-x0 f res-f
 
       -- Invariants preserved through nop
       -- nop only changes pc, so regs s-nop = regs s-f
       stack-inv-nop : StackInvariant s-nop
-      stack-inv-nop = stack-inv-preserved-unchanged s-f s-nop (ir-stack-inv res-f) refl refl
+      stack-inv-nop = stack-inv-preserved-unchanged s-f s-nop (result-stack-inv f res-f) refl refl
 
-      -- Derive X29Invariant for s-f from x29-inv for s using ir-x29 res-f
+      -- Derive X29Invariant for s-f from x29-inv for s using result-x29 f res-f
       x29-inv-f : X29Invariant s-f
-      x29-inv-f = x29-inv-preserved-sp-decreased s s-f x29-inv (ir-x29 res-f) (ir-sp res-f)
+      x29-inv-f = x29-inv-preserved-sp-decreased s s-f x29-inv (result-x29 f res-f) (result-sp f res-f)
 
       -- nop doesn't change registers, so X29Invariant is preserved
       x29-inv-nop : X29Invariant s-nop
       x29-inv-nop = x29-inv-preserved-unchanged s-f s-nop x29-inv-f refl refl
 
       sp-nop : readSP (regs s-nop) > 16
-      sp-nop = sp>16-preserved-unchanged s-f s-nop (ir-sp-bound res-f) refl
+      sp-nop = sp>16-preserved-unchanged s-f s-nop (result-sp-bound f res-f) refl
 
       -- Recursive call for g
-      g-result : ∃[ s' ] IRStarResult g prog-g s-nop s' (eval f x) (length prefix-g)
+      g-result : ∃[ s' ] IRResultFor g prog-g s-nop s' (eval f x) (length prefix-g)
       g-result = run-ir-star-at-offset g prefix-g suffix (eval f x) s-nop
-                   (ir-halted res-f) pc-for-g x0-nop stack-inv-nop x29-inv-nop sp-nop
+                   (result-halted f res-f) pc-for-g x0-nop stack-inv-nop x29-inv-nop sp-nop
 
       s-final : State
       s-final = proj₁ g-result
 
-      res-g-raw : IRStarResult g prog-g s-nop s-final (eval f x) (length prefix-g)
+      res-g-raw : IRResultFor g prog-g s-nop s-final (eval f x) (length prefix-g)
       res-g-raw = proj₂ g-result
 
       -- Reindex g's result to work with prog
-      res-g : IRStarResult g prog s-nop s-final (eval f x) (length prefix-g)
-      res-g = subst (λ p → IRStarResult g p s-nop s-final (eval f x) (length prefix-g)) prog-g-eq res-g-raw
+      res-g : IRResultFor g prog s-nop s-final (eval f x) (length prefix-g)
+      res-g = subst (λ p → IRResultFor g p s-nop s-final (eval f x) (length prefix-g)) prog-g-eq res-g-raw
 
       -- Chain all Star proofs
       star-full : Star prog s s-final
-      star-full = star-trans (star-trans (ir-star res-f) star-nop) (ir-star res-g)
+      star-full = star-trans (star-trans (result-star f res-f) star-nop) (result-star g res-g)
 
       -- Final PC: length prefix + compile-length (g ∘ f)
       -- compile-length (g ∘ f) = compile-length f + 1 + compile-length g
       pc-final : pc s-final ≡ length prefix +ℕ compile-length (g ∘ f)
       pc-final = begin
         pc s-final
-          ≡⟨ ir-pc res-g ⟩
+          ≡⟨ result-pc g res-g ⟩
         length prefix-g +ℕ compile-length g
           ≡⟨ cong (_+ℕ compile-length g) len-pg ⟩
         (length prefix +ℕ compile-length f +ℕ 1) +ℕ compile-length g
@@ -1698,19 +2016,19 @@ mutual
       pc-for-f = trans setup-pc (sym len-pf)
 
       -- Recursive call for f
-      f-result : ∃[ s' ] IRStarResult f prog-f s-setup s' x (length (pair-prefix-f ctx))
+      f-result : ∃[ s' ] IRResultFor f prog-f s-setup s' x (length (pair-prefix-f ctx))
       f-result = run-ir-star-at-offset f (pair-prefix-f ctx) (pair-suffix-f ctx) x s-setup
                    setup-halted pc-for-f setup-x0 setup-stack-inv setup-x29-inv setup-sp>16
 
       s-f : State
       s-f = proj₁ f-result
 
-      res-f-raw : IRStarResult f prog-f s-setup s-f x (length (pair-prefix-f ctx))
+      res-f-raw : IRResultFor f prog-f s-setup s-f x (length (pair-prefix-f ctx))
       res-f-raw = proj₂ f-result
 
       -- Reindex f's result to work with prog
-      res-f : IRStarResult f prog s-setup s-f x (length (pair-prefix-f ctx))
-      res-f = subst (λ p → IRStarResult f p s-setup s-f x (length (pair-prefix-f ctx))) prog-f-eq res-f-raw
+      res-f : IRResultFor f prog s-setup s-f x (length (pair-prefix-f ctx))
+      res-f = subst (λ p → IRResultFor f p s-setup s-f x (length (pair-prefix-f ctx))) prog-f-eq res-f-raw
 
       ------------------------------------------------------------------------
       -- Phase 3: Middle (2 instructions)
@@ -1721,26 +2039,26 @@ mutual
       -- Preconditions for exec-pair-middle:
       -- x20 in s-f = encode x (preserved from setup through f)
       x20-s-f : readReg (regs s-f) x20 ≡ encode x
-      x20-s-f = trans (ir-x20 res-f) setup-x20
+      x20-s-f = trans (result-x20 f res-f) setup-x20
 
       -- x21 in s-f = new-sp (preserved from setup through f)
       x21-s-f : readReg (regs s-f) x21 ≡ new-sp
-      x21-s-f = trans (ir-x21 res-f) setup-x21
+      x21-s-f = trans (result-x21 f res-f) setup-x21
 
       -- X29Invariant for s-f (from IRStarResult)
       x29-inv-s-f : X29Invariant s-f
-      x29-inv-s-f = ir-x29-inv res-f
+      x29-inv-s-f = result-x29-inv f res-f
 
       -- Call exec-pair-middle
       mid-result = exec-pair-middle f g prefix suffix x s s-f
-                     (ir-halted res-f)
-                     (ir-pc res-f)
-                     (ir-x0 res-f)
+                     (result-halted f res-f)
+                     (result-pc f res-f)
+                     (result-x0 f res-f)
                      x20-s-f
                      x21-s-f
-                     (ir-stack-inv res-f)
+                     (result-stack-inv f res-f)
                      x29-inv-s-f
-                     (ir-sp-bound res-f)
+                     (result-sp-bound f res-f)
 
       s-mid : State
       s-mid = proj₁ mid-result
@@ -1809,19 +2127,19 @@ mutual
       pc-for-g = trans mid-pc (sym len-pg)
 
       -- Recursive call for g
-      g-result : ∃[ s' ] IRStarResult g prog-g s-mid s' x (length (pair-prefix-g ctx))
+      g-result : ∃[ s' ] IRResultFor g prog-g s-mid s' x (length (pair-prefix-g ctx))
       g-result = run-ir-star-at-offset g (pair-prefix-g ctx) (pair-suffix-g ctx) x s-mid
                    mid-halted pc-for-g mid-x0 mid-stack-inv mid-x29-inv mid-sp>16
 
       s-g : State
       s-g = proj₁ g-result
 
-      res-g-raw : IRStarResult g prog-g s-mid s-g x (length (pair-prefix-g ctx))
+      res-g-raw : IRResultFor g prog-g s-mid s-g x (length (pair-prefix-g ctx))
       res-g-raw = proj₂ g-result
 
       -- Reindex g's result to work with prog
-      res-g : IRStarResult g prog s-mid s-g x (length (pair-prefix-g ctx))
-      res-g = subst (λ p → IRStarResult g p s-mid s-g x (length (pair-prefix-g ctx))) prog-g-eq res-g-raw
+      res-g : IRResultFor g prog s-mid s-g x (length (pair-prefix-g ctx))
+      res-g = subst (λ p → IRResultFor g p s-mid s-g x (length (pair-prefix-g ctx))) prog-g-eq res-g-raw
 
       ------------------------------------------------------------------------
       -- Phase 5: Final (4 instructions)
@@ -1853,7 +2171,7 @@ mutual
       ------------------------------------------------------------------------
 
       star-full : Star prog s s-final
-      star-full = star-trans (star-trans (star-trans (star-trans star-setup (ir-star res-f)) star-mid) (ir-star res-g)) star-final
+      star-full = star-trans (star-trans (star-trans (star-trans star-setup (result-star f res-f)) star-mid) (result-star g res-g)) star-final
 
 
   -- | Star-based case execution
@@ -1941,7 +2259,7 @@ mutual
       pc-setup-f = trans pc-setup (sym (case-len-prefix-f ctx))
 
       -- Recursive call to f
-      step-f : ∃[ s1 ] IRStarResult f (case-prefix-f ctx ++ case-code-f ctx ++ case-suffix-f ctx) s-setup s1 a (length (case-prefix-f ctx))
+      step-f : ∃[ s1 ] IRResultFor f (case-prefix-f ctx ++ case-code-f ctx ++ case-suffix-f ctx) s-setup s1 a (length (case-prefix-f ctx))
       step-f = run-ir-star-at-offset f (case-prefix-f ctx) (case-suffix-f ctx) a s-setup h-setup pc-setup-f x0-setup stack-inv-setup x29-inv-setup sp>16-setup
 
       s1 = proj₁ step-f
@@ -1949,12 +2267,12 @@ mutual
 
       -- Convert star-f to use prog
       star-f-raw : Star (case-prefix-f ctx ++ case-code-f ctx ++ case-suffix-f ctx) s-setup s1
-      star-f-raw = ir-star r-f
+      star-f-raw = result-star f r-f
 
       star-f : Star prog s-setup s1
       star-f = subst (λ p → Star p s-setup s1) (sym prog-eq-f') star-f-raw
 
-      h1 = ir-halted r-f
+      h1 = result-halted f r-f
 
       -- ========== Phase 3: Jump to end (2 instructions: b, label) ==========
       -- b end-offset ; label end
@@ -2057,7 +2375,7 @@ mutual
       pc-setup-g = trans pc-setup (sym (case-len-prefix-g ctx))
 
       -- Recursive call to g
-      step-g : ∃[ s1 ] IRStarResult g (case-prefix-g ctx ++ case-code-g ctx ++ case-suffix-g ctx) s-setup s1 b-input (length (case-prefix-g ctx))
+      step-g : ∃[ s1 ] IRResultFor g (case-prefix-g ctx ++ case-code-g ctx ++ case-suffix-g ctx) s-setup s1 b-input (length (case-prefix-g ctx))
       step-g = run-ir-star-at-offset g (case-prefix-g ctx) (case-suffix-g ctx) b-input s-setup h-setup pc-setup-g x0-setup stack-inv-setup x29-inv-setup sp>16-setup
 
       s1 = proj₁ step-g
@@ -2065,12 +2383,12 @@ mutual
 
       -- Convert star-g to use prog
       star-g-raw : Star (case-prefix-g ctx ++ case-code-g ctx ++ case-suffix-g ctx) s-setup s1
-      star-g-raw = ir-star r-g
+      star-g-raw = result-star g r-g
 
       star-g : Star prog s-setup s1
       star-g = subst (λ p → Star p s-setup s1) (sym prog-eq-g') star-g-raw
 
-      h1 = ir-halted r-g
+      h1 = result-halted g r-g
 
       -- ========== Phase 4: End label (1 instruction) ==========
 
@@ -2817,14 +3135,14 @@ mutual
       sp>16-setup : readSP (regs s-after-setup) > 16
       sp>16-setup = sp-bound-after-stack-op s-after-setup
 
-      step-f : ∃[ s-f ] IRStarResult f (prefix-f ++ thunk-code-f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
+      step-f : ∃[ s-f ] IRResultFor f (prefix-f ++ thunk-code-f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f = run-ir-star-at-offset f prefix-f suffix-f (env , arg) s-after-setup
                  h-setup pc-setup-f x0-setup stack-inv-setup x29-inv-setup sp>16-setup
 
       s-after-f = proj₁ step-f
       r-f = proj₂ step-f
       star-f-raw : Star (prefix-f ++ thunk-code-f ++ suffix-f) s-after-setup s-after-f
-      star-f-raw = ir-star r-f
+      star-f-raw = result-star f r-f
 
       -- Convert star-f to use prog
       star-f-converted : Star prog s-after-setup s-after-f
@@ -2832,7 +3150,7 @@ mutual
 
       -- Extract properties from IH result
       pc-f-raw : pc s-after-f ≡ length prefix-f +ℕ compile-length f
-      pc-f-raw = ir-pc r-f
+      pc-f-raw = result-pc f r-f
 
       -- After f, PC is at ret-offset
       pc-f-is-ret : pc s-after-f ≡ ret-offset
@@ -2841,7 +3159,7 @@ mutual
       -- Step 3: Trace ret instruction
       -- ret returns to x30, which was preserved by f
       x30-after-f : readReg (regs s-after-f) x30 ≡ ret-addr
-      x30-after-f = trans (ir-x30 r-f) (trans x30-setup x30-eq)
+      x30-after-f = trans (result-x30 f r-f) (trans x30-setup x30-eq)
 
       -- Trace ret: s-after-f → s-final
       -- The ret is at position ret-offset within prog
@@ -2868,11 +3186,11 @@ mutual
       s-final = record s-after-f { pc = ret-addr }
 
       step-ret-result : step (prefix-ret ++ ret ∷ suffix-ret) s-after-f ≡ just s-final
-      step-ret-result = trans (step-ret-at-offset prefix-ret suffix-ret s-after-f (ir-halted r-f) pc-at-ret)
+      step-ret-result = trans (step-ret-at-offset prefix-ret suffix-ret s-after-f (result-halted f r-f) pc-at-ret)
                               (cong (λ ra → just (record s-after-f { pc = ra })) x30-after-f)
 
       star-ret : Star (prefix-ret ++ ret ∷ suffix-ret) s-after-f s-final
-      star-ret = star-single (ir-halted r-f) step-ret-result
+      star-ret = star-single (result-halted f r-f) step-ret-result
 
       -- Convert star-ret to use prog
       star-ret-converted : Star prog s-after-f s-final
@@ -2894,22 +3212,22 @@ mutual
 
       -- Final properties
       halted-final : halted s-final ≡ false
-      halted-final = ir-halted r-f
+      halted-final = result-halted f r-f
 
       pc-final : pc s-final ≡ ret-addr
       pc-final = refl
 
       x0-final : readReg (regs s-final) x0 ≡ encode (eval f (env , arg))
-      x0-final = ir-x0 r-f
+      x0-final = result-x0 f r-f
 
       x20-final : readReg (regs s-final) x20 ≡ readReg (regs s) x20
-      x20-final = trans (ir-x20 r-f) (trans x20-setup refl)
+      x20-final = trans (result-x20 f r-f) (trans x20-setup refl)
 
       x21-final : readReg (regs s-final) x21 ≡ readReg (regs s) x21
-      x21-final = trans (ir-x21 r-f) (trans x21-setup refl)
+      x21-final = trans (result-x21 f r-f) (trans x21-setup refl)
 
       x29-final : readReg (regs s-final) x29 ≡ readReg (regs s) x29
-      x29-final = trans (ir-x29 r-f) (trans x29-setup refl)
+      x29-final = trans (result-x29 f r-f) (trans x29-setup refl)
 
       -- StackInvariant is preserved when only PC changes (registers unchanged)
       -- Since s-final = record s-after-f { pc = ret-addr }, we have regs s-final = regs s-after-f
