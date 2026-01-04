@@ -54,7 +54,7 @@ open import Once.Backend.X86.Correct.IR.Pair using (module PairFinalResultS)
 
 open import Once.Postulates using (encode)
 open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
 open import Data.Maybe using (just; nothing)
@@ -98,7 +98,6 @@ mutual
       rbp-inv-setup = record { rsp≤rbp = rsp-setup≤rbp-setup }
         where
           open import Data.Nat.Properties using (∸-monoʳ-≤)
-          open import Data.Nat using (_≤_; s≤s; z≤n)
           24≤40 : 24 ≤ 40
           24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
           rsp∸40≤rsp∸24 : readReg (regs s) rsp ∸ 40 ≤ readReg (regs s) rsp ∸ 24
