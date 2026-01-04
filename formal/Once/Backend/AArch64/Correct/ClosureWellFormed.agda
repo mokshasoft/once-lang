@@ -421,7 +421,7 @@ run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
     prog-eq-1 = refl
 
     prog-eq-2 : (prefix ++ ldr x9 (base x0) ∷ []) ++ ldr x10 (base+imm x0 8) ∷ apply-rest-2 ++ suffix ≡ prog
-    prog-eq-2 = ++-assoc prefix (ldr x9 (base x0) ∷ []) (ldr x10 (base+imm x0 8) ∷ apply-rest-2 ++ suffix)
+    prog-eq-2 = trans (++-assoc prefix (ldr x9 (base x0) ∷ []) (ldr x10 (base+imm x0 8) ∷ apply-rest-2 ++ suffix)) prog-eq-1
 
     -- Step 1: Trace ldr x9 (base x0) - load closure from pair.fst
     -- Memory contains encoded pair: reading at encode (cl, a) gives encode cl
