@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.IR.Inl
 --
@@ -12,7 +11,6 @@ module Once.Backend.X86.Correct.IR.Inl where
 open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
-open import Size
 open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Postulates using (encode-inl-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
@@ -36,16 +34,16 @@ open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
 -- | Star-based inl execution
-run-inl-star : ∀ {i A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (inl {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (inl {i} {A} {B}) prog s s' x (length prefix)
-run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  let prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inl {A} {B}) prog s s' x (length prefix)
+run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -70,7 +68,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
 
     -- The program
     prog : Program
-    prog = prefix ++ compile-x86 (inl {i} {A} {B}) ++ suffix
+    prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
 
     -- The 4 instructions of inl
     i0 : Instr
@@ -261,7 +259,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16
     rax-is-encode-inl : new-rsp ≡ encode {A + B} (inj₁ x)
     rax-is-encode-inl = encode-inl-construct x new-rsp (memory s4) mem-tag-s4 mem-val-encoded
 
-    rax-eq : readReg (regs s4) rax ≡ encode (eval (inl {i} {A} {B}) x)
+    rax-eq : readReg (regs s4) rax ≡ encode (eval (inl {A} {B}) x)
     rax-eq = trans rax-s4 rax-is-encode-inl
 
     -- r14 preserved

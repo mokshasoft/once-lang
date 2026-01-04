@@ -315,7 +315,7 @@ run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
 -- | Result type for stateful case
 -- Case returns either the result of f (for inl) or g (for inr)
 -- along with the output address
-record CaseResultS {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
+record CaseResultS {i} {A B C : Type} (f : IR A C) (g : IR B C)
                    (prog : Program) (s s' : State) (addr-out : Word)
                    (offset : ℕ) : Set where
   field
@@ -335,7 +335,7 @@ open CaseResultS public
 
 -- | Stateful case for inl input
 -- Takes InlAtS validity, runs f on the extracted value
-run-case-inl-star-s : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C)
+run-case-inl-star-s : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
   (prefix suffix : Program)
   (addr-val addr-sum : Word) (s : State) →
   halted s ≡ false →
@@ -1023,7 +1023,7 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
 
 -- | Stateful case for inr input
 -- Takes InrAtS validity, runs g on the extracted value
-run-case-inr-star-s : ∀ {i} {A B C} (f : IR i A C) (g : IR i B C)
+run-case-inr-star-s : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
   (prefix suffix : Program)
   (addr-val addr-sum : Word) (s : State) →
   halted s ≡ false →

@@ -85,7 +85,7 @@ arith-case m n =
 
 -- | Compile-length matches actual length
 -- Proven by structural induction on IR
-compile-length-correct : ∀ {i} {A B : Type} (ir : IR i A B) →
+compile-length-correct : ∀ {i} {A B : Type} (ir : IR A B) →
   length (compile-aarch64 ir) ≡ compile-length ir
 
 -- Base cases: single-instruction generators

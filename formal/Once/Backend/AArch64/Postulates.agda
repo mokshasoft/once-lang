@@ -94,7 +94,7 @@ postulate
 ------------------------------------------------------------------------
 
 postulate
-  curry-thunk-correct : ∀ {i} {A B C} (f : IR i (A * B) C)
+  curry-thunk-correct : ∀ {i} {A B C} (f : IR (A * B) C)
                         (prefix suffix : Program) (env : ⟦ A ⟧)
                         (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
@@ -145,7 +145,7 @@ postulate
 ------------------------------------------------------------------------
 
 postulate
-  run-thunk-at-offset : ∀ {i} {A B C} (f : IR i (A * B) C)
+  run-thunk-at-offset : ∀ {i} {A B C} (f : IR (A * B) C)
     (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →

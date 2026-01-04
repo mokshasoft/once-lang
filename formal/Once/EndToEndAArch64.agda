@@ -84,7 +84,7 @@ compile-preserves-semantics ir x =
 -- This is PROVEN (not postulated!) using Star-based proofs.
 -- Star relation provides reflexive-transitive closure without fuel.
 --
-codegen-correct : ∀ {i} {A B} (ir : Core.IR i A B) (x : ⟦ A ⟧) →
+codegen-correct : ∀ {i} {A B} (ir : Core.IR A B) (x : ⟦ A ⟧) →
   let prog = compile-aarch64 ir
       s₀ = initWithInput x
   in ∃[ s ] (Star prog s₀ s

@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.IR.ThunkExec
 --
@@ -9,7 +8,6 @@
 module Once.Backend.X86.Correct.IR.ThunkExec where
 
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
-open import Size
 open import Once.Postulates using (encode; encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -31,7 +29,7 @@ open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
 -- Prove thunk setup: label, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
-thunk-setup-star : ∀ {i A B C} (f : IR i (A * B) C)
+thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -633,7 +631,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     mem-old-rsp-preserved = mem-s6-old-rsp
 
 -- Prove ret instruction tracing
-thunk-ret-star : ∀ {i A B C} (f : IR i (A * B) C)
+thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup

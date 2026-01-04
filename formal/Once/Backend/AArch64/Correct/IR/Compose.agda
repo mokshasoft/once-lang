@@ -59,7 +59,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --
 -- Total: (len-f + 1) + len-g = compile-length (g ∘ f)
 
-record ComposeContext {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
+record ComposeContext {i} {A B C : Type} (f : IR A B) (g : IR B C)
                       (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -96,7 +96,7 @@ record ComposeContext {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
 open ComposeContext public
 
 -- | Construct ComposeContext from IR terms and prefix/suffix
-mkComposeContext : ∀ {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
+mkComposeContext : ∀ {i} {A B C : Type} (f : IR A B) (g : IR B C)
                    (prefix suffix : Program) → ComposeContext f g prefix suffix
 mkComposeContext {_} {A} {B} {C} f g prefix suffix = record
   { len-f = the-len-f
@@ -214,7 +214,7 @@ mkComposeContext {_} {A} {B} {C} f g prefix suffix = record
 --   2. Uses IRStarResultS (not IRStarResult) with StackInvariant
 --   3. Uses readSP instead of readReg sp
 --   4. Chains memory invariants (ir-mem-x21, ir-mem-x29, ir-mem-x29+8)
-assemble-compose-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+assemble-compose-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
                           (prefix suffix : Program) (addr-in : Word)
                           (s sf s-nop sg : State) →
   let ctx = mkComposeContext f g prefix suffix
@@ -405,7 +405,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s sf s-nop sg
 
 -- | (len-f + 1) + len-g = compile-length (g ∘ f)
 -- This is immediate from the definition of compile-length for compose
-arith-compose-total : ∀ {i} {A B C : Type} (f : IR i A B) (g : IR i B C) →
+arith-compose-total : ∀ {i} {A B C : Type} (f : IR A B) (g : IR B C) →
   (compile-length f +ℕ 1) +ℕ compile-length g ≡ compile-length (g ∘ f)
 arith-compose-total f g = refl
 

@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.IR.Compose
 --
@@ -13,7 +12,6 @@ module Once.Backend.X86.Correct.IR.Compose where
 open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
-open import Size
 open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -37,7 +35,7 @@ open ≡-Reasoning
 -- Compose Context: computed values that don't depend on execution
 ------------------------------------------------------------------------
 
-record ComposeContext {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
+record ComposeContext {A B C : Type} (f : IR A B) (g : IR B C)
                       (prefix suffix : Program) : Set where
   field
     -- Computed programs
@@ -63,9 +61,9 @@ record ComposeContext {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
     len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f +ℕ 1
 
 -- | Compute the compose context (all the non-state-dependent values)
-make-compose-context : ∀ {i A B C} (f : IR i A B) (g : IR i B C) (prefix suffix : Program) →
+make-compose-context : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) →
   ComposeContext f g prefix suffix
-make-compose-context {i} {A} {B} {C} f g prefix suffix = record
+make-compose-context {A} {B} {C} f g prefix suffix = record
   { code-f = code-f
   ; code-g = code-g
   ; transfer = transfer
@@ -121,7 +119,7 @@ make-compose-context {i} {A} {B} {C} f g prefix suffix = record
 -- Transfer Step Result: what we get after executing the transfer instr
 ------------------------------------------------------------------------
 
-record TransferResult {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
+record TransferResult {A B C : Type} (f : IR A B) (g : IR B C)
                       (prefix suffix : Program) (x : ⟦ A ⟧)
                       (s s1 : State) : Set where
   private
@@ -145,13 +143,13 @@ record TransferResult {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
     mem-s1-to-s2 : ∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute the transfer instruction and compute all properties
-exec-compose-transfer : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+exec-compose-transfer : ∀ {A B C} (f : IR A B) (g : IR B C)
                         (prefix suffix : Program) (x : ⟦ A ⟧) (s s1 : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
   (r1 : IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)) →
   TransferResult f g prefix suffix x s s1
-exec-compose-transfer {i} {A} {B} {C} f g prefix suffix x s s1 r1 = record
+exec-compose-transfer {A} {B} {C} f g prefix suffix x s s1 r1 = record
   { s2 = s2
   ; h2 = h2
   ; pc2-g = pc2-g
@@ -220,7 +218,7 @@ exec-compose-transfer {i} {A} {B} {C} f g prefix suffix x s s1 r1 = record
 -- Transfer Step Result (Stateful): transfer with addresses only
 ------------------------------------------------------------------------
 
-record TransferResultS {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
+record TransferResultS {A B C : Type} (f : IR A B) (g : IR B C)
                        (prefix suffix : Program) (addr-f-out : Word)
                        (s s1 : State) : Set where
   private
@@ -244,13 +242,13 @@ record TransferResultS {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
     mem-s1-to-s2 : ∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute the transfer instruction (stateful version - works with addresses)
-exec-compose-transfer-s : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+exec-compose-transfer-s : ∀ {A B C} (f : IR A B) (g : IR B C)
                           (prefix suffix : Program) (addr-f-out : Word) (s s1 : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
   (r1-s : IRStarResultS f (prefix ++ code-f ++ suffix-f) s s1 addr-f-out (length prefix)) →
   TransferResultS f g prefix suffix addr-f-out s s1
-exec-compose-transfer-s {i} {A} {B} {C} f g prefix suffix addr-f-out s s1 r1-s = record
+exec-compose-transfer-s {A} {B} {C} f g prefix suffix addr-f-out s s1 r1-s = record
   { s2 = s2
   ; h2 = h2
   ; pc2-g = pc2-g
@@ -320,7 +318,7 @@ exec-compose-transfer-s {i} {A} {B} {C} f g prefix suffix addr-f-out s s1 r1-s =
 ------------------------------------------------------------------------
 
 -- | Assemble the final compose result from the pieces
-assemble-compose-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+assemble-compose-result : ∀ {A B C} (f : IR A B) (g : IR B C)
                           (prefix suffix : Program) (x : ⟦ A ⟧) (s s1 s2 s3 : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
@@ -329,7 +327,7 @@ assemble-compose-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
   (r3 : IRStarResult g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)) →
   s2 ≡ TransferResult.s2 tr →
   IRStarResult (g ∘ f) prog s s3 x (length prefix)
-assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-eq = record
+assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-eq = record
   { ir-star = star-all
   ; ir-halted = h3
   ; ir-pc = pc3
@@ -498,7 +496,7 @@ assemble-compose-result {i} {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 
 ------------------------------------------------------------------------
 
 -- | Assemble the final compose result from stateful pieces (no semantic values)
-assemble-compose-result-s : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
+assemble-compose-result-s : ∀ {A B C} (f : IR A B) (g : IR B C)
                             (prefix suffix : Program) (addr-f-out addr-g-out : Word) (s s1 s2 s3 : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
@@ -507,7 +505,7 @@ assemble-compose-result-s : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
   (r3-s : IRStarResultS g (prefix-g ++ code-g ++ suffix) s2 s3 addr-g-out (length prefix-g)) →
   s2 ≡ TransferResultS.s2 tr-s →
   IRStarResultS (g ∘ f) prog s s3 addr-g-out (length prefix)
-assemble-compose-result-s {i} {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s s1 s2 s3 r1-s tr-s r3-s s2-eq = record
+assemble-compose-result-s {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s s1 s2 s3 r1-s tr-s r3-s s2-eq = record
   { ir-star = star-all
   ; ir-halted = h3
   ; ir-pc = pc3

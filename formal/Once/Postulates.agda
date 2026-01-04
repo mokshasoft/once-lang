@@ -19,8 +19,6 @@
 --
 ------------------------------------------------------------------------
 
-{-# OPTIONS --sized-types #-}
-
 module Once.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -126,15 +124,13 @@ postulate
 --
 ------------------------------------------------------------------------
 
-open import Size using (Size)
-
 postulate
-  coerceIRArrow : ∀ {i Γ A B q q'} → IR i Γ (A ⇒[ q ] B) → IR i Γ (A ⇒[ q' ] B)
+  coerceIRArrow : ∀ {Γ A B q q'} → IR Γ (A ⇒[ q ] B) → IR Γ (A ⇒[ q' ] B)
 
   -- Coercion preserves evaluation semantics
   -- Since quantities are erased at runtime, coercing the arrow type
   -- doesn't change the function's behavior
-  coerceIRArrow-preserves-eval : ∀ {i Γ A B q q'} (f : IR i Γ (A ⇒[ q ] B)) (γ : ⟦ Γ ⟧) →
+  coerceIRArrow-preserves-eval : ∀ {Γ A B q q'} (f : IR Γ (A ⇒[ q ] B)) (γ : ⟦ Γ ⟧) →
     eval (coerceIRArrow {q' = q'} f) γ ≡ eval f γ
 
 ------------------------------------------------------------------------
@@ -333,7 +329,7 @@ postulate
   -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a
   -- NOTE: With explicit Closure record, this may become derivable from env-addr field
-  encode-closure-construct : ∀ {i A B C} (f : IR i (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+  encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
     p ≡ encode {B ⇒ C} (eval (curry f) a)

@@ -81,7 +81,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 -- The thunk code (positions 6-10+|f|) is NOT executed during curry.
 -- It's executed later when apply calls the closure.
 
-record CurryContext {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryContext {i} {A B C : Type} (f : IR (A * B) C)
                     (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -116,7 +116,7 @@ record CurryContext {i} {A B C : Type} (f : IR i (A * B) C)
 open CurryContext public
 
 -- | Construct CurryContext from IR terms and prefix/suffix
-mkCurryContext : ∀ {i} {A B C : Type} (f : IR i (A * B) C)
+mkCurryContext : ∀ {i} {A B C : Type} (f : IR (A * B) C)
                  (prefix suffix : Program) → CurryContext f prefix suffix
 mkCurryContext {A} {B} {C} f prefix suffix = record
   { len-f = the-len-f
@@ -164,7 +164,7 @@ mkCurryContext {A} {B} {C} f prefix suffix = record
 -- | Intermediate state records for curry proof phases
 
 -- | State after step 1: sub-sp 16
-record CurryStep1Result {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryStep1Result {i} {A B C : Type} (f : IR (A * B) C)
                         (ctx : CurryContext f [] [])
                         (s s1 : State) (x : ⟦ A ⟧) : Set where
   field
@@ -177,7 +177,7 @@ record CurryStep1Result {i} {A B C : Type} (f : IR i (A * B) C)
 open CurryStep1Result public
 
 -- | State after step 5: mov-from-sp x0 (x0 = closure pointer)
-record CurryStep5Result {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryStep5Result {i} {A B C : Type} (f : IR (A * B) C)
                         (ctx : CurryContext f [] [])
                         (s s5 : State) (x : ⟦ A ⟧) : Set where
   field
@@ -191,7 +191,7 @@ open CurryStep5Result public
 
 -- | State after step 6: b end-offset (pc = pc + end-offset = 5 + (6+len-f) = 11+len-f)
 -- With PC-relative branches: new pc = 5 + end-offset = 5 + 6 + len-f = 11 + len-f = end-label
-record CurryStep6Result {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryStep6Result {i} {A B C : Type} (f : IR (A * B) C)
                         (ctx : CurryContext f [] [])
                         (s s6 : State) (x : ⟦ A ⟧) : Set where
   field
@@ -203,7 +203,7 @@ record CurryStep6Result {i} {A B C : Type} (f : IR i (A * B) C)
 open CurryStep6Result public
 
 -- | Final state after curry execution
-record CurryFinalResult {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryFinalResult {i} {A B C : Type} (f : IR (A * B) C)
                         (prefix suffix : Program)
                         (ctx : CurryContext f prefix suffix)
                         (s s-final : State) (x : ⟦ A ⟧) : Set where
@@ -241,7 +241,7 @@ open CurryFinalResult public
 -- NOTE: For Star-based proofs, use ClosureWellFormed from
 -- ClosureWellFormed.agda which has thunk-correct field for
 -- full execution tracking.
-record ClosureWellFormedSimple {i} {A B C : Type} (f : IR i (A * B) C)
+record ClosureWellFormedSimple {i} {A B C : Type} (f : IR (A * B) C)
                                (closure-ptr : ℕ) (prog : Program) : Set where
   field
     -- The closure contains the correct code pointer
@@ -280,7 +280,7 @@ arith-curry-before-label len-f = begin
 
 -- | Length of curry-before-label = 11 + len-f
 -- curry-before-label = curry-fixed-prefix ++ code-f ++ ret ∷ []
-arith-len-curry-before-label : ∀ {i} {A B C : Type} (f : IR i (A * B) C) →
+arith-len-curry-before-label : ∀ {i} {A B C : Type} (f : IR (A * B) C) →
   let the-len-f = compile-length f
       the-curry-fixed-prefix = sub-sp 16 ∷ str x0 (sp+imm 0) ∷ adr x9 4 ∷
                                str x9 (sp+imm 8) ∷ mov-from-sp x0 ∷ b (11 +ℕ the-len-f) ∷

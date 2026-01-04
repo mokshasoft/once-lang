@@ -11,8 +11,6 @@
 -- that satisfies the property by construction.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --sized-types #-}
-
 module Once.StatefulEncoding where
 
 open import Once.Type

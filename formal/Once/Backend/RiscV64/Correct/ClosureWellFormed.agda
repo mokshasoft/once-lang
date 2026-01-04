@@ -125,7 +125,7 @@ open ClosureWellFormed public
 -- - a0 = closure address (new-sp)
 -- - [closure] = env-addr = encode x
 -- - [closure+8] = code-ptr = offset + 7
-record CurryResult {i : Size} {A B C : Type} (f : IR i (A * B) C)
+record CurryResult {i : Size} {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                    (offset : ℕ) : Set where
   field
@@ -175,7 +175,7 @@ open ApplyMemoryLayout public
 
 -- | When curry executes, it produces this WF info that can be used by apply
 -- This captures the connection between curry's output and apply's input
-record CurryOutputWF {i : Size} {A B C : Type} (f : IR i (A * B) C)
+record CurryOutputWF {i : Size} {A B C : Type} (f : IR (A * B) C)
                      (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) : Set where
   field
     code-ptr : ℕ
@@ -194,7 +194,7 @@ ApplyInputWF A B prog =
   ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ] ∃[ stack-req ]
   ClosureWellFormed {A} {B} prog code-ptr env-addr sem stack-req
 
-curry-output-to-apply-input : ∀ {i A B C} (f : IR i (A * B) C)
+curry-output-to-apply-input : ∀ {i A B C} (f : IR (A * B) C)
                               (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) →
                               CurryOutputWF f prog offset x →
                               ApplyInputWF B C prog

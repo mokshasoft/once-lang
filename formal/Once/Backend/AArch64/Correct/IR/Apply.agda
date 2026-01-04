@@ -215,7 +215,7 @@ open ApplyResult public
 --   x0 = encode (eval f (env, arg))
 --   Then ret returns to x30 (instruction after blr)
 
-record ThunkResultExec {i} {A B C : Type} (f : IR i (A * B) C)
+record ThunkResultExec {i} {A B C : Type} (f : IR (A * B) C)
                        (env : ⟦ A ⟧) (arg : ⟦ B ⟧)
                        (s s-after : State) : Set where
   field

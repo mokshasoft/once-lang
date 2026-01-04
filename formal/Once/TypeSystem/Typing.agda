@@ -205,7 +205,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 -- This shows that every IR term has a typing derivation.
 -- (Embedding into empty context since IR terms are closed.)
 --
-⌈_⌉ : ∀ {i A B} → IR i A B → ∅ ⊢ A ⟶ B
+⌈_⌉ : ∀ {A B} → IR A B → ∅ ⊢ A ⟶ B
 ⌈ id ⌉ = ty-id
 ⌈ g ∘ f ⌉ = ty-comp ⌈ g ⌉ ⌈ f ⌉
 ⌈ fst ⌉ = ty-fst

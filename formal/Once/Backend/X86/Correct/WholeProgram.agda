@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.WholeProgram
 --
@@ -37,7 +36,6 @@
 
 module Once.Backend.X86.Correct.WholeProgram where
 
-open import Size
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
@@ -94,7 +92,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- | Result type for whole-program execution
 -- Like IRStarResult but explicitly tracks closure WF for composition
-record WholeProgramResult {i : Size} {A B : Type} (ir : IR i A B)
+record WholeProgramResult {A B : Type} (ir : IR A B)
                           (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                           (offset : ℕ) : Set₁ where
   field
@@ -121,7 +119,7 @@ open WholeProgramResult public
 ------------------------------------------------------------------------
 
 -- | Convert modular result to whole-program result
-from-modular : ∀ {i A B} {ir : IR i A B} {prog s s' x offset} →
+from-modular : ∀ {A B} {ir : IR A B} {prog s s' x offset} →
   IRStarResult ir prog s s' x offset →
   WholeProgramResult ir prog s s' x offset
 from-modular r = record
@@ -161,7 +159,7 @@ data ClosureMemoryOutput (prog : Program) (m : Memory) : Set where
 -- | Convert IRStarResult with closure WF to WholeProgramResult
 -- Used for curry case: adds has-closure WF to the result
 -- The closure types (ClA, ClB) may differ from the IR types (A, B)
-from-modular-with-wf : ∀ {i A B} {ir : IR i A B} {prog s s' x offset}
+from-modular-with-wf : ∀ {A B} {ir : IR A B} {prog s s' x offset}
   {ClA ClB : Type} {code-ptr env-addr : ℕ} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
   IRStarResult ir prog s s' x offset →
   ClosureWellFormed {ClA} {ClB} prog code-ptr env-addr sem →
@@ -188,7 +186,7 @@ from-modular-with-wf r wf = record
 --
 -- Phase 1: curry produces WF
 -- Phase 2 (TODO): apply consumes WF when available
-run-ir-star-whole-program : ∀ {i A B} (ir : IR i A B)
+run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -201,8 +199,8 @@ run-ir-star-whole-program : ∀ {i A B} (ir : IR i A B)
   in ∃[ s' ] WholeProgramResult ir prog s s' x (length prefix)
 
 -- Curry case: produce has-closure WF
--- Note: curry : {i} {A} {B} {C} → IR i (A * B) C → IR (↑ i) A (B ⇒ C)
-run-ir-star-whole-program (curry {_} {A} {B} {C} f) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
+-- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
+run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
@@ -234,8 +232,8 @@ run-ir-star-whole-program (curry {_} {A} {B} {C} f) prefix suffix x s h-eq pc-eq
 -- - For closed programs, curry and apply are composed together
 -- - The postulate-free path exists (run-apply-with-full-wf)
 -- - Full elimination requires threading memory layout info
-run-ir-star-whole-program (apply {_} {A} {B}) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
-  let (s' , modular-result) = run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s
+run-ir-star-whole-program (apply {A} {B}) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
+  let (s' , modular-result) = run-ir-star-at-offset (apply {A} {B}) prefix suffix x s
                                 h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   in s' , from-modular modular-result
 
@@ -254,7 +252,7 @@ run-ir-star-whole-program ir prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>1
 --
 -- This is the key theorem: given a closed program (no external closures),
 -- execution produces the correct result.
-whole-program-correct : ∀ {i A B} (ir : IR i A B)
+whole-program-correct : ∀ {A B} (ir : IR A B)
   (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →

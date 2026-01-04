@@ -93,7 +93,7 @@ open import Once.Backend.AArch64.Postulates using (curry-thunk-correct)
 -- The thunk at code-ptr is correct by curry-thunk-correct.
 ------------------------------------------------------------------------
 
-construct-closure-wf : ∀ {i} {A B C} (f : IR i (A * B) C)
+construct-closure-wf : ∀ {i} {A B C} (f : IR (A * B) C)
                        (prefix suffix : Program) (env : ⟦ A ⟧) →
   let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6

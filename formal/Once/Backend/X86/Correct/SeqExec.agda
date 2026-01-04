@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.SeqExec
 --
@@ -917,7 +916,7 @@ run-single-mov-mem-disp s dst src disp v h-false pc-0 mem-ok = s2 , run-eq , rax
 run-inl-seq : ∀ {A B} (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
-  ∃[ s' ] (run (compile-x86 (inl {_} {A} {B})) s ≡ just s'
+  ∃[ s' ] (run (compile-x86 (inl {A} {B})) s ≡ just s'
          × halted s' ≡ true
          -- rax points to stack-allocated sum
          × readReg (regs s') rax ≡ readReg (regs s') rsp
@@ -928,7 +927,7 @@ run-inl-seq : ∀ {A B} (s : State) →
 run-inl-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq , val-eq
   where
     prog : List Instr
-    prog = compile-x86 (inl {_} {A} {B})
+    prog = compile-x86 (inl {A} {B})
 
     -- Original values we need to track
     orig-rsp : Word
@@ -1072,7 +1071,7 @@ run-inl-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 run-inr-seq : ∀ {A B} (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
-  ∃[ s' ] (run (compile-x86 (inr {_} {A} {B})) s ≡ just s'
+  ∃[ s' ] (run (compile-x86 (inr {A} {B})) s ≡ just s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ readReg (regs s') rsp
          × readMem (memory s') (readReg (regs s') rax) ≡ just 1
@@ -1080,7 +1079,7 @@ run-inr-seq : ∀ {A B} (s : State) →
 run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq , val-eq
   where
     prog : List Instr
-    prog = compile-x86 (inr {_} {A} {B})
+    prog = compile-x86 (inr {A} {B})
 
     orig-rsp : Word
     orig-rsp = readReg (regs s) rsp

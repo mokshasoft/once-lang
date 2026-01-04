@@ -147,7 +147,7 @@ initWithInput-sp stackSize x = refl
 -- | Initial state has adequate stack for any IR (StackDepth ir ≤ sp)
 -- This is now a trivial lemma - it just restates the precondition.
 -- The caller must prove StackDepth ir ≤ stackSize before calling this.
-initWithInput-sp-sufficient : ∀ {i A B} (ir : IR i A B) (stackSize : ℕ) {A'} (x : ⟦ A' ⟧) →
+initWithInput-sp-sufficient : ∀ {A B} (ir : IR A B) (stackSize : ℕ) {A'} (x : ⟦ A' ⟧) →
   StackDepth ir ≤ stackSize →
   StackDepth ir ≤ readReg (regs (initWithInput stackSize x)) sp
 initWithInput-sp-sufficient ir stackSize x prf = prf
