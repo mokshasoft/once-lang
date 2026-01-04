@@ -2292,6 +2292,9 @@ postulate
     addr ≢ addr-pair +ℕ 8
 
 postulate
+  r15≤rbp-bound : ∀ (s : State) → RbpInvariant s → readReg (regs s) r15 ≤ readReg (regs s) rbp
+
+postulate
   pair-mem-above-rbp-chain : ∀ (s s-final : State) (addr : Word) →
     addr > readReg (regs s) rbp →
     readMem (memory s-final) addr ≡ readMem (memory s) addr
@@ -2415,7 +2418,7 @@ assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 
     mem-orig-final = PairFinalResultS.mem-orig-fin final-res
 
     mem-above-rbp-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
-    mem-above-rbp-final addr addr>rbp = pair-mem-above-rbp-chain s s-final addr addr>rbp
+    mem-above-rbp-final = pair-mem-above-rbp-chain s s-final
 
     mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
     mem-at-0-final =
