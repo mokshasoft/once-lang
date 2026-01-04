@@ -66,6 +66,7 @@ PRIM_MEMORY := Once/Primitive/Memory.agda
 PRIM_IO := Once/Primitive/IO.agda
 PRIM_THREAD := Once/Primitive/Thread.agda
 SPF := Once/SPF.agda
+TERMINATION := Once/Backend/Termination.agda
 
 # Arithmetic compiler (OCP-0001)
 ARITH_TYPE := Once/Arith/Type.agda
@@ -233,6 +234,11 @@ primitives:
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(PRIM_MEMORY)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(PRIM_IO)'
 	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(PRIM_THREAD)'
+
+.PHONY: termination
+termination:
+	@echo "Type-checking termination proof (orthogonal IR termination)..."
+	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TERMINATION)'
 
 .PHONY: spf
 spf:
