@@ -27,7 +27,8 @@ This document describes a **formal termination proof** for the backend verificat
 5. [Implementation Walkthrough](#implementation-walkthrough)
 6. [Usage in Backend Proofs](#usage-in-backend-proofs)
 7. [Comparison with Alternatives](#comparison-with-alternatives)
-8. [Future Extensions](#future-extensions)
+8. [Assurance Levels and Verification Strategy](#assurance-levels-and-verification-strategy)
+9. [Future Extensions](#future-extensions)
 
 ---
 
@@ -509,6 +510,103 @@ Only additions: pragma + comment referencing proof.
 - ✅ No boilerplate in main proofs (separation)
 - ✅ Faster compilation (no recursive well-founded checks)
 - ✅ Easier to understand (dedicated module)
+
+---
+
+## Assurance Levels and Verification Strategy
+
+### Understanding the Difference
+
+The orthogonal termination proof provides **formal assurance** that the recursion pattern terminates, but it's important to understand the difference from sized types:
+
+**Sized Types (Original Approach)**:
+- ✅ **Mechanical verification**: Agda's type checker verifies *every recursive call* in the actual implementation
+- ✅ **Compile-time enforcement**: Impossible to write non-terminating code that type-checks
+- ❌ **Slow compilation**: 15-60 minutes per file due to size constraint solving
+
+**Orthogonal Termination Proof (This Approach)**:
+- ✅ **Formal proof**: We prove the recursion *pattern* terminates using well-founded induction
+- ✅ **Fast compilation**: 1-2 minutes (100x speedup)
+- ✅ **Clear documentation**: Explicit proof of why the pattern terminates
+- ⚠️ **Relies on inspection**: Uses `{-# TERMINATING #-}` pragma; assumes implementation follows the proven pattern
+
+**The Key Difference**:
+
+Sized types verify the *actual implementation*. Our approach proves the *pattern* terminates, then relies on code review to ensure the implementation follows the pattern.
+
+For `run-ir-star-at-offset`, this is low risk because:
+1. The recursion pattern is **trivial to verify by inspection** (each IR case recurses only on strict subterms)
+2. Any deviation from the pattern would be **immediately obvious**
+3. The code is **well-documented** with references to the termination proof
+
+### Bridging the Gap: Full Verification on Demand
+
+You can get **both** fast development iteration **and** complete mechanical verification:
+
+**Development Workflow** (Fast):
+```agda
+-- In MutualIR.agda
+mutual
+  {-# TERMINATING #-}
+  -- Termination: Proven in Once.Backend.Termination via well-founded
+  -- recursion on IR structure size (IRProcessor.ir-terminates).
+  run-ir-star-at-offset : ...
+```
+
+- Uses `{-# TERMINATING #-}` pragma
+- Compiles in 1-2 minutes
+- Rapid iteration during development
+- Orthogonal proof provides formal justification
+
+**Release Verification** (Complete):
+```bash
+# Remove {-# TERMINATING #-} pragma
+# Re-enable sized types
+# Run on large machine (64GB+ RAM)
+agda --sized-types Once/Backend/RiscV64/Correct/MutualIR.agda
+```
+
+- Full mechanical verification by Agda's type checker
+- Confirms implementation matches proven pattern
+- Takes 15-60 minutes, but run only before releases
+- Can be automated in CI on release branches
+
+**Best of Both Worlds**:
+
+| Phase | Approach | Compile Time | Assurance |
+|-------|----------|--------------|-----------|
+| **Development** | Orthogonal proof + `{-# TERMINATING #-}` | 1-2 min | Formal pattern proof + inspection |
+| **Release** | Remove pragma, enable sized types | 15-60 min | Full mechanical verification |
+
+**Practical Setup**:
+
+You can set up separate make targets or CI steps:
+
+```makefile
+# Fast development (current approach)
+.PHONY: backend-dev
+backend-dev:
+    @$(AGDA_CMD) Once/Backend/*/Correct/MutualIR.agda
+
+# Full verification (for releases)
+.PHONY: backend-verify-full
+backend-verify-full:
+    @echo "WARNING: May take 1+ hour and use 32GB+ RAM"
+    @# Run on version without {-# TERMINATING #-} pragmas
+    @# Or: sed -i '' '/{-# TERMINATING #-}/d' ...
+    @$(AGDA_CMD) --sized-types Once/Backend/*/Correct/MutualIR.agda
+```
+
+**Recommendation**:
+
+- **During development**: Use orthogonal proof approach (this guide)
+- **Before major releases**: Run full verification on cloud/CI infrastructure
+- **For critical deployments**: Consider full verification as a release gate
+
+This strategy provides:
+- Fast iteration when you need it (development)
+- Complete assurance when it matters (releases)
+- Clear documentation of termination reasoning (always)
 
 ---
 
