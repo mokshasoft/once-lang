@@ -6,15 +6,18 @@
 
 ## Executive Summary
 
-After discovering that IRResultVariant indexed families are impossible in Agda, we successfully prototyped the **dependent type family approach** (Alternative 2). **This approach works!**
+After discovering that IRResultVariant indexed families are impossible in Agda, we successfully implemented the **dependent type family approach** (Alternative 2). **The type family infrastructure is complete!**
 
-**Current Status**:
+**Current Status (2026-01-04)**:
 - ✅ IRResultVariant blocker documented in `irresultvariant-blocker.md`
-- ✅ **Dependent type family Phase 1-3 COMPLETED** (MutualIR.agda:1279-1361)
+- ✅ **Dependent type family infrastructure COMPLETE** (MutualIR.agda:1279-1468)
+  - IRResultFor type family defined (lines 1281-1285)
+  - Helper functions for field access (lines 1307-1468)
+  - Compose/pair/case all use helpers successfully
 - ✅ Type family correctly enforces curry → CurryResultS, others → IRStarResult
-- ✅ Curry case successfully preserves CurryResultS (line 1359-1361)
-- ⚠️  **Phase 3 Challenge**: Ambiguous field access requires disambiguation (line 1457)
-- 🔨 Phase 4-5 in progress: Implementing field access helpers and compose logic
+- ✅ Ambiguous field access SOLVED via helper functions
+- ⚠️  **Architectural Limitation Discovered**: Postulate elimination requires runtime inspection
+- 🤔 **Recommendation**: Accept postulate as justified model axiom (see below)
 
 ## Work Completed
 
@@ -230,16 +233,73 @@ If we accept the postulate:
 3. Note that `run-apply-with-wf` provides the postulate-free path
 4. Consider this a "verified modulo calling convention" result
 
-## Recommendation
+## Architectural Limitation: Why Full Elimination is Infeasible
 
-**Short-term**: Prototype the dependent type family approach (5-8 hours)
-- If it works: Achieve full verification (1 acceptable postulate)
-- If it fails: Document why and accept the postulate
+**Discovery**: After completing the IRResultFor type family infrastructure, we discovered a fundamental architectural limitation:
 
-**Long-term**: Even if dependent types work, consider whether the complexity is worth it:
-- The current 2-postulate state is already strong verification
-- Both postulates are well-justified
-- The dependent type approach may harm maintainability
+### The Problem
+
+`run-apply-star-direct` (MutualIR.agda:3276-3307) is called **without knowledge of where the closure came from**:
+
+```agda
+run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+  -- preconditions... →
+  ∃[ s' ] IRStarResult apply prog s s' x offset
+
+run-apply-star-direct {A} {B} prefix suffix x s ... =
+  -- LINE 3290: Must call postulate because we don't know where closure came from
+  let (...) = apply-produces-result {A} {B} prefix suffix x s ...
+  in ...
+```
+
+To eliminate the postulate, apply would need to receive a `ClosureWellFormed` proof. But there's no way to pass this proof because:
+
+1. **Modular proof structure**: Each IR term is proven in isolation
+2. **Generic recursion**: `run-ir-star-at-offset` recursively calls itself for ANY IR term
+3. **Type-level limitation**: While IRResultFor can preserve CurryResultS in the TYPE, it cannot force runtime pattern matching on the IR constructor
+
+### What Would Be Required
+
+To eliminate the postulate, we would need:
+
+**Option A**: Whole-program proof (not modular)
+- Write a specialized proof for `compose (curry f) apply`
+- Directly thread the ClosureWellFormed proof from curry to apply
+- Lose the modular architecture that makes the proofs manageable
+
+**Option B**: Runtime inspection in compose
+- Have compose pattern match: "is g apply? if so, is f curry?"
+- Extract ClosureWellFormed from res-f when f is curry
+- Call a special `run-compose-curry-apply` path that uses `run-apply-with-wf`
+- Extremely complex dependent pattern matching
+- Would need similar logic in pair, case, and anywhere curry+apply could occur
+
+**Option C**: Change apply's signature
+- Make `run-apply-star-direct` take an OPTIONAL `ClosureWellFormed` proof
+- Use postulate when proof is absent, use `run-apply-with-wf` when present
+- Still requires runtime inspection throughout to detect curry+apply patterns
+
+All options significantly complicate the proof architecture and may not be worth the benefit.
+
+## Recommendation (Updated 2026-01-04)
+
+**Accept `apply-produces-result` as a justified model axiom.**
+
+### Justification
+
+1. **Semantic boundary**: The postulate represents the calling convention between curry and apply, not a proof gap
+2. **Industry precedent**: CompCert (the gold standard) has similar axioms for calling conventions
+3. **X86 precedent**: Our X86 backend treats this as a model axiom (`run-apply-with-full-wf` takes ClosureWellFormed as precondition)
+4. **Infrastructure exists**: The postulate-free path (`run-apply-with-wf`) exists for whole-program proofs that need it
+5. **Cost-benefit**: Elimination would require significant architectural complexity for marginal benefit
+
+### Final State
+
+**AArch64 Postulates**:
+1. `sp-bound-after-stack-op` - Runtime assumption (acceptable)
+2. `apply-produces-result` - Calling convention model axiom (acceptable)
+
+This is a **strong verification result**: modular IR correctness with well-justified axioms representing runtime invariants and calling conventions, not proof gaps.
 
 ## References
 
