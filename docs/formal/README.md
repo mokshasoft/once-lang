@@ -44,6 +44,7 @@ Practical guides for implementing proofs:
 - **[stateful-runner-example.md](guides/stateful-runner-example.md)** - Example of stateful proof pattern
 - **[apply-proof-strategy.md](guides/apply-proof-strategy.md)** - Strategy for proving apply correctness
 - **[encoding-postulate-elimination-plan.md](guides/encoding-postulate-elimination-plan.md)** - How to eliminate encoding postulates
+- **[allocation-strategies-and-escape-analysis.md](guides/allocation-strategies-and-escape-analysis.md)** - Memory allocation strategies, escape analysis, and stack vs heap tradeoffs
 
 ### `historical/` - Historical Documentation
 
