@@ -50,13 +50,14 @@ open import Once.Postulates
   using (encode-closure-env; encode-closure-code-ptr)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_; _<_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _<_; _≤_; _≟_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Nat.Properties using (+-assoc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong; cong₂)
+open import Relation.Nullary using (Dec; yes; no)
 
 ------------------------------------------------------------------------
 -- ThunkResult: Result type for thunk execution
@@ -253,6 +254,57 @@ record CurryResultS {i} {A B C : Type} (f : IR i (A * B) C)
     closure-wf-s : ClosureWellFormedS f prog offset env-val
 
 open CurryResultS public
+
+------------------------------------------------------------------------
+-- AllClosuresWellFormed: Global invariant for whole-program proofs
+------------------------------------------------------------------------
+
+-- | Offset-indexed closure proof map
+--
+-- Key insight: Each curry instruction at offset N creates closures with
+-- code-ptr = N + 6. So we can identify which curry created a closure by
+-- looking at its code-ptr: offset = code-ptr - 6.
+--
+-- Strategy:
+-- - curry at offset N: Adds entry mapping N to well-formedness proof
+-- - apply: Extracts code-ptr from closure, computes offset = code-ptr - 6,
+--          looks up proof in map
+--
+-- This approach avoids the need for decidable equality on function types!
+data AllClosuresWellFormed (prog : Program) : Set where
+  -- Empty map (initial state)
+  empty-invariant : AllClosuresWellFormed prog
+
+  -- Add a curry-created closure to the map
+  -- The proof is parameterized over the environment value
+  -- This allows different closures from the same curry (with different envs)
+  add-curry : ∀ {i A B C} (offset : ℕ) (f : IR i (A * B) C) →
+              -- Proof function: for ANY environment value,
+              -- the closure is well-formed
+              (∀ (env : ⟦ A ⟧) →
+                ClosureWellFormed prog
+                  (offset +ℕ 6)      -- code-ptr
+                  (encode env)        -- env-addr
+                  (λ b → eval f (env , b))) →  -- semantics
+              AllClosuresWellFormed prog →
+              AllClosuresWellFormed prog
+
+-- Lookup a closure proof by code-ptr and environment
+-- Returns the semantics along with a well-formedness proof
+-- This avoids needing function extensionality to match semantics!
+lookup-closure : ∀ {prog} →
+                 AllClosuresWellFormed prog →
+                 (code-ptr : ℕ) →
+                 ∀ {A} (env : ⟦ A ⟧) →
+                 Maybe (Σ[ B ∈ Type ] Σ[ sem ∈ (⟦ A ⟧ → ⟦ B ⟧) ]
+                        ClosureWellFormed prog code-ptr (encode env) sem)
+lookup-closure empty-invariant _ _ = nothing
+lookup-closure (add-curry {i} {A'} {B'} {C'} offset f prf-fn rest) code-ptr {A} env
+  with code-ptr ≟ (offset +ℕ 6)
+... | yes refl = just (C' , (λ b → eval f (env , b)) , prf-fn env)
+... | no  _    = lookup-closure rest code-ptr env
+
+open AllClosuresWellFormed public using ()
 
 ------------------------------------------------------------------------
 -- ApplyWithWF: Apply execution that uses well-formedness
