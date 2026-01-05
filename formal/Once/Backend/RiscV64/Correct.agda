@@ -64,9 +64,9 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1)
 
--- Import MutualIR for run-ir-star
+-- Import MutualIR for run-ir-star-at-offset
 open import Once.Backend.RiscV64.Correct.MutualIR
-  using (run-ir-star; run-ir-star-at-offset)
+  using (run-ir-star-at-offset)
 
 ------------------------------------------------------------------------
 -- Star-based correctness: star-generator (fuel-free)
@@ -93,13 +93,13 @@ star-generator : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   in ∃[ s' ] (Star prog s s'
          × halted s' ≡ true
          × readReg (regs s') a0 ≡ encode (eval ir x))
-star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-halt , refl , a0-eq'
+star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-halt-converted , refl , a0-eq'
   where
-    -- Step 1: Get Star-based result from MutualIR
-    star-result = run-ir-star ir x s h-false pc-0 a0-eq sp-bound
+    -- Step 1: Get Star-based result from MutualIR (whole program: empty prefix/suffix)
+    star-result = run-ir-star-at-offset ir [] [] x s h-false pc-0 a0-eq sp-bound
     s' = proj₁ star-result
     result = proj₂ star-result
-    prog = compile-riscv ir
+    prog = compile-riscv ir ++ []  -- Matches the program constructed by run-ir-star-at-offset
     star-proof = ir-star result
     h' = ir-halted result
     a0-eq' = ir-a0 result
@@ -110,7 +110,7 @@ star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-
 
     -- Step 2: Prove fetch fails at pc = compile-length ir
     pc-at-end : pc s' ≡ length prog
-    pc-at-end = trans pc' (sym (compile-length-correct ir))
+    pc-at-end = trans pc' (trans (sym (compile-length-correct ir)) (cong length (sym (++-identityʳ (compile-riscv ir)))))
 
     fetch-fail : fetch prog (pc s') ≡ nothing
     fetch-fail = subst (λ p → fetch prog p ≡ nothing)
@@ -129,6 +129,10 @@ star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-
 
     star-with-halt : Star prog s s''
     star-with-halt = star-trans star-proof halt-step
+
+    -- Convert from (compile-riscv ir ++ []) to (compile-riscv ir) using ++-identityʳ
+    star-with-halt-converted : Star (compile-riscv ir) s s''
+    star-with-halt-converted = subst (λ p → Star p s s'') (++-identityʳ (compile-riscv ir)) star-with-halt
 
 ------------------------------------------------------------------------
 -- Main Correctness Theorem (Star-based, fuel-free)
