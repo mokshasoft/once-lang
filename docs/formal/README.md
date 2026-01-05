@@ -45,6 +45,7 @@ Practical guides for implementing proofs:
 - **[apply-proof-strategy.md](guides/apply-proof-strategy.md)** - Strategy for proving apply correctness
 - **[encoding-postulate-elimination-plan.md](guides/encoding-postulate-elimination-plan.md)** - How to eliminate encoding postulates
 - **[allocation-strategies-and-escape-analysis.md](guides/allocation-strategies-and-escape-analysis.md)** - Memory allocation strategies, escape analysis, and stack vs heap tradeoffs
+- **[proof-modularization-comparison.md](guides/proof-modularization-comparison.md)** - Comparing ARM and x86 proof modularization approaches (specialized records vs split modules)
 
 ### `historical/` - Historical Documentation
 
