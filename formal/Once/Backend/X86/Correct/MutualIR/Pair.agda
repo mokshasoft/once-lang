@@ -79,8 +79,8 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-    in ∃[ addr-out ] ∃[ s' ] IRStarResultS ⟨ f , g ⟩ prog s s' addr-out (length prefix)
+    let prog = prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix
+    in ∃[ addr-out ] ∃[ s' ] IRStarResultS (⟨ f , g ⟩ Heap) prog s s' addr-out (length prefix)
   run-pair-star-direct-s {A} {B} {C} f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     (addr-pair , s-final , result-s)
     where
@@ -242,8 +242,8 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-    in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
+    let prog = prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix
+    in ∃[ s' ] IRStarResult (⟨ f , g ⟩ Heap) prog s s' x (length prefix)
   run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , assemble-pair-result f g prefix suffix x s s-setup s1 s2 s3 s-final
                 setup-res r-f mid-res r-g

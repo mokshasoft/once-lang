@@ -31,7 +31,7 @@ open ≡-Reasoning
 -- Prove thunk setup: label, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
       thunk-offset = length prefix +ℕ 6
       f-offset = length prefix +ℕ 13  -- 6 closure-setup + 7 thunk-setup
   in
@@ -63,7 +63,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
     open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
 
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
     offset = length prefix
     thunk-offset = offset +ℕ 6
     f-offset = offset +ℕ 13  -- 6 closure-setup + 7 thunk-setup
@@ -79,7 +79,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     i6 = mov (reg rdi) (reg rsp)           -- rdi = pair address
 
     -- Program structure for fetch proofs:
-    -- prog = prefix ++ compile-x86 (curry f) ++ suffix
+    -- prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
     --      = prefix ++ (curry-closure-setup ++ curry-thunk-setup ++ compile-x86 f ++ curry-tail) ++ suffix
     -- where curry-closure-setup has 6 instructions and curry-thunk-setup starts with label 6
     --
@@ -633,7 +633,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 -- Prove ret instruction tracing
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
       ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup
   in
   halted s ≡ false →
@@ -656,7 +656,7 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
     offset = length prefix
     ret-offset = offset +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup
 

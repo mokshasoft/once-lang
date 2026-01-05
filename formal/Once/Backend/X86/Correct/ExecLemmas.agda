@@ -710,19 +710,19 @@ compile-length>0 (g ∘ f) = comp-pos (compile-length f) (compile-length g)
     comp-pos n m = subst (_> 0) (sym (+-assoc n 1 m)) (n+suc-pos n m)
 compile-length>0 fst = s≤s z≤n
 compile-length>0 snd = s≤s z≤n
-compile-length>0 ⟨ f , g ⟩ = pair-pos (compile-length f) (compile-length g)
+compile-length>0 (⟨ f , g ⟩ _) = pair-pos (compile-length f) (compile-length g)
   where
     pair-pos : (n m : ℕ) → (15 +ℕ n) +ℕ m > 0
     pair-pos n m = s≤s z≤n
-compile-length>0 inl = s≤s z≤n
-compile-length>0 inr = s≤s z≤n
+compile-length>0 (inl _) = s≤s z≤n
+compile-length>0 (inr _) = s≤s z≤n
 compile-length>0 [ f , g ] = case-pos (compile-length f) (compile-length g)
   where
     case-pos : (n m : ℕ) → (8 +ℕ n) +ℕ m > 0
     case-pos n m = s≤s z≤n
 compile-length>0 terminal = s≤s z≤n
 compile-length>0 initial = s≤s z≤n
-compile-length>0 (curry f) = curry-pos (compile-length f)
+compile-length>0 (curry f _) = curry-pos (compile-length f)
   where
     curry-pos : (n : ℕ) → 17 +ℕ n > 0
     curry-pos n = s≤s z≤n

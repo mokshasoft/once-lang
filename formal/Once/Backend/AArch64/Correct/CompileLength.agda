@@ -85,7 +85,7 @@ arith-case m n =
 
 -- | Compile-length matches actual length
 -- Proven by structural induction on IR
-compile-length-correct : ∀ {i} {A B : Type} (ir : IR A B) →
+compile-length-correct : ∀ {A B : Type} (ir : IR A B) →
   length (compile-aarch64 ir) ≡ compile-length ir
 
 -- Base cases: single-instruction generators
@@ -99,10 +99,10 @@ compile-length-correct unfold = refl
 compile-length-correct arr = refl
 
 -- inl: 4 instructions (sub-sp, str-zr, str, mov-from-sp)
-compile-length-correct inl = refl
+compile-length-correct (inl _) = refl
 
 -- inr: 5 instructions (sub-sp, mov, str, str, mov-from-sp)
-compile-length-correct inr = refl
+compile-length-correct (inr _) = refl
 
 -- apply: 6 instructions (ldr, ldr, ldr, ldr, mov, blr)
 compile-length-correct apply = refl
@@ -130,7 +130,7 @@ compile-length-correct (g ∘ f) =
 -- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0 (5)
 -- Middle: str x0 [x21], mov x0 x20 (2)
 -- Final: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16 (4)
-compile-length-correct ⟨ f , g ⟩ =
+compile-length-correct (⟨ f , g ⟩ _) =
   let len-f = compile-length f
       len-g = compile-length g
       IHf = compile-length-correct f
@@ -224,7 +224,7 @@ compile-length-correct [ f , g ] =
 --   end-offset = 6 +ℕ len-f (b jumps forward by this)
 --   code-ptr = 6 (label marker for thunk entry)
 --   end-label = 11 +ℕ len-f (label marker)
-compile-length-correct (curry f) =
+compile-length-correct (curry f _) =
   let len-f = compile-length f
       IHf = compile-length-correct f
       prog-f = compile-aarch64 f

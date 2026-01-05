@@ -65,8 +65,8 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
-  in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
+  let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
+  in ∃[ s' ] (IRStarResult (curry f Heap) prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
 run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   s-final , record
@@ -98,7 +98,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     }
   where
     len-f = compile-length f
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
 
     -- Key offsets (matching CodeGen.agda layout)
     -- jmp at pos 5 needs to reach end-label at pos 16+len-f
@@ -277,7 +277,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ []) ++ i6-label ∷ []
     curry-inner-split = sym (++-assoc (compile-x86 f) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ []) (i6-label ∷ []))
 
-    curry-split : compile-x86 (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
+    curry-split : compile-x86 (curry f Heap) ≡ curry-before-end-label ++ i6-label ∷ []
     curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
                                  label 6 ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
                                  sub (reg rsp) (imm 16) ∷
@@ -296,7 +296,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     prog-eq-for-fetch6 = begin
       prog
         ≡⟨ refl ⟩
-      prefix ++ compile-x86 (curry f) ++ suffix
+      prefix ++ compile-x86 (curry f Heap) ++ suffix
         ≡⟨ cong (λ z → prefix ++ z ++ suffix) curry-split ⟩
       prefix ++ (curry-before-end-label ++ i6-label ∷ []) ++ suffix
         ≡⟨ cong (prefix ++_) (++-assoc curry-before-end-label (i6-label ∷ []) suffix) ⟩
@@ -393,7 +393,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     h7 : halted s7 ≡ false
     h7 = h-false
 
-    pc7 : pc s7 ≡ length prefix +ℕ compile-length (curry f)
+    pc7 : pc s7 ≡ length prefix +ℕ compile-length (curry f Heap)
     pc7 = begin
       pc s7
         ≡⟨ refl ⟩
@@ -407,7 +407,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
         ≡⟨ cong (length prefix +ℕ_) refl ⟩
       length prefix +ℕ (17 +ℕ len-f)
         ≡⟨ refl ⟩
-      length prefix +ℕ compile-length (curry f)
+      length prefix +ℕ compile-length (curry f Heap)
         ∎
 
     -- Build Star using combinators
@@ -428,7 +428,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     h-final : halted s-final ≡ false
     h-final = h7
 
-    pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f)
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length (curry f Heap)
     pc-final = pc7
 
     -- Register preservation through states
@@ -541,10 +541,10 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-code-ptr-final = mem-code-ptr-s4
 
     -- Use encode-closure-construct axiom
-    encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval (curry f) x)
+    encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval (curry f Heap) x)
     encode-curry-result = encode-closure-construct f x new-rsp (memory s-final) mem-at-new-rsp-final
 
-    rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)
+    rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f Heap) x)
     rax-final = trans rax-s7 encode-curry-result
 
     -- Memory preservation

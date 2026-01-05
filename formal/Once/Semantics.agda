@@ -204,11 +204,11 @@ eval (g ∘ f) x         = eval g (eval f x)
 -- Products
 eval fst (a , b)       = a
 eval snd (a , b)       = b
-eval ⟨ f , g ⟩ x       = (eval f x , eval g x)
+eval (⟨ f , g ⟩ _) x   = (eval f x , eval g x)
 
 -- Coproducts
-eval inl a             = inj₁ a
-eval inr b             = inj₂ b
+eval (inl _) a         = inj₁ a
+eval (inr _) b         = inj₂ b
 eval [ f , g ] (inj₁ a) = eval f a
 eval [ f , g ] (inj₂ b) = eval g b
 
@@ -221,7 +221,7 @@ eval initial ()
 -- Exponential (with explicit Closure)
 -- curry f : IR A (B ⇒ C) creates a closure capturing the input
 -- env-addr = encode a makes closure encoding computable!
-eval (curry f) a       = record
+eval (curry f _) a     = record
   { env-addr  = encode a  -- Encoded environment (enables derivable encode-closure-construct)
   ; code-ptr  = 0         -- Placeholder; actual code pointer from compilation
   ; semantics = λ b → eval f (a , b)

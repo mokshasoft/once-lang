@@ -146,7 +146,7 @@ make-pair-context {A} {B} {C} f g prefix suffix = record
     len-g = compile-length g
     code-f = compile-x86 f
     code-g = compile-x86 g
-    prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+    prog = prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix
 
     -- Setup instructions (7)
     setup-push-r14 = push (reg r14)
@@ -701,7 +701,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   s-setup ≡ PairSetupResult.s-setup setup-res →
   RbpInvariant s →
   readReg (regs s-final) rsp ≡ readReg (regs s) rsp →
-  IRStarResult ⟨ f , g ⟩ prog s s-final x (length prefix)
+  IRStarResult (⟨ f , g ⟩ Heap) prog s s-final x (length prefix)
 assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
@@ -761,7 +761,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
     star-all = star-trans star-setup' (star-trans star-f' (star-trans star-mid' (star-trans star-g star-fin)))
 
     -- pc-final calculation
-    pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ Heap)
     pc-final = trans pc-fin-raw (trans (cong (_+ℕ 6) len-prefix-final)
                (trans (+-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6)
                (trans (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6))
@@ -802,7 +802,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
     r15-is-pair-enc = encode-pair-construct (eval f x) (eval g x) (readReg (regs s3) r15) (memory s-final)
                       mem-fst-s-final mem-snd-s-final
 
-    rax-final : readReg (regs s-final) rax ≡ encode (eval ⟨ f , g ⟩ x)
+    rax-final : readReg (regs s-final) rax ≡ encode (eval (⟨ f , g ⟩ Heap) x)
     rax-final = trans rax-fin-is-r15 r15-is-pair-enc
 
 ------------------------------------------------------------------------
@@ -2324,7 +2324,7 @@ assemble-pair-result-s : ∀ {A B C} (f : IR C A) (g : IR C B)
   s-setup ≡ PairSetupResultS.s-setup setup-res →
   s2 ≡ PairMiddleResultS.s2 mid-res →
   RbpInvariant s →
-  IRStarResultS ⟨ f , g ⟩ prog s (PairFinalResultS.s-final final-res) addr-pair (length prefix)
+  IRStarResultS (⟨ f , g ⟩ Heap) prog s (PairFinalResultS.s-final final-res) addr-pair (length prefix)
 assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 setup-res addr-f r-f-s mid-res addr-g r-g-s addr-pair final-res s-setup-eq s2-eq rbp-inv = record
   { ir-star = star-total
   ; ir-halted = h-final
@@ -2378,7 +2378,7 @@ assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 
                          star-final')))
 
     -- Final state properties - use PairFinalResultS fields directly
-    pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ Heap)
     pc-final = trans (PairFinalResultS.pc-fin final-res) (trans (cong (_+ℕ 6) len-prefix-final)
                (trans (+-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6)
                (trans (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6))

@@ -90,13 +90,13 @@ compile-length id = 1              -- nop (a0 already has the value)
 compile-length (g ∘ f) = compile-length f +ℕ compile-length g  -- no mov needed!
 compile-length fst = 1             -- ld a0, 0(a0)
 compile-length snd = 1             -- ld a0, 8(a0)
-compile-length ⟨ f , g ⟩ = (12 +ℕ compile-length f) +ℕ compile-length g  -- 12 = frame pointer approach (5 setup + 2 middle + 5 final)
-compile-length inl = 4             -- addi sp + sd + sd + mv
-compile-length inr = 5             -- addi sp + li + sd + sd + mv
+compile-length (⟨ f , g ⟩ _) = (12 +ℕ compile-length f) +ℕ compile-length g  -- 12 = frame pointer approach (5 setup + 2 middle + 5 final)
+compile-length (inl _) = 4             -- addi sp + sd + sd + mv
+compile-length (inr _) = 5             -- addi sp + li + sd + sd + mv
 compile-length [ f , g ] = (6 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1        -- li a0, 0
 compile-length initial = 1         -- ebreak
-compile-length (curry f) = 19 +ℕ compile-length f  -- includes frame pointer save/restore
+compile-length (curry f _) = 19 +ℕ compile-length f  -- includes frame pointer save/restore
 compile-length apply = 7
 compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
@@ -143,7 +143,7 @@ compile-riscv snd = ld a0 (+ 8) a0 ∷ []
 -- Stack layout: [fst (8 bytes), snd (8 bytes), saved-s1 (8 bytes), saved-s2 (8 bytes)]
 -- We use s2 as frame pointer to allow f and g to allocate arbitrary stack.
 -- Stores/loads for pair data are relative to s2, not sp.
-compile-riscv ⟨ f , g ⟩ =
+compile-riscv (⟨ f , g ⟩ _) =
   -- Setup (5 instructions):
   -- Allocate 32 bytes (16 for pair + 8 for s1 + 8 for s2)
   addi sp sp neg32 ∷
@@ -177,14 +177,14 @@ compile-riscv ⟨ f , g ⟩ =
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
-compile-riscv inl =
+compile-riscv (inl _) =
   addi sp sp neg16 ∷
   sd zero (+ 0) sp ∷           -- tag = 0 (use zero register directly!)
   sd a0 (+ 8) sp ∷             -- value
   mv a0 sp ∷ []                -- return pointer
 
 -- Right injection: create tagged union with tag = 1
-compile-riscv inr =
+compile-riscv (inr _) =
   addi sp sp neg16 ∷
   li t0 (+ 1) ∷                -- load tag = 1 into t0
   sd t0 (+ 0) sp ∷             -- tag = 1
@@ -247,7 +247,7 @@ compile-riscv initial = ebreak ∷ []
 --
 -- Jump offsets are PC-relative, computed based on compiled code length.
 -- The thunk uses s2 as frame pointer for proper stack cleanup.
-compile-riscv (curry {A} {B} {C} f) =
+compile-riscv (curry {A} {B} {C} f _) =
   let len-f = compile-length f
       -- Layout (with PC-relative code-ptr via auipc+addi and frame pointer):
       --   0: addi sp, sp, -16

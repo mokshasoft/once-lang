@@ -656,7 +656,7 @@ run-inl-star-s : ∀ {A B : Type} (prefix suffix : Program) (addr-x : Word) (s :
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix
       addr-out = readReg (regs s) rsp ∸ 16
   in ∃[ s' ] InlResultS prog s s' addr-x addr-out (length prefix)
 run-inl-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
@@ -676,7 +676,7 @@ run-inl-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp
   where
     -- The program
     prog : Program
-    prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
+    prog = prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix
 
     -- The 4 instructions of inl
     i0 : Instr
@@ -934,7 +934,7 @@ run-inr-star-s : ∀ {A B : Type} (prefix suffix : Program) (addr-x : Word) (s :
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix
       addr-out = readReg (regs s) rsp ∸ 16
   in ∃[ s' ] InrResultS prog s s' addr-x addr-out (length prefix)
 run-inr-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
@@ -954,7 +954,7 @@ run-inr-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp
   where
     -- The program
     prog : Program
-    prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
+    prog = prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix
 
     -- The 4 instructions of inr
     i0 : Instr
@@ -1713,7 +1713,7 @@ test-inl-stateful : ∀ {A B : Type} (a : ⟦ A ⟧) →
       s0 = state result
       addr-a = input-addr result
       new-rsp = readReg (regs s0) rsp ∸ 16
-  in ∃[ s' ] (Star (compile-x86 (inl {A} {B})) s0 s'
+  in ∃[ s' ] (Star (compile-x86 (inl {A} {B} Heap)) s0 s'
             × halted s' ≡ false
             × readReg (regs s') rax ≡ new-rsp
             × InlAtS addr-a new-rsp (memory s'))
@@ -1753,10 +1753,10 @@ test-inl-stateful {A} {B} a = s' , star-out , halted-out , rax-out , inl-valid-o
     s' : State
     s' = proj₁ inl-result
 
-    inl-res : InlResultS (compile-x86 (inl {A} {B})) s0 s' addr-a (readReg (regs s0) rsp ∸ 16) 0
+    inl-res : InlResultS (compile-x86 (inl {A} {B} Heap)) s0 s' addr-a (readReg (regs s0) rsp ∸ 16) 0
     inl-res = proj₂ inl-result
 
-    star-out : Star (compile-x86 (inl {A} {B})) s0 s'
+    star-out : Star (compile-x86 (inl {A} {B} Heap)) s0 s'
     star-out = subst (λ p → Star p s0 s') (++-identityʳ _) (InlResultS.star inl-res)
 
     halted-out : halted s' ≡ false
@@ -1775,7 +1775,7 @@ test-inr-stateful : ∀ {A B : Type} (b : ⟦ B ⟧) →
       s0 = state result
       addr-b = input-addr result
       new-rsp = readReg (regs s0) rsp ∸ 16
-  in ∃[ s' ] (Star (compile-x86 (inr {A} {B})) s0 s'
+  in ∃[ s' ] (Star (compile-x86 (inr {A} {B} Heap)) s0 s'
             × halted s' ≡ false
             × readReg (regs s') rax ≡ new-rsp
             × InrAtS addr-b new-rsp (memory s'))
@@ -1815,10 +1815,10 @@ test-inr-stateful {A} {B} b = s' , star-out , halted-out , rax-out , inr-valid-o
     s' : State
     s' = proj₁ inr-result
 
-    inr-res : InrResultS (compile-x86 (inr {A} {B})) s0 s' addr-b (readReg (regs s0) rsp ∸ 16) 0
+    inr-res : InrResultS (compile-x86 (inr {A} {B} Heap)) s0 s' addr-b (readReg (regs s0) rsp ∸ 16) 0
     inr-res = proj₂ inr-result
 
-    star-out : Star (compile-x86 (inr {A} {B})) s0 s'
+    star-out : Star (compile-x86 (inr {A} {B} Heap)) s0 s'
     star-out = subst (λ p → Star p s0 s') (++-identityʳ _) (InrResultS.star inr-res)
 
     halted-out : halted s' ≡ false

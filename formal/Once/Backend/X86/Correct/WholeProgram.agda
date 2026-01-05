@@ -201,7 +201,7 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
 -- Curry case: produce has-closure WF
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
 run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
       -- Get IRStarResult from run-curry-star

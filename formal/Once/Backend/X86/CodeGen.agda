@@ -33,13 +33,13 @@ compile-length id = 1
 compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
-compile-length ⟨ f , g ⟩ = (15 +ℕ compile-length f) +ℕ compile-length g
-compile-length inl = 4
-compile-length inr = 4
+compile-length (⟨ f , g ⟩ _) = (15 +ℕ compile-length f) +ℕ compile-length g
+compile-length (inl _) = 4
+compile-length (inr _) = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1
 compile-length initial = 1
-compile-length (curry f) = 17 +ℕ compile-length f  -- Frame pointer handling in thunk
+compile-length (curry f _) = 17 +ℕ compile-length f  -- Frame pointer handling in thunk
 compile-length apply = 6
 compile-length fold = 1
 compile-length unfold = 1
@@ -84,7 +84,40 @@ compile-x86 snd = mov (reg rax) (mem (base+disp rdi 8)) ∷ []
 -- Uses frame pointer (rbp) to ensure correct stack restoration even when
 -- f or g allocate permanent stack space (e.g., curry creates closures).
 -- r15 holds stable pair base address, r14 holds saved input.
-compile-x86 ⟨ f , g ⟩ =
+--
+-- TODO: Heap mode should use malloc when heap allocation is implemented
+compile-x86 (⟨ f , g ⟩ Stack) =
+  -- Save callee-saved registers
+  push (reg r14) ∷
+  push (reg r15) ∷
+  -- Save and set frame pointer
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
+  -- Allocate 16 bytes on stack for pair
+  sub (reg rsp) (imm 16) ∷
+  -- r15 = stable base address for this pair
+  mov (reg r15) (reg rsp) ∷
+  -- r14 = saved input
+  mov (reg r14) (reg rdi) ∷
+  -- Compute f (may allocate stack, but rbp captures restore point)
+  compile-x86 f ++
+  -- Store f result at [r15] (stable address)
+  mov (mem (base r15)) (reg rax) ∷
+  -- Restore input for g
+  mov (reg rdi) (reg r14) ∷
+  -- Compute g
+  compile-x86 g ++
+  -- Store g result at [r15 + 8]
+  mov (mem (base+disp r15 8)) (reg rax) ∷
+  -- Return pointer to pair
+  mov (reg rax) (reg r15) ∷
+  -- Restore stack to frame base (handles any stack growth by f/g)
+  mov (reg rsp) (reg rbp) ∷
+  -- Restore callee-saved registers
+  pop rbp ∷
+  pop r15 ∷
+  pop r14 ∷ []
+compile-x86 (⟨ f , g ⟩ Heap) =
   -- Save callee-saved registers
   push (reg r14) ∷
   push (reg r15) ∷
@@ -118,14 +151,26 @@ compile-x86 ⟨ f , g ⟩ =
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
-compile-x86 inl =
+-- TODO: Heap mode should use malloc when heap allocation is implemented
+compile-x86 (inl Stack) =
+  sub (reg rsp) (imm 16) ∷
+  mov (mem (base rsp)) (imm 0) ∷          -- tag = 0
+  mov (mem (base+disp rsp 8)) (reg rdi) ∷  -- value
+  mov (reg rax) (reg rsp) ∷ []             -- return pointer
+compile-x86 (inl Heap) =
   sub (reg rsp) (imm 16) ∷
   mov (mem (base rsp)) (imm 0) ∷          -- tag = 0
   mov (mem (base+disp rsp 8)) (reg rdi) ∷  -- value
   mov (reg rax) (reg rsp) ∷ []             -- return pointer
 
 -- Right injection: create tagged union with tag = 1
-compile-x86 inr =
+-- TODO: Heap mode should use malloc when heap allocation is implemented
+compile-x86 (inr Stack) =
+  sub (reg rsp) (imm 16) ∷
+  mov (mem (base rsp)) (imm 1) ∷          -- tag = 1
+  mov (mem (base+disp rsp 8)) (reg rdi) ∷  -- value
+  mov (reg rax) (reg rsp) ∷ []             -- return pointer
+compile-x86 (inr Heap) =
   sub (reg rsp) (imm 16) ∷
   mov (mem (base rsp)) (imm 1) ∷          -- tag = 1
   mov (mem (base+disp rsp 8)) (reg rdi) ∷  -- value
@@ -186,7 +231,52 @@ compile-x86 initial = ud2 ∷ []
 --   3. Executes compile-x86 f
 --
 -- Jump offsets are PC-relative: target = pc + 1 + offset
-compile-x86 (curry {A} {B} {C} f) =
+-- TODO: Heap mode should use malloc when heap allocation is implemented
+-- NOTE: Closures escape by definition and should use heap allocation
+compile-x86 (curry {A} {B} {C} f Stack) =
+  let len-f = compile-length f
+      code-ptr-label = 6
+      rip-offset = 4             -- From instruction 2, offset to reach 6
+      end-offset = 10 +ℕ len-f   -- jmp at pos 5 to reach pos 16+len-f
+      end-label = 16 +ℕ len-f    -- For label pseudo-instruction
+  in
+  -- Allocate closure on stack
+  sub (reg rsp) (imm 16) ∷
+  -- Store environment (input a in rdi) as closure.env
+  mov (mem (base rsp)) (reg rdi) ∷
+  -- Compute code pointer using RIP-relative addressing
+  -- At pc=2, lea computes pc+4=6 (thunk entry address)
+  lea r9 (rip+disp rip-offset) ∷
+  -- Store code pointer from r9
+  mov (mem (base+disp rsp 8)) (reg r9) ∷
+  -- Return closure pointer
+  mov (reg rax) (reg rsp) ∷
+  -- Jump over the thunk code (PC-relative)
+  jmp end-offset ∷
+  -- Thunk code: called via apply with b in rdi, env in r12
+  label code-ptr-label ∷
+  -- Save and set frame pointer (for proper stack cleanup)
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
+  -- Allocate pair (a, b) on stack
+  sub (reg rsp) (imm 16) ∷
+  -- Store a (from r12) at [rsp]
+  mov (mem (base rsp)) (reg r12) ∷
+  -- Store b (from rdi) at [rsp+8]
+  mov (mem (base+disp rsp 8)) (reg rdi) ∷
+  -- Set rdi = pointer to pair
+  mov (reg rdi) (reg rsp) ∷
+  -- Execute f on the pair
+  compile-x86 f ++
+  -- Restore stack to frame (cleans up pair + any f allocations)
+  mov (reg rsp) (reg rbp) ∷
+  -- Restore frame pointer
+  pop rbp ∷
+  -- Return (rax already has result, stack properly restored)
+  ret ∷
+  -- End of thunk
+  label end-label ∷ []
+compile-x86 (curry {A} {B} {C} f Heap) =
   let len-f = compile-length f
       -- Layout (with RIP-relative code-ptr and frame pointer):
       --   0: sub rsp, 16

@@ -48,7 +48,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- - Uses x20, x21 as callee-saved context (not r14, r15)
 -- - Uses x29 as frame pointer (not rbp)
 -- - Uses SP functions (readSP) for stack pointer
-record IRStarResult {i} {A B : Type} (ir : IR A B) (prog : Program)
+record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     -- Execution

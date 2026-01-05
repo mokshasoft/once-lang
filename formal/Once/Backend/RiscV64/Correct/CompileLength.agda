@@ -52,8 +52,8 @@ compile-length-correct initial = refl
 compile-length-correct fold = refl
 compile-length-correct unfold = refl
 compile-length-correct arr = refl
-compile-length-correct inl = refl
-compile-length-correct inr = refl
+compile-length-correct (inl _) = refl
+compile-length-correct (inr _) = refl
 compile-length-correct apply = refl
 
 -- Compose: length (f ++ g) = length f + length g
@@ -64,7 +64,7 @@ compile-length-correct (g ∘ f) =
 -- Pair with frame pointer: [addi, sd, sd, mv, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv, ld, ld, mv]
 -- Length = 5 + len-f + 2 + len-g + 5 = 12 + len-f + len-g
 -- Note: We save/restore both s1 and s2 (frame pointer) for callee-save compliance
-compile-length-correct ⟨ f , g ⟩ =
+compile-length-correct (⟨ f , g ⟩ _) =
   let len-f = compile-length f
       len-g = compile-length g
       ih-f = compile-length-correct f
@@ -179,7 +179,7 @@ compile-length-correct ([ f , g ]) =
 -- Length = 14 + len-f + 5 = 19 + len-f
 -- Note: auipc+addi replaces li for PC-relative code-ptr computation
 -- Thunk now uses s2 as frame pointer for proper stack cleanup
-compile-length-correct (curry f) =
+compile-length-correct (curry f _) =
   let len-f = compile-length f
       ih-f = compile-length-correct f
       -- Helper: x + 5 = suc (suc (suc (suc (suc x))))

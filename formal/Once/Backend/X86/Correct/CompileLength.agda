@@ -59,9 +59,10 @@ compile-length-correct (g ∘ f) = helper
       ∎
 compile-length-correct fst = refl
 compile-length-correct snd = refl
-compile-length-correct ⟨ f , g ⟩ = helper
+-- Both Stack and Heap generate identical code for pairs, so same proof applies
+compile-length-correct (⟨ f , g ⟩ Stack) = helper
   where
-    -- Structure with frame pointer:
+    -- Structure with frame pointer (same for Stack and Heap):
     --   push ∷ push ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷
     --   (compile-x86 f ++ mov ∷ mov ∷
     --    (compile-x86 g ++ mov ∷ mov ∷ mov ∷ pop ∷ pop ∷ pop ∷ []))
@@ -114,11 +115,71 @@ compile-length-correct ⟨ f , g ⟩ = helper
         (15 +ℕ a) +ℕ b
       ∎
 
-    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (15 +ℕ compile-length f) +ℕ compile-length g
+    helper : length (compile-x86 (⟨ f , g ⟩ Stack)) ≡ (15 +ℕ compile-length f) +ℕ compile-length g
     helper = trans (cong (λ x → 7 +ℕ x) len-with-f)
                    (arith2 (compile-length f) (compile-length g))
-compile-length-correct inl = refl
-compile-length-correct inr = refl
+compile-length-correct (⟨ f , g ⟩ Heap) = helper
+  where
+    -- Structure with frame pointer (same for Stack and Heap):
+    --   push ∷ push ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷
+    --   (compile-x86 f ++ mov ∷ mov ∷
+    --    (compile-x86 g ++ mov ∷ mov ∷ mov ∷ pop ∷ pop ∷ pop ∷ []))
+    -- We need to show: 7 + (|f| + (2 + (|g| + 6))) = (15 + |f|) + |g|
+
+    inner-tail : List Instr
+    inner-tail = mov (mem (base+disp r15 8)) (reg rax) ∷
+                 mov (reg rax) (reg r15) ∷
+                 mov (reg rsp) (reg rbp) ∷
+                 pop rbp ∷
+                 pop r15 ∷
+                 pop r14 ∷ []
+
+    -- Lemma: length of the trailing part after g
+    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 6
+    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 6) (compile-length-correct g))
+
+    mid-tail : List Instr
+    mid-tail = mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ (compile-x86 g ++ inner-tail)
+
+    -- Lemma: length after f
+    len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 6)
+    len-after-f = cong (λ x → 2 +ℕ x) len-middle
+
+    full-tail : List Instr
+    full-tail = compile-x86 f ++ mid-tail
+
+    -- Lemma: length including f
+    len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 6))
+    len-with-f = trans (length-++ (compile-x86 f) mid-tail)
+                       (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
+                              (cong (λ x → compile-length f +ℕ x) len-after-f))
+
+    -- Prove: 7 + (a + (2 + (b + 6))) = (15 + a) + b
+    arith2 : ∀ a b → 7 +ℕ (a +ℕ (2 +ℕ (b +ℕ 6))) ≡ (15 +ℕ a) +ℕ b
+    arith2 a b =
+      begin
+        7 +ℕ (a +ℕ (2 +ℕ (b +ℕ 6)))
+      ≡⟨ cong (7 +ℕ_) (cong (a +ℕ_) (cong (2 +ℕ_) (+-comm b 6))) ⟩
+        7 +ℕ (a +ℕ (2 +ℕ (6 +ℕ b)))
+      ≡⟨ cong (7 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 2 6 b))) ⟩
+        7 +ℕ (a +ℕ (8 +ℕ b))
+      ≡⟨ cong (7 +ℕ_) (sym (+-assoc a 8 b)) ⟩
+        7 +ℕ ((a +ℕ 8) +ℕ b)
+      ≡⟨ cong (7 +ℕ_) (cong (_+ℕ b) (+-comm a 8)) ⟩
+        7 +ℕ ((8 +ℕ a) +ℕ b)
+      ≡⟨ sym (+-assoc 7 (8 +ℕ a) b) ⟩
+        (7 +ℕ (8 +ℕ a)) +ℕ b
+      ≡⟨ cong (_+ℕ b) (sym (+-assoc 7 8 a)) ⟩
+        (15 +ℕ a) +ℕ b
+      ∎
+
+    helper : length (compile-x86 (⟨ f , g ⟩ Heap)) ≡ (15 +ℕ compile-length f) +ℕ compile-length g
+    helper = trans (cong (λ x → 7 +ℕ x) len-with-f)
+                   (arith2 (compile-length f) (compile-length g))
+compile-length-correct (inl Stack) = refl
+compile-length-correct (inl Heap) = refl
+compile-length-correct (inr Stack) = refl
+compile-length-correct (inr Heap) = refl
 compile-length-correct [ f , g ] = helper
   where
     -- Structure: mov ∷ cmp ∷ jne ∷ mov ∷ (compile-x86 f ++ jmp ∷ label ∷ mov ∷ (compile-x86 g ++ label ∷ []))
@@ -179,9 +240,10 @@ compile-length-correct [ f , g ] = helper
                    (arith (compile-length f) (compile-length g))
 compile-length-correct terminal = refl
 compile-length-correct initial = refl
-compile-length-correct (curry f) = helper
+-- Both Stack and Heap generate identical code for curry, so same proof applies
+compile-length-correct (curry f Stack) = helper
   where
-    -- Structure with RIP-relative addressing and frame pointer:
+    -- Structure with RIP-relative addressing and frame pointer (same for Stack and Heap):
     -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷ mov ∷
     -- (compile-x86 f ++ mov ∷ pop ∷ ret ∷ label ∷ [])
     -- Length = 13 + (|f| + 4) = 17 + |f|
@@ -206,7 +268,37 @@ compile-length-correct (curry f) = helper
         17 +ℕ a
       ∎
 
-    helper : length (compile-x86 (curry f)) ≡ 17 +ℕ compile-length f
+    helper : length (compile-x86 (curry f Stack)) ≡ 17 +ℕ compile-length f
+    helper = trans (cong (λ x → 13 +ℕ x) len-inner)
+                   (arith (compile-length f))
+compile-length-correct (curry f Heap) = helper
+  where
+    -- Structure with RIP-relative addressing and frame pointer (same for Stack and Heap):
+    -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷ mov ∷
+    -- (compile-x86 f ++ mov ∷ pop ∷ ret ∷ label ∷ [])
+    -- Length = 13 + (|f| + 4) = 17 + |f|
+
+    end-lbl : ℕ
+    end-lbl = 16 +ℕ compile-length f
+
+    inner-tail : List Instr
+    inner-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ label end-lbl ∷ []
+
+    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 4
+    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 4) (compile-length-correct f))
+
+    -- Prove: 13 + (a + 4) = 17 + a
+    arith : ∀ a → 13 +ℕ (a +ℕ 4) ≡ 17 +ℕ a
+    arith a =
+      begin
+        13 +ℕ (a +ℕ 4)
+      ≡⟨ cong (13 +ℕ_) (+-comm a 4) ⟩
+        13 +ℕ (4 +ℕ a)
+      ≡⟨ sym (+-assoc 13 4 a) ⟩
+        17 +ℕ a
+      ∎
+
+    helper : length (compile-x86 (curry f Heap)) ≡ 17 +ℕ compile-length f
     helper = trans (cong (λ x → 13 +ℕ x) len-inner)
                    (arith (compile-length f))
 compile-length-correct apply = refl

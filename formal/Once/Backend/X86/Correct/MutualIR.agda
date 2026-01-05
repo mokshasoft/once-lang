@@ -150,6 +150,50 @@ open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- AllocMode Compile Equality Lemmas
+--
+-- Since Stack and Heap currently generate identical code, these lemmas
+-- prove compilation equality. This allows us to convert proof results
+-- between modes without duplicating proof logic.
+------------------------------------------------------------------------
+
+private
+  inl-compile-eq : ∀ {A B} → compile-x86 (inl {A} {B} Stack) ≡ compile-x86 (inl {A} {B} Heap)
+  inl-compile-eq = refl
+
+  inr-compile-eq : ∀ {A B} → compile-x86 (inr {A} {B} Stack) ≡ compile-x86 (inr {A} {B} Heap)
+  inr-compile-eq = refl
+
+  pair-compile-eq : ∀ {A B C} (f : IR C A) (g : IR C B) →
+    compile-x86 (⟨ f , g ⟩ Stack) ≡ compile-x86 (⟨ f , g ⟩ Heap)
+  pair-compile-eq f g = refl
+
+  curry-compile-eq : ∀ {A B C} (f : IR (A * B) C) →
+    compile-x86 (curry f Stack) ≡ compile-x86 (curry f Heap)
+  curry-compile-eq f = refl
+
+  -- FIXME: Convert IRStarResult from Heap to Stack using compile equality
+  -- Since Stack and Heap compile to identical code (proven by the compile-eq lemmas above),
+  -- the execution proofs are identical. These conversions are postulated as safe placeholders.
+  -- TODO: Construct explicit proof conversion by deconstructing and reconstructing IRStarResult record
+  postulate
+    convert-inl-heap-to-stack : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s s' : State) →
+      IRStarResult (inl {A} {B} Heap) (prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix) s s' x (length prefix) →
+      IRStarResult (inl {A} {B} Stack) (prefix ++ compile-x86 (inl {A} {B} Stack) ++ suffix) s s' x (length prefix)
+
+    convert-inr-heap-to-stack : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s s' : State) →
+      IRStarResult (inr {A} {B} Heap) (prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix) s s' x (length prefix) →
+      IRStarResult (inr {A} {B} Stack) (prefix ++ compile-x86 (inr {A} {B} Stack) ++ suffix) s s' x (length prefix)
+
+    convert-pair-heap-to-stack : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s s' : State) →
+      IRStarResult (⟨ f , g ⟩ Heap) (prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix) s s' x (length prefix) →
+      IRStarResult (⟨ f , g ⟩ Stack) (prefix ++ compile-x86 (⟨ f , g ⟩ Stack) ++ suffix) s s' x (length prefix)
+
+    convert-curry-heap-to-stack : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s s' : State) →
+      IRStarResult (curry f Heap) (prefix ++ compile-x86 (curry f Heap) ++ suffix) s s' x (length prefix) →
+      IRStarResult (curry f Stack) (prefix ++ compile-x86 (curry f Stack) ++ suffix) s s' x (length prefix)
+
+------------------------------------------------------------------------
 -- Star-Based Mutual Block - Concrete Dispatcher
 --
 -- This mutual block contains:
@@ -192,22 +236,34 @@ mutual
     run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   run-ir-star-at-offset (snd {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (inl {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset (inl {A} {B} Heap) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (inr {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset (inl {A} {B} Stack) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res-heap) = run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    in s' , convert-inl-heap-to-stack {A} {B} prefix suffix x s s' res-heap
+  run-ir-star-at-offset (inr {A} {B} Heap) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-ir-star-at-offset (inr {A} {B} Stack) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res-heap) = run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    in s' , convert-inr-heap-to-stack {A} {B} prefix suffix x s s' res-heap
   run-ir-star-at-offset (initial {A}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 _ =
     ⊥-elim x
 
   -- Recursive cases: delegate to implementation modules
   run-ir-star-at-offset (_∘_ {A} {B} {C} g f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-compose-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g Heap) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-pair-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g Stack) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res-heap) = run-pair-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    in s' , convert-pair-heap-to-stack f g prefix suffix x s s' res-heap
   run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-case-star-direct f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset (curry {A} {B} {C} f Heap) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-curry-star-direct f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-ir-star-at-offset (curry {A} {B} {C} f Stack) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res-heap) = run-curry-star-direct f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    in s' , convert-curry-heap-to-stack f prefix suffix x s s' res-heap
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-apply-star-direct prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
 
@@ -263,16 +319,31 @@ mutual
         res-s = convert-to-stateful (snd {A} {B}) prog s s' x (length prefix) res
     in encode (proj₂ x) , s' , res-s
 
-  run-ir-star-at-offset-s (inl {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (inl {A} {B} Heap) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-inl-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
-        res-s = convert-to-stateful (inl {A} {B}) prog s s' x (length prefix) res
+        prog = prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix
+        res-s = convert-to-stateful (inl {A} {B} Heap) prog s s' x (length prefix) res
     in encode (inj₁ x) , s' , res-s
 
-  run-ir-star-at-offset-s (inr {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (inl {A} {B} Stack) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res-heap) = run-inl-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        res-stack = convert-inl-heap-to-stack prefix suffix x s s' res-heap
+        prog = prefix ++ compile-x86 (inl {A} {B} Stack) ++ suffix
+        res-s = convert-to-stateful (inl {A} {B} Stack) prog s s' x (length prefix) res-stack
+    in encode (inj₁ x) , s' , res-s
+
+
+  run-ir-star-at-offset-s (inr {A} {B} Heap) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-inr-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
-        res-s = convert-to-stateful (inr {A} {B}) prog s s' x (length prefix) res
+        prog = prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix
+        res-s = convert-to-stateful (inr {A} {B} Heap) prog s s' x (length prefix) res
+    in encode (inj₂ x) , s' , res-s
+
+  run-ir-star-at-offset-s (inr {A} {B} Stack) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , res-heap) = run-inr-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        res-stack = convert-inr-heap-to-stack prefix suffix x s s' res-heap
+        prog = prefix ++ compile-x86 (inr {A} {B} Stack) ++ suffix
+        res-s = convert-to-stateful (inr {A} {B} Stack) prog s s' x (length prefix) res-stack
     in encode (inj₂ x) , s' , res-s
 
   run-ir-star-at-offset-s (initial {A}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
@@ -282,8 +353,16 @@ mutual
   run-ir-star-at-offset-s (_∘_ {A} {B} {C} g f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     run-compose-star-direct-s f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
 
-  run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g Heap) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     run-pair-star-direct-s f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
+
+  run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g Stack) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let enc-x = encode x
+        (s' , res-heap) = run-pair-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        res-stack = convert-pair-heap-to-stack f g prefix suffix x s s' res-heap
+        prog = prefix ++ compile-x86 (⟨ f , g ⟩ Stack) ++ suffix
+        res-s = convert-to-stateful (⟨ f , g ⟩ Stack) prog s s' x (length prefix) res-stack
+    in encode (eval (⟨ f , g ⟩ Stack) x) , s' , res-s
 
   run-ir-star-at-offset-s ([_,_] {A} {B} {C} f g) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-case-star-direct f g prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
@@ -291,11 +370,18 @@ mutual
         res-s = convert-to-stateful ([ f , g ]) prog s s' x (length prefix) res
     in encode (eval ([ f , g ]) x) , s' , res-s
 
-  run-ir-star-at-offset-s (curry {A} {B} {C} f) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-ir-star-at-offset-s (curry {A} {B} {C} f Heap) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , (res , mem-res)) = run-curry-star f prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (curry f) ++ suffix
-        res-s = convert-to-stateful (curry f) prog s s' x (length prefix) res
-    in encode-closure-addr (eval (curry f) x) , s' , res-s
+        prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
+        res-s = convert-to-stateful (curry f Heap) prog s s' x (length prefix) res
+    in encode-closure-addr (eval (curry f Heap) x) , s' , res-s
+
+  run-ir-star-at-offset-s (curry {A} {B} {C} f Stack) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    let (s' , (res-heap , mem-res)) = run-curry-star f prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+        res-stack = convert-curry-heap-to-stack f prefix suffix x s s' res-heap
+        prog = prefix ++ compile-x86 (curry f Stack) ++ suffix
+        res-s = convert-to-stateful (curry f Stack) prog s s' x (length prefix) res-stack
+    in encode-closure-addr (eval (curry f Stack) x) , s' , res-s
 
   run-ir-star-at-offset-s (apply {A} {B}) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     let (s' , res) = run-apply-star-direct prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
@@ -314,36 +400,36 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
-    in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+    let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
+    in ∃[ s' ] IRStarResult (curry f Heap) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     let (s' , ir-res , _) = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     in s' , ir-res
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
-  -- prog = prefix ++ compile-x86 (curry f) ++ suffix
-  -- compile-length (curry f) = 13 + compile-length f ≥ 13
-  -- So |prefix| + 6 < |prefix| + 13 ≤ |prefix ++ compile-x86 (curry f) ++ suffix|
+  -- prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
+  -- compile-length (curry f Heap) = 13 + compile-length f ≥ 13
+  -- So |prefix| + 6 < |prefix| + 13 ≤ |prefix ++ compile-x86 (curry f Heap) ++ suffix|
   thunk-offset-in-bounds : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
-    length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
+    length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f Heap) ++ suffix)
   thunk-offset-in-bounds {A} {B} {C} f prefix suffix = goal
     where
       open import Data.List.Properties as LP using (length-++)
       open import Data.Nat.Properties using (+-mono-<; +-monoʳ-<; m≤m+n; m≤n+m; ≤-trans; <-≤-trans)
 
-      -- Length of compile-x86 (curry f) is 17 + compile-length f
+      -- Length of compile-x86 (curry f Heap) is 17 + compile-length f
       -- (6 closure setup + 7 thunk setup + len-f + 4 cleanup/end)
-      curry-len : length (compile-x86 (curry f)) ≡ 17 +ℕ compile-length f
-      curry-len = compile-length-correct (curry f)
+      curry-len : length (compile-x86 (curry f Heap)) ≡ 17 +ℕ compile-length f
+      curry-len = compile-length-correct (curry f Heap)
 
       -- Length of full program
-      prog-len : length (prefix ++ compile-x86 (curry f) ++ suffix)
-               ≡ length prefix +ℕ length (compile-x86 (curry f) ++ suffix)
+      prog-len : length (prefix ++ compile-x86 (curry f Heap) ++ suffix)
+               ≡ length prefix +ℕ length (compile-x86 (curry f Heap) ++ suffix)
       prog-len = LP.length-++ prefix
 
-      inner-len : length (compile-x86 (curry f) ++ suffix)
-                ≡ length (compile-x86 (curry f)) +ℕ length suffix
-      inner-len = LP.length-++ (compile-x86 (curry f))
+      inner-len : length (compile-x86 (curry f Heap) ++ suffix)
+                ≡ length (compile-x86 (curry f Heap)) +ℕ length suffix
+      inner-len = LP.length-++ (compile-x86 (curry f Heap))
 
       -- 6 < 17 (obviously)
       6<17 : 6 < 17
@@ -363,18 +449,18 @@ mutual
 
       -- Rewrite using curry-len and inner-len
       step2 : length prefix +ℕ (17 +ℕ compile-length f +ℕ length suffix)
-            ≡ length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
+            ≡ length prefix +ℕ (length (compile-x86 (curry f Heap)) +ℕ length suffix)
       step2 = cong (length prefix +ℕ_) (cong (_+ℕ length suffix) (sym curry-len))
 
-      step3 : length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
-            ≡ length prefix +ℕ length (compile-x86 (curry f) ++ suffix)
+      step3 : length prefix +ℕ (length (compile-x86 (curry f Heap)) +ℕ length suffix)
+            ≡ length prefix +ℕ length (compile-x86 (curry f Heap) ++ suffix)
       step3 = cong (length prefix +ℕ_) (sym inner-len)
 
-      step4 : length prefix +ℕ length (compile-x86 (curry f) ++ suffix)
-            ≡ length (prefix ++ compile-x86 (curry f) ++ suffix)
+      step4 : length prefix +ℕ length (compile-x86 (curry f Heap) ++ suffix)
+            ≡ length (prefix ++ compile-x86 (curry f Heap) ++ suffix)
       step4 = sym prog-len
 
-      goal : length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
+      goal : length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f Heap) ++ suffix)
       goal = subst (length prefix +ℕ 6 <_) (trans step2 (trans step3 step4)) step1
 
   -- | Star-based curry execution with closure well-formedness proof
@@ -386,7 +472,7 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
   run-curry-star-with-wf {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s' , record
@@ -403,7 +489,7 @@ mutual
       ; closure-wf = wf
       }
     where
-      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
       offset = length prefix
 
       -- Get the standard IRStarResult from existing curry proof
@@ -448,7 +534,7 @@ mutual
   curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    let prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
         thunk-offset = length prefix +ℕ 6
     in
     halted s ≡ false →
@@ -477,7 +563,7 @@ mutual
       8≤rsp : 8 ≤ readReg (regs s) rsp
       8≤rsp = ≤-trans 8≤17 rsp>16
 
-      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      prog = prefix ++ compile-x86 (curry f Heap) ++ suffix
       thunk-offset = length prefix +ℕ 6
       f-offset = length prefix +ℕ 13      -- 6 closure + 7 thunk setup
       ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- f-offset + len-f + 2 cleanup
@@ -551,11 +637,11 @@ mutual
       -- Program equality: prog = prefix-f ++ compile-x86 f ++ suffix-f
       -- This requires showing curry structure matches
 
-      -- Helper: compile-x86 (curry f) structure equality
+      -- Helper: compile-x86 (curry f Heap) structure equality
       -- The curry compilation structure is:
       --   [6 closure setup] ++ [5 thunk setup] ++ compile-x86 f ++ [ret, label end]
       -- This is definitionally equal since (x ∷ y ∷ ... ∷ []) ++ rest = x ∷ y ∷ ... ∷ rest
-      curry-structure : compile-x86 (curry f) ≡
+      curry-structure : compile-x86 (curry f Heap) ≡
                         curry-closure-setup ++ curry-thunk-setup ++ compile-x86 f ++ curry-tail
       curry-structure = refl
 

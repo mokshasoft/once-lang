@@ -120,8 +120,8 @@ record CurryResult {A B C : Type} (f : IR (A * B) C)
     -- Standard execution properties
     curry-star     : Star prog s s'
     curry-halted   : halted s' ≡ false
-    curry-pc       : pc s' ≡ offset +ℕ compile-length (curry f)
-    curry-rax      : readReg (regs s') rax ≡ encode {B ⇒ C} (eval (curry f) x)
+    curry-pc       : pc s' ≡ offset +ℕ compile-length (curry f Heap)
+    curry-rax      : readReg (regs s') rax ≡ encode {B ⇒ C} (eval (curry f Heap) x)
     curry-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     curry-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
     curry-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
@@ -132,8 +132,8 @@ record CurryResult {A B C : Type} (f : IR (A * B) C)
 
     -- The closure produced is well-formed!
     -- This is the key property that apply needs
-    -- Note: curry f : IR A (B ⇒ C), so eval (curry f) x : Closure B C
-    --       semantics = Closure.semantics (eval (curry f) x) = λ b → eval f (x , b)
+    -- Note: curry f : IR A (B ⇒ C), so eval (curry f Heap) x : Closure B C
+    --       semantics = Closure.semantics (eval (curry f Heap) x) = λ b → eval f (x , b)
     --       code-ptr = offset + 6 (thunk entry in program)
     --       env-addr = encode x (captured value)
     closure-wf : ClosureWellFormed {B} {C} prog

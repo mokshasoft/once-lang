@@ -514,10 +514,10 @@ test-fst {A} {B} a b = codegen-x86-correct (fst  {A} {B}) (a , b)
 -- Input: x
 -- Expected: x (creates pair (x,x), extracts first = x)
 test-fst-pair : ∀ {A} (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩)) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 (fst  {A} {A} ∘ (⟨ id  {A} , id  {A} ⟩ Heap))) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode x)
-test-fst-pair {A} x = codegen-x86-correct (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩) x
+test-fst-pair {A} x = codegen-x86-correct (fst  {A} {A} ∘ (⟨ id  {A} , id  {A} ⟩ Heap)) x
 
 -- | Test 4: Case analysis
 -- IR: [ id , id ]
@@ -534,10 +534,10 @@ test-case-id {A} x = codegen-x86-correct [ id  {A} , id  {A} ] x
 -- Input: a
 -- Expected: closure that takes b and returns a
 test-curry : ∀ {A B} (a : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (curry (fst  {A} {B}))) (initWithInput a) s
+  ∃[ s ] (Star (compile-x86 (curry (fst  {A} {B}) Heap)) (initWithInput a) s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry (fst  {A} {B})) a))
-test-curry {A} {B} a = codegen-x86-correct (curry (fst  {A} {B})) a
+        × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry (fst  {A} {B}) Heap) a))
+test-curry {A} {B} a = codegen-x86-correct (curry (fst  {A} {B}) Heap) a
 
 -- | Test 6: TRUE E2E - Curry + Apply composed
 -- IR: apply ∘ ⟨curry fst, id⟩
@@ -550,10 +550,10 @@ test-curry {A} {B} a = codegen-x86-correct (curry (fst  {A} {B})) a
 -- When apply calls the closure, it jumps to the thunk WITHIN THE SAME PROGRAM.
 -- With RIP-relative addressing, the code-ptr is computed correctly.
 test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩)) (initWithInput a) s
+  ∃[ s ] (Star (compile-x86 (apply  {A} {A} ∘ (⟨ curry (fst  {A} {A}) Heap , id  {A} ⟩ Heap))) (initWithInput a) s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a))
-test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a
+        × readReg (regs s) rax ≡ encode (eval (apply  {A} {A} ∘ (⟨ curry (fst  {A} {A}) Heap , id  {A} ⟩ Heap)) a))
+test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ (⟨ curry (fst  {A} {A}) Heap , id  {A} ⟩ Heap)) a
 
 ------------------------------------------------------------------------
 -- E2E Summary
@@ -575,7 +575,7 @@ test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst 
 --   - Some internal stepping lemmas (tedious but straightforward)
 --
 -- KEY INSIGHT: With RIP-relative LEA and PC-relative jumps, the compiled
--- program for `apply ∘ ⟨curry fst, id⟩` IS truly executable E2E:
+-- program for `apply ∘ ⟨curry fst, id⟩ Heap` IS truly executable E2E:
 --
 --   Layout (34 instructions):
 --     0-4:   Pair setup (push r14, push r15, sub rsp 16, mov r15 rsp, mov r14 rdi)
@@ -604,7 +604,7 @@ test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst 
 --       32:  mov rdi, rsi        ← argument to rdi
 --       33:  call r15            ← CALLS POSITION 11 (thunk within program!)
 --
---   Execution flow for apply ∘ ⟨curry fst, id⟩ on input a:
+--   Execution flow for apply ∘ ⟨curry fst, id⟩ Heap on input a:
 --     1. Pairing creates pair (closure-for-a, a)
 --     2. curry stores code-ptr=11 (computed by LEA at pc=7: 7+4=11)
 --     3. apply loads code-ptr=11, calls r15
@@ -619,12 +619,12 @@ test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst 
 -- Structural E2E Verification
 ------------------------------------------------------------------------
 --
--- To prove that apply ∘ ⟨curry fst, id⟩ is truly self-contained,
+-- To prove that apply ∘ ⟨curry fst, id⟩ Heap is truly self-contained,
 -- we verify that the thunk address computed by curry is within the program:
 
 -- | Compiled program for curry ∘ ⟨curry fst, id⟩
 curry-apply-prog : {A : Type} → Program
-curry-apply-prog {A} = compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩)
+curry-apply-prog {A} = compile-x86 (apply  {A} {A} ∘ (⟨ (curry (fst  {A} {A}) Heap) , id  {A} ⟩ Heap))
 
 -- | Program length
 curry-apply-len : {A : Type} → ℕ
@@ -676,56 +676,56 @@ lea-computes-thunk = refl
 
 -- | Curry-Apply Fundamental Theorem
 --
--- For any f : IR (A * B) C, the composition `apply ∘ ⟨curry f ∘ fst, snd⟩`
+-- For any f : IR (A * B) C, the composition `apply ∘ ⟨curry f Heap ∘ fst, snd⟩ Heap`
 -- correctly implements f. This is the categorical curry-apply law at the
 -- code generation level.
 --
--- Semantically: eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a, b) = eval f (a, b)
+-- Semantically: eval (apply ∘ ⟨curry f Heap ∘ fst, snd⟩ Heap) (a, b) = eval f (a, b)
 curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ fst , snd ⟩)) (initWithInput (a , b)) s
+  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f Heap ∘ fst , snd ⟩ Heap)) (initWithInput (a , b)) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (a , b)))
 curry-apply-composition {A} {B} {C} f a b =
   -- This follows directly from codegen-x86-correct
-  -- The key is that eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a,b) = eval f (a,b)
+  -- The key is that eval (apply ∘ ⟨curry f Heap ∘ fst, snd⟩ Heap) (a,b) = eval f (a,b)
   -- by the categorical curry-apply law (proven in Once.Category.Laws)
-  codegen-x86-correct (apply ∘ ⟨ curry f ∘ fst , snd ⟩) (a , b)
+  codegen-x86-correct (apply ∘ ⟨ curry f Heap ∘ fst , snd ⟩ Heap) (a , b)
 
 -- | Curry-Apply with arbitrary second component
 --
 -- More general: for any f : IR (A * B) C and g : IR D B,
--- `apply ∘ ⟨curry f, g⟩` applies the closure (curry f x) to (g x).
+-- `apply ∘ ⟨curry f Heap, g⟩ Heap` applies the closure (curry f Heap x) to (g x).
 --
--- Semantically: eval (apply ∘ ⟨curry f, g⟩) x = eval f (x, eval g x)
+-- Semantically: eval (apply ∘ ⟨curry f Heap, g⟩ Heap) x = eval f (x, eval g x)
 curry-apply-any-g : ∀ {A B C} (f : IR (A * B) C) (g : IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , g ⟩)) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f Heap , g ⟩ Heap)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (x , eval g x)))
 curry-apply-any-g {A} {B} {C} f g x =
-  codegen-x86-correct (apply ∘ ⟨ curry f , g ⟩) x
+  codegen-x86-correct (apply ∘ ⟨ curry f Heap , g ⟩ Heap) x
 
 -- | Curry-Apply with identity (the E2E test case)
 --
--- Special case: `apply ∘ ⟨curry f, id⟩` where the argument is passed through.
+-- Special case: `apply ∘ ⟨curry f Heap, id⟩ Heap` where the argument is passed through.
 -- This is the pattern proven step-by-step in E2E-Trace below.
 --
--- Semantically: eval (apply ∘ ⟨curry f, id⟩) x = eval f (x, x)
+-- Semantically: eval (apply ∘ ⟨curry f Heap, id⟩ Heap) x = eval f (x, x)
 curry-apply-id : ∀ {A C} (f : IR (A * A) C) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , id ⟩)) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f Heap , id ⟩ Heap)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (x , x)))
 curry-apply-id {A} {C} f x =
-  codegen-x86-correct (apply ∘ ⟨ curry f , id ⟩) x
+  codegen-x86-correct (apply ∘ ⟨ curry f Heap , id ⟩ Heap) x
 
 -- | Curry-Apply with constant environment
 --
 -- Shows curry works with a constant captured value:
--- `apply ∘ ⟨curry f ∘ terminal, id⟩` where f : IR (Unit * A) B
+-- `apply ∘ ⟨curry f Heap ∘ terminal, id⟩ Heap` where f : IR (Unit * A) B
 -- The closure captures unit (empty environment) and applies to the input.
 curry-apply-const-env : ∀ {A B} (f : IR (Unit * A) B) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ terminal , id ⟩)) (initWithInput x) s
+  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f Heap ∘ terminal , id ⟩ Heap)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (tt , x)))
 curry-apply-const-env {A} {B} f x =
-  codegen-x86-correct (apply ∘ ⟨ curry f ∘ terminal , id ⟩) x
+  codegen-x86-correct (apply ∘ ⟨ curry f Heap ∘ terminal , id ⟩ Heap) x
 
