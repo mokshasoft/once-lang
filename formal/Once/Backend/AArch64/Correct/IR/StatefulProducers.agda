@@ -51,7 +51,7 @@ open import Data.Nat.Properties using (+-identityʳ; +-assoc; m∸n≤m)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
 ------------------------------------------------------------------------
@@ -64,23 +64,23 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 --
 -- The key insight: inl writes tag=0 at new-sp and addr-in at new-sp+8.
 -- From these writes we can directly construct InlAtS.
-run-inl-star-s : ∀ {i} {A B} (prefix suffix : Program) (addr-in : Word) (s : State) →
+run-inl-star-s : ∀ {A B} (prefix suffix : Program) (addr-in : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ addr-in →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (inl {i} {A} {B}) ++ suffix
+  let prog = prefix ++ compile-aarch64 (inl {A} {B}) ++ suffix
       new-sp = readSP (regs s) ∸ 16
-  in ∃[ s' ] (IRStarResultS (inl {i} {A} {B}) prog s s' new-sp (length prefix)
+  in ∃[ s' ] (IRStarResultS (inl {A} {B}) prog s s' new-sp (length prefix)
              × InlAtS addr-in new-sp (memory s'))
-run-inl-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+run-inl-star-s {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   s4 , (result-s , validity)
   where
     -- Program
     prog : Program
-    prog = prefix ++ compile-aarch64 {_} {A} {A + B} inl ++ suffix
+    prog = prefix ++ compile-aarch64 (inl {A} {B}) ++ suffix
 
     orig-sp : Word
     orig-sp = readSP (regs s)
@@ -305,7 +305,7 @@ run-inl-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv
     x0-s4 : readReg (regs s4) x0 ≡ new-sp
     x0-s4 = readReg-writeReg-same (regs s3) x0 new-sp
 
-    result-s : IRStarResultS (inl {i} {A} {B}) prog s s4 new-sp (length prefix)
+    result-s : IRStarResultS (inl {A} {B}) prog s s4 new-sp (length prefix)
     result-s = record
       { ir-star = star-proof
       ; ir-halted = h4
@@ -322,6 +322,7 @@ run-inl-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv
       ; ir-stack-inv = stack-inv'
       ; ir-x29-inv = x29-inv'
       ; ir-sp-bound = sp>16'
+      ; ir-closure-entry = nothing
       }
 
 ------------------------------------------------------------------------
@@ -330,23 +331,23 @@ run-inl-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv
 
 -- | Stateful Star-based inr execution
 -- Returns IRStarResultS with explicit address plus InrAtS validity proof.
-run-inr-star-s : ∀ {i} {A B} (prefix suffix : Program) (addr-in : Word) (s : State) →
+run-inr-star-s : ∀ {A B} (prefix suffix : Program) (addr-in : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ addr-in →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (inr {i} {A} {B}) ++ suffix
+  let prog = prefix ++ compile-aarch64 (inr {A} {B}) ++ suffix
       new-sp = readSP (regs s) ∸ 16
-  in ∃[ s' ] (IRStarResultS (inr {i} {A} {B}) prog s s' new-sp (length prefix)
+  in ∃[ s' ] (IRStarResultS (inr {A} {B}) prog s s' new-sp (length prefix)
              × InrAtS addr-in new-sp (memory s'))
-run-inr-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+run-inr-star-s {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   s5 , (result-s , validity)
   where
     -- Program
     prog : Program
-    prog = prefix ++ compile-aarch64 {_} {B} {A + B} inr ++ suffix
+    prog = prefix ++ compile-aarch64 (inr {A} {B}) ++ suffix
 
     orig-sp : Word
     orig-sp = readSP (regs s)
@@ -610,7 +611,7 @@ run-inr-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv
     x0-s5 : readReg (regs s5) x0 ≡ new-sp
     x0-s5 = readReg-writeReg-same (regs s4) x0 new-sp
 
-    result-s : IRStarResultS (inr {i} {A} {B}) prog s s5 new-sp (length prefix)
+    result-s : IRStarResultS (inr {A} {B}) prog s s5 new-sp (length prefix)
     result-s = record
       { ir-star = star-proof
       ; ir-halted = h5
@@ -627,4 +628,5 @@ run-inr-star-s {i} {A} {B} prefix suffix addr-in s h-false pc-eq x0-eq stack-inv
       ; ir-stack-inv = stack-inv'
       ; ir-x29-inv = x29-inv'
       ; ir-sp-bound = sp>16'
+      ; ir-closure-entry = nothing
       }

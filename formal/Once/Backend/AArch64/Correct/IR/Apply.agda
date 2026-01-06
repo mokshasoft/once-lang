@@ -104,7 +104,7 @@ mkApplyContext {A} {B} prefix suffix = record
   ; apply-code = the-apply-code
   }
   where
-    the-apply-code = compile-aarch64 (apply {_} {A} {B})
+    the-apply-code = compile-aarch64 (apply {A} {B})
     the-prog = prefix ++ the-apply-code ++ suffix
 
 ------------------------------------------------------------------------
@@ -185,7 +185,7 @@ record ApplyResult {A B : Type}
     apply-pc : pc s-final ≡ length prefix +ℕ 6
 
     -- x0 contains result of applying closure to argument
-    apply-x0 : readReg (regs s-final) x0 ≡ encode {B} (eval (apply {_} {A} {B}) x)
+    apply-x0 : readReg (regs s-final) x0 ≡ encode {B} (eval (apply {A} {B}) x)
 
     -- Callee-saved registers preserved
     apply-x20 : readReg (regs s-final) x20 ≡ readReg (regs s) x20
@@ -215,7 +215,7 @@ open ApplyResult public
 --   x0 = encode (eval f (env, arg))
 --   Then ret returns to x30 (instruction after blr)
 
-record ThunkResultExec {i} {A B C : Type} (f : IR (A * B) C)
+record ThunkResultExec {A B C : Type} (f : IR (A * B) C)
                        (env : ⟦ A ⟧) (arg : ⟦ B ⟧)
                        (s s-after : State) : Set where
   field
@@ -263,6 +263,6 @@ open ThunkResultExec public
 ------------------------------------------------------------------------
 
 -- | compile-length apply = 6
-compile-length-apply : ∀ {A B : Type} → compile-length (apply {_} {A} {B}) ≡ 6
+compile-length-apply : ∀ {A B : Type} → compile-length (apply {A} {B}) ≡ 6
 compile-length-apply = refl
 

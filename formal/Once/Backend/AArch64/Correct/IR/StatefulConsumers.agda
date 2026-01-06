@@ -56,7 +56,7 @@ open import Data.Nat.Properties using (≤-refl; +-assoc; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 
@@ -72,7 +72,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 --
 -- The key: PairAtS.fst-valid proves readMem addr-pair = just addr-a
 -- This makes the ldr instruction load addr-a into x0.
-run-fst-star-s : ∀ {i} {A B} (prefix suffix : Program)
+run-fst-star-s : ∀ {A B} (prefix suffix : Program)
   (addr-a addr-b addr-pair : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -81,14 +81,14 @@ run-fst-star-s : ∀ {i} {A B} (prefix suffix : Program)
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (fst {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResultS (fst {i} {A} {B}) prog s s' addr-a (length prefix)
-run-fst-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
+  let prog = prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultS (fst {A} {B}) prog s s' addr-a (length prefix)
+run-fst-star-s {A} {B} prefix suffix addr-a addr-b addr-pair s
                h-false pc-eq x0-eq pair-valid stack-inv x29-inv sp>16 =
   s1 , result-s
   where
     prog : Program
-    prog = prefix ++ compile-aarch64 (fst {i} {A} {B}) ++ suffix
+    prog = prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix
 
     -- fst generates 1 instruction: ldr x0 [x0]
     -- Use validity to prove the load succeeds
@@ -170,7 +170,7 @@ run-fst-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
     sp>16' : readSP (regs s1) > 16
     sp>16' = sp-bound-after-stack-op s1
 
-    result-s : IRStarResultS (fst {i} {A} {B}) prog s s1 addr-a (length prefix)
+    result-s : IRStarResultS (fst {A} {B}) prog s s1 addr-a (length prefix)
     result-s = record
       { ir-star = star-proof
       ; ir-halted = h1
@@ -187,6 +187,7 @@ run-fst-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
       ; ir-stack-inv = stack-inv'
       ; ir-x29-inv = x29-inv'
       ; ir-sp-bound = sp>16'
+      ; ir-closure-entry = nothing
       }
 
 ------------------------------------------------------------------------
@@ -194,7 +195,7 @@ run-fst-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
 ------------------------------------------------------------------------
 
 -- | Stateful snd: consumes PairAtS to prove the load succeeds
-run-snd-star-s : ∀ {i} {A B} (prefix suffix : Program)
+run-snd-star-s : ∀ {A B} (prefix suffix : Program)
   (addr-a addr-b addr-pair : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -203,14 +204,14 @@ run-snd-star-s : ∀ {i} {A B} (prefix suffix : Program)
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (snd {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResultS (snd {i} {A} {B}) prog s s' addr-b (length prefix)
-run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
+  let prog = prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultS (snd {A} {B}) prog s s' addr-b (length prefix)
+run-snd-star-s {A} {B} prefix suffix addr-a addr-b addr-pair s
                h-false pc-eq x0-eq pair-valid stack-inv x29-inv sp>16 =
   s1 , result-s
   where
     prog : Program
-    prog = prefix ++ compile-aarch64 (snd {i} {A} {B}) ++ suffix
+    prog = prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix
 
     -- snd generates 1 instruction: ldr x0 [x0+8]
     -- Use validity to prove the load succeeds
@@ -289,7 +290,7 @@ run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
     sp>16' : readSP (regs s1) > 16
     sp>16' = sp-bound-after-stack-op s1
 
-    result-s : IRStarResultS (snd {i} {A} {B}) prog s s1 addr-b (length prefix)
+    result-s : IRStarResultS (snd {A} {B}) prog s s1 addr-b (length prefix)
     result-s = record
       { ir-star = star-proof
       ; ir-halted = h1
@@ -306,6 +307,7 @@ run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
       ; ir-stack-inv = stack-inv'
       ; ir-x29-inv = x29-inv'
       ; ir-sp-bound = sp>16'
+      ; ir-closure-entry = nothing
       }
 
 ------------------------------------------------------------------------
@@ -315,7 +317,7 @@ run-snd-star-s {i} {A} {B} prefix suffix addr-a addr-b addr-pair s
 -- | Result type for stateful case
 -- Case returns either the result of f (for inl) or g (for inr)
 -- along with the output address
-record CaseResultS {i} {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseResultS {A B C : Type} (f : IR A C) (g : IR B C)
                    (prog : Program) (s s' : State) (addr-out : Word)
                    (offset : ℕ) : Set where
   field
@@ -335,7 +337,7 @@ open CaseResultS public
 
 -- | Stateful case for inl input
 -- Takes InlAtS validity, runs f on the extracted value
-run-case-inl-star-s : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
+run-case-inl-star-s : ∀ {A B C} (f : IR A C) (g : IR B C)
   (prefix suffix : Program)
   (addr-val addr-sum : Word) (s : State) →
   halted s ≡ false →
@@ -1023,7 +1025,7 @@ run-case-inl-star-s f g prefix suffix addr-val addr-sum s
 
 -- | Stateful case for inr input
 -- Takes InrAtS validity, runs g on the extracted value
-run-case-inr-star-s : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
+run-case-inr-star-s : ∀ {A B C} (f : IR A C) (g : IR B C)
   (prefix suffix : Program)
   (addr-val addr-sum : Word) (s : State) →
   halted s ≡ false →

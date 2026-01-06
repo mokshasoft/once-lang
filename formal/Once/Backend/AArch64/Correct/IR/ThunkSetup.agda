@@ -75,7 +75,7 @@ fetch-at-prefix-end (x ∷ prefix) i suffix = fetch-at-prefix-end prefix i suffi
 -- | Prove thunk setup: traces 4 instructions
 -- Entry: pc = thunk-offset, x0 = encode arg, x19 = encode env, x30 = return addr
 -- Exit: pc = f-offset, x0 = encode (env, arg)
-thunk-setup-star : ∀ {i A B C} (f : IR (A * B) C)
+thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6

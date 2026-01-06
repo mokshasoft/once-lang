@@ -86,6 +86,12 @@ open import Once.Backend.AArch64.Correct.IR.StatefulConsumers public
 open import Once.Backend.AArch64.Correct.IR.StatefulCompose public
   using (run-compose-star-s)
 
+-- Import ClosureContext for closure entry tracking
+open import Once.Backend.AArch64.Correct.ClosureContext
+  using (ClosureEntry; make-entry)
+open import Once.Backend.AArch64.Correct.ClosureWellFormed
+  using (ClosureWellFormed)
+
 -- Import extracted IR helper modules (non-recursive parts)
 open import Once.Backend.AArch64.Correct.IR.Compose
   using (ComposeContext; mkComposeContext;
@@ -2947,6 +2953,24 @@ mutual
       -- Convert to IRStarResult by adding encode proof
       -- CurryResultS.curry-closure-addr is the closure address
       -- We need to prove: readReg (regs s-final) x0 ≡ encode (eval (curry f) x)
+      -- Construct ClosureEntry for the produced closure
+      -- Thunk offset is at prefix length + 6 (after curry setup instructions)
+      thunk-offset : ℕ
+      thunk-offset = length prefix +ℕ 6
+
+      -- TODO Phase 5.1: Replace with actual ClosureWellFormed proof
+      postulate
+        curry-closure-wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+
+      closure-entry : ClosureEntry prog
+      closure-entry = make-entry
+        {A = B} {B = C}
+        (CurryResultS.curry-closure-addr curry-res)  -- closure-addr (= new-sp)
+        thunk-offset                                  -- code-ptr
+        (encode x)                                     -- env-addr
+        (λ b → eval f (x , b))                        -- semantics
+        curry-closure-wf                              -- wf
+
       ir-result : IRStarResult (curry f) prog s s-final x (length prefix)
       ir-result = record
         { ir-star = CurryResultS.curry-star curry-res
@@ -2967,6 +2991,7 @@ mutual
         ; ir-stack-inv = CurryResultS.curry-stack-inv curry-res
         ; ir-x29-inv = CurryResultS.curry-x29-inv curry-res
         ; ir-sp-bound = CurryResultS.curry-sp-bound curry-res
+        ; ir-closure-entry = just closure-entry
         }
 
   -- | curry-thunk-correct-impl: Implementation using IH

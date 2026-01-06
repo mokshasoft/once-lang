@@ -34,8 +34,6 @@ open import Once.Backend.AArch64.Correct.StackInvariant
   using (StackInvariant; X29Invariant; x21-unused; stack-below-x21)
 open import Once.Backend.AArch64.Correct.MemoryValid
   using (ClosureAtS; PairAtS)
-open import Once.Backend.AArch64.Correct.StarBase
-  using (PairResultS; ComposeResultS)
 
 open import Once.Backend.AArch64.Correct.Foundation
   using (encode; encode-pair-fst; encode-pair-snd;
@@ -142,7 +140,7 @@ open ClosureWellFormed public
 --
 -- This is a placeholder for Phase 1. In Phase 2, we'll add thunk execution proofs.
 -- For now, it just captures the validity of the closure structure in memory.
-record ClosureWellFormedS {i A B C} (f : IR i (A * B) C) (prog : Program) (offset : ℕ) (env-val : Word) : Set where
+record ClosureWellFormedS {A B C} (f : IR (A * B) C) (prog : Program) (offset : ℕ) (env-val : Word) : Set where
   field
     -- Stateful validity: closure exists at closure address
     closure-valid-s : ∀ (closure-addr : Word) (m : Memory) →
@@ -164,7 +162,7 @@ open ClosureWellFormedS public
 -- - x0 = closure address (new-sp after sub-sp 16)
 -- - [closure]   = env-addr = encode x
 -- - [closure+8] = code-ptr = offset + 6
-record CurryResult {i} {A B C : Type} (f : IR (A * B) C)
+record CurryResult {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                    (offset : ℕ) : Set where
   field
@@ -211,7 +209,7 @@ open CurryResult public
 -- 1. curry-closure-addr: explicit closure address (instead of encode)
 -- 2. curry-closure-valid: ClosureAtS validity proof
 -- 3. closure-wf-s: ClosureWellFormedS proof (stateful version)
-record CurryResultS {i} {A B C : Type} (f : IR i (A * B) C)
+record CurryResultS {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (env-val : Word)
                    (offset : ℕ) : Set where
   field
@@ -277,7 +275,7 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
   field
     apply-star      : Star prog s s'
     apply-halted    : halted s' ≡ false
-    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {_} {A} {B})
+    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
     apply-x0        : readReg (regs s') x0 ≡ encode (Closure.semantics cl a)
     apply-x20       : readReg (regs s') x20 ≡ readReg (regs s) x20
     apply-x21       : readReg (regs s') x21 ≡ readReg (regs s) x21
@@ -379,7 +377,7 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (cl : Closure A B) (a : ⟦ A ⟧) (s : State)
                     (code-ptr env-addr : ℕ) →
   ClosureWellFormed {A} {B}
-    (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix)
+    (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix)
     code-ptr env-addr (Closure.semantics cl) →
   -- Relate runtime parameters to closure's runtime fields
   code-ptr ≡ Closure.code-ptr cl →
@@ -390,7 +388,7 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
   StackInvariant s →
   readSP (regs s) > 16 →
   ∃[ s' ] ApplyWithWFResult
-            (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix)
+            (prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix)
             s s' cl a (length prefix)
 run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
                   code-ptr≡ env-addr≡ h-eq pc-eq x0-eq stack-inv sp>16 =
@@ -406,7 +404,7 @@ run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
     ; apply-sp-bound  = ThunkResult.thunk-sp-bound thunk-res
     }
   where
-    prog = prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix
+    prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
 
     -- Apply instruction breakdown for step-by-step tracing
     apply-rest-1 = ldr x10 (base+imm x0 8) ∷ ldr x19 (base x9) ∷
@@ -819,7 +817,7 @@ run-apply-with-wf {A} {B} prefix suffix cl a s code-ptr env-addr wf
     pc-final = proj₂ (proj₂ thunk-result)
 
     -- Prove pc s-final ≡ length prefix + compile-length apply
-    pc-final-apply : pc s-final ≡ length prefix +ℕ compile-length (apply {_} {A} {B})
+    pc-final-apply : pc s-final ≡ length prefix +ℕ compile-length (apply {A} {B})
     pc-final-apply = trans pc-final refl  -- compile-length apply = 6
 
     -- Track x20, x21, x29 to final state via thunk

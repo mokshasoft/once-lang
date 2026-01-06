@@ -53,7 +53,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- - Uses x29 as frame pointer (not rbp)
 -- - Uses SP functions (readSP) for stack pointer
 record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
-                    (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
+                    (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
   field
     -- Execution
     ir-star       : Star prog s s'
@@ -85,6 +85,11 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-x29-inv    : X29Invariant s'
     ir-sp-bound   : readSP (regs s') > 16
 
+    -- Closure tracking (for eliminating apply-produces-result postulate)
+    -- When curry produces a closure, it provides (just entry).
+    -- Other operations preserve context with nothing.
+    ir-closure-entry : Maybe (ClosureEntry prog)
+
 open IRStarResult public
 
 ------------------------------------------------------------------------
@@ -95,7 +100,7 @@ open IRStarResult public
 -- Recursive case handlers (compose, pair, case, curry, apply) take
 -- an IRRunner as a parameter, allowing them to be defined outside
 -- the mutual block. This dramatically reduces compilation time.
-IRRunner : Set
+IRRunner : Set₁
 IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
