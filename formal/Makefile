@@ -1,6 +1,6 @@
 # Makefile for Once formal verification (Agda proofs)
 #
-# This Makefile runs Agda type-checking within the nix develop shell.
+# PREREQUISITE: Run from within 'nix develop' shell (from repo root).
 # The standard library path is discovered dynamically from the Nix environment.
 #
 # Usage:
@@ -96,9 +96,6 @@ TYPECHECK_SOUND := Once/TypeCheck/Sound.agda
 TYPECHECK_ELABORATE := Once/TypeCheck/Elaborate.agda
 TYPECHECK_MAIN := Once/TypeCheck.agda
 
-# Nix develop wrapper: suppress warnings and banner
-NIX_DEVELOP := ONCE_QUIET=1 NIX_CONFIG="warn-dirty = false" nix --quiet develop '..\#agda' --command
-
 # Agda command: discovers standard library path from Nix store
 # The library file is created dynamically to avoid hardcoded paths
 define AGDA_CMD
@@ -121,163 +118,163 @@ frontend: postulates laws surface surfaceir optimize common
 .PHONY: postulates
 postulates:
 	@echo "Type-checking postulates..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(POSTULATES)'
+	@sh -c '$(AGDA_CMD) $(POSTULATES)'
 
 .PHONY: laws
 laws:
 	@echo "Type-checking categorical laws..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(LAWS)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(SOUNDNESS)'
+	@sh -c '$(AGDA_CMD) $(LAWS)'
+	@sh -c '$(AGDA_CMD) $(SOUNDNESS)'
 
 .PHONY: surface
 surface:
 	@echo "Type-checking surface syntax elaboration..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ELABORATE)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(CORRECT)'
+	@sh -c '$(AGDA_CMD) $(ELABORATE)'
+	@sh -c '$(AGDA_CMD) $(CORRECT)'
 
 .PHONY: surfaceir
 surfaceir:
 	@echo "Type-checking surface IR and desugar..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(SURFACE_IR)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(SURFACE_IR)'
+	@sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR)'
+	@sh -c '$(AGDA_CMD) $(SURFACE_DESUGAR_CORRECT)'
 
 .PHONY: optimize
 optimize:
 	@echo "Type-checking optimizer..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(OPTIMIZE)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(OPTIMIZE_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(OPTIMIZE)'
+	@sh -c '$(AGDA_CMD) $(OPTIMIZE_CORRECT)'
 
 .PHONY: common
 common:
 	@echo "Type-checking common backend lemmas..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(COMMON_FETCH)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(COMMON_EXEC)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(COMMON_MEMORY)'
+	@sh -c '$(AGDA_CMD) $(COMMON_FETCH)'
+	@sh -c '$(AGDA_CMD) $(COMMON_EXEC)'
+	@sh -c '$(AGDA_CMD) $(COMMON_MEMORY)'
 
 .PHONY: x86
 x86:
 	@echo "Type-checking x86-64 backend..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
+	@sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
+	@sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
+	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
 .PHONY: x86-correct
 x86-correct:
 	@echo "Type-checking x86-64 correctness proofs only..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
 .PHONY: x86-star
 x86-star:
 	@echo "Type-checking x86-64 star relation module..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_STAR)'
+	@sh -c '$(AGDA_CMD) $(X86_STAR)'
 
 .PHONY: x86-starbase
 x86-starbase:
 	@echo "Type-checking x86-64 star base proofs..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_STARBASE)'
+	@sh -c '$(AGDA_CMD) $(X86_STARBASE)'
 
 .PHONY: x86-encoding
 x86-encoding:
 	@echo "Type-checking x86-64 encoding derivations..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_ENCODING)'
+	@sh -c '$(AGDA_CMD) $(X86_ENCODING)'
 
 .PHONY: aarch64
 aarch64:
 	@echo "Type-checking AArch64 backend..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_SYNTAX)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_SEMANTICS)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_SYNTAX)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_SEMANTICS)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_CODEGEN)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
 .PHONY: aarch64-correct
 aarch64-correct:
 	@echo "Type-checking AArch64 correctness proofs only..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
 .PHONY: aarch64-foundation
 aarch64-foundation:
 	@echo "Type-checking AArch64 foundation module only..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_FOUNDATION)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_FOUNDATION)'
 
 .PHONY: riscv
 riscv:
 	@echo "Type-checking RISC-V 64-bit backend..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
-	@if [ -f "$(RISCV_SEMANTICS)" ]; then $(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_SEMANTICS)'; fi
-	@if [ -f "$(RISCV_CODEGEN)" ]; then $(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
-	@if [ -f "$(RISCV_CORRECT)" ]; then $(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
+	@sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
+	@if [ -f "$(RISCV_SEMANTICS)" ]; then sh -c '$(AGDA_CMD) $(RISCV_SEMANTICS)'; fi
+	@if [ -f "$(RISCV_CODEGEN)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
+	@if [ -f "$(RISCV_CORRECT)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
 .PHONY: riscv-correct
 riscv-correct:
 	@echo "Type-checking RISC-V correctness proofs only..."
-	@if [ -f "$(RISCV_CORRECT)" ]; then $(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
+	@if [ -f "$(RISCV_CORRECT)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
 .PHONY: riscv-foundation
 riscv-foundation:
 	@echo "Type-checking RISC-V foundation module only..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_FOUNDATION)'
+	@sh -c '$(AGDA_CMD) $(RISCV_FOUNDATION)'
 
 .PHONY: endtoend
 endtoend:
 	@echo "Type-checking end-to-end compilation theorem (x86)..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ENDTOEND)'
+	@sh -c '$(AGDA_CMD) $(ENDTOEND)'
 
 .PHONY: endtoend-aarch64
 endtoend-aarch64:
 	@echo "Type-checking end-to-end compilation theorem (AArch64)..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ENDTOEND_AARCH64)'
+	@sh -c '$(AGDA_CMD) $(ENDTOEND_AARCH64)'
 
 .PHONY: primitives
 primitives:
 	@echo "Type-checking primitive specifications..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(PRIM_MEMORY)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(PRIM_IO)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(PRIM_THREAD)'
+	@sh -c '$(AGDA_CMD) $(PRIM_MEMORY)'
+	@sh -c '$(AGDA_CMD) $(PRIM_IO)'
+	@sh -c '$(AGDA_CMD) $(PRIM_THREAD)'
 
 .PHONY: termination
 termination:
 	@echo "Type-checking termination proof (orthogonal IR termination)..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TERMINATION)'
+	@sh -c '$(AGDA_CMD) $(TERMINATION)'
 
 .PHONY: spf
 spf:
 	@echo "Type-checking strictly positive functors..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(SPF)'
+	@sh -c '$(AGDA_CMD) $(SPF)'
 
 .PHONY: arith
 arith:
 	@echo "Type-checking arithmetic compiler (OCP-0001)..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_TYPE)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_IR)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_SEMANTICS)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_SYNTAX)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_AARCH64_SYNTAX)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CORRECT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_RISCV_SYNTAX)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_RISCV_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_RISCV_CORRECT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
+	@sh -c '$(AGDA_CMD) $(ARITH_TYPE)'
+	@sh -c '$(AGDA_CMD) $(ARITH_IR)'
+	@sh -c '$(AGDA_CMD) $(ARITH_SEMANTICS)'
+	@sh -c '$(AGDA_CMD) $(ARITH_X86_SYNTAX)'
+	@sh -c '$(AGDA_CMD) $(ARITH_X86_CODEGEN)'
+	@sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(ARITH_AARCH64_SYNTAX)'
+	@sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CODEGEN)'
+	@sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(ARITH_RISCV_SYNTAX)'
+	@sh -c '$(AGDA_CMD) $(ARITH_RISCV_CODEGEN)'
+	@sh -c '$(AGDA_CMD) $(ARITH_RISCV_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
 
 .PHONY: arith-correct
 arith-correct:
 	@echo "Type-checking arithmetic correctness proof only..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+	@sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
 
 .PHONY: arith-boundary
 arith-boundary:
 	@echo "Type-checking arithmetic boundary proof only..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
+	@sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
 
 .PHONY: malonzo
 malonzo:
 	@echo "Extracting entire compiler via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
 	@echo "Copying extracted modules to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Surface
@@ -299,16 +296,16 @@ malonzo:
 .PHONY: emit
 emit:
 	@echo "Type-checking assembly emission modules..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(AARCH64_EMIT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(X86_EMIT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(RISCV_EMIT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(EMIT_ALL)'
+	@sh -c '$(AGDA_CMD) $(AARCH64_EMIT)'
+	@sh -c '$(AGDA_CMD) $(X86_EMIT)'
+	@sh -c '$(AGDA_CMD) $(RISCV_EMIT)'
+	@sh -c '$(AGDA_CMD) $(EMIT_ALL)'
 
 .PHONY: malonzo-codegen
 malonzo-codegen:
 	@echo "Extracting verified code generators via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Backend
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Backend/* ../compiler/src/MAlonzo/Code/Once/Backend/
@@ -323,7 +320,7 @@ malonzo-codegen:
 malonzo-arith:
 	@echo "Extracting verified arithmetic backends via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_EMIT)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_EMIT)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/X86
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/AArch64
@@ -341,9 +338,9 @@ malonzo-arith:
 malonzo-arith-codegen:
 	@echo "Extracting verified arithmetic code generators via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_X86_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_AARCH64_CODEGEN)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_RISCV_CODEGEN)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_X86_CODEGEN)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_AARCH64_CODEGEN)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_RISCV_CODEGEN)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/X86
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Arith/Backend/AArch64
@@ -361,37 +358,37 @@ malonzo-arith-codegen:
 .PHONY: typecheck-verified
 typecheck-verified:
 	@echo "Type-checking verified type checker (OCP-0003)..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RAW)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_CONTEXT)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_ERROR)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_RAW)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_CONTEXT)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_ERROR)'
 
 # Core type checker modules (inference + soundness, no extraction yet)
 .PHONY: typecheck-core
 typecheck-core: typecheck-verified
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_UNIFY)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_INFER)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_SOUND)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_UNIFY)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_INFER)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_SOUND)'
 	@echo "Core type checker type-checks successfully!"
 
 # Full type checker with scope resolution and extraction entry point
 .PHONY: typecheck-full
 typecheck-full: typecheck-core
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_RESOLVE)'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_MAIN)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_RESOLVE)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_MAIN)'
 	@echo "Verified type checker type-checks successfully!"
 
 # Fast target for checking just the Elaborate module (for quick iteration)
 .PHONY: typecheck-elaborate
 typecheck-elaborate:
 	@echo "Type-checking TypeCheck.Elaborate module..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(TYPECHECK_ELABORATE)'
+	@sh -c '$(AGDA_CMD) $(TYPECHECK_ELABORATE)'
 	@echo "TypeCheck.Elaborate type-checks successfully!"
 
 .PHONY: malonzo-typecheck
 malonzo-typecheck:
 	@echo "Extracting verified type checker via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/TypeCheck
 	@cp -r _build/malonzo/MAlonzo/Code/Once/TypeCheck/* ../compiler/src/MAlonzo/Code/Once/TypeCheck/ 2>/dev/null || true
@@ -402,7 +399,7 @@ malonzo-typecheck:
 malonzo-elaborate:
 	@echo "Extracting Surface.Elaborate via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ELABORATE)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ELABORATE)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Surface
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Surface/* ../compiler/src/MAlonzo/Code/Once/Surface/ 2>/dev/null || true
@@ -412,11 +409,11 @@ malonzo-elaborate:
 malonzo-core:
 	@echo "Extracting core modules (Type, IR, Semantics, Memory, Postulates) via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Type.agda'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/IR.agda'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Semantics.agda'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Memory.agda'
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Postulates.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Type.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/IR.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Semantics.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Memory.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Postulates.agda'
 	@echo "Copying core modules to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once
 	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
@@ -454,4 +451,4 @@ clean:
 agda:
 	@if [ -z "$(MODULE)" ]; then echo "Usage: make agda MODULE=Once/Path/To/File.agda"; exit 1; fi
 	@echo "Type-checking $(MODULE)..."
-	@$(NIX_DEVELOP) sh -c '$(AGDA_CMD) $(MODULE)'
+	@sh -c '$(AGDA_CMD) $(MODULE)'
