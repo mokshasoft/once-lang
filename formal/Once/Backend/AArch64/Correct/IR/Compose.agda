@@ -33,7 +33,7 @@ open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl; ≤-trans; ≤
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
@@ -61,7 +61,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --
 -- Total: (len-f + 1) + len-g = compile-length (g ∘ f)
 
-record ComposeContext {i} {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeContext {A B C : Type} (f : IR A B) (g : IR B C)
                       (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -98,9 +98,9 @@ record ComposeContext {i} {A B C : Type} (f : IR A B) (g : IR B C)
 open ComposeContext public
 
 -- | Construct ComposeContext from IR terms and prefix/suffix
-mkComposeContext : ∀ {i} {A B C : Type} (f : IR A B) (g : IR B C)
+mkComposeContext : ∀ {A B C : Type} (f : IR A B) (g : IR B C)
                    (prefix suffix : Program) → ComposeContext f g prefix suffix
-mkComposeContext {_} {A} {B} {C} f g prefix suffix = record
+mkComposeContext {A} {B} {C} f g prefix suffix = record
   { len-f = the-len-f
   ; len-g = the-len-g
   ; code-f = the-code-f
@@ -216,7 +216,7 @@ mkComposeContext {_} {A} {B} {C} f g prefix suffix = record
 --   2. Uses IRStarResultS (not IRStarResult) with StackInvariant
 --   3. Uses readSP instead of readReg sp
 --   4. Chains memory invariants (ir-mem-x21, ir-mem-x29, ir-mem-x29+8)
-assemble-compose-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
+assemble-compose-result : ∀ {A B C} (f : IR A B) (g : IR B C)
                           (prefix suffix : Program) (addr-in : Word)
                           (s sf s-nop sg : State) →
   let ctx = mkComposeContext f g prefix suffix
@@ -236,7 +236,7 @@ assemble-compose-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
   (nop-mem-x21 : ∀ addr → readMem (memory s-nop) addr ≡ readMem (memory sf) addr) →
   (nop-mem-x29 : ∀ addr → readMem (memory s-nop) addr ≡ readMem (memory sf) addr) →
   IRStarResultS (g ∘ f) theProg s sg addr-in (length prefix)
-assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s sf s-nop sg
+assemble-compose-result {A} {B} {C} f g prefix suffix addr-in s sf s-nop sg
   res-f star-nop res-g nop-x20 nop-x21 nop-x29 nop-x30 nop-sp nop-mem-x21 nop-mem-x29 = record
   { ir-star = star-all
   ; ir-halted = hg
@@ -253,6 +253,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s sf s-nop sg
   ; ir-stack-inv = IRStarResultS.ir-stack-inv res-g
   ; ir-x29-inv = IRStarResultS.ir-x29-inv res-g
   ; ir-sp-bound = IRStarResultS.ir-sp-bound res-g
+  ; ir-closure-entry = nothing
   }
   where
     ctx = mkComposeContext f g prefix suffix
@@ -407,7 +408,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s sf s-nop sg
 
 -- | (len-f + 1) + len-g = compile-length (g ∘ f)
 -- This is immediate from the definition of compile-length for compose
-arith-compose-total : ∀ {i} {A B C : Type} (f : IR A B) (g : IR B C) →
+arith-compose-total : ∀ {A B C : Type} (f : IR A B) (g : IR B C) →
   (compile-length f +ℕ 1) +ℕ compile-length g ≡ compile-length (g ∘ f)
 arith-compose-total f g = refl
 
@@ -452,7 +453,7 @@ arith-compose-pc p len-f len-g = begin
 -- 1. Returns explicit address (not encode)
 -- 2. Optionally threads ClosureWellFormedS if g produces a closure
 -- 3. Matches IRStarResultS structure for uniform composition
-record ComposeResultS {i A B C} (f : IR i A B) (g : IR i B C)
+record ComposeResultS {A B C} (f : IR A B) (g : IR B C)
                       (prefix suffix : Program)
                       (s s' : State) (addr-out : Word) : Set where
   field

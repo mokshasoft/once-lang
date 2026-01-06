@@ -38,6 +38,7 @@ open import Once.Backend.AArch64.Correct.CompileLength
   using (compile-length-correct; length-++)
 
 open import Data.Bool using (false)
+open import Data.Maybe using (nothing)
 open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-mono-≤; ≤-trans)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -55,7 +56,7 @@ open ≡-Reasoning
 --   Total length: len-f + 1 + len-g
 ------------------------------------------------------------------------
 
-record ComposeContext {i : Size} {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeContext {A B C : Type} (f : IR A B) (g : IR B C)
                       (prefix suffix : Program) : Set where
   field
     -- Computed programs
@@ -86,9 +87,9 @@ record ComposeContext {i : Size} {A B C : Type} (f : IR A B) (g : IR B C)
     len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f +ℕ 1
 
 -- | Compute the compose context (all the non-state-dependent values)
-make-compose-context : ∀ {i A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) →
+make-compose-context : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) →
   ComposeContext f g prefix suffix
-make-compose-context {_} {A} {B} {C} f g prefix suffix = record
+make-compose-context {A} {B} {C} f g prefix suffix = record
   { code-f = code-f
   ; code-g = code-g
   ; prog = prog
@@ -179,7 +180,7 @@ make-compose-context {_} {A} {B} {C} f g prefix suffix = record
 --   r2 : IRStarResultS g (prog with g's context) s-nop s-final addr-out (offset + len-f + 1)
 -- Produce:
 --   IRStarResultS (g ∘ f) prog s s-final addr-out offset
-assemble-compose-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
+assemble-compose-result : ∀ {A B C} (f : IR A B) (g : IR B C)
                           (prefix suffix : Program) (addr-in : Word) (s s-f s-nop s-final : State)
                           (addr-f addr-out : Word) →
   let ctx = make-compose-context f g prefix suffix in
@@ -188,7 +189,7 @@ assemble-compose-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
   (star-nop : Star prog s-f s-nop) →
   (r2 : IRStarResultS g (prefix-g ++ code-g ++ suffix) s-nop s-final addr-out (length prefix-g)) →
   IRStarResultS (g ∘ f) prog s s-final addr-out (length prefix)
-assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s s-f s-nop s-final addr-f addr-out r1 star-nop r2 = record
+assemble-compose-result {A} {B} {C} f g prefix suffix addr-in s s-f s-nop s-final addr-f addr-out r1 star-nop r2 = record
   { ir-star = star-all
   ; ir-halted = hg
   ; ir-pc = pcg
@@ -204,6 +205,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s s-f s-nop s-
   ; ir-stack-inv = ir-stack-inv r2
   ; ir-x29-inv = ir-x29-inv r2
   ; ir-sp-bound = ir-sp-bound r2
+  ; ir-closure-entry = nothing
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -394,7 +396,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix addr-in s s-f s-nop s-
 --
 -- Note: Recursive IR runners are passed as explicit function arguments
 -- rather than using a type alias to avoid universe level issues.
-run-compose-star-s : ∀ {i} {A B C} (f : IR A B) (g : IR B C)
+run-compose-star-s : ∀ {A B C} (f : IR A B) (g : IR B C)
   (prefix suffix : Program) (addr-in : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -404,7 +406,7 @@ run-compose-star-s : ∀ {i} {A B C} (f : IR A B) (g : IR B C)
   readSP (regs s) > 16 →
   let prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
   in ∃[ s' ] ∃[ addr-out ] IRStarResultS (g ∘ f) prog s s' addr-out (length prefix)
-run-compose-star-s {i} {A} {B} {C} f g prefix suffix addr-in s
+run-compose-star-s {A} {B} {C} f g prefix suffix addr-in s
                    h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   s-final , addr-out , assemble-compose-result f g prefix suffix addr-in s s-f s-nop s-final addr-f addr-out res-f star-nop res-g
   where

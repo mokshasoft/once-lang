@@ -53,7 +53,7 @@ open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
@@ -126,7 +126,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 -- | Pre-computed values for pair proof
 -- Extracting these avoids recomputation and makes the proof modular
 -- Following the X86 pattern with intermediate structures for program equality proofs
-record PairContext {i} {A B C : Type} (f : IR C A) (g : IR C B)
+record PairContext {A B C : Type} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -183,7 +183,7 @@ record PairContext {i} {A B C : Type} (f : IR C A) (g : IR C B)
 open PairContext public
 
 -- | Construct PairContext from IR terms and prefix/suffix
-mkPairContext : ∀ {i} {A B C : Type} (f : IR C A) (g : IR C B)
+mkPairContext : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                 (prefix suffix : Program) (s : State) → PairContext f g prefix suffix
 mkPairContext {A} {B} {C} f g prefix suffix s = record
   { len-f = the-len-f
@@ -395,7 +395,7 @@ mkPairContext {A} {B} {C} f g prefix suffix s = record
 --   x21 = orig_sp - 16 (pair pointer = sp₁ ctx)
 --   x20 = orig x0 (saved input)
 --   Memory[SP] = saved x20, Memory[SP+8] = saved x21
-record PairSetupResult {i} {A B C : Type} (f : IR C A) (g : IR C B)
+record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
                        (prefix suffix : Program)
                        (ctx : PairContext f g prefix suffix)
                        (s s-after : State) (x : ⟦ C ⟧) : Set where
@@ -443,7 +443,7 @@ open PairSetupResult public
 -- | Result after middle phase (2 instructions after f execution)
 -- str x0 [x21] ; mov x0 x20
 -- Note: s-f is state after f execution, s-after is state after middle phase
-record PairMiddleResult {i} {A B C : Type} (f : IR C A) (g : IR C B)
+record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program)
                         (ctx : PairContext f g prefix suffix)
                         (s-f s-after : State) (x : ⟦ C ⟧) : Set where
@@ -488,7 +488,7 @@ open PairMiddleResult public
 -- s-init is the original state before pair started (needed for x20/x21 restoration)
 -- Minimal record: only core fields needed for composing Star proofs.
 -- Additional properties (invariants, memory preservation) are postulated in MutualIR.
-record PairFinalResult {i} {A B C : Type} (f : IR C A) (g : IR C B)
+record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
                        (prefix suffix : Program)
                        (ctx : PairContext f g prefix suffix)
                        (s-init s-g s-final : State) (x : ⟦ C ⟧) : Set where
@@ -523,7 +523,7 @@ open PairFinalResult public
 -- 1. Returns explicit addresses for pair components
 -- 2. Includes PairAtS validity proof
 -- 3. Optionally threads ClosureWellFormedS from components (if they produce closures)
-record PairResultS {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairResultS {A B C : Type} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program)
                    (ctx : PairContext f g prefix suffix)
                    (s s' : State) (addr-in : Word) : Set where
@@ -576,7 +576,7 @@ open PairResultS public
 
 -- | Length of prefix-f = length prefix + 5
 -- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0
-len-prefix-f-eq : ∀ {i} {A B C : Type} (f : IR C A) (g : IR C B)
+len-prefix-f-eq : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (s : State) →
                   let ctx = mkPairContext f g prefix suffix s
                   in length (prefix-f ctx) ≡ length prefix +ℕ 5
@@ -593,7 +593,7 @@ len-prefix-f-eq f g prefix suffix s = length-++ prefix (sub-sp 32 ∷ stp x20 x2
 -- | Execute the setup phase for pair
 -- This is a helper that runs outside the mutual block to avoid
 -- slow type-checking in MutualIR.agda
-exec-pair-setup : ∀ {i} {A B C : Type} (f : IR C A) (g : IR C B)
+exec-pair-setup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -676,7 +676,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv 
 --   - x20 contains encode x (saved input from setup)
 --   - x21 contains sp₁ (pair pointer from setup = orig_sp - 16)
 --   - pc = length prefix + 5 + compile-length f
-exec-pair-middle : ∀ {i} {A B C : Type} (f : IR C A) (g : IR C B)
+exec-pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧) (s-init s-f : State) →
   let ctx = mkPairContext f g prefix suffix s-init
   in halted s-f ≡ false →
@@ -930,7 +930,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s-init s-f h-false pc-eq x0-eq 
 --   - x21 contains sp₁ (pair pointer from setup = orig_sp - 16)
 --   - Memory at sp₁ contains encode (eval f x) (stored during middle phase)
 --   - SP = orig_sp - 32 (unchanged from setup)
-exec-pair-final : ∀ {i} {A B C : Type} (f : IR C A) (g : IR C B)
+exec-pair-final : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s-init s-g : State) →
   let ctx = mkPairContext f g prefix suffix s-init
   in halted s-g ≡ false →

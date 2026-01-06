@@ -29,13 +29,15 @@ open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.AArch64.Correct.MemoryValid
   using (PairAtS)
+open import Once.Backend.AArch64.Correct.ClosureContext
+  using (ClosureEntry)
 
 open import Size using (Size)
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; Maybe; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 ------------------------------------------------------------------------
@@ -50,7 +52,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- - Uses x20, x21 as callee-saved context (not r14, r15)
 -- - Uses x29 as frame pointer (not rbp)
 -- - Uses SP functions (readSP) for stack pointer
-record IRStarResult {i} {A B : Type} (ir : IR A B) (prog : Program)
+record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     -- Execution
@@ -110,7 +112,7 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
 
 -- | Combine two Star proofs when PC and register conditions align
 -- This is the key composition lemma for sequential IR execution
-combine-star-results : ∀ {i} {A B C : Type}
+combine-star-results : ∀ {A B C : Type}
   (f : IR A B) (g : IR B C)
   (prog : Program) (s₀ s₁ s₂ : State)
   (x : ⟦ A ⟧) (offset : ℕ) →
@@ -134,8 +136,8 @@ combine-star-results f g prog s₀ s₁ s₂ x offset res-f pc-eq x0-eq res-g =
 --
 -- Key difference: ir-x0-s returns the raw address, and validity
 -- (PairAtS, InlAtS, InrAtS) is tracked separately at the call site.
-record IRStarResultS {i} {A B : Type} (ir : IR A B) (prog : Program)
-                     (s s' : State) (addr-out : Word) (offset : ℕ) : Set where
+record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
+                     (s s' : State) (addr-out : Word) (offset : ℕ) : Set₁ where
   field
     -- Execution
     ir-star       : Star prog s s'
@@ -164,6 +166,11 @@ record IRStarResultS {i} {A B : Type} (ir : IR A B) (prog : Program)
     ir-x29-inv    : X29Invariant s'
     ir-sp-bound   : readSP (regs s') > 16
 
+    -- Closure tracking (for eliminating apply-produces-result postulate)
+    -- When curry produces a closure, it provides (just entry).
+    -- Other operations preserve context with nothing.
+    ir-closure-entry : Maybe (ClosureEntry prog)
+
 open IRStarResultS public
 
 -- | Convert IRStarResult to IRStarResultS
@@ -188,6 +195,7 @@ convert-to-stateful ir prog s s' x offset res = record
   ; ir-stack-inv = IRStarResult.ir-stack-inv res
   ; ir-x29-inv   = IRStarResult.ir-x29-inv res
   ; ir-sp-bound  = IRStarResult.ir-sp-bound res
+  ; ir-closure-entry = nothing
   }
 
 ------------------------------------------------------------------------
@@ -196,7 +204,7 @@ convert-to-stateful ir prog s s' x offset res = record
 
 -- | Type signature for stateful IR execution.
 -- Returns explicit address instead of encode.
-IRRunnerS : Set
+IRRunnerS : Set₁
 IRRunnerS = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (addr-in : Word) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -220,7 +228,7 @@ IRRunnerS = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (addr-in : Word) (
 -- 3. pair-addr: The pair [addr-f, addr-g]
 --
 -- The pair-addr is returned in x0.
-record PairResultS {i} {A B C : Type} (f : IR i C A) (g : IR i C B)
+record PairResultS {A B C : Type} (f : IR C A) (g : IR C B)
                    (prog : Program) (s s' : State)
                    (addr-f addr-g pair-addr : Word) (offset : ℕ) : Set where
   field
@@ -268,7 +276,7 @@ open PairResultS public
 -- 2. addr-out: Final result from g
 --
 -- The addr-out is returned in x0.
-record ComposeResultS {i} {A B C : Type} (f : IR i A B) (g : IR i B C)
+record ComposeResultS {A B C : Type} (f : IR A B) (g : IR B C)
                       (prog : Program) (s s' : State)
                       (addr-mid addr-out : Word) (offset : ℕ) : Set where
   field
@@ -314,7 +322,7 @@ open ComposeResultS public
 -- 1. addr-out: The result from whichever branch was taken
 --
 -- The addr-out is returned in x0.
-record CaseResultS {i} {A B C : Type} (f : IR i A C) (g : IR i B C)
+record CaseResultS {A B C : Type} (f : IR A C) (g : IR B C)
                    (prog : Program) (s s' : State)
                    (addr-out : Word) (offset : ℕ) : Set where
   field
@@ -361,14 +369,14 @@ open CaseResultS public
 -- 3. addr-out: The final result from the closure
 --
 -- The addr-out is returned in x0.
-record ApplyResultS {i} {A B : Type}
+record ApplyResultS {A B : Type}
                     (prog : Program) (s s' : State)
                     (closure-addr arg-addr addr-out : Word) (offset : ℕ) : Set where
   field
     -- Standard execution properties
     apply-star      : Star prog s s'
     apply-halted    : halted s' ≡ false
-    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {i} {A} {B})
+    apply-pc        : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
 
     -- Explicit output address in x0
     apply-x0-s      : readReg (regs s') x0 ≡ addr-out

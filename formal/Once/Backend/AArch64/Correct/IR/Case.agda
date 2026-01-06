@@ -32,7 +32,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc; ++-identityʳ) renaming (length-++ to List-length-++)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
@@ -67,7 +67,7 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 --   7+|f| to 6+|f|+|g|: code-g  -- execute g
 --   7+|f|+|g|: label        -- end label
 
-record CaseContext {i} {A B C : Type} (f : IR A C) (g : IR B C)
+record CaseContext {A B C : Type} (f : IR A C) (g : IR B C)
                    (prefix suffix : Program) : Set where
   field
     -- Computed lengths
@@ -116,7 +116,7 @@ record CaseContext {i} {A B C : Type} (f : IR A C) (g : IR B C)
 open CaseContext public
 
 -- | Construct CaseContext from IR terms and prefix/suffix
-mkCaseContext : ∀ {i} {A B C : Type} (f : IR A C) (g : IR B C)
+mkCaseContext : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
                 (prefix suffix : Program) → CaseContext f g prefix suffix
 mkCaseContext {A} {B} {C} f g prefix suffix = record
   { len-f = the-len-f
@@ -393,7 +393,7 @@ mkCaseContext {A} {B} {C} f g prefix suffix = record
 --   1. Setup (4 instructions): load tag, cmp, b.ne (not taken), load left value
 --   2. Execute f
 --   3. Jump to end (2 instructions): b end-offset, label end
-assemble-case-inl-result : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
+assemble-case-inl-result : ∀ {A B C} (f : IR A C) (g : IR B C)
                            (prefix suffix : Program) (addr-val : Word)
                            (s s-setup sf s-final : State) →
   let ctx = mkCaseContext f g prefix suffix
@@ -434,7 +434,7 @@ assemble-case-inl-result : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
   -- Result: Full case execution
   ∃[ addr-out ] (IRStarResultS [ f , g ] theProg s s-final addr-out (length prefix) ×
                  readReg (regs s-final) x0 ≡ addr-out)
-assemble-case-inl-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sf s-final
+assemble-case-inl-result {A} {B} {C} f g prefix suffix addr-val s s-setup sf s-final
   star-setup h-setup pc-setup x0-setup x20-setup x21-setup x29-setup x30-setup sp-setup mem-x21-setup mem-x29-setup mem-x29+8-setup
   res-f star-jump h-jump pc-jump x0-jump x20-jump x21-jump x29-jump x30-jump sp-jump mem-x21-jump mem-x29-jump stack-inv-jump x29-inv-jump sp>16-jump =
   addr-out , result , refl
@@ -561,6 +561,7 @@ assemble-case-inl-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sf
       ; ir-stack-inv = stack-inv-jump
       ; ir-x29-inv = x29-inv-jump
       ; ir-sp-bound = sp>16-jump
+      ; ir-closure-entry = nothing
       }
 
 -- | Assemble the final case result for inr branch
@@ -575,7 +576,7 @@ assemble-case-inl-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sf
 --   1. Setup (7+|f| instructions): load tag, cmp, b.ne (taken), skip f code, reach right label, load right value
 --   2. Execute g
 --   3. End label (1 instruction)
-assemble-case-inr-result : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
+assemble-case-inr-result : ∀ {A B C} (f : IR A C) (g : IR B C)
                            (prefix suffix : Program) (addr-val : Word)
                            (s s-setup sg s-final : State) →
   let ctx = mkCaseContext f g prefix suffix
@@ -616,7 +617,7 @@ assemble-case-inr-result : ∀ {i} {A B C} (f : IR A C) (g : IR B C)
   -- Result: Full case execution
   ∃[ addr-out ] (IRStarResultS [ f , g ] theProg s s-final addr-out (length prefix) ×
                  readReg (regs s-final) x0 ≡ addr-out)
-assemble-case-inr-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sg s-final
+assemble-case-inr-result {A} {B} {C} f g prefix suffix addr-val s s-setup sg s-final
   star-setup h-setup pc-setup x0-setup x20-setup x21-setup x29-setup x30-setup sp-setup mem-x21-setup mem-x29-setup mem-x29+8-setup
   res-g star-label h-label pc-label x0-label x20-label x21-label x29-label x30-label sp-label mem-x21-label mem-x29-label stack-inv-label x29-inv-label sp>16-label =
   addr-out , result , refl
@@ -743,6 +744,7 @@ assemble-case-inr-result {_} {A} {B} {C} f g prefix suffix addr-val s s-setup sg
       ; ir-stack-inv = stack-inv-label
       ; ir-x29-inv = x29-inv-label
       ; ir-sp-bound = sp>16-label
+      ; ir-closure-entry = nothing
       }
 
 ------------------------------------------------------------------------

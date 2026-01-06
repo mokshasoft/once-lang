@@ -178,16 +178,16 @@ open ≡-Reasoning
 -- | Star-based id execution
 -- compile-aarch64 id = nop ∷ []
 -- eval id x = x, so x0 is unchanged
-run-id-star : ∀ {i} {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (id {i} {A}) ++ suffix
-  in ∃[ s' ] IRStarResult (id {i} {A}) prog s s' x (length prefix)
-run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (id {A}) ++ suffix
+  in ∃[ s' ] IRStarResult (id {A}) prog s s' x (length prefix)
+run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       -- The result state: only PC changes
       s' = record s { pc = pc s +ℕ 1 }
@@ -212,7 +212,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>1
       h'-false = h-false
 
       -- pc s' = pc s + 1 = length prefix + 1 = length prefix + compile-length id
-      pc'-eq : pc s' ≡ length prefix +ℕ compile-length {_} {A} {A} id
+      pc'-eq : pc s' ≡ length prefix +ℕ compile-length {A} {A} id
       pc'-eq = cong (λ p → p +ℕ 1) pc-eq
 
       -- x0 unchanged (nop doesn't touch registers)
@@ -233,7 +233,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>1
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
       -- Build the result
-      result : IRStarResult {_} {A} {A} id prog s s' x (length prefix)
+      result : IRStarResult {A} {A} id prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h'-false
@@ -257,15 +257,15 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>1
 -- | Star-based terminal execution
 -- compile-aarch64 terminal = mov x0 (imm 0) ∷ []
 -- eval terminal x = tt, encode tt = 0
-run-terminal-star : ∀ {i} {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (terminal {i} {A}) ++ suffix
-  in ∃[ s' ] IRStarResult (terminal {i} {A}) prog s s' x (length prefix)
-run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (terminal {A}) ++ suffix
+  in ∃[ s' ] IRStarResult (terminal {A}) prog s s' x (length prefix)
+run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ mov x0 (imm 0) ∷ suffix
       s' = record s { regs = writeReg (regs s) x0 0 ; pc = pc s +ℕ 1 }
 
@@ -292,7 +292,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>1
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
-      result : IRStarResult {_} {A} {Unit} terminal prog s s' x (length prefix)
+      result : IRStarResult {A} {Unit} terminal prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -316,16 +316,16 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>1
 -- | Star-based fold execution
 -- compile-aarch64 fold = nop ∷ []
 -- eval fold x = wrap x, encode (wrap x) = encode x (by encode-fix-wrap)
-run-fold-star : ∀ {i} {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (fold {i} {F}) ++ suffix
-  in ∃[ s' ] IRStarResult (fold {i} {F}) prog s s' x (length prefix)
-run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (fold {F}) ++ suffix
+  in ∃[ s' ] IRStarResult (fold {F}) prog s s' x (length prefix)
+run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -351,7 +351,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp
       x0'-eq : readReg (regs s') x0 ≡ encode (eval fold x)
       x0'-eq = trans x0-eq (sym (encode-fix-wrap x))
 
-      result : IRStarResult {_} {F} {Fix F} fold prog s s' x (length prefix)
+      result : IRStarResult {F} {Fix F} fold prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -375,16 +375,16 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp
 -- | Star-based unfold execution
 -- compile-aarch64 unfold = nop ∷ []
 -- eval unfold (wrap x) = x, encode x = encode (wrap x) (by encode-fix-unwrap)
-run-unfold-star : ∀ {i} {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (unfold {i} {F}) ++ suffix
-  in ∃[ s' ] IRStarResult (unfold {i} {F}) prog s s' x (length prefix)
-run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (unfold {F}) ++ suffix
+  in ∃[ s' ] IRStarResult (unfold {F}) prog s s' x (length prefix)
+run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -410,7 +410,7 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv 
       x0'-eq : readReg (regs s') x0 ≡ encode (eval unfold x)
       x0'-eq = trans x0-eq (sym (encode-fix-unwrap x))
 
-      result : IRStarResult {_} {Fix F} {F} unfold prog s s' x (length prefix)
+      result : IRStarResult {Fix F} {F} unfold prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -434,16 +434,16 @@ run-unfold-star {i} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv 
 -- | Star-based arr execution
 -- compile-aarch64 arr = nop ∷ []
 -- eval arr fn = fn (as Eff), encode (fn as Eff) = encode fn (by encode-arr-identity)
-run-arr-star : ∀ {i} {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
+run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode {A ⇒ B} fn →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (arr {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (arr {i} {A} {B}) prog s s' fn (length prefix)
-run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (arr {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (arr {A} {B}) prog s s' fn (length prefix)
+run-arr-star {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ nop ∷ suffix
       s' = record s { pc = pc s +ℕ 1 }
 
@@ -467,10 +467,10 @@ run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv x29-in
 
       -- eval arr fn = fn (as Eff A B), encode preserves by encode-arr-identity
       -- Note: eval arr fn = fn (same value, different type annotation)
-      x0'-eq : readReg (regs s') x0 ≡ encode {Eff A B} (eval {_} {A ⇒ B} {Eff A B} arr fn)
+      x0'-eq : readReg (regs s') x0 ≡ encode {Eff A B} (eval {A ⇒ B} {Eff A B} arr fn)
       x0'-eq = trans x0-eq (sym (encode-arr-identity {A} {B} fn))
 
-      result : IRStarResult {_} {A ⇒ B} {Eff A B} arr prog s s' fn (length prefix)
+      result : IRStarResult {A ⇒ B} {Eff A B} arr prog s s' fn (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -494,16 +494,16 @@ run-arr-star {i} {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv x29-in
 -- | Star-based fst execution
 -- compile-aarch64 fst = ldr x0 (base x0) ∷ []
 -- Loads first component from pair pointer
-run-fst-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (fst {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (fst {i} {A} {B}) prog s s' x (length prefix)
-run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (fst {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (fst {A} {B}) prog s s' x (length prefix)
+run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ ldr x0 (base x0) ∷ suffix
       a = proj₁ x
       b = proj₂ x
@@ -544,7 +544,7 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
-      result : IRStarResult {_} {A * B} {A} fst prog s s' x (length prefix)
+      result : IRStarResult {A * B} {A} fst prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -568,16 +568,16 @@ run-fst-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 -- | Star-based snd execution
 -- compile-aarch64 snd = ldr x0 (base+imm x0 8) ∷ []
 -- Loads second component from pair pointer + 8
-run-snd-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (snd {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (snd {i} {A} {B}) prog s s' x (length prefix)
-run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (snd {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (snd {A} {B}) prog s s' x (length prefix)
+run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
   let prog = prefix ++ ldr x0 (base+imm x0 8) ∷ suffix
       a = proj₁ x
       b = proj₂ x
@@ -618,7 +618,7 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
       sp>16' : readSP (regs s') > 16
       sp>16' = sp>16-preserved-unchanged s s' sp>16 refl
 
-      result : IRStarResult {_} {A * B} {B} snd prog s s' x (length prefix)
+      result : IRStarResult {A * B} {B} snd prog s s' x (length prefix)
       result = record
         { ir-star = star-pf
         ; ir-halted = h-false
@@ -643,16 +643,16 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 -- compile-aarch64 inl generates 4 instructions:
 --   sub-sp 16, str-zr (sp+imm 0), str x0 (sp+imm 8), mov-from-sp x0
 -- Result: stack-allocated sum with tag=0, value=x, returned in x0
-run-inl-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (inl {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (inl {i} {A} {B}) prog s s' x (length prefix)
-run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (inl {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inl {A} {B}) prog s s' x (length prefix)
+run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -673,7 +673,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
   where
     -- The program
     prog : Program
-    prog = prefix ++ compile-aarch64 {_} {A} {A + B} inl ++ suffix
+    prog = prefix ++ compile-aarch64 {A} {A + B} inl ++ suffix
 
     -- The 4 instructions of inl
     i0 : Instr
@@ -812,7 +812,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     h4 : halted s4 ≡ false
     h4 = h3
 
-    pc4 : pc s4 ≡ length prefix +ℕ compile-length (inl {_} {A} {B})
+    pc4 : pc s4 ≡ length prefix +ℕ compile-length (inl {A} {B})
     pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc (length prefix) 3 1)
 
     -- Memory contains tag=0 at new-sp and value at new-sp+8
@@ -841,7 +841,7 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     x0-s4 : readReg (regs s4) x0 ≡ new-sp
     x0-s4 = readReg-writeReg-same (regs s3) x0 new-sp
 
-    x0-final : readReg (regs s4) x0 ≡ encode (eval {_} {A} {A + B} inl x)
+    x0-final : readReg (regs s4) x0 ≡ encode (eval {A} {A + B} inl x)
     x0-final = trans x0-s4 x0-is-encode-inl
 
     -- Register preservation (x20, x21, x29, x30)
@@ -931,16 +931,16 @@ run-inl-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 -- compile-aarch64 inr generates 5 instructions:
 --   sub-sp 16, mov x9 (imm 1), str x9 (sp+imm 0), str x0 (sp+imm 8), mov-from-sp x0
 -- Result: stack-allocated sum with tag=1, value=x, returned in x0
-run-inr-star : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode x →
   StackInvariant s →
   X29Invariant s →
   readSP (regs s) > 16 →
-  let prog = prefix ++ compile-aarch64 (inr {i} {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (inr {i} {A} {B}) prog s s' x (length prefix)
-run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  let prog = prefix ++ compile-aarch64 (inr {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResult (inr {A} {B}) prog s s' x (length prefix)
+run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s5 , record
     { ir-star = star-proof
     ; ir-halted = h5
@@ -961,7 +961,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
   where
     -- The program
     prog : Program
-    prog = prefix ++ compile-aarch64 {_} {B} {A + B} inr ++ suffix
+    prog = prefix ++ compile-aarch64 {B} {A + B} inr ++ suffix
 
     -- The 5 instructions of inr
     i0 : Instr
@@ -1137,7 +1137,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     h5 : halted s5 ≡ false
     h5 = h4
 
-    pc5 : pc s5 ≡ length prefix +ℕ compile-length (inr {_} {A} {B})
+    pc5 : pc s5 ≡ length prefix +ℕ compile-length (inr {A} {B})
     pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc (length prefix) 4 1)
 
     -- Memory contains tag=1 at new-sp and value at new-sp+8
@@ -1166,7 +1166,7 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
     x0-s5 : readReg (regs s5) x0 ≡ new-sp
     x0-s5 = readReg-writeReg-same (regs s4) x0 new-sp
 
-    x0-final : readReg (regs s5) x0 ≡ encode (eval {_} {B} {A + B} inr x)
+    x0-final : readReg (regs s5) x0 ≡ encode (eval {B} {A + B} inr x)
     x0-final = trans x0-s5 x0-is-encode-inr
 
     -- Register preservation (x20, x21, x29, x30)
@@ -1278,8 +1278,8 @@ run-inr-star {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv
 
 -- Phase 3.1: Type family with proper types for curry vs others
 -- Tests if dependent type family approach works and resolves timeout issues
-IRResultFor : ∀ {i A B} → IR i A B → Program → State → State → ⟦ A ⟧ → ℕ → Set
-IRResultFor (curry {_} {A} {B} {C} f) prog s s' x offset =
+IRResultFor : ∀ {A B} → IR A B → Program → State → State → ⟦ A ⟧ → ℕ → Set
+IRResultFor (curry {A} {B} {C} f) prog s s' x offset =
   CurryResultS f prog s s' (encode x) offset
 IRResultFor ir prog s s' x offset =
   IRStarResult ir prog s s' x offset
@@ -1287,10 +1287,10 @@ IRResultFor ir prog s s' x offset =
 -- Phase 3.2: Field access helpers to disambiguate CurryResultS vs IRStarResult
 -- These pattern match on the IR constructor to extract fields
 -- Explicit patterns for all 15 IR constructors (curry special, rest uniform)
-result-pc : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-pc : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
             IRResultFor ir prog s s' x offset →
             pc s' ≡ offset +ℕ compile-length ir
-result-pc (curry {_} {A} {B} {C} f) r = CurryResultS.curry-pc r
+result-pc (curry {A} {B} {C} f) r = CurryResultS.curry-pc r
 result-pc id r = IRStarResult.ir-pc r
 result-pc terminal r = IRStarResult.ir-pc r
 result-pc fold r = IRStarResult.ir-pc r
@@ -1306,10 +1306,10 @@ result-pc ⟨ _ , _ ⟩ r = IRStarResult.ir-pc r
 result-pc [ _ , _ ] r = IRStarResult.ir-pc r
 result-pc apply r = IRStarResult.ir-pc r
 
-result-halted : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-halted : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                 IRResultFor ir prog s s' x offset →
                 halted s' ≡ false
-result-halted (curry {_} {A} {B} {C} f) r = CurryResultS.curry-halted r
+result-halted (curry {A} {B} {C} f) r = CurryResultS.curry-halted r
 result-halted id r = IRStarResult.ir-halted r
 result-halted terminal r = IRStarResult.ir-halted r
 result-halted fold r = IRStarResult.ir-halted r
@@ -1329,14 +1329,14 @@ result-halted apply r = IRStarResult.ir-halted r
 -- This bridges the gap between stateful CurryResultS (uses explicit addresses)
 -- and semantic IRStarResult (uses encode of eval)
 postulate
-  curry-addr-is-encoded : ∀ {i A B C} {f : IR i (A * B) C} {prog s s' x offset} →
+  curry-addr-is-encoded : ∀ {A B C} {f : IR (A * B) C} {prog s s' x offset} →
                           (r : CurryResultS f prog s s' (encode x) offset) →
                           CurryResultS.curry-closure-addr r ≡ encode {B ⇒ C} (eval (curry f) x)
 
-result-x0 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-x0 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
             IRResultFor ir prog s s' x offset →
             readReg (regs s') x0 ≡ encode (eval ir x)
-result-x0 (curry {_} {A} {B} {C} f) r =
+result-x0 (curry {A} {B} {C} f) r =
   trans (CurryResultS.curry-x0-s r) (curry-addr-is-encoded r)
 result-x0 id r = IRStarResult.ir-x0 r
 result-x0 terminal r = IRStarResult.ir-x0 r
@@ -1353,10 +1353,10 @@ result-x0 ⟨ _ , _ ⟩ r = IRStarResult.ir-x0 r
 result-x0 [ _ , _ ] r = IRStarResult.ir-x0 r
 result-x0 apply r = IRStarResult.ir-x0 r
 
-result-stack-inv : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-stack-inv : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                    IRResultFor ir prog s s' x offset →
                    StackInvariant s'
-result-stack-inv (curry {_} {A} {B} {C} f) r = CurryResultS.curry-stack-inv r
+result-stack-inv (curry {A} {B} {C} f) r = CurryResultS.curry-stack-inv r
 result-stack-inv id r = IRStarResult.ir-stack-inv r
 result-stack-inv terminal r = IRStarResult.ir-stack-inv r
 result-stack-inv fold r = IRStarResult.ir-stack-inv r
@@ -1372,10 +1372,10 @@ result-stack-inv ⟨ _ , _ ⟩ r = IRStarResult.ir-stack-inv r
 result-stack-inv [ _ , _ ] r = IRStarResult.ir-stack-inv r
 result-stack-inv apply r = IRStarResult.ir-stack-inv r
 
-result-x29 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-x29 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
              readReg (regs s') x29 ≡ readReg (regs s) x29
-result-x29 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x29 r
+result-x29 (curry {A} {B} {C} f) r = CurryResultS.curry-x29 r
 result-x29 id r = IRStarResult.ir-x29 r
 result-x29 terminal r = IRStarResult.ir-x29 r
 result-x29 fold r = IRStarResult.ir-x29 r
@@ -1391,10 +1391,10 @@ result-x29 ⟨ _ , _ ⟩ r = IRStarResult.ir-x29 r
 result-x29 [ _ , _ ] r = IRStarResult.ir-x29 r
 result-x29 apply r = IRStarResult.ir-x29 r
 
-result-sp : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-sp : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
             IRResultFor ir prog s s' x offset →
             readSP (regs s') ≤ readSP (regs s)
-result-sp (curry {_} {A} {B} {C} f) r = CurryResultS.curry-sp r
+result-sp (curry {A} {B} {C} f) r = CurryResultS.curry-sp r
 result-sp id r = IRStarResult.ir-sp r
 result-sp terminal r = IRStarResult.ir-sp r
 result-sp fold r = IRStarResult.ir-sp r
@@ -1410,10 +1410,10 @@ result-sp ⟨ _ , _ ⟩ r = IRStarResult.ir-sp r
 result-sp [ _ , _ ] r = IRStarResult.ir-sp r
 result-sp apply r = IRStarResult.ir-sp r
 
-result-sp-bound : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-sp-bound : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                   IRResultFor ir prog s s' x offset →
                   readSP (regs s') > 16
-result-sp-bound (curry {_} {A} {B} {C} f) r = CurryResultS.curry-sp-bound r
+result-sp-bound (curry {A} {B} {C} f) r = CurryResultS.curry-sp-bound r
 result-sp-bound id r = IRStarResult.ir-sp-bound r
 result-sp-bound terminal r = IRStarResult.ir-sp-bound r
 result-sp-bound fold r = IRStarResult.ir-sp-bound r
@@ -1429,10 +1429,10 @@ result-sp-bound ⟨ _ , _ ⟩ r = IRStarResult.ir-sp-bound r
 result-sp-bound [ _ , _ ] r = IRStarResult.ir-sp-bound r
 result-sp-bound apply r = IRStarResult.ir-sp-bound r
 
-result-star : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-star : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
               IRResultFor ir prog s s' x offset →
               Star prog s s'
-result-star (curry {_} {A} {B} {C} f) r = CurryResultS.curry-star r
+result-star (curry {A} {B} {C} f) r = CurryResultS.curry-star r
 result-star id r = IRStarResult.ir-star r
 result-star terminal r = IRStarResult.ir-star r
 result-star fold r = IRStarResult.ir-star r
@@ -1448,10 +1448,10 @@ result-star ⟨ _ , _ ⟩ r = IRStarResult.ir-star r
 result-star [ _ , _ ] r = IRStarResult.ir-star r
 result-star apply r = IRStarResult.ir-star r
 
-result-x20 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-x20 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
              readReg (regs s') x20 ≡ readReg (regs s) x20
-result-x20 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x20 r
+result-x20 (curry {A} {B} {C} f) r = CurryResultS.curry-x20 r
 result-x20 id r = IRStarResult.ir-x20 r
 result-x20 terminal r = IRStarResult.ir-x20 r
 result-x20 fold r = IRStarResult.ir-x20 r
@@ -1467,10 +1467,10 @@ result-x20 ⟨ _ , _ ⟩ r = IRStarResult.ir-x20 r
 result-x20 [ _ , _ ] r = IRStarResult.ir-x20 r
 result-x20 apply r = IRStarResult.ir-x20 r
 
-result-x21 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-x21 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
              readReg (regs s') x21 ≡ readReg (regs s) x21
-result-x21 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x21 r
+result-x21 (curry {A} {B} {C} f) r = CurryResultS.curry-x21 r
 result-x21 id r = IRStarResult.ir-x21 r
 result-x21 terminal r = IRStarResult.ir-x21 r
 result-x21 fold r = IRStarResult.ir-x21 r
@@ -1486,10 +1486,10 @@ result-x21 ⟨ _ , _ ⟩ r = IRStarResult.ir-x21 r
 result-x21 [ _ , _ ] r = IRStarResult.ir-x21 r
 result-x21 apply r = IRStarResult.ir-x21 r
 
-result-x30 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-x30 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
              readReg (regs s') x30 ≡ readReg (regs s) x30
-result-x30 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x30 r
+result-x30 (curry {A} {B} {C} f) r = CurryResultS.curry-x30 r
 result-x30 id r = IRStarResult.ir-x30 r
 result-x30 terminal r = IRStarResult.ir-x30 r
 result-x30 fold r = IRStarResult.ir-x30 r
@@ -1505,10 +1505,10 @@ result-x30 ⟨ _ , _ ⟩ r = IRStarResult.ir-x30 r
 result-x30 [ _ , _ ] r = IRStarResult.ir-x30 r
 result-x30 apply r = IRStarResult.ir-x30 r
 
-result-mem-x21 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-mem-x21 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                  IRResultFor ir prog s s' x offset →
                  readMem (memory s') (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
-result-mem-x21 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-mem-x21 r
+result-mem-x21 (curry {A} {B} {C} f) r = CurryResultS.curry-mem-x21 r
 result-mem-x21 id r = IRStarResult.ir-mem-x21 r
 result-mem-x21 terminal r = IRStarResult.ir-mem-x21 r
 result-mem-x21 fold r = IRStarResult.ir-mem-x21 r
@@ -1524,10 +1524,10 @@ result-mem-x21 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x21 r
 result-mem-x21 [ _ , _ ] r = IRStarResult.ir-mem-x21 r
 result-mem-x21 apply r = IRStarResult.ir-mem-x21 r
 
-result-mem-x29 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-mem-x29 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                  IRResultFor ir prog s s' x offset →
                  readMem (memory s') (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
-result-mem-x29 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-mem-x29 r
+result-mem-x29 (curry {A} {B} {C} f) r = CurryResultS.curry-mem-x29 r
 result-mem-x29 id r = IRStarResult.ir-mem-x29 r
 result-mem-x29 terminal r = IRStarResult.ir-mem-x29 r
 result-mem-x29 fold r = IRStarResult.ir-mem-x29 r
@@ -1543,10 +1543,10 @@ result-mem-x29 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x29 r
 result-mem-x29 [ _ , _ ] r = IRStarResult.ir-mem-x29 r
 result-mem-x29 apply r = IRStarResult.ir-mem-x29 r
 
-result-mem-x29+8 : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-mem-x29+8 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                    IRResultFor ir prog s s' x offset →
                    readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
-result-mem-x29+8 (curry {_} {A} {B} {C} f) r = CurryResultS.curry-mem-x29+8 r
+result-mem-x29+8 (curry {A} {B} {C} f) r = CurryResultS.curry-mem-x29+8 r
 result-mem-x29+8 id r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 terminal r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 fold r = IRStarResult.ir-mem-x29+8 r
@@ -1562,10 +1562,10 @@ result-mem-x29+8 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 [ _ , _ ] r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 apply r = IRStarResult.ir-mem-x29+8 r
 
-result-x29-inv : ∀ {i A B} (ir : IR i A B) {prog s s' x offset} →
+result-x29-inv : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                  IRResultFor ir prog s s' x offset →
                  X29Invariant s'
-result-x29-inv (curry {_} {A} {B} {C} f) r = CurryResultS.curry-x29-inv r
+result-x29-inv (curry {A} {B} {C} f) r = CurryResultS.curry-x29-inv r
 result-x29-inv id r = IRStarResult.ir-x29-inv r
 result-x29-inv terminal r = IRStarResult.ir-x29-inv r
 result-x29-inv fold r = IRStarResult.ir-x29-inv r
@@ -1591,7 +1591,7 @@ result-x29-inv apply r = IRStarResult.ir-x29-inv r
 mutual
   -- | Star-based IR execution at arbitrary offset
   -- Return type uses IRResultFor to preserve curry-specific information
-  run-ir-star-at-offset : ∀ {i} {A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-ir-star-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1602,29 +1602,29 @@ mutual
     in ∃[ s' ] IRResultFor ir prog s s' x (length prefix)
 
   -- Base cases: delegate to Star helper functions
-  run-ir-star-at-offset (id {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-id-star {_} {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (terminal {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-terminal-star {_} {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (fold {_} {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-fold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (unfold {_} {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-unfold-star {_} {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (arr {_} {A} {B}) prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-arr-star {_} {A} {B} prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (fst {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-fst-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (snd {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-snd-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (inl {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-inl-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (inr {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-inr-star {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (initial {_} {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-ir-star-at-offset (id {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (terminal {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (fold {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (unfold {F}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (arr {A} {B}) prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-arr-star {A} {B} prefix suffix f s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (fst {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (snd {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (inl {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (inr {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (initial {A}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     ⊥-elim x  -- Void has no inhabitants
 
   -- Recursive cases: use Star-based composition
-  run-ir-star-at-offset (_∘_ {_} {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-ir-star-at-offset (_∘_ {A} {B} {C} g f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     let (s' , addr-mid , addr-out , res-compose) =
           run-compose-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
         prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
@@ -1637,7 +1637,7 @@ mutual
         postulate-compose-to-ir-result : ∀ {prog s s' addr-mid addr-out offset} →
           ComposeResultS f g prog s s' addr-mid addr-out offset →
           IRStarResult (g ∘ f) prog s s' x offset
-  run-ir-star-at-offset (⟨_,_⟩ {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     let (s' , addr-f , addr-g , pair-addr , res-pair) =
           run-pair-star-direct f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
         prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
@@ -1651,20 +1651,20 @@ mutual
         postulate-pair-to-ir-result : ∀ {prog s s' addr-f addr-g pair-addr offset} →
           PairResultS f g prog s s' addr-f addr-g pair-addr offset →
           IRStarResult ⟨ f , g ⟩ prog s s' x offset
-  run-ir-star-at-offset ([_,_] {_} {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-case-star-direct {_} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   -- Curry case: Return CurryResultS directly (preserves closure-wf-s for apply)
-  run-ir-star-at-offset (curry {_} {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-curry-star-direct {_} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (apply {_} {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-apply-star-direct {_} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
 
   -- | Star-based compose execution
   -- Uses extracted helpers from IR.Compose - only recursive calls remain here
   --
   -- Structure: compile-aarch64 (g ∘ f) = compile-aarch64 f ++ nop ∷ compile-aarch64 g
   -- Execution: (1) execute f, (2) execute nop, (3) execute g
-  run-compose-star-direct : ∀ {i} {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1674,7 +1674,7 @@ mutual
     let prog = prefix ++ compile-aarch64 (g ∘ f) ++ suffix
     in ∃[ s' ] ∃[ addr-mid ] ∃[ addr-out ]
        ComposeResultS f g prog s s' addr-mid addr-out (length prefix)
-  run-compose-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-compose-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , addr-mid , addr-out , record
       { compose-star = star-full
       ; compose-halted = result-halted g res-g
@@ -1870,7 +1870,7 @@ mutual
   -- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0
   -- Middle: str x0 [x21], mov x0 x20
   -- Final: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16
-  run-pair-star-direct : ∀ {i} {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -1880,7 +1880,7 @@ mutual
     let prog = prefix ++ compile-aarch64 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] ∃[ addr-f ] ∃[ addr-g ] ∃[ pair-addr ]
        PairResultS f g prog s s' addr-f addr-g pair-addr (length prefix)
-  run-pair-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Full proof structure:
     -- 1. Setup (5 instructions): sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0
     -- 2. Execute f recursively
@@ -2184,7 +2184,7 @@ mutual
   --   5+|f| to 6+|f|: label + load value for inr
   --   7+|f| to 6+|f|+|g|: code-g (skipped if inl)
   --   7+|f|+|g|: end label
-  run-case-star-direct : ∀ {i} {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -2193,7 +2193,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {i} {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     case-sum {C = ResultType}
       (λ a → run-case-star-direct-inl f g prefix suffix a s h-false pc-eq stack-inv x29-inv sp>16)
       (λ b-val → run-case-star-direct-inr f g prefix suffix b-val s h-false pc-eq stack-inv x29-inv sp>16)
@@ -2216,7 +2216,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {i} {A} {B} {C} f g prefix suffix a s h-false pc-eq stack-inv x29-inv sp>16 =
+  run-case-star-direct-inl {A} {B} {C} f g prefix suffix a s h-false pc-eq stack-inv x29-inv sp>16 =
     s-final , case-inl-result
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -2333,7 +2333,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b-input) (length prefix)
-  run-case-star-direct-inr {i} {A} {B} {C} f g prefix suffix b-input s h-false pc-eq stack-inv x29-inv sp>16 =
+  run-case-star-direct-inr {A} {B} {C} f g prefix suffix b-input s h-false pc-eq stack-inv x29-inv sp>16 =
     s-final , case-inr-result
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -2457,7 +2457,7 @@ mutual
   -- Phase 2: Enhanced to return CurryResultS with closure validity proofs
   -- This replaces the old IRStarResult with stateful CurryResultS that includes
   -- closure validity (ClosureAtS) and well-formedness (ClosureWellFormedS) proofs.
-  run-curry-star-direct : ∀ {i} {A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -2466,7 +2466,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
     in ∃[ s' ] CurryResultS f prog s s' (encode x) (length prefix)
-  run-curry-star-direct {i} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , curry-result
     where
       -- The full program
@@ -2923,7 +2923,7 @@ mutual
 
   -- Compatibility wrapper: Convert CurryResultS to IRStarResult
   -- This allows run-ir-star-at-offset to use the new stateful curry
-  run-curry-star-direct-compat : ∀ {i} {A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-curry-star-direct-compat : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
@@ -2932,7 +2932,7 @@ mutual
     readSP (regs s) > 16 →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-  run-curry-star-direct-compat {i} {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+  run-curry-star-direct-compat {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     s-final , ir-result
     where
       prog = prefix ++ compile-aarch64 (curry f) ++ suffix
@@ -2986,7 +2986,7 @@ mutual
     readSP (regs s) > 16 →
     ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
-  curry-thunk-correct-impl {_} {A} {B} {C} f prefix suffix env arg s ret-addr
+  curry-thunk-correct-impl {A} {B} {C} f prefix suffix env arg s ret-addr
                            h-eq pc-eq x0-eq x19-eq x30-eq stack-inv sp>16 =
     s-final , thunk-result , pc-final
     where
@@ -3273,16 +3273,16 @@ mutual
   -- For whole-program proofs that can eliminate the postulate, use
   -- run-apply-with-wf from ClosureWellFormed which takes a
   -- ClosureWellFormed proof (produced by curry) as input.
-  run-apply-star-direct : ∀ {i} {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+  run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode {(A ⇒ B) * A} x →
     StackInvariant s →
     X29Invariant s →
     readSP (regs s) > 16 →
-    let prog = prefix ++ compile-aarch64 (apply {i} {A} {B}) ++ suffix
-    in ∃[ s' ] IRStarResult (apply {i} {A} {B}) prog s s' x (length prefix)
-  run-apply-star-direct {i} {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    let prog = prefix ++ compile-aarch64 (apply {A} {B}) ++ suffix
+    in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
+  run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     -- Use centralized postulate and wrap result in IRStarResult
     -- Pattern matching in let destructures the tuple cleanly
     let (s' , star-pf , halted-pf , pc-pf , x0-pf , x20-pf , x21-pf , x29-pf , x30-pf , sp-pf ,
@@ -3312,7 +3312,7 @@ mutual
 
 -- | The main correctness theorem: for any IR term and input,
 -- executing the compiled code produces the semantically correct result.
-codegen-aarch64-star-correct : ∀ {i} {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+codegen-aarch64-star-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) x0 ≡ encode x →
