@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Compile
 --
@@ -13,8 +12,6 @@ module Once.Compile where
 
 -- Re-export types
 open import Once.Type public
-
-open import Size using (∞)
 
 -- Re-export Core IR
 open import Once.IR public
@@ -59,9 +56,9 @@ open import Once.Optimize public
 --   import qualified MAlonzo.Code.Once.Compile as C
 --   compiledIR = C.d_compile surfaceIR
 --
-compile : ∀ {A B} → SurfaceIR A B → IR ∞ A B
+compile : ∀ {A B} → SurfaceIR A B → IR A B
 compile ir = optimize (desugar ir)
 
 -- | Compile without optimization (for debugging)
-compile-no-opt : ∀ {A B} → SurfaceIR A B → IR ∞ A B
+compile-no-opt : ∀ {A B} → SurfaceIR A B → IR A B
 compile-no-opt = desugar

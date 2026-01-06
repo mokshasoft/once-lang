@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.TypeSystem.Typing
 --
@@ -12,8 +11,6 @@
 ------------------------------------------------------------------------
 
 module Once.TypeSystem.Typing where
-
-open import Size
 
 open import Once.Type
 open import Once.IR
@@ -183,7 +180,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 --
 -- This shows that the explicit rules generate exactly IR.
 --
-⌊_⌋ : ∀ {Γ A B} → Γ ⊢ A ⟶ B → IR ∞ A B
+⌊_⌋ : ∀ {Γ A B} → Γ ⊢ A ⟶ B → IR A B
 ⌊ ty-id ⌋ = id
 ⌊ ty-comp g f ⌋ = ⌊ g ⌋ ∘ ⌊ f ⌋
 ⌊ ty-fst ⌋ = fst
@@ -224,7 +221,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
-round-trip-ir : ∀ {A B} (f : IR ∞ A B) → ⌊ ⌈ f ⌉ ⌋ ≡ f
+round-trip-ir : ∀ {A B} (f : IR A B) → ⌊ ⌈ f ⌉ ⌋ ≡ f
 round-trip-ir id = refl
 round-trip-ir (g ∘ f) = cong₂ _∘_ (round-trip-ir g) (round-trip-ir f)
   where

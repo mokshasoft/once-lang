@@ -15,11 +15,7 @@
 -- See: docs/formal/guides/orthogonal-termination-proof.md
 ------------------------------------------------------------------------
 
-{-# OPTIONS --sized-types #-}
-
 module Once.Backend.Termination where
-
-open import Size using (Size; ∞)
 open import Once.Type hiding (_+_)
 open import Once.IR
 
@@ -36,7 +32,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 -- Composite terms have size strictly greater than their components.
 ------------------------------------------------------------------------
 
-ir-size : ∀ {A B} → IR ∞ A B → ℕ
+ir-size : ∀ {A B} → IR A B → ℕ
 ir-size id = 1
 ir-size terminal = 1
 ir-size initial = 1
@@ -63,34 +59,34 @@ ir-size arr = 1
 ------------------------------------------------------------------------
 
 -- Compose: Both f and g are smaller than (g ∘ f)
-∘-f-smaller : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
+∘-f-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) →
   ir-size f < ir-size (g ∘ f)
 ∘-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-∘-g-smaller : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
+∘-g-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) →
   ir-size g < ir-size (g ∘ f)
 ∘-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Pair: Both f and g are smaller than ⟨ f , g ⟩
-⟨,⟩-f-smaller : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
+⟨,⟩-f-smaller : ∀ {A B C} (f : IR C A) (g : IR C B) →
   ir-size f < ir-size ⟨ f , g ⟩
 ⟨,⟩-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-⟨,⟩-g-smaller : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
+⟨,⟩-g-smaller : ∀ {A B C} (f : IR C A) (g : IR C B) →
   ir-size g < ir-size ⟨ f , g ⟩
 ⟨,⟩-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Case: Both f and g are smaller than [ f , g ]
-[,]-f-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
+[,]-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) →
   ir-size f < ir-size [ f , g ]
 [,]-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-[,]-g-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
+[,]-g-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) →
   ir-size g < ir-size [ f , g ]
 [,]-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Curry: f is smaller than (curry f)
-curry-smaller : ∀ {A B C} (f : IR ∞ (A * B) C) →
+curry-smaller : ∀ {A B C} (f : IR (A * B) C) →
   ir-size f < ir-size (curry f)
 curry-smaller f = s≤s ≤-refl
 
@@ -108,7 +104,7 @@ curry-smaller f = s≤s ≤-refl
 
 module IRProcessor
   -- What it means to "process" an IR term
-  (Process : ∀ {A B} → IR ∞ A B → Set)
+  (Process : ∀ {A B} → IR A B → Set)
 
   -- How to process base cases (non-recursive constructors)
   (process-id : ∀ {A} → Process (id {∞} {A}))
@@ -124,23 +120,23 @@ module IRProcessor
   (process-arr : ∀ {A B} → Process (arr {∞} {A} {B}))
 
   -- How to process recursive cases (using results from subterms)
-  (process-compose : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
+  (process-compose : ∀ {A B C} (f : IR A B) (g : IR B C) →
                      Process f → Process g → Process (g ∘ f))
-  (process-pair : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
+  (process-pair : ∀ {A B C} (f : IR C A) (g : IR C B) →
                   Process f → Process g → Process ⟨ f , g ⟩)
-  (process-case : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
+  (process-case : ∀ {A B C} (f : IR A C) (g : IR B C) →
                   Process f → Process g → Process [ f , g ])
-  (process-curry : ∀ {A B C} (f : IR ∞ (A * B) C) →
+  (process-curry : ∀ {A B C} (f : IR (A * B) C) →
                    Process f → Process (curry f))
   where
 
   -- Main theorem: Any IR term can be processed
   -- (Proved by well-founded induction on ir-size)
-  ir-terminates : ∀ {A B} (ir : IR ∞ A B) → Process ir
+  ir-terminates : ∀ {A B} (ir : IR A B) → Process ir
   ir-terminates ir = helper ir (<-wellFounded (ir-size ir))
     where
       -- Helper function that uses the accessibility predicate
-      helper : ∀ {A B} (ir : IR ∞ A B) → Acc _<_ (ir-size ir) → Process ir
+      helper : ∀ {A B} (ir : IR A B) → Acc _<_ (ir-size ir) → Process ir
 
       -- Base cases: use provided processors
       helper id _ = process-id
@@ -216,7 +212,7 @@ postulate
   run-ir-star-terminates :
     -- For any IR term, run-ir-star-at-offset terminates
     -- (Proven by instantiating IRProcessor)
-    ∀ {A B} (ir : IR ∞ A B) →
+    ∀ {A B} (ir : IR A B) →
     -- This is a marker that the function terminates
     -- The actual proof is the IRProcessor module above
     Set
@@ -244,12 +240,12 @@ module Example where
 
   -- The property we want to prove: any IR term can be processed
   -- (For a concrete example, we'd need to define what "processing" means)
-  IRProcesses : ∀ {A B} → IR ∞ A B → Set
+  IRProcesses : ∀ {A B} → IR A B → Set
   IRProcesses ir = ⊤  -- Trivial property for demonstration
 
   -- Proof by instantiating IRProcessor
   -- (This is just a sketch showing the pattern - holes marked with ?)
-  ir-processes : ∀ {A B} (ir : IR ∞ A B) → IRProcesses ir
+  ir-processes : ∀ {A B} (ir : IR A B) → IRProcesses ir
   ir-processes = IRProcessor.ir-terminates
     IRProcesses
     -- Base cases: all trivially return tt

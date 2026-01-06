@@ -29,7 +29,7 @@ open import Function using (_∘′_)
 -- For any morphism f : A → B, composing with identity on the left
 -- gives back f.
 --
-eval-id-left : ∀ {A B} (f : IR ∞ A B) (x : ⟦ A ⟧)
+eval-id-left : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
              → eval (id ∘ f) x ≡ eval f x
 eval-id-left f x = refl
 
@@ -38,7 +38,7 @@ eval-id-left f x = refl
 -- For any morphism f : A → B, composing with identity on the right
 -- gives back f.
 --
-eval-id-right : ∀ {A B} (f : IR ∞ A B) (x : ⟦ A ⟧)
+eval-id-right : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
               → eval (f ∘ id) x ≡ eval f x
 eval-id-right f x = refl
 
@@ -46,7 +46,7 @@ eval-id-right f x = refl
 --
 -- Composition is associative.
 --
-eval-assoc : ∀ {A B C D} (f : IR ∞ C D) (g : IR ∞ B C) (h : IR ∞ A B) (x : ⟦ A ⟧)
+eval-assoc : ∀ {A B C D} (f : IR C D) (g : IR B C) (h : IR A B) (x : ⟦ A ⟧)
            → eval ((f ∘ g) ∘ h) x ≡ eval (f ∘ (g ∘ h)) x
 eval-assoc f g h x = refl
 
@@ -58,7 +58,7 @@ eval-assoc f g h x = refl
 --
 -- Projecting the first component of a pair gives the first morphism.
 --
-eval-fst-pair : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) (x : ⟦ C ⟧)
+eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
               → eval (fst ∘ ⟨ f , g ⟩) x ≡ eval f x
 eval-fst-pair f g x = refl
 
@@ -66,7 +66,7 @@ eval-fst-pair f g x = refl
 --
 -- Projecting the second component of a pair gives the second morphism.
 --
-eval-snd-pair : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) (x : ⟦ C ⟧)
+eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
               → eval (snd ∘ ⟨ f , g ⟩) x ≡ eval g x
 eval-snd-pair f g x = refl
 
@@ -87,7 +87,7 @@ eval-pair-eta (a , b) = refl
 -- Any morphism into a product is uniquely determined by its projections.
 -- This is the universal property of products.
 --
-eval-pair-unique : ∀ {A B C} (h : IR ∞ C (A * B)) (x : ⟦ C ⟧)
+eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (x : ⟦ C ⟧)
                  → eval ⟨ fst ∘ h , snd ∘ h ⟩ x ≡ eval h x
 eval-pair-unique h x with eval h x
 ... | (a , b) = refl
@@ -100,7 +100,7 @@ eval-pair-unique h x with eval h x
 --
 -- Case analysis on a left injection gives the left branch.
 --
-eval-case-inl : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) (x : ⟦ A ⟧)
+eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧)
               → eval ([ f , g ] ∘ inl) x ≡ eval f x
 eval-case-inl f g x = refl
 
@@ -108,7 +108,7 @@ eval-case-inl f g x = refl
 --
 -- Case analysis on a right injection gives the right branch.
 --
-eval-case-inr : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) (x : ⟦ B ⟧)
+eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ B ⟧)
               → eval ([ f , g ] ∘ inr) x ≡ eval g x
 eval-case-inr f g x = refl
 
@@ -130,7 +130,7 @@ eval-case-eta (inj₂ b) = refl
 -- Any morphism from a coproduct is uniquely determined by its restrictions.
 -- This is the universal property of coproducts.
 --
-eval-case-unique : ∀ {A B C} (h : IR ∞ (A + B) C) (x : ⟦ A + B ⟧)
+eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (x : ⟦ A + B ⟧)
                  → eval [ h ∘ inl , h ∘ inr ] x ≡ eval h x
 eval-case-unique h (inj₁ a) = refl
 eval-case-unique h (inj₂ b) = refl
@@ -143,7 +143,7 @@ eval-case-unique h (inj₂ b) = refl
 --
 -- Unit is terminal: there's a unique morphism from any object to Unit.
 --
-eval-terminal-unique : ∀ {A} (f : IR ∞ A Unit) (x : ⟦ A ⟧)
+eval-terminal-unique : ∀ {A} (f : IR A Unit) (x : ⟦ A ⟧)
                      → eval f x ≡ eval terminal x
 eval-terminal-unique f x with eval f x
 ... | tt = refl
@@ -157,7 +157,7 @@ eval-terminal-unique f x with eval f x
 -- Void is initial: there's a unique morphism from Void to any object.
 -- This is vacuously true since Void is empty.
 --
-eval-initial-unique : ∀ {A} (f : IR ∞ Void A) (x : ⟦ Void ⟧)
+eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void ⟧)
                     → eval f x ≡ eval initial x
 eval-initial-unique f ()
 
@@ -169,7 +169,7 @@ eval-initial-unique f ()
 --
 -- This is the beta law for exponentials.
 --
-eval-curry-apply : ∀ {A B C} (f : IR ∞ (A * B) C) (x : ⟦ A * B ⟧)
+eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
                  → eval (apply ∘ ⟨ curry f ∘ fst , snd ⟩) x ≡ eval f x
 eval-curry-apply f (a , b) = refl
 
@@ -180,7 +180,7 @@ eval-curry-apply f (a , b) = refl
 -- but we can prove it pointwise.
 --
 -- With explicit Closure, application uses Closure.semantics
-eval-curry-eta : ∀ {A B C} (g : IR ∞ A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
                → Closure.semantics (eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a) b ≡ Closure.semantics (eval g a) b
 eval-curry-eta g a b = refl
 
@@ -204,7 +204,7 @@ eval-bimap-id (a , b) = refl
 -- | bimap preserves composition
 --
 eval-bimap-compose : ∀ {A B C D E F}
-                     (f : IR ∞ B C) (g : IR ∞ A B) (h : IR ∞ E F) (i : IR ∞ D E)
+                     (f : IR B C) (g : IR A B) (h : IR E F) (i : IR D E)
                      (x : ⟦ A * D ⟧)
                    → eval ⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ x
                      ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ ∘ ⟨ g ∘ fst , i ∘ snd ⟩) x

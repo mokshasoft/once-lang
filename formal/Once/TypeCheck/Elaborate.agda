@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.TypeCheck.Elaborate
 --
@@ -31,7 +30,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Data.Nat.Induction using (<-wellFounded)
 
-open import Size using (Size; ∞)
 open import Once.Type
 open Once.Type using (showQuantity) public
 open import Once.IR as IR
@@ -961,7 +959,7 @@ checkElab ctx expr ty with checkElabImpl ctx expr ty
 -- declarations should have type signatures (Once philosophy: explicit > implicit).
 --
 -- Uses bidirectional checking mode for better error messages and polymorphism.
-compileExprTyped : RawExpr → (A : Type) → Maybe (IR ∞ Unit A)
+compileExprTyped : RawExpr → (A : Type) → Maybe (IR Unit A)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _ = nothing
 ... | success se _ _ _ = just (elaborate se)
@@ -975,7 +973,7 @@ compileExprTyped e A with checkElab emptyCtx e A
 -- - May fail where checking succeeds
 --
 -- Once philosophy: Types guide, signatures required.
-compileExpr : RawExpr → Maybe (∃[ A ] IR ∞ Unit A)
+compileExpr : RawExpr → Maybe (∃[ A ] IR Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _ = nothing
 ... | success A se _ _ _ = just (A , elaborate se)

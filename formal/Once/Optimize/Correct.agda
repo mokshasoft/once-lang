@@ -36,7 +36,6 @@ open import Data.Unit using (tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans)
-open import Size using (Size; ∞)
 
 ------------------------------------------------------------------------
 -- Correctness of optimize-compose
@@ -52,7 +51,7 @@ open import Size using (Size; ∞)
 --   - Associativity
 ------------------------------------------------------------------------
 
-optimize-compose-correct : ∀ {A B C} (g : IR ∞ B C) (f : IR ∞ A B) (x : ⟦ A ⟧)
+optimize-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
                          → eval (optimize-compose g f) x ≡ eval (g ∘ f) x
 
 -- Left identity: id ∘ f = f
@@ -301,11 +300,11 @@ optimize-compose-correct (h ∘ g) arr x =
 -- Correctness of optimize-pair
 ------------------------------------------------------------------------
 
-optimize-pair-correct : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) (x : ⟦ C ⟧)
+optimize-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
                       → eval (optimize-pair f g) x ≡ eval ⟨ f , g ⟩ x
 
 -- Eta law: ⟨ fst , snd ⟩ = id
-optimize-pair-correct (fst {_} {A} {B}) (snd {_} {A'} {B'}) x with A ≟Type A' | B ≟Type B'
+optimize-pair-correct (fst {A} {B}) (snd {A'} {B'}) x with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = sym (eval-pair-eta x)
 ... | yes refl | no _     = refl
 ... | no _     | yes _    = refl
@@ -324,17 +323,17 @@ optimize-pair-correct fst apply x = refl
 optimize-pair-correct fst fold x = refl
 
 -- Uniqueness: ⟨ fst ∘ h , snd ∘ h' ⟩ cases
-optimize-pair-correct (_∘_ {_} {_} {D} {_} (fst {_} {A} {B}) h) (_∘_ {_} {_} {D'} {_} (snd {_} {A'} {B'}) h') x
+optimize-pair-correct (_∘_ {_} {D} {_} (fst {A} {B}) h) (_∘_ {_} {D'} {_} (snd {A'} {B'}) h') x
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
-optimize-pair-correct (_∘_ (fst {_} {A} {B}) h) (_∘_ (snd {_} {.A} {.B}) h') x
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {.B}) h') x
   | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = sym (eval-pair-unique h x)  -- Use uniqueness law
 ...   | no _     = refl
-optimize-pair-correct (_∘_ (fst {_} {A} {B}) h) (_∘_ (snd {_} {.A} {.B}) h') x
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {.B}) h') x
   | yes refl | yes refl | no _  = refl
-optimize-pair-correct (_∘_ (fst {_} {A} {B}) h) (_∘_ (snd {_} {.A} {B'}) h') x
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {B'}) h') x
   | yes refl | no _  | _     = refl
-optimize-pair-correct (_∘_ (fst {_} {A} {B}) h) (_∘_ (snd {_} {A'} {B'}) h') x
+optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') x
   | no _  | _     | _     = refl
 
 -- fst ∘ h with non-snd ∘ g' second argument
@@ -400,11 +399,11 @@ optimize-pair-correct arr g x = refl
 -- Correctness of optimize-case
 ------------------------------------------------------------------------
 
-optimize-case-correct : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) (x : ⟦ A + B ⟧)
+optimize-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧)
                       → eval (optimize-case f g) x ≡ eval [ f , g ] x
 
 -- Eta law: [ inl , inr ] = id
-optimize-case-correct (inl {_} {A} {B}) (inr {_} {A'} {B'}) x with A ≟Type A' | B ≟Type B'
+optimize-case-correct (inl {A} {B}) (inr {A'} {B'}) x with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = sym (eval-case-eta x)
 ... | yes refl | no _     = refl
 ... | no _     | yes _    = refl
@@ -422,17 +421,17 @@ optimize-case-correct inl apply x = refl
 optimize-case-correct inl unfold x = refl
 
 -- Uniqueness: [ h ∘ inl , h' ∘ inr ] cases
-optimize-case-correct (_∘_ {_} {_} {D} {_} h (inl {_} {A} {B})) (_∘_ {_} {_} {D'} {_} h' (inr {_} {A'} {B'})) x
+optimize-case-correct (_∘_ {_} {D} {_} h (inl {A} {B})) (_∘_ {_} {D'} {_} h' (inr {A'} {B'})) x
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
-optimize-case-correct (_∘_ h (inl {_} {A} {B})) (_∘_ h' (inr {_} {.A} {.B})) x
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {.B})) x
   | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = sym (eval-case-unique h x)  -- Use uniqueness law
 ...   | no _     = refl
-optimize-case-correct (_∘_ h (inl {_} {A} {B})) (_∘_ h' (inr {_} {.A} {.B})) x
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {.B})) x
   | yes refl | yes refl | no _  = refl
-optimize-case-correct (_∘_ h (inl {_} {A} {B})) (_∘_ h' (inr {_} {.A} {B'})) x
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {B'})) x
   | yes refl | no _  | _     = refl
-optimize-case-correct (_∘_ h (inl {_} {A} {B})) (_∘_ h' (inr {_} {A'} {B'})) x
+optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) x
   | no _  | _     | _     = refl
 
 -- h ∘ inl with second arg NOT of form h' ∘ inr
@@ -502,7 +501,7 @@ optimize-case-correct arr g x = refl
 -- Correctness of optimize-once
 ------------------------------------------------------------------------
 
-optimize-once-correct : ∀ {A B} (f : IR ∞ A B) (x : ⟦ A ⟧)
+optimize-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
                       → eval (optimize-once f) x ≡ eval f x
 optimize-once-correct id x = refl
 optimize-once-correct (g ∘ f) x =
@@ -542,7 +541,7 @@ optimize-once-correct arr x = refl
 -- Correctness of bounded optimization
 ------------------------------------------------------------------------
 
-optimize-n-correct : ∀ {A B} (n : ℕ) (f : IR ∞ A B) (x : ⟦ A ⟧)
+optimize-n-correct : ∀ {A B} (n : ℕ) (f : IR A B) (x : ⟦ A ⟧)
                    → eval (optimize-n n f) x ≡ eval f x
 optimize-n-correct zero f x = refl
 optimize-n-correct (suc n) f x =
@@ -553,6 +552,6 @@ optimize-n-correct (suc n) f x =
 -- Main theorem: optimize preserves semantics
 ------------------------------------------------------------------------
 
-optimize-correct : ∀ {A B} (f : IR ∞ A B) (x : ⟦ A ⟧)
+optimize-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
                  → eval (optimize f) x ≡ eval f x
 optimize-correct f x = optimize-n-correct 10 f x
