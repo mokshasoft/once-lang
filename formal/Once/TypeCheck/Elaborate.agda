@@ -754,10 +754,32 @@ builtinType "compose" n =
             (Surface.app (Surface.var (suc (suc zero)))
                         (Surface.app (Surface.var (suc zero)) (Surface.var zero))))) ,
           suc (suc (suc n)))
--- Note: pure, arr, fold, unfold cannot be implemented in pure Surface.Expr
--- - pure, arr require effect constructors (Eff type)
--- - fold, unfold require Fix constructors
--- These will need to be added when Surface.Syntax is extended with effects/recursion
+-- arr: (α → β) → Eff α β
+-- arr = λf. arr' f (where arr' is the Surface constructor)
+builtinType "arr" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just ((a ⇒ b) ⇒ Eff a b ,
+          Surface.lam Many (Surface.arr' (Surface.var zero)) ,
+          suc (suc n))
+-- fold: F → Fix F
+-- fold = λx. roll' x (where roll' is the Surface constructor)
+builtinType "fold" n =
+  let f = TVar (freshTVar n)
+  in just (f ⇒ Fix f ,
+          Surface.lam Many (Surface.roll' (Surface.var zero)) ,
+          suc n)
+-- unfold: Fix F → F
+-- unfold = λx. unroll' x (where unroll' is the Surface constructor)
+builtinType "unfold" n =
+  let f = TVar (freshTVar n)
+  in just (Fix f ⇒ f ,
+          Surface.lam Many (Surface.unroll' (Surface.var zero)) ,
+          suc n)
+-- Note: pure is NOT a builtin - it's library code defined as:
+--   pure : A → Eff Unit A
+--   pure x = arr (λ_ → x)
+-- Or equivalently: pure = arr ∘ curry terminal
 builtinType _ _ = nothing
 
 ------------------------------------------------------------------------
