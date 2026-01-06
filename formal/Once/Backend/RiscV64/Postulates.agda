@@ -22,8 +22,8 @@ open import Data.Bool using (false)
 open import Size using (Size)
 
 open import Once.Type using (Type; _⇒_; _*_)
-open import Once.IR using (apply; IR)
-open import Once.Semantics using (⟦_⟧; encode)
+open import Once.IRS using (apply; IR)
+open import Once.SemanticsS using (⟦_⟧; encode)
 
 open import Once.Backend.RiscV64.Syntax using (a0; sp; Program; Reg)
 open import Once.Backend.RiscV64.Semantics using (State; readReg; RegFile)
@@ -78,7 +78,7 @@ postulate
 -- STATUS: ELIMINATED! (2026-01-02)
 --
 -- This postulate claimed:
---   ∀ {i A B C} (f : IR (A * B) C) (s : State) →
+--   ∀ {i A B C} (f : IR i (A * B) C) (s : State) →
 --     StackDepth f ≤ readReg (regs s) sp
 --
 -- This was a FALSE universal claim (claimed ANY IR f fits in ANY sp).

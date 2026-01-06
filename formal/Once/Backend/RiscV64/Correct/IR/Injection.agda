@@ -16,18 +16,13 @@ module Once.Backend.RiscV64.Correct.IR.Injection where
 open import Size
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
+open import Once.IRS
+open import Once.SemanticsS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
-open import Once.Backend.RiscV64.CodeGen
-
-open import Once.Postulates
-  using (encode; encode-inl-tag; encode-inl-val;
-         encode-inr-tag; encode-inr-val;
-         encode-inl-construct; encode-inr-construct)
+open import Once.Backend.RiscV64.CodeGen using (compile-riscv; neg16)
 
 open import Once.Backend.RiscV64.Correct.Foundation
 open import Once.Backend.RiscV64.Correct.Star

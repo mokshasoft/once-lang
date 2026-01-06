@@ -16,16 +16,13 @@ open import Data.Product using (_,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; trans; sym; subst)
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
+open import Once.IRS
+open import Once.SemanticsS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
-open import Once.Backend.RiscV64.CodeGen
-
-open import Once.Postulates
-  using (encode)
+open import Once.Backend.RiscV64.CodeGen using (compile-riscv; StackDepth)
 
 open import Once.Backend.RiscV64.Correct.Foundation
 open import Once.Backend.RiscV64.Correct.StarBase

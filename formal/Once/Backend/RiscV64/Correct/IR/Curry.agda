@@ -25,15 +25,14 @@ module Once.Backend.RiscV64.Correct.IR.Curry where
 open import Size
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr)
+open import Once.IRS
+open import Once.SemanticsS hiding (code-ptr)
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
 open import Once.Backend.RiscV64.CodeGen
 
-open import Once.Postulates using (encode; encode-closure-construct)
 open import Once.Backend.RiscV64.Correct.Foundation
 open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-correct)
 open import Once.Backend.RiscV64.Correct.Star
@@ -77,7 +76,7 @@ postulate
 -- Main curry proof
 ------------------------------------------------------------------------
 
-run-curry-star : ∀ {i A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →

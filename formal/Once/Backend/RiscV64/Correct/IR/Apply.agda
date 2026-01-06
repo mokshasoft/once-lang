@@ -35,17 +35,14 @@ module Once.Backend.RiscV64.Correct.IR.Apply where
 open import Size
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+open import Once.IRS
+open import Once.SemanticsS hiding (code-ptr; env-addr; semantics)
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
 open import Once.Backend.RiscV64.Semantics using (effectiveAddr)
-open import Once.Backend.RiscV64.CodeGen
-
-open import Once.Postulates
-  using (encode; encode-pair-fst; encode-pair-snd)
+open import Once.Backend.RiscV64.CodeGen using (compile-riscv; compile-length)
 open import Once.Backend.RiscV64.Correct.Foundation
   using ( fetch-at-prefix-end
         ; readReg-writeReg-same

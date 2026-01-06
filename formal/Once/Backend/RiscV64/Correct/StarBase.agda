@@ -22,8 +22,8 @@ module Once.Backend.RiscV64.Correct.StarBase where
 
 open import Size
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
+open import Once.IRS
+open import Once.SemanticsS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
@@ -60,7 +60,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- RISC-V simplification: a0 is BOTH input and output!
 ------------------------------------------------------------------------
 
-record IRStarResult {i : Size} {A B : Type} (ir : IR A B) (prog : Program) (s s' : State)
+record IRStarResult {i : Size} {A B : Type} (ir : IR i A B) (prog : Program) (s s' : State)
                     (x : ⟦ A ⟧) (offset : ℕ) : Set where
   field
     ir-star    : Star prog s s'                           -- Execution reaches s'
@@ -116,7 +116,7 @@ IRRunner i = ∀ {j : Size< i} {A B} (ir : IR j A B) (prefix suffix : Program) (
 -- a0 unchanged, eval id x = x
 ------------------------------------------------------------------------
 
-run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-id-star : ∀ {i A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
@@ -150,7 +150,7 @@ run-id-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 = 0 = encode tt (by encode-unit)
 ------------------------------------------------------------------------
 
-run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-terminal-star : ∀ {i A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
@@ -185,7 +185,7 @@ run-terminal-star {i} {A} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 unchanged, encode x ≡ encode (wrap x) by encode-fix-wrap
 ------------------------------------------------------------------------
 
-run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+run-fold-star : ∀ {i F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →
@@ -219,7 +219,7 @@ run-fold-star {i} {F} prefix suffix x s h-false pc-eq a0-eq = s' , record
 -- a0 unchanged, encode x ≡ encode (unwrap x) by encode-fix-unwrap
 ------------------------------------------------------------------------
 
-run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+run-unfold-star : ∀ {i F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) a0 ≡ encode x →

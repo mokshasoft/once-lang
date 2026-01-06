@@ -21,7 +21,7 @@ module Once.Backend.RiscV64.CodeGen where
 
 open import Size
 open import Once.Type
-open import Once.IR
+open import Once.IRS
 
 open import Once.Backend.RiscV64.Syntax
 
@@ -52,7 +52,7 @@ open import Once.Backend.RiscV64.Correct.CurryFrameProof
 --   - inr-frame: 16 bytes (tag + value)
 --   - curry-frame: 24 bytes (PROVEN from ThunkSetup.agda instruction sequence)
 --   - apply-frame: 24 bytes (conservative bound for thunk frame)
-open import Once.Backend.Common.StackAnalysis
+open import Once.Backend.Common.StackAnalysisS
   32                 -- pair-frame (TODO: prove from code generation)
   16                 -- inl-frame (TODO: prove from code generation)
   16                 -- inr-frame (TODO: prove from code generation)
@@ -84,7 +84,7 @@ neg32 = -[1+ 31 ]  -- Represents -32
 
 -- | Calculate the number of instructions generated for an IR morphism
 -- This is needed for computing jump targets in case analysis and curry.
-compile-length : ∀ {A B} → IR A B → ℕ
+compile-length : ∀ {i A B} → IR i A B → ℕ
 
 compile-length id = 1              -- nop (a0 already has the value)
 compile-length (g ∘ f) = compile-length f +ℕ compile-length g  -- no mov needed!
@@ -111,7 +111,7 @@ compile-length arr = 1             -- nop (identity)
 
 -- | Generate RISC-V 64-bit code for an IR morphism
 --
--- compile-riscv : IR A B → Program
+-- compile-riscv : IR i A B → Program
 --
 -- The generated code:
 --   - Expects input in a0
@@ -120,7 +120,7 @@ compile-length arr = 1             -- nop (identity)
 --   - Uses s0-s3 as callee-saved temporaries
 --   - Uses t0-t2 as scratch registers
 --
-compile-riscv : ∀ {A B} → IR A B → Program
+compile-riscv : ∀ {i A B} → IR i A B → Program
 
 -- Identity: no-op (a0 already has the value, output goes to a0)
 -- This is simpler than x86 which needs mov rax, rdi

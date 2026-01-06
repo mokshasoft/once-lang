@@ -18,8 +18,8 @@
 module Once.Backend.RiscV64.Correct.Foundation where
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
+open import Once.IRS
+open import Once.SemanticsS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
@@ -43,37 +43,76 @@ open import Once.Backend.Common.Memory
 -- Import common exec N-steps lemmas (parameterized module)
 -- Instantiated below after defining the base lemmas exec-step-continue and exec-one-step
 
--- Import encoding axioms from central postulates module
-open import Once.Postulates public
+-- Import encoding from sized Semantics
+open import Once.SemanticsS public
   using ( encode
         ; encode-unit
-        ; encode-pair-fst
-        ; encode-pair-snd
-        ; encode-inl-tag
-        ; encode-inl-val
-        ; encode-inr-tag
-        ; encode-inr-val
-        ; encode-inl-construct
-        ; encode-inr-construct
         ; encode-fix-unwrap
         ; encode-fix-wrap
         ; encode-arr-identity
-        ; encode-pair-construct
-        ; encode-closure-construct
         )
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
+-- Import standard library modules needed for postulates
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; z≤n; s≤s; _≟_; _≥_) renaming (_+_ to _+ℕ_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; subst₂; module ≡-Reasoning)
+
+-- Encoding postulates for sized semantics
+-- These match Once.Postulates but use sized ⟦_⟧ from Once.SemanticsS
+postulate
+  encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode (a , b)) ≡ just (encode a)
+
+  encode-pair-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
+    readMem m ((encode (a , b)) +ℕ 8) ≡ just (encode b)
+
+  encode-inl-tag : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
+    readMem m (encode {A + B} (inj₁ a)) ≡ just 0
+
+  encode-inl-val : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
+    readMem m ((encode {A + B} (inj₁ a)) +ℕ 8) ≡ just (encode a)
+
+  encode-inr-tag : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
+    readMem m (encode {A + B} (inj₂ b)) ≡ just 1
+
+  encode-inr-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
+    readMem m ((encode {A + B} (inj₂ b)) +ℕ 8) ≡ just (encode b)
+
+  -- Inverse construction: if memory layout matches pair encoding, then it is the encoded pair
+  encode-pair-construct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (ptr : ℕ) (m : Memory) →
+    readMem m ptr ≡ just (encode a) →
+    readMem m (ptr +ℕ 8) ≡ just (encode b) →
+    ptr ≡ encode (a , b)
+
+  -- Curry closure construction: if memory at ptr contains the environment (encode x),
+  -- then ptr is the encoding of the curry result
+  encode-closure-construct : ∀ {i A B C} (f : IR i (A * B) C) (x : ⟦ A ⟧) (ptr : ℕ) (m : Memory) →
+    readMem m ptr ≡ just (encode x) →
+    ptr ≡ encode {B ⇒ C} (eval (curry f) x)
+
+  -- Sum type (inl) construction: if memory at ptr has tag 0 and value x at offset 8,
+  -- then ptr is the encoding of inj₁ x
+  encode-inl-construct : ∀ {A B} (x : ⟦ A ⟧) (ptr : ℕ) (m : Memory) →
+    readMem m ptr ≡ just 0 →
+    readMem m (ptr +ℕ 8) ≡ just (encode x) →
+    ptr ≡ encode {A + B} (inj₁ x)
+
+  -- Sum type (inr) construction: if memory at ptr has tag 1 and value x at offset 8,
+  -- then ptr is the encoding of inj₂ x
+  encode-inr-construct : ∀ {A B} (x : ⟦ B ⟧) (ptr : ℕ) (m : Memory) →
+    readMem m ptr ≡ just 1 →
+    readMem m (ptr +ℕ 8) ≡ just (encode x) →
+    ptr ≡ encode {A + B} (inj₂ x)
+
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++; ++-assoc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-sum)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; subst₂; module ≡-Reasoning)
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
@@ -147,7 +186,7 @@ initWithInput-sp stackSize x = refl
 -- | Initial state has adequate stack for any IR (StackDepth ir ≤ sp)
 -- This is now a trivial lemma - it just restates the precondition.
 -- The caller must prove StackDepth ir ≤ stackSize before calling this.
-initWithInput-sp-sufficient : ∀ {A B} (ir : IR A B) (stackSize : ℕ) {A'} (x : ⟦ A' ⟧) →
+initWithInput-sp-sufficient : ∀ {i A B} (ir : IR i A B) (stackSize : ℕ) {A'} (x : ⟦ A' ⟧) →
   StackDepth ir ≤ stackSize →
   StackDepth ir ≤ readReg (regs (initWithInput stackSize x)) sp
 initWithInput-sp-sufficient ir stackSize x prf = prf

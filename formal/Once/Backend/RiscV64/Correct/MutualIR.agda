@@ -20,8 +20,8 @@ module Once.Backend.RiscV64.Correct.MutualIR where
 
 open import Size
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
+open import Once.IRS
+open import Once.SemanticsS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
@@ -31,7 +31,6 @@ open import Once.Backend.RiscV64.CodeGen
 open import Once.Backend.RiscV64.Correct.CurryFrameProof
   using (curry-frame-value)
 
-open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
          encode-pair-construct; encode-inl-tag; encode-inl-val;
          encode-inr-tag; encode-inr-val; encode-arr-identity;

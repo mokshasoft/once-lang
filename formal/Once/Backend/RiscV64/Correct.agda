@@ -29,9 +29,8 @@ module Once.Backend.RiscV64.Correct where
 open import Size
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
-open import Once.Semantics using (⟦Fix⟧)
+open import Once.IRS
+open import Once.SemanticsS
 open ⟦Fix⟧
 
 open import Once.Backend.RiscV64.Syntax
@@ -84,7 +83,7 @@ open import Once.Backend.RiscV64.Correct.MutualIR
 --   1. Get Star-based result
 --   2. Add halting step when PC reaches end of program (fetch fails)
 --   3. Return Star directly - no fuel!
-star-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+star-generator : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →
@@ -150,7 +149,7 @@ star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-
 --   let stackSize = StackDepth ir + 1024  -- Compute required stack + margin
 --       proof = star-codegen-correct ir stackSize x (auto-prove stackSize ≥ StackDepth ir)
 --   in ...
-star-codegen-correct : ∀ {A B} (ir : IR A B) (stackSize : ℕ) (x : ⟦ A ⟧) →
+star-codegen-correct : ∀ {i A B} (ir : IR i A B) (stackSize : ℕ) (x : ⟦ A ⟧) →
   StackDepth ir ≤ stackSize →  -- Explicit precondition
   ∃[ s ] (Star (compile-riscv ir) (initWithInput stackSize x) s
         × halted s ≡ true
@@ -179,7 +178,7 @@ star-codegen-correct ir stackSize x sp-bound =
 --   in star-codegen-correct id provided x proof
 ------------------------------------------------------------------------
 
-star-id-correct : ∀ {A} (stackSize : ℕ) (x : ⟦ A ⟧) →
+star-id-correct : ∀ {i A} (stackSize : ℕ) (x : ⟦ A ⟧) →
   StackDepth (id {i} {A}) ≤ stackSize →
   ∃[ s ] (Star (compile-riscv (id {i} {A})) (initWithInput stackSize x) s
         × halted s ≡ true

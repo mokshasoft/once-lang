@@ -16,15 +16,14 @@ module Once.Backend.RiscV64.Correct.IR.Compose where
 
 open import Size
 open import Once.Type
-open import Once.IR
-open import Once.Semantics
+open import Once.IRS
+open import Once.SemanticsS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
 open import Once.Backend.RiscV64.CodeGen
 
-open import Once.Postulates using (encode)
 open import Once.Backend.RiscV64.Correct.CompileLength
 open import Once.Backend.RiscV64.Correct.Star
   using (Star; star-trans)
@@ -52,7 +51,7 @@ open ≡-Reasoning
 --   No transfer instruction needed!
 ------------------------------------------------------------------------
 
-record ComposeContext {i : Size} {A B C : Type} (f : IR A B) (g : IR B C)
+record ComposeContext {i : Size} {A B C : Type} (f : IR i A B) (g : IR i B C)
                       (prefix suffix : Program) : Set where
   field
     -- Computed programs
@@ -77,7 +76,7 @@ record ComposeContext {i : Size} {A B C : Type} (f : IR A B) (g : IR B C)
     len-prefix-g : length prefix-g ≡ length prefix +ℕ len-f
 
 -- | Compute the compose context (all the non-state-dependent values)
-make-compose-context : ∀ {i A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) →
+make-compose-context : ∀ {i A B C} (f : IR i A B) (g : IR i B C) (prefix suffix : Program) →
   ComposeContext f g prefix suffix
 make-compose-context {_} {A} {B} {C} f g prefix suffix = record
   { code-f = code-f
@@ -128,7 +127,7 @@ make-compose-context {_} {A} {B} {C} f g prefix suffix = record
 ------------------------------------------------------------------------
 
 -- | Assemble the final compose result from f and g results
-assemble-compose-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
+assemble-compose-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
                           (prefix suffix : Program) (x : ⟦ A ⟧) (s sf sg : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
@@ -256,7 +255,7 @@ assemble-compose-result {_} {A} {B} {C} f g prefix suffix x s sf sg r1 r2 = reco
 
 -- | Transform an IRStarResult for f in (prefix ++ code-f ++ suffix-f)
 --   to one in prog
-transform-f-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
+transform-f-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
                      (prefix suffix : Program) (x : ⟦ A ⟧) (s sf : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
@@ -283,7 +282,7 @@ transform-f-result {_} {A} {B} {C} f g prefix suffix x s sf r = record
 
 -- | Transform an IRStarResult for g in (prefix-g ++ code-g ++ suffix)
 --   to one in prog
-transform-g-result : ∀ {i A B C} (f : IR A B) (g : IR B C)
+transform-g-result : ∀ {i A B C} (f : IR i A B) (g : IR i B C)
                      (prefix suffix : Program) (x : ⟦ A ⟧) (sf sg : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
