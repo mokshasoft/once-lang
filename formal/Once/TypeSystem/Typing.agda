@@ -1,4 +1,3 @@
-{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.TypeSystem.Typing
 --
@@ -12,8 +11,6 @@
 ------------------------------------------------------------------------
 
 module Once.TypeSystem.Typing where
-
-open import Size
 
 open import Once.Type
 open import Once.IR
