@@ -172,26 +172,122 @@ private
     compile-x86 (curry f Stack) ≡ compile-x86 (curry f Heap)
   curry-compile-eq f = refl
 
-  -- FIXME: Convert IRStarResult from Heap to Stack using compile equality
+  -- Convert IRStarResult from Heap to Stack using compile equality
   -- Since Stack and Heap compile to identical code (proven by the compile-eq lemmas above),
-  -- the execution proofs are identical. These conversions are postulated as safe placeholders.
-  -- TODO: Construct explicit proof conversion by deconstructing and reconstructing IRStarResult record
-  postulate
-    convert-inl-heap-to-stack : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s s' : State) →
-      IRStarResult (inl {A} {B} Heap) (prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix) s s' x (length prefix) →
-      IRStarResult (inl {A} {B} Stack) (prefix ++ compile-x86 (inl {A} {B} Stack) ++ suffix) s s' x (length prefix)
+  -- we can convert proofs by substituting the program using the equality.
+  convert-inl-heap-to-stack : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s s' : State) →
+    IRStarResult (inl {A} {B} Heap) (prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix) s s' x (length prefix) →
+    IRStarResult (inl {A} {B} Stack) (prefix ++ compile-x86 (inl {A} {B} Stack) ++ suffix) s s' x (length prefix)
+  convert-inl-heap-to-stack {A} {B} prefix suffix x s s' res = record
+    { ir-star = subst (λ p → Star p s s') prog-eq (ir-star res)
+    ; ir-halted = ir-halted res
+    ; ir-pc = subst (λ len → pc s' ≡ length prefix +ℕ len) len-eq (ir-pc res)
+    ; ir-rax = ir-rax res  -- eval-eq is refl, so no subst needed
+    ; ir-r14 = ir-r14 res
+    ; ir-r15 = ir-r15 res
+    ; ir-rbp = ir-rbp res
+    ; ir-mem = ir-mem res
+    ; ir-mem-rbp = ir-mem-rbp res
+    ; ir-mem-rbp+8 = ir-mem-rbp+8 res
+    ; ir-mem-above = ir-mem-above res
+    ; ir-mem-at-0 = ir-mem-at-0 res
+    ; ir-stack-inv = ir-stack-inv res
+    ; ir-rsp-bound = ir-rsp-bound res
+    ; ir-rbp-inv = ir-rbp-inv res
+    ; ir-closure-wf = ir-closure-wf res
+    }
+    where
+      -- Program equality: prefix ++ compile-x86 (inl Heap) ++ suffix ≡ prefix ++ compile-x86 (inl Stack) ++ suffix
+      prog-eq : prefix ++ compile-x86 (inl {A} {B} Heap) ++ suffix ≡ prefix ++ compile-x86 (inl {A} {B} Stack) ++ suffix
+      prog-eq = cong (λ code → prefix ++ code ++ suffix) (sym (inl-compile-eq {A} {B}))
 
-    convert-inr-heap-to-stack : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s s' : State) →
-      IRStarResult (inr {A} {B} Heap) (prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix) s s' x (length prefix) →
-      IRStarResult (inr {A} {B} Stack) (prefix ++ compile-x86 (inr {A} {B} Stack) ++ suffix) s s' x (length prefix)
+      -- Compile-length equality (inl-compile-eq is refl, so this is refl too)
+      len-eq : compile-length (inl {A} {B} Heap) ≡ compile-length (inl {A} {B} Stack)
+      len-eq = refl
 
-    convert-pair-heap-to-stack : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s s' : State) →
-      IRStarResult (⟨ f , g ⟩ Heap) (prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix) s s' x (length prefix) →
-      IRStarResult (⟨ f , g ⟩ Stack) (prefix ++ compile-x86 (⟨ f , g ⟩ Stack) ++ suffix) s s' x (length prefix)
+  convert-inr-heap-to-stack : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s s' : State) →
+    IRStarResult (inr {A} {B} Heap) (prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix) s s' x (length prefix) →
+    IRStarResult (inr {A} {B} Stack) (prefix ++ compile-x86 (inr {A} {B} Stack) ++ suffix) s s' x (length prefix)
+  convert-inr-heap-to-stack {A} {B} prefix suffix x s s' res = record
+    { ir-star = subst (λ p → Star p s s') prog-eq (ir-star res)
+    ; ir-halted = ir-halted res
+    ; ir-pc = subst (λ len → pc s' ≡ length prefix +ℕ len) len-eq (ir-pc res)
+    ; ir-rax = ir-rax res  -- eval-eq is refl, so no subst needed
+    ; ir-r14 = ir-r14 res
+    ; ir-r15 = ir-r15 res
+    ; ir-rbp = ir-rbp res
+    ; ir-mem = ir-mem res
+    ; ir-mem-rbp = ir-mem-rbp res
+    ; ir-mem-rbp+8 = ir-mem-rbp+8 res
+    ; ir-mem-above = ir-mem-above res
+    ; ir-mem-at-0 = ir-mem-at-0 res
+    ; ir-stack-inv = ir-stack-inv res
+    ; ir-rsp-bound = ir-rsp-bound res
+    ; ir-rbp-inv = ir-rbp-inv res
+    ; ir-closure-wf = ir-closure-wf res
+    }
+    where
+      prog-eq : prefix ++ compile-x86 (inr {A} {B} Heap) ++ suffix ≡ prefix ++ compile-x86 (inr {A} {B} Stack) ++ suffix
+      prog-eq = cong (λ code → prefix ++ code ++ suffix) (sym (inr-compile-eq {A} {B}))
 
-    convert-curry-heap-to-stack : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s s' : State) →
-      IRStarResult (curry f Heap) (prefix ++ compile-x86 (curry f Heap) ++ suffix) s s' x (length prefix) →
-      IRStarResult (curry f Stack) (prefix ++ compile-x86 (curry f Stack) ++ suffix) s s' x (length prefix)
+      len-eq : compile-length (inr {A} {B} Heap) ≡ compile-length (inr {A} {B} Stack)
+      len-eq = refl
+
+  convert-pair-heap-to-stack : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s s' : State) →
+    IRStarResult (⟨ f , g ⟩ Heap) (prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix) s s' x (length prefix) →
+    IRStarResult (⟨ f , g ⟩ Stack) (prefix ++ compile-x86 (⟨ f , g ⟩ Stack) ++ suffix) s s' x (length prefix)
+  convert-pair-heap-to-stack {A} {B} {C} f g prefix suffix x s s' res = record
+    { ir-star = subst (λ p → Star p s s') prog-eq (ir-star res)
+    ; ir-halted = ir-halted res
+    ; ir-pc = subst (λ len → pc s' ≡ length prefix +ℕ len) len-eq (ir-pc res)
+    ; ir-rax = ir-rax res  -- eval-eq is refl, so no subst needed
+    ; ir-r14 = ir-r14 res
+    ; ir-r15 = ir-r15 res
+    ; ir-rbp = ir-rbp res
+    ; ir-mem = ir-mem res
+    ; ir-mem-rbp = ir-mem-rbp res
+    ; ir-mem-rbp+8 = ir-mem-rbp+8 res
+    ; ir-mem-above = ir-mem-above res
+    ; ir-mem-at-0 = ir-mem-at-0 res
+    ; ir-stack-inv = ir-stack-inv res
+    ; ir-rsp-bound = ir-rsp-bound res
+    ; ir-rbp-inv = ir-rbp-inv res
+    ; ir-closure-wf = ir-closure-wf res
+    }
+    where
+      prog-eq : prefix ++ compile-x86 (⟨ f , g ⟩ Heap) ++ suffix ≡ prefix ++ compile-x86 (⟨ f , g ⟩ Stack) ++ suffix
+      prog-eq = cong (λ code → prefix ++ code ++ suffix) (sym (pair-compile-eq f g))
+
+      len-eq : compile-length (⟨ f , g ⟩ Heap) ≡ compile-length (⟨ f , g ⟩ Stack)
+      len-eq = refl
+
+  convert-curry-heap-to-stack : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s s' : State) →
+    IRStarResult (curry f Heap) (prefix ++ compile-x86 (curry f Heap) ++ suffix) s s' x (length prefix) →
+    IRStarResult (curry f Stack) (prefix ++ compile-x86 (curry f Stack) ++ suffix) s s' x (length prefix)
+  convert-curry-heap-to-stack {A} {B} {C} f prefix suffix x s s' res = record
+    { ir-star = subst (λ p → Star p s s') prog-eq (ir-star res)
+    ; ir-halted = ir-halted res
+    ; ir-pc = subst (λ len → pc s' ≡ length prefix +ℕ len) len-eq (ir-pc res)
+    ; ir-rax = ir-rax res  -- eval-eq is refl, so no subst needed
+    ; ir-r14 = ir-r14 res
+    ; ir-r15 = ir-r15 res
+    ; ir-rbp = ir-rbp res
+    ; ir-mem = ir-mem res
+    ; ir-mem-rbp = ir-mem-rbp res
+    ; ir-mem-rbp+8 = ir-mem-rbp+8 res
+    ; ir-mem-above = ir-mem-above res
+    ; ir-mem-at-0 = ir-mem-at-0 res
+    ; ir-stack-inv = ir-stack-inv res
+    ; ir-rsp-bound = ir-rsp-bound res
+    ; ir-rbp-inv = ir-rbp-inv res
+    ; ir-closure-wf = ir-closure-wf res
+    }
+    where
+      prog-eq : prefix ++ compile-x86 (curry f Heap) ++ suffix ≡ prefix ++ compile-x86 (curry f Stack) ++ suffix
+      prog-eq = cong (λ code → prefix ++ code ++ suffix) (sym (curry-compile-eq f))
+
+      len-eq : compile-length (curry f Heap) ≡ compile-length (curry f Stack)
+      len-eq = refl
 
 ------------------------------------------------------------------------
 -- Star-Based Mutual Block - Concrete Dispatcher
