@@ -1,0 +1,94 @@
+-- Allocation stress test for escape analysis
+-- This test creates various allocation patterns:
+-- 1. Stack candidates: Local allocations immediately consumed
+-- 2. Heap required: Allocations that escape (returned, captured in closures)
+
+-- Test 1: Pair allocated and immediately deconstructed (STACK candidate)
+test_local_pair :: Int -> Int
+test_local_pair = \x ->
+  let p = (x, x + 1) in
+  case p of
+    (a, b) -> a + b
+
+-- Test 2: Sum allocated and immediately case-analyzed (STACK candidate)
+test_local_sum :: Int -> Int
+test_local_sum = \x ->
+  let s = if x > 0 then Left x else Right (x + 1) in
+  case s of
+    Left a -> a
+    Right b -> b
+
+-- Test 3: Pair escapes by being returned (HEAP required)
+make_pair :: Int -> (Int, Int)
+make_pair = \x -> (x, x * 2)
+
+-- Test 4: Sum escapes by being returned (HEAP required)
+make_sum :: Int -> Either Int Int
+make_sum = \x ->
+  if x > 0
+    then Left x
+    else Right (x + 1)
+
+-- Test 5: Closure captures allocated pair (HEAP required)
+make_closure_with_pair :: Int -> (Int -> Int)
+make_closure_with_pair = \x ->
+  let p = (x, x + 1) in
+  \y -> case p of
+    (a, b) -> a + b + y
+
+-- Test 6: Closure captures allocated sum (HEAP required)
+make_closure_with_sum :: Int -> (Int -> Int)
+make_closure_with_sum = \x ->
+  let s = if x > 0 then Left x else Right (x + 1) in
+  \y -> case s of
+    Left a -> a + y
+    Right b -> b + y
+
+-- Test 7: Nested pairs - outer escapes, inner consumed (MIXED)
+make_nested_pair :: Int -> ((Int, Int), Int)
+make_nested_pair = \x ->
+  let inner = (x, x + 1) in  -- This inner pair could be stack
+  let outer = (inner, x * 2) in  -- This outer pair must be heap
+  outer
+
+-- Test 8: Multiple allocations in sequence - only some escape
+test_multiple_allocs :: Int -> Int
+test_multiple_allocs = \x ->
+  let p1 = (x, x + 1) in           -- STACK - consumed locally
+  let result1 = case p1 of
+    (a, b) -> a + b in
+  let p2 = make_pair (x * 2) in    -- HEAP - from escaping function
+  let result2 = case p2 of
+    (c, d) -> c + d in
+  result1 + result2
+
+-- Test 9: Complex - closure captures result of escaping allocation
+test_complex :: Int -> (Int -> Int)
+test_complex = \x ->
+  let p = make_pair x in  -- HEAP - from escaping function
+  \y -> case p of
+    (a, b) -> a + b + y
+
+-- Main test driver that exercises all patterns
+main :: Int
+main =
+  let t1 = test_local_pair 5 in
+  let t2 = test_local_sum 3 in
+  let t3_pair = make_pair 7 in
+  let t3 = case t3_pair of
+    (a, b) -> a + b in
+  let t4_sum = make_sum (-2) in
+  let t4 = case t4_sum of
+    Left a -> a
+    Right b -> b in
+  let t5_closure = make_closure_with_pair 10 in
+  let t5 = t5_closure 100 in
+  let t6_closure = make_closure_with_sum 15 in
+  let t6 = t6_closure 200 in
+  let t7_nested = make_nested_pair 20 in
+  let t7 = case t7_nested of
+    ((a, b), c) -> a + b + c in
+  let t8 = test_multiple_allocs 25 in
+  let t9_closure = test_complex 30 in
+  let t9 = t9_closure 300 in
+  t1 + t2 + t3 + t4 + t5 + t6 + t7 + t8 + t9
