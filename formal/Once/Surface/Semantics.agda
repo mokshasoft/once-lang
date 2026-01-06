@@ -8,8 +8,8 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let') renaming (_,_ to _▸_)
+open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; arr'; roll'; unroll') renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -59,3 +59,8 @@ evalSurface ρ unit           = tt
 evalSurface ρ (absurd v)     = ⊥-elim (evalSurface ρ v)
 -- Let: evaluate e1, extend environment, evaluate e2
 evalSurface ρ (let' e1 e2)   = evalSurface (evalSurface ρ e1 ∷ ρ) e2
+-- Effect lifting: arr is identity (Eff A B has same semantics as A ⇒ B)
+evalSurface ρ (arr' f)       = evalSurface ρ f
+-- Fixed point constructors: wrap/unwrap isomorphism
+evalSurface ρ (roll' e)      = wrap (evalSurface ρ e)
+evalSurface ρ (unroll' e)    = ⟦Fix⟧.unwrap (evalSurface ρ e)

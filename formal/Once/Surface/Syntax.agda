@@ -153,3 +153,13 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   -- Let binding: let x = e1 in e2
   -- e1 computes a value of type A, e2 uses it (at de Bruijn index 0)
   let'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr (Γ , A) B → Expr Γ B
+
+  -- Effect lifting (arr combinator from arrow-based effects)
+  -- Lifts a pure function to an effectful morphism
+  arr'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A ⇒ B) → Expr Γ (Eff A B)
+
+  -- Fixed point constructors (for recursive types)
+  -- roll wraps one layer: F → Fix F
+  roll'   : ∀ {n} {Γ : Ctx n} {F} → Expr Γ F → Expr Γ (Fix F)
+  -- unroll unwraps one layer: Fix F → F
+  unroll' : ∀ {n} {Γ : Ctx n} {F} → Expr Γ (Fix F) → Expr Γ F

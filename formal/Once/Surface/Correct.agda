@@ -9,8 +9,8 @@ module Once.Surface.Correct where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics as IR using (⟦_⟧; eval; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let') renaming (_,_ to _▸_)
+open import Once.Semantics as IR using (⟦_⟧; eval; Closure; ⟦Fix⟧; wrap)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; arr'; roll'; unroll') renaming (_,_ to _▸_)
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate)
 
@@ -119,9 +119,9 @@ mutual
   -- Quantity q is ignored in semantics (type-level only)
   elaborate-correct ρ (lam q e) =
     subst (λ c → evalSurface ρ (lam q e) ≡ c)
-          (sym (coerceIRArrow-preserves-eval (curry (elaborate e)) (interpEnv ρ)))
+          (sym (coerceIRArrow-preserves-eval (curry (elaborate e) Heap) (interpEnv ρ)))
           (closure-eq (evalSurface ρ (lam q e))
-                      (eval (curry (elaborate e)) (interpEnv ρ))
+                      (eval (curry (elaborate e) Heap) (interpEnv ρ))
                       λ a → elaborate-correct (a ∷ ρ) e)
   -- For app: elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
   -- Need to show: evalSurface ρ (app f x) ≡ eval (elaborate (app f x)) (interpEnv ρ)
@@ -149,6 +149,18 @@ mutual
     trans (elaborate-correct (evalSurface ρ e1 ∷ ρ) e2)
           (cong (λ v → eval (elaborate e2) (interpEnv ρ , v))
                 (elaborate-correct ρ e1))
+  -- Effect lifting: arr is identity (Eff A B has same semantics as A ⇒ B)
+  -- LHS: evalSurface ρ (arr' f) = evalSurface ρ f
+  -- RHS: eval (arr ∘ elaborate f) γ = eval (elaborate f) γ  [arr is identity]
+  elaborate-correct ρ (arr' f) = elaborate-correct ρ f
+  -- Fixed point roll: wrap one layer
+  -- LHS: evalSurface ρ (roll' e) = wrap (evalSurface ρ e)
+  -- RHS: eval (fold ∘ elaborate e) γ = wrap (eval (elaborate e) γ)
+  elaborate-correct ρ (roll' e) = cong wrap (elaborate-correct ρ e)
+  -- Fixed point unroll: unwrap one layer
+  -- LHS: evalSurface ρ (unroll' e) = ⟦Fix⟧.unwrap (evalSurface ρ e)
+  -- RHS: eval (unfold ∘ elaborate e) γ = ⟦Fix⟧.unwrap (eval (elaborate e) γ)
+  elaborate-correct ρ (unroll' e) = cong ⟦Fix⟧.unwrap (elaborate-correct ρ e)
 
   -- Case dispatch: routes to inl or inr case based on scrutinee value
   case-correct : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)

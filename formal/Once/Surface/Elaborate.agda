@@ -12,7 +12,6 @@ open import Once.IR
 open import Once.Surface.Syntax
 open import Once.Postulates using (coerceIRArrow)
 
-open import Size using (Size; ∞)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 
@@ -32,13 +31,13 @@ open import Data.Fin using (Fin)
 -- Given context (Γ, A), index 0 projects A (using snd),
 -- index n+1 projects from Γ (using fst then recursing).
 --
-proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ∞ ⟦ Γ ⟧ᶜ (lookup Γ i)
+proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⟦ Γ ⟧ᶜ (lookup Γ i)
 proj {Γ = Γ , A ^ q} Fin.zero    = snd
 proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
 
 -- | Helper: swap product components
-swap' : ∀ {X Y} → IR ∞ (X * Y) (Y * X)
-swap' = ⟨ snd , fst ⟩
+swap' : ∀ {X Y} → IR (X * Y) (Y * X)
+swap' = ⟨ snd , fst ⟩ Heap
 
 -- | Distribute environment over sum (distributivity isomorphism)
 --
@@ -49,20 +48,20 @@ swap' = ⟨ snd , fst ⟩
 -- 2. Case on sum, currying the injection to capture Γ
 -- 3. Apply to reconstruct result
 --
-distribute : ∀ {Γ A B} → IR ∞ (Γ * (A + B)) ((Γ * A) + (Γ * B))
+distribute : ∀ {Γ A B} → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
 distribute {Γ} {A} {B} = distrib' ∘ swap'
   where
-    curryInlSwap : IR ∞ A (Γ ⇒ ((Γ * A) + (Γ * B)))
-    curryInlSwap = curry (inl ∘ swap')
+    curryInlSwap : IR A (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryInlSwap = curry (inl Heap ∘ swap') Heap
 
-    curryInrSwap : IR ∞ B (Γ ⇒ ((Γ * A) + (Γ * B)))
-    curryInrSwap = curry (inr ∘ swap')
+    curryInrSwap : IR B (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryInrSwap = curry (inr Heap ∘ swap') Heap
 
-    curryDistrib : IR ∞ (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryDistrib : IR (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
     curryDistrib = [ curryInlSwap , curryInrSwap ]
 
-    distrib' : IR ∞ ((A + B) * Γ) ((Γ * A) + (Γ * B))
-    distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩
+    distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
+    distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩ Heap
 
 -- | Elaborate surface expression to IR
 --
@@ -72,7 +71,7 @@ distribute {Γ} {A} {B} = distrib' ∘ swap'
 -- Key insight: lambdas extend the environment (product), variables
 -- project from the environment, and applications compose appropriately.
 --
-elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ∞ ⟦ Γ ⟧ᶜ A
+elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ⟦ Γ ⟧ᶜ A
 
 -- Variable: project from environment
 elaborate (var i) = proj i
@@ -81,28 +80,29 @@ elaborate (var i) = proj i
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
 -- IR curry always produces (A ⇒ B), so we coerce to (A ⇒[ q ] B)
 -- The quantity q is enforced during type checking, not during elaboration
-elaborate (lam q e) = coerceIRArrow (curry (elaborate e))
+-- Use Heap allocation mode (escape analysis will optimize to Stack later)
+elaborate (lam q e) = coerceIRArrow (curry (elaborate e) Heap)
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply only works with unrestricted arrows, so coerce to Many
-elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
+elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩ Heap
 
 -- Pair: (a, b) becomes ⟨a, b⟩
-elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩
+elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩ Heap
 
 -- Projections: compose with projection
 elaborate (fst' p) = fst ∘ elaborate p
 elaborate (snd' p) = snd ∘ elaborate p
 
 -- Sum introduction
-elaborate (inl' a) = inl ∘ elaborate a
-elaborate (inr' b) = inr ∘ elaborate b
+elaborate (inl' a) = inl Heap ∘ elaborate a
+elaborate (inr' b) = inr Heap ∘ elaborate b
 
 -- Case: distribute environment over sum, then case on result
 -- s : Expr Γ (A + B), l : Expr (Γ,A) C, r : Expr (Γ,B) C
 -- Result: [ el , er ] ∘ distribute ∘ ⟨ id , es ⟩
 elaborate (case' s l r) =
-  [ elaborate l , elaborate r ] ∘ distribute ∘ ⟨ id , elaborate s ⟩
+  [ elaborate l , elaborate r ] ∘ distribute ∘ ⟨ id , elaborate s ⟩ Heap
 
 -- Unit
 elaborate unit = terminal
@@ -114,4 +114,15 @@ elaborate (absurd v) = initial ∘ elaborate v
 -- Pairs current environment with computed value, then evaluates e2
 -- ⟨ id , e1 ⟩ : Γ → Γ × A  (extend environment with bound value)
 -- elaborate e2 : Γ × A → B  (e2 in extended context)
-elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩
+elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩ Heap
+
+-- Effect lifting: arr f lifts pure function to effectful morphism
+-- IR arr : (A ⇒ B) → Eff A B
+elaborate (arr' f) = arr ∘ elaborate f
+
+-- Fixed point constructors
+-- roll wraps one layer: F → Fix F
+elaborate (roll' e) = fold ∘ elaborate e
+
+-- unroll unwraps one layer: Fix F → F
+elaborate (unroll' e) = unfold ∘ elaborate e
