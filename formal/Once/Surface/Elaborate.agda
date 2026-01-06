@@ -3,6 +3,8 @@
 --
 -- Elaboration from surface syntax to IR.
 -- Converts lambda/variable expressions to point-free combinators.
+--
+-- Phase 3: Integrated escape analysis for optimized memory allocation.
 ------------------------------------------------------------------------
 
 module Once.Surface.Elaborate where
@@ -11,6 +13,7 @@ open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
 open import Once.Postulates using (coerceIRArrow)
+open import Once.Analysis.Escape as Escape
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -126,3 +129,23 @@ elaborate (roll' e) = fold ∘ elaborate e
 
 -- unroll unwraps one layer: Fix F → F
 elaborate (unroll' e) = unfold ∘ elaborate e
+
+------------------------------------------------------------------------
+-- Optimized Elaboration with Escape Analysis
+------------------------------------------------------------------------
+
+-- | Elaborate surface expression to IR with escape analysis optimization
+--
+-- This function composes regular elaboration with escape analysis to
+-- optimize memory allocation. Values that don't escape their scope
+-- will be allocated on the stack instead of the heap.
+--
+-- Phase 3: This is the integration point for escape analysis into
+-- the compilation pipeline.
+--
+elaborateOptimized : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ⟦ Γ ⟧ᶜ A
+elaborateOptimized e = Escape.optimizeAllocations (elaborate e)
+
+-- Export the optimized elaboration as the default
+-- Uncomment the following line to enable escape analysis by default:
+-- elaborate = elaborateOptimized

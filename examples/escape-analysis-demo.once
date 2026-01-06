@@ -1,0 +1,77 @@
+-- Escape Analysis Demonstration Program
+--
+-- This program demonstrates how escape analysis optimizes memory allocation
+-- by choosing between stack allocation (fast) and heap allocation (slower)
+-- based on whether values escape their defining scope.
+
+-- Example 1: Non-escaping pair (can use stack allocation)
+-- The pair (x, y) is created and immediately consumed by projection
+-- Since it doesn't escape, it can be allocated on the stack
+def localPairSum : Int -> Int -> Int =
+  \x. \y.
+    let p = pair x y in  -- Pair doesn't escape, can use stack
+    fst p + snd p         -- Consumed locally
+
+-- Example 2: Escaping pair (must use heap allocation)
+-- This function returns a pair, so it escapes the function scope
+-- Must be allocated on the heap to remain valid after return
+def makePair : Int -> Int -> (Int, Int) =
+  \x. \y. pair x y        -- Pair escapes, must use heap
+
+-- Example 3: Pairs in case analysis (non-escaping)
+-- The pairs created in branches are consumed by the case
+-- They don't escape the case expression
+def processSumLocal : (Int + Bool) -> Int =
+  \s. case s of
+    | inl n -> let p = pair n n in fst p  -- Pair doesn't escape
+    | inr b -> if b then 1 else 0
+
+-- Example 4: Closure capture (escaping)
+-- Values captured by closures must be heap-allocated
+-- because the closure may outlive the creating scope
+def makeClosure : Int -> (Int -> Int) =
+  \x.
+    let p = pair x x in    -- Pair captured by closure, must use heap
+    \y. fst p + y           -- Closure captures p
+
+-- Example 5: Nested non-escaping allocations
+-- Multiple allocations that don't escape can all use stack
+def nestedLocal : Int -> Int =
+  \x.
+    let p1 = pair x x in       -- Stack allocation
+    let p2 = pair (fst p1) 2 in  -- Stack allocation
+    let p3 = pair 3 (snd p2) in  -- Stack allocation
+    fst p3 + snd p3
+
+-- Example 6: Mixed escaping and non-escaping
+-- Some allocations escape, others don't
+def mixed : Int -> (Int, Int) =
+  \x.
+    let temp = pair x x in     -- Doesn't escape, can use stack
+    let sum = fst temp + snd temp in
+    pair sum x                  -- Escapes, must use heap
+
+-- Performance comparison notes:
+--
+-- Stack allocation (SUB RSP):     ~1 cycle
+-- Heap allocation (malloc):        ~100-1000 cycles
+--
+-- For non-escaping values like in localPairSum, nestedLocal:
+--   - Stack allocation provides 100x+ speedup
+--   - No garbage collection overhead
+--   - Better cache locality
+--
+-- For escaping values like in makePair, makeClosure:
+--   - Must use heap to ensure validity after function returns
+--   - GC manages lifetime
+--
+-- The escape analysis optimization automatically chooses the right
+-- allocation mode, providing significant performance improvements
+-- for programs with many temporary allocations.
+
+-- Main function to demonstrate the concepts
+def main : Int =
+  let a = localPairSum 10 20 in      -- Fast: stack allocation
+  let b = fst (makePair 30 40) in    -- Slower: heap allocation
+  let c = nestedLocal 5 in           -- Fast: all stack allocations
+  a + b + c
