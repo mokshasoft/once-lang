@@ -1,0 +1,17 @@
+-- CCC Generator Test
+-- Tests that CCC generators (compose, terminal, etc.) are implicitly available
+
+-- Test 1: compose should be available without import
+test_compose : (Int -> Int) -> (Int -> Int) -> Int -> Int
+test_compose = compose
+
+-- Test 2: terminal should be available without import
+test_terminal : Int -> Unit
+test_terminal = terminal
+
+-- Test 3: Using compose in an expression
+test_compose_expr : Int -> Int
+test_compose_expr = compose (+ 1) (+ 2)
+
+main : Int -> Int
+main = id

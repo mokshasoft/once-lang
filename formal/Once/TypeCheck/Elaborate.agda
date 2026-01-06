@@ -712,8 +712,52 @@ builtinType "pair" n =
               (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))
               (Surface.app (Surface.var (suc zero)) (Surface.var zero))))) ,
           suc (suc (suc n)))
--- Note: compose, curry, apply, fold, unfold can be added similarly
--- TODO: Add remaining generators as needed
+-- terminal: α → Unit
+-- terminal = λx. unit
+builtinType "terminal" n =
+  let a = TVar (freshTVar n)
+  in just (a ⇒ Unit , Surface.lam Many Surface.unit , suc n)
+-- initial: Void → α
+-- initial = λx. absurd x
+builtinType "initial" n =
+  let a = TVar (freshTVar n)
+  in just (Void ⇒ a , Surface.lam Many (Surface.absurd (Surface.var zero)) , suc n)
+-- curry: ((α * β) → γ) → α → β → γ
+-- curry = λf. λx. λy. f (x, y)
+builtinType "curry" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+      c = TVar (freshTVar (suc (suc n)))
+  in just (((a Once.Type.* b) ⇒ c) ⇒ a ⇒ b ⇒ c ,
+          Surface.lam Many (Surface.lam Many (Surface.lam Many
+            (Surface.app (Surface.var (suc (suc zero)))
+                        (Surface.pair (Surface.var (suc zero)) (Surface.var zero))))) ,
+          suc (suc (suc n)))
+-- apply: ((α → β) * α) → β
+-- apply = λp. (fst p) (snd p)
+builtinType "apply" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just (((a ⇒ b) Once.Type.* a) ⇒ b ,
+          Surface.lam Many
+            (Surface.app (Surface.fst' (Surface.var zero))
+                        (Surface.snd' (Surface.var zero))) ,
+          suc (suc n))
+-- compose: (β → γ) → (α → β) → α → γ
+-- compose = λf. λg. λx. f (g x)
+builtinType "compose" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+      c = TVar (freshTVar (suc (suc n)))
+  in just ((b ⇒ c) ⇒ (a ⇒ b) ⇒ a ⇒ c ,
+          Surface.lam Many (Surface.lam Many (Surface.lam Many
+            (Surface.app (Surface.var (suc (suc zero)))
+                        (Surface.app (Surface.var (suc zero)) (Surface.var zero))))) ,
+          suc (suc (suc n)))
+-- Note: pure, arr, fold, unfold cannot be implemented in pure Surface.Expr
+-- - pure, arr require effect constructors (Eff type)
+-- - fold, unfold require Fix constructors
+-- These will need to be added when Surface.Syntax is extended with effects/recursion
 builtinType _ _ = nothing
 
 ------------------------------------------------------------------------
