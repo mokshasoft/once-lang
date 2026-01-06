@@ -1284,7 +1284,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
 
 -- Phase 3.1: Type family with proper types for curry vs others
 -- Tests if dependent type family approach works and resolves timeout issues
-IRResultFor : ∀ {A B} → IR A B → Program → State → State → ⟦ A ⟧ → ℕ → Set
+IRResultFor : ∀ {A B} → IR A B → Program → State → State → ⟦ A ⟧ → ℕ → Set₁
 IRResultFor (curry {A} {B} {C} f) prog s s' x offset =
   CurryResultS f prog s s' (encode x) offset
 IRResultFor ir prog s s' x offset =
