@@ -4,26 +4,33 @@
 # The standard library path is discovered dynamically from the Nix environment.
 #
 # Usage:
-#   make          - Type-check all Agda files
-#   make check    - Same as above
-#   make frontend - Type-check frontend only (skip backend generators)
-#   make laws     - Type-check categorical laws only
-#   make surface  - Type-check surface syntax elaboration only
-#   make surfaceir - Type-check surface IR and desugar (D035)
-#   make optimize - Type-check optimizer correctness proofs
-#   make x86      - Type-check x86-64 backend proofs
-#   make aarch64  - Type-check AArch64 backend proofs
-#   make riscv    - Type-check RISC-V 64-bit backend proofs
-#   make endtoend - Type-check end-to-end compilation theorem (x86)
-#   make endtoend-aarch64 - Type-check end-to-end compilation theorem (AArch64)
-#   make primitives - Type-check primitive specifications
-#   make malonzo  - Extract entire compiler to ../compiler/src/MAlonzo/ (IR, Surface, Optimize)
-#   make malonzo-core - Extract core modules (Type, IR, Semantics, Memory)
-#   make malonzo-typecheck - Extract verified type checker
-#   make malonzo-codegen - Extract backend code generators (X86, AArch64, RiscV64)
-#   make clean    - Remove Agda build artifacts
-#   make count-postulates - Count postulates by directory and file
-#   make agda MODULE=Once/Path/To/File.agda - Type-check a single module
+#   make              - Type-check all proofs
+#   make compiler     - Type-check all compiler proofs (frontend + all backends)
+#   make frontend     - Type-check frontend only (no backends)
+#
+#   Architecture-specific:
+#   make x86-compiler    - Type-check x86-64 compiler (frontend + x86 backends)
+#   make aarch64-compiler - Type-check AArch64 compiler (frontend + AArch64 backends)
+#   make riscv-compiler  - Type-check RISC-V compiler (frontend + RISC-V backends)
+#
+#   CCC backends (categorical combinator code generators):
+#   make ccc          - Type-check all CCC backends
+#   make x86-ccc      - Type-check x86-64 CCC backend
+#   make aarch64-ccc  - Type-check AArch64 CCC backend
+#   make riscv-ccc    - Type-check RISC-V CCC backend
+#
+#   Arithmetic backends:
+#   make x86-arith    - Type-check x86-64 arithmetic backend
+#   make aarch64-arith - Type-check AArch64 arithmetic backend
+#   make riscv-arith  - Type-check RISC-V arithmetic backend
+#   make arith        - Type-check all arithmetic backends
+#
+#   Other targets:
+#   make endtoend     - Type-check end-to-end theorem (x86)
+#   make primitives   - Type-check primitive specifications
+#   make clean        - Remove Agda build artifacts
+#   make count-postulates - Count postulates by file
+#   make agda MODULE=path - Type-check a single module
 
 # Main entry points for each module
 POSTULATES := Once/Postulates.agda
@@ -108,12 +115,12 @@ endef
 all: check
 
 .PHONY: check
-check: postulates laws surface surfaceir optimize common x86 aarch64 endtoend endtoend-aarch64 primitives spf
+check: compiler endtoend endtoend-aarch64 primitives spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
-frontend: postulates laws surface surfaceir optimize common
-	@echo "Frontend proofs type-check successfully (backends skipped)!"
+frontend: postulates laws surface surfaceir optimize
+	@echo "Frontend proofs type-check successfully!"
 
 .PHONY: postulates
 postulates:
@@ -152,17 +159,17 @@ common:
 	@sh -c '$(AGDA_CMD) $(COMMON_EXEC)'
 	@sh -c '$(AGDA_CMD) $(COMMON_MEMORY)'
 
-.PHONY: x86
-x86:
-	@echo "Type-checking x86-64 backend..."
+.PHONY: x86-ccc
+x86-ccc:
+	@echo "Type-checking x86-64 CCC backend..."
 	@sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
 	@sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
 	@sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
-.PHONY: x86-correct
-x86-correct:
-	@echo "Type-checking x86-64 correctness proofs only..."
+.PHONY: x86-ccc-correct
+x86-ccc-correct:
+	@echo "Type-checking x86-64 CCC correctness proofs only..."
 	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
 
 .PHONY: x86-star
@@ -180,17 +187,17 @@ x86-encoding:
 	@echo "Type-checking x86-64 encoding derivations..."
 	@sh -c '$(AGDA_CMD) $(X86_ENCODING)'
 
-.PHONY: aarch64
-aarch64:
-	@echo "Type-checking AArch64 backend..."
+.PHONY: aarch64-ccc
+aarch64-ccc:
+	@echo "Type-checking AArch64 CCC backend..."
 	@sh -c '$(AGDA_CMD) $(AARCH64_SYNTAX)'
 	@sh -c '$(AGDA_CMD) $(AARCH64_SEMANTICS)'
 	@sh -c '$(AGDA_CMD) $(AARCH64_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
-.PHONY: aarch64-correct
-aarch64-correct:
-	@echo "Type-checking AArch64 correctness proofs only..."
+.PHONY: aarch64-ccc-correct
+aarch64-ccc-correct:
+	@echo "Type-checking AArch64 CCC correctness proofs only..."
 	@sh -c '$(AGDA_CMD) $(AARCH64_CORRECT)'
 
 .PHONY: aarch64-foundation
@@ -198,18 +205,22 @@ aarch64-foundation:
 	@echo "Type-checking AArch64 foundation module only..."
 	@sh -c '$(AGDA_CMD) $(AARCH64_FOUNDATION)'
 
-.PHONY: riscv
-riscv:
-	@echo "Type-checking RISC-V 64-bit backend..."
+.PHONY: riscv-ccc
+riscv-ccc:
+	@echo "Type-checking RISC-V 64-bit CCC backend..."
 	@sh -c '$(AGDA_CMD) $(RISCV_SYNTAX)'
 	@if [ -f "$(RISCV_SEMANTICS)" ]; then sh -c '$(AGDA_CMD) $(RISCV_SEMANTICS)'; fi
 	@if [ -f "$(RISCV_CODEGEN)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CODEGEN)'; fi
 	@if [ -f "$(RISCV_CORRECT)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
-.PHONY: riscv-correct
-riscv-correct:
-	@echo "Type-checking RISC-V correctness proofs only..."
+.PHONY: riscv-ccc-correct
+riscv-ccc-correct:
+	@echo "Type-checking RISC-V CCC correctness proofs only..."
 	@if [ -f "$(RISCV_CORRECT)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
+
+.PHONY: ccc
+ccc: x86-ccc aarch64-ccc riscv-ccc
+	@echo "All CCC backends type-check successfully!"
 
 .PHONY: riscv-foundation
 riscv-foundation:
@@ -243,32 +254,56 @@ spf:
 	@echo "Type-checking strictly positive functors..."
 	@sh -c '$(AGDA_CMD) $(SPF)'
 
-.PHONY: arith
-arith:
-	@echo "Type-checking arithmetic compiler (OCP-0001)..."
+.PHONY: arith-core
+arith-core:
+	@echo "Type-checking arithmetic core (Type, IR, Semantics, Boundary)..."
 	@sh -c '$(AGDA_CMD) $(ARITH_TYPE)'
 	@sh -c '$(AGDA_CMD) $(ARITH_IR)'
 	@sh -c '$(AGDA_CMD) $(ARITH_SEMANTICS)'
+	@sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
+
+.PHONY: x86-arith
+x86-arith: arith-core
+	@echo "Type-checking x86-64 arithmetic backend..."
 	@sh -c '$(AGDA_CMD) $(ARITH_X86_SYNTAX)'
 	@sh -c '$(AGDA_CMD) $(ARITH_X86_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+
+.PHONY: aarch64-arith
+aarch64-arith: arith-core
+	@echo "Type-checking AArch64 arithmetic backend..."
 	@sh -c '$(AGDA_CMD) $(ARITH_AARCH64_SYNTAX)'
 	@sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(ARITH_AARCH64_CORRECT)'
+
+.PHONY: riscv-arith
+riscv-arith: arith-core
+	@echo "Type-checking RISC-V arithmetic backend..."
 	@sh -c '$(AGDA_CMD) $(ARITH_RISCV_SYNTAX)'
 	@sh -c '$(AGDA_CMD) $(ARITH_RISCV_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(ARITH_RISCV_CORRECT)'
-	@sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
 
-.PHONY: arith-correct
-arith-correct:
-	@echo "Type-checking arithmetic correctness proof only..."
-	@sh -c '$(AGDA_CMD) $(ARITH_X86_CORRECT)'
+.PHONY: arith
+arith: x86-arith aarch64-arith riscv-arith
+	@echo "All arithmetic backends type-check successfully!"
 
-.PHONY: arith-boundary
-arith-boundary:
-	@echo "Type-checking arithmetic boundary proof only..."
-	@sh -c '$(AGDA_CMD) $(ARITH_BOUNDARY)'
+# Architecture-specific compiler targets (frontend + common + arch backends)
+.PHONY: x86-compiler
+x86-compiler: frontend common x86-ccc x86-arith
+	@echo "x86-64 compiler proofs type-check successfully!"
+
+.PHONY: aarch64-compiler
+aarch64-compiler: frontend common aarch64-ccc aarch64-arith
+	@echo "AArch64 compiler proofs type-check successfully!"
+
+.PHONY: riscv-compiler
+riscv-compiler: frontend common riscv-ccc riscv-arith
+	@echo "RISC-V compiler proofs type-check successfully!"
+
+# All compiler proofs
+.PHONY: compiler
+compiler: frontend common x86-ccc aarch64-ccc riscv-ccc arith
+	@echo "All compiler proofs type-check successfully!"
 
 .PHONY: malonzo
 malonzo:
