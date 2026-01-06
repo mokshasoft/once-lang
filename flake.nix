@@ -28,8 +28,11 @@
         };
 
         devShells = {
-          # Default: minimal shell for compiler development
-          default = pkgs.mkShell {
+          # Default: full development environment
+          default = self.devShells.${system}.full;
+
+          # Compiler-only: minimal shell for Haskell compiler development
+          compiler = pkgs.mkShell {
             buildInputs = [
               haskellPackages.ghc
               haskellPackages.cabal-install
@@ -42,12 +45,12 @@
 
             shellHook = ''
               if [ -t 0 ] && [ -z "$ONCE_QUIET" ]; then
-                echo "Once compiler development"
+                echo "Once compiler development (minimal)"
                 echo "  ghc:   $(ghc --version)"
                 echo "  stack: $(stack --version | head -1)"
                 echo "  gcc:   $(gcc --version | head -1)"
                 echo ""
-                echo "Other shells: nix develop .#arm64 | .#riscv64 | .#agda | .#full"
+                echo "For full environment: nix develop .#full"
               fi
             '';
           };

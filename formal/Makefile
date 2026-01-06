@@ -1,6 +1,6 @@
 # Makefile for Once formal verification (Agda proofs)
 #
-# PREREQUISITE: Run from within 'nix develop .#agda' shell (from repo root).
+# PREREQUISITE: Run from within 'nix develop' shell (from repo root).
 # The standard library path is discovered dynamically from the Nix environment.
 #
 # Usage:
