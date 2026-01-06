@@ -680,16 +680,16 @@ lea-computes-thunk = refl
 -- correctly implements f. This is the categorical curry-apply law at the
 -- code generation level.
 --
--- Semantically: eval (apply ∘ ⟨curry f Heap ∘ fst, snd⟩ Heap) (a, b) = eval f (a, b)
+-- Semantically: eval (apply ∘ ⟨(curry f Heap) ∘ fst, snd⟩ Heap) (a, b) = eval f (a, b)
 curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f Heap ∘ fst , snd ⟩ Heap)) (initWithInput (a , b)) s
+  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ (curry f Heap) ∘ fst , snd ⟩ Heap)) (initWithInput (a , b)) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (a , b)))
 curry-apply-composition {A} {B} {C} f a b =
   -- This follows directly from codegen-x86-correct
   -- The key is that eval (apply ∘ ⟨curry f Heap ∘ fst, snd⟩ Heap) (a,b) = eval f (a,b)
   -- by the categorical curry-apply law (proven in Once.Category.Laws)
-  codegen-x86-correct (apply ∘ ⟨ curry f Heap ∘ fst , snd ⟩ Heap) (a , b)
+  codegen-x86-correct (apply ∘ ⟨ (curry f Heap) ∘ fst , snd ⟩ Heap) (a , b)
 
 -- | Curry-Apply with arbitrary second component
 --
