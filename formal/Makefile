@@ -22,6 +22,7 @@
 #   make malonzo-typecheck - Extract verified type checker
 #   make malonzo-codegen - Extract backend code generators (X86, AArch64, RiscV64)
 #   make clean    - Remove Agda build artifacts
+#   make count-postulates - Count postulates by directory and file
 #   make agda MODULE=Once/Path/To/File.agda - Type-check a single module
 
 # Main entry points for each module
@@ -424,6 +425,23 @@ malonzo-core:
 	@cp _build/malonzo/MAlonzo/Code/Once/Memory.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
+
+.PHONY: count-postulates
+count-postulates:
+	@echo "Counting postulates in Agda files (excluding comments)..."
+	@echo ""
+	@echo "=== Postulate Count by File ==="
+	@grep -rn "^[[:space:]]*postulate" --include="*.agda" . 2>/dev/null | \
+		grep -v "^[^:]*:[[:space:]]*--" | \
+		cut -d: -f1 | sort | uniq -c | sort -rn
+	@echo ""
+	@echo "=== Summary ==="
+	@TOTAL=$$(grep -rn "^[[:space:]]*postulate" --include="*.agda" . 2>/dev/null | \
+		grep -v "^[^:]*:[[:space:]]*--" | wc -l | tr -d ' '); \
+	FILES=$$(grep -rn "^[[:space:]]*postulate" --include="*.agda" . 2>/dev/null | \
+		grep -v "^[^:]*:[[:space:]]*--" | cut -d: -f1 | sort -u | wc -l | tr -d ' '); \
+	echo "Total postulates: $$TOTAL"; \
+	echo "Files with postulates: $$FILES"
 
 .PHONY: clean
 clean:
