@@ -4,20 +4,8 @@
 -- Correctness proofs for the Once optimizer.
 -- Each optimization rule preserves semantics.
 --
--- POSTULATES: This module uses one postulate:
---   - funext (function extensionality): ∀ x → f x ≡ g x → f ≡ g
---
--- WHY FUNEXT IS SAFE TO POSTULATE:
---   1. It's consistent with MLTT (proven via setoid/realizability models)
---   2. It's provable in Cubical Type Theory (Agda --cubical)
---   3. It holds in the standard "sets and functions" semantics
---   4. It's standard practice (see Axiom.Extensionality.Propositional
---      in the Agda standard library)
---
--- WHY FUNEXT IS NEEDED:
---   The curry case requires proving equality of functions:
---     eval (curry (optimize-once f)) x ≡ eval (curry f) x
---   which reduces to proving two lambdas equal, requiring funext.
+-- Uses function extensionality (imported from Once.Postulates) for the
+-- curry case, which requires proving equality of functions.
 ------------------------------------------------------------------------
 
 module Once.Optimize.Correct where
@@ -27,7 +15,7 @@ open import Once.IR
 open import Once.Semantics
 open import Once.Optimize
 open import Once.Category.Laws
-open import Once.Postulates using (closure-semantics-eq)
+open import Once.Postulates using (closure-semantics-eq; extensionality)
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
@@ -36,6 +24,10 @@ open import Data.Unit using (tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans)
+
+-- Alias for function extensionality (imported from Once.Postulates)
+funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
+funext = extensionality
 
 ------------------------------------------------------------------------
 -- Correctness of optimize-compose
@@ -529,9 +521,6 @@ optimize-once-correct (curry f) x =
     (eval (curry (optimize-once f)) x)
     (eval (curry f) x)
     (funext (λ b → optimize-once-correct f (x , b)))
-  where
-    -- POSTULATE: Function extensionality (see module header for justification)
-    postulate funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
 optimize-once-correct apply x = refl
 optimize-once-correct fold x = refl
 optimize-once-correct unfold x = refl

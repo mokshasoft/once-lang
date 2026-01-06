@@ -58,11 +58,6 @@ open import Once.TypeCheck.Sound public
   using (WellTyped; Soundness; soundness)
   using (Closed; Decidable; decidable)
 
--- Scope resolution
-open import Once.TypeCheck.Resolve public
-  using (CtxMatch; match-empty; match-extend)
-  using (resolve; resolveClosed)
-
 -- Combined inference + elaboration (OCP-0004)
 open import Once.TypeCheck.Elaborate as Elaborate public
   using (weaken; exchange)
