@@ -285,7 +285,7 @@ riscv-arith: arith-core
 
 .PHONY: arith
 arith: x86-arith aarch64-arith riscv-arith
-	@echo "All arithmetic backends type-check successfully!"
+	@echo "All arithmetic proofs type-check successfully!"
 
 # Architecture-specific compiler targets (frontend + common + arch backends)
 .PHONY: x86-compiler

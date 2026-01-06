@@ -18,11 +18,8 @@
 --   - The embedding preserves semantics (eval ∘ embed = eval-arith)
 ------------------------------------------------------------------------
 
-{-# OPTIONS --sized-types #-}
-
 module Once.Arith.Boundary where
 
-open import Size
 open import Once.Type as T using (Type; Int; Float; Unit; _*_)
 open import Once.IR
 open import Once.Semantics as S using (⟦_⟧; eval; encode)
@@ -116,7 +113,7 @@ envToSem (v AS.∷ᵉ env) = (numToSem _ v , envToSem env)
 
 postulate
   -- | The embedding function (implemented in compiler)
-  embedArith : ∀ {i Γ τ} → A.ArithIR Γ τ → IR (EnvType Γ) (NumToType τ)
+  embedArith : ∀ {Γ τ} → A.ArithIR Γ τ → IR (EnvType Γ) (NumToType τ)
 
 ------------------------------------------------------------------------
 -- Semantic Preservation Theorem
@@ -157,66 +154,6 @@ postulate
     in eval (embedArith (A.Add e₁ e₂)) (envToSem env) ≡ numToSem τ result
 
 ------------------------------------------------------------------------
--- Compilation Boundary
-------------------------------------------------------------------------
-
--- | The compilation boundary shows how arithmetic codegen integrates
--- with the main backend.
---
--- For the x86 backend:
---   compile-x86 (arith e) =
---     setup-env-from-rdi ++   -- Load environment from input
---     compile-arith e ++      -- Arithmetic register code
---     move-result-to-rax      -- Return result in rax
---
--- The correctness follows from:
---   1. compile-arith is correct (from Correct.agda)
---   2. setup-env correctly loads the environment
---   3. move-result correctly returns the value
---
-
-open import Once.Arith.Backend.X86.Syntax using (ArithProgram)
-open import Once.Arith.Backend.X86.CodeGen using (compile-arith)
-
--- | Setup code: load environment from rdi
--- For empty context, no setup needed (result already in rax after compile-arith)
-setup-env-code : A.Ctx → ArithProgram
-setup-env-code [] = []                    -- Empty context: no setup
-setup-env-code (_ ∷ _) = []               -- Placeholder for non-empty contexts
-
--- | Teardown code: move result to rax (usually identity)
--- compile-arith already puts result in rax, so no teardown needed
-teardown-code : NumType → ArithProgram
-teardown-code _ = []  -- Result already in rax
-
--- | Full compilation of embedded arithmetic
-compile-embedded : ∀ {Γ τ} → A.ArithIR Γ τ → ArithProgram
-compile-embedded {Γ} {τ} e =
-  setup-env-code Γ Data.List.++ compile-arith e Data.List.++ teardown-code τ
-
-------------------------------------------------------------------------
--- Compilation Correctness
-------------------------------------------------------------------------
-
-open import Data.Product using (∃; ∃-syntax)
-open import Once.Memory using (Word)
-
--- | Compilation preserves semantics at the boundary
---
--- This combines:
---   1. embed-preserves-semantics (IR level)
---   2. arith-correct (from Correct.agda, machine level)
---
--- The composition gives end-to-end correctness:
---   Running compile-embedded on initial state produces
---   the same value as eval-arith (modulo encoding).
---
-postulate
-  compile-boundary-correct :
-    ∀ {Γ τ} (e : A.ArithIR Γ τ) (env : AS.Env Γ) →
-    ∃[ n ] (encode {NumToType τ} (eval (embedArith e) (envToSem env)) ≡ n)
-
-------------------------------------------------------------------------
 -- Natural Transformation Structure
 ------------------------------------------------------------------------
 
@@ -246,24 +183,15 @@ postulate
 -- Summary
 ------------------------------------------------------------------------
 --
--- This module establishes:
+-- This module establishes the semantic boundary between arithmetic
+-- and the main IR (architecture-independent):
 --
 -- 1. Type mapping: NumType → Once.Type via NumToType
 -- 2. Context mapping: Arith.Ctx → product type via EnvType
 -- 3. Semantic preservation: eval ∘ embedArith = numToSem ∘ eval-arith
--- 4. Compilation integration: compile-embedded = setup ++ arith ++ teardown
 --
--- Together with Correct.agda, this gives the full correctness chain:
---
---   Source ArithIR
---       ↓ eval-arith (Semantics.agda)
---   Semantic value
---       ↓ numToSem
---   Once semantic value
---       ↓ encode
---   Machine word
---       ≡ (by lit-int-correct from Correct.agda)
---   Result of compile-arith execution
+-- Machine-level correctness is proven separately in each backend's
+-- Correct.agda module.
 --
 ------------------------------------------------------------------------
 -- Proof Status
@@ -274,20 +202,16 @@ postulate
 -- ✓ EnvType : Ctx → Type
 -- ✓ numToSem : ⟦ τ ⟧N → ⟦ NumToType τ ⟧
 -- ✓ envToSem : Env Γ → ⟦ EnvType Γ ⟧
--- ✓ setup-env-code : Ctx → ArithProgram
--- ✓ teardown-code : NumType → ArithProgram
--- ✓ compile-embedded : ArithIR Γ τ → ArithProgram
 --
 -- POSTULATED (require IR extension):
 -- - embedArith : ArithIR → IR (architectural integration)
 -- - embed-preserves-semantics (needs embedArith definition)
 -- - embed-lit-correct (corollary of above)
 -- - embed-add-correct (corollary of above)
--- - compile-boundary-correct (high-level composition)
 -- - embed-natural-ctx (naturality, conceptual)
 --
 -- The postulates represent the interface to the main IR, which
--- requires adding an 'arith' constructor. The core machine-level
--- correctness is proven in Correct.agda.
+-- requires adding an 'arith' constructor. Machine-level correctness
+-- is proven in each backend's Correct.agda.
 --
 ------------------------------------------------------------------------
