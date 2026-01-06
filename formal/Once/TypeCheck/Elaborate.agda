@@ -170,6 +170,9 @@ mutual
   weaken Surface.unit = Surface.unit
   weaken (Surface.absurd v) = Surface.absurd (weaken v)
   weaken (Surface.let' e₁ e₂) = Surface.let' (weaken e₁) (exchange e₂)
+  weaken (Surface.arr' f) = Surface.arr' (weaken f)
+  weaken (Surface.roll' e) = Surface.roll' (weaken e)
+  weaken (Surface.unroll' e) = Surface.unroll' (weaken e)
 
   -- | Exchange: insert type A at position 1 (second from top)
   --
@@ -192,6 +195,9 @@ mutual
   exchange Surface.unit = Surface.unit
   exchange (Surface.absurd v) = Surface.absurd (exchange v)
   exchange (Surface.let' e₁ e₂) = Surface.let' (exchange e₁) (exchange₂ e₂)
+  exchange (Surface.arr' f) = Surface.arr' (exchange f)
+  exchange (Surface.roll' e) = Surface.roll' (exchange e)
+  exchange (Surface.unroll' e) = Surface.unroll' (exchange e)
 
   -- | Exchange at depth 2: insert A at position 2
   --
@@ -215,6 +221,9 @@ mutual
   exchange₂ Surface.unit = Surface.unit
   exchange₂ (Surface.absurd v) = Surface.absurd (exchange₂ v)
   exchange₂ (Surface.let' e₁ e₂) = Surface.let' (exchange₂ e₁) (exchange₃ e₂)
+  exchange₂ (Surface.arr' f) = Surface.arr' (exchange₂ f)
+  exchange₂ (Surface.roll' e) = Surface.roll' (exchange₂ e)
+  exchange₂ (Surface.unroll' e) = Surface.unroll' (exchange₂ e)
   -- Primitives don't capture variables
 
   -- | Exchange at depth 3: insert A at position 3
@@ -236,6 +245,9 @@ mutual
   exchange₃ Surface.unit = Surface.unit
   exchange₃ (Surface.absurd v) = Surface.absurd (exchange₃ v)
   exchange₃ (Surface.let' e₁ e₂) = Surface.let' (exchange₃ e₁) (exchange₄ e₂)
+  exchange₃ (Surface.arr' f) = Surface.arr' (exchange₃ f)
+  exchange₃ (Surface.roll' e) = Surface.roll' (exchange₃ e)
+  exchange₃ (Surface.unroll' e) = Surface.unroll' (exchange₃ e)
   -- Primitives don't capture variables
 
   -- | Exchange at depth 4 (for deeply nested expressions)
@@ -260,6 +272,9 @@ mutual
   exchange₄ Surface.unit = Surface.unit
   exchange₄ (Surface.absurd v) = Surface.absurd (exchange₄ v)
   exchange₄ (Surface.let' e₁ e₂) = Surface.let' (exchange₄ e₁) (exchange₅ e₂)
+  exchange₄ (Surface.arr' f) = Surface.arr' (exchange₄ f)
+  exchange₄ (Surface.roll' e) = Surface.roll' (exchange₄ e)
+  exchange₄ (Surface.unroll' e) = Surface.unroll' (exchange₄ e)
   -- Primitives don't capture variables
 
   -- | Exchange at depth 5 (practical limit)
@@ -288,6 +303,9 @@ mutual
   exchange₅ Surface.unit = Surface.unit
   exchange₅ (Surface.absurd v) = Surface.absurd (exchange₅ v)
   exchange₅ (Surface.let' e₁ e₂) = Surface.let' (exchange₅ e₁) (exchange₆ e₂)
+  exchange₅ (Surface.arr' f) = Surface.arr' (exchange₅ f)
+  exchange₅ (Surface.roll' e) = Surface.roll' (exchange₅ e)
+  exchange₅ (Surface.unroll' e) = Surface.unroll' (exchange₅ e)
   -- Primitives don't capture variables
 
   exchange₆ : ∀ {n} {Γ : SCtx n} {A B C D E F G H : Type}
@@ -312,6 +330,9 @@ mutual
   exchange₆ Surface.unit = Surface.unit
   exchange₆ (Surface.absurd v) = Surface.absurd (exchange₆ v)
   exchange₆ (Surface.let' e₁ e₂) = Surface.let' (exchange₆ e₁) (exchange₇ e₂)
+  exchange₆ (Surface.arr' f) = Surface.arr' (exchange₆ f)
+  exchange₆ (Surface.roll' e) = Surface.roll' (exchange₆ e)
+  exchange₆ (Surface.unroll' e) = Surface.unroll' (exchange₆ e)
   -- Primitives don't capture variables
 
   exchange₇ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I : Type}
@@ -337,6 +358,9 @@ mutual
   exchange₇ Surface.unit = Surface.unit
   exchange₇ (Surface.absurd v) = Surface.absurd (exchange₇ v)
   exchange₇ (Surface.let' e₁ e₂) = Surface.let' (exchange₇ e₁) (exchange₈ e₂)
+  exchange₇ (Surface.arr' f) = Surface.arr' (exchange₇ f)
+  exchange₇ (Surface.roll' e) = Surface.roll' (exchange₇ e)
+  exchange₇ (Surface.unroll' e) = Surface.unroll' (exchange₇ e)
   -- Primitives don't capture variables
   -- Primitives don't capture variables, so they're unchanged by exchange
 
@@ -776,6 +800,15 @@ builtinType "unfold" n =
   in just (Fix f ⇒ f ,
           Surface.lam Many (Surface.unroll' (Surface.var zero)) ,
           suc n)
+-- pair: α → β → (α, β)
+-- pair = λx. λy. (x, y) (where pair is the Surface constructor)
+builtinType "pair" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+  in just (a ⇒ (b ⇒ (Once.Type._*_ a b)) ,
+          Surface.lam Many (Surface.lam Many
+            (Surface.pair (Surface.var (suc zero)) (Surface.var zero))) ,
+          suc (suc n))
 -- Note: pure is NOT a builtin - it's library code defined as:
 --   pure : A → Eff Unit A
 --   pure x = arr (λ_ → x)
@@ -1027,7 +1060,7 @@ checkElab ctx expr ty with checkElabImpl ctx expr ty
 -- declarations should have type signatures (Once philosophy: explicit > implicit).
 --
 -- Uses bidirectional checking mode for better error messages and polymorphism.
-compileExprTyped : RawExpr → (A : Type) → Maybe (IR ∞ Unit A)
+compileExprTyped : RawExpr → (A : Type) → Maybe (IR Unit A)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _ = nothing
 ... | success se _ _ _ = just (elaborate se)
@@ -1041,7 +1074,7 @@ compileExprTyped e A with checkElab emptyCtx e A
 -- - May fail where checking succeeds
 --
 -- Once philosophy: Types guide, signatures required.
-compileExpr : RawExpr → Maybe (∃[ A ] IR ∞ Unit A)
+compileExpr : RawExpr → Maybe (∃[ A ] IR Unit A)
 compileExpr e with inferElab emptyCtx e
 ... | failure _ = nothing
 ... | success A se _ _ _ = just (A , elaborate se)
