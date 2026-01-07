@@ -31,12 +31,6 @@ open import Once.Backend.RiscV64.CodeGen
 open import Once.Backend.RiscV64.Correct.CurryFrameProof
   using (curry-frame-value)
 
-  using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
-         encode-pair-construct; encode-inl-tag; encode-inl-val;
-         encode-inr-tag; encode-inr-val; encode-arr-identity;
-         encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
-         encode-inl-construct; encode-inr-construct)
-
 open import Once.Backend.RiscV64.Postulates
   using (run-apply-star)  -- sp-bound-for-f-in-thunk ELIMINATED! (2026-01-02)
 
