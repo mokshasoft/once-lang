@@ -138,11 +138,11 @@ If migrating from extrinsic to intrinsic:
 2. Update downstream code to use `SExpr` instead of `RawExpr + WellTyped`
 3. The elaborate-to-IR step (`Surface.Elaborate.elaborate`) already works with intrinsic types
 
-## Gap Analysis: What's Missing in the Intrinsic Path
+## Gap Analysis: Intrinsic Path is Now Complete
 
-The intrinsic `Surface.Syntax.Expr` is **incomplete** compared to `RawExpr`. Here's the comparison:
+As of commit `9399104`, the intrinsic `Surface.Syntax.Expr` supports **all** `RawExpr` forms:
 
-### Supported in Intrinsic Path
+### Full Coverage
 
 | RawExpr | Surface.Syntax.Expr | Notes |
 |---------|---------------------|-------|
@@ -154,15 +154,10 @@ The intrinsic `Surface.Syntax.Expr` is **incomplete** compared to `RawExpr`. Her
 | `RCase` | `case'` | ✓ |
 | `RUnit` | `unit` | ✓ |
 | `RAnnot` | N/A | Handled by checking mode |
-
-### Missing in Intrinsic Path
-
-| RawExpr | Status | Action Needed |
-|---------|--------|---------------|
-| `RInt` | Rejected | Add `int : ℤ → Expr Γ Int` |
-| `RStringLit` | Rejected | Add `str : String → Expr Γ Str` |
-| `RBinOp` | Rejected | Add arithmetic and comparison ops |
-| `RUnaryOp` | Rejected | Add `neg : Expr Γ Int → Expr Γ Int` |
+| `RInt` | `int` | ✓ (newly added) |
+| `RStringLit` | `str` | ✓ (newly added) |
+| `RBinOp` | `add`, `sub`, `mul`, `div`, `mod'`, `lt`, `le`, `gt`, `ge`, `eq`, `ne` | ✓ (newly added) |
+| `RUnaryOp` | `neg` | ✓ (newly added) |
 
 ### Extra in Intrinsic Path
 
@@ -172,16 +167,9 @@ The intrinsic path has expression forms that are builtins in the extrinsic path:
 - `inl'`, `inr'` - Sum injections (builtins "inl", "inr" in extrinsic)
 - `absurd` - Void elimination
 
-### Effort to Complete Migration
+### Implementation Notes
 
-To fully support all `RawExpr` forms in the intrinsic path:
-
-1. **Integer/String literals** (~10 lines): Add two constructors to `Surface.Syntax.Expr` and their elaboration to IR
-2. **Binary operators** (~50 lines): Add a `BinOp` constructor, handle arithmetic vs comparison result types
-3. **Unary operators** (~10 lines): Add negation constructor
-4. **IR elaboration** (~30 lines): Extend `Once.Surface.Elaborate.elaborate` for new forms
-
-Total effort: ~100 lines of straightforward code. No new proof complexity since intrinsic typing gives soundness for free
+The arithmetic and comparison operations use postulated IR primitives (`intLit`, `addIR`, etc.) whose correctness is assumed. This is consistent with the existing `ArithIR` boundary architecture where `embedArith` is also postulated. The key benefit remains: **soundness is trivial by construction** for the type checking step
 
 ## Summary
 
