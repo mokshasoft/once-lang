@@ -43,10 +43,10 @@ test-verbose:
 	stack test --ta '--hide-successes'
 
 # Test escape analysis optimization
-# Note: The test program now uses IO Unit signature and exit syscall.
-# With --exe flag, the compiler should automatically invoke gcc when the main
-# function has type IO Unit. However, if automatic compilation isn't working,
-# the manual gcc step below will still compile the generated C code.
+# Note: The test program uses IO Unit signature and exit syscall.
+# With --exe flag, the compiler automatically invokes gcc when the main
+# function has type IO Unit or Eff Unit Unit. If automatic compilation
+# isn't working, the manual gcc step below will still compile the generated C code.
 test-escape: build
 	@echo "Testing escape analysis optimization..."
 	@echo "Building simple-refcount-test.once..."
