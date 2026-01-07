@@ -12,6 +12,8 @@ open import Once.Type
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Data.Bool using (Bool; true; _∧_)
+open import Data.Integer using (ℤ)
+open import Data.String using (String)
 
 -- | Typing context (de Bruijn indexed with quantities)
 --
@@ -153,3 +155,27 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   -- Let binding: let x = e1 in e2
   -- e1 computes a value of type A, e2 uses it (at de Bruijn index 0)
   let'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr (Γ , A) B → Expr Γ B
+
+  -- Integer literal
+  int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ Int
+
+  -- String literal
+  str   : ∀ {n} {Γ : Ctx n} → String → Expr Γ Str
+
+  -- Arithmetic operations (Int → Int → Int)
+  add   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
+  sub   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
+  mul   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
+  div   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
+  mod'  : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
+
+  -- Unary negation (Int → Int)
+  neg   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int
+
+  -- Comparison operations (Int → Int → Bool, where Bool = Unit + Unit)
+  lt    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+  le    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+  gt    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+  ge    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+  eq    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+  ne    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)

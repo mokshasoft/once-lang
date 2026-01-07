@@ -14,6 +14,40 @@ open import Once.Postulates using (coerceIRArrow)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
+open import Data.Integer using (ℤ)
+open import Data.String using (String)
+
+------------------------------------------------------------------------
+-- Arithmetic IR Primitives (postulated)
+------------------------------------------------------------------------
+--
+-- These primitives are the interface between Surface.Syntax arithmetic
+-- and the IR. They correspond to embedArith from Once.Arith.Boundary.
+--
+-- The implementation is in the compiler; here we specify the types.
+
+postulate
+  -- Literals (constant morphisms that ignore input)
+  intLit   : ℤ → ∀ {Γ} → IR Γ Int
+  strLit   : String → ∀ {Γ} → IR Γ Str
+
+  -- Arithmetic operations (Int * Int → Int)
+  addIR    : IR (Int * Int) Int
+  subIR    : IR (Int * Int) Int
+  mulIR    : IR (Int * Int) Int
+  divIR    : IR (Int * Int) Int
+  modIR    : IR (Int * Int) Int
+
+  -- Unary negation (Int → Int)
+  negIR    : IR Int Int
+
+  -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
+  ltIR     : IR (Int * Int) (Unit + Unit)
+  leIR     : IR (Int * Int) (Unit + Unit)
+  gtIR     : IR (Int * Int) (Unit + Unit)
+  geIR     : IR (Int * Int) (Unit + Unit)
+  eqIR     : IR (Int * Int) (Unit + Unit)
+  neIR     : IR (Int * Int) (Unit + Unit)
 
 -- | Interpret context as a product type (environment type)
 --
@@ -114,3 +148,27 @@ elaborate (absurd v) = initial ∘ elaborate v
 -- ⟨ id , e1 ⟩ : Γ → Γ × A  (extend environment with bound value)
 -- elaborate e2 : Γ × A → B  (e2 in extended context)
 elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩
+
+-- Integer literal: constant that ignores environment
+elaborate (int n) = intLit n
+
+-- String literal: constant that ignores environment
+elaborate (str s) = strLit s
+
+-- Arithmetic operations: pair operands, then apply primitive
+elaborate (add e₁ e₂) = addIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (sub e₁ e₂) = subIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (mul e₁ e₂) = mulIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (div e₁ e₂) = divIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (mod' e₁ e₂) = modIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+
+-- Unary negation
+elaborate (neg e) = negIR ∘ elaborate e
+
+-- Comparison operations
+elaborate (lt e₁ e₂) = ltIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (le e₁ e₂) = leIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (gt e₁ e₂) = gtIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (ge e₁ e₂) = geIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (eq e₁ e₂) = eqIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+elaborate (ne e₁ e₂) = neIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩

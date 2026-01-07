@@ -9,7 +9,7 @@ module Once.Surface.Semantics where
 
 open import Once.Type
 open import Once.Semantics using (⟦_⟧; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let') renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -17,6 +17,16 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Integer as ℤ using (ℤ; _≤ᵇ_)
+open import Data.Integer.Properties using (_≟_)
+open import Data.String using (String)
+open import Data.Bool using (Bool; true; false; not)
+open import Relation.Nullary using (does)
+
+-- Division and modulo (postulated for semantics - actual impl handles div-by-zero)
+postulate
+  divℤ : ℤ → ℤ → ℤ
+  modℤ : ℤ → ℤ → ℤ
 
 -- | Environment: maps variables to values
 --
@@ -59,3 +69,48 @@ evalSurface ρ unit           = tt
 evalSurface ρ (absurd v)     = ⊥-elim (evalSurface ρ v)
 -- Let: evaluate e1, extend environment, evaluate e2
 evalSurface ρ (let' e1 e2)   = evalSurface (evalSurface ρ e1 ∷ ρ) e2
+
+-- Integer literal
+evalSurface ρ (int n)        = n
+-- String literal
+evalSurface ρ (str s)        = s
+
+-- Arithmetic operations
+evalSurface ρ (add e₁ e₂)    = evalSurface ρ e₁ ℤ.+ evalSurface ρ e₂
+evalSurface ρ (sub e₁ e₂)    = evalSurface ρ e₁ ℤ.- evalSurface ρ e₂
+evalSurface ρ (mul e₁ e₂)    = evalSurface ρ e₁ ℤ.* evalSurface ρ e₂
+evalSurface ρ (div e₁ e₂)    = divℤ (evalSurface ρ e₁) (evalSurface ρ e₂)
+evalSurface ρ (mod' e₁ e₂)   = modℤ (evalSurface ρ e₁) (evalSurface ρ e₂)
+-- Negation
+evalSurface ρ (neg e)        = ℤ.- evalSurface ρ e
+
+-- Comparison operations (Bool → Unit + Unit)
+-- true maps to inj₁ tt, false maps to inj₂ tt
+-- x < y  ≡  ¬(y ≤ x)
+evalSurface ρ (lt e₁ e₂)     = toSum (not (evalSurface ρ e₂ ≤ᵇ evalSurface ρ e₁))
+  where toSum : Bool → ⊤ ⊎ ⊤
+        toSum true  = inj₁ tt
+        toSum false = inj₂ tt
+evalSurface ρ (le e₁ e₂)     = toSum (evalSurface ρ e₁ ≤ᵇ evalSurface ρ e₂)
+  where toSum : Bool → ⊤ ⊎ ⊤
+        toSum true  = inj₁ tt
+        toSum false = inj₂ tt
+-- x > y  ≡  ¬(x ≤ y)
+evalSurface ρ (gt e₁ e₂)     = toSum (not (evalSurface ρ e₁ ≤ᵇ evalSurface ρ e₂))
+  where toSum : Bool → ⊤ ⊎ ⊤
+        toSum true  = inj₁ tt
+        toSum false = inj₂ tt
+-- x ≥ y  ≡  y ≤ x
+evalSurface ρ (ge e₁ e₂)     = toSum (evalSurface ρ e₂ ≤ᵇ evalSurface ρ e₁)
+  where toSum : Bool → ⊤ ⊎ ⊤
+        toSum true  = inj₁ tt
+        toSum false = inj₂ tt
+-- x ≡ y  uses decidable equality
+evalSurface ρ (eq e₁ e₂)     = toSum (does (evalSurface ρ e₁ ≟ evalSurface ρ e₂))
+  where toSum : Bool → ⊤ ⊎ ⊤
+        toSum true  = inj₁ tt
+        toSum false = inj₂ tt
+evalSurface ρ (ne e₁ e₂)     = toSum (not (does (evalSurface ρ e₁ ≟ evalSurface ρ e₂)))
+  where toSum : Bool → ⊤ ⊎ ⊤
+        toSum true  = inj₁ tt
+        toSum false = inj₂ tt
