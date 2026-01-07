@@ -901,20 +901,67 @@ mutual
       inferCase (success (Fix _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (TVar _) _ _ _ _) = failure "Expected sum type in case"
 
-  -- Integer literal: not in Surface.Syntax
-  inferElabImpl _ (Raw.RInt _) = failure "Integer literals not supported in verified elaboration"
+  -- Integer literal: produce int n
+  -- Depth 0 (no nesting), no usage (literals don't use variables)
+  inferElabImpl ctx (Raw.RInt n) =
+    success Int (Surface.int n) 0 (NamedCtx.freshCounter ctx) zeroUsage
 
-  -- String literal: not in Surface.Syntax
-  inferElabImpl _ (Raw.RStringLit _) = failure "String literals not supported in verified elaboration"
+  -- String literal: produce str s
+  -- Depth 0 (no nesting), no usage (literals don't use variables)
+  inferElabImpl ctx (Raw.RStringLit s) =
+    success Str (Surface.str s) 0 (NamedCtx.freshCounter ctx) zeroUsage
 
   -- Type annotation: just elaborate the inner expression
   inferElabImpl ctx (Raw.RAnnot e _) = inferElabImpl ctx e
 
-  -- Binary operators: not in Surface.Syntax
-  inferElabImpl _ (Raw.RBinOp _ _ _) = failure "Binary operators not supported in verified elaboration"
+  -- Binary operators: infer both operands, check they're Int, produce operator
+  -- QTT: Both operands contribute to usage
+  inferElabImpl ctx (Raw.RBinOp op e₁ e₂) = inferOp (inferElabImpl ctx e₁)
+    where
+      bumpFresh' : NamedCtx → ℕ → NamedCtx
+      bumpFresh' (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
 
-  -- Unary operators: not in Surface.Syntax
-  inferElabImpl _ (Raw.RUnaryOp _ _) = failure "Unary operators not supported in verified elaboration"
+      -- Helper to build the result given the inferred operands
+      inferOp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+      inferOp (failure err) = failure err
+      inferOp (success Int e₁Expr e₁Depth e₁Fresh usage₁) = inferOp2 (inferElabImpl (bumpFresh' ctx e₁Fresh) e₂)
+        where
+          inferOp2 : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+          inferOp2 (failure err) = failure err
+          inferOp2 (success Int e₂Expr e₂Depth e₂Fresh usage₂) =
+            let depth = e₁Depth ⊔ e₂Depth
+                usage = usage₁ +ᵘ usage₂
+            in if Raw.isArithmeticOp op
+               then success Int (mkArithOp op e₁Expr e₂Expr) depth e₂Fresh usage
+               else success (Unit Once.Type.+ Unit) (mkCmpOp op e₁Expr e₂Expr) depth e₂Fresh usage
+            where
+              mkArithOp : Raw.BinOp → Surface.Expr _ Int → Surface.Expr _ Int → Surface.Expr _ Int
+              mkArithOp Raw.OpAdd = Surface.add
+              mkArithOp Raw.OpSub = Surface.sub
+              mkArithOp Raw.OpMul = Surface.mul
+              mkArithOp Raw.OpDiv = Surface.div
+              mkArithOp Raw.OpMod = Surface.mod'
+              mkArithOp _ = Surface.add  -- fallback (shouldn't happen)
+
+              mkCmpOp : Raw.BinOp → Surface.Expr _ Int → Surface.Expr _ Int → Surface.Expr _ (Unit Once.Type.+ Unit)
+              mkCmpOp Raw.OpLt = Surface.lt
+              mkCmpOp Raw.OpLe = Surface.le
+              mkCmpOp Raw.OpGt = Surface.gt
+              mkCmpOp Raw.OpGe = Surface.ge
+              mkCmpOp Raw.OpEq = Surface.eq
+              mkCmpOp Raw.OpNe = Surface.ne
+              mkCmpOp _ = Surface.lt  -- fallback (shouldn't happen)
+          inferOp2 (success _ _ _ _ _) = failure "Binary operator requires Int operands"
+      inferOp (success _ _ _ _ _) = failure "Binary operator requires Int operands"
+
+  -- Unary operators: infer operand, check it's Int, produce negation
+  inferElabImpl ctx (Raw.RUnaryOp Raw.OpNeg e) = inferNeg (inferElabImpl ctx e)
+    where
+      inferNeg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+      inferNeg (failure err) = failure err
+      inferNeg (success Int eExpr eDepth eFresh usage) =
+        success Int (Surface.neg eExpr) eDepth eFresh usage
+      inferNeg (success _ _ _ _ _) = failure "Negation requires Int operand"
 
 ------------------------------------------------------------------------
 -- Depth-Checked Inference (Public Interface)

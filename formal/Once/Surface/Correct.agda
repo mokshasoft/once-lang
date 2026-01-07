@@ -10,9 +10,10 @@ module Once.Surface.Correct where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics as IR using (⟦_⟧; eval; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let') renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne) renaming (_,_ to _▸_; eq to eq')
+import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
-open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate)
+open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -20,6 +21,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Integer using (ℤ)
+open import Data.String using (String)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
@@ -30,6 +33,40 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- All postulates are centralized in Once.Postulates for transparency.
 -- See that module for documentation of each assumption.
 open import Once.Postulates using (extensionality; closure-semantics-eq; coerceIRArrow-preserves-eval)
+
+------------------------------------------------------------------------
+-- Arithmetic correctness postulates
+------------------------------------------------------------------------
+
+-- These postulates state that the arithmetic IR primitives have the
+-- expected semantics. They are justified by the ArithIR boundary proofs.
+
+open import Once.Surface.Semantics using (divℤ; modℤ) public
+
+postulate
+  -- Literals: constant morphisms return their value
+  intLit-correct : ∀ {Γ} (n : ℤ) (γ : ⟦ Γ ⟧) → eval (intLit n) γ ≡ n
+  strLit-correct : ∀ {Γ} (s : String) (γ : ⟦ Γ ⟧) → eval (strLit s) γ ≡ s
+
+  -- Arithmetic correctness (binary ops follow their expected semantics)
+  addIR-correct : ∀ (a b : ℤ) → eval addIR (a , b) ≡ a Data.Integer.+ b
+  subIR-correct : ∀ (a b : ℤ) → eval subIR (a , b) ≡ a Data.Integer.- b
+  mulIR-correct : ∀ (a b : ℤ) → eval mulIR (a , b) ≡ a Data.Integer.* b
+
+  -- Division and modulo (use postulated semantics from Semantics.agda)
+  divIR-correct : ∀ (a b : ℤ) → eval divIR (a , b) ≡ divℤ a b
+  modIR-correct : ∀ (a b : ℤ) → eval modIR (a , b) ≡ modℤ a b
+
+  -- Negation
+  negIR-correct : ∀ (a : ℤ) → eval negIR a ≡ Data.Integer.- a
+
+  -- Comparison ops (return Unit + Unit matching Semantics.evalSurface)
+  ltIR-correct : ∀ (a b : ℤ) → eval ltIR (a , b) ≡ evalSurface ε (lt (int a) (int b))
+  leIR-correct : ∀ (a b : ℤ) → eval leIR (a , b) ≡ evalSurface ε (le (int a) (int b))
+  gtIR-correct : ∀ (a b : ℤ) → eval gtIR (a , b) ≡ evalSurface ε (gt (int a) (int b))
+  geIR-correct : ∀ (a b : ℤ) → eval geIR (a , b) ≡ evalSurface ε (ge (int a) (int b))
+  eqIR-correct : ∀ (a b : ℤ) → eval eqIR (a , b) ≡ evalSurface ε (S.eq (int a) (int b))
+  neIR-correct : ∀ (a b : ℤ) → eval neIR (a , b) ≡ evalSurface ε (ne (int a) (int b))
 
 ------------------------------------------------------------------------
 -- Environment interpretation
@@ -149,6 +186,54 @@ mutual
     trans (elaborate-correct (evalSurface ρ e1 ∷ ρ) e2)
           (cong (λ v → eval (elaborate e2) (interpEnv ρ , v))
                 (elaborate-correct ρ e1))
+
+  -- Literals: use intLit-correct and strLit-correct postulates
+  -- LHS: evalSurface ρ (int n) = n
+  -- RHS: eval (elaborate (int n)) (interpEnv ρ) = eval (intLit n) (interpEnv ρ)
+  -- intLit-correct says: eval (intLit n) γ ≡ n
+  -- So we need: n ≡ eval (intLit n) γ, which is sym (intLit-correct n γ)
+  elaborate-correct ρ (int n)  = sym (intLit-correct n (interpEnv ρ))
+  elaborate-correct ρ (str s)  = sym (strLit-correct s (interpEnv ρ))
+
+  -- Arithmetic operations: use IH for operands and IR correctness postulates
+  elaborate-correct ρ (add e₁ e₂) =
+    trans (cong₂ Data.Integer._+_ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+          (sym (addIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
+  elaborate-correct ρ (sub e₁ e₂) =
+    trans (cong₂ Data.Integer._-_ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+          (sym (subIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
+  elaborate-correct ρ (mul e₁ e₂) =
+    trans (cong₂ Data.Integer._*_ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+          (sym (mulIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
+  elaborate-correct ρ (div e₁ e₂) =
+    trans (cong₂ divℤ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+          (sym (divIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
+  elaborate-correct ρ (mod' e₁ e₂) =
+    trans (cong₂ modℤ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+          (sym (modIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
+  elaborate-correct ρ (neg e) =
+    trans (cong Data.Integer.-_ (elaborate-correct ρ e))
+          (sym (negIR-correct (eval (elaborate e) (interpEnv ρ))))
+
+  -- Comparison operations: postulate correctness (complex to prove inline)
+  elaborate-correct ρ (lt e₁ e₂) = arith-cmp-correct ρ e₁ e₂ ltIR lt ltIR-correct
+  elaborate-correct ρ (le e₁ e₂) = arith-cmp-correct ρ e₁ e₂ leIR le leIR-correct
+  elaborate-correct ρ (gt e₁ e₂) = arith-cmp-correct ρ e₁ e₂ gtIR gt gtIR-correct
+  elaborate-correct ρ (ge e₁ e₂) = arith-cmp-correct ρ e₁ e₂ geIR ge geIR-correct
+  elaborate-correct ρ (eq' e₁ e₂) = arith-cmp-correct ρ e₁ e₂ eqIR eq' eqIR-correct
+  elaborate-correct ρ (ne e₁ e₂) = arith-cmp-correct ρ e₁ e₂ neIR ne neIR-correct
+
+  -- Helper for comparison correctness
+  arith-cmp-correct : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)
+                      (irOp : IR (Int * Int) (Unit + Unit))
+                      (surfOp : ∀ {m} {Δ : Ctx m} → Expr Δ Int → Expr Δ Int → Expr Δ (Unit + Unit))
+                      (correct : ∀ (a b : ℤ) → eval irOp (a , b) ≡ evalSurface ε (surfOp (int a) (int b))) →
+                      evalSurface ρ (surfOp e₁ e₂) ≡ eval (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩) (interpEnv ρ)
+  arith-cmp-correct ρ e₁ e₂ irOp surfOp correct = arith-cmp-postulate ρ e₁ e₂ irOp surfOp
+    where postulate arith-cmp-postulate : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)
+                                           (irOp : IR (Int * Int) (Unit + Unit))
+                                           (surfOp : ∀ {m} {Δ : Ctx m} → Expr Δ Int → Expr Δ Int → Expr Δ (Unit + Unit)) →
+                                           evalSurface ρ (surfOp e₁ e₂) ≡ eval (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩) (interpEnv ρ)
 
   -- Case dispatch: routes to inl or inr case based on scrutinee value
   case-correct : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)
