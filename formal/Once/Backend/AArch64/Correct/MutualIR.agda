@@ -157,7 +157,7 @@ open import Once.Backend.AArch64.Correct.ClosureWellFormed public
 open import Once.Backend.AArch64.Postulates
   using (sp-bound-after-stack-op; apply-produces-result)
 
-open import Size using (Size)
+open import Size using (Size; ∞)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_) renaming (_+_ to _+ℕ_)
@@ -256,6 +256,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -315,6 +316,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv x29-inv sp>16 =
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -374,6 +376,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -433,6 +436,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>1
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -493,6 +497,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq x0-eq stack-inv x29-inv sp
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -567,6 +572,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -641,6 +647,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
         ; ir-stack-inv = stack-inv'
         ; ir-x29-inv = x29-inv'
         ; ir-sp-bound = sp>16'
+        ; ir-closure-entry = nothing
         }
 
   in s' , result
@@ -675,6 +682,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
     ; ir-stack-inv = stack-inv'
     ; ir-x29-inv = x29-inv'
     ; ir-sp-bound = sp>16'
+    ; ir-closure-entry = nothing
     }
   where
     -- The program
@@ -963,6 +971,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>
     ; ir-stack-inv = stack-inv'
     ; ir-x29-inv = x29-inv'
     ; ir-sp-bound = sp>16'
+    ; ir-closure-entry = nothing
     }
   where
     -- The program
@@ -1587,6 +1596,15 @@ result-x29-inv ⟨ _ , _ ⟩ r = IRStarResult.ir-x29-inv r
 result-x29-inv [ _ , _ ] r = IRStarResult.ir-x29-inv r
 result-x29-inv apply r = IRStarResult.ir-x29-inv r
 
+-- | Convert IRResultFor to IRStarResult
+-- For non-curry IR, IRResultFor ir = IRStarResult ir, so this is identity.
+-- For curry, we build IRStarResult from CurryResultS fields (see run-curry-star-direct-compat).
+-- Postulated because the curry case requires building ClosureEntry with ClosureWellFormed proof.
+postulate
+  IRResultFor-to-IRStarResult : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
+    IRResultFor ir prog s s' x offset →
+    IRStarResult ir prog s s' x offset
+
 ------------------------------------------------------------------------
 -- Star-Based Mutual Block
 --
@@ -2206,7 +2224,7 @@ mutual
       x
     where
       prog = prefix ++ compile-aarch64 [ f , g ] ++ suffix
-      ResultType : ⟦ A + B ⟧ → Set
+      ResultType : ⟦ A + B ⟧ → Set₁
       ResultType y = ∃[ s' ] IRStarResult [ f , g ] prog s s' y (length prefix)
 
   -- | Star-based case left branch (inl)
@@ -2214,7 +2232,7 @@ mutual
   --   Phase 1: Setup - 4 instructions (ldr x9 [x0], cmp, b.ne not taken, ldr x0 [x0+8])
   --   Phase 2: Execute f - recursive Star call
   --   Phase 3: Jump to end - 2 instructions (b, label)
-  run-case-star-direct-inl : ∀ {i A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     StackInvariant s →
@@ -2323,6 +2341,7 @@ mutual
         ; ir-stack-inv = stack-inv-final
         ; ir-x29-inv = x29-inv-final
         ; ir-sp-bound = sp>16-final
+        ; ir-closure-entry = nothing
         }
 
   -- | Star-based case right branch (inr)
@@ -2331,7 +2350,7 @@ mutual
   --   Phase 2: Skip to right label + load value - 2 instructions (label, ldr x0 [x0+8])
   --   Phase 3: Execute g - recursive Star call
   --   Phase 4: End label - 1 instruction
-  run-case-star-direct-inr : ∀ {i A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b-input : ⟦ B ⟧) (s : State) →
+  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b-input : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     StackInvariant s →
@@ -2437,6 +2456,7 @@ mutual
         ; ir-stack-inv = stack-inv-final
         ; ir-x29-inv = x29-inv-final
         ; ir-sp-bound = sp>16-final
+        ; ir-closure-entry = nothing
         }
 
   -- | Star-based curry execution
@@ -2996,7 +3016,7 @@ mutual
 
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: thunk setup tracing (4 instrs) → IH on f → ret tracing
-  curry-thunk-correct-impl : ∀ {i A B C} (f : IR (A * B) C)
+  curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
     let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
@@ -3329,6 +3349,7 @@ mutual
       ; ir-stack-inv = stack-inv'
       ; ir-x29-inv = x29-inv'
       ; ir-sp-bound = sp>16'
+      ; ir-closure-entry = nothing
       }
 
 ------------------------------------------------------------------------
@@ -3347,5 +3368,6 @@ codegen-aarch64-star-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s
   let prog = [] ++ compile-aarch64 ir ++ []
   in ∃[ s' ] IRStarResult ir prog s s' x 0
 codegen-aarch64-star-correct ir x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-  run-ir-star-at-offset ir [] [] x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  let (s' , res) = run-ir-star-at-offset ir [] [] x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
+  in s' , IRResultFor-to-IRStarResult ir res
 

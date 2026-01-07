@@ -211,7 +211,7 @@ open CurryResult public
 -- 3. closure-wf-s: ClosureWellFormedS proof (stateful version)
 record CurryResultS {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (env-val : Word)
-                   (offset : ℕ) : Set where
+                   (offset : ℕ) : Set₁ where
   field
     -- Standard execution properties (same as CurryResult)
     curry-star      : Star prog s s'

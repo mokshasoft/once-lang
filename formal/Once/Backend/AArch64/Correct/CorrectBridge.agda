@@ -35,7 +35,7 @@ open import Once.Backend.AArch64.Correct.StarBase
 open import Once.Backend.AArch64.Correct.StackInvariant
   using (StackInvariant; X29Invariant; x21-unused; x29-unused)
 open import Once.Backend.AArch64.Correct.MutualIR
-  using (run-ir-star-at-offset)
+  using (run-ir-star-at-offset; IRResultFor-to-IRStarResult)
 
 open import Once.Backend.Common.Fetch using (fetch-past-end)
 
@@ -135,13 +135,13 @@ star-add-halt {prog} {s} {s'} star h-false pc-at-end =
 -- Proven using:
 --   1. run-ir-star-at-offset from MutualIR.agda
 --   2. star-add-halt to reach halted state
-codegen-aarch64-correct : ∀ {i} {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) →
+codegen-aarch64-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) →
   let prog = compile-aarch64 ir
       s₀ = initWithInput x
   in ∃[ s ] (Star prog s₀ s
            × halted s ≡ true
            × readReg (regs s) x0 ≡ encode (eval ir x))
-codegen-aarch64-correct {i} {A} {B} ir x =
+codegen-aarch64-correct {A} {B} ir x =
   let s₀ = initWithInput x
       prog = compile-aarch64 ir
 
@@ -176,10 +176,10 @@ codegen-aarch64-correct {i} {A} {B} ir x =
       (s' , result) = run-ir-star-at-offset ir [] [] x s₀
                         h-false pc-at-start x0-eq stack-inv x29-inv sp>16
 
-      -- Reindex result to work with prog
+      -- Convert IRResultFor to IRStarResult and reindex to work with prog
       result' : IRStarResult ir prog s₀ s' x 0
       result' = subst (λ p → IRStarResult ir p s₀ s' x 0)
-                      prog-eq result
+                      prog-eq (IRResultFor-to-IRStarResult ir result)
 
       -- Extract Star and properties
       star : Star prog s₀ s'
