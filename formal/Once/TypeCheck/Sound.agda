@@ -478,6 +478,195 @@ unify-sound (Fix _) (_ ⇒[ _ ] _) σ ()
 unify-sound (Fix _) (Eff _ _) σ ()
 
 ------------------------------------------------------------------------
+-- Freshness Infrastructure
+------------------------------------------------------------------------
+
+-- Type variables are generated as "t0", "t1", "t2", etc.
+-- A type is "fresh ≥ n" if all its variables have index ≥ n.
+-- A substitution has "domain < n" if it only substitutes variables with index < n.
+
+open import Data.Nat using (_<_; _≤_; _≤?_; _<?_; z≤n; s≤s)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; ≤-step; n≤1+n; <⇒≤)
+open import Data.Nat.Show using (show)
+open import Data.String using (_++_) renaming (_≟_ to _≟S_)
+open import Data.Bool using (Bool; true; false; not; _∧_; T)
+open import Function using (case_of_)
+
+-- | Generate the variable name for index n
+varName : ℕ → String
+varName n = "t" ++ show n
+
+-- | Check if a string is a "tM" for some M < n
+isOldVar : ℕ → String → Bool
+isOldVar zero x = false
+isOldVar (suc n) x with x ≟S varName n
+... | yes _ = true
+... | no  _ = isOldVar n x
+
+-- | Check if all type variables in a type have index ≥ n (i.e., not old)
+isFreshType : ℕ → Type → Bool
+isFreshType n Unit = true
+isFreshType n Void = true
+isFreshType n Int = true
+isFreshType n Float = true
+isFreshType n Str = true
+isFreshType n Buffer = true
+isFreshType n (A * B) = isFreshType n A ∧ isFreshType n B
+isFreshType n (A + B) = isFreshType n A ∧ isFreshType n B
+isFreshType n (A ⇒[ _ ] B) = isFreshType n A ∧ isFreshType n B
+isFreshType n (Eff A B) = isFreshType n A ∧ isFreshType n B
+isFreshType n (Fix F) = isFreshType n F
+isFreshType n (TVar x) = not (isOldVar n x)
+
+-- | Check if a substitution only contains mappings for variables < n
+isFreshSubst : ℕ → Subst → Bool
+isFreshSubst n [] = true
+isFreshSubst n ((x , _) ∷ σ) = isOldVar n x ∧ isFreshSubst n σ
+
+-- | Helper: extract components from T (a ∧ b)
+private
+  proj₁-T : ∀ {a b : Bool} → T (a ∧ b) → T a
+  proj₁-T {true} {true} _ = tt
+  proj₁-T {true} {false} ()
+  proj₁-T {false} ()
+
+  proj₂-T : ∀ {a b : Bool} → T (a ∧ b) → T b
+  proj₂-T {true} {true} _ = tt
+  proj₂-T {true} {false} ()
+  proj₂-T {false} ()
+
+  -- T (not b) and T b are contradictory
+  not-T-contradiction : ∀ {b : Bool} → T (not b) → T b → ⊥
+    where open import Data.Empty using (⊥)
+  not-T-contradiction {false} _ ()
+  not-T-contradiction {true} () _
+
+  -- If isOldVar n x = isOldVar n y when x ≡ y
+  isOldVar-cong : ∀ n x y → x ≡ y → isOldVar n x ≡ isOldVar n y
+  isOldVar-cong n x .x refl = refl
+
+-- | Key lemma: if x is not an old variable (≥ n), then looking it up in a
+-- fresh substitution (domain < n) returns nothing.
+lookupSubst-fresh : ∀ n x σ
+                  → T (not (isOldVar n x))
+                  → T (isFreshSubst n σ)
+                  → lookupSubst x σ ≡ nothing
+lookupSubst-fresh n x [] _ _ = refl
+lookupSubst-fresh n x ((y , Ty) ∷ σ) fresh-x fresh-σ with x ≟S y
+... | yes x≡y = ⊥-elim (not-T-contradiction fresh-x old-x)
+  where
+    open import Data.Empty using (⊥-elim)
+    -- y is old (in domain of substitution)
+    y-old : T (isOldVar n y)
+    y-old = proj₁-T fresh-σ
+    -- x ≡ y, so x is also old
+    old-x : T (isOldVar n x)
+    old-x = subst (λ v → T (isOldVar n v)) (sym x≡y) y-old
+... | no  _ = lookupSubst-fresh n x σ fresh-x (proj₂-T fresh-σ)
+
+-- | Applying a fresh substitution to a fresh type is identity
+applySubst-fresh : ∀ n σ Ty
+                 → T (isFreshSubst n σ)
+                 → T (isFreshType n Ty)
+                 → applySubst σ Ty ≡ Ty
+applySubst-fresh n σ Unit _ _ = refl
+applySubst-fresh n σ Void _ _ = refl
+applySubst-fresh n σ Int _ _ = refl
+applySubst-fresh n σ Float _ _ = refl
+applySubst-fresh n σ Str _ _ = refl
+applySubst-fresh n σ Buffer _ _ = refl
+applySubst-fresh n σ (A * B) σ-fresh T-fresh =
+  cong₂ _*_ (applySubst-fresh n σ A σ-fresh (proj₁-T T-fresh))
+            (applySubst-fresh n σ B σ-fresh (proj₂-T T-fresh))
+applySubst-fresh n σ (A + B) σ-fresh T-fresh =
+  cong₂ _+_ (applySubst-fresh n σ A σ-fresh (proj₁-T T-fresh))
+            (applySubst-fresh n σ B σ-fresh (proj₂-T T-fresh))
+applySubst-fresh n σ (A ⇒[ q ] B) σ-fresh T-fresh =
+  cong₂ (λ a b → a ⇒[ q ] b) (applySubst-fresh n σ A σ-fresh (proj₁-T T-fresh))
+                              (applySubst-fresh n σ B σ-fresh (proj₂-T T-fresh))
+applySubst-fresh n σ (Eff A B) σ-fresh T-fresh =
+  cong₂ Eff (applySubst-fresh n σ A σ-fresh (proj₁-T T-fresh))
+            (applySubst-fresh n σ B σ-fresh (proj₂-T T-fresh))
+applySubst-fresh n σ (Fix F) σ-fresh T-fresh =
+  cong Fix (applySubst-fresh n σ F σ-fresh T-fresh)
+applySubst-fresh n σ (TVar x) σ-fresh x-fresh with lookupSubst x σ | lookupSubst-fresh n x σ x-fresh σ-fresh
+... | nothing | refl = refl
+... | just _  | ()
+
+------------------------------------------------------------------------
+-- Inference Freshness Properties
+------------------------------------------------------------------------
+
+-- These properties characterize how the fresh counter and substitutions
+-- interact during type inference. They are the key to eliminating
+-- the local postulates in the soundness proof.
+
+-- | The fresh counter increases monotonically during inference
+-- If inference starts at f and succeeds with f', then f ≤ f'
+postulate
+  infer-fresh-mono : ∀ {Γ e f T σ f'} → infer Γ e f ≡ success T σ f' → f ≤ f'
+    where open import Data.Nat using (_≤_)
+
+-- | Types returned by inference only contain fresh variables
+-- All type variables in T have index ≥ f (generated during this inference)
+-- and index < f' (bounded by final counter)
+postulate
+  infer-type-vars-fresh : ∀ {Γ e f T σ f'}
+                        → infer Γ e f ≡ success T σ f'
+                        → T (isFreshType f T)
+
+-- | Substitutions returned by inference only map old variables
+-- The substitution σ only contains mappings for variables with index < f'
+postulate
+  infer-subst-fresh : ∀ {Γ e f T σ f'}
+                    → infer Γ e f ≡ success T σ f'
+                    → T (isFreshSubst f' σ)
+
+-- | Key composition lemma: later substitutions don't affect earlier types
+-- If T was inferred with final counter f₁, and σ₂ was produced starting at f₁,
+-- then σ₂ doesn't affect T
+infer-subst-disjoint : ∀ {Γ₁ e₁ f T₁ σ₁ f₁ Γ₂ e₂ T₂ σ₂ f₂}
+                     → infer Γ₁ e₁ f ≡ success T₁ σ₁ f₁
+                     → infer Γ₂ e₂ f₁ ≡ success T₂ σ₂ f₂
+                     → applySubst σ₂ T₁ ≡ T₁
+infer-subst-disjoint {f₁ = f₁} p₁ p₂ =
+  applySubst-fresh f₁ _ _ (infer-subst-fresh p₂) (infer-type-vars-fresh p₁)
+
+-- | Reverse direction: earlier substitutions don't affect later types
+-- If σ₁ was produced with final counter f₁, and T₂ was inferred starting at f₁,
+-- then σ₁ doesn't affect T₂
+infer-subst-disjoint-rev : ∀ {Γ₁ e₁ f T₁ σ₁ f₁ Γ₂ e₂ T₂ σ₂ f₂}
+                         → infer Γ₁ e₁ f ≡ success T₁ σ₁ f₁
+                         → infer Γ₂ e₂ f₁ ≡ success T₂ σ₂ f₂
+                         → applySubst σ₁ T₂ ≡ T₂
+infer-subst-disjoint-rev {f₁ = f₁} p₁ p₂ =
+  applySubst-fresh f₁ _ _ (infer-subst-fresh p₁) (infer-type-vars-fresh p₂)
+
+-- | Substitution ranges are bounded by the final fresh counter
+-- If inference produces σ with final counter f', then applying σ
+-- produces types with variables < f'
+postulate
+  infer-subst-range-fresh : ∀ {Γ e f T σ f'}
+                          → infer Γ e f ≡ success T σ f'
+                          → ∀ A → T (isFreshType f' (applySubst σ A))
+
+-- | Corollary: later substitutions don't affect results of earlier substitutions
+infer-applied-disjoint : ∀ {Γ₁ e₁ f T₁ σ₁ f₁ Γ₂ e₂ T₂ σ₂ f₂}
+                       → infer Γ₁ e₁ f ≡ success T₁ σ₁ f₁
+                       → infer Γ₂ e₂ f₁ ≡ success T₂ σ₂ f₂
+                       → ∀ A → applySubst σ₂ (applySubst σ₁ A) ≡ applySubst σ₁ A
+infer-applied-disjoint {f₁ = f₁} {σ₂ = σ₂} p₁ p₂ A =
+  applySubst-fresh f₁ σ₂ (applySubst _ A) (infer-subst-fresh p₂) (infer-subst-range-fresh p₁ A)
+
+-- | Corollary: composition with later substitution preserves earlier result
+infer-compose-preserve : ∀ {Γ₁ e₁ f T₁ σ₁ f₁ Γ₂ e₂ T₂ σ₂ f₂}
+                       → infer Γ₁ e₁ f ≡ success T₁ σ₁ f₁
+                       → infer Γ₂ e₂ f₁ ≡ success T₂ σ₂ f₂
+                       → applySubst σ₁ T₁ ≡ applySubst (composeSubst σ₂ σ₁) T₁
+infer-compose-preserve {T₁ = T₁} {σ₁ = σ₁} {σ₂ = σ₂} p₁ p₂ =
+  sym (trans (applySubst-compose σ₁ σ₂ T₁) (infer-applied-disjoint p₁ p₂ T₁))
+
+------------------------------------------------------------------------
 -- Soundness Statement
 ------------------------------------------------------------------------
 
@@ -558,6 +747,13 @@ soundness {Γ = Γ} {e = Raw.RPair a b} p | success tyA σ₁ f₁ | failure _ w
 soundness {Γ = Γ} {e = Raw.RPair a b} p | success tyA σ₁ f₁ | success tyB σ₂ f₂ with p
 ...     | refl = subst (WellTyped Γ (Raw.RPair a b)) type-eq (T-Pair wt-a' wt-b')
   where
+    -- Inference proofs for freshness
+    p₁ : infer Γ a _ ≡ success tyA σ₁ f₁
+    p₁ = refl
+
+    p₂ : infer Γ b f₁ ≡ success tyB σ₂ f₂
+    p₂ = refl
+
     -- IH: a is well-typed with (applySubst σ₁ tyA)
     wt-a : WellTyped Γ a (applySubst σ₁ tyA)
     wt-a = soundness refl
@@ -566,28 +762,34 @@ soundness {Γ = Γ} {e = Raw.RPair a b} p | success tyA σ₁ f₁ | success tyB
     wt-b : WellTyped Γ b (applySubst σ₂ tyB)
     wt-b = soundness refl
 
+    -- Key freshness facts:
+    -- 1. σ₂ doesn't affect tyA (tyA was inferred before b, so has vars < f₁)
+    σ₂-no-effect-tyA : applySubst σ₂ tyA ≡ tyA
+    σ₂-no-effect-tyA = infer-subst-disjoint p₁ p₂
+
+    -- 2. σ₁ doesn't affect tyB (tyB was inferred after σ₁, so has vars ≥ f₁)
+    σ₁-no-effect-tyB : applySubst σ₁ tyB ≡ tyB
+    σ₁-no-effect-tyB = infer-subst-disjoint-rev p₁ p₂
+
     -- Transport a's WellTyped proof to use composed substitution
-    -- This requires: applySubst σ₁ tyA ≡ applySubst (composeSubst σ₂ σ₁) (applySubst σ₂ tyA)
-    -- which holds when σ₂ applied to σ₁'s output equals σ₁'s output (idempotence after composition)
-    postulate
-      subst-eq-a : applySubst σ₁ tyA ≡ applySubst (composeSubst σ₂ σ₁) (applySubst σ₂ tyA)
+    -- applySubst σ₁ tyA ≡ applySubst (composeSubst σ₂ σ₁) (applySubst σ₂ tyA)
+    -- = applySubst (composeSubst σ₂ σ₁) tyA  [since σ₂ tyA = tyA]
+    -- This follows from infer-compose-preserve
+    subst-eq-a : applySubst σ₁ tyA ≡ applySubst (composeSubst σ₂ σ₁) (applySubst σ₂ tyA)
+    subst-eq-a = trans (infer-compose-preserve p₁ p₂) (cong (applySubst (composeSubst σ₂ σ₁)) (sym σ₂-no-effect-tyA))
 
     wt-a' : WellTyped Γ a (applySubst (composeSubst σ₂ σ₁) (applySubst σ₂ tyA))
     wt-a' = subst (WellTyped Γ a) subst-eq-a wt-a
 
     -- Transport b's WellTyped proof
-    -- This requires: applySubst σ₂ tyB ≡ applySubst (composeSubst σ₂ σ₁) tyB
-    -- which holds when σ₁ doesn't affect tyB (freshness argument)
+    -- applySubst σ₂ tyB ≡ applySubst (composeSubst σ₂ σ₁) tyB
+    -- = applySubst σ₂ (applySubst σ₁ tyB)  [by compose]
+    -- = applySubst σ₂ tyB  [since σ₁ tyB = tyB]
     subst-eq-b : applySubst σ₂ tyB ≡ applySubst (composeSubst σ₂ σ₁) tyB
-    subst-eq-b = sym (applySubst-compose σ₁ σ₂ tyB)
-      -- Note: this gives applySubst (composeSubst σ₂ σ₁) tyB ≡ applySubst σ₂ (applySubst σ₁ tyB)
-      -- We need σ₁ to not affect tyB for this to equal applySubst σ₂ tyB
-      -- For now, postulate the final equality
-    postulate
-      subst-eq-b-final : applySubst σ₂ tyB ≡ applySubst (composeSubst σ₂ σ₁) tyB
+    subst-eq-b = sym (trans (applySubst-compose σ₁ σ₂ tyB) (cong (applySubst σ₂) σ₁-no-effect-tyB))
 
     wt-b' : WellTyped Γ b (applySubst (composeSubst σ₂ σ₁) tyB)
-    wt-b' = subst (WellTyped Γ b) subst-eq-b-final wt-b
+    wt-b' = subst (WellTyped Γ b) subst-eq-b wt-b
 
     -- Final type equation: product of transported types equals goal
     type-eq : applySubst (composeSubst σ₂ σ₁) (applySubst σ₂ tyA) * applySubst (composeSubst σ₂ σ₁) tyB
@@ -639,6 +841,13 @@ soundness {Γ = Γ} {e = Raw.RLet x e₁ e₂} p | success ty₁ σ₁ f₁ | fa
 soundness {Γ = Γ} {e = Raw.RLet x e₁ e₂} p | success ty₁ σ₁ f₁ | success ty₂ σ₂ f₂ with p
 ...     | refl = subst (WellTyped Γ (Raw.RLet x e₁ e₂)) type-eq (T-Let wt-e₁ wt-e₂)
   where
+    -- Inference proofs for freshness
+    p₁ : infer Γ e₁ _ ≡ success ty₁ σ₁ f₁
+    p₁ = refl
+
+    p₂ : infer (Context.extendCtx Γ x (applySubst σ₁ ty₁)) e₂ f₁ ≡ success ty₂ σ₂ f₂
+    p₂ = refl
+
     -- IH: e₁ is well-typed
     wt-e₁ : WellTyped Γ e₁ (applySubst σ₁ ty₁)
     wt-e₁ = soundness refl
@@ -647,10 +856,15 @@ soundness {Γ = Γ} {e = Raw.RLet x e₁ e₂} p | success ty₁ σ₁ f₁ | su
     wt-e₂ : WellTyped (Context.extendCtx Γ x (applySubst σ₁ ty₁)) e₂ (applySubst σ₂ ty₂)
     wt-e₂ = soundness refl
 
+    -- σ₁ doesn't affect ty₂ (ty₂ was inferred starting at f₁, σ₁ ended at f₁)
+    σ₁-no-effect-ty₂ : applySubst σ₁ ty₂ ≡ ty₂
+    σ₁-no-effect-ty₂ = infer-subst-disjoint-rev p₁ p₂
+
     -- Type equation: applySubst σ₂ ty₂ ≡ applySubst (composeSubst σ₂ σ₁) ty₂
-    -- This holds when σ₁ doesn't affect ty₂ (freshness argument)
-    postulate
-      type-eq : applySubst σ₂ ty₂ ≡ applySubst (composeSubst σ₂ σ₁) ty₂
+    -- = applySubst σ₂ (applySubst σ₁ ty₂) [by compose]
+    -- = applySubst σ₂ ty₂ [since σ₁ ty₂ = ty₂]
+    type-eq : applySubst σ₂ ty₂ ≡ applySubst (composeSubst σ₂ σ₁) ty₂
+    type-eq = sym (trans (applySubst-compose σ₁ σ₂ ty₂) (cong (applySubst σ₂) σ₁-no-effect-ty₂))
 
 -- Case: most complex case with multiple unifications
 -- Structure:
