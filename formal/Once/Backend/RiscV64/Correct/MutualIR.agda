@@ -230,6 +230,15 @@ postulate
     let prog = prefix ++ compile-riscv ([_,_] f g) ++ suffix
     in ∃[ s' ] IRStarResult ([_,_] f g) prog s s' x (length prefix)
 
+  -- Curry closure well-formedness: proves the closure created by curry is valid.
+  -- This can be proven using run-ir-star-at-offset f for thunk-correct,
+  -- combined with thunk-setup-star-proven and thunk-cleanup-star-proven.
+  -- TODO: Prove using the mutual recursion structure.
+  curry-closure-wf : ∀ {i A B C} (f : IR i (A * B) C)
+                     (prefix suffix : Program) (x : ⟦ A ⟧) →
+    let prog = prefix ++ compile-riscv (curry f) ++ suffix
+    in ClosuresWF (B ⇒ C) prog
+
 ------------------------------------------------------------------------
 -- TEMPORARY BRIDGE: Connect stateful execution to semantic evaluation
 --
@@ -298,12 +307,12 @@ mutual
   run-ir-star-at-offset initial prefix suffix x s h-false pc-eq a0-eq _ =
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
-  -- Curry: use run-curry-star (PROVEN WF - no postulate!)
+  -- Curry: use run-curry-star with WF proof from curry-closure-wf
   -- StackDepth (curry f) = curry-frame-value + StackDepth f (24 + StackDepth f)
-  -- Uses run-curry-star which extracts the ClosureWellFormed proof
-  -- from run-curry-star-with-wf, eliminating the curry-output-wf postulate.
+  -- The closure WF is constructed by curry-closure-wf and passed to run-curry-star.
+  -- TODO: Prove curry-closure-wf using thunk-setup/cleanup helpers and IH.
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
-    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound
+    run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound (curry-closure-wf f prefix suffix x)
 
   -- Apply: postulated (requires whole-program analysis)
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq a0-eq _ =

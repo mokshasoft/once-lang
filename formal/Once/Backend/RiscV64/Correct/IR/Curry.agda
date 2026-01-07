@@ -41,7 +41,7 @@ open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1; ir-s2; ir-ra;
          ir-sp-delta; ir-sp-delta-leq; ir-sp; ir-mem-preserved; ir-output-wf)
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
-  using (ClosuresWF; trivialWF)
+  using (ClosuresWF; trivialWF; ApplyInputWF; ClosureWellFormed; ThunkResult)
 
 open import Once.Backend.Common.Memory
   using (readMem-writeMem-same; readMem-writeMem-diff; n≢n+suc)
@@ -59,21 +59,14 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
--- Postulates (to be eliminated)
+-- Internal placeholders (NOT official postulates)
 ------------------------------------------------------------------------
-
--- | Curry produces a closure; WF is proven in MutualIR with full context.
--- This postulate is used as a placeholder in run-curry-star, which is only
--- called internally by run-curry-star-with-wf in the mutual block.
--- The ACTUAL proven WF comes from run-curry-star-proven in MutualIR.agda,
--- which extracts closure-wf from CurryResult and provides the real proof.
--- This postulate is NEVER used by external callers - they use run-curry-star-proven.
--- STATUS: Functionally eliminated (placeholder only, proven version in MutualIR)
-postulate
-  curry-output-wf : ∀ {B C : Type} (prog : Program) → ClosuresWF (B ⇒ C) prog
 
 ------------------------------------------------------------------------
 -- Main curry proof
+--
+-- Takes output WF as parameter - MutualIR constructs this using the
+-- mutual recursion (it can execute f to prove thunk correctness).
 ------------------------------------------------------------------------
 
 run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
@@ -82,8 +75,9 @@ run-curry-star : ∀ {i A B C} (f : IR i (A * B) C) (prefix suffix : Program) (x
   readReg (regs s) a0 ≡ encode x →
   StackDepth (curry f) ≤ readReg (regs s) sp →  -- Stack precondition (uses StackDepth, not hardcoded 16!)
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
-  in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  in ClosuresWF (B ⇒ C) prog →  -- Output WF passed from MutualIR
+  ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
+run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound output-wf =
   s-final , record
     { ir-star   = star-all
     ; ir-halted = h-final
@@ -96,7 +90,7 @@ run-curry-star {_} {A} {B} {C} f prefix suffix x s h-false pc-eq a0-eq sp-bound 
     ; ir-sp-delta-leq = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))) -- 16 ≤ 24
     ; ir-sp     = sp-final
     ; ir-mem-preserved = mem-preserved-final
-    ; ir-output-wf = curry-output-wf {B = B} {C = C} prog  -- Placeholder, proven version in MutualIR
+    ; ir-output-wf = output-wf  -- Use the WF passed from MutualIR
     }
   where
     len-f = compile-length f
