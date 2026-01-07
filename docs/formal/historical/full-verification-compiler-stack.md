@@ -1798,10 +1798,10 @@ Each backend postulates 15+ instruction sequence behaviors:
    - Example: `apply ∘ ⟨curry fst, id⟩` → **fully verified, no axioms**
    - Like CompCert's C→assembly phase (fully verified)
 
-2. **Modular Analysis** (Postulates only at FFI boundaries):
-   - For external closures from FFI, dynamic loading, separate compilation
-   - Postulate: "FFI-returned closures satisfy calling convention"
-   - Like CompCert's assembly semantics (axiomatized at boundary)
+2. **FFI Boundaries** (Programmer proves at edge):
+   - If Once code receives closures from external C/FFI
+   - Programmer provides ClosureWellFormed proofs at the boundary
+   - This is the standard layered proof architecture (generators proven, edges programmer's responsibility)
 
 **Why curry/apply is special**:
 - Only IR generator that performs **indirect calls** via code pointers

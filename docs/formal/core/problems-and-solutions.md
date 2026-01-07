@@ -577,9 +577,9 @@ To prove the compiler works for ALL type-correct programs, we must prove curry
 curry in the same program. This lets us thread `ClosureWellFormed` proofs through
 composition, eliminating the `apply-produces-result` postulate entirely.
 
-**Open programs** would require proving apply works on arbitrary external closures
-(not created by this program), which needs the stronger postulate. That's NOT our
-verification target.
+**Modular proofs** (without ClosureEntry tracking) can't prove closure provenance,
+requiring the postulate. The fix is to thread ClosureEntry through the mutual block,
+NOT to accept the postulate as permanent.
 
 **Closed programs** (our target) mean: All curry/apply pairs are composed together
 in the same program, so we can prove correctness with ZERO postulates.

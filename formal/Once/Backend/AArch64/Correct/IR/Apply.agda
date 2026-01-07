@@ -77,9 +77,12 @@ open ≡-Reasoning
 --   3. Proving the thunk correctly executes f on (env, arg)
 --   4. Proving ret returns to the right location
 --
--- This is a genuine model limitation - the local execution model
--- can't reason about jumps to code in other program regions.
--- The postulate is INTENTIONAL and mathematically justified.
+-- ELIMINATION PATH for closed programs:
+--   For closed Once programs where all closures come from curry,
+--   the postulate CAN be eliminated via ClosureEntry tracking and
+--   ClosureWellFormed proofs. See run-apply-with-wf.
+--
+-- This is a MODULAR proof architecture limitation, not a fundamental axiom.
 
 ------------------------------------------------------------------------
 -- Apply Context: computed values for apply proof
@@ -254,9 +257,8 @@ open ThunkResultExec public
 -- For whole-program proofs with closure well-formedness, use:
 --   run-apply-with-wf (from ClosureWellFormed, re-exported above)
 --
--- The apply postulate is mathematically justified: we're asserting that
--- the AArch64 semantics correctly implement function application
--- when closures are properly formed by curry.
+-- The postulate is an ELIMINATION TARGET for closed programs.
+-- For closed Once programs, use run-apply-with-wf to avoid the postulate.
 
 ------------------------------------------------------------------------
 -- Arithmetic Lemma

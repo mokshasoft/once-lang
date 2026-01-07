@@ -216,11 +216,12 @@ compilation-correct-riscv ir x =
 -- P1: Function Extensionality (used in elaborate-correct, optimize-correct)
 --     ∀ x → f x ≡ g x → f ≡ g
 --
--- P2: Value Encoding Axioms (shared by both backends)
---     - encode-pair-fst/snd
---     - encode-inl/inr-tag/val
+-- P2: Value Encoding Axioms (ELIMINATION TARGETS for stateful proofs)
+--     - encode-pair-fst/snd (eliminated via PairAtS in x86-64 stateful proofs)
+--     - encode-inl/inr-tag/val (eliminated via InlAtS/InrAtS in stateful proofs)
 --     - encode-fix-wrap/unwrap
 --     - encode-arr-identity
+--     See Once.Backend.X86.Correct.StarBase for stateful proof examples.
 --
 -- P3-x86: x86-64 Execution Helpers (used in codegen-correct-x86)
 --     - run-single-* for single instructions

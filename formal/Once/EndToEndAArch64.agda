@@ -145,11 +145,12 @@ compilation-correct-aarch64 ir x =
 -- P1: Function Extensionality (used in elaborate-correct, optimize-correct)
 --     ∀ x → f x ≡ g x → f ≡ g
 --
--- P2: AArch64 Value Encoding Axioms (used in codegen-correct)
---     - encode-pair-fst/snd
---     - encode-inl/inr-tag/val
+-- P2: AArch64 Value Encoding Axioms (ELIMINATION TARGETS for stateful proofs)
+--     - encode-pair-fst/snd (eliminated via PairAtS in stateful proofs)
+--     - encode-inl/inr-tag/val (eliminated via InlAtS/InrAtS in stateful proofs)
 --     - encode-fix-wrap/unwrap
 --     - encode-arr-identity
+--     See Once.Backend.X86.Correct.StarBase for the stateful proof pattern.
 --
 -- P3: AArch64 Execution Helpers (currently postulated, to be proven)
 --     - exec-nop, exec-ldr, exec-str, exec-mov, etc.

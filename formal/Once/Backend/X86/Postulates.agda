@@ -90,12 +90,18 @@ postulate
 -- WHY THIS POSTULATE EXISTS (MODULAR CASE)
 -- ========================================================================
 --
--- For OPEN program fragments (e.g., library code that receives closures
--- from outside), we can't know where closures came from. This postulate
--- axiomatizes the curry/apply calling convention for such cases:
---   - curry stores (encode env, code_ptr) at closure address
---   - apply loads env→r12, code_ptr→r15, arg→rdi, then calls r15
---   - thunk pairs (r12, rdi), calls f, returns result in rax
+-- In the modular mutual block (run-ir-star-at-offset), closures lack
+-- provenance tracking. We can't thread ClosureWellFormed proofs through
+-- the mutual block without significant refactoring.
+--
+-- This is NOT about "external closures" or "open programs" - for closed
+-- Once programs, ALL closures come from curry and this postulate SHOULD
+-- be eliminated via ClosureEntry tracking.
+--
+-- ELIMINATION TARGET:
+--   The infrastructure exists (ClosureEntry, ClosureWellFormed, run-apply-with-wf)
+--   to eliminate this postulate for closed programs. This is a modular proof
+--   architecture limitation, not a fundamental axiom.
 --
 -- ARCHITECTURAL NOTE:
 --   Constructing ClosureWellFormed proofs inside the modular mutual block

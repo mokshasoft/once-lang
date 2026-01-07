@@ -250,7 +250,8 @@ run-ir-star-whole-program ir prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>1
 -- | For closed programs, we can compose the whole-program runner
 -- and get end-to-end correctness without apply-produces-result.
 --
--- This is the key theorem: given a closed program (no external closures),
+-- This is the key theorem: for closed Once programs where all closures
+-- come from curry operations (with tracked provenance via ClosureEntry),
 -- execution produces the correct result.
 whole-program-correct : ∀ {A B} (ir : IR A B)
   (x : ⟦ A ⟧) (s : State) →

@@ -139,6 +139,45 @@ When eliminating postulates (like apply-produces-result), we must eliminate them
 the MODULAR mutual block (run-ir-star-at-offset), not just from example programs.
 The modular layer is where we prove arbitrary program correctness.
 
+## Layered Proof Architecture: Generator Proofs vs Edge Proofs
+
+**Critical Principle**: The Once compiler proves generators correct for Once-generated code.
+External code interactions (FFI) require programmer proofs at the boundary.
+
+### What This Means
+
+1. **Generator Correctness (Our Job)**:
+   - Prove curry produces valid closures
+   - Prove apply correctly invokes closures produced by curry
+   - Prove compose/pair/case preserve closure validity
+   - Result: ANY closed Once program compiles correctly
+
+2. **FFI Boundary Proofs (Programmer's Job)**:
+   - If calling external C functions that return closures
+   - If exposing Once closures to external code
+   - The programmer provides ClosureWellFormed proofs at the boundary
+
+### Why Postulates Are Elimination Targets
+
+When you see postulates like `apply-produces-result`:
+- ❌ WRONG: "This is a justified model axiom because closures could come from anywhere"
+- ✅ RIGHT: "This should be eliminated for closed programs via ClosureEntry tracking"
+
+The infrastructure exists (ClosureEntry, ClosureWellFormed, run-apply-with-wf) to eliminate
+these postulates. Comments suggesting they're permanent axioms lead us down wrong paths.
+
+### Common Misunderstanding Pattern
+
+This mistake has occurred 10+ times in our codebase:
+
+1. Someone sees apply can't prove closure validity modularly
+2. They write "this postulate is justified because closures could be external"
+3. This framing makes it seem like the postulate is permanent
+4. We stop working on elimination and add more postulates
+5. Eventually we rediscover the layered architecture and fix it
+
+**The fix**: Comments should always emphasize the ELIMINATION PATH, not justify permanence.
+
 ## Proof Patterns
 
 ### Single-Instruction IR (id, terminal, fold, unfold, arr)
