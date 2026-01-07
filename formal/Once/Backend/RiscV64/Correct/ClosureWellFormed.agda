@@ -204,15 +204,20 @@ curry-output-to-apply-input f prog offset x cow =
   CurryOutputWF.wf cow
 
 ------------------------------------------------------------------------
--- Postulates (to be eliminated)
+-- Internal placeholders (NOT official postulates)
 ------------------------------------------------------------------------
 
--- | Placeholder WF for arrow types in trivialWF.
--- This should never be called in practice - trivialWF should only be used
--- for types that don't contain closures. Arrow types require proper WF
--- from curry's output.
-postulate
-  dummy-wf-for-arrow : ∀ {A B : Type} (prog : Program) → ApplyInputWF A B prog
+-- REMOVED: dummy-wf-for-arrow postulate (2026-01-06)
+--
+-- This was a placeholder for arrow types in trivialWF.
+-- trivialWF should only be called for types without closures.
+-- Arrow types get WF from curry's output via MutualIR.
+--
+-- If removing this breaks the build, it means trivialWF is being called
+-- with arrow types, which would indicate a gap in the WF threading.
+--
+-- postulate
+--   dummy-wf-for-arrow : ∀ {A B : Type} (prog : Program) → ApplyInputWF A B prog
 
 ------------------------------------------------------------------------
 -- ClosuresWF: WF for all closures in values of a given type
@@ -242,9 +247,11 @@ ClosuresWF (A + B) prog = ClosuresWF A prog × ClosuresWF B prog
 ClosuresWF (A ⇒[ _ ] B) prog = ApplyInputWF A B prog  -- Pattern match on actual constructor
 ClosuresWF (Fix F) prog = ⊤  -- Recursive types: assume no closures for now
 
--- | Trivial WF for types without closures (placeholder for arrow types)
--- Note: For arrow types, this produces an invalid WF. Only use for types
--- that genuinely don't contain closures (which is checked by the caller).
+-- | Trivial WF for types without closures
+-- IMPORTANT: This function should ONLY be called for types that genuinely
+-- don't contain closures. Arrow types must get their WF from curry's output
+-- via MutualIR. If this function is called with an arrow type, it will cause
+-- a compile-time error to help identify gaps in WF threading.
 trivialWF : ∀ T prog → ClosuresWF T prog
 trivialWF Unit prog = tt
 trivialWF Void prog = tt
@@ -256,7 +263,10 @@ trivialWF (TVar _) prog = tt
 trivialWF (Eff _ _) prog = tt
 trivialWF (A * B) prog = trivialWF A prog , trivialWF B prog
 trivialWF (A + B) prog = trivialWF A prog , trivialWF B prog
-trivialWF (A ⇒[ _ ] B) prog = dummy-wf-for-arrow prog  -- Pattern match on actual constructor
+trivialWF (A ⇒[ _ ] B) prog = error-trivialWF-called-with-arrow
+  where postulate error-trivialWF-called-with-arrow : ApplyInputWF A B prog
+        -- ERROR: Arrow types should get WF from curry's output, not trivialWF!
+        -- This postulate indicates a gap in WF threading that needs investigation
 trivialWF (Fix F) prog = tt
 
 -- | Extract WF for first component of a pair
