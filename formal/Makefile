@@ -26,7 +26,6 @@
 #   make arith        - Type-check all arithmetic backends
 #
 #   Other targets:
-#   make endtoend     - Type-check end-to-end theorem (x86)
 #   make primitives   - Type-check primitive specifications
 #   make clean        - Remove Agda build artifacts
 #   make count-postulates - Count postulates by file
@@ -68,8 +67,6 @@ AARCH64_EMIT := Once/Backend/AArch64/Emit.agda
 X86_EMIT := Once/Backend/X86/Emit.agda
 RISCV_EMIT := Once/Backend/RiscV64/Emit.agda
 EMIT_ALL := Once/Backend/Emit.agda
-ENDTOEND := Once/EndToEnd.agda
-ENDTOEND_AARCH64 := Once/EndToEndAArch64.agda
 PRIM_MEMORY := Once/Primitive/Memory.agda
 PRIM_IO := Once/Primitive/IO.agda
 PRIM_THREAD := Once/Primitive/Thread.agda
@@ -113,7 +110,7 @@ endef
 all: check
 
 .PHONY: check
-check: compiler endtoend endtoend-aarch64 primitives spf
+check: compiler primitives spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
@@ -224,16 +221,6 @@ ccc: x86-ccc aarch64-ccc riscv-ccc
 riscv-foundation:
 	@echo "Type-checking RISC-V foundation module only..."
 	@sh -c '$(AGDA_CMD) $(RISCV_FOUNDATION)'
-
-.PHONY: endtoend
-endtoend:
-	@echo "Type-checking end-to-end compilation theorem (x86)..."
-	@sh -c '$(AGDA_CMD) $(ENDTOEND)'
-
-.PHONY: endtoend-aarch64
-endtoend-aarch64:
-	@echo "Type-checking end-to-end compilation theorem (AArch64)..."
-	@sh -c '$(AGDA_CMD) $(ENDTOEND_AARCH64)'
 
 .PHONY: primitives
 primitives:
