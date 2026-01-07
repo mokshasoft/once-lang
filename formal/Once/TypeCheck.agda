@@ -53,11 +53,6 @@ open import Once.TypeCheck.Infer public
   using (Fresh; freshTVar)
   using (generatorType)
 
--- Soundness (for documentation; theorems are postulated)
-open import Once.TypeCheck.Sound public
-  using (WellTyped; Soundness; soundness)
-  using (Closed; Decidable; decidable)
-
 -- Combined inference + elaboration (OCP-0004)
 open import Once.TypeCheck.Elaborate as Elaborate public
   using (weaken; exchange)
