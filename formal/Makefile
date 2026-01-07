@@ -97,7 +97,6 @@ TYPECHECK_RAW := Once/TypeCheck/Raw.agda
 TYPECHECK_CONTEXT := Once/TypeCheck/Context.agda
 TYPECHECK_ERROR := Once/TypeCheck/Error.agda
 TYPECHECK_UNIFY := Once/TypeCheck/Unify.agda
-TYPECHECK_INFER := Once/TypeCheck/Infer.agda
 TYPECHECK_RESOLVE := Once/TypeCheck/Resolve.agda
 TYPECHECK_ELABORATE := Once/TypeCheck/Elaborate.agda
 TYPECHECK_MAIN := Once/TypeCheck.agda
@@ -396,11 +395,10 @@ typecheck-verified:
 	@sh -c '$(AGDA_CMD) $(TYPECHECK_CONTEXT)'
 	@sh -c '$(AGDA_CMD) $(TYPECHECK_ERROR)'
 
-# Core type checker modules (inference, no extraction yet)
+# Core type checker modules (unification only, inference is in Elaborate)
 .PHONY: typecheck-core
 typecheck-core: typecheck-verified
 	@sh -c '$(AGDA_CMD) $(TYPECHECK_UNIFY)'
-	@sh -c '$(AGDA_CMD) $(TYPECHECK_INFER)'
 	@echo "Core type checker type-checks successfully!"
 
 # Full type checker with scope resolution and extraction entry point

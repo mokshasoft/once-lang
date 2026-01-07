@@ -46,35 +46,26 @@ open import Once.TypeCheck.Unify public
   using (unify; UnifyResult; unified; failed)
   using (occurs)
 
--- Type inference
-open import Once.TypeCheck.Infer public
-  using (InferResult; success; failure)
-  using (infer; check)
-  using (Fresh; freshTVar)
-  using (generatorType)
-
--- Combined inference + elaboration (OCP-0004)
+-- Combined inference + elaboration (intrinsically typed)
+-- Soundness is trivial by construction: if inferElab returns success,
+-- the expression IS well-typed (the type is encoded in the term).
 open import Once.TypeCheck.Elaborate as Elaborate public
   using (weaken; exchange)
   using (InferElabResult)
+  renaming (success to elab-success; failure to elab-failure)
   using (NamedCtx; emptyCtx; extendNamedCtx)
   using (lookupVar)
-  using (inferElab)
+  using (inferElab; checkElab)
   using (compileExpr; compileExprTyped)
 
 ------------------------------------------------------------------------
 -- Convenience API
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero)
-
 -- | Type check an expression in the empty context
-typeCheck : RawExpr → InferResult
-typeCheck e = infer ∅ e zero
-
--- | Type check an expression against an expected type
-typeCheckAgainst : RawExpr → Type → InferResult
-typeCheckAgainst e expected = check ∅ e expected zero
+-- Returns an intrinsically-typed result (soundness by construction)
+typeCheck : RawExpr → InferElabResult Elaborate.[]
+typeCheck e = inferElab emptyCtx e
 
 ------------------------------------------------------------------------
 -- Example Usage
@@ -86,18 +77,17 @@ private
   open import Data.Integer using (+_)
 
   -- λx.x has type t0 → t0
-  example-id : InferResult
+  example-id : InferElabResult Elaborate.[]
   example-id = typeCheck (RLam "x" (RVar "x"))
 
   -- (λx.x) () should have type Unit
-  example-app : InferResult
+  example-app : InferElabResult Elaborate.[]
   example-app = typeCheck (RApp (RLam "x" (RVar "x")) RUnit)
 
   -- 1 + 2 should have type Int
-  example-arith : InferResult
+  example-arith : InferElabResult Elaborate.[]
   example-arith = typeCheck (RBinOp OpAdd (RInt (+ 1)) (RInt (+ 2)))
 
   -- 1 < 2 should have type Unit + Unit (Bool)
-  example-cmp : InferResult
+  example-cmp : InferElabResult Elaborate.[]
   example-cmp = typeCheck (RBinOp OpLt (RInt (+ 1)) (RInt (+ 2)))
-
