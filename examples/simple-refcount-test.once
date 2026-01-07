@@ -1,0 +1,41 @@
+-- Simple Reference Counting Test
+--
+-- This test demonstrates the reference counting system with AllocMode.
+-- It creates pairs that can be allocated on stack or heap depending
+-- on escape analysis (once implemented).
+
+-- Import Linux syscalls for exit
+import I.Linux.Syscalls
+
+-- Test non-escaping pair (should eventually use stack allocation)
+def add_pair : Int -> Int -> Int =
+  \x. \y.
+    let p = pair x y in
+    fst p + snd p
+
+-- Test escaping pair (must use heap allocation)
+def make_pair : Int -> Int -> (Int, Int) =
+  \x. \y. pair x y
+
+-- Test nested pairs
+def nested_test : Int -> ((Int, Int), Int) =
+  \x.
+    let inner = pair x (x + 1) in
+    pair inner (x + 2)
+
+-- Main test - now returns IO Unit as required for executables
+def main : IO Unit =
+  -- Test non-escaping pair
+  let sum1 = add_pair 10 20 in           -- Should be 30
+
+  -- Test escaping pair
+  let p = make_pair 5 7 in
+  let sum2 = fst p + snd p in            -- Should be 12
+
+  -- Test nested pairs
+  let n = nested_test 3 in
+  let inner = fst n in
+  let sum3 = fst inner + snd inner + snd n in  -- 3 + 4 + 5 = 12
+
+  -- Exit with the test result (30 + 12 + 12 = 54)
+  exit (sum1 + sum2 + sum3)
