@@ -238,3 +238,9 @@ eval unfold x          = unwrap x
 -- Takes a pure closure and returns it as an effectful closure
 -- Both have the same Closure representation
 eval arr cl            = cl
+
+-- Reference counting operations (semantically transparent)
+-- These operations manage memory but don't change the value
+eval retain x          = x  -- Identity at semantic level
+eval release x         = x  -- Identity at semantic level
+eval move x            = x  -- Identity at semantic level

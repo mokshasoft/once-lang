@@ -85,8 +85,8 @@ recognizeWithInput inputName ir = case ir of
     -> Just (numTy, MA.C_Lit_76 (coe f))
 
   -- Binary operation: op ∘ ⟨left, right⟩
-  -- Pattern: Compose (Prim op _ _) (Pair left right)
-  Compose (Prim opName (TProduct _ _) outTy) (Pair left right)
+  -- Pattern: Compose (Prim op _ _) (Pair left right _)
+  Compose (Prim opName (TProduct _ _) outTy) (Pair left right _)
     | Just op <- arithPrimOp opName
     , Just numTy <- typeToNumType outTy
     -> do

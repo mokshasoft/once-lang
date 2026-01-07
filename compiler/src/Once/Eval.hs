@@ -43,7 +43,7 @@ eval (Fst _ _) _ = Left (TypeError "fst expects a pair")
 eval (Snd _ _) (VPair _ b) = Right b
 eval (Snd _ _) _ = Left (TypeError "snd expects a pair")
 
-eval (Pair f g) v = do
+eval (Pair f g _) v = do  -- AllocMode ignored in evaluation
   a <- eval f v
   b <- eval g v
   Right (VPair a b)
@@ -52,8 +52,8 @@ eval (Pair f g) v = do
 eval (Terminal _) _ = Right VUnit
 
 -- Coproducts
-eval (Inl _ _) v = Right (VLeft v)
-eval (Inr _ _) v = Right (VRight v)
+eval (Inl _ _ _) v = Right (VLeft v)  -- AllocMode ignored
+eval (Inr _ _ _) v = Right (VRight v)  -- AllocMode ignored
 
 eval (Case f _) (VLeft a) = eval f a
 eval (Case _ g) (VRight b) = eval g b
@@ -63,7 +63,7 @@ eval (Case _ _) _ = Left (TypeError "case expects a sum value")
 eval (Initial _) _ = Left (TypeError "initial: Void has no values")
 
 -- Exponentials
-eval (Curry _ f) v = Right (VClosure [(f, v)] f)
+eval (Curry _ f _) v = Right (VClosure [(f, v)] f)  -- AllocMode ignored
 
 eval (Apply _ _) (VPair (VClosure _ body) arg) = eval body (VPair arg arg)
 eval (Apply _ _) _ = Left (TypeError "apply expects (closure, argument) pair")
@@ -92,6 +92,11 @@ eval (Let _ e1 e2) v = do
 -- Arithmetic expression (OCP-0001)
 -- Evaluates MAlonzo ArithIR directly and returns VInt/VFloat for the result
 eval (Arith numTy arithExpr) v = evalArith numTy arithExpr v
+
+-- Reference counting operations (semantically transparent)
+eval (Retain _) v = Right v  -- Identity at semantic level
+eval (Release _) v = Right v  -- Identity at semantic level
+eval (Move _) v = Right v  -- Identity at semantic level
 
 -- | Check if NumType is floating point
 isFloatType :: MT.T_NumType_6 -> Bool

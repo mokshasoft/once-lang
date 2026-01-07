@@ -74,6 +74,12 @@ data IR : Type → Type → Set where
   -- At runtime, this is essentially identity - Eff A B has same representation as A ⇒ B
   arr     : ∀ {A B} → IR (A ⇒ B) (Eff A B)
 
+  -- Reference counting operations (semantically transparent)
+  -- These operations manage memory but don't change the value
+  retain  : ∀ {A} → IR A A      -- Increment refcount if heap-allocated
+  release : ∀ {A} → IR A A      -- Decrement refcount, free if zero
+  move    : ∀ {A} → IR A A      -- Transfer ownership (no refcount change)
+
 -- | IR∞ is now just an alias for IR (kept for backwards compatibility)
 IR∞ : Type → Type → Set
 IR∞ = IR

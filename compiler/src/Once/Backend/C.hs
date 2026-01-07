@@ -177,7 +177,7 @@ generateExpr ir var = trace ("generateExpr: var=" ++ T.unpack var) $ case ir of
       then "((OncePair*)" <> var <> ")->snd"
       else var <> ".snd"
 
-  Pair f g ->
+  Pair f g _ ->  -- AllocMode ignored in C backend
     "(OncePair){ .fst = " <> generateExpr f var <>
     ", .snd = " <> generateExpr g var <> " }"
 

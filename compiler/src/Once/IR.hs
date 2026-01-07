@@ -1,5 +1,6 @@
 module Once.IR
   ( IR (..)
+  , AllocMode (..)
   ) where
 
 import Data.Text (Text)
@@ -7,6 +8,12 @@ import Data.Text (Text)
 import Once.Type (Type, Name)
 import qualified MAlonzo.Code.Once.Arith.IR as MA
 import qualified MAlonzo.Code.Once.Arith.Type as MT
+
+-- | Allocation mode for compound data structures
+data AllocMode
+  = Stack  -- ^ Stack allocation (doesn't escape)
+  | Heap   -- ^ Heap allocation (may escape)
+  deriving (Eq, Show)
 
 -- | Intermediate representation: the 12 categorical generators
 --
@@ -25,21 +32,21 @@ data IR
   -- Products (corresponds to categorical product)
   | Fst Type Type              -- ^ fst : A * B -> A
   | Snd Type Type              -- ^ snd : A * B -> B
-  | Pair IR IR                 -- ^ pair f g : C -> A * B (where f : C -> A, g : C -> B)
+  | Pair IR IR AllocMode       -- ^ pair f g mode : C -> A * B (where f : C -> A, g : C -> B)
 
   -- Terminal object
   | Terminal Type              -- ^ terminal : A -> Unit
 
   -- Coproducts (corresponds to categorical coproduct)
-  | Inl Type Type              -- ^ inl : A -> A + B
-  | Inr Type Type              -- ^ inr : B -> A + B
+  | Inl Type Type AllocMode    -- ^ inl mode : A -> A + B
+  | Inr Type Type AllocMode    -- ^ inr mode : B -> A + B
   | Case IR IR                 -- ^ case f g : A + B -> C (where f : A -> C, g : B -> C)
 
   -- Initial object
   | Initial Type               -- ^ initial : Void -> A (ex falso quodlibet)
 
   -- Exponentials (corresponds to categorical exponential/closed structure)
-  | Curry Name IR              -- ^ curry f : A -> (B -> C) (with lambda var name for codegen)
+  | Curry Name IR AllocMode    -- ^ curry f mode : A -> (B -> C) (with lambda var name for codegen)
   | Apply Type Type            -- ^ apply : (A -> B) * A -> B
 
   -- Variables and primitives (for surface syntax elaboration)
@@ -66,3 +73,8 @@ data IR
   -- Uses MAlonzo-extracted types from verified Agda proofs
   | Arith MT.T_NumType_6 MA.T_ArithIR_72  -- ^ Arithmetic: result type + expression tree
   -- Note: No Eq/Show due to MAlonzo types containing AgdaAny
+
+  -- Reference counting operations (semantically transparent)
+  | Retain Type                -- ^ retain : A -> A (increment refcount if heap-allocated)
+  | Release Type               -- ^ release : A -> A (decrement refcount, free if zero)
+  | Move Type                  -- ^ move : A -> A (transfer ownership, no refcount change)

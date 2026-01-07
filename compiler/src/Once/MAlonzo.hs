@@ -50,16 +50,20 @@ canConvertIR ir = case ir of
   H.Compose g f     -> canConvertIR g && canConvertIR f
   H.Fst a b         -> canConvertType a && canConvertType b
   H.Snd a b         -> canConvertType a && canConvertType b
-  H.Pair f g        -> canConvertIR f && canConvertIR g
+  H.Pair f g _      -> canConvertIR f && canConvertIR g  -- Ignore AllocMode
   H.Terminal t      -> canConvertType t
-  H.Inl a b         -> canConvertType a && canConvertType b
-  H.Inr a b         -> canConvertType a && canConvertType b
+  H.Inl a b _       -> canConvertType a && canConvertType b  -- Ignore AllocMode
+  H.Inr a b _       -> canConvertType a && canConvertType b  -- Ignore AllocMode
   H.Case f g        -> canConvertIR f && canConvertIR g
   H.Initial t       -> canConvertType t
-  H.Curry _ f       -> canConvertIR f
+  H.Curry _ f _     -> canConvertIR f  -- Ignore AllocMode
   H.Apply a b       -> canConvertType a && canConvertType b
   H.Fold t          -> canConvertType t
   H.Unfold t        -> canConvertType t
+  -- Reference counting (semantically transparent)
+  H.Retain t        -> canConvertType t
+  H.Release t       -> canConvertType t
+  H.Move t          -> canConvertType t
   -- Cannot convert these
   H.Var _           -> False
   H.LocalVar _      -> False
@@ -137,16 +141,20 @@ toMAlonzoIR ir = case ir of
   H.Compose g f     -> M.C__'8728'__20 (getMiddleType g f) (toMAlonzoIR g) (toMAlonzoIR f)
   H.Fst _ _         -> M.C_fst_28
   H.Snd _ _         -> M.C_snd_36
-  H.Pair f g        -> M.C_'10216'_'44'_'10217'_46 (toMAlonzoIR f) (toMAlonzoIR g)
+  H.Pair f g _      -> M.C_'10216'_'44'_'10217'_46 (toMAlonzoIR f) (toMAlonzoIR g)  -- Ignore AllocMode
   H.Terminal _      -> M.C_terminal_78
-  H.Inl _ _         -> M.C_inl_54
-  H.Inr _ _         -> M.C_inr_62
+  H.Inl _ _ _       -> M.C_inl_54  -- Ignore AllocMode
+  H.Inr _ _ _       -> M.C_inr_62  -- Ignore AllocMode
   H.Case f g        -> M.C_'91'_'44'_'93'_72 (toMAlonzoIR f) (toMAlonzoIR g)
   H.Initial _       -> M.C_initial_84
-  H.Curry _ f       -> M.C_curry_94 (toMAlonzoIR f)
+  H.Curry _ f _     -> M.C_curry_94 (toMAlonzoIR f)  -- Ignore AllocMode
   H.Apply _ _       -> M.C_apply_102
   H.Fold _          -> M.C_fold_108
   H.Unfold _        -> M.C_unfold_114
+  -- Reference counting (semantically transparent -> identity)
+  H.Retain _        -> M.C_id_10
+  H.Release _       -> M.C_id_10
+  H.Move _          -> M.C_id_10
   -- These should not occur (checked by canConvertIR)
   H.Var _           -> error "MAlonzo: Var not supported"
   H.LocalVar _      -> error "MAlonzo: LocalVar not supported"
@@ -165,13 +173,13 @@ fromMAlonzoIR ir = case ir of
   M.C__'8728'__20 _ g f           -> H.Compose (fromMAlonzoIR g) (fromMAlonzoIR f)
   M.C_fst_28                      -> H.Fst placeholder placeholder
   M.C_snd_36                      -> H.Snd placeholder placeholder
-  M.C_'10216'_'44'_'10217'_46 f g -> H.Pair (fromMAlonzoIR f) (fromMAlonzoIR g)
+  M.C_'10216'_'44'_'10217'_46 f g -> H.Pair (fromMAlonzoIR f) (fromMAlonzoIR g) H.Heap  -- Default to Heap
   M.C_terminal_78                 -> H.Terminal placeholder
-  M.C_inl_54                      -> H.Inl placeholder placeholder
-  M.C_inr_62                      -> H.Inr placeholder placeholder
+  M.C_inl_54                      -> H.Inl placeholder placeholder H.Heap  -- Default to Heap
+  M.C_inr_62                      -> H.Inr placeholder placeholder H.Heap  -- Default to Heap
   M.C_'91'_'44'_'93'_72 f g       -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
   M.C_initial_84                  -> H.Initial placeholder
-  M.C_curry_94 f                  -> H.Curry "_" (fromMAlonzoIR f)
+  M.C_curry_94 f                  -> H.Curry "_" (fromMAlonzoIR f) H.Heap  -- Default to Heap
   M.C_apply_102                   -> H.Apply placeholder placeholder
   M.C_fold_108                    -> H.Fold placeholder
   M.C_unfold_114                  -> H.Unfold placeholder
@@ -185,8 +193,8 @@ getInputType ir = case ir of
   H.Id t            -> toMAlonzoType t
   H.Fst a b         -> M.C__'42'__38 (toMAlonzoType a) (toMAlonzoType b)
   H.Snd a b         -> M.C__'42'__38 (toMAlonzoType a) (toMAlonzoType b)
-  H.Inl a _         -> toMAlonzoType a
-  H.Inr _ b         -> toMAlonzoType b
+  H.Inl a _ _       -> toMAlonzoType a  -- Ignore AllocMode
+  H.Inr _ b _       -> toMAlonzoType b  -- Ignore AllocMode
   H.Terminal t      -> toMAlonzoType t
   H.Initial _       -> M.C_Void_36
   H.Apply a b       -> M.C__'42'__38 (M.C__'8658''91'_'93'__42 (toMAlonzoType a) M.C_Many_10 (toMAlonzoType b)) (toMAlonzoType a)
@@ -204,8 +212,8 @@ getOutputType ir = case ir of
   H.Id t            -> toMAlonzoType t
   H.Fst a _         -> toMAlonzoType a
   H.Snd _ b         -> toMAlonzoType b
-  H.Inl a b         -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)
-  H.Inr a b         -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)
+  H.Inl a b _       -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)  -- Ignore AllocMode
+  H.Inr a b _       -> M.C__'43'__40 (toMAlonzoType a) (toMAlonzoType b)  -- Ignore AllocMode
   H.Terminal _      -> M.C_Unit_34
   H.Initial t       -> toMAlonzoType t
   H.Apply _ b       -> toMAlonzoType b
