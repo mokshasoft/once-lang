@@ -14,7 +14,7 @@ open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.IR as C
-open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap; Closure; encode)
+open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap; Closure; encode; evalPrim)
 open import Once.Postulates using (extensionality; closure-semantics-eq)
 open ⟦Fix⟧ using (unwrap)
 open Closure
@@ -28,22 +28,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.String using (String)
 
 ------------------------------------------------------------------------
--- Primitive evaluation postulate
+-- Primitive evaluation
 ------------------------------------------------------------------------
 
--- | Evaluation of primitives
---
--- Primitives are opaque - we postulate their evaluation exists.
--- The correctness proof assumes primitives evaluate identically
--- in both Surface and Core IR.
---
--- NOTE: These postulates will be eliminated when Prim is added to
--- Core IR (see TODO in Once.Surface.Desugar). At that point:
---   - evalPrim moves to Once.Semantics as the eval case for Prim
---   - prim-eval-eq becomes trivially refl
---
-postulate
-  evalPrim : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
+-- | evalPrim is now imported from Once.Semantics
+-- It was added when Prim constructor was added to Core IR.
 
 ------------------------------------------------------------------------
 -- Surface IR Semantics
@@ -104,17 +93,14 @@ evalSurface (S.Prim name) x = evalPrim name x
 -- Correctness theorem
 ------------------------------------------------------------------------
 
--- | Primitive correctness postulate
+-- | Primitive correctness (now proven)
 --
--- Primitives evaluate identically in both representations.
--- Since prim constructor was removed from Core IR and we use prim-desugar postulate,
--- we postulate correctness directly.
+-- Since prim-desugar = C.Prim and eval (C.Prim name) = evalPrim name,
+-- this is just refl.
 --
--- TEMPORARILY POSTULATED: Until prim is re-added to Core IR
---
-postulate
-  desugar-correct-prim : ∀ {A B} (name : String) (x : ⟦ A ⟧)
-                       → eval (prim-desugar {A} {B} name) x ≡ evalPrim {A} {B} name x
+desugar-correct-prim : ∀ {A B} (name : String) (x : ⟦ A ⟧)
+                     → eval (prim-desugar {A} {B} name) x ≡ evalPrim {A} {B} name x
+desugar-correct-prim name x = refl
 
 -- | Desugar preserves semantics
 --

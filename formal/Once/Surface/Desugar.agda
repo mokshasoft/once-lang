@@ -19,43 +19,20 @@ open import Data.String using (String)
 -- Primitive support in Core IR
 ------------------------------------------------------------------------
 
--- | Primitive in Core IR
+-- | Primitive desugaring: direct passthrough to Core IR
 --
--- Core IR needs a way to represent primitives that pass through from
--- Surface IR. We add this as a postulate since primitives are opaque
--- operations that cannot be expressed in terms of categorical generators.
+-- Prim is a real constructor in Once.IR. Primitives are opaque operations
+-- that cannot be expressed in terms of categorical generators (id, ∘, fst,
+-- snd, etc.). In MAlonzo compilation, this will be implemented via FFI.
 --
--- In MAlonzo compilation, this will be implemented via FFI.
+-- The Core IR Prim constructor was added with:
+--   1. Prim constructor in Once.IR
+--   2. eval case in Once.Semantics (using evalPrim postulate)
+--   3. optimize cases in Once.Optimize (pass through unchanged)
+--   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-------------------------------------------------------------------------
--- TODO: Add Prim to Core IR (Option A)
-------------------------------------------------------------------------
---
--- Currently primitives are postulated here. A cleaner solution is to
--- add Prim directly to Once.IR:
---
---   Prim : ∀ {A B} → String → IR A B
---
--- This would require:
---   1. Add Prim to Once.IR
---   2. Add eval case in Once.Semantics (postulate evalPrim)
---   3. Add optimize cases in Once.Optimize (pass through unchanged)
---   4. Add proof cases in Once.Optimize.Correct (all trivial refl)
---   5. Add codegen in Once.Backend.X86.CodeGen (emit call)
---   6. Add proof in Once.Backend.X86.Correct (postulate call semantics)
---
--- Deferred until x86 backend verification is complete, since adding
--- Prim to Core IR would require updating all pattern matches in the
--- backend proofs.
---
--- See D035 for context on the two-stage IR architecture.
---
-------------------------------------------------------------------------
--- Note: prim is now a real constructor in Once.IR (not a postulate)
-------------------------------------------------------------------------
-
--- Postulate for primitive desugaring (must be before desugar function)
-postulate prim-desugar : ∀ {A B} → String → C.IR A B
+prim-desugar : ∀ {A B} → String → C.IR A B
+prim-desugar = C.Prim
 
 ------------------------------------------------------------------------
 -- Desugar transformation
@@ -113,9 +90,5 @@ desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩
 
 -- | Primitive passthrough
 --
--- Primitives are opaque - just convert to Core's prim representation
--- Uses prim-desugar postulate (defined at top of module)
--- TEMPORARILY USING POSTULATE: prim constructor removed during architectural cleanup
--- TODO: Re-add prim constructor to Once.IR or handle Prim differently
---
+-- Primitives are opaque - just convert to Core's Prim constructor
 desugar (Prim name) = prim-desugar name

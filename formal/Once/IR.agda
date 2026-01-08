@@ -13,6 +13,7 @@
 module Once.IR where
 
 open import Once.Type
+open import Data.String using (String)
 
 -- | IR: Morphisms in a Cartesian Closed Category
 --
@@ -62,6 +63,12 @@ data IR : Type → Type → Set where
   -- arr : (A ⇒ B) → Eff A B
   -- At runtime, this is essentially identity - Eff A B has same representation as A ⇒ B
   arr     : ∀ {A B} → IR (A ⇒ B) (Eff A B)
+
+  -- Primitive operations (opaque to optimizer)
+  -- Primitives are external operations provided by the runtime/platform.
+  -- They cannot be decomposed into categorical generators.
+  -- Examples: syscalls, FFI, platform-specific operations
+  Prim    : ∀ {A B} → String → IR A B
 
 -- | IR∞ is now just an alias for IR (kept for backwards compatibility)
 IR∞ : Type → Type → Set

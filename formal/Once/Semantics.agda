@@ -145,6 +145,12 @@ postulate
   encode-str       : String → Word                               -- String encoding
   encode-buffer    : String → Word                               -- Buffer encoding
 
+-- | Primitive evaluation (opaque operations)
+-- Primitives are external operations whose semantics are defined by the runtime.
+-- This postulate specifies the interface; the implementation is in the compiler.
+postulate
+  evalPrim : ∀ {A B : Type} → String → ⟦ A ⟧ → ⟦ B ⟧
+
 -- | Concrete encode function
 -- TERMINATING: Fix case recurses on smaller type (unwrapped value).
 -- The recursion terminates because types are finite structures.
@@ -238,3 +244,6 @@ eval unfold x          = unwrap x
 -- Takes a pure closure and returns it as an effectful closure
 -- Both have the same Closure representation
 eval arr cl            = cl
+
+-- Primitives (opaque operations)
+eval (Prim name) x     = evalPrim name x
