@@ -35,20 +35,27 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Postulates using (extensionality; closure-semantics-eq; coerceIRArrow-preserves-eval)
 
 ------------------------------------------------------------------------
--- Arithmetic correctness postulates
+-- Primitive semantics (trust boundary)
 ------------------------------------------------------------------------
-
--- These postulates state that the arithmetic IR primitives have the
--- expected semantics. They are justified by the ArithIR boundary proofs.
+--
+-- These axioms define what evalPrim returns for arithmetic primitives.
+-- They are INTENTIONAL trust boundaries, not proof gaps:
+--
+-- - The primitives (intLit, addIR, etc.) are now defined using Prim
+-- - evalPrim is postulated in Once.Semantics
+-- - These axioms specify the contract the runtime must satisfy
+--
+-- This is the same pattern as Once.Arith.Boundary: the structure is
+-- proven, but primitive semantics are trusted to the runtime.
 
 open import Once.Surface.Semantics using (divℤ; modℤ) public
 
 postulate
-  -- Literals: constant morphisms return their value
+  -- Literals: evalPrim for "lit.int.N" returns N
   intLit-correct : ∀ {Γ} (n : ℤ) (γ : ⟦ Γ ⟧) → eval (intLit n) γ ≡ n
   strLit-correct : ∀ {Γ} (s : String) (γ : ⟦ Γ ⟧) → eval (strLit s) γ ≡ s
 
-  -- Arithmetic correctness (binary ops follow their expected semantics)
+  -- Arithmetic: evalPrim for "arith.X.int" computes X
   addIR-correct : ∀ (a b : ℤ) → eval addIR (a , b) ≡ a Data.Integer.+ b
   subIR-correct : ∀ (a b : ℤ) → eval subIR (a , b) ≡ a Data.Integer.- b
   mulIR-correct : ∀ (a b : ℤ) → eval mulIR (a , b) ≡ a Data.Integer.* b
@@ -60,7 +67,7 @@ postulate
   -- Negation
   negIR-correct : ∀ (a : ℤ) → eval negIR a ≡ Data.Integer.- a
 
-  -- Comparison ops (return Unit + Unit matching Semantics.evalSurface)
+  -- Comparisons: evalPrim for "arith.X.int" matches surface semantics
   ltIR-correct : ∀ (a b : ℤ) → eval ltIR (a , b) ≡ evalSurface ε (lt (int a) (int b))
   leIR-correct : ∀ (a b : ℤ) → eval leIR (a , b) ≡ evalSurface ε (le (int a) (int b))
   gtIR-correct : ∀ (a b : ℤ) → eval gtIR (a , b) ≡ evalSurface ε (gt (int a) (int b))

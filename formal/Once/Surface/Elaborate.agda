@@ -15,39 +15,64 @@ open import Once.Postulates using (coerceIRArrow)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Data.Integer using (ℤ)
-open import Data.String using (String)
+open import Data.Integer.Show using () renaming (show to showℤ)
+open import Data.String using (String; _++_)
 
 ------------------------------------------------------------------------
--- Arithmetic IR Primitives (postulated)
+-- Arithmetic IR Primitives
 ------------------------------------------------------------------------
 --
 -- These primitives are the interface between Surface.Syntax arithmetic
--- and the IR. They correspond to embedArith from Once.Arith.Boundary.
+-- and the IR. They use the Prim constructor for opaque runtime operations.
 --
--- The implementation is in the compiler; here we specify the types.
+-- Semantics are defined by evalPrim in Once.Semantics (trust boundary).
 
-postulate
-  -- Literals (constant morphisms that ignore input)
-  intLit   : ℤ → ∀ {Γ} → IR Γ Int
-  strLit   : String → ∀ {Γ} → IR Γ Str
+-- Literals: constant morphisms that ignore input environment
+-- The value is encoded in the primitive name for runtime interpretation.
+intLit : ℤ → ∀ {Γ} → IR Γ Int
+intLit n = Prim ("lit.int." ++ showℤ n) ∘ terminal
 
-  -- Arithmetic operations (Int * Int → Int)
-  addIR    : IR (Int * Int) Int
-  subIR    : IR (Int * Int) Int
-  mulIR    : IR (Int * Int) Int
-  divIR    : IR (Int * Int) Int
-  modIR    : IR (Int * Int) Int
+strLit : String → ∀ {Γ} → IR Γ Str
+strLit s = Prim ("lit.str." ++ s) ∘ terminal
 
-  -- Unary negation (Int → Int)
-  negIR    : IR Int Int
+-- Arithmetic operations (Int * Int → Int)
+addIR : IR (Int * Int) Int
+addIR = Prim "arith.add.int"
 
-  -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
-  ltIR     : IR (Int * Int) (Unit + Unit)
-  leIR     : IR (Int * Int) (Unit + Unit)
-  gtIR     : IR (Int * Int) (Unit + Unit)
-  geIR     : IR (Int * Int) (Unit + Unit)
-  eqIR     : IR (Int * Int) (Unit + Unit)
-  neIR     : IR (Int * Int) (Unit + Unit)
+subIR : IR (Int * Int) Int
+subIR = Prim "arith.sub.int"
+
+mulIR : IR (Int * Int) Int
+mulIR = Prim "arith.mul.int"
+
+divIR : IR (Int * Int) Int
+divIR = Prim "arith.div.int"
+
+modIR : IR (Int * Int) Int
+modIR = Prim "arith.mod.int"
+
+-- Unary negation (Int → Int)
+negIR : IR Int Int
+negIR = Prim "arith.neg.int"
+
+-- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
+ltIR : IR (Int * Int) (Unit + Unit)
+ltIR = Prim "arith.lt.int"
+
+leIR : IR (Int * Int) (Unit + Unit)
+leIR = Prim "arith.le.int"
+
+gtIR : IR (Int * Int) (Unit + Unit)
+gtIR = Prim "arith.gt.int"
+
+geIR : IR (Int * Int) (Unit + Unit)
+geIR = Prim "arith.ge.int"
+
+eqIR : IR (Int * Int) (Unit + Unit)
+eqIR = Prim "arith.eq.int"
+
+neIR : IR (Int * Int) (Unit + Unit)
+neIR = Prim "arith.ne.int"
 
 -- | Interpret context as a product type (environment type)
 --
