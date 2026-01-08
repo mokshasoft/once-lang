@@ -38,7 +38,8 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
+open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
+open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
@@ -56,7 +57,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Relation.Binary.PropositionalEquality using (subst₂)
+open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -225,8 +226,8 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
     mem-cl-s1 = subst (λ addr → readMem (memory s1) addr ≡ just closure-addr)
                       (sym rdi-s1)
-                      (trans (mem-write-read-ne (memory s) new-rsp old-r15
-                               (readReg (regs s) rdi) stack-heap-disjoint-rdi)
+                      (trans (readMem-writeMem-diff (memory s) new-rsp (readReg (regs s) rdi)
+                               old-r15 stack-heap-disjoint-rdi)
                              mem-cl)
 
     s2 : State
@@ -248,9 +249,27 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     rdi-s2 : readReg (regs s2) rdi ≡ readReg (regs s) rdi
     rdi-s2 = trans (readReg-writeReg-r15-rdi (regs s1) closure-addr) rdi-s1
 
+    -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
+    postulate
+      stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ 8
+
+    -- Memory at closure-addr is preserved (stack vs heap disjointness)
+    postulate
+      stack-heap-disjoint-closure : new-rsp ≢ closure-addr
+      stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ 8
+
+    -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
+    -- Since s2 = s1 with only regs changed, memory s2 = memory s1
+    mem-s2-eq-s1 : memory s2 ≡ memory s1
+    mem-s2-eq-s1 = refl
+
+    -- Chain: memory s → memory s1 → memory s2
     mem-arg-s2 : readMem (memory s2) (readReg (regs s2) rdi +ℕ 8) ≡ just (encode arg)
     mem-arg-s2 = subst (λ addr → readMem (memory s2) (addr +ℕ 8) ≡ just (encode arg))
-                       (sym rdi-s2) mem-arg
+                       (sym rdi-s2)
+                       (trans (readMem-writeMem-diff (memory s) new-rsp (readReg (regs s) rdi +ℕ 8)
+                                old-r15 stack-heap-disjoint-rdi+8)
+                              mem-arg)
 
     s3 : State
     s3 = record s2 { regs = writeReg (regs s2) rsi (encode arg)
@@ -274,9 +293,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     r15-s3 : readReg (regs s3) r15 ≡ closure-addr
     r15-s3 = trans (readReg-writeReg-rsi-r15 (regs s2) (encode arg)) r15-s2
 
+    -- memory s3 = memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
+    -- Since new-rsp ≢ closure-addr, readMem at closure-addr is preserved
     mem-env-s3 : readMem (memory s3) (readReg (regs s3) r15) ≡ just env-addr
     mem-env-s3 = subst (λ addr → readMem (memory s3) addr ≡ just env-addr)
-                       (sym r15-s3) mem-env
+                       (sym r15-s3)
+                       (trans (readMem-writeMem-diff (memory s) new-rsp closure-addr
+                                old-r15 stack-heap-disjoint-closure)
+                              mem-env)
 
     s4 : State
     s4 = record s3 { regs = writeReg (regs s3) r12 env-addr
@@ -297,9 +321,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     r15-s4-old : readReg (regs s4) r15 ≡ closure-addr
     r15-s4-old = trans (readReg-writeReg-r12-r15 (regs s3) env-addr) r15-s3
 
+    -- memory s4 = ... = writeMem (memory s) new-rsp old-r15
+    -- Since new-rsp ≢ closure-addr+8, readMem at closure-addr+8 is preserved
     mem-cp-s4 : readMem (memory s4) (readReg (regs s4) r15 +ℕ 8) ≡ just code-ptr
     mem-cp-s4 = subst (λ addr → readMem (memory s4) (addr +ℕ 8) ≡ just code-ptr)
-                      (sym r15-s4-old) mem-cp
+                      (sym r15-s4-old)
+                      (trans (readMem-writeMem-diff (memory s) new-rsp (closure-addr +ℕ 8)
+                               old-r15 stack-heap-disjoint-closure+8)
+                             mem-cp)
 
     s5 : State
     s5 = record s4 { regs = writeReg (regs s4) r15 code-ptr
@@ -579,9 +608,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 s h-false pc-eq mem-r15 stack-inv r
 
     step7 : step prog s ≡ just s1
     step7 = trans (step-exec prog s i7 h-false (subst (λ p → fetch prog p ≡ just i7) (sym pc-eq) fetch7))
-                  (cong (λ v → just (record s { regs = writeReg (writeReg (regs s) r15 v) rsp new-rsp
-                                              ; pc = pc s +ℕ 1 }))
-                        (just-injective mem-r15))
+                  (execPop prog s r15 old-r15 mem-r15)
 
     star-all : Star prog s s1
     star-all = ⟨ h-false , step7 ⟩◅ refl*

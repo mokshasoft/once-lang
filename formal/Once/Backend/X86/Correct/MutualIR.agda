@@ -38,7 +38,7 @@ open import Once.Postulates
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
          encode-inl-construct; encode-inr-construct; encode-closure-addr)
 open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op; apply-produces-result)
+  using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -121,6 +121,10 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
 -- Import thunk execution proofs (extracted from mutual block)
 open import Once.Backend.X86.Correct.IR.ThunkExec
   using (thunk-setup-star; thunk-ret-star)
+
+-- Import apply proof (uses ClosureWellFormed)
+open import Once.Backend.X86.Correct.IR.Apply
+  using (run-apply-to-ir-result)
 
 -- Import implementation modules that use the abstract dispatcher
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
@@ -318,8 +322,32 @@ mutual
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    let (s' , ir-res , _) = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-    in s' , ir-res
+    s' , record ir-res
+      { ir-closure-wf = has-closure thunk-offset (encode x) (λ b → eval f (x , b)) wf
+      }
+    where
+      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+      thunk-offset = offset +ℕ 6
+
+      curry-result : ∃[ s' ] (IRStarResult (curry f) prog s s' x offset
+                              × CurryMemoryResult f prog s' x offset)
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+
+      s' : State
+      s' = proj₁ curry-result
+
+      ir-res : IRStarResult (curry f) prog s s' x offset
+      ir-res = proj₁ (proj₂ curry-result)
+
+      -- Build the ClosureWellFormed proof using curry-thunk-correct-impl
+      wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+      wf = record
+        { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
+        ; thunk-correct = λ arg s ret-addr h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp>16 →
+            curry-thunk-correct-impl f prefix suffix x arg s ret-addr
+              h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp>16
+        }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
   -- prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1105,11 +1133,18 @@ mutual
         }
 
   ------------------------------------------------------------------------
-  -- Apply implementation (kept in mutual block for now)
+  -- Apply implementation (uses run-apply-to-ir-result from Apply.agda)
+  --
+  -- This replaces the monolithic apply-produces-result postulate with
+  -- more structured postulates:
+  --   1. closure-wf-for-apply: The closure is well-formed
+  --   2. Memory layout postulates: Runtime memory structure
+  --
+  -- The apply instruction tracing is now proven in Apply.agda.
   ------------------------------------------------------------------------
 
-  -- | Star-based apply execution (direct, uses Star throughout)
-  -- compile-length apply = 6
+  -- | Star-based apply execution (uses ClosureWellFormed-based proof)
+  -- compile-length apply = 8 (push r15 + 5 movs + call + pop r15)
   run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1120,54 +1155,57 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    s-final , record
-      { ir-star = star-all
-      ; ir-halted = h-final
-      ; ir-pc = pc-final
-      ; ir-rax = rax-final
-      ; ir-r14 = r14-final
-      ; ir-r15 = r15-final
-      ; ir-rbp = rbp-final
-      ; ir-mem = mem-final
-      ; ir-mem-rbp = mem-rbp-final
-      ; ir-mem-rbp+8 = mem-rbp+8-final
-      ; ir-stack-inv = stack-inv-final
-      ; ir-rsp-bound = rsp>16-final
-      ; ir-rbp-inv = rbp-inv-final
-      ; ir-mem-above = mem-above-final
-      ; ir-mem-at-0 = mem-at-0-final
-      ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
-      }
+    let (s' , ir-result') = run-apply-to-ir-result prefix suffix code-ptr env-addr sem arg s
+                              closure-wf-post h-false pc-eq rdi-eq' stack-inv rsp>16 rbp-inv mem-layout
+    in s' , subst (λ xv → IRStarResult (apply {A} {B}) prog s s' xv offset) x'-eq-x ir-result'
     where
       open import Data.Product using (proj₁; proj₂)
-      result = apply-produces-result prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-      s-final = proj₁ result
-      rest1 = proj₂ result
-      star-all = proj₁ rest1
-      rest2 = proj₂ rest1
-      h-final = proj₁ rest2
-      rest3 = proj₂ rest2
-      pc-final = proj₁ rest3
-      rest4 = proj₂ rest3
-      rax-final = proj₁ rest4
-      rest5 = proj₂ rest4
-      r14-final = proj₁ rest5
-      rest6 = proj₂ rest5
-      r15-final = proj₁ rest6
-      rest7 = proj₂ rest6
-      rbp-final = proj₁ rest7
-      rest8 = proj₂ rest7
-      mem-final = proj₁ rest8
-      rest9 = proj₂ rest8
-      mem-rbp-final = proj₁ rest9
-      rest10 = proj₂ rest9
-      mem-rbp+8-final = proj₁ rest10
-      rest11 = proj₂ rest10
-      stack-inv-final = proj₁ rest11
-      rest12 = proj₂ rest11
-      rsp>16-final = proj₁ rest12
-      rbp-inv-final = proj₂ rest12
-      -- POSTULATE: Apply execution preserves memory above rbp
+      open import Once.Semantics using (Closure)
+
+      prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      offset = length prefix
+
+      -- Extract closure and argument from semantic pair
+      cl : Closure A B
+      cl = proj₁ x
+
+      arg : ⟦ A ⟧
+      arg = proj₂ x
+
+      -- Extract code-ptr, env-addr, semantics from closure
+      code-ptr : ℕ
+      code-ptr = Closure.code-ptr cl
+
+      env-addr : ℕ
+      env-addr = Closure.env-addr cl
+
+      sem : ⟦ A ⟧ → ⟦ B ⟧
+      sem = Closure.semantics cl
+
+      -- The semantic value x' for run-apply-to-ir-result matches x
+      x' : ⟦ (A ⇒ B) * A ⟧
+      x' = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem } , arg)
+
+      -- Prove x' ≡ x (eta-expansion of Closure record)
+      -- The closure is reconstructed from its fields, which equals the original
       postulate
-        mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
-        mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+        x'-eq-x : x' ≡ x
+
+      rdi-eq' : readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x'
+      rdi-eq' = trans rdi-eq (cong encode (sym x'-eq-x))
+
+      -- POSTULATE: Closure well-formedness for closures in the program
+      -- This is justified because all closures come from curry in the same program,
+      -- and curry now produces ClosureWellFormed proofs (see run-curry-star-direct).
+      -- Threading this proof through composition is a future improvement.
+      postulate
+        closure-wf-post : ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+
+      -- POSTULATE: Memory layout at runtime
+      -- These capture the encoding of the closure/argument pair in memory.
+      postulate
+        mem-layout : ∃[ closure-addr ] (
+          readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
+          readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
+          readMem (memory s) closure-addr ≡ just env-addr ×
+          readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)

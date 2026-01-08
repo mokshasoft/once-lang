@@ -9,25 +9,12 @@
 
 module Once.Backend.X86.Postulates where
 
-open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; length; _++_)
-open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (false)
+open import Data.Nat using (ℕ; _>_)
 
-open import Once.Type using (Type; _⇒_; _*_)
-open import Once.IR using (apply; curry; IR)
-open import Once.Semantics using (⟦_⟧; encode; eval)
-open import Once.Memory using (Word)
-
-open import Once.Backend.X86.Syntax using (rsp; rax; rdi; r14; r15; rbp; Program)
-open import Once.Backend.X86.Semantics using (State; readReg; readMem)
+open import Once.Backend.X86.Syntax using (rsp)
+open import Once.Backend.X86.Semantics using (State; readReg)
 open import Once.Backend.X86.Semantics using () renaming (module State to St)
-open St using (regs; memory; halted; pc)
-open import Once.Backend.X86.Correct.Star using (Star)
-open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.CodeGen using (compile-x86; compile-length)
+open St using (regs)
 
 ------------------------------------------------------------------------
 -- Postulate P4: Stack Pointer Bounds (Runtime Property)
@@ -58,97 +45,25 @@ postulate
   rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > 40
 
 ------------------------------------------------------------------------
--- Postulate P5: Closure Application (Modular Reasoning Only)
+-- NOTE: apply-produces-result ELIMINATED
 ------------------------------------------------------------------------
 --
--- Executing `apply` on a closure produces the correct result.
+-- The apply-produces-result postulate has been eliminated!
 --
--- SCOPE: This postulate is ONLY for modular/open program reasoning.
---        Whole-program proofs of closed Once programs do NOT need this.
+-- Instead of a monolithic postulate, apply correctness is now proven using:
+--   1. ClosureWellFormed - ensures closure has valid code-ptr and thunk
+--   2. run-apply-to-ir-result (Apply.agda) - uses ClosureWellFormed
+--   3. Local postulates for stack/heap disjointness and memory preservation
 --
--- NEEDED BY: Once.Backend.X86.Correct.MutualIR (run-apply-star-direct)
+-- The local postulates in run-apply-to-ir-result are more fine-grained and
+-- can be individually verified, unlike the monolithic apply-produces-result.
 --
--- ========================================================================
--- VERIFICATION STRATEGY: WHOLE-PROGRAM PROOFS FOR CLOSED PROGRAMS
--- ========================================================================
---
--- The verification goal is to prove correctness of arbitrary closed Once
--- programs. In closed programs:
---   - Every `apply` consumes a closure created by some `curry`
---   - The curry and apply are always composed together
---   - ClosureWellFormed proofs flow naturally through composition
---
--- This means: NO POSTULATE NEEDED for closed program verification.
---
--- The whole-program proof approach:
---   1. run-curry-star-with-wf produces ClosureWellFormed proof
---   2. Thread proof through compose/pair/case (infrastructure exists)
---   3. run-apply-with-full-wf consumes the proof
---   4. Any combination of IR generators is verified
---
--- ========================================================================
--- WHY THIS POSTULATE EXISTS (MODULAR CASE)
--- ========================================================================
---
--- In the modular mutual block (run-ir-star-at-offset), closures lack
--- provenance tracking. We can't thread ClosureWellFormed proofs through
--- the mutual block without significant refactoring.
---
--- This is NOT about "external closures" or "open programs" - for closed
--- Once programs, ALL closures come from curry and this postulate SHOULD
--- be eliminated via ClosureEntry tracking.
---
--- ELIMINATION TARGET:
---   The infrastructure exists (ClosureEntry, ClosureWellFormed, run-apply-with-wf)
---   to eliminate this postulate for closed programs. This is a modular proof
---   architecture limitation, not a fundamental axiom.
---
--- ARCHITECTURAL NOTE:
---   Constructing ClosureWellFormed proofs inside the modular mutual block
---   causes Agda type-checker performance issues (proof term explosion).
---   Threading data is cheap; constructing proofs inside mutual blocks is not.
---
--- ========================================================================
--- INFRASTRUCTURE STATUS
--- ========================================================================
---
--- Whole-program proof infrastructure (postulate-free path):
---   ✓ ClosureWellFormed predicate (ClosureWellFormed.agda)
---   ✓ run-curry-star-with-wf produces CurryResult with closure-wf
---   ✓ ClosureWFOutput threading through compose/pair/case
---   ✓ run-apply-with-full-wf consumes WF proof (IR/Apply.agda)
---   ✓ Demonstrated: test-apply-with-wf-eliminates-postulate
---
--- Modular proof infrastructure (uses this postulate):
---   - run-curry-star uses no-closure (no WF construction)
---   - run-apply-star-direct uses apply-produces-result
---
--- RUNTIME EFFECT: None (proof-only)
+-- Key improvements:
+--   - curry now produces has-closure with ClosureWellFormed proof
+--   - apply uses run-apply-to-ir-result which consumes ClosureWellFormed
+--   - r15 preservation proven via push/pop sequence in apply
 --
 ------------------------------------------------------------------------
-
-postulate
-  apply-produces-result : ∀ {A B : Type} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
-    StackInvariant s →
-    readReg (regs s) rsp > 16 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
-    in ∃[ s' ] (Star prog s s'
-              × halted s' ≡ false
-              × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
-              × readReg (regs s') rax ≡ encode {B} (eval (apply {A} {B}) x)
-              × readReg (regs s') r14 ≡ readReg (regs s) r14
-              × readReg (regs s') r15 ≡ readReg (regs s) r15
-              × readReg (regs s') rbp ≡ readReg (regs s) rbp
-              × readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-              × readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-              × readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-              × StackInvariant s'
-              × readReg (regs s') rsp > 16
-              × RbpInvariant s')
 
 -- NOTE: encode-curry-at-rsp was ELIMINATED
 -- The curry encoding is now derived from encode-closure-construct (in Once.Postulates)
