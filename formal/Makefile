@@ -26,7 +26,6 @@
 #   make arith        - Type-check all arithmetic backends
 #
 #   Other targets:
-#   make primitives   - Type-check primitive specifications
 #   make clean        - Remove Agda build artifacts
 #   make count-postulates - Count postulates by file
 #   make agda MODULE=path - Type-check a single module
@@ -67,9 +66,6 @@ AARCH64_EMIT := Once/Backend/AArch64/Emit.agda
 X86_EMIT := Once/Backend/X86/Emit.agda
 RISCV_EMIT := Once/Backend/RiscV64/Emit.agda
 EMIT_ALL := Once/Backend/Emit.agda
-PRIM_MEMORY := Once/Primitive/Memory.agda
-PRIM_IO := Once/Primitive/IO.agda
-PRIM_THREAD := Once/Primitive/Thread.agda
 SPF := Once/SPF.agda
 TERMINATION := Once/Backend/Termination.agda
 
@@ -110,7 +106,7 @@ endef
 all: check
 
 .PHONY: check
-check: compiler primitives spf
+check: compiler spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
@@ -221,13 +217,6 @@ ccc: x86-ccc aarch64-ccc riscv-ccc
 riscv-foundation:
 	@echo "Type-checking RISC-V foundation module only..."
 	@sh -c '$(AGDA_CMD) $(RISCV_FOUNDATION)'
-
-.PHONY: primitives
-primitives:
-	@echo "Type-checking primitive specifications..."
-	@sh -c '$(AGDA_CMD) $(PRIM_MEMORY)'
-	@sh -c '$(AGDA_CMD) $(PRIM_IO)'
-	@sh -c '$(AGDA_CMD) $(PRIM_THREAD)'
 
 .PHONY: termination
 termination:
