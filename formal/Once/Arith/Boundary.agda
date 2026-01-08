@@ -37,7 +37,7 @@ open import Data.Float as F using (Float)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 ------------------------------------------------------------------------
 -- Type Mapping: NumType → Once.Type
@@ -405,11 +405,13 @@ splitEnv-commutes [] Γ₂ env = refl
 splitEnv-commutes (b ∷ Γ₁) Γ₂ (v AS.∷ᵉ env)
   with AS.splitEnv {Γ₁} {Γ₂} env | splitEnv-commutes Γ₁ Γ₂ env
 ... | (env₁ , env₂) | ih =
-  -- Need to show the restructuring is correct
-  -- This requires unfolding eval for the pairing and composition
-  helper
-  where
-    postulate helper : _  -- Proof by calculation with eval definitions
+  -- LHS: eval ⟨ ⟨ fst , fst ∘ split ∘ snd ⟩ , snd ∘ split ∘ snd ⟩ (v', envSem)
+  -- where v' = numToSem _ v, envSem = envToSem env, split = splitEnvIR Γ₁ Γ₂
+  -- = ((v', fst (eval split envSem)), snd (eval split envSem))
+  -- By IH: eval split envSem = (envToSem env₁, envToSem env₂)
+  -- = ((v', envToSem env₁), envToSem env₂)
+  -- = (envToSem (v ∷ᵉ env₁), envToSem env₂)  ✓
+  cong₂ _,_ (cong (numToSem _ v ,_) (cong proj₁ ih)) (cong proj₂ ih)
 
 -- | Variable projection correctness
 --
@@ -432,25 +434,28 @@ embed-preserves-semantics :
   ∀ {Γ τ} (e : A.ArithIR Γ τ) (env : AS.Env Γ) →
   eval (embedArith e) (envToSem env) ≡ numToSem τ (AS.eval-arith e env)
 
--- Literal case: follows from constant primitive semantics
-embed-preserves-semantics (A.Lit n) env = lit-case
-  where
-    postulate lit-case : _  -- Follows from evalPrim spec for constants
+-- NOTE: The following cases require specifications for evalPrim.
+-- Since evalPrim is postulated in Once.Semantics, these proofs are
+-- blocked until evalPrim specs are added.
+--
+-- Proof pattern for each case:
+--   1. Unfold eval through compositions to reach (Prim name)
+--   2. Use: eval (Prim name) x = evalPrim name x (by definition)
+--   3. Apply evalPrim spec (e.g., evalPrim "arith.add.int" (x,y) = x + y)
+--   4. For recursive cases: combine with IH and splitEnv-commutes
+--
+-- Required evalPrim specs (conceptual, would go in Once.Semantics):
+--   evalPrim "arith.const.int.N" tt = N
+--   evalPrim "arith.add.int" (x, y) = x + y
+--   evalPrim "arith.sub.int" (x, y) = x - y
+--   etc.
 
--- Variable case: use projectVar-correct
+-- Variable case: use projectVar-correct (PROVEN!)
 embed-preserves-semantics (A.Var p) env = projectVar-correct p env
 
--- Addition case: use IH on subexpressions + primitive spec
-embed-preserves-semantics (A.Add {Γ} {Δ} {τ} e₁ e₂) env =
-  -- By IH: eval (embedArith e₁) env₁ ≡ numToSem (eval-arith e₁ env₁)
-  -- By IH: eval (embedArith e₂) env₂ ≡ numToSem (eval-arith e₂ env₂)
-  -- By prim spec: evalPrim "add" (x,y) = x + y
-  -- Combine with splitEnv-commutes
-  add-case
-  where
-    postulate add-case : _  -- Combine IH with primitive spec
-
--- Remaining cases follow same pattern
+-- Cases requiring evalPrim specs (postulated pending specs)
+embed-preserves-semantics (A.Lit _) _ = lit-case where postulate lit-case : _
+embed-preserves-semantics (A.Add _ _) _ = add-case where postulate add-case : _
 embed-preserves-semantics (A.Sub _ _) _ = sub-case where postulate sub-case : _
 embed-preserves-semantics (A.Mul _ _) _ = mul-case where postulate mul-case : _
 embed-preserves-semantics (A.Div _ _) _ = div-case where postulate div-case : _
