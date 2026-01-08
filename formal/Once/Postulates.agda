@@ -72,21 +72,37 @@ postulate
 -- Postulate P1b: Closure Equality (Semantics-Based)
 ------------------------------------------------------------------------
 --
+-- STATUS: SHOULD BE ELIMINATED for closed Once programs
+--
 -- Two closures are equal if their semantics are equal.
--- The env-addr and code-ptr fields are implementation metadata for
--- code generation; they don't affect behavioral equality.
 --
 -- NEEDED BY: Once.Surface.Correct (elaborate-correct for lambdas)
 --
--- JUSTIFICATION:
---   Closures are semantically identified by their behavior.
---   The env-addr/code-ptr are used only during compilation to track
---   how the closure is represented at runtime. For semantic proofs,
---   only the semantics field matters.
+-- WHY IT EXISTS:
+--   The proof in Surface.Correct compares closures abstractly without
+--   tracking how they were created. It needs to show that a closure from
+--   surface semantics equals one from IR semantics.
 --
--- IMPACT:
---   If this were false, different implementations of the same function
---   would be distinguishable, which violates functional extensionality.
+-- WHY IT'S ELIMINABLE:
+--   For closed Once programs, ALL closures are created by Once:
+--   - Surface closures come from Once lambdas
+--   - IR closures come from Once's curry operation
+--
+--   Since we control both, we can track closure creation and prove
+--   STRUCTURAL equality (same env-addr, same code-ptr) rather than
+--   assuming semantic equality implies structural equality.
+--
+-- ELIMINATION STRATEGY:
+--   1. Thread ClosureEntry tracking through Surface.Elaborate
+--   2. Show that elaborated lambdas produce closures with known structure
+--   3. Prove env-addr and code-ptr match between surface and IR closures
+--   4. Derive full closure equality structurally
+--
+--   This follows the same pattern as apply-produces-result elimination:
+--   track closure provenance instead of treating closures as opaque.
+--
+-- NOTE: For open programs (interfacing with external code), this would
+--   remain as a trust boundary - external closures must behave correctly.
 --
 -- RUNTIME EFFECT: None (erased during extraction)
 --
