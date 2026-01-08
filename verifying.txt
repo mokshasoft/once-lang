@@ -1,4 +1,0 @@
-Always print the make commands exit result, e.g.:
-make riscv 2>&1; echo "Exit status: $?"
-
-Never run nix commands that should go to the formal Makefile
