@@ -178,32 +178,97 @@ mutual
   fmapCata (F ⊗ G) alg (x , y) = (fmapCata F alg x , fmapCata G alg y)
 
 ------------------------------------------------------------------------
--- Anamorphism (Unfold)
+-- Greatest Fixed Point (Final Coalgebra)
 --
--- The dual of cata: builds a μ F from a coalgebra.
+-- ν F is the greatest fixed point of functor F.
+-- It satisfies ν F ≅ F (ν F), just like μ F, but is coinductive.
+--
+-- Key difference:
+--   μ F (least fixed point) - inductive, finite, consumed by cata
+--   ν F (greatest fixed point) - coinductive, potentially infinite, produced by ana
+--
+-- For strictly positive functors over Set, μ F ≅ ν F for finite data.
 ------------------------------------------------------------------------
 
--- | Anamorphism (unfold)
+-- | Greatest fixed point of a polynomial functor (coinductive)
 --
--- Given an F-coalgebra (A, coalg : A → F A), builds a μ F.
--- Note: This requires a termination argument in general.
--- For strictly positive F with finite data, it terminates.
+-- Uses Agda's coinductive records with copatterns.
+-- The 'unfold' field gives F (ν F) from ν F.
 --
--- ana coalg a = ⟨ fmap F (ana coalg) (coalg a) ⟩
---
--- We use sized types or fuel for termination if needed.
--- For now, we postulate termination for the general case.
---
-postulate
-  ana : ∀ {F} {A : Set} → (A → ⟦ F ⟧F A) → A → μ F
+record ν (F : Functor) : Set where
+  coinductive
+  field
+    unfold : ⟦ F ⟧F (ν F)
 
--- | Anamorphism specification
+open ν public
+
+------------------------------------------------------------------------
+-- Anamorphism (Unfold)
 --
--- ana coalg a = ⟨ fmap F (ana coalg) (coalg a) ⟩
+-- The dual of cata: builds a ν F from a coalgebra.
+------------------------------------------------------------------------
+
+-- | Anamorphism (unfold) - PROVEN via coinduction
 --
-postulate
-  ana-spec : ∀ (F : Functor) {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-           → ana {F} coalg a ≡ ⟨ fmap F (ana coalg) (coalg a) ⟩
+-- Given an F-coalgebra (A, coalg : A → F A), builds a ν F.
+-- Uses copatterns for productivity checking.
+--
+-- The recursive call to ana is guarded by fmap, ensuring productivity.
+--
+ana : ∀ {F} {A : Set} → (A → ⟦ F ⟧F A) → A → ν F
+unfold (ana {F} coalg a) = fmap F (ana coalg) (coalg a)
+
+-- | Anamorphism specification - PROVEN by definition
+--
+-- ana coalg a = record { unfold = fmap F (ana coalg) (coalg a) }
+--
+-- This is definitionally true from how ana is defined via copatterns.
+--
+ana-unfold : ∀ (F : Functor) {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
+           → unfold (ana {F} coalg a) ≡ fmap F (ana coalg) (coalg a)
+ana-unfold F coalg a = refl
+
+------------------------------------------------------------------------
+-- Embedding μ into ν (finite data is also coinductive)
+--
+-- For finite data, the least and greatest fixed points coincide.
+------------------------------------------------------------------------
+
+-- | Every inductive μ F can be viewed as coinductive ν F
+--
+-- Uses cata to fold μ F into ν F.
+--
+μ-to-ν : ∀ {F} → μ F → ν F
+μ-to-ν {F} = cata {F} {ν F} (λ x → record { unfold = x })
+
+------------------------------------------------------------------------
+-- Anamorphism for μ F (when coalgebra terminates)
+--
+-- For coalgebras that produce finite data, we can build μ F directly.
+-- This requires a well-founded termination argument.
+------------------------------------------------------------------------
+
+-- | Anamorphism with explicit termination (fuel-based)
+--
+-- Given a fuel bound, unfolds at most n levels.
+-- Returns nothing if fuel runs out.
+--
+open import Data.Nat using (ℕ; zero; suc)
+open import Data.Maybe using (Maybe; just; nothing; map)
+
+mutual
+  ana-fuel : ∀ {F} {A : Set} → ℕ → (A → ⟦ F ⟧F A) → A → Maybe (μ F)
+  ana-fuel zero coalg a = nothing
+  ana-fuel {F} (suc n) coalg a = map ⟨_⟩ (fmapAna-fuel F n coalg (coalg a))
+
+  fmapAna-fuel : ∀ G {F} {A : Set} → ℕ → (A → ⟦ F ⟧F A) → ⟦ G ⟧F A → Maybe (⟦ G ⟧F (μ F))
+  fmapAna-fuel (K B) n coalg x = just x
+  fmapAna-fuel Id n coalg x = ana-fuel n coalg x
+  fmapAna-fuel (G₁ ⊕ G₂) n coalg (inj₁ x) = map inj₁ (fmapAna-fuel G₁ n coalg x)
+  fmapAna-fuel (G₁ ⊕ G₂) n coalg (inj₂ y) = map inj₂ (fmapAna-fuel G₂ n coalg y)
+  fmapAna-fuel (G₁ ⊗ G₂) n coalg (x , y) with fmapAna-fuel G₁ n coalg x | fmapAna-fuel G₂ n coalg y
+  ... | just x' | just y' = just (x' , y')
+  ... | _ | _ = nothing
 
 ------------------------------------------------------------------------
 -- Fixed Point Isomorphism
