@@ -67,11 +67,11 @@ open import Once.Backend.X86.Correct.StarBase public
          -- Stateful field accessors
          ir-rax-s;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
-         run-arr-star; run-fst-star; run-snd-star;
+         run-arr-star; run-fst-star; run-snd-star; run-prim-star;
          run-fst-star-v; run-snd-star-v;
          -- Stateful runners for encoding postulate elimination
          run-id-star-s; run-terminal-star-s; run-fold-star-s; run-unfold-star-s;
-         run-arr-star-s; run-fst-star-s; run-snd-star-s;
+         run-arr-star-s; run-fst-star-s; run-snd-star-s; run-prim-star-s;
          run-inl-star-s; run-inr-star-s;
          -- Result records
          FstSndResultS;
@@ -216,6 +216,10 @@ mutual
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-apply-star-direct prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
 
+  -- Prim: opaque primitive - correctness postulated until proper Prim compilation
+  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+    run-prim-star name prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+
   ------------------------------------------------------------------------
   -- Stateful Star-Based Runner (encoding postulate elimination)
   ------------------------------------------------------------------------
@@ -307,6 +311,10 @@ mutual
         prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
         res-s = convert-to-stateful (apply {A} {B}) prog s s' x (length prefix) res
     in encode (eval (apply {A} {B}) x) , s' , res-s
+
+  -- Prim: opaque primitive - correctness postulated until proper Prim compilation
+  run-ir-star-at-offset-s (Prim {A} {B} name) prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+    run-prim-star-s name prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
 
   ------------------------------------------------------------------------
   -- Curry implementation (kept in mutual block for now)

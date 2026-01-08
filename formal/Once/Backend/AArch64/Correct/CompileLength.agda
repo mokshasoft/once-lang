@@ -100,6 +100,7 @@ compile-length-correct initial = refl
 compile-length-correct fold = refl
 compile-length-correct unfold = refl
 compile-length-correct arr = refl
+compile-length-correct (Prim _) = refl
 
 -- inl: 4 instructions (sub-sp, str-zr, str, mov-from-sp)
 compile-length-correct inl = refl

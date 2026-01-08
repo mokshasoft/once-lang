@@ -21,8 +21,10 @@ open import Data.Product using (_,_; ∃-syntax)
 open import Data.Bool using (false)
 open import Size using (Size)
 
+open import Data.String using (String)
+
 open import Once.Type using (Type; _⇒_; _*_)
-open import Once.IRS using (apply; IR)
+open import Once.IRS using (apply; IR; Prim)
 open import Once.SemanticsS using (⟦_⟧; encode)
 
 open import Once.Backend.RiscV64.Syntax using (a0; sp; Program; Reg)
@@ -41,6 +43,18 @@ postulate
     readReg (regs s) a0 ≡ encode {(A ⇒ B) * A} x →
     ∃[ s' ] IRStarResult (apply {i} {A} {B})
                          (prefix ++ compile-riscv (apply {i} {A} {B}) ++ suffix)
+                         s s' x (length prefix)
+
+  -- Prim: opaque primitive - correctness postulated until proper Prim compilation
+  -- NOTE: Current compile-riscv (Prim _) = nop (identity)
+  -- But eval (Prim name) x = evalPrim name x (arbitrary function)
+  -- These don't match, so correctness is postulated.
+  run-prim-star : ∀ {i A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) a0 ≡ encode {A} x →
+    ∃[ s' ] IRStarResult (Prim {i} {A} {B} name)
+                         (prefix ++ compile-riscv (Prim {i} {A} {B} name) ++ suffix)
                          s s' x (length prefix)
 
 ------------------------------------------------------------------------

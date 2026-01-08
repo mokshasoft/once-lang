@@ -147,6 +147,8 @@ postulate
   encode-float     : AgdaFloat → Word                            -- Float encoding (IEEE 754 bits)
   encode-str       : String → Word                               -- String encoding
   encode-buffer    : String → Word                               -- Buffer encoding
+  -- Primitive evaluation (opaque operations resolved by runtime)
+  evalPrim         : ∀ {A B : Type} → String → ⟦ A ⟧ → ⟦ B ⟧
 
 -- | Concrete encode function
 -- TERMINATING: Fix case recurses on smaller type (unwrapped value).
@@ -243,3 +245,6 @@ eval unfold x          = unwrap x
 -- Takes a pure closure and returns it as an effectful closure
 -- Both have the same Closure representation
 eval arr cl            = cl
+
+-- Primitives (opaque operations)
+eval (Prim name) x     = evalPrim name x

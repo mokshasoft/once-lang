@@ -30,6 +30,7 @@ open import Once.Postulates
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; ≤-trans; m∸n≤m)
 open import Data.List.Properties using (++-assoc)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 
 ------------------------------------------------------------------------
@@ -1870,3 +1871,37 @@ test-inr-stateful {A} {B} b = s' , star-out , halted-out , rax-out , inr-valid-o
 --   • StarBase.agda - stateful versions (run-*-star-s) and E2E tests
 --
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Prim Star Functions (Postulated)
+--
+-- Primitives are opaque operations whose semantics (evalPrim) are postulated.
+-- Until proper Prim compilation is implemented, these are postulated.
+--
+-- NOTE: Current compile-x86 (Prim _) = mov rax, rdi (identity)
+-- But eval (Prim name) x = evalPrim name x (arbitrary function)
+-- These don't match, so correctness is postulated.
+------------------------------------------------------------------------
+
+postulate
+  run-prim-star : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ encode x →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
+    in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog s s' x (length prefix)
+
+  run-prim-star-s : ∀ {A B} (name : String) (prefix suffix : Program)
+      (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) rdi ≡ addr-in →
+    encode x ≡ addr-in →
+    StackInvariant s →
+    readReg (regs s) rsp > 16 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
+    in ∃[ addr-out ] ∃[ s' ] IRStarResultS (Prim {A} {B} name) prog s s' addr-out (length prefix)

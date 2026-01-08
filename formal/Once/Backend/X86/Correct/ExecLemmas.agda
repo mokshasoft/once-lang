@@ -730,3 +730,4 @@ compile-length>0 apply = s≤s z≤n
 compile-length>0 fold = s≤s z≤n
 compile-length>0 unfold = s≤s z≤n
 compile-length>0 arr = s≤s z≤n
+compile-length>0 (Prim _) = s≤s z≤n

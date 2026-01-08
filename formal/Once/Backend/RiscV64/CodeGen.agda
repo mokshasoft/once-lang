@@ -186,6 +186,7 @@ compile-length apply = apply-instr-len
 compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
 compile-length arr = 1             -- nop (identity)
+compile-length (Prim _) = 1        -- Primitives are opaque runtime calls
 
 -- NOTE: StackDelta and StackDepth are now imported from
 -- Once.Backend.Common.StackAnalysis (see import above)
@@ -434,6 +435,10 @@ compile-riscv unfold = nop ∷ []
 
 -- Arr: identity at runtime (lift pure to Eff)
 compile-riscv arr = nop ∷ []
+
+-- Prim: opaque primitive operation
+-- At runtime, primitives are resolved by the runtime system.
+compile-riscv (Prim _) = nop ∷ []
 
 ------------------------------------------------------------------------
 -- Value encoding

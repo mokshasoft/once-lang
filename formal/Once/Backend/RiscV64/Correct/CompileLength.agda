@@ -58,6 +58,7 @@ compile-length-correct arr = refl
 compile-length-correct inl = refl
 compile-length-correct inr = refl
 compile-length-correct apply = refl
+compile-length-correct (Prim _) = refl
 
 -- Compose: length (f ++ g) = length f + length g
 compile-length-correct (g ∘ f) =

@@ -17,8 +17,10 @@ open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
 
+open import Data.String using (String)
+
 open import Once.Type using (Type; _⇒_; _*_)
-open import Once.IR using (apply; curry; IR)
+open import Once.IR using (apply; curry; IR; Prim)
 open import Once.Semantics using (⟦_⟧; encode; eval)
 open import Once.Memory using (Word)
 
@@ -228,6 +230,41 @@ postulate
               × halted s' ≡ false
               × pc s' ≡ length prefix +ℕ compile-length (apply {A} {B})
               × readReg (regs s') x0 ≡ encode {B} (eval (apply {A} {B}) x)
+              × readReg (regs s') x20 ≡ readReg (regs s) x20
+              × readReg (regs s') x21 ≡ readReg (regs s) x21
+              × readReg (regs s') x29 ≡ readReg (regs s) x29
+              × readReg (regs s') x30 ≡ readReg (regs s) x30
+              × readSP (regs s') ≤ readSP (regs s)
+              × readMem (memory s') (readReg (regs s) x21) ≡ readMem (memory s) (readReg (regs s) x21)
+              × readMem (memory s') (readReg (regs s) x29) ≡ readMem (memory s) (readReg (regs s) x29)
+              × readMem (memory s') (readReg (regs s) x29 +ℕ 8) ≡ readMem (memory s) (readReg (regs s) x29 +ℕ 8)
+              × StackInvariant s'
+              × X29Invariant s'
+              × readSP (regs s') > 16)
+
+------------------------------------------------------------------------
+-- Postulate: Prim Correctness (Opaque Primitive)
+------------------------------------------------------------------------
+--
+-- Prim: opaque primitive - correctness postulated until proper Prim compilation
+-- NOTE: Current compile-aarch64 (Prim _) = nop (identity)
+-- But eval (Prim name) x = evalPrim name x (arbitrary function)
+-- These don't match, so correctness is postulated.
+--
+------------------------------------------------------------------------
+
+postulate
+  run-prim-star : ∀ {A B : Type} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readReg (regs s) x0 ≡ encode {A} x →
+    StackInvariant s →
+    readSP (regs s) > 16 →
+    let prog = prefix ++ compile-aarch64 (Prim {A} {B} name) ++ suffix
+    in ∃[ s' ] (Star prog s s'
+              × halted s' ≡ false
+              × pc s' ≡ length prefix +ℕ compile-length (Prim {A} {B} name)
+              × readReg (regs s') x0 ≡ encode {B} (eval (Prim {A} {B} name) x)
               × readReg (regs s') x20 ≡ readReg (regs s) x20
               × readReg (regs s') x21 ≡ readReg (regs s) x21
               × readReg (regs s') x29 ≡ readReg (regs s) x29

@@ -213,3 +213,4 @@ compile-length-correct apply = refl
 compile-length-correct fold = refl
 compile-length-correct unfold = refl
 compile-length-correct arr = refl
+compile-length-correct (Prim _) = refl

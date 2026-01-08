@@ -44,6 +44,7 @@ compile-length apply = 8  -- r15 save/restore added for ir-r15 preservation
 compile-length fold = 1
 compile-length unfold = 1
 compile-length arr = 1
+compile-length (Prim _) = 1  -- Primitives are opaque runtime calls
 
 ------------------------------------------------------------------------
 -- Code generation
@@ -285,6 +286,12 @@ compile-x86 unfold = mov (reg rax) (reg rdi) ∷ []
 
 -- Arr: identity at runtime (lift pure to Eff)
 compile-x86 arr = mov (reg rax) (reg rdi) ∷ []
+
+-- Prim: opaque primitive operation
+-- At runtime, primitives are resolved by the runtime system.
+-- Here we emit a placeholder that passes through the input.
+-- Actual primitive implementation is platform-specific.
+compile-x86 (Prim _) = mov (reg rax) (reg rdi) ∷ []
 
 ------------------------------------------------------------------------
 -- Value encoding
