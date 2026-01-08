@@ -11,3 +11,6 @@ formal/_build/
 
 # Manual backups
 *.bak
+
+# Instructions
+.do-not-commit/
