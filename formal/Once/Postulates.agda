@@ -117,6 +117,8 @@ postulate
 -- Postulate P1c: Arrow Quantity Coercion for IR
 ------------------------------------------------------------------------
 --
+-- STATUS: SHOULD BE ELIMINATED via quantity-polymorphic curry/apply
+--
 -- IR arrows are ungraded (always unrestricted/Many). When elaborating
 -- Surface syntax with graded arrows to IR, we need to coerce the
 -- quantity annotation on arrow types.
@@ -137,6 +139,34 @@ postulate
 --   this coercion is semantically valid.
 --
 -- RUNTIME EFFECT: None (quantities are erased)
+--
+-- ELIMINATION STRATEGY:
+--   Make curry and apply quantity-polymorphic in Once.IR and Once.IRS:
+--
+--   Before:
+--     curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)      -- ⇒ = ⇒[Many]
+--     apply : ∀ {A B} → IR ((A ⇒ B) * A) B
+--
+--   After:
+--     curry : ∀ {A B C q} → IR (A * B) C → IR A (B ⇒[q] C)
+--     apply : ∀ {A B q} → IR ((A ⇒[q] B) * A) B
+--
+--   Then:
+--     - elaborate (lam q e) = curry (elaborate e)  -- no coercion needed
+--     - elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩
+--     - coerceIRArrow becomes unnecessary
+--
+--   BACKEND IMPACT: Orthogonal to generator proofs.
+--     Backend proofs gain an extra implicit {q} parameter that is never
+--     used in proof bodies. Pattern matching on (curry f) or (apply)
+--     stays identical - the quantity is phantom.
+--
+--     Example:
+--       -- Before
+--       run-curry-correct : ∀ {A B C} (f : IR (A * B) C) → ...
+--       -- After
+--       run-curry-correct : ∀ {A B C q} (f : IR (A * B) C) → ...
+--                                   -- ^ extra implicit, proof body unchanged
 --
 ------------------------------------------------------------------------
 
@@ -354,6 +384,8 @@ postulate
 -- Postulate P3: QTT Quantity Erasure (Coercion)
 ------------------------------------------------------------------------
 --
+-- STATUS: SHOULD BE ELIMINATED alongside coerceIRArrow
+--
 -- Expressions can be coerced between contexts that differ only in
 -- quantity annotations (0/1/ω). This reflects the QTT erasure property:
 -- quantities are compile-time annotations that don't affect runtime
@@ -372,7 +404,7 @@ postulate
 --     - Unrestricted (used 0+ times)
 --     - Erased (compile-time only)
 --
---   The actual usage checking happens during type checking (Step 3).
+--   The actual usage checking happens during type checking.
 --   This postulate allows infrastructure code to adjust quantities
 --   without affecting semantics.
 --
@@ -388,13 +420,24 @@ postulate
 --   semantics, which violates the design. Programs would behave
 --   differently based on linearity annotations, breaking parametricity.
 --
--- ELIMINATION PLAN:
---   Step 3 will implement proper usage tracking that computes correct
---   quantities during type checking. This postulate is temporary
---   infrastructure to allow Step 2 (adding quantity-aware contexts)
---   without implementing full QTT rules yet.
---
 -- RUNTIME EFFECT: None (quantities are erased)
+--
+-- ELIMINATION STRATEGY:
+--   This postulate is eliminated together with coerceIRArrow (see P1c above).
+--   When curry/apply become quantity-polymorphic, the Surface.Syntax
+--   context quantities flow through naturally:
+--
+--   1. Surface.Syntax Ctx tracks quantities: Γ , A ^ q
+--   2. elaborate preserves quantities via polymorphic curry
+--   3. No coercion needed between contexts with different quantities
+--
+--   The key insight: quantities should be parameters that flow through,
+--   not constraints that require coercion. Once IR and Surface.Syntax
+--   are quantity-polymorphic, this postulate becomes unnecessary.
+--
+--   BACKEND IMPACT: None. This is purely a Surface/TypeCheck concern.
+--   Backend proofs work with IR which already erases quantities in
+--   its semantics (⟦ A ⇒[q] B ⟧ = Closure A B for all q).
 --
 ------------------------------------------------------------------------
 
