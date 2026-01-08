@@ -24,6 +24,7 @@ open import Once.Type
 open import Once.IRS
 
 open import Once.Backend.RiscV64.Syntax
+open Once.Backend.RiscV64.Syntax using (fstOffset; sndOffset; tagOffset; valueOffset)
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Integer using (ℤ; +_; -[1+_])
@@ -61,6 +62,90 @@ open import Once.Backend.Common.StackAnalysisS
   public
 
 ------------------------------------------------------------------------
+-- Thunk structure constants
+------------------------------------------------------------------------
+
+-- Closure setup (instructions before thunk entry point, positions 0-6)
+closure-setup-len : ℕ
+closure-setup-len = 7
+
+-- Thunk setup (instructions at thunk entry, before f, positions 7-13)
+thunk-setup-len : ℕ
+thunk-setup-len = 7
+
+-- Thunk tail (cleanup + ret + end label)
+tail-len : ℕ
+tail-len = 5
+
+-- Derived offsets
+thunk-entry-offset : ℕ
+thunk-entry-offset = closure-setup-len  -- = 7, where label 7 is
+
+thunk-body-offset : ℕ
+thunk-body-offset = closure-setup-len +ℕ thunk-setup-len  -- = 14, where f starts
+
+curry-overhead : ℕ
+curry-overhead = closure-setup-len +ℕ thunk-setup-len +ℕ tail-len  -- = 19
+
+------------------------------------------------------------------------
+-- Compile-length constants for other IR constructors
+------------------------------------------------------------------------
+
+pair-overhead : ℕ
+pair-overhead = 12  -- 5 setup + 2 middle + 5 final
+
+case-overhead : ℕ
+case-overhead = 6  -- 3 loads/branches + 2 jumps + 1 label
+
+inl-instr-len : ℕ
+inl-instr-len = 4
+
+inr-instr-len : ℕ
+inr-instr-len = 5
+
+apply-instr-len : ℕ
+apply-instr-len = 7
+
+------------------------------------------------------------------------
+-- Case label position constants
+------------------------------------------------------------------------
+
+-- Branch offset from bne (at pos 2) to right label (at pos 4+|f|)
+-- offset = (4+|f|) - 2 = 2+|f|
+case-branch-offset : ℕ
+case-branch-offset = 2
+
+-- Jump offset from j (at pos 3+|f|) to end (at pos 5+|f|+|g|)
+-- offset = (5+|f|+|g|) - (3+|f|) = 2+|g|
+case-jump-offset : ℕ
+case-jump-offset = 2
+
+-- Label position for right branch: 4 + |f|
+case-right-label-base : ℕ
+case-right-label-base = 4
+
+-- Label position for end: 5 + |f| + |g|
+case-end-label-base : ℕ
+case-end-label-base = 5
+
+------------------------------------------------------------------------
+-- Curry label position constants
+------------------------------------------------------------------------
+
+-- Offset from auipc (at pos 2) to thunk (at pos 7) = 5
+auipc-thunk-offset : ℕ
+auipc-thunk-offset = 5
+
+-- Jump offset from j (at pos 6) to end (at pos 18+|f|)
+-- offset = (18+|f|) - 6 = 12+|f|
+curry-jump-offset : ℕ
+curry-jump-offset = 12
+
+-- Label position for end: 18 + |f|
+curry-end-label-base : ℕ
+curry-end-label-base = 18
+
+------------------------------------------------------------------------
 -- Offset constants
 ------------------------------------------------------------------------
 
@@ -90,14 +175,14 @@ compile-length id = 1              -- nop (a0 already has the value)
 compile-length (g ∘ f) = compile-length f +ℕ compile-length g  -- no mov needed!
 compile-length fst = 1             -- ld a0, 0(a0)
 compile-length snd = 1             -- ld a0, 8(a0)
-compile-length ⟨ f , g ⟩ = (12 +ℕ compile-length f) +ℕ compile-length g  -- 12 = frame pointer approach (5 setup + 2 middle + 5 final)
-compile-length inl = 4             -- addi sp + sd + sd + mv
-compile-length inr = 5             -- addi sp + li + sd + sd + mv
-compile-length [ f , g ] = (6 +ℕ compile-length f) +ℕ compile-length g
+compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
+compile-length inl = inl-instr-len
+compile-length inr = inr-instr-len
+compile-length [ f , g ] = (case-overhead +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1        -- li a0, 0
 compile-length initial = 1         -- ebreak
-compile-length (curry f) = 19 +ℕ compile-length f  -- includes frame pointer save/restore
-compile-length apply = 7
+compile-length (curry f) = curry-overhead +ℕ compile-length f
+compile-length apply = apply-instr-len
 compile-length fold = 1            -- nop (identity)
 compile-length unfold = 1          -- nop (identity)
 compile-length arr = 1             -- nop (identity)
@@ -134,10 +219,10 @@ compile-riscv (g ∘ f) =
   compile-riscv g
 
 -- First projection: load from offset 0 of pair pointer
-compile-riscv fst = ld a0 (+ 0) a0 ∷ []
+compile-riscv fst = ld a0 fstOffset a0 ∷ []
 
 -- Second projection: load from offset 8 of pair pointer
-compile-riscv snd = ld a0 (+ 8) a0 ∷ []
+compile-riscv snd = ld a0 sndOffset a0 ∷ []
 
 -- Pairing: allocate pair on stack using frame pointer approach
 -- Stack layout: [fst (8 bytes), snd (8 bytes), saved-s1 (8 bytes), saved-s2 (8 bytes)]
@@ -159,14 +244,14 @@ compile-riscv ⟨ f , g ⟩ =
   compile-riscv f ++
   -- Middle (2 instructions):
   -- Store f result at [s2] (frame pointer, not sp!)
-  sd a0 (+ 0) s2 ∷
+  sd a0 fstOffset s2 ∷
   -- Restore input
   mv a0 s1 ∷
   -- Compute g (input in a0, output in a0, sp may change)
   compile-riscv g ++
   -- Final (5 instructions):
   -- Store g result at [s2 + 8] (frame pointer, not sp!)
-  sd a0 (+ 8) s2 ∷
+  sd a0 sndOffset s2 ∷
   -- Return pointer to pair (s2 points to pair data)
   mv a0 s2 ∷
   -- Restore original s1 from frame
@@ -179,16 +264,16 @@ compile-riscv ⟨ f , g ⟩ =
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
 compile-riscv inl =
   addi sp sp neg16 ∷
-  sd zero (+ 0) sp ∷           -- tag = 0 (use zero register directly!)
-  sd a0 (+ 8) sp ∷             -- value
+  sd zero tagOffset sp ∷       -- tag = 0 (use zero register directly!)
+  sd a0 valueOffset sp ∷       -- value
   mv a0 sp ∷ []                -- return pointer
 
 -- Right injection: create tagged union with tag = 1
 compile-riscv inr =
   addi sp sp neg16 ∷
   li t0 (+ 1) ∷                -- load tag = 1 into t0
-  sd t0 (+ 0) sp ∷             -- tag = 1
-  sd a0 (+ 8) sp ∷             -- value
+  sd t0 tagOffset sp ∷         -- tag = 1
+  sd a0 valueOffset sp ∷       -- value
   mv a0 sp ∷ []                -- return pointer
 
 -- Case analysis: branch on tag
@@ -212,22 +297,22 @@ compile-riscv [ f , g ] =
       -- PC-relative offsets:
       --   bne at pos 2 → right at pos 4+|f|: offset = (4+|f|) - 2 = 2+|f|
       --   j at pos 3+|f| → end at pos 5+|f|+|g|: offset = (5+|f|+|g|) - (3+|f|) = 2+|g|
-      right-offset = + (2 +ℕ len-f)
-      end-offset = + (2 +ℕ len-g)
+      right-offset = + (case-branch-offset +ℕ len-f)
+      end-offset = + (case-jump-offset +ℕ len-g)
   in
   -- Load tag into t0
-  ld t0 (+ 0) a0 ∷
+  ld t0 tagOffset a0 ∷
   -- Load value into a0 (do before branch, both branches need it)
-  ld a0 (+ 8) a0 ∷
+  ld a0 valueOffset a0 ∷
   -- Branch to right if tag != 0 (PC-relative: pc + offset)
   bne t0 zero right-offset ∷
   -- Left branch: apply f
   compile-riscv f ++
   j end-offset ∷
   -- Right branch: apply g
-  label (4 +ℕ len-f) ∷
+  label (case-right-label-base +ℕ len-f) ∷
   compile-riscv g ++
-  label ((5 +ℕ len-f) +ℕ len-g) ∷ []
+  label ((case-end-label-base +ℕ len-f) +ℕ len-g) ∷ []
 
 -- Terminal: return unit (represented as 0)
 compile-riscv terminal = li a0 (+ 0) ∷ []
@@ -277,19 +362,19 @@ compile-riscv (curry {A} {B} {C} f) =
       -- KEY FIX: code-ptr is now computed at runtime via auipc+addi,
       -- so it correctly points to the thunk even in composed programs
       -- like `apply ∘ ⟨curry f, id⟩`.
-      code-ptr = 7         -- thunk starts at position 7
-      auipc-to-thunk = 5   -- offset from auipc (pos 2) to thunk (pos 7)
-      end-offset = + (12 +ℕ len-f)
+      code-ptr = thunk-entry-offset  -- thunk starts at position 7
+      auipc-to-thunk = auipc-thunk-offset  -- offset from auipc (pos 2) to thunk (pos 7)
+      end-offset = + (curry-jump-offset +ℕ len-f)
   in
   -- Allocate closure on stack
   addi sp sp neg16 ∷
   -- Store environment (input a in a0) as closure.env
-  sd a0 (+ 0) sp ∷
+  sd a0 fstOffset sp ∷
   -- Compute code pointer using PC-relative addressing:
   -- auipc gives current PC, addi adds offset to thunk
   auipc t0 (+ 0) ∷                    -- t0 = pc (instruction index)
   addi t0 t0 (+ auipc-to-thunk) ∷     -- t0 = pc + 5 = thunk position
-  sd t0 (+ 8) sp ∷
+  sd t0 sndOffset sp ∷
   -- Return closure pointer
   mv a0 sp ∷
   -- Jump over the thunk code (PC-relative: pc + offset)
@@ -303,9 +388,9 @@ compile-riscv (curry {A} {B} {C} f) =
   -- Set frame pointer
   mv s2 sp ∷
   -- Store a (from s0) at pair.fst [sp]
-  sd s0 (+ 0) sp ∷
+  sd s0 fstOffset sp ∷
   -- Store b (from a0) at pair.snd [sp+8]
-  sd a0 (+ 8) sp ∷
+  sd a0 sndOffset sp ∷
   -- Set a0 = pointer to pair
   mv a0 sp ∷
   -- Execute f on the pair
@@ -319,20 +404,20 @@ compile-riscv (curry {A} {B} {C} f) =
   -- Return (a0 already has result)
   ret ∷
   -- End of thunk
-  label (18 +ℕ len-f) ∷ []
+  label (curry-end-label-base +ℕ len-f) ∷ []
 
 -- Apply: call closure
 -- Input is pair (closure, argument)
 -- closure = [env, code_ptr]
 compile-riscv apply =
   -- Load closure from pair.fst into t1
-  ld t1 (+ 0) a0 ∷
+  ld t1 fstOffset a0 ∷
   -- Load argument from pair.snd into t2
-  ld t2 (+ 8) a0 ∷
+  ld t2 sndOffset a0 ∷
   -- Load env from closure.fst into s0 (callee-saved, used by thunk)
-  ld s0 (+ 0) t1 ∷
+  ld s0 fstOffset t1 ∷
   -- Load code_ptr from closure.snd into t0
-  ld t0 (+ 8) t1 ∷
+  ld t0 sndOffset t1 ∷
   -- Move argument to a0
   mv a0 t2 ∷
   -- Call the code (jalr ra, t0, 0)

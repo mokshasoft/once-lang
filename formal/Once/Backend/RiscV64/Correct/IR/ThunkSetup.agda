@@ -34,6 +34,8 @@ open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.Semantics
 open State
 open import Once.Backend.RiscV64.CodeGen
+  using (compile-riscv; compile-length; neg16; neg24;
+         thunk-entry-offset; thunk-body-offset; closure-setup-len; thunk-setup-len; tail-len)
 
 open import Once.Backend.RiscV64.Correct.Foundation
 open import Once.Backend.RiscV64.Correct.CompileLength using (compile-length-correct)
@@ -65,8 +67,8 @@ open ≡-Reasoning
 thunk-setup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
                           (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
-      thunk-offset = length prefix +ℕ 7
-      f-offset = length prefix +ℕ 14
+      thunk-offset = length prefix +ℕ thunk-entry-offset
+      f-offset = length prefix +ℕ thunk-body-offset
   in
   halted s ≡ false →
   pc s ≡ thunk-offset →
@@ -89,8 +91,8 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
     offset = length prefix
-    thunk-offset = offset +ℕ 7
-    f-offset = offset +ℕ 14
+    thunk-offset = offset +ℕ thunk-entry-offset
+    f-offset = offset +ℕ thunk-body-offset
 
     -- Helper values
     orig-sp : Word
@@ -408,10 +410,12 @@ thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
       (thunk-offset +ℕ 6) +ℕ 1
         ≡⟨ +-assoc thunk-offset 6 1 ⟩
       thunk-offset +ℕ 7
-        ≡⟨ cong (_+ℕ 7) refl ⟩  -- thunk-offset = offset + 7
-      (offset +ℕ 7) +ℕ 7
-        ≡⟨ +-assoc offset 7 7 ⟩
-      offset +ℕ 14
+        ≡⟨ cong (_+ℕ thunk-setup-len) refl ⟩  -- thunk-offset = offset + thunk-entry-offset
+      (offset +ℕ thunk-entry-offset) +ℕ thunk-setup-len
+        ≡⟨ +-assoc offset thunk-entry-offset thunk-setup-len ⟩
+      offset +ℕ (thunk-entry-offset +ℕ thunk-setup-len)
+        ≡⟨ refl ⟩  -- thunk-entry-offset + thunk-setup-len = thunk-body-offset by definition
+      offset +ℕ thunk-body-offset
         ≡⟨ refl ⟩
       f-offset ∎
 
@@ -605,8 +609,8 @@ thunk-cleanup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
                              (prefix suffix : Program) (saved-s2-value : Word) (s : State) →
   let prog = prefix ++ compile-riscv (curry f) ++ suffix
       len-f = compile-length f
-      cleanup-offset = length prefix +ℕ 14 +ℕ len-f
-      ret-offset = length prefix +ℕ 17 +ℕ len-f
+      cleanup-offset = length prefix +ℕ thunk-body-offset +ℕ len-f
+      ret-offset = length prefix +ℕ (thunk-body-offset +ℕ 3) +ℕ len-f
   in
   halted s ≡ false →
   pc s ≡ cleanup-offset →
@@ -624,8 +628,8 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix saved-s2-value s h-false p
   where
     -- Use same names as type signature's let-bindings
     len-f = compile-length f
-    cleanup-offset = length prefix +ℕ 14 +ℕ len-f
-    ret-offset = length prefix +ℕ 17 +ℕ len-f
+    cleanup-offset = length prefix +ℕ thunk-body-offset +ℕ len-f
+    ret-offset = length prefix +ℕ (thunk-body-offset +ℕ 3) +ℕ len-f
     prog = prefix ++ compile-riscv (curry f) ++ suffix
 
     -- curry-tail = mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ label (18 +ℕ len-f) ∷ []
@@ -817,9 +821,9 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix saved-s2-value s h-false p
     h3 = h-false
 
     -- pc st3 = (cleanup-offset + 2) + 1 = cleanup-offset + 3
-    -- cleanup-offset = (length prefix + 14) + len-f  [left assoc]
-    -- ret-offset = (length prefix + 17) + len-f  [left assoc]
-    -- Need: ((length prefix + 14) + len-f) + 3 = (length prefix + 17) + len-f
+    -- cleanup-offset = (length prefix + thunk-body-offset) + len-f
+    -- ret-offset = (length prefix + (thunk-body-offset + 3)) + len-f
+    -- Need: cleanup-offset + 3 = ret-offset
     pc3 : pc st3 ≡ ret-offset
     pc3 = begin
       pc st3
@@ -830,17 +834,15 @@ thunk-cleanup-star-proven {A} {B} {C} f prefix suffix saved-s2-value s h-false p
         ≡⟨ +-assoc cleanup-offset 2 1 ⟩
       cleanup-offset +ℕ 3
         ≡⟨ refl ⟩
-      (length prefix +ℕ 14 +ℕ len-f) +ℕ 3
-        ≡⟨ +-assoc (length prefix +ℕ 14) len-f 3 ⟩
-      (length prefix +ℕ 14) +ℕ (len-f +ℕ 3)
-        ≡⟨ cong ((length prefix +ℕ 14) +ℕ_) (+-comm len-f 3) ⟩
-      (length prefix +ℕ 14) +ℕ (3 +ℕ len-f)
-        ≡⟨ sym (+-assoc (length prefix +ℕ 14) 3 len-f) ⟩
-      ((length prefix +ℕ 14) +ℕ 3) +ℕ len-f
-        ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) 14 3) ⟩
-      (length prefix +ℕ (14 +ℕ 3)) +ℕ len-f
-        ≡⟨ refl ⟩
-      (length prefix +ℕ 17) +ℕ len-f
+      (length prefix +ℕ thunk-body-offset +ℕ len-f) +ℕ 3
+        ≡⟨ +-assoc (length prefix +ℕ thunk-body-offset) len-f 3 ⟩
+      (length prefix +ℕ thunk-body-offset) +ℕ (len-f +ℕ 3)
+        ≡⟨ cong ((length prefix +ℕ thunk-body-offset) +ℕ_) (+-comm len-f 3) ⟩
+      (length prefix +ℕ thunk-body-offset) +ℕ (3 +ℕ len-f)
+        ≡⟨ sym (+-assoc (length prefix +ℕ thunk-body-offset) 3 len-f) ⟩
+      ((length prefix +ℕ thunk-body-offset) +ℕ 3) +ℕ len-f
+        ≡⟨ cong (_+ℕ len-f) (+-assoc (length prefix) thunk-body-offset 3) ⟩
+      (length prefix +ℕ (thunk-body-offset +ℕ 3)) +ℕ len-f
         ≡⟨ refl ⟩
       ret-offset
         ∎

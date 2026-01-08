@@ -20,6 +20,7 @@ open import Once.Type
 open import Once.IR
 
 open import Once.Backend.AArch64.Syntax
+open Once.Backend.AArch64.Syntax using (fstOffset; sndOffset; tagOffset; valueOffset)
 
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -50,6 +51,90 @@ open import Once.Backend.Common.StackAnalysis
   public
 
 ------------------------------------------------------------------------
+-- Thunk structure constants
+------------------------------------------------------------------------
+
+-- Closure setup (instructions before thunk entry point, positions 0-5)
+closure-setup-len : ℕ
+closure-setup-len = 6
+
+-- Thunk setup (instructions at thunk entry, before f, positions 6-9)
+thunk-setup-len : ℕ
+thunk-setup-len = 4
+
+-- Thunk tail (ret + end label)
+tail-len : ℕ
+tail-len = 2
+
+-- Derived offsets
+thunk-entry-offset : ℕ
+thunk-entry-offset = closure-setup-len  -- = 6, where label 6 is
+
+thunk-body-offset : ℕ
+thunk-body-offset = closure-setup-len +ℕ thunk-setup-len  -- = 10, where f starts
+
+curry-overhead : ℕ
+curry-overhead = closure-setup-len +ℕ thunk-setup-len +ℕ tail-len  -- = 12
+
+------------------------------------------------------------------------
+-- Compile-length constants for other IR constructors
+------------------------------------------------------------------------
+
+pair-overhead : ℕ
+pair-overhead = 11  -- 5 setup + 2 middle + 4 final
+
+case-overhead : ℕ
+case-overhead = 8  -- 4 setup + 3 middle + 1 final
+
+inl-instr-len : ℕ
+inl-instr-len = 4
+
+inr-instr-len : ℕ
+inr-instr-len = 5
+
+apply-instr-len : ℕ
+apply-instr-len = 6
+
+------------------------------------------------------------------------
+-- Case label position constants
+------------------------------------------------------------------------
+
+-- Branch offset from b.ne (at pos 2) to right label (at pos 5+|f|)
+-- offset = (5+|f|) - 2 = 3+|f|
+case-branch-offset : ℕ
+case-branch-offset = 3
+
+-- Jump offset from b (at pos 4+|f|) to end (at pos 7+|f|+|g|)
+-- offset = (7+|f|+|g|) - (4+|f|) = 3+|g|
+case-jump-offset : ℕ
+case-jump-offset = 3
+
+-- Label position for right branch: 5 + |f|
+case-right-label-base : ℕ
+case-right-label-base = 5
+
+-- Label position for end: 7 + |f| + |g|
+case-end-label-base : ℕ
+case-end-label-base = 7
+
+------------------------------------------------------------------------
+-- Curry label position constants
+------------------------------------------------------------------------
+
+-- Offset from adr instruction to thunk entry = 4
+adr-thunk-offset : ℕ
+adr-thunk-offset = 4
+
+-- Jump offset from b (at pos 5) to end (at pos 11+|f|)
+-- offset = (11+|f|) - 5 = 6+|f|
+curry-jump-offset : ℕ
+curry-jump-offset = 6
+
+-- Label position for end: 11 + |f|
+curry-end-label-base : ℕ
+curry-end-label-base = 11
+
+------------------------------------------------------------------------
 -- Compile length calculation
 ------------------------------------------------------------------------
 
@@ -67,21 +152,21 @@ compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
 compile-length fst = 1
 compile-length snd = 1
 
--- pair: 11 instructions + |f| + |g|
+-- pair: pair-overhead instructions + |f| + |g|
 -- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0 (5)
 -- After f: str x0 [x21], mov x0 x20 (2)
 -- After g: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16 (4)
-compile-length ⟨ f , g ⟩ = (11 +ℕ compile-length f) +ℕ compile-length g
+compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
 
--- inl: sub sp + str-zr + str + mov = 4 instructions
-compile-length inl = 4
+-- inl: sub sp + str-zr + str + mov = inl-instr-len instructions
+compile-length inl = inl-instr-len
 
--- inr: sub sp + mov + str + str + mov = 5 instructions
-compile-length inr = 5
+-- inr: sub sp + mov + str + str + mov = inr-instr-len instructions
+compile-length inr = inr-instr-len
 
 -- case: ldr + cmp + b.ne + ldr + f + b + label + ldr + g + label
--- 8 instructions + |f| + |g|
-compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
+-- case-overhead instructions + |f| + |g|
+compile-length [ f , g ] = (case-overhead +ℕ compile-length f) +ℕ compile-length g
 
 -- terminal: 1 mov
 compile-length terminal = 1
@@ -91,11 +176,11 @@ compile-length initial = 1
 
 -- curry: complex closure creation (similar structure to x86)
 -- sub sp + str + mov + str + mov-from-sp + b + label + sub sp + stp + mov-from-sp + f + ret + label
--- 12 instructions + |f|
-compile-length (curry f) = 12 +ℕ compile-length f
+-- curry-overhead instructions + |f|
+compile-length (curry f) = curry-overhead +ℕ compile-length f
 
--- apply: 6 ldr/mov/blr instructions
-compile-length apply = 6
+-- apply: apply-instr-len instructions
+compile-length apply = apply-instr-len
 
 -- fold/unfold/arr: 1 nop each (identity at runtime)
 compile-length fold = 1
@@ -134,7 +219,7 @@ compile-aarch64 (g ∘ f) =
 compile-aarch64 fst = ldr x0 (base x0) ∷ []
 
 -- Second projection: load from offset 8 of pair pointer
-compile-aarch64 snd = ldr x0 (base+imm x0 8) ∷ []
+compile-aarch64 snd = ldr x0 (base+imm x0 sndOffset) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
 -- Stack layout after setup:
@@ -165,7 +250,7 @@ compile-aarch64 ⟨ f , g ⟩ =
   -- Compute g
   compile-aarch64 g ++
   -- Store result at [x21 + 8] (pair.snd)
-  str x0 (base+imm x21 8) ∷
+  str x0 (base+imm x21 sndOffset) ∷
   -- Return pointer to pair
   mov x0 (reg x21) ∷
   -- Restore x20, x21 (callee-saved registers)
@@ -177,16 +262,16 @@ compile-aarch64 ⟨ f , g ⟩ =
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
 compile-aarch64 inl =
   sub-sp 16 ∷                    -- Allocate 16 bytes
-  str-zr (sp+imm 0) ∷            -- tag = 0 (using zero register)
-  str x0 (sp+imm 8) ∷            -- value
+  str-zr (sp+imm tagOffset) ∷    -- tag = 0 (using zero register)
+  str x0 (sp+imm valueOffset) ∷  -- value
   mov-from-sp x0 ∷ []            -- x0 = sp (return pointer to sum)
 
 -- Right injection: create tagged union with tag = 1
 compile-aarch64 inr =
   sub-sp 16 ∷                    -- Allocate 16 bytes
   mov x9 (imm 1) ∷               -- Load tag value 1 into temp register
-  str x9 (sp+imm 0) ∷            -- tag = 1
-  str x0 (sp+imm 8) ∷            -- value
+  str x9 (sp+imm tagOffset) ∷    -- tag = 1
+  str x0 (sp+imm valueOffset) ∷  -- value
   mov-from-sp x0 ∷ []            -- x0 = sp (return pointer to sum)
 
 -- Case analysis: branch on tag
@@ -209,24 +294,24 @@ compile-aarch64 [ f , g ] =
       -- PC-relative offsets:
       --   At position 2, to reach 5+len-f: offset = (5+len-f) - 2 = 3+len-f
       --   At position 4+len-f, to reach 7+len-f+len-g: offset = (7+len-f+len-g) - (4+len-f) = 3+len-g
-      right-offset = 3 +ℕ len-f      -- b.ne jumps forward by this amount
-      end-offset = 3 +ℕ len-g        -- b jumps forward by this amount
-      right-label = 5 +ℕ len-f       -- label marker only (not used as target)
-      end-label = (7 +ℕ len-f) +ℕ len-g
+      right-offset = case-branch-offset +ℕ len-f  -- b.ne jumps forward by this amount
+      end-offset = case-jump-offset +ℕ len-g      -- b jumps forward by this amount
+      right-label = case-right-label-base +ℕ len-f  -- label marker only
+      end-label = (case-end-label-base +ℕ len-f) +ℕ len-g
   in
   -- Load tag into x9
   ldr x9 (base x0) ∷
   -- Compare with 0
-  cmp x9 (imm 0) ∷
+  cmp x9 (imm tagOffset) ∷
   -- Jump to right branch if not zero (PC-relative: PC + offset)
   b-ne right-offset ∷
   -- Left branch: load value and apply f
-  ldr x0 (base+imm x0 8) ∷
+  ldr x0 (base+imm x0 valueOffset) ∷
   compile-aarch64 f ++
   b end-offset ∷
   -- Right branch: load value and apply g
   label right-label ∷
-  ldr x0 (base+imm x0 8) ∷
+  ldr x0 (base+imm x0 valueOffset) ∷
   compile-aarch64 g ++
   label end-label ∷ []
 
@@ -270,10 +355,10 @@ compile-aarch64 (curry {A} {B} {C} f) =
       --
       -- PC-relative offset for b:
       --   At position 5, to reach 11+len-f: offset = (11+len-f) - 5 = 6+len-f
-      thunk-offset = 4           -- offset from adr instruction to thunk entry
-      code-ptr = 6               -- used only for label name
-      end-offset = 6 +ℕ len-f    -- b jumps forward by this amount
-      end-label = 11 +ℕ len-f    -- label marker only (not used as target)
+      thunk-offset = adr-thunk-offset  -- offset from adr instruction to thunk entry
+      code-ptr = thunk-entry-offset    -- used only for label name
+      end-offset = curry-jump-offset +ℕ len-f  -- b jumps forward by this amount
+      end-label = curry-end-label-base +ℕ len-f  -- label marker only
   in
   -- Allocate closure on stack
   sub-sp 16 ∷
@@ -281,7 +366,7 @@ compile-aarch64 (curry {A} {B} {C} f) =
   str x0 (sp+imm 0) ∷
   -- Compute absolute address of thunk: PC + 4 = position(adr) + 4 = thunk position
   adr x9 thunk-offset ∷
-  str x9 (sp+imm 8) ∷
+  str x9 (sp+imm sndOffset) ∷
   -- Return closure pointer (sp → x0)
   mov-from-sp x0 ∷
   -- Jump over the thunk code (PC-relative: PC + offset)
@@ -308,11 +393,11 @@ compile-aarch64 apply =
   -- Load closure from pair.fst into x9
   ldr x9 (base x0) ∷
   -- Load argument from pair.snd into x10
-  ldr x10 (base+imm x0 8) ∷
+  ldr x10 (base+imm x0 sndOffset) ∷
   -- Load env from closure.fst into x19 (environment register)
   ldr x19 (base x9) ∷
   -- Load code_ptr from closure.snd into x9
-  ldr x9 (base+imm x9 8) ∷
+  ldr x9 (base+imm x9 sndOffset) ∷
   -- Move argument to x0
   mov x0 (reg x10) ∷
   -- Call the code (blr saves return address to x30)

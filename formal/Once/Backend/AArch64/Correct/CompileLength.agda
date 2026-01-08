@@ -13,6 +13,9 @@ open import Once.IR
 
 open import Once.Backend.AArch64.Syntax
 open import Once.Backend.AArch64.CodeGen
+  using (compile-aarch64; compile-length;
+         pair-overhead; case-overhead; curry-overhead;
+         inl-instr-len; inr-instr-len; apply-instr-len; tail-len)
 
 open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm)
@@ -30,9 +33,9 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 -- Arithmetic helpers (moved to top level)
 ------------------------------------------------------------------------
 
--- | 5 + (m + (2 + (n + 4))) = (11 + m) + n
--- For pair: 5 setup + |f| + 2 middle + |g| + 4 final = 11 + |f| + |g|
-arith-pair : ∀ m n → 5 +ℕ (m +ℕ (2 +ℕ (n +ℕ 4))) ≡ (11 +ℕ m) +ℕ n
+-- | 5 + (m + (2 + (n + 4))) = (pair-overhead + m) + n
+-- For pair: 5 setup + |f| + 2 middle + |g| + 4 final = pair-overhead + |f| + |g|
+arith-pair : ∀ m n → 5 +ℕ (m +ℕ (2 +ℕ (n +ℕ 4))) ≡ (pair-overhead +ℕ m) +ℕ n
 arith-pair m n =
   5 +ℕ (m +ℕ (2 +ℕ (n +ℕ 4)))
     ≡⟨ cong (5 +ℕ_) (sym (+-assoc m 2 (n +ℕ 4))) ⟩
@@ -52,11 +55,11 @@ arith-pair m n =
     ≡⟨ cong (λ x → (7 +ℕ x) +ℕ n) (+-comm m 4) ⟩
   (7 +ℕ (4 +ℕ m)) +ℕ n
     ≡⟨ cong (_+ℕ n) (sym (+-assoc 7 4 m)) ⟩
-  (11 +ℕ m) +ℕ n
+  (pair-overhead +ℕ m) +ℕ n
   ∎
 
--- | 4 + (m + (3 + (n + 1))) = (8 + m) + n
-arith-case : ∀ m n → 4 +ℕ (m +ℕ (3 +ℕ (n +ℕ 1))) ≡ (8 +ℕ m) +ℕ n
+-- | 4 + (m + (3 + (n + 1))) = (case-overhead + m) + n
+arith-case : ∀ m n → 4 +ℕ (m +ℕ (3 +ℕ (n +ℕ 1))) ≡ (case-overhead +ℕ m) +ℕ n
 arith-case m n =
   4 +ℕ (m +ℕ (3 +ℕ (n +ℕ 1)))
     ≡⟨ cong (4 +ℕ_) (sym (+-assoc m 3 (n +ℕ 1))) ⟩
@@ -76,7 +79,7 @@ arith-case m n =
     ≡⟨ cong (λ x → (7 +ℕ x) +ℕ n) (+-comm m 1) ⟩
   (7 +ℕ (1 +ℕ m)) +ℕ n
     ≡⟨ cong (_+ℕ n) (sym (+-assoc 7 1 m)) ⟩
-  (8 +ℕ m) +ℕ n
+  (case-overhead +ℕ m) +ℕ n
   ∎
 
 ------------------------------------------------------------------------
@@ -165,7 +168,7 @@ compile-length-correct ⟨ f , g ⟩ =
                      ldp x20 x21 (sp+imm 0) ∷ add-sp 16 ∷ []) ≡
               length prog-g +ℕ 4
       step4 = trans (length-++ prog-g _) refl
-      combine : 5 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 4))) ≡ (11 +ℕ len-f) +ℕ len-g
+      combine : 5 +ℕ (length prog-f +ℕ (2 +ℕ (length prog-g +ℕ 4))) ≡ (pair-overhead +ℕ len-f) +ℕ len-g
       combine = trans (cong (λ x → 5 +ℕ (x +ℕ (2 +ℕ (length prog-g +ℕ 4)))) IHf)
                (trans (cong (λ x → 5 +ℕ (len-f +ℕ (2 +ℕ (x +ℕ 4)))) IHg)
                       (arith-pair len-f len-g))
@@ -210,7 +213,7 @@ compile-length-correct [ f , g ] =
       step3 = refl
       step4 : length (prog-g ++ label end-label ∷ []) ≡ length prog-g +ℕ 1
       step4 = trans (length-++ prog-g _) refl
-      combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (8 +ℕ len-f) +ℕ len-g
+      combine : 4 +ℕ (length prog-f +ℕ (3 +ℕ (length prog-g +ℕ 1))) ≡ (case-overhead +ℕ len-f) +ℕ len-g
       combine = trans (cong (λ x → 4 +ℕ (x +ℕ (3 +ℕ (length prog-g +ℕ 1)))) IHf)
                (trans (cong (λ x → 4 +ℕ (len-f +ℕ (3 +ℕ (x +ℕ 1)))) IHg)
                       (arith-case len-f len-g))
@@ -240,7 +243,7 @@ compile-length-correct (curry f) =
       step1 = refl
       step2 : length (prog-f ++ ret ∷ label end-label ∷ []) ≡ length prog-f +ℕ 2
       step2 = trans (length-++ prog-f _) refl
-      combine : 10 +ℕ (length prog-f +ℕ 2) ≡ 12 +ℕ len-f
+      combine : 10 +ℕ (length prog-f +ℕ 2) ≡ curry-overhead +ℕ len-f
       combine = trans (cong (λ x → 10 +ℕ (x +ℕ 2)) IHf)
                (trans (cong (10 +ℕ_) (+-comm len-f 2))
                       (sym (+-assoc 10 2 len-f)))

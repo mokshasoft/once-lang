@@ -16,6 +16,9 @@ open import Once.IRS
 
 open import Once.Backend.RiscV64.Syntax
 open import Once.Backend.RiscV64.CodeGen
+  using (compile-riscv; compile-length; neg16; neg24; neg32;
+         pair-overhead; case-overhead; curry-overhead;
+         inl-instr-len; inr-instr-len; apply-instr-len; tail-len)
 
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; +-identityʳ)
@@ -62,7 +65,7 @@ compile-length-correct (g ∘ f) =
         (cong₂ _+ℕ_ (compile-length-correct f) (compile-length-correct g))
 
 -- Pair with frame pointer: [addi, sd, sd, mv, mv] ++ f ++ [sd, mv] ++ g ++ [sd, mv, ld, ld, mv]
--- Length = 5 + len-f + 2 + len-g + 5 = 12 + len-f + len-g
+-- Length = 5 + len-f + 2 + len-g + 5 = pair-overhead + len-f + len-g
 -- Note: We save/restore both s1 and s2 (frame pointer) for callee-save compliance
 compile-length-correct ⟨ f , g ⟩ =
   let len-f = compile-length f
@@ -86,8 +89,8 @@ compile-length-correct ⟨ f , g ⟩ =
         ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (+-identityʳ x) ⟩
           suc (suc (suc (suc (suc x))))
         ∎
-      -- Arithmetic: 5 + (len-f + (2 + (len-g + 5))) = (12 + len-f) + len-g
-      arith : suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5))))))) ≡ (12 +ℕ len-f) +ℕ len-g
+      -- Arithmetic: 5 + (len-f + (2 + (len-g + 5))) = (pair-overhead + len-f) + len-g
+      arith : suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5))))))) ≡ (pair-overhead +ℕ len-f) +ℕ len-g
       arith = begin
           suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5)))))))
         ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (+-suc len-f (suc (len-g +ℕ 5))) ⟩
@@ -98,8 +101,8 @@ compile-length-correct ⟨ f , g ⟩ =
           suc (suc (suc (suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 5)))))))
         ≡⟨ cong (suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc ∘′ suc) (plus-5 (len-f +ℕ len-g)) ⟩
           suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))))))))
-        ≡⟨ refl ⟩  -- (12 + len-f) + len-g = suc^12 (len-f + len-g) definitionally
-          (12 +ℕ len-f) +ℕ len-g
+        ≡⟨ refl ⟩  -- (pair-overhead + len-f) + len-g = suc^12 (len-f + len-g) definitionally
+          (pair-overhead +ℕ len-f) +ℕ len-g
         ∎
   in begin
     length (addi sp sp neg32 ∷ sd s2 (+ 24) sp ∷ sd s1 (+ 16) sp ∷ mv s2 sp ∷ mv s1 a0 ∷ compile-riscv f ++
@@ -120,11 +123,11 @@ compile-length-correct ⟨ f , g ⟩ =
   ≡⟨ cong (λ n → suc (suc (suc (suc (suc (len-f +ℕ suc (suc (n +ℕ 5)))))))) ih-g ⟩
     suc (suc (suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 5)))))))
   ≡⟨ arith ⟩
-    (12 +ℕ len-f) +ℕ len-g
+    (pair-overhead +ℕ len-f) +ℕ len-g
   ∎
 
 -- Case: [ld, ld, bne] ++ f ++ [j, label] ++ g ++ [label]
--- Length = 3 + len-f + 2 + len-g + 1 = 6 + len-f + len-g
+-- Length = 3 + len-f + 2 + len-g + 1 = case-overhead + len-f + len-g
 compile-length-correct ([ f , g ]) =
   let len-f = compile-length f
       len-g = compile-length g
@@ -139,8 +142,8 @@ compile-length-correct ([ f , g ]) =
         ≡⟨ cong suc (+-identityʳ x) ⟩
           suc x
         ∎
-      -- Arithmetic lemma: 3 + (len-f + (2 + (len-g + 1))) = (6 + len-f) + len-g
-      arith : suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1))))) ≡ (6 +ℕ len-f) +ℕ len-g
+      -- Arithmetic lemma: 3 + (len-f + (2 + (len-g + 1))) = (case-overhead + len-f) + len-g
+      arith : suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1))))) ≡ (case-overhead +ℕ len-f) +ℕ len-g
       arith = begin
           suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1)))))
         ≡⟨ cong (λ n → suc (suc (suc n))) (+-suc len-f (suc (len-g +ℕ 1))) ⟩
@@ -151,8 +154,8 @@ compile-length-correct ([ f , g ]) =
           suc (suc (suc (suc (suc ((len-f +ℕ len-g) +ℕ 1)))))
         ≡⟨ cong (λ n → suc (suc (suc (suc (suc n))))) (plus-1 (len-f +ℕ len-g)) ⟩
           suc (suc (suc (suc (suc (suc (len-f +ℕ len-g))))))
-        ≡⟨ refl ⟩  -- (6 + len-f) + len-g = suc^6 (len-f + len-g) definitionally
-          (6 +ℕ len-f) +ℕ len-g
+        ≡⟨ refl ⟩  -- (case-overhead + len-f) + len-g = suc^6 (len-f + len-g) definitionally
+          (case-overhead +ℕ len-f) +ℕ len-g
         ∎
   in begin
     length (compile-riscv ([ f , g ]))
@@ -172,11 +175,11 @@ compile-length-correct ([ f , g ]) =
   ≡⟨ cong (λ n → suc (suc (suc (len-f +ℕ suc (suc (n +ℕ 1)))))) ih-g ⟩
     suc (suc (suc (len-f +ℕ suc (suc (len-g +ℕ 1)))))
   ≡⟨ arith ⟩
-    (6 +ℕ len-f) +ℕ len-g
+    (case-overhead +ℕ len-f) +ℕ len-g
   ∎
 
 -- Curry: [addi, sd, auipc, addi, sd, mv, j, label, addi, sd, mv, sd, sd, mv] ++ f ++ [mv, ld, addi, ret, label]
--- Length = 14 + len-f + 5 = 19 + len-f
+-- Length = 14 + len-f + tail-len = curry-overhead + len-f
 -- Note: auipc+addi replaces li for PC-relative code-ptr computation
 -- Thunk now uses s2 as frame pointer for proper stack cleanup
 compile-length-correct (curry f) =
@@ -202,19 +205,19 @@ compile-length-correct (curry f) =
   in begin
     length (compile-riscv (curry f))
   ≡⟨ refl ⟩
-    -- 14 fixed instructions before f
+    -- 14 fixed instructions before f (closure-setup-len + thunk-setup-len = 7 + 7 = 14)
     suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
       (length (compile-riscv f ++ mv sp s2 ∷ ld s2 (+ 16) sp ∷ addi sp sp (+ 24) ∷ ret ∷ label (18 +ℕ len-f) ∷ [])))))))))))))))
   ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))
           (length-++ (compile-riscv f) _) ⟩
     suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc
-      (length (compile-riscv f) +ℕ 5))))))))))))))
-  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (n +ℕ 5)))))))))))))))
+      (length (compile-riscv f) +ℕ tail-len))))))))))))))
+  ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (n +ℕ tail-len)))))))))))))))
           ih-f ⟩
-    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ 5))))))))))))))
+    suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (len-f +ℕ tail-len))))))))))))))
   ≡⟨ cong (λ n → suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))
           (plus-5 len-f) ⟩
     suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc len-f))))))))))))))))))
   ≡⟨ refl ⟩
-    19 +ℕ len-f
+    curry-overhead +ℕ len-f
   ∎

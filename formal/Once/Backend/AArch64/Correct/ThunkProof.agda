@@ -55,6 +55,7 @@ open import Once.Backend.AArch64.Syntax
 open import Once.Backend.AArch64.Semantics
 open Once.Backend.AArch64.Semantics.State
 open import Once.Backend.AArch64.CodeGen
+  using (compile-aarch64; compile-length; thunk-entry-offset)
 
 open import Once.Backend.AArch64.Correct.Star
   using (Star; refl*; step*; star-trans)
@@ -99,7 +100,7 @@ open import Once.Backend.AArch64.Correct.MutualIR using (curry-thunk-correct-imp
 construct-closure-wf : ∀ {i} {A B C} (f : IR (A * B) C)
                        (prefix suffix : Program) (env : ⟦ A ⟧) →
   let prog = prefix ++ compile-aarch64 (curry f) ++ suffix
-      thunk-offset = length prefix +ℕ 6
+      thunk-offset = length prefix +ℕ thunk-entry-offset
   in
   -- Precondition: thunk-offset is within program bounds
   thunk-offset < length prog →
