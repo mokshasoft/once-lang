@@ -1,3 +1,4 @@
+{-# OPTIONS --sized-types #-}
 ------------------------------------------------------------------------
 -- Once.Backend.Termination
 --
@@ -9,15 +10,17 @@
 --
 -- Key properties:
 -- - Architecture-independent (shared by RiscV64, X86, AArch64)
--- - No sized types (uses well-founded recursion instead)
--- - Abstract + concrete (reusable general proof + specific theorem)
+-- - Based on sized IR (Once.IRS) used by RISC-V and AArch64 backends
+-- - Validates the {-# TERMINATING #-} pragmas used in X86 backend
 --
 -- See: docs/formal/guides/orthogonal-termination-proof.md
 ------------------------------------------------------------------------
 
 module Once.Backend.Termination where
 open import Once.Type hiding (_+_)
-open import Once.IR
+open import Once.IRS
+open import Size using (Size; ↑_; ∞)
+open import Data.String using (String)
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl)
@@ -32,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 -- Composite terms have size strictly greater than their components.
 ------------------------------------------------------------------------
 
-ir-size : ∀ {A B} → IR A B → ℕ
+ir-size : ∀ {A B} → IR ∞ A B → ℕ
 ir-size id = 1
 ir-size terminal = 1
 ir-size initial = 1
@@ -48,6 +51,7 @@ ir-size inr = 1
 ir-size fold = 1
 ir-size unfold = 1
 ir-size arr = 1
+ir-size (Prim _) = 1
 
 ------------------------------------------------------------------------
 -- Size decrease lemmas
@@ -59,34 +63,34 @@ ir-size arr = 1
 ------------------------------------------------------------------------
 
 -- Compose: Both f and g are smaller than (g ∘ f)
-∘-f-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) →
+∘-f-smaller : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
   ir-size f < ir-size (g ∘ f)
 ∘-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-∘-g-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) →
+∘-g-smaller : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
   ir-size g < ir-size (g ∘ f)
 ∘-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Pair: Both f and g are smaller than ⟨ f , g ⟩
-⟨,⟩-f-smaller : ∀ {A B C} (f : IR C A) (g : IR C B) →
+⟨,⟩-f-smaller : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
   ir-size f < ir-size ⟨ f , g ⟩
 ⟨,⟩-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-⟨,⟩-g-smaller : ∀ {A B C} (f : IR C A) (g : IR C B) →
+⟨,⟩-g-smaller : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
   ir-size g < ir-size ⟨ f , g ⟩
 ⟨,⟩-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Case: Both f and g are smaller than [ f , g ]
-[,]-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) →
+[,]-f-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
   ir-size f < ir-size [ f , g ]
 [,]-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-[,]-g-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) →
+[,]-g-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
   ir-size g < ir-size [ f , g ]
 [,]-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Curry: f is smaller than (curry f)
-curry-smaller : ∀ {A B C} (f : IR (A * B) C) →
+curry-smaller : ∀ {A B C} (f : IR ∞ (A * B) C) →
   ir-size f < ir-size (curry f)
 curry-smaller f = s≤s ≤-refl
 
@@ -103,40 +107,41 @@ curry-smaller f = s≤s ≤-refl
 ------------------------------------------------------------------------
 
 module IRProcessor
-  -- What it means to "process" an IR term
-  (Process : ∀ {A B} → IR A B → Set)
+  -- What it means to "process" an IR term (size-independent)
+  (Process : ∀ {A B} → IR ∞ A B → Set)
 
   -- How to process base cases (non-recursive constructors)
-  (process-id : ∀ {A} → Process (id {∞} {A}))
-  (process-terminal : ∀ {A} → Process (terminal {∞} {A}))
-  (process-initial : ∀ {A} → Process (initial {∞} {A}))
-  (process-apply : ∀ {A B} → Process (apply {∞} {A} {B}))
-  (process-fst : ∀ {A B} → Process (fst {∞} {A} {B}))
-  (process-snd : ∀ {A B} → Process (snd {∞} {A} {B}))
-  (process-inl : ∀ {A B} → Process (inl {∞} {A} {B}))
-  (process-inr : ∀ {A B} → Process (inr {∞} {A} {B}))
-  (process-fold : ∀ {F} → Process (fold {∞} {F}))
-  (process-unfold : ∀ {F} → Process (unfold {∞} {F}))
-  (process-arr : ∀ {A B} → Process (arr {∞} {A} {B}))
+  (process-id : ∀ {A} → Process (id {A = A}))
+  (process-terminal : ∀ {A} → Process (terminal {A = A}))
+  (process-initial : ∀ {A} → Process (initial {A = A}))
+  (process-apply : ∀ {A B} → Process (apply {A = A} {B}))
+  (process-fst : ∀ {A B} → Process (fst {A = A} {B}))
+  (process-snd : ∀ {A B} → Process (snd {A = A} {B}))
+  (process-inl : ∀ {A B} → Process (inl {A = A} {B}))
+  (process-inr : ∀ {A B} → Process (inr {A = A} {B}))
+  (process-fold : ∀ {F} → Process (fold {F = F}))
+  (process-unfold : ∀ {F} → Process (unfold {F = F}))
+  (process-arr : ∀ {A B} → Process (arr {A = A} {B}))
+  (process-prim : ∀ {A B} (name : String) → Process (Prim {A = A} {B} name))
 
   -- How to process recursive cases (using results from subterms)
-  (process-compose : ∀ {A B C} (f : IR A B) (g : IR B C) →
+  (process-compose : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
                      Process f → Process g → Process (g ∘ f))
-  (process-pair : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  (process-pair : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
                   Process f → Process g → Process ⟨ f , g ⟩)
-  (process-case : ∀ {A B C} (f : IR A C) (g : IR B C) →
+  (process-case : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
                   Process f → Process g → Process [ f , g ])
-  (process-curry : ∀ {A B C} (f : IR (A * B) C) →
+  (process-curry : ∀ {A B C} (f : IR ∞ (A * B) C) →
                    Process f → Process (curry f))
   where
 
   -- Main theorem: Any IR term can be processed
   -- (Proved by well-founded induction on ir-size)
-  ir-terminates : ∀ {A B} (ir : IR A B) → Process ir
+  ir-terminates : ∀ {A B} (ir : IR ∞ A B) → Process ir
   ir-terminates ir = helper ir (<-wellFounded (ir-size ir))
     where
       -- Helper function that uses the accessibility predicate
-      helper : ∀ {A B} (ir : IR A B) → Acc _<_ (ir-size ir) → Process ir
+      helper : ∀ {A B} (ir : IR ∞ A B) → Acc _<_ (ir-size ir) → Process ir
 
       -- Base cases: use provided processors
       helper id _ = process-id
@@ -150,6 +155,7 @@ module IRProcessor
       helper fold _ = process-fold
       helper unfold _ = process-unfold
       helper arr _ = process-arr
+      helper (Prim name) _ = process-prim name
 
       -- Recursive cases: use induction hypothesis
       helper (g ∘ f) (acc rec) = process-compose f g
@@ -178,44 +184,11 @@ module IRProcessor
 -- architecture-independent (depends only on IR structure).
 ------------------------------------------------------------------------
 
--- For the concrete theorem, we would need to import backend types
--- (State, Program, etc.), but that would create circular dependencies.
---
--- Instead, we state the theorem abstractly: any function that
--- structurally recurses on IR terminates, which includes
--- run-ir-star-at-offset as a special case.
---
--- The backend modules can reference this as justification for
--- {-# TERMINATING #-} pragmas.
-
 -- Abstract statement: "There exists a result"
 record Terminates {A B : Set} (f : A → B) (x : A) : Set where
   field
     result : B
     computes : f x ≡ result
-
--- Theorem: run-ir-star-at-offset terminates
---
--- This is proven by instantiating IRProcessor with:
---   Process ir = ∀ args → Terminates (run-ir-star-at-offset ir) args
---
--- We don't include the full proof here to avoid circular dependencies
--- with backend modules. The abstract IRProcessor proof above is
--- sufficient justification.
---
--- Usage in backends:
---   mutual
---     {-# TERMINATING #-}
---     -- Justified by Once.Backend.Termination.IRProcessor
---     run-ir-star-at-offset : ...
-postulate
-  run-ir-star-terminates :
-    -- For any IR term, run-ir-star-at-offset terminates
-    -- (Proven by instantiating IRProcessor)
-    ∀ {A B} (ir : IR A B) →
-    -- This is a marker that the function terminates
-    -- The actual proof is the IRProcessor module above
-    Set
 
 -- The real proof is IRProcessor.ir-terminates, which shows that ANY
 -- function that structurally recurses on IR terminates.
@@ -240,12 +213,11 @@ module Example where
 
   -- The property we want to prove: any IR term can be processed
   -- (For a concrete example, we'd need to define what "processing" means)
-  IRProcesses : ∀ {A B} → IR A B → Set
+  IRProcesses : ∀ {A B} → IR ∞ A B → Set
   IRProcesses ir = ⊤  -- Trivial property for demonstration
 
   -- Proof by instantiating IRProcessor
-  -- (This is just a sketch showing the pattern - holes marked with ?)
-  ir-processes : ∀ {A B} (ir : IR A B) → IRProcesses ir
+  ir-processes : ∀ {A B} (ir : IR ∞ A B) → IRProcesses ir
   ir-processes = IRProcessor.ir-terminates
     IRProcesses
     -- Base cases: all trivially return tt
@@ -260,6 +232,7 @@ module Example where
     tt  -- fold
     tt  -- unfold
     tt  -- arr
+    (λ _ → tt)  -- prim
     -- Recursive cases: all trivially return tt (ignoring subproofs)
     (λ f g pf pg → tt)  -- compose
     (λ f g pf pg → tt)  -- pair
@@ -273,8 +246,7 @@ module Example where
 --
 -- 1. ir-size: A measure of IR term complexity
 -- 2. Size decrease lemmas: Proofs that recursive calls are on smaller terms
--- 3. IRProcessor: Abstract proof that any IR processor terminates
--- 4. run-ir-star-terminates: Concrete theorem for backend verification
+-- 3. IRProcessor: Proven termination for any IR-structural recursion
 --
 -- Usage in backend MutualIR modules:
 --
@@ -289,7 +261,7 @@ module Example where
 --
 -- Benefits:
 -- - Architecture-independent (one proof for RiscV64, X86, AArch64)
--- - Orthogonal (separate from correctness proofs)
+-- - Based on sized IR (Once.IRS) used by RISC-V and AArch64
+-- - Validates {-# TERMINATING #-} pragmas in X86 backend
 -- - Reusable (IRProcessor works for any IR-based function)
--- - Fast compilation (no sized types in main proofs)
 ------------------------------------------------------------------------

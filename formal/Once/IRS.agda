@@ -16,6 +16,7 @@ module Once.IRS where
 
 open import Size
 open import Once.Type
+open import Data.String using (String)
 
 -- | IR: Morphisms in a Cartesian Closed Category (sized)
 --
@@ -70,6 +71,11 @@ data IR : Size → Type → Type → Set where
   -- arr : (A ⇒ B) → Eff A B
   -- At runtime, this is essentially identity - Eff A B has same representation as A ⇒ B
   arr     : ∀ {i A B} → IR (↑ i) (A ⇒ B) (Eff A B)
+
+  -- Primitive operations (opaque to optimizer)
+  -- External operations provided by the runtime/platform.
+  -- The String names the primitive (e.g., "arith.add.int").
+  Prim    : ∀ {i A B} → String → IR (↑ i) A B
 
 -- | Size-polymorphic IR (for backwards compatibility)
 -- Most code can use IR∞ which works at any size
