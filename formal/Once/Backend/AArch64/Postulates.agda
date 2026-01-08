@@ -254,7 +254,6 @@ postulate
 --   encode-inl-construct, encode-inr-construct : Sum construction
 --   encode-closure-construct             : Closure construction
 --
--- Foundation.agda currently duplicates these for historical reasons.
--- TODO: Update Foundation.agda to import from Once.Postulates instead.
+-- Foundation.agda imports these from Once.Postulates (no duplication).
 --
 ------------------------------------------------------------------------

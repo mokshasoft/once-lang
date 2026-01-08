@@ -18,6 +18,7 @@ open import Once.Semantics
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
 ------------------------------------------------------------------------
@@ -172,6 +173,17 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-arr : ∀ {Γ A B} → Γ ⊢ (A ⇒ B) ⟶ Eff A B
 
+  -- Primitive operations (opaque to optimizer)
+  --
+  -- ─────────────────────────
+  -- Γ ⊢ A ⟶ B
+  --
+  -- Primitives are external operations provided by the runtime/platform.
+  -- They cannot be decomposed into categorical generators.
+  -- The String names the primitive (e.g., "arith.add.int").
+  --
+  ty-prim : ∀ {Γ A B} → String → Γ ⊢ A ⟶ B
+
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
 ------------------------------------------------------------------------
@@ -196,6 +208,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-fold ⌋ = fold
 ⌊ ty-unfold ⌋ = unfold
 ⌊ ty-arr ⌋ = arr
+⌊ ty-prim name ⌋ = Prim name
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -218,6 +231,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ fold ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
+⌈ Prim name ⌉ = ty-prim name
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
@@ -252,3 +266,4 @@ round-trip-ir apply = refl
 round-trip-ir fold = refl
 round-trip-ir unfold = refl
 round-trip-ir arr = refl
+round-trip-ir (Prim name) = refl
