@@ -630,9 +630,10 @@ curry-apply-prog {A} = compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) 
 curry-apply-len : {A : Type} → ℕ
 curry-apply-len {A} = length (curry-apply-prog {A})
 
--- | Expected length: (15 + (17 + 1) + 1) + 1 + 6 = 41
--- Curry is now 17 + len-f (was 13) due to frame pointer handling
-curry-apply-len-check : curry-apply-len {Int} ≡ 41
+-- | Expected length: (15 + (19 + 1) + 1) + 1 + 8 = 45
+-- Curry is now 19 + len-f due to frame pointer and r15 save/restore
+-- Apply is now 8 instructions (was 6) due to r15 save/restore
+curry-apply-len-check : curry-apply-len {Int} ≡ 45
 curry-apply-len-check = refl
 
 -- | Position of curry's LEA instruction (within pairing, offset 7 + 2 = 9)
@@ -644,10 +645,10 @@ curry-lea-pos = 9
 thunk-entry-pos : ℕ
 thunk-entry-pos = 13
 
--- | Verify thunk is within program bounds (13 < 41, i.e., 14 ≤ 41)
--- Using arithmetic lemma: 14 + 27 = 41, so m≤m+n 14 27 proves 14 ≤ 41 in O(1)
+-- | Verify thunk is within program bounds (13 < 45, i.e., 14 ≤ 45)
+-- Using arithmetic lemma: 14 + 31 = 45, so m≤m+n 14 31 proves 14 ≤ 45 in O(1)
 thunk-in-bounds : thunk-entry-pos < curry-apply-len {Int}
-thunk-in-bounds = m≤m+n 14 27
+thunk-in-bounds = m≤m+n 14 31
   where
     open import Data.Nat.Properties using (m≤m+n)
 

@@ -101,13 +101,13 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     prog = prefix ++ compile-x86 (curry f) ++ suffix
 
     -- Key offsets (matching CodeGen.agda layout)
-    -- jmp at pos 5 needs to reach end-label at pos 16+len-f
-    -- offset = target - (pc + 1) = (16+len-f) - 6 = 10+len-f
+    -- jmp at pos 5 needs to reach end-label at pos 18+len-f
+    -- offset = target - (pc + 1) = (18+len-f) - 6 = 12+len-f
     jmp-offset : ℕ
-    jmp-offset = 10 +ℕ len-f
+    jmp-offset = 12 +ℕ len-f
 
     end-label-pos : ℕ
-    end-label-pos = 16 +ℕ len-f
+    end-label-pos = 18 +ℕ len-f
 
     -- Helper values
     orig-rsp : Word
@@ -226,13 +226,14 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     fetch5 = subst₂ (λ p n → fetch p n ≡ just i5) (sym prog-eq5) len-prefix-5
                     (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ []) i5 _)
 
-    -- For the label, we need fetch at pc s6 = prefix + 16 + len-f
-    -- New layout with frame pointer:
-    -- 6 setup + 1 label + 2 frame setup + 4 thunk setup + |f| + 3 cleanup = 16 + |f|
+    -- For the label, we need fetch at pc s6 = prefix + 18 + len-f
+    -- New layout with frame pointer and r15 save/restore:
+    -- 6 setup + 1 label + 1 push-r15 + 2 frame setup + 4 thunk setup + |f| + 4 cleanup = 18 + |f|
     curry-before-end-label : Program
     curry-before-end-label =
       i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷  -- 6 closure setup instructions
       label 6 ∷                        -- thunk entry
+      push (reg r15) ∷                 -- save r15 (apply uses it as scratch)
       push (reg rbp) ∷                 -- save frame pointer
       mov (reg rbp) (reg rsp) ∷        -- set frame pointer
       sub (reg rsp) (imm 16) ∷         -- allocate pair
@@ -242,6 +243,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       compile-x86 f ++                 -- inner function
       mov (reg rsp) (reg rbp) ∷        -- restore stack
       pop rbp ∷                        -- restore frame pointer
+      pop r15 ∷                        -- restore r15
       ret ∷ []                         -- return
 
     len-curry-before : length curry-before-end-label ≡ end-label-pos
@@ -249,37 +251,37 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       length curry-before-end-label
         ≡⟨ refl ⟩
       length (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
-              label 6 ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
+              label 6 ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
               sub (reg rsp) (imm 16) ∷
               mov (mem (base rsp)) (reg r12) ∷
               mov (mem (base+disp rsp 8)) (reg rdi) ∷
               mov (reg rdi) (reg rsp) ∷
-              compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ [])
+              compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ [])
         ≡⟨ refl ⟩
-      13 +ℕ length (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ [])
-        ≡⟨ cong (13 +ℕ_) (List-length-++ (compile-x86 f)) ⟩
-      13 +ℕ (length (compile-x86 f) +ℕ 3)
-        ≡⟨ cong (λ z → 13 +ℕ (z +ℕ 3)) (compile-length-correct f) ⟩
-      13 +ℕ (len-f +ℕ 3)
-        ≡⟨ +-assoc 13 len-f 3 ⟩
-      (13 +ℕ len-f) +ℕ 3
-        ≡⟨ cong (_+ℕ 3) (+-comm 13 len-f) ⟩
-      (len-f +ℕ 13) +ℕ 3
-        ≡⟨ +-assoc len-f 13 3 ⟩
-      len-f +ℕ 16
-        ≡⟨ +-comm len-f 16 ⟩
+      14 +ℕ length (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ [])
+        ≡⟨ cong (14 +ℕ_) (List-length-++ (compile-x86 f)) ⟩
+      14 +ℕ (length (compile-x86 f) +ℕ 4)
+        ≡⟨ cong (λ z → 14 +ℕ (z +ℕ 4)) (compile-length-correct f) ⟩
+      14 +ℕ (len-f +ℕ 4)
+        ≡⟨ +-assoc 14 len-f 4 ⟩
+      (14 +ℕ len-f) +ℕ 4
+        ≡⟨ cong (_+ℕ 4) (+-comm 14 len-f) ⟩
+      (len-f +ℕ 14) +ℕ 4
+        ≡⟨ +-assoc len-f 14 4 ⟩
+      len-f +ℕ 18
+        ≡⟨ +-comm len-f 18 ⟩
       end-label-pos
         ∎
 
     curry-code-inner : Program
-    curry-code-inner = compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ i6-label ∷ []
+    curry-code-inner = compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ i6-label ∷ []
 
-    curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ []) ++ i6-label ∷ []
-    curry-inner-split = sym (++-assoc (compile-x86 f) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ []) (i6-label ∷ []))
+    curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ []) ++ i6-label ∷ []
+    curry-inner-split = sym (++-assoc (compile-x86 f) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ []) (i6-label ∷ []))
 
     curry-split : compile-x86 (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
     curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
-                                 label 6 ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
+                                 label 6 ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
                                  sub (reg rsp) (imm 16) ∷
                                  mov (mem (base rsp)) (reg r12) ∷
                                  mov (mem (base+disp rsp 8)) (reg rdi) ∷
@@ -380,8 +382,8 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       (length prefix +ℕ 6) +ℕ jmp-offset
         ≡⟨ +-assoc (length prefix) 6 jmp-offset ⟩
       length prefix +ℕ (6 +ℕ jmp-offset)
-        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 10 len-f)) ⟩
-      length prefix +ℕ ((6 +ℕ 10) +ℕ len-f)
+        ≡⟨ cong (length prefix +ℕ_) (sym (+-assoc 6 12 len-f)) ⟩
+      length prefix +ℕ ((6 +ℕ 12) +ℕ len-f)
         ≡⟨ cong (length prefix +ℕ_) refl ⟩
       length prefix +ℕ end-label-pos
         ∎
@@ -405,7 +407,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
         ≡⟨ cong (length prefix +ℕ_) (+-comm end-label-pos 1) ⟩
       length prefix +ℕ (1 +ℕ end-label-pos)
         ≡⟨ cong (length prefix +ℕ_) refl ⟩
-      length prefix +ℕ (17 +ℕ len-f)
+      length prefix +ℕ (19 +ℕ len-f)
         ≡⟨ refl ⟩
       length prefix +ℕ compile-length (curry f)
         ∎

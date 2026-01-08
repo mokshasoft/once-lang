@@ -181,33 +181,33 @@ compile-length-correct terminal = refl
 compile-length-correct initial = refl
 compile-length-correct (curry f) = helper
   where
-    -- Structure with RIP-relative addressing and frame pointer:
-    -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷ mov ∷
-    -- (compile-x86 f ++ mov ∷ pop ∷ ret ∷ label ∷ [])
-    -- Length = 13 + (|f| + 4) = 17 + |f|
+    -- Structure with RIP-relative addressing, frame pointer, and r15 save/restore:
+    -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ push-r15 ∷ push-rbp ∷ mov ∷ sub ∷ mov ∷ mov ∷ mov ∷
+    -- (compile-x86 f ++ mov ∷ pop-rbp ∷ pop-r15 ∷ ret ∷ label ∷ [])
+    -- Length = 14 + (|f| + 5) = 19 + |f|
 
     end-lbl : ℕ
-    end-lbl = 16 +ℕ compile-length f
+    end-lbl = 18 +ℕ compile-length f
 
     inner-tail : List Instr
-    inner-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ ret ∷ label end-lbl ∷ []
+    inner-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ label end-lbl ∷ []
 
-    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 4
-    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 4) (compile-length-correct f))
+    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 5
+    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 5) (compile-length-correct f))
 
-    -- Prove: 13 + (a + 4) = 17 + a
-    arith : ∀ a → 13 +ℕ (a +ℕ 4) ≡ 17 +ℕ a
+    -- Prove: 14 + (a + 5) = 19 + a
+    arith : ∀ a → 14 +ℕ (a +ℕ 5) ≡ 19 +ℕ a
     arith a =
       begin
-        13 +ℕ (a +ℕ 4)
-      ≡⟨ cong (13 +ℕ_) (+-comm a 4) ⟩
-        13 +ℕ (4 +ℕ a)
-      ≡⟨ sym (+-assoc 13 4 a) ⟩
-        17 +ℕ a
+        14 +ℕ (a +ℕ 5)
+      ≡⟨ cong (14 +ℕ_) (+-comm a 5) ⟩
+        14 +ℕ (5 +ℕ a)
+      ≡⟨ sym (+-assoc 14 5 a) ⟩
+        19 +ℕ a
       ∎
 
-    helper : length (compile-x86 (curry f)) ≡ 17 +ℕ compile-length f
-    helper = trans (cong (λ x → 13 +ℕ x) len-inner)
+    helper : length (compile-x86 (curry f)) ≡ 19 +ℕ compile-length f
+    helper = trans (cong (λ x → 14 +ℕ x) len-inner)
                    (arith (compile-length f))
 compile-length-correct apply = refl
 compile-length-correct fold = refl

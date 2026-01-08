@@ -114,7 +114,8 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
   using (thunk-i0; thunk-i1; thunk-i2; thunk-i3; thunk-i4; thunk-i5; thunk-i6;
          fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4;
          fetch-thunk-i5; fetch-thunk-i6;
-         cleanup-i0; cleanup-i1; fetch-cleanup-i0; fetch-cleanup-i1)
+         cleanup-i0; cleanup-i1; cleanup-i2;
+         fetch-cleanup-i0; fetch-cleanup-i1; fetch-cleanup-i2)
   renaming (fetch-ret to TS-fetch-ret)
 
 -- Import thunk execution proofs (extracted from mutual block)
@@ -322,8 +323,8 @@ mutual
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
   -- prog = prefix ++ compile-x86 (curry f) ++ suffix
-  -- compile-length (curry f) = 13 + compile-length f ≥ 13
-  -- So |prefix| + 6 < |prefix| + 13 ≤ |prefix ++ compile-x86 (curry f) ++ suffix|
+  -- compile-length (curry f) = 19 + compile-length f ≥ 19
+  -- So |prefix| + 6 < |prefix| + 19 ≤ |prefix ++ compile-x86 (curry f) ++ suffix|
   thunk-offset-in-bounds : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
     length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
   thunk-offset-in-bounds {A} {B} {C} f prefix suffix = goal
@@ -331,9 +332,9 @@ mutual
       open import Data.List.Properties as LP using (length-++)
       open import Data.Nat.Properties using (+-mono-<; +-monoʳ-<; m≤m+n; m≤n+m; ≤-trans; <-≤-trans)
 
-      -- Length of compile-x86 (curry f) is 17 + compile-length f
-      -- (6 closure setup + 7 thunk setup + len-f + 4 cleanup/end)
-      curry-len : length (compile-x86 (curry f)) ≡ 17 +ℕ compile-length f
+      -- Length of compile-x86 (curry f) is 19 + compile-length f
+      -- (6 closure setup + 1 push r15 + 7 thunk setup + len-f + 5 cleanup/end)
+      curry-len : length (compile-x86 (curry f)) ≡ 19 +ℕ compile-length f
       curry-len = compile-length-correct (curry f)
 
       -- Length of full program
@@ -345,24 +346,24 @@ mutual
                 ≡ length (compile-x86 (curry f)) +ℕ length suffix
       inner-len = LP.length-++ (compile-x86 (curry f))
 
-      -- 6 < 17 (obviously)
-      6<17 : 6 < 17
-      6<17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
+      -- 6 < 19 (obviously)
+      6<19 : 6 < 19
+      6<19 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
 
-      -- 6 < 17 + compile-length f (using: 6 < 17 and 17 ≤ 17 + compile-length f)
-      6<17+f : 6 < 17 +ℕ compile-length f
-      6<17+f = <-≤-trans 6<17 (m≤m+n 17 (compile-length f))
+      -- 6 < 19 + compile-length f (using: 6 < 19 and 19 ≤ 19 + compile-length f)
+      6<19+f : 6 < 19 +ℕ compile-length f
+      6<19+f = <-≤-trans 6<19 (m≤m+n 19 (compile-length f))
 
-      -- 6 < 17 + compile-length f + length suffix
-      6<17+f+s : 6 < 17 +ℕ compile-length f +ℕ length suffix
-      6<17+f+s = <-≤-trans 6<17+f (m≤m+n (17 +ℕ compile-length f) (length suffix))
+      -- 6 < 19 + compile-length f + length suffix
+      6<19+f+s : 6 < 19 +ℕ compile-length f +ℕ length suffix
+      6<19+f+s = <-≤-trans 6<19+f (m≤m+n (19 +ℕ compile-length f) (length suffix))
 
-      -- |prefix| + 6 < |prefix| + (17 + compile-length f + length suffix)
-      step1 : length prefix +ℕ 6 < length prefix +ℕ (17 +ℕ compile-length f +ℕ length suffix)
-      step1 = +-monoʳ-< (length prefix) 6<17+f+s
+      -- |prefix| + 6 < |prefix| + (19 + compile-length f + length suffix)
+      step1 : length prefix +ℕ 6 < length prefix +ℕ (19 +ℕ compile-length f +ℕ length suffix)
+      step1 = +-monoʳ-< (length prefix) 6<19+f+s
 
       -- Rewrite using curry-len and inner-len
-      step2 : length prefix +ℕ (17 +ℕ compile-length f +ℕ length suffix)
+      step2 : length prefix +ℕ (19 +ℕ compile-length f +ℕ length suffix)
             ≡ length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
       step2 = cong (length prefix +ℕ_) (cong (_+ℕ length suffix) (sym curry-len))
 
@@ -479,10 +480,10 @@ mutual
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
-      f-offset = length prefix +ℕ 13      -- 6 closure + 7 thunk setup
-      ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- f-offset + len-f + 2 cleanup
+      f-offset = length prefix +ℕ 14      -- 6 closure + 8 thunk setup
+      ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- f-offset + len-f + 3 cleanup
 
-      -- Step 1: Trace 7 setup instructions
+      -- Step 1: Trace 8 setup instructions
       setup-result = thunk-setup-star f prefix suffix env arg s
                        h-eq pc-eq rdi-eq r12-eq stack-inv rsp>16
       s-after-setup = proj₁ setup-result
@@ -500,17 +501,21 @@ mutual
       -- Key property: memory at (rbp after setup) = original rbp
       mem-at-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
       -- Memory at original rsp is preserved through setup
-      mem-old-rsp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+      -- The tuple ends with (mem-old-rsp-preserved , mem-r15-preserved)
+      mem-old-rsp-r15-pair = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+      mem-old-rsp-setup = proj₁ mem-old-rsp-r15-pair
+      -- Memory at (old-rsp - 8) where r15 was pushed, preserved through setup
+      mem-r15-setup = proj₂ mem-old-rsp-r15-pair
 
       -- Step 2: Call IH on f
       -- Define prefix-f and suffix-f so that prog = prefix-f ++ compile-x86 f ++ suffix-f
 
-      -- curry layout: [0-5] closure setup, [6-12] thunk setup, [13 to 12+len(f)] f, [13-14+len(f)] cleanup, [15+len(f)] ret, [16+len(f)] label
+      -- curry layout: [0-5] closure setup, [6-13] thunk setup (8 instr), [14 to 13+len(f)] f, [14-16+len(f)] cleanup (3 instr), [17+len(f)] ret, [18+len(f)] label
       len-f = compile-length f
-      end-label = 16 +ℕ len-f  -- position of end label
-      end-offset-curry = 10 +ℕ len-f  -- jmp at pos 5 to reach 16 + len-f
+      end-label = 18 +ℕ len-f  -- position of end label (6 closure + 8 thunk + len-f + 4 tail)
+      end-offset-curry = 12 +ℕ len-f  -- jmp at pos 5 to reach 18 + len-f
 
-      -- Prefix for f: prefix ++ first 13 instructions of curry (6 closure + 7 thunk)
+      -- Prefix for f: prefix ++ first 14 instructions of curry (6 closure + 8 thunk)
       curry-closure-setup : Program
       curry-closure-setup =
         sub (reg rsp) (imm 16) ∷
@@ -523,6 +528,7 @@ mutual
       curry-thunk-setup : Program
       curry-thunk-setup =
         label 6 ∷
+        push (reg r15) ∷                       -- save r15 (apply's scratch register)
         push (reg rbp) ∷                       -- save frame pointer
         mov (reg rbp) (reg rsp) ∷              -- set frame pointer
         sub (reg rsp) (imm 16) ∷
@@ -533,18 +539,19 @@ mutual
       prefix-f : Program
       prefix-f = prefix ++ curry-closure-setup ++ curry-thunk-setup
 
-      -- Suffix for f: cleanup ++ ret ∷ label ∷ suffix
+      -- Suffix for f: cleanup ++ pop r15 ++ ret ∷ label ∷ suffix
       curry-tail : Program
       curry-tail = mov (reg rsp) (reg rbp) ∷   -- restore stack
                    pop rbp ∷                   -- restore frame pointer
+                   pop r15 ∷                   -- restore r15
                    ret ∷ label end-label ∷ []
 
       suffix-f : Program
       suffix-f = curry-tail ++ suffix
 
-      -- Length of prefix-f = length prefix + 13 (6 closure + 7 thunk)
+      -- Length of prefix-f = length prefix + 14 (6 closure + 8 thunk)
       -- Note: ++ is right-associative, so prefix-f = prefix ++ (curry-closure-setup ++ curry-thunk-setup)
-      len-prefix-f : length prefix-f ≡ length prefix +ℕ 13
+      len-prefix-f : length prefix-f ≡ length prefix +ℕ 14
       len-prefix-f = trans (List-length-++ prefix {curry-closure-setup ++ curry-thunk-setup})
                            (cong (length prefix +ℕ_) (List-length-++ curry-closure-setup {curry-thunk-setup}))
 
@@ -639,9 +646,9 @@ mutual
       pc-f-raw : pc s-after-f-raw ≡ length prefix-f +ℕ compile-length f
       pc-f-raw = ir-pc r-f
 
-      -- f ends at position 13 + len-f (after prefix-f + compile-x86 f)
-      -- We need to trace 2 cleanup instructions (mov rsp rbp, pop rbp) to reach ret at 15 + len-f
-      cleanup-offset = length prefix +ℕ 13 +ℕ compile-length f  -- where f ends, cleanup begins
+      -- f ends at position 14 + len-f (after prefix-f + compile-x86 f)
+      -- We need to trace 3 cleanup instructions (mov rsp rbp, pop rbp, pop r15) to reach ret at 17 + len-f
+      cleanup-offset = length prefix +ℕ 14 +ℕ compile-length f  -- where f ends, cleanup begins
 
       pc-f-at-cleanup : pc s-after-f-raw ≡ cleanup-offset
       pc-f-at-cleanup = trans pc-f-raw (cong (_+ℕ len-f) len-prefix-f)
@@ -652,29 +659,29 @@ mutual
       -- because setup pushed it and cleanup pops it
 
       -- We need the following for the pop instruction:
-      -- 1. rbp in s-after-f-raw points to the pushed rbp (s.rsp - 8)
+      -- 1. rbp in s-after-f-raw points to the pushed rbp (s.rsp - 16, after push r15 and push rbp)
       -- 2. Memory at that address contains s.rbp (pushed during setup)
       -- 3. Memory at s.rsp contains ret-addr (never modified)
 
-      -- rbp value after f: preserved from setup, which set it to s.rsp - 8
-      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ 8
+      -- rbp value after f: preserved from setup, which set it to s.rsp - 16
+      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ 16
       rbp-after-f = trans (ir-rbp r-f) rbp-setup
 
       -- Fetch cleanup instructions
-      -- fetch-cleanup-i0 proves: fetch prog (length prefix +ℕ 13 +ℕ compile-length f) ≡ just cleanup-i0
-      -- cleanup-offset = length prefix +ℕ 13 +ℕ compile-length f
-      -- These are definitionally equal (both parse as (length prefix +ℕ 13) +ℕ len-f)
+      -- fetch-cleanup-i0 proves: fetch prog (length prefix +ℕ 14 +ℕ compile-length f) ≡ just cleanup-i0
+      -- cleanup-offset = length prefix +ℕ 14 +ℕ compile-length f
+      -- These are definitionally equal (both parse as (length prefix +ℕ 14) +ℕ len-f)
       fetch-c0 : fetch prog cleanup-offset ≡ just cleanup-i0
       fetch-c0 = fetch-cleanup-i0 f prefix suffix
 
-      -- fetch-cleanup-i1 proves: fetch prog (length prefix +ℕ 14 +ℕ compile-length f) ≡ just cleanup-i1
-      -- cleanup-offset +ℕ 1 = ((length prefix +ℕ 13) +ℕ len-f) +ℕ 1
-      -- We need to show this equals (length prefix +ℕ 14) +ℕ len-f
-      cleanup-offset-plus-1 : cleanup-offset +ℕ 1 ≡ (length prefix +ℕ 14) +ℕ len-f
-      cleanup-offset-plus-1 = trans (+-assoc (length prefix +ℕ 13) len-f 1)
-                                    (trans (cong ((length prefix +ℕ 13) +ℕ_) (+-comm len-f 1))
-                                           (trans (sym (+-assoc (length prefix +ℕ 13) 1 len-f))
-                                                  (cong (_+ℕ len-f) (+-assoc (length prefix) 13 1))))
+      -- fetch-cleanup-i1 proves: fetch prog (length prefix +ℕ 15 +ℕ compile-length f) ≡ just cleanup-i1
+      -- cleanup-offset +ℕ 1 = ((length prefix +ℕ 14) +ℕ len-f) +ℕ 1
+      -- We need to show this equals (length prefix +ℕ 15) +ℕ len-f
+      cleanup-offset-plus-1 : cleanup-offset +ℕ 1 ≡ (length prefix +ℕ 15) +ℕ len-f
+      cleanup-offset-plus-1 = trans (+-assoc (length prefix +ℕ 14) len-f 1)
+                                    (trans (cong ((length prefix +ℕ 14) +ℕ_) (+-comm len-f 1))
+                                           (trans (sym (+-assoc (length prefix +ℕ 14) 1 len-f))
+                                                  (cong (_+ℕ len-f) (+-assoc (length prefix) 14 1))))
 
       fetch-c1 : fetch prog (cleanup-offset +ℕ 1) ≡ just cleanup-i1
       fetch-c1 = subst (λ n → fetch prog n ≡ just cleanup-i1)
@@ -719,8 +726,8 @@ mutual
       mem-c1-eq-f : ∀ addr → readMem (memory s-c1) addr ≡ readMem (memory s-after-f-raw) addr
       mem-c1-eq-f addr = refl
 
-      -- rsp in s-c1 = rbp-val = old-rsp-s - 8 (computed inline, same as rsp-c1 below)
-      rsp-c1-inline : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 8
+      -- rsp in s-c1 = rbp-val = old-rsp-s - 16 (computed inline, same as rsp-c1 below)
+      rsp-c1-inline : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 16
       rsp-c1-inline = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Chain: memory at rbp after setup is preserved through f, available at rsp after cleanup
@@ -728,17 +735,17 @@ mutual
                             readMem (memory s-after-setup) (readReg (regs s-after-setup) rbp)
       mem-rbp-preserved-f = ir-mem-rbp r-f
 
-      -- Convert address from rbp-after-setup to old-rsp-s ∸ 8
-      rbp-setup-addr : readReg (regs s-after-setup) rbp ≡ old-rsp-s ∸ 8
+      -- Convert address from rbp-after-setup to old-rsp-s ∸ 16
+      rbp-setup-addr : readReg (regs s-after-setup) rbp ≡ old-rsp-s ∸ 16
       rbp-setup-addr = rbp-setup
 
       pop-rbp-mem : readMem (memory s-c1) (readReg (regs s-c1) rsp) ≡ just (readReg (regs s) rbp)
       pop-rbp-mem = begin
         readMem (memory s-c1) (readReg (regs s-c1) rsp)
           ≡⟨ cong (readMem (memory s-c1)) rsp-c1-inline ⟩
-        readMem (memory s-c1) (old-rsp-s ∸ 8)
-          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ 8) ⟩
-        readMem (memory s-after-f-raw) (old-rsp-s ∸ 8)
+        readMem (memory s-c1) (old-rsp-s ∸ 16)
+          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ 16) ⟩
+        readMem (memory s-after-f-raw) (old-rsp-s ∸ 16)
           ≡⟨ cong (readMem (memory s-after-f-raw)) (sym rbp-setup-addr) ⟩
         readMem (memory s-after-f-raw) (readReg (regs s-after-setup) rbp)
           ≡⟨ mem-rbp-preserved-f ⟩
@@ -754,34 +761,39 @@ mutual
       h-c2 : halted s-c2 ≡ false
       h-c2 = h-c1
 
-      -- pc s-c2 = cleanup-offset + 2 = ret-offset
-      -- cleanup-offset = (length prefix +ℕ 13) +ℕ len-f
-      -- ret-offset = (length prefix +ℕ 15) +ℕ len-f
-      -- (length prefix +ℕ 13) +ℕ 2 ≡ length prefix +ℕ 15
-      prefix-13+2 : (length prefix +ℕ 13) +ℕ 2 ≡ length prefix +ℕ 15
-      prefix-13+2 = +-assoc (length prefix) 13 2
-
-      cleanup-plus-2≡ret : cleanup-offset +ℕ 2 ≡ ret-offset
-      cleanup-plus-2≡ret = trans (+-assoc (length prefix +ℕ 13) len-f 2)
-                                 (trans (cong ((length prefix +ℕ 13) +ℕ_) (+-comm len-f 2))
-                                        (trans (sym (+-assoc (length prefix +ℕ 13) 2 len-f))
-                                               (cong (_+ℕ len-f) prefix-13+2)))
-
-      pc-c2 : pc s-c2 ≡ ret-offset
+      -- pc s-c2 = cleanup-offset + 2 (we still need one more cleanup step - pop r15)
+      pc-c2 : pc s-c2 ≡ cleanup-offset +ℕ 2
       pc-c2 = trans (cong (_+ℕ 1) pc-c1)
-                    (trans (+-assoc cleanup-offset 1 1)
-                           cleanup-plus-2≡ret)
+                    (+-assoc cleanup-offset 1 1)
 
-      -- rsp after cleanup = (s.rsp - 8) + 8 = s.rsp
-      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 8
+      -- rsp after mov rsp rbp = old-rsp-s - 16
+      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 16
       rsp-c1 = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
-      rsp-c2 : readReg (regs s-c2) rsp ≡ old-rsp-s
-      rsp-c2 = trans (readReg-writeReg-same (writeReg (regs s-c1) rbp (readReg (regs s) rbp)) rsp
-                                            (readReg (regs s-c1) rsp +ℕ 8))
-                     (trans (cong (_+ℕ 8) rsp-c1)
-                            (trans (+-comm (old-rsp-s ∸ 8) 8)
-                                   (m+[n∸m]≡n 8≤rsp)))
+      -- Precondition: 16 ≤ old-rsp-s (for m+[n∸m]≡n later)
+      -- rsp>16 : rsp > 16 means 16 < rsp, which implies 16 ≤ rsp
+      16≤rsp : 16 ≤ readReg (regs s) rsp
+      16≤rsp = Data.Nat.Properties.<⇒≤ rsp>16
+
+      -- rsp after pop rbp = (old-rsp-s - 16) + 8 = old-rsp-s - 8
+      -- Proof: (m ∸ 16) + 8 = ((m ∸ 8) ∸ 8) + 8 = m ∸ 8
+      -- From 16 ≤ rsp, derive 16 - 8 ≤ rsp - 8, i.e., 8 ≤ rsp - 8
+      8≤old-rsp-8 : 8 ≤ old-rsp-s ∸ 8
+      8≤old-rsp-8 = Data.Nat.Properties.∸-monoˡ-≤ 8 16≤rsp
+
+      rsp-c2 : readReg (regs s-c2) rsp ≡ old-rsp-s ∸ 8
+      rsp-c2 = begin
+        readReg (regs s-c2) rsp
+          ≡⟨ readReg-writeReg-same (writeReg (regs s-c1) rbp (readReg (regs s) rbp)) rsp
+                                   (readReg (regs s-c1) rsp +ℕ 8) ⟩
+        readReg (regs s-c1) rsp +ℕ 8
+          ≡⟨ cong (_+ℕ 8) rsp-c1 ⟩
+        (old-rsp-s ∸ 16) +ℕ 8
+          ≡⟨ cong (_+ℕ 8) (sym (∸-+-assoc old-rsp-s 8 8)) ⟩
+        ((old-rsp-s ∸ 8) ∸ 8) +ℕ 8
+          ≡⟨ trans (+-comm ((old-rsp-s ∸ 8) ∸ 8) 8) (m+[n∸m]≡n 8≤old-rsp-8) ⟩
+        old-rsp-s ∸ 8
+        ∎
 
       -- Register preservation through cleanup (mov rsp rbp doesn't touch rax, r14, r15, and pop rbp doesn't either)
       -- s-c2.regs = writeReg (writeReg (regs s-c1) rbp orig-rbp) rsp (s-c1.rsp + 8)
@@ -807,22 +819,154 @@ mutual
       rbp-c2 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s-c1) rbp orig-rbp) rsp-val-c2)
                      (readReg-writeReg-same (regs s-c1) rbp orig-rbp)
 
+      -- Third cleanup step: pop r15
+      -- fetch-cleanup-i2 proves: fetch prog (length prefix +ℕ (thunk-body-offset +ℕ 2) +ℕ compile-length f) ≡ just cleanup-i2
+      -- cleanup-offset +ℕ 2 = ((length prefix +ℕ 14) +ℕ len-f) +ℕ 2
+      -- We need to show this equals (length prefix +ℕ 16) +ℕ len-f
+      cleanup-offset-plus-2 : cleanup-offset +ℕ 2 ≡ (length prefix +ℕ 16) +ℕ len-f
+      cleanup-offset-plus-2 = trans (+-assoc (length prefix +ℕ 14) len-f 2)
+                                    (trans (cong ((length prefix +ℕ 14) +ℕ_) (+-comm len-f 2))
+                                           (trans (sym (+-assoc (length prefix +ℕ 14) 2 len-f))
+                                                  (cong (_+ℕ len-f) (+-assoc (length prefix) 14 2))))
+
+      fetch-c2 : fetch prog (cleanup-offset +ℕ 2) ≡ just cleanup-i2
+      fetch-c2 = subst (λ n → fetch prog n ≡ just cleanup-i2)
+                       (sym cleanup-offset-plus-2)
+                       (fetch-cleanup-i2 f prefix suffix)
+
+      -- Note: h-c2 defined above (after step-c1) already proves halted s-c2 ≡ false
+
+      -- State after pop r15
+      -- Pop restores r15 from stack at current rsp (old-rsp - 8)
+      -- Memory at (old-rsp - 8) was where push r15 wrote the original r15
+      -- We need to prove: readMem (memory s-c2) (readReg (regs s-c2) rsp) = just (orig-r15)
+      -- where orig-r15 = readReg (regs s) r15
+
+      orig-r15 = readReg (regs s) r15
+      rsp-val-c3 = readReg (regs s-c2) rsp +ℕ 8
+
+      s-c3 : State
+      s-c3 = record s-c2 { regs = writeReg (writeReg (regs s-c2) r15 orig-r15)
+                                          rsp rsp-val-c3
+                         ; pc = pc s-c2 +ℕ 1 }
+
+      -- Memory at rsp (old-rsp - 8) contains original r15
+      -- Chain: s → s-after-setup (push r15 wrote here) → s-after-f → s-c1 → s-c2
+      -- Memory preserved through f and cleanup (no writes at old-rsp - 8)
+
+      -- Memory at (old-rsp - 8) preserved through f (using ir-mem-above)
+      -- old-rsp - 8 > rbp because rbp = old-rsp - 16
+      -- Need: old-rsp-s ∸ 16 < old-rsp-s ∸ 8
+      -- Use ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
+      8<16 : 8 < 16
+      8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+      rsp-16<rsp-8 : readReg (regs s) rsp ∸ 16 < readReg (regs s) rsp ∸ 8
+      rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< 8<16 16≤rsp
+
+      old-rsp-8>rbp : old-rsp-s ∸ 8 > readReg (regs s-after-setup) rbp
+      old-rsp-8>rbp = subst (λ x → old-rsp-s ∸ 8 > x) (sym rbp-setup-addr) rsp-16<rsp-8
+
+      -- r15 was pushed at old-rsp - 8 during thunk setup
+      -- mem-r15-preserved from thunk-setup-star proves this is preserved
+      pop-r15-mem : readMem (memory s-c2) (readReg (regs s-c2) rsp) ≡ just orig-r15
+      pop-r15-mem = begin
+        readMem (memory s-c2) (readReg (regs s-c2) rsp)
+          ≡⟨ cong (readMem (memory s-c2)) rsp-c2 ⟩
+        readMem (memory s-c2) (old-rsp-s ∸ 8)
+          ≡⟨⟩  -- memory s-c2 = memory s-c1 (pop rbp only reads)
+        readMem (memory s-c1) (old-rsp-s ∸ 8)
+          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ 8) ⟩
+        readMem (memory s-after-f-raw) (old-rsp-s ∸ 8)
+          ≡⟨ ir-mem-above r-f (old-rsp-s ∸ 8) old-rsp-8>rbp ⟩
+        readMem (memory s-after-setup) (old-rsp-s ∸ 8)
+          ≡⟨ mem-r15-setup ⟩
+        just orig-r15 ∎
+
+      step-c2 : step prog s-c2 ≡ just s-c3
+      step-c2 = trans (step-exec prog s-c2 cleanup-i2 h-c2
+                        (subst (λ n → fetch prog n ≡ just cleanup-i2) (sym pc-c2) fetch-c2))
+                      (execPop prog s-c2 r15 orig-r15 pop-r15-mem)
+
+      h-c3 : halted s-c3 ≡ false
+      h-c3 = h-c2
+
+      -- pc s-c3 = cleanup-offset + 3 = ret-offset
+      -- cleanup-offset = (length prefix +ℕ 14) +ℕ len-f
+      -- ret-offset = (length prefix +ℕ 17) +ℕ len-f
+      -- (length prefix +ℕ 14) +ℕ 3 ≡ length prefix +ℕ 17
+      prefix-14+3 : (length prefix +ℕ 14) +ℕ 3 ≡ length prefix +ℕ 17
+      prefix-14+3 = +-assoc (length prefix) 14 3
+
+      cleanup-plus-3≡ret : cleanup-offset +ℕ 3 ≡ ret-offset
+      cleanup-plus-3≡ret = trans (+-assoc (length prefix +ℕ 14) len-f 3)
+                                 (trans (cong ((length prefix +ℕ 14) +ℕ_) (+-comm len-f 3))
+                                        (trans (sym (+-assoc (length prefix +ℕ 14) 3 len-f))
+                                               (cong (_+ℕ len-f) prefix-14+3)))
+
+      pc-c3 : pc s-c3 ≡ ret-offset
+      pc-c3 = begin
+        pc s-c3
+          ≡⟨⟩
+        pc s-c2 +ℕ 1
+          ≡⟨ cong (_+ℕ 1) pc-c2 ⟩
+        (cleanup-offset +ℕ 2) +ℕ 1
+          ≡⟨ +-assoc cleanup-offset 2 1 ⟩
+        cleanup-offset +ℕ 3
+          ≡⟨ cleanup-plus-3≡ret ⟩
+        ret-offset
+        ∎
+
+      -- rsp after pop r15 = (old-rsp - 8) + 8 = old-rsp
+      rsp-c3 : readReg (regs s-c3) rsp ≡ old-rsp-s
+      rsp-c3 = begin
+        readReg (regs s-c3) rsp
+          ≡⟨ readReg-writeReg-same (writeReg (regs s-c2) r15 orig-r15) rsp rsp-val-c3 ⟩
+        rsp-val-c3
+          ≡⟨⟩
+        readReg (regs s-c2) rsp +ℕ 8
+          ≡⟨ cong (_+ℕ 8) rsp-c2 ⟩
+        (old-rsp-s ∸ 8) +ℕ 8
+          ≡⟨ trans (+-comm (old-rsp-s ∸ 8) 8) (m+[n∸m]≡n 8≤rsp) ⟩
+        old-rsp-s
+        ∎
+
+      -- Register preservation through third cleanup step
+      rax-c3 : readReg (regs s-c3) rax ≡ readReg (regs s-after-f-raw) rax
+      rax-c3 = trans (readReg-writeReg-rsp-rax (writeReg (regs s-c2) r15 orig-r15) rsp-val-c3)
+                     (trans (readReg-writeReg-r15-rax (regs s-c2) orig-r15)
+                            rax-c2)
+
+      r14-c3 : readReg (regs s-c3) r14 ≡ readReg (regs s-after-f-raw) r14
+      r14-c3 = trans (readReg-writeReg-rsp-r14 (writeReg (regs s-c2) r15 orig-r15) rsp-val-c3)
+                     (trans (readReg-writeReg-r15-r14 (regs s-c2) orig-r15)
+                            r14-c2)
+
+      -- r15 after pop r15 = original r15 (restored from stack)
+      r15-c3 : readReg (regs s-c3) r15 ≡ orig-r15
+      r15-c3 = trans (readReg-writeReg-rsp-r15 (writeReg (regs s-c2) r15 orig-r15) rsp-val-c3)
+                     (readReg-writeReg-same (regs s-c2) r15 orig-r15)
+
+      rbp-c3 : readReg (regs s-c3) rbp ≡ readReg (regs s) rbp
+      rbp-c3 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s-c2) r15 orig-r15) rsp-val-c3)
+                     (trans (readReg-writeReg-r15-rbp (regs s-c2) orig-r15)
+                            rbp-c2)
+
       -- Star composition
-      star-c : Star prog s-after-f-raw s-c2
-      star-c = ⟨ ir-halted r-f , step-c0 ⟩◅ ⟨ h-c1 , step-c1 ⟩◅ refl*
+      star-c : Star prog s-after-f-raw s-c3
+      star-c = ⟨ ir-halted r-f , step-c0 ⟩◅ ⟨ h-c1 , step-c1 ⟩◅ ⟨ h-c2 , step-c2 ⟩◅ refl*
 
       -- Stack invariant and rsp bound
-      -- rsp>16-c2 follows from rsp-c2 (rsp restored to original) and rsp>16 (original > 16)
-      rsp>16-c2 : readReg (regs s-c2) rsp > 16
-      rsp>16-c2 = subst (_> 16) (sym rsp-c2) rsp>16
+      -- rsp>16-c3 follows from rsp-c3 (rsp restored to original) and rsp>16 (original > 16)
+      rsp>16-c3 : readReg (regs s-c3) rsp > 16
+      rsp>16-c3 = subst (_> 16) (sym rsp-c3) rsp>16
 
-      -- Stack invariant: chain r15 and rsp back to original state
-      -- r15: s → s-after-setup → s-after-f-raw → s-c2
-      r15-s-to-c2 : readReg (regs s-c2) r15 ≡ readReg (regs s) r15
-      r15-s-to-c2 = trans r15-c2 (trans (ir-r15 r-f) r15-setup)
+      -- Stack invariant: r15 and rsp restored to original
+      r15-s-to-c3 : readReg (regs s-c3) r15 ≡ readReg (regs s) r15
+      r15-s-to-c3 = r15-c3
 
-      stack-inv-c2 : StackInvariant s-c2
-      stack-inv-c2 = stack-inv-preserved-unchanged s s-c2 stack-inv r15-s-to-c2 rsp-c2
+      stack-inv-c3 : StackInvariant s-c3
+      stack-inv-c3 = stack-inv-preserved-unchanged s s-c3 stack-inv r15-s-to-c3 rsp-c3
 
       cleanup-star : ∃[ s-cleanup ] (Star prog s-after-f-raw s-cleanup
                                     × halted s-cleanup ≡ false
@@ -833,7 +977,12 @@ mutual
                                     × readReg (regs s-cleanup) rbp ≡ readReg (regs s) rbp
                                     × StackInvariant s-cleanup
                                     × readReg (regs s-cleanup) rsp > 16)
-      cleanup-star = s-c2 , star-c , h-c2 , pc-c2 , rax-c2 , r14-c2 , r15-c2 , rbp-c2 , stack-inv-c2 , rsp>16-c2
+      -- Note: r15-c3 proves r15 is restored to original, but cleanup-star expects preservation from s-after-f-raw
+      -- We need to chain: r15-c3 : s-c3.r15 ≡ s.r15, and ir-r15 + r15-setup : s-after-f-raw.r15 ≡ s.r15
+      r15-chain : readReg (regs s-c3) r15 ≡ readReg (regs s-after-f-raw) r15
+      r15-chain = trans r15-c3 (sym (trans (ir-r15 r-f) r15-setup))
+
+      cleanup-star = s-c3 , star-c , h-c3 , pc-c3 , rax-c3 , r14-c3 , r15-chain , rbp-c3 , stack-inv-c3 , rsp>16-c3
 
       -- Return address preserved through execution
       --
@@ -843,33 +992,38 @@ mutual
       -- 3. f: ir-mem-rbp+8 says memory at (rbp+8 = s.rsp) preserved
       -- 4. Cleanup: mov doesn't write memory, pop reads from s.rsp - 8
       --
-      -- Arithmetic: (old-rsp-s ∸ 8) + 8 = old-rsp-s (given 8 ≤ old-rsp-s)
-      rbp+8-eq : readReg (regs s-after-setup) rbp +ℕ 8 ≡ old-rsp-s
-      rbp+8-eq = trans (cong (_+ℕ 8) rbp-setup-addr)
-                       (trans (+-comm (old-rsp-s ∸ 8) 8) (m+[n∸m]≡n 8≤rsp))
-
       -- Setup preserves memory at s.rsp (writes are at s.rsp - 8 and below)
       -- Proven via mem-old-rsp-setup from thunk-setup-star
       mem-ret-through-setup : readMem (memory s-after-setup) old-rsp-s ≡ just ret-addr
       mem-ret-through-setup = trans mem-old-rsp-setup mem-ret
 
-      -- Memory at s.rsp preserved through f (using ir-mem-rbp+8)
+      -- Memory at s.rsp preserved through f (using ir-mem-above)
+      -- old-rsp > rbp because rbp = old-rsp - 16 and 16 > 0
+      -- Need: old-rsp > (old-rsp ∸ 16)
+      -- m<m+n proves: (old-rsp ∸ 16) < (old-rsp ∸ 16) + 16
+      -- Chain: (old-rsp ∸ 16) + 16 ≡ 16 + (old-rsp ∸ 16) ≡ old-rsp
+      rbp+16≡old-rsp : readReg (regs s-after-setup) rbp +ℕ 16 ≡ old-rsp-s
+      rbp+16≡old-rsp = trans (cong (_+ℕ 16) rbp-setup-addr)
+                             (trans (+-comm (old-rsp-s ∸ 16) 16) (m+[n∸m]≡n 16≤rsp))
+
+      old-rsp>rbp : old-rsp-s > readReg (regs s-after-setup) rbp
+      old-rsp>rbp = subst (_> readReg (regs s-after-setup) rbp)
+                         rbp+16≡old-rsp
+                         (Data.Nat.Properties.m<m+n (readReg (regs s-after-setup) rbp) {16} (s≤s z≤n))
+
       mem-ret-through-f : readMem (memory s-after-f-raw) old-rsp-s ≡ just ret-addr
       mem-ret-through-f = begin
         readMem (memory s-after-f-raw) old-rsp-s
-          ≡⟨ cong (readMem (memory s-after-f-raw)) (sym rbp+8-eq) ⟩
-        readMem (memory s-after-f-raw) (readReg (regs s-after-setup) rbp +ℕ 8)
-          ≡⟨ ir-mem-rbp+8 r-f ⟩
-        readMem (memory s-after-setup) (readReg (regs s-after-setup) rbp +ℕ 8)
-          ≡⟨ cong (readMem (memory s-after-setup)) rbp+8-eq ⟩
+          ≡⟨ ir-mem-above r-f old-rsp-s old-rsp>rbp ⟩
         readMem (memory s-after-setup) old-rsp-s
           ≡⟨ mem-ret-through-setup ⟩
         just ret-addr ∎
 
-      -- Memory preserved through cleanup (mov and pop don't write at old-rsp-s)
+      -- Memory preserved through cleanup (mov and pops don't write at old-rsp-s)
+      -- s-c3 (after 3 cleanup steps) has rsp = old-rsp-s
       mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
-      mem-ret-preserved = subst (λ addr → readMem (memory s-c2) addr ≡ just ret-addr)
-                                (sym rsp-c2)
+      mem-ret-preserved = subst (λ addr → readMem (memory s-c3) addr ≡ just ret-addr)
+                                (sym rsp-c3)
                                 (trans (mem-c1-eq-f old-rsp-s) mem-ret-through-f)
 
       s-after-cleanup = proj₁ cleanup-star

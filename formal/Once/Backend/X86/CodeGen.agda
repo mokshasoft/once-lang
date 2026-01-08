@@ -39,8 +39,8 @@ compile-length inr = 4
 compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = 1
 compile-length initial = 1
-compile-length (curry f) = 17 +ℕ compile-length f  -- Frame pointer handling in thunk
-compile-length apply = 6
+compile-length (curry f) = 19 +ℕ compile-length f  -- r15 save/restore + frame pointer handling in thunk
+compile-length apply = 8  -- r15 save/restore added for ir-r15 preservation
 compile-length fold = 1
 compile-length unfold = 1
 compile-length arr = 1
@@ -188,29 +188,31 @@ compile-x86 initial = ud2 ∷ []
 -- Jump offsets are PC-relative: target = pc + 1 + offset
 compile-x86 (curry {A} {B} {C} f) =
   let len-f = compile-length f
-      -- Layout (with RIP-relative code-ptr and frame pointer):
+      -- Layout (with RIP-relative code-ptr, frame pointer, and r15 save/restore):
       --   0: sub rsp, 16
       --   1: mov [rsp], rdi
       --   2: lea r9, [rip+4]      -- r9 = pc+4 = 2+4 = 6 (thunk entry)
       --   3: mov [rsp+8], r9
       --   4: mov rax, rsp
-      --   5: jmp end-offset       ; target = 16+len-f, offset = (16+len-f) - 6 = 10+len-f
+      --   5: jmp end-offset       ; target = 18+len-f, offset = (18+len-f) - 6 = 12+len-f
       --   6: label code-ptr
-      --   7: push rbp             -- save frame pointer
-      --   8: mov rbp, rsp         -- set frame pointer
-      --   9: sub rsp, 16          -- allocate pair
-      --   10: mov [rsp], r12      -- store env
-      --   11: mov [rsp+8], rdi    -- store arg
-      --   12: mov rdi, rsp        -- rdi = pair address
-      --   13 to 12+|f|: compile-x86 f
-      --   13+|f|: mov rsp, rbp    -- restore stack (cleans up pair + any f allocations)
-      --   14+|f|: pop rbp         -- restore frame pointer
-      --   15+|f|: ret             -- now pops from correct location
-      --   16+|f|: label end
+      --   7: push r15             -- save r15 (apply uses it as scratch)
+      --   8: push rbp             -- save frame pointer
+      --   9: mov rbp, rsp         -- set frame pointer
+      --   10: sub rsp, 16         -- allocate pair
+      --   11: mov [rsp], r12      -- store env
+      --   12: mov [rsp+8], rdi    -- store arg
+      --   13: mov rdi, rsp        -- rdi = pair address
+      --   14 to 13+|f|: compile-x86 f
+      --   14+|f|: mov rsp, rbp    -- restore stack (cleans up pair + any f allocations)
+      --   15+|f|: pop rbp         -- restore frame pointer
+      --   16+|f|: pop r15         -- restore r15
+      --   17+|f|: ret             -- now pops from correct location
+      --   18+|f|: label end
       code-ptr-label = 6
       rip-offset = 4             -- From instruction 2, offset to reach 6
-      end-offset = 10 +ℕ len-f   -- jmp at pos 5 to reach pos 16+len-f
-      end-label = 16 +ℕ len-f    -- For label pseudo-instruction
+      end-offset = 12 +ℕ len-f   -- jmp at pos 5 to reach pos 18+len-f
+      end-label = 18 +ℕ len-f    -- For label pseudo-instruction
   in
   -- Allocate closure on stack
   sub (reg rsp) (imm 16) ∷
@@ -227,6 +229,8 @@ compile-x86 (curry {A} {B} {C} f) =
   jmp end-offset ∷
   -- Thunk code: called via apply with b in rdi, env in r12
   label code-ptr-label ∷
+  -- Save r15 (apply uses it as scratch for code-ptr)
+  push (reg r15) ∷
   -- Save and set frame pointer (for proper stack cleanup)
   push (reg rbp) ∷
   mov (reg rbp) (reg rsp) ∷
@@ -244,6 +248,8 @@ compile-x86 (curry {A} {B} {C} f) =
   mov (reg rsp) (reg rbp) ∷
   -- Restore frame pointer
   pop rbp ∷
+  -- Restore r15
+  pop r15 ∷
   -- Return (rax already has result, stack properly restored)
   ret ∷
   -- End of thunk
@@ -252,7 +258,10 @@ compile-x86 (curry {A} {B} {C} f) =
 -- Apply: call closure
 -- Input is pair (closure, argument)
 -- closure = [env, code_ptr]
+-- r15 is saved/restored to satisfy ir-r15 preservation requirement
 compile-x86 apply =
+  -- Save r15 (caller's value, to be restored after call)
+  push (reg r15) ∷
   -- Load closure from pair.fst
   mov (reg r15) (mem (base rdi)) ∷
   -- Load argument from pair.snd
@@ -264,7 +273,9 @@ compile-x86 apply =
   -- Move argument to rdi
   mov (reg rdi) (reg rsi) ∷
   -- Call the code
-  call (reg r15) ∷ []
+  call (reg r15) ∷
+  -- Restore r15 (satisfies ir-r15)
+  pop r15 ∷ []
 
 -- Fold: identity at runtime (wrap into Fix)
 compile-x86 fold = mov (reg rax) (reg rdi) ∷ []

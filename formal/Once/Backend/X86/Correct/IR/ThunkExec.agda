@@ -17,7 +17,8 @@ open import Once.Backend.X86.Correct.Star
 
 open import Once.Backend.X86.Correct.IR.ThunkStructure
   using (fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4;
-         fetch-thunk-i5; fetch-thunk-i6)
+         fetch-thunk-i5; fetch-thunk-i6; fetch-thunk-i7;
+         thunk-entry-offset; thunk-body-offset; thunk-setup-len)
   renaming (fetch-ret to TS-fetch-ret)
 
 open import Data.Nat using (_>_; _≤?_)
@@ -28,12 +29,12 @@ open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
--- Prove thunk setup: label, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
+-- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
-      thunk-offset = length prefix +ℕ 6
-      f-offset = length prefix +ℕ 13  -- 6 closure-setup + 7 thunk-setup
+      thunk-offset = length prefix +ℕ thunk-entry-offset
+      f-offset = length prefix +ℕ thunk-body-offset  -- 6 closure-setup + 8 thunk-setup
   in
   halted s ≡ false →
   pc s ≡ thunk-offset →
@@ -47,17 +48,19 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
           × readReg (regs s') rdi ≡ encode (env , arg)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') r15 ≡ readReg (regs s) r15
-          × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 8  -- rbp is now frame pointer
+          × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 16  -- rbp is frame pointer (after push r15 and push rbp)
           × StackInvariant s'
           × readReg (regs s') rsp > 16
           × RbpInvariant s'
           -- Key property for pop-rbp-mem: memory at new rbp contains original rbp
           × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
           -- Memory at original rsp is preserved (for return address)
-          × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp))
+          × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
+          -- Memory for r15 restoration: saved at original_rsp - 8
+          × readMem (memory s') (readReg (regs s) rsp ∸ 8) ≡ just (readReg (regs s) r15))
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  h-false pc-eq rdi-eq r12-eq stack-inv rsp>16 =
-  s7 , star-all , h7 , pc7 , rdi7 , r14-7 , r15-7 , rbp7 , stack-inv7 , rsp>16-7 , rbp-inv7 , mem-at-rbp7 , mem-old-rsp-preserved
+  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp>16-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -65,18 +68,19 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     prog = prefix ++ compile-x86 (curry f) ++ suffix
     offset = length prefix
-    thunk-offset = offset +ℕ 6
-    f-offset = offset +ℕ 13  -- 6 closure-setup + 7 thunk-setup
+    thunk-offset = offset +ℕ thunk-entry-offset
+    f-offset = offset +ℕ thunk-body-offset  -- 6 closure-setup + 8 thunk-setup
 
-    -- The 7 thunk setup instructions (at positions 6-12 within curry)
+    -- The 8 thunk setup instructions (at positions 6-13 within curry)
     -- These match the compile-x86 curry definition exactly
-    i0 = label 6                           -- label at thunk entry (code-ptr-label = 6)
-    i1 = push (reg rbp)                    -- save frame pointer
-    i2 = mov (reg rbp) (reg rsp)           -- set frame pointer
-    i3 = sub (reg rsp) (imm 16)            -- allocate pair
-    i4 = mov (mem (base rsp)) (reg r12)    -- store env
-    i5 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
-    i6 = mov (reg rdi) (reg rsp)           -- rdi = pair address
+    i0 = label thunk-entry-offset          -- label at thunk entry (code-ptr-label = 6)
+    i1 = push (reg r15)                    -- save r15 (apply's scratch register)
+    i2 = push (reg rbp)                    -- save frame pointer
+    i3 = mov (reg rbp) (reg rsp)           -- set frame pointer
+    i4 = sub (reg rsp) (imm 16)            -- allocate pair
+    i5 = mov (mem (base rsp)) (reg r12)    -- store env
+    i6 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
+    i7 = mov (reg rdi) (reg rsp)           -- rdi = pair address
 
     -- Program structure for fetch proofs:
     -- prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -88,7 +92,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Then fetch-at-prefix-end gives us the instruction
 
     len-f = compile-length f
-    end-offset-curry = 10 +ℕ len-f  -- jmp at pos 5 to reach end at 16+len-f
+    end-offset-curry = 12 +ℕ len-f  -- jmp at pos 5 to reach end at 18+len-f
 
     -- curry-closure-setup: first 6 instructions of curry (positions 0-5)
     curry-closure-setup : Program
@@ -123,10 +127,15 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     fetch6 : fetch prog (thunk-offset +ℕ 6) ≡ just i6
     fetch6 = fetch-thunk-i6 f prefix suffix
 
+    fetch7 : fetch prog (thunk-offset +ℕ 7) ≡ just i7
+    fetch7 = fetch-thunk-i7 f prefix suffix
+
     old-rsp = readReg (regs s) rsp
     old-rbp = readReg (regs s) rbp
-    rsp-after-push = old-rsp ∸ 8   -- after push rbp
-    new-rsp = rsp-after-push ∸ 16  -- after sub rsp, 16
+    old-r15 = readReg (regs s) r15
+    rsp-after-push-r15 = old-rsp ∸ 8   -- after push r15
+    rsp-after-push-rbp = rsp-after-push-r15 ∸ 8  -- after push rbp = old-rsp - 16
+    new-rsp = rsp-after-push-rbp ∸ 16  -- after sub rsp, 16 = old-rsp - 32
 
     -- State after label (no-op, just pc++)
     s1 : State
@@ -134,7 +143,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     step0 : step prog s ≡ just s1
     step0 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
-                  (execLabel [] s (offset +ℕ 6))
+                  (execLabel [] s (offset +ℕ thunk-entry-offset))
 
     h1 : halted s1 ≡ false
     h1 = h-false
@@ -142,15 +151,15 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pc1 : pc s1 ≡ thunk-offset +ℕ 1
     pc1 = cong (_+ℕ 1) pc-eq
 
-    -- State after push rbp
+    -- State after push r15 (save r15 for apply's scratch register)
     s2 : State
-    s2 = record s1 { regs = writeReg (regs s1) rsp rsp-after-push
-                   ; memory = writeMem (memory s1) rsp-after-push old-rbp
+    s2 = record s1 { regs = writeReg (regs s1) rsp rsp-after-push-r15
+                   ; memory = writeMem (memory s1) rsp-after-push-r15 old-r15
                    ; pc = pc s1 +ℕ 1 }
 
     step1 : step prog s1 ≡ just s2
     step1 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                  (execPush-reg [] s1 rbp)
+                  (execPush-reg [] s1 r15)
 
     h2 : halted s2 ≡ false
     h2 = h-false
@@ -158,19 +167,21 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pc2 : pc s2 ≡ thunk-offset +ℕ 2
     pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc thunk-offset 1 1)
 
-    -- State after mov rbp, rsp (set frame pointer to current rsp)
-    rsp-s2 : readReg (regs s2) rsp ≡ rsp-after-push
-    rsp-s2 = readReg-writeReg-same (regs s1) rsp rsp-after-push
+    -- State after push rbp (save frame pointer)
+    rsp-s2 : readReg (regs s2) rsp ≡ rsp-after-push-r15
+    rsp-s2 = readReg-writeReg-same (regs s1) rsp rsp-after-push-r15
+
+    rbp-s2 : readReg (regs s2) rbp ≡ old-rbp
+    rbp-s2 = trans (readReg-writeReg-rsp-rbp (regs s1) rsp-after-push-r15) refl
 
     s3 : State
-    s3 = record s2 { regs = writeReg (regs s2) rbp rsp-after-push
+    s3 = record s2 { regs = writeReg (regs s2) rsp rsp-after-push-rbp
+                   ; memory = writeMem (memory s2) rsp-after-push-rbp old-rbp
                    ; pc = pc s2 +ℕ 1 }
 
     step2 : step prog s2 ≡ just s3
     step2 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                  (cong (λ sp → just (record s2 { regs = writeReg (regs s2) rbp sp
-                                                ; pc = pc s2 +ℕ 1 }))
-                        rsp-s2)
+                  (execPush-reg [] s2 rbp)
 
     h3 : halted s3 ≡ false
     h3 = h-false
@@ -178,18 +189,19 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pc3 : pc s3 ≡ thunk-offset +ℕ 3
     pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc thunk-offset 2 1)
 
-    -- State after sub rsp, 16
-    rsp-s3 : readReg (regs s3) rsp ≡ rsp-after-push
-    rsp-s3 = trans (readReg-writeReg-rbp-rsp (regs s2) rsp-after-push) rsp-s2
+    -- State after mov rbp, rsp (set frame pointer to current rsp)
+    rsp-s3 : readReg (regs s3) rsp ≡ rsp-after-push-rbp
+    rsp-s3 = readReg-writeReg-same (regs s2) rsp rsp-after-push-rbp
 
     s4 : State
-    s4 = record s3 { regs = writeReg (regs s3) rsp new-rsp
-                   ; pc = pc s3 +ℕ 1
-                   ; flags = updateFlags new-rsp rsp-after-push }
+    s4 = record s3 { regs = writeReg (regs s3) rbp rsp-after-push-rbp
+                   ; pc = pc s3 +ℕ 1 }
 
     step3 : step prog s3 ≡ just s4
     step3 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
-                  (execSub-reg-imm [] s3 rsp 16)
+                  (cong (λ sp → just (record s3 { regs = writeReg (regs s3) rbp sp
+                                                ; pc = pc s3 +ℕ 1 }))
+                        rsp-s3)
 
     h4 : halted s4 ≡ false
     h4 = h-false
@@ -197,25 +209,18 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pc4 : pc s4 ≡ thunk-offset +ℕ 4
     pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc thunk-offset 3 1)
 
-    -- State after mov [rsp], r12 (store env)
-    rsp-s4 : readReg (regs s4) rsp ≡ new-rsp
-    rsp-s4 = readReg-writeReg-same (regs s3) rsp new-rsp
-
-    r12-s4 : readReg (regs s4) r12 ≡ encode env
-    r12-s4 = trans (readReg-writeReg-rsp-r12 (regs s3) new-rsp)
-                   (trans (readReg-writeReg-rbp-r12 (regs s2) rsp-after-push)
-                          (trans (readReg-writeReg-rsp-r12 (regs s1) rsp-after-push)
-                                 r12-eq))
+    -- State after sub rsp, 16
+    rsp-s4 : readReg (regs s4) rsp ≡ rsp-after-push-rbp
+    rsp-s4 = trans (readReg-writeReg-rbp-rsp (regs s3) rsp-after-push-rbp) rsp-s3
 
     s5 : State
-    s5 = record s4 { memory = writeMem (memory s4) new-rsp (readReg (regs s4) r12)
-                   ; pc = pc s4 +ℕ 1 }
+    s5 = record s4 { regs = writeReg (regs s4) rsp new-rsp
+                   ; pc = pc s4 +ℕ 1
+                   ; flags = updateFlags new-rsp rsp-after-push-rbp }
 
     step4 : step prog s4 ≡ just s5
     step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                  (cong (λ addr → just (record s4 { memory = writeMem (memory s4) addr (readReg (regs s4) r12)
-                                                  ; pc = pc s4 +ℕ 1 }))
-                        rsp-s4)
+                  (execSub-reg-imm [] s4 rsp 16)
 
     h5 : halted s5 ≡ false
     h5 = h-false
@@ -223,23 +228,24 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pc5 : pc s5 ≡ thunk-offset +ℕ 5
     pc5 = trans (cong (_+ℕ 1) pc4) (+-assoc thunk-offset 4 1)
 
-    -- State after mov [rsp+8], rdi (store arg)
+    -- State after mov [rsp], r12 (store env)
     rsp-s5 : readReg (regs s5) rsp ≡ new-rsp
-    rsp-s5 = rsp-s4
+    rsp-s5 = readReg-writeReg-same (regs s4) rsp new-rsp
 
-    rdi-s5 : readReg (regs s5) rdi ≡ encode arg
-    rdi-s5 = trans (readReg-writeReg-rsp-rdi (regs s3) new-rsp)
-                   (trans (readReg-writeReg-rbp-rdi (regs s2) rsp-after-push)
-                          (trans (readReg-writeReg-rsp-rdi (regs s1) rsp-after-push)
-                                 rdi-eq))
+    r12-s5 : readReg (regs s5) r12 ≡ encode env
+    r12-s5 = trans (readReg-writeReg-rsp-r12 (regs s4) new-rsp)
+                   (trans (readReg-writeReg-rbp-r12 (regs s3) rsp-after-push-rbp)
+                          (trans (readReg-writeReg-rsp-r12 (regs s2) rsp-after-push-rbp)
+                                 (trans (readReg-writeReg-rsp-r12 (regs s1) rsp-after-push-r15)
+                                        r12-eq)))
 
     s6 : State
-    s6 = record s5 { memory = writeMem (memory s5) (new-rsp +ℕ 8) (readReg (regs s5) rdi)
+    s6 = record s5 { memory = writeMem (memory s5) new-rsp (readReg (regs s5) r12)
                    ; pc = pc s5 +ℕ 1 }
 
     step5 : step prog s5 ≡ just s6
     step5 = trans (step-exec prog s5 i5 h5 (subst (λ p → fetch prog p ≡ just i5) (sym pc5) fetch5))
-                  (cong (λ addr → just (record s5 { memory = writeMem (memory s5) (addr +ℕ 8) (readReg (regs s5) rdi)
+                  (cong (λ addr → just (record s5 { memory = writeMem (memory s5) addr (readReg (regs s5) r12)
                                                   ; pc = pc s5 +ℕ 1 }))
                         rsp-s5)
 
@@ -249,22 +255,49 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pc6 : pc s6 ≡ thunk-offset +ℕ 6
     pc6 = trans (cong (_+ℕ 1) pc5) (+-assoc thunk-offset 5 1)
 
-    -- State after mov rdi, rsp (rdi = pair address)
+    -- State after mov [rsp+8], rdi (store arg)
     rsp-s6 : readReg (regs s6) rsp ≡ new-rsp
     rsp-s6 = rsp-s5
 
+    rdi-s6 : readReg (regs s6) rdi ≡ encode arg
+    rdi-s6 = trans (readReg-writeReg-rsp-rdi (regs s4) new-rsp)
+                   (trans (readReg-writeReg-rbp-rdi (regs s3) rsp-after-push-rbp)
+                          (trans (readReg-writeReg-rsp-rdi (regs s2) rsp-after-push-rbp)
+                                 (trans (readReg-writeReg-rsp-rdi (regs s1) rsp-after-push-r15)
+                                        rdi-eq)))
+
     s7 : State
-    s7 = record s6 { regs = writeReg (regs s6) rdi new-rsp
+    s7 = record s6 { memory = writeMem (memory s6) (new-rsp +ℕ 8) (readReg (regs s6) rdi)
                    ; pc = pc s6 +ℕ 1 }
 
     step6 : step prog s6 ≡ just s7
     step6 = trans (step-exec prog s6 i6 h6 (subst (λ p → fetch prog p ≡ just i6) (sym pc6) fetch6))
-                  (cong (λ sp → just (record s6 { regs = writeReg (regs s6) rdi sp
-                                                ; pc = pc s6 +ℕ 1 }))
+                  (cong (λ addr → just (record s6 { memory = writeMem (memory s6) (addr +ℕ 8) (readReg (regs s6) rdi)
+                                                  ; pc = pc s6 +ℕ 1 }))
                         rsp-s6)
 
+    h7 : halted s7 ≡ false
+    h7 = h-false
+
+    pc7 : pc s7 ≡ thunk-offset +ℕ 7
+    pc7 = trans (cong (_+ℕ 1) pc6) (+-assoc thunk-offset 6 1)
+
+    -- State after mov rdi, rsp (rdi = pair address)
+    rsp-s7 : readReg (regs s7) rsp ≡ new-rsp
+    rsp-s7 = rsp-s6
+
+    s8 : State
+    s8 = record s7 { regs = writeReg (regs s7) rdi new-rsp
+                   ; pc = pc s7 +ℕ 1 }
+
+    step7 : step prog s7 ≡ just s8
+    step7 = trans (step-exec prog s7 i7 h7 (subst (λ p → fetch prog p ≡ just i7) (sym pc7) fetch7))
+                  (cong (λ sp → just (record s7 { regs = writeReg (regs s7) rdi sp
+                                                ; pc = pc s7 +ℕ 1 }))
+                        rsp-s7)
+
     -- Compose Star proof
-    star-all : Star prog s s7
+    star-all : Star prog s s8
     star-all = ⟨ h-false , step0 ⟩◅
                ⟨ h1 , step1 ⟩◅
                ⟨ h2 , step2 ⟩◅
@@ -272,117 +305,132 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                ⟨ h4 , step4 ⟩◅
                ⟨ h5 , step5 ⟩◅
                ⟨ h6 , step6 ⟩◅
+               ⟨ h7 , step7 ⟩◅
                refl*
 
     -- Final state properties
-    h7 : halted s7 ≡ false
-    h7 = h-false
+    h8 : halted s8 ≡ false
+    h8 = h-false
 
-    pc7 : pc s7 ≡ f-offset
-    pc7 = begin
-      pc s7
+    pc8 : pc s8 ≡ f-offset
+    pc8 = begin
+      pc s8
         ≡⟨ refl ⟩
-      pc s6 +ℕ 1
-        ≡⟨ cong (_+ℕ 1) pc6 ⟩
-      (thunk-offset +ℕ 6) +ℕ 1
-        ≡⟨ +-assoc thunk-offset 6 1 ⟩
-      thunk-offset +ℕ 7
-        ≡⟨ cong (_+ℕ 7) refl ⟩  -- thunk-offset = offset + 6
-      (offset +ℕ 6) +ℕ 7
-        ≡⟨ +-assoc offset 6 7 ⟩
-      offset +ℕ 13
+      pc s7 +ℕ 1
+        ≡⟨ cong (_+ℕ 1) pc7 ⟩
+      (thunk-offset +ℕ 7) +ℕ 1
+        ≡⟨ +-assoc thunk-offset 7 1 ⟩
+      thunk-offset +ℕ 8
+        ≡⟨ cong (_+ℕ thunk-setup-len) refl ⟩  -- thunk-offset = offset + 6, thunk-setup-len = 8
+      (offset +ℕ thunk-entry-offset) +ℕ thunk-setup-len
+        ≡⟨ +-assoc offset thunk-entry-offset thunk-setup-len ⟩
+      offset +ℕ thunk-body-offset
         ≡⟨ refl ⟩
       f-offset ∎
 
-    -- rdi = new-rsp, and memory[new-rsp] = encode env, memory[new-rsp+8] = encode arg
+    -- rdi = new-rsp after s8 (mov rdi, rsp), and memory[new-rsp] = encode env, memory[new-rsp+8] = encode arg
     -- By encode-pair-construct, new-rsp = encode (env, arg)
-    rdi-s7-is-new-rsp : readReg (regs s7) rdi ≡ new-rsp
-    rdi-s7-is-new-rsp = readReg-writeReg-same (regs s6) rdi new-rsp
+    rdi-s8-is-new-rsp : readReg (regs s8) rdi ≡ new-rsp
+    rdi-s8-is-new-rsp = readReg-writeReg-same (regs s7) rdi new-rsp
 
     -- Memory at new-rsp has encode env
-    mem-env : readMem (memory s7) new-rsp ≡ just (encode env)
-    mem-env = trans (mem-read-other {memory s5} {new-rsp +ℕ 8} {new-rsp} {readReg (regs s5) rdi}
+    -- s8 doesn't write memory (only rdi register), so memory s8 = memory s7
+    mem-env : readMem (memory s8) new-rsp ≡ just (encode env)
+    mem-env = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {new-rsp} {readReg (regs s6) rdi}
                       (λ eq → n≢n+8 new-rsp (sym eq)))
-                    (trans (mem-read-write {memory s4} {new-rsp} {readReg (regs s4) r12})
-                           (cong just r12-s4))
+                    (trans (mem-read-write {memory s5} {new-rsp} {readReg (regs s5) r12})
+                           (cong just r12-s5))
 
     -- Memory at new-rsp+8 has encode arg
-    mem-arg : readMem (memory s7) (new-rsp +ℕ 8) ≡ just (encode arg)
-    mem-arg = trans (mem-read-write {memory s5} {new-rsp +ℕ 8} {readReg (regs s5) rdi})
-                    (cong just rdi-s5)
+    mem-arg : readMem (memory s8) (new-rsp +ℕ 8) ≡ just (encode arg)
+    mem-arg = trans (mem-read-write {memory s6} {new-rsp +ℕ 8} {readReg (regs s6) rdi})
+                    (cong just rdi-s6)
 
     -- Use encode-pair-construct to show new-rsp = encode (env, arg)
     pair-encoding : new-rsp ≡ encode (env , arg)
-    pair-encoding = encode-pair-construct env arg new-rsp (memory s7) mem-env mem-arg
+    pair-encoding = encode-pair-construct env arg new-rsp (memory s8) mem-env mem-arg
 
-    rdi7 : readReg (regs s7) rdi ≡ encode (env , arg)
-    rdi7 = trans rdi-s7-is-new-rsp pair-encoding
+    rdi8 : readReg (regs s8) rdi ≡ encode (env , arg)
+    rdi8 = trans rdi-s8-is-new-rsp pair-encoding
 
-    -- Register preservation (through all 7 instructions)
+    -- Register preservation (through all 8 instructions)
     -- Note: rbp is NOT preserved - it's set to frame pointer
-    r14-7 : readReg (regs s7) r14 ≡ readReg (regs s) r14
-    r14-7 = trans (readReg-writeReg-rdi-r14 (regs s6) new-rsp)
-                  (trans (readReg-writeReg-rsp-r14 (regs s3) new-rsp)
-                         (trans (readReg-writeReg-rbp-r14 (regs s2) rsp-after-push)
-                                (trans (readReg-writeReg-rsp-r14 (regs s1) rsp-after-push)
-                                       refl)))
+    -- Trace: s8 writes rdi, s7 no regs, s6 no regs, s5 writes rsp, s4 writes rbp, s3 writes rsp, s2 writes rsp, s1 no regs
+    r14-8 : readReg (regs s8) r14 ≡ readReg (regs s) r14
+    r14-8 = trans (readReg-writeReg-rdi-r14 (regs s7) new-rsp)  -- s8: writes rdi
+                  (trans (readReg-writeReg-rsp-r14 (regs s4) new-rsp)  -- s5: writes rsp
+                         (trans (readReg-writeReg-rbp-r14 (regs s3) rsp-after-push-rbp)  -- s4: writes rbp
+                                (trans (readReg-writeReg-rsp-r14 (regs s2) rsp-after-push-rbp)  -- s3: writes rsp
+                                       (trans (readReg-writeReg-rsp-r14 (regs s1) rsp-after-push-r15)  -- s2: writes rsp
+                                              refl))))
 
-    r15-7 : readReg (regs s7) r15 ≡ readReg (regs s) r15
-    r15-7 = trans (readReg-writeReg-rdi-r15 (regs s6) new-rsp)
-                  (trans (readReg-writeReg-rsp-r15 (regs s3) new-rsp)
-                         (trans (readReg-writeReg-rbp-r15 (regs s2) rsp-after-push)
-                                (trans (readReg-writeReg-rsp-r15 (regs s1) rsp-after-push)
-                                       refl)))
+    r15-8 : readReg (regs s8) r15 ≡ readReg (regs s) r15
+    r15-8 = trans (readReg-writeReg-rdi-r15 (regs s7) new-rsp)  -- s8: writes rdi
+                  (trans (readReg-writeReg-rsp-r15 (regs s4) new-rsp)  -- s5: writes rsp
+                         (trans (readReg-writeReg-rbp-r15 (regs s3) rsp-after-push-rbp)  -- s4: writes rbp
+                                (trans (readReg-writeReg-rsp-r15 (regs s2) rsp-after-push-rbp)  -- s3: writes rsp
+                                       (trans (readReg-writeReg-rsp-r15 (regs s1) rsp-after-push-r15)  -- s2: writes rsp
+                                              refl))))
 
-    -- rbp is now set to rsp-after-push (the frame pointer)
-    rbp7 : readReg (regs s7) rbp ≡ rsp-after-push
-    rbp7 = trans (readReg-writeReg-rdi-rbp (regs s6) new-rsp)
-                 (trans (readReg-writeReg-rsp-rbp (regs s3) new-rsp)
-                        (readReg-writeReg-same (regs s2) rbp rsp-after-push))
+    -- rbp is now set to rsp-after-push-rbp (the frame pointer, = old-rsp - 16)
+    rbp8' : readReg (regs s8) rbp ≡ rsp-after-push-rbp
+    rbp8' = trans (readReg-writeReg-rdi-rbp (regs s7) new-rsp)  -- s8: writes rdi
+                 (trans (readReg-writeReg-rsp-rbp (regs s4) new-rsp)  -- s5: writes rsp
+                        (readReg-writeReg-same (regs s3) rbp rsp-after-push-rbp))  -- s4: writes rbp
+
+    -- Prove that (old-rsp ∸ 8) ∸ 8 ≡ old-rsp ∸ 16
+    -- Using ∸-+-assoc : ∀ m n o → (m ∸ n) ∸ o ≡ m ∸ (n + o)
+    open import Data.Nat.Properties using (∸-+-assoc)
+    rsp-after-push-rbp≡old-rsp∸16 : rsp-after-push-rbp ≡ old-rsp ∸ 16
+    rsp-after-push-rbp≡old-rsp∸16 = ∸-+-assoc old-rsp 8 8
+
+    -- Convert to expected type
+    rbp8 : readReg (regs s8) rbp ≡ old-rsp ∸ 16
+    rbp8 = trans rbp8' rsp-after-push-rbp≡old-rsp∸16
 
     -- StackInvariant proof: rsp decreased, r15 unchanged
-    -- s7.rsp = new-rsp = old-rsp - 8 - 16 ≤ old-rsp = s.rsp
-    rsp-s7 : readReg (regs s7) rsp ≡ new-rsp
-    rsp-s7 = trans (readReg-writeReg-rdi-rsp (regs s6) new-rsp) rsp-s6
+    -- s8.rsp = new-rsp = old-rsp - 16 - 16 = old-rsp - 32 ≤ old-rsp = s.rsp
+    rsp-s8 : readReg (regs s8) rsp ≡ new-rsp
+    rsp-s8 = trans (readReg-writeReg-rdi-rsp (regs s7) new-rsp) rsp-s7
 
-    -- new-rsp = (old-rsp - 8) - 16 ≤ old-rsp
+    -- new-rsp = ((old-rsp - 8) - 8) - 16 = old-rsp - 32 ≤ old-rsp
     rsp-decreased : new-rsp ≤ old-rsp
-    rsp-decreased = ≤-trans (m∸n≤m rsp-after-push 16) (m∸n≤m old-rsp 8)
+    rsp-decreased = ≤-trans (≤-trans (m∸n≤m rsp-after-push-rbp 16) (m∸n≤m rsp-after-push-r15 8)) (m∸n≤m old-rsp 8)
 
-    rsp-s7≤s : readReg (regs s7) rsp ≤ readReg (regs s) rsp
-    rsp-s7≤s = subst (_≤ old-rsp) (sym rsp-s7) rsp-decreased
+    rsp-s8≤s : readReg (regs s8) rsp ≤ readReg (regs s) rsp
+    rsp-s8≤s = subst (_≤ old-rsp) (sym rsp-s8) rsp-decreased
 
-    stack-inv7 : StackInvariant s7
-    stack-inv7 = stack-inv-preserved-rsp-decreased s s7 stack-inv r15-7 rsp-s7≤s
+    stack-inv8 : StackInvariant s8
+    stack-inv8 = stack-inv-preserved-rsp-decreased s s8 stack-inv r15-8 rsp-s8≤s
 
-    rsp>16-7 : readReg (regs s7) rsp > 16
-    rsp>16-7 = ≤-trans 17≤41 (rsp-bound-after-stack-op s7)
+    rsp>16-8 : readReg (regs s8) rsp > 16
+    rsp>16-8 = ≤-trans 17≤41 (rsp-bound-after-stack-op s8)
       where
         open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41
         17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
-    -- Memory at rbp contains original rbp (from push rbp in s2)
-    -- s2 wrote old-rbp at rsp-after-push (= old-rsp - 8)
-    -- s5 wrote at new-rsp (= old-rsp - 24), s6 wrote at new-rsp+8 (= old-rsp - 16)
-    -- Neither overwrites rsp-after-push, so the value persists to s7
-    -- rbp in s7 = rsp-after-push, so readMem s7 rbp = just old-rbp
+    -- Memory at rbp contains original rbp (from push rbp in s3)
+    -- s3 wrote old-rbp at rsp-after-push-rbp (= old-rsp - 16)
+    -- s6 wrote at new-rsp (= old-rsp - 32), s7 wrote at new-rsp+8 (= old-rsp - 24)
+    -- Neither overwrites rsp-after-push-rbp, so the value persists to s8
+    -- rbp in s8 = rsp-after-push-rbp, so readMem s8 rbp = just old-rbp
 
-    -- Need: new-rsp ≢ rsp-after-push
-    -- new-rsp = rsp-after-push - 16 < rsp-after-push
-    -- Approach: new-rsp < new-rsp + 16 = rsp-after-push (when 16 ≤ rsp-after-push)
+    -- Need: new-rsp ≢ rsp-after-push-rbp
+    -- new-rsp = rsp-after-push-rbp - 16 < rsp-after-push-rbp
+    -- Approach: new-rsp < new-rsp + 16 = rsp-after-push-rbp (when 16 ≤ rsp-after-push-rbp)
     open import Data.Nat.Properties using (m∸n+n≡m; +-monoˡ-<; m<m+n; 0<1+n)
 
-    -- Proof: new-rsp = rsp-after-push - 16 ≢ rsp-after-push
-    -- Key insight: rsp-after-push = old-rsp - 8 ≥ 9 (since old-rsp > 16)
-    -- Case 1: If rsp-after-push ≥ 16, then new-rsp = rsp-after-push - 16 < rsp-after-push
-    -- Case 2: If rsp-after-push < 16, then new-rsp = 0, but rsp-after-push ≥ 9 > 0
+    -- Proof: new-rsp = rsp-after-push-rbp - 16 ≢ rsp-after-push-rbp
+    -- Key insight: rsp-after-push-rbp = old-rsp - 16 ≥ 1 (since old-rsp > 16)
+    -- Case 1: If rsp-after-push-rbp ≥ 16, then new-rsp = rsp-after-push-rbp - 16 < rsp-after-push-rbp
+    -- Case 2: If rsp-after-push-rbp < 16, then new-rsp = 0, but rsp-after-push-rbp ≥ 1 > 0
     open import Data.Nat using (_≤?_; z<s)
     open import Relation.Nullary using (yes; no)
 
-    -- First, show rsp-after-push ≥ 9 (stronger than just > 0)
+    -- First, show rsp-after-push-rbp ≥ 1 (stronger than just > 0)
     -- rsp>16 : old-rsp > 16, i.e., old-rsp ≥ 17
-    -- rsp-after-push = old-rsp - 8 ≥ 17 - 8 = 9
+    -- rsp-after-push-rbp = old-rsp - 16 ≥ 17 - 16 = 1
     open import Data.Nat.Properties using (∸-monoˡ-≤)
     open import Data.Empty using (⊥-elim)
 
@@ -390,19 +438,16 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     17≤old-rsp : 17 ≤ old-rsp
     17≤old-rsp = rsp>16
 
-    9≤rsp-after-push : 9 ≤ rsp-after-push
-    9≤rsp-after-push with 17 ≤? old-rsp
-    -- ∸-monoˡ-≤ : m ≤ n → m ∸ o ≤ n ∸ o
-    -- With m = 17, n = old-rsp, o = 8: 17 ≤ old-rsp → 17 ∸ 8 ≤ old-rsp ∸ 8
-    -- 17 ∸ 8 = 9, old-rsp ∸ 8 = rsp-after-push
-    ... | yes 17≤ = ∸-monoˡ-≤ {17} {old-rsp} 8 17≤
-    ... | no ¬17≤ = ⊥-elim (¬17≤ 17≤old-rsp)
+    -- rsp-after-push-r15 = old-rsp ∸ 8 ≥ 17 - 8 = 9
+    9≤rsp-after-push-r15 : 9 ≤ rsp-after-push-r15
+    9≤rsp-after-push-r15 = ∸-monoˡ-≤ {17} {old-rsp} 8 17≤old-rsp
 
-    rsp-after-push>0 : rsp-after-push > 0
-    rsp-after-push>0 = ≤-trans 1≤9 9≤rsp-after-push
-      where
-        1≤9 : 1 ≤ 9
-        1≤9 = s≤s z≤n
+    -- rsp-after-push-rbp = rsp-after-push-r15 ∸ 8 ≥ 9 - 8 = 1
+    1≤rsp-after-push-rbp : 1 ≤ rsp-after-push-rbp
+    1≤rsp-after-push-rbp = ∸-monoˡ-≤ {9} {rsp-after-push-r15} 8 9≤rsp-after-push-r15
+
+    rsp-after-push-rbp>0 : rsp-after-push-rbp > 0
+    rsp-after-push-rbp>0 = 1≤rsp-after-push-rbp
 
     -- m ∸ n ≢ m when m > 0 and n > 0
     -- Case 1: n ≤ m → m ∸ n < m (subtracting positive makes smaller)
@@ -433,124 +478,164 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         0≢suc : ∀ {k} → 0 ≢ suc k
         0≢suc ()
 
-    new-rsp≢rsp-after-push : new-rsp ≢ rsp-after-push
-    new-rsp≢rsp-after-push = ∸-neq rsp-after-push 16 rsp-after-push>0 0<16
+    new-rsp≢rsp-after-push-rbp : new-rsp ≢ rsp-after-push-rbp
+    new-rsp≢rsp-after-push-rbp = ∸-neq rsp-after-push-rbp 16 rsp-after-push-rbp>0 0<16
       where
         0<16 : 0 < 16
         0<16 = s≤s z≤n
 
-    -- For new-rsp + 8 ≢ rsp-after-push:
-    -- new-rsp + 8 = (rsp-after-push - 16) + 8
-    -- Case 1: If rsp-after-push ≥ 16, then new-rsp + 8 = rsp-after-push - 8 < rsp-after-push
-    -- Case 2: If rsp-after-push < 16, then new-rsp = 0, so new-rsp + 8 = 8 < 9 ≤ rsp-after-push
-    new-rsp+8≢rsp-after-push : new-rsp +ℕ 8 ≢ rsp-after-push
-    new-rsp+8≢rsp-after-push eq with 16 ≤? rsp-after-push
-    ... | yes 16≤ = <⇒≢-neq new-rsp+8<rsp-after-push eq
+    -- For new-rsp + 8 ≢ rsp-after-push-rbp:
+    -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
+    -- We use rsp-bound-after-stack-op which gives old-rsp > 40, so old-rsp ≥ 41
+    -- Therefore rsp-after-push-rbp = old-rsp - 16 ≥ 25, which is always ≥ 16
+    -- So new-rsp + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp
+
+    -- First, derive the strong bound from rsp-bound-after-stack-op
+    old-rsp>40 : old-rsp > 40
+    old-rsp>40 = rsp-bound-after-stack-op s
+
+    -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
+    33≤rsp-after-push-r15 : 33 ≤ rsp-after-push-r15
+    33≤rsp-after-push-r15 = ∸-monoˡ-≤ {41} {old-rsp} 8 old-rsp>40
+
+    -- rsp-after-push-rbp = rsp-after-push-r15 - 8 ≥ 33 - 8 = 25
+    25≤rsp-after-push-rbp : 25 ≤ rsp-after-push-rbp
+    25≤rsp-after-push-rbp = ∸-monoˡ-≤ {33} {rsp-after-push-r15} 8 33≤rsp-after-push-r15
+
+    16≤rsp-after-push-rbp : 16 ≤ rsp-after-push-rbp
+    16≤rsp-after-push-rbp = ≤-trans 16≤25 25≤rsp-after-push-rbp
+      where
+        16≤25 : 16 ≤ 25
+        16≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+
+    new-rsp+8≢rsp-after-push-rbp : new-rsp +ℕ 8 ≢ rsp-after-push-rbp
+    new-rsp+8≢rsp-after-push-rbp eq = <⇒≢-neq new-rsp+8<rsp-after-push-rbp eq
       where
         open import Data.Nat.Properties using (m∸n+n≡m)
-        -- new-rsp + 8 = (rsp-after-push - 16) + 8
-        -- rsp-after-push - 16 + 16 = rsp-after-push (since 16 ≤ rsp-after-push)
-        -- So (rsp-after-push - 16) + 8 < (rsp-after-push - 16) + 16 = rsp-after-push
-        new-rsp+8<rsp-after-push : new-rsp +ℕ 8 < rsp-after-push
-        new-rsp+8<rsp-after-push = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤) new-rsp+8<new-rsp+16
-          where
-            8<16 : 8 < 16
-            8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-            new-rsp+8<new-rsp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
-            new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
-    ... | no ¬16≤ = <⇒≢-neq new-rsp+8<rsp eq
+        -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
+        -- rsp-after-push-rbp - 16 + 16 = rsp-after-push-rbp (since 16 ≤ rsp-after-push-rbp)
+        -- So (rsp-after-push-rbp - 16) + 8 < (rsp-after-push-rbp - 16) + 16 = rsp-after-push-rbp
+        8<16 : 8 < 16
+        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        new-rsp+8<new-rsp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
+        new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
+        new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ 8 < rsp-after-push-rbp
+        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16
+
+    -- s3 wrote old-rbp at rsp-after-push-rbp (after push r15 at s2 and push rbp at s3)
+    mem-s3-at-rsp-after-push-rbp : readMem (memory s3) rsp-after-push-rbp ≡ just old-rbp
+    mem-s3-at-rsp-after-push-rbp = mem-read-write {memory s2} {rsp-after-push-rbp} {old-rbp}
+
+    -- s4, s5 don't write to memory (mov rbp rsp and sub rsp 16)
+    mem-s5-at-rsp-after-push-rbp : readMem (memory s5) rsp-after-push-rbp ≡ just old-rbp
+    mem-s5-at-rsp-after-push-rbp = mem-s3-at-rsp-after-push-rbp
+
+    -- s6 wrote at new-rsp, which ≢ rsp-after-push-rbp
+    mem-s6-at-rsp-after-push-rbp : readMem (memory s6) rsp-after-push-rbp ≡ just old-rbp
+    mem-s6-at-rsp-after-push-rbp = trans
+      (mem-read-other {memory s5} {new-rsp} {rsp-after-push-rbp} {readReg (regs s5) r12}
+                      (λ eq → new-rsp≢rsp-after-push-rbp eq))
+      mem-s5-at-rsp-after-push-rbp
+
+    -- s7 wrote at new-rsp + 8, which ≢ rsp-after-push-rbp
+    mem-s7-at-rsp-after-push-rbp : readMem (memory s7) rsp-after-push-rbp ≡ just old-rbp
+    mem-s7-at-rsp-after-push-rbp = trans
+      (mem-read-other {memory s6} {new-rsp +ℕ 8} {rsp-after-push-rbp} {readReg (regs s6) rdi}
+                      (λ eq → new-rsp+8≢rsp-after-push-rbp eq))
+      mem-s6-at-rsp-after-push-rbp
+
+    -- s8 doesn't write to memory (mov rdi rsp only writes register)
+    mem-s8-at-rsp-after-push-rbp : readMem (memory s8) rsp-after-push-rbp ≡ just old-rbp
+    mem-s8-at-rsp-after-push-rbp = mem-s7-at-rsp-after-push-rbp
+
+    -- RbpInvariant: new-rsp ≤ rsp-after-push-rbp
+    -- new-rsp = rsp-after-push-rbp - 16, so this follows from m∸n≤m
+    rbp-inv8 : RbpInvariant s8
+    rbp-inv8 = record { rsp≤rbp = new-rsp≤rsp-after-push-rbp }
       where
-        -- If rsp-after-push < 16, then rsp-after-push ≤ 16, so rsp-after-push ∸ 16 = 0
-        -- new-rsp = rsp-after-push ∸ 16 = 0
-        rsp<16 : rsp-after-push < 16
-        rsp<16 = ≰⇒>-nat ¬16≤
-        rsp≤16 : rsp-after-push ≤ 16
-        rsp≤16 = <⇒≤-nat rsp<16
-        new-rsp≡0 : new-rsp ≡ 0
-        new-rsp≡0 = m≤n⇒m∸n≡0 rsp≤16
-        -- 8 < 9 ≤ rsp-after-push
-        8<9 : 8 < 9
-        8<9 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        8<rsp : 8 < rsp-after-push
-        8<rsp = ≤-trans 8<9 9≤rsp-after-push
-        -- new-rsp + 8 = 0 + 8 = 8, so new-rsp + 8 < rsp-after-push
-        new-rsp+8<rsp : new-rsp +ℕ 8 < rsp-after-push
-        new-rsp+8<rsp = subst (λ n → n +ℕ 8 < rsp-after-push) (sym new-rsp≡0) 8<rsp
+        new-rsp≤rsp-after-push-rbp-raw : new-rsp ≤ rsp-after-push-rbp
+        new-rsp≤rsp-after-push-rbp-raw = m∸n≤m rsp-after-push-rbp 16
+        -- Convert to use old-rsp ∸ 16
+        new-rsp≤old-rsp∸16 : new-rsp ≤ old-rsp ∸ 16
+        new-rsp≤old-rsp∸16 = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 new-rsp≤rsp-after-push-rbp-raw
+        new-rsp≤rsp-after-push-rbp : readReg (regs s8) rsp ≤ readReg (regs s8) rbp
+        new-rsp≤rsp-after-push-rbp = subst₂ _≤_ (sym rsp-s8) (sym rbp8) new-rsp≤old-rsp∸16
 
-    -- s2 wrote old-rbp at rsp-after-push
-    mem-s2-at-rsp-after-push : readMem (memory s2) rsp-after-push ≡ just old-rbp
-    mem-s2-at-rsp-after-push = mem-read-write {memory s1} {rsp-after-push} {old-rbp}
-
-    -- s3, s4 don't write to memory
-    mem-s4-at-rsp-after-push : readMem (memory s4) rsp-after-push ≡ just old-rbp
-    mem-s4-at-rsp-after-push = mem-s2-at-rsp-after-push
-
-    -- s5 wrote at new-rsp, which ≢ rsp-after-push
-    mem-s5-at-rsp-after-push : readMem (memory s5) rsp-after-push ≡ just old-rbp
-    mem-s5-at-rsp-after-push = trans
-      (mem-read-other {memory s4} {new-rsp} {rsp-after-push} {readReg (regs s4) r12}
-                      (λ eq → new-rsp≢rsp-after-push eq))
-      mem-s4-at-rsp-after-push
-
-    -- s6 wrote at new-rsp + 8, which ≢ rsp-after-push
-    mem-s6-at-rsp-after-push : readMem (memory s6) rsp-after-push ≡ just old-rbp
-    mem-s6-at-rsp-after-push = trans
-      (mem-read-other {memory s5} {new-rsp +ℕ 8} {rsp-after-push} {readReg (regs s5) rdi}
-                      (λ eq → new-rsp+8≢rsp-after-push eq))
-      mem-s5-at-rsp-after-push
-
-    -- s7 doesn't write to memory
-    mem-s7-at-rsp-after-push : readMem (memory s7) rsp-after-push ≡ just old-rbp
-    mem-s7-at-rsp-after-push = mem-s6-at-rsp-after-push
-
-    -- RbpInvariant: new-rsp ≤ rsp-after-push
-    -- new-rsp = rsp-after-push - 16, so this follows from m∸n≤m
-    rbp-inv7 : RbpInvariant s7
-    rbp-inv7 = record { rsp≤rbp = new-rsp≤rsp-after-push }
-      where
-        new-rsp≤rsp-after-push-raw : new-rsp ≤ rsp-after-push
-        new-rsp≤rsp-after-push-raw = m∸n≤m rsp-after-push 16
-        new-rsp≤rsp-after-push : readReg (regs s7) rsp ≤ readReg (regs s7) rbp
-        new-rsp≤rsp-after-push = subst₂ _≤_ (sym rsp-s7) (sym rbp7) new-rsp≤rsp-after-push-raw
-
-    -- Finally, using rbp7: rbp s7 = rsp-after-push
-    mem-at-rbp7 : readMem (memory s7) (readReg (regs s7) rbp) ≡ just old-rbp
-    mem-at-rbp7 = subst (λ addr → readMem (memory s7) addr ≡ just old-rbp)
-                        (sym rbp7) mem-s7-at-rsp-after-push
+    -- Finally, using rbp8: rbp s8 = old-rsp ∸ 16
+    -- First convert mem-s8-at-rsp-after-push-rbp to use old-rsp ∸ 16
+    mem-s8-at-old-rsp∸16 : readMem (memory s8) (old-rsp ∸ 16) ≡ just old-rbp
+    mem-s8-at-old-rsp∸16 = subst (λ addr → readMem (memory s8) addr ≡ just old-rbp)
+                                  rsp-after-push-rbp≡old-rsp∸16 mem-s8-at-rsp-after-push-rbp
+    mem-at-rbp8 : readMem (memory s8) (readReg (regs s8) rbp) ≡ just old-rbp
+    mem-at-rbp8 = subst (λ addr → readMem (memory s8) addr ≡ just old-rbp)
+                        (sym rbp8) mem-s8-at-old-rsp∸16
 
     -- Memory at old-rsp is preserved through setup
-    -- s2 writes at rsp-after-push = old-rsp - 8 ≠ old-rsp
-    -- s5 writes at new-rsp = old-rsp - 24 ≠ old-rsp
-    -- s6 writes at new-rsp + 8 = old-rsp - 16 ≠ old-rsp
-    rsp-after-push≢old-rsp : rsp-after-push ≢ old-rsp
-    rsp-after-push≢old-rsp = ∸-neq old-rsp 8 (≤-trans 1≤17 rsp>16) 0<8
+    -- s2 writes at rsp-after-push-r15 = old-rsp - 8 ≠ old-rsp
+    -- s3 writes at rsp-after-push-rbp = old-rsp - 16 ≠ old-rsp
+    -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
+    -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
+    rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
+    rsp-after-push-r15≢old-rsp = ∸-neq old-rsp 8 (≤-trans 1≤17 rsp>16) 0<8
       where
         1≤17 : 1 ≤ 17
         1≤17 = s≤s z≤n
         0<8 : 0 < 8
         0<8 = s≤s z≤n
 
-    -- new-rsp ≤ rsp-after-push < old-rsp (when old-rsp > 16)
-    -- Case 1: rsp-after-push ≥ 16 → new-rsp = rsp-after-push - 16 < rsp-after-push < old-rsp
-    -- Case 2: rsp-after-push < 16 → new-rsp = 0, but old-rsp > 16 > 0
-    new-rsp≢old-rsp : new-rsp ≢ old-rsp
-    new-rsp≢old-rsp eq with 16 ≤? rsp-after-push
-    ... | yes 16≤ = <⇒≢-neq new-rsp<old-rsp eq
+    -- rsp-after-push-rbp = (old-rsp - 8) - 8 < old-rsp - 8 < old-rsp
+    rsp-after-push-rbp≢old-rsp : rsp-after-push-rbp ≢ old-rsp
+    rsp-after-push-rbp≢old-rsp eq = <⇒≢-neq rsp-after-push-rbp<old-rsp eq
       where
-        -- new-rsp = rsp-after-push - 16 < rsp-after-push (since 16 > 0 and 16 ≤ rsp-after-push)
-        new-rsp<rsp-after-push : new-rsp < rsp-after-push
-        new-rsp<rsp-after-push = ∸-monoʳ-< z<s 16≤
-        -- rsp-after-push = old-rsp - 8 < old-rsp (since 8 > 0 and 8 ≤ old-rsp)
+        open import Data.Nat.Properties using (∸-monoʳ-<)
+        -- rsp-after-push-rbp < rsp-after-push-r15 (since 8 > 0 and 8 ≤ rsp-after-push-r15)
+        -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
+        -- With o = 0, n = 8, m = rsp-after-push-r15
+        -- Gives: rsp-after-push-r15 ∸ 8 < rsp-after-push-r15 ∸ 0 = rsp-after-push-r15
+        8≤rsp-after-push-r15 : 8 ≤ rsp-after-push-r15
+        8≤rsp-after-push-r15 = ≤-trans 8≤9 9≤rsp-after-push-r15
+          where
+            8≤9 : 8 ≤ 9
+            8≤9 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        rsp-after-push-rbp<rsp-after-push-r15 : rsp-after-push-rbp < rsp-after-push-r15
+        rsp-after-push-rbp<rsp-after-push-r15 = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15
+        -- rsp-after-push-r15 < old-rsp (since 8 > 0 and 8 ≤ old-rsp)
         8≤old-rsp : 8 ≤ old-rsp
         8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
-        rsp-after-push<old-rsp : rsp-after-push < old-rsp
-        rsp-after-push<old-rsp = ∸-monoʳ-< z<s 8≤old-rsp
+        rsp-after-push-r15<old-rsp : rsp-after-push-r15 < old-rsp
+        rsp-after-push-r15<old-rsp = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp
+        rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
+        rsp-after-push-rbp<old-rsp = <-trans rsp-after-push-rbp<rsp-after-push-r15 rsp-after-push-r15<old-rsp
+
+    -- new-rsp ≤ rsp-after-push-rbp < old-rsp (when old-rsp > 16)
+    new-rsp≢old-rsp : new-rsp ≢ old-rsp
+    new-rsp≢old-rsp eq with 16 ≤? rsp-after-push-rbp
+    ... | yes 16≤ = <⇒≢-neq new-rsp<old-rsp eq
+      where
+        open import Data.Nat.Properties using (∸-monoʳ-<)
+        -- new-rsp = rsp-after-push-rbp - 16 < rsp-after-push-rbp (since 16 > 0 and 16 ≤ rsp-after-push-rbp)
+        new-rsp<rsp-after-push-rbp : new-rsp < rsp-after-push-rbp
+        new-rsp<rsp-after-push-rbp = ∸-monoʳ-< z<s 16≤
+        -- rsp-after-push-rbp = rsp-after-push-r15 - 8 < rsp-after-push-r15 < old-rsp
+        8≤rsp-after-push-r15' : 8 ≤ rsp-after-push-r15
+        8≤rsp-after-push-r15' = ≤-trans 8≤9' 9≤rsp-after-push-r15
+          where
+            8≤9' : 8 ≤ 9
+            8≤9' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        rsp-after-push-rbp<rsp-after-push-r15' : rsp-after-push-rbp < rsp-after-push-r15
+        rsp-after-push-rbp<rsp-after-push-r15' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15'
+        8≤old-rsp' : 8 ≤ old-rsp
+        8≤old-rsp' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+        rsp-after-push-r15<old-rsp' : rsp-after-push-r15 < old-rsp
+        rsp-after-push-r15<old-rsp' = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp'
+        rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
+        rsp-after-push-rbp<old-rsp = <-trans rsp-after-push-rbp<rsp-after-push-r15' rsp-after-push-r15<old-rsp'
         new-rsp<old-rsp : new-rsp < old-rsp
-        new-rsp<old-rsp = <-trans new-rsp<rsp-after-push rsp-after-push<old-rsp
+        new-rsp<old-rsp = <-trans new-rsp<rsp-after-push-rbp rsp-after-push-rbp<old-rsp
     ... | no ¬16≤ = 0≢old-rsp (trans (sym new-rsp≡0) eq)
       where
-        -- rsp-after-push < 16 → new-rsp = 0
-        rsp<16 : rsp-after-push < 16
+        -- rsp-after-push-rbp < 16 → new-rsp = 0
+        rsp<16 : rsp-after-push-rbp < 16
         rsp<16 = ≰⇒>-nat ¬16≤
         new-rsp≡0 : new-rsp ≡ 0
         new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
@@ -560,81 +645,219 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         0≢old-rsp : 0 ≢ old-rsp
         0≢old-rsp zeq = <⇒≢-neq old-rsp>0 zeq
 
-    -- new-rsp + 8 = (rsp-after-push - 16) + 8 < old-rsp
-    -- Since rsp-after-push = old-rsp - 8 < old-rsp (when old-rsp > 8)
-    -- and new-rsp + 8 ≤ rsp-after-push (either equals rsp-after-push - 8 or 8)
+    -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8 < old-rsp
     new-rsp+8≢old-rsp : new-rsp +ℕ 8 ≢ old-rsp
-    new-rsp+8≢old-rsp eq with 16 ≤? rsp-after-push
+    new-rsp+8≢old-rsp eq with 16 ≤? rsp-after-push-rbp
     ... | yes 16≤ = <⇒≢-neq new-rsp+8<old-rsp eq
       where
-        -- new-rsp + 8 = rsp-after-push - 16 + 8 = rsp-after-push - 8 < rsp-after-push < old-rsp
+        -- new-rsp + 8 = rsp-after-push-rbp - 16 + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp < old-rsp
         open import Data.Nat.Properties using (m∸n+n≡m)
         8<16 : 8 < 16
         8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        new-rsp+8<rsp-after-push+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
-        new-rsp+8<rsp-after-push+16 = +-monoʳ-< new-rsp 8<16
-        new-rsp+8<rsp-after-push : new-rsp +ℕ 8 < rsp-after-push
-        new-rsp+8<rsp-after-push = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤) new-rsp+8<rsp-after-push+16
-        8≤old-rsp : 8 ≤ old-rsp
-        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
-        rsp-after-push<old-rsp : rsp-after-push < old-rsp
-        rsp-after-push<old-rsp = ∸-monoʳ-< z<s 8≤old-rsp
+        new-rsp+8<rsp-after-push-rbp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
+        new-rsp+8<rsp-after-push-rbp+16 = +-monoʳ-< new-rsp 8<16
+        new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ 8 < rsp-after-push-rbp
+        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤) new-rsp+8<rsp-after-push-rbp+16
+        -- rsp-after-push-rbp = rsp-after-push-r15 - 8 < rsp-after-push-r15 < old-rsp
+        open import Data.Nat.Properties using (∸-monoʳ-<)
+        8≤rsp-after-push-r15'' : 8 ≤ rsp-after-push-r15
+        8≤rsp-after-push-r15'' = ≤-trans 8≤9'' 9≤rsp-after-push-r15
+          where
+            8≤9'' : 8 ≤ 9
+            8≤9'' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        rsp-after-push-rbp<rsp-after-push-r15'' : rsp-after-push-rbp < rsp-after-push-r15
+        rsp-after-push-rbp<rsp-after-push-r15'' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15''
+        8≤old-rsp'' : 8 ≤ old-rsp
+        8≤old-rsp'' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+        rsp-after-push-r15<old-rsp'' : rsp-after-push-r15 < old-rsp
+        rsp-after-push-r15<old-rsp'' = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp''
+        rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
+        rsp-after-push-rbp<old-rsp = <-trans rsp-after-push-rbp<rsp-after-push-r15'' rsp-after-push-r15<old-rsp''
         new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
-        new-rsp+8<old-rsp = <-trans new-rsp+8<rsp-after-push rsp-after-push<old-rsp
+        new-rsp+8<old-rsp = <-trans new-rsp+8<rsp-after-push-rbp rsp-after-push-rbp<old-rsp
     ... | no ¬16≤ = <⇒≢-neq new-rsp+8<old-rsp eq
       where
-        -- new-rsp = 0, so new-rsp + 8 = 8 < 9 ≤ rsp-after-push < old-rsp
-        rsp<16 : rsp-after-push < 16
+        -- new-rsp = 0, so new-rsp + 8 = 8 < old-rsp (since old-rsp > 16)
+        rsp<16 : rsp-after-push-rbp < 16
         rsp<16 = ≰⇒>-nat ¬16≤
         new-rsp≡0 : new-rsp ≡ 0
         new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
-        8<9 : 8 < 9
-        8<9 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        8<rsp-after-push : 8 < rsp-after-push
-        8<rsp-after-push = ≤-trans 8<9 9≤rsp-after-push
-        8≤old-rsp : 8 ≤ old-rsp
-        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
-        rsp-after-push<old-rsp : rsp-after-push < old-rsp
-        rsp-after-push<old-rsp = ∸-monoʳ-< z<s 8≤old-rsp
-        new-rsp+8<rsp-after-push : new-rsp +ℕ 8 < rsp-after-push
-        new-rsp+8<rsp-after-push = subst (λ n → n +ℕ 8 < rsp-after-push) (sym new-rsp≡0) 8<rsp-after-push
+        8<17 : 8 < 17
+        8<17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        8<old-rsp : 8 < old-rsp
+        8<old-rsp = ≤-trans 8<17 rsp>16
         new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
-        new-rsp+8<old-rsp = <-trans new-rsp+8<rsp-after-push rsp-after-push<old-rsp
+        new-rsp+8<old-rsp = subst (λ n → n +ℕ 8 < old-rsp) (sym new-rsp≡0) 8<old-rsp
 
-    -- s1 doesn't write memory
+    -- s1 doesn't write memory (label instruction)
     mem-s1-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
     mem-s1-old-rsp = refl
 
-    -- s2 writes at rsp-after-push ≠ old-rsp
+    -- s2 writes at rsp-after-push-r15 ≠ old-rsp
     mem-s2-old-rsp : readMem (memory s2) old-rsp ≡ readMem (memory s) old-rsp
-    mem-s2-old-rsp = mem-read-other {memory s1} {rsp-after-push} {old-rsp} {old-rbp}
-                       (λ eq → rsp-after-push≢old-rsp eq)
+    mem-s2-old-rsp = mem-read-other {memory s1} {rsp-after-push-r15} {old-rsp} {old-r15}
+                       (λ eq → rsp-after-push-r15≢old-rsp eq)
 
-    -- s3, s4 don't write memory
-    mem-s4-old-rsp : readMem (memory s4) old-rsp ≡ readMem (memory s) old-rsp
-    mem-s4-old-rsp = mem-s2-old-rsp
+    -- s3 writes at rsp-after-push-rbp ≠ old-rsp
+    mem-s3-old-rsp : readMem (memory s3) old-rsp ≡ readMem (memory s) old-rsp
+    mem-s3-old-rsp = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {old-rsp} {old-rbp}
+                             (λ eq → rsp-after-push-rbp≢old-rsp eq))
+                           mem-s2-old-rsp
 
-    -- s5 writes at new-rsp ≠ old-rsp
+    -- s4, s5 don't write memory
     mem-s5-old-rsp : readMem (memory s5) old-rsp ≡ readMem (memory s) old-rsp
-    mem-s5-old-rsp = trans (mem-read-other {memory s4} {new-rsp} {old-rsp} {readReg (regs s4) r12}
-                             (λ eq → new-rsp≢old-rsp eq))
-                           mem-s4-old-rsp
+    mem-s5-old-rsp = mem-s3-old-rsp
 
-    -- s6 writes at new-rsp + 8 ≠ old-rsp
+    -- s6 writes at new-rsp ≠ old-rsp
     mem-s6-old-rsp : readMem (memory s6) old-rsp ≡ readMem (memory s) old-rsp
-    mem-s6-old-rsp = trans (mem-read-other {memory s5} {new-rsp +ℕ 8} {old-rsp} {readReg (regs s5) rdi}
-                             (λ eq → new-rsp+8≢old-rsp eq))
+    mem-s6-old-rsp = trans (mem-read-other {memory s5} {new-rsp} {old-rsp} {readReg (regs s5) r12}
+                             (λ eq → new-rsp≢old-rsp eq))
                            mem-s5-old-rsp
 
-    -- s7 doesn't write memory
-    mem-old-rsp-preserved : readMem (memory s7) old-rsp ≡ readMem (memory s) old-rsp
-    mem-old-rsp-preserved = mem-s6-old-rsp
+    -- s7 writes at new-rsp + 8 ≠ old-rsp
+    mem-s7-old-rsp : readMem (memory s7) old-rsp ≡ readMem (memory s) old-rsp
+    mem-s7-old-rsp = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {old-rsp} {readReg (regs s6) rdi}
+                             (λ eq → new-rsp+8≢old-rsp eq))
+                           mem-s6-old-rsp
+
+    -- s8 doesn't write memory (mov rdi rsp only writes register)
+    mem-old-rsp-preserved : readMem (memory s8) old-rsp ≡ readMem (memory s) old-rsp
+    mem-old-rsp-preserved = mem-s7-old-rsp
+
+    -- Memory for r15 restoration: s2 wrote old-r15 at rsp-after-push-r15 = old-rsp - 8
+    -- This value is preserved through all subsequent writes
+    -- rsp-after-push-r15 = old-rsp - 8, rsp-after-push-rbp = rsp-after-push-r15 - 8
+    -- ∸-neq gives us: rsp-after-push-r15 ∸ 8 ≢ rsp-after-push-r15
+    -- We need to swap to get: rsp-after-push-r15 ≢ rsp-after-push-r15 ∸ 8 = rsp-after-push-rbp
+    rsp-after-push-r15≢rsp-after-push-rbp : rsp-after-push-r15 ≢ rsp-after-push-rbp
+    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-neq rsp-after-push-r15 8 rsp-after-push-r15>0 0<8)
+      where
+        open import Relation.Binary.PropositionalEquality using (≢-sym)
+        rsp-after-push-r15>0 : rsp-after-push-r15 > 0
+        rsp-after-push-r15>0 = ≤-trans (s≤s z≤n) 9≤rsp-after-push-r15
+        0<8 : 0 < 8
+        0<8 = s≤s z≤n
+
+    new-rsp≢rsp-after-push-r15 : new-rsp ≢ rsp-after-push-r15
+    new-rsp≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp<rsp-after-push-r15 eq
+      where
+        -- new-rsp = old-rsp - 32, rsp-after-push-r15 = old-rsp - 8
+        -- new-rsp < rsp-after-push-r15 (since 32 > 8)
+        new-rsp≤rsp-after-push-rbp : new-rsp ≤ rsp-after-push-rbp
+        new-rsp≤rsp-after-push-rbp = m∸n≤m rsp-after-push-rbp 16
+        rsp-after-push-rbp≤rsp-after-push-r15 : rsp-after-push-rbp ≤ rsp-after-push-r15
+        rsp-after-push-rbp≤rsp-after-push-r15 = m∸n≤m rsp-after-push-r15 8
+        new-rsp≤rsp-after-push-r15 : new-rsp ≤ rsp-after-push-r15
+        new-rsp≤rsp-after-push-r15 = ≤-trans new-rsp≤rsp-after-push-rbp rsp-after-push-rbp≤rsp-after-push-r15
+        -- new-rsp = rsp-after-push-rbp - 16 ≤ rsp-after-push-rbp < rsp-after-push-r15
+        -- Chain: new-rsp ≤ rsp-after-push-rbp < rsp-after-push-r15
+        open import Data.Nat.Properties using (∸-monoʳ-<)
+        8≤rsp-after-push-r15''' : 8 ≤ rsp-after-push-r15
+        8≤rsp-after-push-r15''' = ≤-trans 8≤9''' 9≤rsp-after-push-r15
+          where
+            8≤9''' : 8 ≤ 9
+            8≤9''' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        rsp-after-push-rbp<rsp-after-push-r15''' : rsp-after-push-rbp < rsp-after-push-r15
+        rsp-after-push-rbp<rsp-after-push-r15''' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15'''
+        new-rsp<rsp-after-push-r15 : new-rsp < rsp-after-push-r15
+        new-rsp<rsp-after-push-r15 = ≤-trans (s≤s new-rsp≤rsp-after-push-rbp) rsp-after-push-rbp<rsp-after-push-r15'''
+
+    new-rsp+8≢rsp-after-push-r15 : new-rsp +ℕ 8 ≢ rsp-after-push-r15
+    new-rsp+8≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp+8<rsp-after-push-r15 eq
+      where
+        -- new-rsp + 8 = old-rsp - 24, rsp-after-push-r15 = old-rsp - 8
+        -- For new-rsp + 8 < rsp-after-push-r15: old-rsp - 24 < old-rsp - 8 when old-rsp ≥ 24
+        new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ 8 < rsp-after-push-r15
+        new-rsp+8<rsp-after-push-r15 with 24 ≤? old-rsp
+        ... | yes 24≤ = subst (new-rsp +ℕ 8 <_) (sym rsp-r15-eq) new-rsp+8<rsp-after-push-r15'
+          where
+            open import Data.Nat.Properties using (m∸n+n≡m)
+            -- First show rsp-after-push-r15 = old-rsp - 8
+            -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
+            -- We need: (old-rsp - 16 - 16) + 8 < old-rsp - 8
+            -- Simplify: old-rsp - 32 + 8 < old-rsp - 8
+            -- When old-rsp ≥ 32: old-rsp - 24 < old-rsp - 8, which is 16 > 0, true
+            -- When old-rsp < 32 but ≥ 24: old-rsp - 24 ≥ 0, old-rsp - 8 ≥ 16, so 0..7 < 16+, true
+            16≤rsp-after-push-r15 : 16 ≤ rsp-after-push-r15
+            16≤rsp-after-push-r15 = ∸-monoˡ-≤ {24} {old-rsp} 8 24≤
+            rsp-r15-eq : old-rsp ∸ 8 ≡ rsp-after-push-r15
+            rsp-r15-eq = refl
+            8<16' : 8 < 16
+            8<16' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+            -- Show new-rsp + 8 < new-rsp + 16 = rsp-after-push-rbp (when 16 ≤ rsp-after-push-rbp)
+            -- Then show rsp-after-push-rbp < rsp-after-push-r15
+            -- Use the outer scope's 16≤rsp-after-push-rbp which handles the chained subtraction
+            16≤rsp-after-push-rbp''' : 16 ≤ rsp-after-push-rbp
+            16≤rsp-after-push-rbp''' = 16≤rsp-after-push-rbp
+            new-rsp+16≡rsp-after-push-rbp : new-rsp +ℕ 16 ≡ rsp-after-push-rbp
+            new-rsp+16≡rsp-after-push-rbp = m∸n+n≡m 16≤rsp-after-push-rbp'''
+            new-rsp+8<new-rsp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
+            new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16'
+            new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ 8 < rsp-after-push-rbp
+            new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ 8 <_) new-rsp+16≡rsp-after-push-rbp new-rsp+8<new-rsp+16
+            -- rsp-after-push-rbp = rsp-after-push-r15 ∸ 8, so need 8 ≤ rsp-after-push-r15
+            8≤rsp-after-push-r15'''' : 8 ≤ rsp-after-push-r15
+            8≤rsp-after-push-r15'''' = ≤-trans 8≤9'''' 9≤rsp-after-push-r15
+              where
+                8≤9'''' : 8 ≤ 9
+                8≤9'''' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+            rsp-after-push-rbp+8≡rsp-after-push-r15 : rsp-after-push-rbp +ℕ 8 ≡ rsp-after-push-r15
+            rsp-after-push-rbp+8≡rsp-after-push-r15 = m∸n+n≡m 8≤rsp-after-push-r15''''
+            0<8' : 0 < 8
+            0<8' = s≤s z≤n
+            rsp-after-push-rbp<rsp-after-push-r15 : rsp-after-push-rbp < rsp-after-push-r15
+            rsp-after-push-rbp<rsp-after-push-r15 = subst (rsp-after-push-rbp <_) rsp-after-push-rbp+8≡rsp-after-push-r15 (m<m+n rsp-after-push-rbp 0<8')
+            new-rsp+8<rsp-after-push-r15' : new-rsp +ℕ 8 < old-rsp ∸ 8
+            new-rsp+8<rsp-after-push-r15' = <-trans new-rsp+8<rsp-after-push-rbp rsp-after-push-rbp<rsp-after-push-r15
+        -- This case is unreachable since old-rsp > 40 implies 24 ≤ old-rsp
+        ... | no ¬24≤ = ⊥-elim (¬24≤ 24≤old-rsp)
+          where
+            open import Data.Empty using (⊥-elim)
+            24≤old-rsp : 24 ≤ old-rsp
+            24≤old-rsp = ≤-trans 24≤41 old-rsp>40
+              where
+                24≤41 : 24 ≤ 41
+                24≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+
+    -- Now prove r15 memory preservation
+    -- s2 wrote old-r15 at rsp-after-push-r15
+    mem-s2-at-rsp-after-push-r15 : readMem (memory s2) rsp-after-push-r15 ≡ just old-r15
+    mem-s2-at-rsp-after-push-r15 = mem-read-write {memory s1} {rsp-after-push-r15} {old-r15}
+
+    -- s3 wrote at rsp-after-push-rbp ≠ rsp-after-push-r15
+    mem-s3-at-rsp-after-push-r15 : readMem (memory s3) rsp-after-push-r15 ≡ just old-r15
+    mem-s3-at-rsp-after-push-r15 = trans
+      (mem-read-other {memory s2} {rsp-after-push-rbp} {rsp-after-push-r15} {old-rbp}
+                      (λ eq → rsp-after-push-r15≢rsp-after-push-rbp (sym eq)))
+      mem-s2-at-rsp-after-push-r15
+
+    -- s4, s5 don't write memory
+    mem-s5-at-rsp-after-push-r15 : readMem (memory s5) rsp-after-push-r15 ≡ just old-r15
+    mem-s5-at-rsp-after-push-r15 = mem-s3-at-rsp-after-push-r15
+
+    -- s6 wrote at new-rsp ≠ rsp-after-push-r15
+    mem-s6-at-rsp-after-push-r15 : readMem (memory s6) rsp-after-push-r15 ≡ just old-r15
+    mem-s6-at-rsp-after-push-r15 = trans
+      (mem-read-other {memory s5} {new-rsp} {rsp-after-push-r15} {readReg (regs s5) r12}
+                      (λ eq → new-rsp≢rsp-after-push-r15 eq))
+      mem-s5-at-rsp-after-push-r15
+
+    -- s7 wrote at new-rsp + 8 ≠ rsp-after-push-r15
+    mem-s7-at-rsp-after-push-r15 : readMem (memory s7) rsp-after-push-r15 ≡ just old-r15
+    mem-s7-at-rsp-after-push-r15 = trans
+      (mem-read-other {memory s6} {new-rsp +ℕ 8} {rsp-after-push-r15} {readReg (regs s6) rdi}
+                      (λ eq → new-rsp+8≢rsp-after-push-r15 eq))
+      mem-s6-at-rsp-after-push-r15
+
+    -- s8 doesn't write memory
+    mem-r15-preserved : readMem (memory s8) (old-rsp ∸ 8) ≡ just old-r15
+    mem-r15-preserved = mem-s7-at-rsp-after-push-r15
 
 -- Prove ret instruction tracing
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
-      ret-offset = length prefix +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup
+      ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- 6 closure + 8 thunk + len-f + 3 cleanup
   in
   halted s ≡ false →
   pc s ≡ ret-offset →
@@ -658,15 +881,20 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
 
     prog = prefix ++ compile-x86 (curry f) ++ suffix
     offset = length prefix
-    ret-offset = offset +ℕ 15 +ℕ compile-length f  -- 6 closure + 7 thunk + len-f + 2 cleanup
+    ret-offset = offset +ℕ 17 +ℕ compile-length f  -- 6 closure + 8 thunk + len-f + 3 cleanup
 
     -- The ret instruction is at ret-offset in curry
-    -- curry layout: [6 closure setup] [7 thunk setup] [compile-x86 f] [2 cleanup] [ret] [label end]
-    -- ret is at position 15 + len(f) within curry
+    -- curry layout: [6 closure setup] [8 thunk setup] [compile-x86 f] [3 cleanup] [ret] [label end]
+    -- ret is at position 17 + len(f) within curry
 
     -- Fetch the ret instruction (proven in ThunkStructure)
+    -- TS-fetch-ret gives: fetch prog (length prefix +ℕ (17 +ℕ compile-length f)) ≡ just ret
+    -- We need: fetch prog ((length prefix +ℕ 17) +ℕ compile-length f) ≡ just ret
+    -- These differ by associativity
     fetch-ret : fetch prog ret-offset ≡ just ret
-    fetch-ret = TS-fetch-ret f prefix suffix
+    fetch-ret = subst (λ n → fetch prog n ≡ just ret)
+                      (sym (+-assoc offset 17 (compile-length f)))
+                      (TS-fetch-ret f prefix suffix)
 
     -- State after ret: pc = ret-addr, rsp += 8
     old-rsp = readReg (regs s) rsp
