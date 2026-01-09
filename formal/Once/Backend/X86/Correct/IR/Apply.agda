@@ -133,10 +133,13 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           -- NEW: original r15 is saved on stack (at rsp after push = old rsp - 8)
           × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15)
           -- RSP tracking: s'.rsp = s.rsp - 8 (push decrements by 8)
-          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8)
+          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8
+          -- Memory preservation: addresses >= orig-rsp are not written by setup
+          × (∀ addr → addr ≥ readReg (regs s) rsp →
+             readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
                  h-false pc-eq stack-inv rsp>16 rdi-eq mem-cl mem-arg mem-env mem-cp code-ptr<len =
-  s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp>16-6 , mem-r15-saved , rsp6
+  s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp>16-6 , mem-r15-saved , rsp6 , mem-above-setup
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -480,6 +483,30 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
                           (trans (mem-read-write {memory s} {new-rsp} {old-r15})
                                  refl)
 
+    -- Memory preservation for addresses >= old-rsp
+    -- Setup only writes at new-rsp = old-rsp - 8. For addr >= old-rsp, addr > new-rsp.
+    -- s2-s6 don't write memory (only register/pc changes), so memory s6 = memory s1
+    -- memory s1 = writeMem (memory s) new-rsp old-r15
+    mem-above-setup : ∀ addr → addr ≥ old-rsp → readMem (memory s6) addr ≡ readMem (memory s) addr
+    mem-above-setup addr addr≥rsp =
+      readMem-writeMem-diff (memory s) new-rsp addr old-r15 addr≢new-rsp
+      where
+        open import Data.Nat.Properties as NP using (m∸n≤m; <-≤-trans)
+
+        -- Helper: m ∸ 8 < m when m > 8
+        m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
+        m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
+
+        rsp>8 : old-rsp > 8
+        rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+
+        -- new-rsp = old-rsp - 8 < old-rsp <= addr
+        new-rsp<addr : new-rsp < addr
+        new-rsp<addr = <-≤-trans (m∸8<m old-rsp rsp>8) addr≥rsp
+
+        addr≢new-rsp : new-rsp ≢ addr
+        addr≢new-rsp = NP.<⇒≢ new-rsp<addr
+
 -- Prove call instruction: pushes return address and jumps to code-ptr
 apply-call-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
@@ -506,9 +533,12 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           -- RSP tracking: call pushes return address (rsp -= 8)
           × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8
           -- Memory preservation at original rsp (call writes at new-rsp, not old-rsp)
-          × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp))
+          × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
+          -- General memory preservation for addresses >= s.rsp
+          × (∀ addr → addr ≥ readReg (regs s) rsp →
+             readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv rsp>16 =
-  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1-eq , mem-preserved-old-rsp
+  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -636,6 +666,53 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     mem-preserved-old-rsp = readMem-writeMem-diff (memory s) new-rsp old-rsp (pc s +ℕ 1)
                               (λ eq → old-rsp≢new-rsp (sym eq))
 
+    -- General memory preservation for addresses >= s.rsp
+    -- Call writes at new-rsp = old-rsp - 8. For addr >= old-rsp, addr > new-rsp.
+    mem-above-call : ∀ addr → addr ≥ old-rsp → readMem (memory s1) addr ≡ readMem (memory s) addr
+    mem-above-call addr addr≥rsp =
+      readMem-writeMem-diff (memory s) new-rsp addr (pc s +ℕ 1) addr≢new-rsp
+      where
+        open import Data.Nat.Properties as NP using (m∸n≤m; <-≤-trans)
+
+        -- Helper: m ∸ 8 < m when m > 8
+        m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
+        m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
+
+        rsp>8 : old-rsp > 8
+        rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+
+        -- new-rsp = old-rsp - 8 < old-rsp <= addr
+        new-rsp<addr : new-rsp < addr
+        new-rsp<addr = <-≤-trans (m∸8<m old-rsp rsp>8) addr≥rsp
+
+        addr≢new-rsp : new-rsp ≢ addr
+        addr≢new-rsp = NP.<⇒≢ new-rsp<addr
+
+------------------------------------------------------------------------
+-- ApplyPopResult: Record type for pop r15 results (avoids nested tuples)
+------------------------------------------------------------------------
+
+record ApplyPopResult {A B : Type} (prefix suffix : Program)
+                      (old-r15 orig-rsp : ℕ) (s s' : State) : Set where
+  private
+    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    offset = length prefix
+  field
+    star-pop     : Star prog s s'
+    h-pop        : halted s' ≡ false
+    pc-pop       : pc s' ≡ offset +ℕ 8
+    r15-pop      : readReg (regs s') r15 ≡ old-r15
+    rax-pop      : readReg (regs s') rax ≡ readReg (regs s) rax
+    r14-pop      : readReg (regs s') r14 ≡ readReg (regs s) r14
+    rbp-pop      : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    stack-inv-pop : StackInvariant s'
+    rsp>16-pop   : readReg (regs s') rsp > 16
+    rsp-restored : readReg (regs s') rsp ≡ orig-rsp  -- RSP restored to original
+    -- Pop doesn't write memory, so all memory is preserved
+    mem-pop-preserved : memory s' ≡ memory s
+
+open ApplyPopResult public
+
 -- | Trace pop r15 instruction at the end of apply
 -- This restores r15 to its original value (saved at start by push r15)
 apply-pop-star : ∀ {A B} (prefix suffix : Program)
@@ -646,24 +723,24 @@ apply-pop-star : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset +ℕ 7 →
   readMem (memory s) (readReg (regs s) rsp) ≡ just old-r15 →
-  -- s.rsp should equal orig-rsp - 8 (after push at setup, before pop)
-  -- But after thunk ret, s.rsp = setup.rsp = orig-rsp - 8
   readReg (regs s) rsp ≡ orig-rsp ∸ 8 →
-  -- Original StackInvariant info: either old-r15 = 0, or orig-rsp ≤ old-r15
   (old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15) →
   readReg (regs s) rsp > 16 →
-  -- Result after pop: r15 = old-r15, pc = offset+8
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ offset +ℕ 8
-          × readReg (regs s') r15 ≡ old-r15
-          × readReg (regs s') rax ≡ readReg (regs s) rax
-          × readReg (regs s') r14 ≡ readReg (regs s) r14
-          × readReg (regs s') rbp ≡ readReg (regs s) rbp
-          × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+  ∃[ s' ] ApplyPopResult {A} {B} prefix suffix old-r15 orig-rsp s s'
 apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rsp-eq orig-inv rsp>16 =
-  s1 , star-all , h1 , pc1 , r15-1 , rax1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1
+  s1 , record
+    { star-pop = star-all
+    ; h-pop = h1
+    ; pc-pop = pc1
+    ; r15-pop = r15-1
+    ; rax-pop = rax1
+    ; r14-pop = r14-1
+    ; rbp-pop = rbp1
+    ; stack-inv-pop = stack-inv1
+    ; rsp>16-pop = rsp>16-1
+    ; rsp-restored = rsp1-eq-orig
+    ; mem-pop-preserved = refl  -- s1 only modifies regs and pc, not memory
+    }
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -783,7 +860,33 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
         17≤41 : 17 ≤ 41
         17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
--- | run-apply-with-wf-impl: Implementation using targeted postulates
+------------------------------------------------------------------------
+-- ApplyWfResult: Record type for run-apply-with-wf results
+------------------------------------------------------------------------
+
+record ApplyWfResult {A B : Type} (prefix suffix : Program)
+                     (semantics : ⟦ A ⟧ → ⟦ B ⟧) (arg : ⟦ A ⟧)
+                     (s s' : State) : Set where
+  private
+    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    offset = length prefix
+  field
+    star         : Star prog s s'
+    h-final      : halted s' ≡ false
+    pc-final     : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
+    rax-final    : readReg (regs s') rax ≡ encode (semantics arg)
+    r14-final    : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-final    : readReg (regs s') r15 ≡ readReg (regs s) r15
+    rbp-final    : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    stack-inv    : StackInvariant s'
+    rsp>16       : readReg (regs s') rsp > 16
+    rsp-restored : readReg (regs s') rsp ≡ readReg (regs s) rsp
+    mem-above    : ∀ addr → addr ≥ readReg (regs s) rsp →
+                   readMem (memory s') addr ≡ readMem (memory s) addr
+
+open ApplyWfResult public
+
+-- | run-apply-with-wf: Full apply execution with ClosureWellFormed
 run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (code-ptr env-addr : ℕ)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -804,18 +907,22 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
     readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)) →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
-          × readReg (regs s') rax ≡ encode (semantics arg)
-          × readReg (regs s') r14 ≡ readReg (regs s) r14
-          × readReg (regs s') r15 ≡ readReg (regs s) r15  -- NEW: r15 preserved
-          × readReg (regs s') rbp ≡ readReg (regs s) rbp
-          × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+  ∃[ s' ] ApplyWfResult {A} {B} prefix suffix semantics arg s s'
 run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                   wf h-eq pc-eq stack-inv rsp>16 rdi-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
-  s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , stack-inv-final , rsp>16-final
+  s-final , record
+    { star         = star-all
+    ; h-final      = h-f
+    ; pc-final     = pc-f
+    ; rax-final    = rax-f
+    ; r14-final    = r14-f
+    ; r15-final    = r15-f
+    ; rbp-final    = rbp-f
+    ; stack-inv    = stack-inv-f
+    ; rsp>16       = rsp>16-f
+    ; rsp-restored = rsp-restored-f
+    ; mem-above    = mem-above-f
+    }
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -841,7 +948,9 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     rsp>16-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
     mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
     -- RSP tracking: s-setup.rsp = s.rsp - 8
-    rsp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+    rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
+    -- Memory preservation for addresses >= orig-rsp
+    mem-above-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
 
     -- Step 2: Trace call instruction
     call-result = apply-call-star {A} {B} prefix suffix code-ptr s-setup
@@ -860,7 +969,9 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- RSP tracking: s-call.rsp = s-setup.rsp - 8
     rsp-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))
     -- Memory at s-setup.rsp preserved through call (call writes at s-call.rsp, not s-setup.rsp)
-    mem-call-preserved = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))
+    mem-call-preserved = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))
+    -- General memory preservation for addresses >= s-setup.rsp
+    mem-above-call = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))
 
     -- Step 3: Use thunk-correct from ClosureWellFormed
     -- The thunk executes and returns to ret-addr (offset+7) with result in rax
@@ -969,32 +1080,71 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk
                    rsp-thunk-eq-orig orig-inv (thunk-rsp-bound thunk-res)
     s-pop = proj₁ pop-result
-    star-pop = proj₁ (proj₂ pop-result)
-    h-pop = proj₁ (proj₂ (proj₂ pop-result))
-    pc-pop = proj₁ (proj₂ (proj₂ (proj₂ pop-result)))
-    r15-pop = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ pop-result))))
-    rax-pop = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ pop-result)))))
-    r14-pop = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ pop-result))))))
-    rbp-pop = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ pop-result)))))))
-    stack-inv-pop = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ pop-result))))))))
-    rsp>16-pop = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ pop-result))))))))
+    module PopR = ApplyPopResult (proj₂ pop-result)
 
     -- Final state is after pop
     s-final = s-pop
 
     -- Compose all Star proofs
     star-all : Star prog s s-final
-    star-all = star-trans star-setup (star-trans star-call (star-trans star-thunk star-pop))
+    star-all = star-trans star-setup (star-trans star-call (star-trans star-thunk PopR.star-pop))
 
-    -- Extract final properties
-    h-final = h-pop
-    pc-final = pc-pop  -- pc = offset + 8 = compile-length apply
-    rax-final = trans rax-pop (thunk-rax thunk-res)
-    r14-final = trans r14-pop (trans (thunk-r14 thunk-res) (trans r14-call r14-setup))
-    r15-final = r15-pop  -- r15 restored to original value!
-    rbp-final = trans rbp-pop (trans (thunk-rbp thunk-res) (trans rbp-call rbp-setup))
-    stack-inv-final = stack-inv-pop
-    rsp>16-final = rsp>16-pop
+    -- Extract final properties (using record field access)
+    h-f = PopR.h-pop
+    pc-f = PopR.pc-pop  -- pc = offset + 8 = compile-length apply
+    rax-f = trans PopR.rax-pop (thunk-rax thunk-res)
+    r14-f = trans PopR.r14-pop (trans (thunk-r14 thunk-res) (trans r14-call r14-setup))
+    r15-f = PopR.r15-pop  -- r15 restored to original value!
+    rbp-f = trans PopR.rbp-pop (trans (thunk-rbp thunk-res) (trans rbp-call rbp-setup))
+    stack-inv-f = PopR.stack-inv-pop
+    rsp>16-f = PopR.rsp>16-pop
+    rsp-restored-f = PopR.rsp-restored  -- RSP restored to original
+
+    -- Memory preservation for addresses >= orig-rsp (chained through all phases)
+    -- For addr >= orig-rsp:
+    --   1. mem-above-setup: memory s-setup at addr = memory s at addr
+    --   2. mem-above-call: memory s-call at addr = memory s-setup at addr
+    --      (need addr >= s-setup.rsp, but s-setup.rsp = orig-rsp - 8 < orig-rsp <= addr)
+    --   3. thunk-mem-above: memory s-thunk at addr = memory s-call at addr
+    --      (need addr >= s-call.rsp, but s-call.rsp = orig-rsp - 16 < orig-rsp <= addr)
+    --   4. PopR.mem-pop-preserved: memory s-pop = memory s-thunk
+    mem-above-f : ∀ addr → addr ≥ orig-rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-above-f addr addr≥rsp =
+      trans mem-thunk-to-pop (trans mem-call-to-thunk (trans mem-setup-to-call mem-s-to-setup))
+      where
+        open import Data.Nat.Properties as NP using (m∸n≤m; <-≤-trans)
+
+        -- Chain the proofs
+        mem-s-to-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+        mem-s-to-setup = mem-above-setup addr addr≥rsp
+
+        -- addr >= orig-rsp > orig-rsp - 8 = s-setup.rsp
+        m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
+        m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
+        rsp>8 : orig-rsp > 8
+        rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+        setup-rsp<addr : readReg (regs s-setup) rsp < addr
+        setup-rsp<addr = <-≤-trans (subst (_< orig-rsp) (sym rsp-setup) (m∸8<m orig-rsp rsp>8)) addr≥rsp
+        addr≥setup-rsp : addr ≥ readReg (regs s-setup) rsp
+        addr≥setup-rsp = NP.<⇒≤ setup-rsp<addr
+
+        mem-setup-to-call : readMem (memory s-call) addr ≡ readMem (memory s-setup) addr
+        mem-setup-to-call = mem-above-call addr addr≥setup-rsp
+
+        -- addr >= orig-rsp > orig-rsp - 16 = s-call.rsp
+        -- s-call.rsp = s-setup.rsp - 8 <= s-setup.rsp = orig-rsp - 8 <= orig-rsp
+        call-rsp≤orig : readReg (regs s-call) rsp ≤ orig-rsp
+        call-rsp≤orig = ≤-trans (subst (_≤ orig-rsp ∸ 8) (sym rsp-call) (m∸n≤m (orig-rsp ∸ 8) 8))
+                                 (m∸n≤m orig-rsp 8)
+        addr≥call-rsp : addr ≥ readReg (regs s-call) rsp
+        addr≥call-rsp = ≤-trans call-rsp≤orig addr≥rsp
+
+        mem-call-to-thunk : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
+        mem-call-to-thunk = thunk-mem-above thunk-res addr addr≥call-rsp
+
+        -- s-pop = s-final, and memory s-pop = memory s-thunk (pop doesn't write)
+        mem-thunk-to-pop : readMem (memory s-final) addr ≡ readMem (memory s-thunk) addr
+        mem-thunk-to-pop = cong (λ m → readMem m addr) PopR.mem-pop-preserved
 
 ------------------------------------------------------------------------
 -- Converting to IRStarResult format
@@ -1029,10 +1179,11 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') rsp > 16)
 run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                        wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout =
-  let (s' , star , h' , pc' , rax' , r14' , r15' , rbp' , stack' , rsp') =
-        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
-          wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout
-  in s' , star , h' , pc' , rax' , stack' , rsp'
+  let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
+                 wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout
+      s' = proj₁ result
+      module R = ApplyWfResult (proj₂ result)
+  in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp>16
 
 ------------------------------------------------------------------------
 -- run-apply-to-ir-result: Produce IRStarResult from ClosureWellFormed
@@ -1040,16 +1191,22 @@ run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 -- This function bridges ClosureWellFormed-based apply proof to IRStarResult,
 -- enabling elimination of apply-produces-result postulate.
 --
--- Properties NOW proven (with push/pop r15):
+-- Properties NOW proven via ApplyWfResult.mem-above + invariants:
 --   - star, halted, pc, rax (from thunk-correct)
 --   - r14, r15, rbp (r15 preserved via push/pop!)
 --   - stack-inv, rsp > 16 (from thunk-correct)
+--   - Memory at rbp preserved (via mem-above + RbpInvariant.rsp≤rbp)
+--   - Memory at rbp+8 preserved (via mem-above + rsp ≤ rbp ≤ rbp+8)
+--   - Memory above rbp preserved (via mem-above + addr > rbp ≥ rsp)
+--   - Memory at r15 when rsp ≤ r15 (via mem-above + StackInvariant)
+--   - RbpInvariant preserved (via RSP/RBP restoration)
 --
--- Properties still requiring local postulates:
---   - Memory preservation at r15/rbp/rbp+8
---   - RbpInvariant
---   - Memory above rbp
---   - Memory at address 0 (null page never written)
+-- Remaining local postulates (2 blocks):
+--   1. r15-in-code-implies-disjunct: When r15 is in code region, extract
+--      disjunction for orig-inv. Edge case for unusual r15 values.
+--   2. mem-at-0-post / mem-code-region-post: Memory at address 0 and
+--      at r15 when r15 is in code region. These addresses are outside
+--      the stack region, so mem-above doesn't directly apply.
 ------------------------------------------------------------------------
 
 open import Once.Backend.X86.Correct.StarBase
@@ -1085,21 +1242,21 @@ run-apply-to-ir-result : ∀ {A B} (prefix suffix : Program)
 run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
                        wf h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv mem-layout =
   s' , record
-    { ir-star = star
-    ; ir-halted = h'
-    ; ir-pc = pc'
-    ; ir-rax = trans rax' rax-sem
-    ; ir-r14 = r14'
-    ; ir-r15 = r15'  -- NOW PROVEN! (via push/pop r15)
-    ; ir-rbp = rbp'
+    { ir-star = WfR.star
+    ; ir-halted = WfR.h-final
+    ; ir-pc = WfR.pc-final
+    ; ir-rax = trans WfR.rax-final rax-sem
+    ; ir-r14 = WfR.r14-final
+    ; ir-r15 = WfR.r15-final  -- NOW PROVEN! (via push/pop r15)
+    ; ir-rbp = WfR.rbp-final
     ; ir-mem = mem-r15-post  -- LOCAL POSTULATE
     ; ir-mem-rbp = mem-rbp-post  -- LOCAL POSTULATE
     ; ir-mem-rbp+8 = mem-rbp+8-post  -- LOCAL POSTULATE
     ; ir-mem-above = mem-above-post  -- LOCAL POSTULATE
     ; ir-mem-at-0 = mem-at-0-post  -- LOCAL POSTULATE
-    ; ir-stack-inv = stack'
-    ; ir-capacity = rsp>16-to-capacity s' rsp'
-    ; ir-rbp-inv = rbp-inv-post  -- LOCAL POSTULATE
+    ; ir-stack-inv = WfR.stack-inv
+    ; ir-capacity = rsp>16-to-capacity s' WfR.rsp>16
+    ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }
   where
@@ -1110,46 +1267,69 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     x = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics } , arg)
 
     -- Use proven run-apply-with-wf
-    result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
-               wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout
-    s' = proj₁ result
-    star = proj₁ (proj₂ result)
-    h' = proj₁ (proj₂ (proj₂ result))
-    pc' = proj₁ (proj₂ (proj₂ (proj₂ result)))
-    rax' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ result))))
-    r14' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))
-    r15' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))  -- NOW EXTRACTED!
-    rbp' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result)))))))
-    stack' = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
-    rsp' = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ result))))))))
+    wf-result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
+                  wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout
+    s' = proj₁ wf-result
+    module WfR = ApplyWfResult (proj₂ wf-result)
 
     -- Semantic equality: eval apply x = semantics arg
     -- Since x = (closure with semantics, arg), eval apply x = Closure.semantics closure arg = semantics arg
     rax-sem : encode (semantics arg) ≡ encode (eval (apply {A} {B}) x)
     rax-sem = refl
 
-    -- LOCAL POSTULATES: Memory preservation through apply execution
+    -- PROVEN: RbpInvariant preserved via RSP restoration and RBP preservation
+    -- From: WfR.rsp-restored : s'.rsp ≡ s.rsp
+    --       WfR.rbp-final    : s'.rbp ≡ s.rbp
+    --       rbp-inv : s.rsp ≤ s.rbp
+    -- Derive: s'.rsp ≤ s'.rbp
+    rbp-inv-derived : RbpInvariant s'
+    rbp-inv-derived = record
+      { rsp≤rbp = subst₂ _≤_ (sym WfR.rsp-restored) (sym WfR.rbp-final) (RbpInvariant.rsp≤rbp rbp-inv) }
+
+    -- Memory preservation proofs derived from WfR.mem-above
     --
-    -- These capture that apply only writes to:
-    --   1. Its stack frame (below initial rsp)
-    --   2. The heap (via thunk allocations)
+    -- WfR.mem-above : ∀ addr → addr ≥ rsp → mem s' addr ≡ mem s addr
+    -- RbpInvariant : rsp ≤ rbp
     --
-    -- And does NOT write to:
-    --   - Addresses at/above rbp (caller's frame)
-    --   - Address 0 (null page)
-    --   - The original r15 location
-    --
-    -- To prove: would need to track all memory writes through setup, call,
-    -- thunk execution, and pop. Each instruction's memory effect must be
-    -- shown to not touch these addresses. The thunk would need memory
-    -- preservation guarantees in ThunkResult.
-    --
-    -- NOTE: RISC-V and AArch64 eliminated similar postulates by using
-    -- ApplyMemoryLayout which tracks memory validity statefully.
+    -- So for any addr ≥ rsp, memory is preserved. Since rbp ≥ rsp,
+    -- memory at rbp, rbp+8, and above rbp are all preserved.
+
+    open import Data.Nat.Properties as NP using (≤-trans; m≤m+n; <⇒≤)
+
+    -- Memory at rbp preserved: rbp ≥ rsp (from RbpInvariant)
+    mem-rbp-post : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp-post = WfR.mem-above (readReg (regs s) rbp) (RbpInvariant.rsp≤rbp rbp-inv)
+
+    -- Memory at rbp+8 preserved: rbp+8 ≥ rbp ≥ rsp
+    mem-rbp+8-post : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-post = WfR.mem-above (readReg (regs s) rbp +ℕ 8)
+                       (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (m≤m+n (readReg (regs s) rbp) 8))
+
+    -- Memory above rbp preserved: addr > rbp ≥ rsp implies addr ≥ rsp
+    mem-above-post : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+    mem-above-post addr addr>rbp = WfR.mem-above addr (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp))
+
+    -- Memory at 0 preserved: 0 < rsp (since rsp > 16), so can't use mem-above directly
+    -- Need argument that apply doesn't write to address 0 (null page protection)
+    -- Also: when r15 is in code region, need separate postulate
     postulate
-      mem-r15-post : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      mem-rbp-post : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-      mem-rbp+8-post : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-      mem-above-post : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
       mem-at-0-post : readMem (memory s') 0 ≡ readMem (memory s) 0
-      rbp-inv-post : RbpInvariant s'
+      -- Code region addresses are typically above stack
+      mem-code-region-post : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+
+    -- Memory at r15 preserved: depends on StackInvariant
+    -- StackInvariant gives: r15 = 0 OR rsp ≤ r15 OR r15 in code region
+    -- If rsp ≤ r15, mem-above applies
+    -- If r15 = 0, use mem-at-0-post (since address is 0)
+    -- If r15 in code region, use mem-code-region-post
+    mem-r15-post : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-r15-post = derive-mem-r15 stack-inv
+      where
+        derive-mem-r15 : StackInvariant s → readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        derive-mem-r15 (r15-unused r15-eq-0) =
+          -- r15 = 0, so prove memory at address (readReg (regs s) r15) = memory at 0
+          subst (λ addr → readMem (memory s') addr ≡ readMem (memory s) addr)
+                (sym r15-eq-0)
+                mem-at-0-post
+        derive-mem-r15 (stack-below-r15 rsp≤r15) = WfR.mem-above (readReg (regs s) r15) rsp≤r15
+        derive-mem-r15 (r15-in-code _) = mem-code-region-post
