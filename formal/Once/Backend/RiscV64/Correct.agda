@@ -63,9 +63,9 @@ open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.StarBase
   using (IRStarResult; ir-star; ir-halted; ir-pc; ir-a0; ir-s1)
 
--- Import MutualIR for run-ir-star-at-offset
+-- Import MutualIR for run-ir-star-at-offset and InputValid
 open import Once.Backend.RiscV64.Correct.MutualIR
-  using (run-ir-star-at-offset)
+  using (run-ir-star-at-offset; InputValid)
 
 ------------------------------------------------------------------------
 -- Star-based correctness: star-generator (fuel-free)
@@ -88,14 +88,15 @@ star-generator : ∀ {i A B} (ir : IR i A B) (x : ⟦ A ⟧) (s : State) →
   pc s ≡ 0 →
   readReg (regs s) a0 ≡ encode x →
   StackDepth ir ≤ readReg (regs s) sp →
+  InputValid A x (memory s) →
   let prog = compile-riscv ir
   in ∃[ s' ] (Star prog s s'
          × halted s' ≡ true
          × readReg (regs s') a0 ≡ encode (eval ir x))
-star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-halt-converted , refl , a0-eq'
+star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound input-valid = s'' , star-with-halt-converted , refl , a0-eq'
   where
     -- Step 1: Get Star-based result from MutualIR (whole program: empty prefix/suffix)
-    star-result = run-ir-star-at-offset ir [] [] x s h-false pc-0 a0-eq sp-bound
+    star-result = run-ir-star-at-offset ir [] [] x s h-false pc-0 a0-eq sp-bound input-valid
     s' = proj₁ star-result
     result = proj₂ star-result
     prog = compile-riscv ir ++ []  -- Matches the program constructed by run-ir-star-at-offset
@@ -150,13 +151,14 @@ star-generator {_} {A} {B} ir x s h-false pc-0 a0-eq sp-bound = s'' , star-with-
 --       proof = star-codegen-correct ir stackSize x (auto-prove stackSize ≥ StackDepth ir)
 --   in ...
 star-codegen-correct : ∀ {i A B} (ir : IR i A B) (stackSize : ℕ) (x : ⟦ A ⟧) →
-  StackDepth ir ≤ stackSize →  -- Explicit precondition
+  StackDepth ir ≤ stackSize →  -- Explicit precondition: sufficient stack space
+  InputValid A x (memory (initWithInput stackSize x)) →  -- Input memory validity
   ∃[ s ] (Star (compile-riscv ir) (initWithInput stackSize x) s
         × halted s ≡ true
         × readReg (regs s) a0 ≡ encode (eval ir x))
-star-codegen-correct ir stackSize x sp-bound =
+star-codegen-correct ir stackSize x sp-bound input-valid =
   star-generator ir x (initWithInput stackSize x)
-    (initWithInput-halted stackSize x) (initWithInput-pc stackSize x) (initWithInput-a0 stackSize x) (initWithInput-sp-sufficient ir stackSize x sp-bound)
+    (initWithInput-halted stackSize x) (initWithInput-pc stackSize x) (initWithInput-a0 stackSize x) (initWithInput-sp-sufficient ir stackSize x sp-bound) input-valid
 
 ------------------------------------------------------------------------
 -- Example: star-id-correct
@@ -180,11 +182,12 @@ star-codegen-correct ir stackSize x sp-bound =
 
 star-id-correct : ∀ {i A} (stackSize : ℕ) (x : ⟦ A ⟧) →
   StackDepth (id {i} {A}) ≤ stackSize →
+  InputValid A x (memory (initWithInput stackSize x)) →
   ∃[ s ] (Star (compile-riscv (id {i} {A})) (initWithInput stackSize x) s
         × halted s ≡ true
         × readReg (regs s) a0 ≡ encode x)
-star-id-correct {i} {A} stackSize x sp-bound =
-  star-codegen-correct (id {i} {A}) stackSize x sp-bound
+star-id-correct {i} {A} stackSize x sp-bound input-valid =
+  star-codegen-correct (id {i} {A}) stackSize x sp-bound input-valid
 
 ------------------------------------------------------------------------
 -- Whole-Program Curry/Apply Verification
@@ -226,10 +229,11 @@ star-id-correct {i} {A} stackSize x sp-bound =
 
 -- | Test: Curry + Apply composed
 -- IR: apply ∘ ⟨curry fst, id⟩
--- NOTE: This test now requires explicit stack parameter
+-- NOTE: This test now requires explicit stack parameter and InputValid
 test-curry-apply : ∀ {A} (stackSize : ℕ) (a : ⟦ A ⟧) →
   StackDepth (apply ∘ ⟨ curry fst , id {_} {A} ⟩) ≤ stackSize →
+  InputValid A a (memory (initWithInput stackSize a)) →
   ∃[ s ] (Star (compile-riscv (apply ∘ ⟨ curry fst , id {_} {A} ⟩)) (initWithInput stackSize a) s
         × halted s ≡ true
         × readReg (regs s) a0 ≡ encode (eval (apply ∘ ⟨ curry fst , id {_} {A} ⟩) a))
-test-curry-apply {A} stackSize a sp-bound = star-codegen-correct (apply ∘ ⟨ curry fst , id {_} {A} ⟩) stackSize a sp-bound
+test-curry-apply {A} stackSize a sp-bound input-valid = star-codegen-correct (apply ∘ ⟨ curry fst , id {_} {A} ⟩) stackSize a sp-bound input-valid

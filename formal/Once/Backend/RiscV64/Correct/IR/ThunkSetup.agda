@@ -74,19 +74,23 @@ thunk-setup-star-proven : ∀ {i A B C} (f : IR i (A * B) C)
   pc s ≡ thunk-offset →
   readReg (regs s) a0 ≡ encode arg →
   readReg (regs s) s0 ≡ encode env →
-  ∃[ s' ] (Star prog s s'
+  let new-sp = readReg (regs s) sp ∸ 24
+  in ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ f-offset
           × readReg (regs s') a0 ≡ encode (env , arg)
           × readReg (regs s') s1 ≡ readReg (regs s) s1
           × readReg (regs s') ra ≡ readReg (regs s) ra
-          × readReg (regs s') s2 ≡ readReg (regs s) sp ∸ 24  -- s2 = frame pointer
-          × readReg (regs s') sp ≡ readReg (regs s) sp ∸ 24  -- sp = new-sp
-          × readMem (memory s') (readReg (regs s) sp ∸ 24 +ℕ 16) ≡ just (readReg (regs s) s2))  -- saved s2
+          × readReg (regs s') s2 ≡ new-sp  -- s2 = frame pointer
+          × readReg (regs s') sp ≡ new-sp  -- sp = new-sp
+          × readMem (memory s') (new-sp +ℕ 16) ≡ just (readReg (regs s) s2)  -- saved s2
+          -- Pair memory layout for InputValid:
+          × readMem (memory s') new-sp ≡ just (encode env)          -- fst of pair
+          × readMem (memory s') (new-sp +ℕ 8) ≡ just (encode arg))  -- snd of pair
 
 thunk-setup-star-proven {A} {B} {C} f prefix suffix env arg s
                         h-false pc-eq a0-eq s0-eq =
-  st7 , star-all , h7 , pc7 , a0-final , s1-final , ra-final , s2-final , sp-final , mem-s2-saved
+  st7 , star-all , h7 , pc7 , a0-final , s1-final , ra-final , s2-final , sp-final , mem-s2-saved , mem-at-new-sp-st7 , mem-at-new-sp+8-st7
   where
     len-f = compile-length f
     prog = prefix ++ compile-riscv (curry f) ++ suffix

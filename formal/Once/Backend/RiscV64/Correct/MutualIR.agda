@@ -59,7 +59,7 @@ open import Once.Backend.RiscV64.Correct.StarBase public
 
 -- Import memory validity predicates
 open import Once.Backend.RiscV64.Correct.MemoryValid
-  using (PairAt; fst-valid; snd-valid; InlAt; InrAt)
+  using (PairAt; pair-at; fst-valid; snd-valid; InlAt; InrAt)
 
 -- Import extracted compose helpers
 open import Once.Backend.RiscV64.Correct.IR.Compose
@@ -320,6 +320,24 @@ thunk-offset-in-bounds {i} {A} {B} {C} f prefix suffix = goal
     goal : length prefix +ℕ thunk-entry-offset < length (prefix ++ compile-riscv (curry f) ++ suffix)
     goal = subst (length prefix +ℕ thunk-entry-offset <_) (trans step2 (trans step3 step4)) step1
 
+------------------------------------------------------------------------
+-- InputValid: Memory validity predicate for input values
+--
+-- Captures what validity proof is needed for each input type:
+-- - Pairs need PairAt (for fst/snd to read from memory)
+-- - Sums need InlAt/InrAt (for case to read the tag)
+-- - Other types don't read from memory, so trivially valid (⊤)
+------------------------------------------------------------------------
+
+-- | InputValid A x m: memory m has valid encoding for value x of type A
+-- Only pairs and sums need actual validity proofs; other types trivially valid.
+InputValid : (A : Type) → ⟦ A ⟧ → Memory → Set
+InputValid (A * B) x m = PairAt (proj₁ x) (proj₂ x) (encode x) m
+InputValid (A + B) (inj₁ a) m = InlAt {A} {B} a (encode {A + B} (inj₁ a)) m
+InputValid (A + B) (inj₂ b) m = InrAt {A} {B} b (encode {A + B} (inj₂ b)) m
+InputValid Void () _  -- Void has no inhabitants (absurd pattern)
+InputValid _ _ _ = ⊤  -- All other types: trivially valid
+
 -- Main mutual block: run-ir-star-at-offset
 --
 -- This builds Star proofs using star-single and star-trans.
@@ -330,67 +348,70 @@ mutual
   -- | Star-based IR execution at arbitrary offset (sized for termination)
   -- Stack-space precondition: 24 ≤ sp ensures enough stack for all IR nodes
   -- StackDepth ir ≤ sp ensures sufficient stack space for ir and all nested operations
+  -- InputValid A x (memory s) ensures memory validity for fst/snd/case operations
   -- Size parameter i enables termination checking across module boundaries
   run-ir-star-at-offset : ∀ {i A B} (ir : IR i A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) a0 ≡ encode x →
     StackDepth ir ≤ readReg (regs s) sp →
+    InputValid A x (memory s) →
     let prog = prefix ++ compile-riscv ir ++ suffix
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
-  -- Base cases: delegate to StarBase functions (don't need stack-space)
-  run-ir-star-at-offset id prefix suffix x s h-false pc-eq a0-eq _ =
+  -- Base cases: delegate to StarBase functions (don't need stack-space or validity)
+  run-ir-star-at-offset id prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-id-star prefix suffix x s h-false pc-eq a0-eq
-  run-ir-star-at-offset terminal prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset terminal prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-terminal-star prefix suffix x s h-false pc-eq a0-eq
-  run-ir-star-at-offset fold prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset fold prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-fold-star prefix suffix x s h-false pc-eq a0-eq
-  run-ir-star-at-offset unfold prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset unfold prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-unfold-star prefix suffix x s h-false pc-eq a0-eq
-  run-ir-star-at-offset arr prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset arr prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-arr-star prefix suffix x s h-false pc-eq a0-eq
-  -- fst/snd: use postulate-based versions (validity-based versions available in StarBase)
-  run-ir-star-at-offset fst prefix suffix x s h-false pc-eq a0-eq _ =
-    run-fst-star prefix suffix x s h-false pc-eq a0-eq
-  run-ir-star-at-offset snd prefix suffix x s h-false pc-eq a0-eq _ =
-    run-snd-star prefix suffix x s h-false pc-eq a0-eq
+
+  -- fst/snd: use validity-based versions (eliminates encode-pair-fst/snd postulates!)
+  run-ir-star-at-offset fst prefix suffix x s h-false pc-eq a0-eq _ pair-valid =
+    run-fst-star-v prefix suffix (proj₁ x) (proj₂ x) s h-false pc-eq a0-eq pair-valid
+  run-ir-star-at-offset snd prefix suffix x s h-false pc-eq a0-eq _ pair-valid =
+    run-snd-star-v prefix suffix (proj₁ x) (proj₂ x) s h-false pc-eq a0-eq pair-valid
 
   -- Injection cases: need stack-space for sp arithmetic
-  run-ir-star-at-offset inl prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-ir-star-at-offset inl prefix suffix x s h-false pc-eq a0-eq sp-bound _ =
     run-inl-star prefix suffix x s h-false pc-eq a0-eq sp-bound
-  run-ir-star-at-offset inr prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-ir-star-at-offset inr prefix suffix x s h-false pc-eq a0-eq sp-bound _ =
     run-inr-star prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Void elimination
-  run-ir-star-at-offset initial prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset initial prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-initial-star prefix suffix x s h-false pc-eq a0-eq
 
   -- Curry: use run-curry-star with WF proof from curry-closure-wf
   -- StackDepth (curry f) = curry-frame-value + StackDepth f (24 + StackDepth f)
   -- The closure WF is constructed by curry-closure-wf and passed to run-curry-star.
-  run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound _ =
     run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound (curry-closure-wf f prefix suffix x)
 
   -- Apply: postulated (requires whole-program analysis)
-  run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-apply-star {A} {B} prefix suffix x s h-false pc-eq a0-eq
 
   -- Prim: opaque primitive - correctness postulated until proper Prim compilation
-  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix x s h-false pc-eq a0-eq _ =
+  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix x s h-false pc-eq a0-eq _ _ =
     run-prim-star name prefix suffix x s h-false pc-eq a0-eq
 
   -- Compose: postulated to break mutual recursion
-  run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq a0-eq sp-bound _ =
     run-compose-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Pair: use extracted context helpers with frame pointer approach
   -- Frame pointer allows f and g to use arbitrary stack space.
-  run-ir-star-at-offset ⟨ f , g ⟩ prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-ir-star-at-offset ⟨ f , g ⟩ prefix suffix x s h-false pc-eq a0-eq sp-bound _ =
     run-pair-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   -- Case: use extracted context helpers
-  run-ir-star-at-offset ([_,_] f g) prefix suffix x s h-false pc-eq a0-eq sp-bound =
+  run-ir-star-at-offset ([_,_] f g) prefix suffix x s h-false pc-eq a0-eq sp-bound _ =
     run-case-star f g prefix suffix x s h-false pc-eq a0-eq sp-bound
 
   ------------------------------------------------------------------------
@@ -460,7 +481,11 @@ mutual
           ra-after-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
           s2-after-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
           sp-after-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-          mem-s2-saved = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+          rest-after-sp = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+          mem-s2-saved = proj₁ rest-after-sp
+          -- Pair memory layout from thunk setup (for InputValid):
+          mem-pair-fst = proj₁ (proj₂ rest-after-sp)  -- readMem st1 new-sp ≡ just (encode x)
+          mem-pair-snd = proj₂ (proj₂ rest-after-sp)  -- readMem st1 (new-sp+8) ≡ just (encode arg)
 
           -- Phase 2: Execute f (positions 14 to 14+len-f)
           -- Program decomposition: prog = prefix-f ++ compile-riscv f ++ suffix-f
@@ -593,8 +618,26 @@ mutual
           pc-for-f : pc st1 ≡ length prefix-f
           pc-for-f = trans pc1-eq (sym len-prefix-f)
 
+          -- Construct InputValid (PairAt) proof for the pair (x, arg)
+          -- The thunk setup allocated this pair at new-sp, so:
+          --   new-sp = encode (x, arg)
+          --   memory[new-sp] = encode x
+          --   memory[new-sp + 8] = encode arg
+          new-sp : Word
+          new-sp = readReg (regs s) sp ∸ 24
+
+          -- Derive: new-sp ≡ encode (x, arg)
+          pair-addr-eq : new-sp ≡ encode (x , arg)
+          pair-addr-eq = encode-pair-construct x arg new-sp (memory st1) mem-pair-fst mem-pair-snd
+
+          -- Construct PairAt by substituting the address equality
+          pair-valid : PairAt x arg (encode (x , arg)) (memory st1)
+          pair-valid = pair-at
+            (subst (λ addr → readMem (memory st1) addr ≡ just (encode x)) pair-addr-eq mem-pair-fst)
+            (subst (λ addr → readMem (memory st1) (addr +ℕ 8) ≡ just (encode arg)) pair-addr-eq mem-pair-snd)
+
           f-result = run-ir-star-at-offset f prefix-f suffix-f (x , arg) st1
-                       h1 pc-for-f a0-after-setup sp-bound-f
+                       h1 pc-for-f a0-after-setup sp-bound-f pair-valid
           st2 = proj₁ f-result
           ir-f = proj₂ f-result
           star2-raw : Star (prefix-f ++ compile-riscv f ++ suffix-f) st1 st2
