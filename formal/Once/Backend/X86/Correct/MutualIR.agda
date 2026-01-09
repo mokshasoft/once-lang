@@ -33,15 +33,15 @@ open import Once.Backend.Common.ProgramLemmas
 
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr)
+  using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr;
+         zero-not-in-stack)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach
 open import Once.Backend.X86.Correct.StackInvariant2
-  using (StackCapacity; capacity-maintained; rsp>16-to-capacity;
-         zero-not-in-stack; rsp-in-stack)
+  using (StackCapacity; capacity-maintained; rsp>16-to-capacity; rsp-in-stack)
 
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;

@@ -43,14 +43,14 @@ open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant2
-  using (rsp>16-to-capacity; zero-not-in-stack; R15Status;
+  using (rsp>16-to-capacity; R15Status;
          r15-unused; r15-in-heap; r15-in-code;
          stack-write-preserves-code-r15; stack-write-preserves-zero-r15;
          stack-write-preserves-r15;
          StackCapacity; capacity-maintained)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; stack-code-disjoint;
-         StackPointer; frameSlot)
+         StackPointer; frameSlot; zero-not-in-stack)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-0-is-top)

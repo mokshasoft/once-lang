@@ -21,7 +21,8 @@ open import Once.Backend.X86.Correct.InitState
 -- Import memory regions for r15-in-code case
 open import Once.Backend.Common.MemoryRegions
   using (Region; stack; heap; code; Addr; region-of;
-         stack-heap-disjoint; stack-code-disjoint)
+         stack-heap-disjoint; stack-code-disjoint;
+         pc-in-code)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; m∸n≤m; m∸n+n≡m; <⇒≤; +-comm; m+n∸n≡m)
@@ -360,16 +361,11 @@ stack-inv-preserved-ret s s' (r15-in-code r15-code) r15-eq =
 -- Creating StackInvariant for code pointers
 ------------------------------------------------------------------------
 
--- | Code pointers (valid program addresses) are in the code region
--- This is a runtime property: program is loaded at code addresses
-postulate
-  code-ptr-in-code : ∀ (code-ptr : ℕ) (prog-len : ℕ) →
-    code-ptr < prog-len → region-of code-ptr ≡ code
-
 -- | Create StackInvariant when r15 holds a code pointer
 -- This is used during apply's call phase when r15 = code-ptr
+-- pc-in-code is imported from MemoryRegions
 stack-inv-for-code-ptr : ∀ (s : State) (prog-len : ℕ) →
   readReg (regs s) r15 < prog-len →
   StackInvariant s
 stack-inv-for-code-ptr s prog-len r15<len =
-  r15-in-code (code-ptr-in-code (readReg (regs s) r15) prog-len r15<len)
+  r15-in-code (pc-in-code (readReg (regs s) r15) prog-len r15<len)

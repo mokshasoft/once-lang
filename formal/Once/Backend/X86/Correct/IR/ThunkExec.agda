@@ -32,9 +32,9 @@ open ≡-Reasoning
 
 -- Import region lemmas for D041 approach
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint)
+  using (region-of; code; stack; stack-code-disjoint; zero-not-in-stack)
 open import Once.Backend.X86.Correct.StackInvariant2
-  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity; zero-not-in-stack)
+  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)

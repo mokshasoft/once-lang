@@ -29,7 +29,8 @@ open Once.Backend.X86.Semantics.State
 open import Once.Backend.Common.MemoryRegions
   using (Region; stack; heap; code; Addr; region-of;
          regions-disjoint; stack≢heap; stack≢code;
-         stack-heap-disjoint; stack-code-disjoint)
+         stack-heap-disjoint; stack-code-disjoint;
+         zero-not-in-stack)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤)
@@ -368,9 +369,7 @@ stack-write-preserves-code-r15 s stack-addr stack-region r15-code =
   stack-code-disjoint stack-addr (readReg (regs s) r15) stack-region r15-code
 
 -- | Stack writes don't affect r15 when r15 = 0
--- (Assuming 0 is never a valid stack address)
-postulate
-  zero-not-in-stack : region-of 0 ≢ stack
+-- zero-not-in-stack is imported from MemoryRegions
 
 stack-write-preserves-zero-r15 : ∀ (s : State) (stack-addr : Addr) →
   region-of stack-addr ≡ stack →

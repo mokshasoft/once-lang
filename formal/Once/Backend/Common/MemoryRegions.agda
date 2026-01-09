@@ -27,7 +27,7 @@ module Once.Backend.Common.MemoryRegions where
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -102,6 +102,21 @@ stack-code-disjoint = regions-disjoint stack≢code
 heap-code-disjoint : ∀ a₁ a₂ →
   region-of a₁ ≡ heap → region-of a₂ ≡ code → a₁ ≢ a₂
 heap-code-disjoint = regions-disjoint heap≢code
+
+------------------------------------------------------------------------
+-- Special Address Properties
+------------------------------------------------------------------------
+
+-- | Address 0 is not in the stack region (null page protection)
+-- The null page is never mapped to any allocatable region.
+-- This is a fundamental memory layout invariant.
+postulate
+  zero-not-in-stack : region-of 0 ≢ stack
+
+-- | Derived: stack addresses are never 0
+stack-addr-nonzero : ∀ a → region-of a ≡ stack → a ≢ 0
+stack-addr-nonzero a a-in-stack a≡0 =
+  zero-not-in-stack (subst (λ x → region-of x ≡ stack) a≡0 a-in-stack)
 
 ------------------------------------------------------------------------
 -- Abstract Stack Pointer
