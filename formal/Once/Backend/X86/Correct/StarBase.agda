@@ -14,7 +14,8 @@ open import Once.Backend.X86.Correct.Foundation
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; stack-below-r15; RbpInvariant; stack-inv-preserved-unchanged; rsp>16-preserved-unchanged)
+open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; stack-below-r15; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged; rsp>16-preserved-unchanged)
+open import Once.Backend.Common.MemoryRegions using (region-of)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
@@ -31,7 +32,7 @@ open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; ≤-trans; m∸n≤m)
 open import Data.List.Properties using (++-assoc)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 
 ------------------------------------------------------------------------
 -- ClosureWFOutput: Optional closure well-formedness produced by curry
@@ -890,6 +891,8 @@ run-inl-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp
     stack-inv-helper (stack-below-r15 rsp≤r15) =
       stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-s4-eq)
                                (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+    stack-inv-helper (r15-in-code r15-code) =
+      r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
 
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv
@@ -1160,6 +1163,8 @@ run-inr-star-s {A} {B} prefix suffix addr-x s h-false pc-eq rdi-eq stack-inv rsp
     stack-inv-helper (stack-below-r15 rsp≤r15) =
       stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-s4-eq)
                                (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+    stack-inv-helper (r15-in-code r15-code) =
+      r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
 
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv

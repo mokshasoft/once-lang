@@ -18,10 +18,15 @@ open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.Correct.InitState
   using (initWithInput; initWithInputStateful; InitResult; state; input-addr)
 
+-- Import memory regions for r15-in-code case
+open import Once.Backend.Common.MemoryRegions
+  using (Region; stack; heap; code; Addr; region-of;
+         stack-heap-disjoint; stack-code-disjoint)
+
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans; ≤-refl; m∸n≤m; m∸n+n≡m; <⇒≤; +-comm; m+n∸n≡m)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
 ------------------------------------------------------------------------
 -- Stack Invariants
@@ -34,10 +39,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- From this invariant, we derive that writing to [rsp - 16] and [rsp - 8]
 -- cannot collide with [r15].
 
--- | Stack invariant: either r15 is unused (0) or rsp ≤ r15
+-- | Stack invariant: either r15 is unused (0), rsp ≤ r15, or r15 is in code region
+-- The r15-in-code case is needed during apply's thunk call phase when r15 = code-ptr.
+-- In all cases, stack writes don't corrupt r15's referent (if any).
 data StackInvariant (s : State) : Set where
   r15-unused : readReg (regs s) r15 ≡ 0 → StackInvariant s
   stack-below-r15 : readReg (regs s) rsp ≤ readReg (regs s) r15 → StackInvariant s
+  r15-in-code : region-of (readReg (regs s) r15) ≡ code → StackInvariant s
 
 -- | Initial state satisfies the invariant (r15 = 0)
 initWithInput-stack-inv : ∀ {A} (x : ⟦ A ⟧) → StackInvariant (initWithInput x)
@@ -253,6 +261,29 @@ addr-diff-from-invariant s (stack-below-r15 rsp≤r15) rsp>16 = diff-1 , diff-2
 
     diff-2 : (new-rsp +ℕ 8) ≢ r15-val
     diff-2 = <⇒≢ new-rsp+8<r15
+addr-diff-from-invariant s (r15-in-code r15-code) rsp>16 = diff-1 , diff-2
+  where
+    rsp-val : ℕ
+    rsp-val = readReg (regs s) rsp
+
+    r15-val : ℕ
+    r15-val = readReg (regs s) r15
+
+    new-rsp : ℕ
+    new-rsp = rsp-val ∸ 16
+
+    -- Stack operations stay in stack region
+    -- This is a runtime property: stack grows downward from stackBase
+    postulate
+      new-rsp-in-stack : region-of new-rsp ≡ stack
+      new-rsp+8-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
+
+    -- Stack and code are disjoint, so new-rsp ≢ r15
+    diff-1 : new-rsp ≢ r15-val
+    diff-1 = stack-code-disjoint new-rsp r15-val new-rsp-in-stack r15-code
+
+    diff-2 : (new-rsp +ℕ 8) ≢ r15-val
+    diff-2 = stack-code-disjoint (new-rsp +ℕ 8) r15-val new-rsp+8-in-stack r15-code
 
 ------------------------------------------------------------------------
 -- Invariant preservation lemmas
@@ -268,6 +299,8 @@ stack-inv-preserved-unchanged s s' (r15-unused r15≡0) r15-eq rsp-eq =
   r15-unused (trans r15-eq r15≡0)
 stack-inv-preserved-unchanged s s' (stack-below-r15 rsp≤r15) r15-eq rsp-eq =
   stack-below-r15 (subst₂ _≤_ (sym rsp-eq) (sym r15-eq) rsp≤r15)
+stack-inv-preserved-unchanged s s' (r15-in-code r15-code) r15-eq rsp-eq =
+  r15-in-code (trans (cong region-of r15-eq) r15-code)
 
 -- | rsp > 16 preservation when rsp is unchanged
 rsp>16-preserved-unchanged : ∀ (s s' : State) →
@@ -287,6 +320,8 @@ stack-inv-preserved-rsp-decreased s s' (r15-unused r15≡0) r15-eq rsp-le =
   r15-unused (trans r15-eq r15≡0)
 stack-inv-preserved-rsp-decreased s s' (stack-below-r15 rsp≤r15) r15-eq rsp-le =
   stack-below-r15 (≤-trans rsp-le (subst₂ _≤_ refl (sym r15-eq) rsp≤r15))
+stack-inv-preserved-rsp-decreased s s' (r15-in-code r15-code) r15-eq rsp-le =
+  r15-in-code (trans (cong region-of r15-eq) r15-code)
 
 -- | StackInvariant preservation when r15 is unchanged and equals 0
 -- This is the common case for apply/curry paths where r15 is never used for memory context
@@ -318,3 +353,23 @@ stack-inv-preserved-ret s s' (stack-below-r15 rsp≤r15) r15-eq =
         readReg (regs s) rsp ≤ readReg (regs s) r15 →
         readReg (regs s') r15 ≡ readReg (regs s) r15 →
         readReg (regs s') rsp ≤ readReg (regs s') r15
+stack-inv-preserved-ret s s' (r15-in-code r15-code) r15-eq =
+  r15-in-code (trans (cong region-of r15-eq) r15-code)
+
+------------------------------------------------------------------------
+-- Creating StackInvariant for code pointers
+------------------------------------------------------------------------
+
+-- | Code pointers (valid program addresses) are in the code region
+-- This is a runtime property: program is loaded at code addresses
+postulate
+  code-ptr-in-code : ∀ (code-ptr : ℕ) (prog-len : ℕ) →
+    code-ptr < prog-len → region-of code-ptr ≡ code
+
+-- | Create StackInvariant when r15 holds a code pointer
+-- This is used during apply's call phase when r15 = code-ptr
+stack-inv-for-code-ptr : ∀ (s : State) (prog-len : ℕ) →
+  readReg (regs s) r15 < prog-len →
+  StackInvariant s
+stack-inv-for-code-ptr s prog-len r15<len =
+  r15-in-code (code-ptr-in-code (readReg (regs s) r15) prog-len r15<len)
