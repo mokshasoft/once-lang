@@ -33,7 +33,7 @@ open import Once.Backend.X86.Correct.StarBase
 open import Once.Backend.X86.Correct.MemoryValid using (PairAtS)
 
 open import Data.Nat using (_>_; _≥_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -424,9 +424,8 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     rsp>16-setup : readReg (regs s-setup) rsp > 16
     rsp>16-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
       where
-        open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+        17≤41 = m≤m+n 17 24
 
     -- Memory at address 0 is preserved through setup
     -- Setup only writes to stack addresses (rsp-24, rsp-16, rsp-8) which are > 40, never to 0
@@ -723,7 +722,6 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
   ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
-  ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -1949,9 +1947,8 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       rsp>16-s9 : readReg (regs s9) rsp > 16
       rsp>16-s9 = ≤-trans 17≤41 (rsp-bound-after-stack-op s9)
         where
-          open import Data.Nat.Properties using (≤-trans)
           17≤41 : 17 ≤ 41
-          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+          17≤41 = m≤m+n 17 24
 
       -- ========== Stack invariant proof (via restored rsp and r15) ==========
       -- After the pop sequence: rsp-s9 = rsp-s and r15-s9 = r15-s
@@ -2362,7 +2359,6 @@ assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 
   ; ir-mem-at-0 = mem-at-0-final
   ; ir-stack-inv = stack-inv-final
   ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
-  ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-final
   }
   where

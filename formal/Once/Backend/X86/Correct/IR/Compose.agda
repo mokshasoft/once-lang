@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-rbp-inv; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-s; ir-mem-above; ir-mem-at-0; ir-rbp-inv; ir-closure-wf;
          ir-rax-s)
 
 open import Data.Nat using (_>_)
@@ -271,7 +271,7 @@ exec-compose-transfer-s {A} {B} {C} f g prefix suffix addr-f-out s s1 r1-s = rec
     rax1 : readReg (regs s1) rax ≡ addr-f-out
     rax1 = IRStarResultS.ir-rax-s r1-s
     stack-inv-1 = IRStarResultS.ir-stack-inv r1-s
-    rsp-1>16 = IRStarResultS.ir-rsp-bound r1-s
+    rsp-1>16 = ir-rsp-bound-s r1-s
 
     pc1 : pc s1 ≡ length prefix +ℕ compile-length f
     pc1 = IRStarResultS.ir-pc r1-s
@@ -341,7 +341,6 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
   ; ir-capacity = rsp>16-to-capacity s3 rsp-3>16
-  ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   ; ir-mem-above = mem-above-3
   ; ir-mem-at-0 = mem-at-0-3
@@ -520,7 +519,6 @@ assemble-compose-result-s {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s 
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
   ; ir-capacity = rsp>16-to-capacity s3 rsp-3>16
-  ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResultS.ir-rbp-inv r3-s
   ; ir-mem-above = mem-above-3
   ; ir-mem-at-0 = mem-at-0-3
@@ -556,7 +554,7 @@ assemble-compose-result-s {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s 
     mem-rbp-3-from-s2 = IRStarResultS.ir-mem-rbp r3-s
     mem-rbp+8-3-from-s2 = IRStarResultS.ir-mem-rbp+8 r3-s
     stack-inv-3 = IRStarResultS.ir-stack-inv r3-s
-    rsp-3>16 = IRStarResultS.ir-rsp-bound r3-s
+    rsp-3>16 = ir-rsp-bound-s r3-s
 
     -- Convert star-t from s2' to s2 (they're equal)
     star-t' : Star prog s1 s2

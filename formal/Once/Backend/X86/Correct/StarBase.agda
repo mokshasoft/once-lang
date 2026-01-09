@@ -81,16 +81,21 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- No IR generator writes to address 0, so this is always preserved
     ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
     ir-stack-inv  : StackInvariant s'
-    -- NEW: Abstract stack capacity (D041 - replaces concrete rsp > 16)
+    -- Abstract stack capacity (D041 - replaces concrete rsp > 16)
     ir-capacity   : StackCapacity s' 2
-    -- DERIVED: Concrete bound (for backwards compatibility during migration)
-    ir-rsp-bound  : readReg (regs s') rsp > 16
     -- RbpInvariant preserved: rsp s' ≤ rbp s' (needed for memory disjointness)
     ir-rbp-inv    : RbpInvariant s'
     -- Optional closure well-formedness (produced by curry, consumed by apply)
     ir-closure-wf : ClosureWFOutput prog
 
 open IRStarResult public
+
+-- | Derived: concrete rsp > 16 bound from abstract capacity
+-- This replaces the removed ir-rsp-bound field
+ir-rsp-bound : ∀ {A B ir prog s s' x offset} →
+  IRStarResult {A} {B} ir prog s s' x offset →
+  readReg (regs s') rsp > 16
+ir-rsp-bound res = capacity-to-rsp>16 _ (ir-capacity res)
 
 ------------------------------------------------------------------------
 -- IRRunner: Type for the recursive IR execution function
@@ -186,7 +191,6 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv 
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- id doesn't produce a closure
     }
@@ -223,7 +227,6 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
                        (readReg-writeReg-rax-r15 (regs s) 0)
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- terminal doesn't produce a closure
     }
@@ -261,7 +264,6 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-in
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- fold doesn't produce a closure
     }
@@ -299,7 +301,6 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- unfold doesn't produce a closure
     }
@@ -337,7 +338,6 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 rb
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- arr doesn't produce a closure
     }
@@ -379,7 +379,6 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- fst doesn't produce a closure
     }
@@ -421,7 +420,6 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- snd doesn't produce a closure
     }
@@ -469,7 +467,6 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- fst-v doesn't produce a closure
     }
@@ -510,7 +507,6 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
     ; ir-capacity = cap
-    ; ir-rsp-bound = capacity-to-rsp>16 s' cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure  -- snd-v doesn't produce a closure
     }
@@ -1298,13 +1294,17 @@ record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
     ir-stack-inv  : StackInvariant s'
-    -- NEW: Abstract stack capacity (D041 - replaces concrete rsp > 16)
+    -- Abstract stack capacity (D041 - replaces concrete rsp > 16)
     ir-capacity   : StackCapacity s' 2
-    -- DERIVED: Concrete bound (for backwards compatibility during migration)
-    ir-rsp-bound  : readReg (regs s') rsp > 16
     ir-rbp-inv    : RbpInvariant s'
 
 open IRStarResultS public
+
+-- | Derived: concrete rsp > 16 bound from abstract capacity for IRStarResultS
+ir-rsp-bound-s : ∀ {A B ir prog s s' addr-out offset} →
+  IRStarResultS {A} {B} ir prog s s' addr-out offset →
+  readReg (regs s') rsp > 16
+ir-rsp-bound-s res = capacity-to-rsp>16 _ (IRStarResultS.ir-capacity res)
 
 -- | Convert IRStarResult to IRStarResultS
 -- This allows gradual migration to stateful proofs
@@ -1327,7 +1327,6 @@ convert-to-stateful ir prog s s' x offset res = record
   ; ir-mem-at-0  = IRStarResult.ir-mem-at-0 res
   ; ir-stack-inv = IRStarResult.ir-stack-inv res
   ; ir-capacity  = IRStarResult.ir-capacity res
-  ; ir-rsp-bound = IRStarResult.ir-rsp-bound res
   ; ir-rbp-inv   = IRStarResult.ir-rbp-inv res
   }
 

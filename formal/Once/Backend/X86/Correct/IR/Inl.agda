@@ -17,7 +17,8 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
+open import Once.Backend.X86.Correct.StackInvariant2
+  using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16)
 open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -60,8 +61,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem-above = mem-above-preserved
     ; ir-mem-at-0 = mem-at-0-preserved
     ; ir-stack-inv = stack-inv'
-    ; ir-capacity = rsp>16-to-capacity s4 rsp>16'
-    ; ir-rsp-bound = rsp>16'
+    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-sub16
     ; ir-rbp-inv = rbp-inv'
     ; ir-closure-wf = no-closure  -- inl doesn't produce a closure
     }
@@ -438,11 +438,43 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv
 
+    -- CLEANER CAPACITY DERIVATION:
+    -- Instead of using rsp-bound-after-stack-op on final state,
+    -- we derive capacity through the sub rsp, 16 operation.
+    --
+    -- Key insight: rsp s4 = rsp s - 16 (via rsp-s4 and new-rsp definition)
+    -- So if we have StackCapacity s 4, we get StackCapacity s4 2.
+    --
+    -- For now we still use the hack to get initial capacity,
+    -- but the derivation is through proper capacity tracking.
+
+    -- The rsp change proof needed for capacity-after-sub16
+    rsp-change : readReg (regs s4) rsp ≡ readReg (regs s) rsp ∸ 16
+    rsp-change = rsp-s4  -- since new-rsp = orig-rsp ∸ 16
+
+    -- Get initial capacity from hack (TODO: proper input should provide this)
+    -- rsp-bound-after-stack-op s gives rsp s > 40
+    -- We need StackCapacity s 4 to derive StackCapacity s4 2
+    -- Since 40 > 32, we can convert rsp > 40 to StackCapacity s 4
+    --
+    -- Arithmetic: 33 ≤ 41 using m≤m+n pattern (see lessons-learned.md)
+    33≤41 : 33 ≤ 41
+    33≤41 = m≤m+n 33 8
+      where open import Data.Nat.Properties using (m≤m+n)
+
+    rsp>32 : readReg (regs s) rsp > 32
+    rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
+
+    initial-capacity : StackCapacity s 4
+    initial-capacity = rsp>32-to-capacity s rsp>32
+
+    -- CLEAN DERIVATION: Use proven capacity-after-sub16
+    output-capacity : StackCapacity s4 2
+    output-capacity = capacity-after-sub16 s s4 2 initial-capacity rsp-change
+
+    -- Legacy: derive rsp > 16 from capacity (for compatibility)
     rsp>16' : readReg (regs s4) rsp > 16
-    rsp>16' = ≤-trans 17≤41 (rsp-bound-after-stack-op s4)
-      where
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp>16' = capacity-to-rsp>16 s4 output-capacity
 
     -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv' : RbpInvariant s4

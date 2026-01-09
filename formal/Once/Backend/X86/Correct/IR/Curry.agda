@@ -15,7 +15,8 @@ open import Once.Postulates using (encode-closure-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
+open import Once.Backend.X86.Correct.StackInvariant2
+  using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16)
 open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
@@ -83,8 +84,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-mem-rbp = mem-rbp-final
     ; ir-mem-rbp+8 = mem-rbp+8-final
     ; ir-stack-inv = stack-inv-final
-    ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
-    ; ir-rsp-bound = rsp>16-final
+    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-sub16
     ; ir-rbp-inv = rbp-inv-final
     ; ir-mem-above = mem-above-final
     ; ir-mem-at-0 = mem-at-0-final
@@ -729,12 +729,24 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     stack-inv-final : StackInvariant s-final
     stack-inv-final = stack-inv-helper stack-inv
 
+    -- Clean capacity derivation via capacity-after-sub16
+    rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ 16
+    rsp-change = rsp-s7
+
+    33≤41 : 33 ≤ 41
+    33≤41 = m≤m+n 33 8
+
+    rsp>32 : readReg (regs s) rsp > 32
+    rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
+
+    initial-capacity : StackCapacity s 4
+    initial-capacity = rsp>32-to-capacity s rsp>32
+
+    output-capacity : StackCapacity s-final 2
+    output-capacity = capacity-after-sub16 s s-final 2 initial-capacity rsp-change
+
     rsp>16-final : readReg (regs s-final) rsp > 16
-    rsp>16-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
-      where
-        open import Data.Nat.Properties using (≤-trans)
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp>16-final = capacity-to-rsp>16 s-final output-capacity
 
     -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv-final : RbpInvariant s-final

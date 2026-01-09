@@ -28,7 +28,7 @@ open import Once.Backend.X86.Correct.MutualIR.Dispatcher
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv;
          ir-mem-above; ir-mem-at-0; ir-closure-wf; convert-to-stateful;
          rbp-inv-preserved-unchanged)
 
@@ -132,7 +132,6 @@ mutual
       ; ir-mem-at-0 = mem-at-0-final
       ; ir-stack-inv = stack-inv-final
       ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
-      ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
@@ -457,7 +456,6 @@ mutual
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
       ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
-      ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final

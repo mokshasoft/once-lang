@@ -1099,7 +1099,6 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-mem-at-0 = mem-at-0-post  -- LOCAL POSTULATE
     ; ir-stack-inv = stack'
     ; ir-capacity = rsp>16-to-capacity s' rsp'
-    ; ir-rsp-bound = rsp'
     ; ir-rbp-inv = rbp-inv-post  -- LOCAL POSTULATE
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }

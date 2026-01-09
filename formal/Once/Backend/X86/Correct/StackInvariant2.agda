@@ -31,9 +31,10 @@ open import Once.Backend.Common.MemoryRegions
          regions-disjoint; stack≢heap; stack≢code;
          stack-heap-disjoint; stack-code-disjoint)
 
-open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 ------------------------------------------------------------------------
 -- R15 Region Tracking
@@ -95,11 +96,43 @@ capacity-preserved-rsp-unchanged s s' n cap rsp-eq = record
 -- | After push (rsp -= 8), capacity decreases by 1
 -- Precondition: had capacity (suc n)
 -- Postcondition: have capacity n
-postulate
-  capacity-after-push : ∀ (s s' : State) (n : ℕ) →
-    StackCapacity s (suc n) →
-    readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8 →
-    StackCapacity s' n
+-- PROVEN: The key is (rsp - 8) - (k*8) = rsp - ((1+k)*8)
+capacity-after-push : ∀ (s s' : State) (n : ℕ) →
+  StackCapacity s (suc n) →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8 →
+  StackCapacity s' n
+capacity-after-push s s' n cap rsp-eq = record
+  { rsp-in-stack = rsp'-in-stack
+  ; capacity-maintained = cap-maintained
+  }
+  where
+    old-rsp = readReg (regs s) rsp
+    new-rsp = readReg (regs s') rsp
+
+    -- new-rsp is in stack (old-rsp - 8 is in stack via capacity for k=1)
+    rsp'-in-stack : region-of new-rsp ≡ stack
+    rsp'-in-stack = trans (cong region-of rsp-eq) (capacity-maintained cap 1 (s≤s z≤n))
+
+    -- For capacity, we need: region-of (new-rsp - k*8) = stack for k ≤ n
+    cap-maintained : ∀ k → k ≤ n → region-of (new-rsp ∸ (k *ℕ 8)) ≡ stack
+    cap-maintained k k≤n =
+      let -- Show (1 + k) ≤ suc n
+          1+k≤sn : (1 +ℕ k) ≤ suc n
+          1+k≤sn = s≤s k≤n
+          -- Use old capacity at index (1 + k)
+          old-cap-at-1+k : region-of (old-rsp ∸ ((1 +ℕ k) *ℕ 8)) ≡ stack
+          old-cap-at-1+k = capacity-maintained cap (1 +ℕ k) 1+k≤sn
+          -- Show new-rsp - k*8 = old-rsp - (8 + k*8)
+          step1 : (old-rsp ∸ 8) ∸ (k *ℕ 8) ≡ old-rsp ∸ (8 +ℕ k *ℕ 8)
+          step1 = ∸-+-assoc old-rsp 8 (k *ℕ 8)
+          -- Show 8 + k*8 = (1 + k) * 8
+          arith-eq : 8 +ℕ k *ℕ 8 ≡ (1 +ℕ k) *ℕ 8
+          arith-eq = refl
+          -- Combine
+          addr-eq : new-rsp ∸ (k *ℕ 8) ≡ old-rsp ∸ ((1 +ℕ k) *ℕ 8)
+          addr-eq = trans (cong (λ r → r ∸ (k *ℕ 8)) rsp-eq)
+                          (trans step1 (cong (old-rsp ∸_) arith-eq))
+      in trans (cong region-of addr-eq) old-cap-at-1+k
 
 -- | After pop (rsp += 8), capacity increases by 1
 -- Precondition: had capacity n
@@ -111,11 +144,48 @@ postulate
     StackCapacity s' (suc n)
 
 -- | After sub rsp, 16 (rsp -= 16), capacity decreases by 2
-postulate
-  capacity-after-sub16 : ∀ (s s' : State) (n : ℕ) →
-    StackCapacity s (suc (suc n)) →
-    readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 16 →
-    StackCapacity s' n
+-- PROVEN: The key is (rsp - 16) - (k*8) = rsp - ((2+k)*8)
+capacity-after-sub16 : ∀ (s s' : State) (n : ℕ) →
+  StackCapacity s (suc (suc n)) →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 16 →
+  StackCapacity s' n
+capacity-after-sub16 s s' n cap rsp-eq = record
+  { rsp-in-stack = rsp'-in-stack
+  ; capacity-maintained = cap-maintained
+  }
+  where
+    old-rsp = readReg (regs s) rsp
+    new-rsp = readReg (regs s') rsp
+
+    -- new-rsp is in stack (old-rsp - 16 is in stack via capacity for k=2)
+    rsp'-in-stack : region-of new-rsp ≡ stack
+    rsp'-in-stack = trans (cong region-of rsp-eq) (capacity-maintained cap 2 (s≤s (s≤s z≤n)))
+
+    -- For capacity, we need: region-of (new-rsp - k*8) = stack for k ≤ n
+    -- new-rsp - k*8 = (old-rsp - 16) - k*8 = old-rsp - (16 + k*8) = old-rsp - (2+k)*8
+    -- Since k ≤ n, we have 2+k ≤ 2+n = suc (suc n), so by old capacity this is in stack
+    cap-maintained : ∀ k → k ≤ n → region-of (new-rsp ∸ (k *ℕ 8)) ≡ stack
+    cap-maintained k k≤n =
+      let -- Show (2 + k) ≤ suc (suc n)
+          2+k≤ssn : (2 +ℕ k) ≤ suc (suc n)
+          2+k≤ssn = s≤s (s≤s k≤n)
+          -- Use old capacity at index (2 + k)
+          old-cap-at-2+k : region-of (old-rsp ∸ ((2 +ℕ k) *ℕ 8)) ≡ stack
+          old-cap-at-2+k = capacity-maintained cap (2 +ℕ k) 2+k≤ssn
+          -- Show new-rsp - k*8 = old-rsp - (16 + k*8)
+          -- Using ∸-+-assoc: m ∸ n ∸ o ≡ m ∸ (n + o)
+          step1 : (old-rsp ∸ 16) ∸ (k *ℕ 8) ≡ old-rsp ∸ (16 +ℕ k *ℕ 8)
+          step1 = ∸-+-assoc old-rsp 16 (k *ℕ 8)
+          -- Show 16 + k*8 = (2 + k) * 8 = 2*8 + k*8
+          -- We need: 16 + k*8 ≡ (2 + k) * 8
+          -- Note: (2 + k) * 8 = 8 + 8 + k * 8 = 16 + k * 8 (by distributivity)
+          arith-eq : 16 +ℕ k *ℕ 8 ≡ (2 +ℕ k) *ℕ 8
+          arith-eq = refl  -- Should compute
+          -- Combine: new-rsp - k*8 = old-rsp - (2+k)*8
+          addr-eq : new-rsp ∸ (k *ℕ 8) ≡ old-rsp ∸ ((2 +ℕ k) *ℕ 8)
+          addr-eq = trans (cong (λ r → r ∸ (k *ℕ 8)) rsp-eq)
+                          (trans step1 (cong (old-rsp ∸_) arith-eq))
+      in trans (cong region-of addr-eq) old-cap-at-2+k
 
 -- | After add rsp, 16 (rsp += 16), capacity increases by 2
 postulate
@@ -250,16 +320,28 @@ r15-status-for-code : ∀ (s : State) →
 r15-status-for-code s r15-code = r15-in-code r15-code
 
 ------------------------------------------------------------------------
--- Compatibility: Converting from old rsp > 16 to StackCapacity
+-- Compatibility: Converting from old rsp bounds to StackCapacity
 ------------------------------------------------------------------------
 
--- | Convert rsp > 16 to StackCapacity 2
--- This is the bridge between old concrete bounds and new abstract capacity
--- The postulate captures the runtime invariant that stack addresses are valid
+-- | General conversion: rsp > n*8 gives StackCapacity s n
+-- This captures the runtime invariant that stack addresses are valid
 postulate
-  rsp>16-to-capacity : ∀ (s : State) →
-    readReg (regs s) rsp > 16 →
-    StackCapacity s 2
+  rsp-bound-to-capacity : ∀ (s : State) (n : ℕ) →
+    readReg (regs s) rsp > n *ℕ 8 →
+    StackCapacity s n
+
+-- | Convert rsp > 16 to StackCapacity 2 (legacy wrapper)
+rsp>16-to-capacity : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  StackCapacity s 2
+rsp>16-to-capacity s rsp>16 = rsp-bound-to-capacity s 2 rsp>16
+
+-- | Convert rsp > 32 to StackCapacity 4
+-- Used when we need more capacity for operations that allocate stack
+rsp>32-to-capacity : ∀ (s : State) →
+  readReg (regs s) rsp > 32 →
+  StackCapacity s 4
+rsp>32-to-capacity s rsp>32 = rsp-bound-to-capacity s 4 rsp>32
 
 -- | Convert StackCapacity back to concrete bound (for compatibility)
 -- This allows gradual migration - new proofs can use StackCapacity
