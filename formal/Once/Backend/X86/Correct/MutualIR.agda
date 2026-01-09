@@ -4,7 +4,7 @@
 -- Concrete dispatcher that wires together all implementation modules.
 --
 -- This file contains:
--- 1. The mutual block with the two main dispatchers
+-- 1. The mutual block with the main dispatcher (run-ir-star-at-offset)
 -- 2. Curry and apply implementations (still in mutual block for now)
 --
 -- NOTE: Sized types removed for compilation performance (10-100x speedup).
@@ -73,36 +73,16 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Re-export StarBase for backwards compatibility
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
-         -- Stateful field accessors
-         ir-rax-s;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star; run-prim-star;
          run-fst-star-v; run-snd-star-v;
-         -- Stateful runners for encoding postulate elimination
-         run-id-star-s; run-terminal-star-s; run-fold-star-s; run-unfold-star-s;
-         run-arr-star-s; run-fst-star-s; run-snd-star-s; run-prim-star-s;
-         run-inl-star-s; run-inr-star-s;
-         -- Result records
-         FstSndResultS;
-         -- Conversion function
-         convert-to-stateful;
          -- Helper functions
          rbp-inv-preserved-unchanged)
 
 -- Import extracted IR base case modules
-open import Once.Backend.X86.Correct.IR.Id
-  using () renaming (run-id-star-s to run-id-s-ir)
-open import Once.Backend.X86.Correct.IR.Terminal
-  using () renaming (run-terminal-star-s to run-terminal-s-ir)
-open import Once.Backend.X86.Correct.IR.Fold
-  using () renaming (run-fold-star-s to run-fold-s-ir)
-open import Once.Backend.X86.Correct.IR.Unfold
-  using () renaming (run-unfold-star-s to run-unfold-s-ir)
-open import Once.Backend.X86.Correct.IR.Arr
-  using () renaming (run-arr-star-s to run-arr-s-ir)
 open import Once.Backend.X86.Correct.IR.Inl
   using (run-inl-star)
 open import Once.Backend.X86.Correct.IR.Inr
@@ -140,14 +120,13 @@ open import Once.Backend.X86.Correct.IR.Apply
 
 -- Import implementation modules that use the abstract dispatcher
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (rbp-inv-preserved-through-ir; rbp-inv-preserved-through-ir-s;
-         irresults-preserves-eval)
+  using (rbp-inv-preserved-through-ir)
 
 open import Once.Backend.X86.Correct.MutualIR.Compose
-  using (run-compose-star-direct; run-compose-star-direct-s)
+  using (run-compose-star-direct)
 
 open import Once.Backend.X86.Correct.MutualIR.Pair
-  using (run-pair-star-direct; run-pair-star-direct-s)
+  using (run-pair-star-direct)
 
 open import Once.Backend.X86.Correct.MutualIR.Case
   using (run-case-star-direct)
@@ -170,7 +149,7 @@ open ≡-Reasoning
 -- Star-Based Mutual Block - Concrete Dispatcher
 --
 -- This mutual block contains:
--- 1. run-ir-star-at-offset and run-ir-star-at-offset-s (the dispatchers)
+-- 1. run-ir-star-at-offset (the dispatcher)
 -- 2. curry and apply implementations (kept here for now since curry is 646 lines)
 --
 -- Base cases delegate to StarBase functions.
@@ -232,103 +211,6 @@ mutual
   -- Prim: opaque primitive - correctness postulated until proper Prim compilation
   run-ir-star-at-offset (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     run-prim-star name prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-
-  ------------------------------------------------------------------------
-  -- Stateful Star-Based Runner (encoding postulate elimination)
-  ------------------------------------------------------------------------
-
-  -- | Stateful IR execution - returns address instead of using encode
-  -- This enables encoding postulate elimination by tracking explicit memory addresses
-  -- caller-sp: StackPointer representing the caller's stack frame (D041)
-  run-ir-star-at-offset-s : ∀ {A B} (ir : IR A B) (prefix suffix : Program)
-      (caller-sp : StackPointer) (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ addr-in →
-    encode x ≡ addr-in →  -- Semantic value matches input address
-    StackInvariant s →
-    readReg (regs s) rsp > 16 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 ir ++ suffix
-    in ∃[ addr-out ] ∃[ s' ] IRStarResultS ir prog s s' addr-out (length prefix)
-
-  -- Base cases: delegate to extracted IR modules
-  run-ir-star-at-offset-s (id {A}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-id-s-ir {A} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
-    in addr-in , s' , res
-
-  run-ir-star-at-offset-s (terminal {A}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-terminal-s-ir {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
-    in 0 , s' , res  -- terminal returns 0 (unit encoding)
-
-  run-ir-star-at-offset-s (fold {F}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-fold-s-ir {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
-    in addr-in , s' , res  -- fold is identity at runtime
-
-  run-ir-star-at-offset-s (unfold {F}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-unfold-s-ir {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
-    in addr-in , s' , res  -- unfold is identity at runtime
-
-  run-ir-star-at-offset-s (arr {A} {B}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-arr-s-ir {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
-    in addr-in , s' , res  -- arr is identity at runtime (Eff = Closure)
-
-  -- fst/snd: simple delegation following RISC-V pattern
-  run-ir-star-at-offset-s (fst {A} {B}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-fst-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
-        res-s = convert-to-stateful (fst {A} {B}) prog s s' x (length prefix) res
-    in encode (proj₁ x) , s' , res-s
-
-  run-ir-star-at-offset-s (snd {A} {B}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-snd-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
-        res-s = convert-to-stateful (snd {A} {B}) prog s s' x (length prefix) res
-    in encode (proj₂ x) , s' , res-s
-
-  run-ir-star-at-offset-s (inl {A} {B}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-inl-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
-        res-s = convert-to-stateful (inl {A} {B}) prog s s' x (length prefix) res
-    in encode (inj₁ x) , s' , res-s
-
-  run-ir-star-at-offset-s (inr {A} {B}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-inr-star prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
-        res-s = convert-to-stateful (inr {A} {B}) prog s s' x (length prefix) res
-    in encode (inj₂ x) , s' , res-s
-
-  run-ir-star-at-offset-s (initial {A}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    ⊥-elim x
-
-  -- Recursive cases: delegate to implementation modules
-  run-ir-star-at-offset-s (_∘_ {A} {B} {C} g f) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    run-compose-star-direct-s f g prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
-
-  run-ir-star-at-offset-s (⟨_,_⟩ {A} {B} {C} f g) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    run-pair-star-direct-s f g prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
-
-  run-ir-star-at-offset-s ([_,_] {A} {B} {C} f g) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 ([ f , g ]) ++ suffix
-        res-s = convert-to-stateful ([ f , g ]) prog s s' x (length prefix) res
-    in encode (eval ([ f , g ]) x) , s' , res-s
-
-  run-ir-star-at-offset-s (curry {A} {B} {C} f) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , (res , mem-res)) = run-curry-star f prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (curry f) ++ suffix
-        res-s = convert-to-stateful (curry f) prog s s' x (length prefix) res
-    in encode-closure-addr (eval (curry f) x) , s' , res-s
-
-  run-ir-star-at-offset-s (apply {A} {B}) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    let (s' , res) = run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
-        prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
-        res-s = convert-to-stateful (apply {A} {B}) prog s s' x (length prefix) res
-    in encode (eval (apply {A} {B}) x) , s' , res-s
-
-  -- Prim: opaque primitive - correctness postulated until proper Prim compilation
-  run-ir-star-at-offset-s (Prim {A} {B} name) prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    run-prim-star-s name prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv
 
   ------------------------------------------------------------------------
   -- Curry implementation (kept in mutual block for now)

@@ -20,16 +20,14 @@ open import Once.Backend.X86.Correct.CompileLength
 
 -- Import abstract dispatcher and helpers
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (run-ir-star-at-offset-abstract; run-ir-star-at-offset-s-abstract;
-         rbp-inv-preserved-through-ir; rbp-inv-preserved-through-ir-s;
-         irresults-preserves-eval)
+  using (run-ir-star-at-offset-abstract; rbp-inv-preserved-through-ir)
 
 -- Import StarBase for result types
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv;
-         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf; convert-to-stateful;
+         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 
 -- Import region definitions for D041 memory preservation proofs

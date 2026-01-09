@@ -18,16 +18,14 @@ open import Once.Backend.X86.CodeGen
 
 -- Import abstract dispatcher and helpers
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (run-ir-star-at-offset-abstract; run-ir-star-at-offset-s-abstract;
-         rbp-inv-preserved-through-ir; rbp-inv-preserved-through-ir-s;
-         irresults-preserves-eval)
+  using (run-ir-star-at-offset-abstract; rbp-inv-preserved-through-ir)
 
 -- Import StarBase for result types
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; IRStarResultS; ir-star; ir-halted; ir-pc; ir-rax;
+  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax;
          ir-r14; ir-r15; ir-rbp; ir-mem; ir-rbp-inv; ir-stack-inv; ir-rsp-bound;
          ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-rbp; ir-mem-rbp+8; ir-closure-wf;
-         ir-rax-s; convert-to-stateful; rbp-inv-preserved-unchanged)
+         rbp-inv-preserved-unchanged)
 
 -- Import region definitions for D041 memory preservation proofs
 open import Once.Backend.Common.MemoryRegions using (region-of; code; StackPointer)
@@ -42,18 +40,15 @@ open import Once.Backend.X86.Correct.Star
 
 -- Import Pair helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Pair
-  using (PairContext; make-pair-context; PairSetupResult; PairSetupResultS;
-         exec-pair-setup; exec-pair-setup-s; PairMiddleResult; PairMiddleResultS;
-         exec-pair-middle; exec-pair-middle-s; PairFinalPrecond; PairFinalResult; PairFinalResultS;
-         make-pair-final-precond; exec-pair-final; exec-pair-final-s;
-         assemble-pair-result; assemble-pair-result-s)
+  using (PairContext; make-pair-context; PairSetupResult;
+         exec-pair-setup; PairMiddleResult;
+         exec-pair-middle; PairFinalPrecond; PairFinalResult;
+         make-pair-final-precond; exec-pair-final;
+         assemble-pair-result)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairContext)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResult)
-open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResultS)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairMiddleResult)
-open import Once.Backend.X86.Correct.IR.Pair using (module PairMiddleResultS)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairFinalResult)
-open import Once.Backend.X86.Correct.IR.Pair using (module PairFinalResultS)
 
 open import Once.Postulates using (encode)
 open import Data.Bool using (Bool; false)
@@ -71,185 +66,24 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 ------------------------------------------------------------------------
 
 {-# TERMINATING #-}
-mutual
-  -- | Stateful pair execution (NO encoding postulates!)
-  -- caller-sp: StackPointer from the caller (D041)
-  run-pair-star-direct-s : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program)
-      (caller-sp : StackPointer) (addr-in : Word) (x : ⟦ C ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ addr-in →
-    encode x ≡ addr-in →
-    StackInvariant s →
-    readReg (regs s) rsp > 16 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-    in ∃[ addr-out ] ∃[ s' ] IRStarResultS ⟨ f , g ⟩ prog s s' addr-out (length prefix)
-  run-pair-star-direct-s {A} {B} {C} f g prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-    (addr-pair , s-final , result-s)
-    where
-      ctx = make-pair-context f g prefix suffix
-      open PairContext ctx
-
-      -- Step 1: Execute setup phase (7 instructions)
-      setup-res-s : PairSetupResultS f g prefix suffix addr-in s
-      setup-res-s = exec-pair-setup-s f g prefix suffix addr-in s h-false pc-eq rdi-eq
-
-      s-setup = PairSetupResultS.s-setup setup-res-s
-
-      -- Derive RbpInvariant for s-setup: rsp_setup = rsp ∸ 40, rbp_setup = rsp ∸ 24
-      rbp-inv-setup : RbpInvariant s-setup
-      rbp-inv-setup = record { rsp≤rbp = rsp-setup≤rbp-setup }
-        where
-          open import Data.Nat.Properties using (∸-monoʳ-≤)
-          24≤40 : 24 ≤ 40
-          24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
-          rsp∸40≤rsp∸24 : readReg (regs s) rsp ∸ 40 ≤ readReg (regs s) rsp ∸ 24
-          rsp∸40≤rsp∸24 = ∸-monoʳ-≤ (readReg (regs s) rsp) 24≤40
-          rsp-setup≤rbp-setup : readReg (regs s-setup) rsp ≤ readReg (regs s-setup) rbp
-          rsp-setup≤rbp-setup = subst₂ _≤_
-            (sym (PairSetupResultS.rsp-setup setup-res-s))
-            (sym (PairSetupResultS.rbp-setup setup-res-s))
-            rsp∸40≤rsp∸24
-
-      -- Step 2: Execute f (STATEFUL RECURSIVE CALL via abstract dispatcher)
-      step-f-s : ∃[ addr-f ] ∃[ s1 ] IRStarResultS f (prefix-f ++ code-f ++ suffix-f) s-setup s1 addr-f (length prefix-f)
-      step-f-s = run-ir-star-at-offset-s-abstract f prefix-f suffix-f caller-sp addr-in x s-setup
-                   (PairSetupResultS.h-setup setup-res-s)
-                   (PairSetupResultS.pc-setup-f setup-res-s)
-                   (PairSetupResultS.rdi-setup-addr setup-res-s)
-                   enc-eq
-                   (PairSetupResultS.stack-inv-setup setup-res-s)
-                   (PairSetupResultS.rsp>16-setup setup-res-s)
-                   rbp-inv-setup
-
-      addr-f : Word
-      addr-f = proj₁ step-f-s
-
-      s1 : State
-      s1 = proj₁ (proj₂ step-f-s)
-
-      r-f-s : IRStarResultS f (prefix-f ++ code-f ++ suffix-f) s-setup s1 addr-f (length prefix-f)
-      r-f-s = proj₂ (proj₂ step-f-s)
-
-      -- pc s1 for middle phase
-      pc1 : pc s1 ≡ length prefix +ℕ 7 +ℕ len-f
-      pc1 = trans (IRStarResultS.ir-pc r-f-s) (cong (_+ℕ len-f) len-prefix-f)
-
-      -- rax s1 contains addr-f
-      rax1 : readReg (regs s1) rax ≡ addr-f
-      rax1 = ir-rax-s r-f-s
-
-      -- Step 3: Execute middle phase (2 instructions: store f result, restore input)
-      mid-res-s : PairMiddleResultS f g prefix suffix addr-in s s-setup s1
-      mid-res-s = exec-pair-middle-s f g prefix suffix addr-in s s-setup s1 addr-f r-f-s setup-res-s refl rdi-eq (IRStarResultS.ir-halted r-f-s) pc1 rax1
-
-      s2 = PairMiddleResultS.s2 mid-res-s
-
-      -- RbpInvariant preserved through f and middle
-      rbp-inv-s1 : RbpInvariant s1
-      rbp-inv-s1 = IRStarResultS.ir-rbp-inv r-f-s
-
-      rsp-s2-eq-s1 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
-      rsp-s2-eq-s1 = PairMiddleResultS.rsp-mid mid-res-s
-
-      rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
-      rbp-s2-eq-s1 = PairMiddleResultS.rbp-mid mid-res-s
-
-      rbp-inv-s2 : RbpInvariant s2
-      rbp-inv-s2 = rbp-inv-preserved-unchanged s1 s2 rbp-inv-s1 rsp-s2-eq-s1 rbp-s2-eq-s1
-
-      -- Step 4: Execute g (STATEFUL RECURSIVE CALL via abstract dispatcher)
-      -- Note: g receives x as input (not eval f x - pair passes same input to both branches)
-      -- But we need to prove that addr-f encodes eval f x for validity
-      y : ⟦ A ⟧
-      y = eval f x
-
-      enc-y-eq-addr-f : encode y ≡ addr-f
-      enc-y-eq-addr-f = irresults-preserves-eval f (prefix-f ++ code-f ++ suffix-f) s-setup s1 addr-in addr-f x (length prefix-f) r-f-s enc-eq
-                          (PairSetupResultS.rdi-setup-addr setup-res-s)
-
-      -- g receives original input x, not y = eval f x (pair duplicates input)
-      step-g-s : ∃[ addr-g ] ∃[ s3 ] IRStarResultS g (prefix-g ++ code-g ++ suffix-g) s2 s3 addr-g (length prefix-g)
-      step-g-s = run-ir-star-at-offset-s-abstract g prefix-g suffix-g caller-sp addr-in x s2
-                   (PairMiddleResultS.h2 mid-res-s)
-                   (PairMiddleResultS.pc2-g mid-res-s)
-                   (PairMiddleResultS.rdi2 mid-res-s)
-                   enc-eq
-                   (PairMiddleResultS.stack-inv-s2 mid-res-s)
-                   (PairMiddleResultS.rsp>16-s2 mid-res-s)
-                   rbp-inv-s2
-
-      addr-g : Word
-      addr-g = proj₁ step-g-s
-
-      s3 : State
-      s3 = proj₁ (proj₂ step-g-s)
-
-      r-g-s : IRStarResultS g (prefix-g ++ code-g ++ suffix-g) s2 s3 addr-g (length prefix-g)
-      r-g-s = proj₂ (proj₂ step-g-s)
-
-      -- rax s3 contains addr-g
-      rax3 : readReg (regs s3) rax ≡ addr-g
-      rax3 = ir-rax-s r-g-s
-
-      -- r15 is preserved through middle and g execution
-      r15-s2-eq-s1 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
-      r15-s2-eq-s1 = PairMiddleResultS.r15-mid mid-res-s
-
-      r15-s3-eq-s2 : readReg (regs s3) r15 ≡ readReg (regs s2) r15
-      r15-s3-eq-s2 = IRStarResultS.ir-r15 r-g-s
-
-      r15-s3-eq-s1 : readReg (regs s3) r15 ≡ readReg (regs s1) r15
-      r15-s3-eq-s1 = trans r15-s3-eq-s2 r15-s2-eq-s1
-
-      -- Memory at r15 still contains addr-f (fst component)
-      -- This requires chaining through g's execution which preserves memory except at its output location
-      postulate mem-fst-s3-raw : readMem (memory s3) (readReg (regs s1) r15) ≡ just addr-f
-
-      mem-fst-s3 : readMem (memory s3) (readReg (regs s3) r15) ≡ just addr-f
-      mem-fst-s3 = subst (λ addr → readMem (memory s3) addr ≡ just addr-f) (sym r15-s3-eq-s1) mem-fst-s3-raw
-
-      -- Step 5: Build final precondition
-      -- TODO: Eliminate this postulate by building PairFinalPrecond from stateful results
-      -- This requires proving stack layout preservation through stateful execution
-      postulate final-precond : PairFinalPrecond f g prefix suffix s s3
-
-      -- Step 6: Execute final phase (6 instructions: store g, return pair, restore)
-      final-step : ∃[ addr-pair ] PairFinalResultS f g prefix suffix addr-f addr-g addr-pair s s3
-      final-step = exec-pair-final-s f g prefix suffix s s3 addr-f addr-g final-precond rax3 mem-fst-s3
-
-      addr-pair : Word
-      addr-pair = proj₁ final-step
-
-      final-res-s : PairFinalResultS f g prefix suffix addr-f addr-g addr-pair s s3
-      final-res-s = proj₂ final-step
-
-      s-final = PairFinalResultS.s-final final-res-s
-
-      -- Step 7: Assemble final result
-      result-s = assemble-pair-result-s f g prefix suffix addr-in s s-setup s1 s2 s3
-                   setup-res-s addr-f r-f-s mid-res-s addr-g r-g-s addr-pair final-res-s
-                   refl refl rbp-inv
-
-  -- | Star-based pair (POSTULATE-FREE!)
-  -- Uses star-trans (PROVEN) and exec-to-star to compose 5 phases:
-  -- Phase 1: 7 setup instructions
-  -- Phase 2: Execute f (recursive)
-  -- Phase 3: 2 middle instructions
-  -- Phase 4: Execute g (recursive)
-  -- Phase 5: 6 final instructions
-  -- caller-sp: StackPointer from the caller (D041)
-  run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ C ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
-    StackInvariant s →
-    readReg (regs s) rsp > 16 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-    in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-  run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+-- | Star-based pair (POSTULATE-FREE!)
+-- Uses star-trans (PROVEN) and exec-to-star to compose 5 phases:
+-- Phase 1: 7 setup instructions
+-- Phase 2: Execute f (recursive)
+-- Phase 3: 2 middle instructions
+-- Phase 4: Execute g (recursive)
+-- Phase 5: 6 final instructions
+-- caller-sp: StackPointer from the caller (D041)
+run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ C ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ encode x →
+  StackInvariant s →
+  readReg (regs s) rsp > 16 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+  in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
+run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , assemble-pair-result f g prefix suffix x s s-setup s1 s2 s3 s-final
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
