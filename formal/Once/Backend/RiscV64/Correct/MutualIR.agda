@@ -54,7 +54,12 @@ open import Once.Backend.RiscV64.Correct.StarBase public
          ir-sp-delta; ir-sp-delta-leq; ir-sp;
          ir-mem-preserved; ir-output-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
-         run-arr-star; run-fst-star; run-snd-star)
+         run-arr-star; run-fst-star; run-snd-star;
+         run-fst-star-v; run-snd-star-v)
+
+-- Import memory validity predicates
+open import Once.Backend.RiscV64.Correct.MemoryValid
+  using (PairAt; fst-valid; snd-valid; InlAt; InrAt)
 
 -- Import extracted compose helpers
 open import Once.Backend.RiscV64.Correct.IR.Compose
@@ -345,6 +350,7 @@ mutual
     run-unfold-star prefix suffix x s h-false pc-eq a0-eq
   run-ir-star-at-offset arr prefix suffix x s h-false pc-eq a0-eq _ =
     run-arr-star prefix suffix x s h-false pc-eq a0-eq
+  -- fst/snd: use postulate-based versions (validity-based versions available in StarBase)
   run-ir-star-at-offset fst prefix suffix x s h-false pc-eq a0-eq _ =
     run-fst-star prefix suffix x s h-false pc-eq a0-eq
   run-ir-star-at-offset snd prefix suffix x s h-false pc-eq a0-eq _ =
@@ -363,7 +369,6 @@ mutual
   -- Curry: use run-curry-star with WF proof from curry-closure-wf
   -- StackDepth (curry f) = curry-frame-value + StackDepth f (24 + StackDepth f)
   -- The closure WF is constructed by curry-closure-wf and passed to run-curry-star.
-  -- TODO: Prove curry-closure-wf using thunk-setup/cleanup helpers and IH.
   run-ir-star-at-offset (curry f) prefix suffix x s h-false pc-eq a0-eq sp-bound =
     run-curry-star f prefix suffix x s h-false pc-eq a0-eq sp-bound (curry-closure-wf f prefix suffix x)
 
