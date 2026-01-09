@@ -16,7 +16,7 @@
 module Once.Backend.RiscV64.Correct.MemoryValid where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; encode)
+open import Once.SemanticsS using (⟦_⟧; encode)
 open import Once.Backend.RiscV64.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.RiscV64.Encoding using (mem-read-write; mem-read-other; n≢n+8)
 

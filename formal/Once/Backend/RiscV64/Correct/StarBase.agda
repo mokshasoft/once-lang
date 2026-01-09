@@ -32,6 +32,7 @@ open import Once.Backend.RiscV64.CodeGen
 
 open import Once.Backend.RiscV64.Correct.Star
 open import Once.Backend.RiscV64.Correct.Foundation
+open import Once.Backend.RiscV64.Correct.MemoryValid using (PairAt; fst-valid; snd-valid)
 open import Once.Backend.RiscV64.Correct.ClosureWellFormed
   using (ClosuresWF; trivialWF; pairWF; fstWF; sndWF; applyInputWF; ApplyInputWF)
 
@@ -374,6 +375,103 @@ run-snd-star {i} {A} {B} prefix suffix x s h-false pc-eq a0-eq = s' , record
     eff-addr = cong (_+ℕ 8) a0-eq
 
     -- Memory read succeeds
+    mem-read : readMem (memory s) (effectiveAddr (regs s) a0 (+ 8)) ≡ just (encode b)
+    mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
+
+    s' = record s { regs = writeReg (regs s) a0 (encode b) ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (ld a0 (+ 8) a0)
+    fetch-eq = subst (λ p → fetch prog p ≡ just (ld a0 (+ 8) a0))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (ld a0 (+ 8) a0) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (ld a0 (+ 8) a0) h-false fetch-eq)
+                    (execInstr-ld-success prog s a0 a0 (+ 8) (encode b) mem-read)
+
+------------------------------------------------------------------------
+-- Validity-based versions: use PairAt instead of encoding postulates
+--
+-- These versions take a PairAt validity proof as a precondition,
+-- eliminating the need for encode-pair-fst/snd postulates.
+-- Use these when you have a validity proof from allocation.
+------------------------------------------------------------------------
+
+-- | Validity-based fst (uses PairAt instead of encode-pair-fst postulate)
+run-fst-star-v : ∀ {i A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) a0 ≡ encode (a , b) →
+  PairAt a b (encode (a , b)) (memory s) →
+  ∃[ s' ] IRStarResult (fst {i} {A} {B}) (prefix ++ compile-riscv (fst {i} {A} {B}) ++ suffix) s s' (a , b) (length prefix)
+run-fst-star-v {i} {A} {B} prefix suffix a b s h-false pc-eq a0-eq pair-valid = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode a) (λ ())
+  ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode a)
+  ; ir-s2     = readReg-writeReg-a0-s2 (regs s) (encode a)
+  ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode a)
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode a))
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = trivialWF A prog
+  }
+  where
+    prog = prefix ++ ld a0 (+ 0) a0 ∷ suffix
+
+    -- Memory precondition from validity proof (no postulate!)
+    mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
+    mem-eq = fst-valid pair-valid
+
+    eff-addr : effectiveAddr (regs s) a0 (+ 0) ≡ encode (a , b)
+    eff-addr = trans (cong (readReg (regs s) a0 +ℕ_) refl)
+                     (trans (+-identityʳ (readReg (regs s) a0)) a0-eq)
+
+    mem-read : readMem (memory s) (effectiveAddr (regs s) a0 (+ 0)) ≡ just (encode a)
+    mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
+
+    s' = record s { regs = writeReg (regs s) a0 (encode a) ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (ld a0 (+ 0) a0)
+    fetch-eq = subst (λ p → fetch prog p ≡ just (ld a0 (+ 0) a0))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (ld a0 (+ 0) a0) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (ld a0 (+ 0) a0) h-false fetch-eq)
+                    (execInstr-ld-success prog s a0 a0 (+ 0) (encode a) mem-read)
+
+-- | Validity-based snd (uses PairAt instead of encode-pair-snd postulate)
+run-snd-star-v : ∀ {i A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) a0 ≡ encode (a , b) →
+  PairAt a b (encode (a , b)) (memory s) →
+  ∃[ s' ] IRStarResult (snd {i} {A} {B}) (prefix ++ compile-riscv (snd {i} {A} {B}) ++ suffix) s s' (a , b) (length prefix)
+run-snd-star-v {i} {A} {B} prefix suffix a b s h-false pc-eq a0-eq pair-valid = s' , record
+  { ir-star   = star-single h-false step-eq
+  ; ir-halted = h-false
+  ; ir-pc     = cong (_+ℕ 1) pc-eq
+  ; ir-a0     = readReg-writeReg-same (regs s) a0 (encode b) (λ ())
+  ; ir-s1     = readReg-writeReg-a0-s1 (regs s) (encode b)
+  ; ir-s2     = readReg-writeReg-a0-s2 (regs s) (encode b)
+  ; ir-ra     = readReg-writeReg-a0-ra (regs s) (encode b)
+  ; ir-sp-delta = 0
+  ; ir-sp-delta-leq = ≤-refl
+  ; ir-sp     = trans (+-identityʳ _) (readReg-writeReg-a0-sp (regs s) (encode b))
+  ; ir-mem-preserved = λ n → refl
+  ; ir-output-wf = trivialWF B prog
+  }
+  where
+    prog = prefix ++ ld a0 (+ 8) a0 ∷ suffix
+
+    -- Memory precondition from validity proof (no postulate!)
+    mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
+    mem-eq = snd-valid pair-valid
+
+    eff-addr : effectiveAddr (regs s) a0 (+ 8) ≡ encode (a , b) +ℕ 8
+    eff-addr = cong (_+ℕ 8) a0-eq
+
     mem-read : readMem (memory s) (effectiveAddr (regs s) a0 (+ 8)) ≡ just (encode b)
     mem-read = trans (cong (λ addr → readMem (memory s) addr) eff-addr) mem-eq
 
