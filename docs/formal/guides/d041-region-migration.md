@@ -74,6 +74,36 @@ The D041 approach uses **only region membership and disjointness**:
 3. **Intra-Stack Disjointness**: Use `sp-distinct`, `offset-distinct`
 4. **Memory Preservation**: `readMem-writeMem-diff` with inequality from above
 
+## MIGRATION ORDER: Top-Down
+
+**CRITICAL: Always migrate TOP-DOWN, never middle-out.**
+
+The StackPointer flows naturally from caller to callee. If you start from the middle (e.g., StarBase.agda), you create mismatches because:
+- The middle expects `caller-sp` from above, but above hasn't been updated
+- The middle provides `caller-sp` below, but below expects the old API
+
+### Correct Order:
+
+```
+1. WholeProgram.agda      -- Entry point: receives/creates initial StackPointer
+2. MutualIR.agda          -- Recursive dispatcher: threads StackPointer
+3. IR/*.agda              -- Individual IR proofs: receive StackPointer from MutualIR
+4. StarBase.agda          -- Base runners: receive StackPointer from IR/*
+```
+
+### Why Top-Down Works:
+
+- StackPointer originates at the top (caller provides it, or we create from initial state)
+- Each layer passes it down to the next
+- Arithmetic (`addr > rbp`) naturally falls away because we're passing identity, not computing bounds
+- Changes cascade cleanly: update parent, then child
+
+### Why Middle-Out Fails:
+
+- Creates type mismatches (middle has new API, parent/child have old API)
+- Requires temporary compatibility shims
+- The arithmetic doesn't fall away - you're fighting it from both directions
+
 ## Available Infrastructure (StackInvariant2.agda)
 
 **Key Proven Lemmas:**
