@@ -21,7 +21,7 @@
 
 module Once.Postulates where
 
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -449,7 +449,48 @@ postulate
                  → SExpr (_S,_^_ Γ A q) B → SExpr (_S,_^_ Γ A q') B
 
 ------------------------------------------------------------------------
--- Postulate P4: x86-64 Execution Helpers (in Once.Backend.X86.Correct)
+-- Postulate P4: Heap-Stack Separation
+------------------------------------------------------------------------
+--
+-- Stack addresses (derived from rsp) don't overlap with heap addresses
+-- (produced by encode). This is a fundamental property of the memory layout.
+--
+-- NEEDED BY: X86 apply proof (push r15 before reading from heap)
+--
+-- JUSTIFICATION:
+--   The runtime initializes memory with separate regions:
+--   - Stack: grows down from stackBase
+--   - Heap: grows up from heapStart
+--   - stackBase < heapStart (they don't overlap)
+--
+--   The encode function allocates on the heap (returns addresses ≥ heapStart).
+--   Stack operations use addresses near rsp (≤ stackBase).
+--   Therefore stack addresses ≠ heap addresses.
+--
+-- IMPACT:
+--   If heap and stack overlapped, stack operations could corrupt heap data.
+--   This would cause silent data corruption in generated code.
+--
+-- ELIMINATION:
+--   Could be proven by:
+--   1. Adding HeapAddr/StackAddr predicates to track address regions
+--   2. Threading these through all memory operations
+--   3. Proving encode produces HeapAddr, rsp operations use StackAddr
+--   This is invasive but achievable for whole-program proofs.
+--
+-- RUNTIME EFFECT: None (proof-only)
+--
+------------------------------------------------------------------------
+
+postulate
+  -- Heap addresses (encode x + any offset) are disjoint from stack addresses
+  -- offset = 0 gives encode x ≢ stack-addr
+  -- offset = 8 gives (encode x + 8) ≢ stack-addr (for pair.snd, closure.code-ptr)
+  heap-stack-disjoint : ∀ {A} (x : ⟦ A ⟧) (offset stack-addr : ℕ) →
+    (encode x +ℕ offset) ≢ stack-addr
+
+------------------------------------------------------------------------
+-- Postulate P5: x86-64 Execution Helpers (in Once.Backend.X86.Correct)
 ------------------------------------------------------------------------
 --
 -- The x86-64 backend has additional postulates for instruction execution:

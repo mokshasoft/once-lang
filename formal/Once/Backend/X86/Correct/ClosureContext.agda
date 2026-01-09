@@ -178,6 +178,7 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
                          (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {∞} {A} {B}) ++ suffix
       offset = length prefix
+      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
   ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg →
@@ -185,6 +186,7 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ compile-length (apply {∞} {A} {B})
@@ -192,9 +194,9 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
 run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
-                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp>16 =
-  let (s' , star , h' , pc' , rax' , r14' , rbp' , stack' , rsp') =
-        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp>16
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp>16 rdi-eq =
+  let (s' , star , h' , pc' , rax' , r14' , r15' , rbp' , stack' , rsp') =
+        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp>16 rdi-eq
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
            mem-env mem-layout , mem-cp mem-layout)
   in s' , star , h' , pc' , rax' , stack' , rsp'
@@ -262,6 +264,7 @@ test-apply-with-wf-eliminates-postulate :
     (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {∞} {A} {B}) ++ suffix
       offset = length prefix
+      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
   in
   -- Preconditions that would be established by curry + pair
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
@@ -270,6 +273,7 @@ test-apply-with-wf-eliminates-postulate :
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false

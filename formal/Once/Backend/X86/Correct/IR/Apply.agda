@@ -36,6 +36,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
+open import Once.Postulates using (heap-stack-disjoint; encode-pair-fst)
 open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
@@ -55,7 +56,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-stack-inv; thunk-rsp-bound)
 
 open import Data.Nat using (_>_)
-open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -95,7 +96,7 @@ open ≡-Reasoning
 
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr : ℕ)
-                   (arg : ⟦ A ⟧) (s : State) →
+                   (cl : Closure A B) (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
   in
@@ -103,7 +104,10 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
-  -- Memory layout
+  -- Key: rdi contains the encoded pair (cl, arg)
+  -- This enables deriving stack-heap disjointness from heap-stack-disjoint
+  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Memory layout (derivable from rdi = encode pair, but explicit for convenience)
   readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
   readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) →
   readMem (memory s) closure-addr ≡ just env-addr →
@@ -122,14 +126,16 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') rsp > 16
           -- NEW: original r15 is saved on stack (at rsp after push = old rsp - 8)
           × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15))
-apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
-                 h-false pc-eq stack-inv rsp>16 mem-cl mem-arg mem-env mem-cp =
+apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
+                 h-false pc-eq stack-inv rsp>16 rdi-eq mem-cl mem-arg mem-env mem-cp =
   s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp>16-6 , mem-r15-saved
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
     old-r15 = readReg (regs s) r15
     old-rsp = readReg (regs s) rsp
+    pair : ⟦ (A ⇒ B) * A ⟧
+    pair = (cl , arg)
     new-rsp = old-rsp ∸ 8
 
     -- The 6 instructions (push + 5 movs)
@@ -220,8 +226,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
 
     -- Memory at rdi is preserved after push (stack vs heap disjointness)
-    postulate
-      stack-heap-disjoint-rdi : new-rsp ≢ readReg (regs s) rdi
+    -- Derived from heap-stack-disjoint: rdi = encode pair, so rdi ≠ new-rsp
+    stack-heap-disjoint-rdi : new-rsp ≢ readReg (regs s) rdi
+    stack-heap-disjoint-rdi eq =
+      -- eq : new-rsp ≡ rdi, rdi-eq : rdi ≡ encode pair
+      -- So: new-rsp ≡ encode pair, hence encode pair ≡ new-rsp
+      -- heap-stack-disjoint says: encode pair +ℕ 0 ≢ new-rsp
+      heap-stack-disjoint pair 0 new-rsp
+        (trans (+-identityʳ (encode pair)) (sym (trans eq rdi-eq)))
 
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
     mem-cl-s1 = subst (λ addr → readMem (memory s1) addr ≡ just closure-addr)
@@ -250,13 +262,38 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
     rdi-s2 = trans (readReg-writeReg-r15-rdi (regs s1) closure-addr) rdi-s1
 
     -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
-    postulate
-      stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ 8
+    -- rdi+8 = encode pair + 8, which is still a heap address
+    stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ 8
+    stack-heap-disjoint-rdi+8 eq =
+      -- eq : new-rsp ≡ rdi + 8
+      -- rdi-eq : rdi ≡ encode pair
+      -- So: new-rsp ≡ encode pair + 8
+      -- heap-stack-disjoint says: encode pair +ℕ 8 ≢ new-rsp
+      heap-stack-disjoint pair 8 new-rsp
+        (sym (trans eq (cong (_+ℕ 8) rdi-eq)))
 
     -- Memory at closure-addr is preserved (stack vs heap disjointness)
-    postulate
-      stack-heap-disjoint-closure : new-rsp ≢ closure-addr
-      stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ 8
+    -- Derive: closure-addr = encode cl (the closure is the fst of the pair)
+    -- From encode-pair-fst: readMem m (encode (cl, arg)) ≡ just (encode cl)
+    -- From mem-cl: readMem m rdi ≡ just closure-addr, and rdi = encode (cl, arg)
+    -- Therefore: closure-addr = encode cl
+    closure-addr-eq : closure-addr ≡ encode {A ⇒ B} cl
+    closure-addr-eq =
+      let mem-at-pair : readMem (memory s) (encode pair) ≡ just (encode {A ⇒ B} cl)
+          mem-at-pair = encode-pair-fst cl arg (memory s)
+          mem-cl-subst : readMem (memory s) (encode pair) ≡ just closure-addr
+          mem-cl-subst = subst (λ a → readMem (memory s) a ≡ just closure-addr) rdi-eq mem-cl
+      in just-injective (trans (sym mem-cl-subst) mem-at-pair)
+
+    stack-heap-disjoint-closure : new-rsp ≢ closure-addr
+    stack-heap-disjoint-closure eq =
+      heap-stack-disjoint {A ⇒ B} cl 0 new-rsp
+        (trans (+-identityʳ (encode {A ⇒ B} cl)) (sym (trans eq closure-addr-eq)))
+
+    stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ 8
+    stack-heap-disjoint-closure+8 eq =
+      heap-stack-disjoint {A ⇒ B} cl 8 new-rsp
+        (sym (trans eq (cong (_+ℕ 8) closure-addr-eq)))
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
     -- Since s2 = s1 with only regs changed, memory s2 = memory s1
@@ -652,12 +689,15 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
+      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  -- Key: rdi contains encoded pair (closure, arg) for heap-stack separation
+  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
@@ -673,17 +713,20 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
 run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
-                  wf h-eq pc-eq stack-inv rsp>16 (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
+                  wf h-eq pc-eq stack-inv rsp>16 rdi-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
   s-final , star-all , h-final , pc-final , rax-final , r14-final , r15-final , rbp-final , stack-inv-final , rsp>16-final
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated: thunk returns to pop r15 instruction
     old-r15 = readReg (regs s) r15
+    -- Construct the closure from its components
+    cl : Closure A B
+    cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
 
     -- Step 1: Trace 6 setup instructions (push + 5 movs)
-    setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg s
-                     h-eq pc-eq stack-inv rsp>16 mem-cl mem-arg mem-env mem-cp
+    setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
+                     h-eq pc-eq stack-inv rsp>16 rdi-eq mem-cl mem-arg mem-env mem-cp
     s-setup = proj₁ setup-result
     star-setup = proj₁ (proj₂ setup-result)
     h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -776,12 +819,14 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
                          (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
+      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
   in
   ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
+  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
@@ -795,10 +840,10 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
 run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
-                       wf h-eq pc-eq stack-inv rsp>16 mem-layout =
+                       wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout =
   let (s' , star , h' , pc' , rax' , r14' , r15' , rbp' , stack' , rsp') =
         run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
-          wf h-eq pc-eq stack-inv rsp>16 mem-layout
+          wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout
   in s' , star , h' , pc' , rax' , stack' , rsp'
 
 ------------------------------------------------------------------------
@@ -878,7 +923,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
     -- Use proven run-apply-with-wf
     result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
-               wf h-eq pc-eq stack-inv rsp>16 mem-layout
+               wf h-eq pc-eq stack-inv rsp>16 rdi-eq mem-layout
     s' = proj₁ result
     star = proj₁ (proj₂ result)
     h' = proj₁ (proj₂ (proj₂ result))
