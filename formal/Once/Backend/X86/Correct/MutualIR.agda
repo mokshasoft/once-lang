@@ -78,7 +78,6 @@ open import Once.Backend.X86.Correct.StarBase public
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star; run-prim-star;
-         run-fst-star-v; run-snd-star-v;
          -- Helper functions
          rbp-inv-preserved-unchanged)
 
