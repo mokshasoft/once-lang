@@ -2496,3 +2496,168 @@ arith : ∀ {Γ τ} → ArithIR Γ τ → IR (Env Γ) (NumToType τ)
 - OCP-0001: Orthogonal Arithmetic Compiler (proposal)
 - D022: Agda for Formal Verification
 - D038: Multiple Generator Implementation Profiles
+
+---
+
+## D041: Abstract Memory Regions Model
+
+**Date**: 2026-01-09
+**Status**: Accepted
+
+### Context
+
+The x86 backend proofs use concrete stack addresses (`stackBase = 0x7FFF0000`) and specific postulates like `heap-stack-disjoint`. While working on eliminating postulates in the apply proof, we encountered fundamental issues:
+
+1. **StackInvariant requires ordering**: `rsp ≤ r15` when r15 holds a heap address
+2. **code-ptr is not a heap address**: During apply, r15 holds a code pointer (low program address ~0-1MB) while rsp is high (~2GB), so `rsp ≤ code-ptr` is FALSE
+3. **Concrete addresses are false precision**: We already postulate "enough stack space" - the concrete stackBase value doesn't add real guarantees
+
+The discussion revealed that `heap-stack-disjoint` is justified by the memory layout assumption that regions don't overlap. The same reasoning applies to code addresses, but code-stack disjointness shouldn't need a separate postulate - it follows from the same memory model.
+
+### Decision
+
+Adopt an **abstract memory regions model** where:
+
+1. Memory is partitioned into **three disjoint regions**: Stack, Heap, Code
+2. Stack operations use **tight allocation** (delta equals size, no waste)
+3. Stack is **LIFO** (push/pop are inverses - exact recovery)
+4. Concrete addresses (like `stackBase = 0x7FFF0000`) are replaced with abstract region membership
+
+### The Pure Stack Model
+
+```agda
+record PureStackModel : Set₁ where
+  field
+    -- Stack pointer type (abstract, not concrete ℕ)
+    SP : Set
+
+    -- Allocation advances SP by exactly the requested size (tight, no waste)
+    alloc : SP → ℕ → SP
+    alloc-tight : ∀ sp n → distance sp (alloc sp n) ≡ n
+
+    -- Deallocation retreats SP by exactly the same amount (LIFO, exact recovery)
+    dealloc : SP → ℕ → SP
+    dealloc-inverse : ∀ sp n → dealloc (alloc sp n) n ≡ sp
+
+    -- Convert SP + offset to address
+    slot-addr : SP → ℕ → Addr
+
+    -- Different SPs give different addresses (freshness)
+    sp-distinct : sp₁ ≢ sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
+
+    -- Different offsets give different addresses
+    offset-distinct : k₁ ≢ k₂ → slot-addr sp k₁ ≢ slot-addr sp k₂
+
+    -- All stack addresses are in stack region
+    in-region : ∀ sp k → StackRegion (slot-addr sp k)
+```
+
+### Region Disjointness (Single Postulate)
+
+```agda
+-- Memory is partitioned into regions
+data Region : Set where stack heap code : Region
+
+-- Single postulate: regions are pairwise disjoint
+postulate
+  regions-disjoint : ∀ {r₁ r₂} → r₁ ≢ r₂ →
+    ∀ a₁ a₂ → region-of a₁ ≡ r₁ → region-of a₂ ≡ r₂ → a₁ ≢ a₂
+
+-- Region membership (definitional, not postulated)
+stack-addr-region : ∀ sp k → region-of (slot-addr sp k) ≡ stack
+heap-addr-region : ∀ {A} (x : ⟦ A ⟧) k → region-of (encode x + k) ≡ heap
+code-addr-region : ∀ offset → offset < prog-length → region-of offset ≡ code
+```
+
+### Rationale
+
+**Why abstract over concrete:**
+
+| Concrete Model | Abstract Model |
+|----------------|----------------|
+| `rsp = 0x7FFF0000` | `rsp ∈ StackRegion` |
+| `rsp > 16` | `HasStackSpace sp n` |
+| `heap-stack-disjoint` (postulate) | `regions-disjoint` (single postulate) |
+| `code-stack-disjoint` (needs new postulate) | Follows from `regions-disjoint` |
+| Direction matters (grows down) | Direction abstracted away |
+
+**Why "tight allocation" matters:**
+
+Pure freshness ("allocations don't overlap") allows wasteful implementations:
+```
+Frame 1: [addr 0-7]
+Frame 2: [addr 1000-1007]  -- wasted 992 bytes!
+```
+
+Tight allocation (`delta ≡ size`) ensures no waste - the stack pointer moves exactly by the frame size. Combined with LIFO (`dealloc ∘ alloc = id`), this captures the essential stack discipline without assuming direction.
+
+**Why not assume "grows down":**
+
+- Not all architectures grow down (PA-RISC grew up)
+- The proofs don't actually need direction
+- "Tight + LIFO" captures the essential properties
+- More general = more reusable proofs
+
+**Generalizing "enough stack space":**
+
+We already postulate sufficient stack space. The abstract model generalizes this:
+- Stack: "enough space" = allocations succeed and are tight
+- Heap: "enough space" = encode allocations succeed and are fresh
+- Code: fixed at compile time, no runtime allocation
+
+This is the same assumption applied uniformly across all regions.
+
+### What Changes in Proofs
+
+**StackInvariant simplifies:**
+```agda
+-- Old: track rsp ≤ r15 ordering (fails when r15 = code-ptr)
+-- New: just track which region r15 points to
+
+data R15Status (s : State) : Set where
+  r15-zero   : readReg (regs s) r15 ≡ 0 → R15Status s
+  r15-heap   : HeapRegion (readReg (regs s) r15) → R15Status s
+  r15-code   : CodeRegion (readReg (regs s) r15) → R15Status s
+
+-- Stack writes are safe regardless of which case!
+-- Because regions-disjoint covers all cases
+```
+
+**Memory preservation becomes trivial:**
+```agda
+-- To prove: stack write at sp doesn't affect heap addr h
+mem-preserved : StackRegion sp → HeapRegion h →
+                writeMem mem sp v → readMem (result) h ≡ readMem mem h
+
+-- Proof: regions-disjoint gives sp ≢ h, so write doesn't affect read. QED.
+```
+
+**Concrete bounds disappear:**
+- No more `rsp > 16`
+- No more `stackBase = 0x7FFF0000`
+- Just `HasStackSpace sp n` for operations needing n bytes
+
+### Consequences
+
+- **Single region disjointness postulate** replaces multiple specific postulates
+- **code-stack disjointness** falls out for free (no new postulate)
+- **StackInvariant** simplifies to region membership tracking
+- **Proofs don't assume stack direction** - more general and reusable
+- **Tight allocation + LIFO** captures stack discipline abstractly
+- **Requires refactoring** existing concrete `rsp` usage (future work)
+
+### Migration Path
+
+1. Define abstract `PureStackModel` in new module
+2. Define `regions-disjoint` postulate
+3. Refactor `StackInvariant` to use region membership
+4. Update memory preservation proofs to use region disjointness
+5. Remove concrete `stackBase`, `rsp > 16` bounds
+6. Remove `heap-stack-disjoint` (subsumed by `regions-disjoint`)
+
+### See Also
+
+- D022: Agda for Formal Verification
+- D038: Multiple Generator Implementation Profiles
+- `formal/Once/Backend/X86/Correct/StackInvariant.agda` - Current concrete model
+- `formal/Once/Postulates.agda` - Current `heap-stack-disjoint` postulate
