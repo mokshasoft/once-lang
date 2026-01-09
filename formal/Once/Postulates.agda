@@ -22,7 +22,7 @@
 module Once.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -488,6 +488,13 @@ postulate
   -- offset = 8 gives (encode x + 8) ≢ stack-addr (for pair.snd, closure.code-ptr)
   heap-stack-disjoint : ∀ {A} (x : ⟦ A ⟧) (offset stack-addr : ℕ) →
     (encode x +ℕ offset) ≢ stack-addr
+
+  -- Heap addresses are above stack addresses (stronger than disjointness)
+  -- This captures the runtime layout: heap grows downward from high addresses,
+  -- stack grows downward from a lower base address.
+  -- Used to prove StackInvariant (rsp ≤ heap-addr) when r15 holds a heap pointer.
+  heap-above-stack : ∀ {A} (x : ⟦ A ⟧) (offset stack-addr : ℕ) →
+    stack-addr ≤ (encode x +ℕ offset)
 
 ------------------------------------------------------------------------
 -- Postulate P5: x86-64 Execution Helpers (in Once.Backend.X86.Correct)

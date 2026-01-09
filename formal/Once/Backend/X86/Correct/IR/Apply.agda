@@ -36,7 +36,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
-open import Once.Postulates using (heap-stack-disjoint; encode-pair-fst)
+open import Once.Postulates using (heap-stack-disjoint; heap-above-stack; encode-pair-fst)
 open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
@@ -58,6 +58,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
 
 open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -126,10 +127,12 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > 16
           -- NEW: original r15 is saved on stack (at rsp after push = old rsp - 8)
-          × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15))
+          × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15)
+          -- RSP tracking: s'.rsp = s.rsp - 8 (push decrements by 8)
+          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8)
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
                  h-false pc-eq stack-inv rsp>16 rdi-eq mem-cl mem-arg mem-env mem-cp =
-  s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp>16-6 , mem-r15-saved
+  s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp>16-6 , mem-r15-saved , rsp6
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -624,14 +627,18 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
 -- | Trace pop r15 instruction at the end of apply
 -- This restores r15 to its original value (saved at start by push r15)
 apply-pop-star : ∀ {A B} (prefix suffix : Program)
-                 (old-r15 : ℕ) (s : State) →
+                 (old-r15 orig-rsp : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
   in
   halted s ≡ false →
   pc s ≡ offset +ℕ 7 →
   readMem (memory s) (readReg (regs s) rsp) ≡ just old-r15 →
-  StackInvariant s →
+  -- s.rsp should equal orig-rsp - 8 (after push at setup, before pop)
+  -- But after thunk ret, s.rsp = setup.rsp = orig-rsp - 8
+  readReg (regs s) rsp ≡ orig-rsp ∸ 8 →
+  -- Original StackInvariant info: either old-r15 = 0, or orig-rsp ≤ old-r15
+  (old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15) →
   readReg (regs s) rsp > 16 →
   -- Result after pop: r15 = old-r15, pc = offset+8
   ∃[ s' ] (Star prog s s'
@@ -643,7 +650,7 @@ apply-pop-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
-apply-pop-star {A} {B} prefix suffix old-r15 s h-false pc-eq mem-r15 stack-inv rsp>16 =
+apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rsp-eq orig-inv rsp>16 =
   s1 , star-all , h1 , pc1 , r15-1 , rax1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -710,12 +717,53 @@ apply-pop-star {A} {B} prefix suffix old-r15 s h-false pc-eq mem-r15 stack-inv r
                  (readReg-writeReg-r15-rbp (regs s) old-r15)
 
     -- StackInvariant for apply pop result
-    -- POSTULATE: After pop, r15 = old-r15 (restored), rsp = thunk_rsp + 8
-    -- Could be proven by showing final rsp = original rsp and r15 = original r15,
-    -- then deriving from original StackInvariant. Requires threading original
-    -- StackInvariant through the proof.
-    postulate
-      stack-inv1 : StackInvariant s1
+    -- Proven using original invariant information (orig-inv)
+    --
+    -- Key facts:
+    -- - s1.r15 = old-r15 (proven by r15-1)
+    -- - s1.rsp = new-rsp = old-rsp + 8 = (orig-rsp - 8) + 8 = orig-rsp
+    --   (where old-rsp = s.rsp = orig-rsp - 8 by rsp-eq)
+    --
+    -- Case orig-inv:
+    -- - inj₁ (old-r15 ≡ 0): s1.r15 = 0, use r15-unused
+    -- - inj₂ (orig-rsp ≤ old-r15): s1.rsp = orig-rsp ≤ old-r15 = s1.r15, use stack-below-r15
+
+    -- s1.rsp = orig-rsp
+    rsp1-eq-orig : readReg (regs s1) rsp ≡ orig-rsp
+    rsp1-eq-orig = begin
+      readReg (regs s1) rsp
+        ≡⟨ readReg-writeReg-same (writeReg (regs s) r15 old-r15) rsp new-rsp ⟩
+      new-rsp
+        ≡⟨ refl ⟩
+      old-rsp +ℕ 8
+        ≡⟨ cong (_+ℕ 8) rsp-eq ⟩
+      (orig-rsp ∸ 8) +ℕ 8
+        ≡⟨ m∸n+n≡m 8≤orig-rsp ⟩
+      orig-rsp ∎
+      where
+        -- Need 8 ≤ orig-rsp for m∸n+n≡m
+        -- From rsp>16 : s.rsp > 16, and rsp-eq : s.rsp = orig-rsp - 8
+        -- So orig-rsp - 8 > 16, hence orig-rsp > 24 ≥ 8
+        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (<⇒≤; m∸n≤m)
+
+        -- s.rsp ≤ orig-rsp because s.rsp = orig-rsp - 8 ≤ orig-rsp
+        s-rsp≤orig : readReg (regs s) rsp ≤ orig-rsp
+        s-rsp≤orig = subst (_≤ orig-rsp) (sym rsp-eq) (m∸n≤m orig-rsp 8)
+
+        8≤orig-rsp : 8 ≤ orig-rsp
+        8≤orig-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+                            (≤-trans (<⇒≤ rsp>16) s-rsp≤orig)
+
+    stack-inv1 : StackInvariant s1
+    stack-inv1 = derive-stack-inv orig-inv
+      where
+        derive-stack-inv : (old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15) → StackInvariant s1
+        derive-stack-inv (inj₁ r15-zero) = r15-unused (trans r15-1 r15-zero)
+        derive-stack-inv (inj₂ orig-rsp≤old-r15) =
+          stack-below-r15 (subst (_≤ readReg (regs s1) r15)
+                                 (sym rsp1-eq-orig)
+                                 (subst (orig-rsp ≤_) (sym r15-1) orig-rsp≤old-r15))
 
     rsp>16-1 : readReg (regs s1) rsp > 16
     rsp>16-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
@@ -779,7 +827,9 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
     stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
     rsp>16-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-    mem-r15-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+    mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+    -- RSP tracking: s-setup.rsp = s.rsp - 8
+    rsp-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
 
     -- Step 2: Trace call instruction
     call-result = apply-call-star {A} {B} prefix suffix code-ptr s-setup
@@ -879,9 +929,27 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         ≡⟨ mem-r15-setup ⟩
       just old-r15 ∎
 
-    pop-result = apply-pop-star {A} {B} prefix suffix old-r15 s-thunk
+    -- Original rsp for threading to apply-pop-star
+    orig-rsp = readReg (regs s) rsp
+
+    -- Prove s-thunk.rsp = orig-rsp - 8
+    -- Chain: s-thunk.rsp = s-setup.rsp (rsp-thunk-eq-setup) = s.rsp - 8 (rsp-setup)
+    rsp-thunk-eq-orig : readReg (regs s-thunk) rsp ≡ orig-rsp ∸ 8
+    rsp-thunk-eq-orig = trans rsp-thunk-eq-setup rsp-setup
+
+    -- Extract original StackInvariant info
+    -- stack-inv : StackInvariant s tells us either s.r15 = 0 or s.rsp ≤ s.r15
+    -- Since old-r15 = s.r15, this gives us either old-r15 = 0 or orig-rsp ≤ old-r15
+    orig-inv : old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15
+    orig-inv = extract-stack-inv stack-inv
+      where
+        extract-stack-inv : StackInvariant s → old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15
+        extract-stack-inv (r15-unused r15-eq-0) = inj₁ r15-eq-0
+        extract-stack-inv (stack-below-r15 rsp≤r15) = inj₂ rsp≤r15
+
+    pop-result = apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s-thunk
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk
-                   (thunk-stack-inv thunk-res) (thunk-rsp-bound thunk-res)
+                   rsp-thunk-eq-orig orig-inv (thunk-rsp-bound thunk-res)
     s-pop = proj₁ pop-result
     star-pop = proj₁ (proj₂ pop-result)
     h-pop = proj₁ (proj₂ (proj₂ pop-result))
