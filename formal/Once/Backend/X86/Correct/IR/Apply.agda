@@ -53,10 +53,11 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          code-ptr-valid; thunk-correct;
          thunk-star; thunk-halted; thunk-rax;
          thunk-r14; thunk-r15; thunk-rbp;
-         thunk-stack-inv; thunk-rsp-bound)
+         thunk-stack-inv; thunk-rsp-bound;
+         thunk-rsp-plus-8; thunk-mem-above)
 
-open import Data.Nat using (_>_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans)
+open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -492,9 +493,13 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+          × readReg (regs s') rsp > 16
+          -- RSP tracking: call pushes return address (rsp -= 8)
+          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8
+          -- Memory preservation at original rsp (call writes at new-rsp, not old-rsp)
+          × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp))
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv rsp>16 =
-  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1
+  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1-eq , mem-preserved-old-rsp
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -586,6 +591,35 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
         open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41
         17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+    -- RSP tracking: s1.rsp = new-rsp = old-rsp ∸ 8 = s.rsp ∸ 8
+    rsp1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ 8
+    rsp1-eq = rsp1  -- rsp1 proves s1.rsp = new-rsp, and new-rsp = old-rsp ∸ 8 = s.rsp ∸ 8
+
+    -- Memory at original rsp preserved (call writes at new-rsp = old-rsp - 8, not old-rsp)
+    -- Since old-rsp > 16, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
+    old-rsp≢new-rsp : old-rsp ≢ new-rsp
+    old-rsp≢new-rsp eq = contradiction (sym eq)
+      where
+        open import Data.Nat.Properties using (<⇒≢; ∸-monoʳ-<; +-identityʳ)
+        open import Data.Nat using (s≤s; z≤n; _<_)
+        -- old-rsp > 16 ≥ 8, and 0 < 8, so old-rsp - 8 < old-rsp - 0 = old-rsp
+        -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
+        -- With o = 0, n = 8: 0 < 8 → 8 ≤ old-rsp → old-rsp ∸ 8 < old-rsp ∸ 0 = old-rsp
+        0<8 : 0 < 8
+        0<8 = s≤s z≤n
+        8≤old-rsp : 8 ≤ old-rsp
+        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp>16)
+          where
+            open import Data.Nat.Properties using (<⇒≤)
+        new-rsp<old-rsp : new-rsp < old-rsp
+        new-rsp<old-rsp = ∸-monoʳ-< 0<8 8≤old-rsp
+        contradiction : new-rsp ≢ old-rsp
+        contradiction = Data.Nat.Properties.<⇒≢ new-rsp<old-rsp
+
+    mem-preserved-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
+    mem-preserved-old-rsp = readMem-writeMem-diff (memory s) new-rsp old-rsp (pc s +ℕ 1)
+                              (λ eq → old-rsp≢new-rsp (sym eq))
 
 -- | Trace pop r15 instruction at the end of apply
 -- This restores r15 to its original value (saved at start by push r15)
@@ -760,7 +794,11 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     r14-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))
     rbp-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))
     stack-inv-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))
-    rsp>16-call = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))
+    rsp>16-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))
+    -- RSP tracking: s-call.rsp = s-setup.rsp - 8
+    rsp-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))
+    -- Memory at s-setup.rsp preserved through call (call writes at s-call.rsp, not s-setup.rsp)
+    mem-call-preserved = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))
 
     -- Step 3: Use thunk-correct from ClosureWellFormed
     -- The thunk executes and returns to ret-addr (offset+7) with result in rax
@@ -779,13 +817,67 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     star-thunk = thunk-star thunk-res
 
     -- Step 4: Trace pop r15 instruction
-    -- Need to show that original r15 is still on stack at s-thunk's rsp
-    -- POSTULATE: Thunk preserves memory above its stack frame
-    -- The pushed r15 is at (original_rsp - 8), thunk operates below that
-    -- To prove: would need ThunkResult to include memory preservation guarantees
-    -- showing thunk only modifies memory at addresses < initial_rsp
-    postulate
-      mem-r15-thunk : readMem (memory s-thunk) (readReg (regs s-thunk) rsp) ≡ just old-r15
+    -- Prove that original r15 is still on stack at s-thunk's rsp
+    --
+    -- Memory chain:
+    -- 1. mem-r15-setup: readMem (memory s-setup) s-setup.rsp ≡ just old-r15
+    -- 2. Call writes at s-call.rsp = s-setup.rsp - 8, not at s-setup.rsp
+    -- 3. thunk-mem-above: memory at addr ≥ s-call.rsp is preserved
+    --    Since s-setup.rsp = s-call.rsp + 8 ≥ s-call.rsp, memory at s-setup.rsp is preserved
+    -- 4. thunk-rsp-plus-8: s-thunk.rsp = s-call.rsp + 8 = s-setup.rsp
+    --
+    -- Therefore: readMem (memory s-thunk) s-thunk.rsp = just old-r15
+
+    -- s-thunk.rsp = s-call.rsp + 8 (thunk's ret pops return address)
+    rsp-thunk-eq : readReg (regs s-thunk) rsp ≡ readReg (regs s-call) rsp +ℕ 8
+    rsp-thunk-eq = thunk-rsp-plus-8 thunk-res
+
+    -- s-call.rsp = s-setup.rsp - 8 (call pushes return address)
+    -- Therefore: s-call.rsp + 8 = s-setup.rsp (when rsp > 16, we have 8 ≤ rsp, so rsp - 8 + 8 = rsp)
+    8≤setup-rsp : 8 ≤ readReg (regs s-setup) rsp
+    8≤setup-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp>16-setup)
+      where
+        open import Data.Nat.Properties using (<⇒≤)
+        open import Data.Nat using (s≤s; z≤n)
+
+    rsp-call-plus-8-eq : readReg (regs s-call) rsp +ℕ 8 ≡ readReg (regs s-setup) rsp
+    rsp-call-plus-8-eq = trans (cong (_+ℕ 8) rsp-call) (m∸n+n≡m 8≤setup-rsp)
+
+    -- s-thunk.rsp = s-setup.rsp
+    rsp-thunk-eq-setup : readReg (regs s-thunk) rsp ≡ readReg (regs s-setup) rsp
+    rsp-thunk-eq-setup = trans rsp-thunk-eq rsp-call-plus-8-eq
+
+    -- s-setup.rsp ≥ s-call.rsp (since s-setup.rsp = s-call.rsp + 8)
+    -- This is s-call.rsp ≤ s-setup.rsp = s-call.rsp + 8
+    setup-rsp-geq-call : readReg (regs s-setup) rsp ≥ readReg (regs s-call) rsp
+    setup-rsp-geq-call = subst (readReg (regs s-call) rsp ≤_)
+                               rsp-call-plus-8-eq
+                               (m≤m+n (readReg (regs s-call) rsp) 8)
+
+    -- Memory at s-setup.rsp preserved from s-call to s-thunk (by thunk-mem-above)
+    mem-preserved-thunk : readMem (memory s-thunk) (readReg (regs s-setup) rsp) ≡
+                          readMem (memory s-call) (readReg (regs s-setup) rsp)
+    mem-preserved-thunk = thunk-mem-above thunk-res (readReg (regs s-setup) rsp) setup-rsp-geq-call
+
+    -- Call writes at s-call.rsp, not s-setup.rsp. They differ by 8.
+    -- Memory at s-setup.rsp preserved from s-setup to s-call
+    -- Proven via mem-call-preserved from apply-call-star
+    mem-preserved-call : readMem (memory s-call) (readReg (regs s-setup) rsp) ≡
+                         readMem (memory s-setup) (readReg (regs s-setup) rsp)
+    mem-preserved-call = mem-call-preserved
+
+    -- Chain the memory preservation proofs
+    mem-r15-thunk : readMem (memory s-thunk) (readReg (regs s-thunk) rsp) ≡ just old-r15
+    mem-r15-thunk = begin
+      readMem (memory s-thunk) (readReg (regs s-thunk) rsp)
+        ≡⟨ cong (readMem (memory s-thunk)) rsp-thunk-eq-setup ⟩
+      readMem (memory s-thunk) (readReg (regs s-setup) rsp)
+        ≡⟨ mem-preserved-thunk ⟩
+      readMem (memory s-call) (readReg (regs s-setup) rsp)
+        ≡⟨ mem-preserved-call ⟩
+      readMem (memory s-setup) (readReg (regs s-setup) rsp)
+        ≡⟨ mem-r15-setup ⟩
+      just old-r15 ∎
 
     pop-result = apply-pop-star {A} {B} prefix suffix old-r15 s-thunk
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk

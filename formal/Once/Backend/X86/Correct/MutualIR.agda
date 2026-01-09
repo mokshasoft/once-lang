@@ -1128,6 +1128,27 @@ mutual
 
       -- Build ThunkResult
       -- Note: rbp-f now directly gives s-after-f.rbp = s.rbp (cleanup restores original)
+
+      -- RSP after thunk = entry RSP + 8 (ret pops return address):
+      -- s → s-after-setup (rsp -= 32: push r15, push rbp, sub 16)
+      -- s-after-setup → s-after-f (rsp restored by cleanup: add 16, pop rbp, pop r15)
+      -- s-after-f → s-final (ret: rsp += 8)
+      -- Net effect: -32 + 24 + 8 = 0... wait that's wrong
+      -- Actually: s.rsp (thunk entry has return addr on stack)
+      --           s-after-setup.rsp = s.rsp - 32
+      --           s-after-f.rsp = s.rsp (cleanup restores)
+      --           s-final.rsp = s.rsp + 8 (ret pops return addr)
+      -- LOCAL POSTULATE: Will be proven by composing cleanup rsp restoration with ret rsp effect
+      postulate
+        thunk-rsp-plus-8-post : readReg (regs s-final) rsp ≡ readReg (regs s) rsp +ℕ 8
+
+      -- Memory preservation above initial rsp:
+      -- Thunk writes only below initial rsp (push, sub, local stores)
+      -- LOCAL POSTULATE: Will be proven by composing setup/f/cleanup/ret memory preservation
+      postulate
+        thunk-mem-above-post : ∀ addr → addr ≥ readReg (regs s) rsp →
+                               readMem (memory s-final) addr ≡ readMem (memory s) addr
+
       thunk-result : ThunkResult prog s s-final (λ b → eval f (env , b)) arg
       thunk-result = record
         { thunk-star = star-all
@@ -1138,6 +1159,8 @@ mutual
         ; thunk-rbp = trans rbp-final rbp-f  -- rbp-f gives s-after-f.rbp = s.rbp directly
         ; thunk-stack-inv = stack-inv-final
         ; thunk-rsp-bound = rsp>16-final
+        ; thunk-rsp-plus-8 = thunk-rsp-plus-8-post
+        ; thunk-mem-above = thunk-mem-above-post
         }
 
   ------------------------------------------------------------------------

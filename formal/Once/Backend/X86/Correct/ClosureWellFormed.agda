@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Postulates using (encode)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _<_; _≥_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -53,6 +53,17 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     thunk-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     thunk-stack-inv : StackInvariant s'
     thunk-rsp-bound : readReg (regs s') rsp > 16
+
+    -- RSP after thunk = entry RSP + 8 (thunk's ret pops return address)
+    -- Thunk internally: push r15, push rbp, sub 16, <run f>, add 16, pop rbp, pop r15, ret
+    -- Net effect on rsp: -8 -8 -16 +16 +8 +8 +8 = +8
+    thunk-rsp-plus-8 : readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
+
+    -- Memory at/above initial rsp is preserved
+    -- Thunk only writes to stack addresses below its entry rsp
+    -- This is crucial for proving apply's pushed r15 is preserved
+    thunk-mem-above : ∀ addr → addr ≥ readReg (regs s) rsp →
+                      readMem (memory s') addr ≡ readMem (memory s) addr
 
 open ThunkResult public
 
