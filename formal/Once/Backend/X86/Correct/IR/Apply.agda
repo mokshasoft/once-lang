@@ -451,6 +451,9 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
                                              rsp1))))
 
     -- StackInvariant for apply setup
+    -- POSTULATE: After setup, r15 = code-ptr (heap address), rsp = old_rsp - 8
+    -- To prove: would need stack-below-r15 (rsp ≤ code-ptr), i.e., stack ≤ heap
+    -- This is related to heap-stack-disjoint but requires ordering, not just inequality
     postulate
       stack-inv6 : StackInvariant s6
 
@@ -570,14 +573,13 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     rbp1 = readReg-writeReg-rsp-rbp (regs s) new-rsp
 
     -- StackInvariant: call pushed return address but r15 changed
-    -- We postulate this for now since r15 no longer holds heap pointer
+    -- StackInvariant for apply call
+    -- POSTULATE: After call, r15 = code-ptr (unchanged), rsp = old_rsp - 8
+    -- Same situation as stack-inv6: r15 holds heap address, need rsp ≤ r15
     postulate
       stack-inv1 : StackInvariant s1
 
-    -- rsp > 16: rsp decreased by 8 but was > 16 so new rsp > 8
-    -- Actually we need rsp > 16 after call. With rsp > 16 initially
-    -- and subtracting 8, we get new-rsp > 8. For new-rsp > 16 we need
-    -- old rsp > 24. We postulate the runtime guarantee.
+    -- rsp > 16 after call: derived from runtime bound rsp-bound-after-stack-op
     rsp>16-1 : readReg (regs s1) rsp > 16
     rsp>16-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
       where
@@ -673,6 +675,11 @@ apply-pop-star {A} {B} prefix suffix old-r15 s h-false pc-eq mem-r15 stack-inv r
     rbp1 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s) r15 old-r15) new-rsp)
                  (readReg-writeReg-r15-rbp (regs s) old-r15)
 
+    -- StackInvariant for apply pop result
+    -- POSTULATE: After pop, r15 = old-r15 (restored), rsp = thunk_rsp + 8
+    -- Could be proven by showing final rsp = original rsp and r15 = original r15,
+    -- then deriving from original StackInvariant. Requires threading original
+    -- StackInvariant through the proof.
     postulate
       stack-inv1 : StackInvariant s1
 
@@ -773,7 +780,10 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
     -- Step 4: Trace pop r15 instruction
     -- Need to show that original r15 is still on stack at s-thunk's rsp
-    -- The thunk preserves the stack, so the original r15 pushed at start should still be there
+    -- POSTULATE: Thunk preserves memory above its stack frame
+    -- The pushed r15 is at (original_rsp - 8), thunk operates below that
+    -- To prove: would need ThunkResult to include memory preservation guarantees
+    -- showing thunk only modifies memory at addresses < initial_rsp
     postulate
       mem-r15-thunk : readMem (memory s-thunk) (readReg (regs s-thunk) rsp) ≡ just old-r15
 
@@ -940,8 +950,24 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     rax-sem : encode (semantics arg) ≡ encode (eval (apply {A} {B}) x)
     rax-sem = refl
 
-    -- LOCAL POSTULATES: Remaining postulates for memory properties
-    -- These can be proven with detailed memory tracing
+    -- LOCAL POSTULATES: Memory preservation through apply execution
+    --
+    -- These capture that apply only writes to:
+    --   1. Its stack frame (below initial rsp)
+    --   2. The heap (via thunk allocations)
+    --
+    -- And does NOT write to:
+    --   - Addresses at/above rbp (caller's frame)
+    --   - Address 0 (null page)
+    --   - The original r15 location
+    --
+    -- To prove: would need to track all memory writes through setup, call,
+    -- thunk execution, and pop. Each instruction's memory effect must be
+    -- shown to not touch these addresses. The thunk would need memory
+    -- preservation guarantees in ThunkResult.
+    --
+    -- NOTE: RISC-V and AArch64 eliminated similar postulates by using
+    -- ApplyMemoryLayout which tracks memory validity statefully.
     postulate
       mem-r15-post : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
       mem-rbp-post : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
