@@ -78,8 +78,10 @@ exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
          × readMem (memory s') (readReg (regs s') rbp +ℕ 8) ≡ just (readReg (regs s) r15)
          × readMem (memory s') (readReg (regs s') rbp +ℕ 16) ≡ just (readReg (regs s) r14)
          -- Memory preservation: addresses >= orig-rsp are unchanged (writes are below rsp)
-         × (∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr))
-exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq , mem-rbp-eq , mem-r15-eq , mem-r14-eq , mem-above-eq
+         × (∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr)
+         -- Memory at address 0 is preserved (write addresses are in stack region, 0 is not)
+         × readMem (memory s') 0 ≡ readMem (memory s) 0)
+exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq , mem-rbp-eq , mem-r15-eq , mem-r14-eq , mem-above-eq , mem-at-0
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
@@ -588,6 +590,48 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         -- Memory s1: step 1 wrote at write1, which ≠ addr
         mem-s1-s : readMem (memory s1) addr ≡ readMem (memory s) addr
         mem-s1-s = mem-read-other {memory s} {write1} {addr} {orig-r14} (λ eq → addr≢write1 (sym eq))
+
+    -- Memory at address 0 is preserved
+    -- Uses abstract stackAddr-write-preserves-zero lemma (no inline arithmetic reasoning)
+    mem-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
+    mem-at-0 = trans mem0-s7-s3 (trans mem0-s3-s2 (trans mem0-s2-s1 mem0-s1-s))
+      where
+        open import Once.Backend.X86.Correct.StackInvariant2 using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
+        open import Once.Backend.Common.MemoryRegions using (region-of; stack; stackAddr-write-preserves-zero)
+
+        -- Write addresses (from x86 semantics)
+        write1 = orig-rsp ∸ 8
+        write2 = orig-rsp ∸ 16
+        write3 = orig-rsp ∸ 24
+
+        -- Derive capacity from rsp > 24
+        cap : StackCapacity s 3
+        cap = rsp-bound-to-capacity s 3 rsp-gt-24
+
+        -- Write addresses are in stack region (via capacity-maintained)
+        write1-in-stack : region-of write1 ≡ stack
+        write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
+
+        write2-in-stack : region-of write2 ≡ stack
+        write2-in-stack = capacity-maintained cap 2 (s≤s (s≤s z≤n))
+
+        write3-in-stack : region-of write3 ≡ stack
+        write3-in-stack = capacity-maintained cap 3 (s≤s (s≤s (s≤s z≤n)))
+
+        -- Chain memory preservation at 0 using abstract lemma
+        mem0-s7-s3 : readMem (memory s7) 0 ≡ readMem (memory s3) 0
+        mem0-s7-s3 = refl
+
+        mem0-s3-s2 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
+        mem0-s3-s2 = trans (cong (λ a → readMem (writeMem (memory s2) a (readReg (regs s2) rbp)) 0) write-addr-s3)
+                          (stackAddr-write-preserves-zero (memory s2) write3 (readReg (regs s2) rbp) write3-in-stack)
+
+        mem0-s2-s1 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+        mem0-s2-s1 = trans (cong (λ a → readMem (writeMem (memory s1) a (readReg (regs s1) r15)) 0) write-addr-s2)
+                          (stackAddr-write-preserves-zero (memory s1) write2 (readReg (regs s1) r15) write2-in-stack)
+
+        mem0-s1-s : readMem (memory s1) 0 ≡ readMem (memory s) 0
+        mem0-s1-s = stackAddr-write-preserves-zero (memory s) write1 orig-r14 write1-in-stack
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
 -- Used for phase 3 of pair construction - storing f's result and restoring input

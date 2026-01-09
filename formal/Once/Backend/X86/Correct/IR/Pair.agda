@@ -395,7 +395,9 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
     mem-r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
     -- Memory preservation for addresses >= orig-rsp
-    mem-above-eq-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+    mem-above-eq-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
+    -- Memory at address 0 is preserved (from exec-pair-setup-at-7)
+    mem-at-0-from-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
 
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     r14-setup = r14-setup-raw
@@ -430,10 +432,9 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
         17≤41 = m≤m+n 17 24
 
     -- Memory at address 0 is preserved through setup
-    -- Setup only writes to stack addresses (rsp-24, rsp-16, rsp-8) which are > 40, never to 0
-    -- TODO: Prove this by showing exec-pair-setup-at-7 preserves memory at addresses < rsp-24
-    postulate
-      mem-at-0-setup-proof : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+    -- Extracted directly from exec-pair-setup-at-7 result
+    mem-at-0-setup-proof : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+    mem-at-0-setup-proof = mem-at-0-from-setup
 
 ------------------------------------------------------------------------
 -- Middle Result: state after 2 middle instructions (store f result, restore input)

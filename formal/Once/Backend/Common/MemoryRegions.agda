@@ -33,7 +33,7 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 -- Import Memory type from Common.Memory
-open import Once.Backend.Common.Memory using (Memory; Word; readMem)
+open import Once.Backend.Common.Memory using (Memory; Word; readMem; writeMem)
 
 ------------------------------------------------------------------------
 -- Memory Regions
@@ -249,6 +249,60 @@ postulate
   frameSlot-distinct-slots : ∀ mem sp k₁ k₂ val →
     k₁ ≢ k₂ →
     frameSlot (frameWriteSlot mem sp k₁ val) sp k₂ ≡ frameSlot mem sp k₂
+
+------------------------------------------------------------------------
+-- Abstract Memory Preservation Properties
+------------------------------------------------------------------------
+-- These state what frame operations preserve, with NO arithmetic.
+-- The instantiation layer proves these using concrete reasoning.
+
+postulate
+  -- | Frame writes preserve address 0 (null page protection)
+  -- Stack frames are never at address 0, so writing to any frame
+  -- slot preserves memory at 0.
+  frameWriteSlot-preserves-zero : ∀ mem sp k val →
+    readMem (frameWriteSlot mem sp k val) 0 ≡ readMem mem 0
+
+  -- | Frame writes preserve heap addresses
+  -- Stack and heap regions are disjoint.
+  frameWriteSlot-preserves-heap : ∀ mem sp k val heap-addr →
+    region-of heap-addr ≡ heap →
+    readMem (frameWriteSlot mem sp k val) heap-addr ≡ readMem mem heap-addr
+
+  -- | Frame writes preserve code addresses
+  -- Stack and code regions are disjoint.
+  frameWriteSlot-preserves-code : ∀ mem sp k val code-addr →
+    region-of code-addr ≡ code →
+    readMem (frameWriteSlot mem sp k val) code-addr ≡ readMem mem code-addr
+
+------------------------------------------------------------------------
+-- Raw Stack Write Preservation (for x86 execution)
+------------------------------------------------------------------------
+-- These lemmas are for raw writeMem operations at stack addresses.
+-- Used when x86 execution writes to stack (push, mov [rsp-k], etc.)
+-- The INSTANTIATION LAYER proves these; x86 proofs just use them.
+--
+-- KEY: These take `region-of addr ≡ stack` as input, hiding all
+-- arithmetic about "why stack addresses ≠ 0/heap/code".
+
+postulate
+  -- | Writing to a stack address preserves address 0
+  -- If addr is in stack region, then addr ≠ 0 (since 0 is not in stack)
+  stackAddr-write-preserves-zero : ∀ mem addr val →
+    region-of addr ≡ stack →
+    readMem (writeMem mem addr val) 0 ≡ readMem mem 0
+
+  -- | Writing to a stack address preserves heap addresses
+  stackAddr-write-preserves-heap : ∀ mem addr val heap-addr →
+    region-of addr ≡ stack →
+    region-of heap-addr ≡ heap →
+    readMem (writeMem mem addr val) heap-addr ≡ readMem mem heap-addr
+
+  -- | Writing to a stack address preserves code addresses
+  stackAddr-write-preserves-code : ∀ mem addr val code-addr →
+    region-of addr ≡ stack →
+    region-of code-addr ≡ code →
+    readMem (writeMem mem addr val) code-addr ≡ readMem mem code-addr
 
 ------------------------------------------------------------------------
 -- INTERNAL: Abstraction Boundary Glue
