@@ -33,7 +33,7 @@ open import Once.Backend.Common.ProgramLemmas
 
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot)
+  using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
@@ -1205,41 +1205,33 @@ mutual
       thunk-preserves-frame-proof k = begin
         frameSlot (memory s-final) caller-sp k
           ≡⟨ frameSlot-is-readMem (memory s-final) caller-sp k ⟩
-        readMem (memory s-final) slot-addr
-          ≡⟨ mem-ret-preserves slot-addr ⟩
-        readMem (memory s-after-f) slot-addr
-          ≡⟨ mem-f-preserved slot-addr ⟩
-        readMem (memory s-after-f-raw) slot-addr
-          ≡⟨ ir-mem-above r-f slot-addr slot-addr>rbp ⟩
-        readMem (memory s-after-setup) slot-addr
+        readMem (memory s-final) the-slot-addr
+          ≡⟨ mem-ret-preserves the-slot-addr ⟩
+        readMem (memory s-after-f) the-slot-addr
+          ≡⟨ mem-f-preserved the-slot-addr ⟩
+        readMem (memory s-after-f-raw) the-slot-addr
+          ≡⟨ ir-mem-above r-f the-slot-addr slot-addr>rbp ⟩
+        readMem (memory s-after-setup) the-slot-addr
           ≡⟨ setup-preserves-caller-slot ⟩
-        readMem (memory s) slot-addr
+        readMem (memory s) the-slot-addr
           ≡⟨ sym (frameSlot-is-readMem (memory s) caller-sp k) ⟩
         frameSlot (memory s) caller-sp k ∎
         where
-          -- The slot address for caller-sp slot k
-          slot-addr = StackPointer.addr caller-sp +ℕ k *ℕ 8
+          -- The slot address for caller-sp slot k (abstract, no arithmetic!)
+          the-slot-addr = slot-addr caller-sp k
 
-          -- Call convention: caller-sp.addr = s.rsp + 8
-          -- (call instruction pushed return address)
-          -- This is the key relationship for proving disjointness.
-          -- Postulated because the relationship comes from the caller (apply).
+          -- Caller's slots are preserved through IR execution
+          -- (IR writes only to its own frame, caller's frame is disjoint)
+          -- Uses abstract slot-addr - no arithmetic exposed
           postulate
-            caller-addr-eq : StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8
+            slot-addr>rbp : the-slot-addr > readReg (regs s-after-setup) rbp
 
-          -- slot-addr = s.rsp + 8 + k*8 = s.rsp + 8(1+k)
-          -- rbp after setup = s.rsp - 16
-          -- slot-addr > rbp when s.rsp + 8(1+k) > s.rsp - 16
-          -- i.e., 8(1+k) > -16, always true for k ≥ 0
+          -- Setup preserves caller's slot addresses
+          -- (setup writes only to thunk's frame, caller's frame is disjoint)
+          -- Uses abstract slot-addr - no arithmetic exposed
           postulate
-            slot-addr>rbp : slot-addr > readReg (regs s-after-setup) rbp
-
-          -- Setup writes at s.rsp - 8, s.rsp - 16, s.rsp - 24, s.rsp - 32
-          -- slot-addr = s.rsp + 8 + k*8 ≥ s.rsp + 8 > s.rsp - 32
-          -- So setup preserves memory at slot-addr
-          postulate
-            setup-preserves-caller-slot : readMem (memory s-after-setup) slot-addr ≡
-                                          readMem (memory s) slot-addr
+            setup-preserves-caller-slot : readMem (memory s-after-setup) the-slot-addr ≡
+                                          readMem (memory s) the-slot-addr
 
       -- Memory at address 0 preserved:
       -- Thunk writes only to stack region, 0 is not in stack region

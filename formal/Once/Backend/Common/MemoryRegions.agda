@@ -266,7 +266,7 @@ module FrameSlotInternal where
     frameWriteSlot-0-is-writeMem : ∀ mem sp val →
       frameWriteSlot mem sp 0 val ≡ Once.Backend.Common.Memory.writeMem mem (addr sp) val
 
-    -- | General: slot k corresponds to reading at addr sp + k * 8
-    -- This is the key glue for proving frame preservation through phases
-    -- that preserve memory at specific address ranges.
-    frameSlot-is-readMem : ∀ mem sp k → frameSlot mem sp k ≡ readMem mem (addr sp + k * 8)
+    -- | General: slot k corresponds to reading at slot-addr sp k
+    -- Uses abstract slot-addr instead of arithmetic (addr sp + k * 8)
+    -- This keeps the abstraction clean and architecture-independent.
+    frameSlot-is-readMem : ∀ mem sp k → frameSlot mem sp k ≡ readMem mem (slot-addr sp k)
