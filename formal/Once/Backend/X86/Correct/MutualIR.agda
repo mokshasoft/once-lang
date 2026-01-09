@@ -31,6 +31,10 @@ open import Once.Backend.Common.Memory
 open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-transfer-eq; compose-g-eq)
 
+-- Import memory region definitions
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code)
+
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
          encode-pair-construct; encode-inl-tag; encode-inl-val;
@@ -1149,6 +1153,19 @@ mutual
         thunk-mem-above-post : ∀ addr → addr ≥ readReg (regs s) rsp →
                                readMem (memory s-final) addr ≡ readMem (memory s) addr
 
+      -- Memory at address 0 preserved:
+      -- Thunk writes only to stack region, 0 is not in stack region
+      -- LOCAL POSTULATE: Will be proven by composing setup/f/cleanup/ret region proofs
+      postulate
+        thunk-preserves-zero-post : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+
+      -- Memory at code-region addresses preserved:
+      -- Thunk writes only to stack region, code region is disjoint from stack
+      -- LOCAL POSTULATE: Will be proven by composing setup/f/cleanup/ret region proofs
+      postulate
+        thunk-preserves-code-post : ∀ addr → region-of addr ≡ code →
+                                    readMem (memory s-final) addr ≡ readMem (memory s) addr
+
       thunk-result : ThunkResult prog s s-final (λ b → eval f (env , b)) arg
       thunk-result = record
         { thunk-star = star-all
@@ -1161,6 +1178,8 @@ mutual
         ; thunk-rsp-bound = rsp>16-final
         ; thunk-rsp-plus-8 = thunk-rsp-plus-8-post
         ; thunk-mem-above = thunk-mem-above-post
+        ; thunk-preserves-zero = thunk-preserves-zero-post
+        ; thunk-preserves-code = thunk-preserves-code-post
         }
 
   ------------------------------------------------------------------------

@@ -26,6 +26,8 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code)
 
 open import Once.Postulates using (encode)
 
@@ -64,6 +66,15 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     -- This is crucial for proving apply's pushed r15 is preserved
     thunk-mem-above : ∀ addr → addr ≥ readReg (regs s) rsp →
                       readMem (memory s') addr ≡ readMem (memory s) addr
+
+    -- Memory at address 0 is preserved (null page protection)
+    -- Thunk only writes to stack region, and 0 is not in stack region
+    thunk-preserves-zero : readMem (memory s') 0 ≡ readMem (memory s) 0
+
+    -- Memory at code-region addresses is preserved
+    -- Thunk only writes to stack region, which is disjoint from code region
+    thunk-preserves-code : ∀ addr → region-of addr ≡ code →
+                           readMem (memory s') addr ≡ readMem (memory s) addr
 
 open ThunkResult public
 

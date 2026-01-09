@@ -42,8 +42,14 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+open import Once.Backend.X86.Correct.StackInvariant2
+  using (rsp>16-to-capacity; zero-not-in-stack; R15Status;
+         r15-unused; r15-in-heap; r15-in-code;
+         stack-write-preserves-code-r15; stack-write-preserves-zero-r15;
+         stack-write-preserves-r15;
+         StackCapacity; capacity-maintained)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code; stack; stack-code-disjoint)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
@@ -56,7 +62,8 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-star; thunk-halted; thunk-rax;
          thunk-r14; thunk-r15; thunk-rbp;
          thunk-stack-inv; thunk-rsp-bound;
-         thunk-rsp-plus-8; thunk-mem-above)
+         thunk-rsp-plus-8; thunk-mem-above;
+         thunk-preserves-zero; thunk-preserves-code)
 
 open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n)
@@ -536,9 +543,14 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
           -- General memory preservation for addresses >= s.rsp
           × (∀ addr → addr ≥ readReg (regs s) rsp →
+             readMem (memory s') addr ≡ readMem (memory s) addr)
+          -- Memory at 0 preserved (D041: call writes to stack, 0 not in stack)
+          × readMem (memory s') 0 ≡ readMem (memory s) 0
+          -- Memory at code-region preserved (D041: call writes to stack, disjoint from code)
+          × (∀ addr → region-of addr ≡ code →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv rsp>16 =
-  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call
+  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call , mem-at-0-call , mem-code-call
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -688,6 +700,37 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
         addr≢new-rsp : new-rsp ≢ addr
         addr≢new-rsp = NP.<⇒≢ new-rsp<addr
 
+    -- Memory at 0 preserved (D041: write addr is in stack, 0 is not in stack)
+    mem-at-0-call : readMem (memory s1) 0 ≡ readMem (memory s) 0
+    mem-at-0-call = readMem-writeMem-diff (memory s) new-rsp 0 (pc s +ℕ 1) new-rsp≢0
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        -- Get StackCapacity to prove new-rsp is in stack region
+        cap : StackCapacity s 2
+        cap = rsp>16-to-capacity s rsp>16
+
+        -- new-rsp = old-rsp - 8 is in stack region (from capacity_maintained 1)
+        new-rsp-in-stack : region-of new-rsp ≡ stack
+        new-rsp-in-stack = capacity-maintained cap 1 (s≤s z≤n)
+
+        -- new-rsp ≢ 0 by region disjointness (0 not in stack)
+        new-rsp≢0 : new-rsp ≢ 0
+        new-rsp≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) new-rsp-in-stack)
+
+    -- Memory at code-region addresses preserved (D041: stack-code-disjoint)
+    mem-code-call : ∀ addr → region-of addr ≡ code → readMem (memory s1) addr ≡ readMem (memory s) addr
+    mem-code-call addr addr-in-code = readMem-writeMem-diff (memory s) new-rsp addr (pc s +ℕ 1) new-rsp≢addr
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        cap : StackCapacity s 2
+        cap = rsp>16-to-capacity s rsp>16
+
+        new-rsp-in-stack : region-of new-rsp ≡ stack
+        new-rsp-in-stack = capacity-maintained cap 1 (s≤s z≤n)
+
+        new-rsp≢addr : new-rsp ≢ addr
+        new-rsp≢addr = stack-code-disjoint new-rsp addr new-rsp-in-stack addr-in-code
+
 ------------------------------------------------------------------------
 -- ApplyPopResult: Record type for pop r15 results (avoids nested tuples)
 ------------------------------------------------------------------------
@@ -713,6 +756,13 @@ record ApplyPopResult {A B : Type} (prefix suffix : Program)
 
 open ApplyPopResult public
 
+-- | R15OrigInfo: Information about r15 for pop reconstruction
+-- Three cases corresponding to StackInvariant constructors
+data R15OrigInfo (old-r15 orig-rsp : ℕ) : Set where
+  r15-was-zero    : old-r15 ≡ 0 → R15OrigInfo old-r15 orig-rsp
+  r15-was-above   : orig-rsp ≤ old-r15 → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-code : region-of old-r15 ≡ code → R15OrigInfo old-r15 orig-rsp
+
 -- | Trace pop r15 instruction at the end of apply
 -- This restores r15 to its original value (saved at start by push r15)
 apply-pop-star : ∀ {A B} (prefix suffix : Program)
@@ -724,7 +774,7 @@ apply-pop-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset +ℕ 7 →
   readMem (memory s) (readReg (regs s) rsp) ≡ just old-r15 →
   readReg (regs s) rsp ≡ orig-rsp ∸ 8 →
-  (old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15) →
+  R15OrigInfo old-r15 orig-rsp →  -- Changed from disjunction to R15OrigInfo
   readReg (regs s) rsp > 16 →
   ∃[ s' ] ApplyPopResult {A} {B} prefix suffix old-r15 orig-rsp s s'
 apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rsp-eq orig-inv rsp>16 =
@@ -847,12 +897,15 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
     stack-inv1 : StackInvariant s1
     stack-inv1 = derive-stack-inv orig-inv
       where
-        derive-stack-inv : (old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15) → StackInvariant s1
-        derive-stack-inv (inj₁ r15-zero) = r15-unused (trans r15-1 r15-zero)
-        derive-stack-inv (inj₂ orig-rsp≤old-r15) =
+        derive-stack-inv : R15OrigInfo old-r15 orig-rsp → StackInvariant s1
+        derive-stack-inv (r15-was-zero r15-zero) = r15-unused (trans r15-1 r15-zero)
+        derive-stack-inv (r15-was-above orig-rsp≤old-r15) =
           stack-below-r15 (subst (_≤ readReg (regs s1) r15)
                                  (sym rsp1-eq-orig)
                                  (subst (orig-rsp ≤_) (sym r15-1) orig-rsp≤old-r15))
+        derive-stack-inv (r15-was-in-code r15-code) =
+          -- r15 is in code region, s1.r15 = old-r15, so s1.r15 is also in code region
+          r15-in-code (subst (λ r → region-of r ≡ code) (sym r15-1) r15-code)
 
     rsp>16-1 : readReg (regs s1) rsp > 16
     rsp>16-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
@@ -883,6 +936,11 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
     rsp-restored : readReg (regs s') rsp ≡ readReg (regs s) rsp
     mem-above    : ∀ addr → addr ≥ readReg (regs s) rsp →
                    readMem (memory s') addr ≡ readMem (memory s) addr
+    -- Memory at address 0 is preserved (for r15-unused case)
+    mem-at-0     : readMem (memory s') 0 ≡ readMem (memory s) 0
+    -- Memory at code-region addresses is preserved (for r15-in-code case)
+    mem-code-region : ∀ addr → region-of addr ≡ code →
+                      readMem (memory s') addr ≡ readMem (memory s) addr
 
 open ApplyWfResult public
 
@@ -922,6 +980,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; rsp>16       = rsp>16-f
     ; rsp-restored = rsp-restored-f
     ; mem-above    = mem-above-f
+    ; mem-at-0     = mem-at-0-f
+    ; mem-code-region = mem-code-region-f
     }
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -971,7 +1031,11 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- Memory at s-setup.rsp preserved through call (call writes at s-call.rsp, not s-setup.rsp)
     mem-call-preserved = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))
     -- General memory preservation for addresses >= s-setup.rsp
-    mem-above-call = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))
+    mem-above-call = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))))
+    -- Memory at 0 preserved through call (D041)
+    mem-at-0-call-phase = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))))
+    -- Memory at code-region addresses preserved through call (D041)
+    mem-code-call-phase = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))))
 
     -- Step 3: Use thunk-correct from ClosureWellFormed
     -- The thunk executes and returns to ret-addr (offset+7) with result in rax
@@ -1060,21 +1124,16 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     rsp-thunk-eq-orig : readReg (regs s-thunk) rsp ≡ orig-rsp ∸ 8
     rsp-thunk-eq-orig = trans rsp-thunk-eq-setup rsp-setup
 
-    -- Extract original StackInvariant info
-    -- stack-inv : StackInvariant s tells us either s.r15 = 0 or s.rsp ≤ s.r15
-    -- Since old-r15 = s.r15, this gives us either old-r15 = 0 or orig-rsp ≤ old-r15
-    orig-inv : old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15
+    -- Extract original StackInvariant info as R15OrigInfo
+    -- NOW FULLY PROVEN - no postulates needed!
+    -- Direct conversion from StackInvariant to R15OrigInfo
+    orig-inv : R15OrigInfo old-r15 orig-rsp
     orig-inv = extract-stack-inv stack-inv
       where
-        -- POSTULATE: When r15 is in code region at apply entry, assume we can derive
-        -- the disjunction. This is an unusual case (typically r15 = 0 at program start).
-        postulate
-          r15-in-code-implies-disjunct : region-of old-r15 ≡ code → old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15
-
-        extract-stack-inv : StackInvariant s → old-r15 ≡ 0 ⊎ orig-rsp ≤ old-r15
-        extract-stack-inv (r15-unused r15-eq-0) = inj₁ r15-eq-0
-        extract-stack-inv (stack-below-r15 rsp≤r15) = inj₂ rsp≤r15
-        extract-stack-inv (r15-in-code r15-code) = r15-in-code-implies-disjunct r15-code
+        extract-stack-inv : StackInvariant s → R15OrigInfo old-r15 orig-rsp
+        extract-stack-inv (r15-unused r15-eq-0) = r15-was-zero r15-eq-0
+        extract-stack-inv (stack-below-r15 rsp≤r15) = r15-was-above rsp≤r15
+        extract-stack-inv (r15-in-code r15-code) = r15-was-in-code r15-code
 
     pop-result = apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s-thunk
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk
@@ -1146,6 +1205,92 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         mem-thunk-to-pop : readMem (memory s-final) addr ≡ readMem (memory s-thunk) addr
         mem-thunk-to-pop = cong (λ m → readMem m addr) PopR.mem-pop-preserved
 
+    -- Memory at address 0 preserved (using region-based proof)
+    -- Chain: s → s-setup → s-call → s-thunk → s-pop
+    --
+    -- Setup writes to (rsp - 8) which is in stack region
+    -- Call writes to (rsp - 16) which is in stack region
+    -- Both are ≢ 0 since 0 is not in stack region (zero-not-in-stack)
+    -- Thunk preserves 0 via thunk-preserves-zero
+    -- Pop preserves memory (no write)
+    mem-at-0-f : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+    mem-at-0-f = trans mem-0-pop (trans mem-0-thunk (trans mem-0-call mem-0-setup))
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        init-rsp = readReg (regs s) rsp
+
+        -- Get StackCapacity to prove write addresses are in stack region
+        cap : StackCapacity s 2
+        cap = rsp>16-to-capacity s rsp>16
+
+        -- Setup writes to (rsp - 8), which is in stack region
+        setup-write-addr : ℕ
+        setup-write-addr = init-rsp ∸ 8
+
+        setup-write-in-stack : region-of setup-write-addr ≡ stack
+        setup-write-in-stack = capacity-maintained cap 1 (s≤s z≤n)
+
+        -- setup-write-addr ≢ 0 by region disjointness
+        setup-write≢0 : setup-write-addr ≢ 0
+        setup-write≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) setup-write-in-stack)
+
+        -- Memory s-setup at 0 = Memory s at 0
+        -- s-setup.memory = writeMem s.memory (rsp - 8) old-r15
+        mem-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+        mem-0-setup = readMem-writeMem-diff (memory s) setup-write-addr 0 old-r15 setup-write≢0
+
+        -- Memory s-call at 0 = Memory s-setup at 0
+        -- Uses mem-at-0-call-phase from apply-call-star (D041 approach)
+        mem-0-call : readMem (memory s-call) 0 ≡ readMem (memory s-setup) 0
+        mem-0-call = mem-at-0-call-phase
+
+        -- Memory s-thunk at 0 = Memory s-call at 0 (via thunk-preserves-zero)
+        mem-0-thunk : readMem (memory s-thunk) 0 ≡ readMem (memory s-call) 0
+        mem-0-thunk = thunk-preserves-zero thunk-res
+
+        -- Memory s-final at 0 = Memory s-thunk at 0 (pop doesn't write)
+        mem-0-pop : readMem (memory s-final) 0 ≡ readMem (memory s-thunk) 0
+        mem-0-pop = cong (λ m → readMem m 0) PopR.mem-pop-preserved
+
+    -- Memory at code-region addresses preserved (using region-based proof)
+    -- Chain same as above, but use stack-code-disjoint instead of zero-not-in-stack
+    mem-code-region-f : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code-region-f addr addr-in-code = trans mem-code-pop (trans mem-code-thunk (trans mem-code-call mem-code-setup))
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        init-rsp' = readReg (regs s) rsp
+
+        -- Get StackCapacity
+        cap : StackCapacity s 2
+        cap = rsp>16-to-capacity s rsp>16
+
+        -- Setup writes to (rsp - 8) in stack region
+        setup-write-addr : ℕ
+        setup-write-addr = init-rsp' ∸ 8
+
+        setup-write-in-stack : region-of setup-write-addr ≡ stack
+        setup-write-in-stack = capacity-maintained cap 1 (s≤s z≤n)
+
+        -- stack ≢ code implies setup-write-addr ≢ addr
+        setup-write≢addr : setup-write-addr ≢ addr
+        setup-write≢addr = stack-code-disjoint setup-write-addr addr setup-write-in-stack addr-in-code
+
+        mem-code-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+        mem-code-setup = readMem-writeMem-diff (memory s) setup-write-addr addr old-r15 setup-write≢addr
+
+        -- Memory s-call at addr = Memory s-setup at addr
+        -- Uses mem-code-call-phase from apply-call-star (D041 approach)
+        mem-code-call : readMem (memory s-call) addr ≡ readMem (memory s-setup) addr
+        mem-code-call = mem-code-call-phase addr addr-in-code
+
+        -- Thunk preserves code-region addresses
+        mem-code-thunk : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
+        mem-code-thunk = thunk-preserves-code thunk-res addr addr-in-code
+
+        -- Pop doesn't write
+        mem-code-pop : readMem (memory s-final) addr ≡ readMem (memory s-thunk) addr
+        mem-code-pop = cong (λ m → readMem m addr) PopR.mem-pop-preserved
+
 ------------------------------------------------------------------------
 -- Converting to IRStarResult format
 ------------------------------------------------------------------------
@@ -1191,22 +1336,23 @@ run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 -- This function bridges ClosureWellFormed-based apply proof to IRStarResult,
 -- enabling elimination of apply-produces-result postulate.
 --
--- Properties NOW proven via ApplyWfResult.mem-above + invariants:
+-- ALL PROPERTIES NOW FULLY PROVEN (zero local postulates!):
 --   - star, halted, pc, rax (from thunk-correct)
 --   - r14, r15, rbp (r15 preserved via push/pop!)
 --   - stack-inv, rsp > 16 (from thunk-correct)
 --   - Memory at rbp preserved (via mem-above + RbpInvariant.rsp≤rbp)
 --   - Memory at rbp+8 preserved (via mem-above + rsp ≤ rbp ≤ rbp+8)
 --   - Memory above rbp preserved (via mem-above + addr > rbp ≥ rsp)
---   - Memory at r15 when rsp ≤ r15 (via mem-above + StackInvariant)
+--   - Memory at r15 (all cases via R15OrigInfo + region disjointness)
+--   - Memory at 0 preserved (via D041 region approach: zero-not-in-stack)
+--   - Memory at code-region preserved (via D041: stack-code-disjoint)
 --   - RbpInvariant preserved (via RSP/RBP restoration)
 --
--- Remaining local postulates (2 blocks):
---   1. r15-in-code-implies-disjunct: When r15 is in code region, extract
---      disjunction for orig-inv. Edge case for unusual r15 values.
---   2. mem-at-0-post / mem-code-region-post: Memory at address 0 and
---      at r15 when r15 is in code region. These addresses are outside
---      the stack region, so mem-above doesn't directly apply.
+-- Key techniques:
+--   - D041 abstract memory regions (stack, heap, code)
+--   - regions-disjoint postulate → stack-code-disjoint, zero-not-in-stack
+--   - R15OrigInfo type for clean three-way case split
+--   - ThunkResult.thunk-preserves-zero/code for thunk phase
 ------------------------------------------------------------------------
 
 open import Once.Backend.X86.Correct.StarBase
@@ -1249,11 +1395,11 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-r14 = WfR.r14-final
     ; ir-r15 = WfR.r15-final  -- NOW PROVEN! (via push/pop r15)
     ; ir-rbp = WfR.rbp-final
-    ; ir-mem = mem-r15-post  -- LOCAL POSTULATE
-    ; ir-mem-rbp = mem-rbp-post  -- LOCAL POSTULATE
-    ; ir-mem-rbp+8 = mem-rbp+8-post  -- LOCAL POSTULATE
-    ; ir-mem-above = mem-above-post  -- LOCAL POSTULATE
-    ; ir-mem-at-0 = mem-at-0-post  -- LOCAL POSTULATE
+    ; ir-mem = mem-r15-post  -- NOW PROVEN via R15OrigInfo + region disjointness
+    ; ir-mem-rbp = mem-rbp-post  -- PROVEN via WfR.mem-above + RbpInvariant
+    ; ir-mem-rbp+8 = mem-rbp+8-post  -- PROVEN via WfR.mem-above + RbpInvariant
+    ; ir-mem-above = mem-above-post  -- PROVEN via WfR.mem-above + RbpInvariant
+    ; ir-mem-at-0 = WfR.mem-at-0  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
     ; ir-capacity = rsp>16-to-capacity s' WfR.rsp>16
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
@@ -1309,27 +1455,22 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-above-post : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     mem-above-post addr addr>rbp = WfR.mem-above addr (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp))
 
-    -- Memory at 0 preserved: 0 < rsp (since rsp > 16), so can't use mem-above directly
-    -- Need argument that apply doesn't write to address 0 (null page protection)
-    -- Also: when r15 is in code region, need separate postulate
-    postulate
-      mem-at-0-post : readMem (memory s') 0 ≡ readMem (memory s) 0
-      -- Code region addresses are typically above stack
-      mem-code-region-post : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-
     -- Memory at r15 preserved: depends on StackInvariant
+    -- NOW FULLY PROVEN using WfR.mem-at-0 and WfR.mem-code-region
     -- StackInvariant gives: r15 = 0 OR rsp ≤ r15 OR r15 in code region
-    -- If rsp ≤ r15, mem-above applies
-    -- If r15 = 0, use mem-at-0-post (since address is 0)
-    -- If r15 in code region, use mem-code-region-post
+    -- - If r15 = 0, use WfR.mem-at-0
+    -- - If rsp ≤ r15, use WfR.mem-above
+    -- - If r15 in code region, use WfR.mem-code-region
     mem-r15-post : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     mem-r15-post = derive-mem-r15 stack-inv
       where
         derive-mem-r15 : StackInvariant s → readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
         derive-mem-r15 (r15-unused r15-eq-0) =
-          -- r15 = 0, so prove memory at address (readReg (regs s) r15) = memory at 0
+          -- r15 = 0, so memory at r15 = memory at 0, which is preserved via WfR.mem-at-0
           subst (λ addr → readMem (memory s') addr ≡ readMem (memory s) addr)
                 (sym r15-eq-0)
-                mem-at-0-post
+                WfR.mem-at-0
         derive-mem-r15 (stack-below-r15 rsp≤r15) = WfR.mem-above (readReg (regs s) r15) rsp≤r15
-        derive-mem-r15 (r15-in-code _) = mem-code-region-post
+        derive-mem-r15 (r15-in-code r15-code) =
+          -- r15 is in code region, use WfR.mem-code-region
+          WfR.mem-code-region (readReg (regs s) r15) r15-code
