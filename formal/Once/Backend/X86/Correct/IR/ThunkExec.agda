@@ -21,13 +21,20 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
          thunk-entry-offset; thunk-body-offset; thunk-setup-len)
   renaming (fetch-ret to TS-fetch-ret)
 
-open import Data.Nat using (_>_; _≤?_)
+open import Data.Nat using (_>_; _≤?_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-assoc; m∸n≤m; ≤-trans; ∸-monoˡ-≤; ∸-monoʳ-<;
-                                       m∸n+n≡m; m≤n⇒m∸n≡0; +-monoˡ-<; +-monoʳ-<; m<m+n; <-trans)
+                                       m∸n+n≡m; m≤n⇒m∸n≡0; +-monoˡ-<; +-monoʳ-<; m<m+n; <-trans;
+                                       ∸-+-assoc)
                                 renaming (<⇒≢ to <⇒≢-neq; ≰⇒> to ≰⇒>-nat; <⇒≤ to <⇒≤-nat; ≤-pred to ≤-pred-nat)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
+
+-- Import region lemmas for D041 approach
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code; stack; stack-code-disjoint)
+open import Once.Backend.X86.Correct.StackInvariant2
+  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity; zero-not-in-stack)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
@@ -57,10 +64,14 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
           -- Memory at original rsp is preserved (for return address)
           × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
           -- Memory for r15 restoration: saved at original_rsp - 8
-          × readMem (memory s') (readReg (regs s) rsp ∸ 8) ≡ just (readReg (regs s) r15))
+          × readMem (memory s') (readReg (regs s) rsp ∸ 8) ≡ just (readReg (regs s) r15)
+          -- D041: Memory at address 0 preserved (setup writes only to stack region)
+          × readMem (memory s') 0 ≡ readMem (memory s) 0
+          -- D041: Memory at code-region addresses preserved
+          × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr))
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  h-false pc-eq rdi-eq r12-eq stack-inv rsp>16 =
-  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp>16-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved
+  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp>16-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -853,6 +864,177 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     mem-r15-preserved : readMem (memory s8) (old-rsp ∸ 8) ≡ just old-r15
     mem-r15-preserved = mem-s7-at-rsp-after-push-r15
 
+    ------------------------------------------------------------------------
+    -- D041: Memory at address 0 preserved (all writes are to stack region)
+    ------------------------------------------------------------------------
+
+    -- Get StackCapacity to prove write addresses are in stack region
+    -- We use old-rsp>40 from rsp-bound-after-stack-op which gives capacity 5
+    -- Note: rsp-bound-to-capacity expects rsp > n*8, and 5*8 = 40
+    cap-stronger : StackCapacity s 5
+    cap-stronger = rsp-bound-to-capacity s 5 old-rsp>40
+
+    -- Write addresses are all in stack region
+    -- Need to use ∸-+-assoc to relate nested subtractions to flat ones
+    -- ∸-+-assoc m n o : (m ∸ n) ∸ o ≡ m ∸ (n + o)
+
+    -- rsp-after-push-r15 = old-rsp ∸ 8 matches old-rsp ∸ 1*8 directly
+    addr-rsp-8-in-stack : region-of rsp-after-push-r15 ≡ stack
+    addr-rsp-8-in-stack = capacity-maintained cap-stronger 1 (s≤s z≤n)
+
+    -- rsp-after-push-rbp = (old-rsp ∸ 8) ∸ 8 = old-rsp ∸ 16 = old-rsp ∸ 2*8
+    rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ 16
+    rsp-after-push-rbp-eq = ∸-+-assoc old-rsp 8 8
+
+    addr-rsp-16-in-stack : region-of rsp-after-push-rbp ≡ stack
+    addr-rsp-16-in-stack = subst (λ x → region-of x ≡ stack) (sym rsp-after-push-rbp-eq)
+                                 (capacity-maintained cap-stronger 2 (s≤s (s≤s z≤n)))
+
+    -- new-rsp = ((old-rsp ∸ 8) ∸ 8) ∸ 16 = (old-rsp ∸ 16) ∸ 16 = old-rsp ∸ 32 = old-rsp ∸ 4*8
+    new-rsp-eq : new-rsp ≡ old-rsp ∸ 32
+    new-rsp-eq = trans (cong (_∸ 16) rsp-after-push-rbp-eq) (∸-+-assoc old-rsp 16 16)
+
+    addr-rsp-32-in-stack : region-of new-rsp ≡ stack
+    addr-rsp-32-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp-eq)
+                                 (capacity-maintained cap-stronger 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
+
+    -- new-rsp + 8 = (old-rsp ∸ 32) + 8 = old-rsp ∸ 24 = old-rsp ∸ 3*8
+    -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
+    -- Strategy: (old-rsp ∸ 32) + 8 = old-rsp ∸ 24
+    --   Let k = old-rsp ∸ 32. Then k + 32 = old-rsp (by m∸n+n≡m).
+    --   old-rsp ∸ 24 = (k + 32) ∸ 24 = k + (32 ∸ 24) = k + 8 (by +-∸-assoc)
+    new-rsp+8-eq : new-rsp +ℕ 8 ≡ old-rsp ∸ 24
+    new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) k+8≡old-rsp∸24
+      where
+        open import Data.Nat.Properties using (+-∸-assoc)
+
+        k = old-rsp ∸ 32
+
+        -- old-rsp > 40 implies 32 ≤ old-rsp
+        32≤old-rsp : 32 ≤ old-rsp
+        32≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+                     (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+                     (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+                     (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))) old-rsp>40
+
+        -- k + 32 = old-rsp
+        k+32≡old-rsp : k +ℕ 32 ≡ old-rsp
+        k+32≡old-rsp = m∸n+n≡m 32≤old-rsp
+
+        24≤32 : 24 ≤ 32
+        24≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+                (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+                (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+
+        -- (k + 32) ∸ 24 = k + (32 ∸ 24) = k + 8
+        assoc-step : (k +ℕ 32) ∸ 24 ≡ k +ℕ 8
+        assoc-step = +-∸-assoc k 24≤32
+
+        -- old-rsp ∸ 24 = (k + 32) ∸ 24 = k + 8
+        k+8≡old-rsp∸24 : k +ℕ 8 ≡ old-rsp ∸ 24
+        k+8≡old-rsp∸24 = sym (trans (cong (_∸ 24) (sym k+32≡old-rsp)) assoc-step)
+
+    addr-rsp-24-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
+    addr-rsp-24-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp+8-eq)
+                                 (capacity-maintained cap-stronger 3 (s≤s (s≤s (s≤s z≤n))))
+
+    -- Address 0 is not in stack region, so write addresses ≠ 0
+    addr-rsp-8≢0 : rsp-after-push-r15 ≢ 0
+    addr-rsp-8≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-8-in-stack)
+
+    addr-rsp-16≢0 : rsp-after-push-rbp ≢ 0
+    addr-rsp-16≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-16-in-stack)
+
+    addr-rsp-32≢0 : new-rsp ≢ 0
+    addr-rsp-32≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-32-in-stack)
+
+    addr-rsp-24≢0 : new-rsp +ℕ 8 ≢ 0
+    addr-rsp-24≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-24-in-stack)
+
+    -- Chain memory preservation at 0 through all states
+    -- s1 doesn't write memory
+    mem-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
+    mem-s1-at-0 = refl
+
+    -- s2 writes at rsp-after-push-r15 ≠ 0
+    mem-s2-at-0 : readMem (memory s2) 0 ≡ readMem (memory s) 0
+    mem-s2-at-0 = mem-read-other {memory s1} {rsp-after-push-r15} {0} {old-r15} addr-rsp-8≢0
+
+    -- s3 writes at rsp-after-push-rbp ≠ 0
+    mem-s3-at-0 : readMem (memory s3) 0 ≡ readMem (memory s) 0
+    mem-s3-at-0 = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {0} {old-rbp} addr-rsp-16≢0)
+                        mem-s2-at-0
+
+    -- s4, s5 don't write memory
+    mem-s5-at-0 : readMem (memory s5) 0 ≡ readMem (memory s) 0
+    mem-s5-at-0 = mem-s3-at-0
+
+    -- s6 writes at new-rsp ≠ 0
+    mem-s6-at-0 : readMem (memory s6) 0 ≡ readMem (memory s) 0
+    mem-s6-at-0 = trans (mem-read-other {memory s5} {new-rsp} {0} {readReg (regs s5) r12} addr-rsp-32≢0)
+                        mem-s5-at-0
+
+    -- s7 writes at new-rsp + 8 ≠ 0
+    mem-s7-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
+    mem-s7-at-0 = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {0} {readReg (regs s6) rdi} addr-rsp-24≢0)
+                        mem-s6-at-0
+
+    -- s8 doesn't write memory
+    mem-at-0-preserved : readMem (memory s8) 0 ≡ readMem (memory s) 0
+    mem-at-0-preserved = mem-s7-at-0
+
+    ------------------------------------------------------------------------
+    -- D041: Memory at code-region addresses preserved
+    ------------------------------------------------------------------------
+
+    -- For any code address, it's not equal to any of the write addresses
+    -- because stack region is disjoint from code region
+    code-addr≢write-addr : ∀ addr → region-of addr ≡ code →
+      addr ≢ rsp-after-push-r15 × addr ≢ rsp-after-push-rbp ×
+      addr ≢ new-rsp × addr ≢ (new-rsp +ℕ 8)
+    code-addr≢write-addr addr addr-code =
+      (λ eq → stack-code-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-code (sym eq)) ,
+      (λ eq → stack-code-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-code (sym eq)) ,
+      (λ eq → stack-code-disjoint new-rsp addr addr-rsp-32-in-stack addr-code (sym eq)) ,
+      (λ eq → stack-code-disjoint (new-rsp +ℕ 8) addr addr-rsp-24-in-stack addr-code (sym eq))
+
+    -- Chain memory preservation at code addresses through all states
+    mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s8) addr ≡ readMem (memory s) addr
+    mem-code-preserved addr addr-code = mem-s7-code
+      where
+        disj = code-addr≢write-addr addr addr-code
+        addr≢rsp-8 = proj₁ disj
+        addr≢rsp-16 = proj₁ (proj₂ disj)
+        addr≢rsp-32 = proj₁ (proj₂ (proj₂ disj))
+        addr≢rsp-24 = proj₂ (proj₂ (proj₂ disj))
+
+        -- s1 doesn't write memory
+        mem-s1-code : readMem (memory s1) addr ≡ readMem (memory s) addr
+        mem-s1-code = refl
+
+        -- s2 writes at rsp-8 ≠ addr
+        mem-s2-code : readMem (memory s2) addr ≡ readMem (memory s) addr
+        mem-s2-code = mem-read-other {memory s1} {rsp-after-push-r15} {addr} {old-r15} (λ eq → addr≢rsp-8 (sym eq))
+
+        -- s3 writes at rsp-16 ≠ addr
+        mem-s3-code : readMem (memory s3) addr ≡ readMem (memory s) addr
+        mem-s3-code = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {addr} {old-rbp} (λ eq → addr≢rsp-16 (sym eq)))
+                            mem-s2-code
+
+        -- s4, s5 don't write memory
+        mem-s5-code : readMem (memory s5) addr ≡ readMem (memory s) addr
+        mem-s5-code = mem-s3-code
+
+        -- s6 writes at new-rsp ≠ addr
+        mem-s6-code : readMem (memory s6) addr ≡ readMem (memory s) addr
+        mem-s6-code = trans (mem-read-other {memory s5} {new-rsp} {addr} {readReg (regs s5) r12} (λ eq → addr≢rsp-32 (sym eq)))
+                            mem-s5-code
+
+        -- s7 writes at new-rsp + 8 ≠ addr
+        mem-s7-code : readMem (memory s7) addr ≡ readMem (memory s) addr
+        mem-s7-code = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+                            mem-s6-code
+
 -- Prove ret instruction tracing
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
@@ -872,10 +1054,13 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
           × readReg (regs s') r15 ≡ readReg (regs s) r15
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+          × readReg (regs s') rsp > 16
+          -- D041: Memory preservation (ret doesn't write memory)
+          × readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
+          × (∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr))
 thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
                h-false pc-eq mem-ret stack-inv rsp>16 =
-  s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp>16-1
+  s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1 , mem-ret-preserves
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
@@ -939,3 +1124,11 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
         open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41
         17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+    -- D041: RSP after ret = original RSP + 8 (ret pops return address)
+    rsp1 : readReg (regs s1) rsp ≡ readReg (regs s) rsp +ℕ 8
+    rsp1 = readReg-writeReg-same (regs s) rsp (old-rsp +ℕ 8)
+
+    -- D041: Memory preservation (ret doesn't write memory, record update preserves it)
+    mem-ret-preserves : ∀ addr → readMem (memory s1) addr ≡ readMem (memory s) addr
+    mem-ret-preserves addr = refl

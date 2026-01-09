@@ -18,8 +18,9 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant2
-  using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16)
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+  using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16;
+         addr-minus-16-in-stack; addr-minus-8-in-stack; sub16-both-writes-in-stack)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
@@ -27,10 +28,10 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc; <⇒≤)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
@@ -60,6 +61,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem-rbp+8 = mem-rbp+8-preserved
     ; ir-mem-above = mem-above-preserved
     ; ir-mem-at-0 = mem-at-0-preserved
+    ; ir-mem-code = mem-code-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-sub16
     ; ir-rbp-inv = rbp-inv'
@@ -419,6 +421,38 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
           mem-s2-at-0 = readMem-writeMem-diff (memory s1) new-rsp 0 0 diff-1
           mem-s3-at-0 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) 0 orig-rdi diff-2) mem-s2-at-0
       in mem-s3-at-0
+
+    -- D041: Memory at code-region addresses preserved (PURE REGION APPROACH)
+    -- 1. Get region membership for both write addresses (encapsulates arithmetic)
+    -- 2. Use stack-code-disjoint to prove write ≠ code address
+    -- 3. Chain readMem-writeMem-diff
+    -- NO ARITHMETIC COMPARISONS at this level
+    mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
+    mem-code-preserved addr addr-in-code =
+      trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) addr orig-rdi (λ eq → addr≢new-rsp+8 (sym eq)))
+            (readMem-writeMem-diff (memory s1) new-rsp addr 0 (λ eq → addr≢new-rsp (sym eq)))
+      where
+        open import Data.Product using (proj₁; proj₂)
+
+        -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
+        cap2 : StackCapacity s 2
+        cap2 = rsp>16-to-capacity s rsp>16
+
+        writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
+        writes-in-stack = sub16-both-writes-in-stack s cap2
+
+        new-rsp-in-stack : region-of new-rsp ≡ stack
+        new-rsp-in-stack = proj₁ writes-in-stack
+
+        new-rsp+8-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
+        new-rsp+8-in-stack = proj₂ writes-in-stack
+
+        -- Step 2: Disjointness from region membership (code addr ≢ stack addr)
+        addr≢new-rsp : addr ≢ new-rsp
+        addr≢new-rsp eq = stack-code-disjoint new-rsp addr new-rsp-in-stack addr-in-code (sym eq)
+
+        addr≢new-rsp+8 : addr ≢ (new-rsp +ℕ 8)
+        addr≢new-rsp+8 eq = stack-code-disjoint (new-rsp +ℕ 8) addr new-rsp+8-in-stack addr-in-code (sym eq)
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15

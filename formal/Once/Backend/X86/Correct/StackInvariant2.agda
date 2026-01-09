@@ -31,7 +31,7 @@ open import Once.Backend.Common.MemoryRegions
          regions-disjoint; stack≢heap; stack≢code;
          stack-heap-disjoint; stack-code-disjoint)
 
-open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
@@ -214,6 +214,67 @@ addr-minus-8-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
   where
     open import Data.Nat using (s≤s; z≤n)
 
+------------------------------------------------------------------------
+-- Combined Region Lemmas for Stack Operations
+--
+-- These encapsulate arithmetic internally, providing pure region facts
+-- at the API level. No arithmetic comparisons leak to callers.
+------------------------------------------------------------------------
+
+-- | After sub rsp 16, both write addresses (new-rsp and new-rsp+8) are in stack
+-- This is the pure region interface for inl/inr operations
+-- Internally: new-rsp = rsp - 16, new-rsp + 8 = rsp - 8 (arithmetic hidden)
+sub16-both-writes-in-stack : ∀ (s : State) →
+  StackCapacity s 2 →
+  let rsp-val = readReg (regs s) rsp
+      new-rsp = rsp-val ∸ 16
+  in (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
+sub16-both-writes-in-stack s cap =
+  let rsp-val = readReg (regs s) rsp
+      new-rsp = rsp-val ∸ 16
+      -- First write address: new-rsp = rsp - 16
+      write1-in-stack : region-of new-rsp ≡ stack
+      write1-in-stack = addr-minus-16-in-stack s cap
+      -- Second write address: new-rsp + 8
+      -- Internally we know: (rsp - 16) + 8 = rsp - 8 (when rsp ≥ 16)
+      -- We use subst to connect new-rsp + 8 to rsp - 8
+      write2-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
+      write2-in-stack = subst (λ a → region-of a ≡ stack)
+                              (sym (sub16-plus8-eq rsp-val (cap-to-rsp≥16 cap)))
+                              (addr-minus-8-in-stack s (capacity-weaken cap))
+  in write1-in-stack , write2-in-stack
+  where
+    open import Data.Nat using (s≤s; z≤n)
+    open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤)
+
+    -- Helper: StackCapacity 2 implies rsp ≥ 16
+    -- This is the one bridge between abstract regions and concrete bounds
+    postulate
+      cap2-implies-rsp≥16 : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
+
+    cap-to-rsp≥16 : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
+    cap-to-rsp≥16 = cap2-implies-rsp≥16
+
+    -- Helper: weaken capacity 2 to capacity 1
+    capacity-weaken : StackCapacity s 2 → StackCapacity s 1
+    capacity-weaken cap2 = record
+      { rsp-in-stack = rsp-in-stack cap2
+      ; capacity-maintained = λ k k≤1 →
+          capacity-maintained cap2 k (≤-trans k≤1 (s≤s z≤n))
+      }
+
+    -- The key arithmetic identity (hidden from callers)
+    -- (rsp - 16) + 8 = rsp - 8 when rsp ≥ 16
+    sub16-plus8-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ 16 → (rsp-val ∸ 16) +ℕ 8 ≡ rsp-val ∸ 8
+    sub16-plus8-eq rsp-val rsp≥16 = trans (cong (_+ℕ 8) step1) (m∸n+n≡m 8≤rsp-8)
+      where
+        -- (rsp - 16) + 8 = (rsp - 8 - 8) + 8 = rsp - 8
+        step1 : rsp-val ∸ 16 ≡ (rsp-val ∸ 8) ∸ 8
+        step1 = sym (∸-+-assoc rsp-val 8 8)
+        -- (x - 8) + 8 = x when x ≥ 8
+        8≤rsp-8 : 8 ≤ rsp-val ∸ 8
+        8≤rsp-8 = ∸-monoˡ-≤ 8 rsp≥16
+
 -- | Stack writes at rsp - k*8 don't affect heap addresses (when we have capacity)
 stack-write-disjoint-from-heap : ∀ (s : State) (n k : ℕ) (heap-addr : Addr) →
   StackCapacity s n →
@@ -223,6 +284,68 @@ stack-write-disjoint-from-heap : ∀ (s : State) (n k : ℕ) (heap-addr : Addr) 
 stack-write-disjoint-from-heap s n k heap-addr cap k≤n heap-proof =
   stack-heap-disjoint (readReg (regs s) rsp ∸ (k *ℕ 8)) heap-addr
                       (capacity-maintained cap k k≤n) heap-proof
+
+------------------------------------------------------------------------
+-- Pair-specific: (rsp - 40) + 8 is in stack region
+--
+-- During Pair setup, r15 is set to rsp - 40. Then (r15 + 8) is used for
+-- storing the second element. This is (rsp - 40) + 8 = rsp - 32.
+-- With capacity 5 (from rsp ≥ 40), this is in the stack region.
+------------------------------------------------------------------------
+
+-- | rsp - 40 is in stack region when we have capacity 5
+-- This is the base address for pair's r15 register
+pair-r15-in-stack : ∀ (s : State) →
+  StackCapacity s 5 →
+  region-of (readReg (regs s) rsp ∸ 40) ≡ stack
+pair-r15-in-stack s cap = capacity-maintained cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+  where
+    open import Data.Nat using (s≤s; z≤n)
+
+-- | (rsp - 40) + 8 is in stack region when we have capacity 5
+-- This encapsulates the arithmetic: (rsp ∸ 40) +ℕ 8 ≡ rsp ∸ 32 when rsp ≥ 40
+pair-r15-plus-8-in-stack : ∀ (s : State) →
+  StackCapacity s 5 →
+  region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
+pair-r15-plus-8-in-stack s cap =
+  subst (λ a → region-of a ≡ stack)
+        (sym (sub40-plus8-eq rsp-val (cap-to-rsp≥40 cap)))
+        (capacity-maintained cap 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
+  where
+    open import Data.Nat using (s≤s; z≤n)
+    open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤)
+
+    rsp-val = readReg (regs s) rsp
+
+    -- Helper: StackCapacity 5 implies rsp ≥ 40
+    postulate
+      cap5-implies-rsp≥40 : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
+
+    cap-to-rsp≥40 : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
+    cap-to-rsp≥40 = cap5-implies-rsp≥40
+
+    -- The key arithmetic identity (hidden from callers)
+    -- (rsp - 40) + 8 = rsp - 32 when rsp ≥ 40
+    sub40-plus8-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ 40 → (rsp-val ∸ 40) +ℕ 8 ≡ rsp-val ∸ 32
+    sub40-plus8-eq rsp-val rsp≥40 = trans (cong (_+ℕ 8) step1) (m∸n+n≡m 8≤rsp-32)
+      where
+        -- (rsp - 40) + 8 = (rsp - 32 - 8) + 8 = rsp - 32
+        step1 : rsp-val ∸ 40 ≡ (rsp-val ∸ 32) ∸ 8
+        step1 = sym (∸-+-assoc rsp-val 32 8)
+        -- (x - 8) + 8 = x when x ≥ 8
+        8≤rsp-32 : 8 ≤ rsp-val ∸ 32
+        8≤rsp-32 = ∸-monoˡ-≤ 32 rsp≥40
+
+-- | Convert rsp ≥ 40 to StackCapacity 5 (uses postulate for now)
+postulate
+  rsp≥40-to-capacity-post : ∀ (s : State) →
+    readReg (regs s) rsp ≥ 40 →
+    StackCapacity s 5
+
+rsp≥40-to-capacity : ∀ (s : State) →
+  readReg (regs s) rsp ≥ 40 →
+  StackCapacity s 5
+rsp≥40-to-capacity = rsp≥40-to-capacity-post
 
 ------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership

@@ -19,8 +19,9 @@ open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n�
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k')
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+open import Once.Backend.X86.Correct.StackInvariant2
+  using (rsp>16-to-capacity; rsp≥40-to-capacity; pair-r15-in-stack; pair-r15-plus-8-in-stack)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -28,8 +29,9 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
          rbp-inv-preserved-unchanged)
+open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.MemoryValid using (PairAtS)
 
 open import Data.Nat using (_>_; _≥_)
@@ -697,6 +699,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
+  (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -707,7 +710,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final
+                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final
                      star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
   { ir-star = star-all
@@ -725,6 +728,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
+  ; ir-mem-code = mem-code-final
   ; ir-closure-wf = closure-wf-final  -- Prefer g's closure (executed last)
   }
   where
@@ -1136,10 +1140,23 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
 
         -- Case 3: r15-s is in code region
         -- r15-s3 + 8 is a stack address (since r15-s3 = rsp - 40)
-        -- Code and stack addresses are disjoint by region separation
-        postulate
-          case-r15-code : region-of (readReg (regs s) r15) ≡ code →
-                          readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+        -- Code and stack addresses are disjoint by region separation (D041 pure region proof)
+        case-r15-code : region-of (readReg (regs s) r15) ≡ code →
+                        readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+        case-r15-code r15-code-pf eq =
+          let -- Get capacity 5 from 40 ≤ rsp-s
+              cap5 = rsp≥40-to-capacity s 40≤rsp-s
+              -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region
+              write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
+              write-addr-in-stack = pair-r15-plus-8-in-stack s cap5
+              -- Convert via r15-chain: readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ 40
+              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
+              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain) write-addr-in-stack
+              -- By stack-code-disjoint: s.r15 (in code) ≠ s3.r15+8 (in stack)
+              disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+              disjoint = λ eq' → stack-code-disjoint (readReg (regs s3) r15 +ℕ 8) (readReg (regs s) r15)
+                                                      s3-r15+8-in-stack r15-code-pf (sym eq')
+          in disjoint eq
 
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
         case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
@@ -1633,9 +1650,21 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 m∸n<m-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
             s1-r15<orig-r15 : readReg (regs s1) r15 < orig-r15
             s1-r15<orig-r15 = subst (_< orig-r15) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp rsp≤r15)
-        -- Case r15 in code region: code addresses are disjoint from stack addresses
-        postulate
-          case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
+        -- Case r15 in code region: code addresses are disjoint from stack addresses (D041 region proof)
+        case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-code-r15 r15-code-pf eq =
+          let -- s1.r15 = rsp - 40 is in stack region
+              cap5 = rsp≥40-to-capacity s 40≤rsp-s
+              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
+              rsp-40-in-stack = pair-r15-in-stack s cap5
+              -- Convert via s1-r15-eq
+              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
+              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              -- By stack-code-disjoint: orig-r15 (in code) ≠ s1.r15 (in stack)
+              disjoint : orig-r15 ≢ readReg (regs s1) r15
+              disjoint = λ eq' → stack-code-disjoint (readReg (regs s1) r15) orig-r15
+                                                      s1-r15-in-stack r15-code-pf (sym eq')
+          in disjoint eq
 
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
         case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
@@ -2357,6 +2386,7 @@ assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-mem-above = mem-above-rbp-final
   ; ir-mem-at-0 = mem-at-0-final
+  ; ir-mem-code = mem-code-final
   ; ir-stack-inv = stack-inv-final
   ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
   ; ir-rbp-inv = rbp-inv-final
@@ -2463,6 +2493,14 @@ assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 
             (trans mem-s1-to-s2-at-0
               (trans mem-setup-to-s1-at-0
                 mem-s-to-setup-at-0)))
+
+    -- D041: Memory at code-region addresses preserved (chain through all phases)
+    -- TODO Phase 2: Add mem-code fields to PairSetupResultS, PairMiddleResultS, PairFinalResultS
+    -- For now, use postulate to get the build working
+    postulate
+      mem-code-final-post : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code-final = mem-code-final-post
 
     rbp-inv-final : RbpInvariant s-final
     rbp-inv-final = rbp-inv-preserved-unchanged s s-final rbp-inv

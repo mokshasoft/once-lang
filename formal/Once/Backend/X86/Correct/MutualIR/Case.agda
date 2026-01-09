@@ -29,8 +29,11 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv;
-         ir-mem-above; ir-mem-at-0; ir-closure-wf; convert-to-stateful;
+         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf; convert-to-stateful;
          rbp-inv-preserved-unchanged)
+
+-- Import region definitions for D041 memory preservation proofs
+open import Once.Backend.Common.MemoryRegions using (region-of; code)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -130,6 +133,7 @@ mutual
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
+      ; ir-mem-code = mem-code-final
       ; ir-stack-inv = stack-inv-final
       ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
@@ -427,6 +431,18 @@ mutual
           mem-at-0-jump = subst (λ m → readMem m 0 ≡ readMem (memory s1) 0)
                                 (sym mem-jump) refl
 
+      -- D041: Memory in code region preserved: setup/jump don't modify memory, chain through f
+      mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-code-final addr addr-in-code = trans mem-code-jump (trans (ir-mem-code r-f addr addr-in-code) mem-code-setup)
+        where
+          mem-code-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-code-setup = subst (λ m → readMem m addr ≡ readMem (memory s) addr)
+                                 (sym mem-setup) refl
+
+          mem-code-jump : readMem (memory s-final) addr ≡ readMem (memory s1) addr
+          mem-code-jump = subst (λ m → readMem m addr ≡ readMem (memory s1) addr)
+                                (sym mem-jump) refl
+
   -- | Star-based case right branch (inr)
   -- Structure:
   --   Phase 1: Setup - 3 instructions (mov r11 [rdi], cmp, jne taken)
@@ -459,6 +475,7 @@ mutual
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
+      ; ir-mem-code = mem-code-final
       ; ir-closure-wf = closure-wf-final  -- Thread through g (inr branch)
       }
     where
@@ -810,3 +827,16 @@ mutual
 
           mem-at-0-end : readMem (memory s-final) 0 ≡ readMem (memory s1) 0
           mem-at-0-end = cong (λ m → readMem m 0) mem-end
+
+      -- D041: Memory in code region preserved: setup/right-setup/end don't modify memory, chain through g
+      mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-code-final addr addr-in-code = trans mem-code-end (trans (ir-mem-code r-g addr addr-in-code) (trans mem-code-right mem-code-setup))
+        where
+          mem-code-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-code-setup = cong (λ m → readMem m addr) mem-setup
+
+          mem-code-right : readMem (memory s-right) addr ≡ readMem (memory s-setup) addr
+          mem-code-right = cong (λ m → readMem m addr) mem-right
+
+          mem-code-end : readMem (memory s-final) addr ≡ readMem (memory s1) addr
+          mem-code-end = cong (λ m → readMem m addr) mem-end

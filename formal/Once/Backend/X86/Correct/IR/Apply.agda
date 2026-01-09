@@ -55,7 +55,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -1400,6 +1400,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-mem-rbp+8 = mem-rbp+8-post  -- PROVEN via WfR.mem-above + RbpInvariant
     ; ir-mem-above = mem-above-post  -- PROVEN via WfR.mem-above + RbpInvariant
     ; ir-mem-at-0 = WfR.mem-at-0  -- PROVEN via D041 region-based chain
+    ; ir-mem-code = WfR.mem-code-region  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
     ; ir-capacity = rsp>16-to-capacity s' WfR.rsp>16
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration

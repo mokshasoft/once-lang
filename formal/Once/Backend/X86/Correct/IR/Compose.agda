@@ -17,13 +17,14 @@ open import Once.Backend.Common.ProgramLemmas
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
+open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-s; ir-mem-above; ir-mem-at-0; ir-rbp-inv; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-s; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-rbp-inv; ir-closure-wf;
          ir-rax-s)
 
 open import Data.Nat using (_>_)
@@ -344,6 +345,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   ; ir-mem-above = mem-above-3
   ; ir-mem-at-0 = mem-at-0-3
+  ; ir-mem-code = mem-code-3
   ; ir-closure-wf = closure-wf-3  -- Prefer g's closure (executed last)
   }
   where
@@ -492,6 +494,21 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
           mem-s-to-s1-at-0 = ir-mem-at-0 r1
       in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
 
+    -- D041: Memory at code-region addresses preserved (compose of sub-proofs)
+    mem-code-3 : ∀ addr → region-of addr ≡ code → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-code-3 addr addr-in-code =
+      let -- Memory from s2 to s3 via r3.ir-mem-code
+          mem-s2-to-s3-code : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s2-to-s3-code = ir-mem-code r3 addr addr-in-code
+          -- Memory from s1 to s2 via transfer (preserves all memory including code)
+          mem-s1-to-s2-code : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s1-to-s2-code = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                                    (sym s2-eq) (mem-s1-to-s2 addr)
+          -- Memory from s to s1 via r1.ir-mem-code
+          mem-s-to-s1-code : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s-to-s1-code = ir-mem-code r1 addr addr-in-code
+      in trans mem-s2-to-s3-code (trans mem-s1-to-s2-code mem-s-to-s1-code)
+
 ------------------------------------------------------------------------
 -- Final Assembly (Stateful): combine all stateful results
 ------------------------------------------------------------------------
@@ -522,6 +539,7 @@ assemble-compose-result-s {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s 
   ; ir-rbp-inv = IRStarResultS.ir-rbp-inv r3-s
   ; ir-mem-above = mem-above-3
   ; ir-mem-at-0 = mem-at-0-3
+  ; ir-mem-code = mem-code-3
   }
   where
     ctx = make-compose-context f g prefix suffix
@@ -655,3 +673,15 @@ assemble-compose-result-s {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s 
           mem-s-to-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
           mem-s-to-s1-at-0 = IRStarResultS.ir-mem-at-0 r1-s
       in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
+
+    -- D041: Memory at code-region addresses preserved (compose of sub-proofs)
+    mem-code-3 : ∀ addr → region-of addr ≡ code → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-code-3 addr addr-in-code =
+      let mem-s2-to-s3-code : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s2-to-s3-code = IRStarResultS.ir-mem-code r3-s addr addr-in-code
+          mem-s1-to-s2-code : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s1-to-s2-code = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                                    (sym s2-eq) (mem-s1-to-s2 addr)
+          mem-s-to-s1-code : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s-to-s1-code = IRStarResultS.ir-mem-code r1-s addr addr-in-code
+      in trans mem-s2-to-s3-code (trans mem-s1-to-s2-code mem-s-to-s1-code)

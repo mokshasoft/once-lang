@@ -26,8 +26,11 @@ open import Once.Backend.X86.Correct.MutualIR.Dispatcher
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ir-star; ir-halted; ir-pc; ir-rax;
          ir-r14; ir-r15; ir-rbp; ir-mem; ir-rbp-inv; ir-stack-inv; ir-rsp-bound;
-         ir-mem-above; ir-mem-at-0; ir-mem-rbp; ir-mem-rbp+8; ir-closure-wf;
+         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-rbp; ir-mem-rbp+8; ir-closure-wf;
          ir-rax-s; convert-to-stateful; rbp-inv-preserved-unchanged)
+
+-- Import region definitions for D041 memory preservation proofs
+open import Once.Backend.Common.MemoryRegions using (region-of; code)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -249,7 +252,7 @@ mutual
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                 stack-inv-final rsp>16-final mem-fst-final mem-snd-final
-                rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final
+                rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final
                 star-fin refl refl
                 rbp-inv rsp-final-eq
     where
@@ -559,6 +562,20 @@ mutual
                        (trans mem-mid-preserves-0
                        (trans (ir-mem-at-0 r-f)
                               mem-setup-preserves-0)))
+
+      -- Memory in code region preserved through all phases (D041 region-based)
+      -- Chain ir-mem-code from f and g, plus preservation through setup/middle/final
+      postulate
+        mem-setup-preserves-code : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+        mem-mid-preserves-code : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+        mem-final-preserves-code : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+
+      mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-code-final addr addr-in-code = trans (mem-final-preserves-code addr addr-in-code)
+                                         (trans (ir-mem-code r-g addr addr-in-code)
+                                         (trans (mem-mid-preserves-code addr addr-in-code)
+                                         (trans (ir-mem-code r-f addr addr-in-code)
+                                                (mem-setup-preserves-code addr addr-in-code))))
 
       -- Convert final exec to Star (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
