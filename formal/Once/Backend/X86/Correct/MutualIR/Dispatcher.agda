@@ -21,6 +21,8 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ir-rbp-inv; rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
+open import Once.Backend.Common.MemoryRegions
+  using (StackPointer)
 
 open import Once.Postulates using (encode)
 open import Data.Bool using (Bool; false)
@@ -99,7 +101,8 @@ postulate
 
 postulate
   -- | Abstract dispatcher for non-stateful IR execution
-  run-ir-star-at-offset-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  -- caller-sp: StackPointer representing the caller's stack frame (D041)
+  run-ir-star-at-offset-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -110,8 +113,9 @@ postulate
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
   -- | Abstract dispatcher for stateful IR execution
+  -- caller-sp: StackPointer representing the caller's stack frame (D041)
   run-ir-star-at-offset-s-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program)
-      (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
+      (caller-sp : StackPointer) (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ addr-in →

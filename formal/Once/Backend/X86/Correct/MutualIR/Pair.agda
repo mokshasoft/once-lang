@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-rax-s; convert-to-stateful; rbp-inv-preserved-unchanged)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; StackPointer)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -73,8 +73,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 {-# TERMINATING #-}
 mutual
   -- | Stateful pair execution (NO encoding postulates!)
+  -- caller-sp: StackPointer from the caller (D041)
   run-pair-star-direct-s : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program)
-      (addr-in : Word) (x : ⟦ C ⟧) (s : State) →
+      (caller-sp : StackPointer) (addr-in : Word) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ addr-in →
@@ -84,7 +85,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
     in ∃[ addr-out ] ∃[ s' ] IRStarResultS ⟨ f , g ⟩ prog s s' addr-out (length prefix)
-  run-pair-star-direct-s {A} {B} {C} f g prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  run-pair-star-direct-s {A} {B} {C} f g prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
     (addr-pair , s-final , result-s)
     where
       ctx = make-pair-context f g prefix suffix
@@ -113,7 +114,7 @@ mutual
 
       -- Step 2: Execute f (STATEFUL RECURSIVE CALL via abstract dispatcher)
       step-f-s : ∃[ addr-f ] ∃[ s1 ] IRStarResultS f (prefix-f ++ code-f ++ suffix-f) s-setup s1 addr-f (length prefix-f)
-      step-f-s = run-ir-star-at-offset-s-abstract f prefix-f suffix-f addr-in x s-setup
+      step-f-s = run-ir-star-at-offset-s-abstract f prefix-f suffix-f caller-sp addr-in x s-setup
                    (PairSetupResultS.h-setup setup-res-s)
                    (PairSetupResultS.pc-setup-f setup-res-s)
                    (PairSetupResultS.rdi-setup-addr setup-res-s)
@@ -170,7 +171,7 @@ mutual
 
       -- g receives original input x, not y = eval f x (pair duplicates input)
       step-g-s : ∃[ addr-g ] ∃[ s3 ] IRStarResultS g (prefix-g ++ code-g ++ suffix-g) s2 s3 addr-g (length prefix-g)
-      step-g-s = run-ir-star-at-offset-s-abstract g prefix-g suffix-g addr-in x s2
+      step-g-s = run-ir-star-at-offset-s-abstract g prefix-g suffix-g caller-sp addr-in x s2
                    (PairMiddleResultS.h2 mid-res-s)
                    (PairMiddleResultS.pc2-g mid-res-s)
                    (PairMiddleResultS.rdi2 mid-res-s)
@@ -238,7 +239,8 @@ mutual
   -- Phase 3: 2 middle instructions
   -- Phase 4: Execute g (recursive)
   -- Phase 5: 6 final instructions
-  run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
+  -- caller-sp: StackPointer from the caller (D041)
+  run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ C ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -247,7 +249,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
     in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-  run-pair-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , assemble-pair-result f g prefix suffix x s s-setup s1 s2 s3 s-final
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
@@ -290,7 +292,7 @@ mutual
             rsp∸40≤rsp∸24
 
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
-      step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f x s-setup
+      step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f caller-sp x s-setup
                 (PairSetupResult.h-setup setup-res)
                 (PairSetupResult.pc-setup-f setup-res)
                 (PairSetupResult.rdi-setup-enc setup-res)
@@ -328,7 +330,7 @@ mutual
       rbp-inv-s2 = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s2 rbp-inv-s1 rsp-s2-eq-s1 rbp-s2-eq-s1
 
       step-g : ∃[ s3 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
-      step-g = run-ir-star-at-offset-abstract g prefix-g suffix-g x s2
+      step-g = run-ir-star-at-offset-abstract g prefix-g suffix-g caller-sp x s2
                 (PairMiddleResult.h2 mid-res)
                 (PairMiddleResult.pc2-g mid-res)
                 (PairMiddleResult.rdi2 mid-res)

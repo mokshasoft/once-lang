@@ -53,6 +53,9 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import common exec N-steps lemmas (parameterized module)
 -- Instantiated below after defining the base lemmas exec-on-non-halted-step and exec-on-halted-step
 
+-- Import StackPointer for caller frame tracking (D041)
+open import Once.Backend.Common.MemoryRegions using (StackPointer)
+
 -- Import encoding axioms from central postulates module
 open import Once.Postulates public
   using ( encode
@@ -219,7 +222,8 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 ------------------------------------------------------------------------
 
 -- | Star-based IR execution at arbitrary offset
-run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+-- caller-sp: StackPointer representing the caller's stack frame (D041)
+run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -248,7 +252,8 @@ transfer-star : ∀ (prog : Program) (s : State) →
 transfer-star prog s h-false step-eq = star-single h-false step-eq
 
 -- | Compose two IR computations using Star
-compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : State) →
+-- caller-sp: StackPointer representing the caller's stack frame (D041)
+compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
     readReg (regs s) rdi ≡ encode x →
@@ -258,13 +263,13 @@ compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s : S
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , star-proof , h-final , rax-final
   where
     open import Data.List.Properties using (++-identityʳ)
 
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+    result = run-ir-star-at-offset (g ∘ f) [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
     s-final = proj₁ result
     r = proj₂ result
     h-final = ir-halted r
@@ -290,8 +295,9 @@ compose-with-star {A} {B} {C} f g x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-i
 
 -- | Detailed Star-based compose showing the 3-step composition
 -- Uses run-ir-star-at-offset directly - no fuel conversion needed
+-- caller-sp: StackPointer representing the caller's stack frame (D041)
 run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
-    (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -301,10 +307,10 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-run-ir-star-compose-internal {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    result = run-ir-star-at-offset (g ∘ f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     s-final = proj₁ result
     r = proj₂ result
   in
@@ -383,13 +389,14 @@ exec-halted-stable = exec-n-halted
 -- This is the cleanest interface - no fuel postulates needed.
 ------------------------------------------------------------------------
 
-run-generator : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+-- caller-sp: StackPointer representing the caller's stack frame (D041)
+run-generator : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
   StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
   ∃[ s' ] (Star (compile-x86 ir) s s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
-run-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
   s-halted , star-full , halted-true , rax-preserved
   where
     open import Data.List.Properties using (++-identityʳ)
@@ -398,7 +405,7 @@ run-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
     prog = compile-x86 ir
 
     -- Use run-ir-star-at-offset (Star-based)
-    result = run-ir-star-at-offset ir [] [] x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+    result = run-ir-star-at-offset ir [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
     s' = proj₁ result
     r = proj₂ result
 
@@ -454,7 +461,8 @@ run-generator {A} {B} ir x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
 -- Now derived from run-generator directly
 ------------------------------------------------------------------------
 
-run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : State) →
+-- caller-sp: StackPointer representing the caller's stack frame (D041)
+run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s0 : State) →
   halted s0 ≡ false →
   pc s0 ≡ 0 →
   readReg (regs s0) rdi ≡ encode x →
@@ -465,8 +473,8 @@ run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (x : ⟦ A ⟧) (s0 : St
   ∃[ s2 ] (Star (compile-x86 (g ∘ f)) s0 s2
          × halted s2 ≡ true
          × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
-run-seq-compose {A} {B} {C} f g x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
-  run-generator (g ∘ f) x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
 
 ------------------------------------------------------------------------
 -- Code generation correctness
@@ -475,12 +483,13 @@ run-seq-compose {A} {B} {C} f g x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-in
 -- The execution trace is witnessed by Star (reflexive-transitive closure).
 ------------------------------------------------------------------------
 
-codegen-x86-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
+-- caller-sp: StackPointer representing the external caller's stack frame (D041)
+codegen-x86-correct : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 ir) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval ir x))
-codegen-x86-correct ir x =
-  let (s' , star-eq , halt-eq , rax-eq) = run-generator ir x (initWithInput x)
+codegen-x86-correct ir caller-sp x =
+  let (s' , star-eq , halt-eq , rax-eq) = run-generator ir caller-sp x (initWithInput x)
         (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
         (initWithInput-stack-inv x) (initWithInput-rsp>16 x) (initWithInput-rbp-inv x)
   in s' , star-eq , halt-eq , rax-eq
@@ -493,51 +502,51 @@ codegen-x86-correct ir x =
 -- IR: id
 -- Input: any value x
 -- Expected: x
-test-id : ∀ {A} (x : ⟦ A ⟧) →
+test-id : ∀ {A} (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (id {A})) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode x)
-test-id {A} x = codegen-x86-correct (id {A}) x
+test-id {A} caller-sp x = codegen-x86-correct (id {A}) caller-sp x
 
 -- | Test 2: First projection
 -- IR: fst
 -- Input: (a, b)
 -- Expected: a
-test-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+test-fst : ∀ {A B} (caller-sp : StackPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
   ∃[ s ] (Star (compile-x86 (fst  {A} {B})) (initWithInput (a , b)) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode a)
-test-fst {A} {B} a b = codegen-x86-correct (fst  {A} {B}) (a , b)
+test-fst {A} {B} caller-sp a b = codegen-x86-correct (fst  {A} {B}) caller-sp (a , b)
 
 -- | Test 3: Composition (fst after pairing)
 -- IR: fst ∘ ⟨id, id⟩
 -- Input: x
 -- Expected: x (creates pair (x,x), extracts first = x)
-test-fst-pair : ∀ {A} (x : ⟦ A ⟧) →
+test-fst-pair : ∀ {A} (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode x)
-test-fst-pair {A} x = codegen-x86-correct (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩) x
+test-fst-pair {A} caller-sp x = codegen-x86-correct (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩) caller-sp x
 
 -- | Test 4: Case analysis
 -- IR: [ id , id ]
 -- Input: inl a or inr b
 -- Expected: a or b (identity on sum)
-test-case-id : ∀ {A} (x : ⟦ A ⟧ ⊎ ⟦ A ⟧) →
+test-case-id : ∀ {A} (caller-sp : StackPointer) (x : ⟦ A ⟧ ⊎ ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 [ id  {A} , id  {A} ]) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval [ id  {A} , id  {A} ] x))
-test-case-id {A} x = codegen-x86-correct [ id  {A} , id  {A} ] x
+test-case-id {A} caller-sp x = codegen-x86-correct [ id  {A} , id  {A} ] caller-sp x
 
 -- | Test 5: Curry creates closure
 -- IR: curry fst
 -- Input: a
 -- Expected: closure that takes b and returns a
-test-curry : ∀ {A B} (a : ⟦ A ⟧) →
+test-curry : ∀ {A B} (caller-sp : StackPointer) (a : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (curry (fst  {A} {B}))) (initWithInput a) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry (fst  {A} {B})) a))
-test-curry {A} {B} a = codegen-x86-correct (curry (fst  {A} {B})) a
+test-curry {A} {B} caller-sp a = codegen-x86-correct (curry (fst  {A} {B})) caller-sp a
 
 -- | Test 6: TRUE E2E - Curry + Apply composed
 -- IR: apply ∘ ⟨curry fst, id⟩
@@ -549,11 +558,11 @@ test-curry {A} {B} a = codegen-x86-correct (curry (fst  {A} {B})) a
 --   - apply's call instruction
 -- When apply calls the closure, it jumps to the thunk WITHIN THE SAME PROGRAM.
 -- With RIP-relative addressing, the code-ptr is computed correctly.
-test-curry-apply : ∀ {A} (a : ⟦ A ⟧) →
+test-curry-apply : ∀ {A} (caller-sp : StackPointer) (a : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩)) (initWithInput a) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a))
-test-curry-apply {A} a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a
+test-curry-apply {A} caller-sp a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) caller-sp a
 
 ------------------------------------------------------------------------
 -- E2E Summary
@@ -682,15 +691,15 @@ lea-computes-thunk = refl
 -- code generation level.
 --
 -- Semantically: eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a, b) = eval f (a, b)
-curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (caller-sp : StackPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ fst , snd ⟩)) (initWithInput (a , b)) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (a , b)))
-curry-apply-composition {A} {B} {C} f a b =
+curry-apply-composition {A} {B} {C} f caller-sp a b =
   -- This follows directly from codegen-x86-correct
   -- The key is that eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a,b) = eval f (a,b)
   -- by the categorical curry-apply law (proven in Once.Category.Laws)
-  codegen-x86-correct (apply ∘ ⟨ curry f ∘ fst , snd ⟩) (a , b)
+  codegen-x86-correct (apply ∘ ⟨ curry f ∘ fst , snd ⟩) caller-sp (a , b)
 
 -- | Curry-Apply with arbitrary second component
 --
@@ -698,12 +707,12 @@ curry-apply-composition {A} {B} {C} f a b =
 -- `apply ∘ ⟨curry f, g⟩` applies the closure (curry f x) to (g x).
 --
 -- Semantically: eval (apply ∘ ⟨curry f, g⟩) x = eval f (x, eval g x)
-curry-apply-any-g : ∀ {A B C} (f : IR (A * B) C) (g : IR A B) (x : ⟦ A ⟧) →
+curry-apply-any-g : ∀ {A B C} (f : IR (A * B) C) (g : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , g ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (x , eval g x)))
-curry-apply-any-g {A} {B} {C} f g x =
-  codegen-x86-correct (apply ∘ ⟨ curry f , g ⟩) x
+curry-apply-any-g {A} {B} {C} f g caller-sp x =
+  codegen-x86-correct (apply ∘ ⟨ curry f , g ⟩) caller-sp x
 
 -- | Curry-Apply with identity (the E2E test case)
 --
@@ -711,22 +720,22 @@ curry-apply-any-g {A} {B} {C} f g x =
 -- This is the pattern proven step-by-step in E2E-Trace below.
 --
 -- Semantically: eval (apply ∘ ⟨curry f, id⟩) x = eval f (x, x)
-curry-apply-id : ∀ {A C} (f : IR (A * A) C) (x : ⟦ A ⟧) →
+curry-apply-id : ∀ {A C} (f : IR (A * A) C) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , id ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (x , x)))
-curry-apply-id {A} {C} f x =
-  codegen-x86-correct (apply ∘ ⟨ curry f , id ⟩) x
+curry-apply-id {A} {C} f caller-sp x =
+  codegen-x86-correct (apply ∘ ⟨ curry f , id ⟩) caller-sp x
 
 -- | Curry-Apply with constant environment
 --
 -- Shows curry works with a constant captured value:
 -- `apply ∘ ⟨curry f ∘ terminal, id⟩` where f : IR (Unit * A) B
 -- The closure captures unit (empty environment) and applies to the input.
-curry-apply-const-env : ∀ {A B} (f : IR (Unit * A) B) (x : ⟦ A ⟧) →
+curry-apply-const-env : ∀ {A B} (f : IR (Unit * A) B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ terminal , id ⟩)) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval f (tt , x)))
-curry-apply-const-env {A} {B} f x =
-  codegen-x86-correct (apply ∘ ⟨ curry f ∘ terminal , id ⟩) x
+curry-apply-const-env {A} {B} f caller-sp x =
+  codegen-x86-correct (apply ∘ ⟨ curry f ∘ terminal , id ⟩) caller-sp x
 

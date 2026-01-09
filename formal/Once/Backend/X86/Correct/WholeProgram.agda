@@ -59,6 +59,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged)
+open import Once.Backend.Common.MemoryRegions using (StackPointer)
 
 -- Import closure infrastructure
 open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -186,8 +187,11 @@ from-modular-with-wf r wf = record
 --
 -- Phase 1: curry produces WF
 -- Phase 2 (TODO): apply consumes WF when available
+--
+-- caller-sp: StackPointer representing the caller's stack frame
+-- (D041: used for intra-stack memory preservation via sp-distinct)
 run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
-  (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -200,12 +204,12 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
 
 -- Curry case: produce has-closure WF
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
-run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
+run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
       -- Get IRStarResult from run-curry-star
-      (s' , ir-res , _) = run-curry-star f prefix suffix x s
+      (s' , ir-res , _) = run-curry-star f prefix suffix caller-sp x s
                             h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
       -- Build ClosureWellFormed proof
       -- f : IR _ (A * B) C, so closure semantics is ⟦ B ⟧ → ⟦ C ⟧
@@ -232,14 +236,14 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix x s h-eq pc-eq rdi
 -- - For closed programs, curry and apply are composed together
 -- - The postulate-free path exists (run-apply-with-full-wf)
 -- - Full elimination requires threading memory layout info
-run-ir-star-whole-program (apply {A} {B}) prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
-  let (s' , modular-result) = run-ir-star-at-offset (apply {A} {B}) prefix suffix x s
+run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
+  let (s' , modular-result) = run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s
                                 h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   in s' , from-modular modular-result
 
 -- All other cases: delegate to modular runner
-run-ir-star-whole-program ir prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
-  let (s' , modular-result) = run-ir-star-at-offset ir prefix suffix x s
+run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
+  let (s' , modular-result) = run-ir-star-at-offset ir prefix suffix caller-sp x s
                                 h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
   in s' , from-modular modular-result
 
@@ -253,8 +257,11 @@ run-ir-star-whole-program ir prefix suffix x s h-eq pc-eq rdi-eq stack-inv rsp>1
 -- This is the key theorem: for closed Once programs where all closures
 -- come from curry operations (with tracked provenance via ClosureEntry),
 -- execution produces the correct result.
+--
+-- caller-sp: StackPointer representing the external caller's stack frame
+-- (D041: the runtime/C code calling into Once provides their frame pointer)
 whole-program-correct : ∀ {A B} (ir : IR A B)
-  (x : ⟦ A ⟧) (s : State) →
+  (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
   readReg (regs s) rdi ≡ encode x →
@@ -266,13 +273,13 @@ whole-program-correct : ∀ {A B} (ir : IR A B)
             × halted s' ≡ false
             × pc s' ≡ compile-length ir
             × readReg (regs s') rax ≡ encode (eval ir x))
-whole-program-correct ir x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+whole-program-correct ir caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let code = compile-x86 ir
       -- [] ++ code ++ [] ≡ code ++ [] ≡ code
       prog-eq : [] ++ code ++ [] ≡ code
       prog-eq = ++-identityʳ code
       -- Run with empty prefix/suffix
-      (s' , result) = run-ir-star-whole-program ir [] [] x s
+      (s' , result) = run-ir-star-whole-program ir [] [] caller-sp x s
                         h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv no-closure
       -- Transport result to the simplified program
       star' = subst (λ p → Star p s s') prog-eq (wp-star result)

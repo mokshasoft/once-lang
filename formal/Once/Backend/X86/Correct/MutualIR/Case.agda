@@ -33,7 +33,7 @@ open import Once.Backend.X86.Correct.StarBase
          rbp-inv-preserved-unchanged)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; StackPointer)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -85,7 +85,8 @@ mutual
   -- For inl: Setup(4) → f → JumpToEnd(2) (labels are pseudo-instructions)
   -- For inr: Setup(3) → Jump(1) → LoadVal(1) → g → Label(1)
   -- compile-length [ f , g ] = (8 + len-f) + len-g
-  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (x : ⟦ A + B ⟧) (s : State) →
+  -- caller-sp: StackPointer from the caller (D041)
+  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -94,13 +95,13 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-case-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
     with x
-  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix a s h-false pc-eq rdi-eq-inl stack-inv rsp>16 rbp-inv
+  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix caller-sp a s h-false pc-eq rdi-eq-inl stack-inv rsp>16 rbp-inv
     where
       rdi-eq-inl : readReg (regs s) rdi ≡ encode {A + B} (inj₁ a)
       rdi-eq-inl = rdi-eq
-  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix b s h-false pc-eq rdi-eq-inr stack-inv rsp>16 rbp-inv
+  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix caller-sp b s h-false pc-eq rdi-eq-inr stack-inv rsp>16 rbp-inv
     where
       rdi-eq-inr : readReg (regs s) rdi ≡ encode {A + B} (inj₂ b)
       rdi-eq-inr = rdi-eq
@@ -110,7 +111,8 @@ mutual
   --   Phase 1: Setup - 4 instructions (mov r11 [rdi], cmp, jne not taken, mov rdi [rdi+8])
   --   Phase 2: Execute f - recursive Star call via abstract dispatcher
   --   Phase 3: Jump to end - 2 instructions (jmp, label)
-  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
+  -- caller-sp: StackPointer from the caller (D041)
+  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
@@ -119,7 +121,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {A} {B} {C} f g prefix suffix a s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-case-star-direct-inl {A} {B} {C} f g prefix suffix caller-sp a s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -281,7 +283,7 @@ mutual
 
       -- Recursive call to f via abstract dispatcher
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
-      step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f a s-setup h-setup pc-setup-f rdi-setup stack-inv-setup rsp>16-setup rbp-inv-setup
+      step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f rdi-setup stack-inv-setup rsp>16-setup rbp-inv-setup
 
       s1 : State
       s1 = proj₁ step-f
@@ -449,7 +451,8 @@ mutual
   --   Phase 2: Right branch setup - 2 instructions (label, mov rdi [rdi+8])
   --   Phase 3: Execute g - recursive Star call via abstract dispatcher
   --   Phase 4: End label - 1 instruction
-  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
+  -- caller-sp: StackPointer from the caller (D041)
+  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
@@ -458,7 +461,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b) (length prefix)
-  run-case-star-direct-inr {A} {B} {C} f g prefix suffix b s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-case-star-direct-inr {A} {B} {C} f g prefix suffix caller-sp b s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -678,7 +681,7 @@ mutual
 
       -- Recursive call to g via abstract dispatcher
       step-g : ∃[ s1 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
-      step-g = run-ir-star-at-offset-abstract g prefix-g suffix-g b s-right h-right pc-right-g rdi-right stack-inv-right rsp>16-right rbp-inv-right
+      step-g = run-ir-star-at-offset-abstract g prefix-g suffix-g caller-sp b s-right h-right pc-right-g rdi-right stack-inv-right rsp>16-right rbp-inv-right
 
       s1 : State
       s1 = proj₁ step-g
