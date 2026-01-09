@@ -265,3 +265,8 @@ module FrameSlotInternal where
     -- | Writing to slot 0 corresponds to writing at the SP's address
     frameWriteSlot-0-is-writeMem : ∀ mem sp val →
       frameWriteSlot mem sp 0 val ≡ Once.Backend.Common.Memory.writeMem mem (addr sp) val
+
+    -- | General: slot k corresponds to reading at addr sp + k * 8
+    -- This is the key glue for proving frame preservation through phases
+    -- that preserve memory at specific address ranges.
+    frameSlot-is-readMem : ∀ mem sp k → frameSlot mem sp k ≡ readMem mem (addr sp + k * 8)

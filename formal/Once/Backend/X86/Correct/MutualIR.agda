@@ -34,6 +34,9 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot)
+-- Internal glue for abstraction boundary (implementation use only!)
+open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
+open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach
 open import Once.Backend.X86.Correct.StackInvariant2
@@ -150,7 +153,7 @@ open import Once.Backend.X86.Correct.MutualIR.Case
   using (run-case-star-direct)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -1186,12 +1189,57 @@ mutual
       -- Uses abstract frameSlot interface instead of arithmetic (addr ≥ rsp)
       -- Thunk writes only to its own frame, caller's frame (caller-sp) is disjoint
       --
-      -- Implementation note: The actual proof would use sp-distinct to show
-      -- thunk's frame addresses differ from caller's frame addresses.
-      -- For now, we postulate this - the interface is clean and abstract.
-      postulate
-        thunk-preserves-frame-proof : ∀ k → frameSlot (memory s-final) caller-sp k ≡
-                                            frameSlot (memory s) caller-sp k
+      -- Proof strategy:
+      -- 1. Convert frameSlot to readMem via frameSlot-is-readMem (internal glue)
+      -- 2. Chain through phases: ret → cleanup → IR → setup
+      -- 3. ret and cleanup preserve ALL memory (no arithmetic needed)
+      -- 4. IR preserves memory > rbp (need caller addr > rbp)
+      -- 5. setup preserves memory above s.rsp (need caller addr > s.rsp - 32)
+      -- 6. Convert back to frameSlot
+      --
+      -- The call convention ensures: caller-sp.addr = s.rsp + 8
+      -- (call instruction pushed return address before thunk entry)
+      -- This relationship is captured in local postulates below.
+      thunk-preserves-frame-proof : ∀ k → frameSlot (memory s-final) caller-sp k ≡
+                                          frameSlot (memory s) caller-sp k
+      thunk-preserves-frame-proof k = begin
+        frameSlot (memory s-final) caller-sp k
+          ≡⟨ frameSlot-is-readMem (memory s-final) caller-sp k ⟩
+        readMem (memory s-final) slot-addr
+          ≡⟨ mem-ret-preserves slot-addr ⟩
+        readMem (memory s-after-f) slot-addr
+          ≡⟨ mem-f-preserved slot-addr ⟩
+        readMem (memory s-after-f-raw) slot-addr
+          ≡⟨ ir-mem-above r-f slot-addr slot-addr>rbp ⟩
+        readMem (memory s-after-setup) slot-addr
+          ≡⟨ setup-preserves-caller-slot ⟩
+        readMem (memory s) slot-addr
+          ≡⟨ sym (frameSlot-is-readMem (memory s) caller-sp k) ⟩
+        frameSlot (memory s) caller-sp k ∎
+        where
+          -- The slot address for caller-sp slot k
+          slot-addr = StackPointer.addr caller-sp +ℕ k *ℕ 8
+
+          -- Call convention: caller-sp.addr = s.rsp + 8
+          -- (call instruction pushed return address)
+          -- This is the key relationship for proving disjointness.
+          -- Postulated because the relationship comes from the caller (apply).
+          postulate
+            caller-addr-eq : StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8
+
+          -- slot-addr = s.rsp + 8 + k*8 = s.rsp + 8(1+k)
+          -- rbp after setup = s.rsp - 16
+          -- slot-addr > rbp when s.rsp + 8(1+k) > s.rsp - 16
+          -- i.e., 8(1+k) > -16, always true for k ≥ 0
+          postulate
+            slot-addr>rbp : slot-addr > readReg (regs s-after-setup) rbp
+
+          -- Setup writes at s.rsp - 8, s.rsp - 16, s.rsp - 24, s.rsp - 32
+          -- slot-addr = s.rsp + 8 + k*8 ≥ s.rsp + 8 > s.rsp - 32
+          -- So setup preserves memory at slot-addr
+          postulate
+            setup-preserves-caller-slot : readMem (memory s-after-setup) slot-addr ≡
+                                          readMem (memory s) slot-addr
 
       -- Memory at address 0 preserved:
       -- Thunk writes only to stack region, 0 is not in stack region
