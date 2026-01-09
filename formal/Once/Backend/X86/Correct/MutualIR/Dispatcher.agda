@@ -21,6 +21,7 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultS; ir-rbp-inv; rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
+open import Once.Backend.Common.MemoryRegions using (StackPointer)
 
 open import Once.Postulates using (encode)
 open import Data.Bool using (Bool; false)
@@ -39,8 +40,8 @@ open Once.Backend.X86.Semantics.State public
 -- Uses ir-rbp-inv from IRStarResult and register preservation from transfer
 rbp-inv-preserved-through-ir : ∀ (s s1 s2 : State) →
   RbpInvariant s →
-  ∀ {A B} {ir : IR A B} {prog x offset} →
-  IRStarResult ir prog s s1 x offset →
+  ∀ {A B} {ir : IR A B} {prog caller-sp x offset} →
+  IRStarResult ir prog caller-sp s s1 x offset →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
   readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
   RbpInvariant s2
@@ -52,8 +53,8 @@ rbp-inv-preserved-through-ir s s1 s2 _ {ir = ir} r rsp2-eq rbp2-eq =
 -- Stateful version for IRStarResultS
 rbp-inv-preserved-through-ir-s : ∀ (s s1 s2 : State) →
   RbpInvariant s →
-  ∀ {A B} {ir : IR A B} {prog addr-out offset} →
-  IRStarResultS ir prog s s1 addr-out offset →
+  ∀ {A B} {ir : IR A B} {prog caller-sp addr-out offset} →
+  IRStarResultS ir prog caller-sp s s1 addr-out offset →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
   readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
   RbpInvariant s2
@@ -90,16 +91,17 @@ rbp-inv-preserved-through-ir-s s s1 s2 _ {ir = ir} r-s rsp2-eq rbp2-eq =
 --
 -- Dependencies: Requires encode postulates for primitive types to be proven first.
 postulate
-  irresults-preserves-eval : ∀ {A B} (ir : IR A B) (prog : Program) (s s' : State)
-                               (addr-in addr-out : Word) (x : ⟦ A ⟧) (offset : ℕ) →
-    IRStarResultS ir prog s s' addr-out offset →
+  irresults-preserves-eval : ∀ {A B} (ir : IR A B) (prog : Program) (caller-sp : StackPointer)
+                               (s s' : State) (addr-in addr-out : Word) (x : ⟦ A ⟧) (offset : ℕ) →
+    IRStarResultS ir prog caller-sp s s' addr-out offset →
     encode x ≡ addr-in →
     readReg (regs s) rdi ≡ addr-in →
     encode (eval ir x) ≡ addr-out
 
 postulate
   -- | Abstract dispatcher for non-stateful IR execution
-  run-ir-star-at-offset-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-ir-star-at-offset-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program)
+      (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -107,11 +109,11 @@ postulate
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
-    in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+    in ∃[ s' ] IRStarResult ir prog caller-sp s s' x (length prefix)
 
   -- | Abstract dispatcher for stateful IR execution
   run-ir-star-at-offset-s-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program)
-      (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
+      (caller-sp : StackPointer) (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ addr-in →
@@ -120,4 +122,4 @@ postulate
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
-    in ∃[ addr-out ] ∃[ s' ] IRStarResultS ir prog s s' addr-out (length prefix)
+    in ∃[ addr-out ] ∃[ s' ] IRStarResultS ir prog caller-sp s s' addr-out (length prefix)

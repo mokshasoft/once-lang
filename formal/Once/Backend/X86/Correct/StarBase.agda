@@ -15,7 +15,9 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; stack-below-r15; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged; rsp>16-preserved-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code; stack; stack-code-disjoint;
+         StackPointer; addr; in-stack; slot-addr; sp-distinct; offset-distinct; slot-in-stack)
 open import Once.Backend.X86.Correct.StackInvariant2
   using (StackCapacity; rsp>16-to-capacity; capacity-to-rsp>16;
          capacity-preserved-rsp-unchanged)
@@ -60,8 +62,9 @@ data ClosureWFOutput (prog : Program) : Set₁ where
 
 -- | Record type for Star-based IR execution result
 -- Contains all properties needed for proof composition
+-- Takes caller-sp: the caller's StackPointer (for memory preservation proofs)
 record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
-                    (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
+                    (caller-sp : StackPointer) (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
   field
     ir-star       : Star prog s s'
     ir-halted     : halted s' ≡ false
@@ -74,9 +77,9 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     -- Memory at rbp+8 preserved (where ret-addr is stored in thunk context)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-    -- Memory above frame preserved (for caller's rbp in pair proofs)
-    -- Any address strictly above rbp is not touched by IR execution
-    ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+    -- Caller memory preserved: all slots from caller-sp are unchanged
+    -- Disjointness via sp-distinct
+    ir-mem-caller : ∀ k → readMem (memory s') (slot-addr caller-sp k) ≡ readMem (memory s) (slot-addr caller-sp k)
     -- Memory at address 0 preserved (null page never written)
     -- No IR generator writes to address 0, so this is always preserved
     ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
@@ -96,8 +99,8 @@ open IRStarResult public
 
 -- | Derived: concrete rsp > 16 bound from abstract capacity
 -- This replaces the removed ir-rsp-bound field
-ir-rsp-bound : ∀ {A B ir prog s s' x offset} →
-  IRStarResult {A} {B} ir prog s s' x offset →
+ir-rsp-bound : ∀ {A B ir prog caller-sp s s' x offset} →
+  IRStarResult {A} {B} ir prog caller-sp s s' x offset →
   readReg (regs s') rsp > 16
 ir-rsp-bound res = capacity-to-rsp>16 _ (ir-capacity res)
 
@@ -113,14 +116,15 @@ ir-rsp-bound res = capacity-to-rsp>16 _ (ir-capacity res)
 -- NOTE: Sized types removed for compilation performance (10-100x speedup).
 -- Termination is guaranteed by structural recursion on IR constructors.
 IRRunner : Set₁
-IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer)
+             (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+  in ∃[ s' ] IRStarResult ir prog caller-sp s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- IRRunnerWithWF: Extended runner that tracks closure WF
@@ -129,7 +133,8 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
 -- | Like IRRunner, but also returns optional ClosureWFOutput.
 -- This enables threading WF proofs from curry through to apply.
 IRRunnerWithWF : Set₁
-IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer)
+                   (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -138,7 +143,7 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
   RbpInvariant s →
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] (IRStarResult ir prog s s' x (length prefix)
+  in ∃[ s' ] (IRStarResult ir prog caller-sp s s' x (length prefix)
              × ClosureWFOutput prog)  -- Output WF context
 
 ------------------------------------------------------------------------
@@ -162,7 +167,7 @@ rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq = record
 ------------------------------------------------------------------------
 
 -- | Star-based id execution
-run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-id-star : ∀ {A} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -170,13 +175,13 @@ run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (id {A}) ++ suffix
-  in ∃[ s' ] IRStarResult (id {A}) prog s s' x (length prefix)
-run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (id {A}) prog caller-sp s s' x (length prefix)
+run-id-star {A} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 (id {A}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      -- NEW: Capacity preserved when rsp unchanged
+      -- Capacity preserved when rsp unchanged
       cap = capacity-preserved-rsp-unchanged s s' 2 (rsp>16-to-capacity s rsp>16) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
@@ -189,7 +194,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv 
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- id doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- id doesn't write memory
     ; ir-mem-at-0 = refl  -- id doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- id doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -201,15 +206,15 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv 
     }
 
 -- | Star-based terminal execution
-run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-terminal-star : ∀ {A} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
-  in ∃[ s' ] IRStarResult (terminal {A}) prog s s' x (length prefix)
-run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (terminal {A}) prog caller-sp s s' x (length prefix)
+run-terminal-star {A} prefix suffix caller-sp x s h-false pc-eq stack-inv rsp>16 rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
       prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) 0
@@ -226,7 +231,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- terminal doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- terminal doesn't write memory
     ; ir-mem-at-0 = refl  -- terminal doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- terminal doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -238,7 +243,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
     }
 
 -- | Star-based fold execution
-run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+run-fold-star : ∀ {F} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -246,8 +251,8 @@ run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) �
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
-  in ∃[ s' ] IRStarResult (fold {F}) prog s s' x (length prefix)
-run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (fold {F}) prog caller-sp s s' x (length prefix)
+run-fold-star {F} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 (fold {F}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
@@ -264,7 +269,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-in
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- fold doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- fold doesn't write memory
     ; ir-mem-at-0 = refl  -- fold doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- fold doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -276,7 +281,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-in
     }
 
 -- | Star-based unfold execution
-run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+run-unfold-star : ∀ {F} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -284,8 +289,8 @@ run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : Sta
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
-  in ∃[ s' ] IRStarResult (unfold {F}) prog s s' x (length prefix)
-run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (unfold {F}) prog caller-sp s s' x (length prefix)
+run-unfold-star {F} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
@@ -302,7 +307,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- unfold doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- unfold doesn't write memory
     ; ir-mem-at-0 = refl  -- unfold doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- unfold doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -314,7 +319,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-
     }
 
 -- | Star-based arr execution
-run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
+run-arr-star : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (fn : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode {A ⇒ B} fn →
@@ -322,8 +327,8 @@ run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : S
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (arr {A} {B}) prog s s' fn (length prefix)
-run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (arr {A} {B}) prog caller-sp s s' fn (length prefix)
+run-arr-star {A} {B} prefix suffix caller-sp fn s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-arr-at-offset {A} {B} prefix suffix fn s h-false pc-eq rdi-eq
       prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
@@ -340,7 +345,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 rb
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- arr doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- arr doesn't write memory
     ; ir-mem-at-0 = refl  -- arr doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- arr doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -352,7 +357,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp>16 rb
     }
 
 -- | Star-based fst execution (uses encode-pair-fst axiom)
-run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-fst-star : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -360,8 +365,8 @@ run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : Stat
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (fst {A} {B}) prog s s' x (length prefix)
-run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (fst {A} {B}) prog caller-sp s s' x (length prefix)
+run-fst-star {A} {B} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let a = proj₁ x
       b = proj₂ x
       mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
@@ -382,7 +387,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- fst doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- fst doesn't write memory
     ; ir-mem-at-0 = refl  -- fst doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- fst doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -394,7 +399,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     }
 
 -- | Star-based snd execution (uses encode-pair-snd axiom)
-run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : State) →
+run-snd-star : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A * B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
@@ -402,8 +407,8 @@ run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : Stat
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (snd {A} {B}) prog s s' x (length prefix)
-run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (snd {A} {B}) prog caller-sp s s' x (length prefix)
+run-snd-star {A} {B} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
   let a = proj₁ x
       b = proj₂ x
       mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
@@ -424,7 +429,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- snd doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- snd doesn't write memory
     ; ir-mem-at-0 = refl  -- snd doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- snd doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -443,7 +448,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
 ------------------------------------------------------------------------
 
 -- | Postulate-free fst: uses PairAt validity instead of axiom
-run-fst-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+run-fst-star-v : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode (a , b) →
@@ -452,8 +457,8 @@ run-fst-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (fst {A} {B}) prog s s' (a , b) (length prefix)
-run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (fst {A} {B}) prog caller-sp s s' (a , b) (length prefix)
+run-fst-star-v {A} {B} prefix suffix caller-sp a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 rbp-inv =
   let mem-eq : readMem (memory s) (encode (a , b)) ≡ just (encode a)
       mem-eq = fst-valid pair-valid
       (s' , step-eq , h' , pc' , rax-eq') = run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
@@ -472,7 +477,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- fst-v doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- fst-v doesn't write memory
     ; ir-mem-at-0 = refl  -- fst-v doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- fst-v doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -484,7 +489,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     }
 
 -- | Postulate-free snd: uses PairAt validity instead of axiom
-run-snd-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
+run-snd-star-v : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode (a , b) →
@@ -493,8 +498,8 @@ run-snd-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResult (snd {A} {B}) prog s s' (a , b) (length prefix)
-run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResult (snd {A} {B}) prog caller-sp s s' (a , b) (length prefix)
+run-snd-star-v {A} {B} prefix suffix caller-sp a b s h-false pc-eq rdi-eq pair-valid stack-inv rsp>16 rbp-inv =
   let mem-eq : readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b)
       mem-eq = snd-valid pair-valid
       (s' , step-eq , h' , pc' , rax-eq') = run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq
@@ -513,7 +518,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
-    ; ir-mem-above = λ _ _ → refl  -- snd-v doesn't write memory
+    ; ir-mem-caller = λ _ → refl  -- snd-v doesn't write memory
     ; ir-mem-at-0 = refl  -- snd-v doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- snd-v doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -1291,8 +1296,9 @@ pair-stores-create-validity mem-fst mem-snd = pair-at-s mem-fst mem-snd
 
 -- | Stateful IR execution result record
 -- Like IRStarResult but with explicit address instead of encode
+-- Takes caller-sp: the caller's StackPointer (for memory preservation proofs)
 record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
-                     (s s' : State) (addr-out : Word) (offset : ℕ) : Set where
+                     (caller-sp : StackPointer) (s s' : State) (addr-out : Word) (offset : ℕ) : Set where
   field
     ir-star       : Star prog s s'
     ir-halted     : halted s' ≡ false
@@ -1304,7 +1310,9 @@ record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-    ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+    -- Caller memory preserved: all slots from caller-sp are unchanged
+    -- Disjointness via sp-distinct
+    ir-mem-caller : ∀ k → readMem (memory s') (slot-addr caller-sp k) ≡ readMem (memory s) (slot-addr caller-sp k)
     ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
     -- D041: Memory at code-region addresses preserved
     ir-mem-code   : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
@@ -1316,34 +1324,34 @@ record IRStarResultS {A B : Type} (ir : IR A B) (prog : Program)
 open IRStarResultS public
 
 -- | Derived: concrete rsp > 16 bound from abstract capacity for IRStarResultS
-ir-rsp-bound-s : ∀ {A B ir prog s s' addr-out offset} →
-  IRStarResultS {A} {B} ir prog s s' addr-out offset →
+ir-rsp-bound-s : ∀ {A B ir prog caller-sp s s' addr-out offset} →
+  IRStarResultS {A} {B} ir prog caller-sp s s' addr-out offset →
   readReg (regs s') rsp > 16
 ir-rsp-bound-s res = capacity-to-rsp>16 _ (IRStarResultS.ir-capacity res)
 
 -- | Convert IRStarResult to IRStarResultS
 -- This allows gradual migration to stateful proofs
 convert-to-stateful : ∀ {A B : Type} (ir : IR A B) (prog : Program)
-                      (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
-  IRStarResult ir prog s s' x offset →
-  IRStarResultS ir prog s s' (encode (eval ir x)) offset
-convert-to-stateful ir prog s s' x offset res = record
-  { ir-star      = IRStarResult.ir-star res
-  ; ir-halted    = IRStarResult.ir-halted res
-  ; ir-pc        = IRStarResult.ir-pc res
-  ; ir-rax-s     = IRStarResult.ir-rax res
-  ; ir-r14       = IRStarResult.ir-r14 res
-  ; ir-r15       = IRStarResult.ir-r15 res
-  ; ir-rbp       = IRStarResult.ir-rbp res
-  ; ir-mem       = IRStarResult.ir-mem res
-  ; ir-mem-rbp   = IRStarResult.ir-mem-rbp res
-  ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 res
-  ; ir-mem-above = IRStarResult.ir-mem-above res
-  ; ir-mem-at-0  = IRStarResult.ir-mem-at-0 res
-  ; ir-mem-code  = IRStarResult.ir-mem-code res
-  ; ir-stack-inv = IRStarResult.ir-stack-inv res
-  ; ir-capacity  = IRStarResult.ir-capacity res
-  ; ir-rbp-inv   = IRStarResult.ir-rbp-inv res
+                      (caller-sp : StackPointer) (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
+  IRStarResult ir prog caller-sp s s' x offset →
+  IRStarResultS ir prog caller-sp s s' (encode (eval ir x)) offset
+convert-to-stateful ir prog caller-sp s s' x offset res = record
+  { ir-star       = IRStarResult.ir-star res
+  ; ir-halted     = IRStarResult.ir-halted res
+  ; ir-pc         = IRStarResult.ir-pc res
+  ; ir-rax-s      = IRStarResult.ir-rax res
+  ; ir-r14        = IRStarResult.ir-r14 res
+  ; ir-r15        = IRStarResult.ir-r15 res
+  ; ir-rbp        = IRStarResult.ir-rbp res
+  ; ir-mem        = IRStarResult.ir-mem res
+  ; ir-mem-rbp    = IRStarResult.ir-mem-rbp res
+  ; ir-mem-rbp+8  = IRStarResult.ir-mem-rbp+8 res
+  ; ir-mem-caller = IRStarResult.ir-mem-caller res
+  ; ir-mem-at-0   = IRStarResult.ir-mem-at-0 res
+  ; ir-mem-code   = IRStarResult.ir-mem-code res
+  ; ir-stack-inv  = IRStarResult.ir-stack-inv res
+  ; ir-capacity   = IRStarResult.ir-capacity res
+  ; ir-rbp-inv    = IRStarResult.ir-rbp-inv res
   }
 
 ------------------------------------------------------------------------
@@ -1355,7 +1363,7 @@ convert-to-stateful ir prog s s' x offset res = record
 ------------------------------------------------------------------------
 
 -- | Stateful id runner: input address = output address
-run-id-star-s : ∀ {A : Type} (prefix suffix : Program)
+run-id-star-s : ∀ {A : Type} (prefix suffix : Program) (caller-sp : StackPointer)
     (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -1365,28 +1373,28 @@ run-id-star-s : ∀ {A : Type} (prefix suffix : Program)
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (id {A}) ++ suffix
-  in ∃[ s' ] IRStarResultS (id {A}) prog s s' addr-in (length prefix)
-run-id-star-s {A} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-  let (s' , res) = run-id-star {A} prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+  in ∃[ s' ] IRStarResultS (id {A}) prog caller-sp s s' addr-in (length prefix)
+run-id-star-s {A} prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-id-star {A} prefix suffix caller-sp x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
       prog = prefix ++ compile-x86 (id {A}) ++ suffix
-      res-s = convert-to-stateful (id {A}) prog s s' x (length prefix) res
-  in s' , subst (λ addr → IRStarResultS (id {A}) prog s s' addr (length prefix)) enc-eq res-s
+      res-s = convert-to-stateful (id {A}) prog caller-sp s s' x (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (id {A}) prog caller-sp s s' addr (length prefix)) enc-eq res-s
 
 -- | Stateful terminal runner: output address = 0 (unit encoding)
-run-terminal-star-s : ∀ {A : Type} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+run-terminal-star-s : ∀ {A : Type} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
-  in ∃[ s' ] IRStarResultS (terminal {A}) prog s s' 0 (length prefix)
-run-terminal-star-s {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv =
-  let (s' , res) = run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
-  in s' , convert-to-stateful (terminal {A}) _ s s' x _ res
+  in ∃[ s' ] IRStarResultS (terminal {A}) prog caller-sp s s' 0 (length prefix)
+run-terminal-star-s {A} prefix suffix caller-sp x s h-false pc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-terminal-star {A} prefix suffix caller-sp x s h-false pc-eq stack-inv rsp>16 rbp-inv
+  in s' , convert-to-stateful (terminal {A}) _ caller-sp s s' x _ res
 
 -- | Stateful fold runner: input address = output address (Fix ≅ A)
-run-fold-star-s : ∀ {F} (prefix suffix : Program)
+run-fold-star-s : ∀ {F} (prefix suffix : Program) (caller-sp : StackPointer)
     (addr-in : Word) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -1396,15 +1404,15 @@ run-fold-star-s : ∀ {F} (prefix suffix : Program)
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
-  in ∃[ s' ] IRStarResultS (fold {F}) prog s s' addr-in (length prefix)
-run-fold-star-s {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-  let (s' , res) = run-fold-star {F} prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+  in ∃[ s' ] IRStarResultS (fold {F}) prog caller-sp s s' addr-in (length prefix)
+run-fold-star-s {F} prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-fold-star {F} prefix suffix caller-sp x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
       prog = prefix ++ compile-x86 (fold {F}) ++ suffix
-      res-s = convert-to-stateful (fold {F}) prog s s' x (length prefix) res
-  in s' , subst (λ addr → IRStarResultS (fold {F}) prog s s' addr (length prefix)) enc-eq res-s
+      res-s = convert-to-stateful (fold {F}) prog caller-sp s s' x (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (fold {F}) prog caller-sp s s' addr (length prefix)) enc-eq res-s
 
 -- | Stateful unfold runner: input address = output address (Fix ≅ A)
-run-unfold-star-s : ∀ {F} (prefix suffix : Program)
+run-unfold-star-s : ∀ {F} (prefix suffix : Program) (caller-sp : StackPointer)
     (addr-in : Word) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -1414,15 +1422,15 @@ run-unfold-star-s : ∀ {F} (prefix suffix : Program)
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
-  in ∃[ s' ] IRStarResultS (unfold {F}) prog s s' addr-in (length prefix)
-run-unfold-star-s {F} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
-  let (s' , res) = run-unfold-star {F} prefix suffix x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+  in ∃[ s' ] IRStarResultS (unfold {F}) prog caller-sp s s' addr-in (length prefix)
+run-unfold-star-s {F} prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  let (s' , res) = run-unfold-star {F} prefix suffix caller-sp x s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
       prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
-      res-s = convert-to-stateful (unfold {F}) prog s s' x (length prefix) res
-  in s' , subst (λ addr → IRStarResultS (unfold {F}) prog s s' addr (length prefix)) enc-eq res-s
+      res-s = convert-to-stateful (unfold {F}) prog caller-sp s s' x (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (unfold {F}) prog caller-sp s s' addr (length prefix)) enc-eq res-s
 
 -- | Stateful arr runner: input address = output address (Eff ≅ Closure)
-run-arr-star-s : ∀ {A B : Type} (prefix suffix : Program)
+run-arr-star-s : ∀ {A B : Type} (prefix suffix : Program) (caller-sp : StackPointer)
     (addr-in : Word) (x : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -1432,14 +1440,14 @@ run-arr-star-s : ∀ {A B : Type} (prefix suffix : Program)
   readReg (regs s) rsp > 16 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
-  in ∃[ s' ] IRStarResultS (arr {A} {B}) prog s s' addr-in (length prefix)
-run-arr-star-s {A} {B} prefix suffix addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
+  in ∃[ s' ] IRStarResultS (arr {A} {B}) prog caller-sp s s' addr-in (length prefix)
+run-arr-star-s {A} {B} prefix suffix caller-sp addr-in x s h-false pc-eq rdi-eq enc-eq stack-inv rsp>16 rbp-inv =
   let x-typed : ⟦ A ⇒ B ⟧
       x-typed = x
-      (s' , res) = run-arr-star {A} {B} prefix suffix x-typed s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
+      (s' , res) = run-arr-star {A} {B} prefix suffix caller-sp x-typed s h-false pc-eq (trans rdi-eq (sym enc-eq)) stack-inv rsp>16 rbp-inv
       prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
-      res-s = convert-to-stateful (arr {A} {B}) prog s s' x-typed (length prefix) res
-  in s' , subst (λ addr → IRStarResultS (arr {A} {B}) prog s s' addr (length prefix)) enc-eq res-s
+      res-s = convert-to-stateful (arr {A} {B}) prog caller-sp s s' x-typed (length prefix) res
+  in s' , subst (λ addr → IRStarResultS (arr {A} {B}) prog caller-sp s s' addr (length prefix)) enc-eq res-s
 
 ------------------------------------------------------------------------
 -- Stateful Pair Assembly: Produce PairAtS from sub-IR results
@@ -1933,7 +1941,8 @@ test-inr-stateful {A} {B} b = s' , star-out , halted-out , rax-out , inr-valid-o
 ------------------------------------------------------------------------
 
 postulate
-  run-prim-star : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-prim-star : ∀ {A B} (name : String) (prefix suffix : Program) (caller-sp : StackPointer)
+      (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
@@ -1941,9 +1950,9 @@ postulate
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
-    in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog s s' x (length prefix)
+    in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog caller-sp s s' x (length prefix)
 
-  run-prim-star-s : ∀ {A B} (name : String) (prefix suffix : Program)
+  run-prim-star-s : ∀ {A B} (name : String) (prefix suffix : Program) (caller-sp : StackPointer)
       (addr-in : Word) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1953,4 +1962,4 @@ postulate
     readReg (regs s) rsp > 16 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
-    in ∃[ addr-out ] ∃[ s' ] IRStarResultS (Prim {A} {B} name) prog s s' addr-out (length prefix)
+    in ∃[ addr-out ] ∃[ s' ] IRStarResultS (Prim {A} {B} name) prog caller-sp s s' addr-out (length prefix)
