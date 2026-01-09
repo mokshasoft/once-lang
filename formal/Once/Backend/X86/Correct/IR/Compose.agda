@@ -16,6 +16,7 @@ open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
@@ -339,6 +340,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-mem-rbp = mem-rbp-3
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
+  ; ir-capacity = rsp>16-to-capacity s3 rsp-3>16
   ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   ; ir-mem-above = mem-above-3
@@ -517,6 +519,7 @@ assemble-compose-result-s {A} {B} {C} f g prefix suffix addr-f-out addr-g-out s 
   ; ir-mem-rbp = mem-rbp-3
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
+  ; ir-capacity = rsp>16-to-capacity s3 rsp-3>16
   ; ir-rsp-bound = rsp-3>16
   ; ir-rbp-inv = IRStarResultS.ir-rbp-inv r3-s
   ; ir-mem-above = mem-above-3

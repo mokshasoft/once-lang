@@ -17,6 +17,8 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
+open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
@@ -58,6 +60,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem-above = mem-above-preserved
     ; ir-mem-at-0 = mem-at-0-preserved
     ; ir-stack-inv = stack-inv'
+    ; ir-capacity = rsp>16-to-capacity s4 rsp>16'
     ; ir-rsp-bound = rsp>16'
     ; ir-rbp-inv = rbp-inv'
     ; ir-closure-wf = no-closure  -- inr doesn't produce a closure
@@ -429,6 +432,8 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     stack-inv-helper (stack-below-r15 rsp≤r15) =
       stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-s4-eq)
                                (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+    stack-inv-helper (r15-in-code r15-code) =
+      r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
 
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv

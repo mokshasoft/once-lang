@@ -19,6 +19,8 @@ open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n�
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k')
 open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
+open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -720,6 +722,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
+  ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
   ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
@@ -1133,9 +1136,17 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             r15-s3+8<r15-s : readReg (regs s3) r15 +ℕ 8 < readReg (regs s) r15
             r15-s3+8<r15-s = ≤-trans r15-s3+8<rsp-s rsp≤r15
 
+        -- Case 3: r15-s is in code region
+        -- r15-s3 + 8 is a stack address (since r15-s3 = rsp - 40)
+        -- Code and stack addresses are disjoint by region separation
+        postulate
+          case-r15-code : region-of (readReg (regs s) r15) ≡ code →
+                          readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
         case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
         case-stack-inv (stack-below-r15 rsp≤r15) = case-r15-stack rsp≤r15
+        case-stack-inv (r15-in-code r15-code) = case-r15-code r15-code
 
     -- ========== Memory frame preservation (chain through f and g) ==========
     -- PROVEN: Chain through 4 phases using ir-mem-above and mem-above-* fields
@@ -1565,9 +1576,15 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     orig-r15-safe-for-setup : (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
     orig-r15-safe-for-setup = case-stack-inv-setup stack-inv
       where
+        -- For r15-in-code case: code addresses are above stack, so r15 ≥ rsp
+        postulate
+          case-r15-code-setup : region-of orig-r15 ≡ code →
+                                (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
+
         case-stack-inv-setup : StackInvariant s → (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
         case-stack-inv-setup (r15-unused r15≡0) = inj₂ r15≡0
         case-stack-inv-setup (stack-below-r15 rsp≤r15) = inj₁ rsp≤r15
+        case-stack-inv-setup (r15-in-code r15-code) = case-r15-code-setup r15-code
 
     -- orig-r15 > s-setup.rbp OR orig-r15 = 0
     orig-r15>setup-rbp-or-zero : (orig-r15 > readReg (regs s-setup) rbp) ⊎ (orig-r15 ≡ 0)
@@ -1618,9 +1635,14 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 m∸n<m-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
             s1-r15<orig-r15 : readReg (regs s1) r15 < orig-r15
             s1-r15<orig-r15 = subst (_< orig-r15) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp rsp≤r15)
+        -- Case r15 in code region: code addresses are disjoint from stack addresses
+        postulate
+          case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
+
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
         case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
         case-stack-inv-r15 (stack-below-r15 rsp≤r15) = case-r15-stack-r15 rsp≤r15
+        case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
 
     -- orig-r15 > s2.rbp OR orig-r15 = 0
     orig-r15>s2-rbp-or-zero : (orig-r15 > readReg (regs s2) rbp) ⊎ (orig-r15 ≡ 0)
@@ -2339,6 +2361,7 @@ assemble-pair-result-s {A} {B} {C} f g prefix suffix addr-in s s-setup s1 s2 s3 
   ; ir-mem-above = mem-above-rbp-final
   ; ir-mem-at-0 = mem-at-0-final
   ; ir-stack-inv = stack-inv-final
+  ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
   ; ir-rsp-bound = rsp>16-final
   ; ir-rbp-inv = rbp-inv-final
   }

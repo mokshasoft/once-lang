@@ -42,6 +42,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
 open import Once.Backend.Common.MemoryRegions using (region-of; code)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
@@ -1097,6 +1098,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-mem-above = mem-above-post  -- LOCAL POSTULATE
     ; ir-mem-at-0 = mem-at-0-post  -- LOCAL POSTULATE
     ; ir-stack-inv = stack'
+    ; ir-capacity = rsp>16-to-capacity s' rsp'
     ; ir-rsp-bound = rsp'
     ; ir-rbp-inv = rbp-inv-post  -- LOCAL POSTULATE
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one

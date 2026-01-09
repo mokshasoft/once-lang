@@ -35,6 +35,7 @@ open import Once.Backend.X86.Correct.StarBase
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
+open import Once.Backend.X86.Correct.StackInvariant2 using (rsp>16-to-capacity)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -130,6 +131,7 @@ mutual
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
       ; ir-stack-inv = stack-inv-final
+      ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
@@ -454,6 +456,7 @@ mutual
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
+      ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
       ; ir-rsp-bound = rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
