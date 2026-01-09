@@ -61,13 +61,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 
 -- Encoding postulates for sized semantics
 -- These match Once.Postulates but use sized ⟦_⟧ from Once.SemanticsS
+--
+-- NOTE: encode-pair-fst and encode-pair-snd ELIMINATED!
+-- They are now derived from PairAt validity proofs in MemoryValid.agda.
+-- Use run-fst-star-v and run-snd-star-v with InputValid.
 postulate
-  encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
-    readMem m (encode (a , b)) ≡ just (encode a)
-
-  encode-pair-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
-    readMem m ((encode (a , b)) +ℕ 8) ≡ just (encode b)
-
   encode-inl-tag : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
     readMem m (encode {A + B} (inj₁ a)) ≡ just 0
 

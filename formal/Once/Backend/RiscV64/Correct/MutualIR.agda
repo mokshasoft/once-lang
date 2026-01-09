@@ -54,8 +54,9 @@ open import Once.Backend.RiscV64.Correct.StarBase public
          ir-sp-delta; ir-sp-delta-leq; ir-sp;
          ir-mem-preserved; ir-output-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
-         run-arr-star; run-fst-star; run-snd-star;
+         run-arr-star;
          run-fst-star-v; run-snd-star-v)
+-- Note: run-fst-star and run-snd-star removed - use run-fst-star-v/run-snd-star-v with InputValid
 
 -- Import memory validity predicates
 open import Once.Backend.RiscV64.Correct.MemoryValid
