@@ -74,6 +74,54 @@ The D041 approach uses **only region membership and disjointness**:
 3. **Intra-Stack Disjointness**: Use `sp-distinct`, `offset-distinct`
 4. **Memory Preservation**: `readMem-writeMem-diff` with inequality from above
 
+## THE ABSTRACTION BOUNDARY
+
+**This is the key insight for incremental migration.**
+
+The D041 approach establishes a clean abstraction boundary:
+
+- **Interface (exported):** Uses `StackPointer` and `slot-addr` exclusively
+- **Implementation (internal):** May temporarily use arithmetic (local only)
+
+### What This Means
+
+```agda
+-- INTERFACE: ThunkResult record (what consumers see)
+record ThunkResult ... (caller-sp : StackPointer) ... where
+  field
+    -- Memory preservation expressed via slot-addr
+    thunk-mem-caller : ∀ k → readMem s' (slot-addr caller-sp k) ≡
+                             readMem s (slot-addr caller-sp k)
+
+-- IMPLEMENTATION: curry-thunk-correct-impl (internal proof)
+-- Can use arithmetic internally to establish the abstract property
+-- This is "local dirt" that doesn't leak to consumers
+```
+
+### Rules for the Abstraction Boundary
+
+1. **Interfaces must be abstract:** Function signatures, record fields, and module exports use `StackPointer` and `slot-addr` only
+2. **Arithmetic stays local:** Implementation details may use `addr`, `rsp`, `≥` internally
+3. **No leakage:** Arithmetic must not appear in types that cross module boundaries
+4. **Incremental cleanup:** Internal arithmetic can be cleaned up later without affecting consumers
+
+### Example: Apply Using ThunkResult
+
+```agda
+-- Consumer (Apply.agda) sees only abstract interface:
+-- - Receives caller-sp
+-- - Passes caller-sp to thunk-correct
+-- - Uses thunk-mem-caller with slot indices
+-- - Never mentions concrete addresses
+
+-- Implementation (MutualIR.agda) internally:
+-- - May compute concrete addresses for execution
+-- - Establishes abstract properties from concrete facts
+-- - Arithmetic stays inside the proof, not in the type
+```
+
+This boundary allows incremental migration: update interfaces first, clean up implementations later.
+
 ## MIGRATION ORDER: Top-Down
 
 **CRITICAL: Always migrate TOP-DOWN, never middle-out.**

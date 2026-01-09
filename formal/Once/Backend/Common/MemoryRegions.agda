@@ -26,10 +26,14 @@ module Once.Backend.Common.MemoryRegions where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+
+-- Import Memory type from Common.Memory
+open import Once.Backend.Common.Memory using (Memory; Word; readMem)
 
 ------------------------------------------------------------------------
 -- Memory Regions
@@ -212,3 +216,52 @@ stack-preserves-code : ∀ (stack-addr code-addr : Addr) →
   region-of code-addr ≡ code →
   stack-addr ≢ code-addr
 stack-preserves-code = stack-code-disjoint
+
+------------------------------------------------------------------------
+-- Abstract Frame Operations
+------------------------------------------------------------------------
+
+-- | Read slot k of a stack frame
+-- k is an abstract SLOT INDEX (0, 1, 2, ...), NOT an address!
+-- - Slot 0 = top of frame (e.g., saved r15)
+-- - Slot 1 = next slot (e.g., saved rbp)
+-- - Slot 2+ = local variables, struct fields, etc.
+--
+-- Fully abstract - no implementation exposed, no arithmetic leaks!
+postulate
+  frameSlot : Memory → StackPointer → ℕ → Maybe Word
+
+  -- | Write to slot k of a stack frame
+  frameWriteSlot : Memory → StackPointer → ℕ → Word → Memory
+
+  -- | Reading after writing to same slot returns written value
+  frameSlot-write-same : ∀ mem sp k val →
+    frameSlot (frameWriteSlot mem sp k val) sp k ≡ just val
+
+  -- | Different frames don't interfere
+  -- If two StackPointers identify different frames, writing to one
+  -- doesn't affect reading from the other.
+  frameSlot-distinct-frames : ∀ mem sp₁ sp₂ k₁ k₂ val →
+    addr sp₁ ≢ addr sp₂ →
+    frameSlot (frameWriteSlot mem sp₁ k₁ val) sp₂ k₂ ≡ frameSlot mem sp₂ k₂
+
+  -- | Different slots in same frame don't interfere
+  frameSlot-distinct-slots : ∀ mem sp k₁ k₂ val →
+    k₁ ≢ k₂ →
+    frameSlot (frameWriteSlot mem sp k₁ val) sp k₂ ≡ frameSlot mem sp k₂
+
+------------------------------------------------------------------------
+-- INTERNAL: Abstraction Boundary Glue
+------------------------------------------------------------------------
+-- These connect abstract frameSlot to concrete readMem/writeMem.
+-- ONLY import these in implementation code (e.g., MutualIR.agda).
+-- Consumer code should NEVER use these directly!
+
+module FrameSlotInternal where
+  postulate
+    -- | Slot 0 corresponds to reading at the SP's address
+    frameSlot-0-is-top : ∀ mem sp → frameSlot mem sp 0 ≡ readMem mem (addr sp)
+
+    -- | Writing to slot 0 corresponds to writing at the SP's address
+    frameWriteSlot-0-is-writeMem : ∀ mem sp val →
+      frameWriteSlot mem sp 0 val ≡ Once.Backend.Common.Memory.writeMem mem (addr sp) val

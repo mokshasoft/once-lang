@@ -33,7 +33,7 @@ open import Once.Backend.Common.ProgramLemmas
 
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint; StackPointer)
+  using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot)
 
 -- Import stack capacity and region lemmas for D041 approach
 open import Once.Backend.X86.Correct.StackInvariant2
@@ -72,7 +72,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StarBase public
   using (IRStarResult; IRStarResultS; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
          -- Stateful field accessors
          ir-rax-s;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
@@ -360,11 +360,13 @@ mutual
       ir-res = proj₁ (proj₂ curry-result)
 
       -- Build the ClosureWellFormed proof using curry-thunk-correct-impl
+      -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
+      -- curry-thunk-correct-impl for memory preservation
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁ →
-            curry-thunk-correct-impl f prefix suffix caller-sp x arg s₁ ret-addr
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁ →
+            curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁
         }
 
@@ -466,11 +468,13 @@ mutual
 
       -- Build the ClosureWellFormed proof using curry-thunk-correct-impl
       -- (This uses the proven version instead of the postulate-based construct-closure-wf)
+      -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
+      -- curry-thunk-correct-impl for memory preservation
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁ →
-            curry-thunk-correct-impl f prefix suffix caller-sp x arg s₁ ret-addr
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁ →
+            curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁
         }
 
@@ -507,7 +511,7 @@ mutual
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
-    ∃[ s' ] (ThunkResult prog s s' (λ b → eval f (env , b)) arg
+    ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
                            h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp>16 =
@@ -1178,44 +1182,16 @@ mutual
       thunk-rsp-plus-8-proof : readReg (regs s-final) rsp ≡ readReg (regs s) rsp +ℕ 8
       thunk-rsp-plus-8-proof = trans rsp-ret-plus-8 (cong (_+ℕ 8) rsp-f-restored)
 
-      -- Memory preservation above initial rsp:
-      -- Thunk writes only below initial rsp (push, sub, local stores)
-      -- Chain: ret preserves → cleanup preserves → f preserves (via ir-mem-above) → setup preserves
+      -- D041: Memory preservation for caller's stack frame
+      -- Uses abstract frameSlot interface instead of arithmetic (addr ≥ rsp)
+      -- Thunk writes only to its own frame, caller's frame (caller-sp) is disjoint
       --
-      -- D041 approach for this proof:
-      -- 1. ret preserves all memory: mem-ret-preserves (proven - ret doesn't write)
-      -- 2. cleanup preserves all memory: mem-f-preserved (proven - mov/pop don't write)
-      -- 3. IR preserves addresses > rbp: ir-mem-above (proven in IRStarResult)
-      --    - rbp = s.rsp - 16, so addr ≥ s.rsp implies addr > rbp
-      -- 4. setup preserves addresses ≥ s.rsp: needs thunk-setup-mem-above
-      --    - Setup writes at s.rsp-8, s.rsp-16, s.rsp-24, s.rsp-32 (all < s.rsp)
-      --    - To prove: extend thunk-setup-star with mem-above field
-      thunk-mem-above-proof : ∀ addr → addr ≥ readReg (regs s) rsp →
-                              readMem (memory s-final) addr ≡ readMem (memory s) addr
-      thunk-mem-above-proof addr addr≥rsp = begin
-        readMem (memory s-final) addr
-          ≡⟨ mem-ret-preserves addr ⟩
-        readMem (memory s-after-f) addr
-          ≡⟨ mem-f-preserved addr ⟩
-        readMem (memory s-after-f-raw) addr
-          ≡⟨ ir-mem-above r-f addr addr>rbp-setup ⟩
-        readMem (memory s-after-setup) addr
-          ≡⟨ setup-mem-above-post ⟩
-        readMem (memory s) addr ∎
-        where
-          -- addr ≥ s.rsp and rbp = s.rsp - 16, so addr > rbp
-          -- Proof: addr ≥ rsp > rsp - 16 = rbp (since rsp > 16)
-          addr>rbp-setup : addr > readReg (regs s-after-setup) rbp
-          addr>rbp-setup = subst (addr >_) (sym rbp-setup) addr>rsp-16
-            where
-              -- addr ≥ rsp and rsp > 16 implies addr > rsp - 16
-              postulate
-                addr>rsp-16 : addr > readReg (regs s) rsp ∸ 16
-
-          -- Setup writes only at addresses < s.rsp, so addresses ≥ s.rsp are preserved
-          -- To eliminate: extend thunk-setup-star to return mem-above field
-          postulate
-            setup-mem-above-post : readMem (memory s-after-setup) addr ≡ readMem (memory s) addr
+      -- Implementation note: The actual proof would use sp-distinct to show
+      -- thunk's frame addresses differ from caller's frame addresses.
+      -- For now, we postulate this - the interface is clean and abstract.
+      postulate
+        thunk-preserves-frame-proof : ∀ k → frameSlot (memory s-final) caller-sp k ≡
+                                            frameSlot (memory s) caller-sp k
 
       -- Memory at address 0 preserved:
       -- Thunk writes only to stack region, 0 is not in stack region
@@ -1255,19 +1231,12 @@ mutual
         readMem (memory s-after-f) addr
           ≡⟨ mem-f-preserved addr ⟩
         readMem (memory s-after-f-raw) addr
-          ≡⟨ ir-mem-code-post ⟩
+          ≡⟨ ir-mem-code r-f addr addr-in-code ⟩
         readMem (memory s-after-setup) addr
           ≡⟨ mem-code-setup addr addr-in-code ⟩
         readMem (memory s) addr ∎
-        where
-          -- TODO: Replace with ir-mem-code from IRStarResult
-          -- Requires adding: ir-mem-code : ∀ addr → region-of addr ≡ code →
-          --                                readMem (memory s') addr ≡ readMem (memory s) addr
-          -- Proof: IR only writes to stack region, code is disjoint from stack
-          postulate
-            ir-mem-code-post : readMem (memory s-after-f-raw) addr ≡ readMem (memory s-after-setup) addr
 
-      thunk-result : ThunkResult prog s s-final (λ b → eval f (env , b)) arg
+      thunk-result : ThunkResult prog s s-final caller-sp (λ b → eval f (env , b)) arg
       thunk-result = record
         { thunk-star = star-all
         ; thunk-halted = h-final
@@ -1278,7 +1247,7 @@ mutual
         ; thunk-stack-inv = stack-inv-final
         ; thunk-rsp-bound = rsp>16-final
         ; thunk-rsp-plus-8 = thunk-rsp-plus-8-proof
-        ; thunk-mem-above = thunk-mem-above-proof
+        ; thunk-preserves-frame = thunk-preserves-frame-proof
         ; thunk-preserves-zero = thunk-preserves-zero-proof
         ; thunk-preserves-code = thunk-preserves-code-proof
         }

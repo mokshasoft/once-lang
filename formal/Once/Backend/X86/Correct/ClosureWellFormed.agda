@@ -27,7 +27,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code)
+  using (region-of; code; StackPointer; frameSlot)
 
 open import Once.Postulates using (encode)
 
@@ -44,7 +44,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- | When a thunk executes, it produces this result
 -- This captures what happens when apply calls a closure
+--
+-- D041: caller-sp identifies the caller's stack frame.
+-- Memory preservation for caller's frame uses sp-distinct (region-based).
 record ThunkResult {A B : Type} (prog : Program) (s s' : State)
+                   (caller-sp : StackPointer)
                    (f : ⟦ A ⟧ → ⟦ B ⟧) (a : ⟦ A ⟧) : Set where
   field
     thunk-star     : Star prog s s'
@@ -61,11 +65,12 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     -- Net effect on rsp: -8 -8 -16 +16 +8 +8 +8 = +8
     thunk-rsp-plus-8 : readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
 
-    -- Memory at/above initial rsp is preserved
-    -- Thunk only writes to stack addresses below its entry rsp
-    -- This is crucial for proving apply's pushed r15 is preserved
-    thunk-mem-above : ∀ addr → addr ≥ readReg (regs s) rsp →
-                      readMem (memory s') addr ≡ readMem (memory s) addr
+    -- D041: Memory in caller's stack frame is preserved
+    -- Thunk writes only to its own frame, caller's frame is disjoint
+    -- Uses abstract frameSlot - no addresses in interface!
+    -- k is a slot INDEX (0, 1, 2, ...), not an address
+    thunk-preserves-frame : ∀ k → frameSlot (memory s') caller-sp k ≡
+                                  frameSlot (memory s) caller-sp k
 
     -- Memory at address 0 is preserved (null page protection)
     -- Thunk only writes to stack region, and 0 is not in stack region
@@ -108,7 +113,8 @@ record ClosureWellFormed {A B : Type} (prog : Program)
 
     -- Executing from code-ptr produces correct result for any input
     -- ret-addr: the return address (pushed by call, popped by ret)
-    thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) →
+    -- caller-sp: identifies the caller's stack frame (D041)
+    thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
       readReg (regs s) rdi ≡ encode a →
@@ -116,7 +122,7 @@ record ClosureWellFormed {A B : Type} (prog : Program)
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →
       readReg (regs s) rsp > 16 →
-      ∃[ s' ] (ThunkResult prog s s' semantics a
+      ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a
               × pc s' ≡ ret-addr)
 
 open ClosureWellFormed public
