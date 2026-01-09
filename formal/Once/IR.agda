@@ -49,9 +49,12 @@ data IR : Type → Type → Set where
   -- Initial object (Void)
   initial : ∀ {A} → IR Void A
 
-  -- Exponential (A ⇒ B)
-  curry   : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)
-  apply   : ∀ {A B} → IR ((A ⇒ B) * A) B
+  -- Exponential (A ⇒[q] B) - quantity-polymorphic
+  -- The quantity q is a phantom parameter at runtime (erased by QTT).
+  -- This allows curry/apply to work with any graded arrow, eliminating
+  -- the need for coerceIRArrow postulate.
+  curry   : ∀ {A B C} {q : Quantity} → IR (A * B) C → IR A (B ⇒[ q ] C)
+  apply   : ∀ {A B} {q : Quantity} → IR ((A ⇒[ q ] B) * A) B
 
   -- Recursive types (Fixed point isomorphism)
   -- Fix F ≅ F (Fix F), witnessed by fold/unfold

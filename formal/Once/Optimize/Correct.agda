@@ -563,10 +563,10 @@ optimize-once-correct [ f , g ] x =
     lemma (inj₂ b) = optimize-once-correct g b
 optimize-once-correct terminal x = refl
 optimize-once-correct initial ()
-optimize-once-correct (curry f) x =
+optimize-once-correct (curry {q = q} f) x =
   closure-semantics-eq
-    (eval (curry (optimize-once f)) x)
-    (eval (curry f) x)
+    (eval (curry {q = q} (optimize-once f)) x)
+    (eval (curry {q = q} f) x)
     (funext (λ b → optimize-once-correct f (x , b)))
 optimize-once-correct apply x = refl
 optimize-once-correct fold x = refl

@@ -32,7 +32,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- All postulates are centralized in Once.Postulates for transparency.
 -- See that module for documentation of each assumption.
-open import Once.Postulates using (extensionality; closure-semantics-eq; coerceIRArrow-preserves-eval)
+-- Note: coerceIRArrow-preserves-eval no longer needed - curry/apply are quantity-polymorphic
+open import Once.Postulates using (extensionality; closure-semantics-eq)
 
 ------------------------------------------------------------------------
 -- Primitive semantics (trust boundary)
@@ -158,24 +159,22 @@ mutual
   elaborate-correct ρ (var i) = proj-correct ρ i
   -- For lam: use closure-eq since both sides create closures with equal semantics
   -- LHS: evalSurface ρ (lam q e) has semantics = λ a → evalSurface (a ∷ ρ) e
-  -- RHS: eval (coerceIRArrow (curry (elaborate e))) (interpEnv ρ)
-  --    = eval (curry (elaborate e)) (interpEnv ρ)   [by coerceIRArrow-preserves-eval]
-  -- Quantity q is ignored in semantics (type-level only)
+  -- RHS: eval (curry {q = q} (elaborate e)) (interpEnv ρ)
+  --    = closure with semantics = λ b → eval (elaborate e) (interpEnv ρ , b)
+  -- Quantity q is a phantom parameter (erased at runtime)
   elaborate-correct ρ (lam q e) =
-    subst (λ c → evalSurface ρ (lam q e) ≡ c)
-          (sym (coerceIRArrow-preserves-eval (curry (elaborate e)) (interpEnv ρ)))
-          (closure-eq (evalSurface ρ (lam q e))
-                      (eval (curry (elaborate e)) (interpEnv ρ))
-                      λ a → elaborate-correct (a ∷ ρ) e)
-  -- For app: elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
-  -- Need to show: evalSurface ρ (app f x) ≡ eval (elaborate (app f x)) (interpEnv ρ)
-  -- Since eval involves apply with coerced arrow, we use coerceIRArrow-preserves-eval
+    closure-eq (evalSurface ρ (lam q e))
+               (eval (curry {q = q} (elaborate e)) (interpEnv ρ))
+               (λ a → elaborate-correct (a ∷ ρ) e)
+  -- For app: elaborate (app f x) = apply {q = q} ∘ ⟨ elaborate f , elaborate x ⟩
+  -- LHS: evalSurface ρ (app f x) = semantics (evalSurface ρ f) (evalSurface ρ x)
+  -- RHS: eval (apply ∘ ⟨ elaborate f , elaborate x ⟩) (interpEnv ρ)
+  --    = semantics (eval (elaborate f) (interpEnv ρ)) (eval (elaborate x) (interpEnv ρ))
+  -- By IH on f and x, these are equal
   elaborate-correct ρ (app {q = q} f x) =
-    trans (cong₂ (λ f' x' → Closure.semantics f' x')
-                 (elaborate-correct ρ f)
-                 (elaborate-correct ρ x))
-          (cong (λ f' → Closure.semantics f' (eval (elaborate x) (interpEnv ρ)))
-                (sym (coerceIRArrow-preserves-eval (elaborate f) (interpEnv ρ))))
+    cong₂ (λ f' x' → Closure.semantics f' x')
+          (elaborate-correct ρ f)
+          (elaborate-correct ρ x)
   elaborate-correct ρ (pair a b) = cong₂ _,_ (elaborate-correct ρ a) (elaborate-correct ρ b)
   elaborate-correct ρ (fst' p) = cong proj₁ (elaborate-correct ρ p)
   elaborate-correct ρ (snd' p) = cong proj₂ (elaborate-correct ρ p)

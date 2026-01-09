@@ -153,8 +153,9 @@ desugar-correct S.initial ()
 -- Exponential (with explicit Closure)
 -- Both eval (curry (desugar f)) and evalSurface (S.curry f) create Closure records.
 -- We prove equality via closure-semantics-eq by showing their semantics are equal.
+-- Surface.IR curry uses Many quantity (B ⇒ C = B ⇒[ Many ] C)
 desugar-correct (S.curry f) a = closure-semantics-eq
-  (eval (C.curry (desugar f)) a)
+  (eval (C.curry {q = Many} (desugar f)) a)
   (evalSurface (S.curry f) a)
   (extensionality (λ b → desugar-correct f (a , b)))
 desugar-correct S.apply (cl , a) = refl

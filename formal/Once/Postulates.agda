@@ -375,10 +375,10 @@ postulate
   -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a
   -- NOTE: With explicit Closure record, this may become derivable from env-addr field
-  encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+  encode-closure-construct : ∀ {A B C} {q : Quantity} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
-    p ≡ encode {B ⇒ C} (eval (curry f) a)
+    p ≡ encode {B ⇒[ q ] C} (eval (curry {q = q} f) a)
 
 ------------------------------------------------------------------------
 -- Postulate P3: QTT Quantity Erasure (Coercion)

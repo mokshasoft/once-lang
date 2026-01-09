@@ -169,8 +169,8 @@ eval-initial-unique f ()
 --
 -- This is the beta law for exponentials.
 --
-eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
-                 → eval (apply ∘ ⟨ curry f ∘ fst , snd ⟩) x ≡ eval f x
+eval-curry-apply : ∀ {A B C} {q : Quantity} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
+                 → eval (apply {q = q} ∘ ⟨ curry {q = q} f ∘ fst , snd ⟩) x ≡ eval f x
 eval-curry-apply f (a , b) = refl
 
 -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
@@ -180,8 +180,8 @@ eval-curry-apply f (a , b) = refl
 -- but we can prove it pointwise.
 --
 -- With explicit Closure, application uses Closure.semantics
-eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → Closure.semantics (eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a) b ≡ Closure.semantics (eval g a) b
+eval-curry-eta : ∀ {A B C} {q : Quantity} (g : IR A (B ⇒[ q ] C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+               → Closure.semantics (eval (curry {q = q} (apply {q = q} ∘ ⟨ g ∘ fst , snd ⟩)) a) b ≡ Closure.semantics (eval g a) b
 eval-curry-eta g a b = refl
 
 ------------------------------------------------------------------------

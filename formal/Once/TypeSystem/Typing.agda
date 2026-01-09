@@ -133,20 +133,20 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-initial : ∀ {Γ A} → Γ ⊢ Void ⟶ A
 
-  -- Curry
+  -- Curry (quantity-polymorphic)
   --
   --    Γ ⊢ (A * B) ⟶ C
-  -- ─────────────────────
-  --   Γ ⊢ A ⟶ (B ⇒ C)
+  -- ─────────────────────────
+  --   Γ ⊢ A ⟶ (B ⇒[q] C)
   --
-  ty-curry : ∀ {Γ A B C} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒ C)
+  ty-curry : ∀ {Γ A B C} {q : Quantity} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒[ q ] C)
 
-  -- Apply
+  -- Apply (quantity-polymorphic)
   --
-  -- ───────────────────────────
-  -- Γ ⊢ ((A ⇒ B) * A) ⟶ B
+  -- ───────────────────────────────
+  -- Γ ⊢ ((A ⇒[q] B) * A) ⟶ B
   --
-  ty-apply : ∀ {Γ A B} → Γ ⊢ ((A ⇒ B) * A) ⟶ B
+  ty-apply : ∀ {Γ A B} {q : Quantity} → Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
 
   -- Fold (constructor for recursive types)
   --

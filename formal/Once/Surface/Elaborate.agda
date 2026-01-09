@@ -10,7 +10,7 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
-open import Once.Postulates using (coerceIRArrow)
+-- Note: coerceIRArrow no longer needed - curry/apply are quantity-polymorphic
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -137,13 +137,12 @@ elaborate (var i) = proj i
 
 -- Lambda: λ^q x.e becomes curry of (elaborate e)
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
--- IR curry always produces (A ⇒ B), so we coerce to (A ⇒[ q ] B)
--- The quantity q is enforced during type checking, not during elaboration
-elaborate (lam q e) = coerceIRArrow (curry (elaborate e))
+-- IR curry is quantity-polymorphic, so we instantiate with the lambda's quantity q
+elaborate (lam q e) = curry {q = q} (elaborate e)
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
--- IR's apply only works with unrestricted arrows, so coerce to Many
-elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
+-- IR apply is quantity-polymorphic, matching the arrow's quantity
+elaborate (app {q = q} f x) = apply {q = q} ∘ ⟨ elaborate f , elaborate x ⟩
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩
