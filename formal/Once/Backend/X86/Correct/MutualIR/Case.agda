@@ -42,6 +42,13 @@ open import Once.Backend.X86.Correct.StackInvariant using (rsp-to-capacity-2)
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans)
 
+-- Import SeqExec for case setup helpers
+open import Once.Backend.X86.Correct.SeqExec
+  using (CaseInlSetupResult; exec-case-inl-setup;
+         CaseInrSetupResult; exec-case-inr-setup)
+open import Once.Backend.X86.Correct.SeqExec using (module CaseInlSetupResult)
+open import Once.Backend.X86.Correct.SeqExec using (module CaseInrSetupResult)
+
 -- Import Case helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context; CaseRightSetupResult;
@@ -202,19 +209,50 @@ mutual
       mem-val-precond = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode a))
                               (sym rdi-eq) (encode-inl-val {A} {B} a (memory s))
 
-      -- TODO: exec-case-inl-setup and CaseInlSetupResult were never extracted to IR/Case.agda
-      -- For now, using postulates to get compilation working. These need to be implemented.
-      postulate
-        s-setup-raw : State
-        exec-setup-raw : exec 4 (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper) s ≡ just s-setup-raw
-        h-setup-raw : halted s-setup-raw ≡ false
-        pc-setup-raw : pc s-setup-raw ≡ length prefix +ℕ 4
-        rdi-setup-raw : readReg (regs s-setup-raw) rdi ≡ encode a
-        r14-setup-raw : readReg (regs s-setup-raw) r14 ≡ readReg (regs s) r14
-        r15-setup-raw : readReg (regs s-setup-raw) r15 ≡ readReg (regs s) r15
-        rbp-setup-raw : readReg (regs s-setup-raw) rbp ≡ readReg (regs s) rbp
-        rsp-setup-raw : readReg (regs s-setup-raw) rsp ≡ readReg (regs s) rsp
-        mem-setup-raw : memory s-setup-raw ≡ memory s
+      -- Use exec-case-inl-setup from SeqExec.agda
+      -- This executes the 4 setup instructions and returns the result record
+      inl-setup-result : ∃[ s' ] CaseInlSetupResult
+                           (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper)
+                           s s' prefix (encode a)
+      inl-setup-result = exec-case-inl-setup prefix suffix-for-helper right-offset (encode a) s
+                           h-false pc-eq mem-tag-precond mem-val-precond
+
+      -- Extract state and result record
+      s-setup-raw : State
+      s-setup-raw = proj₁ inl-setup-result
+
+      setup-rec : CaseInlSetupResult
+                    (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper)
+                    s s-setup-raw prefix (encode a)
+      setup-rec = proj₂ inl-setup-result
+
+      -- Extract fields from the result record
+      exec-setup-raw : exec 4 (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper) s ≡ just s-setup-raw
+      exec-setup-raw = CaseInlSetupResult.exec-eq setup-rec
+
+      h-setup-raw : halted s-setup-raw ≡ false
+      h-setup-raw = CaseInlSetupResult.halted-eq setup-rec
+
+      pc-setup-raw : pc s-setup-raw ≡ length prefix +ℕ 4
+      pc-setup-raw = CaseInlSetupResult.pc-eq setup-rec
+
+      rdi-setup-raw : readReg (regs s-setup-raw) rdi ≡ encode a
+      rdi-setup-raw = CaseInlSetupResult.rdi-eq setup-rec
+
+      r14-setup-raw : readReg (regs s-setup-raw) r14 ≡ readReg (regs s) r14
+      r14-setup-raw = CaseInlSetupResult.r14-eq setup-rec
+
+      r15-setup-raw : readReg (regs s-setup-raw) r15 ≡ readReg (regs s) r15
+      r15-setup-raw = CaseInlSetupResult.r15-eq setup-rec
+
+      rbp-setup-raw : readReg (regs s-setup-raw) rbp ≡ readReg (regs s) rbp
+      rbp-setup-raw = CaseInlSetupResult.rbp-eq setup-rec
+
+      rsp-setup-raw : readReg (regs s-setup-raw) rsp ≡ readReg (regs s) rsp
+      rsp-setup-raw = CaseInlSetupResult.rsp-eq setup-rec
+
+      mem-setup-raw : memory s-setup-raw ≡ memory s
+      mem-setup-raw = CaseInlSetupResult.mem-eq setup-rec
 
       -- Use CaseContext for program equality
       ctx = make-case-context f g prefix suffix
@@ -226,8 +264,8 @@ mutual
       exec-setup-converted = subst (λ p → exec 4 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
 
       -- StackInvariant preserved: memory, rsp, and r15 unchanged
-      -- TODO: stack-inv-preserved-mem-rsp doesn't exist in StackInvariant module
-      postulate stack-inv-derived : StackInvariant s-setup-raw
+      stack-inv-derived : StackInvariant s-setup-raw
+      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
 
       -- Derive rsp-sufficient from preserved rsp
       rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > 16
@@ -542,19 +580,50 @@ mutual
       mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 1)
                               (sym rdi-eq) (encode-inr-tag {A} {B} b (memory s))
 
-      -- TODO: exec-case-inr-setup and CaseInrSetupResult were never extracted to IR/Case.agda
-      -- For now, using postulates to get compilation working. These need to be implemented.
-      postulate
-        s-setup-raw : State
-        exec-setup-raw : exec 3 (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper) s ≡ just s-setup-raw
-        h-setup-raw : halted s-setup-raw ≡ false
-        pc-setup-raw : pc s-setup-raw ≡ length prefix +ℕ 3 +ℕ right-offset
-        rdi-setup-raw : readReg (regs s-setup-raw) rdi ≡ readReg (regs s) rdi
-        r14-setup-raw : readReg (regs s-setup-raw) r14 ≡ readReg (regs s) r14
-        r15-setup-raw : readReg (regs s-setup-raw) r15 ≡ readReg (regs s) r15
-        rbp-setup-raw : readReg (regs s-setup-raw) rbp ≡ readReg (regs s) rbp
-        rsp-setup-raw : readReg (regs s-setup-raw) rsp ≡ readReg (regs s) rsp
-        mem-setup-raw : memory s-setup-raw ≡ memory s
+      -- Use exec-case-inr-setup from SeqExec.agda
+      -- This executes the 3 setup instructions (with jne TAKEN) and returns the result record
+      inr-setup-result : ∃[ s' ] CaseInrSetupResult
+                           (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper)
+                           s s' prefix right-offset
+      inr-setup-result = exec-case-inr-setup prefix suffix-for-helper right-offset s
+                           h-false pc-eq mem-tag-precond
+
+      -- Extract state and result record
+      s-setup-raw : State
+      s-setup-raw = proj₁ inr-setup-result
+
+      setup-rec : CaseInrSetupResult
+                    (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper)
+                    s s-setup-raw prefix right-offset
+      setup-rec = proj₂ inr-setup-result
+
+      -- Extract fields from the result record
+      exec-setup-raw : exec 3 (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper) s ≡ just s-setup-raw
+      exec-setup-raw = CaseInrSetupResult.exec-eq setup-rec
+
+      h-setup-raw : halted s-setup-raw ≡ false
+      h-setup-raw = CaseInrSetupResult.halted-eq setup-rec
+
+      pc-setup-raw : pc s-setup-raw ≡ length prefix +ℕ 3 +ℕ right-offset
+      pc-setup-raw = CaseInrSetupResult.pc-eq setup-rec
+
+      rdi-setup-raw : readReg (regs s-setup-raw) rdi ≡ readReg (regs s) rdi
+      rdi-setup-raw = CaseInrSetupResult.rdi-eq setup-rec
+
+      r14-setup-raw : readReg (regs s-setup-raw) r14 ≡ readReg (regs s) r14
+      r14-setup-raw = CaseInrSetupResult.r14-eq setup-rec
+
+      r15-setup-raw : readReg (regs s-setup-raw) r15 ≡ readReg (regs s) r15
+      r15-setup-raw = CaseInrSetupResult.r15-eq setup-rec
+
+      rbp-setup-raw : readReg (regs s-setup-raw) rbp ≡ readReg (regs s) rbp
+      rbp-setup-raw = CaseInrSetupResult.rbp-eq setup-rec
+
+      rsp-setup-raw : readReg (regs s-setup-raw) rsp ≡ readReg (regs s) rsp
+      rsp-setup-raw = CaseInrSetupResult.rsp-eq setup-rec
+
+      mem-setup-raw : memory s-setup-raw ≡ memory s
+      mem-setup-raw = CaseInrSetupResult.mem-eq setup-rec
 
       -- Use CaseContext for program equality
       ctx = make-case-context f g prefix suffix
@@ -573,8 +642,8 @@ mutual
                               (cong (_+ℕ len-f) (+-assoc (length prefix) 3 2)))
 
       -- StackInvariant preserved: memory, rsp, and r15 unchanged
-      -- TODO: stack-inv-preserved-mem-rsp doesn't exist in StackInvariant module
-      postulate stack-inv-derived : StackInvariant s-setup-raw
+      stack-inv-derived : StackInvariant s-setup-raw
+      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
 
       -- rsp-sufficient preserved
       rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > 16
