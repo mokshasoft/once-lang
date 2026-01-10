@@ -50,7 +50,7 @@ run-inr-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) �
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (inr {A} {B}) prog s s' x (length prefix)
-run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -297,7 +297,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     mem-s1 = refl
 
     addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-    addr-diffs = addr-diff-from-invariant s stack-inv rsp>16
+    addr-diffs = addr-diff-from-invariant s stack-inv rsp-sufficient
 
     addr-diff-1 : new-rsp ≢ orig-r15
     addr-diff-1 = proj₁ addr-diffs
@@ -319,7 +319,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     orig-rbp = readReg (regs s) rbp
 
     rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
-    rbp-diffs = rbp-addr-diff-from-invariant s rbp-inv rsp>16
+    rbp-diffs = rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient
 
     rbp-diff-1 : new-rsp ≢ orig-rbp
     rbp-diff-1 = proj₁ rbp-diffs
@@ -344,13 +344,13 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     new-rsp<rbp : new-rsp < orig-rbp
     new-rsp<rbp =
       let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
-          new-rsp<rsp = ∸-preserves-< ≤-refl rsp>16 (s≤s z≤n)
+          new-rsp<rsp = ∸-preserves-< ≤-refl rsp-sufficient (s≤s z≤n)
       in ≤-trans new-rsp<rsp rsp≤rbp'
 
     new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
     new-rsp+8<rbp =
       let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
-          new-rsp+8<rsp = ∸+<-lemma rsp>16
+          new-rsp+8<rsp = ∸+<-lemma rsp-sufficient
       in ≤-trans new-rsp+8<rsp rsp≤rbp'
 
     -- new-rsp < rbp < rbp+8
@@ -399,7 +399,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
       let -- Get region membership (encapsulates all arithmetic)
-          cap = rsp-to-capacity-2 s rsp>16
+          cap = rsp-to-capacity-2 s rsp-sufficient
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
           -- Use abstract interface (NO arithmetic!)
@@ -413,7 +413,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
       let -- Get region membership (encapsulates all arithmetic)
-          cap = rsp-to-capacity-2 s rsp>16
+          cap = rsp-to-capacity-2 s rsp-sufficient
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
           -- Use abstract interface (NO arithmetic!)
@@ -459,8 +459,8 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     output-capacity = capacity-after-alloc-2-slots s s4 2 input-capacity rsp-change
 
     -- Legacy: derive rsp > 16 from capacity (for compatibility)
-    rsp>16' : readReg (regs s4) rsp > 16
-    rsp>16' = capacity-2-to-rsp-bound s4 output-capacity
+    rsp-sufficient' : readReg (regs s4) rsp > 16
+    rsp-sufficient' = capacity-2-to-rsp-bound s4 output-capacity
 
     -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv' : RbpInvariant s4

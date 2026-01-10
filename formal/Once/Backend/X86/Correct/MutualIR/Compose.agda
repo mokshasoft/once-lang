@@ -65,7 +65,7 @@ run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix :
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)
-run-compose-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-compose-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s3 , assemble-compose-result f g prefix suffix x s s1 s2 s3 r1 tr r3 refl
     where
       -- Get context for computed values
@@ -74,7 +74,7 @@ run-compose-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-e
 
       -- Step 1: Execute f (RECURSIVE via abstract dispatcher)
       step-f : ∃[ s1 ] IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = run-ir-star-at-offset-abstract f prefix suffix-f caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+      step-f = run-ir-star-at-offset-abstract f prefix suffix-f caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
 
       s1 : State
       s1 = proj₁ step-f

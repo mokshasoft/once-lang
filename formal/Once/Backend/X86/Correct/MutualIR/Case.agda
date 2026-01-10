@@ -93,13 +93,13 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-case-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
     with x
-  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix caller-sp a s h-false pc-eq rdi-eq-inl stack-inv rsp>16 rbp-inv
+  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix caller-sp a s h-false pc-eq rdi-eq-inl stack-inv rsp-sufficient rbp-inv
     where
       rdi-eq-inl : readReg (regs s) rdi ≡ encode {A + B} (inj₁ a)
       rdi-eq-inl = rdi-eq
-  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix caller-sp b s h-false pc-eq rdi-eq-inr stack-inv rsp>16 rbp-inv
+  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix caller-sp b s h-false pc-eq rdi-eq-inr stack-inv rsp-sufficient rbp-inv
     where
       rdi-eq-inr : readReg (regs s) rdi ≡ encode {A + B} (inj₂ b)
       rdi-eq-inr = rdi-eq
@@ -119,7 +119,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {A} {B} {C} f g prefix suffix caller-sp a s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-case-star-direct-inl {A} {B} {C} f g prefix suffix caller-sp a s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -135,7 +135,7 @@ mutual
       ; ir-mem-at-0 = mem-at-0-final
       ; ir-mem-code = mem-code-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp-to-capacity-2 s-final rsp>16-final
+      ; ir-capacity = rsp-to-capacity-2 s-final rsp-sufficient-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
@@ -228,9 +228,9 @@ mutual
       -- TODO: stack-inv-preserved-mem-rsp doesn't exist in StackInvariant module
       postulate stack-inv-derived : StackInvariant s-setup-raw
 
-      -- Derive rsp>16 from preserved rsp
-      rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
-      rsp>16-derived = subst (_> 16) (sym rsp-setup-raw) rsp>16
+      -- Derive rsp-sufficient from preserved rsp
+      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > 16
+      rsp-sufficient-derived = subst (_> 16) (sym rsp-setup-raw) rsp-sufficient
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       setup-result : ∃[ s-setup ] (exec 4 prog s ≡ just s-setup
@@ -246,7 +246,7 @@ mutual
                                     × readReg (regs s-setup) rsp > 16)
       setup-result = s-setup-raw , exec-setup-converted , h-setup-raw , pc-setup-raw ,
                      rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
-                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp>16-derived
+                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
 
       s-setup = proj₁ setup-result
       exec-setup = proj₁ (proj₂ setup-result)
@@ -259,7 +259,7 @@ mutual
       rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
       mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      rsp>16-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      rsp-sufficient-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
 
       -- Convert setup exec to Star
       star-setup : Star prog s s-setup
@@ -281,7 +281,7 @@ mutual
 
       -- Recursive call to f via abstract dispatcher
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
-      step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f rdi-setup stack-inv-setup rsp>16-setup rbp-inv-setup
+      step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f rdi-setup stack-inv-setup rsp-sufficient-setup rbp-inv-setup
 
       s1 : State
       s1 = proj₁ step-f
@@ -407,8 +407,8 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f) r15-jump
 
-      rsp>16-final : readReg (regs s-final) rsp > 16
-      rsp>16-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+      rsp-sufficient-final : readReg (regs s-final) rsp > 16
+      rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
         where
           open import Data.Nat.Properties using (≤-trans)
           open import Data.Nat using (s≤s; z≤n)
@@ -459,7 +459,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b) (length prefix)
-  run-case-star-direct-inr {A} {B} {C} f g prefix suffix caller-sp b s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-case-star-direct-inr {A} {B} {C} f g prefix suffix caller-sp b s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -472,7 +472,7 @@ mutual
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp-to-capacity-2 s-final rsp>16-final
+      ; ir-capacity = rsp-to-capacity-2 s-final rsp-sufficient-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
@@ -562,9 +562,9 @@ mutual
       -- TODO: stack-inv-preserved-mem-rsp doesn't exist in StackInvariant module
       postulate stack-inv-derived : StackInvariant s-setup-raw
 
-      -- rsp>16 preserved
-      rsp>16-derived : readReg (regs s-setup-raw) rsp > 16
-      rsp>16-derived = subst (_> 16) (sym rsp-setup-raw) rsp>16
+      -- rsp-sufficient preserved
+      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > 16
+      rsp-sufficient-derived = subst (_> 16) (sym rsp-setup-raw) rsp-sufficient
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       setup-result : ∃[ s-setup ] (exec 3 prog s ≡ just s-setup
@@ -580,7 +580,7 @@ mutual
                                     × readReg (regs s-setup) rsp > 16)
       setup-result = s-setup-raw , exec-setup-converted , h-setup-raw , pc-setup-proof ,
                      rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
-                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp>16-derived
+                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
 
       s-setup = proj₁ setup-result
       exec-setup = proj₁ (proj₂ setup-result)
@@ -593,7 +593,7 @@ mutual
       rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
       mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      rsp>16-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      rsp-sufficient-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
 
       -- Convert setup exec to Star
       star-setup : Star prog s s-setup
@@ -610,7 +610,7 @@ mutual
       -- Use extracted helper for right setup execution
       right-setup-result : CaseRightSetupResult f g prefix suffix b s-setup
       right-setup-result = exec-case-right-setup f g prefix suffix b s-setup
-                             h-setup pc-setup rdi-setup-eq stack-inv-setup rsp>16-setup
+                             h-setup pc-setup rdi-setup-eq stack-inv-setup rsp-sufficient-setup
 
       s-right = CaseRightSetupResult.s-right right-setup-result
       exec-right = CaseRightSetupResult.exec-right right-setup-result
@@ -623,7 +623,7 @@ mutual
       rsp-right = CaseRightSetupResult.rsp-preserved right-setup-result
       mem-right = CaseRightSetupResult.mem-preserved right-setup-result
       stack-inv-right = CaseRightSetupResult.stack-inv-right right-setup-result
-      rsp>16-right = CaseRightSetupResult.rsp>16-right right-setup-result
+      rsp-sufficient-right = CaseRightSetupResult.rsp-sufficient-right right-setup-result
 
       -- Convert right setup exec to Star
       star-right : Star prog s-setup s-right
@@ -679,7 +679,7 @@ mutual
 
       -- Recursive call to g via abstract dispatcher
       step-g : ∃[ s1 ] IRStarResult g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
-      step-g = run-ir-star-at-offset-abstract g prefix-g suffix-g caller-sp b s-right h-right pc-right-g rdi-right stack-inv-right rsp>16-right rbp-inv-right
+      step-g = run-ir-star-at-offset-abstract g prefix-g suffix-g caller-sp b s-right h-right pc-right-g rdi-right stack-inv-right rsp-sufficient-right rbp-inv-right
 
       s1 : State
       s1 = proj₁ step-g
@@ -794,8 +794,8 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g) r15-end
 
-      rsp>16-final : readReg (regs s-final) rsp > 16
-      rsp>16-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+      rsp-sufficient-final : readReg (regs s-final) rsp > 16
+      rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
         where
           open import Data.Nat.Properties using (≤-trans)
           open import Data.Nat using (s≤s; z≤n)

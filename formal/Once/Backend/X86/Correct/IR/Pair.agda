@@ -330,7 +330,7 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
     rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
     stack-inv-setup : StackInvariant s-setup
-    rsp>16-setup : readReg (regs s-setup) rsp > 16
+    rsp-sufficient-setup : readReg (regs s-setup) rsp > 16
     star-setup : Star prog s s-setup
     -- Memory above orig-rsp is preserved (all writes happen below rsp)
     mem-above-rsp-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
@@ -358,7 +358,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   ; rbp-setup = rbp-setup
   ; rsp-setup = rsp-setup
   ; stack-inv-setup = stack-inv-setup
-  ; rsp>16-setup = rsp>16-setup
+  ; rsp-sufficient-setup = rsp-sufficient-setup
   ; star-setup = star-setup
   ; mem-above-rsp-setup = mem-above-eq-raw
   ; mem-stack-rbp = mem-rbp-setup
@@ -423,8 +423,8 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     stack-inv-setup = postulate-pair-stack-inv
       where postulate postulate-pair-stack-inv : StackInvariant s-setup
 
-    rsp>16-setup : readReg (regs s-setup) rsp > 16
-    rsp>16-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
+    rsp-sufficient-setup : readReg (regs s-setup) rsp > 16
+    rsp-sufficient-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
       where
         17≤41 : 17 ≤ 41
         17≤41 = m≤m+n 17 24
@@ -451,7 +451,7 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     pc2-g : pc s2 ≡ length prefix-g
     rdi2 : readReg (regs s2) rdi ≡ encode x
     stack-inv-s2 : StackInvariant s2
-    rsp>16-s2 : readReg (regs s2) rsp > 16
+    rsp-sufficient-s2 : readReg (regs s2) rsp > 16
     star-mid : Star prog s1 s2
     -- Register preservation
     r14-mid : readReg (regs s2) r14 ≡ readReg (regs s1) r14
@@ -486,7 +486,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
   ; pc2-g = pc2-g
   ; rdi2 = rdi2
   ; stack-inv-s2 = stack-inv-s2
-  ; rsp>16-s2 = rsp>16-s2
+  ; rsp-sufficient-s2 = rsp-sufficient-s2
   ; star-mid = star-mid
   ; r14-mid = r14-mid
   ; r15-mid = r15-mid
@@ -561,8 +561,8 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     pc2-g = trans pc2 (sym len-prefix-g)
 
     -- StackInvariant and rsp>16 preserved
-    rsp>16-s2 : readReg (regs s2) rsp > 16
-    rsp>16-s2 = subst (_> 16) (sym rsp-mid) (ir-rsp-bound r-f)
+    rsp-sufficient-s2 : readReg (regs s2) rsp > 16
+    rsp-sufficient-s2 = subst (_> 16) (sym rsp-mid) (ir-rsp-bound r-f)
 
     stack-inv-s2 : StackInvariant s2
     stack-inv-s2 = stack-inv-preserved-unchanged s1 s2 (ir-stack-inv r-f) (sym r15-mid) (sym rsp-mid)
@@ -595,15 +595,15 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
         -- rsp-40 = rsp-24 follows from the equality
         eq' : rsp-s ∸ 40 ≡ rsp-s ∸ 24
         eq' = trans (sym r15-s1-eq) (trans eq rbp-s1-eq)
-        -- We have 40 ≤ rsp-s from rsp>16-s2 and rsp-setup = rsp - 40 > 16
-        rsp>16-setup-raw : readReg (regs s-setup) rsp > 16
-        rsp>16-setup-raw = subst (λ ss → readReg (regs ss) rsp > 16)
-                                 (sym s-setup-eq) (PairSetupResult.rsp>16-setup setup-res)
+        -- We have 40 ≤ rsp-s from rsp-sufficient-s2 and rsp-setup = rsp - 40 > 16
+        rsp-sufficient-setup-raw : readReg (regs s-setup) rsp > 16
+        rsp-sufficient-setup-raw = subst (λ ss → readReg (regs ss) rsp > 16)
+                                 (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
         rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
         rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ 40)
                              (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
         rsp∸40>16 : rsp-s ∸ 40 > 16
-        rsp∸40>16 = subst (_> 16) rsp-setup-eq rsp>16-setup-raw
+        rsp∸40>16 = subst (_> 16) rsp-setup-eq rsp-sufficient-setup-raw
         -- rsp - 24 = (rsp - 40) + 16 when rsp ≥ 40
         rsp∸40>0 : rsp-s ∸ 40 > 0
         rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16
@@ -645,11 +645,11 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
       where
         -- rsp - 40 > 16 from setup
         rsp∸40>16 : readReg (regs s) rsp ∸ 40 > 16
-        rsp∸40>16 = subst (_> 16) rsp-setup-eq rsp>16-setup-raw
+        rsp∸40>16 = subst (_> 16) rsp-setup-eq rsp-sufficient-setup-raw
           where
-            rsp>16-setup-raw : readReg (regs s-setup) rsp > 16
-            rsp>16-setup-raw = subst (λ ss → readReg (regs ss) rsp > 16)
-                                     (sym s-setup-eq) (PairSetupResult.rsp>16-setup setup-res)
+            rsp-sufficient-setup-raw : readReg (regs s-setup) rsp > 16
+            rsp-sufficient-setup-raw = subst (λ ss → readReg (regs ss) rsp > 16)
+                                     (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
             rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
             rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ 40)
                                  (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
@@ -708,7 +708,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
 assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                     stack-inv-final rsp>16-final mem-fst-final mem-snd-final
+                     stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
                      rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final
                      star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
@@ -723,7 +723,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
-  ; ir-capacity = rsp-to-capacity-2 s-final rsp>16-final
+  ; ir-capacity = rsp-to-capacity-2 s-final rsp-sufficient-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -829,7 +829,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     r14-fin : readReg (regs s-final) r14 ≡ readReg (regs s) r14
     r15-fin : readReg (regs s-final) r15 ≡ readReg (regs s) r15
     stack-inv-fin : StackInvariant s-final
-    rsp>16-fin : readReg (regs s-final) rsp > 16
+    rsp-sufficient-fin : readReg (regs s-final) rsp > 16
     rsp-fin : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
     mem-fst-fin : readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15)
     mem-snd-fin : readMem (memory s-final) (readReg (regs s3) r15 +ℕ 8) ≡ just (readReg (regs s3) rax)
@@ -1027,9 +1027,9 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     -- This follows from setup using 40 bytes of stack (3 pushes + sub 16)
 
     -- Get rsp>16 from setup, which implies rsp-s > 56, thus 40 ≤ rsp-s
-    rsp>16-setup' : readReg (regs s-setup) rsp > 16
-    rsp>16-setup' = subst (λ ss → readReg (regs ss) rsp > 16)
-                          (sym s-setup-eq) (PairSetupResult.rsp>16-setup setup-res)
+    rsp-sufficient-setup' : readReg (regs s-setup) rsp > 16
+    rsp-sufficient-setup' = subst (λ ss → readReg (regs ss) rsp > 16)
+                          (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
 
     -- rsp-setup = rsp-s ∸ 40, and rsp-setup > 16, so rsp-s ∸ 40 > 16 > 0, thus 40 ≤ rsp-s
     rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
@@ -1037,7 +1037,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                           (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
 
     rsp∸40>16 : readReg (regs s) rsp ∸ 40 > 16
-    rsp∸40>16 = subst (_> 16) rsp-setup-eq' rsp>16-setup'
+    rsp∸40>16 = subst (_> 16) rsp-setup-eq' rsp-sufficient-setup'
 
     rsp∸40>0 : readReg (regs s) rsp ∸ 40 > 0
     rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16  -- 1 ≤ 17 ≤ rsp∸40
@@ -1810,7 +1810,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     ; r14-fin = r14-s9
     ; r15-fin = r15-s9
     ; stack-inv-fin = stack-inv-s9
-    ; rsp>16-fin = rsp>16-s9
+    ; rsp-sufficient-fin = rsp-sufficient-s9
     ; rsp-fin = rsp-s9-eq-s
     ; mem-fst-fin = mem-fst-preserved
     ; mem-snd-fin = mem-snd-stored
@@ -2001,8 +2001,8 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
                (trans (readReg-writeReg-rsp-rbp rf6-with-rbp (readReg (regs s6) rsp +ℕ 8))
                (readReg-writeReg-same (regs s6) rbp v-rbp)))))
 
-      rsp>16-s9 : readReg (regs s9) rsp > 16
-      rsp>16-s9 = ≤-trans 17≤41 (rsp-bound-after-stack-op s9)
+      rsp-sufficient-s9 : readReg (regs s9) rsp > 16
+      rsp-sufficient-s9 = ≤-trans 17≤41 (rsp-bound-after-stack-op s9)
         where
           17≤41 : 17 ≤ 41
           17≤41 = m≤m+n 17 24

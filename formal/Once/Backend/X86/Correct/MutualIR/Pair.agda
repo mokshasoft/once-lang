@@ -83,11 +83,11 @@ run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Pr
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
-run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s-final , assemble-pair-result f g prefix suffix x s s-setup s1 s2 s3 s-final
                 setup-res r-f mid-res r-g
                 h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                stack-inv-final rsp>16-final mem-fst-final mem-snd-final
+                stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
                 rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final
                 star-fin refl refl
                 rbp-inv rsp-final-eq
@@ -131,7 +131,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
                 (PairSetupResult.pc-setup-f setup-res)
                 (PairSetupResult.rdi-setup-enc setup-res)
                 (PairSetupResult.stack-inv-setup setup-res)
-                (PairSetupResult.rsp>16-setup setup-res)
+                (PairSetupResult.rsp-sufficient-setup setup-res)
                 rbp-inv-setup
 
       s1 : State
@@ -169,7 +169,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
                 (PairMiddleResult.pc2-g mid-res)
                 (PairMiddleResult.rdi2 mid-res)
                 (PairMiddleResult.stack-inv-s2 mid-res)
-                (PairMiddleResult.rsp>16-s2 mid-res)
+                (PairMiddleResult.rsp-sufficient-s2 mid-res)
                 rbp-inv-s2
 
       s3 : State
@@ -195,7 +195,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
       r14-final = PairFinalResult.r14-fin final-res
       r15-final = PairFinalResult.r15-fin final-res
       stack-inv-final = PairFinalResult.stack-inv-fin final-res
-      rsp>16-final = PairFinalResult.rsp>16-fin final-res
+      rsp-sufficient-final = PairFinalResult.rsp-sufficient-fin final-res
       mem-fst-final = PairFinalResult.mem-fst-fin final-res
       mem-snd-final = PairFinalResult.mem-snd-fin final-res
       rbp-final = PairFinalResult.rbp-fin final-res
@@ -241,7 +241,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           rsp∸24<rsp = m∸n<m orig-rsp 24 rsp>0 24>0
             where
               rsp>0 : orig-rsp > 0
-              rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+              rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
               24>0 : 24 > 0
               24>0 = s≤s z≤n
               -- m ∸ n < m when m > 0 and n > 0
@@ -273,7 +273,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           rsp∸40<rsp = m∸n<m orig-rsp 40 rsp>0 40>0
             where
               rsp>0 : orig-rsp > 0
-              rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+              rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
               40>0 : 40 > 0
               40>0 = s≤s z≤n
               m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
@@ -318,7 +318,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           rsp∸32<rsp = m∸n<m orig-rsp 32 rsp>0 32>0
             where
               rsp>0 : orig-rsp > 0
-              rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+              rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
               32>0 : 32 > 0
               32>0 = s≤s z≤n
               m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
@@ -351,7 +351,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
                       0+8≡8 : orig-rsp ∸ 40 +ℕ 8 ≡ 8
                       0+8≡8 = cong (_+ℕ 8) rsp∸40≡0
                       8<rsp : 8 < orig-rsp
-                      8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+                      8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
                   -- Case rsp ≥ 40: (rsp - 40) + 8 = rsp - 32 < rsp
                   ... | yes 40≤rsp = subst (_< orig-rsp) (sym m∸40+8≡m∸32) rsp∸32<rsp
                     where

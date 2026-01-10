@@ -72,7 +72,7 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
   s-final , record
     { ir-star = star-all
     ; ir-halted = h-final
@@ -559,7 +559,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     orig-r15 = readReg (regs s) r15
 
     addr-diff : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-    addr-diff = addr-diff-from-invariant s stack-inv rsp>16
+    addr-diff = addr-diff-from-invariant s stack-inv rsp-sufficient
 
     mem-s1-eq : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
     mem-s1-eq = refl
@@ -601,7 +601,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
     -- With o = 0, n = 16, m = orig-rsp: 0 < 16 → 16 ≤ orig-rsp → orig-rsp ∸ 16 < orig-rsp
     16≤orig-rsp : 16 ≤ orig-rsp
-    16≤orig-rsp = <⇒≤ rsp>16
+    16≤orig-rsp = <⇒≤ rsp-sufficient
 
     new-rsp<rbp : new-rsp < orig-rbp
     new-rsp<rbp = ≤-trans new-rsp<orig-rsp (RbpInvariant.rsp≤rbp rbp-inv)
@@ -741,8 +741,8 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     output-capacity : StackCapacity s-final 2
     output-capacity = capacity-after-alloc-2-slots s s-final 2 input-capacity rsp-change
 
-    rsp>16-final : readReg (regs s-final) rsp > 16
-    rsp>16-final = capacity-2-to-rsp-bound s-final output-capacity
+    rsp-sufficient-final : readReg (regs s-final) rsp > 16
+    rsp-sufficient-final = capacity-2-to-rsp-bound s-final output-capacity
 
     -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv-final : RbpInvariant s-final
@@ -802,7 +802,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-at-0-final =
       let -- Prove rsp > 16 implies rsp ∸ 16 > 0
           17≤rsp : 17 ≤ orig-rsp
-          17≤rsp = rsp>16
+          17≤rsp = rsp-sufficient
 
           -- By monus monotonicity: 17 ≤ rsp implies 17 ∸ 16 ≤ rsp ∸ 16
           1≤new-rsp : 1 ≤ new-rsp
@@ -836,7 +836,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-to-capacity-2 s rsp>16
+          cap2 = rsp-to-capacity-2 s rsp-sufficient
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)

@@ -204,21 +204,21 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
 
 -- Curry case: produce has-closure WF
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
-run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv _ =
+run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv _ =
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
       -- Get IRStarResult from run-curry-star
       (s' , ir-res , _) = run-curry-star f prefix suffix caller-sp x s
-                            h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+                            h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
       -- Build ClosureWellFormed proof
       -- f : IR _ (A * B) C, so closure semantics is ⟦ B ⟧ → ⟦ C ⟧
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp>16₁ →
+        ; thunk-correct = λ arg s₁ ret-addr h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ →
             curry-thunk-correct-impl f prefix suffix x arg s₁ ret-addr
-              h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp>16₁
+              h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁
         }
   in s' , from-modular-with-wf ir-res wf
 
@@ -236,15 +236,15 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
 -- - For closed programs, curry and apply are composed together
 -- - The postulate-free path exists (run-apply-with-full-wf)
 -- - Full elimination requires threading memory layout info
-run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
+run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv wf-in =
   let (s' , modular-result) = run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s
-                                h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+                                h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
   in s' , from-modular modular-result
 
 -- All other cases: delegate to modular runner
-run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv wf-in =
+run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv wf-in =
   let (s' , modular-result) = run-ir-star-at-offset ir prefix suffix caller-sp x s
-                                h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+                                h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
   in s' , from-modular modular-result
 
 ------------------------------------------------------------------------
@@ -273,14 +273,14 @@ whole-program-correct : ∀ {A B} (ir : IR A B)
             × halted s' ≡ false
             × pc s' ≡ compile-length ir
             × readReg (regs s') rax ≡ encode (eval ir x))
-whole-program-correct ir caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+whole-program-correct ir caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
   let code = compile-x86 ir
       -- [] ++ code ++ [] ≡ code ++ [] ≡ code
       prog-eq : [] ++ code ++ [] ≡ code
       prog-eq = ++-identityʳ code
       -- Run with empty prefix/suffix
       (s' , result) = run-ir-star-whole-program ir [] [] caller-sp x s
-                        h-eq pc-eq rdi-eq stack-inv rsp>16 rbp-inv no-closure
+                        h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv no-closure
       -- Transport result to the simplified program
       star' = subst (λ p → Star p s s') prog-eq (wp-star result)
   in s' , star' , wp-halted result , wp-pc result , wp-rax result

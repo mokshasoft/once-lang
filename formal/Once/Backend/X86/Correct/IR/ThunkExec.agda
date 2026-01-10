@@ -70,8 +70,8 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
           -- D041: Memory at code-region addresses preserved
           × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr))
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
-                 h-false pc-eq rdi-eq r12-eq stack-inv rsp>16 =
-  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp>16-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved
+                 h-false pc-eq rdi-eq r12-eq stack-inv rsp-sufficient =
+  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -414,8 +414,8 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     stack-inv8 : StackInvariant s8
     stack-inv8 = stack-inv-preserved-r15-unchanged s s8 stack-inv r15-8
 
-    rsp>16-8 : readReg (regs s8) rsp > 16
-    rsp>16-8 = ≤-trans 17≤41 (rsp-bound-after-stack-op s8)
+    rsp-sufficient-8 : readReg (regs s8) rsp > 16
+    rsp-sufficient-8 = ≤-trans 17≤41 (rsp-bound-after-stack-op s8)
       where
         open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41
@@ -440,14 +440,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     open import Relation.Nullary using (yes; no)
 
     -- First, show rsp-after-push-rbp ≥ 1 (stronger than just > 0)
-    -- rsp>16 : old-rsp > 16, i.e., old-rsp ≥ 17
+    -- rsp-sufficient : old-rsp > 16, i.e., old-rsp ≥ 17
     -- rsp-after-push-rbp = old-rsp - 16 ≥ 17 - 16 = 1
     open import Data.Nat.Properties using (∸-monoˡ-≤)
     open import Data.Empty using (⊥-elim)
 
-    -- old-rsp ≥ 17 (from rsp>16)
+    -- old-rsp ≥ 17 (from rsp-sufficient)
     17≤old-rsp : 17 ≤ old-rsp
-    17≤old-rsp = rsp>16
+    17≤old-rsp = rsp-sufficient
 
     -- rsp-after-push-r15 = old-rsp ∸ 8 ≥ 17 - 8 = 9
     9≤rsp-after-push-r15 : 9 ≤ rsp-after-push-r15
@@ -587,7 +587,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
     -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
     rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
-    rsp-after-push-r15≢old-rsp = ∸-neq old-rsp 8 (≤-trans 1≤17 rsp>16) 0<8
+    rsp-after-push-r15≢old-rsp = ∸-neq old-rsp 8 (≤-trans 1≤17 rsp-sufficient) 0<8
       where
         1≤17 : 1 ≤ 17
         1≤17 = s≤s z≤n
@@ -612,7 +612,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         rsp-after-push-rbp<rsp-after-push-r15 = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15
         -- rsp-after-push-r15 < old-rsp (since 8 > 0 and 8 ≤ old-rsp)
         8≤old-rsp : 8 ≤ old-rsp
-        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp-sufficient
         rsp-after-push-r15<old-rsp : rsp-after-push-r15 < old-rsp
         rsp-after-push-r15<old-rsp = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp
         rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
@@ -636,7 +636,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         rsp-after-push-rbp<rsp-after-push-r15' : rsp-after-push-rbp < rsp-after-push-r15
         rsp-after-push-rbp<rsp-after-push-r15' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15'
         8≤old-rsp' : 8 ≤ old-rsp
-        8≤old-rsp' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+        8≤old-rsp' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp-sufficient
         rsp-after-push-r15<old-rsp' : rsp-after-push-r15 < old-rsp
         rsp-after-push-r15<old-rsp' = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp'
         rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
@@ -652,7 +652,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
         -- old-rsp > 16 > 0, so 0 ≠ old-rsp
         old-rsp>0 : old-rsp > 0
-        old-rsp>0 = ≤-trans (s≤s z≤n) rsp>16
+        old-rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
         0≢old-rsp : 0 ≢ old-rsp
         0≢old-rsp zeq = <⇒≢-neq old-rsp>0 zeq
 
@@ -679,7 +679,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         rsp-after-push-rbp<rsp-after-push-r15'' : rsp-after-push-rbp < rsp-after-push-r15
         rsp-after-push-rbp<rsp-after-push-r15'' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15''
         8≤old-rsp'' : 8 ≤ old-rsp
-        8≤old-rsp'' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp>16
+        8≤old-rsp'' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp-sufficient
         rsp-after-push-r15<old-rsp'' : rsp-after-push-r15 < old-rsp
         rsp-after-push-r15<old-rsp'' = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp''
         rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
@@ -696,7 +696,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         8<17 : 8 < 17
         8<17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
         8<old-rsp : 8 < old-rsp
-        8<old-rsp = ≤-trans 8<17 rsp>16
+        8<old-rsp = ≤-trans 8<17 rsp-sufficient
         new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
         new-rsp+8<old-rsp = subst (λ n → n +ℕ 8 < old-rsp) (sym new-rsp≡0) 8<old-rsp
 
@@ -1059,8 +1059,8 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
           × readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
           × (∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr))
 thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
-               h-false pc-eq mem-ret stack-inv rsp>16 =
-  s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp>16-1 , rsp1 , mem-ret-preserves
+               h-false pc-eq mem-ret stack-inv rsp-sufficient =
+  s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1 , mem-ret-preserves
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
@@ -1118,8 +1118,8 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     stack-inv1 : StackInvariant s1
     stack-inv1 = stack-inv-preserved-r15-unchanged s s1 stack-inv r15-1
 
-    rsp>16-1 : readReg (regs s1) rsp > 16
-    rsp>16-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
+    rsp-sufficient-1 : readReg (regs s1) rsp > 16
+    rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
       where
         open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41

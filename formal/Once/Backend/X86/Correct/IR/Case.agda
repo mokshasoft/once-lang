@@ -725,7 +725,7 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
     rsp-preserved : readReg (regs s-right) rsp ≡ readReg (regs s-setup) rsp
     mem-preserved : memory s-right ≡ memory s-setup
     stack-inv-right : StackInvariant s-right
-    rsp>16-right : readReg (regs s-right) rsp > 16
+    rsp-sufficient-right : readReg (regs s-right) rsp > 16
 
 -- | Execute right branch setup for inr (2 instructions)
 -- Preconditions:
@@ -744,7 +744,7 @@ exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
   StackInvariant s-setup →
   readReg (regs s-setup) rsp > 16 →
   CaseRightSetupResult f g prefix suffix b s-setup
-exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp>16-setup = record
+exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
     { s-right = s2
     ; exec-right = exec-2
     ; h-right = h2
@@ -756,7 +756,7 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     ; rsp-preserved = refl
     ; mem-preserved = refl
     ; stack-inv-right = stack-inv-s2
-    ; rsp>16-right = rsp>16-s2
+    ; rsp-sufficient-right = rsp-sufficient-s2
     }
   where
     ctx = make-case-context f g prefix suffix
@@ -817,8 +817,8 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     stack-inv-s2 = stack-inv-preserved-mem-rsp s-setup s2 refl refl stack-inv-setup refl
 
     -- rsp > 16 preserved
-    rsp>16-s2 : readReg (regs s2) rsp > 16
-    rsp>16-s2 = rsp>16-setup
+    rsp-sufficient-s2 : readReg (regs s2) rsp > 16
+    rsp-sufficient-s2 = rsp-sufficient-setup
 
     -- Fetch proofs for the two instructions
     -- Instruction 1: label (5 + len-f) at position prefix + 5 + len-f

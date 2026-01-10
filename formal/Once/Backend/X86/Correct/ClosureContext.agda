@@ -194,9 +194,9 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
 run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
-                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp>16 rdi-eq =
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq =
   let (s' , star , h' , pc' , rax' , r14' , r15' , rbp' , stack' , rsp') =
-        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp>16 rdi-eq
+        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
            mem-env mem-layout , mem-cp mem-layout)
   in s' , star , h' , pc' , rax' , stack' , rsp'

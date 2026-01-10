@@ -174,42 +174,42 @@ mutual
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
   -- Base cases: delegate to existing Star functions
-  run-ir-star-at-offset (id {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (terminal {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (fold {F}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (unfold {F}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-arr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (initial {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 _ =
+  run-ir-star-at-offset (id {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (terminal {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (fold {F}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (unfold {F}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-arr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (initial {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient _ =
     ⊥-elim x
 
   -- Recursive cases: delegate to implementation modules
-  run-ir-star-at-offset (_∘_ {A} {B} {C} g f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-compose-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-pair-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
-  run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-ir-star-at-offset (_∘_ {A} {B} {C} g f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-compose-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-pair-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
 
   -- Prim: opaque primitive - correctness postulated until proper Prim compilation
-  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
-    run-prim-star name prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    run-prim-star name prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
 
   ------------------------------------------------------------------------
   -- Curry implementation (kept in mutual block for now)
@@ -224,7 +224,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s' , record ir-res
       { ir-closure-wf = has-closure thunk-offset (encode x) (λ b → eval f (x , b)) wf
       }
@@ -235,7 +235,7 @@ mutual
 
       curry-result : ∃[ s' ] (IRStarResult (curry f) prog s s' x offset
                               × CurryMemoryResult f prog s' x offset)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
 
       s' : State
       s' = proj₁ curry-result
@@ -249,9 +249,9 @@ mutual
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁
+              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -322,7 +322,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
-  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s' , record
       { curry-star = ir-star ir-res
       ; curry-halted = ir-halted ir-res
@@ -342,7 +342,7 @@ mutual
 
       -- Get the standard IRStarResult from existing curry proof
       -- run-curry-star now returns (s', IRStarResult, CurryMemoryResult)
-      ir-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+      ir-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
       s' = proj₁ ir-result
       ir-res = proj₁ (proj₂ ir-result)
       -- mem-res = proj₂ (proj₂ ir-result)  -- CurryMemoryResult (available if needed)
@@ -357,9 +357,9 @@ mutual
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp>16₁
+              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁
         }
 
   ------------------------------------------------------------------------
@@ -398,7 +398,7 @@ mutual
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp>16 =
+                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp-sufficient =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -412,7 +412,7 @@ mutual
       8≤17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
 
       8≤rsp : 8 ≤ readReg (regs s) rsp
-      8≤rsp = ≤-trans 8≤17 rsp>16
+      8≤rsp = ≤-trans 8≤17 rsp-sufficient
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -421,7 +421,7 @@ mutual
 
       -- Step 1: Trace 8 setup instructions
       setup-result = thunk-setup-star f prefix suffix env arg s
-                       h-eq pc-eq rdi-eq r12-eq stack-inv rsp>16
+                       h-eq pc-eq rdi-eq r12-eq stack-inv rsp-sufficient
       s-after-setup = proj₁ setup-result
       star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -431,7 +431,7 @@ mutual
       r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
       rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
       stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      rsp>16-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+      rsp-sufficient-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       -- RbpInvariant after setup
       rbp-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
       -- Key property: memory at (rbp after setup) = original rbp
@@ -569,7 +569,7 @@ mutual
 
       step-f : ∃[ s-f ] IRStarResult f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f = run-ir-star-at-offset f prefix-f suffix-f caller-sp (env , arg) s-after-setup
-                 h-setup pc-setup-f rdi-setup stack-inv-setup rsp>16-setup rbp-inv-setup
+                 h-setup pc-setup-f rdi-setup stack-inv-setup rsp-sufficient-setup rbp-inv-setup
 
       s-after-f-raw : State
       s-after-f-raw = proj₁ step-f
@@ -712,9 +712,9 @@ mutual
       rsp-c1 = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Precondition: 16 ≤ old-rsp-s (for m+[n∸m]≡n later)
-      -- rsp>16 : rsp > 16 means 16 < rsp, which implies 16 ≤ rsp
+      -- rsp-sufficient : rsp > 16 means 16 < rsp, which implies 16 ≤ rsp
       16≤rsp : 16 ≤ readReg (regs s) rsp
-      16≤rsp = Data.Nat.Properties.<⇒≤ rsp>16
+      16≤rsp = Data.Nat.Properties.<⇒≤ rsp-sufficient
 
       -- rsp after pop rbp = (old-rsp-s - 16) + 8 = old-rsp-s - 8
       -- Proof: (m ∸ 16) + 8 = ((m ∸ 8) ∸ 8) + 8 = m ∸ 8
@@ -898,9 +898,9 @@ mutual
       star-c = ⟨ ir-halted r-f , step-c0 ⟩◅ ⟨ h-c1 , step-c1 ⟩◅ ⟨ h-c2 , step-c2 ⟩◅ refl*
 
       -- Stack invariant and rsp bound
-      -- rsp>16-c3 follows from rsp-c3 (rsp restored to original) and rsp>16 (original > 16)
-      rsp>16-c3 : readReg (regs s-c3) rsp > 16
-      rsp>16-c3 = subst (_> 16) (sym rsp-c3) rsp>16
+      -- rsp-sufficient-c3 follows from rsp-c3 (rsp restored to original) and rsp-sufficient (original > 16)
+      rsp-sufficient-c3 : readReg (regs s-c3) rsp > 16
+      rsp-sufficient-c3 = subst (_> 16) (sym rsp-c3) rsp-sufficient
 
       -- Stack invariant: r15 and rsp restored to original
       r15-s-to-c3 : readReg (regs s-c3) r15 ≡ readReg (regs s) r15
@@ -931,7 +931,7 @@ mutual
       mem-cleanup-preserves : ∀ addr → readMem (memory s-c3) addr ≡ readMem (memory s-after-f-raw) addr
       mem-cleanup-preserves addr = mem-c1-eq-f addr  -- All three cleanup steps preserve memory
 
-      cleanup-star = s-c3 , star-c , h-c3 , pc-c3 , rax-c3 , r14-c3 , r15-chain , rbp-c3 , stack-inv-c3 , rsp>16-c3 , rsp-c3 , mem-cleanup-preserves
+      cleanup-star = s-c3 , star-c , h-c3 , pc-c3 , rax-c3 , r14-c3 , r15-chain , rbp-c3 , stack-inv-c3 , rsp-sufficient-c3 , rsp-c3 , mem-cleanup-preserves
 
       -- Return address preserved through execution
       --
@@ -986,7 +986,7 @@ mutual
       stack-inv-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))))
       -- New D041 fields from cleanup-star
       cleanup-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))))
-      rsp>16-cleanup = proj₁ cleanup-rest
+      rsp-sufficient-cleanup = proj₁ cleanup-rest
       rsp-cleanup-restored = proj₁ (proj₂ cleanup-rest)
       mem-cleanup-preserved = proj₂ (proj₂ cleanup-rest)
 
@@ -1014,7 +1014,7 @@ mutual
                         trans r14-cleanup (ir-r14 r-f) ,
                         trans r15-cleanup (ir-r15 r-f) ,
                         rbp-cleanup ,  -- cleanup restores original rbp directly
-                        stack-inv-cleanup , rsp>16-cleanup , mem-ret-preserved ,
+                        stack-inv-cleanup , rsp-sufficient-cleanup , mem-ret-preserved ,
                         rsp-cleanup-restored , mem-cleanup-preserved
 
       s-after-f = proj₁ f-result-bridge
@@ -1026,7 +1026,7 @@ mutual
       r15-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))
       rbp-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))
       stack-inv-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))))
-      rsp>16-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))))
+      rsp-sufficient-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))))
       -- D041 fields from f-result-bridge
       f-bridge-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))))
       mem-ret-f = proj₁ f-bridge-rest
@@ -1035,7 +1035,7 @@ mutual
 
       -- Step 3: Trace ret instruction
       ret-result = thunk-ret-star f prefix suffix ret-addr s-after-f
-                     h-f pc-f mem-ret-f stack-inv-f rsp>16-f
+                     h-f pc-f mem-ret-f stack-inv-f rsp-sufficient-f
       s-final = proj₁ ret-result
       star-ret = proj₁ (proj₂ ret-result)
       h-final = proj₁ (proj₂ (proj₂ ret-result))
@@ -1047,7 +1047,7 @@ mutual
       stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result))))))))
       -- New fields from extended thunk-ret-star
       ret-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result))))))))
-      rsp>16-final = proj₁ ret-rest
+      rsp-sufficient-final = proj₁ ret-rest
       rsp-ret-plus-8 = proj₁ (proj₂ ret-rest)
       mem-ret-preserves = proj₂ (proj₂ ret-rest)
 
@@ -1166,7 +1166,7 @@ mutual
         ; thunk-r15 = trans r15-final (trans r15-f r15-setup)
         ; thunk-rbp = trans rbp-final rbp-f  -- rbp-f gives s-after-f.rbp = s.rbp directly
         ; thunk-stack-inv = stack-inv-final
-        ; thunk-rsp-bound = rsp>16-final
+        ; thunk-rsp-bound = rsp-sufficient-final
         ; thunk-rsp-plus-8 = thunk-rsp-plus-8-proof
         ; thunk-preserves-frame = thunk-preserves-frame-proof
         ; thunk-preserves-zero = thunk-preserves-zero-proof
@@ -1195,9 +1195,9 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+  run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     let (s' , ir-result') = run-apply-to-ir-result prefix suffix code-ptr env-addr sem arg s
-                              closure-wf-post h-false pc-eq rdi-eq' stack-inv rsp>16 rbp-inv mem-layout
+                              closure-wf-post h-false pc-eq rdi-eq' stack-inv rsp-sufficient rbp-inv mem-layout
     in s' , subst (λ xv → IRStarResult (apply {A} {B}) prog s s' xv offset) x'-eq-x ir-result'
     where
       open import Data.Product using (proj₁; proj₂)

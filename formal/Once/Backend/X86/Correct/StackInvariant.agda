@@ -473,7 +473,7 @@ rsp-bound-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s) rsp > 16 →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
   readReg (regs s') rsp > 16
-rsp-bound-preserved-unchanged s s' rsp>16 rsp-eq = subst (_> 16) (sym rsp-eq) rsp>16
+rsp-bound-preserved-unchanged s s' rsp-sufficient rsp-eq = subst (_> 16) (sym rsp-eq) rsp-sufficient
 
 ------------------------------------------------------------------------
 -- Converting from rsp bounds to StackCapacity
@@ -490,7 +490,7 @@ postulate
 rsp-to-capacity-2 : ∀ (s : State) →
   readReg (regs s) rsp > 16 →
   StackCapacity s 2
-rsp-to-capacity-2 s rsp>16 = rsp-bound-to-capacity s 2 rsp>16
+rsp-to-capacity-2 s rsp-sufficient = rsp-bound-to-capacity s 2 rsp-sufficient
 
 -- | Convert rsp > 32 to StackCapacity 4
 -- Used when we need more capacity for operations that allocate stack
@@ -525,9 +525,9 @@ from-old-invariants : ∀ (s : State) →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   AbstractStackInvariant s
-from-old-invariants s stack-inv rsp>16 = record
+from-old-invariants s stack-inv rsp-sufficient = record
   { r15-status = stack-inv  -- StackInvariant = R15Status, so identity
-  ; capacity = rsp-to-capacity-2 s rsp>16
+  ; capacity = rsp-to-capacity-2 s rsp-sufficient
   }
 
 ------------------------------------------------------------------------
@@ -579,8 +579,8 @@ addr-diff-from-invariant : ∀ (s : State) →
   let new-rsp = readReg (regs s) rsp ∸ 16
       orig-r15 = readReg (regs s) r15
   in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-addr-diff-from-invariant s stack-inv rsp>16 =
-  let cap = rsp-to-capacity-2 s rsp>16
+addr-diff-from-invariant s stack-inv rsp-sufficient =
+  let cap = rsp-to-capacity-2 s rsp-sufficient
       (write1-in-stack , write2-in-stack) = alloc-2-slots-addrs-in-stack s cap
       diff1 = stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 16) stack-inv write1-in-stack
       diff2 = stack-write-preserves-r15 s ((readReg (regs s) rsp ∸ 16) +ℕ 8) stack-inv write2-in-stack
@@ -594,7 +594,7 @@ rbp-addr-diff-from-invariant : ∀ (s : State) →
   let new-rsp = readReg (regs s) rsp ∸ 16
       orig-rbp = readReg (regs s) rbp
   in (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
-rbp-addr-diff-from-invariant s rbp-inv rsp>16 =
+rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient =
   -- new-rsp = rsp - 16 < rsp ≤ rbp, so new-rsp ≠ rbp
   -- (new-rsp + 8) = rsp - 8 < rsp ≤ rbp, so (new-rsp + 8) ≠ rbp
   postulate-rbp-diffs , postulate-rbp-diffs-2
