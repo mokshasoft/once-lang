@@ -711,10 +711,60 @@ rbp-addr-diff-from-invariant : ∀ (s : State) →
 rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient =
   -- new-rsp = rsp - 16 < rsp ≤ rbp, so new-rsp ≠ rbp
   -- (new-rsp + 8) = rsp - 8 < rsp ≤ rbp, so (new-rsp + 8) ≠ rbp
-  postulate-rbp-diffs , postulate-rbp-diffs-2
+  rbp-diff-proof , rbp-diff-proof-2
   where
-    new-rsp = readReg (regs s) rsp ∸ 16
+    open import Data.Nat.Properties using (<⇒≢; <-≤-trans; m∸n≤m)
+    open import Data.Nat using (s≤s; z≤n)
+
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+
+    rsp-val = readReg (regs s) rsp
+    new-rsp = rsp-val ∸ 16
     orig-rbp = readReg (regs s) rbp
-    postulate
-      postulate-rbp-diffs : new-rsp ≢ orig-rbp
-      postulate-rbp-diffs-2 : (new-rsp +ℕ 8) ≢ orig-rbp
+
+    -- rsp - 16 < rsp (since rsp > 16)
+    new-rsp<rsp : new-rsp < rsp-val
+    new-rsp<rsp = m∸n<m' rsp-val 16 (s≤s z≤n) rsp-sufficient
+
+    -- rsp ≤ rbp (from RbpInvariant)
+    rsp-val≤rbp : rsp-val ≤ orig-rbp
+    rsp-val≤rbp = rsp≤rbp rbp-inv
+
+    -- rsp - 16 < rbp (by transitivity)
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp = <-≤-trans new-rsp<rsp rsp-val≤rbp
+
+    -- PROVEN: rsp - 16 ≢ rbp
+    rbp-diff-proof : new-rsp ≢ orig-rbp
+    rbp-diff-proof = <⇒≢ new-rsp<rbp
+
+    -- rsp - 8 < rsp (since rsp > 8, which follows from rsp > 16)
+    rsp>8 : rsp-val > 8
+    rsp>8 = ≤-trans 9≤17 rsp-sufficient
+      where
+        9≤17 : 9 ≤ 17
+        9≤17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    rsp∸8<rsp : rsp-val ∸ 8 < rsp-val
+    rsp∸8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
+
+    -- rsp - 8 < rbp (by transitivity)
+    rsp∸8<rbp : rsp-val ∸ 8 < orig-rbp
+    rsp∸8<rbp = <-≤-trans rsp∸8<rsp rsp-val≤rbp
+
+    -- (rsp - 16) + 8 = rsp - 8 (when rsp ≥ 16)
+    new-rsp+8-eq : new-rsp +ℕ 8 ≡ rsp-val ∸ 8
+    new-rsp+8-eq = trans (cong (_+ℕ 8) step1) (m∸n+n≡m 8≤rsp∸8)
+      where
+        open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; n≤1+n)
+        step1 : rsp-val ∸ 16 ≡ (rsp-val ∸ 8) ∸ 8
+        step1 = sym (∸-+-assoc rsp-val 8 8)
+        16≤rsp : 16 ≤ rsp-val
+        16≤rsp = ≤-trans (n≤1+n 16) rsp-sufficient
+        8≤rsp∸8 : 8 ≤ rsp-val ∸ 8
+        8≤rsp∸8 = ∸-monoˡ-≤ 8 16≤rsp
+
+    -- PROVEN: (rsp - 16) + 8 ≢ rbp
+    rbp-diff-proof-2 : (new-rsp +ℕ 8) ≢ orig-rbp
+    rbp-diff-proof-2 = subst (_≢ orig-rbp) (sym new-rsp+8-eq) (<⇒≢ rsp∸8<rbp)
