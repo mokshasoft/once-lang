@@ -43,7 +43,7 @@ open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
-  using (rsp>16-to-capacity; R15Status;
+  using (rsp-to-capacity-2; R15Status;
          r15-unused; r15-in-heap; r15-in-code;
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
          stack-write-preserves-r15;
@@ -706,7 +706,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
         open import Data.Nat using (s≤s; z≤n)
         -- Get StackCapacity to prove new-rsp is in stack region
         cap : StackCapacity s 2
-        cap = rsp>16-to-capacity s rsp>16
+        cap = rsp-to-capacity-2 s rsp>16
 
         -- new-rsp = old-rsp - 8 is in stack region (from capacity_maintained 1)
         new-rsp-in-stack : region-of new-rsp ≡ stack
@@ -722,7 +722,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
       where
         open import Data.Nat using (s≤s; z≤n)
         cap : StackCapacity s 2
-        cap = rsp>16-to-capacity s rsp>16
+        cap = rsp-to-capacity-2 s rsp>16
 
         new-rsp-in-stack : region-of new-rsp ≡ stack
         new-rsp-in-stack = capacity-maintained cap 1 (s≤s z≤n)
@@ -1047,7 +1047,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     apply-sp : StackPointer
     apply-sp = record
       { addr = readReg (regs s-setup) rsp
-      ; in-stack = capacity-maintained (rsp>16-to-capacity s rsp>16) 1 (s≤s z≤n)
+      ; in-stack = capacity-maintained (rsp-to-capacity-2 s rsp>16) 1 (s≤s z≤n)
       }
       where open import Data.Nat using (s≤s; z≤n)
 
@@ -1247,7 +1247,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
         -- Get StackCapacity to prove write addresses are in stack region
         cap : StackCapacity s 2
-        cap = rsp>16-to-capacity s rsp>16
+        cap = rsp-to-capacity-2 s rsp>16
 
         -- Setup writes to (rsp - 8), which is in stack region
         setup-write-addr : ℕ
@@ -1288,7 +1288,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
         -- Get StackCapacity
         cap : StackCapacity s 2
-        cap = rsp>16-to-capacity s rsp>16
+        cap = rsp-to-capacity-2 s rsp>16
 
         -- Setup writes to (rsp - 8) in stack region
         setup-write-addr : ℕ
@@ -1428,7 +1428,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-mem-at-0 = WfR.mem-at-0  -- PROVEN via D041 region-based chain
     ; ir-mem-code = WfR.mem-code-region  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
-    ; ir-capacity = rsp>16-to-capacity s' WfR.rsp>16
+    ; ir-capacity = rsp-to-capacity-2 s' WfR.rsp>16
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }

@@ -36,7 +36,7 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; StackPoint
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInvariant using (rsp>16-to-capacity)
+open import Once.Backend.X86.Correct.StackInvariant using (rsp-to-capacity-2)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -135,7 +135,7 @@ mutual
       ; ir-mem-at-0 = mem-at-0-final
       ; ir-mem-code = mem-code-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
+      ; ir-capacity = rsp-to-capacity-2 s-final rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
@@ -472,7 +472,7 @@ mutual
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
+      ; ir-capacity = rsp-to-capacity-2 s-final rsp>16-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final

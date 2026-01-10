@@ -16,8 +16,8 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
-  using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16;
-         sub16-both-writes-in-stack)
+  using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
+         alloc-2-slots-addrs-in-stack)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
@@ -85,7 +85,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-mem-rbp = mem-rbp-final
     ; ir-mem-rbp+8 = mem-rbp+8-final
     ; ir-stack-inv = stack-inv-final
-    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-sub16
+    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-alloc-2-slots
     ; ir-rbp-inv = rbp-inv-final
     ; ir-mem-above = mem-above-final
     ; ir-mem-at-0 = mem-at-0-final
@@ -725,7 +725,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     stack-inv-final : StackInvariant s-final
     stack-inv-final = stack-inv-helper stack-inv
 
-    -- Clean capacity derivation via capacity-after-sub16
+    -- Clean capacity derivation via capacity-after-alloc-2-slots
     rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ 16
     rsp-change = rsp-s7
 
@@ -736,13 +736,13 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
-    input-capacity = rsp>32-to-capacity s rsp>32
+    input-capacity = rsp-to-capacity-4 s rsp>32
 
     output-capacity : StackCapacity s-final 2
-    output-capacity = capacity-after-sub16 s s-final 2 input-capacity rsp-change
+    output-capacity = capacity-after-alloc-2-slots s s-final 2 input-capacity rsp-change
 
     rsp>16-final : readReg (regs s-final) rsp > 16
-    rsp>16-final = capacity-to-rsp>16 s-final output-capacity
+    rsp>16-final = capacity-2-to-rsp-bound s-final output-capacity
 
     -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv-final : RbpInvariant s-final
@@ -836,11 +836,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
       let cap2 : StackCapacity s 2
-          cap2 = rsp>16-to-capacity s rsp>16
+          cap2 = rsp-to-capacity-2 s rsp>16
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
-          writes-in-stack = sub16-both-writes-in-stack s cap2
+          writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
 
           new-rsp-in-stack : region-of new-rsp ≡ stack
           new-rsp-in-stack = proj₁ writes-in-stack

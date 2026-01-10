@@ -118,7 +118,7 @@ initWithInput-stack-inv x = r15-unused r15≡0
 open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInvariant
-  using (RbpInvariant; StackCapacity; rsp>16-to-capacity; capacity-to-rsp>16)
+  using (RbpInvariant; StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound)
 
 -- Internal: raw rsp bound proof
 private
@@ -127,11 +127,11 @@ private
 
 -- | Initial state has stack capacity for 2 slots (16 bytes)
 initWithInput-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInput x) 2
-initWithInput-stack-capacity x = rsp>16-to-capacity (initWithInput x) (rsp-bound x)
+initWithInput-stack-capacity x = rsp-to-capacity-2 (initWithInput x) (rsp-bound x)
 
 -- | Initial state has sufficient rsp (derived from capacity, for legacy interfaces)
 initWithInput-rsp-sufficient : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16
-initWithInput-rsp-sufficient x = capacity-to-rsp>16 (initWithInput x) (initWithInput-stack-capacity x)
+initWithInput-rsp-sufficient x = capacity-2-to-rsp-bound (initWithInput x) (initWithInput-stack-capacity x)
 
 -- | Initial state satisfies RbpInvariant (rsp ≤ rbp)
 -- Both rsp and rbp are set to stackBase, so rsp ≤ rbp (equality case)

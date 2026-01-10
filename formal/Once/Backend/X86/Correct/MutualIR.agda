@@ -41,7 +41,7 @@ open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackCapacity; capacity-maintained; rsp>16-to-capacity; rsp-in-stack)
+  using (StackCapacity; capacity-maintained; rsp-to-capacity-2; rsp-in-stack)
 
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;

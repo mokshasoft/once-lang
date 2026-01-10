@@ -20,7 +20,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; r15-unused; r15-in-heap; r15-in-code;
-         rsp>16-to-capacity; rsp≥40-to-capacity; pair-r15-in-stack; pair-r15-plus-8-in-stack;
+         rsp-to-capacity-2; rsp-to-capacity-5; pair-r15-in-stack; pair-second-slot-in-stack;
          stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint)
 open import Once.Backend.X86.Correct.ExecLemmas
@@ -723,7 +723,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
-  ; ir-capacity = rsp>16-to-capacity s-final rsp>16-final
+  ; ir-capacity = rsp-to-capacity-2 s-final rsp>16-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -1144,10 +1144,10 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
         case-r15-code r15-code-pf eq =
           let -- Get capacity 5 from 40 ≤ rsp-s
-              cap5 = rsp≥40-to-capacity s 40≤rsp-s
+              cap5 = rsp-to-capacity-5 s 40≤rsp-s
               -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region
               write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
-              write-addr-in-stack = pair-r15-plus-8-in-stack s cap5
+              write-addr-in-stack = pair-second-slot-in-stack s cap5
               -- Convert via r15-chain: readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ 40
               s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
               s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain) write-addr-in-stack
@@ -1163,10 +1163,10 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-heap : region-of (readReg (regs s) r15) ≡ heap →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
         case-r15-heap r15-heap-pf eq =
-          let cap5 = rsp≥40-to-capacity s 40≤rsp-s
+          let cap5 = rsp-to-capacity-5 s 40≤rsp-s
               s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
               s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain)
-                                        (pair-r15-plus-8-in-stack s cap5)
+                                        (pair-second-slot-in-stack s cap5)
               disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
               disjoint = λ eq' → stack-heap-disjoint (readReg (regs s3) r15 +ℕ 8) (readReg (regs s) r15)
                                                      s3-r15+8-in-stack r15-heap-pf (sym eq')
@@ -1670,7 +1670,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
           let -- s1.r15 = rsp - 40 is in stack region
-              cap5 = rsp≥40-to-capacity s 40≤rsp-s
+              cap5 = rsp-to-capacity-5 s 40≤rsp-s
               rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
               rsp-40-in-stack = pair-r15-in-stack s cap5
               -- Convert via s1-r15-eq
@@ -1684,7 +1684,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- Case r15 in heap region: heap addresses are disjoint from stack addresses (D041 region proof)
         case-r15-heap-r15 : region-of orig-r15 ≡ heap → orig-r15 ≢ readReg (regs s1) r15
         case-r15-heap-r15 r15-heap-pf eq =
-          let cap5 = rsp≥40-to-capacity s 40≤rsp-s
+          let cap5 = rsp-to-capacity-5 s 40≤rsp-s
               rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
               rsp-40-in-stack = pair-r15-in-stack s cap5
               s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack

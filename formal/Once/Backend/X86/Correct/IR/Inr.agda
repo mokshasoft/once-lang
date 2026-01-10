@@ -19,8 +19,8 @@ open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
-  using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16;
-         sub16-both-writes-in-stack)
+  using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
+         alloc-2-slots-addrs-in-stack)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -64,7 +64,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     ; ir-mem-at-0 = mem-at-0-preserved
     ; ir-mem-code = mem-code-preserved
     ; ir-stack-inv = stack-inv'
-    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-sub16
+    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-alloc-2-slots
     ; ir-rbp-inv = rbp-inv'
     ; ir-closure-wf = no-closure  -- inr doesn't produce a closure
     }
@@ -437,10 +437,10 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
 
         -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
         cap2 : StackCapacity s 2
-        cap2 = rsp>16-to-capacity s rsp>16
+        cap2 = rsp-to-capacity-2 s rsp>16
 
         writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
-        writes-in-stack = sub16-both-writes-in-stack s cap2
+        writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
 
         new-rsp-in-stack : region-of new-rsp ≡ stack
         new-rsp-in-stack = proj₁ writes-in-stack
@@ -473,7 +473,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     stack-inv' = stack-inv-helper stack-inv
 
     -- CLEAN CAPACITY DERIVATION (same pattern as Inl.agda)
-    -- The rsp change proof needed for capacity-after-sub16
+    -- The rsp change proof needed for capacity-after-alloc-2-slots
     rsp-change : readReg (regs s4) rsp ≡ readReg (regs s) rsp ∸ 16
     rsp-change = rsp-s4  -- since new-rsp = orig-rsp ∸ 16
 
@@ -486,15 +486,15 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
-    input-capacity = rsp>32-to-capacity s rsp>32
+    input-capacity = rsp-to-capacity-4 s rsp>32
 
-    -- Use proven capacity-after-sub16 to derive output capacity
+    -- Use proven capacity-after-alloc-2-slots to derive output capacity
     output-capacity : StackCapacity s4 2
-    output-capacity = capacity-after-sub16 s s4 2 input-capacity rsp-change
+    output-capacity = capacity-after-alloc-2-slots s s4 2 input-capacity rsp-change
 
     -- Legacy: derive rsp > 16 from capacity (for compatibility)
     rsp>16' : readReg (regs s4) rsp > 16
-    rsp>16' = capacity-to-rsp>16 s4 output-capacity
+    rsp>16' = capacity-2-to-rsp-bound s4 output-capacity
 
     -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv' : RbpInvariant s4

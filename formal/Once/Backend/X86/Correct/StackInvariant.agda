@@ -144,11 +144,11 @@ postulate
 
 -- | After sub rsp, 16 (rsp -= 16), capacity decreases by 2
 -- PROVEN: The key is (rsp - 16) - (k*8) = rsp - ((2+k)*8)
-capacity-after-sub16 : ∀ (s s' : State) (n : ℕ) →
+capacity-after-alloc-2-slots : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s (suc (suc n)) →
   readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 16 →
   StackCapacity s' n
-capacity-after-sub16 s s' n cap rsp-eq = record
+capacity-after-alloc-2-slots s s' n cap rsp-eq = record
   { rsp-in-stack = rsp'-in-stack
   ; capacity-maintained = cap-maintained
   }
@@ -188,7 +188,7 @@ capacity-after-sub16 s s' n cap rsp-eq = record
 
 -- | After add rsp, 16 (rsp += 16), capacity increases by 2
 postulate
-  capacity-after-add16 : ∀ (s s' : State) (n : ℕ) →
+  capacity-after-dealloc-2-slots : ∀ (s s' : State) (n : ℕ) →
     StackCapacity s n →
     readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 16 →
     StackCapacity s' (suc (suc n))
@@ -198,18 +198,18 @@ postulate
 ------------------------------------------------------------------------
 
 -- | With capacity n ≥ 2, address rsp - 16 is in stack region
-addr-minus-16-in-stack : ∀ (s : State) →
+slot-2-addr-in-stack : ∀ (s : State) →
   StackCapacity s 2 →
   region-of (readReg (regs s) rsp ∸ 16) ≡ stack
-addr-minus-16-in-stack s cap = capacity-maintained cap 2 (s≤s (s≤s z≤n))
+slot-2-addr-in-stack s cap = capacity-maintained cap 2 (s≤s (s≤s z≤n))
   where
     open import Data.Nat using (s≤s; z≤n)
 
 -- | With capacity n ≥ 1, address rsp - 8 is in stack region
-addr-minus-8-in-stack : ∀ (s : State) →
+slot-1-addr-in-stack : ∀ (s : State) →
   StackCapacity s 1 →
   region-of (readReg (regs s) rsp ∸ 8) ≡ stack
-addr-minus-8-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
+slot-1-addr-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
   where
     open import Data.Nat using (s≤s; z≤n)
 
@@ -223,24 +223,24 @@ addr-minus-8-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
 -- | After sub rsp 16, both write addresses (new-rsp and new-rsp+8) are in stack
 -- This is the pure region interface for inl/inr operations
 -- Internally: new-rsp = rsp - 16, new-rsp + 8 = rsp - 8 (arithmetic hidden)
-sub16-both-writes-in-stack : ∀ (s : State) →
+alloc-2-slots-addrs-in-stack : ∀ (s : State) →
   StackCapacity s 2 →
   let rsp-val = readReg (regs s) rsp
       new-rsp = rsp-val ∸ 16
   in (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
-sub16-both-writes-in-stack s cap =
+alloc-2-slots-addrs-in-stack s cap =
   let rsp-val = readReg (regs s) rsp
       new-rsp = rsp-val ∸ 16
       -- First write address: new-rsp = rsp - 16
       write1-in-stack : region-of new-rsp ≡ stack
-      write1-in-stack = addr-minus-16-in-stack s cap
+      write1-in-stack = slot-2-addr-in-stack s cap
       -- Second write address: new-rsp + 8
       -- Internally we know: (rsp - 16) + 8 = rsp - 8 (when rsp ≥ 16)
       -- We use subst to connect new-rsp + 8 to rsp - 8
       write2-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
       write2-in-stack = subst (λ a → region-of a ≡ stack)
-                              (sym (sub16-plus8-eq rsp-val (cap-to-rsp≥16 cap)))
-                              (addr-minus-8-in-stack s (capacity-weaken cap))
+                              (sym (sub16-plus8-eq rsp-val (cap-to-rsp-bound cap)))
+                              (slot-1-addr-in-stack s (capacity-weaken cap))
   in write1-in-stack , write2-in-stack
   where
     open import Data.Nat using (s≤s; z≤n)
@@ -249,10 +249,10 @@ sub16-both-writes-in-stack s cap =
     -- Helper: StackCapacity 2 implies rsp ≥ 16
     -- This is the one bridge between abstract regions and concrete bounds
     postulate
-      cap2-implies-rsp≥16 : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
+      capacity-2-implies-rsp-bound : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
 
-    cap-to-rsp≥16 : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
-    cap-to-rsp≥16 = cap2-implies-rsp≥16
+    cap-to-rsp-bound : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
+    cap-to-rsp-bound = capacity-2-implies-rsp-bound
 
     -- Helper: weaken capacity 2 to capacity 1
     capacity-weaken : StackCapacity s 2 → StackCapacity s 1
@@ -303,12 +303,12 @@ pair-r15-in-stack s cap = capacity-maintained cap 5 (s≤s (s≤s (s≤s (s≤s 
 
 -- | (rsp - 40) + 8 is in stack region when we have capacity 5
 -- This encapsulates the arithmetic: (rsp ∸ 40) +ℕ 8 ≡ rsp ∸ 32 when rsp ≥ 40
-pair-r15-plus-8-in-stack : ∀ (s : State) →
+pair-second-slot-in-stack : ∀ (s : State) →
   StackCapacity s 5 →
   region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
-pair-r15-plus-8-in-stack s cap =
+pair-second-slot-in-stack s cap =
   subst (λ a → region-of a ≡ stack)
-        (sym (sub40-plus8-eq rsp-val (cap-to-rsp≥40 cap)))
+        (sym (sub40-plus8-eq rsp-val (cap-to-rsp-bound-5 cap)))
         (capacity-maintained cap 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
   where
     open import Data.Nat using (s≤s; z≤n)
@@ -318,10 +318,10 @@ pair-r15-plus-8-in-stack s cap =
 
     -- Helper: StackCapacity 5 implies rsp ≥ 40
     postulate
-      cap5-implies-rsp≥40 : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
+      capacity-5-implies-rsp-bound : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
 
-    cap-to-rsp≥40 : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
-    cap-to-rsp≥40 = cap5-implies-rsp≥40
+    cap-to-rsp-bound-5 : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
+    cap-to-rsp-bound-5 = capacity-5-implies-rsp-bound
 
     -- The key arithmetic identity (hidden from callers)
     -- (rsp - 40) + 8 = rsp - 32 when rsp ≥ 40
@@ -337,14 +337,14 @@ pair-r15-plus-8-in-stack s cap =
 
 -- | Convert rsp ≥ 40 to StackCapacity 5 (uses postulate for now)
 postulate
-  rsp≥40-to-capacity-post : ∀ (s : State) →
+  rsp-to-capacity-5-post : ∀ (s : State) →
     readReg (regs s) rsp ≥ 40 →
     StackCapacity s 5
 
-rsp≥40-to-capacity : ∀ (s : State) →
+rsp-to-capacity-5 : ∀ (s : State) →
   readReg (regs s) rsp ≥ 40 →
   StackCapacity s 5
-rsp≥40-to-capacity = rsp≥40-to-capacity-post
+rsp-to-capacity-5 = rsp-to-capacity-5-post
 
 ------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
@@ -469,11 +469,11 @@ stack-inv-preserved-r15-unchanged s s' (r15-in-code r15-code) r15-eq =
   r15-in-code (trans (cong region-of r15-eq) r15-code)
 
 -- | rsp > 16 preservation when rsp is unchanged
-rsp>16-preserved-unchanged : ∀ (s s' : State) →
+rsp-bound-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s) rsp > 16 →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
   readReg (regs s') rsp > 16
-rsp>16-preserved-unchanged s s' rsp>16 rsp-eq = subst (_> 16) (sym rsp-eq) rsp>16
+rsp-bound-preserved-unchanged s s' rsp>16 rsp-eq = subst (_> 16) (sym rsp-eq) rsp>16
 
 ------------------------------------------------------------------------
 -- Converting from rsp bounds to StackCapacity
@@ -487,23 +487,23 @@ postulate
     StackCapacity s n
 
 -- | Convert rsp > 16 to StackCapacity 2 (legacy wrapper)
-rsp>16-to-capacity : ∀ (s : State) →
+rsp-to-capacity-2 : ∀ (s : State) →
   readReg (regs s) rsp > 16 →
   StackCapacity s 2
-rsp>16-to-capacity s rsp>16 = rsp-bound-to-capacity s 2 rsp>16
+rsp-to-capacity-2 s rsp>16 = rsp-bound-to-capacity s 2 rsp>16
 
 -- | Convert rsp > 32 to StackCapacity 4
 -- Used when we need more capacity for operations that allocate stack
-rsp>32-to-capacity : ∀ (s : State) →
+rsp-to-capacity-4 : ∀ (s : State) →
   readReg (regs s) rsp > 32 →
   StackCapacity s 4
-rsp>32-to-capacity s rsp>32 = rsp-bound-to-capacity s 4 rsp>32
+rsp-to-capacity-4 s rsp>32 = rsp-bound-to-capacity s 4 rsp>32
 
 -- | Convert StackCapacity back to concrete bound (for compatibility)
 -- This allows gradual migration - new proofs can use StackCapacity
 -- while still producing rsp > 16 for old interfaces
 postulate
-  capacity-to-rsp>16 : ∀ (s : State) →
+  capacity-2-to-rsp-bound : ∀ (s : State) →
     StackCapacity s 2 →
     readReg (regs s) rsp > 16
 
@@ -527,7 +527,7 @@ from-old-invariants : ∀ (s : State) →
   AbstractStackInvariant s
 from-old-invariants s stack-inv rsp>16 = record
   { r15-status = stack-inv  -- StackInvariant = R15Status, so identity
-  ; capacity = rsp>16-to-capacity s rsp>16
+  ; capacity = rsp-to-capacity-2 s rsp>16
   }
 
 ------------------------------------------------------------------------
@@ -536,19 +536,19 @@ from-old-invariants s stack-inv rsp>16 = record
 
 -- | Prove that stack write at (rsp - 16) doesn't affect r15
 -- This is the key lemma needed for memory preservation in IR proofs
-stack-write-at-rsp-16-preserves-r15 : ∀ (s : State) →
+stack-write-slot-2-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ 16 ≢ readReg (regs s) r15
-stack-write-at-rsp-16-preserves-r15 s inv =
+stack-write-slot-2-preserves-r15 s inv =
   stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 16)
                             (r15-status inv)
-                            (addr-minus-16-in-stack s (capacity inv))
+                            (slot-2-addr-in-stack s (capacity inv))
 
 -- | Similarly for (rsp - 8)
-stack-write-at-rsp-8-preserves-r15 : ∀ (s : State) →
+stack-write-slot-1-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ 8 ≢ readReg (regs s) r15
-stack-write-at-rsp-8-preserves-r15 s inv =
+stack-write-slot-1-preserves-r15 s inv =
   stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 8)
                             (r15-status inv)
                             (capacity-maintained (capacity inv) 1 (s≤s z≤n))
@@ -563,7 +563,7 @@ stack-write-preserves-heap-data : ∀ (s : State) (heap-addr : Addr) →
   readReg (regs s) rsp ∸ 16 ≢ heap-addr
 stack-write-preserves-heap-data s heap-addr inv heap-proof =
   stack-heap-disjoint (readReg (regs s) rsp ∸ 16) heap-addr
-                      (addr-minus-16-in-stack s (capacity inv))
+                      (slot-2-addr-in-stack s (capacity inv))
                       heap-proof
 
 ------------------------------------------------------------------------
@@ -580,8 +580,8 @@ addr-diff-from-invariant : ∀ (s : State) →
       orig-r15 = readReg (regs s) r15
   in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
 addr-diff-from-invariant s stack-inv rsp>16 =
-  let cap = rsp>16-to-capacity s rsp>16
-      (write1-in-stack , write2-in-stack) = sub16-both-writes-in-stack s cap
+  let cap = rsp-to-capacity-2 s rsp>16
+      (write1-in-stack , write2-in-stack) = alloc-2-slots-addrs-in-stack s cap
       diff1 = stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 16) stack-inv write1-in-stack
       diff2 = stack-write-preserves-r15 s ((readReg (regs s) rsp ∸ 16) +ℕ 8) stack-inv write2-in-stack
   in diff1 , diff2
