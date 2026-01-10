@@ -366,14 +366,14 @@ stack-write-preserves-code-r15 : ∀ (s : State) (stack-addr : Addr) →
 stack-write-preserves-code-r15 s stack-addr stack-region r15-code =
   stack-code-disjoint stack-addr (readReg (regs s) r15) stack-region r15-code
 
--- | Stack writes don't affect r15 when r15 = 0
--- zero-not-in-stack is imported from MemoryRegions
+-- | Stack writes don't affect r15 when r15 is unused (r15 = 0)
+-- Address 0 is not in stack region (zero-not-in-stack from MemoryRegions)
 
-stack-write-preserves-zero-r15 : ∀ (s : State) (stack-addr : Addr) →
+stack-write-preserves-unused-r15 : ∀ (s : State) (stack-addr : Addr) →
   region-of stack-addr ≡ stack →
   readReg (regs s) r15 ≡ 0 →
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-zero-r15 s stack-addr stack-region r15≡0 eq =
+stack-write-preserves-unused-r15 s stack-addr stack-region r15≡0 eq =
   -- If stack-addr ≡ r15 and r15 ≡ 0, then stack-addr ≡ 0
   -- So region-of stack-addr ≡ region-of 0
   -- But region-of stack-addr ≡ stack, so region-of 0 ≡ stack
@@ -390,7 +390,7 @@ stack-write-preserves-r15 : ∀ (s : State) (stack-addr : Addr) →
   region-of stack-addr ≡ stack →
   stack-addr ≢ readReg (regs s) r15
 stack-write-preserves-r15 s stack-addr (r15-unused r15≡0) stack-region =
-  stack-write-preserves-zero-r15 s stack-addr stack-region r15≡0
+  stack-write-preserves-unused-r15 s stack-addr stack-region r15≡0
 stack-write-preserves-r15 s stack-addr (r15-in-heap r15-heap) stack-region =
   stack-write-preserves-heap-r15 s stack-addr stack-region r15-heap
 stack-write-preserves-r15 s stack-addr (r15-in-code r15-code) stack-region =

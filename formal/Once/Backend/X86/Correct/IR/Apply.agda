@@ -45,7 +45,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (rsp>16-to-capacity; R15Status;
          r15-unused; r15-in-heap; r15-in-code;
-         stack-write-preserves-code-r15; stack-write-preserves-zero-r15;
+         stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
          stack-write-preserves-r15;
          StackCapacity; capacity-maintained)
 open import Once.Backend.Common.MemoryRegions

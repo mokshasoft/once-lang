@@ -113,15 +113,28 @@ initWithInput-stack-inv x = r15-unused r15≡0
     r15≡0 : readReg (regs (initWithInput x)) r15 ≡ 0
     r15≡0 = refl  -- r15 untouched, defaults to 0 from emptyRegFile
 
--- | Initial state has rsp > 16 (stackBase = 0x7FFF0000 >> 16)
+-- | Initial state has sufficient stack capacity
+-- stackBase = 0x7FFF0000 provides ample space for stack operations
 open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
-initWithInput-rsp>16 : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16
-initWithInput-rsp>16 x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+open import Once.Backend.X86.Correct.StackInvariant
+  using (RbpInvariant; StackCapacity; rsp>16-to-capacity; capacity-to-rsp>16)
+
+-- Internal: raw rsp bound proof
+private
+  rsp-bound : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16
+  rsp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+-- | Initial state has stack capacity for 2 slots (16 bytes)
+initWithInput-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInput x) 2
+initWithInput-stack-capacity x = rsp>16-to-capacity (initWithInput x) (rsp-bound x)
+
+-- | Initial state has sufficient rsp (derived from capacity, for legacy interfaces)
+initWithInput-rsp-sufficient : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16
+initWithInput-rsp-sufficient x = capacity-to-rsp>16 (initWithInput x) (initWithInput-stack-capacity x)
 
 -- | Initial state satisfies RbpInvariant (rsp ≤ rbp)
 -- Both rsp and rbp are set to stackBase, so rsp ≤ rbp (equality case)
-open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
 initWithInput-rbp-inv x = record { rsp≤rbp = ≤-refl }  -- stackBase ≤ stackBase
 

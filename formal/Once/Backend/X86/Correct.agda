@@ -81,7 +81,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas public
 open import Once.Backend.X86.Correct.FetchStep public
 open import Once.Backend.X86.Correct.CompileLength public hiding (length-++)
 open import Once.Backend.X86.Correct.InitState public
-  using (initWithInput; initWithInput-rdi; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-rsp>16; initWithInput-rbp-inv; stackBase)
+  using (initWithInput; initWithInput-rdi; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-stack-capacity; initWithInput-rsp-sufficient; initWithInput-rbp-inv; stackBase)
 open import Once.Backend.X86.Correct.InstrExec public
 
 -- Level 1: Depends on InitState
@@ -491,7 +491,7 @@ codegen-x86-correct : âˆ€ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : âŸ
 codegen-x86-correct ir caller-sp x =
   let (s' , star-eq , halt-eq , rax-eq) = run-generator ir caller-sp x (initWithInput x)
         (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
-        (initWithInput-stack-inv x) (initWithInput-rsp>16 x) (initWithInput-rbp-inv x)
+        (initWithInput-stack-inv x) (initWithInput-rsp-sufficient x) (initWithInput-rbp-inv x)
   in s' , star-eq , halt-eq , rax-eq
 
 ------------------------------------------------------------------------
