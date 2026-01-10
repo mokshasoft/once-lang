@@ -641,9 +641,14 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     r15-1 : readReg (regs s1) r15 ≡ readReg (regs s) r15
     r15-1 = readReg-writeReg-rsp-r15 (regs s) new-rsp
 
-    -- StackInvariant after call: r15 unchanged (region-based invariant only depends on r15)
+    -- StackInvariant after call: r15 unchanged, rsp decreased
+    -- new-rsp = old-rsp ∸ 8 ≤ old-rsp, and rsp1 proves s1.rsp = new-rsp
     stack-inv1 : StackInvariant s1
-    stack-inv1 = stack-inv-preserved-r15-unchanged s s1 stack-inv r15-1
+    stack-inv1 = stack-inv-preserved-r15-unchanged-rsp-dec s s1 stack-inv r15-1 rsp1≤
+      where
+        open import Data.Nat.Properties using (m∸n≤m)
+        rsp1≤ : readReg (regs s1) rsp ≤ readReg (regs s) rsp
+        rsp1≤ = subst (_≤ old-rsp) (sym rsp1) (m∸n≤m old-rsp 8)
 
     -- rsp > 16 after call: derived from runtime bound rsp-bound-after-stack-op
     rsp-sufficient-1 : readReg (regs s1) rsp > 16
