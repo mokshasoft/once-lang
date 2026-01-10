@@ -1061,9 +1061,20 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
       }
       where open import Data.Nat using (s≤s; z≤n)
 
+    -- D041: Prove caller-sp bound for thunk-correct
+    -- apply-sp.addr = s-setup.rsp = s-call.rsp + 8
+    -- Inline proof: s-call.rsp = s-setup.rsp - 8, so s-call.rsp + 8 = s-setup.rsp
+    apply-sp-bound : StackPointer.addr apply-sp ≡ readReg (regs s-call) rsp +ℕ 8
+    apply-sp-bound = sym (trans (cong (_+ℕ 8) rsp-call) (m∸n+n≡m 8≤setup))
+      where
+        open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m)
+        open import Data.Nat using (s≤s; z≤n)
+        8≤setup : 8 ≤ readReg (regs s-setup) rsp
+        8≤setup = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp-sufficient-setup)
+
     thunk-result = thunk-correct wf arg s-call ret-addr apply-sp
                      h-call pc-call rdi-for-thunk r12-for-thunk mem-ret
-                     stack-inv-call rsp-sufficient-call
+                     stack-inv-call rsp-sufficient-call apply-sp-bound
     s-thunk = proj₁ thunk-result
     thunk-res = proj₁ (proj₂ thunk-result)
     pc-thunk = proj₂ (proj₂ thunk-result)

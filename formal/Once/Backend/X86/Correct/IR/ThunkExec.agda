@@ -70,10 +70,13 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
           -- D041: Memory at code-region addresses preserved
           × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr)
           -- D041: Memory at heap-region addresses preserved
-          × (∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr))
+          × (∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr)
+          -- D041: Memory above original rsp preserved (for caller frame)
+          -- Setup writes only to addresses ≤ original_rsp - 8, so addresses > original_rsp are safe
+          × (∀ caller-addr → caller-addr > readReg (regs s) rsp → readMem (memory s') caller-addr ≡ readMem (memory s) caller-addr))
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  h-false pc-eq rdi-eq r12-eq stack-inv rsp-sufficient =
-  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved , mem-heap-preserved
+  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved , mem-heap-preserved , mem-above-rsp-preserved
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -1088,6 +1091,90 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         mem-s7-heap : readMem (memory s7) addr ≡ readMem (memory s) addr
         mem-s7-heap = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                             mem-s6-heap
+
+    -- D041: Memory above original rsp preserved (for caller frame)
+    -- Setup writes to: rsp-8 (push r15), rsp-16 (push rbp), rsp-32 (mov [rsp]), rsp-24 (mov [rsp+8])
+    -- All write addresses are < old-rsp, so addr > old-rsp implies addr ≠ all write addresses
+    mem-above-rsp-preserved : ∀ caller-addr → caller-addr > old-rsp → readMem (memory s8) caller-addr ≡ readMem (memory s) caller-addr
+    mem-above-rsp-preserved caller-addr caller-addr>old-rsp = mem-s7-above
+      where
+        open import Data.Nat.Properties using (<⇒≢; <-≤-trans; <-trans)
+
+        -- Helper: m ∸ n < m when m > 0 and n > 0
+        m∸n<m' : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+        m∸n<m' (suc m'') (suc n'') _ _ = s≤s (m∸n≤m m'' n'')
+          where open import Data.Nat using (s≤s)
+
+        -- Helper: if addr > old-rsp and write-addr < old-rsp, then addr ≠ write-addr
+        -- Note: caller-addr > old-rsp means old-rsp < caller-addr (flip of _<_)
+        addr≢write : ∀ write-addr → write-addr < old-rsp → caller-addr ≢ write-addr
+        addr≢write write-addr write<rsp eq = <⇒≢ (<-trans write<rsp caller-addr>old-rsp) (sym eq)
+
+        -- All write addresses are below old-rsp
+        rsp-8<old-rsp : rsp-after-push-r15 < old-rsp
+        rsp-8<old-rsp = m∸n<m' old-rsp 8 (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
+          where open import Data.Nat using (s≤s; z≤n)
+
+        rsp-16<old-rsp : rsp-after-push-rbp < old-rsp
+        rsp-16<old-rsp = <-trans rsp-16<rsp-8 rsp-8<old-rsp
+          where
+            rsp-16<rsp-8 : rsp-after-push-rbp < rsp-after-push-r15
+            rsp-16<rsp-8 = m∸n<m' rsp-after-push-r15 8 (≤-trans (s≤s z≤n) 33≤rsp-after-push-r15) (s≤s z≤n)
+              where open import Data.Nat using (s≤s; z≤n)
+
+        rsp-32<old-rsp : new-rsp < old-rsp
+        rsp-32<old-rsp = <-trans new-rsp<rsp-16 rsp-16<old-rsp
+          where
+            new-rsp<rsp-16 : new-rsp < rsp-after-push-rbp
+            new-rsp<rsp-16 = m∸n<m' rsp-after-push-rbp 16 (≤-trans (s≤s z≤n) 25≤rsp-after-push-rbp) (s≤s z≤n)
+              where open import Data.Nat using (s≤s; z≤n)
+
+        rsp-24<old-rsp : new-rsp +ℕ 8 < old-rsp
+        rsp-24<old-rsp = <-≤-trans new-rsp+8<rsp-after-push-rbp' (Data.Nat.Properties.<⇒≤ rsp-16<old-rsp)
+          where
+            open import Data.Nat.Properties using (+-monoʳ-<; m∸n+n≡m)
+            open import Data.Nat using (s≤s; z≤n)
+            8<16'' : 8 < 16
+            8<16'' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+            new-rsp+8<new-rsp+16'' : new-rsp +ℕ 8 < new-rsp +ℕ 16
+            new-rsp+8<new-rsp+16'' = +-monoʳ-< new-rsp 8<16''
+            new-rsp+8<rsp-after-push-rbp' : new-rsp +ℕ 8 < rsp-after-push-rbp
+            new-rsp+8<rsp-after-push-rbp' = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16''
+
+        -- All write addresses are ≠ caller-addr
+        addr≢rsp-8 : caller-addr ≢ rsp-after-push-r15
+        addr≢rsp-8 = addr≢write rsp-after-push-r15 rsp-8<old-rsp
+
+        addr≢rsp-16 : caller-addr ≢ rsp-after-push-rbp
+        addr≢rsp-16 = addr≢write rsp-after-push-rbp rsp-16<old-rsp
+
+        addr≢rsp-32 : caller-addr ≢ new-rsp
+        addr≢rsp-32 = addr≢write new-rsp rsp-32<old-rsp
+
+        addr≢rsp-24 : caller-addr ≢ (new-rsp +ℕ 8)
+        addr≢rsp-24 = addr≢write (new-rsp +ℕ 8) rsp-24<old-rsp
+
+        -- Chain through all states
+        mem-s1-above : readMem (memory s1) caller-addr ≡ readMem (memory s) caller-addr
+        mem-s1-above = refl
+
+        mem-s2-above : readMem (memory s2) caller-addr ≡ readMem (memory s) caller-addr
+        mem-s2-above = mem-read-other {memory s1} {rsp-after-push-r15} {caller-addr} {old-r15} (λ eq → addr≢rsp-8 (sym eq))
+
+        mem-s3-above : readMem (memory s3) caller-addr ≡ readMem (memory s) caller-addr
+        mem-s3-above = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {caller-addr} {old-rbp} (λ eq → addr≢rsp-16 (sym eq)))
+                             mem-s2-above
+
+        mem-s5-above : readMem (memory s5) caller-addr ≡ readMem (memory s) caller-addr
+        mem-s5-above = mem-s3-above
+
+        mem-s6-above : readMem (memory s6) caller-addr ≡ readMem (memory s) caller-addr
+        mem-s6-above = trans (mem-read-other {memory s5} {new-rsp} {caller-addr} {readReg (regs s5) r12} (λ eq → addr≢rsp-32 (sym eq)))
+                             mem-s5-above
+
+        mem-s7-above : readMem (memory s7) caller-addr ≡ readMem (memory s) caller-addr
+        mem-s7-above = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {caller-addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+                             mem-s6-above
 
 -- Prove ret instruction tracing
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)

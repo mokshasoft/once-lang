@@ -34,7 +34,7 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr;
-         zero-not-in-stack)
+         zero-not-in-stack; slot-addr-above-thunk-rbp; slot-addr-≥-base)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
@@ -249,9 +249,9 @@ mutual
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁
+              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -357,9 +357,9 @@ mutual
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁
+              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁
         }
 
   ------------------------------------------------------------------------
@@ -382,6 +382,7 @@ mutual
   -- | curry-thunk-correct-impl: Implementation using IH
   -- This composes: setup tracing → IH on f → ret tracing
   -- caller-sp: StackPointer from the caller (D041)
+  -- caller-sp-bound: addr caller-sp = s.rsp + 8 (call convention)
   curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (caller-sp : StackPointer) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
@@ -395,10 +396,11 @@ mutual
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
     readReg (regs s) rsp > 16 →
+    StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp-sufficient =
+                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp-sufficient caller-sp-bound =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -1082,7 +1084,7 @@ mutual
       --
       -- The call convention ensures: caller-sp.addr = s.rsp + 8
       -- (call instruction pushed return address before thunk entry)
-      -- This relationship is captured in local postulates below.
+      -- D041 FULLY PROVEN: Uses slot-addr-above-thunk-rbp and mem-above-rsp-preserved
       thunk-preserves-frame-proof : ∀ k → frameSlot (memory s-final) caller-sp k ≡
                                           frameSlot (memory s) caller-sp k
       thunk-preserves-frame-proof k = begin
@@ -1100,21 +1102,34 @@ mutual
           ≡⟨ sym (frameSlot-is-readMem (memory s) caller-sp k) ⟩
         frameSlot (memory s) caller-sp k ∎
         where
+          open import Data.Nat.Properties using (<-≤-trans; m<m+n)
+          open import Data.Nat using (s≤s; z≤n)
+
           -- The slot address for caller-sp slot k (abstract, no arithmetic!)
           the-slot-addr = slot-addr caller-sp k
 
-          -- Caller's slots are preserved through IR execution
-          -- (IR writes only to its own frame, caller's frame is disjoint)
-          -- Uses abstract slot-addr - no arithmetic exposed
-          postulate
-            slot-addr>rbp : the-slot-addr > readReg (regs s-after-setup) rbp
+          -- D041 PROVEN: Caller slots are above thunk's rbp
+          -- Uses abstract slot-addr-above-thunk-rbp from MemoryRegions
+          slot-addr>rbp : the-slot-addr > readReg (regs s-after-setup) rbp
+          slot-addr>rbp = slot-addr-above-thunk-rbp caller-sp k
+                           (readReg (regs s) rsp) (readReg (regs s-after-setup) rbp)
+                           caller-sp-bound rbp-setup rsp-sufficient
 
-          -- Setup preserves caller's slot addresses
-          -- (setup writes only to thunk's frame, caller's frame is disjoint)
-          -- Uses abstract slot-addr - no arithmetic exposed
-          postulate
-            setup-preserves-caller-slot : readMem (memory s-after-setup) the-slot-addr ≡
-                                          readMem (memory s) the-slot-addr
+          -- D041 PROVEN: Caller slots are above initial rsp
+          -- From caller-sp.addr = rsp + 8 and slot-addr ≥ addr caller-sp
+          slot-addr>rsp : the-slot-addr > readReg (regs s) rsp
+          slot-addr>rsp = <-≤-trans rsp<rsp+8 rsp+8≤slot
+            where
+              rsp<rsp+8 : readReg (regs s) rsp < readReg (regs s) rsp +ℕ 8
+              rsp<rsp+8 = m<m+n (readReg (regs s) rsp) (s≤s z≤n)
+              rsp+8≤slot : readReg (regs s) rsp +ℕ 8 ≤ the-slot-addr
+              rsp+8≤slot = subst (_≤ the-slot-addr) caller-sp-bound (slot-addr-≥-base caller-sp k)
+
+          -- D041 PROVEN: Setup preserves caller's slot addresses
+          -- Uses proj₂ mem-heap-setup which requires addr > original rsp
+          setup-preserves-caller-slot : readMem (memory s-after-setup) the-slot-addr ≡
+                                        readMem (memory s) the-slot-addr
+          setup-preserves-caller-slot = proj₂ mem-heap-setup the-slot-addr slot-addr>rsp
 
       -- Memory at address 0 preserved:
       -- Thunk writes only to stack region, 0 is not in stack region
@@ -1171,7 +1186,7 @@ mutual
         readMem (memory s-after-f-raw) addr
           ≡⟨ ir-mem-heap r-f addr addr-in-heap ⟩
         readMem (memory s-after-setup) addr
-          ≡⟨ mem-heap-setup addr addr-in-heap ⟩
+          ≡⟨ proj₁ mem-heap-setup addr addr-in-heap ⟩
         readMem (memory s) addr ∎
 
       thunk-result : ThunkResult prog s s-final caller-sp (λ b → eval f (env , b)) arg

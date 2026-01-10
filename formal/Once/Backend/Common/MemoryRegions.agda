@@ -187,6 +187,21 @@ postulate
   -- Different offsets give different slots
   offset-distinct : ∀ sp k₁ k₂ → k₁ ≢ k₂ → slot-addr sp k₁ ≢ slot-addr sp k₂
 
+  -- Slot addresses are at or above the base address
+  -- slot-addr sp k = addr sp + k * 8 ≥ addr sp
+  -- D041: This is the key property for proving caller frame preservation
+  slot-addr-≥-base : ∀ sp k → slot-addr sp k ≥ addr sp
+
+  -- D041: Caller slots are above thunk's frame pointer
+  -- When caller-sp.addr = rsp + 8 (call convention) and thunk-rbp = rsp - 16,
+  -- all caller slots are above thunk-rbp.
+  -- Arithmetic: slot-addr sp k = (rsp + 8) + k*8 ≥ rsp + 8 > rsp - 16 = thunk-rbp
+  slot-addr-above-thunk-rbp : ∀ sp k rsp thunk-rbp →
+    addr sp ≡ rsp + 8 →
+    thunk-rbp ≡ rsp ∸ 16 →
+    rsp > 16 →
+    slot-addr sp k > thunk-rbp
+
 ------------------------------------------------------------------------
 -- Heap Region Properties
 ------------------------------------------------------------------------

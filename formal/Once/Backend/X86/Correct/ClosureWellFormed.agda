@@ -119,6 +119,7 @@ record ClosureWellFormed {A B : Type} (prog : Program)
     -- Executing from code-ptr produces correct result for any input
     -- ret-addr: the return address (pushed by call, popped by ret)
     -- caller-sp: identifies the caller's stack frame (D041)
+    -- caller-sp-bound: caller's frame starts 8 bytes above current rsp (call convention)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
@@ -127,6 +128,7 @@ record ClosureWellFormed {A B : Type} (prog : Program)
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →
       readReg (regs s) rsp > 16 →
+      StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
       ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a
               × pc s' ≡ ret-addr)
 
