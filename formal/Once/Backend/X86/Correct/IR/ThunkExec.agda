@@ -567,7 +567,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- RbpInvariant: new-rsp ≤ rsp-after-push-rbp
     -- new-rsp = rsp-after-push-rbp - 16, so this follows from m∸n≤m
     rbp-inv8 : RbpInvariant s8
-    rbp-inv8 = record { rsp≤rbp = new-rsp≤rsp-after-push-rbp }
+    rbp-inv8 = record { rsp-bounded-by-rbp = new-rsp≤rsp-after-push-rbp }
       where
         new-rsp≤rsp-after-push-rbp-raw : new-rsp ≤ rsp-after-push-rbp
         new-rsp≤rsp-after-push-rbp-raw = m∸n≤m rsp-after-push-rbp 16

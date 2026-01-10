@@ -488,7 +488,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
     -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv' : RbpInvariant s4
-    rbp-inv' = record { rsp≤rbp = new-rsp≤rbp }
+    rbp-inv' = record { rsp-bounded-by-rbp = new-rsp≤rbp }
       where
         new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
         new-rsp≤orig-rsp = m∸n≤m orig-rsp 16

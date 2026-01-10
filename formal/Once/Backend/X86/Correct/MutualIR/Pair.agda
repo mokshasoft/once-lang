@@ -109,7 +109,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
       -- Need: (rsp ∸ 40) ≤ (rsp ∸ 24), which follows from 24 ≤ 40
       rbp-inv-setup : RbpInvariant s-setup
       rbp-inv-setup = record
-        { rsp≤rbp = rsp-setup≤rbp-setup }
+        { rsp-bounded-by-rbp = rsp-setup≤rbp-setup }
         where
           open import Data.Nat.Properties using (∸-monoʳ-≤)
           open import Data.Nat using (s≤s; z≤n)

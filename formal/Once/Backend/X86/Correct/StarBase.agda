@@ -151,7 +151,7 @@ rbp-inv-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s') rbp ≡ readReg (regs s) rbp →
   RbpInvariant s'
 rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq = record
-  { rsp≤rbp = subst₂ _≤_ (sym rsp-eq) (sym rbp-eq) (RbpInvariant.rsp≤rbp rbp-inv) }
+  { rsp-bounded-by-rbp = subst₂ _≤_ (sym rsp-eq) (sym rbp-eq) (RbpInvariant.rsp≤rbp rbp-inv) }
   where
     open import Data.Nat using (_≤_)
     open import Relation.Binary.PropositionalEquality using (subst₂)

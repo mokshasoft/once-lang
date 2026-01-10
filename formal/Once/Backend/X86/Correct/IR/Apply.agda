@@ -1463,7 +1463,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- Derive: s'.rsp ≤ s'.rbp
     rbp-inv-derived : RbpInvariant s'
     rbp-inv-derived = record
-      { rsp≤rbp = subst₂ _≤_ (sym WfR.rsp-restored) (sym WfR.rbp-final) (RbpInvariant.rsp≤rbp rbp-inv) }
+      { rsp-bounded-by-rbp = subst₂ _≤_ (sym WfR.rsp-restored) (sym WfR.rbp-final) (RbpInvariant.rsp≤rbp rbp-inv) }
 
     -- Memory preservation proofs derived from WfR.mem-above
     --

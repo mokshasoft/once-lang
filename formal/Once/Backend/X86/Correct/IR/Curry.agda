@@ -756,7 +756,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 
     -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
     rbp-inv-final : RbpInvariant s-final
-    rbp-inv-final = record { rsp≤rbp = new-rsp≤rbp-final }
+    rbp-inv-final = record { rsp-bounded-by-rbp = new-rsp≤rbp-final }
       where
         new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
         new-rsp≤orig-rsp = m∸n≤m orig-rsp 16

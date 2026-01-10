@@ -136,7 +136,7 @@ initWithInput-rsp-sufficient x = capacity-2-to-rsp-bound (initWithInput x) (init
 -- | Initial state satisfies RbpInvariant (rsp ≤ rbp)
 -- Both rsp and rbp are set to stackBase, so rsp ≤ rbp (equality case)
 initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
-initWithInput-rbp-inv x = record { rsp≤rbp = ≤-refl }  -- stackBase ≤ stackBase
+initWithInput-rbp-inv x = record { rsp-bounded-by-rbp = ≤-refl }  -- stackBase ≤ stackBase
 
 -- | Stack base value exported for other modules
 stackBase : Word
