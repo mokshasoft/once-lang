@@ -1677,47 +1677,6 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     -- Helper: 0 is disjoint from any positive address
     0≢pos : ∀ n → n > 0 → 0 ≢ n
     0≢pos (suc n) _ ()
-
-    -- orig-r15 ≥ s.rsp OR orig-r15 = 0 (from StackInvariant)
-    orig-r15-safe-for-setup : (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
-    orig-r15-safe-for-setup = case-stack-inv-setup stack-inv
-      where
-        -- For r15-in-code/heap case: code/heap addresses are above stack, so r15 ≥ rsp
-        postulate
-          case-r15-code-setup : region-of orig-r15 ≡ code →
-                                (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
-          case-r15-heap-setup : region-of orig-r15 ≡ heap →
-                                (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
-
-        case-stack-inv-setup : StackInvariant s → (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
-        case-stack-inv-setup (r15-unused r15≡0) = inj₂ r15≡0
-        case-stack-inv-setup (r15-in-heap r15-heap) = case-r15-heap-setup r15-heap
-        case-stack-inv-setup (r15-in-code r15-code) = case-r15-code-setup r15-code
-        case-stack-inv-setup (r15-in-stack _ r15≥rsp) = inj₁ r15≥rsp
-
-    -- orig-r15 > s-setup.rbp OR orig-r15 = 0
-    orig-r15>setup-rbp-or-zero : (orig-r15 > readReg (regs s-setup) rbp) ⊎ (orig-r15 ≡ 0)
-    orig-r15>setup-rbp-or-zero with orig-r15-safe-for-setup
-    ... | inj₂ r15≡0 = inj₂ r15≡0
-    ... | inj₁ r15≥rsp = inj₁ r15>setup-rbp-proof
-      where
-        open import Data.Nat.Properties using (<-≤-trans)
-        -- s-setup.rbp = s.rsp - 24 < s.rsp ≤ s.r15
-        setup-rbp<rsp : readReg (regs s-setup) rbp < readReg (regs s) rsp
-        setup-rbp<rsp = subst (_< readReg (regs s) rsp) (sym rbp-setup-eq-proof) rsp∸24<rsp-proof
-          where
-            rbp-setup-eq-proof : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
-            rbp-setup-eq-proof = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
-                                       (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
-            rsp∸24<rsp-proof : readReg (regs s) rsp ∸ 24 < readReg (regs s) rsp
-            rsp∸24<rsp-proof = m∸n<m-for-frame (readReg (regs s) rsp) 24
-                                 (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
-              where
-                m∸n<m-for-frame : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-                m∸n<m-for-frame (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
-        r15>setup-rbp-proof : orig-r15 > readReg (regs s-setup) rbp
-        r15>setup-rbp-proof = <-≤-trans setup-rbp<rsp r15≥rsp
-
     -- orig-r15 ≠ s1.r15 (similar to disjoint-orig-s3 logic)
     orig-r15≢s1-r15 : orig-r15 ≢ readReg (regs s1) r15
     orig-r15≢s1-r15 = case-stack-inv-r15 stack-inv
@@ -1778,98 +1737,74 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
         case-stack-inv-r15 (r15-in-stack _ r15≥rsp) = case-r15-stack-r15 r15≥rsp
 
-    -- orig-r15 > s2.rbp OR orig-r15 = 0
-    orig-r15>s2-rbp-or-zero : (orig-r15 > readReg (regs s2) rbp) ⊎ (orig-r15 ≡ 0)
-    orig-r15>s2-rbp-or-zero with orig-r15>setup-rbp-or-zero
-    ... | inj₂ r15≡0 = inj₂ r15≡0
-    ... | inj₁ r15>setup = inj₁ (subst (orig-r15 >_) (sym s2-rbp-chain) r15>setup)
-      where
-        s2-rbp-chain : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
-        s2-rbp-chain = trans rbp-s2-eq-s1 rbp-s1-eq-setup
-
     -- Chain the 4 phases for memory preservation
-    -- For the r15=0 case, use a postulate since ir-mem-above doesn't cover addr=0
+    -- Dispatch on StackInvariant directly for region-based proofs (D041)
     mem-frame-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-    mem-frame-s3 with orig-r15-safe-for-setup
-    -- Case 1: rsp ≤ r15, so we can chain through all 4 phases
-    ... | inj₁ r15≥rsp = trans mem-g-r15 (trans mem-mid-r15 (trans mem-f-r15 mem-setup-r15))
+    mem-frame-s3 = case-mem-frame stack-inv
       where
-        open import Data.Nat.Properties using (<-≤-trans)
-
-        -- Phase 1: Setup preserves (r15 ≥ rsp, writes are at rsp-k)
-        mem-setup-r15 : readMem (memory s-setup) orig-r15 ≡ readMem (memory s) orig-r15
-        mem-setup-r15 = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
-                              (sym s-setup-eq)
-                              (PairSetupResult.mem-above-rsp-setup setup-res orig-r15 r15≥rsp)
-
-        -- Phase 2: f preserves (r15 > s-setup.rbp = rsp-24)
-        r15>setup-rbp : orig-r15 > readReg (regs s-setup) rbp
-        r15>setup-rbp = subst (orig-r15 >_) (sym setup-rbp-eq-proof) rsp∸24<r15
+        -- Case 1: r15 = 0 - chain ir-mem-at-0
+        case-r15-zero : orig-r15 ≡ 0 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-zero r15≡0 = trans (cong (readMem (memory s3)) r15≡0)
+                              (trans (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
+                                     (cong (readMem (memory s)) (sym r15≡0)))
           where
-            setup-rbp-eq-proof : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
-            setup-rbp-eq-proof = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
-                                       (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
-            rsp∸24<rsp : readReg (regs s) rsp ∸ 24 < readReg (regs s) rsp
-            rsp∸24<rsp = m∸n<m-for-r15 (readReg (regs s) rsp) 24
-                           (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+            mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
+                                   (sym s-setup-eq) (PairSetupResult.mem-at-0-setup setup-res)
+            mem-f-at-0 = ir-mem-at-0 r-f
+            mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
+                                 (sym s2-eq) (PairMiddleResult.mem-at-0-mid mid-res)
+            mem-g-at-0 = ir-mem-at-0 r-g
+
+        -- Case 2: r15 in code region - chain ir-mem-code (D041 pure region proof)
+        case-r15-code : region-of orig-r15 ≡ code → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-code r15-code = trans mem-g-code (trans mem-mid-code (trans mem-f-code mem-setup-code))
+          where
+            mem-setup-code = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
+                                   (sym s-setup-eq) (PairSetupResult.mem-code-setup setup-res orig-r15 r15-code)
+            mem-f-code = ir-mem-code r-f orig-r15 r15-code
+            mem-mid-code = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
+                                 (sym s2-eq) (PairMiddleResult.mem-code-mid mid-res orig-r15 r15-code)
+            mem-g-code = ir-mem-code r-g orig-r15 r15-code
+
+        -- Case 3: r15 in heap region - chain ir-mem-heap (D041 pure region proof)
+        case-r15-heap : region-of orig-r15 ≡ heap → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-heap r15-heap = trans mem-g-heap (trans mem-mid-heap (trans mem-f-heap mem-setup-heap))
+          where
+            mem-setup-heap = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
+                                   (sym s-setup-eq) (PairSetupResult.mem-heap-setup setup-res orig-r15 r15-heap)
+            mem-f-heap = ir-mem-heap r-f orig-r15 r15-heap
+            mem-mid-heap = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
+                                 (sym s2-eq) (PairMiddleResult.mem-heap-mid mid-res orig-r15 r15-heap)
+            mem-g-heap = ir-mem-heap r-g orig-r15 r15-heap
+
+        -- Case 4: r15 in stack region with r15 ≥ rsp - chain ir-mem-above
+        case-r15-stack : readReg (regs s) rsp ≤ orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-stack r15≥rsp = trans mem-g-r15 (trans mem-mid-r15 (trans mem-f-r15 mem-setup-r15))
+          where
+            open import Data.Nat.Properties using (<-≤-trans)
+            mem-setup-r15 = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
+                                  (sym s-setup-eq) (PairSetupResult.mem-above-rsp-setup setup-res orig-r15 r15≥rsp)
+            r15>setup-rbp : orig-r15 > readReg (regs s-setup) rbp
+            r15>setup-rbp = subst (orig-r15 >_) (sym setup-rbp-eq) rsp∸24<r15
               where
-                m∸n<m-for-r15 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-                m∸n<m-for-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
-            rsp∸24<r15 : readReg (regs s) rsp ∸ 24 < orig-r15
-            rsp∸24<r15 = <-≤-trans rsp∸24<rsp r15≥rsp
+                setup-rbp-eq = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ 24)
+                                     (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
+                rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                  where m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+                        m∸n<m-helper (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+                rsp∸24<r15 = <-≤-trans rsp∸24<rsp r15≥rsp
+            mem-f-r15 = ir-mem-above r-f orig-r15 r15>setup-rbp
+            mem-mid-r15 = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
+                                (sym s2-eq) (PairMiddleResult.mem-above-r15-mid mid-res orig-r15 orig-r15≢s1-r15)
+            r15>s2-rbp = subst (orig-r15 >_) (sym (trans rbp-s2-eq-s1 rbp-s1-eq-setup)) r15>setup-rbp
+            mem-g-r15 = ir-mem-above r-g orig-r15 r15>s2-rbp
 
-        mem-f-r15 : readMem (memory s1) orig-r15 ≡ readMem (memory s-setup) orig-r15
-        mem-f-r15 = ir-mem-above r-f orig-r15 r15>setup-rbp
-
-        -- Phase 3: Middle preserves (r15 ≠ s1.r15)
-        mem-mid-r15 : readMem (memory s2) orig-r15 ≡ readMem (memory s1) orig-r15
-        mem-mid-r15 = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
-                            (sym s2-eq)
-                            (PairMiddleResult.mem-above-r15-mid mid-res orig-r15 orig-r15≢s1-r15)
-
-        -- Phase 4: g preserves (r15 > s2.rbp)
-        r15>s2-rbp : orig-r15 > readReg (regs s2) rbp
-        r15>s2-rbp = subst (orig-r15 >_) (sym s2-rbp-chain-for-r15) r15>setup-rbp
-          where
-            s2-rbp-chain-for-r15 : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
-            s2-rbp-chain-for-r15 = trans rbp-s2-eq-s1 rbp-s1-eq-setup
-
-        mem-g-r15 : readMem (memory s3) orig-r15 ≡ readMem (memory s2) orig-r15
-        mem-g-r15 = ir-mem-above r-g orig-r15 r15>s2-rbp
-
-    -- Case 2: r15 = 0 (r15-unused case of StackInvariant)
-    -- When r15=0, no prior pair context exists. Memory at 0 is never allocated or written.
-    -- PROOF: Chain ir-mem-at-0 through all 4 phases (setup, f, middle, g)
-    ... | inj₂ r15≡0 = mem-at-0-chain
-      where
-        -- All IR generators preserve memory at address 0 via ir-mem-at-0
-        -- Chain them through all phases to prove end-to-end preservation
-
-        -- Phase 1: Setup preserves address 0
-        mem-setup-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-        mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
-                               (sym s-setup-eq)
-                               (PairSetupResult.mem-at-0-setup setup-res)
-
-        -- Phase 2: f preserves address 0 via ir-mem-at-0
-        mem-f-at-0 : readMem (memory s1) 0 ≡ readMem (memory s-setup) 0
-        mem-f-at-0 = ir-mem-at-0 r-f
-
-        -- Phase 3: Middle preserves address 0
-        mem-mid-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-        mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
-                             (sym s2-eq)
-                             (PairMiddleResult.mem-at-0-mid mid-res)
-
-        -- Phase 4: g preserves address 0 via ir-mem-at-0
-        mem-g-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
-        mem-g-at-0 = ir-mem-at-0 r-g
-
-        -- Chain all 4 phases: orig-r15 = 0, so this proves the required property
-        mem-at-0-chain : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        mem-at-0-chain = trans (cong (readMem (memory s3)) r15≡0)
-                         (trans (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
-                                (cong (readMem (memory s)) (sym r15≡0)))
+        -- Dispatch on StackInvariant
+        case-mem-frame : StackInvariant s → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-mem-frame (r15-unused r15≡0) = case-r15-zero r15≡0
+        case-mem-frame (r15-in-code r15-code) = case-r15-code r15-code
+        case-mem-frame (r15-in-heap r15-heap) = case-r15-heap r15-heap
+        case-mem-frame (r15-in-stack _ r15≥rsp) = case-r15-stack r15≥rsp
 
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
