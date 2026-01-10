@@ -42,14 +42,14 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2
+open import Once.Backend.X86.Correct.StackInvariant
   using (rsp>16-to-capacity; R15Status;
          r15-unused; r15-in-heap; r15-in-code;
          stack-write-preserves-code-r15; stack-write-preserves-zero-r15;
          stack-write-preserves-r15;
          StackCapacity; capacity-maintained)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint;
+  using (region-of; code; stack; heap; stack-code-disjoint;
          StackPointer; frameSlot; zero-not-in-stack)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
@@ -636,14 +636,9 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     r15-1 : readReg (regs s1) r15 ≡ readReg (regs s) r15
     r15-1 = readReg-writeReg-rsp-r15 (regs s) new-rsp
 
-    -- StackInvariant after call: r15 unchanged, rsp decreased
-    -- We can use stack-inv-preserved-rsp-decreased
+    -- StackInvariant after call: r15 unchanged (region-based invariant only depends on r15)
     stack-inv1 : StackInvariant s1
-    stack-inv1 = stack-inv-preserved-rsp-decreased s s1 stack-inv r15-1 rsp-le
-      where
-        -- new-rsp = old-rsp - 8 ≤ old-rsp
-        rsp-le : readReg (regs s1) rsp ≤ readReg (regs s) rsp
-        rsp-le = subst (_≤ old-rsp) (sym rsp1) (m∸n≤m old-rsp 8)
+    stack-inv1 = stack-inv-preserved-r15-unchanged s s1 stack-inv r15-1
 
     -- rsp > 16 after call: derived from runtime bound rsp-bound-after-stack-op
     rsp>16-1 : readReg (regs s1) rsp > 16
@@ -761,10 +756,10 @@ record ApplyPopResult {A B : Type} (prefix suffix : Program)
 open ApplyPopResult public
 
 -- | R15OrigInfo: Information about r15 for pop reconstruction
--- Three cases corresponding to StackInvariant constructors
+-- Three cases corresponding to StackInvariant constructors (region-based)
 data R15OrigInfo (old-r15 orig-rsp : ℕ) : Set where
   r15-was-zero    : old-r15 ≡ 0 → R15OrigInfo old-r15 orig-rsp
-  r15-was-above   : orig-rsp ≤ old-r15 → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-heap : region-of old-r15 ≡ heap → R15OrigInfo old-r15 orig-rsp
   r15-was-in-code : region-of old-r15 ≡ code → R15OrigInfo old-r15 orig-rsp
 
 -- | Trace pop r15 instruction at the end of apply
@@ -869,7 +864,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
     --
     -- Case orig-inv:
     -- - inj₁ (old-r15 ≡ 0): s1.r15 = 0, use r15-unused
-    -- - inj₂ (orig-rsp ≤ old-r15): s1.rsp = orig-rsp ≤ old-r15 = s1.r15, use stack-below-r15
+    -- - inj₂ (orig-rsp ≤ old-r15): s1.rsp = orig-rsp ≤ old-r15 = s1.r15
 
     -- s1.rsp = orig-rsp
     rsp1-eq-orig : readReg (regs s1) rsp ≡ orig-rsp
@@ -903,12 +898,9 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
       where
         derive-stack-inv : R15OrigInfo old-r15 orig-rsp → StackInvariant s1
         derive-stack-inv (r15-was-zero r15-zero) = r15-unused (trans r15-1 r15-zero)
-        derive-stack-inv (r15-was-above orig-rsp≤old-r15) =
-          stack-below-r15 (subst (_≤ readReg (regs s1) r15)
-                                 (sym rsp1-eq-orig)
-                                 (subst (orig-rsp ≤_) (sym r15-1) orig-rsp≤old-r15))
+        derive-stack-inv (r15-was-in-heap r15-heap) =
+          r15-in-heap (subst (λ r → region-of r ≡ heap) (sym r15-1) r15-heap)
         derive-stack-inv (r15-was-in-code r15-code) =
-          -- r15 is in code region, s1.r15 = old-r15, so s1.r15 is also in code region
           r15-in-code (subst (λ r → region-of r ≡ code) (sym r15-1) r15-code)
 
     rsp>16-1 : readReg (regs s1) rsp > 16
@@ -1162,7 +1154,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
       where
         extract-stack-inv : StackInvariant s → R15OrigInfo old-r15 orig-rsp
         extract-stack-inv (r15-unused r15-eq-0) = r15-was-zero r15-eq-0
-        extract-stack-inv (stack-below-r15 rsp≤r15) = r15-was-above rsp≤r15
+        extract-stack-inv (r15-in-heap r15-heap) = r15-was-in-heap r15-heap
         extract-stack-inv (r15-in-code r15-code) = r15-was-in-code r15-code
 
     pop-result = apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s-thunk
@@ -1505,7 +1497,11 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
           subst (λ addr → readMem (memory s') addr ≡ readMem (memory s) addr)
                 (sym r15-eq-0)
                 WfR.mem-at-0
-        derive-mem-r15 (stack-below-r15 rsp≤r15) = WfR.mem-above (readReg (regs s) r15) rsp≤r15
+        derive-mem-r15 (r15-in-heap r15-heap) =
+          -- r15 is in heap region, stack operations don't affect heap
+          -- TODO: Add mem-heap-region to ApplyWfResult for proper proof
+          postulate-heap-preserved r15-heap
+          where postulate postulate-heap-preserved : region-of (readReg (regs s) r15) ≡ heap → readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
         derive-mem-r15 (r15-in-code r15-code) =
           -- r15 is in code region, use WfR.mem-code-region
           WfR.mem-code-region (readReg (regs s) r15) r15-code

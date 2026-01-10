@@ -40,7 +40,7 @@ open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach
-open import Once.Backend.X86.Correct.StackInvariant2
+open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; capacity-maintained; rsp>16-to-capacity; rsp-in-stack)
 
 open import Once.Postulates
@@ -1227,8 +1227,8 @@ mutual
       x' : ⟦ (A ⇒ B) * A ⟧
       x' = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem } , arg)
 
-      -- Prove x' ≡ x (eta-expansion of Closure record)
-      -- The closure is reconstructed from its fields, which equals the original
+      -- Prove x' ≡ x (eta-expansion of Closure record and pair)
+      -- Note: Closure lacks eta-equality (mutual block), so this needs manual proof
       postulate
         x'-eq-x : x' ≡ x
 

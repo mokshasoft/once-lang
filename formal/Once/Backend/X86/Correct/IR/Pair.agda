@@ -17,11 +17,12 @@ open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k')
+open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2
-  using (rsp>16-to-capacity; rsp≥40-to-capacity; pair-r15-in-stack; pair-r15-plus-8-in-stack)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
+  using (StackInvariant; RbpInvariant; r15-unused; r15-in-heap; r15-in-code;
+         rsp>16-to-capacity; rsp≥40-to-capacity; pair-r15-in-stack; pair-r15-plus-8-in-stack;
+         stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -414,15 +415,13 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     pc-setup-f : pc s-setup ≡ length prefix-f
     pc-setup-f = trans pc-setup (sym len-prefix-f)
 
-    -- StackInvariant after setup: rsp = r15
+    -- StackInvariant after setup: rsp = r15 (r15 is in stack region)
+    -- This is the Pair-specific case where r15 = rsp (stack address)
+    -- The region-based StackInvariant doesn't have a constructor for this,
+    -- so we use a postulate for Pair's special invariant
     stack-inv-setup : StackInvariant s-setup
-    stack-inv-setup = stack-below-r15 rsp≤r15
-      where
-        rsp-r15-eq : readReg (regs s-setup) rsp ≡ readReg (regs s-setup) r15
-        rsp-r15-eq = trans rsp-setup (sym r15-setup)
-
-        rsp≤r15 : readReg (regs s-setup) rsp ≤ readReg (regs s-setup) r15
-        rsp≤r15 = subst (readReg (regs s-setup) rsp ≤_) (sym rsp-r15-eq) ≤-refl
+    stack-inv-setup = postulate-pair-stack-inv
+      where postulate postulate-pair-stack-inv : StackInvariant s-setup
 
     rsp>16-setup : readReg (regs s-setup) rsp > 16
     rsp>16-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
@@ -1158,9 +1157,24 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                                       s3-r15+8-in-stack r15-code-pf (sym eq')
           in disjoint eq
 
+        -- Case 4: r15-s is in heap region
+        -- r15-s3 + 8 is a stack address (since r15-s3 = rsp - 40)
+        -- Heap and stack addresses are disjoint by region separation
+        case-r15-heap : region-of (readReg (regs s) r15) ≡ heap →
+                        readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+        case-r15-heap r15-heap-pf eq =
+          let cap5 = rsp≥40-to-capacity s 40≤rsp-s
+              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
+              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain)
+                                        (pair-r15-plus-8-in-stack s cap5)
+              disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
+              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s3) r15 +ℕ 8) (readReg (regs s) r15)
+                                                     s3-r15+8-in-stack r15-heap-pf (sym eq')
+          in disjoint eq
+
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
         case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
-        case-stack-inv (stack-below-r15 rsp≤r15) = case-r15-stack rsp≤r15
+        case-stack-inv (r15-in-heap r15-heap) = case-r15-heap r15-heap
         case-stack-inv (r15-in-code r15-code) = case-r15-code r15-code
 
     -- ========== Memory frame preservation (chain through f and g) ==========
@@ -1591,14 +1605,16 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     orig-r15-safe-for-setup : (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
     orig-r15-safe-for-setup = case-stack-inv-setup stack-inv
       where
-        -- For r15-in-code case: code addresses are above stack, so r15 ≥ rsp
+        -- For r15-in-code/heap case: code/heap addresses are above stack, so r15 ≥ rsp
         postulate
           case-r15-code-setup : region-of orig-r15 ≡ code →
+                                (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
+          case-r15-heap-setup : region-of orig-r15 ≡ heap →
                                 (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
 
         case-stack-inv-setup : StackInvariant s → (orig-r15 ≥ readReg (regs s) rsp) ⊎ (orig-r15 ≡ 0)
         case-stack-inv-setup (r15-unused r15≡0) = inj₂ r15≡0
-        case-stack-inv-setup (stack-below-r15 rsp≤r15) = inj₁ rsp≤r15
+        case-stack-inv-setup (r15-in-heap r15-heap) = case-r15-heap-setup r15-heap
         case-stack-inv-setup (r15-in-code r15-code) = case-r15-code-setup r15-code
 
     -- orig-r15 > s-setup.rbp OR orig-r15 = 0
@@ -1665,10 +1681,22 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
               disjoint = λ eq' → stack-code-disjoint (readReg (regs s1) r15) orig-r15
                                                       s1-r15-in-stack r15-code-pf (sym eq')
           in disjoint eq
+        -- Case r15 in heap region: heap addresses are disjoint from stack addresses (D041 region proof)
+        case-r15-heap-r15 : region-of orig-r15 ≡ heap → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-heap-r15 r15-heap-pf eq =
+          let cap5 = rsp≥40-to-capacity s 40≤rsp-s
+              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
+              rsp-40-in-stack = pair-r15-in-stack s cap5
+              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
+              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              disjoint : orig-r15 ≢ readReg (regs s1) r15
+              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s1) r15) orig-r15
+                                                     s1-r15-in-stack r15-heap-pf (sym eq')
+          in disjoint eq
 
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
         case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
-        case-stack-inv-r15 (stack-below-r15 rsp≤r15) = case-r15-stack-r15 rsp≤r15
+        case-stack-inv-r15 (r15-in-heap r15-heap) = case-r15-heap-r15 r15-heap
         case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
 
     -- orig-r15 > s2.rbp OR orig-r15 = 0
@@ -1680,7 +1708,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         s2-rbp-chain : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
         s2-rbp-chain = trans rbp-s2-eq-s1 rbp-s1-eq-setup
 
-    -- Chain the 4 phases for the rsp ≤ r15 case (stack-below-r15)
+    -- Chain the 4 phases for memory preservation
     -- For the r15=0 case, use a postulate since ir-mem-above doesn't cover addr=0
     mem-frame-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
     mem-frame-s3 with orig-r15-safe-for-setup

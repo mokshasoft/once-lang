@@ -16,8 +16,9 @@ open import Once.Postulates using (encode-inl-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
+open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2
+open import Once.Backend.X86.Correct.StackInvariant
   using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16;
          addr-minus-16-in-stack; addr-minus-8-in-stack; sub16-both-writes-in-stack)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
@@ -463,9 +464,8 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
 
     stack-inv-helper : StackInvariant s → StackInvariant s4
     stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-s4-eq r15≡0)
-    stack-inv-helper (stack-below-r15 rsp≤r15) =
-      stack-below-r15 (subst₂ _≤_ (sym rsp-s4-eq) (sym r15-s4-eq)
-                               (≤-trans (m∸n≤m orig-rsp 16) rsp≤r15))
+    stack-inv-helper (r15-in-heap r15-heap) =
+      r15-in-heap (trans (cong region-of r15-s4-eq) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
       r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
 
@@ -499,12 +499,12 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
     rsp>32 : readReg (regs s) rsp > 32
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
-    initial-capacity : StackCapacity s 4
-    initial-capacity = rsp>32-to-capacity s rsp>32
+    input-capacity : StackCapacity s 4
+    input-capacity = rsp>32-to-capacity s rsp>32
 
     -- CLEAN DERIVATION: Use proven capacity-after-sub16
     output-capacity : StackCapacity s4 2
-    output-capacity = capacity-after-sub16 s s4 2 initial-capacity rsp-change
+    output-capacity = capacity-after-sub16 s s4 2 input-capacity rsp-change
 
     -- Legacy: derive rsp > 16 from capacity (for compatibility)
     rsp>16' : readReg (regs s4) rsp > 16

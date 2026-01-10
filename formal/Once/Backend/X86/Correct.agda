@@ -81,7 +81,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas public
 open import Once.Backend.X86.Correct.FetchStep public
 open import Once.Backend.X86.Correct.CompileLength public hiding (length-++)
 open import Once.Backend.X86.Correct.InitState public
-  using (initWithInput; initWithInput-rdi; initWithInput-halted; initWithInput-pc; stackBase)
+  using (initWithInput; initWithInput-rdi; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-rsp>16; initWithInput-rbp-inv; stackBase)
 open import Once.Backend.X86.Correct.InstrExec public
 
 -- Level 1: Depends on InitState

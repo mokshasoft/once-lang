@@ -596,7 +596,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
     mem-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
     mem-at-0 = trans mem0-s7-s3 (trans mem0-s3-s2 (trans mem0-s2-s1 mem0-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInvariant2 using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
+        open import Once.Backend.X86.Correct.StackInvariant using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; stackAddr-write-preserves-zero)
 
         -- Write addresses (from x86 semantics)

@@ -7,11 +7,11 @@
 
 module Once.Backend.X86.Correct.Arithmetic where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; z≤n; s≤s; _<_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _>_; z≤n; s≤s; _<_)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-identityˡ; +-suc;
                                        ≤-refl; ≤-trans; m≤m+n; m∸n≤m;
                                        m+n∸m≡n; m+n∸n≡m; ∸-+-assoc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Data.Empty using (⊥-elim)
 
 ------------------------------------------------------------------------
@@ -89,3 +89,33 @@ m∸40+16≡m∸24 m 40≤m = m∸n+k≡m∸n-k m 40 16 40≤m 16≤40
   where
     16≤40 : 16 ≤ 40
     16≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+
+------------------------------------------------------------------------
+-- Ordering lemmas for address disjointness
+------------------------------------------------------------------------
+
+-- | m ≤ n and m > k implies (m ∸ k) < n (when k > 0)
+∸-preserves-< : ∀ {m n k} → m ≤ n → m > k → k > 0 → (m ∸ k) < n
+∸-preserves-< {suc m} {n} {suc k} m≤n (s≤s m>k) (s≤s z≤n) =
+  ≤-trans (s≤s (m∸n≤m m k)) m≤n
+
+-- | m < n implies m ≢ n
+<⇒≢ : ∀ {m n} → m < n → m ≢ n
+<⇒≢ {zero} {suc n} (s≤s z≤n) ()
+<⇒≢ {suc m} {suc n} (s≤s p) refl = <⇒≢ p refl
+
+-- | k + 8 < k + 16 for any k
+-- Base case: 8 < 16 means 9 ≤ 16, which is s≤s^9 (z≤n : 0 ≤ 7)
+k+8<k+16 : ∀ k → k + 8 < k + 16
+k+8<k+16 zero = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+k+8<k+16 (suc k) = s≤s (k+8<k+16 k)
+
+-- | (m ∸ 16) + 8 < m when m > 16
+∸+<-lemma : ∀ {m} → m > 16 → (m ∸ 16) + 8 < m
+∸+<-lemma {m} m>16 = subst ((m ∸ 16) + 8 <_) eq (k+8<k+16 (m ∸ 16))
+  where
+    open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m)
+    16≤m : 16 ≤ m
+    16≤m = <⇒≤ m>16
+    eq : (m ∸ 16) + 16 ≡ m
+    eq = m∸n+n≡m 16≤m

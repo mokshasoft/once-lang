@@ -15,7 +15,7 @@ open import Once.Postulates using (encode-closure-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant2
+open import Once.Backend.X86.Correct.StackInvariant
   using (rsp>16-to-capacity; rsp>32-to-capacity; StackCapacity; capacity-after-sub16; capacity-to-rsp>16;
          sub16-both-writes-in-stack)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
@@ -714,17 +714,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-rbp+8-final = trans mem-rbp+8-s7 (trans mem-rbp+8-s6 (trans mem-rbp+8-s5 (trans mem-rbp+8-s4
                         (trans mem-rbp+8-s3 (trans mem-rbp+8-s2 mem-rbp+8-s1)))))
 
-    -- StackInvariant preservation
+    -- StackInvariant preservation (region-based)
     stack-inv-helper : StackInvariant s → StackInvariant s-final
     stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-final r15≡0)
-    stack-inv-helper (stack-below-r15 rsp≤r15) = stack-below-r15 new-rsp≤r15
-      where
-        new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
-        new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
-        new-rsp≤r15-orig : new-rsp ≤ readReg (regs s) r15
-        new-rsp≤r15-orig = ≤-trans new-rsp≤orig-rsp rsp≤r15
-        new-rsp≤r15 : readReg (regs s-final) rsp ≤ readReg (regs s-final) r15
-        new-rsp≤r15 = subst₂ _≤_ (sym rsp-s7) (sym r15-final) new-rsp≤r15-orig
+    stack-inv-helper (r15-in-heap r15-heap) =
+      r15-in-heap (trans (cong region-of r15-final) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
       r15-in-code (trans (cong region-of r15-final) r15-code)
 
@@ -741,11 +735,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp>32 : readReg (regs s) rsp > 32
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
-    initial-capacity : StackCapacity s 4
-    initial-capacity = rsp>32-to-capacity s rsp>32
+    input-capacity : StackCapacity s 4
+    input-capacity = rsp>32-to-capacity s rsp>32
 
     output-capacity : StackCapacity s-final 2
-    output-capacity = capacity-after-sub16 s s-final 2 initial-capacity rsp-change
+    output-capacity = capacity-after-sub16 s s-final 2 input-capacity rsp-change
 
     rsp>16-final : readReg (regs s-final) rsp > 16
     rsp>16-final = capacity-to-rsp>16 s-final output-capacity

@@ -39,6 +39,10 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Postulates
   using (encode)
 
+-- Import StackInvariant for initial state proof
+open import Once.Backend.X86.Correct.StackInvariant
+  using (StackInvariant; r15-unused)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -100,6 +104,26 @@ initWithInput-halted x = refl
 -- | Initial state has pc = 0 (proven from definition)
 initWithInput-pc : ∀ {A} (x : ⟦ A ⟧) → pc (initWithInput x) ≡ 0
 initWithInput-pc x = refl
+
+-- | Initial state satisfies StackInvariant (r15 = 0)
+-- The initial state only sets rdi, rsp, rbp from emptyRegFile (which has r15 = 0)
+initWithInput-stack-inv : ∀ {A} (x : ⟦ A ⟧) → StackInvariant (initWithInput x)
+initWithInput-stack-inv x = r15-unused r15≡0
+  where
+    r15≡0 : readReg (regs (initWithInput x)) r15 ≡ 0
+    r15≡0 = refl  -- r15 untouched, defaults to 0 from emptyRegFile
+
+-- | Initial state has rsp > 16 (stackBase = 0x7FFF0000 >> 16)
+open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-refl)
+initWithInput-rsp>16 : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16
+initWithInput-rsp>16 x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+-- | Initial state satisfies RbpInvariant (rsp ≤ rbp)
+-- Both rsp and rbp are set to stackBase, so rsp ≤ rbp (equality case)
+open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
+initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
+initWithInput-rbp-inv x = record { rsp≤rbp = ≤-refl }  -- stackBase ≤ stackBase
 
 -- | Stack base value exported for other modules
 stackBase : Word
