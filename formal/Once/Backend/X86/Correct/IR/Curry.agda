@@ -29,7 +29,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
 
-open import Data.Nat using (_>_)
+open import Data.Nat using (_>_; _≥_)
 open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n; ∸-monoˡ-≤; +-monoˡ-<) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
@@ -724,6 +724,13 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       r15-in-heap (trans (cong region-of r15-final) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
       r15-in-code (trans (cong region-of r15-final) r15-code)
+    stack-inv-helper (r15-in-stack r15-stack r15≥rsp) =
+      r15-in-stack (trans (cong region-of r15-final) r15-stack) final-r15≥rsp
+      where
+        -- s-final.r15 = s.r15 ≥ s.rsp ≥ s.rsp ∸ 16 = s-final.rsp
+        final-r15≥rsp : readReg (regs s-final) r15 ≥ readReg (regs s-final) rsp
+        final-r15≥rsp = subst₂ _≥_ (sym r15-final) (sym rsp-s7)
+                          (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) r15≥rsp)
 
     stack-inv-final : StackInvariant s-final
     stack-inv-final = stack-inv-helper stack-inv

@@ -751,11 +751,12 @@ record ApplyPopResult {A B : Type} (prefix suffix : Program)
 open ApplyPopResult public
 
 -- | R15OrigInfo: Information about r15 for pop reconstruction
--- Three cases corresponding to StackInvariant constructors (region-based)
+-- Four cases corresponding to StackInvariant constructors (region-based)
 data R15OrigInfo (old-r15 orig-rsp : ℕ) : Set where
-  r15-was-zero    : old-r15 ≡ 0 → R15OrigInfo old-r15 orig-rsp
-  r15-was-in-heap : region-of old-r15 ≡ heap → R15OrigInfo old-r15 orig-rsp
-  r15-was-in-code : region-of old-r15 ≡ code → R15OrigInfo old-r15 orig-rsp
+  r15-was-zero     : old-r15 ≡ 0 → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-heap  : region-of old-r15 ≡ heap → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-code  : region-of old-r15 ≡ code → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-stack : region-of old-r15 ≡ stack → old-r15 ≥ orig-rsp → R15OrigInfo old-r15 orig-rsp
 
 -- | Trace pop r15 instruction at the end of apply
 -- This restores r15 to its original value (saved at start by push r15)
@@ -897,6 +898,9 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
           r15-in-heap (subst (λ r → region-of r ≡ heap) (sym r15-1) r15-heap)
         derive-stack-inv (r15-was-in-code r15-code) =
           r15-in-code (subst (λ r → region-of r ≡ code) (sym r15-1) r15-code)
+        derive-stack-inv (r15-was-in-stack r15-stack r15≥rsp) =
+          r15-in-stack (subst (λ r → region-of r ≡ stack) (sym r15-1) r15-stack)
+                       (subst₂ _≥_ (sym r15-1) (sym rsp1-eq-orig) r15≥rsp)
 
     rsp-sufficient-1 : readReg (regs s1) rsp > 16
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
@@ -1157,6 +1161,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         extract-stack-inv (r15-unused r15-eq-0) = r15-was-zero r15-eq-0
         extract-stack-inv (r15-in-heap r15-heap) = r15-was-in-heap r15-heap
         extract-stack-inv (r15-in-code r15-code) = r15-was-in-code r15-code
+        extract-stack-inv (r15-in-stack r15-stack r15≥rsp) = r15-was-in-stack r15-stack r15≥rsp
 
     pop-result = apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s-thunk
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk
@@ -1468,3 +1473,6 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
         derive-mem-r15 (r15-in-code r15-code) =
           -- r15 is in code region, use WfR.mem-code-region
           WfR.mem-code-region (readReg (regs s) r15) r15-code
+        derive-mem-r15 (r15-in-stack _ r15≥rsp) =
+          -- r15 is in stack region but above rsp, use WfR.mem-above
+          WfR.mem-above (readReg (regs s) r15) r15≥rsp

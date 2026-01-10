@@ -450,6 +450,14 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
       r15-in-heap (trans (cong region-of r15-s4-eq) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
       r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
+    stack-inv-helper (r15-in-stack r15-stack r15≥rsp) =
+      r15-in-stack (trans (cong region-of r15-s4-eq) r15-stack) s4-r15≥s4-rsp
+      where
+        open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+        -- s4.r15 = s.r15 ≥ s.rsp ≥ s.rsp ∸ 16 = s4.rsp
+        s4-r15≥s4-rsp : readReg (regs s4) r15 ≥ readReg (regs s4) rsp
+        s4-r15≥s4-rsp = subst₂ _≥_ (sym r15-s4-eq) (sym rsp-s4-eq)
+                          (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) r15≥rsp)
 
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv
