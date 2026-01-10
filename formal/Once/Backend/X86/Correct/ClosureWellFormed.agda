@@ -86,6 +86,12 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     thunk-preserves-heap : ∀ addr → region-of addr ≡ heap →
                            readMem (memory s') addr ≡ readMem (memory s) addr
 
+    -- D041: Memory above thunk's entry rsp is preserved
+    -- Thunk writes only at addresses ≤ entry-rsp - 8 (its own frame)
+    -- So addresses > entry-rsp are safe (caller's caller frame and higher)
+    thunk-preserves-above-entry-rsp : ∀ addr → addr > readReg (regs s) rsp →
+                                      readMem (memory s') addr ≡ readMem (memory s) addr
+
 open ThunkResult public
 
 ------------------------------------------------------------------------

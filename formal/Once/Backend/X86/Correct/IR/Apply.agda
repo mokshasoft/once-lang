@@ -69,7 +69,8 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-r14; thunk-r15; thunk-rbp;
          thunk-stack-inv; thunk-rsp-bound;
          thunk-rsp-plus-8; thunk-preserves-frame;
-         thunk-preserves-zero; thunk-preserves-code; thunk-preserves-heap)
+         thunk-preserves-zero; thunk-preserves-code; thunk-preserves-heap;
+         thunk-preserves-above-entry-rsp)
 
 open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n)
@@ -1241,13 +1242,33 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         addr≥call-rsp : addr ≥ readReg (regs s-call) rsp
         addr≥call-rsp = ≤-trans call-rsp≤orig addr≥rsp
 
-        -- TODO: To fully abstract this, thread caller-sp through apply
-        -- For now, use postulate - the key r15 preservation above is abstract
+        -- D041 PROVEN: Use thunk-preserves-above-entry-rsp
+        -- addr ≥ orig-rsp > (orig-rsp ∸ 8) ∸ 8 = s-call.rsp
         mem-call-to-thunk : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
-        mem-call-to-thunk = thunk-preserves-arbitrary-addr
+        mem-call-to-thunk = thunk-preserves-above-entry-rsp thunk-res addr addr>call-rsp
           where
-            postulate
-              thunk-preserves-arbitrary-addr : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
+            open import Data.Nat.Properties using (m∸n≤m; ≤-<-trans)
+            open import Data.Nat using (s≤s; z≤n)
+            -- Helper: m ∸ n < m when m > n > 0
+            m∸n<m' : ∀ m n → m > n → n > 0 → m ∸ n < m
+            m∸n<m' (suc m') (suc n') (s≤s m>n') _ = s≤s (m∸n≤m m' n')
+            -- (m ∸ 8) ∸ 8 < m: use (m ∸ 8) ∸ 8 ≤ m ∸ 8 < m
+            rsp∸8<orig : orig-rsp ∸ 8 < orig-rsp
+            rsp∸8<orig = m∸n<m' orig-rsp 8 (≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient) (s≤s z≤n)
+            rsp∸16≤rsp∸8 : (orig-rsp ∸ 8) ∸ 8 ≤ orig-rsp ∸ 8
+            rsp∸16≤rsp∸8 = m∸n≤m (orig-rsp ∸ 8) 8
+            -- (orig-rsp ∸ 8) ∸ 8 < orig-rsp via transitivity
+            rsp∸16<orig : (orig-rsp ∸ 8) ∸ 8 < orig-rsp
+            rsp∸16<orig = ≤-<-trans rsp∸16≤rsp∸8 rsp∸8<orig
+            -- s-call.rsp = (orig-rsp ∸ 8) ∸ 8
+            call-rsp-eq : readReg (regs s-call) rsp ≡ (orig-rsp ∸ 8) ∸ 8
+            call-rsp-eq = trans rsp-call (cong (_∸ 8) rsp-setup)
+            -- s-call.rsp < orig-rsp
+            call-rsp<orig : readReg (regs s-call) rsp < orig-rsp
+            call-rsp<orig = subst (_< orig-rsp) (sym call-rsp-eq) rsp∸16<orig
+            -- addr ≥ orig-rsp > s-call.rsp
+            addr>call-rsp : addr > readReg (regs s-call) rsp
+            addr>call-rsp = <-≤-trans call-rsp<orig addr≥rsp
 
         -- s-pop = s-final, and memory s-pop = memory s-thunk (pop doesn't write)
         mem-thunk-to-pop : readMem (memory s-final) addr ≡ readMem (memory s-thunk) addr

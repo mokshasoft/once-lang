@@ -1189,6 +1189,32 @@ mutual
           ≡⟨ proj₁ mem-heap-setup addr addr-in-heap ⟩
         readMem (memory s) addr ∎
 
+      -- D041: Memory above entry rsp is preserved
+      -- Chain: ret → cleanup → IR → setup, all preserve addresses > entry-rsp
+      thunk-preserves-above-entry-rsp-proof : ∀ addr → addr > readReg (regs s) rsp →
+                                               readMem (memory s-final) addr ≡ readMem (memory s) addr
+      thunk-preserves-above-entry-rsp-proof addr addr>rsp = begin
+        readMem (memory s-final) addr
+          ≡⟨ mem-ret-preserves addr ⟩
+        readMem (memory s-after-f) addr
+          ≡⟨ mem-f-preserved addr ⟩
+        readMem (memory s-after-f-raw) addr
+          ≡⟨ ir-mem-above r-f addr addr>rbp ⟩
+        readMem (memory s-after-setup) addr
+          ≡⟨ proj₂ mem-heap-setup addr addr>rsp ⟩
+        readMem (memory s) addr ∎
+        where
+          open import Data.Nat.Properties using (<-trans; m∸n≤m)
+          open import Data.Nat using (s≤s; z≤n)
+          -- Helper: m ∸ n < m when m > 0 and n > 0
+          m∸n<m' : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+          m∸n<m' (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+          -- addr > rsp > rsp - 16 = rbp-after-setup
+          rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ 16
+          rsp>rsp-16 = m∸n<m' (readReg (regs s) rsp) 16 (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
+          addr>rbp : addr > readReg (regs s-after-setup) rbp
+          addr>rbp = subst (addr >_) (sym rbp-setup) (<-trans rsp>rsp-16 addr>rsp)
+
       thunk-result : ThunkResult prog s s-final caller-sp (λ b → eval f (env , b)) arg
       thunk-result = record
         { thunk-star = star-all
@@ -1204,6 +1230,7 @@ mutual
         ; thunk-preserves-zero = thunk-preserves-zero-proof
         ; thunk-preserves-code = thunk-preserves-code-proof
         ; thunk-preserves-heap = thunk-preserves-heap-proof
+        ; thunk-preserves-above-entry-rsp = thunk-preserves-above-entry-rsp-proof
         }
 
   ------------------------------------------------------------------------
