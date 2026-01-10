@@ -21,7 +21,9 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          alloc-2-slots-addrs-in-stack)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code; stack;
+         stackAddr-write-preserves-zero; stackAddr-write-preserves-code)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
@@ -392,68 +394,32 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp
       in mem-s3-above
 
     -- Memory at address 0 preserved (null page never written)
-    -- inr writes at new-rsp and new-rsp+8, both > 0, so address 0 is unchanged
-    -- Proof: rsp > 16 implies new-rsp = rsp - 16 > 0
+    -- D041 REGION APPROACH: Stack addresses ≠ 0 (zero-not-in-stack)
+    -- NO ARITHMETIC - just use abstract interface
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
-      let -- Prove rsp > 16 implies rsp ∸ 16 > 0
-          --  rsp > 16 means 17 ≤ rsp
-          --  So rsp ∸ 16 ≥ 17 ∸ 16 = 1 > 0
-          17≤rsp : 17 ≤ orig-rsp
-          17≤rsp = rsp>16
+      let -- Get region membership (encapsulates all arithmetic)
+          cap = rsp-to-capacity-2 s rsp>16
+          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
-          -- By monus monotonicity: 17 ≤ rsp implies 17 ∸ 16 ≤ rsp ∸ 16
-          1≤new-rsp : 1 ≤ new-rsp
-          1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ 16 17≤rsp)
+          -- Use abstract interface (NO arithmetic!)
+          after-tag-write = stackAddr-write-preserves-zero (memory s1) new-rsp 1 tag-addr-in-stack
+          after-val-write = stackAddr-write-preserves-zero (memory s2) (new-rsp +ℕ 8) orig-rdi val-addr-in-stack
+      in trans after-val-write after-tag-write
 
-          new-rsp>0 : new-rsp > 0
-          new-rsp>0 = 1≤new-rsp
-
-          diff-1 : new-rsp ≢ 0
-          diff-1 eq = <⇒≢ new-rsp>0 (sym eq)
-
-          -- new-rsp ≥ 1, so new-rsp + 8 ≥ 9 > 0
-          new-rsp+8>0 : (new-rsp +ℕ 8) > 0
-          new-rsp+8>0 = <-trans (s≤s z≤n) (+-monoˡ-< 8 new-rsp>0)
-
-          diff-2 : (new-rsp +ℕ 8) ≢ 0
-          diff-2 eq = <⇒≢ new-rsp+8>0 (sym eq)
-
-          mem-s2-at-0 = readMem-writeMem-diff (memory s1) new-rsp 0 1 diff-1
-          mem-s3-at-0 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) 0 orig-rdi diff-2) mem-s2-at-0
-      in mem-s3-at-0
-
-    -- D041: Memory at code-region addresses preserved (PURE REGION APPROACH)
-    -- 1. Get region membership for both write addresses (encapsulates arithmetic)
-    -- 2. Use stack-code-disjoint to prove write ≠ code address
-    -- 3. Chain readMem-writeMem-diff
-    -- NO ARITHMETIC COMPARISONS at this level
+    -- Memory at code-region addresses preserved
+    -- D041 REGION APPROACH: Stack and code regions are disjoint
+    -- NO ARITHMETIC - just use abstract interface
     mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
-      trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) addr orig-rdi (λ eq → addr≢new-rsp+8 (sym eq)))
-            (readMem-writeMem-diff (memory s1) new-rsp addr 1 (λ eq → addr≢new-rsp (sym eq)))
-      where
-        open import Data.Product using (proj₁; proj₂)
+      let -- Get region membership (encapsulates all arithmetic)
+          cap = rsp-to-capacity-2 s rsp>16
+          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
-        -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
-        cap2 : StackCapacity s 2
-        cap2 = rsp-to-capacity-2 s rsp>16
-
-        writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
-        writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
-
-        new-rsp-in-stack : region-of new-rsp ≡ stack
-        new-rsp-in-stack = proj₁ writes-in-stack
-
-        new-rsp+8-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
-        new-rsp+8-in-stack = proj₂ writes-in-stack
-
-        -- Step 2: Disjointness from region membership (code addr ≢ stack addr)
-        addr≢new-rsp : addr ≢ new-rsp
-        addr≢new-rsp eq = stack-code-disjoint new-rsp addr new-rsp-in-stack addr-in-code (sym eq)
-
-        addr≢new-rsp+8 : addr ≢ (new-rsp +ℕ 8)
-        addr≢new-rsp+8 eq = stack-code-disjoint (new-rsp +ℕ 8) addr new-rsp+8-in-stack addr-in-code (sym eq)
+          -- Use abstract interface (NO arithmetic!)
+          after-tag-write = stackAddr-write-preserves-code (memory s1) new-rsp 1 addr tag-addr-in-stack addr-in-code
+          after-val-write = stackAddr-write-preserves-code (memory s2) (new-rsp +ℕ 8) orig-rdi addr val-addr-in-stack addr-in-code
+      in trans after-val-write after-tag-write
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15
