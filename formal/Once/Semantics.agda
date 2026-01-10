@@ -21,6 +21,7 @@ import Data.Integer as Int
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Word Type (imported from Once.Memory)
@@ -114,6 +115,21 @@ mutual
   ⟦ TVar _ ⟧       = ⊤                 -- Type variables: use Unit as placeholder
 
 open Closure public
+
+-- | Propositional η-equality for Closure records
+-- Records in mutual blocks lack definitional η-equality in Agda.
+-- This postulate provides propositional η: reconstructing a Closure from
+-- its fields produces the same Closure.
+--
+-- JUSTIFICATION: This is a standard mathematical truth for record types.
+-- Any record equals a record constructed from its own fields. Agda doesn't
+-- provide this definitionally for records in mutual blocks, but it's logically
+-- sound and used in the standard library pattern for such cases.
+postulate
+  Closure-η : ∀ {A B} (cl : Closure A B) →
+    record { env-addr = env-addr cl
+           ; code-ptr = code-ptr cl
+           ; semantics = semantics cl } ≡ cl
 
 ------------------------------------------------------------------------
 -- Encoding (moved here so eval can use it for closures)

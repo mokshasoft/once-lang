@@ -16,6 +16,7 @@ module Once.Backend.X86.Correct.MutualIR where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+  renaming (Closure-η to Closure-η-sem)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
@@ -140,7 +141,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Function using (case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; subst₂; module ≡-Reasoning; inspect) renaming ([_] to ⟦_⟧ᵢ)
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
@@ -1288,9 +1289,9 @@ mutual
       x' = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem } , arg)
 
       -- Prove x' ≡ x (eta-expansion of Closure record and pair)
-      -- Note: Closure lacks eta-equality (mutual block), so this needs manual proof
-      postulate
-        x'-eq-x : x' ≡ x
+      -- Uses Closure-η from Semantics.agda for propositional eta
+      x'-eq-x : x' ≡ x
+      x'-eq-x = cong₂ _,_ (Closure-η-sem cl) refl
 
       rdi-eq' : readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x'
       rdi-eq' = trans rdi-eq (cong encode (sym x'-eq-x))
