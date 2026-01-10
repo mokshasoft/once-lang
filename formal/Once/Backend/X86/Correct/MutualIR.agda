@@ -33,7 +33,7 @@ open import Once.Backend.Common.ProgramLemmas
 
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr;
+  using (region-of; code; heap; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr;
          zero-not-in-stack)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
@@ -75,7 +75,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StarBase public
   using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star; run-prim-star;
          -- Helper functions
@@ -443,10 +443,12 @@ mutual
       -- Memory at (old-rsp - 8) where r15 was pushed, preserved through setup
       mem-r15-rest = proj₂ mem-rest
       mem-r15-setup = proj₁ mem-r15-rest
-      -- Memory at 0 and code regions preserved through setup
-      mem-0-and-code = proj₂ mem-r15-rest
-      mem-at-0-setup = proj₁ mem-0-and-code
-      mem-code-setup = proj₂ mem-0-and-code
+      -- Memory at 0 and code/heap regions preserved through setup
+      mem-0-and-rest = proj₂ mem-r15-rest
+      mem-at-0-setup = proj₁ mem-0-and-rest
+      mem-code-and-heap = proj₂ mem-0-and-rest
+      mem-code-setup = proj₁ mem-code-and-heap
+      mem-heap-setup = proj₂ mem-code-and-heap
 
       -- Step 2: Call IH on f
       -- Define prefix-f and suffix-f so that prog = prefix-f ++ compile-x86 f ++ suffix-f
@@ -1157,6 +1159,21 @@ mutual
           ≡⟨ mem-code-setup addr addr-in-code ⟩
         readMem (memory s) addr ∎
 
+      -- Memory at heap-region addresses preserved:
+      -- Same structure as code - thunk writes only to stack, heap is disjoint
+      thunk-preserves-heap-proof : ∀ addr → region-of addr ≡ heap →
+                                   readMem (memory s-final) addr ≡ readMem (memory s) addr
+      thunk-preserves-heap-proof addr addr-in-heap = begin
+        readMem (memory s-final) addr
+          ≡⟨ mem-ret-preserves addr ⟩
+        readMem (memory s-after-f) addr
+          ≡⟨ mem-f-preserved addr ⟩
+        readMem (memory s-after-f-raw) addr
+          ≡⟨ ir-mem-heap r-f addr addr-in-heap ⟩
+        readMem (memory s-after-setup) addr
+          ≡⟨ mem-heap-setup addr addr-in-heap ⟩
+        readMem (memory s) addr ∎
+
       thunk-result : ThunkResult prog s s-final caller-sp (λ b → eval f (env , b)) arg
       thunk-result = record
         { thunk-star = star-all
@@ -1171,6 +1188,7 @@ mutual
         ; thunk-preserves-frame = thunk-preserves-frame-proof
         ; thunk-preserves-zero = thunk-preserves-zero-proof
         ; thunk-preserves-code = thunk-preserves-code-proof
+        ; thunk-preserves-heap = thunk-preserves-heap-proof
         }
 
   ------------------------------------------------------------------------

@@ -27,7 +27,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; StackPointer; frameSlot)
+  using (region-of; code; heap; StackPointer; frameSlot)
 
 open import Once.Postulates using (encode)
 
@@ -79,6 +79,11 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     -- Memory at code-region addresses is preserved
     -- Thunk only writes to stack region, which is disjoint from code region
     thunk-preserves-code : ∀ addr → region-of addr ≡ code →
+                           readMem (memory s') addr ≡ readMem (memory s) addr
+
+    -- Memory at heap-region addresses is preserved
+    -- Thunk only writes to stack region, which is disjoint from heap region
+    thunk-preserves-heap : ∀ addr → region-of addr ≡ heap →
                            readMem (memory s') addr ≡ readMem (memory s) addr
 
 open ThunkResult public

@@ -18,14 +18,16 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          alloc-2-slots-addrs-in-stack)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code; heap; stack; stack-code-disjoint; stack-heap-disjoint;
+         stackAddr-write-preserves-heap)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n; ∸-monoˡ-≤; +-monoˡ-<) renaming (<⇒≢ to Nat-<⇒≢)
@@ -90,6 +92,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     ; ir-mem-above = mem-above-final
     ; ir-mem-at-0 = mem-at-0-final
     ; ir-mem-code = mem-code-final
+    ; ir-mem-heap = mem-heap-final
     ; ir-closure-wf = no-closure  -- TODO: curry should produce has-closure with ClosureWellFormed proof
     } , record
     { closure-addr = new-rsp
@@ -854,6 +857,42 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
 
           addr≢new-rsp+8 : addr ≢ (new-rsp +ℕ 8)
           addr≢new-rsp+8 eq = stack-code-disjoint (new-rsp +ℕ 8) addr new-rsp+8-in-stack addr-in-code (sym eq)
+
+          -- Step 3: Chain through memory writes
+          mem-s2 : readMem (memory s2) addr ≡ readMem (memory s) addr
+          mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) addr
+                     (readReg (regs s1) rdi) (subst (λ x → x ≢ addr) (sym rsp-s1) (λ eq → addr≢new-rsp (sym eq)))
+
+          mem-s4 : readMem (memory s4) addr ≡ readMem (memory s2) addr
+          mem-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ 8) addr
+                     (readReg (regs s3) r9) (subst (λ x → (x +ℕ 8) ≢ addr) (sym rsp-s3) (λ eq → addr≢new-rsp+8 (sym eq)))
+      in trans mem-s4 mem-s2
+      where
+        open import Data.Product using (proj₁; proj₂)
+
+    -- Memory at heap-region addresses preserved (D041)
+    -- Stack and heap regions are disjoint, curry only writes to stack
+    mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-heap-final addr addr-in-heap =
+      let cap2 : StackCapacity s 2
+          cap2 = rsp-to-capacity-2 s rsp-sufficient
+
+          -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
+          writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
+          writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
+
+          new-rsp-in-stack : region-of new-rsp ≡ stack
+          new-rsp-in-stack = proj₁ writes-in-stack
+
+          new-rsp+8-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
+          new-rsp+8-in-stack = proj₂ writes-in-stack
+
+          -- Step 2: Disjointness from region membership
+          addr≢new-rsp : addr ≢ new-rsp
+          addr≢new-rsp eq = stack-heap-disjoint new-rsp addr new-rsp-in-stack addr-in-heap (sym eq)
+
+          addr≢new-rsp+8 : addr ≢ (new-rsp +ℕ 8)
+          addr≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ 8) addr new-rsp+8-in-stack addr-in-heap (sym eq)
 
           -- Step 3: Chain through memory writes
           mem-s2 : readMem (memory s2) addr ≡ readMem (memory s) addr

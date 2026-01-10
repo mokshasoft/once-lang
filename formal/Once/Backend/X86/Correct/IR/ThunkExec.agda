@@ -32,7 +32,7 @@ open ≡-Reasoning
 
 -- Import region lemmas for D041 approach
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; stack-code-disjoint; zero-not-in-stack)
+  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity)
 
@@ -68,10 +68,12 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
           -- D041: Memory at address 0 preserved (setup writes only to stack region)
           × readMem (memory s') 0 ≡ readMem (memory s) 0
           -- D041: Memory at code-region addresses preserved
-          × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr))
+          × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr)
+          -- D041: Memory at heap-region addresses preserved
+          × (∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr))
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  h-false pc-eq rdi-eq r12-eq stack-inv rsp-sufficient =
-  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved
+  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved , mem-heap-preserved
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -1034,6 +1036,58 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         mem-s7-code : readMem (memory s7) addr ≡ readMem (memory s) addr
         mem-s7-code = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                             mem-s6-code
+
+    ------------------------------------------------------------------------
+    -- D041: Memory at heap-region addresses preserved
+    ------------------------------------------------------------------------
+
+    -- For any heap address, it's not equal to any of the write addresses
+    -- because stack region is disjoint from heap region
+    heap-addr≢write-addr : ∀ addr → region-of addr ≡ heap →
+      addr ≢ rsp-after-push-r15 × addr ≢ rsp-after-push-rbp ×
+      addr ≢ new-rsp × addr ≢ (new-rsp +ℕ 8)
+    heap-addr≢write-addr addr addr-heap =
+      (λ eq → stack-heap-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-heap (sym eq)) ,
+      (λ eq → stack-heap-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-heap (sym eq)) ,
+      (λ eq → stack-heap-disjoint new-rsp addr addr-rsp-32-in-stack addr-heap (sym eq)) ,
+      (λ eq → stack-heap-disjoint (new-rsp +ℕ 8) addr addr-rsp-24-in-stack addr-heap (sym eq))
+
+    -- Chain memory preservation at heap addresses through all states
+    mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s8) addr ≡ readMem (memory s) addr
+    mem-heap-preserved addr addr-heap = mem-s7-heap
+      where
+        disj = heap-addr≢write-addr addr addr-heap
+        addr≢rsp-8 = proj₁ disj
+        addr≢rsp-16 = proj₁ (proj₂ disj)
+        addr≢rsp-32 = proj₁ (proj₂ (proj₂ disj))
+        addr≢rsp-24 = proj₂ (proj₂ (proj₂ disj))
+
+        -- s1 doesn't write memory
+        mem-s1-heap : readMem (memory s1) addr ≡ readMem (memory s) addr
+        mem-s1-heap = refl
+
+        -- s2 writes at rsp-8 ≠ addr
+        mem-s2-heap : readMem (memory s2) addr ≡ readMem (memory s) addr
+        mem-s2-heap = mem-read-other {memory s1} {rsp-after-push-r15} {addr} {old-r15} (λ eq → addr≢rsp-8 (sym eq))
+
+        -- s3 writes at rsp-16 ≠ addr
+        mem-s3-heap : readMem (memory s3) addr ≡ readMem (memory s) addr
+        mem-s3-heap = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {addr} {old-rbp} (λ eq → addr≢rsp-16 (sym eq)))
+                            mem-s2-heap
+
+        -- s4, s5 don't write memory
+        mem-s5-heap : readMem (memory s5) addr ≡ readMem (memory s) addr
+        mem-s5-heap = mem-s3-heap
+
+        -- s6 writes at new-rsp ≠ addr
+        mem-s6-heap : readMem (memory s6) addr ≡ readMem (memory s) addr
+        mem-s6-heap = trans (mem-read-other {memory s5} {new-rsp} {addr} {readReg (regs s5) r12} (λ eq → addr≢rsp-32 (sym eq)))
+                            mem-s5-heap
+
+        -- s7 writes at new-rsp + 8 ≠ addr
+        mem-s7-heap : readMem (memory s7) addr ≡ readMem (memory s) addr
+        mem-s7-heap = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+                            mem-s6-heap
 
 -- Prove ret instruction tracing
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)

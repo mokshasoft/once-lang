@@ -27,11 +27,11 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv;
-         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
+         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code; StackPointer)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; StackPointer)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -134,6 +134,7 @@ mutual
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
       ; ir-mem-code = mem-code-final
+      ; ir-mem-heap = mem-heap-final
       ; ir-stack-inv = stack-inv-final
       ; ir-capacity = rsp-to-capacity-2 s-final rsp-sufficient-final
       ; ir-rbp-inv = rbp-inv-final
@@ -443,6 +444,18 @@ mutual
           mem-code-jump = subst (λ m → readMem m addr ≡ readMem (memory s1) addr)
                                 (sym mem-jump) refl
 
+      -- D041: Memory in heap region preserved: setup/jump don't modify memory, chain through f
+      mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-heap-final addr addr-in-heap = trans mem-heap-jump (trans (ir-mem-heap r-f addr addr-in-heap) mem-heap-setup)
+        where
+          mem-heap-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-heap-setup = subst (λ m → readMem m addr ≡ readMem (memory s) addr)
+                                 (sym mem-setup) refl
+
+          mem-heap-jump : readMem (memory s-final) addr ≡ readMem (memory s1) addr
+          mem-heap-jump = subst (λ m → readMem m addr ≡ readMem (memory s1) addr)
+                                (sym mem-jump) refl
+
   -- | Star-based case right branch (inr)
   -- Structure:
   --   Phase 1: Setup - 3 instructions (mov r11 [rdi], cmp, jne taken)
@@ -477,6 +490,7 @@ mutual
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
       ; ir-mem-code = mem-code-final
+      ; ir-mem-heap = mem-heap-final
       ; ir-closure-wf = closure-wf-final  -- Thread through g (inr branch)
       }
     where
@@ -841,3 +855,16 @@ mutual
 
           mem-code-end : readMem (memory s-final) addr ≡ readMem (memory s1) addr
           mem-code-end = cong (λ m → readMem m addr) mem-end
+
+      -- D041: Memory in heap region preserved: setup/right-setup/end don't modify memory, chain through g
+      mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-heap-final addr addr-in-heap = trans mem-heap-end (trans (ir-mem-heap r-g addr addr-in-heap) (trans mem-heap-right mem-heap-setup))
+        where
+          mem-heap-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-heap-setup = cong (λ m → readMem m addr) mem-setup
+
+          mem-heap-right : readMem (memory s-right) addr ≡ readMem (memory s-setup) addr
+          mem-heap-right = cong (λ m → readMem m addr) mem-right
+
+          mem-heap-end : readMem (memory s-final) addr ≡ readMem (memory s1) addr
+          mem-heap-end = cong (λ m → readMem m addr) mem-end

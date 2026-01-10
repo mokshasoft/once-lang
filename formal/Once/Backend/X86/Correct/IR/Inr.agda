@@ -22,8 +22,9 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          alloc-2-slots-addrs-in-stack)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack;
-         stackAddr-write-preserves-zero; stackAddr-write-preserves-code)
+  using (region-of; code; heap; stack;
+         stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
+         stackAddr-write-preserves-heap)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
@@ -31,7 +32,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -65,6 +66,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     ; ir-mem-above = mem-above-preserved
     ; ir-mem-at-0 = mem-at-0-preserved
     ; ir-mem-code = mem-code-preserved
+    ; ir-mem-heap = mem-heap-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-alloc-2-slots
     ; ir-rbp-inv = rbp-inv'
@@ -419,6 +421,20 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-code (memory s1) new-rsp 1 addr tag-addr-in-stack addr-in-code
           after-val-write = stackAddr-write-preserves-code (memory s2) (new-rsp +ℕ 8) orig-rdi addr val-addr-in-stack addr-in-code
+      in trans after-val-write after-tag-write
+
+    -- Memory at heap-region addresses preserved
+    -- D041 REGION APPROACH: Stack and heap regions are disjoint
+    -- NO ARITHMETIC - just use abstract interface
+    mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s4) addr ≡ readMem (memory s) addr
+    mem-heap-preserved addr addr-in-heap =
+      let -- Get region membership (encapsulates all arithmetic)
+          cap = rsp-to-capacity-2 s rsp-sufficient
+          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
+
+          -- Use abstract interface (NO arithmetic!)
+          after-tag-write = stackAddr-write-preserves-heap (memory s1) new-rsp 1 addr tag-addr-in-stack addr-in-heap
+          after-val-write = stackAddr-write-preserves-heap (memory s2) (new-rsp +ℕ 8) orig-rdi addr val-addr-in-stack addr-in-heap
       in trans after-val-write after-tag-write
 
     -- StackInvariant preservation

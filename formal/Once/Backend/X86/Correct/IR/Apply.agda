@@ -51,7 +51,8 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint;
          StackPointer; frameSlot; zero-not-in-stack;
-         stackAddr-write-preserves-zero; stackAddr-write-preserves-code)
+         stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
+         stackAddr-write-preserves-heap)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-0-is-top)
@@ -60,7 +61,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -68,7 +69,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-r14; thunk-r15; thunk-rbp;
          thunk-stack-inv; thunk-rsp-bound;
          thunk-rsp-plus-8; thunk-preserves-frame;
-         thunk-preserves-zero; thunk-preserves-code)
+         thunk-preserves-zero; thunk-preserves-code; thunk-preserves-heap)
 
 open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n)
@@ -553,9 +554,12 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           × readMem (memory s') 0 ≡ readMem (memory s) 0
           -- Memory at code-region preserved (D041: call writes to stack, disjoint from code)
           × (∀ addr → region-of addr ≡ code →
+             readMem (memory s') addr ≡ readMem (memory s) addr)
+          -- Memory at heap-region preserved (D041: call writes to stack, disjoint from heap)
+          × (∀ addr → region-of addr ≡ heap →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv rsp-sufficient =
-  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call , mem-at-0-call , mem-code-call
+  s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call , mem-at-0-call , mem-code-call , mem-heap-call
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -710,6 +714,13 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     -- Memory at code-region addresses preserved (D041: use abstract interface)
     mem-code-call : ∀ addr → region-of addr ≡ code → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-code-call addr addr-in-code = stackAddr-write-preserves-code (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack addr-in-code
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        write-addr-in-stack = capacity-maintained (rsp-to-capacity-2 s rsp-sufficient) 1 (s≤s z≤n)
+
+    -- Memory at heap-region addresses preserved (D041: use abstract interface)
+    mem-heap-call : ∀ addr → region-of addr ≡ heap → readMem (memory s1) addr ≡ readMem (memory s) addr
+    mem-heap-call addr addr-in-heap = stackAddr-write-preserves-heap (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack addr-in-heap
       where
         open import Data.Nat using (s≤s; z≤n)
         write-addr-in-stack = capacity-maintained (rsp-to-capacity-2 s rsp-sufficient) 1 (s≤s z≤n)
@@ -921,6 +932,9 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
     -- Memory at code-region addresses is preserved (for r15-in-code case)
     mem-code-region : ∀ addr → region-of addr ≡ code →
                       readMem (memory s') addr ≡ readMem (memory s) addr
+    -- Memory at heap-region addresses is preserved (for r15-in-heap case)
+    mem-heap-region : ∀ addr → region-of addr ≡ heap →
+                      readMem (memory s') addr ≡ readMem (memory s) addr
 
 open ApplyWfResult public
 
@@ -962,6 +976,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; mem-above    = mem-above-f
     ; mem-at-0     = mem-at-0-f
     ; mem-code-region = mem-code-region-f
+    ; mem-heap-region = mem-heap-region-f
     }
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -1015,7 +1030,9 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- Memory at 0 preserved through call (D041)
     mem-at-0-call-phase = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))))
     -- Memory at code-region addresses preserved through call (D041)
-    mem-code-call-phase = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result))))))))))))))
+    mem-code-call-phase = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))))))
+    -- Memory at heap-region addresses preserved through call (D041)
+    mem-heap-call-phase = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ call-result)))))))))))))))
 
     -- Step 3: Use thunk-correct from ClosureWellFormed
     -- The thunk executes and returns to ret-addr (offset+7) with result in rax
@@ -1249,6 +1266,20 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         after-thunk = thunk-preserves-code thunk-res addr addr-in-code
         after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved
 
+    -- Memory at heap-region addresses preserved: chain through all phases (D041)
+    mem-heap-region-f : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-heap-region-f addr addr-in-heap = trans after-pop (trans after-thunk (trans after-call after-setup))
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        -- Setup write address is in stack region
+        setup-write-in-stack = capacity-maintained (rsp-to-capacity-2 s rsp-sufficient) 1 (s≤s z≤n)
+
+        -- Chain: setup → call → thunk → pop
+        after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ 8) old-r15 addr setup-write-in-stack addr-in-heap
+        after-call  = mem-heap-call-phase addr addr-in-heap
+        after-thunk = thunk-preserves-heap thunk-res addr addr-in-heap
+        after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved
+
 ------------------------------------------------------------------------
 -- Converting to IRStarResult format
 ------------------------------------------------------------------------
@@ -1359,6 +1390,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     ; ir-mem-above = mem-above-post  -- PROVEN via WfR.mem-above + RbpInvariant
     ; ir-mem-at-0 = WfR.mem-at-0  -- PROVEN via D041 region-based chain
     ; ir-mem-code = WfR.mem-code-region  -- PROVEN via D041 region-based chain
+    ; ir-mem-heap = WfR.mem-heap-region  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
     ; ir-capacity = rsp-to-capacity-2 s' WfR.rsp-sufficient
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
@@ -1431,9 +1463,8 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
                 WfR.mem-at-0
         derive-mem-r15 (r15-in-heap r15-heap) =
           -- r15 is in heap region, stack operations don't affect heap
-          -- TODO: Add mem-heap-region to ApplyWfResult for proper proof
-          postulate-heap-preserved r15-heap
-          where postulate postulate-heap-preserved : region-of (readReg (regs s) r15) ≡ heap → readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+          -- NOW PROVEN via WfR.mem-heap-region (D041 region-based proof)
+          WfR.mem-heap-region (readReg (regs s) r15) r15-heap
         derive-mem-r15 (r15-in-code r15-code) =
           -- r15 is in code region, use WfR.mem-code-region
           WfR.mem-code-region (readReg (regs s) r15) r15-code

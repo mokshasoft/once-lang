@@ -17,14 +17,14 @@ open import Once.Backend.Common.ProgramLemmas
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant using (rsp-to-capacity-2)
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-rbp-inv; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
@@ -247,6 +247,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-mem-above = mem-above-3
   ; ir-mem-at-0 = mem-at-0-3
   ; ir-mem-code = mem-code-3
+  ; ir-mem-heap = mem-heap-3
   ; ir-closure-wf = closure-wf-3  -- Prefer g's closure (executed last)
   }
   where
@@ -409,5 +410,20 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
           mem-s-to-s1-code : readMem (memory s1) addr ≡ readMem (memory s) addr
           mem-s-to-s1-code = ir-mem-code r1 addr addr-in-code
       in trans mem-s2-to-s3-code (trans mem-s1-to-s2-code mem-s-to-s1-code)
+
+    -- D041: Memory at heap-region addresses preserved (compose of sub-proofs)
+    mem-heap-3 : ∀ addr → region-of addr ≡ heap → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-heap-3 addr addr-in-heap =
+      let -- Memory from s2 to s3 via r3.ir-mem-heap
+          mem-s2-to-s3-heap : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s2-to-s3-heap = ir-mem-heap r3 addr addr-in-heap
+          -- Memory from s1 to s2 via transfer (preserves all memory including heap)
+          mem-s1-to-s2-heap : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s1-to-s2-heap = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                                    (sym s2-eq) (mem-s1-to-s2 addr)
+          -- Memory from s to s1 via r1.ir-mem-heap
+          mem-s-to-s1-heap : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s-to-s1-heap = ir-mem-heap r1 addr addr-in-heap
+      in trans mem-s2-to-s3-heap (trans mem-s1-to-s2-heap mem-s-to-s1-heap)
 
 ------------------------------------------------------------------------

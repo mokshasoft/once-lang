@@ -19,10 +19,10 @@ open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n�
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackInvariant; RbpInvariant; r15-unused; r15-in-heap; r15-in-code;
+  using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code;
          rsp-to-capacity-2; rsp-to-capacity-5; pair-r15-in-stack; pair-second-slot-in-stack;
          stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -30,9 +30,9 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 
 open import Data.Nat using (_>_; _≥_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
@@ -340,6 +340,10 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
     -- Null page preservation (address 0 is never written)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+    -- Code region preservation (D041)
+    mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- Heap region preservation (D041)
+    mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase and compute all properties
 exec-pair-setup : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -365,6 +369,8 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   ; mem-stack-r15 = mem-r15-setup
   ; mem-stack-r14 = mem-r14-setup
   ; mem-at-0-setup = mem-at-0-setup-proof
+  ; mem-code-setup = mem-code-from-setup
+  ; mem-heap-setup = mem-heap-from-setup
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -397,7 +403,11 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     -- Memory preservation for addresses >= orig-rsp
     mem-above-eq-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
     -- Memory at address 0 is preserved (from exec-pair-setup-at-7)
-    mem-at-0-from-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
+    mem-at-0-from-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))))
+    -- Memory at code region preserved (from exec-pair-setup-at-7)
+    mem-code-from-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))))
+    -- Memory at heap region preserved (from exec-pair-setup-at-7)
+    mem-heap-from-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))))
 
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     r14-setup = r14-setup-raw
@@ -466,6 +476,10 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-above-r15-mid : ∀ addr → addr ≢ readReg (regs s1) r15 → readMem (memory s2) addr ≡ readMem (memory s1) addr
     -- Null page preservation (address 0 is never written)
     mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
+    -- Code region preservation (D041)
+    mem-code-mid : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    -- Heap region preservation (D041)
+    mem-heap-mid : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute middle phase
 exec-pair-middle : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -496,6 +510,8 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
   ; mem-rbp-mid = mem-rbp-mid
   ; mem-above-r15-mid = mem-above-mid-raw
   ; mem-at-0-mid = mem-at-0-mid-proof
+  ; mem-code-mid = mem-code-mid-proof
+  ; mem-heap-mid = mem-heap-mid-proof
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -666,6 +682,53 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     mem-at-0-mid-proof = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) 0
                                                 (readReg (regs s1) rax) r15-neq-0
 
+    -- Code region preservation (D041): r15 is in stack, code disjoint from stack
+    -- r15 s1 = rsp s - 40, which is in stack region when rsp s > 40
+    mem-code-mid-proof : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-code-mid-proof addr addr-in-code = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
+                                             (readReg (regs s1) rax) r15-neq-addr
+      where
+        -- r15 = rsp_orig - 40, which is in stack region
+        -- Derive capacity from original state
+        rsp-orig>40 : readReg (regs s) rsp > 40
+        rsp-orig>40 = rsp-bound-after-stack-op s
+        rsp-orig≥40 : readReg (regs s) rsp ≥ 40
+        rsp-orig≥40 = <⇒≤ rsp-orig>40
+        cap-orig : StackCapacity s 5
+        cap-orig = rsp-to-capacity-5 s rsp-orig≥40
+        -- region-of (rsp s - 40) = stack
+        write-addr-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
+        write-addr-in-stack = pair-r15-in-stack s cap-orig
+        -- r15 s1 = rsp s - 40
+        r15-eq-write : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+        r15-eq-write = r15-s1-eq
+        -- Therefore region-of (r15 s1) = stack
+        r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
+        r15-in-stack = subst (λ a → region-of a ≡ stack) (sym r15-eq-write) write-addr-in-stack
+        r15-neq-addr : readReg (regs s1) r15 ≢ addr
+        r15-neq-addr eq = stack-code-disjoint (readReg (regs s1) r15) addr r15-in-stack addr-in-code eq
+
+    -- Heap region preservation (D041): r15 is in stack, heap disjoint from stack
+    mem-heap-mid-proof : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-heap-mid-proof addr addr-in-heap = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
+                                             (readReg (regs s1) rax) r15-neq-addr
+      where
+        -- Same derivation as code: r15 = rsp_orig - 40 is in stack
+        rsp-orig>40 : readReg (regs s) rsp > 40
+        rsp-orig>40 = rsp-bound-after-stack-op s
+        rsp-orig≥40 : readReg (regs s) rsp ≥ 40
+        rsp-orig≥40 = <⇒≤ rsp-orig>40
+        cap-orig : StackCapacity s 5
+        cap-orig = rsp-to-capacity-5 s rsp-orig≥40
+        write-addr-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
+        write-addr-in-stack = pair-r15-in-stack s cap-orig
+        r15-eq-write : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
+        r15-eq-write = r15-s1-eq
+        r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
+        r15-in-stack = subst (λ a → region-of a ≡ stack) (sym r15-eq-write) write-addr-in-stack
+        r15-neq-addr : readReg (regs s1) r15 ≢ addr
+        r15-neq-addr eq = stack-heap-disjoint (readReg (regs s1) r15) addr r15-in-stack addr-in-heap eq
+
 ------------------------------------------------------------------------
 -- Final Assembly: combine all results into IRStarResult
 ------------------------------------------------------------------------
@@ -699,6 +762,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
   (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -709,7 +773,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
-                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final
+                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
                      star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
   { ir-star = star-all
@@ -728,6 +792,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
   ; ir-mem-code = mem-code-final
+  ; ir-mem-heap = mem-heap-final
   ; ir-closure-wf = closure-wf-final  -- Prefer g's closure (executed last)
   }
   where
@@ -839,6 +904,10 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-rbp+8-fin : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     -- Memory preservation: addresses ≠ r15-s3 + 8 are unchanged (only write is at r15-s3+8)
     mem-above-r15+8-fin : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ 8 → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+    -- D041: Memory preservation for address 0, code, and heap regions
+    mem-at-0-fin : readMem (memory s-final) 0 ≡ readMem (memory s3) 0
+    mem-code-fin : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+    mem-heap-fin : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s3) addr
 
 -- | Preconditions for exec-pair-final: stack layout from setup phase
 record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
@@ -879,6 +948,9 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     disjoint-orig-rbp+8 : readReg (regs s) rbp +ℕ 8 ≢ readReg (regs s3) r15 +ℕ 8
     -- RSP bound for final phase restoration proof
     rsp-bound : 24 ≤ readReg (regs s) rsp
+    -- D041 region proofs: r15-chain and 40≤rsp needed for stack region proof
+    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ 40
+    40≤rsp-s : 40 ≤ readReg (regs s) rsp
 
 ------------------------------------------------------------------------
 -- Arithmetic lemmas for disjointness proofs
@@ -976,6 +1048,8 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; mem-frame-rbp = mem-frame-rbp-s3
   ; mem-frame-rbp+8 = mem-frame-rbp+8-s3
   ; rsp-bound = rsp-bound-s
+  ; r15-chain = r15-chain
+  ; 40≤rsp-s = 40≤rsp-s
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -1819,9 +1893,12 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-rbp-fin = mem-rbp-preserved
     ; mem-rbp+8-fin = mem-rbp+8-preserved
     ; mem-above-r15+8-fin = mem-above-r15+8-proof
+    ; mem-at-0-fin = mem-at-0-proof
+    ; mem-code-fin = mem-code-proof
+    ; mem-heap-fin = mem-heap-proof
     }
     where
-      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; disjoint-orig-rbp; disjoint-orig-rbp+8; mem-frame; mem-frame-rbp; mem-frame-rbp+8)
+      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; disjoint-orig-rbp; disjoint-orig-rbp+8; mem-frame; mem-frame-rbp; mem-frame-rbp+8; r15-chain; 40≤rsp-s)
 
       ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -2052,4 +2129,40 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       -- Memory preservation: addresses ≠ r15-s3 + 8 are unchanged (only write is at r15-s3+8)
       mem-above-r15+8-proof : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ 8 → readMem (memory s9) addr ≡ readMem (memory s3) addr
       mem-above-r15+8-proof addr addr≢r15+8 = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {addr} {readReg (regs s3) rax} (λ eq → addr≢r15+8 (sym eq))
+
+      -- ========== D041 memory preservation proofs ==========
+      -- The write address (r15-s3 + 8) is in stack region, so it's disjoint from 0, code, and heap
+
+      -- Get capacity 5 from 40 ≤ rsp-s
+      cap5 : StackCapacity s 5
+      cap5 = rsp-to-capacity-5 s 40≤rsp-s
+
+      -- (rsp - 40) + 8 is in stack region
+      write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
+      write-addr-in-stack-raw = pair-second-slot-in-stack s cap5
+
+      -- r15-s3 + 8 is in stack region (using r15-chain)
+      write-addr-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
+      write-addr-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain) write-addr-in-stack-raw
+
+      -- Memory at address 0 preserved (D041)
+      mem-at-0-proof : readMem (memory s9) 0 ≡ readMem (memory s3) 0
+      mem-at-0-proof = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {0} {readReg (regs s3) rax} write-addr-neq-0
+        where
+          write-addr-neq-0 : readReg (regs s3) r15 +ℕ 8 ≢ 0
+          write-addr-neq-0 eq = zero-not-in-stack (subst (λ a → region-of a ≡ stack) eq write-addr-in-stack)
+
+      -- Memory at code region addresses preserved (D041)
+      mem-code-proof : ∀ addr → region-of addr ≡ code → readMem (memory s9) addr ≡ readMem (memory s3) addr
+      mem-code-proof addr addr-in-code = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {addr} {readReg (regs s3) rax} write-neq-addr
+        where
+          write-neq-addr : readReg (regs s3) r15 +ℕ 8 ≢ addr
+          write-neq-addr eq = stack-code-disjoint (readReg (regs s3) r15 +ℕ 8) addr write-addr-in-stack addr-in-code eq
+
+      -- Memory at heap region addresses preserved (D041)
+      mem-heap-proof : ∀ addr → region-of addr ≡ heap → readMem (memory s9) addr ≡ readMem (memory s3) addr
+      mem-heap-proof addr addr-in-heap = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ 8} {addr} {readReg (regs s3) rax} write-neq-addr
+        where
+          write-neq-addr : readReg (regs s3) r15 +ℕ 8 ≢ addr
+          write-neq-addr eq = stack-heap-disjoint (readReg (regs s3) r15 +ℕ 8) addr write-addr-in-stack addr-in-heap eq
 

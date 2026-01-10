@@ -15,7 +15,7 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged; rsp-bound-preserved-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; stack-code-disjoint)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; stack-code-disjoint)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged)
@@ -79,6 +79,10 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- IR only writes to stack region, code region is disjoint from stack (stack-code-disjoint)
     -- Therefore code addresses are never written by IR execution
     ir-mem-code   : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
+    -- D041: Memory at heap-region addresses preserved
+    -- IR only writes to stack region, heap region is disjoint from stack (stack-heap-disjoint)
+    -- Therefore heap addresses are never written by IR execution
+    ir-mem-heap   : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-stack-inv  : StackInvariant s'
     -- Abstract stack capacity (D041 - replaces concrete rsp > 16)
     ir-capacity   : StackCapacity s' 2
@@ -187,6 +191,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient 
     ; ir-mem-above = λ _ _ → refl  -- id doesn't write memory
     ; ir-mem-at-0 = refl  -- id doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- id doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- id doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -224,6 +229,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficient r
     ; ir-mem-above = λ _ _ → refl  -- terminal doesn't write memory
     ; ir-mem-at-0 = refl  -- terminal doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- terminal doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- terminal doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) 0)
                        rsp-eq
@@ -262,6 +268,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficien
     ; ir-mem-above = λ _ _ → refl  -- fold doesn't write memory
     ; ir-mem-at-0 = refl  -- fold doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- fold doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- fold doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -300,6 +307,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffici
     ; ir-mem-above = λ _ _ → refl  -- unfold doesn't write memory
     ; ir-mem-at-0 = refl  -- unfold doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- unfold doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- unfold doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -338,6 +346,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp-suffi
     ; ir-mem-above = λ _ _ → refl  -- arr doesn't write memory
     ; ir-mem-at-0 = refl  -- arr doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- arr doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- arr doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -380,6 +389,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     ; ir-mem-above = λ _ _ → refl  -- fst doesn't write memory
     ; ir-mem-at-0 = refl  -- fst doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- fst doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- fst doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -422,6 +432,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     ; ir-mem-above = λ _ _ → refl  -- snd doesn't write memory
     ; ir-mem-at-0 = refl  -- snd doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- snd doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- snd doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -470,6 +481,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-mem-above = λ _ _ → refl  -- fst-v doesn't write memory
     ; ir-mem-at-0 = refl  -- fst-v doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- fst-v doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- fst-v doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -511,6 +523,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
     ; ir-mem-above = λ _ _ → refl  -- snd-v doesn't write memory
     ; ir-mem-at-0 = refl  -- snd-v doesn't write to address 0
     ; ir-mem-code = λ _ _ → refl  -- snd-v doesn't write memory
+    ; ir-mem-heap = λ _ _ → refl  -- snd-v doesn't write memory
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
