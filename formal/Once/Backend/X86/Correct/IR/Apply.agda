@@ -47,7 +47,11 @@ open import Once.Backend.X86.Correct.StackInvariant
          r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
          stack-write-preserves-r15;
-         StackCapacity; capacity-maintained)
+         StackCapacity; capacity-maintained;
+         -- D041: Abstract helpers for 1-slot and 2-slot allocation
+         apply-alloc-below-rsp; apply-alloc-diff-from-above;
+         apply-rsp-diff-from-alloc; apply-double-alloc-below-rsp;
+         apply-double-alloc-diff-from-above)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint;
          StackPointer; frameSlot; zero-not-in-stack;
@@ -501,28 +505,11 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
                                  refl)
 
     -- Memory preservation for addresses >= old-rsp
-    -- Setup only writes at new-rsp = old-rsp - 8. For addr >= old-rsp, addr > new-rsp.
-    -- s2-s6 don't write memory (only register/pc changes), so memory s6 = memory s1
-    -- memory s1 = writeMem (memory s) new-rsp old-r15
+    -- D041: Use abstract helper for 1-slot allocation disjointness
     mem-above-setup : ∀ addr → addr ≥ old-rsp → readMem (memory s6) addr ≡ readMem (memory s) addr
     mem-above-setup addr addr≥rsp =
-      readMem-writeMem-diff (memory s) new-rsp addr old-r15 addr≢new-rsp
-      where
-        open import Data.Nat.Properties as NP using (m∸n≤m; <-≤-trans)
-
-        -- Helper: m ∸ 8 < m when m > 8
-        m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
-        m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
-
-        rsp>8 : old-rsp > 8
-        rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
-
-        -- new-rsp = old-rsp - 8 < old-rsp <= addr
-        new-rsp<addr : new-rsp < addr
-        new-rsp<addr = <-≤-trans (m∸8<m old-rsp rsp>8) addr≥rsp
-
-        addr≢new-rsp : new-rsp ≢ addr
-        addr≢new-rsp = NP.<⇒≢ new-rsp<addr
+      readMem-writeMem-diff (memory s) new-rsp addr old-r15
+        (apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp)
 
 -- Prove call instruction: pushes return address and jumps to code-ptr
 apply-call-star : ∀ {A B} (prefix suffix : Program)
@@ -668,24 +655,9 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
 
     -- Memory at original rsp preserved (call writes at new-rsp = old-rsp - 8, not old-rsp)
     -- Since old-rsp > 16, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
+    -- D041: Use abstract helper from StackInvariant
     old-rsp≢new-rsp : old-rsp ≢ new-rsp
-    old-rsp≢new-rsp eq = contradiction (sym eq)
-      where
-        open import Data.Nat.Properties using (<⇒≢; ∸-monoʳ-<; +-identityʳ)
-        open import Data.Nat using (s≤s; z≤n; _<_)
-        -- old-rsp > 16 ≥ 8, and 0 < 8, so old-rsp - 8 < old-rsp - 0 = old-rsp
-        -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
-        -- With o = 0, n = 8: 0 < 8 → 8 ≤ old-rsp → old-rsp ∸ 8 < old-rsp ∸ 0 = old-rsp
-        0<8 : 0 < 8
-        0<8 = s≤s z≤n
-        8≤old-rsp : 8 ≤ old-rsp
-        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp-sufficient)
-          where
-            open import Data.Nat.Properties using (<⇒≤)
-        new-rsp<old-rsp : new-rsp < old-rsp
-        new-rsp<old-rsp = ∸-monoʳ-< 0<8 8≤old-rsp
-        contradiction : new-rsp ≢ old-rsp
-        contradiction = Data.Nat.Properties.<⇒≢ new-rsp<old-rsp
+    old-rsp≢new-rsp = apply-rsp-diff-from-alloc s rsp-sufficient
 
     mem-preserved-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
     mem-preserved-old-rsp = readMem-writeMem-diff (memory s) new-rsp old-rsp (pc s +ℕ 1)
@@ -693,25 +665,11 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
 
     -- General memory preservation for addresses >= s.rsp
     -- Call writes at new-rsp = old-rsp - 8. For addr >= old-rsp, addr > new-rsp.
+    -- D041: Use abstract helper from StackInvariant
     mem-above-call : ∀ addr → addr ≥ old-rsp → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-above-call addr addr≥rsp =
-      readMem-writeMem-diff (memory s) new-rsp addr (pc s +ℕ 1) addr≢new-rsp
-      where
-        open import Data.Nat.Properties as NP using (m∸n≤m; <-≤-trans)
-
-        -- Helper: m ∸ 8 < m when m > 8
-        m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
-        m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
-
-        rsp>8 : old-rsp > 8
-        rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
-
-        -- new-rsp = old-rsp - 8 < old-rsp <= addr
-        new-rsp<addr : new-rsp < addr
-        new-rsp<addr = <-≤-trans (m∸8<m old-rsp rsp>8) addr≥rsp
-
-        addr≢new-rsp : new-rsp ≢ addr
-        addr≢new-rsp = NP.<⇒≢ new-rsp<addr
+      readMem-writeMem-diff (memory s) new-rsp addr (pc s +ℕ 1)
+        (apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp)
 
     -- Memory at 0 preserved (D041: use abstract interface)
     mem-at-0-call : readMem (memory s1) 0 ≡ readMem (memory s) 0
@@ -1242,64 +1200,40 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     --   3. thunk phase: memory s-thunk at addr = memory s-call at addr
     --      (TODO: thread caller-sp to make this fully abstract)
     --   4. PopR.mem-pop-preserved: memory s-pop = memory s-thunk
+    -- D041: Use abstract helpers from StackInvariant for memory preservation
     mem-above-f : ∀ addr → addr ≥ orig-rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-above-f addr addr≥rsp =
       trans mem-thunk-to-pop (trans mem-call-to-thunk (trans mem-setup-to-call mem-s-to-setup))
       where
-        open import Data.Nat.Properties as NP using (m∸n≤m; <-≤-trans)
+        open import Data.Nat.Properties as NP using (<-≤-trans)
 
         -- Chain the proofs
         mem-s-to-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
         mem-s-to-setup = mem-above-setup addr addr≥rsp
 
-        -- addr >= orig-rsp > orig-rsp - 8 = s-setup.rsp
-        m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
-        m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
-        rsp>8 : orig-rsp > 8
-        rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
-        setup-rsp<addr : readReg (regs s-setup) rsp < addr
-        setup-rsp<addr = <-≤-trans (subst (_< orig-rsp) (sym rsp-setup) (m∸8<m orig-rsp rsp>8)) addr≥rsp
+        -- D041: addr >= orig-rsp > orig-rsp - 8 = s-setup.rsp
         addr≥setup-rsp : addr ≥ readReg (regs s-setup) rsp
-        addr≥setup-rsp = NP.<⇒≤ setup-rsp<addr
+        addr≥setup-rsp = NP.<⇒≤ (<-≤-trans
+          (subst (_< orig-rsp) (sym rsp-setup) (apply-alloc-below-rsp s rsp-sufficient))
+          addr≥rsp)
 
         mem-setup-to-call : readMem (memory s-call) addr ≡ readMem (memory s-setup) addr
         mem-setup-to-call = mem-above-call addr addr≥setup-rsp
 
-        -- addr >= orig-rsp > orig-rsp - 16 = s-call.rsp
-        -- s-call.rsp = s-setup.rsp - 8 <= s-setup.rsp = orig-rsp - 8 <= orig-rsp
-        call-rsp≤orig : readReg (regs s-call) rsp ≤ orig-rsp
-        call-rsp≤orig = ≤-trans (subst (_≤ orig-rsp ∸ 8) (sym rsp-call) (m∸n≤m (orig-rsp ∸ 8) 8))
-                                 (m∸n≤m orig-rsp 8)
-        addr≥call-rsp : addr ≥ readReg (regs s-call) rsp
-        addr≥call-rsp = ≤-trans call-rsp≤orig addr≥rsp
-
-        -- D041 PROVEN: Use thunk-preserves-above-entry-rsp
-        -- addr ≥ orig-rsp > (orig-rsp ∸ 8) ∸ 8 = s-call.rsp
-        mem-call-to-thunk : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
-        mem-call-to-thunk = thunk-preserves-above-entry-rsp thunk-res addr addr>call-rsp
+        -- D041: addr >= orig-rsp > (orig-rsp - 8) - 8 = s-call.rsp
+        addr>call-rsp : addr > readReg (regs s-call) rsp
+        addr>call-rsp = <-≤-trans call-rsp<orig addr≥rsp
           where
-            open import Data.Nat.Properties using (m∸n≤m; ≤-<-trans)
-            open import Data.Nat using (s≤s; z≤n)
-            -- Helper: m ∸ n < m when m > n > 0
-            m∸n<m' : ∀ m n → m > n → n > 0 → m ∸ n < m
-            m∸n<m' (suc m') (suc n') (s≤s m>n') _ = s≤s (m∸n≤m m' n')
-            -- (m ∸ 8) ∸ 8 < m: use (m ∸ 8) ∸ 8 ≤ m ∸ 8 < m
-            rsp∸8<orig : orig-rsp ∸ 8 < orig-rsp
-            rsp∸8<orig = m∸n<m' orig-rsp 8 (≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient) (s≤s z≤n)
-            rsp∸16≤rsp∸8 : (orig-rsp ∸ 8) ∸ 8 ≤ orig-rsp ∸ 8
-            rsp∸16≤rsp∸8 = m∸n≤m (orig-rsp ∸ 8) 8
-            -- (orig-rsp ∸ 8) ∸ 8 < orig-rsp via transitivity
-            rsp∸16<orig : (orig-rsp ∸ 8) ∸ 8 < orig-rsp
-            rsp∸16<orig = ≤-<-trans rsp∸16≤rsp∸8 rsp∸8<orig
             -- s-call.rsp = (orig-rsp ∸ 8) ∸ 8
             call-rsp-eq : readReg (regs s-call) rsp ≡ (orig-rsp ∸ 8) ∸ 8
             call-rsp-eq = trans rsp-call (cong (_∸ 8) rsp-setup)
-            -- s-call.rsp < orig-rsp
+            -- s-call.rsp < orig-rsp via abstract helper
             call-rsp<orig : readReg (regs s-call) rsp < orig-rsp
-            call-rsp<orig = subst (_< orig-rsp) (sym call-rsp-eq) rsp∸16<orig
-            -- addr ≥ orig-rsp > s-call.rsp
-            addr>call-rsp : addr > readReg (regs s-call) rsp
-            addr>call-rsp = <-≤-trans call-rsp<orig addr≥rsp
+            call-rsp<orig = subst (_< orig-rsp) (sym call-rsp-eq) (apply-double-alloc-below-rsp s rsp-sufficient)
+
+        -- D041 PROVEN: Use thunk-preserves-above-entry-rsp
+        mem-call-to-thunk : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
+        mem-call-to-thunk = thunk-preserves-above-entry-rsp thunk-res addr addr>call-rsp
 
         -- s-pop = s-final, and memory s-pop = memory s-thunk (pop doesn't write)
         mem-thunk-to-pop : readMem (memory s-final) addr ≡ readMem (memory s-thunk) addr

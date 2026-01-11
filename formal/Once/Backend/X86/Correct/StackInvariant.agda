@@ -1388,3 +1388,153 @@ curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+8
 
     diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ 0
     diff-new-rsp+8 eq = <⇒≢ 0<new-rsp+8 (sym eq)
+
+------------------------------------------------------------------------
+-- Apply helpers: 1-slot allocation (push r15)
+------------------------------------------------------------------------
+
+-- | Helper: (m - 8) < m when m > 8
+-- Used repeatedly in Apply.agda for 1-slot allocation proofs
+private
+  m∸8<m : ∀ m → m > 8 → m ∸ 8 < m
+  m∸8<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
+
+-- | Prove 1-slot allocation address is below original rsp
+-- When rsp > 16, we have rsp > 8, so (rsp - 8) < rsp
+apply-alloc-below-rsp : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp ∸ 8 < readReg (regs s) rsp
+apply-alloc-below-rsp s rsp-sufficient = m∸8<m rsp-val rsp>8
+  where
+    rsp-val = readReg (regs s) rsp
+    rsp>8 : rsp-val > 8
+    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+
+-- | Prove 1-slot allocation address is different from addresses >= rsp
+-- When addr >= rsp > rsp - 8, we have (rsp - 8) ≢ addr
+apply-alloc-diff-from-above : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  (addr : ℕ) →
+  addr ≥ readReg (regs s) rsp →
+  readReg (regs s) rsp ∸ 8 ≢ addr
+apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp = <⇒≢ new-rsp<addr
+  where
+    open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
+    rsp-val = readReg (regs s) rsp
+    new-rsp = rsp-val ∸ 8
+    new-rsp<rsp = apply-alloc-below-rsp s rsp-sufficient
+    new-rsp<addr : new-rsp < addr
+    new-rsp<addr = <-≤-trans new-rsp<rsp addr≥rsp
+
+-- | Prove rsp ≢ (rsp - 8) when rsp > 16
+-- The original and allocated addresses are different
+apply-rsp-diff-from-alloc : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp ≢ readReg (regs s) rsp ∸ 8
+apply-rsp-diff-from-alloc s rsp-sufficient eq =
+  <⇒≢ (apply-alloc-below-rsp s rsp-sufficient) (sym eq)
+  where
+    open import Data.Nat.Properties using (<⇒≢)
+
+-- | Prove 2-slot allocation ((rsp - 8) - 8) is below original rsp
+-- Used in apply when both push and call happen
+apply-double-alloc-below-rsp : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  (readReg (regs s) rsp ∸ 8) ∸ 8 < readReg (regs s) rsp
+apply-double-alloc-below-rsp s rsp-sufficient = ≤-<-trans rsp∸16≤rsp∸8 rsp∸8<rsp
+  where
+    open import Data.Nat.Properties using (≤-<-trans)
+    rsp-val = readReg (regs s) rsp
+    rsp∸8<rsp = apply-alloc-below-rsp s rsp-sufficient
+    rsp∸16≤rsp∸8 = m∸n≤m (rsp-val ∸ 8) 8
+
+-- | Prove 2-slot allocation address is different from addresses >= rsp
+apply-double-alloc-diff-from-above : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  (addr : ℕ) →
+  addr ≥ readReg (regs s) rsp →
+  (readReg (regs s) rsp ∸ 8) ∸ 8 ≢ addr
+apply-double-alloc-diff-from-above s rsp-sufficient addr addr≥rsp =
+  <⇒≢ (<-≤-trans (apply-double-alloc-below-rsp s rsp-sufficient) addr≥rsp)
+  where
+    open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
+
+------------------------------------------------------------------------
+-- D041: Thunk-specific Abstract Helpers
+--
+-- ThunkExec allocates 4 slots: push r15, push rbp, sub rsp 16
+-- These helpers encapsulate the arithmetic for 2-slot and 4-slot relations.
+------------------------------------------------------------------------
+
+-- | Helper: 2-slot is below 1-slot when rsp > 16
+-- Proves: (rsp ∸ 16) < (rsp ∸ 8)
+-- Uses ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
+-- With o = 8, n = 16, m = rsp: 8 < 16 → 16 ≤ rsp → rsp ∸ 16 < rsp ∸ 8
+thunk-2slot-below-1slot : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  let rsp-val = readReg (regs s) rsp
+  in (rsp-val ∸ 16) < (rsp-val ∸ 8)
+thunk-2slot-below-1slot s rsp-sufficient = ∸-monoʳ-< 8<16 16≤rsp
+  where
+    open import Data.Nat.Properties using (∸-monoʳ-<; <⇒≤)
+    open import Data.Nat using (s≤s; z≤n)
+    rsp-val = readReg (regs s) rsp
+    8<16 : 8 < 16
+    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    16≤rsp : 16 ≤ rsp-val
+    16≤rsp = <⇒≤ rsp-sufficient
+
+-- | Helper: 2-slot is below orig-rsp when rsp > 16
+-- Proves: (rsp ∸ 16) < rsp
+thunk-2slot-below-orig : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  let rsp-val = readReg (regs s) rsp
+  in (rsp-val ∸ 16) < rsp-val
+thunk-2slot-below-orig s rsp-sufficient = <-trans rsp∸16<rsp∸8 rsp∸8<rsp
+  where
+    open import Data.Nat.Properties using (<-trans)
+    rsp∸16<rsp∸8 = thunk-2slot-below-1slot s rsp-sufficient
+    rsp∸8<rsp = apply-alloc-below-rsp s rsp-sufficient
+
+-- | Helper: 2-slot is different from orig-rsp when rsp > 16
+-- Proves: (rsp ∸ 16) ≢ rsp
+thunk-2slot-diff-from-orig : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  let rsp-val = readReg (regs s) rsp
+  in (rsp-val ∸ 16) ≢ rsp-val
+thunk-2slot-diff-from-orig s rsp-sufficient eq =
+  <⇒≢ (thunk-2slot-below-orig s rsp-sufficient) eq
+  where
+    open import Data.Nat.Properties using (<⇒≢)
+
+-- | Helper: 4-slot is below orig-rsp when rsp > 16
+-- Proves: (rsp ∸ 32) < rsp
+-- ThunkExec: new-rsp = ((rsp ∸ 8) ∸ 8) ∸ 16 = rsp ∸ 32
+thunk-4slot-below-orig : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  let rsp-val = readReg (regs s) rsp
+  in (rsp-val ∸ 32) < rsp-val
+thunk-4slot-below-orig s rsp-sufficient = ≤-<-trans rsp∸32≤rsp∸8 rsp∸8<rsp
+  where
+    open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
+    open import Data.Nat using (s≤s; z≤n)
+    rsp-val = readReg (regs s) rsp
+    rsp∸8<rsp = apply-alloc-below-rsp s rsp-sufficient
+    -- ∸-monoʳ-≤ : m → x ≤ y → m ∸ y ≤ m ∸ x (subtracting more gives less)
+    -- With m = rsp, x = 8, y = 32: 8 ≤ 32 → rsp ∸ 32 ≤ rsp ∸ 8
+    8≤32 : 8 ≤ 32
+    8≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+    rsp∸32≤rsp∸8 : (rsp-val ∸ 32) ≤ (rsp-val ∸ 8)
+    rsp∸32≤rsp∸8 = ∸-monoʳ-≤ rsp-val 8≤32
+
+-- | Helper: 4-slot is different from addresses >= orig-rsp
+-- Proves: (rsp ∸ 32) ≢ addr when addr ≥ rsp
+thunk-4slot-diff-from-above : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  (addr : ℕ) →
+  addr ≥ readReg (regs s) rsp →
+  (readReg (regs s) rsp ∸ 32) ≢ addr
+thunk-4slot-diff-from-above s rsp-sufficient addr addr≥rsp =
+  <⇒≢ (<-≤-trans (thunk-4slot-below-orig s rsp-sufficient) addr≥rsp)
+  where
+    open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
