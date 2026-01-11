@@ -643,6 +643,30 @@ pair-rbp-frame-≥-r15-frame s cap =
   frame-at-lower-slot-≥ s cap 3 5 (s≤s (s≤s (s≤s z≤n))) (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
                         (s≤s (s≤s (s≤s z≤n)))
 
+-- | Frame at slot 1 has addr = rsp - 8 (used for saved r15 in thunk)
+make-frame-at-slot-1-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
+  sp-addr (make-frame-at-slot s cap 1 (s≤s z≤n)) ≡ readReg (regs s) rsp ∸ 8
+make-frame-at-slot-1-addr s cap = refl
+
+-- | Frame at slot 2 has addr = rsp - 16 (used for rbp in thunk)
+make-frame-at-slot-2-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) →
+  sp-addr (make-frame-at-slot s cap 2 (s≤s (s≤s z≤n))) ≡ readReg (regs s) rsp ∸ 16
+make-frame-at-slot-2-addr s cap = refl
+
+-- | Frame at slot 4 has addr = rsp - 32 (used for new rsp after thunk setup)
+make-frame-at-slot-4-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) →
+  sp-addr (make-frame-at-slot s cap 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) ≡ readReg (regs s) rsp ∸ 32
+make-frame-at-slot-4-addr s cap = refl
+
+-- | Thunk-specific: frame at slot 2 (rbp) is ≥ frame at slot 4 (new rsp)
+-- (rsp - 16) ≥ (rsp - 32) since 16 ≤ 32
+thunk-rbp-frame-≥-new-rsp : ∀ (s : State) (cap : StackCapacity s 4) →
+  sp-addr (make-frame-at-slot s cap 2 (s≤s (s≤s z≤n))) ≥
+  sp-addr (make-frame-at-slot s cap 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
+thunk-rbp-frame-≥-new-rsp s cap =
+  frame-at-lower-slot-≥ s cap 2 4 (s≤s (s≤s z≤n)) (s≤s (s≤s (s≤s (s≤s z≤n))))
+                        (s≤s (s≤s z≤n))
+
 ------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
 ------------------------------------------------------------------------
