@@ -660,25 +660,12 @@ stack-write-preserves-r15 s stack-addr (r15-in-stack r15-stack r15≥rsp) stack-
   stack-write-preserves-instack-r15 s stack-addr stack-region r15-stack r15≥rsp addr<rsp
 
 ------------------------------------------------------------------------
--- RBP Region (Frame Pointer)
-------------------------------------------------------------------------
-
--- | RBP is always in stack region (it's the caller's frame pointer)
--- Initially set to stackBase, always stays in stack
-postulate
-  rbp-in-stack : ∀ (s : State) → region-of (readReg (regs s) rbp) ≡ stack
-
--- | Stack writes at lower addresses don't affect rbp
--- This requires proving that stack writes are at different stack addresses
--- than rbp, which needs the LIFO/ordering properties of stack
-
--- For now, we capture the key property: if we can show the write address
--- differs from rbp (both in stack but at different positions), they're disjoint
--- This is handled by the existing RbpInvariant (rsp ≤ rbp means rbp is "above")
-
-------------------------------------------------------------------------
 -- RbpInvariant (Frame Pointer Invariant)
 ------------------------------------------------------------------------
+
+-- | Stack writes at lower addresses don't affect rbp
+-- The key property is captured by RbpInvariant: rsp ≤ rbp means rbp is "above"
+-- the current stack pointer, so writes at rsp don't affect memory at rbp.
 
 -- | Invariant: rsp ≤ rbp (frame pointer is above stack pointer)
 record RbpInvariant (s : State) : Set where
