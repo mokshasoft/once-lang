@@ -21,9 +21,16 @@ open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-to-capacity-2; rsp-to-capacity-5; pair-stack-capacity;
+         -- Abstract interface (D041-compliant, no arithmetic in types)
+         pair-frame-0; pair-frame-slot-0-in-stack; pair-frame-slot-1-in-stack;
+         pair-frame-0-addr-eq; pair-frame-slot-1-addr-eq;
+         -- Concrete interface (instantiation layer - arithmetic in types)
          pair-r15-in-stack; pair-second-slot-in-stack;
          pair-setup-stack-inv; stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack; slot-addr; slot-addr-≥-base)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint;
+         zero-not-in-stack; slot-addr; slot-addr-≥-base;
+         slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
@@ -43,6 +50,41 @@ open import Data.List.Properties using (++-assoc) renaming (length-++ to List-le
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
+
+------------------------------------------------------------------------
+-- Abstract Interface Bridging (D041 Migration)
+------------------------------------------------------------------------
+-- These helpers show how to use the abstract StackPointer interface
+-- while maintaining compatibility with existing concrete code.
+--
+-- MIGRATION PATTERN:
+-- 1. Abstract interface: pair-frame-0, pair-frame-slot-{0,1}-in-stack
+-- 2. At abstraction boundary: use these bridging lemmas
+-- 3. Eventual goal: proof layer uses ONLY abstract forms
+
+-- | Bridge from abstract slot region to concrete rsp-40 region
+-- Usage: replace `pair-r15-in-stack s cap` with this
+abstract-to-rsp-40-in-stack : ∀ (s : State) (cap : StackCapacity s 5) →
+                              region-of (readReg (regs s) rsp ∸ 40) ≡ stack
+abstract-to-rsp-40-in-stack s cap =
+  subst (λ addr → region-of addr ≡ stack)
+        (trans (slot-addr-0-is-base (pair-frame-0 s cap))
+               (pair-frame-0-addr-eq s cap))
+        (pair-frame-slot-0-in-stack s cap)
+
+-- | Bridge from abstract slot region to concrete (rsp-40)+8 region
+-- Usage: replace `pair-second-slot-in-stack s cap` with this
+abstract-to-rsp-40+8-in-stack : ∀ (s : State) (cap : StackCapacity s 5) →
+                                region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
+abstract-to-rsp-40+8-in-stack s cap =
+  subst (λ addr → region-of addr ≡ stack)
+        (pair-frame-slot-1-addr-eq s cap)
+        (pair-frame-slot-1-in-stack s cap)
+
+-- | Get the abstract pair frame for slot 5
+-- This is the PREFERRED way to work with pair's r15 frame in proof layer
+get-pair-frame : ∀ (s : State) (cap : StackCapacity s 5) → StackPointer
+get-pair-frame = pair-frame-0
 
 ------------------------------------------------------------------------
 -- Pair Context: computed values that don't depend on execution
@@ -702,7 +744,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
         cap-orig = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) rsp-orig>40
         -- region-of (rsp s - 40) = stack
         write-addr-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
-        write-addr-in-stack = pair-r15-in-stack s cap-orig
+        write-addr-in-stack = abstract-to-rsp-40-in-stack s cap-orig
         -- r15 s1 = rsp s - 40
         r15-eq-write : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
         r15-eq-write = r15-s1-eq
@@ -725,7 +767,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
         cap-orig : StackCapacity s 5
         cap-orig = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) rsp-orig>40
         write-addr-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
-        write-addr-in-stack = pair-r15-in-stack s cap-orig
+        write-addr-in-stack = abstract-to-rsp-40-in-stack s cap-orig
         r15-eq-write : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ 40
         r15-eq-write = r15-s1-eq
         s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
@@ -1237,9 +1279,9 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code r15-code-pf eq =
           let -- Get capacity 5 from 40 ≤ rsp-s
               cap5 = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
-              -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region
+              -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region (via abstract interface)
               write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
-              write-addr-in-stack = pair-second-slot-in-stack s cap5
+              write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap5
               -- Convert via r15-chain: readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ 40
               s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
               s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain) write-addr-in-stack
@@ -1258,7 +1300,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           let cap5 = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
               s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack
               s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ 8) ≡ stack) (sym r15-chain)
-                                        (pair-second-slot-in-stack s cap5)
+                                        (abstract-to-rsp-40+8-in-stack s cap5)
               disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ 8
               disjoint = λ eq' → stack-heap-disjoint (readReg (regs s3) r15 +ℕ 8) (readReg (regs s) r15)
                                                      s3-r15+8-in-stack r15-heap-pf (sym eq')
@@ -1727,10 +1769,10 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- Case r15 in code region: code addresses are disjoint from stack addresses (D041 region proof)
         case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
-          let -- s1.r15 = rsp - 40 is in stack region
+          let -- s1.r15 = rsp - 40 is in stack region (via abstract interface)
               cap5 = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
               rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
-              rsp-40-in-stack = pair-r15-in-stack s cap5
+              rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap5
               -- Convert via s1-r15-eq
               s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
               s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
@@ -1744,7 +1786,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-heap-r15 r15-heap-pf eq =
           let cap5 = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
               rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
-              rsp-40-in-stack = pair-r15-in-stack s cap5
+              rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap5
               s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
               s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
               disjoint : orig-r15 ≢ readReg (regs s1) r15
@@ -2108,9 +2150,9 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       cap5 : StackCapacity s 5
       cap5 = rsp-to-capacity-5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
 
-      -- (rsp - 40) + 8 is in stack region
+      -- (rsp - 40) + 8 is in stack region (via abstract interface)
       write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ 40) +ℕ 8) ≡ stack
-      write-addr-in-stack-raw = pair-second-slot-in-stack s cap5
+      write-addr-in-stack-raw = abstract-to-rsp-40+8-in-stack s cap5
 
       -- r15-s3 + 8 is in stack region (using r15-chain)
       write-addr-in-stack : region-of (readReg (regs s3) r15 +ℕ 8) ≡ stack

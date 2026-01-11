@@ -668,6 +668,45 @@ thunk-rbp-frame-≥-new-rsp s cap =
                         (s≤s (s≤s z≤n))
 
 ------------------------------------------------------------------------
+-- Abstract Slot Region Interface (D041-compliant)
+------------------------------------------------------------------------
+-- The PROOF LAYER uses these functions. Type signatures contain NO arithmetic.
+-- Proof layer should use: make-frame-at-slot + frame-slot-in-stack
+-- Never use: pair-r15-in-stack, pair-second-slot-in-stack (contain rsp ∸ k)
+
+-- | Any slot in a frame created from capacity is in stack region
+-- This is the KEY abstraction: proof layer uses this, never sees ∸ arithmetic
+frame-slot-in-stack : ∀ {n} (s : State) (cap : StackCapacity s n)
+                      (k : ℕ) (k≤n : k ≤ n) (offset : ℕ) →
+                      region-of (slot-addr (make-frame-at-slot s cap k k≤n) offset) ≡ stack
+frame-slot-in-stack s cap k k≤n offset = slot-in-stack (make-frame-at-slot s cap k k≤n) offset
+
+-- | Pair-specific: frame at slot 5, offset 0 (abstract version of pair-r15-in-stack)
+-- Type signature uses StackPointer abstraction, not rsp ∸ 40
+pair-frame-0 : (s : State) (cap : StackCapacity s 5) → StackPointer
+pair-frame-0 s cap = make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+
+pair-frame-slot-0-in-stack : (s : State) (cap : StackCapacity s 5) →
+                             region-of (slot-addr (pair-frame-0 s cap) 0) ≡ stack
+pair-frame-slot-0-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 0
+
+-- | Pair-specific: frame at slot 5, offset 1 (abstract version of pair-second-slot-in-stack)
+-- Type signature uses StackPointer abstraction, not (rsp ∸ 40) +ℕ 8
+pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s 5) →
+                             region-of (slot-addr (pair-frame-0 s cap) 1) ≡ stack
+pair-frame-slot-1-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 1
+
+-- | Connection between abstract and concrete (for instantiation layer use only!)
+-- Proof layer should NEVER use these - they expose arithmetic
+pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s 5) →
+                       sp-addr (pair-frame-0 s cap) ≡ readReg (regs s) rsp ∸ 40
+pair-frame-0-addr-eq s cap = refl
+
+pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s 5) →
+                            slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ 40) +ℕ 8
+pair-frame-slot-1-addr-eq s cap = slot-addr-1-is-base+8 (pair-frame-0 s cap)
+
+------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
 ------------------------------------------------------------------------
 
