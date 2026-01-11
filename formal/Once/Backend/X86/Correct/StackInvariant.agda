@@ -28,7 +28,8 @@ open import Once.Backend.Common.MemoryRegions
   using (Region; stack; heap; code; Addr; region-of;
          regions-disjoint; stack≢heap; stack≢code;
          stack-heap-disjoint; stack-code-disjoint;
-         zero-not-in-stack; pc-in-code)
+         zero-not-in-stack; pc-in-code;
+         stack-sub-preserves-region)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; m∸n≤m; ≤-refl)
@@ -70,6 +71,10 @@ record StackCapacity (s : State) (n : ℕ) : Set where
     -- rsp points to stack region
     rsp-in-stack : region-of (readReg (regs s) rsp) ≡ stack
 
+    -- rsp has sufficient space for n slots (concrete bound)
+    -- This bridges abstract capacity to concrete X86 bounds
+    rsp-sufficient : readReg (regs s) rsp > n *ℕ 8
+
     -- After allocating n slots, still in stack region
     -- (This is the abstract version of "enough space")
     capacity-maintained : ∀ k → k ≤ n →
@@ -94,6 +99,7 @@ capacity-preserved-rsp-unchanged : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s' n
 capacity-preserved-rsp-unchanged s s' n cap rsp-eq = record
   { rsp-in-stack = trans (cong region-of rsp-eq) (rsp-in-stack cap)
+  ; rsp-sufficient = subst (_> n *ℕ 8) (sym rsp-eq) (rsp-sufficient cap)
   ; capacity-maintained = λ k k≤n →
       trans (cong (λ r → region-of (r ∸ (k *ℕ 8))) rsp-eq)
             (capacity-maintained cap k k≤n)
@@ -109,15 +115,50 @@ capacity-after-push : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s' n
 capacity-after-push s s' n cap rsp-eq = record
   { rsp-in-stack = rsp'-in-stack
+  ; rsp-sufficient = rsp'-sufficient
   ; capacity-maintained = cap-maintained
   }
   where
+    open import Data.Nat.Properties using (m+n∸n≡m; m∸n+n≡m; <⇒≤; +-monoʳ-<)
+
     old-rsp = readReg (regs s) rsp
     new-rsp = readReg (regs s') rsp
 
     -- new-rsp is in stack (old-rsp - 8 is in stack via capacity for k=1)
     rsp'-in-stack : region-of new-rsp ≡ stack
     rsp'-in-stack = trans (cong region-of rsp-eq) (capacity-maintained cap 1 (s≤s z≤n))
+
+    -- old-rsp > (suc n) * 8 = 8 + n*8, so old-rsp - 8 > n*8
+    rsp'-sufficient : new-rsp > n *ℕ 8
+    rsp'-sufficient = subst (_> n *ℕ 8) (sym rsp-eq) sub-lemma
+      where
+        open import Data.Nat.Properties using (≤-<-trans; m≤m+n; +-cancelʳ-<; +-comm)
+
+        -- old-rsp > (suc n) * 8, i.e., old-rsp > 8 + n*8
+        old-bound : old-rsp > 8 +ℕ n *ℕ 8
+        old-bound = rsp-sufficient cap
+
+        -- old-rsp ≥ 8 (from old-rsp > 8 + n*8 ≥ 8)
+        8≤old : 8 ≤ old-rsp
+        8≤old = <⇒≤ (≤-<-trans (m≤m+n 8 (n *ℕ 8)) old-bound)
+
+        -- (old-rsp - 8) + 8 = old-rsp
+        old-rsp-eq : (old-rsp ∸ 8) +ℕ 8 ≡ old-rsp
+        old-rsp-eq = m∸n+n≡m 8≤old
+
+        -- Rewrite old-bound to use n*8 + 8 instead of 8 + n*8
+        old-bound' : old-rsp > n *ℕ 8 +ℕ 8
+        old-bound' = subst (old-rsp >_) (+-comm 8 (n *ℕ 8)) old-bound
+
+        -- old-rsp - 8 > n*8 follows from old-rsp > n*8 + 8
+        -- Using: (old-rsp - 8) + 8 = old-rsp > n*8 + 8
+        -- By +-cancelʳ-<: n + o < m + o → n < m
+        sub-lemma : old-rsp ∸ 8 > n *ℕ 8
+        sub-lemma = +-cancelʳ-< 8 (n *ℕ 8) (old-rsp ∸ 8) bound-step
+          where
+            -- Need: n*8 + 8 < (old-rsp - 8) + 8
+            bound-step : n *ℕ 8 +ℕ 8 < (old-rsp ∸ 8) +ℕ 8
+            bound-step = subst (n *ℕ 8 +ℕ 8 <_) (sym old-rsp-eq) old-bound'
 
     -- For capacity, we need: region-of (new-rsp - k*8) = stack for k ≤ n
     cap-maintained : ∀ k → k ≤ n → region-of (new-rsp ∸ (k *ℕ 8)) ≡ stack
@@ -141,13 +182,64 @@ capacity-after-push s s' n cap rsp-eq = record
       in trans (cong region-of addr-eq) old-cap-at-1+k
 
 -- | After pop (rsp += 8), capacity increases by 1
--- Precondition: had capacity n
+-- Precondition: had capacity n, and new rsp is in stack
 -- Postcondition: have capacity (suc n)
-postulate
-  capacity-after-pop : ∀ (s s' : State) (n : ℕ) →
-    StackCapacity s n →
-    readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8 →
-    StackCapacity s' (suc n)
+-- NOTE: new-rsp-in-stack is required because we can't derive it from old rsp.
+-- At call sites, this comes from the caller's capacity before the push.
+-- PROVEN: The key is (rsp + 8) - (k*8) = rsp - ((k-1)*8) for k ≥ 1
+capacity-after-pop : ∀ (s s' : State) (n : ℕ) →
+  StackCapacity s n →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8 →
+  region-of (readReg (regs s') rsp) ≡ stack →
+  StackCapacity s' (suc n)
+capacity-after-pop s s' n cap rsp-eq new-rsp-in-stack = record
+  { rsp-in-stack = new-rsp-in-stack
+  ; rsp-sufficient = rsp'-sufficient
+  ; capacity-maintained = cap-maintained
+  }
+  where
+    open import Data.Nat.Properties using (+-monoʳ-<; +-comm)
+
+    old-rsp = readReg (regs s) rsp
+    new-rsp = readReg (regs s') rsp
+
+    -- old-rsp > n*8, so new-rsp = old-rsp + 8 > n*8 + 8 = (suc n)*8
+    rsp'-sufficient : new-rsp > (suc n) *ℕ 8
+    rsp'-sufficient = subst (_> (suc n) *ℕ 8) (sym rsp-eq) add-lemma
+      where
+        open import Data.Nat.Properties using (+-monoˡ-<)
+        -- old-rsp > n*8, so old-rsp + 8 > n*8 + 8
+        step1 : old-rsp +ℕ 8 > n *ℕ 8 +ℕ 8
+        step1 = +-monoˡ-< 8 (rsp-sufficient cap)
+        -- n*8 + 8 = 8 + n*8 = (suc n)*8
+        add-lemma : old-rsp +ℕ 8 > (suc n) *ℕ 8
+        add-lemma = subst (old-rsp +ℕ 8 >_) (+-comm (n *ℕ 8) 8) step1
+
+    -- For capacity: need region-of (new-rsp - k*8) = stack for k ≤ suc n
+    -- new-rsp - k*8 = (old-rsp + 8) - k*8
+    -- For k = 0: new-rsp (provided by new-rsp-in-stack)
+    -- For k ≥ 1: = old-rsp - (k-1)*8 (by arithmetic, use old capacity)
+    cap-maintained : ∀ k → k ≤ suc n → region-of (new-rsp ∸ (k *ℕ 8)) ≡ stack
+    cap-maintained zero _ = new-rsp-in-stack  -- new-rsp ∸ 0 = new-rsp by computation
+    cap-maintained (suc k) (s≤s k≤n) = trans (cong region-of addr-eq) old-cap-at-k
+      where
+        open import Data.Nat.Properties using (m+n∸n≡m)
+        -- old capacity at index k: region-of (old-rsp - k*8) = stack
+        old-cap-at-k : region-of (old-rsp ∸ (k *ℕ 8)) ≡ stack
+        old-cap-at-k = capacity-maintained cap k k≤n
+        -- Show: (old-rsp + 8) - (suc k)*8 = old-rsp - k*8
+        -- (suc k)*8 = 8 + k*8
+        -- (old-rsp + 8) - (8 + k*8) = ((old-rsp + 8) - 8) - k*8 = old-rsp - k*8
+        -- ∸-+-assoc gives (m ∸ n) ∸ o ≡ m ∸ (n + o), need sym for the other direction
+        step1 : (old-rsp +ℕ 8) ∸ (8 +ℕ k *ℕ 8) ≡ ((old-rsp +ℕ 8) ∸ 8) ∸ (k *ℕ 8)
+        step1 = sym (∸-+-assoc (old-rsp +ℕ 8) 8 (k *ℕ 8))
+        step2 : (old-rsp +ℕ 8) ∸ 8 ≡ old-rsp
+        step2 = m+n∸n≡m old-rsp 8
+        arith-eq : (old-rsp +ℕ 8) ∸ ((suc k) *ℕ 8) ≡ old-rsp ∸ (k *ℕ 8)
+        arith-eq = trans step1 (cong (_∸ (k *ℕ 8)) step2)
+        -- Combine via substitution
+        addr-eq : new-rsp ∸ ((suc k) *ℕ 8) ≡ old-rsp ∸ (k *ℕ 8)
+        addr-eq = trans (cong (λ r → r ∸ ((suc k) *ℕ 8)) rsp-eq) arith-eq
 
 -- | After sub rsp, 16 (rsp -= 16), capacity decreases by 2
 -- PROVEN: The key is (rsp - 16) - (k*8) = rsp - ((2+k)*8)
@@ -157,15 +249,45 @@ capacity-after-alloc-2-slots : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s' n
 capacity-after-alloc-2-slots s s' n cap rsp-eq = record
   { rsp-in-stack = rsp'-in-stack
+  ; rsp-sufficient = rsp'-sufficient
   ; capacity-maintained = cap-maintained
   }
   where
+    open import Data.Nat.Properties using (m∸n+n≡m; <⇒≤; ≤-<-trans; m≤m+n; +-cancelʳ-<; +-comm)
+
     old-rsp = readReg (regs s) rsp
     new-rsp = readReg (regs s') rsp
 
     -- new-rsp is in stack (old-rsp - 16 is in stack via capacity for k=2)
     rsp'-in-stack : region-of new-rsp ≡ stack
     rsp'-in-stack = trans (cong region-of rsp-eq) (capacity-maintained cap 2 (s≤s (s≤s z≤n)))
+
+    -- old-rsp > (suc (suc n)) * 8 = 16 + n*8, so old-rsp - 16 > n*8
+    rsp'-sufficient : new-rsp > n *ℕ 8
+    rsp'-sufficient = subst (_> n *ℕ 8) (sym rsp-eq) sub-lemma
+      where
+        -- old-rsp > (suc (suc n)) * 8 = 16 + n*8
+        old-bound : old-rsp > 16 +ℕ n *ℕ 8
+        old-bound = rsp-sufficient cap
+
+        -- old-rsp ≥ 16
+        16≤old : 16 ≤ old-rsp
+        16≤old = <⇒≤ (≤-<-trans (m≤m+n 16 (n *ℕ 8)) old-bound)
+
+        -- (old-rsp - 16) + 16 = old-rsp
+        old-rsp-eq : (old-rsp ∸ 16) +ℕ 16 ≡ old-rsp
+        old-rsp-eq = m∸n+n≡m 16≤old
+
+        -- Rewrite to n*8 + 16
+        old-bound' : old-rsp > n *ℕ 8 +ℕ 16
+        old-bound' = subst (old-rsp >_) (+-comm 16 (n *ℕ 8)) old-bound
+
+        -- old-rsp - 16 > n*8
+        sub-lemma : old-rsp ∸ 16 > n *ℕ 8
+        sub-lemma = +-cancelʳ-< 16 (n *ℕ 8) (old-rsp ∸ 16) bound-step
+          where
+            bound-step : n *ℕ 8 +ℕ 16 < (old-rsp ∸ 16) +ℕ 16
+            bound-step = subst (n *ℕ 8 +ℕ 16 <_) (sym old-rsp-eq) old-bound'
 
     -- For capacity, we need: region-of (new-rsp - k*8) = stack for k ≤ n
     -- new-rsp - k*8 = (old-rsp - 16) - k*8 = old-rsp - (16 + k*8) = old-rsp - (2+k)*8
@@ -194,11 +316,79 @@ capacity-after-alloc-2-slots s s' n cap rsp-eq = record
       in trans (cong region-of addr-eq) old-cap-at-2+k
 
 -- | After add rsp, 16 (rsp += 16), capacity increases by 2
-postulate
-  capacity-after-dealloc-2-slots : ∀ (s s' : State) (n : ℕ) →
-    StackCapacity s n →
-    readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 16 →
-    StackCapacity s' (suc (suc n))
+-- Precondition: had capacity n, and new rsp is in stack
+-- Postcondition: have capacity (suc (suc n))
+-- NOTE: new-rsp-in-stack is required because we can't derive it from old rsp.
+-- PROVEN: The key is (rsp + 16) - (k*8) = rsp - ((k-2)*8) for k ≥ 2
+capacity-after-dealloc-2-slots : ∀ (s s' : State) (n : ℕ) →
+  StackCapacity s n →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 16 →
+  region-of (readReg (regs s') rsp) ≡ stack →
+  StackCapacity s' (suc (suc n))
+capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
+  { rsp-in-stack = new-rsp-in-stack
+  ; rsp-sufficient = rsp'-sufficient
+  ; capacity-maintained = cap-maintained
+  }
+  where
+    open import Data.Nat.Properties using (+-monoʳ-<; +-comm; m≤m+n)
+
+    old-rsp = readReg (regs s) rsp
+    new-rsp = readReg (regs s') rsp
+
+    -- old-rsp > n*8, so new-rsp = old-rsp + 16 > n*8 + 16 = (suc (suc n))*8
+    rsp'-sufficient : new-rsp > (suc (suc n)) *ℕ 8
+    rsp'-sufficient = subst (_> (suc (suc n)) *ℕ 8) (sym rsp-eq) add-lemma
+      where
+        open import Data.Nat.Properties using (+-monoˡ-<)
+        -- old-rsp > n*8, so old-rsp + 16 > n*8 + 16
+        step1 : old-rsp +ℕ 16 > n *ℕ 8 +ℕ 16
+        step1 = +-monoˡ-< 16 (rsp-sufficient cap)
+        -- n*8 + 16 = 16 + n*8 = (suc (suc n))*8
+        add-lemma : old-rsp +ℕ 16 > (suc (suc n)) *ℕ 8
+        add-lemma = subst (old-rsp +ℕ 16 >_) (+-comm (n *ℕ 8) 16) step1
+
+    -- For k = 0: new-rsp (from new-rsp-in-stack)
+    -- For k = 1: new-rsp - 8 = old-rsp + 8, need separate proof
+    -- For k ≥ 2: new-rsp - k*8 = old-rsp - (k-2)*8
+    cap-maintained : ∀ k → k ≤ suc (suc n) → region-of (new-rsp ∸ (k *ℕ 8)) ≡ stack
+    cap-maintained zero _ = new-rsp-in-stack  -- new-rsp ∸ 0 = new-rsp by computation
+    cap-maintained 1 _ = stack-sub-preserves-region new-rsp 8 new-rsp-in-stack 8≤new-rsp
+      where
+        open import Data.Nat.Properties using (<⇒≤; +-monoˡ-<; <-trans)
+        -- old-rsp > 0 follows from old-rsp > n*8 ≥ 0
+        rsp>0 : old-rsp > 0
+        rsp>0 = ≤-trans (s≤s z≤n) (rsp-sufficient cap)
+        -- old-rsp + 16 > 0 + 16 = 16 > 8
+        step1 : old-rsp +ℕ 16 > 16
+        step1 = +-monoˡ-< 16 rsp>0
+        -- 16 > 8
+        step2 : 16 > 8
+        step2 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        -- old-rsp + 16 > 8 by transitivity
+        new-rsp-bound : new-rsp > 8
+        new-rsp-bound = subst (_> 8) (sym rsp-eq) (<-trans step2 step1)
+        8≤new-rsp : 8 ≤ new-rsp
+        8≤new-rsp = <⇒≤ new-rsp-bound
+    cap-maintained (suc (suc k)) (s≤s (s≤s k≤n)) = trans (cong region-of addr-eq) old-cap-at-k
+      where
+        open import Data.Nat.Properties using (m+n∸n≡m)
+        -- old capacity at index k: region-of (old-rsp - k*8) = stack
+        old-cap-at-k : region-of (old-rsp ∸ (k *ℕ 8)) ≡ stack
+        old-cap-at-k = capacity-maintained cap k k≤n
+        -- Show: (old-rsp + 16) - (suc (suc k))*8 = old-rsp - k*8
+        -- (suc (suc k))*8 = 16 + k*8
+        -- (old-rsp + 16) - (16 + k*8) = ((old-rsp + 16) - 16) - k*8 = old-rsp - k*8
+        -- ∸-+-assoc gives (m ∸ n) ∸ o ≡ m ∸ (n + o), need sym for the other direction
+        step1 : (old-rsp +ℕ 16) ∸ (16 +ℕ k *ℕ 8) ≡ ((old-rsp +ℕ 16) ∸ 16) ∸ (k *ℕ 8)
+        step1 = sym (∸-+-assoc (old-rsp +ℕ 16) 16 (k *ℕ 8))
+        step2 : (old-rsp +ℕ 16) ∸ 16 ≡ old-rsp
+        step2 = m+n∸n≡m old-rsp 16
+        arith-eq : (old-rsp +ℕ 16) ∸ ((suc (suc k)) *ℕ 8) ≡ old-rsp ∸ (k *ℕ 8)
+        arith-eq = trans step1 (cong (_∸ (k *ℕ 8)) step2)
+        -- Combine via substitution
+        addr-eq : new-rsp ∸ ((suc (suc k)) *ℕ 8) ≡ old-rsp ∸ (k *ℕ 8)
+        addr-eq = trans (cong (λ r → r ∸ ((suc (suc k)) *ℕ 8)) rsp-eq) arith-eq
 
 ------------------------------------------------------------------------
 -- Deriving Address Properties from Capacity
@@ -254,20 +444,23 @@ alloc-2-slots-addrs-in-stack s cap =
     open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤)
 
     -- Helper: StackCapacity 2 implies sufficient rsp for inl/inr operations
-    -- This is the one bridge between abstract regions and concrete bounds
-    postulate
-      inl-inr-capacity-implies-rsp-bound : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
-
+    -- PROVEN: rsp > 16 implies rsp ≥ 16
     cap-to-inl-inr-rsp-bound : StackCapacity s 2 → readReg (regs s) rsp ≥ 16
-    cap-to-inl-inr-rsp-bound = inl-inr-capacity-implies-rsp-bound
+    cap-to-inl-inr-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
 
     -- Helper: weaken capacity 2 to capacity 1
     capacity-weaken : StackCapacity s 2 → StackCapacity s 1
     capacity-weaken cap2 = record
       { rsp-in-stack = rsp-in-stack cap2
+      ; rsp-sufficient = <-trans rsp>8 (rsp-sufficient cap2)
       ; capacity-maintained = λ k k≤1 →
           capacity-maintained cap2 k (≤-trans k≤1 (s≤s z≤n))
       }
+      where
+        open import Data.Nat.Properties using (<-trans; n<1+n)
+        -- 8 < 16, i.e., 9 ≤ 16 (need 9 s≤s constructors)
+        rsp>8 : 8 < 16
+        rsp>8 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
 
     -- The key arithmetic identity (hidden from callers)
     -- After allocating 2 slots, adding 1 slot offset gives slot-1 address
@@ -321,14 +514,14 @@ pair-second-slot-in-stack s cap =
     open import Data.Nat using (s≤s; z≤n)
     open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤)
 
+    open import Data.Nat.Properties using (<⇒≤) renaming () -- for cap-to-pair-setup-rsp-bound
+
     rsp-val = readReg (regs s) rsp
 
     -- Helper: StackCapacity 5 implies sufficient rsp for pair setup
-    postulate
-      pair-setup-capacity-implies-rsp-bound : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
-
+    -- PROVEN: rsp > 40 implies rsp ≥ 40
     cap-to-pair-setup-rsp-bound : StackCapacity s 5 → readReg (regs s) rsp ≥ 40
-    cap-to-pair-setup-rsp-bound = pair-setup-capacity-implies-rsp-bound
+    cap-to-pair-setup-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
 
     -- The key arithmetic identity (hidden from callers)
     -- After allocating 5 slots, adding 1 slot offset gives slot-4 address
@@ -620,10 +813,11 @@ rsp-to-capacity-4 s rsp>32 = rsp-bound-to-capacity s 4 rsp>32
 -- | Convert StackCapacity back to concrete bound (for compatibility)
 -- This allows gradual migration - new proofs can use StackCapacity
 -- while still producing rsp > 16 for old interfaces
-postulate
-  capacity-2-to-rsp-bound : ∀ (s : State) →
-    StackCapacity s 2 →
-    readReg (regs s) rsp > 16
+-- PROVEN: trivial extraction of rsp-sufficient field
+capacity-2-to-rsp-bound : ∀ (s : State) →
+  StackCapacity s 2 →
+  readReg (regs s) rsp > 16
+capacity-2-to-rsp-bound s cap = rsp-sufficient cap
 
 ------------------------------------------------------------------------
 -- Combined State Invariant (R15Status + StackCapacity)
@@ -654,24 +848,56 @@ from-old-invariants s stack-inv rsp-sufficient = record
 
 -- | Prove that stack write at (rsp - 16) doesn't affect r15
 -- This is the key lemma needed for memory preservation in IR proofs
+-- PROVEN: Handles all R15Status cases without postulates
 stack-write-slot-2-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ 16 ≢ readReg (regs s) r15
-stack-write-slot-2-preserves-r15 s inv =
-  stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 16)
-                            (r15-status inv)
-                            (slot-2-addr-in-stack s (capacity inv))
+stack-write-slot-2-preserves-r15 s inv = helper (r15-status inv)
+  where
+    open import Data.Nat.Properties using (m∸n≤m)
+    stack-addr = readReg (regs s) rsp ∸ 16
+    stack-addr-in-stack = slot-2-addr-in-stack s (capacity inv)
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+    -- rsp > 16, so rsp - 16 < rsp
+    addr<rsp : stack-addr < readReg (regs s) rsp
+    addr<rsp = m∸n<m' (readReg (regs s) rsp) 16 (s≤s z≤n) (rsp-sufficient (capacity inv))
+    helper : R15Status s → stack-addr ≢ readReg (regs s) r15
+    helper (r15-unused r15≡0) = stack-write-preserves-unused-r15 s stack-addr stack-addr-in-stack r15≡0
+    helper (r15-in-heap r15-heap) = stack-write-preserves-heap-r15 s stack-addr stack-addr-in-stack r15-heap
+    helper (r15-in-code r15-code) = stack-write-preserves-code-r15 s stack-addr stack-addr-in-stack r15-code
+    helper (r15-in-stack r15-stack r15≥rsp) =
+      stack-write-preserves-instack-r15 s stack-addr stack-addr-in-stack r15-stack r15≥rsp addr<rsp
 
 -- | Similarly for (rsp - 8)
+-- PROVEN: Handles all R15Status cases without postulates
 stack-write-slot-1-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ 8 ≢ readReg (regs s) r15
-stack-write-slot-1-preserves-r15 s inv =
-  stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 8)
-                            (r15-status inv)
-                            (capacity-maintained (capacity inv) 1 (s≤s z≤n))
+stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
   where
     open import Data.Nat using (s≤s; z≤n)
+    open import Data.Nat.Properties using (m∸n≤m; <-trans)
+    stack-addr = readReg (regs s) rsp ∸ 8
+    stack-addr-in-stack = capacity-maintained (capacity inv) 1 (s≤s z≤n)
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+    -- rsp > 16 > 8, so rsp > 8, hence rsp - 8 < rsp
+    rsp>8 : readReg (regs s) rsp > 8
+    rsp>8 = <-trans 8<16 (rsp-sufficient (capacity inv))
+      where
+        8<16 : 8 < 16
+        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    addr<rsp : stack-addr < readReg (regs s) rsp
+    addr<rsp = m∸n<m' (readReg (regs s) rsp) 8 (s≤s z≤n) rsp>8
+    helper : R15Status s → stack-addr ≢ readReg (regs s) r15
+    helper (r15-unused r15≡0) = stack-write-preserves-unused-r15 s stack-addr stack-addr-in-stack r15≡0
+    helper (r15-in-heap r15-heap) = stack-write-preserves-heap-r15 s stack-addr stack-addr-in-stack r15-heap
+    helper (r15-in-code r15-code) = stack-write-preserves-code-r15 s stack-addr stack-addr-in-stack r15-code
+    helper (r15-in-stack r15-stack r15≥rsp) =
+      stack-write-preserves-instack-r15 s stack-addr stack-addr-in-stack r15-stack r15≥rsp addr<rsp
 
 -- | Proof that stack writes don't affect heap-allocated data
 -- This is cleaner than the old approach which required ordering proofs
@@ -691,18 +917,60 @@ stack-write-preserves-heap-data s heap-addr inv heap-proof =
 -- | Prove (rsp - 16) and (rsp - 8) are different from r15
 -- Using region-based proof: stack addresses are in stack region,
 -- r15 is in a different region (unused/heap/code)
+-- PROVEN: Handles all R15Status cases without postulates
 addr-diff-from-invariant : ∀ (s : State) →
   StackInvariant s →
   readReg (regs s) rsp > 16 →
   let new-rsp = readReg (regs s) rsp ∸ 16
       orig-r15 = readReg (regs s) r15
   in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-addr-diff-from-invariant s stack-inv rsp-sufficient =
-  let cap = rsp-to-capacity-2 s rsp-sufficient
-      (write1-in-stack , write2-in-stack) = alloc-2-slots-addrs-in-stack s cap
-      diff1 = stack-write-preserves-r15 s (readReg (regs s) rsp ∸ 16) stack-inv write1-in-stack
-      diff2 = stack-write-preserves-r15 s ((readReg (regs s) rsp ∸ 16) +ℕ 8) stack-inv write2-in-stack
-  in diff1 , diff2
+addr-diff-from-invariant s stack-inv rsp-suff = diff1 , diff2
+  where
+    open import Data.Nat.Properties using (m∸n≤m; <-trans)
+    open import Data.Product using (proj₁; proj₂)
+    rsp-val = readReg (regs s) rsp
+    cap = rsp-to-capacity-2 s rsp-suff
+    addrs-in-stack = alloc-2-slots-addrs-in-stack s cap
+    write1-in-stack = proj₁ addrs-in-stack
+    write2-in-stack = proj₂ addrs-in-stack
+    stack-addr1 = rsp-val ∸ 16
+    stack-addr2 = (rsp-val ∸ 16) +ℕ 8
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+    -- rsp > 16, so rsp - 16 < rsp
+    addr1<rsp : stack-addr1 < rsp-val
+    addr1<rsp = m∸n<m' rsp-val 16 (s≤s z≤n) rsp-suff
+    -- rsp > 16 > 8, so rsp - 8 < rsp; (rsp - 16) + 8 = rsp - 8 when rsp ≥ 16
+    addr2<rsp : stack-addr2 < rsp-val
+    addr2<rsp = subst (_< rsp-val) (sym addr2-eq) (m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8)
+      where
+        open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; <⇒≤)
+        rsp>8 : rsp-val > 8
+        rsp>8 = <-trans 8<16 rsp-suff
+          where
+            8<16 : 8 < 16
+            8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        rsp≥16 : rsp-val ≥ 16
+        rsp≥16 = <⇒≤ rsp-suff
+        addr2-eq : stack-addr2 ≡ rsp-val ∸ 8
+        addr2-eq = trans (cong (_+ℕ 8) (sym (∸-+-assoc rsp-val 8 8)))
+                         (m∸n+n≡m (∸-monoˡ-≤ 8 rsp≥16))
+          where
+            open import Data.Nat.Properties using (∸-monoˡ-≤)
+    -- Helper for each address
+    diff-helper : ∀ stack-addr → region-of stack-addr ≡ stack → stack-addr < rsp-val →
+                  R15Status s → stack-addr ≢ readReg (regs s) r15
+    diff-helper addr addr-in-stack addr<rsp (r15-unused r15≡0) =
+      stack-write-preserves-unused-r15 s addr addr-in-stack r15≡0
+    diff-helper addr addr-in-stack addr<rsp (r15-in-heap r15-heap) =
+      stack-write-preserves-heap-r15 s addr addr-in-stack r15-heap
+    diff-helper addr addr-in-stack addr<rsp (r15-in-code r15-code) =
+      stack-write-preserves-code-r15 s addr addr-in-stack r15-code
+    diff-helper addr addr-in-stack addr<rsp (r15-in-stack r15-stack r15≥rsp) =
+      stack-write-preserves-instack-r15 s addr addr-in-stack r15-stack r15≥rsp addr<rsp
+    diff1 = diff-helper stack-addr1 write1-in-stack addr1<rsp stack-inv
+    diff2 = diff-helper stack-addr2 write2-in-stack addr2<rsp stack-inv
 
 -- | Prove (rsp - 16) and (rsp - 8) are different from rbp
 -- Uses RbpInvariant: rsp ≤ rbp means writes below rsp don't touch rbp

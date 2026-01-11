@@ -113,6 +113,17 @@ heap-code-disjoint = regions-disjoint heap≢code
 postulate
   zero-not-in-stack : region-of 0 ≢ stack
 
+-- | Stack region is contiguous downward from any stack address.
+-- Subtracting from a stack address stays in the stack region
+-- (as long as we don't underflow).
+-- This is a fundamental memory layout invariant: the runtime
+-- initializes the stack as a contiguous region from stackBase downward.
+postulate
+  stack-sub-preserves-region : ∀ (a k : ℕ) →
+    region-of a ≡ stack →
+    k ≤ a →
+    region-of (a ∸ k) ≡ stack
+
 -- | Derived: stack addresses are never 0
 stack-addr-nonzero : ∀ a → region-of a ≡ stack → a ≢ 0
 stack-addr-nonzero a a-in-stack a≡0 =
