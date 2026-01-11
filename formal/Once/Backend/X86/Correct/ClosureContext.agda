@@ -115,7 +115,7 @@ lookup-closure addr (entry ∷ ctx) with addr ≟ closure-addr entry
 -- | ClosureWF indexed by type: captures WF proof only for closure types
 -- For non-closure types, this is just ⊤ (trivially satisfied)
 ClosureWFFor : Type → Program → Set
-ClosureWFFor (A ⇒ B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
+ClosureWFFor (A ⇒[ _ ] B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
   ClosureWellFormed {A} {B} prog code-ptr env-addr sem
 ClosureWFFor (Eff A B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
   ClosureWellFormed {A} {B} prog code-ptr env-addr sem
@@ -176,7 +176,7 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
                          (code-ptr env-addr closure-addr : ℕ)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {∞} {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
   in
@@ -189,17 +189,18 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {∞} {A} {B})
+          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)
 run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
                        semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq =
-  let (s' , star , h' , pc' , rax' , r14' , r15' , rbp' , stack' , rsp') =
-        run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
+  let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
            mem-env mem-layout , mem-cp mem-layout)
-  in s' , star , h' , pc' , rax' , stack' , rsp'
+      s' = proj₁ result
+      module R = ApplyProof.ApplyWfResult (proj₂ result)
+  in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
 
 ------------------------------------------------------------------------
 -- CurryOutputWF: What curry produces for threading to apply
@@ -262,7 +263,7 @@ test-apply-with-wf-eliminates-postulate :
     (code-ptr env-addr closure-addr : ℕ)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {∞} {A} {B}) ++ suffix
+  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
   in
@@ -277,7 +278,7 @@ test-apply-with-wf-eliminates-postulate :
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
-          × pc s' ≡ offset +ℕ compile-length (apply {∞} {A} {B})
+          × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
           × readReg (regs s') rsp > 16)

@@ -591,6 +591,39 @@ pair-stack-capacity : ∀ (s : State) →
 pair-stack-capacity = rsp-to-capacity-5
 
 ------------------------------------------------------------------------
+-- Abstract Frame Creation (for proof layer)
+------------------------------------------------------------------------
+-- These functions create StackPointers from StackCapacity, hiding arithmetic.
+-- The proof layer uses these to work with frames abstractly.
+-- Arithmetic is ONLY in this file (instantiation layer).
+
+-- | Create a StackPointer for a frame at offset k slots below current rsp.
+-- k=0 gives frame at current rsp
+-- k=1 gives frame at rsp-8 (one slot below)
+-- k=3 gives frame at rsp-24 (three slots below, used for rbp in pair)
+-- k=5 gives frame at rsp-40 (five slots below, used for r15 in pair)
+make-frame-at-slot : ∀ {n} (s : State) → StackCapacity s n → (k : ℕ) → k ≤ n → StackPointer
+make-frame-at-slot s cap k k≤n = record
+  { addr = readReg (regs s) rsp ∸ (k *ℕ 8)
+  ; in-stack = capacity-maintained cap k k≤n
+  }
+
+-- | The frame created at slot 0 has addr = current rsp
+make-frame-at-slot-0-addr : ∀ {n} (s : State) (cap : StackCapacity s n) →
+  sp-addr (make-frame-at-slot s cap 0 z≤n) ≡ readReg (regs s) rsp
+make-frame-at-slot-0-addr s cap = refl
+
+-- | Frame at slot 3 has addr = rsp - 24 (used for rbp frame in pair)
+make-frame-at-slot-3-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) →
+  sp-addr (make-frame-at-slot s cap 3 (s≤s (s≤s (s≤s z≤n)))) ≡ readReg (regs s) rsp ∸ 24
+make-frame-at-slot-3-addr s cap = refl
+
+-- | Frame at slot 5 has addr = rsp - 40 (used for r15 frame in pair)
+make-frame-at-slot-5-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc (suc n)))))) →
+  sp-addr (make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))) ≡ readReg (regs s) rsp ∸ 40
+make-frame-at-slot-5-addr s cap = refl
+
+------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
 ------------------------------------------------------------------------
 
