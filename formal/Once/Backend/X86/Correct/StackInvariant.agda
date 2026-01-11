@@ -780,31 +780,6 @@ stack-inv-preserved-r15-unchanged s s' (r15-in-stack r15-stack r15-rsp-ord) r15-
     r15-bounds-rsp = subst (_≥ readReg (regs s') rsp) (sym r15-eq)
                           (≤-trans rsp-ord r15-rsp-ord)
 
--- | Stack invariant preservation when r15 unchanged and rsp INCREASED
--- This is the complement to stack-inv-preserved-r15-unchanged for operations like ret.
---
--- NOTE: r15-in-stack case is not handled here because at ret sites, r15 is always
--- in code region (Apply sets r15 to code pointer before calling thunks, and cleanup
--- restores r15 to entry value). If you need to handle r15-in-stack with rsp increase,
--- the invariant may not be satisfiable since r15 ≥ old-rsp does not imply r15 ≥ new-rsp.
---
--- PROVEN for r15-unused, r15-in-heap, and r15-in-code cases.
-stack-inv-preserved-r15-unchanged-rsp-inc : ∀ (s s' : State) →
-  StackInvariant s →
-  readReg (regs s') r15 ≡ readReg (regs s) r15 →
-  StackInvariant s'
-stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-unused r15≡0) r15-eq =
-  r15-unused (trans r15-eq r15≡0)
-stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-in-heap r15-heap) r15-eq =
-  r15-in-heap (trans (cong region-of r15-eq) r15-heap)
-stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-in-code r15-code) r15-eq =
-  r15-in-code (trans (cong region-of r15-eq) r15-code)
-stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-in-stack r15-stack _) r15-eq =
-  -- Exhaustiveness case: This pattern is required by Agda but never reached at runtime.
-  -- At ret sites, r15 is always in code region (from Apply). See function comment.
-  r15-in-stack (trans (cong region-of r15-eq) r15-stack) unreachable-bound
-  where postulate unreachable-bound : readReg (regs s') r15 ≥ readReg (regs s') rsp
-
 -- | rsp > 16 preservation when rsp is unchanged
 rsp-bound-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s) rsp > 16 →

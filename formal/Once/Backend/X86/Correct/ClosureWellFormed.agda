@@ -126,6 +126,7 @@ record ClosureWellFormed {A B : Type} (prog : Program)
     -- ret-addr: the return address (pushed by call, popped by ret)
     -- caller-sp: identifies the caller's stack frame (D041)
     -- caller-sp-bound: caller's frame starts 8 bytes above current rsp (call convention)
+    -- r15-in-code-evidence: r15 is in code region (set by Apply before call)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
@@ -135,6 +136,7 @@ record ClosureWellFormed {A B : Type} (prog : Program)
       StackInvariant s →
       readReg (regs s) rsp > 16 →
       StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
+      region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
       ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a
               × pc s' ≡ ret-addr)
 

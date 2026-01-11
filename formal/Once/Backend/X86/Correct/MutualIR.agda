@@ -247,12 +247,13 @@ mutual
       -- Build the ClosureWellFormed proof using curry-thunk-correct-impl
       -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
       -- curry-thunk-correct-impl for memory preservation
+      -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁
+              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -355,12 +356,13 @@ mutual
       -- (This uses the proven version instead of the postulate-based construct-closure-wf)
       -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
       -- curry-thunk-correct-impl for memory preservation
+      -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁
+              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
 
   ------------------------------------------------------------------------
@@ -384,6 +386,7 @@ mutual
   -- This composes: setup tracing → IH on f → ret tracing
   -- caller-sp: StackPointer from the caller (D041)
   -- caller-sp-bound: addr caller-sp = s.rsp + 8 (call convention)
+  -- r15-in-code: r15 is in code region (from Apply, allows postulate-free ret)
   curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (caller-sp : StackPointer) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
@@ -398,10 +401,11 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > 16 →
     StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
+    region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp-sufficient caller-sp-bound =
+                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -1039,8 +1043,19 @@ mutual
       mem-f-preserved = proj₂ (proj₂ f-bridge-rest)
 
       -- Step 3: Trace ret instruction
+      -- r15 is in code region at s-after-f (restored to entry value by cleanup)
+      -- Chain: s-after-f.r15 = s-after-setup.r15 = s.r15 (via r15-f and r15-setup)
+      r15-in-code-f : region-of (readReg (regs s-after-f) r15) ≡ code
+      r15-in-code-f = trans (cong region-of r15-f-eq-s) r15-in-code-entry
+        where
+          -- Chain: s-after-f.r15 = s-after-setup.r15 = s.r15
+          r15-f-eq-setup : readReg (regs s-after-f) r15 ≡ readReg (regs s-after-setup) r15
+          r15-f-eq-setup = r15-f
+          r15-f-eq-s : readReg (regs s-after-f) r15 ≡ readReg (regs s) r15
+          r15-f-eq-s = trans r15-f-eq-setup r15-setup
+
       ret-result = thunk-ret-star f prefix suffix ret-addr s-after-f
-                     h-f pc-f mem-ret-f stack-inv-f rsp-sufficient-f
+                     h-f pc-f mem-ret-f r15-in-code-f rsp-sufficient-f
       s-final = proj₁ ret-result
       star-ret = proj₁ (proj₂ ret-result)
       h-final = proj₁ (proj₂ (proj₂ ret-result))

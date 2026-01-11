@@ -52,7 +52,8 @@ open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint;
          StackPointer; frameSlot; zero-not-in-stack;
          stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
-         stackAddr-write-preserves-heap)
+         stackAddr-write-preserves-heap;
+         pc-in-code)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-0-is-top)
@@ -1073,9 +1074,26 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         8≤setup : 8 ≤ readReg (regs s-setup) rsp
         8≤setup = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp-sufficient-setup)
 
+    -- Proof: r15 is in code region at s-call
+    -- Chain: s-call.r15 = s-setup.r15 = code-ptr < length prog
+    r15-call-in-code : region-of (readReg (regs s-call) r15) ≡ code
+    r15-call-in-code = pc-in-code (readReg (regs s-call) r15) (length prog) r15-call<len
+      where
+        -- Call preserves r15 (only modifies rsp, pc, and memory)
+        -- apply-call-star constructs s1 with regs = writeReg (regs s) rsp new-rsp
+        -- So readReg (regs s-call) r15 = readReg (regs s-setup) r15
+        r15-call-eq-setup : readReg (regs s-call) r15 ≡ readReg (regs s-setup) r15
+        r15-call-eq-setup = refl  -- s-call.regs differs from s-setup.regs only in rsp
+        -- Chain: s-call.r15 = s-setup.r15 = code-ptr
+        r15-call-eq-code-ptr : readReg (regs s-call) r15 ≡ code-ptr
+        r15-call-eq-code-ptr = trans r15-call-eq-setup r15-setup
+        -- code-ptr < length prog
+        r15-call<len : readReg (regs s-call) r15 < length prog
+        r15-call<len = Relation.Binary.PropositionalEquality.subst (_< length prog) (sym r15-call-eq-code-ptr) (code-ptr-valid wf)
+
     thunk-result = thunk-correct wf arg s-call ret-addr apply-sp
                      h-call pc-call rdi-for-thunk r12-for-thunk mem-ret
-                     stack-inv-call rsp-sufficient-call apply-sp-bound
+                     stack-inv-call rsp-sufficient-call apply-sp-bound r15-call-in-code
     s-thunk = proj₁ thunk-result
     thunk-res = proj₁ (proj₂ thunk-result)
     pc-thunk = proj₂ (proj₂ thunk-result)

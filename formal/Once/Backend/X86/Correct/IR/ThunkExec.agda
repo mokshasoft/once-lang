@@ -35,7 +35,7 @@ open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
-         stack-inv-preserved-r15-unchanged-rsp-inc)
+         r15-in-code)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
@@ -1178,6 +1178,8 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                              mem-s6-above
 
 -- Prove ret instruction tracing
+-- Takes explicit r15-in-code evidence instead of generic StackInvariant.
+-- At ret sites in thunks, r15 is ALWAYS in code region (from Apply setup).
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1186,7 +1188,7 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
   halted s ≡ false →
   pc s ≡ ret-offset →
   readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
-  StackInvariant s →
+  region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
   readReg (regs s) rsp > 16 →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -1201,7 +1203,7 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
           × readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
           × (∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr))
 thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
-               h-false pc-eq mem-ret stack-inv rsp-sufficient =
+               h-false pc-eq mem-ret r15-code rsp-sufficient =
   s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1 , mem-ret-preserves
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -1256,9 +1258,10 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     rbp1 : readReg (regs s1) rbp ≡ readReg (regs s) rbp
     rbp1 = readReg-writeReg-rsp-rbp (regs s) (old-rsp +ℕ 8)
 
-    -- StackInvariant preserved after ret (r15 unchanged, rsp increased)
+    -- StackInvariant: r15 is in code region (ret doesn't change r15)
+    -- FULLY PROVEN: Direct construction using explicit r15-in-code evidence
     stack-inv1 : StackInvariant s1
-    stack-inv1 = stack-inv-preserved-r15-unchanged-rsp-inc s s1 stack-inv r15-1
+    stack-inv1 = r15-in-code (trans (cong region-of r15-1) r15-code)
 
     rsp-sufficient-1 : readReg (regs s1) rsp > 16
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
