@@ -1180,3 +1180,211 @@ rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient =
     -- PROVEN: (new-rsp + 8) ≢ rbp
     rbp-diff-proof-2 : (new-rsp +ℕ 8) ≢ orig-rbp
     rbp-diff-proof-2 = subst (_≢ orig-rbp) (sym second-slot-eq) (<⇒≢ rsp-8<rbp)
+
+-- | Prove (rsp - 16) and (rsp - 8) are different from (rbp + 8)
+-- Uses frame-bound from RbpInvariant: rbp-frame addr ≥ rsp, so writes below rsp
+-- are in a different frame from rbp, hence also different from rbp+8.
+rbp+8-addr-diff-from-invariant : ∀ (s : State) →
+  RbpInvariant s →
+  readReg (regs s) rsp > 16 →
+  let new-rsp = readReg (regs s) rsp ∸ 16
+      orig-rbp+8 = readReg (regs s) rbp +ℕ 8
+  in (new-rsp ≢ orig-rbp+8) × ((new-rsp +ℕ 8) ≢ orig-rbp+8)
+rbp+8-addr-diff-from-invariant s rbp-inv rsp-sufficient =
+  rbp+8-diff-1 , rbp+8-diff-2
+  where
+    open import Data.Nat.Properties using (<⇒≢; <-≤-trans; m∸n≤m; ≤-trans; m≤m+n)
+    open import Data.Nat using (s≤s; z≤n)
+
+    rsp-val = readReg (regs s) rsp
+    new-rsp = rsp-val ∸ 16
+    orig-rbp = readReg (regs s) rbp
+    orig-rbp+8 = orig-rbp +ℕ 8
+
+    -- Use rbp-addr-diff-from-invariant for new-rsp < rbp and new-rsp+8 < rbp
+    rbp-diffs = rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient
+
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+
+    -- new-rsp < rsp (allocation decreases stack pointer)
+    new-rsp<rsp : new-rsp < rsp-val
+    new-rsp<rsp = m∸n<m' rsp-val 16 (s≤s z≤n) rsp-sufficient
+
+    -- new-rsp < rbp (via frame-bound)
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp = subst (new-rsp <_) (sym (rbp-is-base rbp-inv))
+                        (<-≤-trans new-rsp<rsp (frame-bound rbp-inv))
+
+    -- new-rsp < rbp ≤ rbp+8, so new-rsp < rbp+8
+    new-rsp<rbp+8 : new-rsp < orig-rbp+8
+    new-rsp<rbp+8 = ≤-trans new-rsp<rbp (m≤m+n orig-rbp 8)
+
+    -- PROVEN: new-rsp ≢ rbp+8
+    rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
+    rbp+8-diff-1 = <⇒≢ new-rsp<rbp+8
+
+    -- For (new-rsp + 8): reuse rsp-8 < rbp from rbp-addr-diff-from-invariant pattern
+    rsp>8 : rsp-val > 8
+    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+
+    rsp-8<rsp : rsp-val ∸ 8 < rsp-val
+    rsp-8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
+
+    rsp-8<rbp : rsp-val ∸ 8 < orig-rbp
+    rsp-8<rbp = subst (rsp-val ∸ 8 <_) (sym (rbp-is-base rbp-inv))
+                      (<-≤-trans rsp-8<rsp (frame-bound rbp-inv))
+
+    -- (rsp - 8) < rbp ≤ rbp+8
+    rsp-8<rbp+8 : rsp-val ∸ 8 < orig-rbp+8
+    rsp-8<rbp+8 = ≤-trans rsp-8<rbp (m≤m+n orig-rbp 8)
+
+    -- new-rsp + 8 = rsp - 8
+    second-slot-eq : new-rsp +ℕ 8 ≡ rsp-val ∸ 8
+    second-slot-eq = trans (cong (_+ℕ 8) step1) (m∸n+n≡m word-fits)
+      where
+        open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; n≤1+n)
+        step1 : rsp-val ∸ 16 ≡ (rsp-val ∸ 8) ∸ 8
+        step1 = sym (∸-+-assoc rsp-val 8 8)
+        two-slots-fit : 16 ≤ rsp-val
+        two-slots-fit = ≤-trans (n≤1+n 16) rsp-sufficient
+        word-fits : 8 ≤ rsp-val ∸ 8
+        word-fits = ∸-monoˡ-≤ 8 two-slots-fit
+
+    -- PROVEN: (new-rsp + 8) ≢ rbp+8
+    rbp+8-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp+8
+    rbp+8-diff-2 = subst (_≢ orig-rbp+8) (sym second-slot-eq) (<⇒≢ rsp-8<rbp+8)
+
+-- | Combined rbp and rbp+8 disjointness for curry (2-slot allocation)
+-- Encapsulates all arithmetic needed for curry's frame preservation proofs
+curry-frame-disjoint-from-rbp : ∀ (s : State) →
+  RbpInvariant s →
+  readReg (regs s) rsp > 16 →
+  let new-rsp = readReg (regs s) rsp ∸ 16
+      orig-rbp = readReg (regs s) rbp
+  in (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp) ×
+     (new-rsp ≢ orig-rbp +ℕ 8) × ((new-rsp +ℕ 8) ≢ orig-rbp +ℕ 8)
+curry-frame-disjoint-from-rbp s rbp-inv rsp-suff =
+  let (d1 , d2) = rbp-addr-diff-from-invariant s rbp-inv rsp-suff
+      (d3 , d4) = rbp+8-addr-diff-from-invariant s rbp-inv rsp-suff
+  in d1 , d2 , d3 , d4
+
+-- | Stack invariant frame bound update after 2-slot allocation
+-- After rsp decreases by 16, the frame bound (sp-addr frame ≥ old-rsp) still holds
+-- for the new rsp (since new-rsp ≤ old-rsp).
+curry-stack-inv-frame-bound-update : ∀ (s s' : State) →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 16 →
+  (frame : StackPointer) →
+  sp-addr frame ≥ readReg (regs s) rsp →
+  sp-addr frame ≥ readReg (regs s') rsp
+curry-stack-inv-frame-bound-update s s' rsp-eq frame old-bound =
+  subst (sp-addr frame ≥_) (sym rsp-eq) (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) old-bound)
+
+-- | RbpInvariant preservation after 2-slot allocation
+-- The rbp-frame and rbp-is-base are unchanged (rbp register doesn't change),
+-- only the frame-bound needs updating.
+curry-rbp-inv-update : ∀ (s s' : State) →
+  RbpInvariant s →
+  readReg (regs s') rbp ≡ readReg (regs s) rbp →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 16 →
+  RbpInvariant s'
+curry-rbp-inv-update s s' rbp-inv rbp-eq rsp-eq = record
+  { rbp-frame = RbpInvariant.rbp-frame rbp-inv
+  ; rbp-is-base = trans rbp-eq (RbpInvariant.rbp-is-base rbp-inv)
+  ; frame-bound = curry-stack-inv-frame-bound-update s s' rsp-eq
+                    (RbpInvariant.rbp-frame rbp-inv)
+                    (RbpInvariant.frame-bound rbp-inv)
+  }
+
+-- | Ordering facts for curry: new-rsp < rbp and (new-rsp + 8) < rbp
+-- Used for mem-above-final transitivity proofs
+curry-alloc-below-rbp : ∀ (s : State) →
+  RbpInvariant s →
+  readReg (regs s) rsp > 16 →
+  let new-rsp = readReg (regs s) rsp ∸ 16
+      orig-rbp = readReg (regs s) rbp
+  in (new-rsp < orig-rbp) × ((new-rsp +ℕ 8) < orig-rbp)
+curry-alloc-below-rbp s rbp-inv rsp-sufficient = new-rsp<rbp , new-rsp+8<rbp
+  where
+    open import Data.Nat.Properties using (<-≤-trans; m∸n≤m; <⇒≤; +-monoʳ-<; m∸n+n≡m; ≤-<-trans)
+    open import Data.Nat using (s≤s; z≤n)
+
+    rsp-val = readReg (regs s) rsp
+    new-rsp = rsp-val ∸ 16
+    orig-rbp = readReg (regs s) rbp
+
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+
+    -- new-rsp < rsp
+    new-rsp<rsp : new-rsp < rsp-val
+    new-rsp<rsp = m∸n<m' rsp-val 16 (s≤s z≤n) rsp-sufficient
+
+    -- new-rsp < rbp (via frame-bound)
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp = subst (new-rsp <_) (sym (rbp-is-base rbp-inv))
+                        (<-≤-trans new-rsp<rsp (frame-bound rbp-inv))
+
+    -- For (new-rsp + 8) < rbp
+    16≤rsp : 16 ≤ rsp-val
+    16≤rsp = <⇒≤ rsp-sufficient
+
+    rsp>8 : rsp-val > 8
+    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+
+    rsp-8<rsp : rsp-val ∸ 8 < rsp-val
+    rsp-8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
+
+    rsp-8<rbp : rsp-val ∸ 8 < orig-rbp
+    rsp-8<rbp = subst (rsp-val ∸ 8 <_) (sym (rbp-is-base rbp-inv))
+                      (<-≤-trans rsp-8<rsp (frame-bound rbp-inv))
+
+    -- new-rsp + 8 = rsp - 8
+    second-slot-eq : new-rsp +ℕ 8 ≡ rsp-val ∸ 8
+    second-slot-eq = trans (cong (_+ℕ 8) step1) (m∸n+n≡m word-fits)
+      where
+        open import Data.Nat.Properties using (∸-+-assoc; ∸-monoˡ-≤; n≤1+n)
+        step1 : rsp-val ∸ 16 ≡ (rsp-val ∸ 8) ∸ 8
+        step1 = sym (∸-+-assoc rsp-val 8 8)
+        two-slots-fit : 16 ≤ rsp-val
+        two-slots-fit = ≤-trans (n≤1+n 16) rsp-sufficient
+        word-fits : 8 ≤ rsp-val ∸ 8
+        word-fits = ∸-monoˡ-≤ 8 two-slots-fit
+
+    new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
+    new-rsp+8<rbp = subst (_< orig-rbp) (sym second-slot-eq) rsp-8<rbp
+
+-- | Prove curry allocation addresses are non-zero (for mem-at-0 preservation)
+-- When rsp > 16, the allocation addresses (rsp-16) and (rsp-8) are both > 0
+curry-alloc-nonzero : ∀ (s : State) →
+  readReg (regs s) rsp > 16 →
+  let new-rsp = readReg (regs s) rsp ∸ 16
+  in (new-rsp ≢ 0) × ((new-rsp +ℕ 8) ≢ 0)
+curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+8
+  where
+    open import Data.Nat.Properties using (<⇒≢; ∸-monoˡ-≤; <-trans; +-monoˡ-<)
+    open import Data.Nat using (s≤s; z≤n)
+
+    rsp-val = readReg (regs s) rsp
+    new-rsp = rsp-val ∸ 16
+
+    -- rsp > 16 means rsp ≥ 17, so rsp ∸ 16 ≥ 1 > 0
+    17≤rsp : 17 ≤ rsp-val
+    17≤rsp = rsp-sufficient
+
+    1≤new-rsp : 1 ≤ new-rsp
+    1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ 16 17≤rsp)
+
+    0<new-rsp : 0 < new-rsp
+    0<new-rsp = 1≤new-rsp
+
+    0<new-rsp+8 : 0 < (new-rsp +ℕ 8)
+    0<new-rsp+8 = <-trans (s≤s z≤n) (+-monoˡ-< 8 0<new-rsp)
+
+    diff-new-rsp : new-rsp ≢ 0
+    diff-new-rsp eq = <⇒≢ 0<new-rsp (sym eq)
+
+    diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ 0
+    diff-new-rsp+8 eq = <⇒≢ 0<new-rsp+8 (sym eq)

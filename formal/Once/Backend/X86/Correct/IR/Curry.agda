@@ -17,7 +17,10 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
-         alloc-2-slots-addrs-in-stack)
+         alloc-2-slots-addrs-in-stack;
+         -- D041: Abstract helpers that encapsulate arithmetic
+         curry-frame-disjoint-from-rbp; curry-rbp-inv-update; curry-stack-inv-frame-bound-update;
+         curry-alloc-below-rbp; curry-alloc-nonzero)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; stack; stack-code-disjoint; stack-heap-disjoint;
          stackAddr-write-preserves-heap; slot-addr)
@@ -30,8 +33,10 @@ open import Once.Backend.X86.Correct.StarBase
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
 
-open import Data.Nat using (_>_; _≥_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m∸n≤m; m<m+n; 0<1+n; ∸-monoʳ-<; <⇒≤; +-monoʳ-<; m∸n+n≡m; m≤m+n; ∸-monoˡ-≤; +-monoˡ-<) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat using (_>_; _≥_; _<_; s≤s; z≤n)
+-- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
+-- m≤m+n kept for simple numeric constant facts
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; m<m+n; 0<1+n; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -594,54 +599,30 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
                   (trans mem-s3-eq (trans mem-s2-eq mem-s1-eq)))))
 
     -- Memory at rbp and rbp+8 preservation
-    -- Proved via RbpInvariant: rsp ≤ rbp, so new-rsp = rsp-16 < rsp ≤ rbp
+    -- D041: Use abstract helper that encapsulates arithmetic
     orig-rbp : Word
     orig-rbp = readReg (regs s) rbp
 
-    -- RbpInvariant: s.rsp ≤ s.rbp (stack pointer at or below frame pointer)
-    -- (rbp-inv is now a parameter to run-curry-star)
+    -- D041: All rbp/rbp+8 disjointness proofs via abstract helper
+    rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp) ×
+                (new-rsp ≢ orig-rbp +ℕ 8) × ((new-rsp +ℕ 8) ≢ orig-rbp +ℕ 8)
+    rbp-diffs = curry-frame-disjoint-from-rbp s rbp-inv rsp-sufficient
 
-    -- new-rsp < rbp: since new-rsp = rsp - 16 < rsp ≤ rbp
-    -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
-    -- With o = 0, n = 16, m = orig-rsp: 0 < 16 → 16 ≤ orig-rsp → orig-rsp ∸ 16 < orig-rsp
-    16≤orig-rsp : 16 ≤ orig-rsp
-    16≤orig-rsp = <⇒≤ rsp-sufficient
+    -- D041: Ordering facts for mem-above-final transitivity
+    rbp-orders : (new-rsp < orig-rbp) × ((new-rsp +ℕ 8) < orig-rbp)
+    rbp-orders = curry-alloc-below-rbp s rbp-inv rsp-sufficient
 
     new-rsp<rbp : new-rsp < orig-rbp
-    new-rsp<rbp = ≤-trans new-rsp<orig-rsp (RbpInvariant.rsp≤rbp rbp-inv)
-      where
-        new-rsp<orig-rsp : new-rsp < orig-rsp
-        new-rsp<orig-rsp = ∸-monoʳ-< 0<16 16≤orig-rsp
-          where
-            0<16 : 0 < 16
-            0<16 = m<m+n 0 0<1+n
+    new-rsp<rbp = proj₁ rbp-orders
 
-    -- For new-rsp + 8 < rbp:
-    -- new-rsp + 8 < orig-rsp (since 8 < 16 and 16 ≤ orig-rsp)
-    -- orig-rsp ≤ rbp (from RbpInvariant)
-    -- Therefore new-rsp + 8 < rbp
     new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
-    new-rsp+8<rbp = ≤-trans new-rsp+8<orig-rsp (RbpInvariant.rsp≤rbp rbp-inv)
-      where
-        -- (rsp - 16) + 8 < rsp when 8 < 16 and 16 ≤ rsp
-        -- Using ∸-monoʳ-< with o=0, n=8: 0 < 8 → 8 ≤ m → m ∸ 8 < m
-        -- But we have (rsp - 16) + 8, not rsp - 8
-        -- Key: (rsp - 16) + 8 < (rsp - 16) + 16 = rsp (when rsp ≥ 16)
-        8<16 : 8 < 16
-        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        new-rsp+8<new-rsp+16 : (new-rsp +ℕ 8) < (new-rsp +ℕ 16)
-        new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
-        new-rsp+16≡orig-rsp : (new-rsp +ℕ 16) ≡ orig-rsp
-        new-rsp+16≡orig-rsp = m∸n+n≡m 16≤orig-rsp
-        new-rsp+8<orig-rsp : (new-rsp +ℕ 8) < orig-rsp
-        new-rsp+8<orig-rsp = subst ((new-rsp +ℕ 8) <_) new-rsp+16≡orig-rsp new-rsp+8<new-rsp+16
+    new-rsp+8<rbp = proj₂ rbp-orders
 
-    -- Disjointness: new-rsp ≢ rbp and new-rsp+8 ≢ rbp
     rbp-diff-1 : new-rsp ≢ orig-rbp
-    rbp-diff-1 eq = Nat-<⇒≢ new-rsp<rbp eq
+    rbp-diff-1 = proj₁ rbp-diffs
 
     rbp-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp
-    rbp-diff-2 eq = Nat-<⇒≢ new-rsp+8<rbp eq
+    rbp-diff-2 = proj₁ (proj₂ rbp-diffs)
 
     -- Chain memory preservation through all states
     mem-rbp-s1 : readMem (memory s1) orig-rbp ≡ readMem (memory s) orig-rbp
@@ -672,23 +653,15 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-rbp-final = trans mem-rbp-s7 (trans mem-rbp-s6 (trans mem-rbp-s5 (trans mem-rbp-s4
                       (trans mem-rbp-s3 (trans mem-rbp-s2 mem-rbp-s1)))))
 
-    -- Similarly for rbp+8
+    -- Similarly for rbp+8 (D041: extracted from abstract helper)
     orig-rbp+8 : Word
     orig-rbp+8 = readReg (regs s) rbp +ℕ 8
 
-    -- new-rsp < rbp ≤ rbp+8, so new-rsp < rbp+8
-    -- new-rsp<rbp : suc new-rsp ≤ rbp, and rbp ≤ rbp+8, gives suc new-rsp ≤ rbp+8
-    new-rsp<rbp+8 : new-rsp < orig-rbp+8
-    new-rsp<rbp+8 = ≤-trans new-rsp<rbp (m≤m+n orig-rbp 8)
-
-    new-rsp+8<rbp+8 : (new-rsp +ℕ 8) < orig-rbp+8
-    new-rsp+8<rbp+8 = ≤-trans new-rsp+8<rbp (m≤m+n orig-rbp 8)
-
     rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
-    rbp+8-diff-1 eq = Nat-<⇒≢ new-rsp<rbp+8 eq
+    rbp+8-diff-1 = proj₁ (proj₂ (proj₂ rbp-diffs))
 
     rbp+8-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp+8
-    rbp+8-diff-2 eq = Nat-<⇒≢ new-rsp+8<rbp+8 eq
+    rbp+8-diff-2 = proj₂ (proj₂ (proj₂ rbp-diffs))
 
     mem-rbp+8-s1 : readMem (memory s1) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
     mem-rbp+8-s1 = refl
@@ -732,11 +705,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
         -- from r15-final : s-final.r15 ≡ s.r15 and r15-eq : s.r15 ≡ slot-addr frame slot
         r15-eq' : readReg (regs s-final) r15 ≡ slot-addr frame slot
         r15-eq' = trans r15-final r15-eq
-        -- frame-bound': sp-addr frame ≥ s-final.rsp
-        -- from frame-bound : sp-addr frame ≥ s.rsp and s-final.rsp = s.rsp ∸ 16 ≤ s.rsp
+        -- frame-bound': D041 abstract helper encapsulates arithmetic
         frame-bound' : sp-addr frame ≥ readReg (regs s-final) rsp
-        frame-bound' = subst (sp-addr frame ≥_) (sym rsp-s7)
-                         (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) frame-bound)
+        frame-bound' = curry-stack-inv-frame-bound-update s s-final rsp-s7 frame frame-bound
 
     stack-inv-final : StackInvariant s-final
     stack-inv-final = stack-inv-helper stack-inv
@@ -745,11 +716,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ 16
     rsp-change = rsp-s7
 
-    33≤41 : 33 ≤ 41
-    33≤41 = m≤m+n 33 8
-
+    -- 33 ≤ 41 via simple m≤m+n (constant fact, not variable arithmetic)
     rsp>32 : readReg (regs s) rsp > 32
-    rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
+    rsp>32 = ≤-trans (m≤m+n 33 8) (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
     input-capacity = rsp-to-capacity-4 s (rsp-in-stack-after-stack-op s) rsp>32
@@ -760,19 +729,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp-sufficient-final : readReg (regs s-final) rsp > 16
     rsp-sufficient-final = capacity-2-to-rsp-bound s-final output-capacity
 
-    -- RbpInvariant preservation: rbp-frame unchanged, frame-bound updated
+    -- RbpInvariant preservation: D041 abstract helper encapsulates arithmetic
     rbp-inv-final : RbpInvariant s-final
-    rbp-inv-final = record
-      { rbp-frame = RbpInvariant.rbp-frame rbp-inv
-      ; rbp-is-base = trans rbp-final (RbpInvariant.rbp-is-base rbp-inv)
-      ; frame-bound = new-frame-bound
-      }
-      where
-        new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
-        new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
-        new-frame-bound : sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥ readReg (regs s-final) rsp
-        new-frame-bound = subst (sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥_) (sym rsp-s7)
-                                (≤-trans new-rsp≤orig-rsp (RbpInvariant.frame-bound rbp-inv))
+    rbp-inv-final = curry-rbp-inv-update s s-final rbp-inv rbp-final rsp-s7
 
     -- Memory above rbp preserved through all states
     -- Curry writes only at new-rsp (s2) and new-rsp+8 (s4), both < rbp
@@ -813,29 +772,15 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       in trans mem-s7 (trans mem-s6 (trans mem-s5 (trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1)))))
 
     -- Memory at 0 preserved through all states
-    -- Curry writes at new-rsp and new-rsp+8, both > 0 when rsp > 16
-    -- Proof: rsp > 16 implies new-rsp = rsp - 16 > 0
+    -- D041: Use abstract helper for nonzero proofs
     mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
     mem-at-0-final =
-      let -- Prove rsp > 16 implies rsp ∸ 16 > 0
-          17≤rsp : 17 ≤ orig-rsp
-          17≤rsp = rsp-sufficient
-
-          -- By monus monotonicity: 17 ≤ rsp implies 17 ∸ 16 ≤ rsp ∸ 16
-          1≤new-rsp : 1 ≤ new-rsp
-          1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ 16 17≤rsp)
-
-          0<new-rsp : 0 < new-rsp
-          0<new-rsp = 1≤new-rsp
-
-          -- new-rsp ≥ 1, so new-rsp + 8 ≥ 9 > 0
-          0<new-rsp+8 : 0 < (new-rsp +ℕ 8)
-          0<new-rsp+8 = <-trans (s≤s z≤n) (+-monoˡ-< 8 0<new-rsp)
-
+      let -- D041: Abstract helper provides nonzero proofs
+          alloc-nonzero = curry-alloc-nonzero s rsp-sufficient
           diff-new-rsp : new-rsp ≢ 0
-          diff-new-rsp eq = Nat-<⇒≢ 0<new-rsp (sym eq)
+          diff-new-rsp = proj₁ alloc-nonzero
           diff-new-rsp+8 : (new-rsp +ℕ 8) ≢ 0
-          diff-new-rsp+8 eq = Nat-<⇒≢ 0<new-rsp+8 (sym eq)
+          diff-new-rsp+8 = proj₂ alloc-nonzero
           -- Chain through all states
           mem-s2 : readMem (memory s2) 0 ≡ readMem (memory s) 0
           mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) 0
