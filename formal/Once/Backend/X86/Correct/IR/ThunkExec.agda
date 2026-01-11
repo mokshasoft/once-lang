@@ -42,7 +42,8 @@ open import Once.Backend.X86.Correct.StackInvariant
          apply-alloc-below-rsp; thunk-2slot-below-1slot; thunk-2slot-below-orig;
          thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above;
          -- D041: Raw ℕ helpers for local variable patterns
-         n∸8<n-raw; n∸16<n∸8-raw; n∸16<n-raw; n∸32<n-raw)
+         n∸8<n-raw; n∸16<n∸8-raw; n∸16<n-raw; n∸24<n-raw; n∸24<n∸8-raw; n∸32<n-raw; n∸32+8<n-raw;
+         n∸32+8≡n∸24)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
@@ -601,87 +602,30 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
         rsp-after-push-rbp<old-rsp = subst (_< old-rsp) (sym rsp-after-push-rbp≡old-rsp∸16) (n∸16<n-raw old-rsp rsp-sufficient)
 
-    -- new-rsp ≤ rsp-after-push-rbp < old-rsp (when old-rsp > 16)
+    -- new-rsp = old-rsp - 32 < old-rsp (D041: eliminate with, use abstract helper)
     new-rsp≢old-rsp : new-rsp ≢ old-rsp
-    new-rsp≢old-rsp eq with 16 ≤? rsp-after-push-rbp
-    ... | yes 16≤ = <⇒≢-neq new-rsp<old-rsp eq
+    new-rsp≢old-rsp eq = <⇒≢-neq new-rsp<old-rsp eq
       where
-        open import Data.Nat.Properties using (∸-monoʳ-<)
-        -- new-rsp = rsp-after-push-rbp - 16 < rsp-after-push-rbp (since 16 > 0 and 16 ≤ rsp-after-push-rbp)
-        new-rsp<rsp-after-push-rbp : new-rsp < rsp-after-push-rbp
-        new-rsp<rsp-after-push-rbp = ∸-monoʳ-< z<s 16≤
-        -- rsp-after-push-rbp = rsp-after-push-r15 - 8 < rsp-after-push-r15 < old-rsp
-        8≤rsp-after-push-r15' : 8 ≤ rsp-after-push-r15
-        8≤rsp-after-push-r15' = ≤-trans 8≤9' 9≤rsp-after-push-r15
-          where
-            8≤9' : 8 ≤ 9
-            8≤9' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
-        rsp-after-push-rbp<rsp-after-push-r15' : rsp-after-push-rbp < rsp-after-push-r15
-        rsp-after-push-rbp<rsp-after-push-r15' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15'
-        8≤old-rsp' : 8 ≤ old-rsp
-        8≤old-rsp' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp-sufficient
-        rsp-after-push-r15<old-rsp' : rsp-after-push-r15 < old-rsp
-        rsp-after-push-r15<old-rsp' = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp'
-        rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
-        rsp-after-push-rbp<old-rsp = <-trans rsp-after-push-rbp<rsp-after-push-r15' rsp-after-push-r15<old-rsp'
+        -- Derive new-rsp = old-rsp ∸ 32 locally
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ 32
+        new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
+        -- Use abstract helper: (old-rsp ∸ 32) < old-rsp when old-rsp > 16
         new-rsp<old-rsp : new-rsp < old-rsp
-        new-rsp<old-rsp = <-trans new-rsp<rsp-after-push-rbp rsp-after-push-rbp<old-rsp
-    ... | no ¬16≤ = 0≢old-rsp (trans (sym new-rsp≡0) eq)
-      where
-        -- rsp-after-push-rbp < 16 → new-rsp = 0
-        rsp<16 : rsp-after-push-rbp < 16
-        rsp<16 = ≰⇒>-nat ¬16≤
-        new-rsp≡0 : new-rsp ≡ 0
-        new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
-        -- old-rsp > 16 > 0, so 0 ≠ old-rsp
-        old-rsp>0 : old-rsp > 0
-        old-rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
-        0≢old-rsp : 0 ≢ old-rsp
-        0≢old-rsp zeq = <⇒≢-neq old-rsp>0 zeq
+        new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸32<n-raw old-rsp rsp-sufficient)
 
-    -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8 < old-rsp
+    -- new-rsp + 8 = (old-rsp - 32) + 8 < old-rsp (D041: eliminate with, use abstract helper)
     new-rsp+8≢old-rsp : new-rsp +ℕ 8 ≢ old-rsp
-    new-rsp+8≢old-rsp eq with 16 ≤? rsp-after-push-rbp
-    ... | yes 16≤ = <⇒≢-neq new-rsp+8<old-rsp eq
+    new-rsp+8≢old-rsp eq = <⇒≢-neq new-rsp+8<old-rsp eq
       where
-        -- new-rsp + 8 = rsp-after-push-rbp - 16 + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp < old-rsp
-        open import Data.Nat.Properties using (m∸n+n≡m)
-        8<16 : 8 < 16
-        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        new-rsp+8<rsp-after-push-rbp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
-        new-rsp+8<rsp-after-push-rbp+16 = +-monoʳ-< new-rsp 8<16
-        new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ 8 < rsp-after-push-rbp
-        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤) new-rsp+8<rsp-after-push-rbp+16
-        -- rsp-after-push-rbp = rsp-after-push-r15 - 8 < rsp-after-push-r15 < old-rsp
-        open import Data.Nat.Properties using (∸-monoʳ-<)
-        8≤rsp-after-push-r15'' : 8 ≤ rsp-after-push-r15
-        8≤rsp-after-push-r15'' = ≤-trans 8≤9'' 9≤rsp-after-push-r15
-          where
-            8≤9'' : 8 ≤ 9
-            8≤9'' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
-        rsp-after-push-rbp<rsp-after-push-r15'' : rsp-after-push-rbp < rsp-after-push-r15
-        rsp-after-push-rbp<rsp-after-push-r15'' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15''
-        8≤old-rsp'' : 8 ≤ old-rsp
-        8≤old-rsp'' = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp-sufficient
-        rsp-after-push-r15<old-rsp'' : rsp-after-push-r15 < old-rsp
-        rsp-after-push-r15<old-rsp'' = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp''
-        rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
-        rsp-after-push-rbp<old-rsp = <-trans rsp-after-push-rbp<rsp-after-push-r15'' rsp-after-push-r15<old-rsp''
+        -- Derive new-rsp = old-rsp ∸ 32 locally
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ 32
+        new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
+        -- new-rsp + 8 = (old-rsp ∸ 32) + 8
+        new-rsp+8-eq : new-rsp +ℕ 8 ≡ (old-rsp ∸ 32) +ℕ 8
+        new-rsp+8-eq = cong (_+ℕ 8) new-rsp-eq-local
+        -- Use abstract helper: (old-rsp ∸ 32) + 8 < old-rsp when old-rsp > 16
         new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
-        new-rsp+8<old-rsp = <-trans new-rsp+8<rsp-after-push-rbp rsp-after-push-rbp<old-rsp
-    ... | no ¬16≤ = <⇒≢-neq new-rsp+8<old-rsp eq
-      where
-        -- new-rsp = 0, so new-rsp + 8 = 8 < old-rsp (since old-rsp > 16)
-        rsp<16 : rsp-after-push-rbp < 16
-        rsp<16 = ≰⇒>-nat ¬16≤
-        new-rsp≡0 : new-rsp ≡ 0
-        new-rsp≡0 = m≤n⇒m∸n≡0 (<⇒≤-nat rsp<16)
-        8<17 : 8 < 17
-        8<17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        8<old-rsp : 8 < old-rsp
-        8<old-rsp = ≤-trans 8<17 rsp-sufficient
-        new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
-        new-rsp+8<old-rsp = subst (λ n → n +ℕ 8 < old-rsp) (sym new-rsp≡0) 8<old-rsp
+        new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸32+8<n-raw old-rsp rsp-sufficient)
 
     -- s1 doesn't write memory (label instruction)
     mem-s1-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
@@ -756,62 +700,34 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp<rsp-after-push-r15 : new-rsp < rsp-after-push-r15
         new-rsp<rsp-after-push-r15 = ≤-trans (s≤s new-rsp≤rsp-after-push-rbp) rsp-after-push-rbp<rsp-after-push-r15'''
 
+    -- new-rsp + 8 = old-rsp - 24 < old-rsp - 8 = rsp-after-push-r15 (D041: eliminate with)
     new-rsp+8≢rsp-after-push-r15 : new-rsp +ℕ 8 ≢ rsp-after-push-r15
     new-rsp+8≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp+8<rsp-after-push-r15 eq
       where
-        -- new-rsp + 8 = old-rsp - 24, rsp-after-push-r15 = old-rsp - 8
-        -- For new-rsp + 8 < rsp-after-push-r15: old-rsp - 24 < old-rsp - 8 when old-rsp ≥ 24
+        -- Derive 32 ≤ old-rsp from old-rsp > 40
+        32≤old-rsp : 32 ≤ old-rsp
+        32≤old-rsp = ≤-trans 32≤41 old-rsp>40
+          where
+            32≤41 : 32 ≤ 41
+            32≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))
+        -- Derive old-rsp > 24 from old-rsp > 40
+        old-rsp>24 : old-rsp > 24
+        old-rsp>24 = ≤-trans 25≤41 old-rsp>40
+          where
+            25≤41 : 25 ≤ 41
+            25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+        -- new-rsp = old-rsp ∸ 32
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ 32
+        new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
+        -- new-rsp + 8 = (old-rsp ∸ 32) + 8 = old-rsp ∸ 24
+        new-rsp+8≡old-rsp∸24 : new-rsp +ℕ 8 ≡ old-rsp ∸ 24
+        new-rsp+8≡old-rsp∸24 = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸32+8≡n∸24 old-rsp 32≤old-rsp)
+        -- old-rsp ∸ 24 < old-rsp ∸ 8 = rsp-after-push-r15
+        old-rsp∸24<old-rsp∸8 : old-rsp ∸ 24 < old-rsp ∸ 8
+        old-rsp∸24<old-rsp∸8 = n∸24<n∸8-raw old-rsp old-rsp>24
+        -- Therefore new-rsp + 8 < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ 8 < rsp-after-push-r15
-        new-rsp+8<rsp-after-push-r15 with 24 ≤? old-rsp
-        ... | yes 24≤ = subst (new-rsp +ℕ 8 <_) (sym rsp-r15-eq) new-rsp+8<rsp-after-push-r15'
-          where
-            open import Data.Nat.Properties using (m∸n+n≡m)
-            -- First show rsp-after-push-r15 = old-rsp - 8
-            -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
-            -- We need: (old-rsp - 16 - 16) + 8 < old-rsp - 8
-            -- Simplify: old-rsp - 32 + 8 < old-rsp - 8
-            -- When old-rsp ≥ 32: old-rsp - 24 < old-rsp - 8, which is 16 > 0, true
-            -- When old-rsp < 32 but ≥ 24: old-rsp - 24 ≥ 0, old-rsp - 8 ≥ 16, so 0..7 < 16+, true
-            16≤rsp-after-push-r15 : 16 ≤ rsp-after-push-r15
-            16≤rsp-after-push-r15 = ∸-monoˡ-≤ {24} {old-rsp} 8 24≤
-            rsp-r15-eq : old-rsp ∸ 8 ≡ rsp-after-push-r15
-            rsp-r15-eq = refl
-            8<16' : 8 < 16
-            8<16' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-            -- Show new-rsp + 8 < new-rsp + 16 = rsp-after-push-rbp (when 16 ≤ rsp-after-push-rbp)
-            -- Then show rsp-after-push-rbp < rsp-after-push-r15
-            -- Use the outer scope's 16≤rsp-after-push-rbp which handles the chained subtraction
-            16≤rsp-after-push-rbp''' : 16 ≤ rsp-after-push-rbp
-            16≤rsp-after-push-rbp''' = 16≤rsp-after-push-rbp
-            new-rsp+16≡rsp-after-push-rbp : new-rsp +ℕ 16 ≡ rsp-after-push-rbp
-            new-rsp+16≡rsp-after-push-rbp = m∸n+n≡m 16≤rsp-after-push-rbp'''
-            new-rsp+8<new-rsp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
-            new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16'
-            new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ 8 < rsp-after-push-rbp
-            new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ 8 <_) new-rsp+16≡rsp-after-push-rbp new-rsp+8<new-rsp+16
-            -- rsp-after-push-rbp = rsp-after-push-r15 ∸ 8, so need 8 ≤ rsp-after-push-r15
-            8≤rsp-after-push-r15'''' : 8 ≤ rsp-after-push-r15
-            8≤rsp-after-push-r15'''' = ≤-trans 8≤9'''' 9≤rsp-after-push-r15
-              where
-                8≤9'''' : 8 ≤ 9
-                8≤9'''' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
-            rsp-after-push-rbp+8≡rsp-after-push-r15 : rsp-after-push-rbp +ℕ 8 ≡ rsp-after-push-r15
-            rsp-after-push-rbp+8≡rsp-after-push-r15 = m∸n+n≡m 8≤rsp-after-push-r15''''
-            0<8' : 0 < 8
-            0<8' = s≤s z≤n
-            rsp-after-push-rbp<rsp-after-push-r15 : rsp-after-push-rbp < rsp-after-push-r15
-            rsp-after-push-rbp<rsp-after-push-r15 = subst (rsp-after-push-rbp <_) rsp-after-push-rbp+8≡rsp-after-push-r15 (m<m+n rsp-after-push-rbp 0<8')
-            new-rsp+8<rsp-after-push-r15' : new-rsp +ℕ 8 < old-rsp ∸ 8
-            new-rsp+8<rsp-after-push-r15' = <-trans new-rsp+8<rsp-after-push-rbp rsp-after-push-rbp<rsp-after-push-r15
-        -- This case is unreachable since old-rsp > 40 implies 24 ≤ old-rsp
-        ... | no ¬24≤ = ⊥-elim (¬24≤ 24≤old-rsp)
-          where
-            open import Data.Empty using (⊥-elim)
-            24≤old-rsp : 24 ≤ old-rsp
-            24≤old-rsp = ≤-trans 24≤41 old-rsp>40
-              where
-                24≤41 : 24 ≤ 41
-                24≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+        new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ 8) (sym new-rsp+8≡old-rsp∸24) old-rsp∸24<old-rsp∸8
 
     -- Now prove r15 memory preservation
     -- s2 wrote old-r15 at rsp-after-push-r15

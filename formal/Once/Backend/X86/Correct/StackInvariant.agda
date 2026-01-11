@@ -1583,3 +1583,74 @@ n∸32<n-raw n n>16 = ≤-<-trans n∸32≤n∸8 n∸8<n
     8≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
     n∸32≤n∸8 : (n ∸ 32) ≤ (n ∸ 8)
     n∸32≤n∸8 = ∸-monoʳ-≤ n 8≤32
+
+-- | Raw ℕ version: 3-slot below orig when n > 16
+-- Proves: (n ∸ 24) < n
+n∸24<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 24) < n
+n∸24<n-raw n n>16 = ≤-<-trans n∸24≤n∸8 n∸8<n
+  where
+    open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
+    open import Data.Nat using (s≤s; z≤n)
+    n∸8<n = n∸8<n-raw n n>16
+    8≤24 : 8 ≤ 24
+    8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+    n∸24≤n∸8 : (n ∸ 24) ≤ (n ∸ 8)
+    n∸24≤n∸8 = ∸-monoʳ-≤ n 8≤24
+
+-- | Raw ℕ version: 3-slot below < 1-slot below when n > 24
+-- Proves: (n ∸ 24) < (n ∸ 8)
+-- Used for new-rsp+8 < rsp-after-push-r15 in thunk
+n∸24<n∸8-raw : ∀ (n : ℕ) → n > 24 → (n ∸ 24) < (n ∸ 8)
+n∸24<n∸8-raw n n>24 = ∸-monoʳ-< 8<24 24≤n
+  where
+    open import Data.Nat.Properties using (∸-monoʳ-<; <⇒≤)
+    open import Data.Nat using (s≤s; z≤n)
+    8<24 : 8 < 24
+    8<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    24≤n : 24 ≤ n
+    24≤n = <⇒≤ n>24
+
+-- | Identity: (n ∸ 32) + 8 ≡ n ∸ 24 when n ≥ 32
+-- Used for connecting new-rsp+8 to old-rsp∸24
+n∸32+8≡n∸24 : ∀ (n : ℕ) → 32 ≤ n → (n ∸ 32) +ℕ 8 ≡ n ∸ 24
+n∸32+8≡n∸24 n 32≤n = trans step1 step2
+  where
+    open import Data.Nat.Properties using (m+n∸n≡m; m∸n+n≡m)
+    -- (n ∸ 32) + 8 = ((n ∸ 32) + 8 + 24) ∸ 24
+    step1 : (n ∸ 32) +ℕ 8 ≡ ((n ∸ 32) +ℕ 8 +ℕ 24) ∸ 24
+    step1 = sym (m+n∸n≡m ((n ∸ 32) +ℕ 8) 24)
+    -- (n ∸ 32) + 8 + 24 = (n ∸ 32) + 32 = n
+    8+24≡32 : 8 +ℕ 24 ≡ 32
+    8+24≡32 = refl
+    lhs+24≡n : (n ∸ 32) +ℕ 8 +ℕ 24 ≡ n
+    lhs+24≡n = trans (+-assoc (n ∸ 32) 8 24) (trans (cong ((n ∸ 32) +ℕ_) 8+24≡32) (m∸n+n≡m 32≤n))
+    -- Therefore ((n ∸ 32) + 8 + 24) ∸ 24 = n ∸ 24
+    step2 : ((n ∸ 32) +ℕ 8 +ℕ 24) ∸ 24 ≡ n ∸ 24
+    step2 = cong (_∸ 24) lhs+24≡n
+
+-- | Raw ℕ version: 4-slot below orig + 8 < orig when n > 16
+-- Proves: (n ∸ 32) + 8 < n
+-- Used for new-rsp+8 < old-rsp in thunk (eliminates with pattern)
+n∸32+8<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 32) +ℕ 8 < n
+n∸32+8<n-raw n n>16 = <-≤-trans step8<step16 step16≤n
+  where
+    open import Data.Nat.Properties using (<-≤-trans; +-monoˡ-≤; +-monoʳ-<; ∸-monoʳ-≤; m∸n+n≡m; <⇒≤)
+    open import Data.Nat using (s≤s; z≤n)
+    -- (n ∸ 32) + 8 < (n ∸ 32) + 16
+    8<16 : 8 < 16
+    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    step8<step16 : (n ∸ 32) +ℕ 8 < (n ∸ 32) +ℕ 16
+    step8<step16 = +-monoʳ-< (n ∸ 32) 8<16
+    -- (n ∸ 32) + 16 ≤ (n ∸ 16) + 16 = n
+    16≤32 : 16 ≤ 32
+    16≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+    n∸32≤n∸16 : (n ∸ 32) ≤ (n ∸ 16)
+    n∸32≤n∸16 = ∸-monoʳ-≤ n 16≤32
+    step16≤n∸16+16 : (n ∸ 32) +ℕ 16 ≤ (n ∸ 16) +ℕ 16
+    step16≤n∸16+16 = +-monoˡ-≤ 16 n∸32≤n∸16
+    16≤n : 16 ≤ n
+    16≤n = <⇒≤ n>16
+    n∸16+16≡n : (n ∸ 16) +ℕ 16 ≡ n
+    n∸16+16≡n = m∸n+n≡m 16≤n
+    step16≤n : (n ∸ 32) +ℕ 16 ≤ n
+    step16≤n = subst ((n ∸ 32) +ℕ 16 ≤_) n∸16+16≡n step16≤n∸16+16
