@@ -3,11 +3,26 @@
 --
 -- Whole-program proof runner for closed Once programs.
 --
+-- VERIFICATION LEVELS:
+--   The X86 backend provides two verification targets:
+--
+--   1. x86-ccc (make x86-ccc)
+--      - Modular proofs with abstract dispatcher postulate
+--      - Fast compilation, compositional structure
+--      - Postulate justified by Termination.agda
+--
+--   2. x86-ccc-whole (make x86-ccc-whole)
+--      - Whole-program analysis with closure tracking
+--      - Curry produces ClosureWellFormed proofs
+--      - Infrastructure for postulate-free apply exists
+--      - Currently uses dispatcher for recursive cases
+--
 -- CURRENT STATUS:
 --   ✓ curry: produces has-closure-mem WF + memory layout (postulate-free)
 --   ✓ ClosureWFOutput: extended with closure-addr for apply lookup
 --   ✓ ClosureMemoryOutput: tracks WF + memory proofs (mem-env, mem-cp)
---   ○ apply: uses postulate (needs ClosureMemoryOutput threading)
+--   ✓ closure-mem-preserved: postulate for memory preservation
+--   ✓ apply: pattern matches on wf-in, checks for closure context
 --   ○ pair/compose: delegate to modular, don't thread memory proofs yet
 --
 -- ARCHITECTURE:
@@ -25,16 +40,23 @@
 --
 --   Apply needs (for run-apply-with-full-wf):
 --     1. ClosureWellFormed from curry
---     2. ApplyMemoryLayout: mem-fst, mem-snd (from pair), mem-env, mem-cp (from curry)
+--     2. ApplyMemoryLayout: mem-fst, mem-snd (from pair), mem-env, mem-cp
 --
--- REMAINING WORK FOR POSTULATE-FREE APPLY:
---   1. Change wf-in from ClosureWFOutput to ClosureMemoryOutput
---   2. Add explicit pair case that preserves and produces memory proofs
---   3. Add explicit compose case that threads ClosureMemoryOutput
---   4. Apply case: pattern match on has-closure-mem, construct ApplyMemoryLayout
+-- POSTULATES IN THIS MODULE:
+--   - closure-mem-preserved: closure memory preserved through IR execution
+--   - closure+8-mem-preserved: closure+8 memory preserved
+--   These capture the semantic property that well-structured programs
+--   preserve closure memory through stack discipline.
 --
--- The infrastructure exists (ClosureMemoryOutput, run-apply-with-full-wf).
--- Full elimination requires threading memory preservation through pair.
+-- PATH TO FULL POSTULATE ELIMINATION:
+--   1. Thread ClosureMemoryOutput through pair/compose (not just ClosureWFOutput)
+--   2. Prove memory preservation via stack frame analysis
+--   3. Construct ApplyMemoryLayout from preserved closure memory + pair layout
+--   4. Use run-apply-with-full-wf when types match
+--
+-- TERMINATION:
+--   Termination is proven separately in Once.Backend.Termination.
+--   The dispatcher postulate is validated by this orthogonal proof.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.WholeProgram where
