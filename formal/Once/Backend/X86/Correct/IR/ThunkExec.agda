@@ -38,9 +38,11 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code;
-         -- D041: Abstract helpers for thunk arithmetic
+         -- D041: Abstract helpers for thunk arithmetic (State-based)
          apply-alloc-below-rsp; thunk-2slot-below-1slot; thunk-2slot-below-orig;
-         thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above)
+         thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above;
+         -- D041: Raw ℕ helpers for local variable patterns
+         n∸8<n-raw; n∸16<n∸8-raw; n∸16<n-raw; n∸32<n-raw)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
@@ -592,29 +594,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         0<8 : 0 < 8
         0<8 = s≤s z≤n
 
-    -- rsp-after-push-rbp = (old-rsp - 8) - 8 < old-rsp - 8 < old-rsp
+    -- rsp-after-push-rbp = old-rsp - 16 < old-rsp (D041: use abstract helper)
     rsp-after-push-rbp≢old-rsp : rsp-after-push-rbp ≢ old-rsp
     rsp-after-push-rbp≢old-rsp eq = <⇒≢-neq rsp-after-push-rbp<old-rsp eq
       where
-        open import Data.Nat.Properties using (∸-monoʳ-<)
-        -- rsp-after-push-rbp < rsp-after-push-r15 (since 8 > 0 and 8 ≤ rsp-after-push-r15)
-        -- ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
-        -- With o = 0, n = 8, m = rsp-after-push-r15
-        -- Gives: rsp-after-push-r15 ∸ 8 < rsp-after-push-r15 ∸ 0 = rsp-after-push-r15
-        8≤rsp-after-push-r15 : 8 ≤ rsp-after-push-r15
-        8≤rsp-after-push-r15 = ≤-trans 8≤9 9≤rsp-after-push-r15
-          where
-            8≤9 : 8 ≤ 9
-            8≤9 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
-        rsp-after-push-rbp<rsp-after-push-r15 : rsp-after-push-rbp < rsp-after-push-r15
-        rsp-after-push-rbp<rsp-after-push-r15 = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15
-        -- rsp-after-push-r15 < old-rsp (since 8 > 0 and 8 ≤ old-rsp)
-        8≤old-rsp : 8 ≤ old-rsp
-        8≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) rsp-sufficient
-        rsp-after-push-r15<old-rsp : rsp-after-push-r15 < old-rsp
-        rsp-after-push-r15<old-rsp = ∸-monoʳ-< (s≤s z≤n) 8≤old-rsp
         rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
-        rsp-after-push-rbp<old-rsp = <-trans rsp-after-push-rbp<rsp-after-push-r15 rsp-after-push-r15<old-rsp
+        rsp-after-push-rbp<old-rsp = subst (_< old-rsp) (sym rsp-after-push-rbp≡old-rsp∸16) (n∸16<n-raw old-rsp rsp-sufficient)
 
     -- new-rsp ≤ rsp-after-push-rbp < old-rsp (when old-rsp > 16)
     new-rsp≢old-rsp : new-rsp ≢ old-rsp
