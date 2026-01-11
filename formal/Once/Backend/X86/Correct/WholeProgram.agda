@@ -209,16 +209,17 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
       offset = length prefix
       thunk-offset = offset +ℕ 6
       -- Get IRStarResult from run-curry-star
-      (s' , ir-res , _) = run-curry-star f prefix suffix caller-sp x s
+      -- Note: run-curry-star doesn't take caller-sp (curry doesn't need it)
+      (s' , ir-res , _) = run-curry-star f prefix suffix x s
                             h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
       -- Build ClosureWellFormed proof
       -- f : IR _ (A * B) C, so closure semantics is ⟦ B ⟧ → ⟦ C ⟧
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ →
-            curry-thunk-correct-impl f prefix suffix x arg s₁ ret-addr
-              h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+            curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
+              h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
   in s' , from-modular-with-wf ir-res wf
 
