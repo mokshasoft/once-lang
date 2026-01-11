@@ -41,7 +41,10 @@ open import Once.Postulates
 
 -- Import StackInvariant for initial state proof
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackInvariant; r15-unused)
+  using (StackInvariant; RbpInvariant; r15-unused)
+open import Once.Backend.Common.MemoryRegions
+  using (StackPointer)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -118,7 +121,7 @@ initWithInput-stack-inv x = r15-unused r15≡0
 open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInvariant
-  using (RbpInvariant; StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound)
+  using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
 -- Internal: raw rsp bound proof
@@ -134,10 +137,20 @@ initWithInput-stack-capacity x = rsp-to-capacity-2 (initWithInput x) (rsp-in-sta
 initWithInput-rsp-sufficient : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16
 initWithInput-rsp-sufficient x = capacity-2-to-rsp-bound (initWithInput x) (initWithInput-stack-capacity x)
 
--- | Initial state satisfies RbpInvariant (rsp ≤ rbp)
--- Both rsp and rbp are set to stackBase, so rsp ≤ rbp (equality case)
+-- | Initial state satisfies RbpInvariant
+-- Both rsp and rbp are set to stackBase. The rbp-frame is the initial stack frame.
 initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
-initWithInput-rbp-inv x = record { rsp-bounded-by-rbp = ≤-refl }  -- stackBase ≤ stackBase
+initWithInput-rbp-inv x = record
+  { rbp-frame = init-frame
+  ; rbp-is-base = refl   -- rbp = stackBase = sp-addr init-frame
+  ; frame-bound = ≤-refl -- sp-addr init-frame = stackBase ≥ stackBase = rsp
+  }
+  where
+    init-frame : StackPointer
+    init-frame = record
+      { addr = 0x7FFF0000  -- stackBase
+      ; in-stack = rsp-in-stack-after-stack-op (initWithInput x)
+      }
 
 -- | Stack base value exported for other modules
 stackBase : Word

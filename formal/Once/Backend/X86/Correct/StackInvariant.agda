@@ -31,7 +31,8 @@ open import Once.Backend.Common.MemoryRegions
          zero-not-in-stack; pc-in-code;
          stack-sub-preserves-region;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base)
+         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
+         slot-addr-1-is-base+8)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 open import Data.Unit using (⊤; tt)
 
@@ -689,18 +690,19 @@ stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq
 -- RbpInvariant (Frame Pointer Invariant)
 ------------------------------------------------------------------------
 
--- | Stack writes at lower addresses don't affect rbp
--- The key property is captured by RbpInvariant: rsp ≤ rbp means rbp is "above"
--- the current stack pointer, so writes at rsp don't affect memory at rbp.
-
--- | Invariant: rsp ≤ rbp (frame pointer is above stack pointer)
+-- | Invariant: rbp points to a frame base (caller's frame)
+-- Uses frame identity instead of arithmetic ordering.
+-- rbp-frame identifies which frame rbp belongs to.
+-- frame-bound ensures rbp's frame is at or above rsp (for frame distinctness).
 record RbpInvariant (s : State) : Set where
   field
-    rsp-bounded-by-rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
+    rbp-frame : StackPointer
+    rbp-is-base : readReg (regs s) rbp ≡ sp-addr rbp-frame
+    frame-bound : sp-addr rbp-frame ≥ readReg (regs s) rsp
 
-  -- Backward compatibility alias
+  -- Backward compatibility: derive rsp≤rbp from frame-bound + rbp-is-base
   rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
-  rsp≤rbp = rsp-bounded-by-rbp
+  rsp≤rbp = subst (readReg (regs s) rsp ≤_) (sym rbp-is-base) frame-bound
 
 open RbpInvariant public
 
@@ -734,7 +736,7 @@ pair-setup-stack-inv : ∀ (s s-setup : State) →
   readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40 →
   StackInvariant s-setup
 pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
-  r15-in-stack pair-frame 0 r15-is-slot0 frame-bound
+  r15-in-stack pair-frame 0 r15-is-slot0 pair-frame-bound
   where
     -- region-of (s.rsp - 40) ≡ stack from capacity
     base-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
@@ -755,8 +757,8 @@ pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
 
     -- Frame bound: pair-frame.addr = rsp - 40 = s-setup.rsp (since both equal rsp - 40)
     -- So pair-frame.addr ≥ s-setup.rsp (actually =)
-    frame-bound : sp-addr pair-frame ≥ readReg (regs s-setup) rsp
-    frame-bound = subst (sp-addr pair-frame ≥_) (sym rsp-eq) ≤-refl
+    pair-frame-bound : sp-addr pair-frame ≥ readReg (regs s-setup) rsp
+    pair-frame-bound = subst (sp-addr pair-frame ≥_) (sym rsp-eq) ≤-refl
 
 ------------------------------------------------------------------------
 -- Invariant preservation lemmas
@@ -1027,7 +1029,8 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
     diff2 = diff-helper stack-addr2 write2-in-stack addr2<rsp stack-inv
 
 -- | Prove (rsp - 16) and (rsp - 8) are different from rbp
--- Uses RbpInvariant: rsp ≤ rbp means writes below rsp don't touch rbp
+-- Uses frame-bound from RbpInvariant: rbp-frame addr ≥ rsp, so writes below rsp
+-- are in a different frame from rbp.
 rbp-addr-diff-from-invariant : ∀ (s : State) →
   RbpInvariant s →
   readReg (regs s) rsp > 16 →
@@ -1035,62 +1038,68 @@ rbp-addr-diff-from-invariant : ∀ (s : State) →
       orig-rbp = readReg (regs s) rbp
   in (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
 rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient =
-  -- new-rsp = rsp - 16 < rsp ≤ rbp, so new-rsp ≠ rbp
-  -- (new-rsp + 8) = rsp - 8 < rsp ≤ rbp, so (new-rsp + 8) ≠ rbp
   rbp-diff-proof , rbp-diff-proof-2
   where
-    open import Data.Nat.Properties using (<⇒≢; <-≤-trans; m∸n≤m)
+    open import Data.Nat.Properties using (<⇒≢; <-≤-trans; m∸n≤m; ≤-trans)
     open import Data.Nat using (s≤s; z≤n)
-
-    -- Helper: m ∸ n < m when n > 0 and m > n
-    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
-    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
 
     rsp-val = readReg (regs s) rsp
     new-rsp = rsp-val ∸ 16
     orig-rbp = readReg (regs s) rbp
 
+    -- Helper: m ∸ n < m when n > 0 and m > n
+    m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
+    m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+
     -- new-rsp < rsp (allocation decreases stack pointer)
-    new-rsp-rsp-ord : new-rsp < rsp-val
-    new-rsp-rsp-ord = m∸n<m' rsp-val 16 (s≤s z≤n) rsp-sufficient
+    new-rsp<rsp : new-rsp < rsp-val
+    new-rsp<rsp = m∸n<m' rsp-val 16 (s≤s z≤n) rsp-sufficient
 
-    -- rsp ≤ rbp (from RbpInvariant)
-    rsp-rbp-ord : rsp-val ≤ orig-rbp
-    rsp-rbp-ord = rsp-bounded-by-rbp rbp-inv
+    -- rbp = sp-addr rbp-frame (from rbp-is-base)
+    -- frame-bound: sp-addr rbp-frame ≥ rsp
+    -- So: new-rsp < rsp ≤ sp-addr rbp-frame = rbp
 
-    -- new-rsp < rbp (by transitivity)
-    new-rsp-rbp-ord : new-rsp < orig-rbp
-    new-rsp-rbp-ord = <-≤-trans new-rsp-rsp-ord rsp-rbp-ord
+    -- new-rsp < rbp (by frame-bound and rbp-is-base)
+    new-rsp<rbp : new-rsp < orig-rbp
+    new-rsp<rbp = subst (new-rsp <_) (sym (rbp-is-base rbp-inv))
+                        (<-≤-trans new-rsp<rsp (frame-bound rbp-inv))
 
     -- PROVEN: new-rsp ≢ rbp
     rbp-diff-proof : new-rsp ≢ orig-rbp
-    rbp-diff-proof = <⇒≢ new-rsp-rbp-ord
+    rbp-diff-proof = <⇒≢ new-rsp<rbp
 
-    -- rsp has capacity for 1 slot (follows from rsp-sufficient)
-    rsp-has-1-slot : rsp-val > 8
-    rsp-has-1-slot = ≤-trans bounds-lemma rsp-sufficient
+    -- For (new-rsp + 8): need new-rsp + 8 < rbp
+    -- new-rsp + 8 = rsp - 8
+    -- rsp > 16 implies rsp > 8, so rsp - 8 < rsp ≤ rbp
+
+    -- rsp > 8 (follows from rsp > 16)
+    rsp>8 : rsp-val > 8
+    rsp>8 = ≤-trans bounds-lemma rsp-sufficient
       where
         bounds-lemma : 9 ≤ 17
         bounds-lemma = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-    rsp-slot1-ord : rsp-val ∸ 8 < rsp-val
-    rsp-slot1-ord = m∸n<m' rsp-val 8 (s≤s z≤n) rsp-has-1-slot
 
-    -- rsp minus 1 slot is within frame (by transitivity)
-    rsp-slot1-rbp-ord : rsp-val ∸ 8 < orig-rbp
-    rsp-slot1-rbp-ord = <-≤-trans rsp-slot1-ord rsp-rbp-ord
+    -- rsp - 8 < rsp
+    rsp-8<rsp : rsp-val ∸ 8 < rsp-val
+    rsp-8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
 
-    -- Second slot address equals rsp minus 1 slot
-    second-slot-addr-eq : new-rsp +ℕ 8 ≡ rsp-val ∸ 8
-    second-slot-addr-eq = trans (cong (_+ℕ 8) step1) (m∸n+n≡m word-fits-in-remaining)
+    -- rsp - 8 < rbp
+    rsp-8<rbp : rsp-val ∸ 8 < orig-rbp
+    rsp-8<rbp = subst (rsp-val ∸ 8 <_) (sym (rbp-is-base rbp-inv))
+                      (<-≤-trans rsp-8<rsp (frame-bound rbp-inv))
+
+    -- new-rsp + 8 = rsp - 8
+    second-slot-eq : new-rsp +ℕ 8 ≡ rsp-val ∸ 8
+    second-slot-eq = trans (cong (_+ℕ 8) step1) (m∸n+n≡m word-fits)
       where
         open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; n≤1+n)
         step1 : rsp-val ∸ 16 ≡ (rsp-val ∸ 8) ∸ 8
         step1 = sym (∸-+-assoc rsp-val 8 8)
         two-slots-fit : 16 ≤ rsp-val
         two-slots-fit = ≤-trans (n≤1+n 16) rsp-sufficient
-        word-fits-in-remaining : 8 ≤ rsp-val ∸ 8
-        word-fits-in-remaining = ∸-monoˡ-≤ 8 two-slots-fit
+        word-fits : 8 ≤ rsp-val ∸ 8
+        word-fits = ∸-monoˡ-≤ 8 two-slots-fit
 
-    -- PROVEN: second slot address ≢ rbp
+    -- PROVEN: (new-rsp + 8) ≢ rbp
     rbp-diff-proof-2 : (new-rsp +ℕ 8) ≢ orig-rbp
-    rbp-diff-proof-2 = subst (_≢ orig-rbp) (sym second-slot-addr-eq) (<⇒≢ rsp-slot1-rbp-ord)
+    rbp-diff-proof-2 = subst (_≢ orig-rbp) (sym second-slot-eq) (<⇒≢ rsp-8<rbp)

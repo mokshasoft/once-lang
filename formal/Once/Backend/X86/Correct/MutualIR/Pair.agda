@@ -28,11 +28,12 @@ open import Once.Backend.X86.Correct.StarBase
          rbp-inv-preserved-unchanged)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; StackPointer)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; StackPointer)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackInvariant; RbpInvariant)
+  using (StackInvariant; RbpInvariant; StackCapacity; capacity-maintained; pair-stack-capacity)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -51,6 +52,7 @@ open import Once.Backend.X86.Correct.IR.Pair using (module PairMiddleResult)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairFinalResult)
 
 open import Once.Postulates using (encode)
+open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op; rsp-bound-after-stack-op)
 open import Data.Bool using (Bool; false)
 open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
@@ -106,23 +108,43 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
 
       -- ========== Phase 2: Execute f (recursive call via abstract dispatcher) ==========
       -- Derive RbpInvariant for s-setup: rsp_setup = rsp ∸ 40, rbp_setup = rsp ∸ 24
-      -- Need: (rsp ∸ 40) ≤ (rsp ∸ 24), which follows from 24 ≤ 40
+      -- Need: frame-bound: (rsp ∸ 24) ≥ (rsp ∸ 40), which follows from 24 ≤ 40
       rbp-inv-setup : RbpInvariant s-setup
       rbp-inv-setup = record
-        { rsp-bounded-by-rbp = rsp-setup≤rbp-setup }
+        { rbp-frame = setup-rbp-frame
+        ; rbp-is-base = PairSetupResult.rbp-setup setup-res
+        ; frame-bound = setup-frame-bound
+        }
         where
           open import Data.Nat.Properties using (∸-monoʳ-≤)
           open import Data.Nat using (s≤s; z≤n)
+
+          -- Get StackCapacity 5 for the original state s
+          cap5 : StackCapacity s 5
+          cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+
+          -- rsp ∸ 24 is in stack region (slot 3: 3 * 8 = 24)
+          rbp-addr-in-stack : region-of (readReg (regs s) rsp ∸ 24) ≡ stack
+          rbp-addr-in-stack = capacity-maintained cap5 3 (s≤s (s≤s (s≤s z≤n)))
+
+          -- The frame for rbp: StackPointer with addr = rsp ∸ 24
+          setup-rbp-frame : StackPointer
+          setup-rbp-frame = record
+            { addr = readReg (regs s) rsp ∸ 24
+            ; in-stack = rbp-addr-in-stack
+            }
+
+          -- frame-bound: sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
+          -- i.e., (rsp ∸ 24) ≥ (rsp ∸ 40)
           -- 24 ≤ 40
           24≤40 : 24 ≤ 40
           24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
           -- (rsp ∸ 40) ≤ (rsp ∸ 24) by ∸-monoʳ-≤
           rsp∸40≤rsp∸24 : readReg (regs s) rsp ∸ 40 ≤ readReg (regs s) rsp ∸ 24
           rsp∸40≤rsp∸24 = ∸-monoʳ-≤ (readReg (regs s) rsp) 24≤40
-          rsp-setup≤rbp-setup : readReg (regs s-setup) rsp ≤ readReg (regs s-setup) rbp
-          rsp-setup≤rbp-setup = subst₂ _≤_
+          setup-frame-bound : sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
+          setup-frame-bound = subst (readReg (regs s) rsp ∸ 24 ≥_)
             (sym (PairSetupResult.rsp-setup setup-res))
-            (sym (PairSetupResult.rbp-setup setup-res))
             rsp∸40≤rsp∸24
 
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)

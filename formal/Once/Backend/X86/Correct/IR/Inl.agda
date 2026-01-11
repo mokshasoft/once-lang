@@ -505,15 +505,17 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     rsp-sufficient' : readReg (regs s4) rsp > 16
     rsp-sufficient' = capacity-2-to-rsp-bound s4 output-capacity
 
-    -- RbpInvariant: new-rsp ≤ orig-rsp ≤ orig-rbp
+    -- RbpInvariant: rbp-frame unchanged, frame-bound updated for new rsp
     rbp-inv' : RbpInvariant s4
-    rbp-inv' = record { rsp-bounded-by-rbp = new-rsp≤rbp }
+    rbp-inv' = record
+      { rbp-frame = RbpInvariant.rbp-frame rbp-inv
+      ; rbp-is-base = trans rbp-eq (RbpInvariant.rbp-is-base rbp-inv)
+      ; frame-bound = new-frame-bound
+      }
       where
+        -- new-rsp ≤ orig-rsp ≤ frame-bound
         new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
         new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
-        orig-rsp≤orig-rbp : orig-rsp ≤ orig-rbp
-        orig-rsp≤orig-rbp = RbpInvariant.rsp≤rbp rbp-inv
-        new-rsp≤orig-rbp : new-rsp ≤ orig-rbp
-        new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
-        new-rsp≤rbp : readReg (regs s4) rsp ≤ readReg (regs s4) rbp
-        new-rsp≤rbp = subst₂ _≤_ (sym rsp-s4) (sym rbp-eq) new-rsp≤orig-rbp
+        new-frame-bound : sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥ readReg (regs s4) rsp
+        new-frame-bound = subst (sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥_) (sym rsp-s4)
+                                (≤-trans new-rsp≤orig-rsp (RbpInvariant.frame-bound rbp-inv))

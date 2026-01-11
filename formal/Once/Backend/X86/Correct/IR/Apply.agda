@@ -63,7 +63,8 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -1489,11 +1490,9 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- PROVEN: RbpInvariant preserved via RSP restoration and RBP preservation
     -- From: WfR.rsp-restored : s'.rsp ≡ s.rsp
     --       WfR.rbp-final    : s'.rbp ≡ s.rbp
-    --       rbp-inv : s.rsp ≤ s.rbp
-    -- Derive: s'.rsp ≤ s'.rbp
+    -- Both rsp and rbp are restored/preserved, so use rbp-inv-preserved-unchanged
     rbp-inv-derived : RbpInvariant s'
-    rbp-inv-derived = record
-      { rsp-bounded-by-rbp = subst₂ _≤_ (sym WfR.rsp-restored) (sym WfR.rbp-final) (RbpInvariant.rsp≤rbp rbp-inv) }
+    rbp-inv-derived = rbp-inv-preserved-unchanged s s' rbp-inv WfR.rsp-restored WfR.rbp-final
 
     -- Memory preservation proofs derived from WfR.mem-above
     --

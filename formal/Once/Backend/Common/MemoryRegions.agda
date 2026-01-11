@@ -195,6 +195,9 @@ postulate
   -- Slot 0 is at the frame's base address
   slot-addr-0-is-base : ∀ sp → slot-addr sp 0 ≡ addr sp
 
+  -- Slot 1 is 8 bytes above the base address
+  slot-addr-1-is-base+8 : ∀ sp → slot-addr sp 1 ≡ addr sp + 8
+
   -- Different SPs give different slots (freshness) - for same slot index
   sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
 

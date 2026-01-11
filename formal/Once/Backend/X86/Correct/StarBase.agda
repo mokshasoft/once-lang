@@ -16,6 +16,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged; rsp-bound-preserved-unchanged)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; stack-code-disjoint)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged)
@@ -152,10 +153,14 @@ rbp-inv-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s') rbp ≡ readReg (regs s) rbp →
   RbpInvariant s'
 rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq = record
-  { rsp-bounded-by-rbp = subst₂ _≤_ (sym rsp-eq) (sym rbp-eq) (RbpInvariant.rsp≤rbp rbp-inv) }
+  { rbp-frame = RbpInvariant.rbp-frame rbp-inv
+  ; rbp-is-base = trans rbp-eq (RbpInvariant.rbp-is-base rbp-inv)
+  ; frame-bound = subst (sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥_) (sym rsp-eq)
+                        (RbpInvariant.frame-bound rbp-inv)
+  }
   where
-    open import Data.Nat using (_≤_)
-    open import Relation.Binary.PropositionalEquality using (subst₂)
+    open import Data.Nat using (_≤_; _≥_)
+    open import Relation.Binary.PropositionalEquality using (subst)
 
 ------------------------------------------------------------------------
 -- Simple Star proofs (single-step, no recursion)

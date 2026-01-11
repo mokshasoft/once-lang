@@ -760,18 +760,19 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp-sufficient-final : readReg (regs s-final) rsp > 16
     rsp-sufficient-final = capacity-2-to-rsp-bound s-final output-capacity
 
-    -- RbpInvariant preservation: new-rsp ≤ orig-rsp ≤ orig-rbp
+    -- RbpInvariant preservation: rbp-frame unchanged, frame-bound updated
     rbp-inv-final : RbpInvariant s-final
-    rbp-inv-final = record { rsp-bounded-by-rbp = new-rsp≤rbp-final }
+    rbp-inv-final = record
+      { rbp-frame = RbpInvariant.rbp-frame rbp-inv
+      ; rbp-is-base = trans rbp-final (RbpInvariant.rbp-is-base rbp-inv)
+      ; frame-bound = new-frame-bound
+      }
       where
         new-rsp≤orig-rsp : new-rsp ≤ orig-rsp
         new-rsp≤orig-rsp = m∸n≤m orig-rsp 16
-        orig-rsp≤orig-rbp : orig-rsp ≤ readReg (regs s) rbp
-        orig-rsp≤orig-rbp = RbpInvariant.rsp≤rbp rbp-inv
-        new-rsp≤orig-rbp : new-rsp ≤ readReg (regs s) rbp
-        new-rsp≤orig-rbp = ≤-trans new-rsp≤orig-rsp orig-rsp≤orig-rbp
-        new-rsp≤rbp-final : readReg (regs s-final) rsp ≤ readReg (regs s-final) rbp
-        new-rsp≤rbp-final = subst₂ _≤_ (sym rsp-s7) (sym rbp-final) new-rsp≤orig-rbp
+        new-frame-bound : sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥ readReg (regs s-final) rsp
+        new-frame-bound = subst (sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥_) (sym rsp-s7)
+                                (≤-trans new-rsp≤orig-rsp (RbpInvariant.frame-bound rbp-inv))
 
     -- Memory above rbp preserved through all states
     -- Curry writes only at new-rsp (s2) and new-rsp+8 (s4), both < rbp

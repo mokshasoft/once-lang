@@ -21,7 +21,7 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
          thunk-entry-offset; thunk-body-offset; thunk-setup-len)
   renaming (fetch-ret to TS-fetch-ret)
 
-open import Data.Nat using (_>_; _≤?_; _≤_; s≤s; z≤n)
+open import Data.Nat using (_>_; _≤?_; _≤_; _≥_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-assoc; m∸n≤m; ≤-trans; ∸-monoˡ-≤; ∸-monoʳ-<;
                                        m∸n+n≡m; m≤n⇒m∸n≡0; +-monoˡ-<; +-monoʳ-<; m<m+n; <-trans;
                                        ∸-+-assoc)
@@ -32,7 +32,9 @@ open ≡-Reasoning
 
 -- Import region lemmas for D041 approach
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack)
+  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack;
+         StackPointer)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code)
@@ -565,19 +567,6 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     mem-s8-at-rsp-after-push-rbp : readMem (memory s8) rsp-after-push-rbp ≡ just old-rbp
     mem-s8-at-rsp-after-push-rbp = mem-s7-at-rsp-after-push-rbp
 
-    -- RbpInvariant: new-rsp ≤ rsp-after-push-rbp
-    -- new-rsp = rsp-after-push-rbp - 16, so this follows from m∸n≤m
-    rbp-inv8 : RbpInvariant s8
-    rbp-inv8 = record { rsp-bounded-by-rbp = new-rsp≤rsp-after-push-rbp }
-      where
-        new-rsp≤rsp-after-push-rbp-raw : new-rsp ≤ rsp-after-push-rbp
-        new-rsp≤rsp-after-push-rbp-raw = m∸n≤m rsp-after-push-rbp 16
-        -- Convert to use old-rsp ∸ 16
-        new-rsp≤old-rsp∸16 : new-rsp ≤ old-rsp ∸ 16
-        new-rsp≤old-rsp∸16 = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 new-rsp≤rsp-after-push-rbp-raw
-        new-rsp≤rsp-after-push-rbp : readReg (regs s8) rsp ≤ readReg (regs s8) rbp
-        new-rsp≤rsp-after-push-rbp = subst₂ _≤_ (sym rsp-s8) (sym rbp8) new-rsp≤old-rsp∸16
-
     -- Finally, using rbp8: rbp s8 = old-rsp ∸ 16
     -- First convert mem-s8-at-rsp-after-push-rbp to use old-rsp ∸ 16
     mem-s8-at-old-rsp∸16 : readMem (memory s8) (old-rsp ∸ 16) ≡ just old-rbp
@@ -895,6 +884,28 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     addr-rsp-16-in-stack : region-of rsp-after-push-rbp ≡ stack
     addr-rsp-16-in-stack = subst (λ x → region-of x ≡ stack) (sym rsp-after-push-rbp-eq)
                                  (capacity-maintained cap-stronger 2 (s≤s (s≤s z≤n)))
+
+    -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
+    -- addr-rsp-16-in-stack has type region-of rsp-after-push-rbp ≡ stack
+    -- We need region-of (old-rsp ∸ 16) ≡ stack, so use rsp-after-push-rbp-eq to convert
+    thunk-frame : StackPointer
+    thunk-frame = record
+      { addr = old-rsp ∸ 16
+      ; in-stack = subst (λ x → region-of x ≡ stack) rsp-after-push-rbp-eq addr-rsp-16-in-stack
+      }
+
+    new-rsp≤frame : new-rsp ≤ old-rsp ∸ 16
+    new-rsp≤frame = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 (m∸n≤m rsp-after-push-rbp 16)
+
+    thunk-frame-bound : sp-addr thunk-frame ≥ readReg (regs s8) rsp
+    thunk-frame-bound = subst (old-rsp ∸ 16 ≥_) (sym rsp-s8) new-rsp≤frame
+
+    rbp-inv8 : RbpInvariant s8
+    rbp-inv8 = record
+      { rbp-frame = thunk-frame
+      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ 16 = sp-addr thunk-frame
+      ; frame-bound = thunk-frame-bound
+      }
 
     -- new-rsp = ((old-rsp ∸ 8) ∸ 8) ∸ 16 = (old-rsp ∸ 16) ∸ 16 = old-rsp ∸ 32 = old-rsp ∸ 4*8
     new-rsp-eq : new-rsp ≡ old-rsp ∸ 32
