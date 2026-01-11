@@ -645,7 +645,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     -- StackInvariant after call: r15 unchanged, rsp decreased
     -- new-rsp = old-rsp ∸ 8 ≤ old-rsp, and rsp1 proves s1.rsp = new-rsp
     stack-inv1 : StackInvariant s1
-    stack-inv1 = stack-inv-preserved-r15-unchanged-rsp-dec s s1 stack-inv r15-1 rsp1≤
+    stack-inv1 = stack-inv-preserved-r15-unchanged s s1 stack-inv r15-1 rsp1≤
       where
         open import Data.Nat.Properties using (m∸n≤m)
         rsp1≤ : readReg (regs s1) rsp ≤ readReg (regs s) rsp

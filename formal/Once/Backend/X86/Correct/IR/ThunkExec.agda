@@ -418,7 +418,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-s8≤s = subst (_≤ old-rsp) (sym rsp-s8) rsp-decreased
 
     stack-inv8 : StackInvariant s8
-    stack-inv8 = stack-inv-preserved-r15-unchanged-rsp-dec s s8 stack-inv r15-8 rsp-s8≤s
+    stack-inv8 = stack-inv-preserved-r15-unchanged s s8 stack-inv r15-8 rsp-s8≤s
 
     rsp-sufficient-8 : readReg (regs s8) rsp > 16
     rsp-sufficient-8 = ≤-trans 17≤41 (rsp-bound-after-stack-op s8)
