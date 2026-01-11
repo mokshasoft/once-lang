@@ -44,7 +44,7 @@ open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (rsp-to-capacity-2; R15Status;
-         r15-unused; r15-in-heap; r15-in-code;
+         r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
          stack-write-preserves-r15;
          StackCapacity; capacity-maintained)
@@ -53,7 +53,8 @@ open import Once.Backend.Common.MemoryRegions
          StackPointer; frameSlot; zero-not-in-stack;
          stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
-         pc-in-code)
+         pc-in-code; slot-addr; slot-addr-≥-base)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-0-is-top)
@@ -758,12 +759,16 @@ record ApplyPopResult {A B : Type} (prefix suffix : Program)
 open ApplyPopResult public
 
 -- | R15OrigInfo: Information about r15 for pop reconstruction
--- Four cases corresponding to StackInvariant constructors (region-based)
+-- Four cases corresponding to StackInvariant constructors (slot-based)
 data R15OrigInfo (old-r15 orig-rsp : ℕ) : Set where
   r15-was-zero     : old-r15 ≡ 0 → R15OrigInfo old-r15 orig-rsp
   r15-was-in-heap  : region-of old-r15 ≡ heap → R15OrigInfo old-r15 orig-rsp
   r15-was-in-code  : region-of old-r15 ≡ code → R15OrigInfo old-r15 orig-rsp
-  r15-was-in-stack : region-of old-r15 ≡ stack → old-r15 ≥ orig-rsp → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-stack : (frame : StackPointer) →
+                     (slot : ℕ) →
+                     old-r15 ≡ slot-addr frame slot →
+                     sp-addr frame ≥ orig-rsp →
+                     R15OrigInfo old-r15 orig-rsp
 
 -- | Trace pop r15 instruction at the end of apply
 -- This restores r15 to its original value (saved at start by push r15)
@@ -905,9 +910,14 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
           r15-in-heap (subst (λ r → region-of r ≡ heap) (sym r15-1) r15-heap)
         derive-stack-inv (r15-was-in-code r15-code) =
           r15-in-code (subst (λ r → region-of r ≡ code) (sym r15-1) r15-code)
-        derive-stack-inv (r15-was-in-stack r15-stack r15≥rsp) =
-          r15-in-stack (subst (λ r → region-of r ≡ stack) (sym r15-1) r15-stack)
-                       (subst₂ _≥_ (sym r15-1) (sym rsp1-eq-orig) r15≥rsp)
+        derive-stack-inv (r15-was-in-stack frame slot r15-eq frame-bound) =
+          -- frame, slot: unchanged
+          -- r15-eq': s1.r15 ≡ slot-addr frame slot
+          --   from r15-1 : s1.r15 ≡ old-r15 and r15-eq : old-r15 ≡ slot-addr frame slot
+          -- frame-bound': sp-addr frame ≥ s1.rsp
+          --   from frame-bound : sp-addr frame ≥ orig-rsp and rsp1-eq-orig : s1.rsp ≡ orig-rsp
+          r15-in-stack frame slot (trans r15-1 r15-eq)
+                       (subst (sp-addr frame ≥_) (sym rsp1-eq-orig) frame-bound)
 
     rsp-sufficient-1 : readReg (regs s1) rsp > 16
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
@@ -1189,6 +1199,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- Extract original StackInvariant info as R15OrigInfo
     -- NOW FULLY PROVEN - no postulates needed!
     -- Direct conversion from StackInvariant to R15OrigInfo
+    -- old-r15 = s.r15 and orig-rsp = s.rsp, so types align directly
     orig-inv : R15OrigInfo old-r15 orig-rsp
     orig-inv = extract-stack-inv stack-inv
       where
@@ -1196,7 +1207,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         extract-stack-inv (r15-unused r15-eq-0) = r15-was-zero r15-eq-0
         extract-stack-inv (r15-in-heap r15-heap) = r15-was-in-heap r15-heap
         extract-stack-inv (r15-in-code r15-code) = r15-was-in-code r15-code
-        extract-stack-inv (r15-in-stack r15-stack r15≥rsp) = r15-was-in-stack r15-stack r15≥rsp
+        extract-stack-inv (r15-in-stack frame slot r15-eq frame-bound) =
+          r15-was-in-stack frame slot r15-eq frame-bound
 
     pop-result = apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s-thunk
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk
@@ -1528,6 +1540,16 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
         derive-mem-r15 (r15-in-code r15-code) =
           -- r15 is in code region, use WfR.mem-code-region
           WfR.mem-code-region (readReg (regs s) r15) r15-code
-        derive-mem-r15 (r15-in-stack _ r15≥rsp) =
+        derive-mem-r15 (r15-in-stack frame slot r15-eq frame-bound) =
           -- r15 is in stack region but above rsp, use WfR.mem-above
-          WfR.mem-above (readReg (regs s) r15) r15≥rsp
+          -- Derive r15 ≥ rsp from frame-bound and slot-addr-≥-base:
+          --   slot-addr frame slot ≥ sp-addr frame  (from slot-addr-≥-base)
+          --   sp-addr frame ≥ s.rsp  (from frame-bound)
+          --   s.r15 = slot-addr frame slot  (from r15-eq)
+          let slot≥frame : slot-addr frame slot ≥ sp-addr frame
+              slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp : slot-addr frame slot ≥ readReg (regs s) rsp
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp : readReg (regs s) r15 ≥ readReg (regs s) rsp
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in WfR.mem-above (readReg (regs s) r15) r15≥rsp

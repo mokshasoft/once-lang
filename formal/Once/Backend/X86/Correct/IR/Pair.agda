@@ -23,7 +23,8 @@ open import Once.Backend.X86.Correct.StackInvariant
          rsp-to-capacity-2; rsp-to-capacity-5; pair-stack-capacity;
          pair-r15-in-stack; pair-second-slot-in-stack;
          pair-setup-stack-inv; stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack; slot-addr; slot-addr-≥-base)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -1252,7 +1253,12 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
         case-stack-inv (r15-in-heap r15-heap) = case-r15-heap r15-heap
         case-stack-inv (r15-in-code r15-code) = case-r15-code r15-code
-        case-stack-inv (r15-in-stack _ r15≥rsp) = case-r15-stack r15≥rsp
+        case-stack-inv (r15-in-stack frame slot r15-eq frame-bound) =
+          -- Derive r15≥rsp from frame-bound and slot-addr-≥-base
+          let slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in case-r15-stack r15≥rsp
 
     -- ========== Memory frame preservation (chain through f and g) ==========
     -- PROVEN: Chain through 4 phases using ir-mem-above and mem-above-* fields
@@ -1735,7 +1741,12 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
         case-stack-inv-r15 (r15-in-heap r15-heap) = case-r15-heap-r15 r15-heap
         case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
-        case-stack-inv-r15 (r15-in-stack _ r15≥rsp) = case-r15-stack-r15 r15≥rsp
+        case-stack-inv-r15 (r15-in-stack frame slot r15-eq frame-bound) =
+          -- Derive r15≥rsp from frame-bound and slot-addr-≥-base
+          let slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in case-r15-stack-r15 r15≥rsp
 
     -- Chain the 4 phases for memory preservation
     -- Dispatch on StackInvariant directly for region-based proofs (D041)
@@ -1804,7 +1815,12 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-mem-frame (r15-unused r15≡0) = case-r15-zero r15≡0
         case-mem-frame (r15-in-code r15-code) = case-r15-code r15-code
         case-mem-frame (r15-in-heap r15-heap) = case-r15-heap r15-heap
-        case-mem-frame (r15-in-stack _ r15≥rsp) = case-r15-stack r15≥rsp
+        case-mem-frame (r15-in-stack frame slot r15-eq frame-bound) =
+          -- Derive r15≥rsp from frame-bound and slot-addr-≥-base
+          let slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in case-r15-stack r15≥rsp
 
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR

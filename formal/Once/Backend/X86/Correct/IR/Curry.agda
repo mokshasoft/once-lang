@@ -20,7 +20,8 @@ open import Once.Backend.X86.Correct.StackInvariant
          alloc-2-slots-addrs-in-stack)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; stack; stack-code-disjoint; stack-heap-disjoint;
-         stackAddr-write-preserves-heap)
+         stackAddr-write-preserves-heap; slot-addr)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_)
@@ -724,13 +725,18 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       r15-in-heap (trans (cong region-of r15-final) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
       r15-in-code (trans (cong region-of r15-final) r15-code)
-    stack-inv-helper (r15-in-stack r15-stack r15≥rsp) =
-      r15-in-stack (trans (cong region-of r15-final) r15-stack) final-r15≥rsp
+    stack-inv-helper (r15-in-stack frame slot r15-eq frame-bound) =
+      r15-in-stack frame slot r15-eq' frame-bound'
       where
-        -- s-final.r15 = s.r15 ≥ s.rsp ≥ s.rsp ∸ 16 = s-final.rsp
-        final-r15≥rsp : readReg (regs s-final) r15 ≥ readReg (regs s-final) rsp
-        final-r15≥rsp = subst₂ _≥_ (sym r15-final) (sym rsp-s7)
-                          (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) r15≥rsp)
+        -- r15-eq': s-final.r15 ≡ slot-addr frame slot
+        -- from r15-final : s-final.r15 ≡ s.r15 and r15-eq : s.r15 ≡ slot-addr frame slot
+        r15-eq' : readReg (regs s-final) r15 ≡ slot-addr frame slot
+        r15-eq' = trans r15-final r15-eq
+        -- frame-bound': sp-addr frame ≥ s-final.rsp
+        -- from frame-bound : sp-addr frame ≥ s.rsp and s-final.rsp = s.rsp ∸ 16 ≤ s.rsp
+        frame-bound' : sp-addr frame ≥ readReg (regs s-final) rsp
+        frame-bound' = subst (sp-addr frame ≥_) (sym rsp-s7)
+                         (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) frame-bound)
 
     stack-inv-final : StackInvariant s-final
     stack-inv-final = stack-inv-helper stack-inv

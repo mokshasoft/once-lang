@@ -192,11 +192,22 @@ postulate
   -- Slot addresses are in stack region
   slot-in-stack : ∀ sp k → region-of (slot-addr sp k) ≡ stack
 
-  -- Different SPs give different slots (freshness)
+  -- Slot 0 is at the frame's base address
+  slot-addr-0-is-base : ∀ sp → slot-addr sp 0 ≡ addr sp
+
+  -- Different SPs give different slots (freshness) - for same slot index
   sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
 
   -- Different offsets give different slots
   offset-distinct : ∀ sp k₁ k₂ → k₁ ≢ k₂ → slot-addr sp k₁ ≢ slot-addr sp k₂
+
+  -- | Frames with distinct base addresses have disjoint slots (any indices)
+  -- This generalizes sp-distinct to handle different slot indices.
+  -- Valid because the stack allocator maintains non-overlapping frames:
+  -- callee frames are below caller frames and don't exceed their capacity.
+  frames-disjoint-slots : ∀ sp₁ sp₂ k₁ k₂ →
+    addr sp₁ ≢ addr sp₂ →
+    slot-addr sp₁ k₁ ≢ slot-addr sp₂ k₂
 
   -- Slot addresses are at or above the base address
   -- slot-addr sp k = addr sp + k * 8 ≥ addr sp

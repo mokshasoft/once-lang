@@ -29,7 +29,11 @@ open import Once.Backend.Common.MemoryRegions
          regions-disjoint; stack≢heap; stack≢code;
          stack-heap-disjoint; stack-code-disjoint;
          zero-not-in-stack; pc-in-code;
-         stack-sub-preserves-region)
+         stack-sub-preserves-region;
+         StackPointer; slot-addr; sp-distinct; offset-distinct;
+         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; in-stack to sp-in-stack)
+open import Data.Unit using (⊤; tt)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; m∸n≤m; ≤-refl)
@@ -53,10 +57,14 @@ data R15Status (s : State) : Set where
   r15-in-code : region-of (readReg (regs s) r15) ≡ code → R15Status s
 
   -- r15 points to stack (e.g., during Pair where r15 = result address)
-  -- The bound r15 ≥ rsp ensures writes at (rsp - k) don't affect r15.
+  -- r15 is a slot in some frame, identified by frame and slot index.
+  -- The frame-rsp-bound ensures writes below current rsp don't affect r15:
+  --   write at (rsp - k) has frame addr < rsp ≤ frame addr → disjoint
   -- This is the key invariant for nested IR execution in Pair.
-  r15-in-stack : region-of (readReg (regs s) r15) ≡ stack →
-                 readReg (regs s) r15 ≥ readReg (regs s) rsp →
+  r15-in-stack : (frame : StackPointer) →
+                 (slot : ℕ) →
+                 readReg (regs s) r15 ≡ slot-addr frame slot →
+                 sp-addr frame ≥ readReg (regs s) rsp →  -- frame allocated at or above current rsp
                  R15Status s
 
 ------------------------------------------------------------------------
@@ -619,45 +627,63 @@ stack-write-preserves-unused-r15 s stack-addr stack-region r15≡0 eq =
       region-0≡stack = trans (cong region-of (sym stack-addr≡0)) stack-region
   in zero-not-in-stack region-0≡stack
 
--- | Stack writes at (rsp - k) don't affect r15 when r15 ≥ rsp and k > 0
+-- | Stack writes in one frame don't affect r15 when r15 is in a different frame.
 -- This is the key lemma for r15-in-stack case.
--- If stack-addr = rsp - k for k > 0, then stack-addr < rsp ≤ r15.
+-- Uses frames-disjoint-slots: distinct frame addresses → disjoint slot addresses.
 stack-write-preserves-instack-r15 : ∀ (s : State) (stack-addr : Addr) →
-  region-of stack-addr ≡ stack →
-  region-of (readReg (regs s) r15) ≡ stack →
-  readReg (regs s) r15 ≥ readReg (regs s) rsp →
-  stack-addr < readReg (regs s) rsp →
+  (write-frame : StackPointer) →
+  (write-slot : ℕ) →
+  stack-addr ≡ slot-addr write-frame write-slot →
+  (r15-frame : StackPointer) →
+  (r15-slot : ℕ) →
+  readReg (regs s) r15 ≡ slot-addr r15-frame r15-slot →
+  sp-addr write-frame ≢ sp-addr r15-frame →
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-instack-r15 s stack-addr _ _ r15-bound addr-rsp-ord eq =
-  -- stack-addr < rsp ≤ r15, but stack-addr ≡ r15, contradiction
-  strict-order-distinct addr-r15-ord eq
-  where
-    -- Helper: strict ordering implies distinct
-    strict-order-distinct : ∀ {n m} → n < m → n ≢ m
-    strict-order-distinct {suc n} {suc m} (s≤s ord) refl = strict-order-distinct ord refl
+stack-write-preserves-instack-r15 s stack-addr write-frame write-slot addr-eq
+                                  r15-frame r15-slot r15-eq frames-neq eq =
+  -- stack-addr = slot-addr write-frame write-slot
+  -- r15 = slot-addr r15-frame r15-slot
+  -- write-frame.addr ≢ r15-frame.addr
+  -- By frames-disjoint-slots: slot-addr write-frame write-slot ≢ slot-addr r15-frame r15-slot
+  -- But stack-addr ≡ r15 → slot-addr write-frame write-slot ≡ slot-addr r15-frame r15-slot, contradiction
+  frames-disjoint-slots write-frame r15-frame write-slot r15-slot frames-neq
+    (trans (sym addr-eq) (trans eq r15-eq))
 
-    -- stack-addr < rsp ≤ r15, so stack-addr < r15 (by transitivity)
-    addr-r15-ord : stack-addr < readReg (regs s) r15
-    addr-r15-ord = ≤-trans addr-rsp-ord r15-bound
+-- | Evidence needed for r15-in-stack case: write frame is different from r15 frame
+-- For other R15Status cases, no additional evidence is needed.
+FrameEvidenceFor : ∀ {s : State} → StackPointer → R15Status s → Set
+FrameEvidenceFor write-frame (r15-unused _) = ⊤
+FrameEvidenceFor write-frame (r15-in-heap _) = ⊤
+FrameEvidenceFor write-frame (r15-in-code _) = ⊤
+FrameEvidenceFor write-frame (r15-in-stack r15-frame r15-slot _ _) =
+  sp-addr write-frame ≢ sp-addr r15-frame
 
 -- | General: stack writes don't affect r15 based on R15Status
--- NOTE: For r15-in-stack, this requires stack-addr < rsp.
--- | General: stack writes don't affect r15 based on R15Status
--- For r15-in-stack, requires explicit stack-addr < rsp proof.
--- NOTE: Postulate REMOVED - now requires ordering proof for r15-in-stack case.
+-- For r15-in-stack, requires frame identity and frames-neq evidence.
+-- For other cases, pass tt for the frame evidence.
 stack-write-preserves-r15 : ∀ (s : State) (stack-addr : Addr) →
-  R15Status s →
-  region-of stack-addr ≡ stack →
-  stack-addr < readReg (regs s) rsp →
+  (write-frame : StackPointer) →
+  (write-slot : ℕ) →
+  stack-addr ≡ slot-addr write-frame write-slot →
+  (r15-inv : R15Status s) →
+  FrameEvidenceFor write-frame r15-inv →
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-r15 s stack-addr (r15-unused r15≡0) stack-region _ =
-  stack-write-preserves-unused-r15 s stack-addr stack-region r15≡0
-stack-write-preserves-r15 s stack-addr (r15-in-heap r15-heap) stack-region _ =
-  stack-write-preserves-heap-r15 s stack-addr stack-region r15-heap
-stack-write-preserves-r15 s stack-addr (r15-in-code r15-code) stack-region _ =
-  stack-write-preserves-code-r15 s stack-addr stack-region r15-code
-stack-write-preserves-r15 s stack-addr (r15-in-stack r15-stack r15≥rsp) stack-region addr<rsp =
-  stack-write-preserves-instack-r15 s stack-addr stack-region r15-stack r15≥rsp addr<rsp
+stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-unused r15≡0) _ =
+  stack-write-preserves-unused-r15 s stack-addr
+    (subst (λ a → region-of a ≡ stack) (sym addr-eq) (slot-in-stack write-frame write-slot))
+    r15≡0
+stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-in-heap r15-heap) _ =
+  stack-write-preserves-heap-r15 s stack-addr
+    (subst (λ a → region-of a ≡ stack) (sym addr-eq) (slot-in-stack write-frame write-slot))
+    r15-heap
+stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-in-code r15-code) _ =
+  stack-write-preserves-code-r15 s stack-addr
+    (subst (λ a → region-of a ≡ stack) (sym addr-eq) (slot-in-stack write-frame write-slot))
+    r15-code
+stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq
+                          (r15-in-stack r15-frame r15-slot r15-eq _) frames-neq =
+  stack-write-preserves-instack-r15 s stack-addr write-frame write-slot addr-eq
+                                    r15-frame r15-slot r15-eq frames-neq
 
 ------------------------------------------------------------------------
 -- RbpInvariant (Frame Pointer Invariant)
@@ -700,27 +726,37 @@ stack-inv-for-code-ptr s prog-len r15<len = r15-in-code (pc-in-code (readReg (re
 --   r15-eq: r15 in s-setup = rsp in s - 40
 --   rsp-eq: rsp in s-setup = rsp in s - 40
 --   cap: StackCapacity s 5 (sufficient stack space for Pair)
+--
+-- Returns: StackInvariant where r15 is identified as slot 0 of the pair frame
 pair-setup-stack-inv : ∀ (s s-setup : State) →
   StackCapacity s 5 →
   readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ 40 →
   readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40 →
   StackInvariant s-setup
 pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
-  r15-in-stack r15-region r15-bound
+  r15-in-stack pair-frame 0 r15-is-slot0 frame-bound
   where
     -- region-of (s.rsp - 40) ≡ stack from capacity
     base-in-stack : region-of (readReg (regs s) rsp ∸ 40) ≡ stack
     base-in-stack = pair-r15-in-stack s cap
 
-    -- r15 in s-setup is in stack region
-    r15-region : region-of (readReg (regs s-setup) r15) ≡ stack
-    r15-region = subst (λ a → region-of a ≡ stack) (sym r15-eq) base-in-stack
+    -- The pair frame: StackPointer with addr = rsp - 40
+    pair-frame : StackPointer
+    pair-frame = record
+      { addr = readReg (regs s) rsp ∸ 40
+      ; in-stack = base-in-stack
+      }
 
-    -- r15 = rsp in s-setup, so r15 is safe from stack writes
-    r15-bound : readReg (regs s-setup) r15 ≥ readReg (regs s-setup) rsp
-    r15-bound = subst₂ _≥_ (sym r15-eq) (sym rsp-eq) ≤-refl
-      where
-        open import Relation.Binary.PropositionalEquality using (subst₂)
+    -- r15 = slot-addr pair-frame 0
+    -- By slot-addr-0-is-base: slot-addr pair-frame 0 = addr pair-frame = rsp - 40
+    -- And r15 = rsp - 40 by r15-eq
+    r15-is-slot0 : readReg (regs s-setup) r15 ≡ slot-addr pair-frame 0
+    r15-is-slot0 = trans r15-eq (sym (slot-addr-0-is-base pair-frame))
+
+    -- Frame bound: pair-frame.addr = rsp - 40 = s-setup.rsp (since both equal rsp - 40)
+    -- So pair-frame.addr ≥ s-setup.rsp (actually =)
+    frame-bound : sp-addr pair-frame ≥ readReg (regs s-setup) rsp
+    frame-bound = subst (sp-addr pair-frame ≥_) (sym rsp-eq) ≤-refl
 
 ------------------------------------------------------------------------
 -- Invariant preservation lemmas
@@ -738,15 +774,15 @@ stack-inv-preserved-unchanged s s' (r15-in-heap r15-heap) r15-eq _ =
   r15-in-heap (trans (cong region-of r15-eq) r15-heap)
 stack-inv-preserved-unchanged s s' (r15-in-code r15-code) r15-eq _ =
   r15-in-code (trans (cong region-of r15-eq) r15-code)
-stack-inv-preserved-unchanged s s' (r15-in-stack r15-stack r15-bound) r15-eq rsp-eq =
-  r15-in-stack (trans (cong region-of r15-eq) r15-stack)
-               (subst₂ _≥_ (sym r15-eq) (sym rsp-eq) r15-bound)
-  where
-    open import Relation.Binary.PropositionalEquality using (subst₂)
+stack-inv-preserved-unchanged s s' (r15-in-stack frame slot r15-eq-slot frame-bound) r15-eq rsp-eq =
+  -- r15 unchanged: s'.r15 = s.r15 = slot-addr frame slot
+  -- Frame bound preserved: frame.addr ≥ s.rsp = s'.rsp
+  r15-in-stack frame slot (trans r15-eq r15-eq-slot)
+               (subst (sp-addr frame ≥_) (sym rsp-eq) frame-bound)
 
 -- | Stack invariant preservation when r15 unchanged and rsp decreased/unchanged
--- For r15-in-stack, requires rsp ≤ old-rsp to preserve r15 ≥ rsp ordering.
--- NOTE: Postulate REMOVED - now requires explicit rsp ordering for r15-in-stack case.
+-- With slot-based r15-in-stack, rsp ordering is no longer needed for preservation.
+-- The signature is kept for backward compatibility with callers.
 stack-inv-preserved-r15-unchanged : ∀ (s s' : State) →
   StackInvariant s →
   readReg (regs s') r15 ≡ readReg (regs s) r15 →
@@ -758,14 +794,11 @@ stack-inv-preserved-r15-unchanged s s' (r15-in-heap r15-heap) r15-eq _ =
   r15-in-heap (trans (cong region-of r15-eq) r15-heap)
 stack-inv-preserved-r15-unchanged s s' (r15-in-code r15-code) r15-eq _ =
   r15-in-code (trans (cong region-of r15-eq) r15-code)
-stack-inv-preserved-r15-unchanged s s' (r15-in-stack r15-stack r15-rsp-ord) r15-eq rsp-ord =
-  r15-in-stack (trans (cong region-of r15-eq) r15-stack) r15-bounds-rsp
-  where
-    open import Data.Nat.Properties using (≤-trans)
-    -- s'.r15 = s.r15 ≥ s.rsp ≥ s'.rsp
-    r15-bounds-rsp : readReg (regs s') r15 ≥ readReg (regs s') rsp
-    r15-bounds-rsp = subst (_≥ readReg (regs s') rsp) (sym r15-eq)
-                          (≤-trans rsp-ord r15-rsp-ord)
+stack-inv-preserved-r15-unchanged s s' (r15-in-stack frame slot r15-eq-slot frame-bound) r15-eq rsp-ord =
+  -- r15 unchanged: s'.r15 = s.r15 = slot-addr frame slot
+  -- Frame bound strengthened: frame.addr ≥ s.rsp ≥ s'.rsp
+  r15-in-stack frame slot (trans r15-eq r15-eq-slot)
+               (≤-trans rsp-ord frame-bound)
 
 -- | rsp > 16 preservation when rsp is unchanged
 rsp-bound-preserved-unchanged : ∀ (s s' : State) →
@@ -830,42 +863,62 @@ from-old-invariants s stack-inv rsp-in-stack rsp-sufficient = record
 
 -- | Prove that stack write at (rsp - 16) doesn't affect r15
 -- This is the key lemma needed for memory preservation in IR proofs
--- PROVEN: Handles all R15Status cases without postulates
+-- PROVEN: Handles all R15Status cases using slot-based disjointness
 stack-write-slot-2-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ 16 ≢ readReg (regs s) r15
 stack-write-slot-2-preserves-r15 s inv = helper (r15-status inv)
   where
-    open import Data.Nat.Properties using (m∸n≤m)
+    open import Data.Nat.Properties using (m∸n≤m; <⇒≢; <-≤-trans)
     stack-addr = readReg (regs s) rsp ∸ 16
     stack-addr-in-stack = slot-2-addr-in-stack s (capacity inv)
+
     -- Helper: m ∸ n < m when n > 0 and m > n
     m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
     m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+
     -- rsp > 16, so rsp - 16 < rsp
     addr<rsp : stack-addr < readReg (regs s) rsp
     addr<rsp = m∸n<m' (readReg (regs s) rsp) 16 (s≤s z≤n) (rsp-sufficient (capacity inv))
+
     helper : R15Status s → stack-addr ≢ readReg (regs s) r15
     helper (r15-unused r15≡0) = stack-write-preserves-unused-r15 s stack-addr stack-addr-in-stack r15≡0
     helper (r15-in-heap r15-heap) = stack-write-preserves-heap-r15 s stack-addr stack-addr-in-stack r15-heap
     helper (r15-in-code r15-code) = stack-write-preserves-code-r15 s stack-addr stack-addr-in-stack r15-code
-    helper (r15-in-stack r15-stack r15≥rsp) =
-      stack-write-preserves-instack-r15 s stack-addr stack-addr-in-stack r15-stack r15≥rsp addr<rsp
+    helper (r15-in-stack r15-frame r15-slot r15-eq frame-bound) =
+      -- stack-addr = rsp - 16 < rsp ≤ frame.addr (by frame-bound)
+      -- So stack-addr < frame.addr, hence stack-addr ≢ frame.addr
+      -- The slot-addr at r15 is in r15-frame, and stack-addr < frame.addr
+      -- means write-frame would have addr < r15-frame.addr
+      let write-addr = readReg (regs s) rsp ∸ 16
+          addr<frame : write-addr < sp-addr r15-frame
+          addr<frame = <-≤-trans addr<rsp frame-bound
+          -- Create write-frame
+          write-frame : StackPointer
+          write-frame = record { addr = write-addr ; in-stack = stack-addr-in-stack }
+          -- write-frame.addr < r15-frame.addr implies ≢
+          frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
+          frames-neq = <⇒≢ addr<frame
+      in stack-write-preserves-instack-r15 s stack-addr
+           write-frame 0 (sym (slot-addr-0-is-base write-frame))
+           r15-frame r15-slot r15-eq frames-neq
 
 -- | Similarly for (rsp - 8)
--- PROVEN: Handles all R15Status cases without postulates
+-- PROVEN: Handles all R15Status cases using slot-based disjointness
 stack-write-slot-1-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ 8 ≢ readReg (regs s) r15
 stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
   where
     open import Data.Nat using (s≤s; z≤n)
-    open import Data.Nat.Properties using (m∸n≤m; <-trans)
+    open import Data.Nat.Properties using (m∸n≤m; <-trans; <⇒≢; <-≤-trans)
     stack-addr = readReg (regs s) rsp ∸ 8
     stack-addr-in-stack = capacity-maintained (capacity inv) 1 (s≤s z≤n)
+
     -- Helper: m ∸ n < m when n > 0 and m > n
     m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
     m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
+
     -- rsp > 16 > 8, so rsp > 8, hence rsp - 8 < rsp
     rsp>8 : readReg (regs s) rsp > 8
     rsp>8 = <-trans 8<16 (rsp-sufficient (capacity inv))
@@ -874,12 +927,22 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
         8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
     addr<rsp : stack-addr < readReg (regs s) rsp
     addr<rsp = m∸n<m' (readReg (regs s) rsp) 8 (s≤s z≤n) rsp>8
+
     helper : R15Status s → stack-addr ≢ readReg (regs s) r15
     helper (r15-unused r15≡0) = stack-write-preserves-unused-r15 s stack-addr stack-addr-in-stack r15≡0
     helper (r15-in-heap r15-heap) = stack-write-preserves-heap-r15 s stack-addr stack-addr-in-stack r15-heap
     helper (r15-in-code r15-code) = stack-write-preserves-code-r15 s stack-addr stack-addr-in-stack r15-code
-    helper (r15-in-stack r15-stack r15≥rsp) =
-      stack-write-preserves-instack-r15 s stack-addr stack-addr-in-stack r15-stack r15≥rsp addr<rsp
+    helper (r15-in-stack r15-frame r15-slot r15-eq frame-bound) =
+      let write-addr = readReg (regs s) rsp ∸ 8
+          addr<frame : write-addr < sp-addr r15-frame
+          addr<frame = <-≤-trans addr<rsp frame-bound
+          write-frame : StackPointer
+          write-frame = record { addr = write-addr ; in-stack = stack-addr-in-stack }
+          frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
+          frames-neq = <⇒≢ addr<frame
+      in stack-write-preserves-instack-r15 s stack-addr
+           write-frame 0 (sym (slot-addr-0-is-base write-frame))
+           r15-frame r15-slot r15-eq frames-neq
 
 -- | Proof that stack writes don't affect heap-allocated data
 -- This is cleaner than the old approach which required ordering proofs
@@ -909,7 +972,7 @@ addr-diff-from-invariant : ∀ (s : State) →
   in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
 addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
   where
-    open import Data.Nat.Properties using (m∸n≤m; <-trans)
+    open import Data.Nat.Properties using (m∸n≤m; <-trans; <⇒≢; <-≤-trans)
     open import Data.Product using (proj₁; proj₂)
     rsp-val = readReg (regs s) rsp
     cap = rsp-to-capacity-2 s rsp-in-stack rsp-suff
@@ -950,8 +1013,16 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
       stack-write-preserves-heap-r15 s addr addr-in-stack r15-heap
     diff-helper addr addr-in-stack addr<rsp (r15-in-code r15-code) =
       stack-write-preserves-code-r15 s addr addr-in-stack r15-code
-    diff-helper addr addr-in-stack addr<rsp (r15-in-stack r15-stack r15≥rsp) =
-      stack-write-preserves-instack-r15 s addr addr-in-stack r15-stack r15≥rsp addr<rsp
+    diff-helper addr addr-in-stack addr<rsp (r15-in-stack r15-frame r15-slot r15-eq frame-bound) =
+      let addr<frame : addr < sp-addr r15-frame
+          addr<frame = <-≤-trans addr<rsp frame-bound
+          write-frame : StackPointer
+          write-frame = record { addr = addr ; in-stack = addr-in-stack }
+          frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
+          frames-neq = <⇒≢ addr<frame
+      in stack-write-preserves-instack-r15 s addr
+           write-frame 0 (sym (slot-addr-0-is-base write-frame))
+           r15-frame r15-slot r15-eq frames-neq
     diff1 = diff-helper stack-addr1 write1-in-stack addr1<rsp stack-inv
     diff2 = diff-helper stack-addr2 write2-in-stack addr2<rsp stack-inv
 

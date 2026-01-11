@@ -24,7 +24,8 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; stack;
          stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
-         stackAddr-write-preserves-heap)
+         stackAddr-write-preserves-heap; slot-addr)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
@@ -450,14 +451,18 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
       r15-in-heap (trans (cong region-of r15-s4-eq) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
       r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
-    stack-inv-helper (r15-in-stack r15-stack r15≥rsp) =
-      r15-in-stack (trans (cong region-of r15-s4-eq) r15-stack) s4-r15≥s4-rsp
+    stack-inv-helper (r15-in-stack frame slot r15-eq frame-bound) =
+      r15-in-stack frame slot r15-eq' frame-bound'
       where
         open import Data.Nat.Properties using (≤-trans; m∸n≤m)
-        -- s4.r15 = s.r15 ≥ s.rsp ≥ s.rsp ∸ 16 = s4.rsp
-        s4-r15≥s4-rsp : readReg (regs s4) r15 ≥ readReg (regs s4) rsp
-        s4-r15≥s4-rsp = subst₂ _≥_ (sym r15-s4-eq) (sym rsp-s4-eq)
-                          (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) r15≥rsp)
+        -- r15-eq': s4.r15 ≡ slot-addr frame slot
+        r15-eq' : readReg (regs s4) r15 ≡ slot-addr frame slot
+        r15-eq' = trans r15-s4-eq r15-eq
+        -- frame-bound': sp-addr frame ≥ s4.rsp
+        -- from frame-bound : sp-addr frame ≥ s.rsp and s4.rsp = s.rsp ∸ 16 ≤ s.rsp
+        frame-bound' : sp-addr frame ≥ readReg (regs s4) rsp
+        frame-bound' = subst (sp-addr frame ≥_) (sym rsp-s4-eq)
+                         (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) frame-bound)
 
     stack-inv' : StackInvariant s4
     stack-inv' = stack-inv-helper stack-inv
