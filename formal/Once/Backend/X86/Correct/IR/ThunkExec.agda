@@ -9,7 +9,7 @@ module Once.Backend.X86.Correct.IR.ThunkExec where
 
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
 open import Once.Postulates using (encode; encode-pair-construct)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.Star
@@ -34,7 +34,8 @@ open ≡-Reasoning
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack)
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity)
+  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
+         stack-inv-preserved-r15-unchanged-rsp-inc)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
@@ -877,7 +878,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- We use old-rsp>40 from rsp-bound-after-stack-op which gives capacity 5
     -- Note: rsp-bound-to-capacity expects rsp > n*8, and 5*8 = 40
     cap-stronger : StackCapacity s 5
-    cap-stronger = rsp-bound-to-capacity s 5 old-rsp>40
+    cap-stronger = rsp-bound-to-capacity s 5 (rsp-in-stack-after-stack-op s) old-rsp>40
 
     -- Write addresses are all in stack region
     -- Need to use ∸-+-assoc to relate nested subtractions to flat ones
@@ -1255,9 +1256,9 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     rbp1 : readReg (regs s1) rbp ≡ readReg (regs s) rbp
     rbp1 = readReg-writeReg-rsp-rbp (regs s) (old-rsp +ℕ 8)
 
-    -- StackInvariant preserved after ret (r15 unchanged)
+    -- StackInvariant preserved after ret (r15 unchanged, rsp increased)
     stack-inv1 : StackInvariant s1
-    stack-inv1 = stack-inv-preserved-r15-unchanged s s1 stack-inv r15-1
+    stack-inv1 = stack-inv-preserved-r15-unchanged-rsp-inc s s1 stack-inv r15-1
 
     rsp-sufficient-1 : readReg (regs s1) rsp > 16
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)

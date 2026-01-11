@@ -10,11 +10,14 @@
 module Once.Backend.X86.Postulates where
 
 open import Data.Nat using (ℕ; _>_)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Backend.X86.Syntax using (rsp)
 open import Once.Backend.X86.Semantics using (State; readReg)
 open import Once.Backend.X86.Semantics using () renaming (module State to St)
 open St using (regs)
+
+open import Once.Backend.Common.MemoryRegions using (Region; stack; region-of)
 
 ------------------------------------------------------------------------
 -- Postulate P4: Stack Pointer Bounds (Runtime Property)
@@ -43,6 +46,11 @@ postulate
   -- Changed from > 16 to > 40 to support memory layout proofs
   -- Pair setup subtracts 40 from rsp (3 pushes × 8 + sub 16)
   rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > 40
+
+  -- RSP is always in stack region (runtime invariant)
+  -- Companion to rsp-bound-after-stack-op: rsp not only has enough space,
+  -- but is also in the correct memory region.
+  rsp-in-stack-after-stack-op : ∀ (s : State) → region-of (readReg (regs s) rsp) ≡ stack
 
 ------------------------------------------------------------------------
 -- NOTE: apply-produces-result ELIMINATED

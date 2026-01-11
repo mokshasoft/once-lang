@@ -13,7 +13,7 @@ open import Once.Backend.X86.Correct.Foundation
 -- Additional imports not in Foundation
 open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Postulates using (encode-inr-construct)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
@@ -299,7 +299,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-s1 = refl
 
     addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-    addr-diffs = addr-diff-from-invariant s stack-inv rsp-sufficient
+    addr-diffs = addr-diff-from-invariant s stack-inv (rsp-in-stack-after-stack-op s) rsp-sufficient
 
     addr-diff-1 : new-rsp ≢ orig-r15
     addr-diff-1 = proj₁ addr-diffs
@@ -401,7 +401,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
       let -- Get region membership (encapsulates all arithmetic)
-          cap = rsp-to-capacity-2 s rsp-sufficient
+          cap = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
           -- Use abstract interface (NO arithmetic!)
@@ -415,7 +415,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
       let -- Get region membership (encapsulates all arithmetic)
-          cap = rsp-to-capacity-2 s rsp-sufficient
+          cap = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
           -- Use abstract interface (NO arithmetic!)
@@ -429,7 +429,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-heap-preserved addr addr-in-heap =
       let -- Get region membership (encapsulates all arithmetic)
-          cap = rsp-to-capacity-2 s rsp-sufficient
+          cap = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap
 
           -- Use abstract interface (NO arithmetic!)
@@ -476,7 +476,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
-    input-capacity = rsp-to-capacity-4 s rsp>32
+    input-capacity = rsp-to-capacity-4 s (rsp-in-stack-after-stack-op s) rsp>32
 
     -- Use proven capacity-after-alloc-2-slots to derive output capacity
     output-capacity : StackCapacity s4 2

@@ -63,7 +63,7 @@ open import Once.Backend.X86.Correct.IR.Case using (module CaseEndResult)
 open import Once.Postulates
   using (encode; encode-inl-tag; encode-inl-val; encode-inr-tag; encode-inr-val)
 open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op)
+  using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Data.Bool using (Bool; false)
 
 -- Import MemoryValid for encoding axioms
@@ -143,7 +143,7 @@ mutual
       ; ir-mem-code = mem-code-final
       ; ir-mem-heap = mem-heap-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp-to-capacity-2 s-final rsp-sufficient-final
+      ; ir-capacity = rsp-to-capacity-2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
@@ -523,7 +523,7 @@ mutual
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp-to-capacity-2 s-final rsp-sufficient-final
+      ; ir-capacity = rsp-to-capacity-2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final

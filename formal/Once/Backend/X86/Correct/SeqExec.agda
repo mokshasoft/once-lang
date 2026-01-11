@@ -16,6 +16,7 @@ open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
+open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl)
@@ -609,9 +610,9 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         write2 = orig-rsp ∸ 16
         write3 = orig-rsp ∸ 24
 
-        -- Derive capacity from rsp > 24
+        -- Derive capacity from rsp > 24 and rsp-in-stack
         cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity s 3 rsp-gt-24
+        cap = rsp-bound-to-capacity s 3 (rsp-in-stack-after-stack-op s) rsp-gt-24
 
         -- Write addresses are in stack region (via capacity-maintained)
         write1-in-stack : region-of write1 ≡ stack
@@ -650,9 +651,9 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         write2 = orig-rsp ∸ 16
         write3 = orig-rsp ∸ 24
 
-        -- Derive capacity from rsp > 24
+        -- Derive capacity from rsp > 24 and rsp-in-stack
         cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity s 3 rsp-gt-24
+        cap = rsp-bound-to-capacity s 3 (rsp-in-stack-after-stack-op s) rsp-gt-24
 
         -- Write addresses are in stack region (via capacity-maintained)
         write1-in-stack : region-of write1 ≡ stack
@@ -691,9 +692,9 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         write2 = orig-rsp ∸ 16
         write3 = orig-rsp ∸ 24
 
-        -- Derive capacity from rsp > 24
+        -- Derive capacity from rsp > 24 and rsp-in-stack
         cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity s 3 rsp-gt-24
+        cap = rsp-bound-to-capacity s 3 (rsp-in-stack-after-stack-op s) rsp-gt-24
 
         -- Write addresses are in stack region (via capacity-maintained)
         write1-in-stack : region-of write1 ≡ stack

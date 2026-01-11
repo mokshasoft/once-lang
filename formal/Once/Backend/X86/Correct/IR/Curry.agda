@@ -12,7 +12,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-closure-construct)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -562,7 +562,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     orig-r15 = readReg (regs s) r15
 
     addr-diff : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-    addr-diff = addr-diff-from-invariant s stack-inv rsp-sufficient
+    addr-diff = addr-diff-from-invariant s stack-inv (rsp-in-stack-after-stack-op s) rsp-sufficient
 
     mem-s1-eq : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
     mem-s1-eq = refl
@@ -746,7 +746,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
-    input-capacity = rsp-to-capacity-4 s rsp>32
+    input-capacity = rsp-to-capacity-4 s (rsp-in-stack-after-stack-op s) rsp>32
 
     output-capacity : StackCapacity s-final 2
     output-capacity = capacity-after-alloc-2-slots s s-final 2 input-capacity rsp-change
@@ -846,7 +846,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-to-capacity-2 s rsp-sufficient
+          cap2 = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
@@ -882,7 +882,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-final addr addr-in-heap =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-to-capacity-2 s rsp-sufficient
+          cap2 = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)

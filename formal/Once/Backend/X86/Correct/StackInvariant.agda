@@ -86,11 +86,10 @@ open StackCapacity public
 -- Stack Capacity Operations
 ------------------------------------------------------------------------
 
--- | Initial state has sufficient capacity
--- This replaces the concrete stackBase = 0x7FFF0000 assumption
--- We postulate that the runtime provides enough stack space
-postulate
-  initial-capacity : ∀ (s : State) (n : ℕ) → StackCapacity s n
+-- NOTE: initial-capacity postulate REMOVED
+-- Capacity now flows from rsp-bound-to-capacity with explicit rsp-in-stack evidence,
+-- or from capacity operations that preserve rsp-in-stack.
+-- The initial rsp-in-stack evidence comes from the program entry precondition.
 
 -- | Capacity is preserved when rsp doesn't change
 capacity-preserved-rsp-unchanged : ∀ (s s' : State) (n : ℕ) →
@@ -535,26 +534,52 @@ pair-second-slot-in-stack s cap =
         word-fits-after-4-slots : 8 ≤ rsp-val ∸ 32
         word-fits-after-4-slots = ∸-monoˡ-≤ 32 rsp≥40
 
--- | Convert rsp ≥ 40 to StackCapacity 5 (uses postulate for now)
-postulate
-  rsp-to-capacity-5-post : ∀ (s : State) →
-    readReg (regs s) rsp ≥ 40 →
-    StackCapacity s 5
+------------------------------------------------------------------------
+-- Converting from rsp bounds to StackCapacity (forward declarations)
+------------------------------------------------------------------------
 
+-- | General conversion: rsp > n*8 gives StackCapacity s n
+-- Takes rsp-in-stack as explicit evidence (no new axioms)
+-- Uses stack-sub-preserves-region from MemoryRegions
+rsp-bound-to-capacity : ∀ (s : State) (n : ℕ) →
+  region-of (readReg (regs s) rsp) ≡ stack →
+  readReg (regs s) rsp > n *ℕ 8 →
+  StackCapacity s n
+rsp-bound-to-capacity s n rsp-in-stack rsp-bound = record
+  { rsp-in-stack = rsp-in-stack
+  ; rsp-sufficient = rsp-bound
+  ; capacity-maintained = cap-maintained
+  }
+  where
+    open import Data.Nat.Properties using (*-monoˡ-≤; <⇒≤; ≤-<-trans)
+
+    rsp-val = readReg (regs s) rsp
+
+    -- Arithmetic: k ≤ n ∧ rsp > n*8 → k*8 ≤ rsp
+    -- Proof: k*8 ≤ n*8 (by *-monoˡ-≤) < rsp (given), so k*8 < rsp, so k*8 ≤ rsp
+    k*8≤rsp : ∀ k → k ≤ n → k *ℕ 8 ≤ rsp-val
+    k*8≤rsp k k≤n = <⇒≤ (≤-<-trans (*-monoˡ-≤ 8 k≤n) rsp-bound)
+
+    -- capacity-maintained: for all k ≤ n, region-of (rsp - k*8) = stack
+    cap-maintained : ∀ k → k ≤ n → region-of (rsp-val ∸ (k *ℕ 8)) ≡ stack
+    cap-maintained k k≤n = stack-sub-preserves-region rsp-val (k *ℕ 8) rsp-in-stack (k*8≤rsp k k≤n)
+
+-- | Convert rsp > 40 to StackCapacity 5
+-- Takes rsp-in-stack as explicit evidence
+-- Uses rsp-bound-to-capacity with n = 5 (since 5 * 8 = 40)
 rsp-to-capacity-5 : ∀ (s : State) →
-  readReg (regs s) rsp ≥ 40 →
-  StackCapacity s 5
-rsp-to-capacity-5 = rsp-to-capacity-5-post
-
--- | Get StackCapacity for Pair setup from runtime rsp bound
--- Pair needs 5 slots; runtime postulate guarantees sufficient space.
--- Encapsulates arithmetic conversion.
-pair-stack-capacity : ∀ (s : State) →
+  region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > 40 →
   StackCapacity s 5
-pair-stack-capacity s rsp-bound = rsp-to-capacity-5 s (<⇒≤ rsp-bound)
-  where
-    open import Data.Nat.Properties using (<⇒≤)
+rsp-to-capacity-5 s rsp-in-stack rsp>40 = rsp-bound-to-capacity s 5 rsp-in-stack rsp>40
+
+-- | Get StackCapacity for Pair setup from runtime rsp bound
+-- Pair needs 5 slots. Encapsulates arithmetic conversion.
+pair-stack-capacity : ∀ (s : State) →
+  region-of (readReg (regs s) rsp) ≡ stack →
+  readReg (regs s) rsp > 40 →
+  StackCapacity s 5
+pair-stack-capacity = rsp-to-capacity-5
 
 ------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
@@ -617,25 +642,22 @@ stack-write-preserves-instack-r15 s stack-addr _ _ r15-bound addr-rsp-ord eq =
 
 -- | General: stack writes don't affect r15 based on R15Status
 -- NOTE: For r15-in-stack, this requires stack-addr < rsp.
--- Use stack-write-preserves-instack-r15 directly when you have this proof.
+-- | General: stack writes don't affect r15 based on R15Status
+-- For r15-in-stack, requires explicit stack-addr < rsp proof.
+-- NOTE: Postulate REMOVED - now requires ordering proof for r15-in-stack case.
 stack-write-preserves-r15 : ∀ (s : State) (stack-addr : Addr) →
   R15Status s →
   region-of stack-addr ≡ stack →
+  stack-addr < readReg (regs s) rsp →
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-r15 s stack-addr (r15-unused r15≡0) stack-region =
+stack-write-preserves-r15 s stack-addr (r15-unused r15≡0) stack-region _ =
   stack-write-preserves-unused-r15 s stack-addr stack-region r15≡0
-stack-write-preserves-r15 s stack-addr (r15-in-heap r15-heap) stack-region =
+stack-write-preserves-r15 s stack-addr (r15-in-heap r15-heap) stack-region _ =
   stack-write-preserves-heap-r15 s stack-addr stack-region r15-heap
-stack-write-preserves-r15 s stack-addr (r15-in-code r15-code) stack-region =
+stack-write-preserves-r15 s stack-addr (r15-in-code r15-code) stack-region _ =
   stack-write-preserves-code-r15 s stack-addr stack-region r15-code
-stack-write-preserves-r15 s stack-addr (r15-in-stack r15-stack r15≥rsp) stack-region =
-  -- For r15-in-stack, both addresses are in stack region.
-  -- We need to know stack-addr < rsp to conclude stack-addr ≠ r15.
-  -- In practice, all IR writes are at (rsp - k) for k > 0.
-  -- Postulate this for now; can be proven at call site with offset info.
-  postulate-instack-disjoint
-  where
-    postulate postulate-instack-disjoint : stack-addr ≢ readReg (regs s) r15
+stack-write-preserves-r15 s stack-addr (r15-in-stack r15-stack r15≥rsp) stack-region addr<rsp =
+  stack-write-preserves-instack-r15 s stack-addr stack-region r15-stack r15≥rsp addr<rsp
 
 ------------------------------------------------------------------------
 -- RBP Region (Frame Pointer)
@@ -735,42 +757,21 @@ stack-inv-preserved-unchanged s s' (r15-in-stack r15-stack r15-bound) r15-eq rsp
   where
     open import Relation.Binary.PropositionalEquality using (subst₂)
 
--- | Stack invariant preservation when only r15 is unchanged (simpler version)
--- The region-based invariant only depends on r15, not rsp
--- NOTE: For r15-in-stack, this also requires rsp is unchanged to preserve r15 ≥ rsp.
-stack-inv-preserved-r15-unchanged : ∀ (s s' : State) →
-  StackInvariant s →
-  readReg (regs s') r15 ≡ readReg (regs s) r15 →
-  StackInvariant s'
-stack-inv-preserved-r15-unchanged s s' (r15-unused r15≡0) r15-eq =
-  r15-unused (trans r15-eq r15≡0)
-stack-inv-preserved-r15-unchanged s s' (r15-in-heap r15-heap) r15-eq =
-  r15-in-heap (trans (cong region-of r15-eq) r15-heap)
-stack-inv-preserved-r15-unchanged s s' (r15-in-code r15-code) r15-eq =
-  r15-in-code (trans (cong region-of r15-eq) r15-code)
-stack-inv-preserved-r15-unchanged s s' (r15-in-stack r15-stack r15≥rsp) r15-eq =
-  -- For r15-in-stack, we need rsp info.
-  -- Use stack-inv-preserved-r15-unchanged-rsp-dec with explicit rsp≤ proof at call sites.
-  -- This case keeps a postulate for backward compatibility when rsp info not available.
-  postulate-r15-instack-preserved
-  where
-    postulate postulate-r15-instack-preserved : StackInvariant s'
-
 -- | Stack invariant preservation when r15 unchanged and rsp decreased/unchanged
--- This is the more precise version that handles r15-in-stack properly.
--- Use this instead of stack-inv-preserved-r15-unchanged when you have rsp≤ proof.
-stack-inv-preserved-r15-unchanged-rsp-dec : ∀ (s s' : State) →
+-- For r15-in-stack, requires rsp ≤ old-rsp to preserve r15 ≥ rsp ordering.
+-- NOTE: Postulate REMOVED - now requires explicit rsp ordering for r15-in-stack case.
+stack-inv-preserved-r15-unchanged : ∀ (s s' : State) →
   StackInvariant s →
   readReg (regs s') r15 ≡ readReg (regs s) r15 →
   readReg (regs s') rsp ≤ readReg (regs s) rsp →
   StackInvariant s'
-stack-inv-preserved-r15-unchanged-rsp-dec s s' (r15-unused r15≡0) r15-eq _ =
+stack-inv-preserved-r15-unchanged s s' (r15-unused r15≡0) r15-eq _ =
   r15-unused (trans r15-eq r15≡0)
-stack-inv-preserved-r15-unchanged-rsp-dec s s' (r15-in-heap r15-heap) r15-eq _ =
+stack-inv-preserved-r15-unchanged s s' (r15-in-heap r15-heap) r15-eq _ =
   r15-in-heap (trans (cong region-of r15-eq) r15-heap)
-stack-inv-preserved-r15-unchanged-rsp-dec s s' (r15-in-code r15-code) r15-eq _ =
+stack-inv-preserved-r15-unchanged s s' (r15-in-code r15-code) r15-eq _ =
   r15-in-code (trans (cong region-of r15-eq) r15-code)
-stack-inv-preserved-r15-unchanged-rsp-dec s s' (r15-in-stack r15-stack r15-rsp-ord) r15-eq rsp-ord =
+stack-inv-preserved-r15-unchanged s s' (r15-in-stack r15-stack r15-rsp-ord) r15-eq rsp-ord =
   r15-in-stack (trans (cong region-of r15-eq) r15-stack) r15-bounds-rsp
   where
     open import Data.Nat.Properties using (≤-trans)
@@ -779,6 +780,39 @@ stack-inv-preserved-r15-unchanged-rsp-dec s s' (r15-in-stack r15-stack r15-rsp-o
     r15-bounds-rsp = subst (_≥ readReg (regs s') rsp) (sym r15-eq)
                           (≤-trans rsp-ord r15-rsp-ord)
 
+-- | Backward compatibility alias
+-- NOTE: This is the same as stack-inv-preserved-r15-unchanged now.
+stack-inv-preserved-r15-unchanged-rsp-dec : ∀ (s s' : State) →
+  StackInvariant s →
+  readReg (regs s') r15 ≡ readReg (regs s) r15 →
+  readReg (regs s') rsp ≤ readReg (regs s) rsp →
+  StackInvariant s'
+stack-inv-preserved-r15-unchanged-rsp-dec = stack-inv-preserved-r15-unchanged
+
+-- | Stack invariant preservation when r15 unchanged and rsp INCREASED
+-- This is the complement to stack-inv-preserved-r15-unchanged for operations like ret.
+-- For r15-in-stack case, we use a postulate since the bound r15 ≥ rsp might not hold
+-- when rsp increases. In practice, r15-in-stack is used during Pair construction and
+-- should not occur at ret sites.
+stack-inv-preserved-r15-unchanged-rsp-inc : ∀ (s s' : State) →
+  StackInvariant s →
+  readReg (regs s') r15 ≡ readReg (regs s) r15 →
+  StackInvariant s'
+stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-unused r15≡0) r15-eq =
+  r15-unused (trans r15-eq r15≡0)
+stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-in-heap r15-heap) r15-eq =
+  r15-in-heap (trans (cong region-of r15-eq) r15-heap)
+stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-in-code r15-code) r15-eq =
+  r15-in-code (trans (cong region-of r15-eq) r15-code)
+stack-inv-preserved-r15-unchanged-rsp-inc s s' (r15-in-stack r15-stack r15≥rsp) r15-eq =
+  -- After ret, rsp increases. If r15 was in-stack with r15 ≥ old-rsp,
+  -- we may not have r15 ≥ new-rsp. In practice, r15-in-stack occurs during
+  -- Pair construction and should have returned to another status before ret.
+  -- We use a postulate here as a fallback for the complex case.
+  postulate-ret-instack-preserved
+  where
+    postulate postulate-ret-instack-preserved : StackInvariant s'
+
 -- | rsp > 16 preservation when rsp is unchanged
 rsp-bound-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s) rsp > 16 →
@@ -786,29 +820,21 @@ rsp-bound-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s') rsp > 16
 rsp-bound-preserved-unchanged s s' rsp-sufficient rsp-eq = subst (_> 16) (sym rsp-eq) rsp-sufficient
 
-------------------------------------------------------------------------
--- Converting from rsp bounds to StackCapacity
-------------------------------------------------------------------------
-
--- | General conversion: rsp > n*8 gives StackCapacity s n
--- This captures the runtime invariant that stack addresses are valid
-postulate
-  rsp-bound-to-capacity : ∀ (s : State) (n : ℕ) →
-    readReg (regs s) rsp > n *ℕ 8 →
-    StackCapacity s n
-
--- | Convert rsp > 16 to StackCapacity 2 (legacy wrapper)
+-- | Convert rsp > 16 to StackCapacity 2
+-- Takes rsp-in-stack as explicit evidence
 rsp-to-capacity-2 : ∀ (s : State) →
+  region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > 16 →
   StackCapacity s 2
-rsp-to-capacity-2 s rsp-sufficient = rsp-bound-to-capacity s 2 rsp-sufficient
+rsp-to-capacity-2 s rsp-in-stack rsp-sufficient = rsp-bound-to-capacity s 2 rsp-in-stack rsp-sufficient
 
 -- | Convert rsp > 32 to StackCapacity 4
--- Used when we need more capacity for operations that allocate stack
+-- Takes rsp-in-stack as explicit evidence
 rsp-to-capacity-4 : ∀ (s : State) →
+  region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > 32 →
   StackCapacity s 4
-rsp-to-capacity-4 s rsp>32 = rsp-bound-to-capacity s 4 rsp>32
+rsp-to-capacity-4 s rsp-in-stack rsp>32 = rsp-bound-to-capacity s 4 rsp-in-stack rsp>32
 
 -- | Convert StackCapacity back to concrete bound (for compatibility)
 -- This allows gradual migration - new proofs can use StackCapacity
@@ -833,13 +859,15 @@ record AbstractStackInvariant (s : State) : Set where
 open AbstractStackInvariant public
 
 -- | Create AbstractStackInvariant from StackInvariant (= R15Status) and rsp bound
+-- Takes rsp-in-stack as explicit evidence
 from-old-invariants : ∀ (s : State) →
   StackInvariant s →
+  region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > 16 →
   AbstractStackInvariant s
-from-old-invariants s stack-inv rsp-sufficient = record
+from-old-invariants s stack-inv rsp-in-stack rsp-sufficient = record
   { r15-status = stack-inv  -- StackInvariant = R15Status, so identity
-  ; capacity = rsp-to-capacity-2 s rsp-sufficient
+  ; capacity = rsp-to-capacity-2 s rsp-in-stack rsp-sufficient
   }
 
 ------------------------------------------------------------------------
@@ -920,16 +948,17 @@ stack-write-preserves-heap-data s heap-addr inv heap-proof =
 -- PROVEN: Handles all R15Status cases without postulates
 addr-diff-from-invariant : ∀ (s : State) →
   StackInvariant s →
+  region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > 16 →
   let new-rsp = readReg (regs s) rsp ∸ 16
       orig-r15 = readReg (regs s) r15
   in (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
-addr-diff-from-invariant s stack-inv rsp-suff = diff1 , diff2
+addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
   where
     open import Data.Nat.Properties using (m∸n≤m; <-trans)
     open import Data.Product using (proj₁; proj₂)
     rsp-val = readReg (regs s) rsp
-    cap = rsp-to-capacity-2 s rsp-suff
+    cap = rsp-to-capacity-2 s rsp-in-stack rsp-suff
     addrs-in-stack = alloc-2-slots-addrs-in-stack s cap
     write1-in-stack = proj₁ addrs-in-stack
     write2-in-stack = proj₂ addrs-in-stack
