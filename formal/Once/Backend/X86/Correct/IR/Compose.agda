@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ClosureWFOutput; no-closure;
+  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf)
 
@@ -32,6 +32,7 @@ open import Data.Nat.Properties using (+-assoc)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
+open import Function using (case_of_)
 
 ------------------------------------------------------------------------
 -- Compose Context: computed values that don't depend on execution
@@ -283,10 +284,24 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
     mem-rbp+8-3-from-s2 = ir-mem-rbp+8 r3
     stack-inv-3 = ir-stack-inv r3
     rsp-3>16 = ir-rsp-bound r3
-    closure-wf-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix)
-    closure-wf-raw = ir-closure-wf r3
+    -- Closure WF: prefer g's closure if available, otherwise use f's
+    -- This handles cases like apply ∘ ⟨curry body, _⟩ where f produces the closure
+    closure-wf-f-raw : ClosureWFOutput (prefix ++ code-f ++ suffix-f)
+    closure-wf-f-raw = ir-closure-wf r1
+    closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix)
+    closure-wf-g-raw = ir-closure-wf r3
+
+    -- Transport to prog
+    closure-wf-from-f : ClosureWFOutput prog
+    closure-wf-from-f = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
+    closure-wf-from-g : ClosureWFOutput prog
+    closure-wf-from-g = subst ClosureWFOutput (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) closure-wf-g-raw
+
+    -- Prefer g's closure if available (g is outer function), otherwise use f's
     closure-wf-3 : ClosureWFOutput prog
-    closure-wf-3 = subst ClosureWFOutput (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) closure-wf-raw
+    closure-wf-3 = case closure-wf-from-g of λ where
+      no-closure → closure-wf-from-f  -- g has no closure, use f's
+      wf-g → wf-g                      -- g has closure, use it
 
     -- Convert star-t from s2' to s2 (they're equal)
     -- s2-eq : s2 ≡ s2', so sym s2-eq : s2' ≡ s2

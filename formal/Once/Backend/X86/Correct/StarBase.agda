@@ -43,10 +43,15 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 --
 -- The existential quantification allows us to hide the closure's types
 -- when threading through compose/pair.
+--
+-- closure-addr: Runtime heap address where the closure is stored.
+--   This is needed by apply to look up the closure in memory.
+--   For curry, this is the address returned in rax.
+--   For pair ⟨curry f, g⟩, this is stored at pair-addr (fst).
 data ClosureWFOutput (prog : Program) : Set₁ where
   no-closure : ClosureWFOutput prog
   has-closure : ∀ {A B : Type}
-                (code-ptr env-addr : ℕ)
+                (closure-addr code-ptr env-addr : ℕ)
                 (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                 (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics) →
                 ClosureWFOutput prog

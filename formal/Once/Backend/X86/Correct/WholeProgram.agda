@@ -4,9 +4,11 @@
 -- Whole-program proof runner for closed Once programs.
 --
 -- CURRENT STATUS:
---   ✓ curry: produces has-closure WF (postulate-free)
---   ○ apply: uses postulate (needs memory layout from pair)
---   ○ pair: delegates to modular (needs to produce memory layout)
+--   ✓ curry: produces has-closure-mem WF + memory layout (postulate-free)
+--   ✓ ClosureWFOutput: extended with closure-addr for apply lookup
+--   ✓ ClosureMemoryOutput: tracks WF + memory proofs (mem-env, mem-cp)
+--   ○ apply: uses postulate (needs ClosureMemoryOutput threading)
+--   ○ pair/compose: delegate to modular, don't thread memory proofs yet
 --
 -- ARCHITECTURE:
 --   For closed programs, every apply consumes a closure from some curry.
@@ -14,24 +16,25 @@
 --
 --   Curry produces:
 --     - ClosureWellFormed: proves thunk at code-ptr is correct
---     - CurryMemoryResult: memory layout (closure-addr, env-addr, code-ptr)
+--     - ClosureMemoryOutput: WF + memory proofs (mem-env, mem-cp)
 --
---   Pair produces:
---     - Memory layout: (fst-result, snd-result) at pair-addr
---     - For apply: memory[rdi] = closure-addr, memory[rdi+8] = arg
+--   Pair should produce (for postulate-free apply):
+--     - mem-fst: memory[pair-addr] = closure-addr (stored by pair)
+--     - mem-snd: memory[pair-addr+8] = encode arg (stored by pair)
+--     - Preserved: mem-env, mem-cp from curry (through g's execution)
 --
 --   Apply needs (for run-apply-with-full-wf):
 --     1. ClosureWellFormed from curry
---     2. Memory layout: closure-addr, env-addr, code-ptr locations
+--     2. ApplyMemoryLayout: mem-fst, mem-snd (from pair), mem-env, mem-cp (from curry)
 --
 -- REMAINING WORK FOR POSTULATE-FREE APPLY:
---   1. Pair case: produce memory layout showing where it stored things
---   2. Prove closure memory preserved through pair (closure-addr, env, code-ptr)
---   3. Apply case: consume WF + memory layout, use run-apply-with-full-wf
+--   1. Change wf-in from ClosureWFOutput to ClosureMemoryOutput
+--   2. Add explicit pair case that preserves and produces memory proofs
+--   3. Add explicit compose case that threads ClosureMemoryOutput
+--   4. Apply case: pattern match on has-closure-mem, construct ApplyMemoryLayout
 --
--- The infrastructure exists (ClosureWellFormed, CurryMemoryResult,
--- run-apply-with-full-wf). The remaining work is threading memory
--- preservation proofs through pair execution.
+-- The infrastructure exists (ClosureMemoryOutput, run-apply-with-full-wf).
+-- Full elimination requires threading memory preservation through pair.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.WholeProgram where
@@ -88,11 +91,28 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 ------------------------------------------------------------------------
+-- ClosureMemoryOutput: Combined WF and memory layout from curry
+------------------------------------------------------------------------
+
+-- | Optional closure memory layout (produced by curry, consumed by apply)
+-- This tracks both the WF proof and the memory addresses for apply.
+-- Must be defined before WholeProgramResult since it's used in that record.
+data ClosureMemoryOutput (prog : Program) (m : Memory) : Set where
+  no-closure-mem : ClosureMemoryOutput prog m
+  has-closure-mem : ∀ {A B : Type}
+    (closure-addr code-ptr env-addr : ℕ)
+    (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+    (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics)
+    (mem-env-valid : readMem m closure-addr ≡ just env-addr)
+    (mem-cp-valid : readMem m (closure-addr +ℕ 8) ≡ just code-ptr) →
+    ClosureMemoryOutput prog m
+
+------------------------------------------------------------------------
 -- WholeProgramResult: Result with closure tracking
 ------------------------------------------------------------------------
 
 -- | Result type for whole-program execution
--- Like IRStarResult but explicitly tracks closure WF for composition
+-- Like IRStarResult but explicitly tracks closure WF AND memory layout for composition
 record WholeProgramResult {A B : Type} (ir : IR A B)
                           (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                           (offset : ℕ) : Set₁ where
@@ -110,8 +130,9 @@ record WholeProgramResult {A B : Type} (ir : IR A B)
     wp-stack-inv : StackInvariant s'
     wp-rsp-bound : readReg (regs s') rsp > 16
     wp-rbp-inv   : RbpInvariant s'
-    -- Closure WF output (for threading to apply)
-    wp-closure-wf : ClosureWFOutput prog
+    -- Closure WF + memory layout output (for threading to apply)
+    -- Uses ClosureMemoryOutput to track both WF and memory proofs
+    wp-closure-mem : ClosureMemoryOutput prog (memory s')
 
 open WholeProgramResult public
 
@@ -120,6 +141,7 @@ open WholeProgramResult public
 ------------------------------------------------------------------------
 
 -- | Convert modular result to whole-program result
+-- Uses no-closure-mem since modular runner doesn't track closure memory
 from-modular : ∀ {A B} {ir : IR A B} {prog s s' x offset} →
   IRStarResult ir prog s s' x offset →
   WholeProgramResult ir prog s s' x offset
@@ -134,38 +156,24 @@ from-modular r = record
   ; wp-stack-inv = ir-stack-inv r
   ; wp-rsp-bound = ir-rsp-bound r
   ; wp-rbp-inv = ir-rbp-inv r
-  ; wp-closure-wf = ir-closure-wf r
+  ; wp-closure-mem = no-closure-mem  -- Modular runner doesn't track closure memory
   }
-
-------------------------------------------------------------------------
--- ClosureOutput: Combined WF and memory layout from curry
-------------------------------------------------------------------------
-
--- | Optional closure memory layout (produced by curry, consumed by apply)
--- This tracks both the WF proof and the memory addresses for apply
-data ClosureMemoryOutput (prog : Program) (m : Memory) : Set where
-  no-closure-mem : ClosureMemoryOutput prog m
-  has-closure-mem : ∀ {A B : Type}
-    (closure-addr code-ptr env-addr : ℕ)
-    (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-    (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics)
-    (mem-env-valid : readMem m closure-addr ≡ just env-addr)
-    (mem-cp-valid : readMem m (closure-addr +ℕ 8) ≡ just code-ptr) →
-    ClosureMemoryOutput prog m
 
 ------------------------------------------------------------------------
 -- Whole-program runner with curry WF production
 ------------------------------------------------------------------------
 
--- | Convert IRStarResult with closure WF to WholeProgramResult
--- Used for curry case: adds has-closure WF to the result
+-- | Convert IRStarResult with closure WF and memory proofs to WholeProgramResult
+-- Used for curry case: adds has-closure-mem with full memory layout
 -- The closure types (ClA, ClB) may differ from the IR types (A, B)
 from-modular-with-wf : ∀ {A B} {ir : IR A B} {prog s s' x offset}
-  {ClA ClB : Type} {code-ptr env-addr : ℕ} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
+  {ClA ClB : Type} {closure-addr code-ptr env-addr : ℕ} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
   IRStarResult ir prog s s' x offset →
   ClosureWellFormed {ClA} {ClB} prog code-ptr env-addr sem →
+  readMem (memory s') closure-addr ≡ just env-addr →  -- mem-env proof
+  readMem (memory s') (closure-addr +ℕ 8) ≡ just code-ptr →  -- mem-cp proof
   WholeProgramResult ir prog s s' x offset
-from-modular-with-wf r wf = record
+from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env-addr = ea} r wf mem-env mem-cp = record
   { wp-star = ir-star r
   ; wp-halted = ir-halted r
   ; wp-pc = ir-pc r
@@ -176,7 +184,7 @@ from-modular-with-wf r wf = record
   ; wp-stack-inv = ir-stack-inv r
   ; wp-rsp-bound = ir-rsp-bound r
   ; wp-rbp-inv = ir-rbp-inv r
-  ; wp-closure-wf = has-closure _ _ _ wf  -- KEY: produce WF!
+  ; wp-closure-mem = has-closure-mem cl-addr cp ea _ wf mem-env mem-cp
   }
 
 -- | Run IR with closure WF tracking for whole-program proofs
@@ -202,16 +210,20 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] WholeProgramResult ir prog s s' x (length prefix)
 
--- Curry case: produce has-closure WF
+-- Curry case: produce has-closure-mem with full memory layout
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
 run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv _ =
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
-      -- Get IRStarResult from run-curry-star
+      -- Get IRStarResult and CurryMemoryResult from run-curry-star
       -- Note: run-curry-star doesn't take caller-sp (curry doesn't need it)
-      (s' , ir-res , _) = run-curry-star f prefix suffix x s
+      (s' , ir-res , curry-mem-res) = run-curry-star f prefix suffix x s
                             h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+      -- Extract closure-addr and memory proofs from CurryMemoryResult
+      cl-addr = closure-addr curry-mem-res
+      mem-env-prf = mem-env curry-mem-res
+      mem-cp-prf = mem-cp curry-mem-res
       -- Build ClosureWellFormed proof
       -- f : IR _ (A * B) C, so closure semantics is ⟦ B ⟧ → ⟦ C ⟧
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
@@ -221,22 +233,30 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
-  in s' , from-modular-with-wf ir-res wf
+  in s' , from-modular-with-wf {closure-addr = cl-addr} ir-res wf mem-env-prf mem-cp-prf
 
--- Apply case: currently delegates to modular runner (uses postulate)
+-- Apply case: uses modular runner for now
 --
--- TODO: To use run-apply-with-full-wf, we need:
---   1. ClosureWellFormed proof (from wf-in if has-closure)
---   2. ApplyMemoryLayout (memory layout from pair)
+-- CURRENT STATE: Uses modular runner which relies on apply-produces-result postulate.
 --
--- The memory layout is established by pair when it creates (closure, arg).
--- We need to thread this info through compose/pair to apply.
+-- POSTULATE-FREE PATH EXISTS via run-apply-with-full-wf, which needs:
+--   1. ClosureWellFormed proof - available from wf-in if has-closure
+--   2. ApplyMemoryLayout - needs memory proofs from pair execution:
+--      - mem-fst: memory[rdi] = closure-addr (pair stored curry's result here)
+--      - mem-snd: memory[rdi+8] = encode arg (pair stored g's result here)
+--      - mem-env: memory[closure-addr] = env-addr (curry established, needs preservation)
+--      - mem-cp: memory[closure-addr+8] = code-ptr (curry established, needs preservation)
 --
--- For now, apply uses the modular runner which relies on the postulate.
--- This is acceptable because:
--- - For closed programs, curry and apply are composed together
--- - The postulate-free path exists (run-apply-with-full-wf)
--- - Full elimination requires threading memory layout info
+-- REMAINING WORK FOR POSTULATE-FREE APPLY:
+--   1. Change wf-in parameter from ClosureWFOutput to ClosureMemoryOutput
+--   2. Add explicit pair case that:
+--      a) Preserves curry's closure memory (mem-env, mem-cp) through g's execution
+--      b) Produces pair memory layout proofs (mem-fst, mem-snd)
+--   3. Add explicit compose case that threads ClosureMemoryOutput
+--   4. Here, pattern match on has-closure-mem and construct ApplyMemoryLayout
+--
+-- The infrastructure exists (ClosureMemoryOutput, run-apply-with-full-wf).
+-- Full elimination requires threading memory proofs through the call chain.
 run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv wf-in =
   let (s' , modular-result) = run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s
                                 h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv

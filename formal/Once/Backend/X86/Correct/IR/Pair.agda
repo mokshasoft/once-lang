@@ -37,6 +37,7 @@ open import Once.Backend.X86.Correct.StarBase
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 
 open import Data.Nat using (_>_; _≥_)
+open import Function using (case_of_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
@@ -821,12 +822,26 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
     star-g : Star prog s2 s3
     star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
 
-    -- Closure WF: prefer g's closure (executed last), could fall back to f's
-    -- For now, just use g's closure (handles ⟨anything, curry⟩ case)
+    -- Closure WF: prefer f's closure (first component) over g's
+    -- This handles the critical ⟨curry body, _⟩ pattern for apply
+    -- If f produces a closure (e.g., curry), use that; otherwise fall back to g
+    closure-wf-f-raw : ClosureWFOutput (prefix-f ++ code-f ++ suffix-f)
+    closure-wf-f-raw = ir-closure-wf r-f
     closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix-g)
     closure-wf-g-raw = ir-closure-wf r-g
+
+    -- Transport to prog: need path through program equalities
+    closure-wf-from-f : ClosureWFOutput prog
+    closure-wf-from-f = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
+    closure-wf-from-g : ClosureWFOutput prog
+    closure-wf-from-g = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
+
+    -- Prefer f's closure if available, otherwise use g's
+    -- For ⟨curry body, _⟩ pattern, this ensures the closure WF is threaded through
     closure-wf-final : ClosureWFOutput prog
-    closure-wf-final = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
+    closure-wf-final = case closure-wf-from-f of λ where
+      no-closure → closure-wf-from-g
+      wf-f → wf-f
 
     -- Compose all 5 phases
     star-all : Star prog s s-final

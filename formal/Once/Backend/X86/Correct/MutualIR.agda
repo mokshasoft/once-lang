@@ -89,7 +89,7 @@ open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
-open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult)
+open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; closure-addr)
 
 -- Import closure well-formedness infrastructure for whole-program proofs
 open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -227,7 +227,7 @@ mutual
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
     s' , record ir-res
-      { ir-closure-wf = has-closure thunk-offset (encode x) (λ b → eval f (x , b)) wf
+      { ir-closure-wf = has-closure cl-addr thunk-offset (encode x) (λ b → eval f (x , b)) wf
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -243,6 +243,13 @@ mutual
 
       ir-res : IRStarResult (curry f) prog s s' x offset
       ir-res = proj₁ (proj₂ curry-result)
+
+      -- Extract closure-addr from CurryMemoryResult
+      curry-mem-result : CurryMemoryResult f prog s' x offset
+      curry-mem-result = proj₂ (proj₂ curry-result)
+
+      cl-addr : ℕ
+      cl-addr = closure-addr curry-mem-result
 
       -- Build the ClosureWellFormed proof using curry-thunk-correct-impl
       -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
