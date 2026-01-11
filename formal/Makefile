@@ -16,6 +16,8 @@
 #   CCC backends (categorical combinator code generators):
 #   make ccc          - Type-check all CCC backends
 #   make x86-ccc      - Type-check x86-64 CCC backend
+#   make x86-ccc-correct - Type-check x86-64 correctness proofs only
+#   make x86-ccc-whole   - Type-check x86-64 whole-program proofs
 #   make aarch64-ccc  - Type-check AArch64 CCC backend
 #   make riscv-ccc    - Type-check RISC-V CCC backend
 #
@@ -48,6 +50,7 @@ X86_CODEGEN := Once/Backend/X86/CodeGen.agda
 X86_CORRECT := Once/Backend/X86/Correct.agda
 X86_STAR := Once/Backend/X86/Correct/Star.agda
 X86_STARBASE := Once/Backend/X86/Correct/StarBase.agda
+X86_WHOLEPROGRAM := Once/Backend/X86/Correct/WholeProgram.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
@@ -162,6 +165,11 @@ x86-ccc:
 x86-ccc-correct:
 	@echo "Type-checking x86-64 CCC correctness proofs only..."
 	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
+
+.PHONY: x86-ccc-whole
+x86-ccc-whole:
+	@echo "Type-checking x86-64 CCC whole-program proofs..."
+	@sh -c '$(AGDA_CMD) $(X86_WHOLEPROGRAM)'
 
 .PHONY: x86-star
 x86-star:
