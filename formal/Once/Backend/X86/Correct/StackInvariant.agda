@@ -707,6 +707,84 @@ pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s 5) →
 pair-frame-slot-1-addr-eq s cap = slot-addr-1-is-base+8 (pair-frame-0 s cap)
 
 ------------------------------------------------------------------------
+-- Apply-specific Abstract Interface (D041-compliant)
+------------------------------------------------------------------------
+-- Apply pushes one value (rsp - 8), so it uses slot 1
+
+-- | Apply frame at slot 1 (one slot below rsp)
+apply-frame-1 : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) → StackPointer
+apply-frame-1 s cap = make-frame-at-slot s cap 1 (s≤s z≤n)
+
+apply-frame-slot-0-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
+                              region-of (slot-addr (apply-frame-1 s cap) 0) ≡ stack
+apply-frame-slot-0-in-stack s cap = slot-in-stack (apply-frame-1 s cap) 0
+
+-- | Connection lemma: slot 0 of frame at slot 1 = rsp - 8
+apply-frame-1-addr-eq : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
+                        sp-addr (apply-frame-1 s cap) ≡ readReg (regs s) rsp ∸ 8
+apply-frame-1-addr-eq s cap = refl
+
+-- | Bridge from abstract to concrete for Apply's push address (rsp - 8)
+abstract-to-rsp-8-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
+                             region-of (readReg (regs s) rsp ∸ 8) ≡ stack
+abstract-to-rsp-8-in-stack s cap =
+  subst (λ addr → region-of addr ≡ stack)
+        (trans (slot-addr-0-is-base (apply-frame-1 s cap))
+               (apply-frame-1-addr-eq s cap))
+        (apply-frame-slot-0-in-stack s cap)
+
+------------------------------------------------------------------------
+-- ThunkExec-specific Abstract Interface (D041-compliant)
+------------------------------------------------------------------------
+-- ThunkExec uses slots 1-4 for saving registers and frame setup
+
+-- | Thunk frame at slot 2 (two slots below rsp = rsp - 16)
+thunk-frame-2 : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) → StackPointer
+thunk-frame-2 s cap = make-frame-at-slot s cap 2 (s≤s (s≤s z≤n))
+
+thunk-frame-slot-2-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) →
+                              region-of (slot-addr (thunk-frame-2 s cap) 0) ≡ stack
+thunk-frame-slot-2-in-stack s cap = slot-in-stack (thunk-frame-2 s cap) 0
+
+-- | Thunk frame at slot 3 (three slots below rsp = rsp - 24)
+thunk-frame-3 : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) → StackPointer
+thunk-frame-3 s cap = make-frame-at-slot s cap 3 (s≤s (s≤s (s≤s z≤n)))
+
+thunk-frame-slot-3-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) →
+                              region-of (slot-addr (thunk-frame-3 s cap) 0) ≡ stack
+thunk-frame-slot-3-in-stack s cap = slot-in-stack (thunk-frame-3 s cap) 0
+
+-- | Thunk frame at slot 4 (four slots below rsp = rsp - 32)
+thunk-frame-4 : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) → StackPointer
+thunk-frame-4 s cap = make-frame-at-slot s cap 4 (s≤s (s≤s (s≤s (s≤s z≤n))))
+
+thunk-frame-slot-4-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) →
+                              region-of (slot-addr (thunk-frame-4 s cap) 0) ≡ stack
+thunk-frame-slot-4-in-stack s cap = slot-in-stack (thunk-frame-4 s cap) 0
+
+-- | Bridge lemmas from abstract to concrete for ThunkExec
+abstract-to-rsp-16-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) →
+                              region-of (readReg (regs s) rsp ∸ 16) ≡ stack
+abstract-to-rsp-16-in-stack s cap =
+  subst (λ addr → region-of addr ≡ stack)
+        (trans (slot-addr-0-is-base (thunk-frame-2 s cap)) refl)
+        (thunk-frame-slot-2-in-stack s cap)
+
+abstract-to-rsp-24-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) →
+                              region-of (readReg (regs s) rsp ∸ 24) ≡ stack
+abstract-to-rsp-24-in-stack s cap =
+  subst (λ addr → region-of addr ≡ stack)
+        (trans (slot-addr-0-is-base (thunk-frame-3 s cap)) refl)
+        (thunk-frame-slot-3-in-stack s cap)
+
+abstract-to-rsp-32-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) →
+                              region-of (readReg (regs s) rsp ∸ 32) ≡ stack
+abstract-to-rsp-32-in-stack s cap =
+  subst (λ addr → region-of addr ≡ stack)
+        (trans (slot-addr-0-is-base (thunk-frame-4 s cap)) refl)
+        (thunk-frame-slot-4-in-stack s cap)
+
+------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
 ------------------------------------------------------------------------
 

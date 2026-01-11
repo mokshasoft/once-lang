@@ -42,12 +42,14 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant
-  using (rsp-to-capacity-2; R15Status;
+  using (rsp-to-capacity-2; R15Status; StackInvariant;
          r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
-         stack-write-preserves-r15;
+         stack-write-preserves-r15; stack-inv-for-code-ptr;
+         stack-inv-preserved-r15-unchanged; stack-inv-preserved-unchanged;
          StackCapacity; capacity-maintained;
+         -- D041: Abstract interface (no arithmetic in types)
+         apply-frame-1; apply-frame-slot-0-in-stack; abstract-to-rsp-8-in-stack;
          -- D041: Abstract helpers for 1-slot and 2-slot allocation
          apply-alloc-below-rsp; apply-alloc-diff-from-above;
          apply-rsp-diff-from-alloc; apply-double-alloc-below-rsp;
@@ -675,22 +677,19 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     mem-at-0-call : readMem (memory s1) 0 ≡ readMem (memory s) 0
     mem-at-0-call = stackAddr-write-preserves-zero (memory s) new-rsp (pc s +ℕ 1) write-addr-in-stack
       where
-        open import Data.Nat using (s≤s; z≤n)
-        write-addr-in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+        write-addr-in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
     -- Memory at code-region addresses preserved (D041: use abstract interface)
     mem-code-call : ∀ addr → region-of addr ≡ code → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-code-call addr addr-in-code = stackAddr-write-preserves-code (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack addr-in-code
       where
-        open import Data.Nat using (s≤s; z≤n)
-        write-addr-in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+        write-addr-in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
     -- Memory at heap-region addresses preserved (D041: use abstract interface)
     mem-heap-call : ∀ addr → region-of addr ≡ heap → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-heap-call addr addr-in-heap = stackAddr-write-preserves-heap (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack addr-in-heap
       where
-        open import Data.Nat using (s≤s; z≤n)
-        write-addr-in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+        write-addr-in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
 ------------------------------------------------------------------------
 -- ApplyPopResult: Record type for pop r15 results (avoids nested tuples)
@@ -1028,9 +1027,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     apply-sp : StackPointer
     apply-sp = record
       { addr = readReg (regs s-setup) rsp
-      ; in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+      ; in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
       }
-      where open import Data.Nat using (s≤s; z≤n)
 
     -- D041: Prove caller-sp bound for thunk-correct
     -- apply-sp.addr = s-setup.rsp = s-call.rsp + 8
@@ -1249,9 +1247,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-at-0-f : readMem (memory s-final) 0 ≡ readMem (memory s) 0
     mem-at-0-f = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
-        open import Data.Nat using (s≤s; z≤n)
-        -- Setup write address (rsp - 8) is in stack region
-        setup-write-in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+        -- Setup write address (rsp - 8) is in stack region (via abstract interface)
+        setup-write-in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
         -- Chain: setup → call → thunk → pop
         after-setup = stackAddr-write-preserves-zero (memory s) (readReg (regs s) rsp ∸ 8) old-r15 setup-write-in-stack
@@ -1263,9 +1260,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-code-region-f : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-region-f addr addr-in-code = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
-        open import Data.Nat using (s≤s; z≤n)
-        -- Setup write address is in stack region
-        setup-write-in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+        -- Setup write address is in stack region (via abstract interface)
+        setup-write-in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
         -- Chain: setup → call → thunk → pop
         after-setup = stackAddr-write-preserves-code (memory s) (readReg (regs s) rsp ∸ 8) old-r15 addr setup-write-in-stack addr-in-code
@@ -1277,9 +1273,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-heap-region-f : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-region-f addr addr-in-heap = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
-        open import Data.Nat using (s≤s; z≤n)
-        -- Setup write address is in stack region
-        setup-write-in-stack = capacity-maintained (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) 1 (s≤s z≤n)
+        -- Setup write address is in stack region (via abstract interface)
+        setup-write-in-stack = abstract-to-rsp-8-in-stack s (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
         -- Chain: setup → call → thunk → pop
         after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ 8) old-r15 addr setup-write-in-stack addr-in-heap
