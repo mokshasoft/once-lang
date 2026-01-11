@@ -623,6 +623,26 @@ make-frame-at-slot-5-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc
   sp-addr (make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))) ≡ readReg (regs s) rsp ∸ 40
 make-frame-at-slot-5-addr s cap = refl
 
+-- | Frames at lower slot indices have higher addresses (stack grows down)
+-- slot k₁ ≤ slot k₂ implies (rsp - k₁*8) ≥ (rsp - k₂*8)
+-- This enables frame-bound proofs without exposing arithmetic to proof layer.
+frame-at-lower-slot-≥ : ∀ {n} (s : State) (cap : StackCapacity s n) (k₁ k₂ : ℕ)
+  (k₁≤n : k₁ ≤ n) (k₂≤n : k₂ ≤ n) →
+  k₁ ≤ k₂ →
+  sp-addr (make-frame-at-slot s cap k₁ k₁≤n) ≥ sp-addr (make-frame-at-slot s cap k₂ k₂≤n)
+frame-at-lower-slot-≥ s cap k₁ k₂ k₁≤n k₂≤n k₁≤k₂ = ∸-monoʳ-≤ (readReg (regs s) rsp) (*-monoˡ-≤ 8 k₁≤k₂)
+  where
+    open import Data.Nat.Properties using (∸-monoʳ-≤; *-monoˡ-≤)
+
+-- | Pair-specific: frame at slot 3 (rbp) is ≥ frame at slot 5 (r15/rsp)
+-- (rsp - 24) ≥ (rsp - 40) since 24 ≤ 40
+pair-rbp-frame-≥-r15-frame : ∀ (s : State) (cap : StackCapacity s 5) →
+  sp-addr (make-frame-at-slot s cap 3 (s≤s (s≤s (s≤s z≤n)))) ≥
+  sp-addr (make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
+pair-rbp-frame-≥-r15-frame s cap =
+  frame-at-lower-slot-≥ s cap 3 5 (s≤s (s≤s (s≤s z≤n))) (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+                        (s≤s (s≤s (s≤s z≤n)))
+
 ------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership
 ------------------------------------------------------------------------

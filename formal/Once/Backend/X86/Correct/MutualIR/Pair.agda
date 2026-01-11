@@ -33,7 +33,8 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackInvariant; RbpInvariant; StackCapacity; capacity-maintained; pair-stack-capacity)
+  using (StackInvariant; RbpInvariant; StackCapacity; capacity-maintained; pair-stack-capacity;
+         make-frame-at-slot; pair-rbp-frame-≥-r15-frame)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -108,7 +109,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
 
       -- ========== Phase 2: Execute f (recursive call via abstract dispatcher) ==========
       -- Derive RbpInvariant for s-setup: rsp_setup = rsp ∸ 40, rbp_setup = rsp ∸ 24
-      -- Need: frame-bound: (rsp ∸ 24) ≥ (rsp ∸ 40), which follows from 24 ≤ 40
+      -- D041: Uses abstract frame creation - NO arithmetic exposed here!
       rbp-inv-setup : RbpInvariant s-setup
       rbp-inv-setup = record
         { rbp-frame = setup-rbp-frame
@@ -116,36 +117,21 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
         ; frame-bound = setup-frame-bound
         }
         where
-          open import Data.Nat.Properties using (∸-monoʳ-≤)
-          open import Data.Nat using (s≤s; z≤n)
-
           -- Get StackCapacity 5 for the original state s
           cap5 : StackCapacity s 5
           cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
 
-          -- rsp ∸ 24 is in stack region (slot 3: 3 * 8 = 24)
-          rbp-addr-in-stack : region-of (readReg (regs s) rsp ∸ 24) ≡ stack
-          rbp-addr-in-stack = capacity-maintained cap5 3 (s≤s (s≤s (s≤s z≤n)))
-
-          -- The frame for rbp: StackPointer with addr = rsp ∸ 24
+          -- D041: Use abstract frame creation (slot 3 = rbp frame)
           setup-rbp-frame : StackPointer
-          setup-rbp-frame = record
-            { addr = readReg (regs s) rsp ∸ 24
-            ; in-stack = rbp-addr-in-stack
-            }
+          setup-rbp-frame = make-frame-at-slot s cap5 3 (s≤s (s≤s (s≤s z≤n)))
 
-          -- frame-bound: sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
-          -- i.e., (rsp ∸ 24) ≥ (rsp ∸ 40)
-          -- 24 ≤ 40
-          24≤40 : 24 ≤ 40
-          24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
-          -- (rsp ∸ 40) ≤ (rsp ∸ 24) by ∸-monoʳ-≤
-          rsp∸40≤rsp∸24 : readReg (regs s) rsp ∸ 40 ≤ readReg (regs s) rsp ∸ 24
-          rsp∸40≤rsp∸24 = ∸-monoʳ-≤ (readReg (regs s) rsp) 24≤40
+          -- D041: Frame bound uses abstract interface (no arithmetic here!)
+          -- pair-rbp-frame-≥-r15-frame: slot 3 ≥ slot 5
+          -- PairSetupResult.rsp-setup: s-setup.rsp = s.rsp ∸ 40 = slot 5 addr
           setup-frame-bound : sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
-          setup-frame-bound = subst (readReg (regs s) rsp ∸ 24 ≥_)
+          setup-frame-bound = subst (sp-addr setup-rbp-frame ≥_)
             (sym (PairSetupResult.rsp-setup setup-res))
-            rsp∸40≤rsp∸24
+            (pair-rbp-frame-≥-r15-frame s cap5)
 
       step-f : ∃[ s1 ] IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
       step-f = run-ir-star-at-offset-abstract f prefix-f suffix-f caller-sp x s-setup
