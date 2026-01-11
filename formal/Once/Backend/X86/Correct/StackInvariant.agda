@@ -1538,3 +1538,48 @@ thunk-4slot-diff-from-above s rsp-sufficient addr addr≥rsp =
   <⇒≢ (<-≤-trans (thunk-4slot-below-orig s rsp-sufficient) addr≥rsp)
   where
     open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
+
+------------------------------------------------------------------------
+-- D041: Raw ℕ versions of thunk helpers
+--
+-- These take a raw ℕ value instead of State, making them usable
+-- when the rsp value is in a local binding (like in ThunkExec.agda).
+------------------------------------------------------------------------
+
+-- | Raw ℕ version: 1-slot below orig when n > 16
+-- Proves: (n ∸ 8) < n
+n∸8<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 8) < n
+n∸8<n-raw n n>16 = m∸8<m n (≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) n>16)
+
+-- | Raw ℕ version: 2-slot below 1-slot when n > 16
+-- Proves: (n ∸ 16) < (n ∸ 8)
+n∸16<n∸8-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 16) < (n ∸ 8)
+n∸16<n∸8-raw n n>16 = ∸-monoʳ-< 8<16 16≤n
+  where
+    open import Data.Nat.Properties using (∸-monoʳ-<; <⇒≤)
+    open import Data.Nat using (s≤s; z≤n)
+    8<16 : 8 < 16
+    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    16≤n : 16 ≤ n
+    16≤n = <⇒≤ n>16
+
+-- | Raw ℕ version: 2-slot below orig when n > 16
+-- Proves: (n ∸ 16) < n
+n∸16<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 16) < n
+n∸16<n-raw n n>16 = <-trans (n∸16<n∸8-raw n n>16) (n∸8<n-raw n n>16)
+  where
+    open import Data.Nat.Properties using (<-trans)
+
+-- | Raw ℕ version: 4-slot below orig when n > 16
+-- Proves: (n ∸ 32) < n
+n∸32<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 32) < n
+n∸32<n-raw n n>16 = ≤-<-trans n∸32≤n∸8 n∸8<n
+  where
+    open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
+    open import Data.Nat using (s≤s; z≤n)
+    n∸8<n = n∸8<n-raw n n>16
+    -- ∸-monoʳ-≤ : m → x ≤ y → m ∸ y ≤ m ∸ x (subtracting more gives less)
+    8≤32 : 8 ≤ 32
+    8≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+    n∸32≤n∸8 : (n ∸ 32) ≤ (n ∸ 8)
+    n∸32≤n∸8 = ∸-monoʳ-≤ n 8≤32

@@ -37,7 +37,10 @@ open import Once.Backend.Common.MemoryRegions
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
-         r15-in-code)
+         r15-in-code;
+         -- D041: Abstract helpers for thunk arithmetic
+         apply-alloc-below-rsp; thunk-2slot-below-1slot; thunk-2slot-below-orig;
+         thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
