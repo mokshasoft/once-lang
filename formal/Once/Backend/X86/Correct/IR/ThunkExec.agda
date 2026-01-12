@@ -44,9 +44,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- D041: Abstract helpers for thunk arithmetic (State-based)
          apply-alloc-below-rsp; thunk-2slot-below-1slot; thunk-2slot-below-orig;
          thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above;
-         -- D041: Raw ℕ helpers for local variable patterns
-         n∸8<n-raw; n∸16<n∸8-raw; n∸16<n-raw; n∸24<n-raw; n∸24<n∸8-raw; n∸32<n-raw; n∸32+8<n-raw;
-         n∸32+8≡n∸24;
+         -- D041: Raw ℕ helpers for local variable patterns (renamed to semantic names)
+         n∸slot<n-raw; n∸2slot<n∸slot-raw; n∸2slot<n-raw; n∸3slot<n-raw; n∸3slot<n∸slot-raw;
+         n∸4slot<n-raw; n∸4slot+slot<n-raw; n∸4slot+slot≡n∸3slot;
          -- D041: Generic arithmetic helpers
          ∸-gives-different; ∸-gives-smaller)
 
@@ -577,7 +577,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-after-push-rbp≢old-rsp eq = <⇒≢-neq rsp-after-push-rbp<old-rsp eq
       where
         rsp-after-push-rbp<old-rsp : rsp-after-push-rbp < old-rsp
-        rsp-after-push-rbp<old-rsp = subst (_< old-rsp) (sym rsp-after-push-rbp≡old-rsp∸16) (n∸16<n-raw old-rsp rsp-sufficient)
+        rsp-after-push-rbp<old-rsp = subst (_< old-rsp) (sym rsp-after-push-rbp≡old-rsp∸16) (n∸2slot<n-raw old-rsp rsp-sufficient)
 
     -- new-rsp = old-rsp - 32 < old-rsp (D041: eliminate with, use abstract helper)
     new-rsp≢old-rsp : new-rsp ≢ old-rsp
@@ -588,7 +588,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
         -- Use abstract helper: (old-rsp ∸ 32) < old-rsp when old-rsp > 16
         new-rsp<old-rsp : new-rsp < old-rsp
-        new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸32<n-raw old-rsp rsp-sufficient)
+        new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸4slot<n-raw old-rsp rsp-sufficient)
 
     -- new-rsp + 8 = (old-rsp - 32) + 8 < old-rsp (D041: eliminate with, use abstract helper)
     new-rsp+8≢old-rsp : new-rsp +ℕ 8 ≢ old-rsp
@@ -602,7 +602,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp+8-eq = cong (_+ℕ 8) new-rsp-eq-local
         -- Use abstract helper: (old-rsp ∸ 32) + 8 < old-rsp when old-rsp > 16
         new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
-        new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸32+8<n-raw old-rsp rsp-sufficient)
+        new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸4slot+slot<n-raw old-rsp rsp-sufficient)
 
     -- s1 doesn't write memory (label instruction)
     mem-s1-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
@@ -698,10 +698,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
         -- new-rsp + 8 = (old-rsp ∸ 32) + 8 = old-rsp ∸ 24
         new-rsp+8≡old-rsp∸24 : new-rsp +ℕ 8 ≡ old-rsp ∸ 24
-        new-rsp+8≡old-rsp∸24 = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸32+8≡n∸24 old-rsp 32≤old-rsp)
+        new-rsp+8≡old-rsp∸24 = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp 32≤old-rsp)
         -- old-rsp ∸ 24 < old-rsp ∸ 8 = rsp-after-push-r15
         old-rsp∸24<old-rsp∸8 : old-rsp ∸ 24 < old-rsp ∸ 8
-        old-rsp∸24<old-rsp∸8 = n∸24<n∸8-raw old-rsp old-rsp>24
+        old-rsp∸24<old-rsp∸8 = n∸3slot<n∸slot-raw old-rsp old-rsp>24
         -- Therefore new-rsp + 8 < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ 8 < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ 8) (sym new-rsp+8≡old-rsp∸24) old-rsp∸24<old-rsp∸8
