@@ -10,9 +10,9 @@ module Once.Backend.X86.Correct.ExecLemmas where
 -- Import consolidated Foundation module
 open import Once.Backend.X86.Correct.Foundation
 
--- Import helpers from Star module (exec-step-helper re-exported publicly)
+-- Import helpers from Star module (re-exported publicly)
 open import Once.Backend.X86.Correct.Star
-  using (exec-step-helper; exec-on-halted; just-injective; step-on-non-halted)
+  using (exec-on-halted; just-injective)
   public
 
 -- Additional imports not in Foundation
@@ -25,34 +25,6 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong₂; subst�
 ------------------------------------------------------------------------
 -- Exec Lemmas
 ------------------------------------------------------------------------
-
--- | Exec returns immediately when step returns halted state
--- Now requires halted s ≡ false since exec checks halted s first
--- PROVEN: Uses exec-step-helper and the fact that exec on halted state returns immediately
-exec-on-halted-step : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
-  halted s ≡ false →
-  step prog s ≡ just s' →
-  halted s' ≡ true →
-  exec (suc n) prog s ≡ just s'
-exec-on-halted-step n prog s s' h-eq step-eq halt-eq =
-  exec-step-helper h-eq step-eq (exec-n-halted n prog s' halt-eq)
-  where
-    -- When halted s' = true, exec n prog s' = just s'
-    exec-n-halted : ∀ m prog s → halted s ≡ true → exec m prog s ≡ just s
-    exec-n-halted zero _ s _ = refl
-    exec-n-halted (suc m) prog s h with halted s | h
-    ... | true | refl = refl
-
--- | Exec continues recursively when step returns non-halted state
--- Now requires halted s ≡ false since exec checks halted s first
--- PROVEN: Uses rewrite to reduce exec, matching the pattern from exec-step-helper.
-exec-on-non-halted-step : ∀ (n : ℕ) (prog : List Instr) (s s' : State) →
-  halted s ≡ false →
-  step prog s ≡ just s' →
-  halted s' ≡ false →
-  exec (suc n) prog s ≡ exec n prog s'
-exec-on-non-halted-step n prog s s' h-false step-eq h'-false
-  rewrite h-false | step-on-non-halted {prog} {s} h-false | step-eq | h'-false = refl
 
 -- | Helper for just-injective
 just-inj : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
@@ -526,67 +498,6 @@ run-mov-rdi-rax-at-offset prefix suffix s h-false pc-eq = s' , step-eq , h' , pc
     -- rax is preserved (we only wrote to rdi)
     rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
     rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
-
-------------------------------------------------------------------------
--- N-step execution with halting (replaces Common.Exec)
---
--- These lemmas use exec-step-helper (from Star.agda) to chain steps,
--- and exec-n-halted to handle the final halted state.
--- This avoids the signature mismatch issues with Common.Exec.
-------------------------------------------------------------------------
-
--- | Helper: exec returns unchanged state when halted
--- (Copied from exec-on-halted-step's where clause)
-exec-n-halted : ∀ m prog (s : State) → halted s ≡ true → exec m prog s ≡ just s
-exec-n-halted zero _ s _ = refl
-exec-n-halted (suc m) prog s h with halted s | h
-... | true | refl = refl
-
--- | Execute 2 steps with final halt
-exec-two-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ true →
-  exec (suc (suc n)) prog s ≡ just s₂
-exec-two-steps n prog s s₁ s₂ step₁ h₁ step₂ h₂ =
-  exec-step-helper h₀ step₁ (exec-step-helper h₁ step₂ (exec-n-halted n prog s₂ h₂))
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 3 steps with final halt
-exec-three-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ true →
-  exec (suc (suc (suc n))) prog s ≡ just s₃
-exec-three-steps n prog s s₁ s₂ s₃ step₁ h₁ step₂ h₂ step₃ h₃ =
-  exec-step-helper h₀ step₁ (exec-two-steps n prog s₁ s₂ s₃ step₂ h₂ step₃ h₃)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 4 steps with final halt
-exec-four-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ false →
-  step prog s₃ ≡ just s₄ → halted s₄ ≡ true →
-  exec (suc (suc (suc (suc n)))) prog s ≡ just s₄
-exec-four-steps n prog s s₁ s₂ s₃ s₄ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ =
-  exec-step-helper h₀ step₁ (exec-three-steps n prog s₁ s₂ s₃ s₄ step₂ h₂ step₃ h₃ step₄ h₄)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
-
--- | Execute 5 steps with final halt
-exec-five-steps : ∀ (n : ℕ) (prog : List Instr) (s s₁ s₂ s₃ s₄ s₅ : State) →
-  step prog s ≡ just s₁ → halted s₁ ≡ false →
-  step prog s₁ ≡ just s₂ → halted s₂ ≡ false →
-  step prog s₂ ≡ just s₃ → halted s₃ ≡ false →
-  step prog s₃ ≡ just s₄ → halted s₄ ≡ false →
-  step prog s₄ ≡ just s₅ → halted s₅ ≡ true →
-  exec (suc (suc (suc (suc (suc n))))) prog s ≡ just s₅
-exec-five-steps n prog s s₁ s₂ s₃ s₄ s₅ step₁ h₁ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅ =
-  exec-step-helper h₀ step₁ (exec-four-steps n prog s₁ s₂ s₃ s₄ s₅ step₂ h₂ step₃ h₃ step₄ h₄ step₅ h₅)
-  where
-    h₀ = step-implies-not-halted prog s s₁ step₁ h₁
 
 ------------------------------------------------------------------------
 -- compile-length properties
