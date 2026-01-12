@@ -356,7 +356,7 @@ record CaseJumpResult {A B C : Type} (f : IR A C) (g : IR B C)
 
 -- | Execute jump phase for inl branch
 -- Precondition: pc s1 = length prefix + 4 + len-f (after f finishes)
-exec-case-jump : ∀ {A B C} (f : IR A C) (g : IR B C)
+case-jump-star : ∀ {A B C} (f : IR A C) (g : IR B C)
                  (prefix suffix : Program)
                  (s1 : State) →
   let ctx = make-case-context f g prefix suffix in
@@ -364,7 +364,7 @@ exec-case-jump : ∀ {A B C} (f : IR A C) (g : IR B C)
   halted s1 ≡ false →
   pc s1 ≡ length prefix +ℕ 4 +ℕ len-f →
   CaseJumpResult f g prefix suffix s1
-exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
+case-jump-star {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s3
     ; star-jump = star-eq
     ; h-final = h3
@@ -586,7 +586,7 @@ record CaseEndResult {A B C : Type} (f : IR A C) (g : IR B C)
 
 -- | Execute end label for inr branch (1 instruction)
 -- Precondition: pc s1 = length prefix + 7 + len-f + len-g (at end label)
-exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
+case-end-star : ∀ {A B C} (f : IR A C) (g : IR B C)
                 (prefix suffix : Program)
                 (s1 : State) →
   let ctx = make-case-context f g prefix suffix in
@@ -594,7 +594,7 @@ exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
   halted s1 ≡ false →
   pc s1 ≡ length prefix +ℕ 7 +ℕ len-f +ℕ len-g →
   CaseEndResult f g prefix suffix s1
-exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
+case-end-star {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s2
     ; star-end = star-eq
     ; h-final = h2
@@ -732,7 +732,7 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
 --   pc s-setup = length prefix + 5 + len-f (at right label)
 --   rdi s-setup = encode (inr b) (pointing to the sum)
 --   memory contains the sum value with tag=1 at [rdi] and b at [rdi+8]
-exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
+case-right-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
                         (prefix suffix : Program)
                         (b : ⟦ B ⟧)
                         (s-setup : State) →
@@ -744,7 +744,7 @@ exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
   StackInvariant s-setup →
   readReg (regs s-setup) rsp > 16 →
   CaseRightSetupResult f g prefix suffix b s-setup
-exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
+case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
     { s-right = s2
     ; star-right = star-eq
     ; h-right = h2

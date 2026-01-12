@@ -44,16 +44,16 @@ open import Once.Backend.X86.Correct.Star
 
 -- Import SeqExec for case setup helpers
 open import Once.Backend.X86.Correct.SeqExec
-  using (CaseInlSetupResult; exec-case-inl-setup;
-         CaseInrSetupResult; exec-case-inr-setup)
+  using (CaseInlSetupResult; case-inl-setup-star;
+         CaseInrSetupResult; case-inr-setup-star)
 open import Once.Backend.X86.Correct.SeqExec using (module CaseInlSetupResult)
 open import Once.Backend.X86.Correct.SeqExec using (module CaseInrSetupResult)
 
 -- Import Case helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseContext; make-case-context; CaseRightSetupResult;
-         exec-case-right-setup; CaseJumpResult; exec-case-jump;
-         CaseEndResult; exec-case-end; stack-inv-preserved-mem-rsp)
+         case-right-setup-star; CaseJumpResult; case-jump-star;
+         CaseEndResult; case-end-star; stack-inv-preserved-mem-rsp)
 open import Once.Backend.X86.Correct.IR.Case using (module CaseContext)
 open import Once.Backend.X86.Correct.IR.Case using (module CaseRightSetupResult)
 open import Once.Backend.X86.Correct.IR.Case using (module CaseJumpResult)
@@ -209,12 +209,12 @@ mutual
       mem-val-precond = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode a))
                               (sym rdi-eq) (encode-inl-val {A} {B} a (memory s))
 
-      -- Use exec-case-inl-setup from SeqExec.agda
+      -- Use case-inl-setup-star from SeqExec.agda
       -- This executes the 4 setup instructions and returns the result record
       inl-setup-result : ∃[ s' ] CaseInlSetupResult
                            (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper)
                            s s' prefix (encode a)
-      inl-setup-result = exec-case-inl-setup prefix suffix-for-helper right-offset (encode a) s
+      inl-setup-result = case-inl-setup-star prefix suffix-for-helper right-offset (encode a) s
                            h-false pc-eq mem-tag-precond mem-val-precond
 
       -- Extract state and result record
@@ -348,9 +348,9 @@ mutual
       -- After: pc = length prefix + 4 + len-f + 2 + len-g + 1 (at end label)
       --      = length prefix + (8 + len-f) + len-g = length prefix + compile-length [ f , g ]
 
-      -- Use the extracted exec-case-jump helper
+      -- Use the extracted case-jump-star helper
       jump-result : CaseJumpResult f g prefix suffix s1
-      jump-result = exec-case-jump f g prefix suffix s1 h1 pc1
+      jump-result = case-jump-star f g prefix suffix s1 h1 pc1
 
       s-final = CaseJumpResult.s-final jump-result
       star-jump = CaseJumpResult.star-jump jump-result
@@ -573,12 +573,12 @@ mutual
       mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 1)
                               (sym rdi-eq) (encode-inr-tag {A} {B} b (memory s))
 
-      -- Use exec-case-inr-setup from SeqExec.agda
+      -- Use case-inr-setup-star from SeqExec.agda
       -- This executes the 3 setup instructions (with jne TAKEN) and returns the result record
       inr-setup-result : ∃[ s' ] CaseInrSetupResult
                            (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper)
                            s s' prefix right-offset
-      inr-setup-result = exec-case-inr-setup prefix suffix-for-helper right-offset s
+      inr-setup-result = case-inr-setup-star prefix suffix-for-helper right-offset s
                            h-false pc-eq mem-tag-precond
 
       -- Extract state and result record
@@ -682,7 +682,7 @@ mutual
 
       -- Use extracted helper for right setup execution
       right-setup-result : CaseRightSetupResult f g prefix suffix b s-setup
-      right-setup-result = exec-case-right-setup f g prefix suffix b s-setup
+      right-setup-result = case-right-setup-star f g prefix suffix b s-setup
                              h-setup pc-setup rdi-setup-eq stack-inv-setup rsp-sufficient-setup
 
       s-right = CaseRightSetupResult.s-right right-setup-result
@@ -777,9 +777,9 @@ mutual
       -- ========== Phase 4: End label (1 instruction) ==========
       -- label (7+len-f+len-g) - no-op, just advances pc
 
-      -- Use the extracted exec-case-end helper
+      -- Use the extracted case-end-star helper
       end-result : CaseEndResult f g prefix suffix s1
-      end-result = exec-case-end f g prefix suffix s1 h1 pc1
+      end-result = case-end-star f g prefix suffix s1 h1 pc1
 
       s-final = CaseEndResult.s-final end-result
       star-end = CaseEndResult.star-end end-result

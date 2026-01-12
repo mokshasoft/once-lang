@@ -97,13 +97,13 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
 -- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
 --
 -- Returns FrameSetupResult with Star-based execution proof and all frame properties.
-exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
+frame-setup-star : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rsp > 24 →   -- Need rsp > 24 to prove memory disjointness
   let prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
   in FrameSetupResult prog s (length prefix +ℕ 7)
-exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = record
+frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
   { s-setup = s7
   ; star-setup = star-eq
   ; h-setup = h7
@@ -755,13 +755,13 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = record
         memH-s1-s = stackAddr-write-preserves-heap (memory s) write1 orig-r14 addr write1-in-stack addr-in-heap
 
 ------------------------------------------------------------------------
--- PairMiddleExecResult: Star-based result for pair middle phase
+-- PairMiddleStarResult: Star-based result for pair middle phase
 ------------------------------------------------------------------------
 
 -- | Result of executing 2 pair middle instructions with Star semantics
 -- Instructions: mov [r15], rax; mov rdi, r14
 -- Stores f's result at [r15] and restores original input to rdi.
-record PairMiddleExecResult (prog : Program) (s : State) (pc-after : ℕ) : Set where
+record PairMiddleStarResult (prog : Program) (s : State) (pc-after : ℕ) : Set where
   field
     -- Output state
     s-mid : State
@@ -791,13 +791,13 @@ record PairMiddleExecResult (prog : Program) (s : State) (pc-after : ℕ) : Set 
     mem-other : ∀ addr → addr ≢ readReg (regs s) r15 → readMem (memory s-mid) addr ≡ readMem (memory s) addr
 
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
--- Returns PairMiddleExecResult with Star-based execution proof.
-exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
+-- Returns PairMiddleStarResult with Star-based execution proof.
+pair-middle-star-at : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   let prog = prefix ++ mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest
-  in PairMiddleExecResult prog s (length prefix +ℕ 2)
-exec-pair-middle-at prefix rest s h-false pc-eq = record
+  in PairMiddleStarResult prog s (length prefix +ℕ 2)
+pair-middle-star-at prefix rest s h-false pc-eq = record
   { s-mid = s-final
   ; star-mid = star-eq
   ; h-mid = h-final
@@ -963,7 +963,7 @@ record CaseInrSetupResult (prog : Program) (s s' : State) (prefix : Program) (jn
 --   - r14, rbp, rsp, rax unchanged
 --   - memory unchanged
 -- Note: Uses r11 (scratch register) for tag to preserve r15 (callee-save)
-exec-case-inl-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : ℕ) (s : State) →
+case-inl-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : ℕ) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
@@ -973,7 +973,7 @@ exec-case-inl-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : �
                         jne jne-offset ∷
                         mov (reg rdi) (mem (base+disp rdi 8)) ∷ suffix
   in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
-exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
+case-inl-setup-star prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
   s4 , record { star-setup = star-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
               ; r14-eq = r14-s4 ; r15-eq = r15-s4 ; rbp-eq = rbp-s4 ; rsp-eq = rsp-s4
               ; mem-eq = mem-s4 }
@@ -1141,7 +1141,7 @@ exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val
 --   rdi = unchanged
 --   r14, rbp, rsp, memory unchanged
 -- Note: Uses r11 (scratch register) for tag to preserve r15 (callee-save)
-exec-case-inr-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : State) →
+case-inr-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readMem (memory s) (readReg (regs s) rdi) ≡ just 1 →  -- tag = 1 for inr
@@ -1149,7 +1149,7 @@ exec-case-inr-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : Stat
                         cmp (reg r11) (imm 0) ∷
                         jne jne-offset ∷ suffix
   in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
-exec-case-inr-setup prefix suffix jne-offset s h-false pc-eq mem-tag =
+case-inr-setup-star prefix suffix jne-offset s h-false pc-eq mem-tag =
   s3 , record { star-setup = star-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
               ; r14-eq = r14-s3 ; r15-eq = r15-s3 ; rbp-eq = rbp-s3 ; rsp-eq = rsp-s3
               ; mem-eq = mem-s3 }

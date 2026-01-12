@@ -145,13 +145,13 @@ record TransferResult {A B C : Type} (f : IR A B) (g : IR B C)
     mem-s1-to-s2 : ∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute the transfer instruction and compute all properties
-exec-compose-transfer : ∀ {A B C} (f : IR A B) (g : IR B C)
+compose-transfer-star : ∀ {A B C} (f : IR A B) (g : IR B C)
                         (prefix suffix : Program) (x : ⟦ A ⟧) (s s1 : State) →
   let ctx = make-compose-context f g prefix suffix in
   let open ComposeContext ctx in
   (r1 : IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)) →
   TransferResult f g prefix suffix x s s1
-exec-compose-transfer {A} {B} {C} f g prefix suffix x s s1 r1 = record
+compose-transfer-star {A} {B} {C} f g prefix suffix x s s1 r1 = record
   { s2 = s2
   ; h2 = h2
   ; pc2-g = pc2-g
@@ -182,7 +182,7 @@ exec-compose-transfer {A} {B} {C} f g prefix suffix x s s1 r1 = record
     pc1-transfer = trans pc1 (sym len-prefix-transfer)
 
     -- Execute transfer instruction
-    step-transfer-result = exec-transfer-at prefix-transfer (code-g ++ suffix) s1 h1 pc1-transfer
+    step-transfer-result = transfer-star prefix-transfer (code-g ++ suffix) s1 h1 pc1-transfer
 
     s2 = proj₁ step-transfer-result
     step-t : step (prefix-transfer ++ transfer ∷ (code-g ++ suffix)) s1 ≡ just s2

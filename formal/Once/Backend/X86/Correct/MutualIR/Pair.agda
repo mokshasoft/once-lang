@@ -43,9 +43,9 @@ open import Once.Backend.X86.Correct.Star
 -- Import Pair helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Pair
   using (PairContext; make-pair-context; PairSetupResult;
-         exec-pair-setup; PairMiddleResult;
-         exec-pair-middle; PairFinalPrecond; PairFinalResult;
-         make-pair-final-precond; exec-pair-final;
+         pair-setup-star; PairMiddleResult;
+         pair-middle-star; PairFinalPrecond; PairFinalResult;
+         make-pair-final-precond; pair-final-star;
          assemble-pair-result)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairContext)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResult)
@@ -103,7 +103,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
       open PairContext ctx
 
       -- ========== Phase 1: Setup (7 instructions) ==========
-      setup-res = exec-pair-setup f g prefix suffix x s h-false pc-eq rdi-eq
+      setup-res = pair-setup-star f g prefix suffix x s h-false pc-eq rdi-eq
       s-setup = PairSetupResult.s-setup setup-res
 
       -- ========== Phase 2: Execute f (recursive call via abstract dispatcher) ==========
@@ -152,7 +152,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
       pc1 = trans (ir-pc r-f) (cong (_+ℕ len-f) len-prefix-f)
 
       -- ========== Phase 3: Middle (2 instructions) ==========
-      mid-res = exec-pair-middle f g prefix suffix x s s-setup s1 r-f setup-res refl rdi-eq (ir-halted r-f) pc1
+      mid-res = pair-middle-star f g prefix suffix x s s-setup s1 r-f setup-res refl rdi-eq (ir-halted r-f) pc1
       s2 = PairMiddleResult.s2 mid-res
 
       -- ========== Phase 4: Execute g (recursive call via abstract dispatcher) ==========
@@ -192,7 +192,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
                         stack-inv rbp-inv setup-res r-f mid-res r-g refl refl
 
       final-res : PairFinalResult f g prefix suffix s s3
-      final-res = exec-pair-final f g prefix suffix s s3 final-precond
+      final-res = pair-final-star f g prefix suffix s s3 final-precond
 
       s-final = PairFinalResult.s-final final-res
       star-fin-raw = PairFinalResult.star-fin final-res

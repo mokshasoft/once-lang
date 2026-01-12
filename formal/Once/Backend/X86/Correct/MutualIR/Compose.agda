@@ -35,7 +35,7 @@ open import Once.Backend.Common.MemoryRegions
 -- Import Compose helpers (non-recursive parts)
 open import Once.Backend.X86.Correct.IR.Compose
   using (ComposeContext; make-compose-context; TransferResult;
-         exec-compose-transfer; assemble-compose-result)
+         compose-transfer-star; assemble-compose-result)
 open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
 open import Once.Backend.X86.Correct.IR.Compose using (module TransferResult)
 
@@ -84,7 +84,7 @@ run-compose-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-e
 
       -- Step 2: Execute transfer (extracted helper)
       tr : TransferResult f g prefix suffix x s s1
-      tr = exec-compose-transfer f g prefix suffix x s s1 r1
+      tr = compose-transfer-star f g prefix suffix x s s1 r1
 
       s2 = TransferResult.s2 tr
 

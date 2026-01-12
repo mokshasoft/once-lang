@@ -62,7 +62,7 @@ fetch-at-prefix-end (x ∷ prefix) i rest = fetch-at-prefix-end prefix i rest
 
 -- | Execute transfer instruction (mov rdi, rax) at position N in a program
 -- Used between sub-programs in compose to transfer result to input
-exec-transfer-at : ∀ (prefix : Program) (suffix : Program) (s : State) →
+transfer-star : ∀ (prefix : Program) (suffix : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ∃[ s' ] (step (prefix ++ mov (reg rdi) (reg rax) ∷ suffix) s ≡ just s'
@@ -70,7 +70,7 @@ exec-transfer-at : ∀ (prefix : Program) (suffix : Program) (s : State) →
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rdi ≡ readReg (regs s) rax
          × readReg (regs s') rax ≡ readReg (regs s) rax)
-exec-transfer-at prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-eq , rax-eq
+transfer-star prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-eq , rax-eq
   where
     prog : Program
     prog = prefix ++ mov (reg rdi) (reg rax) ∷ suffix

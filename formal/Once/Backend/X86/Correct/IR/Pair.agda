@@ -33,7 +33,7 @@ open import Once.Backend.Common.MemoryRegions
          slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.SeqExec using (exec-pair-setup-at-7; FrameSetupResult; exec-pair-middle-at; PairMiddleExecResult)
+open import Once.Backend.X86.Correct.SeqExec using (frame-setup-star; FrameSetupResult; pair-middle-star-at; PairMiddleStarResult)
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-step6)
 open import Once.Backend.X86.Correct.StarBase
@@ -391,13 +391,13 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase and compute all properties
-exec-pair-setup : ∀ {A B C} (f : IR C A) (g : IR C B)
+pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   PairSetupResult f g prefix suffix x s
-exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
+pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   { s-setup = s-setup
   ; h-setup = h-setup
   ; pc-setup-f = pc-setup-f
@@ -430,7 +430,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
         25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
 
     -- Execute 7 setup instructions - returns FrameSetupResult with Star proof
-    setup-result = exec-pair-setup-at-7 prefix rest-for-setup s h-false pc-eq rsp>24
+    setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq rsp>24
 
     -- Open FrameSetupResult with renaming to match existing variable names
     open FrameSetupResult setup-result
@@ -479,7 +479,7 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
         17≤41 = m≤m+n 17 24
 
     -- Memory at address 0 is preserved through setup
-    -- Extracted directly from exec-pair-setup-at-7 result
+    -- Extracted directly from frame-setup-star result
     mem-at-0-setup-proof : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-at-0-setup-proof = mem-at-0-from-setup
 
@@ -521,7 +521,7 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-heap-mid : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute middle phase
-exec-pair-middle : ∀ {A B C} (f : IR C A) (g : IR C B)
+pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
                    (prefix suffix : Program) (x : ⟦ C ⟧)
                    (s s-setup s1 : State) →
   let ctx = make-pair-context f g prefix suffix in
@@ -533,7 +533,7 @@ exec-pair-middle : ∀ {A B C} (f : IR C A) (g : IR C B)
   halted s1 ≡ false →
   pc s1 ≡ length prefix +ℕ 7 +ℕ len-f →
   PairMiddleResult f g prefix suffix x s s-setup s1
-exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-setup-eq rdi-eq h1 pc1 = record
+pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-setup-eq rdi-eq h1 pc1 = record
   { s2 = s2
   ; h2 = h2
   ; pc2-g = pc2-g
@@ -575,11 +575,11 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     r14-s1-is-input : readReg (regs s1) r14 ≡ encode x
     r14-s1-is-input = trans r14-s1 (trans r14-setup rdi-eq)
 
-    -- Execute middle 2 instructions - returns PairMiddleExecResult with Star proof
-    middle-result = exec-pair-middle-at prefix-mid rest-mid s1 h1 pc1-mid
+    -- Execute middle 2 instructions - returns PairMiddleStarResult with Star proof
+    middle-result = pair-middle-star-at prefix-mid rest-mid s1 h1 pc1-mid
 
-    -- Open PairMiddleExecResult with renaming to match existing variable names
-    open PairMiddleExecResult middle-result
+    -- Open PairMiddleStarResult with renaming to match existing variable names
+    open PairMiddleStarResult middle-result
       renaming ( s-mid to s2-rec
                ; star-mid to star-mid-raw
                ; h-mid to h2
@@ -596,7 +596,7 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     r14-mid = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) r14)
     rbp-mid = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
 
-    -- star-mid-raw comes directly from PairMiddleExecResult (Star-based, no fuel conversion needed)
+    -- star-mid-raw comes directly from PairMiddleResult (Star-based, no fuel conversion needed)
     star-mid : Star prog s1 s2
     star-mid = subst (λ p → Star p s1 s2) (sym prog-eq-mid) star-mid-raw
 
@@ -962,7 +962,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-code-fin : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s3) addr
     mem-heap-fin : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s3) addr
 
--- | Preconditions for exec-pair-final: stack layout from setup phase
+-- | Preconditions for pair-final-star: stack layout from setup phase
 record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
                         (prefix suffix : Program)
                         (s s3 : State) : Set where
@@ -1876,12 +1876,12 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
 -- Takes full preconditions for proven stack restoration
 -- All postulates eliminated - rsp-bound passed via PairFinalPrecond
-exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
+pair-final-star : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program)
                   (s s3 : State) →
   PairFinalPrecond f g prefix suffix s s3 →
   PairFinalResult f g prefix suffix s s3
-exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
+pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
     { s-final = s9
     ; star-fin = star-eq
     ; h-final = h9
@@ -1989,7 +1989,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       pc9 : pc s9 ≡ length prefix-final +ℕ 6
       pc9 = trans (cong (_+ℕ 1) pc8) (+-assoc (length prefix-final) 5 1)
 
-      -- Fetch and step proofs (same as exec-pair-final)
+      -- Fetch and step proofs (same as pair-final-star)
       fetch4 : fetch prog-final (pc s3) ≡ just store-g-instr
       fetch4 = subst (λ n → fetch prog-final n ≡ just store-g-instr) (sym pc3) (fetch-at-prefix-end prefix-final store-g-instr _)
       prog-eq-i2 : prog-final ≡ (prefix-final ++ store-g-instr ∷ []) ++ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix
@@ -2047,7 +2047,7 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       star-eq : Star prog-final s3 s9
       star-eq = star-step6 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9
 
-      -- Register preservation (same as exec-pair-final)
+      -- Register preservation (same as pair-final-star)
       v-r14 : Word
       v-r14 = readReg (regs s) r14
       v-r15 : Word
