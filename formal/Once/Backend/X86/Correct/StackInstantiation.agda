@@ -54,6 +54,13 @@ open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢)
 open import Relation.Nullary using (yes; no)
+
+-- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
+open import Once.Backend.X86.Correct.Arithmetic
+  using (word<pair; word≤pair; word<regs; word≤regs; pair≤regs;
+         word≤frame∸word; pair≤frame∸word; regs≤frame∸word;
+         word+1≤pair; pair<regs;
+         slot1-plus-word≡slot2)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
@@ -341,7 +348,7 @@ capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
         step1 : old-rsp +ℕ 16 > 16
         step1 = +-monoˡ-< 16 rsp>0
         step2 : 16 > 8
-        step2 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        step2 = word<pair
         new-rsp-bound : new-rsp > 8
         new-rsp-bound = subst (_> 8) (sym rsp-eq) (<-trans step2 step1)
         8≤new-rsp : 8 ≤ new-rsp
@@ -675,7 +682,7 @@ alloc-2-slots-addrs-in-stack s cap =
       }
       where
         rsp>8 : 8 < 16
-        rsp>8 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        rsp>8 = word<pair
     alloc-2-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ 16 → (rsp-val ∸ 16) +ℕ 8 ≡ rsp-val ∸ 8
     alloc-2-slots-second-addr-eq rsp-val rsp≥16 = trans (cong (_+ℕ 8) step1) (m∸n+n≡m word-fits-after-1-slot)
       where
@@ -762,10 +769,7 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
     m∸n<m' : ∀ m n → n > 0 → m > n → m ∸ n < m
     m∸n<m' (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
     rsp>8 : readReg (regs s) rsp > 8
-    rsp>8 = <-trans 8<16 (rsp-sufficient (capacity inv))
-      where
-        8<16 : 8 < 16
-        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    rsp>8 = <-trans word<pair (rsp-sufficient (capacity inv))
     addr<rsp : stack-addr < readReg (regs s) rsp
     addr<rsp = m∸n<m' (readReg (regs s) rsp) 8 (s≤s z≤n) rsp>8
     helper : R15Status s → stack-addr ≢ readReg (regs s) r15
@@ -824,12 +828,9 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
     addr2<rsp : stack-addr2 < rsp-val
     addr2<rsp = subst (_< rsp-val) (sym addr2-eq) (m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8)
       where
-        open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; <⇒≤)
+        open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc)
         rsp>8 : rsp-val > 8
-        rsp>8 = <-trans 8<16 rsp-suff
-          where
-            8<16 : 8 < 16
-            8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        rsp>8 = <-trans word<pair rsp-suff
         rsp≥16 : rsp-val ≥ 16
         rsp≥16 = <⇒≤ rsp-suff
         addr2-eq : stack-addr2 ≡ rsp-val ∸ 8
@@ -884,7 +885,7 @@ rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient =
     rbp-diff-proof : new-rsp ≢ orig-rbp
     rbp-diff-proof = <⇒≢ new-rsp<rbp
     rsp>8 : rsp-val > 8
-    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+    rsp>8 = ≤-trans word+1≤pair (<⇒≤ rsp-sufficient)
     rsp-8<rsp : rsp-val ∸ 8 < rsp-val
     rsp-8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
     rsp-8<rbp : rsp-val ∸ 8 < orig-rbp
@@ -929,7 +930,7 @@ rbp+8-addr-diff-from-invariant s rbp-inv rsp-sufficient =
     rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
     rbp+8-diff-1 = <⇒≢ new-rsp<rbp+8
     rsp>8 : rsp-val > 8
-    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+    rsp>8 = ≤-trans word+1≤pair (<⇒≤ rsp-sufficient)
     rsp-8<rsp : rsp-val ∸ 8 < rsp-val
     rsp-8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
     rsp-8<rbp : rsp-val ∸ 8 < orig-rbp
@@ -1008,7 +1009,7 @@ curry-alloc-below-rbp s rbp-inv rsp-sufficient = new-rsp<rbp , new-rsp+8<rbp
     16≤rsp : 16 ≤ rsp-val
     16≤rsp = <⇒≤ rsp-sufficient
     rsp>8 : rsp-val > 8
-    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+    rsp>8 = ≤-trans word+1≤pair (<⇒≤ rsp-sufficient)
     rsp-8<rsp : rsp-val ∸ 8 < rsp-val
     rsp-8<rsp = m∸n<m' rsp-val 8 (s≤s z≤n) rsp>8
     rsp-8<rbp : rsp-val ∸ 8 < orig-rbp
@@ -1066,7 +1067,7 @@ apply-alloc-below-rsp s rsp-sufficient = m∸8<m rsp-val rsp>8
   where
     rsp-val = readReg (regs s) rsp
     rsp>8 : rsp-val > 8
-    rsp>8 = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
+    rsp>8 = ≤-trans word+1≤pair (<⇒≤ rsp-sufficient)
 
 -- | Prove 1-slot allocation address is different from addresses >= rsp
 apply-alloc-diff-from-above : ∀ (s : State) →
@@ -1123,14 +1124,7 @@ thunk-2slot-below-1slot : ∀ (s : State) →
   readReg (regs s) rsp > 16 →
   let rsp-val = readReg (regs s) rsp
   in (rsp-val ∸ 16) < (rsp-val ∸ 8)
-thunk-2slot-below-1slot s rsp-sufficient = ∸-monoʳ-< 8<16 16≤rsp
-  where
-    open import Data.Nat.Properties using (∸-monoʳ-<; <⇒≤)
-    rsp-val = readReg (regs s) rsp
-    8<16 : 8 < 16
-    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-    16≤rsp : 16 ≤ rsp-val
-    16≤rsp = <⇒≤ rsp-sufficient
+thunk-2slot-below-1slot s rsp-sufficient = ∸-monoʳ-< word<pair (<⇒≤ rsp-sufficient)
 
 -- | Helper: 2-slot is below orig-rsp when rsp > 16
 thunk-2slot-below-orig : ∀ (s : State) →
@@ -1163,10 +1157,8 @@ thunk-4slot-below-orig s rsp-sufficient = ≤-<-trans rsp∸32≤rsp∸8 rsp∸8
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
     rsp-val = readReg (regs s) rsp
     rsp∸8<rsp = apply-alloc-below-rsp s rsp-sufficient
-    8≤32 : 8 ≤ 32
-    8≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
     rsp∸32≤rsp∸8 : (rsp-val ∸ 32) ≤ (rsp-val ∸ 8)
-    rsp∸32≤rsp∸8 = ∸-monoʳ-≤ rsp-val 8≤32
+    rsp∸32≤rsp∸8 = ∸-monoʳ-≤ rsp-val word≤frame∸word
 
 -- | Helper: 4-slot is different from addresses >= orig-rsp
 thunk-4slot-diff-from-above : ∀ (s : State) →
@@ -1185,17 +1177,11 @@ thunk-4slot-diff-from-above s rsp-sufficient addr addr≥rsp =
 
 -- | Raw ℕ version: 1-slot below orig when n > 16
 n∸8<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 8) < n
-n∸8<n-raw n n>16 = m∸8<m n (≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) n>16)
+n∸8<n-raw n n>16 = m∸8<m n (≤-trans word+1≤pair (<⇒≤ n>16))
 
 -- | Raw ℕ version: 2-slot below 1-slot when n > 16
 n∸16<n∸8-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 16) < (n ∸ 8)
-n∸16<n∸8-raw n n>16 = ∸-monoʳ-< 8<16 16≤n
-  where
-    open import Data.Nat.Properties using (∸-monoʳ-<; <⇒≤)
-    8<16 : 8 < 16
-    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-    16≤n : 16 ≤ n
-    16≤n = <⇒≤ n>16
+n∸16<n∸8-raw n n>16 = ∸-monoʳ-< word<pair (<⇒≤ n>16)
 
 -- | Raw ℕ version: 2-slot below orig when n > 16
 n∸16<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 16) < n
@@ -1205,63 +1191,38 @@ n∸16<n-raw n n>16 = <-trans (n∸16<n∸8-raw n n>16) (n∸8<n-raw n n>16)
 
 -- | Raw ℕ version: 4-slot below orig when n > 16
 n∸32<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 32) < n
-n∸32<n-raw n n>16 = ≤-<-trans n∸32≤n∸8 n∸8<n
+n∸32<n-raw n n>16 = ≤-<-trans n∸32≤n∸8 (n∸8<n-raw n n>16)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
-    n∸8<n = n∸8<n-raw n n>16
-    8≤32 : 8 ≤ 32
-    8≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
     n∸32≤n∸8 : (n ∸ 32) ≤ (n ∸ 8)
-    n∸32≤n∸8 = ∸-monoʳ-≤ n 8≤32
+    n∸32≤n∸8 = ∸-monoʳ-≤ n word≤frame∸word
 
 -- | Raw ℕ version: 3-slot below orig when n > 16
 n∸24<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 24) < n
-n∸24<n-raw n n>16 = ≤-<-trans n∸24≤n∸8 n∸8<n
+n∸24<n-raw n n>16 = ≤-<-trans n∸24≤n∸8 (n∸8<n-raw n n>16)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
-    n∸8<n = n∸8<n-raw n n>16
-    8≤24 : 8 ≤ 24
-    8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
     n∸24≤n∸8 : (n ∸ 24) ≤ (n ∸ 8)
-    n∸24≤n∸8 = ∸-monoʳ-≤ n 8≤24
+    n∸24≤n∸8 = ∸-monoʳ-≤ n word≤regs
 
 -- | Raw ℕ version: 3-slot below < 1-slot below when n > 24
 n∸24<n∸8-raw : ∀ (n : ℕ) → n > 24 → (n ∸ 24) < (n ∸ 8)
-n∸24<n∸8-raw n n>24 = ∸-monoʳ-< 8<24 24≤n
-  where
-    open import Data.Nat.Properties using (∸-monoʳ-<; <⇒≤)
-    8<24 : 8 < 24
-    8<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-    24≤n : 24 ≤ n
-    24≤n = <⇒≤ n>24
+n∸24<n∸8-raw n n>24 = ∸-monoʳ-< word<regs (<⇒≤ n>24)
 
 -- | Identity: (n ∸ 32) + 8 ≡ n ∸ 24 when n ≥ 32
+-- Uses slot1-plus-word≡slot2 from Arithmetic
 n∸32+8≡n∸24 : ∀ (n : ℕ) → 32 ≤ n → (n ∸ 32) +ℕ 8 ≡ n ∸ 24
-n∸32+8≡n∸24 n 32≤n = trans step1 step2
-  where
-    open import Data.Nat.Properties using (m+n∸n≡m; m∸n+n≡m)
-    step1 : (n ∸ 32) +ℕ 8 ≡ ((n ∸ 32) +ℕ 8 +ℕ 24) ∸ 24
-    step1 = sym (m+n∸n≡m ((n ∸ 32) +ℕ 8) 24)
-    8+24≡32 : 8 +ℕ 24 ≡ 32
-    8+24≡32 = refl
-    lhs+24≡n : (n ∸ 32) +ℕ 8 +ℕ 24 ≡ n
-    lhs+24≡n = trans (+-assoc (n ∸ 32) 8 24) (trans (cong ((n ∸ 32) +ℕ_) 8+24≡32) (m∸n+n≡m 32≤n))
-    step2 : ((n ∸ 32) +ℕ 8 +ℕ 24) ∸ 24 ≡ n ∸ 24
-    step2 = cong (_∸ 24) lhs+24≡n
+n∸32+8≡n∸24 = slot1-plus-word≡slot2
 
 -- | Raw ℕ version: 4-slot below orig + 8 < orig when n > 16
 n∸32+8<n-raw : ∀ (n : ℕ) → n > 16 → (n ∸ 32) +ℕ 8 < n
 n∸32+8<n-raw n n>16 = <-≤-trans step8<step16 step16≤n
   where
-    open import Data.Nat.Properties using (<-≤-trans; +-monoˡ-≤; +-monoʳ-<; ∸-monoʳ-≤; m∸n+n≡m; <⇒≤)
-    8<16 : 8 < 16
-    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+    open import Data.Nat.Properties using (<-≤-trans; +-monoˡ-≤; +-monoʳ-<; ∸-monoʳ-≤; m∸n+n≡m)
     step8<step16 : (n ∸ 32) +ℕ 8 < (n ∸ 32) +ℕ 16
-    step8<step16 = +-monoʳ-< (n ∸ 32) 8<16
-    16≤32 : 16 ≤ 32
-    16≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+    step8<step16 = +-monoʳ-< (n ∸ 32) word<pair
     n∸32≤n∸16 : (n ∸ 32) ≤ (n ∸ 16)
-    n∸32≤n∸16 = ∸-monoʳ-≤ n 16≤32
+    n∸32≤n∸16 = ∸-monoʳ-≤ n pair≤frame∸word
     step16≤n∸16+16 : (n ∸ 32) +ℕ 16 ≤ (n ∸ 16) +ℕ 16
     step16≤n∸16+16 = +-monoˡ-≤ 16 n∸32≤n∸16
     16≤n : 16 ≤ n
@@ -1331,24 +1292,13 @@ thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
 -- m ∸ 16 ≢ m ∸ 8 when m > 16
 -- Note: 8 < 16 means 9 ≤ 16, requiring s≤s^9 z≤n
 ∸two-slot≢∸one-slot : ∀ m → m > two-push-offset → m ∸ two-push-offset ≢ m ∸ push-offset
-∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset 8<16 (<⇒≤ m>16)
-  where
-    8<16 : push-offset < two-push-offset
-    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset word<pair (<⇒≤ m>16)
 
 -- m ∸ 24 ≢ m ∸ 8 when m > 24
--- Note: 8 < 24 means 9 ≤ 24, requiring s≤s^9 z≤n
 ∸three-slot≢∸one-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ push-offset
-∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset 8<24 (<⇒≤ m>24)
-  where
-    8<24 : push-offset < three-slot-offset
-    8<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset word<regs (<⇒≤ m>24)
 
 -- m ∸ 24 ≢ m ∸ 16 when m > 24
--- Note: 16 < 24 means 17 ≤ 24, requiring s≤s^17 z≤n
 ∸three-slot≢∸two-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ two-push-offset
-∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset 16<24 (<⇒≤ m>24)
-  where
-    16<24 : two-push-offset < three-slot-offset
-    16<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset pair<regs (<⇒≤ m>24)
 

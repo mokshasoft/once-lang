@@ -23,27 +23,16 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl; <⇒≤)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
--- Arithmetic lemmas for stack slot address proofs
--- These are needed because rsp > 24 ensures the subtractions don't underflow
--- Note: _+_ is defined by recursion on the first argument, so we use +-comm
--- We match on the proof to ensure complete coverage
-
--- (x ∸ 24) + 8 ≡ x ∸ 16 when x > 24
--- Matching on the proof ensures x = suc^25 n for some n
-∸24+8≡∸16 : ∀ m → m > 24 → (m ∸ 24) +ℕ 8 ≡ m ∸ 16
-∸24+8≡∸16 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) =
-  trans (+-comm (suc n) 8) refl
-
--- (x ∸ 24) + 16 ≡ x ∸ 8 when x > 24
-∸24+16≡∸8 : ∀ m → m > 24 → (m ∸ 24) +ℕ 16 ≡ m ∸ 8
-∸24+16≡∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) =
-  trans (+-comm (suc n) 16) refl
+-- Import semantic arithmetic lemmas from Arithmetic module
+open import Once.Backend.X86.Correct.Arithmetic
+  using (rbp-plus-word≡r15-save; rbp-plus-pair≡r14-save;
+         word-size; pair-alloc; saved-regs-size; frame-size)
 
 ------------------------------------------------------------------------
 -- FrameSetupResult: Star-based result for pair frame setup
@@ -527,21 +516,21 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     mem-rbp-eq = subst (λ addr → readMem (memory s7) addr ≡ just orig-rbp) (sym rbp-eq) mem-s3-at-rbp
 
     -- [rbp + 8] = [orig-rsp - 16] = orig-r15
-    -- We need to show: (orig-rsp ∸ 24) + 8 ≡ orig-rsp ∸ 16
+    -- We need to show: (orig-rsp ∸ saved-regs-size) + word-size ≡ orig-rsp ∸ pair-alloc
     mem-r15-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ 8) ≡ just orig-r15
     mem-r15-eq = subst (λ addr → readMem (memory s7) (addr +ℕ 8) ≡ just orig-r15)
                        (sym rbp-eq)
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r15)
-                              (sym (∸24+8≡∸16 orig-rsp rsp-gt-24))
+                              (sym (rbp-plus-word≡r15-save orig-rsp (<⇒≤ rsp-gt-24)))
                               mem-s3-at-r15slot)
 
     -- [rbp + 16] = [orig-rsp - 8] = orig-r14
-    -- We need to show: (orig-rsp ∸ 24) + 16 ≡ orig-rsp ∸ 8
+    -- We need to show: (orig-rsp ∸ saved-regs-size) + pair-alloc ≡ orig-rsp ∸ word-size
     mem-r14-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ 16) ≡ just orig-r14
     mem-r14-eq = subst (λ addr → readMem (memory s7) (addr +ℕ 16) ≡ just orig-r14)
                        (sym rbp-eq)
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r14)
-                              (sym (∸24+16≡∸8 orig-rsp rsp-gt-24))
+                              (sym (rbp-plus-pair≡r14-save orig-rsp (<⇒≤ rsp-gt-24)))
                               mem-s3-at-r14slot)
 
     -- Memory preservation: addresses >= orig-rsp are unchanged
