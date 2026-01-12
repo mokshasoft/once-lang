@@ -16,7 +16,7 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
+  using (rsp-bound-to-capacity; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          alloc-2-slots-addrs-in-stack;
          -- D041: Abstract helpers that encapsulate arithmetic
          curry-frame-disjoint-from-rbp; curry-rbp-inv-update; curry-stack-inv-frame-bound-update;
@@ -721,7 +721,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     rsp>32 = ≤-trans (m≤m+n 33 8) (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
-    input-capacity = rsp-to-capacity-4 s (rsp-in-stack-after-stack-op s) rsp>32
+    input-capacity = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>32
 
     output-capacity : StackCapacity s-final 2
     output-capacity = capacity-after-alloc-2-slots s s-final 2 input-capacity rsp-change
@@ -798,7 +798,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)
@@ -834,7 +834,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
     mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-final addr addr-in-heap =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ 8) ≡ stack)

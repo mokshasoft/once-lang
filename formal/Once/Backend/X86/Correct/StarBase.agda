@@ -18,7 +18,7 @@ open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-u
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; stack-code-disjoint)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound;
+  using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
@@ -187,7 +187,7 @@ run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient 
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
       -- NEW: Capacity preserved when rsp unchanged
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -225,7 +225,7 @@ run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficient r
       prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) 0
       rbp-eq = readReg-writeReg-rax-rbp (regs s) 0
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -264,7 +264,7 @@ run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficien
       prog = prefix ++ compile-x86 (fold {F}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -303,7 +303,7 @@ run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffici
       prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -342,7 +342,7 @@ run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp-suffi
       prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -385,7 +385,7 @@ run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
       prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -428,7 +428,7 @@ run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
       prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -477,7 +477,7 @@ run-fst-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
       prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'
@@ -519,7 +519,7 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
       prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-to-capacity-2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
   in s' , record
     { ir-star = star-single h-false step-eq
     ; ir-halted = h'

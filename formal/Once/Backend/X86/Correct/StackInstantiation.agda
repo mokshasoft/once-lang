@@ -12,7 +12,7 @@
 -- - IR/*.agda (proof layer): imports this module for all stack operations
 --
 -- The proof layer should use abstract interfaces like:
---   apply-frame-1, abstract-to-rsp-8-in-stack
+--   apply-frame-1, abstract-to-rsp-slot-in-stack
 -- These hide the arithmetic (rsp ∸ slot-size) behind region-based types.
 ------------------------------------------------------------------------
 
@@ -183,7 +183,7 @@ capacity-preserved-rsp-unchanged s s' n cap rsp-eq = record
             (capacity-maintained cap k k≤n)
   }
 
--- | After push (rsp -= 8), capacity decreases by 1
+-- | After push (rsp -= slot-size), capacity decreases by 1
 capacity-after-push : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s (suc n) →
   readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size →
@@ -240,7 +240,7 @@ capacity-after-push s s' n cap rsp-eq = record
                           (trans step1 (cong (old-rsp ∸_) arith-eq))
       in trans (cong region-of addr-eq) old-cap-at-1+k
 
--- | After pop (rsp += 8), capacity increases by 1
+-- | After pop (rsp += slot-size), capacity increases by 1
 capacity-after-pop : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s n →
   readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ slot-size →
@@ -402,7 +402,7 @@ slot-2-addr-in-stack : ∀ (s : State) →
   region-of (readReg (regs s) rsp ∸ two-push-offset) ≡ stack
 slot-2-addr-in-stack s cap = capacity-maintained cap 2 (s≤s (s≤s z≤n))
 
--- | With capacity n ≥ 1, address rsp - 8 is in stack region
+-- | With capacity n ≥ 1, address rsp - slot-size is in stack region
 slot-1-addr-in-stack : ∀ (s : State) →
   StackCapacity s 1 →
   region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
@@ -413,11 +413,11 @@ slot-1-addr-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
 ------------------------------------------------------------------------
 
 -- | General conversion: rsp > n*8 gives StackCapacity s n
-rsp-bound-to-capacity : ∀ (s : State) (n : ℕ) →
+rsp-bound-to-capacity : ∀ (n : ℕ) (s : State) →
   region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > n *ℕ slot-size →
   StackCapacity s n
-rsp-bound-to-capacity s n rsp-in-stack rsp-bound = record
+rsp-bound-to-capacity n s rsp-in-stack rsp-bound = record
   { rsp-in-stack = rsp-in-stack
   ; rsp-sufficient = rsp-bound
   ; capacity-maintained = cap-maintained
@@ -430,26 +430,8 @@ rsp-bound-to-capacity s n rsp-in-stack rsp-bound = record
     cap-maintained : ∀ k → k ≤ n → region-of (rsp-val ∸ (k *ℕ slot-size)) ≡ stack
     cap-maintained k k≤n = stack-sub-preserves-region rsp-val (k *ℕ slot-size) rsp-in-stack (k*slot≤rsp k k≤n)
 
--- | Convert rsp > two-push-offset to StackCapacity 2
-rsp-to-capacity-2 : ∀ (s : State) →
-  region-of (readReg (regs s) rsp) ≡ stack →
-  readReg (regs s) rsp > two-push-offset →
-  StackCapacity s 2
-rsp-to-capacity-2 s rsp-in-stack rsp-sufficient = rsp-bound-to-capacity s 2 rsp-in-stack rsp-sufficient
-
--- | Convert rsp > four-slot-offset to StackCapacity 4
-rsp-to-capacity-4 : ∀ (s : State) →
-  region-of (readReg (regs s) rsp) ≡ stack →
-  readReg (regs s) rsp > four-slot-offset →
-  StackCapacity s 4
-rsp-to-capacity-4 s rsp-in-stack rsp>32 = rsp-bound-to-capacity s 4 rsp-in-stack rsp>32
-
--- | Convert rsp > five-slot-offset to StackCapacity 5
-rsp-to-capacity-5 : ∀ (s : State) →
-  region-of (readReg (regs s) rsp) ≡ stack →
-  readReg (regs s) rsp > five-slot-offset →
-  StackCapacity s 5
-rsp-to-capacity-5 s rsp-in-stack rsp>40 = rsp-bound-to-capacity s 5 rsp-in-stack rsp>40
+-- Note: rsp-to-capacity-N wrappers have been removed.
+-- Use rsp-bound-to-capacity n s rsp-in-stack rsp-bound directly.
 
 -- | Convert StackCapacity back to concrete bound (for compatibility)
 capacity-2-to-rsp-bound : ∀ (s : State) →
@@ -480,7 +462,7 @@ make-frame-at-slot-0-addr : ∀ {n} (s : State) (cap : StackCapacity s n) →
   sp-addr (make-frame-at-slot s cap 0 z≤n) ≡ readReg (regs s) rsp
 make-frame-at-slot-0-addr s cap = refl
 
--- | Frame at slot 1 has addr = rsp - 8
+-- | Frame at slot 1 has addr = rsp - slot-size
 make-frame-at-slot-1-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
   sp-addr (make-frame-at-slot s cap 1 (s≤s z≤n)) ≡ readReg (regs s) rsp ∸ slot-size
 make-frame-at-slot-1-addr s cap = refl
@@ -526,54 +508,39 @@ apply-frame-slot-0-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)
                               region-of (slot-addr (apply-frame-1 s cap) 0) ≡ stack
 apply-frame-slot-0-in-stack s cap = slot-in-stack (apply-frame-1 s cap) 0
 
--- | Bridge from abstract to concrete for Apply's push address (rsp - 8)
-abstract-to-rsp-8-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
+-- | Bridge from abstract to concrete for Apply's push address (rsp - slot-size)
+abstract-to-rsp-slot-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
                              region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
-abstract-to-rsp-8-in-stack s cap =
+abstract-to-rsp-slot-in-stack s cap =
   subst (λ addr → region-of addr ≡ stack)
         (trans (slot-addr-0-is-base (apply-frame-1 s cap))
                (make-frame-at-slot-1-addr s cap))
         (apply-frame-slot-0-in-stack s cap)
 
 ------------------------------------------------------------------------
+-- Generic slot-in-stack proof (D041: unified interface)
+------------------------------------------------------------------------
+
+-- | Generic: (rsp - slots k) is in stack when we have capacity ≥ k
+-- This is the core abstraction - all specific slot proofs derive from this
+rsp-minus-n-slots-in-stack : ∀ (k : ℕ) {n} (s : State) (cap : StackCapacity s n) →
+                              k ≤ n →
+                              region-of (readReg (regs s) rsp ∸ slots k) ≡ stack
+rsp-minus-n-slots-in-stack k s cap k≤n = capacity-maintained cap k k≤n
+
+------------------------------------------------------------------------
 -- ThunkExec-specific Abstract Interface (D041-compliant)
 ------------------------------------------------------------------------
 
--- | Thunk frame at slot 2 (rsp - 16)
-thunk-frame-2 : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) → StackPointer
-thunk-frame-2 s cap = make-frame-at-slot s cap 2 (s≤s (s≤s z≤n))
+-- | Parameterized thunk frame at slot k
+-- Alias for make-frame-at-slot with clearer naming for thunk context
+thunk-frame : (k : ℕ) {n : ℕ} (s : State) (cap : StackCapacity s n) (k≤n : k ≤ n) → StackPointer
+thunk-frame k s cap k≤n = make-frame-at-slot s cap k k≤n
 
--- | Bridge from abstract to concrete for (rsp - 16)
-abstract-to-rsp-16-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) →
-                              region-of (readReg (regs s) rsp ∸ two-push-offset) ≡ stack
-abstract-to-rsp-16-in-stack s cap =
-  subst (λ addr → region-of addr ≡ stack)
-        (trans (slot-addr-0-is-base (thunk-frame-2 s cap)) refl)
-        (slot-in-stack (thunk-frame-2 s cap) 0)
-
--- | Thunk frame at slot 3 (rsp - 24)
-thunk-frame-3 : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) → StackPointer
-thunk-frame-3 s cap = make-frame-at-slot s cap 3 (s≤s (s≤s (s≤s z≤n)))
-
--- | Bridge from abstract to concrete for (rsp - 24)
-abstract-to-rsp-24-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) →
-                              region-of (readReg (regs s) rsp ∸ three-slot-offset) ≡ stack
-abstract-to-rsp-24-in-stack s cap =
-  subst (λ addr → region-of addr ≡ stack)
-        (trans (slot-addr-0-is-base (thunk-frame-3 s cap)) refl)
-        (slot-in-stack (thunk-frame-3 s cap) 0)
-
--- | Thunk frame at slot 4 (rsp - 32)
-thunk-frame-4 : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) → StackPointer
-thunk-frame-4 s cap = make-frame-at-slot s cap 4 (s≤s (s≤s (s≤s (s≤s z≤n))))
-
--- | Bridge from abstract to concrete for (rsp - 32)
-abstract-to-rsp-32-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) →
-                              region-of (readReg (regs s) rsp ∸ four-slot-offset) ≡ stack
-abstract-to-rsp-32-in-stack s cap =
-  subst (λ addr → region-of addr ≡ stack)
-        (trans (slot-addr-0-is-base (thunk-frame-4 s cap)) refl)
-        (slot-in-stack (thunk-frame-4 s cap) 0)
+-- | Parameterized bridge from abstract to concrete for (rsp - k*slot-size)
+abstract-to-rsp-slots-in-stack : (k : ℕ) {n : ℕ} (s : State) (cap : StackCapacity s n) (k≤n : k ≤ n) →
+                                 region-of (readReg (regs s) rsp ∸ slots k) ≡ stack
+abstract-to-rsp-slots-in-stack k s cap k≤n = rsp-minus-n-slots-in-stack k s cap k≤n
 
 -- | Thunk rbp frame at slot 2 >= new rsp at slot 4
 thunk-rbp-frame-≥-new-rsp : ∀ (s : State) (cap : StackCapacity s 4) →
@@ -604,7 +571,7 @@ pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s 5) →
                        sp-addr (pair-frame-0 s cap) ≡ readReg (regs s) rsp ∸ five-slot-offset
 pair-frame-0-addr-eq s cap = refl
 
--- | Pair frame slot 1 address equals (rsp - 40) + 8
+-- | Pair frame slot 1 address equals (rsp - five-slot-offset) + slot-size
 pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s 5) →
                             slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size
 pair-frame-slot-1-addr-eq s cap =
@@ -625,7 +592,7 @@ pair-r15-in-stack : ∀ (s : State) →
   region-of (readReg (regs s) rsp ∸ five-slot-offset) ≡ stack
 pair-r15-in-stack s cap = capacity-maintained cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
 
--- | (rsp - 40) + 8 is in stack region when we have capacity 5
+-- | (rsp - five-slot-offset) + slot-size is in stack region when we have capacity 5
 pair-second-slot-in-stack : ∀ (s : State) →
   StackCapacity s 5 →
   region-of ((readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size) ≡ stack
@@ -651,7 +618,7 @@ pair-stack-capacity : ∀ (s : State) →
   region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > five-slot-offset →
   StackCapacity s 5
-pair-stack-capacity = rsp-to-capacity-5
+pair-stack-capacity s rsp-in-stack rsp-bound = rsp-bound-to-capacity 5 s rsp-in-stack rsp-bound
 
 -- | Create StackInvariant for state after Pair setup
 pair-setup-stack-inv : ∀ (s s-setup : State) →
@@ -678,7 +645,7 @@ pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
 -- Combined Region Lemmas for Stack Operations
 ------------------------------------------------------------------------
 
--- | After sub rsp 16, both write addresses (new-rsp and new-rsp+8) are in stack
+-- | After sub rsp 16, both write addresses (new-rsp and new-rsp+slot) are in stack
 alloc-2-slots-addrs-in-stack : ∀ (s : State) →
   StackCapacity s 2 →
   let rsp-val = readReg (regs s) rsp
@@ -701,13 +668,13 @@ alloc-2-slots-addrs-in-stack s cap =
     capacity-weaken : StackCapacity s 2 → StackCapacity s 1
     capacity-weaken cap2 = record
       { rsp-in-stack = rsp-in-stack cap2
-      ; rsp-sufficient = <-trans rsp>8 (rsp-sufficient cap2)
+      ; rsp-sufficient = <-trans slot<2slot (rsp-sufficient cap2)
       ; capacity-maintained = λ k k≤1 →
           capacity-maintained cap2 k (≤-trans k≤1 (s≤s z≤n))
       }
       where
-        rsp>8 : slot-size < two-push-offset
-        rsp>8 = word<pair
+        slot<2slot : slot-size < two-push-offset
+        slot<2slot = word<pair
     alloc-2-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ two-push-offset → (rsp-val ∸ two-push-offset) +ℕ slot-size ≡ rsp-val ∸ slot-size
     alloc-2-slots-second-addr-eq rsp-val rsp≥16 = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-1-slot)
       where
@@ -746,7 +713,7 @@ from-old-invariants : ∀ (s : State) →
   AbstractStackInvariant s
 from-old-invariants s stack-inv rsp-in-stack rsp-sufficient = record
   { r15-status = stack-inv
-  ; capacity = rsp-to-capacity-2 s rsp-in-stack rsp-sufficient
+  ; capacity = rsp-bound-to-capacity 2 s rsp-in-stack rsp-sufficient
   }
 
 ------------------------------------------------------------------------
@@ -780,7 +747,7 @@ stack-write-slot-2-preserves-r15 s inv = helper (r15-status inv)
            write-frame 0 (sym (slot-addr-0-is-base write-frame))
            r15-frame r15-slot r15-eq frames-neq
 
--- | Similarly for (rsp - 8)
+-- | Similarly for (rsp - slot-size)
 stack-write-slot-1-preserves-r15 : ∀ (s : State) →
   AbstractStackInvariant s →
   readReg (regs s) rsp ∸ slot-size ≢ readReg (regs s) r15
@@ -823,7 +790,7 @@ stack-write-preserves-heap-data s heap-addr inv heap-proof =
 -- Address disjointness from StackInvariant (legacy compatibility)
 ------------------------------------------------------------------------
 
--- | Prove (rsp - 16) and (rsp - 8) are different from r15
+-- | Prove (rsp - two-push-offset) and (rsp - slot-size) are different from r15
 addr-diff-from-invariant : ∀ (s : State) →
   StackInvariant s →
   region-of (readReg (regs s) rsp) ≡ stack →
@@ -836,7 +803,7 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
     open import Data.Nat.Properties using (<-trans; <⇒≢; <-≤-trans; ∸-monoˡ-≤)
     open import Data.Product using (proj₁; proj₂)
     rsp-val = readReg (regs s) rsp
-    cap = rsp-to-capacity-2 s rsp-in-stack rsp-suff
+    cap = rsp-bound-to-capacity 2 s rsp-in-stack rsp-suff
     addrs-in-stack = alloc-2-slots-addrs-in-stack s cap
     write1-in-stack = proj₁ addrs-in-stack
     write2-in-stack = proj₂ addrs-in-stack
@@ -880,7 +847,7 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
 -- RbpInvariant address disjointness proofs
 ------------------------------------------------------------------------
 
--- | Prove (rsp - 16) and (rsp - 8) are different from rbp
+-- | Prove (rsp - two-push-offset) and (rsp - slot-size) are different from rbp
 rbp-addr-diff-from-invariant : ∀ (s : State) →
   RbpInvariant s →
   readReg (regs s) rsp > two-push-offset →
@@ -920,30 +887,30 @@ rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient =
     rbp-diff-proof-2 : (new-rsp +ℕ slot-size) ≢ orig-rbp
     rbp-diff-proof-2 = subst (_≢ orig-rbp) (sym second-slot-eq) (<⇒≢ rsp-slot<rbp)
 
--- | Prove (rsp - 16) and (rsp - 8) are different from (rbp + 8)
-rbp+8-addr-diff-from-invariant : ∀ (s : State) →
+-- | Prove (rsp - two-push-offset) and (rsp - slot-size) are different from (rbp + slot-size)
+rbp+slot-addr-diff-from-invariant : ∀ (s : State) →
   RbpInvariant s →
   readReg (regs s) rsp > two-push-offset →
   let new-rsp = readReg (regs s) rsp ∸ two-push-offset
-      orig-rbp+8 = readReg (regs s) rbp +ℕ slot-size
-  in (new-rsp ≢ orig-rbp+8) × ((new-rsp +ℕ slot-size) ≢ orig-rbp+8)
-rbp+8-addr-diff-from-invariant s rbp-inv rsp-sufficient =
-  rbp+8-diff-1 , rbp+8-diff-2
+      orig-rbp+slot = readReg (regs s) rbp +ℕ slot-size
+  in (new-rsp ≢ orig-rbp+slot) × ((new-rsp +ℕ slot-size) ≢ orig-rbp+slot)
+rbp+slot-addr-diff-from-invariant s rbp-inv rsp-sufficient =
+  rbp+slot-diff-1 , rbp+slot-diff-2
   where
     open import Data.Nat.Properties using (<⇒≢; <-≤-trans; m≤m+n; m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; n≤1+n)
     rsp-val = readReg (regs s) rsp
     new-rsp = rsp-val ∸ two-push-offset
     orig-rbp = readReg (regs s) rbp
-    orig-rbp+8 = orig-rbp +ℕ slot-size
+    orig-rbp+slot = orig-rbp +ℕ slot-size
     new-rsp<rsp : new-rsp < rsp-val
     new-rsp<rsp = m∸n<m-when-m>n rsp-val two-push-offset (s≤s z≤n) rsp-sufficient
     new-rsp<rbp : new-rsp < orig-rbp
     new-rsp<rbp = subst (new-rsp <_) (sym (rbp-is-base rbp-inv))
                         (<-≤-trans new-rsp<rsp (frame-bound rbp-inv))
-    new-rsp<rbp+8 : new-rsp < orig-rbp+8
-    new-rsp<rbp+8 = ≤-trans new-rsp<rbp (m≤m+n orig-rbp slot-size)
-    rbp+8-diff-1 : new-rsp ≢ orig-rbp+8
-    rbp+8-diff-1 = <⇒≢ new-rsp<rbp+8
+    new-rsp<rbp+slot : new-rsp < orig-rbp+slot
+    new-rsp<rbp+slot = ≤-trans new-rsp<rbp (m≤m+n orig-rbp slot-size)
+    rbp+slot-diff-1 : new-rsp ≢ orig-rbp+slot
+    rbp+slot-diff-1 = <⇒≢ new-rsp<rbp+slot
     rsp>slot : rsp-val > slot-size
     rsp>slot = rsp>slot-from-2slot rsp-sufficient
     rsp-slot<rsp : rsp-val ∸ slot-size < rsp-val
@@ -951,8 +918,8 @@ rbp+8-addr-diff-from-invariant s rbp-inv rsp-sufficient =
     rsp-slot<rbp : rsp-val ∸ slot-size < orig-rbp
     rsp-slot<rbp = subst (rsp-val ∸ slot-size <_) (sym (rbp-is-base rbp-inv))
                       (<-≤-trans rsp-slot<rsp (frame-bound rbp-inv))
-    rsp-slot<rbp+8 : rsp-val ∸ slot-size < orig-rbp+8
-    rsp-slot<rbp+8 = ≤-trans rsp-slot<rbp (m≤m+n orig-rbp slot-size)
+    rsp-slot<rbp+slot : rsp-val ∸ slot-size < orig-rbp+slot
+    rsp-slot<rbp+slot = ≤-trans rsp-slot<rbp (m≤m+n orig-rbp slot-size)
     second-slot-eq : new-rsp +ℕ slot-size ≡ rsp-val ∸ slot-size
     second-slot-eq = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits)
       where
@@ -962,10 +929,10 @@ rbp+8-addr-diff-from-invariant s rbp-inv rsp-sufficient =
         two-slots-fit = ≤-trans (n≤1+n two-push-offset) rsp-sufficient
         word-fits : slot-size ≤ rsp-val ∸ slot-size
         word-fits = ∸-monoˡ-≤ slot-size two-slots-fit
-    rbp+8-diff-2 : (new-rsp +ℕ slot-size) ≢ orig-rbp+8
-    rbp+8-diff-2 = subst (_≢ orig-rbp+8) (sym second-slot-eq) (<⇒≢ rsp-slot<rbp+8)
+    rbp+slot-diff-2 : (new-rsp +ℕ slot-size) ≢ orig-rbp+slot
+    rbp+slot-diff-2 = subst (_≢ orig-rbp+slot) (sym second-slot-eq) (<⇒≢ rsp-slot<rbp+slot)
 
--- | Combined rbp and rbp+8 disjointness for curry
+-- | Combined rbp and rbp+slot disjointness for curry
 curry-frame-disjoint-from-rbp : ∀ (s : State) →
   RbpInvariant s →
   readReg (regs s) rsp > two-push-offset →
@@ -975,7 +942,7 @@ curry-frame-disjoint-from-rbp : ∀ (s : State) →
      (new-rsp ≢ orig-rbp +ℕ slot-size) × ((new-rsp +ℕ slot-size) ≢ orig-rbp +ℕ slot-size)
 curry-frame-disjoint-from-rbp s rbp-inv rsp-suff =
   let (d1 , d2) = rbp-addr-diff-from-invariant s rbp-inv rsp-suff
-      (d3 , d4) = rbp+8-addr-diff-from-invariant s rbp-inv rsp-suff
+      (d3 , d4) = rbp+slot-addr-diff-from-invariant s rbp-inv rsp-suff
   in d1 , d2 , d3 , d4
 
 -- | Stack invariant frame bound update after 2-slot allocation
@@ -1001,14 +968,14 @@ curry-rbp-inv-update s s' rbp-inv rbp-eq rsp-eq = record
                     (RbpInvariant.frame-bound rbp-inv)
   }
 
--- | Ordering facts for curry: new-rsp < rbp and (new-rsp + 8) < rbp
+-- | Ordering facts for curry: new-rsp < rbp and (new-rsp + slot-size) < rbp
 curry-alloc-below-rbp : ∀ (s : State) →
   RbpInvariant s →
   readReg (regs s) rsp > two-push-offset →
   let new-rsp = readReg (regs s) rsp ∸ two-push-offset
       orig-rbp = readReg (regs s) rbp
   in (new-rsp < orig-rbp) × ((new-rsp +ℕ slot-size) < orig-rbp)
-curry-alloc-below-rbp s rbp-inv rsp-sufficient = new-rsp<rbp , new-rsp+8<rbp
+curry-alloc-below-rbp s rbp-inv rsp-sufficient = new-rsp<rbp , new-rsp+slot<rbp
   where
     open import Data.Nat.Properties using (<-≤-trans; <⇒≤; +-monoʳ-<; m∸n+n≡m; ≤-<-trans; ∸-+-assoc; ∸-monoˡ-≤)
     rsp-val = readReg (regs s) rsp
@@ -1038,15 +1005,15 @@ curry-alloc-below-rbp s rbp-inv rsp-sufficient = new-rsp<rbp , new-rsp+8<rbp
         two-slots-fit = ≤-trans (n≤1+n two-push-offset) rsp-sufficient
         word-fits : slot-size ≤ rsp-val ∸ slot-size
         word-fits = ∸-monoˡ-≤ slot-size two-slots-fit
-    new-rsp+8<rbp : (new-rsp +ℕ slot-size) < orig-rbp
-    new-rsp+8<rbp = subst (_< orig-rbp) (sym second-slot-eq) rsp-slot<rbp
+    new-rsp+slot<rbp : (new-rsp +ℕ slot-size) < orig-rbp
+    new-rsp+slot<rbp = subst (_< orig-rbp) (sym second-slot-eq) rsp-slot<rbp
 
 -- | Prove curry allocation addresses are non-zero
 curry-alloc-nonzero : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
   let new-rsp = readReg (regs s) rsp ∸ two-push-offset
   in (new-rsp ≢ 0) × ((new-rsp +ℕ slot-size) ≢ 0)
-curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+8
+curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+slot
   where
     open import Data.Nat.Properties using (<⇒≢; ∸-monoˡ-≤; <-trans; +-monoˡ-<)
     rsp-val = readReg (regs s) rsp
@@ -1057,12 +1024,12 @@ curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+8
     1≤new-rsp = subst (1 ≤_) refl (∸-monoˡ-≤ two-push-offset 17≤rsp)
     0<new-rsp : 0 < new-rsp
     0<new-rsp = 1≤new-rsp
-    0<new-rsp+8 : 0 < (new-rsp +ℕ slot-size)
-    0<new-rsp+8 = <-trans (s≤s z≤n) (+-monoˡ-< slot-size 0<new-rsp)
+    0<new-rsp+slot : 0 < (new-rsp +ℕ slot-size)
+    0<new-rsp+slot = <-trans (s≤s z≤n) (+-monoˡ-< slot-size 0<new-rsp)
     diff-new-rsp : new-rsp ≢ 0
     diff-new-rsp eq = <⇒≢ 0<new-rsp (sym eq)
-    diff-new-rsp+8 : (new-rsp +ℕ slot-size) ≢ 0
-    diff-new-rsp+8 eq = <⇒≢ 0<new-rsp+8 (sym eq)
+    diff-new-rsp+slot : (new-rsp +ℕ slot-size) ≢ 0
+    diff-new-rsp+slot eq = <⇒≢ 0<new-rsp+slot (sym eq)
 
 ------------------------------------------------------------------------
 -- Apply helpers: 1-slot allocation (push r15)
@@ -1076,11 +1043,11 @@ private
 apply-alloc-below-rsp : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
   readReg (regs s) rsp ∸ slot-size < readReg (regs s) rsp
-apply-alloc-below-rsp s rsp-sufficient = m∸slot<m rsp-val rsp>8
+apply-alloc-below-rsp s rsp-sufficient = m∸slot<m rsp-val rsp>slot
   where
     rsp-val = readReg (regs s) rsp
-    rsp>8 : rsp-val > slot-size
-    rsp>8 = ≤-trans word+1≤pair (<⇒≤ rsp-sufficient)
+    rsp>slot : rsp-val > slot-size
+    rsp>slot = rsp>slot-from-2slot rsp-sufficient
 
 -- | Prove 1-slot allocation address is different from addresses >= rsp
 apply-alloc-diff-from-above : ∀ (s : State) →
@@ -1097,7 +1064,7 @@ apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp = <⇒≢ new-rsp<a
     new-rsp<addr : new-rsp < addr
     new-rsp<addr = <-≤-trans new-rsp<rsp addr≥rsp
 
--- | Prove rsp ≢ (rsp - 8) when rsp > two-push-offset
+-- | Prove rsp ≢ (rsp - slot-size) when rsp > two-push-offset
 apply-rsp-diff-from-alloc : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
   readReg (regs s) rsp ≢ readReg (regs s) rsp ∸ slot-size
@@ -1222,12 +1189,12 @@ n∸3slot<n-raw n n>16 = ≤-<-trans n∸3slot≤n∸slot (n∸slot<n-raw n n>16
 n∸3slot<n∸slot-raw : ∀ (n : ℕ) → n > three-slot-offset → (n ∸ three-slot-offset) < (n ∸ slot-size)
 n∸3slot<n∸slot-raw n n>24 = ∸-monoʳ-< word<regs (<⇒≤ n>24)
 
--- | Identity: (n ∸ four-slot-offset) + 8 ≡ n ∸ three-slot-offset when n ≥ 32
+-- | Identity: (n ∸ four-slot-offset) + slot-size ≡ n ∸ three-slot-offset when n ≥ 32
 -- Uses slot1-plus-word≡slot2 from Arithmetic
 n∸4slot+slot≡n∸3slot : ∀ (n : ℕ) → four-slot-offset ≤ n → (n ∸ four-slot-offset) +ℕ slot-size ≡ n ∸ three-slot-offset
 n∸4slot+slot≡n∸3slot = slot1-plus-word≡slot2
 
--- | Raw ℕ version: 4-slot below orig + 8 < orig when n > two-push-offset
+-- | Raw ℕ version: 4-slot below orig + slot-size < orig when n > two-push-offset
 n∸4slot+slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ four-slot-offset) +ℕ slot-size < n
 n∸4slot+slot<n-raw n n>16 = <-≤-trans step-slot<step-2slot step-2slot≤n
   where
@@ -1298,16 +1265,16 @@ thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
 ∸-different-offsets m a b a<b m≥b eq = <⇒≢ (∸-monoʳ-< a<b m≥b) eq
 
 -- Specific instances for SeqExec pair setup
--- m ∸ 16 ≢ m ∸ 8 when m > two-push-offset
--- Note: 8 < 16 means 9 ≤ 16, requiring s≤s^9 z≤n
+-- m ∸ two-push-offset ≢ m ∸ slot-size when m > two-push-offset
+-- Note: slot-size < two-push-offset means 9 ≤ 16, requiring s≤s^9 z≤n
 ∸two-slot≢∸one-slot : ∀ m → m > two-push-offset → m ∸ two-push-offset ≢ m ∸ push-offset
 ∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset word<pair (<⇒≤ m>16)
 
--- m ∸ three-slot-offset ≢ m ∸ 8 when m > three-slot-offset
+-- m ∸ three-slot-offset ≢ m ∸ slot-size when m > three-slot-offset
 ∸three-slot≢∸one-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ push-offset
 ∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset word<regs (<⇒≤ m>24)
 
--- m ∸ three-slot-offset ≢ m ∸ 16 when m > three-slot-offset
+-- m ∸ three-slot-offset ≢ m ∸ two-push-offset when m > three-slot-offset
 ∸three-slot≢∸two-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ two-push-offset
 ∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset pair<regs (<⇒≤ m>24)
 

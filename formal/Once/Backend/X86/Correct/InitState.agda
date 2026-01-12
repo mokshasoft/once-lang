@@ -121,7 +121,7 @@ initWithInput-stack-inv x = r15-unused r15≡0
 open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound)
+  using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
 -- Internal: raw rsp bound proof
@@ -131,7 +131,7 @@ private
 
 -- | Initial state has stack capacity for 2 slots (16 bytes)
 initWithInput-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInput x) 2
-initWithInput-stack-capacity x = rsp-to-capacity-2 (initWithInput x) (rsp-in-stack-after-stack-op (initWithInput x)) (rsp-bound x)
+initWithInput-stack-capacity x = rsp-bound-to-capacity 2 (initWithInput x) (rsp-in-stack-after-stack-op (initWithInput x)) (rsp-bound x)
 
 -- | Initial state has sufficient rsp (derived from capacity, for legacy interfaces)
 initWithInput-rsp-sufficient : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > 16

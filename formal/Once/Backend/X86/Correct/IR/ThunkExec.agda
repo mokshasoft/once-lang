@@ -38,9 +38,8 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code;
-         -- D041: Abstract interface (no arithmetic in types)
-         abstract-to-rsp-8-in-stack; abstract-to-rsp-16-in-stack;
-         abstract-to-rsp-24-in-stack; abstract-to-rsp-32-in-stack;
+         -- D041: Parameterized abstract interface
+         abstract-to-rsp-slot-in-stack; abstract-to-rsp-slots-in-stack;
          -- D041: Abstract helpers for thunk arithmetic (State-based)
          apply-alloc-below-rsp; thunk-2slot-below-1slot; thunk-2slot-below-orig;
          thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above;
@@ -748,7 +747,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- We use old-rsp>40 from rsp-bound-after-stack-op which gives capacity 5
     -- Note: rsp-bound-to-capacity expects rsp > n*8, and 5*8 = 40
     cap-stronger : StackCapacity s 5
-    cap-stronger = rsp-bound-to-capacity s 5 (rsp-in-stack-after-stack-op s) old-rsp>40
+    cap-stronger = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) old-rsp>40
 
     -- Write addresses are all in stack region
     -- Need to use ∸-+-assoc to relate nested subtractions to flat ones
@@ -756,7 +755,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- rsp-after-push-r15 = old-rsp ∸ 8 matches old-rsp ∸ 1*8 directly (via abstract interface)
     addr-rsp-8-in-stack : region-of rsp-after-push-r15 ≡ stack
-    addr-rsp-8-in-stack = abstract-to-rsp-8-in-stack s cap-stronger
+    addr-rsp-8-in-stack = abstract-to-rsp-slot-in-stack s cap-stronger
 
     -- rsp-after-push-rbp = (old-rsp ∸ 8) ∸ 8 = old-rsp ∸ 16 = old-rsp ∸ 2*8
     rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ 16
@@ -764,13 +763,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-16-in-stack : region-of rsp-after-push-rbp ≡ stack
     addr-rsp-16-in-stack = subst (λ x → region-of x ≡ stack) (sym rsp-after-push-rbp-eq)
-                                 (abstract-to-rsp-16-in-stack s cap-stronger)
+                                 (abstract-to-rsp-slots-in-stack 2 s cap-stronger (s≤s (s≤s z≤n)))
 
     -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
     -- addr-rsp-16-in-stack has type region-of rsp-after-push-rbp ≡ stack
     -- We need region-of (old-rsp ∸ 16) ≡ stack, so use rsp-after-push-rbp-eq to convert
-    thunk-frame : StackPointer
-    thunk-frame = record
+    setup-thunk-frame : StackPointer
+    setup-thunk-frame = record
       { addr = old-rsp ∸ 16
       ; in-stack = subst (λ x → region-of x ≡ stack) rsp-after-push-rbp-eq addr-rsp-16-in-stack
       }
@@ -778,14 +777,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp≤frame : new-rsp ≤ old-rsp ∸ 16
     new-rsp≤frame = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 (m∸n≤m rsp-after-push-rbp 16)
 
-    thunk-frame-bound : sp-addr thunk-frame ≥ readReg (regs s8) rsp
-    thunk-frame-bound = subst (old-rsp ∸ 16 ≥_) (sym rsp-s8) new-rsp≤frame
+    setup-thunk-frame-bound : sp-addr setup-thunk-frame ≥ readReg (regs s8) rsp
+    setup-thunk-frame-bound = subst (old-rsp ∸ 16 ≥_) (sym rsp-s8) new-rsp≤frame
 
     rbp-inv8 : RbpInvariant s8
     rbp-inv8 = record
-      { rbp-frame = thunk-frame
-      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ 16 = sp-addr thunk-frame
-      ; frame-bound = thunk-frame-bound
+      { rbp-frame = setup-thunk-frame
+      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ 16 = sp-addr setup-thunk-frame
+      ; frame-bound = setup-thunk-frame-bound
       }
 
     -- new-rsp = ((old-rsp ∸ 8) ∸ 8) ∸ 16 = (old-rsp ∸ 16) ∸ 16 = old-rsp ∸ 32 = old-rsp ∸ 4*8
@@ -794,7 +793,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-32-in-stack : region-of new-rsp ≡ stack
     addr-rsp-32-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp-eq)
-                                 (abstract-to-rsp-32-in-stack s cap-stronger)
+                                 (abstract-to-rsp-slots-in-stack 4 s cap-stronger (s≤s (s≤s (s≤s (s≤s z≤n)))))
 
     -- new-rsp + 8 = (old-rsp ∸ 32) + 8 = old-rsp ∸ 24 = old-rsp ∸ 3*8
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
@@ -834,7 +833,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-24-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
     addr-rsp-24-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp+8-eq)
-                                 (abstract-to-rsp-24-in-stack s cap-stronger)
+                                 (abstract-to-rsp-slots-in-stack 3 s cap-stronger (s≤s (s≤s (s≤s z≤n))))
 
     -- Address 0 is not in stack region, so write addresses ≠ 0
     addr-rsp-8≢0 : rsp-after-push-r15 ≢ 0

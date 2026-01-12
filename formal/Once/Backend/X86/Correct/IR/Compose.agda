@@ -243,7 +243,7 @@ assemble-compose-result {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2-e
   ; ir-mem-rbp = mem-rbp-3
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-stack-inv = stack-inv-3
-  ; ir-capacity = rsp-to-capacity-2 s3 (rsp-in-stack-after-stack-op s3) rsp-3>16
+  ; ir-capacity = rsp-bound-to-capacity 2 s3 (rsp-in-stack-after-stack-op s3) rsp-3>16
   ; ir-rbp-inv = IRStarResult.ir-rbp-inv r3
   ; ir-mem-above = mem-above-3
   ; ir-mem-at-0 = mem-at-0-3

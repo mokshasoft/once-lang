@@ -634,7 +634,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
         -- Derive capacity from rsp > 24 and rsp-in-stack
         cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity s 3 (rsp-in-stack-after-stack-op s) rsp-gt-24
+        cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
 
         -- Write addresses are in stack region (via capacity-maintained)
         write1-in-stack : region-of write1 ≡ stack
@@ -675,7 +675,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
         -- Derive capacity from rsp > 24 and rsp-in-stack
         cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity s 3 (rsp-in-stack-after-stack-op s) rsp-gt-24
+        cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
 
         -- Write addresses are in stack region (via capacity-maintained)
         write1-in-stack : region-of write1 ≡ stack
@@ -716,7 +716,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
         -- Derive capacity from rsp > 24 and rsp-in-stack
         cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity s 3 (rsp-in-stack-after-stack-op s) rsp-gt-24
+        cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
 
         -- Write addresses are in stack region (via capacity-maintained)
         write1-in-stack : region-of write1 ≡ stack
