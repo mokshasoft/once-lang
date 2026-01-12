@@ -33,7 +33,7 @@ open import Once.Backend.Common.MemoryRegions
          slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.SeqExec
+open import Once.Backend.X86.Correct.SeqExec using (exec-pair-setup-at-7; FrameSetupResult; exec-pair-middle-at)
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; exec-to-star)
 open import Once.Backend.X86.Correct.StarBase
@@ -429,38 +429,31 @@ exec-pair-setup {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
         25≤41 : 25 ≤ 41
         25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
 
-    -- Execute 7 setup instructions
+    -- Execute 7 setup instructions - returns FrameSetupResult with Star proof
     setup-result = exec-pair-setup-at-7 prefix rest-for-setup s h-false pc-eq rsp>24
 
-    s-setup = proj₁ setup-result
-    exec-setup = proj₁ (proj₂ setup-result)
-    h-setup = proj₁ (proj₂ (proj₂ setup-result))
-    pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
-    r14-setup-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-    rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-    r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-    rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-    rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-    -- Stack slot memory proofs: saved registers on stack after setup
-    mem-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
-    mem-r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-    mem-r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
-    -- Memory preservation for addresses >= orig-rsp
-    mem-above-eq-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
-    -- Memory at address 0 is preserved (from exec-pair-setup-at-7)
-    mem-at-0-from-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))))
-    -- Memory at code region preserved (from exec-pair-setup-at-7)
-    mem-code-from-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))))
-    -- Memory at heap region preserved (from exec-pair-setup-at-7)
-    mem-heap-from-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))))
+    -- Open FrameSetupResult with renaming to match existing variable names
+    open FrameSetupResult setup-result
+      renaming ( s-setup to s-setup-rec
+               ; star-setup to star-setup-raw
+               ; h-setup to h-setup
+               ; pc-setup to pc-setup
+               ; r14-setup to r14-setup
+               ; rdi-setup to rdi-setup
+               ; r15-setup to r15-setup
+               ; rsp-setup to rsp-setup
+               ; rbp-setup to rbp-setup
+               ; mem-slot0 to mem-rbp-setup
+               ; mem-slot8 to mem-r15-setup
+               ; mem-slot16 to mem-r14-setup
+               ; mem-above to mem-above-eq-raw
+               ; mem-at-0 to mem-at-0-from-setup
+               ; mem-code to mem-code-from-setup
+               ; mem-heap to mem-heap-from-setup )
 
-    r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
-    r14-setup = r14-setup-raw
+    s-setup = s-setup-rec
 
-    -- Convert setup exec to Star
-    star-setup-raw : Star (prefix ++ setup-push-r14 ∷ setup-push-r15 ∷ setup-push-rbp ∷ setup-frame ∷ setup-sub ∷ setup-base ∷ setup-save ∷ rest-for-setup) s s-setup
-    star-setup-raw = exec-to-star exec-setup
-
+    -- star-setup-raw comes directly from FrameSetupResult (Star-based, no fuel conversion needed)
     star-setup : Star prog s s-setup
     star-setup = subst (λ p → Star p s s-setup) (sym prog-eq-setup) star-setup-raw
 

@@ -18,6 +18,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
   using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
          two-push-offset; three-slot-offset)
 open import Once.Backend.X86.Correct.ExecLemmas
+open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; exec-to-star)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
@@ -44,41 +45,82 @@ open ≡-Reasoning
 ∸24+16≡∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) =
   trans (+-comm (suc n) 16) refl
 
--- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
--- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
+------------------------------------------------------------------------
+-- FrameSetupResult: Star-based result for pair frame setup
+------------------------------------------------------------------------
+
+-- | Result of executing 7 pair setup instructions with Star semantics
+-- Encapsulates all frame setup state and proofs, replacing nested tuples.
+--
+-- Setup instructions: push r14; push r15; push rbp; mov rbp,rsp; sub rsp,16; mov r15,rsp; mov r14,rdi
 --
 -- After execution:
 --   rsp = orig_rsp - 40 (3 pushes of 8 bytes + sub 16)
 --   rbp = orig_rsp - 24 (frame base, after 3 pushes)
 --   r15 = rsp (pair base address)
 --   r14 = orig_rdi (saved input)
---   rdi = orig_rdi (unchanged)
---   pc = orig_pc + 7
+--   Stack: [rbp+0]=orig_rbp, [rbp+8]=orig_r15, [rbp+16]=orig_r14
+record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set where
+  field
+    -- Output state
+    s-setup : State
+
+    -- Star execution proof (not fuel-based)
+    star-setup : Star prog s s-setup
+
+    -- Non-halting
+    h-setup : halted s-setup ≡ false
+
+    -- PC advancement
+    pc-setup : pc s-setup ≡ pc-after
+
+    -- Register values after setup
+    r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
+    rdi-setup : readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
+    r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ 40
+    rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
+    rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+
+    -- Stack slot memory (rbp-relative addressing)
+    -- These express memory layout without requiring arithmetic at use sites
+    mem-slot0 : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
+    mem-slot8 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
+    mem-slot16 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+
+    -- Memory preservation
+    mem-above : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+    mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+
+-- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
+-- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
+--
+-- Returns FrameSetupResult with Star-based execution proof and all frame properties.
 exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rsp > 24 →   -- Need rsp > 24 to prove memory disjointness
-  ∃[ s' ] (exec 7 (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest) s ≡ just s'
-         × halted s' ≡ false
-         × pc s' ≡ length prefix +ℕ 7
-         × readReg (regs s') r14 ≡ readReg (regs s) rdi
-         × readReg (regs s') rdi ≡ readReg (regs s) rdi
-         × readReg (regs s') r15 ≡ readReg (regs s) rsp ∸ 40
-         × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 40
-         × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 24
-         -- Memory proofs: stack slots contain saved registers
-         × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
-         × readMem (memory s') (readReg (regs s') rbp +ℕ 8) ≡ just (readReg (regs s) r15)
-         × readMem (memory s') (readReg (regs s') rbp +ℕ 16) ≡ just (readReg (regs s) r14)
-         -- Memory preservation: addresses >= orig-rsp are unchanged (writes are below rsp)
-         × (∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr)
-         -- Memory at address 0 is preserved (write addresses are in stack region, 0 is not)
-         × readMem (memory s') 0 ≡ readMem (memory s) 0
-         -- Memory at code-region addresses preserved (D041)
-         × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr)
-         -- Memory at heap-region addresses preserved (D041)
-         × (∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr))
-exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 , pc7 , r14-eq , rdi-eq , r15-eq , rsp-eq , rbp-eq , mem-rbp-eq , mem-r15-eq , mem-r14-eq , mem-above-eq , mem-at-0 , mem-code , mem-heap
+  let prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+  in FrameSetupResult prog s (length prefix +ℕ 7)
+exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = record
+  { s-setup = s7
+  ; star-setup = exec-to-star exec-eq
+  ; h-setup = h7
+  ; pc-setup = pc7
+  ; r14-setup = r14-eq
+  ; rdi-setup = rdi-eq
+  ; r15-setup = r15-eq
+  ; rsp-setup = rsp-eq
+  ; rbp-setup = rbp-eq
+  ; mem-slot0 = mem-rbp-eq
+  ; mem-slot8 = mem-r15-eq
+  ; mem-slot16 = mem-r14-eq
+  ; mem-above = mem-above-eq
+  ; mem-at-0 = mem-at-0
+  ; mem-code = mem-code
+  ; mem-heap = mem-heap
+  }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)
