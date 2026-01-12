@@ -15,8 +15,7 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant using (rsp-to-capacity-2)
+open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 open import Once.Backend.X86.Correct.ExecLemmas

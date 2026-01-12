@@ -36,7 +36,7 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; Stac
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInvariant using (rsp-to-capacity-2)
+open import Once.Backend.X86.Correct.StackInstantiation using (rsp-to-capacity-2)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star

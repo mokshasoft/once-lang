@@ -41,7 +41,7 @@ open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-to-capacity-2; rsp-in-stack)
 
 open import Once.Postulates
@@ -57,7 +57,7 @@ open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.InitState
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star

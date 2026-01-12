@@ -14,12 +14,12 @@ open import Once.Backend.X86.Correct.Foundation
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged; rsp-bound-preserved-unchanged)
+open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; stack-code-disjoint)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound;
-         capacity-preserved-rsp-unchanged)
+         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star

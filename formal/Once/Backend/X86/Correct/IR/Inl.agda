@@ -17,8 +17,8 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
-open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
+open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          slot-2-addr-in-stack; slot-1-addr-in-stack; alloc-2-slots-addrs-in-stack)
 open import Once.Backend.Common.MemoryRegions

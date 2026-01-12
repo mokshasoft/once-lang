@@ -28,13 +28,14 @@ open Once.Backend.X86.Semantics.State
 -- Import and re-export abstract types from StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant public
   using (R15Status; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
-         RbpInvariant; open RbpInvariant;
+         RbpInvariant;
          StackInvariant; FrameEvidenceFor;
          stack-write-preserves-heap-r15; stack-write-preserves-code-r15;
          stack-write-preserves-unused-r15; stack-write-preserves-instack-r15;
          stack-write-preserves-r15;
          stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged;
          stack-inv-for-code-ptr)
+open RbpInvariant public
 
 -- Import region abstractions
 open import Once.Backend.Common.MemoryRegions
@@ -511,6 +512,18 @@ pair-frame-slot-0-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 0
 pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s 5) →
                              region-of (slot-addr (pair-frame-0 s cap) 1) ≡ stack
 pair-frame-slot-1-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 1
+
+-- | Pair frame 0 address equals rsp - 40
+pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s 5) →
+                       sp-addr (pair-frame-0 s cap) ≡ readReg (regs s) rsp ∸ 40
+pair-frame-0-addr-eq s cap = refl
+
+-- | Pair frame slot 1 address equals (rsp - 40) + 8
+pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s 5) →
+                            slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ 40) +ℕ 8
+pair-frame-slot-1-addr-eq s cap =
+  trans (slot-addr-1-is-base+8 (pair-frame-0 s cap))
+        (cong (_+ℕ 8) (pair-frame-0-addr-eq s cap))
 
 -- | Pair rbp frame at slot 3 (rsp - 24)
 pair-rbp-frame-≥-r15-frame : ∀ (s : State) (cap : StackCapacity s 5) →

@@ -11,7 +11,7 @@ open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
 open import Once.Postulates using (encode; encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 
@@ -35,7 +35,7 @@ open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack;
          StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code;
          -- D041: Abstract interface (no arithmetic in types)

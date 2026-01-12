@@ -602,7 +602,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
     mem-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
     mem-at-0 = trans mem0-s7-s3 (trans mem0-s3-s2 (trans mem0-s2-s1 mem0-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInvariant using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
+        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; stackAddr-write-preserves-zero)
 
         -- Write addresses (from x86 semantics)
@@ -643,7 +643,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
     mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-code addr addr-in-code = trans memC-s7-s3 (trans memC-s3-s2 (trans memC-s2-s1 memC-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInvariant using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
+        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; code; stackAddr-write-preserves-code)
 
         -- Write addresses (from x86 semantics)
@@ -684,7 +684,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
     mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-heap addr addr-in-heap = trans memH-s7-s3 (trans memH-s3-s2 (trans memH-s2-s1 memH-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInvariant using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
+        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; heap; stackAddr-write-preserves-heap)
 
         -- Write addresses (from x86 semantics)

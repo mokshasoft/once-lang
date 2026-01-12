@@ -41,7 +41,7 @@ open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-to-capacity-2; R15Status; StackInvariant;
          r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;

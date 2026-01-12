@@ -31,8 +31,8 @@ open import Once.Backend.X86.Correct.StarBase
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
--- Import StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant
+-- Import StackInstantiation (re-exports StackInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; RbpInvariant; StackCapacity; capacity-maintained; pair-stack-capacity;
          make-frame-at-slot; pair-rbp-frame-≥-r15-frame)
 

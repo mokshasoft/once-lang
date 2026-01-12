@@ -120,7 +120,7 @@ initWithInput-stack-inv x = r15-unused r15≡0
 -- stackBase = 0x7FFF0000 provides ample space for stack operations
 open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-to-capacity-2; capacity-2-to-rsp-bound)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 

@@ -14,8 +14,8 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Postulates using (encode-closure-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
-open import Once.Backend.X86.Correct.StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
+open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-to-capacity-2; rsp-to-capacity-4; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          alloc-2-slots-addrs-in-stack;
          -- D041: Abstract helpers that encapsulate arithmetic

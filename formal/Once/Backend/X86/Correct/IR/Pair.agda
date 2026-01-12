@@ -18,7 +18,7 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
-open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-to-capacity-2; rsp-to-capacity-5; pair-stack-capacity;
          -- Abstract interface (D041-compliant, no arithmetic in types)
