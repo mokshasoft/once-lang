@@ -344,7 +344,7 @@ record CaseJumpResult {A B C : Type} (f : IR A C) (g : IR B C)
 
   field
     s-final : State
-    exec-jump : exec 2 prog s1 ≡ just s-final
+    star-jump : Star prog s1 s-final
     h-final : halted s-final ≡ false
     pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
     rax-preserved : readReg (regs s-final) rax ≡ readReg (regs s1) rax
@@ -366,7 +366,7 @@ exec-case-jump : ∀ {A B C} (f : IR A C) (g : IR B C)
   CaseJumpResult f g prefix suffix s1
 exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s3
-    ; exec-jump = exec-2
+    ; star-jump = exec-to-star exec-2
     ; h-final = h3
     ; pc-final = pc3
     ; rax-preserved = refl
@@ -574,7 +574,7 @@ record CaseEndResult {A B C : Type} (f : IR A C) (g : IR B C)
 
   field
     s-final : State
-    exec-end : exec 1 prog s1 ≡ just s-final
+    star-end : Star prog s1 s-final
     h-final : halted s-final ≡ false
     pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
     rax-preserved : readReg (regs s-final) rax ≡ readReg (regs s1) rax
@@ -596,7 +596,7 @@ exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
   CaseEndResult f g prefix suffix s1
 exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s2
-    ; exec-end = exec-1
+    ; star-end = exec-to-star exec-1
     ; h-final = h2
     ; pc-final = pc2
     ; rax-preserved = refl
@@ -715,7 +715,7 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
 
   field
     s-right : State
-    exec-right : exec 2 prog s-setup ≡ just s-right
+    star-right : Star prog s-setup s-right
     h-right : halted s-right ≡ false
     pc-right : pc s-right ≡ length prefix +ℕ 7 +ℕ len-f
     rdi-right : readReg (regs s-right) rdi ≡ encode b
@@ -746,7 +746,7 @@ exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
   CaseRightSetupResult f g prefix suffix b s-setup
 exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
     { s-right = s2
-    ; exec-right = exec-2
+    ; star-right = exec-to-star exec-2
     ; h-right = h2
     ; pc-right = pc2
     ; rdi-right = rdi2

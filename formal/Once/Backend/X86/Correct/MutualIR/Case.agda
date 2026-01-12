@@ -353,7 +353,7 @@ mutual
       jump-result = exec-case-jump f g prefix suffix s1 h1 pc1
 
       s-final = CaseJumpResult.s-final jump-result
-      exec-jump = CaseJumpResult.exec-jump jump-result
+      star-jump = CaseJumpResult.star-jump jump-result
       h-final = CaseJumpResult.h-final jump-result
       pc-final-raw = CaseJumpResult.pc-final jump-result
       rax-jump = CaseJumpResult.rax-preserved jump-result
@@ -362,10 +362,6 @@ mutual
       rbp-jump = CaseJumpResult.rbp-preserved jump-result
       rsp-jump = CaseJumpResult.rsp-preserved jump-result
       mem-jump = CaseJumpResult.mem-preserved jump-result
-
-      -- Convert jump exec to Star
-      star-jump : Star prog s1 s-final
-      star-jump = Once.Backend.X86.Correct.Star.exec-to-star exec-jump
 
       -- ========== Compose all phases ==========
       star-all : Star prog s s-final
@@ -690,7 +686,7 @@ mutual
                              h-setup pc-setup rdi-setup-eq stack-inv-setup rsp-sufficient-setup
 
       s-right = CaseRightSetupResult.s-right right-setup-result
-      exec-right = CaseRightSetupResult.exec-right right-setup-result
+      star-right = CaseRightSetupResult.star-right right-setup-result
       h-right = CaseRightSetupResult.h-right right-setup-result
       pc-right = CaseRightSetupResult.pc-right right-setup-result
       rdi-right = CaseRightSetupResult.rdi-right right-setup-result
@@ -701,10 +697,6 @@ mutual
       mem-right = CaseRightSetupResult.mem-preserved right-setup-result
       stack-inv-right = CaseRightSetupResult.stack-inv-right right-setup-result
       rsp-sufficient-right = CaseRightSetupResult.rsp-sufficient-right right-setup-result
-
-      -- Convert right setup exec to Star
-      star-right : Star prog s-setup s-right
-      star-right = Once.Backend.X86.Correct.Star.exec-to-star exec-right
 
       -- ========== Phase 3: Execute g (recursive call via abstract dispatcher) ==========
       -- pc s-right = length prefix + 7 + len-f
@@ -790,7 +782,7 @@ mutual
       end-result = exec-case-end f g prefix suffix s1 h1 pc1
 
       s-final = CaseEndResult.s-final end-result
-      exec-end = CaseEndResult.exec-end end-result
+      star-end = CaseEndResult.star-end end-result
       h-final = CaseEndResult.h-final end-result
       pc-final-raw = CaseEndResult.pc-final end-result
       rax-end = CaseEndResult.rax-preserved end-result
@@ -799,10 +791,6 @@ mutual
       rbp-end = CaseEndResult.rbp-preserved end-result
       rsp-end = CaseEndResult.rsp-preserved end-result
       mem-end = CaseEndResult.mem-preserved end-result
-
-      -- Convert end exec to Star
-      star-end : Star prog s1 s-final
-      star-end = Once.Backend.X86.Correct.Star.exec-to-star exec-end
 
       -- ========== Compose all phases ==========
       star-all : Star prog s s-final

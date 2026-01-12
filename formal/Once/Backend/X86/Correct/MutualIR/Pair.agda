@@ -196,7 +196,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
       final-res = exec-pair-final f g prefix suffix s s3 final-precond
 
       s-final = PairFinalResult.s-final final-res
-      exec-fin = PairFinalResult.exec-fin final-res
+      star-fin-raw = PairFinalResult.star-fin final-res
       h-final = PairFinalResult.h-final final-res
       pc-fin-raw = PairFinalResult.pc-fin final-res
       rax-fin-is-r15 = PairFinalResult.rax-fin final-res
@@ -446,6 +446,6 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
                                          (trans (ir-mem-heap r-f addr addr-in-heap)
                                                 (mem-setup-preserves-heap addr addr-in-heap))))
 
-      -- Convert final exec to Star (prog-eq-final from PairContext)
+      -- Convert final Star to prog (prog-eq-final from PairContext)
       star-fin : Star prog s3 s-final
-      star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) (exec-to-star exec-fin)
+      star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) star-fin-raw

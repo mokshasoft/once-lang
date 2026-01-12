@@ -940,7 +940,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
 
   field
     s-final : State
-    exec-fin : exec 6 (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 ≡ just s-final
+    star-fin : Star (prefix-final ++ store-g-instr ∷ return-pair-instr ∷ restore-rsp ∷ final-pop-rbp ∷ final-pop-r15 ∷ final-pop-r14 ∷ suffix) s3 s-final
     h-final : halted s-final ≡ false
     pc-fin : pc s-final ≡ length prefix-final +ℕ 6
     rax-fin : readReg (regs s-final) rax ≡ readReg (regs s3) r15
@@ -1883,7 +1883,7 @@ exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
   PairFinalResult f g prefix suffix s s3
 exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     { s-final = s9
-    ; exec-fin = exec-6-final
+    ; star-fin = exec-to-star exec-6-final
     ; h-final = h9
     ; pc-fin = pc9
     ; rax-fin = rax-s9
