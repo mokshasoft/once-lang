@@ -93,6 +93,12 @@ infixr 5 ⟨_,_⟩◅_
           Star prog s s''
 ⟨ h , step-eq ⟩◅ rest = step* h step-eq rest
 
+-- | Chain 1 step
+star-step1 : ∀ {prog s₀ s₁} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    Star prog s₀ s₁
+star-step1 h₀ step₀ = ⟨ h₀ , step₀ ⟩◅ refl*
+
 -- | Chain 2 steps
 star-step2 : ∀ {prog s₀ s₁ s₂} →
     halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
@@ -119,6 +125,42 @@ star-step4 : ∀ {prog s₀ s₁ s₂ s₃ s₄} →
     Star prog s₀ s₄
 star-step4 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ =
   ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ refl*
+
+-- | Chain 5 steps
+star-step5 : ∀ {prog s₀ s₁ s₂ s₃ s₄ s₅} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
+    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
+    halted s₃ ≡ false → step prog s₃ ≡ just s₄ →
+    halted s₄ ≡ false → step prog s₄ ≡ just s₅ →
+    Star prog s₀ s₅
+star-step5 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ h₄ step₄ =
+  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ ⟨ h₄ , step₄ ⟩◅ refl*
+
+-- | Chain 6 steps
+star-step6 : ∀ {prog s₀ s₁ s₂ s₃ s₄ s₅ s₆} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
+    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
+    halted s₃ ≡ false → step prog s₃ ≡ just s₄ →
+    halted s₄ ≡ false → step prog s₄ ≡ just s₅ →
+    halted s₅ ≡ false → step prog s₅ ≡ just s₆ →
+    Star prog s₀ s₆
+star-step6 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ h₄ step₄ h₅ step₅ =
+  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ ⟨ h₄ , step₄ ⟩◅ ⟨ h₅ , step₅ ⟩◅ refl*
+
+-- | Chain 7 steps
+star-step7 : ∀ {prog s₀ s₁ s₂ s₃ s₄ s₅ s₆ s₇} →
+    halted s₀ ≡ false → step prog s₀ ≡ just s₁ →
+    halted s₁ ≡ false → step prog s₁ ≡ just s₂ →
+    halted s₂ ≡ false → step prog s₂ ≡ just s₃ →
+    halted s₃ ≡ false → step prog s₃ ≡ just s₄ →
+    halted s₄ ≡ false → step prog s₄ ≡ just s₅ →
+    halted s₅ ≡ false → step prog s₅ ≡ just s₆ →
+    halted s₆ ≡ false → step prog s₆ ≡ just s₇ →
+    Star prog s₀ s₇
+star-step7 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ h₄ step₄ h₅ step₅ h₆ step₆ =
+  ⟨ h₀ , step₀ ⟩◅ ⟨ h₁ , step₁ ⟩◅ ⟨ h₂ , step₂ ⟩◅ ⟨ h₃ , step₃ ⟩◅ ⟨ h₄ , step₄ ⟩◅ ⟨ h₅ , step₅ ⟩◅ ⟨ h₆ , step₆ ⟩◅ refl*
 
 ------------------------------------------------------------------------
 -- Bridge Lemmas (PROVEN!)

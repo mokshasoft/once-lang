@@ -35,7 +35,7 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec using (exec-pair-setup-at-7; FrameSetupResult; exec-pair-middle-at; PairMiddleExecResult)
 open import Once.Backend.X86.Correct.Star
-  using (Star; star-trans; exec-to-star)
+  using (Star; star-trans; star-step6)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
@@ -1883,7 +1883,7 @@ exec-pair-final : ∀ {A B C} (f : IR C A) (g : IR C B)
   PairFinalResult f g prefix suffix s s3
 exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
     { s-final = s9
-    ; star-fin = exec-to-star exec-6-final
+    ; star-fin = star-eq
     ; h-final = h9
     ; pc-fin = pc9
     ; rax-fin = rax-s9
@@ -2044,8 +2044,8 @@ exec-pair-final {A} {B} {C} f g prefix suffix s s3 precond = record
       step9 : step prog-final s8 ≡ just s9
       step9 = trans (step-exec prog-final s8 final-pop-r14 h8 fetch9) (execPop prog-final s8 r14 (readReg (regs s) r14) pop-r14-mem')
 
-      exec-6-final : exec 6 prog-final s3 ≡ just s9
-      exec-6-final = exec-six-steps-nonhalt prog-final s3 s4 s5 s6 s7 s8 s9 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9 h9
+      star-eq : Star prog-final s3 s9
+      star-eq = star-step6 h3 step4 h4 step5 h5 step6 h6 step7 h7 step8 h8 step9
 
       -- Register preservation (same as exec-pair-final)
       v-r14 : Word

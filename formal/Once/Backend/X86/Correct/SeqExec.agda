@@ -18,7 +18,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
   using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
          two-push-offset; three-slot-offset)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; exec-to-star)
+open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
@@ -105,7 +105,7 @@ exec-pair-setup-at-7 : ∀ (prefix : Program) (rest : Program) (s : State) →
   in FrameSetupResult prog s (length prefix +ℕ 7)
 exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = record
   { s-setup = s7
-  ; star-setup = exec-to-star exec-eq
+  ; star-setup = star-eq
   ; h-setup = h7
   ; pc-setup = pc7
   ; r14-setup = r14-eq
@@ -379,8 +379,8 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = record
     pc7 : pc s7 ≡ length prefix +ℕ 7
     pc7 = trans (cong (λ n → n +ℕ 1) pc6) (+-assoc (length prefix) 6 1)
 
-    exec-eq : exec 7 prog s ≡ just s7
-    exec-eq = exec-seven-steps-nonhalt prog s s1 s2 s3 s4 s5 s6 s7 step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7 h7
+    star-eq : Star prog s s7
+    star-eq = star-step7 h-false step1 h1 step2 h2 step3 h3 step4 h4 step5 h5 step6 h6 step7
 
     r14-eq : readReg (regs s7) r14 ≡ orig-rdi
     r14-eq = trans (readReg-writeReg-same (regs s6) r14 (readReg (regs s6) rdi)) rdi-s6
@@ -799,7 +799,7 @@ exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
   in PairMiddleExecResult prog s (length prefix +ℕ 2)
 exec-pair-middle-at prefix rest s h-false pc-eq = record
   { s-mid = s-final
-  ; star-mid = exec-to-star exec-eq
+  ; star-mid = star-eq
   ; h-mid = h-final
   ; pc-mid = pc-final
   ; rdi-mid = rdi-eq
@@ -866,8 +866,8 @@ exec-pair-middle-at prefix rest s h-false pc-eq = record
     pc-final : pc s-final ≡ length prefix +ℕ 2
     pc-final = trans (cong (λ p → p +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
 
-    exec-eq : exec 2 prog s ≡ just s-final
-    exec-eq = exec-two-steps-nonhalt prog s s1 s-final step1 h1 step2 h-final
+    star-eq : Star prog s s-final
+    star-eq = star-step2 h-false step1 h1 step2
 
     -- r14 in s1 is the same as in s (mov [r15], rax doesn't change registers)
     r14-s1-eq : readReg (regs s1) r14 ≡ readReg (regs s) r14
@@ -1467,7 +1467,7 @@ exec-case-inl-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : �
                         mov (reg rdi) (mem (base+disp rdi 8)) ∷ suffix
   in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
 exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
-  s4 , record { star-setup = exec-to-star exec-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
+  s4 , record { star-setup = star-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
               ; r14-eq = r14-s4 ; r15-eq = r15-s4 ; rbp-eq = rbp-s4 ; rsp-eq = rsp-s4
               ; mem-eq = mem-s4 }
   where
@@ -1617,9 +1617,9 @@ exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val
     mem-s4 : memory s4 ≡ memory s
     mem-s4 = refl
 
-    -- Execution proof
-    exec-eq : exec 4 prog s ≡ just s4
-    exec-eq = exec-four-steps-nonhalt prog s s1 s2 s3 s4 step1 h1 step2 h2 step3 h3 step4 h4
+    -- Execution proof (direct Star construction)
+    star-eq : Star prog s s4
+    star-eq = star-step4 h-false step1 h1 step2 h2 step3 h3 step4
 
 ------------------------------------------------------------------------
 -- Case-inr Setup Helper (3 instructions, jne TAKEN)
@@ -1643,7 +1643,7 @@ exec-case-inr-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : Stat
                         jne jne-offset ∷ suffix
   in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
 exec-case-inr-setup prefix suffix jne-offset s h-false pc-eq mem-tag =
-  s3 , record { star-setup = exec-to-star exec-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
+  s3 , record { star-setup = star-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
               ; r14-eq = r14-s3 ; r15-eq = r15-s3 ; rbp-eq = rbp-s3 ; rsp-eq = rsp-s3
               ; mem-eq = mem-s3 }
   where
@@ -1758,7 +1758,7 @@ exec-case-inr-setup prefix suffix jne-offset s h-false pc-eq mem-tag =
     mem-s3 : memory s3 ≡ memory s
     mem-s3 = refl
 
-    -- Execution proof
-    exec-eq : exec 3 prog s ≡ just s3
-    exec-eq = exec-three-steps-nonhalt prog s s1 s2 s3 step1 h1 step2 h2 step3 h3
+    -- Execution proof (direct Star construction)
+    star-eq : Star prog s s3
+    star-eq = star-step3 h-false step1 h1 step2 h2 step3
 

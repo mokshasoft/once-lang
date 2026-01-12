@@ -19,7 +19,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
-  using (Star; star-trans; exec-to-star)
+  using (Star; star-trans; star-step1; star-step2)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
@@ -366,7 +366,7 @@ exec-case-jump : ∀ {A B C} (f : IR A C) (g : IR B C)
   CaseJumpResult f g prefix suffix s1
 exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s3
-    ; star-jump = exec-to-star exec-2
+    ; star-jump = star-eq
     ; h-final = h3
     ; pc-final = pc3
     ; rax-preserved = refl
@@ -556,8 +556,8 @@ exec-case-jump {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     step2 : step prog s2 ≡ just s3
     step2 = trans (step-exec prog s2 end-label-instr h2 fetch2) (execLabel prog s2 end-label)
 
-    exec-2 : exec 2 prog s1 ≡ just s3
-    exec-2 = exec-two-steps-nonhalt prog s1 s2 s3 step1 h2 step2 h3
+    star-eq : Star prog s1 s3
+    star-eq = star-step2 h1 step1 h2 step2
 
 ------------------------------------------------------------------------
 -- CaseEndResult: Result of executing the end label (1 instruction)
@@ -596,7 +596,7 @@ exec-case-end : ∀ {A B C} (f : IR A C) (g : IR B C)
   CaseEndResult f g prefix suffix s1
 exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     { s-final = s2
-    ; star-end = exec-to-star exec-1
+    ; star-end = star-eq
     ; h-final = h2
     ; pc-final = pc2
     ; rax-preserved = refl
@@ -696,8 +696,8 @@ exec-case-end {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
     step1 : step prog s1 ≡ just s2
     step1 = trans (step-exec prog s1 end-label-instr h1 fetch1) (execLabel prog s1 end-label)
 
-    exec-1 : exec 1 prog s1 ≡ just s2
-    exec-1 = exec-one-step-nonhalt prog s1 s2 step1 h2
+    star-eq : Star prog s1 s2
+    star-eq = star-step1 h1 step1
 
 ------------------------------------------------------------------------
 -- CaseRightSetupResult: Result of executing right branch setup (2 instructions)
@@ -746,7 +746,7 @@ exec-case-right-setup : ∀ {A B C} (f : IR A C) (g : IR B C)
   CaseRightSetupResult f g prefix suffix b s-setup
 exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
     { s-right = s2
-    ; star-right = exec-to-star exec-2
+    ; star-right = star-eq
     ; h-right = h2
     ; pc-right = pc2
     ; rdi-right = rdi2
@@ -916,5 +916,5 @@ exec-case-right-setup {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     step2 = trans (step-exec prog s1 right-load-val-instr h1 fetch2)
                   (execMov-reg-mem-disp s1 rdi rdi 8 (encode b) mem-read)
 
-    exec-2 : exec 2 prog s-setup ≡ just s2
-    exec-2 = exec-two-steps-nonhalt prog s-setup s1 s2 step1 h1 step2 h2
+    star-eq : Star prog s-setup s2
+    star-eq = star-step2 h-setup step1 h1 step2
