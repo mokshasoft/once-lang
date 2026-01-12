@@ -87,6 +87,19 @@ pair-frame-size = 5 *ℕ slot-size           -- 40: Pair operation (5 slots)
 curry-frame-size : ℕ
 curry-frame-size = 2 *ℕ slot-size          -- 16: Curry closure setup
 
+-- Closure/Pair memory layout offsets
+closure-code-offset : ℕ
+closure-code-offset = slot-size            -- 8: offset to code pointer in closure
+                                           -- closure layout: [env-addr, code-ptr]
+                                           -- closure-addr + 0 = env-addr
+                                           -- closure-addr + 8 = code-ptr
+
+pair-snd-offset : ℕ
+pair-snd-offset = slot-size                -- 8: offset to second element of pair
+                                           -- pair layout: [fst, snd]
+                                           -- pair-addr + 0 = fst
+                                           -- pair-addr + 8 = snd
+
 -- Minimum rsp bounds for safe operations
 thunk-min-rsp : ℕ
 thunk-min-rsp = thunk-frame-size +ℕ slot-size   -- 40: need > 32 with buffer
@@ -1338,3 +1351,4 @@ thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
   where
     16<24 : two-push-offset < three-slot-offset
     16<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
