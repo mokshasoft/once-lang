@@ -70,7 +70,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 
 {-# TERMINATING #-}
 -- | Star-based pair (POSTULATE-FREE!)
--- Uses star-trans (PROVEN) and exec-to-star to compose 5 phases:
+-- Uses star-trans to compose 5 phases:
 -- Phase 1: 7 setup instructions
 -- Phase 2: Execute f (recursive)
 -- Phase 3: 2 middle instructions
