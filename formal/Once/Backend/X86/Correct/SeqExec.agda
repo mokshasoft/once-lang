@@ -754,24 +754,60 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = record
         memH-s1-s : readMem (memory s1) addr ≡ readMem (memory s) addr
         memH-s1-s = stackAddr-write-preserves-heap (memory s) write1 orig-r14 addr write1-in-stack addr-in-heap
 
+------------------------------------------------------------------------
+-- PairMiddleExecResult: Star-based result for pair middle phase
+------------------------------------------------------------------------
+
+-- | Result of executing 2 pair middle instructions with Star semantics
+-- Instructions: mov [r15], rax; mov rdi, r14
+-- Stores f's result at [r15] and restores original input to rdi.
+record PairMiddleExecResult (prog : Program) (s : State) (pc-after : ℕ) : Set where
+  field
+    -- Output state
+    s-mid : State
+
+    -- Star execution proof (not fuel-based)
+    star-mid : Star prog s s-mid
+
+    -- Non-halting
+    h-mid : halted s-mid ≡ false
+
+    -- PC advancement
+    pc-mid : pc s-mid ≡ pc-after
+
+    -- rdi gets r14's value (input restored)
+    rdi-mid : readReg (regs s-mid) rdi ≡ readReg (regs s) r14
+
+    -- Memory at [r15] contains rax (f's result stored)
+    mem-at-r15 : readMem (memory s-mid) (readReg (regs s-mid) r15) ≡ just (readReg (regs s) rax)
+
+    -- r15 preserved
+    r15-mid : readReg (regs s-mid) r15 ≡ readReg (regs s) r15
+
+    -- rsp preserved
+    rsp-mid : readReg (regs s-mid) rsp ≡ readReg (regs s) rsp
+
+    -- Memory preservation: addresses ≠ r15 are unchanged
+    mem-other : ∀ addr → addr ≢ readReg (regs s) r15 → readMem (memory s-mid) addr ≡ readMem (memory s) addr
+
 -- | Execute pair middle instructions (mov [r15], rax; mov rdi, r14) at arbitrary offset
--- Used for phase 3 of pair construction - storing f's result and restoring input
--- Instructions:
---   mov [r15], rax   - store f's result at [r15] (stable pair base)
---   mov rdi, r14     - restore original input from r14 to rdi
+-- Returns PairMiddleExecResult with Star-based execution proof.
 exec-pair-middle-at : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ∃[ s' ] (exec 2 (prefix ++ mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest) s ≡ just s'
-         × halted s' ≡ false
-         × pc s' ≡ length prefix +ℕ 2
-         × readReg (regs s') rdi ≡ readReg (regs s) r14
-         × readMem (memory s') (readReg (regs s') r15) ≡ just (readReg (regs s) rax)
-         × readReg (regs s') r15 ≡ readReg (regs s) r15
-         × readReg (regs s') rsp ≡ readReg (regs s) rsp
-         -- Memory preservation: addresses ≠ r15 are unchanged (only r15 is written)
-         × (∀ addr → addr ≢ readReg (regs s) r15 → readMem (memory s') addr ≡ readMem (memory s) addr))
-exec-pair-middle-at prefix rest s h-false pc-eq = s-final , exec-eq , h-final , pc-final , rdi-eq , mem-eq , r15-eq , rsp-eq , mem-above-eq
+  let prog = prefix ++ mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ rest
+  in PairMiddleExecResult prog s (length prefix +ℕ 2)
+exec-pair-middle-at prefix rest s h-false pc-eq = record
+  { s-mid = s-final
+  ; star-mid = exec-to-star exec-eq
+  ; h-mid = h-final
+  ; pc-mid = pc-final
+  ; rdi-mid = rdi-eq
+  ; mem-at-r15 = mem-eq
+  ; r15-mid = r15-eq
+  ; rsp-mid = rsp-eq
+  ; mem-other = mem-above-eq
+  }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (+-assoc)

@@ -33,7 +33,7 @@ open import Once.Backend.Common.MemoryRegions
          slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.SeqExec using (exec-pair-setup-at-7; FrameSetupResult; exec-pair-middle-at)
+open import Once.Backend.X86.Correct.SeqExec using (exec-pair-setup-at-7; FrameSetupResult; exec-pair-middle-at; PairMiddleExecResult)
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; exec-to-star)
 open import Once.Backend.X86.Correct.StarBase
@@ -575,28 +575,28 @@ exec-pair-middle {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     r14-s1-is-input : readReg (regs s1) r14 ≡ encode x
     r14-s1-is-input = trans r14-s1 (trans r14-setup rdi-eq)
 
-    -- Execute middle 2 instructions
+    -- Execute middle 2 instructions - returns PairMiddleExecResult with Star proof
     middle-result = exec-pair-middle-at prefix-mid rest-mid s1 h1 pc1-mid
 
-    s2 = proj₁ middle-result
-    exec-mid = proj₁ (proj₂ middle-result)
-    h2 = proj₁ (proj₂ (proj₂ middle-result))
-    pc2-raw = proj₁ (proj₂ (proj₂ (proj₂ middle-result)))
-    rdi2-raw = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))
-    mem-fst-stored = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))
-    r15-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result))))))
-    rsp-mid = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))
-    -- Memory preservation at addresses ≠ r15
-    mem-above-mid-raw = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ middle-result)))))))
+    -- Open PairMiddleExecResult with renaming to match existing variable names
+    open PairMiddleExecResult middle-result
+      renaming ( s-mid to s2-rec
+               ; star-mid to star-mid-raw
+               ; h-mid to h2
+               ; pc-mid to pc2-raw
+               ; rdi-mid to rdi2-raw
+               ; mem-at-r15 to mem-fst-stored
+               ; r15-mid to r15-mid
+               ; rsp-mid to rsp-mid
+               ; mem-other to mem-above-mid-raw )
+
+    s2 = s2-rec
 
     -- rbp preserved: mov [r15], rax doesn't touch rbp, mov rdi, r14 doesn't touch rbp
     r14-mid = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) r14)
     rbp-mid = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
 
-    -- Convert middle exec to Star
-    star-mid-raw : Star (prefix-mid ++ store-f-instr ∷ restore-input ∷ rest-mid) s1 s2
-    star-mid-raw = exec-to-star exec-mid
-
+    -- star-mid-raw comes directly from PairMiddleExecResult (Star-based, no fuel conversion needed)
     star-mid : Star prog s1 s2
     star-mid = subst (λ p → Star p s1 s2) (sym prog-eq-mid) star-mid-raw
 
