@@ -12,7 +12,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Import helpers from Star module (re-exported publicly)
 open import Once.Backend.X86.Correct.Star
-  using (exec-on-halted; just-injective)
+  using (just-injective)
   public
 
 -- Additional imports not in Foundation

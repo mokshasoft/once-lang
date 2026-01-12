@@ -97,7 +97,6 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (+-assoc; +-comm)
-      open import Once.Backend.X86.Correct.Star using (exec-to-star)
 
       -- Context and shorthand
       ctx = make-pair-context f g prefix suffix
