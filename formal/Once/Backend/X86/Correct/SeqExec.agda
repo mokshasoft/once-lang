@@ -14,6 +14,9 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Memory using (mem-read-write; mem-read-other)
 open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
+         two-push-offset; three-slot-offset)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
@@ -40,18 +43,6 @@ open ≡-Reasoning
 ∸24+16≡∸8 : ∀ m → m > 24 → (m ∸ 24) +ℕ 16 ≡ m ∸ 8
 ∸24+16≡∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) =
   trans (+-comm (suc n) 16) refl
-
--- m ∸ 16 ≢ m ∸ 8 when m > 16
-∸16≢∸8 : ∀ m → m > 16 → m ∸ 16 ≢ m ∸ 8
-∸16≢∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))) ()
-
--- m ∸ 24 ≢ m ∸ 8 when m > 24
-∸24≢∸8 : ∀ m → m > 24 → m ∸ 24 ≢ m ∸ 8
-∸24≢∸8 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) ()
-
--- m ∸ 24 ≢ m ∸ 16 when m > 24
-∸24≢∸16 : ∀ m → m > 24 → m ∸ 24 ≢ m ∸ 16
-∸24≢∸16 (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n))))))))))))))))))))))))) (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) ()
 
 -- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
 -- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
@@ -435,7 +426,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
     -- Memory at [orig-rsp - 8] in s2 (after push r15 at step 2)
     -- push r15 wrote to [orig-rsp - 16], not [orig-rsp - 8]
     -- s2.memory = writeMem (memory s1) (orig-rsp ∸ 16) orig-r15 (by write-addr-s2 and r15-s1)
-    -- Derive rsp > 16 from rsp-gt-24 for the ∸16≢∸8 lemma
+    -- Derive rsp > 16 from rsp-gt-24 for the ∸two-slot≢∸one-slot lemma
     -- rsp > 24 means 25 ≤ rsp, we need rsp > 16 which is 17 ≤ rsp
     -- Use ≤-trans with 17 ≤ 25 and 25 ≤ rsp
     rsp-gt-16 : orig-rsp > 16
@@ -452,7 +443,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)) (orig-rsp ∸ 8)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ 8)) write-addr-s2 ⟩
         readMem (writeMem (memory s1) (orig-rsp ∸ 16) (readReg (regs s1) r15)) (orig-rsp ∸ 8)
-      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ 16} {orig-rsp ∸ 8} {readReg (regs s1) r15} (∸16≢∸8 orig-rsp rsp-gt-16) ⟩
+      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ 16} {orig-rsp ∸ 8} {readReg (regs s1) r15} (∸two-slot≢∸one-slot orig-rsp rsp-gt-16) ⟩
         readMem (memory s1) (orig-rsp ∸ 8)
       ≡⟨ mem-s1-at-r14slot ⟩
         just orig-r14
@@ -467,7 +458,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 8)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 8)) write-addr-s3 ⟩
         readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 8)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 8} {readReg (regs s2) rbp} (∸24≢∸8 orig-rsp rsp-gt-24) ⟩
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 8} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-24) ⟩
         readMem (memory s2) (orig-rsp ∸ 8)
       ≡⟨ mem-s2-at-r14slot ⟩
         just orig-r14
@@ -482,7 +473,7 @@ exec-pair-setup-at-7 prefix rest s h-false pc-eq rsp-gt-24 = s7 , exec-eq , h7 ,
         readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 16)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 16)) write-addr-s3 ⟩
         readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 16)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 16} {readReg (regs s2) rbp} (∸24≢∸16 orig-rsp rsp-gt-24) ⟩
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 16} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-24) ⟩
         readMem (memory s2) (orig-rsp ∸ 16)
       ≡⟨ mem-s2-at-r15slot ⟩
         just orig-r15

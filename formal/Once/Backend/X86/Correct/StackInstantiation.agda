@@ -51,10 +51,51 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 open import Data.Unit using (⊤; tt)
 
 -- Arithmetic imports (the instantiation layer uses these)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; m∸n≤m; ≤-refl)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢)
+open import Relation.Nullary using (yes; no)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+
+------------------------------------------------------------------------
+-- Named Constants (D041: replace magic numbers with semantic names)
+------------------------------------------------------------------------
+
+-- Fundamental stack unit (x86-64 word size)
+slot-size : ℕ
+slot-size = 8
+
+-- Stack frame offsets
+push-offset : ℕ
+push-offset = slot-size                    -- 8: one push instruction
+
+two-push-offset : ℕ
+two-push-offset = 2 *ℕ slot-size           -- 16: push r15 + push rbp
+
+three-slot-offset : ℕ
+three-slot-offset = 3 *ℕ slot-size         -- 24: three slots
+
+thunk-local-size : ℕ
+thunk-local-size = 2 *ℕ slot-size          -- 16: sub rsp, 16 in thunk
+
+thunk-frame-size : ℕ
+thunk-frame-size = 4 *ℕ slot-size          -- 32: total thunk frame (2 pushes + 16 local)
+
+pair-frame-size : ℕ
+pair-frame-size = 5 *ℕ slot-size           -- 40: Pair operation (5 slots)
+
+curry-frame-size : ℕ
+curry-frame-size = 2 *ℕ slot-size          -- 16: Curry closure setup
+
+-- Minimum rsp bounds for safe operations
+thunk-min-rsp : ℕ
+thunk-min-rsp = thunk-frame-size +ℕ slot-size   -- 40: need > 32 with buffer
+
+pair-min-rsp : ℕ
+pair-min-rsp = pair-frame-size +ℕ slot-size     -- 48: need > 40 with buffer
+
+apply-min-rsp : ℕ
+apply-min-rsp = two-push-offset                -- 16: need > 16 for apply
 
 ------------------------------------------------------------------------
 -- Stack Capacity (X86 instantiation)
@@ -1216,3 +1257,84 @@ n∸32+8<n-raw n n>16 = <-≤-trans step8<step16 step16≤n
     n∸16+16≡n = m∸n+n≡m 16≤n
     step16≤n : (n ∸ 32) +ℕ 16 ≤ n
     step16≤n = subst ((n ∸ 32) +ℕ 16 ≤_) n∸16+16≡n step16≤n∸16+16
+
+------------------------------------------------------------------------
+-- Generic Arithmetic Helpers (D041: centralize arithmetic proofs)
+------------------------------------------------------------------------
+
+-- | Subtraction with positive n gives different result
+∸-gives-different : ∀ m n → m > 0 → n > 0 → m ∸ n ≢ m
+∸-gives-different zero _ () _
+∸-gives-different (suc m) zero _ ()
+∸-gives-different (suc m) (suc n) _ _ eq with suc n ≤? suc m
+... | yes n≤m = <⇒≢ m∸n<m eq
+  where
+    z<s : 0 < suc n
+    z<s = s≤s z≤n
+    m∸n<m : suc m ∸ suc n < suc m
+    m∸n<m = ∸-monoʳ-< z<s n≤m
+... | no ¬n≤m = 0≢suc m∸n≡0-then-eq
+  where
+    -- ≰⇒> gives suc m < suc n, which is s≤s (m < n)
+    -- <⇒≤ then gives suc m ≤ suc n, which is s≤s (m ≤ n)
+    sucm≤sucn : suc m ≤ suc n
+    sucm≤sucn = <⇒≤ (≰⇒> ¬n≤m)
+    m≤n : m ≤ n
+    m≤n with sucm≤sucn
+    ... | s≤s le = le
+    m∸n≡0 : m ∸ n ≡ 0
+    m∸n≡0 = m≤n⇒m∸n≡0 m≤n
+    0≢suc : 0 ≢ suc m
+    0≢suc ()
+    m∸n≡0-then-eq : 0 ≡ suc m
+    m∸n≡0-then-eq = trans (sym m∸n≡0) eq
+
+-- | Subtraction with positive n gives smaller result
+∸-gives-smaller : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+∸-gives-smaller (suc m′) (suc n′) _ _ = s≤s (m∸n≤m m′ n′)
+
+-- | Subtraction composition (wraps ∸-+-assoc from stdlib)
+∸-∸-compose : ∀ m a b → (m ∸ a) ∸ b ≡ m ∸ (a +ℕ b)
+∸-∸-compose m a b = ∸-+-assoc m a b
+
+-- | Named composition: two pushes compose to two-push-offset
+push-push-eq : ∀ m → (m ∸ push-offset) ∸ push-offset ≡ m ∸ two-push-offset
+push-push-eq m = ∸-+-assoc m push-offset push-offset
+
+-- | Named composition: thunk frame from two-push + local allocation
+thunk-frame-eq : ∀ m → (m ∸ two-push-offset) ∸ thunk-local-size ≡ m ∸ thunk-frame-size
+thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
+
+------------------------------------------------------------------------
+-- Pair/SeqExec Arithmetic Helpers (D041: migrate from SeqExec)
+------------------------------------------------------------------------
+
+-- | Different offsets give different addresses (when m is large enough)
+-- If a < b and m ≥ b, then m ∸ b < m ∸ a, so they're different
+∸-different-offsets : ∀ m a b → a < b → m ≥ b → m ∸ b ≢ m ∸ a
+∸-different-offsets m a b a<b m≥b eq = <⇒≢ (∸-monoʳ-< a<b m≥b) eq
+
+-- Specific instances for SeqExec pair setup
+-- m ∸ 16 ≢ m ∸ 8 when m > 16
+-- Note: 8 < 16 means 9 ≤ 16, requiring s≤s^9 z≤n
+∸two-slot≢∸one-slot : ∀ m → m > two-push-offset → m ∸ two-push-offset ≢ m ∸ push-offset
+∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset 8<16 (<⇒≤ m>16)
+  where
+    8<16 : push-offset < two-push-offset
+    8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+-- m ∸ 24 ≢ m ∸ 8 when m > 24
+-- Note: 8 < 24 means 9 ≤ 24, requiring s≤s^9 z≤n
+∸three-slot≢∸one-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ push-offset
+∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset 8<24 (<⇒≤ m>24)
+  where
+    8<24 : push-offset < three-slot-offset
+    8<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+-- m ∸ 24 ≢ m ∸ 16 when m > 24
+-- Note: 16 < 24 means 17 ≤ 24, requiring s≤s^17 z≤n
+∸three-slot≢∸two-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ two-push-offset
+∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset 16<24 (<⇒≤ m>24)
+  where
+    16<24 : two-push-offset < three-slot-offset
+    16<24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))

@@ -46,7 +46,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above;
          -- D041: Raw ℕ helpers for local variable patterns
          n∸8<n-raw; n∸16<n∸8-raw; n∸16<n-raw; n∸24<n-raw; n∸24<n∸8-raw; n∸32<n-raw; n∸32+8<n-raw;
-         n∸32+8≡n∸24)
+         n∸32+8≡n∸24;
+         -- D041: Generic arithmetic helpers
+         ∸-gives-different; ∸-gives-smaller)
 
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
@@ -477,37 +479,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-after-push-rbp>0 : rsp-after-push-rbp > 0
     rsp-after-push-rbp>0 = 1≤rsp-after-push-rbp
 
-    -- m ∸ n ≢ m when m > 0 and n > 0
-    -- Case 1: n ≤ m → m ∸ n < m (subtracting positive makes smaller)
-    -- Case 2: n > m → m ∸ n = 0 ≢ m (underflow)
-    open import Data.Nat.Properties using (∸-monoʳ-<; m≤n⇒m∸n≡0; +-monoʳ-<; <-trans) renaming (<⇒≢ to <⇒≢-neq; ≰⇒> to ≰⇒>-nat; <⇒≤ to <⇒≤-nat)
-
-    ∸-neq : ∀ m n → m > 0 → n > 0 → m ∸ n ≢ m
-    ∸-neq zero _ () _
-    ∸-neq (suc m) zero _ ()
-    ∸-neq (suc m) (suc n) _ _ eq with suc n ≤? suc m
-    ... | yes n≤m = <⇒≢-neq (∸-monoʳ-< z<s n≤m) eq
-    ... | no ¬n≤m = 0≢suc m∸n≡0-then-eq
-      where
-        open import Data.Nat.Properties using (≤-pred)
-        -- ¬(suc n ≤ suc m) → suc m < suc n = suc (suc m) ≤ suc n
-        -- ≤-pred gives suc m ≤ n, which is m < n
-        -- <⇒≤ gives m ≤ n
-        suc-suc-m≤suc-n : suc (suc m) ≤ suc n
-        suc-suc-m≤suc-n = ≰⇒>-nat ¬n≤m
-        suc-m≤n : suc m ≤ n  -- same as m < n
-        suc-m≤n = ≤-pred suc-suc-m≤suc-n
-        m≤n : m ≤ n
-        m≤n = <⇒≤-nat suc-m≤n
-        m∸n≡0 : m ∸ n ≡ 0
-        m∸n≡0 = m≤n⇒m∸n≡0 m≤n
-        m∸n≡0-then-eq : 0 ≡ suc m
-        m∸n≡0-then-eq = trans (sym m∸n≡0) eq
-        0≢suc : ∀ {k} → 0 ≢ suc k
-        0≢suc ()
-
+    -- D041: Use centralized ∸-gives-different from StackInstantiation
     new-rsp≢rsp-after-push-rbp : new-rsp ≢ rsp-after-push-rbp
-    new-rsp≢rsp-after-push-rbp = ∸-neq rsp-after-push-rbp 16 rsp-after-push-rbp>0 0<16
+    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp 16 rsp-after-push-rbp>0 0<16
       where
         0<16 : 0 < 16
         0<16 = s≤s z≤n
@@ -591,7 +565,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
     -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
     rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
-    rsp-after-push-r15≢old-rsp = ∸-neq old-rsp 8 (≤-trans 1≤17 rsp-sufficient) 0<8
+    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp 8 (≤-trans 1≤17 rsp-sufficient) 0<8
       where
         1≤17 : 1 ≤ 17
         1≤17 = s≤s z≤n
@@ -668,10 +642,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Memory for r15 restoration: s2 wrote old-r15 at rsp-after-push-r15 = old-rsp - 8
     -- This value is preserved through all subsequent writes
     -- rsp-after-push-r15 = old-rsp - 8, rsp-after-push-rbp = rsp-after-push-r15 - 8
-    -- ∸-neq gives us: rsp-after-push-r15 ∸ 8 ≢ rsp-after-push-r15
+    -- D041: ∸-gives-different gives us: rsp-after-push-r15 ∸ 8 ≢ rsp-after-push-r15
     -- We need to swap to get: rsp-after-push-r15 ≢ rsp-after-push-r15 ∸ 8 = rsp-after-push-rbp
     rsp-after-push-r15≢rsp-after-push-rbp : rsp-after-push-r15 ≢ rsp-after-push-rbp
-    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-neq rsp-after-push-r15 8 rsp-after-push-r15>0 0<8)
+    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 8 rsp-after-push-r15>0 0<8)
       where
         open import Relation.Binary.PropositionalEquality using (≢-sym)
         rsp-after-push-r15>0 : rsp-after-push-r15 > 0
@@ -1019,10 +993,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
       where
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans; <-trans)
 
-        -- Helper: m ∸ n < m when m > 0 and n > 0
-        m∸n<m' : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-        m∸n<m' (suc m'') (suc n'') _ _ = s≤s (m∸n≤m m'' n'')
-          where open import Data.Nat using (s≤s)
+        -- D041: Use centralized ∸-gives-smaller from StackInstantiation
 
         -- Helper: if addr > old-rsp and write-addr < old-rsp, then addr ≠ write-addr
         -- Note: caller-addr > old-rsp means old-rsp < caller-addr (flip of _<_)
@@ -1031,21 +1002,21 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         -- All write addresses are below old-rsp
         rsp-8<old-rsp : rsp-after-push-r15 < old-rsp
-        rsp-8<old-rsp = m∸n<m' old-rsp 8 (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
+        rsp-8<old-rsp = ∸-gives-smaller old-rsp 8 (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
           where open import Data.Nat using (s≤s; z≤n)
 
         rsp-16<old-rsp : rsp-after-push-rbp < old-rsp
         rsp-16<old-rsp = <-trans rsp-16<rsp-8 rsp-8<old-rsp
           where
             rsp-16<rsp-8 : rsp-after-push-rbp < rsp-after-push-r15
-            rsp-16<rsp-8 = m∸n<m' rsp-after-push-r15 8 (≤-trans (s≤s z≤n) 33≤rsp-after-push-r15) (s≤s z≤n)
+            rsp-16<rsp-8 = ∸-gives-smaller rsp-after-push-r15 8 (≤-trans (s≤s z≤n) 33≤rsp-after-push-r15) (s≤s z≤n)
               where open import Data.Nat using (s≤s; z≤n)
 
         rsp-32<old-rsp : new-rsp < old-rsp
         rsp-32<old-rsp = <-trans new-rsp<rsp-16 rsp-16<old-rsp
           where
             new-rsp<rsp-16 : new-rsp < rsp-after-push-rbp
-            new-rsp<rsp-16 = m∸n<m' rsp-after-push-rbp 16 (≤-trans (s≤s z≤n) 25≤rsp-after-push-rbp) (s≤s z≤n)
+            new-rsp<rsp-16 = ∸-gives-smaller rsp-after-push-rbp 16 (≤-trans (s≤s z≤n) 25≤rsp-after-push-rbp) (s≤s z≤n)
               where open import Data.Nat using (s≤s; z≤n)
 
         rsp-24<old-rsp : new-rsp +ℕ 8 < old-rsp
