@@ -457,35 +457,10 @@ make-frame-at-slot s cap k k≤n = record
   ; in-stack = capacity-maintained cap k k≤n
   }
 
--- | The frame created at slot 0 has addr = current rsp
-make-frame-at-slot-0-addr : ∀ {n} (s : State) (cap : StackCapacity s n) →
-  sp-addr (make-frame-at-slot s cap 0 z≤n) ≡ readReg (regs s) rsp
-make-frame-at-slot-0-addr s cap = refl
-
--- | Frame at slot 1 has addr = rsp - slot-size
-make-frame-at-slot-1-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
-  sp-addr (make-frame-at-slot s cap 1 (s≤s z≤n)) ≡ readReg (regs s) rsp ∸ slot-size
-make-frame-at-slot-1-addr s cap = refl
-
--- | Frame at slot 2 has addr = rsp - 16
-make-frame-at-slot-2-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc n))) →
-  sp-addr (make-frame-at-slot s cap 2 (s≤s (s≤s z≤n))) ≡ readReg (regs s) rsp ∸ two-push-offset
-make-frame-at-slot-2-addr s cap = refl
-
--- | Frame at slot 3 has addr = rsp - 24
-make-frame-at-slot-3-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc n)))) →
-  sp-addr (make-frame-at-slot s cap 3 (s≤s (s≤s (s≤s z≤n)))) ≡ readReg (regs s) rsp ∸ three-slot-offset
-make-frame-at-slot-3-addr s cap = refl
-
--- | Frame at slot 4 has addr = rsp - 32
-make-frame-at-slot-4-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc n))))) →
-  sp-addr (make-frame-at-slot s cap 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) ≡ readReg (regs s) rsp ∸ four-slot-offset
-make-frame-at-slot-4-addr s cap = refl
-
--- | Frame at slot 5 has addr = rsp - 40
-make-frame-at-slot-5-addr : ∀ {n} (s : State) (cap : StackCapacity s (suc (suc (suc (suc (suc n)))))) →
-  sp-addr (make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))) ≡ readReg (regs s) rsp ∸ five-slot-offset
-make-frame-at-slot-5-addr s cap = refl
+-- | Parameterized: frame at slot k has addr = rsp - slots k
+make-frame-at-slot-addr : (k : ℕ) {n : ℕ} (s : State) (cap : StackCapacity s n) (k≤n : k ≤ n) →
+  sp-addr (make-frame-at-slot s cap k k≤n) ≡ readReg (regs s) rsp ∸ slots k
+make-frame-at-slot-addr k s cap k≤n = refl
 
 -- | Frames at lower slot indices have higher addresses (stack grows down)
 frame-at-lower-slot-≥ : ∀ {n} (s : State) (cap : StackCapacity s n) (k₁ k₂ : ℕ)
@@ -514,7 +489,7 @@ abstract-to-rsp-slot-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc 
 abstract-to-rsp-slot-in-stack s cap =
   subst (λ addr → region-of addr ≡ stack)
         (trans (slot-addr-0-is-base (apply-frame-1 s cap))
-               (make-frame-at-slot-1-addr s cap))
+               (make-frame-at-slot-addr 1 s cap (s≤s z≤n)))
         (apply-frame-slot-0-in-stack s cap)
 
 ------------------------------------------------------------------------
