@@ -1415,9 +1415,10 @@ run-inr-seq {A} {B} s h-false pc-0 = s5 , run-eq , halt-eq , rax-rsp-eq , tag-eq
 
 -- | Result record for case-inl setup (4 instructions, jne NOT taken)
 -- Note: r15 is preserved because we use r11 (scratch) for tag loading
+-- Star-based: uses Star relation instead of fuel-based exec
 record CaseInlSetupResult (prog : Program) (s s' : State) (prefix : Program) (val : ℕ) : Set where
   field
-    exec-eq   : exec 4 prog s ≡ just s'
+    star-setup : Star prog s s'
     halted-eq : halted s' ≡ false
     pc-eq     : pc s' ≡ length prefix +ℕ 4
     rdi-eq    : readReg (regs s') rdi ≡ val
@@ -1429,9 +1430,10 @@ record CaseInlSetupResult (prog : Program) (s s' : State) (prefix : Program) (va
 
 -- | Result record for case-inr setup (3 instructions, jne TAKEN)
 -- Note: r15 is preserved because we use r11 (scratch) for tag loading
+-- Star-based: uses Star relation instead of fuel-based exec
 record CaseInrSetupResult (prog : Program) (s s' : State) (prefix : Program) (jne-offset : ℕ) : Set where
   field
-    exec-eq   : exec 3 prog s ≡ just s'
+    star-setup : Star prog s s'
     halted-eq : halted s' ≡ false
     pc-eq     : pc s' ≡ length prefix +ℕ 3 +ℕ jne-offset
     rdi-eq    : readReg (regs s') rdi ≡ readReg (regs s) rdi  -- unchanged
@@ -1465,7 +1467,7 @@ exec-case-inl-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : �
                         mov (reg rdi) (mem (base+disp rdi 8)) ∷ suffix
   in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
 exec-case-inl-setup prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
-  s4 , record { exec-eq = exec-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
+  s4 , record { star-setup = exec-to-star exec-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
               ; r14-eq = r14-s4 ; r15-eq = r15-s4 ; rbp-eq = rbp-s4 ; rsp-eq = rsp-s4
               ; mem-eq = mem-s4 }
   where
@@ -1641,7 +1643,7 @@ exec-case-inr-setup : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : Stat
                         jne jne-offset ∷ suffix
   in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
 exec-case-inr-setup prefix suffix jne-offset s h-false pc-eq mem-tag =
-  s3 , record { exec-eq = exec-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
+  s3 , record { star-setup = exec-to-star exec-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
               ; r14-eq = r14-s3 ; r15-eq = r15-s3 ; rbp-eq = rbp-s3 ; rsp-eq = rsp-s3
               ; mem-eq = mem-s3 }
   where

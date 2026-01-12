@@ -226,9 +226,9 @@ mutual
                     s s-setup-raw prefix (encode a)
       setup-rec = proj₂ inl-setup-result
 
-      -- Extract fields from the result record
-      exec-setup-raw : exec 4 (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper) s ≡ just s-setup-raw
-      exec-setup-raw = CaseInlSetupResult.exec-eq setup-rec
+      -- Extract fields from the result record (star-based)
+      star-setup-raw : Star (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper) s s-setup-raw
+      star-setup-raw = CaseInlSetupResult.star-setup setup-rec
 
       h-setup-raw : halted s-setup-raw ≡ false
       h-setup-raw = CaseInlSetupResult.halted-eq setup-rec
@@ -259,9 +259,9 @@ mutual
       prog-eq-setup : prog ≡ prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper
       prog-eq-setup = CaseContext.prog-eq-inl-setup ctx
 
-      -- Convert exec from prog-for-helper to prog
-      exec-setup-converted : exec 4 prog s ≡ just s-setup-raw
-      exec-setup-converted = subst (λ p → exec 4 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
+      -- Convert Star from prog-for-helper to prog
+      star-setup-converted : Star prog s s-setup-raw
+      star-setup-converted = subst (λ p → Star p s s-setup-raw) (sym prog-eq-setup) star-setup-raw
 
       -- StackInvariant preserved: memory, rsp, and r15 unchanged
       stack-inv-derived : StackInvariant s-setup-raw
@@ -272,7 +272,8 @@ mutual
       rsp-sufficient-derived = subst (_> 16) (sym rsp-setup-raw) rsp-sufficient
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
-      setup-result : ∃[ s-setup ] (exec 4 prog s ≡ just s-setup
+      -- Star-based: uses Star relation directly instead of fuel-based exec
+      setup-result : ∃[ s-setup ] (Star prog s s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 4
                                     × readReg (regs s-setup) rdi ≡ encode a
@@ -283,12 +284,12 @@ mutual
                                     × memory s-setup ≡ memory s
                                     × StackInvariant s-setup
                                     × readReg (regs s-setup) rsp > 16)
-      setup-result = s-setup-raw , exec-setup-converted , h-setup-raw , pc-setup-raw ,
+      setup-result = s-setup-raw , star-setup-converted , h-setup-raw , pc-setup-raw ,
                      rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
                      rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
 
       s-setup = proj₁ setup-result
-      exec-setup = proj₁ (proj₂ setup-result)
+      star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
       pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
       rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
@@ -299,10 +300,6 @@ mutual
       mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
       rsp-sufficient-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-
-      -- Convert setup exec to Star
-      star-setup : Star prog s s-setup
-      star-setup = Once.Backend.X86.Correct.Star.exec-to-star exec-setup
 
       -- ========== Phase 2: Execute f (recursive call via abstract dispatcher) ==========
       -- pc s-setup = length prefix + 4 = length prefix-f
@@ -597,9 +594,9 @@ mutual
                     s s-setup-raw prefix right-offset
       setup-rec = proj₂ inr-setup-result
 
-      -- Extract fields from the result record
-      exec-setup-raw : exec 3 (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper) s ≡ just s-setup-raw
-      exec-setup-raw = CaseInrSetupResult.exec-eq setup-rec
+      -- Extract fields from the result record (star-based)
+      star-setup-raw : Star (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper) s s-setup-raw
+      star-setup-raw = CaseInrSetupResult.star-setup setup-rec
 
       h-setup-raw : halted s-setup-raw ≡ false
       h-setup-raw = CaseInrSetupResult.halted-eq setup-rec
@@ -630,9 +627,9 @@ mutual
       prog-eq-setup : prog ≡ prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper
       prog-eq-setup = CaseContext.prog-eq-inr-setup ctx
 
-      -- Convert exec from prog-for-helper to prog
-      exec-setup-converted : exec 3 prog s ≡ just s-setup-raw
-      exec-setup-converted = subst (λ p → exec 3 p s ≡ just s-setup-raw) (sym prog-eq-setup) exec-setup-raw
+      -- Convert Star from prog-for-helper to prog
+      star-setup-converted : Star prog s s-setup-raw
+      star-setup-converted = subst (λ p → Star p s s-setup-raw) (sym prog-eq-setup) star-setup-raw
 
       -- PC proof: helper gives length prefix + 3 + right-offset = length prefix + 3 + (2 + len-f) = length prefix + 5 + len-f
       -- (length prefix + 3) + (2 + len-f) = ((length prefix + 3) + 2) + len-f = (length prefix + 5) + len-f
@@ -650,7 +647,8 @@ mutual
       rsp-sufficient-derived = subst (_> 16) (sym rsp-setup-raw) rsp-sufficient
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
-      setup-result : ∃[ s-setup ] (exec 3 prog s ≡ just s-setup
+      -- Star-based: uses Star relation directly instead of fuel-based exec
+      setup-result : ∃[ s-setup ] (Star prog s s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f
                                     × readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
@@ -661,12 +659,12 @@ mutual
                                     × memory s-setup ≡ memory s
                                     × StackInvariant s-setup
                                     × readReg (regs s-setup) rsp > 16)
-      setup-result = s-setup-raw , exec-setup-converted , h-setup-raw , pc-setup-proof ,
+      setup-result = s-setup-raw , star-setup-converted , h-setup-raw , pc-setup-proof ,
                      rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
                      rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
 
       s-setup = proj₁ setup-result
-      exec-setup = proj₁ (proj₂ setup-result)
+      star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
       pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
       rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
@@ -677,10 +675,6 @@ mutual
       mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
       stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
       rsp-sufficient-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-
-      -- Convert setup exec to Star
-      star-setup : Star prog s s-setup
-      star-setup = Once.Backend.X86.Correct.Star.exec-to-star exec-setup
 
       -- ========== Phase 2: Right setup (2 instructions) ==========
       -- label (5+len-f) ; mov rdi, [rdi+8]
