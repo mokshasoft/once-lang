@@ -16,10 +16,12 @@
 --   4. [ f , g ] ∘ inr m → [ f , g ] ∘ inr Stack  (injection consumed by case)
 --   5. apply ∘ ⟨ curry f m₁ , x ⟩ m₂ → apply ∘ ⟨ curry f Stack , x ⟩ Stack
 --      (closure immediately applied, pair immediately consumed)
---   6. fold ∘ inl m → fold ∘ inl Stack  (injection consumed by fold)
---   7. fold ∘ inr m → fold ∘ inr Stack  (injection consumed by fold)
+--   6. apply ∘ ⟨ f , x ⟩ m → apply ∘ ⟨ f , x ⟩ Stack  (pair consumed by apply)
+--      (generalizes rule 5 for non-curry functions)
+--   7. fold ∘ inl m → fold ∘ inl Stack  (injection consumed by fold)
+--   8. fold ∘ inr m → fold ∘ inr Stack  (injection consumed by fold)
 --
--- Rules 6-7 are especially powerful with linear types: linearity guarantees
+-- Rules 7-8 are especially powerful with linear types: linearity guarantees
 -- the injection is used exactly once, so stack allocation is provably safe.
 ------------------------------------------------------------------------
 
@@ -65,7 +67,19 @@ escape-compose [ f , g ] (inr _) = [ f , g ] ∘ inr Stack
 -- consumed by apply. Neither the closure nor the pair escape.
 escape-compose apply (⟨ curry f _ , x ⟩ _) = apply ∘ ⟨ curry f Stack , x ⟩ Stack
 
--- Rule 6: fold ∘ inl m → fold ∘ inl Stack
+-- Rule 6: apply ∘ ⟨ f , x ⟩ m → apply ∘ ⟨ f , x ⟩ Stack (for non-curry f)
+-- The pair is immediately consumed by apply, regardless of how f produces
+-- the function. This generalizes rule 5 to all function-producing terms.
+escape-compose apply (⟨ id , x ⟩ _) = apply ∘ ⟨ id , x ⟩ Stack
+escape-compose apply (⟨ g ∘ h , x ⟩ _) = apply ∘ ⟨ g ∘ h , x ⟩ Stack
+escape-compose apply (⟨ fst , x ⟩ _) = apply ∘ ⟨ fst , x ⟩ Stack
+escape-compose apply (⟨ snd , x ⟩ _) = apply ∘ ⟨ snd , x ⟩ Stack
+escape-compose apply (⟨ [ f , g ] , x ⟩ _) = apply ∘ ⟨ [ f , g ] , x ⟩ Stack
+escape-compose apply (⟨ initial , x ⟩ _) = apply ∘ ⟨ initial , x ⟩ Stack
+escape-compose apply (⟨ apply , x ⟩ _) = apply ∘ ⟨ apply , x ⟩ Stack
+escape-compose apply (⟨ Prim name , x ⟩ _) = apply ∘ ⟨ Prim name , x ⟩ Stack
+
+-- Rule 7: fold ∘ inl m → fold ∘ inl Stack
 -- The left injection is immediately consumed by fold to construct a Fix value.
 -- Common pattern: nil = fold ∘ inl (for list-like structures)
 -- With linear types, the injection is guaranteed to be used exactly once.

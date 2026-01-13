@@ -53,11 +53,15 @@ escape-compose-correct [ f , g ] (inr _) x = refl
 -- Rule 5: apply ∘ ⟨ curry f , x ⟩ - AllocMode transparent in curry and pair
 escape-compose-correct apply (⟨ curry f _ , h ⟩ _) x = refl
 
--- apply ∘ ⟨ f , g ⟩ where f is NOT (curry _ _)
+-- Rule 6: apply ∘ ⟨ f , x ⟩ - AllocMode transparent in pair (non-curry f)
+-- The pair is consumed by apply regardless of how f produces the function.
 escape-compose-correct apply (⟨ id , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ g ∘ g' , h ⟩ _) x = refl
+escape-compose-correct apply (⟨ fst , h ⟩ _) x = refl
+escape-compose-correct apply (⟨ snd , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ [ g , g' ] , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ initial , h ⟩ _) x = refl
+escape-compose-correct apply (⟨ apply , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ Prim _ , h ⟩ _) x = refl
 
 -- All other cases: escape-compose returns g ∘ f unchanged, so proof is refl
@@ -82,10 +86,10 @@ escape-compose-correct apply id x = refl
 escape-compose-correct apply (g ∘ h) x = refl
 escape-compose-correct apply (Prim _) x = refl
 
--- Rule 6: fold ∘ inl - AllocMode transparent in injection
+-- Rule 7: fold ∘ inl - AllocMode transparent in injection
 escape-compose-correct fold (inl _) x = refl
 
--- Rule 7: fold ∘ inr - AllocMode transparent in injection
+-- Rule 8: fold ∘ inr - AllocMode transparent in injection
 escape-compose-correct fold (inr _) x = refl
 
 -- fold with other arguments (default case)
