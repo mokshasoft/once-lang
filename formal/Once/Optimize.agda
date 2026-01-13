@@ -471,6 +471,14 @@ optimize-compose apply (⟨ curry f _ , g ⟩ _) = f ∘ ⟨ id , g ⟩ Heap
 optimize-compose fold unfold = id
 optimize-compose unfold fold = id
 
+-- Fusion rules: fold ∘ (unfold ∘ f) = f, unfold ∘ (fold ∘ f) = f
+-- Eliminates intermediate Fix F structure by associativity + identity:
+--   fold ∘ (unfold ∘ f) = (fold ∘ unfold) ∘ f = id ∘ f = f
+-- High impact for deforestation: chains like fold ∘ h ∘ unfold ∘ fold ∘ g ∘ unfold
+-- can be simplified by eliminating adjacent fold/unfold pairs.
+optimize-compose fold (unfold ∘ f) = f
+optimize-compose unfold (fold ∘ f) = f
+
 -- Terminal fusion: terminal ∘ f = terminal (dead code elimination)
 -- Any computation followed by discarding the result can skip the computation
 optimize-compose terminal (g ∘ f) = terminal

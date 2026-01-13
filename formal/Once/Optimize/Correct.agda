@@ -227,7 +227,25 @@ optimize-compose-correct apply (Prim name) x = refl
 
 -- fold cases
 optimize-compose-correct fold id x = refl
-optimize-compose-correct fold (g' ∘ f') x = refl
+-- Fusion rule: fold ∘ (unfold ∘ f) = f
+-- By associativity + identity: (fold ∘ unfold) ∘ f = id ∘ f = f
+optimize-compose-correct fold (unfold ∘ f') x = refl
+-- Other compositions (default case)
+optimize-compose-correct fold (id ∘ f') x = refl
+optimize-compose-correct fold ((g' ∘ g'') ∘ f') x = refl
+optimize-compose-correct fold (fst ∘ f') x = refl
+optimize-compose-correct fold (snd ∘ f') x = refl
+optimize-compose-correct fold ((⟨ g' , g'' ⟩ _) ∘ f') x = refl
+optimize-compose-correct fold ((inl _) ∘ f') x = refl
+optimize-compose-correct fold ((inr _) ∘ f') x = refl
+optimize-compose-correct fold ([ g' , g'' ] ∘ f') x = refl
+optimize-compose-correct fold (terminal ∘ f') x = refl
+optimize-compose-correct fold (initial ∘ f') x = refl
+optimize-compose-correct fold ((curry g' _) ∘ f') x = refl
+optimize-compose-correct fold (apply ∘ f') x = refl
+optimize-compose-correct fold (fold ∘ f') x = refl
+optimize-compose-correct fold (arr ∘ f') x = refl
+optimize-compose-correct fold ((Prim _) ∘ f') x = refl
 optimize-compose-correct fold fst x = refl
 optimize-compose-correct fold snd x = refl
 optimize-compose-correct fold (⟨ f' , g' ⟩ _) x = refl
@@ -246,7 +264,19 @@ optimize-compose-correct fold (Prim name) x = refl
 
 -- unfold cases
 optimize-compose-correct unfold id x = refl
-optimize-compose-correct unfold (g' ∘ f') x = refl
+-- Fusion rule: unfold ∘ (fold ∘ f) = f
+-- By associativity + identity: (unfold ∘ fold) ∘ f = id ∘ f = f
+optimize-compose-correct unfold (fold ∘ f') x = refl
+-- Other compositions (default case)
+optimize-compose-correct unfold (id ∘ f') x = refl
+optimize-compose-correct unfold ((g' ∘ g'') ∘ f') x = refl
+optimize-compose-correct unfold (fst ∘ f') x = refl
+optimize-compose-correct unfold (snd ∘ f') x = refl
+optimize-compose-correct unfold ([ g' , g'' ] ∘ f') x = refl
+optimize-compose-correct unfold (initial ∘ f') x = refl
+optimize-compose-correct unfold (apply ∘ f') x = refl
+optimize-compose-correct unfold (unfold ∘ f') x = refl
+optimize-compose-correct unfold ((Prim _) ∘ f') x = refl
 optimize-compose-correct unfold fst x = refl
 optimize-compose-correct unfold snd x = refl
 optimize-compose-correct unfold apply x = refl
