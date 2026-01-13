@@ -109,14 +109,14 @@ eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
 eval id x              = x
 eval (g ∘ f) x         = eval g (eval f x)
 
--- Products
+-- Products (AllocMode ignored in semantics)
 eval fst (a , b)       = a
 eval snd (a , b)       = b
-eval ⟨ f , g ⟩ x       = (eval f x , eval g x)
+eval (⟨ f , g ⟩ _) x   = (eval f x , eval g x)
 
--- Coproducts
-eval inl a             = inj₁ a
-eval inr b             = inj₂ b
+-- Coproducts (AllocMode ignored in semantics)
+eval (inl _) a         = inj₁ a
+eval (inr _) b         = inj₂ b
 eval [ f , g ] (inj₁ a) = eval f a
 eval [ f , g ] (inj₂ b) = eval g b
 
@@ -126,11 +126,11 @@ eval terminal _        = tt
 -- Initial
 eval initial ()
 
--- Exponential (with explicit Closure)
+-- Exponential (with explicit Closure, AllocMode ignored in semantics)
 -- curry f : IR A (B ⇒ C) creates a closure capturing the input
 -- env-addr = encode a makes closure encoding computable!
 -- NOTE: code-ptr is NOT in Closure - it's a compilation artifact, not semantic.
-eval (curry f) a       = record
+eval (curry f _) a     = record
   { env-addr  = encode a  -- Encoded environment (enables derivable encode-closure-construct)
   ; semantics = λ b → eval f (a , b)
   }

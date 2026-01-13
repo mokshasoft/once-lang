@@ -151,10 +151,10 @@ desugar-correct S.terminal x = refl
 desugar-correct S.initial ()
 
 -- Exponential (with explicit Closure)
--- Both eval (curry (desugar f)) and evalSurface (S.curry f) create Closure records.
+-- Both eval (curry (desugar f) Heap) and evalSurface (S.curry f) create Closure records.
 -- We prove equality via closure-semantics-eq by showing their semantics are equal.
 desugar-correct (S.curry f) a = closure-semantics-eq
-  (eval (C.curry (desugar f)) a)
+  (eval (C.curry (desugar f) C.Heap) a)
   (evalSurface (S.curry f) a)
   (extensionality (λ b → desugar-correct f (a , b)))
 desugar-correct S.apply (cl , a) = refl
@@ -182,7 +182,7 @@ desugar-correct (S.Let e1 e2) x =
   in begin
     eval (desugar (S.Let e1 e2)) x
       ≡⟨ refl ⟩
-    eval (desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩) x
+    eval (desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩ C.Heap) x
       ≡⟨ refl ⟩
     eval (desugar e2) (x , eval (desugar e1) x)
       ≡⟨ cong (λ v → eval (desugar e2) (x , v)) ih-e1 ⟩

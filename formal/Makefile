@@ -42,6 +42,8 @@ SURFACE_DESUGAR_CORRECT := Once/Surface/Desugar/Correct.agda
 COMPILE := Once/Compile.agda
 OPTIMIZE := Once/Optimize.agda
 OPTIMIZE_CORRECT := Once/Optimize/Correct.agda
+ESCAPE := Once/Escape.agda
+ESCAPE_CORRECT := Once/Escape/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
@@ -111,7 +113,7 @@ check: compiler spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
-frontend: postulates laws surface surfaceir optimize
+frontend: postulates laws surface surfaceir optimize escape
 	@echo "Frontend proofs type-check successfully!"
 
 .PHONY: postulates
@@ -143,6 +145,12 @@ optimize:
 	@echo "Type-checking optimizer..."
 	@sh -c '$(AGDA_CMD) $(OPTIMIZE)'
 	@sh -c '$(AGDA_CMD) $(OPTIMIZE_CORRECT)'
+
+.PHONY: escape
+escape:
+	@echo "Type-checking escape analysis..."
+	@sh -c '$(AGDA_CMD) $(ESCAPE)'
+	@sh -c '$(AGDA_CMD) $(ESCAPE_CORRECT)'
 
 .PHONY: common
 common:

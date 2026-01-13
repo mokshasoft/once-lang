@@ -11,6 +11,7 @@ This document explains Once's current memory allocation strategy, why heap alloc
 5. [Escape Analysis Levels](#escape-analysis-levels)
 6. [Implementation Roadmap](#implementation-roadmap)
 7. [Verification Implications](#verification-implications)
+8. [Boxing vs Unboxing: The Orthogonal Concern](#boxing-vs-unboxing-the-orthogonal-concern)
 
 ## Current Architecture
 
@@ -510,6 +511,138 @@ Allocation cost:
 ```
 
 GC bump-pointer allocation is **50x faster** than malloc, nearly as fast as stack allocation!
+
+## Boxing vs Unboxing: The Orthogonal Concern
+
+### The Limited Value of Escape Analysis with Boxed Representation
+
+With the current **boxed representation**, all compound values are represented as pointers:
+
+```c
+// Current boxed representation
+typedef struct { void* fst; void* snd; } OncePair;  // 16 bytes (two pointers)
+```
+
+Consider what escape analysis saves with boxed pairs:
+
+```
+fst ∘ ⟨f, g⟩ Stack   →   Stack-allocate 16 bytes (the pointer pair)
+                         The actual data from f and g is STILL heap-allocated
+```
+
+**This saves almost nothing.** The 16-byte pointer pair is trivial. The real data (which could be large) is still on the heap.
+
+### The Real Win: Unboxed Representation
+
+With **unboxed representation**, data is stored inline:
+
+```c
+// Unboxed representation
+typedef struct { A fst; B snd; } Pair_A_B;  // sizeof(A) + sizeof(B) inline
+```
+
+Now escape analysis becomes valuable:
+
+```
+fst ∘ ⟨f, g⟩ Stack   →   Stack-allocate sizeof(A) + sizeof(B)
+                         The actual data lives on the stack
+                         ZERO heap allocation!
+```
+
+### Orthogonality of Concerns
+
+These are **two independent decisions**:
+
+| Concern | Question | Options |
+|---------|----------|---------|
+| **Escape Analysis** | Where to allocate? | Stack vs Heap |
+| **Boxing** | How to represent data? | Pointers vs Inline |
+
+The combinations:
+
+| Boxing | Escape | Result |
+|--------|--------|--------|
+| Boxed | Heap | Pointer pair on heap (current) |
+| Boxed | Stack | Pointer pair on stack (saves ~16 bytes) |
+| Unboxed | Heap | Inline data on heap (saves indirection) |
+| Unboxed | Stack | Inline data on stack (**the big win**) |
+
+### Why This Matters for Once
+
+The escape analysis infrastructure we built (`Once/Escape.agda`) identifies which allocations don't escape. This information is **representation-agnostic** - the proofs hold regardless of boxing.
+
+For escape analysis to deliver significant performance gains, Once needs:
+
+1. **Escape analysis** (done): Identifies non-escaping allocations → `Stack` annotation
+2. **Unboxed representation** (future): Backend stores data inline, not as pointers
+
+The combination means: `Stack` annotation + unboxed = entire value on stack, zero heap allocation.
+
+### Unboxing is a Backend Decision
+
+Unboxing doesn't require IR changes. The categorical semantics are representation-agnostic:
+
+```agda
+⟦ A × B ⟧ = ⟦ A ⟧ × ⟦ B ⟧   -- Abstract product, doesn't dictate memory layout
+```
+
+The backend chooses representation:
+- Small types → unboxed (inline)
+- Recursive types (`Fix`) → must box (infinite size otherwise)
+- Closures → typically boxed (variable environment size)
+
+### Implementation Strategy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ IR Level (Agda-verified)                                    │
+│   - AllocMode: Stack | Heap (escape analysis result)        │
+│   - Semantics ignore AllocMode (proofs are refl)            │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              v
+┌─────────────────────────────────────────────────────────────┐
+│ Backend Level (code generation)                             │
+│   - Representation: Boxed | Unboxed (per-type decision)     │
+│   - Combines with AllocMode for actual allocation           │
+│                                                             │
+│   if AllocMode == Stack && sizeof(type) < THRESHOLD:        │
+│       allocate inline on stack (unboxed)                    │
+│   else:                                                     │
+│       heap allocate (boxed or unboxed depending on type)    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Types That Must Remain Boxed
+
+Some types cannot be unboxed:
+
+1. **Recursive types (`Fix F`)**: Would have infinite size
+   ```agda
+   Fix F ≈ F (Fix F) ≈ F (F (Fix F)) ≈ ...  -- Infinite unfolding
+   ```
+
+2. **Closures with variable environments**: Size depends on captured variables
+   ```agda
+   λx. λy. (x, y)   -- Captures x, size depends on type of x
+   ```
+
+3. **Sum types with large variants**: May choose to box for uniform size
+   ```agda
+   A + B  where sizeof(A) >> sizeof(B)  -- Boxing avoids wasted space
+   ```
+
+### Current Status Summary
+
+| Component | Status |
+|-----------|--------|
+| Escape analysis rules | Implemented (`Once/Escape.agda`) |
+| Correctness proofs | Complete (`Once/Escape/Correct.agda`) |
+| AllocMode in IR | Present (Stack/Heap annotations) |
+| Unboxed representation | Not yet implemented |
+| Full optimization benefit | Requires unboxing in backend |
+
+The escape analysis infrastructure is ready. A backend using unboxed representation would immediately benefit from the `Stack` annotations without any changes to the IR or proofs.
 
 ## Conclusion
 

@@ -158,14 +158,14 @@ mutual
   elaborate-correct ρ (var i) = proj-correct ρ i
   -- For lam: use closure-eq since both sides create closures with equal semantics
   -- LHS: evalSurface ρ (lam q e) has semantics = λ a → evalSurface (a ∷ ρ) e
-  -- RHS: eval (coerceIRArrow (curry (elaborate e))) (interpEnv ρ)
-  --    = eval (curry (elaborate e)) (interpEnv ρ)   [by coerceIRArrow-preserves-eval]
+  -- RHS: eval (coerceIRArrow (curry (elaborate e) Heap)) (interpEnv ρ)
+  --    = eval (curry (elaborate e) Heap) (interpEnv ρ)   [by coerceIRArrow-preserves-eval]
   -- Quantity q is ignored in semantics (type-level only)
   elaborate-correct ρ (lam q e) =
     subst (λ c → evalSurface ρ (lam q e) ≡ c)
-          (sym (coerceIRArrow-preserves-eval (curry (elaborate e)) (interpEnv ρ)))
+          (sym (coerceIRArrow-preserves-eval (curry (elaborate e) Heap) (interpEnv ρ)))
           (closure-eq (evalSurface ρ (lam q e))
-                      (eval (curry (elaborate e)) (interpEnv ρ))
+                      (eval (curry (elaborate e) Heap) (interpEnv ρ))
                       λ a → elaborate-correct (a ∷ ρ) e)
   -- For app: elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
   -- Need to show: evalSurface ρ (app f x) ≡ eval (elaborate (app f x)) (interpEnv ρ)
@@ -248,12 +248,12 @@ mutual
                       (irOp : IR (Int * Int) (Unit + Unit))
                       (surfOp : ∀ {m} {Δ : Ctx m} → Expr Δ Int → Expr Δ Int → Expr Δ (Unit + Unit))
                       (correct : ∀ (a b : ℤ) → eval irOp (a , b) ≡ evalSurface ε (surfOp (int a) (int b))) →
-                      evalSurface ρ (surfOp e₁ e₂) ≡ eval (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩) (interpEnv ρ)
+                      evalSurface ρ (surfOp e₁ e₂) ≡ eval (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap) (interpEnv ρ)
   arith-cmp-correct ρ e₁ e₂ irOp surfOp correct = arith-cmp-postulate ρ e₁ e₂ irOp surfOp
     where postulate arith-cmp-postulate : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)
                                            (irOp : IR (Int * Int) (Unit + Unit))
                                            (surfOp : ∀ {m} {Δ : Ctx m} → Expr Δ Int → Expr Δ Int → Expr Δ (Unit + Unit)) →
-                                           evalSurface ρ (surfOp e₁ e₂) ≡ eval (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩) (interpEnv ρ)
+                                           evalSurface ρ (surfOp e₁ e₂) ≡ eval (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap) (interpEnv ρ)
 
   -- Case dispatch: routes to inl or inr case based on scrutinee value
   case-correct : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)

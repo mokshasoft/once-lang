@@ -19,6 +19,16 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
 
 ------------------------------------------------------------------------
+-- Equality decision for AllocMode
+------------------------------------------------------------------------
+
+_≟AllocMode_ : (m₁ m₂ : AllocMode) → Dec (m₁ ≡ m₂)
+Stack ≟AllocMode Stack = yes refl
+Stack ≟AllocMode Heap  = no (λ ())
+Heap  ≟AllocMode Stack = no (λ ())
+Heap  ≟AllocMode Heap  = yes refl
+
+------------------------------------------------------------------------
 -- Equality decision for Types (needed for pattern matching)
 ------------------------------------------------------------------------
 
@@ -213,8 +223,12 @@ mutual
   id ≟IR id = yes refl
   fst ≟IR fst = yes refl
   snd ≟IR snd = yes refl
-  inl ≟IR inl = yes refl
-  inr ≟IR inr = yes refl
+  (inl m) ≟IR (inl m') with m ≟AllocMode m'
+  ... | yes refl = yes refl
+  ... | no neq   = no (λ { refl → neq refl })
+  (inr m) ≟IR (inr m') with m ≟AllocMode m'
+  ... | yes refl = yes refl
+  ... | no neq   = no (λ { refl → neq refl })
   terminal ≟IR terminal = yes refl
   initial ≟IR initial = yes refl
   apply ≟IR apply = yes refl
@@ -228,14 +242,16 @@ mutual
   ... | no neq   = no (λ { refl → neq refl })
 
   -- Recursive constructors - same constructor
-  (curry f) ≟IR (curry g) with f ≟IR g
-  ... | yes refl = yes refl
-  ... | no neq   = no (λ { refl → neq refl })
-
-  ⟨ f , g ⟩ ≟IR ⟨ f' , g' ⟩ with f ≟IR f' | g ≟IR g'
+  (curry f m) ≟IR (curry g m') with f ≟IR g | m ≟AllocMode m'
   ... | yes refl | yes refl = yes refl
   ... | no neq   | _        = no (λ { refl → neq refl })
   ... | _        | no neq   = no (λ { refl → neq refl })
+
+  (⟨ f , g ⟩ m) ≟IR (⟨ f' , g' ⟩ m') with f ≟IR f' | g ≟IR g' | m ≟AllocMode m'
+  ... | yes refl | yes refl | yes refl = yes refl
+  ... | no neq   | _        | _        = no (λ { refl → neq refl })
+  ... | _        | no neq   | _        = no (λ { refl → neq refl })
+  ... | _        | _        | no neq   = no (λ { refl → neq refl })
 
   [ f , g ] ≟IR [ f' , g' ] with f ≟IR f' | g ≟IR g'
   ... | yes refl | yes refl = yes refl
@@ -255,14 +271,14 @@ mutual
   id ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR id = no (λ ())
 
-  ⟨ _ , _ ⟩ ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
 
   [ _ , _ ] ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR [ _ , _ ] = no (λ ())
 
-  (curry _) ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR (curry _) = no (λ ())
+  (curry _ _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (curry _ _) = no (λ ())
 
   terminal ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR terminal = no (λ ())
@@ -276,11 +292,11 @@ mutual
   snd ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR snd = no (λ ())
 
-  inl ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR inl = no (λ ())
+  (inl _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (inl _) = no (λ ())
 
-  inr ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR inr = no (λ ())
+  (inr _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (inr _) = no (λ ())
 
   apply ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR apply = no (λ ())
@@ -304,20 +320,20 @@ mutual
   fst ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR snd = no (λ ())
   snd ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR inl = no (λ ())
-  inl ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR inr = no (λ ())
-  inr ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (inl _) = no (λ ())
+  (inl _) ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (inr _) = no (λ ())
+  (inr _) ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR [ _ , _ ] = no (λ ())
   [ _ , _ ] ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR terminal = no (λ ())
   terminal ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR initial = no (λ ())
   initial ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR (curry _) = no (λ ())
-  (curry _) ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (curry _ _) = no (λ ())
+  (curry _ _) ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR apply = no (λ ())
   apply ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR fold = no (λ ())
@@ -328,45 +344,45 @@ mutual
   arr ≟IR (Prim _) = no (λ ())
 
   -- Remaining type-compatible different-constructor cases
-  id ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  id ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   id ≟IR [ _ , _ ] = no (λ ())
   id ≟IR terminal = no (λ ())
   id ≟IR initial = no (λ ())
-  id ≟IR (curry _) = no (λ ())
+  id ≟IR (curry _ _) = no (λ ())
 
   fst ≟IR snd = no (λ ())
-  fst ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  fst ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   fst ≟IR terminal = no (λ ())
-  fst ≟IR (curry _) = no (λ ())
+  fst ≟IR (curry _ _) = no (λ ())
 
   snd ≟IR fst = no (λ ())
-  snd ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  snd ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   snd ≟IR terminal = no (λ ())
-  snd ≟IR (curry _) = no (λ ())
+  snd ≟IR (curry _ _) = no (λ ())
   snd ≟IR apply = no (λ ())
 
-  ⟨ _ , _ ⟩ ≟IR id = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR fst = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR snd = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR [ _ , _ ] = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR initial = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR apply = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR unfold = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR id = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR fst = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR snd = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR [ _ , _ ] = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR initial = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR apply = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR unfold = no (λ ())
 
-  inl ≟IR inr = no (λ ())
-  inl ≟IR [ _ , _ ] = no (λ ())
-  inl ≟IR initial = no (λ ())
+  (inl _) ≟IR (inr _) = no (λ ())
+  (inl _) ≟IR [ _ , _ ] = no (λ ())
+  (inl _) ≟IR initial = no (λ ())
 
-  inr ≟IR inl = no (λ ())
-  inr ≟IR [ _ , _ ] = no (λ ())
-  inr ≟IR initial = no (λ ())
+  (inr _) ≟IR (inl _) = no (λ ())
+  (inr _) ≟IR [ _ , _ ] = no (λ ())
+  (inr _) ≟IR initial = no (λ ())
 
   [ _ , _ ] ≟IR id = no (λ ())
-  [ _ , _ ] ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  [ _ , _ ] ≟IR inl = no (λ ())
-  [ _ , _ ] ≟IR inr = no (λ ())
+  [ _ , _ ] ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
+  [ _ , _ ] ≟IR (inl _) = no (λ ())
+  [ _ , _ ] ≟IR (inr _) = no (λ ())
   [ _ , _ ] ≟IR terminal = no (λ ())
-  [ _ , _ ] ≟IR (curry _) = no (λ ())
+  [ _ , _ ] ≟IR (curry _ _) = no (λ ())
   [ _ , _ ] ≟IR fold = no (λ ())
 
   terminal ≟IR id = no (λ ())
@@ -378,32 +394,32 @@ mutual
   terminal ≟IR unfold = no (λ ())
 
   initial ≟IR id = no (λ ())
-  initial ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  initial ≟IR inl = no (λ ())
-  initial ≟IR inr = no (λ ())
+  initial ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
+  initial ≟IR (inl _) = no (λ ())
+  initial ≟IR (inr _) = no (λ ())
   initial ≟IR terminal = no (λ ())
-  initial ≟IR (curry _) = no (λ ())
+  initial ≟IR (curry _ _) = no (λ ())
   initial ≟IR fold = no (λ ())
 
-  (curry _) ≟IR id = no (λ ())
-  (curry _) ≟IR fst = no (λ ())
-  (curry _) ≟IR snd = no (λ ())
-  (curry _) ≟IR [ _ , _ ] = no (λ ())
-  (curry _) ≟IR initial = no (λ ())
-  (curry _) ≟IR apply = no (λ ())
-  (curry _) ≟IR unfold = no (λ ())
+  (curry _ _) ≟IR id = no (λ ())
+  (curry _ _) ≟IR fst = no (λ ())
+  (curry _ _) ≟IR snd = no (λ ())
+  (curry _ _) ≟IR [ _ , _ ] = no (λ ())
+  (curry _ _) ≟IR initial = no (λ ())
+  (curry _ _) ≟IR apply = no (λ ())
+  (curry _ _) ≟IR unfold = no (λ ())
 
   apply ≟IR snd = no (λ ())
-  apply ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  apply ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   apply ≟IR terminal = no (λ ())
-  apply ≟IR (curry _) = no (λ ())
+  apply ≟IR (curry _ _) = no (λ ())
 
   fold ≟IR [ _ , _ ] = no (λ ())
   fold ≟IR initial = no (λ ())
 
-  unfold ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  unfold ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   unfold ≟IR terminal = no (λ ())
-  unfold ≟IR (curry _) = no (λ ())
+  unfold ≟IR (curry _ _) = no (λ ())
 
 ------------------------------------------------------------------------
 -- Optimizer: Single-step rewriting
@@ -425,12 +441,12 @@ optimize-compose id f = f
 -- Right identity: fst ∘ id = fst, etc. (when right arg is id, left is not)
 optimize-compose fst id = fst
 optimize-compose snd id = snd
-optimize-compose ⟨ f , g ⟩ id = ⟨ f , g ⟩
-optimize-compose inl id = inl
-optimize-compose inr id = inr
+optimize-compose (⟨ f , g ⟩ m) id = ⟨ f , g ⟩ m
+optimize-compose (inl m) id = inl m
+optimize-compose (inr m) id = inr m
 optimize-compose [ f , g ] id = [ f , g ]
 optimize-compose terminal id = terminal
-optimize-compose (curry f) id = curry f
+optimize-compose (curry f m) id = curry f m
 optimize-compose apply id = apply
 optimize-compose fold id = fold
 optimize-compose unfold id = unfold
@@ -439,12 +455,12 @@ optimize-compose (Prim name) id = Prim name
 optimize-compose (h ∘ g) id = h ∘ g  -- Don't simplify here, let associativity handle it
 
 -- Product beta laws: fst ∘ ⟨ f , g ⟩ = f, snd ∘ ⟨ f , g ⟩ = g
-optimize-compose fst ⟨ f , g ⟩ = f
-optimize-compose snd ⟨ f , g ⟩ = g
+optimize-compose fst (⟨ f , g ⟩ _) = f
+optimize-compose snd (⟨ f , g ⟩ _) = g
 
 -- Coproduct beta laws: [ f , g ] ∘ inl = f, [ f , g ] ∘ inr = g
-optimize-compose [ f , g ] inl = f
-optimize-compose [ f , g ] inr = g
+optimize-compose [ f , g ] (inl _) = f
+optimize-compose [ f , g ] (inr _) = g
 
 -- Fixed point laws: fold ∘ unfold = id, unfold ∘ fold = id
 optimize-compose fold unfold = id
@@ -455,12 +471,12 @@ optimize-compose unfold fold = id
 optimize-compose terminal (g ∘ f) = terminal
 optimize-compose terminal fst = terminal
 optimize-compose terminal snd = terminal
-optimize-compose terminal ⟨ f , g ⟩ = terminal
-optimize-compose terminal inl = terminal
-optimize-compose terminal inr = terminal
+optimize-compose terminal (⟨ f , g ⟩ _) = terminal
+optimize-compose terminal (inl _) = terminal
+optimize-compose terminal (inr _) = terminal
 optimize-compose terminal [ f , g ] = terminal
 optimize-compose terminal terminal = terminal
-optimize-compose terminal (curry f) = terminal
+optimize-compose terminal (curry f _) = terminal
 optimize-compose terminal apply = terminal
 optimize-compose terminal fold = terminal
 optimize-compose terminal unfold = terminal
@@ -471,12 +487,12 @@ optimize-compose terminal (Prim name) = terminal
 -- Composition with initial is initial (vacuously true, Void is empty)
 optimize-compose fst initial = initial
 optimize-compose snd initial = initial
-optimize-compose ⟨ f , g ⟩ initial = initial
-optimize-compose inl initial = initial
-optimize-compose inr initial = initial
+optimize-compose (⟨ f , g ⟩ _) initial = initial
+optimize-compose (inl _) initial = initial
+optimize-compose (inr _) initial = initial
 optimize-compose [ f , g ] initial = initial
 optimize-compose terminal initial = initial
-optimize-compose (curry f) initial = initial
+optimize-compose (curry f _) initial = initial
 optimize-compose apply initial = initial
 optimize-compose fold initial = initial
 optimize-compose unfold initial = initial
@@ -487,20 +503,21 @@ optimize-compose (h ∘ g) initial = initial
 -- Pairing fusion: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
 -- Distributes composition into pairs, exposing beta reductions
 -- Note: id and initial cases handled above
-optimize-compose ⟨ f , g ⟩ (h ∘ k) = ⟨ optimize-compose f (h ∘ k) , optimize-compose g (h ∘ k) ⟩
-optimize-compose ⟨ f , g ⟩ fst = ⟨ optimize-compose f fst , optimize-compose g fst ⟩
-optimize-compose ⟨ f , g ⟩ snd = ⟨ optimize-compose f snd , optimize-compose g snd ⟩
-optimize-compose ⟨ f , g ⟩ ⟨ h , k ⟩ = ⟨ optimize-compose f ⟨ h , k ⟩ , optimize-compose g ⟨ h , k ⟩ ⟩
-optimize-compose ⟨ f , g ⟩ inl = ⟨ optimize-compose f inl , optimize-compose g inl ⟩
-optimize-compose ⟨ f , g ⟩ inr = ⟨ optimize-compose f inr , optimize-compose g inr ⟩
-optimize-compose ⟨ f , g ⟩ [ h , k ] = ⟨ optimize-compose f [ h , k ] , optimize-compose g [ h , k ] ⟩
-optimize-compose ⟨ f , g ⟩ terminal = ⟨ optimize-compose f terminal , optimize-compose g terminal ⟩
-optimize-compose ⟨ f , g ⟩ (curry h) = ⟨ optimize-compose f (curry h) , optimize-compose g (curry h) ⟩
-optimize-compose ⟨ f , g ⟩ apply = ⟨ optimize-compose f apply , optimize-compose g apply ⟩
-optimize-compose ⟨ f , g ⟩ fold = ⟨ optimize-compose f fold , optimize-compose g fold ⟩
-optimize-compose ⟨ f , g ⟩ unfold = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩
-optimize-compose ⟨ f , g ⟩ arr = ⟨ optimize-compose f arr , optimize-compose g arr ⟩
-optimize-compose ⟨ f , g ⟩ (Prim name) = ⟨ optimize-compose f (Prim name) , optimize-compose g (Prim name) ⟩
+-- AllocMode is preserved from the original pair
+optimize-compose (⟨ f , g ⟩ m) (h ∘ k) = ⟨ optimize-compose f (h ∘ k) , optimize-compose g (h ∘ k) ⟩ m
+optimize-compose (⟨ f , g ⟩ m) fst = ⟨ optimize-compose f fst , optimize-compose g fst ⟩ m
+optimize-compose (⟨ f , g ⟩ m) snd = ⟨ optimize-compose f snd , optimize-compose g snd ⟩ m
+optimize-compose (⟨ f , g ⟩ m) (⟨ h , k ⟩ _) = ⟨ optimize-compose f (⟨ h , k ⟩ Heap) , optimize-compose g (⟨ h , k ⟩ Heap) ⟩ m
+optimize-compose (⟨ f , g ⟩ m) (inl _) = ⟨ optimize-compose f (inl Heap) , optimize-compose g (inl Heap) ⟩ m
+optimize-compose (⟨ f , g ⟩ m) (inr _) = ⟨ optimize-compose f (inr Heap) , optimize-compose g (inr Heap) ⟩ m
+optimize-compose (⟨ f , g ⟩ m) [ h , k ] = ⟨ optimize-compose f [ h , k ] , optimize-compose g [ h , k ] ⟩ m
+optimize-compose (⟨ f , g ⟩ m) terminal = ⟨ optimize-compose f terminal , optimize-compose g terminal ⟩ m
+optimize-compose (⟨ f , g ⟩ m) (curry h _) = ⟨ optimize-compose f (curry h Heap) , optimize-compose g (curry h Heap) ⟩ m
+optimize-compose (⟨ f , g ⟩ m) apply = ⟨ optimize-compose f apply , optimize-compose g apply ⟩ m
+optimize-compose (⟨ f , g ⟩ m) fold = ⟨ optimize-compose f fold , optimize-compose g fold ⟩ m
+optimize-compose (⟨ f , g ⟩ m) unfold = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩ m
+optimize-compose (⟨ f , g ⟩ m) arr = ⟨ optimize-compose f arr , optimize-compose g arr ⟩ m
+optimize-compose (⟨ f , g ⟩ m) (Prim name) = ⟨ optimize-compose f (Prim name) , optimize-compose g (Prim name) ⟩ m
 
 -- Case fusion: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
 -- Distributes composition over case, exposing beta reductions
@@ -508,9 +525,9 @@ optimize-compose ⟨ f , g ⟩ (Prim name) = ⟨ optimize-compose f (Prim name) 
 -- Note: ⟨ h , k ⟩ [ f , g ] is covered by pairing fusion above
 optimize-compose fst [ f , g ] = [ optimize-compose fst f , optimize-compose fst g ]
 optimize-compose snd [ f , g ] = [ optimize-compose snd f , optimize-compose snd g ]
-optimize-compose inl [ f , g ] = [ optimize-compose inl f , optimize-compose inl g ]
-optimize-compose inr [ f , g ] = [ optimize-compose inr f , optimize-compose inr g ]
-optimize-compose (curry h) [ f , g ] = [ optimize-compose (curry h) f , optimize-compose (curry h) g ]
+optimize-compose (inl m) [ f , g ] = [ optimize-compose (inl m) f , optimize-compose (inl m) g ]
+optimize-compose (inr m) [ f , g ] = [ optimize-compose (inr m) f , optimize-compose (inr m) g ]
+optimize-compose (curry h m) [ f , g ] = [ optimize-compose (curry h m) f , optimize-compose (curry h m) g ]
 optimize-compose apply [ f , g ] = [ optimize-compose apply f , optimize-compose apply g ]
 optimize-compose fold [ f , g ] = [ optimize-compose fold f , optimize-compose fold g ]
 optimize-compose unfold [ f , g ] = [ optimize-compose unfold f , optimize-compose unfold g ]
@@ -535,20 +552,22 @@ optimize-compose g f = g ∘ f
 --   1. Eta law: ⟨ fst , snd ⟩ = id
 --   2. Uniqueness law: ⟨ fst ∘ h , snd ∘ h ⟩ = h
 --
+-- Note: Uses Heap as default AllocMode since escape analysis hasn't run yet
+--
 optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
 -- Eta: ⟨ fst , snd ⟩ = id
 optimize-pair (fst {A} {B}) (snd {A'} {B'}) with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
-... | _        | _        = ⟨ fst , snd ⟩
+... | _        | _        = ⟨ fst , snd ⟩ Heap
 -- Uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ = h
 optimize-pair (_∘_ {_} {D} {_} (fst {A} {B}) h) (_∘_ {_} {D'} {_} (snd {A'} {B'}) h')
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
 ... | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = h                  -- ⟨ fst ∘ h , snd ∘ h ⟩ = h
-...   | no _     = ⟨ fst ∘ h , snd ∘ h' ⟩
-optimize-pair (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩
+...   | no _     = ⟨ fst ∘ h , snd ∘ h' ⟩ Heap
+optimize-pair (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩ Heap
 -- Default: no simplification
-optimize-pair f g = ⟨ f , g ⟩
+optimize-pair f g = ⟨ f , g ⟩ Heap
 
 ------------------------------------------------------------------------
 -- Optimizer: Simplify case
@@ -560,18 +579,20 @@ optimize-pair f g = ⟨ f , g ⟩
 --   1. Eta law: [ inl , inr ] = id
 --   2. Uniqueness law: [ h ∘ inl , h ∘ inr ] = h
 --
+-- Note: Uses Heap as default AllocMode since escape analysis hasn't run yet
+--
 optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
 -- Eta: [ inl , inr ] = id
-optimize-case (inl {A} {B}) (inr {A'} {B'}) with A ≟Type A' | B ≟Type B'
+optimize-case (inl {A} {B} m) (inr {A'} {B'} m') with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
-... | _        | _        = [ inl , inr ]
+... | _        | _        = [ inl m , inr m' ]
 -- Uniqueness: [ h ∘ inl , h ∘ inr ] = h
-optimize-case (_∘_ {_} {D} {_} h (inl {A} {B})) (_∘_ {_} {D'} {_} h' (inr {A'} {B'}))
+optimize-case (_∘_ {_} {D} {_} h (inl {A} {B} m)) (_∘_ {_} {D'} {_} h' (inr {A'} {B'} m'))
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
 ... | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = h                  -- [ h ∘ inl , h ∘ inr ] = h
-...   | no _     = [ h ∘ inl , h' ∘ inr ]
-optimize-case (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) | _ | _ | _ = [ h ∘ inl , h' ∘ inr ]
+...   | no _     = [ h ∘ inl m , h' ∘ inr m' ]
+optimize-case (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {A'} {B'} m')) | _ | _ | _ = [ h ∘ inl m , h' ∘ inr m' ]
 -- Default: no simplification
 optimize-case f g = [ f , g ]
 
@@ -582,19 +603,20 @@ optimize-case f g = [ f , g ]
 -- | Single optimization pass
 --
 -- Recursively optimize all subterms, then apply simplifications.
+-- AllocMode is preserved through optimization.
 --
 optimize-once : ∀ {A B} → IR A B → IR A B
 optimize-once id = id
 optimize-once (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
 optimize-once fst = fst
 optimize-once snd = snd
-optimize-once ⟨ f , g ⟩ = optimize-pair (optimize-once f) (optimize-once g)
-optimize-once inl = inl
-optimize-once inr = inr
+optimize-once (⟨ f , g ⟩ m) = optimize-pair (optimize-once f) (optimize-once g)
+optimize-once (inl m) = inl m
+optimize-once (inr m) = inr m
 optimize-once [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
 optimize-once terminal = terminal
 optimize-once initial = initial
-optimize-once (curry f) = curry (optimize-once f)
+optimize-once (curry f m) = curry (optimize-once f) m
 optimize-once apply = apply
 optimize-once fold = fold
 optimize-once unfold = unfold

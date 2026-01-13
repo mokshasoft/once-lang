@@ -57,7 +57,7 @@ optimize-compose-correct fst id x = refl
 optimize-compose-correct fst (g' ∘ f') x = refl
 optimize-compose-correct fst fst x = refl
 optimize-compose-correct fst snd x = refl
-optimize-compose-correct fst ⟨ f' , g' ⟩ x = refl  -- Product beta
+optimize-compose-correct fst (⟨ f' , g' ⟩ _) x = refl  -- Product beta
 optimize-compose-correct fst apply x = refl
 optimize-compose-correct fst unfold x = refl
 optimize-compose-correct fst initial ()  -- Initial absorption (Void is empty)
@@ -71,7 +71,7 @@ optimize-compose-correct snd id x = refl
 optimize-compose-correct snd (g' ∘ f') x = refl
 optimize-compose-correct snd fst x = refl
 optimize-compose-correct snd snd x = refl
-optimize-compose-correct snd ⟨ f' , g' ⟩ x = refl  -- Product beta
+optimize-compose-correct snd (⟨ f' , g' ⟩ _) x = refl  -- Product beta
 optimize-compose-correct snd apply x = refl
 optimize-compose-correct snd unfold x = refl
 optimize-compose-correct snd initial ()  -- Initial absorption (Void is empty)
@@ -81,82 +81,82 @@ optimize-compose-correct snd [ f' , g' ] (inj₂ b) = optimize-compose-correct s
 optimize-compose-correct snd (Prim name) x = refl
 
 -- ⟨_,_⟩ cases - Pairing fusion: ⟨f,g⟩ ∘ h = ⟨f∘h, g∘h⟩
-optimize-compose-correct ⟨ f' , g' ⟩ id x = refl
-optimize-compose-correct ⟨ f' , g' ⟩ initial ()  -- Initial absorption (Void is empty)
-optimize-compose-correct ⟨ f' , g' ⟩ (h ∘ h') x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) id x = refl
+optimize-compose-correct (⟨ f' , g' ⟩ _) initial ()  -- Initial absorption (Void is empty)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (h ∘ h') x =
   cong₂ _,_ (optimize-compose-correct f' (h ∘ h') x) (optimize-compose-correct g' (h ∘ h') x)
-optimize-compose-correct ⟨ f' , g' ⟩ fst x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) fst x =
   cong₂ _,_ (optimize-compose-correct f' fst x) (optimize-compose-correct g' fst x)
-optimize-compose-correct ⟨ f' , g' ⟩ snd x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) snd x =
   cong₂ _,_ (optimize-compose-correct f' snd x) (optimize-compose-correct g' snd x)
-optimize-compose-correct ⟨ f' , g' ⟩ ⟨ h , h' ⟩ x =
-  cong₂ _,_ (optimize-compose-correct f' ⟨ h , h' ⟩ x) (optimize-compose-correct g' ⟨ h , h' ⟩ x)
-optimize-compose-correct ⟨ f' , g' ⟩ inl x =
-  cong₂ _,_ (optimize-compose-correct f' inl x) (optimize-compose-correct g' inl x)
-optimize-compose-correct ⟨ f' , g' ⟩ inr x =
-  cong₂ _,_ (optimize-compose-correct f' inr x) (optimize-compose-correct g' inr x)
-optimize-compose-correct ⟨ f' , g' ⟩ [ h , h' ] x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) (⟨ h , h' ⟩ _) x =
+  cong₂ _,_ (optimize-compose-correct f' (⟨ h , h' ⟩ Heap) x) (optimize-compose-correct g' (⟨ h , h' ⟩ Heap) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (inl _) x =
+  cong₂ _,_ (optimize-compose-correct f' (inl Heap) x) (optimize-compose-correct g' (inl Heap) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (inr _) x =
+  cong₂ _,_ (optimize-compose-correct f' (inr Heap) x) (optimize-compose-correct g' (inr Heap) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) [ h , h' ] x =
   cong₂ _,_ (optimize-compose-correct f' [ h , h' ] x) (optimize-compose-correct g' [ h , h' ] x)
-optimize-compose-correct ⟨ f' , g' ⟩ terminal x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) terminal x =
   cong₂ _,_ (optimize-compose-correct f' terminal x) (optimize-compose-correct g' terminal x)
-optimize-compose-correct ⟨ f' , g' ⟩ (curry h) x =
-  cong₂ _,_ (optimize-compose-correct f' (curry h) x) (optimize-compose-correct g' (curry h) x)
-optimize-compose-correct ⟨ f' , g' ⟩ apply x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) (curry h _) x =
+  cong₂ _,_ (optimize-compose-correct f' (curry h Heap) x) (optimize-compose-correct g' (curry h Heap) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) apply x =
   cong₂ _,_ (optimize-compose-correct f' apply x) (optimize-compose-correct g' apply x)
-optimize-compose-correct ⟨ f' , g' ⟩ fold x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) fold x =
   cong₂ _,_ (optimize-compose-correct f' fold x) (optimize-compose-correct g' fold x)
-optimize-compose-correct ⟨ f' , g' ⟩ unfold x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) unfold x =
   cong₂ _,_ (optimize-compose-correct f' unfold x) (optimize-compose-correct g' unfold x)
-optimize-compose-correct ⟨ f' , g' ⟩ arr x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) arr x =
   cong₂ _,_ (optimize-compose-correct f' arr x) (optimize-compose-correct g' arr x)
-optimize-compose-correct ⟨ f' , g' ⟩ (Prim name) x =
+optimize-compose-correct (⟨ f' , g' ⟩ _) (Prim name) x =
   cong₂ _,_ (optimize-compose-correct f' (Prim name) x) (optimize-compose-correct g' (Prim name) x)
 
 -- inl cases - Case fusion: inl ∘ [ f' , g' ] = [ inl ∘ f' , inl ∘ g' ]
-optimize-compose-correct inl id x = refl
-optimize-compose-correct inl (g' ∘ f') x = refl
-optimize-compose-correct inl fst x = refl
-optimize-compose-correct inl snd x = refl
-optimize-compose-correct inl ⟨ f' , g' ⟩ x = refl
-optimize-compose-correct inl inl x = refl
-optimize-compose-correct inl inr x = refl
-optimize-compose-correct inl terminal x = refl
-optimize-compose-correct inl (curry f') x = refl
-optimize-compose-correct inl apply x = refl
-optimize-compose-correct inl fold x = refl
-optimize-compose-correct inl unfold x = refl
-optimize-compose-correct inl arr x = refl
-optimize-compose-correct inl initial ()  -- Initial absorption (Void is empty)
-optimize-compose-correct inl [ f' , g' ] (inj₁ a) = optimize-compose-correct inl f' a
-optimize-compose-correct inl [ f' , g' ] (inj₂ b) = optimize-compose-correct inl g' b
-optimize-compose-correct inl (Prim name) x = refl
+optimize-compose-correct (inl _) id x = refl
+optimize-compose-correct (inl _) (g' ∘ f') x = refl
+optimize-compose-correct (inl _) fst x = refl
+optimize-compose-correct (inl _) snd x = refl
+optimize-compose-correct (inl _) (⟨ f' , g' ⟩ _) x = refl
+optimize-compose-correct (inl _) (inl _) x = refl
+optimize-compose-correct (inl _) (inr _) x = refl
+optimize-compose-correct (inl _) terminal x = refl
+optimize-compose-correct (inl _) (curry f' _) x = refl
+optimize-compose-correct (inl _) apply x = refl
+optimize-compose-correct (inl _) fold x = refl
+optimize-compose-correct (inl _) unfold x = refl
+optimize-compose-correct (inl _) arr x = refl
+optimize-compose-correct (inl _) initial ()  -- Initial absorption (Void is empty)
+optimize-compose-correct (inl m) [ f' , g' ] (inj₁ a) = optimize-compose-correct (inl m) f' a
+optimize-compose-correct (inl m) [ f' , g' ] (inj₂ b) = optimize-compose-correct (inl m) g' b
+optimize-compose-correct (inl _) (Prim name) x = refl
 
 -- inr cases - Case fusion
-optimize-compose-correct inr id x = refl
-optimize-compose-correct inr (g' ∘ f') x = refl
-optimize-compose-correct inr fst x = refl
-optimize-compose-correct inr snd x = refl
-optimize-compose-correct inr ⟨ f' , g' ⟩ x = refl
-optimize-compose-correct inr inl x = refl
-optimize-compose-correct inr inr x = refl
-optimize-compose-correct inr terminal x = refl
-optimize-compose-correct inr (curry f') x = refl
-optimize-compose-correct inr apply x = refl
-optimize-compose-correct inr fold x = refl
-optimize-compose-correct inr unfold x = refl
-optimize-compose-correct inr arr x = refl
-optimize-compose-correct inr initial ()  -- Initial absorption (Void is empty)
-optimize-compose-correct inr [ f' , g' ] (inj₁ a) = optimize-compose-correct inr f' a
-optimize-compose-correct inr [ f' , g' ] (inj₂ b) = optimize-compose-correct inr g' b
-optimize-compose-correct inr (Prim name) x = refl
+optimize-compose-correct (inr _) id x = refl
+optimize-compose-correct (inr _) (g' ∘ f') x = refl
+optimize-compose-correct (inr _) fst x = refl
+optimize-compose-correct (inr _) snd x = refl
+optimize-compose-correct (inr _) (⟨ f' , g' ⟩ _) x = refl
+optimize-compose-correct (inr _) (inl _) x = refl
+optimize-compose-correct (inr _) (inr _) x = refl
+optimize-compose-correct (inr _) terminal x = refl
+optimize-compose-correct (inr _) (curry f' _) x = refl
+optimize-compose-correct (inr _) apply x = refl
+optimize-compose-correct (inr _) fold x = refl
+optimize-compose-correct (inr _) unfold x = refl
+optimize-compose-correct (inr _) arr x = refl
+optimize-compose-correct (inr _) initial ()  -- Initial absorption (Void is empty)
+optimize-compose-correct (inr m) [ f' , g' ] (inj₁ a) = optimize-compose-correct (inr m) f' a
+optimize-compose-correct (inr m) [ f' , g' ] (inj₂ b) = optimize-compose-correct (inr m) g' b
+optimize-compose-correct (inr _) (Prim name) x = refl
 
 -- [_,_] cases (coproduct beta laws)
 optimize-compose-correct [ f' , g' ] id x = refl
 optimize-compose-correct [ f' , g' ] (h ∘ h') x = refl
 optimize-compose-correct [ f' , g' ] fst x = refl
 optimize-compose-correct [ f' , g' ] snd x = refl
-optimize-compose-correct [ f' , g' ] inl x = refl  -- Coproduct beta
-optimize-compose-correct [ f' , g' ] inr x = refl  -- Coproduct beta
+optimize-compose-correct [ f' , g' ] (inl _) x = refl  -- Coproduct beta
+optimize-compose-correct [ f' , g' ] (inr _) x = refl  -- Coproduct beta
 optimize-compose-correct [ f' , g' ] [ h , h' ] x = refl
 optimize-compose-correct [ f' , g' ] apply x = refl
 optimize-compose-correct [ f' , g' ] unfold x = refl
@@ -168,12 +168,12 @@ optimize-compose-correct terminal id x = refl
 optimize-compose-correct terminal (g' ∘ f') x = refl
 optimize-compose-correct terminal fst x = refl
 optimize-compose-correct terminal snd x = refl
-optimize-compose-correct terminal ⟨ f' , g' ⟩ x = refl
-optimize-compose-correct terminal inl x = refl
-optimize-compose-correct terminal inr x = refl
+optimize-compose-correct terminal (⟨ f' , g' ⟩ _) x = refl
+optimize-compose-correct terminal (inl _) x = refl
+optimize-compose-correct terminal (inr _) x = refl
 optimize-compose-correct terminal [ f' , g' ] x = refl
 optimize-compose-correct terminal terminal x = refl
-optimize-compose-correct terminal (curry f') x = refl
+optimize-compose-correct terminal (curry f' _) x = refl
 optimize-compose-correct terminal apply x = refl
 optimize-compose-correct terminal fold x = refl
 optimize-compose-correct terminal unfold x = refl
@@ -182,30 +182,30 @@ optimize-compose-correct terminal initial ()  -- Void is empty
 optimize-compose-correct terminal (Prim name) x = refl
 
 -- curry cases - Case fusion: curry ∘ [ f' , g' ] = [ curry ∘ f' , curry ∘ g' ]
-optimize-compose-correct (curry f') id x = refl
-optimize-compose-correct (curry f') (g' ∘ h) x = refl
-optimize-compose-correct (curry f') fst x = refl
-optimize-compose-correct (curry f') snd x = refl
-optimize-compose-correct (curry f') ⟨ g' , h ⟩ x = refl
-optimize-compose-correct (curry f') inl x = refl
-optimize-compose-correct (curry f') inr x = refl
-optimize-compose-correct (curry f') terminal x = refl
-optimize-compose-correct (curry f') (curry g') x = refl
-optimize-compose-correct (curry f') apply x = refl
-optimize-compose-correct (curry f') fold x = refl
-optimize-compose-correct (curry f') unfold x = refl
-optimize-compose-correct (curry f') arr x = refl
-optimize-compose-correct (curry f') initial ()  -- Initial absorption (Void is empty)
-optimize-compose-correct (curry f') [ g' , h ] (inj₁ a) = optimize-compose-correct (curry f') g' a
-optimize-compose-correct (curry f') [ g' , h ] (inj₂ b) = optimize-compose-correct (curry f') h b
-optimize-compose-correct (curry f') (Prim name) x = refl
+optimize-compose-correct (curry f' m) id x = refl
+optimize-compose-correct (curry f' _) (g' ∘ h) x = refl
+optimize-compose-correct (curry f' _) fst x = refl
+optimize-compose-correct (curry f' _) snd x = refl
+optimize-compose-correct (curry f' _) (⟨ g' , h ⟩ _) x = refl
+optimize-compose-correct (curry f' _) (inl _) x = refl
+optimize-compose-correct (curry f' _) (inr _) x = refl
+optimize-compose-correct (curry f' _) terminal x = refl
+optimize-compose-correct (curry f' _) (curry g' _) x = refl
+optimize-compose-correct (curry f' _) apply x = refl
+optimize-compose-correct (curry f' _) fold x = refl
+optimize-compose-correct (curry f' _) unfold x = refl
+optimize-compose-correct (curry f' _) arr x = refl
+optimize-compose-correct (curry f' _) initial ()  -- Initial absorption (Void is empty)
+optimize-compose-correct (curry f' m) [ g' , h ] (inj₁ a) = optimize-compose-correct (curry f' m) g' a
+optimize-compose-correct (curry f' m) [ g' , h ] (inj₂ b) = optimize-compose-correct (curry f' m) h b
+optimize-compose-correct (curry f' _) (Prim name) x = refl
 
 -- apply cases
 optimize-compose-correct apply id x = refl
 optimize-compose-correct apply (g' ∘ f') x = refl
 optimize-compose-correct apply fst x = refl
 optimize-compose-correct apply snd x = refl
-optimize-compose-correct apply ⟨ f' , g' ⟩ x = refl
+optimize-compose-correct apply (⟨ f' , g' ⟩ _) x = refl
 optimize-compose-correct apply apply x = refl
 optimize-compose-correct apply unfold x = refl
 optimize-compose-correct apply initial ()  -- Initial absorption (Void is empty)
@@ -218,11 +218,11 @@ optimize-compose-correct fold id x = refl
 optimize-compose-correct fold (g' ∘ f') x = refl
 optimize-compose-correct fold fst x = refl
 optimize-compose-correct fold snd x = refl
-optimize-compose-correct fold ⟨ f' , g' ⟩ x = refl
-optimize-compose-correct fold inl x = refl
-optimize-compose-correct fold inr x = refl
+optimize-compose-correct fold (⟨ f' , g' ⟩ _) x = refl
+optimize-compose-correct fold (inl _) x = refl
+optimize-compose-correct fold (inr _) x = refl
 optimize-compose-correct fold terminal x = refl
-optimize-compose-correct fold (curry f') x = refl
+optimize-compose-correct fold (curry f' _) x = refl
 optimize-compose-correct fold apply x = refl
 optimize-compose-correct fold fold x = refl
 optimize-compose-correct fold unfold x = refl  -- Fixed point law
@@ -250,7 +250,7 @@ optimize-compose-correct arr id x = refl
 optimize-compose-correct arr (g' ∘ f') x = refl
 optimize-compose-correct arr fst x = refl
 optimize-compose-correct arr snd x = refl
-optimize-compose-correct arr (curry f') x = refl
+optimize-compose-correct arr (curry f' _) x = refl
 optimize-compose-correct arr apply x = refl
 optimize-compose-correct arr unfold x = refl
 optimize-compose-correct arr initial ()  -- Initial absorption (Void is empty)
@@ -270,24 +270,24 @@ optimize-compose-correct (h ∘ g) fst x =
 optimize-compose-correct (h ∘ g) snd x =
   trans (optimize-compose-correct h (optimize-compose g snd) x)
         (cong (eval h) (optimize-compose-correct g snd x))
-optimize-compose-correct (h ∘ g) ⟨ f' , f'' ⟩ x =
-  trans (optimize-compose-correct h (optimize-compose g ⟨ f' , f'' ⟩) x)
-        (cong (eval h) (optimize-compose-correct g ⟨ f' , f'' ⟩ x))
-optimize-compose-correct (h ∘ g) inl x =
-  trans (optimize-compose-correct h (optimize-compose g inl) x)
-        (cong (eval h) (optimize-compose-correct g inl x))
-optimize-compose-correct (h ∘ g) inr x =
-  trans (optimize-compose-correct h (optimize-compose g inr) x)
-        (cong (eval h) (optimize-compose-correct g inr x))
+optimize-compose-correct (h ∘ g) (⟨ f' , f'' ⟩ m) x =
+  trans (optimize-compose-correct h (optimize-compose g (⟨ f' , f'' ⟩ m)) x)
+        (cong (eval h) (optimize-compose-correct g (⟨ f' , f'' ⟩ m) x))
+optimize-compose-correct (h ∘ g) (inl m) x =
+  trans (optimize-compose-correct h (optimize-compose g (inl m)) x)
+        (cong (eval h) (optimize-compose-correct g (inl m) x))
+optimize-compose-correct (h ∘ g) (inr m) x =
+  trans (optimize-compose-correct h (optimize-compose g (inr m)) x)
+        (cong (eval h) (optimize-compose-correct g (inr m) x))
 optimize-compose-correct (h ∘ g) [ f' , f'' ] x =
   trans (optimize-compose-correct h (optimize-compose g [ f' , f'' ]) x)
         (cong (eval h) (optimize-compose-correct g [ f' , f'' ] x))
 optimize-compose-correct (h ∘ g) terminal x =
   trans (optimize-compose-correct h (optimize-compose g terminal) x)
         (cong (eval h) (optimize-compose-correct g terminal x))
-optimize-compose-correct (h ∘ g) (curry f') x =
-  trans (optimize-compose-correct h (optimize-compose g (curry f')) x)
-        (cong (eval h) (optimize-compose-correct g (curry f') x))
+optimize-compose-correct (h ∘ g) (curry f' m) x =
+  trans (optimize-compose-correct h (optimize-compose g (curry f' m)) x)
+        (cong (eval h) (optimize-compose-correct g (curry f' m) x))
 optimize-compose-correct (h ∘ g) apply x =
   trans (optimize-compose-correct h (optimize-compose g apply) x)
         (cong (eval h) (optimize-compose-correct g apply x))
@@ -309,11 +309,11 @@ optimize-compose-correct (Prim name) id x = refl
 optimize-compose-correct (Prim name) (g' ∘ f') x = refl
 optimize-compose-correct (Prim name) fst x = refl
 optimize-compose-correct (Prim name) snd x = refl
-optimize-compose-correct (Prim name) ⟨ f' , g' ⟩ x = refl
-optimize-compose-correct (Prim name) inl x = refl
-optimize-compose-correct (Prim name) inr x = refl
+optimize-compose-correct (Prim name) (⟨ f' , g' ⟩ _) x = refl
+optimize-compose-correct (Prim name) (inl _) x = refl
+optimize-compose-correct (Prim name) (inr _) x = refl
 optimize-compose-correct (Prim name) terminal x = refl
-optimize-compose-correct (Prim name) (curry f') x = refl
+optimize-compose-correct (Prim name) (curry f' _) x = refl
 optimize-compose-correct (Prim name) apply x = refl
 optimize-compose-correct (Prim name) fold x = refl
 optimize-compose-correct (Prim name) unfold x = refl
@@ -328,11 +328,11 @@ optimize-compose-correct (Prim name) (Prim name') x = refl
 ------------------------------------------------------------------------
 
 optimize-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
-                      → eval (optimize-pair f g) x ≡ eval ⟨ f , g ⟩ x
+                      → eval (optimize-pair f g) x ≡ eval (⟨ f , g ⟩ Heap) x
 
 -- Eta law: ⟨ fst , snd ⟩ = id
 optimize-pair-correct (fst {A} {B}) (snd {A'} {B'}) x with A ≟Type A' | B ≟Type B'
-... | yes refl | yes refl = sym (eval-pair-eta x)
+... | yes refl | yes refl = sym (eval-pair-eta Heap x)
 ... | yes refl | no _     = refl
 ... | no _     | yes _    = refl
 ... | no _     | no _     = refl
@@ -341,11 +341,11 @@ optimize-pair-correct (fst {A} {B}) (snd {A'} {B'}) x with A ≟Type A' | B ≟T
 optimize-pair-correct fst id x = refl
 optimize-pair-correct fst (g ∘ h) x = refl
 optimize-pair-correct fst fst x = refl
-optimize-pair-correct fst ⟨ g , h ⟩ x = refl
-optimize-pair-correct fst inl x = refl
-optimize-pair-correct fst inr x = refl
+optimize-pair-correct fst (⟨ g , h ⟩ _) x = refl
+optimize-pair-correct fst (inl _) x = refl
+optimize-pair-correct fst (inr _) x = refl
 optimize-pair-correct fst terminal x = refl
-optimize-pair-correct fst (curry g) x = refl
+optimize-pair-correct fst (curry g _) x = refl
 optimize-pair-correct fst apply x = refl
 optimize-pair-correct fst fold x = refl
 optimize-pair-correct fst (Prim name) x = refl
@@ -355,7 +355,7 @@ optimize-pair-correct (_∘_ {_} {D} {_} (fst {A} {B}) h) (_∘_ {_} {D'} {_} (s
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
 optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {.B}) h') x
   | yes refl | yes refl | yes refl with h ≟IR h'
-...   | yes refl = sym (eval-pair-unique h x)  -- Use uniqueness law
+...   | yes refl = sym (eval-pair-unique h Heap x)  -- Use uniqueness law
 ...   | no _     = refl
 optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {.A} {.B}) h') x
   | yes refl | yes refl | no _  = refl
@@ -368,12 +368,12 @@ optimize-pair-correct (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') x
 optimize-pair-correct (fst ∘ h) id x = refl
 optimize-pair-correct (fst ∘ h) fst x = refl
 optimize-pair-correct (fst ∘ h) snd x = refl
-optimize-pair-correct (fst ∘ h) ⟨ g , g' ⟩ x = refl
-optimize-pair-correct (fst ∘ h) inl x = refl
-optimize-pair-correct (fst ∘ h) inr x = refl
+optimize-pair-correct (fst ∘ h) (⟨ g , g' ⟩ _) x = refl
+optimize-pair-correct (fst ∘ h) (inl _) x = refl
+optimize-pair-correct (fst ∘ h) (inr _) x = refl
 optimize-pair-correct (fst ∘ h) [ g , g' ] x = refl
 optimize-pair-correct (fst ∘ h) terminal x = refl
-optimize-pair-correct (fst ∘ h) (curry g) x = refl
+optimize-pair-correct (fst ∘ h) (curry g _) x = refl
 optimize-pair-correct (fst ∘ h) apply x = refl
 optimize-pair-correct (fst ∘ h) fold x = refl
 optimize-pair-correct (fst ∘ h) unfold x = refl
@@ -381,13 +381,13 @@ optimize-pair-correct (fst ∘ h) arr x = refl
 -- Non-snd composition
 optimize-pair-correct (fst ∘ h) (id ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) (fst ∘ g') x = refl
-optimize-pair-correct (fst ∘ h) (inl ∘ g') x = refl
-optimize-pair-correct (fst ∘ h) (inr ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ((inl _) ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ((inr _) ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) ([ f , g ] ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) (terminal ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) ((f ∘ f') ∘ g') x = refl
-optimize-pair-correct (fst ∘ h) (⟨ f , g ⟩ ∘ g') x = refl
-optimize-pair-correct (fst ∘ h) ((curry f) ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ((⟨ f , g ⟩ _) ∘ g') x = refl
+optimize-pair-correct (fst ∘ h) ((curry f _) ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) (apply ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) (fold ∘ g') x = refl
 optimize-pair-correct (fst ∘ h) (unfold ∘ g') x = refl
@@ -401,13 +401,13 @@ optimize-pair-correct (fst ∘ h) (Prim name) x = refl
 optimize-pair-correct id g x = refl
 optimize-pair-correct (id ∘ h) g x = refl
 optimize-pair-correct (snd ∘ h) g x = refl
-optimize-pair-correct (inl ∘ h) g x = refl
-optimize-pair-correct (inr ∘ h) g x = refl
+optimize-pair-correct ((inl _) ∘ h) g x = refl
+optimize-pair-correct ((inr _) ∘ h) g x = refl
 optimize-pair-correct ([ f , f' ] ∘ h) g x = refl
 optimize-pair-correct (terminal ∘ h) g x = refl
 optimize-pair-correct ((f ∘ f') ∘ h) g x = refl
-optimize-pair-correct (⟨ f , f' ⟩ ∘ h) g x = refl
-optimize-pair-correct ((curry f) ∘ h) g x = refl
+optimize-pair-correct ((⟨ f , f' ⟩ _) ∘ h) g x = refl
+optimize-pair-correct ((curry f _) ∘ h) g x = refl
 optimize-pair-correct (apply ∘ h) g x = refl
 optimize-pair-correct (fold ∘ h) g x = refl
 optimize-pair-correct (unfold ∘ h) g x = refl
@@ -416,12 +416,12 @@ optimize-pair-correct (arr ∘ h) g x = refl
 optimize-pair-correct (initial ∘ h) g x = refl
 optimize-pair-correct ((Prim name) ∘ h) g x = refl
 optimize-pair-correct snd g x = refl
-optimize-pair-correct ⟨ f , h ⟩ g x = refl
-optimize-pair-correct inl g x = refl
-optimize-pair-correct inr g x = refl
+optimize-pair-correct (⟨ f , h ⟩ _) g x = refl
+optimize-pair-correct (inl _) g x = refl
+optimize-pair-correct (inr _) g x = refl
 optimize-pair-correct [ f , h ] g x = refl
 optimize-pair-correct terminal g x = refl
-optimize-pair-correct (curry f) g x = refl
+optimize-pair-correct (curry f _) g x = refl
 optimize-pair-correct apply g x = refl
 optimize-pair-correct fold g x = refl
 optimize-pair-correct unfold g x = refl
@@ -437,85 +437,97 @@ optimize-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧
                       → eval (optimize-case f g) x ≡ eval [ f , g ] x
 
 -- Eta law: [ inl , inr ] = id
-optimize-case-correct (inl {A} {B}) (inr {A'} {B'}) x with A ≟Type A' | B ≟Type B'
-... | yes refl | yes refl = sym (eval-case-eta x)
+-- Note: AllocModes m and m' may differ but semantics are the same (mode is transparent)
+optimize-case-correct (inl {A} {B} m) (inr {A'} {B'} m') x with A ≟Type A' | B ≟Type B'
+... | yes refl | yes refl = sym (lemma x)
+  where
+    -- AllocMode doesn't affect semantics of inl/inr
+    lemma : (y : ⟦ A + B ⟧) → eval [ inl m , inr m' ] y ≡ y
+    lemma (inj₁ a) = refl
+    lemma (inj₂ b) = refl
 ... | yes refl | no _     = refl
 ... | no _     | yes _    = refl
 ... | no _     | no _     = refl
 
 -- All other inl cases
-optimize-case-correct inl id x = refl
-optimize-case-correct inl (g ∘ h) x = refl
-optimize-case-correct inl fst x = refl
-optimize-case-correct inl snd x = refl
-optimize-case-correct inl inl x = refl
-optimize-case-correct inl [ g , h ] x = refl
-optimize-case-correct inl initial x = refl
-optimize-case-correct inl apply x = refl
-optimize-case-correct inl unfold x = refl
-optimize-case-correct inl (Prim name) x = refl
+optimize-case-correct (inl _) id x = refl
+optimize-case-correct (inl _) (g ∘ h) x = refl
+optimize-case-correct (inl _) fst x = refl
+optimize-case-correct (inl _) snd x = refl
+optimize-case-correct (inl _) (inl _) x = refl
+optimize-case-correct (inl _) [ g , h ] x = refl
+optimize-case-correct (inl _) initial x = refl
+optimize-case-correct (inl _) apply x = refl
+optimize-case-correct (inl _) unfold x = refl
+optimize-case-correct (inl _) (Prim name) x = refl
 
 -- Uniqueness: [ h ∘ inl , h' ∘ inr ] cases
-optimize-case-correct (_∘_ {_} {D} {_} h (inl {A} {B})) (_∘_ {_} {D'} {_} h' (inr {A'} {B'})) x
+-- Note: AllocModes m and m' may differ but uniqueness still holds (mode is transparent)
+optimize-case-correct (_∘_ {_} {D} {_} h (inl {A} {B} m)) (_∘_ {_} {D'} {_} h' (inr {A'} {B'} m')) x
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
-optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {.B})) x
+optimize-case-correct (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {.A} {.B} m')) x
   | yes refl | yes refl | yes refl with h ≟IR h'
-...   | yes refl = sym (eval-case-unique h x)  -- Use uniqueness law
+...   | yes refl = sym (lemma x)  -- Use uniqueness with mode-transparent proof
+  where
+    -- AllocMode doesn't affect semantics, so uniqueness holds regardless of modes
+    lemma : (y : ⟦ A + B ⟧) → eval [ h ∘ inl m , h ∘ inr m' ] y ≡ eval h y
+    lemma (inj₁ a) = refl
+    lemma (inj₂ b) = refl
 ...   | no _     = refl
-optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {.B})) x
+optimize-case-correct (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {.A} {.B} m')) x
   | yes refl | yes refl | no _  = refl
-optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {.A} {B'})) x
+optimize-case-correct (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {.A} {B'} m')) x
   | yes refl | no _  | _     = refl
-optimize-case-correct (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) x
+optimize-case-correct (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {A'} {B'} m')) x
   | no _  | _     | _     = refl
 
 -- h ∘ inl with second arg NOT of form h' ∘ inr
 -- Non-compositions
-optimize-case-correct (h ∘ inl) id x = refl
-optimize-case-correct (h ∘ inl) fst x = refl
-optimize-case-correct (h ∘ inl) snd x = refl
-optimize-case-correct (h ∘ inl) ⟨ g₁ , g₂ ⟩ x = refl
-optimize-case-correct (h ∘ inl) inl x = refl
-optimize-case-correct (h ∘ inl) inr x = refl
-optimize-case-correct (h ∘ inl) [ g₁ , g₂ ] x = refl
-optimize-case-correct (h ∘ inl) terminal x = refl
-optimize-case-correct (h ∘ inl) initial x = refl
-optimize-case-correct (h ∘ inl) (curry g) x = refl
-optimize-case-correct (h ∘ inl) apply x = refl
-optimize-case-correct (h ∘ inl) fold x = refl
-optimize-case-correct (h ∘ inl) unfold x = refl
-optimize-case-correct (h ∘ inl) arr x = refl
+optimize-case-correct (h ∘ (inl _)) id x = refl
+optimize-case-correct (h ∘ (inl _)) fst x = refl
+optimize-case-correct (h ∘ (inl _)) snd x = refl
+optimize-case-correct (h ∘ (inl _)) (⟨ g₁ , g₂ ⟩ _) x = refl
+optimize-case-correct (h ∘ (inl _)) (inl _) x = refl
+optimize-case-correct (h ∘ (inl _)) (inr _) x = refl
+optimize-case-correct (h ∘ (inl _)) [ g₁ , g₂ ] x = refl
+optimize-case-correct (h ∘ (inl _)) terminal x = refl
+optimize-case-correct (h ∘ (inl _)) initial x = refl
+optimize-case-correct (h ∘ (inl _)) (curry g _) x = refl
+optimize-case-correct (h ∘ (inl _)) apply x = refl
+optimize-case-correct (h ∘ (inl _)) fold x = refl
+optimize-case-correct (h ∘ (inl _)) unfold x = refl
+optimize-case-correct (h ∘ (inl _)) arr x = refl
 -- Compositions NOT ending in inr
-optimize-case-correct (h ∘ inl) (g ∘ id) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ fst) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ snd) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ (g' ∘ g'')) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ ⟨ g₁ , g₂ ⟩) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ inl) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ id) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ fst) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ snd) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ (g' ∘ g'')) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ (⟨ g₁ , g₂ ⟩ _)) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ (inl _)) x = refl
 -- g ∘ inr is handled by uniqueness case above
-optimize-case-correct (h ∘ inl) (g ∘ [ g₁ , g₂ ]) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ terminal) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ initial) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ curry g') x = refl
-optimize-case-correct (h ∘ inl) (g ∘ apply) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ fold) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ unfold) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ arr) x = refl
-optimize-case-correct (h ∘ inl) (g ∘ Prim name) x = refl
-optimize-case-correct (h ∘ inl) (Prim name) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ [ g₁ , g₂ ]) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ terminal) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ initial) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ (curry g' _)) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ apply) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ fold) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ unfold) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ arr) x = refl
+optimize-case-correct (h ∘ (inl _)) (g ∘ Prim name) x = refl
+optimize-case-correct (h ∘ (inl _)) (Prim name) x = refl
 
 -- All other first arg cases (not inl at end)
 optimize-case-correct (f ∘ id) g x = refl
 optimize-case-correct (f ∘ fst) g x = refl
 optimize-case-correct (f ∘ snd) g x = refl
 optimize-case-correct (f ∘ (f' ∘ f'')) g x = refl
-optimize-case-correct (f ∘ ⟨ f₁ , f₂ ⟩) g x = refl
+optimize-case-correct (f ∘ (⟨ f₁ , f₂ ⟩ _)) g x = refl
 -- f ∘ inl is handled above
-optimize-case-correct (f ∘ inr) g x = refl
+optimize-case-correct (f ∘ (inr _)) g x = refl
 optimize-case-correct (f ∘ [ f₁ , f₂ ]) g x = refl
 optimize-case-correct (f ∘ terminal) g x = refl
 optimize-case-correct (f ∘ initial) g x = refl
-optimize-case-correct (f ∘ curry f') g x = refl
+optimize-case-correct (f ∘ (curry f' _)) g x = refl
 optimize-case-correct (f ∘ apply) g x = refl
 optimize-case-correct (f ∘ fold) g x = refl
 optimize-case-correct (f ∘ unfold) g x = refl
@@ -524,12 +536,12 @@ optimize-case-correct (f ∘ Prim name) g x = refl
 optimize-case-correct id g x = refl
 optimize-case-correct fst g x = refl
 optimize-case-correct snd g x = refl
-optimize-case-correct ⟨ f , h ⟩ g x = refl
-optimize-case-correct inr g x = refl
+optimize-case-correct (⟨ f , h ⟩ _) g x = refl
+optimize-case-correct (inr _) g x = refl
 optimize-case-correct [ f , h ] g x = refl
 optimize-case-correct terminal g x = refl
 optimize-case-correct initial g x = refl
-optimize-case-correct (curry f) g x = refl
+optimize-case-correct (curry f _) g x = refl
 optimize-case-correct apply g x = refl
 optimize-case-correct fold g x = refl
 optimize-case-correct unfold g x = refl
@@ -549,11 +561,11 @@ optimize-once-correct (g ∘ f) x =
                (optimize-once-correct g (eval f x)))
 optimize-once-correct fst x = refl
 optimize-once-correct snd x = refl
-optimize-once-correct ⟨ f , g ⟩ x =
+optimize-once-correct (⟨ f , g ⟩ _) x =
   trans (optimize-pair-correct (optimize-once f) (optimize-once g) x)
         (cong₂ _,_ (optimize-once-correct f x) (optimize-once-correct g x))
-optimize-once-correct inl x = refl
-optimize-once-correct inr x = refl
+optimize-once-correct (inl _) x = refl
+optimize-once-correct (inr _) x = refl
 optimize-once-correct [ f , g ] x =
   trans (optimize-case-correct (optimize-once f) (optimize-once g) x)
         (lemma x)
@@ -563,10 +575,10 @@ optimize-once-correct [ f , g ] x =
     lemma (inj₂ b) = optimize-once-correct g b
 optimize-once-correct terminal x = refl
 optimize-once-correct initial ()
-optimize-once-correct (curry f) x =
+optimize-once-correct (curry f _) x =
   closure-semantics-eq
-    (eval (curry (optimize-once f)) x)
-    (eval (curry f) x)
+    (eval (curry (optimize-once f) Heap) x)
+    (eval (curry f Heap) x)
     (funext (λ b → optimize-once-correct f (x , b)))
 optimize-once-correct apply x = refl
 optimize-once-correct fold x = refl

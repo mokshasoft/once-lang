@@ -54,11 +54,11 @@ desugar (g S.∘ f) = desugar g C.∘ desugar f
 -- Products
 desugar S.fst = C.fst
 desugar S.snd = C.snd
-desugar S.⟨ f , g ⟩ = C.⟨ desugar f , desugar g ⟩
+desugar S.⟨ f , g ⟩ = C.⟨ desugar f , desugar g ⟩ C.Heap
 
 -- Coproducts
-desugar S.inl = C.inl
-desugar S.inr = C.inr
+desugar S.inl = C.inl C.Heap
+desugar S.inr = C.inr C.Heap
 desugar S.[ f , g ] = C.[ desugar f , desugar g ]
 
 -- Terminal/Initial
@@ -66,7 +66,7 @@ desugar S.terminal = C.terminal
 desugar S.initial = C.initial
 
 -- Exponential
-desugar (S.curry f) = C.curry (desugar f)
+desugar (S.curry f) = C.curry (desugar f) C.Heap
 desugar S.apply = C.apply
 
 -- Recursive types
@@ -86,7 +86,7 @@ desugar S.arr = C.arr
 -- - Body e2 : A * B → C receives this pair
 -- - Body uses fst to access original input, snd for bound value
 --
-desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩
+desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩ C.Heap
 
 -- | Primitive passthrough
 --
