@@ -17,6 +17,8 @@ module Once.Backend.X86.Encoding where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-suc; +-comm)
+
+open import Once.Backend.X86.Syntax using (slot-size)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -53,21 +55,21 @@ alloc-pair : Memory → Word → Word → Word → Memory × Word
 alloc-pair m base v₁ v₂ = m' , base
   where
     m₁ = writeMem m base v₁
-    m' = writeMem m₁ (base + 8) v₂
+    m' = writeMem m₁ (base + slot-size) v₂
 
 -- | Allocate a sum (left): write tag 0 and value
 alloc-inl : Memory → Word → Word → Memory × Word
 alloc-inl m base v = m' , base
   where
     m₁ = writeMem m base 0       -- tag = 0
-    m' = writeMem m₁ (base + 8) v
+    m' = writeMem m₁ (base + slot-size) v
 
 -- | Allocate a sum (right): write tag 1 and value
 alloc-inr : Memory → Word → Word → Memory × Word
 alloc-inr m base v = m' , base
   where
     m₁ = writeMem m base 1       -- tag = 1
-    m' = writeMem m₁ (base + 8) v
+    m' = writeMem m₁ (base + slot-size) v
 
 ------------------------------------------------------------------------
 -- DERIVED PROPERTIES
@@ -83,14 +85,14 @@ alloc-pair-fst : ∀ (m : Memory) (base v₁ v₂ : Word) →
   in readMem m' addr ≡ just v₁
 alloc-pair-fst m base v₁ v₂ = trans step3 step4
   where
-    -- m' = writeMem (writeMem m base v₁) (base + 8) v₂
+    -- m' = writeMem (writeMem m base v₁) (base + slot-size) v₂
     -- Need: readMem m' base ≡ just v₁
     m₁ = writeMem m base v₁
-    m' = writeMem m₁ (base + 8) v₂
+    m' = writeMem m₁ (base + slot-size) v₂
 
     -- Step 3: readMem m' base = readMem m₁ base (by mem-read-other)
     step3 : readMem m' base ≡ readMem m₁ base
-    step3 = mem-read-other {m₁} {base + 8} {base} {v₂} (λ eq → n≢n+8 base (sym eq))
+    step3 = mem-read-other {m₁} {base + slot-size} {base} {v₂} (λ eq → n≢n+8 base (sym eq))
 
     -- Step 4: readMem m₁ base = just v₁ (by mem-read-write)
     step4 : readMem m₁ base ≡ just v₁
@@ -100,12 +102,12 @@ alloc-pair-fst m base v₁ v₂ = trans step3 step4
 -- DERIVED from mem-read-write
 alloc-pair-snd : ∀ (m : Memory) (base v₁ v₂ : Word) →
   let (m' , addr) = alloc-pair m base v₁ v₂
-  in readMem m' (addr + 8) ≡ just v₂
+  in readMem m' (addr + slot-size) ≡ just v₂
 alloc-pair-snd m base v₁ v₂ =
-  -- m' = writeMem (writeMem m base v₁) (base + 8) v₂
-  -- Need: readMem m' (base + 8) ≡ just v₂
+  -- m' = writeMem (writeMem m base v₁) (base + slot-size) v₂
+  -- Need: readMem m' (base + slot-size) ≡ just v₂
   -- Direct application of mem-read-write
-  mem-read-write {writeMem m base v₁} {base + 8} {v₂}
+  mem-read-write {writeMem m base v₁} {base + slot-size} {v₂}
 
 -- | Reading tag of allocated left sum
 -- DERIVED from mem-read-write and mem-read-other
@@ -115,10 +117,10 @@ alloc-inl-tag : ∀ (m : Memory) (base v : Word) →
 alloc-inl-tag m base v = trans step1 step2
   where
     m₁ = writeMem m base 0
-    m' = writeMem m₁ (base + 8) v
+    m' = writeMem m₁ (base + slot-size) v
 
     step1 : readMem m' base ≡ readMem m₁ base
-    step1 = mem-read-other {m₁} {base + 8} {base} {v} (λ eq → n≢n+8 base (sym eq))
+    step1 = mem-read-other {m₁} {base + slot-size} {base} {v} (λ eq → n≢n+8 base (sym eq))
 
     step2 : readMem m₁ base ≡ just 0
     step2 = mem-read-write {m} {base} {0}
@@ -127,9 +129,9 @@ alloc-inl-tag m base v = trans step1 step2
 -- DERIVED from mem-read-write
 alloc-inl-val : ∀ (m : Memory) (base v : Word) →
   let (m' , addr) = alloc-inl m base v
-  in readMem m' (addr + 8) ≡ just v
+  in readMem m' (addr + slot-size) ≡ just v
 alloc-inl-val m base v =
-  mem-read-write {writeMem m base 0} {base + 8} {v}
+  mem-read-write {writeMem m base 0} {base + slot-size} {v}
 
 -- | Reading tag of allocated right sum
 -- DERIVED from mem-read-write and mem-read-other
@@ -139,10 +141,10 @@ alloc-inr-tag : ∀ (m : Memory) (base v : Word) →
 alloc-inr-tag m base v = trans step1 step2
   where
     m₁ = writeMem m base 1
-    m' = writeMem m₁ (base + 8) v
+    m' = writeMem m₁ (base + slot-size) v
 
     step1 : readMem m' base ≡ readMem m₁ base
-    step1 = mem-read-other {m₁} {base + 8} {base} {v} (λ eq → n≢n+8 base (sym eq))
+    step1 = mem-read-other {m₁} {base + slot-size} {base} {v} (λ eq → n≢n+8 base (sym eq))
 
     step2 : readMem m₁ base ≡ just 1
     step2 = mem-read-write {m} {base} {1}
@@ -151,9 +153,9 @@ alloc-inr-tag m base v = trans step1 step2
 -- DERIVED from mem-read-write
 alloc-inr-val : ∀ (m : Memory) (base v : Word) →
   let (m' , addr) = alloc-inr m base v
-  in readMem m' (addr + 8) ≡ just v
+  in readMem m' (addr + slot-size) ≡ just v
 alloc-inr-val m base v =
-  mem-read-write {writeMem m base 1} {base + 8} {v}
+  mem-read-write {writeMem m base 1} {base + slot-size} {v}
 
 ------------------------------------------------------------------------
 -- HeapValid: Tracking Properly Allocated Memory
@@ -216,21 +218,21 @@ record-inr base v h = alloc-at base (inr-alloc v) ∷ h
 alloc-pair-valid : (m : Memory) (base v₁ v₂ : Word) (h : HeapValid) →
   let (m' , addr) = alloc-pair m base v₁ v₂
       h' = record-pair base v₁ v₂ h
-  in (readMem m' addr ≡ just v₁) × (readMem m' (addr + 8) ≡ just v₂)
+  in (readMem m' addr ≡ just v₁) × (readMem m' (addr + slot-size) ≡ just v₂)
 alloc-pair-valid m base v₁ v₂ h = alloc-pair-fst m base v₁ v₂ , alloc-pair-snd m base v₁ v₂
 
 -- | Allocate left sum and record it
 alloc-inl-valid : (m : Memory) (base v : Word) (h : HeapValid) →
   let (m' , addr) = alloc-inl m base v
       h' = record-inl base v h
-  in (readMem m' addr ≡ just 0) × (readMem m' (addr + 8) ≡ just v)
+  in (readMem m' addr ≡ just 0) × (readMem m' (addr + slot-size) ≡ just v)
 alloc-inl-valid m base v h = alloc-inl-tag m base v , alloc-inl-val m base v
 
 -- | Allocate right sum and record it
 alloc-inr-valid : (m : Memory) (base v : Word) (h : HeapValid) →
   let (m' , addr) = alloc-inr m base v
       h' = record-inr base v h
-  in (readMem m' addr ≡ just 1) × (readMem m' (addr + 8) ≡ just v)
+  in (readMem m' addr ≡ just 1) × (readMem m' (addr + slot-size) ≡ just v)
 alloc-inr-valid m base v h = alloc-inr-tag m base v , alloc-inr-val m base v
 
 ------------------------------------------------------------------------
@@ -323,10 +325,10 @@ alloc-pair-stateful-fst st v₁ v₂ = trans step1 step2
   where
     base' = heap-ptr st
     m₁ = writeMem (mem st) base' v₁
-    m₂ = writeMem m₁ (base' + 8) v₂
+    m₂ = writeMem m₁ (base' + slot-size) v₂
 
     step1 : readMem m₂ base' ≡ readMem m₁ base'
-    step1 = mem-read-other {m₁} {base' + 8} {base'} {v₂} (λ eq → n≢n+8 base' (sym eq))
+    step1 = mem-read-other {m₁} {base' + slot-size} {base'} {v₂} (λ eq → n≢n+8 base' (sym eq))
 
     step2 : readMem m₁ base' ≡ just v₁
     step2 = mem-read-write {mem st} {base'} {v₁}
@@ -334,8 +336,8 @@ alloc-pair-stateful-fst st v₁ v₂ = trans step1 step2
 -- | Reading second component of statefully allocated pair
 alloc-pair-stateful-snd : ∀ (st : AllocState) (v₁ v₂ : Word) →
   let (st' , base) = alloc-pair-stateful st v₁ v₂
-  in readMem (mem st') (base + 8) ≡ just v₂
-alloc-pair-stateful-snd st v₁ v₂ = mem-read-write {writeMem (mem st) (heap-ptr st) v₁} {heap-ptr st + 8} {v₂}
+  in readMem (mem st') (base + slot-size) ≡ just v₂
+alloc-pair-stateful-snd st v₁ v₂ = mem-read-write {writeMem (mem st) (heap-ptr st) v₁} {heap-ptr st + slot-size} {v₂}
 
 ------------------------------------------------------------------------
 -- Connection: Stateful Encode = Allocation Address
@@ -370,7 +372,7 @@ encode-pair-stateful-fst enc-a enc-b st a b = alloc-pair-stateful-fst st (enc-a 
 encode-pair-stateful-snd : ∀ {A B : Set} (enc-a : A → Word) (enc-b : B → Word)
     (st : AllocState) (a : A) (b : B) →
     let (st' , addr) = encode-pair-stateful enc-a enc-b st (a , b)
-    in readMem (mem st') (addr + 8) ≡ just (enc-b b)
+    in readMem (mem st') (addr + slot-size) ≡ just (enc-b b)
 encode-pair-stateful-snd enc-a enc-b st a b = alloc-pair-stateful-snd st (enc-a a) (enc-b b)
 
 ------------------------------------------------------------------------

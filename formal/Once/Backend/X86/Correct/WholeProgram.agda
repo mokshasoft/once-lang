@@ -79,6 +79,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
@@ -182,7 +183,7 @@ record WholeProgramResult {A B : Type} (ir : IR A B)
     wp-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     -- Stack invariants
     wp-stack-inv : StackInvariant s'
-    wp-rsp-bound : readReg (regs s') rsp > 16
+    wp-rsp-bound : readReg (regs s') rsp > slots 2
     wp-rbp-inv   : RbpInvariant s'
     -- Closure WF + memory layout output (for threading to apply)
     -- Uses ClosureMemoryOutput to track both WF and memory proofs
@@ -258,7 +259,7 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
@@ -349,7 +350,7 @@ whole-program-correct : ∀ {A B} (ir : IR A B)
   pc s ≡ 0 →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = compile-x86 ir
   in ∃[ s' ] (Star prog s s'

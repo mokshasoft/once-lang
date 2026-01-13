@@ -26,6 +26,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; StackPointer; frameSlot)
 
@@ -58,7 +59,7 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     thunk-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
     thunk-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     thunk-stack-inv : StackInvariant s'
-    thunk-rsp-bound : readReg (regs s') rsp > 16
+    thunk-rsp-bound : readReg (regs s') rsp > slots 2
 
     -- RSP after thunk = entry RSP + 8 (thunk's ret pops return address)
     -- Thunk internally: push r15, push rbp, sub 16, <run f>, add 16, pop rbp, pop r15, ret
@@ -134,7 +135,7 @@ record ClosureWellFormed {A B : Type} (prog : Program)
       readReg (regs s) r12 ≡ env-addr →
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →
-      readReg (regs s) rsp > 16 →
+      readReg (regs s) rsp > slots 2 →
       StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
       region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
       ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a
@@ -171,7 +172,7 @@ record CurryResult {A B C : Type} (f : IR (A * B) C)
     curry-mem      : readMem (memory s') (readReg (regs s) r15) ≡
                      readMem (memory s) (readReg (regs s) r15)
     curry-stack-inv : StackInvariant s'
-    curry-rsp-bound : readReg (regs s') rsp > 16
+    curry-rsp-bound : readReg (regs s') rsp > slots 2
 
     -- The closure produced is well-formed!
     -- This is the key property that apply needs
@@ -215,7 +216,7 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
     apply-mem      : readMem (memory s') (readReg (regs s) r15) ≡
                      readMem (memory s) (readReg (regs s) r15)
     apply-stack-inv : StackInvariant s'
-    apply-rsp-bound : readReg (regs s') rsp > 16
+    apply-rsp-bound : readReg (regs s') rsp > slots 2
 
 open ApplyWithWFResult public
 
@@ -239,7 +240,7 @@ open ApplyWithWFResult public
 --   pc s ≡ length prefix →
 --   readReg (regs s) rdi ≡ encode (cl , a) →
 --   StackInvariant s →
---   readReg (regs s) rsp > 16 →
+--   readReg (regs s) rsp > slots 2 →
 --   ∃[ s' ] ApplyWithWFResult (prefix ++ compile-x86 (apply {A} {B}) ++ suffix)
 --                              s s' cl a (length prefix)
 -- run-apply-with-wf = ?

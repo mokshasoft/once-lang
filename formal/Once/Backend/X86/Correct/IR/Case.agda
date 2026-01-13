@@ -16,6 +16,7 @@ open import Once.Postulates using (encode-inr-val)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; slot-size)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -440,7 +441,7 @@ case-jump-star {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
       ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 4) 4 len-f)) ⟩
         (((length prefix +ℕ 4) +ℕ 4) +ℕ len-f) +ℕ len-g
       ≡⟨ cong (λ n → (n +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 4 4) ⟩
-        ((length prefix +ℕ 8) +ℕ len-f) +ℕ len-g
+        ((length prefix +ℕ slot-size) +ℕ len-f) +ℕ len-g
       ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 8 len-f) ⟩
         (length prefix +ℕ (8 +ℕ len-f)) +ℕ len-g
       ≡⟨ +-assoc (length prefix) (8 +ℕ len-f) len-g ⟩
@@ -639,7 +640,7 @@ case-end-star {A} {B} {C} f g prefix suffix s1 h1 pc1 = record
       ≡⟨ cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 7) 1 len-f)) ⟩
         (((length prefix +ℕ 7) +ℕ 1) +ℕ len-f) +ℕ len-g
       ≡⟨ cong (λ n → (n +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 7 1) ⟩
-        ((length prefix +ℕ 8) +ℕ len-f) +ℕ len-g
+        ((length prefix +ℕ slot-size) +ℕ len-f) +ℕ len-g
       ≡⟨ cong (_+ℕ len-g) (+-assoc (length prefix) 8 len-f) ⟩
         (length prefix +ℕ (8 +ℕ len-f)) +ℕ len-g
       ≡⟨ +-assoc (length prefix) (8 +ℕ len-f) len-g ⟩
@@ -725,7 +726,7 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
     rsp-preserved : readReg (regs s-right) rsp ≡ readReg (regs s-setup) rsp
     mem-preserved : memory s-right ≡ memory s-setup
     stack-inv-right : StackInvariant s-right
-    rsp-sufficient-right : readReg (regs s-right) rsp > 16
+    rsp-sufficient-right : readReg (regs s-right) rsp > slots 2
 
 -- | Execute right branch setup for inr (2 instructions)
 -- Preconditions:
@@ -742,7 +743,7 @@ case-right-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f →
   readReg (regs s-setup) rdi ≡ encode {A + B} (inj₂ b) →
   StackInvariant s-setup →
-  readReg (regs s-setup) rsp > 16 →
+  readReg (regs s-setup) rsp > slots 2 →
   CaseRightSetupResult f g prefix suffix b s-setup
 case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
     { s-right = s2
@@ -808,16 +809,16 @@ case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     rdi2 = readReg-writeReg-same (regs s1) rdi (encode b)
 
     -- Memory read proof for mov instruction
-    mem-read : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ 8) ≡ just (encode b)
-    mem-read = trans (cong (λ addr → readMem (memory s-setup) (addr +ℕ 8)) rdi-setup)
+    mem-read : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ slot-size) ≡ just (encode b)
+    mem-read = trans (cong (λ addr → readMem (memory s-setup) (addr +ℕ slot-size)) rdi-setup)
                      (encode-inr-val b (memory s-setup))
 
     -- StackInvariant preserved (memory and rsp unchanged, r15 also unchanged)
     stack-inv-s2 : StackInvariant s2
     stack-inv-s2 = stack-inv-preserved-mem-rsp s-setup s2 refl refl stack-inv-setup refl
 
-    -- rsp > 16 preserved
-    rsp-sufficient-s2 : readReg (regs s2) rsp > 16
+    -- rsp > slots 2 preserved
+    rsp-sufficient-s2 : readReg (regs s2) rsp > slots 2
     rsp-sufficient-s2 = rsp-sufficient-setup
 
     -- Fetch proofs for the two instructions

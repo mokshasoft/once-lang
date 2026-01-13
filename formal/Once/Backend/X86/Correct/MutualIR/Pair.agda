@@ -34,7 +34,7 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 -- Import StackInstantiation (re-exports StackInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; RbpInvariant; StackCapacity; capacity-maintained; pair-stack-capacity;
-         make-frame-at-slot; pair-rbp-frame-≥-r15-frame)
+         make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slots; slot-size)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -82,7 +82,7 @@ run-pair-star-direct : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Pr
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResult ⟨ f , g ⟩ prog s s' x (length prefix)
@@ -107,7 +107,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
       s-setup = PairSetupResult.s-setup setup-res
 
       -- ========== Phase 2: Execute f (recursive call via abstract dispatcher) ==========
-      -- Derive RbpInvariant for s-setup: rsp_setup = rsp ∸ 40, rbp_setup = rsp ∸ 24
+      -- Derive RbpInvariant for s-setup: rsp_setup = rsp ∸ slots 5, rbp_setup = rsp ∸ slots 3
       -- D041: Uses abstract frame creation - NO arithmetic exposed here!
       rbp-inv-setup : RbpInvariant s-setup
       rbp-inv-setup = record
@@ -126,7 +126,7 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
 
           -- D041: Frame bound uses abstract interface (no arithmetic here!)
           -- pair-rbp-frame-≥-r15-frame: slot 3 ≥ slot 5
-          -- PairSetupResult.rsp-setup: s-setup.rsp = s.rsp ∸ 40 = slot 5 addr
+          -- PairSetupResult.rsp-setup: s-setup.rsp = s.rsp ∸ slots 5 = slot 5 addr
           setup-frame-bound : sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
           setup-frame-bound = subst (sp-addr setup-rbp-frame ≥_)
             (sym (PairSetupResult.rsp-setup setup-res))
@@ -240,11 +240,11 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           -- For f/g phases: addr > s-setup.rbp = rsp - 24
           -- Since addr ≥ rsp > rsp - 24 (when rsp ≥ 1), we have addr > rsp - 24
           setup-rbp = readReg (regs s-setup) rbp
-          setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ 24
+          setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ slots 3
           setup-rbp-eq = PairSetupResult.rbp-setup setup-res
 
-          -- rsp > 16 (from precondition), so rsp ≥ 17, thus rsp - 24 < rsp ≤ addr
-          rsp∸24<rsp : orig-rsp ∸ 24 < orig-rsp
+          -- rsp > slots 2 (from precondition), so rsp ≥ 17, thus rsp - 24 < rsp ≤ addr
+          rsp∸24<rsp : orig-rsp ∸ slots 3 < orig-rsp
           rsp∸24<rsp = m∸n<m orig-rsp 24 rsp>0 24>0
             where
               rsp>0 : orig-rsp > 0
@@ -260,10 +260,10 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           addr>setup-rbp = subst (addr >_) (sym setup-rbp-eq) rsp∸24<addr
             where
               open import Data.Nat.Properties using (<-trans)
-              -- rsp ∸ 24 < rsp ≤ rbp < addr
-              rsp∸24<rbp : orig-rsp ∸ 24 < orig-rbp
+              -- rsp ∸ slots 3 < rsp ≤ rbp < addr
+              rsp∸24<rbp : orig-rsp ∸ slots 3 < orig-rbp
               rsp∸24<rbp = <-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)
-              rsp∸24<addr : orig-rsp ∸ 24 < addr
+              rsp∸24<addr : orig-rsp ∸ slots 3 < addr
               rsp∸24<addr = <-trans rsp∸24<rbp addr>rbp
 
           -- Phase 2: f preserves memory at addr (addr > s-setup.rbp)
@@ -273,10 +273,10 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           -- For middle: addr ≠ s1.r15 = rsp - 40
           -- Since addr ≥ rsp > rsp - 40, we have addr ≠ rsp - 40
           s1-r15 = readReg (regs s1) r15
-          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ 40
+          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ slots 5
           s1-r15-eq = trans (ir-r15 r-f) (PairSetupResult.r15-setup setup-res)
 
-          rsp∸40<rsp : orig-rsp ∸ 40 < orig-rsp
+          rsp∸40<rsp : orig-rsp ∸ slots 5 < orig-rsp
           rsp∸40<rsp = m∸n<m orig-rsp 40 rsp>0 40>0
             where
               rsp>0 : orig-rsp > 0
@@ -298,16 +298,16 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
 
           -- For g phase: addr > s2.rbp = s1.rbp = s-setup.rbp (rbp preserved through f and middle)
           s2-rbp = readReg (regs s2) rbp
-          s2-rbp-eq : s2-rbp ≡ orig-rsp ∸ 24
+          s2-rbp-eq : s2-rbp ≡ orig-rsp ∸ slots 3
           s2-rbp-eq = trans (PairMiddleResult.rbp-mid mid-res) (trans (ir-rbp r-f) setup-rbp-eq)
 
           addr>s2-rbp : addr > s2-rbp
           addr>s2-rbp = subst (addr >_) (sym s2-rbp-eq) rsp∸24<addr
             where
               open import Data.Nat.Properties using (<-trans)
-              rsp∸24<rbp : orig-rsp ∸ 24 < orig-rbp
+              rsp∸24<rbp : orig-rsp ∸ slots 3 < orig-rbp
               rsp∸24<rbp = <-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)
-              rsp∸24<addr : orig-rsp ∸ 24 < addr
+              rsp∸24<addr : orig-rsp ∸ slots 3 < addr
               rsp∸24<addr = <-trans rsp∸24<rbp addr>rbp
 
           -- Phase 4: g preserves memory at addr (addr > s2.rbp)
@@ -317,11 +317,11 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
           -- For final: addr ≠ s3.r15 + 8 = (rsp - 40) + 8 = rsp - 32
           -- Since addr ≥ rsp > rsp - 32, we have addr ≠ rsp - 32
           s3-r15 = readReg (regs s3) r15
-          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ 40
+          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ slots 5
           s3-r15-eq = trans (ir-r15 r-g) (trans (PairMiddleResult.r15-mid mid-res) (trans (ir-r15 r-f) (PairSetupResult.r15-setup setup-res)))
 
           -- rsp - 32 < rsp (when rsp > 0)
-          rsp∸32<rsp : orig-rsp ∸ 32 < orig-rsp
+          rsp∸32<rsp : orig-rsp ∸ slots 4 < orig-rsp
           rsp∸32<rsp = m∸n<m orig-rsp 32 rsp>0 32>0
             where
               rsp>0 : orig-rsp > 0
@@ -333,30 +333,30 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
 
           -- (rsp - 40) + 8 = rsp - 32 when rsp ≥ 40
           -- More precisely: we need addr ≠ s3-r15 + 8
-          addr≢s3-r15+8 : addr ≢ s3-r15 +ℕ 8
+          addr≢s3-r15+8 : addr ≢ s3-r15 +ℕ slot-size
           addr≢s3-r15+8 eq = Data.Nat.Properties.<⇒≢ s3-r15+8<addr (sym eq)
             where
-              -- s3-r15 + 8 = (rsp - 40) + 8 < rsp when rsp > 16
-              -- Arithmetic lemma: (m ∸ 40) + 8 < m when m > 16
+              -- s3-r15 + 8 = (rsp - 40) + 8 < rsp when rsp > slots 2
+              -- Arithmetic lemma: (m ∸ slots 5) + 8 < m when m > 16
               -- Case analysis:
-              --   When m < 40: (m ∸ 40) + 8 = 0 + 8 = 8 < m (since m > 16 > 8)
-              --   When m ≥ 40: (m ∸ 40) + 8 = m - 32 < m (since 32 > 0)
-              s3-r15+8<rsp : s3-r15 +ℕ 8 < orig-rsp
-              s3-r15+8<rsp = subst (λ r → r +ℕ 8 < orig-rsp) (sym s3-r15-eq) arith
+              --   When m < 40: (m ∸ slots 5) + 8 = 0 + 8 = 8 < m (since m > 16 > 8)
+              --   When m ≥ 40: (m ∸ slots 5) + 8 = m - 32 < m (since 32 > 0)
+              s3-r15+8<rsp : s3-r15 +ℕ slot-size < orig-rsp
+              s3-r15+8<rsp = subst (λ r → r +ℕ slot-size < orig-rsp) (sym s3-r15-eq) arith
                 where
                   open import Data.Nat.Properties using (m≤n⇒m∸n≡0; ≰⇒>)
                   open import Data.Nat using (_≤?_)
-                  arith : orig-rsp ∸ 40 +ℕ 8 < orig-rsp
+                  arith : orig-rsp ∸ slots 5 +ℕ slot-size < orig-rsp
                   arith with 40 ≤? orig-rsp
-                  -- Case rsp < 40: (rsp - 40) + 8 = 0 + 8 = 8 < rsp (since rsp > 16)
+                  -- Case rsp < 40: (rsp - 40) + 8 = 0 + 8 = 8 < rsp (since rsp > slots 2)
                   ... | no 40>rsp = subst (_< orig-rsp) (sym 0+8≡8) 8<rsp
                     where
                       rsp<40 : orig-rsp < 40
                       rsp<40 = ≰⇒> 40>rsp
-                      rsp∸40≡0 : orig-rsp ∸ 40 ≡ 0
+                      rsp∸40≡0 : orig-rsp ∸ slots 5 ≡ 0
                       rsp∸40≡0 = m≤n⇒m∸n≡0 (<⇒≤ rsp<40)
-                      0+8≡8 : orig-rsp ∸ 40 +ℕ 8 ≡ 8
-                      0+8≡8 = cong (_+ℕ 8) rsp∸40≡0
+                      0+8≡8 : orig-rsp ∸ slots 5 +ℕ slot-size ≡ 8
+                      0+8≡8 = cong (_+ℕ slot-size) rsp∸40≡0
                       8<rsp : 8 < orig-rsp
                       8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
                   -- Case rsp ≥ 40: (rsp - 40) + 8 = rsp - 32 < rsp
@@ -366,21 +366,21 @@ run-pair-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq r
                       -- Let k = rsp - 40, so rsp = k + 40 (by m∸n+n≡m)
                       -- LHS = k + 8
                       -- RHS = (k + 40) - 32 = ((k + 8) + 32) - 32 = k + 8 (by m+n∸n≡m)
-                      k = orig-rsp ∸ 40
+                      k = orig-rsp ∸ slots 5
                       -- k + 40 = k + 8 + 32 = (k + 8) + 32
-                      k+40≡k+8+32 : k +ℕ 40 ≡ (k +ℕ 8) +ℕ 32
+                      k+40≡k+8+32 : k +ℕ slots 5 ≡ (k +ℕ slot-size) +ℕ slots 4
                       k+40≡k+8+32 = trans (cong (k +ℕ_) refl)
                                          (sym (+-assoc k 8 32))
                       -- (k + 40) - 32 = ((k + 8) + 32) - 32 = k + 8
-                      k+40∸32≡k+8 : (k +ℕ 40) ∸ 32 ≡ k +ℕ 8
-                      k+40∸32≡k+8 = trans (cong (_∸ 32) k+40≡k+8+32) (m+n∸n≡m (k +ℕ 8) 32)
-                      m∸40+8≡m∸32 : orig-rsp ∸ 40 +ℕ 8 ≡ orig-rsp ∸ 32
+                      k+40∸32≡k+8 : (k +ℕ slots 5) ∸ slots 4 ≡ k +ℕ slot-size
+                      k+40∸32≡k+8 = trans (cong (_∸ slots 4) k+40≡k+8+32) (m+n∸n≡m (k +ℕ slot-size) 32)
+                      m∸40+8≡m∸32 : orig-rsp ∸ slots 5 +ℕ slot-size ≡ orig-rsp ∸ slots 4
                       m∸40+8≡m∸32 =
-                        let step1 : orig-rsp ∸ 32 ≡ (k +ℕ 40) ∸ 32
-                            step1 = cong (_∸ 32) (sym (m∸n+n≡m 40≤rsp))
+                        let step1 : orig-rsp ∸ slots 4 ≡ (k +ℕ slots 5) ∸ slots 4
+                            step1 = cong (_∸ slots 4) (sym (m∸n+n≡m 40≤rsp))
                         in sym (trans step1 k+40∸32≡k+8)
 
-              s3-r15+8<addr : s3-r15 +ℕ 8 < addr
+              s3-r15+8<addr : s3-r15 +ℕ slot-size < addr
               s3-r15+8<addr = <-≤-trans s3-r15+8<rsp addr≥rsp
 
           -- Phase 5: Final preserves memory at addr (addr ≠ s3.r15 + 8)

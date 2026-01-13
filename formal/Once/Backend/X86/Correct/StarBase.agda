@@ -19,7 +19,7 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stac
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
-         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged)
+         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots)
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
@@ -91,7 +91,7 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- Therefore heap addresses are never written by IR execution
     ir-mem-heap   : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-stack-inv  : StackInvariant s'
-    -- Abstract stack capacity (D041 - replaces concrete rsp > 16)
+    -- Abstract stack capacity (D041 - replaces concrete rsp > slots 2)
     ir-capacity   : StackCapacity s' 2
     -- RbpInvariant preserved: rsp s' ≤ rbp s' (needed for memory disjointness)
     ir-rbp-inv    : RbpInvariant s'
@@ -100,11 +100,11 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
 
 open IRStarResult public
 
--- | Derived: concrete rsp > 16 bound from abstract capacity
+-- | Derived: concrete rsp > slots 2 bound from abstract capacity
 -- This replaces the removed ir-rsp-bound field
 ir-rsp-bound : ∀ {A B ir prog s s' x offset} →
   IRStarResult {A} {B} ir prog s s' x offset →
-  readReg (regs s') rsp > 16
+  readReg (regs s') rsp > slots 2
 ir-rsp-bound res = capacity-2-to-rsp-bound _ (ir-capacity res)
 
 ------------------------------------------------------------------------
@@ -124,7 +124,7 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
@@ -140,7 +140,7 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
@@ -177,7 +177,7 @@ run-id-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (id {A}) ++ suffix
   in ∃[ s' ] IRStarResult (id {A}) prog s s' x (length prefix)
@@ -216,7 +216,7 @@ run-terminal-star : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
   in ∃[ s' ] IRStarResult (terminal {A}) prog s s' x (length prefix)
@@ -255,7 +255,7 @@ run-fold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) �
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
   in ∃[ s' ] IRStarResult (fold {F}) prog s s' x (length prefix)
@@ -294,7 +294,7 @@ run-unfold-star : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : Sta
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
   in ∃[ s' ] IRStarResult (unfold {F}) prog s s' x (length prefix)
@@ -333,7 +333,7 @@ run-arr-star : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : S
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode {A ⇒ B} fn →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (arr {A} {B}) prog s s' fn (length prefix)
@@ -372,7 +372,7 @@ run-fst-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : Stat
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (fst {A} {B}) prog s s' x (length prefix)
@@ -415,7 +415,7 @@ run-snd-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A * B ⟧) (s : Stat
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (snd {A} {B}) prog s s' x (length prefix)
@@ -466,7 +466,7 @@ run-fst-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   readReg (regs s) rdi ≡ encode (a , b) →
   PairAt a b (encode (a , b)) (memory s) →  -- Validity precondition (PROVEN by allocation)
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (fst {A} {B}) prog s s' (a , b) (length prefix)
@@ -508,7 +508,7 @@ run-snd-star-v : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B 
   readReg (regs s) rdi ≡ encode (a , b) →
   PairAt a b (encode (a , b)) (memory s) →  -- Validity precondition (PROVEN by allocation)
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (snd {A} {B}) prog s s' (a , b) (length prefix)
@@ -561,7 +561,7 @@ postulate
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
     in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog s s' x (length prefix)

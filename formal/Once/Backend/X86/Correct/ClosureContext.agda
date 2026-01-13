@@ -37,6 +37,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -185,14 +186,14 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+          × readReg (regs s') rsp > slots 2)
 run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
                        semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq =
   let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
@@ -273,7 +274,7 @@ test-apply-with-wf-eliminates-postulate :
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
@@ -281,7 +282,7 @@ test-apply-with-wf-eliminates-postulate :
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+          × readReg (regs s') rsp > slots 2)
 test-apply-with-wf-eliminates-postulate = run-apply-with-full-wf
 -- ^^^ This is the key: we just delegate to run-apply-with-full-wf!
 -- The postulate is NOT used in this path.

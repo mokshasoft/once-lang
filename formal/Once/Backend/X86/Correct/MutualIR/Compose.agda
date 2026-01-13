@@ -28,6 +28,7 @@ open import Once.Backend.X86.Correct.StarBase
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 -- Import StackPointer for D041
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
@@ -61,7 +62,7 @@ run-compose-star-direct : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix :
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResult (g ∘ f) prog s s' x (length prefix)

@@ -48,7 +48,7 @@ run-inl-star : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) �
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResult (inl {A} {B}) prog s s' x (length prefix)
@@ -83,7 +83,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
     -- The 4 instructions of inl
     i0 : Instr
-    i0 = sub (reg rsp) (imm 16)
+    i0 = sub (reg rsp) (imm (slots 2))
     i1 : Instr
     i1 = mov (mem (base rsp)) (imm 0)
     i2 : Instr
@@ -97,7 +97,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     orig-rdi : Word
     orig-rdi = readReg (regs s) rdi
     new-rsp : Word
-    new-rsp = orig-rsp ∸ 16
+    new-rsp = orig-rsp ∸ slots 2
 
     -- State after step 1: sub rsp, 16
     s1 : State
@@ -112,7 +112,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
     -- State after step 3: mov [rsp+8], rdi
     s3 : State
-    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ 8) (readReg (regs s2) rdi)
+    s3 = record s2 { memory = writeMem (memory s2) (readReg (regs s2) rsp +ℕ slot-size) (readReg (regs s2) rdi)
                    ; pc = pc s2 +ℕ 1 }
 
     -- State after step 4: mov rax, rsp
@@ -230,7 +230,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     rdi-s2 = rdi-s1
 
     -- Address disjointness
-    addr-disjoint : new-rsp ≢ new-rsp +ℕ 8
+    addr-disjoint : new-rsp ≢ new-rsp +ℕ slot-size
     addr-disjoint = n≢n+suc new-rsp 7
 
     -- Memory at new-rsp = 0 (set in s2)
@@ -242,8 +242,8 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-tag-s3 : readMem (memory s3) new-rsp ≡ just 0
     mem-tag-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) new-rsp ≡
                                         readMem (memory s2) new-rsp)
-                              (sym (cong (_+ℕ 8) rsp-s2))
-                              (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) new-rsp (readReg (regs s2) rdi)
+                              (sym (cong (_+ℕ slot-size) rsp-s2))
+                              (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) new-rsp (readReg (regs s2) rdi)
                                                      (λ eq → addr-disjoint (sym eq))))
                        mem-tag-s2
 
@@ -251,20 +251,20 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-tag-s4 = mem-tag-s3
 
     -- Memory at new-rsp + 8 = orig-rdi (set in s3)
-    mem-val-s3 : readMem (memory s3) (new-rsp +ℕ 8) ≡ just orig-rdi
-    mem-val-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) (new-rsp +ℕ 8) ≡
+    mem-val-s3 : readMem (memory s3) (new-rsp +ℕ slot-size) ≡ just orig-rdi
+    mem-val-s3 = trans (subst (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rdi)) (new-rsp +ℕ slot-size) ≡
                                         just (readReg (regs s2) rdi))
-                              (sym (cong (_+ℕ 8) rsp-s2))
-                              (readMem-writeMem-same (memory s2) (new-rsp +ℕ 8) (readReg (regs s2) rdi)))
+                              (sym (cong (_+ℕ slot-size) rsp-s2))
+                              (readMem-writeMem-same (memory s2) (new-rsp +ℕ slot-size) (readReg (regs s2) rdi)))
                        (cong just rdi-s2)
 
-    mem-val-s4 : readMem (memory s4) (new-rsp +ℕ 8) ≡ just orig-rdi
+    mem-val-s4 : readMem (memory s4) (new-rsp +ℕ slot-size) ≡ just orig-rdi
     mem-val-s4 = mem-val-s3
 
     orig-rdi-is-encode-x : orig-rdi ≡ encode x
     orig-rdi-is-encode-x = rdi-eq
 
-    mem-val-encoded : readMem (memory s4) (new-rsp +ℕ 8) ≡ just (encode x)
+    mem-val-encoded : readMem (memory s4) (new-rsp +ℕ slot-size) ≡ just (encode x)
     mem-val-encoded = trans mem-val-s4 (cong just orig-rdi-is-encode-x)
 
     rax-is-encode-inl : new-rsp ≡ encode {A + B} (inj₁ x)
@@ -299,7 +299,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-s1 : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
     mem-s1 = refl
 
-    addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ 8) ≢ orig-r15)
+    addr-diffs : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ slot-size) ≢ orig-r15)
     addr-diffs = addr-diff-from-invariant s stack-inv (rsp-in-stack-after-stack-op s) rsp-sufficient
 
     addr-diff-1 : new-rsp ≢ orig-r15
@@ -308,11 +308,11 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     mem-s2' : readMem (memory s2) orig-r15 ≡ readMem (memory s) orig-r15
     mem-s2' = trans (readMem-writeMem-diff (memory s1) new-rsp orig-r15 0 (λ eq → addr-diff-1 eq)) mem-s1
 
-    addr-diff-2 : (new-rsp +ℕ 8) ≢ orig-r15
+    addr-diff-2 : (new-rsp +ℕ slot-size) ≢ orig-r15
     addr-diff-2 = proj₂ addr-diffs
 
     mem-s3' : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-    mem-s3' = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-r15 orig-rdi (λ eq → addr-diff-2 eq)) mem-s2'
+    mem-s3' = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) orig-r15 orig-rdi (λ eq → addr-diff-2 eq)) mem-s2'
 
     mem-preserved : readMem (memory s4) orig-r15 ≡ readMem (memory s) orig-r15
     mem-preserved = mem-s3'
@@ -321,27 +321,27 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     orig-rbp : Word
     orig-rbp = readReg (regs s) rbp
 
-    rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ 8) ≢ orig-rbp)
+    rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ slot-size) ≢ orig-rbp)
     rbp-diffs = rbp-addr-diff-from-invariant s rbp-inv rsp-sufficient
 
     rbp-diff-1 : new-rsp ≢ orig-rbp
     rbp-diff-1 = proj₁ rbp-diffs
 
-    rbp-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp
+    rbp-diff-2 : (new-rsp +ℕ slot-size) ≢ orig-rbp
     rbp-diff-2 = proj₂ rbp-diffs
 
     mem-rbp-s2 : readMem (memory s2) orig-rbp ≡ readMem (memory s) orig-rbp
     mem-rbp-s2 = readMem-writeMem-diff (memory s1) new-rsp orig-rbp 0 rbp-diff-1
 
     mem-rbp-s3 : readMem (memory s3) orig-rbp ≡ readMem (memory s) orig-rbp
-    mem-rbp-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-rbp orig-rdi rbp-diff-2) mem-rbp-s2
+    mem-rbp-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) orig-rbp orig-rdi rbp-diff-2) mem-rbp-s2
 
     mem-rbp-preserved : readMem (memory s4) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     mem-rbp-preserved = mem-rbp-s3
 
     -- Memory at rbp+8 preserved
     orig-rbp+8 : Word
-    orig-rbp+8 = orig-rbp +ℕ 8
+    orig-rbp+8 = orig-rbp +ℕ slot-size
 
     -- Derive disjointness for rbp+8 from new-rsp < rbp
     new-rsp<rbp : new-rsp < orig-rbp
@@ -350,7 +350,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
           new-rsp<rsp = ∸-preserves-< ≤-refl rsp-sufficient (s≤s z≤n)
       in ≤-trans new-rsp<rsp rsp≤rbp'
 
-    new-rsp+8<rbp : (new-rsp +ℕ 8) < orig-rbp
+    new-rsp+8<rbp : (new-rsp +ℕ slot-size) < orig-rbp
     new-rsp+8<rbp =
       let rsp≤rbp' = RbpInvariant.rsp≤rbp rbp-inv
           new-rsp+8<rsp = ∸+<-lemma rsp-sufficient
@@ -360,7 +360,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     rbp<rbp+8 : orig-rbp < orig-rbp+8
     rbp<rbp+8 = n<n+8 orig-rbp
       where
-        n<n+8 : ∀ n → n < n +ℕ 8
+        n<n+8 : ∀ n → n < n +ℕ slot-size
         n<n+8 zero = s≤s z≤n
         n<n+8 (suc n) = s≤s (n<n+8 n)
 
@@ -371,19 +371,19 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     rbp+8-diff-1 = <⇒≢ new-rsp<rbp+8
 
     -- new-rsp+8 < rbp < rbp+8
-    new-rsp+8<rbp+8 : (new-rsp +ℕ 8) < orig-rbp+8
+    new-rsp+8<rbp+8 : (new-rsp +ℕ slot-size) < orig-rbp+8
     new-rsp+8<rbp+8 = <-trans new-rsp+8<rbp rbp<rbp+8
 
-    rbp+8-diff-2 : (new-rsp +ℕ 8) ≢ orig-rbp+8
+    rbp+8-diff-2 : (new-rsp +ℕ slot-size) ≢ orig-rbp+8
     rbp+8-diff-2 = <⇒≢ new-rsp+8<rbp+8
 
     mem-rbp+8-s2 : readMem (memory s2) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
     mem-rbp+8-s2 = readMem-writeMem-diff (memory s1) new-rsp orig-rbp+8 0 rbp+8-diff-1
 
     mem-rbp+8-s3 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
-    mem-rbp+8-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) orig-rbp+8 orig-rdi rbp+8-diff-2) mem-rbp+8-s2
+    mem-rbp+8-s3 = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) orig-rbp+8 orig-rdi rbp+8-diff-2) mem-rbp+8-s2
 
-    mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8-preserved : readMem (memory s4) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
     mem-rbp+8-preserved = mem-rbp+8-s3
 
     -- Memory above rbp preserved (for caller's frame)
@@ -393,7 +393,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
       let diff-1 = λ eq → <⇒≢ (<-trans new-rsp<rbp addr>rbp) eq
           diff-2 = λ eq → <⇒≢ (<-trans new-rsp+8<rbp addr>rbp) eq
           mem-s2-above = readMem-writeMem-diff (memory s1) new-rsp addr 0 diff-1
-          mem-s3-above = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ 8) addr orig-rdi diff-2) mem-s2-above
+          mem-s3-above = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) addr orig-rdi diff-2) mem-s2-above
       in mem-s3-above
 
     -- Memory at address 0 preserved (null page never written)
@@ -407,7 +407,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-zero (memory s1) new-rsp 0 tag-addr-in-stack
-          after-val-write = stackAddr-write-preserves-zero (memory s2) (new-rsp +ℕ 8) orig-rdi val-addr-in-stack
+          after-val-write = stackAddr-write-preserves-zero (memory s2) (new-rsp +ℕ slot-size) orig-rdi val-addr-in-stack
       in trans after-val-write after-tag-write
 
     -- Memory at code-region addresses preserved
@@ -421,7 +421,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-code (memory s1) new-rsp 0 addr tag-addr-in-stack addr-in-code
-          after-val-write = stackAddr-write-preserves-code (memory s2) (new-rsp +ℕ 8) orig-rdi addr val-addr-in-stack addr-in-code
+          after-val-write = stackAddr-write-preserves-code (memory s2) (new-rsp +ℕ slot-size) orig-rdi addr val-addr-in-stack addr-in-code
       in trans after-val-write after-tag-write
 
     -- Memory at heap-region addresses preserved
@@ -435,7 +435,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-heap (memory s1) new-rsp 0 addr tag-addr-in-stack addr-in-heap
-          after-val-write = stackAddr-write-preserves-heap (memory s2) (new-rsp +ℕ 8) orig-rdi addr val-addr-in-stack addr-in-heap
+          after-val-write = stackAddr-write-preserves-heap (memory s2) (new-rsp +ℕ slot-size) orig-rdi addr val-addr-in-stack addr-in-heap
       in trans after-val-write after-tag-write
 
     -- StackInvariant preservation
@@ -459,7 +459,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
         r15-eq' : readReg (regs s4) r15 ≡ slot-addr frame slot
         r15-eq' = trans r15-s4-eq r15-eq
         -- frame-bound': sp-addr frame ≥ s4.rsp
-        -- from frame-bound : sp-addr frame ≥ s.rsp and s4.rsp = s.rsp ∸ 16 ≤ s.rsp
+        -- from frame-bound : sp-addr frame ≥ s.rsp and s4.rsp = s.rsp ∸ slots 2 ≤ s.rsp
         frame-bound' : sp-addr frame ≥ readReg (regs s4) rsp
         frame-bound' = subst (sp-addr frame ≥_) (sym rsp-s4-eq)
                          (≤-trans (m∸n≤m (readReg (regs s) rsp) 16) frame-bound)
@@ -478,8 +478,8 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     -- but the derivation is through proper capacity tracking.
 
     -- The rsp change proof needed for capacity-after-alloc-2-slots
-    rsp-change : readReg (regs s4) rsp ≡ readReg (regs s) rsp ∸ 16
-    rsp-change = rsp-s4  -- since new-rsp = orig-rsp ∸ 16
+    rsp-change : readReg (regs s4) rsp ≡ readReg (regs s) rsp ∸ slots 2
+    rsp-change = rsp-s4  -- since new-rsp = orig-rsp ∸ slots 2
 
     -- Get initial capacity from hack (TODO: proper input should provide this)
     -- rsp-bound-after-stack-op s gives rsp s > 40
@@ -491,7 +491,7 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     33≤41 = m≤m+n 33 8
       where open import Data.Nat.Properties using (m≤m+n)
 
-    rsp>32 : readReg (regs s) rsp > 32
+    rsp>32 : readReg (regs s) rsp > slots 4
     rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
@@ -501,8 +501,8 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     output-capacity : StackCapacity s4 2
     output-capacity = capacity-after-alloc-2-slots s s4 2 input-capacity rsp-change
 
-    -- Legacy: derive rsp > 16 from capacity (for compatibility)
-    rsp-sufficient' : readReg (regs s4) rsp > 16
+    -- Legacy: derive rsp > slots 2 from capacity (for compatibility)
+    rsp-sufficient' : readReg (regs s4) rsp > slots 2
     rsp-sufficient' = capacity-2-to-rsp-bound s4 output-capacity
 
     -- RbpInvariant: rbp-frame unchanged, frame-bound updated for new rsp

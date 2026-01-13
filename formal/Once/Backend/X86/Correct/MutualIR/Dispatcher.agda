@@ -21,6 +21,7 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ir-rbp-inv; rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 
@@ -63,7 +64,7 @@ postulate
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)

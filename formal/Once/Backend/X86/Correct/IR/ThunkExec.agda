@@ -487,12 +487,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- For new-rsp + 8 ≢ rsp-after-push-rbp:
     -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
-    -- We use rsp-bound-after-stack-op which gives old-rsp > 40, so old-rsp ≥ 41
+    -- We use rsp-bound-after-stack-op which gives old-rsp > slots 5, so old-rsp ≥ 41
     -- Therefore rsp-after-push-rbp = old-rsp - 16 ≥ 25, which is always ≥ 16
     -- So new-rsp + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp
 
     -- First, derive the strong bound from rsp-bound-after-stack-op
-    old-rsp>40 : old-rsp > 40
+    old-rsp>40 : old-rsp > slots 5
     old-rsp>40 = rsp-bound-after-stack-op s
 
     -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
@@ -518,7 +518,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- So (rsp-after-push-rbp - 16) + 8 < (rsp-after-push-rbp - 16) + 16 = rsp-after-push-rbp
         8<16 : 8 < 16
         8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        new-rsp+8<new-rsp+16 : new-rsp +ℕ slot-size < new-rsp +ℕ 16
+        new-rsp+8<new-rsp+16 : new-rsp +ℕ slot-size < new-rsp +ℕ slots 2
         new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
         new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ slot-size < rsp-after-push-rbp
         new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16
@@ -680,13 +680,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp+8≢rsp-after-push-r15 : new-rsp +ℕ slot-size ≢ rsp-after-push-r15
     new-rsp+8≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp+8<rsp-after-push-r15 eq
       where
-        -- Derive 32 ≤ old-rsp from old-rsp > 40
+        -- Derive 32 ≤ old-rsp from old-rsp > slots 5
         32≤old-rsp : 32 ≤ old-rsp
         32≤old-rsp = ≤-trans 32≤41 old-rsp>40
           where
             32≤41 : 32 ≤ 41
             32≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))
-        -- Derive old-rsp > 24 from old-rsp > 40
+        -- Derive old-rsp > 24 from old-rsp > slots 5
         old-rsp>24 : old-rsp > 24
         old-rsp>24 = ≤-trans 25≤41 old-rsp>40
           where
@@ -799,7 +799,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
     -- Strategy: (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3
     --   Let k = old-rsp ∸ slots 4. Then k + 32 = old-rsp (by m∸n+n≡m).
-    --   old-rsp ∸ slots 3 = (k + 32) ∸ 24 = k + (32 ∸ 24) = k + 8 (by +-∸-assoc)
+    --   old-rsp ∸ slots 3 = (k + 32) ∸ slots 3 = k + (32 ∸ slots 3) = k + 8 (by +-∸-assoc)
     new-rsp+8-eq : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
     new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) k+8≡old-rsp∸24
       where
@@ -807,7 +807,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         k = old-rsp ∸ slots 4
 
-        -- old-rsp > 40 implies 32 ≤ old-rsp
+        -- old-rsp > slots 5 implies 32 ≤ old-rsp
         32≤old-rsp : 32 ≤ old-rsp
         32≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
                      (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
@@ -815,7 +815,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                      (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))) old-rsp>40
 
         -- k + 32 = old-rsp
-        k+32≡old-rsp : k +ℕ 32 ≡ old-rsp
+        k+32≡old-rsp : k +ℕ slots 4 ≡ old-rsp
         k+32≡old-rsp = m∸n+n≡m 32≤old-rsp
 
         24≤32 : 24 ≤ 32
@@ -823,11 +823,11 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                 (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
                 (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
 
-        -- (k + 32) ∸ 24 = k + (32 ∸ 24) = k + 8
-        assoc-step : (k +ℕ 32) ∸ 24 ≡ k +ℕ 8
+        -- (k + 32) ∸ slots 3 = k + (32 ∸ slots 3) = k + 8
+        assoc-step : (k +ℕ slots 4) ∸ slots 3 ≡ k +ℕ 8
         assoc-step = +-∸-assoc k 24≤32
 
-        -- old-rsp ∸ slots 3 = (k + 32) ∸ 24 = k + 8
+        -- old-rsp ∸ slots 3 = (k + 32) ∸ slots 3 = k + 8
         k+8≡old-rsp∸24 : k +ℕ 8 ≡ old-rsp ∸ slots 3
         k+8≡old-rsp∸24 = sym (trans (cong (_∸ slots 3) (sym k+32≡old-rsp)) assoc-step)
 
@@ -1025,7 +1025,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
             open import Data.Nat using (s≤s; z≤n)
             8<16'' : 8 < 16
             8<16'' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-            new-rsp+8<new-rsp+16'' : new-rsp +ℕ slot-size < new-rsp +ℕ 16
+            new-rsp+8<new-rsp+16'' : new-rsp +ℕ slot-size < new-rsp +ℕ slots 2
             new-rsp+8<new-rsp+16'' = +-monoʳ-< new-rsp 8<16''
             new-rsp+8<rsp-after-push-rbp' : new-rsp +ℕ slot-size < rsp-after-push-rbp
             new-rsp+8<rsp-after-push-rbp' = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16''

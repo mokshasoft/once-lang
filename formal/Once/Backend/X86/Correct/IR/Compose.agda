@@ -134,7 +134,7 @@ record TransferResult {A B C : Type} (f : IR A B) (g : IR B C)
     pc2-g : pc s2 ≡ length prefix-g
     rdi2-enc : readReg (regs s2) rdi ≡ encode (eval f x)
     stack-inv-2 : StackInvariant s2
-    rsp-2>16 : readReg (regs s2) rsp > 16
+    rsp-2>16 : readReg (regs s2) rsp > slots 2
     star-t : Star prog s1 s2
     -- Register preservation from s1 to s2
     r14-s1-to-s2 : readReg (regs s2) r14 ≡ readReg (regs s1) r14

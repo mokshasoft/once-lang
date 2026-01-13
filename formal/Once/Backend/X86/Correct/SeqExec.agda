@@ -457,10 +457,10 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     -- Memory at [orig-rsp - 8] in s2 (after push r15 at step 2)
     -- push r15 wrote to [orig-rsp - 16], not [orig-rsp - 8]
     -- s2.memory = writeMem (memory s1) (orig-rsp ∸ slots 2) orig-r15 (by write-addr-s2 and r15-s1)
-    -- Derive rsp > 16 from rsp-gt-24 for the ∸two-slot≢∸one-slot lemma
-    -- rsp > slots 3 means 25 ≤ rsp, we need rsp > 16 which is 17 ≤ rsp
+    -- Derive rsp > slots 2 from rsp-gt-24 for the ∸two-slot≢∸one-slot lemma
+    -- rsp > slots 3 means 25 ≤ rsp, we need rsp > slots 2 which is 17 ≤ rsp
     -- Use ≤-trans with 17 ≤ 25 and 25 ≤ rsp
-    rsp-gt-16 : orig-rsp > 16
+    rsp-gt-16 : orig-rsp > slots 2
     rsp-gt-16 = ≤-trans 17≤25 rsp-gt-24
       where
         open import Data.Nat.Properties using (≤-trans)
