@@ -646,3 +646,159 @@ postulate
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
     in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- Validity-Based Star Proofs (Phase 4: Simple Producers)
+--
+-- These return IRStarResultV with ValidAt, eliminating encode postulates.
+-- Clean interface: ValidAt x rdi m replaces rdi ≡ encode x
+-- No explicit address parameters - rdi is implicitly the input address.
+------------------------------------------------------------------------
+
+-- | Validity-based id execution
+-- Input validity at rdi → output validity at rax (same address, id copies rdi to rax)
+run-id-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →  -- Clean: validity at rdi
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (id {A}) ++ suffix
+  in ∃[ s' ] IRStarResultV (id {A}) prog s s' x (length prefix)
+run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  let prog = prefix ++ compile-x86 (id {A}) ++ suffix
+      s' : State
+      s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                    ; pc = pc s +ℕ 1 }
+      fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+      fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                       (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+      step-eq : step prog s ≡ just s'
+      step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                      (execMov-reg-reg s rax rdi)
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
+      rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      -- Key: rax s' = rdi s, memory unchanged
+      rax-eq : readReg (regs s') rax ≡ readReg (regs s) rdi
+      rax-eq = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
+      result-valid : ValidAt x (readReg (regs s') rax) (memory s')
+      result-valid = subst (λ a → ValidAt x a (memory s')) (sym rax-eq) input-valid
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h-false
+    ; ir-pc = cong (_+ℕ 1) pc-eq
+    ; ir-result-valid = result-valid
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
+    }
+
+-- | Validity-based terminal execution
+-- Result is tt at address 0, so valid-unit (no input validity needed)
+run-terminal-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
+  in ∃[ s' ] IRStarResultV (terminal {A}) prog s s' x (length prefix)
+run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficient rbp-inv =
+  let (s' , step-eq , h' , pc' , rax-eq') = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
+      prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) 0
+      rbp-eq = readReg-writeReg-rax-rbp (regs s) 0
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      -- rax s' = 0, eval terminal x = tt, so ValidAt tt 0 m = valid-unit
+      result-valid : ValidAt {Unit} tt (readReg (regs s') rax) (memory s')
+      result-valid = subst (λ a → ValidAt {Unit} tt a (memory s')) (sym rax-eq') valid-unit
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h'
+    ; ir-pc = pc'
+    ; ir-result-valid = result-valid
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) 0
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) 0
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) 0)
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
+    }
+
+-- | Validity-based fold execution
+-- Input x : ⟦ F ⟧ valid at rdi → output (wrap x) : Fix F valid at rax
+run-fold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →  -- Clean: validity at rdi
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
+  in ∃[ s' ] IRStarResultV (fold {F}) prog s s' x (length prefix)
+run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
+      s' : State
+      s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                    ; pc = pc s +ℕ 1 }
+      fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+      fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                       (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+      step-eq : step prog s ≡ just s'
+      step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                      (execMov-reg-reg s rax rdi)
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
+      rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      -- Key: rax s' = rdi s, memory unchanged
+      rax-eq : readReg (regs s') rax ≡ readReg (regs s) rdi
+      rax-eq = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
+      result-valid : ValidAt (wrap x) (readReg (regs s') rax) (memory s')
+      result-valid = subst (λ a → ValidAt (wrap x) a (memory s')) (sym rax-eq) (valid-fix input-valid)
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h-false
+    ; ir-pc = cong (_+ℕ 1) pc-eq
+    ; ir-result-valid = result-valid
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
+    }
