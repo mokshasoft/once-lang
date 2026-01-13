@@ -69,10 +69,15 @@ open FrameSlotInternal using (frameSlot-0-is-top)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ClosureWFOutput; no-closure;
+  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; valid-pair; valid-closure;
+         PairAtS; fst-valid-s; snd-valid-s;
+         ClosureAtS; env-valid-s; code-valid-s;
+         addr-from-valid; valid-from-encode)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -1479,3 +1484,113 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
               r15≥rsp : readReg (regs s) r15 ≥ readReg (regs s) rsp
               r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
           in WfR.mem-above (readReg (regs s) r15) r15≥rsp
+
+------------------------------------------------------------------------
+-- Validity-Based Apply Wrapper (Phase 5c)
+--
+-- Takes ValidAt input, uses bridging postulates to call encode-based
+-- implementation, converts result back to IRStarResultV.
+--
+-- Input type: (A ⇒ B) * A
+-- ValidAt ((closure, arg)) input-addr m is valid-pair v-cl v-arg pair-at
+--   where v-cl : ValidAt closure closure-addr m
+--         v-arg : ValidAt arg arg-addr m
+--         pair-at : PairAtS closure-addr arg-addr input-addr m
+-- And v-cl is valid-closure closure-at where:
+--   closure-at : ClosureAtS env-addr code-ptr closure-addr m
+------------------------------------------------------------------------
+
+run-apply-to-ir-result-v : ∀ {A B} (prefix suffix : Program)
+                           (code-ptr env-addr : ℕ)
+                           (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+                           (closure-addr arg-addr : ℕ)
+                           (arg : ⟦ A ⟧) (s : State) →
+  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      offset = length prefix
+      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
+      x = (cl , arg)
+  in
+  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
+  halted s ≡ false →
+  pc s ≡ offset →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  -- Validity-based memory layout:
+  (v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)) →
+  (v-arg : ValidAt arg arg-addr (memory s)) →
+  (pair-at : PairAtS closure-addr arg-addr (readReg (regs s) rdi) (memory s)) →
+  (closure-at : ClosureAtS env-addr code-ptr closure-addr (memory s)) →
+  ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
+run-apply-to-ir-result-v {A} {B} prefix suffix code-ptr env-addr semantics closure-addr arg-addr arg s
+                         wf h-eq pc-eq stack-inv rsp-sufficient rbp-inv v-cl v-arg pair-at closure-at =
+  let
+    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    offset = length prefix
+    cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
+    x : ⟦ (A ⇒ B) * A ⟧
+    x = (cl , arg)
+
+    -- Bridge: construct rdi-eq from validity
+    input-valid : ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s)
+    input-valid = valid-pair v-cl v-arg pair-at
+
+    rdi-eq : readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x
+    rdi-eq = addr-from-valid input-valid
+
+    -- Bridge: construct arg-addr ≡ encode arg from arg validity
+    arg-addr-eq : arg-addr ≡ encode arg
+    arg-addr-eq = addr-from-valid v-arg
+
+    -- Construct mem-layout from validity predicates
+    mem-cl : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr
+    mem-cl = fst-valid-s pair-at
+
+    mem-arg : readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just arg-addr
+    mem-arg = snd-valid-s pair-at
+
+    mem-arg' : readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just (encode arg)
+    mem-arg' = subst (λ a → readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just a)
+                     arg-addr-eq mem-arg
+
+    mem-env : readMem (memory s) closure-addr ≡ just env-addr
+    mem-env = env-valid-s closure-at
+
+    mem-code-ptr : readMem (memory s) (closure-addr +ℕ' slot-size) ≡ just code-ptr
+    mem-code-ptr = code-valid-s closure-at
+
+    mem-layout : ∃[ cl-addr ] (
+        readMem (memory s) (readReg (regs s) rdi) ≡ just cl-addr ×
+        readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just (encode arg) ×
+        readMem (memory s) cl-addr ≡ just env-addr ×
+        readMem (memory s) (cl-addr +ℕ' slot-size) ≡ just code-ptr)
+    mem-layout = closure-addr , mem-cl , mem-arg' , mem-env , mem-code-ptr
+
+    -- Call existing encode-based implementation
+    (s' , result) = run-apply-to-ir-result prefix suffix code-ptr env-addr semantics arg s
+                      wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout
+
+    -- Convert output: ir-rax says rax ≡ encode (eval apply x)
+    result-valid : ValidAt (eval (apply {A} {B}) x) (readReg (regs s') rax) (memory s')
+    result-valid = valid-from-encode (IRStarResult.ir-rax result)
+
+  in s' , record
+    { ir-star = IRStarResult.ir-star result
+    ; ir-halted = IRStarResult.ir-halted result
+    ; ir-pc = IRStarResult.ir-pc result
+    ; ir-result-valid = result-valid
+    ; ir-r14 = IRStarResult.ir-r14 result
+    ; ir-r15 = IRStarResult.ir-r15 result
+    ; ir-rbp = IRStarResult.ir-rbp result
+    ; ir-mem = IRStarResult.ir-mem result
+    ; ir-mem-rbp = IRStarResult.ir-mem-rbp result
+    ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 result
+    ; ir-mem-above = IRStarResult.ir-mem-above result
+    ; ir-mem-at-0 = IRStarResult.ir-mem-at-0 result
+    ; ir-mem-code = IRStarResult.ir-mem-code result
+    ; ir-mem-heap = IRStarResult.ir-mem-heap result
+    ; ir-stack-inv = IRStarResult.ir-stack-inv result
+    ; ir-capacity = IRStarResult.ir-capacity result
+    ; ir-rbp-inv = IRStarResult.ir-rbp-inv result
+    ; ir-closure-wf = IRStarResult.ir-closure-wf result
+    }
