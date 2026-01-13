@@ -18,12 +18,16 @@ open import Once.Backend.X86.CodeGen
 
 -- Import abstract dispatcher and helpers
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (run-ir-star-at-offset-abstract; rbp-inv-preserved-through-ir)
+  using (run-ir-star-at-offset-abstract; run-ir-star-at-offset-abstract-v; rbp-inv-preserved-through-ir)
 
 -- Import StarBase for result types
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ir-star; ir-halted; ir-pc; ir-rax;
+  using (IRStarResult; IRStarResultV; ir-star; ir-halted; ir-pc; ir-rax;
          ir-r14; ir-r15; ir-rbp; ir-mem; ir-rbp-inv; ir-stack-inv; ir-rsp-bound)
+
+-- Import validity predicates and bridging for Phase 6
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; addr-from-valid; valid-from-encode)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -111,3 +115,53 @@ run-compose-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-e
 
       r3 : IRStarResult g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
       r3 = proj₂ step-g
+
+------------------------------------------------------------------------
+-- Validity-based compose wrapper
+-- Uses bridging postulates to convert between validity and encode
+------------------------------------------------------------------------
+
+{-# TERMINATING #-}
+-- | Validity-based compose execution
+-- Takes ValidAt input, bridges to encode-based implementation, converts output to validity
+run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+  in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
+run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  let
+    -- Bridge: validity → encode equality
+    rdi-eq : readReg (regs s) rdi ≡ encode x
+    rdi-eq = addr-from-valid input-valid
+
+    -- Call the encode-based implementation
+    (s' , result) = run-compose-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+
+    -- Bridge: encode equality → validity
+    result-valid : ValidAt (eval (g ∘ f) x) (readReg (regs s') rax) (memory s')
+    result-valid = valid-from-encode (IRStarResult.ir-rax result)
+  in s' , record
+    { ir-star = IRStarResult.ir-star result
+    ; ir-halted = IRStarResult.ir-halted result
+    ; ir-pc = IRStarResult.ir-pc result
+    ; ir-result-valid = result-valid
+    ; ir-r14 = IRStarResult.ir-r14 result
+    ; ir-r15 = IRStarResult.ir-r15 result
+    ; ir-rbp = IRStarResult.ir-rbp result
+    ; ir-mem = IRStarResult.ir-mem result
+    ; ir-mem-rbp = IRStarResult.ir-mem-rbp result
+    ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 result
+    ; ir-mem-above = IRStarResult.ir-mem-above result
+    ; ir-mem-at-0 = IRStarResult.ir-mem-at-0 result
+    ; ir-mem-code = IRStarResult.ir-mem-code result
+    ; ir-mem-heap = IRStarResult.ir-mem-heap result
+    ; ir-stack-inv = IRStarResult.ir-stack-inv result
+    ; ir-capacity = IRStarResult.ir-capacity result
+    ; ir-rbp-inv = IRStarResult.ir-rbp-inv result
+    ; ir-closure-wf = IRStarResult.ir-closure-wf result
+    }

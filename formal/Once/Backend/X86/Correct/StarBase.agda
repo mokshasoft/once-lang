@@ -29,7 +29,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          ValidAt; valid-unit; valid-pair; valid-inl; valid-inr;
          valid-closure; valid-eff; valid-fix;
          PairAtS; fst-valid-s; snd-valid-s;
-         InlAtS; InrAtS; ClosureAtS)
+         InlAtS; InrAtS; ClosureAtS;
+         addr-from-valid; valid-from-encode)
 open import Once.Postulates
   using (encode-pair-fst; encode-pair-snd; encode-fix-unwrap; encode-fix-wrap)
 
@@ -988,3 +989,67 @@ run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
     }
+
+------------------------------------------------------------------------
+-- Validity-based arr and prim (Phase 6b: wiring)
+------------------------------------------------------------------------
+
+-- | Validity-based arr execution
+-- arr is identity on arrow types: eval (arr {A} {B}) fn = fn
+-- So output validity equals input validity
+run-arr-star-vv : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt fn (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultV (arr {A} {B}) prog s s' fn (length prefix)
+run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  let
+    -- Bridge: validity → encode equality
+    rdi-eq : readReg (regs s) rdi ≡ encode {A ⇒ B} fn
+    rdi-eq = addr-from-valid {A ⇒ B} input-valid
+
+    -- Call encode-based version
+    (s' , result) = run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+
+    -- Bridge: encode equality → validity
+    -- Note: arr : IR (A ⇒ B) (Eff A B), so output type is Eff A B
+    -- eval arr fn = fn, and ⟦ A ⇒ B ⟧ = ⟦ Eff A B ⟧ = Closure A B
+    result-valid : ValidAt {Eff A B} fn (readReg (regs s') rax) (memory s')
+    result-valid = valid-from-encode {Eff A B} (ir-rax result)
+  in s' , record
+    { ir-star = ir-star result
+    ; ir-halted = ir-halted result
+    ; ir-pc = ir-pc result
+    ; ir-result-valid = result-valid
+    ; ir-r14 = ir-r14 result
+    ; ir-r15 = ir-r15 result
+    ; ir-rbp = ir-rbp result
+    ; ir-mem = ir-mem result
+    ; ir-mem-rbp = ir-mem-rbp result
+    ; ir-mem-rbp+8 = ir-mem-rbp+8 result
+    ; ir-mem-above = ir-mem-above result
+    ; ir-mem-at-0 = ir-mem-at-0 result
+    ; ir-mem-code = ir-mem-code result
+    ; ir-mem-heap = ir-mem-heap result
+    ; ir-stack-inv = ir-stack-inv result
+    ; ir-capacity = ir-capacity result
+    ; ir-rbp-inv = ir-rbp-inv result
+    ; ir-closure-wf = ir-closure-wf result
+    }
+
+-- | Validity-based prim execution (postulated)
+-- Prim correctness is already postulated; this is the validity version
+postulate
+  run-prim-star-vv : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
+    in ∃[ s' ] IRStarResultV (Prim {A} {B} name) prog s s' x (length prefix)

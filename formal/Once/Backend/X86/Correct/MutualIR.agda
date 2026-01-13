@@ -75,19 +75,22 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Re-export StarBase for backwards compatibility
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf; ir-capacity;
          run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
          run-arr-star; run-fst-star; run-snd-star; run-prim-star;
+         -- Validity-based versions
+         run-id-star-vv; run-terminal-star-vv; run-fold-star-vv; run-unfold-star-vv;
+         run-arr-star-vv; run-prim-star-vv;
          -- Helper functions
          rbp-inv-preserved-unchanged)
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Inl
-  using (run-inl-star)
+  using (run-inl-star; run-inl-star-v)
 open import Once.Backend.X86.Correct.IR.Inr
-  using (run-inr-star)
+  using (run-inr-star; run-inr-star-v)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; closure-addr)
@@ -124,13 +127,18 @@ open import Once.Backend.X86.Correct.MutualIR.Dispatcher
   using (rbp-inv-preserved-through-ir)
 
 open import Once.Backend.X86.Correct.MutualIR.Compose
-  using (run-compose-star-direct)
+  using (run-compose-star-direct; run-compose-star-v)
 
 open import Once.Backend.X86.Correct.MutualIR.Pair
-  using (run-pair-star-direct)
+  using (run-pair-star-direct; run-pair-star-v)
 
 open import Once.Backend.X86.Correct.MutualIR.Case
-  using (run-case-star-direct)
+  using (run-case-star-direct; run-case-star-v-inl; run-case-star-v-inr)
+
+-- Import validity predicates for dispatcher
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; valid-inl; valid-inr; addr-from-valid; valid-from-encode)
+  renaming (PairAt to MV-PairAt)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
@@ -1334,3 +1342,52 @@ mutual
           readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
           readMem (memory s) closure-addr ≡ just env-addr ×
           readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)
+
+------------------------------------------------------------------------
+-- Validity-based dispatcher wrapper (Phase 6b)
+-- Uses bridging postulates to convert between validity and encode
+------------------------------------------------------------------------
+
+-- | Validity-based IR execution dispatcher
+-- Takes ValidAt input, bridges to encode-based implementation, converts output to validity
+run-ir-star-at-offset-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+run-ir-star-at-offset-v {A} {B} ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  let
+    -- Bridge: validity → encode equality
+    rdi-eq : readReg (regs s) rdi ≡ encode x
+    rdi-eq = addr-from-valid input-valid
+
+    -- Call the encode-based dispatcher
+    (s' , result) = run-ir-star-at-offset ir prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+
+    -- Bridge: encode equality → validity
+    result-valid : ValidAt (eval ir x) (readReg (regs s') rax) (memory s')
+    result-valid = valid-from-encode (ir-rax result)
+  in s' , record
+    { ir-star = ir-star result
+    ; ir-halted = ir-halted result
+    ; ir-pc = ir-pc result
+    ; ir-result-valid = result-valid
+    ; ir-r14 = ir-r14 result
+    ; ir-r15 = ir-r15 result
+    ; ir-rbp = ir-rbp result
+    ; ir-mem = ir-mem result
+    ; ir-mem-rbp = ir-mem-rbp result
+    ; ir-mem-rbp+8 = ir-mem-rbp+8 result
+    ; ir-mem-above = ir-mem-above result
+    ; ir-mem-at-0 = ir-mem-at-0 result
+    ; ir-mem-code = ir-mem-code result
+    ; ir-mem-heap = ir-mem-heap result
+    ; ir-stack-inv = ir-stack-inv result
+    ; ir-capacity = ir-capacity result
+    ; ir-rbp-inv = ir-rbp-inv result
+    ; ir-closure-wf = ir-closure-wf result
+    }

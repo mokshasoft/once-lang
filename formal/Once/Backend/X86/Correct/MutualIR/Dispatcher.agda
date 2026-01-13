@@ -18,7 +18,9 @@ open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ir-rbp-inv; rbp-inv-preserved-unchanged)
+  using (IRStarResult; IRStarResultV; ir-rbp-inv; rbp-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
@@ -68,3 +70,16 @@ postulate
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+
+  -- | Validity-based abstract dispatcher for IR execution
+  -- Takes a validity proof for input instead of encode equality
+  -- Returns IRStarResultV with validity proof for output
+  run-ir-star-at-offset-abstract-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 ir ++ suffix
+    in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
