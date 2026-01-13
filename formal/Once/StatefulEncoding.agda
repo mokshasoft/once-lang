@@ -17,7 +17,7 @@ open import Once.Type
 open import Once.Memory
   using (Word; Memory; AllocState; alloc-state; mem; heap-ptr;
          readMem; writeMem; alloc-two-words;
-         mem-read-write; mem-read-other; n≢n+8;
+         mem-read-write; mem-read-other; word-size;
          alloc-two-words-fst; alloc-two-words-snd)
 
 open import Data.Unit using (⊤; tt)

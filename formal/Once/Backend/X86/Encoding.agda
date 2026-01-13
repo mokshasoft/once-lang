@@ -32,7 +32,7 @@ open import Relation.Nullary using (yes; no)
 open import Once.Memory public
   using (Word; Memory; readMem; writeMem; AllocState; alloc-state; mem; heap-ptr;
          init-alloc-state; alloc-two-words; alloc-two-words-fst; alloc-two-words-snd;
-         n≢n+8; n≢n+suc-m)
+         word-size; n≢n+word-size; n≢n+suc-m)
 
 -- Re-export memory theorems
 open import Once.Memory public
@@ -92,7 +92,7 @@ alloc-pair-fst m base v₁ v₂ = trans step3 step4
 
     -- Step 3: readMem m' base = readMem m₁ base (by mem-read-other)
     step3 : readMem m' base ≡ readMem m₁ base
-    step3 = mem-read-other {m₁} {base + slot-size} {base} {v₂} (λ eq → n≢n+8 base (sym eq))
+    step3 = mem-read-other {m₁} {base + slot-size} {base} {v₂} (λ eq → n≢n+word-size base (sym eq))
 
     -- Step 4: readMem m₁ base = just v₁ (by mem-read-write)
     step4 : readMem m₁ base ≡ just v₁
@@ -120,7 +120,7 @@ alloc-inl-tag m base v = trans step1 step2
     m' = writeMem m₁ (base + slot-size) v
 
     step1 : readMem m' base ≡ readMem m₁ base
-    step1 = mem-read-other {m₁} {base + slot-size} {base} {v} (λ eq → n≢n+8 base (sym eq))
+    step1 = mem-read-other {m₁} {base + slot-size} {base} {v} (λ eq → n≢n+word-size base (sym eq))
 
     step2 : readMem m₁ base ≡ just 0
     step2 = mem-read-write {m} {base} {0}
@@ -144,7 +144,7 @@ alloc-inr-tag m base v = trans step1 step2
     m' = writeMem m₁ (base + slot-size) v
 
     step1 : readMem m' base ≡ readMem m₁ base
-    step1 = mem-read-other {m₁} {base + slot-size} {base} {v} (λ eq → n≢n+8 base (sym eq))
+    step1 = mem-read-other {m₁} {base + slot-size} {base} {v} (λ eq → n≢n+word-size base (sym eq))
 
     step2 : readMem m₁ base ≡ just 1
     step2 = mem-read-write {m} {base} {1}
@@ -328,7 +328,7 @@ alloc-pair-stateful-fst st v₁ v₂ = trans step1 step2
     m₂ = writeMem m₁ (base' + slot-size) v₂
 
     step1 : readMem m₂ base' ≡ readMem m₁ base'
-    step1 = mem-read-other {m₁} {base' + slot-size} {base'} {v₂} (λ eq → n≢n+8 base' (sym eq))
+    step1 = mem-read-other {m₁} {base' + slot-size} {base'} {v₂} (λ eq → n≢n+word-size base' (sym eq))
 
     step2 : readMem m₁ base' ≡ just v₁
     step2 = mem-read-write {mem st} {base'} {v₁}

@@ -17,7 +17,7 @@ module Once.Backend.X86.Correct.MemoryValid where
 open import Once.Type
 open import Once.Semantics using (⟦_⟧; encode)
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
-open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
+open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -118,7 +118,7 @@ alloc-pair-creates-valid a b addr m = pair-at fst-proof snd-proof
     --          = encode a (by mem-read-write)
     fst-proof : readMem m₂ addr ≡ just (encode a)
     fst-proof = trans
-      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode b} (λ eq → n≢n+8 addr (sym eq)))
+      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode b} (λ eq → n≢n+word-size addr (sym eq)))
       (mem-read-write {m} {addr} {encode a})
 
     -- m₂[addr+8] = encode b (by mem-read-write)
@@ -137,7 +137,7 @@ alloc-inl-creates-valid a addr m = inl-at tag-proof val-proof
 
     tag-proof : readMem m₂ addr ≡ just 0
     tag-proof = trans
-      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode a} (λ eq → n≢n+8 addr (sym eq)))
+      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode a} (λ eq → n≢n+word-size addr (sym eq)))
       (mem-read-write {m} {addr} {0})
 
     val-proof : readMem m₂ (addr +ℕ slot-size) ≡ just (encode a)
@@ -155,7 +155,7 @@ alloc-inr-creates-valid b addr m = inr-at tag-proof val-proof
 
     tag-proof : readMem m₂ addr ≡ just 1
     tag-proof = trans
-      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode b} (λ eq → n≢n+8 addr (sym eq)))
+      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode b} (λ eq → n≢n+word-size addr (sym eq)))
       (mem-read-write {m} {addr} {1})
 
     val-proof : readMem m₂ (addr +ℕ slot-size) ≡ just (encode b)

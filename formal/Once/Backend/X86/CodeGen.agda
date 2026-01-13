@@ -187,12 +187,12 @@ curry-rip-offset = 4   -- From lea at pos 2, offset to reach label at pos 6
 
 -- Position of end label (last instruction position in overhead)
 curry-end-label-base : ℕ
-curry-end-label-base = curry-overhead ∸ 1  -- = 18
+curry-end-label-base = curry-overhead ∸ 1
 
 -- jmp offset base: jmp at pos 5, target at pos (curry-end-label-base + len-f)
--- PC-relative: offset = target - (jmp-pos + 1) = (18 + len-f) - 6 = 12 + len-f
+-- PC-relative: offset = target - (jmp-pos + 1) = (curry-end-label-base + len-f) - curry-closure-setup-count
 curry-jmp-base : ℕ
-curry-jmp-base = curry-end-label-base ∸ curry-closure-setup-count  -- = 12
+curry-jmp-base = curry-end-label-base ∸ curry-closure-setup-count
 
 ------------------------------------------------------------------------
 -- Compile length calculation

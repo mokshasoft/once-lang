@@ -9,13 +9,13 @@
 module Once.Backend.X86.Correct.IR.Pair where
 
 -- Import consolidated Foundation module
--- Hide n≢n+8 and n+8≢n since we use propositional versions from X86.Encoding
-open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
+-- Hide n≢n+word-size and n+word-size≢n since we use propositional versions from X86.Encoding
+open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-size≢n)
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
-open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8; n≢n+suc-m)
+open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
 open import Once.Backend.X86.Correct.StackInstantiation
@@ -1009,13 +1009,13 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
 -- Arithmetic lemmas for disjointness proofs
 ------------------------------------------------------------------------
 
--- | n + 8 ≢ n (symmetric of n≢n+8)
-n+8≢n : ∀ (n : ℕ) → n +ℕ slot-size ≢ n
-n+8≢n n eq = n≢n+8 n (sym eq)
+-- | n + word-size ≢ n (symmetric of n≢n+word-size)
+n+word-size≢n : ∀ (n : ℕ) → n +ℕ slot-size ≢ n
+n+word-size≢n n eq = n≢n+word-size n (sym eq)
 
--- | n + 16 ≢ n + 8
-n+16≢n+8 : ∀ (n : ℕ) → n +ℕ slots 2 ≢ n +ℕ slot-size
-n+16≢n+8 n eq = n≢n+8 (n +ℕ slot-size) (+-assoc-cancel eq)
+-- | n + slots 2 ≢ n + slot-size
+n+slots2≢n+slot-size : ∀ (n : ℕ) → n +ℕ slots 2 ≢ n +ℕ slot-size
+n+slots2≢n+slot-size n eq = n≢n+word-size (n +ℕ slot-size) (+-assoc-cancel eq)
   where
     -- If n + 16 = n + 8, then (n + 8) + 8 = n + 8, so n + 8 = (n + 8) + 8
     -- n + 16 = (n + 8) + 8 by +-assoc
@@ -1197,7 +1197,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     -- disjoint-rbp-s3: rbp-s3 ≢ r15-s3 + 8
     -- rbp-s3 = r15-s3 + 16, so r15-s3 + 16 ≢ r15-s3 + 8
     disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-rbp-s3 eq = n+16≢n+8 (readReg (regs s3) r15) combined-eq
+    disjoint-rbp-s3 eq = n+slots2≢n+slot-size (readReg (regs s3) r15) combined-eq
       where
         -- subst (λ x → x ≡ r15+8) (rbp ≡ r15+16) : (rbp ≡ r15+8) → (r15+16 ≡ r15+8)
         combined-eq : readReg (regs s3) r15 +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slot-size
@@ -2117,7 +2117,7 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       -- Memory preservation
       r15-s3 = readReg (regs s3) r15
       mem-fst-preserved : readMem (memory s9) r15-s3 ≡ readMem (memory s3) r15-s3
-      mem-fst-preserved = mem-read-other {memory s3} {r15-s3 +ℕ slot-size} {r15-s3} {readReg (regs s3) rax} (λ eq → n≢n+8 r15-s3 (sym eq))
+      mem-fst-preserved = mem-read-other {memory s3} {r15-s3 +ℕ slot-size} {r15-s3} {readReg (regs s3) rax} (λ eq → n≢n+word-size r15-s3 (sym eq))
       mem-snd-stored : readMem (memory s9) (r15-s3 +ℕ slot-size) ≡ just (readReg (regs s3) rax)
       mem-snd-stored = mem-read-write {memory s3} {r15-s3 +ℕ slot-size} {readReg (regs s3) rax}
       mem-orig-preserved : readMem (memory s9) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)

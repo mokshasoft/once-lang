@@ -41,15 +41,15 @@ n≢n+suc n k eq = helper n k (sym eq)
     helper zero k ()
     helper (suc n) k eq = helper n k (suc-injective eq)
 
--- | n ≡ᵇ (n + 8) is false (used for 8-byte aligned stack operations)
-n≢n+8-bool : ∀ (n : ℕ) → (n ≡ᵇ (n + 8)) ≡ false
-n≢n+8-bool zero = refl
-n≢n+8-bool (suc n) = n≢n+8-bool n
+-- | n ≡ᵇ (n + 8) is false (used for word-size aligned stack operations)
+n≢n+word-size-bool : ∀ (n : ℕ) → (n ≡ᵇ (n + 8)) ≡ false
+n≢n+word-size-bool zero = refl
+n≢n+word-size-bool (suc n) = n≢n+word-size-bool n
 
 -- | (n + 8) ≡ᵇ n is false (swapped version)
-n+8≢n-bool : ∀ (n : ℕ) → ((n + 8) ≡ᵇ n) ≡ false
-n+8≢n-bool zero = refl
-n+8≢n-bool (suc n) = n+8≢n-bool n
+n+word-size≢n-bool : ∀ (n : ℕ) → ((n + 8) ≡ᵇ n) ≡ false
+n+word-size≢n-bool zero = refl
+n+word-size≢n-bool (suc n) = n+word-size≢n-bool n
 
 -- | n ≡ᵇ (n + 16) is false
 n≢n+16-bool : ∀ (n : ℕ) → (n ≡ᵇ (n + 16)) ≡ false

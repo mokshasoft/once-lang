@@ -39,7 +39,7 @@ open import Once.Backend.Common.Fetch
 -- Note: readMem-writeMem-same is also defined in RegisterLemmas, so we don't re-export from Common
 open import Once.Backend.Common.Memory
   using (≡ᵇ-refl)
-  renaming (n≢n+8-bool to n≢n+8; n+8≢n-bool to n+8≢n; readMem-writeMem-diff-bool to readMem-writeMem-diff-common)
+  renaming (n≢n+word-size-bool to n≢n+word-size; n+word-size≢n-bool to n+word-size≢n; readMem-writeMem-diff-bool to readMem-writeMem-diff-common)
   public
 
 -- Import encoding axioms from centralized Once.Postulates

@@ -31,6 +31,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 Word : Set
 Word = ℕ
 
+-- Size of a word in bytes (8 bytes = 64 bits)
+word-size : ℕ
+word-size = 8
+
+-- Size of two words (for pair/sum allocation)
+two-words : ℕ
+two-words = word-size +ℕ word-size
+
 ------------------------------------------------------------------------
 -- Memory Type
 ------------------------------------------------------------------------
@@ -120,11 +128,11 @@ alloc-two-words st v₁ v₂ = (st' , base)
   where
     base = heap-ptr st
     m₁ = writeMem (mem st) base v₁
-    m₂ = writeMem m₁ (base +ℕ 8) v₂
-    st' = alloc-state m₂ (base +ℕ 16)
+    m₂ = writeMem m₁ (base +ℕ word-size) v₂
+    st' = alloc-state m₂ (base +ℕ two-words)
 
 ------------------------------------------------------------------------
--- Helper: n ≢ n + 8
+-- Helper: n ≢ n + word-size
 ------------------------------------------------------------------------
 
 n≢n+suc-m : ∀ (n m : ℕ) → n ≢ n +ℕ suc m
@@ -134,8 +142,8 @@ n≢n+suc-m (suc n) m eq = n≢n+suc-m n m (suc-injective eq)
     suc-injective : ∀ {a b : ℕ} → suc a ≡ suc b → a ≡ b
     suc-injective refl = refl
 
-n≢n+8 : ∀ (n : ℕ) → n ≢ n +ℕ 8
-n≢n+8 n = n≢n+suc-m n 7
+n≢n+word-size : ∀ (n : ℕ) → n ≢ n +ℕ word-size
+n≢n+word-size n = n≢n+suc-m n 7
 
 ------------------------------------------------------------------------
 -- Allocation Theorems
@@ -149,10 +157,10 @@ alloc-two-words-fst st v₁ v₂ = trans step1 step2
   where
     base = heap-ptr st
     m₁ = writeMem (mem st) base v₁
-    m₂ = writeMem m₁ (base +ℕ 8) v₂
+    m₂ = writeMem m₁ (base +ℕ word-size) v₂
 
     step1 : readMem m₂ base ≡ readMem m₁ base
-    step1 = mem-read-other {m₁} {base +ℕ 8} {base} {v₂} (λ eq → n≢n+8 base (sym eq))
+    step1 = mem-read-other {m₁} {base +ℕ 8} {base} {v₂} (λ eq → n≢n+word-size base (sym eq))
 
     step2 : readMem m₁ base ≡ just v₁
     step2 = mem-read-write {mem st} {base} {v₁}
@@ -160,7 +168,7 @@ alloc-two-words-fst st v₁ v₂ = trans step1 step2
 -- Reading second word of allocated pair
 alloc-two-words-snd : ∀ (st : AllocState) (v₁ v₂ : Word) →
   let (st' , base) = alloc-two-words st v₁ v₂
-  in readMem (mem st') (base +ℕ 8) ≡ just v₂
+  in readMem (mem st') (base +ℕ word-size) ≡ just v₂
 alloc-two-words-snd st v₁ v₂ =
   mem-read-write {writeMem (mem st) (heap-ptr st) v₁} {heap-ptr st +ℕ 8} {v₂}
 

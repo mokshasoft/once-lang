@@ -7,7 +7,7 @@
 
 module Once.Backend.X86.Correct.IR.ThunkExec where
 
-open import Once.Backend.X86.Correct.Foundation hiding (n≢n+8; n+8≢n)
+open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-size≢n)
 open import Once.Postulates using (encode; encode-pair-construct)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -93,7 +93,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
-    open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
+    open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 
     prog = prefix ++ compile-x86 (curry f) ++ suffix
     offset = length prefix
@@ -366,7 +366,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s8 doesn't write memory (only rdi register), so memory s8 = memory s7
     mem-env : readMem (memory s8) new-rsp ≡ just (encode env)
     mem-env = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {new-rsp} {readReg (regs s6) rdi}
-                      (λ eq → n≢n+8 new-rsp (sym eq)))
+                      (λ eq → n≢n+word-size new-rsp (sym eq)))
                     (trans (mem-read-write {memory s5} {new-rsp} {readReg (regs s5) r12})
                            (cong just r12-s5))
 

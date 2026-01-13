@@ -256,13 +256,13 @@ compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPoin
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv =
     s-final , star-proof , h-final , rax-final
   where
     open import Data.List.Properties using (++-identityʳ)
 
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+    result = run-ir-star-at-offset (g ∘ f) [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv
     s-final = proj₁ result
     r = proj₂ result
     h-final = ir-halted r
@@ -300,10 +300,10 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv =
+run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv stack-cap rbp-inv =
   let
     -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp>16 rbp-inv
+    result = run-ir-star-at-offset (g ∘ f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv stack-cap rbp-inv
     s-final = proj₁ result
     r = proj₂ result
   in
@@ -389,7 +389,7 @@ run-generator : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A �
   ∃[ s' ] (Star (compile-x86 ir) s s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
-run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
+run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv =
   s-halted , star-full , halted-true , rax-preserved
   where
     open import Data.List.Properties using (++-identityʳ)
@@ -398,7 +398,7 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-
     prog = compile-x86 ir
 
     -- Use run-ir-star-at-offset (Star-based)
-    result = run-ir-star-at-offset ir [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+    result = run-ir-star-at-offset ir [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv
     s' = proj₁ result
     r = proj₂ result
 
@@ -466,8 +466,8 @@ run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointe
   ∃[ s2 ] (Star (compile-x86 (g ∘ f)) s0 s2
          × halted s2 ≡ true
          × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
-run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv =
-  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 rdi-eq stack-inv rsp>16 rbp-inv
+run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv =
+  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv
 
 ------------------------------------------------------------------------
 -- Code generation correctness
