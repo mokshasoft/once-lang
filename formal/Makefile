@@ -44,6 +44,8 @@ OPTIMIZE := Once/Optimize.agda
 OPTIMIZE_CORRECT := Once/Optimize/Correct.agda
 ESCAPE := Once/Escape.agda
 ESCAPE_CORRECT := Once/Escape/Correct.agda
+FUSION := Once/Fusion.agda
+FUSION_CORRECT := Once/Fusion/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
@@ -113,7 +115,7 @@ check: compiler spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
-frontend: postulates laws surface surfaceir optimize escape
+frontend: postulates laws surface surfaceir optimize escape fusion
 	@echo "Frontend proofs type-check successfully!"
 
 .PHONY: postulates
@@ -151,6 +153,12 @@ escape:
 	@echo "Type-checking escape analysis..."
 	@sh -c '$(AGDA_CMD) $(ESCAPE)'
 	@sh -c '$(AGDA_CMD) $(ESCAPE_CORRECT)'
+
+.PHONY: fusion
+fusion:
+	@echo "Type-checking fusion/deforestation..."
+	@sh -c '$(AGDA_CMD) $(FUSION)'
+	@sh -c '$(AGDA_CMD) $(FUSION_CORRECT)'
 
 .PHONY: common
 common:
