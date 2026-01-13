@@ -80,7 +80,16 @@ escape-compose-correct [ g , h ] id x = refl
 escape-compose-correct [ g , h ] (f ∘ f') x = refl
 escape-compose-correct [ g , h ] [ f , f' ] x = refl
 escape-compose-correct [ g , h ] (Prim _) x = refl
-escape-compose-correct terminal f x = refl
+-- Rules 9-10: terminal discards values - AllocMode transparent
+escape-compose-correct terminal (⟨ f , g ⟩ _) x = refl
+escape-compose-correct terminal (curry f _) x = refl
+-- terminal with other arguments (default case)
+escape-compose-correct terminal id x = refl
+escape-compose-correct terminal (f ∘ g) x = refl
+escape-compose-correct terminal (inl _) x = refl
+escape-compose-correct terminal (inr _) x = refl
+escape-compose-correct terminal [ f , g ] x = refl
+escape-compose-correct terminal (Prim _) x = refl
 escape-compose-correct (curry g _) f x = refl
 escape-compose-correct apply id x = refl
 escape-compose-correct apply (g ∘ h) x = refl

@@ -20,9 +20,12 @@
 --      (generalizes rule 5 for non-curry functions)
 --   7. fold ∘ inl m → fold ∘ inl Stack  (injection consumed by fold)
 --   8. fold ∘ inr m → fold ∘ inr Stack  (injection consumed by fold)
+--   9. terminal ∘ ⟨ f , g ⟩ m → terminal ∘ ⟨ f , g ⟩ Stack  (pair discarded)
+--  10. terminal ∘ curry f m → terminal ∘ curry f Stack  (closure discarded)
 --
 -- Rules 7-8 are especially powerful with linear types: linearity guarantees
 -- the injection is used exactly once, so stack allocation is provably safe.
+-- Rules 9-10 are edge cases for dead code that wasn't eliminated.
 ------------------------------------------------------------------------
 
 module Once.Escape where
@@ -85,11 +88,15 @@ escape-compose apply (⟨ Prim name , x ⟩ _) = apply ∘ ⟨ Prim name , x ⟩
 -- With linear types, the injection is guaranteed to be used exactly once.
 escape-compose fold (inl _) = fold ∘ inl Stack
 
--- Rule 7: fold ∘ inr m → fold ∘ inr Stack
+-- Rule 8: fold ∘ inr m → fold ∘ inr Stack
 -- The right injection is immediately consumed by fold to construct a Fix value.
 -- Common pattern: cons = fold ∘ inr (for list-like structures)
 -- With linear types, the injection is guaranteed to be used exactly once.
 escape-compose fold (inr _) = fold ∘ inr Stack
+
+-- Rules 9-10: terminal discards values (edge cases for dead code)
+escape-compose terminal (⟨ f , g ⟩ _) = terminal ∘ ⟨ f , g ⟩ Stack
+escape-compose terminal (curry f _) = terminal ∘ curry f Stack
 
 -- Default: no escape optimization, preserve original composition
 escape-compose g f = g ∘ f
