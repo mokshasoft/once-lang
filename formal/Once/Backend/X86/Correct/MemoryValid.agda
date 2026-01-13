@@ -20,13 +20,17 @@ open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
+open import Once.Backend.Common.MemoryRegions
+  using (region-of; stack; heap; stack-heap-disjoint)
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (encode-in-heap-sem)
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; cong)
 
 ------------------------------------------------------------------------
 -- ValueAt: A value is properly encoded at an address in memory
@@ -254,6 +258,32 @@ postulate
     ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
     addr ≡ encode v →
     ValidAt v addr m
+
+------------------------------------------------------------------------
+-- Region-based disjointness from validity (Phase 6c-6d)
+--
+-- These lemmas derive heap-stack disjointness from ValidAt.
+-- Uses addr-from-valid internally, so still depends on bridging postulate.
+-- ELIMINABLE: Once ValidAt directly implies region info, remove addr-from-valid.
+------------------------------------------------------------------------
+
+-- | Valid address is in heap (or 0 for Unit)
+-- Derived from: addr-from-valid gives addr = encode v, encode-in-heap-sem gives region = heap
+valid-addr-in-heap : ∀ {A : Type} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+  ValidAt v addr m →
+  region-of addr ≡ heap
+valid-addr-in-heap {A} {v} {addr} {m} valid =
+  let addr-eq = addr-from-valid valid
+  in trans (subst (λ a → region-of addr ≡ region-of a) addr-eq refl) (encode-in-heap-sem v)
+
+-- | Valid address is disjoint from stack addresses
+-- If addr has ValidAt and stack-addr is in stack, then addr ≢ stack-addr
+valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
+  ValidAt v addr m →
+  region-of stack-addr ≡ stack →
+  addr ≢ stack-addr
+valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof addr-eq =
+  stack-heap-disjoint stack-addr addr stack-proof (valid-addr-in-heap valid) (sym addr-eq)
 
 ------------------------------------------------------------------------
 -- Creating validity proofs from allocation
