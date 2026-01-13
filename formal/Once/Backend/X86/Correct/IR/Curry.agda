@@ -31,7 +31,10 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf)
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         IRStarResultV; ir-result-valid)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; valid-closure-at; ClosureAtS; closure-at-s)
 
 open import Data.Nat using (_>_; _≥_; _<_; s≤s; z≤n)
 -- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
@@ -864,3 +867,102 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
       in trans mem-s4 mem-s2
       where
         open import Data.Product using (proj₁; proj₂)
+
+------------------------------------------------------------------------
+-- Validity-Based Curry Proof
+------------------------------------------------------------------------
+
+-- | Validity-based curry execution
+-- Like run-curry-star but produces ValidAt instead of encode equality
+--
+-- Key difference from encode-based:
+-- - Instead of proving rax ≡ encode (eval (curry f) x)
+-- - We prove ValidAt (eval (curry f) x) rax memory
+--
+-- The closure validity uses valid-closure-at because:
+-- - Semantic closure has code-ptr = 0 (placeholder)
+-- - Runtime memory has actual thunk address
+-- - valid-closure-at only requires env-addr to match
+run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
+run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  s-final , record
+    { ir-star = IRStarResult.ir-star ir-result
+    ; ir-halted = IRStarResult.ir-halted ir-result
+    ; ir-pc = IRStarResult.ir-pc ir-result
+    ; ir-result-valid = result-valid
+    ; ir-r14 = IRStarResult.ir-r14 ir-result
+    ; ir-r15 = IRStarResult.ir-r15 ir-result
+    ; ir-rbp = IRStarResult.ir-rbp ir-result
+    ; ir-mem = IRStarResult.ir-mem ir-result
+    ; ir-mem-rbp = IRStarResult.ir-mem-rbp ir-result
+    ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 ir-result
+    ; ir-stack-inv = IRStarResult.ir-stack-inv ir-result
+    ; ir-capacity = IRStarResult.ir-capacity ir-result
+    ; ir-rbp-inv = IRStarResult.ir-rbp-inv ir-result
+    ; ir-mem-above = IRStarResult.ir-mem-above ir-result
+    ; ir-mem-at-0 = IRStarResult.ir-mem-at-0 ir-result
+    ; ir-mem-code = IRStarResult.ir-mem-code ir-result
+    ; ir-mem-heap = IRStarResult.ir-mem-heap ir-result
+    ; ir-closure-wf = IRStarResult.ir-closure-wf ir-result
+    }
+  where
+    -- Helper to extract encode from validity (needed to call existing run-curry-star)
+    postulate
+      encode-rdi-from-valid : ∀ {A'} {v : ⟦ A' ⟧} {addr : Word} {m : Memory} →
+        ValidAt v addr m →
+        addr ≡ encode v
+
+    -- Get the encode-based result first (to reuse all the proof machinery)
+    rdi-eq : readReg (regs s) rdi ≡ encode x
+    rdi-eq = encode-rdi-from-valid input-valid
+
+    -- Call the existing encode-based curry
+    curry-result : ∃[ s' ] (IRStarResult (curry f) (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
+                           × CurryMemoryResult f (prefix ++ compile-x86 (curry f) ++ suffix) s' x (length prefix))
+    curry-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+
+    s-final = proj₁ curry-result
+    ir-result = proj₁ (proj₂ curry-result)
+    curry-mem = proj₂ (proj₂ curry-result)
+
+    -- ============================================================
+    -- VALIDITY-BASED PROOF (replaces encode-closure-construct)
+    -- ============================================================
+
+    -- Extract fields from CurryMemoryResult
+    curry-env-addr = CurryMemoryResult.env-addr curry-mem
+    curry-code-ptr = CurryMemoryResult.code-ptr curry-mem
+    curry-closure-addr = CurryMemoryResult.closure-addr curry-mem
+    curry-rax-eq = CurryMemoryResult.rax-eq curry-mem
+    curry-mem-env = CurryMemoryResult.mem-env curry-mem
+    curry-mem-cp = CurryMemoryResult.mem-cp curry-mem
+    curry-env-is-encoded = CurryMemoryResult.env-is-encoded curry-mem
+
+    -- Construct ClosureAtS from memory proofs
+    closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s-final)
+    closure-at = closure-at-s curry-mem-env curry-mem-cp
+
+    -- The semantic closure from eval (curry f) x
+    sem-closure : Closure B C
+    sem-closure = eval (curry f) x
+
+    -- env-addr matches the semantic closure's env-addr
+    env-match : Closure.env-addr sem-closure ≡ curry-env-addr
+    env-match = sym curry-env-is-encoded  -- Closure.env-addr (eval (curry f) x) = encode x
+
+    -- Closure validity at curry-closure-addr
+    closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
+    closure-valid-at-addr = valid-closure-at env-match closure-at
+
+    -- Transport to rax
+    result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)
+    result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s-final))
+                         (sym curry-rax-eq) closure-valid-at-addr

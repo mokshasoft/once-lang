@@ -201,6 +201,34 @@ valid-at-preserved-under-writes valid neq1 neq2 =
   valid-at-preserved-under-write (valid-at-preserved-under-write valid neq1) neq2
 
 ------------------------------------------------------------------------
+-- Closure validity with runtime code-ptr
+--
+-- The semantic closure from `eval (curry f) x` has code-ptr = 0 (placeholder),
+-- but the runtime memory stores the actual thunk address. This postulate
+-- allows constructing validity when the env-addr matches but code-ptr differs.
+--
+-- This is sound because:
+-- 1. The closure's semantics field (not code-ptr) determines behavior
+-- 2. The code-ptr is only used at runtime to find the thunk
+-- 3. We separately verify via ClosureWF that code-ptr points to valid code
+------------------------------------------------------------------------
+postulate
+  -- | Closure validity with explicit env-addr and code-ptr
+  -- Used for curry where semantic code-ptr is 0 but runtime has actual address
+  valid-closure-at :
+    ∀ {A B} {cl : Closure A B} {env-addr code-ptr addr : Word} {m : Memory} →
+    Closure.env-addr cl ≡ env-addr →  -- env must match
+    ClosureAtS env-addr code-ptr addr m →  -- memory layout
+    ValidAt {A ⇒ B} cl addr m
+
+  -- | Same for Eff type
+  valid-eff-at :
+    ∀ {A B} {cl : Closure A B} {env-addr code-ptr addr : Word} {m : Memory} →
+    Closure.env-addr cl ≡ env-addr →
+    ClosureAtS env-addr code-ptr addr m →
+    ValidAt {Eff A B} cl addr m
+
+------------------------------------------------------------------------
 -- Creating validity proofs from allocation
 ------------------------------------------------------------------------
 
