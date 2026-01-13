@@ -802,3 +802,59 @@ run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-s
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
     }
+
+-- | Validity-based unfold execution
+-- Input (wrap x') : Fix F valid at rdi → output x' : ⟦ F ⟧ valid at rax
+-- Extracts underlying validity from valid-fix
+run-unfold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
+  in ∃[ s' ] IRStarResultV (unfold {F}) prog s s' x (length prefix)
+run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-valid) stack-inv rsp-sufficient rbp-inv =
+  let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
+      s' : State
+      s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
+                    ; pc = pc s +ℕ 1 }
+      fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+      fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                       (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+      step-eq : step prog s ≡ just s'
+      step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                      (execMov-reg-reg s rax rdi)
+      rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
+      rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
+      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      -- Key: rax s' = rdi s, memory unchanged
+      rax-eq : readReg (regs s') rax ≡ readReg (regs s) rdi
+      rax-eq = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
+      -- input-valid : ValidAt {F} x' rdi m (extracted from valid-fix)
+      -- eval unfold (wrap x') = x', so result-valid : ValidAt {F} x' rax m'
+      result-valid : ValidAt x' (readReg (regs s') rax) (memory s')
+      result-valid = subst (λ a → ValidAt x' a (memory s')) (sym rax-eq) input-valid
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h-false
+    ; ir-pc = cong (_+ℕ 1) pc-eq
+    ; ir-result-valid = result-valid
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
+    }
