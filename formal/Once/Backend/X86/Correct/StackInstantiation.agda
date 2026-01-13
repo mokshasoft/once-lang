@@ -47,13 +47,14 @@ open import Once.Backend.Common.MemoryRegions
          stack-sub-preserves-region;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
-         slot-addr-1-is-base+8)
+         slot-addr-1-is-base+8;
+         encode-in-heap; heap-offset)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 open import Data.Unit using (⊤; tt)
 
 -- Arithmetic imports (the instantiation layer uses these)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢)
+open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢)
 open import Relation.Nullary using (yes; no)
 
 -- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
@@ -1251,4 +1252,141 @@ thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
 -- m ∸ three-slot-offset ≢ m ∸ two-push-offset when m > three-slot-offset
 ∸three-slot≢∸two-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ two-push-offset
 ∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset pair<regs (<⇒≤ m>24)
+
+------------------------------------------------------------------------
+-- SlotFrame Abstraction (D041 Phase B)
+------------------------------------------------------------------------
+-- Replaces arithmetic-based slot disjointness with frame-identity reasoning.
+-- SlotFrame is FULLY PROVABLE from arithmetic - no new postulates.
+--
+-- Key insight: different slot indices give disjoint addresses when
+-- the base address is large enough. This generalizes the existing
+-- ∸two-slot≢∸one-slot, ∸three-slot≢∸one-slot lemmas.
+
+-- | Slot monotonicity: k₁ < k₂ → slots k₁ < slots k₂
+-- Proven by induction using +-monoʳ-< and slot-size = 8
+slots-mono-8 : ∀ k₁ k₂ → k₁ < k₂ → slots k₁ < slots k₂
+slots-mono-8 zero (suc k₂) _ = s≤s z≤n  -- 0 < 8 + k₂ * 8
+slots-mono-8 (suc k₁) (suc k₂) (s≤s k₁<k₂) = helper
+  where
+    -- slots (suc k₁) = 8 + k₁ * 8
+    -- slots (suc k₂) = 8 + k₂ * 8
+    -- Need: 8 + k₁ * 8 < 8 + k₂ * 8
+    -- Which follows from k₁ * 8 < k₂ * 8
+    helper : slots (suc k₁) < slots (suc k₂)
+    helper = +-monoʳ-< slot-size (slots-mono-8 k₁ k₂ k₁<k₂)
+
+-- | Slot disjointness (cleaner version using slots-mono-8)
+slots-disjoint' : ∀ m k₁ k₂ →
+  k₁ < k₂ →
+  m ≥ slots k₂ →
+  m ∸ slots k₂ ≢ m ∸ slots k₁
+slots-disjoint' m k₁ k₂ k₁<k₂ m≥k₂ =
+  ∸-different-offsets m (slots k₁) (slots k₂) (slots-mono-8 k₁ k₂ k₁<k₂) m≥k₂
+
+-- | SlotFrame: a stack frame at a specific slot offset
+-- This abstracts over the concrete arithmetic (rsp ∸ slots k).
+record SlotFrame (s : State) (k : ℕ) : Set where
+  field
+    -- The concrete address of this frame
+    frame-addr : ℕ
+    -- The address equals rsp - slots k
+    addr-eq : frame-addr ≡ readReg (regs s) rsp ∸ slots k
+    -- The address is in the stack region
+    in-stack : region-of frame-addr ≡ stack
+
+open SlotFrame public
+
+-- | Create a SlotFrame from StackCapacity
+-- When we have capacity for n slots and k ≤ n, we can create a frame at slot k
+mk-slot-frame : ∀ (s : State) (k n : ℕ) →
+  StackCapacity s n →
+  k ≤ n →
+  SlotFrame s k
+mk-slot-frame s k n cap k≤n = record
+  { frame-addr = readReg (regs s) rsp ∸ slots k
+  ; addr-eq = refl
+  ; in-stack = capacity-maintained cap k k≤n
+  }
+
+-- | Key theorem: frames at different slot indices have disjoint addresses
+-- This is the core abstraction - instead of proving arithmetic disjointness
+-- each time, we prove it once here and reuse via frame identity.
+frame-addrs-disjoint : ∀ {s : State} {k₁ k₂ n : ℕ} →
+  (f₁ : SlotFrame s k₁) →
+  (f₂ : SlotFrame s k₂) →
+  k₁ < k₂ →
+  StackCapacity s n →
+  k₂ ≤ n →
+  frame-addr f₁ ≢ frame-addr f₂
+frame-addrs-disjoint {s} {k₁} {k₂} {n} f₁ f₂ k₁<k₂ cap k₂≤n eq =
+  slots-disjoint' rsp-val k₁ k₂ k₁<k₂ rsp≥k₂ addr-eq-contra
+  where
+    rsp-val = readReg (regs s) rsp
+    -- We have: slots n < rsp-val and k₂ ≤ n, so slots k₂ ≤ slots n < rsp-val
+    slots-k₂≤slots-n : slots k₂ ≤ slots n
+    slots-k₂≤slots-n = slots-mono-≤ k₂≤n
+      where
+        -- slots is monotonic for ≤ (follows from slots being multiplication)
+        slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
+        slots-mono-≤ {zero} {b} _ = z≤n
+        slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
+    rsp≥k₂ : rsp-val ≥ slots k₂
+    rsp≥k₂ = ≤-trans slots-k₂≤slots-n (<⇒≤ (rsp-sufficient cap))
+    -- f₁.addr = rsp ∸ slots k₁, f₂.addr = rsp ∸ slots k₂
+    -- eq : f₁.addr ≡ f₂.addr
+    -- Need: rsp ∸ slots k₂ ≡ rsp ∸ slots k₁ (for slots-disjoint')
+    addr-eq-contra : rsp-val ∸ slots k₂ ≡ rsp-val ∸ slots k₁
+    addr-eq-contra = trans (sym (addr-eq f₂)) (trans (sym eq) (addr-eq f₁))
+
+------------------------------------------------------------------------
+-- Specific Frame Constructors
+------------------------------------------------------------------------
+
+-- | Pair frame at slot 5 (rsp - 40)
+mk-pair-frame-5 : ∀ (s : State) → StackCapacity s 5 → SlotFrame s 5
+mk-pair-frame-5 s cap = mk-slot-frame s 5 5 cap ≤-refl
+
+-- | Pair frame at slot 3 (rsp - 24, for rbp)
+mk-pair-frame-3 : ∀ (s : State) → StackCapacity s 5 → SlotFrame s 3
+mk-pair-frame-3 s cap = mk-slot-frame s 3 5 cap (s≤s (s≤s (s≤s z≤n)))
+
+-- | Apply frame at slot 1 (rsp - 8)
+mk-apply-frame : ∀ (s : State) → StackCapacity s 2 → SlotFrame s 1
+mk-apply-frame s cap = mk-slot-frame s 1 2 cap (s≤s z≤n)
+
+-- | Thunk frame at slot 2 (rsp - 16)
+mk-thunk-frame-2 : ∀ (s : State) → StackCapacity s 4 → SlotFrame s 2
+mk-thunk-frame-2 s cap = mk-slot-frame s 2 4 cap (s≤s (s≤s z≤n))
+
+-- | Thunk frame at slot 4 (rsp - 32)
+mk-thunk-frame-4 : ∀ (s : State) → StackCapacity s 4 → SlotFrame s 4
+mk-thunk-frame-4 s cap = mk-slot-frame s 4 4 cap ≤-refl
+
+------------------------------------------------------------------------
+-- Heap-Stack Disjointness via Regions
+--
+-- These lemmas replace the heap-stack-disjoint postulate in Postulates.agda
+-- by using the region-based abstraction from MemoryRegions.agda.
+------------------------------------------------------------------------
+
+-- | Encoded values are in the heap region (specialized for Once.Semantics.encode)
+encode-in-heap-sem : ∀ {A : Type} (x : ⟦ A ⟧) → region-of (encode x) ≡ heap
+encode-in-heap-sem {A} x = encode-in-heap {⟦ A ⟧} (encode {A}) x
+
+-- | Encoded value + offset is in heap region
+encode-offset-in-heap : ∀ {A : Type} (x : ⟦ A ⟧) (offset : ℕ) →
+  region-of (encode x +ℕ offset) ≡ heap
+encode-offset-in-heap x offset = heap-offset (encode x) offset (encode-in-heap-sem x)
+
+-- | Heap-stack disjointness via regions (replaces postulate)
+-- Usage: heap-stack-disjoint-via-region pair 0 new-rsp stack-proof
+heap-stack-disjoint-via-region : ∀ {A : Type} (x : ⟦ A ⟧) (offset stack-addr : ℕ) →
+  region-of stack-addr ≡ stack →
+  (encode x +ℕ offset) ≢ stack-addr
+heap-stack-disjoint-via-region x offset stack-addr stack-proof eq =
+  stack-heap-disjoint stack-addr (encode x +ℕ offset)
+    stack-proof
+    (encode-offset-in-heap x offset)
+    (sym eq)
 

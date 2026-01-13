@@ -36,7 +36,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
-open import Once.Postulates using (heap-stack-disjoint; heap-above-stack; encode-pair-fst)
+open import Once.Postulates using (encode-pair-fst)
 open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
@@ -53,7 +53,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- D041: Abstract helpers for 1-slot and 2-slot allocation
          apply-alloc-below-rsp; apply-alloc-diff-from-above;
          apply-rsp-diff-from-alloc; apply-double-alloc-below-rsp;
-         apply-double-alloc-diff-from-above)
+         apply-double-alloc-diff-from-above;
+         -- D041: Heap-stack disjointness via regions (replaces postulate)
+         heap-stack-disjoint-via-region)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint;
          StackPointer; frameSlot; zero-not-in-stack;
@@ -172,6 +174,11 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     pair = (cl , arg)
     new-rsp = old-rsp ∸ slot-size
 
+    -- D041: Stack region proof for new-rsp (replaces heap-stack-disjoint postulate usage)
+    new-rsp-in-stack : region-of new-rsp ≡ stack
+    new-rsp-in-stack = abstract-to-rsp-slot-in-stack s
+                         (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+
     -- The 6 instructions (push + 5 movs)
     i0 = push (reg r15)
     i1 = mov (reg r15) (mem (base rdi))
@@ -260,13 +267,13 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
 
     -- Memory at rdi is preserved after push (stack vs heap disjointness)
-    -- Derived from heap-stack-disjoint: rdi = encode pair, so rdi ≠ new-rsp
+    -- D041: Uses region-based proof instead of postulate
     stack-heap-disjoint-rdi : new-rsp ≢ readReg (regs s) rdi
     stack-heap-disjoint-rdi eq =
       -- eq : new-rsp ≡ rdi, rdi-eq : rdi ≡ encode pair
       -- So: new-rsp ≡ encode pair, hence encode pair ≡ new-rsp
-      -- heap-stack-disjoint says: encode pair +ℕ 0 ≢ new-rsp
-      heap-stack-disjoint pair 0 new-rsp
+      -- heap-stack-disjoint-via-region says: encode pair +ℕ 0 ≢ new-rsp
+      heap-stack-disjoint-via-region pair 0 new-rsp new-rsp-in-stack
         (trans (+-identityʳ (encode pair)) (sym (trans eq rdi-eq)))
 
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
@@ -296,14 +303,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     rdi-s2 = trans (readReg-writeReg-r15-rdi (regs s1) closure-addr) rdi-s1
 
     -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
-    -- rdi+8 = encode pair + 8, which is still a heap address
+    -- D041: Uses region-based proof instead of postulate
     stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
     stack-heap-disjoint-rdi+8 eq =
       -- eq : new-rsp ≡ rdi + 8
       -- rdi-eq : rdi ≡ encode pair
       -- So: new-rsp ≡ encode pair + 8
-      -- heap-stack-disjoint says: encode pair +ℕ 8 ≢ new-rsp
-      heap-stack-disjoint pair slot-size new-rsp
+      -- heap-stack-disjoint-via-region says: encode pair +ℕ 8 ≢ new-rsp
+      heap-stack-disjoint-via-region pair slot-size new-rsp new-rsp-in-stack
         (sym (trans eq (cong (_+ℕ slot-size) rdi-eq)))
 
     -- Memory at closure-addr is preserved (stack vs heap disjointness)
@@ -319,14 +326,15 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
           mem-cl-subst = subst (λ a → readMem (memory s) a ≡ just closure-addr) rdi-eq mem-cl
       in just-injective (trans (sym mem-cl-subst) mem-at-pair)
 
+    -- D041: Uses region-based proof instead of postulate
     stack-heap-disjoint-closure : new-rsp ≢ closure-addr
     stack-heap-disjoint-closure eq =
-      heap-stack-disjoint {A ⇒ B} cl 0 new-rsp
+      heap-stack-disjoint-via-region {A ⇒ B} cl 0 new-rsp new-rsp-in-stack
         (trans (+-identityʳ (encode {A ⇒ B} cl)) (sym (trans eq closure-addr-eq)))
 
     stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
     stack-heap-disjoint-closure+8 eq =
-      heap-stack-disjoint {A ⇒ B} cl slot-size new-rsp
+      heap-stack-disjoint-via-region {A ⇒ B} cl slot-size new-rsp new-rsp-in-stack
         (sym (trans eq (cong (_+ℕ slot-size) closure-addr-eq)))
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
@@ -673,23 +681,21 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
       readMem-writeMem-diff (memory s) new-rsp addr (pc s +ℕ 1)
         (apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp)
 
+    -- Shared: write address is in stack region (D041: lifted from nested where clauses)
+    write-addr-in-stack-call : region-of new-rsp ≡ stack
+    write-addr-in-stack-call = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+
     -- Memory at 0 preserved (D041: use abstract interface)
     mem-at-0-call : readMem (memory s1) 0 ≡ readMem (memory s) 0
-    mem-at-0-call = stackAddr-write-preserves-zero (memory s) new-rsp (pc s +ℕ 1) write-addr-in-stack
-      where
-        write-addr-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    mem-at-0-call = stackAddr-write-preserves-zero (memory s) new-rsp (pc s +ℕ 1) write-addr-in-stack-call
 
     -- Memory at code-region addresses preserved (D041: use abstract interface)
     mem-code-call : ∀ addr → region-of addr ≡ code → readMem (memory s1) addr ≡ readMem (memory s) addr
-    mem-code-call addr addr-in-code = stackAddr-write-preserves-code (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack addr-in-code
-      where
-        write-addr-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    mem-code-call addr addr-in-code = stackAddr-write-preserves-code (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack-call addr-in-code
 
     -- Memory at heap-region addresses preserved (D041: use abstract interface)
     mem-heap-call : ∀ addr → region-of addr ≡ heap → readMem (memory s1) addr ≡ readMem (memory s) addr
-    mem-heap-call addr addr-in-heap = stackAddr-write-preserves-heap (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack addr-in-heap
-      where
-        write-addr-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    mem-heap-call addr addr-in-heap = stackAddr-write-preserves-heap (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack-call addr-in-heap
 
 ------------------------------------------------------------------------
 -- ApplyPopResult: Record type for pop r15 results (avoids nested tuples)
@@ -1243,15 +1249,15 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- Setup writes to (rsp - 8) which is in stack region
     -- Call writes to (rsp - 16) which is in stack region
     -- Both are ≢ 0 since 0 is not in stack region (zero-not-in-stack)
+    -- Shared: Setup write address (rsp - 8) is in stack region (D041: lifted)
+    setup-write-in-stack-f : region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
+    setup-write-in-stack-f = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+
     -- Memory at 0 preserved: chain through all phases using D041 abstract interface
     mem-at-0-f : readMem (memory s-final) 0 ≡ readMem (memory s) 0
     mem-at-0-f = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
-        -- Setup write address (rsp - 8) is in stack region (via abstract interface)
-        setup-write-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
-
-        -- Chain: setup → call → thunk → pop
-        after-setup = stackAddr-write-preserves-zero (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 setup-write-in-stack
+        after-setup = stackAddr-write-preserves-zero (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 setup-write-in-stack-f
         after-call  = mem-at-0-call-phase
         after-thunk = thunk-preserves-zero thunk-res
         after-pop   = cong (λ m → readMem m 0) PopR.mem-pop-preserved
@@ -1260,11 +1266,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-code-region-f : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-region-f addr addr-in-code = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
-        -- Setup write address is in stack region (via abstract interface)
-        setup-write-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
-
-        -- Chain: setup → call → thunk → pop
-        after-setup = stackAddr-write-preserves-code (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack addr-in-code
+        after-setup = stackAddr-write-preserves-code (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack-f addr-in-code
         after-call  = mem-code-call-phase addr addr-in-code
         after-thunk = thunk-preserves-code thunk-res addr addr-in-code
         after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved
@@ -1273,11 +1275,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-heap-region-f : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-region-f addr addr-in-heap = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
-        -- Setup write address is in stack region (via abstract interface)
-        setup-write-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
-
-        -- Chain: setup → call → thunk → pop
-        after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack addr-in-heap
+        after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack-f addr-in-heap
         after-call  = mem-heap-call-phase addr addr-in-heap
         after-thunk = thunk-preserves-heap thunk-res addr addr-in-heap
         after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved

@@ -52,6 +52,15 @@ open import Relation.Binary.PropositionalEquality.Properties using (module ≡-R
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- Capacity Helper (D041 Refactoring)
+------------------------------------------------------------------------
+-- Centralized capacity-5 creation to avoid repeated pattern:
+--   rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+
+mk-capacity-5 : (s : State) → StackCapacity s 5
+mk-capacity-5 s = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+
+------------------------------------------------------------------------
 -- Abstract Interface Bridging (D041 Migration)
 ------------------------------------------------------------------------
 -- These helpers show how to use the abstract StackPointer interface
@@ -640,6 +649,12 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     rbp-s1-eq : readReg (regs s1) rbp ≡ readReg (regs s) rsp ∸ slots 3
     rbp-s1-eq = trans (ir-rbp r-f) rbp-setup-raw
 
+    -- Shared: r15 s1 is in stack region (used by mem-code-mid-proof, mem-heap-mid-proof)
+    -- D041: Lifted from nested where clauses to avoid duplication
+    s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
+    s1-r15-region = subst (λ a → region-of a ≡ stack) (sym r15-s1-eq)
+                          (abstract-to-rsp-40-in-stack s (mk-capacity-5 s))
+
     -- r15 ≠ rbp in s1 (since rsp-40 ≠ rsp-24)
     -- Key: if rsp - 40 = rsp - 24 with rsp ≥ 40, then (rsp-24) = (rsp-40),
     -- which means (rsp-40) + 16 = (rsp-40), contradiction via n≢n+suc-m
@@ -722,49 +737,20 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
                                                 (readReg (regs s1) rax) r15-neq-0
 
     -- Code region preservation (D041): r15 is in stack, code disjoint from stack
-    -- r15 s1 = rsp s - 40, which is in stack region when rsp s > 40
+    -- Uses shared s1-r15-region computed above
     mem-code-mid-proof : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-code-mid-proof addr addr-in-code = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
       where
-        -- r15 = rsp_orig - 40, which is in stack region
-        -- Derive capacity from original state
-        rsp-orig>40 : readReg (regs s) rsp > slots 5
-        rsp-orig>40 = rsp-bound-after-stack-op s
-        rsp-orig≥40 : readReg (regs s) rsp ≥ 40
-        rsp-orig≥40 = <⇒≤ rsp-orig>40
-        cap-orig : StackCapacity s 5
-        cap-orig = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) rsp-orig>40
-        -- region-of (rsp s - 40) = stack
-        write-addr-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
-        write-addr-in-stack = abstract-to-rsp-40-in-stack s cap-orig
-        -- r15 s1 = rsp s - 40
-        r15-eq-write : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
-        r15-eq-write = r15-s1-eq
-        -- Therefore region-of (r15 s1) = stack
-        s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
-        s1-r15-region = subst (λ a → region-of a ≡ stack) (sym r15-eq-write) write-addr-in-stack
         r15-neq-addr : readReg (regs s1) r15 ≢ addr
         r15-neq-addr eq = stack-code-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-code eq
 
     -- Heap region preservation (D041): r15 is in stack, heap disjoint from stack
+    -- Uses shared s1-r15-region computed above
     mem-heap-mid-proof : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-heap-mid-proof addr addr-in-heap = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
       where
-        -- Same derivation as code: r15 = rsp_orig - 40 is in stack
-        rsp-orig>40 : readReg (regs s) rsp > slots 5
-        rsp-orig>40 = rsp-bound-after-stack-op s
-        rsp-orig≥40 : readReg (regs s) rsp ≥ 40
-        rsp-orig≥40 = <⇒≤ rsp-orig>40
-        cap-orig : StackCapacity s 5
-        cap-orig = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) rsp-orig>40
-        write-addr-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
-        write-addr-in-stack = abstract-to-rsp-40-in-stack s cap-orig
-        r15-eq-write : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
-        r15-eq-write = r15-s1-eq
-        s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
-        s1-r15-region = subst (λ a → region-of a ≡ stack) (sym r15-eq-write) write-addr-in-stack
         r15-neq-addr : readReg (regs s1) r15 ≢ addr
         r15-neq-addr eq = stack-heap-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-heap eq
 
@@ -1270,8 +1256,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code : region-of (readReg (regs s) r15) ≡ code →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-code r15-code-pf eq =
-          let -- Get capacity 5 from 40 ≤ rsp-s
-              cap5 = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+          let cap5 = mk-capacity-5 s
               -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region (via abstract interface)
               write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack
               write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap5
@@ -1290,7 +1275,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-heap : region-of (readReg (regs s) r15) ≡ heap →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-heap r15-heap-pf eq =
-          let cap5 = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+          let cap5 = mk-capacity-5 s
               s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
               s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain)
                                         (abstract-to-rsp-40+8-in-stack s cap5)
@@ -1763,7 +1748,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
           let -- s1.r15 = rsp - 40 is in stack region (via abstract interface)
-              cap5 = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+              cap5 = mk-capacity-5 s
               rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap5
               -- Convert via s1-r15-eq
@@ -1777,7 +1762,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- Case r15 in heap region: heap addresses are disjoint from stack addresses (D041 region proof)
         case-r15-heap-r15 : region-of orig-r15 ≡ heap → orig-r15 ≢ readReg (regs s1) r15
         case-r15-heap-r15 r15-heap-pf eq =
-          let cap5 = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+          let cap5 = mk-capacity-5 s
               rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap5
               s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
@@ -2139,9 +2124,8 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       -- ========== D041 memory preservation proofs ==========
       -- The write address (r15-s3 + 8) is in stack region, so it's disjoint from 0, code, and heap
 
-      -- Get capacity 5 from 40 ≤ rsp-s
       cap5 : StackCapacity s 5
-      cap5 = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+      cap5 = mk-capacity-5 s
 
       -- (rsp - 40) + 8 is in stack region (via abstract interface)
       write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack
