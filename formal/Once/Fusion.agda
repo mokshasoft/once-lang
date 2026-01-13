@@ -8,10 +8,25 @@
 -- the categorical laws (coproduct beta, functor laws).
 --
 -- Rules implemented:
---   1. Coproduct functor fusion:
+--   1. Right functor fusion (fmap on right component):
 --      [ inl, inr ∘ h ] ∘ [ inl, inr ∘ k ] = [ inl, inr ∘ (h ∘ k) ]
 --      This is the functor law: fmap h ∘ fmap k = fmap (h ∘ k)
 --      High impact for list operations: map f ∘ map g = map (f ∘ g)
+--
+--   2. Bimap fusion (transforms both components):
+--      [ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ (g ∘ k) ]
+--      This is: bimap f g ∘ bimap h k = bimap (f ∘ h) (g ∘ k)
+--
+--   3. Left functor fusion (fmap on left component):
+--      [ inl ∘ f, inr ] ∘ [ inl ∘ g, inr ] = [ inl ∘ (f ∘ g), inr ]
+--
+--   4. Mixed fusion (bimap with right fmap):
+--      [ inl ∘ f, inr ∘ g ] ∘ [ inl, inr ∘ k ] = [ inl ∘ f, inr ∘ (g ∘ k) ]
+--      [ inl, inr ∘ h ] ∘ [ inl ∘ f, inr ∘ g ] = [ inl ∘ f, inr ∘ (h ∘ g) ]
+--
+--   5. Mixed fusion (bimap with left fmap):
+--      [ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ] = [ inl ∘ (f ∘ h), inr ∘ g ]
+--      [ inl ∘ f, inr ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ k ]
 ------------------------------------------------------------------------
 
 module Once.Fusion where
@@ -51,6 +66,63 @@ fusion-compose : ∀ {A B C} → IR B C → IR A B → IR A C
 --
 fusion-compose [ inl m1 , (inr m2) ∘ h ] [ inl m3 , (inr m4) ∘ k ] =
   [ inl m1 , (inr m2) ∘ (h ∘ k) ]
+
+-- Rule 2: Bimap fusion
+-- [ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ (g ∘ k) ]
+--
+-- Both branches transform their values. Composing two such bimaps
+-- fuses the transformations on each branch.
+--
+fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl m3) ∘ h , (inr m4) ∘ k ] =
+  [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ (g ∘ k) ]
+
+-- Rule 3: Left functor fusion
+-- [ inl ∘ f, inr ] ∘ [ inl ∘ g, inr ] = [ inl ∘ (f ∘ g), inr ]
+--
+-- Only the left branch transforms values; right branch is identity.
+--
+fusion-compose [ (inl m1) ∘ f , inr m2 ] [ (inl m3) ∘ g , inr m4 ] =
+  [ (inl m1) ∘ (f ∘ g) , inr m2 ]
+
+-- Rule 4a: Mixed fusion (bimap after right fmap)
+-- [ inl ∘ f, inr ∘ g ] ∘ [ inl, inr ∘ k ] = [ inl ∘ f, inr ∘ (g ∘ k) ]
+--
+-- Inner transforms right only, outer transforms both.
+-- Left: inl → inl → inl ∘ f (= inl ∘ f)
+-- Right: inr ∘ k → inr ∘ g ∘ k (= inr ∘ (g ∘ k))
+--
+fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ inl m3 , (inr m4) ∘ k ] =
+  [ (inl m1) ∘ f , (inr m2) ∘ (g ∘ k) ]
+
+-- Rule 4b: Mixed fusion (right fmap after bimap)
+-- [ inl, inr ∘ h ] ∘ [ inl ∘ f, inr ∘ g ] = [ inl ∘ f, inr ∘ (h ∘ g) ]
+--
+-- Inner transforms both, outer transforms right only.
+-- Left: inl ∘ f → inl ∘ f (preserved)
+-- Right: inr ∘ g → inr ∘ h ∘ g (= inr ∘ (h ∘ g))
+--
+fusion-compose [ inl m1 , (inr m2) ∘ h ] [ (inl m3) ∘ f , (inr m4) ∘ g ] =
+  [ (inl m1) ∘ f , (inr m2) ∘ (h ∘ g) ]
+
+-- Rule 5a: Mixed fusion (bimap after left fmap)
+-- [ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ] = [ inl ∘ (f ∘ h), inr ∘ g ]
+--
+-- Inner transforms left only, outer transforms both.
+-- Left: inl ∘ h → inl ∘ f ∘ h (= inl ∘ (f ∘ h))
+-- Right: inr → inr ∘ g (= inr ∘ g)
+--
+fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl m3) ∘ h , inr m4 ] =
+  [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ g ]
+
+-- Rule 5b: Mixed fusion (left fmap after bimap)
+-- [ inl ∘ f, inr ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ k ]
+--
+-- Inner transforms both, outer transforms left only.
+-- Left: inl ∘ h → inl ∘ f ∘ h (= inl ∘ (f ∘ h))
+-- Right: inr ∘ k → inr ∘ k (preserved)
+--
+fusion-compose [ (inl m1) ∘ f , inr m2 ] [ (inl m3) ∘ h , (inr m4) ∘ k ] =
+  [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ k ]
 
 -- Default: no fusion, preserve original composition
 fusion-compose g f = g ∘ f
