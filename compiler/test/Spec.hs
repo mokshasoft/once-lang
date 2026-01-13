@@ -2,6 +2,7 @@ module Main (main) where
 
 import Test.Tasty
 
+import AllocationSpec (allocationStressTests)
 import Arith.Spec (arithTests)
 import BackendSpec (backendTests)
 import ElaborateSpec (elaborateTests)
@@ -23,4 +24,5 @@ main = defaultMain $ testGroup "Once"
   , typeCheckTests
   , moduleTests
   , backendTests
+  , allocationStressTests
   ]

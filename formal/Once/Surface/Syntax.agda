@@ -179,3 +179,13 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   ge    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
   eq    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
   ne    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+
+  -- Effect lifting (arr combinator from arrow-based effects)
+  -- Lifts a pure function to an effectful morphism
+  arr'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A ⇒ B) → Expr Γ (Eff A B)
+
+  -- Fixed point constructors (for recursive types)
+  -- roll wraps one layer: F → Fix F
+  roll'   : ∀ {n} {Γ : Ctx n} {F} → Expr Γ F → Expr Γ (Fix F)
+  -- unroll unwraps one layer: Fix F → F
+  unroll' : ∀ {n} {Γ : Ctx n} {F} → Expr Γ (Fix F) → Expr Γ F

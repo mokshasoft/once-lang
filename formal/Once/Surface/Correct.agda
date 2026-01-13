@@ -9,8 +9,8 @@ module Once.Surface.Correct where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics as IR using (⟦_⟧; eval; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne) renaming (_,_ to _▸_; eq to eq')
+open import Once.Semantics as IR using (⟦_⟧; eval; Closure; ⟦Fix⟧; wrap)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll') renaming (_,_ to _▸_; eq to eq')
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
@@ -229,6 +229,19 @@ mutual
   elaborate-correct ρ (ge e₁ e₂) = arith-cmp-correct ρ e₁ e₂ geIR ge geIR-correct
   elaborate-correct ρ (eq' e₁ e₂) = arith-cmp-correct ρ e₁ e₂ eqIR eq' eqIR-correct
   elaborate-correct ρ (ne e₁ e₂) = arith-cmp-correct ρ e₁ e₂ neIR ne neIR-correct
+
+  -- Effect lifting: arr is identity (Eff A B has same semantics as A ⇒ B)
+  -- LHS: evalSurface ρ (arr' f) = evalSurface ρ f
+  -- RHS: eval (arr ∘ elaborate f) γ = eval (elaborate f) γ  [arr is identity]
+  elaborate-correct ρ (arr' f) = elaborate-correct ρ f
+  -- Fixed point roll: wrap one layer
+  -- LHS: evalSurface ρ (roll' e) = wrap (evalSurface ρ e)
+  -- RHS: eval (fold ∘ elaborate e) γ = wrap (eval (elaborate e) γ)
+  elaborate-correct ρ (roll' e) = cong wrap (elaborate-correct ρ e)
+  -- Fixed point unroll: unwrap one layer
+  -- LHS: evalSurface ρ (unroll' e) = ⟦Fix⟧.unwrap (evalSurface ρ e)
+  -- RHS: eval (unfold ∘ elaborate e) γ = ⟦Fix⟧.unwrap (eval (elaborate e) γ)
+  elaborate-correct ρ (unroll' e) = cong ⟦Fix⟧.unwrap (elaborate-correct ρ e)
 
   -- Helper for comparison correctness
   arith-cmp-correct : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)

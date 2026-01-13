@@ -197,3 +197,14 @@ elaborate (gt e₁ e₂) = gtIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
 elaborate (ge e₁ e₂) = geIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
 elaborate (eq e₁ e₂) = eqIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
 elaborate (ne e₁ e₂) = neIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
+
+-- Effect lifting: arr f lifts pure function to effectful morphism
+-- IR arr : (A ⇒ B) → Eff A B
+elaborate (arr' f) = arr ∘ elaborate f
+
+-- Fixed point constructors
+-- roll wraps one layer: F → Fix F
+elaborate (roll' e) = fold ∘ elaborate e
+
+-- unroll unwraps one layer: Fix F → F
+elaborate (unroll' e) = unfold ∘ elaborate e

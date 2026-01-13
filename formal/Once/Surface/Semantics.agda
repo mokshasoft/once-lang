@@ -8,8 +8,8 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; Closure)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne) renaming (_,_ to _▸_)
+open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; roll'; unroll') renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -114,3 +114,9 @@ evalSurface ρ (ne e₁ e₂)     = toSum (not (does (evalSurface ρ e₁ ≟ ev
   where toSum : Bool → ⊤ ⊎ ⊤
         toSum true  = inj₁ tt
         toSum false = inj₂ tt
+
+-- Effect lifting: arr is identity (Eff A B has same semantics as A ⇒ B)
+evalSurface ρ (arr' f)       = evalSurface ρ f
+-- Fixed point constructors: wrap/unwrap isomorphism
+evalSurface ρ (roll' e)      = wrap (evalSurface ρ e)
+evalSurface ρ (unroll' e)    = ⟦Fix⟧.unwrap (evalSurface ρ e)
