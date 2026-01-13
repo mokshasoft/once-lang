@@ -40,7 +40,10 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
-         rbp-inv-preserved-unchanged)
+         rbp-inv-preserved-unchanged;
+         IRStarResultV; ir-result-valid)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 
 open import Data.Nat using (_>_; _≥_)
@@ -2155,4 +2158,185 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
         where
           write-neq-addr : readReg (regs s3) r15 +ℕ slot-size ≢ addr
           write-neq-addr eq = stack-heap-disjoint (readReg (regs s3) r15 +ℕ slot-size) addr write-addr-in-stack addr-in-heap eq
+
+------------------------------------------------------------------------
+-- Validity-Based Pair Result Assembly
+------------------------------------------------------------------------
+
+-- | Assemble pair result with validity-based correctness
+-- Like assemble-pair-result but produces ValidAt instead of encode equality
+--
+-- Key inputs:
+-- - f-result-valid : ValidAt (eval f x) addr-a (memory s-final)
+-- - g-result-valid : ValidAt (eval g x) addr-b (memory s-final)
+-- - pair-mem : PairAtS addr-a addr-b r15-s3 (memory s-final)
+--
+-- These combine into: valid-pair f-result-valid g-result-valid pair-mem
+assemble-pair-result-v : ∀ {A B C} (f : IR C A) (g : IR C B)
+                         (prefix suffix : Program) (x : ⟦ C ⟧)
+                         (s s-setup s1 s2 s3 s-final : State) →
+  let ctx = make-pair-context f g prefix suffix in
+  let open PairContext ctx in
+  (setup-res : PairSetupResult f g prefix suffix x s) →
+  (r-f : IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)) →
+  (mid-res : PairMiddleResult f g prefix suffix x s s-setup s1) →
+  (r-g : IRStarResult g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)) →
+  -- Final phase properties
+  halted s-final ≡ false →
+  pc s-final ≡ length prefix-final +ℕ 6 →
+  readReg (regs s-final) rax ≡ readReg (regs s3) r15 →
+  readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
+  readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
+  StackInvariant s-final →
+  readReg (regs s-final) rsp > slots 2 →
+  readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
+  readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
+  readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
+  readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15) →
+  readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
+  readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
+  (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
+  (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  Star prog s3 s-final →
+  s2 ≡ PairMiddleResult.s2 mid-res →
+  s-setup ≡ PairSetupResult.s-setup setup-res →
+  RbpInvariant s →
+  readReg (regs s-final) rsp ≡ readReg (regs s) rsp →
+  -- NEW: Validity-based inputs (replace encode-based inputs)
+  -- f's result validity, preserved to s-final
+  ValidAt (eval f x) (readReg (regs s1) rax) (memory s-final) →
+  -- g's result validity, preserved to s-final
+  ValidAt (eval g x) (readReg (regs s3) rax) (memory s-final) →
+  -- Result: IRStarResultV with validity instead of encode
+  IRStarResultV ⟨ f , g ⟩ prog s s-final x (length prefix)
+assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
+                       setup-res r-f mid-res r-g
+                       h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
+                       stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
+                       rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
+                       star-fin s2-eq s-setup-eq
+                       rbp-inv rsp-final
+                       f-valid-final g-valid-final = record
+  { ir-star = star-all
+  ; ir-halted = h-final
+  ; ir-pc = pc-final
+  ; ir-result-valid = result-valid
+  ; ir-r14 = r14-final
+  ; ir-r15 = r15-final
+  ; ir-rbp = rbp-final
+  ; ir-mem = mem-final
+  ; ir-mem-rbp = mem-rbp-final
+  ; ir-mem-rbp+8 = mem-rbp+8-final
+  ; ir-stack-inv = stack-inv-final
+  ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+  ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
+  ; ir-mem-above = mem-above-final
+  ; ir-mem-at-0 = mem-at-0-final
+  ; ir-mem-code = mem-code-final
+  ; ir-mem-heap = mem-heap-final
+  ; ir-closure-wf = closure-wf-final
+  }
+  where
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
+
+    -- Star proofs from each phase (same as assemble-pair-result)
+    star-setup' : Star prog s s-setup
+    star-setup' = subst (λ ss → Star prog s ss) (sym s-setup-eq) (PairSetupResult.star-setup setup-res)
+
+    star-f-raw : Star (prefix-f ++ code-f ++ suffix-f) s-setup s1
+    star-f-raw = ir-star r-f
+    star-f' : Star prog s-setup s1
+    star-f' = subst (λ p → Star p s-setup s1) (sym prog-eq-f) star-f-raw
+
+    star-mid' : Star prog s1 s2
+    star-mid' = subst (λ s2' → Star prog s1 s2') (sym s2-eq) (PairMiddleResult.star-mid mid-res)
+
+    star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s2 s3
+    star-g-raw = ir-star r-g
+    star-g : Star prog s2 s3
+    star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
+
+    -- Closure WF (same as assemble-pair-result)
+    closure-wf-f-raw : ClosureWFOutput (prefix-f ++ code-f ++ suffix-f)
+    closure-wf-f-raw = ir-closure-wf r-f
+    closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix-g)
+    closure-wf-g-raw = ir-closure-wf r-g
+    closure-wf-from-f : ClosureWFOutput prog
+    closure-wf-from-f = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
+    closure-wf-from-g : ClosureWFOutput prog
+    closure-wf-from-g = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
+    closure-wf-final : ClosureWFOutput prog
+    closure-wf-final = case closure-wf-from-f of λ where
+      no-closure → closure-wf-from-g
+      wf-f → wf-f
+
+    -- Compose all 5 phases
+    star-all : Star prog s s-final
+    star-all = star-trans star-setup' (star-trans star-f' (star-trans star-mid' (star-trans star-g star-fin)))
+
+    -- pc-final calculation (same as assemble-pair-result)
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+    pc-final = trans pc-fin-raw (trans (cong (_+ℕ 6) len-prefix-final)
+               (trans (+-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6)
+               (trans (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6))
+               (trans (sym (+-assoc (length prefix +ℕ 9 +ℕ len-f) 6 len-g))
+               (trans (cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 9) len-f 6))
+               (trans (cong (λ z → (length prefix +ℕ 9 +ℕ z) +ℕ len-g) (+-comm len-f 6))
+               (trans (cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 9) 6 len-f)))
+               (trans (cong (λ z → (z +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 9 6))
+               (trans (cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f))
+               (+-assoc (length prefix) (15 +ℕ len-f) len-g))))))))))
+
+    -- ============================================================
+    -- VALIDITY-BASED RESULT (replaces encode-pair-construct)
+    -- ============================================================
+
+    -- Address chain for r15
+    rax1 = ir-rax r-f
+    rax3 = ir-rax r-g
+    r15-s3 = ir-r15 r-g
+    r15-mid' = subst (λ s2' → readReg (regs s2') r15 ≡ readReg (regs s1) r15) (sym s2-eq) (PairMiddleResult.r15-mid mid-res)
+    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s1) r15
+    r15-chain = trans r15-s3 r15-mid'
+
+    -- First component: memory at r15 contains addr-a (rax-s1)
+    -- Memory at r15-s3 = memory at r15-s1 (via chain)
+    mem-fst-stored' = subst (λ s2' → readMem (memory s2') (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)) (sym s2-eq) (PairMiddleResult.mem-fst-stored mid-res)
+
+    -- mem-fst-s3: memory at r15 in s3 = memory stored in middle phase
+    mem-fst-s3' : readMem (memory s3) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
+    mem-fst-s3' = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s3) (readReg (regs s2) r15))
+                               (sym r15-s3) refl)
+                        (trans (ir-mem r-g)
+                        (trans (subst (λ addr → readMem (memory s2) addr ≡ readMem (memory s2) (readReg (regs s1) r15))
+                                      (sym r15-mid') refl)
+                        mem-fst-stored'))
+
+    -- First component memory in s-final
+    mem-fst-s-final' : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
+    mem-fst-s-final' = trans mem-fst-final mem-fst-s3'
+
+    -- Second component memory in s-final
+    mem-snd-s-final' : readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax)
+    mem-snd-s-final' = mem-snd-final
+
+    -- Construct PairAtS from memory proofs
+    pair-at : PairAtS (readReg (regs s1) rax) (readReg (regs s3) rax) (readReg (regs s3) r15) (memory s-final)
+    pair-at = pair-at-s mem-fst-s-final' mem-snd-s-final'
+
+    -- Final result: rax = r15 points to valid pair
+    -- valid-pair needs:
+    -- 1. ValidAt (eval f x) addr-a (memory s-final) -- f-valid-final
+    -- 2. ValidAt (eval g x) addr-b (memory s-final) -- g-valid-final
+    -- 3. PairAtS addr-a addr-b r15 (memory s-final) -- pair-at
+    result-valid-at-r15 : ValidAt {A * B} (eval f x , eval g x) (readReg (regs s3) r15) (memory s-final)
+    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at
+
+    -- Transport to rax (rax-s-final = r15-s3)
+    result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
+    result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))
+                         (sym rax-fin-is-r15) result-valid-at-r15
 
