@@ -81,7 +81,19 @@ escape-compose-correct (curry g _) f x = refl
 escape-compose-correct apply id x = refl
 escape-compose-correct apply (g ∘ h) x = refl
 escape-compose-correct apply (Prim _) x = refl
-escape-compose-correct fold f x = refl
+
+-- Rule 6: fold ∘ inl - AllocMode transparent in injection
+escape-compose-correct fold (inl _) x = refl
+
+-- Rule 7: fold ∘ inr - AllocMode transparent in injection
+escape-compose-correct fold (inr _) x = refl
+
+-- fold with other arguments (default case)
+escape-compose-correct fold id x = refl
+escape-compose-correct fold (f ∘ g) x = refl
+escape-compose-correct fold (⟨ f , g ⟩ _) x = refl
+escape-compose-correct fold [ f , g ] x = refl
+escape-compose-correct fold (Prim _) x = refl
 escape-compose-correct unfold f x = refl
 escape-compose-correct arr f x = refl
 escape-compose-correct (Prim _) f x = refl

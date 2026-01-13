@@ -16,6 +16,11 @@
 --   4. [ f , g ] ∘ inr m → [ f , g ] ∘ inr Stack  (injection consumed by case)
 --   5. apply ∘ ⟨ curry f m₁ , x ⟩ m₂ → apply ∘ ⟨ curry f Stack , x ⟩ Stack
 --      (closure immediately applied, pair immediately consumed)
+--   6. fold ∘ inl m → fold ∘ inl Stack  (injection consumed by fold)
+--   7. fold ∘ inr m → fold ∘ inr Stack  (injection consumed by fold)
+--
+-- Rules 6-7 are especially powerful with linear types: linearity guarantees
+-- the injection is used exactly once, so stack allocation is provably safe.
 ------------------------------------------------------------------------
 
 module Once.Escape where
@@ -59,6 +64,18 @@ escape-compose [ f , g ] (inr _) = [ f , g ] ∘ inr Stack
 -- The closure is immediately applied, and the argument pair is immediately
 -- consumed by apply. Neither the closure nor the pair escape.
 escape-compose apply (⟨ curry f _ , x ⟩ _) = apply ∘ ⟨ curry f Stack , x ⟩ Stack
+
+-- Rule 6: fold ∘ inl m → fold ∘ inl Stack
+-- The left injection is immediately consumed by fold to construct a Fix value.
+-- Common pattern: nil = fold ∘ inl (for list-like structures)
+-- With linear types, the injection is guaranteed to be used exactly once.
+escape-compose fold (inl _) = fold ∘ inl Stack
+
+-- Rule 7: fold ∘ inr m → fold ∘ inr Stack
+-- The right injection is immediately consumed by fold to construct a Fix value.
+-- Common pattern: cons = fold ∘ inr (for list-like structures)
+-- With linear types, the injection is guaranteed to be used exactly once.
+escape-compose fold (inr _) = fold ∘ inr Stack
 
 -- Default: no escape optimization, preserve original composition
 escape-compose g f = g ∘ f
