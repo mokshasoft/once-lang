@@ -21,6 +21,9 @@ open import Once.Backend.X86.Syntax
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 
+-- Import slots function (slot-size comes from Syntax)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+
 ------------------------------------------------------------------------
 -- Compile length calculation
 ------------------------------------------------------------------------
@@ -77,7 +80,7 @@ compile-x86 (g ∘ f) =
 compile-x86 fst = mov (reg rax) (mem (base rdi)) ∷ []
 
 -- Second projection: load from offset 8 of pair pointer
-compile-x86 snd = mov (reg rax) (mem (base+disp rdi 8)) ∷ []
+compile-x86 snd = mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
 -- Stack layout: [fst (8 bytes), snd (8 bytes)]
@@ -93,7 +96,7 @@ compile-x86 ⟨ f , g ⟩ =
   push (reg rbp) ∷
   mov (reg rbp) (reg rsp) ∷
   -- Allocate 16 bytes on stack for pair
-  sub (reg rsp) (imm 16) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
   -- r15 = stable base address for this pair
   mov (reg r15) (reg rsp) ∷
   -- r14 = saved input
@@ -107,7 +110,7 @@ compile-x86 ⟨ f , g ⟩ =
   -- Compute g
   compile-x86 g ++
   -- Store g result at [r15 + 8]
-  mov (mem (base+disp r15 8)) (reg rax) ∷
+  mov (mem (base+disp r15 slot-size)) (reg rax) ∷
   -- Return pointer to pair
   mov (reg rax) (reg r15) ∷
   -- Restore stack to frame base (handles any stack growth by f/g)
@@ -120,16 +123,16 @@ compile-x86 ⟨ f , g ⟩ =
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
 compile-x86 inl =
-  sub (reg rsp) (imm 16) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
   mov (mem (base rsp)) (imm 0) ∷          -- tag = 0
-  mov (mem (base+disp rsp 8)) (reg rdi) ∷  -- value
+  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷  -- value
   mov (reg rax) (reg rsp) ∷ []             -- return pointer
 
 -- Right injection: create tagged union with tag = 1
 compile-x86 inr =
-  sub (reg rsp) (imm 16) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
   mov (mem (base rsp)) (imm 1) ∷          -- tag = 1
-  mov (mem (base+disp rsp 8)) (reg rdi) ∷  -- value
+  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷  -- value
   mov (reg rax) (reg rsp) ∷ []             -- return pointer
 
 -- Case analysis: branch on tag
@@ -161,12 +164,12 @@ compile-x86 [ f , g ] =
   -- Jump to right branch if not zero (PC-relative)
   jne right-offset ∷
   -- Left branch: load value and apply f
-  mov (reg rdi) (mem (base+disp rdi 8)) ∷
+  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
   compile-x86 f ++
   jmp end-offset ∷
   -- Right branch: load value and apply g
   label right-label ∷
-  mov (reg rdi) (mem (base+disp rdi 8)) ∷
+  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
   compile-x86 g ++
   label end-label ∷ []
 
@@ -216,14 +219,14 @@ compile-x86 (curry {A} {B} {C} f) =
       end-label = 18 +ℕ len-f    -- For label pseudo-instruction
   in
   -- Allocate closure on stack
-  sub (reg rsp) (imm 16) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
   -- Store environment (input a in rdi) as closure.env
   mov (mem (base rsp)) (reg rdi) ∷
   -- Compute code pointer using RIP-relative addressing
   -- At pc=2, lea computes pc+4=6 (thunk entry address)
   lea r9 (rip+disp rip-offset) ∷
   -- Store code pointer from r9
-  mov (mem (base+disp rsp 8)) (reg r9) ∷
+  mov (mem (base+disp rsp slot-size)) (reg r9) ∷
   -- Return closure pointer
   mov (reg rax) (reg rsp) ∷
   -- Jump over the thunk code (PC-relative)
@@ -236,11 +239,11 @@ compile-x86 (curry {A} {B} {C} f) =
   push (reg rbp) ∷
   mov (reg rbp) (reg rsp) ∷
   -- Allocate pair (a, b) on stack
-  sub (reg rsp) (imm 16) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
   -- Store a (from r12) at [rsp]
   mov (mem (base rsp)) (reg r12) ∷
   -- Store b (from rdi) at [rsp+8]
-  mov (mem (base+disp rsp 8)) (reg rdi) ∷
+  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
   -- Set rdi = pointer to pair
   mov (reg rdi) (reg rsp) ∷
   -- Execute f on the pair
@@ -266,11 +269,11 @@ compile-x86 apply =
   -- Load closure from pair.fst
   mov (reg r15) (mem (base rdi)) ∷
   -- Load argument from pair.snd
-  mov (reg rsi) (mem (base+disp rdi 8)) ∷
+  mov (reg rsi) (mem (base+disp rdi slot-size)) ∷
   -- Load env from closure.fst into r12
   mov (reg r12) (mem (base r15)) ∷
   -- Load code_ptr from closure.snd
-  mov (reg r15) (mem (base+disp r15 8)) ∷
+  mov (reg r15) (mem (base+disp r15 slot-size)) ∷
   -- Move argument to rdi
   mov (reg rdi) (reg rsi) ∷
   -- Call the code

@@ -21,7 +21,8 @@ module Once.Backend.X86.Correct.StackInstantiation where
 open import Once.Type
 open import Once.Semantics
 
-open import Once.Backend.X86.Syntax
+open import Once.Backend.X86.Syntax public using (slot-size)  -- Re-export slot-size
+open import Once.Backend.X86.Syntax hiding (slot-size)        -- Import the rest
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
@@ -68,9 +69,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- Named Constants (D041: replace magic numbers with semantic names)
 ------------------------------------------------------------------------
 
--- Fundamental stack unit (x86-64 word size)
-slot-size : ℕ
-slot-size = 8
+-- slot-size is imported from Once.Backend.X86.Syntax (= 8, x86-64 word size)
 
 -- | Generic n-slot offset: n slots in bytes
 -- All slot-based offsets are derived from this function

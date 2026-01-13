@@ -172,19 +172,23 @@ record Function : Set where
 --   tag = 0 for inl, tag = 1 for inr
 --   Access: tag at offset 0, value at offset 8
 
+-- | Word/slot size for x86-64 (8 bytes)
+slot-size : ℕ
+slot-size = 8
+
 -- | Offsets for product fields
 fstOffset : ℕ
 fstOffset = 0
 
 sndOffset : ℕ
-sndOffset = 8
+sndOffset = slot-size
 
 -- | Offsets for sum fields
 tagOffset : ℕ
 tagOffset = 0
 
 valueOffset : ℕ
-valueOffset = 8
+valueOffset = slot-size
 
 -- | Tag values for sums
 inlTag : ℕ

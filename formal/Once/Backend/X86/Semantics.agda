@@ -264,7 +264,7 @@ execInstr prog s (call target) =
     (just addr) →
       let retAddr = pc s + 1
           sp = readReg (regs s) rsp
-          newSp = sp ∸ 8
+          newSp = sp ∸ slot-size
       in just (record s { regs = writeReg (regs s) rsp newSp
                         ; memory = writeMem (memory s) newSp retAddr
                         ; pc = addr })
@@ -275,7 +275,7 @@ execInstr prog s ret =
     nothing → nothing
     (just retAddr) →
       let sp = readReg (regs s) rsp
-      in just (record s { regs = writeReg (regs s) rsp (sp + 8)
+      in just (record s { regs = writeReg (regs s) rsp (sp + slot-size)
                         ; pc = retAddr })
 
 execInstr prog s (push src) =
@@ -283,7 +283,7 @@ execInstr prog s (push src) =
     nothing → nothing
     (just v) →
       let sp = readReg (regs s) rsp
-          newSp = sp ∸ 8
+          newSp = sp ∸ slot-size
       in just (record s { regs = writeReg (regs s) rsp newSp
                         ; memory = writeMem (memory s) newSp v
                         ; pc = pc s + 1 })
@@ -293,7 +293,7 @@ execInstr prog s (pop r) =
     nothing → nothing
     (just v) →
       let sp = readReg (regs s) rsp
-      in just (record s { regs = writeReg (writeReg (regs s) r v) rsp (sp + 8)
+      in just (record s { regs = writeReg (writeReg (regs s) r v) rsp (sp + slot-size)
                         ; pc = pc s + 1 })
 
 execInstr prog s nop =

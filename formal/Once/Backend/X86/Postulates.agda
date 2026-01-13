@@ -12,25 +12,26 @@ module Once.Backend.X86.Postulates where
 open import Data.Nat using (ℕ; _>_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Backend.X86.Syntax using (rsp)
+open import Once.Backend.X86.Syntax using (rsp; slot-size)
 open import Once.Backend.X86.Semantics using (State; readReg)
 open import Once.Backend.X86.Semantics using () renaming (module State to St)
 open St using (regs)
 
 open import Once.Backend.Common.MemoryRegions using (Region; stack; region-of)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 
 ------------------------------------------------------------------------
 -- Postulate P4: Stack Pointer Bounds (Runtime Property)
 ------------------------------------------------------------------------
 --
--- After any stack-using operation, rsp remains > 16.
+-- After any stack-using operation, rsp remains > slots 5 (40 bytes).
 --
 -- NEEDED BY: Once.Backend.X86.Correct.MutualIR (inl, inr, pair, case, curry)
 --
 -- JUSTIFICATION:
 --   The initial rsp is 0x7FFF0000 (≈2 billion). Stack-using operations
 --   subtract at most 64 bytes per call. Even with deep recursion (millions
---   of calls), total stack usage is bounded and rsp never drops below 16.
+--   of calls), total stack usage is bounded and rsp never drops below slots 5.
 --   This is a runtime guarantee from the execution environment.
 --
 -- IMPACT:
@@ -43,9 +44,9 @@ open import Once.Backend.Common.MemoryRegions using (Region; stack; region-of)
 ------------------------------------------------------------------------
 
 postulate
-  -- Changed from > 16 to > 40 to support memory layout proofs
-  -- Pair setup subtracts 40 from rsp (3 pushes × 8 + sub 16)
-  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > 40
+  -- Changed from > slots 2 to > slots 5 to support memory layout proofs
+  -- Pair setup subtracts slots 5 from rsp (3 pushes + sub (slots 2))
+  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > slots 5
 
   -- RSP is always in stack region (runtime invariant)
   -- Companion to rsp-bound-after-stack-op: rsp not only has enough space,

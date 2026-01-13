@@ -96,6 +96,9 @@ open import Once.Backend.X86.Correct.SeqExec public
 -- Level 4: Mutual block for run-ir-star-at-offset (Star-based IR execution)
 open import Once.Backend.X86.Correct.MutualIR public
 
+-- Import semantic stack constants
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -228,7 +231,7 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : Sta
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
 run-ir-star = run-ir-star-at-offset
@@ -248,7 +251,7 @@ compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPoin
     pc s ≡ 0 →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
@@ -292,7 +295,7 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
            × halted s' ≡ false
@@ -382,7 +385,7 @@ exec-halted-stable = exec-n-halted
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 run-generator : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
-  StackInvariant s → readReg (regs s) rsp > 16 → RbpInvariant s →
+  StackInvariant s → readReg (regs s) rsp > slots 2 → RbpInvariant s →
   ∃[ s' ] (Star (compile-x86 ir) s s'
          × halted s' ≡ true
          × readReg (regs s') rax ≡ encode (eval ir x))
@@ -457,7 +460,7 @@ run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointe
   pc s0 ≡ 0 →
   readReg (regs s0) rdi ≡ encode x →
   StackInvariant s0 →
-  readReg (regs s0) rsp > 16 →
+  readReg (regs s0) rsp > slots 2 →
   RbpInvariant s0 →
   -- After running g ∘ f: exists s2 with Star trace and rax = encode (eval g (eval f x))
   ∃[ s2 ] (Star (compile-x86 (g ∘ f)) s0 s2
