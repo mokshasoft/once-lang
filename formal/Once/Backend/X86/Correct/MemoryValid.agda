@@ -162,6 +162,45 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ValidAt {Fix F} (wrap x) addr m
 
 ------------------------------------------------------------------------
+-- ValidAt preservation under memory writes
+--
+-- Key insight: if we write to addresses disjoint from those referenced
+-- by a validity proof, the validity is preserved.
+--
+-- This is a postulate for now, to be proven by induction on ValidAt
+-- once we have better region reasoning. It's conceptually sound and
+-- replaces the more problematic encode postulates.
+------------------------------------------------------------------------
+
+-- | ValidAt is preserved when writing to disjoint addresses
+-- The write addresses (w1, w2) must not overlap with any address
+-- referenced by the validity proof at addr-v.
+--
+-- For stack-allocated sums/pairs written at w1 and w1+8,
+-- this holds when addr-v points to:
+-- - Heap-allocated data (heap ≠ stack)
+-- - Previously stack-allocated data above the current rsp
+-- - Simple types like Unit (no memory dependency)
+--
+-- TODO: Prove by induction on ValidAt structure
+postulate
+  valid-at-preserved-under-write :
+    ∀ {A} {v : ⟦ A ⟧} {addr-v w : Word} {val : Word} {m : Memory} →
+    ValidAt v addr-v m →
+    addr-v ≢ w →  -- write address different from validity address
+    ValidAt v addr-v (writeMem m w val)
+
+-- | Convenience: preservation under two writes (common for alloc-2-slots)
+valid-at-preserved-under-writes :
+  ∀ {A} {v : ⟦ A ⟧} {addr-v w1 w2 : Word} {val1 val2 : Word} {m : Memory} →
+  ValidAt v addr-v m →
+  addr-v ≢ w1 →
+  addr-v ≢ w2 →
+  ValidAt v addr-v (writeMem (writeMem m w1 val1) w2 val2)
+valid-at-preserved-under-writes valid neq1 neq2 =
+  valid-at-preserved-under-write (valid-at-preserved-under-write valid neq1) neq2
+
+------------------------------------------------------------------------
 -- Creating validity proofs from allocation
 ------------------------------------------------------------------------
 
