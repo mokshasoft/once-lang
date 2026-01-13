@@ -18,94 +18,181 @@ open import Once.IR
 
 open import Once.Backend.X86.Syntax
 
-open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 
 -- Import slots function (slot-size comes from Syntax)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 
 ------------------------------------------------------------------------
--- Instruction count constants
+-- Instruction lists and computed lengths
 --
--- These define how many instructions each IR construct generates.
--- Named constants make the compile-length function self-documenting.
+-- Instruction counts are CALCULATED from the actual instruction lists,
+-- ensuring compile-length stays in sync with compile-x86.
 ------------------------------------------------------------------------
 
--- Simple IR constructs (id, fst, snd, terminal, initial, fold, unfold, arr, Prim)
+-- Simple constructs generate 1 instruction each
 simple-instr-count : ℕ
 simple-instr-count = 1
 
--- Injection (inl/inr): sub, mov tag, mov value, mov result
+------------------------------------------------------------------------
+-- Injection (inl/inr) instruction list
+------------------------------------------------------------------------
+
+-- The instruction sequences for inl/inr (identical except tag value)
+inl-instrs : Program
+inl-instrs =
+  sub (reg rsp) (imm (slots 2)) ∷
+  mov (mem (base rsp)) (imm 0) ∷
+  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
+  mov (reg rax) (reg rsp) ∷ []
+
+inr-instrs : Program
+inr-instrs =
+  sub (reg rsp) (imm (slots 2)) ∷
+  mov (mem (base rsp)) (imm 1) ∷
+  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
+  mov (reg rax) (reg rsp) ∷ []
+
 injection-instr-count : ℕ
-injection-instr-count = 4
+injection-instr-count = length inl-instrs
 
--- Apply: push r15, mov×5, call, pop r15
+------------------------------------------------------------------------
+-- Apply instruction list
+------------------------------------------------------------------------
+
+apply-instrs : Program
+apply-instrs =
+  push (reg r15) ∷
+  mov (reg r15) (mem (base rdi)) ∷
+  mov (reg rsi) (mem (base+disp rdi slot-size)) ∷
+  mov (reg r12) (mem (base r15)) ∷
+  mov (reg r15) (mem (base+disp r15 slot-size)) ∷
+  mov (reg rdi) (reg rsi) ∷
+  call (reg r15) ∷
+  pop r15 ∷ []
+
 apply-instr-count : ℕ
-apply-instr-count = 8
+apply-instr-count = length apply-instrs
 
--- Case overhead (excluding f and g):
---   mov r11, cmp, jne, mov rdi (before f)
---   jmp (after f)
---   label, mov rdi (before g)
---   label (after g)
-case-overhead : ℕ
-case-overhead = 8
+------------------------------------------------------------------------
+-- Pair overhead instruction lists
+------------------------------------------------------------------------
 
--- Pair overhead (excluding f and g):
---   push r14, push r15, push rbp, mov rbp, sub, mov r15, mov r14 (7 setup)
---   mov [r15], mov rdi (2 middle)
---   mov [r15+8], mov rax, mov rsp, pop rbp, pop r15, pop r14 (6 cleanup)
+-- Setup: push r14, push r15, push rbp, mov rbp rsp, sub, mov r15, mov r14
+pair-setup : Program
+pair-setup =
+  push (reg r14) ∷
+  push (reg r15) ∷
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
+  mov (reg r15) (reg rsp) ∷
+  mov (reg r14) (reg rdi) ∷ []
+
+-- Middle (between f and g): mov [r15] rax, mov rdi r14
+pair-middle : Program
+pair-middle =
+  mov (mem (base r15)) (reg rax) ∷
+  mov (reg rdi) (reg r14) ∷ []
+
+-- Cleanup: mov [r15+8] rax, mov rax r15, mov rsp rbp, pop rbp, pop r15, pop r14
+pair-cleanup : Program
+pair-cleanup =
+  mov (mem (base+disp r15 slot-size)) (reg rax) ∷
+  mov (reg rax) (reg r15) ∷
+  mov (reg rsp) (reg rbp) ∷
+  pop rbp ∷
+  pop r15 ∷
+  pop r14 ∷ []
+
 pair-overhead : ℕ
-pair-overhead = 15
-
--- Curry overhead (excluding f):
---   sub, mov, lea, mov, mov, jmp (6 closure-setup)
---   label (1)
---   push r15, push rbp, mov rbp, sub, mov, mov, mov (7 thunk-setup → wait, 8)
---   mov rsp, pop rbp, pop r15, ret, label (5 thunk-cleanup)
---   Total: 6 + 1 + 8 + 4 = 19
-curry-overhead : ℕ
-curry-overhead = 19
+pair-overhead = length pair-setup +ℕ length pair-middle +ℕ length pair-cleanup
 
 ------------------------------------------------------------------------
--- Jump offset constants for case
+-- Case overhead instruction lists
+--
+-- Note: jne/jmp offsets and label values depend on len-f/len-g,
+-- so we can't fully factor out the lists. We define the structure
+-- and compute the overhead from fixed instruction counts.
 ------------------------------------------------------------------------
 
--- jne offset base: right-offset = case-jne-base + len-f
+-- Prefix (before f): mov r11 [rdi], cmp r11 0, jne _, mov rdi [rdi+8]
+case-prefix-count : ℕ
+case-prefix-count = 4
+
+-- Middle (between f and g): jmp _, label _, mov rdi [rdi+8]
+case-middle-count : ℕ
+case-middle-count = 3
+
+-- Suffix (after g): label _
+case-suffix-count : ℕ
+case-suffix-count = 1
+
+case-overhead : ℕ
+case-overhead = case-prefix-count +ℕ case-middle-count +ℕ case-suffix-count
+
+-- Jump offset bases (derived from layout)
 case-jne-base : ℕ
-case-jne-base = 2
+case-jne-base = 2   -- jne at pos 2, right-label at pos (5 + len-f), offset = 2 + len-f
 
--- jmp offset base: end-offset = case-jmp-base + len-g
 case-jmp-base : ℕ
-case-jmp-base = 2
+case-jmp-base = 2   -- jmp at pos (4 + len-f), end at pos (7 + len-f + len-g)
 
--- Right branch label base: right-label = case-right-label-base + len-f
 case-right-label-base : ℕ
 case-right-label-base = 5
 
--- End label base: end-label = (case-end-label-base + len-f) + len-g
 case-end-label-base : ℕ
 case-end-label-base = 7
 
 ------------------------------------------------------------------------
--- Label and offset constants for curry
+-- Curry overhead instruction lists
 ------------------------------------------------------------------------
 
--- Position of thunk entry label (code-ptr-label)
+-- Closure setup: sub, mov, lea, mov, mov, jmp
+-- (jmp offset depends on len-f, so we just count)
+curry-closure-setup-count : ℕ
+curry-closure-setup-count = 6
+
+-- Thunk setup: label, push r15, push rbp, mov rbp rsp, sub, mov, mov, mov
+curry-thunk-setup-len-calc : Program
+curry-thunk-setup-len-calc =
+  label 6 ∷  -- placeholder label value
+  push (reg r15) ∷
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
+  sub (reg rsp) (imm (slots 2)) ∷
+  mov (mem (base rsp)) (reg r12) ∷
+  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
+  mov (reg rdi) (reg rsp) ∷ []
+
+-- Thunk cleanup: mov rsp rbp, pop rbp, pop r15, ret, label
+curry-thunk-cleanup : Program
+curry-thunk-cleanup =
+  mov (reg rsp) (reg rbp) ∷
+  pop rbp ∷
+  pop r15 ∷
+  ret ∷
+  label 0 ∷ []  -- placeholder label value
+
+curry-overhead : ℕ
+curry-overhead = curry-closure-setup-count +ℕ length curry-thunk-setup-len-calc +ℕ length curry-thunk-cleanup
+
+-- Label and offset constants (derived from layout)
 curry-thunk-label : ℕ
-curry-thunk-label = 6
+curry-thunk-label = curry-closure-setup-count  -- = 6
 
--- RIP-relative offset from lea instruction to thunk entry
 curry-rip-offset : ℕ
-curry-rip-offset = 4
+curry-rip-offset = 4   -- From lea at pos 2, offset to reach label at pos 6
 
--- jmp offset base: end-offset = curry-jmp-base + len-f
-curry-jmp-base : ℕ
-curry-jmp-base = 12
-
--- End label base: end-label = curry-end-label-base + len-f
+-- Position of end label (last instruction position in overhead)
 curry-end-label-base : ℕ
-curry-end-label-base = 18
+curry-end-label-base = curry-overhead ∸ 1  -- = 18
+
+-- jmp offset base: jmp at pos 5, target at pos (curry-end-label-base + len-f)
+-- PC-relative: offset = target - (jmp-pos + 1) = (18 + len-f) - 6 = 12 + len-f
+curry-jmp-base : ℕ
+curry-jmp-base = curry-end-label-base ∸ curry-closure-setup-count  -- = 12
 
 ------------------------------------------------------------------------
 -- Compile length calculation
@@ -166,57 +253,19 @@ compile-x86 fst = mov (reg rax) (mem (base rdi)) ∷ []
 compile-x86 snd = mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
--- Stack layout: [fst (8 bytes), snd (8 bytes)]
---
--- Uses frame pointer (rbp) to ensure correct stack restoration even when
--- f or g allocate permanent stack space (e.g., curry creates closures).
--- r15 holds stable pair base address, r14 holds saved input.
+-- Uses pair-setup/middle/cleanup instruction lists defined above.
 compile-x86 ⟨ f , g ⟩ =
-  -- Save callee-saved registers
-  push (reg r14) ∷
-  push (reg r15) ∷
-  -- Save and set frame pointer
-  push (reg rbp) ∷
-  mov (reg rbp) (reg rsp) ∷
-  -- Allocate 16 bytes on stack for pair
-  sub (reg rsp) (imm (slots 2)) ∷
-  -- r15 = stable base address for this pair
-  mov (reg r15) (reg rsp) ∷
-  -- r14 = saved input
-  mov (reg r14) (reg rdi) ∷
-  -- Compute f (may allocate stack, but rbp captures restore point)
+  pair-setup ++
   compile-x86 f ++
-  -- Store f result at [r15] (stable address)
-  mov (mem (base r15)) (reg rax) ∷
-  -- Restore input for g
-  mov (reg rdi) (reg r14) ∷
-  -- Compute g
+  pair-middle ++
   compile-x86 g ++
-  -- Store g result at [r15 + 8]
-  mov (mem (base+disp r15 slot-size)) (reg rax) ∷
-  -- Return pointer to pair
-  mov (reg rax) (reg r15) ∷
-  -- Restore stack to frame base (handles any stack growth by f/g)
-  mov (reg rsp) (reg rbp) ∷
-  -- Restore callee-saved registers
-  pop rbp ∷
-  pop r15 ∷
-  pop r14 ∷ []
+  pair-cleanup
 
--- Left injection: create tagged union with tag = 0
--- Stack layout: [tag (8 bytes), value (8 bytes)]
-compile-x86 inl =
-  sub (reg rsp) (imm (slots 2)) ∷
-  mov (mem (base rsp)) (imm 0) ∷          -- tag = 0
-  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷  -- value
-  mov (reg rax) (reg rsp) ∷ []             -- return pointer
+-- Left injection: uses inl-instrs defined above
+compile-x86 inl = inl-instrs
 
--- Right injection: create tagged union with tag = 1
-compile-x86 inr =
-  sub (reg rsp) (imm (slots 2)) ∷
-  mov (mem (base rsp)) (imm 1) ∷          -- tag = 1
-  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷  -- value
-  mov (reg rax) (reg rsp) ∷ []             -- return pointer
+-- Right injection: uses inr-instrs defined above
+compile-x86 inr = inr-instrs
 
 -- Case analysis: branch on tag
 -- Jump offsets are PC-relative: target = pc + 1 + offset
@@ -343,26 +392,8 @@ compile-x86 (curry {A} {B} {C} f) =
   label end-label ∷ []
 
 -- Apply: call closure
--- Input is pair (closure, argument)
--- closure = [env, code_ptr]
--- r15 is saved/restored to satisfy ir-r15 preservation requirement
-compile-x86 apply =
-  -- Save r15 (caller's value, to be restored after call)
-  push (reg r15) ∷
-  -- Load closure from pair.fst
-  mov (reg r15) (mem (base rdi)) ∷
-  -- Load argument from pair.snd
-  mov (reg rsi) (mem (base+disp rdi slot-size)) ∷
-  -- Load env from closure.fst into r12
-  mov (reg r12) (mem (base r15)) ∷
-  -- Load code_ptr from closure.snd
-  mov (reg r15) (mem (base+disp r15 slot-size)) ∷
-  -- Move argument to rdi
-  mov (reg rdi) (reg rsi) ∷
-  -- Call the code
-  call (reg r15) ∷
-  -- Restore r15 (satisfies ir-r15)
-  pop r15 ∷ []
+-- Uses apply-instrs instruction list defined above.
+compile-x86 apply = apply-instrs
 
 -- Fold: identity at runtime (wrap into Fix)
 compile-x86 fold = mov (reg rax) (reg rdi) ∷ []
