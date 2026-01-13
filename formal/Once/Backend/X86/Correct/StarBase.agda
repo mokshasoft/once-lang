@@ -25,7 +25,10 @@ open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (PairAt; fst-valid; snd-valid)
+  using (PairAt; fst-valid; snd-valid;
+         ValidAt; valid-unit; valid-pair; valid-inl; valid-inr;
+         valid-closure; valid-eff; valid-fix;
+         PairAtS; InlAtS; InrAtS; ClosureAtS)
 open import Once.Postulates
   using (encode-pair-fst; encode-pair-snd; encode-fix-unwrap; encode-fix-wrap)
 
@@ -127,6 +130,84 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
   readReg (regs s) rsp > slots 2 →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- IRStarResultV: Validity-Based Result Type
+--
+-- Like IRStarResult, but uses ValidAt instead of encode equality.
+-- This enables postulate-free correctness proofs.
+------------------------------------------------------------------------
+
+-- | Validity-based IR execution result
+-- Replaces ir-rax : rax ≡ encode (eval ir x) with
+--          ir-result-valid : ValidAt (eval ir x) rax memory
+record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
+                     (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
+  field
+    -- Execution properties (same as IRStarResult)
+    ir-star       : Star prog s s'
+    ir-halted     : halted s' ≡ false
+    ir-pc         : pc s' ≡ offset +ℕ compile-length ir
+
+    -- NEW: Validity-based correctness (replaces ir-rax)
+    -- Says "rax points to a valid representation of eval ir x in memory"
+    ir-result-valid : ValidAt (eval ir x) (readReg (regs s') rax) (memory s')
+
+    -- Register preservation (same as IRStarResult)
+    ir-r14        : readReg (regs s') r14 ≡ readReg (regs s) r14
+    ir-r15        : readReg (regs s') r15 ≡ readReg (regs s) r15
+    ir-rbp        : readReg (regs s') rbp ≡ readReg (regs s) rbp
+
+    -- Memory preservation (same as IRStarResult)
+    ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
+    ir-mem-code   : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-heap   : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+
+    -- Invariants (same as IRStarResult)
+    ir-stack-inv  : StackInvariant s'
+    ir-capacity   : StackCapacity s' 2
+    ir-rbp-inv    : RbpInvariant s'
+    ir-closure-wf : ClosureWFOutput prog
+
+open IRStarResultV public using ()
+  renaming ( ir-star to ir-star-v; ir-halted to ir-halted-v; ir-pc to ir-pc-v
+           ; ir-result-valid to ir-result-valid
+           ; ir-r14 to ir-r14-v; ir-r15 to ir-r15-v; ir-rbp to ir-rbp-v
+           ; ir-mem to ir-mem-v; ir-mem-rbp to ir-mem-rbp-v; ir-mem-rbp+8 to ir-mem-rbp+8-v
+           ; ir-mem-above to ir-mem-above-v; ir-mem-at-0 to ir-mem-at-0-v
+           ; ir-mem-code to ir-mem-code-v; ir-mem-heap to ir-mem-heap-v
+           ; ir-stack-inv to ir-stack-inv-v; ir-capacity to ir-capacity-v
+           ; ir-rbp-inv to ir-rbp-inv-v; ir-closure-wf to ir-closure-wf-v )
+
+-- | Derived: concrete rsp > slots 2 bound from abstract capacity
+ir-rsp-bound-v : ∀ {A B ir prog s s' x offset} →
+  IRStarResultV {A} {B} ir prog s s' x offset →
+  readReg (regs s') rsp > slots 2
+ir-rsp-bound-v res = capacity-2-to-rsp-bound _ (IRStarResultV.ir-capacity res)
+
+------------------------------------------------------------------------
+-- IRRunnerV: Validity-Based Recursive IR Runner
+------------------------------------------------------------------------
+
+-- | Validity-based recursive IR runner
+-- Like IRRunner, but takes ValidAt precondition and returns ValidAt postcondition.
+-- This enables threading validity through recursive IR execution without encode.
+IRRunnerV : Set₁
+IRRunnerV = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State)
+              (addr-in : ℕ) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  readReg (regs s) rdi ≡ addr-in →
+  ValidAt x addr-in (memory s) →  -- Input validity (replaces encode x)
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- IRRunnerWithWF: Extended runner that tracks closure WF
