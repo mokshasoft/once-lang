@@ -64,9 +64,11 @@ thunk-entry-offset = closure-setup-len  -- = 6
 thunk-body-offset : ℕ
 thunk-body-offset = closure-setup-len +ℕ thunk-setup-len  -- = 14
 
--- Total overhead of curry (not counting compile-x86 f)
-curry-overhead : ℕ
-curry-overhead = closure-setup-len +ℕ thunk-setup-len +ℕ tail-len  -- = 19
+-- curry-overhead is imported from CodeGen (via Foundation)
+-- Verification: closure-setup-len + thunk-setup-len + tail-len = 6 + 8 + 5 = 19
+private
+  _ : curry-overhead ≡ closure-setup-len +ℕ thunk-setup-len +ℕ tail-len
+  _ = refl
 
 -- Position of end label relative to start (last instruction in curry)
 -- = thunk-body-offset + cleanup-len + 1 + len-f

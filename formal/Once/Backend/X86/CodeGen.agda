@@ -25,6 +25,89 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 
 ------------------------------------------------------------------------
+-- Instruction count constants
+--
+-- These define how many instructions each IR construct generates.
+-- Named constants make the compile-length function self-documenting.
+------------------------------------------------------------------------
+
+-- Simple IR constructs (id, fst, snd, terminal, initial, fold, unfold, arr, Prim)
+simple-instr-count : ℕ
+simple-instr-count = 1
+
+-- Injection (inl/inr): sub, mov tag, mov value, mov result
+injection-instr-count : ℕ
+injection-instr-count = 4
+
+-- Apply: push r15, mov×5, call, pop r15
+apply-instr-count : ℕ
+apply-instr-count = 8
+
+-- Case overhead (excluding f and g):
+--   mov r11, cmp, jne, mov rdi (before f)
+--   jmp (after f)
+--   label, mov rdi (before g)
+--   label (after g)
+case-overhead : ℕ
+case-overhead = 8
+
+-- Pair overhead (excluding f and g):
+--   push r14, push r15, push rbp, mov rbp, sub, mov r15, mov r14 (7 setup)
+--   mov [r15], mov rdi (2 middle)
+--   mov [r15+8], mov rax, mov rsp, pop rbp, pop r15, pop r14 (6 cleanup)
+pair-overhead : ℕ
+pair-overhead = 15
+
+-- Curry overhead (excluding f):
+--   sub, mov, lea, mov, mov, jmp (6 closure-setup)
+--   label (1)
+--   push r15, push rbp, mov rbp, sub, mov, mov, mov (7 thunk-setup → wait, 8)
+--   mov rsp, pop rbp, pop r15, ret, label (5 thunk-cleanup)
+--   Total: 6 + 1 + 8 + 4 = 19
+curry-overhead : ℕ
+curry-overhead = 19
+
+------------------------------------------------------------------------
+-- Jump offset constants for case
+------------------------------------------------------------------------
+
+-- jne offset base: right-offset = case-jne-base + len-f
+case-jne-base : ℕ
+case-jne-base = 2
+
+-- jmp offset base: end-offset = case-jmp-base + len-g
+case-jmp-base : ℕ
+case-jmp-base = 2
+
+-- Right branch label base: right-label = case-right-label-base + len-f
+case-right-label-base : ℕ
+case-right-label-base = 5
+
+-- End label base: end-label = (case-end-label-base + len-f) + len-g
+case-end-label-base : ℕ
+case-end-label-base = 7
+
+------------------------------------------------------------------------
+-- Label and offset constants for curry
+------------------------------------------------------------------------
+
+-- Position of thunk entry label (code-ptr-label)
+curry-thunk-label : ℕ
+curry-thunk-label = 6
+
+-- RIP-relative offset from lea instruction to thunk entry
+curry-rip-offset : ℕ
+curry-rip-offset = 4
+
+-- jmp offset base: end-offset = curry-jmp-base + len-f
+curry-jmp-base : ℕ
+curry-jmp-base = 12
+
+-- End label base: end-label = curry-end-label-base + len-f
+curry-end-label-base : ℕ
+curry-end-label-base = 18
+
+------------------------------------------------------------------------
 -- Compile length calculation
 ------------------------------------------------------------------------
 
@@ -32,22 +115,22 @@ open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 -- This is needed for computing jump targets in case analysis and curry.
 compile-length : ∀ {A B} → IR A B → ℕ
 
-compile-length id = 1
-compile-length (g ∘ f) = (compile-length f +ℕ 1) +ℕ compile-length g
-compile-length fst = 1
-compile-length snd = 1
-compile-length ⟨ f , g ⟩ = (15 +ℕ compile-length f) +ℕ compile-length g
-compile-length inl = 4
-compile-length inr = 4
-compile-length [ f , g ] = (8 +ℕ compile-length f) +ℕ compile-length g
-compile-length terminal = 1
-compile-length initial = 1
-compile-length (curry f) = 19 +ℕ compile-length f  -- r15 save/restore + frame pointer handling in thunk
-compile-length apply = 8  -- r15 save/restore added for ir-r15 preservation
-compile-length fold = 1
-compile-length unfold = 1
-compile-length arr = 1
-compile-length (Prim _) = 1  -- Primitives are opaque runtime calls
+compile-length id = simple-instr-count
+compile-length (g ∘ f) = (compile-length f +ℕ simple-instr-count) +ℕ compile-length g
+compile-length fst = simple-instr-count
+compile-length snd = simple-instr-count
+compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
+compile-length inl = injection-instr-count
+compile-length inr = injection-instr-count
+compile-length [ f , g ] = (case-overhead +ℕ compile-length f) +ℕ compile-length g
+compile-length terminal = simple-instr-count
+compile-length initial = simple-instr-count
+compile-length (curry f) = curry-overhead +ℕ compile-length f
+compile-length apply = apply-instr-count
+compile-length fold = simple-instr-count
+compile-length unfold = simple-instr-count
+compile-length arr = simple-instr-count
+compile-length (Prim _) = simple-instr-count
 
 ------------------------------------------------------------------------
 -- Code generation
@@ -152,10 +235,10 @@ compile-x86 [ f , g ] =
       --   6+|f|: mov rdi, [rdi+8]
       --   7+|f| to 6+|f|+|g|: compile-x86 g
       --   7+|f|+|g|: label (end)
-      right-offset = 2 +ℕ len-f    -- jne at pos 2 to reach pos 5+len-f
-      end-offset = 2 +ℕ len-g      -- jmp at pos 4+len-f to reach pos 7+len-f+len-g
-      right-label = 5 +ℕ len-f     -- For label pseudo-instruction
-      end-label = (7 +ℕ len-f) +ℕ len-g
+      right-offset = case-jne-base +ℕ len-f
+      end-offset = case-jmp-base +ℕ len-g
+      right-label = case-right-label-base +ℕ len-f
+      end-label = (case-end-label-base +ℕ len-f) +ℕ len-g
   in
   -- Load tag into r11 (scratch register, doesn't clobber r15)
   mov (reg r11) (mem (base rdi)) ∷
@@ -213,10 +296,10 @@ compile-x86 (curry {A} {B} {C} f) =
       --   16+|f|: pop r15         -- restore r15
       --   17+|f|: ret             -- now pops from correct location
       --   18+|f|: label end
-      code-ptr-label = 6
-      rip-offset = 4             -- From instruction 2, offset to reach 6
-      end-offset = 12 +ℕ len-f   -- jmp at pos 5 to reach pos 18+len-f
-      end-label = 18 +ℕ len-f    -- For label pseudo-instruction
+      code-ptr-label = curry-thunk-label
+      rip-offset = curry-rip-offset
+      end-offset = curry-jmp-base +ℕ len-f
+      end-label = curry-end-label-base +ℕ len-f
   in
   -- Allocate closure on stack
   sub (reg rsp) (imm (slots 2)) ∷
