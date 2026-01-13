@@ -124,11 +124,6 @@ postulate
     k ≤ a →
     region-of (a ∸ k) ≡ stack
 
--- | Derived: stack addresses are never 0
-stack-addr-nonzero : ∀ a → region-of a ≡ stack → a ≢ 0
-stack-addr-nonzero a a-in-stack a≡0 =
-  zero-not-in-stack (subst (λ x → region-of x ≡ stack) a≡0 a-in-stack)
-
 ------------------------------------------------------------------------
 -- Abstract Stack Pointer
 ------------------------------------------------------------------------

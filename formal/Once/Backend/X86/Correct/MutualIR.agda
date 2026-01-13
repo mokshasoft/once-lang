@@ -88,9 +88,9 @@ open import Once.Backend.X86.Correct.StarBase public
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Inl
-  using (run-inl-star; run-inl-star-v)
+  using (run-inl-star; run-inl-star-v; run-inl-star-v-auto)
 open import Once.Backend.X86.Correct.IR.Inr
-  using (run-inr-star; run-inr-star-v)
+  using (run-inr-star; run-inr-star-v; run-inr-star-v-auto)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; closure-addr)
@@ -1344,12 +1344,13 @@ mutual
           readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)
 
 ------------------------------------------------------------------------
--- Validity-based dispatcher wrapper (Phase 6b)
--- Uses bridging postulates to convert between validity and encode
+-- Validity-based dispatcher (Phase 6b)
+-- Direct validity-based execution where available, fallback to bridging otherwise
 ------------------------------------------------------------------------
 
 -- | Validity-based IR execution dispatcher
--- Takes ValidAt input, bridges to encode-based implementation, converts output to validity
+-- Takes ValidAt input, returns IRStarResultV with validity output
+-- Pattern matches on IR to call direct validity-based implementations where available
 run-ir-star-at-offset-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -1359,6 +1360,19 @@ run-ir-star-at-offset-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (cal
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+-- Direct validity-based execution for inl (no encode bridging)
+run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+-- Direct validity-based execution for inr (no encode bridging)
+run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+-- Pair: uses validity-based wrapper (bridges internally, recursive calls use encode-based dispatcher for now)
+run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-pair-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+-- Compose: uses validity-based wrapper (bridges internally for now)
+run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-compose-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+-- Fallback: bridge encode ↔ validity for other IR operations
 run-ir-star-at-offset-v {A} {B} ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   let
     -- Bridge: validity → encode equality

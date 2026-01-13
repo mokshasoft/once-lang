@@ -662,7 +662,7 @@ postulate
 run-id-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →  -- Clean: validity at rdi
+  ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
@@ -757,7 +757,7 @@ run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficien
 run-fold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →  -- Clean: validity at rdi
+  ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
@@ -1043,11 +1043,13 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv r
 
 -- | Validity-based prim execution (postulated)
 -- Prim correctness is already postulated; this is the validity version
+-- Input disjointness flows forward (prim doesn't allocate on stack)
 postulate
   run-prim-star-vv : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
+    (∀ addr → region-of addr ≡ stack → readReg (regs s) rdi ≢ addr) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →

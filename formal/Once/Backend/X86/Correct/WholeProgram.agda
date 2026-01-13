@@ -81,10 +81,12 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
-         ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged)
+         ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
+         ir-result-valid)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegions using (StackPointer; region-of; heap)
 
 -- Import closure infrastructure
@@ -98,7 +100,7 @@ open import Once.Backend.X86.Correct.ClosureContext
 
 -- Import modular runner for delegation
 open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star-at-offset; thunk-offset-in-bounds; curry-thunk-correct-impl)
+  using (run-ir-star-at-offset; run-ir-star-at-offset-v; thunk-offset-in-bounds; curry-thunk-correct-impl)
 
 -- Import curry proof with memory result
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult)
@@ -190,6 +192,36 @@ record WholeProgramResult {A B : Type} (ir : IR A B)
     wp-closure-mem : ClosureMemoryOutput prog (memory s')
 
 open WholeProgramResult public
+
+------------------------------------------------------------------------
+-- WholeProgramResultV: Validity-based result (no encode)
+------------------------------------------------------------------------
+
+-- | Validity-based result type for whole-program execution
+-- Like WholeProgramResult but proves ValidAt instead of encode equality
+-- This is the target for eliminating encode postulates
+record WholeProgramResultV {A B : Type} (ir : IR A B)
+                           (prog : Program) (s s' : State) (x : ⟦ A ⟧)
+                           (offset : ℕ) : Set₁ where
+  field
+    -- Core execution result
+    wpv-star     : Star prog s s'
+    wpv-halted   : halted s' ≡ false
+    wpv-pc       : pc s' ≡ offset +ℕ compile-length ir
+    -- Validity-based correctness (replaces wp-rax)
+    wpv-result-valid : ValidAt (eval ir x) (readReg (regs s') rax) (memory s')
+    -- Register preservation
+    wpv-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
+    wpv-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
+    wpv-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    -- Stack invariants
+    wpv-stack-inv : StackInvariant s'
+    wpv-rsp-bound : readReg (regs s') rsp > slots 2
+    wpv-rbp-inv   : RbpInvariant s'
+    -- Closure WF + memory layout output (for threading to apply)
+    wpv-closure-mem : ClosureMemoryOutput prog (memory s')
+
+open WholeProgramResultV public
 
 ------------------------------------------------------------------------
 -- Conversion: IRStarResult to WholeProgramResult
@@ -368,3 +400,37 @@ whole-program-correct ir caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficien
       -- Transport result to the simplified program
       star' = subst (λ p → Star p s s') prog-eq (wp-star result)
   in s' , star' , wp-halted result , wp-pc result , wp-rax result
+
+------------------------------------------------------------------------
+-- Validity-based whole-program correctness (no encode)
+------------------------------------------------------------------------
+
+-- | Validity-based whole-program correctness theorem
+-- Takes ValidAt input, returns ValidAt output
+-- This is the target for eliminating encode postulates
+--
+-- caller-sp: StackPointer representing the external caller's stack frame
+whole-program-correct-v : ∀ {A B} (ir : IR A B)
+  (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ 0 →
+  ValidAt x (readReg (regs s) rdi) (memory s) →  -- Input validity
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = compile-x86 ir
+  in ∃[ s' ] (Star prog s s'
+            × halted s' ≡ false
+            × pc s' ≡ compile-length ir
+            × ValidAt (eval ir x) (readReg (regs s') rax) (memory s'))  -- Output validity
+whole-program-correct-v ir caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  let code = compile-x86 ir
+      -- [] ++ code ++ [] ≡ code ++ [] ≡ code
+      prog-eq : [] ++ code ++ [] ≡ code
+      prog-eq = ++-identityʳ code
+      -- Run with empty prefix/suffix using validity-based dispatcher
+      (s' , result) = run-ir-star-at-offset-v ir [] [] caller-sp x s
+                        h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      -- Transport result to the simplified program
+      star' = subst (λ p → Star p s s') prog-eq (IRStarResultV.ir-star result)
+  in s' , star' , IRStarResultV.ir-halted result , IRStarResultV.ir-pc result , IRStarResultV.ir-result-valid result

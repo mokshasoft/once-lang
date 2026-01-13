@@ -132,6 +132,11 @@ apply-min-rsp = two-push-offset                -- 16: need > two-push-offset for
 -- Centralized Arithmetic Helpers (D041: define early for use throughout)
 ------------------------------------------------------------------------
 
+-- | Stack addresses are never 0 (moved from MemoryRegions to keep it high-level)
+stack-addr-nonzero : ∀ a → region-of a ≡ stack → a ≢ 0
+stack-addr-nonzero a a-in-stack a≡0 =
+  zero-not-in-stack (subst (λ x → region-of x ≡ stack) a≡0 a-in-stack)
+
 -- | Common bound conversion: rsp > two-push-offset implies rsp > slot-size
 -- Used in many proofs where we have two-slot bound but need single-slot bound
 rsp>slot-from-2slot : ∀ {n} → n > two-push-offset → n > slot-size

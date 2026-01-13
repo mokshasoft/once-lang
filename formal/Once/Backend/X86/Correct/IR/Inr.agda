@@ -36,7 +36,8 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-inr; InrAtS; inr-at-s; valid-at-preserved-under-writes)
+  using (ValidAt; valid-inr; InrAtS; inr-at-s; valid-at-preserved-under-writes;
+         valid-disjoint-from-stack)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
@@ -952,3 +953,41 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rsp
         new-frame-bound : sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥ readReg (regs s4) rsp
         new-frame-bound = subst (sp-addr (RbpInvariant.rbp-frame rbp-inv) ≥_) (sym rsp-s4)
                                 (≤-trans new-rsp≤orig-rsp (RbpInvariant.frame-bound rbp-inv))
+
+------------------------------------------------------------------------
+-- Auto version: derives address disjointness from validity
+------------------------------------------------------------------------
+
+-- | Validity-based inr execution with automatic address disjointness derivation
+-- Uses valid-disjoint-from-stack to derive that the input address (which is valid)
+-- is disjoint from new stack slots
+run-inr-star-v-auto : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultV (inr {A} {B}) prog s s' x (length prefix)
+run-inr-star-v-auto {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-inr-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    addr-neq-1 addr-neq-2
+  where
+    rsp-val = readReg (regs s) rsp
+    rdi-val = readReg (regs s) rdi
+
+    -- Get StackCapacity from rsp bound
+    cap : StackCapacity s 2
+    cap = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+
+    -- Stack slot addresses are in stack region
+    slots-in-stack : (region-of (rsp-val ∸ slots 2) ≡ stack) × (region-of ((rsp-val ∸ slots 2) +ℕ slot-size) ≡ stack)
+    slots-in-stack = alloc-2-slots-addrs-in-stack s cap
+
+    -- Derive disjointness using valid-disjoint-from-stack
+    addr-neq-1 : rdi-val ≢ rsp-val ∸ slots 2
+    addr-neq-1 = valid-disjoint-from-stack input-valid (proj₁ slots-in-stack)
+
+    addr-neq-2 : rdi-val ≢ (rsp-val ∸ slots 2) +ℕ slot-size
+    addr-neq-2 = valid-disjoint-from-stack input-valid (proj₂ slots-in-stack)
