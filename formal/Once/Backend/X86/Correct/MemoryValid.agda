@@ -15,7 +15,8 @@
 module Once.Backend.X86.Correct.MemoryValid where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; encode)
+open import Once.Semantics using (⟦_⟧; encode; Closure; ⟦Fix⟧; wrap)
+open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
@@ -98,6 +99,67 @@ record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
     val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
 
 open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
+
+-- | Closure validity with explicit addresses
+-- Memory at addr-closure contains [env-addr, code-ptr]
+record ClosureAtS (env-addr code-ptr addr-closure : Word) (m : Memory) : Set where
+  constructor closure-at-s
+  field
+    env-valid : readMem m addr-closure ≡ just env-addr
+    code-valid : readMem m (addr-closure +ℕ slot-size) ≡ just code-ptr
+
+open ClosureAtS public using () renaming (env-valid to env-valid-s; code-valid to code-valid-s)
+
+------------------------------------------------------------------------
+-- ValidAt: Unified Validity Predicate
+--
+-- This is the core abstraction for validity-based correctness.
+-- ValidAt says "value v is correctly represented at address a in memory m".
+--
+-- Key insight: Instead of proving "rax ≡ encode (eval ir x)" with postulates,
+-- we prove "ValidAt (eval ir x) rax memory" directly from memory writes.
+------------------------------------------------------------------------
+
+-- | Unified validity predicate for all types
+-- Says "value v is correctly represented at address a in memory m"
+data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
+  -- Unit: value 0, no memory needed
+  valid-unit : ∀ {m} → ValidAt {Unit} tt 0 m
+
+  -- Pair: both components valid at their addresses, pair structure at addr
+  valid-pair : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr-a addr-b addr : Word} {m : Memory} →
+    ValidAt a addr-a m →
+    ValidAt b addr-b m →
+    PairAtS addr-a addr-b addr m →
+    ValidAt (a , b) addr m
+
+  -- Left sum: tag=0, value valid
+  valid-inl : ∀ {A B} {a : ⟦ A ⟧} {addr-a addr : Word} {m : Memory} →
+    ValidAt a addr-a m →
+    InlAtS addr-a addr m →
+    ValidAt {A + B} (inj₁ a) addr m
+
+  -- Right sum: tag=1, value valid
+  valid-inr : ∀ {A B} {b : ⟦ B ⟧} {addr-b addr : Word} {m : Memory} →
+    ValidAt b addr-b m →
+    InrAtS addr-b addr m →
+    ValidAt {A + B} (inj₂ b) addr m
+
+  -- Closure: env and code-ptr at addr
+  -- Note: Closures are abstract (env-addr and code-ptr are just words)
+  valid-closure : ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
+    ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr m →
+    ValidAt {A ⇒ B} cl addr m
+
+  -- Eff: same as closure (Eff = Closure at runtime)
+  valid-eff : ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
+    ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr m →
+    ValidAt {Eff A B} cl addr m
+
+  -- Fix: validity of unwrapped value (Fix is identity at runtime)
+  valid-fix : ∀ {F} {x : ⟦ F ⟧} {addr : Word} {m : Memory} →
+    ValidAt x addr m →
+    ValidAt {Fix F} (wrap x) addr m
 
 ------------------------------------------------------------------------
 -- Creating validity proofs from allocation
