@@ -205,7 +205,19 @@ optimize-compose-correct apply id x = refl
 optimize-compose-correct apply (g' ∘ f') x = refl
 optimize-compose-correct apply fst x = refl
 optimize-compose-correct apply snd x = refl
-optimize-compose-correct apply (⟨ f' , g' ⟩ _) x = refl
+-- Exponential beta law: apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
+-- Eliminates closure allocation!
+optimize-compose-correct apply (⟨ curry f' _ , g' ⟩ _) x = refl
+-- apply with pair where first component is not curry (default case)
+optimize-compose-correct apply (⟨ id , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ f' ∘ f'' , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ fst , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ snd , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ [ f' , f'' ] , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ initial , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ apply , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ unfold , g' ⟩ _) x = refl
+optimize-compose-correct apply (⟨ Prim _ , g' ⟩ _) x = refl
 optimize-compose-correct apply apply x = refl
 optimize-compose-correct apply unfold x = refl
 optimize-compose-correct apply initial ()  -- Initial absorption (Void is empty)

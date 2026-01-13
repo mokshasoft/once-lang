@@ -462,6 +462,11 @@ optimize-compose snd (⟨ f , g ⟩ _) = g
 optimize-compose [ f , g ] (inl _) = f
 optimize-compose [ f , g ] (inr _) = g
 
+-- Exponential beta law: apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
+-- This eliminates closure allocation when a curried function is immediately applied!
+-- High impact optimization for functional code.
+optimize-compose apply (⟨ curry f _ , g ⟩ _) = f ∘ ⟨ id , g ⟩ Heap
+
 -- Fixed point laws: fold ∘ unfold = id, unfold ∘ fold = id
 optimize-compose fold unfold = id
 optimize-compose unfold fold = id
