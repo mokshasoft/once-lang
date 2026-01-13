@@ -28,7 +28,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; fst-valid; snd-valid;
          ValidAt; valid-unit; valid-pair; valid-inl; valid-inr;
          valid-closure; valid-eff; valid-fix;
-         PairAtS; InlAtS; InrAtS; ClosureAtS)
+         PairAtS; fst-valid-s; snd-valid-s;
+         InlAtS; InrAtS; ClosureAtS)
 open import Once.Postulates
   using (encode-pair-fst; encode-pair-snd; encode-fix-unwrap; encode-fix-wrap)
 
@@ -853,6 +854,135 @@ run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
+    }
+
+------------------------------------------------------------------------
+-- Validity-Based Consumer Proofs (Phase 5: Consumers)
+--
+-- These consume ValidAt input and produce ValidAt output.
+-- Pattern: Extract component validity from ValidAt via pattern matching.
+------------------------------------------------------------------------
+
+-- | Validity-based fst consumer
+-- Input: ValidAt (a, b) rdi m - pattern match to extract component validities
+-- Output: ValidAt a rax m' - first component validity preserved
+run-fst-star-vv : ∀ {A B} (prefix suffix : Program)
+    (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+    (addr-a addr-b : Word)  -- Component addresses from ValidAt
+    (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  (va : ValidAt a addr-a (memory s)) →
+  (vb : ValidAt b addr-b (memory s)) →
+  (pair-at : PairAtS addr-a addr-b (readReg (regs s) rdi) (memory s)) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultV (fst {A} {B}) prog s s' (a , b) (length prefix)
+run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv =
+  let
+    prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
+    input-addr = readReg (regs s) rdi
+
+    -- From PairAtS: memory at input-addr contains addr-a
+    mem-eq : readMem (memory s) input-addr ≡ just addr-a
+    mem-eq = fst-valid-s pair-at
+
+    -- Execute fst: rax := mem[rdi] = addr-a
+    (s' , step-eq , h' , pc' , rax-eq) =
+      run-fst-at-offset-s {A} {B} prefix suffix input-addr addr-a s h-false pc-eq refl mem-eq
+
+    -- Result validity: va at addr-a, and rax = addr-a
+    result-valid : ValidAt a (readReg (regs s') rax) (memory s')
+    result-valid = subst (λ addr → ValidAt a addr (memory s')) (sym rax-eq) va
+
+    rsp-eq = readReg-writeReg-rax-rsp (regs s) addr-a
+    rbp-eq = readReg-writeReg-rax-rbp (regs s) addr-a
+    cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h'
+    ; ir-pc = pc'
+    ; ir-result-valid = result-valid
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) addr-a
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) addr-a
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- fst doesn't write memory
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) addr-a)
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
+    }
+
+-- | Validity-based snd consumer
+-- Input: ValidAt (a, b) rdi m - pattern match to extract component validities
+-- Output: ValidAt b rax m' - second component validity preserved
+run-snd-star-vv : ∀ {A B} (prefix suffix : Program)
+    (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+    (addr-a addr-b : Word)  -- Component addresses from ValidAt
+    (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  (va : ValidAt a addr-a (memory s)) →
+  (vb : ValidAt b addr-b (memory s)) →
+  (pair-at : PairAtS addr-a addr-b (readReg (regs s) rdi) (memory s)) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
+  in ∃[ s' ] IRStarResultV (snd {A} {B}) prog s s' (a , b) (length prefix)
+run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv =
+  let
+    prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
+    input-addr = readReg (regs s) rdi
+
+    -- From PairAtS: memory at input-addr+8 contains addr-b
+    mem-eq : readMem (memory s) (input-addr +ℕ 8) ≡ just addr-b
+    mem-eq = snd-valid-s pair-at
+
+    -- Execute snd: rax := mem[rdi+8] = addr-b
+    (s' , step-eq , h' , pc' , rax-eq) =
+      run-snd-at-offset-s {A} {B} prefix suffix input-addr addr-b s h-false pc-eq refl mem-eq
+
+    -- Result validity: vb at addr-b, and rax = addr-b
+    result-valid : ValidAt b (readReg (regs s') rax) (memory s')
+    result-valid = subst (λ addr → ValidAt b addr (memory s')) (sym rax-eq) vb
+
+    rsp-eq = readReg-writeReg-rax-rsp (regs s) addr-b
+    rbp-eq = readReg-writeReg-rax-rbp (regs s) addr-b
+    cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+
+  in s' , record
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h'
+    ; ir-pc = pc'
+    ; ir-result-valid = result-valid
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) addr-b
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) addr-b
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- snd doesn't write memory
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) addr-b)
                        rsp-eq
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq

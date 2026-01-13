@@ -229,6 +229,33 @@ postulate
     ValidAt {Eff A B} cl addr m
 
 ------------------------------------------------------------------------
+-- Bridge: ValidAt → encode
+--
+-- During the transition from encode-based to validity-based proofs,
+-- we need bridges to call existing encode-based recursive functions.
+-- This postulate will be eliminated once all recursion uses validity.
+--
+-- Conceptually: if v is validly represented at addr in m, then addr
+-- is the "canonical address" of v, which is what encode computes.
+------------------------------------------------------------------------
+postulate
+  -- | Extract encode address from validity proof
+  -- This bridges validity-based preconditions to encode-based recursive calls.
+  -- ELIMINABLE: Remove once run-ir-star-at-offset uses ValidAt throughout.
+  addr-from-valid :
+    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+    ValidAt v addr m →
+    addr ≡ encode v
+
+  -- | Construct validity from encode address (reverse bridge)
+  -- If addr ≡ encode v and memory is properly allocated, then validity holds.
+  -- ELIMINABLE: Remove once all producers emit ValidAt directly.
+  valid-from-encode :
+    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+    addr ≡ encode v →
+    ValidAt v addr m
+
+------------------------------------------------------------------------
 -- Creating validity proofs from allocation
 ------------------------------------------------------------------------
 
