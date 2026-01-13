@@ -311,6 +311,8 @@ malonzo:
 	@# Copy optimizer
 	@cp _build/malonzo/MAlonzo/Code/Once/Optimize.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Optimize/* ../compiler/src/MAlonzo/Code/Once/Optimize/ 2>/dev/null || true
+	@# Copy escape analysis
+	@cp _build/malonzo/MAlonzo/Code/Once/Escape.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done! Entire compiler extracted to compiler/src/MAlonzo/Code/Once/"
 	@echo "Entry point: MAlonzo.Code.Once.Compile.compile"
 
