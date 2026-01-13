@@ -7,6 +7,24 @@
 -- Key insight: These rules preserve semantics because they follow from
 -- the categorical laws (coproduct beta, functor laws).
 --
+-- Stream Fusion in Once
+-- =====================
+-- These coproduct fusion rules, combined with the fold/unfold rules in
+-- Optimize.agda, provide stream fusion semantics for recursive types.
+--
+-- In Once, a list type is: List A = Fix (Unit + (A × List A))
+-- A list map operation is: map f = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold
+--
+-- For map f ∘ map g:
+--   = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold ∘ fold ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
+--   = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ id ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
+--     (by unfold ∘ fold = id from Optimize.agda)
+--   = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
+--   = fold ∘ [inl, inr ∘ (⟨f ∘ fst, snd⟩ ∘ ⟨g ∘ fst, snd⟩)] ∘ unfold
+--     (by coproduct functor fusion, Rule 1 below)
+--   = fold ∘ [inl, inr ∘ ⟨(f ∘ g) ∘ fst, snd⟩] ∘ unfold
+--   = map (f ∘ g)  -- single traversal!
+--
 -- Rules implemented:
 --   1. Right functor fusion (fmap on right component):
 --      [ inl, inr ∘ h ] ∘ [ inl, inr ∘ k ] = [ inl, inr ∘ (h ∘ k) ]
