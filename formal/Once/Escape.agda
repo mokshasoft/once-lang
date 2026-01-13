@@ -22,10 +22,14 @@
 --   8. fold ∘ inr m → fold ∘ inr Stack  (injection consumed by fold)
 --   9. terminal ∘ ⟨ f , g ⟩ m → terminal ∘ ⟨ f , g ⟩ Stack  (pair discarded)
 --  10. terminal ∘ curry f m → terminal ∘ curry f Stack  (closure discarded)
+--  11. (f ∘ fst) ∘ ⟨ g , h ⟩ m → (f ∘ fst) ∘ ⟨ g , h ⟩ Stack  (pair consumed by fst)
+--  12. (f ∘ snd) ∘ ⟨ g , h ⟩ m → (f ∘ snd) ∘ ⟨ g , h ⟩ Stack  (pair consumed by snd)
 --
 -- Rules 7-8 are especially powerful with linear types: linearity guarantees
 -- the injection is used exactly once, so stack allocation is provably safe.
 -- Rules 9-10 are edge cases for dead code that wasn't eliminated.
+-- Rules 11-12 are high-impact for let bindings: `let x = e1 in f x` desugars to
+-- `(f ∘ snd) ∘ ⟨id, e1⟩` which is now optimized.
 ------------------------------------------------------------------------
 
 module Once.Escape where
@@ -97,6 +101,12 @@ escape-compose fold (inr _) = fold ∘ inr Stack
 -- Rules 9-10: terminal discards values (edge cases for dead code)
 escape-compose terminal (⟨ f , g ⟩ _) = terminal ∘ ⟨ f , g ⟩ Stack
 escape-compose terminal (curry f _) = terminal ∘ curry f Stack
+
+-- Rules 11-12: (f ∘ fst/snd) ∘ ⟨ g , h ⟩ - projection inside composition
+-- The pair is consumed by the projection, even when followed by another function.
+-- This is HIGH IMPACT for let bindings: `let x = e in f x` → `(f ∘ snd) ∘ ⟨id, e⟩`
+escape-compose (f ∘ fst) (⟨ g , h ⟩ _) = (f ∘ fst) ∘ ⟨ g , h ⟩ Stack
+escape-compose (f ∘ snd) (⟨ g , h ⟩ _) = (f ∘ snd) ∘ ⟨ g , h ⟩ Stack
 
 -- Default: no escape optimization, preserve original composition
 escape-compose g f = g ∘ f

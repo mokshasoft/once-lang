@@ -67,7 +67,31 @@ escape-compose-correct apply (⟨ Prim _ , h ⟩ _) x = refl
 -- All other cases: escape-compose returns g ∘ f unchanged, so proof is refl
 -- Enumerate by first argument
 escape-compose-correct id f x = refl
-escape-compose-correct (g ∘ h) f x = refl
+-- Composition cases: enumerate by what the inner function is
+-- (f ∘ fst) and (f ∘ snd) with ⟨_,_⟩ are rules 11-12 (handled below)
+-- All other compositions hit the default case
+escape-compose-correct (g ∘ id) f x = refl
+escape-compose-correct (g ∘ (h ∘ h')) f x = refl
+escape-compose-correct (g ∘ ⟨ h , h' ⟩ _) f x = refl
+escape-compose-correct (g ∘ inl _) f x = refl
+escape-compose-correct (g ∘ inr _) f x = refl
+escape-compose-correct (g ∘ [ h , h' ]) f x = refl
+escape-compose-correct (g ∘ terminal) f x = refl
+escape-compose-correct (g ∘ initial) f x = refl
+escape-compose-correct (g ∘ curry h _) f x = refl
+escape-compose-correct (g ∘ apply) f x = refl
+escape-compose-correct (g ∘ fold) f x = refl
+escape-compose-correct (g ∘ unfold) f x = refl
+escape-compose-correct (g ∘ arr) f x = refl
+escape-compose-correct (g ∘ Prim _) f x = refl
+-- (g ∘ fst) and (g ∘ snd) with non-pair second arg (default case)
+-- Note: some patterns are type-impossible (fst/snd expect product, inl/inr/curry produce other types)
+escape-compose-correct (g ∘ fst) id x = refl
+escape-compose-correct (g ∘ fst) (f ∘ f') x = refl
+escape-compose-correct (g ∘ fst) (Prim _) x = refl
+escape-compose-correct (g ∘ snd) id x = refl
+escape-compose-correct (g ∘ snd) (f ∘ f') x = refl
+escape-compose-correct (g ∘ snd) (Prim _) x = refl
 escape-compose-correct fst id x = refl
 escape-compose-correct fst (g ∘ h) x = refl
 escape-compose-correct snd id x = refl
@@ -90,6 +114,12 @@ escape-compose-correct terminal (inl _) x = refl
 escape-compose-correct terminal (inr _) x = refl
 escape-compose-correct terminal [ f , g ] x = refl
 escape-compose-correct terminal (Prim _) x = refl
+
+-- Rules 11-12: (f ∘ fst/snd) ∘ ⟨ g , h ⟩ - AllocMode transparent in pair
+-- High impact for let bindings!
+escape-compose-correct (f ∘ fst) (⟨ g , h ⟩ _) x = refl
+escape-compose-correct (f ∘ snd) (⟨ g , h ⟩ _) x = refl
+
 escape-compose-correct (curry g _) f x = refl
 escape-compose-correct apply id x = refl
 escape-compose-correct apply (g ∘ h) x = refl
