@@ -16,7 +16,7 @@ open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation
   using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
-         two-push-offset; three-slot-offset)
+         slot-size; slots)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
@@ -66,15 +66,15 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
     -- Register values after setup
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     rdi-setup : readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
-    r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ 40
-    rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ 40
-    rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ 24
+    r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ slots 5
+    rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
+    rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
 
     -- Stack slot memory (rbp-relative addressing)
     -- These express memory layout without requiring arithmetic at use sites
     mem-slot0 : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
-    mem-slot8 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 8) ≡ just (readReg (regs s) r15)
-    mem-slot16 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ 16) ≡ just (readReg (regs s) r14)
+    mem-slot8 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
+    mem-slot16 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
 
     -- Memory preservation
     mem-above : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
@@ -89,8 +89,8 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
 frame-setup-star : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  readReg (regs s) rsp > 24 →   -- Need rsp > 24 to prove memory disjointness
-  let prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+  readReg (regs s) rsp > slots 3 →   -- Need rsp > slots 3 to prove memory disjointness
+  let prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
   in FrameSetupResult prog s (length prefix +ℕ 7)
 frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
   { s-setup = s7
@@ -115,7 +115,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     open import Data.Nat.Properties using (+-assoc)
 
     prog : Program
-    prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
 
     -- Original values
     orig-rsp : Word
@@ -135,8 +135,8 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
     -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
     s1 : State
-    s1 = record s { regs = writeReg (regs s) rsp (orig-rsp ∸ 8)
-                  ; memory = writeMem (memory s) (orig-rsp ∸ 8) orig-r14
+    s1 = record s { regs = writeReg (regs s) rsp (orig-rsp ∸ slot-size)
+                  ; memory = writeMem (memory s) (orig-rsp ∸ slot-size) orig-r14
                   ; pc = pc s +ℕ 1 }
 
     fetch1 : fetch prog (length prefix) ≡ just (push (reg r14))
@@ -153,22 +153,22 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     pc1 : pc s1 ≡ length prefix +ℕ 1
     pc1 = cong (λ n → n +ℕ 1) pc-eq
 
-    rsp-s1 : readReg (regs s1) rsp ≡ orig-rsp ∸ 8
-    rsp-s1 = readReg-writeReg-same (regs s) rsp (orig-rsp ∸ 8)
+    rsp-s1 : readReg (regs s1) rsp ≡ orig-rsp ∸ slot-size
+    rsp-s1 = readReg-writeReg-same (regs s) rsp (orig-rsp ∸ slot-size)
 
     r15-s1 : readReg (regs s1) r15 ≡ orig-r15
-    r15-s1 = readReg-writeReg-rsp-r15 (regs s) (orig-rsp ∸ 8)
+    r15-s1 = readReg-writeReg-rsp-r15 (regs s) (orig-rsp ∸ slot-size)
 
     rbp-s1 : readReg (regs s1) rbp ≡ orig-rbp
-    rbp-s1 = readReg-writeReg-rsp-rbp (regs s) (orig-rsp ∸ 8)
+    rbp-s1 = readReg-writeReg-rsp-rbp (regs s) (orig-rsp ∸ slot-size)
 
     -- Step 2: push r15 - save r15 to stack, decrement rsp by 8
     s2 : State
-    s2 = record s1 { regs = writeReg (regs s1) rsp (readReg (regs s1) rsp ∸ 8)
-                   ; memory = writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)
+    s2 = record s1 { regs = writeReg (regs s1) rsp (readReg (regs s1) rsp ∸ slot-size)
+                   ; memory = writeMem (memory s1) (readReg (regs s1) rsp ∸ slot-size) (readReg (regs s1) r15)
                    ; pc = pc s1 +ℕ 1 }
 
-    prog-eq1 : prog ≡ (prefix ++ push (reg r14) ∷ []) ++ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq1 : prog ≡ (prefix ++ push (reg r14) ∷ []) ++ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
     prog-eq1 = sym (++-assoc prefix _ _)
 
     len-prefix1 : length (prefix ++ push (reg r14) ∷ []) ≡ length prefix +ℕ 1
@@ -189,22 +189,22 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     pc2 : pc s2 ≡ length prefix +ℕ 2
     pc2 = trans (cong (λ n → n +ℕ 1) pc1) (+-assoc (length prefix) 1 1)
 
-    rsp-s2-raw : readReg (regs s2) rsp ≡ readReg (regs s1) rsp ∸ 8
-    rsp-s2-raw = readReg-writeReg-same (regs s1) rsp (readReg (regs s1) rsp ∸ 8)
+    rsp-s2-raw : readReg (regs s2) rsp ≡ readReg (regs s1) rsp ∸ slot-size
+    rsp-s2-raw = readReg-writeReg-same (regs s1) rsp (readReg (regs s1) rsp ∸ slot-size)
 
-    rsp-s2 : readReg (regs s2) rsp ≡ orig-rsp ∸ 16
-    rsp-s2 = trans rsp-s2-raw (trans (cong (_∸ 8) rsp-s1) (∸-+-assoc orig-rsp 8 8))
+    rsp-s2 : readReg (regs s2) rsp ≡ orig-rsp ∸ slots 2
+    rsp-s2 = trans rsp-s2-raw (trans (cong (_∸ slot-size) rsp-s1) (∸-+-assoc orig-rsp slot-size slot-size))
 
     rbp-s2 : readReg (regs s2) rbp ≡ orig-rbp
-    rbp-s2 = trans (readReg-writeReg-rsp-rbp (regs s1) (readReg (regs s1) rsp ∸ 8)) rbp-s1
+    rbp-s2 = trans (readReg-writeReg-rsp-rbp (regs s1) (readReg (regs s1) rsp ∸ slot-size)) rbp-s1
 
     -- Step 3: push rbp - save rbp to stack, decrement rsp by 8
     s3 : State
-    s3 = record s2 { regs = writeReg (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
-                   ; memory = writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)
+    s3 = record s2 { regs = writeReg (regs s2) rsp (readReg (regs s2) rsp ∸ slot-size)
+                   ; memory = writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)
                    ; pc = pc s2 +ℕ 1 }
 
-    prog-eq2 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ++ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq2 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ++ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
     prog-eq2 = sym (++-assoc prefix _ _)
 
     len-prefix2 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ []) ≡ length prefix +ℕ 2
@@ -225,18 +225,18 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     pc3 : pc s3 ≡ length prefix +ℕ 3
     pc3 = trans (cong (λ n → n +ℕ 1) pc2) (+-assoc (length prefix) 2 1)
 
-    rsp-s3-raw : readReg (regs s3) rsp ≡ readReg (regs s2) rsp ∸ 8
-    rsp-s3-raw = readReg-writeReg-same (regs s2) rsp (readReg (regs s2) rsp ∸ 8)
+    rsp-s3-raw : readReg (regs s3) rsp ≡ readReg (regs s2) rsp ∸ slot-size
+    rsp-s3-raw = readReg-writeReg-same (regs s2) rsp (readReg (regs s2) rsp ∸ slot-size)
 
-    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp ∸ 24
-    rsp-s3 = trans rsp-s3-raw (trans (cong (_∸ 8) rsp-s2) (∸-+-assoc orig-rsp 16 8))
+    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp ∸ slots 3
+    rsp-s3 = trans rsp-s3-raw (trans (cong (_∸ slot-size) rsp-s2) (∸-+-assoc orig-rsp (slots 2) slot-size))
 
     -- Step 4: mov rbp, rsp - set rbp to current rsp (frame base)
     s4 : State
     s4 = record s3 { regs = writeReg (regs s3) rbp (readReg (regs s3) rsp)
                    ; pc = pc s3 +ℕ 1 }
 
-    prog-eq3 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ++ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq3 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ++ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
     prog-eq3 = sym (++-assoc prefix _ _)
 
     len-prefix3 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ []) ≡ length prefix +ℕ 3
@@ -257,32 +257,32 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     pc4 : pc s4 ≡ length prefix +ℕ 4
     pc4 = trans (cong (λ n → n +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
 
-    rbp-s4 : readReg (regs s4) rbp ≡ orig-rsp ∸ 24
+    rbp-s4 : readReg (regs s4) rbp ≡ orig-rsp ∸ slots 3
     rbp-s4 = trans (readReg-writeReg-same (regs s3) rbp (readReg (regs s3) rsp)) rsp-s3
 
-    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ 24
+    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ slots 3
     rsp-s4 = trans (readReg-writeReg-rbp-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
 
     -- Step 5: sub rsp, 16 - allocate 16 bytes on stack
     s5 : State
-    s5 = record s4 { regs = writeReg (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
+    s5 = record s4 { regs = writeReg (regs s4) rsp (readReg (regs s4) rsp ∸ slots 2)
                    ; pc = pc s4 +ℕ 1
-                   ; flags = updateFlags (readReg (regs s4) rsp ∸ 16) (readReg (regs s4) rsp) }
+                   ; flags = updateFlags (readReg (regs s4) rsp ∸ slots 2) (readReg (regs s4) rsp) }
 
-    prog-eq4 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ++ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq4 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ++ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
     prog-eq4 = sym (++-assoc prefix _ _)
 
     len-prefix4 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) ≡ length prefix +ℕ 4
     len-prefix4 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
 
-    fetch5 : fetch prog (length prefix +ℕ 4) ≡ just (sub (reg rsp) (imm 16))
-    fetch5 = subst₂ (λ p n → fetch p n ≡ just (sub (reg rsp) (imm 16))) (sym prog-eq4) len-prefix4
-                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) (sub (reg rsp) (imm 16)) _)
+    fetch5 : fetch prog (length prefix +ℕ 4) ≡ just (sub (reg rsp) (imm (slots 2)))
+    fetch5 = subst₂ (λ p n → fetch p n ≡ just (sub (reg rsp) (imm (slots 2)))) (sym prog-eq4) len-prefix4
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ []) (sub (reg rsp) (imm (slots 2))) _)
 
     step5 : step prog s4 ≡ just s5
-    step5 = trans (step-exec prog s4 (sub (reg rsp) (imm 16)) h4
-                             (subst (λ n → fetch prog n ≡ just (sub (reg rsp) (imm 16))) (sym pc4) fetch5))
-                  (execSub-reg-imm prog s4 rsp 16)
+    step5 = trans (step-exec prog s4 (sub (reg rsp) (imm (slots 2))) h4
+                             (subst (λ n → fetch prog n ≡ just (sub (reg rsp) (imm (slots 2)))) (sym pc4) fetch5))
+                  (execSub-reg-imm prog s4 rsp (slots 2))
 
     h5 : halted s5 ≡ false
     h5 = h-false
@@ -290,29 +290,29 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     pc5 : pc s5 ≡ length prefix +ℕ 5
     pc5 = trans (cong (λ n → n +ℕ 1) pc4) (+-assoc (length prefix) 4 1)
 
-    rsp-s5-raw : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ 16
-    rsp-s5-raw = readReg-writeReg-same (regs s4) rsp (readReg (regs s4) rsp ∸ 16)
+    rsp-s5-raw : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ slots 2
+    rsp-s5-raw = readReg-writeReg-same (regs s4) rsp (readReg (regs s4) rsp ∸ slots 2)
 
-    rsp-s5 : readReg (regs s5) rsp ≡ orig-rsp ∸ 40
-    rsp-s5 = trans rsp-s5-raw (trans (cong (_∸ 16) rsp-s4) (∸-+-assoc orig-rsp 24 16))
+    rsp-s5 : readReg (regs s5) rsp ≡ orig-rsp ∸ slots 5
+    rsp-s5 = trans rsp-s5-raw (trans (cong (_∸ slots 2) rsp-s4) (∸-+-assoc orig-rsp (slots 3) (slots 2)))
 
-    rbp-s5 : readReg (regs s5) rbp ≡ orig-rsp ∸ 24
-    rbp-s5 = trans (readReg-writeReg-rsp-rbp (regs s4) (readReg (regs s4) rsp ∸ 16)) rbp-s4
+    rbp-s5 : readReg (regs s5) rbp ≡ orig-rsp ∸ slots 3
+    rbp-s5 = trans (readReg-writeReg-rsp-rbp (regs s4) (readReg (regs s4) rsp ∸ slots 2)) rbp-s4
 
     -- Step 6: mov r15, rsp - set r15 to current rsp (pair base address)
     s6 : State
     s6 = record s5 { regs = writeReg (regs s5) r15 (readReg (regs s5) rsp)
                    ; pc = pc s5 +ℕ 1 }
 
-    prog-eq5 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) ++ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq5 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ []) ++ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
     prog-eq5 = sym (++-assoc prefix _ _)
 
-    len-prefix5 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) ≡ length prefix +ℕ 5
+    len-prefix5 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ []) ≡ length prefix +ℕ 5
     len-prefix5 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
 
     fetch6 : fetch prog (length prefix +ℕ 5) ≡ just (mov (reg r15) (reg rsp))
     fetch6 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r15) (reg rsp))) (sym prog-eq5) len-prefix5
-                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ []) (mov (reg r15) (reg rsp)) _)
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ []) (mov (reg r15) (reg rsp)) _)
 
     step6 : step prog s5 ≡ just s6
     step6 = trans (step-exec prog s5 (mov (reg r15) (reg rsp)) h5
@@ -325,37 +325,37 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     pc6 : pc s6 ≡ length prefix +ℕ 6
     pc6 = trans (cong (λ n → n +ℕ 1) pc5) (+-assoc (length prefix) 5 1)
 
-    r15-s6 : readReg (regs s6) r15 ≡ orig-rsp ∸ 40
+    r15-s6 : readReg (regs s6) r15 ≡ orig-rsp ∸ slots 5
     r15-s6 = trans (readReg-writeReg-same (regs s5) r15 (readReg (regs s5) rsp)) rsp-s5
 
-    rsp-s6 : readReg (regs s6) rsp ≡ orig-rsp ∸ 40
+    rsp-s6 : readReg (regs s6) rsp ≡ orig-rsp ∸ slots 5
     rsp-s6 = trans (readReg-writeReg-r15-rsp (regs s5) (readReg (regs s5) rsp)) rsp-s5
 
-    rbp-s6 : readReg (regs s6) rbp ≡ orig-rsp ∸ 24
+    rbp-s6 : readReg (regs s6) rbp ≡ orig-rsp ∸ slots 3
     rbp-s6 = trans (readReg-writeReg-r15-rbp (regs s5) (readReg (regs s5) rsp)) rbp-s5
 
     rdi-s6 : readReg (regs s6) rdi ≡ orig-rdi
     rdi-s6 = trans (readReg-writeReg-r15-rdi (regs s5) (readReg (regs s5) rsp))
-                   (trans (readReg-writeReg-rsp-rdi (regs s4) (readReg (regs s4) rsp ∸ 16))
+                   (trans (readReg-writeReg-rsp-rdi (regs s4) (readReg (regs s4) rsp ∸ slots 2))
                           (trans (readReg-writeReg-rbp-rdi (regs s3) (readReg (regs s3) rsp))
-                                 (trans (readReg-writeReg-rsp-rdi (regs s2) (readReg (regs s2) rsp ∸ 8))
-                                        (trans (readReg-writeReg-rsp-rdi (regs s1) (readReg (regs s1) rsp ∸ 8))
-                                               (readReg-writeReg-rsp-rdi (regs s) (orig-rsp ∸ 8))))))
+                                 (trans (readReg-writeReg-rsp-rdi (regs s2) (readReg (regs s2) rsp ∸ slot-size))
+                                        (trans (readReg-writeReg-rsp-rdi (regs s1) (readReg (regs s1) rsp ∸ slot-size))
+                                               (readReg-writeReg-rsp-rdi (regs s) (orig-rsp ∸ slot-size))))))
 
     -- Step 7: mov r14, rdi - save input to r14
     s7 : State
     s7 = record s6 { regs = writeReg (regs s6) r14 (readReg (regs s6) rdi)
                    ; pc = pc s6 +ℕ 1 }
 
-    prog-eq6 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) ++ mov (reg r14) (reg rdi) ∷ rest
+    prog-eq6 : prog ≡ (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ []) ++ mov (reg r14) (reg rdi) ∷ rest
     prog-eq6 = sym (++-assoc prefix _ _)
 
-    len-prefix6 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) ≡ length prefix +ℕ 6
+    len-prefix6 : length (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ []) ≡ length prefix +ℕ 6
     len-prefix6 = trans (List-length-++ prefix) (cong (length prefix +ℕ_) refl)
 
     fetch7 : fetch prog (length prefix +ℕ 6) ≡ just (mov (reg r14) (reg rdi))
     fetch7 = subst₂ (λ p n → fetch p n ≡ just (mov (reg r14) (reg rdi))) (sym prog-eq6) len-prefix6
-                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm 16) ∷ mov (reg r15) (reg rsp) ∷ []) (mov (reg r14) (reg rdi)) _)
+                    (fetch-at-prefix-end (prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ []) (mov (reg r14) (reg rdi)) _)
 
     step7 : step prog s6 ≡ just s7
     step7 = trans (step-exec prog s6 (mov (reg r14) (reg rdi)) h6
@@ -377,13 +377,13 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     rdi-eq : readReg (regs s7) rdi ≡ orig-rdi
     rdi-eq = trans (readReg-writeReg-r14-rdi (regs s6) (readReg (regs s6) rdi)) rdi-s6
 
-    r15-eq : readReg (regs s7) r15 ≡ orig-rsp ∸ 40
+    r15-eq : readReg (regs s7) r15 ≡ orig-rsp ∸ slots 5
     r15-eq = trans (readReg-writeReg-r14-r15 (regs s6) (readReg (regs s6) rdi)) r15-s6
 
-    rsp-eq : readReg (regs s7) rsp ≡ orig-rsp ∸ 40
+    rsp-eq : readReg (regs s7) rsp ≡ orig-rsp ∸ slots 5
     rsp-eq = trans (readReg-writeReg-r14-rsp (regs s6) (readReg (regs s6) rdi)) rsp-s6
 
-    rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ 24
+    rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ slots 3
     rbp-eq = trans (readReg-writeReg-r14-rbp (regs s6) (readReg (regs s6) rdi)) rbp-s6
 
     -- Memory proofs: stack slots contain saved registers
@@ -397,50 +397,50 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     --   [rbp + 16] = orig-r14  (at orig-rsp - 8)
 
     -- Address where step 3 writes: (orig-rsp - 16) - 8 = orig-rsp - 24
-    write-addr-s3 : readReg (regs s2) rsp ∸ 8 ≡ orig-rsp ∸ 24
-    write-addr-s3 = trans (cong (_∸ 8) rsp-s2) (∸-+-assoc orig-rsp 16 8)
+    write-addr-s3 : readReg (regs s2) rsp ∸ slot-size ≡ orig-rsp ∸ slots 3
+    write-addr-s3 = trans (cong (_∸ slot-size) rsp-s2) (∸-+-assoc orig-rsp (slots 2) slot-size)
 
     -- Memory after step 3: push rbp wrote orig-rbp to [orig-rsp - 24]
     -- Steps 4-7 don't write to memory (only mov/sub instructions)
-    mem-s3-at-rbp : readMem (memory s3) (orig-rsp ∸ 24) ≡ just orig-rbp
+    mem-s3-at-rbp : readMem (memory s3) (orig-rsp ∸ slots 3) ≡ just orig-rbp
     mem-s3-at-rbp = begin
-        readMem (memory s3) (orig-rsp ∸ 24)
+        readMem (memory s3) (orig-rsp ∸ slots 3)
       ≡⟨⟩
-        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 24)
-      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 24)) write-addr-s3 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 24)
-      ≡⟨ cong (λ v → readMem (writeMem (memory s2) (orig-rsp ∸ 24) v) (orig-rsp ∸ 24)) rbp-s2 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ 24) orig-rbp) (orig-rsp ∸ 24)
-      ≡⟨ mem-read-write {memory s2} {orig-rsp ∸ 24} {orig-rbp} ⟩
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 3)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slots 3)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 3)
+      ≡⟨ cong (λ v → readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) v) (orig-rsp ∸ slots 3)) rbp-s2 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) orig-rbp) (orig-rsp ∸ slots 3)
+      ≡⟨ mem-read-write {memory s2} {orig-rsp ∸ slots 3} {orig-rbp} ⟩
         just orig-rbp
       ∎
 
     -- Address where step 2 writes: (orig-rsp - 8) - 8 = orig-rsp - 16
-    write-addr-s2 : readReg (regs s1) rsp ∸ 8 ≡ orig-rsp ∸ 16
-    write-addr-s2 = trans (cong (_∸ 8) rsp-s1) (∸-+-assoc orig-rsp 8 8)
+    write-addr-s2 : readReg (regs s1) rsp ∸ slot-size ≡ orig-rsp ∸ slots 2
+    write-addr-s2 = trans (cong (_∸ slot-size) rsp-s1) (∸-+-assoc orig-rsp slot-size slot-size)
 
     -- Memory after step 2: push r15 wrote orig-r15 to [orig-rsp - 16]
-    mem-s2-at-r15slot : readMem (memory s2) (orig-rsp ∸ 16) ≡ just orig-r15
+    mem-s2-at-r15slot : readMem (memory s2) (orig-rsp ∸ slots 2) ≡ just orig-r15
     mem-s2-at-r15slot = begin
-        readMem (memory s2) (orig-rsp ∸ 16)
+        readMem (memory s2) (orig-rsp ∸ slots 2)
       ≡⟨⟩
-        readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)) (orig-rsp ∸ 16)
-      ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ 16)) write-addr-s2 ⟩
-        readMem (writeMem (memory s1) (orig-rsp ∸ 16) (readReg (regs s1) r15)) (orig-rsp ∸ 16)
-      ≡⟨ cong (λ v → readMem (writeMem (memory s1) (orig-rsp ∸ 16) v) (orig-rsp ∸ 16)) r15-s1 ⟩
-        readMem (writeMem (memory s1) (orig-rsp ∸ 16) orig-r15) (orig-rsp ∸ 16)
-      ≡⟨ mem-read-write {memory s1} {orig-rsp ∸ 16} {orig-r15} ⟩
+        readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ slot-size) (readReg (regs s1) r15)) (orig-rsp ∸ slots 2)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ slots 2)) write-addr-s2 ⟩
+        readMem (writeMem (memory s1) (orig-rsp ∸ slots 2) (readReg (regs s1) r15)) (orig-rsp ∸ slots 2)
+      ≡⟨ cong (λ v → readMem (writeMem (memory s1) (orig-rsp ∸ slots 2) v) (orig-rsp ∸ slots 2)) r15-s1 ⟩
+        readMem (writeMem (memory s1) (orig-rsp ∸ slots 2) orig-r15) (orig-rsp ∸ slots 2)
+      ≡⟨ mem-read-write {memory s1} {orig-rsp ∸ slots 2} {orig-r15} ⟩
         just orig-r15
       ∎
 
     -- Memory after step 1: push r14 wrote orig-r14 to [orig-rsp - 8]
-    -- s1.memory = writeMem (memory s) (orig-rsp ∸ 8) orig-r14
-    mem-s1-at-r14slot : readMem (memory s1) (orig-rsp ∸ 8) ≡ just orig-r14
+    -- s1.memory = writeMem (memory s) (orig-rsp ∸ slot-size) orig-r14
+    mem-s1-at-r14slot : readMem (memory s1) (orig-rsp ∸ slot-size) ≡ just orig-r14
     mem-s1-at-r14slot = begin
-        readMem (memory s1) (orig-rsp ∸ 8)
+        readMem (memory s1) (orig-rsp ∸ slot-size)
       ≡⟨⟩  -- by definition of s1
-        readMem (writeMem (memory s) (orig-rsp ∸ 8) orig-r14) (orig-rsp ∸ 8)
-      ≡⟨ mem-read-write {memory s} {orig-rsp ∸ 8} {orig-r14} ⟩
+        readMem (writeMem (memory s) (orig-rsp ∸ slot-size) orig-r14) (orig-rsp ∸ slot-size)
+      ≡⟨ mem-read-write {memory s} {orig-rsp ∸ slot-size} {orig-r14} ⟩
         just orig-r14
       ∎
 
@@ -456,9 +456,9 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
     -- Memory at [orig-rsp - 8] in s2 (after push r15 at step 2)
     -- push r15 wrote to [orig-rsp - 16], not [orig-rsp - 8]
-    -- s2.memory = writeMem (memory s1) (orig-rsp ∸ 16) orig-r15 (by write-addr-s2 and r15-s1)
+    -- s2.memory = writeMem (memory s1) (orig-rsp ∸ slots 2) orig-r15 (by write-addr-s2 and r15-s1)
     -- Derive rsp > 16 from rsp-gt-24 for the ∸two-slot≢∸one-slot lemma
-    -- rsp > 24 means 25 ≤ rsp, we need rsp > 16 which is 17 ≤ rsp
+    -- rsp > slots 3 means 25 ≤ rsp, we need rsp > 16 which is 17 ≤ rsp
     -- Use ≤-trans with 17 ≤ 25 and 25 ≤ rsp
     rsp-gt-16 : orig-rsp > 16
     rsp-gt-16 = ≤-trans 17≤25 rsp-gt-24
@@ -467,45 +467,45 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         17≤25 : 17 ≤ 25
         17≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
-    mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ 8) ≡ just orig-r14
+    mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ slot-size) ≡ just orig-r14
     mem-s2-at-r14slot = begin
-        readMem (memory s2) (orig-rsp ∸ 8)
+        readMem (memory s2) (orig-rsp ∸ slot-size)
       ≡⟨⟩
-        readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ 8) (readReg (regs s1) r15)) (orig-rsp ∸ 8)
-      ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ 8)) write-addr-s2 ⟩
-        readMem (writeMem (memory s1) (orig-rsp ∸ 16) (readReg (regs s1) r15)) (orig-rsp ∸ 8)
-      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ 16} {orig-rsp ∸ 8} {readReg (regs s1) r15} (∸two-slot≢∸one-slot orig-rsp rsp-gt-16) ⟩
-        readMem (memory s1) (orig-rsp ∸ 8)
+        readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ slot-size) (readReg (regs s1) r15)) (orig-rsp ∸ slot-size)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ slot-size)) write-addr-s2 ⟩
+        readMem (writeMem (memory s1) (orig-rsp ∸ slots 2) (readReg (regs s1) r15)) (orig-rsp ∸ slot-size)
+      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ slots 2} {orig-rsp ∸ slot-size} {readReg (regs s1) r15} (∸two-slot≢∸one-slot orig-rsp rsp-gt-16) ⟩
+        readMem (memory s1) (orig-rsp ∸ slot-size)
       ≡⟨ mem-s1-at-r14slot ⟩
         just orig-r14
       ∎
 
     -- Memory at [orig-rsp - 8] in s3 (after push rbp at step 3)
     -- push rbp wrote to [orig-rsp - 24], not [orig-rsp - 8]
-    mem-s3-at-r14slot : readMem (memory s3) (orig-rsp ∸ 8) ≡ just orig-r14
+    mem-s3-at-r14slot : readMem (memory s3) (orig-rsp ∸ slot-size) ≡ just orig-r14
     mem-s3-at-r14slot = begin
-        readMem (memory s3) (orig-rsp ∸ 8)
+        readMem (memory s3) (orig-rsp ∸ slot-size)
       ≡⟨⟩
-        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 8)
-      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 8)) write-addr-s3 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 8)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 8} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-24) ⟩
-        readMem (memory s2) (orig-rsp ∸ 8)
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slot-size} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-24) ⟩
+        readMem (memory s2) (orig-rsp ∸ slot-size)
       ≡⟨ mem-s2-at-r14slot ⟩
         just orig-r14
       ∎
 
     -- Memory at [orig-rsp - 16] in s3 (after push rbp at step 3)
     -- push rbp wrote to [orig-rsp - 24], not [orig-rsp - 16]
-    mem-s3-at-r15slot : readMem (memory s3) (orig-rsp ∸ 16) ≡ just orig-r15
+    mem-s3-at-r15slot : readMem (memory s3) (orig-rsp ∸ slots 2) ≡ just orig-r15
     mem-s3-at-r15slot = begin
-        readMem (memory s3) (orig-rsp ∸ 16)
+        readMem (memory s3) (orig-rsp ∸ slots 2)
       ≡⟨⟩
-        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ 8) (readReg (regs s2) rbp)) (orig-rsp ∸ 16)
-      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ 16)) write-addr-s3 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ 24) (readReg (regs s2) rbp)) (orig-rsp ∸ 16)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ 24} {orig-rsp ∸ 16} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-24) ⟩
-        readMem (memory s2) (orig-rsp ∸ 16)
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slots 2} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-24) ⟩
+        readMem (memory s2) (orig-rsp ∸ slots 2)
       ≡⟨ mem-s2-at-r15slot ⟩
         just orig-r15
       ∎
@@ -517,8 +517,8 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
     -- [rbp + 8] = [orig-rsp - 16] = orig-r15
     -- We need to show: (orig-rsp ∸ saved-regs-size) + word-size ≡ orig-rsp ∸ pair-alloc
-    mem-r15-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ 8) ≡ just orig-r15
-    mem-r15-eq = subst (λ addr → readMem (memory s7) (addr +ℕ 8) ≡ just orig-r15)
+    mem-r15-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ slot-size) ≡ just orig-r15
+    mem-r15-eq = subst (λ addr → readMem (memory s7) (addr +ℕ slot-size) ≡ just orig-r15)
                        (sym rbp-eq)
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r15)
                               (sym (rbp-plus-word≡r15-save orig-rsp (<⇒≤ rsp-gt-24)))
@@ -526,8 +526,8 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
     -- [rbp + 16] = [orig-rsp - 8] = orig-r14
     -- We need to show: (orig-rsp ∸ saved-regs-size) + pair-alloc ≡ orig-rsp ∸ word-size
-    mem-r14-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ 16) ≡ just orig-r14
-    mem-r14-eq = subst (λ addr → readMem (memory s7) (addr +ℕ 16) ≡ just orig-r14)
+    mem-r14-eq : readMem (memory s7) (readReg (regs s7) rbp +ℕ slots 2) ≡ just orig-r14
+    mem-r14-eq = subst (λ addr → readMem (memory s7) (addr +ℕ slots 2) ≡ just orig-r14)
                        (sym rbp-eq)
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r14)
                               (sym (rbp-plus-pair≡r14-save orig-rsp (<⇒≤ rsp-gt-24)))
@@ -542,11 +542,11 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         open import Data.Nat.Properties using (≤-trans; <-≤-trans; ∸-monoʳ-<; <⇒≤)
 
         -- All write addresses are < orig-rsp, hence ≠ addr
-        write1 = orig-rsp ∸ 8    -- step 1 write address
-        write2 = orig-rsp ∸ 16   -- step 2 write address
-        write3 = orig-rsp ∸ 24   -- step 3 write address
+        write1 = orig-rsp ∸ slot-size    -- step 1 write address
+        write2 = orig-rsp ∸ slots 2   -- step 2 write address
+        write3 = orig-rsp ∸ slots 3   -- step 3 write address
 
-        -- orig-rsp > 8 (derived from rsp > 24)
+        -- orig-rsp > 8 (derived from rsp > slots 3)
         rsp-gt-8 : orig-rsp > 8
         rsp-gt-8 = ≤-trans 9≤25 rsp-gt-24
           where
@@ -628,11 +628,11 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; stackAddr-write-preserves-zero)
 
         -- Write addresses (from x86 semantics)
-        write1 = orig-rsp ∸ 8
-        write2 = orig-rsp ∸ 16
-        write3 = orig-rsp ∸ 24
+        write1 = orig-rsp ∸ slot-size
+        write2 = orig-rsp ∸ slots 2
+        write3 = orig-rsp ∸ slots 3
 
-        -- Derive capacity from rsp > 24 and rsp-in-stack
+        -- Derive capacity from rsp > slots 3 and rsp-in-stack
         cap : StackCapacity s 3
         cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
 
@@ -669,11 +669,11 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; code; stackAddr-write-preserves-code)
 
         -- Write addresses (from x86 semantics)
-        write1 = orig-rsp ∸ 8
-        write2 = orig-rsp ∸ 16
-        write3 = orig-rsp ∸ 24
+        write1 = orig-rsp ∸ slot-size
+        write2 = orig-rsp ∸ slots 2
+        write3 = orig-rsp ∸ slots 3
 
-        -- Derive capacity from rsp > 24 and rsp-in-stack
+        -- Derive capacity from rsp > slots 3 and rsp-in-stack
         cap : StackCapacity s 3
         cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
 
@@ -710,11 +710,11 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; heap; stackAddr-write-preserves-heap)
 
         -- Write addresses (from x86 semantics)
-        write1 = orig-rsp ∸ 8
-        write2 = orig-rsp ∸ 16
-        write3 = orig-rsp ∸ 24
+        write1 = orig-rsp ∸ slot-size
+        write2 = orig-rsp ∸ slots 2
+        write3 = orig-rsp ∸ slots 3
 
-        -- Derive capacity from rsp > 24 and rsp-in-stack
+        -- Derive capacity from rsp > slots 3 and rsp-in-stack
         cap : StackCapacity s 3
         cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
 
@@ -956,11 +956,11 @@ case-inl-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : �
   halted s ≡ false →
   pc s ≡ length prefix →
   readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
-  readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just val →
+  readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val →
   let prog = prefix ++ mov (reg r11) (mem (base rdi)) ∷
                         cmp (reg r11) (imm 0) ∷
                         jne jne-offset ∷
-                        mov (reg rdi) (mem (base+disp rdi 8)) ∷ suffix
+                        mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ suffix
   in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
 case-inl-setup-star prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
   s4 , record { star-setup = star-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
@@ -972,7 +972,7 @@ case-inl-setup-star prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val
     i0 = mov (reg r11) (mem (base rdi))
     i1 = cmp (reg r11) (imm 0)
     i2 = jne jne-offset
-    i3 = mov (reg rdi) (mem (base+disp rdi 8))
+    i3 = mov (reg rdi) (mem (base+disp rdi slot-size))
     prog = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ suffix
 
     orig-rdi = readReg (regs s) rdi
@@ -1077,12 +1077,12 @@ case-inl-setup-star prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val
     rdi-s3 = rdi-s2
 
     -- memory at rdi+8 in s3 (unchanged)
-    mem-s3 : readMem (memory s3) (readReg (regs s3) rdi +ℕ 8) ≡ just val
-    mem-s3 = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just val) (sym rdi-s3) mem-val
+    mem-s3 : readMem (memory s3) (readReg (regs s3) rdi +ℕ slot-size) ≡ just val
+    mem-s3 = subst (λ addr → readMem (memory s) (addr +ℕ slot-size) ≡ just val) (sym rdi-s3) mem-val
 
     step4 : step prog s3 ≡ just s4
     step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
-                  (execMov-reg-mem-disp s3 rdi rdi 8 val mem-s3)
+                  (execMov-reg-mem-disp s3 rdi rdi slot-size val mem-s3)
 
     h4 : halted s4 ≡ false
     h4 = h-false

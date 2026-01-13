@@ -36,7 +36,7 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; Stac
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; slot-size; slots)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -96,7 +96,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
@@ -122,7 +122,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
@@ -182,7 +182,7 @@ mutual
       load-tag-instr = mov (reg r11) (mem (base rdi))
       cmp-tag-instr = cmp (reg r11) (imm 0)
       jne-instr = jne right-offset
-      load-val-instr = mov (reg rdi) (mem (base+disp rdi 8))
+      load-val-instr = mov (reg rdi) (mem (base+disp rdi slot-size))
 
       -- Prefix for f = prefix + 4 setup instructions
       prefix-f : Program
@@ -190,7 +190,7 @@ mutual
 
       -- Suffix for f = jmp ∷ label ∷ load-val ∷ g ∷ end-label ∷ suffix
       suffix-f : Program
-      suffix-f = jmp end-offset ∷ label (5 +ℕ len-f) ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-g ++ label ((7 +ℕ len-f) +ℕ len-g) ∷ suffix
+      suffix-f = jmp end-offset ∷ label (5 +ℕ len-f) ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ code-g ++ label ((7 +ℕ len-f) +ℕ len-g) ∷ suffix
 
       -- Length of prefix-f
       len-prefix-f : length prefix-f ≡ length prefix +ℕ 4
@@ -205,8 +205,8 @@ mutual
       mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 0)
                               (sym rdi-eq) (encode-inl-tag {A} {B} a (memory s))
 
-      mem-val-precond : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode a)
-      mem-val-precond = subst (λ addr → readMem (memory s) (addr +ℕ 8) ≡ just (encode a))
+      mem-val-precond : readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode a)
+      mem-val-precond = subst (λ addr → readMem (memory s) (addr +ℕ slot-size) ≡ just (encode a))
                               (sym rdi-eq) (encode-inl-val {A} {B} a (memory s))
 
       -- Use case-inl-setup-star from SeqExec.agda
@@ -268,8 +268,8 @@ mutual
       stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
 
       -- Derive rsp-sufficient from preserved rsp
-      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > 16
-      rsp-sufficient-derived = subst (_> 16) (sym rsp-setup-raw) rsp-sufficient
+      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > slots 2
+      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) rsp-sufficient
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       -- Star-based: uses Star relation directly instead of fuel-based exec
@@ -283,7 +283,7 @@ mutual
                                     × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
                                     × memory s-setup ≡ memory s
                                     × StackInvariant s-setup
-                                    × readReg (regs s-setup) rsp > 16)
+                                    × readReg (regs s-setup) rsp > slots 2)
       setup-result = s-setup-raw , star-setup-converted , h-setup-raw , pc-setup-raw ,
                      rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
                      rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
@@ -415,12 +415,12 @@ mutual
                              (cong (λ addr → readMem (memory s) addr) rbp-setup))))
 
       -- Memory at rbp+8 preserved through case execution
-      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-      mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ 8)) mem-jump)
-                        (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ 8) rbp-setup)))
+      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
+      mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ slot-size)) mem-jump)
+                        (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ slot-size) rbp-setup)))
                         (trans (ir-mem-rbp+8 r-f)
-                        (trans (cong (λ m → readMem m (readReg (regs s-setup) rbp +ℕ 8)) mem-setup)
-                               (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ 8) rbp-setup)))))
+                        (trans (cong (λ m → readMem m (readReg (regs s-setup) rbp +ℕ slot-size)) mem-setup)
+                               (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ slot-size) rbp-setup)))))
 
       -- Memory above rbp preserved through case execution (same chain pattern)
       mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
@@ -439,7 +439,7 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f) r15-jump
 
-      rsp-sufficient-final : readReg (regs s-final) rsp > 16
+      rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
       rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
         where
           open import Data.Nat.Properties using (≤-trans)
@@ -499,7 +499,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b) (length prefix)
@@ -564,8 +564,8 @@ mutual
 
       -- Suffix for helper: rest of case code after the 3 setup instructions
       suffix-for-helper : Program
-      suffix-for-helper = mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-f ++
-                          jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
+      suffix-for-helper = mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ code-f ++
+                          jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
                           code-g ++ label end-label ∷ suffix
 
       -- Derive memory precondition from encode-inr-tag
@@ -639,8 +639,8 @@ mutual
       stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
 
       -- rsp-sufficient preserved
-      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > 16
-      rsp-sufficient-derived = subst (_> 16) (sym rsp-setup-raw) rsp-sufficient
+      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > slots 2
+      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) rsp-sufficient
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       -- Star-based: uses Star relation directly instead of fuel-based exec
@@ -654,7 +654,7 @@ mutual
                                     × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
                                     × memory s-setup ≡ memory s
                                     × StackInvariant s-setup
-                                    × readReg (regs s-setup) rsp > 16)
+                                    × readReg (regs s-setup) rsp > slots 2)
       setup-result = s-setup-raw , star-setup-converted , h-setup-raw , pc-setup-proof ,
                      rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
                      rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
@@ -707,8 +707,8 @@ mutual
       -- g starts at position 7+len-f, so prefix-g has length = length prefix + 7 + len-f
       prefix-g : Program
       prefix-g = prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
-                 mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-f ++
-                 jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷ []
+                 mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ code-f ++
+                 jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
 
       suffix-g : Program
       suffix-g = label end-label ∷ suffix
@@ -723,8 +723,8 @@ mutual
         where
           -- Inner list: 4 cons, then code-f ++ 3 more
           inner-eq : length (load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷
-                            mov (reg rdi) (mem (base+disp rdi 8)) ∷ code-f ++
-                            jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷ [])
+                            mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ code-f ++
+                            jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ [])
                    ≡ 7 +ℕ len-f
           inner-eq = trans (cong (4 +ℕ_) (List-length-++ code-f))
                      (trans (cong (λ n → 4 +ℕ n +ℕ 3) (compile-length-correct f))
@@ -847,19 +847,19 @@ mutual
                              (cong (λ addr → readMem (memory s) addr) rbp-right-to-s)))))
 
       -- Memory at rbp+8 preserved through case execution
-      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-      mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ 8)) mem-end)
-                        (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ 8) rbp-right-to-s)))
+      mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
+      mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ slot-size)) mem-end)
+                        (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ slot-size) rbp-right-to-s)))
                         (trans (ir-mem-rbp+8 r-g)
-                        (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ 8)) mem-right)
-                        (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ 8)) mem-setup)
-                               (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ 8) rbp-right-to-s))))))
+                        (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ slot-size)) mem-right)
+                        (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ slot-size)) mem-setup)
+                               (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ slot-size) rbp-right-to-s))))))
 
       -- Stack invariant: preserved from s1 to s-final since memory, rsp, and r15 unchanged
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g) r15-end
 
-      rsp-sufficient-final : readReg (regs s-final) rsp > 16
+      rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
       rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
         where
           open import Data.Nat.Properties using (≤-trans)

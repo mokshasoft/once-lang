@@ -42,7 +42,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (rsp-bound-to-capacity; R15Status; StackInvariant;
+  using (slot-size; slots; rsp-bound-to-capacity; R15Status; StackInvariant;
          r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
          stack-write-preserves-r15; stack-inv-for-code-ptr;
@@ -130,15 +130,15 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   -- Key: rdi contains the encoded pair (cl, arg)
   -- This enables deriving stack-heap disjointness from heap-stack-disjoint
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   -- Memory layout (derivable from rdi = encode pair, but explicit for convenience)
   readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
-  readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) →
+  readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) →
   readMem (memory s) closure-addr ≡ just env-addr →
-  readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr →
+  readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr →
   -- NEW: code-ptr is a valid program address (needed for r15-in-code StackInvariant)
   code-ptr < length prog →
   -- Result after 6 instructions: r12=env, rdi=arg, r15=code-ptr, pc=offset+6
@@ -152,11 +152,11 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > 16
+          × readReg (regs s') rsp > slots 2
           -- NEW: original r15 is saved on stack (at rsp after push = old rsp - 8)
           × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15)
           -- RSP tracking: s'.rsp = s.rsp - 8 (push decrements by 8)
-          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8
+          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
           -- Memory preservation: addresses >= orig-rsp are not written by setup
           × (∀ addr → addr ≥ readReg (regs s) rsp →
              readMem (memory s') addr ≡ readMem (memory s) addr))
@@ -170,14 +170,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     old-rsp = readReg (regs s) rsp
     pair : ⟦ (A ⇒ B) * A ⟧
     pair = (cl , arg)
-    new-rsp = old-rsp ∸ 8
+    new-rsp = old-rsp ∸ slot-size
 
     -- The 6 instructions (push + 5 movs)
     i0 = push (reg r15)
     i1 = mov (reg r15) (mem (base rdi))
-    i2 = mov (reg rsi) (mem (base+disp rdi 8))
+    i2 = mov (reg rsi) (mem (base+disp rdi slot-size))
     i3 = mov (reg r12) (mem (base r15))
-    i4 = mov (reg r15) (mem (base+disp r15 8))
+    i4 = mov (reg r15) (mem (base+disp r15 slot-size))
     i5 = mov (reg rdi) (reg rsi)
 
     -- Fetch lemmas
@@ -297,14 +297,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
 
     -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
     -- rdi+8 = encode pair + 8, which is still a heap address
-    stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ 8
+    stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
     stack-heap-disjoint-rdi+8 eq =
       -- eq : new-rsp ≡ rdi + 8
       -- rdi-eq : rdi ≡ encode pair
       -- So: new-rsp ≡ encode pair + 8
       -- heap-stack-disjoint says: encode pair +ℕ 8 ≢ new-rsp
-      heap-stack-disjoint pair 8 new-rsp
-        (sym (trans eq (cong (_+ℕ 8) rdi-eq)))
+      heap-stack-disjoint pair slot-size new-rsp
+        (sym (trans eq (cong (_+ℕ slot-size) rdi-eq)))
 
     -- Memory at closure-addr is preserved (stack vs heap disjointness)
     -- Derive: closure-addr = encode cl (the closure is the fst of the pair)
@@ -324,10 +324,10 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
       heap-stack-disjoint {A ⇒ B} cl 0 new-rsp
         (trans (+-identityʳ (encode {A ⇒ B} cl)) (sym (trans eq closure-addr-eq)))
 
-    stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ 8
+    stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
     stack-heap-disjoint-closure+8 eq =
-      heap-stack-disjoint {A ⇒ B} cl 8 new-rsp
-        (sym (trans eq (cong (_+ℕ 8) closure-addr-eq)))
+      heap-stack-disjoint {A ⇒ B} cl slot-size new-rsp
+        (sym (trans eq (cong (_+ℕ slot-size) closure-addr-eq)))
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
     -- Since s2 = s1 with only regs changed, memory s2 = memory s1
@@ -335,10 +335,10 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     mem-s2-eq-s1 = refl
 
     -- Chain: memory s → memory s1 → memory s2
-    mem-arg-s2 : readMem (memory s2) (readReg (regs s2) rdi +ℕ 8) ≡ just (encode arg)
-    mem-arg-s2 = subst (λ addr → readMem (memory s2) (addr +ℕ 8) ≡ just (encode arg))
+    mem-arg-s2 : readMem (memory s2) (readReg (regs s2) rdi +ℕ slot-size) ≡ just (encode arg)
+    mem-arg-s2 = subst (λ addr → readMem (memory s2) (addr +ℕ slot-size) ≡ just (encode arg))
                        (sym rdi-s2)
-                       (trans (readMem-writeMem-diff (memory s) new-rsp (readReg (regs s) rdi +ℕ 8)
+                       (trans (readMem-writeMem-diff (memory s) new-rsp (readReg (regs s) rdi +ℕ slot-size)
                                 old-r15 stack-heap-disjoint-rdi+8)
                               mem-arg)
 
@@ -348,7 +348,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
 
     step2 : step prog s2 ≡ just s3
     step2 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                  (execMov-reg-mem-disp s2 rsi rdi 8 (encode arg) mem-arg-s2)
+                  (execMov-reg-mem-disp s2 rsi rdi slot-size (encode arg) mem-arg-s2)
 
     h3 : halted s3 ≡ false
     h3 = h-false
@@ -394,10 +394,10 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
 
     -- memory s4 = ... = writeMem (memory s) new-rsp old-r15
     -- Since new-rsp ≢ closure-addr+8, readMem at closure-addr+8 is preserved
-    mem-cp-s4 : readMem (memory s4) (readReg (regs s4) r15 +ℕ 8) ≡ just code-ptr
-    mem-cp-s4 = subst (λ addr → readMem (memory s4) (addr +ℕ 8) ≡ just code-ptr)
+    mem-cp-s4 : readMem (memory s4) (readReg (regs s4) r15 +ℕ slot-size) ≡ just code-ptr
+    mem-cp-s4 = subst (λ addr → readMem (memory s4) (addr +ℕ slot-size) ≡ just code-ptr)
                       (sym r15-s4-old)
-                      (trans (readMem-writeMem-diff (memory s) new-rsp (closure-addr +ℕ 8)
+                      (trans (readMem-writeMem-diff (memory s) new-rsp (closure-addr +ℕ slot-size)
                                old-r15 stack-heap-disjoint-closure+8)
                              mem-cp)
 
@@ -407,7 +407,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
 
     step4 : step prog s4 ≡ just s5
     step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                  (execMov-reg-mem-disp s4 r15 r15 8 code-ptr mem-cp-s4)
+                  (execMov-reg-mem-disp s4 r15 r15 slot-size code-ptr mem-cp-s4)
 
     h5 : halted s5 ≡ false
     h5 = h-false
@@ -493,7 +493,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
         r15<len : readReg (regs s6) r15 < length prog
         r15<len = subst (_< length prog) (sym r15-6) code-ptr<len
 
-    rsp-sufficient-6 : readReg (regs s6) rsp > 16
+    rsp-sufficient-6 : readReg (regs s6) rsp > slots 2
     rsp-sufficient-6 = ≤-trans 17≤41 (rsp-bound-after-stack-op s6)
       where
         17≤41 : 17 ≤ 41
@@ -524,7 +524,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset +ℕ 6 →  -- Updated: setup ends at 6
   readReg (regs s) r15 ≡ code-ptr →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   -- Result after call: pc=code-ptr, ret-addr on stack
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -535,9 +535,9 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > 16
+          × readReg (regs s') rsp > slots 2
           -- RSP tracking: call pushes return address (rsp -= 8)
-          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ 8
+          × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
           -- Memory preservation at original rsp (call writes at new-rsp, not old-rsp)
           × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
           -- General memory preservation for addresses >= s.rsp
@@ -565,9 +565,9 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     -- So instruction 6 is call at offset+6
     i0' = push (reg r15)
     i1' = mov (reg r15) (mem (base rdi))
-    i2' = mov (reg rsi) (mem (base+disp rdi 8))
+    i2' = mov (reg rsi) (mem (base+disp rdi slot-size))
     i3' = mov (reg r12) (mem (base r15))
-    i4' = mov (reg r15) (mem (base+disp r15 8))
+    i4' = mov (reg r15) (mem (base+disp r15 slot-size))
     i5' = mov (reg rdi) (reg rsi)
 
     prog-eq6 : prog ≡ (prefix ++ i0' ∷ i1' ∷ i2' ∷ i3' ∷ i4' ∷ i5' ∷ []) ++ _
@@ -582,7 +582,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
 
     -- State after call r15
     old-rsp = readReg (regs s) rsp
-    new-rsp = old-rsp ∸ 8
+    new-rsp = old-rsp ∸ slot-size
 
     s1 : State
     s1 = record s { regs = writeReg (regs s) rsp new-rsp
@@ -635,28 +635,28 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     r15-1 = readReg-writeReg-rsp-r15 (regs s) new-rsp
 
     -- StackInvariant after call: r15 unchanged, rsp decreased
-    -- new-rsp = old-rsp ∸ 8 ≤ old-rsp, and rsp1 proves s1.rsp = new-rsp
+    -- new-rsp = old-rsp ∸ slot-size ≤ old-rsp, and rsp1 proves s1.rsp = new-rsp
     stack-inv1 : StackInvariant s1
     stack-inv1 = stack-inv-preserved-r15-unchanged s s1 stack-inv r15-1 rsp1≤
       where
         open import Data.Nat.Properties using (m∸n≤m)
         rsp1≤ : readReg (regs s1) rsp ≤ readReg (regs s) rsp
-        rsp1≤ = subst (_≤ old-rsp) (sym rsp1) (m∸n≤m old-rsp 8)
+        rsp1≤ = subst (_≤ old-rsp) (sym rsp1) (m∸n≤m old-rsp slot-size)
 
-    -- rsp > 16 after call: derived from runtime bound rsp-bound-after-stack-op
-    rsp-sufficient-1 : readReg (regs s1) rsp > 16
+    -- rsp > slots 2 after call: derived from runtime bound rsp-bound-after-stack-op
+    rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
       where
         open import Data.Nat.Properties using (≤-trans)
         17≤41 : 17 ≤ 41
         17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
-    -- RSP tracking: s1.rsp = new-rsp = old-rsp ∸ 8 = s.rsp ∸ 8
-    rsp1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ 8
-    rsp1-eq = rsp1  -- rsp1 proves s1.rsp = new-rsp, and new-rsp = old-rsp ∸ 8 = s.rsp ∸ 8
+    -- RSP tracking: s1.rsp = new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
+    rsp1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ slot-size
+    rsp1-eq = rsp1  -- rsp1 proves s1.rsp = new-rsp, and new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
 
     -- Memory at original rsp preserved (call writes at new-rsp = old-rsp - 8, not old-rsp)
-    -- Since old-rsp > 16, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
+    -- Since old-rsp > slots 2, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
     -- D041: Use abstract helper from StackInvariant
     old-rsp≢new-rsp : old-rsp ≢ new-rsp
     old-rsp≢new-rsp = apply-rsp-diff-from-alloc s rsp-sufficient
@@ -709,7 +709,7 @@ record ApplyPopResult {A B : Type} (prefix suffix : Program)
     r14-pop      : readReg (regs s') r14 ≡ readReg (regs s) r14
     rbp-pop      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     stack-inv-pop : StackInvariant s'
-    rsp-sufficient-pop   : readReg (regs s') rsp > 16
+    rsp-sufficient-pop   : readReg (regs s') rsp > slots 2
     rsp-restored : readReg (regs s') rsp ≡ orig-rsp  -- RSP restored to original
     -- Pop doesn't write memory, so all memory is preserved
     mem-pop-preserved : memory s' ≡ memory s
@@ -738,9 +738,9 @@ apply-pop-star : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset +ℕ 7 →
   readMem (memory s) (readReg (regs s) rsp) ≡ just old-r15 →
-  readReg (regs s) rsp ≡ orig-rsp ∸ 8 →
+  readReg (regs s) rsp ≡ orig-rsp ∸ slot-size →
   R15OrigInfo old-r15 orig-rsp →  -- Changed from disjunction to R15OrigInfo
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   ∃[ s' ] ApplyPopResult {A} {B} prefix suffix old-r15 orig-rsp s s'
 apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rsp-eq orig-inv rsp-sufficient =
   s1 , record
@@ -766,9 +766,9 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
     -- Fetch lemma for pop r15 at offset+7
     i0' = push (reg r15)
     i1' = mov (reg r15) (mem (base rdi))
-    i2' = mov (reg rsi) (mem (base+disp rdi 8))
+    i2' = mov (reg rsi) (mem (base+disp rdi slot-size))
     i3' = mov (reg r12) (mem (base r15))
-    i4' = mov (reg r15) (mem (base+disp r15 8))
+    i4' = mov (reg r15) (mem (base+disp r15 slot-size))
     i5' = mov (reg rdi) (reg rsi)
     i6' = call (reg r15)
 
@@ -784,7 +784,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
 
     -- State after pop r15
     old-rsp = readReg (regs s) rsp
-    new-rsp = old-rsp +ℕ 8
+    new-rsp = old-rsp +ℕ slot-size
 
     s1 : State
     s1 = record s { regs = writeReg (writeReg (regs s) r15 old-r15) rsp new-rsp
@@ -839,21 +839,21 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
         ≡⟨ readReg-writeReg-same (writeReg (regs s) r15 old-r15) rsp new-rsp ⟩
       new-rsp
         ≡⟨ refl ⟩
-      old-rsp +ℕ 8
-        ≡⟨ cong (_+ℕ 8) rsp-eq ⟩
-      (orig-rsp ∸ 8) +ℕ 8
+      old-rsp +ℕ slot-size
+        ≡⟨ cong (_+ℕ slot-size) rsp-eq ⟩
+      (orig-rsp ∸ slot-size) +ℕ slot-size
         ≡⟨ m∸n+n≡m 8≤orig-rsp ⟩
       orig-rsp ∎
       where
         -- Need 8 ≤ orig-rsp for m∸n+n≡m
-        -- From rsp-sufficient : s.rsp > 16, and rsp-eq : s.rsp = orig-rsp - 8
+        -- From rsp-sufficient : s.rsp > slots 2, and rsp-eq : s.rsp = orig-rsp - 8
         -- So orig-rsp - 8 > 16, hence orig-rsp > 24 ≥ 8
         open import Data.Nat using (s≤s; z≤n)
         open import Data.Nat.Properties using (<⇒≤; m∸n≤m)
 
         -- s.rsp ≤ orig-rsp because s.rsp = orig-rsp - 8 ≤ orig-rsp
         s-rsp≤orig : readReg (regs s) rsp ≤ orig-rsp
-        s-rsp≤orig = subst (_≤ orig-rsp) (sym rsp-eq) (m∸n≤m orig-rsp 8)
+        s-rsp≤orig = subst (_≤ orig-rsp) (sym rsp-eq) (m∸n≤m orig-rsp slot-size)
 
         8≤orig-rsp : 8 ≤ orig-rsp
         8≤orig-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
@@ -877,7 +877,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
           r15-in-stack frame slot (trans r15-1 r15-eq)
                        (subst (sp-addr frame ≥_) (sym rsp1-eq-orig) frame-bound)
 
-    rsp-sufficient-1 : readReg (regs s1) rsp > 16
+    rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
       where
         17≤41 : 17 ≤ 41
@@ -902,7 +902,7 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
     r15-final    : readReg (regs s') r15 ≡ readReg (regs s) r15
     rbp-final    : readReg (regs s') rbp ≡ readReg (regs s) rbp
     stack-inv    : StackInvariant s'
-    rsp-sufficient : readReg (regs s') rsp > 16
+    rsp-sufficient : readReg (regs s') rsp > slots 2
     rsp-restored : readReg (regs s') rsp ≡ readReg (regs s) rsp
     mem-above    : ∀ addr → addr ≥ readReg (regs s) rsp →
                    readMem (memory s') addr ≡ readMem (memory s) addr
@@ -930,14 +930,14 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   -- Key: rdi contains encoded pair (closure, arg) for heap-stack separation
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
-    readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
+    readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
-    readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)) →
+    readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
   ∃[ s' ] ApplyWfResult {A} {B} prefix suffix semantics arg s s'
 run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                   wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
@@ -1033,8 +1033,8 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- D041: Prove caller-sp bound for thunk-correct
     -- apply-sp.addr = s-setup.rsp = s-call.rsp + 8
     -- Inline proof: s-call.rsp = s-setup.rsp - 8, so s-call.rsp + 8 = s-setup.rsp
-    apply-sp-bound : StackPointer.addr apply-sp ≡ readReg (regs s-call) rsp +ℕ 8
-    apply-sp-bound = sym (trans (cong (_+ℕ 8) rsp-call) (m∸n+n≡m 8≤setup))
+    apply-sp-bound : StackPointer.addr apply-sp ≡ readReg (regs s-call) rsp +ℕ slot-size
+    apply-sp-bound = sym (trans (cong (_+ℕ slot-size) rsp-call) (m∸n+n≡m 8≤setup))
       where
         open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m)
         open import Data.Nat using (s≤s; z≤n)
@@ -1079,19 +1079,19 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
     -- Therefore: readMem (memory s-thunk) s-thunk.rsp = just old-r15
 
     -- s-thunk.rsp = s-call.rsp + 8 (thunk's ret pops return address)
-    rsp-thunk-eq : readReg (regs s-thunk) rsp ≡ readReg (regs s-call) rsp +ℕ 8
+    rsp-thunk-eq : readReg (regs s-thunk) rsp ≡ readReg (regs s-call) rsp +ℕ slot-size
     rsp-thunk-eq = thunk-rsp-plus-8 thunk-res
 
     -- s-call.rsp = s-setup.rsp - 8 (call pushes return address)
-    -- Therefore: s-call.rsp + 8 = s-setup.rsp (when rsp > 16, we have 8 ≤ rsp, so rsp - 8 + 8 = rsp)
+    -- Therefore: s-call.rsp + 8 = s-setup.rsp (when rsp > slots 2, we have 8 ≤ rsp, so rsp - 8 + 8 = rsp)
     8≤setup-rsp : 8 ≤ readReg (regs s-setup) rsp
     8≤setup-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp-sufficient-setup)
       where
         open import Data.Nat.Properties using (<⇒≤)
         open import Data.Nat using (s≤s; z≤n)
 
-    rsp-call-plus-8-eq : readReg (regs s-call) rsp +ℕ 8 ≡ readReg (regs s-setup) rsp
-    rsp-call-plus-8-eq = trans (cong (_+ℕ 8) rsp-call) (m∸n+n≡m 8≤setup-rsp)
+    rsp-call-plus-8-eq : readReg (regs s-call) rsp +ℕ slot-size ≡ readReg (regs s-setup) rsp
+    rsp-call-plus-8-eq = trans (cong (_+ℕ slot-size) rsp-call) (m∸n+n≡m 8≤setup-rsp)
 
     -- s-thunk.rsp = s-setup.rsp
     rsp-thunk-eq-setup : readReg (regs s-thunk) rsp ≡ readReg (regs s-setup) rsp
@@ -1150,7 +1150,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
     -- Prove s-thunk.rsp = orig-rsp - 8
     -- Chain: s-thunk.rsp = s-setup.rsp (rsp-thunk-eq-setup) = s.rsp - 8 (rsp-setup)
-    rsp-thunk-eq-orig : readReg (regs s-thunk) rsp ≡ orig-rsp ∸ 8
+    rsp-thunk-eq-orig : readReg (regs s-thunk) rsp ≡ orig-rsp ∸ slot-size
     rsp-thunk-eq-orig = trans rsp-thunk-eq-setup rsp-setup
 
     -- Extract original StackInvariant info as R15OrigInfo
@@ -1222,9 +1222,9 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         addr>call-rsp : addr > readReg (regs s-call) rsp
         addr>call-rsp = <-≤-trans call-rsp<orig addr≥rsp
           where
-            -- s-call.rsp = (orig-rsp ∸ 8) ∸ 8
-            call-rsp-eq : readReg (regs s-call) rsp ≡ (orig-rsp ∸ 8) ∸ 8
-            call-rsp-eq = trans rsp-call (cong (_∸ 8) rsp-setup)
+            -- s-call.rsp = (orig-rsp ∸ slot-size) ∸ slot-size
+            call-rsp-eq : readReg (regs s-call) rsp ≡ (orig-rsp ∸ slot-size) ∸ slot-size
+            call-rsp-eq = trans rsp-call (cong (_∸ slot-size) rsp-setup)
             -- s-call.rsp < orig-rsp via abstract helper
             call-rsp<orig : readReg (regs s-call) rsp < orig-rsp
             call-rsp<orig = subst (_< orig-rsp) (sym call-rsp-eq) (apply-double-alloc-below-rsp s rsp-sufficient)
@@ -1251,7 +1251,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         setup-write-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
         -- Chain: setup → call → thunk → pop
-        after-setup = stackAddr-write-preserves-zero (memory s) (readReg (regs s) rsp ∸ 8) old-r15 setup-write-in-stack
+        after-setup = stackAddr-write-preserves-zero (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 setup-write-in-stack
         after-call  = mem-at-0-call-phase
         after-thunk = thunk-preserves-zero thunk-res
         after-pop   = cong (λ m → readMem m 0) PopR.mem-pop-preserved
@@ -1264,7 +1264,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         setup-write-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
         -- Chain: setup → call → thunk → pop
-        after-setup = stackAddr-write-preserves-code (memory s) (readReg (regs s) rsp ∸ 8) old-r15 addr setup-write-in-stack addr-in-code
+        after-setup = stackAddr-write-preserves-code (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack addr-in-code
         after-call  = mem-code-call-phase addr addr-in-code
         after-thunk = thunk-preserves-code thunk-res addr addr-in-code
         after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved
@@ -1277,7 +1277,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         setup-write-in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
 
         -- Chain: setup → call → thunk → pop
-        after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ 8) old-r15 addr setup-write-in-stack addr-in-heap
+        after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack addr-in-heap
         after-call  = mem-heap-call-phase addr addr-in-heap
         after-thunk = thunk-preserves-heap thunk-res addr addr-in-heap
         after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved
@@ -1299,20 +1299,20 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
-    readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
+    readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
-    readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)) →
+    readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
   -- Note: The input type for apply is (closure , arg) but we abstract over semantics
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ 8  -- compile-length apply = 8
           × readReg (regs s') rax ≡ encode (semantics arg)
           × StackInvariant s'
-          × readReg (regs s') rsp > 16)
+          × readReg (regs s') rsp > slots 2)
 run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
                        wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout =
   let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
@@ -1330,7 +1330,7 @@ run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 -- ALL PROPERTIES NOW FULLY PROVEN (zero local postulates!):
 --   - star, halted, pc, rax (from thunk-correct)
 --   - r14, r15, rbp (r15 preserved via push/pop!)
---   - stack-inv, rsp > 16 (from thunk-correct)
+--   - stack-inv, rsp > slots 2 (from thunk-correct)
 --   - Memory at rbp preserved (via mem-above + RbpInvariant.rsp≤rbp)
 --   - Memory at rbp+8 preserved (via mem-above + rsp ≤ rbp ≤ rbp+8)
 --   - Memory above rbp preserved (via mem-above + addr > rbp ≥ rsp)
@@ -1368,13 +1368,13 @@ run-apply-to-ir-result : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
-    readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
+    readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
-    readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)) →
+    readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
   ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x offset
 run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
                        wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout =
@@ -1438,9 +1438,9 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
     mem-rbp-post = WfR.mem-above (readReg (regs s) rbp) (RbpInvariant.rsp≤rbp rbp-inv)
 
     -- Memory at rbp+8 preserved: rbp+8 ≥ rbp ≥ rsp
-    mem-rbp+8-post : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-    mem-rbp+8-post = WfR.mem-above (readReg (regs s) rbp +ℕ 8)
-                       (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (m≤m+n (readReg (regs s) rbp) 8))
+    mem-rbp+8-post : readMem (memory s') (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
+    mem-rbp+8-post = WfR.mem-above (readReg (regs s) rbp +ℕ slot-size)
+                       (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (m≤m+n (readReg (regs s) rbp) slot-size))
 
     -- Memory above rbp preserved: addr > rbp ≥ rsp implies addr ≥ rsp
     mem-above-post : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr

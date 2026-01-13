@@ -42,7 +42,8 @@ open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity; rsp-in-stack)
+  using (StackCapacity; capacity-maintained; rsp-bound-to-capacity; rsp-in-stack;
+         slot-size; slots)
 
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
@@ -169,7 +170,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
@@ -221,7 +222,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResult (curry f) prog s s' x (length prefix)
@@ -327,7 +328,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
@@ -406,8 +407,8 @@ mutual
     readReg (regs s) r12 ≡ encode env →
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
-    StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
+    readReg (regs s) rsp > slots 2 →
+    StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ slot-size →  -- D041: caller-sp bound
     region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
@@ -421,7 +422,7 @@ mutual
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (≤-trans; +-comm)
 
-      -- From rsp > 16, derive 8 ≤ rsp (for m+[n∸m]≡n)
+      -- From rsp > slots 2, derive 8 ≤ rsp (for m+[n∸m]≡n)
       8≤17 : 8 ≤ 17
       8≤17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
 
@@ -475,10 +476,10 @@ mutual
       -- Prefix for f: prefix ++ first 14 instructions of curry (6 closure + 8 thunk)
       curry-closure-setup : Program
       curry-closure-setup =
-        sub (reg rsp) (imm 16) ∷
+        sub (reg rsp) (imm (slots 2)) ∷
         mov (mem (base rsp)) (reg rdi) ∷
         lea r9 (rip+disp 4) ∷
-        mov (mem (base+disp rsp 8)) (reg r9) ∷
+        mov (mem (base+disp rsp slot-size)) (reg r9) ∷
         mov (reg rax) (reg rsp) ∷
         jmp end-offset-curry ∷ []
 
@@ -488,9 +489,9 @@ mutual
         push (reg r15) ∷                       -- save r15 (apply's scratch register)
         push (reg rbp) ∷                       -- save frame pointer
         mov (reg rbp) (reg rsp) ∷              -- set frame pointer
-        sub (reg rsp) (imm 16) ∷
+        sub (reg rsp) (imm (slots 2)) ∷
         mov (mem (base rsp)) (reg r12) ∷
-        mov (mem (base+disp rsp 8)) (reg rdi) ∷
+        mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
         mov (reg rdi) (reg rsp) ∷ []
 
       prefix-f : Program
@@ -621,7 +622,7 @@ mutual
       -- 3. Memory at s.rsp contains ret-addr (never modified)
 
       -- rbp value after f: preserved from setup, which set it to s.rsp - 16
-      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ 16
+      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ slots 2
       rbp-after-f = trans (ir-rbp r-f) rbp-setup
 
       -- Fetch cleanup instructions
@@ -647,7 +648,7 @@ mutual
 
       -- State after mov rsp, rbp
       old-rsp-s = readReg (regs s) rsp
-      rbp-val = readReg (regs s-after-f-raw) rbp  -- = old-rsp-s ∸ 8
+      rbp-val = readReg (regs s-after-f-raw) rbp  -- = old-rsp-s ∸ slot-size
 
       s-c1 : State
       s-c1 = record s-after-f-raw { regs = writeReg (regs s-after-f-raw) rsp rbp-val
@@ -667,7 +668,7 @@ mutual
       -- State after pop rbp
       s-c2 : State
       s-c2 = record s-c1 { regs = writeReg (writeReg (regs s-c1) rbp (readReg (regs s) rbp))
-                                          rsp (readReg (regs s-c1) rsp +ℕ 8)
+                                          rsp (readReg (regs s-c1) rsp +ℕ slot-size)
                          ; pc = pc s-c1 +ℕ 1 }
 
       -- For pop rbp, we need memory at rbp to contain the original rbp
@@ -684,7 +685,7 @@ mutual
       mem-c1-eq-f addr = refl
 
       -- rsp in s-c1 = rbp-val = old-rsp-s - 16 (computed inline, same as rsp-c1 below)
-      rsp-c1-inline : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 16
+      rsp-c1-inline : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ slots 2
       rsp-c1-inline = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Chain: memory at rbp after setup is preserved through f, available at rsp after cleanup
@@ -693,16 +694,16 @@ mutual
       mem-rbp-preserved-f = ir-mem-rbp r-f
 
       -- Convert address from rbp-after-setup to old-rsp-s ∸ 16
-      rbp-setup-addr : readReg (regs s-after-setup) rbp ≡ old-rsp-s ∸ 16
+      rbp-setup-addr : readReg (regs s-after-setup) rbp ≡ old-rsp-s ∸ slots 2
       rbp-setup-addr = rbp-setup
 
       pop-rbp-mem : readMem (memory s-c1) (readReg (regs s-c1) rsp) ≡ just (readReg (regs s) rbp)
       pop-rbp-mem = begin
         readMem (memory s-c1) (readReg (regs s-c1) rsp)
           ≡⟨ cong (readMem (memory s-c1)) rsp-c1-inline ⟩
-        readMem (memory s-c1) (old-rsp-s ∸ 16)
-          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ 16) ⟩
-        readMem (memory s-after-f-raw) (old-rsp-s ∸ 16)
+        readMem (memory s-c1) (old-rsp-s ∸ slots 2)
+          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ slots 2) ⟩
+        readMem (memory s-after-f-raw) (old-rsp-s ∸ slots 2)
           ≡⟨ cong (readMem (memory s-after-f-raw)) (sym rbp-setup-addr) ⟩
         readMem (memory s-after-f-raw) (readReg (regs s-after-setup) rbp)
           ≡⟨ mem-rbp-preserved-f ⟩
@@ -724,37 +725,37 @@ mutual
                     (+-assoc cleanup-offset 1 1)
 
       -- rsp after mov rsp rbp = old-rsp-s - 16
-      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ 16
+      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ slots 2
       rsp-c1 = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Precondition: 16 ≤ old-rsp-s (for m+[n∸m]≡n later)
-      -- rsp-sufficient : rsp > 16 means 16 < rsp, which implies 16 ≤ rsp
-      16≤rsp : 16 ≤ readReg (regs s) rsp
+      -- rsp-sufficient : rsp > slots 2 means 16 < rsp, which implies 16 ≤ rsp
+      16≤rsp : slots 2 ≤ readReg (regs s) rsp
       16≤rsp = Data.Nat.Properties.<⇒≤ rsp-sufficient
 
       -- rsp after pop rbp = (old-rsp-s - 16) + 8 = old-rsp-s - 8
       -- Proof: (m ∸ 16) + 8 = ((m ∸ 8) ∸ 8) + 8 = m ∸ 8
       -- From 16 ≤ rsp, derive 16 - 8 ≤ rsp - 8, i.e., 8 ≤ rsp - 8
-      8≤old-rsp-8 : 8 ≤ old-rsp-s ∸ 8
-      8≤old-rsp-8 = Data.Nat.Properties.∸-monoˡ-≤ 8 16≤rsp
+      8≤old-rsp-8 : slot-size ≤ old-rsp-s ∸ slot-size
+      8≤old-rsp-8 = Data.Nat.Properties.∸-monoˡ-≤ slot-size 16≤rsp
 
-      rsp-c2 : readReg (regs s-c2) rsp ≡ old-rsp-s ∸ 8
+      rsp-c2 : readReg (regs s-c2) rsp ≡ old-rsp-s ∸ slot-size
       rsp-c2 = begin
         readReg (regs s-c2) rsp
           ≡⟨ readReg-writeReg-same (writeReg (regs s-c1) rbp (readReg (regs s) rbp)) rsp
-                                   (readReg (regs s-c1) rsp +ℕ 8) ⟩
-        readReg (regs s-c1) rsp +ℕ 8
-          ≡⟨ cong (_+ℕ 8) rsp-c1 ⟩
-        (old-rsp-s ∸ 16) +ℕ 8
-          ≡⟨ cong (_+ℕ 8) (sym (∸-+-assoc old-rsp-s 8 8)) ⟩
-        ((old-rsp-s ∸ 8) ∸ 8) +ℕ 8
-          ≡⟨ trans (+-comm ((old-rsp-s ∸ 8) ∸ 8) 8) (m+[n∸m]≡n 8≤old-rsp-8) ⟩
-        old-rsp-s ∸ 8
+                                   (readReg (regs s-c1) rsp +ℕ slot-size) ⟩
+        readReg (regs s-c1) rsp +ℕ slot-size
+          ≡⟨ cong (_+ℕ slot-size) rsp-c1 ⟩
+        (old-rsp-s ∸ slots 2) +ℕ slot-size
+          ≡⟨ cong (_+ℕ slot-size) (sym (∸-+-assoc old-rsp-s slot-size slot-size)) ⟩
+        ((old-rsp-s ∸ slot-size) ∸ slot-size) +ℕ slot-size
+          ≡⟨ trans (+-comm ((old-rsp-s ∸ slot-size) ∸ slot-size) slot-size) (m+[n∸m]≡n 8≤old-rsp-8) ⟩
+        old-rsp-s ∸ slot-size
         ∎
 
       -- Register preservation through cleanup (mov rsp rbp doesn't touch rax, r14, r15, and pop rbp doesn't either)
       -- s-c2.regs = writeReg (writeReg (regs s-c1) rbp orig-rbp) rsp (s-c1.rsp + 8)
-      rsp-val-c2 = readReg (regs s-c1) rsp +ℕ 8
+      rsp-val-c2 = readReg (regs s-c1) rsp +ℕ slot-size
       orig-rbp = readReg (regs s) rbp
 
       rax-c2 : readReg (regs s-c2) rax ≡ readReg (regs s-after-f-raw) rax
@@ -800,7 +801,7 @@ mutual
       -- where orig-r15 = readReg (regs s) r15
 
       orig-r15 = readReg (regs s) r15
-      rsp-val-c3 = readReg (regs s-c2) rsp +ℕ 8
+      rsp-val-c3 = readReg (regs s-c2) rsp +ℕ slot-size
 
       s-c3 : State
       s-c3 = record s-c2 { regs = writeReg (writeReg (regs s-c2) r15 orig-r15)
@@ -813,16 +814,16 @@ mutual
 
       -- Memory at (old-rsp - 8) preserved through f (using ir-mem-above)
       -- old-rsp - 8 > rbp because rbp = old-rsp - 16
-      -- Need: old-rsp-s ∸ 16 < old-rsp-s ∸ 8
+      -- Need: old-rsp-s ∸ 16 < old-rsp-s ∸ slot-size
       -- Use ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
-      8<16 : 8 < 16
+      8<16 : slot-size < slots 2
       8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
 
-      rsp-16<rsp-8 : readReg (regs s) rsp ∸ 16 < readReg (regs s) rsp ∸ 8
+      rsp-16<rsp-8 : readReg (regs s) rsp ∸ slots 2 < readReg (regs s) rsp ∸ slot-size
       rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< 8<16 16≤rsp
 
-      old-rsp-8>rbp : old-rsp-s ∸ 8 > readReg (regs s-after-setup) rbp
-      old-rsp-8>rbp = subst (λ x → old-rsp-s ∸ 8 > x) (sym rbp-setup-addr) rsp-16<rsp-8
+      old-rsp-8>rbp : old-rsp-s ∸ slot-size > readReg (regs s-after-setup) rbp
+      old-rsp-8>rbp = subst (λ x → old-rsp-s ∸ slot-size > x) (sym rbp-setup-addr) rsp-16<rsp-8
 
       -- r15 was pushed at old-rsp - 8 during thunk setup
       -- mem-r15-preserved from thunk-setup-star proves this is preserved
@@ -830,13 +831,13 @@ mutual
       pop-r15-mem = begin
         readMem (memory s-c2) (readReg (regs s-c2) rsp)
           ≡⟨ cong (readMem (memory s-c2)) rsp-c2 ⟩
-        readMem (memory s-c2) (old-rsp-s ∸ 8)
+        readMem (memory s-c2) (old-rsp-s ∸ slot-size)
           ≡⟨⟩  -- memory s-c2 = memory s-c1 (pop rbp only reads)
-        readMem (memory s-c1) (old-rsp-s ∸ 8)
-          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ 8) ⟩
-        readMem (memory s-after-f-raw) (old-rsp-s ∸ 8)
-          ≡⟨ ir-mem-above r-f (old-rsp-s ∸ 8) old-rsp-8>rbp ⟩
-        readMem (memory s-after-setup) (old-rsp-s ∸ 8)
+        readMem (memory s-c1) (old-rsp-s ∸ slot-size)
+          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ slot-size) ⟩
+        readMem (memory s-after-f-raw) (old-rsp-s ∸ slot-size)
+          ≡⟨ ir-mem-above r-f (old-rsp-s ∸ slot-size) old-rsp-8>rbp ⟩
+        readMem (memory s-after-setup) (old-rsp-s ∸ slot-size)
           ≡⟨ mem-r15-setup ⟩
         just orig-r15 ∎
 
@@ -881,10 +882,10 @@ mutual
           ≡⟨ readReg-writeReg-same (writeReg (regs s-c2) r15 orig-r15) rsp rsp-val-c3 ⟩
         rsp-val-c3
           ≡⟨⟩
-        readReg (regs s-c2) rsp +ℕ 8
-          ≡⟨ cong (_+ℕ 8) rsp-c2 ⟩
-        (old-rsp-s ∸ 8) +ℕ 8
-          ≡⟨ trans (+-comm (old-rsp-s ∸ 8) 8) (m+[n∸m]≡n 8≤rsp) ⟩
+        readReg (regs s-c2) rsp +ℕ slot-size
+          ≡⟨ cong (_+ℕ slot-size) rsp-c2 ⟩
+        (old-rsp-s ∸ slot-size) +ℕ slot-size
+          ≡⟨ trans (+-comm (old-rsp-s ∸ slot-size) slot-size) (m+[n∸m]≡n 8≤rsp) ⟩
         old-rsp-s
         ∎
 
@@ -915,8 +916,8 @@ mutual
 
       -- Stack invariant and rsp bound
       -- rsp-sufficient-c3 follows from rsp-c3 (rsp restored to original) and rsp-sufficient (original > 16)
-      rsp-sufficient-c3 : readReg (regs s-c3) rsp > 16
-      rsp-sufficient-c3 = subst (_> 16) (sym rsp-c3) rsp-sufficient
+      rsp-sufficient-c3 : readReg (regs s-c3) rsp > slots 2
+      rsp-sufficient-c3 = subst (_> slots 2) (sym rsp-c3) rsp-sufficient
 
       -- Stack invariant: r15 and rsp restored to original
       r15-s-to-c3 : readReg (regs s-c3) r15 ≡ readReg (regs s) r15
@@ -933,7 +934,7 @@ mutual
                                     × readReg (regs s-cleanup) r15 ≡ readReg (regs s-after-f-raw) r15
                                     × readReg (regs s-cleanup) rbp ≡ readReg (regs s) rbp
                                     × StackInvariant s-cleanup
-                                    × readReg (regs s-cleanup) rsp > 16
+                                    × readReg (regs s-cleanup) rsp > slots 2
                                     -- D041: RSP restored to original and memory preservation
                                     × readReg (regs s-cleanup) rsp ≡ readReg (regs s) rsp
                                     × (∀ addr → readMem (memory s-cleanup) addr ≡ readMem (memory s-after-f-raw) addr))
@@ -967,14 +968,14 @@ mutual
       -- Need: old-rsp > (old-rsp ∸ 16)
       -- m<m+n proves: (old-rsp ∸ 16) < (old-rsp ∸ 16) + 16
       -- Chain: (old-rsp ∸ 16) + 16 ≡ 16 + (old-rsp ∸ 16) ≡ old-rsp
-      rbp+16≡old-rsp : readReg (regs s-after-setup) rbp +ℕ 16 ≡ old-rsp-s
-      rbp+16≡old-rsp = trans (cong (_+ℕ 16) rbp-setup-addr)
-                             (trans (+-comm (old-rsp-s ∸ 16) 16) (m+[n∸m]≡n 16≤rsp))
+      rbp+16≡old-rsp : readReg (regs s-after-setup) rbp +ℕ slots 2 ≡ old-rsp-s
+      rbp+16≡old-rsp = trans (cong (_+ℕ slots 2) rbp-setup-addr)
+                             (trans (+-comm (old-rsp-s ∸ slots 2) (slots 2)) (m+[n∸m]≡n 16≤rsp))
 
       old-rsp>rbp : old-rsp-s > readReg (regs s-after-setup) rbp
       old-rsp>rbp = subst (_> readReg (regs s-after-setup) rbp)
                          rbp+16≡old-rsp
-                         (Data.Nat.Properties.m<m+n (readReg (regs s-after-setup) rbp) {16} (s≤s z≤n))
+                         (Data.Nat.Properties.m<m+n (readReg (regs s-after-setup) rbp) {slots 2} (s≤s z≤n))
 
       mem-ret-through-f : readMem (memory s-after-f-raw) old-rsp-s ≡ just ret-addr
       mem-ret-through-f = begin
@@ -1020,7 +1021,7 @@ mutual
                                  × readReg (regs s-f) r15 ≡ readReg (regs s-after-setup) r15
                                  × readReg (regs s-f) rbp ≡ readReg (regs s) rbp  -- restored to original
                                  × StackInvariant s-f
-                                 × readReg (regs s-f) rsp > 16
+                                 × readReg (regs s-f) rsp > slots 2
                                  × readMem (memory s-f) (readReg (regs s-f) rsp) ≡ just ret-addr
                                  -- D041: RSP and memory preservation for thunk postulates
                                  × readReg (regs s-f) rsp ≡ readReg (regs s) rsp
@@ -1090,8 +1091,8 @@ mutual
       -- s-after-setup → s-after-f (rsp restored by cleanup: add 16, pop rbp, pop r15)
       -- s-after-f → s-final (ret: rsp += 8)
       -- PROVEN: Chain rsp-ret-plus-8 with rsp-f-restored
-      thunk-rsp-plus-8-proof : readReg (regs s-final) rsp ≡ readReg (regs s) rsp +ℕ 8
-      thunk-rsp-plus-8-proof = trans rsp-ret-plus-8 (cong (_+ℕ 8) rsp-f-restored)
+      thunk-rsp-plus-8-proof : readReg (regs s-final) rsp ≡ readReg (regs s) rsp +ℕ slot-size
+      thunk-rsp-plus-8-proof = trans rsp-ret-plus-8 (cong (_+ℕ slot-size) rsp-f-restored)
 
       -- D041: Memory preservation for caller's stack frame
       -- Uses abstract frameSlot interface instead of arithmetic (addr ≥ rsp)
@@ -1143,9 +1144,9 @@ mutual
           slot-addr>rsp : the-slot-addr > readReg (regs s) rsp
           slot-addr>rsp = <-≤-trans rsp<rsp+8 rsp+8≤slot
             where
-              rsp<rsp+8 : readReg (regs s) rsp < readReg (regs s) rsp +ℕ 8
+              rsp<rsp+8 : readReg (regs s) rsp < readReg (regs s) rsp +ℕ slot-size
               rsp<rsp+8 = m<m+n (readReg (regs s) rsp) (s≤s z≤n)
-              rsp+8≤slot : readReg (regs s) rsp +ℕ 8 ≤ the-slot-addr
+              rsp+8≤slot : readReg (regs s) rsp +ℕ slot-size ≤ the-slot-addr
               rsp+8≤slot = subst (_≤ the-slot-addr) caller-sp-bound (slot-addr-≥-base caller-sp k)
 
           -- D041 PROVEN: Setup preserves caller's slot addresses
@@ -1233,8 +1234,8 @@ mutual
           m∸n<m' : ∀ m n → m > 0 → n > 0 → m ∸ n < m
           m∸n<m' (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
           -- addr > rsp > rsp - 16 = rbp-after-setup
-          rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ 16
-          rsp>rsp-16 = m∸n<m' (readReg (regs s) rsp) 16 (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
+          rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ slots 2
+          rsp>rsp-16 = m∸n<m' (readReg (regs s) rsp) (slots 2) (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
           addr>rbp : addr > readReg (regs s-after-setup) rbp
           addr>rbp = subst (addr >_) (sym rbp-setup) (<-trans rsp>rsp-16 addr>rsp)
 
@@ -1274,7 +1275,7 @@ mutual
     pc s ≡ length prefix →
     readReg (regs s) rdi ≡ encode x →
     StackInvariant s →
-    readReg (regs s) rsp > 16 →
+    readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x (length prefix)
@@ -1330,6 +1331,6 @@ mutual
       postulate
         mem-layout : ∃[ closure-addr ] (
           readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
-          readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg) ×
+          readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
           readMem (memory s) closure-addr ≡ just env-addr ×
-          readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr)
+          readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)

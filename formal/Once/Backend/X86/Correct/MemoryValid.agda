@@ -18,6 +18,7 @@ open import Once.Type
 open import Once.Semantics using (⟦_⟧; encode)
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+8)
+open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -36,7 +37,7 @@ record PairAt {A B : Type} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (addr : Word) (m : Me
   constructor pair-at
   field
     fst-valid : readMem m addr ≡ just (encode a)
-    snd-valid : readMem m (addr +ℕ 8) ≡ just (encode b)
+    snd-valid : readMem m (addr +ℕ slot-size) ≡ just (encode b)
 
 open PairAt public
 
@@ -46,7 +47,7 @@ record InlAt {A B : Type} (a : ⟦ A ⟧) (addr : Word) (m : Memory) : Set where
   constructor inl-at
   field
     tag-valid : readMem m addr ≡ just 0
-    val-valid : readMem m (addr +ℕ 8) ≡ just (encode a)
+    val-valid : readMem m (addr +ℕ slot-size) ≡ just (encode a)
 
 open InlAt public
 
@@ -56,7 +57,7 @@ record InrAt {A B : Type} (b : ⟦ B ⟧) (addr : Word) (m : Memory) : Set where
   constructor inr-at
   field
     tag-valid : readMem m addr ≡ just 1
-    val-valid : readMem m (addr +ℕ 8) ≡ just (encode b)
+    val-valid : readMem m (addr +ℕ slot-size) ≡ just (encode b)
 
 open InrAt public
 
@@ -74,7 +75,7 @@ record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
   constructor pair-at-s
   field
     fst-valid : readMem m addr-pair ≡ just addr-a
-    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
+    snd-valid : readMem m (addr-pair +ℕ slot-size) ≡ just addr-b
 
 open PairAtS public using () renaming (fst-valid to fst-valid-s; snd-valid to snd-valid-s)
 
@@ -84,7 +85,7 @@ record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
   constructor inl-at-s
   field
     tag-valid : readMem m addr-sum ≡ just 0
-    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+    val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
 
 open InlAtS public using () renaming (tag-valid to tag-valid-inl-s; val-valid to val-valid-inl-s)
 
@@ -94,7 +95,7 @@ record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
   constructor inr-at-s
   field
     tag-valid : readMem m addr-sum ≡ just 1
-    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
+    val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
 
 open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
 
@@ -106,59 +107,59 @@ open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to
 -- Uses proven mem-read-write and mem-read-other
 alloc-pair-creates-valid : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
   let m₁ = writeMem m addr (encode a)
-      m₂ = writeMem m₁ (addr +ℕ 8) (encode b)
+      m₂ = writeMem m₁ (addr +ℕ slot-size) (encode b)
   in PairAt a b addr m₂
 alloc-pair-creates-valid a b addr m = pair-at fst-proof snd-proof
   where
     m₁ = writeMem m addr (encode a)
-    m₂ = writeMem m₁ (addr +ℕ 8) (encode b)
+    m₂ = writeMem m₁ (addr +ℕ slot-size) (encode b)
 
     -- m₂[addr] = m₁[addr] (by mem-read-other, since addr ≠ addr+8)
     --          = encode a (by mem-read-write)
     fst-proof : readMem m₂ addr ≡ just (encode a)
     fst-proof = trans
-      (mem-read-other {m₁} {addr +ℕ 8} {addr} {encode b} (λ eq → n≢n+8 addr (sym eq)))
+      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode b} (λ eq → n≢n+8 addr (sym eq)))
       (mem-read-write {m} {addr} {encode a})
 
     -- m₂[addr+8] = encode b (by mem-read-write)
-    snd-proof : readMem m₂ (addr +ℕ 8) ≡ just (encode b)
-    snd-proof = mem-read-write {m₁} {addr +ℕ 8} {encode b}
+    snd-proof : readMem m₂ (addr +ℕ slot-size) ≡ just (encode b)
+    snd-proof = mem-read-write {m₁} {addr +ℕ slot-size} {encode b}
 
 -- | Allocate left sum and create validity proof
 alloc-inl-creates-valid : ∀ {A B} (a : ⟦ A ⟧) (addr : Word) (m : Memory) →
   let m₁ = writeMem m addr 0
-      m₂ = writeMem m₁ (addr +ℕ 8) (encode a)
+      m₂ = writeMem m₁ (addr +ℕ slot-size) (encode a)
   in InlAt {A} {B} a addr m₂
 alloc-inl-creates-valid a addr m = inl-at tag-proof val-proof
   where
     m₁ = writeMem m addr 0
-    m₂ = writeMem m₁ (addr +ℕ 8) (encode a)
+    m₂ = writeMem m₁ (addr +ℕ slot-size) (encode a)
 
     tag-proof : readMem m₂ addr ≡ just 0
     tag-proof = trans
-      (mem-read-other {m₁} {addr +ℕ 8} {addr} {encode a} (λ eq → n≢n+8 addr (sym eq)))
+      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode a} (λ eq → n≢n+8 addr (sym eq)))
       (mem-read-write {m} {addr} {0})
 
-    val-proof : readMem m₂ (addr +ℕ 8) ≡ just (encode a)
-    val-proof = mem-read-write {m₁} {addr +ℕ 8} {encode a}
+    val-proof : readMem m₂ (addr +ℕ slot-size) ≡ just (encode a)
+    val-proof = mem-read-write {m₁} {addr +ℕ slot-size} {encode a}
 
 -- | Allocate right sum and create validity proof
 alloc-inr-creates-valid : ∀ {A B} (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
   let m₁ = writeMem m addr 1
-      m₂ = writeMem m₁ (addr +ℕ 8) (encode b)
+      m₂ = writeMem m₁ (addr +ℕ slot-size) (encode b)
   in InrAt {A} {B} b addr m₂
 alloc-inr-creates-valid b addr m = inr-at tag-proof val-proof
   where
     m₁ = writeMem m addr 1
-    m₂ = writeMem m₁ (addr +ℕ 8) (encode b)
+    m₂ = writeMem m₁ (addr +ℕ slot-size) (encode b)
 
     tag-proof : readMem m₂ addr ≡ just 1
     tag-proof = trans
-      (mem-read-other {m₁} {addr +ℕ 8} {addr} {encode b} (λ eq → n≢n+8 addr (sym eq)))
+      (mem-read-other {m₁} {addr +ℕ slot-size} {addr} {encode b} (λ eq → n≢n+8 addr (sym eq)))
       (mem-read-write {m} {addr} {1})
 
-    val-proof : readMem m₂ (addr +ℕ 8) ≡ just (encode b)
-    val-proof = mem-read-write {m₁} {addr +ℕ 8} {encode b}
+    val-proof : readMem m₂ (addr +ℕ slot-size) ≡ just (encode b)
+    val-proof = mem-read-write {m₁} {addr +ℕ slot-size} {encode b}
 
 ------------------------------------------------------------------------
 -- Deriving encoding properties from validity proofs
@@ -178,7 +179,7 @@ encode-pair-fst-derived a b addr m valid = fst-valid valid
 -- Replaces: encode-pair-snd axiom
 encode-pair-snd-derived : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
   PairAt a b addr m →
-  readMem m (addr +ℕ 8) ≡ just (encode b)
+  readMem m (addr +ℕ slot-size) ≡ just (encode b)
 encode-pair-snd-derived a b addr m valid = snd-valid valid
 
 -- | Derived: reading tag of a valid left sum
@@ -192,7 +193,7 @@ encode-inl-tag-derived a addr m valid = tag-valid valid
 -- Replaces: encode-inl-val axiom
 encode-inl-val-derived : ∀ {A B} (a : ⟦ A ⟧) (addr : Word) (m : Memory) →
   InlAt {A} {B} a addr m →
-  readMem m (addr +ℕ 8) ≡ just (encode a)
+  readMem m (addr +ℕ slot-size) ≡ just (encode a)
 encode-inl-val-derived a addr m valid = val-valid valid
 
 -- | Derived: reading tag of a valid right sum
@@ -206,7 +207,7 @@ encode-inr-tag-derived b addr m valid = tag-valid valid
 -- Replaces: encode-inr-val axiom
 encode-inr-val-derived : ∀ {A B} (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
   InrAt {A} {B} b addr m →
-  readMem m (addr +ℕ 8) ≡ just (encode b)
+  readMem m (addr +ℕ slot-size) ≡ just (encode b)
 encode-inr-val-derived b addr m valid = val-valid valid
 
 ------------------------------------------------------------------------
@@ -218,13 +219,13 @@ record NoOverlap (addr₁ addr₂ : Word) : Set where
   constructor no-overlap
   field
     neq-base : addr₁ ≢ addr₂
-    neq-snd  : addr₁ ≢ addr₂ +ℕ 8
+    neq-snd  : addr₁ ≢ addr₂ +ℕ slot-size
 
 -- | Writing to a non-overlapping address preserves pair validity
 pair-valid-preserved : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (pair-addr write-addr : Word) (v : Word) (m : Memory) →
   PairAt a b pair-addr m →
   NoOverlap write-addr pair-addr →
-  write-addr ≢ pair-addr +ℕ 8 →
+  write-addr ≢ pair-addr +ℕ slot-size →
   PairAt a b pair-addr (writeMem m write-addr v)
 pair-valid-preserved a b pair-addr write-addr v m valid no-over neq-snd =
   pair-at fst-preserved snd-preserved
@@ -236,9 +237,9 @@ pair-valid-preserved a b pair-addr write-addr v m valid no-over neq-snd =
       (mem-read-other {m} {write-addr} {pair-addr} {v} (NoOverlap.neq-base no-over))
       (fst-valid valid)
 
-    snd-preserved : readMem m' (pair-addr +ℕ 8) ≡ just (encode b)
+    snd-preserved : readMem m' (pair-addr +ℕ slot-size) ≡ just (encode b)
     snd-preserved = trans
-      (mem-read-other {m} {write-addr} {pair-addr +ℕ 8} {v} neq-snd)
+      (mem-read-other {m} {write-addr} {pair-addr +ℕ slot-size} {v} neq-snd)
       (snd-valid valid)
 
 ------------------------------------------------------------------------
@@ -268,7 +269,7 @@ pair-valid-at-encode-fst a b m valid = fst-valid valid
 
 pair-valid-at-encode-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
   PairAt a b (encode (a , b)) m →
-  readMem m (encode (a , b) +ℕ 8) ≡ just (encode b)
+  readMem m (encode (a , b) +ℕ slot-size) ≡ just (encode b)
 pair-valid-at-encode-snd a b m valid = snd-valid valid
 
 -- | If left sum is valid at encode address, derive the axiom property
@@ -279,7 +280,7 @@ inl-valid-at-encode-tag a m valid = tag-valid valid
 
 inl-valid-at-encode-val : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
   InlAt {A} {B} a (encode (inj₁ a)) m →
-  readMem m (encode {A + B} (inj₁ a) +ℕ 8) ≡ just (encode a)
+  readMem m (encode {A + B} (inj₁ a) +ℕ slot-size) ≡ just (encode a)
 inl-valid-at-encode-val a m valid = val-valid valid
 
 -- | If right sum is valid at encode address, derive the axiom property
@@ -290,7 +291,7 @@ inr-valid-at-encode-tag b m valid = tag-valid valid
 
 inr-valid-at-encode-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
   InrAt {A} {B} b (encode (inj₂ b)) m →
-  readMem m (encode {A + B} (inj₂ b) +ℕ 8) ≡ just (encode b)
+  readMem m (encode {A + B} (inj₂ b) +ℕ slot-size) ≡ just (encode b)
 inr-valid-at-encode-val b m valid = val-valid valid
 
 ------------------------------------------------------------------------

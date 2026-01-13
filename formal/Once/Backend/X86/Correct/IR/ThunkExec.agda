@@ -37,7 +37,7 @@ open import Once.Backend.Common.MemoryRegions
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
-         r15-in-code;
+         r15-in-code; slot-size; slots;
          -- D041: Parameterized abstract interface
          abstract-to-rsp-slot-in-stack; abstract-to-rsp-slots-in-stack;
          -- D041: Abstract helpers for thunk arithmetic (State-based)
@@ -61,23 +61,23 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
   readReg (regs s) rdi ≡ encode arg →
   readReg (regs s) r12 ≡ encode env →
   StackInvariant s →
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ f-offset
           × readReg (regs s') rdi ≡ encode (env , arg)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') r15 ≡ readReg (regs s) r15
-          × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ 16  -- rbp is frame pointer (after push r15 and push rbp)
+          × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slots 2  -- rbp is frame pointer (after push r15 and push rbp)
           × StackInvariant s'
-          × readReg (regs s') rsp > 16
+          × readReg (regs s') rsp > slots 2
           × RbpInvariant s'
           -- Key property for pop-rbp-mem: memory at new rbp contains original rbp
           × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
           -- Memory at original rsp is preserved (for return address)
           × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
           -- Memory for r15 restoration: saved at original_rsp - 8
-          × readMem (memory s') (readReg (regs s) rsp ∸ 8) ≡ just (readReg (regs s) r15)
+          × readMem (memory s') (readReg (regs s) rsp ∸ slot-size) ≡ just (readReg (regs s) r15)
           -- D041: Memory at address 0 preserved (setup writes only to stack region)
           × readMem (memory s') 0 ≡ readMem (memory s) 0
           -- D041: Memory at code-region addresses preserved
@@ -106,9 +106,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     i1 = push (reg r15)                    -- save r15 (apply's scratch register)
     i2 = push (reg rbp)                    -- save frame pointer
     i3 = mov (reg rbp) (reg rsp)           -- set frame pointer
-    i4 = sub (reg rsp) (imm 16)            -- allocate pair
+    i4 = sub (reg rsp) (imm (slots 2))            -- allocate pair
     i5 = mov (mem (base rsp)) (reg r12)    -- store env
-    i6 = mov (mem (base+disp rsp 8)) (reg rdi)  -- store arg
+    i6 = mov (mem (base+disp rsp slot-size)) (reg rdi)  -- store arg
     i7 = mov (reg rdi) (reg rsp)           -- rdi = pair address
 
     -- Program structure for fetch proofs:
@@ -126,10 +126,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- curry-closure-setup: first 6 instructions of curry (positions 0-5)
     curry-closure-setup : Program
     curry-closure-setup =
-      sub (reg rsp) (imm 16) ∷
+      sub (reg rsp) (imm (slots 2)) ∷
       mov (mem (base rsp)) (reg rdi) ∷
       lea r9 (rip+disp 4) ∷
-      mov (mem (base+disp rsp 8)) (reg r9) ∷
+      mov (mem (base+disp rsp slot-size)) (reg r9) ∷
       mov (reg rax) (reg rsp) ∷
       jmp end-offset-curry ∷ []
 
@@ -162,9 +162,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     old-rsp = readReg (regs s) rsp
     old-rbp = readReg (regs s) rbp
     old-r15 = readReg (regs s) r15
-    rsp-after-push-r15 = old-rsp ∸ 8   -- after push r15
-    rsp-after-push-rbp = rsp-after-push-r15 ∸ 8  -- after push rbp = old-rsp - 16
-    new-rsp = rsp-after-push-rbp ∸ 16  -- after sub rsp, 16 = old-rsp - 32
+    rsp-after-push-r15 = old-rsp ∸ slot-size   -- after push r15
+    rsp-after-push-rbp = rsp-after-push-r15 ∸ slot-size  -- after push rbp = old-rsp - 16
+    new-rsp = rsp-after-push-rbp ∸ slots 2  -- after sub rsp, 16 = old-rsp - 32
 
     -- State after label (no-op, just pc++)
     s1 : State
@@ -249,7 +249,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     step4 : step prog s4 ≡ just s5
     step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                  (execSub-reg-imm [] s4 rsp 16)
+                  (execSub-reg-imm [] s4 rsp (slots 2))
 
     h5 : halted s5 ≡ false
     h5 = h-false
@@ -296,12 +296,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                                         rdi-eq)))
 
     s7 : State
-    s7 = record s6 { memory = writeMem (memory s6) (new-rsp +ℕ 8) (readReg (regs s6) rdi)
+    s7 = record s6 { memory = writeMem (memory s6) (new-rsp +ℕ slot-size) (readReg (regs s6) rdi)
                    ; pc = pc s6 +ℕ 1 }
 
     step6 : step prog s6 ≡ just s7
     step6 = trans (step-exec prog s6 i6 h6 (subst (λ p → fetch prog p ≡ just i6) (sym pc6) fetch6))
-                  (cong (λ addr → just (record s6 { memory = writeMem (memory s6) (addr +ℕ 8) (readReg (regs s6) rdi)
+                  (cong (λ addr → just (record s6 { memory = writeMem (memory s6) (addr +ℕ slot-size) (readReg (regs s6) rdi)
                                                   ; pc = pc s6 +ℕ 1 }))
                         rsp-s6)
 
@@ -365,14 +365,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Memory at new-rsp has encode env
     -- s8 doesn't write memory (only rdi register), so memory s8 = memory s7
     mem-env : readMem (memory s8) new-rsp ≡ just (encode env)
-    mem-env = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {new-rsp} {readReg (regs s6) rdi}
+    mem-env = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {new-rsp} {readReg (regs s6) rdi}
                       (λ eq → n≢n+8 new-rsp (sym eq)))
                     (trans (mem-read-write {memory s5} {new-rsp} {readReg (regs s5) r12})
                            (cong just r12-s5))
 
     -- Memory at new-rsp+8 has encode arg
-    mem-arg : readMem (memory s8) (new-rsp +ℕ 8) ≡ just (encode arg)
-    mem-arg = trans (mem-read-write {memory s6} {new-rsp +ℕ 8} {readReg (regs s6) rdi})
+    mem-arg : readMem (memory s8) (new-rsp +ℕ slot-size) ≡ just (encode arg)
+    mem-arg = trans (mem-read-write {memory s6} {new-rsp +ℕ slot-size} {readReg (regs s6) rdi})
                     (cong just rdi-s6)
 
     -- Use encode-pair-construct to show new-rsp = encode (env, arg)
@@ -407,14 +407,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  (trans (readReg-writeReg-rsp-rbp (regs s4) new-rsp)  -- s5: writes rsp
                         (readReg-writeReg-same (regs s3) rbp rsp-after-push-rbp))  -- s4: writes rbp
 
-    -- Prove that (old-rsp ∸ 8) ∸ 8 ≡ old-rsp ∸ 16
+    -- Prove that (old-rsp ∸ slot-size) ∸ 8 ≡ old-rsp ∸ slots 2
     -- Using ∸-+-assoc : ∀ m n o → (m ∸ n) ∸ o ≡ m ∸ (n + o)
     open import Data.Nat.Properties using (∸-+-assoc)
-    rsp-after-push-rbp≡old-rsp∸16 : rsp-after-push-rbp ≡ old-rsp ∸ 16
-    rsp-after-push-rbp≡old-rsp∸16 = ∸-+-assoc old-rsp 8 8
+    rsp-after-push-rbp≡old-rsp∸16 : rsp-after-push-rbp ≡ old-rsp ∸ slots 2
+    rsp-after-push-rbp≡old-rsp∸16 = ∸-+-assoc old-rsp slot-size slot-size
 
     -- Convert to expected type
-    rbp8 : readReg (regs s8) rbp ≡ old-rsp ∸ 16
+    rbp8 : readReg (regs s8) rbp ≡ old-rsp ∸ slots 2
     rbp8 = trans rbp8' rsp-after-push-rbp≡old-rsp∸16
 
     -- StackInvariant proof: rsp decreased, r15 unchanged
@@ -424,7 +424,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- new-rsp = ((old-rsp - 8) - 8) - 16 = old-rsp - 32 ≤ old-rsp
     rsp-decreased : new-rsp ≤ old-rsp
-    rsp-decreased = ≤-trans (≤-trans (m∸n≤m rsp-after-push-rbp 16) (m∸n≤m rsp-after-push-r15 8)) (m∸n≤m old-rsp 8)
+    rsp-decreased = ≤-trans (≤-trans (m∸n≤m rsp-after-push-rbp (slots 2)) (m∸n≤m rsp-after-push-r15 slot-size)) (m∸n≤m old-rsp slot-size)
 
     rsp-s8≤s : readReg (regs s8) rsp ≤ readReg (regs s) rsp
     rsp-s8≤s = subst (_≤ old-rsp) (sym rsp-s8) rsp-decreased
@@ -432,7 +432,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     stack-inv8 : StackInvariant s8
     stack-inv8 = stack-inv-preserved-r15-unchanged s s8 stack-inv r15-8 rsp-s8≤s
 
-    rsp-sufficient-8 : readReg (regs s8) rsp > 16
+    rsp-sufficient-8 : readReg (regs s8) rsp > slots 2
     rsp-sufficient-8 = ≤-trans 17≤41 (rsp-bound-after-stack-op s8)
       where
         open import Data.Nat.Properties using (≤-trans)
@@ -451,14 +451,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     open import Data.Nat.Properties using (m∸n+n≡m; +-monoˡ-<; m<m+n; 0<1+n)
 
     -- Proof: new-rsp = rsp-after-push-rbp - 16 ≢ rsp-after-push-rbp
-    -- Key insight: rsp-after-push-rbp = old-rsp - 16 ≥ 1 (since old-rsp > 16)
+    -- Key insight: rsp-after-push-rbp = old-rsp - 16 ≥ 1 (since old-rsp > slots 2)
     -- Case 1: If rsp-after-push-rbp ≥ 16, then new-rsp = rsp-after-push-rbp - 16 < rsp-after-push-rbp
     -- Case 2: If rsp-after-push-rbp < 16, then new-rsp = 0, but rsp-after-push-rbp ≥ 1 > 0
     open import Data.Nat using (_≤?_; z<s)
     open import Relation.Nullary using (yes; no)
 
     -- First, show rsp-after-push-rbp ≥ 1 (stronger than just > 0)
-    -- rsp-sufficient : old-rsp > 16, i.e., old-rsp ≥ 17
+    -- rsp-sufficient : old-rsp > slots 2, i.e., old-rsp ≥ 17
     -- rsp-after-push-rbp = old-rsp - 16 ≥ 17 - 16 = 1
     open import Data.Nat.Properties using (∸-monoˡ-≤)
     open import Data.Empty using (⊥-elim)
@@ -467,20 +467,20 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     17≤old-rsp : 17 ≤ old-rsp
     17≤old-rsp = rsp-sufficient
 
-    -- rsp-after-push-r15 = old-rsp ∸ 8 ≥ 17 - 8 = 9
+    -- rsp-after-push-r15 = old-rsp ∸ slot-size ≥ 17 - 8 = 9
     9≤rsp-after-push-r15 : 9 ≤ rsp-after-push-r15
-    9≤rsp-after-push-r15 = ∸-monoˡ-≤ {17} {old-rsp} 8 17≤old-rsp
+    9≤rsp-after-push-r15 = ∸-monoˡ-≤ {17} {old-rsp} slot-size 17≤old-rsp
 
-    -- rsp-after-push-rbp = rsp-after-push-r15 ∸ 8 ≥ 9 - 8 = 1
+    -- rsp-after-push-rbp = rsp-after-push-r15 ∸ slot-size ≥ 9 - 8 = 1
     1≤rsp-after-push-rbp : 1 ≤ rsp-after-push-rbp
-    1≤rsp-after-push-rbp = ∸-monoˡ-≤ {9} {rsp-after-push-r15} 8 9≤rsp-after-push-r15
+    1≤rsp-after-push-rbp = ∸-monoˡ-≤ {9} {rsp-after-push-r15} slot-size 9≤rsp-after-push-r15
 
     rsp-after-push-rbp>0 : rsp-after-push-rbp > 0
     rsp-after-push-rbp>0 = 1≤rsp-after-push-rbp
 
     -- D041: Use centralized ∸-gives-different from StackInstantiation
     new-rsp≢rsp-after-push-rbp : new-rsp ≢ rsp-after-push-rbp
-    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp 16 rsp-after-push-rbp>0 0<16
+    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp (slots 2) rsp-after-push-rbp>0 0<16
       where
         0<16 : 0 < 16
         0<16 = s≤s z≤n
@@ -497,11 +497,11 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
     33≤rsp-after-push-r15 : 33 ≤ rsp-after-push-r15
-    33≤rsp-after-push-r15 = ∸-monoˡ-≤ {41} {old-rsp} 8 old-rsp>40
+    33≤rsp-after-push-r15 = ∸-monoˡ-≤ {41} {old-rsp} slot-size old-rsp>40
 
     -- rsp-after-push-rbp = rsp-after-push-r15 - 8 ≥ 33 - 8 = 25
     25≤rsp-after-push-rbp : 25 ≤ rsp-after-push-rbp
-    25≤rsp-after-push-rbp = ∸-monoˡ-≤ {33} {rsp-after-push-r15} 8 33≤rsp-after-push-r15
+    25≤rsp-after-push-rbp = ∸-monoˡ-≤ {33} {rsp-after-push-r15} slot-size 33≤rsp-after-push-r15
 
     16≤rsp-after-push-rbp : 16 ≤ rsp-after-push-rbp
     16≤rsp-after-push-rbp = ≤-trans 16≤25 25≤rsp-after-push-rbp
@@ -509,7 +509,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         16≤25 : 16 ≤ 25
         16≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
 
-    new-rsp+8≢rsp-after-push-rbp : new-rsp +ℕ 8 ≢ rsp-after-push-rbp
+    new-rsp+8≢rsp-after-push-rbp : new-rsp +ℕ slot-size ≢ rsp-after-push-rbp
     new-rsp+8≢rsp-after-push-rbp eq = <⇒≢-neq new-rsp+8<rsp-after-push-rbp eq
       where
         open import Data.Nat.Properties using (m∸n+n≡m)
@@ -518,10 +518,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- So (rsp-after-push-rbp - 16) + 8 < (rsp-after-push-rbp - 16) + 16 = rsp-after-push-rbp
         8<16 : 8 < 16
         8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        new-rsp+8<new-rsp+16 : new-rsp +ℕ 8 < new-rsp +ℕ 16
+        new-rsp+8<new-rsp+16 : new-rsp +ℕ slot-size < new-rsp +ℕ 16
         new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
-        new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ 8 < rsp-after-push-rbp
-        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16
+        new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ slot-size < rsp-after-push-rbp
+        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16
 
     -- s3 wrote old-rbp at rsp-after-push-rbp (after push r15 at s2 and push rbp at s3)
     mem-s3-at-rsp-after-push-rbp : readMem (memory s3) rsp-after-push-rbp ≡ just old-rbp
@@ -541,7 +541,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s7 wrote at new-rsp + 8, which ≢ rsp-after-push-rbp
     mem-s7-at-rsp-after-push-rbp : readMem (memory s7) rsp-after-push-rbp ≡ just old-rbp
     mem-s7-at-rsp-after-push-rbp = trans
-      (mem-read-other {memory s6} {new-rsp +ℕ 8} {rsp-after-push-rbp} {readReg (regs s6) rdi}
+      (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {rsp-after-push-rbp} {readReg (regs s6) rdi}
                       (λ eq → new-rsp+8≢rsp-after-push-rbp eq))
       mem-s6-at-rsp-after-push-rbp
 
@@ -549,9 +549,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     mem-s8-at-rsp-after-push-rbp : readMem (memory s8) rsp-after-push-rbp ≡ just old-rbp
     mem-s8-at-rsp-after-push-rbp = mem-s7-at-rsp-after-push-rbp
 
-    -- Finally, using rbp8: rbp s8 = old-rsp ∸ 16
-    -- First convert mem-s8-at-rsp-after-push-rbp to use old-rsp ∸ 16
-    mem-s8-at-old-rsp∸16 : readMem (memory s8) (old-rsp ∸ 16) ≡ just old-rbp
+    -- Finally, using rbp8: rbp s8 = old-rsp ∸ slots 2
+    -- First convert mem-s8-at-rsp-after-push-rbp to use old-rsp ∸ slots 2
+    mem-s8-at-old-rsp∸16 : readMem (memory s8) (old-rsp ∸ slots 2) ≡ just old-rbp
     mem-s8-at-old-rsp∸16 = subst (λ addr → readMem (memory s8) addr ≡ just old-rbp)
                                   rsp-after-push-rbp≡old-rsp∸16 mem-s8-at-rsp-after-push-rbp
     mem-at-rbp8 : readMem (memory s8) (readReg (regs s8) rbp) ≡ just old-rbp
@@ -564,7 +564,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
     -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
     rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
-    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp 8 (≤-trans 1≤17 rsp-sufficient) 0<8
+    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (≤-trans 1≤17 rsp-sufficient) 0<8
       where
         1≤17 : 1 ≤ 17
         1≤17 = s≤s z≤n
@@ -582,25 +582,25 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp≢old-rsp : new-rsp ≢ old-rsp
     new-rsp≢old-rsp eq = <⇒≢-neq new-rsp<old-rsp eq
       where
-        -- Derive new-rsp = old-rsp ∸ 32 locally
-        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ 32
-        new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
-        -- Use abstract helper: (old-rsp ∸ 32) < old-rsp when old-rsp > 16
+        -- Derive new-rsp = old-rsp ∸ slots 4 locally
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
+        new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
+        -- Use abstract helper: (old-rsp ∸ slots 4) < old-rsp when old-rsp > slots 2
         new-rsp<old-rsp : new-rsp < old-rsp
         new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸4slot<n-raw old-rsp rsp-sufficient)
 
     -- new-rsp + 8 = (old-rsp - 32) + 8 < old-rsp (D041: eliminate with, use abstract helper)
-    new-rsp+8≢old-rsp : new-rsp +ℕ 8 ≢ old-rsp
+    new-rsp+8≢old-rsp : new-rsp +ℕ slot-size ≢ old-rsp
     new-rsp+8≢old-rsp eq = <⇒≢-neq new-rsp+8<old-rsp eq
       where
-        -- Derive new-rsp = old-rsp ∸ 32 locally
-        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ 32
-        new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
-        -- new-rsp + 8 = (old-rsp ∸ 32) + 8
-        new-rsp+8-eq : new-rsp +ℕ 8 ≡ (old-rsp ∸ 32) +ℕ 8
+        -- Derive new-rsp = old-rsp ∸ slots 4 locally
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
+        new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
+        -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8
+        new-rsp+8-eq : new-rsp +ℕ slot-size ≡ (old-rsp ∸ slots 4) +ℕ 8
         new-rsp+8-eq = cong (_+ℕ 8) new-rsp-eq-local
-        -- Use abstract helper: (old-rsp ∸ 32) + 8 < old-rsp when old-rsp > 16
-        new-rsp+8<old-rsp : new-rsp +ℕ 8 < old-rsp
+        -- Use abstract helper: (old-rsp ∸ slots 4) + 8 < old-rsp when old-rsp > slots 2
+        new-rsp+8<old-rsp : new-rsp +ℕ slot-size < old-rsp
         new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸4slot+slot<n-raw old-rsp rsp-sufficient)
 
     -- s1 doesn't write memory (label instruction)
@@ -630,7 +630,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- s7 writes at new-rsp + 8 ≠ old-rsp
     mem-s7-old-rsp : readMem (memory s7) old-rsp ≡ readMem (memory s) old-rsp
-    mem-s7-old-rsp = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {old-rsp} {readReg (regs s6) rdi}
+    mem-s7-old-rsp = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {old-rsp} {readReg (regs s6) rdi}
                              (λ eq → new-rsp+8≢old-rsp eq))
                            mem-s6-old-rsp
 
@@ -641,10 +641,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Memory for r15 restoration: s2 wrote old-r15 at rsp-after-push-r15 = old-rsp - 8
     -- This value is preserved through all subsequent writes
     -- rsp-after-push-r15 = old-rsp - 8, rsp-after-push-rbp = rsp-after-push-r15 - 8
-    -- D041: ∸-gives-different gives us: rsp-after-push-r15 ∸ 8 ≢ rsp-after-push-r15
-    -- We need to swap to get: rsp-after-push-r15 ≢ rsp-after-push-r15 ∸ 8 = rsp-after-push-rbp
+    -- D041: ∸-gives-different gives us: rsp-after-push-r15 ∸ slot-size ≢ rsp-after-push-r15
+    -- We need to swap to get: rsp-after-push-r15 ≢ rsp-after-push-r15 ∸ slot-size = rsp-after-push-rbp
     rsp-after-push-r15≢rsp-after-push-rbp : rsp-after-push-r15 ≢ rsp-after-push-rbp
-    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 8 rsp-after-push-r15>0 0<8)
+    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 slot-size rsp-after-push-r15>0 0<8)
       where
         open import Relation.Binary.PropositionalEquality using (≢-sym)
         rsp-after-push-r15>0 : rsp-after-push-r15 > 0
@@ -658,9 +658,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- new-rsp = old-rsp - 32, rsp-after-push-r15 = old-rsp - 8
         -- new-rsp < rsp-after-push-r15 (since 32 > 8)
         new-rsp≤rsp-after-push-rbp : new-rsp ≤ rsp-after-push-rbp
-        new-rsp≤rsp-after-push-rbp = m∸n≤m rsp-after-push-rbp 16
+        new-rsp≤rsp-after-push-rbp = m∸n≤m rsp-after-push-rbp (slots 2)
         rsp-after-push-rbp≤rsp-after-push-r15 : rsp-after-push-rbp ≤ rsp-after-push-r15
-        rsp-after-push-rbp≤rsp-after-push-r15 = m∸n≤m rsp-after-push-r15 8
+        rsp-after-push-rbp≤rsp-after-push-r15 = m∸n≤m rsp-after-push-r15 slot-size
         new-rsp≤rsp-after-push-r15 : new-rsp ≤ rsp-after-push-r15
         new-rsp≤rsp-after-push-r15 = ≤-trans new-rsp≤rsp-after-push-rbp rsp-after-push-rbp≤rsp-after-push-r15
         -- new-rsp = rsp-after-push-rbp - 16 ≤ rsp-after-push-rbp < rsp-after-push-r15
@@ -677,7 +677,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp<rsp-after-push-r15 = ≤-trans (s≤s new-rsp≤rsp-after-push-rbp) rsp-after-push-rbp<rsp-after-push-r15'''
 
     -- new-rsp + 8 = old-rsp - 24 < old-rsp - 8 = rsp-after-push-r15 (D041: eliminate with)
-    new-rsp+8≢rsp-after-push-r15 : new-rsp +ℕ 8 ≢ rsp-after-push-r15
+    new-rsp+8≢rsp-after-push-r15 : new-rsp +ℕ slot-size ≢ rsp-after-push-r15
     new-rsp+8≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp+8<rsp-after-push-r15 eq
       where
         -- Derive 32 ≤ old-rsp from old-rsp > 40
@@ -692,18 +692,18 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
           where
             25≤41 : 25 ≤ 41
             25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
-        -- new-rsp = old-rsp ∸ 32
-        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ 32
-        new-rsp-eq-local = trans (cong (_∸ 16) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp 16 16)
-        -- new-rsp + 8 = (old-rsp ∸ 32) + 8 = old-rsp ∸ 24
-        new-rsp+8≡old-rsp∸24 : new-rsp +ℕ 8 ≡ old-rsp ∸ 24
+        -- new-rsp = old-rsp ∸ slots 4
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
+        new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
+        -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3
+        new-rsp+8≡old-rsp∸24 : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
         new-rsp+8≡old-rsp∸24 = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp 32≤old-rsp)
-        -- old-rsp ∸ 24 < old-rsp ∸ 8 = rsp-after-push-r15
-        old-rsp∸24<old-rsp∸8 : old-rsp ∸ 24 < old-rsp ∸ 8
+        -- old-rsp ∸ slots 3 < old-rsp ∸ slot-size = rsp-after-push-r15
+        old-rsp∸24<old-rsp∸8 : old-rsp ∸ slots 3 < old-rsp ∸ slot-size
         old-rsp∸24<old-rsp∸8 = n∸3slot<n∸slot-raw old-rsp old-rsp>24
         -- Therefore new-rsp + 8 < rsp-after-push-r15
-        new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ 8 < rsp-after-push-r15
-        new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ 8) (sym new-rsp+8≡old-rsp∸24) old-rsp∸24<old-rsp∸8
+        new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ slot-size < rsp-after-push-r15
+        new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ slot-size) (sym new-rsp+8≡old-rsp∸24) old-rsp∸24<old-rsp∸8
 
     -- Now prove r15 memory preservation
     -- s2 wrote old-r15 at rsp-after-push-r15
@@ -731,12 +731,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s7 wrote at new-rsp + 8 ≠ rsp-after-push-r15
     mem-s7-at-rsp-after-push-r15 : readMem (memory s7) rsp-after-push-r15 ≡ just old-r15
     mem-s7-at-rsp-after-push-r15 = trans
-      (mem-read-other {memory s6} {new-rsp +ℕ 8} {rsp-after-push-r15} {readReg (regs s6) rdi}
+      (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {rsp-after-push-r15} {readReg (regs s6) rdi}
                       (λ eq → new-rsp+8≢rsp-after-push-r15 eq))
       mem-s6-at-rsp-after-push-r15
 
     -- s8 doesn't write memory
-    mem-r15-preserved : readMem (memory s8) (old-rsp ∸ 8) ≡ just old-r15
+    mem-r15-preserved : readMem (memory s8) (old-rsp ∸ slot-size) ≡ just old-r15
     mem-r15-preserved = mem-s7-at-rsp-after-push-r15
 
     ------------------------------------------------------------------------
@@ -753,13 +753,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Need to use ∸-+-assoc to relate nested subtractions to flat ones
     -- ∸-+-assoc m n o : (m ∸ n) ∸ o ≡ m ∸ (n + o)
 
-    -- rsp-after-push-r15 = old-rsp ∸ 8 matches old-rsp ∸ 1*8 directly (via abstract interface)
+    -- rsp-after-push-r15 = old-rsp ∸ slot-size matches old-rsp ∸ 1*8 directly (via abstract interface)
     addr-rsp-8-in-stack : region-of rsp-after-push-r15 ≡ stack
     addr-rsp-8-in-stack = abstract-to-rsp-slot-in-stack s cap-stronger
 
-    -- rsp-after-push-rbp = (old-rsp ∸ 8) ∸ 8 = old-rsp ∸ 16 = old-rsp ∸ 2*8
-    rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ 16
-    rsp-after-push-rbp-eq = ∸-+-assoc old-rsp 8 8
+    -- rsp-after-push-rbp = (old-rsp ∸ slot-size) ∸ 8 = old-rsp ∸ slots 2 = old-rsp ∸ 2*8
+    rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ slots 2
+    rsp-after-push-rbp-eq = ∸-+-assoc old-rsp slot-size slot-size
 
     addr-rsp-16-in-stack : region-of rsp-after-push-rbp ≡ stack
     addr-rsp-16-in-stack = subst (λ x → region-of x ≡ stack) (sym rsp-after-push-rbp-eq)
@@ -767,45 +767,45 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
     -- addr-rsp-16-in-stack has type region-of rsp-after-push-rbp ≡ stack
-    -- We need region-of (old-rsp ∸ 16) ≡ stack, so use rsp-after-push-rbp-eq to convert
+    -- We need region-of (old-rsp ∸ slots 2) ≡ stack, so use rsp-after-push-rbp-eq to convert
     setup-thunk-frame : StackPointer
     setup-thunk-frame = record
-      { addr = old-rsp ∸ 16
+      { addr = old-rsp ∸ slots 2
       ; in-stack = subst (λ x → region-of x ≡ stack) rsp-after-push-rbp-eq addr-rsp-16-in-stack
       }
 
-    new-rsp≤frame : new-rsp ≤ old-rsp ∸ 16
-    new-rsp≤frame = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 (m∸n≤m rsp-after-push-rbp 16)
+    new-rsp≤frame : new-rsp ≤ old-rsp ∸ slots 2
+    new-rsp≤frame = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 (m∸n≤m rsp-after-push-rbp (slots 2))
 
     setup-thunk-frame-bound : sp-addr setup-thunk-frame ≥ readReg (regs s8) rsp
-    setup-thunk-frame-bound = subst (old-rsp ∸ 16 ≥_) (sym rsp-s8) new-rsp≤frame
+    setup-thunk-frame-bound = subst (old-rsp ∸ slots 2 ≥_) (sym rsp-s8) new-rsp≤frame
 
     rbp-inv8 : RbpInvariant s8
     rbp-inv8 = record
       { rbp-frame = setup-thunk-frame
-      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ 16 = sp-addr setup-thunk-frame
+      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ slots 2 = sp-addr setup-thunk-frame
       ; frame-bound = setup-thunk-frame-bound
       }
 
-    -- new-rsp = ((old-rsp ∸ 8) ∸ 8) ∸ 16 = (old-rsp ∸ 16) ∸ 16 = old-rsp ∸ 32 = old-rsp ∸ 4*8
-    new-rsp-eq : new-rsp ≡ old-rsp ∸ 32
-    new-rsp-eq = trans (cong (_∸ 16) rsp-after-push-rbp-eq) (∸-+-assoc old-rsp 16 16)
+    -- new-rsp = ((old-rsp ∸ slot-size) ∸ 8) ∸ 16 = (old-rsp ∸ slots 2) ∸ 16 = old-rsp ∸ slots 4 = old-rsp ∸ 4*8
+    new-rsp-eq : new-rsp ≡ old-rsp ∸ slots 4
+    new-rsp-eq = trans (cong (_∸ slots 2) rsp-after-push-rbp-eq) (∸-+-assoc old-rsp (slots 2) (slots 2))
 
     addr-rsp-32-in-stack : region-of new-rsp ≡ stack
     addr-rsp-32-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp-eq)
                                  (abstract-to-rsp-slots-in-stack 4 s cap-stronger (s≤s (s≤s (s≤s (s≤s z≤n)))))
 
-    -- new-rsp + 8 = (old-rsp ∸ 32) + 8 = old-rsp ∸ 24 = old-rsp ∸ 3*8
+    -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3 = old-rsp ∸ 3*8
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
-    -- Strategy: (old-rsp ∸ 32) + 8 = old-rsp ∸ 24
-    --   Let k = old-rsp ∸ 32. Then k + 32 = old-rsp (by m∸n+n≡m).
-    --   old-rsp ∸ 24 = (k + 32) ∸ 24 = k + (32 ∸ 24) = k + 8 (by +-∸-assoc)
-    new-rsp+8-eq : new-rsp +ℕ 8 ≡ old-rsp ∸ 24
+    -- Strategy: (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3
+    --   Let k = old-rsp ∸ slots 4. Then k + 32 = old-rsp (by m∸n+n≡m).
+    --   old-rsp ∸ slots 3 = (k + 32) ∸ 24 = k + (32 ∸ 24) = k + 8 (by +-∸-assoc)
+    new-rsp+8-eq : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
     new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) k+8≡old-rsp∸24
       where
         open import Data.Nat.Properties using (+-∸-assoc)
 
-        k = old-rsp ∸ 32
+        k = old-rsp ∸ slots 4
 
         -- old-rsp > 40 implies 32 ≤ old-rsp
         32≤old-rsp : 32 ≤ old-rsp
@@ -827,11 +827,11 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         assoc-step : (k +ℕ 32) ∸ 24 ≡ k +ℕ 8
         assoc-step = +-∸-assoc k 24≤32
 
-        -- old-rsp ∸ 24 = (k + 32) ∸ 24 = k + 8
-        k+8≡old-rsp∸24 : k +ℕ 8 ≡ old-rsp ∸ 24
-        k+8≡old-rsp∸24 = sym (trans (cong (_∸ 24) (sym k+32≡old-rsp)) assoc-step)
+        -- old-rsp ∸ slots 3 = (k + 32) ∸ 24 = k + 8
+        k+8≡old-rsp∸24 : k +ℕ 8 ≡ old-rsp ∸ slots 3
+        k+8≡old-rsp∸24 = sym (trans (cong (_∸ slots 3) (sym k+32≡old-rsp)) assoc-step)
 
-    addr-rsp-24-in-stack : region-of (new-rsp +ℕ 8) ≡ stack
+    addr-rsp-24-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
     addr-rsp-24-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp+8-eq)
                                  (abstract-to-rsp-slots-in-stack 3 s cap-stronger (s≤s (s≤s (s≤s z≤n))))
 
@@ -845,7 +845,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     addr-rsp-32≢0 : new-rsp ≢ 0
     addr-rsp-32≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-32-in-stack)
 
-    addr-rsp-24≢0 : new-rsp +ℕ 8 ≢ 0
+    addr-rsp-24≢0 : new-rsp +ℕ slot-size ≢ 0
     addr-rsp-24≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-24-in-stack)
 
     -- Chain memory preservation at 0 through all states
@@ -873,7 +873,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- s7 writes at new-rsp + 8 ≠ 0
     mem-s7-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
-    mem-s7-at-0 = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {0} {readReg (regs s6) rdi} addr-rsp-24≢0)
+    mem-s7-at-0 = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {0} {readReg (regs s6) rdi} addr-rsp-24≢0)
                         mem-s6-at-0
 
     -- s8 doesn't write memory
@@ -888,12 +888,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- because stack region is disjoint from code region
     code-addr≢write-addr : ∀ addr → region-of addr ≡ code →
       addr ≢ rsp-after-push-r15 × addr ≢ rsp-after-push-rbp ×
-      addr ≢ new-rsp × addr ≢ (new-rsp +ℕ 8)
+      addr ≢ new-rsp × addr ≢ (new-rsp +ℕ slot-size)
     code-addr≢write-addr addr addr-code =
       (λ eq → stack-code-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-code (sym eq)) ,
       (λ eq → stack-code-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-code (sym eq)) ,
       (λ eq → stack-code-disjoint new-rsp addr addr-rsp-32-in-stack addr-code (sym eq)) ,
-      (λ eq → stack-code-disjoint (new-rsp +ℕ 8) addr addr-rsp-24-in-stack addr-code (sym eq))
+      (λ eq → stack-code-disjoint (new-rsp +ℕ slot-size) addr addr-rsp-24-in-stack addr-code (sym eq))
 
     -- Chain memory preservation at code addresses through all states
     mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s8) addr ≡ readMem (memory s) addr
@@ -929,7 +929,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         -- s7 writes at new-rsp + 8 ≠ addr
         mem-s7-code : readMem (memory s7) addr ≡ readMem (memory s) addr
-        mem-s7-code = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+        mem-s7-code = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                             mem-s6-code
 
     ------------------------------------------------------------------------
@@ -940,12 +940,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- because stack region is disjoint from heap region
     heap-addr≢write-addr : ∀ addr → region-of addr ≡ heap →
       addr ≢ rsp-after-push-r15 × addr ≢ rsp-after-push-rbp ×
-      addr ≢ new-rsp × addr ≢ (new-rsp +ℕ 8)
+      addr ≢ new-rsp × addr ≢ (new-rsp +ℕ slot-size)
     heap-addr≢write-addr addr addr-heap =
       (λ eq → stack-heap-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-heap (sym eq)) ,
       (λ eq → stack-heap-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-heap (sym eq)) ,
       (λ eq → stack-heap-disjoint new-rsp addr addr-rsp-32-in-stack addr-heap (sym eq)) ,
-      (λ eq → stack-heap-disjoint (new-rsp +ℕ 8) addr addr-rsp-24-in-stack addr-heap (sym eq))
+      (λ eq → stack-heap-disjoint (new-rsp +ℕ slot-size) addr addr-rsp-24-in-stack addr-heap (sym eq))
 
     -- Chain memory preservation at heap addresses through all states
     mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s8) addr ≡ readMem (memory s) addr
@@ -981,7 +981,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         -- s7 writes at new-rsp + 8 ≠ addr
         mem-s7-heap : readMem (memory s7) addr ≡ readMem (memory s) addr
-        mem-s7-heap = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+        mem-s7-heap = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                             mem-s6-heap
 
     -- D041: Memory above original rsp preserved (for caller frame)
@@ -1018,17 +1018,17 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
             new-rsp<rsp-16 = ∸-gives-smaller rsp-after-push-rbp 16 (≤-trans (s≤s z≤n) 25≤rsp-after-push-rbp) (s≤s z≤n)
               where open import Data.Nat using (s≤s; z≤n)
 
-        rsp-24<old-rsp : new-rsp +ℕ 8 < old-rsp
+        rsp-24<old-rsp : new-rsp +ℕ slot-size < old-rsp
         rsp-24<old-rsp = <-≤-trans new-rsp+8<rsp-after-push-rbp' (Data.Nat.Properties.<⇒≤ rsp-16<old-rsp)
           where
             open import Data.Nat.Properties using (+-monoʳ-<; m∸n+n≡m)
             open import Data.Nat using (s≤s; z≤n)
             8<16'' : 8 < 16
             8<16'' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-            new-rsp+8<new-rsp+16'' : new-rsp +ℕ 8 < new-rsp +ℕ 16
+            new-rsp+8<new-rsp+16'' : new-rsp +ℕ slot-size < new-rsp +ℕ 16
             new-rsp+8<new-rsp+16'' = +-monoʳ-< new-rsp 8<16''
-            new-rsp+8<rsp-after-push-rbp' : new-rsp +ℕ 8 < rsp-after-push-rbp
-            new-rsp+8<rsp-after-push-rbp' = subst (new-rsp +ℕ 8 <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16''
+            new-rsp+8<rsp-after-push-rbp' : new-rsp +ℕ slot-size < rsp-after-push-rbp
+            new-rsp+8<rsp-after-push-rbp' = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16''
 
         -- All write addresses are ≠ caller-addr
         addr≢rsp-8 : caller-addr ≢ rsp-after-push-r15
@@ -1040,8 +1040,8 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         addr≢rsp-32 : caller-addr ≢ new-rsp
         addr≢rsp-32 = addr≢write new-rsp rsp-32<old-rsp
 
-        addr≢rsp-24 : caller-addr ≢ (new-rsp +ℕ 8)
-        addr≢rsp-24 = addr≢write (new-rsp +ℕ 8) rsp-24<old-rsp
+        addr≢rsp-24 : caller-addr ≢ (new-rsp +ℕ slot-size)
+        addr≢rsp-24 = addr≢write (new-rsp +ℕ slot-size) rsp-24<old-rsp
 
         -- Chain through all states
         mem-s1-above : readMem (memory s1) caller-addr ≡ readMem (memory s) caller-addr
@@ -1062,7 +1062,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                              mem-s5-above
 
         mem-s7-above : readMem (memory s7) caller-addr ≡ readMem (memory s) caller-addr
-        mem-s7-above = trans (mem-read-other {memory s6} {new-rsp +ℕ 8} {caller-addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+        mem-s7-above = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {caller-addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                              mem-s6-above
 
 -- Prove ret instruction tracing
@@ -1077,7 +1077,7 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
   pc s ≡ ret-offset →
   readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
   region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
-  readReg (regs s) rsp > 16 →
+  readReg (regs s) rsp > slots 2 →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ ret-addr
@@ -1086,7 +1086,7 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
           × readReg (regs s') r15 ≡ readReg (regs s) r15
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > 16
+          × readReg (regs s') rsp > slots 2
           -- D041: Memory preservation (ret doesn't write memory)
           × readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
           × (∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr))
@@ -1151,7 +1151,7 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     stack-inv1 : StackInvariant s1
     stack-inv1 = r15-in-code (trans (cong region-of r15-1) r15-code)
 
-    rsp-sufficient-1 : readReg (regs s1) rsp > 16
+    rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
     rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
       where
         open import Data.Nat.Properties using (≤-trans)

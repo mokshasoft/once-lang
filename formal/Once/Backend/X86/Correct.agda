@@ -241,16 +241,6 @@ run-ir-star = run-ir-star-at-offset
 -- we just use star-trans to compose Star proofs.
 ------------------------------------------------------------------------
 
--- Helper: Execute single transfer instruction (mov rdi, rax)
--- Returns Star proof for one step
-transfer-star : ∀ (prog : Program) (s : State) →
-    halted s ≡ false →
-    step prog s ≡ just (record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
-                                 ; pc = pc s +ℕ 1 }) →
-    Star prog s (record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
-                          ; pc = pc s +ℕ 1 })
-transfer-star prog s h-false step-eq = star-single h-false step-eq
-
 -- | Compose two IR computations using Star
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
