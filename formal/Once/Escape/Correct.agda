@@ -1,4 +1,3 @@
-{-# OPTIONS --allow-incomplete-matches #-}
 ------------------------------------------------------------------------
 -- Once.Escape.Correct
 --
@@ -12,6 +11,8 @@
 -- This is the beauty of verified optimization: we can be aggressive
 -- with escape analysis because we have machine-checked proofs that
 -- the rewrites preserve semantics.
+--
+-- This file has COMPLETE pattern coverage (no --allow-incomplete-matches).
 ------------------------------------------------------------------------
 
 module Once.Escape.Correct where
@@ -33,10 +34,15 @@ open import Relation.Binary.PropositionalEquality
 --
 -- All cases are trivially correct because AllocMode is ignored in eval.
 -- The semantic value is identical regardless of Stack vs Heap mode.
+-- Complete pattern coverage without --allow-incomplete-matches.
 ------------------------------------------------------------------------
 
 escape-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
                        → eval (escape-compose g f) x ≡ eval (g ∘ f) x
+
+------------------------------------------------------------------------
+-- Escape rules that match specific patterns
+------------------------------------------------------------------------
 
 -- Rule 1: fst ∘ ⟨ f , g ⟩ - AllocMode transparent in pair
 escape-compose-correct fst (⟨ f , g ⟩ _) x = refl
@@ -54,7 +60,6 @@ escape-compose-correct [ f , g ] (inr _) x = refl
 escape-compose-correct apply (⟨ curry f _ , h ⟩ _) x = refl
 
 -- Rule 6: apply ∘ ⟨ f , x ⟩ - AllocMode transparent in pair (non-curry f)
--- The pair is consumed by apply regardless of how f produces the function.
 escape-compose-correct apply (⟨ id , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ g ∘ g' , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ fst , h ⟩ _) x = refl
@@ -62,14 +67,31 @@ escape-compose-correct apply (⟨ snd , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ [ g , g' ] , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ initial , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ apply , h ⟩ _) x = refl
+escape-compose-correct apply (⟨ unfold , h ⟩ _) x = refl
 escape-compose-correct apply (⟨ Prim _ , h ⟩ _) x = refl
 
--- All other cases: escape-compose returns g ∘ f unchanged, so proof is refl
--- Enumerate by first argument
+-- Rules 7-8: fold ∘ inl/inr - AllocMode transparent in injection
+escape-compose-correct fold (inl _) x = refl
+escape-compose-correct fold (inr _) x = refl
+
+-- Rules 9-10: terminal discards values - AllocMode transparent
+escape-compose-correct terminal (⟨ f , g ⟩ _) x = refl
+escape-compose-correct terminal (curry f _) x = refl
+
+-- Rules 11-12: (f ∘ fst/snd) ∘ ⟨ g , h ⟩ - AllocMode transparent in pair
+escape-compose-correct (f ∘ fst) (⟨ g , h ⟩ _) x = refl
+escape-compose-correct (f ∘ snd) (⟨ g , h ⟩ _) x = refl
+
+------------------------------------------------------------------------
+-- First arg: id
+------------------------------------------------------------------------
+
 escape-compose-correct id f x = refl
--- Composition cases: enumerate by what the inner function is
--- (f ∘ fst) and (f ∘ snd) with ⟨_,_⟩ are rules 11-12 (handled below)
--- All other compositions hit the default case
+
+------------------------------------------------------------------------
+-- First arg: g ∘ h (composition) - enumerate inner h
+------------------------------------------------------------------------
+
 escape-compose-correct (g ∘ id) f x = refl
 escape-compose-correct (g ∘ (h ∘ h')) f x = refl
 escape-compose-correct (g ∘ ⟨ h , h' ⟩ _) f x = refl
@@ -84,59 +106,142 @@ escape-compose-correct (g ∘ fold) f x = refl
 escape-compose-correct (g ∘ unfold) f x = refl
 escape-compose-correct (g ∘ arr) f x = refl
 escape-compose-correct (g ∘ Prim _) f x = refl
--- (g ∘ fst) and (g ∘ snd) with non-pair second arg (default case)
--- Note: some patterns are type-impossible (fst/snd expect product, inl/inr/curry produce other types)
+
+-- (g ∘ fst) with second arg NOT ⟨_,_⟩ (that's rule 11)
 escape-compose-correct (g ∘ fst) id x = refl
 escape-compose-correct (g ∘ fst) (f ∘ f') x = refl
+escape-compose-correct (g ∘ fst) fst x = refl
+escape-compose-correct (g ∘ fst) snd x = refl
+escape-compose-correct (g ∘ fst) [ _ , _ ] x = refl
+escape-compose-correct (g ∘ fst) apply x = refl
+escape-compose-correct (g ∘ fst) unfold x = refl
 escape-compose-correct (g ∘ fst) (Prim _) x = refl
+
+-- (g ∘ snd) with second arg NOT ⟨_,_⟩ (that's rule 12)
 escape-compose-correct (g ∘ snd) id x = refl
 escape-compose-correct (g ∘ snd) (f ∘ f') x = refl
+escape-compose-correct (g ∘ snd) fst x = refl
+escape-compose-correct (g ∘ snd) snd x = refl
+escape-compose-correct (g ∘ snd) [ _ , _ ] x = refl
+escape-compose-correct (g ∘ snd) apply x = refl
+escape-compose-correct (g ∘ snd) unfold x = refl
 escape-compose-correct (g ∘ snd) (Prim _) x = refl
+
+------------------------------------------------------------------------
+-- First arg: fst (with second arg NOT ⟨_,_⟩, that's rule 1)
+------------------------------------------------------------------------
+
 escape-compose-correct fst id x = refl
 escape-compose-correct fst (g ∘ h) x = refl
+escape-compose-correct fst fst x = refl
+escape-compose-correct fst snd x = refl
+escape-compose-correct fst [ _ , _ ] x = refl
+escape-compose-correct fst apply x = refl
+escape-compose-correct fst unfold x = refl
+escape-compose-correct fst (Prim _) x = refl
+
+------------------------------------------------------------------------
+-- First arg: snd (with second arg NOT ⟨_,_⟩, that's rule 2)
+------------------------------------------------------------------------
+
 escape-compose-correct snd id x = refl
 escape-compose-correct snd (g ∘ h) x = refl
+escape-compose-correct snd fst x = refl
+escape-compose-correct snd snd x = refl
+escape-compose-correct snd [ _ , _ ] x = refl
+escape-compose-correct snd apply x = refl
+escape-compose-correct snd unfold x = refl
+escape-compose-correct snd (Prim _) x = refl
+
+------------------------------------------------------------------------
+-- First arg: ⟨_,_⟩, inl, inr
+------------------------------------------------------------------------
+
 escape-compose-correct (⟨ g , h ⟩ _) f x = refl
 escape-compose-correct (inl _) f x = refl
 escape-compose-correct (inr _) f x = refl
--- case: second arg must produce sum type
+
+------------------------------------------------------------------------
+-- First arg: [_,_] (with second arg NOT inl/inr, those are rules 3-4)
+------------------------------------------------------------------------
+
 escape-compose-correct [ g , h ] id x = refl
 escape-compose-correct [ g , h ] (f ∘ f') x = refl
+escape-compose-correct [ g , h ] fst x = refl
+escape-compose-correct [ g , h ] snd x = refl
 escape-compose-correct [ g , h ] [ f , f' ] x = refl
+escape-compose-correct [ g , h ] apply x = refl
+escape-compose-correct [ g , h ] unfold x = refl
 escape-compose-correct [ g , h ] (Prim _) x = refl
--- Rules 9-10: terminal discards values - AllocMode transparent
-escape-compose-correct terminal (⟨ f , g ⟩ _) x = refl
-escape-compose-correct terminal (curry f _) x = refl
--- terminal with other arguments (default case)
+
+------------------------------------------------------------------------
+-- First arg: terminal (with second arg NOT ⟨_,_⟩/curry, those are rules 9-10)
+------------------------------------------------------------------------
+
 escape-compose-correct terminal id x = refl
 escape-compose-correct terminal (f ∘ g) x = refl
+escape-compose-correct terminal fst x = refl
+escape-compose-correct terminal snd x = refl
 escape-compose-correct terminal (inl _) x = refl
 escape-compose-correct terminal (inr _) x = refl
 escape-compose-correct terminal [ f , g ] x = refl
+escape-compose-correct terminal terminal x = refl
+escape-compose-correct terminal apply x = refl
+escape-compose-correct terminal fold x = refl
+escape-compose-correct terminal unfold x = refl
+escape-compose-correct terminal arr x = refl
 escape-compose-correct terminal (Prim _) x = refl
 
--- Rules 11-12: (f ∘ fst/snd) ∘ ⟨ g , h ⟩ - AllocMode transparent in pair
--- High impact for let bindings!
-escape-compose-correct (f ∘ fst) (⟨ g , h ⟩ _) x = refl
-escape-compose-correct (f ∘ snd) (⟨ g , h ⟩ _) x = refl
+------------------------------------------------------------------------
+-- First arg: initial
+------------------------------------------------------------------------
+
+escape-compose-correct initial (f ∘ f') x = refl
+escape-compose-correct initial [ _ , _ ] x = refl
+escape-compose-correct initial apply x = refl
+escape-compose-correct initial (Prim _) x = refl
+
+------------------------------------------------------------------------
+-- First arg: curry
+------------------------------------------------------------------------
 
 escape-compose-correct (curry g _) f x = refl
+
+------------------------------------------------------------------------
+-- First arg: apply (with second arg NOT ⟨_,_⟩, those are rules 5-6)
+------------------------------------------------------------------------
+
 escape-compose-correct apply id x = refl
 escape-compose-correct apply (g ∘ h) x = refl
+escape-compose-correct apply fst x = refl
+escape-compose-correct apply snd x = refl
+escape-compose-correct apply [ _ , _ ] x = refl
+escape-compose-correct apply apply x = refl
+escape-compose-correct apply unfold x = refl
 escape-compose-correct apply (Prim _) x = refl
 
--- Rule 7: fold ∘ inl - AllocMode transparent in injection
-escape-compose-correct fold (inl _) x = refl
+------------------------------------------------------------------------
+-- First arg: fold (with second arg NOT inl/inr, those are rules 7-8)
+------------------------------------------------------------------------
 
--- Rule 8: fold ∘ inr - AllocMode transparent in injection
-escape-compose-correct fold (inr _) x = refl
-
--- fold with other arguments (default case)
 escape-compose-correct fold id x = refl
 escape-compose-correct fold (f ∘ g) x = refl
+escape-compose-correct fold fst x = refl
+escape-compose-correct fold snd x = refl
 escape-compose-correct fold (⟨ f , g ⟩ _) x = refl
 escape-compose-correct fold [ f , g ] x = refl
+escape-compose-correct fold terminal x = refl
+escape-compose-correct fold (curry _ _) x = refl
+escape-compose-correct fold apply x = refl
+escape-compose-correct fold fold x = refl
+escape-compose-correct fold unfold x = refl
+escape-compose-correct fold arr x = refl
 escape-compose-correct fold (Prim _) x = refl
+
+------------------------------------------------------------------------
+-- First arg: unfold, arr, Prim
+------------------------------------------------------------------------
+
 escape-compose-correct unfold f x = refl
 escape-compose-correct arr f x = refl
 escape-compose-correct (Prim _) f x = refl
