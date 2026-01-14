@@ -13,6 +13,7 @@
 --   - Eta laws (⟨fst,snd⟩ = id, [inl,inr] = id)
 --   - Fixed point fusion (fold ∘ unfold = id)
 --   - Coproduct fusion (map f ∘ map g = map (f ∘ g))
+--   - Product fusion (bimap f g ∘ bimap h k = bimap (f∘h) (g∘k))
 --   - Distribution (⟨f,g⟩ ∘ h = ⟨f∘h,g∘h⟩, h ∘ [f,g] = [h∘f,h∘g])
 --   - Dead code elimination (terminal ∘ f = terminal)
 ------------------------------------------------------------------------
@@ -532,6 +533,42 @@ optimize-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl _) ∘ h , inr _ ] =
 -- [ inl ∘ f, inr ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ k ]
 optimize-compose [ (inl m1) ∘ f , inr m2 ] [ (inl _) ∘ h , (inr _) ∘ k ] =
   [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ k ]
+
+------------------------------------------------------------------------
+-- Product Functor Fusion Rules
+-- Eliminates intermediate pairs in bimap/first/second compositions
+------------------------------------------------------------------------
+
+-- Full bimap fusion: bimap f g ∘ bimap h k = bimap (f ∘ h) (g ∘ k)
+-- ⟨ f ∘ fst, g ∘ snd ⟩ ∘ ⟨ h ∘ fst, k ∘ snd ⟩ = ⟨ (f ∘ h) ∘ fst, (g ∘ k) ∘ snd ⟩
+optimize-compose (⟨ f ∘ fst , g ∘ snd ⟩ m) (⟨ h ∘ fst , k ∘ snd ⟩ _) =
+  ⟨ (f ∘ h) ∘ fst , (g ∘ k) ∘ snd ⟩ m
+
+-- First functor fusion: first f ∘ first g = first (f ∘ g)
+-- ⟨ f ∘ fst, snd ⟩ ∘ ⟨ g ∘ fst, snd ⟩ = ⟨ (f ∘ g) ∘ fst, snd ⟩
+optimize-compose (⟨ f ∘ fst , snd ⟩ m) (⟨ g ∘ fst , snd ⟩ _) =
+  ⟨ (f ∘ g) ∘ fst , snd ⟩ m
+
+-- Second functor fusion: second f ∘ second g = second (f ∘ g)
+-- ⟨ fst, f ∘ snd ⟩ ∘ ⟨ fst, g ∘ snd ⟩ = ⟨ fst, (f ∘ g) ∘ snd ⟩
+optimize-compose (⟨ fst , f ∘ snd ⟩ m) (⟨ fst , g ∘ snd ⟩ _) =
+  ⟨ fst , (f ∘ g) ∘ snd ⟩ m
+
+-- Mixed: bimap after first
+optimize-compose (⟨ f ∘ fst , g ∘ snd ⟩ m) (⟨ h ∘ fst , snd ⟩ _) =
+  ⟨ (f ∘ h) ∘ fst , g ∘ snd ⟩ m
+
+-- Mixed: bimap after second
+optimize-compose (⟨ f ∘ fst , g ∘ snd ⟩ m) (⟨ fst , h ∘ snd ⟩ _) =
+  ⟨ f ∘ fst , (g ∘ h) ∘ snd ⟩ m
+
+-- Mixed: first after bimap
+optimize-compose (⟨ f ∘ fst , snd ⟩ m) (⟨ g ∘ fst , h ∘ snd ⟩ _) =
+  ⟨ (f ∘ g) ∘ fst , h ∘ snd ⟩ m
+
+-- Mixed: second after bimap
+optimize-compose (⟨ fst , f ∘ snd ⟩ m) (⟨ g ∘ fst , h ∘ snd ⟩ _) =
+  ⟨ g ∘ fst , (f ∘ h) ∘ snd ⟩ m
 
 ------------------------------------------------------------------------
 -- Distribution Rules
