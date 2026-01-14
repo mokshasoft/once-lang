@@ -1386,6 +1386,59 @@ mutual
           readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)
 
 ------------------------------------------------------------------------
+-- Validity wrappers for curry and apply (Phase C)
+-- These take ValidAt input and return IRStarResultV
+------------------------------------------------------------------------
+
+  -- | Validity-based curry execution
+  -- Takes ValidAt input, bridges to encode internally, returns IRStarResultV
+  run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
+  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+    let rdi-eq = addr-from-valid input-valid
+        (s' , result) = run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+    in s' , record
+      { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
+      ; ir-result-valid = valid-from-encode (ir-rax result)
+      ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
+      ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
+      ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
+      ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
+      ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
+      ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+
+  -- | Validity-based apply execution
+  -- Takes ValidAt input, bridges to encode internally, returns IRStarResultV
+  run-apply-star-v : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
+  run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+    let rdi-eq = addr-from-valid input-valid
+        (s' , result) = run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+    in s' , record
+      { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
+      ; ir-result-valid = valid-from-encode (ir-rax result)
+      ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
+      ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
+      ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
+      ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
+      ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
+      ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+
+------------------------------------------------------------------------
 -- Validity-based dispatcher (Phase 6b)
 -- Direct validity-based execution where available, fallback to bridging otherwise
 ------------------------------------------------------------------------
@@ -1436,7 +1489,8 @@ run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false 
 -- Initial: absurd case
 run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   ⊥-elim x
--- Remaining cases: bridge to encode-based implementations (fst, snd, case, curry, apply)
+-- fst/snd: bridge validity→encode, call encode impl
+-- (These require pair decomposition which is complex - future work)
 -- fst: bridge validity→encode, call encode impl
 run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   let rdi-eq = addr-from-valid input-valid
@@ -1466,29 +1520,9 @@ run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq 
 -- case: direct validity call
 run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   run-case-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
--- curry: bridge validity→encode, call encode impl
+-- curry: direct validity call
 run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  let rdi-eq = addr-from-valid input-valid
-      (s' , result) = run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  in s' , record
-    { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
-    ; ir-result-valid = valid-from-encode (ir-rax result)
-    ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
-    ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-    ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
-    ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
-    ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
-    ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
--- apply: bridge validity→encode, call encode impl
+  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+-- apply: direct validity call
 run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  let rdi-eq = addr-from-valid input-valid
-      (s' , result) = run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  in s' , record
-    { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
-    ; ir-result-valid = valid-from-encode (ir-rax result)
-    ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
-    ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-    ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
-    ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
-    ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
-    ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+  run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
