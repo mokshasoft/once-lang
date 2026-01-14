@@ -381,18 +381,32 @@ fusion-correct : ∀ f x → eval (fused f) x ≡ eval f x
 fusion-correct f x = refl  -- or simple equational reasoning
 ```
 
-## Future Directions
-
-### Product Functor Fusion
-
-Symmetric to coproduct fusion, we could add product functor fusion:
-
+**Product functor fusion** (deforestation for product types):
 ```agda
--- Product bimap fusion: bimap f g ∘ bimap h k = bimap (f ∘ h) (g ∘ k)
+-- Full bimap fusion: bimap f g ∘ bimap h k = bimap (f ∘ h) (g ∘ k)
 ⟨ f ∘ fst, g ∘ snd ⟩ ∘ ⟨ h ∘ fst, k ∘ snd ⟩  →  ⟨ (f ∘ h) ∘ fst, (g ∘ k) ∘ snd ⟩
+
+-- First functor fusion
+⟨ f ∘ fst, snd ⟩ ∘ ⟨ g ∘ fst, snd ⟩  →  ⟨ (f ∘ g) ∘ fst, snd ⟩
+
+-- Second functor fusion
+⟨ fst, f ∘ snd ⟩ ∘ ⟨ fst, g ∘ snd ⟩  →  ⟨ fst, (f ∘ g) ∘ snd ⟩
+
+-- Mixed fusion (4 additional rules for combinations)
 ```
 
-This would require detecting the "bimap" pattern and fusing compositions.
+These rules eliminate intermediate pair allocations when composing product maps.
+
+## Future Directions
+
+### Curry/Apply Laws
+
+Additional exponential laws that could be added:
+```agda
+curry f ∘ g  →  curry (f ∘ ⟨ g ∘ fst, snd ⟩)
+```
+
+This pushes composition into the curry body, potentially enabling further simplifications. However, this rule creates new terms (the pair), which causes termination issues with structural recursion. Would need a fuel-based approach in `optimize-n`.
 
 ### Product Associativity Normalization
 
