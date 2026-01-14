@@ -319,16 +319,33 @@ fold ∘ ... ∘ unfold
 
 ### Implemented Fusion Rules
 
-**Basic fold/unfold cancellation** (already in Once):
+**Basic fold/unfold cancellation:**
 ```agda
 fold ∘ unfold  →  id
 unfold ∘ fold  →  id
 ```
 
-**Composition through fold** (to be added):
+**Composition through fold/unfold:**
 ```agda
-fold ∘ (unfold ∘ f)  →  f    -- when f : A → Fix F
+fold ∘ (unfold ∘ f)  →  f
+unfold ∘ (fold ∘ f)  →  f
 ```
+
+**Coproduct functor fusion** (deforestation for sum types):
+```agda
+-- Right functor fusion: fmap h ∘ fmap k = fmap (h ∘ k)
+[ inl, inr ∘ h ] ∘ [ inl, inr ∘ k ]  →  [ inl, inr ∘ (h ∘ k) ]
+
+-- Left functor fusion
+[ inl ∘ f, inr ] ∘ [ inl ∘ g, inr ]  →  [ inl ∘ (f ∘ g), inr ]
+
+-- Bimap fusion: bimap f g ∘ bimap h k = bimap (f ∘ h) (g ∘ k)
+[ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ∘ k ]  →  [ inl ∘ (f ∘ h), inr ∘ (g ∘ k) ]
+
+-- Mixed fusion (4 additional rules for combinations)
+```
+
+These rules eliminate intermediate sum allocations when composing coproduct maps.
 
 ### Short-Cut Fusion
 
@@ -365,6 +382,28 @@ fusion-correct f x = refl  -- or simple equational reasoning
 ```
 
 ## Future Directions
+
+### Product Functor Fusion
+
+Symmetric to coproduct fusion, we could add product functor fusion:
+
+```agda
+-- Product bimap fusion: bimap f g ∘ bimap h k = bimap (f ∘ h) (g ∘ k)
+⟨ f ∘ fst, g ∘ snd ⟩ ∘ ⟨ h ∘ fst, k ∘ snd ⟩  →  ⟨ (f ∘ h) ∘ fst, (g ∘ k) ∘ snd ⟩
+```
+
+This would require detecting the "bimap" pattern and fusing compositions.
+
+### Product Associativity Normalization
+
+Normalize nested products to a canonical form:
+
+```agda
+-- Type isomorphism (not equality)
+(A × B) × C  ≅  A × (B × C)
+```
+
+This requires working with type isomorphisms rather than simple rewrites, since the types differ. Could be useful for optimizing tuple-heavy code.
 
 ### Stream Fusion
 

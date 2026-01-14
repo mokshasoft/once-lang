@@ -13,6 +13,7 @@
 --   - Eta laws (⟨fst,snd⟩ = id, [inl,inr] = id)
 --   - Fixed point fusion (fold ∘ unfold = id)
 --   - Coproduct fusion (map f ∘ map g = map (f ∘ g))
+--   - Distribution (⟨f,g⟩ ∘ h = ⟨f∘h,g∘h⟩, h ∘ [f,g] = [h∘f,h∘g])
 --   - Dead code elimination (terminal ∘ f = terminal)
 ------------------------------------------------------------------------
 
@@ -531,6 +532,19 @@ optimize-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl _) ∘ h , inr _ ] =
 -- [ inl ∘ f, inr ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ k ]
 optimize-compose [ (inl m1) ∘ f , inr m2 ] [ (inl _) ∘ h , (inr _) ∘ k ] =
   [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ k ]
+
+------------------------------------------------------------------------
+-- Distribution Rules
+-- Push compositions through pair/case to expose more optimizations
+------------------------------------------------------------------------
+
+-- Pairing distribution: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
+-- Exposes beta reductions when f or g are projections
+optimize-compose (⟨ f , g ⟩ m) h = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+
+-- Case distribution: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
+-- Pushes computation into branches
+optimize-compose h [ f , g ] = [ optimize-compose h f , optimize-compose h g ]
 
 ------------------------------------------------------------------------
 -- Associativity (enables more optimizations)
