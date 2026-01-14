@@ -419,6 +419,38 @@ Normalize nested products to a canonical form:
 
 This requires working with type isomorphisms rather than simple rewrites, since the types differ. Could be useful for optimizing tuple-heavy code.
 
+### Advanced Recursion Scheme Fusion
+
+Beyond the basic `fold ∘ unfold = id` laws already implemented, recursion scheme theory offers more powerful fusion:
+
+**Banana-split** (fuse two folds into one):
+```agda
+⟨ cata f , cata g ⟩ = cata ⟨ f , g ⟩
+```
+
+Two traversals of the same recursive structure become one traversal producing a pair. Eliminates duplicate work when computing multiple results from the same input.
+
+**Hylomorphism deforestation**:
+```agda
+cata alg ∘ ana coalg  →  hylo alg coalg
+```
+
+An unfold followed by a fold can be fused into a hylomorphism that never builds the intermediate `Fix F` structure. The algebra and coalgebra are composed directly.
+
+**Challenge for Once:**
+
+In our IR, `cata` and `ana` are not primitives - they're patterns built from `fold`, `unfold`, and functor maps:
+```agda
+cata alg = alg ∘ fmap (cata alg) ∘ unfold
+ana coalg = fold ∘ fmap (ana coalg) ∘ coalg
+```
+
+Detecting "this composition forms a catamorphism" requires recognizing recursive patterns, which is beyond simple pattern matching. Would likely need a separate analysis pass.
+
+**References:**
+- Meijer et al. "Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire" (1991)
+- "sumtypeofway" recursion schemes blog series
+
 ### Stream Fusion
 
 Instead of fusing list operations directly, convert to a stream representation that fuses naturally:
