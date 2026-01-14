@@ -195,7 +195,8 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
-  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Key: ValidAt for input pair (replaces rdi-eq)
+  ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
   ValidAt arg (encode arg) (memory s) →
   ValidAt env (encode env) (memory s) →
@@ -206,8 +207,8 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr env
-                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq v-arg v-env =
-  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient input-valid v-arg v-env =
+  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient input-valid
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
            mem-env mem-layout , mem-cp mem-layout) v-arg v-env
       s' = proj₁ result
@@ -287,7 +288,8 @@ test-apply-with-wf-eliminates-postulate :
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
-  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Key: ValidAt for input pair (replaces rdi-eq)
+  ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
   ValidAt arg (encode arg) (memory s) →
   ValidAt env (encode env) (memory s) →

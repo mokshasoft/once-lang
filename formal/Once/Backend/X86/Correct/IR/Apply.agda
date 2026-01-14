@@ -80,7 +80,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
          addr-from-valid; valid-from-encode;
-         valid-subst-addr-mem; valid-subst-heap-preserved)
+         valid-subst-addr-mem; valid-subst-heap-preserved;
+         valid-pair-decompose; valid-in-heap)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -934,8 +935,8 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
-  -- Key: rdi contains encoded pair (closure, arg) for heap-stack separation
-  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Key: ValidAt for input pair (replaces rdi-eq for heap-stack separation)
+  ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
@@ -947,7 +948,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   ValidAt env (encode env) (memory s) →
   ∃[ s' ] ApplyWfResult {A} {B} prefix suffix semantics arg s s'
 run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg s
-                  wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) v-arg v-env =
+                  wf h-eq pc-eq stack-inv rsp-sufficient input-valid (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) v-arg v-env =
   s-final , record
     { star         = star-all
     ; h-final      = h-f
@@ -976,25 +977,35 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg s
     cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
 
     -- Step 1: Trace 6 setup instructions (push + 5 movs)
-    -- Derive region proofs from rdi-eq for heap-stack disjointness
+    -- Derive region proofs from input-valid for heap-stack disjointness
+    pair : ⟦ (A ⇒ B) * A ⟧
     pair = (cl , arg)
+
+    -- rdi-in-heap derived directly from input validity
     rdi-in-heap : region-of (readReg (regs s) rdi) ≡ heap
-    rdi-in-heap = subst (λ a → region-of a ≡ heap) (sym rdi-eq) (encode-in-heap-sem pair)
+    rdi-in-heap = valid-in-heap input-valid
 
-    -- Derive closure-addr region from pair structure
-    -- closure-addr is read from memory at rdi, which is encode pair
-    -- encode-pair-fst tells us mem[encode pair] = encode (fst pair) = encode cl
-    -- So closure-addr = encode cl, hence closure-addr is in heap
-    closure-addr-eq : closure-addr ≡ encode {A ⇒ B} cl
-    closure-addr-eq =
-      let mem-at-pair : readMem (memory s) (encode pair) ≡ just (encode {A ⇒ B} cl)
-          mem-at-pair = encode-pair-fst cl arg (memory s)
-          mem-cl-subst : readMem (memory s) (encode pair) ≡ just closure-addr
-          mem-cl-subst = subst (λ a → readMem (memory s) a ≡ just closure-addr) rdi-eq mem-cl
-      in just-injective (trans (sym mem-cl-subst) mem-at-pair)
+    -- Decompose input validity to get closure validity
+    -- valid-pair-decompose gives us component validities + PairAtS
+    decomp = valid-pair-decompose input-valid
+    closure-addr' = proj₁ decomp
+    arg-addr' = proj₁ (proj₂ decomp)
+    v-cl-decomp = proj₁ (proj₂ (proj₂ decomp))
+    v-arg-decomp = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
+    pair-at-decomp = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
+    -- closure-addr' from decomposition equals closure-addr from memory layout
+    -- Both are the value at mem[rdi]
+    closure-addr'-eq : closure-addr' ≡ closure-addr
+    closure-addr'-eq = just-injective (trans (sym (fst-valid-s pair-at-decomp)) mem-cl)
+
+    -- Transport validity along the address equality
+    v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)
+    v-cl = subst (λ a → ValidAt cl a (memory s)) closure-addr'-eq v-cl-decomp
+
+    -- closure-in-heap derived from closure validity
     closure-in-heap : region-of closure-addr ≡ heap
-    closure-in-heap = subst (λ a → region-of a ≡ heap) (sym closure-addr-eq) (encode-in-heap-sem {A ⇒ B} cl)
+    closure-in-heap = valid-in-heap v-cl
 
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
                      h-eq pc-eq stack-inv rsp-sufficient rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
@@ -1363,7 +1374,8 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
-  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Key: ValidAt for input pair (replaces rdi-eq)
+  ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
@@ -1381,9 +1393,9 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg s
-                       wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout v-arg v-env =
+                       wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env =
   let result = run-apply-with-wf prefix suffix code-ptr env semantics arg s
-                 wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout v-arg v-env
+                 wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env
       s' = proj₁ result
       module R = ApplyWfResult (proj₂ result)
   in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
@@ -1433,7 +1445,8 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
   halted s ≡ false →
   pc s ≡ offset →
-  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x →
+  -- Key: ValidAt for input pair (replaces rdi-eq)
+  ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
@@ -1449,7 +1462,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   ∃[ s' ] (IRStarResult (apply {A} {B}) prog s s' x offset
            × ValidAt (eval (apply {A} {B}) x) (readReg (regs s') rax) (memory s'))
 run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg s
-                       wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env =
+                       wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env =
   s' , record
     { ir-star = WfR.star
     ; ir-halted = WfR.h-final
@@ -1480,7 +1493,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg s
 
     -- Use proven run-apply-with-wf
     wf-result = run-apply-with-wf prefix suffix code-ptr env semantics arg s
-                  wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout v-arg v-env
+                  wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
 
@@ -1603,14 +1616,12 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     x : ⟦ (A ⇒ B) * A ⟧
     x = (cl , arg)
 
-    -- Bridge: construct rdi-eq from validity
+    -- Construct input validity from component validities (no bridge!)
     input-valid : ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s)
     input-valid = valid-pair v-cl v-arg pair-at
 
-    rdi-eq : readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} x
-    rdi-eq = addr-from-valid input-valid
-
     -- Bridge: construct arg-addr ≡ encode arg from arg validity
+    -- TODO: Eliminate this bridge by changing memory layout interface
     arg-addr-eq : arg-addr ≡ encode arg
     arg-addr-eq = addr-from-valid v-arg
 
@@ -1642,10 +1653,10 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     v-arg-at-encode : ValidAt arg (encode arg) (memory s)
     v-arg-at-encode = subst (λ a → ValidAt arg a (memory s)) arg-addr-eq v-arg
 
-    -- Call existing implementation (now takes env value directly)
+    -- Call existing implementation (now takes input-valid directly - no rdi-eq bridge!)
     -- Returns pair: (IRStarResult, ValidAt) - validity is direct from run-apply-with-wf!
     (s' , ir-result , result-valid) = run-apply-to-ir-result prefix suffix code-ptr env semantics arg s
-                      wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout v-arg-at-encode v-env
+                      wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg-at-encode v-env
 
   in s' , record
     { ir-star = IRStarResult.ir-star ir-result
