@@ -77,7 +77,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; valid-closure;
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
-         addr-from-valid; valid-from-encode)
+         addr-from-valid; valid-from-encode;
+         valid-subst-heap-preserved)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -949,9 +950,11 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
+  -- Validity-based argument (for thunk-correct)
+  ValidAt arg (encode arg) (memory s) →
   ∃[ s' ] ApplyWfResult {A} {B} prefix suffix semantics arg s s'
 run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
-                  wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) =
+                  wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) v-arg =
   s-final , record
     { star         = star-all
     ; h-final      = h-f
@@ -1026,8 +1029,40 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
     -- Step 3: Use thunk-correct from ClosureWellFormed
     -- The thunk executes and returns to ret-addr (offset+7) with result in rax
+
+    -- Derive validity-based arg proof for thunk-correct
+    -- We have v-arg : ValidAt arg (encode arg) (memory s)
+    -- We need: ValidAt arg (readReg (regs s-call) rdi) (memory s-call)
+    -- Chain: s-call.rdi = s-setup.rdi = encode arg, heap preserved from s to s-call
+
+    -- Address chain: s-call.rdi ≡ encode arg
     rdi-for-thunk : readReg (regs s-call) rdi ≡ encode arg
     rdi-for-thunk = trans rdi-call rdi-setup
+
+    -- Heap preservation through setup: setup only writes to stack (push)
+    -- Using D041 region-based disjointness
+    --
+    -- Setup phase: memory s-setup = writeMem (memory s) (rsp-8) old-r15
+    -- The write address (rsp-8) is in stack region, so heap is preserved
+    setup-write-in-stack : region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
+    setup-write-in-stack = abstract-to-rsp-slot-in-stack s
+                             (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+
+    heap-pres-setup : ∀ a → region-of a ≡ heap →
+                      readMem (memory s-setup) a ≡ readMem (memory s) a
+    heap-pres-setup a a-in-heap =
+      stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 a
+        setup-write-in-stack a-in-heap
+
+    -- Compose: heap preserved from s to s-call
+    heap-pres-s-to-call : ∀ a → region-of a ≡ heap →
+                          readMem (memory s-call) a ≡ readMem (memory s) a
+    heap-pres-s-to-call a a-in-heap = trans (mem-heap-call-phase a a-in-heap)
+                                            (heap-pres-setup a a-in-heap)
+
+    -- Validity at s-call: propagate using heap preservation
+    arg-valid-at-call : ValidAt arg (readReg (regs s-call) rdi) (memory s-call)
+    arg-valid-at-call = valid-subst-heap-preserved v-arg (sym rdi-for-thunk) heap-pres-s-to-call
 
     r12-for-thunk : readReg (regs s-call) r12 ≡ env-addr
     r12-for-thunk = trans r12-call r12-setup
@@ -1070,7 +1105,7 @@ run-apply-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
         r15-call<len = Relation.Binary.PropositionalEquality.subst (_< length prog) (sym r15-call-eq-code-ptr) (code-ptr-valid wf)
 
     thunk-result = thunk-correct wf arg s-call ret-addr apply-sp
-                     h-call pc-call rdi-for-thunk r12-for-thunk mem-ret
+                     h-call pc-call arg-valid-at-call r12-for-thunk mem-ret
                      stack-inv-call rsp-sufficient-call apply-sp-bound r15-call-in-code
     s-thunk = proj₁ thunk-result
     thunk-res = proj₁ (proj₂ thunk-result)
@@ -1309,6 +1344,8 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
+  -- Validity-based argument (for thunk-correct)
+  ValidAt arg (encode arg) (memory s) →
   -- Note: The input type for apply is (closure , arg) but we abstract over semantics
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -1317,9 +1354,9 @@ run-apply-star-with-wf : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-star-with-wf {A} {B} prefix suffix code-ptr env-addr semantics arg s
-                       wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout =
+                       wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout v-arg =
   let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
-                 wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout
+                 wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout v-arg
       s' = proj₁ result
       module R = ApplyWfResult (proj₂ result)
   in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
@@ -1378,9 +1415,11 @@ run-apply-to-ir-result : ∀ {A B} (prefix suffix : Program)
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) ×
     readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
+  -- Validity-based argument (for thunk-correct)
+  ValidAt arg (encode arg) (memory s) →
   ∃[ s' ] IRStarResult (apply {A} {B}) prog s s' x offset
 run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
-                       wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout =
+                       wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout v-arg =
   s' , record
     { ir-star = WfR.star
     ; ir-halted = WfR.h-final
@@ -1410,7 +1449,7 @@ run-apply-to-ir-result {A} {B} prefix suffix code-ptr env-addr semantics arg s
 
     -- Use proven run-apply-with-wf
     wf-result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s
-                  wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout
+                  wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-layout v-arg
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
 
@@ -1566,9 +1605,13 @@ run-apply-to-ir-result-v {A} {B} prefix suffix code-ptr env-addr semantics closu
         readMem (memory s) (cl-addr +ℕ' slot-size) ≡ just code-ptr)
     mem-layout = closure-addr , mem-cl , mem-arg' , mem-env , mem-code-ptr
 
+    -- Construct validity at encode arg from v-arg at arg-addr
+    v-arg-at-encode : ValidAt arg (encode arg) (memory s)
+    v-arg-at-encode = subst (λ a → ValidAt arg a (memory s)) arg-addr-eq v-arg
+
     -- Call existing encode-based implementation
     (s' , result) = run-apply-to-ir-result prefix suffix code-ptr env-addr semantics arg s
-                      wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout
+                      wf h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv mem-layout v-arg-at-encode
 
     -- Convert output: ir-rax says rax ≡ encode (eval apply x)
     result-valid : ValidAt (eval (apply {A} {B}) x) (readReg (regs s') rax) (memory s')

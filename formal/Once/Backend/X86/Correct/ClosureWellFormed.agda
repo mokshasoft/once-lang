@@ -131,10 +131,11 @@ record ClosureWellFormed {A B : Type} (prog : Program)
     -- caller-sp: identifies the caller's stack frame (D041)
     -- caller-sp-bound: caller's frame starts 8 bytes above current rsp (call convention)
     -- r15-in-code-evidence: r15 is in code region (set by Apply before call)
+    -- arg-valid: validity proof for argument (eliminates encode bridging!)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
-      readReg (regs s) rdi ≡ encode a →
+      ValidAt a (readReg (regs s) rdi) (memory s) →  -- validity-based!
       readReg (regs s) r12 ≡ env-addr →
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →

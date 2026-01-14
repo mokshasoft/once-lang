@@ -448,9 +448,9 @@ mutual
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -557,9 +557,9 @@ mutual
       wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ rdi-eq₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
 
   ------------------------------------------------------------------------
@@ -592,7 +592,7 @@ mutual
     in
     halted s ≡ false →
     pc s ≡ thunk-offset →
-    readReg (regs s) rdi ≡ encode arg →
+    ValidAt arg (readReg (regs s) rdi) (memory s) →  -- validity-based!
     readReg (regs s) r12 ≡ encode env →
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
@@ -602,7 +602,7 @@ mutual
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq rdi-eq r12-eq mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry =
+                           h-eq pc-eq v-arg r12-eq mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -623,9 +623,14 @@ mutual
       f-offset = length prefix +ℕ 14      -- 6 closure + 8 thunk setup
       ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- f-offset + len-f + 3 cleanup
 
+      -- Bridge: convert validity to encode for thunk-setup-star
+      -- This is the internal bridge for curry-thunk-correct-impl
+      rdi-eq-arg : readReg (regs s) rdi ≡ encode arg
+      rdi-eq-arg = addr-from-valid v-arg
+
       -- Step 1: Trace 8 setup instructions
       setup-result = thunk-setup-star f prefix suffix env arg s
-                       h-eq pc-eq rdi-eq r12-eq stack-inv rsp-sufficient
+                       h-eq pc-eq rdi-eq-arg r12-eq stack-inv rsp-sufficient
       s-after-setup = proj₁ setup-result
       star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))

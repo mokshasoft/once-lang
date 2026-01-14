@@ -43,6 +43,8 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          code-ptr-valid; thunk-correct;
          thunk-star; thunk-halted; thunk-rax;
          thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt)
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (_≟_)
@@ -188,6 +190,8 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Validity-based argument (for thunk-correct)
+  ValidAt arg (encode arg) (memory s) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
@@ -195,10 +199,10 @@ run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
-                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq =
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq v-arg =
   let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
-           mem-env mem-layout , mem-cp mem-layout)
+           mem-env mem-layout , mem-cp mem-layout) v-arg
       s' = proj₁ result
       module R = ApplyProof.ApplyWfResult (proj₂ result)
   in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
@@ -276,6 +280,8 @@ test-apply-with-wf-eliminates-postulate :
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
+  -- Validity-based argument (for thunk-correct)
+  ValidAt arg (encode arg) (memory s) →
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
