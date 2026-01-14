@@ -71,7 +71,11 @@ open import Data.Bool using (Bool; false)
 open import Once.Backend.X86.Correct.MemoryValid
   using (encode-inl-tag-derived; encode-inl-val-derived;
          encode-inr-tag-derived; encode-inr-val-derived;
-         ValidAt; addr-from-valid; valid-from-encode)
+         ValidAt;
+         -- Validity-based sum structure postulates
+         valid-inl-tag-is-0; valid-inl-val-ptr;
+         valid-inr-tag-is-1; valid-inr-val-ptr;
+         valid-subst-heap-preserved)
 
 open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
@@ -90,7 +94,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 mutual
   -- | Validity-based case execution
   -- Takes ValidAt input, returns IRStarResultV
-  -- Bridges internally to encode-based implementation
+  -- Delegates directly to validity-based branch implementations - no bridging!
   run-case-star-v : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -101,61 +105,47 @@ mutual
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
   run-case-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    let rdi-eq = addr-from-valid input-valid
-        (s' , result) = run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-    in s' , record
-      { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
-      ; ir-result-valid = valid-from-encode (ir-rax result)
-      ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
-      ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-      ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
-      ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
-      ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
-      ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+    -- Delegate directly - run-case-star-direct now takes validity and returns IRStarResultV
+    run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
-  -- | Encode-based case execution (kept for internal use)
-  -- Bridges from validity to encode at entry, calls branch implementations
+  -- | Validity-based case execution
+  -- Dispatches to branch implementations based on sum injection
   run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-    in ∃[ s' ] IRStarResult [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+    in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
+  run-case-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
     with x
-  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix caller-sp a s h-false pc-eq rdi-eq-inl stack-inv rsp-sufficient rbp-inv
-    where
-      rdi-eq-inl : readReg (regs s) rdi ≡ encode {A + B} (inj₁ a)
-      rdi-eq-inl = rdi-eq
-  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix caller-sp b s h-false pc-eq rdi-eq-inr stack-inv rsp-sufficient rbp-inv
-    where
-      rdi-eq-inr : readReg (regs s) rdi ≡ encode {A + B} (inj₂ b)
-      rdi-eq-inr = rdi-eq
+  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
-  -- | Star-based case left branch (inl)
+  -- | Star-based case left branch (inl) - validity-based version
   -- Structure:
   --   Phase 1: Setup - 4 instructions (mov r11 [rdi], cmp, jne not taken, mov rdi [rdi+8])
   --   Phase 2: Execute f - recursive Star call via abstract dispatcher
   --   Phase 3: Jump to end - 2 instructions (jmp, label)
   -- caller-sp: StackPointer from the caller (D041)
+  -- NOTE: Now takes ValidAt input and returns IRStarResultV - no encode bridging!
   run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode {A + B} (inj₁ a) →
+    ValidAt {A + B} (inj₁ a) (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-    in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {A} {B} {C} f g prefix suffix caller-sp a s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₁ a) (length prefix)
+  run-case-star-direct-inl {A} {B} {C} f g prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
       ; ir-pc = pc-final
-      ; ir-rax = rax-final
+      ; ir-result-valid = result-valid
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
@@ -224,22 +214,31 @@ mutual
       suffix-for-helper : Program
       suffix-for-helper = code-f ++ suffix-f
 
-      -- Derive memory preconditions from encode axioms and rdi-eq
+      -- Derive memory preconditions from validity (no encode bridging!)
       mem-tag-precond : readMem (memory s) (readReg (regs s) rdi) ≡ just 0
-      mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 0)
-                              (sym rdi-eq) (encode-inl-tag {A} {B} a (memory s))
+      mem-tag-precond = valid-inl-tag-is-0 input-valid
 
-      mem-val-precond : readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode a)
-      mem-val-precond = subst (λ addr → readMem (memory s) (addr +ℕ slot-size) ≡ just (encode a))
-                              (sym rdi-eq) (encode-inl-val {A} {B} a (memory s))
+      -- Extract value pointer and child validity from sum validity
+      val-ptr-data : ∃[ val-addr ] (readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val-addr × ValidAt a val-addr (memory s))
+      val-ptr-data = valid-inl-val-ptr input-valid
+
+      val-addr : Word
+      val-addr = proj₁ val-ptr-data
+
+      mem-val-precond-raw : readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val-addr
+      mem-val-precond-raw = proj₁ (proj₂ val-ptr-data)
+
+      child-valid : ValidAt a val-addr (memory s)
+      child-valid = proj₂ (proj₂ val-ptr-data)
 
       -- Use case-inl-setup-star from SeqExec.agda
       -- This executes the 4 setup instructions and returns the result record
+      -- val-addr is the child value pointer extracted from validity
       inl-setup-result : ∃[ s' ] CaseInlSetupResult
                            (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper)
-                           s s' prefix (encode a)
-      inl-setup-result = case-inl-setup-star prefix suffix-for-helper right-offset (encode a) s
-                           h-false pc-eq mem-tag-precond mem-val-precond
+                           s s' prefix val-addr
+      inl-setup-result = case-inl-setup-star prefix suffix-for-helper right-offset val-addr s
+                           h-false pc-eq mem-tag-precond mem-val-precond-raw
 
       -- Extract state and result record
       s-setup-raw : State
@@ -247,7 +246,7 @@ mutual
 
       setup-rec : CaseInlSetupResult
                     (prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper)
-                    s s-setup-raw prefix (encode a)
+                    s s-setup-raw prefix val-addr
       setup-rec = proj₂ inl-setup-result
 
       -- Extract fields from the result record (star-based)
@@ -260,7 +259,8 @@ mutual
       pc-setup-raw : pc s-setup-raw ≡ length prefix +ℕ 4
       pc-setup-raw = CaseInlSetupResult.pc-eq setup-rec
 
-      rdi-setup-raw : readReg (regs s-setup-raw) rdi ≡ encode a
+      -- rdi in s-setup-raw contains val-addr (the child value pointer)
+      rdi-setup-raw : readReg (regs s-setup-raw) rdi ≡ val-addr
       rdi-setup-raw = CaseInlSetupResult.rdi-eq setup-rec
 
       r14-setup-raw : readReg (regs s-setup-raw) r14 ≡ readReg (regs s) r14
@@ -297,10 +297,11 @@ mutual
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       -- Star-based: uses Star relation directly instead of fuel-based exec
+      -- Note: rdi contains val-addr (child value pointer), not encode a
       setup-result : ∃[ s-setup ] (Star prog s s-setup
                                     × halted s-setup ≡ false
                                     × pc s-setup ≡ length prefix +ℕ 4
-                                    × readReg (regs s-setup) rdi ≡ encode a
+                                    × readReg (regs s-setup) rdi ≡ val-addr
                                     × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
                                     × readReg (regs s-setup) r15 ≡ readReg (regs s) r15
                                     × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
@@ -339,9 +340,14 @@ mutual
       rbp-inv-setup : RbpInvariant s-setup
       rbp-inv-setup = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s s-setup rbp-inv rsp-setup rbp-setup
 
-      -- Bridge: encode → validity for recursive call
+      -- Derive input validity for f from child-valid (no encode bridging!)
+      -- child-valid : ValidAt a val-addr (memory s)
+      -- rdi-setup : readReg (regs s-setup) rdi ≡ val-addr
+      -- mem-setup : memory s-setup ≡ memory s
       input-valid-f : ValidAt a (readReg (regs s-setup) rdi) (memory s-setup)
-      input-valid-f = valid-from-encode rdi-setup
+      input-valid-f = valid-subst-heap-preserved child-valid
+                        (sym rdi-setup)  -- addr: val-addr → rdi in s-setup
+                        (λ addr _ → subst (λ m → readMem (memory s-setup) addr ≡ readMem m addr) (sym mem-setup) refl)
 
       -- Recursive call to f via validity-based dispatcher
       step-f-v : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
@@ -353,32 +359,11 @@ mutual
       r-f-v : IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
       r-f-v = proj₂ step-f-v
 
-      -- Convert IRStarResultV to IRStarResult for rest of proof
-      r-f : IRStarResult f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
-      r-f = record
-        { ir-star = IRStarResultV.ir-star r-f-v
-        ; ir-halted = IRStarResultV.ir-halted r-f-v
-        ; ir-pc = IRStarResultV.ir-pc r-f-v
-        ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid r-f-v)
-        ; ir-r14 = IRStarResultV.ir-r14 r-f-v
-        ; ir-r15 = IRStarResultV.ir-r15 r-f-v
-        ; ir-rbp = IRStarResultV.ir-rbp r-f-v
-        ; ir-mem = IRStarResultV.ir-mem r-f-v
-        ; ir-mem-rbp = IRStarResultV.ir-mem-rbp r-f-v
-        ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 r-f-v
-        ; ir-stack-inv = IRStarResultV.ir-stack-inv r-f-v
-        ; ir-capacity = IRStarResultV.ir-capacity r-f-v
-        ; ir-rbp-inv = IRStarResultV.ir-rbp-inv r-f-v
-        ; ir-mem-above = IRStarResultV.ir-mem-above r-f-v
-        ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 r-f-v
-        ; ir-mem-code = IRStarResultV.ir-mem-code r-f-v
-        ; ir-mem-heap = IRStarResultV.ir-mem-heap r-f-v
-        ; ir-closure-wf = IRStarResultV.ir-closure-wf r-f-v
-        }
+      -- Use r-f-v directly - no conversion to encode-based IRStarResult!
       star-f-raw : Star (prefix-f ++ code-f ++ suffix-f) s-setup s1
-      star-f-raw = ir-star r-f
-      h1 = ir-halted r-f
-      pc1-raw = ir-pc r-f  -- pc s1 = length prefix-f + len-f = length prefix + 4 + len-f
+      star-f-raw = IRStarResultV.ir-star r-f-v
+      h1 = IRStarResultV.ir-halted r-f-v
+      pc1-raw = IRStarResultV.ir-pc r-f-v  -- pc s1 = length prefix-f + len-f = length prefix + 4 + len-f
 
       -- Convert star-f to use prog
       star-f : Star prog s-setup s1
@@ -386,7 +371,7 @@ mutual
 
       -- Convert closure-wf from f to use prog
       closure-wf-f-raw : ClosureWFOutput (prefix-f ++ code-f ++ suffix-f)
-      closure-wf-f-raw = ir-closure-wf r-f
+      closure-wf-f-raw = IRStarResultV.ir-closure-wf r-f-v
       closure-wf-final : ClosureWFOutput prog
       closure-wf-final = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
 
@@ -422,38 +407,36 @@ mutual
       pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
       pc-final = pc-final-raw
 
-      -- rax-final: from ir-rax r-f, preserved through jump
-      rax-final : readReg (regs s-final) rax ≡ encode (eval f a)
-      rax-final = trans rax-jump (ir-rax r-f)
+      -- Result validity: propagate through jump phase (heap preserved)
+      -- IRStarResultV.ir-result-valid r-f-v : ValidAt (eval f a) (readReg (regs s1) rax) (memory s1)
+      -- rax-jump : readReg (regs s-final) rax ≡ readReg (regs s1) rax
+      -- mem-jump : memory s-final ≡ memory s1
+      result-valid : ValidAt (eval f a) (readReg (regs s-final) rax) (memory s-final)
+      result-valid = valid-subst-heap-preserved (IRStarResultV.ir-result-valid r-f-v)
+                       (sym rax-jump)  -- addr: rax in s1 → rax in s-final
+                       (λ addr _ → subst (λ m → readMem (memory s-final) addr ≡ readMem m addr) (sym mem-jump) refl)
 
       -- r14 preserved through all phases
       r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
-      r14-final = trans r14-jump (trans (ir-r14 r-f) r14-setup)
+      r14-final = trans r14-jump (trans (IRStarResultV.ir-r14 r-f-v) r14-setup)
 
       -- r15 preserved: setup uses r11 for tag (not r15), f preserves r15, jump preserves r15
-      -- Proof: trans r15-jump (trans (ir-r15 r-f) r15-setup)
       r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
-      r15-final = trans r15-jump (trans (ir-r15 r-f) r15-setup)
+      r15-final = trans r15-jump (trans (IRStarResultV.ir-r15 r-f-v) r15-setup)
 
       -- rbp preserved through all phases
       rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
-      rbp-final = trans rbp-jump (trans (ir-rbp r-f) rbp-setup)
+      rbp-final = trans rbp-jump (trans (IRStarResultV.ir-rbp r-f-v) rbp-setup)
 
       -- Memory preserved through all phases:
       -- 1. mem-setup: memory s-setup = memory s
       -- 2. r15-setup: r15 s-setup = r15 s
-      -- 3. ir-mem r-f: readMem (memory s1) (r15 s-setup) = readMem (memory s-setup) (r15 s-setup)
+      -- 3. IRStarResultV.ir-mem r-f-v: readMem (memory s1) (r15 s-setup) = readMem (memory s-setup) (r15 s-setup)
       -- 4. mem-jump: memory s-final = memory s1
-      -- Chain: readMem (memory s-final) (r15 s)
-      --      = readMem (memory s1) (r15 s)                    (by mem-jump)
-      --      = readMem (memory s1) (r15 s-setup)              (by r15-setup)
-      --      = readMem (memory s-setup) (r15 s-setup)         (by ir-mem r-f)
-      --      = readMem (memory s) (r15 s-setup)               (by mem-setup)
-      --      = readMem (memory s) (r15 s)                     (by r15-setup)
       mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
       mem-final = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-jump)
                   (trans (cong (λ addr → readMem (memory s1) addr) (sym r15-setup))
-                  (trans (ir-mem r-f)
+                  (trans (IRStarResultV.ir-mem r-f-v)
                   (trans (cong (λ m → readMem m (readReg (regs s-setup) r15)) mem-setup)
                          (cong (λ addr → readMem (memory s) addr) r15-setup))))
 
@@ -461,7 +444,7 @@ mutual
       mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
       mem-rbp-final = trans (cong (λ m → readMem m (readReg (regs s) rbp)) mem-jump)
                       (trans (cong (λ addr → readMem (memory s1) addr) (sym rbp-setup))
-                      (trans (ir-mem-rbp r-f)
+                      (trans (IRStarResultV.ir-mem-rbp r-f-v)
                       (trans (cong (λ m → readMem m (readReg (regs s-setup) rbp)) mem-setup)
                              (cong (λ addr → readMem (memory s) addr) rbp-setup))))
 
@@ -469,7 +452,7 @@ mutual
       mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
       mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ slot-size)) mem-jump)
                         (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ slot-size) rbp-setup)))
-                        (trans (ir-mem-rbp+8 r-f)
+                        (trans (IRStarResultV.ir-mem-rbp+8 r-f-v)
                         (trans (cong (λ m → readMem m (readReg (regs s-setup) rbp +ℕ slot-size)) mem-setup)
                                (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ slot-size) rbp-setup)))))
 
@@ -479,16 +462,12 @@ mutual
         let addr>rbp-setup : addr > readReg (regs s-setup) rbp
             addr>rbp-setup = subst (addr >_) (sym rbp-setup) addr>rbp
         in trans (cong (λ m → readMem m addr) mem-jump)
-           (trans (ir-mem-above r-f addr addr>rbp-setup)
+           (trans (IRStarResultV.ir-mem-above r-f-v addr addr>rbp-setup)
                   (cong (λ m → readMem m addr) mem-setup))
 
       -- Stack invariant: preserved from s1 to s-final since memory, rsp, and r15 unchanged
-      -- ir-stack-inv r-f: StackInvariant s1
-      -- mem-jump: memory s-final = memory s1
-      -- rsp-jump: rsp s-final = rsp s1
-      -- r15-jump: r15 s-final = r15 s1
       stack-inv-final : StackInvariant s-final
-      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (ir-stack-inv r-f) r15-jump
+      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (IRStarResultV.ir-stack-inv r-f-v) r15-jump
 
       rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
       rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
@@ -498,13 +477,13 @@ mutual
           17≤41 : 17 ≤ 41
           17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
-      -- RbpInvariant preserved: from ir-rbp-inv r-f through jump (rsp/rbp preserved)
+      -- RbpInvariant preserved: from ir-rbp-inv r-f-v through jump (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
-      rbp-inv-final = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s-final (ir-rbp-inv r-f) rsp-jump rbp-jump
+      rbp-inv-final = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s-final (IRStarResultV.ir-rbp-inv r-f-v) rsp-jump rbp-jump
 
       -- Memory at 0 preserved: setup/jump don't modify memory, chain through f
       mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-      mem-at-0-final = trans mem-at-0-jump (trans (ir-mem-at-0 r-f) mem-at-0-setup)
+      mem-at-0-final = trans mem-at-0-jump (trans (IRStarResultV.ir-mem-at-0 r-f-v) mem-at-0-setup)
         where
           mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
           mem-at-0-setup = subst (λ m → readMem m 0 ≡ readMem (memory s) 0)
@@ -516,7 +495,7 @@ mutual
 
       -- D041: Memory in code region preserved: setup/jump don't modify memory, chain through f
       mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-code-final addr addr-in-code = trans mem-code-jump (trans (ir-mem-code r-f addr addr-in-code) mem-code-setup)
+      mem-code-final addr addr-in-code = trans mem-code-jump (trans (IRStarResultV.ir-mem-code r-f-v addr addr-in-code) mem-code-setup)
         where
           mem-code-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
           mem-code-setup = subst (λ m → readMem m addr ≡ readMem (memory s) addr)
@@ -528,7 +507,7 @@ mutual
 
       -- D041: Memory in heap region preserved: setup/jump don't modify memory, chain through f
       mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-heap-final addr addr-in-heap = trans mem-heap-jump (trans (ir-mem-heap r-f addr addr-in-heap) mem-heap-setup)
+      mem-heap-final addr addr-in-heap = trans mem-heap-jump (trans (IRStarResultV.ir-mem-heap r-f-v addr addr-in-heap) mem-heap-setup)
         where
           mem-heap-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
           mem-heap-setup = subst (λ m → readMem m addr ≡ readMem (memory s) addr)
@@ -538,28 +517,29 @@ mutual
           mem-heap-jump = subst (λ m → readMem m addr ≡ readMem (memory s1) addr)
                                 (sym mem-jump) refl
 
-  -- | Star-based case right branch (inr)
+  -- | Star-based case right branch (inr) - validity-based version
   -- Structure:
   --   Phase 1: Setup - 3 instructions (mov r11 [rdi], cmp, jne taken)
   --   Phase 2: Right branch setup - 2 instructions (label, mov rdi [rdi+8])
   --   Phase 3: Execute g - recursive Star call via abstract dispatcher
   --   Phase 4: End label - 1 instruction
   -- caller-sp: StackPointer from the caller (D041)
+  -- NOTE: Now takes ValidAt input and returns IRStarResultV - no encode bridging!
   run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode {A + B} (inj₂ b) →
+    ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-    in ∃[ s' ] IRStarResult [ f , g ] prog s s' (inj₂ b) (length prefix)
-  run-case-star-direct-inr {A} {B} {C} f g prefix suffix caller-sp b s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+    in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
+  run-case-star-direct-inr {A} {B} {C} f g prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
       ; ir-pc = pc-final
-      ; ir-rax = rax-final
+      ; ir-result-valid = result-valid
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
@@ -619,10 +599,19 @@ mutual
                           jmp (2 +ℕ len-g) ∷ label right-label ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
                           code-g ++ label end-label ∷ suffix
 
-      -- Derive memory precondition from encode-inr-tag
+      -- Derive memory precondition from validity (no encode bridging!)
       mem-tag-precond : readMem (memory s) (readReg (regs s) rdi) ≡ just 1
-      mem-tag-precond = subst (λ addr → readMem (memory s) addr ≡ just 1)
-                              (sym rdi-eq) (encode-inr-tag {A} {B} b (memory s))
+      mem-tag-precond = valid-inr-tag-is-1 input-valid
+
+      -- Extract value pointer and child validity from sum validity
+      val-ptr-data : ∃[ val-addr ] (readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr (memory s))
+      val-ptr-data = valid-inr-val-ptr input-valid
+
+      val-addr : Word
+      val-addr = proj₁ val-ptr-data
+
+      child-valid : ValidAt b val-addr (memory s)
+      child-valid = proj₂ (proj₂ val-ptr-data)
 
       -- Use case-inr-setup-star from SeqExec.agda
       -- This executes the 3 setup instructions (with jne TAKEN) and returns the result record
@@ -725,22 +714,26 @@ mutual
 
       -- ========== Phase 2: Right setup (2 instructions) ==========
       -- label (5+len-f) ; mov rdi, [rdi+8]
-      -- After: pc = length prefix + 7 + len-f, rdi = encode b
+      -- After: pc = length prefix + 7 + len-f, rdi = val-addr
 
-      -- Compose rdi proofs: rdi s-setup = rdi s = encode (inj₂ b)
-      rdi-setup-eq : readReg (regs s-setup) rdi ≡ encode {A + B} (inj₂ b)
-      rdi-setup-eq = trans rdi-setup rdi-eq
+      -- Derive raw memory precondition for helper (no encode bridging!)
+      -- val-ptr-data : readMem (memory s) (rdi s + 8) ≡ just val-addr
+      -- rdi-setup : rdi s-setup = rdi s, mem-setup : memory s-setup = memory s
+      mem-precond-for-helper : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ slot-size) ≡ just val-addr
+      mem-precond-for-helper = trans (cong (λ m → readMem m (readReg (regs s-setup) rdi +ℕ slot-size)) (sym mem-setup))
+                               (trans (cong (λ addr → readMem (memory s) (addr +ℕ slot-size)) rdi-setup)
+                                      (proj₁ (proj₂ val-ptr-data)))
 
-      -- Use extracted helper for right setup execution
+      -- Use extracted helper for right setup execution (now takes raw precondition!)
       right-setup-result : CaseRightSetupResult f g prefix suffix b s-setup
       right-setup-result = case-right-setup-star f g prefix suffix b s-setup
-                             h-setup pc-setup rdi-setup-eq stack-inv-setup rsp-sufficient-setup
+                             h-setup pc-setup val-addr mem-precond-for-helper stack-inv-setup rsp-sufficient-setup
 
       s-right = CaseRightSetupResult.s-right right-setup-result
       star-right = CaseRightSetupResult.star-right right-setup-result
       h-right = CaseRightSetupResult.h-right right-setup-result
       pc-right = CaseRightSetupResult.pc-right right-setup-result
-      rdi-right = CaseRightSetupResult.rdi-right right-setup-result
+      rdi-right-raw = CaseRightSetupResult.rdi-right-raw right-setup-result
       r14-right = CaseRightSetupResult.r14-preserved right-setup-result
       r15-right = CaseRightSetupResult.r15-preserved right-setup-result
       rbp-right = CaseRightSetupResult.rbp-preserved right-setup-result
@@ -797,9 +790,32 @@ mutual
       rbp-inv-right : RbpInvariant s-right
       rbp-inv-right = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s-setup s-right rbp-inv-setup-for-right rsp-right rbp-right
 
-      -- Bridge: encode → validity for recursive call
+      -- Derive rdi s-right = val-addr using raw memory read chain
+      -- rdi-right-raw : readMem (memory s-setup) (rdi s-setup + 8) ≡ just (rdi s-right)
+      -- val-ptr-data : readMem (memory s) (rdi s + 8) ≡ just val-addr
+      -- rdi-setup : rdi s-setup = rdi s, mem-setup : memory s-setup = memory s
+      mem-read-chain : readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (readReg (regs s-right) rdi)
+      mem-read-chain = trans (cong (λ m → readMem m (readReg (regs s) rdi +ℕ slot-size)) (sym mem-setup))
+                       (trans (cong (λ addr → readMem (memory s-setup) (addr +ℕ slot-size)) (sym rdi-setup))
+                              rdi-right-raw)
+
+      -- val-addr = rdi s-right (from matching memory reads)
+      val-addr-eq-rdi-right : val-addr ≡ readReg (regs s-right) rdi
+      val-addr-eq-rdi-right with just-injective (trans (sym (proj₁ (proj₂ val-ptr-data))) mem-read-chain)
+        where
+          just-injective : ∀ {x y : Word} → just x ≡ just y → x ≡ y
+          just-injective refl = refl
+      ... | eq = eq
+
+      -- Derive validity for g's input using raw chain (no encode bridging!)
+      -- memory s-right = memory s-setup = memory s
+      mem-s-right-eq-s : memory s-right ≡ memory s
+      mem-s-right-eq-s = trans mem-right mem-setup
+
       input-valid-g : ValidAt b (readReg (regs s-right) rdi) (memory s-right)
-      input-valid-g = valid-from-encode rdi-right
+      input-valid-g = valid-subst-heap-preserved child-valid
+                        (sym val-addr-eq-rdi-right)  -- addr: val-addr → rdi s-right
+                        (λ addr _ → subst (λ m → readMem (memory s-right) addr ≡ readMem m addr) (sym mem-s-right-eq-s) refl)
 
       -- Recursive call to g via validity-based dispatcher
       step-g-v : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
@@ -811,32 +827,11 @@ mutual
       r-g-v : IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
       r-g-v = proj₂ step-g-v
 
-      -- Convert IRStarResultV to IRStarResult for rest of proof
-      r-g : IRStarResult g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
-      r-g = record
-        { ir-star = IRStarResultV.ir-star r-g-v
-        ; ir-halted = IRStarResultV.ir-halted r-g-v
-        ; ir-pc = IRStarResultV.ir-pc r-g-v
-        ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid r-g-v)
-        ; ir-r14 = IRStarResultV.ir-r14 r-g-v
-        ; ir-r15 = IRStarResultV.ir-r15 r-g-v
-        ; ir-rbp = IRStarResultV.ir-rbp r-g-v
-        ; ir-mem = IRStarResultV.ir-mem r-g-v
-        ; ir-mem-rbp = IRStarResultV.ir-mem-rbp r-g-v
-        ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 r-g-v
-        ; ir-stack-inv = IRStarResultV.ir-stack-inv r-g-v
-        ; ir-capacity = IRStarResultV.ir-capacity r-g-v
-        ; ir-rbp-inv = IRStarResultV.ir-rbp-inv r-g-v
-        ; ir-mem-above = IRStarResultV.ir-mem-above r-g-v
-        ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 r-g-v
-        ; ir-mem-code = IRStarResultV.ir-mem-code r-g-v
-        ; ir-mem-heap = IRStarResultV.ir-mem-heap r-g-v
-        ; ir-closure-wf = IRStarResultV.ir-closure-wf r-g-v
-        }
+      -- Use r-g-v directly - no conversion to encode-based IRStarResult!
       star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s-right s1
-      star-g-raw = ir-star r-g
-      h1 = ir-halted r-g
-      pc1-raw = ir-pc r-g  -- pc s1 = length prefix-g + len-g = length prefix + 7 + len-f + len-g
+      star-g-raw = IRStarResultV.ir-star r-g-v
+      h1 = IRStarResultV.ir-halted r-g-v
+      pc1-raw = IRStarResultV.ir-pc r-g-v  -- pc s1 = length prefix-g + len-g = length prefix + 7 + len-f + len-g
 
       -- Convert star-g to use prog
       star-g : Star prog s-right s1
@@ -844,7 +839,7 @@ mutual
 
       -- Convert closure-wf from g to use prog
       closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix-g)
-      closure-wf-g-raw = ir-closure-wf r-g
+      closure-wf-g-raw = IRStarResultV.ir-closure-wf r-g-v
       closure-wf-final : ClosureWFOutput prog
       closure-wf-final = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
 
@@ -878,27 +873,31 @@ mutual
       pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
       pc-final = pc-final-raw
 
-      -- rax-final: from ir-rax r-g, preserved through end
-      rax-final : readReg (regs s-final) rax ≡ encode (eval g b)
-      rax-final = trans rax-end (ir-rax r-g)
+      -- Result validity: propagate through end phase (heap preserved)
+      -- IRStarResultV.ir-result-valid r-g-v : ValidAt (eval g b) (readReg (regs s1) rax) (memory s1)
+      -- rax-end : readReg (regs s-final) rax ≡ readReg (regs s1) rax
+      -- mem-end : memory s-final ≡ memory s1
+      result-valid : ValidAt (eval g b) (readReg (regs s-final) rax) (memory s-final)
+      result-valid = valid-subst-heap-preserved (IRStarResultV.ir-result-valid r-g-v)
+                       (sym rax-end)  -- addr: rax in s1 → rax in s-final
+                       (λ addr _ → subst (λ m → readMem (memory s-final) addr ≡ readMem m addr) (sym mem-end) refl)
 
       -- r14 preserved through all phases
       r14-final : readReg (regs s-final) r14 ≡ readReg (regs s) r14
-      r14-final = trans r14-end (trans (ir-r14 r-g) (trans r14-right r14-setup))
+      r14-final = trans r14-end (trans (IRStarResultV.ir-r14 r-g-v) (trans r14-right r14-setup))
 
       -- r15 preserved: setup uses r11 for tag (not r15), then preserved through remaining phases
-      -- Proof: trans r15-end (trans (ir-r15 r-g) (trans r15-right r15-setup))
       r15-final : readReg (regs s-final) r15 ≡ readReg (regs s) r15
-      r15-final = trans r15-end (trans (ir-r15 r-g) (trans r15-right r15-setup))
+      r15-final = trans r15-end (trans (IRStarResultV.ir-r15 r-g-v) (trans r15-right r15-setup))
 
       -- rbp preserved through all phases
       rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
-      rbp-final = trans rbp-end (trans (ir-rbp r-g) (trans rbp-right rbp-setup))
+      rbp-final = trans rbp-end (trans (IRStarResultV.ir-rbp r-g-v) (trans rbp-right rbp-setup))
 
       -- Memory preserved through all phases:
       -- 1. mem-setup: memory s-setup = memory s
       -- 2. mem-right: memory s-right = memory s-setup
-      -- 3. ir-mem r-g: readMem (memory s1) (r15 s-right) = readMem (memory s-right) (r15 s-right)
+      -- 3. IRStarResultV.ir-mem r-g-v: readMem (memory s1) (r15 s-right) = readMem (memory s-right) (r15 s-right)
       -- 4. mem-end: memory s-final = memory s1
       -- And r15 is preserved: r15-setup, r15-right compose to r15 s-right = r15 s
       r15-right-to-s : readReg (regs s-right) r15 ≡ readReg (regs s) r15
@@ -907,7 +906,7 @@ mutual
       mem-final : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
       mem-final = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-end)
                   (trans (cong (λ addr → readMem (memory s1) addr) (sym r15-right-to-s))
-                  (trans (ir-mem r-g)
+                  (trans (IRStarResultV.ir-mem r-g-v)
                   (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-right)
                   (trans (cong (λ m → readMem m (readReg (regs s-right) r15)) mem-setup)
                          (cong (λ addr → readMem (memory s) addr) r15-right-to-s)))))
@@ -919,7 +918,7 @@ mutual
       mem-rbp-final : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
       mem-rbp-final = trans (cong (λ m → readMem m (readReg (regs s) rbp)) mem-end)
                       (trans (cong (λ addr → readMem (memory s1) addr) (sym rbp-right-to-s))
-                      (trans (ir-mem-rbp r-g)
+                      (trans (IRStarResultV.ir-mem-rbp r-g-v)
                       (trans (cong (λ m → readMem m (readReg (regs s-right) rbp)) mem-right)
                       (trans (cong (λ m → readMem m (readReg (regs s-right) rbp)) mem-setup)
                              (cong (λ addr → readMem (memory s) addr) rbp-right-to-s)))))
@@ -928,14 +927,14 @@ mutual
       mem-rbp+8-final : readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
       mem-rbp+8-final = trans (cong (λ m → readMem m (readReg (regs s) rbp +ℕ slot-size)) mem-end)
                         (trans (cong (λ addr → readMem (memory s1) addr) (sym (cong (_+ℕ slot-size) rbp-right-to-s)))
-                        (trans (ir-mem-rbp+8 r-g)
+                        (trans (IRStarResultV.ir-mem-rbp+8 r-g-v)
                         (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ slot-size)) mem-right)
                         (trans (cong (λ m → readMem m (readReg (regs s-right) rbp +ℕ slot-size)) mem-setup)
                                (cong (λ addr → readMem (memory s) addr) (cong (_+ℕ slot-size) rbp-right-to-s))))))
 
       -- Stack invariant: preserved from s1 to s-final since memory, rsp, and r15 unchanged
       stack-inv-final : StackInvariant s-final
-      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (ir-stack-inv r-g) r15-end
+      stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (IRStarResultV.ir-stack-inv r-g-v) r15-end
 
       rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
       rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
@@ -945,9 +944,9 @@ mutual
           17≤41 : 17 ≤ 41
           17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
-      -- RbpInvariant preserved: from ir-rbp-inv r-g through end (rsp/rbp preserved)
+      -- RbpInvariant preserved: from ir-rbp-inv r-g-v through end (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
-      rbp-inv-final = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s-final (ir-rbp-inv r-g) rsp-end rbp-end
+      rbp-inv-final = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s-final (IRStarResultV.ir-rbp-inv r-g-v) rsp-end rbp-end
 
       -- Memory above rbp preserved through all phases
       mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
@@ -955,13 +954,13 @@ mutual
         let addr>rbp-right : addr > readReg (regs s-right) rbp
             addr>rbp-right = subst (addr >_) (sym rbp-right-to-s) addr>rbp
         in trans (cong (λ m → readMem m addr) mem-end)
-           (trans (ir-mem-above r-g addr addr>rbp-right)
+           (trans (IRStarResultV.ir-mem-above r-g-v addr addr>rbp-right)
            (trans (cong (λ m → readMem m addr) mem-right)
                   (cong (λ m → readMem m addr) mem-setup)))
 
       -- Memory at 0 preserved: setup/right-setup/end don't modify memory, chain through g
       mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-      mem-at-0-final = trans mem-at-0-end (trans (ir-mem-at-0 r-g) (trans mem-at-0-right mem-at-0-setup))
+      mem-at-0-final = trans mem-at-0-end (trans (IRStarResultV.ir-mem-at-0 r-g-v) (trans mem-at-0-right mem-at-0-setup))
         where
           mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
           mem-at-0-setup = cong (λ m → readMem m 0) mem-setup
@@ -974,7 +973,7 @@ mutual
 
       -- D041: Memory in code region preserved: setup/right-setup/end don't modify memory, chain through g
       mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-code-final addr addr-in-code = trans mem-code-end (trans (ir-mem-code r-g addr addr-in-code) (trans mem-code-right mem-code-setup))
+      mem-code-final addr addr-in-code = trans mem-code-end (trans (IRStarResultV.ir-mem-code r-g-v addr addr-in-code) (trans mem-code-right mem-code-setup))
         where
           mem-code-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
           mem-code-setup = cong (λ m → readMem m addr) mem-setup
@@ -987,7 +986,7 @@ mutual
 
       -- D041: Memory in heap region preserved: setup/right-setup/end don't modify memory, chain through g
       mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-heap-final addr addr-in-heap = trans mem-heap-end (trans (ir-mem-heap r-g addr addr-in-heap) (trans mem-heap-right mem-heap-setup))
+      mem-heap-final addr addr-in-heap = trans mem-heap-end (trans (IRStarResultV.ir-mem-heap r-g-v addr addr-in-heap) (trans mem-heap-right mem-heap-setup))
         where
           mem-heap-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
           mem-heap-setup = cong (λ m → readMem m addr) mem-setup

@@ -719,7 +719,8 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
     star-right : Star prog s-setup s-right
     h-right : halted s-right ≡ false
     pc-right : pc s-right ≡ length prefix +ℕ 7 +ℕ len-f
-    rdi-right : readReg (regs s-right) rdi ≡ encode b
+    -- Raw field: rdi contains what was loaded from memory[rdi-setup + 8]
+    rdi-right-raw : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ slot-size) ≡ just (readReg (regs s-right) rdi)
     r14-preserved : readReg (regs s-right) r14 ≡ readReg (regs s-setup) r14
     r15-preserved : readReg (regs s-right) r15 ≡ readReg (regs s-setup) r15
     rbp-preserved : readReg (regs s-right) rbp ≡ readReg (regs s-setup) rbp
@@ -731,8 +732,8 @@ record CaseRightSetupResult {A B C : Type} (f : IR A C) (g : IR B C)
 -- | Execute right branch setup for inr (2 instructions)
 -- Preconditions:
 --   pc s-setup = length prefix + 5 + len-f (at right label)
---   rdi s-setup = encode (inr b) (pointing to the sum)
---   memory contains the sum value with tag=1 at [rdi] and b at [rdi+8]
+--   memory[rdi+8] = load-val (the child value pointer)
+-- Returns state with rdi = load-val
 case-right-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
                         (prefix suffix : Program)
                         (b : ⟦ B ⟧)
@@ -741,16 +742,17 @@ case-right-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   let open CaseContext ctx in
   halted s-setup ≡ false →
   pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f →
-  readReg (regs s-setup) rdi ≡ encode {A + B} (inj₂ b) →
+  (load-val : Word) →
+  readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ slot-size) ≡ just load-val →
   StackInvariant s-setup →
   readReg (regs s-setup) rsp > slots 2 →
   CaseRightSetupResult f g prefix suffix b s-setup
-case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup rdi-setup stack-inv-setup rsp-sufficient-setup = record
+case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup load-val mem-precond stack-inv-setup rsp-sufficient-setup = record
     { s-right = s2
     ; star-right = star-eq
     ; h-right = h2
     ; pc-right = pc2
-    ; rdi-right = rdi2
+    ; rdi-right-raw = rdi2-raw
     ; r14-preserved = refl
     ; r15-preserved = refl
     ; rbp-preserved = refl
@@ -768,9 +770,9 @@ case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     s1 = record s-setup { pc = pc s-setup +ℕ 1 }
 
     -- State after mov rdi, [rdi+8] instruction
-    -- rdi gets the value at [rdi+8], which is encode b (by encode-inr-val)
+    -- rdi gets the value at [rdi+8], which is load-val (from precondition)
     s2 : State
-    s2 = record s1 { regs = writeReg (regs s1) rdi (encode b)
+    s2 = record s1 { regs = writeReg (regs s1) rdi load-val
                    ; pc = pc s1 +ℕ 1 }
 
     h1 : halted s1 ≡ false
@@ -801,17 +803,13 @@ case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
         (length prefix +ℕ 7) +ℕ len-f
       ∎
 
-    -- Key proof: rdi s2 = encode b
-    -- The mov instruction loads from [rdi+8] into rdi
-    -- By encode-inr-val: readMem m (encode (inj₂ b) + 8) = just (encode b)
-    -- Since rdi s-setup = encode (inj₂ b), we have rdi s2 = encode b
-    rdi2 : readReg (regs s2) rdi ≡ encode b
-    rdi2 = readReg-writeReg-same (regs s1) rdi (encode b)
+    -- rdi s2 = load-val (from writeReg)
+    rdi2 : readReg (regs s2) rdi ≡ load-val
+    rdi2 = readReg-writeReg-same (regs s1) rdi load-val
 
-    -- Memory read proof for mov instruction
-    mem-read : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ slot-size) ≡ just (encode b)
-    mem-read = trans (cong (λ addr → readMem (memory s-setup) (addr +ℕ slot-size)) rdi-setup)
-                     (encode-inr-val b (memory s-setup))
+    -- Raw memory read: rdi contains what was loaded from memory
+    rdi2-raw : readMem (memory s-setup) (readReg (regs s-setup) rdi +ℕ slot-size) ≡ just (readReg (regs s2) rdi)
+    rdi2-raw = trans mem-precond (cong just (sym rdi2))
 
     -- StackInvariant preserved (memory and rsp unchanged, r15 also unchanged)
     stack-inv-s2 : StackInvariant s2
@@ -915,7 +913,7 @@ case-right-setup-star {A} {B} {C} f g prefix suffix b s-setup h-setup pc-setup r
     -- right-load-val-instr = mov (reg rdi) (mem (base+disp rdi 8))
     step2 : step prog s1 ≡ just s2
     step2 = trans (step-exec prog s1 right-load-val-instr h1 fetch2)
-                  (execMov-reg-mem-disp s1 rdi rdi 8 (encode b) mem-read)
+                  (execMov-reg-mem-disp s1 rdi rdi 8 load-val mem-precond)
 
     star-eq : Star prog s-setup s2
     star-eq = star-step2 h-setup step1 h1 step2

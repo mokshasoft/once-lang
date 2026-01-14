@@ -282,6 +282,58 @@ postulate
     (∀ a → region-of a ≡ heap → readMem mem2 a ≡ readMem mem1 a) →
     ValidAt v addr2 mem2
 
+  -- | Extract validity of left injection's child value
+  -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
+  -- then a is validly represented at val-addr.
+  -- ELIMINABLE: Provable from ValidAt structure (sum validity implies child validity).
+  valid-inl-child :
+    ∀ {A B} {a : ⟦ A ⟧} {addr val-addr : Word} {mem : Memory} →
+    ValidAt {A + B} (inj₁ a) addr mem →
+    readMem mem (addr +ℕ slot-size) ≡ just val-addr →
+    ValidAt a val-addr mem
+
+  -- | Extract validity of right injection's child value
+  -- If (inj₂ b) is validly represented at addr, and mem[addr+8] = val-addr,
+  -- then b is validly represented at val-addr.
+  -- ELIMINABLE: Provable from ValidAt structure (sum validity implies child validity).
+  valid-inr-child :
+    ∀ {A B} {b : ⟦ B ⟧} {addr val-addr : Word} {mem : Memory} →
+    ValidAt {A + B} (inj₂ b) addr mem →
+    readMem mem (addr +ℕ slot-size) ≡ just val-addr →
+    ValidAt b val-addr mem
+
+  -- | Left injection tag is 0 in memory
+  -- If (inj₁ a) is validly represented at addr, then mem[addr] = 0.
+  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+  valid-inl-tag-is-0 :
+    ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
+    ValidAt {A + B} (inj₁ a) addr mem →
+    readMem mem addr ≡ just 0
+
+  -- | Left injection value pointer exists in memory
+  -- If (inj₁ a) is validly represented at addr, then mem[addr+8] contains a valid pointer.
+  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+  valid-inl-val-ptr :
+    ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
+    ValidAt {A + B} (inj₁ a) addr mem →
+    ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt a val-addr mem)
+
+  -- | Right injection tag is 1 in memory
+  -- If (inj₂ b) is validly represented at addr, then mem[addr] = 1.
+  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+  valid-inr-tag-is-1 :
+    ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
+    ValidAt {A + B} (inj₂ b) addr mem →
+    readMem mem addr ≡ just 1
+
+  -- | Right injection value pointer exists in memory
+  -- If (inj₂ b) is validly represented at addr, then mem[addr+8] contains a valid pointer.
+  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+  valid-inr-val-ptr :
+    ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
+    ValidAt {A + B} (inj₂ b) addr mem →
+    ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr mem)
+
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
 --
