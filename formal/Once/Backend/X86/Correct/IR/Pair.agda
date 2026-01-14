@@ -2206,6 +2206,723 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
               r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
           in case-r15-stack r15≥rsp
 
+------------------------------------------------------------------------
+-- Validity-based version of make-pair-final-precond (Phase D.5e)
+-- Takes validity-based records, produces same PairFinalPrecond output
+-- Body is identical since all accessed fields exist in both versions
+------------------------------------------------------------------------
+
+-- | Construct PairFinalPrecond from validity-based intermediate results
+-- Same as make-pair-final-precond but takes IRStarResultV and *ResultV inputs
+make-pair-final-precond-v : ∀ {A B C} (f : IR C A) (g : IR C B)
+                            (prefix suffix : Program) (x : ⟦ C ⟧)
+                            (s s-setup s1 s2 s3 : State)
+                            (stack-inv : StackInvariant s)
+                            (rbp-inv : RbpInvariant s) →
+  let ctx = make-pair-context f g prefix suffix in
+  let open PairContext ctx in
+  (setup-res : PairSetupResultV f g prefix suffix x s) →
+  (r-f : IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)) →
+  (mid-res : PairMiddleResultV f g prefix suffix x s s-setup s1) →
+  (r-g : IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)) →
+  s-setup ≡ PairSetupResultV.s-setup setup-res →
+  s2 ≡ PairMiddleResultV.s2 mid-res →
+  PairFinalPrecond f g prefix suffix s s3
+make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
+                          stack-inv rbp-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
+  { h3 = IRStarResultV.ir-halted r-g
+  ; pc3 = pc3
+  ; stack-rbp = stack-rbp-s3
+  ; stack-r15 = stack-r15-s3
+  ; stack-r14 = stack-r14-s3
+  ; stack-inv-s3 = IRStarResultV.ir-stack-inv r-g
+  ; stack-inv-s = stack-inv
+  ; rbp-chain = rbp-chain
+  ; mem-frame = mem-frame-s3
+  ; disjoint-rbp = disjoint-rbp-s3
+  ; disjoint-r15 = disjoint-r15-s3
+  ; disjoint-r14 = disjoint-r14-s3
+  ; disjoint-orig = disjoint-orig-s3
+  ; disjoint-orig-rbp = disjoint-orig-rbp-s3
+  ; disjoint-orig-rbp+8 = disjoint-orig-rbp+8-s3
+  ; mem-frame-rbp = mem-frame-rbp-s3
+  ; mem-frame-rbp+8 = mem-frame-rbp+8-s3
+  ; rsp-bound = rsp-bound-s
+  ; r15-chain = r15-chain
+  ; 40≤rsp-s = 40≤rsp-s
+  }
+  where
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
+    open import Data.Sum using (_⊎_; inj₁; inj₂)
+
+    -- Aliases for field access with v- prefix to avoid clash with encode-based names
+    v-halted = IRStarResultV.ir-halted
+    v-pc = IRStarResultV.ir-pc
+    v-rbp = IRStarResultV.ir-rbp
+    v-r15 = IRStarResultV.ir-r15
+    v-stack-inv = IRStarResultV.ir-stack-inv
+    v-mem-above = IRStarResultV.ir-mem-above
+    v-mem-rbp = IRStarResultV.ir-mem-rbp
+    v-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8
+    v-mem-at-0 = IRStarResultV.ir-mem-at-0
+    v-mem-code = IRStarResultV.ir-mem-code
+    v-mem-heap = IRStarResultV.ir-mem-heap
+
+    -- PC at s3 for final phase
+    pc3 : pc s3 ≡ length prefix-final
+    pc3 = trans (v-pc r-g) (trans (cong (_+ℕ len-g) len-prefix-g) (sym len-prefix-final))
+
+    -- rbp was preserved through f and g execution: s3 → s2 → s1 → s-setup
+    rbp-s3-eq-s2 : readReg (regs s3) rbp ≡ readReg (regs s2) rbp
+    rbp-s3-eq-s2 = v-rbp r-g
+
+    rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+    rbp-s2-eq-s1 = subst (λ s2' → readReg (regs s2') rbp ≡ readReg (regs s1) rbp)
+                         (sym s2-eq) (PairMiddleResultV.rbp-mid mid-res)
+
+    rbp-s1-eq-setup : readReg (regs s1) rbp ≡ readReg (regs s-setup) rbp
+    rbp-s1-eq-setup = v-rbp r-f
+
+    rbp-setup-eq : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
+    rbp-setup-eq = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
+                         (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)
+
+    rbp-chain : readReg (regs s3) rbp ≡ readReg (regs s) rsp ∸ slots 3
+    rbp-chain = trans rbp-s3-eq-s2 (trans rbp-s2-eq-s1 (trans rbp-s1-eq-setup rbp-setup-eq))
+
+    -- r15 was preserved through f and g execution: s3 → s2 → s1 → s-setup
+    r15-s3-eq-s2 : readReg (regs s3) r15 ≡ readReg (regs s2) r15
+    r15-s3-eq-s2 = v-r15 r-g
+
+    r15-s2-eq-s1 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
+    r15-s2-eq-s1 = subst (λ s2' → readReg (regs s2') r15 ≡ readReg (regs s1) r15)
+                         (sym s2-eq) (PairMiddleResultV.r15-mid mid-res)
+
+    r15-s1-eq-setup : readReg (regs s1) r15 ≡ readReg (regs s-setup) r15
+    r15-s1-eq-setup = v-r15 r-f
+
+    r15-setup-eq : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ slots 5
+    r15-setup-eq = subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                         (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res)
+
+    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ slots 5
+    r15-chain = trans r15-s3-eq-s2 (trans r15-s2-eq-s1 (trans r15-s1-eq-setup r15-setup-eq))
+
+    -- ========== Disjointness proofs (PROVEN from arithmetic) ==========
+    -- Key insight: rbp-s3 = rsp-s ∸ slots 3 = r15-s3 + 16 (when rsp-s ≥ 40)
+
+    -- Get rsp>16 from setup, which implies rsp-s > 56, thus 40 ≤ rsp-s
+    rsp-sufficient-setup' : readReg (regs s-setup) rsp > slots 2
+    rsp-sufficient-setup' = subst (λ ss → readReg (regs ss) rsp > slots 2)
+                          (sym s-setup-eq) (PairSetupResultV.rsp-sufficient-setup setup-res)
+
+    -- rsp-setup = rsp-s ∸ slots 5, and rsp-setup > 16, so rsp-s ∸ slots 5 > 16 > 0, thus 40 ≤ rsp-s
+    rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
+    rsp-setup-eq' = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots 5)
+                          (sym s-setup-eq) (PairSetupResultV.rsp-setup setup-res)
+
+    rsp∸40>16 : readReg (regs s) rsp ∸ slots 5 > 16
+    rsp∸40>16 = subst (_> slots 2) rsp-setup-eq' rsp-sufficient-setup'
+
+    rsp∸40>0 : readReg (regs s) rsp ∸ slots 5 > 0
+    rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16  -- 1 ≤ 17 ≤ rsp∸40
+
+    40≤rsp-s : 40 ≤ readReg (regs s) rsp
+    40≤rsp-s = ∸>0⇒≤ (readReg (regs s) rsp) 40 rsp∸40>0
+
+    -- 24 ≤ rsp-s follows from 24 ≤ 40 ≤ rsp-s
+    rsp-bound-s : 24 ≤ readReg (regs s) rsp
+    rsp-bound-s = ≤-trans 24≤40 40≤rsp-s
+      where
+        24≤40 : 24 ≤ 40
+        24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+
+    -- rbp-s3 = r15-s3 + 16 (key relationship for disjointness)
+    offset-eq : readReg (regs s) rsp ∸ slots 3 ≡ (readReg (regs s) rsp ∸ slots 5) +ℕ slots 2
+    offset-eq = ∸-offset-relationship (readReg (regs s) rsp) 40≤rsp-s
+
+    rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ slots 2
+    rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ slots 2) (sym r15-chain)))
+
+    -- Derived relationships for disjointness
+    rbp+8-is-r15+24 : readReg (regs s3) rbp +ℕ slot-size ≡ readReg (regs s3) r15 +ℕ slots 3
+    rbp+8-is-r15+24 = trans (cong (_+ℕ slot-size) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 8)
+
+    rbp+16-is-r15+32 : readReg (regs s3) rbp +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slots 4
+    rbp+16-is-r15+32 = trans (cong (_+ℕ slots 2) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 16)
+
+    -- disjoint-rbp-s3: rbp-s3 ≢ r15-s3 + 8
+    disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-rbp-s3 eq = n+slots2≢n+slot-size (readReg (regs s3) r15) combined-eq
+      where
+        combined-eq : readReg (regs s3) r15 +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp-eq-r15-plus-16 eq
+
+    -- disjoint-r15-s3: rbp-s3 + 8 ≢ r15-s3 + 8
+    disjoint-r15-s3 : readReg (regs s3) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r15-s3 eq = n+24≢n+8 (readReg (regs s3) r15) combined-eq
+      where
+        combined-eq : readReg (regs s3) r15 +ℕ slots 3 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp+8-is-r15+24 eq
+
+    -- disjoint-r14-s3: rbp-s3 + 16 ≢ r15-s3 + 8
+    disjoint-r14-s3 : readReg (regs s3) rbp +ℕ slots 2 ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r14-s3 eq = n+32≢n+8 (readReg (regs s3) r15) combined-eq
+      where
+        combined-eq : readReg (regs s3) r15 +ℕ slots 4 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp+16-is-r15+32 eq
+
+    -- disjoint-orig-s3: r15-s ≢ r15-s3 + 8
+    disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-orig-s3 = case-stack-inv stack-inv
+      where
+        0<n+8 : ∀ n → 0 < n +ℕ slot-size
+        0<n+8 n = subst (1 ≤_) (sym (+-suc n 7)) (s≤s z≤n)
+
+        case-r15-zero : readReg (regs s) r15 ≡ 0 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+        case-r15-zero r15≡0 eq = <⇒≢ (0<n+8 (readReg (regs s3) r15)) (sym combined-eq)
+          where
+            combined-eq : readReg (regs s3) r15 +ℕ slot-size ≡ 0
+            combined-eq = trans (sym eq) r15≡0
+
+        case-r15-stack : readReg (regs s) rsp ≤ readReg (regs s) r15 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+        case-r15-stack rsp≤r15 eq = <⇒≢ r15-s3+8<r15-s (sym eq)
+          where
+            r15-s3+8<rsp-s : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rsp
+            r15-s3+8<rsp-s = subst (λ n → n +ℕ slot-size < readReg (regs s) rsp) (sym r15-chain) arith-step
+              where
+                rsp-s = readReg (regs s) rsp
+                k = rsp-s ∸ slots 5
+                8<40 : 8 < 40
+                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+                k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
+                k+8<k+40 = +-monoʳ-< k 8<40
+                arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
+                arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+
+            r15-s3+8<r15-s : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) r15
+            r15-s3+8<r15-s = ≤-trans r15-s3+8<rsp-s rsp≤r15
+
+        case-r15-code : region-of (readReg (regs s) r15) ≡ code →
+                        readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+        case-r15-code r15-code-pf eq =
+          let cap5 = mk-capacity-5 s
+              write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack
+              write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap5
+              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
+              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain) write-addr-in-stack
+              disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+              disjoint = λ eq' → stack-code-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
+                                                      s3-r15+8-in-stack r15-code-pf (sym eq')
+          in disjoint eq
+
+        case-r15-heap : region-of (readReg (regs s) r15) ≡ heap →
+                        readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+        case-r15-heap r15-heap-pf eq =
+          let cap5 = mk-capacity-5 s
+              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
+              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain)
+                                        (abstract-to-rsp-40+8-in-stack s cap5)
+              disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
+                                                     s3-r15+8-in-stack r15-heap-pf (sym eq')
+          in disjoint eq
+
+        case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
+        case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
+        case-stack-inv (r15-in-heap r15-heap) = case-r15-heap r15-heap
+        case-stack-inv (r15-in-code r15-code) = case-r15-code r15-code
+        case-stack-inv (r15-in-stack frame slot r15-eq frame-bound) =
+          let slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in case-r15-stack r15≥rsp
+
+    -- ========== Memory frame preservation (chain through f and g) ==========
+    orig-rbp : ℕ
+    orig-rbp = readReg (regs s) rbp
+
+    orig-rbp≥rsp : orig-rbp ≥ readReg (regs s) rsp
+    orig-rbp≥rsp = RbpInvariant.rsp≤rbp rbp-inv
+
+    orig-rbp>setup-rbp : orig-rbp > readReg (regs s-setup) rbp
+    orig-rbp>setup-rbp = subst (orig-rbp >_) (sym rbp-setup-eq-for-proof) rsp∸24<rbp
+      where
+        rbp-setup-eq-for-proof : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
+        rbp-setup-eq-for-proof = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
+                                       (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)
+        rsp∸24<rsp : readReg (regs s) rsp ∸ slots 3 < readReg (regs s) rsp
+        rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 rsp>0-for-proof 24>0-for-proof
+          where
+            rsp>0-for-proof : readReg (regs s) rsp > 0
+            rsp>0-for-proof = ≤-trans (s≤s z≤n) 40≤rsp-s
+            24>0-for-proof : 24 > 0
+            24>0-for-proof = s≤s z≤n
+            m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-helper (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        rsp∸24<rbp : readReg (regs s) rsp ∸ slots 3 < orig-rbp
+        rsp∸24<rbp = <-≤-trans rsp∸24<rsp orig-rbp≥rsp
+          where open import Data.Nat.Properties using (<-≤-trans)
+
+    orig-rbp≢s1-r15 : orig-rbp ≢ readReg (regs s1) r15
+    orig-rbp≢s1-r15 eq = Data.Nat.Properties.<⇒≢ r15-s1<rbp (sym eq)
+      where
+        open import Data.Nat.Properties using (<-≤-trans)
+        r15-s1-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
+        r15-s1-eq = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                                              (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
+        rsp∸40<rsp : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
+        rsp∸40<rsp = m∸n<m-helper2 (readReg (regs s) rsp) 40 rsp>0-for-proof2 40>0-for-proof
+          where
+            rsp>0-for-proof2 : readReg (regs s) rsp > 0
+            rsp>0-for-proof2 = ≤-trans (s≤s z≤n) 40≤rsp-s
+            40>0-for-proof : 40 > 0
+            40>0-for-proof = s≤s z≤n
+            m∸n<m-helper2 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-helper2 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        rsp∸40<rbp : readReg (regs s) rsp ∸ slots 5 < orig-rbp
+        rsp∸40<rbp = <-≤-trans rsp∸40<rsp orig-rbp≥rsp
+        r15-s1<rbp : readReg (regs s1) r15 < orig-rbp
+        r15-s1<rbp = subst (_< orig-rbp) (sym r15-s1-eq) rsp∸40<rbp
+
+    orig-rbp>s2-rbp : orig-rbp > readReg (regs s2) rbp
+    orig-rbp>s2-rbp = subst (orig-rbp >_) (sym rbp-s2-chain) orig-rbp>setup-rbp
+      where
+        rbp-s2-chain : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
+        rbp-s2-chain = trans rbp-s2-eq-s1 rbp-s1-eq-setup
+
+    mem-frame-rbp-s3 : readMem (memory s3) orig-rbp ≡ readMem (memory s) orig-rbp
+    mem-frame-rbp-s3 = trans mem-g (trans mem-mid (trans mem-f mem-setup))
+      where
+        mem-setup : readMem (memory s-setup) orig-rbp ≡ readMem (memory s) orig-rbp
+        mem-setup = subst (λ ss → readMem (memory ss) orig-rbp ≡ readMem (memory s) orig-rbp)
+                          (sym s-setup-eq)
+                          (PairSetupResultV.mem-above-rsp-setup setup-res orig-rbp orig-rbp≥rsp)
+        mem-f : readMem (memory s1) orig-rbp ≡ readMem (memory s-setup) orig-rbp
+        mem-f = v-mem-above r-f orig-rbp orig-rbp>setup-rbp
+        mem-mid : readMem (memory s2) orig-rbp ≡ readMem (memory s1) orig-rbp
+        mem-mid = subst (λ s2' → readMem (memory s2') orig-rbp ≡ readMem (memory s1) orig-rbp)
+                        (sym s2-eq)
+                        (PairMiddleResultV.mem-above-r15-mid mid-res orig-rbp orig-rbp≢s1-r15)
+        mem-g : readMem (memory s3) orig-rbp ≡ readMem (memory s2) orig-rbp
+        mem-g = v-mem-above r-g orig-rbp orig-rbp>s2-rbp
+
+    -- Same proof for orig-rbp + 8
+    orig-rbp+8 : ℕ
+    orig-rbp+8 = orig-rbp +ℕ slot-size
+
+    orig-rbp+8>setup-rbp : orig-rbp+8 > readReg (regs s-setup) rbp
+    orig-rbp+8>setup-rbp = <-trans orig-rbp>setup-rbp rbp<rbp+8-proof
+      where
+        rbp<rbp+8-proof : orig-rbp < orig-rbp+8
+        rbp<rbp+8-proof = n<n+8-helper orig-rbp
+          where
+            n<n+8-helper : ∀ n → n < n +ℕ slot-size
+            n<n+8-helper zero = s≤s z≤n
+            n<n+8-helper (suc n) = s≤s (n<n+8-helper n)
+
+    orig-rbp+8≢s1-r15 : orig-rbp+8 ≢ readReg (regs s1) r15
+    orig-rbp+8≢s1-r15 eq = Data.Nat.Properties.<⇒≢ r15-s1<rbp+8 (sym eq)
+      where
+        r15-s1<rbp+8 : readReg (regs s1) r15 < orig-rbp+8
+        r15-s1<rbp+8 = <-trans (subst (_< orig-rbp) (sym r15-s1-eq-for-proof)
+                               ((<-≤-trans rsp∸40<rsp-for-proof orig-rbp≥rsp)))
+                               rbp<rbp+8-for-proof
+          where
+            open import Data.Nat.Properties using (<-≤-trans)
+            r15-s1-eq-for-proof : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
+            r15-s1-eq-for-proof = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                                                            (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
+            rsp∸40<rsp-for-proof : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
+            rsp∸40<rsp-for-proof = m∸n<m-helper3 (readReg (regs s) rsp) 40
+                                     (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+              where
+                m∸n<m-helper3 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+                m∸n<m-helper3 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+            rbp<rbp+8-for-proof : orig-rbp < orig-rbp+8
+            rbp<rbp+8-for-proof = n<n+8-helper2 orig-rbp
+              where
+                n<n+8-helper2 : ∀ n → n < n +ℕ slot-size
+                n<n+8-helper2 zero = s≤s z≤n
+                n<n+8-helper2 (suc n) = s≤s (n<n+8-helper2 n)
+
+    orig-rbp+8>s2-rbp : orig-rbp+8 > readReg (regs s2) rbp
+    orig-rbp+8>s2-rbp = subst (orig-rbp+8 >_) (sym rbp-s2-chain-for-proof) orig-rbp+8>setup-rbp
+      where
+        rbp-s2-chain-for-proof : readReg (regs s2) rbp ≡ readReg (regs s-setup) rbp
+        rbp-s2-chain-for-proof = trans rbp-s2-eq-s1 rbp-s1-eq-setup
+
+    mem-frame-rbp+8-s3 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+    mem-frame-rbp+8-s3 = trans mem-g+8 (trans mem-mid+8 (trans mem-f+8 mem-setup+8))
+      where
+        mem-setup+8 : readMem (memory s-setup) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8
+        mem-setup+8 = subst (λ ss → readMem (memory ss) orig-rbp+8 ≡ readMem (memory s) orig-rbp+8)
+                            (sym s-setup-eq)
+                            (PairSetupResultV.mem-above-rsp-setup setup-res orig-rbp+8
+                              (≤-trans orig-rbp≥rsp (m≤m+n-helper orig-rbp 8)))
+          where
+            m≤m+n-helper : ∀ m n → m ≤ m +ℕ n
+            m≤m+n-helper zero n = z≤n
+            m≤m+n-helper (suc m) n = s≤s (m≤m+n-helper m n)
+        mem-f+8 : readMem (memory s1) orig-rbp+8 ≡ readMem (memory s-setup) orig-rbp+8
+        mem-f+8 = v-mem-above r-f orig-rbp+8 orig-rbp+8>setup-rbp
+        mem-mid+8 : readMem (memory s2) orig-rbp+8 ≡ readMem (memory s1) orig-rbp+8
+        mem-mid+8 = subst (λ s2' → readMem (memory s2') orig-rbp+8 ≡ readMem (memory s1) orig-rbp+8)
+                          (sym s2-eq)
+                          (PairMiddleResultV.mem-above-r15-mid mid-res orig-rbp+8 orig-rbp+8≢s1-r15)
+        mem-g+8 : readMem (memory s3) orig-rbp+8 ≡ readMem (memory s2) orig-rbp+8
+        mem-g+8 = v-mem-above r-g orig-rbp+8 orig-rbp+8>s2-rbp
+
+    -- ========== Disjointness for original rbp ==========
+    r15-s3+8<rsp-rbp : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rsp
+    r15-s3+8<rsp-rbp = subst (λ n → n +ℕ slot-size < readReg (regs s) rsp) (sym r15-chain) arith-step
+      where
+        rsp-s = readReg (regs s) rsp
+        k = rsp-s ∸ slots 5
+        8<40 : 8 < 40
+        8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
+        k+8<k+40 = +-monoʳ-< k 8<40
+        arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
+        arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+
+    r15-s3+8<rbp : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rbp
+    r15-s3+8<rbp = ≤-trans r15-s3+8<rsp-rbp (RbpInvariant.rsp≤rbp rbp-inv)
+
+    disjoint-orig-rbp-s3 : readReg (regs s) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-orig-rbp-s3 eq = <⇒≢ r15-s3+8<rbp (sym eq)
+
+    rbp<rbp+8 : readReg (regs s) rbp < readReg (regs s) rbp +ℕ slot-size
+    rbp<rbp+8 = n<n+8 (readReg (regs s) rbp)
+      where
+        n<n+8 : ∀ n → n < n +ℕ slot-size
+        n<n+8 zero = s≤s z≤n
+        n<n+8 (suc n) = s≤s (n<n+8 n)
+
+    r15-s3+8<rbp+8 : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rbp +ℕ slot-size
+    r15-s3+8<rbp+8 = <-trans r15-s3+8<rbp rbp<rbp+8
+
+    disjoint-orig-rbp+8-s3 : readReg (regs s) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-orig-rbp+8-s3 eq = <⇒≢ r15-s3+8<rbp+8 (sym eq)
+
+    -- ========== Stack layout PROVEN (memory preservation) ==========
+    setup-rbp≢s1-r15 : readReg (regs s-setup) rbp ≢ readReg (regs s1) r15
+    setup-rbp≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp-eq-proof) (sym s1-r15-eq-proof) rsp∸24≢rsp∸40
+      where
+        setup-rbp-eq-proof : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
+        setup-rbp-eq-proof = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
+                                   (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)
+        s1-r15-eq-proof : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
+        s1-r15-eq-proof = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                                                    (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
+        rsp∸24≢rsp∸40 : readReg (regs s) rsp ∸ slots 3 ≢ readReg (regs s) rsp ∸ slots 5
+        rsp∸24≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸24 (sym eq)
+          where
+            open import Data.Nat.Properties using (∸-monoʳ-<)
+            rsp∸40<rsp∸24 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 3
+            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 40≤rsp-s
+              where
+                24<40 : 24 < 40
+                24<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+
+    stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
+    stack-rbp-s3 = trans mem-g-rbp (trans mem-mid-rbp (trans mem-f-rbp mem-setup-rbp))
+      where
+        mem-setup-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
+        mem-setup-rbp = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp) ≡ just (readReg (regs s) rbp))
+                              (sym s-setup-eq)
+                              (PairSetupResultV.mem-stack-rbp setup-res)
+        mem-f-rbp : readMem (memory s1) (readReg (regs s1) rbp) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp)
+        mem-f-rbp = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp))
+                          (sym (v-rbp r-f))
+                          (v-mem-rbp r-f)
+        mem-mid-rbp : readMem (memory s2) (readReg (regs s2) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
+        mem-mid-rbp = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp))
+                             (cong memory (sym s2-eq))
+                             (sym (subst (λ s2' → readReg (regs s2') rbp ≡ readReg (regs s1) rbp)
+                                         (sym s2-eq) (PairMiddleResultV.rbp-mid mid-res)))
+                             (PairMiddleResultV.mem-rbp-mid mid-res)
+        mem-g-rbp : readMem (memory s3) (readReg (regs s3) rbp) ≡ readMem (memory s2) (readReg (regs s2) rbp)
+        mem-g-rbp = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp))
+                          (sym (v-rbp r-g))
+                          (v-mem-rbp r-g)
+
+    setup-rbp+8≢s1-r15 : readReg (regs s-setup) rbp +ℕ slot-size ≢ readReg (regs s1) r15
+    setup-rbp+8≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+8-eq) (sym s1-r15-eq-proof2) rsp∸16≢rsp∸40
+      where
+        setup-rbp+8-eq : readReg (regs s-setup) rbp +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
+        setup-rbp+8-eq = trans (cong (_+ℕ slot-size) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
+                                                     (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)))
+                               rsp∸24+8≡rsp∸16
+          where
+            rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ slots 3 +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
+            rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp 8≤24
+              where
+                24≤rsp : 24 ≤ readReg (regs s) rsp
+                24≤rsp = ≤-trans 24≤40 40≤rsp-s
+                  where
+                    24≤40 : 24 ≤ 40
+                    24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+                8≤24 : 8 ≤ 24
+                8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+        s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
+        s1-r15-eq-proof2 = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                                                     (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
+        rsp∸16≢rsp∸40 : readReg (regs s) rsp ∸ slots 2 ≢ readReg (regs s) rsp ∸ slots 5
+        rsp∸16≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸16 (sym eq)
+          where
+            open import Data.Nat.Properties using (∸-monoʳ-<)
+            rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 2
+            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 40≤rsp-s
+              where
+                16<40 : 16 < 40
+                16<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+    stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
+    stack-r15-s3 = trans mem-g-r15' (trans mem-mid-r15' (trans mem-f-r15' mem-setup-r15'))
+      where
+        mem-setup-r15' : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
+        mem-setup-r15' = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15))
+                               (sym s-setup-eq)
+                               (PairSetupResultV.mem-stack-r15 setup-res)
+        rbp+8-s1 : readReg (regs s1) rbp +ℕ slot-size ≡ readReg (regs s-setup) rbp +ℕ slot-size
+        rbp+8-s1 = cong (_+ℕ slot-size) (v-rbp r-f)
+        mem-f-r15' : readMem (memory s1) (readReg (regs s1) rbp +ℕ slot-size) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size)
+        mem-f-r15' = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size))
+                           (sym rbp+8-s1)
+                           (v-mem-rbp+8 r-f)
+        setup-rbp+8≢s1-r15' : readReg (regs s1) rbp +ℕ slot-size ≢ readReg (regs s-setup) r15
+        setup-rbp+8≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym rbp+8-s1) (v-r15 r-f) setup-rbp+8≢s1-r15
+        mem-mid-r15' : readMem (memory s2) (readReg (regs s2) rbp +ℕ slot-size) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slot-size)
+        mem-mid-r15' = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slot-size))
+                              (cong memory (sym s2-eq))
+                              (sym rbp+8-s2-eq-s1-local)
+                              mem-at-s1-rbp+8-preserved
+          where
+            rbp-midres-eq-s1 : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp ≡ readReg (regs s1) rbp
+            rbp-midres-eq-s1 = PairMiddleResultV.rbp-mid mid-res
+            rbp+8-mid-res-eq-s1-local : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp +ℕ slot-size ≡ readReg (regs s1) rbp +ℕ slot-size
+            rbp+8-mid-res-eq-s1-local = cong (_+ℕ slot-size) rbp-midres-eq-s1
+            rbp+8-s2-eq-s1-local : readReg (regs s2) rbp +ℕ slot-size ≡ readReg (regs s1) rbp +ℕ slot-size
+            rbp+8-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ slot-size ≡ readReg (regs s1) rbp +ℕ slot-size)
+                                   (sym s2-eq) rbp+8-mid-res-eq-s1-local
+            s1-rbp+8≢s1-r15-local : readReg (regs s1) rbp +ℕ slot-size ≢ readReg (regs s1) r15
+            s1-rbp+8≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ slot-size ≢_) (sym (v-r15 r-f)) setup-rbp+8≢s1-r15'
+            mem-at-s1-rbp+8-preserved : readMem (memory (PairMiddleResultV.s2 mid-res)) (readReg (regs s1) rbp +ℕ slot-size) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slot-size)
+            mem-at-s1-rbp+8-preserved = PairMiddleResultV.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ slot-size) s1-rbp+8≢s1-r15-local
+        rbp+8-s3 : readReg (regs s3) rbp +ℕ slot-size ≡ readReg (regs s2) rbp +ℕ slot-size
+        rbp+8-s3 = cong (_+ℕ slot-size) (v-rbp r-g)
+        mem-g-r15' : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slot-size)
+        mem-g-r15' = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slot-size))
+                           (sym rbp+8-s3)
+                           (v-mem-rbp+8 r-g)
+
+    setup-rbp+16≢s1-r15 : readReg (regs s-setup) rbp +ℕ slots 2 ≢ readReg (regs s1) r15
+    setup-rbp+16≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+16-eq) (sym s1-r15-eq-proof3) rsp∸8≢rsp∸40
+      where
+        setup-rbp+16-eq : readReg (regs s-setup) rbp +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
+        setup-rbp+16-eq = trans (cong (_+ℕ slots 2) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
+                                                       (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)))
+                                rsp∸24+16≡rsp∸8
+          where
+            rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ slots 3 +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
+            rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' 16≤24
+              where
+                24≤rsp' : 24 ≤ readReg (regs s) rsp
+                24≤rsp' = ≤-trans 24≤40' 40≤rsp-s
+                  where
+                    24≤40' : 24 ≤ 40
+                    24≤40' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+                16≤24 : 16 ≤ 24
+                16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+        s1-r15-eq-proof3 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
+        s1-r15-eq-proof3 = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                                                      (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
+        rsp∸8≢rsp∸40 : readReg (regs s) rsp ∸ slot-size ≢ readReg (regs s) rsp ∸ slots 5
+        rsp∸8≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸8 (sym eq)
+          where
+            open import Data.Nat.Properties using (∸-monoʳ-<)
+            rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slot-size
+            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 40≤rsp-s
+              where
+                8<40 : 8 < 40
+                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+    stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+    stack-r14-s3 = trans mem-g-r14 (trans mem-mid-r14 (trans mem-f-r14 mem-setup-r14))
+      where
+        mem-setup-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+        mem-setup-r14 = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14))
+                              (sym s-setup-eq)
+                              (PairSetupResultV.mem-stack-r14 setup-res)
+        rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ slots 2 > readReg (regs s-setup) rbp
+        rbp+16>setup-rbp = n<n+k (readReg (regs s-setup) rbp) 15
+          where
+            n<n+k : ∀ n k → n < n +ℕ suc k
+            n<n+k zero k = s≤s z≤n
+            n<n+k (suc n) k = s≤s (n<n+k n k)
+        mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2)
+        mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2))
+                          (sym (cong (_+ℕ slots 2) (v-rbp r-f)))
+                          (v-mem-above r-f (readReg (regs s-setup) rbp +ℕ slots 2) rbp+16>setup-rbp)
+        setup-rbp+16≢s1-r15' : readReg (regs s1) rbp +ℕ slots 2 ≢ readReg (regs s-setup) r15
+        setup-rbp+16≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym (cong (_+ℕ slots 2) (v-rbp r-f))) (v-r15 r-f) setup-rbp+16≢s1-r15
+        mem-mid-r14 : readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2)
+        mem-mid-r14 = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2))
+                             (cong memory (sym s2-eq))
+                             (sym rbp+16-s2-eq-s1-local)
+                             mem-at-s1-rbp+16-preserved
+          where
+            rbp-midres-eq-s1-r14 : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp ≡ readReg (regs s1) rbp
+            rbp-midres-eq-s1-r14 = PairMiddleResultV.rbp-mid mid-res
+            rbp+16-mid-res-eq-s1-local : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2
+            rbp+16-mid-res-eq-s1-local = cong (_+ℕ slots 2) rbp-midres-eq-s1-r14
+            rbp+16-s2-eq-s1-local : readReg (regs s2) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2
+            rbp+16-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2)
+                                   (sym s2-eq) rbp+16-mid-res-eq-s1-local
+            s1-rbp+16≢s1-r15-local : readReg (regs s1) rbp +ℕ slots 2 ≢ readReg (regs s1) r15
+            s1-rbp+16≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ slots 2 ≢_) (sym (v-r15 r-f)) setup-rbp+16≢s1-r15'
+            mem-at-s1-rbp+16-preserved : readMem (memory (PairMiddleResultV.s2 mid-res)) (readReg (regs s1) rbp +ℕ slots 2) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2)
+            mem-at-s1-rbp+16-preserved = PairMiddleResultV.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ slots 2) s1-rbp+16≢s1-r15-local
+        rbp+16>s2-rbp : readReg (regs s2) rbp +ℕ slots 2 > readReg (regs s2) rbp
+        rbp+16>s2-rbp = n<n+k'' (readReg (regs s2) rbp) 15
+          where
+            n<n+k'' : ∀ n k → n < n +ℕ suc k
+            n<n+k'' zero k = s≤s z≤n
+            n<n+k'' (suc n) k = s≤s (n<n+k'' n k)
+        mem-g-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2)
+        mem-g-r14 = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2))
+                          (sym (cong (_+ℕ slots 2) (v-rbp r-g)))
+                          (v-mem-above r-g (readReg (regs s2) rbp +ℕ slots 2) rbp+16>s2-rbp)
+
+    -- ========== mem-frame-s3: PROVEN via 4-phase chain ==========
+    orig-r15 : ℕ
+    orig-r15 = readReg (regs s) r15
+
+    0≢pos : ∀ n → n > 0 → 0 ≢ n
+    0≢pos (suc n) _ ()
+
+    orig-r15≢s1-r15 : orig-r15 ≢ readReg (regs s1) r15
+    orig-r15≢s1-r15 = case-stack-inv-r15 stack-inv
+      where
+        open import Data.Nat.Properties using (<-≤-trans)
+        s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
+        s1-r15-eq = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+                                              (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
+        s1-r15>0 : readReg (regs s1) r15 > 0
+        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp∸40>0
+        case-r15-zero-r15 : orig-r15 ≡ 0 → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-zero-r15 r15≡0 eq = 0≢pos (readReg (regs s1) r15) s1-r15>0 (trans (sym r15≡0) eq)
+        case-r15-stack-r15 : readReg (regs s) rsp ≤ orig-r15 → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-stack-r15 rsp≤r15 eq = Data.Nat.Properties.<⇒≢ s1-r15<orig-r15 (sym eq)
+          where
+            rsp∸40<rsp : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
+            rsp∸40<rsp = m∸n<m-r15 (readReg (regs s) rsp) 40
+                           (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+              where
+                m∸n<m-r15 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+                m∸n<m-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+            s1-r15<orig-r15 : readReg (regs s1) r15 < orig-r15
+            s1-r15<orig-r15 = subst (_< orig-r15) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp rsp≤r15)
+        case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-code-r15 r15-code-pf eq =
+          let cap5 = mk-capacity-5 s
+              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
+              rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap5
+              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
+              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              disjoint : orig-r15 ≢ readReg (regs s1) r15
+              disjoint = λ eq' → stack-code-disjoint (readReg (regs s1) r15) orig-r15
+                                                      s1-r15-in-stack r15-code-pf (sym eq')
+          in disjoint eq
+        case-r15-heap-r15 : region-of orig-r15 ≡ heap → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-heap-r15 r15-heap-pf eq =
+          let cap5 = mk-capacity-5 s
+              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
+              rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap5
+              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
+              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              disjoint : orig-r15 ≢ readReg (regs s1) r15
+              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s1) r15) orig-r15
+                                                      s1-r15-in-stack r15-heap-pf (sym eq')
+          in disjoint eq
+        case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
+        case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
+        case-stack-inv-r15 (r15-in-heap r15-heap) = case-r15-heap-r15 r15-heap
+        case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
+        case-stack-inv-r15 (r15-in-stack frame slot r15-eq frame-bound) =
+          let slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in case-r15-stack-r15 r15≥rsp
+
+    mem-frame-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+    mem-frame-s3 = case-mem-frame stack-inv
+      where
+        case-r15-zero : orig-r15 ≡ 0 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-zero r15≡0 = trans (cong (readMem (memory s3)) r15≡0)
+                              (trans (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
+                                     (cong (readMem (memory s)) (sym r15≡0)))
+          where
+            mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
+                                   (sym s-setup-eq) (PairSetupResultV.mem-at-0-setup setup-res)
+            mem-f-at-0 = v-mem-at-0 r-f
+            mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
+                                 (sym s2-eq) (PairMiddleResultV.mem-at-0-mid mid-res)
+            mem-g-at-0 = v-mem-at-0 r-g
+
+        case-r15-code : region-of orig-r15 ≡ code → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-code r15-code = trans mem-g-code (trans mem-mid-code (trans mem-f-code mem-setup-code))
+          where
+            mem-setup-code = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
+                                   (sym s-setup-eq) (PairSetupResultV.mem-code-setup setup-res orig-r15 r15-code)
+            mem-f-code = v-mem-code r-f orig-r15 r15-code
+            mem-mid-code = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
+                                 (sym s2-eq) (PairMiddleResultV.mem-code-mid mid-res orig-r15 r15-code)
+            mem-g-code = v-mem-code r-g orig-r15 r15-code
+
+        case-r15-heap : region-of orig-r15 ≡ heap → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-heap r15-heap = trans mem-g-heap (trans mem-mid-heap (trans mem-f-heap mem-setup-heap))
+          where
+            mem-setup-heap = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
+                                   (sym s-setup-eq) (PairSetupResultV.mem-heap-setup setup-res orig-r15 r15-heap)
+            mem-f-heap = v-mem-heap r-f orig-r15 r15-heap
+            mem-mid-heap = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
+                                 (sym s2-eq) (PairMiddleResultV.mem-heap-mid mid-res orig-r15 r15-heap)
+            mem-g-heap = v-mem-heap r-g orig-r15 r15-heap
+
+        case-r15-stack : readReg (regs s) rsp ≤ orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-stack r15≥rsp = trans mem-g-r15 (trans mem-mid-r15 (trans mem-f-r15 mem-setup-r15))
+          where
+            open import Data.Nat.Properties using (<-≤-trans)
+            mem-setup-r15 = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
+                                  (sym s-setup-eq) (PairSetupResultV.mem-above-rsp-setup setup-res orig-r15 r15≥rsp)
+            r15>setup-rbp : orig-r15 > readReg (regs s-setup) rbp
+            r15>setup-rbp = subst (orig-r15 >_) (sym setup-rbp-eq) rsp∸24<r15
+              where
+                setup-rbp-eq = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
+                                     (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)
+                rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                  where m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+                        m∸n<m-helper (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+                rsp∸24<r15 = <-≤-trans rsp∸24<rsp r15≥rsp
+            mem-f-r15 = v-mem-above r-f orig-r15 r15>setup-rbp
+            mem-mid-r15 = subst (λ s2' → readMem (memory s2') orig-r15 ≡ readMem (memory s1) orig-r15)
+                                (sym s2-eq) (PairMiddleResultV.mem-above-r15-mid mid-res orig-r15 orig-r15≢s1-r15)
+            r15>s2-rbp = subst (orig-r15 >_) (sym (trans rbp-s2-eq-s1 rbp-s1-eq-setup)) r15>setup-rbp
+            mem-g-r15 = v-mem-above r-g orig-r15 r15>s2-rbp
+
+        case-mem-frame : StackInvariant s → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-mem-frame (r15-unused r15≡0) = case-r15-zero r15≡0
+        case-mem-frame (r15-in-code r15-code) = case-r15-code r15-code
+        case-mem-frame (r15-in-heap r15-heap) = case-r15-heap r15-heap
+        case-mem-frame (r15-in-stack frame slot r15-eq frame-bound) =
+          let slot≥frame = slot-addr-≥-base frame slot
+              slot≥rsp = ≤-trans frame-bound slot≥frame
+              r15≥rsp = subst (_≥ readReg (regs s) rsp) (sym r15-eq) slot≥rsp
+          in case-r15-stack r15≥rsp
+
 -- | Execute the final 6 instructions of pair
 -- Extracted to separate module to prevent type-checker explosion in MutualIR
 -- Takes full preconditions for proven stack restoration
@@ -2682,6 +3399,162 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
     result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at
 
     -- Transport to rax (rax-s-final = r15-s3)
+    result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
+    result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))
+                         (sym rax-fin-is-r15) result-valid-at-r15
+
+------------------------------------------------------------------------
+-- Fully validity-based assemble function (Phase D.5e)
+-- Takes all validity-based records (no encode-based inputs)
+------------------------------------------------------------------------
+
+-- | Assemble pair result from fully validity-based inputs
+-- Same as assemble-pair-result-v but takes *ResultV records
+assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
+                          (prefix suffix : Program) (x : ⟦ C ⟧)
+                          (s s-setup s1 s2 s3 s-final : State) →
+  let ctx = make-pair-context f g prefix suffix in
+  let open PairContext ctx in
+  (setup-res : PairSetupResultV f g prefix suffix x s) →
+  (r-f : IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)) →
+  (mid-res : PairMiddleResultV f g prefix suffix x s s-setup s1) →
+  (r-g : IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)) →
+  -- Final phase properties
+  halted s-final ≡ false →
+  pc s-final ≡ length prefix-final +ℕ 6 →
+  readReg (regs s-final) rax ≡ readReg (regs s3) r15 →
+  readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
+  readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
+  StackInvariant s-final →
+  readReg (regs s-final) rsp > slots 2 →
+  readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
+  readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
+  readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
+  readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15) →
+  readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
+  readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
+  (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
+  (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  Star prog s3 s-final →
+  s2 ≡ PairMiddleResultV.s2 mid-res →
+  s-setup ≡ PairSetupResultV.s-setup setup-res →
+  RbpInvariant s →
+  readReg (regs s-final) rsp ≡ readReg (regs s) rsp →
+  -- Validity-based inputs (same as assemble-pair-result-v)
+  ValidAt (eval f x) (readReg (regs s1) rax) (memory s-final) →
+  ValidAt (eval g x) (readReg (regs s3) rax) (memory s-final) →
+  -- Result: IRStarResultV with validity instead of encode
+  IRStarResultV ⟨ f , g ⟩ prog s s-final x (length prefix)
+assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
+                        setup-res r-f mid-res r-g
+                        h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
+                        stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
+                        rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
+                        star-fin s2-eq s-setup-eq
+                        rbp-inv rsp-final
+                        f-valid-final g-valid-final = record
+  { ir-star = star-all
+  ; ir-halted = h-final
+  ; ir-pc = pc-final
+  ; ir-result-valid = result-valid
+  ; ir-r14 = r14-final
+  ; ir-r15 = r15-final
+  ; ir-rbp = rbp-final
+  ; ir-mem = mem-final
+  ; ir-mem-rbp = mem-rbp-final
+  ; ir-mem-rbp+8 = mem-rbp+8-final
+  ; ir-stack-inv = stack-inv-final
+  ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+  ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
+  ; ir-mem-above = mem-above-final
+  ; ir-mem-at-0 = mem-at-0-final
+  ; ir-mem-code = mem-code-final
+  ; ir-mem-heap = mem-heap-final
+  ; ir-closure-wf = closure-wf-final
+  }
+  where
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
+
+    -- Star proofs from each phase (using V versions)
+    star-setup' : Star prog s s-setup
+    star-setup' = subst (λ ss → Star prog s ss) (sym s-setup-eq) (PairSetupResultV.star-setup setup-res)
+
+    star-f-raw : Star (prefix-f ++ code-f ++ suffix-f) s-setup s1
+    star-f-raw = IRStarResultV.ir-star r-f
+    star-f' : Star prog s-setup s1
+    star-f' = subst (λ p → Star p s-setup s1) (sym prog-eq-f) star-f-raw
+
+    star-mid' : Star prog s1 s2
+    star-mid' = subst (λ s2' → Star prog s1 s2') (sym s2-eq) (PairMiddleResultV.star-mid mid-res)
+
+    star-g-raw : Star (prefix-g ++ code-g ++ suffix-g) s2 s3
+    star-g-raw = IRStarResultV.ir-star r-g
+    star-g : Star prog s2 s3
+    star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
+
+    -- Closure WF (using V versions)
+    closure-wf-f-raw : ClosureWFOutput (prefix-f ++ code-f ++ suffix-f)
+    closure-wf-f-raw = IRStarResultV.ir-closure-wf r-f
+    closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix-g)
+    closure-wf-g-raw = IRStarResultV.ir-closure-wf r-g
+    closure-wf-from-f : ClosureWFOutput prog
+    closure-wf-from-f = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
+    closure-wf-from-g : ClosureWFOutput prog
+    closure-wf-from-g = subst ClosureWFOutput (sym prog-eq-g) closure-wf-g-raw
+    closure-wf-final : ClosureWFOutput prog
+    closure-wf-final = case closure-wf-from-f of λ where
+      no-closure → closure-wf-from-g
+      wf-f → wf-f
+
+    -- Compose all 5 phases
+    star-all : Star prog s s-final
+    star-all = star-trans star-setup' (star-trans star-f' (star-trans star-mid' (star-trans star-g star-fin)))
+
+    -- pc-final calculation
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length ⟨ f , g ⟩
+    pc-final = trans pc-fin-raw (trans (cong (_+ℕ 6) len-prefix-final)
+               (trans (+-assoc (length prefix +ℕ 9 +ℕ len-f) len-g 6)
+               (trans (cong ((length prefix +ℕ 9 +ℕ len-f) +ℕ_) (+-comm len-g 6))
+               (trans (sym (+-assoc (length prefix +ℕ 9 +ℕ len-f) 6 len-g))
+               (trans (cong (_+ℕ len-g) (+-assoc (length prefix +ℕ 9) len-f 6))
+               (trans (cong (λ z → (length prefix +ℕ 9 +ℕ z) +ℕ len-g) (+-comm len-f 6))
+               (trans (cong (_+ℕ len-g) (sym (+-assoc (length prefix +ℕ 9) 6 len-f)))
+               (trans (cong (λ z → (z +ℕ len-f) +ℕ len-g) (+-assoc (length prefix) 9 6))
+               (trans (cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f))
+               (+-assoc (length prefix) (15 +ℕ len-f) len-g))))))))))
+
+    -- Address chains (using V versions)
+    r15-s3-v = IRStarResultV.ir-r15 r-g
+    r15-mid' = subst (λ s2' → readReg (regs s2') r15 ≡ readReg (regs s1) r15) (sym s2-eq) (PairMiddleResultV.r15-mid mid-res)
+    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s1) r15
+    r15-chain = trans r15-s3-v r15-mid'
+
+    -- First component: memory at r15 contains addr-a (rax-s1)
+    mem-fst-stored' = subst (λ s2' → readMem (memory s2') (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)) (sym s2-eq) (PairMiddleResultV.mem-fst-stored mid-res)
+
+    mem-fst-s3' : readMem (memory s3) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
+    mem-fst-s3' = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s3) (readReg (regs s2) r15))
+                               (sym r15-s3-v) refl)
+                        (trans (IRStarResultV.ir-mem r-g)
+                        (trans (subst (λ addr → readMem (memory s2) addr ≡ readMem (memory s2) (readReg (regs s1) r15))
+                                      (sym r15-mid') refl)
+                               mem-fst-stored'))
+
+    mem-fst-s-final' : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
+    mem-fst-s-final' = trans mem-fst-final mem-fst-s3'
+
+    mem-snd-s-final' : readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax)
+    mem-snd-s-final' = mem-snd-final
+
+    pair-at : PairAtS (readReg (regs s1) rax) (readReg (regs s3) rax) (readReg (regs s3) r15) (memory s-final)
+    pair-at = pair-at-s mem-fst-s-final' mem-snd-s-final'
+
+    result-valid-at-r15 : ValidAt {A * B} (eval f x , eval g x) (readReg (regs s3) r15) (memory s-final)
+    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at
+
     result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
     result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))
                          (sym rax-fin-is-r15) result-valid-at-r15
