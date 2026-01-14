@@ -137,7 +137,8 @@ open import Once.Backend.X86.Correct.MutualIR.Case
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; addr-from-valid; valid-from-encode; valid-disjoint-from-stack)
+  using (ValidAt; addr-from-valid; valid-from-encode; valid-disjoint-from-stack;
+         valid-pair-decompose; PairAtS)
   renaming (PairAt to MV-PairAt)
 
 open import Data.Bool using (Bool; true; false)
@@ -1510,34 +1511,31 @@ run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false 
 -- Initial: absurd case
 run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   ⊥-elim x
--- fst/snd: bridge validity→encode, call encode impl
--- (These require pair decomposition which is complex - future work)
--- fst: bridge validity→encode, call encode impl
+-- fst/snd: use validity-based versions with pair decomposition
+-- fst: decompose pair validity, call validity-based implementation
 run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  let rdi-eq = addr-from-valid input-valid
-      (s' , result) = run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  in s' , record
-    { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
-    ; ir-result-valid = valid-from-encode (ir-rax result)
-    ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
-    ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-    ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
-    ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
-    ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
-    ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
--- snd: bridge validity→encode, call encode impl
+  let a = proj₁ x
+      b = proj₂ x
+      -- Decompose pair validity to get component validities
+      decomp = valid-pair-decompose input-valid
+      addr-a = proj₁ decomp
+      addr-b = proj₁ (proj₂ decomp)
+      va = proj₁ (proj₂ (proj₂ decomp))
+      vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
+      pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
+  in run-fst-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv
+-- snd: decompose pair validity, call validity-based implementation
 run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  let rdi-eq = addr-from-valid input-valid
-      (s' , result) = run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  in s' , record
-    { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
-    ; ir-result-valid = valid-from-encode (ir-rax result)
-    ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
-    ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-    ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
-    ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
-    ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
-    ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+  let a = proj₁ x
+      b = proj₂ x
+      -- Decompose pair validity to get component validities
+      decomp = valid-pair-decompose input-valid
+      addr-a = proj₁ decomp
+      addr-b = proj₁ (proj₂ decomp)
+      va = proj₁ (proj₂ (proj₂ decomp))
+      vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
+      pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
+  in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv
 -- case: direct validity call
 run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   run-case-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv

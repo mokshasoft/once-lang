@@ -343,6 +343,15 @@ postulate
     ValidAt {A + B} (inj₂ b) addr mem →
     ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr mem)
 
+  -- | Extract fst component validity from pair validity
+  -- If (a, b) is validly represented at addr, extracts component addresses and validities.
+  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+  valid-pair-decompose :
+    ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
+    ValidAt {A * B} (a , b) addr mem →
+    ∃[ addr-a ] ∃[ addr-b ]
+      (ValidAt a addr-a mem × ValidAt b addr-b mem × PairAtS addr-a addr-b addr mem)
+
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
 --
