@@ -623,31 +623,34 @@ mutual
       f-offset = length prefix +ℕ 14      -- 6 closure + 8 thunk setup
       ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- f-offset + len-f + 3 cleanup
 
-      -- Bridge: convert validity to encode for thunk-setup-star
-      -- This is the internal bridge for curry-thunk-correct-impl
-      rdi-eq-arg : readReg (regs s) rdi ≡ encode arg
-      rdi-eq-arg = addr-from-valid v-arg
+      -- Bridge: construct validity for env from encode-eq
+      -- This uses valid-from-encode (the remaining bridge for env)
+      -- arg already has ValidAt via v-arg input
+      v-env : ValidAt env (readReg (regs s) r12) (memory s)
+      v-env = valid-from-encode r12-eq
 
-      -- Step 1: Trace 8 setup instructions
+      -- Step 1: Trace 8 setup instructions (now takes validity for both env and arg)
       setup-result = thunk-setup-star f prefix suffix env arg s
-                       h-eq pc-eq rdi-eq-arg r12-eq stack-inv rsp-sufficient
+                       h-eq pc-eq v-arg v-env stack-inv rsp-sufficient
       s-after-setup = proj₁ setup-result
       star-setup = proj₁ (proj₂ setup-result)
       h-setup = proj₁ (proj₂ (proj₂ setup-result))
       pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
       rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      rsp-sufficient-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+      -- NEW: validity output from thunk-setup-star
+      v-pair-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
+      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
+      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
+      rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
+      stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
+      rsp-sufficient-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
       -- RbpInvariant after setup
-      rbp-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      rbp-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
       -- Key property: memory at (rbp after setup) = original rbp
-      mem-at-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+      mem-at-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
       -- Memory at original rsp is preserved through setup
-      -- The tuple ends with (mem-old-rsp × mem-r15 × mem-at-0 × mem-code)
-      mem-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
+      -- The tuple ends with (mem-old-rsp × mem-r15 × mem-at-0 × mem-code × mem-heap × mem-above)
+      mem-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
       mem-old-rsp-setup = proj₁ mem-rest
       -- Memory at (old-rsp - 8) where r15 was pushed, preserved through setup
       mem-r15-rest = proj₂ mem-rest

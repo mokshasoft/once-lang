@@ -35,6 +35,10 @@ open import Once.Backend.Common.MemoryRegions
   using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack;
          StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
+
+-- Import validity types for validity-based interface
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; PairAtS; pair-at-s; valid-pair; addr-from-valid; valid-subst-heap-preserved)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots;
@@ -58,14 +62,15 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
   in
   halted s ≡ false →
   pc s ≡ thunk-offset →
-  readReg (regs s) rdi ≡ encode arg →
-  readReg (regs s) r12 ≡ encode env →
+  ValidAt arg (readReg (regs s) rdi) (memory s) →   -- validity-based!
+  ValidAt env (readReg (regs s) r12) (memory s) →   -- validity-based!
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ f-offset
           × readReg (regs s') rdi ≡ encode (env , arg)
+          × ValidAt (env , arg) (readReg (regs s') rdi) (memory s')  -- validity output!
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') r15 ≡ readReg (regs s) r15
           × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slots 2  -- rbp is frame pointer (after push r15 and push rbp)
@@ -88,8 +93,8 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
           -- Setup writes only to addresses ≤ original_rsp - 8, so addresses > original_rsp are safe
           × (∀ caller-addr → caller-addr > readReg (regs s) rsp → readMem (memory s') caller-addr ≡ readMem (memory s) caller-addr))
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
-                 h-false pc-eq rdi-eq r12-eq stack-inv rsp-sufficient =
-  s8 , star-all , h8 , pc8 , rdi8 , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved , mem-heap-preserved , mem-above-rsp-preserved
+                 h-false pc-eq v-arg v-env stack-inv rsp-sufficient =
+  s8 , star-all , h8 , pc8 , rdi8 , v-pair , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved , mem-heap-preserved , mem-above-rsp-preserved
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -165,6 +170,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-after-push-r15 = old-rsp ∸ slot-size   -- after push r15
     rsp-after-push-rbp = rsp-after-push-r15 ∸ slot-size  -- after push rbp = old-rsp - 16
     new-rsp = rsp-after-push-rbp ∸ slots 2  -- after sub rsp, 16 = old-rsp - 32
+
+    -- Internal bridging: extract encode equalities from validity
+    -- These are used internally by r12-s5 and rdi-s6
+    rdi-eq : readReg (regs s) rdi ≡ encode arg
+    rdi-eq = addr-from-valid v-arg
+
+    r12-eq : readReg (regs s) r12 ≡ encode env
+    r12-eq = addr-from-valid v-env
 
     -- State after label (no-op, just pc++)
     s1 : State
@@ -983,6 +996,25 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         mem-s7-heap : readMem (memory s7) addr ≡ readMem (memory s) addr
         mem-s7-heap = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                             mem-s6-heap
+
+    -- Validity output: construct ValidAt (env, arg) from components
+    -- Step 1: Propagate v-env through heap preservation to memory s8
+    v-env-at-s8 : ValidAt env (encode env) (memory s8)
+    v-env-at-s8 = valid-subst-heap-preserved v-env (sym r12-eq) mem-heap-preserved
+
+    -- Step 2: Propagate v-arg through heap preservation to memory s8
+    v-arg-at-s8 : ValidAt arg (encode arg) (memory s8)
+    v-arg-at-s8 = valid-subst-heap-preserved v-arg (sym rdi-eq) mem-heap-preserved
+
+    -- Step 3: Construct PairAtS from memory layout
+    pair-layout : PairAtS (encode env) (encode arg) new-rsp (memory s8)
+    pair-layout = pair-at-s mem-env mem-arg
+
+    -- Step 4: Combine using valid-pair
+    v-pair : ValidAt (env , arg) (readReg (regs s8) rdi) (memory s8)
+    v-pair = subst (λ addr → ValidAt (env , arg) addr (memory s8))
+                   (sym rdi-s8-is-new-rsp)
+                   (valid-pair v-env-at-s8 v-arg-at-s8 pair-layout)
 
     -- D041: Memory above original rsp preserved (for caller frame)
     -- Setup writes to: rsp-8 (push r15), rsp-16 (push rbp), rsp-32 (mov [rsp]), rsp-24 (mov [rsp+8])
