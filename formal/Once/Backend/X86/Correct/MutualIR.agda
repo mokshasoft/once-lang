@@ -133,7 +133,7 @@ open import Once.Backend.X86.Correct.MutualIR.Pair
   using (run-pair-star-v)
 
 open import Once.Backend.X86.Correct.MutualIR.Case
-  using (run-case-star-direct)
+  using (run-case-star-direct; run-case-star-v)
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
@@ -1463,19 +1463,9 @@ run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq 
     ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
     ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
     ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
--- case: bridge validity→encode, call encode impl
+-- case: direct validity call
 run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  let rdi-eq = addr-from-valid input-valid
-      (s' , result) = run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  in s' , record
-    { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
-    ; ir-result-valid = valid-from-encode (ir-rax result)
-    ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
-    ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-    ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
-    ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
-    ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
-    ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+  run-case-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 -- curry: bridge validity→encode, call encode impl
 run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   let rdi-eq = addr-from-valid input-valid

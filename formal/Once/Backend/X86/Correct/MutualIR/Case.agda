@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.MutualIR.Dispatcher
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv; ir-capacity;
          ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StarBase using (module IRStarResultV)
@@ -88,11 +88,33 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 
 {-# TERMINATING #-}
 mutual
-  -- | Star-based case execution (direct dispatcher)
-  -- For inl: Setup(4) → f → JumpToEnd(2) (labels are pseudo-instructions)
-  -- For inr: Setup(3) → Jump(1) → LoadVal(1) → g → Label(1)
-  -- compile-length [ f , g ] = (8 + len-f) + len-g
-  -- caller-sp: StackPointer from the caller (D041)
+  -- | Validity-based case execution
+  -- Takes ValidAt input, returns IRStarResultV
+  -- Bridges internally to encode-based implementation
+  run-case-star-v : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
+  run-case-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+    let rdi-eq = addr-from-valid input-valid
+        (s' , result) = run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+    in s' , record
+      { ir-star = ir-star result ; ir-halted = ir-halted result ; ir-pc = ir-pc result
+      ; ir-result-valid = valid-from-encode (ir-rax result)
+      ; ir-r14 = ir-r14 result ; ir-r15 = ir-r15 result ; ir-rbp = ir-rbp result
+      ; ir-mem = ir-mem result ; ir-mem-rbp = ir-mem-rbp result ; ir-mem-rbp+8 = ir-mem-rbp+8 result
+      ; ir-mem-above = ir-mem-above result ; ir-mem-at-0 = ir-mem-at-0 result
+      ; ir-mem-code = ir-mem-code result ; ir-mem-heap = ir-mem-heap result
+      ; ir-stack-inv = ir-stack-inv result ; ir-capacity = ir-capacity result
+      ; ir-rbp-inv = ir-rbp-inv result ; ir-closure-wf = ir-closure-wf result }
+
+  -- | Encode-based case execution (kept for internal use)
+  -- Bridges from validity to encode at entry, calls branch implementations
   run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
