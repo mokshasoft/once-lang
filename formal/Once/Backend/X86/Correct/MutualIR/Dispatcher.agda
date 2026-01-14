@@ -27,7 +27,6 @@ open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 
-open import Once.Postulates using (encode)
 open import Data.Bool using (Bool; false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
@@ -55,22 +54,10 @@ rbp-inv-preserved-through-ir s s1 s2 _ {ir = ir} r rsp2-eq rbp2-eq =
   rbp-inv-preserved-unchanged s1 s2 (ir-rbp-inv r) rsp2-eq rbp2-eq
 
 ------------------------------------------------------------------------
--- Abstract dispatcher signatures (to be implemented concretely later)
+-- Abstract dispatcher signature (validity-based)
 ------------------------------------------------------------------------
 
 postulate
-  -- | Abstract dispatcher for non-stateful IR execution
-  -- caller-sp: StackPointer representing the caller's stack frame (D041)
-  run-ir-star-at-offset-abstract : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
-    StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 ir ++ suffix
-    in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
-
   -- | Validity-based abstract dispatcher for IR execution
   -- Takes a validity proof for input instead of encode equality
   -- Returns IRStarResultV with validity proof for output
