@@ -55,10 +55,12 @@ open import Once.Backend.X86.Correct.StackInstantiation
          apply-rsp-diff-from-alloc; apply-double-alloc-below-rsp;
          apply-double-alloc-diff-from-above;
          -- D041: Heap-stack disjointness via regions (replaces postulate)
-         heap-stack-disjoint-via-region)
+         heap-stack-disjoint-via-region;
+         -- Region proofs from encode
+         encode-in-heap-sem; encode-offset-in-heap)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; heap; stack-code-disjoint;
-         StackPointer; frameSlot; zero-not-in-stack;
+  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint;
+         heap-offset; StackPointer; frameSlot; zero-not-in-stack;
          stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
          pc-in-code; slot-addr; slot-addr-≥-base)
@@ -139,10 +141,12 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
-  -- Key: rdi contains the encoded pair (cl, arg)
-  -- This enables deriving stack-heap disjointness from heap-stack-disjoint
-  readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
-  -- Memory layout (derivable from rdi = encode pair, but explicit for convenience)
+  -- Region proof: rdi is in heap (for heap-stack disjointness)
+  -- Replaces rdi-eq - we only need the region, not the exact encode equality
+  region-of (readReg (regs s) rdi) ≡ heap →
+  -- Region proof: closure-addr is in heap (for heap-stack disjointness)
+  region-of closure-addr ≡ heap →
+  -- Memory layout (derivable from validity, explicit for convenience)
   readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
   readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just (encode arg) →
   readMem (memory s) closure-addr ≡ just env-addr →
@@ -169,7 +173,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × (∀ addr → addr ≥ readReg (regs s) rsp →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
-                 h-false pc-eq stack-inv rsp-sufficient rdi-eq mem-cl mem-arg mem-env mem-cp code-ptr<len =
+                 h-false pc-eq stack-inv rsp-sufficient rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp code-ptr<len =
   s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp-sufficient-6 , mem-r15-saved , rsp6 , mem-above-setup
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -273,14 +277,12 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
 
     -- Memory at rdi is preserved after push (stack vs heap disjointness)
-    -- D041: Uses region-based proof instead of postulate
+    -- Uses rdi-in-heap directly (no encode needed!)
     stack-heap-disjoint-rdi : new-rsp ≢ readReg (regs s) rdi
     stack-heap-disjoint-rdi eq =
-      -- eq : new-rsp ≡ rdi, rdi-eq : rdi ≡ encode pair
-      -- So: new-rsp ≡ encode pair, hence encode pair ≡ new-rsp
-      -- heap-stack-disjoint-via-region says: encode pair +ℕ 0 ≢ new-rsp
-      heap-stack-disjoint-via-region pair 0 new-rsp new-rsp-in-stack
-        (trans (+-identityʳ (encode pair)) (sym (trans eq rdi-eq)))
+      -- eq : new-rsp ≡ rdi
+      -- new-rsp is in stack, rdi is in heap → contradiction
+      stack-heap-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack rdi-in-heap eq
 
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
     mem-cl-s1 = subst (λ addr → readMem (memory s1) addr ≡ just closure-addr)
@@ -309,39 +311,26 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
     rdi-s2 = trans (readReg-writeReg-r15-rdi (regs s1) closure-addr) rdi-s1
 
     -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
-    -- D041: Uses region-based proof instead of postulate
+    -- Uses rdi-in-heap + heap-offset (no encode needed!)
     stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
     stack-heap-disjoint-rdi+8 eq =
       -- eq : new-rsp ≡ rdi + 8
-      -- rdi-eq : rdi ≡ encode pair
-      -- So: new-rsp ≡ encode pair + 8
-      -- heap-stack-disjoint-via-region says: encode pair +ℕ 8 ≢ new-rsp
-      heap-stack-disjoint-via-region pair slot-size new-rsp new-rsp-in-stack
-        (sym (trans eq (cong (_+ℕ slot-size) rdi-eq)))
+      -- new-rsp is in stack, rdi+8 is in heap (via heap-offset) → contradiction
+      let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) slot-size rdi-in-heap
+      in stack-heap-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
 
     -- Memory at closure-addr is preserved (stack vs heap disjointness)
-    -- Derive: closure-addr = encode cl (the closure is the fst of the pair)
-    -- From encode-pair-fst: readMem m (encode (cl, arg)) ≡ just (encode cl)
-    -- From mem-cl: readMem m rdi ≡ just closure-addr, and rdi = encode (cl, arg)
-    -- Therefore: closure-addr = encode cl
-    closure-addr-eq : closure-addr ≡ encode {A ⇒ B} cl
-    closure-addr-eq =
-      let mem-at-pair : readMem (memory s) (encode pair) ≡ just (encode {A ⇒ B} cl)
-          mem-at-pair = encode-pair-fst cl arg (memory s)
-          mem-cl-subst : readMem (memory s) (encode pair) ≡ just closure-addr
-          mem-cl-subst = subst (λ a → readMem (memory s) a ≡ just closure-addr) rdi-eq mem-cl
-      in just-injective (trans (sym mem-cl-subst) mem-at-pair)
-
-    -- D041: Uses region-based proof instead of postulate
+    -- Uses closure-in-heap directly (no encode derivation needed!)
     stack-heap-disjoint-closure : new-rsp ≢ closure-addr
     stack-heap-disjoint-closure eq =
-      heap-stack-disjoint-via-region {A ⇒ B} cl 0 new-rsp new-rsp-in-stack
-        (trans (+-identityʳ (encode {A ⇒ B} cl)) (sym (trans eq closure-addr-eq)))
+      -- new-rsp is in stack, closure-addr is in heap → contradiction
+      stack-heap-disjoint new-rsp closure-addr new-rsp-in-stack closure-in-heap eq
 
     stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
     stack-heap-disjoint-closure+8 eq =
-      heap-stack-disjoint-via-region {A ⇒ B} cl slot-size new-rsp new-rsp-in-stack
-        (sym (trans eq (cong (_+ℕ slot-size) closure-addr-eq)))
+      -- new-rsp is in stack, closure-addr+8 is in heap (via heap-offset) → contradiction
+      let closure+8-in-heap = heap-offset closure-addr slot-size closure-in-heap
+      in stack-heap-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
     -- Since s2 = s1 with only regs changed, memory s2 = memory s1
@@ -987,8 +976,28 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg s
     cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
 
     -- Step 1: Trace 6 setup instructions (push + 5 movs)
+    -- Derive region proofs from rdi-eq for heap-stack disjointness
+    pair = (cl , arg)
+    rdi-in-heap : region-of (readReg (regs s) rdi) ≡ heap
+    rdi-in-heap = subst (λ a → region-of a ≡ heap) (sym rdi-eq) (encode-in-heap-sem pair)
+
+    -- Derive closure-addr region from pair structure
+    -- closure-addr is read from memory at rdi, which is encode pair
+    -- encode-pair-fst tells us mem[encode pair] = encode (fst pair) = encode cl
+    -- So closure-addr = encode cl, hence closure-addr is in heap
+    closure-addr-eq : closure-addr ≡ encode {A ⇒ B} cl
+    closure-addr-eq =
+      let mem-at-pair : readMem (memory s) (encode pair) ≡ just (encode {A ⇒ B} cl)
+          mem-at-pair = encode-pair-fst cl arg (memory s)
+          mem-cl-subst : readMem (memory s) (encode pair) ≡ just closure-addr
+          mem-cl-subst = subst (λ a → readMem (memory s) a ≡ just closure-addr) rdi-eq mem-cl
+      in just-injective (trans (sym mem-cl-subst) mem-at-pair)
+
+    closure-in-heap : region-of closure-addr ≡ heap
+    closure-in-heap = subst (λ a → region-of a ≡ heap) (sym closure-addr-eq) (encode-in-heap-sem {A ⇒ B} cl)
+
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr cl arg s
-                     h-eq pc-eq stack-inv rsp-sufficient rdi-eq mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
+                     h-eq pc-eq stack-inv rsp-sufficient rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
     star-setup = proj₁ (proj₂ setup-result)
     h-setup = proj₁ (proj₂ (proj₂ setup-result))

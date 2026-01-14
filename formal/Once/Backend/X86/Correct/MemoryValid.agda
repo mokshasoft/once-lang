@@ -291,6 +291,16 @@ postulate
     ValidAt {A ⇒ B} cl addr m →
     ValidAt {Eff A B} cl addr m
 
+  -- | Valid address is in heap region
+  -- ValidAt structures represent heap-allocated data, so the address must be in heap.
+  -- This is the fundamental connection between validity and memory regions.
+  -- ELIMINABLE: Provable by induction on ValidAt structure - all constructors use
+  -- heap addresses (from encode which always returns heap addresses).
+  valid-in-heap :
+    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+    ValidAt v addr m →
+    region-of addr ≡ heap
+
   -- | Extract validity of left injection's child value
   -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
   -- then a is validly represented at val-addr.
@@ -363,18 +373,15 @@ postulate
 -- Region-based disjointness from validity (Phase 6c-6d)
 --
 -- These lemmas derive heap-stack disjointness from ValidAt.
--- Uses addr-from-valid internally, so still depends on bridging postulate.
--- ELIMINABLE: Once ValidAt directly implies region info, remove addr-from-valid.
+-- Uses valid-in-heap postulate directly - no addr-from-valid dependency!
 ------------------------------------------------------------------------
 
--- | Valid address is in heap (or 0 for Unit)
--- Derived from: addr-from-valid gives addr = encode v, encode-in-heap-sem gives region = heap
+-- | Valid address is in heap
+-- Direct application of valid-in-heap postulate.
 valid-addr-in-heap : ∀ {A : Type} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
   ValidAt v addr m →
   region-of addr ≡ heap
-valid-addr-in-heap {A} {v} {addr} {m} valid =
-  let addr-eq = addr-from-valid valid
-  in trans (subst (λ a → region-of addr ≡ region-of a) addr-eq refl) (encode-in-heap-sem v)
+valid-addr-in-heap = valid-in-heap
 
 -- | Valid address is disjoint from stack addresses
 -- If addr has ValidAt and stack-addr is in stack, then addr ≢ stack-addr
