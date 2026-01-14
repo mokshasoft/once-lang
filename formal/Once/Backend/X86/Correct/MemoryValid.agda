@@ -352,6 +352,13 @@ postulate
     ∃[ addr-a ] ∃[ addr-b ]
       (ValidAt a addr-a mem × ValidAt b addr-b mem × PairAtS addr-a addr-b addr mem)
 
+  -- | Extract closure memory layout from closure validity
+  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+  valid-closure-decompose :
+    ∀ {A B} {cl : Closure A B} {addr : Word} {mem : Memory} →
+    ValidAt {A ⇒ B} cl addr mem →
+    ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr mem
+
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
 --

@@ -34,7 +34,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-closure-at; ClosureAtS; closure-at-s)
+  using (ValidAt; valid-closure-at; ClosureAtS; closure-at-s; addr-from-valid)
 
 open import Data.Nat using (_>_; _≥_; _<_; s≤s; z≤n)
 -- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
@@ -914,15 +914,10 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     ; ir-closure-wf = IRStarResult.ir-closure-wf ir-result
     }
   where
-    -- Helper to extract encode from validity (needed to call existing run-curry-star)
-    postulate
-      encode-rdi-from-valid : ∀ {A'} {v : ⟦ A' ⟧} {addr : Word} {m : Memory} →
-        ValidAt v addr m →
-        addr ≡ encode v
-
     -- Get the encode-based result first (to reuse all the proof machinery)
+    -- Use shared bridge postulate addr-from-valid
     rdi-eq : readReg (regs s) rdi ≡ encode x
-    rdi-eq = encode-rdi-from-valid input-valid
+    rdi-eq = addr-from-valid input-valid
 
     -- Call the existing encode-based curry
     curry-result : ∃[ s' ] (IRStarResult (curry f) (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)

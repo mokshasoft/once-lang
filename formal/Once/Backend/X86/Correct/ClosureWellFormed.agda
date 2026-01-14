@@ -27,6 +27,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; StackPointer; frameSlot)
 
@@ -55,6 +56,8 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     thunk-star     : Star prog s s'
     thunk-halted   : halted s' ≡ false
     thunk-rax      : readReg (regs s') rax ≡ encode (f a)
+    -- Validity-based result (eliminates need for valid-from-encode bridging)
+    thunk-result-valid : ValidAt (f a) (readReg (regs s') rax) (memory s')
     thunk-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     thunk-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
     thunk-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
