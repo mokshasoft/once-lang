@@ -27,9 +27,9 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-mem-rbp; ir-mem-rbp+8; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 
--- Import validity predicates and bridging (temporary, for helper compatibility)
+-- Import validity predicates and bridging
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; addr-from-valid; valid-from-encode)
+  using (ValidAt; addr-from-valid; valid-from-encode; valid-subst-heap-preserved)
 
 -- Import region definitions for D041 memory preservation proofs
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; StackPointer)
@@ -96,7 +96,7 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
       ctx = make-pair-context f g prefix suffix
       open PairContext ctx
 
-      -- Bridge: get encode equality for setup and middle phases (temporary, until helpers converted)
+      -- Bridge: get encode equality for setup helper (still needs encode input)
       rdi-eq : readReg (regs s) rdi ≡ encode x
       rdi-eq = addr-from-valid input-valid
 
@@ -104,9 +104,13 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
       setup-res = pair-setup-star f g prefix suffix x s h-false pc-eq rdi-eq
       s-setup = PairSetupResult.s-setup setup-res
 
-      -- Input validity for f: transfer preserves validity via rdi preservation
+      -- Input validity for f: propagate through setup using heap preservation
+      -- rdi is unchanged, heap memory is preserved
       input-valid-for-f : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
-      input-valid-for-f = valid-from-encode (PairSetupResult.rdi-setup-enc setup-res)
+      input-valid-for-f = valid-subst-heap-preserved
+        input-valid
+        (sym (PairSetupResult.rdi-setup-raw setup-res))  -- rdi in s-setup = rdi in s
+        (PairSetupResult.mem-heap-setup setup-res)        -- heap memory preserved
 
       -- ========== Phase 2: Execute f (recursive call via validity-based dispatcher) ==========
       -- Derive RbpInvariant for s-setup
@@ -187,9 +191,28 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
       rbp-inv-s2 : RbpInvariant s2
       rbp-inv-s2 = Once.Backend.X86.Correct.StarBase.rbp-inv-preserved-unchanged s1 s2 rbp-inv-s1 rsp-s2-eq-s1 rbp-s2-eq-s1
 
-      -- Construct validity for g's input
+      -- Construct validity for g's input via register/memory chain
+      -- Register chain: rdi in s2 = r14 in s1 = r14 in s-setup = rdi in s
+      rdi-s2-eq-s : readReg (regs s2) rdi ≡ readReg (regs s) rdi
+      rdi-s2-eq-s =
+        let rdi2-raw = PairMiddleResult.rdi2-raw mid-res  -- rdi in s2 = r14 in s1
+            r14-s1-eq-setup = IRStarResultV.ir-r14 r-f-v  -- r14 in s1 = r14 in s-setup
+            r14-setup-eq-rdi = PairSetupResult.r14-setup setup-res  -- r14 in s-setup = rdi in s
+        in trans rdi2-raw (trans r14-s1-eq-setup r14-setup-eq-rdi)
+
+      -- Memory chain: heap preserved s → s-setup → s1 → s2
+      mem-heap-s-to-s2 : ∀ a → region-of a ≡ heap → readMem (memory s2) a ≡ readMem (memory s) a
+      mem-heap-s-to-s2 a h =
+        let setup-heap = PairSetupResult.mem-heap-setup setup-res a h
+            f-heap = IRStarResultV.ir-mem-heap r-f-v a h
+            mid-heap = PairMiddleResult.mem-heap-mid mid-res a h
+        in trans mid-heap (trans f-heap setup-heap)
+
       input-valid-for-g : ValidAt x (readReg (regs s2) rdi) (memory s2)
-      input-valid-for-g = valid-from-encode (PairMiddleResult.rdi2 mid-res)
+      input-valid-for-g = valid-subst-heap-preserved
+        input-valid
+        rdi-s2-eq-s            -- rdi in s2 = rdi in s
+        mem-heap-s-to-s2        -- heap memory preserved
 
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
       step-g = run-ir-star-at-offset-abstract-v g prefix-g suffix-g caller-sp x s2

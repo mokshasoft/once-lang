@@ -259,6 +259,29 @@ postulate
     addr ≡ encode v →
     ValidAt v addr m
 
+  -- | Propagate validity through address/memory substitution
+  -- If validity holds at addr1/mem1, and addr2=addr1 and mem2 agrees with mem1,
+  -- then validity holds at addr2/mem2.
+  -- ELIMINABLE: Provable by induction on ValidAt structure once AtS predicates
+  -- are shown to be preserved under pointwise memory equality.
+  valid-subst-addr-mem :
+    ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
+    ValidAt v addr1 mem1 →
+    addr2 ≡ addr1 →
+    (∀ a → readMem mem2 a ≡ readMem mem1 a) →
+    ValidAt v addr2 mem2
+
+  -- | Propagate validity when only heap memory is preserved
+  -- ValidAt structures only depend on heap memory (not stack), so heap
+  -- preservation is sufficient for validity propagation.
+  -- ELIMINABLE: Provable by induction on ValidAt structure.
+  valid-subst-heap-preserved :
+    ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
+    ValidAt v addr1 mem1 →
+    addr2 ≡ addr1 →
+    (∀ a → region-of a ≡ heap → readMem mem2 a ≡ readMem mem1 a) →
+    ValidAt v addr2 mem2
+
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
 --

@@ -133,6 +133,8 @@ record TransferResult {A B C : Type} (f : IR A B) (g : IR B C)
     h2 : halted s2 ≡ false
     pc2-g : pc s2 ≡ length prefix-g
     rdi2-enc : readReg (regs s2) rdi ≡ encode (eval f x)
+    -- Raw register equality for validity propagation (rdi2-enc = trans rdi2-raw rax1)
+    rdi2-raw : readReg (regs s2) rdi ≡ readReg (regs s1) rax
     stack-inv-2 : StackInvariant s2
     rsp-2>16 : readReg (regs s2) rsp > slots 2
     star-t : Star prog s1 s2
@@ -156,6 +158,7 @@ compose-transfer-star {A} {B} {C} f g prefix suffix x s s1 r1 = record
   ; h2 = h2
   ; pc2-g = pc2-g
   ; rdi2-enc = rdi2-enc
+  ; rdi2-raw = rdi2
   ; stack-inv-2 = stack-inv-2
   ; rsp-2>16 = rsp-2>16
   ; star-t = star-t

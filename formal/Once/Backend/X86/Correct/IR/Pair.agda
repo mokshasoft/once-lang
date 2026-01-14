@@ -382,6 +382,8 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     h-setup : halted s-setup ≡ false
     pc-setup-f : pc s-setup ≡ length prefix-f
     rdi-setup-enc : readReg (regs s-setup) rdi ≡ encode x
+    -- Raw register preservation for validity propagation (rdi-setup-enc = trans rdi-setup-raw input-rdi-eq)
+    rdi-setup-raw : readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ slots 5
     rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
@@ -414,6 +416,7 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
   ; h-setup = h-setup
   ; pc-setup-f = pc-setup-f
   ; rdi-setup-enc = rdi-setup-enc
+  ; rdi-setup-raw = rdi-setup
   ; r14-setup = r14-setup
   ; r15-setup = r15-setup
   ; rbp-setup = rbp-setup
@@ -511,6 +514,8 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     h2 : halted s2 ≡ false
     pc2-g : pc s2 ≡ length prefix-g
     rdi2 : readReg (regs s2) rdi ≡ encode x
+    -- Raw register equality for validity propagation: mov rdi, r14 restores input
+    rdi2-raw : readReg (regs s2) rdi ≡ readReg (regs s1) r14
     stack-inv-s2 : StackInvariant s2
     rsp-sufficient-s2 : readReg (regs s2) rsp > slots 2
     star-mid : Star prog s1 s2
@@ -550,6 +555,7 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
   ; h2 = h2
   ; pc2-g = pc2-g
   ; rdi2 = rdi2
+  ; rdi2-raw = rdi2-raw
   ; stack-inv-s2 = stack-inv-s2
   ; rsp-sufficient-s2 = rsp-sufficient-s2
   ; star-mid = star-mid

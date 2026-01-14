@@ -28,9 +28,9 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem-code; ir-mem-heap; ir-capacity; ir-closure-wf;
          rbp-inv-preserved-unchanged)
 
--- Import validity predicates and bridging (temporary, for helper compatibility)
+-- Import validity predicates and bridging
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; addr-from-valid; valid-from-encode)
+  using (ValidAt; addr-from-valid; valid-from-encode; valid-subst-addr-mem)
 
 -- Import StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant
@@ -91,11 +91,8 @@ run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq inp
       r1-v : IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
       r1-v = proj₂ step-f
 
-      -- Bridge: get encode equality for transfer helper (temporary, until helper converted)
-      rdi-eq : readReg (regs s) rdi ≡ encode x
-      rdi-eq = addr-from-valid input-valid
-
       -- Create IRStarResult from IRStarResultV for compose-transfer-star
+      -- Note: ir-rax still needs bridging because compose-transfer-star computes rdi2-enc
       r1 : IRStarResult f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
       r1 = record
         { ir-star = IRStarResultV.ir-star r1-v
@@ -134,11 +131,15 @@ run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq inp
       rbp-inv-2 : RbpInvariant s2
       rbp-inv-2 = rbp-inv-preserved-unchanged s1 s2 (IRStarResultV.ir-rbp-inv r1-v) rsp-s2-eq-s1 rbp-s2-eq-s1
 
-      -- Construct validity for g's input
+      -- Construct validity for g's input via direct propagation
       -- The transfer moves rax→rdi and doesn't change memory
       -- So validity at rax in s1 becomes validity at rdi in s2
+      -- Using valid-subst-addr-mem instead of round-tripping through encode
       input-valid-for-g : ValidAt (eval f x) (readReg (regs s2) rdi) (memory s2)
-      input-valid-for-g = valid-from-encode (TransferResult.rdi2-enc tr)
+      input-valid-for-g = valid-subst-addr-mem
+        (IRStarResultV.ir-result-valid r1-v)  -- ValidAt at rax in s1
+        (TransferResult.rdi2-raw tr)           -- rdi in s2 = rax in s1
+        (TransferResult.mem-s1-to-s2 tr)       -- memory unchanged
 
       -- Step 3: Execute g (RECURSIVE via validity-based dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
