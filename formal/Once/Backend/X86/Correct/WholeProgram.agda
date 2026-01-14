@@ -122,13 +122,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- | Optional closure memory layout (produced by curry, consumed by apply)
 -- This tracks both the WF proof and the memory addresses for apply.
 -- Must be defined before WholeProgramResult since it's used in that record.
-data ClosureMemoryOutput (prog : Program) (m : Memory) : Set where
+-- E is the captured environment type
+data ClosureMemoryOutput (prog : Program) (m : Memory) : Set₁ where
   no-closure-mem : ClosureMemoryOutput prog m
-  has-closure-mem : ∀ {A B : Type}
-    (closure-addr code-ptr env-addr : ℕ)
+  has-closure-mem : ∀ {E A B : Type}
+    (closure-addr code-ptr : ℕ)
+    (env : ⟦ E ⟧)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-    (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics)
-    (mem-env-valid : readMem m closure-addr ≡ just env-addr)
+    (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics)
+    (mem-env-valid : readMem m closure-addr ≡ just (encode env))
     (mem-cp-valid : readMem m (closure-addr +ℕ 8) ≡ just code-ptr) →
     ClosureMemoryOutput prog m
 
@@ -252,15 +254,16 @@ from-modular r = record
 
 -- | Convert IRStarResult with closure WF and memory proofs to WholeProgramResult
 -- Used for curry case: adds has-closure-mem with full memory layout
--- The closure types (ClA, ClB) may differ from the IR types (A, B)
+-- The closure types (E, ClA, ClB) may differ from the IR types (A, B)
+-- E is the captured environment type
 from-modular-with-wf : ∀ {A B} {ir : IR A B} {prog s s' x offset}
-  {ClA ClB : Type} {closure-addr code-ptr env-addr : ℕ} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
+  {E ClA ClB : Type} {closure-addr code-ptr : ℕ} {env : ⟦ E ⟧} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
   IRStarResult ir prog s s' x offset →
-  ClosureWellFormed {ClA} {ClB} prog code-ptr env-addr sem →
-  readMem (memory s') closure-addr ≡ just env-addr →  -- mem-env proof
+  ClosureWellFormed {E} {ClA} {ClB} prog code-ptr env sem →
+  readMem (memory s') closure-addr ≡ just (encode env) →  -- mem-env proof
   readMem (memory s') (closure-addr +ℕ 8) ≡ just code-ptr →  -- mem-cp proof
   WholeProgramResult ir prog s s' x offset
-from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env-addr = ea} r wf mem-env mem-cp = record
+from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env = e} r wf mem-env mem-cp = record
   { wp-star = ir-star r
   ; wp-halted = ir-halted r
   ; wp-pc = ir-pc r
@@ -271,7 +274,7 @@ from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env-addr = ea} r 
   ; wp-stack-inv = ir-stack-inv r
   ; wp-rsp-bound = ir-rsp-bound r
   ; wp-rbp-inv = ir-rbp-inv r
-  ; wp-closure-mem = has-closure-mem cl-addr cp ea _ wf mem-env mem-cp
+  ; wp-closure-mem = has-closure-mem cl-addr cp e _ wf mem-env mem-cp
   }
 
 -- | Run IR with closure WF tracking for whole-program proofs
@@ -312,15 +315,15 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
       mem-env-prf = mem-env curry-mem-res
       mem-cp-prf = mem-cp curry-mem-res
       -- Build ClosureWellFormed proof
-      -- f : IR _ (A * B) C, so closure semantics is ⟦ B ⟧ → ⟦ C ⟧
-      wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+      -- f : IR (A * B) C, so env type is A, arg type is B, result type is C
+      wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq₁ pc-eq₁ rdi-eq₁ r12-eq₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
-  in s' , from-modular-with-wf {closure-addr = cl-addr} ir-res wf mem-env-prf mem-cp-prf
+  in s' , from-modular-with-wf {closure-addr = cl-addr} {env = x} ir-res wf mem-env-prf mem-cp-prf
 
 -- Apply case: pattern match on wf-in to use closure when available
 --

@@ -114,13 +114,16 @@ open ThunkResult public
 -- The caller (apply) pushes this address via `call`, and thunk-correct
 -- guarantees execution returns there.
 --
--- NOTE: We use explicit runtime values (code-ptr, env-addr) rather than
+-- NOTE: We use explicit runtime values (code-ptr, env) rather than
 -- the semantic Closure record because:
 -- 1. Closure.code-ptr in semantics is 0 (placeholder)
 -- 2. The actual code-ptr comes from compilation (offset + 6)
 -- 3. Apply reads these from memory, not from the semantic record
-record ClosureWellFormed {A B : Type} (prog : Program)
-                         (code-ptr : ℕ) (env-addr : ℕ)
+--
+-- E is the env type, env is the captured environment value.
+-- thunk-correct takes validity for both arg AND env (fully validity-based!)
+record ClosureWellFormed {E A B : Type} (prog : Program)
+                         (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧) : Set where
   field
     -- The code-ptr is within the program bounds
@@ -131,12 +134,13 @@ record ClosureWellFormed {A B : Type} (prog : Program)
     -- caller-sp: identifies the caller's stack frame (D041)
     -- caller-sp-bound: caller's frame starts 8 bytes above current rsp (call convention)
     -- r15-in-code-evidence: r15 is in code region (set by Apply before call)
-    -- arg-valid: validity proof for argument (eliminates encode bridging!)
+    -- v-arg: validity proof for argument (eliminates encode bridging!)
+    -- v-env: validity proof for environment (eliminates encode bridging!)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
-      ValidAt a (readReg (regs s) rdi) (memory s) →  -- validity-based!
-      readReg (regs s) r12 ≡ env-addr →
+      ValidAt a (readReg (regs s) rdi) (memory s) →    -- validity for arg!
+      ValidAt env (readReg (regs s) r12) (memory s) →  -- validity for env!
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →
       readReg (regs s) rsp > slots 2 →
@@ -183,10 +187,10 @@ record CurryResult {A B C : Type} (f : IR (A * B) C)
     -- Note: curry f : IR A (B ⇒ C), so eval (curry f) x : Closure B C
     --       semantics = Closure.semantics (eval (curry f) x) = λ b → eval f (x , b)
     --       code-ptr = offset + 6 (thunk entry in program)
-    --       env-addr = encode x (captured value)
-    closure-wf : ClosureWellFormed {B} {C} prog
+    --       env = x (the captured value of type A)
+    closure-wf : ClosureWellFormed {A} {B} {C} prog
                    (offset +ℕ 6)           -- code-ptr: thunk at offset+6
-                   (encode x)              -- env-addr: encoded captured value
+                   x                       -- env: the captured value
                    (λ b → eval f (x , b))  -- semantics: partial application
 
 open CurryResult public

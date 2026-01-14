@@ -55,10 +55,10 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 --   For pair ⟨curry f, g⟩, this is stored at pair-addr (fst).
 data ClosureWFOutput (prog : Program) : Set₁ where
   no-closure : ClosureWFOutput prog
-  has-closure : ∀ {A B : Type}
-                (closure-addr code-ptr env-addr : ℕ)
+  has-closure : ∀ {E A B : Type}
+                (closure-addr code-ptr : ℕ) (env : ⟦ E ⟧)
                 (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                (wf : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics) →
+                (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
                 ClosureWFOutput prog
 
 ------------------------------------------------------------------------

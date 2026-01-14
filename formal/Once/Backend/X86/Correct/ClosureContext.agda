@@ -53,6 +53,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
+open import Level using (Lift; lift)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (yes; no)
@@ -66,13 +67,14 @@ open import Relation.Nullary using (yes; no)
 record ClosureEntry (prog : Program) : Set₁ where
   constructor make-entry
   field
+    {E} : Type                 -- Environment type
     {A} : Type
     {B} : Type
     closure-addr : ℕ           -- Runtime address of closure (value of encode closure)
     code-ptr     : ℕ           -- Runtime code pointer (thunk offset in program)
-    env-addr     : ℕ           -- Encoded environment value
+    env          : ⟦ E ⟧       -- Captured environment value
     semantics    : ⟦ A ⟧ → ⟦ B ⟧   -- Semantic function
-    wf           : ClosureWellFormed {A} {B} prog code-ptr env-addr semantics
+    wf           : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics
 
 open ClosureEntry public
 
@@ -99,8 +101,8 @@ add-closure entry ctx = entry ∷ ctx
 
 -- | Lookup result
 data LookupResult {prog : Program} (addr : ℕ) : Set₁ where
-  found : ∀ {A B} (code-ptr env-addr : ℕ) (sem : ⟦ A ⟧ → ⟦ B ⟧)
-        → ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+  found : ∀ {E A B} (code-ptr : ℕ) (env : ⟦ E ⟧) (sem : ⟦ A ⟧ → ⟦ B ⟧)
+        → ClosureWellFormed {E} {A} {B} prog code-ptr env sem
         → LookupResult addr
   not-found : LookupResult addr
 
@@ -108,25 +110,8 @@ data LookupResult {prog : Program} (addr : ℕ) : Set₁ where
 lookup-closure : ∀ {prog} (addr : ℕ) → ClosureContext prog → LookupResult {prog} addr
 lookup-closure addr [] = not-found
 lookup-closure addr (entry ∷ ctx) with addr ≟ closure-addr entry
-... | yes refl = found (code-ptr entry) (env-addr entry) (semantics entry) (wf entry)
+... | yes refl = found (code-ptr entry) (env entry) (semantics entry) (wf entry)
 ... | no _     = lookup-closure addr ctx
-
-------------------------------------------------------------------------
--- Type-indexed closure WF tracking
-------------------------------------------------------------------------
-
--- | ClosureWF indexed by type: captures WF proof only for closure types
--- For non-closure types, this is just ⊤ (trivially satisfied)
-ClosureWFFor : Type → Program → Set
-ClosureWFFor (A ⇒[ _ ] B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
-  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
-ClosureWFFor (Eff A B) prog = ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
-  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
-ClosureWFFor _ prog = ⊤
-
--- | For non-closure types, the WF is trivially satisfied
-trivial-closure-wf : ∀ {prog} → ClosureWFFor Unit prog
-trivial-closure-wf = tt
 
 ------------------------------------------------------------------------
 -- ApplyInputWF: WF precondition for apply's input
@@ -134,10 +119,30 @@ trivial-closure-wf = tt
 
 -- | WF precondition for apply's input: the closure component must have WF
 -- For apply : IR ((A ⇒ B) * C) B, we need WF for the closure
-ApplyInputWF : ∀ (A B : Type) → Program → Set
-ApplyInputWF A B prog =
-  ∃[ code-ptr ] ∃[ env-addr ] ∃[ sem ]
-  ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+-- E is the captured environment type (existentially quantified)
+record ApplyInputWF (A B : Type) (prog : Program) : Set₁ where
+  field
+    {E} : Type
+    code-ptr : ℕ
+    env : ⟦ E ⟧
+    sem : ⟦ A ⟧ → ⟦ B ⟧
+    wf : ClosureWellFormed {E} {A} {B} prog code-ptr env sem
+
+------------------------------------------------------------------------
+-- Type-indexed closure WF tracking
+------------------------------------------------------------------------
+
+-- | ClosureWF indexed by type: captures WF proof only for closure types
+-- For non-closure types, this is just ⊤ (trivially satisfied)
+-- Uses ApplyInputWF for closure types (which is Set₁)
+ClosureWFFor : Type → Program → Set₁
+ClosureWFFor (A ⇒[ _ ] B) prog = ApplyInputWF A B prog
+ClosureWFFor (Eff A B) prog = ApplyInputWF A B prog
+ClosureWFFor _ prog = Lift _ ⊤
+
+-- | For non-closure types, the WF is trivially satisfied
+trivial-closure-wf : ∀ {prog} → ClosureWFFor Unit prog
+trivial-closure-wf = lift tt
 
 ------------------------------------------------------------------------
 -- Key theorem: apply with WF input and memory layout
@@ -175,34 +180,36 @@ open ApplyMemoryLayout public
 open import Once.Backend.X86.Correct.IR.Apply as ApplyProof
   using (run-apply-with-wf)
 
-run-apply-with-full-wf : ∀ {A B} (prefix suffix : Program)
-                         (code-ptr env-addr closure-addr : ℕ)
+run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
+                         (code-ptr closure-addr : ℕ)
+                         (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
-  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
-  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg →
+  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
-  -- Validity-based argument (for thunk-correct)
+  -- Validity-based arguments (for thunk-correct)
   ValidAt arg (encode arg) (memory s) →
+  ValidAt env (encode env) (memory s) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
-run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
-                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq v-arg =
-  let result = run-apply-with-wf prefix suffix code-ptr env-addr semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
+run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr env
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient rdi-eq v-arg v-env =
+  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient rdi-eq
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
-           mem-env mem-layout , mem-cp mem-layout) v-arg
+           mem-env mem-layout , mem-cp mem-layout) v-arg v-env
       s' = proj₁ result
       module R = ApplyProof.ApplyWfResult (proj₂ result)
   in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
@@ -213,14 +220,13 @@ run-apply-with-full-wf {A} {B} prefix suffix code-ptr env-addr closure-addr
 
 -- | When curry executes, it produces this WF info that can be used by apply
 -- This captures the connection between curry's output and apply's input
+-- For curry f : IR A (B ⇒ C), the env type E = A and env = x
 record CurryOutputWF {A B C : Type} (f : IR (A * B) C)
                      (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) : Set where
   field
     code-ptr : ℕ
-    env-addr : ℕ
     code-ptr-eq : code-ptr ≡ offset +ℕ 6  -- Thunk is at offset+6
-    env-addr-eq : env-addr ≡ encode x      -- Env is encoded input
-    wf : ClosureWellFormed {B} {C} prog code-ptr env-addr (λ b → eval f (x , b))
+    wf : ClosureWellFormed {A} {B} {C} prog code-ptr x (λ b → eval f (x , b))
 
 open CurryOutputWF public
 
@@ -230,11 +236,12 @@ curry-output-to-apply-input : ∀ {A B C} (f : IR (A * B) C)
                               (prog : Program) (offset : ℕ) (x : ⟦ A ⟧) →
                               CurryOutputWF f prog offset x →
                               ApplyInputWF B C prog
-curry-output-to-apply-input f prog offset x cow =
-  CurryOutputWF.code-ptr cow ,
-  CurryOutputWF.env-addr cow ,
-  (λ b → eval f (x , b)) ,
-  CurryOutputWF.wf cow
+curry-output-to-apply-input {A} f prog offset x cow = record
+  { code-ptr = CurryOutputWF.code-ptr cow
+  ; env = x
+  ; sem = λ b → eval f (x , b)
+  ; wf = CurryOutputWF.wf cow
+  }
 
 ------------------------------------------------------------------------
 -- E2E TEST: Apply with ClosureWellFormed (NO POSTULATE!)
@@ -264,24 +271,26 @@ curry-output-to-apply-input f prog offset x cow =
 -- This is not a runnable test but a type-level proof that the infrastructure
 -- is sufficient to eliminate the postulate.
 test-apply-with-wf-eliminates-postulate :
-  ∀ {A B : Type} (prefix suffix : Program)
-    (code-ptr env-addr closure-addr : ℕ)
+  ∀ {E A B : Type} (prefix suffix : Program)
+    (code-ptr closure-addr : ℕ)
+    (env : ⟦ E ⟧)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
   -- Preconditions that would be established by curry + pair
-  ClosureWellFormed {A} {B} prog code-ptr env-addr semantics →
-  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg →
+  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   readReg (regs s) rdi ≡ encode {(A ⇒ B) * A} (cl , arg) →
-  -- Validity-based argument (for thunk-correct)
+  -- Validity-based arguments (for thunk-correct)
   ValidAt arg (encode arg) (memory s) →
+  ValidAt env (encode env) (memory s) →
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false

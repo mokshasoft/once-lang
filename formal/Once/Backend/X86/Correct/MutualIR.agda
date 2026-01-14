@@ -377,7 +377,7 @@ mutual
       ; ir-stack-inv = ir-stack-inv ir-res
       ; ir-capacity = ir-capacity ir-res
       ; ir-rbp-inv = ir-rbp-inv ir-res
-      ; ir-closure-wf = has-closure cl-addr thunk-offset (encode x) (λ b → eval f (x , b)) wf
+      ; ir-closure-wf = has-closure cl-addr thunk-offset x (λ b → eval f (x , b)) wf
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -445,12 +445,13 @@ mutual
       -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
       -- curry-thunk-correct-impl for memory preservation
       -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
-      wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+      -- Now uses env type A and env value x (not encode x)
+      wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -554,12 +555,12 @@ mutual
       -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
       -- curry-thunk-correct-impl for memory preservation
       -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
-      wf : ClosureWellFormed {B} {C} prog thunk-offset (encode x) (λ b → eval f (x , b))
+      wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ v-arg₁ r12-eq mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
 
   ------------------------------------------------------------------------
@@ -592,8 +593,8 @@ mutual
     in
     halted s ≡ false →
     pc s ≡ thunk-offset →
-    ValidAt arg (readReg (regs s) rdi) (memory s) →  -- validity-based!
-    readReg (regs s) r12 ≡ encode env →
+    ValidAt arg (readReg (regs s) rdi) (memory s) →  -- validity for arg!
+    ValidAt env (readReg (regs s) r12) (memory s) →  -- validity for env!
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
@@ -602,7 +603,7 @@ mutual
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq v-arg r12-eq mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry =
+                           h-eq pc-eq v-arg v-env mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -623,11 +624,7 @@ mutual
       f-offset = length prefix +ℕ 14      -- 6 closure + 8 thunk setup
       ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- f-offset + len-f + 3 cleanup
 
-      -- Bridge: construct validity for env from encode-eq
-      -- This uses valid-from-encode (the remaining bridge for env)
-      -- arg already has ValidAt via v-arg input
-      v-env : ValidAt env (readReg (regs s) r12) (memory s)
-      v-env = valid-from-encode r12-eq
+      -- v-env is now an input parameter (no more valid-from-encode bridge!)
 
       -- Step 1: Trace 8 setup instructions (now takes validity for both env and arg)
       setup-result = thunk-setup-star f prefix suffix env arg s
@@ -1504,9 +1501,9 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    let (s' , ir-result') = run-apply-to-ir-result-v prefix suffix code-ptr env-addr sem apply-closure-addr apply-arg-addr arg s
-                              closure-wf-post h-false pc-eq stack-inv rsp-sufficient rbp-inv apply-v-cl apply-v-arg apply-pair-at apply-closure-at
-    in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x'-eq-x ir-result'
+    let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
+                              closure-wf-post h-false pc-eq stack-inv rsp-sufficient rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
+    in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
     where
       open import Data.Product using (proj₁; proj₂)
       open import Once.Semantics using (Closure)
@@ -1531,7 +1528,7 @@ mutual
       sem : ⟦ A ⟧ → ⟦ B ⟧
       sem = Closure.semantics cl
 
-      -- The semantic value x' for run-apply-to-ir-result-v matches x
+      -- The semantic value x' for the original closure
       x' : ⟦ (A ⇒ B) * A ⟧
       x' = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem } , arg)
 
@@ -1556,20 +1553,55 @@ mutual
       cl' : Closure A B
       cl' = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem }
 
-      -- Transport validity from cl to cl' using Closure eta
-      -- Closure-η-sem cl : cl' ≡ cl, so we use sym to get cl ≡ cl'
-      apply-v-cl : ValidAt {A ⇒ B} cl' apply-closure-addr (memory s)
-      apply-v-cl = subst (λ c → ValidAt c apply-closure-addr (memory s)) (sym (Closure-η-sem cl)) apply-v-cl-raw
-
       -- Decompose closure validity into memory layout
-      apply-closure-at = valid-closure-decompose apply-v-cl-raw
+      apply-closure-at-raw = valid-closure-decompose apply-v-cl-raw
 
       -- POSTULATE: Closure well-formedness for closures in the program
       -- This is justified because all closures come from curry in the same program,
       -- and curry now produces ClosureWellFormed proofs (see run-curry-star-direct).
       -- Threading this proof through composition is a future improvement.
+      -- E is the captured environment type, env is the environment value
       postulate
-        closure-wf-post : ClosureWellFormed {A} {B} prog code-ptr env-addr sem
+        closure-wf-E : Type
+        closure-wf-env : ⟦ closure-wf-E ⟧
+        closure-wf-post : ClosureWellFormed {closure-wf-E} {A} {B} prog code-ptr closure-wf-env sem
+        closure-wf-v-env : ValidAt closure-wf-env (encode closure-wf-env) (memory s)
+        -- Consistency: the env-addr in Closure must match encode of the env value
+        closure-wf-env-addr-eq : env-addr ≡ encode closure-wf-env
+
+      -- Closure with env-addr matching closure-wf-env (for run-apply-to-ir-result-v)
+      cl'' : Closure A B
+      cl'' = record { env-addr = encode closure-wf-env ; code-ptr = code-ptr ; semantics = sem }
+
+      -- Transport validity from cl to cl'' using the env-addr equality
+      -- First transport from cl to cl' (using Closure eta)
+      apply-v-cl' : ValidAt {A ⇒ B} cl' apply-closure-addr (memory s)
+      apply-v-cl' = subst (λ c → ValidAt c apply-closure-addr (memory s)) (sym (Closure-η-sem cl)) apply-v-cl-raw
+
+      -- Then transport from cl' to cl'' (using closure-wf-env-addr-eq)
+      apply-v-cl : ValidAt {A ⇒ B} cl'' apply-closure-addr (memory s)
+      apply-v-cl = subst (λ e → ValidAt (record { env-addr = e ; code-ptr = code-ptr ; semantics = sem }) apply-closure-addr (memory s))
+                         closure-wf-env-addr-eq apply-v-cl'
+
+      -- Transport closure-at to use encode closure-wf-env
+      apply-closure-at : ClosureAtS (encode closure-wf-env) code-ptr apply-closure-addr (memory s)
+      apply-closure-at = subst (λ e → ClosureAtS e code-ptr apply-closure-addr (memory s)) closure-wf-env-addr-eq apply-closure-at-raw
+
+      -- x'' is the semantic value that run-apply-to-ir-result-v produces
+      -- (with env-addr = encode closure-wf-env)
+      x'' : ⟦ (A ⇒ B) * A ⟧
+      x'' = (cl'' , arg)
+
+      -- Prove x'' ≡ x by transitivity: x'' ≡ x' ≡ x
+      -- First, x'' ≡ x' using sym of closure-wf-env-addr-eq
+      cl''-eq-cl' : cl'' ≡ cl'
+      cl''-eq-cl' = cong (λ e → record { env-addr = e ; code-ptr = code-ptr ; semantics = sem }) (sym closure-wf-env-addr-eq)
+
+      x''-eq-x' : x'' ≡ x'
+      x''-eq-x' = cong (λ c → (c , arg)) cl''-eq-cl'
+
+      x''-eq-x : x'' ≡ x
+      x''-eq-x = trans x''-eq-x' x'-eq-x
 
 ------------------------------------------------------------------------
 -- Validity wrappers for curry and apply (Phase C)
