@@ -282,6 +282,15 @@ postulate
     (∀ a → region-of a ≡ heap → readMem mem2 a ≡ readMem mem1 a) →
     ValidAt v addr2 mem2
 
+  -- | Convert validity from (A ⇒ B) to (Eff A B)
+  -- These types have the same runtime representation (Closure A B), but
+  -- ValidAt uses Type as a type index, so conversion is needed.
+  -- ELIMINABLE: Provable by pattern matching on valid-closure and constructing valid-eff.
+  valid-arrow-to-eff :
+    ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
+    ValidAt {A ⇒ B} cl addr m →
+    ValidAt {Eff A B} cl addr m
+
   -- | Extract validity of left injection's child value
   -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
   -- then a is validly represented at val-addr.

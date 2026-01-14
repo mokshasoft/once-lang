@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-closure; valid-eff; valid-fix;
          PairAtS; fst-valid-s; snd-valid-s;
          InlAtS; InrAtS; ClosureAtS;
-         addr-from-valid; valid-from-encode)
+         valid-arrow-to-eff)
 open import Once.Postulates
   using (encode-pair-fst; encode-pair-snd; encode-fix-unwrap; encode-fix-wrap)
 
@@ -1008,37 +1008,68 @@ run-arr-star-vv : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s 
   in ∃[ s' ] IRStarResultV (arr {A} {B}) prog s s' fn (length prefix)
 run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   let
-    -- Bridge: validity → encode equality
-    rdi-eq : readReg (regs s) rdi ≡ encode {A ⇒ B} fn
-    rdi-eq = addr-from-valid {A ⇒ B} input-valid
+    prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
+    input-addr = readReg (regs s) rdi
 
-    -- Call encode-based version
-    (s' , result) = run-arr-star {A} {B} prefix suffix fn s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+    -- Final state after mov rax, rdi
+    s' : State
+    s' = record s { regs = writeReg (regs s) rax input-addr
+                  ; pc = pc s +ℕ 1 }
 
-    -- Bridge: encode equality → validity
-    -- Note: arr : IR (A ⇒ B) (Eff A B), so output type is Eff A B
-    -- eval arr fn = fn, and ⟦ A ⇒ B ⟧ = ⟦ Eff A B ⟧ = Closure A B
+    -- Step execution (inline from run-arr-at-offset)
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rax) (reg rdi))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rax) (reg rdi)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rax) (reg rdi)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rax) (reg rdi)) h-false fetch-eq)
+                    (execMov-reg-reg s rax rdi)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    -- rax in s' = rdi in s (raw equality)
+    rax-eq-raw : readReg (regs s') rax ≡ readReg (regs s) rdi
+    rax-eq-raw = readReg-writeReg-same (regs s) rax input-addr
+
+    -- Validity at new location (same type index A ⇒ B)
+    valid-at-rax : ValidAt {A ⇒ B} fn (readReg (regs s') rax) (memory s')
+    valid-at-rax = subst (λ addr → ValidAt fn addr (memory s)) (sym rax-eq-raw) input-valid
+
+    -- Convert from (A ⇒ B) to (Eff A B) - same runtime representation
+    -- eval arr fn = fn, and arr : IR (A ⇒ B) (Eff A B)
     result-valid : ValidAt {Eff A B} fn (readReg (regs s') rax) (memory s')
-    result-valid = valid-from-encode {Eff A B} (ir-rax result)
+    result-valid = valid-arrow-to-eff valid-at-rax
+
+    -- Register preservation
+    rsp-eq = readReg-writeReg-rax-rsp (regs s) input-addr
+    rbp-eq = readReg-writeReg-rax-rbp (regs s) input-addr
+    cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+
   in s' , record
-    { ir-star = ir-star result
-    ; ir-halted = ir-halted result
-    ; ir-pc = ir-pc result
+    { ir-star = star-single h-false step-eq
+    ; ir-halted = h'
+    ; ir-pc = pc'
     ; ir-result-valid = result-valid
-    ; ir-r14 = ir-r14 result
-    ; ir-r15 = ir-r15 result
-    ; ir-rbp = ir-rbp result
-    ; ir-mem = ir-mem result
-    ; ir-mem-rbp = ir-mem-rbp result
-    ; ir-mem-rbp+8 = ir-mem-rbp+8 result
-    ; ir-mem-above = ir-mem-above result
-    ; ir-mem-at-0 = ir-mem-at-0 result
-    ; ir-mem-code = ir-mem-code result
-    ; ir-mem-heap = ir-mem-heap result
-    ; ir-stack-inv = ir-stack-inv result
-    ; ir-capacity = ir-capacity result
-    ; ir-rbp-inv = ir-rbp-inv result
-    ; ir-closure-wf = ir-closure-wf result
+    ; ir-r14 = readReg-writeReg-rax-r14 (regs s) input-addr
+    ; ir-r15 = readReg-writeReg-rax-r15 (regs s) input-addr
+    ; ir-rbp = rbp-eq
+    ; ir-mem = refl
+    ; ir-mem-rbp = refl
+    ; ir-mem-rbp+8 = refl
+    ; ir-mem-above = λ _ _ → refl  -- arr doesn't write memory
+    ; ir-mem-at-0 = refl
+    ; ir-mem-code = λ _ _ → refl
+    ; ir-mem-heap = λ _ _ → refl
+    ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
+                       (readReg-writeReg-rax-r15 (regs s) input-addr)
+                       rsp-eq
+    ; ir-capacity = cap
+    ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
+    ; ir-closure-wf = no-closure
     }
 
 -- | Validity-based prim execution (postulated)
