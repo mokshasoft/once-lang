@@ -1144,9 +1144,29 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         mem-s7-above = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {caller-addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
                              mem-s6-above
 
+------------------------------------------------------------------------
+-- ThunkRetResult: Record for thunk-ret-star return value
+-- Using a record avoids deep proj chains and helps termination checking
+------------------------------------------------------------------------
+
+record ThunkRetResult (prog : Program) (s s' : State) (ret-addr : ℕ) : Set where
+  field
+    ret-star : Star prog s s'
+    ret-halted : halted s' ≡ false
+    ret-pc : pc s' ≡ ret-addr
+    ret-rax : readReg (regs s') rax ≡ readReg (regs s) rax
+    ret-r14 : readReg (regs s') r14 ≡ readReg (regs s) r14
+    ret-r15 : readReg (regs s') r15 ≡ readReg (regs s) r15
+    ret-rbp : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    ret-stack-inv : StackInvariant s'
+    ret-rsp-bound : readReg (regs s') rsp > slots 2
+    ret-rsp-plus-8 : readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
+    ret-mem-preserved : ∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr
+
 -- Prove ret instruction tracing
 -- Takes explicit r15-in-code evidence instead of generic StackInvariant.
 -- At ret sites in thunks, r15 is ALWAYS in code region (from Apply setup).
+-- Returns a record for clean field access (avoids proj chains)
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -1157,21 +1177,22 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
   readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
   region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
   readReg (regs s) rsp > slots 2 →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ ret-addr
-          × readReg (regs s') rax ≡ readReg (regs s) rax
-          × readReg (regs s') r14 ≡ readReg (regs s) r14
-          × readReg (regs s') r15 ≡ readReg (regs s) r15
-          × readReg (regs s') rbp ≡ readReg (regs s) rbp
-          × StackInvariant s'
-          × readReg (regs s') rsp > slots 2
-          -- D041: Memory preservation (ret doesn't write memory)
-          × readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
-          × (∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr))
+  ∃[ s' ] ThunkRetResult prog s s' ret-addr
 thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
                h-false pc-eq mem-ret r15-code rsp-sufficient =
-  s1 , star-all , h1 , pc1 , rax1 , r14-1 , r15-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1 , mem-ret-preserves
+  s1 , record
+    { ret-star = star-all
+    ; ret-halted = h1
+    ; ret-pc = pc1
+    ; ret-rax = rax1
+    ; ret-r14 = r14-1
+    ; ret-r15 = r15-1
+    ; ret-rbp = rbp1
+    ; ret-stack-inv = stack-inv1
+    ; ret-rsp-bound = rsp-sufficient-1
+    ; ret-rsp-plus-8 = rsp1
+    ; ret-mem-preserved = mem-ret-preserves
+    }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 

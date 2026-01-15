@@ -119,8 +119,9 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
 
 -- Import thunk execution proofs (extracted from mutual block)
 open import Once.Backend.X86.Correct.IR.ThunkExec
-  using (thunk-setup-star; thunk-ret-star; ThunkSetupResult)
+  using (thunk-setup-star; thunk-ret-star; ThunkSetupResult; ThunkRetResult)
 import Once.Backend.X86.Correct.IR.ThunkExec as TE
+open ThunkRetResult
 
 -- Import apply proof (uses ClosureWellFormed)
 open import Once.Backend.X86.Correct.IR.Apply
@@ -130,6 +131,13 @@ open import Once.Backend.X86.Correct.IR.Apply
 import Once.Backend.X86.Correct.MutualIR.Compose as ComposeModule
 import Once.Backend.X86.Correct.MutualIR.Pair as PairModule
 import Once.Backend.X86.Correct.MutualIR.Case as CaseModule
+
+-- Import well-founded recursion and IR size measure
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Once.Backend.X86.Correct.IRSize
+  using (ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
+         [,]-f-smaller; [,]-g-smaller; curry-smaller)
 
 -- Import helper from Dispatcher (still used for rbp invariant preservation)
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
@@ -161,22 +169,21 @@ open ≡-Reasoning
 -- Star-Based Mutual Block - Concrete Dispatcher
 --
 -- This mutual block contains:
--- 1. run-ir-star-at-offset (the dispatcher)
+-- 1. run-ir-star-at-offset (the dispatcher with Acc-based termination)
 -- 2. curry and apply implementations (kept here for now since curry is 646 lines)
 --
 -- Base cases delegate to StarBase functions.
 -- Recursive cases (compose, pair, case) delegate to implementation modules.
 -- Curry and apply are defined inline in this mutual block.
 --
--- TERMINATION: Sized types removed for 10-100x compilation speedup.
--- Structural recursion on IR constructors guarantees termination.
+-- TERMINATION: Uses well-founded recursion on ir-size measure.
+-- The Acc (accessibility) pattern proves termination without sized types.
 ------------------------------------------------------------------------
 
-{-# TERMINATING #-}
 mutual
-  -- | Validity-based IR execution dispatcher (IN mutual block for recursive calls)
+  -- | Validity-based IR execution dispatcher (with Acc for termination)
   -- Takes ValidAt input, returns IRStarResultV with validity output
-  -- This is the primary internal dispatcher - encode-based wrapper is outside mutual block
+  -- Acc proof ensures termination via well-founded recursion on ir-size
   run-ir-star-at-offset-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -184,6 +191,7 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
+    Acc _<_ (ir-size ir) →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
@@ -191,7 +199,7 @@ mutual
   -- Curry implementation (kept in mutual block for now)
   ------------------------------------------------------------------------
 
-  -- | Validity-based curry execution
+  -- | Validity-based curry execution (with Acc for termination)
   -- Takes ValidAt input, returns IRStarResultV with direct validity construction (no bridging!)
   run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -200,9 +208,10 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
+    Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
     s' , record
       { ir-star = exec-star exec-res
       ; ir-halted = exec-halted exec-res
@@ -283,12 +292,13 @@ mutual
       -- curry-thunk-correct-impl for memory preservation
       -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
       -- Now uses env type A and env value x (not encode x)
+      -- ac (Acc for curry f) is passed to curry-thunk-correct-impl for termination
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
         ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ ac
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -348,7 +358,7 @@ mutual
       goal : length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
       goal = subst (length prefix +ℕ 6 <_) (trans step2 (trans step3 step4)) step1
 
-  -- | Star-based curry execution with closure well-formedness proof
+  -- | Star-based curry execution with closure well-formedness proof (with Acc)
   -- Returns CurryResult which includes ClosureWellFormed for use by apply
   run-curry-star-with-wf : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -358,9 +368,10 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
+    Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
-  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
     s' , record
       { curry-star = exec-star exec-res
       ; curry-halted = exec-halted exec-res
@@ -421,7 +432,7 @@ mutual
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
         ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ ac
         }
 
   ------------------------------------------------------------------------
@@ -441,11 +452,12 @@ mutual
   ------------------------------------------------------------------------
 
 
-  -- | curry-thunk-correct-impl: Implementation using IH
+  -- | curry-thunk-correct-impl: Implementation using IH (with Acc for termination)
   -- This composes: setup tracing → IH on f → ret tracing
   -- caller-sp: StackPointer from the caller (D041)
   -- caller-sp-bound: addr caller-sp = s.rsp + 8 (call convention)
   -- r15-in-code: r15 is in code region (from Apply, allows postulate-free ret)
+  -- ac: Accessibility proof for curry f, used to extract smaller Acc for f
   curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (caller-sp : StackPointer) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
@@ -461,10 +473,11 @@ mutual
     readReg (regs s) rsp > slots 2 →
     StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ slot-size →  -- D041: caller-sp bound
     region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
+    Acc _<_ (ir-size (curry f)) →  -- Acc for curry f
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq v-arg v-env mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry =
+                           h-eq pc-eq v-arg v-env mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry (acc smaller-acc) =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -618,10 +631,12 @@ mutual
       input-valid-f : ValidAt (env , arg) (readReg (regs s-after-setup) rdi) (memory s-after-setup)
       input-valid-f = v-pair-setup
 
-      -- Call validity-based dispatcher (now in mutual block!)
+      -- Call validity-based dispatcher with smaller Acc proof
+      -- NOTE: Inlining (smaller-acc (curry-smaller f)) for termination checker visibility
       step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f-v = run-ir-star-at-offset-v f prefix-f suffix-f caller-sp (env , arg) s-after-setup
                    h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
+                   (smaller-acc (curry-smaller f))
 
       s-after-f-raw : State
       s-after-f-raw = proj₁ step-f-v
@@ -965,29 +980,17 @@ mutual
       stack-inv-c3 : StackInvariant s-c3
       stack-inv-c3 = stack-inv-preserved-unchanged s s-c3 stack-inv r15-s-to-c3 rsp-c3
 
-      cleanup-star : ∃[ s-cleanup ] (Star prog s-after-f-raw s-cleanup
-                                    × halted s-cleanup ≡ false
-                                    × pc s-cleanup ≡ ret-offset
-                                    × readReg (regs s-cleanup) rax ≡ readReg (regs s-after-f-raw) rax
-                                    × readReg (regs s-cleanup) r14 ≡ readReg (regs s-after-f-raw) r14
-                                    × readReg (regs s-cleanup) r15 ≡ readReg (regs s-after-f-raw) r15
-                                    × readReg (regs s-cleanup) rbp ≡ readReg (regs s) rbp
-                                    × StackInvariant s-cleanup
-                                    × readReg (regs s-cleanup) rsp > slots 2
-                                    -- D041: RSP restored to original and memory preservation
-                                    × readReg (regs s-cleanup) rsp ≡ readReg (regs s) rsp
-                                    × (∀ addr → readMem (memory s-cleanup) addr ≡ readMem (memory s-after-f-raw) addr))
-      -- Note: r15-c3 proves r15 is restored to original, but cleanup-star expects preservation from s-after-f-raw
-      -- We need to chain: r15-c3 : s-c3.r15 ≡ s.r15, and ir-r15 + r15-setup : s-after-f-raw.r15 ≡ s.r15
-      r15-chain : readReg (regs s-c3) r15 ≡ readReg (regs s-after-f-raw) r15
-      r15-chain = trans r15-c3 (sym (trans (IRStarResultV.ir-r15 r-f-v) r15-setup))
-
       -- Cleanup preserves memory (mov, pop, pop don't write to arbitrary addresses)
       -- memory s-c1 = memory s-after-f-raw (mov), memory s-c2 = memory s-c1 (pop), memory s-c3 = memory s-c2 (pop)
       mem-cleanup-preserves : ∀ addr → readMem (memory s-c3) addr ≡ readMem (memory s-after-f-raw) addr
       mem-cleanup-preserves addr = mem-c1-eq-f addr  -- All three cleanup steps preserve memory
 
-      cleanup-star = s-c3 , star-c , h-c3 , pc-c3 , rax-c3 , r14-c3 , r15-chain , rbp-c3 , stack-inv-c3 , rsp-sufficient-c3 , rsp-c3 , mem-cleanup-preserves
+      -- Direct alias to avoid proj chains (used in validity propagation)
+      rax-cleanup : readReg (regs s-c3) rax ≡ readReg (regs s-after-f-raw) rax
+      rax-cleanup = rax-c3
+
+      mem-cleanup-preserved : ∀ addr → readMem (memory s-c3) addr ≡ readMem (memory s-after-f-raw) addr
+      mem-cleanup-preserved = mem-cleanup-preserves
 
       -- Return address preserved through execution
       --
@@ -1026,65 +1029,57 @@ mutual
 
       -- Memory preserved through cleanup (mov and pops don't write at old-rsp-s)
       -- s-c3 (after 3 cleanup steps) has rsp = old-rsp-s
-      mem-ret-preserved : readMem (memory (proj₁ cleanup-star)) (readReg (regs (proj₁ cleanup-star)) rsp) ≡ just ret-addr
+      mem-ret-preserved : readMem (memory s-c3) (readReg (regs s-c3) rsp) ≡ just ret-addr
       mem-ret-preserved = subst (λ addr → readMem (memory s-c3) addr ≡ just ret-addr)
                                 (sym rsp-c3)
                                 (trans (mem-c1-eq-f old-rsp-s) mem-ret-through-f)
 
-      s-after-cleanup = proj₁ cleanup-star
-      star-cleanup = proj₁ (proj₂ cleanup-star)
-      h-cleanup = proj₁ (proj₂ (proj₂ cleanup-star))
-      pc-cleanup = proj₁ (proj₂ (proj₂ (proj₂ cleanup-star)))
-      rax-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))
-      r14-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star)))))
-      r15-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))
-      rbp-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star)))))))
-      stack-inv-cleanup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))))
-      -- New D041 fields from cleanup-star
-      cleanup-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ cleanup-star))))))))
-      rsp-sufficient-cleanup = proj₁ cleanup-rest
-      rsp-cleanup-restored = proj₁ (proj₂ cleanup-rest)
-      mem-cleanup-preserved = proj₂ (proj₂ cleanup-rest)
+      -- Direct aliases instead of proj chains (for termination checker efficiency)
+      -- s-c3 is s-after-cleanup, star-c is star-cleanup, etc.
+      s-after-f : State
+      s-after-f = s-c3
 
       -- Compose f execution with cleanup
-      star-f-to-cleanup : Star prog s-after-setup s-after-cleanup
-      star-f-to-cleanup = star-trans star-f-converted star-cleanup
+      star-f-to-cleanup : Star prog s-after-setup s-c3
+      star-f-to-cleanup = star-trans star-f-converted star-c
 
-      -- Note: rbp is NOT preserved through setup (it becomes frame pointer)
-      -- but IS restored to original by cleanup. So we need rbp relative to original s.
-      f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
-                                 × halted s-f ≡ false
-                                 × pc s-f ≡ ret-offset
-                                 × readReg (regs s-f) r14 ≡ readReg (regs s-after-setup) r14
-                                 × readReg (regs s-f) r15 ≡ readReg (regs s-after-setup) r15
-                                 × readReg (regs s-f) rbp ≡ readReg (regs s) rbp  -- restored to original
-                                 × StackInvariant s-f
-                                 × readReg (regs s-f) rsp > slots 2
-                                 × readMem (memory s-f) (readReg (regs s-f) rsp) ≡ just ret-addr
-                                 -- D041: RSP and memory preservation for thunk postulates
-                                 × readReg (regs s-f) rsp ≡ readReg (regs s) rsp
-                                 × (∀ addr → readMem (memory s-f) addr ≡ readMem (memory s-after-f-raw) addr))
-      f-result-bridge = s-after-cleanup , star-f-to-cleanup , h-cleanup , pc-cleanup ,
-                        trans r14-cleanup (IRStarResultV.ir-r14 r-f-v) ,
-                        trans r15-cleanup (IRStarResultV.ir-r15 r-f-v) ,
-                        rbp-cleanup ,  -- cleanup restores original rbp directly
-                        stack-inv-cleanup , rsp-sufficient-cleanup , mem-ret-preserved ,
-                        rsp-cleanup-restored , mem-cleanup-preserved
+      star-f : Star prog s-after-setup s-after-f
+      star-f = star-f-to-cleanup
 
-      s-after-f = proj₁ f-result-bridge
-      star-f = proj₁ (proj₂ f-result-bridge)
-      h-f = proj₁ (proj₂ (proj₂ f-result-bridge))
-      pc-f = proj₁ (proj₂ (proj₂ (proj₂ f-result-bridge)))
-      r14-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))
-      r15-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))
-      rbp-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))
-      stack-inv-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))
-      rsp-sufficient-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))))
-      -- D041 fields from f-result-bridge
-      f-bridge-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))))
-      mem-ret-f = proj₁ f-bridge-rest
-      rsp-f-restored = proj₁ (proj₂ f-bridge-rest)
-      mem-f-preserved = proj₂ (proj₂ f-bridge-rest)
+      h-f : halted s-after-f ≡ false
+      h-f = h-c3
+
+      pc-f : pc s-after-f ≡ ret-offset
+      pc-f = pc-c3
+
+      -- Register preservation chains (cleanup preserves from s-after-f-raw, then to s-after-setup)
+      r14-f : readReg (regs s-after-f) r14 ≡ readReg (regs s-after-setup) r14
+      r14-f = trans r14-c3 (IRStarResultV.ir-r14 r-f-v)
+
+      r15-f : readReg (regs s-after-f) r15 ≡ readReg (regs s-after-setup) r15
+      r15-f = trans r15-c3 (sym r15-setup)
+              -- r15-c3 : s-c3.r15 = s.r15
+              -- r15-setup : s-after-setup.r15 = s.r15
+              -- sym r15-setup : s.r15 = s-after-setup.r15
+              -- Result: s-c3.r15 = s-after-setup.r15
+
+      rbp-f : readReg (regs s-after-f) rbp ≡ readReg (regs s) rbp
+      rbp-f = rbp-c3
+
+      stack-inv-f : StackInvariant s-after-f
+      stack-inv-f = stack-inv-c3
+
+      rsp-sufficient-f : readReg (regs s-after-f) rsp > slots 2
+      rsp-sufficient-f = rsp-sufficient-c3
+
+      mem-ret-f : readMem (memory s-after-f) (readReg (regs s-after-f) rsp) ≡ just ret-addr
+      mem-ret-f = mem-ret-preserved
+
+      rsp-f-restored : readReg (regs s-after-f) rsp ≡ readReg (regs s) rsp
+      rsp-f-restored = rsp-c3
+
+      mem-f-preserved : ∀ addr → readMem (memory s-after-f) addr ≡ readMem (memory s-after-f-raw) addr
+      mem-f-preserved = mem-cleanup-preserves
 
       -- Step 3: Trace ret instruction
       -- r15 is in code region at s-after-f (restored to entry value by cleanup)
@@ -1098,22 +1093,50 @@ mutual
           r15-f-eq-s : readReg (regs s-after-f) r15 ≡ readReg (regs s) r15
           r15-f-eq-s = trans r15-f-eq-setup r15-setup
 
-      ret-result = thunk-ret-star f prefix suffix ret-addr s-after-f
-                     h-f pc-f mem-ret-f r15-in-code-f rsp-sufficient-f
-      s-final = proj₁ ret-result
-      star-ret = proj₁ (proj₂ ret-result)
-      h-final = proj₁ (proj₂ (proj₂ ret-result))
-      pc-final = proj₁ (proj₂ (proj₂ (proj₂ ret-result)))
-      rax-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ ret-result))))
-      r14-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result)))))
-      r15-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result))))))
-      rbp-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result)))))))
-      stack-inv-final = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result))))))))
-      -- New fields from extended thunk-ret-star
-      ret-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ ret-result))))))))
-      rsp-sufficient-final = proj₁ ret-rest
-      rsp-ret-plus-8 = proj₁ (proj₂ ret-rest)
-      mem-ret-preserves = proj₂ (proj₂ ret-rest)
+      -- Use ThunkRetResult record for clean field access (no proj chains!)
+      ret-result-pair : ∃[ s-fin ] ThunkRetResult prog s-after-f s-fin ret-addr
+      ret-result-pair = thunk-ret-star f prefix suffix ret-addr s-after-f
+                          h-f pc-f mem-ret-f r15-in-code-f rsp-sufficient-f
+
+      s-final : State
+      s-final = proj₁ ret-result-pair
+
+      ret-rec : ThunkRetResult prog s-after-f s-final ret-addr
+      ret-rec = proj₂ ret-result-pair
+
+      -- Direct record field access (no proj chains!)
+      star-ret : Star prog s-after-f s-final
+      star-ret = ret-star ret-rec
+
+      h-final : halted s-final ≡ false
+      h-final = ret-halted ret-rec
+
+      pc-final : pc s-final ≡ ret-addr
+      pc-final = ret-pc ret-rec
+
+      rax-final : readReg (regs s-final) rax ≡ readReg (regs s-after-f) rax
+      rax-final = ret-rax ret-rec
+
+      r14-final : readReg (regs s-final) r14 ≡ readReg (regs s-after-f) r14
+      r14-final = ret-r14 ret-rec
+
+      r15-final : readReg (regs s-final) r15 ≡ readReg (regs s-after-f) r15
+      r15-final = ret-r15 ret-rec
+
+      rbp-final : readReg (regs s-final) rbp ≡ readReg (regs s-after-f) rbp
+      rbp-final = ret-rbp ret-rec
+
+      stack-inv-final : StackInvariant s-final
+      stack-inv-final = ret-stack-inv ret-rec
+
+      rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
+      rsp-sufficient-final = ret-rsp-bound ret-rec
+
+      rsp-ret-plus-8 : readReg (regs s-final) rsp ≡ readReg (regs s-after-f) rsp +ℕ slot-size
+      rsp-ret-plus-8 = ret-rsp-plus-8 ret-rec
+
+      mem-ret-preserves : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s-after-f) addr
+      mem-ret-preserves = ret-mem-preserved ret-rec
 
       -- Compose the three Star proofs
       star-all : Star prog s s-final
@@ -1316,9 +1339,10 @@ mutual
   -- The apply instruction tracing is now proven in Apply.agda.
   ------------------------------------------------------------------------
 
-  -- | Validity-based apply execution
+  -- | Validity-based apply execution (with Acc for termination)
   -- Takes ValidAt input, uses validity decomposition to extract memory layout
   -- Returns IRStarResultV with direct validity (bridges eliminated from output!)
+  -- Note: Acc passed but not used directly - thunk-correct in closure already has termination baked in
   run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1326,9 +1350,10 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
+    Acc _<_ (ir-size (apply {A} {B})) →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
                               closure-wf-post h-false pc-eq stack-inv rsp-sufficient rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
     in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
@@ -1436,8 +1461,8 @@ mutual
 -- These take ValidAt input and return IRStarResultV
 ------------------------------------------------------------------------
 
-  -- | Validity-based curry execution
-  -- Simple passthrough to run-curry-star-direct (which now takes validity input)
+  -- | Validity-based curry execution (with Acc for termination)
+  -- Simple passthrough to run-curry-star-direct (which now takes validity input and Acc)
   run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1445,14 +1470,15 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
+    Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    -- run-curry-star-direct takes validity input directly, bridges internally
-    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+    -- run-curry-star-direct takes validity input directly, passes Acc for thunk execution
+    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
 
-  -- | Validity-based apply execution
-  -- Simple passthrough to run-apply-star-direct (which now takes validity input)
+  -- | Validity-based apply execution (with Acc for termination)
+  -- Simple passthrough to run-apply-star-direct (which now takes validity input and Acc)
   run-apply-star-v : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1460,54 +1486,75 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
+    Acc _<_ (ir-size (apply {A} {B})) →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
     -- run-apply-star-direct takes validity input directly, returns IRStarResultV
-    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
 
   ------------------------------------------------------------------------
   -- Validity-based dispatcher cases (IN mutual block)
   ------------------------------------------------------------------------
 
-  -- Direct validity-based execution for inl
-  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity-based execution for inl (base case, ignores Acc)
+  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Direct validity-based execution for inr
-  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity-based execution for inr (base case, ignores Acc)
+  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Pair: uses parameterized module with recursive dispatcher
-  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    let open PairModule run-ir-star-at-offset-v
-    in run-pair-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Compose: uses parameterized module with recursive dispatcher
-  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    let open ComposeModule run-ir-star-at-offset-v
-    in run-compose-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Direct validity for id
-  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
+  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv (acc rs) =
+    let -- Construct size-bounded dispatcher from Acc destructor (rs)
+        rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size ⟨ f , g ⟩ →
+              (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
+              halted s' ≡ false → pc s' ≡ length prefix' →
+              ValidAt x' (readReg (regs s') rdi) (memory s') →
+              StackInvariant s' → readReg (regs s') rsp > slots 2 → RbpInvariant s' →
+              let prog' = prefix' ++ compile-x86 ir' ++ suffix'
+              in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
+        rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' rsp-sufficient' rbp-inv' =
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' rsp-sufficient' rbp-inv' (rs lt)
+        open PairModule (ir-size ⟨ f , g ⟩) rec
+    in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
+  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv (acc rs) =
+    let -- Construct size-bounded dispatcher from Acc destructor (rs)
+        rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size (g ∘ f) →
+              (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
+              halted s' ≡ false → pc s' ≡ length prefix' →
+              ValidAt x' (readReg (regs s') rdi) (memory s') →
+              StackInvariant s' → readReg (regs s') rsp > slots 2 → RbpInvariant s' →
+              let prog' = prefix' ++ compile-x86 ir' ++ suffix'
+              in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
+        rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' rsp-sufficient' rbp-inv' =
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' rsp-sufficient' rbp-inv' (rs lt)
+        open ComposeModule (ir-size (g ∘ f)) rec
+    in run-compose-star-v f g (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  -- Direct validity for id (base case, ignores Acc)
+  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Direct validity for terminal
-  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity for terminal (base case, ignores Acc)
+  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-terminal-star-vv prefix suffix x s h-false pc-eq stack-inv rsp-sufficient rbp-inv
-  -- Direct validity for fold
-  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity for fold (base case, ignores Acc)
+  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-fold-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Direct validity for unfold
-  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity for unfold (base case, ignores Acc)
+  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-unfold-star-vv prefix suffix (wrap x') s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Direct validity for arr
-  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity for arr (base case, ignores Acc)
+  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Direct validity for prim
-  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Direct validity for prim (base case, ignores Acc)
+  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
     in run-prim-star-vv name prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv rsp-sufficient rbp-inv
-  -- Initial: absurd case
-  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- Initial: absurd case (base case, ignores Acc)
+  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     ⊥-elim x
-  -- fst: decompose pair validity
-  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- fst: decompose pair validity (base case, ignores Acc)
+  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -1517,8 +1564,8 @@ mutual
         vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-fst-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv
-  -- snd: decompose pair validity
-  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  -- snd: decompose pair validity (base case, ignores Acc)
+  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -1528,14 +1575,46 @@ mutual
         vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv
-  -- case: uses parameterized module with recursive dispatcher
-  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    let open CaseModule run-ir-star-at-offset-v
-    in run-case-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- curry: direct validity call
-  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- apply: direct validity call
-  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  -- case: uses Acc to construct size-bounded dispatcher for parameterized module
+  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv (acc rs) =
+    let -- Construct size-bounded dispatcher from Acc destructor (rs)
+        rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size [ f , g ] →
+              (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
+              halted s' ≡ false → pc s' ≡ length prefix' →
+              ValidAt x' (readReg (regs s') rdi) (memory s') →
+              StackInvariant s' → readReg (regs s') rsp > slots 2 → RbpInvariant s' →
+              let prog' = prefix' ++ compile-x86 ir' ++ suffix'
+              in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
+        rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' rsp-sufficient' rbp-inv' =
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' rsp-sufficient' rbp-inv' (rs lt)
+        open CaseModule (ir-size [ f , g ]) rec
+    in run-case-star-v f g ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
+  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+    run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
+  -- apply: passes Acc to recursive calls (closure body execution)
+  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
 
+------------------------------------------------------------------------
+-- Public API: run-ir-star (provides initial Acc using <-wellFounded)
+--
+-- This is the function exported to external callers. It provides the
+-- initial Acc proof using <-wellFounded, so callers don't need to
+-- provide it manually.
+------------------------------------------------------------------------
+
+-- | Execute IR with validity-based input/output (public API)
+-- Provides initial Acc using <-wellFounded
+run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  readReg (regs s) rsp > slots 2 →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+run-ir-star ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-ir-star-at-offset-v ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    (<-wellFounded (ir-size ir))

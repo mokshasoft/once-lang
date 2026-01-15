@@ -93,8 +93,12 @@ open import Once.Backend.X86.Correct.ClosureContext
 
 -- Import modular runner for delegation
 open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star-at-offset-v; thunk-offset-in-bounds; curry-thunk-correct-impl;
+  using (run-ir-star; thunk-offset-in-bounds; curry-thunk-correct-impl;
          IRStarResultV; module IRStarResultV)
+
+-- Import ir-size and well-founded induction for curry-thunk-correct-impl Acc parameter
+open import Once.Backend.X86.Correct.IRSize using (ir-size)
+open import Data.Nat.Induction using (<-wellFounded)
 
 -- Import curry proof with memory result
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; CurryExecResult)
@@ -285,6 +289,7 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
         ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              (<-wellFounded (ir-size (curry f)))
         }
       -- Transport wf to use mem-code-ptr (which equals thunk-offset)
       wf : ClosureWellFormed {A} {B} {C} prog mem-code-ptr x (λ b → eval f (x , b))
@@ -308,7 +313,7 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     -- Fallback: use validity-based modular runner
     apply-fallback : ∃[ s' ] WholeProgramResult (apply {A} {B}) prog s s' x (length prefix)
     apply-fallback =
-      let (s' , result-v) = run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s
+      let (s' , result-v) = run-ir-star (apply {A} {B}) prefix suffix caller-sp x s
                               h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
       in s' , from-modular-v s' result-v
 
@@ -328,7 +333,7 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
 
 -- All other cases: use validity-based modular runner
 run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv wf-in =
-  let (s' , result-v) = run-ir-star-at-offset-v ir prefix suffix caller-sp x s
+  let (s' , result-v) = run-ir-star ir prefix suffix caller-sp x s
                           h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
   in s' , from-modular-v s' result-v
 
@@ -366,7 +371,7 @@ whole-program-correct ir caller-sp x s h-eq pc-eq input-valid stack-inv rsp-suff
       prog-eq : [] ++ code ++ [] ≡ code
       prog-eq = ++-identityʳ code
       -- Run with empty prefix/suffix using validity-based dispatcher
-      (s' , result) = run-ir-star-at-offset-v ir [] [] caller-sp x s
+      (s' , result) = run-ir-star ir [] [] caller-sp x s
                         h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
       -- Transport result to the simplified program
       star' = subst (λ p → Star p s s') prog-eq (IRStarResultV.ir-star result)

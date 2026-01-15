@@ -2,8 +2,8 @@
 -- Once.Backend.X86.Correct.MutualIR.Case
 --
 -- Case implementation as a parameterized module.
--- Takes the recursive dispatcher as a module parameter.
--- Part of the strategy to enable well-founded recursion on IR size.
+-- Takes a size-bounded recursive dispatcher as a module parameter.
+-- Enables well-founded recursion on IR size via Acc pattern.
 ------------------------------------------------------------------------
 
 open import Once.Type
@@ -25,15 +25,19 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
+open import Once.Backend.X86.Correct.IRSize
+  using (ir-size; [,]-f-smaller; [,]-g-smaller)
 open import Data.Bool using (Bool; false)
 open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; subst₂; cong₂)
 
--- Parameterized module: takes the recursive dispatcher as parameter
+-- Parameterized module: takes size bound and size-bounded dispatcher
 module Once.Backend.X86.Correct.MutualIR.Case
-  (run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  (bound : ℕ)
+  (run-ir-star : ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -98,15 +102,19 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Maybe using (just; nothing)
 
 ------------------------------------------------------------------------
--- Case implementation using parameterized dispatcher
--- Termination is handled by caller (MutualIR uses Acc pattern on ir-size)
+-- Case implementation using size-bounded dispatcher
+-- Termination is proven via Acc pattern on ir-size in MutualIR.agda
 ------------------------------------------------------------------------
 
 mutual
   -- | Validity-based case execution
   -- Takes ValidAt input, returns IRStarResultV
   -- Delegates directly to validity-based branch implementations - no bridging!
-  run-case-star-v : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
+  -- Takes size proofs for sub-terms to enable well-founded recursion.
+  run-case-star-v : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    ir-size f < bound →
+    ir-size g < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -115,13 +123,16 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
-  run-case-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-case-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     -- Delegate directly - run-case-star-direct now takes validity and returns IRStarResultV
-    run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    run-case-star-direct f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
   -- | Validity-based case execution
   -- Dispatches to branch implementations based on sum injection
-  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
+  run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    ir-size f < bound →
+    ir-size g < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A + B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -130,10 +141,10 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  run-case-star-direct {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
     with x
-  ... | inj₁ a = run-case-star-direct-inl f g prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  ... | inj₂ b = run-case-star-direct-inr f g prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  ... | inj₁ a = run-case-star-direct-inl f g f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  ... | inj₂ b = run-case-star-direct-inr f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
   -- | Star-based case left branch (inl) - validity-based version
   -- Structure:
@@ -142,7 +153,9 @@ mutual
   --   Phase 3: Jump to end - 2 instructions (jmp, label)
   -- caller-sp: StackPointer from the caller (D041)
   -- NOTE: Now takes ValidAt input and returns IRStarResultV - no encode bridging!
-  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (a : ⟦ A ⟧) (s : State) →
+  run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    ir-size f < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (a : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt {A + B} (inj₁ a) (readReg (regs s) rdi) (memory s) →
@@ -151,7 +164,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {A} {B} {C} f g prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -360,9 +373,9 @@ mutual
                         (sym rdi-setup)  -- addr: val-addr → rdi in s-setup
                         (λ addr _ → subst (λ m → readMem (memory s-setup) addr ≡ readMem m addr) (sym mem-setup) refl)
 
-      -- Recursive call to f via validity-based dispatcher
+      -- Recursive call to f via size-bounded dispatcher
       step-f-v : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
-      step-f-v = run-ir-star f prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
+      step-f-v = run-ir-star f f<bound prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
 
       s1 : State
       s1 = proj₁ step-f-v
@@ -532,11 +545,13 @@ mutual
   -- Structure:
   --   Phase 1: Setup - 3 instructions (mov r11 [rdi], cmp, jne taken)
   --   Phase 2: Right branch setup - 2 instructions (label, mov rdi [rdi+8])
-  --   Phase 3: Execute g - recursive Star call via abstract dispatcher
+  --   Phase 3: Execute g - recursive Star call via size-bounded dispatcher
   --   Phase 4: End label - 1 instruction
   -- caller-sp: StackPointer from the caller (D041)
   -- NOTE: Now takes ValidAt input and returns IRStarResultV - no encode bridging!
-  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (b : ⟦ B ⟧) (s : State) →
+  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    ir-size g < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (b : ⟦ B ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
@@ -545,7 +560,7 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
-  run-case-star-direct-inr {A} {B} {C} f g prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -828,9 +843,9 @@ mutual
                         (sym val-addr-eq-rdi-right)  -- addr: val-addr → rdi s-right
                         (λ addr _ → subst (λ m → readMem (memory s-right) addr ≡ readMem m addr) (sym mem-s-right-eq-s) refl)
 
-      -- Recursive call to g via validity-based dispatcher
+      -- Recursive call to g via size-bounded dispatcher
       step-g-v : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
-      step-g-v = run-ir-star g prefix-g suffix-g caller-sp b s-right h-right pc-right-g input-valid-g stack-inv-right rsp-sufficient-right rbp-inv-right
+      step-g-v = run-ir-star g g<bound prefix-g suffix-g caller-sp b s-right h-right pc-right-g input-valid-g stack-inv-right rsp-sufficient-right rbp-inv-right
 
       s1 : State
       s1 = proj₁ step-g-v

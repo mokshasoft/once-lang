@@ -2,8 +2,8 @@
 -- Once.Backend.X86.Correct.MutualIR.Compose
 --
 -- Compose implementation as a parameterized module.
--- Takes the recursive dispatcher as a module parameter.
--- Part of the strategy to enable well-founded recursion on IR size.
+-- Takes a size-bounded recursive dispatcher as a module parameter.
+-- Enables well-founded recursion on IR size via Acc pattern.
 ------------------------------------------------------------------------
 
 open import Once.Type
@@ -25,15 +25,19 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
+open import Once.Backend.X86.Correct.IRSize
+  using (ir-size; ∘-f-smaller; ∘-g-smaller)
 open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym)
 
--- Parameterized module: takes the recursive dispatcher as parameter
+-- Parameterized module: takes size bound and size-bounded dispatcher
 module Once.Backend.X86.Correct.MutualIR.Compose
-  (run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  (bound : ℕ)
+  (run-ir-star : ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -58,12 +62,16 @@ open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
 open import Once.Backend.X86.Correct.IR.Compose using (module TransferResultV)
 
 ------------------------------------------------------------------------
--- Compose implementation using parameterized dispatcher
--- Termination is handled by caller (MutualIR uses Acc pattern on ir-size)
+-- Compose implementation using size-bounded dispatcher
+-- Termination is proven via Acc pattern on ir-size in MutualIR.agda
 ------------------------------------------------------------------------
 -- | Validity-based compose execution
 -- Uses validity-based dispatcher and helpers - no encode bridging needed!
-run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+-- Takes size proofs for sub-terms to enable well-founded recursion.
+run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
+  ir-size f < bound →
+  ir-size g < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -72,16 +80,16 @@ run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Prog
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
-run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s3 , result-v
     where
       -- Get context for computed values
       ctx = make-compose-context f g prefix suffix
       open ComposeContext ctx
 
-      -- Step 1: Execute f (RECURSIVE via validity-based dispatcher)
+      -- Step 1: Execute f (RECURSIVE via size-bounded dispatcher)
       step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = run-ir-star f prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
       s1 : State
       s1 = proj₁ step-f
@@ -114,9 +122,9 @@ run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq inp
         (TransferResultV.rdi2-raw tr)          -- rdi in s2 = rax in s1
         (TransferResultV.mem-s1-to-s2 tr)      -- memory unchanged
 
-      -- Step 3: Execute g (RECURSIVE via validity-based dispatcher)
+      -- Step 3: Execute g (RECURSIVE via size-bounded dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
-      step-g = run-ir-star g prefix-g suffix caller-sp (eval f x) s2
+      step-g = run-ir-star g g<bound prefix-g suffix caller-sp (eval f x) s2
                  (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
                  (TransferResultV.stack-inv-2 tr) (TransferResultV.rsp-2>16 tr) rbp-inv-2
 

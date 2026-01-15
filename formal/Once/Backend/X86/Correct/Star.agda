@@ -46,17 +46,19 @@ data Star (prog : Program) : State → State → Set where
           Star prog s s''
 
 ------------------------------------------------------------------------
--- Star Properties
+-- Star Properties (abstract to prevent normalization during type-checking)
 ------------------------------------------------------------------------
 
--- | Transitivity of star
--- If prog takes us from s₁ to s₂, and from s₂ to s₃, then from s₁ to s₃
-star-trans : ∀ {prog s₁ s₂ s₃} →
-             Star prog s₁ s₂ →
-             Star prog s₂ s₃ →
-             Star prog s₁ s₃
-star-trans refl* p₂ = p₂
-star-trans (step* h step-eq p₁) p₂ = step* h step-eq (star-trans p₁ p₂)
+abstract
+  -- | Transitivity of star
+  -- If prog takes us from s₁ to s₂, and from s₂ to s₃, then from s₁ to s₃
+  -- Made abstract to prevent Agda from unfolding through execution traces
+  star-trans : ∀ {prog s₁ s₂ s₃} →
+               Star prog s₁ s₂ →
+               Star prog s₂ s₃ →
+               Star prog s₁ s₃
+  star-trans refl* p₂ = p₂
+  star-trans (step* h step-eq p₁) p₂ = step* h step-eq (star-trans p₁ p₂)
 
 -- | Single step lifts to star
 star-single : ∀ {prog s s'} →

@@ -2,8 +2,8 @@
 -- Once.Backend.X86.Correct.MutualIR.Pair
 --
 -- Pair implementation as a parameterized module.
--- Takes the recursive dispatcher as a module parameter.
--- Part of the strategy to enable well-founded recursion on IR size.
+-- Takes a size-bounded recursive dispatcher as a module parameter.
+-- Enables well-founded recursion on IR size via Acc pattern.
 ------------------------------------------------------------------------
 
 open import Once.Type
@@ -25,15 +25,19 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
+open import Once.Backend.X86.Correct.IRSize
+  using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
 open import Data.Bool using (Bool; false)
 open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; cong; sym; subst; subst₂; cong₂)
 
--- Parameterized module: takes the recursive dispatcher as parameter
+-- Parameterized module: takes size bound and size-bounded dispatcher
 module Once.Backend.X86.Correct.MutualIR.Pair
-  (run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  (bound : ℕ)
+  (run-ir-star : ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+    (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -83,13 +87,17 @@ open import Data.Maybe using (just; nothing)
 open import Relation.Nullary using (yes; no)
 
 ------------------------------------------------------------------------
--- Pair implementation using parameterized dispatcher
--- Termination is handled by caller (MutualIR uses Acc pattern on ir-size)
+-- Pair implementation using size-bounded dispatcher
+-- Termination is proven via Acc pattern on ir-size in MutualIR.agda
 ------------------------------------------------------------------------
 -- | Validity-based pair execution
 -- Uses validity-based dispatcher for recursive calls
 -- Fully validity-based - zero bridge postulates!
-run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ C ⟧) (s : State) →
+-- Takes size proofs for sub-terms to enable well-founded recursion.
+run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  ir-size f < bound →
+  ir-size g < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -98,7 +106,7 @@ run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) (prefix suffix : Program
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
-run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s-final , result-v
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -141,7 +149,7 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
             (pair-rbp-frame-≥-r15-frame s cap5)
 
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
-      step-f = run-ir-star f prefix-f suffix-f caller-sp x s-setup
+      step-f = run-ir-star f f<bound prefix-f suffix-f caller-sp x s-setup
                 (PairSetupResultV.h-setup setup-res)
                 (PairSetupResultV.pc-setup-f setup-res)
                 input-valid-for-f
@@ -200,7 +208,7 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
         mem-heap-s-to-s2        -- heap memory preserved
 
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
-      step-g = run-ir-star g prefix-g suffix-g caller-sp x s2
+      step-g = run-ir-star g g<bound prefix-g suffix-g caller-sp x s2
                 (PairMiddleResultV.h2 mid-res)
                 (PairMiddleResultV.pc2-g mid-res)
                 input-valid-for-g

@@ -213,27 +213,9 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 -- NOTE: List manipulation lemmas (compose-prog-eq, compose-transfer-eq, compose-g-eq)
 -- are now imported from Once.Backend.Common.ProgramLemmas
 
-------------------------------------------------------------------------
--- run-ir-star: Star-based version of IR execution
---
--- Delegates directly to run-ir-star-at-offset which returns IRStarResult.
---
--- Note: IRStarResult is defined in MutualIR.agda and re-exported from there.
-------------------------------------------------------------------------
+-- NOTE: run-ir-star is exported from Once.Backend.X86.Correct.MutualIR (imported above with public)
 
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
-
--- | Star-based IR execution at arbitrary offset (validity-based)
--- caller-sp: StackPointer representing the caller's stack frame (D041)
-run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    ValidAt x (readReg (regs s) rdi) (memory s) →
-    StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
-    RbpInvariant s →
-    ∃[ s' ] IRStarResultV ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
-run-ir-star = run-ir-star-at-offset-v
 
 ------------------------------------------------------------------------
 -- Example: Composing IR proofs with Star
@@ -260,8 +242,8 @@ compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-i
   where
     open import Data.List.Properties using (++-identityʳ)
 
-    -- Use run-ir-star-at-offset-v (Star-based, validity input)
-    result = run-ir-star-at-offset-v (g ∘ f) [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
+    -- Use run-ir-star (Star-based, validity input)
+    result = run-ir-star (g ∘ f) [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
     s-final = proj₁ result
     r = proj₂ result
     h-final = IRStarResultV.ir-halted r
@@ -286,7 +268,7 @@ compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-i
 -- Just transitivity of the star relation.
 
 -- | Detailed Star-based compose showing the 3-step composition (validity-based)
--- Uses run-ir-star-at-offset-v directly - no fuel conversion needed
+-- Uses run-ir-star directly - no fuel conversion needed
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
@@ -302,8 +284,8 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
            × ValidAt (eval (g ∘ f) x) (readReg (regs s') rax) (memory s'))
 run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv =
   let
-    -- Use run-ir-star-at-offset-v (Star-based, validity input)
-    result = run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv
+    -- Use run-ir-star (Star-based, validity input)
+    result = run-ir-star (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv
     s-final = proj₁ result
     r = proj₂ result
   in
@@ -391,8 +373,8 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 input-valid stack-inv stack-
     prog : Program
     prog = compile-x86 ir
 
-    -- Use run-ir-star-at-offset-v (Star-based, validity input)
-    result = run-ir-star-at-offset-v ir [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
+    -- Use run-ir-star (Star-based, validity input)
+    result = run-ir-star ir [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
     s' = proj₁ result
     r = proj₂ result
 
