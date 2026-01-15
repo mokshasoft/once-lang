@@ -85,12 +85,17 @@ enumerateNormalizedWithProgress src tgt maxDepth = do
     processWithProgress (count, seen) term = do
       let count' = count + 1
           opt = optimize term
+          isNew = not (any (irStructEq opt) seen)
       -- Log progress every 500 terms
       when (count' `mod` 500 == 0) $ do
         putStr $ "\rProcessed " ++ show count' ++ " terms, " ++ show (length seen) ++ " unique normal forms"
         hFlush stdout
+      -- Print new normal form when found
+      when isNew $ do
+        putStrLn $ "\n  NEW [" ++ show (length seen + 1) ++ "]: " ++ showIR opt
+        hFlush stdout
       -- Add if not seen
-      let seen' = if any (irStructEq opt) seen then seen else opt : seen
+      let seen' = if isNew then opt : seen else seen
       pure (count', seen')
 
 -- | Check if all terms in an equivalence class normalize to the same form
