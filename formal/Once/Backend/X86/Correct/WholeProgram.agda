@@ -79,14 +79,14 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
          ir-result-valid)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode; addr-from-valid)
 open import Once.Backend.Common.MemoryRegions using (StackPointer; region-of; heap)
 
 -- Import closure infrastructure
@@ -100,7 +100,8 @@ open import Once.Backend.X86.Correct.ClosureContext
 
 -- Import modular runner for delegation
 open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star-at-offset; run-ir-star-at-offset-v; thunk-offset-in-bounds; curry-thunk-correct-impl)
+  using (run-ir-star-at-offset; run-ir-star-at-offset-v; thunk-offset-in-bounds; curry-thunk-correct-impl;
+         IRStarResultV; module IRStarResultV)
 
 -- Import curry proof with memory result
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult)
@@ -277,6 +278,26 @@ from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env = e} r wf mem
   ; wp-closure-mem = has-closure-mem cl-addr cp e _ wf mem-env mem-cp
   }
 
+-- | Convert validity-based modular result to whole-program result
+-- Uses addr-from-valid bridge to convert validity to encode equality
+-- This consolidates all bridging for fallback cases in one place
+from-modular-v : ∀ {A B} {ir : IR A B} {prog s x offset} (s' : State) →
+  IRStarResultV ir prog s s' x offset →
+  WholeProgramResult ir prog s s' x offset
+from-modular-v s' r = record
+  { wp-star = IRStarResultV.ir-star r
+  ; wp-halted = IRStarResultV.ir-halted r
+  ; wp-pc = IRStarResultV.ir-pc r
+  ; wp-rax = addr-from-valid (IRStarResultV.ir-result-valid r)  -- Bridge: validity to encode
+  ; wp-r14 = IRStarResultV.ir-r14 r
+  ; wp-r15 = IRStarResultV.ir-r15 r
+  ; wp-rbp = IRStarResultV.ir-rbp r
+  ; wp-stack-inv = IRStarResultV.ir-stack-inv r
+  ; wp-rsp-bound = capacity-2-to-rsp-bound s' (IRStarResultV.ir-capacity r)
+  ; wp-rbp-inv = IRStarResultV.ir-rbp-inv r
+  ; wp-closure-mem = no-closure-mem  -- Modular runner doesn't track closure memory
+  }
+
 -- | Run IR with closure WF tracking for whole-program proofs
 --
 -- This is the main entry point for whole-program verification.
@@ -341,12 +362,13 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
 
-    -- Fallback: use modular runner
+    -- Fallback: use validity-based modular runner (consolidates bridging in from-modular-v)
     apply-fallback : ∃[ s' ] WholeProgramResult (apply {A} {B}) prog s s' x (length prefix)
     apply-fallback =
-      let (s' , modular-result) = run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s
-                                    h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-      in s' , from-modular modular-result
+      let input-valid = valid-from-encode rdi-eq
+          (s' , result-v) = run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s
+                              h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      in s' , from-modular-v s' result-v
 
     -- Pattern match on wf-in
     apply-with-wf-check : ClosureWFOutput prog →
@@ -362,11 +384,12 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     --   2. Postulated memory layout (ApplyMemoryLayout)
     --   3. Call run-apply-with-full-wf with the WF proof
 
--- All other cases: delegate to modular runner
+-- All other cases: use validity-based modular runner (consolidates bridging in from-modular-v)
 run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv wf-in =
-  let (s' , modular-result) = run-ir-star-at-offset ir prefix suffix caller-sp x s
-                                h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  in s' , from-modular modular-result
+  let input-valid = valid-from-encode rdi-eq
+      (s' , result-v) = run-ir-star-at-offset-v ir prefix suffix caller-sp x s
+                          h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  in s' , from-modular-v s' result-v
 
 ------------------------------------------------------------------------
 -- Whole-program composition theorem
