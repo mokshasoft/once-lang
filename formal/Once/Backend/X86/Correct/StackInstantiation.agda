@@ -20,6 +20,7 @@ module Once.Backend.X86.Correct.StackInstantiation where
 
 open import Once.Type
 open import Once.Semantics
+open import Once.IR
 
 open import Once.Backend.X86.Syntax public using (slot-size)  -- Re-export slot-size
 open import Once.Backend.X86.Syntax hiding (slot-size)        -- Import the rest
@@ -170,6 +171,41 @@ record StackCapacity (s : State) (n : ℕ) : Set where
       region-of (readReg (regs s) rsp ∸ (k *ℕ slot-size)) ≡ stack
 
 open StackCapacity public
+
+------------------------------------------------------------------------
+-- IR Stack Frame Requirements
+--
+-- Each IR operation has a known stack frame requirement. These functions
+-- allow computing the required input capacity to ensure safe execution.
+------------------------------------------------------------------------
+
+-- | Stack slots needed by each IR operation
+-- This reflects the maximum stack depth used during execution:
+-- - Simple operations (id, fst, snd, etc): 0 slots
+-- - Curry: 5 slots (push r15, push rbp, sub 24 = 3 more slots)
+-- - Apply: 3 slots (call pushes ret addr, thunk uses 2 more)
+ir-frame-slots : ∀ {A B} → IR A B → ℕ
+ir-frame-slots id             = 0
+ir-frame-slots (_ ∘ _)        = 0   -- Composition itself doesn't allocate
+ir-frame-slots fst            = 0
+ir-frame-slots snd            = 0
+ir-frame-slots ⟨ _ , _ ⟩      = 0   -- Pair doesn't allocate stack
+ir-frame-slots inl            = 0
+ir-frame-slots inr            = 0
+ir-frame-slots [ _ , _ ]      = 0   -- Case branches don't allocate
+ir-frame-slots terminal       = 0
+ir-frame-slots initial        = 0
+ir-frame-slots (curry _)      = 5   -- push r15, push rbp, sub rsp 24
+ir-frame-slots apply          = 3   -- call + thunk frame setup
+ir-frame-slots fold           = 0
+ir-frame-slots unfold         = 0
+ir-frame-slots arr            = 0
+ir-frame-slots (Prim _)       = 0
+
+-- | Input capacity needed: frame slots + output capacity (2)
+-- This ensures that after the operation, we have capacity for 2 slots.
+ir-input-capacity : ∀ {A B} → IR A B → ℕ
+ir-input-capacity ir = ir-frame-slots ir +ℕ 2
 
 ------------------------------------------------------------------------
 -- Capacity Operations (arithmetic-heavy)

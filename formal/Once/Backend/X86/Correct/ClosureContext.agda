@@ -42,7 +42,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
          thunk-star; thunk-halted; thunk-result-valid;
-         thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
+         thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Data.Bool using (Bool; true; false)

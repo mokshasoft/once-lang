@@ -86,7 +86,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          code-ptr-valid; thunk-correct;
          thunk-star; thunk-halted; thunk-result-valid;
          thunk-r14; thunk-r15; thunk-rbp;
-         thunk-stack-inv; thunk-rsp-bound;
+         thunk-stack-inv; thunk-capacity;
          thunk-rsp-plus-8; thunk-preserves-frame;
          thunk-preserves-zero; thunk-preserves-code; thunk-preserves-heap;
          thunk-preserves-above-entry-rsp)
@@ -1241,7 +1241,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 
     pop-result = apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s-thunk
                    (thunk-halted thunk-res) pc-thunk mem-r15-thunk
-                   rsp-thunk-eq-orig orig-inv (thunk-rsp-bound thunk-res)
+                   rsp-thunk-eq-orig orig-inv (StackCapacity.rsp-sufficient (thunk-capacity thunk-res))
     s-pop = proj₁ pop-result
     module PopR = ApplyPopResult (proj₂ pop-result)
 

@@ -349,6 +349,56 @@ This is provable in Cubical Agda if a constructive proof is needed.
 
 ## Typechecker Performance
 
+### No function definitions in `where` clauses (CRITICAL!)
+
+**Problem**: Defining functions inside `where` clauses causes severe performance issues:
+1. Functions in `where` are re-typechecked at every use site
+2. If the same helper is defined in multiple `where` blocks, Agda checks each independently
+3. Combined effect can cause exponential slowdown or memory exhaustion
+
+**Evidence**: In `MutualIR/Pair.agda`, the same helper `m∸n<m` was defined THREE times in nested `where` blocks. Build times went from ~30 seconds to 14+ minutes with eventual OOM kill.
+
+**The Rule**: No function definitions (with pattern matching or explicit λ) in `where` clauses.
+
+```agda
+-- BAD: Function defined in where clause (re-typechecked at each use)
+mem-above-final addr = mem-chain
+  where
+    m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m  -- Function!
+    m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+    rsp∸24<rsp = m∸n<m ...
+    rsp∸40<rsp = m∸n<m ...  -- Function typechecked again!
+
+-- GOOD: Value bindings in where are fine
+mem-above-final addr = mem-chain
+  where
+    orig-rsp = readReg (regs s) rsp  -- Value binding, OK
+    setup-rbp = readReg (regs s-setup) rbp  -- Value binding, OK
+    rsp∸24<rsp = m∸n<m-when-positive orig-rsp 24 ...  -- Uses module-level helper
+```
+
+**Solution**: Use either:
+1. **Existing module-level helpers** - Check StackInstantiation, Data.Nat.Properties first
+2. **`private` block at module level** - For truly local helpers not in standard library
+
+```agda
+-- Private block at module level: checked once, not exported
+private
+  -- Helper used only in this module
+  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > slots 2 → rsp-val ∸ slots 5 +ℕ slot-size < rsp-val
+  rsp∸40+8<rsp rsp-val rsp>16 with 40 ≤? rsp-val
+  ... | yes 40≤rsp = ...
+  ... | no  40>rsp = ...
+
+-- Main function uses the private helper
+run-pair-star-v ... = ...
+  where
+    rsp∸40+8<rsp-proof = rsp∸40+8<rsp orig-rsp rsp>16  -- Single call to module-level helper
+```
+
+**Result**: Build time for Pair.agda dropped from 14+ minutes (OOM) to ~30 seconds.
+
 ### Replace deeply nested tuple projections with records
 
 **Problem**: Functions returning many values as nested tuples cause typechecker resource exhaustion. Deeply nested `proj₁`/`proj₂` chains (10+ levels) create exponential unification work.

@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -42,7 +42,7 @@ module Once.Backend.X86.Correct.MutualIR.Case
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
@@ -119,13 +119,13 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
-  run-case-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-case-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     -- Delegate directly - run-case-star-direct now takes validity and returns IRStarResultV
-    run-case-star-direct f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    run-case-star-direct f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
 
   -- | Validity-based case execution
   -- Dispatches to branch implementations based on sum injection
@@ -137,14 +137,14 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
-  run-case-star-direct {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  run-case-star-direct {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
     with x
-  ... | inj₁ a = run-case-star-direct-inl f g f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  ... | inj₂ b = run-case-star-direct-inr f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  ... | inj₁ a = run-case-star-direct-inl f g f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+  ... | inj₂ b = run-case-star-direct-inr f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv cap-in rbp-inv
 
   -- | Star-based case left branch (inl) - validity-based version
   -- Structure:
@@ -160,11 +160,11 @@ mutual
     pc s ≡ length prefix →
     ValidAt {A + B} (inj₁ a) (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₁ a) (length prefix)
-  run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -317,7 +317,7 @@ mutual
 
       -- Derive rsp-sufficient from preserved rsp
       rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > slots 2
-      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) rsp-sufficient
+      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) (StackCapacity.rsp-sufficient cap-in)
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       -- Star-based: uses Star relation directly instead of fuel-based exec
@@ -373,9 +373,13 @@ mutual
                         (sym rdi-setup)  -- addr: val-addr → rdi in s-setup
                         (λ addr _ → subst (λ m → readMem (memory s-setup) addr ≡ readMem m addr) (sym mem-setup) refl)
 
+      -- Construct StackCapacity for s-setup from raw bounds
+      cap-setup : StackCapacity s-setup 2
+      cap-setup = rsp-bound-to-capacity 2 s-setup (rsp-in-stack-after-stack-op s-setup) rsp-sufficient-setup
+
       -- Recursive call to f via size-bounded dispatcher
       step-f-v : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
-      step-f-v = run-ir-star f f<bound prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
+      step-f-v = run-ir-star f f<bound prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f input-valid-f stack-inv-setup cap-setup rbp-inv-setup
 
       s1 : State
       s1 = proj₁ step-f-v
@@ -556,11 +560,11 @@ mutual
     pc s ≡ length prefix →
     ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
-  run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+  run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s-final , record
       { ir-star = star-all
       ; ir-halted = h-final
@@ -706,7 +710,7 @@ mutual
 
       -- rsp-sufficient preserved
       rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > slots 2
-      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) rsp-sufficient
+      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) (StackCapacity.rsp-sufficient cap-in)
 
       -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
       -- Star-based: uses Star relation directly instead of fuel-based exec
@@ -843,9 +847,13 @@ mutual
                         (sym val-addr-eq-rdi-right)  -- addr: val-addr → rdi s-right
                         (λ addr _ → subst (λ m → readMem (memory s-right) addr ≡ readMem m addr) (sym mem-s-right-eq-s) refl)
 
+      -- Construct StackCapacity for s-right from raw bounds
+      cap-right : StackCapacity s-right 2
+      cap-right = rsp-bound-to-capacity 2 s-right (rsp-in-stack-after-stack-op s-right) rsp-sufficient-right
+
       -- Recursive call to g via size-bounded dispatcher
       step-g-v : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
-      step-g-v = run-ir-star g g<bound prefix-g suffix-g caller-sp b s-right h-right pc-right-g input-valid-g stack-inv-right rsp-sufficient-right rbp-inv-right
+      step-g-v = run-ir-star g g<bound prefix-g suffix-g caller-sp b s-right h-right pc-right-g input-valid-g stack-inv-right cap-right rbp-inv-right
 
       s1 : State
       s1 = proj₁ step-g-v

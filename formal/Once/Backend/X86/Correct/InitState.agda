@@ -43,7 +43,7 @@ open import Once.Postulates
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; r15-unused)
 open import Once.Backend.Common.MemoryRegions
-  using (StackPointer)
+  using (StackPointer; region-of; stack)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
 open import Data.Bool using (Bool; true; false)
@@ -122,7 +122,13 @@ open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound; slots)
-open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
+
+-- Specific postulate: stackBase is in stack region
+-- This is more precise than the blanket rsp-in-stack-after-stack-op
+-- because it only claims the property for the specific initial address.
+-- JUSTIFICATION: The runtime initializes stackBase (0x7FFF0000) in the stack region.
+postulate
+  stackBase-in-stack : region-of 0x7FFF0000 ≡ stack
 
 -- Internal: raw rsp bound proof
 private
@@ -130,8 +136,9 @@ private
   rsp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
 
 -- | Initial state has stack capacity for 2 slots (16 bytes)
+-- Uses stackBase-in-stack instead of blanket postulate
 initWithInput-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInput x) 2
-initWithInput-stack-capacity x = rsp-bound-to-capacity 2 (initWithInput x) (rsp-in-stack-after-stack-op (initWithInput x)) (rsp-bound x)
+initWithInput-stack-capacity x = rsp-bound-to-capacity 2 (initWithInput x) stackBase-in-stack (rsp-bound x)
 
 -- | Initial state has sufficient rsp (derived from capacity, for legacy interfaces)
 initWithInput-rsp-sufficient : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > slots 2
@@ -149,7 +156,7 @@ initWithInput-rbp-inv x = record
     init-frame : StackPointer
     init-frame = record
       { addr = 0x7FFF0000  -- stackBase
-      ; in-stack = rsp-in-stack-after-stack-op (initWithInput x)
+      ; in-stack = stackBase-in-stack
       }
 
 -- | Stack base value exported for other modules

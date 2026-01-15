@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; StackPointer; frameSlot)
@@ -61,7 +61,7 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     thunk-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
     thunk-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     thunk-stack-inv : StackInvariant s'
-    thunk-rsp-bound : readReg (regs s') rsp > slots 2
+    thunk-capacity : StackCapacity s' 2
 
     -- RSP after thunk = entry RSP + 8 (thunk's ret pops return address)
     -- Thunk internally: push r15, push rbp, sub 16, <run f>, add 16, pop rbp, pop r15, ret
@@ -180,7 +180,7 @@ record CurryResult {A B C : Type} (f : IR (A * B) C)
     curry-mem      : readMem (memory s') (readReg (regs s) r15) ≡
                      readMem (memory s) (readReg (regs s) r15)
     curry-stack-inv : StackInvariant s'
-    curry-rsp-bound : readReg (regs s') rsp > slots 2
+    curry-capacity : StackCapacity s' 2
 
     -- The closure produced is well-formed!
     -- This is the key property that apply needs
@@ -224,7 +224,7 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
     apply-mem      : readMem (memory s') (readReg (regs s) r15) ≡
                      readMem (memory s) (readReg (regs s) r15)
     apply-stack-inv : StackInvariant s'
-    apply-rsp-bound : readReg (regs s') rsp > slots 2
+    apply-capacity : StackCapacity s' 2
 
 open ApplyWithWFResult public
 

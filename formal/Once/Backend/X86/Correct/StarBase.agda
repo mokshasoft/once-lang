@@ -642,11 +642,11 @@ run-id-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) �
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (id {A}) ++ suffix
   in ∃[ s' ] IRStarResultV (id {A}) prog s s' x (length prefix)
-run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   let prog = prefix ++ compile-x86 (id {A}) ++ suffix
       s' : State
       s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -659,7 +659,7 @@ run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-suf
                       (execMov-reg-reg s rax rdi)
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
       -- Key: rax s' = rdi s, memory unchanged
       rax-eq : readReg (regs s') rax ≡ readReg (regs s) rdi
       rax-eq = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
@@ -694,16 +694,16 @@ run-terminal-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : St
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
   in ∃[ s' ] IRStarResultV (terminal {A}) prog s s' x (length prefix)
-run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficient rbp-inv =
+run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv cap-in rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
       prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) 0
       rbp-eq = readReg-writeReg-rax-rbp (regs s) 0
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
       -- rax s' = 0, eval terminal x = tt, so ValidAt tt 0 m = valid-unit
       result-valid : ValidAt {Unit} tt (readReg (regs s') rax) (memory s')
       result-valid = subst (λ a → ValidAt {Unit} tt a (memory s')) (sym rax-eq') valid-unit
@@ -737,11 +737,11 @@ run-fold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State)
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
   in ∃[ s' ] IRStarResultV (fold {F}) prog s s' x (length prefix)
-run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
       s' : State
       s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -754,7 +754,7 @@ run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-s
                       (execMov-reg-reg s rax rdi)
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
       -- Key: rax s' = rdi s, memory unchanged
       rax-eq : readReg (regs s') rax ≡ readReg (regs s) rdi
       rax-eq = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
@@ -791,11 +791,11 @@ run-unfold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : 
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
   in ∃[ s' ] IRStarResultV (unfold {F}) prog s s' x (length prefix)
-run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-valid) stack-inv rsp-sufficient rbp-inv =
+run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-valid) stack-inv cap-in rbp-inv =
   let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
       s' : State
       s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -808,7 +808,7 @@ run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-
                       (execMov-reg-reg s rax rdi)
       rsp-eq = readReg-writeReg-rax-rsp (regs s) (readReg (regs s) rdi)
       rbp-eq = readReg-writeReg-rax-rbp (regs s) (readReg (regs s) rdi)
-      cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+      cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
       -- Key: rax s' = rdi s, memory unchanged
       rax-eq : readReg (regs s') rax ≡ readReg (regs s) rdi
       rax-eq = readReg-writeReg-same (regs s) rax (readReg (regs s) rdi)
@@ -859,11 +859,11 @@ run-fst-star-vv : ∀ {A B} (prefix suffix : Program)
   (vb : ValidAt b addr-b (memory s)) →
   (pair-at : PairAtS addr-a addr-b (readReg (regs s) rdi) (memory s)) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (fst {A} {B}) prog s s' (a , b) (length prefix)
-run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv =
+run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv =
   let
     prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
     input-addr = readReg (regs s) rdi
@@ -882,7 +882,7 @@ run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
 
     rsp-eq = readReg-writeReg-rax-rsp (regs s) addr-a
     rbp-eq = readReg-writeReg-rax-rbp (regs s) addr-a
-    cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+    cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
 
   in s' , record
     { ir-star = star-single h-false step-eq
@@ -920,11 +920,11 @@ run-snd-star-vv : ∀ {A B} (prefix suffix : Program)
   (vb : ValidAt b addr-b (memory s)) →
   (pair-at : PairAtS addr-a addr-b (readReg (regs s) rdi) (memory s)) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (snd {A} {B}) prog s s' (a , b) (length prefix)
-run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv =
+run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv =
   let
     prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
     input-addr = readReg (regs s) rdi
@@ -943,7 +943,7 @@ run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
 
     rsp-eq = readReg-writeReg-rax-rsp (regs s) addr-b
     rbp-eq = readReg-writeReg-rax-rbp (regs s) addr-b
-    cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+    cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
 
   in s' , record
     { ir-star = star-single h-false step-eq
@@ -980,11 +980,11 @@ run-arr-star-vv : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s 
   pc s ≡ length prefix →
   ValidAt fn (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (arr {A} {B}) prog s s' fn (length prefix)
-run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   let
     prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
     input-addr = readReg (regs s) rdi
@@ -1025,7 +1025,7 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv r
     -- Register preservation
     rsp-eq = readReg-writeReg-rax-rsp (regs s) input-addr
     rbp-eq = readReg-writeReg-rax-rbp (regs s) input-addr
-    cap = capacity-preserved-rsp-unchanged s s' 2 (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient) rsp-eq
+    cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
 
   in s' , record
     { ir-star = star-single h-false step-eq
@@ -1060,7 +1060,7 @@ postulate
     ValidAt x (readReg (regs s) rdi) (memory s) →
     (∀ addr → region-of addr ≡ stack → readReg (regs s) rdi ≢ addr) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name) prog s s' x (length prefix)

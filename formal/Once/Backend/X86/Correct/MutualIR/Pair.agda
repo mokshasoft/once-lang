@@ -22,13 +22,13 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
 open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; cong; sym; subst; subst₂; cong₂)
@@ -42,7 +42,7 @@ module Once.Backend.X86.Correct.MutualIR.Pair
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
@@ -61,7 +61,11 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 -- Import StackInstantiation (re-exports StackInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; pair-stack-capacity;
-         make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slot-size)
+         make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slot-size;
+         rsp-bound-to-capacity; m∸n<m-when-m>n)
+
+-- Import Data.Nat.Properties at module level to avoid repeated imports
+open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl; m∸n≤m; <-trans; m≤n⇒m∸n≡0; ≰⇒>; m∸n+n≡m; m+n∸n≡m; +-assoc; +-comm)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -87,6 +91,44 @@ open import Data.Maybe using (just; nothing)
 open import Relation.Nullary using (yes; no)
 
 ------------------------------------------------------------------------
+-- Private helpers to avoid function definitions in where clauses
+-- (Improves typechecking performance by defining once at module level)
+------------------------------------------------------------------------
+private
+  -- Helper: m ∸ n < m when both m > 0 and n > 0
+  -- Weaker precondition than m∸n<m-when-m>n (doesn't require m > n)
+  m∸n<m-when-positive : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+  m∸n<m-when-positive (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+  -- Helper: m ∸ 40 + 8 < m when m > 16 (used in mem-above-final proof)
+  -- This replaces a complex `with` clause that was defined inline
+  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > slots 2 → rsp-val ∸ slots 5 +ℕ slot-size < rsp-val
+  rsp∸40+8<rsp rsp-val rsp>16 with 40 ≤? rsp-val
+  ... | yes 40≤rsp = subst (_< rsp-val) (sym m∸40+8≡m∸32) (m∸n<m-when-m>n rsp-val 32 (s≤s z≤n) rsp>32)
+    where
+      rsp>32 : rsp-val > 32
+      rsp>32 = ≤-trans 33≤40 40≤rsp
+        where 33≤40 : 33 ≤ 40
+              -- 33 applications of s≤s, base case 0 ≤ 7
+              33≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))))))))))
+      k = rsp-val ∸ slots 5
+      m∸40+8≡m∸32 : rsp-val ∸ slots 5 +ℕ slot-size ≡ rsp-val ∸ slots 4
+      m∸40+8≡m∸32 =
+        let step1 : rsp-val ∸ slots 4 ≡ (k +ℕ slots 5) ∸ slots 4
+            step1 = cong (_∸ slots 4) (sym (m∸n+n≡m 40≤rsp))
+            k+40∸32≡k+8 : (k +ℕ slots 5) ∸ slots 4 ≡ k +ℕ slot-size
+            k+40∸32≡k+8 = trans (cong (_∸ slots 4) (sym (+-assoc k 8 32))) (m+n∸n≡m (k +ℕ slot-size) 32)
+        in sym (trans step1 k+40∸32≡k+8)
+  ... | no 40>rsp = subst (_< rsp-val) (sym 0+8≡8) 8<rsp
+    where
+      rsp∸40≡0 : rsp-val ∸ slots 5 ≡ 0
+      rsp∸40≡0 = m≤n⇒m∸n≡0 (<⇒≤ (≰⇒> 40>rsp))
+      0+8≡8 : rsp-val ∸ slots 5 +ℕ slot-size ≡ 8
+      0+8≡8 = cong (_+ℕ slot-size) rsp∸40≡0
+      8<rsp : 8 < rsp-val
+      8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+
+------------------------------------------------------------------------
 -- Pair implementation using size-bounded dispatcher
 -- Termination is proven via Acc pattern on ir-size in MutualIR.agda
 ------------------------------------------------------------------------
@@ -102,11 +144,11 @@ run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
-run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s-final , result-v
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -148,13 +190,17 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
             (sym (PairSetupResultV.rsp-setup setup-res))
             (pair-rbp-frame-≥-r15-frame s cap5)
 
+      -- Construct StackCapacity for s-setup from raw bounds
+      cap-setup : StackCapacity s-setup 2
+      cap-setup = rsp-bound-to-capacity 2 s-setup (rsp-in-stack-after-stack-op s-setup) (PairSetupResultV.rsp-sufficient-setup setup-res)
+
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
       step-f = run-ir-star f f<bound prefix-f suffix-f caller-sp x s-setup
                 (PairSetupResultV.h-setup setup-res)
                 (PairSetupResultV.pc-setup-f setup-res)
                 input-valid-for-f
                 (PairSetupResultV.stack-inv-setup setup-res)
-                (PairSetupResultV.rsp-sufficient-setup setup-res)
+                cap-setup
                 rbp-inv-setup
 
       s1 : State
@@ -207,13 +253,17 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         rdi-s2-eq-s            -- rdi in s2 = rdi in s
         mem-heap-s-to-s2        -- heap memory preserved
 
+      -- Construct StackCapacity for s2 from raw bounds
+      cap-s2 : StackCapacity s2 2
+      cap-s2 = rsp-bound-to-capacity 2 s2 (rsp-in-stack-after-stack-op s2) (PairMiddleResultV.rsp-sufficient-s2 mid-res)
+
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix-g caller-sp x s2
                 (PairMiddleResultV.h2 mid-res)
                 (PairMiddleResultV.pc2-g mid-res)
                 input-valid-for-g
                 (PairMiddleResultV.stack-inv-s2 mid-res)
-                (PairMiddleResultV.rsp-sufficient-s2 mid-res)
+                cap-s2
                 rbp-inv-s2
 
       s3 : State
@@ -248,15 +298,15 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       mem-rbp+8-final = PairFinalResult.mem-rbp+8-fin final-res
 
       -- Memory above original rbp preserved
+      -- Refactored to use module-level helpers (m∸n<m-when-m>n, rsp∸40+8<rsp)
+      -- instead of defining functions in where clauses
       mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
       mem-above-final addr addr>rbp = mem-chain
         where
-          open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl; m∸n≤m)
-          open import Data.Nat using (s≤s; z≤n)
-          open import Relation.Binary.PropositionalEquality using (trans)
-
+          -- Value bindings only (no function definitions in where clauses)
           orig-rsp = readReg (regs s) rsp
           orig-rbp = readReg (regs s) rbp
+          rsp>16 = StackCapacity.rsp-sufficient cap-in
 
           addr≥rsp : addr ≥ orig-rsp
           addr≥rsp = ≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp)
@@ -268,24 +318,15 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ slots 3
           setup-rbp-eq = PairSetupResultV.rbp-setup setup-res
 
+          -- Use private m∸n<m-when-positive instead of local definition
           rsp∸24<rsp : orig-rsp ∸ slots 3 < orig-rsp
-          rsp∸24<rsp = m∸n<m orig-rsp 24 rsp>0 24>0
-            where
-              rsp>0 : orig-rsp > 0
-              rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
-              24>0 : 24 > 0
-              24>0 = s≤s z≤n
-              m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-              m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+          rsp∸24<rsp = m∸n<m-when-positive orig-rsp 24 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
+
+          rsp∸24<addr : orig-rsp ∸ slots 3 < addr
+          rsp∸24<addr = <-trans (<-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)) addr>rbp
 
           addr>setup-rbp : addr > setup-rbp
           addr>setup-rbp = subst (addr >_) (sym setup-rbp-eq) rsp∸24<addr
-            where
-              open import Data.Nat.Properties using (<-trans)
-              rsp∸24<rbp : orig-rsp ∸ slots 3 < orig-rbp
-              rsp∸24<rbp = <-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)
-              rsp∸24<addr : orig-rsp ∸ slots 3 < addr
-              rsp∸24<addr = <-trans rsp∸24<rbp addr>rbp
 
           mem-f : readMem (memory s1) addr ≡ readMem (memory s-setup) addr
           mem-f = IRStarResultV.ir-mem-above r-f-v addr addr>setup-rbp
@@ -294,21 +335,15 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           s1-r15-eq : s1-r15 ≡ orig-rsp ∸ slots 5
           s1-r15-eq = trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)
 
+          -- Use private m∸n<m-when-positive instead of local definition
           rsp∸40<rsp : orig-rsp ∸ slots 5 < orig-rsp
-          rsp∸40<rsp = m∸n<m orig-rsp 40 rsp>0 40>0
-            where
-              rsp>0 : orig-rsp > 0
-              rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
-              40>0 : 40 > 0
-              40>0 = s≤s z≤n
-              m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-              m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+          rsp∸40<rsp = m∸n<m-when-positive orig-rsp 40 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
+
+          s1-r15<addr : s1-r15 < addr
+          s1-r15<addr = subst (_< addr) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp addr≥rsp)
 
           addr≢s1-r15 : addr ≢ s1-r15
-          addr≢s1-r15 eq = Data.Nat.Properties.<⇒≢ s1-r15<addr (sym eq)
-            where
-              s1-r15<addr : s1-r15 < addr
-              s1-r15<addr = subst (_< addr) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp addr≥rsp)
+          addr≢s1-r15 eq = <⇒≢ s1-r15<addr (sym eq)
 
           mem-mid : readMem (memory s2) addr ≡ readMem (memory s1) addr
           mem-mid = PairMiddleResultV.mem-above-r15-mid mid-res addr addr≢s1-r15
@@ -319,12 +354,6 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
 
           addr>s2-rbp : addr > s2-rbp
           addr>s2-rbp = subst (addr >_) (sym s2-rbp-eq) rsp∸24<addr
-            where
-              open import Data.Nat.Properties using (<-trans)
-              rsp∸24<rbp : orig-rsp ∸ slots 3 < orig-rbp
-              rsp∸24<rbp = <-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)
-              rsp∸24<addr : orig-rsp ∸ slots 3 < addr
-              rsp∸24<addr = <-trans rsp∸24<rbp addr>rbp
 
           mem-g : readMem (memory s3) addr ≡ readMem (memory s2) addr
           mem-g = IRStarResultV.ir-mem-above r-g-v addr addr>s2-rbp
@@ -333,52 +362,15 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           s3-r15-eq : s3-r15 ≡ orig-rsp ∸ slots 5
           s3-r15-eq = trans (IRStarResultV.ir-r15 r-g-v) (trans (PairMiddleResultV.r15-mid mid-res) (trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)))
 
-          rsp∸32<rsp : orig-rsp ∸ slots 4 < orig-rsp
-          rsp∸32<rsp = m∸n<m orig-rsp 32 rsp>0 32>0
-            where
-              rsp>0 : orig-rsp > 0
-              rsp>0 = ≤-trans (s≤s z≤n) rsp-sufficient
-              32>0 : 32 > 0
-              32>0 = s≤s z≤n
-              m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-              m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+          -- Use private module-level helper instead of inline with-clause
+          s3-r15+8<rsp : s3-r15 +ℕ slot-size < orig-rsp
+          s3-r15+8<rsp = subst (λ r → r +ℕ slot-size < orig-rsp) (sym s3-r15-eq) (rsp∸40+8<rsp orig-rsp rsp>16)
+
+          s3-r15+8<addr : s3-r15 +ℕ slot-size < addr
+          s3-r15+8<addr = <-≤-trans s3-r15+8<rsp addr≥rsp
 
           addr≢s3-r15+8 : addr ≢ s3-r15 +ℕ slot-size
-          addr≢s3-r15+8 eq = Data.Nat.Properties.<⇒≢ s3-r15+8<addr (sym eq)
-            where
-              s3-r15+8<rsp : s3-r15 +ℕ slot-size < orig-rsp
-              s3-r15+8<rsp = subst (λ r → r +ℕ slot-size < orig-rsp) (sym s3-r15-eq) arith
-                where
-                  open import Data.Nat.Properties using (m≤n⇒m∸n≡0; ≰⇒>)
-                  open import Data.Nat using (_≤?_)
-                  arith : orig-rsp ∸ slots 5 +ℕ slot-size < orig-rsp
-                  arith with 40 ≤? orig-rsp
-                  ... | no 40>rsp = subst (_< orig-rsp) (sym 0+8≡8) 8<rsp
-                    where
-                      rsp<40 : orig-rsp < 40
-                      rsp<40 = ≰⇒> 40>rsp
-                      rsp∸40≡0 : orig-rsp ∸ slots 5 ≡ 0
-                      rsp∸40≡0 = m≤n⇒m∸n≡0 (<⇒≤ rsp<40)
-                      0+8≡8 : orig-rsp ∸ slots 5 +ℕ slot-size ≡ 8
-                      0+8≡8 = cong (_+ℕ slot-size) rsp∸40≡0
-                      8<rsp : 8 < orig-rsp
-                      8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp-sufficient
-                  ... | yes 40≤rsp = subst (_< orig-rsp) (sym m∸40+8≡m∸32) rsp∸32<rsp
-                    where
-                      open import Data.Nat.Properties using (m∸n+n≡m; m+n∸n≡m; +-assoc; +-comm)
-                      k = orig-rsp ∸ slots 5
-                      k+40≡k+8+32 : k +ℕ slots 5 ≡ (k +ℕ slot-size) +ℕ slots 4
-                      k+40≡k+8+32 = trans (cong (k +ℕ_) refl) (sym (+-assoc k 8 32))
-                      k+40∸32≡k+8 : (k +ℕ slots 5) ∸ slots 4 ≡ k +ℕ slot-size
-                      k+40∸32≡k+8 = trans (cong (_∸ slots 4) k+40≡k+8+32) (m+n∸n≡m (k +ℕ slot-size) 32)
-                      m∸40+8≡m∸32 : orig-rsp ∸ slots 5 +ℕ slot-size ≡ orig-rsp ∸ slots 4
-                      m∸40+8≡m∸32 =
-                        let step1 : orig-rsp ∸ slots 4 ≡ (k +ℕ slots 5) ∸ slots 4
-                            step1 = cong (_∸ slots 4) (sym (m∸n+n≡m 40≤rsp))
-                        in sym (trans step1 k+40∸32≡k+8)
-
-              s3-r15+8<addr : s3-r15 +ℕ slot-size < addr
-              s3-r15+8<addr = <-≤-trans s3-r15+8<rsp addr≥rsp
+          addr≢s3-r15+8 eq = <⇒≢ s3-r15+8<addr (sym eq)
 
           mem-final-phase : readMem (memory s-final) addr ≡ readMem (memory s3) addr
           mem-final-phase = PairFinalResult.mem-above-r15+8-fin final-res addr addr≢s3-r15+8

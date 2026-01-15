@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -42,7 +42,7 @@ module Once.Backend.X86.Correct.MutualIR.Compose
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
@@ -50,7 +50,9 @@ module Once.Backend.X86.Correct.MutualIR.Compose
 
 -- Additional imports needed inside the module (beyond what's in parameter signature)
 open import Once.Backend.X86.Correct.StarBase
-  using (rbp-inv-preserved-unchanged)
+  using (rbp-inv-preserved-unchanged; IRStarResultV)
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (capacity-preserved-rsp-unchanged)
 open import Once.Backend.X86.Correct.MemoryValid
   using (valid-subst-addr-mem)
 
@@ -76,11 +78,11 @@ run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
-run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s3 , result-v
     where
       -- Get context for computed values
@@ -89,7 +91,7 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
 
       -- Step 1: Execute f (RECURSIVE via size-bounded dispatcher)
       step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
 
       s1 : State
       s1 = proj₁ step-f
@@ -122,11 +124,15 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
         (TransferResultV.rdi2-raw tr)          -- rdi in s2 = rax in s1
         (TransferResultV.mem-s1-to-s2 tr)      -- memory unchanged
 
+      -- Transfer capacity from s1 to s2 (rsp unchanged during transfer)
+      cap-s2 : StackCapacity s2 2
+      cap-s2 = capacity-preserved-rsp-unchanged s1 s2 2 (IRStarResultV.ir-capacity r1-v) (TransferResultV.rsp-s1-to-s2 tr)
+
       -- Step 3: Execute g (RECURSIVE via size-bounded dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix caller-sp (eval f x) s2
                  (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
-                 (TransferResultV.stack-inv-2 tr) (TransferResultV.rsp-2>16 tr) rbp-inv-2
+                 (TransferResultV.stack-inv-2 tr) cap-s2 rbp-inv-2
 
       s3 : State
       s3 = proj₁ step-g
