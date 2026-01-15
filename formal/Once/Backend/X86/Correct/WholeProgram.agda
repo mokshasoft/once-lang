@@ -86,7 +86,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
          ir-result-valid)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode)
 open import Once.Backend.Common.MemoryRegions using (StackPointer; region-of; heap)
 
 -- Import closure infrastructure
@@ -306,10 +306,12 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
+      -- Convert rdi-eq to validity for run-curry-star
+      input-valid = valid-from-encode rdi-eq
       -- Get IRStarResult and CurryMemoryResult from run-curry-star
-      -- Note: run-curry-star doesn't take caller-sp (curry doesn't need it)
+      -- Note: run-curry-star now takes validity (bridge via valid-from-encode)
       (s' , ir-res , curry-mem-res) = run-curry-star f prefix suffix x s
-                            h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+                            h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
       -- Extract closure-addr and memory proofs from CurryMemoryResult
       cl-addr = closure-addr curry-mem-res
       mem-env-prf = mem-env curry-mem-res

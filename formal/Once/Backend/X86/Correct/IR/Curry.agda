@@ -76,14 +76,15 @@ open CurryMemoryResult public
 run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  readReg (regs s) rdi ≡ encode x →
+  -- Key: ValidAt for input (replaces rdi-eq - consolidates bridging here)
+  ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   s-final , record
     { ir-star = star-all
     ; ir-halted = h-final
@@ -116,6 +117,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq rdi-eq stack-inv rs
   where
     len-f = compile-length f
     prog = prefix ++ compile-x86 (curry f) ++ suffix
+
+    -- Internal bridge: derive rdi-eq from input-valid
+    -- This consolidates all bridging for curry input here
+    rdi-eq : readReg (regs s) rdi ≡ encode x
+    rdi-eq = addr-from-valid input-valid
 
     -- Key offsets (matching CodeGen.agda layout)
     -- jmp at pos 5 needs to reach end-label at pos 18+len-f
@@ -914,15 +920,10 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     ; ir-closure-wf = IRStarResult.ir-closure-wf ir-result
     }
   where
-    -- Get the encode-based result first (to reuse all the proof machinery)
-    -- Use shared bridge postulate addr-from-valid
-    rdi-eq : readReg (regs s) rdi ≡ encode x
-    rdi-eq = addr-from-valid input-valid
-
-    -- Call the existing encode-based curry
+    -- Call curry with validity (now takes input-valid directly - no bridge here!)
     curry-result : ∃[ s' ] (IRStarResult (curry f) (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
                            × CurryMemoryResult f (prefix ++ compile-x86 (curry f) ++ suffix) s' x (length prefix))
-    curry-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+    curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
     s-final = proj₁ curry-result
     ir-result = proj₁ (proj₂ curry-result)

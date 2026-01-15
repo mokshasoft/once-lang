@@ -384,14 +384,10 @@ mutual
       offset = length prefix
       thunk-offset = offset +ℕ 6
 
-      -- Bridge: convert validity to encode for run-curry-star
-      -- This is the ONLY bridge location for curry input
-      curry-rdi-eq : readReg (regs s) rdi ≡ encode x
-      curry-rdi-eq = addr-from-valid input-valid
-
+      -- Call curry with validity (now takes input-valid directly - no bridge here!)
       curry-result : ∃[ s' ] (IRStarResult (curry f) prog s s' x offset
                               × CurryMemoryResult f prog s' x offset)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq curry-rdi-eq stack-inv rsp-sufficient rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
       s' : State
       s' = proj₁ curry-result
@@ -516,13 +512,14 @@ mutual
   run-curry-star-with-wf : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
+    -- Key: ValidAt for input (replaces rdi-eq)
+    ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
-  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
+  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s' , record
       { curry-star = ir-star ir-res
       ; curry-halted = ir-halted ir-res
@@ -541,8 +538,8 @@ mutual
       offset = length prefix
 
       -- Get the standard IRStarResult from existing curry proof
-      -- run-curry-star now returns (s', IRStarResult, CurryMemoryResult)
-      ir-result = run-curry-star f prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
+      -- run-curry-star now takes input-valid directly (no bridge here!)
+      ir-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
       s' = proj₁ ir-result
       ir-res = proj₁ (proj₂ ir-result)
       -- mem-res = proj₂ (proj₂ ir-result)  -- CurryMemoryResult (available if needed)
