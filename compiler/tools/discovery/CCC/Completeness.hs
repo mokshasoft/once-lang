@@ -22,6 +22,7 @@ import Once.Optimize (optimize)
 
 import Common.Enumerate (enumerate, TypeSig(..), irStructEq)
 import Common.Equivalence (testEquivalent)
+import CCC.Rules (showIR)
 
 -- | Result of completeness check
 data CompletenessResult = CompletenessResult
@@ -48,6 +49,10 @@ checkCompletenessForSig sig maxDepth numTests = do
   putStrLn "Enumerating and normalizing terms..."
   normalForms <- enumerateNormalizedWithProgress (sigSource sig) (sigTarget sig) maxDepth
   putStrLn $ "Found " ++ show (length normalForms) ++ " unique normal forms"
+  -- Show the normal forms if there are few enough
+  when (length normalForms <= 20 && length normalForms > 1) $ do
+    putStrLn "Normal forms:"
+    mapM_ (putStrLn . ("  " ++) . showIR) normalForms
 
   -- Build equivalence classes on the normal forms
   classes <- buildEquivClasses normalForms (sigSource sig) numTests
