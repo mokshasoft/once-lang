@@ -3,24 +3,25 @@
 --
 -- Verifies that the optimizer can normalize all equivalent terms
 -- to the same canonical form.
+--
+-- Key optimization: We optimize terms during enumeration, not after.
+-- This collapses many equivalent terms to the same normal form early,
+-- dramatically reducing the number of equivalence tests needed.
 module CCC.Completeness
   ( CompletenessResult(..)
   , checkCompleteness
   , checkCompletenessForSig
   ) where
 
-import Control.Monad (filterM)
-import Data.List (sortBy, groupBy, nubBy)
-import Data.Ord (comparing)
+import Control.Monad (filterM, foldM, when)
+import System.IO (hFlush, stdout)
 
 import Once.IR (IR(..))
 import Once.Type (Type(..))
 import Once.Optimize (optimize)
 
-import Common.Enumerate (enumerate, TypeSig(..))
+import Common.Enumerate (enumerate, TypeSig(..), irStructEq)
 import Common.Equivalence (testEquivalent)
-import CCC.Cost (cost, totalCost)
-import CCC.Rules (irStructEq, showIR)
 
 -- | Result of completeness check
 data CompletenessResult = CompletenessResult
@@ -37,19 +38,22 @@ instance Show CompletenessResult where
 
 -- | Check completeness for a type signature
 --
--- 1. Enumerate all terms up to maxDepth
--- 2. Build equivalence classes via evaluation
--- 3. For each class, optimize all terms and check they're equal
+-- Optimized algorithm using enumerateNormalized:
+-- 1. Enumerate terms, optimizing and deduping during generation
+-- 2. Build equivalence classes on the unique normal forms
+-- 3. Check that each equivalence class has exactly one normal form
 checkCompletenessForSig :: TypeSig -> Int -> Int -> IO CompletenessResult
 checkCompletenessForSig sig maxDepth numTests = do
-  let terms = enumerate (sigSource sig) (sigTarget sig) maxDepth
-  putStrLn $ "Checking completeness for " ++ show (length terms) ++ " terms"
+  -- enumerateNormalized optimizes during enumeration and dedupes by normal form
+  putStrLn "Enumerating and normalizing terms..."
+  normalForms <- enumerateNormalizedWithProgress (sigSource sig) (sigTarget sig) maxDepth
+  putStrLn $ "Found " ++ show (length normalForms) ++ " unique normal forms"
 
-  -- Build equivalence classes
-  classes <- buildEquivClasses terms (sigSource sig) numTests
+  -- Build equivalence classes on the normal forms
+  classes <- buildEquivClasses normalForms (sigSource sig) numTests
   putStrLn $ "Found " ++ show (length classes) ++ " equivalence classes"
 
-  -- Check each class
+  -- Check each equivalence class - all forms should be structurally equal
   let results = map checkClass classes
       incomplete = filter (not . null . snd) results
       missing = concatMap snd incomplete
@@ -61,23 +65,41 @@ checkCompletenessForSig sig maxDepth numTests = do
     , crMissingRules = missing
     }
 
--- | Check if optimizer normalizes all terms in a class to the same form
+-- | Enumerate and normalize with progress logging
 --
--- Returns (canonical, [(term, expected) | optimizer fails])
+-- Processes terms one by one, optimizing and deduping, with periodic progress updates.
+-- Does NOT compute total upfront (which would force full evaluation).
+enumerateNormalizedWithProgress :: Type -> Type -> Int -> IO [IR]
+enumerateNormalizedWithProgress src tgt maxDepth = do
+  let terms = enumerate src tgt maxDepth
+  -- Process lazily with progress (don't compute length - that forces evaluation!)
+  (count, normalForms) <- foldM processWithProgress (0, []) terms
+  putStrLn $ "\nProcessed " ++ show count ++ " terms total"
+  pure (reverse normalForms)
+  where
+    processWithProgress (count, seen) term = do
+      let count' = count + 1
+          opt = optimize term
+      -- Log progress every 500 terms
+      when (count' `mod` 500 == 0) $ do
+        putStr $ "\rProcessed " ++ show count' ++ " terms, " ++ show (length seen) ++ " unique normal forms"
+        hFlush stdout
+      -- Add if not seen
+      let seen' = if any (irStructEq opt) seen then seen else opt : seen
+      pure (count', seen')
+
+-- | Check if all terms in an equivalence class normalize to the same form
+--
+-- If optimizer is complete, each equivalence class should have exactly
+-- one normal form (all terms in the class are structurally equal).
 checkClass :: [IR] -> (IR, [(IR, IR)])
 checkClass [] = error "Empty equivalence class"
-checkClass terms =
-  -- Find canonical form (cheapest after optimization)
-  let optimized = map (\t -> (t, optimize t)) terms
-      canonical = snd $ head $ sortBy (comparing (totalCost . cost . snd)) optimized
-      -- Find terms that don't optimize to canonical
-      failures = [ (orig, canonical)
-                 | (orig, opt) <- optimized
-                 , not (irStructEq opt canonical)
-                 ]
+checkClass (canonical:rest) =
+  -- All terms should be structurally equal to canonical
+  let failures = [ (t, canonical) | t <- rest, not (irStructEq t canonical) ]
   in (canonical, failures)
 
--- | Build equivalence classes (same as in Rules.hs)
+-- | Build equivalence classes on optimized forms
 buildEquivClasses :: [IR] -> Type -> Int -> IO [[IR]]
 buildEquivClasses [] _ _ = pure []
 buildEquivClasses (t:ts) srcType numTests = do

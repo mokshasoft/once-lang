@@ -6,12 +6,15 @@
 -- We only generate terms that are well-typed by construction.
 module Common.Enumerate
   ( enumerate
+  , enumerateNormalized
   , allTypes
   , TypeSig(..)
+  , irStructEq
   ) where
 
 import Once.IR (IR(..))
 import Once.Type (Type(..))
+import Once.Optimize (optimize)
 import Data.List (nubBy)
 
 -- | Type signature: source and target types
@@ -41,22 +44,52 @@ allTypes n = baseTypes ++
 -- 3. Type-checking is implicit - we only generate well-typed terms
 enumerate :: Type -> Type -> Int -> [IR]
 enumerate src tgt maxDepth = nubBy irEq $ enumIR src tgt maxDepth
-  where
-    -- Simple structural equality for IR (ignoring type annotations)
-    irEq :: IR -> IR -> Bool
-    irEq (Id _) (Id _) = True
-    irEq (Compose g1 f1) (Compose g2 f2) = irEq g1 g2 && irEq f1 f2
-    irEq (Fst _ _) (Fst _ _) = True
-    irEq (Snd _ _) (Snd _ _) = True
-    irEq (Pair f1 g1) (Pair f2 g2) = irEq f1 f2 && irEq g1 g2
-    irEq (Terminal _) (Terminal _) = True
-    irEq (Inl _ _) (Inl _ _) = True
-    irEq (Inr _ _) (Inr _ _) = True
-    irEq (Case f1 g1) (Case f2 g2) = irEq f1 f2 && irEq g1 g2
-    irEq (Initial _) (Initial _) = True
-    irEq (Curry _ f1) (Curry _ f2) = irEq f1 f2
-    irEq (Apply _ _) (Apply _ _) = True
-    irEq _ _ = False
+
+-- | Enumerate and normalize terms, deduplicating by normal form
+--
+-- This is much more efficient than enumerate for completeness checking:
+-- 1. Generate each term
+-- 2. Immediately optimize it
+-- 3. Only keep if we haven't seen this normal form before
+--
+-- Returns list of unique normal forms (already optimized).
+enumerateNormalized :: Type -> Type -> Int -> [IR]
+enumerateNormalized src tgt maxDepth =
+  nubBy irStructEq $ map optimize $ enumIR src tgt maxDepth
+
+-- | Simple structural equality for IR (ignoring type annotations)
+-- Used by enumerate to dedupe syntactically equal terms
+irEq :: IR -> IR -> Bool
+irEq (Id _) (Id _) = True
+irEq (Compose g1 f1) (Compose g2 f2) = irEq g1 g2 && irEq f1 f2
+irEq (Fst _ _) (Fst _ _) = True
+irEq (Snd _ _) (Snd _ _) = True
+irEq (Pair f1 g1) (Pair f2 g2) = irEq f1 f2 && irEq g1 g2
+irEq (Terminal _) (Terminal _) = True
+irEq (Inl _ _) (Inl _ _) = True
+irEq (Inr _ _) (Inr _ _) = True
+irEq (Case f1 g1) (Case f2 g2) = irEq f1 f2 && irEq g1 g2
+irEq (Initial _) (Initial _) = True
+irEq (Curry _ f1) (Curry _ f2) = irEq f1 f2
+irEq (Apply _ _) (Apply _ _) = True
+irEq _ _ = False
+
+-- | Structural equality for normalized IR (includes type annotations)
+-- Used by enumerateNormalized to dedupe by normal form
+irStructEq :: IR -> IR -> Bool
+irStructEq (Id t1) (Id t2) = t1 == t2
+irStructEq (Compose g1 f1) (Compose g2 f2) = irStructEq g1 g2 && irStructEq f1 f2
+irStructEq (Fst a1 b1) (Fst a2 b2) = a1 == a2 && b1 == b2
+irStructEq (Snd a1 b1) (Snd a2 b2) = a1 == a2 && b1 == b2
+irStructEq (Pair f1 g1) (Pair f2 g2) = irStructEq f1 f2 && irStructEq g1 g2
+irStructEq (Terminal t1) (Terminal t2) = t1 == t2
+irStructEq (Inl a1 b1) (Inl a2 b2) = a1 == a2 && b1 == b2
+irStructEq (Inr a1 b1) (Inr a2 b2) = a1 == a2 && b1 == b2
+irStructEq (Case f1 g1) (Case f2 g2) = irStructEq f1 f2 && irStructEq g1 g2
+irStructEq (Initial t1) (Initial t2) = t1 == t2
+irStructEq (Curry n1 f1) (Curry n2 f2) = n1 == n2 && irStructEq f1 f2
+irStructEq (Apply a1 b1) (Apply a2 b2) = a1 == a2 && b1 == b2
+irStructEq _ _ = False
 
 -- | Internal enumeration with explicit depth tracking
 enumIR :: Type -> Type -> Int -> [IR]
