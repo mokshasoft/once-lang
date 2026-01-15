@@ -151,11 +151,11 @@ trivial-closure-wf = lift tt
 -- | Memory layout precondition for apply
 -- Captures that the pair (closure, arg) is properly laid out in memory
 record ApplyMemoryLayout {A B : Type} (prog : Program) (s : State)
-                         (closure-addr code-ptr env-addr : ℕ) (arg : ⟦ A ⟧) : Set where
+                         (closure-addr code-ptr env-addr arg-addr : ℕ) : Set where
   field
-    -- Pair layout: rdi points to (closure-addr, encode arg)
+    -- Pair layout: rdi points to (closure-addr, arg-addr)
     mem-fst : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr
-    mem-snd : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just (encode arg)
+    mem-snd : readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just arg-addr
     -- Closure layout: closure-addr points to (env-addr, code-ptr)
     mem-env : readMem (memory s) closure-addr ≡ just env-addr
     mem-cp  : readMem (memory s) (closure-addr +ℕ 8) ≡ just code-ptr
@@ -181,7 +181,7 @@ open import Once.Backend.X86.Correct.IR.Apply as ApplyProof
   using (run-apply-with-wf)
 
 run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
-                         (code-ptr closure-addr : ℕ)
+                         (code-ptr closure-addr arg-addr : ℕ)
                          (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
@@ -190,7 +190,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
       cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
   ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
-  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
@@ -198,7 +198,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
-  ValidAt arg (encode arg) (memory s) →
+  ValidAt arg arg-addr (memory s) →
   ValidAt env (encode env) (memory s) →
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -206,9 +206,9 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
           × readReg (regs s') rax ≡ encode {B} (semantics arg)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
-run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr env
+run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr env
                        semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient input-valid v-arg v-env =
-  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg s wf h-eq pc-eq stack-inv rsp-sufficient input-valid
+  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s wf h-eq pc-eq stack-inv rsp-sufficient input-valid
           (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
            mem-env mem-layout , mem-cp mem-layout) v-arg v-env
       s' = proj₁ result
@@ -273,7 +273,7 @@ curry-output-to-apply-input {A} f prog offset x cow = record
 -- is sufficient to eliminate the postulate.
 test-apply-with-wf-eliminates-postulate :
   ∀ {E A B : Type} (prefix suffix : Program)
-    (code-ptr closure-addr : ℕ)
+    (code-ptr closure-addr arg-addr : ℕ)
     (env : ⟦ E ⟧)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (arg : ⟦ A ⟧) (s : State) →
@@ -283,7 +283,7 @@ test-apply-with-wf-eliminates-postulate :
   in
   -- Preconditions that would be established by curry + pair
   ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
-  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
@@ -291,7 +291,7 @@ test-apply-with-wf-eliminates-postulate :
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
-  ValidAt arg (encode arg) (memory s) →
+  ValidAt arg arg-addr (memory s) →
   ValidAt env (encode env) (memory s) →
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
