@@ -5,6 +5,7 @@
 -- 1. Enumerating well-typed IR terms
 -- 2. Finding pairs where one is cheaper than the other
 -- 3. Testing semantic equivalence via evaluation
+-- 4. Shrinking to remove redundant/derived rules
 module CCC.Rules
   ( DiscoveredRule(..)
   , discoverRules
@@ -13,7 +14,7 @@ module CCC.Rules
   ) where
 
 import Control.Monad (filterM)
-import Data.List (sortBy)
+import Data.List (sortBy, minimumBy, nubBy)
 import Data.Ord (comparing, Down(..))
 
 import Once.IR (IR(..))
@@ -37,43 +38,100 @@ instance Show DiscoveredRule where
 -- | Discover optimization rules for a given type signature
 --
 -- 1. Enumerate all terms up to maxDepth
--- 2. For each pair where t2 is cheaper than t1
--- 3. Test if they're semantically equivalent
--- 4. Return as optimization rules
+-- 2. Group terms into equivalence classes
+-- 3. For each class, rules map to the cheapest (normal form)
+-- 4. Shrink to remove redundant rules
 discoverRules :: TypeSig -> Int -> Int -> IO [DiscoveredRule]
 discoverRules sig maxDepth numTests = do
   let terms = enumerate (sigSource sig) (sigTarget sig) maxDepth
   putStrLn $ "Enumerated " ++ show (length terms) ++ " terms"
 
-  -- Generate all pairs where target is cheaper
-  let candidates =
-        [ (t1, t2)
-        | t1 <- terms
-        , t2 <- terms
-        , cheaper t2 t1  -- t2 is cheaper than t1
-        ]
-  putStrLn $ "Found " ++ show (length candidates) ++ " candidate pairs"
+  -- Build equivalence classes
+  classes <- buildEquivClasses terms (sigSource sig) numTests
+  putStrLn $ "Found " ++ show (length classes) ++ " equivalence classes"
 
-  -- Test equivalence for each candidate
-  rules <- filterM (testPair sig numTests) candidates
+  -- For each class, find the normal form (cheapest) and create rules
+  let rules = concatMap classToRules classes
+
+  -- Shrink: remove rules with identity noise in source
+  let shrunkRules = filter (not . hasIdentityNoise . ruleSource) rules
+
+  -- Deduplicate by normalized form
+  let dedupedRules = nubBy sameRule shrunkRules
 
   -- Create rule records and sort by cost saved
   let ruleRecords =
         [ DiscoveredRule
-          { ruleSource = expensive
-          , ruleTarget = cheap
+          { ruleSource = src
+          , ruleTarget = tgt
           , ruleSig = sig
-          , ruleCostSaved = totalCost (cost expensive) - totalCost (cost cheap)
+          , ruleCostSaved = totalCost (cost src) - totalCost (cost tgt)
           }
-        | (expensive, cheap) <- rules
+        | DiscoveredRule src tgt _ _ <- dedupedRules
         ]
 
   pure $ sortBy (comparing (Down . ruleCostSaved)) ruleRecords
 
--- | Test if a candidate pair is equivalent
-testPair :: TypeSig -> Int -> (IR, IR) -> IO Bool
-testPair sig numTests (t1, t2) =
-  testEquivalent t1 t2 (sigSource sig) numTests
+-- | Build equivalence classes from a list of terms
+buildEquivClasses :: [IR] -> Type -> Int -> IO [[IR]]
+buildEquivClasses [] _ _ = pure []
+buildEquivClasses (t:ts) srcType numTests = do
+  -- Find all terms equivalent to t
+  equivs <- filterM (\t' -> testEquivalent t t' srcType numTests) ts
+  let thisClass = t : equivs
+  -- Continue with remaining terms (those not in equivs)
+  let remaining = filter (\x -> not $ any (irStructEq x) equivs) ts
+  rest <- buildEquivClasses remaining srcType numTests
+  pure (thisClass : rest)
+
+-- | Convert an equivalence class to rules (all terms -> cheapest)
+classToRules :: [IR] -> [DiscoveredRule]
+classToRules [] = []
+classToRules terms =
+  let normalForm = minimumBy (comparing (totalCost . cost)) terms
+      normalCost = totalCost (cost normalForm)
+      -- Filter out the normal form itself using structural equality
+      others = filter (not . irStructEq normalForm) terms
+  in [ DiscoveredRule src normalForm (TypeSig TUnit TUnit) 0
+     | src <- others
+     , totalCost (cost src) > normalCost
+     ]
+
+-- | Check if two rules are essentially the same
+sameRule :: DiscoveredRule -> DiscoveredRule -> Bool
+sameRule r1 r2 =
+  irStructEq (ruleSource r1) (ruleSource r2) &&
+  irStructEq (ruleTarget r1) (ruleTarget r2)
+
+-- | Structural equality for IR (ignoring type annotations)
+irStructEq :: IR -> IR -> Bool
+irStructEq (Id _) (Id _) = True
+irStructEq (Compose g1 f1) (Compose g2 f2) = irStructEq g1 g2 && irStructEq f1 f2
+irStructEq (Fst _ _) (Fst _ _) = True
+irStructEq (Snd _ _) (Snd _ _) = True
+irStructEq (Pair f1 g1) (Pair f2 g2) = irStructEq f1 f2 && irStructEq g1 g2
+irStructEq (Terminal _) (Terminal _) = True
+irStructEq (Initial _) (Initial _) = True
+irStructEq (Inl _ _) (Inl _ _) = True
+irStructEq (Inr _ _) (Inr _ _) = True
+irStructEq (Case f1 g1) (Case f2 g2) = irStructEq f1 f2 && irStructEq g1 g2
+irStructEq (Curry _ f1) (Curry _ f2) = irStructEq f1 f2
+irStructEq (Apply _ _) (Apply _ _) = True
+irStructEq (Fold _) (Fold _) = True
+irStructEq (Unfold _) (Unfold _) = True
+irStructEq _ _ = False
+
+-- | Check if a term has unnecessary identity compositions
+-- e.g., "id . f" or "f . id" where we could just have "f"
+hasIdentityNoise :: IR -> Bool
+hasIdentityNoise = \case
+  Compose (Id _) _ -> True           -- id . f
+  Compose _ (Id _) -> True           -- f . id
+  Compose g f -> hasIdentityNoise g || hasIdentityNoise f
+  Pair f g -> hasIdentityNoise f || hasIdentityNoise g
+  Case f g -> hasIdentityNoise f || hasIdentityNoise g
+  Curry _ f -> hasIdentityNoise f
+  _ -> False
 
 -- | Pretty-print an IR term in a readable format
 showIR :: IR -> String
