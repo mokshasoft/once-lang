@@ -116,7 +116,8 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
 
 -- Import thunk execution proofs (extracted from mutual block)
 open import Once.Backend.X86.Correct.IR.ThunkExec
-  using (thunk-setup-star; thunk-ret-star)
+  using (thunk-setup-star; thunk-ret-star; ThunkSetupResult)
+import Once.Backend.X86.Correct.IR.ThunkExec as TE
 
 -- Import apply proof (uses ClosureWellFormed)
 open import Once.Backend.X86.Correct.IR.Apply
@@ -624,37 +625,12 @@ mutual
       -- v-env is now an input parameter (no more valid-from-encode bridge!)
 
       -- Step 1: Trace 8 setup instructions (now takes validity for both env and arg)
+      -- Returns ThunkSetupResult record for clean field access
       setup-result = thunk-setup-star f prefix suffix env arg s
                        h-eq pc-eq v-arg v-env stack-inv rsp-sufficient
       s-after-setup = proj₁ setup-result
-      star-setup = proj₁ (proj₂ setup-result)
-      h-setup = proj₁ (proj₂ (proj₂ setup-result))
-      pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
-      rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      -- NEW: validity output from thunk-setup-star
-      v-pair-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
-      rsp-sufficient-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      -- RbpInvariant after setup
-      rbp-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))))
-      -- Key property: memory at (rbp after setup) = original rbp
-      mem-at-rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
-      -- Memory at original rsp is preserved through setup
-      -- The tuple ends with (mem-old-rsp × mem-r15 × mem-at-0 × mem-code × mem-heap × mem-above)
-      mem-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
-      mem-old-rsp-setup = proj₁ mem-rest
-      -- Memory at (old-rsp - 8) where r15 was pushed, preserved through setup
-      mem-r15-rest = proj₂ mem-rest
-      mem-r15-setup = proj₁ mem-r15-rest
-      -- Memory at 0 and code/heap regions preserved through setup
-      mem-0-and-rest = proj₂ mem-r15-rest
-      mem-at-0-setup = proj₁ mem-0-and-rest
-      mem-code-and-heap = proj₂ mem-0-and-rest
-      mem-code-setup = proj₁ mem-code-and-heap
-      mem-heap-setup = proj₂ mem-code-and-heap
+      setup-rec = proj₂ setup-result
+      open TE.ThunkSetupResult setup-rec
 
       -- Step 2: Call IH on f
       -- Define prefix-f and suffix-f so that prog = prefix-f ++ compile-x86 f ++ suffix-f
@@ -1366,10 +1342,10 @@ mutual
               rsp+8≤slot = subst (_≤ the-slot-addr) caller-sp-bound (slot-addr-≥-base caller-sp k)
 
           -- D041 PROVEN: Setup preserves caller's slot addresses
-          -- Uses proj₂ mem-heap-setup which requires addr > original rsp
+          -- Uses mem-above-setup which requires addr > original rsp
           setup-preserves-caller-slot : readMem (memory s-after-setup) the-slot-addr ≡
                                         readMem (memory s) the-slot-addr
-          setup-preserves-caller-slot = proj₂ mem-heap-setup the-slot-addr slot-addr>rsp
+          setup-preserves-caller-slot = mem-above-setup the-slot-addr slot-addr>rsp
 
       -- Memory at address 0 preserved:
       -- Thunk writes only to stack region, 0 is not in stack region
@@ -1426,7 +1402,7 @@ mutual
         readMem (memory s-after-f-raw) addr
           ≡⟨ IRStarResultV.ir-mem-heap r-f-v addr addr-in-heap ⟩
         readMem (memory s-after-setup) addr
-          ≡⟨ proj₁ mem-heap-setup addr addr-in-heap ⟩
+          ≡⟨ mem-heap-setup addr addr-in-heap ⟩
         readMem (memory s) addr ∎
 
       -- D041: Memory above entry rsp is preserved
@@ -1441,7 +1417,7 @@ mutual
         readMem (memory s-after-f-raw) addr
           ≡⟨ IRStarResultV.ir-mem-above r-f-v addr addr>rbp ⟩
         readMem (memory s-after-setup) addr
-          ≡⟨ proj₂ mem-heap-setup addr addr>rsp ⟩
+          ≡⟨ mem-above-setup addr addr>rsp ⟩
         readMem (memory s) addr ∎
         where
           open import Data.Nat.Properties using (<-trans; m∸n≤m)

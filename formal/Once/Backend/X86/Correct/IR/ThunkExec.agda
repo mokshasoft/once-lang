@@ -38,7 +38,7 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 
 -- Import validity types for validity-based interface
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; PairAtS; pair-at-s; valid-pair; addr-from-valid; valid-subst-heap-preserved)
+  using (ValidAt; PairAtS; pair-at-s; valid-pair; valid-subst-heap-preserved)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots;
@@ -53,6 +53,64 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- D041: Generic arithmetic helpers
          ∸-gives-different; ∸-gives-smaller)
 
+------------------------------------------------------------------------
+-- ThunkSetupResult: Record type for thunk setup output
+-- Replaces deeply nested tuple to improve typechecker performance
+------------------------------------------------------------------------
+
+record ThunkSetupResult {A B C : Type} (f : IR (A * B) C)
+                        (prog : Program) (s s' : State)
+                        (env : ⟦ A ⟧) (arg : ⟦ B ⟧)
+                        (f-offset : ℕ) : Set₁ where
+  field
+    -- Star execution proof
+    star-setup : Star prog s s'
+
+    -- Non-halting
+    h-setup : halted s' ≡ false
+
+    -- PC advancement
+    pc-setup : pc s' ≡ f-offset
+
+    -- Validity output: pair (env, arg) at rdi
+    v-pair-setup : ValidAt (env , arg) (readReg (regs s') rdi) (memory s')
+
+    -- Callee-saved register preservation
+    r14-setup : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r15-setup : readReg (regs s') r15 ≡ readReg (regs s) r15
+
+    -- Frame pointer setup
+    rbp-setup : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slots 2
+
+    -- Stack invariants
+    stack-inv-setup : StackInvariant s'
+    rsp-sufficient-setup : readReg (regs s') rsp > slots 2
+    rbp-inv-setup : RbpInvariant s'
+
+    -- Memory at rbp contains original rbp
+    mem-at-rbp-setup : readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
+
+    -- Memory at original rsp preserved (for return address)
+    mem-old-rsp-setup : readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
+
+    -- Memory for r15 restoration
+    mem-r15-setup : readMem (memory s') (readReg (regs s) rsp ∸ slot-size) ≡ just (readReg (regs s) r15)
+
+    -- Memory at 0 preserved
+    mem-at-0-setup : readMem (memory s') 0 ≡ readMem (memory s) 0
+
+    -- Memory at code region preserved
+    mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
+
+    -- Memory at heap region preserved
+    mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+
+    -- Memory above original rsp preserved
+    mem-above-setup : ∀ caller-addr → caller-addr > readReg (regs s) rsp →
+                      readMem (memory s') caller-addr ≡ readMem (memory s) caller-addr
+
+open ThunkSetupResult public
+
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
@@ -66,35 +124,28 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
   ValidAt env (readReg (regs s) r12) (memory s) →   -- validity-based!
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
-  ∃[ s' ] (Star prog s s'
-          × halted s' ≡ false
-          × pc s' ≡ f-offset
-          × readReg (regs s') rdi ≡ encode (env , arg)
-          × ValidAt (env , arg) (readReg (regs s') rdi) (memory s')  -- validity output!
-          × readReg (regs s') r14 ≡ readReg (regs s) r14
-          × readReg (regs s') r15 ≡ readReg (regs s) r15
-          × readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slots 2  -- rbp is frame pointer (after push r15 and push rbp)
-          × StackInvariant s'
-          × readReg (regs s') rsp > slots 2
-          × RbpInvariant s'
-          -- Key property for pop-rbp-mem: memory at new rbp contains original rbp
-          × readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
-          -- Memory at original rsp is preserved (for return address)
-          × readMem (memory s') (readReg (regs s) rsp) ≡ readMem (memory s) (readReg (regs s) rsp)
-          -- Memory for r15 restoration: saved at original_rsp - 8
-          × readMem (memory s') (readReg (regs s) rsp ∸ slot-size) ≡ just (readReg (regs s) r15)
-          -- D041: Memory at address 0 preserved (setup writes only to stack region)
-          × readMem (memory s') 0 ≡ readMem (memory s) 0
-          -- D041: Memory at code-region addresses preserved
-          × (∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr)
-          -- D041: Memory at heap-region addresses preserved
-          × (∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr)
-          -- D041: Memory above original rsp preserved (for caller frame)
-          -- Setup writes only to addresses ≤ original_rsp - 8, so addresses > original_rsp are safe
-          × (∀ caller-addr → caller-addr > readReg (regs s) rsp → readMem (memory s') caller-addr ≡ readMem (memory s) caller-addr))
+  ∃[ s' ] ThunkSetupResult f prog s s' env arg f-offset
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  h-false pc-eq v-arg v-env stack-inv rsp-sufficient =
-  s8 , star-all , h8 , pc8 , rdi8 , v-pair , r14-8 , r15-8 , rbp8 , stack-inv8 , rsp-sufficient-8 , rbp-inv8 , mem-at-rbp8 , mem-old-rsp-preserved , mem-r15-preserved , mem-at-0-preserved , mem-code-preserved , mem-heap-preserved , mem-above-rsp-preserved
+  s8 , record
+    { star-setup = star-all
+    ; h-setup = h8
+    ; pc-setup = pc8
+    ; v-pair-setup = v-pair
+    ; r14-setup = r14-8
+    ; r15-setup = r15-8
+    ; rbp-setup = rbp8
+    ; stack-inv-setup = stack-inv8
+    ; rsp-sufficient-setup = rsp-sufficient-8
+    ; rbp-inv-setup = rbp-inv8
+    ; mem-at-rbp-setup = mem-at-rbp8
+    ; mem-old-rsp-setup = mem-old-rsp-preserved
+    ; mem-r15-setup = mem-r15-preserved
+    ; mem-at-0-setup = mem-at-0-preserved
+    ; mem-code-setup = mem-code-preserved
+    ; mem-heap-setup = mem-heap-preserved
+    ; mem-above-setup = mem-above-rsp-preserved
+    }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
@@ -171,13 +222,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-after-push-rbp = rsp-after-push-r15 ∸ slot-size  -- after push rbp = old-rsp - 16
     new-rsp = rsp-after-push-rbp ∸ slots 2  -- after sub rsp, 16 = old-rsp - 32
 
-    -- Internal bridging: extract encode equalities from validity
-    -- These are used internally by r12-s5 and rdi-s6
-    rdi-eq : readReg (regs s) rdi ≡ encode arg
-    rdi-eq = addr-from-valid v-arg
-
-    r12-eq : readReg (regs s) r12 ≡ encode env
-    r12-eq = addr-from-valid v-env
+    -- Raw register values (addresses where validity holds)
+    orig-r12 = readReg (regs s) r12
+    orig-rdi = readReg (regs s) rdi
 
     -- State after label (no-op, just pc++)
     s1 : State
@@ -274,12 +321,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-s5 : readReg (regs s5) rsp ≡ new-rsp
     rsp-s5 = readReg-writeReg-same (regs s4) rsp new-rsp
 
-    r12-s5 : readReg (regs s5) r12 ≡ encode env
+    -- r12 preserved through setup (no addr-from-valid needed!)
+    r12-s5 : readReg (regs s5) r12 ≡ orig-r12
     r12-s5 = trans (readReg-writeReg-rsp-r12 (regs s4) new-rsp)
                    (trans (readReg-writeReg-rbp-r12 (regs s3) rsp-after-push-rbp)
                           (trans (readReg-writeReg-rsp-r12 (regs s2) rsp-after-push-rbp)
                                  (trans (readReg-writeReg-rsp-r12 (regs s1) rsp-after-push-r15)
-                                        r12-eq)))
+                                        refl)))
 
     s6 : State
     s6 = record s5 { memory = writeMem (memory s5) new-rsp (readReg (regs s5) r12)
@@ -301,12 +349,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-s6 : readReg (regs s6) rsp ≡ new-rsp
     rsp-s6 = rsp-s5
 
-    rdi-s6 : readReg (regs s6) rdi ≡ encode arg
+    -- rdi preserved through setup (no addr-from-valid needed!)
+    rdi-s6 : readReg (regs s6) rdi ≡ orig-rdi
     rdi-s6 = trans (readReg-writeReg-rsp-rdi (regs s4) new-rsp)
                    (trans (readReg-writeReg-rbp-rdi (regs s3) rsp-after-push-rbp)
                           (trans (readReg-writeReg-rsp-rdi (regs s2) rsp-after-push-rbp)
                                  (trans (readReg-writeReg-rsp-rdi (regs s1) rsp-after-push-r15)
-                                        rdi-eq)))
+                                        refl)))
 
     s7 : State
     s7 = record s6 { memory = writeMem (memory s6) (new-rsp +ℕ slot-size) (readReg (regs s6) rdi)
@@ -375,25 +424,20 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rdi-s8-is-new-rsp : readReg (regs s8) rdi ≡ new-rsp
     rdi-s8-is-new-rsp = readReg-writeReg-same (regs s7) rdi new-rsp
 
-    -- Memory at new-rsp has encode env
+    -- Memory at new-rsp has orig-r12 (no encode needed!)
     -- s8 doesn't write memory (only rdi register), so memory s8 = memory s7
-    mem-env : readMem (memory s8) new-rsp ≡ just (encode env)
-    mem-env = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {new-rsp} {readReg (regs s6) rdi}
-                      (λ eq → n≢n+word-size new-rsp (sym eq)))
-                    (trans (mem-read-write {memory s5} {new-rsp} {readReg (regs s5) r12})
-                           (cong just r12-s5))
+    mem-env-raw : readMem (memory s8) new-rsp ≡ just orig-r12
+    mem-env-raw = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {new-rsp} {readReg (regs s6) rdi}
+                         (λ eq → n≢n+word-size new-rsp (sym eq)))
+                        (trans (mem-read-write {memory s5} {new-rsp} {readReg (regs s5) r12})
+                               (cong just r12-s5))
 
-    -- Memory at new-rsp+8 has encode arg
-    mem-arg : readMem (memory s8) (new-rsp +ℕ slot-size) ≡ just (encode arg)
-    mem-arg = trans (mem-read-write {memory s6} {new-rsp +ℕ slot-size} {readReg (regs s6) rdi})
-                    (cong just rdi-s6)
+    -- Memory at new-rsp+8 has orig-rdi (no encode needed!)
+    mem-arg-raw : readMem (memory s8) (new-rsp +ℕ slot-size) ≡ just orig-rdi
+    mem-arg-raw = trans (mem-read-write {memory s6} {new-rsp +ℕ slot-size} {readReg (regs s6) rdi})
+                        (cong just rdi-s6)
 
-    -- Use encode-pair-construct to show new-rsp = encode (env, arg)
-    pair-encoding : new-rsp ≡ encode (env , arg)
-    pair-encoding = encode-pair-construct env arg new-rsp (memory s8) mem-env mem-arg
-
-    rdi8 : readReg (regs s8) rdi ≡ encode (env , arg)
-    rdi8 = trans rdi-s8-is-new-rsp pair-encoding
+    -- NOTE: Removed encode-based proofs (pair-encoding, rdi8) - not needed with validity output!
 
     -- Register preservation (through all 8 instructions)
     -- Note: rbp is NOT preserved - it's set to frame pointer
@@ -998,17 +1042,20 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                             mem-s6-heap
 
     -- Validity output: construct ValidAt (env, arg) from components
+    -- NO addr-from-valid bridges needed!
+
     -- Step 1: Propagate v-env through heap preservation to memory s8
-    v-env-at-s8 : ValidAt env (encode env) (memory s8)
-    v-env-at-s8 = valid-subst-heap-preserved v-env (sym r12-eq) mem-heap-preserved
+    -- Key: use refl for address (orig-r12 = orig-r12), no encode equality needed!
+    v-env-at-s8 : ValidAt env orig-r12 (memory s8)
+    v-env-at-s8 = valid-subst-heap-preserved v-env refl mem-heap-preserved
 
     -- Step 2: Propagate v-arg through heap preservation to memory s8
-    v-arg-at-s8 : ValidAt arg (encode arg) (memory s8)
-    v-arg-at-s8 = valid-subst-heap-preserved v-arg (sym rdi-eq) mem-heap-preserved
+    v-arg-at-s8 : ValidAt arg orig-rdi (memory s8)
+    v-arg-at-s8 = valid-subst-heap-preserved v-arg refl mem-heap-preserved
 
-    -- Step 3: Construct PairAtS from memory layout
-    pair-layout : PairAtS (encode env) (encode arg) new-rsp (memory s8)
-    pair-layout = pair-at-s mem-env mem-arg
+    -- Step 3: Construct PairAtS from memory layout (using raw addresses)
+    pair-layout : PairAtS orig-r12 orig-rdi new-rsp (memory s8)
+    pair-layout = pair-at-s mem-env-raw mem-arg-raw
 
     -- Step 4: Combine using valid-pair
     v-pair : ValidAt (env , arg) (readReg (regs s8) rdi) (memory s8)
