@@ -775,9 +775,9 @@ mutual
       pc-setup-f : pc s-after-setup ≡ length prefix-f
       pc-setup-f = trans pc-setup (sym len-prefix-f)
 
-      -- Convert encode input to validity for validity dispatcher
+      -- Use validity directly from thunk-setup-star (no valid-from-encode bridge!)
       input-valid-f : ValidAt (env , arg) (readReg (regs s-after-setup) rdi) (memory s-after-setup)
-      input-valid-f = valid-from-encode rdi-setup
+      input-valid-f = v-pair-setup
 
       -- Call validity-based dispatcher (now in mutual block!)
       step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
