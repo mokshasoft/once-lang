@@ -72,15 +72,14 @@ open import Once.Backend.X86.Correct.MemoryValid
          encode-inl-tag-derived; encode-inl-val-derived;
          encode-inr-tag-derived; encode-inr-val-derived)
 
--- Re-export StarBase for backwards compatibility
+-- Re-export StarBase
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
-         ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
+  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
+         ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf; ir-capacity;
-         run-id-star; run-terminal-star; run-fold-star; run-unfold-star;
-         run-arr-star; run-fst-star; run-snd-star; run-prim-star;
-         -- Validity-based versions
+         ir-result-valid;  -- Validity-based result field
+         -- Validity-based versions only
          run-id-star-vv; run-terminal-star-vv; run-fold-star-vv; run-unfold-star-vv;
          run-arr-star-vv; run-fst-star-vv; run-snd-star-vv; run-prim-star-vv;
          -- Helper functions
@@ -142,7 +141,7 @@ open import Once.Backend.X86.Correct.MutualIR.Case
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; addr-from-valid; valid-from-encode; valid-disjoint-from-stack;
+  using (ValidAt; addr-from-valid; valid-disjoint-from-stack;
          valid-pair-decompose; valid-closure-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem)
@@ -191,161 +190,6 @@ mutual
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
-
-  -- | Encode-based IR execution at arbitrary offset (calls validity dispatcher)
-  -- caller-sp: StackPointer representing the caller's stack frame (D041)
-  run-ir-star-at-offset : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
-    StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 ir ++ suffix
-    in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
-
-  -- Base cases for encode-based dispatcher: delegate to existing Star functions
-  run-ir-star-at-offset (id {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-id-star {A} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (terminal {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-terminal-star {A} prefix suffix x s h-false pc-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (fold {F}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-fold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (unfold {F}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-unfold-star {F} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-arr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-fst-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-snd-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
-  run-ir-star-at-offset (initial {A}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient _ =
-    ⊥-elim x
-
-  -- Recursive cases: delegate to implementation modules (bridging through validity)
-  run-ir-star-at-offset (_∘_ {A} {B} {C} g f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    let input-valid = valid-from-encode rdi-eq
-        (s' , result-v) = run-compose-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-    in s' , record
-      { ir-star = IRStarResultV.ir-star result-v
-      ; ir-halted = IRStarResultV.ir-halted result-v
-      ; ir-pc = IRStarResultV.ir-pc result-v
-      ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid result-v)
-      ; ir-r14 = IRStarResultV.ir-r14 result-v
-      ; ir-r15 = IRStarResultV.ir-r15 result-v
-      ; ir-rbp = IRStarResultV.ir-rbp result-v
-      ; ir-mem = IRStarResultV.ir-mem result-v
-      ; ir-mem-rbp = IRStarResultV.ir-mem-rbp result-v
-      ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 result-v
-      ; ir-stack-inv = IRStarResultV.ir-stack-inv result-v
-      ; ir-capacity = IRStarResultV.ir-capacity result-v
-      ; ir-rbp-inv = IRStarResultV.ir-rbp-inv result-v
-      ; ir-mem-above = IRStarResultV.ir-mem-above result-v
-      ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 result-v
-      ; ir-mem-code = IRStarResultV.ir-mem-code result-v
-      ; ir-mem-heap = IRStarResultV.ir-mem-heap result-v
-      ; ir-closure-wf = IRStarResultV.ir-closure-wf result-v
-      }
-  run-ir-star-at-offset (⟨_,_⟩ {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    let input-valid = valid-from-encode rdi-eq
-        (s' , result-v) = run-pair-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-    in s' , record
-      { ir-star = IRStarResultV.ir-star result-v
-      ; ir-halted = IRStarResultV.ir-halted result-v
-      ; ir-pc = IRStarResultV.ir-pc result-v
-      ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid result-v)
-      ; ir-r14 = IRStarResultV.ir-r14 result-v
-      ; ir-r15 = IRStarResultV.ir-r15 result-v
-      ; ir-rbp = IRStarResultV.ir-rbp result-v
-      ; ir-mem = IRStarResultV.ir-mem result-v
-      ; ir-mem-rbp = IRStarResultV.ir-mem-rbp result-v
-      ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 result-v
-      ; ir-stack-inv = IRStarResultV.ir-stack-inv result-v
-      ; ir-capacity = IRStarResultV.ir-capacity result-v
-      ; ir-rbp-inv = IRStarResultV.ir-rbp-inv result-v
-      ; ir-mem-above = IRStarResultV.ir-mem-above result-v
-      ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 result-v
-      ; ir-mem-code = IRStarResultV.ir-mem-code result-v
-      ; ir-mem-heap = IRStarResultV.ir-mem-heap result-v
-      ; ir-closure-wf = IRStarResultV.ir-closure-wf result-v
-      }
-  run-ir-star-at-offset ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    let input-valid = valid-from-encode rdi-eq
-        (s' , result-v) = run-case-star-direct f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-    in s' , record
-      { ir-star = IRStarResultV.ir-star result-v
-      ; ir-halted = IRStarResultV.ir-halted result-v
-      ; ir-pc = IRStarResultV.ir-pc result-v
-      ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid result-v)
-      ; ir-r14 = IRStarResultV.ir-r14 result-v
-      ; ir-r15 = IRStarResultV.ir-r15 result-v
-      ; ir-rbp = IRStarResultV.ir-rbp result-v
-      ; ir-mem = IRStarResultV.ir-mem result-v
-      ; ir-mem-rbp = IRStarResultV.ir-mem-rbp result-v
-      ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 result-v
-      ; ir-stack-inv = IRStarResultV.ir-stack-inv result-v
-      ; ir-capacity = IRStarResultV.ir-capacity result-v
-      ; ir-rbp-inv = IRStarResultV.ir-rbp-inv result-v
-      ; ir-mem-above = IRStarResultV.ir-mem-above result-v
-      ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 result-v
-      ; ir-mem-code = IRStarResultV.ir-mem-code result-v
-      ; ir-mem-heap = IRStarResultV.ir-mem-heap result-v
-      ; ir-closure-wf = IRStarResultV.ir-closure-wf result-v
-      }
-  run-ir-star-at-offset (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    let input-valid = valid-from-encode rdi-eq
-        (s' , result-v) = run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-    in s' , record
-      { ir-star = IRStarResultV.ir-star result-v
-      ; ir-halted = IRStarResultV.ir-halted result-v
-      ; ir-pc = IRStarResultV.ir-pc result-v
-      ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid result-v)
-      ; ir-r14 = IRStarResultV.ir-r14 result-v
-      ; ir-r15 = IRStarResultV.ir-r15 result-v
-      ; ir-rbp = IRStarResultV.ir-rbp result-v
-      ; ir-mem = IRStarResultV.ir-mem result-v
-      ; ir-mem-rbp = IRStarResultV.ir-mem-rbp result-v
-      ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 result-v
-      ; ir-stack-inv = IRStarResultV.ir-stack-inv result-v
-      ; ir-capacity = IRStarResultV.ir-capacity result-v
-      ; ir-rbp-inv = IRStarResultV.ir-rbp-inv result-v
-      ; ir-mem-above = IRStarResultV.ir-mem-above result-v
-      ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 result-v
-      ; ir-mem-code = IRStarResultV.ir-mem-code result-v
-      ; ir-mem-heap = IRStarResultV.ir-mem-heap result-v
-      ; ir-closure-wf = IRStarResultV.ir-closure-wf result-v
-      }
-  run-ir-star-at-offset (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    let input-valid = valid-from-encode rdi-eq
-        (s' , result-v) = run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-    in s' , record
-      { ir-star = IRStarResultV.ir-star result-v
-      ; ir-halted = IRStarResultV.ir-halted result-v
-      ; ir-pc = IRStarResultV.ir-pc result-v
-      ; ir-rax = addr-from-valid (IRStarResultV.ir-result-valid result-v)
-      ; ir-r14 = IRStarResultV.ir-r14 result-v
-      ; ir-r15 = IRStarResultV.ir-r15 result-v
-      ; ir-rbp = IRStarResultV.ir-rbp result-v
-      ; ir-mem = IRStarResultV.ir-mem result-v
-      ; ir-mem-rbp = IRStarResultV.ir-mem-rbp result-v
-      ; ir-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8 result-v
-      ; ir-stack-inv = IRStarResultV.ir-stack-inv result-v
-      ; ir-capacity = IRStarResultV.ir-capacity result-v
-      ; ir-rbp-inv = IRStarResultV.ir-rbp-inv result-v
-      ; ir-mem-above = IRStarResultV.ir-mem-above result-v
-      ; ir-mem-at-0 = IRStarResultV.ir-mem-at-0 result-v
-      ; ir-mem-code = IRStarResultV.ir-mem-code result-v
-      ; ir-mem-heap = IRStarResultV.ir-mem-heap result-v
-      ; ir-closure-wf = IRStarResultV.ir-closure-wf result-v
-      }
-
-  -- Prim: opaque primitive - correctness postulated until proper Prim compilation
-  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-    run-prim-star name prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv
 
   ------------------------------------------------------------------------
   -- Curry implementation (kept in mutual block for now)

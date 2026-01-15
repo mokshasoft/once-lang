@@ -27,10 +27,7 @@ open import Once.Backend.X86.CodeGen
 -- Import Star relation for compositional proofs
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single;
-         _◅◅_; ⟨_,_⟩◅_; star-step2; star-step3; star-step4;
-         exec-to-star; exec-until-pc-to-star;
-         StarResult; star-exec; not-halted; rax-correct;
-         exec-to-star-result; compose-star-results)
+         _◅◅_; ⟨_,_⟩◅_; star-step2; star-step3; star-step4)
 
 -- Import common fetch lemmas (polymorphic, work with any instruction type)
 open import Once.Backend.Common.Fetch
@@ -224,17 +221,20 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 -- Note: IRStarResult is defined in MutualIR.agda and re-exported from there.
 ------------------------------------------------------------------------
 
--- | Star-based IR execution at arbitrary offset
+-- Import addr-from-valid for boundary translation to encode
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; addr-from-valid)
+
+-- | Star-based IR execution at arbitrary offset (validity-based)
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
-    ∃[ s' ] IRStarResult ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
-run-ir-star = run-ir-star-at-offset
+    ∃[ s' ] IRStarResultV ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)
+run-ir-star = run-ir-star-at-offset-v
 
 ------------------------------------------------------------------------
 -- Example: Composing IR proofs with Star
@@ -244,36 +244,36 @@ run-ir-star = run-ir-star-at-offset
 -- we just use star-trans to compose Star proofs.
 ------------------------------------------------------------------------
 
--- | Compose two IR computations using Star
+-- | Compose two IR computations using Star (validity-based)
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
-    readReg (regs s) rdi ≡ encode x →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv =
+compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
     s-final , star-proof , h-final , rax-final
   where
     open import Data.List.Properties using (++-identityʳ)
 
-    -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv
+    -- Use run-ir-star-at-offset-v (Star-based, validity input)
+    result = run-ir-star-at-offset-v (g ∘ f) [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
     s-final = proj₁ result
     r = proj₂ result
-    h-final = ir-halted r
-    rax-final = ir-rax r
+    h-final = IRStarResultV.ir-halted r
+    rax-final = addr-from-valid (IRStarResultV.ir-result-valid r)
 
     -- Convert program equality
     prog-eq : [] ++ compile-x86 (g ∘ f) ++ [] ≡ compile-x86 (g ∘ f)
     prog-eq = ++-identityʳ (compile-x86 (g ∘ f))
 
     star-proof : Star (compile-x86 (g ∘ f)) s s-final
-    star-proof = subst (λ p → Star p s s-final) prog-eq (ir-star r)
+    star-proof = subst (λ p → Star p s s-final) prog-eq (IRStarResultV.ir-star r)
 
 -- The key insight: with Star, the compose proof structure becomes:
 --
@@ -286,28 +286,28 @@ compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 rdi-eq stack-inv st
 -- No fuel arithmetic like (compile-length f + 1 + compile-length g)!
 -- Just transitivity of the star relation.
 
--- | Detailed Star-based compose showing the 3-step composition
--- Uses run-ir-star-at-offset directly - no fuel conversion needed
+-- | Detailed Star-based compose showing the 3-step composition (validity-based)
+-- Uses run-ir-star-at-offset-v directly - no fuel conversion needed
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
     ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
            × halted s' ≡ false
            × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
-run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv stack-cap rbp-inv =
+run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv =
   let
-    -- Use run-ir-star-at-offset (Star-based, no fuel conversion needed)
-    result = run-ir-star-at-offset (g ∘ f) prefix suffix caller-sp x s h-false pc-eq rdi-eq stack-inv stack-cap rbp-inv
+    -- Use run-ir-star-at-offset-v (Star-based, validity input)
+    result = run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv
     s-final = proj₁ result
     r = proj₂ result
   in
-    s-final , ir-star r , ir-halted r , ir-rax r
+    s-final , IRStarResultV.ir-star r , IRStarResultV.ir-halted r , addr-from-valid (IRStarResultV.ir-result-valid r)
 
 -- The real benefit: when we need to compose multiple IR terms,
 -- we can now use star-trans directly instead of fuel arithmetic.
@@ -368,13 +368,6 @@ step-halted-stable prog s h-true with halted s
 ... | true = refl
 ... | false with () ← h-true
 
--- Lemma: When halted, further exec keeps the same state
--- This is exec-n-halted from ExecLemmas, re-exported
-exec-halted-stable : ∀ (n : ℕ) (prog : Program) (s : State) →
-  halted s ≡ true →
-  exec n prog s ≡ just s
-exec-halted-stable = exec-n-halted
-
 ------------------------------------------------------------------------
 -- Star-based generator: Primary interface (no fuel postulates)
 --
@@ -383,33 +376,35 @@ exec-halted-stable = exec-n-halted
 ------------------------------------------------------------------------
 
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
+-- Validity-based: takes ValidAt input, returns ValidAt output
 run-generator : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false → pc s ≡ 0 → readReg (regs s) rdi ≡ encode x →
+  halted s ≡ false → pc s ≡ 0 → ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s → readReg (regs s) rsp > slots 2 → RbpInvariant s →
   ∃[ s' ] (Star (compile-x86 ir) s s'
          × halted s' ≡ true
-         × readReg (regs s') rax ≡ encode (eval ir x))
-run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv =
-  s-halted , star-full , halted-true , rax-preserved
+         × ValidAt (eval ir x) (readReg (regs s') rax) (memory s'))
+run-generator {A} {B} ir caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
+  s-halted , star-full , halted-true , result-valid
   where
     open import Data.List.Properties using (++-identityʳ)
 
     prog : Program
     prog = compile-x86 ir
 
-    -- Use run-ir-star-at-offset (Star-based)
-    result = run-ir-star-at-offset ir [] [] caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv
+    -- Use run-ir-star-at-offset-v (Star-based, validity input)
+    result = run-ir-star-at-offset-v ir [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
     s' = proj₁ result
     r = proj₂ result
 
     h' : halted s' ≡ false
-    h' = ir-halted r
+    h' = IRStarResultV.ir-halted r
 
     pc' : pc s' ≡ compile-length ir
-    pc' = ir-pc r
+    pc' = IRStarResultV.ir-pc r
 
-    rax' : readReg (regs s') rax ≡ encode (eval ir x)
-    rax' = ir-rax r
+    -- Result validity directly from IRStarResultV
+    result-valid' : ValidAt (eval ir x) (readReg (regs s') rax) (memory s')
+    result-valid' = IRStarResultV.ir-result-valid r
 
     -- Program equality: [] ++ compile-x86 ir ++ [] = compile-x86 ir
     prog-eq : [] ++ compile-x86 ir ++ [] ≡ prog
@@ -417,7 +412,7 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap r
 
     -- Convert Star to use prog
     star-raw : Star ([] ++ compile-x86 ir ++ []) s s'
-    star-raw = ir-star r
+    star-raw = IRStarResultV.ir-star r
 
     star-prog : Star prog s s'
     star-prog = subst (λ p → Star p s s') prog-eq star-raw
@@ -443,9 +438,9 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap r
     halted-true : halted s-halted ≡ true
     halted-true = refl
 
-    -- rax is preserved when we just set halted = true
-    rax-preserved : readReg (regs s-halted) rax ≡ encode (eval ir x)
-    rax-preserved = rax'
+    -- Validity preserved when we just set halted = true (regs and memory unchanged)
+    result-valid : ValidAt (eval ir x) (readReg (regs s-halted) rax) (memory s-halted)
+    result-valid = result-valid'
 
 ------------------------------------------------------------------------
 -- Helper: sequential execution of two programs (Star-based)
@@ -455,19 +450,20 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 rdi-eq stack-inv stack-cap r
 ------------------------------------------------------------------------
 
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
+-- Validity-based: takes ValidAt input, returns ValidAt output
 run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s0 : State) →
   halted s0 ≡ false →
   pc s0 ≡ 0 →
-  readReg (regs s0) rdi ≡ encode x →
+  ValidAt x (readReg (regs s0) rdi) (memory s0) →
   StackInvariant s0 →
   readReg (regs s0) rsp > slots 2 →
   RbpInvariant s0 →
-  -- After running g ∘ f: exists s2 with Star trace and rax = encode (eval g (eval f x))
+  -- After running g ∘ f: exists s2 with Star trace and result validity
   ∃[ s2 ] (Star (compile-x86 (g ∘ f)) s0 s2
          × halted s2 ≡ true
-         × readReg (regs s2) rax ≡ encode (eval g (eval f x)))
-run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv =
-  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 rdi-eq stack-inv stack-cap rbp-inv
+         × ValidAt (eval g (eval f x)) (readReg (regs s2) rax) (memory s2))
+run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
+  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 input-valid stack-inv stack-cap rbp-inv
 
 ------------------------------------------------------------------------
 -- Code generation correctness
@@ -476,15 +472,24 @@ run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 rdi-eq stack-inv sta
 -- The execution trace is witnessed by Star (reflexive-transitive closure).
 ------------------------------------------------------------------------
 
+-- Import bridge postulates for entry/exit translation
+open import Once.Backend.X86.Correct.MemoryValid using (valid-from-encode)
+
 -- caller-sp: StackPointer representing the external caller's stack frame (D041)
+-- This is the encode boundary: converts encode input to validity, runs, converts back
 codegen-x86-correct : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
   ∃[ s ] (Star (compile-x86 ir) (initWithInput x) s
         × halted s ≡ true
         × readReg (regs s) rax ≡ encode (eval ir x))
 codegen-x86-correct ir caller-sp x =
-  let (s' , star-eq , halt-eq , rax-eq) = run-generator ir caller-sp x (initWithInput x)
-        (initWithInput-halted x) (initWithInput-pc x) (initWithInput-rdi x)
+  let -- Entry bridge: encode → validity
+      input-valid = valid-from-encode (initWithInput-rdi x)
+      -- Run with validity
+      (s' , star-eq , halt-eq , result-valid) = run-generator ir caller-sp x (initWithInput x)
+        (initWithInput-halted x) (initWithInput-pc x) input-valid
         (initWithInput-stack-inv x) (initWithInput-rsp-sufficient x) (initWithInput-rbp-inv x)
+      -- Exit bridge: validity → encode
+      rax-eq = addr-from-valid result-valid
   in s' , star-eq , halt-eq , rax-eq
 
 ------------------------------------------------------------------------

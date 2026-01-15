@@ -81,12 +81,12 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
-         ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
+  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
+         ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
          ir-result-valid)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode; addr-from-valid; valid-closure-env; ClosureAtS; closure-at-s)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; addr-from-valid; valid-closure-env; ClosureAtS; closure-at-s)
 open import Once.Backend.Common.MemoryRegions using (StackPointer; region-of; heap)
 
 -- Import closure infrastructure
@@ -100,7 +100,7 @@ open import Once.Backend.X86.Correct.ClosureContext
 
 -- Import modular runner for delegation
 open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star-at-offset; run-ir-star-at-offset-v; thunk-offset-in-bounds; curry-thunk-correct-impl;
+  using (run-ir-star-at-offset-v; thunk-offset-in-bounds; curry-thunk-correct-impl;
          IRStarResultV; module IRStarResultV)
 
 -- Import curry proof with memory result
@@ -170,11 +170,12 @@ transport-closure-mem m m' (has-closure-mem cl-addr cp ea sem wf mem-env mem-cp)
     (trans (closure+8-mem-preserved m m' cl-addr) mem-cp)
 
 ------------------------------------------------------------------------
--- WholeProgramResult: Result with closure tracking
+-- WholeProgramResult: Result with closure tracking (validity-based)
 ------------------------------------------------------------------------
 
 -- | Result type for whole-program execution
--- Like IRStarResult but explicitly tracks closure WF AND memory layout for composition
+-- Uses validity (ValidAt) instead of encode equality
+-- Explicitly tracks closure WF AND memory layout for composition
 record WholeProgramResult {A B : Type} (ir : IR A B)
                           (prog : Program) (s s' : State) (x : ⟦ A ⟧)
                           (offset : ℕ) : Set₁ where
@@ -183,7 +184,8 @@ record WholeProgramResult {A B : Type} (ir : IR A B)
     wp-star     : Star prog s s'
     wp-halted   : halted s' ≡ false
     wp-pc       : pc s' ≡ offset +ℕ compile-length ir
-    wp-rax      : readReg (regs s') rax ≡ encode (eval ir x)
+    -- Validity-based correctness (no encode!)
+    wp-result-valid : ValidAt (eval ir x) (readReg (regs s') rax) (memory s')
     -- Register preservation
     wp-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     wp-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
@@ -199,90 +201,12 @@ record WholeProgramResult {A B : Type} (ir : IR A B)
 open WholeProgramResult public
 
 ------------------------------------------------------------------------
--- WholeProgramResultV: Validity-based result (no encode)
+-- Conversion helpers for whole-program proofs
 ------------------------------------------------------------------------
-
--- | Validity-based result type for whole-program execution
--- Like WholeProgramResult but proves ValidAt instead of encode equality
--- This is the target for eliminating encode postulates
-record WholeProgramResultV {A B : Type} (ir : IR A B)
-                           (prog : Program) (s s' : State) (x : ⟦ A ⟧)
-                           (offset : ℕ) : Set₁ where
-  field
-    -- Core execution result
-    wpv-star     : Star prog s s'
-    wpv-halted   : halted s' ≡ false
-    wpv-pc       : pc s' ≡ offset +ℕ compile-length ir
-    -- Validity-based correctness (replaces wp-rax)
-    wpv-result-valid : ValidAt (eval ir x) (readReg (regs s') rax) (memory s')
-    -- Register preservation
-    wpv-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
-    wpv-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
-    wpv-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
-    -- Stack invariants
-    wpv-stack-inv : StackInvariant s'
-    wpv-rsp-bound : readReg (regs s') rsp > slots 2
-    wpv-rbp-inv   : RbpInvariant s'
-    -- Closure WF + memory layout output (for threading to apply)
-    wpv-closure-mem : ClosureMemoryOutput prog (memory s')
-
-open WholeProgramResultV public
-
-------------------------------------------------------------------------
--- Conversion: IRStarResult to WholeProgramResult
-------------------------------------------------------------------------
-
--- | Convert modular result to whole-program result
--- Uses no-closure-mem since modular runner doesn't track closure memory
-from-modular : ∀ {A B} {ir : IR A B} {prog s s' x offset} →
-  IRStarResult ir prog s s' x offset →
-  WholeProgramResult ir prog s s' x offset
-from-modular r = record
-  { wp-star = ir-star r
-  ; wp-halted = ir-halted r
-  ; wp-pc = ir-pc r
-  ; wp-rax = ir-rax r
-  ; wp-r14 = ir-r14 r
-  ; wp-r15 = ir-r15 r
-  ; wp-rbp = ir-rbp r
-  ; wp-stack-inv = ir-stack-inv r
-  ; wp-rsp-bound = ir-rsp-bound r
-  ; wp-rbp-inv = ir-rbp-inv r
-  ; wp-closure-mem = no-closure-mem  -- Modular runner doesn't track closure memory
-  }
-
-------------------------------------------------------------------------
--- Whole-program runner with curry WF production
-------------------------------------------------------------------------
-
--- | Convert IRStarResult with closure WF and memory proofs to WholeProgramResult
--- Used for curry case: adds has-closure-mem with full memory layout
--- The closure types (E, ClA, ClB) may differ from the IR types (A, B)
--- E is the captured environment type
-from-modular-with-wf : ∀ {A B} {ir : IR A B} {prog s s' x offset}
-  {E ClA ClB : Type} {closure-addr code-ptr : ℕ} {env : ⟦ E ⟧} {sem : ⟦ ClA ⟧ → ⟦ ClB ⟧} →
-  IRStarResult ir prog s s' x offset →
-  ClosureWellFormed {E} {ClA} {ClB} prog code-ptr env sem →
-  readMem (memory s') closure-addr ≡ just (encode env) →  -- mem-env proof
-  readMem (memory s') (closure-addr +ℕ 8) ≡ just code-ptr →  -- mem-cp proof
-  WholeProgramResult ir prog s s' x offset
-from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env = e} r wf mem-env mem-cp = record
-  { wp-star = ir-star r
-  ; wp-halted = ir-halted r
-  ; wp-pc = ir-pc r
-  ; wp-rax = ir-rax r
-  ; wp-r14 = ir-r14 r
-  ; wp-r15 = ir-r15 r
-  ; wp-rbp = ir-rbp r
-  ; wp-stack-inv = ir-stack-inv r
-  ; wp-rsp-bound = ir-rsp-bound r
-  ; wp-rbp-inv = ir-rbp-inv r
-  ; wp-closure-mem = has-closure-mem cl-addr cp e _ wf mem-env mem-cp
-  }
 
 -- | Convert CurryExecResult with closure WF and memory proofs to WholeProgramResult
--- Computes wp-rax using validity from CurryMemoryResult
--- Derives mem-env and mem-cp proofs from CurryMemoryResult using addr-from-valid
+-- Computes result validity using valid-closure-env constructor
+-- Derives mem-env proof for has-closure-mem using addr-from-valid (boundary translation)
 from-curry-with-wf : ∀ {A B C} (f : IR (A * B) C) (prog : Program) (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
   (exec-res : CurryExecResult f prog s s' x offset) →
   (mem-res : CurryMemoryResult f prog s' x offset) →
@@ -292,7 +216,7 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
   { wp-star = exec-star exec-res
   ; wp-halted = exec-halted exec-res
   ; wp-pc = exec-pc exec-res
-  ; wp-rax = addr-from-valid result-valid
+  ; wp-result-valid = result-valid
   ; wp-r14 = exec-r14 exec-res
   ; wp-r15 = exec-r15 exec-res
   ; wp-rbp = exec-rbp exec-res
@@ -344,8 +268,7 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
                          (sym curry-rax-eq) closure-valid-at-addr
 
 -- | Convert validity-based modular result to whole-program result
--- Uses addr-from-valid bridge to convert validity to encode equality
--- This consolidates all bridging for fallback cases in one place
+-- Direct conversion: just transfers validity fields
 from-modular-v : ∀ {A B} {ir : IR A B} {prog s x offset} (s' : State) →
   IRStarResultV ir prog s s' x offset →
   WholeProgramResult ir prog s s' x offset
@@ -353,7 +276,7 @@ from-modular-v s' r = record
   { wp-star = IRStarResultV.ir-star r
   ; wp-halted = IRStarResultV.ir-halted r
   ; wp-pc = IRStarResultV.ir-pc r
-  ; wp-rax = addr-from-valid (IRStarResultV.ir-result-valid r)  -- Bridge: validity to encode
+  ; wp-result-valid = IRStarResultV.ir-result-valid r
   ; wp-r14 = IRStarResultV.ir-r14 r
   ; wp-r15 = IRStarResultV.ir-r15 r
   ; wp-rbp = IRStarResultV.ir-rbp r
@@ -374,11 +297,13 @@ from-modular-v s' r = record
 --
 -- caller-sp: StackPointer representing the caller's stack frame
 -- (D041: used for intra-stack memory preservation via sp-distinct)
+--
+-- VALIDITY-BASED API: Takes ValidAt instead of encode equality
 run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  readReg (regs s) rdi ≡ encode x →
+  ValidAt x (readReg (regs s) rdi) (memory s) →  -- Validity-based input
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
@@ -388,14 +313,11 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
 
 -- Curry case: produce has-closure-mem with full memory layout
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
-run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv _ =
+run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
-      -- Convert rdi-eq to validity for run-curry-star
-      input-valid = valid-from-encode rdi-eq
-      -- Get CurryExecResult and CurryMemoryResult from run-curry-star
-      -- Note: run-curry-star now takes validity (bridge via valid-from-encode)
+      -- Get CurryExecResult and CurryMemoryResult from run-curry-star (uses validity directly)
       (s' , exec-res , curry-mem-res) = run-curry-star f prefix suffix x s
                             h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
       -- Get code-ptr from memory result and prove it equals thunk-offset
@@ -425,16 +347,15 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
 -- POSTULATES FOR APPLY MEMORY LAYOUT:
 -- These capture the semantic property that when a closure is in context,
 -- the pair has properly set up the memory layout for apply.
-run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv wf-in =
+run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv wf-in =
   apply-with-wf-check wf-in
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
 
-    -- Fallback: use validity-based modular runner (consolidates bridging in from-modular-v)
+    -- Fallback: use validity-based modular runner
     apply-fallback : ∃[ s' ] WholeProgramResult (apply {A} {B}) prog s s' x (length prefix)
     apply-fallback =
-      let input-valid = valid-from-encode rdi-eq
-          (s' , result-v) = run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s
+      let (s' , result-v) = run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s
                               h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
       in s' , from-modular-v s' result-v
 
@@ -452,10 +373,9 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     --   2. Postulated memory layout (ApplyMemoryLayout)
     --   3. Call run-apply-with-full-wf with the WF proof
 
--- All other cases: use validity-based modular runner (consolidates bridging in from-modular-v)
-run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv wf-in =
-  let input-valid = valid-from-encode rdi-eq
-      (s' , result-v) = run-ir-star-at-offset-v ir prefix suffix caller-sp x s
+-- All other cases: use validity-based modular runner
+run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv wf-in =
+  let (s' , result-v) = run-ir-star-at-offset-v ir prefix suffix caller-sp x s
                           h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
   in s' , from-modular-v s' result-v
 
@@ -470,43 +390,11 @@ run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq rdi-eq stack
 -- come from curry operations (with tracked provenance via ClosureEntry),
 -- execution produces the correct result.
 --
+-- VALIDITY-BASED: Takes ValidAt input, returns ValidAt output
+--
 -- caller-sp: StackPointer representing the external caller's stack frame
 -- (D041: the runtime/C code calling into Once provides their frame pointer)
 whole-program-correct : ∀ {A B} (ir : IR A B)
-  (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false →
-  pc s ≡ 0 →
-  readReg (regs s) rdi ≡ encode x →
-  StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
-  RbpInvariant s →
-  let prog = compile-x86 ir
-  in ∃[ s' ] (Star prog s s'
-            × halted s' ≡ false
-            × pc s' ≡ compile-length ir
-            × readReg (regs s') rax ≡ encode (eval ir x))
-whole-program-correct ir caller-sp x s h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv =
-  let code = compile-x86 ir
-      -- [] ++ code ++ [] ≡ code ++ [] ≡ code
-      prog-eq : [] ++ code ++ [] ≡ code
-      prog-eq = ++-identityʳ code
-      -- Run with empty prefix/suffix
-      (s' , result) = run-ir-star-whole-program ir [] [] caller-sp x s
-                        h-eq pc-eq rdi-eq stack-inv rsp-sufficient rbp-inv no-closure
-      -- Transport result to the simplified program
-      star' = subst (λ p → Star p s s') prog-eq (wp-star result)
-  in s' , star' , wp-halted result , wp-pc result , wp-rax result
-
-------------------------------------------------------------------------
--- Validity-based whole-program correctness (no encode)
-------------------------------------------------------------------------
-
--- | Validity-based whole-program correctness theorem
--- Takes ValidAt input, returns ValidAt output
--- This is the target for eliminating encode postulates
---
--- caller-sp: StackPointer representing the external caller's stack frame
-whole-program-correct-v : ∀ {A B} (ir : IR A B)
   (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ 0 →
@@ -519,7 +407,7 @@ whole-program-correct-v : ∀ {A B} (ir : IR A B)
             × halted s' ≡ false
             × pc s' ≡ compile-length ir
             × ValidAt (eval ir x) (readReg (regs s') rax) (memory s'))  -- Output validity
-whole-program-correct-v ir caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+whole-program-correct ir caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   let code = compile-x86 ir
       -- [] ++ code ++ [] ≡ code ++ [] ≡ code
       prog-eq : [] ++ code ++ [] ≡ code
