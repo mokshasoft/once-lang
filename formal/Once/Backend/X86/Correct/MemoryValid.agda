@@ -155,10 +155,31 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr m →
     ValidAt {A ⇒ B} cl addr m
 
+  -- Closure from env validity: for curry-created closures
+  -- When curry creates a closure, we have:
+  --   1. Closure.env-addr cl ≡ encode env  (by eval definition for curry)
+  --   2. ValidAt env env-addr m            (env validity from input)
+  --   3. ClosureAtS layout                 (from memory writes)
+  -- This constructor builds closure validity without addr-from-valid.
+  valid-closure-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
+                      {env-addr code-ptr closure-addr : Word} {m : Memory} →
+    Closure.env-addr cl ≡ encode env →  -- semantic property (refl for curry)
+    ValidAt env env-addr m →             -- env validity at runtime address
+    ClosureAtS env-addr code-ptr closure-addr m →  -- memory layout
+    ValidAt {A ⇒ B} cl closure-addr m
+
   -- Eff: same as closure (Eff = Closure at runtime)
   valid-eff : ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
     ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr m →
     ValidAt {Eff A B} cl addr m
+
+  -- Eff from env validity: for curry-created effect closures
+  valid-eff-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
+                  {env-addr code-ptr closure-addr : Word} {m : Memory} →
+    Closure.env-addr cl ≡ encode env →
+    ValidAt env env-addr m →
+    ClosureAtS env-addr code-ptr closure-addr m →
+    ValidAt {Eff A B} cl closure-addr m
 
   -- Fix: validity of unwrapped value (Fix is identity at runtime)
   valid-fix : ∀ {F} {x : ⟦ F ⟧} {addr : Word} {m : Memory} →

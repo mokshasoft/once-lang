@@ -86,13 +86,13 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
          ir-result-valid)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode; addr-from-valid)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode; addr-from-valid; valid-closure-env; ClosureAtS; closure-at-s)
 open import Once.Backend.Common.MemoryRegions using (StackPointer; region-of; heap)
 
 -- Import closure infrastructure
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; CurryResult;
-         curry-star; curry-halted; curry-pc; curry-rax;
+         curry-star; curry-halted; curry-pc; curry-result-valid;
          curry-r14; curry-r15; curry-rbp;
          curry-stack-inv; curry-rsp-bound; closure-wf)
 open import Once.Backend.X86.Correct.ClosureContext
@@ -104,8 +104,10 @@ open import Once.Backend.X86.Correct.MutualIR as Modular
          IRStarResultV; module IRStarResultV)
 
 -- Import curry proof with memory result
-open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult)
-open import Once.Backend.X86.Correct.IR.Curry using (closure-addr; code-ptr; env-addr; rax-eq; mem-env; mem-cp)
+open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; CurryExecResult)
+open import Once.Backend.X86.Correct.IR.Curry using (closure-addr; code-ptr; env-addr; rax-eq; mem-env; mem-cp; v-env; code-ptr-is-thunk)
+-- CurryExecResult field accessors
+open import Once.Backend.X86.Correct.IR.Curry using (exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-stack-inv; exec-capacity; exec-rbp-inv)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
@@ -278,6 +280,69 @@ from-modular-with-wf {closure-addr = cl-addr} {code-ptr = cp} {env = e} r wf mem
   ; wp-closure-mem = has-closure-mem cl-addr cp e _ wf mem-env mem-cp
   }
 
+-- | Convert CurryExecResult with closure WF and memory proofs to WholeProgramResult
+-- Computes wp-rax using validity from CurryMemoryResult
+-- Derives mem-env and mem-cp proofs from CurryMemoryResult using addr-from-valid
+from-curry-with-wf : ∀ {A B C} (f : IR (A * B) C) (prog : Program) (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
+  (exec-res : CurryExecResult f prog s s' x offset) →
+  (mem-res : CurryMemoryResult f prog s' x offset) →
+  ClosureWellFormed {A} {B} {C} prog (CurryMemoryResult.code-ptr mem-res) x (λ b → eval f (x , b)) →
+  WholeProgramResult (curry f) prog s s' x offset
+from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
+  { wp-star = exec-star exec-res
+  ; wp-halted = exec-halted exec-res
+  ; wp-pc = exec-pc exec-res
+  ; wp-rax = addr-from-valid result-valid
+  ; wp-r14 = exec-r14 exec-res
+  ; wp-r15 = exec-r15 exec-res
+  ; wp-rbp = exec-rbp exec-res
+  ; wp-stack-inv = exec-stack-inv exec-res
+  ; wp-rsp-bound = capacity-2-to-rsp-bound s' (exec-capacity exec-res)
+  ; wp-rbp-inv = exec-rbp-inv exec-res
+  ; wp-closure-mem = has-closure-mem cl-addr cp x _ wf mem-env-prf mem-cp-prf
+  }
+  where
+    -- Extract fields from CurryMemoryResult
+    curry-env-addr = CurryMemoryResult.env-addr mem-res
+    curry-code-ptr = CurryMemoryResult.code-ptr mem-res
+    curry-closure-addr = CurryMemoryResult.closure-addr mem-res
+    curry-rax-eq = CurryMemoryResult.rax-eq mem-res
+    curry-mem-env = CurryMemoryResult.mem-env mem-res
+    curry-mem-cp = CurryMemoryResult.mem-cp mem-res
+    curry-v-env = CurryMemoryResult.v-env mem-res
+
+    -- Aliases for has-closure-mem
+    cl-addr = curry-closure-addr
+    cp = curry-code-ptr
+
+    -- Derive mem-env proof for has-closure-mem
+    -- CurryMemoryResult.mem-env : readMem m cl-addr ≡ just env-addr
+    -- addr-from-valid v-env : env-addr ≡ encode x
+    -- We need: readMem m cl-addr ≡ just (encode x)
+    mem-env-prf : readMem (memory s') cl-addr ≡ just (encode x)
+    mem-env-prf = trans curry-mem-env (cong just (addr-from-valid curry-v-env))
+
+    -- mem-cp proof is directly from CurryMemoryResult
+    mem-cp-prf : readMem (memory s') (cl-addr +ℕ slot-size) ≡ just cp
+    mem-cp-prf = curry-mem-cp
+
+    -- Construct ClosureAtS from memory proofs
+    closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s')
+    closure-at = closure-at-s curry-mem-env curry-mem-cp
+
+    -- The semantic closure from eval (curry f) x
+    sem-closure : Closure B C
+    sem-closure = eval (curry f) x
+
+    -- Closure validity via valid-closure-env constructor
+    closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+
+    -- Transport to rax
+    result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
+    result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s'))
+                         (sym curry-rax-eq) closure-valid-at-addr
+
 -- | Convert validity-based modular result to whole-program result
 -- Uses addr-from-valid bridge to convert validity to encode equality
 -- This consolidates all bridging for fallback cases in one place
@@ -329,24 +394,27 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
       thunk-offset = offset +ℕ 6
       -- Convert rdi-eq to validity for run-curry-star
       input-valid = valid-from-encode rdi-eq
-      -- Get IRStarResult and CurryMemoryResult from run-curry-star
+      -- Get CurryExecResult and CurryMemoryResult from run-curry-star
       -- Note: run-curry-star now takes validity (bridge via valid-from-encode)
-      (s' , ir-res , curry-mem-res) = run-curry-star f prefix suffix x s
+      (s' , exec-res , curry-mem-res) = run-curry-star f prefix suffix x s
                             h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-      -- Extract closure-addr and memory proofs from CurryMemoryResult
-      cl-addr = closure-addr curry-mem-res
-      mem-env-prf = mem-env curry-mem-res
-      mem-cp-prf = mem-cp curry-mem-res
-      -- Build ClosureWellFormed proof
+      -- Get code-ptr from memory result and prove it equals thunk-offset
+      mem-code-ptr = code-ptr curry-mem-res
+      cp-eq : mem-code-ptr ≡ thunk-offset
+      cp-eq = code-ptr-is-thunk curry-mem-res
+      -- Build ClosureWellFormed proof at mem-code-ptr (transport from thunk-offset)
       -- f : IR (A * B) C, so env type is A, arg type is B, result type is C
-      wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
-      wf = record
+      wf-at-thunk : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
+      wf-at-thunk = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
         ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
         }
-  in s' , from-modular-with-wf {closure-addr = cl-addr} {env = x} ir-res wf mem-env-prf mem-cp-prf
+      -- Transport wf to use mem-code-ptr (which equals thunk-offset)
+      wf : ClosureWellFormed {A} {B} {C} prog mem-code-ptr x (λ b → eval f (x , b))
+      wf = subst (λ cp → ClosureWellFormed {A} {B} {C} prog cp x (λ b → eval f (x , b))) (sym cp-eq) wf-at-thunk
+  in s' , from-curry-with-wf f prog s s' x offset exec-res curry-mem-res wf
 
 -- Apply case: pattern match on wf-in to use closure when available
 --

@@ -167,13 +167,14 @@ open ClosureWellFormed public
 -- - [closure+8] = code-ptr = offset + 6
 record CurryResult {A B C : Type} (f : IR (A * B) C)
                    (prog : Program) (s s' : State) (x : ⟦ A ⟧)
-                   (offset : ℕ) : Set where
+                   (offset : ℕ) : Set₁ where
   field
     -- Standard execution properties
     curry-star     : Star prog s s'
     curry-halted   : halted s' ≡ false
     curry-pc       : pc s' ≡ offset +ℕ compile-length (curry f)
-    curry-rax      : readReg (regs s') rax ≡ encode {B ⇒ C} (eval (curry f) x)
+    -- Validity-based result (replaces curry-rax : rax ≡ encode result)
+    curry-result-valid : ValidAt {B ⇒ C} (eval (curry f) x) (readReg (regs s') rax) (memory s')
     curry-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     curry-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
     curry-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp

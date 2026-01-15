@@ -34,7 +34,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-closure-at; ClosureAtS; closure-at-s; addr-from-valid)
+  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write; valid-in-heap)
 
 open import Data.Nat using (_>_; _≥_; _<_; s≤s; z≤n)
 -- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
@@ -53,7 +53,7 @@ open ≡-Reasoning
 -- This is what apply needs to look up the closure
 record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
                          (prog : Program) (s-final : State)
-                         (x : ⟦ A ⟧) (offset : ℕ) : Set where
+                         (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
   field
     closure-addr : ℕ
     code-ptr : ℕ
@@ -63,65 +63,91 @@ record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
     -- Memory layout of the closure
     mem-env : readMem (memory s-final) closure-addr ≡ just env-addr
     mem-cp : readMem (memory s-final) (closure-addr +ℕ slot-size) ≡ just code-ptr
-    -- Semantic values
-    env-is-encoded : env-addr ≡ encode x
+    -- Env validity (replaces env-is-encoded : env-addr ≡ encode x)
+    v-env : ValidAt x env-addr (memory s-final)
     code-ptr-is-thunk : code-ptr ≡ offset +ℕ 6
 
 open CurryMemoryResult public
 
 ------------------------------------------------------------------------
--- Main curry proof
+-- CurryExecResult: Execution result without encode-based ir-rax
+------------------------------------------------------------------------
+
+-- | Curry execution result - all fields except ir-rax
+-- This avoids computing encode equality, keeping curry validity-based.
+-- ir-rax is not needed because run-curry-star-v computes validity directly.
+record CurryExecResult {A B C : Type} (f : IR (A * B) C)
+                       (prog : Program) (s s' : State)
+                       (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
+  field
+    exec-star : Star prog s s'
+    exec-halted : halted s' ≡ false
+    exec-pc : pc s' ≡ offset +ℕ compile-length (curry f)
+    exec-r14 : readReg (regs s') r14 ≡ readReg (regs s) r14
+    exec-r15 : readReg (regs s') r15 ≡ readReg (regs s) r15
+    exec-rbp : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    exec-mem : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    exec-mem-rbp : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    exec-mem-rbp+8 : readMem (memory s') (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
+    exec-stack-inv : StackInvariant s'
+    exec-capacity : StackCapacity s' 2
+    exec-rbp-inv : RbpInvariant s'
+    exec-mem-above : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
+    exec-mem-at-0 : readMem (memory s') 0 ≡ readMem (memory s) 0
+    exec-mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
+    exec-mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+
+open CurryExecResult public
+
+------------------------------------------------------------------------
+-- Main curry proof (validity-based, no encode)
 ------------------------------------------------------------------------
 
 run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  -- Key: ValidAt for input (replaces rdi-eq - consolidates bridging here)
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   readReg (regs s) rsp > slots 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
-  in ∃[ s' ] (IRStarResult (curry f) prog s s' x (length prefix)
+  in ∃[ s' ] (CurryExecResult f prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
 run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   s-final , record
-    { ir-star = star-all
-    ; ir-halted = h-final
-    ; ir-pc = pc-final
-    ; ir-rax = rax-final
-    ; ir-r14 = r14-final
-    ; ir-r15 = r15-final
-    ; ir-rbp = rbp-final
-    ; ir-mem = mem-final
-    ; ir-mem-rbp = mem-rbp-final
-    ; ir-mem-rbp+8 = mem-rbp+8-final
-    ; ir-stack-inv = stack-inv-final
-    ; ir-capacity = output-capacity  -- CLEAN: derived via capacity-after-alloc-2-slots
-    ; ir-rbp-inv = rbp-inv-final
-    ; ir-mem-above = mem-above-final
-    ; ir-mem-at-0 = mem-at-0-final
-    ; ir-mem-code = mem-code-final
-    ; ir-mem-heap = mem-heap-final
-    ; ir-closure-wf = no-closure  -- TODO: curry should produce has-closure with ClosureWellFormed proof
+    { exec-star = star-all
+    ; exec-halted = h-final
+    ; exec-pc = pc-final
+    ; exec-r14 = r14-final
+    ; exec-r15 = r15-final
+    ; exec-rbp = rbp-final
+    ; exec-mem = mem-final
+    ; exec-mem-rbp = mem-rbp-final
+    ; exec-mem-rbp+8 = mem-rbp+8-final
+    ; exec-stack-inv = stack-inv-final
+    ; exec-capacity = output-capacity
+    ; exec-rbp-inv = rbp-inv-final
+    ; exec-mem-above = mem-above-final
+    ; exec-mem-at-0 = mem-at-0-final
+    ; exec-mem-code = mem-code-final
+    ; exec-mem-heap = mem-heap-final
     } , record
     { closure-addr = new-rsp
     ; code-ptr = thunk-offset
-    ; env-addr = encode x
+    ; env-addr = orig-rdi
     ; rax-eq = rax-s7
     ; mem-env = mem-at-new-rsp-final
     ; mem-cp = mem-code-ptr-final
-    ; env-is-encoded = refl
+    ; v-env = v-env-final
     ; code-ptr-is-thunk = refl
     }
   where
     len-f = compile-length f
     prog = prefix ++ compile-x86 (curry f) ++ suffix
 
-    -- Internal bridge: derive rdi-eq from input-valid
-    -- This consolidates all bridging for curry input here
-    rdi-eq : readReg (regs s) rdi ≡ encode x
-    rdi-eq = addr-from-valid input-valid
+    -- Track original rdi (env address from input)
+    orig-rdi : ℕ
+    orig-rdi = readReg (regs s) rdi
 
     -- Key offsets (matching CodeGen.agda layout)
     -- jmp at pos 5 needs to reach end-label at pos 18+len-f
@@ -494,18 +520,18 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     rax-s7 : readReg (regs s7) rax ≡ new-rsp
     rax-s7 = readReg-writeReg-same (regs s4) rax (readReg (regs s4) rsp)
 
-    -- Show memory at new-rsp contains encode x
+    -- Show memory at new-rsp contains orig-rdi (the env address)
     -- s2 writes (readReg (regs s1) rdi) to (readReg (regs s1) rsp) = new-rsp
     -- s4 writes to rsp+8, not rsp, so new-rsp is unchanged
-    rdi-s1 : readReg (regs s1) rdi ≡ encode x
-    rdi-s1 = trans (readReg-writeReg-rsp-rdi (regs s) new-rsp) rdi-eq
+    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
+    rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
 
-    mem-at-new-rsp-s2 : readMem (memory s2) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-s2 : readMem (memory s2) new-rsp ≡ just orig-rdi
     mem-at-new-rsp-s2 = trans (readMem-writeMem-same (memory s1) (readReg (regs s1) rsp) (readReg (regs s1) rdi))
                               (cong just (trans (cong (λ addr → readReg (regs s1) rdi) (sym rsp-s1)) rdi-s1))
 
     -- s3 doesn't modify memory
-    mem-at-new-rsp-s3 : readMem (memory s3) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-s3 : readMem (memory s3) new-rsp ≡ just orig-rdi
     mem-at-new-rsp-s3 = mem-at-new-rsp-s2
 
     -- s4 writes to rsp+8, not new-rsp
@@ -514,15 +540,60 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     new-rsp≢new-rsp+8 : new-rsp ≢ new-rsp +ℕ slot-size
     new-rsp≢new-rsp+8 = Nat-<⇒≢ (m<m+n new-rsp 0<1+n)
 
-    mem-at-new-rsp-s4 : readMem (memory s4) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-s4 : readMem (memory s4) new-rsp ≡ just orig-rdi
     mem-at-new-rsp-s4 = trans (readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ slot-size) new-rsp
                                 (readReg (regs s3) r9)
                                 (subst (λ addr → addr +ℕ slot-size ≢ new-rsp) (sym rsp-s3) (λ eq → new-rsp≢new-rsp+8 (sym eq))))
                               mem-at-new-rsp-s3
 
     -- s5, s6, s7 don't modify memory
-    mem-at-new-rsp-final : readMem (memory s-final) new-rsp ≡ just (encode x)
+    mem-at-new-rsp-final : readMem (memory s-final) new-rsp ≡ just orig-rdi
     mem-at-new-rsp-final = mem-at-new-rsp-s4
+
+    -- ============================================================
+    -- Env validity tracking (no bridges in this section)
+    -- ============================================================
+    -- input-valid : ValidAt x orig-rdi (memory s)
+    -- Curry writes to stack (new-rsp and new-rsp+8), not heap
+    -- orig-rdi is in heap (from input validity), so validity is preserved
+
+    -- orig-rdi is in heap (from input validity)
+    orig-rdi-in-heap : region-of orig-rdi ≡ heap
+    orig-rdi-in-heap = valid-in-heap input-valid
+
+    -- s2 writes to new-rsp (stack), not orig-rdi (heap)
+    new-rsp-in-stack : region-of new-rsp ≡ stack
+    new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap2)
+      where
+        cap2 : StackCapacity s 2
+        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+
+    orig-rdi≢new-rsp : orig-rdi ≢ new-rsp
+    orig-rdi≢new-rsp eq = stack-heap-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
+
+    v-env-s2 : ValidAt x orig-rdi (memory s2)
+    v-env-s2 = valid-at-preserved-under-write input-valid orig-rdi≢new-rsp
+
+    -- s3 doesn't modify memory
+    v-env-s3 : ValidAt x orig-rdi (memory s3)
+    v-env-s3 = v-env-s2
+
+    -- s4 writes to new-rsp+8 (stack), not orig-rdi (heap)
+    new-rsp+8-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
+    new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap2)
+      where
+        cap2 : StackCapacity s 2
+        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+
+    orig-rdi≢new-rsp+8 : orig-rdi ≢ new-rsp +ℕ slot-size
+    orig-rdi≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
+
+    v-env-s4 : ValidAt x orig-rdi (memory s4)
+    v-env-s4 = valid-at-preserved-under-write v-env-s3 orig-rdi≢new-rsp+8
+
+    -- s5, s6, s7 don't modify memory
+    v-env-final : ValidAt x orig-rdi (memory s-final)
+    v-env-final = v-env-s4
 
     -- Thunk offset: the code-ptr stored in the closure
     -- The thunk entry label is at index 6 within curry's compiled code
@@ -564,13 +635,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- s5, s6, s7 don't modify memory, so code-ptr persists
     mem-code-ptr-final : readMem (memory s-final) (new-rsp +ℕ slot-size) ≡ just thunk-offset
     mem-code-ptr-final = mem-code-ptr-s4
-
-    -- Use encode-closure-construct axiom
-    encode-curry-result : new-rsp ≡ encode {B ⇒ C} (eval (curry f) x)
-    encode-curry-result = encode-closure-construct f x new-rsp (memory s-final) mem-at-new-rsp-final
-
-    rax-final : readReg (regs s-final) rax ≡ encode {B ⇒ C} (eval (curry f) x)
-    rax-final = trans rax-s7 encode-curry-result
 
     -- Memory preservation
     orig-r15 : Word
@@ -900,37 +964,37 @@ run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x :
   in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
 run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
   s-final , record
-    { ir-star = IRStarResult.ir-star ir-result
-    ; ir-halted = IRStarResult.ir-halted ir-result
-    ; ir-pc = IRStarResult.ir-pc ir-result
+    { ir-star = exec-star exec-result
+    ; ir-halted = exec-halted exec-result
+    ; ir-pc = exec-pc exec-result
     ; ir-result-valid = result-valid
-    ; ir-r14 = IRStarResult.ir-r14 ir-result
-    ; ir-r15 = IRStarResult.ir-r15 ir-result
-    ; ir-rbp = IRStarResult.ir-rbp ir-result
-    ; ir-mem = IRStarResult.ir-mem ir-result
-    ; ir-mem-rbp = IRStarResult.ir-mem-rbp ir-result
-    ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 ir-result
-    ; ir-stack-inv = IRStarResult.ir-stack-inv ir-result
-    ; ir-capacity = IRStarResult.ir-capacity ir-result
-    ; ir-rbp-inv = IRStarResult.ir-rbp-inv ir-result
-    ; ir-mem-above = IRStarResult.ir-mem-above ir-result
-    ; ir-mem-at-0 = IRStarResult.ir-mem-at-0 ir-result
-    ; ir-mem-code = IRStarResult.ir-mem-code ir-result
-    ; ir-mem-heap = IRStarResult.ir-mem-heap ir-result
-    ; ir-closure-wf = IRStarResult.ir-closure-wf ir-result
+    ; ir-r14 = exec-r14 exec-result
+    ; ir-r15 = exec-r15 exec-result
+    ; ir-rbp = exec-rbp exec-result
+    ; ir-mem = exec-mem exec-result
+    ; ir-mem-rbp = exec-mem-rbp exec-result
+    ; ir-mem-rbp+8 = exec-mem-rbp+8 exec-result
+    ; ir-stack-inv = exec-stack-inv exec-result
+    ; ir-capacity = exec-capacity exec-result
+    ; ir-rbp-inv = exec-rbp-inv exec-result
+    ; ir-mem-above = exec-mem-above exec-result
+    ; ir-mem-at-0 = exec-mem-at-0 exec-result
+    ; ir-mem-code = exec-mem-code exec-result
+    ; ir-mem-heap = exec-mem-heap exec-result
+    ; ir-closure-wf = no-closure  -- TODO: curry should produce ClosureWellFormed
     }
   where
-    -- Call curry with validity (now takes input-valid directly - no bridge here!)
-    curry-result : ∃[ s' ] (IRStarResult (curry f) (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
+    -- Call curry with validity (no bridges!)
+    curry-result : ∃[ s' ] (CurryExecResult f (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
                            × CurryMemoryResult f (prefix ++ compile-x86 (curry f) ++ suffix) s' x (length prefix))
     curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
     s-final = proj₁ curry-result
-    ir-result = proj₁ (proj₂ curry-result)
+    exec-result = proj₁ (proj₂ curry-result)
     curry-mem = proj₂ (proj₂ curry-result)
 
     -- ============================================================
-    -- VALIDITY-BASED PROOF (replaces encode-closure-construct)
+    -- VALIDITY-BASED PROOF (NO BRIDGES - uses valid-closure-env constructor)
     -- ============================================================
 
     -- Extract fields from CurryMemoryResult
@@ -940,7 +1004,7 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     curry-rax-eq = CurryMemoryResult.rax-eq curry-mem
     curry-mem-env = CurryMemoryResult.mem-env curry-mem
     curry-mem-cp = CurryMemoryResult.mem-cp curry-mem
-    curry-env-is-encoded = CurryMemoryResult.env-is-encoded curry-mem
+    curry-v-env = CurryMemoryResult.v-env curry-mem
 
     -- Construct ClosureAtS from memory proofs
     closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s-final)
@@ -950,13 +1014,10 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     sem-closure : Closure B C
     sem-closure = eval (curry f) x
 
-    -- env-addr matches the semantic closure's env-addr
-    env-match : Closure.env-addr sem-closure ≡ curry-env-addr
-    env-match = sym curry-env-is-encoded  -- Closure.env-addr (eval (curry f) x) = encode x
-
-    -- Closure validity at curry-closure-addr
+    -- Closure validity via valid-closure-env constructor
+    -- The env-addr equality is refl because Closure.env-addr (eval (curry f) x) = encode x by definition
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
-    closure-valid-at-addr = valid-closure-at env-match closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)

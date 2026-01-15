@@ -93,12 +93,16 @@ open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star; run-inr-star-v; run-inr-star-v-auto)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
-open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; closure-addr)
+open import Once.Backend.X86.Correct.IR.Curry
+  using (run-curry-star; CurryExecResult; CurryMemoryResult; closure-addr;
+         exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-mem;
+         exec-mem-rbp; exec-mem-rbp+8; exec-stack-inv; exec-capacity; exec-rbp-inv;
+         exec-mem-above; exec-mem-at-0; exec-mem-code; exec-mem-heap)
 
 -- Import closure well-formedness infrastructure for whole-program proofs
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; CurryResult; ThunkResult;
-         curry-star; curry-halted; curry-pc; curry-rax;
+         curry-star; curry-halted; curry-pc; curry-result-valid;
          curry-r14; curry-r15; curry-rbp; curry-mem;
          curry-stack-inv; curry-rsp-bound; closure-wf)
 -- Note: ThunkProof postulates are now UNUSED
@@ -140,7 +144,7 @@ open import Once.Backend.X86.Correct.MutualIR.Case
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; addr-from-valid; valid-from-encode; valid-disjoint-from-stack;
          valid-pair-decompose; valid-closure-decompose; PairAtS;
-         valid-closure-at; ClosureAtS; closure-at-s;
+         valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem)
   renaming (PairAt to MV-PairAt)
 
@@ -361,23 +365,23 @@ mutual
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s' , record
-      { ir-star = ir-star ir-res
-      ; ir-halted = ir-halted ir-res
-      ; ir-pc = ir-pc ir-res
+      { ir-star = exec-star exec-res
+      ; ir-halted = exec-halted exec-res
+      ; ir-pc = exec-pc exec-res
       ; ir-result-valid = result-valid
-      ; ir-r14 = ir-r14 ir-res
-      ; ir-r15 = ir-r15 ir-res
-      ; ir-rbp = ir-rbp ir-res
-      ; ir-mem = ir-mem ir-res
-      ; ir-mem-rbp = ir-mem-rbp ir-res
-      ; ir-mem-rbp+8 = ir-mem-rbp+8 ir-res
-      ; ir-mem-above = ir-mem-above ir-res
-      ; ir-mem-at-0 = ir-mem-at-0 ir-res
-      ; ir-mem-code = ir-mem-code ir-res
-      ; ir-mem-heap = ir-mem-heap ir-res
-      ; ir-stack-inv = ir-stack-inv ir-res
-      ; ir-capacity = ir-capacity ir-res
-      ; ir-rbp-inv = ir-rbp-inv ir-res
+      ; ir-r14 = exec-r14 exec-res
+      ; ir-r15 = exec-r15 exec-res
+      ; ir-rbp = exec-rbp exec-res
+      ; ir-mem = exec-mem exec-res
+      ; ir-mem-rbp = exec-mem-rbp exec-res
+      ; ir-mem-rbp+8 = exec-mem-rbp+8 exec-res
+      ; ir-mem-above = exec-mem-above exec-res
+      ; ir-mem-at-0 = exec-mem-at-0 exec-res
+      ; ir-mem-code = exec-mem-code exec-res
+      ; ir-mem-heap = exec-mem-heap exec-res
+      ; ir-stack-inv = exec-stack-inv exec-res
+      ; ir-capacity = exec-capacity exec-res
+      ; ir-rbp-inv = exec-rbp-inv exec-res
       ; ir-closure-wf = has-closure cl-addr thunk-offset x (λ b → eval f (x , b)) wf
       }
     where
@@ -385,16 +389,16 @@ mutual
       offset = length prefix
       thunk-offset = offset +ℕ 6
 
-      -- Call curry with validity (now takes input-valid directly - no bridge here!)
-      curry-result : ∃[ s' ] (IRStarResult (curry f) prog s s' x offset
+      -- Call curry with validity (no bridges!)
+      curry-result : ∃[ s' ] (CurryExecResult f prog s s' x offset
                               × CurryMemoryResult f prog s' x offset)
       curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
       s' : State
       s' = proj₁ curry-result
 
-      ir-res : IRStarResult (curry f) prog s s' x offset
-      ir-res = proj₁ (proj₂ curry-result)
+      exec-res : CurryExecResult f prog s s' x offset
+      exec-res = proj₁ (proj₂ curry-result)
 
       -- Extract from CurryMemoryResult for validity construction
       curry-mem-result : CurryMemoryResult f prog s' x offset
@@ -414,7 +418,7 @@ mutual
       curry-rax-eq = CurryMemoryResult.rax-eq curry-mem-result
       curry-mem-env = CurryMemoryResult.mem-env curry-mem-result
       curry-mem-cp = CurryMemoryResult.mem-cp curry-mem-result
-      curry-env-is-encoded = CurryMemoryResult.env-is-encoded curry-mem-result
+      curry-v-env = CurryMemoryResult.v-env curry-mem-result
 
       -- Construct ClosureAtS from memory proofs
       closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s')
@@ -424,13 +428,10 @@ mutual
       sem-closure : Closure B C
       sem-closure = eval (curry f) x
 
-      -- env-addr matches the semantic closure's env-addr
-      env-match : Closure.env-addr sem-closure ≡ curry-env-addr
-      env-match = sym curry-env-is-encoded  -- Closure.env-addr (eval (curry f) x) = encode x
-
-      -- Closure validity at curry-closure-addr
+      -- Closure validity via valid-closure-env constructor
+      -- The env-addr equality is refl because Closure.env-addr (eval (curry f) x) = encode x by definition
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-at env-match closure-at
+      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
 
       -- Transport to rax
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
@@ -522,28 +523,51 @@ mutual
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
   run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     s' , record
-      { curry-star = ir-star ir-res
-      ; curry-halted = ir-halted ir-res
-      ; curry-pc = ir-pc ir-res
-      ; curry-rax = ir-rax ir-res
-      ; curry-r14 = ir-r14 ir-res
-      ; curry-r15 = ir-r15 ir-res
-      ; curry-rbp = ir-rbp ir-res
-      ; curry-mem = ir-mem ir-res
-      ; curry-stack-inv = ir-stack-inv ir-res
-      ; curry-rsp-bound = ir-rsp-bound ir-res
+      { curry-star = exec-star exec-res
+      ; curry-halted = exec-halted exec-res
+      ; curry-pc = exec-pc exec-res
+      ; curry-result-valid = result-valid
+      ; curry-r14 = exec-r14 exec-res
+      ; curry-r15 = exec-r15 exec-res
+      ; curry-rbp = exec-rbp exec-res
+      ; curry-mem = exec-mem exec-res
+      ; curry-stack-inv = exec-stack-inv exec-res
+      ; curry-rsp-bound = capacity-2-to-rsp-bound s' (exec-capacity exec-res)
       ; closure-wf = wf
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
 
-      -- Get the standard IRStarResult from existing curry proof
-      -- run-curry-star now takes input-valid directly (no bridge here!)
-      ir-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-      s' = proj₁ ir-result
-      ir-res = proj₁ (proj₂ ir-result)
-      -- mem-res = proj₂ (proj₂ ir-result)  -- CurryMemoryResult (available if needed)
+      -- Get CurryExecResult from curry proof (no bridges!)
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      s' = proj₁ curry-result
+      exec-res = proj₁ (proj₂ curry-result)
+      curry-mem-res = proj₂ (proj₂ curry-result)
+
+      -- ============================================================
+      -- VALIDITY CONSTRUCTION (no bridges - uses valid-closure-env)
+      -- ============================================================
+      curry-env-addr = CurryMemoryResult.env-addr curry-mem-res
+      curry-code-ptr = CurryMemoryResult.code-ptr curry-mem-res
+      curry-closure-addr = CurryMemoryResult.closure-addr curry-mem-res
+      curry-rax-eq = CurryMemoryResult.rax-eq curry-mem-res
+      curry-mem-env = CurryMemoryResult.mem-env curry-mem-res
+      curry-mem-cp = CurryMemoryResult.mem-cp curry-mem-res
+      curry-v-env = CurryMemoryResult.v-env curry-mem-res
+
+      closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s')
+      closure-at = closure-at-s curry-mem-env curry-mem-cp
+
+      sem-closure : Closure B C
+      sem-closure = eval (curry f) x
+
+      closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
+      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+
+      result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
+      result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s'))
+                           (sym curry-rax-eq) closure-valid-at-addr
 
       -- Thunk offset is offset + 6 (the code-ptr label in curry)
       thunk-offset = offset +ℕ 6
