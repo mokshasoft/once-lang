@@ -628,28 +628,6 @@ run-snd-star-v {A} {B} prefix suffix a b s h-false pc-eq rdi-eq pair-valid stack
 
 
 ------------------------------------------------------------------------
--- Prim Star Functions (Postulated)
---
--- Primitives are opaque operations whose semantics (evalPrim) are postulated.
--- Until proper Prim compilation is implemented, these are postulated.
---
--- NOTE: Current compile-x86 (Prim _) = mov rax, rdi (identity)
--- But eval (Prim name) x = evalPrim name x (arbitrary function)
--- These don't match, so correctness is postulated.
-------------------------------------------------------------------------
-
-postulate
-  run-prim-star : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readReg (regs s) rdi ≡ encode x →
-    StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
-    in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog s s' x (length prefix)
-
-------------------------------------------------------------------------
 -- Validity-Based Star Proofs (Phase 4: Simple Producers)
 --
 -- These return IRStarResultV with ValidAt, eliminating encode postulates.
