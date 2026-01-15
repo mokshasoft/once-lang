@@ -372,6 +372,7 @@ executable once-discover
       Common.Equivalence
       CCC.Cost
       CCC.Rules
+      CCC.Completeness
   hs-source-dirs:
       tools/discovery
   ghc-options:

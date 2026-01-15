@@ -11,6 +11,7 @@ module CCC.Rules
   , discoverRules
   , showRule
   , showIR
+  , irStructEq
   ) where
 
 import Control.Monad (filterM)

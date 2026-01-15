@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Type-directed enumeration of well-typed IR terms
 --
 -- The key insight is that types heavily prune the search space.
@@ -28,7 +29,8 @@ allTypes :: Int -> [Type]
 allTypes 0 = baseTypes
 allTypes n = baseTypes ++
   [ TProduct a b | a <- smaller, b <- smaller ] ++
-  [ TSum a b | a <- smaller, b <- smaller ]
+  [ TSum a b | a <- smaller, b <- smaller ] ++
+  [ TArrow a b | a <- smaller, b <- smaller ]  -- Exponential types
   where smaller = allTypes (n - 1)
 
 -- | Generate all well-typed IR terms of type (src -> tgt) up to depth n
@@ -52,6 +54,8 @@ enumerate src tgt maxDepth = nubBy irEq $ enumIR src tgt maxDepth
     irEq (Inr _ _) (Inr _ _) = True
     irEq (Case f1 g1) (Case f2 g2) = irEq f1 f2 && irEq g1 g2
     irEq (Initial _) (Initial _) = True
+    irEq (Curry _ f1) (Curry _ f2) = irEq f1 f2
+    irEq (Apply _ _) (Apply _ _) = True
     irEq _ _ = False
 
 -- | Internal enumeration with explicit depth tracking
@@ -102,6 +106,21 @@ enumIR src tgt n = concat
         ]
       _ -> []
 
+  , -- Curry (if target is arrow type)
+    -- curry(f) : A → (B → C) where f : A × B → C
+    case tgt of
+      TArrow b c ->
+        [ Curry "x" f  -- "x" is placeholder name for codegen
+        | f <- enumIR (TProduct src b) c (n - 1)
+        ]
+      _ -> []
+
+  , -- Apply (if source is (A → B) × A and target is B)
+    case src of
+      TProduct (TArrow a b) a' | typeEq a a' && typeEq b tgt ->
+        [ Apply a b ]
+      _ -> []
+
   , -- Composition (through intermediate types)
     -- This is expensive but necessary to discover composition rules
     [ Compose g f
@@ -119,6 +138,7 @@ typeEq TVoid TVoid = True
 typeEq (TVar a) (TVar b) = a == b
 typeEq (TProduct a1 b1) (TProduct a2 b2) = typeEq a1 a2 && typeEq b1 b2
 typeEq (TSum a1 b1) (TSum a2 b2) = typeEq a1 a2 && typeEq b1 b2
+typeEq (TArrow a1 b1) (TArrow a2 b2) = typeEq a1 a2 && typeEq b1 b2
 typeEq _ _ = False
 
 -- | Check if an IR term is identity

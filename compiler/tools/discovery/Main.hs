@@ -16,13 +16,15 @@ import Control.Monad (forM_)
 
 import Once.Type (Type(..))
 import Common.Enumerate (TypeSig(..))
-import CCC.Rules (DiscoveredRule, discoverRules, showRule)
+import CCC.Rules (DiscoveredRule, discoverRules, showRule, showIR)
+import CCC.Completeness (CompletenessResult(..), checkCompletenessForSig)
 
 main :: IO ()
 main = do
   args <- getArgs
   case args of
     ("ccc" : rest) -> runCCCDiscovery rest
+    ("completeness" : rest) -> runCompletenessCheck rest
     _ -> usage
 
 usage :: IO ()
@@ -30,9 +32,10 @@ usage = do
   putStrLn "Usage: once-discover <command> [options]"
   putStrLn ""
   putStrLn "Commands:"
-  putStrLn "  ccc     Discover CCC optimization rules"
+  putStrLn "  ccc           Discover CCC optimization rules"
+  putStrLn "  completeness  Check optimizer completeness"
   putStrLn ""
-  putStrLn "Options for 'ccc':"
+  putStrLn "Options:"
   putStrLn "  --depth N   Maximum term depth (default: 3)"
   putStrLn "  --tests N   Number of test values (default: 100)"
   exitFailure
@@ -59,17 +62,24 @@ runCCCDiscovery args = do
   -- Define type signatures to explore
   let tA = TVar "A"
       tB = TVar "B"
-      signatures =
-        [ -- Product signatures
-          TypeSig (TProduct tA tB) tA           -- A * B -> A
+      -- Focused signatures for exponential beta/eta discovery
+      expSignatures =
+        [ -- Key type for exponential beta: apply . ⟨curry(f) . fst, snd⟩ = f
+          TypeSig (TProduct tA tB) tB                           -- (A * B) -> B
+        , TypeSig (TProduct (TArrow tA tB) tA) tB                -- (A -> B) * A -> B (apply)
+        , TypeSig tA (TArrow tA tA)                              -- A -> (A -> A) for eta
+        ]
+      -- Standard product/sum signatures
+      basicSignatures =
+        [ TypeSig (TProduct tA tB) tA           -- A * B -> A
         , TypeSig (TProduct tA tB) tB           -- A * B -> B
         , TypeSig tA (TProduct tA tA)           -- A -> A * A
         , TypeSig (TProduct tA tB) (TProduct tA tB)  -- A * B -> A * B
         , TypeSig tA tA                         -- A -> A (identity)
-        -- Sum signatures (Phase 2)
         , TypeSig (TSum tA tB) tA               -- A + B -> A (partial)
         , TypeSig tA (TSum tA tB)               -- A -> A + B
         ]
+      signatures = expSignatures ++ basicSignatures
 
   -- Discover rules for each signature
   allRules <- concat <$> mapM (discoverForSig maxDepth numTests) signatures
@@ -103,5 +113,50 @@ showType = \case
   TFloat -> "Float"
   TProduct a b -> "(" ++ showType a ++ " * " ++ showType b ++ ")"
   TSum a b -> "(" ++ showType a ++ " + " ++ showType b ++ ")"
-  TArrow a b -> "(" ++ showType a ++ " -> " ++ showType b ++ ")"
+  TArrow a b -> "(" ++ showType a ++ " → " ++ showType b ++ ")"
   _ -> "?"
+
+-- | Run completeness check
+runCompletenessCheck :: [String] -> IO ()
+runCompletenessCheck args = do
+  let (maxDepth, numTests) = parseOpts args
+
+  putStrLn "=== Optimizer Completeness Check ==="
+  putStrLn $ "Depth: " ++ show maxDepth
+  putStrLn $ "Tests: " ++ show numTests
+  putStrLn ""
+
+  -- Type signatures to check
+  let tA = TVar "A"
+      tB = TVar "B"
+      signatures =
+        [ TypeSig tA tA                                -- A -> A
+        , TypeSig (TProduct tA tB) tA                  -- A * B -> A
+        , TypeSig (TProduct tA tB) tB                  -- A * B -> B
+        , TypeSig (TProduct tA tB) (TProduct tA tB)    -- A * B -> A * B
+        , TypeSig tA (TProduct tA tA)                  -- A -> A * A
+        ]
+
+  -- Check each signature
+  results <- mapM (checkSig maxDepth numTests) signatures
+
+  -- Summary
+  putStrLn ""
+  putStrLn "=== Summary ==="
+  let totalMissing = sum $ map (length . crMissingRules) results
+  if totalMissing == 0
+    then putStrLn "✓ Optimizer is complete for all tested signatures!"
+    else do
+      putStrLn $ "✗ Found " ++ show totalMissing ++ " missing optimizations:"
+      forM_ results $ \r ->
+        forM_ (crMissingRules r) $ \(term, expected) ->
+          putStrLn $ "  " ++ showIR term ++ "  should optimize to  " ++ showIR expected
+
+-- | Check completeness for a single signature
+checkSig :: Int -> Int -> TypeSig -> IO CompletenessResult
+checkSig maxDepth numTests sig = do
+  putStrLn $ "Checking: " ++ showSig sig
+  result <- checkCompletenessForSig sig maxDepth numTests
+  putStrLn $ "  Classes: " ++ show (crTotalClasses result)
+           ++ ", Incomplete: " ++ show (crIncompleteClasses result)
+  pure result

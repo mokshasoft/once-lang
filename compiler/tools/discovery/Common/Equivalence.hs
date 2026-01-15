@@ -10,7 +10,7 @@ module Common.Equivalence
   ) where
 
 import Test.QuickCheck (Gen, arbitrary, oneof, sized, vectorOf, generate)
-import Once.IR (IR)
+import Once.IR (IR(..))
 import Once.Type (Type(..))
 import Once.Value (Value(..))
 import Once.Eval (eval)
@@ -35,6 +35,8 @@ genValueForType = sized . genSized
     genSized TInt _ = VInt <$> arbitrary
     genSized TFloat _ = VFloat <$> arbitrary
     genSized (TString _) _ = pure (VString "test")
+    -- For arrow types, generate a closure with identity
+    genSized (TArrow a _) _ = pure (VClosure [] (Id a))
     genSized _ n = genAnyValue n  -- Fallback
 
     -- Generate any value (for type variables)
@@ -50,9 +52,34 @@ genValueForType = sized . genSized
 -- | Test if two IR terms produce the same output for a given input
 evalEq :: IR -> IR -> Value -> Bool
 evalEq f g v = case (eval f v, eval g v) of
-  (Right a, Right b) -> a == b
+  (Right a, Right b) -> valueEq a b
   (Left _, Left _)   -> True  -- Both error = considered equivalent
   _                  -> False
+
+-- | Compare values, handling closures by testing at sample inputs
+--
+-- For closure comparison, we apply both to a few test values and compare results.
+-- This is sound (if they differ at any input, they're different) but incomplete
+-- (we might miss differences at untested inputs).
+valueEq :: Value -> Value -> Bool
+valueEq VUnit VUnit = True
+valueEq (VPair a1 b1) (VPair a2 b2) = valueEq a1 a2 && valueEq b1 b2
+valueEq (VLeft a) (VLeft b) = valueEq a b
+valueEq (VRight a) (VRight b) = valueEq a b
+valueEq (VInt a) (VInt b) = a == b
+valueEq (VFloat a) (VFloat b) = a == b
+valueEq (VString a) (VString b) = a == b
+-- For closures, test at sample inputs
+valueEq (VClosure env1 body1) (VClosure env2 body2) =
+  let testInputs = [VUnit, VPair VUnit VUnit, VLeft VUnit, VRight VUnit]
+      results1 = map (eval body1) testInputs  -- Note: simplified, ignores env
+      results2 = map (eval body2) testInputs
+  in all matchResults (zip results1 results2)
+  where
+    matchResults (Right a, Right b) = valueEq a b
+    matchResults (Left _, Left _) = True
+    matchResults _ = False
+valueEq _ _ = False
 
 -- | Test if two IR terms are semantically equivalent
 --
