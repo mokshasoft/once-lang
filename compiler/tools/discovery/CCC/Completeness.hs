@@ -78,7 +78,7 @@ enumerateNormalizedWithProgress :: Type -> Type -> Int -> IO [IR]
 enumerateNormalizedWithProgress src tgt maxDepth = do
   let terms = enumerate src tgt maxDepth
   -- Process lazily with progress (don't compute length - that forces evaluation!)
-  (count, normalForms) <- foldM processWithProgress (0, []) terms
+  (count, normalForms) <- foldM processWithProgress (0 :: Int, []) terms
   putStrLn $ "\nProcessed " ++ show count ++ " terms total"
   pure (reverse normalForms)
   where
