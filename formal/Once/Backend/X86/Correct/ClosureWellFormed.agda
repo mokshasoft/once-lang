@@ -55,8 +55,7 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
   field
     thunk-star     : Star prog s s'
     thunk-halted   : halted s' ≡ false
-    thunk-rax      : readReg (regs s') rax ≡ encode (f a)
-    -- Validity-based result (eliminates need for valid-from-encode bridging)
+    -- Validity-based result (no encode!)
     thunk-result-valid : ValidAt (f a) (readReg (regs s') rax) (memory s')
     thunk-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     thunk-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15

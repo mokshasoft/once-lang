@@ -39,18 +39,25 @@ compile-preserves-semantics ir x =
 
 open import Once.Backend.X86.Syntax using (rax)
 open import Once.Backend.X86.Semantics as X86
-open X86.State using (regs; halted)
+open X86.State using (regs; halted; memory)
 open import Once.Backend.X86.CodeGen using (compile-x86)
-open import Once.Backend.X86.Correct using (codegen-x86-correct; initWithInput; encode)
+open import Once.Backend.X86.Correct using (codegen-x86-correct; initWithInput)
 open import Once.Backend.X86.Correct.Star using (Star)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 
+-- | Validity-based x86 compilation correctness
 compile-correct-x86 : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (compile ir)) (initWithInput x) s
+  let s₀ = initWithInput x in
+  ∃[ s ] (Star (compile-x86 (compile ir)) s₀ s
         × halted s ≡ true
-        × X86.readReg (regs s) rax ≡ encode (evalSurface ir x))
+        × ValidAt (evalSurface ir x) (X86.readReg (regs s) rax) (memory s))
 compile-correct-x86 ir x =
-  let (s , star , halt , reg) = codegen-x86-correct (compile ir) x
-  in s , star , halt , trans reg (cong encode (compile-preserves-semantics ir x))
+  let (s , star , halt , result-valid) = codegen-x86-correct (compile ir) x
+  in s , star , halt , subst-valid result-valid (compile-preserves-semantics ir x)
+  where
+    -- Substitute semantic equality into validity
+    subst-valid : ∀ {A} {v w : ⟦ A ⟧} {addr m} → ValidAt v addr m → v ≡ w → ValidAt w addr m
+    subst-valid v-valid refl = v-valid
 
 ------------------------------------------------------------------------
 -- RISC-V 64 backend

@@ -20,8 +20,7 @@
 -- CURRENT STATUS:
 --   ✓ curry: produces has-closure-mem WF + memory layout (postulate-free)
 --   ✓ ClosureWFOutput: extended with closure-addr for apply lookup
---   ✓ ClosureMemoryOutput: tracks WF + memory proofs (mem-env, mem-cp)
---   ✓ closure-mem-preserved: postulate for memory preservation
+--   ✓ ClosureMemoryOutput: tracks WF + memory proofs (validity-based)
 --   ✓ apply: pattern matches on wf-in, checks for closure context
 --   ○ pair/compose: delegate to modular, don't thread memory proofs yet
 --
@@ -31,22 +30,16 @@
 --
 --   Curry produces:
 --     - ClosureWellFormed: proves thunk at code-ptr is correct
---     - ClosureMemoryOutput: WF + memory proofs (mem-env, mem-cp)
+--     - ClosureMemoryOutput: WF + memory proofs (validity-based)
 --
 --   Pair should produce (for postulate-free apply):
 --     - mem-fst: memory[pair-addr] = closure-addr (stored by pair)
---     - mem-snd: memory[pair-addr+8] = encode arg (stored by pair)
---     - Preserved: mem-env, mem-cp from curry (through g's execution)
+--     - mem-snd: memory[pair-addr+8] = arg-addr (stored by pair)
+--     - Preserved: validity from curry (through g's execution via heap preservation)
 --
 --   Apply needs (for run-apply-with-full-wf):
 --     1. ClosureWellFormed from curry
 --     2. ApplyMemoryLayout: mem-fst, mem-snd (from pair), mem-env, mem-cp
---
--- POSTULATES IN THIS MODULE:
---   - closure-mem-preserved: closure memory preserved through IR execution
---   - closure+8-mem-preserved: closure+8 memory preserved
---   These capture the semantic property that well-structured programs
---   preserve closure memory through stack discipline.
 --
 -- PATH TO FULL POSTULATE ELIMINATION:
 --   1. Thread ClosureMemoryOutput through pair/compose (not just ClosureWFOutput)
@@ -86,7 +79,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound;
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
          ir-result-valid)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; addr-from-valid; valid-closure-env; ClosureAtS; closure-at-s)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s)
 open import Once.Backend.Common.MemoryRegions using (StackPointer; region-of; heap)
 
 -- Import closure infrastructure
@@ -126,48 +119,18 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- This tracks both the WF proof and the memory addresses for apply.
 -- Must be defined before WholeProgramResult since it's used in that record.
 -- E is the captured environment type
+-- Uses validity-based env representation (no encode in interface!)
 data ClosureMemoryOutput (prog : Program) (m : Memory) : Set₁ where
   no-closure-mem : ClosureMemoryOutput prog m
   has-closure-mem : ∀ {E A B : Type}
-    (closure-addr code-ptr : ℕ)
+    (closure-addr code-ptr env-addr : ℕ)
     (env : ⟦ E ⟧)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics)
-    (mem-env-valid : readMem m closure-addr ≡ just (encode env))
+    (mem-env-ptr : readMem m closure-addr ≡ just env-addr)
+    (v-env : ValidAt env env-addr m)
     (mem-cp-valid : readMem m (closure-addr +ℕ 8) ≡ just code-ptr) →
     ClosureMemoryOutput prog m
-
-------------------------------------------------------------------------
--- Closure memory preservation postulate
-------------------------------------------------------------------------
-
--- | Postulate: Closure memory is preserved through subsequent IR execution
---
--- SEMANTIC PROPERTY: In a well-structured program where curry allocates
--- a closure, subsequent operations in the same composition don't overwrite
--- the closure memory. This holds because:
---   1. Curry allocates closure below its frame
---   2. Subsequent operations use frames below the closure
---   3. Stack discipline ensures no overlap
---
--- This postulate captures this semantic property. A full proof would
--- require tracking stack frame relationships through execution.
-postulate
-  closure-mem-preserved : (m m' : Memory) (closure-addr : ℕ) →
-    readMem m' closure-addr ≡ readMem m closure-addr
-  closure+8-mem-preserved : (m m' : Memory) (closure-addr : ℕ) →
-    readMem m' (closure-addr +ℕ 8) ≡ readMem m (closure-addr +ℕ 8)
-
--- | Transport ClosureMemoryOutput to a new memory state
--- Uses the closure-mem-preserved postulate to maintain memory validity
-transport-closure-mem : ∀ {prog} (m m' : Memory) →
-  ClosureMemoryOutput prog m →
-  ClosureMemoryOutput prog m'
-transport-closure-mem m m' no-closure-mem = no-closure-mem
-transport-closure-mem m m' (has-closure-mem cl-addr cp ea sem wf mem-env mem-cp) =
-  has-closure-mem cl-addr cp ea sem wf
-    (trans (closure-mem-preserved m m' cl-addr) mem-env)
-    (trans (closure+8-mem-preserved m m' cl-addr) mem-cp)
 
 ------------------------------------------------------------------------
 -- WholeProgramResult: Result with closure tracking (validity-based)
@@ -206,7 +169,7 @@ open WholeProgramResult public
 
 -- | Convert CurryExecResult with closure WF and memory proofs to WholeProgramResult
 -- Computes result validity using valid-closure-env constructor
--- Derives mem-env proof for has-closure-mem using addr-from-valid (boundary translation)
+-- Uses validity-based has-closure-mem (no bridging postulates!)
 from-curry-with-wf : ∀ {A B C} (f : IR (A * B) C) (prog : Program) (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) →
   (exec-res : CurryExecResult f prog s s' x offset) →
   (mem-res : CurryMemoryResult f prog s' x offset) →
@@ -223,7 +186,8 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
   ; wp-stack-inv = exec-stack-inv exec-res
   ; wp-rsp-bound = capacity-2-to-rsp-bound s' (exec-capacity exec-res)
   ; wp-rbp-inv = exec-rbp-inv exec-res
-  ; wp-closure-mem = has-closure-mem cl-addr cp x _ wf mem-env-prf mem-cp-prf
+  -- Validity-based has-closure-mem (no addr-from-valid bridge!)
+  ; wp-closure-mem = has-closure-mem cl-addr cp curry-env-addr x _ wf curry-mem-env curry-v-env curry-mem-cp
   }
   where
     -- Extract fields from CurryMemoryResult
@@ -238,17 +202,6 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
     -- Aliases for has-closure-mem
     cl-addr = curry-closure-addr
     cp = curry-code-ptr
-
-    -- Derive mem-env proof for has-closure-mem
-    -- CurryMemoryResult.mem-env : readMem m cl-addr ≡ just env-addr
-    -- addr-from-valid v-env : env-addr ≡ encode x
-    -- We need: readMem m cl-addr ≡ just (encode x)
-    mem-env-prf : readMem (memory s') cl-addr ≡ just (encode x)
-    mem-env-prf = trans curry-mem-env (cong just (addr-from-valid curry-v-env))
-
-    -- mem-cp proof is directly from CurryMemoryResult
-    mem-cp-prf : readMem (memory s') (cl-addr +ℕ slot-size) ≡ just cp
-    mem-cp-prf = curry-mem-cp
 
     -- Construct ClosureAtS from memory proofs
     closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s')

@@ -41,7 +41,7 @@ open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
-         thunk-star; thunk-halted; thunk-rax;
+         thunk-star; thunk-halted; thunk-result-valid;
          thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
@@ -200,10 +200,11 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
   -- Validity-based arguments (for thunk-correct)
   ValidAt arg arg-addr (memory s) →
   ValidAt env (encode env) (memory s) →
+  -- Validity-based return (no encode!)
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
-          × readReg (regs s') rax ≡ encode {B} (semantics arg)
+          × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr env
@@ -213,7 +214,7 @@ run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr 
            mem-env mem-layout , mem-cp mem-layout) v-arg v-env
       s' = proj₁ result
       module R = ApplyProof.ApplyWfResult (proj₂ result)
-  in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
+  in s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
 
 ------------------------------------------------------------------------
 -- CurryOutputWF: What curry produces for threading to apply
@@ -297,7 +298,7 @@ test-apply-with-wf-eliminates-postulate :
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
-          × readReg (regs s') rax ≡ encode {B} (semantics arg)
+          × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 test-apply-with-wf-eliminates-postulate = run-apply-with-full-wf

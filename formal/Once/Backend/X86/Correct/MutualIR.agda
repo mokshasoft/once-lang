@@ -141,7 +141,7 @@ open import Once.Backend.X86.Correct.MutualIR.Case
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; addr-from-valid; valid-disjoint-from-stack;
+  using (ValidAt; valid-disjoint-from-stack;
          valid-pair-decompose; valid-closure-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem)
@@ -196,8 +196,7 @@ mutual
   ------------------------------------------------------------------------
 
   -- | Validity-based curry execution
-  -- Takes ValidAt input, uses addr-from-valid internally for encode-based run-curry-star
-  -- Returns IRStarResultV with direct validity construction (no external bridging needed!)
+  -- Takes ValidAt input, returns IRStarResultV with direct validity construction (no bridging!)
   run-curry-star-direct : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -473,7 +472,7 @@ mutual
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
-        using (ThunkResult; thunk-star; thunk-halted; thunk-rax;
+        using (ThunkResult; thunk-star; thunk-halted; thunk-result-valid;
                thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-rsp-bound)
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
       open import Data.Nat.Properties using (≤-trans; +-comm)
@@ -639,10 +638,6 @@ mutual
       -- Get validity output directly from IRStarResultV (no valid-from-encode needed!)
       result-valid-f : ValidAt (eval f (env , arg)) (readReg (regs s-after-f-raw) rax) (memory s-after-f-raw)
       result-valid-f = IRStarResultV.ir-result-valid r-f-v
-
-      -- Derive encode from validity for backward compatibility
-      ir-rax-f : readReg (regs s-after-f-raw) rax ≡ encode (eval f (env , arg))
-      ir-rax-f = addr-from-valid result-valid-f
 
       -- Convert star-f to use prog
       star-f-converted : Star prog s-after-setup s-after-f-raw
@@ -1064,7 +1059,6 @@ mutual
       f-result-bridge : ∃[ s-f ] (Star prog s-after-setup s-f
                                  × halted s-f ≡ false
                                  × pc s-f ≡ ret-offset
-                                 × readReg (regs s-f) rax ≡ encode (eval f (env , arg))
                                  × readReg (regs s-f) r14 ≡ readReg (regs s-after-setup) r14
                                  × readReg (regs s-f) r15 ≡ readReg (regs s-after-setup) r15
                                  × readReg (regs s-f) rbp ≡ readReg (regs s) rbp  -- restored to original
@@ -1075,7 +1069,6 @@ mutual
                                  × readReg (regs s-f) rsp ≡ readReg (regs s) rsp
                                  × (∀ addr → readMem (memory s-f) addr ≡ readMem (memory s-after-f-raw) addr))
       f-result-bridge = s-after-cleanup , star-f-to-cleanup , h-cleanup , pc-cleanup ,
-                        trans rax-cleanup ir-rax-f ,
                         trans r14-cleanup (IRStarResultV.ir-r14 r-f-v) ,
                         trans r15-cleanup (IRStarResultV.ir-r15 r-f-v) ,
                         rbp-cleanup ,  -- cleanup restores original rbp directly
@@ -1086,14 +1079,13 @@ mutual
       star-f = proj₁ (proj₂ f-result-bridge)
       h-f = proj₁ (proj₂ (proj₂ f-result-bridge))
       pc-f = proj₁ (proj₂ (proj₂ (proj₂ f-result-bridge)))
-      rax-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))
-      r14-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))
-      r15-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))
-      rbp-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))
-      stack-inv-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))))
-      rsp-sufficient-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))))
+      r14-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))
+      r15-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))
+      rbp-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))
+      stack-inv-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))
+      rsp-sufficient-f = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))))
       -- D041 fields from f-result-bridge
-      f-bridge-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge)))))))))
+      f-bridge-rest = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ f-result-bridge))))))))
       mem-ret-f = proj₁ f-bridge-rest
       rsp-f-restored = proj₁ (proj₂ f-bridge-rest)
       mem-f-preserved = proj₂ (proj₂ f-bridge-rest)
@@ -1303,7 +1295,6 @@ mutual
       thunk-result = record
         { thunk-star = star-all
         ; thunk-halted = h-final
-        ; thunk-rax = trans rax-final rax-f
         ; thunk-result-valid = thunk-result-valid-proof
         ; thunk-r14 = trans r14-final (trans r14-f r14-setup)
         ; thunk-r15 = trans r15-final (trans r15-f r15-setup)

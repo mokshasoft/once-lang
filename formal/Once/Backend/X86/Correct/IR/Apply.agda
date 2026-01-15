@@ -79,13 +79,12 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; valid-closure;
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
-         addr-from-valid; valid-from-encode;
          valid-subst-addr-mem; valid-subst-heap-preserved;
          valid-pair-decompose; valid-in-heap)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
-         thunk-star; thunk-halted; thunk-rax; thunk-result-valid;
+         thunk-star; thunk-halted; thunk-result-valid;
          thunk-r14; thunk-r15; thunk-rbp;
          thunk-stack-inv; thunk-rsp-bound;
          thunk-rsp-plus-8; thunk-preserves-frame;
@@ -897,7 +896,7 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
     star         : Star prog s s'
     h-final      : halted s' ≡ false
     pc-final     : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
-    rax-final    : readReg (regs s') rax ≡ encode (semantics arg)
+    -- Validity-based result (no encode!)
     rax-valid    : ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
     r14-final    : readReg (regs s') r14 ≡ readReg (regs s) r14
     r15-final    : readReg (regs s') r15 ≡ readReg (regs s) r15
@@ -951,7 +950,6 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     { star         = star-all
     ; h-final      = h-f
     ; pc-final     = pc-f
-    ; rax-final    = rax-f
     ; rax-valid    = rax-valid-f
     ; r14-final    = r14-f
     ; r15-final    = r15-f
@@ -1257,7 +1255,6 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- Extract final properties (using record field access)
     h-f = PopR.h-pop
     pc-f = PopR.pc-pop  -- pc = offset + 8 = compile-length apply
-    rax-f = trans PopR.rax-pop (thunk-rax thunk-res)
     -- Derive rax-valid from thunk-result-valid through pop
     -- thunk-result-valid gives ValidAt at s-thunk, pop preserves rax and memory
     rax-valid-f : ValidAt (semantics arg) (readReg (regs s-final) rax) (memory s-final)
@@ -1384,10 +1381,11 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
   -- Validity-based environment (for thunk-correct)
   ValidAt env (encode env) (memory s) →
   -- Note: The input type for apply is (closure , arg) but we abstract over semantics
+  -- Validity-based return (no encode!)
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
           × pc s' ≡ offset +ℕ 8  -- compile-length apply = 8
-          × readReg (regs s') rax ≡ encode (semantics arg)
+          × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
@@ -1396,7 +1394,7 @@ run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
                  wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env
       s' = proj₁ result
       module R = ApplyWfResult (proj₂ result)
-  in s' , R.star , R.h-final , R.pc-final , R.rax-final , R.stack-inv , R.rsp-sufficient
+  in s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
 
 ------------------------------------------------------------------------
 -- run-apply-to-ir-result: Produce IRStarResult from ClosureWellFormed
@@ -1457,15 +1455,14 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   ValidAt arg arg-addr (memory s) →
   -- Validity-based environment (for thunk-correct)
   ValidAt env (encode env) (memory s) →
-  ∃[ s' ] (IRStarResult (apply {A} {B}) prog s s' x offset
-           × ValidAt (eval (apply {A} {B}) x) (readReg (regs s') rax) (memory s'))
+  ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
 run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
                        wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env =
   s' , record
     { ir-star = WfR.star
     ; ir-halted = WfR.h-final
     ; ir-pc = WfR.pc-final
-    ; ir-rax = trans WfR.rax-final rax-sem
+    ; ir-result-valid = WfR.rax-valid  -- Direct validity (no bridge!)
     ; ir-r14 = WfR.r14-final
     ; ir-r15 = WfR.r15-final  -- NOW PROVEN! (via push/pop r15)
     ; ir-rbp = WfR.rbp-final
@@ -1480,7 +1477,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-capacity = rsp-bound-to-capacity 2 s' (rsp-in-stack-after-stack-op s') WfR.rsp-sufficient
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
-    } , WfR.rax-valid  -- Validity from run-apply-with-wf (no bridge!)
+    }
   where
     open import Once.Semantics using (Closure)
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -1494,11 +1491,6 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
                   wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
-
-    -- Semantic equality: eval apply x = semantics arg
-    -- Since x = (closure with semantics, arg), eval apply x = Closure.semantics closure arg = semantics arg
-    rax-sem : encode (semantics arg) ≡ encode (eval (apply {A} {B}) x)
-    rax-sem = refl
 
     -- PROVEN: RbpInvariant preserved via RSP restoration and RBP preservation
     -- From: WfR.rsp-restored : s'.rsp ≡ s.rsp
@@ -1638,28 +1630,8 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
         readMem (memory s) (cl-addr +ℕ' slot-size) ≡ just code-ptr)
     mem-layout = closure-addr , mem-cl , mem-arg , mem-env , mem-code-ptr
 
-    -- Call existing implementation (no bridge - passes arg-addr and v-arg directly!)
-    -- Returns pair: (IRStarResult, ValidAt) - validity is direct from run-apply-with-wf!
-    (s' , ir-result , result-valid) = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr s
-                      wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env
+    -- Call existing implementation - returns IRStarResultV directly (no bridge!)
+    result = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr s
+               wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env
 
-  in s' , record
-    { ir-star = IRStarResult.ir-star ir-result
-    ; ir-halted = IRStarResult.ir-halted ir-result
-    ; ir-pc = IRStarResult.ir-pc ir-result
-    ; ir-result-valid = result-valid  -- Direct from run-apply-to-ir-result (no bridge!)
-    ; ir-r14 = IRStarResult.ir-r14 ir-result
-    ; ir-r15 = IRStarResult.ir-r15 ir-result
-    ; ir-rbp = IRStarResult.ir-rbp ir-result
-    ; ir-mem = IRStarResult.ir-mem ir-result
-    ; ir-mem-rbp = IRStarResult.ir-mem-rbp ir-result
-    ; ir-mem-rbp+8 = IRStarResult.ir-mem-rbp+8 ir-result
-    ; ir-mem-above = IRStarResult.ir-mem-above ir-result
-    ; ir-mem-at-0 = IRStarResult.ir-mem-at-0 ir-result
-    ; ir-mem-code = IRStarResult.ir-mem-code ir-result
-    ; ir-mem-heap = IRStarResult.ir-mem-heap ir-result
-    ; ir-stack-inv = IRStarResult.ir-stack-inv ir-result
-    ; ir-capacity = IRStarResult.ir-capacity ir-result
-    ; ir-rbp-inv = IRStarResult.ir-rbp-inv ir-result
-    ; ir-closure-wf = IRStarResult.ir-closure-wf ir-result
-    }
+  in result  -- Direct passthrough (no conversion needed!)

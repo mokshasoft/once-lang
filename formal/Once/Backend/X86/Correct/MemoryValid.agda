@@ -254,27 +254,18 @@ postulate
     ValidAt {Eff A B} cl addr m
 
 ------------------------------------------------------------------------
--- Bridge: ValidAt → encode
+-- Entry Point: encode → ValidAt
 --
--- During the transition from encode-based to validity-based proofs,
--- we need bridges to call existing encode-based recursive functions.
--- This postulate will be eliminated once all recursion uses validity.
---
--- Conceptually: if v is validly represented at addr in m, then addr
--- is the "canonical address" of v, which is what encode computes.
+-- This foundational postulate establishes validity at system entry:
+-- when external code provides input x encoded in memory at address addr,
+-- this asserts the validity predicate holds.
 ------------------------------------------------------------------------
 postulate
-  -- | Extract encode address from validity proof
-  -- This bridges validity-based preconditions to encode-based recursive calls.
-  -- ELIMINABLE: Remove once run-ir-star-at-offset uses ValidAt throughout.
-  addr-from-valid :
-    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
-    ValidAt v addr m →
-    addr ≡ encode v
-
-  -- | Construct validity from encode address (reverse bridge)
-  -- If addr ≡ encode v and memory is properly allocated, then validity holds.
-  -- ELIMINABLE: Remove once all producers emit ValidAt directly.
+  -- | Construct validity from encode address at entry point
+  -- This is a foundational postulate for the system entry point:
+  -- when external code provides input x, it is encoded in memory, and
+  -- this establishes validity at the encoded address.
+  -- Used by codegen-x86-correct to establish initial input validity.
   valid-from-encode :
     ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
     addr ≡ encode v →

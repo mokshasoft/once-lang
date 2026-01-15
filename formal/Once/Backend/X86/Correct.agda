@@ -221,8 +221,7 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-ass
 -- Note: IRStarResult is defined in MutualIR.agda and re-exported from there.
 ------------------------------------------------------------------------
 
--- Import addr-from-valid for boundary translation to encode
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; addr-from-valid)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 
 -- | Star-based IR execution at arbitrary offset (validity-based)
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
@@ -255,9 +254,9 @@ compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPoin
     RbpInvariant s →
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
-           × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
+           × ValidAt (eval (g ∘ f) x) (readReg (regs s') rax) (memory s'))
 compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
-    s-final , star-proof , h-final , rax-final
+    s-final , star-proof , h-final , result-valid
   where
     open import Data.List.Properties using (++-identityʳ)
 
@@ -266,7 +265,7 @@ compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-i
     s-final = proj₁ result
     r = proj₂ result
     h-final = IRStarResultV.ir-halted r
-    rax-final = addr-from-valid (IRStarResultV.ir-result-valid r)
+    result-valid = IRStarResultV.ir-result-valid r
 
     -- Convert program equality
     prog-eq : [] ++ compile-x86 (g ∘ f) ++ [] ≡ compile-x86 (g ∘ f)
@@ -297,9 +296,10 @@ run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     RbpInvariant s →
-    ∃[ s' ] (Star (prefix ++ compile-x86 (g ∘ f) ++ suffix) s s'
+    let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix in
+    ∃[ s' ] (Star prog s s'
            × halted s' ≡ false
-           × readReg (regs s') rax ≡ encode (eval (g ∘ f) x))
+           × ValidAt (eval (g ∘ f) x) (readReg (regs s') rax) (memory s'))
 run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv =
   let
     -- Use run-ir-star-at-offset-v (Star-based, validity input)
@@ -307,7 +307,7 @@ run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false
     s-final = proj₁ result
     r = proj₂ result
   in
-    s-final , IRStarResultV.ir-star r , IRStarResultV.ir-halted r , addr-from-valid (IRStarResultV.ir-result-valid r)
+    s-final , IRStarResultV.ir-star r , IRStarResultV.ir-halted r , IRStarResultV.ir-result-valid r
 
 -- The real benefit: when we need to compose multiple IR terms,
 -- we can now use star-trans directly instead of fuel arithmetic.
@@ -472,95 +472,77 @@ run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 input-valid stack-in
 -- The execution trace is witnessed by Star (reflexive-transitive closure).
 ------------------------------------------------------------------------
 
--- Import bridge postulates for entry/exit translation
-open import Once.Backend.X86.Correct.MemoryValid using (valid-from-encode)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode)
 
 -- caller-sp: StackPointer representing the external caller's stack frame (D041)
--- This is the encode boundary: converts encode input to validity, runs, converts back
+-- Returns validity-based result (no addr-from-valid bridge!)
+-- Entry uses valid-from-encode (the one remaining bridge for external input)
 codegen-x86-correct : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 ir) (initWithInput x) s
+  let s₀ = initWithInput x in
+  ∃[ s ] (Star (compile-x86 ir) s₀ s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval ir x))
+        × ValidAt (eval ir x) (readReg (regs s) rax) (memory s))
 codegen-x86-correct ir caller-sp x =
-  let -- Entry bridge: encode → validity
+  let -- Entry bridge: encode → validity (the one remaining bridge)
       input-valid = valid-from-encode (initWithInput-rdi x)
       -- Run with validity
       (s' , star-eq , halt-eq , result-valid) = run-generator ir caller-sp x (initWithInput x)
         (initWithInput-halted x) (initWithInput-pc x) input-valid
         (initWithInput-stack-inv x) (initWithInput-rsp-sufficient x) (initWithInput-rbp-inv x)
-      -- Exit bridge: validity → encode
-      rax-eq = addr-from-valid result-valid
-  in s' , star-eq , halt-eq , rax-eq
+  in s' , star-eq , halt-eq , result-valid
 
 ------------------------------------------------------------------------
--- Concrete E2E Tests
+-- Concrete E2E Tests (validity-based)
 ------------------------------------------------------------------------
 
 -- | Test 1: Identity
--- IR: id
--- Input: any value x
--- Expected: x
 test-id : ∀ {A} (caller-sp : StackPointer) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (id {A})) (initWithInput x) s
+  let s₀ = initWithInput x in
+  ∃[ s ] (Star (compile-x86 (id {A})) s₀ s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode x)
+        × ValidAt x (readReg (regs s) rax) (memory s))
 test-id {A} caller-sp x = codegen-x86-correct (id {A}) caller-sp x
 
 -- | Test 2: First projection
--- IR: fst
--- Input: (a, b)
--- Expected: a
 test-fst : ∀ {A B} (caller-sp : StackPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (Star (compile-x86 (fst  {A} {B})) (initWithInput (a , b)) s
+  let s₀ = initWithInput (a , b) in
+  ∃[ s ] (Star (compile-x86 (fst {A} {B})) s₀ s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode a)
-test-fst {A} {B} caller-sp a b = codegen-x86-correct (fst  {A} {B}) caller-sp (a , b)
+        × ValidAt a (readReg (regs s) rax) (memory s))
+test-fst {A} {B} caller-sp a b = codegen-x86-correct (fst {A} {B}) caller-sp (a , b)
 
 -- | Test 3: Composition (fst after pairing)
--- IR: fst ∘ ⟨id, id⟩
--- Input: x
--- Expected: x (creates pair (x,x), extracts first = x)
 test-fst-pair : ∀ {A} (caller-sp : StackPointer) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩)) (initWithInput x) s
+  let s₀ = initWithInput x in
+  ∃[ s ] (Star (compile-x86 (fst {A} {A} ∘ ⟨ id {A} , id {A} ⟩)) s₀ s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode x)
-test-fst-pair {A} caller-sp x = codegen-x86-correct (fst  {A} {A} ∘ ⟨ id  {A} , id  {A} ⟩) caller-sp x
+        × ValidAt x (readReg (regs s) rax) (memory s))
+test-fst-pair {A} caller-sp x = codegen-x86-correct (fst {A} {A} ∘ ⟨ id {A} , id {A} ⟩) caller-sp x
 
 -- | Test 4: Case analysis
--- IR: [ id , id ]
--- Input: inl a or inr b
--- Expected: a or b (identity on sum)
 test-case-id : ∀ {A} (caller-sp : StackPointer) (x : ⟦ A ⟧ ⊎ ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 [ id  {A} , id  {A} ]) (initWithInput x) s
+  let s₀ = initWithInput x in
+  ∃[ s ] (Star (compile-x86 [ id {A} , id {A} ]) s₀ s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval [ id  {A} , id  {A} ] x))
-test-case-id {A} caller-sp x = codegen-x86-correct [ id  {A} , id  {A} ] caller-sp x
+        × ValidAt (eval [ id {A} , id {A} ] x) (readReg (regs s) rax) (memory s))
+test-case-id {A} caller-sp x = codegen-x86-correct [ id {A} , id {A} ] caller-sp x
 
 -- | Test 5: Curry creates closure
--- IR: curry fst
--- Input: a
--- Expected: closure that takes b and returns a
 test-curry : ∀ {A B} (caller-sp : StackPointer) (a : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (curry (fst  {A} {B}))) (initWithInput a) s
+  let s₀ = initWithInput a in
+  ∃[ s ] (Star (compile-x86 (curry (fst {A} {B}))) s₀ s
         × halted s ≡ true
-        × readReg (regs s) rax ≡ encode {B ⇒ A} (eval (curry (fst  {A} {B})) a))
-test-curry {A} {B} caller-sp a = codegen-x86-correct (curry (fst  {A} {B})) caller-sp a
+        × ValidAt (eval (curry (fst {A} {B})) a) (readReg (regs s) rax) (memory s))
+test-curry {A} {B} caller-sp a = codegen-x86-correct (curry (fst {A} {B})) caller-sp a
 
 -- | Test 6: TRUE E2E - Curry + Apply composed
--- IR: apply ∘ ⟨curry fst, id⟩
--- Input: a
--- Expected: a (creates closure λb.a, pairs with a, applies closure to a, returns a)
---
--- THIS IS THE KEY TEST: The compiled program includes BOTH:
---   - curry's thunk code (inside the pairing)
---   - apply's call instruction
--- When apply calls the closure, it jumps to the thunk WITHIN THE SAME PROGRAM.
--- With RIP-relative addressing, the code-ptr is computed correctly.
 test-curry-apply : ∀ {A} (caller-sp : StackPointer) (a : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩)) (initWithInput a) s
-        × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) a))
-test-curry-apply {A} caller-sp a = codegen-x86-correct (apply  {A} {A} ∘ ⟨ curry (fst  {A} {A}) , id  {A} ⟩) caller-sp a
+  let s₀ = initWithInput a
+      ir = apply {A} {A} ∘ ⟨ curry (fst {A} {A}) , id {A} ⟩
+  in ∃[ s ] (Star (compile-x86 ir) s₀ s
+           × halted s ≡ true
+           × ValidAt (eval ir a) (readReg (regs s) rax) (memory s))
+test-curry-apply {A} caller-sp a = codegen-x86-correct (apply {A} {A} ∘ ⟨ curry (fst {A} {A}) , id {A} ⟩) caller-sp a
 
 ------------------------------------------------------------------------
 -- E2E Summary
@@ -682,58 +664,43 @@ lea-computes-thunk = refl
 --
 -- See docs/formal/x86-full-proof-architecture.md for the full proof strategy.
 
--- | Curry-Apply Fundamental Theorem
---
--- For any f : IR (A * B) C, the composition `apply ∘ ⟨curry f ∘ fst, snd⟩`
--- correctly implements f. This is the categorical curry-apply law at the
--- code generation level.
---
--- Semantically: eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a, b) = eval f (a, b)
+-- | Curry-Apply Fundamental Theorem (validity-based)
 curry-apply-composition : ∀ {A B C} (f : IR (A * B) C) (caller-sp : StackPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ fst , snd ⟩)) (initWithInput (a , b)) s
-        × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval f (a , b)))
+  let s₀ = initWithInput (a , b)
+      ir = apply ∘ ⟨ curry f ∘ fst , snd ⟩
+  in ∃[ s ] (Star (compile-x86 ir) s₀ s
+           × halted s ≡ true
+           × ValidAt (eval ir (a , b)) (readReg (regs s) rax) (memory s))
 curry-apply-composition {A} {B} {C} f caller-sp a b =
-  -- This follows directly from codegen-x86-correct
-  -- The key is that eval (apply ∘ ⟨curry f ∘ fst, snd⟩) (a,b) = eval f (a,b)
-  -- by the categorical curry-apply law (proven in Once.Category.Laws)
   codegen-x86-correct (apply ∘ ⟨ curry f ∘ fst , snd ⟩) caller-sp (a , b)
 
--- | Curry-Apply with arbitrary second component
---
--- More general: for any f : IR (A * B) C and g : IR D B,
--- `apply ∘ ⟨curry f, g⟩` applies the closure (curry f x) to (g x).
---
--- Semantically: eval (apply ∘ ⟨curry f, g⟩) x = eval f (x, eval g x)
+-- | Curry-Apply with arbitrary second component (validity-based)
 curry-apply-any-g : ∀ {A B C} (f : IR (A * B) C) (g : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , g ⟩)) (initWithInput x) s
-        × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval f (x , eval g x)))
+  let s₀ = initWithInput x
+      ir = apply ∘ ⟨ curry f , g ⟩
+  in ∃[ s ] (Star (compile-x86 ir) s₀ s
+           × halted s ≡ true
+           × ValidAt (eval ir x) (readReg (regs s) rax) (memory s))
 curry-apply-any-g {A} {B} {C} f g caller-sp x =
   codegen-x86-correct (apply ∘ ⟨ curry f , g ⟩) caller-sp x
 
--- | Curry-Apply with identity (the E2E test case)
---
--- Special case: `apply ∘ ⟨curry f, id⟩` where the argument is passed through.
--- This is the pattern proven step-by-step in E2E-Trace below.
---
--- Semantically: eval (apply ∘ ⟨curry f, id⟩) x = eval f (x, x)
+-- | Curry-Apply with identity (validity-based)
 curry-apply-id : ∀ {A C} (f : IR (A * A) C) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f , id ⟩)) (initWithInput x) s
-        × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval f (x , x)))
+  let s₀ = initWithInput x
+      ir = apply ∘ ⟨ curry f , id ⟩
+  in ∃[ s ] (Star (compile-x86 ir) s₀ s
+           × halted s ≡ true
+           × ValidAt (eval ir x) (readReg (regs s) rax) (memory s))
 curry-apply-id {A} {C} f caller-sp x =
   codegen-x86-correct (apply ∘ ⟨ curry f , id ⟩) caller-sp x
 
--- | Curry-Apply with constant environment
---
--- Shows curry works with a constant captured value:
--- `apply ∘ ⟨curry f ∘ terminal, id⟩` where f : IR (Unit * A) B
--- The closure captures unit (empty environment) and applies to the input.
+-- | Curry-Apply with constant environment (validity-based)
 curry-apply-const-env : ∀ {A B} (f : IR (Unit * A) B) (caller-sp : StackPointer) (x : ⟦ A ⟧) →
-  ∃[ s ] (Star (compile-x86 (apply ∘ ⟨ curry f ∘ terminal , id ⟩)) (initWithInput x) s
-        × halted s ≡ true
-        × readReg (regs s) rax ≡ encode (eval f (tt , x)))
+  let s₀ = initWithInput x
+      ir = apply ∘ ⟨ curry f ∘ terminal , id ⟩
+  in ∃[ s ] (Star (compile-x86 ir) s₀ s
+           × halted s ≡ true
+           × ValidAt (eval ir x) (readReg (regs s) rax) (memory s))
 curry-apply-const-env {A} {B} f caller-sp x =
   codegen-x86-correct (apply ∘ ⟨ curry f ∘ terminal , id ⟩) caller-sp x
 
