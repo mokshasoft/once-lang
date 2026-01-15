@@ -373,6 +373,7 @@ executable once-discover
       CCC.Cost
       CCC.Rules
       CCC.Completeness
+      Escape.Patterns
   hs-source-dirs:
       tools/discovery
   ghc-options:

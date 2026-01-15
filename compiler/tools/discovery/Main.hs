@@ -1,13 +1,15 @@
 {-# LANGUAGE LambdaCase #-}
--- | CCC Optimization Rule Discovery Tool
+-- | Optimization Rule Discovery Tool
 --
 -- Usage:
 --   once-discover ccc --depth 3 --tests 100
+--   once-discover completeness --depth 3 --tests 50
+--   once-discover escape --depth 3 --tests 50
 --
 -- This tool automatically discovers optimization rules by:
--- 1. Enumerating well-typed CCC terms
+-- 1. Enumerating well-typed terms
 -- 2. Finding cheaper equivalents via evaluation testing
--- 3. Reporting discovered rules
+-- 3. Reporting discovered rules or missing optimizations
 module Main where
 
 import System.Environment (getArgs)
@@ -18,6 +20,7 @@ import Once.Type (Type(..))
 import Common.Enumerate (TypeSig(..))
 import CCC.Rules (DiscoveredRule, discoverRules, showRule, showIR)
 import CCC.Completeness (CompletenessResult(..), checkCompletenessForSig)
+import Escape.Patterns (EscapeResult(..), checkEscapeForSig)
 
 main :: IO ()
 main = do
@@ -25,6 +28,7 @@ main = do
   case args of
     ("ccc" : rest) -> runCCCDiscovery rest
     ("completeness" : rest) -> runCompletenessCheck rest
+    ("escape" : rest) -> runEscapeCheck rest
     _ -> usage
 
 usage :: IO ()
@@ -34,6 +38,7 @@ usage = do
   putStrLn "Commands:"
   putStrLn "  ccc           Discover CCC optimization rules"
   putStrLn "  completeness  Check optimizer completeness"
+  putStrLn "  escape        Check escape analysis completeness (stub)"
   putStrLn ""
   putStrLn "Options:"
   putStrLn "  --depth N   Maximum term depth (default: 3)"
@@ -159,4 +164,43 @@ checkSig maxDepth numTests sig = do
   result <- checkCompletenessForSig sig maxDepth numTests
   putStrLn $ "  Classes: " ++ show (crTotalClasses result)
            ++ ", Incomplete: " ++ show (crIncompleteClasses result)
+  pure result
+
+-- | Run escape analysis check (STUB)
+runEscapeCheck :: [String] -> IO ()
+runEscapeCheck args = do
+  let (maxDepth, numTests) = parseOpts args
+
+  putStrLn "=== Escape Analysis Completeness Check ==="
+  putStrLn $ "Depth: " ++ show maxDepth
+  putStrLn $ "Tests: " ++ show numTests
+  putStrLn ""
+
+  -- Type signatures to check
+  let tA = TVar "A"
+      tB = TVar "B"
+      signatures =
+        [ TypeSig tA tA
+        , TypeSig (TProduct tA tB) tA
+        , TypeSig (TProduct tA tB) tB
+        ]
+
+  -- Check each signature
+  results <- mapM (checkEscapeSig maxDepth numTests) signatures
+
+  -- Summary
+  putStrLn ""
+  putStrLn "=== Summary ==="
+  let totalMissed = sum $ map erMissedPatterns results
+  if totalMissed == 0
+    then putStrLn "Escape analysis check complete (stub - no actual checking yet)"
+    else putStrLn $ "Found " ++ show totalMissed ++ " potentially missed escape optimizations"
+
+-- | Check escape analysis for a single signature
+checkEscapeSig :: Int -> Int -> TypeSig -> IO EscapeResult
+checkEscapeSig maxDepth numTests sig = do
+  putStrLn $ "Checking: " ++ showSig sig
+  result <- checkEscapeForSig sig maxDepth numTests
+  putStrLn $ "  Terms: " ++ show (erTotalTerms result)
+           ++ ", Heap remaining: " ++ show (erHeapRemaining result)
   pure result
