@@ -439,17 +439,62 @@ An unfold followed by a fold can be fused into a hylomorphism that never builds 
 
 **Challenge for Once:**
 
-In our IR, `cata` and `ana` are not primitives - they're patterns built from `fold`, `unfold`, and functor maps:
+In our current IR, `cata` and `ana` are not primitives - they're patterns built from `fold`, `unfold`, and functor maps:
 ```agda
 cata alg = alg ∘ fmap (cata alg) ∘ unfold
 ana coalg = fold ∘ fmap (ana coalg) ∘ coalg
 ```
 
-Detecting "this composition forms a catamorphism" requires recognizing recursive patterns, which is beyond simple pattern matching. Would likely need a separate analysis pass.
+Note the self-reference: `cata alg` appears on both sides. This requires recursion at the **term level**, which our CCC generators don't currently support. We have:
+```agda
+fold   : F (Fix F) → Fix F      -- one-step wrap (type-level recursion)
+unfold : Fix F → F (Fix F)      -- one-step unwrap
+```
+
+These form an isomorphism at the type level, but don't provide term-level iteration.
+
+**Possible Extension: Add cata/ana as Generators**
+
+The minimal addition to enable recursion scheme fusion would be adding `cata` and `ana` as primitive generators:
+
+```agda
+cata : IR (F A) A → IR (Fix F) A      -- consume recursive structure
+ana  : IR A (F A) → IR A (Fix F)      -- produce recursive structure
+```
+
+This is categorically justified: `cata` is the unique morphism from the initial F-algebra, guaranteed by the universal property. The existing `fold`/`unfold` would remain as the isomorphism components.
+
+With these generators, fusion laws become direct rewrite rules:
+```agda
+-- Hylomorphism deforestation
+cata alg ∘ ana coalg  →  hylo alg coalg
+
+-- Banana-split
+⟨ cata f , cata g ⟩  →  cata ⟨ f , g ⟩
+```
+
+**Proof Complexity:**
+
+Adding `cata`/`ana` as generators would require new correctness proofs:
+1. Semantics for `cata` and `ana` (recursive evaluation)
+2. Proof that `cata alg ∘ ana coalg = hylo alg coalg`
+3. Backend correctness: codegen produces correct loops
+
+The hylo fusion proof in particular may be complex, as it involves showing that two different recursive traversals (build then consume) equal a single fused traversal. This is non-trivial even in paper proofs.
+
+**Alternative: Higher-Level Fusion**
+
+Instead of extending the CCC, fusion could happen at a higher stratum:
+- The surface language (see `Strata/Derived/Initial.once`) defines `cata`, `ana`, `hylo`
+- Fusion rules apply at that level, before lowering to CCC
+- The CCC only sees the already-fused result
+
+This keeps the CCC generator set minimal and avoids complex proofs at the IR level.
 
 **References:**
 - Meijer et al. "Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire" (1991)
 - "sumtypeofway" recursion schemes blog series
+- `Strata/Derived/Initial.once` - recursion scheme definitions in Once syntax
 
 ### Stream Fusion
 
