@@ -1,11 +1,10 @@
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.MutualIR.Compose
 --
--- Compose implementation using abstract dispatcher.
--- Part of the strategy to break large mutual blocks into smaller pieces.
+-- Compose implementation as a parameterized module.
+-- Takes the recursive dispatcher as a module parameter.
+-- Part of the strategy to enable well-founded recursion on IR size.
 ------------------------------------------------------------------------
-
-module Once.Backend.X86.Correct.MutualIR.Compose where
 
 open import Once.Type
 open import Once.IR
@@ -16,25 +15,40 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
--- Import abstract dispatcher (validity-based only)
-open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (run-ir-star-at-offset-abstract-v)
-
--- Import StarBase for result types (validity-based only)
+-- Import types needed for module parameter signature
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResultV; ir-result-valid; rbp-inv-preserved-unchanged)
-
--- Import validity predicates (no bridging postulates needed!)
+  using (IRStarResultV)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-subst-addr-mem)
-
--- Import StackInvariant
+  using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
--- Import StackPointer for D041
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
+open import Data.Bool using (Bool; false)
+open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.List using (List; _++_; length)
+open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym)
+
+-- Parameterized module: takes the recursive dispatcher as parameter
+module Once.Backend.X86.Correct.MutualIR.Compose
+  (run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 ir ++ suffix
+    in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
+  where
+
+-- Additional imports needed inside the module (beyond what's in parameter signature)
+open import Once.Backend.X86.Correct.StarBase
+  using (rbp-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (valid-subst-addr-mem)
 
 -- Import Compose helpers (validity-based versions)
 open import Once.Backend.X86.Correct.IR.Compose
@@ -43,19 +57,10 @@ open import Once.Backend.X86.Correct.IR.Compose
 open import Once.Backend.X86.Correct.IR.Compose using (module ComposeContext)
 open import Once.Backend.X86.Correct.IR.Compose using (module TransferResultV)
 
-open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; _++_; length)
-open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym)
-
 ------------------------------------------------------------------------
--- Compose implementation with abstract dispatcher
--- NOTE: Uses TERMINATING pragma as structural recursion is guaranteed
--- by IR structure but hidden by abstract dispatcher
+-- Compose implementation using parameterized dispatcher
+-- Termination is handled by caller (MutualIR uses Acc pattern on ir-size)
 ------------------------------------------------------------------------
-
-{-# TERMINATING #-}
 -- | Validity-based compose execution
 -- Uses validity-based dispatcher and helpers - no encode bridging needed!
 run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
@@ -76,7 +81,7 @@ run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq inp
 
       -- Step 1: Execute f (RECURSIVE via validity-based dispatcher)
       step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = run-ir-star-at-offset-abstract-v f prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      step-f = run-ir-star f prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
 
       s1 : State
       s1 = proj₁ step-f
@@ -111,7 +116,7 @@ run-compose-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq inp
 
       -- Step 3: Execute g (RECURSIVE via validity-based dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
-      step-g = run-ir-star-at-offset-abstract-v g prefix-g suffix caller-sp (eval f x) s2
+      step-g = run-ir-star g prefix-g suffix caller-sp (eval f x) s2
                  (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
                  (TransferResultV.stack-inv-2 tr) (TransferResultV.rsp-2>16 tr) rbp-inv-2
 

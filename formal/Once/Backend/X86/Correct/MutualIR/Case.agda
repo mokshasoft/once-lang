@@ -1,11 +1,10 @@
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.MutualIR.Case
 --
--- Case implementation using abstract dispatcher.
--- Part of the strategy to break large mutual blocks into smaller pieces.
+-- Case implementation as a parameterized module.
+-- Takes the recursive dispatcher as a module parameter.
+-- Part of the strategy to enable well-founded recursion on IR size.
 ------------------------------------------------------------------------
-
-module Once.Backend.X86.Correct.MutualIR.Case where
 
 open import Once.Type
 open import Once.IR
@@ -15,29 +14,49 @@ open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
+
+-- Import types needed for module parameter signature
+open import Once.Backend.X86.Correct.StarBase
+  using (IRStarResultV)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt)
+open import Once.Backend.X86.Correct.StackInvariant
+  using (StackInvariant; RbpInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.Common.MemoryRegions
+  using (StackPointer)
+open import Data.Bool using (Bool; false)
+open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_) renaming (_+_ to _+ℕ_)
+open import Data.List using (List; _++_; length; _∷_; [])
+open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_; _×_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; subst₂; cong₂)
+
+-- Parameterized module: takes the recursive dispatcher as parameter
+module Once.Backend.X86.Correct.MutualIR.Case
+  (run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 ir ++ suffix
+    in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
+  where
+
+-- Additional imports needed inside the module
 open import Once.Backend.X86.Correct.CompileLength
   using (compile-length-correct)
 
--- Import abstract dispatcher and helpers (validity-based)
-open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (run-ir-star-at-offset-abstract-v; rbp-inv-preserved-through-ir)
-
--- Import StarBase for result types
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
-         ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv; ir-capacity;
-         ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+  using (ClosureWFOutput; no-closure; has-closure;
          rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StarBase using (module IRStarResultV)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; StackPointer)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 
--- Import StackInvariant
-open import Once.Backend.X86.Correct.StackInvariant
-  using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; slot-size; slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; slot-size)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -65,32 +84,24 @@ open import Once.Postulates
   using (encode; encode-inl-tag; encode-inl-val; encode-inr-tag; encode-inr-val)
 open import Once.Backend.X86.Postulates
   using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
-open import Data.Bool using (Bool; false)
 
 -- Import MemoryValid for encoding axioms and validity predicates
 open import Once.Backend.X86.Correct.MemoryValid
   using (encode-inl-tag-derived; encode-inl-val-derived;
          encode-inr-tag-derived; encode-inr-val-derived;
-         ValidAt;
          -- Validity-based sum structure postulates
          valid-inl-tag-is-0; valid-inl-val-ptr;
          valid-inr-tag-is-1; valid-inr-val-ptr;
          valid-subst-heap-preserved)
 
-open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; _++_; length; _∷_; [])
-open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_; _×_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Maybe using (just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; subst₂; cong₂)
 
 ------------------------------------------------------------------------
--- Case implementation with abstract dispatcher
--- NOTE: Uses TERMINATING pragma as structural recursion is guaranteed
--- by IR structure but hidden by abstract dispatcher
+-- Case implementation using parameterized dispatcher
+-- Termination is handled by caller (MutualIR uses Acc pattern on ir-size)
 ------------------------------------------------------------------------
 
-{-# TERMINATING #-}
 mutual
   -- | Validity-based case execution
   -- Takes ValidAt input, returns IRStarResultV
@@ -351,7 +362,7 @@ mutual
 
       -- Recursive call to f via validity-based dispatcher
       step-f-v : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
-      step-f-v = run-ir-star-at-offset-abstract-v f prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
+      step-f-v = run-ir-star f prefix-f suffix-f caller-sp a s-setup h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
 
       s1 : State
       s1 = proj₁ step-f-v
@@ -819,7 +830,7 @@ mutual
 
       -- Recursive call to g via validity-based dispatcher
       step-g-v : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
-      step-g-v = run-ir-star-at-offset-abstract-v g prefix-g suffix-g caller-sp b s-right h-right pc-right-g input-valid-g stack-inv-right rsp-sufficient-right rbp-inv-right
+      step-g-v = run-ir-star g prefix-g suffix-g caller-sp b s-right h-right pc-right-g input-valid-g stack-inv-right rsp-sufficient-right rbp-inv-right
 
       s1 : State
       s1 = proj₁ step-g-v

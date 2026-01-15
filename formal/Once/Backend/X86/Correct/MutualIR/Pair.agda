@@ -1,11 +1,10 @@
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Correct.MutualIR.Pair
 --
--- Pair implementation using abstract dispatcher.
--- Part of the strategy to break large mutual blocks into smaller pieces.
+-- Pair implementation as a parameterized module.
+-- Takes the recursive dispatcher as a module parameter.
+-- Part of the strategy to enable well-founded recursion on IR size.
 ------------------------------------------------------------------------
-
-module Once.Backend.X86.Correct.MutualIR.Pair where
 
 open import Once.Type
 open import Once.IR
@@ -16,26 +15,49 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
--- Import abstract dispatcher (validity-based only)
-open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (run-ir-star-at-offset-abstract-v)
-
--- Import StarBase for result types (validity-based only)
+-- Import types needed for module parameter signature
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResultV; rbp-inv-preserved-unchanged)
-
--- Import validity predicates (no bridging postulates needed!)
+  using (IRStarResultV)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-subst-heap-preserved)
+  using (ValidAt)
+open import Once.Backend.X86.Correct.StackInvariant
+  using (StackInvariant; RbpInvariant)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.Common.MemoryRegions
+  using (StackPointer)
+open import Data.Bool using (Bool; false)
+open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.List using (List; _++_; length)
+open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; cong; sym; subst; subst₂; cong₂)
+
+-- Parameterized module: takes the recursive dispatcher as parameter
+module Once.Backend.X86.Correct.MutualIR.Pair
+  (run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    readReg (regs s) rsp > slots 2 →
+    RbpInvariant s →
+    let prog = prefix ++ compile-x86 ir ++ suffix
+    in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
+  where
+
+-- Additional imports needed inside the module
+open import Once.Backend.X86.Correct.StarBase
+  using (rbp-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (valid-subst-heap-preserved)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; StackPointer)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
 -- Import StackInstantiation (re-exports StackInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (StackInvariant; RbpInvariant; StackCapacity; capacity-maintained; pair-stack-capacity;
-         make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slots; slot-size)
+  using (StackCapacity; capacity-maintained; pair-stack-capacity;
+         make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slot-size)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -57,21 +79,13 @@ open import Once.Backend.X86.Correct.IR.Pair using (module PairMiddleResultV)
 
 -- Note: encode no longer needed - fully validity-based!
 open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op; rsp-bound-after-stack-op)
-open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; _++_; length)
-open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
 open import Data.Maybe using (just; nothing)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; cong; sym; subst; subst₂; cong₂)
 
 ------------------------------------------------------------------------
--- Pair implementation with abstract dispatcher
--- NOTE: Uses TERMINATING pragma as structural recursion is guaranteed
--- by IR structure but hidden by abstract dispatcher
+-- Pair implementation using parameterized dispatcher
+-- Termination is handled by caller (MutualIR uses Acc pattern on ir-size)
 ------------------------------------------------------------------------
-
-{-# TERMINATING #-}
 -- | Validity-based pair execution
 -- Uses validity-based dispatcher for recursive calls
 -- Fully validity-based - zero bridge postulates!
@@ -127,7 +141,7 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
             (pair-rbp-frame-≥-r15-frame s cap5)
 
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
-      step-f = run-ir-star-at-offset-abstract-v f prefix-f suffix-f caller-sp x s-setup
+      step-f = run-ir-star f prefix-f suffix-f caller-sp x s-setup
                 (PairSetupResultV.h-setup setup-res)
                 (PairSetupResultV.pc-setup-f setup-res)
                 input-valid-for-f
@@ -186,7 +200,7 @@ run-pair-star-v {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-
         mem-heap-s-to-s2        -- heap memory preserved
 
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
-      step-g = run-ir-star-at-offset-abstract-v g prefix-g suffix-g caller-sp x s2
+      step-g = run-ir-star g prefix-g suffix-g caller-sp x s2
                 (PairMiddleResultV.h2 mid-res)
                 (PairMiddleResultV.pc2-g mid-res)
                 input-valid-for-g

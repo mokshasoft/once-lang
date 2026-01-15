@@ -126,18 +126,14 @@ import Once.Backend.X86.Correct.IR.ThunkExec as TE
 open import Once.Backend.X86.Correct.IR.Apply
   using (run-apply-to-ir-result; run-apply-to-ir-result-v)
 
--- Import implementation modules that use the abstract dispatcher
+-- Import implementation modules (parameterized, will be opened inside dispatcher)
+import Once.Backend.X86.Correct.MutualIR.Compose as ComposeModule
+import Once.Backend.X86.Correct.MutualIR.Pair as PairModule
+import Once.Backend.X86.Correct.MutualIR.Case as CaseModule
+
+-- Import helper from Dispatcher (still used for rbp invariant preservation)
 open import Once.Backend.X86.Correct.MutualIR.Dispatcher
   using (rbp-inv-preserved-through-ir)
-
-open import Once.Backend.X86.Correct.MutualIR.Compose
-  using (run-compose-star-v)
-
-open import Once.Backend.X86.Correct.MutualIR.Pair
-  using (run-pair-star-v)
-
-open import Once.Backend.X86.Correct.MutualIR.Case
-  using (run-case-star-direct; run-case-star-v)
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
@@ -1480,12 +1476,14 @@ mutual
   -- Direct validity-based execution for inr
   run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Pair: uses validity-based wrapper
+  -- Pair: uses parameterized module with recursive dispatcher
   run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    run-pair-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-  -- Compose: uses validity-based wrapper
+    let open PairModule run-ir-star-at-offset-v
+    in run-pair-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  -- Compose: uses parameterized module with recursive dispatcher
   run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    run-compose-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    let open ComposeModule run-ir-star-at-offset-v
+    in run-compose-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
   -- Direct validity for id
   run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
@@ -1530,9 +1528,10 @@ mutual
         vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv rsp-sufficient rbp-inv
-  -- case: direct validity call
+  -- case: uses parameterized module with recursive dispatcher
   run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-    run-case-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    let open CaseModule run-ir-star-at-offset-v
+    in run-case-star-v f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
   -- curry: direct validity call
   run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
     run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
