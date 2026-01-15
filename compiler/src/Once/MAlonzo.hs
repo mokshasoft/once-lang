@@ -3,9 +3,9 @@
 -- This module provides the interface for the verified MAlonzo optimizer
 -- and type checker. Code is extracted from formally verified Agda proofs via MAlonzo.
 module Once.MAlonzo
-  ( -- * Optimization (temporarily disabled for QTT integration)
-    -- optimizeMAlonzo
-    canConvertIR
+  ( -- * Optimization
+    optimizeMAlonzo
+  , canConvertIR
     -- * Conversion functions (for native backends)
   , toMAlonzoType
   , fromMAlonzoType
@@ -30,7 +30,7 @@ import qualified Once.Type as H
 
 import qualified MAlonzo.Code.Once.IR as M
 import qualified MAlonzo.Code.Once.Type as M
--- import qualified MAlonzo.Code.Once.Optimize as M  -- Temporarily disabled for QTT integration
+import qualified MAlonzo.Code.Once.Optimize as MO
 import qualified MAlonzo.Code.Once.TypeCheck.Raw as MR
 import qualified MAlonzo.Code.Once.TypeCheck.Infer as MI
 import qualified MAlonzo.Code.Once.TypeCheck.Error as ME
@@ -87,14 +87,16 @@ canConvertType t = case t of
   H.TApp _ _      -> False  -- Type applications not in MAlonzo
 
 -- | Optimize using MAlonzo (verified) optimizer
--- Temporarily disabled for QTT integration
--- optimizeMAlonzo :: H.IR -> H.IR
--- optimizeMAlonzo ir
---   | canConvertIR ir =
---       let mIR = toMAlonzoIR ir
---           mOptimized = M.d_optimize_1146 (getInputType ir) (getOutputType ir) mIR
---       in fromMAlonzoIR mOptimized
---   | otherwise = ir
+--
+-- Uses the formally verified optimizer extracted from Agda via MAlonzo.
+-- Falls back to input if IR cannot be converted (contains Var, Prim, etc.)
+optimizeMAlonzo :: H.IR -> H.IR
+optimizeMAlonzo ir
+  | canConvertIR ir =
+      let mIR = toMAlonzoIR ir
+          mOptimized = MO.d_optimize_1200 (getInputType ir) (getOutputType ir) mIR
+      in fromMAlonzoIR mOptimized
+  | otherwise = ir
 
 -- | Convert Haskell Type to MAlonzo Type
 toMAlonzoType :: H.Type -> M.T_Type_32

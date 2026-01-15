@@ -254,7 +254,7 @@ library
       MAlonzo.Code.Once.Backend.X86.Emit
       MAlonzo.Code.Once.Backend.X86.Syntax
       MAlonzo.Code.Once.IR
-      -- MAlonzo.Code.Once.Optimize
+      MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate

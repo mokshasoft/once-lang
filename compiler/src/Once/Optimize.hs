@@ -30,12 +30,18 @@ optimizeWith MAlonzoOptimizer = optimizeWithMAlonzo
 --
 -- For IR that cannot be converted, falls back to the Haskell optimizer.
 --
--- NOTE: MAlonzo optimizer temporarily disabled for QTT integration
+-- | Optimize using MAlonzo (verified) if possible, fallback to Haskell
+--
+-- The MAlonzo optimizer is generated from verified Agda code.
+-- It can only optimize IR that:
+-- - Uses only categorical types (Unit, Void, Product, Sum, Arrow, Eff, Fix)
+-- - Does not contain Var, LocalVar, FunRef, or StringLit
+--
+-- For IR that cannot be converted, falls back to the Haskell optimizer.
 optimizeWithMAlonzo :: IR -> IR
-optimizeWithMAlonzo ir = optimize ir  -- Always use Haskell optimizer for now
-  -- TODO: Re-enable MAlonzo optimizer after QTT integration complete
-  -- | M.canConvertIR ir = M.optimizeMAlonzo ir
-  -- | otherwise = optimize ir
+optimizeWithMAlonzo ir
+  | M.canConvertIR ir = M.optimizeMAlonzo ir
+  | otherwise = optimize ir
 
 -- | Optimize IR by applying categorical rewrite rules until fixed point
 optimize :: IR -> IR
@@ -93,11 +99,26 @@ simplifyCompose g f = case (g, f) of
   -- snd ∘ pair f g = g
   (Snd _ _, Pair _ k) -> k
 
+  -- Pair fusion (product bifunctoriality)
+  -- pair f g ∘ h = pair (f ∘ h) (g ∘ h)
+  -- This exposes beta-redexes when f or g are projections
+  (Pair f' g', h) -> simplifyPair (simplifyCompose f' h) (simplifyCompose g' h)
+
   -- Coproduct laws
   -- case f g ∘ inl = f
   (Case h _, Inl _ _) -> h
   -- case f g ∘ inr = g
   (Case _ k, Inr _ _) -> k
+  -- Extended coproduct beta for composition chains:
+  -- [f, g] ∘ (inl ∘ h) = f ∘ h
+  (Case h _, Compose (Inl _ _) k) -> simplifyCompose h k
+  -- [f, g] ∘ (inr ∘ h) = g ∘ h
+  (Case _ k, Compose (Inr _ _) h) -> simplifyCompose k h
+
+  -- Case fusion (coproduct bifunctoriality)
+  -- h ∘ [f, g] = [h ∘ f, h ∘ g]
+  -- This exposes beta-redexes when h is a projection or case
+  (h, Case f' g') -> simplifyCase (simplifyCompose h f') (simplifyCompose h g')
 
   -- Recursive type laws (Fix isomorphism)
   -- fold ∘ unfold = id : Fix F -> Fix F
