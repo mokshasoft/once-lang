@@ -44,9 +44,9 @@ open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 ------------------------------------------------------------------------
 
 postulate
-  -- Changed from > slots 2 to > slots 5 to support memory layout proofs
-  -- Pair setup subtracts slots 5 from rsp (3 pushes + sub (slots 2))
-  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > slots 5
+  -- Changed from > slots 2 to > slots 7 to support pair operations
+  -- Pair needs: 5 slots for setup (3 pushes + sub 16) + 2 slots remaining capacity
+  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > slots 7
 
   -- RSP is always in stack region (runtime invariant)
   -- Companion to rsp-bound-after-stack-op: rsp not only has enough space,

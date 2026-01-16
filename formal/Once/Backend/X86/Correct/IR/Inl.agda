@@ -487,12 +487,12 @@ run-inl-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
     -- Since 40 > 32, we can convert rsp > 40 to StackCapacity s 4
     --
     -- Arithmetic: 33 ≤ 41 using m≤m+n pattern (see lessons-learned.md)
-    33≤41 : 33 ≤ 41
-    33≤41 = m≤m+n 33 8
+    33≤57 : 33 ≤ 57
+    33≤57 = m≤m+n 33 24
       where open import Data.Nat.Properties using (m≤m+n)
 
     rsp>32 : readReg (regs s) rsp > slots 4
-    rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
+    rsp>32 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
     input-capacity = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>32
@@ -942,12 +942,12 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rsp
     rsp-change : readReg (regs s4) rsp ≡ readReg (regs s) rsp ∸ slots 2
     rsp-change = rsp-s4
 
-    33≤41 : 33 ≤ 41
-    33≤41 = m≤m+n 33 8
+    33≤57 : 33 ≤ 57
+    33≤57 = m≤m+n 33 24
       where open import Data.Nat.Properties using (m≤m+n)
 
     rsp>32 : readReg (regs s) rsp > slots 4
-    rsp>32 = ≤-trans 33≤41 (rsp-bound-after-stack-op s)
+    rsp>32 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
     input-capacity = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>32

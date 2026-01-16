@@ -16,14 +16,14 @@ open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation
   using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
-         slot-size; slots)
+         slot-size; slots; StackCapacity; rsp-in-stack; rsp-sufficient; capacity-maintained;
+         slots-mono-≤)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
-open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl; <⇒≤)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl; <⇒≤; ≤-<-trans)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
@@ -85,14 +85,15 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
 -- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
 -- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
 --
+-- Stack usage: 3 pushes (24 bytes) + sub 16 = 40 bytes = 5 slots
 -- Returns FrameSetupResult with Star-based execution proof and all frame properties.
 frame-setup-star : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  readReg (regs s) rsp > slots 3 →   -- Need rsp > slots 3 to prove memory disjointness
+  StackCapacity s 5 →   -- Need capacity 5: 3 pushes + 2 slots for sub
   let prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
   in FrameSetupResult prog s (length prefix +ℕ 7)
-frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
+frame-setup-star prefix rest s h-false pc-eq cap = record
   { s-setup = s7
   ; star-setup = star-eq
   ; h-setup = h7
@@ -132,6 +133,17 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
 
     orig-rbp : Word
     orig-rbp = readReg (regs s) rbp
+
+    -- Extract rsp bound from capacity - we need 5 slots total
+    rsp-bound : orig-rsp > slots 5
+    rsp-bound = rsp-sufficient cap
+
+    -- Derive smaller bounds using slot monotonicity: 3 ≤ 5 → slots 3 ≤ slots 5
+    rsp-gt-slots3 : orig-rsp > slots 3
+    rsp-gt-slots3 = ≤-<-trans (slots-mono-≤ 3≤5) rsp-bound
+      where
+        3≤5 : 3 ≤ 5
+        3≤5 = s≤s (s≤s (s≤s z≤n))
 
     -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
     s1 : State
@@ -457,15 +469,12 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     -- Memory at [orig-rsp - 8] in s2 (after push r15 at step 2)
     -- push r15 wrote to [orig-rsp - 16], not [orig-rsp - 8]
     -- s2.memory = writeMem (memory s1) (orig-rsp ∸ slots 2) orig-r15 (by write-addr-s2 and r15-s1)
-    -- Derive rsp > slots 2 from rsp-gt-24 for the ∸two-slot≢∸one-slot lemma
-    -- rsp > slots 3 means 25 ≤ rsp, we need rsp > slots 2 which is 17 ≤ rsp
-    -- Use ≤-trans with 17 ≤ 25 and 25 ≤ rsp
-    rsp-gt-16 : orig-rsp > slots 2
-    rsp-gt-16 = ≤-trans 17≤25 rsp-gt-24
+    -- Derive rsp > slots 2 from rsp-gt-slots3 using slot monotonicity
+    rsp-gt-slots2 : orig-rsp > slots 2
+    rsp-gt-slots2 = ≤-<-trans (slots-mono-≤ 2≤3) rsp-gt-slots3
       where
-        open import Data.Nat.Properties using (≤-trans)
-        17≤25 : 17 ≤ 25
-        17≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+        2≤3 : 2 ≤ 3
+        2≤3 = s≤s (s≤s z≤n)
 
     mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ slot-size) ≡ just orig-r14
     mem-s2-at-r14slot = begin
@@ -474,7 +483,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         readMem (writeMem (memory s1) (readReg (regs s1) rsp ∸ slot-size) (readReg (regs s1) r15)) (orig-rsp ∸ slot-size)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s1) addr (readReg (regs s1) r15)) (orig-rsp ∸ slot-size)) write-addr-s2 ⟩
         readMem (writeMem (memory s1) (orig-rsp ∸ slots 2) (readReg (regs s1) r15)) (orig-rsp ∸ slot-size)
-      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ slots 2} {orig-rsp ∸ slot-size} {readReg (regs s1) r15} (∸two-slot≢∸one-slot orig-rsp rsp-gt-16) ⟩
+      ≡⟨ mem-read-other {memory s1} {orig-rsp ∸ slots 2} {orig-rsp ∸ slot-size} {readReg (regs s1) r15} (∸two-slot≢∸one-slot orig-rsp rsp-gt-slots2) ⟩
         readMem (memory s1) (orig-rsp ∸ slot-size)
       ≡⟨ mem-s1-at-r14slot ⟩
         just orig-r14
@@ -489,7 +498,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)) write-addr-s3 ⟩
         readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slot-size} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-24) ⟩
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slot-size} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-slots3) ⟩
         readMem (memory s2) (orig-rsp ∸ slot-size)
       ≡⟨ mem-s2-at-r14slot ⟩
         just orig-r14
@@ -504,7 +513,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)) write-addr-s3 ⟩
         readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slots 2} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-24) ⟩
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slots 2} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-slots3) ⟩
         readMem (memory s2) (orig-rsp ∸ slots 2)
       ≡⟨ mem-s2-at-r15slot ⟩
         just orig-r15
@@ -521,7 +530,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     mem-r15-eq = subst (λ addr → readMem (memory s7) (addr +ℕ slot-size) ≡ just orig-r15)
                        (sym rbp-eq)
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r15)
-                              (sym (rbp-plus-word≡r15-save orig-rsp (<⇒≤ rsp-gt-24)))
+                              (sym (rbp-plus-word≡r15-save orig-rsp (<⇒≤ rsp-gt-slots3)))
                               mem-s3-at-r15slot)
 
     -- [rbp + 16] = [orig-rsp - 8] = orig-r14
@@ -530,7 +539,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     mem-r14-eq = subst (λ addr → readMem (memory s7) (addr +ℕ slots 2) ≡ just orig-r14)
                        (sym rbp-eq)
                        (subst (λ a → readMem (memory s7) a ≡ just orig-r14)
-                              (sym (rbp-plus-pair≡r14-save orig-rsp (<⇒≤ rsp-gt-24)))
+                              (sym (rbp-plus-pair≡r14-save orig-rsp (<⇒≤ rsp-gt-slots3)))
                               mem-s3-at-r14slot)
 
     -- Memory preservation: addresses >= orig-rsp are unchanged
@@ -546,48 +555,45 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         write2 = orig-rsp ∸ slots 2   -- step 2 write address
         write3 = orig-rsp ∸ slots 3   -- step 3 write address
 
-        -- orig-rsp > 8 (derived from rsp > slots 3)
-        rsp-gt-8 : orig-rsp > 8
-        rsp-gt-8 = ≤-trans 9≤25 rsp-gt-24
+        -- Derive smaller bounds using slot monotonicity
+        -- rsp > slots 1 (i.e., > 8)
+        rsp-gt-slots1 : orig-rsp > slots 1
+        rsp-gt-slots1 = ≤-<-trans (slots-mono-≤ 1≤3) rsp-gt-slots3
           where
-            9≤25 : 9 ≤ 25
-            9≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+            1≤3 : 1 ≤ 3
+            1≤3 = s≤s z≤n
 
-        -- 0 < 8 (needed for ∸-monoʳ-<)
-        0<8 : 0 < 8
-        0<8 = s≤s z≤n
+        -- 0 < slots k for positive k (needed for ∸-monoʳ-<)
+        0<slot : 0 < slot-size
+        0<slot = s≤s z≤n
 
-        -- 0 < 16 (needed for ∸-monoʳ-<)
-        0<16 : 0 < 16
-        0<16 = s≤s z≤n
+        0<slots2 : 0 < slots 2
+        0<slots2 = s≤s z≤n
 
-        -- 0 < 24 (needed for ∸-monoʳ-<)
-        0<24 : 0 < 24
-        0<24 = s≤s z≤n
+        0<slots3 : 0 < slots 3
+        0<slots3 = s≤s z≤n
 
-        -- 8 ≤ orig-rsp
-        8≤rsp : 8 ≤ orig-rsp
-        8≤rsp = <⇒≤ rsp-gt-8
+        -- Bounds for memory write proofs
+        slot1≤rsp : slot-size ≤ orig-rsp
+        slot1≤rsp = <⇒≤ rsp-gt-slots1
 
-        -- 16 ≤ orig-rsp
-        16≤rsp : 16 ≤ orig-rsp
-        16≤rsp = <⇒≤ rsp-gt-16
+        slots2≤rsp : slots 2 ≤ orig-rsp
+        slots2≤rsp = <⇒≤ rsp-gt-slots2
 
-        -- 24 ≤ orig-rsp
-        24≤rsp : 24 ≤ orig-rsp
-        24≤rsp = <⇒≤ rsp-gt-24
+        slots3≤rsp : slots 3 ≤ orig-rsp
+        slots3≤rsp = <⇒≤ rsp-gt-slots3
 
         -- write1 < orig-rsp (using ∸-monoʳ-<)
         write1<rsp : write1 < orig-rsp
-        write1<rsp = ∸-monoʳ-< 0<8 8≤rsp
+        write1<rsp = ∸-monoʳ-< 0<slot slot1≤rsp
 
         -- write2 < orig-rsp
         write2<rsp : write2 < orig-rsp
-        write2<rsp = ∸-monoʳ-< 0<16 16≤rsp
+        write2<rsp = ∸-monoʳ-< 0<slots2 slots2≤rsp
 
         -- write3 < orig-rsp
         write3<rsp : write3 < orig-rsp
-        write3<rsp = ∸-monoʳ-< 0<24 24≤rsp
+        write3<rsp = ∸-monoʳ-< 0<slots3 slots3≤rsp
 
         -- addr ≠ write1 (because write1 < orig-rsp ≤ addr)
         addr≢write1 : addr ≢ write1
@@ -624,7 +630,6 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     mem-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
     mem-at-0 = trans mem0-s7-s3 (trans mem0-s3-s2 (trans mem0-s2-s1 mem0-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; stackAddr-write-preserves-zero)
 
         -- Write addresses (from x86 semantics)
@@ -632,11 +637,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         write2 = orig-rsp ∸ slots 2
         write3 = orig-rsp ∸ slots 3
 
-        -- Derive capacity from rsp > slots 3 and rsp-in-stack
-        cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
-
-        -- Write addresses are in stack region (via capacity-maintained)
+        -- Write addresses are in stack region (via capacity-maintained from cap parameter)
         write1-in-stack : region-of write1 ≡ stack
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
@@ -665,7 +666,6 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-code addr addr-in-code = trans memC-s7-s3 (trans memC-s3-s2 (trans memC-s2-s1 memC-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; code; stackAddr-write-preserves-code)
 
         -- Write addresses (from x86 semantics)
@@ -673,11 +673,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         write2 = orig-rsp ∸ slots 2
         write3 = orig-rsp ∸ slots 3
 
-        -- Derive capacity from rsp > slots 3 and rsp-in-stack
-        cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
-
-        -- Write addresses are in stack region (via capacity-maintained)
+        -- Write addresses are in stack region (via capacity-maintained from cap parameter)
         write1-in-stack : region-of write1 ≡ stack
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
@@ -706,7 +702,6 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
     mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-heap addr addr-in-heap = trans memH-s7-s3 (trans memH-s3-s2 (trans memH-s2-s1 memH-s1-s))
       where
-        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; capacity-maintained; StackCapacity)
         open import Once.Backend.Common.MemoryRegions using (region-of; stack; heap; stackAddr-write-preserves-heap)
 
         -- Write addresses (from x86 semantics)
@@ -714,11 +709,7 @@ frame-setup-star prefix rest s h-false pc-eq rsp-gt-24 = record
         write2 = orig-rsp ∸ slots 2
         write3 = orig-rsp ∸ slots 3
 
-        -- Derive capacity from rsp > slots 3 and rsp-in-stack
-        cap : StackCapacity s 3
-        cap = rsp-bound-to-capacity 3 s (rsp-in-stack-after-stack-op s) rsp-gt-24
-
-        -- Write addresses are in stack region (via capacity-maintained)
+        -- Write addresses are in stack region (via capacity-maintained from cap parameter)
         write1-in-stack : region-of write1 ≡ stack
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 

@@ -189,7 +189,7 @@ ir-frame-slots id             = 0
 ir-frame-slots (_ ∘ _)        = 0   -- Composition itself doesn't allocate
 ir-frame-slots fst            = 0
 ir-frame-slots snd            = 0
-ir-frame-slots ⟨ _ , _ ⟩      = 0   -- Pair doesn't allocate stack
+ir-frame-slots ⟨ _ , _ ⟩      = 5   -- Pair: push r14, push r15, push rbp, sub rsp 16
 ir-frame-slots inl            = 0
 ir-frame-slots inr            = 0
 ir-frame-slots [ _ , _ ]      = 0   -- Case branches don't allocate
@@ -1051,14 +1051,15 @@ curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+slot
 -- Apply helpers: 1-slot allocation (push r15)
 ------------------------------------------------------------------------
 
+-- | Slot monotonicity for ≤ (follows from slots being multiplication)
+-- Useful for deriving smaller bounds: a ≤ b → slots a ≤ slots b
+slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
+slots-mono-≤ {zero} {b} _ = z≤n
+slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
+
 private
   m∸slot<m : ∀ m → m > slot-size → m ∸ slot-size < m
   m∸slot<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
-
-  -- slots is monotonic for ≤ (follows from slots being multiplication)
-  slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
-  slots-mono-≤ {zero} {b} _ = z≤n
-  slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
 
 -- | Prove 1-slot allocation address is below original rsp
 apply-alloc-below-rsp : ∀ (s : State) →

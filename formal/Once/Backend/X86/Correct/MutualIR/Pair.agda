@@ -22,7 +22,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -136,6 +137,8 @@ private
 -- Uses validity-based dispatcher for recursive calls
 -- Fully validity-based - zero bridge postulates!
 -- Takes size proofs for sub-terms to enable well-founded recursion.
+-- | Validity-based pair execution
+-- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining
 run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   ir-size f < bound →
   ir-size g < bound →
@@ -144,7 +147,7 @@ run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 7 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
@@ -159,7 +162,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       open PairContext ctx
 
       -- ========== Phase 1: Setup (7 instructions) ==========
-      setup-res = pair-setup-star-v f g prefix suffix x s h-false pc-eq
+      setup-res = pair-setup-star-v f g prefix suffix x s h-false pc-eq cap-in
       s-setup = PairSetupResultV.s-setup setup-res
 
       -- Input validity for f: propagate through setup using heap preservation
@@ -179,8 +182,14 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         ; frame-bound = setup-frame-bound
         }
         where
+          -- Derive rsp > slots 5 from postulate rsp > slots 7 via slot monotonicity
+          rsp>slots5 : readReg (regs s) rsp > slots 5
+          rsp>slots5 = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-bound-after-stack-op s)
+            where
+              5≤7 : 5 ≤ 7
+              5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
           cap5 : StackCapacity s 5
-          cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+          cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) rsp>slots5
 
           setup-rbp-frame : StackPointer
           setup-rbp-frame = make-frame-at-slot s cap5 3 (s≤s (s≤s (s≤s z≤n)))
@@ -306,7 +315,13 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           -- Value bindings only (no function definitions in where clauses)
           orig-rsp = readReg (regs s) rsp
           orig-rbp = readReg (regs s) rbp
-          rsp>16 = StackCapacity.rsp-sufficient cap-in
+          -- Derive rsp > slots 2 from rsp > slots 7 using slot monotonicity
+          rsp>56 = StackCapacity.rsp-sufficient cap-in
+          rsp>16 : orig-rsp > slots 2
+          rsp>16 = ≤-<-trans (slots-mono-≤ 2≤7) rsp>56
+            where
+              2≤7 : 2 ≤ 7
+              2≤7 = s≤s (s≤s z≤n)
 
           addr≥rsp : addr ≥ orig-rsp
           addr≥rsp = ≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp)

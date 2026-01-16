@@ -39,10 +39,19 @@
   - NOTE: Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`) still used in ~13 internal files
   - Entry points now use specific `stackBase-in-stack` postulate instead
   - Full elimination requires threading StackCapacity through all internal operations
+  - **Postulate changed**: `rsp-bound-after-stack-op` now returns `> slots 7` (was `> slots 5`) to support pair operations
   - Progress:
     - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
     - IR/Case.agda: eliminated (was unused import)
-  - Current status: 105 occurrences across 13 files (down from 109/15)
+    - Cascading fixes for `> slots 7` change:
+      - IR/Curry.agda: changed `m≤m+n 33 8` to `m≤m+n 33 24`
+      - IR/ThunkExec.agda: changed `17≤41` to `m≤m+n 17 40`, derived `> slots 5` via `slots-mono-≤`
+      - IR/Apply.agda: changed three `17≤41` occurrences to `m≤m+n 17 40`
+      - IR/Pair.agda: added `mk-capacity-5` helper using `slots-mono-≤`, changed `17≤41` to `m≤m+n 17 40`
+      - IR/Inl.agda, IR/Inr.agda: changed `33≤41` to `33≤57` via `m≤m+n 33 24`
+      - MutualIR/Pair.agda: derived `rsp > slots 5` from `> slots 7` via `slots-mono-≤`
+      - MutualIR/Case.agda: changed `17≤41` to `m≤m+n 17 40` (2 occurrences)
+  - Current status: Build passes for x86-ccc-whole
 - [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
   - Keep only simple variable bindings (val = expr) in where clauses
@@ -60,6 +69,9 @@
 - Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`)
   still used in internal files when constructing StackCapacity after state changes
 - See `docs/formal/historical/lessons-learned.md` for "no functions in where clauses" rule
+- **Naming convention**: Rename variables with concrete byte values (e.g., `rsp-gt-24`, `rsp-gt-16`)
+  to use abstract slot-based names (e.g., `rsp-bound`, `rsp-sufficient`) since `slots n` is abstract
+  and the concrete byte representation (n * 8) should not leak into proof names
 
 ---
 

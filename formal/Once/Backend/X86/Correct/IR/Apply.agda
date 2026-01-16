@@ -495,10 +495,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
         r15<len = subst (_< length prog) (sym r15-6) code-ptr<len
 
     rsp-sufficient-6 : readReg (regs s6) rsp > slots 2
-    rsp-sufficient-6 = ≤-trans 17≤41 (rsp-bound-after-stack-op s6)
-      where
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp-sufficient-6 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s6)
 
     -- Memory preservation: original r15 is saved at new-rsp
     mem-r15-saved : readMem (memory s6) (readReg (regs s6) rsp) ≡ just old-r15
@@ -646,11 +643,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
 
     -- rsp > slots 2 after call: derived from runtime bound rsp-bound-after-stack-op
     rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
-      where
-        open import Data.Nat.Properties using (≤-trans)
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp-sufficient-1 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s1)
 
     -- RSP tracking: s1.rsp = new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
     rsp1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ slot-size
@@ -877,10 +870,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
                        (subst (sp-addr frame ≥_) (sym rsp1-eq-orig) frame-bound)
 
     rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
-      where
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp-sufficient-1 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s1)
 
 ------------------------------------------------------------------------
 -- ApplyWfResult: Record type for run-apply-with-wf results

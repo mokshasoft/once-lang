@@ -1519,6 +1519,8 @@ mutual
   run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
     run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
+  -- NOTE: Pair needs StackCapacity s 7 (5 for setup + 2 remaining)
+  -- TODO: Dispatcher should take ir-input-capacity ir slots, not fixed 2
   run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
         rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size ⟨ f , g ⟩ →
@@ -1531,7 +1533,10 @@ mutual
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
         open PairModule (ir-size ⟨ f , g ⟩) rec
-    in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+        -- Construct StackCapacity s 7 for pair from postulate (TODO: thread properly)
+        cap7 : StackCapacity s 7
+        cap7 = rsp-bound-to-capacity 7 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+    in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap7 rbp-inv
   -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
   run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)

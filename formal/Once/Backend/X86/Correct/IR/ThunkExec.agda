@@ -22,9 +22,9 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
   renaming (fetch-ret to TS-fetch-ret)
 
 open import Data.Nat using (_>_; _≤?_; _≤_; _≥_; s≤s; z≤n)
-open import Data.Nat.Properties using (+-assoc; m∸n≤m; ≤-trans; ∸-monoˡ-≤; ∸-monoʳ-<;
+open import Data.Nat.Properties using (+-assoc; m∸n≤m; ≤-trans; ≤-<-trans; ∸-monoˡ-≤; ∸-monoʳ-<;
                                        m∸n+n≡m; m≤n⇒m∸n≡0; +-monoˡ-<; +-monoʳ-<; m<m+n; <-trans;
-                                       ∸-+-assoc)
+                                       ∸-+-assoc; m≤m+n)
                                 renaming (<⇒≢ to <⇒≢-neq; ≰⇒> to ≰⇒>-nat; <⇒≤ to <⇒≤-nat; ≤-pred to ≤-pred-nat)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
@@ -41,7 +41,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; PairAtS; pair-at-s; valid-pair; valid-subst-heap-preserved)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
-         r15-in-code; slot-size; slots;
+         r15-in-code; slot-size; slots; slots-mono-≤;
          -- D041: Parameterized abstract interface
          abstract-to-rsp-slot-in-stack; abstract-to-rsp-slots-in-stack;
          -- D041: Abstract helpers for thunk arithmetic (State-based)
@@ -490,11 +490,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     stack-inv8 = stack-inv-preserved-r15-unchanged s s8 stack-inv r15-8 rsp-s8≤s
 
     rsp-sufficient-8 : readReg (regs s8) rsp > slots 2
-    rsp-sufficient-8 = ≤-trans 17≤41 (rsp-bound-after-stack-op s8)
-      where
-        open import Data.Nat.Properties using (≤-trans)
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp-sufficient-8 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s8)
 
     -- Memory at rbp contains original rbp (from push rbp in s3)
     -- s3 wrote old-rbp at rsp-after-push-rbp (= old-rsp - 16)
@@ -544,13 +540,16 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- For new-rsp + 8 ≢ rsp-after-push-rbp:
     -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
-    -- We use rsp-bound-after-stack-op which gives old-rsp > slots 5, so old-rsp ≥ 41
-    -- Therefore rsp-after-push-rbp = old-rsp - 16 ≥ 25, which is always ≥ 16
+    -- We use rsp-bound-after-stack-op which gives old-rsp > slots 7, so old-rsp ≥ 57
+    -- Therefore rsp-after-push-rbp = old-rsp - 16 ≥ 41, which is always ≥ 16
     -- So new-rsp + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp
 
-    -- First, derive the strong bound from rsp-bound-after-stack-op
+    -- Derive > slots 5 from > slots 7 via slot monotonicity
     old-rsp>40 : old-rsp > slots 5
-    old-rsp>40 = rsp-bound-after-stack-op s
+    old-rsp>40 = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-bound-after-stack-op s)
+      where
+        5≤7 : 5 ≤ 7
+        5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
 
     -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
     33≤rsp-after-push-r15 : 33 ≤ rsp-after-push-r15
@@ -1252,11 +1251,7 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     stack-inv1 = r15-in-code (trans (cong region-of r15-1) r15-code)
 
     rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = ≤-trans 17≤41 (rsp-bound-after-stack-op s1)
-      where
-        open import Data.Nat.Properties using (≤-trans)
-        17≤41 : 17 ≤ 41
-        17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+    rsp-sufficient-1 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s1)
 
     -- D041: RSP after ret = original RSP + 8 (ret pops return address)
     rsp1 : readReg (regs s1) rsp ≡ readReg (regs s) rsp +ℕ 8

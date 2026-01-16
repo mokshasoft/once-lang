@@ -498,12 +498,9 @@ mutual
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (IRStarResultV.ir-stack-inv r-f-v) r15-jump
 
       rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
-      rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+      rsp-sufficient-final = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s-final)
         where
-          open import Data.Nat.Properties using (≤-trans)
-          open import Data.Nat using (s≤s; z≤n)
-          17≤41 : 17 ≤ 41
-          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+          open import Data.Nat.Properties using (≤-trans; m≤m+n)
 
       -- RbpInvariant preserved: from ir-rbp-inv r-f-v through jump (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
@@ -971,12 +968,9 @@ mutual
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (IRStarResultV.ir-stack-inv r-g-v) r15-end
 
       rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
-      rsp-sufficient-final = ≤-trans 17≤41 (rsp-bound-after-stack-op s-final)
+      rsp-sufficient-final = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s-final)
         where
-          open import Data.Nat.Properties using (≤-trans)
-          open import Data.Nat using (s≤s; z≤n)
-          17≤41 : 17 ≤ 41
-          17≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+          open import Data.Nat.Properties using (≤-trans; m≤m+n)
 
       -- RbpInvariant preserved: from ir-rbp-inv r-g-v through end (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final

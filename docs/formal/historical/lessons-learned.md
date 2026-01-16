@@ -105,6 +105,56 @@ This follows the same pattern as:
 
 ---
 
+## No Capacity Weakening: Thread Exact Requirements
+
+**Problem**: When threading resource requirements (like `StackCapacity`) through proofs, it's tempting to add "weakening" functions that convert `Capacity n` to `Capacity m` when `m ≤ n`.
+
+```agda
+-- BAD: Capacity weakening is a code smell
+capacity-weaken : StackCapacity s n → m ≤ n → StackCapacity s m
+```
+
+**Why it's wrong**: Weakening obscures the actual requirements. If a function needs capacity 3 but receives capacity 5 and weakens it, you lose information about what the function actually consumes.
+
+**The Rule**: Functions should declare exactly what they need, and callers should provide exactly that.
+
+```agda
+-- BAD: Function takes capacity 3 but actually needs 5
+frame-setup-star : ... → StackCapacity s 3 → ...
+-- Called with capacity 5, internally weakened to 3
+-- But the function actually allocates 5 slots!
+
+-- GOOD: Function declares its actual requirement
+frame-setup-star : ... → StackCapacity s 5 → ...  -- 3 pushes + sub 16 = 5 slots
+```
+
+**How to determine the right capacity**:
+1. Count the actual stack operations the function performs
+2. Include ALL allocations: pushes, `sub rsp`, etc.
+3. The capacity should equal the maximum stack depth relative to the starting rsp
+
+**Example - pair frame setup**:
+```
+push r14        ; 1 slot
+push r15        ; 1 slot
+push rbp        ; 1 slot
+sub rsp, 16     ; 2 slots
+--------------------------
+Total: 5 slots
+```
+
+So `frame-setup-star` needs `StackCapacity s 5`, not `StackCapacity s 3`.
+
+**Benefits of exact requirements**:
+1. **Self-documenting**: The type signature tells you exactly what resources are consumed
+2. **No hidden costs**: Callers know precisely what they're providing
+3. **Composable**: Capacity arithmetic is straightforward (no weak≤ chains)
+4. **Debuggable**: If a proof fails, the capacity mismatch is immediately visible
+
+**Naming convention**: Use abstract names like `rsp-bound` instead of concrete byte counts like `rsp-gt-24`, since `slots n` is abstract and shouldn't leak byte representations.
+
+---
+
 ## Trusted Computing Base (TCB)
 
 For a complete list of what is proven and what is postulated, see [What Is Proven](what-is-proven.md).

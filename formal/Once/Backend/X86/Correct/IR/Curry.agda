@@ -794,9 +794,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ slots 2
     rsp-change = rsp-s7
 
-    -- 33 ≤ 41 via simple m≤m+n (constant fact, not variable arithmetic)
+    -- 33 ≤ 57 via simple m≤m+n (constant fact, not variable arithmetic)
     rsp>32 : readReg (regs s) rsp > slots 4
-    rsp>32 = ≤-trans (m≤m+n 33 8) (rsp-bound-after-stack-op s)
+    rsp>32 = ≤-trans (m≤m+n 33 24) (rsp-bound-after-stack-op s)
 
     input-capacity : StackCapacity s 4
     input-capacity = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>32

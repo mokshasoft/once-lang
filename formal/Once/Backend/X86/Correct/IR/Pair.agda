@@ -21,6 +21,7 @@ open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-bound-to-capacity; pair-stack-capacity; slots; slot-size;
+         rsp-in-stack; rsp-sufficient; capacity-maintained; slots-mono-≤;
          -- Abstract interface (D041-compliant, no arithmetic in types)
          pair-frame-0; pair-frame-slot-0-in-stack; pair-frame-slot-1-in-stack;
          pair-frame-0-addr-eq; pair-frame-slot-1-addr-eq;
@@ -48,7 +49,7 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
 
 open import Data.Nat using (_>_; _≥_)
 open import Function using (case_of_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; +-monoʳ-<; <-trans; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; ≤-<-trans; +-monoʳ-<; <-trans; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -58,10 +59,15 @@ open ≡-Reasoning
 -- Capacity Helper (D041 Refactoring)
 ------------------------------------------------------------------------
 -- Centralized capacity-5 creation to avoid repeated pattern:
---   rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+--   Derives rsp > slots 5 from postulate rsp > slots 7 via slot monotonicity
 
 mk-capacity-5 : (s : State) → StackCapacity s 5
-mk-capacity-5 s = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+mk-capacity-5 s = rsp-bound-to-capacity 5 s (rsp-in-stack-after-stack-op s) rsp>slots5
+  where
+    5≤7 : 5 ≤ 7
+    5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+    rsp>slots5 : readReg (regs s) rsp > slots 5
+    rsp>slots5 = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-bound-after-stack-op s)
 
 ------------------------------------------------------------------------
 -- Abstract Interface Bridging (D041 Migration)
@@ -405,13 +411,15 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase and compute all properties
+-- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining capacity
 pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
+  StackCapacity s 7 →
   PairSetupResult f g prefix suffix x s
-pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
+pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = record
   { s-setup = s-setup
   ; h-setup = h-setup
   ; pc-setup-f = pc-setup-f
@@ -436,16 +444,19 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
 
-    -- Derive rsp > slots 3 from rsp > slots 5 (from postulate)
-    rsp>24 : readReg (regs s) rsp > slots 3
-    rsp>24 = ≤-trans 25≤41 (rsp-bound-after-stack-op s)
+    -- Construct StackCapacity s 5 from cap7 for frame-setup-star
+    cap5 : StackCapacity s 5
+    cap5 = record
+      { rsp-in-stack = rsp-in-stack cap
+      ; rsp-sufficient = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-sufficient cap)
+      ; capacity-maintained = λ k k≤5 → capacity-maintained cap k (≤-trans k≤5 5≤7)
+      }
       where
-        open import Data.Nat.Properties using (≤-trans)
-        25≤41 : 25 ≤ 41
-        25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+        5≤7 : 5 ≤ 7
+        5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
 
-    -- Execute 7 setup instructions - returns FrameSetupResult with Star proof
-    setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq rsp>24
+    -- Execute 7 setup instructions
+    setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq cap5
 
     -- Open FrameSetupResult with renaming to match existing variable names
     open FrameSetupResult setup-result
@@ -482,16 +493,37 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq = record
     -- Uses pair-setup-stack-inv from StackInvariant (encapsulates arithmetic)
     stack-inv-setup : StackInvariant s-setup
     stack-inv-setup = pair-setup-stack-inv s s-setup cap5 r15-setup rsp-setup
-      where
-        -- StackCapacity from runtime bound (postulate)
-        cap5 : StackCapacity s 5
-        cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
 
+    -- After setup, rsp-setup = orig-rsp ∸ slots 5. We need rsp-setup > slots 2.
+    -- From cap: orig-rsp > slots 7 (i.e., > 56)
+    -- So rsp-setup = orig-rsp - 40 > 56 - 40 = 16 = slots 2 ✓
     rsp-sufficient-setup : readReg (regs s-setup) rsp > slots 2
-    rsp-sufficient-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
+    rsp-sufficient-setup = subst (_> slots 2) (sym rsp-setup) rsp∸40>16
       where
-        17≤41 : 17 ≤ 41
-        17≤41 = m≤m+n 17 24
+        open import Data.Nat.Properties using (+-cancelʳ-<; m∸n+n≡m; <⇒≤)
+        orig-rsp = readReg (regs s) rsp
+        -- From cap: rsp > slots 7, so rsp > 56, meaning rsp ≥ 57
+        rsp>56 : orig-rsp > slots 7
+        rsp>56 = rsp-sufficient cap
+        -- 40 ≤ 56 < rsp, so 40 ≤ rsp
+        40≤rsp : slots 5 ≤ orig-rsp
+        40≤rsp = <⇒≤ (≤-<-trans (slots-mono-≤ 5≤7) rsp>56)
+          where
+            5≤7 : 5 ≤ 7
+            5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+        -- rsp - 40 + 40 = rsp (since 40 ≤ rsp)
+        rsp∸40+40≡rsp : (orig-rsp ∸ slots 5) +ℕ slots 5 ≡ orig-rsp
+        rsp∸40+40≡rsp = m∸n+n≡m 40≤rsp
+        -- Need: rsp - 40 > 16, i.e., 17 ≤ rsp - 40
+        -- From rsp > 56: rsp ≥ 57, so rsp - 40 ≥ 17
+        rsp∸40>16 : orig-rsp ∸ slots 5 > slots 2
+        rsp∸40>16 = +-cancelʳ-< (slots 5) (slots 2) (orig-rsp ∸ slots 5) bound
+          where
+            -- slots 2 + slots 5 = 16 + 40 = 56 = slots 7
+            -- (rsp - 40) + 40 = rsp
+            -- Need: 56 < rsp, which is rsp > slots 7
+            bound : slots 2 +ℕ slots 5 < (orig-rsp ∸ slots 5) +ℕ slots 5
+            bound = subst (slots 7 <_) (sym rsp∸40+40≡rsp) rsp>56
 
     -- Memory at address 0 is preserved through setup
     -- Extracted directly from frame-setup-star result
@@ -532,12 +564,14 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase (validity-based, no encode input)
+-- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining capacity
 pair-setup-star-v : ∀ {A B C} (f : IR C A) (g : IR C B)
                     (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
+  StackCapacity s 7 →
   PairSetupResultV f g prefix suffix x s
-pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq = record
+pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
   { s-setup = s-setup
   ; h-setup = h-setup
   ; pc-setup-f = pc-setup-f
@@ -561,14 +595,19 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq = record
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
 
-    rsp>24 : readReg (regs s) rsp > slots 3
-    rsp>24 = ≤-trans 25≤41 (rsp-bound-after-stack-op s)
+    -- Construct StackCapacity s 5 from cap7 for frame-setup-star
+    cap5 : StackCapacity s 5
+    cap5 = record
+      { rsp-in-stack = rsp-in-stack cap
+      ; rsp-sufficient = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-sufficient cap)
+      ; capacity-maintained = λ k k≤5 → capacity-maintained cap k (≤-trans k≤5 5≤7)
+      }
       where
-        open import Data.Nat.Properties using (≤-trans)
-        25≤41 : 25 ≤ 41
-        25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+        5≤7 : 5 ≤ 7
+        5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
 
-    setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq rsp>24
+    -- Execute 7 setup instructions
+    setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq cap5
 
     open FrameSetupResult setup-result
       renaming ( s-setup to s-setup-rec
@@ -598,15 +637,29 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq = record
 
     stack-inv-setup : StackInvariant s-setup
     stack-inv-setup = pair-setup-stack-inv s s-setup cap5 r15-setup rsp-setup
-      where
-        cap5 : StackCapacity s 5
-        cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
 
+    -- After setup, rsp-setup = orig-rsp ∸ slots 5. We need rsp-setup > slots 2.
+    -- From cap: orig-rsp > slots 7 (i.e., > 56)
+    -- So rsp-setup = orig-rsp - 40 > 56 - 40 = 16 = slots 2 ✓
     rsp-sufficient-setup : readReg (regs s-setup) rsp > slots 2
-    rsp-sufficient-setup = ≤-trans 17≤41 (rsp-bound-after-stack-op s-setup)
+    rsp-sufficient-setup = subst (_> slots 2) (sym rsp-setup) rsp∸40>16
       where
-        17≤41 : 17 ≤ 41
-        17≤41 = m≤m+n 17 24
+        open import Data.Nat.Properties using (+-cancelʳ-<; m∸n+n≡m; <⇒≤)
+        orig-rsp = readReg (regs s) rsp
+        rsp>56 : orig-rsp > slots 7
+        rsp>56 = rsp-sufficient cap
+        40≤rsp : slots 5 ≤ orig-rsp
+        40≤rsp = <⇒≤ (≤-<-trans (slots-mono-≤ 5≤7) rsp>56)
+          where
+            5≤7 : 5 ≤ 7
+            5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+        rsp∸40+40≡rsp : (orig-rsp ∸ slots 5) +ℕ slots 5 ≡ orig-rsp
+        rsp∸40+40≡rsp = m∸n+n≡m 40≤rsp
+        rsp∸40>16 : orig-rsp ∸ slots 5 > slots 2
+        rsp∸40>16 = +-cancelʳ-< (slots 5) (slots 2) (orig-rsp ∸ slots 5) bound
+          where
+            bound : slots 2 +ℕ slots 5 < (orig-rsp ∸ slots 5) +ℕ slots 5
+            bound = subst (slots 7 <_) (sym rsp∸40+40≡rsp) rsp>56
 
 ------------------------------------------------------------------------
 -- Middle Result: state after 2 middle instructions (store f result, restore input)
@@ -956,7 +1009,7 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
 
     -- r15 in s1 is in stack region
     cap5 : StackCapacity s 5
-    cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
+    cap5 = mk-capacity-5 s
 
     s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
     s1-r15-region = subst (λ addr → region-of addr ≡ stack)
@@ -3136,10 +3189,7 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
                (readReg-writeReg-same (regs s6) rbp v-rbp)))))
 
       rsp-sufficient-s9 : readReg (regs s9) rsp > slots 2
-      rsp-sufficient-s9 = ≤-trans 17≤41 (rsp-bound-after-stack-op s9)
-        where
-          17≤41 : 17 ≤ 41
-          17≤41 = m≤m+n 17 24
+      rsp-sufficient-s9 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s9)
 
       -- ========== Stack invariant proof (via restored rsp and r15) ==========
       -- After the pop sequence: rsp-s9 = rsp-s and r15-s9 = r15-s
