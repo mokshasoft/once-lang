@@ -1,6 +1,6 @@
 # Plan: Eliminate Stack Postulates via StackCapacity Threading
 
-## Current Status (2026-01-15)
+## Current Status (2026-01-16)
 
 ### Completed:
 - [x] Phase 1: Add ir-frame-slots and ir-input-capacity to StackInstantiation.agda
@@ -11,18 +11,49 @@
 - [x] Phase 3d: Update MutualIR.agda base cases to convert rsp-sufficient → StackCapacity
 - [x] Refactor Pair.agda: remove function definitions from where clauses (performance fix)
 - [x] Add stackBase-in-stack postulate to InitState.agda (specific vs blanket)
+- [x] Phase 3e: Change dispatcher signature to take StackCapacity
+  - Changed `run-ir-star-at-offset-v` to take `StackCapacity s 2` instead of `rsp-sufficient`
+  - Updated `run-curry-star-v`, `run-apply-star-v`, and all dispatcher cases
+  - Postulate usage now consolidated at: `run-ir-star` entry point, `curry-thunk-correct-impl`
+- [x] Phase 4: Update IR/Inl.agda and IR/Inr.agda to take StackCapacity
+  - Changed `run-inl-star-v-auto` and `run-inr-star-v-auto` to take `StackCapacity s 2`
+  - Dispatcher now passes `cap-in` directly without extracting `rsp-sufficient`
+  - Internal helper functions still use postulate (can be cleaned up later)
+- [x] Phase 5: Update IR/Curry.agda to take StackCapacity
+  - Changed `run-curry-star` and `run-curry-star-v` to take `StackCapacity s 2`
+  - Updated `run-curry-star-with-wf` in MutualIR.agda
+  - Internal uses converted from `rsp-sufficient` to `rsp-bound` (extracted from cap)
+- [x] Refactor MutualIR.agda: remove function definitions from where clauses (performance fix)
+  - Added private block with `m∸n<m-when-positive` and `rsp<rsp+slot` helpers
+  - Removed nested function definitions from `thunk-preserves-above-entry-rsp-proof`
+  - Simplified nested where clause in `thunk-preserves-frame-proof`
 
 ### Remaining:
-- [ ] Phase 3e: Change dispatcher signature to take StackCapacity (invasive)
-- [ ] Phase 4: Update IR/Inl.agda and IR/Inr.agda to take StackCapacity
-- [ ] Phase 5: Update IR/Curry.agda and IR/Apply.agda to take StackCapacity
-- [ ] Phase 6b: Complete InitState postulate elimination
+- [x] Phase 6b: Complete InitState postulate elimination
+  - Changed `run-ir-star` to take `StackCapacity s 2` instead of `rsp > slots 2`
+  - Updated `run-generator`, `codegen-x86-correct`, `compose-with-star`, etc. in Correct.agda
+  - Updated `run-ir-star-whole-program`, `whole-program-correct` in WholeProgram.agda
+  - Entry point now uses `initWithInput-stack-capacity` (from specific `stackBase-in-stack` postulate)
+  - Blanket `rsp-in-stack-after-stack-op` no longer used at entry points
 - [ ] Phase 7: Delete postulates from Postulates.agda
+  - NOTE: Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`) still used in 14 internal files
+  - Entry points now use specific `stackBase-in-stack` postulate instead
+  - Full elimination requires threading StackCapacity through all internal operations
+  - Current status: postulates can't be deleted yet, but usage is more localized
+- [ ] Phase 8: Apply "no functions in where clauses" refactoring to all X86 backend files
+  - Pattern: Move function definitions from where clauses to private module-level blocks
+  - Keep only simple variable bindings (val = expr) in where clauses
+  - Files to check: IR/Apply.agda, IR/Curry.agda, IR/Inl.agda, IR/Inr.agda, IR/Pair.agda,
+    IR/ThunkExec.agda, IR/ThunkStructure.agda, StarBase.agda, StackInstantiation.agda,
+    ClosureWellFormed.agda, MutualIR/Compose.agda, MutualIR/Case.agda, and others
+  - See Pair.agda and MutualIR.agda for reference patterns
 
 ### Notes:
 - Build passes in current hybrid state
-- 13 files still use blanket `rsp-in-stack-after-stack-op` at conversion points
-- Phase 3e (dispatcher signature change) is the major remaining work
+- Entry points (Correct.agda, WholeProgram.agda) now use `initWithInput-stack-capacity`
+  which uses the specific `stackBase-in-stack` postulate
+- Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`)
+  still used in internal files when constructing StackCapacity after state changes
 - See `docs/formal/historical/lessons-learned.md` for "no functions in where clauses" rule
 
 ---

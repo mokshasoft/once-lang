@@ -94,7 +94,7 @@ open import Once.Backend.X86.Correct.SeqExec public
 open import Once.Backend.X86.Correct.MutualIR public
 
 -- Import semantic stack constants
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_)
@@ -227,23 +227,24 @@ open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 
 -- | Compose two IR computations using Star (validity-based)
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
+-- Takes StackCapacity directly - caller provides the capacity proof.
 compose-with-star : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ 0 →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     ∃[ s' ] (Star (compile-x86 (g ∘ f)) s s'
            × halted s' ≡ false
            × ValidAt (eval (g ∘ f) x) (readReg (regs s') rax) (memory s'))
-compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
+compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-inv cap-in rbp-inv =
     s-final , star-proof , h-final , result-valid
   where
     open import Data.List.Properties using (++-identityʳ)
 
     -- Use run-ir-star (Star-based, validity input)
-    result = run-ir-star (g ∘ f) [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
+    result = run-ir-star (g ∘ f) [] [] caller-sp x s h-false pc-0 input-valid stack-inv cap-in rbp-inv
     s-final = proj₁ result
     r = proj₂ result
     h-final = IRStarResultV.ir-halted r
@@ -270,22 +271,23 @@ compose-with-star {A} {B} {C} f g caller-sp x s h-false pc-0 input-valid stack-i
 -- | Detailed Star-based compose showing the 3-step composition (validity-based)
 -- Uses run-ir-star directly - no fuel conversion needed
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
+-- Takes StackCapacity directly - caller provides the capacity proof.
 run-ir-star-compose-internal : ∀ {A B C} (f : IR A B) (g : IR B C)
     (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix in
     ∃[ s' ] (Star prog s s'
            × halted s' ≡ false
            × ValidAt (eval (g ∘ f) x) (readReg (regs s') rax) (memory s'))
-run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv =
+run-ir-star-compose-internal {A} {B} {C} f g prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   let
     -- Use run-ir-star (Star-based, validity input)
-    result = run-ir-star (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv stack-cap rbp-inv
+    result = run-ir-star (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
     s-final = proj₁ result
     r = proj₂ result
   in
@@ -359,13 +361,14 @@ step-halted-stable prog s h-true with halted s
 
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 -- Validity-based: takes ValidAt input, returns ValidAt output
+-- Takes StackCapacity directly - caller provides the capacity proof.
 run-generator : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ 0 → ValidAt x (readReg (regs s) rdi) (memory s) →
-  StackInvariant s → readReg (regs s) rsp > slots 2 → RbpInvariant s →
+  StackInvariant s → StackCapacity s 2 → RbpInvariant s →
   ∃[ s' ] (Star (compile-x86 ir) s s'
          × halted s' ≡ true
          × ValidAt (eval ir x) (readReg (regs s') rax) (memory s'))
-run-generator {A} {B} ir caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
+run-generator {A} {B} ir caller-sp x s h-false pc-0 input-valid stack-inv cap-in rbp-inv =
   s-halted , star-full , halted-true , result-valid
   where
     open import Data.List.Properties using (++-identityʳ)
@@ -374,7 +377,7 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 input-valid stack-inv stack-
     prog = compile-x86 ir
 
     -- Use run-ir-star (Star-based, validity input)
-    result = run-ir-star ir [] [] caller-sp x s h-false pc-0 input-valid stack-inv stack-cap rbp-inv
+    result = run-ir-star ir [] [] caller-sp x s h-false pc-0 input-valid stack-inv cap-in rbp-inv
     s' = proj₁ result
     r = proj₂ result
 
@@ -433,19 +436,20 @@ run-generator {A} {B} ir caller-sp x s h-false pc-0 input-valid stack-inv stack-
 
 -- caller-sp: StackPointer representing the caller's stack frame (D041)
 -- Validity-based: takes ValidAt input, returns ValidAt output
+-- Takes StackCapacity directly - caller provides the capacity proof.
 run-seq-compose : ∀ {A B C} (f : IR A B) (g : IR B C) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s0 : State) →
   halted s0 ≡ false →
   pc s0 ≡ 0 →
   ValidAt x (readReg (regs s0) rdi) (memory s0) →
   StackInvariant s0 →
-  readReg (regs s0) rsp > slots 2 →
+  StackCapacity s0 2 →
   RbpInvariant s0 →
   -- After running g ∘ f: exists s2 with Star trace and result validity
   ∃[ s2 ] (Star (compile-x86 (g ∘ f)) s0 s2
          × halted s2 ≡ true
          × ValidAt (eval g (eval f x)) (readReg (regs s2) rax) (memory s2))
-run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 input-valid stack-inv stack-cap rbp-inv =
-  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 input-valid stack-inv stack-cap rbp-inv
+run-seq-compose {A} {B} {C} f g caller-sp x s0 h-false pc-0 input-valid stack-inv cap-in rbp-inv =
+  run-generator (g ∘ f) caller-sp x s0 h-false pc-0 input-valid stack-inv cap-in rbp-inv
 
 ------------------------------------------------------------------------
 -- Code generation correctness
@@ -467,10 +471,10 @@ codegen-x86-correct : ∀ {A B} (ir : IR A B) (caller-sp : StackPointer) (x : �
 codegen-x86-correct ir caller-sp x =
   let -- Entry bridge: encode → validity (the one remaining bridge)
       input-valid = valid-from-encode (initWithInput-rdi x)
-      -- Run with validity
+      -- Run with validity - use initWithInput-stack-capacity (from specific stackBase-in-stack postulate)
       (s' , star-eq , halt-eq , result-valid) = run-generator ir caller-sp x (initWithInput x)
         (initWithInput-halted x) (initWithInput-pc x) input-valid
-        (initWithInput-stack-inv x) (initWithInput-rsp-sufficient x) (initWithInput-rbp-inv x)
+        (initWithInput-stack-inv x) (initWithInput-stack-capacity x) (initWithInput-rbp-inv x)
   in s' , star-eq , halt-eq , result-valid
 
 ------------------------------------------------------------------------

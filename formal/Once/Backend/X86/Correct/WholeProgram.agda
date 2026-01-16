@@ -72,7 +72,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound; StackCapacity)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
@@ -87,7 +87,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; CurryResult;
          curry-star; curry-halted; curry-pc; curry-result-valid;
          curry-r14; curry-r15; curry-rbp;
-         curry-stack-inv; curry-rsp-bound; closure-wf)
+         curry-stack-inv; curry-capacity; closure-wf)
 open import Once.Backend.X86.Correct.ClosureContext
   using (ApplyMemoryLayout; run-apply-with-full-wf; CurryOutputWF)
 
@@ -256,13 +256,14 @@ from-modular-v s' r = record
 -- (D041: used for intra-stack memory preservation via sp-distinct)
 --
 -- VALIDITY-BASED API: Takes ValidAt instead of encode equality
+-- Takes StackCapacity directly - caller provides the capacity proof.
 run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →  -- Validity-based input
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
@@ -270,13 +271,13 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
 
 -- Curry case: produce has-closure-mem with full memory layout
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
-run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
+run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv _ =
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
       -- Get CurryExecResult and CurryMemoryResult from run-curry-star (uses validity directly)
       (s' , exec-res , curry-mem-res) = run-curry-star f prefix suffix x s
-                            h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+                            h-eq pc-eq input-valid stack-inv cap-in rbp-inv
       -- Get code-ptr from memory result and prove it equals thunk-offset
       mem-code-ptr = code-ptr curry-mem-res
       cp-eq : mem-code-ptr ≡ thunk-offset
@@ -305,7 +306,7 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
 -- POSTULATES FOR APPLY MEMORY LAYOUT:
 -- These capture the semantic property that when a closure is in context,
 -- the pair has properly set up the memory layout for apply.
-run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv wf-in =
+run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv wf-in =
   apply-with-wf-check wf-in
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -314,7 +315,7 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     apply-fallback : ∃[ s' ] WholeProgramResult (apply {A} {B}) prog s s' x (length prefix)
     apply-fallback =
       let (s' , result-v) = run-ir-star (apply {A} {B}) prefix suffix caller-sp x s
-                              h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+                              h-eq pc-eq input-valid stack-inv cap-in rbp-inv
       in s' , from-modular-v s' result-v
 
     -- Pattern match on wf-in
@@ -332,9 +333,9 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     --   3. Call run-apply-with-full-wf with the WF proof
 
 -- All other cases: use validity-based modular runner
-run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv wf-in =
+run-ir-star-whole-program ir prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv wf-in =
   let (s' , result-v) = run-ir-star ir prefix suffix caller-sp x s
-                          h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+                          h-eq pc-eq input-valid stack-inv cap-in rbp-inv
   in s' , from-modular-v s' result-v
 
 ------------------------------------------------------------------------
@@ -358,21 +359,21 @@ whole-program-correct : ∀ {A B} (ir : IR A B)
   pc s ≡ 0 →
   ValidAt x (readReg (regs s) rdi) (memory s) →  -- Input validity
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = compile-x86 ir
   in ∃[ s' ] (Star prog s s'
             × halted s' ≡ false
             × pc s' ≡ compile-length ir
             × ValidAt (eval ir x) (readReg (regs s') rax) (memory s'))  -- Output validity
-whole-program-correct ir caller-sp x s h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+whole-program-correct ir caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv =
   let code = compile-x86 ir
       -- [] ++ code ++ [] ≡ code ++ [] ≡ code
       prog-eq : [] ++ code ++ [] ≡ code
       prog-eq = ++-identityʳ code
       -- Run with empty prefix/suffix using validity-based dispatcher
       (s' , result) = run-ir-star ir [] [] caller-sp x s
-                        h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+                        h-eq pc-eq input-valid stack-inv cap-in rbp-inv
       -- Transport result to the simplified program
       star' = subst (λ p → Star p s s') prog-eq (IRStarResultV.ir-star result)
   in s' , star' , IRStarResultV.ir-halted result , IRStarResultV.ir-pc result , IRStarResultV.ir-result-valid result

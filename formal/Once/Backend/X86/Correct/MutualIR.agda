@@ -166,6 +166,21 @@ open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
 ------------------------------------------------------------------------
+-- Private helpers to avoid function definitions in where clauses
+-- (Improves typechecking performance by defining once at module level)
+------------------------------------------------------------------------
+private
+  -- Helper: m ∸ n < m when both m > 0 and n > 0
+  m∸n<m-when-positive : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+  m∸n<m-when-positive (suc m') (suc n') _ _ = s≤s (Data.Nat.Properties.m∸n≤m m' n')
+    where open import Data.Nat.Properties using (m∸n≤m)
+
+  -- Helper: rsp < rsp + 8 (for slot address proofs)
+  rsp<rsp+slot : ∀ (rsp-val : ℕ) → rsp-val < rsp-val +ℕ slot-size
+  rsp<rsp+slot rsp-val = Data.Nat.Properties.m<m+n rsp-val (s≤s z≤n)
+    where open import Data.Nat.Properties using (m<m+n)
+
+------------------------------------------------------------------------
 -- Star-Based Mutual Block - Concrete Dispatcher
 --
 -- This mutual block contains:
@@ -184,12 +199,13 @@ mutual
   -- | Validity-based IR execution dispatcher (with Acc for termination)
   -- Takes ValidAt input, returns IRStarResultV with validity output
   -- Acc proof ensures termination via well-founded recursion on ir-size
+  -- NOTE: Takes StackCapacity directly to eliminate rsp-in-stack-after-stack-op postulate
   run-ir-star-at-offset-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     Acc _<_ (ir-size ir) →
     let prog = prefix ++ compile-x86 ir ++ suffix
@@ -206,12 +222,12 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
     s' , record
       { ir-star = exec-star exec-res
       ; ir-halted = exec-halted exec-res
@@ -240,7 +256,7 @@ mutual
       -- Call curry with validity (no bridges!)
       curry-result : ∃[ s' ] (CurryExecResult f prog s s' x offset
                               × CurryMemoryResult f prog s' x offset)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
 
       s' : State
       s' = proj₁ curry-result
@@ -366,12 +382,12 @@ mutual
     -- Key: ValidAt for input (replaces rdi-eq)
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
-  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+  run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv ac =
     s' , record
       { curry-star = exec-star exec-res
       ; curry-halted = exec-halted exec-res
@@ -390,7 +406,7 @@ mutual
       offset = length prefix
 
       -- Get CurryExecResult from curry proof (no bridges!)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
       s' = proj₁ curry-result
       exec-res = proj₁ (proj₂ curry-result)
       curry-mem-res = proj₂ (proj₂ curry-result)
@@ -633,9 +649,13 @@ mutual
 
       -- Call validity-based dispatcher with smaller Acc proof
       -- NOTE: Inlining (smaller-acc (curry-smaller f)) for termination checker visibility
+      -- Construct StackCapacity from rsp-sufficient-setup (uses postulate at this conversion point)
+      cap-setup : StackCapacity s-after-setup 2
+      cap-setup = rsp-bound-to-capacity 2 s-after-setup (rsp-in-stack-after-stack-op s-after-setup) rsp-sufficient-setup
+
       step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f-v = run-ir-star-at-offset-v f prefix-f suffix-f caller-sp (env , arg) s-after-setup
-                   h-setup pc-setup-f input-valid-f stack-inv-setup rsp-sufficient-setup rbp-inv-setup
+                   h-setup pc-setup-f input-valid-f stack-inv-setup cap-setup rbp-inv-setup
                    (smaller-acc (curry-smaller f))
 
       s-after-f-raw : State
@@ -1212,13 +1232,11 @@ mutual
 
           -- D041 PROVEN: Caller slots are above initial rsp
           -- From caller-sp.addr = rsp + 8 and slot-addr ≥ addr caller-sp
+          -- Use private rsp<rsp+slot helper instead of nested where clause
+          rsp+8≤slot : readReg (regs s) rsp +ℕ slot-size ≤ the-slot-addr
+          rsp+8≤slot = subst (_≤ the-slot-addr) caller-sp-bound (slot-addr-≥-base caller-sp k)
           slot-addr>rsp : the-slot-addr > readReg (regs s) rsp
-          slot-addr>rsp = <-≤-trans rsp<rsp+8 rsp+8≤slot
-            where
-              rsp<rsp+8 : readReg (regs s) rsp < readReg (regs s) rsp +ℕ slot-size
-              rsp<rsp+8 = m<m+n (readReg (regs s) rsp) (s≤s z≤n)
-              rsp+8≤slot : readReg (regs s) rsp +ℕ slot-size ≤ the-slot-addr
-              rsp+8≤slot = subst (_≤ the-slot-addr) caller-sp-bound (slot-addr-≥-base caller-sp k)
+          slot-addr>rsp = <-≤-trans (rsp<rsp+slot (readReg (regs s) rsp)) rsp+8≤slot
 
           -- D041 PROVEN: Setup preserves caller's slot addresses
           -- Uses mem-above-setup which requires addr > original rsp
@@ -1299,14 +1317,11 @@ mutual
           ≡⟨ mem-above-setup addr addr>rsp ⟩
         readMem (memory s) addr ∎
         where
-          open import Data.Nat.Properties using (<-trans; m∸n≤m)
-          open import Data.Nat using (s≤s; z≤n)
-          -- Helper: m ∸ n < m when m > 0 and n > 0
-          m∸n<m' : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-          m∸n<m' (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+          open import Data.Nat.Properties using (<-trans)
           -- addr > rsp > rsp - 16 = rbp-after-setup
+          -- Use private m∸n<m-when-positive helper instead of local definition
           rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ slots 2
-          rsp>rsp-16 = m∸n<m' (readReg (regs s) rsp) (slots 2) (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
+          rsp>rsp-16 = m∸n<m-when-positive (readReg (regs s) rsp) (slots 2) (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
           addr>rbp : addr > readReg (regs s-after-setup) rbp
           addr>rbp = subst (addr >_) (sym rbp-setup) (<-trans rsp>rsp-16 addr>rsp)
 
@@ -1468,14 +1483,14 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
     -- run-curry-star-direct takes validity input directly, passes Acc for thunk execution
-    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
+    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
 
   -- | Validity-based apply execution (with Acc for termination)
   -- Simple passthrough to run-apply-star-direct (which now takes validity input and Acc)
@@ -1484,27 +1499,27 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s 2 →
     RbpInvariant s →
     Acc _<_ (ir-size (apply {A} {B})) →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
+  run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
     -- run-apply-star-direct takes validity input directly, returns IRStarResultV
-    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
+    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv (StackCapacity.rsp-sufficient cap-in) rbp-inv ac
 
   ------------------------------------------------------------------------
   -- Validity-based dispatcher cases (IN mutual block)
   ------------------------------------------------------------------------
 
   -- Direct validity-based execution for inl (base case, ignores Acc)
-  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity-based execution for inr (base case, ignores Acc)
-  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
-  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv (acc rs) =
+  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
         rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size ⟨ f , g ⟩ →
               (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
@@ -1514,12 +1529,11 @@ mutual
               let prog' = prefix' ++ compile-x86 ir' ++ suffix'
               in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' (StackCapacity.rsp-sufficient cap-in') rbp-inv' (rs lt)
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
         open PairModule (ir-size ⟨ f , g ⟩) rec
-        cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
     in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
-  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv (acc rs) =
+  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
         rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size (g ∘ f) →
               (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
@@ -1529,40 +1543,33 @@ mutual
               let prog' = prefix' ++ compile-x86 ir' ++ suffix'
               in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' (StackCapacity.rsp-sufficient cap-in') rbp-inv' (rs lt)
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
         open ComposeModule (ir-size (g ∘ f)) rec
-        cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
     in run-compose-star-v f g (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for id (base case, ignores Acc)
-  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    let cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-    in run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for terminal (base case, ignores Acc)
-  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    let cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-    in run-terminal-star-vv prefix suffix x s h-false pc-eq stack-inv cap-in rbp-inv
+  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-terminal-star-vv prefix suffix x s h-false pc-eq stack-inv cap-in rbp-inv
   -- Direct validity for fold (base case, ignores Acc)
-  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    let cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-    in run-fold-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-fold-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for unfold (base case, ignores Acc)
-  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    let cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-    in run-unfold-star-vv prefix suffix (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-unfold-star-vv prefix suffix (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for arr (base case, ignores Acc)
-  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
-    let cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-    in run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+    run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
+  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
     let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
-        cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
     in run-prim-star-vv name prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
   -- Initial: absurd case (base case, ignores Acc)
-  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
+  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
     ⊥-elim x
   -- fst: decompose pair validity (base case, ignores Acc)
-  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
+  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -1571,10 +1578,9 @@ mutual
         va = proj₁ (proj₂ (proj₂ decomp))
         vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
-        cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
     in run-fst-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
   -- snd: decompose pair validity (base case, ignores Acc)
-  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
+  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -1583,10 +1589,9 @@ mutual
         va = proj₁ (proj₂ (proj₂ decomp))
         vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
-        cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
     in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
   -- case: uses Acc to construct size-bounded dispatcher for parameterized module
-  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv (acc rs) =
+  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
         rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size [ f , g ] →
               (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
@@ -1596,16 +1601,15 @@ mutual
               let prog' = prefix' ++ compile-x86 ir' ++ suffix'
               in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' (StackCapacity.rsp-sufficient cap-in') rbp-inv' (rs lt)
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
         open CaseModule (ir-size [ f , g ]) rec
-        cap-in = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
     in run-case-star-v f g ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
-  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
-    run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
+  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
+    run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
   -- apply: passes Acc to recursive calls (closure body execution)
-  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac =
-    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv ac
+  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
+    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
 
 ------------------------------------------------------------------------
 -- Public API: run-ir-star (provides initial Acc using <-wellFounded)
@@ -1617,15 +1621,17 @@ mutual
 
 -- | Execute IR with validity-based input/output (public API)
 -- Provides initial Acc using <-wellFounded
+-- NOTE: Takes StackCapacity directly - caller provides the capacity proof.
+-- This eliminates rsp-in-stack-after-stack-op postulate at the entry point.
 run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
-run-ir-star ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  run-ir-star-at-offset-v ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
-    (<-wellFounded (ir-size ir))
+run-ir-star ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+  run-ir-star-at-offset-v ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+       (<-wellFounded (ir-size ir))

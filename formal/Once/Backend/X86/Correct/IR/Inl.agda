@@ -987,28 +987,24 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rsp
 ------------------------------------------------------------------------
 
 -- | Validity-based inl with automatic disjointness derivation
--- Takes same parameters as run-ir-star-at-offset-v but derives addr-neq proofs
+-- Takes StackCapacity directly (eliminates rsp-in-stack-after-stack-op postulate usage)
 run-inl-star-v-auto : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inl {A} {B}) prog s s' x (length prefix)
-run-inl-star-v-auto {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
-  run-inl-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+run-inl-star-v-auto {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
+  run-inl-star-v prefix suffix x s h-false pc-eq input-valid stack-inv (StackCapacity.rsp-sufficient cap) rbp-inv
     addr-neq-1 addr-neq-2
   where
     rsp-val = readReg (regs s) rsp
     rdi-val = readReg (regs s) rdi
 
-    -- Get StackCapacity from rsp bound
-    cap : StackCapacity s 2
-    cap = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-
-    -- Stack slot addresses are in stack region
+    -- Stack slot addresses are in stack region (uses cap directly, no postulate!)
     slots-in-stack : (region-of (rsp-val ∸ slots 2) ≡ stack) × (region-of ((rsp-val ∸ slots 2) +ℕ slot-size) ≡ stack)
     slots-in-stack = alloc-2-slots-addrs-in-stack s cap
 

@@ -103,17 +103,18 @@ open CurryExecResult public
 -- Main curry proof (validity-based, no encode)
 ------------------------------------------------------------------------
 
+-- | Main curry proof (takes StackCapacity directly to eliminate postulate usage)
 run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (CurryExecResult f prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
   s-final , record
     { exec-star = star-all
     ; exec-halted = h-final
@@ -144,6 +145,10 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
   where
     len-f = compile-length f
     prog = prefix ++ compile-x86 (curry f) ++ suffix
+
+    -- Extract rsp bound from StackCapacity for internal use
+    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound = StackCapacity.rsp-sufficient cap
 
     -- Track original rdi (env address from input)
     orig-rdi : ℕ
@@ -566,7 +571,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap2)
       where
         cap2 : StackCapacity s 2
-        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
 
     orig-rdi≢new-rsp : orig-rdi ≢ new-rsp
     orig-rdi≢new-rsp eq = stack-heap-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
@@ -583,7 +588,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap2)
       where
         cap2 : StackCapacity s 2
-        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
 
     orig-rdi≢new-rsp+8 : orig-rdi ≢ new-rsp +ℕ slot-size
     orig-rdi≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
@@ -641,7 +646,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     orig-r15 = readReg (regs s) r15
 
     addr-diff : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ slot-size) ≢ orig-r15)
-    addr-diff = addr-diff-from-invariant s stack-inv (rsp-in-stack-after-stack-op s) rsp-sufficient
+    addr-diff = addr-diff-from-invariant s stack-inv (rsp-in-stack-after-stack-op s) rsp-bound
 
     mem-s1-eq : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
     mem-s1-eq = refl
@@ -679,11 +684,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- D041: All rbp/rbp+8 disjointness proofs via abstract helper
     rbp-diffs : (new-rsp ≢ orig-rbp) × ((new-rsp +ℕ slot-size) ≢ orig-rbp) ×
                 (new-rsp ≢ orig-rbp +ℕ slot-size) × ((new-rsp +ℕ slot-size) ≢ orig-rbp +ℕ slot-size)
-    rbp-diffs = curry-frame-disjoint-from-rbp s rbp-inv rsp-sufficient
+    rbp-diffs = curry-frame-disjoint-from-rbp s rbp-inv rsp-bound
 
     -- D041: Ordering facts for mem-above-final transitivity
     rbp-orders : (new-rsp < orig-rbp) × ((new-rsp +ℕ slot-size) < orig-rbp)
-    rbp-orders = curry-alloc-below-rbp s rbp-inv rsp-sufficient
+    rbp-orders = curry-alloc-below-rbp s rbp-inv rsp-bound
 
     new-rsp<rbp : new-rsp < orig-rbp
     new-rsp<rbp = proj₁ rbp-orders
@@ -849,7 +854,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
     mem-at-0-final =
       let -- D041: Abstract helper provides nonzero proofs
-          alloc-nonzero = curry-alloc-nonzero s rsp-sufficient
+          alloc-nonzero = curry-alloc-nonzero s rsp-bound
           diff-new-rsp : new-rsp ≢ 0
           diff-new-rsp = proj₁ alloc-nonzero
           diff-new-rsp+8 : (new-rsp +ℕ slot-size) ≢ 0
@@ -871,7 +876,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
@@ -907,7 +912,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-final addr addr-in-heap =
       let cap2 : StackCapacity s 2
-          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
 
           -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
@@ -958,11 +963,11 @@ run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x :
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv =
+run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
   s-final , record
     { ir-star = exec-star exec-result
     ; ir-halted = exec-halted exec-result
@@ -987,7 +992,7 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     -- Call curry with validity (no bridges!)
     curry-result : ∃[ s' ] (CurryExecResult f (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
                            × CurryMemoryResult f (prefix ++ compile-x86 (curry f) ++ suffix) s' x (length prefix))
-    curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv
+    curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
 
     s-final = proj₁ curry-result
     exec-result = proj₁ (proj₂ curry-result)
