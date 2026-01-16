@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-stack-requirement; ir-rsp-delta; ir-output-capacity; capacity-preserved-rsp-unchanged)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -42,7 +42,7 @@ module Once.Backend.X86.Correct.MutualIR.Case
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
@@ -60,7 +60,9 @@ open import Once.Backend.X86.Correct.StarBase using (module IRStarResultV)
 -- Import region definitions for D041 memory preservation proofs
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack)
 
-open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; slot-size)
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (rsp-bound-to-capacity; slot-size; capacity-left-from-max;
+         capacity-right-from-max; capacity-preserved-rsp-unchanged)
 
 -- Import Star
 open import Once.Backend.X86.Correct.Star
@@ -117,7 +119,7 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement [ f , g ]) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
@@ -135,7 +137,7 @@ mutual
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement [ f , g ]) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
@@ -158,7 +160,7 @@ mutual
     pc s ≡ length prefix →
     ValidAt {A + B} (inj₁ a) (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement [ f , g ]) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₁ a) (length prefix)
@@ -171,6 +173,7 @@ mutual
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
+      ; ir-rsp = rsp-final  -- rsp preserved overall (case delta = 0)
       ; ir-mem = mem-final
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
@@ -179,7 +182,7 @@ mutual
       ; ir-mem-code = mem-code-final
       ; ir-mem-heap = mem-heap-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = cap-final  -- Derived from ir-capacity r-f-v via rsp-jump
+      ; ir-capacity = cap-final  -- Derived from cap-in via rsp-final (case preserves rsp)
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
@@ -305,48 +308,27 @@ mutual
       prog-eq-setup : prog ≡ prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ load-val-instr ∷ suffix-for-helper
       prog-eq-setup = CaseContext.prog-eq-inl-setup ctx
 
+      -- Use s-setup-raw directly as s-setup (no intermediate tuple needed)
+      s-setup : State
+      s-setup = s-setup-raw
+
       -- Convert Star from prog-for-helper to prog
-      star-setup-converted : Star prog s s-setup-raw
-      star-setup-converted = subst (λ p → Star p s s-setup-raw) (sym prog-eq-setup) star-setup-raw
+      star-setup : Star prog s s-setup
+      star-setup = subst (λ p → Star p s s-setup) (sym prog-eq-setup) star-setup-raw
+
+      -- Rename fields for consistency
+      h-setup = h-setup-raw
+      pc-setup = pc-setup-raw
+      rdi-setup = rdi-setup-raw
+      r14-setup = r14-setup-raw
+      r15-setup = r15-setup-raw
+      rbp-setup = rbp-setup-raw
+      rsp-setup = rsp-setup-raw
+      mem-setup = mem-setup-raw
 
       -- StackInvariant preserved: memory, rsp, and r15 unchanged
-      stack-inv-derived : StackInvariant s-setup-raw
-      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
-
-      -- Derive rsp-sufficient from preserved rsp
-      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > slots 2
-      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) (StackCapacity.rsp-sufficient cap-in)
-
-      -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
-      -- Star-based: uses Star relation directly instead of fuel-based exec
-      -- Note: rdi contains val-addr (child value pointer), not encode a
-      setup-result : ∃[ s-setup ] (Star prog s s-setup
-                                    × halted s-setup ≡ false
-                                    × pc s-setup ≡ length prefix +ℕ 4
-                                    × readReg (regs s-setup) rdi ≡ val-addr
-                                    × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
-                                    × readReg (regs s-setup) r15 ≡ readReg (regs s) r15
-                                    × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
-                                    × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
-                                    × memory s-setup ≡ memory s
-                                    × StackInvariant s-setup
-                                    × readReg (regs s-setup) rsp > slots 2)
-      setup-result = s-setup-raw , star-setup-converted , h-setup-raw , pc-setup-raw ,
-                     rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
-                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
-
-      s-setup = proj₁ setup-result
-      star-setup = proj₁ (proj₂ setup-result)
-      h-setup = proj₁ (proj₂ (proj₂ setup-result))
-      pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
-      rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
-      stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      rsp-sufficient-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      stack-inv-setup : StackInvariant s-setup
+      stack-inv-setup = stack-inv-preserved-mem-rsp s s-setup mem-setup rsp-setup stack-inv r15-setup
 
       -- ========== Phase 2: Execute f (recursive call via abstract dispatcher) ==========
       -- pc s-setup = length prefix + 4 = length prefix-f
@@ -371,11 +353,14 @@ mutual
                         (sym rdi-setup)  -- addr: val-addr → rdi in s-setup
                         (λ addr _ → subst (λ m → readMem (memory s-setup) addr ≡ readMem m addr) (sym mem-setup) refl)
 
-      -- Derive StackCapacity for s-setup from cap-in via rsp-setup (setup preserves rsp)
-      cap-setup : StackCapacity s-setup 2
-      cap-setup = rsp-bound-to-capacity 2 s-setup
-                    (subst (λ r → region-of r ≡ stack) (sym rsp-setup) (StackCapacity.rsp-in-stack cap-in))
-                    rsp-sufficient-setup
+      -- Derive StackCapacity for s-setup from cap-in via capacity derivation
+      -- ir-stack-requirement [ f , g ] = ir-stack-requirement f ⊔ ir-stack-requirement g
+      cap-f-at-s : StackCapacity s (ir-stack-requirement f)
+      cap-f-at-s = capacity-left-from-max s (ir-stack-requirement f) (ir-stack-requirement g) cap-in
+
+      -- Thread capacity through setup (setup preserves rsp)
+      cap-setup : StackCapacity s-setup (ir-stack-requirement f)
+      cap-setup = capacity-preserved-rsp-unchanged s s-setup (ir-stack-requirement f) cap-f-at-s (sym rsp-setup)
 
       -- Recursive call to f via size-bounded dispatcher
       step-f-v : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
@@ -497,11 +482,20 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (IRStarResultV.ir-stack-inv r-f-v) r15-jump
 
-      -- Derive final capacity from ir-capacity r-f-v via rsp-jump (jump preserves rsp)
-      cap-final : StackCapacity s-final 2
-      cap-final = rsp-bound-to-capacity 2 s-final
-                    (subst (λ r → region-of r ≡ stack) (sym rsp-jump) (StackCapacity.rsp-in-stack (IRStarResultV.ir-capacity r-f-v)))
-                    (subst (_> slots 2) (sym rsp-jump) (StackCapacity.rsp-sufficient (IRStarResultV.ir-capacity r-f-v)))
+      -- RSP preserved overall: rsp s-final = rsp s (since ir-rsp-delta [ f , g ] = 0)
+      -- Chain: rsp-setup, ir-rsp r-f-v, rsp-jump
+      rsp-chain : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
+      rsp-chain = trans rsp-jump (trans (IRStarResultV.ir-rsp r-f-v) (trans (cong (λ r → r ∸ slots (ir-rsp-delta f)) rsp-setup) refl))
+
+      -- ir-rsp needs type: rsp s-final ≡ rsp s ∸ slots (ir-rsp-delta [ f , g ])
+      -- Since ir-rsp-delta [ f , g ] = 0, this is: rsp s-final ≡ rsp s ∸ 0
+      rsp-final : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta [ f , g ])
+      rsp-final = rsp-chain  -- ir-rsp-delta [ f , g ] = 0, so slots 0 = 0, so rsp ∸ 0 = rsp
+
+      -- Derive final capacity from cap-in via rsp-final
+      -- ir-output-capacity [ f , g ] = ir-stack-requirement [ f , g ] (since delta = 0)
+      cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
+      cap-final = capacity-preserved-rsp-unchanged s s-final (ir-stack-requirement [ f , g ]) cap-in rsp-chain
 
       -- RbpInvariant preserved: from ir-rbp-inv r-f-v through jump (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
@@ -558,7 +552,7 @@ mutual
     pc s ≡ length prefix →
     ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement [ f , g ]) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
@@ -571,11 +565,12 @@ mutual
       ; ir-r14 = r14-final
       ; ir-r15 = r15-final
       ; ir-rbp = rbp-final
+      ; ir-rsp = rsp-final  -- rsp preserved overall (case delta = 0)
       ; ir-mem = mem-final
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = cap-final  -- Derived from ir-capacity r-g-v via rsp-end
+      ; ir-capacity = cap-final  -- Derived from cap-in via rsp-final (case preserves rsp)
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
@@ -691,54 +686,33 @@ mutual
       prog-eq-setup : prog ≡ prefix ++ load-tag-instr ∷ cmp-tag-instr ∷ jne-instr ∷ suffix-for-helper
       prog-eq-setup = CaseContext.prog-eq-inr-setup ctx
 
+      -- Use s-setup-raw directly as s-setup (no intermediate tuple needed)
+      s-setup : State
+      s-setup = s-setup-raw
+
       -- Convert Star from prog-for-helper to prog
-      star-setup-converted : Star prog s s-setup-raw
-      star-setup-converted = subst (λ p → Star p s s-setup-raw) (sym prog-eq-setup) star-setup-raw
+      star-setup : Star prog s s-setup
+      star-setup = subst (λ p → Star p s s-setup) (sym prog-eq-setup) star-setup-raw
+
+      -- Rename fields for consistency
+      h-setup = h-setup-raw
+      rdi-setup = rdi-setup-raw
+      r14-setup = r14-setup-raw
+      r15-setup = r15-setup-raw
+      rbp-setup = rbp-setup-raw
+      rsp-setup = rsp-setup-raw
+      mem-setup = mem-setup-raw
 
       -- PC proof: helper gives length prefix + 3 + right-offset = length prefix + 3 + (2 + len-f) = length prefix + 5 + len-f
       -- (length prefix + 3) + (2 + len-f) = ((length prefix + 3) + 2) + len-f = (length prefix + 5) + len-f
-      pc-setup-proof : pc s-setup-raw ≡ length prefix +ℕ 5 +ℕ len-f
-      pc-setup-proof = trans pc-setup-raw
+      pc-setup : pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f
+      pc-setup = trans pc-setup-raw
                        (trans (sym (+-assoc (length prefix +ℕ 3) 2 len-f))
                               (cong (_+ℕ len-f) (+-assoc (length prefix) 3 2)))
 
       -- StackInvariant preserved: memory, rsp, and r15 unchanged
-      stack-inv-derived : StackInvariant s-setup-raw
-      stack-inv-derived = stack-inv-preserved-mem-rsp s s-setup-raw mem-setup-raw rsp-setup-raw stack-inv r15-setup-raw
-
-      -- rsp-sufficient preserved
-      rsp-sufficient-derived : readReg (regs s-setup-raw) rsp > slots 2
-      rsp-sufficient-derived = subst (_> slots 2) (sym rsp-setup-raw) (StackCapacity.rsp-sufficient cap-in)
-
-      -- Assemble full setup-result (r15 preserved, uses r11 scratch for tag)
-      -- Star-based: uses Star relation directly instead of fuel-based exec
-      setup-result : ∃[ s-setup ] (Star prog s s-setup
-                                    × halted s-setup ≡ false
-                                    × pc s-setup ≡ length prefix +ℕ 5 +ℕ len-f
-                                    × readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
-                                    × readReg (regs s-setup) r14 ≡ readReg (regs s) r14
-                                    × readReg (regs s-setup) r15 ≡ readReg (regs s) r15
-                                    × readReg (regs s-setup) rbp ≡ readReg (regs s) rbp
-                                    × readReg (regs s-setup) rsp ≡ readReg (regs s) rsp
-                                    × memory s-setup ≡ memory s
-                                    × StackInvariant s-setup
-                                    × readReg (regs s-setup) rsp > slots 2)
-      setup-result = s-setup-raw , star-setup-converted , h-setup-raw , pc-setup-proof ,
-                     rdi-setup-raw , r14-setup-raw , r15-setup-raw , rbp-setup-raw ,
-                     rsp-setup-raw , mem-setup-raw , stack-inv-derived , rsp-sufficient-derived
-
-      s-setup = proj₁ setup-result
-      star-setup = proj₁ (proj₂ setup-result)
-      h-setup = proj₁ (proj₂ (proj₂ setup-result))
-      pc-setup = proj₁ (proj₂ (proj₂ (proj₂ setup-result)))
-      rdi-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))
-      r14-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))
-      r15-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))
-      rbp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))
-      rsp-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))
-      mem-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result)))))))))
-      stack-inv-setup = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
-      rsp-sufficient-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))
+      stack-inv-setup : StackInvariant s-setup
+      stack-inv-setup = stack-inv-preserved-mem-rsp s s-setup mem-setup rsp-setup stack-inv r15-setup
 
       -- ========== Phase 2: Right setup (2 instructions) ==========
       -- label (5+len-f) ; mov rdi, [rdi+8]
@@ -752,10 +726,17 @@ mutual
                                (trans (cong (λ addr → readMem (memory s) (addr +ℕ slot-size)) rdi-setup)
                                       (proj₁ (proj₂ val-ptr-data)))
 
+      -- Derive capacity for s-setup with g's requirement
+      cap-g-at-s : StackCapacity s (ir-stack-requirement g)
+      cap-g-at-s = capacity-right-from-max s (ir-stack-requirement f) (ir-stack-requirement g) cap-in
+
+      cap-setup-g : StackCapacity s-setup (ir-stack-requirement g)
+      cap-setup-g = capacity-preserved-rsp-unchanged s s-setup (ir-stack-requirement g) cap-g-at-s (sym rsp-setup)
+
       -- Use extracted helper for right setup execution (now takes raw precondition!)
-      right-setup-result : CaseRightSetupResult f g prefix suffix b s-setup
-      right-setup-result = case-right-setup-star f g prefix suffix b s-setup
-                             h-setup pc-setup val-addr mem-precond-for-helper stack-inv-setup rsp-sufficient-setup
+      right-setup-result : CaseRightSetupResult f g prefix suffix b s-setup (ir-stack-requirement g)
+      right-setup-result = case-right-setup-star f g prefix suffix b s-setup (ir-stack-requirement g)
+                             h-setup pc-setup val-addr mem-precond-for-helper stack-inv-setup cap-setup-g
 
       s-right = CaseRightSetupResult.s-right right-setup-result
       star-right = CaseRightSetupResult.star-right right-setup-result
@@ -768,7 +749,7 @@ mutual
       rsp-right = CaseRightSetupResult.rsp-preserved right-setup-result
       mem-right = CaseRightSetupResult.mem-preserved right-setup-result
       stack-inv-right = CaseRightSetupResult.stack-inv-right right-setup-result
-      rsp-sufficient-right = CaseRightSetupResult.rsp-sufficient-right right-setup-result
+      cap-right = CaseRightSetupResult.cap-right right-setup-result
 
       -- ========== Phase 3: Execute g (recursive call via abstract dispatcher) ==========
       -- pc s-right = length prefix + 7 + len-f
@@ -845,14 +826,7 @@ mutual
                         (sym val-addr-eq-rdi-right)  -- addr: val-addr → rdi s-right
                         (λ addr _ → subst (λ m → readMem (memory s-right) addr ≡ readMem m addr) (sym mem-s-right-eq-s) refl)
 
-      -- Derive StackCapacity for s-right from cap-in via rsp chain (setup and right-setup preserve rsp)
-      cap-right : StackCapacity s-right 2
-      cap-right = rsp-bound-to-capacity 2 s-right
-                    (subst (λ r → region-of r ≡ stack) (sym rsp-right-eq) (StackCapacity.rsp-in-stack cap-in))
-                    (subst (_> slots 2) (sym rsp-right-eq) (StackCapacity.rsp-sufficient cap-in))
-        where
-          rsp-right-eq : readReg (regs s-right) rsp ≡ readReg (regs s) rsp
-          rsp-right-eq = trans rsp-right rsp-setup
+      -- cap-right is now obtained from right-setup-result (StackCapacity s-right (ir-stack-requirement g))
 
       -- Recursive call to g via size-bounded dispatcher
       step-g-v : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
@@ -973,11 +947,20 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (IRStarResultV.ir-stack-inv r-g-v) r15-end
 
-      -- Derive final capacity from ir-capacity r-g-v via rsp-end (end preserves rsp)
-      cap-final : StackCapacity s-final 2
-      cap-final = rsp-bound-to-capacity 2 s-final
-                    (subst (λ r → region-of r ≡ stack) (sym rsp-end) (StackCapacity.rsp-in-stack (IRStarResultV.ir-capacity r-g-v)))
-                    (subst (_> slots 2) (sym rsp-end) (StackCapacity.rsp-sufficient (IRStarResultV.ir-capacity r-g-v)))
+      -- RSP preserved overall: rsp s-final = rsp s (since ir-rsp-delta [ f , g ] = 0)
+      -- Chain: rsp-setup, rsp-right, ir-rsp r-g-v, rsp-end
+      rsp-chain : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
+      rsp-chain = trans rsp-end (trans (IRStarResultV.ir-rsp r-g-v) (trans (cong (λ r → r ∸ slots (ir-rsp-delta g)) rsp-right) (trans (cong (λ r → r ∸ slots (ir-rsp-delta g)) rsp-setup) refl)))
+
+      -- ir-rsp needs type: rsp s-final ≡ rsp s ∸ slots (ir-rsp-delta [ f , g ])
+      -- Since ir-rsp-delta [ f , g ] = 0, this is: rsp s-final ≡ rsp s ∸ 0
+      rsp-final : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta [ f , g ])
+      rsp-final = rsp-chain  -- ir-rsp-delta [ f , g ] = 0, so slots 0 = 0, so rsp ∸ 0 = rsp
+
+      -- Derive final capacity from cap-in via rsp-final
+      -- ir-output-capacity [ f , g ] = ir-stack-requirement [ f , g ] (since delta = 0)
+      cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
+      cap-final = capacity-preserved-rsp-unchanged s s-final (ir-stack-requirement [ f , g ]) cap-in rsp-chain
 
       -- RbpInvariant preserved: from ir-rbp-inv r-g-v through end (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final

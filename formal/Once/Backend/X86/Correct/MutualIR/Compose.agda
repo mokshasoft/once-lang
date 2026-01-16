@@ -22,13 +22,13 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-stack-requirement)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller)
 open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_; _<_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _<_; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym)
@@ -42,7 +42,7 @@ module Once.Backend.X86.Correct.MutualIR.Compose
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
@@ -52,7 +52,8 @@ module Once.Backend.X86.Correct.MutualIR.Compose
 open import Once.Backend.X86.Correct.StarBase
   using (rbp-inv-preserved-unchanged; IRStarResultV)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (capacity-preserved-rsp-unchanged)
+  using (capacity-preserved-rsp-unchanged; capacity-left-from-max; capacity-right-from-max;
+         capacity-after-delta; ir-rsp-delta)
 open import Once.Backend.X86.Correct.MemoryValid
   using (valid-subst-addr-mem)
 
@@ -78,7 +79,7 @@ run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s (ir-stack-requirement (g ∘ f)) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
@@ -89,9 +90,14 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
       ctx = make-compose-context f g prefix suffix
       open ComposeContext ctx
 
+      -- Derive sub-capacities from compose capacity
+      -- ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g)
+      cap-f : StackCapacity s (ir-stack-requirement f)
+      cap-f = capacity-left-from-max s (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g) cap-in
+
       -- Step 1: Execute f (RECURSIVE via size-bounded dispatcher)
       step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-f rbp-inv
 
       s1 : State
       s1 = proj₁ step-f
@@ -124,15 +130,28 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
         (TransferResultV.rdi2-raw tr)          -- rdi in s2 = rax in s1
         (TransferResultV.mem-s1-to-s2 tr)      -- memory unchanged
 
-      -- Transfer capacity from s1 to s2 (rsp unchanged during transfer)
-      cap-s2 : StackCapacity s2 2
-      cap-s2 = capacity-preserved-rsp-unchanged s1 s2 2 (IRStarResultV.ir-capacity r1-v) (TransferResultV.rsp-s1-to-s2 tr)
+      -- Derive capacity for g from original compose capacity via rsp delta tracking
+      -- f may change rsp by ir-rsp-delta f slots, so we use capacity-after-delta
+      cap-delta-g-at-s : StackCapacity s (ir-rsp-delta f +ℕ ir-stack-requirement g)
+      cap-delta-g-at-s = capacity-right-from-max s (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g) cap-in
+
+      -- f changes rsp: rsp s1 = rsp s ∸ slots (ir-rsp-delta f)
+      rsp-s1-delta : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta f)
+      rsp-s1-delta = IRStarResultV.ir-rsp r1-v
+
+      -- Use capacity-after-delta to derive capacity for g at s1
+      cap-g-at-s1 : StackCapacity s1 (ir-stack-requirement g)
+      cap-g-at-s1 = capacity-after-delta s s1 (ir-rsp-delta f) (ir-stack-requirement g) cap-delta-g-at-s rsp-s1-delta
+
+      -- Transfer preserves rsp: rsp s2 = rsp s1
+      cap-g : StackCapacity s2 (ir-stack-requirement g)
+      cap-g = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g) cap-g-at-s1 (sym rsp-s2-eq-s1)
 
       -- Step 3: Execute g (RECURSIVE via size-bounded dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix caller-sp (eval f x) s2
                  (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
-                 (TransferResultV.stack-inv-2 tr) cap-s2 rbp-inv-2
+                 (TransferResultV.stack-inv-2 tr) cap-g rbp-inv-2
 
       s3 : State
       s3 = proj₁ step-g
@@ -142,4 +161,4 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
 
       -- Assemble final result (validity-based - no encode bridging!)
       result-v : IRStarResultV (g ∘ f) prog s s3 x (length prefix)
-      result-v = assemble-compose-result-v f g prefix suffix x s s1 s2 s3 r1-v tr r3-v refl
+      result-v = assemble-compose-result-v f g prefix suffix x s s1 s2 s3 r1-v tr r3-v refl cap-in

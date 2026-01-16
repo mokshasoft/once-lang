@@ -29,7 +29,8 @@ open import Once.Backend.X86.Syntax hiding (slot-size; slots)
 -- Import computed slot consumption values from CodeGen (derived from instruction lists)
 open import Once.Backend.X86.CodeGen public
   using (apply-consumed-slots; pair-setup-consumed-slots;
-         thunk-setup-consumed-slots; curry-closure-consumed-slots)
+         thunk-setup-consumed-slots; curry-closure-consumed-slots;
+         injection-consumed-slots)
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
@@ -61,7 +62,7 @@ open import Data.Unit using (⊤; tt)
 
 -- Arithmetic imports (the instantiation layer uses these)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢)
+open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢; ⊔-mono-≤; m∸n+n≡m; m≤n⊔m; m≤m+n)
 open import Relation.Nullary using (yes; no)
 
 -- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
@@ -201,6 +202,42 @@ private
   curry-closure-capacity-correct : curry-closure-capacity ≡ curry-closure-consumed-slots +ℕ output-slots
   curry-closure-capacity-correct = refl
 
+  inl-inr-capacity-correct : inl-inr-capacity ≡ injection-consumed-slots +ℕ output-slots
+  inl-inr-capacity-correct = refl
+
+------------------------------------------------------------------------
+-- RSP Delta: How much RSP changes (decreases) during IR execution
+------------------------------------------------------------------------
+-- Most IRs preserve rsp (delta = 0). Curry allocates closure on stack (delta = 2).
+-- This is used for proper capacity threading through compose.
+-- MUST be defined before ir-stack-requirement since compose uses it.
+
+ir-rsp-delta : ∀ {A B} → IR A B → ℕ
+-- Simple operations: preserve rsp
+ir-rsp-delta id = 0
+ir-rsp-delta fst = 0
+ir-rsp-delta snd = 0
+ir-rsp-delta terminal = 0
+ir-rsp-delta initial = 0
+ir-rsp-delta fold = 0
+ir-rsp-delta unfold = 0
+ir-rsp-delta arr = 0
+ir-rsp-delta (Prim _) = 0
+-- Injections: allocate slots on stack for tag+value, do NOT restore
+-- Value derived from CodeGen.injection-consumed-slots (computes from inl-instrs)
+ir-rsp-delta inl = injection-consumed-slots
+ir-rsp-delta inr = injection-consumed-slots
+-- Compose: total delta is sum of deltas (both execute)
+ir-rsp-delta (g ∘ f) = ir-rsp-delta f +ℕ ir-rsp-delta g
+-- Pair/Case: setup/teardown balance, rsp restored
+ir-rsp-delta ⟨ f , g ⟩ = 0
+ir-rsp-delta [ l , r ] = 0
+-- Curry: allocates slots for closure, does NOT restore
+-- Value derived from CodeGen.curry-closure-consumed-slots
+ir-rsp-delta (curry f) = curry-closure-consumed-slots
+-- Apply: call/ret balance, rsp restored
+ir-rsp-delta apply = 0
+
 ------------------------------------------------------------------------
 -- Dynamic IR Stack Requirement (computed from IR structure)
 --
@@ -233,17 +270,97 @@ ir-stack-requirement (Prim _) = 2
 -- Injections: need capacity for tag+value write (literal 4)
 ir-stack-requirement inl = 4
 ir-stack-requirement inr = 4
--- Compose: run f, then g sequentially. Need max capacity at any point.
-ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ ir-stack-requirement g
--- Pair: setup frame (5 slots), then run f, then g
-ir-stack-requirement ⟨ f , g ⟩ = 5 +ℕ (ir-stack-requirement f ⊔ ir-stack-requirement g)
--- Case: check tag, then run left or right branch
-ir-stack-requirement [ l , r ] = ir-stack-requirement l ⊔ ir-stack-requirement r
+-- Compose: run f, then g. Account for rsp delta: after f uses delta slots,
+-- we need enough remaining for g. So: max(req f, delta f + req g)
+ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g)
+-- Pair: setup frame consumes pair-setup-consumed-slots, then run f, then g
+ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ (ir-stack-requirement f ⊔ ir-stack-requirement g)
+-- Case: frame setup (1 slot for saved rbp), then run left or right branch
+ir-stack-requirement [ l , r ] = 1 +ℕ (ir-stack-requirement l ⊔ ir-stack-requirement r)
 -- Curry: closure setup (2) + thunk setup (4) + inner requirement
 ir-stack-requirement (curry f) = 2 +ℕ (4 +ℕ ir-stack-requirement f)
 -- Apply: calls thunk from closure (literal 4)
 ir-stack-requirement apply = 4
 
+------------------------------------------------------------------------
+-- Output Capacity (what remains after IR execution)
+--
+-- After an IR runs, the stack capacity is reduced by ir-rsp-delta.
+-- Output capacity = input requirement - consumed delta
+------------------------------------------------------------------------
+
+-- | Compute output capacity after IR execution
+-- This is the capacity available after the IR has run.
+ir-output-capacity : ∀ {A B} → IR A B → ℕ
+ir-output-capacity ir = ir-stack-requirement ir ∸ ir-rsp-delta ir
+
+-- | RSP delta never exceeds stack requirement
+-- This is fundamental: we can't consume more stack than we require.
+-- Proof by case analysis on each IR constructor.
+ir-delta-≤-requirement : ∀ {A B} (ir : IR A B) → ir-rsp-delta ir ≤ ir-stack-requirement ir
+ir-delta-≤-requirement id = z≤n
+ir-delta-≤-requirement fst = z≤n
+ir-delta-≤-requirement snd = z≤n
+ir-delta-≤-requirement terminal = z≤n
+ir-delta-≤-requirement initial = z≤n
+ir-delta-≤-requirement fold = z≤n
+ir-delta-≤-requirement unfold = z≤n
+ir-delta-≤-requirement arr = z≤n
+ir-delta-≤-requirement (Prim _) = z≤n
+ir-delta-≤-requirement inl = m≤m+n injection-consumed-slots output-slots  -- 2 ≤ 4
+ir-delta-≤-requirement inr = m≤m+n injection-consumed-slots output-slots  -- 2 ≤ 4
+ir-delta-≤-requirement (g ∘ f) =
+  let δf = ir-rsp-delta f
+      δg = ir-rsp-delta g
+      req-f = ir-stack-requirement f
+      req-g = ir-stack-requirement g
+      -- Need: δf + δg ≤ max(req-f, δf + req-g)
+      -- δg ≤ req-g by IH, so δf + δg ≤ δf + req-g ≤ max(...)
+      δg≤req-g = ir-delta-≤-requirement g
+      δf+δg≤δf+req-g = +-monoʳ-≤ δf δg≤req-g
+  in ≤-trans δf+δg≤δf+req-g (m≤n⊔m req-f (δf +ℕ req-g))
+ir-delta-≤-requirement ⟨ f , g ⟩ = z≤n  -- delta = 0
+ir-delta-≤-requirement [ l , r ] = z≤n  -- delta = 0
+ir-delta-≤-requirement (curry f) = m≤m+n curry-closure-consumed-slots _  -- 2 ≤ 2 + (4 + req f)
+ir-delta-≤-requirement apply = z≤n  -- delta = 0
+
+-- | Requirement = delta + output (exact decomposition)
+-- Since delta ≤ requirement, we have requirement ∸ delta + delta = requirement
+ir-requirement-split : ∀ {A B} (ir : IR A B) →
+  ir-stack-requirement ir ≡ ir-rsp-delta ir +ℕ ir-output-capacity ir
+ir-requirement-split ir = trans (sym (m∸n+n≡m (ir-delta-≤-requirement ir)))
+                                (+-comm (ir-output-capacity ir) (ir-rsp-delta ir))
+
+-- | Inner requirement for pair: maximum of f and g requirements
+-- This is what's needed AFTER the pair-setup-consumed-slots frame setup is complete.
+-- Semantically: pair-inner-requirement f g = ir-stack-requirement ⟨ f , g ⟩ ∸ pair-setup-consumed-slots
+pair-inner-requirement : ∀ {A B C} → IR C A → IR C B → ℕ
+pair-inner-requirement f g = ir-stack-requirement f ⊔ ir-stack-requirement g
+
+-- | Pair setup slots ≤ pair requirement
+-- Follows from: ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ inner-req
+pair-setup≤pair-req : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  pair-setup-consumed-slots ≤ ir-stack-requirement ⟨ f , g ⟩
+pair-setup≤pair-req f g = m≤m+n pair-setup-consumed-slots (pair-inner-requirement f g)
+
+-- | Output slots ≤ pair setup consumed slots
+-- Both are computed from instruction lists: output-slots = 2, pair-setup-consumed-slots = 5
+output-slots≤pair-setup : output-slots ≤ pair-setup-consumed-slots
+output-slots≤pair-setup = s≤s (s≤s z≤n)
+
+-- | Output slots ≤ pair requirement (transitivity)
+output-slots≤pair-req : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  output-slots ≤ ir-stack-requirement ⟨ f , g ⟩
+output-slots≤pair-req f g = ≤-trans output-slots≤pair-setup (pair-setup≤pair-req f g)
+
+-- | All IRs have output capacity ≥ 2
+-- This is the minimum capacity any IR leaves after execution.
+-- Used to derive weaker bounds from dynamic ir-output-capacity.
+--
+-- Proof sketch for compose (g ∘ f):
+--   output(g ∘ f) = max(req f, delta f + req g) - (delta f + delta g)
+--   Case 1 (req f ≥ delta f + req g): output = out f - delta g ≥ 2 (complex monus arithmetic)
+--   Case 2 (req f < delta f + req g): output = out g ≥ 2 by IH
 ------------------------------------------------------------------------
 -- Centralized Arithmetic Helpers (D041: define early for use throughout)
 ------------------------------------------------------------------------
@@ -548,6 +665,19 @@ capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
         addr-eq : new-rsp ∸ ((suc (suc k)) *ℕ slot-size) ≡ old-rsp ∸ (k *ℕ slot-size)
         addr-eq = trans (cong (λ r → r ∸ ((suc (suc k)) *ℕ slot-size)) rsp-eq) arith-eq
 
+-- | When RSP is restored (rsp s' = rsp s), capacity is preserved
+-- Used by apply which restores RSP via push/pop pattern
+capacity-when-rsp-restored : ∀ (s s' : State) (n : ℕ) →
+  StackCapacity s n →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp →
+  StackCapacity s' n
+capacity-when-rsp-restored s s' n cap rsp-eq = record
+  { rsp-in-stack = subst (λ r → region-of r ≡ stack) (sym rsp-eq) (rsp-in-stack cap)
+  ; rsp-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) (rsp-sufficient cap)
+  ; capacity-maintained = λ k k≤n → subst (λ r → region-of (r ∸ k *ℕ slot-size) ≡ stack)
+                                          (sym rsp-eq) (capacity-maintained cap k k≤n)
+  }
+
 ------------------------------------------------------------------------
 -- Deriving Address Properties from Capacity
 ------------------------------------------------------------------------
@@ -595,12 +725,12 @@ capacity-2-to-rsp-bound : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset
 capacity-2-to-rsp-bound s cap = rsp-sufficient cap
 
--- | rsp > two-push-offset preservation when rsp is unchanged
-rsp-bound-preserved-unchanged : ∀ (s s' : State) →
-  readReg (regs s) rsp > two-push-offset →
+-- | rsp > bound preservation when rsp is unchanged (generic version)
+rsp-bound-preserved-unchanged : ∀ (bound : ℕ) (s s' : State) →
+  readReg (regs s) rsp > bound →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
-  readReg (regs s') rsp > two-push-offset
-rsp-bound-preserved-unchanged s s' rsp-sufficient rsp-eq = subst (_> two-push-offset) (sym rsp-eq) rsp-sufficient
+  readReg (regs s') rsp > bound
+rsp-bound-preserved-unchanged bound s s' rsp-sufficient rsp-eq = subst (_> bound) (sym rsp-eq) rsp-sufficient
 
 ------------------------------------------------------------------------
 -- Max-based Capacity Derivation (for compose/case/pair threading)
@@ -615,7 +745,7 @@ rsp-bound-preserved-unchanged s s' rsp-sufficient rsp-eq = subst (_> two-push-of
 ------------------------------------------------------------------------
 
 open import Data.Nat using (_⊔_)
-open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; *-monoˡ-≤; ≤-<-trans; ⊔-comm)
+open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; *-monoˡ-≤; ≤-<-trans; ⊔-comm; m≤m+n)
 
 -- Helper: n ≤ m ⊔ n (via commutativity: n ≤ n ⊔ m = m ⊔ n)
 private
@@ -652,6 +782,156 @@ capacity-from-larger s m n cap m≤n = record
   ; capacity-maintained = λ k k≤m →
       capacity-maintained cap k (≤-trans k≤m m≤n)
   }
+
+-- | Slot distribution over addition: slots (a + b) = slots a + slots b
+-- This is multiplication distributivity: (a + b) * 8 = a * 8 + b * 8
+-- Used for compose rsp tracking: rsp s3 = rsp s ∸ slots (delta f + delta g)
+slots-distribute : ∀ a b → slots (a +ℕ b) ≡ slots a +ℕ slots b
+slots-distribute zero b = refl
+slots-distribute (suc a) b =
+  trans (cong (slot-size +ℕ_) (slots-distribute a b))
+        (sym (+-assoc slot-size (slots a) (slots b)))
+
+-- | Derive capacity after RSP delta: if we have capacity for d+n at rsp, and rsp
+-- decreases by d slots, then we have capacity for n at the new rsp.
+-- This is critical for compose capacity threading when f has non-zero rsp delta.
+capacity-after-delta : ∀ (s s' : State) (d n : ℕ) →
+  StackCapacity s (d +ℕ n) →
+  readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slots d →
+  StackCapacity s' n
+capacity-after-delta s s' d n cap rsp-eq = record
+  { rsp-in-stack = rsp'-in-stack
+  ; rsp-sufficient = rsp'-sufficient
+  ; capacity-maintained = cap'-maintained
+  }
+  where
+    open import Data.Nat.Properties using (m+n∸n≡m; +-monoˡ-<; <-≤-trans; m+n∸m≡n; +-cancelˡ-<)
+    rsp-s = readReg (regs s) rsp
+    rsp-s' = readReg (regs s') rsp
+
+    -- rsp' in stack: from capacity-maintained at k=d
+    d≤d+n : d ≤ d +ℕ n
+    d≤d+n = m≤m+n d n
+    rsp'-in-stack : region-of rsp-s' ≡ stack
+    rsp'-in-stack = subst (λ r → region-of r ≡ stack) (sym rsp-eq) (capacity-maintained cap d d≤d+n)
+
+    -- rsp' sufficient: rsp s > slots (d+n), so rsp s - slots d > slots n
+    -- Key insight: if m > a + b, then m - a > b
+    -- Proof: m > a + b means a + b < m, so b < m - a (by +-cancelˡ-< after rearranging)
+    rsp-suff : rsp-s > slots (d +ℕ n)
+    rsp-suff = rsp-sufficient cap
+    slot-eq : slots (d +ℕ n) ≡ slots d +ℕ slots n
+    slot-eq = slots-distribute d n
+    rsp-suff' : rsp-s > slots d +ℕ slots n
+    rsp-suff' = subst (rsp-s >_) slot-eq rsp-suff
+    -- slots d + slots n < rsp-s, so slots n < rsp-s - slots d
+    rsp'-sufficient : rsp-s' > slots n
+    rsp'-sufficient = subst (_> slots n) (sym rsp-eq) helper
+      where
+        open import Data.Nat.Properties using (m+[n∸m]≡n)
+        -- We have: slots d + slots n < rsp-s
+        -- Want: slots n < rsp-s - slots d
+        -- Use: if a + b < m, then b < m - a (when a ≤ m)
+        sum<rsp : slots d +ℕ slots n < rsp-s
+        sum<rsp = rsp-suff'
+        -- slots d ≤ rsp-s (follows from slots d + slots n < rsp-s)
+        -- slots d ≤ slots d + slots n < rsp-s, so slots d < rsp-s, so slots d ≤ rsp-s
+        d-slots≤rsp : slots d ≤ rsp-s
+        d-slots≤rsp = <⇒≤ (≤-<-trans (m≤m+n (slots d) (slots n)) sum<rsp)
+        -- rsp-s = slots d + (rsp-s - slots d) by m+[n∸m]≡n
+        rsp-split : rsp-s ≡ slots d +ℕ (rsp-s ∸ slots d)
+        rsp-split = sym (m+[n∸m]≡n d-slots≤rsp)
+        -- slots d + slots n < slots d + (rsp-s - slots d)
+        -- Therefore slots n < rsp-s - slots d (i.e., rsp-s - slots d > slots n)
+        sum<rsp' : slots d +ℕ slots n < slots d +ℕ (rsp-s ∸ slots d)
+        sum<rsp' = subst (λ x → slots d +ℕ slots n < x) rsp-split sum<rsp
+        helper : slots n < rsp-s ∸ slots d
+        helper = +-cancelˡ-< (slots d) (slots n) (rsp-s ∸ slots d) sum<rsp'
+
+    -- capacity maintained: for k ≤ n, region-of (rsp' ∸ slots k) = stack
+    -- rsp' ∸ slots k = (rsp s ∸ slots d) ∸ slots k = rsp s ∸ (slots d + slots k) = rsp s ∸ slots (d + k)
+    cap'-maintained : ∀ k → k ≤ n → region-of (rsp-s' ∸ slots k) ≡ stack
+    cap'-maintained k k≤n = step4
+      where
+        -- Step 1: capacity-maintained gives us region proof for rsp-s ∸ slots (d+k)
+        step1 : region-of (rsp-s ∸ slots (d +ℕ k)) ≡ stack
+        step1 = capacity-maintained cap (d +ℕ k) (+-monoʳ-≤ d k≤n)
+        -- Step 2: slots (d+k) = slots d + slots k (slots-distribute)
+        step2 : region-of (rsp-s ∸ (slots d +ℕ slots k)) ≡ stack
+        step2 = subst (λ x → region-of (rsp-s ∸ x) ≡ stack) (slots-distribute d k) step1
+        -- Step 3: rsp-s ∸ (slots d + slots k) = (rsp-s ∸ slots d) ∸ slots k (sym ∸-+-assoc)
+        -- ∸-+-assoc gives: (m ∸ n) ∸ o ≡ m ∸ (n + o), so we use sym
+        step3 : region-of ((rsp-s ∸ slots d) ∸ slots k) ≡ stack
+        step3 = subst (λ x → region-of x ≡ stack) (sym (∸-+-assoc rsp-s (slots d) (slots k))) step2
+        -- Step 4: rsp-s ∸ slots d = rsp-s' (from rsp-eq)
+        step4 : region-of (rsp-s' ∸ slots k) ≡ stack
+        step4 = subst (λ r → region-of (r ∸ slots k) ≡ stack) (sym rsp-eq) step3
+
+------------------------------------------------------------------------
+-- IR-Specific Capacity Derivation Lemmas
+--
+-- These lemmas prove that internal proof requirements are bounded by
+-- ir-stack-requirement. They enable deriving the capacity needed for
+-- sub-proofs (Curry.agda, Inl.agda, etc.) from the dispatcher's capacity.
+------------------------------------------------------------------------
+
+-- | ir-rsp-delta (curry f) ≤ curry-closure-capacity
+-- Proof: ir-rsp-delta (curry f) = curry-closure-consumed-slots
+--        curry-closure-capacity = curry-closure-consumed-slots + output-slots
+--        So delta ≤ capacity by m≤m+n
+curry-rsp-delta≤curry-capacity : ∀ {A B C} (f : IR (A * B) C) →
+  ir-rsp-delta (curry f) ≤ curry-closure-capacity
+curry-rsp-delta≤curry-capacity f = m≤m+n curry-closure-consumed-slots output-slots
+
+-- | curry-closure-capacity ≤ ir-stack-requirement (curry f)
+-- Proof: curry-closure-capacity = 4
+--        ir-stack-requirement (curry f) = 2 + (4 + ir-stack-requirement f) = 6 + ir-stack-requirement f ≥ 6 ≥ 4
+curry-closure-capacity≤curry-req : ∀ {A B C} (f : IR (A * B) C) →
+  curry-closure-capacity ≤ ir-stack-requirement (curry f)
+curry-closure-capacity≤curry-req f = ≤-trans (s≤s (s≤s (s≤s (s≤s z≤n)))) (m≤m+n 6 (ir-stack-requirement f))
+
+-- | ir-rsp-delta (curry f) ≤ ir-stack-requirement (curry f)
+-- Combines the above two lemmas by transitivity
+curry-rsp-delta≤curry-req : ∀ {A B C} (f : IR (A * B) C) →
+  ir-rsp-delta (curry f) ≤ ir-stack-requirement (curry f)
+curry-rsp-delta≤curry-req f = ≤-trans (curry-rsp-delta≤curry-capacity f) (curry-closure-capacity≤curry-req f)
+
+-- | ir-rsp-delta inl ≤ inl-inr-capacity
+-- Proof: ir-rsp-delta inl = injection-consumed-slots
+--        inl-inr-capacity = injection-consumed-slots + output-slots
+--        So delta ≤ capacity by m≤m+n
+inl-rsp-delta≤inl-capacity : ∀ {A B} → ir-rsp-delta (inl {A} {B}) ≤ inl-inr-capacity
+inl-rsp-delta≤inl-capacity = m≤m+n injection-consumed-slots output-slots
+
+-- | inl-inr-capacity ≤ ir-stack-requirement inl
+-- Proof: both are 4 (definitionally equal)
+inl-capacity≤inl-req : ∀ {A B} → inl-inr-capacity ≤ ir-stack-requirement (inl {A} {B})
+inl-capacity≤inl-req = ≤-refl
+
+-- | ir-rsp-delta inl ≤ ir-stack-requirement inl
+-- Combines the above two lemmas by transitivity
+inl-rsp-delta≤inl-req : ∀ {A B} → ir-rsp-delta (inl {A} {B}) ≤ ir-stack-requirement (inl {A} {B})
+inl-rsp-delta≤inl-req {A} {B} = ≤-trans (inl-rsp-delta≤inl-capacity {A} {B}) (inl-capacity≤inl-req {A} {B})
+
+-- | ir-rsp-delta inr ≤ inl-inr-capacity
+-- Same as inl (both use injection-consumed-slots)
+inr-rsp-delta≤inr-capacity : ∀ {A B} → ir-rsp-delta (inr {A} {B}) ≤ inl-inr-capacity
+inr-rsp-delta≤inr-capacity = m≤m+n injection-consumed-slots output-slots
+
+-- | inl-inr-capacity ≤ ir-stack-requirement inr
+-- Proof: both are 4 (definitionally equal)
+inr-capacity≤inr-req : ∀ {A B} → inl-inr-capacity ≤ ir-stack-requirement (inr {A} {B})
+inr-capacity≤inr-req = ≤-refl
+
+-- | ir-rsp-delta inr ≤ ir-stack-requirement inr
+-- Combines the above two lemmas by transitivity
+inr-rsp-delta≤inr-req : ∀ {A B} → ir-rsp-delta (inr {A} {B}) ≤ ir-stack-requirement (inr {A} {B})
+inr-rsp-delta≤inr-req {A} {B} = ≤-trans (inr-rsp-delta≤inr-capacity {A} {B}) (inr-capacity≤inr-req {A} {B})
+
+-- | apply-capacity ≤ ir-stack-requirement apply
+-- Proof: both are 4 (definitionally equal)
+apply-capacity≤apply-req : ∀ {A B} → apply-capacity ≤ ir-stack-requirement (apply {A} {B})
+apply-capacity≤apply-req = ≤-refl
 
 ------------------------------------------------------------------------
 -- Abstract Frame Creation
@@ -1222,6 +1502,19 @@ curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+slot
 slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
 slots-mono-≤ {zero} {b} _ = z≤n
 slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
+
+-- | Compose rsp delta: chain two rsp deltas into one
+-- Given: rsp₁ = rsp₀ ∸ slots a, rsp₂ = rsp₁ ∸ slots b
+-- Proves: rsp₂ = rsp₀ ∸ slots (a + b)
+compose-rsp-delta : ∀ (rsp₀ rsp₁ rsp₂ : ℕ) (a b : ℕ) →
+  rsp₁ ≡ rsp₀ ∸ slots a →
+  rsp₂ ≡ rsp₁ ∸ slots b →
+  rsp₂ ≡ rsp₀ ∸ slots (a +ℕ b)
+compose-rsp-delta rsp₀ rsp₁ rsp₂ a b eq1 eq2 =
+  trans eq2
+        (trans (cong (_∸ slots b) eq1)
+               (trans (∸-+-assoc rsp₀ (slots a) (slots b))
+                      (cong (rsp₀ ∸_) (sym (slots-distribute a b)))))
 
 private
   m∸slot<m : ∀ m → m > slot-size → m ∸ slot-size < m

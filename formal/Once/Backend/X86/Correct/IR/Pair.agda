@@ -21,7 +21,12 @@ open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-bound-to-capacity; pair-stack-capacity; slots; slot-size;
-         rsp-in-stack; rsp-sufficient; capacity-maintained; slots-mono-≤;
+         rsp-in-stack; rsp-sufficient; capacity-maintained; slots-mono-≤; slots-distribute;
+         pair-setup-consumed-slots;
+         -- Dynamic capacity functions
+         ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
+         pair-inner-requirement;
+         capacity-when-rsp-restored; capacity-preserved-rsp-unchanged;
          -- Abstract interface (D041-compliant, no arithmetic in types)
          pair-frame-0; pair-frame-slot-0-in-stack; pair-frame-slot-1-in-stack;
          pair-frame-0-addr-eq; pair-frame-slot-1-addr-eq;
@@ -395,7 +400,7 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
     rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
     stack-inv-setup : StackInvariant s-setup
-    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots 2
+    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots (pair-inner-requirement f g)
     star-setup : Star prog s s-setup
     -- Memory above orig-rsp is preserved (all writes happen below rsp)
     mem-above-rsp-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
@@ -411,13 +416,13 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase and compute all properties
--- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining capacity
+-- Requires StackCapacity s (ir-stack-requirement ⟨ f , g ⟩): 5 slots for setup + inner requirement remaining
 pair-setup-star : ∀ {A B C} (f : IR C A) (g : IR C B)
                   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  StackCapacity s 7 →
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →
   PairSetupResult f g prefix suffix x s
 pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = record
   { s-setup = s-setup
@@ -444,16 +449,29 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = rec
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
 
-    -- Construct StackCapacity s 5 from cap7 for frame-setup-star
-    cap5 : StackCapacity s 5
+    -- Pair inner requirement for this specific f and g
+    inner-req : ℕ
+    inner-req = pair-inner-requirement f g
+
+    -- Semantic constant for pair setup consumption (3 pushes + 2 sub slots)
+    setup-slots : ℕ
+    setup-slots = pair-setup-consumed-slots
+
+    -- ir-stack-requirement ⟨ f , g ⟩ = setup-slots + inner-req
+    pair-req : ℕ
+    pair-req = ir-stack-requirement ⟨ f , g ⟩
+
+    -- setup-slots ≤ ir-stack-requirement ⟨ f , g ⟩ since pair-req = setup-slots + inner-req
+    setup≤pair-req : setup-slots ≤ pair-req
+    setup≤pair-req = m≤m+n setup-slots inner-req
+
+    -- Construct StackCapacity s setup-slots from cap for frame-setup-star
+    cap5 : StackCapacity s setup-slots
     cap5 = record
       { rsp-in-stack = rsp-in-stack cap
-      ; rsp-sufficient = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-sufficient cap)
-      ; capacity-maintained = λ k k≤5 → capacity-maintained cap k (≤-trans k≤5 5≤7)
+      ; rsp-sufficient = ≤-<-trans (slots-mono-≤ setup≤pair-req) (rsp-sufficient cap)
+      ; capacity-maintained = λ k k≤setup → capacity-maintained cap k (≤-trans k≤setup setup≤pair-req)
       }
-      where
-        5≤7 : 5 ≤ 7
-        5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
 
     -- Execute 7 setup instructions
     setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq cap5
@@ -494,36 +512,36 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = rec
     stack-inv-setup : StackInvariant s-setup
     stack-inv-setup = pair-setup-stack-inv s s-setup cap5 r15-setup rsp-setup
 
-    -- After setup, rsp-setup = orig-rsp ∸ slots 5. We need rsp-setup > slots 2.
-    -- From cap: orig-rsp > slots 7 (i.e., > 56)
-    -- So rsp-setup = orig-rsp - 40 > 56 - 40 = 16 = slots 2 ✓
-    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots 2
-    rsp-sufficient-setup = subst (_> slots 2) (sym rsp-setup) rsp∸40>16
+    -- After setup, rsp-setup = orig-rsp ∸ slots setup-slots. We need rsp-setup > slots inner-req.
+    -- From cap: orig-rsp > slots pair-req = slots (setup-slots + inner-req)
+    -- So rsp-setup = orig-rsp - slots setup-slots > slots inner-req ✓
+    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots inner-req
+    rsp-sufficient-setup = subst (_> slots inner-req) (sym rsp-setup) rsp∸setup>inner
       where
         open import Data.Nat.Properties using (+-cancelʳ-<; m∸n+n≡m; <⇒≤)
         orig-rsp = readReg (regs s) rsp
-        -- From cap: rsp > slots 7, so rsp > 56, meaning rsp ≥ 57
-        rsp>56 : orig-rsp > slots 7
-        rsp>56 = rsp-sufficient cap
-        -- 40 ≤ 56 < rsp, so 40 ≤ rsp
-        40≤rsp : slots 5 ≤ orig-rsp
-        40≤rsp = <⇒≤ (≤-<-trans (slots-mono-≤ 5≤7) rsp>56)
+        -- From cap: rsp > slots pair-req
+        rsp>pair-req : orig-rsp > slots pair-req
+        rsp>pair-req = rsp-sufficient cap
+        -- pair-req = setup-slots + inner-req, so slots pair-req = slots setup-slots + slots inner-req
+        slots-pair-eq : slots pair-req ≡ slots setup-slots +ℕ slots inner-req
+        slots-pair-eq = slots-distribute setup-slots inner-req
+        -- rsp > slots setup-slots + slots inner-req
+        rsp>sum : orig-rsp > slots setup-slots +ℕ slots inner-req
+        rsp>sum = subst (orig-rsp >_) slots-pair-eq rsp>pair-req
+        -- slots setup-slots ≤ slots setup-slots + slots inner-req < rsp
+        setup-slots≤rsp : slots setup-slots ≤ orig-rsp
+        setup-slots≤rsp = <⇒≤ (≤-<-trans (m≤m+n (slots setup-slots) (slots inner-req)) rsp>sum)
+        -- rsp - slots setup-slots + slots setup-slots = rsp
+        rsp∸setup+setup≡rsp : (orig-rsp ∸ slots setup-slots) +ℕ slots setup-slots ≡ orig-rsp
+        rsp∸setup+setup≡rsp = m∸n+n≡m setup-slots≤rsp
+        -- Need: rsp - slots setup-slots > slots inner-req
+        rsp∸setup>inner : orig-rsp ∸ slots setup-slots > slots inner-req
+        rsp∸setup>inner = +-cancelʳ-< (slots setup-slots) (slots inner-req) (orig-rsp ∸ slots setup-slots) bound
           where
-            5≤7 : 5 ≤ 7
-            5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
-        -- rsp - 40 + 40 = rsp (since 40 ≤ rsp)
-        rsp∸40+40≡rsp : (orig-rsp ∸ slots 5) +ℕ slots 5 ≡ orig-rsp
-        rsp∸40+40≡rsp = m∸n+n≡m 40≤rsp
-        -- Need: rsp - 40 > 16, i.e., 17 ≤ rsp - 40
-        -- From rsp > 56: rsp ≥ 57, so rsp - 40 ≥ 17
-        rsp∸40>16 : orig-rsp ∸ slots 5 > slots 2
-        rsp∸40>16 = +-cancelʳ-< (slots 5) (slots 2) (orig-rsp ∸ slots 5) bound
-          where
-            -- slots 2 + slots 5 = 16 + 40 = 56 = slots 7
-            -- (rsp - 40) + 40 = rsp
-            -- Need: 56 < rsp, which is rsp > slots 7
-            bound : slots 2 +ℕ slots 5 < (orig-rsp ∸ slots 5) +ℕ slots 5
-            bound = subst (slots 7 <_) (sym rsp∸40+40≡rsp) rsp>56
+            bound : slots inner-req +ℕ slots setup-slots < (orig-rsp ∸ slots setup-slots) +ℕ slots setup-slots
+            bound = subst (λ x → slots inner-req +ℕ slots setup-slots < x) (sym rsp∸setup+setup≡rsp)
+                          (subst (orig-rsp >_) (+-comm (slots setup-slots) (slots inner-req)) rsp>sum)
 
     -- Memory at address 0 is preserved through setup
     -- Extracted directly from frame-setup-star result
@@ -553,7 +571,7 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
     rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
     stack-inv-setup : StackInvariant s-setup
-    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots 2
+    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots (pair-inner-requirement f g)
     star-setup : Star prog s s-setup
     mem-above-rsp-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
@@ -562,16 +580,16 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-    -- StackCapacity s 5 derived from input StackCapacity s 7 (for downstream use)
-    cap5 : StackCapacity s 5
+    -- StackCapacity s pair-setup-consumed-slots derived from input capacity (for downstream use)
+    cap5 : StackCapacity s pair-setup-consumed-slots
 
 -- | Execute setup phase (validity-based, no encode input)
--- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining capacity
+-- Requires StackCapacity s (ir-stack-requirement ⟨ f , g ⟩): setup-slots + inner requirement remaining
 pair-setup-star-v : ∀ {A B C} (f : IR C A) (g : IR C B)
                     (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  StackCapacity s 7 →
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →
   PairSetupResultV f g prefix suffix x s
 pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
   { s-setup = s-setup
@@ -598,16 +616,29 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
 
-    -- Construct StackCapacity s 5 from cap7 for frame-setup-star
-    cap5 : StackCapacity s 5
+    -- Pair inner requirement for this specific f and g
+    inner-req : ℕ
+    inner-req = pair-inner-requirement f g
+
+    -- Semantic constant for pair setup consumption (3 pushes + 2 sub slots)
+    setup-slots : ℕ
+    setup-slots = pair-setup-consumed-slots
+
+    -- ir-stack-requirement ⟨ f , g ⟩ = setup-slots + inner-req
+    pair-req : ℕ
+    pair-req = ir-stack-requirement ⟨ f , g ⟩
+
+    -- setup-slots ≤ ir-stack-requirement ⟨ f , g ⟩ since pair-req = setup-slots + inner-req
+    setup≤pair-req : setup-slots ≤ pair-req
+    setup≤pair-req = m≤m+n setup-slots inner-req
+
+    -- Construct StackCapacity s setup-slots from cap for frame-setup-star
+    cap5 : StackCapacity s setup-slots
     cap5 = record
       { rsp-in-stack = rsp-in-stack cap
-      ; rsp-sufficient = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-sufficient cap)
-      ; capacity-maintained = λ k k≤5 → capacity-maintained cap k (≤-trans k≤5 5≤7)
+      ; rsp-sufficient = ≤-<-trans (slots-mono-≤ setup≤pair-req) (rsp-sufficient cap)
+      ; capacity-maintained = λ k k≤setup → capacity-maintained cap k (≤-trans k≤setup setup≤pair-req)
       }
-      where
-        5≤7 : 5 ≤ 7
-        5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
 
     -- Execute 7 setup instructions
     setup-result = frame-setup-star prefix rest-for-setup s h-false pc-eq cap5
@@ -641,28 +672,36 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
     stack-inv-setup : StackInvariant s-setup
     stack-inv-setup = pair-setup-stack-inv s s-setup cap5 r15-setup rsp-setup
 
-    -- After setup, rsp-setup = orig-rsp ∸ slots 5. We need rsp-setup > slots 2.
-    -- From cap: orig-rsp > slots 7 (i.e., > 56)
-    -- So rsp-setup = orig-rsp - 40 > 56 - 40 = 16 = slots 2 ✓
-    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots 2
-    rsp-sufficient-setup = subst (_> slots 2) (sym rsp-setup) rsp∸40>16
+    -- After setup, rsp-setup = orig-rsp ∸ slots setup-slots. We need rsp-setup > slots inner-req.
+    -- From cap: orig-rsp > slots pair-req = slots (setup-slots + inner-req)
+    -- So rsp-setup = orig-rsp - slots setup-slots > slots inner-req ✓
+    rsp-sufficient-setup : readReg (regs s-setup) rsp > slots inner-req
+    rsp-sufficient-setup = subst (_> slots inner-req) (sym rsp-setup) rsp∸setup>inner
       where
         open import Data.Nat.Properties using (+-cancelʳ-<; m∸n+n≡m; <⇒≤)
         orig-rsp = readReg (regs s) rsp
-        rsp>56 : orig-rsp > slots 7
-        rsp>56 = rsp-sufficient cap
-        40≤rsp : slots 5 ≤ orig-rsp
-        40≤rsp = <⇒≤ (≤-<-trans (slots-mono-≤ 5≤7) rsp>56)
+        -- From cap: rsp > slots pair-req
+        rsp>pair-req : orig-rsp > slots pair-req
+        rsp>pair-req = rsp-sufficient cap
+        -- pair-req = setup-slots + inner-req, so slots pair-req = slots setup-slots + slots inner-req
+        slots-pair-eq : slots pair-req ≡ slots setup-slots +ℕ slots inner-req
+        slots-pair-eq = slots-distribute setup-slots inner-req
+        -- rsp > slots setup-slots + slots inner-req
+        rsp>sum : orig-rsp > slots setup-slots +ℕ slots inner-req
+        rsp>sum = subst (orig-rsp >_) slots-pair-eq rsp>pair-req
+        -- slots setup-slots ≤ slots setup-slots + slots inner-req < rsp
+        setup-slots≤rsp : slots setup-slots ≤ orig-rsp
+        setup-slots≤rsp = <⇒≤ (≤-<-trans (m≤m+n (slots setup-slots) (slots inner-req)) rsp>sum)
+        -- rsp - slots setup-slots + slots setup-slots = rsp
+        rsp∸setup+setup≡rsp : (orig-rsp ∸ slots setup-slots) +ℕ slots setup-slots ≡ orig-rsp
+        rsp∸setup+setup≡rsp = m∸n+n≡m setup-slots≤rsp
+        -- Need: rsp - slots setup-slots > slots inner-req
+        rsp∸setup>inner : orig-rsp ∸ slots setup-slots > slots inner-req
+        rsp∸setup>inner = +-cancelʳ-< (slots setup-slots) (slots inner-req) (orig-rsp ∸ slots setup-slots) bound
           where
-            5≤7 : 5 ≤ 7
-            5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
-        rsp∸40+40≡rsp : (orig-rsp ∸ slots 5) +ℕ slots 5 ≡ orig-rsp
-        rsp∸40+40≡rsp = m∸n+n≡m 40≤rsp
-        rsp∸40>16 : orig-rsp ∸ slots 5 > slots 2
-        rsp∸40>16 = +-cancelʳ-< (slots 5) (slots 2) (orig-rsp ∸ slots 5) bound
-          where
-            bound : slots 2 +ℕ slots 5 < (orig-rsp ∸ slots 5) +ℕ slots 5
-            bound = subst (slots 7 <_) (sym rsp∸40+40≡rsp) rsp>56
+            bound : slots inner-req +ℕ slots setup-slots < (orig-rsp ∸ slots setup-slots) +ℕ slots setup-slots
+            bound = subst (λ x → slots inner-req +ℕ slots setup-slots < x) (sym rsp∸setup+setup≡rsp)
+                          (subst (orig-rsp >_) (+-comm (slots setup-slots) (slots inner-req)) rsp>sum)
 
 ------------------------------------------------------------------------
 -- Middle Result: state after 2 middle instructions (store f result, restore input)
@@ -683,7 +722,7 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     -- Raw register equality for validity propagation: mov rdi, r14 restores input
     rdi2-raw : readReg (regs s2) rdi ≡ readReg (regs s1) r14
     stack-inv-s2 : StackInvariant s2
-    rsp-sufficient-s2 : readReg (regs s2) rsp > slots 2
+    rsp-sufficient-s2 : readReg (regs s2) rsp > slots (ir-output-capacity f)
     star-mid : Star prog s1 s2
     -- Register preservation
     r14-mid : readReg (regs s2) r14 ≡ readReg (regs s1) r14
@@ -799,9 +838,9 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     pc2-g : pc s2 ≡ length prefix-g
     pc2-g = trans pc2 (sym len-prefix-g)
 
-    -- StackInvariant and rsp>16 preserved
-    rsp-sufficient-s2 : readReg (regs s2) rsp > slots 2
-    rsp-sufficient-s2 = subst (_> slots 2) (sym rsp-mid) (ir-rsp-bound r-f)
+    -- StackInvariant and rsp preserved (uses dynamic ir-output-capacity)
+    rsp-sufficient-s2 : readReg (regs s2) rsp > slots (ir-output-capacity f)
+    rsp-sufficient-s2 = subst (_> slots (ir-output-capacity f)) (sym rsp-mid) (ir-rsp-bound r-f)
 
     stack-inv-s2 : StackInvariant s2
     stack-inv-s2 = stack-inv-preserved-unchanged s1 s2 (ir-stack-inv r-f) (sym r15-mid) (sym rsp-mid)
@@ -840,31 +879,38 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
         -- rsp-40 = rsp-24 follows from the equality
         eq' : rsp-s ∸ slots 5 ≡ rsp-s ∸ slots 3
         eq' = trans (sym r15-s1-eq) (trans eq rbp-s1-eq)
-        -- We have 40 ≤ rsp-s from rsp-sufficient-s2 and rsp-setup = rsp - 40 > 16
-        rsp-sufficient-setup-raw : readReg (regs s-setup) rsp > slots 2
-        rsp-sufficient-setup-raw = subst (λ ss → readReg (regs ss) rsp > slots 2)
-                                 (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
-        rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
-        rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots 5)
+        -- We derive setup-frame-fits from PairSetupResult properties:
+        -- rsp-setup = rsp-s ∸ slots setup-slots, and rsp-setup > slots inner-req ≥ 0
+        -- So rsp-setup > 0, meaning rsp-s ∸ slots setup-slots > 0
+        -- By (m ∸ n > 0) ⇒ (n ≤ m), we get slots setup-slots ≤ rsp-s
+        inner-req-local : ℕ
+        inner-req-local = pair-inner-requirement f g
+        setup-slots-local : ℕ
+        setup-slots-local = pair-setup-consumed-slots
+        -- From PairSetupResult: rsp-setup = rsp-s ∸ slots setup-slots
+        rsp-setup-eq : readReg (regs s-setup) rsp ≡ rsp-s ∸ slots setup-slots-local
+        rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ rsp-s ∸ slots setup-slots-local)
                              (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
-        rsp∸40>16 : rsp-s ∸ slots 5 > 16
-        rsp∸40>16 = subst (_> slots 2) rsp-setup-eq rsp-sufficient-setup-raw
-        -- rsp - 24 = (rsp - 40) + 16 when rsp ≥ 40
-        rsp∸40>0 : rsp-s ∸ slots 5 > 0
-        rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16
-        -- Local definition since ∸>0⇒≤ is defined later in file
+        -- From PairSetupResult: rsp-setup > slots inner-req
+        rsp-setup-sufficient : readReg (regs s-setup) rsp > slots inner-req-local
+        rsp-setup-sufficient = subst (λ ss → readReg (regs ss) rsp > slots inner-req-local)
+                                     (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
+        -- rsp-s ∸ slots setup-slots > slots inner-req ≥ 0, so rsp-s ∸ slots setup-slots > 0
+        rsp-after-setup>0 : rsp-s ∸ slots setup-slots-local > 0
+        rsp-after-setup>0 = ≤-<-trans z≤n (subst (_> slots inner-req-local) rsp-setup-eq rsp-setup-sufficient)
+        -- Local helper: (m ∸ n > 0) ⇒ (n ≤ m)
         ∸>0⇒≤-local : ∀ m n → m ∸ n > 0 → n ≤ m
         ∸>0⇒≤-local m zero _ = z≤n
         ∸>0⇒≤-local zero (suc n) ()
         ∸>0⇒≤-local (suc m) (suc n) sm∸sn>0 = s≤s (∸>0⇒≤-local m n sm∸sn>0)
-        40≤rsp : 40 ≤ rsp-s
-        40≤rsp = ∸>0⇒≤-local rsp-s 40 rsp∸40>0
-        -- Local ∸-offset-relationship: m ∸ slots 3 ≡ (m ∸ slots 5) + 16 when 40 ≤ m
-        rsp∸24-eq : rsp-s ∸ slots 3 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
-        rsp∸24-eq = trans step1 step2
+        setup-frame-fits : slots setup-slots-local ≤ rsp-s
+        setup-frame-fits = ∸>0⇒≤-local rsp-s (slots setup-slots-local) rsp-after-setup>0
+        -- Local ∸-offset-relationship: m ∸ slots 3 ≡ (m ∸ slots 5) + slots 2 when setup-frame-fits
+        rsp∸rbp-offset-eq : rsp-s ∸ slots 3 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
+        rsp∸rbp-offset-eq = trans step1 step2
           where
             step1 : rsp-s ∸ slots 3 ≡ (rsp-s ∸ slots 5 +ℕ slots 5) ∸ slots 3
-            step1 = cong (_∸ slots 3) (sym (m∸n+n≡m 40≤rsp))
+            step1 = cong (_∸ slots 3) (sym (m∸n+n≡m setup-frame-fits))
             step2 : (rsp-s ∸ slots 5 +ℕ slots 5) ∸ slots 3 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
             step2 = lemma (rsp-s ∸ slots 5)
               where
@@ -873,9 +919,9 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
                   where
                     step-a : (40 +ℕ k) ∸ slots 3 ≡ 16 +ℕ k
                     step-a = refl
-        -- Now: (rsp-40) = (rsp-24) = (rsp-40) + 16, contradiction
+        -- Now: (rsp - r15-offset) = (rsp - rbp-offset) = (rsp - r15-offset) + frame-gap, contradiction
         contra : rsp-s ∸ slots 5 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
-        contra = trans eq' rsp∸24-eq
+        contra = trans eq' rsp∸rbp-offset-eq
 
     -- Memory preserved via readMem-writeMem-diff
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
@@ -888,24 +934,26 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     r15-neq-0 : readReg (regs s1) r15 ≢ 0
     r15-neq-0 eq = Nat-<⇒≢ r15>0 (sym eq)
       where
-        -- rsp - 40 > 16 from setup
-        rsp∸40>16 : readReg (regs s) rsp ∸ slots 5 > 16
-        rsp∸40>16 = subst (_> slots 2) rsp-setup-eq rsp-sufficient-setup-raw
-          where
-            rsp-sufficient-setup-raw : readReg (regs s-setup) rsp > slots 2
-            rsp-sufficient-setup-raw = subst (λ ss → readReg (regs ss) rsp > slots 2)
+        -- Semantic constants
+        inner-req-local : ℕ
+        inner-req-local = pair-inner-requirement f g
+        setup-slots-local : ℕ
+        setup-slots-local = pair-setup-consumed-slots
+        -- rsp-setup = rsp - slots setup-slots, and rsp-setup > slots inner-req ≥ 0
+        rsp-setup-sufficient : readReg (regs s-setup) rsp > slots inner-req-local
+        rsp-setup-sufficient = subst (λ ss → readReg (regs ss) rsp > slots inner-req-local)
                                      (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
-            rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
-            rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots 5)
-                                 (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
+        rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots setup-slots-local
+        rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
+                             (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
 
-        -- Therefore rsp - 40 > 0
-        rsp∸40>0 : readReg (regs s) rsp ∸ slots 5 > 0
-        rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16
+        -- rsp - slots setup-slots > slots inner-req ≥ 0, so rsp - slots setup-slots > 0
+        rsp-after-setup>0 : readReg (regs s) rsp ∸ slots setup-slots-local > 0
+        rsp-after-setup>0 = ≤-<-trans z≤n (subst (_> slots inner-req-local) rsp-setup-eq rsp-setup-sufficient)
 
-        -- r15 = rsp - 40, so r15 > 0
+        -- r15 = rsp - slots setup-slots, so r15 > 0
         r15>0 : readReg (regs s1) r15 > 0
-        r15>0 = subst (_> 0) (sym r15-s1-eq) rsp∸40>0
+        r15>0 = subst (_> 0) (sym r15-s1-eq) rsp-after-setup>0
 
     mem-at-0-mid-proof : readMem (memory s2) 0 ≡ readMem (memory s1) 0
     mem-at-0-mid-proof = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) 0
@@ -948,7 +996,7 @@ record PairMiddleResultV {A B C : Type} (f : IR C A) (g : IR C B)
     -- Raw register equality (no encode)
     rdi2-raw : readReg (regs s2) rdi ≡ readReg (regs s1) r14
     stack-inv-s2 : StackInvariant s2
-    rsp-sufficient-s2 : readReg (regs s2) rsp > slots 2
+    rsp-sufficient-s2 : readReg (regs s2) rsp > slots (ir-output-capacity f)
     star-mid : Star prog s1 s2
     r14-mid : readReg (regs s2) r14 ≡ readReg (regs s1) r14
     r15-mid : readReg (regs s2) r15 ≡ readReg (regs s1) r15
@@ -1058,14 +1106,14 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
     rdi2-eq-r14-s-setup = trans rdi2-raw r14-s1-eq-s-setup
 
     stack-inv-s1 = IRStarResultV.ir-stack-inv r-f
-    rsp-s1>16 : readReg (regs s1) rsp > slots 2
-    rsp-s1>16 = ir-rsp-bound-v r-f
+    rsp-s1>f-output : readReg (regs s1) rsp > slots (ir-output-capacity f)
+    rsp-s1>f-output = ir-rsp-bound-v r-f
 
     stack-inv-s2 : StackInvariant s2
     stack-inv-s2 = stack-inv-preserved-unchanged s1 s2 stack-inv-s1 (sym r15-mid) (sym rsp-mid)
 
-    rsp-sufficient-s2 : readReg (regs s2) rsp > slots 2
-    rsp-sufficient-s2 = subst (_> slots 2) (sym rsp-mid) rsp-s1>16
+    rsp-sufficient-s2 : readReg (regs s2) rsp > slots (ir-output-capacity f)
+    rsp-sufficient-s2 = subst (_> slots (ir-output-capacity f)) (sym rsp-mid) rsp-s1>f-output
 
     -- mem-at-r15-raw : readMem (memory s2) (readReg (regs s2) r15) ≡ just (readReg (regs s1) rax)
     -- Use r15-mid to get the needed form
@@ -1088,48 +1136,56 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
     rbp-s1-eq : readReg (regs s1) rbp ≡ readReg (regs s) rsp ∸ slots 3
     rbp-s1-eq = trans rbp-s1-eq-s-setup rbp-setup-raw
 
-    -- r15 ≠ rbp in s1 (since rsp-40 ≠ rsp-24)
+    -- r15 ≠ rbp in s1 (since r15 at rsp - slots setup-slots ≠ rbp at rsp - slots rbp-offset)
     r15-neq-rbp-s1 : readReg (regs s1) r15 ≢ readReg (regs s1) rbp
-    r15-neq-rbp-s1 eq = n≢n+suc-m (rsp-s ∸ slots 5) 15 contra
+    r15-neq-rbp-s1 eq = n≢n+suc-m (rsp-s ∸ slots setup-slots-local) (slots r15-rbp-delta ∸ 1) contra
       where
         rsp-s = readReg (regs s) rsp
-        -- eq': rsp-40 = rsp-24 (from r15 = rbp hypothesis)
-        eq' : rsp-s ∸ slots 5 ≡ rsp-s ∸ slots 3
+        setup-slots-local : ℕ
+        setup-slots-local = pair-setup-consumed-slots
+        rbp-offset : ℕ
+        rbp-offset = 3
+        r15-rbp-delta : ℕ
+        r15-rbp-delta = setup-slots-local ∸ rbp-offset  -- = 5 - 3 = 2
+        -- eq': r15-position = rbp-position (from r15 = rbp hypothesis)
+        eq' : rsp-s ∸ slots setup-slots-local ≡ rsp-s ∸ slots rbp-offset
         eq' = trans (sym r15-s1-eq) (trans eq rbp-s1-eq)
-        -- Need rsp ≥ 40 for the arithmetic
-        rsp-sufficient-setup-raw : readReg (regs s-setup) rsp > slots 2
-        rsp-sufficient-setup-raw = subst (λ ss → readReg (regs ss) rsp > slots 2)
+        -- Need rsp ≥ slots setup-consumed for the arithmetic
+        inner-req-local : ℕ
+        inner-req-local = pair-inner-requirement f g
+        rsp-sufficient-setup-raw : readReg (regs s-setup) rsp > slots inner-req-local
+        rsp-sufficient-setup-raw = subst (λ ss → readReg (regs ss) rsp > slots inner-req-local)
                                  (sym s-setup-eq) (PairSetupResultV.rsp-sufficient-setup setup-res)
-        rsp-setup-eq : readReg (regs s-setup) rsp ≡ rsp-s ∸ slots 5
-        rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ rsp-s ∸ slots 5)
+        rsp-setup-eq : readReg (regs s-setup) rsp ≡ rsp-s ∸ slots setup-slots-local
+        rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ rsp-s ∸ slots setup-slots-local)
                              (sym s-setup-eq) (PairSetupResultV.rsp-setup setup-res)
-        rsp∸40>16 : rsp-s ∸ slots 5 > 16
-        rsp∸40>16 = subst (_> slots 2) rsp-setup-eq rsp-sufficient-setup-raw
-        rsp∸40>0 : rsp-s ∸ slots 5 > 0
-        rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16
+        rsp-after-setup>inner : rsp-s ∸ slots setup-slots-local > slots inner-req-local
+        rsp-after-setup>inner = subst (_> slots inner-req-local) rsp-setup-eq rsp-sufficient-setup-raw
+        rsp-after-setup>0 : rsp-s ∸ slots setup-slots-local > 0
+        rsp-after-setup>0 = ≤-<-trans z≤n rsp-after-setup>inner
         ∸>0⇒≤-local : ∀ m n → m ∸ n > 0 → n ≤ m
         ∸>0⇒≤-local m zero _ = z≤n
         ∸>0⇒≤-local zero (suc n) ()
         ∸>0⇒≤-local (suc m) (suc n) sm∸sn>0 = s≤s (∸>0⇒≤-local m n sm∸sn>0)
-        40≤rsp : 40 ≤ rsp-s
-        40≤rsp = ∸>0⇒≤-local rsp-s 40 rsp∸40>0
-        -- rsp - 24 = (rsp - 40) + 16 when 40 ≤ rsp
-        rsp∸24-eq : rsp-s ∸ slots 3 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
-        rsp∸24-eq = trans step1 step2
+        setup-frame-fits : slots setup-slots-local ≤ rsp-s
+        setup-frame-fits = ∸>0⇒≤-local rsp-s (slots setup-slots-local) rsp-after-setup>0
+        -- rsp - slots rbp-offset = (rsp - slots setup-slots-local) + slots r15-rbp-delta
+        rsp∸rbp-eq : rsp-s ∸ slots rbp-offset ≡ (rsp-s ∸ slots setup-slots-local) +ℕ slots r15-rbp-delta
+        rsp∸rbp-eq = trans step1 step2
           where
-            step1 : rsp-s ∸ slots 3 ≡ (rsp-s ∸ slots 5 +ℕ slots 5) ∸ slots 3
-            step1 = cong (_∸ slots 3) (sym (m∸n+n≡m 40≤rsp))
-            step2 : (rsp-s ∸ slots 5 +ℕ slots 5) ∸ slots 3 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
-            step2 = lemma (rsp-s ∸ slots 5)
+            step1 : rsp-s ∸ slots rbp-offset ≡ (rsp-s ∸ slots setup-slots-local +ℕ slots setup-slots-local) ∸ slots rbp-offset
+            step1 = cong (_∸ slots rbp-offset) (sym (m∸n+n≡m setup-frame-fits))
+            step2 : (rsp-s ∸ slots setup-slots-local +ℕ slots setup-slots-local) ∸ slots rbp-offset ≡ (rsp-s ∸ slots setup-slots-local) +ℕ slots r15-rbp-delta
+            step2 = lemma (rsp-s ∸ slots setup-slots-local)
               where
-                lemma : ∀ k → (k +ℕ slots 5) ∸ slots 3 ≡ k +ℕ slots 2
-                lemma k = trans (cong (_∸ slots 3) (+-comm k 40)) (trans step-a (+-comm 16 k))
+                lemma : ∀ k → (k +ℕ slots setup-slots-local) ∸ slots rbp-offset ≡ k +ℕ slots r15-rbp-delta
+                lemma k = trans (cong (_∸ slots rbp-offset) (+-comm k (slots setup-slots-local))) (trans step-a (+-comm (slots r15-rbp-delta) k))
                   where
-                    step-a : (40 +ℕ k) ∸ slots 3 ≡ 16 +ℕ k
+                    step-a : (slots setup-slots-local +ℕ k) ∸ slots rbp-offset ≡ slots r15-rbp-delta +ℕ k
                     step-a = refl
-        -- (rsp-40) = (rsp-24) = (rsp-40) + 16, contradiction
-        contra : rsp-s ∸ slots 5 ≡ (rsp-s ∸ slots 5) +ℕ slots 2
-        contra = trans eq' rsp∸24-eq
+        -- (rsp - r15-offset) = (rsp - rbp-offset) = (rsp - r15-offset) + delta, contradiction
+        contra : rsp-s ∸ slots setup-slots-local ≡ (rsp-s ∸ slots setup-slots-local) +ℕ slots r15-rbp-delta
+        contra = trans eq' rsp∸rbp-eq
 
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
     mem-rbp-mid = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) (readReg (regs s1) rbp)
@@ -1182,7 +1238,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
   readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
   StackInvariant s-final →
-  StackCapacity s 2 →  -- Initial state capacity (final derived via rsp-final)
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →  -- Initial state capacity (final derived via rsp-final)
   readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
@@ -1217,7 +1273,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
-  ; ir-capacity = cap-final  -- Derived from initial cap via rsp-final
+  ; ir-capacity = cap-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -1230,10 +1286,14 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
     open PairContext ctx
 
     -- Derive final capacity from initial capacity via rsp-final (pair restores rsp)
-    cap-final : StackCapacity s-final 2
-    cap-final = rsp-bound-to-capacity 2 s-final
+    -- Since ir-rsp-delta ⟨ f , g ⟩ = 0, output capacity equals input requirement
+    output-cap : ℕ
+    output-cap = ir-output-capacity ⟨ f , g ⟩
+    -- ir-output-capacity ⟨ f , g ⟩ = ir-stack-requirement ⟨ f , g ⟩ ∸ 0 = ir-stack-requirement ⟨ f , g ⟩
+    cap-final : StackCapacity s-final output-cap
+    cap-final = rsp-bound-to-capacity output-cap s-final
                   (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
-                  (subst (_> slots 2) (sym rsp-final) (rsp-sufficient cap))
+                  (subst (_> slots output-cap) (sym rsp-final) (rsp-sufficient cap))
 
     -- Star proofs from each phase
     -- setup-res.star-setup : Star prog s (setup-res.s-setup)
@@ -1344,7 +1404,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     r14-fin : readReg (regs s-final) r14 ≡ readReg (regs s) r14
     r15-fin : readReg (regs s-final) r15 ≡ readReg (regs s) r15
     stack-inv-fin : StackInvariant s-final
-    rsp-sufficient-fin : readReg (regs s-final) rsp > slots 2
+    rsp-sufficient-fin : readReg (regs s-final) rsp > slots (ir-output-capacity ⟨ f , g ⟩)
     rsp-fin : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
     mem-fst-fin : readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15)
     mem-snd-fin : readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax)
@@ -1396,13 +1456,13 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     -- Disjointness for mem-rbp-preserved (original rbp not touched by final write)
     disjoint-orig-rbp : readReg (regs s) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
     disjoint-orig-rbp+8 : readReg (regs s) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
-    -- RSP bound for final phase restoration proof
-    rsp-bound : 24 ≤ readReg (regs s) rsp
-    -- D041 region proofs: r15-chain and 40≤rsp needed for stack region proof
-    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ slots 5
-    40≤rsp-s : 40 ≤ readReg (regs s) rsp
-    -- StackCapacity s 5 for downstream postulate-free derivation
-    cap5 : StackCapacity s 5
+    -- RSP bound for final phase restoration proof (slots rbp-offset ≤ rsp)
+    rsp-bound : slots 3 ≤ readReg (regs s) rsp
+    -- D041 region proofs: r15-chain and setup-frame-fits needed for stack region proof
+    r15-chain : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ slots pair-setup-consumed-slots
+    setup-frame-fits : slots pair-setup-consumed-slots ≤ readReg (regs s) rsp
+    -- StackCapacity for downstream derivation
+    cap : StackCapacity s (ir-stack-requirement ⟨ f , g ⟩)
 
 ------------------------------------------------------------------------
 -- Arithmetic lemmas for disjointness proofs
@@ -1470,7 +1530,8 @@ make-pair-final-precond : ∀ {A B C} (f : IR C A) (g : IR C B)
                           (prefix suffix : Program) (x : ⟦ C ⟧)
                           (s s-setup s1 s2 s3 : State)
                           (stack-inv : StackInvariant s)
-                          (rbp-inv : RbpInvariant s) →
+                          (rbp-inv : RbpInvariant s)
+                          (cap : StackCapacity s (ir-stack-requirement ⟨ f , g ⟩)) →
   let ctx = make-pair-context f g prefix suffix in
   let open PairContext ctx in
   (setup-res : PairSetupResult f g prefix suffix x s) →
@@ -1481,7 +1542,7 @@ make-pair-final-precond : ∀ {A B C} (f : IR C A) (g : IR C B)
   s2 ≡ PairMiddleResult.s2 mid-res →
   PairFinalPrecond f g prefix suffix s s3
 make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
-                        stack-inv rbp-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
+                        stack-inv rbp-inv cap setup-res r-f mid-res r-g s-setup-eq s2-eq = record
   { h3 = ir-halted r-g
   ; pc3 = pc3
   ; stack-rbp = stack-rbp-s3
@@ -1501,8 +1562,8 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; mem-frame-rbp+8 = mem-frame-rbp+8-s3
   ; rsp-bound = rsp-bound-s
   ; r15-chain = r15-chain
-  ; 40≤rsp-s = 40≤rsp-s
-  ; cap5 = mk-capacity-5 s
+  ; setup-frame-fits = setup-frame-fits
+  ; cap = cap
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -1550,39 +1611,56 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     r15-chain = trans r15-s3-eq-s2 (trans r15-s2-eq-s1 (trans r15-s1-eq-setup r15-setup-eq))
 
     -- ========== Disjointness proofs (PROVEN from arithmetic) ==========
-    -- Key insight: rbp-s3 = rsp-s ∸ slots 3 = r15-s3 + 16 (when rsp-s ≥ 40)
-    -- This follows from setup using 40 bytes of stack (3 pushes + sub 16)
+    -- Key insight: rbp-s3 = rsp-s ∸ slots rbp-offset-local = r15-s3 + slots delta-local
+    -- Frame layout: setup consumes pair-setup-consumed-slots of stack
 
-    -- Get rsp>16 from setup, which implies rsp-s > 56, thus 40 ≤ rsp-s
-    rsp-sufficient-setup' : readReg (regs s-setup) rsp > slots 2
-    rsp-sufficient-setup' = subst (λ ss → readReg (regs ss) rsp > slots 2)
+    -- Semantic constants for frame layout
+    inner-req-local : ℕ
+    inner-req-local = pair-inner-requirement f g
+    setup-slots-local : ℕ
+    setup-slots-local = pair-setup-consumed-slots
+    rbp-offset-local : ℕ
+    rbp-offset-local = 3
+    delta-local : ℕ
+    delta-local = setup-slots-local ∸ rbp-offset-local  -- = 5 - 3 = 2
+
+    -- Get rsp > slots inner-req from setup
+    rsp-sufficient-setup' : readReg (regs s-setup) rsp > slots inner-req-local
+    rsp-sufficient-setup' = subst (λ ss → readReg (regs ss) rsp > slots inner-req-local)
                           (sym s-setup-eq) (PairSetupResult.rsp-sufficient-setup setup-res)
 
-    -- rsp-setup = rsp-s ∸ slots 5, and rsp-setup > 16, so rsp-s ∸ slots 5 > 16 > 0, thus 40 ≤ rsp-s
-    rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
-    rsp-setup-eq' = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots 5)
+    -- rsp-setup = rsp-s ∸ slots setup-slots-local
+    rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots setup-slots-local
+    rsp-setup-eq' = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
                           (sym s-setup-eq) (PairSetupResult.rsp-setup setup-res)
 
-    rsp∸40>16 : readReg (regs s) rsp ∸ slots 5 > 16
-    rsp∸40>16 = subst (_> slots 2) rsp-setup-eq' rsp-sufficient-setup'
+    rsp-after-setup>inner : readReg (regs s) rsp ∸ slots setup-slots-local > slots inner-req-local
+    rsp-after-setup>inner = subst (_> slots inner-req-local) rsp-setup-eq' rsp-sufficient-setup'
 
-    rsp∸40>0 : readReg (regs s) rsp ∸ slots 5 > 0
-    rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16  -- 1 ≤ 17 ≤ rsp∸40
+    rsp-after-setup>0 : readReg (regs s) rsp ∸ slots setup-slots-local > 0
+    rsp-after-setup>0 = ≤-<-trans z≤n rsp-after-setup>inner
 
-    40≤rsp-s : 40 ≤ readReg (regs s) rsp
-    40≤rsp-s = ∸>0⇒≤ (readReg (regs s) rsp) 40 rsp∸40>0
+    setup-frame-fits : slots setup-slots-local ≤ readReg (regs s) rsp
+    setup-frame-fits = ∸>0⇒≤ (readReg (regs s) rsp) (slots setup-slots-local) rsp-after-setup>0
 
-    -- 24 ≤ rsp-s follows from 24 ≤ 40 ≤ rsp-s
-    rsp-bound-s : 24 ≤ readReg (regs s) rsp
-    rsp-bound-s = ≤-trans 24≤40 40≤rsp-s
-      where
-        24≤40 : 24 ≤ 40
-        24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+    -- slots rbp-offset-local ≤ rsp-s follows from slots rbp-offset-local ≤ slots setup-slots-local ≤ rsp-s
+    -- Derived semantically: delta-local = setup-slots-local ∸ rbp-offset-local > 0 implies rbp-offset-local ≤ setup-slots-local
+    delta>0 : delta-local > 0
+    delta>0 = s≤s z≤n  -- delta-local = 2, so 1 ≤ 2
 
-    -- rbp-s3 = r15-s3 + 16 (key relationship for disjointness)
+    rbp-offset≤setup : rbp-offset-local ≤ setup-slots-local
+    rbp-offset≤setup = ∸>0⇒≤ setup-slots-local rbp-offset-local delta>0
+
+    slots-rbp-offset≤setup : slots rbp-offset-local ≤ slots setup-slots-local
+    slots-rbp-offset≤setup = Data.Nat.Properties.*-monoˡ-≤ slot-size rbp-offset≤setup
+
+    rsp-bound-s : slots rbp-offset-local ≤ readReg (regs s) rsp
+    rsp-bound-s = ≤-trans slots-rbp-offset≤setup setup-frame-fits
+
+    -- rbp-s3 = r15-s3 + slots delta-local (key relationship for disjointness)
     -- Using full expressions to avoid projection mismatch errors
-    offset-eq : readReg (regs s) rsp ∸ slots 3 ≡ (readReg (regs s) rsp ∸ slots 5) +ℕ slots 2
-    offset-eq = ∸-offset-relationship (readReg (regs s) rsp) 40≤rsp-s
+    offset-eq : readReg (regs s) rsp ∸ slots rbp-offset-local ≡ (readReg (regs s) rsp ∸ slots setup-slots-local) +ℕ slots delta-local
+    offset-eq = ∸-offset-relationship (readReg (regs s) rsp) setup-frame-fits
 
     rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ slots 2
     rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ slots 2) (sym r15-chain)))
@@ -1637,29 +1715,28 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             combined-eq : readReg (regs s3) r15 +ℕ slot-size ≡ 0
             combined-eq = trans (sym eq) r15≡0
 
-        -- Case 2: rsp-s ≤ r15-s, then r15-s3 + 8 = (rsp-s ∸ slots 5) + 8 < rsp-s ≤ r15-s
+        -- Case 2: rsp-s ≤ r15-s, then r15-s3 + slot-size = (rsp-s ∸ slots setup-slots-local) + slot-size < rsp-s ≤ r15-s
         case-r15-stack : readReg (regs s) rsp ≤ readReg (regs s) r15 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-stack rsp≤r15 eq = <⇒≢ r15-s3+8<r15-s (sym eq)
           where
-            -- (rsp-s ∸ slots 5) + 8 < rsp-s (when 40 ≤ rsp-s)
-            -- Proof: rsp-s = (rsp-s ∸ slots 5) + 40, so need (rsp-s ∸ slots 5) + 8 < (rsp-s ∸ slots 5) + 40
-            --        which follows from 8 < 40
+            -- (rsp-s ∸ slots setup-slots-local) + slot-size < rsp-s (when slots setup-slots-local ≤ rsp-s)
+            -- Proof: rsp-s = (rsp-s ∸ slots setup-slots-local) + slots setup-slots-local
+            --        and slot-size < slots setup-slots-local
             r15-s3+8<rsp-s : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rsp
             r15-s3+8<rsp-s = subst (λ n → n +ℕ slot-size < readReg (regs s) rsp) (sym r15-chain) arith-step
               where
                 rsp-s = readReg (regs s) rsp
-                k = rsp-s ∸ slots 5
+                k = rsp-s ∸ slots setup-slots-local
 
-                -- k + 8 < k + 40 from 8 < 40
-                -- 8 < 40 means 9 ≤ 40, so need 9 s≤s applications to z≤n : 0 ≤ 31
-                8<40 : 8 < 40
-                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+                -- slot-size < slots setup-slots-local (8 < 40 when setup-slots-local = 5)
+                slot-size<setup : slot-size < slots setup-slots-local
+                slot-size<setup = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
 
-                k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
-                k+8<k+40 = +-monoʳ-< k 8<40
+                k+slot<k+setup : k +ℕ slot-size < k +ℕ slots setup-slots-local
+                k+slot<k+setup = +-monoʳ-< k slot-size<setup
 
-                arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
-                arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+                arith-step : (readReg (regs s) rsp ∸ slots setup-slots-local) +ℕ slot-size < readReg (regs s) rsp
+                arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+slot<k+setup
 
             r15-s3+8<r15-s : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) r15
             r15-s3+8<r15-s = ≤-trans r15-s3+8<rsp-s rsp≤r15
@@ -1733,9 +1810,9 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         rsp∸24<rsp : readReg (regs s) rsp ∸ slots 3 < readReg (regs s) rsp
         rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 rsp>0-for-proof 24>0-for-proof
           where
-            -- From 40≤rsp-s we get rsp ≥ 40 > 0
+            -- From setup-frame-fits we get rsp ≥ 40 > 0
             rsp>0-for-proof : readReg (regs s) rsp > 0
-            rsp>0-for-proof = ≤-trans (s≤s z≤n) 40≤rsp-s
+            rsp>0-for-proof = ≤-trans (s≤s z≤n) setup-frame-fits
             24>0-for-proof : 24 > 0
             24>0-for-proof = s≤s z≤n
             m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
@@ -1757,7 +1834,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         rsp∸40<rsp = m∸n<m-helper2 (readReg (regs s) rsp) 40 rsp>0-for-proof2 40>0-for-proof
           where
             rsp>0-for-proof2 : readReg (regs s) rsp > 0
-            rsp>0-for-proof2 = ≤-trans (s≤s z≤n) 40≤rsp-s
+            rsp>0-for-proof2 = ≤-trans (s≤s z≤n) setup-frame-fits
             40>0-for-proof : 40 > 0
             40>0-for-proof = s≤s z≤n
             m∸n<m-helper2 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
@@ -1824,7 +1901,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                                             (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
             rsp∸40<rsp-for-proof : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
             rsp∸40<rsp-for-proof = m∸n<m-helper3 (readReg (regs s) rsp) 40
-                                     (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                                     (≤-trans (s≤s z≤n) setup-frame-fits) (s≤s z≤n)
               where
                 m∸n<m-helper3 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
                 m∸n<m-helper3 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
@@ -1878,7 +1955,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
         k+8<k+40 = +-monoʳ-< k 8<40
         arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
-        arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+        arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+8<k+40
 
     r15-s3+8<rbp : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rbp
     r15-s3+8<rbp = ≤-trans r15-s3+8<rsp-rbp (RbpInvariant.rsp≤rbp rbp-inv)
@@ -1921,7 +1998,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             open import Data.Nat.Properties using (∸-monoʳ-<)
             -- rsp - 40 < rsp - 24 since 40 > 24 (and rsp > slots 5)
             rsp∸40<rsp∸24 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 3
-            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 40≤rsp-s
+            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 setup-frame-fits
               where
                 24<40 : 24 < 40
                 24<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
@@ -1970,7 +2047,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp 8≤24
               where
                 24≤rsp : 24 ≤ readReg (regs s) rsp
-                24≤rsp = ≤-trans 24≤40 40≤rsp-s
+                24≤rsp = ≤-trans 24≤40 setup-frame-fits
                   where
                     24≤40 : 24 ≤ 40
                     24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
@@ -1986,7 +2063,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 2
-            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 40≤rsp-s
+            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 setup-frame-fits
               where
                 16<40 : 16 < 40
                 16<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
@@ -2046,7 +2123,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' 16≤24
               where
                 24≤rsp' : 24 ≤ readReg (regs s) rsp
-                24≤rsp' = ≤-trans 24≤40' 40≤rsp-s
+                24≤rsp' = ≤-trans 24≤40' setup-frame-fits
                   where
                     24≤40' : 24 ≤ 40
                     24≤40' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
@@ -2062,7 +2139,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slot-size
-            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 40≤rsp-s
+            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 setup-frame-fits
               where
                 8<40 : 8 < 40
                 8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
@@ -2137,12 +2214,13 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     orig-r15≢s1-r15 = case-stack-inv-r15 stack-inv
       where
         open import Data.Nat.Properties using (<-≤-trans)
-        s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
-        s1-r15-eq = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+        -- setup-slots-local and rsp-after-setup>0 already in outer scope
+        s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local
+        s1-r15-eq = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
                                               (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
-        -- s1.r15 = rsp - 40 > 0 (since rsp > slots 5)
+        -- s1.r15 = rsp - slots setup > 0
         s1-r15>0 : readReg (regs s1) r15 > 0
-        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp∸40>0
+        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp-after-setup>0
         -- Case r15 = 0: 0 ≠ s1.r15 since s1.r15 > 0
         case-r15-zero-r15 : orig-r15 ≡ 0 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-zero-r15 r15≡0 eq = 0≢pos (readReg (regs s1) r15) s1-r15>0 (trans (sym r15≡0) eq)
@@ -2152,7 +2230,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             rsp∸40<rsp : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
             rsp∸40<rsp = m∸n<m-r15 (readReg (regs s) rsp) 40
-                           (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                           (≤-trans (s≤s z≤n) setup-frame-fits) (s≤s z≤n)
               where
                 m∸n<m-r15 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
                 m∸n<m-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
@@ -2249,7 +2327,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
               where
                 setup-rbp-eq = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
                                      (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)
-                rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 (≤-trans (s≤s z≤n) setup-frame-fits) (s≤s z≤n)
                   where m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
                         m∸n<m-helper (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
                 rsp∸24<r15 = <-≤-trans rsp∸24<rsp r15≥rsp
@@ -2283,7 +2361,8 @@ make-pair-final-precond-v : ∀ {A B C} (f : IR C A) (g : IR C B)
                             (prefix suffix : Program) (x : ⟦ C ⟧)
                             (s s-setup s1 s2 s3 : State)
                             (stack-inv : StackInvariant s)
-                            (rbp-inv : RbpInvariant s) →
+                            (rbp-inv : RbpInvariant s)
+                            (cap : StackCapacity s (ir-stack-requirement ⟨ f , g ⟩)) →
   let ctx = make-pair-context f g prefix suffix in
   let open PairContext ctx in
   (setup-res : PairSetupResultV f g prefix suffix x s) →
@@ -2294,7 +2373,7 @@ make-pair-final-precond-v : ∀ {A B C} (f : IR C A) (g : IR C B)
   s2 ≡ PairMiddleResultV.s2 mid-res →
   PairFinalPrecond f g prefix suffix s s3
 make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
-                          stack-inv rbp-inv setup-res r-f mid-res r-g s-setup-eq s2-eq = record
+                          stack-inv rbp-inv cap setup-res r-f mid-res r-g s-setup-eq s2-eq = record
   { h3 = IRStarResultV.ir-halted r-g
   ; pc3 = pc3
   ; stack-rbp = stack-rbp-s3
@@ -2314,8 +2393,8 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; mem-frame-rbp+8 = mem-frame-rbp+8-s3
   ; rsp-bound = rsp-bound-s
   ; r15-chain = r15-chain
-  ; 40≤rsp-s = 40≤rsp-s
-  ; cap5 = PairSetupResultV.cap5 setup-res
+  ; setup-frame-fits = setup-frame-fits
+  ; cap = cap
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -2376,37 +2455,50 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     r15-chain = trans r15-s3-eq-s2 (trans r15-s2-eq-s1 (trans r15-s1-eq-setup r15-setup-eq))
 
     -- ========== Disjointness proofs (PROVEN from arithmetic) ==========
-    -- Key insight: rbp-s3 = rsp-s ∸ slots 3 = r15-s3 + 16 (when rsp-s ≥ 40)
+    -- Key insight: rbp-s3 = rsp-s ∸ slots rbp-offset = r15-s3 + slots delta
 
-    -- Get rsp>16 from setup, which implies rsp-s > 56, thus 40 ≤ rsp-s
-    rsp-sufficient-setup' : readReg (regs s-setup) rsp > slots 2
-    rsp-sufficient-setup' = subst (λ ss → readReg (regs ss) rsp > slots 2)
+    -- Semantic constants for frame layout
+    inner-req-local : ℕ
+    inner-req-local = pair-inner-requirement f g
+    setup-slots-local : ℕ
+    setup-slots-local = pair-setup-consumed-slots
+    rbp-offset-local : ℕ
+    rbp-offset-local = 3
+    delta-local : ℕ
+    delta-local = setup-slots-local ∸ rbp-offset-local  -- = 5 - 3 = 2
+
+    -- Get rsp > inner-req from setup
+    rsp-sufficient-setup' : readReg (regs s-setup) rsp > slots inner-req-local
+    rsp-sufficient-setup' = subst (λ ss → readReg (regs ss) rsp > slots inner-req-local)
                           (sym s-setup-eq) (PairSetupResultV.rsp-sufficient-setup setup-res)
 
-    -- rsp-setup = rsp-s ∸ slots 5, and rsp-setup > 16, so rsp-s ∸ slots 5 > 16 > 0, thus 40 ≤ rsp-s
-    rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
-    rsp-setup-eq' = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots 5)
+    -- rsp-setup = rsp-s ∸ slots setup-slots-local
+    rsp-setup-eq' : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots setup-slots-local
+    rsp-setup-eq' = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
                           (sym s-setup-eq) (PairSetupResultV.rsp-setup setup-res)
 
-    rsp∸40>16 : readReg (regs s) rsp ∸ slots 5 > 16
-    rsp∸40>16 = subst (_> slots 2) rsp-setup-eq' rsp-sufficient-setup'
+    rsp-after-setup>inner : readReg (regs s) rsp ∸ slots setup-slots-local > slots inner-req-local
+    rsp-after-setup>inner = subst (_> slots inner-req-local) rsp-setup-eq' rsp-sufficient-setup'
 
-    rsp∸40>0 : readReg (regs s) rsp ∸ slots 5 > 0
-    rsp∸40>0 = ≤-trans (s≤s z≤n) rsp∸40>16  -- 1 ≤ 17 ≤ rsp∸40
+    rsp-after-setup>0 : readReg (regs s) rsp ∸ slots setup-slots-local > 0
+    rsp-after-setup>0 = ≤-<-trans z≤n rsp-after-setup>inner
 
-    40≤rsp-s : 40 ≤ readReg (regs s) rsp
-    40≤rsp-s = ∸>0⇒≤ (readReg (regs s) rsp) 40 rsp∸40>0
+    setup-frame-fits : slots setup-slots-local ≤ readReg (regs s) rsp
+    setup-frame-fits = ∸>0⇒≤ (readReg (regs s) rsp) (slots setup-slots-local) rsp-after-setup>0
 
-    -- 24 ≤ rsp-s follows from 24 ≤ 40 ≤ rsp-s
-    rsp-bound-s : 24 ≤ readReg (regs s) rsp
-    rsp-bound-s = ≤-trans 24≤40 40≤rsp-s
-      where
-        24≤40 : 24 ≤ 40
-        24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
+    -- slots rbp-offset ≤ rsp-s follows from slots rbp-offset ≤ slots setup-slots ≤ rsp-s
+    delta>0 : delta-local > 0
+    delta>0 = s≤s z≤n  -- delta-local = 2, so 1 ≤ 2
+    rbp-offset≤setup : rbp-offset-local ≤ setup-slots-local
+    rbp-offset≤setup = ∸>0⇒≤ setup-slots-local rbp-offset-local delta>0
+    slots-rbp-offset≤setup : slots rbp-offset-local ≤ slots setup-slots-local
+    slots-rbp-offset≤setup = Data.Nat.Properties.*-monoˡ-≤ slot-size rbp-offset≤setup
+    rsp-bound-s : slots rbp-offset-local ≤ readReg (regs s) rsp
+    rsp-bound-s = ≤-trans slots-rbp-offset≤setup setup-frame-fits
 
     -- rbp-s3 = r15-s3 + 16 (key relationship for disjointness)
     offset-eq : readReg (regs s) rsp ∸ slots 3 ≡ (readReg (regs s) rsp ∸ slots 5) +ℕ slots 2
-    offset-eq = ∸-offset-relationship (readReg (regs s) rsp) 40≤rsp-s
+    offset-eq = ∸-offset-relationship (readReg (regs s) rsp) setup-frame-fits
 
     rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ slots 2
     rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ slots 2) (sym r15-chain)))
@@ -2465,7 +2557,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
                 k+8<k+40 = +-monoʳ-< k 8<40
                 arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
-                arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+                arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+8<k+40
 
             r15-s3+8<r15-s : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) r15
             r15-s3+8<r15-s = ≤-trans r15-s3+8<rsp-s rsp≤r15
@@ -2522,7 +2614,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 rsp>0-for-proof 24>0-for-proof
           where
             rsp>0-for-proof : readReg (regs s) rsp > 0
-            rsp>0-for-proof = ≤-trans (s≤s z≤n) 40≤rsp-s
+            rsp>0-for-proof = ≤-trans (s≤s z≤n) setup-frame-fits
             24>0-for-proof : 24 > 0
             24>0-for-proof = s≤s z≤n
             m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
@@ -2542,7 +2634,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         rsp∸40<rsp = m∸n<m-helper2 (readReg (regs s) rsp) 40 rsp>0-for-proof2 40>0-for-proof
           where
             rsp>0-for-proof2 : readReg (regs s) rsp > 0
-            rsp>0-for-proof2 = ≤-trans (s≤s z≤n) 40≤rsp-s
+            rsp>0-for-proof2 = ≤-trans (s≤s z≤n) setup-frame-fits
             40>0-for-proof : 40 > 0
             40>0-for-proof = s≤s z≤n
             m∸n<m-helper2 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
@@ -2602,7 +2694,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                                             (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
             rsp∸40<rsp-for-proof : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
             rsp∸40<rsp-for-proof = m∸n<m-helper3 (readReg (regs s) rsp) 40
-                                     (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                                     (≤-trans (s≤s z≤n) setup-frame-fits) (s≤s z≤n)
               where
                 m∸n<m-helper3 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
                 m∸n<m-helper3 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
@@ -2651,7 +2743,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
         k+8<k+40 = +-monoʳ-< k 8<40
         arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
-        arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m 40≤rsp-s) k+8<k+40
+        arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+8<k+40
 
     r15-s3+8<rbp : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) rbp
     r15-s3+8<rbp = ≤-trans r15-s3+8<rsp-rbp (RbpInvariant.rsp≤rbp rbp-inv)
@@ -2687,7 +2779,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸24 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 3
-            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 40≤rsp-s
+            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 setup-frame-fits
               where
                 24<40 : 24 < 40
                 24<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
@@ -2726,7 +2818,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp 8≤24
               where
                 24≤rsp : 24 ≤ readReg (regs s) rsp
-                24≤rsp = ≤-trans 24≤40 40≤rsp-s
+                24≤rsp = ≤-trans 24≤40 setup-frame-fits
                   where
                     24≤40 : 24 ≤ 40
                     24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
@@ -2740,7 +2832,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 2
-            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 40≤rsp-s
+            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 setup-frame-fits
               where
                 16<40 : 16 < 40
                 16<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
@@ -2796,7 +2888,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' 16≤24
               where
                 24≤rsp' : 24 ≤ readReg (regs s) rsp
-                24≤rsp' = ≤-trans 24≤40' 40≤rsp-s
+                24≤rsp' = ≤-trans 24≤40' setup-frame-fits
                   where
                     24≤40' : 24 ≤ 40
                     24≤40' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
@@ -2810,7 +2902,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slot-size
-            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 40≤rsp-s
+            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 setup-frame-fits
               where
                 8<40 : 8 < 40
                 8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
@@ -2873,11 +2965,12 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     orig-r15≢s1-r15 = case-stack-inv-r15 stack-inv
       where
         open import Data.Nat.Properties using (<-≤-trans)
-        s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
-        s1-r15-eq = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
+        -- setup-slots-local and rsp-after-setup>0 in outer scope
+        s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local
+        s1-r15-eq = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
                                               (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
         s1-r15>0 : readReg (regs s1) r15 > 0
-        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp∸40>0
+        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp-after-setup>0
         case-r15-zero-r15 : orig-r15 ≡ 0 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-zero-r15 r15≡0 eq = 0≢pos (readReg (regs s1) r15) s1-r15>0 (trans (sym r15≡0) eq)
         case-r15-stack-r15 : readReg (regs s) rsp ≤ orig-r15 → orig-r15 ≢ readReg (regs s1) r15
@@ -2885,7 +2978,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             rsp∸40<rsp : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp
             rsp∸40<rsp = m∸n<m-r15 (readReg (regs s) rsp) 40
-                           (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                           (≤-trans (s≤s z≤n) setup-frame-fits) (s≤s z≤n)
               where
                 m∸n<m-r15 : ∀ m n → m > 0 → n > 0 → m ∸ n < m
                 m∸n<m-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
@@ -2969,7 +3062,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
               where
                 setup-rbp-eq = subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ slots 3)
                                      (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)
-                rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 (≤-trans (s≤s z≤n) 40≤rsp-s) (s≤s z≤n)
+                rsp∸24<rsp = m∸n<m-helper (readReg (regs s) rsp) 24 (≤-trans (s≤s z≤n) setup-frame-fits) (s≤s z≤n)
                   where m∸n<m-helper : ∀ m n → m > 0 → n > 0 → m ∸ n < m
                         m∸n<m-helper (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
                 rsp∸24<r15 = <-≤-trans rsp∸24<rsp r15≥rsp
@@ -3021,7 +3114,7 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-heap-fin = mem-heap-proof
     }
     where
-      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; disjoint-orig-rbp; disjoint-orig-rbp+8; mem-frame; mem-frame-rbp; mem-frame-rbp+8; r15-chain; 40≤rsp-s)
+      open PairFinalPrecond precond using (h3; pc3; stack-rbp; stack-r15; stack-r14; stack-inv-s; rbp-chain; disjoint-rbp; disjoint-r15; disjoint-r14; disjoint-orig; disjoint-orig-rbp; disjoint-orig-rbp+8; mem-frame; mem-frame-rbp; mem-frame-rbp+8; r15-chain; setup-frame-fits)
 
       ctx = make-pair-context f g prefix suffix
       open PairContext ctx
@@ -3221,15 +3314,12 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
           24≤rsp-s : 24 ≤ readReg (regs s) rsp
           24≤rsp-s = PairFinalPrecond.rsp-bound precond
 
-      -- Derive rsp-sufficient-s9 from cap5 via rsp-s9-eq-s (s9 restores rsp)
-      rsp-sufficient-s9 : readReg (regs s9) rsp > slots 2
-      rsp-sufficient-s9 = subst (_> slots 2) (sym rsp-s9-eq-s) rsp-s-sufficient
-        where
-          cap5-precond = PairFinalPrecond.cap5 precond
-          2≤5 : 2 ≤ 5
-          2≤5 = s≤s (s≤s z≤n)
-          rsp-s-sufficient : readReg (regs s) rsp > slots 2
-          rsp-s-sufficient = ≤-<-trans (slots-mono-≤ 2≤5) (StackCapacity.rsp-sufficient cap5-precond)
+      -- Derive rsp-sufficient-s9 from cap via rsp-s9-eq-s (s9 restores rsp)
+      -- Since ir-rsp-delta ⟨ f , g ⟩ = 0, output capacity = input requirement
+      output-cap-local : ℕ
+      output-cap-local = ir-output-capacity ⟨ f , g ⟩
+      rsp-sufficient-s9 : readReg (regs s9) rsp > slots output-cap-local
+      rsp-sufficient-s9 = subst (_> slots output-cap-local) (sym rsp-s9-eq-s) (StackCapacity.rsp-sufficient (PairFinalPrecond.cap precond))
 
       -- Stack invariant: s9 has same r15 and rsp as s, so inherits StackInvariant
       stack-inv-s9 : StackInvariant s9
@@ -3260,11 +3350,14 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       -- ========== D041 memory preservation proofs ==========
       -- The write address (r15-s3 + 8) is in stack region, so it's disjoint from 0, code, and heap
 
-      cap5 : StackCapacity s 5
-      cap5 = PairFinalPrecond.cap5 precond
+      -- Get StackCapacity s 5 by weakening from the dynamic capacity
+      cap-precond : StackCapacity s (ir-stack-requirement ⟨ f , g ⟩)
+      cap-precond = PairFinalPrecond.cap precond
+      cap5 : StackCapacity s pair-setup-consumed-slots
+      cap5 = mk-capacity-5 s
 
-      -- (rsp - 40) + 8 is in stack region (via abstract interface)
-      write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack
+      -- (rsp - slots setup) + slot-size is in stack region (via abstract interface)
+      write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) +ℕ slot-size) ≡ stack
       write-addr-in-stack-raw = abstract-to-rsp-40+8-in-stack s cap5
 
       -- r15-s3 + 8 is in stack region (using r15-chain)
@@ -3321,7 +3414,7 @@ assemble-pair-result-v : ∀ {A B C} (f : IR C A) (g : IR C B)
   readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
   readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
   StackInvariant s-final →
-  StackCapacity s 2 →  -- Initial state capacity (final derived via rsp-final)
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →  -- Initial state capacity (final derived via rsp-final)
   readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
@@ -3359,6 +3452,7 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
   ; ir-r14 = r14-final
   ; ir-r15 = r15-final
   ; ir-rbp = rbp-final
+  ; ir-rsp = rsp-final  -- pair has delta=0, so rsp s-final ≡ rsp s ∸ 0 = rsp s
   ; ir-mem = mem-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
@@ -3376,10 +3470,9 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
     open PairContext ctx
 
     -- Derive final capacity from initial capacity via rsp-final (pair restores rsp)
-    cap-final : StackCapacity s-final 2
-    cap-final = rsp-bound-to-capacity 2 s-final
-                  (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
-                  (subst (_> slots 2) (sym rsp-final) (rsp-sufficient cap))
+    -- For pair: ir-output-capacity ⟨ f , g ⟩ = ir-stack-requirement ⟨ f , g ⟩ (delta = 0)
+    cap-final : StackCapacity s-final (ir-output-capacity ⟨ f , g ⟩)
+    cap-final = capacity-preserved-rsp-unchanged s s-final (ir-stack-requirement ⟨ f , g ⟩) cap rsp-final
 
     -- Star proofs from each phase (same as assemble-pair-result)
     star-setup' : Star prog s s-setup
@@ -3502,7 +3595,7 @@ assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
   readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
   readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
   StackInvariant s-final →
-  StackCapacity s 2 →  -- Initial state capacity (final derived via rsp-final)
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →  -- Initial state capacity (final derived via rsp-final)
   readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
@@ -3538,6 +3631,7 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
   ; ir-r14 = r14-final
   ; ir-r15 = r15-final
   ; ir-rbp = rbp-final
+  ; ir-rsp = rsp-final  -- pair has delta=0, so rsp s-final ≡ rsp s ∸ 0 = rsp s
   ; ir-mem = mem-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
@@ -3555,10 +3649,9 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     open PairContext ctx
 
     -- Derive final capacity from initial capacity via rsp-final (pair restores rsp)
-    cap-final : StackCapacity s-final 2
-    cap-final = rsp-bound-to-capacity 2 s-final
-                  (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
-                  (subst (_> slots 2) (sym rsp-final) (rsp-sufficient cap))
+    -- For pair: ir-output-capacity ⟨ f , g ⟩ = ir-stack-requirement ⟨ f , g ⟩ (delta = 0)
+    cap-final : StackCapacity s-final (ir-output-capacity ⟨ f , g ⟩)
+    cap-final = capacity-preserved-rsp-unchanged s s-final (ir-stack-requirement ⟨ f , g ⟩) cap rsp-final
 
     -- Star proofs from each phase (using V versions)
     star-setup' : Star prog s s-setup

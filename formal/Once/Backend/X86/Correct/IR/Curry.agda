@@ -12,11 +12,14 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-closure-construct)
+open import Once.Backend.X86.Postulates using (curry-rsp-preserved)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-bound-to-capacity; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
          alloc-2-slots-addrs-in-stack; slots-mono-≤;
+         ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
+         curry-rsp-delta≤curry-req;
          -- D041: Abstract helpers that encapsulate arithmetic
          curry-frame-disjoint-from-rbp; curry-rbp-inv-update; curry-stack-inv-frame-bound-update;
          curry-alloc-below-rbp; curry-alloc-nonzero)
@@ -86,11 +89,13 @@ record CurryExecResult {A B C : Type} (f : IR (A * B) C)
     exec-r14 : readReg (regs s') r14 ≡ readReg (regs s) r14
     exec-r15 : readReg (regs s') r15 ≡ readReg (regs s) r15
     exec-rbp : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    -- RSP delta: curry allocates slots, rsp decreases by ir-rsp-delta
+    exec-rsp : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta (curry f))
     exec-mem : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     exec-mem-rbp : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     exec-mem-rbp+8 : readMem (memory s') (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
     exec-stack-inv : StackInvariant s'
-    exec-capacity : StackCapacity s' 2
+    exec-capacity : StackCapacity s' (ir-output-capacity (curry f))
     exec-rbp-inv : RbpInvariant s'
     exec-mem-above : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     exec-mem-at-0 : readMem (memory s') 0 ≡ readMem (memory s) 0
@@ -103,14 +108,14 @@ open CurryExecResult public
 -- Main curry proof (validity-based, no encode)
 ------------------------------------------------------------------------
 
--- | Main curry proof (takes StackCapacity s 4 directly to eliminate postulate usage)
--- Curry allocates 2 slots, so we need 4 to guarantee output capacity of 2
+-- | Main curry proof (takes StackCapacity s (ir-stack-requirement (curry f)) directly)
+-- Uses dynamic capacity based on the actual IR's requirements
 run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (curry f)) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (CurryExecResult f prog s s' x (length prefix)
@@ -123,6 +128,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     ; exec-r14 = r14-final
     ; exec-r15 = r15-final
     ; exec-rbp = rbp-final
+    ; exec-rsp = rsp-change
     ; exec-mem = mem-final
     ; exec-mem-rbp = mem-rbp-final
     ; exec-mem-rbp+8 = mem-rbp+8-final
@@ -147,18 +153,16 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     len-f = compile-length f
     prog = prefix ++ compile-x86 (curry f) ++ suffix
 
-    -- Derive rsp bound from StackCapacity (no postulate needed!)
-    2≤4 : 2 ≤ 4
-    2≤4 = s≤s (s≤s z≤n)
-
-    rsp-bound : readReg (regs s) rsp > slots 2
-    rsp-bound = ≤-<-trans (slots-mono-≤ 2≤4) (StackCapacity.rsp-sufficient cap)
+    -- Derive rsp bound from StackCapacity using dynamic requirement
+    -- ir-rsp-delta (curry f) ≤ ir-stack-requirement (curry f) via named lemma
+    rsp-bound : readReg (regs s) rsp > slots (ir-rsp-delta (curry f))
+    rsp-bound = ≤-<-trans (slots-mono-≤ (curry-rsp-delta≤curry-req f)) (StackCapacity.rsp-sufficient cap)
 
     rsp-region : region-of (readReg (regs s) rsp) ≡ stack
     rsp-region = StackCapacity.rsp-in-stack cap
 
-    cap2 : StackCapacity s 2
-    cap2 = rsp-bound-to-capacity 2 s rsp-region rsp-bound
+    cap2 : StackCapacity s (ir-rsp-delta (curry f))
+    cap2 = rsp-bound-to-capacity (ir-rsp-delta (curry f)) s rsp-region rsp-bound
 
     -- Track original rdi (env address from input)
     orig-rdi : ℕ
@@ -177,8 +181,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     orig-rsp : Word
     orig-rsp = readReg (regs s) rsp
 
+    -- new-rsp uses ir-rsp-delta to avoid hardcoding
     new-rsp : Word
-    new-rsp = orig-rsp ∸ slots 2
+    new-rsp = orig-rsp ∸ slots (ir-rsp-delta (curry f))
 
     -- The 7 instructions that actually execute
     i0 : Instr
@@ -795,15 +800,19 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     stack-inv-final = stack-inv-helper stack-inv
 
     -- Clean capacity derivation via capacity-after-alloc-2-slots
-    rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ slots 2
+    -- rsp decreases by ir-rsp-delta (curry f) = 2 slots
+    rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta (curry f))
     rsp-change = rsp-s7
 
-    -- Use input cap directly (no postulate needed!)
-    output-capacity : StackCapacity s-final 2
-    output-capacity = capacity-after-alloc-2-slots s s-final 2 cap rsp-change
+    -- Output capacity = input requirement - delta
+    -- capacity-after-alloc-2-slots expects StackCapacity s (suc (suc n)) and produces StackCapacity s' n
+    -- Since ir-stack-requirement (curry f) = 2 + (4 + req f) and ir-output-capacity (curry f) = 4 + req f,
+    -- we have ir-stack-requirement = suc (suc ir-output-capacity) definitionally
+    output-capacity : StackCapacity s-final (ir-output-capacity (curry f))
+    output-capacity = capacity-after-alloc-2-slots s s-final (ir-output-capacity (curry f)) cap rsp-change
 
-    rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
-    rsp-sufficient-final = capacity-2-to-rsp-bound s-final output-capacity
+    rsp-sufficient-final : readReg (regs s-final) rsp > slots (ir-output-capacity (curry f))
+    rsp-sufficient-final = StackCapacity.rsp-sufficient output-capacity
 
     -- RbpInvariant preservation: D041 abstract helper encapsulates arithmetic
     rbp-inv-final : RbpInvariant s-final
@@ -950,14 +959,14 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 -- - Semantic closure has code-ptr = 0 (placeholder)
 -- - Runtime memory has actual thunk address
 -- - valid-closure-at only requires env-addr to match
--- Takes StackCapacity s 4 directly (eliminates blanket postulates)
--- Curry allocates 2 slots, so we need 4 to guarantee output capacity of 2
+-- Takes StackCapacity s (ir-stack-requirement (curry f)) directly
+-- Curry allocates ir-rsp-delta slots, output capacity = ir-output-capacity
 run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (curry f)) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
@@ -970,6 +979,7 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     ; ir-r14 = exec-r14 exec-result
     ; ir-r15 = exec-r15 exec-result
     ; ir-rbp = exec-rbp exec-result
+    ; ir-rsp = exec-rsp exec-result  -- curry: rsp s' = rsp s ∸ slots (ir-rsp-delta)
     ; ir-mem = exec-mem exec-result
     ; ir-mem-rbp = exec-mem-rbp exec-result
     ; ir-mem-rbp+8 = exec-mem-rbp+8 exec-result

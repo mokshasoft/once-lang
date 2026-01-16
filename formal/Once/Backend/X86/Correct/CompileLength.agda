@@ -121,61 +121,68 @@ compile-length-correct inl = refl
 compile-length-correct inr = refl
 compile-length-correct [ f , g ] = helper
   where
-    -- Structure: mov ∷ cmp ∷ jne ∷ mov ∷ (compile-x86 f ++ jmp ∷ label ∷ mov ∷ (compile-x86 g ++ label ∷ []))
-    -- Length = 4 + (|f| + (3 + (|g| + 1))) = (8 + |f|) + |g|
-
-    end-lbl : ℕ
-    end-lbl = (7 +ℕ compile-length f) +ℕ compile-length g
+    -- Structure with stack frame:
+    --   push rbp ∷ mov rbp rsp ∷                            -- 2 setup
+    --   mov r11 [rdi] ∷ cmp r11 0 ∷ jne ∷ mov rdi [rdi+8] ∷ -- 4 prefix
+    --   compile-x86 f ++
+    --   jmp ∷ label ∷ mov rdi [rdi+8] ∷                     -- 3 middle
+    --   compile-x86 g ++
+    --   mov rsp rbp ∷ pop rbp ∷ []                          -- 2 cleanup
+    -- Length = 6 + |f| + 3 + |g| + 2 = (case-overhead + |f|) + |g|
 
     right-lbl : ℕ
-    right-lbl = 5 +ℕ compile-length f
+    right-lbl = case-right-label-base +ℕ compile-length f
 
-    end-offset : ℕ
-    end-offset = 2 +ℕ compile-length g
+    cleanup-offset : ℕ
+    cleanup-offset = case-jmp-base +ℕ compile-length g
 
-    inner-tail : List Instr
-    inner-tail = label end-lbl ∷ []
+    -- Cleanup tail: mov rsp rbp ∷ pop rbp ∷ []
+    cleanup-tail : List Instr
+    cleanup-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
-    len-inner : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 1
-    len-inner = trans (length-++ (compile-x86 g) inner-tail)
-                      (cong (λ x → x +ℕ 1) (compile-length-correct g))
+    len-cleanup : length (compile-x86 g ++ cleanup-tail) ≡ compile-length g +ℕ 2
+    len-cleanup = trans (length-++ (compile-x86 g) cleanup-tail)
+                        (cong (λ x → x +ℕ 2) (compile-length-correct g))
 
+    -- Middle + g + cleanup: jmp ∷ label ∷ mov ∷ (g ++ cleanup)
     mid-tail : List Instr
-    mid-tail = jmp end-offset ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi 8)) ∷
-               (compile-x86 g ++ inner-tail)
+    mid-tail = jmp cleanup-offset ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+               (compile-x86 g ++ cleanup-tail)
 
-    len-mid : length mid-tail ≡ 3 +ℕ (compile-length g +ℕ 1)
-    len-mid = cong (λ x → 3 +ℕ x) len-inner
+    len-mid : length mid-tail ≡ 3 +ℕ (compile-length g +ℕ 2)
+    len-mid = cong (λ x → 3 +ℕ x) len-cleanup
 
+    -- f + middle
     full-tail : List Instr
     full-tail = compile-x86 f ++ mid-tail
 
-    len-with-f : length full-tail ≡ compile-length f +ℕ (3 +ℕ (compile-length g +ℕ 1))
+    len-with-f : length full-tail ≡ compile-length f +ℕ (3 +ℕ (compile-length g +ℕ 2))
     len-with-f = trans (length-++ (compile-x86 f) mid-tail)
                        (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
                               (cong (λ x → compile-length f +ℕ x) len-mid))
 
-    -- Prove: 4 + (a + (3 + (b + 1))) = (8 + a) + b
-    arith : ∀ a b → 4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1))) ≡ (8 +ℕ a) +ℕ b
+    -- Prove: 6 + (a + (3 + (b + 2))) = (case-overhead + a) + b
+    -- case-overhead = 11, so target is (11 + a) + b
+    arith : ∀ a b → 6 +ℕ (a +ℕ (3 +ℕ (b +ℕ 2))) ≡ (case-overhead +ℕ a) +ℕ b
     arith a b =
       begin
-        4 +ℕ (a +ℕ (3 +ℕ (b +ℕ 1)))
-      ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (cong (3 +ℕ_) (+-comm b 1))) ⟩
-        4 +ℕ (a +ℕ (3 +ℕ (1 +ℕ b)))
-      ≡⟨ cong (4 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 3 1 b))) ⟩
-        4 +ℕ (a +ℕ (4 +ℕ b))
-      ≡⟨ cong (4 +ℕ_) (sym (+-assoc a 4 b)) ⟩
-        4 +ℕ ((a +ℕ 4) +ℕ b)
-      ≡⟨ cong (4 +ℕ_) (cong (_+ℕ b) (+-comm a 4)) ⟩
-        4 +ℕ ((4 +ℕ a) +ℕ b)
-      ≡⟨ sym (+-assoc 4 (4 +ℕ a) b) ⟩
-        (4 +ℕ (4 +ℕ a)) +ℕ b
-      ≡⟨ cong (_+ℕ b) (sym (+-assoc 4 4 a)) ⟩
-        (8 +ℕ a) +ℕ b
+        6 +ℕ (a +ℕ (3 +ℕ (b +ℕ 2)))
+      ≡⟨ cong (6 +ℕ_) (cong (a +ℕ_) (cong (3 +ℕ_) (+-comm b 2))) ⟩
+        6 +ℕ (a +ℕ (3 +ℕ (2 +ℕ b)))
+      ≡⟨ cong (6 +ℕ_) (cong (a +ℕ_) (sym (+-assoc 3 2 b))) ⟩
+        6 +ℕ (a +ℕ (5 +ℕ b))
+      ≡⟨ cong (6 +ℕ_) (sym (+-assoc a 5 b)) ⟩
+        6 +ℕ ((a +ℕ 5) +ℕ b)
+      ≡⟨ cong (6 +ℕ_) (cong (_+ℕ b) (+-comm a 5)) ⟩
+        6 +ℕ ((5 +ℕ a) +ℕ b)
+      ≡⟨ sym (+-assoc 6 (5 +ℕ a) b) ⟩
+        (6 +ℕ (5 +ℕ a)) +ℕ b
+      ≡⟨ cong (_+ℕ b) (sym (+-assoc 6 5 a)) ⟩
+        (11 +ℕ a) +ℕ b
       ∎
 
-    helper : length (compile-x86 [ f , g ]) ≡ (8 +ℕ compile-length f) +ℕ compile-length g
-    helper = trans (cong (λ x → 4 +ℕ x) len-with-f)
+    helper : length (compile-x86 [ f , g ]) ≡ (case-overhead +ℕ compile-length f) +ℕ compile-length g
+    helper = trans (cong (λ x → 6 +ℕ x) len-with-f)
                    (arith (compile-length f) (compile-length g))
 compile-length-correct terminal = refl
 compile-length-correct initial = refl

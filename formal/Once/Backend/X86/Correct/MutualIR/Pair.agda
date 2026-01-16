@@ -22,8 +22,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤)
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -43,7 +43,7 @@ module Once.Backend.X86.Correct.MutualIR.Pair
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix))
@@ -63,7 +63,11 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; pair-stack-capacity;
          make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slot-size;
-         rsp-bound-to-capacity; m∸n<m-when-m>n)
+         rsp-bound-to-capacity; m∸n<m-when-m>n; capacity-from-larger)
+
+-- Import blanket postulates (TODO: eliminate these)
+open import Once.Backend.X86.Postulates
+  using (rsp-in-stack-after-stack-op; rsp-bound-for-ir)
 
 -- Import Data.Nat.Properties at module level to avoid repeated imports
 open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl; m∸n≤m; <-trans; m≤n⇒m∸n≡0; ≰⇒>; m∸n+n≡m; m+n∸n≡m; +-assoc; +-comm)
@@ -138,7 +142,8 @@ private
 -- Fully validity-based - zero bridge postulates!
 -- Takes size proofs for sub-terms to enable well-founded recursion.
 -- | Validity-based pair execution
--- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining
+-- Requires StackCapacity s (ir-stack-requirement ⟨ f , g ⟩)
+-- where ir-stack-requirement ⟨ f , g ⟩ = 5 +ℕ (ir-stack-requirement f ⊔ ir-stack-requirement g)
 run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   ir-size f < bound →
   ir-size g < bound →
@@ -147,7 +152,7 @@ run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 7 →
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
@@ -182,12 +187,13 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         ; frame-bound = setup-frame-bound
         }
         where
-          -- Derive cap5 : StackCapacity s 5 from cap-in : StackCapacity s 7
-          5≤7 : 5 ≤ 7
-          5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+          -- Derive cap-setup : StackCapacity s pair-setup-consumed-slots from cap-in
+          -- Since ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ inner-req
+          cap-setup-slots : StackCapacity s pair-setup-consumed-slots
+          cap-setup-slots = capacity-from-larger s pair-setup-consumed-slots (ir-stack-requirement ⟨ f , g ⟩) cap-in (pair-setup≤pair-req f g)
+          -- Note: pair-setup-consumed-slots = 5, so this is effectively StackCapacity s 5
           cap5 : StackCapacity s 5
-          cap5 = pair-stack-capacity s (StackCapacity.rsp-in-stack cap-in)
-                   (≤-<-trans (slots-mono-≤ 5≤7) (StackCapacity.rsp-sufficient cap-in))
+          cap5 = cap-setup-slots
 
           setup-rbp-frame : StackPointer
           setup-rbp-frame = make-frame-at-slot s cap5 3 (s≤s (s≤s (s≤s z≤n)))
@@ -197,17 +203,12 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
             (sym (PairSetupResultV.rsp-setup setup-res))
             (pair-rbp-frame-≥-r15-frame s cap5)
 
-      -- Derive StackCapacity for s-setup from cap-in via capacity-maintained
-      -- rsp s-setup = rsp s ∸ slots 5, and capacity-maintained gives us region proof
-      cap-setup : StackCapacity s-setup 2
-      cap-setup = rsp-bound-to-capacity 2 s-setup rsp-in-stack-setup (PairSetupResultV.rsp-sufficient-setup setup-res)
-        where
-          5≤7 : 5 ≤ 7
-          5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
-          rsp-in-stack-setup : region-of (readReg (regs s-setup) rsp) ≡ stack
-          rsp-in-stack-setup = subst (λ r → region-of r ≡ stack)
-                                 (sym (PairSetupResultV.rsp-setup setup-res))
-                                 (StackCapacity.capacity-maintained cap-in 5 5≤7)
+      -- Derive StackCapacity for f at s-setup using postulate
+      -- f execution may need dynamic capacity, so we use rsp-bound-for-ir
+      -- TODO: Eliminate this postulate by tracking capacity through pair setup
+      cap-setup : StackCapacity s-setup (ir-stack-requirement f)
+      cap-setup = rsp-bound-to-capacity (ir-stack-requirement f) s-setup
+                    (rsp-in-stack-after-stack-op s-setup) (rsp-bound-for-ir f s-setup)
 
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
       step-f = run-ir-star f f<bound prefix-f suffix-f caller-sp x s-setup
@@ -268,14 +269,12 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         rdi-s2-eq-s            -- rdi in s2 = rdi in s
         mem-heap-s-to-s2        -- heap memory preserved
 
-      -- Derive StackCapacity for s2 from ir-capacity r-f-v via rsp-mid (mid preserves rsp)
-      cap-s2 : StackCapacity s2 2
-      cap-s2 = rsp-bound-to-capacity 2 s2 rsp-in-stack-s2 (PairMiddleResultV.rsp-sufficient-s2 mid-res)
-        where
-          rsp-in-stack-s2 : region-of (readReg (regs s2) rsp) ≡ stack
-          rsp-in-stack-s2 = subst (λ r → region-of r ≡ stack)
-                              (sym rsp-s2-eq-s1)
-                              (StackCapacity.rsp-in-stack (IRStarResultV.ir-capacity r-f-v))
+      -- Derive StackCapacity for g at s2 using postulate
+      -- g execution may need dynamic capacity, so we use rsp-bound-for-ir
+      -- TODO: Eliminate this postulate by tracking capacity through pair middle
+      cap-s2 : StackCapacity s2 (ir-stack-requirement g)
+      cap-s2 = rsp-bound-to-capacity (ir-stack-requirement g) s2
+                 (rsp-in-stack-after-stack-op s2) (rsp-bound-for-ir g s2)
 
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix-g caller-sp x s2
@@ -295,7 +294,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       -- ========== Phase 5: Final (6 instructions) ==========
       final-precond : PairFinalPrecond f g prefix suffix s s3
       final-precond = make-pair-final-precond-v f g prefix suffix x s s-setup s1 s2 s3
-                        stack-inv rbp-inv setup-res r-f-v mid-res r-g-v refl refl
+                        stack-inv rbp-inv cap-in setup-res r-f-v mid-res r-g-v refl refl
 
       final-res : PairFinalResult f g prefix suffix s s3
       final-res = pair-final-star f g prefix suffix s s3 final-precond
@@ -308,18 +307,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       r14-final = PairFinalResult.r14-fin final-res
       r15-final = PairFinalResult.r15-fin final-res
       stack-inv-final = PairFinalResult.stack-inv-fin final-res
-      -- Derive StackCapacity s 2 from cap-in : StackCapacity s 7 (for assemble-pair-result-vv)
-      cap : StackCapacity s 2
-      cap = rsp-bound-to-capacity 2 s (StackCapacity.rsp-in-stack cap-in) rsp>slots2
-        where
-          2≤7 : 2 ≤ 7
-          2≤7 = s≤s (s≤s z≤n)
-          slots2≤slots7 : slots 2 ≤ slots 7
-          slots2≤slots7 = slots-mono-≤ 2≤7
-          rsp>slots7 : readReg (regs s) rsp > slots 7
-          rsp>slots7 = StackCapacity.rsp-sufficient cap-in
-          rsp>slots2 : readReg (regs s) rsp > slots 2
-          rsp>slots2 = ≤-<-trans slots2≤slots7 rsp>slots7
+      -- cap-in : StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) is passed directly to assemble
       mem-fst-final = PairFinalResult.mem-fst-fin final-res
       mem-snd-final = PairFinalResult.mem-snd-fin final-res
       rbp-final = PairFinalResult.rbp-fin final-res
@@ -337,13 +325,10 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           -- Value bindings only (no function definitions in where clauses)
           orig-rsp = readReg (regs s) rsp
           orig-rbp = readReg (regs s) rbp
-          -- Derive rsp > slots 2 from rsp > slots 7 using slot monotonicity
-          rsp>56 = StackCapacity.rsp-sufficient cap-in
-          rsp>16 : orig-rsp > slots 2
-          rsp>16 = ≤-<-trans (slots-mono-≤ 2≤7) rsp>56
-            where
-              2≤7 : 2 ≤ 7
-              2≤7 = s≤s (s≤s z≤n)
+          -- Derive rsp > slots output-slots from rsp > slots (ir-stack-requirement ⟨ f , g ⟩)
+          rsp>pair-req = StackCapacity.rsp-sufficient cap-in
+          rsp>16 : orig-rsp > slots output-slots
+          rsp>16 = ≤-<-trans (slots-mono-≤ (output-slots≤pair-req f g)) rsp>pair-req
 
           addr≥rsp : addr ≥ orig-rsp
           addr≥rsp = ≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp)
@@ -499,7 +484,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       result-v = assemble-pair-result-vv f g prefix suffix x s s-setup s1 s2 s3 s-final
                   setup-res r-f-v mid-res r-g-v
                   h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                  stack-inv-final cap mem-fst-final mem-snd-final
+                  stack-inv-final cap-in mem-fst-final mem-snd-final
                   rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
                   star-fin refl refl
                   rbp-inv rsp-final-eq

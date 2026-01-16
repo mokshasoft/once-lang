@@ -520,19 +520,19 @@ compile-length>0 fst = s≤s z≤n
 compile-length>0 snd = s≤s z≤n
 compile-length>0 ⟨ f , g ⟩ = pair-pos (compile-length f) (compile-length g)
   where
-    pair-pos : (n m : ℕ) → (15 +ℕ n) +ℕ m > 0
+    pair-pos : (n m : ℕ) → (pair-overhead +ℕ n) +ℕ m > 0
     pair-pos n m = s≤s z≤n
 compile-length>0 inl = s≤s z≤n
 compile-length>0 inr = s≤s z≤n
 compile-length>0 [ f , g ] = case-pos (compile-length f) (compile-length g)
   where
-    case-pos : (n m : ℕ) → (8 +ℕ n) +ℕ m > 0
+    case-pos : (n m : ℕ) → (case-overhead +ℕ n) +ℕ m > 0
     case-pos n m = s≤s z≤n
 compile-length>0 terminal = s≤s z≤n
 compile-length>0 initial = s≤s z≤n
 compile-length>0 (curry f) = curry-pos (compile-length f)
   where
-    curry-pos : (n : ℕ) → 19 +ℕ n > 0
+    curry-pos : (n : ℕ) → curry-overhead +ℕ n > 0
     curry-pos n = s≤s z≤n
 compile-length>0 apply = s≤s z≤n
 compile-length>0 fold = s≤s z≤n

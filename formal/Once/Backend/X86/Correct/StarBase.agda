@@ -19,7 +19,8 @@ open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stac
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
-         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots)
+         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots;
+         ir-rsp-delta; ir-stack-requirement; ir-output-capacity)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
@@ -95,8 +96,8 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- Therefore heap addresses are never written by IR execution
     ir-mem-heap   : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-stack-inv  : StackInvariant s'
-    -- Abstract stack capacity (D041 - replaces concrete rsp > slots 2)
-    ir-capacity   : StackCapacity s' 2
+    -- Abstract stack capacity (output = input - consumed)
+    ir-capacity   : StackCapacity s' (ir-output-capacity ir)
     -- RbpInvariant preserved: rsp s' ≤ rbp s' (needed for memory disjointness)
     ir-rbp-inv    : RbpInvariant s'
     -- Optional closure well-formedness (produced by curry, consumed by apply)
@@ -104,12 +105,12 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
 
 open IRStarResult public
 
--- | Derived: concrete rsp > slots 2 bound from abstract capacity
--- This replaces the removed ir-rsp-bound field
+-- | Derived: concrete rsp bound from abstract capacity
+-- Returns rsp > slots (ir-output-capacity ir)
 ir-rsp-bound : ∀ {A B ir prog s s' x offset} →
   IRStarResult {A} {B} ir prog s s' x offset →
-  readReg (regs s') rsp > slots 2
-ir-rsp-bound res = capacity-2-to-rsp-bound _ (ir-capacity res)
+  readReg (regs s') rsp > slots (ir-output-capacity ir)
+ir-rsp-bound res = StackCapacity.rsp-sufficient (ir-capacity res)
 
 ------------------------------------------------------------------------
 -- IRRunner: Type for the recursive IR execution function
@@ -158,6 +159,9 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
     ir-r14        : readReg (regs s') r14 ≡ readReg (regs s) r14
     ir-r15        : readReg (regs s') r15 ≡ readReg (regs s) r15
     ir-rbp        : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    -- RSP delta tracking (needed for capacity threading through compose/case/pair)
+    -- rsp s' = rsp s ∸ (delta * 8). Most IRs have delta=0; curry has delta=2.
+    ir-rsp        : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta ir)
 
     -- Memory preservation (same as IRStarResult)
     ir-mem        : readMem (memory s') (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
@@ -170,25 +174,26 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
 
     -- Invariants (same as IRStarResult)
     ir-stack-inv  : StackInvariant s'
-    ir-capacity   : StackCapacity s' 2
+    ir-capacity   : StackCapacity s' (ir-output-capacity ir)
     ir-rbp-inv    : RbpInvariant s'
     ir-closure-wf : ClosureWFOutput prog
 
 open IRStarResultV public using ()
   renaming ( ir-star to ir-star-v; ir-halted to ir-halted-v; ir-pc to ir-pc-v
            ; ir-result-valid to ir-result-valid
-           ; ir-r14 to ir-r14-v; ir-r15 to ir-r15-v; ir-rbp to ir-rbp-v
+           ; ir-r14 to ir-r14-v; ir-r15 to ir-r15-v; ir-rbp to ir-rbp-v; ir-rsp to ir-rsp-v
            ; ir-mem to ir-mem-v; ir-mem-rbp to ir-mem-rbp-v; ir-mem-rbp+8 to ir-mem-rbp+8-v
            ; ir-mem-above to ir-mem-above-v; ir-mem-at-0 to ir-mem-at-0-v
            ; ir-mem-code to ir-mem-code-v; ir-mem-heap to ir-mem-heap-v
            ; ir-stack-inv to ir-stack-inv-v; ir-capacity to ir-capacity-v
            ; ir-rbp-inv to ir-rbp-inv-v; ir-closure-wf to ir-closure-wf-v )
 
--- | Derived: concrete rsp > slots 2 bound from abstract capacity
+-- | Derived: concrete rsp bound from abstract capacity
+-- Returns rsp > slots (ir-output-capacity ir)
 ir-rsp-bound-v : ∀ {A B ir prog s s' x offset} →
   IRStarResultV {A} {B} ir prog s s' x offset →
-  readReg (regs s') rsp > slots 2
-ir-rsp-bound-v res = capacity-2-to-rsp-bound _ (IRStarResultV.ir-capacity res)
+  readReg (regs s') rsp > slots (ir-output-capacity ir)
+ir-rsp-bound-v res = StackCapacity.rsp-sufficient (IRStarResultV.ir-capacity res)
 
 ------------------------------------------------------------------------
 -- IRRunnerV: Validity-Based Recursive IR Runner
@@ -295,6 +300,7 @@ run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in 
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
@@ -337,6 +343,7 @@ run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv cap-in rbp-in
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) 0
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) 0
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
@@ -390,6 +397,7 @@ run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv cap-i
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
@@ -446,6 +454,7 @@ run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) (readReg (regs s) rdi)
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi)
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
@@ -514,6 +523,7 @@ run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) addr-a
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) addr-a
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
@@ -575,6 +585,7 @@ run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) addr-b
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) addr-b
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
@@ -657,6 +668,7 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-r14 = readReg-writeReg-rax-r14 (regs s) input-addr
     ; ir-r15 = readReg-writeReg-rax-r15 (regs s) input-addr
     ; ir-rbp = rbp-eq
+    ; ir-rsp = rsp-eq
     ; ir-mem = refl
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl

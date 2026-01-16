@@ -49,6 +49,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
          stack-inv-preserved-r15-unchanged; stack-inv-preserved-unchanged;
          StackCapacity; capacity-maintained; slots-mono-≤;
          capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
+         capacity-when-rsp-restored;
+         ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
          -- D041: Abstract interface (no arithmetic in types)
          apply-frame-1; apply-frame-slot-0-in-stack; abstract-to-rsp-slot-in-stack;
          -- D041: Abstract helpers for 1-slot and 2-slot allocation
@@ -132,7 +134,7 @@ open ≡-Reasoning
 --   4: mov r15, [r15+8]    ; load code_ptr from closure.snd
 --   5: mov rdi, rsi        ; move argument to rdi
 
--- Takes StackCapacity s 4 to produce StackCapacity s' 3 after push (for call phase)
+-- Takes StackCapacity s (ir-stack-requirement apply) to produce StackCapacity s' 3 after push (for call phase)
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr arg-addr : ℕ)
                    (s : State) →
@@ -142,7 +144,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   -- Region proof: rdi is in heap (for heap-stack disjointness)
   -- Replaces rdi-eq - we only need the region, not the exact encode equality
   region-of (readReg (regs s) rdi) ≡ heap →
@@ -184,7 +186,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     old-rsp = readReg (regs s) rsp
     new-rsp = old-rsp ∸ slot-size
 
-    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 4 gives > slots 4)
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s (ir-stack-requirement apply) gives > slots 4)
     -- Derive > slots 2 for helpers that need weaker bound
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
     rsp-bound : readReg (regs s) rsp > slots 2
@@ -501,7 +503,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
         r15<len : readReg (regs s6) r15 < length prog
         r15<len = subst (_< length prog) (sym r15-6) code-ptr<len
 
-    -- Derive StackCapacity s6 3 from input cap : StackCapacity s 4 via push
+    -- Derive StackCapacity s6 3 from input cap : StackCapacity s (ir-stack-requirement apply) via push
     rsp-sufficient-6 : StackCapacity s6 3
     rsp-sufficient-6 = capacity-after-push s s6 3 cap rsp6'
       where
@@ -945,7 +947,7 @@ open ApplyWfResult public
 
 -- | run-apply-with-wf: Full apply execution with ClosureWellFormed
 -- E is the env type, env is the captured environment value
--- Takes StackCapacity s 4 for postulate-free capacity threading
+-- Takes StackCapacity s (ir-stack-requirement apply) for postulate-free capacity threading
 run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (code-ptr : ℕ) (env : ⟦ E ⟧)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -958,7 +960,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   -- Key: ValidAt for input pair (replaces rdi-eq for heap-stack separation)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1030,13 +1032,13 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     closure-in-heap : region-of closure-addr ≡ heap
     closure-in-heap = valid-in-heap v-cl
 
-    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 4 gives > slots 4)
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s (ir-stack-requirement apply) gives > slots 4)
     -- Derive > slots 2 for helpers that need weaker bound
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
     rsp-bound : readReg (regs s) rsp > slots 2
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 2)) (StackCapacity.rsp-sufficient cap)
 
-    -- Step 1: Setup phase (now takes StackCapacity s 4, outputs StackCapacity s-setup 3)
+    -- Step 1: Setup phase (now takes StackCapacity s (ir-stack-requirement apply), outputs StackCapacity s-setup 3)
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
                      h-eq pc-eq stack-inv cap rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
@@ -1391,7 +1393,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 ------------------------------------------------------------------------
 
 -- | Wrapper that produces IRStarResult from run-apply-with-wf
--- Takes StackCapacity s 4 directly (eliminates blanket postulates)
+-- Takes StackCapacity s (ir-stack-requirement apply) directly (eliminates blanket postulates)
 run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1404,7 +1406,7 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1466,7 +1468,7 @@ open import Once.Backend.X86.Correct.StarBase
             ir-rsp-bound to ir-rsp-bound'; ir-rbp-inv to ir-rbp-inv'; ir-closure-wf to ir-closure-wf')
 open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
--- Takes StackCapacity s 4 directly (eliminates blanket postulates)
+-- Takes StackCapacity s (ir-stack-requirement apply) directly (eliminates blanket postulates)
 run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1481,7 +1483,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   RbpInvariant s →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
@@ -1503,6 +1505,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-r14 = WfR.r14-final
     ; ir-r15 = WfR.r15-final  -- NOW PROVEN! (via push/pop r15)
     ; ir-rbp = WfR.rbp-final
+    ; ir-rsp = WfR.rsp-restored  -- apply: rsp restored (delta = 0)
     ; ir-mem = mem-r15-post  -- NOW PROVEN via R15OrigInfo + region disjointness
     ; ir-mem-rbp = mem-rbp-post  -- PROVEN via WfR.mem-above + RbpInvariant
     ; ir-mem-rbp+8 = mem-rbp+8-post  -- PROVEN via WfR.mem-above + RbpInvariant
@@ -1511,8 +1514,9 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-mem-code = WfR.mem-code-region  -- PROVEN via D041 region-based chain
     ; ir-mem-heap = WfR.mem-heap-region  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
-    -- Derive s' capacity from s capacity via rsp-restored (no postulate for final state!)
-    ; ir-capacity = rsp-bound-to-capacity 2 s' (subst (λ r → region-of r ≡ stack) (sym WfR.rsp-restored) (StackCapacity.rsp-in-stack cap)) WfR.rsp-sufficient
+    -- Derive s' capacity from s capacity via rsp-restored (apply restores RSP, delta = 0)
+    -- ir-output-capacity apply = ir-stack-requirement apply ∸ 0 = 4 (definitionally)
+    ; ir-capacity = capacity-when-rsp-restored s s' (ir-output-capacity (apply {A} {B})) cap WfR.rsp-restored
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }
@@ -1611,7 +1615,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 --   closure-at : ClosureAtS env-addr code-ptr closure-addr m
 ------------------------------------------------------------------------
 
--- Takes StackCapacity s 4 directly (eliminates blanket postulates)
+-- Takes StackCapacity s (ir-stack-requirement apply) directly (eliminates blanket postulates)
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1626,7 +1630,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 4 →
+  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   RbpInvariant s →
   -- Validity-based memory layout:
   (v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)) →

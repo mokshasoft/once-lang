@@ -56,6 +56,11 @@ inr-instrs =
 injection-instr-count : ℕ
 injection-instr-count = length inl-instrs
 
+-- | Stack slots consumed by inl/inr
+-- Computed from actual instruction sequence: sub rsp, 16 (2) = 2
+injection-consumed-slots : ℕ
+injection-consumed-slots = instrs-consumed-slots inl-instrs
+
 ------------------------------------------------------------------------
 -- Apply instruction list
 ------------------------------------------------------------------------
@@ -116,6 +121,10 @@ pair-overhead = length pair-setup +ℕ length pair-middle +ℕ length pair-clean
 -- and compute the overhead from fixed instruction counts.
 ------------------------------------------------------------------------
 
+-- Setup (frame establishment): push rbp, mov rbp rsp
+case-setup-count : ℕ
+case-setup-count = 2
+
 -- Prefix (before f): mov r11 [rdi], cmp r11 0, jne _, mov rdi [rdi+8]
 case-prefix-count : ℕ
 case-prefix-count = 4
@@ -124,25 +133,23 @@ case-prefix-count = 4
 case-middle-count : ℕ
 case-middle-count = 3
 
--- Suffix (after g): label _
-case-suffix-count : ℕ
-case-suffix-count = 1
+-- Cleanup (frame restore): mov rsp rbp, pop rbp
+case-cleanup-count : ℕ
+case-cleanup-count = 2
 
 case-overhead : ℕ
-case-overhead = case-prefix-count +ℕ case-middle-count +ℕ case-suffix-count
+case-overhead = case-setup-count +ℕ case-prefix-count +ℕ case-middle-count +ℕ case-cleanup-count
 
--- Jump offset bases (derived from layout)
+-- Jump offset bases (derived from layout with setup)
+-- Layout: setup(2) + prefix(4) + f + middle(3) + g + cleanup(2)
 case-jne-base : ℕ
-case-jne-base = 2   -- jne at pos 2, right-label at pos (5 + len-f), offset = 2 + len-f
+case-jne-base = 2   -- jne at pos 4, right-label at pos (7 + len-f), offset = 2 + len-f
 
 case-jmp-base : ℕ
-case-jmp-base = 2   -- jmp at pos (4 + len-f), end at pos (7 + len-f + len-g)
+case-jmp-base = 2   -- jmp at pos (6 + len-f), cleanup at pos (9 + len-f + len-g), offset = 2 + len-g
 
 case-right-label-base : ℕ
-case-right-label-base = 5
-
-case-end-label-base : ℕ
-case-end-label-base = 7
+case-right-label-base = 7   -- was 5, now +2 for setup
 
 ------------------------------------------------------------------------
 -- Curry overhead instruction lists
@@ -308,25 +315,31 @@ compile-x86 inr = inr-instrs
 -- Case analysis: branch on tag
 -- Jump offsets are PC-relative: target = pc + 1 + offset
 -- Note: Uses r11 (scratch register) for tag to avoid clobbering r15 (callee-save)
+-- Stack frame: push/pop rbp to restore rsp after branch execution (branches may have non-zero delta)
 compile-x86 [ f , g ] =
   let len-f = compile-length f
       len-g = compile-length g
-      -- Layout:
-      --   0: mov r11, [rdi]       ; load tag into scratch register
-      --   1: cmp r11, 0
-      --   2: jne right-offset     ; target = 5+len-f, offset = (5+len-f) - 3 = 2+len-f
-      --   3: mov rdi, [rdi+8]
-      --   4 to 3+|f|: compile-x86 f
-      --   4+|f|: jmp end-offset   ; target = 7+len-f+len-g, offset = (7+len-f+len-g) - (5+len-f) = 2+len-g
-      --   5+|f|: label (right-branch)
-      --   6+|f|: mov rdi, [rdi+8]
-      --   7+|f| to 6+|f|+|g|: compile-x86 g
-      --   7+|f|+|g|: label (end)
+      -- Layout with stack frame:
+      --   0: push rbp             ; setup - save frame pointer
+      --   1: mov rbp, rsp         ; setup - establish frame
+      --   2: mov r11, [rdi]       ; load tag into scratch register
+      --   3: cmp r11, 0
+      --   4: jne right-offset     ; target = 7+len-f, offset = 2+len-f
+      --   5: mov rdi, [rdi+8]
+      --   6 to 5+|f|: compile-x86 f
+      --   6+|f|: jmp cleanup      ; target = 9+len-f+len-g, offset = 2+len-g
+      --   7+|f|: label (right-branch)
+      --   8+|f|: mov rdi, [rdi+8]
+      --   9+|f| to 8+|f|+|g|: compile-x86 g
+      --   9+|f|+|g|: mov rsp, rbp ; cleanup - restore rsp
+      --   10+|f|+|g|: pop rbp     ; cleanup - restore rbp
       right-offset = case-jne-base +ℕ len-f
-      end-offset = case-jmp-base +ℕ len-g
+      cleanup-offset = case-jmp-base +ℕ len-g
       right-label = case-right-label-base +ℕ len-f
-      end-label = (case-end-label-base +ℕ len-f) +ℕ len-g
   in
+  -- Setup: establish stack frame
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
   -- Load tag into r11 (scratch register, doesn't clobber r15)
   mov (reg r11) (mem (base rdi)) ∷
   -- Compare with 0
@@ -336,12 +349,14 @@ compile-x86 [ f , g ] =
   -- Left branch: load value and apply f
   mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
   compile-x86 f ++
-  jmp end-offset ∷
+  jmp cleanup-offset ∷
   -- Right branch: load value and apply g
   label right-label ∷
   mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
   compile-x86 g ++
-  label end-label ∷ []
+  -- Cleanup: restore stack frame (undoes any branch delta)
+  mov (reg rsp) (reg rbp) ∷
+  pop rbp ∷ []
 
 -- Terminal: return unit (represented as 0)
 compile-x86 terminal = mov (reg rax) (imm 0) ∷ []
