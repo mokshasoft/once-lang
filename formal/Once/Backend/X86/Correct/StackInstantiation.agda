@@ -603,6 +603,57 @@ rsp-bound-preserved-unchanged : ∀ (s s' : State) →
 rsp-bound-preserved-unchanged s s' rsp-sufficient rsp-eq = subst (_> two-push-offset) (sym rsp-eq) rsp-sufficient
 
 ------------------------------------------------------------------------
+-- Max-based Capacity Derivation (for compose/case/pair threading)
+--
+-- These lemmas enable deriving sub-capacity from max-based requirements.
+-- This is NOT arbitrary weakening - it's principled arithmetic tied to
+-- how ir-stack-requirement computes requirements for composed operations.
+--
+-- ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ ir-stack-requirement g
+-- ir-stack-requirement [ l , r ] = ir-stack-requirement l ⊔ ir-stack-requirement r
+-- ir-stack-requirement ⟨ f , g ⟩ = 5 + (ir-stack-requirement f ⊔ ir-stack-requirement g)
+------------------------------------------------------------------------
+
+open import Data.Nat using (_⊔_)
+open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; *-monoˡ-≤; ≤-<-trans; ⊔-comm)
+
+-- Helper: n ≤ m ⊔ n (via commutativity: n ≤ n ⊔ m = m ⊔ n)
+private
+  n≤m⊔n : ∀ m n → n ≤ m ⊔ n
+  n≤m⊔n m n = subst (n ≤_) (⊔-comm n m) (m≤m⊔n n m)
+
+-- | Derive left sub-capacity from max: m ≤ m ⊔ n
+capacity-left-from-max : ∀ (s : State) (m n : ℕ) →
+  StackCapacity s (m ⊔ n) → StackCapacity s m
+capacity-left-from-max s m n cap = record
+  { rsp-in-stack = rsp-in-stack cap
+  ; rsp-sufficient = ≤-<-trans (*-monoˡ-≤ slot-size (m≤m⊔n m n)) (rsp-sufficient cap)
+  ; capacity-maintained = λ k k≤m →
+      capacity-maintained cap k (≤-trans k≤m (m≤m⊔n m n))
+  }
+
+-- | Derive right sub-capacity from max: n ≤ m ⊔ n
+capacity-right-from-max : ∀ (s : State) (m n : ℕ) →
+  StackCapacity s (m ⊔ n) → StackCapacity s n
+capacity-right-from-max s m n cap = record
+  { rsp-in-stack = rsp-in-stack cap
+  ; rsp-sufficient = ≤-<-trans (*-monoˡ-≤ slot-size (n≤m⊔n m n)) (rsp-sufficient cap)
+  ; capacity-maintained = λ k k≤n →
+      capacity-maintained cap k (≤-trans k≤n (n≤m⊔n m n))
+  }
+
+-- | Derive capacity when we have more than needed: m ≤ n
+-- Used when ir-stack-requirement returns a value smaller than what we have
+capacity-from-larger : ∀ (s : State) (m n : ℕ) →
+  StackCapacity s n → m ≤ n → StackCapacity s m
+capacity-from-larger s m n cap m≤n = record
+  { rsp-in-stack = rsp-in-stack cap
+  ; rsp-sufficient = ≤-<-trans (*-monoˡ-≤ slot-size m≤n) (rsp-sufficient cap)
+  ; capacity-maintained = λ k k≤m →
+      capacity-maintained cap k (≤-trans k≤m m≤n)
+  }
+
+------------------------------------------------------------------------
 -- Abstract Frame Creation
 ------------------------------------------------------------------------
 
