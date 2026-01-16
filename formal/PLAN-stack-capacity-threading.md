@@ -16,9 +16,12 @@
   - Updated `run-curry-star-v`, `run-apply-star-v`, and all dispatcher cases
   - Postulate usage now consolidated at: `run-ir-star` entry point, `curry-thunk-correct-impl`
 - [x] Phase 4: Update IR/Inl.agda and IR/Inr.agda to take StackCapacity
-  - Changed `run-inl-star-v-auto` and `run-inr-star-v-auto` to take `StackCapacity s 2`
-  - Dispatcher now passes `cap-in` directly without extracting `rsp-sufficient`
-  - Internal helper functions still use postulate (can be cleaned up later)
+  - Changed `run-inl-star-v-auto` and `run-inr-star-v-auto` to take `StackCapacity s 4`
+  - Changed `run-inl-star-v` and `run-inr-star-v` to take `StackCapacity s 4`
+  - Deleted dead code: `run-inl-star` and `run-inr-star` (~920 lines combined)
+  - Internal usages now derive from cap parameter (rsp-bound, rsp-region, cap2)
+  - **Both files are now completely postulate-free!**
+  - MutualIR derives StackCapacity s 4 from blanket postulate at call sites
 - [x] Phase 5: Update IR/Curry.agda to take StackCapacity
   - Changed `run-curry-star` and `run-curry-star-v` to take `StackCapacity s 2`
   - Updated `run-curry-star-with-wf` in MutualIR.agda
@@ -36,21 +39,28 @@
   - Entry point now uses `initWithInput-stack-capacity` (from specific `stackBase-in-stack` postulate)
   - Blanket `rsp-in-stack-after-stack-op` no longer used at entry points
 - [ ] Phase 7: Delete postulates from Postulates.agda
-  - NOTE: Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`) still used in ~13 internal files
+  - NOTE: Blanket postulates still used in 58 places across 9 internal files
   - Entry points now use specific `stackBase-in-stack` postulate instead
   - Full elimination requires threading StackCapacity through all internal operations
   - **Postulate changed**: `rsp-bound-after-stack-op` now returns `> slots 7` (was `> slots 5`) to support pair operations
   - Progress:
-    - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
-    - IR/Case.agda: eliminated (was unused import)
-    - Cascading fixes for `> slots 7` change:
-      - IR/Curry.agda: changed `m≤m+n 33 8` to `m≤m+n 33 24`
-      - IR/ThunkExec.agda: changed `17≤41` to `m≤m+n 17 40`, derived `> slots 5` via `slots-mono-≤`
-      - IR/Apply.agda: changed three `17≤41` occurrences to `m≤m+n 17 40`
-      - IR/Pair.agda: added `mk-capacity-5` helper using `slots-mono-≤`, changed `17≤41` to `m≤m+n 17 40`
-      - IR/Inl.agda, IR/Inr.agda: changed `33≤41` to `33≤57` via `m≤m+n 33 24`
-      - MutualIR/Pair.agda: derived `rsp > slots 5` from `> slots 7` via `slots-mono-≤`
-      - MutualIR/Case.agda: changed `17≤41` to `m≤m+n 17 40` (2 occurrences)
+    - **Files now postulate-free:**
+      - StarBase.agda: deleted ~377 lines of dead code (old non-vv versions)
+      - IR/Inl.agda: deleted ~464 lines dead code, refactored to take StackCapacity s 4
+      - IR/Inr.agda: deleted ~460 lines dead code, refactored to take StackCapacity s 4
+      - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
+      - IR/Case.agda: eliminated (was unused import)
+    - **Remaining files with postulate usages (58 total):**
+      - IR/Apply.agda: 11 usages (complex: multiple intermediate states)
+      - MutualIR.agda: 9 usages (includes inl/inr consolidated derivation)
+      - IR/Curry.agda: 8 usages
+      - MutualIR/Case.agda: 7 usages
+      - IR/ThunkExec.agda: 7 usages
+      - IR/Pair.agda: 7 usages (has mk-capacity-5 helper)
+      - MutualIR/Pair.agda: 5 usages
+      - Postulates.agda: 3 usages (the definitions)
+      - InitState.agda: 1 usage
+  - Postulate usage reduced: 85 → 58 (27 eliminated)
   - Current status: Build passes for x86-ccc-whole
 - [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
