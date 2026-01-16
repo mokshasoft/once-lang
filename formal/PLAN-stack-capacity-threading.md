@@ -129,6 +129,45 @@
   - Values ultimately derived from codegen (through proof chain)
 - **ir-stack-requirement**: Also uses literals for fast type checking
 
+### Infrastructure for Dispatcher Change (2026-01-16)
+The following infrastructure is now in place to enable changing the dispatcher signature
+from `StackCapacity s 2` to `StackCapacity s (ir-stack-requirement ir)`:
+
+1. **ir-stack-requirement function** (StackInstantiation.agda)
+   - Computes exact capacity needed for each IR
+   - Uses literals for fast type checking (e.g., `ir-stack-requirement apply = 4`)
+   - For compose/case: returns `max(f, g)`
+   - For pair: returns `5 + max(f, g)`
+   - For curry: returns `2 + (4 + ir-stack-requirement f)`
+
+2. **Max-based capacity derivation lemmas** (StackInstantiation.agda)
+   ```agda
+   -- For compose/case: derive sub-capacity from max
+   capacity-left-from-max : StackCapacity s (m ⊔ n) → StackCapacity s m
+   capacity-right-from-max : StackCapacity s (m ⊔ n) → StackCapacity s n
+
+   -- General derivation when we have more than needed
+   capacity-from-larger : StackCapacity s n → m ≤ n → StackCapacity s m
+   ```
+
+3. **Capacity preservation lemma** (existing)
+   ```agda
+   capacity-preserved-rsp-unchanged : StackCapacity s n → rsp s' ≡ rsp s → StackCapacity s' n
+   ```
+
+**Next steps for dispatcher change:**
+1. Change signature: `StackCapacity s (ir-stack-requirement ir)`
+2. For simple ops (id, fst, snd, etc.): use input capacity directly
+3. For compose (g ∘ f):
+   - Derive `StackCapacity s (ir-stack-requirement f)` via `capacity-left-from-max`
+   - After f: use `capacity-preserved-rsp-unchanged` to preserve capacity
+   - Derive `StackCapacity s' (ir-stack-requirement g)` via `capacity-right-from-max`
+4. For case: similar to compose (both branches have capacity from max)
+5. For pair: after setup consumes 5 slots, derive `max(f, g)` from `5 + max(f, g)`
+6. For curry: derive inner capacity from `2 + (4 + f)`
+7. For apply: use input capacity (4) directly
+8. Update entry points to provide `ir-stack-requirement ir`
+
 ---
 
 ## Goal
