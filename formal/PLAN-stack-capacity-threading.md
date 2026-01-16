@@ -36,10 +36,13 @@
   - Entry point now uses `initWithInput-stack-capacity` (from specific `stackBase-in-stack` postulate)
   - Blanket `rsp-in-stack-after-stack-op` no longer used at entry points
 - [ ] Phase 7: Delete postulates from Postulates.agda
-  - NOTE: Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`) still used in 14 internal files
+  - NOTE: Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`) still used in ~13 internal files
   - Entry points now use specific `stackBase-in-stack` postulate instead
   - Full elimination requires threading StackCapacity through all internal operations
-  - Current status: postulates can't be deleted yet, but usage is more localized
+  - Progress:
+    - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
+    - IR/Case.agda: eliminated (was unused import)
+  - Current status: 105 occurrences across 13 files (down from 109/15)
 - [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
   - Keep only simple variable bindings (val = expr) in where clauses

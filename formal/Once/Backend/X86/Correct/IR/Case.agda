@@ -13,7 +13,6 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-inr-val)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; slot-size)
