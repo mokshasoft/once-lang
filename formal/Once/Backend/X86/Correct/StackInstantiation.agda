@@ -154,6 +154,80 @@ apply-min-rsp = two-push-offset                -- 16: need > two-push-offset for
 output-slots : ℕ
 output-slots = 2
 
+-- | Capacity required by each operation (computed: consumed + output)
+-- These values match what the proof modules require
+
+-- Simple operations: no stack allocation, just output capacity
+simple-capacity : ℕ
+simple-capacity = output-slots  -- 2
+
+-- Apply: push r15 (1) + call (1) + thunk output (2) = 4
+apply-capacity : ℕ
+apply-capacity = apply-consumed-slots +ℕ output-slots  -- 2 + 2 = 4
+
+-- Thunk setup: push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 6
+thunk-setup-capacity : ℕ
+thunk-setup-capacity = thunk-setup-consumed-slots +ℕ output-slots  -- 4 + 2 = 6
+
+-- Pair: push r14 (1) + push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 7
+pair-capacity : ℕ
+pair-capacity = pair-setup-consumed-slots +ℕ output-slots  -- 5 + 2 = 7
+
+-- Curry closure: sub rsp,16 (2) + output (2) = 4
+curry-closure-capacity : ℕ
+curry-closure-capacity = curry-closure-consumed-slots +ℕ output-slots  -- 2 + 2 = 4
+
+-- Inl/Inr: need to allocate output pair (tag + value), require 4 slots
+-- (2 for writes + 2 for output guarantee)
+inl-inr-capacity : ℕ
+inl-inr-capacity = 4  -- TODO: derive from codegen once inl/inr instructions are computed
+
+------------------------------------------------------------------------
+-- Dynamic IR Stack Requirement (computed from IR structure)
+--
+-- This function computes the exact stack capacity needed for each IR.
+-- For compose/pair/case, it takes the max of sub-operations.
+-- For curry, it includes the inner thunk's requirement.
+-- For apply, we use a fixed bound (thunk requirement unknown at static time).
+------------------------------------------------------------------------
+
+open import Data.Nat using (_⊔_)  -- max
+
+-- | Compute stack requirement for an IR operation dynamically
+-- This is the capacity dispatcher should require: ir-stack-requirement ir
+ir-stack-requirement : ∀ {A B} → IR A B → ℕ
+-- Simple operations: no stack allocation
+ir-stack-requirement id = output-slots
+ir-stack-requirement fst = output-slots
+ir-stack-requirement snd = output-slots
+ir-stack-requirement terminal = output-slots
+ir-stack-requirement initial = output-slots  -- unreachable, but need a bound
+-- Recursive types: isomorphisms, no stack allocation
+ir-stack-requirement fold = output-slots
+ir-stack-requirement unfold = output-slots
+-- Effect lifting: essentially identity at runtime
+ir-stack-requirement arr = output-slots
+-- Primitives: external operations, assume simple capacity
+ir-stack-requirement (Prim _) = output-slots
+-- Injections: need capacity for tag+value write
+ir-stack-requirement inl = inl-inr-capacity
+ir-stack-requirement inr = inl-inr-capacity
+-- Compose: run f, then g sequentially. Need max capacity at any point.
+ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ ir-stack-requirement g
+-- Pair: setup frame, then run f, then g. Frame consumed during setup.
+ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ (ir-stack-requirement f ⊔ ir-stack-requirement g)
+-- Case: check tag, then run left or right branch
+ir-stack-requirement [ l , r ] = ir-stack-requirement l ⊔ ir-stack-requirement r
+-- Curry: creates closure with embedded thunk
+-- Thunk needs: thunk-setup-consumed-slots + inner IR requirement
+-- Closure setup: curry-closure-consumed-slots
+-- Total: curry consumes its slots, thunk consumes its slots + inner
+ir-stack-requirement (curry f) = curry-closure-consumed-slots +ℕ (thunk-setup-consumed-slots +ℕ ir-stack-requirement f)
+-- Apply: calls thunk from closure. We don't know the thunk's inner IR statically,
+-- so we use apply-capacity (the apply operation's own consumption + output).
+-- The thunk's capacity is handled separately by the closure well-formedness invariant.
+ir-stack-requirement apply = apply-capacity
+
 ------------------------------------------------------------------------
 -- Centralized Arithmetic Helpers (D041: define early for use throughout)
 ------------------------------------------------------------------------
