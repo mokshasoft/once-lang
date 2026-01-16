@@ -254,10 +254,19 @@ mutual
       offset = length prefix
       thunk-offset = offset +ℕ 6
 
+      -- Derive StackCapacity s 4 from blanket postulate (Curry.agda is now postulate-free!)
+      open import Data.Nat.Properties using (≤-trans; m≤m+n)
+      33≤57 : 33 ≤ 57
+      33≤57 = m≤m+n 33 24
+      rsp>slots4 : readReg (regs s) rsp > slots 4
+      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
+      cap4 : StackCapacity s 4
+      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
+
       -- Call curry with validity (no bridges!)
       curry-result : ∃[ s' ] (CurryExecResult f prog s s' x offset
                               × CurryMemoryResult f prog s' x offset)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap4 rbp-inv
 
       s' : State
       s' = proj₁ curry-result
@@ -406,8 +415,17 @@ mutual
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
 
+      -- Derive StackCapacity s 4 from blanket postulate (Curry.agda is now postulate-free!)
+      open import Data.Nat.Properties using (≤-trans; m≤m+n)
+      33≤57 : 33 ≤ 57
+      33≤57 = m≤m+n 33 24
+      rsp>slots4 : readReg (regs s) rsp > slots 4
+      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
+      cap4 : StackCapacity s 4
+      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
+
       -- Get CurryExecResult from curry proof (no bridges!)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap4 rbp-inv
       s' = proj₁ curry-result
       exec-res = proj₁ (proj₂ curry-result)
       curry-mem-res = proj₂ (proj₂ curry-result)

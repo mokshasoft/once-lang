@@ -72,7 +72,9 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound; StackCapacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound; StackCapacity; rsp-bound-to-capacity)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans)
+open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
@@ -107,7 +109,7 @@ open import Once.Backend.X86.Correct.IR.Curry using (closure-addr; code-ptr; env
 open import Once.Backend.X86.Correct.IR.Curry using (exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-stack-inv; exec-capacity; exec-rbp-inv)
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; _>_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -275,9 +277,16 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
+      -- Derive StackCapacity s 4 from blanket postulate (Curry.agda is now postulate-free!)
+      33≤57 : 33 ≤ 57
+      33≤57 = m≤m+n 33 24
+      rsp>slots4 : readReg (regs s) rsp > slots 4
+      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
+      cap4 : StackCapacity s 4
+      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
       -- Get CurryExecResult and CurryMemoryResult from run-curry-star (uses validity directly)
       (s' , exec-res , curry-mem-res) = run-curry-star f prefix suffix x s
-                            h-eq pc-eq input-valid stack-inv cap-in rbp-inv
+                            h-eq pc-eq input-valid stack-inv cap4 rbp-inv
       -- Get code-ptr from memory result and prove it equals thunk-offset
       mem-code-ptr = code-ptr curry-mem-res
       cp-eq : mem-code-ptr ≡ thunk-offset

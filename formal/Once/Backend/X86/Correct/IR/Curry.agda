@@ -12,15 +12,15 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-closure-construct)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-bound-to-capacity; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
-         alloc-2-slots-addrs-in-stack;
+         alloc-2-slots-addrs-in-stack; slots-mono-≤;
          -- D041: Abstract helpers that encapsulate arithmetic
          curry-frame-disjoint-from-rbp; curry-rbp-inv-update; curry-stack-inv-frame-bound-update;
          curry-alloc-below-rbp; curry-alloc-nonzero)
+open import Data.Nat.Properties using (≤-<-trans)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; stack; stack-code-disjoint; stack-heap-disjoint;
          stackAddr-write-preserves-heap; slot-addr)
@@ -103,13 +103,14 @@ open CurryExecResult public
 -- Main curry proof (validity-based, no encode)
 ------------------------------------------------------------------------
 
--- | Main curry proof (takes StackCapacity directly to eliminate postulate usage)
+-- | Main curry proof (takes StackCapacity s 4 directly to eliminate postulate usage)
+-- Curry allocates 2 slots, so we need 4 to guarantee output capacity of 2
 run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (CurryExecResult f prog s s' x (length prefix)
@@ -146,9 +147,18 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     len-f = compile-length f
     prog = prefix ++ compile-x86 (curry f) ++ suffix
 
-    -- Extract rsp bound from StackCapacity for internal use
+    -- Derive rsp bound from StackCapacity (no postulate needed!)
+    2≤4 : 2 ≤ 4
+    2≤4 = s≤s (s≤s z≤n)
+
     rsp-bound : readReg (regs s) rsp > slots 2
-    rsp-bound = StackCapacity.rsp-sufficient cap
+    rsp-bound = ≤-<-trans (slots-mono-≤ 2≤4) (StackCapacity.rsp-sufficient cap)
+
+    rsp-region : region-of (readReg (regs s) rsp) ≡ stack
+    rsp-region = StackCapacity.rsp-in-stack cap
+
+    cap2 : StackCapacity s 2
+    cap2 = rsp-bound-to-capacity 2 s rsp-region rsp-bound
 
     -- Track original rdi (env address from input)
     orig-rdi : ℕ
@@ -569,9 +579,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- s2 writes to new-rsp (stack), not orig-rdi (heap)
     new-rsp-in-stack : region-of new-rsp ≡ stack
     new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap2)
-      where
-        cap2 : StackCapacity s 2
-        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
 
     orig-rdi≢new-rsp : orig-rdi ≢ new-rsp
     orig-rdi≢new-rsp eq = stack-heap-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
@@ -586,9 +593,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- s4 writes to new-rsp+8 (stack), not orig-rdi (heap)
     new-rsp+8-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
     new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap2)
-      where
-        cap2 : StackCapacity s 2
-        cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
 
     orig-rdi≢new-rsp+8 : orig-rdi ≢ new-rsp +ℕ slot-size
     orig-rdi≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
@@ -646,7 +650,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     orig-r15 = readReg (regs s) r15
 
     addr-diff : (new-rsp ≢ orig-r15) × ((new-rsp +ℕ slot-size) ≢ orig-r15)
-    addr-diff = addr-diff-from-invariant s stack-inv (rsp-in-stack-after-stack-op s) rsp-bound
+    addr-diff = addr-diff-from-invariant s stack-inv rsp-region rsp-bound
 
     mem-s1-eq : readMem (memory s1) orig-r15 ≡ readMem (memory s) orig-r15
     mem-s1-eq = refl
@@ -794,15 +798,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     rsp-change : readReg (regs s-final) rsp ≡ readReg (regs s) rsp ∸ slots 2
     rsp-change = rsp-s7
 
-    -- 33 ≤ 57 via simple m≤m+n (constant fact, not variable arithmetic)
-    rsp>32 : readReg (regs s) rsp > slots 4
-    rsp>32 = ≤-trans (m≤m+n 33 24) (rsp-bound-after-stack-op s)
-
-    input-capacity : StackCapacity s 4
-    input-capacity = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>32
-
+    -- Use input cap directly (no postulate needed!)
     output-capacity : StackCapacity s-final 2
-    output-capacity = capacity-after-alloc-2-slots s s-final 2 input-capacity rsp-change
+    output-capacity = capacity-after-alloc-2-slots s s-final 2 cap rsp-change
 
     rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
     rsp-sufficient-final = capacity-2-to-rsp-bound s-final output-capacity
@@ -875,10 +873,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- NO ARITHMETIC COMPARISONS at this level
     mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
-      let cap2 : StackCapacity s 2
-          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
-
-          -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
+      let -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
           writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
 
@@ -911,10 +906,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- Stack and heap regions are disjoint, curry only writes to stack
     mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-final addr addr-in-heap =
-      let cap2 : StackCapacity s 2
-          cap2 = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-bound
-
-          -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
+      let -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
           writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
 
@@ -958,12 +950,14 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 -- - Semantic closure has code-ptr = 0 (placeholder)
 -- - Runtime memory has actual thunk address
 -- - valid-closure-at only requires env-addr to match
+-- Takes StackCapacity s 4 directly (eliminates blanket postulates)
+-- Curry allocates 2 slots, so we need 4 to guarantee output capacity of 2
 run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)

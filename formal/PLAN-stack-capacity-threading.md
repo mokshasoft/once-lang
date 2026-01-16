@@ -50,17 +50,17 @@
       - IR/Inr.agda: deleted ~460 lines dead code, refactored to take StackCapacity s 4
       - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
       - IR/Case.agda: eliminated (was unused import)
-    - **Remaining files with postulate usages (58 total):**
+      - IR/Curry.agda: refactored to take StackCapacity s 4 (curry allocates 2 slots)
+    - **Remaining files with postulate usages (54 total):**
+      - MutualIR.agda: 13 usages (includes curry/inl/inr consolidated derivation)
       - IR/Apply.agda: 11 usages (complex: multiple intermediate states)
-      - MutualIR.agda: 9 usages (includes inl/inr consolidated derivation)
-      - IR/Curry.agda: 8 usages
       - MutualIR/Case.agda: 7 usages
       - IR/ThunkExec.agda: 7 usages
       - IR/Pair.agda: 7 usages (has mk-capacity-5 helper)
       - MutualIR/Pair.agda: 5 usages
-      - Postulates.agda: 3 usages (the definitions)
+      - WholeProgram.agda: 3 usages (curry call site derivation)
       - InitState.agda: 1 usage
-  - Postulate usage reduced: 85 → 58 (27 eliminated)
+  - Postulate usage reduced: 85 → 54 (31 eliminated)
   - Current status: Build passes for x86-ccc-whole
 - [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
