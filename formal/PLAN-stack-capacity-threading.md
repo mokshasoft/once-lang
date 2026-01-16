@@ -105,6 +105,30 @@
   to use abstract slot-based names (e.g., `rsp-bound`, `rsp-sufficient`) since `slots n` is abstract
   and the concrete byte representation (n * 8) should not leak into proof names
 
+### Architecture: Literals with Correctness Proofs (2026-01-16)
+- **Problem**: Using named capacity constants (e.g., `StackCapacity s apply-capacity`) in type
+  signatures causes significant build slowdown because Agda normalizes computed expressions
+- **Solution**: Use literal values in signatures with private correctness proofs
+  ```agda
+  -- Fast: Agda compares literals directly
+  apply-capacity : ℕ
+  apply-capacity = 4
+
+  -- Ensures value is correct (fails if codegen changes)
+  private
+    apply-capacity-correct : apply-capacity ≡ apply-consumed-slots +ℕ output-slots
+    apply-capacity-correct = refl
+  ```
+- **Three-tier derivation**:
+  1. CodeGen.agda: `apply-consumed-slots = instrs-consumed-slots apply-instrs` (computed from instruction list)
+  2. StackInstantiation.agda: `apply-capacity = 4` with proof `4 ≡ apply-consumed-slots + output-slots`
+  3. IR/Apply.agda: Uses literal `StackCapacity s 4` (fast type checking)
+- **Benefits**:
+  - Fast type checking (Agda sees `4`, not `instrs-consumed-slots apply-instrs +ℕ 2`)
+  - Correctness guaranteed (proofs fail if literals become stale)
+  - Values ultimately derived from codegen (through proof chain)
+- **ir-stack-requirement**: Also uses literals for fast type checking
+
 ---
 
 ## Goal
