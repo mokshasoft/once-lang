@@ -87,7 +87,7 @@ open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResultV)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairMiddleResultV)
 
 -- Note: encode no longer needed - fully validity-based!
-open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op; rsp-bound-after-stack-op)
+-- Note: postulates no longer needed - derives from StackCapacity
 open import Data.Maybe using (just; nothing)
 open import Relation.Nullary using (yes; no)
 
@@ -182,14 +182,12 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         ; frame-bound = setup-frame-bound
         }
         where
-          -- Derive rsp > slots 5 from postulate rsp > slots 7 via slot monotonicity
-          rsp>slots5 : readReg (regs s) rsp > slots 5
-          rsp>slots5 = ≤-<-trans (slots-mono-≤ 5≤7) (rsp-bound-after-stack-op s)
-            where
-              5≤7 : 5 ≤ 7
-              5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+          -- Derive cap5 : StackCapacity s 5 from cap-in : StackCapacity s 7
+          5≤7 : 5 ≤ 7
+          5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
           cap5 : StackCapacity s 5
-          cap5 = pair-stack-capacity s (rsp-in-stack-after-stack-op s) rsp>slots5
+          cap5 = pair-stack-capacity s (StackCapacity.rsp-in-stack cap-in)
+                   (≤-<-trans (slots-mono-≤ 5≤7) (StackCapacity.rsp-sufficient cap-in))
 
           setup-rbp-frame : StackPointer
           setup-rbp-frame = make-frame-at-slot s cap5 3 (s≤s (s≤s (s≤s z≤n)))
@@ -199,9 +197,17 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
             (sym (PairSetupResultV.rsp-setup setup-res))
             (pair-rbp-frame-≥-r15-frame s cap5)
 
-      -- Construct StackCapacity for s-setup from raw bounds
+      -- Derive StackCapacity for s-setup from cap-in via capacity-maintained
+      -- rsp s-setup = rsp s ∸ slots 5, and capacity-maintained gives us region proof
       cap-setup : StackCapacity s-setup 2
-      cap-setup = rsp-bound-to-capacity 2 s-setup (rsp-in-stack-after-stack-op s-setup) (PairSetupResultV.rsp-sufficient-setup setup-res)
+      cap-setup = rsp-bound-to-capacity 2 s-setup rsp-in-stack-setup (PairSetupResultV.rsp-sufficient-setup setup-res)
+        where
+          5≤7 : 5 ≤ 7
+          5≤7 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+          rsp-in-stack-setup : region-of (readReg (regs s-setup) rsp) ≡ stack
+          rsp-in-stack-setup = subst (λ r → region-of r ≡ stack)
+                                 (sym (PairSetupResultV.rsp-setup setup-res))
+                                 (StackCapacity.capacity-maintained cap-in 5 5≤7)
 
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
       step-f = run-ir-star f f<bound prefix-f suffix-f caller-sp x s-setup
@@ -262,9 +268,14 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         rdi-s2-eq-s            -- rdi in s2 = rdi in s
         mem-heap-s-to-s2        -- heap memory preserved
 
-      -- Construct StackCapacity for s2 from raw bounds
+      -- Derive StackCapacity for s2 from ir-capacity r-f-v via rsp-mid (mid preserves rsp)
       cap-s2 : StackCapacity s2 2
-      cap-s2 = rsp-bound-to-capacity 2 s2 (rsp-in-stack-after-stack-op s2) (PairMiddleResultV.rsp-sufficient-s2 mid-res)
+      cap-s2 = rsp-bound-to-capacity 2 s2 rsp-in-stack-s2 (PairMiddleResultV.rsp-sufficient-s2 mid-res)
+        where
+          rsp-in-stack-s2 : region-of (readReg (regs s2) rsp) ≡ stack
+          rsp-in-stack-s2 = subst (λ r → region-of r ≡ stack)
+                              (sym rsp-s2-eq-s1)
+                              (StackCapacity.rsp-in-stack (IRStarResultV.ir-capacity r-f-v))
 
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix-g caller-sp x s2

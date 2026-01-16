@@ -37,8 +37,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity)
-open import Once.Backend.X86.Postulates using (rsp-in-stack-after-stack-op)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -195,7 +194,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 4 →  -- Apply needs 4 slots: push r15 (1) + call (1) + thunk output (2)
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
@@ -209,16 +208,14 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr env
-                       semantics arg s wf mem-layout h-eq pc-eq stack-inv rsp-sufficient input-valid v-arg v-env =
-  let -- Derive StackCapacity s 2 from rsp-sufficient using blanket postulate
-      cap : StackCapacity s 2
-      cap = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
-      result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s wf h-eq pc-eq stack-inv cap input-valid
-          (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
-           mem-env mem-layout , mem-cp mem-layout) v-arg v-env
-      s' = proj₁ result
-      module R = ApplyProof.ApplyWfResult (proj₂ result)
-  in s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
+                       semantics arg s wf mem-layout h-eq pc-eq stack-inv cap input-valid v-arg v-env =
+  s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
+  where
+    result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s wf h-eq pc-eq stack-inv cap input-valid
+        (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
+         mem-env mem-layout , mem-cp mem-layout) v-arg v-env
+    s' = proj₁ result
+    module R = ApplyProof.ApplyWfResult (proj₂ result)
 
 ------------------------------------------------------------------------
 -- CurryOutputWF: What curry produces for threading to apply
@@ -292,7 +289,7 @@ test-apply-with-wf-eliminates-postulate :
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 4 →  -- Apply needs 4 slots: push r15 (1) + call (1) + thunk output (2)
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)

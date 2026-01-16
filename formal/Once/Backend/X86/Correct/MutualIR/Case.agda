@@ -58,7 +58,7 @@ open import Once.Backend.X86.Correct.StarBase
 open import Once.Backend.X86.Correct.StarBase using (module IRStarResultV)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
+open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack)
 
 open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; slot-size)
 
@@ -86,8 +86,6 @@ open import Once.Backend.X86.Correct.IR.Case using (module CaseEndResult)
 -- Import Postulates
 open import Once.Postulates
   using (encode; encode-inl-tag; encode-inl-val; encode-inr-tag; encode-inr-val)
-open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 
 -- Import MemoryValid for encoding axioms and validity predicates
 open import Once.Backend.X86.Correct.MemoryValid
@@ -181,7 +179,7 @@ mutual
       ; ir-mem-code = mem-code-final
       ; ir-mem-heap = mem-heap-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+      ; ir-capacity = cap-final  -- Derived from ir-capacity r-f-v via rsp-jump
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final  -- Thread through f (inl branch)
       }
@@ -373,9 +371,11 @@ mutual
                         (sym rdi-setup)  -- addr: val-addr → rdi in s-setup
                         (λ addr _ → subst (λ m → readMem (memory s-setup) addr ≡ readMem m addr) (sym mem-setup) refl)
 
-      -- Construct StackCapacity for s-setup from raw bounds
+      -- Derive StackCapacity for s-setup from cap-in via rsp-setup (setup preserves rsp)
       cap-setup : StackCapacity s-setup 2
-      cap-setup = rsp-bound-to-capacity 2 s-setup (rsp-in-stack-after-stack-op s-setup) rsp-sufficient-setup
+      cap-setup = rsp-bound-to-capacity 2 s-setup
+                    (subst (λ r → region-of r ≡ stack) (sym rsp-setup) (StackCapacity.rsp-in-stack cap-in))
+                    rsp-sufficient-setup
 
       -- Recursive call to f via size-bounded dispatcher
       step-f-v : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
@@ -497,10 +497,11 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-jump rsp-jump (IRStarResultV.ir-stack-inv r-f-v) r15-jump
 
-      rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
-      rsp-sufficient-final = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s-final)
-        where
-          open import Data.Nat.Properties using (≤-trans; m≤m+n)
+      -- Derive final capacity from ir-capacity r-f-v via rsp-jump (jump preserves rsp)
+      cap-final : StackCapacity s-final 2
+      cap-final = rsp-bound-to-capacity 2 s-final
+                    (subst (λ r → region-of r ≡ stack) (sym rsp-jump) (StackCapacity.rsp-in-stack (IRStarResultV.ir-capacity r-f-v)))
+                    (subst (_> slots 2) (sym rsp-jump) (StackCapacity.rsp-sufficient (IRStarResultV.ir-capacity r-f-v)))
 
       -- RbpInvariant preserved: from ir-rbp-inv r-f-v through jump (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final
@@ -574,7 +575,7 @@ mutual
       ; ir-mem-rbp = mem-rbp-final
       ; ir-mem-rbp+8 = mem-rbp+8-final
       ; ir-stack-inv = stack-inv-final
-      ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+      ; ir-capacity = cap-final  -- Derived from ir-capacity r-g-v via rsp-end
       ; ir-rbp-inv = rbp-inv-final
       ; ir-mem-above = mem-above-final
       ; ir-mem-at-0 = mem-at-0-final
@@ -844,9 +845,14 @@ mutual
                         (sym val-addr-eq-rdi-right)  -- addr: val-addr → rdi s-right
                         (λ addr _ → subst (λ m → readMem (memory s-right) addr ≡ readMem m addr) (sym mem-s-right-eq-s) refl)
 
-      -- Construct StackCapacity for s-right from raw bounds
+      -- Derive StackCapacity for s-right from cap-in via rsp chain (setup and right-setup preserve rsp)
       cap-right : StackCapacity s-right 2
-      cap-right = rsp-bound-to-capacity 2 s-right (rsp-in-stack-after-stack-op s-right) rsp-sufficient-right
+      cap-right = rsp-bound-to-capacity 2 s-right
+                    (subst (λ r → region-of r ≡ stack) (sym rsp-right-eq) (StackCapacity.rsp-in-stack cap-in))
+                    (subst (_> slots 2) (sym rsp-right-eq) (StackCapacity.rsp-sufficient cap-in))
+        where
+          rsp-right-eq : readReg (regs s-right) rsp ≡ readReg (regs s) rsp
+          rsp-right-eq = trans rsp-right rsp-setup
 
       -- Recursive call to g via size-bounded dispatcher
       step-g-v : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-right s1 b (length prefix-g)
@@ -967,10 +973,11 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = stack-inv-preserved-mem-rsp s1 s-final mem-end rsp-end (IRStarResultV.ir-stack-inv r-g-v) r15-end
 
-      rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
-      rsp-sufficient-final = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s-final)
-        where
-          open import Data.Nat.Properties using (≤-trans; m≤m+n)
+      -- Derive final capacity from ir-capacity r-g-v via rsp-end (end preserves rsp)
+      cap-final : StackCapacity s-final 2
+      cap-final = rsp-bound-to-capacity 2 s-final
+                    (subst (λ r → region-of r ≡ stack) (sym rsp-end) (StackCapacity.rsp-in-stack (IRStarResultV.ir-capacity r-g-v)))
+                    (subst (_> slots 2) (sym rsp-end) (StackCapacity.rsp-sufficient (IRStarResultV.ir-capacity r-g-v)))
 
       -- RbpInvariant preserved: from ir-rbp-inv r-g-v through end (rsp/rbp preserved)
       rbp-inv-final : RbpInvariant s-final

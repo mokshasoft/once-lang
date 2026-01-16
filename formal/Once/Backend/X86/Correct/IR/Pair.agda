@@ -562,6 +562,8 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- StackCapacity s 5 derived from input StackCapacity s 7 (for downstream use)
+    cap5 : StackCapacity s 5
 
 -- | Execute setup phase (validity-based, no encode input)
 -- Requires StackCapacity s 7: 5 slots for setup + 2 slots remaining capacity
@@ -590,6 +592,7 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
   ; mem-at-0-setup = mem-at-0-from-setup
   ; mem-code-setup = mem-code-from-setup
   ; mem-heap-setup = mem-heap-from-setup
+  ; cap5 = cap5
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -1007,9 +1010,9 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
     r15-setup-raw : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ slots 5
     r15-setup-raw = subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5) (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res)
 
-    -- r15 in s1 is in stack region
+    -- r15 in s1 is in stack region (using cap5 from setup-res)
     cap5 : StackCapacity s 5
-    cap5 = mk-capacity-5 s
+    cap5 = PairSetupResultV.cap5 setup-res
 
     s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
     s1-r15-region = subst (λ addr → region-of addr ≡ stack)
@@ -1398,6 +1401,8 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     -- D041 region proofs: r15-chain and 40≤rsp needed for stack region proof
     r15-chain : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ slots 5
     40≤rsp-s : 40 ≤ readReg (regs s) rsp
+    -- StackCapacity s 5 for downstream postulate-free derivation
+    cap5 : StackCapacity s 5
 
 ------------------------------------------------------------------------
 -- Arithmetic lemmas for disjointness proofs
@@ -1497,6 +1502,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; rsp-bound = rsp-bound-s
   ; r15-chain = r15-chain
   ; 40≤rsp-s = 40≤rsp-s
+  ; cap5 = mk-capacity-5 s
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -2309,6 +2315,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; rsp-bound = rsp-bound-s
   ; r15-chain = r15-chain
   ; 40≤rsp-s = 40≤rsp-s
+  ; cap5 = PairSetupResultV.cap5 setup-res
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -3194,9 +3201,6 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
                (trans (readReg-writeReg-rsp-rbp rf6-with-rbp (readReg (regs s6) rsp +ℕ slot-size))
                (readReg-writeReg-same (regs s6) rbp v-rbp)))))
 
-      rsp-sufficient-s9 : readReg (regs s9) rsp > slots 2
-      rsp-sufficient-s9 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s9)
-
       -- ========== Stack invariant proof (via restored rsp and r15) ==========
       -- After the pop sequence: rsp-s9 = rsp-s and r15-s9 = r15-s
       -- So StackInvariant s implies StackInvariant s9
@@ -3216,6 +3220,16 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
         where
           24≤rsp-s : 24 ≤ readReg (regs s) rsp
           24≤rsp-s = PairFinalPrecond.rsp-bound precond
+
+      -- Derive rsp-sufficient-s9 from cap5 via rsp-s9-eq-s (s9 restores rsp)
+      rsp-sufficient-s9 : readReg (regs s9) rsp > slots 2
+      rsp-sufficient-s9 = subst (_> slots 2) (sym rsp-s9-eq-s) rsp-s-sufficient
+        where
+          cap5-precond = PairFinalPrecond.cap5 precond
+          2≤5 : 2 ≤ 5
+          2≤5 = s≤s (s≤s z≤n)
+          rsp-s-sufficient : readReg (regs s) rsp > slots 2
+          rsp-s-sufficient = ≤-<-trans (slots-mono-≤ 2≤5) (StackCapacity.rsp-sufficient cap5-precond)
 
       -- Stack invariant: s9 has same r15 and rsp as s, so inherits StackInvariant
       stack-inv-s9 : StackInvariant s9
@@ -3247,7 +3261,7 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       -- The write address (r15-s3 + 8) is in stack region, so it's disjoint from 0, code, and heap
 
       cap5 : StackCapacity s 5
-      cap5 = mk-capacity-5 s
+      cap5 = PairFinalPrecond.cap5 precond
 
       -- (rsp - 40) + 8 is in stack region (via abstract interface)
       write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack

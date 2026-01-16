@@ -51,20 +51,24 @@
       - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
       - IR/Case.agda: eliminated (was unused import)
       - IR/Curry.agda: refactored to take StackCapacity s 4 (curry allocates 2 slots)
-    - **Remaining files with postulate usages (41 total):**
-      - MutualIR.agda: 14 usages (includes curry/inl/inr/apply consolidated derivation)
-      - MutualIR/Case.agda: 7 usages
-      - IR/ThunkExec.agda: 7 usages
-      - IR/Apply.agda: 6 usages (intermediate states s-setup, s-call, s6, s1)
-      - MutualIR/Pair.agda: 5 usages
-      - IR/Pair.agda: 4 usages (mk-capacity-5 helper, pair-final-star s9)
+      - MutualIR/Case.agda: derives cap-setup from cap-in, cap-final from ir-capacity via rsp preservation
+      - MutualIR/Pair.agda: derives cap5 from cap-in, cap-setup via capacity-maintained, cap-s2 from ir-capacity
+      - IR/Apply.agda: refactored to take StackCapacity s 4 (push r15 + call + thunk needs 2)
+      - ClosureContext.agda: takes StackCapacity s 4 directly (exact requirement, no internal derivation)
+      - IR/ThunkExec.agda: refactored to take StackCapacity s 6 (thunk setup: push r15 + push rbp + sub 16 + output 2)
+        - thunk-setup-star: threads capacity through 8 state transitions
+        - thunk-ret-star: derives rsp-sufficient-1 from input via <-≤-trans
+    - **Remaining files with postulate usages (23 total):**
+      - MutualIR.agda: 17 usages (dispatcher derives cap from blanket for each operation: cap6 for thunk, cap4 for apply)
+      - IR/Pair.agda: 3 usages (mk-capacity-5 helper in encode-based path only)
       - WholeProgram.agda: 3 usages (curry call site derivation)
-      - ClosureContext.agda: 2 usages
-      - InitState.agda: 1 usage
-  - Postulate usage reduced: 85 → 41 (44 eliminated)
-  - IR/Apply.agda: Changed signatures to take StackCapacity s 2, reduced usages 11 → 6
-  - IR/Pair.agda: Changed assemble-pair-result* to take StackCapacity s 2, reduced 7 → 4
+  - Postulate usage reduced: 85 → 23 (62 eliminated)
+  - IR/Apply.agda: Changed signatures to take StackCapacity s 4 (was 2), now postulate-free!
+  - IR/Pair.agda: Changed assemble-pair-result* to take StackCapacity s 2, reduced 7 → 2
     - Derives final capacity from initial via rsp-final (pair restores rsp)
+    - Added cap5 field to PairSetupResultV, threaded through PairFinalPrecond
+    - Validity-based path is now postulate-free (encode-based still uses mk-capacity-5)
+  - MutualIR/Case.agda: Eliminated all 7 usages by deriving from cap-in via rsp preservation
   - Current status: Build passes for x86-ccc-whole
 - [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
@@ -83,6 +87,20 @@
 - Blanket postulates (`rsp-in-stack-after-stack-op`, `rsp-bound-after-stack-op`)
   still used in internal files when constructing StackCapacity after state changes
 - See `docs/formal/historical/lessons-learned.md` for "no functions in where clauses" rule
+
+### Architecture: No Capacity Weakening (from lessons-learned.md)
+- **Rule**: Functions declare exactly what they need, callers provide exactly that
+- **Anti-pattern**: Adding `capacity-weaken-to` to convert `StackCapacity s n` to `StackCapacity s m` (code smell!)
+- **Correct pattern**:
+  1. Individual operation modules take exact requirements (ThunkExec: 6, Apply: 4, etc.)
+  2. MutualIR dispatcher takes `StackCapacity s 2` (the output guarantee all operations provide)
+  3. At each call site in MutualIR, derive exact capacity from blanket postulates:
+     ```agda
+     rsp>slots6 = ≤-<-trans (slots-mono-≤ 6≤7) (rsp-bound-after-stack-op s)
+     cap6 = rsp-bound-to-capacity 6 s (rsp-in-stack-after-stack-op s) rsp>slots6
+     ```
+  4. Blanket postulates remain at dispatcher level (MutualIR) - this is acceptable
+- **Benefits**: Types are self-documenting, no hidden costs, composable capacity arithmetic
 - **Naming convention**: Rename variables with concrete byte values (e.g., `rsp-gt-24`, `rsp-gt-16`)
   to use abstract slot-based names (e.g., `rsp-bound`, `rsp-sufficient`) since `slots n` is abstract
   and the concrete byte representation (n * 8) should not leak into proof names

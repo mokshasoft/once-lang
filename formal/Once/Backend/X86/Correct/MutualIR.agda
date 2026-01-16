@@ -535,10 +535,22 @@ mutual
 
       -- v-env is now an input parameter (no more valid-from-encode bridge!)
 
-      -- Step 1: Trace 8 setup instructions (now takes validity for both env and arg)
+      -- Construct StackCapacity s 6 for thunk-setup-star
+      -- Thunk setup needs 6 slots: push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 6
+      rsp>slots6 : readReg (regs s) rsp > slots 6
+      rsp>slots6 = ≤-<-trans (slots-mono-≤ 6≤7) (rsp-bound-after-stack-op s)
+        where
+          open import Data.Nat.Properties using (≤-<-trans)
+          6≤7 : 6 ≤ 7
+          6≤7 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+
+      cap6 : StackCapacity s 6
+      cap6 = rsp-bound-to-capacity 6 s (rsp-in-stack-after-stack-op s) rsp>slots6
+
+      -- Step 1: Trace 8 setup instructions (now takes StackCapacity s 6)
       -- Returns ThunkSetupResult record for clean field access
       setup-result = thunk-setup-star f prefix suffix env arg s
-                       h-eq pc-eq v-arg v-env stack-inv rsp-sufficient
+                       h-eq pc-eq v-arg v-env stack-inv cap6
       s-after-setup = proj₁ setup-result
       setup-rec = proj₂ setup-result
       open TE.ThunkSetupResult setup-rec
@@ -1398,9 +1410,17 @@ mutual
       prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
 
-      -- Derive StackCapacity s 2 from rsp-sufficient using blanket postulate for region
-      cap : StackCapacity s 2
-      cap = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
+      -- Derive StackCapacity s 4 from blanket postulate
+      -- Apply needs 4 slots: push r15 (1) + call (1) + thunk output (2) = 4
+      rsp>slots4 : readReg (regs s) rsp > slots 4
+      rsp>slots4 = ≤-<-trans (slots-mono-≤ 4≤7) (rsp-bound-after-stack-op s)
+        where
+          open import Data.Nat.Properties using (≤-<-trans)
+          4≤7 : 4 ≤ 7
+          4≤7 = s≤s (s≤s (s≤s (s≤s z≤n)))
+
+      cap : StackCapacity s 4
+      cap = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
 
       -- Extract closure and argument from semantic pair
       cl : Closure A B

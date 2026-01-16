@@ -35,7 +35,7 @@ module Once.Backend.X86.Correct.IR.Apply where
 open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
+-- NOTE: IR/Apply.agda is now postulate-free! Capacity threading eliminates blanket postulates.
 open import Once.Postulates using (encode-pair-fst)
 open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -47,7 +47,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
          stack-write-preserves-code-r15; stack-write-preserves-unused-r15;
          stack-write-preserves-r15; stack-inv-for-code-ptr;
          stack-inv-preserved-r15-unchanged; stack-inv-preserved-unchanged;
-         StackCapacity; capacity-maintained;
+         StackCapacity; capacity-maintained; slots-mono-≤;
+         capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
          -- D041: Abstract interface (no arithmetic in types)
          apply-frame-1; apply-frame-slot-0-in-stack; abstract-to-rsp-slot-in-stack;
          -- D041: Abstract helpers for 1-slot and 2-slot allocation
@@ -131,7 +132,7 @@ open ≡-Reasoning
 --   4: mov r15, [r15+8]    ; load code_ptr from closure.snd
 --   5: mov rdi, rsi        ; move argument to rdi
 
--- Takes StackCapacity s 2 directly (eliminates blanket postulates for initial state)
+-- Takes StackCapacity s 4 to produce StackCapacity s' 3 after push (for call phase)
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr arg-addr : ℕ)
                    (s : State) →
@@ -141,7 +142,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   -- Region proof: rdi is in heap (for heap-stack disjointness)
   -- Replaces rdi-eq - we only need the region, not the exact encode equality
   region-of (readReg (regs s) rdi) ≡ heap →
@@ -165,7 +166,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > slots 2
+          × StackCapacity s' 3  -- Capacity after push (was rsp > slots 2)
           -- NEW: original r15 is saved on stack (at rsp after push = old rsp - 8)
           × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15)
           -- RSP tracking: s'.rsp = s.rsp - 8 (push decrements by 8)
@@ -183,9 +184,11 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     old-rsp = readReg (regs s) rsp
     new-rsp = old-rsp ∸ slot-size
 
-    -- Extract rsp-bound from cap for internal use
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 4 gives > slots 4)
+    -- Derive > slots 2 for helpers that need weaker bound
+    open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
     rsp-bound : readReg (regs s) rsp > slots 2
-    rsp-bound = StackCapacity.rsp-sufficient cap
+    rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 2)) (StackCapacity.rsp-sufficient cap)
 
     -- D041: Stack region proof for new-rsp (uses cap directly, no postulate!)
     new-rsp-in-stack : region-of new-rsp ≡ stack
@@ -498,8 +501,13 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
         r15<len : readReg (regs s6) r15 < length prog
         r15<len = subst (_< length prog) (sym r15-6) code-ptr<len
 
-    rsp-sufficient-6 : readReg (regs s6) rsp > slots 2
-    rsp-sufficient-6 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s6)
+    -- Derive StackCapacity s6 3 from input cap : StackCapacity s 4 via push
+    rsp-sufficient-6 : StackCapacity s6 3
+    rsp-sufficient-6 = capacity-after-push s s6 3 cap rsp6'
+      where
+        -- rsp6 proves s6.rsp = new-rsp, and new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
+        rsp6' : readReg (regs s6) rsp ≡ readReg (regs s) rsp ∸ slot-size
+        rsp6' = rsp6  -- new-rsp = old-rsp ∸ slot-size by definition
 
     -- Memory preservation: original r15 is saved at new-rsp
     mem-r15-saved : readMem (memory s6) (readReg (regs s6) rsp) ≡ just old-r15
@@ -516,7 +524,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
         (apply-alloc-diff-from-above s rsp-bound addr addr≥rsp)
 
 -- Prove call instruction: pushes return address and jumps to code-ptr
--- Takes StackCapacity s 2 directly (eliminates blanket postulates for initial state)
+-- Takes StackCapacity s 3 to produce StackCapacity s' 2 after call (for thunk)
 apply-call-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -527,7 +535,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset +ℕ 6 →  -- Updated: setup ends at 6
   readReg (regs s) r15 ≡ code-ptr →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 3 →
   -- Result after call: pc=code-ptr, ret-addr on stack
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -538,7 +546,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × readReg (regs s') rsp > slots 2
+          × StackCapacity s' 2  -- Capacity after call (was rsp > slots 2)
           -- RSP tracking: call pushes return address (rsp -= 8)
           × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
           -- Memory preservation at original rsp (call writes at new-rsp, not old-rsp)
@@ -557,13 +565,16 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv cap =
   s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call , mem-at-0-call , mem-code-call , mem-heap-call
   where
+    open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
+
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated
 
-    -- Extract rsp-bound from cap for internal use
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 3 gives > slots 3)
+    -- Used where > slots 2 suffices (slots 3 > slots 2)
     rsp-bound : readReg (regs s) rsp > slots 2
-    rsp-bound = StackCapacity.rsp-sufficient cap
+    rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 1)) (StackCapacity.rsp-sufficient cap)
 
     -- The call instruction (now i6)
     i6 = call (reg r15)
@@ -650,13 +661,13 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
         rsp1≤ : readReg (regs s1) rsp ≤ readReg (regs s) rsp
         rsp1≤ = subst (_≤ old-rsp) (sym rsp1) (m∸n≤m old-rsp slot-size)
 
-    -- rsp > slots 2 after call: derived from runtime bound rsp-bound-after-stack-op
-    rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s1)
-
     -- RSP tracking: s1.rsp = new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
     rsp1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ slot-size
     rsp1-eq = rsp1  -- rsp1 proves s1.rsp = new-rsp, and new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
+
+    -- Derive StackCapacity s1 2 from input cap : StackCapacity s 3 via call (push ret addr)
+    rsp-sufficient-1 : StackCapacity s1 2
+    rsp-sufficient-1 = capacity-after-push s s1 2 cap rsp1-eq
 
     -- Memory at original rsp preserved (call writes at new-rsp = old-rsp - 8, not old-rsp)
     -- Since old-rsp > slots 2, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
@@ -878,8 +889,24 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
           r15-in-stack frame slot (trans r15-1 r15-eq)
                        (subst (sp-addr frame ≥_) (sym rsp1-eq-orig) frame-bound)
 
+    -- Derive rsp-sufficient-1 from preconditions (no postulate!)
+    -- s.rsp = orig-rsp - 8 and s.rsp > slots 2
+    -- orig-rsp ≥ s.rsp (since m ∸ n ≤ m), and s.rsp ≥ 17 (from s.rsp > slots 2 = 16)
+    -- By transitivity: orig-rsp ≥ 17 = suc (slots 2), i.e., orig-rsp > slots 2
+    -- s1.rsp = orig-rsp (after pop restores)
     rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = ≤-trans (m≤m+n 17 40) (rsp-bound-after-stack-op s1)
+    rsp-sufficient-1 = subst (_> slots 2) (sym rsp1-eq-orig) orig-rsp>slots2
+      where
+        open import Data.Nat.Properties using (≤-trans; m∸n≤m)
+        -- rsp-sufficient : s.rsp > slots 2 = slots 2 < s.rsp = suc (slots 2) ≤ s.rsp = 17 ≤ s.rsp
+        -- orig-rsp ≥ s.rsp (since s.rsp = orig-rsp ∸ 8 ≤ orig-rsp by m∸n≤m)
+        orig-rsp≥s-rsp : orig-rsp ≥ readReg (regs s) rsp
+        orig-rsp≥s-rsp = subst (orig-rsp ≥_) (sym rsp-eq) (m∸n≤m orig-rsp slot-size)
+
+        -- By transitivity: 17 ≤ s.rsp ≤ orig-rsp, so 17 ≤ orig-rsp
+        -- 17 ≤ orig-rsp is suc (slots 2) ≤ orig-rsp = slots 2 < orig-rsp = orig-rsp > slots 2
+        orig-rsp>slots2 : orig-rsp > slots 2
+        orig-rsp>slots2 = ≤-trans rsp-sufficient orig-rsp≥s-rsp
 
 ------------------------------------------------------------------------
 -- ApplyWfResult: Record type for run-apply-with-wf results
@@ -918,7 +945,7 @@ open ApplyWfResult public
 
 -- | run-apply-with-wf: Full apply execution with ClosureWellFormed
 -- E is the env type, env is the captured environment value
--- Takes StackCapacity s 2 directly (eliminates blanket postulates for initial state)
+-- Takes StackCapacity s 4 for postulate-free capacity threading
 run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (code-ptr : ℕ) (env : ⟦ E ⟧)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -931,7 +958,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   -- Key: ValidAt for input pair (replaces rdi-eq for heap-stack separation)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1003,10 +1030,13 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     closure-in-heap : region-of closure-addr ≡ heap
     closure-in-heap = valid-in-heap v-cl
 
-    -- Extract rsp-bound from cap for internal use
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 4 gives > slots 4)
+    -- Derive > slots 2 for helpers that need weaker bound
+    open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
     rsp-bound : readReg (regs s) rsp > slots 2
-    rsp-bound = StackCapacity.rsp-sufficient cap
+    rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 2)) (StackCapacity.rsp-sufficient cap)
 
+    -- Step 1: Setup phase (now takes StackCapacity s 4, outputs StackCapacity s-setup 3)
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
                      h-eq pc-eq stack-inv cap rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
@@ -1027,12 +1057,10 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     mem-above-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
 
     -- Step 2: Trace call instruction
-    -- Derive StackCapacity for s-setup from blanket postulate (intermediate state)
-    cap-setup : StackCapacity s-setup 2
-    cap-setup = rsp-bound-to-capacity 2 s-setup (rsp-in-stack-after-stack-op s-setup) rsp-sufficient-setup
-
+    -- rsp-sufficient-setup is now StackCapacity s-setup 3 (from apply-setup-star)
+    -- apply-call-star takes StackCapacity s 3 and produces StackCapacity s-call 2
     call-result = apply-call-star {A} {B} prefix suffix code-ptr s-setup
-                    h-setup pc-setup r15-setup stack-inv-setup cap-setup
+                    h-setup pc-setup r15-setup stack-inv-setup rsp-sufficient-setup
     s-call = proj₁ call-result
     star-call = proj₁ (proj₂ call-result)
     h-call = proj₁ (proj₂ (proj₂ call-result))
@@ -1115,10 +1143,10 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     apply-sp-bound : StackPointer.addr apply-sp ≡ readReg (regs s-call) rsp +ℕ slot-size
     apply-sp-bound = sym (trans (cong (_+ℕ slot-size) rsp-call) (m∸n+n≡m 8≤setup))
       where
-        open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m)
-        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m; m≤m+n)
+        -- rsp > slots 3 = 24, so 24 ≤ rsp. Since 8 ≤ 8+16 = 24, we get 8 ≤ rsp
         8≤setup : 8 ≤ readReg (regs s-setup) rsp
-        8≤setup = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp-sufficient-setup)
+        8≤setup = ≤-trans (m≤m+n 8 16) (<⇒≤ (StackCapacity.rsp-sufficient rsp-sufficient-setup))
 
     -- Proof: r15 is in code region at s-call
     -- Chain: s-call.r15 = s-setup.r15 = code-ptr < length prog
@@ -1137,9 +1165,10 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         r15-call<len : readReg (regs s-call) r15 < length prog
         r15-call<len = Relation.Binary.PropositionalEquality.subst (_< length prog) (sym r15-call-eq-code-ptr) (code-ptr-valid wf)
 
+    -- rsp-sufficient-call is StackCapacity s-call 2, extract rsp > slots 2 for thunk-correct
     thunk-result = thunk-correct wf arg s-call ret-addr apply-sp
                      h-call pc-call arg-valid-at-call env-valid-at-call mem-ret
-                     stack-inv-call rsp-sufficient-call apply-sp-bound r15-call-in-code
+                     stack-inv-call (StackCapacity.rsp-sufficient rsp-sufficient-call) apply-sp-bound r15-call-in-code
     s-thunk = proj₁ thunk-result
     thunk-res = proj₁ (proj₂ thunk-result)
     pc-thunk = proj₂ (proj₂ thunk-result)
@@ -1162,12 +1191,11 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     rsp-thunk-eq = thunk-rsp-plus-8 thunk-res
 
     -- s-call.rsp = s-setup.rsp - 8 (call pushes return address)
-    -- Therefore: s-call.rsp + 8 = s-setup.rsp (when rsp > slots 2, we have 8 ≤ rsp, so rsp - 8 + 8 = rsp)
+    -- Therefore: s-call.rsp + 8 = s-setup.rsp (rsp > slots 3 = 24, so 8 ≤ 24 ≤ rsp)
     8≤setup-rsp : 8 ≤ readReg (regs s-setup) rsp
-    8≤setup-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))) (<⇒≤ rsp-sufficient-setup)
+    8≤setup-rsp = ≤-trans (m≤m+n 8 16) (<⇒≤ (StackCapacity.rsp-sufficient rsp-sufficient-setup))
       where
-        open import Data.Nat.Properties using (<⇒≤)
-        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (<⇒≤; m≤m+n)
 
     rsp-call-plus-8-eq : readReg (regs s-call) rsp +ℕ slot-size ≡ readReg (regs s-setup) rsp
     rsp-call-plus-8-eq = trans (cong (_+ℕ slot-size) rsp-call) (m∸n+n≡m 8≤setup-rsp)
@@ -1363,7 +1391,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 ------------------------------------------------------------------------
 
 -- | Wrapper that produces IRStarResult from run-apply-with-wf
--- Takes StackCapacity s 2 directly (eliminates blanket postulates)
+-- Takes StackCapacity s 4 directly (eliminates blanket postulates)
 run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1376,7 +1404,7 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1438,7 +1466,7 @@ open import Once.Backend.X86.Correct.StarBase
             ir-rsp-bound to ir-rsp-bound'; ir-rbp-inv to ir-rbp-inv'; ir-closure-wf to ir-closure-wf')
 open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
--- Takes StackCapacity s 2 directly (eliminates blanket postulates)
+-- Takes StackCapacity s 4 directly (eliminates blanket postulates)
 run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1453,7 +1481,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   RbpInvariant s →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
@@ -1583,7 +1611,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 --   closure-at : ClosureAtS env-addr code-ptr closure-addr m
 ------------------------------------------------------------------------
 
--- Takes StackCapacity s 2 directly (eliminates blanket postulates)
+-- Takes StackCapacity s 4 directly (eliminates blanket postulates)
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1598,7 +1626,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s 4 →
   RbpInvariant s →
   -- Validity-based memory layout:
   (v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)) →
