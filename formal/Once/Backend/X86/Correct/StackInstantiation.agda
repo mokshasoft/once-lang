@@ -1055,6 +1055,11 @@ private
   m∸slot<m : ∀ m → m > slot-size → m ∸ slot-size < m
   m∸slot<m (suc m') (s≤s _) = s≤s (m∸n≤m m' 7)
 
+  -- slots is monotonic for ≤ (follows from slots being multiplication)
+  slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
+  slots-mono-≤ {zero} {b} _ = z≤n
+  slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
+
 -- | Prove 1-slot allocation address is below original rsp
 apply-alloc-below-rsp : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
@@ -1367,11 +1372,6 @@ frame-addrs-disjoint {s} {k₁} {k₂} {n} f₁ f₂ k₁<k₂ cap k₂≤n eq =
     -- We have: slots n < rsp-val and k₂ ≤ n, so slots k₂ ≤ slots n < rsp-val
     slots-k₂≤slots-n : slots k₂ ≤ slots n
     slots-k₂≤slots-n = slots-mono-≤ k₂≤n
-      where
-        -- slots is monotonic for ≤ (follows from slots being multiplication)
-        slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
-        slots-mono-≤ {zero} {b} _ = z≤n
-        slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
     rsp≥k₂ : rsp-val ≥ slots k₂
     rsp≥k₂ = ≤-trans slots-k₂≤slots-n (<⇒≤ (rsp-sufficient cap))
     -- f₁.addr = rsp ∸ slots k₁, f₂.addr = rsp ∸ slots k₂

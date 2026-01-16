@@ -93,6 +93,13 @@ from-yes-< (no _) = ⊥-elim impossible
 -- Core subtraction lemma
 ------------------------------------------------------------------------
 
+private
+  -- Helper: suc (x - y) = suc x - y when y ≤ x
+  suc-∸ : ∀ x y → y ≤ x → suc (x ∸ y) ≡ suc x ∸ y
+  suc-∸ x zero _ = refl
+  suc-∸ zero (suc y) ()
+  suc-∸ (suc x) (suc y) (s≤s y≤x) = suc-∸ x y y≤x
+
 -- | Key lemma: (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
 --
 -- Used for stack pointer arithmetic:
@@ -104,11 +111,6 @@ m∸n+k≡m∸n-k (suc m) zero (suc k) _ ()
 m∸n+k≡m∸n-k (suc m) (suc n) (suc k) (s≤s n≤m) (s≤s k≤n) =
   help ((n ∸ k) ≤? m)
   where
-    suc-∸ : ∀ x y → y ≤ x → suc (x ∸ y) ≡ suc x ∸ y
-    suc-∸ x zero _ = refl
-    suc-∸ zero (suc y) ()
-    suc-∸ (suc x) (suc y) (s≤s y≤x) = suc-∸ x y y≤x
-
     help : Dec ((n ∸ k) ≤ m) → (m ∸ n) + suc k ≡ suc m ∸ (n ∸ k)
     help (yes nk≤m) =
       trans (+-suc (m ∸ n) k)

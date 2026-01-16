@@ -40,12 +40,14 @@
   - Entry points now use specific `stackBase-in-stack` postulate instead
   - Full elimination requires threading StackCapacity through all internal operations
   - Current status: postulates can't be deleted yet, but usage is more localized
-- [ ] Phase 8: Apply "no functions in where clauses" refactoring to all X86 backend files
+- [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
   - Keep only simple variable bindings (val = expr) in where clauses
-  - Files to check: IR/Apply.agda, IR/Curry.agda, IR/Inl.agda, IR/Inr.agda, IR/Pair.agda,
-    IR/ThunkExec.agda, IR/ThunkStructure.agda, StarBase.agda, StackInstantiation.agda,
-    ClosureWellFormed.agda, MutualIR/Compose.agda, MutualIR/Case.agda, and others
+  - Completed refactorings:
+    - IR/Inl.agda: replaced nested `n<n+8` with `m<m+n` from stdlib (2 occurrences)
+    - IR/Inr.agda: replaced nested `n<n+8` with `m<m+n` from stdlib (2 occurrences)
+    - StackInstantiation.agda: moved `slots-mono-≤` to private block
+    - Arithmetic.agda: moved `suc-∸` to private block
   - See Pair.agda and MutualIR.agda for reference patterns
 
 ### Notes:

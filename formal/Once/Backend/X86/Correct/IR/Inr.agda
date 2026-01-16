@@ -40,7 +40,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-disjoint-from-stack)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc; m<m+n)
 open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂; module ≡-Reasoning)
 open import Relation.Nullary using (yes; no)
@@ -362,11 +362,7 @@ run-inr-star {A} {B} prefix suffix x s h-false pc-eq rdi-eq stack-inv rsp-suffic
 
     -- new-rsp < rbp < rbp+8
     rbp<rbp+8 : orig-rbp < orig-rbp+8
-    rbp<rbp+8 = n<n+8 orig-rbp
-      where
-        n<n+8 : ∀ n → n < n +ℕ slot-size
-        n<n+8 zero = s≤s z≤n
-        n<n+8 (suc n) = s≤s (n<n+8 n)
+    rbp<rbp+8 = m<m+n orig-rbp (s≤s z≤n)
 
     new-rsp<rbp+8 : new-rsp < orig-rbp+8
     new-rsp<rbp+8 = <-trans new-rsp<rbp rbp<rbp+8
@@ -832,11 +828,7 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rsp
       in ≤-trans new-rsp+8<rsp rsp≤rbp'
 
     rbp<rbp+8 : orig-rbp < orig-rbp+8
-    rbp<rbp+8 = n<n+8 orig-rbp
-      where
-        n<n+8 : ∀ n → n < n +ℕ slot-size
-        n<n+8 zero = s≤s z≤n
-        n<n+8 (suc n) = s≤s (n<n+8 n)
+    rbp<rbp+8 = m<m+n orig-rbp (s≤s z≤n)
 
     new-rsp<rbp+8 : new-rsp < orig-rbp+8
     new-rsp<rbp+8 = <-trans new-rsp<rbp rbp<rbp+8
