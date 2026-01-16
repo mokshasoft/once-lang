@@ -155,6 +155,138 @@ So `frame-setup-star` needs `StackCapacity s 5`, not `StackCapacity s 3`.
 
 ---
 
+## No Magic Numbers for Stack Sizes
+
+**Problem**: Hardcoding stack slot counts like `StackCapacity s 7` or `slots 5` in proofs creates brittle, architecture-dependent code that breaks when codegen changes.
+
+```agda
+-- BAD: Magic number hardcoded in proof
+thunk-setup-star : ... → StackCapacity s 6 → ...  -- Why 6? Where does it come from?
+
+-- BAD: Magic number in dispatcher
+run-ir-star-at-offset-v : ... → StackCapacity s 7 → ...  -- Why 7?
+```
+
+**Why it's wrong**:
+1. **Architecture-dependent**: The number 7 depends on x86-64 calling conventions, register choices, instruction selection
+2. **Fragile**: Stack compaction or codegen optimization changes these values
+3. **Obscures intent**: Reader can't tell if 7 is correct or why
+4. **Duplicated knowledge**: The codegen knows the frame layout; proofs shouldn't re-state it
+
+**The Rule**: All stack slot counts must be **derived from codegen**, not hardcoded.
+
+**Correct architecture**:
+
+```agda
+-- In StackInstantiation.agda: derive from actual codegen
+curry-frame-slots : ℕ
+curry-frame-slots = 4  -- push r15 (1) + push rbp (1) + sub 16 (2)
+-- TODO: Should be computed from compile-x86 (curry _)
+
+apply-frame-slots : ℕ
+thunk-setup-slots : ℕ
+pair-setup-slots : ℕ
+output-slots : ℕ
+output-slots = 2  -- capacity guaranteed after any operation
+
+-- In proofs: use named constants for individual operations
+thunk-setup-star : ... → StackCapacity s thunk-setup-slots → ...
+pair-setup-star : ... → StackCapacity s pair-setup-slots → ...
+```
+
+**CRITICAL: No static maximum for dispatcher!**
+
+```agda
+-- BAD: Static maximum doesn't work for recursion
+run-ir-star : ... → StackCapacity s max-frame-slots → ...
+-- After thunk-setup consumes slots, recursive call can't provide max-frame-slots
+
+-- GOOD: Capacity is computed from IR structure (dynamic)
+ir-stack-requirement : ∀ {A B} → IR A B → ℕ
+ir-stack-requirement id = output-slots
+ir-stack-requirement (curry f) = thunk-setup-slots + ir-stack-requirement f
+ir-stack-requirement (g ∘ f) = max (ir-stack-requirement f) (ir-stack-requirement g)
+ir-stack-requirement (pair f g) = pair-setup-slots + max (ir-stack-requirement f) (ir-stack-requirement g)
+-- etc.
+
+-- Dispatcher takes exactly what the specific IR needs
+run-ir-star : ∀ {A B} (ir : IR A B) ... →
+  StackCapacity s (ir-stack-requirement ir) →
+  ...
+```
+
+**Why static maximums fail**: Consider `curry f` where `f` is another `curry g`:
+- Entry needs `thunk-setup-slots + ir-stack-requirement f`
+- After thunk-setup, we have `ir-stack-requirement f` remaining
+- Recursive call needs exactly `ir-stack-requirement f` ✓
+- But if dispatcher expected static `max-frame-slots`, we couldn't provide it after consuming slots
+
+**The ideal (future work)**: Frame slot counts should be *computed* from the codegen output:
+
+```agda
+-- Analyze instruction sequence for stack impact
+stack-depth : List Instr → ℕ
+stack-depth instrs = ... -- count pushes, sub rsp, etc.
+
+curry-frame-slots : ℕ
+curry-frame-slots = stack-depth (compile-x86 (curry id))  -- derived!
+```
+
+**Benefits**:
+1. **Single source of truth**: Codegen defines layout, proofs follow
+2. **Refactoring-safe**: Change codegen, constants update automatically
+3. **Self-documenting**: Named constants explain what capacity is for
+4. **Enables stack compaction**: Optimize codegen without rewriting proofs
+
+---
+
+## Stack Capacity is About Exact Requirements, Not "Big Enough"
+
+**Problem**: Thinking "the stack is huge, so postulates about capacity are practically true" leads to sloppy reasoning and unprovable claims.
+
+```agda
+-- BAD mental model:
+-- "Stack starts at 0x7FFF0000, we only use hundreds of bytes, so rsp > slots 7 is always true"
+postulate
+  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > slots 7
+```
+
+**Why this thinking is wrong**:
+1. **The stack doesn't "start at X"** - that's implementation detail. Proofs should be abstract.
+2. **"Practically true" is not a proof** - we need actual derivations or justified axioms
+3. **Blanket postulates hide real requirements** - claiming capacity for ANY state means we don't track actual consumption
+4. **Can't compute actual needs** - if we don't know exact requirements, we can't size the stack correctly
+
+**The correct mental model**:
+
+1. **Each IR has computable stack requirements** based on its structure
+2. **Entry point provides exactly what's needed** for the specific program
+3. **Proofs thread capacity through**, consuming on allocation, recovering on deallocation
+4. **The only postulate needed** is at the entry point: "initial state has capacity N for this program"
+
+```agda
+-- GOOD: Capacity is program-specific, computed from IR structure
+ir-stack-requirement : ∀ {A B} → IR A B → ℕ
+ir-stack-requirement id = 0
+ir-stack-requirement (curry f) = curry-frame-slots + ir-stack-requirement f
+ir-stack-requirement (g ∘ f) = max (ir-stack-requirement f) (ir-stack-requirement g)
+-- etc.
+
+-- Entry point postulate is specific and justified
+initWithInput-capacity : ∀ {A B} (x : ⟦ A ⟧) (ir : IR A B) →
+  StackCapacity (initWithInput x) (ir-stack-requirement ir)
+```
+
+**Key insight**: Since we control the entire chain (compiler, runtime, semantics), we CAN know exactly how much stack any program needs. The postulate just says "we allocated that much."
+
+**What to avoid**:
+- Blanket postulates claiming capacity for "any state"
+- Reasoning based on concrete addresses (0x7FFF0000)
+- Magic numbers that don't trace back to codegen
+- "It's big enough" without computing actual requirements
+
+---
+
 ## Trusted Computing Base (TCB)
 
 For a complete list of what is proven and what is postulated, see [What Is Proven](what-is-proven.md).
