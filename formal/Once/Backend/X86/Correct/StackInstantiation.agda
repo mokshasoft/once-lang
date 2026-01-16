@@ -22,8 +22,14 @@ open import Once.Type
 open import Once.Semantics
 open import Once.IR
 
-open import Once.Backend.X86.Syntax public using (slot-size)  -- Re-export slot-size
-open import Once.Backend.X86.Syntax hiding (slot-size)        -- Import the rest
+-- Import slot-size and slots from Syntax (single source of truth)
+open import Once.Backend.X86.Syntax public using (slot-size; slots)
+open import Once.Backend.X86.Syntax hiding (slot-size; slots)
+
+-- Import computed slot consumption values from CodeGen (derived from instruction lists)
+open import Once.Backend.X86.CodeGen public
+  using (apply-consumed-slots; pair-setup-consumed-slots;
+         thunk-setup-consumed-slots; curry-closure-consumed-slots)
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
@@ -71,12 +77,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- Named Constants (D041: replace magic numbers with semantic names)
 ------------------------------------------------------------------------
 
--- slot-size is imported from Once.Backend.X86.Syntax (= 8, x86-64 word size)
-
--- | Generic n-slot offset: n slots in bytes
--- All slot-based offsets are derived from this function
-slots : ℕ → ℕ
-slots n = n *ℕ slot-size
+-- slot-size and slots are imported from Once.Backend.X86.Syntax
+-- Computed slot consumption values are imported from Once.Backend.X86.CodeGen:
+--   apply-consumed-slots, pair-setup-consumed-slots,
+--   thunk-setup-consumed-slots, curry-closure-consumed-slots
 
 -- Stack frame offsets (derived from slots function)
 push-offset : ℕ
@@ -119,7 +123,7 @@ pair-snd-offset = slot-size                -- 8: offset to second element of pai
                                            -- pair-addr + 0 = fst
                                            -- pair-addr + 8 = snd
 
--- Minimum rsp bounds for safe operations
+-- Minimum rsp bounds for safe operations (DEPRECATED: use slot-based constants below)
 thunk-min-rsp : ℕ
 thunk-min-rsp = thunk-frame-size +ℕ slot-size   -- 40: need > four-slot-offset with buffer
 
@@ -128,6 +132,27 @@ pair-min-rsp = pair-frame-size +ℕ slot-size     -- 48: need > five-slot-offset
 
 apply-min-rsp : ℕ
 apply-min-rsp = two-push-offset                -- 16: need > two-push-offset for apply
+
+------------------------------------------------------------------------
+-- Slot-based Capacity Constants (for StackCapacity)
+--
+-- Consumed slot values are COMPUTED from codegen instruction lists and
+-- imported from Once.Backend.X86.CodeGen:
+--   - apply-consumed-slots (push r15 + call = 2)
+--   - pair-setup-consumed-slots (3 pushes + sub 16 = 5)
+--   - thunk-setup-consumed-slots (2 pushes + sub 16 = 4)
+--   - curry-closure-consumed-slots (sub 16 = 2)
+--
+-- ARCHITECTURE: See docs/formal/historical/lessons-learned.md
+-- - No magic numbers in proofs
+-- - All slot counts derived from codegen
+-- - ir-stack-requirement computes total dynamically per IR
+------------------------------------------------------------------------
+
+-- | Output slots: capacity guaranteed after any operation completes
+-- All operations return with at least this much capacity remaining
+output-slots : ℕ
+output-slots = 2
 
 ------------------------------------------------------------------------
 -- Centralized Arithmetic Helpers (D041: define early for use throughout)

@@ -9,9 +9,9 @@
 
 module Once.Backend.X86.Syntax where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Fin using (Fin)
-open import Data.List using (List)
+open import Data.List using (List; []; _∷_; foldr)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -175,6 +175,34 @@ record Function : Set where
 -- | Word/slot size for x86-64 (8 bytes)
 slot-size : ℕ
 slot-size = 8
+
+-- | Convert slots to bytes: n slots = n * 8 bytes
+slots : ℕ → ℕ
+slots n = n *ℕ slot-size
+
+------------------------------------------------------------------------
+-- Stack consumption analysis
+--
+-- Compute how many stack slots an instruction consumes (positive)
+-- or frees (negative represented as 0 here since we track max depth).
+-- Used to derive stack requirements from codegen.
+------------------------------------------------------------------------
+
+-- | Stack slots consumed by a single instruction
+-- Only counts allocations, not deallocations (for max depth calculation)
+instr-consumed-slots : Instr → ℕ
+instr-consumed-slots (push _) = 1
+instr-consumed-slots (sub dst (imm n)) with dst
+... | reg rsp = n / slot-size  -- sub rsp, n consumes n/8 slots
+  where open import Data.Nat using (_/_)
+... | _ = 0
+instr-consumed-slots (call _) = 1  -- call pushes return address
+instr-consumed-slots _ = 0
+
+-- | Total stack slots consumed by an instruction sequence
+-- Note: This counts allocations only, not the net change (ignores pop/add/ret)
+instrs-consumed-slots : List Instr → ℕ
+instrs-consumed-slots = foldr (λ i acc → instr-consumed-slots i +ℕ acc) 0
 
 -- | Offsets for product fields
 fstOffset : ℕ

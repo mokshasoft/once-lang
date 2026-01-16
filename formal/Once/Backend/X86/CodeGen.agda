@@ -21,8 +21,7 @@ open import Once.Backend.X86.Syntax
 open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 
--- Import slots function (slot-size comes from Syntax)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+-- slots and instrs-consumed-slots come from Syntax (no circular dependency)
 
 ------------------------------------------------------------------------
 -- Instruction lists and computed lengths
@@ -149,10 +148,20 @@ case-end-label-base = 7
 -- Curry overhead instruction lists
 ------------------------------------------------------------------------
 
--- Closure setup: sub, mov, lea, mov, mov, jmp
--- (jmp offset depends on len-f, so we just count)
+-- Closure setup instruction template (for stack analysis)
+-- Full sequence: sub, mov, lea, mov, mov, jmp - only sub affects stack
+-- Note: ThunkStructure.curry-closure-setup computes actual jmp offset
+curry-closure-instrs : Program
+curry-closure-instrs =
+  sub (reg rsp) (imm (slots 2)) ∷
+  mov (mem (base rsp)) (reg rdi) ∷
+  lea r9 (rip+disp 4) ∷
+  mov (mem (base+disp rsp slot-size)) (reg r9) ∷
+  mov (reg rax) (reg rsp) ∷
+  jmp 0 ∷ []  -- placeholder offset
+
 curry-closure-setup-count : ℕ
-curry-closure-setup-count = 6
+curry-closure-setup-count = length curry-closure-instrs
 
 -- Thunk setup: label, push r15, push rbp, mov rbp rsp, sub, mov, mov, mov
 curry-thunk-setup-len-calc : Program
@@ -193,6 +202,35 @@ curry-end-label-base = curry-overhead ∸ 1
 -- PC-relative: offset = target - (jmp-pos + 1) = (curry-end-label-base + len-f) - curry-closure-setup-count
 curry-jmp-base : ℕ
 curry-jmp-base = curry-end-label-base ∸ curry-closure-setup-count
+
+------------------------------------------------------------------------
+-- Computed stack slot consumption (derived from instruction lists)
+--
+-- These values are COMPUTED from the actual instruction sequences above.
+-- When codegen changes, these automatically update.
+-- See docs/formal/historical/lessons-learned.md for architecture.
+------------------------------------------------------------------------
+
+-- | Stack slots consumed by apply instructions
+-- Computed: push r15 (1) + call (1) = 2
+apply-consumed-slots : ℕ
+apply-consumed-slots = instrs-consumed-slots apply-instrs
+
+-- | Stack slots consumed by pair setup
+-- Computed: push r14 (1) + push r15 (1) + push rbp (1) + sub rsp,16 (2) = 5
+pair-setup-consumed-slots : ℕ
+pair-setup-consumed-slots = instrs-consumed-slots pair-setup
+
+-- | Stack slots consumed by thunk setup (inside curry)
+-- Computed: push r15 (1) + push rbp (1) + sub rsp,16 (2) = 4
+-- Note: label doesn't consume stack
+thunk-setup-consumed-slots : ℕ
+thunk-setup-consumed-slots = instrs-consumed-slots curry-thunk-setup-len-calc
+
+-- | Stack slots consumed by curry closure setup
+-- Computed: sub rsp, 16 (2) = 2
+curry-closure-consumed-slots : ℕ
+curry-closure-consumed-slots = instrs-consumed-slots curry-closure-instrs
 
 ------------------------------------------------------------------------
 -- Compile length calculation
