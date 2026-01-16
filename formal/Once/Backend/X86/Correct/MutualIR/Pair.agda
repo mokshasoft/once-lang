@@ -297,7 +297,18 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       r14-final = PairFinalResult.r14-fin final-res
       r15-final = PairFinalResult.r15-fin final-res
       stack-inv-final = PairFinalResult.stack-inv-fin final-res
-      rsp-sufficient-final = PairFinalResult.rsp-sufficient-fin final-res
+      -- Derive StackCapacity s 2 from cap-in : StackCapacity s 7 (for assemble-pair-result-vv)
+      cap : StackCapacity s 2
+      cap = rsp-bound-to-capacity 2 s (StackCapacity.rsp-in-stack cap-in) rsp>slots2
+        where
+          2≤7 : 2 ≤ 7
+          2≤7 = s≤s (s≤s z≤n)
+          slots2≤slots7 : slots 2 ≤ slots 7
+          slots2≤slots7 = slots-mono-≤ 2≤7
+          rsp>slots7 : readReg (regs s) rsp > slots 7
+          rsp>slots7 = StackCapacity.rsp-sufficient cap-in
+          rsp>slots2 : readReg (regs s) rsp > slots 2
+          rsp>slots2 = ≤-<-trans slots2≤slots7 rsp>slots7
       mem-fst-final = PairFinalResult.mem-fst-fin final-res
       mem-snd-final = PairFinalResult.mem-snd-fin final-res
       rbp-final = PairFinalResult.rbp-fin final-res
@@ -477,7 +488,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
       result-v = assemble-pair-result-vv f g prefix suffix x s s-setup s1 s2 s3 s-final
                   setup-res r-f-v mid-res r-g-v
                   h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                  stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
+                  stack-inv-final cap mem-fst-final mem-snd-final
                   rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
                   star-fin refl refl
                   rbp-inv rsp-final-eq

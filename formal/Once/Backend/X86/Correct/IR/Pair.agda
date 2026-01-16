@@ -1179,7 +1179,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
   readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
   StackInvariant s-final →
-  readReg (regs s-final) rsp > slots 2 →
+  StackCapacity s 2 →  -- Initial state capacity (final derived via rsp-final)
   readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
@@ -1199,7 +1199,7 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
 assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                     stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
+                     stack-inv-final cap mem-fst-final mem-snd-final
                      rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
                      star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
@@ -1214,7 +1214,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
-  ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+  ; ir-capacity = cap-final  -- Derived from initial cap via rsp-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -1225,6 +1225,12 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
+
+    -- Derive final capacity from initial capacity via rsp-final (pair restores rsp)
+    cap-final : StackCapacity s-final 2
+    cap-final = rsp-bound-to-capacity 2 s-final
+                  (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
+                  (subst (_> slots 2) (sym rsp-final) (rsp-sufficient cap))
 
     -- Star proofs from each phase
     -- setup-res.star-setup : Star prog s (setup-res.s-setup)
@@ -3301,7 +3307,7 @@ assemble-pair-result-v : ∀ {A B C} (f : IR C A) (g : IR C B)
   readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
   readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
   StackInvariant s-final →
-  readReg (regs s-final) rsp > slots 2 →
+  StackCapacity s 2 →  -- Initial state capacity (final derived via rsp-final)
   readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
@@ -3327,7 +3333,7 @@ assemble-pair-result-v : ∀ {A B C} (f : IR C A) (g : IR C B)
 assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                        setup-res r-f mid-res r-g
                        h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                       stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
+                       stack-inv-final cap mem-fst-final mem-snd-final
                        rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
                        star-fin s2-eq s-setup-eq
                        rbp-inv rsp-final
@@ -3343,7 +3349,7 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
-  ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+  ; ir-capacity = cap-final  -- Derived from initial cap via rsp-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -3354,6 +3360,12 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
+
+    -- Derive final capacity from initial capacity via rsp-final (pair restores rsp)
+    cap-final : StackCapacity s-final 2
+    cap-final = rsp-bound-to-capacity 2 s-final
+                  (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
+                  (subst (_> slots 2) (sym rsp-final) (rsp-sufficient cap))
 
     -- Star proofs from each phase (same as assemble-pair-result)
     star-setup' : Star prog s s-setup
@@ -3476,7 +3488,7 @@ assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
   readReg (regs s-final) r14 ≡ readReg (regs s) r14 →
   readReg (regs s-final) r15 ≡ readReg (regs s) r15 →
   StackInvariant s-final →
-  readReg (regs s-final) rsp > slots 2 →
+  StackCapacity s 2 →  -- Initial state capacity (final derived via rsp-final)
   readMem (memory s-final) (readReg (regs s3) r15) ≡ readMem (memory s3) (readReg (regs s3) r15) →
   readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax) →
   readReg (regs s-final) rbp ≡ readReg (regs s) rbp →
@@ -3500,7 +3512,7 @@ assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
 assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                         setup-res r-f mid-res r-g
                         h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
-                        stack-inv-final rsp-sufficient-final mem-fst-final mem-snd-final
+                        stack-inv-final cap mem-fst-final mem-snd-final
                         rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
                         star-fin s2-eq s-setup-eq
                         rbp-inv rsp-final
@@ -3516,7 +3528,7 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
   ; ir-mem-rbp = mem-rbp-final
   ; ir-mem-rbp+8 = mem-rbp+8-final
   ; ir-stack-inv = stack-inv-final
-  ; ir-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+  ; ir-capacity = cap-final  -- Derived from initial cap via rsp-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
   ; ir-mem-at-0 = mem-at-0-final
@@ -3527,6 +3539,12 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
+
+    -- Derive final capacity from initial capacity via rsp-final (pair restores rsp)
+    cap-final : StackCapacity s-final 2
+    cap-final = rsp-bound-to-capacity 2 s-final
+                  (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
+                  (subst (_> slots 2) (sym rsp-final) (rsp-sufficient cap))
 
     -- Star proofs from each phase (using V versions)
     star-setup' : Star prog s s-setup

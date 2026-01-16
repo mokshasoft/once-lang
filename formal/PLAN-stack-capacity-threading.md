@@ -51,18 +51,20 @@
       - IR/Compose.agda: eliminated (use ir-capacity from sub-result directly)
       - IR/Case.agda: eliminated (was unused import)
       - IR/Curry.agda: refactored to take StackCapacity s 4 (curry allocates 2 slots)
-    - **Remaining files with postulate usages (44 total):**
+    - **Remaining files with postulate usages (41 total):**
       - MutualIR.agda: 14 usages (includes curry/inl/inr/apply consolidated derivation)
       - MutualIR/Case.agda: 7 usages
       - IR/ThunkExec.agda: 7 usages
-      - IR/Pair.agda: 7 usages (has mk-capacity-5 helper)
+      - IR/Apply.agda: 6 usages (intermediate states s-setup, s-call, s6, s1)
       - MutualIR/Pair.agda: 5 usages
-      - IR/Apply.agda: 4 usages (intermediate states s-setup, s-call, s6, s1)
+      - IR/Pair.agda: 4 usages (mk-capacity-5 helper, pair-final-star s9)
       - WholeProgram.agda: 3 usages (curry call site derivation)
       - ClosureContext.agda: 2 usages
       - InitState.agda: 1 usage
-  - Postulate usage reduced: 85 → 44 (41 eliminated)
-  - IR/Apply.agda: Changed signatures to take StackCapacity s 2, reduced usages 11 → 4
+  - Postulate usage reduced: 85 → 41 (44 eliminated)
+  - IR/Apply.agda: Changed signatures to take StackCapacity s 2, reduced usages 11 → 6
+  - IR/Pair.agda: Changed assemble-pair-result* to take StackCapacity s 2, reduced 7 → 4
+    - Derives final capacity from initial via rsp-final (pair restores rsp)
   - Current status: Build passes for x86-ccc-whole
 - [x] Phase 8: Apply "no functions in where clauses" refactoring to X86 backend files
   - Pattern: Move function definitions from where clauses to private module-level blocks
