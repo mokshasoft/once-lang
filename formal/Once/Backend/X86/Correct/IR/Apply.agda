@@ -131,6 +131,7 @@ open ≡-Reasoning
 --   4: mov r15, [r15+8]    ; load code_ptr from closure.snd
 --   5: mov rdi, rsi        ; move argument to rdi
 
+-- Takes StackCapacity s 2 directly (eliminates blanket postulates for initial state)
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr arg-addr : ℕ)
                    (s : State) →
@@ -140,7 +141,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   -- Region proof: rdi is in heap (for heap-stack disjointness)
   -- Replaces rdi-eq - we only need the region, not the exact encode equality
   region-of (readReg (regs s) rdi) ≡ heap →
@@ -173,7 +174,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × (∀ addr → addr ≥ readReg (regs s) rsp →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
-                 h-false pc-eq stack-inv rsp-sufficient rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp code-ptr<len =
+                 h-false pc-eq stack-inv cap rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp code-ptr<len =
   s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp-sufficient-6 , mem-r15-saved , rsp6 , mem-above-setup
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -182,10 +183,13 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     old-rsp = readReg (regs s) rsp
     new-rsp = old-rsp ∸ slot-size
 
-    -- D041: Stack region proof for new-rsp (replaces heap-stack-disjoint postulate usage)
+    -- Extract rsp-bound from cap for internal use
+    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound = StackCapacity.rsp-sufficient cap
+
+    -- D041: Stack region proof for new-rsp (uses cap directly, no postulate!)
     new-rsp-in-stack : region-of new-rsp ≡ stack
-    new-rsp-in-stack = abstract-to-rsp-slot-in-stack s
-                         (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    new-rsp-in-stack = abstract-to-rsp-slot-in-stack s cap
 
     -- The 6 instructions (push + 5 movs)
     i0 = push (reg r15)
@@ -509,9 +513,10 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     mem-above-setup : ∀ addr → addr ≥ old-rsp → readMem (memory s6) addr ≡ readMem (memory s) addr
     mem-above-setup addr addr≥rsp =
       readMem-writeMem-diff (memory s) new-rsp addr old-r15
-        (apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp)
+        (apply-alloc-diff-from-above s rsp-bound addr addr≥rsp)
 
 -- Prove call instruction: pushes return address and jumps to code-ptr
+-- Takes StackCapacity s 2 directly (eliminates blanket postulates for initial state)
 apply-call-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -522,7 +527,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset +ℕ 6 →  -- Updated: setup ends at 6
   readReg (regs s) r15 ≡ code-ptr →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   -- Result after call: pc=code-ptr, ret-addr on stack
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -549,12 +554,16 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           -- Memory at heap-region preserved (D041: call writes to stack, disjoint from heap)
           × (∀ addr → region-of addr ≡ heap →
              readMem (memory s') addr ≡ readMem (memory s) addr))
-apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv rsp-sufficient =
+apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv cap =
   s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call , mem-at-0-call , mem-code-call , mem-heap-call
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated
+
+    -- Extract rsp-bound from cap for internal use
+    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound = StackCapacity.rsp-sufficient cap
 
     -- The call instruction (now i6)
     i6 = call (reg r15)
@@ -653,7 +662,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     -- Since old-rsp > slots 2, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
     -- D041: Use abstract helper from StackInvariant
     old-rsp≢new-rsp : old-rsp ≢ new-rsp
-    old-rsp≢new-rsp = apply-rsp-diff-from-alloc s rsp-sufficient
+    old-rsp≢new-rsp = apply-rsp-diff-from-alloc s rsp-bound
 
     mem-preserved-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
     mem-preserved-old-rsp = readMem-writeMem-diff (memory s) new-rsp old-rsp (pc s +ℕ 1)
@@ -665,11 +674,11 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     mem-above-call : ∀ addr → addr ≥ old-rsp → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-above-call addr addr≥rsp =
       readMem-writeMem-diff (memory s) new-rsp addr (pc s +ℕ 1)
-        (apply-alloc-diff-from-above s rsp-sufficient addr addr≥rsp)
+        (apply-alloc-diff-from-above s rsp-bound addr addr≥rsp)
 
-    -- Shared: write address is in stack region (D041: lifted from nested where clauses)
+    -- Shared: write address is in stack region (D041: uses cap directly, no postulate!)
     write-addr-in-stack-call : region-of new-rsp ≡ stack
-    write-addr-in-stack-call = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    write-addr-in-stack-call = abstract-to-rsp-slot-in-stack s cap
 
     -- Memory at 0 preserved (D041: use abstract interface)
     mem-at-0-call : readMem (memory s1) 0 ≡ readMem (memory s) 0
@@ -909,6 +918,7 @@ open ApplyWfResult public
 
 -- | run-apply-with-wf: Full apply execution with ClosureWellFormed
 -- E is the env type, env is the captured environment value
+-- Takes StackCapacity s 2 directly (eliminates blanket postulates for initial state)
 run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (code-ptr : ℕ) (env : ⟦ E ⟧)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -921,7 +931,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   -- Key: ValidAt for input pair (replaces rdi-eq for heap-stack separation)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -935,7 +945,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   ValidAt env (encode env) (memory s) →
   ∃[ s' ] ApplyWfResult {A} {B} prefix suffix semantics arg s s'
 run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
-                  wf h-eq pc-eq stack-inv rsp-sufficient input-valid (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) v-arg v-env =
+                  wf h-eq pc-eq stack-inv cap input-valid (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) v-arg v-env =
   s-final , record
     { star         = star-all
     ; h-final      = h-f
@@ -993,8 +1003,12 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     closure-in-heap : region-of closure-addr ≡ heap
     closure-in-heap = valid-in-heap v-cl
 
+    -- Extract rsp-bound from cap for internal use
+    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound = StackCapacity.rsp-sufficient cap
+
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
-                     h-eq pc-eq stack-inv rsp-sufficient rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
+                     h-eq pc-eq stack-inv cap rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
     star-setup = proj₁ (proj₂ setup-result)
     h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -1013,8 +1027,12 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     mem-above-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
 
     -- Step 2: Trace call instruction
+    -- Derive StackCapacity for s-setup from blanket postulate (intermediate state)
+    cap-setup : StackCapacity s-setup 2
+    cap-setup = rsp-bound-to-capacity 2 s-setup (rsp-in-stack-after-stack-op s-setup) rsp-sufficient-setup
+
     call-result = apply-call-star {A} {B} prefix suffix code-ptr s-setup
-                    h-setup pc-setup r15-setup stack-inv-setup rsp-sufficient-setup
+                    h-setup pc-setup r15-setup stack-inv-setup cap-setup
     s-call = proj₁ call-result
     star-call = proj₁ (proj₂ call-result)
     h-call = proj₁ (proj₂ (proj₂ call-result))
@@ -1057,8 +1075,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- Setup phase: memory s-setup = writeMem (memory s) (rsp-8) old-r15
     -- The write address (rsp-8) is in stack region, so heap is preserved
     setup-write-in-stack : region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
-    setup-write-in-stack = abstract-to-rsp-slot-in-stack s
-                             (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    setup-write-in-stack = abstract-to-rsp-slot-in-stack s cap
 
     heap-pres-setup : ∀ a → region-of a ≡ heap →
                       readMem (memory s-setup) a ≡ readMem (memory s) a
@@ -1089,7 +1106,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     apply-sp : StackPointer
     apply-sp = record
       { addr = readReg (regs s-setup) rsp
-      ; in-stack = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+      ; in-stack = abstract-to-rsp-slot-in-stack s cap
       }
 
     -- D041: Prove caller-sp bound for thunk-correct
@@ -1279,7 +1296,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         -- D041: addr >= orig-rsp > orig-rsp - 8 = s-setup.rsp
         addr≥setup-rsp : addr ≥ readReg (regs s-setup) rsp
         addr≥setup-rsp = NP.<⇒≤ (<-≤-trans
-          (subst (_< orig-rsp) (sym rsp-setup) (apply-alloc-below-rsp s rsp-sufficient))
+          (subst (_< orig-rsp) (sym rsp-setup) (apply-alloc-below-rsp s rsp-bound))
           addr≥rsp)
 
         mem-setup-to-call : readMem (memory s-call) addr ≡ readMem (memory s-setup) addr
@@ -1294,7 +1311,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
             call-rsp-eq = trans rsp-call (cong (_∸ slot-size) rsp-setup)
             -- s-call.rsp < orig-rsp via abstract helper
             call-rsp<orig : readReg (regs s-call) rsp < orig-rsp
-            call-rsp<orig = subst (_< orig-rsp) (sym call-rsp-eq) (apply-double-alloc-below-rsp s rsp-sufficient)
+            call-rsp<orig = subst (_< orig-rsp) (sym call-rsp-eq) (apply-double-alloc-below-rsp s rsp-bound)
 
         -- D041 PROVEN: Use thunk-preserves-above-entry-rsp
         mem-call-to-thunk : readMem (memory s-thunk) addr ≡ readMem (memory s-call) addr
@@ -1310,9 +1327,9 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- Setup writes to (rsp - 8) which is in stack region
     -- Call writes to (rsp - 16) which is in stack region
     -- Both are ≢ 0 since 0 is not in stack region (zero-not-in-stack)
-    -- Shared: Setup write address (rsp - 8) is in stack region (D041: lifted)
+    -- Shared: Setup write address (rsp - 8) is in stack region (D041: uses cap, no postulate!)
     setup-write-in-stack-f : region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
-    setup-write-in-stack-f = abstract-to-rsp-slot-in-stack s (rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient)
+    setup-write-in-stack-f = abstract-to-rsp-slot-in-stack s cap
 
     -- Memory at 0 preserved: chain through all phases using D041 abstract interface
     mem-at-0-f : readMem (memory s-final) 0 ≡ readMem (memory s) 0
@@ -1346,6 +1363,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 ------------------------------------------------------------------------
 
 -- | Wrapper that produces IRStarResult from run-apply-with-wf
+-- Takes StackCapacity s 2 directly (eliminates blanket postulates)
 run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1358,7 +1376,7 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1379,9 +1397,9 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
           × StackInvariant s'
           × readReg (regs s') rsp > slots 2)
 run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
-                       wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env =
+                       wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env =
   let result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s
-                 wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env
+                 wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env
       s' = proj₁ result
       module R = ApplyWfResult (proj₂ result)
   in s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
@@ -1420,6 +1438,7 @@ open import Once.Backend.X86.Correct.StarBase
             ir-rsp-bound to ir-rsp-bound'; ir-rbp-inv to ir-rbp-inv'; ir-closure-wf to ir-closure-wf')
 open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
+-- Takes StackCapacity s 2 directly (eliminates blanket postulates)
 run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1434,7 +1453,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
@@ -1447,7 +1466,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   ValidAt env (encode env) (memory s) →
   ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
 run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
-                       wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env =
+                       wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env =
   s' , record
     { ir-star = WfR.star
     ; ir-halted = WfR.h-final
@@ -1464,7 +1483,8 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-mem-code = WfR.mem-code-region  -- PROVEN via D041 region-based chain
     ; ir-mem-heap = WfR.mem-heap-region  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
-    ; ir-capacity = rsp-bound-to-capacity 2 s' (rsp-in-stack-after-stack-op s') WfR.rsp-sufficient
+    -- Derive s' capacity from s capacity via rsp-restored (no postulate for final state!)
+    ; ir-capacity = rsp-bound-to-capacity 2 s' (subst (λ r → region-of r ≡ stack) (sym WfR.rsp-restored) (StackCapacity.rsp-in-stack cap)) WfR.rsp-sufficient
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }
@@ -1478,7 +1498,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 
     -- Use proven run-apply-with-wf
     wf-result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s
-                  wf h-eq pc-eq stack-inv rsp-sufficient input-valid mem-layout v-arg v-env
+                  wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
 
@@ -1563,6 +1583,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 --   closure-at : ClosureAtS env-addr code-ptr closure-addr m
 ------------------------------------------------------------------------
 
+-- Takes StackCapacity s 2 directly (eliminates blanket postulates)
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1577,7 +1598,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  StackCapacity s 2 →
   RbpInvariant s →
   -- Validity-based memory layout:
   (v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)) →
@@ -1587,7 +1608,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
   (closure-at : ClosureAtS (encode env) code-ptr closure-addr (memory s)) →
   ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
 run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closure-addr arg-addr arg s
-                         wf h-eq pc-eq stack-inv rsp-sufficient rbp-inv v-cl v-arg v-env pair-at closure-at =
+                         wf h-eq pc-eq stack-inv cap rbp-inv v-cl v-arg v-env pair-at closure-at =
   let
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
@@ -1622,6 +1643,6 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
 
     -- Call existing implementation - returns IRStarResultV directly (no bridge!)
     result = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr s
-               wf h-eq pc-eq input-valid stack-inv rsp-sufficient rbp-inv mem-layout v-arg v-env
+               wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env
 
   in result  -- Direct passthrough (no conversion needed!)

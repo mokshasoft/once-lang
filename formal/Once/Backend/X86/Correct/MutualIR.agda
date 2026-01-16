@@ -1389,7 +1389,7 @@ mutual
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
     let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
-                              closure-wf-post h-false pc-eq stack-inv rsp-sufficient rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
+                              closure-wf-post h-false pc-eq stack-inv cap rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
     in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
     where
       open import Data.Product using (proj₁; proj₂)
@@ -1397,6 +1397,10 @@ mutual
 
       prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
+
+      -- Derive StackCapacity s 2 from rsp-sufficient using blanket postulate for region
+      cap : StackCapacity s 2
+      cap = rsp-bound-to-capacity 2 s (rsp-in-stack-after-stack-op s) rsp-sufficient
 
       -- Extract closure and argument from semantic pair
       cl : Closure A B
