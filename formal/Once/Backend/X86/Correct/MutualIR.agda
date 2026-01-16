@@ -87,9 +87,9 @@ open import Once.Backend.X86.Correct.StarBase public
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Inl
-  using (run-inl-star; run-inl-star-v; run-inl-star-v-auto)
+  using (run-inl-star-v; run-inl-star-v-auto)
 open import Once.Backend.X86.Correct.IR.Inr
-  using (run-inr-star; run-inr-star-v; run-inr-star-v-auto)
+  using (run-inr-star-v; run-inr-star-v-auto)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry
@@ -199,7 +199,8 @@ mutual
   -- | Validity-based IR execution dispatcher (with Acc for termination)
   -- Takes ValidAt input, returns IRStarResultV with validity output
   -- Acc proof ensures termination via well-founded recursion on ir-size
-  -- NOTE: Takes StackCapacity directly to eliminate rsp-in-stack-after-stack-op postulate
+  -- NOTE: Takes StackCapacity s 2 (output guarantee)
+  -- Operations needing higher capacity derive it from blanket postulate
   run-ir-star-at-offset-v : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1513,11 +1514,29 @@ mutual
   ------------------------------------------------------------------------
 
   -- Direct validity-based execution for inl (base case, ignores Acc)
+  -- Derive StackCapacity s 4 from blanket postulate (Inl.agda is now postulate-free!)
   run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
-    run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+    run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap4 rbp-inv
+    where
+      open import Data.Nat.Properties using (≤-trans; m≤m+n)
+      33≤57 : 33 ≤ 57
+      33≤57 = m≤m+n 33 24
+      rsp>slots4 : readReg (regs s) rsp > slots 4
+      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
+      cap4 : StackCapacity s 4
+      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
   -- Direct validity-based execution for inr (base case, ignores Acc)
+  -- Derive StackCapacity s 4 from blanket postulate (Inr.agda is now postulate-free!)
   run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
-    run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+    run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap4 rbp-inv
+    where
+      open import Data.Nat.Properties using (≤-trans; m≤m+n)
+      33≤57 : 33 ≤ 57
+      33≤57 = m≤m+n 33 24
+      rsp>slots4 : readReg (regs s) rsp > slots 4
+      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
+      cap4 : StackCapacity s 4
+      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
   -- NOTE: Pair needs StackCapacity s 7 (5 for setup + 2 remaining)
   -- TODO: Dispatcher should take ir-input-capacity ir slots, not fixed 2
