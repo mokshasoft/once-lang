@@ -101,7 +101,7 @@ open import Once.Backend.X86.Correct.IR.Inr
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry
   using (run-curry-star; CurryExecResult; CurryMemoryResult; closure-addr;
-         exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-mem;
+         exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-rsp; exec-mem;
          exec-mem-rbp; exec-mem-rbp+8; exec-stack-inv; exec-capacity; exec-rbp-inv;
          exec-mem-above; exec-mem-at-0; exec-mem-code; exec-mem-heap)
 
@@ -245,6 +245,7 @@ mutual
       ; ir-r14 = exec-r14 exec-res
       ; ir-r15 = exec-r15 exec-res
       ; ir-rbp = exec-rbp exec-res
+      ; ir-rsp = exec-rsp exec-res
       ; ir-mem = exec-mem exec-res
       ; ir-mem-rbp = exec-mem-rbp exec-res
       ; ir-mem-rbp+8 = exec-mem-rbp+8 exec-res
@@ -262,15 +263,11 @@ mutual
       offset = length prefix
       thunk-offset = offset +ℕ 6
 
-      -- Derive StackCapacity s curry-closure-capacity from cap-in (no blanket postulates!)
-      cap-curry : StackCapacity s curry-closure-capacity
-      cap-curry = capacity-from-larger s curry-closure-capacity
-                    (ir-stack-requirement (curry f)) cap-in (curry-closure-capacity≤curry-req f)
-
       -- Call curry with validity (no bridges!)
+      -- cap-in has type StackCapacity s (ir-stack-requirement (curry f)) which is what run-curry-star expects
       curry-result : ∃[ s' ] (CurryExecResult f prog s s' x offset
                               × CurryMemoryResult f prog s' x offset)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap-curry rbp-inv
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
 
       s' : State
       s' = proj₁ curry-result
@@ -419,13 +416,9 @@ mutual
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
 
-      -- Derive StackCapacity s curry-closure-capacity from cap-in (no blanket postulates!)
-      cap-curry : StackCapacity s curry-closure-capacity
-      cap-curry = capacity-from-larger s curry-closure-capacity
-                    (ir-stack-requirement (curry f)) cap-in (curry-closure-capacity≤curry-req f)
-
       -- Get CurryExecResult from curry proof (no bridges!)
-      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap-curry rbp-inv
+      -- cap-in has type StackCapacity s (ir-stack-requirement (curry f)) which is what run-curry-star expects
+      curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
       s' = proj₁ curry-result
       exec-res = proj₁ (proj₂ curry-result)
       curry-mem-res = proj₂ (proj₂ curry-result)
@@ -1603,13 +1596,8 @@ mutual
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
         open PairModule (ir-size ⟨ f , g ⟩) rec
-        -- Derive StackCapacity for pair from cap-in using capacity-from-larger
-        -- ir-stack-requirement ⟨ f , g ⟩ = 5 + (ir-stack-requirement f ⊔ ir-stack-requirement g)
-        -- pair-capacity = 7, which is ≤ ir-stack-requirement ⟨ f , g ⟩ when max ≥ 2
-        -- For now, use blanket postulate (TODO: prove 7 ≤ ir-stack-requirement ⟨ f , g ⟩)
-        cap7 : StackCapacity s 7
-        cap7 = rsp-bound-to-capacity 7 s (rsp-in-stack-after-stack-op s) (rsp-bound-after-stack-op s)
-    in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap7 rbp-inv
+        -- cap-in has type StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) which is what run-pair-star-v expects
+    in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
   run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
@@ -1706,7 +1694,7 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : Sta
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)

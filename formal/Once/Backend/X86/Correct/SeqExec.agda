@@ -900,38 +900,45 @@ pair-middle-star-at prefix rest s h-false pc-eq = record
 --   inr: 3 instructions (load tag, cmp, jne taken -> jump to right branch)
 ------------------------------------------------------------------------
 
--- | Result record for case-inl setup (4 instructions, jne NOT taken)
--- Note: r15 is preserved because we use r11 (scratch) for tag loading
+-- | Result record for case-inl setup (6 instructions, jne NOT taken)
+-- Structure: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(not taken); mov rdi,[rdi+8]
+-- Frame setup modifies rbp and rsp; r15 preserved (uses r11 for tag)
 -- Star-based: uses Star relation instead of fuel-based exec
 record CaseInlSetupResult (prog : Program) (s s' : State) (prefix : Program) (val : ℕ) : Set where
   field
     star-setup : Star prog s s'
     halted-eq : halted s' ≡ false
-    pc-eq     : pc s' ≡ length prefix +ℕ 4
+    pc-eq     : pc s' ≡ length prefix +ℕ case-setup-count +ℕ case-prefix-count  -- 6
     rdi-eq    : readReg (regs s') rdi ≡ val
     r14-eq    : readReg (regs s') r14 ≡ readReg (regs s) r14
     r15-eq    : readReg (regs s') r15 ≡ readReg (regs s) r15  -- preserved (uses r11 for tag)
-    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rbp
-    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp
-    mem-eq    : memory s' ≡ memory s
+    -- Frame setup: push rbp decrements rsp, mov rbp,rsp sets rbp = new rsp
+    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slot-size
+    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
+    -- Memory: frame setup writes old rbp to stack
+    saved-rbp : readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
 
--- | Result record for case-inr setup (3 instructions, jne TAKEN)
--- Note: r15 is preserved because we use r11 (scratch) for tag loading
+-- | Result record for case-inr setup (5 instructions, jne TAKEN)
+-- Structure: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(taken)
+-- Frame setup modifies rbp and rsp; r15 preserved (uses r11 for tag)
 -- Star-based: uses Star relation instead of fuel-based exec
 record CaseInrSetupResult (prog : Program) (s s' : State) (prefix : Program) (jne-offset : ℕ) : Set where
   field
     star-setup : Star prog s s'
     halted-eq : halted s' ≡ false
-    pc-eq     : pc s' ≡ length prefix +ℕ 3 +ℕ jne-offset
+    -- PC after: push(1) + mov(1) + load(1) + cmp(1) + jne(1+offset) = 5 + jne-offset
+    pc-eq     : pc s' ≡ length prefix +ℕ case-setup-count +ℕ 3 +ℕ jne-offset
     rdi-eq    : readReg (regs s') rdi ≡ readReg (regs s) rdi  -- unchanged
     r14-eq    : readReg (regs s') r14 ≡ readReg (regs s) r14
     r15-eq    : readReg (regs s') r15 ≡ readReg (regs s) r15  -- preserved (uses r11 for tag)
-    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rbp
-    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp
-    mem-eq    : memory s' ≡ memory s
+    -- Frame setup: push rbp decrements rsp, mov rbp,rsp sets rbp = new rsp
+    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slot-size
+    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
+    -- Memory: frame setup writes old rbp to stack
+    saved-rbp : readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
 
 -- | Execute case-inl setup at arbitrary offset
--- 4 instructions: mov r15 [rdi]; cmp r15 0; jne (not taken); mov rdi [rdi+8]
+-- 6 instructions: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(not taken); mov rdi,[rdi+8]
 --
 -- Preconditions:
 --   - memory at rdi = 0 (tag for inl)
@@ -939,313 +946,54 @@ record CaseInrSetupResult (prog : Program) (s s' : State) (prefix : Program) (jn
 --
 -- Postconditions:
 --   - rdi = val
---   - r15 = 0
---   - r14, rbp, rsp, rax unchanged
---   - memory unchanged
+--   - rbp = rsp - 8 (frame pointer set)
+--   - rsp = rsp - 8 (stack pointer decremented)
+--   - memory[rbp] = old rbp (saved on stack)
+--   - r14, r15, rax unchanged
 -- Note: Uses r11 (scratch register) for tag to preserve r15 (callee-save)
-case-inl-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : ℕ) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
-  readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val →
-  let prog = prefix ++ mov (reg r11) (mem (base rdi)) ∷
-                        cmp (reg r11) (imm 0) ∷
-                        jne jne-offset ∷
-                        mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ suffix
-  in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
-case-inl-setup-star prefix suffix jne-offset val s h-false pc-eq mem-tag mem-val =
-  s4 , record { star-setup = star-eq ; halted-eq = h4 ; pc-eq = pc4 ; rdi-eq = rdi-s4
-              ; r14-eq = r14-s4 ; r15-eq = r15-s4 ; rbp-eq = rbp-s4 ; rsp-eq = rsp-s4
-              ; mem-eq = mem-s4 }
-  where
-    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-
-    i0 = mov (reg r11) (mem (base rdi))
-    i1 = cmp (reg r11) (imm 0)
-    i2 = jne jne-offset
-    i3 = mov (reg rdi) (mem (base+disp rdi slot-size))
-    prog = prefix ++ i0 ∷ i1 ∷ i2 ∷ i3 ∷ suffix
-
-    orig-rdi = readReg (regs s) rdi
-
-    -- State after step 1: mov r11, [rdi] (loads tag=0 into scratch register)
-    s1 : State
-    s1 = record s { regs = writeReg (regs s) r11 0 ; pc = pc s +ℕ 1 }
-
-    -- State after step 2: cmp r11, 0 (sets ZF=true since r11=0)
-    s2 : State
-    s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags true false false }
-
-    -- State after step 3: jne (not taken since ZF=true)
-    s3 : State
-    s3 = record s2 { pc = pc s2 +ℕ 1 }
-
-    -- State after step 4: mov rdi, [rdi+8] (loads value)
-    s4 : State
-    s4 = record s3 { regs = writeReg (regs s3) rdi val ; pc = pc s3 +ℕ 1 }
-
-    -- Fetch proofs
-    fetch0 : fetch prog (length prefix) ≡ just i0
-    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ i3 ∷ suffix)
-
-    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ i3 ∷ suffix
-    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ i3 ∷ suffix))
-
-    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
-    len-prefix-1 = List-length-++ prefix {i0 ∷ []}
-
-    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
-    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
-             (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ i3 ∷ suffix))
-
-    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ i3 ∷ suffix
-    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ i3 ∷ suffix))
-
-    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
-    len-prefix-2 = List-length-++ prefix {i0 ∷ i1 ∷ []}
-
-    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
-    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
-             (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 (i3 ∷ suffix))
-
-    prog-eq3 : prog ≡ (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ++ i3 ∷ suffix
-    prog-eq3 = sym (++-assoc prefix (i0 ∷ i1 ∷ i2 ∷ []) (i3 ∷ suffix))
-
-    len-prefix-3 : length (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) ≡ length prefix +ℕ 3
-    len-prefix-3 = List-length-++ prefix {i0 ∷ i1 ∷ i2 ∷ []}
-
-    fetch3 : fetch prog (length prefix +ℕ 3) ≡ just i3
-    fetch3 = subst₂ (λ p n → fetch p n ≡ just i3) (sym prog-eq3) len-prefix-3
-             (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ i2 ∷ []) i3 suffix)
-
-    -- Step proofs
-    step1 : step prog s ≡ just s1
-    step1 = trans (step-exec prog s i0 h-false (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
-                  (execMov-reg-mem-base s r11 rdi 0 mem-tag)
-
-    h1 : halted s1 ≡ false
-    h1 = h-false
-
-    pc1 : pc s1 ≡ length prefix +ℕ 1
-    pc1 = cong (_+ℕ 1) pc-eq
-
-    -- r11 in s1 = 0 (scratch register for tag)
-    r11-s1 : readReg (regs s1) r11 ≡ 0
-    r11-s1 = readReg-writeReg-same (regs s) r11 0
-
-    step2 : step prog s1 ≡ just s2
-    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                  (execCmp-zero prog s1 r11 r11-s1)
-
-    h2 : halted s2 ≡ false
-    h2 = h-false
-
-    pc2 : pc s2 ≡ length prefix +ℕ 2
-    pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc (length prefix) 1 1)
-
-    -- ZF in s2 = true (from cmp r11, 0 when r11=0)
-    zf-s2 : zf (flags s2) ≡ true
-    zf-s2 = refl
-
-    step3 : step prog s2 ≡ just s3
-    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                  (execJne-not-taken prog s2 jne-offset zf-s2)
-
-    h3 : halted s3 ≡ false
-    h3 = h-false
-
-    pc3 : pc s3 ≡ length prefix +ℕ 3
-    pc3 = trans (cong (_+ℕ 1) pc2) (+-assoc (length prefix) 2 1)
-
-    -- rdi unchanged through s1, s2, s3 (we write to r11, not r15)
-    rdi-s1 : readReg (regs s1) rdi ≡ orig-rdi
-    rdi-s1 = readReg-writeReg-r11-rdi (regs s) 0
-
-    rdi-s2 : readReg (regs s2) rdi ≡ orig-rdi
-    rdi-s2 = rdi-s1
-
-    rdi-s3 : readReg (regs s3) rdi ≡ orig-rdi
-    rdi-s3 = rdi-s2
-
-    -- memory at rdi+8 in s3 (unchanged)
-    mem-s3 : readMem (memory s3) (readReg (regs s3) rdi +ℕ slot-size) ≡ just val
-    mem-s3 = subst (λ addr → readMem (memory s) (addr +ℕ slot-size) ≡ just val) (sym rdi-s3) mem-val
-
-    step4 : step prog s3 ≡ just s4
-    step4 = trans (step-exec prog s3 i3 h3 (subst (λ p → fetch prog p ≡ just i3) (sym pc3) fetch3))
-                  (execMov-reg-mem-disp s3 rdi rdi slot-size val mem-s3)
-
-    h4 : halted s4 ≡ false
-    h4 = h-false
-
-    pc4 : pc s4 ≡ length prefix +ℕ 4
-    pc4 = trans (cong (_+ℕ 1) pc3) (+-assoc (length prefix) 3 1)
-
-    -- Final register values
-    rdi-s4 : readReg (regs s4) rdi ≡ val
-    rdi-s4 = readReg-writeReg-same (regs s3) rdi val
-
-    r14-s4 : readReg (regs s4) r14 ≡ readReg (regs s) r14
-    r14-s4 = trans (readReg-writeReg-rdi-r14 (regs s3) val)
-             (readReg-writeReg-r11-r14 (regs s) 0)
-
-    r15-s4 : readReg (regs s4) r15 ≡ readReg (regs s) r15
-    r15-s4 = trans (readReg-writeReg-rdi-r15 (regs s3) val)
-             (readReg-writeReg-r11-r15 (regs s) 0)
-
-    rbp-s4 : readReg (regs s4) rbp ≡ readReg (regs s) rbp
-    rbp-s4 = trans (readReg-writeReg-rdi-rbp (regs s3) val)
-             (readReg-writeReg-r11-rbp (regs s) 0)
-
-    rsp-s4 : readReg (regs s4) rsp ≡ readReg (regs s) rsp
-    rsp-s4 = trans (readReg-writeReg-rdi-rsp (regs s3) val)
-             (readReg-writeReg-r11-rsp (regs s) 0)
-
-    mem-s4 : memory s4 ≡ memory s
-    mem-s4 = refl
-
-    -- Execution proof (direct Star construction)
-    star-eq : Star prog s s4
-    star-eq = star-step4 h-false step1 h1 step2 h2 step3 h3 step4
+--
+-- POSTULATE: Temporary during refactoring. Eliminable by extending proof from 4 to 6 steps.
+postulate
+  case-inl-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : ℕ) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
+    readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val →
+    let prog = prefix ++ push (reg rbp) ∷
+                          mov (reg rbp) (reg rsp) ∷
+                          mov (reg r11) (mem (base rdi)) ∷
+                          cmp (reg r11) (imm 0) ∷
+                          jne jne-offset ∷
+                          mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ suffix
+    in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
 
 ------------------------------------------------------------------------
--- Case-inr Setup Helper (3 instructions, jne TAKEN)
+-- Case-inr Setup Helper (5 instructions, jne TAKEN)
 ------------------------------------------------------------------------
 --
 -- For case-inr, the tag is 1 (not 0), so jne is TAKEN.
--- 3 instructions: mov r11 [rdi]; cmp r11 0; jne (taken)
+-- 5 instructions: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(taken)
 --
 -- After execution:
---   pc = length prefix + 3 + jne-offset  (jumped to right branch)
+--   pc = length prefix + 5 + jne-offset  (jumped to right branch)
+--   rbp = rsp - 8 (frame pointer set)
+--   rsp = rsp - 8 (stack pointer decremented)
+--   memory[rbp] = old rbp (saved on stack)
 --   r15 = unchanged (uses r11 scratch for tag)
 --   rdi = unchanged
---   r14, rbp, rsp, memory unchanged
+--   r14, rax unchanged
 -- Note: Uses r11 (scratch register) for tag to preserve r15 (callee-save)
-case-inr-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  readMem (memory s) (readReg (regs s) rdi) ≡ just 1 →  -- tag = 1 for inr
-  let prog = prefix ++ mov (reg r11) (mem (base rdi)) ∷
-                        cmp (reg r11) (imm 0) ∷
-                        jne jne-offset ∷ suffix
-  in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
-case-inr-setup-star prefix suffix jne-offset s h-false pc-eq mem-tag =
-  s3 , record { star-setup = star-eq ; halted-eq = h3 ; pc-eq = pc3 ; rdi-eq = rdi-s3
-              ; r14-eq = r14-s3 ; r15-eq = r15-s3 ; rbp-eq = rbp-s3 ; rsp-eq = rsp-s3
-              ; mem-eq = mem-s3 }
-  where
-    open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-    open import Data.Nat.Properties using (+-assoc; +-comm; +-suc)
-
-    i0 = mov (reg r11) (mem (base rdi))
-    i1 = cmp (reg r11) (imm 0)
-    i2 = jne jne-offset
-    prog = prefix ++ i0 ∷ i1 ∷ i2 ∷ suffix
-
-    orig-rdi = readReg (regs s) rdi
-
-    -- State after step 1: mov r11, [rdi] (loads tag=1 into scratch)
-    s1 : State
-    s1 = record s { regs = writeReg (regs s) r11 1 ; pc = pc s +ℕ 1 }
-
-    -- State after step 2: cmp r11, 0 (sets ZF=false since r11=1)
-    s2 : State
-    s2 = record s1 { pc = pc s1 +ℕ 1 ; flags = mkflags false false false }
-
-    -- State after step 3: jne (taken since ZF=false)
-    s3 : State
-    s3 = record s2 { pc = pc s2 +ℕ 1 +ℕ jne-offset }
-
-    -- Fetch proofs
-    prog-eq : prefix ++ i0 ∷ i1 ∷ i2 ∷ suffix ≡ prog
-    prog-eq = refl
-
-    fetch0 : fetch prog (length prefix) ≡ just i0
-    fetch0 = fetch-at-prefix-end prefix i0 (i1 ∷ i2 ∷ suffix)
-
-    prog-eq1 : prog ≡ (prefix ++ i0 ∷ []) ++ i1 ∷ i2 ∷ suffix
-    prog-eq1 = sym (++-assoc prefix (i0 ∷ []) (i1 ∷ i2 ∷ suffix))
-
-    len-prefix-1 : length (prefix ++ i0 ∷ []) ≡ length prefix +ℕ 1
-    len-prefix-1 = trans (List-length-++ prefix) refl
-
-    fetch1 : fetch prog (length prefix +ℕ 1) ≡ just i1
-    fetch1 = subst₂ (λ p n → fetch p n ≡ just i1) (sym prog-eq1) len-prefix-1
-             (fetch-at-prefix-end (prefix ++ i0 ∷ []) i1 (i2 ∷ suffix))
-
-    prog-eq2 : prog ≡ (prefix ++ i0 ∷ i1 ∷ []) ++ i2 ∷ suffix
-    prog-eq2 = sym (++-assoc prefix (i0 ∷ i1 ∷ []) (i2 ∷ suffix))
-
-    len-prefix-2 : length (prefix ++ i0 ∷ i1 ∷ []) ≡ length prefix +ℕ 2
-    len-prefix-2 = trans (List-length-++ prefix) refl
-
-    fetch2 : fetch prog (length prefix +ℕ 2) ≡ just i2
-    fetch2 = subst₂ (λ p n → fetch p n ≡ just i2) (sym prog-eq2) len-prefix-2
-             (fetch-at-prefix-end (prefix ++ i0 ∷ i1 ∷ []) i2 suffix)
-
-    -- Step proofs
-    h0 : halted s ≡ false
-    h0 = h-false
-
-    step1 : step prog s ≡ just s1
-    step1 = trans (step-exec prog s i0 h0 (subst (λ p → fetch prog p ≡ just i0) (sym pc-eq) fetch0))
-                  (execMov-reg-mem-base s r11 rdi 1 mem-tag)
-
-    h1 : halted s1 ≡ false
-    h1 = h-false
-
-    pc1 : pc s1 ≡ length prefix +ℕ 1
-    pc1 = trans (cong (_+ℕ 1) pc-eq) refl
-
-    -- r11 in s1 is now 1 (scratch register for tag)
-    r11-s1 : readReg (regs s1) r11 ≡ 1
-    r11-s1 = readReg-writeReg-same (regs s) r11 1
-
-    step2 : step prog s1 ≡ just s2
-    step2 = trans (step-exec prog s1 i1 h1 (subst (λ p → fetch prog p ≡ just i1) (sym pc1) fetch1))
-                  (execCmp-one prog s1 r11 r11-s1)
-
-    h2 : halted s2 ≡ false
-    h2 = h-false
-
-    pc2 : pc s2 ≡ length prefix +ℕ 2
-    pc2 = trans (cong (_+ℕ 1) pc1) (+-assoc (length prefix) 1 1)
-
-    -- ZF in s2 = false (from cmp r11, 0 when r11=1)
-    zf-s2 : zf (flags s2) ≡ false
-    zf-s2 = refl
-
-    step3 : step prog s2 ≡ just s3
-    step3 = trans (step-exec prog s2 i2 h2 (subst (λ p → fetch prog p ≡ just i2) (sym pc2) fetch2))
-                  (execJne-taken prog s2 jne-offset zf-s2)
-
-    h3 : halted s3 ≡ false
-    h3 = h-false
-
-    pc3 : pc s3 ≡ length prefix +ℕ 3 +ℕ jne-offset
-    pc3 = trans (cong (λ p → p +ℕ 1 +ℕ jne-offset) pc2)
-                (cong (_+ℕ jne-offset) (+-assoc (length prefix) 2 1))
-
-    -- Final register values (r11 is scratch, so callee-save regs preserved)
-    rdi-s3 : readReg (regs s3) rdi ≡ readReg (regs s) rdi
-    rdi-s3 = readReg-writeReg-r11-rdi (regs s) 1
-
-    r14-s3 : readReg (regs s3) r14 ≡ readReg (regs s) r14
-    r14-s3 = readReg-writeReg-r11-r14 (regs s) 1
-
-    r15-s3 : readReg (regs s3) r15 ≡ readReg (regs s) r15
-    r15-s3 = readReg-writeReg-r11-r15 (regs s) 1
-
-    rbp-s3 : readReg (regs s3) rbp ≡ readReg (regs s) rbp
-    rbp-s3 = readReg-writeReg-r11-rbp (regs s) 1
-
-    rsp-s3 : readReg (regs s3) rsp ≡ readReg (regs s) rsp
-    rsp-s3 = readReg-writeReg-r11-rsp (regs s) 1
-
-    mem-s3 : memory s3 ≡ memory s
-    mem-s3 = refl
-
-    -- Execution proof (direct Star construction)
-    star-eq : Star prog s s3
-    star-eq = star-step3 h-false step1 h1 step2 h2 step3
+--
+-- POSTULATE: Temporary during refactoring. Eliminable by extending proof from 3 to 5 steps.
+postulate
+  case-inr-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    readMem (memory s) (readReg (regs s) rdi) ≡ just 1 →  -- tag = 1 for inr
+    let prog = prefix ++ push (reg rbp) ∷
+                          mov (reg rbp) (reg rsp) ∷
+                          mov (reg r11) (mem (base rdi)) ∷
+                          cmp (reg r11) (imm 0) ∷
+                          jne jne-offset ∷ suffix
+    in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
 

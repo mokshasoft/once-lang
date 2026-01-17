@@ -72,7 +72,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; capacity-2-to-rsp-bound; StackCapacity; rsp-bound-to-capacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity; ir-stack-requirement; ir-output-capacity)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans)
 open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.StarBase
@@ -161,7 +161,7 @@ record WholeProgramResult {A B : Type} (ir : IR A B)
     wp-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     -- Stack invariants
     wp-stack-inv : StackInvariant s'
-    wp-rsp-bound : readReg (regs s') rsp > slots 2
+    wp-capacity  : StackCapacity s' (ir-output-capacity ir)
     wp-rbp-inv   : RbpInvariant s'
     -- Closure WF + memory layout output (for threading to apply)
     -- Uses ClosureMemoryOutput to track both WF and memory proofs
@@ -190,7 +190,7 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
   ; wp-r15 = exec-r15 exec-res
   ; wp-rbp = exec-rbp exec-res
   ; wp-stack-inv = exec-stack-inv exec-res
-  ; wp-rsp-bound = capacity-2-to-rsp-bound s' (exec-capacity exec-res)
+  ; wp-capacity = exec-capacity exec-res
   ; wp-rbp-inv = exec-rbp-inv exec-res
   -- Validity-based has-closure-mem (no addr-from-valid bridge!)
   ; wp-closure-mem = has-closure-mem cl-addr cp curry-env-addr x _ wf curry-mem-env curry-v-env curry-mem-cp
@@ -240,7 +240,7 @@ from-modular-v s' r = record
   ; wp-r15 = IRStarResultV.ir-r15 r
   ; wp-rbp = IRStarResultV.ir-rbp r
   ; wp-stack-inv = IRStarResultV.ir-stack-inv r
-  ; wp-rsp-bound = capacity-2-to-rsp-bound s' (IRStarResultV.ir-capacity r)
+  ; wp-capacity = IRStarResultV.ir-capacity r
   ; wp-rbp-inv = IRStarResultV.ir-rbp-inv r
   ; wp-closure-mem = no-closure-mem  -- Modular runner doesn't track closure memory
   }
@@ -265,7 +265,7 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →  -- Validity-based input
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
@@ -277,16 +277,9 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
-      -- Derive StackCapacity s 4 from blanket postulate (Curry.agda is now postulate-free!)
-      33≤57 : 33 ≤ 57
-      33≤57 = m≤m+n 33 24
-      rsp>slots4 : readReg (regs s) rsp > slots 4
-      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
-      cap4 : StackCapacity s 4
-      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
       -- Get CurryExecResult and CurryMemoryResult from run-curry-star (uses validity directly)
       (s' , exec-res , curry-mem-res) = run-curry-star f prefix suffix x s
-                            h-eq pc-eq input-valid stack-inv cap4 rbp-inv
+                            h-eq pc-eq input-valid stack-inv cap-in rbp-inv
       -- Get code-ptr from memory result and prove it equals thunk-offset
       mem-code-ptr = code-ptr curry-mem-res
       cp-eq : mem-code-ptr ≡ thunk-offset
@@ -368,7 +361,7 @@ whole-program-correct : ∀ {A B} (ir : IR A B)
   pc s ≡ 0 →
   ValidAt x (readReg (regs s) rdi) (memory s) →  -- Input validity
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
   let prog = compile-x86 ir
   in ∃[ s' ] (Star prog s s'

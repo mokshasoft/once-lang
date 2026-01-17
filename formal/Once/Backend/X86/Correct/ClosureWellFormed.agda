@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegions
   using (region-of; code; heap; StackPointer; frameSlot)
@@ -180,7 +180,7 @@ record CurryResult {A B C : Type} (f : IR (A * B) C)
     curry-mem      : readMem (memory s') (readReg (regs s) r15) ≡
                      readMem (memory s) (readReg (regs s) r15)
     curry-stack-inv : StackInvariant s'
-    curry-capacity : StackCapacity s' 2
+    curry-capacity : StackCapacity s' (ir-output-capacity (curry f))
 
     -- The closure produced is well-formed!
     -- This is the key property that apply needs
