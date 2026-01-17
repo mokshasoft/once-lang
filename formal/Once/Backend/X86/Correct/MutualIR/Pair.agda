@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req)
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -203,12 +203,12 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
             (sym (PairSetupResultV.rsp-setup setup-res))
             (pair-rbp-frame-≥-r15-frame s cap5)
 
-      -- Derive StackCapacity for f at s-setup using postulate
-      -- f execution may need dynamic capacity, so we use rsp-bound-for-ir
-      -- TODO: Eliminate this postulate by tracking capacity through pair setup
+      -- Derive StackCapacity for f at s-setup from cap-inner (properly threaded capacity)
+      -- cap-inner : StackCapacity s-setup (pair-inner-requirement f g)
+      -- ir-stack-requirement f ≤ pair-inner-requirement f g = ir-stack-requirement f ⊔ ir-stack-requirement g
       cap-setup : StackCapacity s-setup (ir-stack-requirement f)
-      cap-setup = rsp-bound-to-capacity (ir-stack-requirement f) s-setup
-                    (rsp-in-stack-after-stack-op s-setup) (rsp-bound-for-ir f s-setup)
+      cap-setup = capacity-from-larger s-setup (ir-stack-requirement f) (pair-inner-requirement f g)
+                    (PairSetupResultV.cap-inner setup-res) (m≤m⊔n (ir-stack-requirement f) (ir-stack-requirement g))
 
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
       step-f = run-ir-star f f<bound prefix-f suffix-f caller-sp x s-setup
@@ -270,8 +270,10 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         mem-heap-s-to-s2        -- heap memory preserved
 
       -- Derive StackCapacity for g at s2 using postulate
-      -- g execution may need dynamic capacity, so we use rsp-bound-for-ir
-      -- TODO: Eliminate this postulate by tracking capacity through pair middle
+      -- TODO: Eliminate this postulate. The challenge is that after f executes,
+      -- ir-output-capacity f might be < ir-stack-requirement g if f has non-zero rsp-delta.
+      -- The fix requires changing pair-inner-requirement to: max(req-f, delta-f + req-g)
+      -- This ensures capacity for g even after f's stack consumption.
       cap-s2 : StackCapacity s2 (ir-stack-requirement g)
       cap-s2 = rsp-bound-to-capacity (ir-stack-requirement g) s2
                  (rsp-in-stack-after-stack-op s2) (rsp-bound-for-ir g s2)

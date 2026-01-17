@@ -27,6 +27,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
          pair-inner-requirement;
          capacity-when-rsp-restored; capacity-preserved-rsp-unchanged;
+         capacity-after-delta;  -- For deriving post-setup capacity
          -- Abstract interface (D041-compliant, no arithmetic in types)
          pair-frame-0; pair-frame-slot-0-in-stack; pair-frame-slot-1-in-stack;
          pair-frame-0-addr-eq; pair-frame-slot-1-addr-eq;
@@ -582,6 +583,8 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- StackCapacity s pair-setup-consumed-slots derived from input capacity (for downstream use)
     cap5 : StackCapacity s pair-setup-consumed-slots
+    -- Post-setup capacity: after consuming setup slots, we have capacity for inner requirement
+    cap-inner : StackCapacity s-setup (pair-inner-requirement f g)
 
 -- | Execute setup phase (validity-based, no encode input)
 -- Requires StackCapacity s (ir-stack-requirement ⟨ f , g ⟩): setup-slots + inner requirement remaining
@@ -611,6 +614,7 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
   ; mem-code-setup = mem-code-from-setup
   ; mem-heap-setup = mem-heap-from-setup
   ; cap5 = cap5
+  ; cap-inner = cap-inner
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -702,6 +706,12 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
             bound : slots inner-req +ℕ slots setup-slots < (orig-rsp ∸ slots setup-slots) +ℕ slots setup-slots
             bound = subst (λ x → slots inner-req +ℕ slots setup-slots < x) (sym rsp∸setup+setup≡rsp)
                           (subst (orig-rsp >_) (+-comm (slots setup-slots) (slots inner-req)) rsp>sum)
+
+    -- Post-setup capacity: derived from input capacity using capacity-after-delta
+    -- Input: StackCapacity s (setup-slots + inner-req)
+    -- Output: StackCapacity s-setup inner-req
+    cap-inner : StackCapacity s-setup inner-req
+    cap-inner = capacity-after-delta s s-setup setup-slots inner-req cap rsp-setup
 
 ------------------------------------------------------------------------
 -- Middle Result: state after 2 middle instructions (store f result, restore input)
