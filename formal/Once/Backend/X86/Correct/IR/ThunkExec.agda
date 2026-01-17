@@ -43,6 +43,13 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots; slots-mono-≤;
+         -- Capacity constants (no hard-coded literals)
+         thunk-setup-capacity; output-slots; thunk-local-size;
+         thunk-cap-after-first-push; thunk-cap-after-pushes;
+         output-fits-thunk-cap;
+         -- Thunk frame slot indices and proofs
+         thunk-rbp-frame-slot; thunk-alloc-slot; thunk-r15-slot;
+         rbp-frame-fits-thunk-cap; alloc-slot-fits-thunk-cap; r15-slot-fits-thunk-cap;
          -- D041: Parameterized abstract interface
          abstract-to-rsp-slot-in-stack; abstract-to-rsp-slots-in-stack;
          -- D041: Abstract helpers for thunk arithmetic (State-based)
@@ -124,7 +131,7 @@ thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
   ValidAt arg (readReg (regs s) rdi) (memory s) →   -- validity-based!
   ValidAt env (readReg (regs s) r12) (memory s) →   -- validity-based!
   StackInvariant s →
-  StackCapacity s 6 →  -- Thunk setup: push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 6
+  StackCapacity s thunk-setup-capacity →
   ∃[ s' ] ThunkSetupResult f prog s s' env arg f-offset
 thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  h-false pc-eq v-arg v-env stack-inv cap =
@@ -221,17 +228,15 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     old-r15 = readReg (regs s) r15
     rsp-after-push-r15 = old-rsp ∸ slot-size   -- after push r15
     rsp-after-push-rbp = rsp-after-push-r15 ∸ slot-size  -- after push rbp = old-rsp - 16
-    new-rsp = rsp-after-push-rbp ∸ slots 2  -- after sub rsp, 16 = old-rsp - 32
+    new-rsp = rsp-after-push-rbp ∸ thunk-local-size  -- after sub rsp, 16 (thunk local allocation)
 
     -- Derive rsp-bound from cap for compatibility with existing proofs
-    -- cap : StackCapacity s 6, so cap.rsp-sufficient : old-rsp > slots 6
-    -- We need old-rsp > slots 2, which follows from slots 2 < slots 6
-    rsp-bound : old-rsp > slots 2
-    rsp-bound = ≤-<-trans (slots-mono-≤ 2≤6) (StackCapacity.rsp-sufficient cap)
+    -- cap : StackCapacity s thunk-setup-capacity, so cap.rsp-sufficient : old-rsp > slots thunk-setup-capacity
+    -- We need old-rsp > slots output-slots, which follows from output-fits-thunk-cap
+    rsp-bound : old-rsp > slots output-slots
+    rsp-bound = ≤-<-trans (slots-mono-≤ output-fits-thunk-cap) (StackCapacity.rsp-sufficient cap)
       where
         open import Data.Nat.Properties using (≤-<-trans)
-        2≤6 : 2 ≤ 6
-        2≤6 = s≤s (s≤s z≤n)
 
     -- Raw register values (addresses where validity holds)
     orig-r12 = readReg (regs s) r12
@@ -502,64 +507,64 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- Thread StackCapacity through state transitions to derive rsp-sufficient-8
     -- State flow: s → s1 (label) → s2 (push r15) → s3 (push rbp) → s4 (mov) → s5 (sub 16) → s6-s8 (movs)
-    -- Capacity: 6 → 6 → 5 → 4 → 4 → 2 → 2 → 2 → 2
+    -- Capacity: thunk-setup-capacity → ... → output-slots
 
     -- s1 only changes pc, not regs
     rsp-s1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp
     rsp-s1-eq = refl
 
-    cap1 : StackCapacity s1 6
-    cap1 = capacity-preserved-rsp-unchanged s s1 6 cap rsp-s1-eq
+    cap-at-label : StackCapacity s1 thunk-setup-capacity
+    cap-at-label = capacity-preserved-rsp-unchanged s s1 thunk-setup-capacity cap rsp-s1-eq
 
     -- s2: push r15 (rsp -= 8)
     rsp-s2-from-s1 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp ∸ slot-size
     rsp-s2-from-s1 = rsp-s2
 
-    cap2 : StackCapacity s2 5
-    cap2 = capacity-after-push s1 s2 5 cap1 rsp-s2-from-s1
+    cap-after-push-r15 : StackCapacity s2 thunk-cap-after-first-push
+    cap-after-push-r15 = capacity-after-push s1 s2 thunk-cap-after-first-push cap-at-label rsp-s2-from-s1
 
     -- s3: push rbp (rsp -= 8)
     rsp-s3-from-s2 : readReg (regs s3) rsp ≡ readReg (regs s2) rsp ∸ slot-size
     rsp-s3-from-s2 = trans rsp-s3 (cong (_∸ slot-size) (sym rsp-s2))
 
-    cap3 : StackCapacity s3 4
-    cap3 = capacity-after-push s2 s3 4 cap2 rsp-s3-from-s2
+    cap-after-push-rbp : StackCapacity s3 thunk-cap-after-pushes
+    cap-after-push-rbp = capacity-after-push s2 s3 thunk-cap-after-pushes cap-after-push-r15 rsp-s3-from-s2
 
     -- s4: mov rbp, rsp (no rsp change)
     rsp-s4-eq : readReg (regs s4) rsp ≡ readReg (regs s3) rsp
     rsp-s4-eq = trans rsp-s4 (sym rsp-s3)
 
-    cap4 : StackCapacity s4 4
-    cap4 = capacity-preserved-rsp-unchanged s3 s4 4 cap3 rsp-s4-eq
+    cap-after-mov-rbp : StackCapacity s4 thunk-cap-after-pushes
+    cap-after-mov-rbp = capacity-preserved-rsp-unchanged s3 s4 thunk-cap-after-pushes cap-after-push-rbp rsp-s4-eq
 
-    -- s5: sub rsp, 16 (rsp -= 16 = 2 slots)
-    rsp-s5-from-s4 : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ slots 2
-    rsp-s5-from-s4 = trans rsp-s5 (cong (_∸ slots 2) (sym rsp-s4))
+    -- s5: sub rsp, 16 (thunk local allocation)
+    rsp-s5-from-s4 : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ thunk-local-size
+    rsp-s5-from-s4 = trans rsp-s5 (cong (_∸ thunk-local-size) (sym rsp-s4))
 
-    cap5 : StackCapacity s5 2
-    cap5 = capacity-after-alloc-2-slots s4 s5 2 cap4 rsp-s5-from-s4
+    cap-after-alloc : StackCapacity s5 output-slots
+    cap-after-alloc = capacity-after-alloc-2-slots s4 s5 output-slots cap-after-mov-rbp rsp-s5-from-s4
 
     -- s6, s7, s8: memory/rdi writes, no rsp change
     rsp-s6-eq : readReg (regs s6) rsp ≡ readReg (regs s5) rsp
     rsp-s6-eq = trans rsp-s6 (sym rsp-s5)
 
-    cap6 : StackCapacity s6 2
-    cap6 = capacity-preserved-rsp-unchanged s5 s6 2 cap5 rsp-s6-eq
+    cap-after-mov-env : StackCapacity s6 output-slots
+    cap-after-mov-env = capacity-preserved-rsp-unchanged s5 s6 output-slots cap-after-alloc rsp-s6-eq
 
     rsp-s7-eq : readReg (regs s7) rsp ≡ readReg (regs s6) rsp
     rsp-s7-eq = trans rsp-s7 (sym rsp-s6)
 
-    cap7 : StackCapacity s7 2
-    cap7 = capacity-preserved-rsp-unchanged s6 s7 2 cap6 rsp-s7-eq
+    cap-after-mov-arg : StackCapacity s7 output-slots
+    cap-after-mov-arg = capacity-preserved-rsp-unchanged s6 s7 output-slots cap-after-mov-env rsp-s7-eq
 
     rsp-s8-eq : readReg (regs s8) rsp ≡ readReg (regs s7) rsp
     rsp-s8-eq = trans rsp-s8 (sym rsp-s7)
 
-    cap8 : StackCapacity s8 2
-    cap8 = capacity-preserved-rsp-unchanged s7 s8 2 cap7 rsp-s8-eq
+    cap-after-lea : StackCapacity s8 output-slots
+    cap-after-lea = capacity-preserved-rsp-unchanged s7 s8 output-slots cap-after-mov-arg rsp-s8-eq
 
-    rsp-sufficient-8 : readReg (regs s8) rsp > slots 2
-    rsp-sufficient-8 = StackCapacity.rsp-sufficient cap8
+    rsp-sufficient-8 : readReg (regs s8) rsp > slots output-slots
+    rsp-sufficient-8 = StackCapacity.rsp-sufficient cap-after-lea
 
     -- Memory at rbp contains original rbp (from push rbp in s3)
     -- s3 wrote old-rbp at rsp-after-push-rbp (= old-rsp - 16)
@@ -613,12 +618,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Therefore rsp-after-push-rbp = old-rsp - 16 ≥ 33, which is always ≥ 16
     -- So new-rsp + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp
 
-    -- Derive > slots 5 from > slots 6 via slot monotonicity
-    old-rsp>40 : old-rsp > slots 5
-    old-rsp>40 = ≤-<-trans (slots-mono-≤ 5≤6) (StackCapacity.rsp-sufficient cap)
-      where
-        5≤6 : 5 ≤ 6
-        5≤6 = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+    -- Derive > slots thunk-r15-slot from > slots thunk-setup-capacity via slot monotonicity
+    old-rsp>40 : old-rsp > slots thunk-r15-slot
+    old-rsp>40 = ≤-<-trans (slots-mono-≤ r15-slot-fits-thunk-cap) (StackCapacity.rsp-sufficient cap)
 
     -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
     33≤rsp-after-push-r15 : 33 ≤ rsp-after-push-r15

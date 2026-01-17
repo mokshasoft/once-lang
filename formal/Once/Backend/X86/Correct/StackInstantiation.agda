@@ -175,6 +175,40 @@ apply-capacity = 4
 thunk-setup-capacity : ℕ
 thunk-setup-capacity = 6
 
+-- Thunk intermediate capacities (for threading through state transitions)
+-- Capacity after first push (push r15) in thunk setup
+thunk-cap-after-first-push : ℕ
+thunk-cap-after-first-push = thunk-setup-capacity ∸ 1
+
+-- Capacity after both pushes (push r15 + push rbp) in thunk setup
+thunk-cap-after-pushes : ℕ
+thunk-cap-after-pushes = thunk-setup-capacity ∸ 2
+
+-- Semantic relationships: capacity invariants for thunk-setup
+-- Used when deriving bounds from capacity proofs
+output-fits-thunk-cap : output-slots ≤ thunk-setup-capacity
+output-fits-thunk-cap = s≤s (s≤s z≤n)
+
+-- Named slot indices for thunk frame layout
+thunk-rbp-frame-slot : ℕ
+thunk-rbp-frame-slot = 3
+
+thunk-alloc-slot : ℕ
+thunk-alloc-slot = 4
+
+thunk-r15-slot : ℕ
+thunk-r15-slot = 5
+
+-- Proofs that frame slots fit in thunk capacity
+rbp-frame-fits-thunk-cap : thunk-rbp-frame-slot ≤ thunk-setup-capacity
+rbp-frame-fits-thunk-cap = s≤s (s≤s (s≤s z≤n))
+
+alloc-slot-fits-thunk-cap : thunk-alloc-slot ≤ thunk-setup-capacity
+alloc-slot-fits-thunk-cap = s≤s (s≤s (s≤s (s≤s z≤n)))
+
+r15-slot-fits-thunk-cap : thunk-r15-slot ≤ thunk-setup-capacity
+r15-slot-fits-thunk-cap = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+
 -- Pair: push r14 (1) + push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 7
 pair-capacity : ℕ
 pair-capacity = 7
