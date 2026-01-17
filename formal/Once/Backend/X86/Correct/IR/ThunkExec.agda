@@ -618,37 +618,38 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Therefore rsp-after-push-rbp = old-rsp - 16 ≥ 33, which is always ≥ 16
     -- So new-rsp + 8 = rsp-after-push-rbp - 8 < rsp-after-push-rbp
 
-    -- Derive > slots thunk-r15-slot from > slots thunk-setup-capacity via slot monotonicity
-    old-rsp>40 : old-rsp > slots thunk-r15-slot
-    old-rsp>40 = ≤-<-trans (slots-mono-≤ r15-slot-fits-thunk-cap) (StackCapacity.rsp-sufficient cap)
+    -- Derive rsp bound from capacity: rsp > slots thunk-r15-slot
+    -- Semantic: rsp is high enough to safely access the r15 slot
+    rsp-above-r15-slot-bound : old-rsp > slots thunk-r15-slot
+    rsp-above-r15-slot-bound = ≤-<-trans (slots-mono-≤ r15-slot-fits-thunk-cap) (StackCapacity.rsp-sufficient cap)
 
-    -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
-    33≤rsp-after-push-r15 : 33 ≤ rsp-after-push-r15
-    33≤rsp-after-push-r15 = ∸-monoˡ-≤ {41} {old-rsp} slot-size old-rsp>40
+    -- Semantic: rsp remains safe after first push (r15)
+    -- old-rsp > 40, so old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
+    rsp-safe-after-r15-push : 33 ≤ rsp-after-push-r15
+    rsp-safe-after-r15-push = ∸-monoˡ-≤ {41} {old-rsp} slot-size rsp-above-r15-slot-bound
 
-    -- rsp-after-push-rbp = rsp-after-push-r15 - 8 ≥ 33 - 8 = 25
-    25≤rsp-after-push-rbp : 25 ≤ rsp-after-push-rbp
-    25≤rsp-after-push-rbp = ∸-monoˡ-≤ {33} {rsp-after-push-r15} slot-size 33≤rsp-after-push-r15
+    -- Semantic: rsp remains safe after second push (rbp)
+    -- rsp-after-push-r15 ≥ 33, so rsp-after-push-rbp = rsp-after-push-r15 - 8 ≥ 25
+    rsp-safe-after-rbp-push : 25 ≤ rsp-after-push-rbp
+    rsp-safe-after-rbp-push = ∸-monoˡ-≤ {33} {rsp-after-push-r15} slot-size rsp-safe-after-r15-push
 
-    16≤rsp-after-push-rbp : 16 ≤ rsp-after-push-rbp
-    16≤rsp-after-push-rbp = ≤-trans 16≤25 25≤rsp-after-push-rbp
-      where
-        16≤25 : 16 ≤ 25
-        16≤25 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+    -- Semantic: local allocation (16 bytes) fits in available space after pushes
+    local-alloc-safe-after-pushes : 16 ≤ rsp-after-push-rbp
+    local-alloc-safe-after-pushes = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))) rsp-safe-after-rbp-push
 
     new-rsp+8≢rsp-after-push-rbp : new-rsp +ℕ slot-size ≢ rsp-after-push-rbp
     new-rsp+8≢rsp-after-push-rbp eq = <⇒≢-neq new-rsp+8<rsp-after-push-rbp eq
       where
         open import Data.Nat.Properties using (m∸n+n≡m)
-        -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
-        -- rsp-after-push-rbp - 16 + 16 = rsp-after-push-rbp (since 16 ≤ rsp-after-push-rbp)
-        -- So (rsp-after-push-rbp - 16) + 8 < (rsp-after-push-rbp - 16) + 16 = rsp-after-push-rbp
-        8<16 : 8 < 16
-        8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-        new-rsp+8<new-rsp+16 : new-rsp +ℕ slot-size < new-rsp +ℕ slots 2
-        new-rsp+8<new-rsp+16 = +-monoʳ-< new-rsp 8<16
+        -- Semantic: slot-size < local allocation size
+        -- new-rsp + slot-size = (rsp-after-push-rbp - local-alloc) + slot-size
+        -- Since slot-size < local-alloc, new-rsp + slot-size < rsp-after-push-rbp
+        slot-lt-local-alloc : slot-size < thunk-local-size
+        slot-lt-local-alloc = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+        new-rsp+slot<new-rsp+local : new-rsp +ℕ slot-size < new-rsp +ℕ thunk-local-size
+        new-rsp+slot<new-rsp+local = +-monoʳ-< new-rsp slot-lt-local-alloc
         new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ slot-size < rsp-after-push-rbp
-        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16
+        new-rsp+8<rsp-after-push-rbp = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m local-alloc-safe-after-pushes) new-rsp+slot<new-rsp+local
 
     -- s3 wrote old-rbp at rsp-after-push-rbp (after push r15 at s2 and push rbp at s3)
     mem-s3-at-rsp-after-push-rbp : readMem (memory s3) rsp-after-push-rbp ≡ just old-rbp
@@ -807,30 +808,24 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp+8≢rsp-after-push-r15 : new-rsp +ℕ slot-size ≢ rsp-after-push-r15
     new-rsp+8≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp+8<rsp-after-push-r15 eq
       where
-        -- Derive 32 ≤ old-rsp from old-rsp > slots 5
-        32≤old-rsp : 32 ≤ old-rsp
-        32≤old-rsp = ≤-trans 32≤41 old-rsp>40
-          where
-            32≤41 : 32 ≤ 41
-            32≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))
-        -- Derive old-rsp > 24 from old-rsp > slots 5
-        old-rsp>24 : old-rsp > 24
-        old-rsp>24 = ≤-trans 25≤41 old-rsp>40
-          where
-            25≤41 : 25 ≤ 41
-            25≤41 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+        -- Semantic: rsp is at least 4 slots above the r15 slot bound
+        rsp-above-4-slots : 32 ≤ old-rsp
+        rsp-above-4-slots = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))) rsp-above-r15-slot-bound
+        -- Semantic: rsp is above 3-slot offset (for new-rsp + slot calculation)
+        rsp-above-3-slot-offset : old-rsp > 24
+        rsp-above-3-slot-offset = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))) rsp-above-r15-slot-bound
         -- new-rsp = old-rsp ∸ slots 4
         new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
         new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
-        -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3
-        new-rsp+8≡old-rsp∸24 : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
-        new-rsp+8≡old-rsp∸24 = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp 32≤old-rsp)
+        -- new-rsp + slot-size = (old-rsp ∸ slots 4) + slot-size = old-rsp ∸ slots 3
+        new-rsp+slot≡old-rsp∸3slots : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
+        new-rsp+slot≡old-rsp∸3slots = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp rsp-above-4-slots)
         -- old-rsp ∸ slots 3 < old-rsp ∸ slot-size = rsp-after-push-r15
-        old-rsp∸24<old-rsp∸8 : old-rsp ∸ slots 3 < old-rsp ∸ slot-size
-        old-rsp∸24<old-rsp∸8 = n∸3slot<n∸slot-raw old-rsp old-rsp>24
-        -- Therefore new-rsp + 8 < rsp-after-push-r15
+        offset-3slots-lt-1slot : old-rsp ∸ slots 3 < old-rsp ∸ slot-size
+        offset-3slots-lt-1slot = n∸3slot<n∸slot-raw old-rsp rsp-above-3-slot-offset
+        -- Therefore new-rsp + slot-size < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ slot-size < rsp-after-push-r15
-        new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ slot-size) (sym new-rsp+8≡old-rsp∸24) old-rsp∸24<old-rsp∸8
+        new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ slot-size) (sym new-rsp+slot≡old-rsp∸3slots) offset-3slots-lt-1slot
 
     -- Now prove r15 memory preservation
     -- s2 wrote old-r15 at rsp-after-push-r15
@@ -931,35 +926,37 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     --   Let k = old-rsp ∸ slots 4. Then k + 32 = old-rsp (by m∸n+n≡m).
     --   old-rsp ∸ slots 3 = (k + 32) ∸ slots 3 = k + (32 ∸ slots 3) = k + 8 (by +-∸-assoc)
     new-rsp+8-eq : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
-    new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) k+8≡old-rsp∸24
+    new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) offset-plus-slot≡orig-minus-3slots
       where
         open import Data.Nat.Properties using (+-∸-assoc)
 
-        k = old-rsp ∸ slots 4
+        -- Semantic: offset from original rsp to 4-slot position
+        rsp-offset-4-slots = old-rsp ∸ slots 4
 
-        -- old-rsp > slots 5 implies 32 ≤ old-rsp
-        32≤old-rsp : 32 ≤ old-rsp
-        32≤old-rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+        -- Semantic: rsp is large enough for 4-slot addressing
+        rsp-fits-4-slots : 32 ≤ old-rsp
+        rsp-fits-4-slots = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
                      (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
                      (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
-                     (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))) old-rsp>40
+                     (s≤s (s≤s z≤n)))))))))))))))))))))))))))))))) rsp-above-r15-slot-bound
 
-        -- k + 32 = old-rsp
-        k+32≡old-rsp : k +ℕ slots 4 ≡ old-rsp
-        k+32≡old-rsp = m∸n+n≡m 32≤old-rsp
+        -- Semantic: offset + 4-slots = original rsp
+        offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ slots 4 ≡ old-rsp
+        offset-plus-4-slots≡orig = m∸n+n≡m rsp-fits-4-slots
 
-        24≤32 : 24 ≤ 32
-        24≤32 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
+        -- Semantic: 3 slots fit in 4 slots allocation (for associativity)
+        three-slots-fit-in-four : slots 3 ≤ slots 4
+        three-slots-fit-in-four = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
                 (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s
                 (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
 
-        -- (k + 32) ∸ slots 3 = k + (32 ∸ slots 3) = k + 8
-        assoc-step : (k +ℕ slots 4) ∸ slots 3 ≡ k +ℕ 8
-        assoc-step = +-∸-assoc k 24≤32
+        -- Semantic: associativity for 4-slot minus 3-slot = offset + slot-size
+        assoc-4-minus-3 : (rsp-offset-4-slots +ℕ slots 4) ∸ slots 3 ≡ rsp-offset-4-slots +ℕ 8
+        assoc-4-minus-3 = +-∸-assoc rsp-offset-4-slots three-slots-fit-in-four
 
-        -- old-rsp ∸ slots 3 = (k + 32) ∸ slots 3 = k + 8
-        k+8≡old-rsp∸24 : k +ℕ 8 ≡ old-rsp ∸ slots 3
-        k+8≡old-rsp∸24 = sym (trans (cong (_∸ slots 3) (sym k+32≡old-rsp)) assoc-step)
+        -- Semantic: offset + slot-size = old-rsp - 3 slots
+        offset-plus-slot≡orig-minus-3slots : rsp-offset-4-slots +ℕ 8 ≡ old-rsp ∸ slots 3
+        offset-plus-slot≡orig-minus-3slots = sym (trans (cong (_∸ slots 3) (sym offset-plus-4-slots≡orig)) assoc-4-minus-3)
 
     addr-rsp-24-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
     addr-rsp-24-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp+8-eq)
@@ -1154,70 +1151,75 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         addr≢write : ∀ write-addr → write-addr < old-rsp → caller-addr ≢ write-addr
         addr≢write write-addr write<rsp eq = <⇒≢ (<-trans write<rsp caller-addr>old-rsp) (sym eq)
 
-        -- All write addresses are below old-rsp
-        rsp-8<old-rsp : rsp-after-push-r15 < old-rsp
-        rsp-8<old-rsp = ∸-gives-smaller old-rsp 8 (≤-trans (s≤s z≤n) rsp-bound) (s≤s z≤n)
+        -- Semantic: all write addresses are below original rsp
+        -- rsp after first push (r15) is below original
+        r15-slot-lt-orig : rsp-after-push-r15 < old-rsp
+        r15-slot-lt-orig = ∸-gives-smaller old-rsp 8 (≤-trans (s≤s z≤n) rsp-bound) (s≤s z≤n)
           where open import Data.Nat using (s≤s; z≤n)
 
-        rsp-16<old-rsp : rsp-after-push-rbp < old-rsp
-        rsp-16<old-rsp = <-trans rsp-16<rsp-8 rsp-8<old-rsp
-          where
-            rsp-16<rsp-8 : rsp-after-push-rbp < rsp-after-push-r15
-            rsp-16<rsp-8 = ∸-gives-smaller rsp-after-push-r15 8 (≤-trans (s≤s z≤n) 33≤rsp-after-push-r15) (s≤s z≤n)
-              where open import Data.Nat using (s≤s; z≤n)
+        -- Semantic: rsp after both pushes is below rsp after first push
+        rbp-slot-lt-r15-slot : rsp-after-push-rbp < rsp-after-push-r15
+        rbp-slot-lt-r15-slot = ∸-gives-smaller rsp-after-push-r15 8 (≤-trans (s≤s z≤n) rsp-safe-after-r15-push) (s≤s z≤n)
+          where open import Data.Nat using (s≤s; z≤n)
 
-        rsp-32<old-rsp : new-rsp < old-rsp
-        rsp-32<old-rsp = <-trans new-rsp<rsp-16 rsp-16<old-rsp
-          where
-            new-rsp<rsp-16 : new-rsp < rsp-after-push-rbp
-            new-rsp<rsp-16 = ∸-gives-smaller rsp-after-push-rbp 16 (≤-trans (s≤s z≤n) 25≤rsp-after-push-rbp) (s≤s z≤n)
-              where open import Data.Nat using (s≤s; z≤n)
+        rbp-slot-lt-orig : rsp-after-push-rbp < old-rsp
+        rbp-slot-lt-orig = <-trans rbp-slot-lt-r15-slot r15-slot-lt-orig
 
-        rsp-24<old-rsp : new-rsp +ℕ slot-size < old-rsp
-        rsp-24<old-rsp = <-≤-trans new-rsp+8<rsp-after-push-rbp' (Data.Nat.Properties.<⇒≤ rsp-16<old-rsp)
+        -- Semantic: new-rsp (after local alloc) is below rsp after pushes
+        local-slot-lt-rbp-slot : new-rsp < rsp-after-push-rbp
+        local-slot-lt-rbp-slot = ∸-gives-smaller rsp-after-push-rbp 16 (≤-trans (s≤s z≤n) rsp-safe-after-rbp-push) (s≤s z≤n)
+          where open import Data.Nat using (s≤s; z≤n)
+
+        local-slot-lt-orig : new-rsp < old-rsp
+        local-slot-lt-orig = <-trans local-slot-lt-rbp-slot rbp-slot-lt-orig
+
+        -- Semantic: new-rsp + slot-size (second local slot) is below original rsp
+        second-local-slot-lt-orig : new-rsp +ℕ slot-size < old-rsp
+        second-local-slot-lt-orig = <-≤-trans second-local-slot-lt-rbp-slot (Data.Nat.Properties.<⇒≤ rbp-slot-lt-orig)
           where
             open import Data.Nat.Properties using (+-monoʳ-<; m∸n+n≡m)
             open import Data.Nat using (s≤s; z≤n)
-            8<16'' : 8 < 16
-            8<16'' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-            new-rsp+8<new-rsp+16'' : new-rsp +ℕ slot-size < new-rsp +ℕ slots 2
-            new-rsp+8<new-rsp+16'' = +-monoʳ-< new-rsp 8<16''
-            new-rsp+8<rsp-after-push-rbp' : new-rsp +ℕ slot-size < rsp-after-push-rbp
-            new-rsp+8<rsp-after-push-rbp' = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m 16≤rsp-after-push-rbp) new-rsp+8<new-rsp+16''
+            -- slot-size < thunk-local-size (8 < 16)
+            slot-lt-local-alloc' : slot-size < thunk-local-size
+            slot-lt-local-alloc' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+            new-rsp+slot<new-rsp+local' : new-rsp +ℕ slot-size < new-rsp +ℕ thunk-local-size
+            new-rsp+slot<new-rsp+local' = +-monoʳ-< new-rsp slot-lt-local-alloc'
+            second-local-slot-lt-rbp-slot : new-rsp +ℕ slot-size < rsp-after-push-rbp
+            second-local-slot-lt-rbp-slot = subst (new-rsp +ℕ slot-size <_) (m∸n+n≡m local-alloc-safe-after-pushes) new-rsp+slot<new-rsp+local'
 
-        -- All write addresses are ≠ caller-addr
-        addr≢rsp-8 : caller-addr ≢ rsp-after-push-r15
-        addr≢rsp-8 = addr≢write rsp-after-push-r15 rsp-8<old-rsp
+        -- Semantic: all write addresses are disjoint from caller's memory
+        addr-disjoint-r15-slot : caller-addr ≢ rsp-after-push-r15
+        addr-disjoint-r15-slot = addr≢write rsp-after-push-r15 r15-slot-lt-orig
 
-        addr≢rsp-16 : caller-addr ≢ rsp-after-push-rbp
-        addr≢rsp-16 = addr≢write rsp-after-push-rbp rsp-16<old-rsp
+        addr-disjoint-rbp-slot : caller-addr ≢ rsp-after-push-rbp
+        addr-disjoint-rbp-slot = addr≢write rsp-after-push-rbp rbp-slot-lt-orig
 
-        addr≢rsp-32 : caller-addr ≢ new-rsp
-        addr≢rsp-32 = addr≢write new-rsp rsp-32<old-rsp
+        addr-disjoint-first-local : caller-addr ≢ new-rsp
+        addr-disjoint-first-local = addr≢write new-rsp local-slot-lt-orig
 
-        addr≢rsp-24 : caller-addr ≢ (new-rsp +ℕ slot-size)
-        addr≢rsp-24 = addr≢write (new-rsp +ℕ slot-size) rsp-24<old-rsp
+        addr-disjoint-second-local : caller-addr ≢ (new-rsp +ℕ slot-size)
+        addr-disjoint-second-local = addr≢write (new-rsp +ℕ slot-size) second-local-slot-lt-orig
 
-        -- Chain through all states
+        -- Chain memory preservation through all states
         mem-s1-above : readMem (memory s1) caller-addr ≡ readMem (memory s) caller-addr
         mem-s1-above = refl
 
         mem-s2-above : readMem (memory s2) caller-addr ≡ readMem (memory s) caller-addr
-        mem-s2-above = mem-read-other {memory s1} {rsp-after-push-r15} {caller-addr} {old-r15} (λ eq → addr≢rsp-8 (sym eq))
+        mem-s2-above = mem-read-other {memory s1} {rsp-after-push-r15} {caller-addr} {old-r15} (λ eq → addr-disjoint-r15-slot (sym eq))
 
         mem-s3-above : readMem (memory s3) caller-addr ≡ readMem (memory s) caller-addr
-        mem-s3-above = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {caller-addr} {old-rbp} (λ eq → addr≢rsp-16 (sym eq)))
+        mem-s3-above = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {caller-addr} {old-rbp} (λ eq → addr-disjoint-rbp-slot (sym eq)))
                              mem-s2-above
 
         mem-s5-above : readMem (memory s5) caller-addr ≡ readMem (memory s) caller-addr
         mem-s5-above = mem-s3-above
 
         mem-s6-above : readMem (memory s6) caller-addr ≡ readMem (memory s) caller-addr
-        mem-s6-above = trans (mem-read-other {memory s5} {new-rsp} {caller-addr} {readReg (regs s5) r12} (λ eq → addr≢rsp-32 (sym eq)))
+        mem-s6-above = trans (mem-read-other {memory s5} {new-rsp} {caller-addr} {readReg (regs s5) r12} (λ eq → addr-disjoint-first-local (sym eq)))
                              mem-s5-above
 
         mem-s7-above : readMem (memory s7) caller-addr ≡ readMem (memory s) caller-addr
-        mem-s7-above = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {caller-addr} {readReg (regs s6) rdi} (λ eq → addr≢rsp-24 (sym eq)))
+        mem-s7-above = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {caller-addr} {readReg (regs s6) rdi} (λ eq → addr-disjoint-second-local (sym eq)))
                              mem-s6-above
 
 ------------------------------------------------------------------------
