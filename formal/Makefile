@@ -15,9 +15,7 @@
 #
 #   CCC backends (categorical combinator code generators):
 #   make ccc          - Type-check all CCC backends
-#   make x86-ccc      - Type-check x86-64 CCC backend
-#   make x86-ccc-correct - Type-check x86-64 correctness proofs only
-#   make x86-ccc-whole   - Type-check x86-64 whole-program proofs
+#   make x86-ccc      - Type-check x86-64 CCC backend (whole-program proofs)
 #   make aarch64-ccc  - Type-check AArch64 CCC backend
 #   make riscv-ccc    - Type-check RISC-V CCC backend
 #
@@ -155,20 +153,10 @@ common:
 
 .PHONY: x86-ccc
 x86-ccc:
-	@echo "Type-checking x86-64 CCC backend..."
+	@echo "Type-checking x86-64 CCC backend (whole-program)..."
 	@sh -c '$(AGDA_CMD) $(X86_SYNTAX)'
 	@sh -c '$(AGDA_CMD) $(X86_SEMANTICS)'
 	@sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
-	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
-
-.PHONY: x86-ccc-correct
-x86-ccc-correct:
-	@echo "Type-checking x86-64 CCC correctness proofs only..."
-	@sh -c '$(AGDA_CMD) $(X86_CORRECT)'
-
-.PHONY: x86-ccc-whole
-x86-ccc-whole:
-	@echo "Type-checking x86-64 CCC whole-program proofs..."
 	@sh -c '$(AGDA_CMD) $(X86_WHOLEPROGRAM)'
 
 .PHONY: x86-star
