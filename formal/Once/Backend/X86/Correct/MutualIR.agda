@@ -1383,17 +1383,18 @@ mutual
   -- Takes ValidAt input, uses validity decomposition to extract memory layout
   -- Returns IRStarResultV with direct validity (bridges eliminated from output!)
   -- Note: Acc passed but not used directly - thunk-correct in closure already has termination baked in
+  -- ir-stack-requirement apply = 4, so cap-in : StackCapacity s 4
   run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s (ir-stack-requirement (apply {A} {B})) →
     RbpInvariant s →
     Acc _<_ (ir-size (apply {A} {B})) →
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-  run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp-sufficient rbp-inv _ =
+  run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv _ =
     let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
                               closure-wf-post h-false pc-eq stack-inv cap rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
     in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
@@ -1403,18 +1404,6 @@ mutual
 
       prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-
-      -- Derive StackCapacity s 4 from blanket postulate
-      -- Apply needs 4 slots: push r15 (1) + call (1) + thunk output (2) = 4
-      rsp>slots4 : readReg (regs s) rsp > slots 4
-      rsp>slots4 = ≤-<-trans (slots-mono-≤ 4≤7) (rsp-bound-after-stack-op s)
-        where
-          open import Data.Nat.Properties using (≤-<-trans)
-          4≤7 : 4 ≤ 7
-          4≤7 = s≤s (s≤s (s≤s (s≤s z≤n)))
-
-      cap : StackCapacity s 4
-      cap = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
 
       -- Extract closure and argument from semantic pair
       cl : Closure A B
@@ -1542,45 +1531,21 @@ mutual
     let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-v {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
-    -- run-apply-star-direct takes rsp > slots 2, derive via capacity-from-larger
-    -- ir-stack-requirement apply = 4, so StackCapacity s 4 → StackCapacity s 2 (since 2 ≤ 4)
-    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv rsp>slots2 rbp-inv ac
-    where
-      open import Data.Nat.Properties using (m≤m+n)
-      -- Derive StackCapacity s 2 from StackCapacity s (ir-stack-requirement apply)
-      cap2 : StackCapacity s 2
-      cap2 = capacity-from-larger s 2 (ir-stack-requirement (apply {A} {B})) cap-in (m≤m+n 2 2)
-      rsp>slots2 : readReg (regs s) rsp > slots 2
-      rsp>slots2 = StackCapacity.rsp-sufficient cap2
+    -- ir-stack-requirement apply = 4, cap-in : StackCapacity s 4 directly
+    run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
 
   ------------------------------------------------------------------------
   -- Validity-based dispatcher cases (IN mutual block)
   ------------------------------------------------------------------------
 
   -- Direct validity-based execution for inl (base case, ignores Acc)
-  -- Derive StackCapacity s 4 from blanket postulate (Inl.agda is now postulate-free!)
+  -- ir-stack-requirement inl = 4, so cap-in : StackCapacity s 4 directly
   run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
-    run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap4 rbp-inv
-    where
-      open import Data.Nat.Properties using (≤-trans; m≤m+n)
-      33≤57 : 33 ≤ 57
-      33≤57 = m≤m+n 33 24
-      rsp>slots4 : readReg (regs s) rsp > slots 4
-      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
-      cap4 : StackCapacity s 4
-      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
+    run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity-based execution for inr (base case, ignores Acc)
-  -- Derive StackCapacity s 4 from blanket postulate (Inr.agda is now postulate-free!)
+  -- ir-stack-requirement inr = 4, so cap-in : StackCapacity s 4 directly
   run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
-    run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap4 rbp-inv
-    where
-      open import Data.Nat.Properties using (≤-trans; m≤m+n)
-      33≤57 : 33 ≤ 57
-      33≤57 = m≤m+n 33 24
-      rsp>slots4 : readReg (regs s) rsp > slots 4
-      rsp>slots4 = ≤-trans 33≤57 (rsp-bound-after-stack-op s)
-      cap4 : StackCapacity s 4
-      cap4 = rsp-bound-to-capacity 4 s (rsp-in-stack-after-stack-op s) rsp>slots4
+    run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
   -- NOTE: Pair needs StackCapacity s 7 (5 for setup + 2 remaining)
   -- TODO: Dispatcher should take ir-input-capacity ir slots, not fixed 2
