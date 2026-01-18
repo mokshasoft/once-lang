@@ -36,7 +36,6 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; pair-at; InlAt; inl-at; InrAt; inr-at;
          PairAtS; pair-at-s; InlAtS; inl-at-s; InrAtS; inr-at-s)
 
--- Keep old encode for backwards compatibility during transition
 open import Once.Postulates
   using (encode)
 
@@ -108,7 +107,7 @@ initWithInput-stack-inv sp x = r15-unused r15≡0
     r15≡0 = refl  -- r15 untouched, defaults to 0 from emptyRegFile
 
 -- | Initial state has sufficient stack capacity
-open import Data.Nat using (ℕ; _>_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; _>_; _≤_)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound; slots)
@@ -122,7 +121,7 @@ initWithInput-stack-capacity : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
 initWithInput-stack-capacity sp x addr-bound =
   rsp-bound-to-capacity 2 (initWithInput sp x) (StackPointer.in-stack sp) addr-bound
 
--- | Initial state has sufficient rsp (derived from capacity, for legacy interfaces)
+-- | Initial state has sufficient rsp (derived from capacity)
 initWithInput-rsp-sufficient : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
   sp-addr sp > slots 2 →
   readReg (regs (initWithInput sp x)) rsp > slots 2
@@ -139,45 +138,7 @@ initWithInput-rbp-inv sp x = record
   }
 
 ------------------------------------------------------------------------
--- Legacy Interface (Backward Compatibility)
-------------------------------------------------------------------------
-
--- | Legacy stackBase constant
--- DEPRECATED: Use parameterized version instead.
--- This is kept for backward compatibility during migration.
-stackBase : Word
-stackBase = 0x7FFF0000
-
--- | Legacy postulate for stackBase's region membership
--- DEPRECATED: Use StackPointer's in-stack field instead.
-postulate
-  stackBase-in-stack : InStack 0x7FFF0000
-
--- | Legacy StackPointer using stackBase
-legacyStackPointer : StackPointer
-legacyStackPointer = record
-  { addr = stackBase
-  ; in-stack = stackBase-in-stack
-  }
-
--- | Legacy initWithInput (takes only the value, uses hard-coded stackBase)
--- DEPRECATED: Use parameterized initWithInput instead.
-initWithInputLegacy : ∀ {A} → ⟦ A ⟧ → State
-initWithInputLegacy x = initWithInput legacyStackPointer x
-
--- | Legacy rsp-bound proof using s≤s chain
--- DEPRECATED: The parameterized version derives this from StackPointer properties.
-private
-  legacy-rsp-bound : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInputLegacy x)) rsp > slots 2
-  legacy-rsp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
-
--- | Legacy capacity proof
-initWithInputLegacy-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInputLegacy x) 2
-initWithInputLegacy-stack-capacity x =
-  rsp-bound-to-capacity 2 (initWithInputLegacy x) stackBase-in-stack (legacy-rsp-bound x)
-
-------------------------------------------------------------------------
--- NEW: Stateful Initial State Setup (Parameterized)
+-- Stateful Initial State Setup (Parameterized)
 ------------------------------------------------------------------------
 
 -- | Record containing the initial state plus validity evidence
@@ -248,26 +209,6 @@ initWithInputStateful-pc sp hp x = refl
 -- Additional imports for validity lemmas
 open import Data.Maybe using (just)
 open import Data.Nat using () renaming (_+_ to _+ℕ_)
-
-------------------------------------------------------------------------
--- Legacy Stateful Interface (Backward Compatibility)
-------------------------------------------------------------------------
-
--- | Legacy HeapPointer using hard-coded address
--- DEPRECATED: Use parameterized version with explicit HeapPointer instead.
-postulate
-  heapBase-in-heap : InHeap 0x80000000
-
-legacyHeapPointer : HeapPointer
-legacyHeapPointer = record
-  { haddr = 0x80000000
-  ; in-heap = heapBase-in-heap
-  }
-
--- | Legacy stateful init (uses hard-coded addresses)
--- DEPRECATED: Use parameterized initWithInputStateful instead.
-initWithInputStatefulLegacy : ∀ {A} → ⟦ A ⟧ → InitResult A
-initWithInputStatefulLegacy x = initWithInputStateful legacyStackPointer legacyHeapPointer x
 
 ------------------------------------------------------------------------
 -- Input Validity Lemmas (Parameterized)
