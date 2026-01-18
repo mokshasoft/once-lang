@@ -51,6 +51,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
          capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
          capacity-when-rsp-restored;
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
+         -- Apply intermediate capacities (symbolic names)
+         apply-cap-after-push; apply-cap-after-call;
          -- D041: Abstract interface (no arithmetic in types)
          apply-frame-1; apply-frame-slot-0-in-stack; abstract-to-rsp-slot-in-stack;
          -- D041: Abstract helpers for 1-slot and 2-slot allocation
@@ -526,7 +528,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
         (apply-alloc-diff-from-above s rsp-bound addr addr≥rsp)
 
 -- Prove call instruction: pushes return address and jumps to code-ptr
--- Takes StackCapacity s 3 to produce StackCapacity s' 2 after call (for thunk)
+-- Takes StackCapacity s apply-cap-after-push to produce StackCapacity s' apply-cap-after-call (for thunk)
 apply-call-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -537,7 +539,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset +ℕ 6 →  -- Updated: setup ends at 6
   readReg (regs s) r15 ≡ code-ptr →
   StackInvariant s →
-  StackCapacity s 3 →
+  StackCapacity s apply-cap-after-push →
   -- Result after call: pc=code-ptr, ret-addr on stack
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -548,7 +550,7 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × StackCapacity s' 2  -- Capacity after call (was rsp > slots 2)
+          × StackCapacity s' apply-cap-after-call  -- Capacity after call (for thunk)
           -- RSP tracking: call pushes return address (rsp -= 8)
           × readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
           -- Memory preservation at original rsp (call writes at new-rsp, not old-rsp)
@@ -573,9 +575,9 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated
 
-    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 3 gives > slots 3)
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s apply-cap-after-push gives > slots 3)
     -- Used where > slots 2 suffices (slots 3 > slots 2)
-    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound : readReg (regs s) rsp > slots apply-cap-after-call
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 1)) (StackCapacity.rsp-sufficient cap)
 
     -- The call instruction (now i6)
@@ -667,9 +669,9 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     rsp1-eq : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ slot-size
     rsp1-eq = rsp1  -- rsp1 proves s1.rsp = new-rsp, and new-rsp = old-rsp ∸ slot-size = s.rsp ∸ slot-size
 
-    -- Derive StackCapacity s1 2 from input cap : StackCapacity s 3 via call (push ret addr)
-    rsp-sufficient-1 : StackCapacity s1 2
-    rsp-sufficient-1 = capacity-after-push s s1 2 cap rsp1-eq
+    -- Derive StackCapacity s1 apply-cap-after-call from input cap via call (push ret addr)
+    rsp-sufficient-1 : StackCapacity s1 apply-cap-after-call
+    rsp-sufficient-1 = capacity-after-push s s1 apply-cap-after-call cap rsp1-eq
 
     -- Memory at original rsp preserved (call writes at new-rsp = old-rsp - 8, not old-rsp)
     -- Since old-rsp > slots 2, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
@@ -1059,8 +1061,8 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     mem-above-setup = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ setup-result))))))))))))
 
     -- Step 2: Trace call instruction
-    -- rsp-sufficient-setup is now StackCapacity s-setup 3 (from apply-setup-star)
-    -- apply-call-star takes StackCapacity s 3 and produces StackCapacity s-call 2
+    -- rsp-sufficient-setup is StackCapacity s-setup apply-cap-after-push (from apply-setup-star)
+    -- apply-call-star takes that and produces StackCapacity s-call apply-cap-after-call
     call-result = apply-call-star {A} {B} prefix suffix code-ptr s-setup
                     h-setup pc-setup r15-setup stack-inv-setup rsp-sufficient-setup
     s-call = proj₁ call-result

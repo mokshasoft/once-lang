@@ -171,6 +171,15 @@ simple-capacity = 2
 apply-capacity : ℕ
 apply-capacity = 4
 
+-- Apply intermediate capacities (for threading through state transitions)
+-- Capacity after push r15 in apply setup: used for call phase
+apply-cap-after-push : ℕ
+apply-cap-after-push = apply-capacity ∸ 1  -- = 3
+
+-- Capacity after call in apply: same as output-slots (thunk needs output-slots)
+apply-cap-after-call : ℕ
+apply-cap-after-call = output-slots  -- = 2
+
 -- Thunk setup: push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 6
 thunk-setup-capacity : ℕ
 thunk-setup-capacity = 6
