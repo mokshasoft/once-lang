@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
@@ -187,21 +187,17 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         ; frame-bound = setup-frame-bound
         }
         where
-          -- Derive cap-setup : StackCapacity s pair-setup-consumed-slots from cap-in
-          -- Since ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ inner-req
-          cap-setup-slots : StackCapacity s pair-setup-consumed-slots
-          cap-setup-slots = capacity-from-larger s pair-setup-consumed-slots (ir-stack-requirement ⟨ f , g ⟩) cap-in (pair-setup≤pair-req f g)
-          -- Note: pair-setup-consumed-slots = 5, so this is effectively StackCapacity s 5
-          cap5 : StackCapacity s 5
-          cap5 = cap-setup-slots
+          -- Derive cap-pair-setup : StackCapacity s pair-setup-consumed-slots from cap-in
+          cap-pair-setup : StackCapacity s pair-setup-consumed-slots
+          cap-pair-setup = capacity-from-larger s pair-setup-consumed-slots (ir-stack-requirement ⟨ f , g ⟩) cap-in (pair-setup≤pair-req f g)
 
           setup-rbp-frame : StackPointer
-          setup-rbp-frame = make-frame-at-slot s cap5 3 (s≤s (s≤s (s≤s z≤n)))
+          setup-rbp-frame = make-frame-at-slot s cap-pair-setup pair-rbp-slot pair-rbp-slot≤pair-setup
 
           setup-frame-bound : sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
           setup-frame-bound = subst (sp-addr setup-rbp-frame ≥_)
             (sym (PairSetupResultV.rsp-setup setup-res))
-            (pair-rbp-frame-≥-r15-frame s cap5)
+            (pair-rbp-frame-≥-r15-frame s cap-pair-setup)
 
       -- Derive StackCapacity for f at s-setup from cap-inner (properly threaded capacity)
       -- cap-inner : StackCapacity s-setup (pair-inner-requirement f g)

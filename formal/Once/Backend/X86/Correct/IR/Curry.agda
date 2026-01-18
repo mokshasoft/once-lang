@@ -161,8 +161,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     rsp-region : region-of (readReg (regs s) rsp) ≡ stack
     rsp-region = StackCapacity.rsp-in-stack cap
 
-    cap2 : StackCapacity s (ir-rsp-delta (curry f))
-    cap2 = rsp-bound-to-capacity (ir-rsp-delta (curry f)) s rsp-region rsp-bound
+    -- StackCapacity for output allocation (derived from ir-rsp-delta)
+    cap-output-alloc : StackCapacity s (ir-rsp-delta (curry f))
+    cap-output-alloc = rsp-bound-to-capacity (ir-rsp-delta (curry f)) s rsp-region rsp-bound
 
     -- Track original rdi (env address from input)
     orig-rdi : ℕ
@@ -583,7 +584,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 
     -- s2 writes to new-rsp (stack), not orig-rdi (heap)
     new-rsp-in-stack : region-of new-rsp ≡ stack
-    new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap2)
+    new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap-output-alloc)
 
     orig-rdi≢new-rsp : orig-rdi ≢ new-rsp
     orig-rdi≢new-rsp eq = stack-heap-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
@@ -597,7 +598,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 
     -- s4 writes to new-rsp+8 (stack), not orig-rdi (heap)
     new-rsp+8-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
-    new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap2)
+    new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap-output-alloc)
 
     orig-rdi≢new-rsp+8 : orig-rdi ≢ new-rsp +ℕ slot-size
     orig-rdi≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
@@ -884,7 +885,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     mem-code-final addr addr-in-code =
       let -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
-          writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
+          writes-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
           new-rsp-in-stack : region-of new-rsp ≡ stack
           new-rsp-in-stack = proj₁ writes-in-stack
@@ -917,7 +918,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     mem-heap-final addr addr-in-heap =
       let -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
           writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
-          writes-in-stack = alloc-2-slots-addrs-in-stack s cap2
+          writes-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
           new-rsp-in-stack : region-of new-rsp ≡ stack
           new-rsp-in-stack = proj₁ writes-in-stack

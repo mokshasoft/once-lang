@@ -17,7 +17,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation
   using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
          slot-size; slots; StackCapacity; rsp-in-stack; rsp-sufficient; capacity-maintained;
-         slots-mono-≤)
+         slots-mono-≤; pair-setup-consumed-slots)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
 open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
@@ -90,7 +90,7 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
 frame-setup-star : ∀ (prefix : Program) (rest : Program) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  StackCapacity s 5 →   -- Need capacity 5: 3 pushes + 2 slots for sub
+  StackCapacity s pair-setup-consumed-slots →   -- 3 pushes + 2 slots for sub
   let prog = prefix ++ push (reg r14) ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷ sub (reg rsp) (imm (slots 2)) ∷ mov (reg r15) (reg rsp) ∷ mov (reg r14) (reg rdi) ∷ rest
   in FrameSetupResult prog s (length prefix +ℕ 7)
 frame-setup-star prefix rest s h-false pc-eq cap = record

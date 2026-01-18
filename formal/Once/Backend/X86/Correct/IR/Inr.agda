@@ -96,9 +96,9 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     rsp-region : region-of (readReg (regs s) rsp) ≡ stack
     rsp-region = StackCapacity.rsp-in-stack cap
 
-    -- StackCapacity s (ir-rsp-delta inr) for operations that need it (derived, no postulate!)
-    cap2 : StackCapacity s (ir-rsp-delta (inr {A} {B}))
-    cap2 = rsp-bound-to-capacity (ir-rsp-delta (inr {A} {B})) s rsp-region rsp-bound
+    -- StackCapacity for output allocation (derived from ir-rsp-delta)
+    cap-output-alloc : StackCapacity s (ir-rsp-delta (inr {A} {B}))
+    cap-output-alloc = rsp-bound-to-capacity (ir-rsp-delta (inr {A} {B})) s rsp-region rsp-bound
 
     -- The program
     prog : Program
@@ -417,26 +417,26 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
           mem-s3-above = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) addr orig-rdi diff-2) mem-s2-above
       in mem-s3-above
 
-    -- Memory at address 0 preserved (uses cap2, no postulate!)
+    -- Memory at address 0 preserved (uses cap-output-alloc, no postulate!)
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
-      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap2
+      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
           after-tag-write = stackAddr-write-preserves-zero (memory s1) new-rsp 1 tag-addr-in-stack
           after-val-write = stackAddr-write-preserves-zero (memory s2) (new-rsp +ℕ slot-size) orig-rdi val-addr-in-stack
       in trans after-val-write after-tag-write
 
-    -- Memory at code-region addresses preserved (uses cap2, no postulate!)
+    -- Memory at code-region addresses preserved (uses cap-output-alloc, no postulate!)
     mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
-      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap2
+      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
           after-tag-write = stackAddr-write-preserves-code (memory s1) new-rsp 1 addr tag-addr-in-stack addr-in-code
           after-val-write = stackAddr-write-preserves-code (memory s2) (new-rsp +ℕ slot-size) orig-rdi addr val-addr-in-stack addr-in-code
       in trans after-val-write after-tag-write
 
-    -- Memory at heap-region addresses preserved (uses cap2, no postulate!)
+    -- Memory at heap-region addresses preserved (uses cap-output-alloc, no postulate!)
     mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-heap-preserved addr addr-in-heap =
-      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap2
+      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
           after-tag-write = stackAddr-write-preserves-heap (memory s1) new-rsp 1 addr tag-addr-in-stack addr-in-heap
           after-val-write = stackAddr-write-preserves-heap (memory s2) (new-rsp +ℕ slot-size) orig-rdi addr val-addr-in-stack addr-in-heap
       in trans after-val-write after-tag-write

@@ -20,7 +20,7 @@ open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots;
-         ir-rsp-delta; ir-stack-requirement; ir-output-capacity)
+         ir-rsp-delta; ir-stack-requirement; ir-output-capacity; output-slots)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
@@ -269,7 +269,7 @@ run-id-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) �
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (id {A}) ++ suffix
   in ∃[ s' ] IRStarResultV (id {A}) prog s s' x (length prefix)
@@ -322,7 +322,7 @@ run-terminal-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : St
   halted s ≡ false →
   pc s ≡ length prefix →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
   in ∃[ s' ] IRStarResultV (terminal {A}) prog s s' x (length prefix)
@@ -366,7 +366,7 @@ run-fold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State)
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
   in ∃[ s' ] IRStarResultV (fold {F}) prog s s' x (length prefix)
@@ -421,7 +421,7 @@ run-unfold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : 
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
   in ∃[ s' ] IRStarResultV (unfold {F}) prog s s' x (length prefix)
@@ -490,7 +490,7 @@ run-fst-star-vv : ∀ {A B} (prefix suffix : Program)
   (vb : ValidAt b addr-b (memory s)) →
   (pair-at : PairAtS addr-a addr-b (readReg (regs s) rdi) (memory s)) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (fst {A} {B}) prog s s' (a , b) (length prefix)
@@ -552,7 +552,7 @@ run-snd-star-vv : ∀ {A B} (prefix suffix : Program)
   (vb : ValidAt b addr-b (memory s)) →
   (pair-at : PairAtS addr-a addr-b (readReg (regs s) rdi) (memory s)) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (snd {A} {B}) prog s s' (a , b) (length prefix)
@@ -613,7 +613,7 @@ run-arr-star-vv : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s 
   pc s ≡ length prefix →
   ValidAt fn (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s 2 →
+  StackCapacity s output-slots →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (arr {A} {B}) prog s s' fn (length prefix)
@@ -694,7 +694,7 @@ postulate
     ValidAt x (readReg (regs s) rdi) (memory s) →
     (∀ addr → region-of addr ≡ stack → readReg (regs s) rdi ≢ addr) →
     StackInvariant s →
-    StackCapacity s 2 →
+    StackCapacity s output-slots →
     RbpInvariant s →
     let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name) prog s s' x (length prefix)

@@ -240,6 +240,31 @@ curry-closure-consumed-slots : ℕ
 curry-closure-consumed-slots = instrs-consumed-slots curry-closure-instrs
 
 ------------------------------------------------------------------------
+-- Stack frame slot positions (semantic names for slot indices)
+------------------------------------------------------------------------
+-- These define WHERE in the stack frame each saved register lives.
+-- Slot N means rsp - (N * 8) from the ORIGINAL rsp before any pushes.
+
+-- Thunk layout: push r15, push rbp, sub rsp 16
+-- r15 saved at slot 1 (first push), rbp at slot 2 (second push)
+thunk-r15-slot : ℕ
+thunk-r15-slot = 1
+
+thunk-rbp-slot : ℕ
+thunk-rbp-slot = 2
+
+-- Pair layout: push r14, push r15, push rbp, sub rsp 16
+-- r14 at slot 1, r15 at slot 2, rbp at slot 3
+pair-r14-slot : ℕ
+pair-r14-slot = 1
+
+pair-r15-slot : ℕ
+pair-r15-slot = 2
+
+pair-rbp-slot : ℕ
+pair-rbp-slot = 3
+
+------------------------------------------------------------------------
 -- Compile length calculation
 ------------------------------------------------------------------------
 

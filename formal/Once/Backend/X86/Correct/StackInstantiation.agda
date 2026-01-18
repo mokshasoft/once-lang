@@ -30,7 +30,10 @@ open import Once.Backend.X86.Syntax hiding (slot-size; slots)
 open import Once.Backend.X86.CodeGen public
   using (apply-consumed-slots; pair-setup-consumed-slots;
          thunk-setup-consumed-slots; curry-closure-consumed-slots;
-         injection-consumed-slots)
+         injection-consumed-slots;
+         -- Slot positions (semantic names for frame layout)
+         thunk-r15-slot; thunk-rbp-slot;
+         pair-r14-slot; pair-r15-slot; pair-rbp-slot)
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
@@ -198,25 +201,8 @@ thunk-cap-after-pushes = thunk-setup-capacity ∸ 2
 output-fits-thunk-cap : output-slots ≤ thunk-setup-capacity
 output-fits-thunk-cap = s≤s (s≤s z≤n)
 
--- Named slot indices for thunk frame layout
-thunk-rbp-frame-slot : ℕ
-thunk-rbp-frame-slot = 3
-
-thunk-alloc-slot : ℕ
-thunk-alloc-slot = 4
-
-thunk-r15-slot : ℕ
-thunk-r15-slot = 5
-
--- Proofs that frame slots fit in thunk capacity
-rbp-frame-fits-thunk-cap : thunk-rbp-frame-slot ≤ thunk-setup-capacity
-rbp-frame-fits-thunk-cap = s≤s (s≤s (s≤s z≤n))
-
-alloc-slot-fits-thunk-cap : thunk-alloc-slot ≤ thunk-setup-capacity
-alloc-slot-fits-thunk-cap = s≤s (s≤s (s≤s (s≤s z≤n)))
-
-r15-slot-fits-thunk-cap : thunk-r15-slot ≤ thunk-setup-capacity
-r15-slot-fits-thunk-cap = s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))
+-- Slot positions are imported from CodeGen (thunk-r15-slot, thunk-rbp-slot, etc.)
+-- Slot position inequalities are defined above (thunk-rbp-slot≤thunk-setup, etc.)
 
 -- Pair: push r14 (1) + push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 7
 pair-capacity : ℕ
@@ -261,8 +247,22 @@ apply-setup-fits-capacity = m≤m+n apply-consumed-slots output-slots
 thunk-setup-fits-pair-capacity : thunk-setup-capacity ≤ pair-capacity
 thunk-setup-fits-pair-capacity = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
 
-  inl-inr-capacity-correct : inl-inr-capacity ≡ injection-consumed-slots +ℕ output-slots
-  inl-inr-capacity-correct = refl
+inl-inr-capacity-correct : inl-inr-capacity ≡ injection-consumed-slots +ℕ output-slots
+inl-inr-capacity-correct = refl
+
+------------------------------------------------------------------------
+-- Slot position inequalities (semantic proofs that slots fit in frames)
+------------------------------------------------------------------------
+-- These prove that specific saved register slots are within the frame bounds.
+-- Derived algebraically from the slot position and frame size definitions.
+
+-- Thunk frame: rbp is at slot 2, frame has 4 slots
+thunk-rbp-slot≤thunk-setup : thunk-rbp-slot ≤ thunk-setup-consumed-slots
+thunk-rbp-slot≤thunk-setup = s≤s (s≤s z≤n)
+
+-- Pair frame: rbp is at slot 3, frame has 5 slots
+pair-rbp-slot≤pair-setup : pair-rbp-slot ≤ pair-setup-consumed-slots
+pair-rbp-slot≤pair-setup = s≤s (s≤s (s≤s z≤n))
 
 ------------------------------------------------------------------------
 -- RSP Delta: How much RSP changes (decreases) during IR execution
@@ -1063,68 +1063,73 @@ abstract-to-rsp-slots-in-stack : (k : ℕ) {n : ℕ} (s : State) (cap : StackCap
                                  region-of (readReg (regs s) rsp ∸ slots k) ≡ stack
 abstract-to-rsp-slots-in-stack k s cap k≤n = rsp-minus-n-slots-in-stack k s cap k≤n
 
--- | Thunk rbp frame at slot 2 >= new rsp at slot 4
-thunk-rbp-frame-≥-new-rsp : ∀ (s : State) (cap : StackCapacity s 4) →
-  sp-addr (make-frame-at-slot s cap 2 (s≤s (s≤s z≤n))) ≥
-  sp-addr (make-frame-at-slot s cap 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
+-- | Thunk rbp frame (at thunk-rbp-slot) >= new rsp frame (at thunk-setup-consumed-slots)
+thunk-rbp-frame-≥-new-rsp : ∀ (s : State) (cap : StackCapacity s thunk-setup-consumed-slots) →
+  sp-addr (make-frame-at-slot s cap thunk-rbp-slot thunk-rbp-slot≤thunk-setup) ≥
+  sp-addr (make-frame-at-slot s cap thunk-setup-consumed-slots ≤-refl)
 thunk-rbp-frame-≥-new-rsp s cap =
-  frame-at-lower-slot-≥ s cap 2 4 (s≤s (s≤s z≤n)) (s≤s (s≤s (s≤s (s≤s z≤n))))
-                        (s≤s (s≤s z≤n))
+  frame-at-lower-slot-≥ s cap thunk-rbp-slot thunk-setup-consumed-slots
+                        thunk-rbp-slot≤thunk-setup ≤-refl thunk-rbp-slot≤thunk-setup
 
 ------------------------------------------------------------------------
 -- Pair-specific Abstract Interface
 ------------------------------------------------------------------------
 
 -- | Pair frame at slot 5 (rsp - 40)
-pair-frame-0 : (s : State) (cap : StackCapacity s 5) → StackPointer
-pair-frame-0 s cap = make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+pair-frame-0 : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) → StackPointer
+pair-frame-0 s cap = make-frame-at-slot s cap pair-setup-consumed-slots pair-setup-consumed-slots≤pair-setup-consumed-slots
+  where
+    pair-setup-consumed-slots≤pair-setup-consumed-slots : pair-setup-consumed-slots ≤ pair-setup-consumed-slots
+    pair-setup-consumed-slots≤pair-setup-consumed-slots = ≤-refl
 
-pair-frame-slot-0-in-stack : (s : State) (cap : StackCapacity s 5) →
+pair-frame-slot-0-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
                              region-of (slot-addr (pair-frame-0 s cap) 0) ≡ stack
 pair-frame-slot-0-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 0
 
-pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s 5) →
+pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
                              region-of (slot-addr (pair-frame-0 s cap) 1) ≡ stack
 pair-frame-slot-1-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 1
 
 -- | Pair frame 0 address equals rsp - 40
-pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s 5) →
+pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
                        sp-addr (pair-frame-0 s cap) ≡ readReg (regs s) rsp ∸ five-slot-offset
 pair-frame-0-addr-eq s cap = refl
 
 -- | Pair frame slot 1 address equals (rsp - five-slot-offset) + slot-size
-pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s 5) →
+pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
                             slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size
 pair-frame-slot-1-addr-eq s cap =
   trans (slot-addr-1-is-base+8 (pair-frame-0 s cap))
         (cong (_+ℕ slot-size) (pair-frame-0-addr-eq s cap))
 
--- | Pair rbp frame at slot 3 (rsp - 24)
-pair-rbp-frame-≥-r15-frame : ∀ (s : State) (cap : StackCapacity s 5) →
-  sp-addr (make-frame-at-slot s cap 3 (s≤s (s≤s (s≤s z≤n)))) ≥
-  sp-addr (make-frame-at-slot s cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
+-- | Pair rbp frame (at pair-rbp-slot) ≥ r15 frame (at pair-setup-consumed-slots)
+pair-rbp-frame-≥-r15-frame : ∀ (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
+  sp-addr (make-frame-at-slot s cap pair-rbp-slot pair-rbp-slot≤pair-setup) ≥
+  sp-addr (make-frame-at-slot s cap pair-setup-consumed-slots ≤-refl)
 pair-rbp-frame-≥-r15-frame s cap =
-  frame-at-lower-slot-≥ s cap 3 5 (s≤s (s≤s (s≤s z≤n))) (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
-                        (s≤s (s≤s (s≤s z≤n)))
+  frame-at-lower-slot-≥ s cap pair-rbp-slot pair-setup-consumed-slots
+                        pair-rbp-slot≤pair-setup ≤-refl pair-rbp-slot≤pair-setup
 
--- | rsp - 40 is in stack region when we have capacity 5
+-- | rsp - 40 is in stack region when we have pair-setup capacity
 pair-r15-in-stack : ∀ (s : State) →
-  StackCapacity s 5 →
+  StackCapacity s pair-setup-consumed-slots →
   region-of (readReg (regs s) rsp ∸ five-slot-offset) ≡ stack
-pair-r15-in-stack s cap = capacity-maintained cap 5 (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+pair-r15-in-stack s cap = capacity-maintained cap pair-setup-consumed-slots ≤-refl
 
--- | (rsp - five-slot-offset) + slot-size is in stack region when we have capacity 5
+-- | (rsp - five-slot-offset) + slot-size is in stack region when we have pair-setup capacity
 pair-second-slot-in-stack : ∀ (s : State) →
-  StackCapacity s 5 →
+  StackCapacity s pair-setup-consumed-slots →
   region-of ((readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size) ≡ stack
 pair-second-slot-in-stack s cap =
   subst (λ a → region-of a ≡ stack)
         (sym (alloc-5-slots-second-addr-eq rsp-val (cap-to-pair-setup-rsp-bound cap)))
-        (capacity-maintained cap 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
+        (capacity-maintained cap 4 slot-4≤pair-setup)
   where
     open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; <⇒≤)
     rsp-val = readReg (regs s) rsp
-    cap-to-pair-setup-rsp-bound : StackCapacity s 5 → readReg (regs s) rsp ≥ five-slot-offset
+    slot-4≤pair-setup : 4 ≤ pair-setup-consumed-slots
+    slot-4≤pair-setup = s≤s (s≤s (s≤s (s≤s z≤n)))
+    cap-to-pair-setup-rsp-bound : StackCapacity s pair-setup-consumed-slots → readReg (regs s) rsp ≥ five-slot-offset
     cap-to-pair-setup-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
     alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ five-slot-offset → (rsp-val ∸ five-slot-offset) +ℕ slot-size ≡ rsp-val ∸ four-slot-offset
     alloc-5-slots-second-addr-eq rsp-val rsp≥40 = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-4-slots)
@@ -1138,12 +1143,12 @@ pair-second-slot-in-stack s cap =
 pair-stack-capacity : ∀ (s : State) →
   region-of (readReg (regs s) rsp) ≡ stack →
   readReg (regs s) rsp > five-slot-offset →
-  StackCapacity s 5
-pair-stack-capacity s rsp-in-stack rsp-bound = rsp-bound-to-capacity 5 s rsp-in-stack rsp-bound
+  StackCapacity s pair-setup-consumed-slots
+pair-stack-capacity s rsp-in-stack rsp-bound = rsp-bound-to-capacity pair-setup-consumed-slots s rsp-in-stack rsp-bound
 
 -- | Create StackInvariant for state after Pair setup
 pair-setup-stack-inv : ∀ (s s-setup : State) →
-  StackCapacity s 5 →
+  StackCapacity s pair-setup-consumed-slots →
   readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ five-slot-offset →
   readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ five-slot-offset →
   StackInvariant s-setup
@@ -1187,11 +1192,11 @@ alloc-2-slots-addrs-in-stack s cap =
     cap-to-inl-inr-rsp-bound : StackCapacity s 2 → readReg (regs s) rsp ≥ two-push-offset
     cap-to-inl-inr-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
     capacity-weaken : StackCapacity s 2 → StackCapacity s 1
-    capacity-weaken cap2 = record
-      { rsp-in-stack = rsp-in-stack cap2
-      ; rsp-sufficient = <-trans slot<2slot (rsp-sufficient cap2)
+    capacity-weaken cap-input = record
+      { rsp-in-stack = rsp-in-stack cap-input
+      ; rsp-sufficient = <-trans slot<2slot (rsp-sufficient cap-input)
       ; capacity-maintained = λ k k≤1 →
-          capacity-maintained cap2 k (≤-trans k≤1 (s≤s z≤n))
+          capacity-maintained cap-input k (≤-trans k≤1 (s≤s z≤n))
       }
       where
         slot<2slot : slot-size < two-push-offset
@@ -1903,25 +1908,25 @@ frame-addrs-disjoint {s} {k₁} {k₂} {n} f₁ f₂ k₁<k₂ cap k₂≤n eq =
 -- Specific Frame Constructors
 ------------------------------------------------------------------------
 
--- | Pair frame at slot 5 (rsp - 40)
-mk-pair-frame-5 : ∀ (s : State) → StackCapacity s 5 → SlotFrame s 5
-mk-pair-frame-5 s cap = mk-slot-frame s 5 5 cap ≤-refl
+-- | Pair r15 frame (at pair-setup-consumed-slots, i.e., rsp - 40)
+mk-pair-r15-frame : ∀ (s : State) → StackCapacity s pair-setup-consumed-slots → SlotFrame s pair-setup-consumed-slots
+mk-pair-r15-frame s cap = mk-slot-frame s pair-setup-consumed-slots pair-setup-consumed-slots cap ≤-refl
 
--- | Pair frame at slot 3 (rsp - 24, for rbp)
-mk-pair-frame-3 : ∀ (s : State) → StackCapacity s 5 → SlotFrame s 3
-mk-pair-frame-3 s cap = mk-slot-frame s 3 5 cap (s≤s (s≤s (s≤s z≤n)))
+-- | Pair rbp frame (at pair-rbp-slot, i.e., rsp - 24)
+mk-pair-rbp-frame : ∀ (s : State) → StackCapacity s pair-setup-consumed-slots → SlotFrame s pair-rbp-slot
+mk-pair-rbp-frame s cap = mk-slot-frame s pair-rbp-slot pair-setup-consumed-slots cap pair-rbp-slot≤pair-setup
 
 -- | Apply frame at slot 1 (rsp - 8)
-mk-apply-frame : ∀ (s : State) → StackCapacity s 2 → SlotFrame s 1
-mk-apply-frame s cap = mk-slot-frame s 1 2 cap (s≤s z≤n)
+mk-apply-frame : ∀ (s : State) → StackCapacity s output-slots → SlotFrame s 1
+mk-apply-frame s cap = mk-slot-frame s 1 output-slots cap (s≤s z≤n)
 
--- | Thunk frame at slot 2 (rsp - 16)
-mk-thunk-frame-2 : ∀ (s : State) → StackCapacity s 4 → SlotFrame s 2
-mk-thunk-frame-2 s cap = mk-slot-frame s 2 4 cap (s≤s (s≤s z≤n))
+-- | Thunk rbp frame (at thunk-rbp-slot, i.e., rsp - 16)
+mk-thunk-rbp-frame : ∀ (s : State) → StackCapacity s thunk-setup-consumed-slots → SlotFrame s thunk-rbp-slot
+mk-thunk-rbp-frame s cap = mk-slot-frame s thunk-rbp-slot thunk-setup-consumed-slots cap thunk-rbp-slot≤thunk-setup
 
--- | Thunk frame at slot 4 (rsp - 32)
-mk-thunk-frame-4 : ∀ (s : State) → StackCapacity s 4 → SlotFrame s 4
-mk-thunk-frame-4 s cap = mk-slot-frame s 4 4 cap ≤-refl
+-- | Thunk new-rsp frame (at thunk-setup-consumed-slots, i.e., rsp - 32)
+mk-thunk-rsp-frame : ∀ (s : State) → StackCapacity s thunk-setup-consumed-slots → SlotFrame s thunk-setup-consumed-slots
+mk-thunk-rsp-frame s cap = mk-slot-frame s thunk-setup-consumed-slots thunk-setup-consumed-slots cap ≤-refl
 
 ------------------------------------------------------------------------
 -- Heap-Stack Disjointness via Regions

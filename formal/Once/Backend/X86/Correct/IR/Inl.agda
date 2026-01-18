@@ -105,9 +105,9 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     rsp-region : region-of (readReg (regs s) rsp) ≡ stack
     rsp-region = StackCapacity.rsp-in-stack cap
 
-    -- StackCapacity s (ir-rsp-delta inl) for operations that need it (derived, no postulate!)
-    cap2 : StackCapacity s (ir-rsp-delta (inl {A} {B}))
-    cap2 = rsp-bound-to-capacity (ir-rsp-delta (inl {A} {B})) s rsp-region rsp-bound
+    -- StackCapacity for output allocation (derived from ir-rsp-delta)
+    cap-output-alloc : StackCapacity s (ir-rsp-delta (inl {A} {B}))
+    cap-output-alloc = rsp-bound-to-capacity (ir-rsp-delta (inl {A} {B})) s rsp-region rsp-bound
 
     -- The program
     prog : Program
@@ -425,7 +425,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
     mem-at-0-preserved =
       let -- Get region membership (derived from cap, no postulate!)
-          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap2
+          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-zero (memory s1) new-rsp 0 tag-addr-in-stack
@@ -437,7 +437,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
       let -- Get region membership (derived from cap, no postulate!)
-          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap2
+          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-code (memory s1) new-rsp 0 addr tag-addr-in-stack addr-in-code
@@ -449,7 +449,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-heap-preserved addr addr-in-heap =
       let -- Get region membership (derived from cap, no postulate!)
-          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap2
+          (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
           -- Use abstract interface (NO arithmetic!)
           after-tag-write = stackAddr-write-preserves-heap (memory s1) new-rsp 0 addr tag-addr-in-stack addr-in-heap
