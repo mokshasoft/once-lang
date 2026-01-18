@@ -33,6 +33,7 @@ open ≡-Reasoning
 open import Once.Backend.X86.Correct.Arithmetic
   using (rbp-plus-word≡r15-save; rbp-plus-pair≡r14-save;
          word-size; pair-alloc; saved-regs-size; frame-size)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (2≤3; 3≤5; 2≤5)
 
 ------------------------------------------------------------------------
 -- FrameSetupResult: Star-based result for pair frame setup
@@ -141,9 +142,6 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     -- Derive smaller bounds using slot monotonicity: 3 ≤ 5 → slots 3 ≤ slots 5
     rsp-gt-slots3 : orig-rsp > slots 3
     rsp-gt-slots3 = ≤-<-trans (slots-mono-≤ 3≤5) rsp-bound
-      where
-        3≤5 : 3 ≤ 5
-        3≤5 = s≤s (s≤s (s≤s z≤n))
 
     -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
     s1 : State
@@ -472,9 +470,6 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     -- Derive rsp > slots 2 from rsp-gt-slots3 using slot monotonicity
     rsp-gt-slots2 : orig-rsp > slots 2
     rsp-gt-slots2 = ≤-<-trans (slots-mono-≤ 2≤3) rsp-gt-slots3
-      where
-        2≤3 : 2 ≤ 3
-        2≤3 = s≤s (s≤s z≤n)
 
     mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ slot-size) ≡ just orig-r14
     mem-s2-at-r14slot = begin
@@ -642,10 +637,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
         write2-in-stack : region-of write2 ≡ stack
-        write2-in-stack = capacity-maintained cap 2 (s≤s (s≤s z≤n))
+        write2-in-stack = capacity-maintained cap 2 2≤5
 
         write3-in-stack : region-of write3 ≡ stack
-        write3-in-stack = capacity-maintained cap 3 (s≤s (s≤s (s≤s z≤n)))
+        write3-in-stack = capacity-maintained cap 3 3≤5
 
         -- Chain memory preservation at 0 using abstract lemma
         mem0-s7-s3 : readMem (memory s7) 0 ≡ readMem (memory s3) 0
@@ -678,10 +673,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
         write2-in-stack : region-of write2 ≡ stack
-        write2-in-stack = capacity-maintained cap 2 (s≤s (s≤s z≤n))
+        write2-in-stack = capacity-maintained cap 2 2≤5
 
         write3-in-stack : region-of write3 ≡ stack
-        write3-in-stack = capacity-maintained cap 3 (s≤s (s≤s (s≤s z≤n)))
+        write3-in-stack = capacity-maintained cap 3 3≤5
 
         -- Chain memory preservation at code addresses using abstract lemma
         memC-s7-s3 : readMem (memory s7) addr ≡ readMem (memory s3) addr
@@ -714,10 +709,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
         write2-in-stack : region-of write2 ≡ stack
-        write2-in-stack = capacity-maintained cap 2 (s≤s (s≤s z≤n))
+        write2-in-stack = capacity-maintained cap 2 2≤5
 
         write3-in-stack : region-of write3 ≡ stack
-        write3-in-stack = capacity-maintained cap 3 (s≤s (s≤s (s≤s z≤n)))
+        write3-in-stack = capacity-maintained cap 3 3≤5
 
         -- Chain memory preservation at heap addresses using abstract lemma
         memH-s7-s3 : readMem (memory s7) addr ≡ readMem (memory s3) addr

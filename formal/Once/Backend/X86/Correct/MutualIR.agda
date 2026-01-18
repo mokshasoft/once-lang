@@ -69,6 +69,7 @@ open import Once.Backend.X86.Correct.InitState
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (6<19; word≤thunk-bound; word<pair)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
@@ -354,9 +355,6 @@ mutual
                 ≡ length (compile-x86 (curry f)) +ℕ length suffix
       inner-len = LP.length-++ (compile-x86 (curry f))
 
-      -- 6 < 19 (obviously)
-      6<19 : 6 < 19
-      6<19 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))
 
       -- 6 < 19 + compile-length f (using: 6 < 19 and 19 ≤ 19 + compile-length f)
       6<19+f : 6 < 19 +ℕ compile-length f
@@ -516,11 +514,8 @@ mutual
       open import Data.Nat.Properties using (≤-trans; +-comm)
 
       -- From rsp > slots 2, derive 8 ≤ rsp (for m+[n∸m]≡n)
-      8≤17 : 8 ≤ 17
-      8≤17 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
-
       8≤rsp : 8 ≤ readReg (regs s) rsp
-      8≤rsp = ≤-trans 8≤17 rsp-sufficient
+      8≤rsp = ≤-trans word≤thunk-bound rsp-sufficient
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -914,11 +909,8 @@ mutual
       -- old-rsp - 8 > rbp because rbp = old-rsp - 16
       -- Need: old-rsp-s ∸ 16 < old-rsp-s ∸ slot-size
       -- Use ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
-      8<16 : slot-size < slots 2
-      8<16 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-
       rsp-16<rsp-8 : readReg (regs s) rsp ∸ slots 2 < readReg (regs s) rsp ∸ slot-size
-      rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< 8<16 16≤rsp
+      rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< word<pair 16≤rsp
 
       old-rsp-8>rbp : old-rsp-s ∸ slot-size > readReg (regs s-after-setup) rbp
       old-rsp-8>rbp = subst (λ x → old-rsp-s ∸ slot-size > x) (sym rbp-setup-addr) rsp-16<rsp-8

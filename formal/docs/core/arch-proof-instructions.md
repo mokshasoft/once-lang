@@ -14,9 +14,9 @@
 
 - **Minimal caller burden**: Entry points should only require `StackCapacity s (ir-stack-requirement ir)` - nothing more.
 
-- **Proofs at module top**: Helper proofs go in `private` blocks at module top, not in `where` clauses.
+- **Lemmas in Lemma modules**: Reusable proofs belong in dedicated `*Lemmas.agda` files (e.g., `ArithmeticLemmas.agda`, `RegisterLemmas.agda`, `ExecLemmas.agda`). Move existing `where`-clause lemmas to these modules - don't leave them scattered in proof files. This speeds up compilation (proofs typechecked once, cached) and eliminates duplication.
 
-- **Name invariants, not relationships**: Names like `x≤y` or `2≤4` are wrong. Name what the invariant *means* (e.g., `frame-fits-in-capacity`), not the numeric relationship.
+- **Name invariants, not relationships**: Names like `x≤y` or `2≤4` are wrong. Name what the invariant *means* (e.g., `word<frame`, `regs≤frame`), not the numeric relationship.
 
 - **No backwards compatibility shims**: When changing design, change it cleanly.
 

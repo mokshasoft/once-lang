@@ -24,6 +24,7 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (rsp-min-pair≤frame; word<thunk-bound)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
@@ -112,10 +113,7 @@ private
   ... | yes 40≤rsp = subst (_< rsp-val) (sym m∸40+8≡m∸32) (m∸n<m-when-m>n rsp-val 32 (s≤s z≤n) rsp>32)
     where
       rsp>32 : rsp-val > 32
-      rsp>32 = ≤-trans 33≤40 40≤rsp
-        where 33≤40 : 33 ≤ 40
-              -- 33 applications of s≤s, base case 0 ≤ 7
-              33≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))))))))))
+      rsp>32 = ≤-trans rsp-min-pair≤frame 40≤rsp
       k = rsp-val ∸ slots 5
       m∸40+8≡m∸32 : rsp-val ∸ slots 5 +ℕ slot-size ≡ rsp-val ∸ slots 4
       m∸40+8≡m∸32 =
@@ -131,7 +129,7 @@ private
       0+8≡8 : rsp-val ∸ slots 5 +ℕ slot-size ≡ 8
       0+8≡8 = cong (_+ℕ slot-size) rsp∸40≡0
       8<rsp : 8 < rsp-val
-      8<rsp = ≤-trans (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))) rsp>16
+      8<rsp = ≤-trans word<thunk-bound rsp>16
 
 ------------------------------------------------------------------------
 -- Pair implementation using size-bounded dispatcher

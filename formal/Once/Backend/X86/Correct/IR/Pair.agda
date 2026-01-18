@@ -18,6 +18,7 @@ open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (word<frame; pair<frame; regs<frame; word≤regs; pair≤regs; regs≤frame)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-bound-to-capacity; pair-stack-capacity; slots; slot-size;
@@ -1737,12 +1738,8 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 rsp-s = readReg (regs s) rsp
                 k = rsp-s ∸ slots setup-slots-local
 
-                -- slot-size < slots setup-slots-local (8 < 40 when setup-slots-local = 5)
-                slot-size<setup : slot-size < slots setup-slots-local
-                slot-size<setup = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-
                 k+slot<k+setup : k +ℕ slot-size < k +ℕ slots setup-slots-local
-                k+slot<k+setup = +-monoʳ-< k slot-size<setup
+                k+slot<k+setup = +-monoʳ-< k word<frame
 
                 arith-step : (readReg (regs s) rsp ∸ slots setup-slots-local) +ℕ slot-size < readReg (regs s) rsp
                 arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+slot<k+setup
@@ -1959,10 +1956,8 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
       where
         rsp-s = readReg (regs s) rsp
         k = rsp-s ∸ slots 5
-        8<40 : 8 < 40
-        8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
         k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
-        k+8<k+40 = +-monoʳ-< k 8<40
+        k+8<k+40 = +-monoʳ-< k word<frame
         arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
         arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+8<k+40
 
@@ -2007,10 +2002,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             open import Data.Nat.Properties using (∸-monoʳ-<)
             -- rsp - 40 < rsp - 24 since 40 > 24 (and rsp > slots 5)
             rsp∸40<rsp∸24 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 3
-            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 setup-frame-fits
-              where
-                24<40 : 24 < 40
-                24<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+            rsp∸40<rsp∸24 = ∸-monoʳ-< regs<frame setup-frame-fits
 
     -- Chain for stack-rbp-s3: memory[s3.rbp] = just s.rbp
     stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
@@ -2053,15 +2045,10 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                rsp∸24+8≡rsp∸16
           where
             rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ slots 3 +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
-            rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp 8≤24
+            rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp word≤regs
               where
                 24≤rsp : 24 ≤ readReg (regs s) rsp
-                24≤rsp = ≤-trans 24≤40 setup-frame-fits
-                  where
-                    24≤40 : 24 ≤ 40
-                    24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
-                8≤24 : 8 ≤ 24
-                8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+                24≤rsp = ≤-trans regs≤frame setup-frame-fits
                 -- (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
                 -- Standard arithmetic identity; now proven in Arithmetic.agda
         s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
@@ -2072,10 +2059,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 2
-            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 setup-frame-fits
-              where
-                16<40 : 16 < 40
-                16<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+            rsp∸40<rsp∸16 = ∸-monoʳ-< pair<frame setup-frame-fits
 
     stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
     stack-r15-s3 = trans mem-g-r15' (trans mem-mid-r15' (trans mem-f-r15' mem-setup-r15'))
@@ -2129,15 +2113,10 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                 rsp∸24+16≡rsp∸8
           where
             rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ slots 3 +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
-            rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' 16≤24
+            rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' pair≤regs
               where
                 24≤rsp' : 24 ≤ readReg (regs s) rsp
-                24≤rsp' = ≤-trans 24≤40' setup-frame-fits
-                  where
-                    24≤40' : 24 ≤ 40
-                    24≤40' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
-                16≤24 : 16 ≤ 24
-                16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+                24≤rsp' = ≤-trans regs≤frame setup-frame-fits
                 -- (m - n) + k = m - (n - k) when n ≤ m and k ≤ n
                 -- Now proven in Arithmetic.agda
         s1-r15-eq-proof3 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
@@ -2148,10 +2127,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slot-size
-            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 setup-frame-fits
-              where
-                8<40 : 8 < 40
-                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+            rsp∸40<rsp∸8 = ∸-monoʳ-< word<frame setup-frame-fits
 
     stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
     stack-r14-s3 = trans mem-g-r14 (trans mem-mid-r14 (trans mem-f-r14 mem-setup-r14))
@@ -2561,10 +2537,8 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
               where
                 rsp-s = readReg (regs s) rsp
                 k = rsp-s ∸ slots 5
-                8<40 : 8 < 40
-                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
                 k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
-                k+8<k+40 = +-monoʳ-< k 8<40
+                k+8<k+40 = +-monoʳ-< k word<frame
                 arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
                 arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+8<k+40
 
@@ -2747,10 +2721,8 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
       where
         rsp-s = readReg (regs s) rsp
         k = rsp-s ∸ slots 5
-        8<40 : 8 < 40
-        8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
         k+8<k+40 : k +ℕ slot-size < k +ℕ slots 5
-        k+8<k+40 = +-monoʳ-< k 8<40
+        k+8<k+40 = +-monoʳ-< k word<frame
         arith-step : (readReg (regs s) rsp ∸ slots 5) +ℕ slot-size < readReg (regs s) rsp
         arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m setup-frame-fits) k+8<k+40
 
@@ -2788,10 +2760,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸24 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 3
-            rsp∸40<rsp∸24 = ∸-monoʳ-< 24<40 setup-frame-fits
-              where
-                24<40 : 24 < 40
-                24<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))))))))))
+            rsp∸40<rsp∸24 = ∸-monoʳ-< regs<frame setup-frame-fits
 
     stack-rbp-s3 : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
     stack-rbp-s3 = trans mem-g-rbp (trans mem-mid-rbp (trans mem-f-rbp mem-setup-rbp))
@@ -2824,15 +2793,10 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                rsp∸24+8≡rsp∸16
           where
             rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ slots 3 +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
-            rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp 8≤24
+            rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp word≤regs
               where
                 24≤rsp : 24 ≤ readReg (regs s) rsp
-                24≤rsp = ≤-trans 24≤40 setup-frame-fits
-                  where
-                    24≤40 : 24 ≤ 40
-                    24≤40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
-                8≤24 : 8 ≤ 24
-                8≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+                24≤rsp = ≤-trans regs≤frame setup-frame-fits
         s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
         s1-r15-eq-proof2 = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
                                                      (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
@@ -2841,10 +2805,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slots 2
-            rsp∸40<rsp∸16 = ∸-monoʳ-< 16<40 setup-frame-fits
-              where
-                16<40 : 16 < 40
-                16<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+            rsp∸40<rsp∸16 = ∸-monoʳ-< pair<frame setup-frame-fits
 
     stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
     stack-r15-s3 = trans mem-g-r15' (trans mem-mid-r15' (trans mem-f-r15' mem-setup-r15'))
@@ -2894,15 +2855,10 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                 rsp∸24+16≡rsp∸8
           where
             rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ slots 3 +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
-            rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' 16≤24
+            rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' pair≤regs
               where
                 24≤rsp' : 24 ≤ readReg (regs s) rsp
-                24≤rsp' = ≤-trans 24≤40' setup-frame-fits
-                  where
-                    24≤40' : 24 ≤ 40
-                    24≤40' = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))))))))))
-                16≤24 : 16 ≤ 24
-                16≤24 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+                24≤rsp' = ≤-trans regs≤frame setup-frame-fits
         s1-r15-eq-proof3 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots 5
         s1-r15-eq-proof3 = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots 5)
                                                       (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
@@ -2911,10 +2867,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
             rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ slots 5 < readReg (regs s) rsp ∸ slot-size
-            rsp∸40<rsp∸8 = ∸-monoʳ-< 8<40 setup-frame-fits
-              where
-                8<40 : 8 < 40
-                8<40 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+            rsp∸40<rsp∸8 = ∸-monoʳ-< word<frame setup-frame-fits
 
     stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
     stack-r14-s3 = trans mem-g-r14 (trans mem-mid-r14 (trans mem-f-r14 mem-setup-r14))

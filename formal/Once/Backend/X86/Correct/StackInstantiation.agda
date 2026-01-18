@@ -73,7 +73,8 @@ open import Once.Backend.X86.Correct.Arithmetic
   using (word<pair; word≤pair; word<regs; word≤regs; pair≤regs;
          word≤frame∸word; pair≤frame∸word; regs≤frame∸word;
          word+1≤pair; pair<regs;
-         slot1-plus-word≡slot2)
+         slot1-plus-word≡slot2;
+         from-yes-≤; from-yes-<)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
@@ -199,7 +200,7 @@ thunk-cap-after-pushes = thunk-setup-capacity ∸ 2
 -- Semantic relationships: capacity invariants for thunk-setup
 -- Used when deriving bounds from capacity proofs
 output-fits-thunk-cap : output-slots ≤ thunk-setup-capacity
-output-fits-thunk-cap = s≤s (s≤s z≤n)
+output-fits-thunk-cap = from-yes-≤ (output-slots ≤? thunk-setup-capacity)
 
 -- Slot positions are imported from CodeGen (thunk-r15-slot, thunk-rbp-slot, etc.)
 -- Slot position inequalities are defined above (thunk-rbp-slot≤thunk-setup, etc.)
@@ -245,7 +246,7 @@ apply-setup-fits-capacity = m≤m+n apply-consumed-slots output-slots
 -- Cross-capacity relationships: thunk-setup fits in pair capacity
 -- Used when curry thunk setup runs with pair capacity bound
 thunk-setup-fits-pair-capacity : thunk-setup-capacity ≤ pair-capacity
-thunk-setup-fits-pair-capacity = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+thunk-setup-fits-pair-capacity = from-yes-≤ (thunk-setup-capacity ≤? pair-capacity)
 
 inl-inr-capacity-correct : inl-inr-capacity ≡ injection-consumed-slots +ℕ output-slots
 inl-inr-capacity-correct = refl
@@ -258,11 +259,20 @@ inl-inr-capacity-correct = refl
 
 -- Thunk frame: rbp is at slot 2, frame has 4 slots
 thunk-rbp-slot≤thunk-setup : thunk-rbp-slot ≤ thunk-setup-consumed-slots
-thunk-rbp-slot≤thunk-setup = s≤s (s≤s z≤n)
+thunk-rbp-slot≤thunk-setup = from-yes-≤ (thunk-rbp-slot ≤? thunk-setup-consumed-slots)
+
+-- Thunk slot positions fit in capacity (for slot-based bounds)
+-- r15 is at slot 1, capacity is 6, so 1 ≤ 6
+r15-slot-fits-thunk-cap : thunk-r15-slot ≤ thunk-setup-capacity
+r15-slot-fits-thunk-cap = from-yes-≤ (thunk-r15-slot ≤? thunk-setup-capacity)
+
+-- rbp is at slot 2, capacity is 6, so 2 ≤ 6
+rbp-slot-fits-thunk-cap : thunk-rbp-slot ≤ thunk-setup-capacity
+rbp-slot-fits-thunk-cap = from-yes-≤ (thunk-rbp-slot ≤? thunk-setup-capacity)
 
 -- Pair frame: rbp is at slot 3, frame has 5 slots
 pair-rbp-slot≤pair-setup : pair-rbp-slot ≤ pair-setup-consumed-slots
-pair-rbp-slot≤pair-setup = s≤s (s≤s (s≤s z≤n))
+pair-rbp-slot≤pair-setup = from-yes-≤ (pair-rbp-slot ≤? pair-setup-consumed-slots)
 
 ------------------------------------------------------------------------
 -- RSP Delta: How much RSP changes (decreases) during IR execution
@@ -405,7 +415,7 @@ pair-setup≤pair-req f g = m≤m+n pair-setup-consumed-slots (pair-inner-requir
 -- | Output slots ≤ pair setup consumed slots
 -- Both are computed from instruction lists: output-slots = 2, pair-setup-consumed-slots = 5
 output-slots≤pair-setup : output-slots ≤ pair-setup-consumed-slots
-output-slots≤pair-setup = s≤s (s≤s z≤n)
+output-slots≤pair-setup = from-yes-≤ (output-slots ≤? pair-setup-consumed-slots)
 
 -- | Output slots ≤ pair requirement (transitivity)
 output-slots≤pair-req : ∀ {A B C} (f : IR C A) (g : IR C B) →
@@ -947,7 +957,7 @@ curry-rsp-delta≤curry-capacity f = m≤m+n curry-closure-consumed-slots output
 --        ir-stack-requirement (curry f) = 2 + (4 + ir-stack-requirement f) = 6 + ir-stack-requirement f ≥ 6 ≥ 4
 curry-closure-capacity≤curry-req : ∀ {A B C} (f : IR (A * B) C) →
   curry-closure-capacity ≤ ir-stack-requirement (curry f)
-curry-closure-capacity≤curry-req f = ≤-trans (s≤s (s≤s (s≤s (s≤s z≤n)))) (m≤m+n 6 (ir-stack-requirement f))
+curry-closure-capacity≤curry-req f = ≤-trans (from-yes-≤ (curry-closure-capacity ≤? 6)) (m≤m+n 6 (ir-stack-requirement f))
 
 -- | ir-rsp-delta (curry f) ≤ ir-stack-requirement (curry f)
 -- Combines the above two lemmas by transitivity
@@ -1128,7 +1138,7 @@ pair-second-slot-in-stack s cap =
     open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; <⇒≤)
     rsp-val = readReg (regs s) rsp
     slot-4≤pair-setup : 4 ≤ pair-setup-consumed-slots
-    slot-4≤pair-setup = s≤s (s≤s (s≤s (s≤s z≤n)))
+    slot-4≤pair-setup = from-yes-≤ (4 ≤? pair-setup-consumed-slots)
     cap-to-pair-setup-rsp-bound : StackCapacity s pair-setup-consumed-slots → readReg (regs s) rsp ≥ five-slot-offset
     cap-to-pair-setup-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
     alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ five-slot-offset → (rsp-val ∸ five-slot-offset) +ℕ slot-size ≡ rsp-val ∸ four-slot-offset
