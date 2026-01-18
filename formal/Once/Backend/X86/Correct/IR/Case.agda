@@ -541,6 +541,9 @@ record CaseCleanupResult {A B C : Type} (prefix suffix : Program) (f : IR A C) (
     -- Register restoration to original values
     rsp-final : readReg (regs s-final) rsp ≡ orig-rsp
     rbp-final : readReg (regs s-final) rbp ≡ orig-rbp
+    -- Register preservation (r14/r15 unchanged through cleanup)
+    r14-preserved : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+    r15-preserved : readReg (regs s-final) r15 ≡ readReg (regs s) r15
 
 ------------------------------------------------------------------------
 -- Case Cleanup Proof (for inl branch)
@@ -641,6 +644,20 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     rbp3 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s2) rbp orig-rbp) (rbp-val +ℕ slot-size))
                  (readReg-writeReg-same (regs s2) rbp orig-rbp)
 
+    -- r14 unchanged through cleanup: jmp (no reg change), mov rsp (doesn't touch r14), pop rbp (doesn't touch r14)
+    -- s1 = record s { pc = ... }, so regs s1 = regs s
+    -- s2 = record s1 { regs = writeReg (regs s1) rsp ... }, r14 s2 = r14 s1
+    -- s3 = record s2 { regs = writeReg (writeReg (regs s2) rbp ...) rsp ... }, r14 s3 = r14 s2
+    r14-3 : readReg (regs s3) r14 ≡ readReg (regs s) r14
+    r14-3 = trans (readReg-writeReg-rsp-r14 (writeReg (regs s2) rbp orig-rbp) (rbp-val +ℕ slot-size))
+                  (trans (readReg-writeReg-rbp-r14 (regs s2) orig-rbp)
+                         (readReg-writeReg-rsp-r14 (regs s1) rbp-val))
+
+    r15-3 : readReg (regs s3) r15 ≡ readReg (regs s) r15
+    r15-3 = trans (readReg-writeReg-rsp-r15 (writeReg (regs s2) rbp orig-rbp) (rbp-val +ℕ slot-size))
+                  (trans (readReg-writeReg-rbp-r15 (regs s2) orig-rbp)
+                         (readReg-writeReg-rsp-r15 (regs s1) rbp-val))
+
     -- ========== Assemble result ==========
     result : CaseCleanupResult {A} {B} {C} prefix suffix f g s s3 orig-rsp orig-rbp
     result = record
@@ -649,5 +666,7 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
       ; pc-final = pc3
       ; rsp-final = rsp3
       ; rbp-final = rbp3
+      ; r14-preserved = r14-3
+      ; r15-preserved = r15-3
       }
 

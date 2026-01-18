@@ -371,29 +371,127 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     star-f : Star prog s-setup s1
     star-f = subst (λ p → Star p s-setup s1) prog-eq (IRStarResultV.ir-star r-f)
       where
-        postulate
-          -- prog = prefix-f ++ code-f ++ suffix-f
-          prog-eq : prefix-f ++ code-f ++ suffix-f ≡ prog
+        -- prog = prefix-f ++ code-f ++ suffix-f
+        -- Proof: both sides expand to the same list via ++-assoc
+        --
+        -- compile-x86 [ f , g ] = setup-instrs ++ compile-x86 f ++ case-middle-code
+        -- where case-middle-code = jmp ... ∷ label ... ∷ mov ... ∷ compile-x86 g ++ mov rsp rbp ∷ pop rbp ∷ []
+        --
+        -- So: prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+        --          = prefix ++ (setup-instrs ++ compile-x86 f ++ case-middle-code) ++ suffix
+        --          = prefix ++ setup-instrs ++ compile-x86 f ++ (case-middle-code ++ suffix)
+        --          = prefix-f ++ code-f ++ suffix-f
+
+        -- The suffix after f but before the actual suffix
+        -- Note: suffix-f = first-part ++ (mov rsp rbp ∷ pop rbp ∷ suffix)
+        -- where first-part = jmp ... ∷ label ... ∷ mov ... ∷ compile-x86 g
+        first-part : Program
+        first-part = jmp (case-jmp-base +ℕ len-g) ∷ label (case-right-label-base +ℕ len-f) ∷
+                     mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ compile-x86 g
+
+        cleanup-instrs : Program
+        cleanup-instrs = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+
+        case-middle-code : Program
+        case-middle-code = first-part ++ cleanup-instrs
+
+        -- suffix-f = first-part ++ (mov rsp rbp ∷ pop rbp ∷ suffix) by definition
+        -- case-middle-code ++ suffix = (first-part ++ cleanup-instrs) ++ suffix
+        --                            = first-part ++ (cleanup-instrs ++ suffix)  by ++-assoc
+        --                            = first-part ++ (mov rsp rbp ∷ pop rbp ∷ suffix)  since cleanup-instrs ++ suffix = mov... ∷ pop... ∷ suffix
+        --                            = suffix-f
+        suffix-f-eq : suffix-f ≡ case-middle-code ++ suffix
+        suffix-f-eq = sym (++-assoc first-part cleanup-instrs suffix)
+
+        -- compile-x86 [ f , g ] = setup-instrs ++ (compile-x86 f ++ case-middle-code) definitionally
+        -- And (setup-instrs ++ compile-x86 f) ++ case-middle-code = setup-instrs ++ (compile-x86 f ++ case-middle-code)
+        -- by ++-assoc, so case-code-eq = sym (++-assoc ...)
+        case-code-eq : compile-x86 [ f , g ] ≡ setup-instrs ++ compile-x86 f ++ case-middle-code
+        case-code-eq = sym (++-assoc setup-instrs (compile-x86 f) case-middle-code)
+
+        -- Goal: prefix-f ++ code-f ++ suffix-f ≡ prog
+        -- where prefix-f = prefix ++ setup-instrs, code-f = compile-x86 f
+        -- Note: ++ is infixr 5, so a ++ b ++ c = a ++ (b ++ c)
+        --
+        -- Key facts:
+        -- - prog = prefix ++ (compile-x86 [ f , g ] ++ suffix)
+        -- - compile-x86 [ f , g ] = setup-instrs ++ (code-f ++ case-middle-code)
+        -- - suffix-f = first-part ++ (cleanup-instrs ++ suffix) = case-middle-code ++ suffix (by assoc)
+        -- - prefix-f = prefix ++ setup-instrs
+        --
+        -- So: prefix-f ++ (code-f ++ suffix-f) = (prefix ++ setup-instrs) ++ (code-f ++ (case-middle-code ++ suffix))
+        --     Need to show this equals: prefix ++ (compile-x86 [ f , g ] ++ suffix)
+        --     = prefix ++ ((setup-instrs ++ (code-f ++ case-middle-code)) ++ suffix)
+        prog-eq : prefix-f ++ code-f ++ suffix-f ≡ prog
+        prog-eq =
+          let
+            -- With infixr, suffix-f = first-part ++ (cleanup-instrs ++ suffix)
+            -- and case-middle-code ++ suffix = (first-part ++ cleanup-instrs) ++ suffix
+            --                                = first-part ++ (cleanup-instrs ++ suffix) by ++-assoc
+            -- So suffix-f ≡ case-middle-code ++ suffix is just sym (++-assoc first-part cleanup-instrs suffix)
+
+            -- Step 1: code-f ++ suffix-f = code-f ++ (case-middle-code ++ suffix)
+            step1 : code-f ++ suffix-f ≡ code-f ++ (case-middle-code ++ suffix)
+            step1 = cong (code-f ++_) suffix-f-eq
+
+            -- Step 2: code-f ++ (case-middle-code ++ suffix) = (code-f ++ case-middle-code) ++ suffix by sym ++-assoc
+            step2 : code-f ++ (case-middle-code ++ suffix) ≡ (code-f ++ case-middle-code) ++ suffix
+            step2 = sym (++-assoc code-f case-middle-code suffix)
+
+            -- Step 3: Combine to get code-f ++ suffix-f = (code-f ++ case-middle-code) ++ suffix
+            step3 : code-f ++ suffix-f ≡ (code-f ++ case-middle-code) ++ suffix
+            step3 = trans step1 step2
+
+            -- Step 4: Apply prefix-f ++_ to both sides
+            step4 : prefix-f ++ (code-f ++ suffix-f) ≡ prefix-f ++ ((code-f ++ case-middle-code) ++ suffix)
+            step4 = cong (prefix-f ++_) step3
+
+            -- Step 5: prefix-f ++ ((code-f ++ case-middle-code) ++ suffix)
+            --       = (prefix-f ++ (code-f ++ case-middle-code)) ++ suffix by sym ++-assoc
+            step5 : prefix-f ++ ((code-f ++ case-middle-code) ++ suffix) ≡ (prefix-f ++ (code-f ++ case-middle-code)) ++ suffix
+            step5 = sym (++-assoc prefix-f (code-f ++ case-middle-code) suffix)
+
+            -- Step 6: prefix-f ++ (code-f ++ case-middle-code) = (prefix ++ setup-instrs) ++ (code-f ++ case-middle-code)
+            --       = prefix ++ (setup-instrs ++ (code-f ++ case-middle-code)) by ++-assoc
+            step6 : prefix-f ++ (code-f ++ case-middle-code) ≡ prefix ++ (setup-instrs ++ (code-f ++ case-middle-code))
+            step6 = ++-assoc prefix setup-instrs (code-f ++ case-middle-code)
+
+            -- Step 7: setup-instrs ++ (code-f ++ case-middle-code) = compile-x86 [ f , g ] definitionally
+            -- So prefix ++ (setup-instrs ++ (code-f ++ case-middle-code)) = prefix ++ compile-x86 [ f , g ]
+            step7 : prefix ++ (setup-instrs ++ (code-f ++ case-middle-code)) ≡ prefix ++ compile-x86 [ f , g ]
+            step7 = refl
+
+            -- Step 8: (prefix-f ++ (code-f ++ case-middle-code)) ++ suffix = (prefix ++ compile-x86 [ f , g ]) ++ suffix
+            step8 : (prefix-f ++ (code-f ++ case-middle-code)) ++ suffix ≡ (prefix ++ compile-x86 [ f , g ]) ++ suffix
+            step8 = cong (_++ suffix) (trans step6 step7)
+
+            -- Step 9: (prefix ++ compile-x86 [ f , g ]) ++ suffix = prefix ++ (compile-x86 [ f , g ] ++ suffix) by ++-assoc
+            --       = prog
+            step9 : (prefix ++ compile-x86 [ f , g ]) ++ suffix ≡ prog
+            step9 = ++-assoc prefix (compile-x86 [ f , g ]) suffix
+
+          in trans step4 (trans step5 (trans step8 step9))
 
     -- Full execution star
     full-star : Star prog s s-final
     full-star = star-trans (star-trans star-setup star-f) star-cleanup
 
     -- Register preservation through all phases
+    -- Chain: orig → setup → after-f → final
+    -- r14: r14-setup (orig→setup), ir-r14 (setup→s1), r14-preserved (s1→final)
     r14-final : readReg (regs s-final) r14 ≡ orig-r14
-    r14-final = postulate-r14-final
-      where postulate postulate-r14-final : readReg (regs s-final) r14 ≡ orig-r14
+    r14-final = trans (CaseCleanupResult.r14-preserved cleanup-res)
+                      (trans (IRStarResultV.ir-r14 r-f) r14-setup)
 
     r15-final : readReg (regs s-final) r15 ≡ orig-r15
-    r15-final = postulate-r15-final
-      where postulate postulate-r15-final : readReg (regs s-final) r15 ≡ orig-r15
+    r15-final = trans (CaseCleanupResult.r15-preserved cleanup-res)
+                      (trans (IRStarResultV.ir-r15 r-f) r15-setup)
 
     -- rsp restored to original (rsp-final already proved)
+    -- ir-rsp-delta [ f , g ] = 0, so rsp = orig-rsp ∸ slots 0 = orig-rsp ∸ 0 = orig-rsp
+    -- Note: slots 0 = 0 *ℕ slot-size = 0 definitionally
     rsp-eq : readReg (regs s-final) rsp ≡ orig-rsp ∸ slots 0
-    rsp-eq = trans rsp-final (sym (cong (orig-rsp ∸_) slots-0))
-      where
-        open import Once.Backend.X86.Correct.StackInstantiation using (slots)
-        postulate slots-0 : slots 0 ≡ 0
+    rsp-eq = rsp-final  -- slots 0 = 0, so orig-rsp ∸ slots 0 = orig-rsp ∸ 0 = orig-rsp
 
     -- Result validity: eval [ f , g ] (inj₁ a) = eval f a
     -- Need to show ValidAt (eval f a) (rax s-final) (memory s-final)
