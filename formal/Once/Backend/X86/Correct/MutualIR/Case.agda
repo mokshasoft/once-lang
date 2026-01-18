@@ -72,6 +72,11 @@ open import Relation.Nullary using (yes; no)
 open import Once.Backend.X86.Postulates
   using (rsp-in-stack-after-stack-op; rsp-bound-for-ir)
 
+-- Import Case helpers
+open import Once.Backend.X86.Correct.IR.Case
+  using (CaseInlSetupResult; case-inl-setup-star; CaseCleanupResult; case-inl-cleanup-star)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseInlSetupResult)
+
 ------------------------------------------------------------------------
 -- Case implementation using size-bounded dispatcher
 -- Termination is proven via Acc pattern on ir-size in MutualIR.agda
@@ -170,23 +175,57 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     f-req≤max : f-req ≤ (f-req ⊔ g-req)
     f-req≤max = m≤m⊔n f-req g-req
 
-    -- ========== Use postulate for now - full proof requires step-by-step execution ==========
-    -- This postulate will be eliminated by providing the actual Star execution
+    -- ========== Phase 1-2: Setup using helper ==========
+    -- Execute 6 instructions: push rbp, mov rbp rsp, mov r11 [rdi], cmp r11 0, jne, mov rdi [rdi+8]
+    setup-result : ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
+    setup-result = case-inl-setup-star f g prefix suffix a s val-addr
+                     h-false pc-eq tag-is-0 val-at-rdi+8 stack-inv cap-in rbp-inv
+
+    s-setup : State
+    s-setup = proj₁ setup-result
+
+    setup-res : CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
+    setup-res = proj₂ setup-result
+
+    -- Extract properties from setup result
+    star-setup : Star prog s s-setup
+    star-setup = CaseInlSetupResult.star-setup setup-res
+
+    h-setup : halted s-setup ≡ false
+    h-setup = CaseInlSetupResult.h-setup setup-res
+
+    pc-setup : pc s-setup ≡ length prefix +ℕ 6
+    pc-setup = CaseInlSetupResult.pc-setup setup-res
+
+    rdi-setup : readReg (regs s-setup) rdi ≡ val-addr
+    rdi-setup = CaseInlSetupResult.rdi-setup setup-res
+
+    rbp-setup : readReg (regs s-setup) rbp ≡ orig-rsp ∸ slot-size
+    rbp-setup = CaseInlSetupResult.rbp-setup setup-res
+
+    rsp-setup : readReg (regs s-setup) rsp ≡ orig-rsp ∸ slot-size
+    rsp-setup = CaseInlSetupResult.rsp-setup setup-res
+
+    r14-setup : readReg (regs s-setup) r14 ≡ orig-r14
+    r14-setup = CaseInlSetupResult.r14-setup setup-res
+
+    r15-setup : readReg (regs s-setup) r15 ≡ orig-r15
+    r15-setup = CaseInlSetupResult.r15-setup setup-res
+
+    mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
+    mem-heap-setup = CaseInlSetupResult.mem-heap-setup setup-res
+
+    stack-inv-setup : StackInvariant s-setup
+    stack-inv-setup = CaseInlSetupResult.stack-inv-setup setup-res
+
+    -- Capacity for f needs to be derived from case capacity after push
+    -- ir-stack-requirement [ f , g ] = 1 + max(req-f, req-g)
+    -- After push, capacity reduced by 1, so have max(req-f, req-g) ≥ req-f
     postulate
-      -- Setup phase result
-      s-setup : State
-      star-setup : Star prog s s-setup
-      h-setup : halted s-setup ≡ false
-      pc-setup : pc s-setup ≡ length prefix +ℕ 6
-      rdi-setup : readReg (regs s-setup) rdi ≡ val-addr
-      rbp-setup : readReg (regs s-setup) rbp ≡ orig-rsp ∸ slot-size
-      rsp-setup : readReg (regs s-setup) rsp ≡ orig-rsp ∸ slot-size
-      r14-setup : readReg (regs s-setup) r14 ≡ orig-r14
-      r15-setup : readReg (regs s-setup) r15 ≡ orig-r15
-      mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
-      stack-inv-setup : StackInvariant s-setup
       cap-setup : StackCapacity s-setup f-req
-      rbp-inv-setup : RbpInvariant s-setup
+
+    rbp-inv-setup : RbpInvariant s-setup
+    rbp-inv-setup = CaseInlSetupResult.rbp-inv-setup setup-res
 
     -- Input validity for f after setup (heap preserved)
     input-valid-for-f : ValidAt a (readReg (regs s-setup) rdi) (memory s-setup)
