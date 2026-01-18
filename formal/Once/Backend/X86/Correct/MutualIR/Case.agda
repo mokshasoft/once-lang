@@ -57,11 +57,11 @@ open import Once.Backend.X86.Correct.FetchStep using (step-exec)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-subst-heap-preserved; valid-inl-tag-is-0; valid-inl-child; valid-inl-val-ptr;
-         valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr)
+         valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr; valid-addr-in-heap)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (slots; slot-size; StackCapacity; ir-stack-requirement; capacity-from-larger;
          capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged)
-open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode)
+open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode; heap-offset)
 open import Data.Nat.Properties using (≤-trans; <-trans; ≤-<-trans; <⇒≤; m≤m⊔n; m≤n⊔m; m∸n≤m; +-comm; suc-injective)
 open import Data.List.Properties using (++-assoc)
 open import Once.Backend.X86.Correct.CompileLength using (length-++)
@@ -75,7 +75,7 @@ open import Once.Backend.X86.Postulates
 -- Import Case helpers
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseInlSetupResult; case-inl-setup-star; CaseCleanupResult; case-inl-cleanup-star)
-open import Once.Backend.X86.Correct.IR.Case using (module CaseInlSetupResult)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseInlSetupResult; module CaseCleanupResult)
 
 ------------------------------------------------------------------------
 -- Case implementation using size-bounded dispatcher
@@ -177,9 +177,18 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
 
     -- ========== Phase 1-2: Setup using helper ==========
     -- Execute 6 instructions: push rbp, mov rbp rsp, mov r11 [rdi], cmp r11 0, jne, mov rdi [rdi+8]
+
+    -- Derive InHeap proofs from ValidAt
+    rdi-in-heap : InHeap orig-rdi
+    rdi-in-heap = valid-addr-in-heap input-valid
+
+    -- rdi+8 is also in heap (follows from rdi in heap + heap is contiguous)
+    rdi+8-in-heap : InHeap (orig-rdi +ℕ slot-size)
+    rdi+8-in-heap = heap-offset orig-rdi slot-size rdi-in-heap
+
     setup-result : ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
     setup-result = case-inl-setup-star f g prefix suffix a s val-addr
-                     h-false pc-eq tag-is-0 val-at-rdi+8 stack-inv cap-in rbp-inv
+                     h-false pc-eq tag-is-0 val-at-rdi+8 rdi-in-heap rdi+8-in-heap stack-inv cap-in rbp-inv
 
     s-setup : State
     s-setup = proj₁ setup-result
@@ -268,15 +277,65 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     r-f : IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 a (length prefix-f)
     r-f = proj₂ step-f
 
-    -- ========== Phase 4: Jump to cleanup (jmp) ==========
-    -- ========== Phase 5: Cleanup (mov rsp,rbp; pop rbp) ==========
+    -- ========== Phase 4-5: Cleanup using helper ==========
+    -- Execute: jmp cleanup, mov rsp rbp, pop rbp
 
-    postulate
-      -- Final state after cleanup
-      s-final : State
-      star-cleanup : Star prog s1 s-final
-      h-final : halted s-final ≡ false
-      pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    -- Need: halted s1 = false
+    h-s1 : halted s1 ≡ false
+    h-s1 = IRStarResultV.ir-halted r-f
+
+    -- Need: pc s1 = length prefix + 6 + compile-length f
+    -- From ir-pc: pc s1 = length prefix-f + compile-length f = (length prefix + 6) + compile-length f
+    pc-s1 : pc s1 ≡ length prefix +ℕ 6 +ℕ compile-length f
+    pc-s1 = trans (IRStarResultV.ir-pc r-f) (cong (_+ℕ compile-length f) len-prefix-f)
+
+    -- Need: rbp s1 = orig-rsp - slot-size
+    -- From ir-rbp: rbp s1 = rbp s-setup, and rbp-setup: rbp s-setup = orig-rsp - slot-size
+    rbp-s1 : readReg (regs s1) rbp ≡ orig-rsp ∸ slot-size
+    rbp-s1 = trans (IRStarResultV.ir-rbp r-f) rbp-setup
+
+    -- Need: mem s1 at (rbp s1) = just orig-rbp
+    -- From ir-mem-rbp: mem s1 at (rbp s-setup) = mem s-setup at (rbp s-setup)
+    -- And mem-saved-rbp: mem s-setup at (rbp s-setup) = just orig-rbp
+    mem-saved-rbp-setup : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just orig-rbp
+    mem-saved-rbp-setup = CaseInlSetupResult.mem-saved-rbp setup-res
+
+    mem-rbp-s1 : readMem (memory s1) (readReg (regs s1) rbp) ≡ just orig-rbp
+    mem-rbp-s1 = trans (subst (λ addr → readMem (memory s1) addr ≡ readMem (memory s-setup) addr)
+                              (sym (IRStarResultV.ir-rbp r-f))
+                              (IRStarResultV.ir-mem-rbp r-f))
+                       (subst (λ v → readMem (memory s-setup) v ≡ just orig-rbp)
+                              (sym (IRStarResultV.ir-rbp r-f))
+                              mem-saved-rbp-setup)
+
+    stack-inv-s1 : StackInvariant s1
+    stack-inv-s1 = IRStarResultV.ir-stack-inv r-f
+
+    -- Call cleanup helper
+    cleanup-result : ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s1 s-final orig-rsp orig-rbp
+    cleanup-result = case-inl-cleanup-star f g prefix suffix s1 orig-rsp orig-rbp
+                       h-s1 pc-s1 rbp-s1 mem-rbp-s1 stack-inv-s1
+
+    s-final : State
+    s-final = proj₁ cleanup-result
+
+    cleanup-res : CaseCleanupResult {A} {B} {C} prefix suffix f g s1 s-final orig-rsp orig-rbp
+    cleanup-res = proj₂ cleanup-result
+
+    star-cleanup : Star prog s1 s-final
+    star-cleanup = CaseCleanupResult.star-cleanup cleanup-res
+
+    h-final : halted s-final ≡ false
+    h-final = CaseCleanupResult.h-final cleanup-res
+
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    pc-final = CaseCleanupResult.pc-final cleanup-res
+
+    rsp-final : readReg (regs s-final) rsp ≡ orig-rsp
+    rsp-final = CaseCleanupResult.rsp-final cleanup-res
+
+    rbp-final : readReg (regs s-final) rbp ≡ orig-rbp
+    rbp-final = CaseCleanupResult.rbp-final cleanup-res
 
     -- ========== Assemble final result ==========
     postulate
