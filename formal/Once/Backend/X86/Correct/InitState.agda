@@ -4,9 +4,10 @@
 -- Initial state setup for x86-64 execution.
 -- These are independent (Level 0) - no dependencies on other Correct/* modules.
 --
--- KEY CHANGE: Uses stateful encoding to properly allocate input values
--- in memory. This eliminates the "magic heap" approach where postulates
--- claimed validity for emptyMemory.
+-- KEY CHANGES:
+-- 1. Parameterized over abstract StackPointer/HeapPointer (no magic numbers)
+-- 2. Uses stateful encoding to properly allocate input values in memory
+-- 3. Stack capacity comes from StackPointer's interval membership
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.InitState where
@@ -43,8 +44,8 @@ open import Once.Postulates
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; r15-unused)
 open import Once.Backend.Common.MemoryRegions
-  using (StackPointer; region-of; stack)
-open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
+  using (StackPointer; HeapPointer; region-of; stack; heap)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; haddr to hp-addr)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -52,37 +53,30 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
--- Initial State Setup
+-- Initial State Setup (Parameterized)
 ------------------------------------------------------------------------
 
 -- | Create initial state with input in rdi
 --
+-- Now parameterized over StackPointer - no hard-coded addresses!
+-- The StackPointer bundles:
+--   - addr: the stack base address (abstract)
+--   - in-stack: proof that addr is in the stack region
+--
 -- Sets up machine state ready to execute generated code:
 --   - rdi contains encoded input
 --   - Memory contains encoded heap objects
---   - Other registers initialized to 0
---   - Stack pointer set appropriately
-
--- | Initial state with input value (concrete definition)
---
--- We set up the state with:
---   - rdi = encode x (input)
---   - rsp = rbp = large value (stack pointer = frame pointer at entry)
+--   - rsp = rbp = sp.addr (stack pointer = frame pointer at entry)
 --   - pc = 0
 --   - halted = false
---   - Memory contains encoded representation of x (postulated)
-initWithInput : ∀ {A} → ⟦ A ⟧ → State
-initWithInput {A} x = mkstate
-  (writeReg (writeReg (writeReg emptyRegFile rdi (encode x)) rsp stackBase) rbp stackBase)
+initWithInput : ∀ {A} → (sp : StackPointer) → ⟦ A ⟧ → State
+initWithInput {A} sp x = mkstate
+  (writeReg (writeReg (writeReg emptyRegFile rdi (encode x)) rsp (sp-addr sp)) rbp (sp-addr sp))
   encodedMemory
   initFlags
   0
   false
   where
-    -- Stack starts at a high address
-    stackBase : Word
-    stackBase = 0x7FFF0000
-
     -- Memory containing encoded values
     -- The encoding postulates (encode-pair-fst, encode-inl-tag, etc.) in
     -- Once.Postulates already assert that reading from any memory at
@@ -93,81 +87,97 @@ initWithInput {A} x = mkstate
     encodedMemory = emptyMemory
 
 -- | The input is placed in rdi (proven from definition)
---
--- Proof: regs (initWithInput x) = writeReg (writeReg emptyRegFile rdi (encode x)) rsp stackBase
--- readReg on rdi extracts get-rdi, which is (encode x) since we wrote rdi first then rsp.
-initWithInput-rdi : ∀ {A} (x : ⟦ A ⟧) →
-  readReg (regs (initWithInput x)) rdi ≡ encode x
-initWithInput-rdi x = refl
+initWithInput-rdi : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
+  readReg (regs (initWithInput sp x)) rdi ≡ encode x
+initWithInput-rdi sp x = refl
 
 -- | Initial state is not halted (proven from definition)
-initWithInput-halted : ∀ {A} (x : ⟦ A ⟧) → halted (initWithInput x) ≡ false
-initWithInput-halted x = refl
+initWithInput-halted : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) → halted (initWithInput sp x) ≡ false
+initWithInput-halted sp x = refl
 
 -- | Initial state has pc = 0 (proven from definition)
-initWithInput-pc : ∀ {A} (x : ⟦ A ⟧) → pc (initWithInput x) ≡ 0
-initWithInput-pc x = refl
+initWithInput-pc : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) → pc (initWithInput sp x) ≡ 0
+initWithInput-pc sp x = refl
 
 -- | Initial state satisfies StackInvariant (r15 = 0)
 -- The initial state only sets rdi, rsp, rbp from emptyRegFile (which has r15 = 0)
-initWithInput-stack-inv : ∀ {A} (x : ⟦ A ⟧) → StackInvariant (initWithInput x)
-initWithInput-stack-inv x = r15-unused r15≡0
+initWithInput-stack-inv : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) → StackInvariant (initWithInput sp x)
+initWithInput-stack-inv sp x = r15-unused r15≡0
   where
-    r15≡0 : readReg (regs (initWithInput x)) r15 ≡ 0
+    r15≡0 : readReg (regs (initWithInput sp x)) r15 ≡ 0
     r15≡0 = refl  -- r15 untouched, defaults to 0 from emptyRegFile
 
 -- | Initial state has sufficient stack capacity
--- stackBase = 0x7FFF0000 provides ample space for stack operations
-open import Data.Nat using (_>_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; _>_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound; slots)
 
--- Specific postulate: stackBase is in stack region
--- This is more precise than the blanket rsp-in-stack-after-stack-op
--- because it only claims the property for the specific initial address.
--- JUSTIFICATION: The runtime initializes stackBase (0x7FFF0000) in the stack region.
-postulate
-  stackBase-in-stack : region-of 0x7FFF0000 ≡ stack
-
--- Internal: raw rsp bound proof
-private
-  rsp-bound : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > slots 2
-  rsp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
-
--- | Initial state has stack capacity for 2 slots (16 bytes)
--- Uses stackBase-in-stack instead of blanket postulate
-initWithInput-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInput x) 2
-initWithInput-stack-capacity x = rsp-bound-to-capacity 2 (initWithInput x) stackBase-in-stack (rsp-bound x)
+-- | Stack capacity for initial state
+-- The capacity comes from the StackPointer's properties.
+-- We require that the caller provides a StackPointer with sufficient capacity.
+initWithInput-stack-capacity : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
+  sp-addr sp > slots 2 →
+  StackCapacity (initWithInput sp x) 2
+initWithInput-stack-capacity sp x addr-bound =
+  rsp-bound-to-capacity 2 (initWithInput sp x) (StackPointer.in-stack sp) addr-bound
 
 -- | Initial state has sufficient rsp (derived from capacity, for legacy interfaces)
-initWithInput-rsp-sufficient : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInput x)) rsp > slots 2
-initWithInput-rsp-sufficient x = capacity-2-to-rsp-bound (initWithInput x) (initWithInput-stack-capacity x)
+initWithInput-rsp-sufficient : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
+  sp-addr sp > slots 2 →
+  readReg (regs (initWithInput sp x)) rsp > slots 2
+initWithInput-rsp-sufficient sp x addr-bound =
+  capacity-2-to-rsp-bound (initWithInput sp x) (initWithInput-stack-capacity sp x addr-bound)
 
 -- | Initial state satisfies RbpInvariant
--- Both rsp and rbp are set to stackBase. The rbp-frame is the initial stack frame.
-initWithInput-rbp-inv : ∀ {A} (x : ⟦ A ⟧) → RbpInvariant (initWithInput x)
-initWithInput-rbp-inv x = record
-  { rbp-frame = init-frame
-  ; rbp-is-base = refl   -- rbp = stackBase = sp-addr init-frame
-  ; frame-bound = ≤-refl -- sp-addr init-frame = stackBase ≥ stackBase = rsp
+-- Both rsp and rbp are set to sp.addr. The rbp-frame is the initial stack frame.
+initWithInput-rbp-inv : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) → RbpInvariant (initWithInput sp x)
+initWithInput-rbp-inv sp x = record
+  { rbp-frame = sp
+  ; rbp-is-base = refl   -- rbp = sp.addr = sp-addr sp
+  ; frame-bound = ≤-refl -- sp-addr sp ≥ sp-addr sp = rsp
   }
-  where
-    init-frame : StackPointer
-    init-frame = record
-      { addr = 0x7FFF0000  -- stackBase
-      ; in-stack = stackBase-in-stack
-      }
 
--- | Stack base value exported for other modules
+------------------------------------------------------------------------
+-- Legacy Interface (Backward Compatibility)
+------------------------------------------------------------------------
+
+-- | Legacy stackBase constant
+-- DEPRECATED: Use parameterized version instead.
+-- This is kept for backward compatibility during migration.
 stackBase : Word
 stackBase = 0x7FFF0000
 
+-- | Legacy postulate for stackBase's region membership
+-- DEPRECATED: Use StackPointer's in-stack field instead.
+postulate
+  stackBase-in-stack : region-of 0x7FFF0000 ≡ stack
+
+-- | Legacy StackPointer using stackBase
+legacyStackPointer : StackPointer
+legacyStackPointer = record
+  { addr = stackBase
+  ; in-stack = stackBase-in-stack
+  }
+
+-- | Legacy initWithInput (takes only the value, uses hard-coded stackBase)
+-- DEPRECATED: Use parameterized initWithInput instead.
+initWithInputLegacy : ∀ {A} → ⟦ A ⟧ → State
+initWithInputLegacy x = initWithInput legacyStackPointer x
+
+-- | Legacy rsp-bound proof using s≤s chain
+-- DEPRECATED: The parameterized version derives this from StackPointer properties.
+private
+  legacy-rsp-bound : ∀ {A} (x : ⟦ A ⟧) → readReg (regs (initWithInputLegacy x)) rsp > slots 2
+  legacy-rsp-bound x = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))))))))))
+
+-- | Legacy capacity proof
+initWithInputLegacy-stack-capacity : ∀ {A} (x : ⟦ A ⟧) → StackCapacity (initWithInputLegacy x) 2
+initWithInputLegacy-stack-capacity x =
+  rsp-bound-to-capacity 2 (initWithInputLegacy x) stackBase-in-stack (legacy-rsp-bound x)
+
 ------------------------------------------------------------------------
--- NEW: Stateful Initial State Setup
---
--- This version properly allocates input values in memory, eliminating
--- the need for encoding postulates.
+-- NEW: Stateful Initial State Setup (Parameterized)
 ------------------------------------------------------------------------
 
 -- | Record containing the initial state plus validity evidence
@@ -182,6 +192,10 @@ open InitResult public
 
 -- | Create initial state with STATEFUL encoding
 --
+-- Now parameterized over StackPointer AND HeapPointer!
+-- - StackPointer provides the stack base address
+-- - HeapPointer provides the heap start address for allocation
+--
 -- Unlike initWithInput, this version:
 --   1. Actually allocates x in memory using encode-s
 --   2. Uses that memory in the State
@@ -189,10 +203,10 @@ open InitResult public
 --
 -- The key property: memory ACTUALLY contains the encoded value,
 -- so encoding theorems can be applied without postulates.
-initWithInputStateful : ∀ {A} → ⟦ A ⟧ → InitResult A
-initWithInputStateful {A} x = record
+initWithInputStateful : ∀ {A} → (sp : StackPointer) → (hp : HeapPointer) → ⟦ A ⟧ → InitResult A
+initWithInputStateful {A} sp hp x = record
   { state = mkstate
-      (writeReg (writeReg (writeReg emptyRegFile rdi x-addr) rsp stackBase) rbp stackBase)
+      (writeReg (writeReg (writeReg emptyRegFile rdi x-addr) rsp (sp-addr sp)) rbp (sp-addr sp))
       (alloc-mem x-alloc)  -- Use the memory with allocated x!
       initFlags
       0
@@ -202,9 +216,9 @@ initWithInputStateful {A} x = record
   ; rdi-eq = refl
   }
   where
-    -- Start with heap at a good location (after stack area)
+    -- Start with heap at the provided HeapPointer address
     init-heap : AllocState
-    init-heap = alloc-state emptyMemory 0x80000000  -- Heap starts after 2GB
+    init-heap = alloc-state emptyMemory (hp-addr hp)
 
     -- Encode x, allocating it in memory
     encode-result : Word × AllocState
@@ -217,26 +231,46 @@ initWithInputStateful {A} x = record
     x-alloc = proj₂ encode-result
 
 -- | The stateful input is placed in rdi
-initWithInputStateful-rdi : ∀ {A} (x : ⟦ A ⟧) →
-  readReg (regs (state (initWithInputStateful x))) rdi ≡ input-addr (initWithInputStateful x)
-initWithInputStateful-rdi x = rdi-eq (initWithInputStateful x)
+initWithInputStateful-rdi : ∀ {A} (sp : StackPointer) (hp : HeapPointer) (x : ⟦ A ⟧) →
+  readReg (regs (state (initWithInputStateful sp hp x))) rdi ≡ input-addr (initWithInputStateful sp hp x)
+initWithInputStateful-rdi sp hp x = rdi-eq (initWithInputStateful sp hp x)
 
 -- | Stateful initial state is not halted
-initWithInputStateful-halted : ∀ {A} (x : ⟦ A ⟧) →
-  halted (state (initWithInputStateful x)) ≡ false
-initWithInputStateful-halted x = refl
+initWithInputStateful-halted : ∀ {A} (sp : StackPointer) (hp : HeapPointer) (x : ⟦ A ⟧) →
+  halted (state (initWithInputStateful sp hp x)) ≡ false
+initWithInputStateful-halted sp hp x = refl
 
 -- | Stateful initial state has pc = 0
-initWithInputStateful-pc : ∀ {A} (x : ⟦ A ⟧) →
-  pc (state (initWithInputStateful x)) ≡ 0
-initWithInputStateful-pc x = refl
+initWithInputStateful-pc : ∀ {A} (sp : StackPointer) (hp : HeapPointer) (x : ⟦ A ⟧) →
+  pc (state (initWithInputStateful sp hp x)) ≡ 0
+initWithInputStateful-pc sp hp x = refl
 
 -- Additional imports for validity lemmas
 open import Data.Maybe using (just)
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
+open import Data.Nat using () renaming (_+_ to _+ℕ_)
 
 ------------------------------------------------------------------------
--- Input Validity Lemmas
+-- Legacy Stateful Interface (Backward Compatibility)
+------------------------------------------------------------------------
+
+-- | Legacy HeapPointer using hard-coded address
+-- DEPRECATED: Use parameterized version with explicit HeapPointer instead.
+postulate
+  heapBase-in-heap : region-of 0x80000000 ≡ heap
+
+legacyHeapPointer : HeapPointer
+legacyHeapPointer = record
+  { haddr = 0x80000000
+  ; in-heap = heapBase-in-heap
+  }
+
+-- | Legacy stateful init (uses hard-coded addresses)
+-- DEPRECATED: Use parameterized initWithInputStateful instead.
+initWithInputStatefulLegacy : ∀ {A} → ⟦ A ⟧ → InitResult A
+initWithInputStatefulLegacy x = initWithInputStateful legacyStackPointer legacyHeapPointer x
+
+------------------------------------------------------------------------
+-- Input Validity Lemmas (Parameterized)
 --
 -- These lemmas prove that when initWithInputStateful allocates a
 -- compound value, the memory satisfies the stateful validity predicate.
@@ -244,52 +278,52 @@ open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
 ------------------------------------------------------------------------
 
 -- | For pair inputs, the initial memory satisfies PairAtS
-initWithInputStateful-pair-valid : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
-  let init-heap = alloc-state emptyMemory 0x80000000
+initWithInputStateful-pair-valid : ∀ {A B} (sp : StackPointer) (hp : HeapPointer) (a : ⟦ A ⟧) (b : ⟦ B ⟧) →
+  let init-heap = alloc-state emptyMemory (hp-addr hp)
       (addr-a , st₁) = encode-s {A} a init-heap
       (addr-b , st₂) = encode-s {B} b st₁
-      result = initWithInputStateful {A * B} (a , b)
+      result = initWithInputStateful {A * B} sp hp (a , b)
       m = memory (state result)
       addr-pair = input-addr result
   in PairAtS addr-a addr-b addr-pair m
-initWithInputStateful-pair-valid {A} {B} a b = pair-at-s fst-valid snd-valid
+initWithInputStateful-pair-valid {A} {B} sp hp a b = pair-at-s fst-valid snd-valid
   where
     init-heap : AllocState
-    init-heap = alloc-state emptyMemory 0x80000000
+    init-heap = alloc-state emptyMemory (hp-addr hp)
 
     -- PROVEN from StatefulEncoding theorems
     fst-valid = encode-pair-fst-thm {A} {B} a b init-heap
     snd-valid = encode-pair-snd-thm {A} {B} a b init-heap
 
 -- | For left sum inputs, the initial memory satisfies InlAtS
-initWithInputStateful-inl-valid : ∀ {A B} (a : ⟦ A ⟧) →
-  let init-heap = alloc-state emptyMemory 0x80000000
+initWithInputStateful-inl-valid : ∀ {A B} (sp : StackPointer) (hp : HeapPointer) (a : ⟦ A ⟧) →
+  let init-heap = alloc-state emptyMemory (hp-addr hp)
       (addr-a , st₁) = encode-s {A} a init-heap
-      result = initWithInputStateful {A + B} (inj₁ a)
+      result = initWithInputStateful {A + B} sp hp (inj₁ a)
       m = memory (state result)
       addr-sum = input-addr result
   in InlAtS addr-a addr-sum m
-initWithInputStateful-inl-valid {A} {B} a = inl-at-s tag-valid val-valid
+initWithInputStateful-inl-valid {A} {B} sp hp a = inl-at-s tag-valid val-valid
   where
     init-heap : AllocState
-    init-heap = alloc-state emptyMemory 0x80000000
+    init-heap = alloc-state emptyMemory (hp-addr hp)
 
     -- PROVEN from StatefulEncoding theorems
     tag-valid = encode-inl-tag-thm {A} {B} a init-heap
     val-valid = encode-inl-val-thm {A} {B} a init-heap
 
 -- | For right sum inputs, the initial memory satisfies InrAtS
-initWithInputStateful-inr-valid : ∀ {A B} (b : ⟦ B ⟧) →
-  let init-heap = alloc-state emptyMemory 0x80000000
+initWithInputStateful-inr-valid : ∀ {A B} (sp : StackPointer) (hp : HeapPointer) (b : ⟦ B ⟧) →
+  let init-heap = alloc-state emptyMemory (hp-addr hp)
       (addr-b , st₁) = encode-s {B} b init-heap
-      result = initWithInputStateful {A + B} (inj₂ b)
+      result = initWithInputStateful {A + B} sp hp (inj₂ b)
       m = memory (state result)
       addr-sum = input-addr result
   in InrAtS addr-b addr-sum m
-initWithInputStateful-inr-valid {A} {B} b = inr-at-s tag-valid val-valid
+initWithInputStateful-inr-valid {A} {B} sp hp b = inr-at-s tag-valid val-valid
   where
     init-heap : AllocState
-    init-heap = alloc-state emptyMemory 0x80000000
+    init-heap = alloc-state emptyMemory (hp-addr hp)
 
     -- PROVEN from StatefulEncoding theorems
     tag-valid = encode-inr-tag-thm {A} {B} b init-heap
