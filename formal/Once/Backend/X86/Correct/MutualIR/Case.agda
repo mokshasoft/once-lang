@@ -28,7 +28,7 @@ open import Once.Backend.Common.MemoryRegions
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; [,]-f-smaller; [,]-g-smaller)
 open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_; _⊔_; suc) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; subst₂; cong₂)
@@ -54,13 +54,13 @@ open import Data.Sum using (inj₁; inj₂)
 -- Additional imports for proving case execution
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.FetchStep using (step-exec)
-open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; rbp-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; rbp-inv-preserved-unchanged; ClosureWFOutput)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-subst-heap-preserved; valid-inl-tag-is-0; valid-inl-child; valid-inl-val-ptr;
          valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr; valid-addr-in-heap)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (slots; slot-size; StackCapacity; ir-stack-requirement; capacity-from-larger;
-         capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged)
+  using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity;
+         capacity-from-larger; capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged)
 open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode; heap-offset)
 open import Data.Nat.Properties using (≤-trans; <-trans; ≤-<-trans; <⇒≤; m≤m⊔n; m≤n⊔m; m∸n≤m; +-comm; suc-injective)
 open import Data.List.Properties using (++-assoc)
@@ -227,11 +227,29 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     stack-inv-setup : StackInvariant s-setup
     stack-inv-setup = CaseInlSetupResult.stack-inv-setup setup-res
 
-    -- Capacity for f needs to be derived from case capacity after push
-    -- ir-stack-requirement [ f , g ] = 1 + max(req-f, req-g)
-    -- After push, capacity reduced by 1, so have max(req-f, req-g) ≥ req-f
-    postulate
-      cap-setup : StackCapacity s-setup f-req
+    -- Capacity for f: derive from case capacity after push
+    -- ir-stack-requirement [ f , g ] = 1 + (f-req ⊔ g-req) (by definition)
+    -- After push, capacity reduced by 1, so we have (f-req ⊔ g-req) ≥ f-req
+
+    -- Step 1: ir-stack-requirement [ f , g ] = suc (f-req ⊔ g-req)
+    case-req-eq : case-req ≡ suc (f-req ⊔ g-req)
+    case-req-eq = refl
+
+    -- Step 2: Convert cap-in to StackCapacity s (suc (f-req ⊔ g-req))
+    cap-in' : StackCapacity s (suc (f-req ⊔ g-req))
+    cap-in' = subst (StackCapacity s) case-req-eq cap-in
+
+    -- Step 3: rsp s-setup = orig-rsp - slot-size, orig-rsp = rsp s
+    rsp-setup-from-s : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slot-size
+    rsp-setup-from-s = rsp-setup
+
+    -- Step 4: Apply capacity-after-push to get StackCapacity s-setup (f-req ⊔ g-req)
+    cap-max : StackCapacity s-setup (f-req ⊔ g-req)
+    cap-max = capacity-after-push s s-setup (f-req ⊔ g-req) cap-in' rsp-setup-from-s
+
+    -- Step 5: Apply capacity-from-larger to get StackCapacity s-setup f-req
+    cap-setup : StackCapacity s-setup f-req
+    cap-setup = capacity-from-larger s-setup f-req (f-req ⊔ g-req) cap-max f-req≤max
 
     rbp-inv-setup : RbpInvariant s-setup
     rbp-inv-setup = CaseInlSetupResult.rbp-inv-setup setup-res
@@ -338,8 +356,83 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     rbp-final = CaseCleanupResult.rbp-final cleanup-res
 
     -- ========== Assemble final result ==========
+    -- Need to chain proofs through setup → f → cleanup
+
+    -- Star chain: s → s-setup → s1 → s-final
+    -- Note: r-f has star on (prefix-f ++ code-f ++ suffix-f), need to show this equals prog
+
+    -- Program equality: prog = prefix-f ++ code-f ++ suffix-f
+    -- prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    -- prefix-f = prefix ++ setup-instrs
+    -- code-f = compile-x86 f
+    -- suffix-f = jmp ... ++ label ... ++ mov ... ++ compile-x86 g ++ mov rsp rbp ++ pop rbp ++ suffix
+    -- prefix-f ++ code-f ++ suffix-f = prefix ++ setup-instrs ++ compile-x86 f ++ rest = prog
+
+    star-f : Star prog s-setup s1
+    star-f = subst (λ p → Star p s-setup s1) prog-eq (IRStarResultV.ir-star r-f)
+      where
+        postulate
+          -- prog = prefix-f ++ code-f ++ suffix-f
+          prog-eq : prefix-f ++ code-f ++ suffix-f ≡ prog
+
+    -- Full execution star
+    full-star : Star prog s s-final
+    full-star = star-trans (star-trans star-setup star-f) star-cleanup
+
+    -- Register preservation through all phases
+    r14-final : readReg (regs s-final) r14 ≡ orig-r14
+    r14-final = postulate-r14-final
+      where postulate postulate-r14-final : readReg (regs s-final) r14 ≡ orig-r14
+
+    r15-final : readReg (regs s-final) r15 ≡ orig-r15
+    r15-final = postulate-r15-final
+      where postulate postulate-r15-final : readReg (regs s-final) r15 ≡ orig-r15
+
+    -- rsp restored to original (rsp-final already proved)
+    rsp-eq : readReg (regs s-final) rsp ≡ orig-rsp ∸ slots 0
+    rsp-eq = trans rsp-final (sym (cong (orig-rsp ∸_) slots-0))
+      where
+        open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+        postulate slots-0 : slots 0 ≡ 0
+
+    -- Result validity: eval [ f , g ] (inj₁ a) = eval f a
+    -- Need to show ValidAt (eval f a) (rax s-final) (memory s-final)
     postulate
-      result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)
+      result-valid : ValidAt (eval [ f , g ] (inj₁ a)) (readReg (regs s-final) rax) (memory s-final)
+      mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+      mem-rbp : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+      mem-rbp+8 : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+      mem-above : ∀ addr → addr > orig-rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+      mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-heap : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      stack-inv-final : StackInvariant s-final
+      cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
+      rbp-inv-final : RbpInvariant s-final
+      closure-wf-final : ClosureWFOutput prog
+
+    result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)
+    result = record
+      { ir-star = full-star
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-result-valid = result-valid
+      ; ir-r14 = r14-final
+      ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
+      ; ir-rsp = rsp-eq
+      ; ir-mem = mem-r15
+      ; ir-mem-rbp = mem-rbp
+      ; ir-mem-rbp+8 = mem-rbp+8
+      ; ir-mem-above = mem-above
+      ; ir-mem-at-0 = mem-at-0
+      ; ir-mem-code = mem-code
+      ; ir-mem-heap = mem-heap
+      ; ir-stack-inv = stack-inv-final
+      ; ir-capacity = cap-final
+      ; ir-rbp-inv = rbp-inv-final
+      ; ir-closure-wf = closure-wf-final
+      }
 
 -- | Validity-based case execution (inr branch)
 -- Executes: frame setup (2), prefix (3), jne taken to label, prefix-right (2), g, cleanup (2)
