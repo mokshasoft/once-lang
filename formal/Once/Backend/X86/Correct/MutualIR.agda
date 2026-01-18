@@ -69,7 +69,7 @@ open import Once.Backend.X86.Correct.InitState
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
-open import Once.Backend.X86.Correct.ArithmeticLemmas using (6<19; word≤thunk-bound; word<pair)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (thunk-setup-within-apply-code; word-fits-thunk-bound; word-fits-pair-strict)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
@@ -357,16 +357,16 @@ mutual
 
 
       -- 6 < 19 + compile-length f (using: 6 < 19 and 19 ≤ 19 + compile-length f)
-      6<19+f : 6 < 19 +ℕ compile-length f
-      6<19+f = <-≤-trans 6<19 (m≤m+n 19 (compile-length f))
+      thunk-setup-within-apply-code+f : 6 < 19 +ℕ compile-length f
+      thunk-setup-within-apply-code+f = <-≤-trans thunk-setup-within-apply-code (m≤m+n 19 (compile-length f))
 
       -- 6 < 19 + compile-length f + length suffix
-      6<19+f+s : 6 < 19 +ℕ compile-length f +ℕ length suffix
-      6<19+f+s = <-≤-trans 6<19+f (m≤m+n (19 +ℕ compile-length f) (length suffix))
+      thunk-setup-within-apply-code+f+s : 6 < 19 +ℕ compile-length f +ℕ length suffix
+      thunk-setup-within-apply-code+f+s = <-≤-trans thunk-setup-within-apply-code+f (m≤m+n (19 +ℕ compile-length f) (length suffix))
 
       -- |prefix| + 6 < |prefix| + (19 + compile-length f + length suffix)
       step1 : length prefix +ℕ 6 < length prefix +ℕ (19 +ℕ compile-length f +ℕ length suffix)
-      step1 = +-monoʳ-< (length prefix) 6<19+f+s
+      step1 = +-monoʳ-< (length prefix) thunk-setup-within-apply-code+f+s
 
       -- Rewrite using curry-len and inner-len
       step2 : length prefix +ℕ (19 +ℕ compile-length f +ℕ length suffix)
@@ -515,7 +515,7 @@ mutual
 
       -- From rsp > slots 2, derive 8 ≤ rsp (for m+[n∸m]≡n)
       8≤rsp : 8 ≤ readReg (regs s) rsp
-      8≤rsp = ≤-trans word≤thunk-bound rsp-sufficient
+      8≤rsp = ≤-trans word-fits-thunk-bound rsp-sufficient
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -910,7 +910,7 @@ mutual
       -- Need: old-rsp-s ∸ 16 < old-rsp-s ∸ slot-size
       -- Use ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
       rsp-16<rsp-8 : readReg (regs s) rsp ∸ slots 2 < readReg (regs s) rsp ∸ slot-size
-      rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< word<pair 16≤rsp
+      rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< word-fits-pair-strict 16≤rsp
 
       old-rsp-8>rbp : old-rsp-s ∸ slot-size > readReg (regs s-after-setup) rbp
       old-rsp-8>rbp = subst (λ x → old-rsp-s ∸ slot-size > x) (sym rbp-setup-addr) rsp-16<rsp-8

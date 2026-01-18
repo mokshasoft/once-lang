@@ -63,7 +63,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          heap-stack-disjoint-via-region;
          -- Region proofs from encode
          encode-in-heap-sem; encode-offset-in-heap)
-open import Once.Backend.X86.Correct.ArithmeticLemmas using (word≤thunk-bound)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
 open import Once.Backend.Common.MemoryRegions
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          heap-offset; StackPointer; frameSlot; zero-not-in-stack;
@@ -875,7 +875,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
         -- Note: rsp-sufficient : s.rsp > slots 2 = 17 ≤ s.rsp (m > n = suc n ≤ m)
         -- So we can use it directly without <⇒≤
         8≤orig-rsp : 8 ≤ orig-rsp
-        8≤orig-rsp = ≤-trans word≤thunk-bound (≤-trans rsp-sufficient s-rsp≤orig)
+        8≤orig-rsp = ≤-trans word-fits-thunk-bound (≤-trans rsp-sufficient s-rsp≤orig)
 
     stack-inv1 : StackInvariant s1
     stack-inv1 = derive-stack-inv orig-inv

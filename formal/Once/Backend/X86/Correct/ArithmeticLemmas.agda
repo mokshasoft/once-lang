@@ -4,10 +4,11 @@
 -- Consolidated numeric comparison lemmas for X86 backend proofs.
 -- Uses decidability-based proofs for fast typechecking.
 --
--- Naming convention: semantic names describing what the invariant means,
--- not the numeric relationship (e.g., `word<frame` not `8<40`).
---
--- Lemmas grouped by relationship type for duplicate detection.
+-- NAMING CONVENTION (from arch-proof-instructions.md):
+-- - Name invariants, not relationships
+-- - No ordering symbols (≤, <, ≥, >) in names - arch-specific direction
+-- - Use "fits", "within", "sufficient" for containment
+-- - Describe the SEMANTIC meaning, not numeric comparison
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.ArithmeticLemmas where
@@ -18,211 +19,181 @@ open import Once.Backend.X86.Correct.Arithmetic
          word-size; pair-alloc; saved-regs-size; frame-size)
 
 ------------------------------------------------------------------------
--- Frame-size bounds (_ < frame-size, _ ≤ frame-size)
---
--- frame-size = 40 = saved-regs-size + pair-alloc = 24 + 16
+-- Frame containment (components fit within frame)
 ------------------------------------------------------------------------
 
--- | word-size < frame-size (8 < 40)
-word<frame : word-size < frame-size
-word<frame = from-yes-< (word-size <? frame-size)
+-- | Word fits strictly within frame
+word-fits-frame-strict : word-size < frame-size
+word-fits-frame-strict = from-yes-< (word-size <? frame-size)
 
--- | pair-alloc < frame-size (16 < 40)
-pair<frame : pair-alloc < frame-size
-pair<frame = from-yes-< (pair-alloc <? frame-size)
+-- | Pair-alloc fits strictly within frame
+pair-fits-frame-strict : pair-alloc < frame-size
+pair-fits-frame-strict = from-yes-< (pair-alloc <? frame-size)
 
--- | saved-regs-size < frame-size (24 < 40)
-regs<frame : saved-regs-size < frame-size
-regs<frame = from-yes-< (saved-regs-size <? frame-size)
+-- | Saved-regs fits strictly within frame
+regs-fits-frame-strict : saved-regs-size < frame-size
+regs-fits-frame-strict = from-yes-< (saved-regs-size <? frame-size)
 
--- | word-size ≤ frame-size (8 ≤ 40)
-word≤frame : word-size ≤ frame-size
-word≤frame = from-yes-≤ (word-size ≤? frame-size)
+-- | Word fits within frame
+word-fits-frame : word-size ≤ frame-size
+word-fits-frame = from-yes-≤ (word-size ≤? frame-size)
 
--- | pair-alloc ≤ frame-size (16 ≤ 40)
-pair≤frame : pair-alloc ≤ frame-size
-pair≤frame = from-yes-≤ (pair-alloc ≤? frame-size)
+-- | Pair-alloc fits within frame
+pair-fits-frame : pair-alloc ≤ frame-size
+pair-fits-frame = from-yes-≤ (pair-alloc ≤? frame-size)
 
--- | saved-regs-size ≤ frame-size (24 ≤ 40)
-regs≤frame : saved-regs-size ≤ frame-size
-regs≤frame = from-yes-≤ (saved-regs-size ≤? frame-size)
-
-------------------------------------------------------------------------
--- Slot-1 bounds (_ < frame-size ∸ word-size, _ ≤ frame-size ∸ word-size)
---
--- frame-size ∸ word-size = 32 (offset to slot 1)
-------------------------------------------------------------------------
-
--- | pair-alloc ≤ (frame-size ∸ word-size) (16 ≤ 32)
-pair≤slot1 : pair-alloc ≤ (frame-size ∸ word-size)
-pair≤slot1 = from-yes-≤ (pair-alloc ≤? (frame-size ∸ word-size))
-
--- | saved-regs-size ≤ (frame-size ∸ word-size) (24 ≤ 32)
-regs≤slot1 : saved-regs-size ≤ (frame-size ∸ word-size)
-regs≤slot1 = from-yes-≤ (saved-regs-size ≤? (frame-size ∸ word-size))
+-- | Saved-regs fits within frame
+regs-fits-frame : saved-regs-size ≤ frame-size
+regs-fits-frame = from-yes-≤ (saved-regs-size ≤? frame-size)
 
 ------------------------------------------------------------------------
--- Saved-regs-size bounds (_ ≤ saved-regs-size)
---
--- saved-regs-size = 24
+-- Slot-1 containment (frame - word = 32)
 ------------------------------------------------------------------------
 
--- | word-size ≤ saved-regs-size (8 ≤ 24)
--- Already in Arithmetic.agda as word≤regs, re-exported for convenience
-word≤regs : word-size ≤ saved-regs-size
-word≤regs = from-yes-≤ (word-size ≤? saved-regs-size)
+-- | Pair-alloc fits within slot-1 offset
+pair-fits-slot1 : pair-alloc ≤ (frame-size ∸ word-size)
+pair-fits-slot1 = from-yes-≤ (pair-alloc ≤? (frame-size ∸ word-size))
 
--- | pair-alloc ≤ saved-regs-size (16 ≤ 24)
--- Already in Arithmetic.agda as pair≤regs, re-exported for convenience
-pair≤regs : pair-alloc ≤ saved-regs-size
-pair≤regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
+-- | Saved-regs fits within slot-1 offset
+regs-fits-slot1 : saved-regs-size ≤ (frame-size ∸ word-size)
+regs-fits-slot1 = from-yes-≤ (saved-regs-size ≤? (frame-size ∸ word-size))
 
 ------------------------------------------------------------------------
--- Rsp-bound lemmas for specific stack configurations
---
--- These relate to minimum rsp values needed for various operations.
--- 33 = frame-size - word-size + 1 (minimum rsp for pair frame with margin)
--- 17 = pair-alloc + 1 (minimum rsp for thunk operations)
+-- Saved-regs containment
 ------------------------------------------------------------------------
 
--- | Minimum rsp for pair frame operations (33 ≤ 40)
--- 33 = saved-regs-size + word-size + 1 = 24 + 8 + 1
-rsp-min-pair≤frame : 33 ≤ frame-size
-rsp-min-pair≤frame = from-yes-≤ (33 ≤? frame-size)
+-- | Word fits within saved-regs
+word-fits-regs : word-size ≤ saved-regs-size
+word-fits-regs = from-yes-≤ (word-size ≤? saved-regs-size)
 
--- | Minimum rsp for thunk operations (1 ≤ 17)
-rsp-min-thunk-1 : 1 ≤ 17
-rsp-min-thunk-1 = from-yes-≤ (1 ≤? 17)
-
--- | word-size fits in thunk rsp bound (8 ≤ 17)
-word≤thunk-bound : word-size ≤ 17
-word≤thunk-bound = from-yes-≤ (word-size ≤? 17)
-
--- | word-size < thunk rsp bound (8 < 17, i.e., 9 ≤ 17)
-word<thunk-bound : word-size < 17
-word<thunk-bound = from-yes-< (word-size <? 17)
+-- | Pair-alloc fits within saved-regs
+pair-fits-regs : pair-alloc ≤ saved-regs-size
+pair-fits-regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
 
 ------------------------------------------------------------------------
--- Small slot bounds (for capacity proofs)
+-- Rsp minimum bounds (for stack operations)
 ------------------------------------------------------------------------
 
--- | 2 ≤ 3 (slot bounds)
-2≤3 : 2 ≤ 3
-2≤3 = from-yes-≤ (2 ≤? 3)
+-- | Minimum rsp for pair frame fits within frame
+rsp-min-pair-fits-frame : 33 ≤ frame-size
+rsp-min-pair-fits-frame = from-yes-≤ (33 ≤? frame-size)
 
--- | 3 ≤ 5 (slot bounds for pair setup)
-3≤5 : 3 ≤ 5
-3≤5 = from-yes-≤ (3 ≤? 5)
+-- | Single slot fits thunk bound
+single-slot-fits-thunk-bound : 1 ≤ 17
+single-slot-fits-thunk-bound = from-yes-≤ (1 ≤? 17)
 
--- | 2 ≤ 5 (slot bounds)
-2≤5 : 2 ≤ 5
-2≤5 = from-yes-≤ (2 ≤? 5)
+-- | Word fits thunk rsp bound
+word-fits-thunk-bound : word-size ≤ 17
+word-fits-thunk-bound = from-yes-≤ (word-size ≤? 17)
 
--- | 3 ≤ 3 (reflexive, for capacity)
-3≤3 : 3 ≤ 3
-3≤3 = from-yes-≤ (3 ≤? 3)
-
-------------------------------------------------------------------------
--- Compile-length bounds (instruction sequence lengths)
-------------------------------------------------------------------------
-
--- | 6 < 19 (closure header < curry instructions)
-6<19 : 6 < 19
-6<19 = from-yes-< (6 <? 19)
+-- | Word fits strictly within thunk rsp bound
+word-fits-thunk-bound-strict : word-size < 17
+word-fits-thunk-bound-strict = from-yes-< (word-size <? 17)
 
 ------------------------------------------------------------------------
--- Word vs pair-alloc bounds
+-- Capacity containment (output/intermediate slots fit in operation capacity)
 ------------------------------------------------------------------------
 
--- | word-size < pair-alloc (8 < 16)
-word<pair : word-size < pair-alloc
-word<pair = from-yes-< (word-size <? pair-alloc)
+-- | Output capacity fits apply-intermediate (2 slots output, 3 slots intermediate)
+output-fits-apply-intermediate : 2 ≤ 3
+output-fits-apply-intermediate = from-yes-≤ (2 ≤? 3)
+
+-- | Apply-intermediate fits pair-setup capacity (3 slots, 5 slots)
+apply-fits-pair-setup : 3 ≤ 5
+apply-fits-pair-setup = from-yes-≤ (3 ≤? 5)
+
+-- | Output capacity fits pair-setup (2 slots output, 5 slots pair-setup)
+output-fits-pair-setup : 2 ≤ 5
+output-fits-pair-setup = from-yes-≤ (2 ≤? 5)
 
 ------------------------------------------------------------------------
--- Thunk setup bounds (for ThunkExec.agda)
---
--- thunk-min-rsp = 41 = slots 5 + 1 (minimum rsp for thunk operations)
--- rsp-after-rbp-min = 25 = 33 - 8 (rsp after rbp push, minimum)
+-- Code region containment
 ------------------------------------------------------------------------
 
--- | pair-alloc ≤ rsp-after-rbp-min (16 ≤ 25)
--- Used for local-alloc-safe-after-pushes in thunk setup
-pair≤rsp-after-rbp-min : pair-alloc ≤ 25
-pair≤rsp-after-rbp-min = from-yes-≤ (pair-alloc ≤? 25)
-
--- | word-size ≤ word-size + 1 (8 ≤ 9)
--- Used for 8≤9 proofs in thunk frame calculations
-word≤word+1 : word-size ≤ 9
-word≤word+1 = from-yes-≤ (word-size ≤? 9)
-
--- | thunk-min-rsp-actual = 49 = slots thunk-setup-capacity + 1 = 48 + 1
--- This is what StackCapacity.rsp-sufficient gives: old-rsp > 48
-
--- | 41 ≤ thunk-rsp-actual-min (41 ≤ 49)
--- Used for rsp-safe-after-r15-push derivation from capacity
-41≤thunk-rsp-actual : 41 ≤ 49
-41≤thunk-rsp-actual = from-yes-≤ (41 ≤? 49)
-
--- | four-slot-offset ≤ thunk-rsp-actual-min (32 ≤ 49)
--- Used for rsp-above-4-slots, rsp-fits-4-slots in thunk operations
-four-slots≤thunk-rsp-actual : 32 ≤ 49
-four-slots≤thunk-rsp-actual = from-yes-≤ (32 ≤? 49)
-
--- | three-slot-offset+1 ≤ thunk-rsp-actual-min (25 ≤ 49)
--- Used for rsp-above-3-slot-offset in thunk operations
-rsp-after-rbp-min≤thunk-rsp-actual : 25 ≤ 49
-rsp-after-rbp-min≤thunk-rsp-actual = from-yes-≤ (25 ≤? 49)
-
--- | three-slots ≤ four-slots (24 ≤ 32)
--- Used for three-slots-fit-in-four associativity proofs
-three-slots≤four-slots : 24 ≤ 32
-three-slots≤four-slots = from-yes-≤ (24 ≤? 32)
+-- | Thunk setup fits within apply code region
+thunk-setup-within-apply-code : 6 < 19
+thunk-setup-within-apply-code = from-yes-< (6 <? 19)
 
 ------------------------------------------------------------------------
--- Capacity slot bounds (for slot≤capacity proofs)
+-- Word/pair containment
 ------------------------------------------------------------------------
 
--- | 2 ≤ 6 (output slots ≤ thunk setup capacity)
-2≤6 : 2 ≤ 6
-2≤6 = from-yes-≤ (2 ≤? 6)
-
--- | 3 ≤ 6 (various slot bounds)
-3≤6 : 3 ≤ 6
-3≤6 = from-yes-≤ (3 ≤? 6)
-
--- | 4 ≤ 6 (curry closure capacity ≤ thunk setup capacity)
-4≤6 : 4 ≤ 6
-4≤6 = from-yes-≤ (4 ≤? 6)
+-- | Word fits strictly within pair-alloc
+word-fits-pair-strict : word-size < pair-alloc
+word-fits-pair-strict = from-yes-< (word-size <? pair-alloc)
 
 ------------------------------------------------------------------------
--- Zero bounds (for non-zero proofs)
+-- Thunk capacity bounds
 ------------------------------------------------------------------------
 
--- | 0 < word-size (stack operations need positive offsets)
-0<word : 0 < word-size
-0<word = from-yes-< (0 <? word-size)
+-- | Pair-alloc fits post-rbp-push minimum
+pair-fits-post-rbp-push : pair-alloc ≤ 25
+pair-fits-post-rbp-push = from-yes-≤ (pair-alloc ≤? 25)
 
--- | 0 < pair-alloc (0 < 16, also 0 < slots 2)
-0<pair : 0 < pair-alloc
-0<pair = from-yes-< (0 <? pair-alloc)
+-- | Word fits word+1 bound
+word-fits-word-plus-one : word-size ≤ 9
+word-fits-word-plus-one = from-yes-≤ (word-size ≤? 9)
 
--- | 0 < saved-regs-size (0 < 24, also 0 < slots 3)
-0<regs : 0 < saved-regs-size
-0<regs = from-yes-< (0 <? saved-regs-size)
+-- | Thunk minimum fits actual thunk capacity
+thunk-min-fits-actual : 41 ≤ 49
+thunk-min-fits-actual = from-yes-≤ (41 ≤? 49)
+
+-- | Four slots fit thunk actual capacity
+four-slots-fit-thunk-actual : 32 ≤ 49
+four-slots-fit-thunk-actual = from-yes-≤ (32 ≤? 49)
+
+-- | Post-rbp-push minimum fits thunk actual
+post-rbp-push-fits-thunk-actual : 25 ≤ 49
+post-rbp-push-fits-thunk-actual = from-yes-≤ (25 ≤? 49)
+
+-- | Three slots fit four slots
+three-slots-fit-four-slots : 24 ≤ 32
+three-slots-fit-four-slots = from-yes-≤ (24 ≤? 32)
 
 ------------------------------------------------------------------------
--- Small slot monotonicity bounds
+-- Thunk setup capacity (6 slots)
 ------------------------------------------------------------------------
 
--- | 1 ≤ 3 (for slot monotonicity: slots 1 ≤ slots 3)
-1≤3 : 1 ≤ 3
-1≤3 = from-yes-≤ (1 ≤? 3)
+-- | Output fits thunk-setup capacity (2 output, 6 thunk-setup)
+output-fits-thunk-setup : 2 ≤ 6
+output-fits-thunk-setup = from-yes-≤ (2 ≤? 6)
+
+-- | Thunk-intermediate fits thunk-setup capacity
+thunk-intermediate-fits-setup : 3 ≤ 6
+thunk-intermediate-fits-setup = from-yes-≤ (3 ≤? 6)
+
+-- | Thunk-pushes fit thunk-setup capacity (4 pushes, 6 capacity)
+thunk-pushes-fit-setup : 4 ≤ 6
+thunk-pushes-fit-setup = from-yes-≤ (4 ≤? 6)
+
+------------------------------------------------------------------------
+-- Positive bounds (non-zero)
+------------------------------------------------------------------------
+
+-- | Word-size is positive
+word-positive : 0 < word-size
+word-positive = from-yes-< (0 <? word-size)
+
+-- | Pair-alloc is positive
+pair-positive : 0 < pair-alloc
+pair-positive = from-yes-< (0 <? pair-alloc)
+
+-- | Saved-regs is positive
+regs-positive : 0 < saved-regs-size
+regs-positive = from-yes-< (0 <? saved-regs-size)
+
+------------------------------------------------------------------------
+-- Apply capacity bounds
+------------------------------------------------------------------------
+
+-- | Single slot fits apply-intermediate
+single-slot-fits-apply : 1 ≤ 3
+single-slot-fits-apply = from-yes-≤ (1 ≤? 3)
 
 ------------------------------------------------------------------------
 -- Inr capacity bounds
 ------------------------------------------------------------------------
 
--- | 33 ≤ 57 (rsp-min for inr ≤ slots inr-requirement + 1)
--- Used for capacity derivation in Inr.agda
-33≤57 : 33 ≤ 57
-33≤57 = from-yes-≤ (33 ≤? 57)
+-- | Inr-setup fits within full injection capacity
+inr-setup-within-injection : 33 ≤ 57
+inr-setup-within-injection = from-yes-≤ (33 ≤? 57)

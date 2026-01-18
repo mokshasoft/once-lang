@@ -16,7 +16,14 @@
 
 - **Lemmas in Lemma modules**: Reusable proofs belong in dedicated `*Lemmas.agda` files (e.g., `ArithmeticLemmas.agda`, `RegisterLemmas.agda`, `ExecLemmas.agda`). Move existing `where`-clause lemmas to these modules - don't leave them scattered in proof files. This speeds up compilation (proofs typechecked once, cached) and eliminates duplication.
 
-- **Name invariants, not relationships**: Names like `x≤y` or `2≤4` are wrong. Name what the invariant *means* (e.g., `word<frame`, `regs≤frame`), not the numeric relationship.
+- **Name invariants, not relationships**: Names like `x≤y` or `2≤4` are wrong. Name what the invariant *means* (e.g., `word-fits-frame`, `regs-fits-frame`), not the numeric relationship. Use architecture-neutral names (`fits`, `within`, `sufficient`) not ordering symbols (`≤`, `<`) since stack direction varies by architecture.
+
+- **No specific-number lemmas**: If a lemma expresses a relationship like `word-size + 1 ≤ pair-alloc` (i.e., `9 ≤ 16`), ask: *why* is this needed? Either:
+  1. **Generalize**: Express the actual invariant (e.g., "one extra byte always fits in pair allocation")
+  2. **Derive internally**: The proof that needs it should derive it from more fundamental relationships
+  3. **Restructure**: Change the proof to not need this specific relationship
+
+  Specific-number lemmas are a code smell - they indicate the proof structure doesn't match the semantic structure.
 
 - **No backwards compatibility shims**: When changing design, change it cleanly.
 

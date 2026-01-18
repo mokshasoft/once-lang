@@ -71,9 +71,9 @@ open import Relation.Nullary using (yes; no)
 
 -- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
 open import Once.Backend.X86.Correct.Arithmetic
-  using (word<pair; word≤pair; word<regs; word≤regs; pair≤regs;
-         word≤frame∸word; pair≤frame∸word; regs≤frame∸word;
-         word+1≤pair; pair<regs;
+  using (word-fits-pair-strict; word-fits-pair; word-fits-regs-strict; word-fits-regs; pair-fits-regs;
+         word-fits-frame-remainder; pair-fits-frame-remainder; regs-fits-frame-remainder;
+         word-plus-one-fits-pair; pair-fits-regs-strict;
          slot1-plus-word≡slot2;
          from-yes-≤; from-yes-<)
 open import Data.Product using (_×_; _,_)
@@ -202,6 +202,20 @@ thunk-cap-after-pushes = thunk-setup-capacity ∸ 2
 -- Used when deriving bounds from capacity proofs
 output-fits-thunk-cap : output-slots ≤ thunk-setup-capacity
 output-fits-thunk-cap = from-yes-≤ (output-slots ≤? thunk-setup-capacity)
+
+-- Apply capacity relationships
+output-fits-apply-cap : output-slots ≤ apply-cap-after-push
+output-fits-apply-cap = from-yes-≤ (output-slots ≤? apply-cap-after-push)
+
+apply-cap-fits-pair-setup : apply-cap-after-push ≤ pair-setup-consumed-slots
+apply-cap-fits-pair-setup = from-yes-≤ (apply-cap-after-push ≤? pair-setup-consumed-slots)
+
+-- Single slot: one stack slot (used for single-value operations)
+single-slot : ℕ
+single-slot = 1
+
+single-slot-fits-apply-cap : single-slot ≤ apply-cap-after-push
+single-slot-fits-apply-cap = from-yes-≤ (single-slot ≤? apply-cap-after-push)
 
 -- Slot positions are imported from CodeGen (thunk-r15-slot, thunk-rbp-slot, etc.)
 -- Slot position inequalities are defined above (thunk-rbp-slot≤thunk-setup, etc.)
@@ -443,7 +457,7 @@ stack-addr-nonzero a a-in-stack a≡0 =
 -- | Common bound conversion: rsp > two-push-offset implies rsp > slot-size
 -- Used in many proofs where we have two-slot bound but need single-slot bound
 rsp>slot-from-2slot : ∀ {n} → n > two-push-offset → n > slot-size
-rsp>slot-from-2slot n>2slot = ≤-trans word+1≤pair (<⇒≤ n>2slot)
+rsp>slot-from-2slot n>2slot = ≤-trans word-plus-one-fits-pair (<⇒≤ n>2slot)
 
 -- | Generic subtraction-less-than helper (m ∸ n < m when m > n and n > 0)
 -- Centralized to avoid defining this pattern in every proof
@@ -716,7 +730,7 @@ capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
         step1 : old-rsp +ℕ two-push-offset > two-push-offset
         step1 = +-monoˡ-< two-push-offset rsp>0
         step2 : two-push-offset > slot-size
-        step2 = word<pair
+        step2 = word-fits-pair-strict
         new-rsp-bound : new-rsp > slot-size
         new-rsp-bound = subst (_> slot-size) (sym rsp-eq) (<-trans step2 step1)
         slot≤new-rsp : slot-size ≤ new-rsp
@@ -1143,12 +1157,12 @@ pair-second-slot-in-stack s cap =
     cap-to-pair-setup-rsp-bound : StackCapacity s pair-setup-consumed-slots → readReg (regs s) rsp ≥ five-slot-offset
     cap-to-pair-setup-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
     alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ five-slot-offset → (rsp-val ∸ five-slot-offset) +ℕ slot-size ≡ rsp-val ∸ four-slot-offset
-    alloc-5-slots-second-addr-eq rsp-val rsp≥40 = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-4-slots)
+    alloc-5-slots-second-addr-eq rsp-val rsp≥5slot = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-4-slots)
       where
         step1 : rsp-val ∸ five-slot-offset ≡ (rsp-val ∸ four-slot-offset) ∸ slot-size
         step1 = sym (∸-+-assoc rsp-val four-slot-offset slot-size)
         word-fits-after-4-slots : slot-size ≤ rsp-val ∸ four-slot-offset
-        word-fits-after-4-slots = ∸-monoˡ-≤ four-slot-offset rsp≥40
+        word-fits-after-4-slots = ∸-monoˡ-≤ four-slot-offset rsp≥5slot
 
 -- | Get StackCapacity for Pair setup from runtime rsp bound
 pair-stack-capacity : ∀ (s : State) →
@@ -1211,14 +1225,14 @@ alloc-2-slots-addrs-in-stack s cap =
       }
       where
         slot<2slot : slot-size < two-push-offset
-        slot<2slot = word<pair
+        slot<2slot = word-fits-pair-strict
     alloc-2-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ two-push-offset → (rsp-val ∸ two-push-offset) +ℕ slot-size ≡ rsp-val ∸ slot-size
-    alloc-2-slots-second-addr-eq rsp-val rsp≥16 = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-1-slot)
+    alloc-2-slots-second-addr-eq rsp-val rsp≥2slot = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-1-slot)
       where
         step1 : rsp-val ∸ two-push-offset ≡ (rsp-val ∸ slot-size) ∸ slot-size
         step1 = sym (∸-+-assoc rsp-val slot-size slot-size)
         word-fits-after-1-slot : slot-size ≤ rsp-val ∸ slot-size
-        word-fits-after-1-slot = ∸-monoˡ-≤ slot-size rsp≥16
+        word-fits-after-1-slot = ∸-monoˡ-≤ slot-size rsp≥2slot
 
 -- | Stack writes at rsp - k*8 don't affect heap addresses
 stack-write-disjoint-from-heap : ∀ (s : State) (n k : ℕ) (heap-addr : Addr) →
@@ -1294,7 +1308,7 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
     stack-addr = readReg (regs s) rsp ∸ slot-size
     stack-addr-in-stack = capacity-maintained (capacity inv) 1 (s≤s z≤n)
     rsp>slot : readReg (regs s) rsp > slot-size
-    rsp>slot = <-trans word<pair (rsp-sufficient (capacity inv))
+    rsp>slot = <-trans word-fits-pair-strict (rsp-sufficient (capacity inv))
     addr<rsp : stack-addr < readReg (regs s) rsp
     addr<rsp = m∸n<m-when-m>n (readReg (regs s) rsp) slot-size (s≤s z≤n) rsp>slot
     helper : R15Status s → stack-addr ≢ readReg (regs s) r15
@@ -1354,11 +1368,11 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
     addr2<rsp = subst (_< rsp-val) (sym addr2-eq) (m∸n<m-when-m>n rsp-val slot-size (s≤s z≤n) rsp>slot)
       where
         open import Data.Nat.Properties using (m∸n+n≡m; ∸-+-assoc)
-        rsp≥16 : rsp-val ≥ two-push-offset
-        rsp≥16 = <⇒≤ rsp-suff
+        rsp≥2slot : rsp-val ≥ two-push-offset
+        rsp≥2slot = <⇒≤ rsp-suff
         addr2-eq : stack-addr2 ≡ rsp-val ∸ slot-size
         addr2-eq = trans (cong (_+ℕ slot-size) (sym (∸-+-assoc rsp-val slot-size slot-size)))
-                         (m∸n+n≡m (∸-monoˡ-≤ slot-size rsp≥16))
+                         (m∸n+n≡m (∸-monoˡ-≤ slot-size rsp≥2slot))
     diff-helper : ∀ stack-addr → InStack stack-addr → stack-addr < rsp-val →
                   R15Status s → stack-addr ≢ readReg (regs s) r15
     diff-helper addr addr-in-stack addr<rsp (r15-unused r15≡0) =
@@ -1660,7 +1674,7 @@ thunk-2slot-below-1slot : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
   let rsp-val = readReg (regs s) rsp
   in (rsp-val ∸ two-push-offset) < (rsp-val ∸ slot-size)
-thunk-2slot-below-1slot s rsp-sufficient = ∸-monoʳ-< word<pair (<⇒≤ rsp-sufficient)
+thunk-2slot-below-1slot s rsp-sufficient = ∸-monoʳ-< word-fits-pair-strict (<⇒≤ rsp-sufficient)
 
 -- | Helper: 2-slot is below orig-rsp when rsp > two-push-offset
 thunk-2slot-below-orig : ∀ (s : State) →
@@ -1694,7 +1708,7 @@ thunk-4slot-below-orig s rsp-sufficient = ≤-<-trans rsp∸4slot≤rsp∸slot r
     rsp-val = readReg (regs s) rsp
     rsp∸slot<rsp = apply-alloc-below-rsp s rsp-sufficient
     rsp∸4slot≤rsp∸slot : (rsp-val ∸ four-slot-offset) ≤ (rsp-val ∸ slot-size)
-    rsp∸4slot≤rsp∸slot = ∸-monoʳ-≤ rsp-val word≤frame∸word
+    rsp∸4slot≤rsp∸slot = ∸-monoʳ-≤ rsp-val word-fits-frame-remainder
 
 -- | Helper: 4-slot is different from addresses >= orig-rsp
 thunk-4slot-diff-from-above : ∀ (s : State) →
@@ -1713,37 +1727,37 @@ thunk-4slot-diff-from-above s rsp-sufficient addr addr≥rsp =
 
 -- | Raw ℕ version: 1-slot below orig when n > two-push-offset
 n∸slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ slot-size) < n
-n∸slot<n-raw n n>16 = m∸slot<m n (≤-trans word+1≤pair (<⇒≤ n>16))
+n∸slot<n-raw n n>2slot = m∸slot<m n (≤-trans word-plus-one-fits-pair (<⇒≤ n>2slot))
 
 -- | Raw ℕ version: 2-slot below 1-slot when n > two-push-offset
 n∸2slot<n∸slot-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ two-push-offset) < (n ∸ slot-size)
-n∸2slot<n∸slot-raw n n>16 = ∸-monoʳ-< word<pair (<⇒≤ n>16)
+n∸2slot<n∸slot-raw n n>2slot = ∸-monoʳ-< word-fits-pair-strict (<⇒≤ n>2slot)
 
 -- | Raw ℕ version: 2-slot below orig when n > two-push-offset
 n∸2slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ two-push-offset) < n
-n∸2slot<n-raw n n>16 = <-trans (n∸2slot<n∸slot-raw n n>16) (n∸slot<n-raw n n>16)
+n∸2slot<n-raw n n>2slot = <-trans (n∸2slot<n∸slot-raw n n>2slot) (n∸slot<n-raw n n>2slot)
   where
     open import Data.Nat.Properties using (<-trans)
 
 -- | Raw ℕ version: 4-slot below orig when n > two-push-offset
 n∸4slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ four-slot-offset) < n
-n∸4slot<n-raw n n>16 = ≤-<-trans n∸4slot≤n∸slot (n∸slot<n-raw n n>16)
+n∸4slot<n-raw n n>2slot = ≤-<-trans n∸4slot≤n∸slot (n∸slot<n-raw n n>2slot)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
     n∸4slot≤n∸slot : (n ∸ four-slot-offset) ≤ (n ∸ slot-size)
-    n∸4slot≤n∸slot = ∸-monoʳ-≤ n word≤frame∸word
+    n∸4slot≤n∸slot = ∸-monoʳ-≤ n word-fits-frame-remainder
 
 -- | Raw ℕ version: 3-slot below orig when n > two-push-offset
 n∸3slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ three-slot-offset) < n
-n∸3slot<n-raw n n>16 = ≤-<-trans n∸3slot≤n∸slot (n∸slot<n-raw n n>16)
+n∸3slot<n-raw n n>2slot = ≤-<-trans n∸3slot≤n∸slot (n∸slot<n-raw n n>2slot)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
     n∸3slot≤n∸slot : (n ∸ three-slot-offset) ≤ (n ∸ slot-size)
-    n∸3slot≤n∸slot = ∸-monoʳ-≤ n word≤regs
+    n∸3slot≤n∸slot = ∸-monoʳ-≤ n word-fits-regs
 
 -- | Raw ℕ version: 3-slot below < 1-slot below when n > three-slot-offset
 n∸3slot<n∸slot-raw : ∀ (n : ℕ) → n > three-slot-offset → (n ∸ three-slot-offset) < (n ∸ slot-size)
-n∸3slot<n∸slot-raw n n>24 = ∸-monoʳ-< word<regs (<⇒≤ n>24)
+n∸3slot<n∸slot-raw n n>3slot = ∸-monoʳ-< word-fits-regs-strict (<⇒≤ n>3slot)
 
 -- | Identity: (n ∸ four-slot-offset) + slot-size ≡ n ∸ three-slot-offset when n ≥ 32
 -- Uses slot1-plus-word≡slot2 from Arithmetic
@@ -1752,17 +1766,17 @@ n∸4slot+slot≡n∸3slot = slot1-plus-word≡slot2
 
 -- | Raw ℕ version: 4-slot below orig + slot-size < orig when n > two-push-offset
 n∸4slot+slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ four-slot-offset) +ℕ slot-size < n
-n∸4slot+slot<n-raw n n>16 = <-≤-trans step-slot<step-2slot step-2slot≤n
+n∸4slot+slot<n-raw n n>2slot = <-≤-trans step-slot<step-2slot step-2slot≤n
   where
     open import Data.Nat.Properties using (<-≤-trans; +-monoˡ-≤; +-monoʳ-<; ∸-monoʳ-≤; m∸n+n≡m)
     step-slot<step-2slot : (n ∸ four-slot-offset) +ℕ slot-size < (n ∸ four-slot-offset) +ℕ two-push-offset
-    step-slot<step-2slot = +-monoʳ-< (n ∸ four-slot-offset) word<pair
+    step-slot<step-2slot = +-monoʳ-< (n ∸ four-slot-offset) word-fits-pair-strict
     n∸4slot≤n∸2slot : (n ∸ four-slot-offset) ≤ (n ∸ two-push-offset)
-    n∸4slot≤n∸2slot = ∸-monoʳ-≤ n pair≤frame∸word
+    n∸4slot≤n∸2slot = ∸-monoʳ-≤ n pair-fits-frame-remainder
     step-2slot≤n∸2slot+2slot : (n ∸ four-slot-offset) +ℕ two-push-offset ≤ (n ∸ two-push-offset) +ℕ two-push-offset
     step-2slot≤n∸2slot+2slot = +-monoˡ-≤ two-push-offset n∸4slot≤n∸2slot
     2slot≤n : two-push-offset ≤ n
-    2slot≤n = <⇒≤ n>16
+    2slot≤n = <⇒≤ n>2slot
     n∸2slot+2slot≡n : (n ∸ two-push-offset) +ℕ two-push-offset ≡ n
     n∸2slot+2slot≡n = m∸n+n≡m 2slot≤n
     step-2slot≤n : (n ∸ four-slot-offset) +ℕ two-push-offset ≤ n
@@ -1824,15 +1838,15 @@ thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
 -- m ∸ two-push-offset ≢ m ∸ slot-size when m > two-push-offset
 -- Note: slot-size < two-push-offset means 9 ≤ 16, requiring s≤s^9 z≤n
 ∸two-slot≢∸one-slot : ∀ m → m > two-push-offset → m ∸ two-push-offset ≢ m ∸ push-offset
-∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset word<pair (<⇒≤ m>16)
+∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset word-fits-pair-strict (<⇒≤ m>16)
 
 -- m ∸ three-slot-offset ≢ m ∸ slot-size when m > three-slot-offset
 ∸three-slot≢∸one-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ push-offset
-∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset word<regs (<⇒≤ m>24)
+∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset word-fits-regs-strict (<⇒≤ m>24)
 
 -- m ∸ three-slot-offset ≢ m ∸ two-push-offset when m > three-slot-offset
 ∸three-slot≢∸two-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ two-push-offset
-∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset pair<regs (<⇒≤ m>24)
+∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset pair-fits-regs-strict (<⇒≤ m>24)
 
 ------------------------------------------------------------------------
 -- SlotFrame Abstraction (D041 Phase B)

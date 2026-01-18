@@ -9,11 +9,11 @@ module Once.Backend.X86.Correct.IR.ThunkExec where
 
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-size≢n)
 open import Once.Backend.X86.Correct.ArithmeticLemmas
-  using (pair≤rsp-after-rbp-min; word≤word+1; 41≤thunk-rsp-actual;
-         four-slots≤thunk-rsp-actual; rsp-after-rbp-min≤thunk-rsp-actual;
-         three-slots≤four-slots; 2≤6; 3≤6; 4≤6;
-         0<word; 0<pair; rsp-min-thunk-1)
-open import Once.Backend.X86.Correct.Arithmetic using (word+1≤pair)
+  using (pair-fits-post-rbp-push; word-fits-word-plus-one; thunk-min-fits-actual;
+         four-slots-fit-thunk-actual; post-rbp-push-fits-thunk-actual;
+         three-slots-fit-four-slots; output-fits-thunk-setup; thunk-intermediate-fits-setup; thunk-pushes-fit-setup;
+         word-positive; pair-positive; single-slot-fits-thunk-bound)
+open import Once.Backend.X86.Correct.Arithmetic using (word-plus-one-fits-pair)
 open import Once.Postulates using (encode; encode-pair-construct)
 -- Postulates removed: rsp-bound-after-stack-op, rsp-in-stack-after-stack-op
 -- All stack capacity proofs now derived from input StackCapacity parameter
@@ -610,7 +610,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- D041: Use centralized ∸-gives-different from StackInstantiation
     new-rsp≢rsp-after-push-rbp : new-rsp ≢ rsp-after-push-rbp
-    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp (slots 2) rsp-after-push-rbp>0 0<pair
+    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp (slots 2) rsp-after-push-rbp>0 pair-positive
 
     -- For new-rsp + 8 ≢ rsp-after-push-rbp:
     -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
@@ -622,7 +622,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- (Note: m > n = suc n ≤ m, so rsp > 48 is already 49 ≤ rsp)
     -- We derive 41 ≤ rsp via 41 ≤ 49 ≤ rsp
     rsp-above-r15-slot-bound : 41 ≤ old-rsp
-    rsp-above-r15-slot-bound = ≤-trans 41≤thunk-rsp-actual (StackCapacity.rsp-sufficient cap)
+    rsp-above-r15-slot-bound = ≤-trans thunk-min-fits-actual (StackCapacity.rsp-sufficient cap)
 
     -- Semantic: rsp remains safe after first push (r15)
     -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
@@ -636,7 +636,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- Semantic: local allocation (16 bytes) fits in available space after pushes
     local-alloc-safe-after-pushes : 16 ≤ rsp-after-push-rbp
-    local-alloc-safe-after-pushes = ≤-trans pair≤rsp-after-rbp-min rsp-safe-after-rbp-push
+    local-alloc-safe-after-pushes = ≤-trans pair-fits-post-rbp-push rsp-safe-after-rbp-push
 
     new-rsp+8≢rsp-after-push-rbp : new-rsp +ℕ slot-size ≢ rsp-after-push-rbp
     new-rsp+8≢rsp-after-push-rbp eq = <⇒≢-neq new-rsp+8<rsp-after-push-rbp eq
@@ -646,7 +646,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- new-rsp + slot-size = (rsp-after-push-rbp - local-alloc) + slot-size
         -- Since slot-size < local-alloc, new-rsp + slot-size < rsp-after-push-rbp
         slot-lt-local-alloc : slot-size < thunk-local-size
-        slot-lt-local-alloc = word+1≤pair
+        slot-lt-local-alloc = word-plus-one-fits-pair
         new-rsp+slot<new-rsp+local : new-rsp +ℕ slot-size < new-rsp +ℕ thunk-local-size
         new-rsp+slot<new-rsp+local = +-monoʳ-< new-rsp slot-lt-local-alloc
         new-rsp+8<rsp-after-push-rbp : new-rsp +ℕ slot-size < rsp-after-push-rbp
@@ -693,7 +693,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
     -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
     rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
-    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (≤-trans rsp-min-thunk-1 rsp-bound) 0<word
+    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (≤-trans single-slot-fits-thunk-bound rsp-bound) word-positive
 
     -- rsp-after-push-rbp = old-rsp - 16 < old-rsp (D041: use abstract helper)
     rsp-after-push-rbp≢old-rsp : rsp-after-push-rbp ≢ old-rsp
@@ -768,7 +768,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- D041: ∸-gives-different gives us: rsp-after-push-r15 ∸ slot-size ≢ rsp-after-push-r15
     -- We need to swap to get: rsp-after-push-r15 ≢ rsp-after-push-r15 ∸ slot-size = rsp-after-push-rbp
     rsp-after-push-r15≢rsp-after-push-rbp : rsp-after-push-r15 ≢ rsp-after-push-rbp
-    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 slot-size rsp-after-push-r15>0 0<word)
+    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 slot-size rsp-after-push-r15>0 word-positive)
       where
         open import Relation.Binary.PropositionalEquality using (≢-sym)
         rsp-after-push-r15>0 : rsp-after-push-r15 > 0
@@ -789,7 +789,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Chain: new-rsp ≤ rsp-after-push-rbp < rsp-after-push-r15
         open import Data.Nat.Properties using (∸-monoʳ-<)
         8≤rsp-after-push-r15''' : 8 ≤ rsp-after-push-r15
-        8≤rsp-after-push-r15''' = ≤-trans word≤word+1 9≤rsp-after-push-r15
+        8≤rsp-after-push-r15''' = ≤-trans word-fits-word-plus-one 9≤rsp-after-push-r15
         rsp-after-push-rbp<rsp-after-push-r15''' : rsp-after-push-rbp < rsp-after-push-r15
         rsp-after-push-rbp<rsp-after-push-r15''' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15'''
         new-rsp<rsp-after-push-r15 : new-rsp < rsp-after-push-r15
@@ -802,10 +802,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is at least 4 slots above the r15 slot bound
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
         rsp-above-4-slots : 32 ≤ old-rsp
-        rsp-above-4-slots = ≤-trans four-slots≤thunk-rsp-actual (StackCapacity.rsp-sufficient cap)
+        rsp-above-4-slots = ≤-trans four-slots-fit-thunk-actual (StackCapacity.rsp-sufficient cap)
         -- Semantic: rsp is above 3-slot offset (for new-rsp + slot calculation)
         rsp-above-3-slot-offset : old-rsp > 24
-        rsp-above-3-slot-offset = ≤-trans rsp-after-rbp-min≤thunk-rsp-actual (StackCapacity.rsp-sufficient cap)
+        rsp-above-3-slot-offset = ≤-trans post-rbp-push-fits-thunk-actual (StackCapacity.rsp-sufficient cap)
         -- new-rsp = old-rsp ∸ slots 4
         new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
         new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
@@ -874,7 +874,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-16-in-stack : InStack rsp-after-push-rbp
     addr-rsp-16-in-stack = subst (λ x → InStack x) (sym rsp-after-push-rbp-eq)
-                                 (abstract-to-rsp-slots-in-stack 2 s cap 2≤6)
+                                 (abstract-to-rsp-slots-in-stack 2 s cap output-fits-thunk-setup)
 
     -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
     -- addr-rsp-16-in-stack has type InStack rsp-after-push-rbp
@@ -904,7 +904,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-32-in-stack : InStack new-rsp
     addr-rsp-32-in-stack = subst (λ x → InStack x) (sym new-rsp-eq)
-                                 (abstract-to-rsp-slots-in-stack 4 s cap 4≤6)
+                                 (abstract-to-rsp-slots-in-stack 4 s cap thunk-pushes-fit-setup)
 
     -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3 = old-rsp ∸ 3*8
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
@@ -922,7 +922,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is large enough for 4-slot addressing
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
         rsp-fits-4-slots : 32 ≤ old-rsp
-        rsp-fits-4-slots = ≤-trans four-slots≤thunk-rsp-actual (StackCapacity.rsp-sufficient cap)
+        rsp-fits-4-slots = ≤-trans four-slots-fit-thunk-actual (StackCapacity.rsp-sufficient cap)
 
         -- Semantic: offset + 4-slots = original rsp
         offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ slots 4 ≡ old-rsp
@@ -930,7 +930,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         -- Semantic: 3 slots fit in 4 slots allocation (for associativity)
         three-slots-fit-in-four : slots 3 ≤ slots 4
-        three-slots-fit-in-four = three-slots≤four-slots
+        three-slots-fit-in-four = three-slots-fit-four-slots
 
         -- Semantic: associativity for 4-slot minus 3-slot = offset + slot-size
         assoc-4-minus-3 : (rsp-offset-4-slots +ℕ slots 4) ∸ slots 3 ≡ rsp-offset-4-slots +ℕ 8
@@ -942,7 +942,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-24-in-stack : InStack (new-rsp +ℕ slot-size)
     addr-rsp-24-in-stack = subst (λ x → InStack x) (sym new-rsp+8-eq)
-                                 (abstract-to-rsp-slots-in-stack 3 s cap 3≤6)
+                                 (abstract-to-rsp-slots-in-stack 3 s cap thunk-intermediate-fits-setup)
 
     -- Address 0 is not in stack region, so write addresses ≠ 0
     addr-rsp-8≢0 : rsp-after-push-r15 ≢ 0
@@ -1159,7 +1159,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
             open import Data.Nat.Properties using (+-monoʳ-<; m∸n+n≡m)
             -- slot-size < thunk-local-size (8 < 16)
             slot-lt-local-alloc' : slot-size < thunk-local-size
-            slot-lt-local-alloc' = word+1≤pair
+            slot-lt-local-alloc' = word-plus-one-fits-pair
             new-rsp+slot<new-rsp+local' : new-rsp +ℕ slot-size < new-rsp +ℕ thunk-local-size
             new-rsp+slot<new-rsp+local' = +-monoʳ-< new-rsp slot-lt-local-alloc'
             second-local-slot-lt-rbp-slot : new-rsp +ℕ slot-size < rsp-after-push-rbp

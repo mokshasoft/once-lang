@@ -17,7 +17,10 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation
   using (∸two-slot≢∸one-slot; ∸three-slot≢∸one-slot; ∸three-slot≢∸two-slot;
          slot-size; slots; StackCapacity; rsp-in-stack; rsp-sufficient; capacity-maintained;
-         slots-mono-≤; pair-setup-consumed-slots)
+         slots-mono-≤; pair-setup-consumed-slots;
+         -- Symbolic capacity lemmas (replacing numeric output-fits-apply-cap, apply-cap-fits-pair-setup, etc.)
+         output-fits-apply-cap; apply-cap-fits-pair-setup;
+         output-slots≤pair-setup; single-slot-fits-apply-cap)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
 open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode)
@@ -33,7 +36,7 @@ open ≡-Reasoning
 open import Once.Backend.X86.Correct.Arithmetic
   using (rbp-plus-word≡r15-save; rbp-plus-pair≡r14-save;
          word-size; pair-alloc; saved-regs-size; frame-size)
-open import Once.Backend.X86.Correct.ArithmeticLemmas using (2≤3; 3≤5; 2≤5; 1≤3; 0<word; 0<pair; 0<regs)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-positive; pair-positive; regs-positive)
 
 ------------------------------------------------------------------------
 -- FrameSetupResult: Star-based result for pair frame setup
@@ -141,7 +144,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
 
     -- Derive smaller bounds using slot monotonicity: 3 ≤ 5 → slots 3 ≤ slots 5
     rsp-gt-slots3 : orig-rsp > slots 3
-    rsp-gt-slots3 = ≤-<-trans (slots-mono-≤ 3≤5) rsp-bound
+    rsp-gt-slots3 = ≤-<-trans (slots-mono-≤ apply-cap-fits-pair-setup) rsp-bound
 
     -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
     s1 : State
@@ -469,7 +472,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     -- s2.memory = writeMem (memory s1) (orig-rsp ∸ slots 2) orig-r15 (by write-addr-s2 and r15-s1)
     -- Derive rsp > slots 2 from rsp-gt-slots3 using slot monotonicity
     rsp-gt-slots2 : orig-rsp > slots 2
-    rsp-gt-slots2 = ≤-<-trans (slots-mono-≤ 2≤3) rsp-gt-slots3
+    rsp-gt-slots2 = ≤-<-trans (slots-mono-≤ output-fits-apply-cap) rsp-gt-slots3
 
     mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ slot-size) ≡ just orig-r14
     mem-s2-at-r14slot = begin
@@ -553,18 +556,18 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         -- Derive smaller bounds using slot monotonicity
         -- rsp > slots 1 (i.e., > 8)
         rsp-gt-slots1 : orig-rsp > slots 1
-        rsp-gt-slots1 = ≤-<-trans (slots-mono-≤ 1≤3) rsp-gt-slots3
+        rsp-gt-slots1 = ≤-<-trans (slots-mono-≤ single-slot-fits-apply-cap) rsp-gt-slots3
 
         -- 0 < slots k for positive k (needed for ∸-monoʳ-<)
-        -- Use consolidated lemmas: 0<word = 0 < 8, 0<pair = 0 < 16, 0<regs = 0 < 24
+        -- Use consolidated lemmas: word-positive = 0 < 8, pair-positive = 0 < 16, regs-positive = 0 < 24
         0<slot : 0 < slot-size
-        0<slot = 0<word
+        0<slot = word-positive
 
         0<slots2 : 0 < slots 2
-        0<slots2 = 0<pair
+        0<slots2 = pair-positive
 
         0<slots3 : 0 < slots 3
-        0<slots3 = 0<regs
+        0<slots3 = regs-positive
 
         -- Bounds for memory write proofs
         slot1≤rsp : slot-size ≤ orig-rsp
@@ -635,10 +638,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
         write2-in-stack : InStack write2
-        write2-in-stack = capacity-maintained cap 2 2≤5
+        write2-in-stack = capacity-maintained cap 2 output-slots≤pair-setup
 
         write3-in-stack : InStack write3
-        write3-in-stack = capacity-maintained cap 3 3≤5
+        write3-in-stack = capacity-maintained cap 3 apply-cap-fits-pair-setup
 
         -- Chain memory preservation at 0 using abstract lemma
         mem0-s7-s3 : readMem (memory s7) 0 ≡ readMem (memory s3) 0
@@ -671,10 +674,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
         write2-in-stack : InStack write2
-        write2-in-stack = capacity-maintained cap 2 2≤5
+        write2-in-stack = capacity-maintained cap 2 output-slots≤pair-setup
 
         write3-in-stack : InStack write3
-        write3-in-stack = capacity-maintained cap 3 3≤5
+        write3-in-stack = capacity-maintained cap 3 apply-cap-fits-pair-setup
 
         -- Chain memory preservation at code addresses using abstract lemma
         memC-s7-s3 : readMem (memory s7) addr ≡ readMem (memory s3) addr
@@ -707,10 +710,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
         write2-in-stack : InStack write2
-        write2-in-stack = capacity-maintained cap 2 2≤5
+        write2-in-stack = capacity-maintained cap 2 output-slots≤pair-setup
 
         write3-in-stack : InStack write3
-        write3-in-stack = capacity-maintained cap 3 3≤5
+        write3-in-stack = capacity-maintained cap 3 apply-cap-fits-pair-setup
 
         -- Chain memory preservation at heap addresses using abstract lemma
         memH-s7-s3 : readMem (memory s7) addr ≡ readMem (memory s3) addr
@@ -884,109 +887,4 @@ pair-middle-star-at prefix rest s h-false pc-eq = record
 -- instruction sequence (used add rsp, 16 instead of mov rsp, rbp).
 -- The actual proof uses inline postulates in run-pair-at-offset.
 -- See docs/formal/x86-full-proof-architecture.md for the correct approach.
-
-------------------------------------------------------------------------
--- Case Setup Helpers (Generalized)
---
--- These helpers encapsulate the case dispatch setup:
---   inl: 4 instructions (load tag, cmp, jne not taken, load value)
---   inr: 3 instructions (load tag, cmp, jne taken -> jump to right branch)
-------------------------------------------------------------------------
-
--- | Result record for case-inl setup (6 instructions, jne NOT taken)
--- Structure: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(not taken); mov rdi,[rdi+8]
--- Frame setup modifies rbp and rsp; r15 preserved (uses r11 for tag)
--- Star-based: uses Star relation instead of fuel-based exec
-record CaseInlSetupResult (prog : Program) (s s' : State) (prefix : Program) (val : ℕ) : Set where
-  field
-    star-setup : Star prog s s'
-    halted-eq : halted s' ≡ false
-    pc-eq     : pc s' ≡ length prefix +ℕ case-setup-count +ℕ case-prefix-count  -- 6
-    rdi-eq    : readReg (regs s') rdi ≡ val
-    r14-eq    : readReg (regs s') r14 ≡ readReg (regs s) r14
-    r15-eq    : readReg (regs s') r15 ≡ readReg (regs s) r15  -- preserved (uses r11 for tag)
-    -- Frame setup: push rbp decrements rsp, mov rbp,rsp sets rbp = new rsp
-    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slot-size
-    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
-    -- Memory: frame setup writes old rbp to stack
-    saved-rbp : readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
-
--- | Result record for case-inr setup (5 instructions, jne TAKEN)
--- Structure: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(taken)
--- Frame setup modifies rbp and rsp; r15 preserved (uses r11 for tag)
--- Star-based: uses Star relation instead of fuel-based exec
-record CaseInrSetupResult (prog : Program) (s s' : State) (prefix : Program) (jne-offset : ℕ) : Set where
-  field
-    star-setup : Star prog s s'
-    halted-eq : halted s' ≡ false
-    -- PC after: push(1) + mov(1) + load(1) + cmp(1) + jne(1+offset) = 5 + jne-offset
-    pc-eq     : pc s' ≡ length prefix +ℕ case-setup-count +ℕ 3 +ℕ jne-offset
-    rdi-eq    : readReg (regs s') rdi ≡ readReg (regs s) rdi  -- unchanged
-    r14-eq    : readReg (regs s') r14 ≡ readReg (regs s) r14
-    r15-eq    : readReg (regs s') r15 ≡ readReg (regs s) r15  -- preserved (uses r11 for tag)
-    -- Frame setup: push rbp decrements rsp, mov rbp,rsp sets rbp = new rsp
-    rbp-eq    : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slot-size
-    rsp-eq    : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size
-    -- Memory: frame setup writes old rbp to stack
-    saved-rbp : readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
-
--- | Execute case-inl setup at arbitrary offset
--- 6 instructions: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(not taken); mov rdi,[rdi+8]
---
--- Preconditions:
---   - memory at rdi = 0 (tag for inl)
---   - memory at rdi+8 = val (the value to load)
---
--- Postconditions:
---   - rdi = val
---   - rbp = rsp - 8 (frame pointer set)
---   - rsp = rsp - 8 (stack pointer decremented)
---   - memory[rbp] = old rbp (saved on stack)
---   - r14, r15, rax unchanged
--- Note: Uses r11 (scratch register) for tag to preserve r15 (callee-save)
---
--- POSTULATE: Temporary during refactoring. Eliminable by extending proof from 4 to 6 steps.
-postulate
-  case-inl-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (val : ℕ) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
-    readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val →
-    let prog = prefix ++ push (reg rbp) ∷
-                          mov (reg rbp) (reg rsp) ∷
-                          mov (reg r11) (mem (base rdi)) ∷
-                          cmp (reg r11) (imm 0) ∷
-                          jne jne-offset ∷
-                          mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ suffix
-    in ∃[ s' ] CaseInlSetupResult prog s s' prefix val
-
-------------------------------------------------------------------------
--- Case-inr Setup Helper (5 instructions, jne TAKEN)
-------------------------------------------------------------------------
---
--- For case-inr, the tag is 1 (not 0), so jne is TAKEN.
--- 5 instructions: push rbp; mov rbp,rsp; mov r11,[rdi]; cmp r11,0; jne(taken)
---
--- After execution:
---   pc = length prefix + 5 + jne-offset  (jumped to right branch)
---   rbp = rsp - 8 (frame pointer set)
---   rsp = rsp - 8 (stack pointer decremented)
---   memory[rbp] = old rbp (saved on stack)
---   r15 = unchanged (uses r11 scratch for tag)
---   rdi = unchanged
---   r14, rax unchanged
--- Note: Uses r11 (scratch register) for tag to preserve r15 (callee-save)
---
--- POSTULATE: Temporary during refactoring. Eliminable by extending proof from 3 to 5 steps.
-postulate
-  case-inr-setup-star : ∀ (prefix suffix : Program) (jne-offset : ℕ) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    readMem (memory s) (readReg (regs s) rdi) ≡ just 1 →  -- tag = 1 for inr
-    let prog = prefix ++ push (reg rbp) ∷
-                          mov (reg rbp) (reg rsp) ∷
-                          mov (reg r11) (mem (base rdi)) ∷
-                          cmp (reg r11) (imm 0) ∷
-                          jne jne-offset ∷ suffix
-    in ∃[ s' ] CaseInrSetupResult prog s s' prefix jne-offset
 

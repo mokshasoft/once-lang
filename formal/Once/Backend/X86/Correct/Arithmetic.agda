@@ -155,48 +155,51 @@ rbp-plus-pair≡r14-save m 24≤m = m∸n+k≡m∸n-k m saved-regs-size pair-all
                                  (from-yes-≤ (pair-alloc ≤? saved-regs-size))
 
 ------------------------------------------------------------------------
--- Constant comparisons (decidability-based, no verbose s≤s chains)
+-- Frame layout relationships (semantic names, no ordering symbols)
+--
+-- These prove containment relationships between frame components.
+-- Names use "fits" to be architecture-neutral (stack grows up or down).
 ------------------------------------------------------------------------
 
--- | word-size < pair-alloc (8 < 16)
-word<pair : word-size < pair-alloc
-word<pair = from-yes-< (word-size <? pair-alloc)
+-- | Word fits strictly within pair-alloc space
+word-fits-pair-strict : word-size < pair-alloc
+word-fits-pair-strict = from-yes-< (word-size <? pair-alloc)
 
--- | word-size ≤ pair-alloc (8 ≤ 16)
-word≤pair : word-size ≤ pair-alloc
-word≤pair = from-yes-≤ (word-size ≤? pair-alloc)
+-- | Word fits within pair-alloc space
+word-fits-pair : word-size ≤ pair-alloc
+word-fits-pair = from-yes-≤ (word-size ≤? pair-alloc)
 
--- | word-size < saved-regs-size (8 < 24)
-word<regs : word-size < saved-regs-size
-word<regs = from-yes-< (word-size <? saved-regs-size)
+-- | Word fits strictly within saved-regs space
+word-fits-regs-strict : word-size < saved-regs-size
+word-fits-regs-strict = from-yes-< (word-size <? saved-regs-size)
 
--- | word-size ≤ saved-regs-size (8 ≤ 24)
-word≤regs : word-size ≤ saved-regs-size
-word≤regs = from-yes-≤ (word-size ≤? saved-regs-size)
+-- | Word fits within saved-regs space
+word-fits-regs : word-size ≤ saved-regs-size
+word-fits-regs = from-yes-≤ (word-size ≤? saved-regs-size)
 
--- | pair-alloc ≤ saved-regs-size (16 ≤ 24)
-pair≤regs : pair-alloc ≤ saved-regs-size
-pair≤regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
+-- | Pair-alloc fits within saved-regs space
+pair-fits-regs : pair-alloc ≤ saved-regs-size
+pair-fits-regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
 
--- | word-size ≤ (frame-size - word-size) (8 ≤ 32)
-word≤frame∸word : word-size ≤ (frame-size ∸ word-size)
-word≤frame∸word = from-yes-≤ (word-size ≤? (frame-size ∸ word-size))
+-- | Word fits within frame remainder (frame - word)
+word-fits-frame-remainder : word-size ≤ (frame-size ∸ word-size)
+word-fits-frame-remainder = from-yes-≤ (word-size ≤? (frame-size ∸ word-size))
 
--- | pair-alloc ≤ (frame-size - word-size) (16 ≤ 32)
-pair≤frame∸word : pair-alloc ≤ (frame-size ∸ word-size)
-pair≤frame∸word = from-yes-≤ (pair-alloc ≤? (frame-size ∸ word-size))
+-- | Pair-alloc fits within frame remainder
+pair-fits-frame-remainder : pair-alloc ≤ (frame-size ∸ word-size)
+pair-fits-frame-remainder = from-yes-≤ (pair-alloc ≤? (frame-size ∸ word-size))
 
--- | saved-regs-size ≤ (frame-size - word-size) (24 ≤ 32)
-regs≤frame∸word : saved-regs-size ≤ (frame-size ∸ word-size)
-regs≤frame∸word = from-yes-≤ (saved-regs-size ≤? (frame-size ∸ word-size))
+-- | Saved-regs fits within frame remainder
+regs-fits-frame-remainder : saved-regs-size ≤ (frame-size ∸ word-size)
+regs-fits-frame-remainder = from-yes-≤ (saved-regs-size ≤? (frame-size ∸ word-size))
 
--- | (word-size + 1) ≤ pair-alloc (9 ≤ 16) - for rsp > 8 bounds
-word+1≤pair : (word-size + 1) ≤ pair-alloc
-word+1≤pair = from-yes-≤ ((word-size + 1) ≤? pair-alloc)
+-- | Word+1 fits within pair-alloc (for rsp > 8 bounds)
+word-plus-one-fits-pair : (word-size + 1) ≤ pair-alloc
+word-plus-one-fits-pair = from-yes-≤ ((word-size + 1) ≤? pair-alloc)
 
--- | pair-alloc < saved-regs-size (16 < 24)
-pair<regs : pair-alloc < saved-regs-size
-pair<regs = from-yes-< (pair-alloc <? saved-regs-size)
+-- | Pair-alloc fits strictly within saved-regs space
+pair-fits-regs-strict : pair-alloc < saved-regs-size
+pair-fits-regs-strict = from-yes-< (pair-alloc <? saved-regs-size)
 
 ------------------------------------------------------------------------
 -- Slot arithmetic for deeper stack offsets
@@ -205,7 +208,7 @@ pair<regs = from-yes-< (pair-alloc <? saved-regs-size)
 -- | slot1 + word-size = slot2: (m - 32) + 8 = m - 24
 slot1-plus-word≡slot2 : ∀ m → (frame-size ∸ word-size) ≤ m →
   m ∸ (frame-size ∸ word-size) + word-size ≡ m ∸ saved-regs-size
-slot1-plus-word≡slot2 m 32≤m = m∸n+k≡m∸n-k m (frame-size ∸ word-size) word-size 32≤m word≤frame∸word
+slot1-plus-word≡slot2 m 32≤m = m∸n+k≡m∸n-k m (frame-size ∸ word-size) word-size 32≤m word-fits-frame-remainder
 
 ------------------------------------------------------------------------
 -- Ordering lemmas for address disjointness
