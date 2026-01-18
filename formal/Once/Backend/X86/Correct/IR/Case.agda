@@ -50,7 +50,7 @@ open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; zero; s≤s
 open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; ≤-<-trans; <⇒≤; m∸n≤m; ≤-refl)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.List.Properties using (++-assoc)
-open import Once.Backend.X86.Correct.CompileLength using (length-++)
+open import Once.Backend.X86.Correct.CompileLength using (length-++; compile-length-correct)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_; _×_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Maybe using (just; nothing)
@@ -610,13 +610,245 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     -- PC at start of cleanup: length prefix + 6 + len-f
     -- This is where the jmp instruction is
 
-    -- The jmp instruction at index 6+len-f in compile-x86 [ f , g ]
+    -- Helper: fetch at index 6 in a list starting with 6 elements skips to the tail
+    fetch-skip-6 : ∀ (i0 i1 i2 i3 i4 i5 : Instr) (xs : List Instr) (n : ℕ) →
+      fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ xs) (6 +ℕ n) ≡ fetch xs n
+    fetch-skip-6 i0 i1 i2 i3 i4 i5 xs n = refl
+
+    -- The compile-x86 [ f , g ] structure:
+    -- i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ (compile-x86 f ++ jmp ∷ label ∷ mov ∷ compile-x86 g ++ cleanup)
+    -- where cleanup = mov rsp rbp ∷ pop rbp ∷ []
+
+    -- Setup instructions (indices 0-5)
+    setup-0 = push (reg rbp)
+    setup-1 = mov (reg rbp) (reg rsp)
+    setup-2 = mov (reg r11) (mem (base rdi))
+    setup-3 = cmp (reg r11) (imm 0)
+    setup-4 = jne (case-jne-base +ℕ len-f)
+    setup-5 = mov (reg rdi) (mem (base+disp rdi slot-size))
+
+    -- Middle code after f (indices 6+len-f onwards in case code)
+    jmp-instr = jmp (case-jmp-base +ℕ len-g)
+    label-instr = label (case-right-label-base +ℕ len-f)
+    mov-rdi-instr = mov (reg rdi) (mem (base+disp rdi slot-size))
+
+    -- Cleanup instructions (indices 9+len-f+len-g and 10+len-f+len-g)
+    cleanup-mov = mov (reg rsp) (reg rbp)
+    cleanup-pop = pop rbp
+
+    -- Middle code structure
+    middle-code : List Instr
+    middle-code = jmp-instr ∷ label-instr ∷ mov-rdi-instr ∷ compile-x86 g ++ cleanup-mov ∷ cleanup-pop ∷ []
+
+    -- The tail after setup instructions
+    after-setup : List Instr
+    after-setup = compile-x86 f ++ middle-code
+
+    -- compile-x86 [ f , g ] = setup ++ after-setup
+    case-code-structure : compile-x86 [ f , g ] ≡
+      setup-0 ∷ setup-1 ∷ setup-2 ∷ setup-3 ∷ setup-4 ∷ setup-5 ∷ after-setup
+    case-code-structure = refl
+
+    -- fetch at index 6+len-f in case-code gets jmp
+    -- First skip 6 setup instrs, then skip len-f instrs of compile-x86 f, get jmp at head
+    fetch-case-code-jmp : fetch case-code (6 +ℕ len-f) ≡ just jmp-instr
+    fetch-case-code-jmp =
+      let
+        -- Step 1: case-code = compile-x86 [ f , g ] ++ suffix
+        -- fetch case-code (6+len-f) = fetch (compile-x86 [ f , g ] ++ suffix) (6+len-f)
+        -- Since 6+len-f < length (compile-x86 [ f , g ]), we can use fetch-append-left
+        -- Actually, let's use a more direct approach
+
+        -- Step 2: compile-x86 [ f , g ] = setup ++ after-setup
+        -- fetch (compile-x86 [ f , g ] ++ suffix) (6+len-f)
+        -- = fetch (setup ++ after-setup ++ suffix) (6+len-f)  where setup has length 6
+        -- = fetch (after-setup ++ suffix) len-f  by fetch-append-right
+
+        -- Step 3: after-setup = compile-x86 f ++ middle-code
+        -- fetch (after-setup ++ suffix) len-f
+        -- = fetch ((compile-x86 f ++ middle-code) ++ suffix) len-f
+        -- = fetch (compile-x86 f ++ (middle-code ++ suffix)) len-f  by ++-assoc
+        -- = fetch (middle-code ++ suffix) 0  by fetch-append-right
+
+        -- Step 4: middle-code = jmp ∷ ...
+        -- fetch (jmp ∷ ...) 0 = just jmp
+
+        -- Putting it together:
+        step1 : fetch case-code (6 +ℕ len-f) ≡ fetch (after-setup ++ suffix) len-f
+        step1 = trans (cong (λ c → fetch (c ++ suffix) (6 +ℕ len-f)) case-code-structure)
+                      (fetch-skip-6 setup-0 setup-1 setup-2 setup-3 setup-4 setup-5 (after-setup ++ suffix) len-f)
+
+        step2 : fetch (after-setup ++ suffix) len-f ≡ fetch ((compile-x86 f ++ middle-code) ++ suffix) len-f
+        step2 = refl
+
+        step3 : fetch ((compile-x86 f ++ middle-code) ++ suffix) len-f ≡ fetch (compile-x86 f ++ (middle-code ++ suffix)) len-f
+        step3 = cong (λ xs → fetch xs len-f) (++-assoc (compile-x86 f) middle-code suffix)
+
+        -- len-f = compile-length f = length (compile-x86 f) by compile-length-correct
+        len-f-eq : len-f ≡ length (compile-x86 f)
+        len-f-eq = sym (compile-length-correct f)
+
+        step4 : fetch (compile-x86 f ++ (middle-code ++ suffix)) len-f ≡ fetch (middle-code ++ suffix) 0
+        step4 = trans (cong (λ n → fetch (compile-x86 f ++ (middle-code ++ suffix)) n)
+                            (trans len-f-eq (sym (+-identityʳ (length (compile-x86 f))))))
+                      (fetch-append-right (compile-x86 f) (middle-code ++ suffix) 0)
+
+        step5 : fetch (middle-code ++ suffix) 0 ≡ just jmp-instr
+        step5 = refl
+      in trans step1 (trans step2 (trans step3 (trans step4 step5)))
+
+    -- Now prove fetch-jmp using fetch-case-code-jmp
+    fetch-jmp : fetch prog (pc s) ≡ just (jmp (case-jmp-base +ℕ len-g))
+    fetch-jmp =
+      let
+        -- pc s = length prefix + 6 + len-f (using pc-eq which has compile-length f = len-f)
+        -- Note: len-f = compile-length f by definition, so they're definitionally equal
+        pc-eq' : pc s ≡ length prefix +ℕ (6 +ℕ len-f)
+        pc-eq' = trans pc-eq (+-assoc (length prefix) 6 len-f)
+
+        -- fetch prog (length prefix + (6 + len-f)) = fetch case-code (6 + len-f)
+        step1 : fetch prog (length prefix +ℕ (6 +ℕ len-f)) ≡ fetch case-code (6 +ℕ len-f)
+        step1 = fetch-at-n (6 +ℕ len-f)
+      in trans (cong (fetch prog) pc-eq') (trans step1 fetch-case-code-jmp)
+
+    -- step1: execute jmp instruction
+    -- execInstr prog s (jmp target) = just (record s { pc = pc s + 1 + target })
+    -- target = case-jmp-base + len-g = 2 + len-g
+    -- So new pc = pc s + 1 + 2 + len-g = pc s + 3 + len-g
+    -- s1 = record s { pc = pc s + 3 + len-g }
+    step1 : step prog s ≡ just s1
+    step1 = trans (step-exec prog s jmp-instr h-false fetch-jmp)
+                  (trans (execJmp prog s (case-jmp-base +ℕ len-g))
+                         (cong just (cong (λ p → record s { pc = p }) pc-arith)))
+      where
+        -- pc s + 1 + (case-jmp-base + len-g) = pc s + 1 + (2 + len-g) = pc s + 3 + len-g
+        pc-arith : pc s +ℕ 1 +ℕ (case-jmp-base +ℕ len-g) ≡ pc s +ℕ 3 +ℕ len-g
+        pc-arith = trans (cong (λ n → pc s +ℕ 1 +ℕ n) refl)  -- case-jmp-base = 2
+                         (trans (sym (+-assoc (pc s +ℕ 1) 2 len-g))
+                                (cong (_+ℕ len-g) (+-assoc (pc s) 1 2)))
+
+    -- PC values for subsequent instructions
+    -- pc s1 = pc s + 3 + len-g = (length prefix + 6 + len-f) + 3 + len-g = length prefix + 9 + len-f + len-g
+    pc-s1 : pc s1 ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
+    pc-s1 =
+      let
+        -- pc s1 = pc s + 3 + len-g  (by definition of s1)
+        -- pc s = length prefix + 6 + len-f  (by pc-eq)
+        step1 : pc s1 ≡ (length prefix +ℕ 6 +ℕ len-f) +ℕ 3 +ℕ len-g
+        step1 = cong (λ p → p +ℕ 3 +ℕ len-g) pc-eq
+
+        -- (a + 6 + b) + 3 + c = a + 9 + b + c
+        -- Inner: ((lp + 6) + len-f) + 3 ≡ (lp + 9) + len-f
+        inner : ((length prefix +ℕ 6) +ℕ len-f) +ℕ 3 ≡ (length prefix +ℕ 9) +ℕ len-f
+        inner = trans (+-assoc (length prefix +ℕ 6) len-f 3)
+                      (trans (cong ((length prefix +ℕ 6) +ℕ_) (+-comm len-f 3))
+                             (trans (sym (+-assoc (length prefix +ℕ 6) 3 len-f))
+                                    (cong (_+ℕ len-f) (+-assoc (length prefix) 6 3))))
+
+        step2 : (length prefix +ℕ 6 +ℕ len-f) +ℕ 3 +ℕ len-g ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
+        step2 = cong (_+ℕ len-g) inner
+      in trans step1 step2
+
+    -- Helper: fetch at index 3 in a list starting with 3 elements skips to the tail
+    fetch-skip-3 : ∀ (i0 i1 i2 : Instr) (xs : List Instr) (n : ℕ) →
+      fetch (i0 ∷ i1 ∷ i2 ∷ xs) (3 +ℕ n) ≡ fetch xs n
+    fetch-skip-3 i0 i1 i2 xs n = refl
+
+    -- fetch at index 9+len-f+len-g in case-code gets cleanup-mov
+    -- Use postulate for now - the proof is complex due to list structure
     postulate
-      fetch-jmp : fetch prog (pc s) ≡ just (jmp (case-jmp-base +ℕ len-g))
-      step1 : step prog s ≡ just s1
-      fetch-mov-cleanup : fetch prog (pc s1) ≡ just (mov (reg rsp) (reg rbp))
-      step2 : step prog s1 ≡ just s2
-      fetch-pop : fetch prog (pc s2) ≡ just (pop rbp)
+      fetch-case-code-cleanup : fetch case-code (9 +ℕ len-f +ℕ len-g) ≡ just cleanup-mov
+
+    -- Prove fetch-mov-cleanup using fetch-case-code-cleanup
+    fetch-mov-cleanup : fetch prog (pc s1) ≡ just (mov (reg rsp) (reg rbp))
+    fetch-mov-cleanup =
+      let
+        -- pc s1 = ((length prefix + 9) + len-f) + len-g (from pc-s1, left-assoc)
+        -- We need: length prefix + (9 + len-f + len-g) = length prefix + ((9 + len-f) + len-g)
+        pc-eq' : pc s1 ≡ length prefix +ℕ (9 +ℕ len-f +ℕ len-g)
+        pc-eq' = trans pc-s1
+                       (trans (+-assoc (length prefix +ℕ 9) len-f len-g)
+                              (trans (+-assoc (length prefix) 9 (len-f +ℕ len-g))
+                                     (cong (length prefix +ℕ_) (sym (+-assoc 9 len-f len-g)))))
+
+        step1' : fetch prog (length prefix +ℕ (9 +ℕ len-f +ℕ len-g)) ≡ fetch case-code (9 +ℕ len-f +ℕ len-g)
+        step1' = fetch-at-n (9 +ℕ len-f +ℕ len-g)
+      in trans (cong (fetch prog) pc-eq') (trans step1' fetch-case-code-cleanup)
+
+    -- step2: execute mov rsp rbp instruction
+    -- execInstr prog s (mov dst src) = just (record s { regs = writeReg (regs s) dst val, pc = pc s + 1 })
+    step2 : step prog s1 ≡ just s2
+    step2 = trans (step-exec prog s1 cleanup-mov h1 fetch-mov-cleanup) refl
+
+    -- fetch-pop: fetch at pc s2
+    -- pc s2 = pc s1 + 1 = length prefix + 9 + len-f + len-g + 1 = length prefix + 10 + len-f + len-g
+    pc-s2 : pc s2 ≡ length prefix +ℕ 10 +ℕ len-f +ℕ len-g
+    pc-s2 = trans step1' (trans step2' (trans step3' (trans step4' (trans step5' step6'))))
+      where
+        -- pc s2 = pc s1 + 1  (definitionally from s2 definition)
+        -- First convert pc s1 + 1 to a workable form using pc-s1
+        step1' : pc s2 ≡ ((length prefix +ℕ 9) +ℕ len-f) +ℕ len-g +ℕ 1
+        step1' = cong (_+ℕ 1) pc-s1
+
+        -- (((a + 9) + b) + c) + 1 = ((a + 10) + b) + c
+        -- Regroup using associativity
+        step2' : ((length prefix +ℕ 9) +ℕ len-f) +ℕ len-g +ℕ 1 ≡ ((length prefix +ℕ 9) +ℕ len-f) +ℕ (len-g +ℕ 1)
+        step2' = +-assoc ((length prefix +ℕ 9) +ℕ len-f) len-g 1
+
+        step3' : ((length prefix +ℕ 9) +ℕ len-f) +ℕ (len-g +ℕ 1) ≡ (length prefix +ℕ 9) +ℕ (len-f +ℕ (len-g +ℕ 1))
+        step3' = +-assoc (length prefix +ℕ 9) len-f (len-g +ℕ 1)
+
+        step4' : (length prefix +ℕ 9) +ℕ (len-f +ℕ (len-g +ℕ 1)) ≡ length prefix +ℕ (9 +ℕ (len-f +ℕ (len-g +ℕ 1)))
+        step4' = +-assoc (length prefix) 9 (len-f +ℕ (len-g +ℕ 1))
+
+        -- Now 9 + (len-f + (len-g + 1)) = 9 + ((len-f + len-g) + 1) = 9 + (1 + (len-f + len-g))
+        --   = (9 + 1) + (len-f + len-g) = 10 + (len-f + len-g) = 10 + len-f + len-g
+        inner1 : len-f +ℕ (len-g +ℕ 1) ≡ (len-f +ℕ len-g) +ℕ 1
+        inner1 = sym (+-assoc len-f len-g 1)
+
+        inner2 : (len-f +ℕ len-g) +ℕ 1 ≡ 1 +ℕ (len-f +ℕ len-g)
+        inner2 = +-comm (len-f +ℕ len-g) 1
+
+        inner3 : 9 +ℕ (1 +ℕ (len-f +ℕ len-g)) ≡ (9 +ℕ 1) +ℕ (len-f +ℕ len-g)
+        inner3 = sym (+-assoc 9 1 (len-f +ℕ len-g))
+
+        inner4 : (9 +ℕ 1) +ℕ (len-f +ℕ len-g) ≡ 10 +ℕ len-f +ℕ len-g
+        inner4 = sym (+-assoc 10 len-f len-g)
+
+        step5' : length prefix +ℕ (9 +ℕ (len-f +ℕ (len-g +ℕ 1))) ≡ length prefix +ℕ (10 +ℕ len-f +ℕ len-g)
+        step5' = cong (length prefix +ℕ_)
+                     (trans (cong (9 +ℕ_) inner1)
+                            (trans (cong (9 +ℕ_) inner2)
+                                   (trans inner3 inner4)))
+
+        step6' : length prefix +ℕ (10 +ℕ len-f +ℕ len-g) ≡ length prefix +ℕ 10 +ℕ len-f +ℕ len-g
+        step6' = trans (sym (+-assoc (length prefix) (10 +ℕ len-f) len-g))
+                      (cong (_+ℕ len-g) (sym (+-assoc (length prefix) 10 len-f)))
+
+    -- fetch at index 10+len-f+len-g in case-code gets cleanup-pop
+    -- Use postulate for now - similar structure to fetch-case-code-cleanup
+    postulate
+      fetch-case-code-pop : fetch case-code (10 +ℕ len-f +ℕ len-g) ≡ just cleanup-pop
+
+    fetch-pop : fetch prog (pc s2) ≡ just (pop rbp)
+    fetch-pop =
+      let
+        -- pc s2 = ((length prefix + 10) + len-f) + len-g (from pc-s2, left-assoc)
+        pc-eq' : pc s2 ≡ length prefix +ℕ (10 +ℕ len-f +ℕ len-g)
+        pc-eq' = trans pc-s2
+                       (trans (+-assoc (length prefix +ℕ 10) len-f len-g)
+                              (trans (+-assoc (length prefix) 10 (len-f +ℕ len-g))
+                                     (cong (length prefix +ℕ_) (sym (+-assoc 10 len-f len-g)))))
+
+        step1' : fetch prog (length prefix +ℕ (10 +ℕ len-f +ℕ len-g)) ≡ fetch case-code (10 +ℕ len-f +ℕ len-g)
+        step1' = fetch-at-n (10 +ℕ len-f +ℕ len-g)
+      in trans (cong (fetch prog) pc-eq') (trans step1' fetch-case-code-pop)
+
+    -- step3: execute pop rbp instruction
+    -- The pop reads from memory at rsp (which is rbp-val after step2), getting orig-rbp
+    -- This requires using mem-rbp hypothesis: memory s rbp-val = just orig-rbp
+    -- And showing memory is unchanged through steps 1 and 2
+    postulate
       step3 : step prog s2 ≡ just s3
 
     star3 : Star prog s s3
