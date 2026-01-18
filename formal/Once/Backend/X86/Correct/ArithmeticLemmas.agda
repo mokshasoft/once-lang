@@ -202,6 +202,27 @@ three-slots≤four-slots = from-yes-≤ (24 ≤? 32)
 0<word : 0 < word-size
 0<word = from-yes-< (0 <? word-size)
 
--- | 0 < pair-alloc
+-- | 0 < pair-alloc (0 < 16, also 0 < slots 2)
 0<pair : 0 < pair-alloc
 0<pair = from-yes-< (0 <? pair-alloc)
+
+-- | 0 < saved-regs-size (0 < 24, also 0 < slots 3)
+0<regs : 0 < saved-regs-size
+0<regs = from-yes-< (0 <? saved-regs-size)
+
+------------------------------------------------------------------------
+-- Small slot monotonicity bounds
+------------------------------------------------------------------------
+
+-- | 1 ≤ 3 (for slot monotonicity: slots 1 ≤ slots 3)
+1≤3 : 1 ≤ 3
+1≤3 = from-yes-≤ (1 ≤? 3)
+
+------------------------------------------------------------------------
+-- Inr capacity bounds
+------------------------------------------------------------------------
+
+-- | 33 ≤ 57 (rsp-min for inr ≤ slots inr-requirement + 1)
+-- Used for capacity derivation in Inr.agda
+33≤57 : 33 ≤ 57
+33≤57 = from-yes-≤ (33 ≤? 57)

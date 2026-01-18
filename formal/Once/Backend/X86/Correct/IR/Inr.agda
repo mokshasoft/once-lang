@@ -17,6 +17,7 @@ open import Once.Postulates using (encode-inr-construct)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (33≤57)
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-bound-to-capacity; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
@@ -471,9 +472,7 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     rsp-change : readReg (regs s4) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta (inr {A} {B}))
     rsp-change = rsp-s4
 
-    33≤57 : 33 ≤ 57
-    33≤57 = m≤m+n 33 24
-      where open import Data.Nat.Properties using (m≤m+n)
+    -- 33≤57 imported from ArithmeticLemmas
 
     -- Output capacity = input requirement - delta
     -- capacity-after-alloc-2-slots expects StackCapacity s (suc (suc n)) and produces StackCapacity s' n

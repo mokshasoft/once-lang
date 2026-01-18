@@ -33,7 +33,7 @@ open ≡-Reasoning
 open import Once.Backend.X86.Correct.Arithmetic
   using (rbp-plus-word≡r15-save; rbp-plus-pair≡r14-save;
          word-size; pair-alloc; saved-regs-size; frame-size)
-open import Once.Backend.X86.Correct.ArithmeticLemmas using (2≤3; 3≤5; 2≤5)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (2≤3; 3≤5; 2≤5; 1≤3; 0<word; 0<pair; 0<regs)
 
 ------------------------------------------------------------------------
 -- FrameSetupResult: Star-based result for pair frame setup
@@ -554,19 +554,17 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         -- rsp > slots 1 (i.e., > 8)
         rsp-gt-slots1 : orig-rsp > slots 1
         rsp-gt-slots1 = ≤-<-trans (slots-mono-≤ 1≤3) rsp-gt-slots3
-          where
-            1≤3 : 1 ≤ 3
-            1≤3 = s≤s z≤n
 
         -- 0 < slots k for positive k (needed for ∸-monoʳ-<)
+        -- Use consolidated lemmas: 0<word = 0 < 8, 0<pair = 0 < 16, 0<regs = 0 < 24
         0<slot : 0 < slot-size
-        0<slot = s≤s z≤n
+        0<slot = 0<word
 
         0<slots2 : 0 < slots 2
-        0<slots2 = s≤s z≤n
+        0<slots2 = 0<pair
 
         0<slots3 : 0 < slots 3
-        0<slots3 = s≤s z≤n
+        0<slots3 = 0<regs
 
         -- Bounds for memory write proofs
         slot1≤rsp : slot-size ≤ orig-rsp

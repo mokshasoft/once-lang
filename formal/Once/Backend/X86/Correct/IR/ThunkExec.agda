@@ -11,7 +11,8 @@ open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-
 open import Once.Backend.X86.Correct.ArithmeticLemmas
   using (pair≤rsp-after-rbp-min; word≤word+1; 41≤thunk-rsp-actual;
          four-slots≤thunk-rsp-actual; rsp-after-rbp-min≤thunk-rsp-actual;
-         three-slots≤four-slots; 2≤6; 3≤6; 4≤6)
+         three-slots≤four-slots; 2≤6; 3≤6; 4≤6;
+         0<word; 0<pair; rsp-min-thunk-1)
 open import Once.Backend.X86.Correct.Arithmetic using (word+1≤pair)
 open import Once.Postulates using (encode; encode-pair-construct)
 -- Postulates removed: rsp-bound-after-stack-op, rsp-in-stack-after-stack-op
@@ -609,10 +610,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- D041: Use centralized ∸-gives-different from StackInstantiation
     new-rsp≢rsp-after-push-rbp : new-rsp ≢ rsp-after-push-rbp
-    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp (slots 2) rsp-after-push-rbp>0 0<16
-      where
-        0<16 : 0 < 16
-        0<16 = s≤s z≤n
+    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp (slots 2) rsp-after-push-rbp>0 0<pair
 
     -- For new-rsp + 8 ≢ rsp-after-push-rbp:
     -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
@@ -695,12 +693,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
     -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
     rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
-    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (≤-trans 1≤17 rsp-bound) 0<8
-      where
-        1≤17 : 1 ≤ 17
-        1≤17 = s≤s z≤n
-        0<8 : 0 < 8
-        0<8 = s≤s z≤n
+    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (≤-trans rsp-min-thunk-1 rsp-bound) 0<word
 
     -- rsp-after-push-rbp = old-rsp - 16 < old-rsp (D041: use abstract helper)
     rsp-after-push-rbp≢old-rsp : rsp-after-push-rbp ≢ old-rsp
@@ -775,13 +768,11 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- D041: ∸-gives-different gives us: rsp-after-push-r15 ∸ slot-size ≢ rsp-after-push-r15
     -- We need to swap to get: rsp-after-push-r15 ≢ rsp-after-push-r15 ∸ slot-size = rsp-after-push-rbp
     rsp-after-push-r15≢rsp-after-push-rbp : rsp-after-push-r15 ≢ rsp-after-push-rbp
-    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 slot-size rsp-after-push-r15>0 0<8)
+    rsp-after-push-r15≢rsp-after-push-rbp = ≢-sym (∸-gives-different rsp-after-push-r15 slot-size rsp-after-push-r15>0 0<word)
       where
         open import Relation.Binary.PropositionalEquality using (≢-sym)
         rsp-after-push-r15>0 : rsp-after-push-r15 > 0
         rsp-after-push-r15>0 = ≤-trans (s≤s z≤n) 9≤rsp-after-push-r15
-        0<8 : 0 < 8
-        0<8 = s≤s z≤n
 
     new-rsp≢rsp-after-push-r15 : new-rsp ≢ rsp-after-push-r15
     new-rsp≢rsp-after-push-r15 eq = <⇒≢-neq new-rsp<rsp-after-push-r15 eq
