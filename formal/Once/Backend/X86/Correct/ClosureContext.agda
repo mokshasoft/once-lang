@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; apply-capacity)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -194,7 +194,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 4 →  -- Apply needs 4 slots: push r15 (1) + call (1) + thunk output (2)
+  StackCapacity s apply-capacity →  -- Apply capacity: push r15 + call + thunk output
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
@@ -289,7 +289,7 @@ test-apply-with-wf-eliminates-postulate :
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s 4 →  -- Apply needs 4 slots: push r15 (1) + call (1) + thunk output (2)
+  StackCapacity s apply-capacity →  -- Apply capacity: push r15 + call + thunk output
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
