@@ -245,6 +245,17 @@ private
   curry-closure-capacity-correct : curry-closure-capacity ≡ curry-closure-consumed-slots +ℕ output-slots
   curry-closure-capacity-correct = refl
 
+-- Semantic capacity relationships: setup phases fit in full capacity
+-- Single source of truth for these inequalities
+pair-setup-fits-capacity : pair-setup-consumed-slots ≤ pair-capacity
+pair-setup-fits-capacity = m≤m+n pair-setup-consumed-slots output-slots
+
+thunk-setup-fits-capacity : thunk-setup-consumed-slots ≤ thunk-setup-capacity
+thunk-setup-fits-capacity = m≤m+n thunk-setup-consumed-slots output-slots
+
+apply-setup-fits-capacity : apply-consumed-slots ≤ apply-capacity
+apply-setup-fits-capacity = m≤m+n apply-consumed-slots output-slots
+
   inl-inr-capacity-correct : inl-inr-capacity ≡ injection-consumed-slots +ℕ output-slots
   inl-inr-capacity-correct = refl
 
