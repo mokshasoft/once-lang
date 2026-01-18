@@ -17,7 +17,7 @@ open import Once.Backend.X86.Semantics using (State; readReg)
 open import Once.Backend.X86.Semantics using () renaming (module State to St)
 open St using (regs)
 
-open import Once.Backend.Common.MemoryRegions using (Region; stack; region-of)
+open import Once.Backend.Common.MemoryRegions using (InStack)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; ir-stack-requirement)
 open import Once.IR using (IR)
 open import Once.Type using (_*_)
@@ -53,7 +53,7 @@ postulate
   -- RSP is always in stack region (runtime invariant)
   -- Companion to rsp-bound-after-stack-op: rsp not only has enough space,
   -- but is also in the correct memory region.
-  rsp-in-stack-after-stack-op : ∀ (s : State) → region-of (readReg (regs s) rsp) ≡ stack
+  rsp-in-stack-after-stack-op : ∀ (s : State) → InStack (readReg (regs s) rsp)
 
   -- Dynamic capacity bound for thunk execution
   -- Thunks (curry closures) invoke their inner IR with dynamic capacity.

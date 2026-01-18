@@ -15,7 +15,7 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack; stack-code-disjoint)
+open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode; stack-code-disjoint)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
@@ -90,11 +90,11 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- D041: Memory at code-region addresses preserved
     -- IR only writes to stack region, code region is disjoint from stack (stack-code-disjoint)
     -- Therefore code addresses are never written by IR execution
-    ir-mem-code   : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-code   : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
     -- D041: Memory at heap-region addresses preserved
     -- IR only writes to stack region, heap region is disjoint from stack (stack-heap-disjoint)
     -- Therefore heap addresses are never written by IR execution
-    ir-mem-heap   : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-heap   : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-stack-inv  : StackInvariant s'
     -- Abstract stack capacity (output = input - consumed)
     ir-capacity   : StackCapacity s' (ir-output-capacity ir)
@@ -169,8 +169,8 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
-    ir-mem-code   : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
-    ir-mem-heap   : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-code   : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
+    ir-mem-heap   : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
     -- Invariants (same as IRStarResult)
     ir-stack-inv  : StackInvariant s'
@@ -692,7 +692,7 @@ postulate
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
-    (∀ addr → region-of addr ≡ stack → readReg (regs s) rdi ≢ addr) →
+    (∀ addr → InStack addr → readReg (regs s) rdi ≢ addr) →
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →

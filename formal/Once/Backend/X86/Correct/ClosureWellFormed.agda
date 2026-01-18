@@ -29,7 +29,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; heap; StackPointer; frameSlot)
+  using (InCode; InHeap; StackPointer; frameSlot)
 
 open import Once.Postulates using (encode)
 
@@ -81,12 +81,12 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
 
     -- Memory at code-region addresses is preserved
     -- Thunk only writes to stack region, which is disjoint from code region
-    thunk-preserves-code : ∀ addr → region-of addr ≡ code →
+    thunk-preserves-code : ∀ addr → InCode addr →
                            readMem (memory s') addr ≡ readMem (memory s) addr
 
     -- Memory at heap-region addresses is preserved
     -- Thunk only writes to stack region, which is disjoint from heap region
-    thunk-preserves-heap : ∀ addr → region-of addr ≡ heap →
+    thunk-preserves-heap : ∀ addr → InHeap addr →
                            readMem (memory s') addr ≡ readMem (memory s) addr
 
     -- D041: Memory above thunk's entry rsp is preserved
@@ -144,7 +144,7 @@ record ClosureWellFormed {E A B : Type} (prog : Program)
       StackInvariant s →
       readReg (regs s) rsp > slots 2 →
       StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
-      region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
+      InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
       ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a
               × pc s' ≡ ret-addr)
 

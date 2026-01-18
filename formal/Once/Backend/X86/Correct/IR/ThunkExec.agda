@@ -39,7 +39,7 @@ open ≡-Reasoning
 
 -- Import region lemmas for D041 approach
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint; zero-not-in-stack;
+  using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint; zero-not-in-stack;
          StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
@@ -111,10 +111,10 @@ record ThunkSetupResult {A B C : Type} (f : IR (A * B) C)
     mem-at-0-setup : readMem (memory s') 0 ≡ readMem (memory s) 0
 
     -- Memory at code region preserved
-    mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
+    mem-code-setup : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
     -- Memory at heap region preserved
-    mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+    mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
     -- Memory above original rsp preserved
     mem-above-setup : ∀ caller-addr → caller-addr > readReg (regs s) rsp →
@@ -865,24 +865,24 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- ∸-+-assoc m n o : (m ∸ n) ∸ o ≡ m ∸ (n + o)
 
     -- rsp-after-push-r15 = old-rsp ∸ slot-size matches old-rsp ∸ 1*8 directly (via abstract interface)
-    addr-rsp-8-in-stack : region-of rsp-after-push-r15 ≡ stack
+    addr-rsp-8-in-stack : InStack rsp-after-push-r15
     addr-rsp-8-in-stack = abstract-to-rsp-slot-in-stack s cap
 
     -- rsp-after-push-rbp = (old-rsp ∸ slot-size) ∸ 8 = old-rsp ∸ slots 2 = old-rsp ∸ 2*8
     rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ slots 2
     rsp-after-push-rbp-eq = ∸-+-assoc old-rsp slot-size slot-size
 
-    addr-rsp-16-in-stack : region-of rsp-after-push-rbp ≡ stack
-    addr-rsp-16-in-stack = subst (λ x → region-of x ≡ stack) (sym rsp-after-push-rbp-eq)
+    addr-rsp-16-in-stack : InStack rsp-after-push-rbp
+    addr-rsp-16-in-stack = subst (λ x → InStack x) (sym rsp-after-push-rbp-eq)
                                  (abstract-to-rsp-slots-in-stack 2 s cap 2≤6)
 
     -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
-    -- addr-rsp-16-in-stack has type region-of rsp-after-push-rbp ≡ stack
-    -- We need region-of (old-rsp ∸ slots 2) ≡ stack, so use rsp-after-push-rbp-eq to convert
+    -- addr-rsp-16-in-stack has type InStack rsp-after-push-rbp
+    -- We need InStack (old-rsp ∸ slots 2), so use rsp-after-push-rbp-eq to convert
     setup-thunk-frame : StackPointer
     setup-thunk-frame = record
       { addr = old-rsp ∸ slots 2
-      ; in-stack = subst (λ x → region-of x ≡ stack) rsp-after-push-rbp-eq addr-rsp-16-in-stack
+      ; in-stack = subst (λ x → InStack x) rsp-after-push-rbp-eq addr-rsp-16-in-stack
       }
 
     new-rsp≤frame : new-rsp ≤ old-rsp ∸ slots 2
@@ -902,8 +902,8 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp-eq : new-rsp ≡ old-rsp ∸ slots 4
     new-rsp-eq = trans (cong (_∸ slots 2) rsp-after-push-rbp-eq) (∸-+-assoc old-rsp (slots 2) (slots 2))
 
-    addr-rsp-32-in-stack : region-of new-rsp ≡ stack
-    addr-rsp-32-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp-eq)
+    addr-rsp-32-in-stack : InStack new-rsp
+    addr-rsp-32-in-stack = subst (λ x → InStack x) (sym new-rsp-eq)
                                  (abstract-to-rsp-slots-in-stack 4 s cap 4≤6)
 
     -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3 = old-rsp ∸ 3*8
@@ -940,22 +940,22 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         offset-plus-slot≡orig-minus-3slots : rsp-offset-4-slots +ℕ 8 ≡ old-rsp ∸ slots 3
         offset-plus-slot≡orig-minus-3slots = sym (trans (cong (_∸ slots 3) (sym offset-plus-4-slots≡orig)) assoc-4-minus-3)
 
-    addr-rsp-24-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
-    addr-rsp-24-in-stack = subst (λ x → region-of x ≡ stack) (sym new-rsp+8-eq)
+    addr-rsp-24-in-stack : InStack (new-rsp +ℕ slot-size)
+    addr-rsp-24-in-stack = subst (λ x → InStack x) (sym new-rsp+8-eq)
                                  (abstract-to-rsp-slots-in-stack 3 s cap 3≤6)
 
     -- Address 0 is not in stack region, so write addresses ≠ 0
     addr-rsp-8≢0 : rsp-after-push-r15 ≢ 0
-    addr-rsp-8≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-8-in-stack)
+    addr-rsp-8≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-8-in-stack)
 
     addr-rsp-16≢0 : rsp-after-push-rbp ≢ 0
-    addr-rsp-16≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-16-in-stack)
+    addr-rsp-16≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-16-in-stack)
 
     addr-rsp-32≢0 : new-rsp ≢ 0
-    addr-rsp-32≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-32-in-stack)
+    addr-rsp-32≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-32-in-stack)
 
     addr-rsp-24≢0 : new-rsp +ℕ slot-size ≢ 0
-    addr-rsp-24≢0 eq = zero-not-in-stack (trans (cong region-of (sym eq)) addr-rsp-24-in-stack)
+    addr-rsp-24≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-24-in-stack)
 
     -- Chain memory preservation at 0 through all states
     -- s1 doesn't write memory
@@ -995,17 +995,17 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- For any code address, it's not equal to any of the write addresses
     -- because stack region is disjoint from code region
-    code-addr≢write-addr : ∀ addr → region-of addr ≡ code →
+    code-addr≢write-addr : ∀ addr → InCode addr →
       addr ≢ rsp-after-push-r15 × addr ≢ rsp-after-push-rbp ×
       addr ≢ new-rsp × addr ≢ (new-rsp +ℕ slot-size)
     code-addr≢write-addr addr addr-code =
-      (λ eq → stack-code-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-code (sym eq)) ,
-      (λ eq → stack-code-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-code (sym eq)) ,
-      (λ eq → stack-code-disjoint new-rsp addr addr-rsp-32-in-stack addr-code (sym eq)) ,
-      (λ eq → stack-code-disjoint (new-rsp +ℕ slot-size) addr addr-rsp-24-in-stack addr-code (sym eq))
+      (λ eq → stack-code-addr-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-code (sym eq)) ,
+      (λ eq → stack-code-addr-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-code (sym eq)) ,
+      (λ eq → stack-code-addr-disjoint new-rsp addr addr-rsp-32-in-stack addr-code (sym eq)) ,
+      (λ eq → stack-code-addr-disjoint (new-rsp +ℕ slot-size) addr addr-rsp-24-in-stack addr-code (sym eq))
 
     -- Chain memory preservation at code addresses through all states
-    mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s8) addr ≡ readMem (memory s) addr
+    mem-code-preserved : ∀ addr → InCode addr → readMem (memory s8) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-code = mem-s7-code
       where
         disj = code-addr≢write-addr addr addr-code
@@ -1047,17 +1047,17 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- For any heap address, it's not equal to any of the write addresses
     -- because stack region is disjoint from heap region
-    heap-addr≢write-addr : ∀ addr → region-of addr ≡ heap →
+    heap-addr≢write-addr : ∀ addr → InHeap addr →
       addr ≢ rsp-after-push-r15 × addr ≢ rsp-after-push-rbp ×
       addr ≢ new-rsp × addr ≢ (new-rsp +ℕ slot-size)
     heap-addr≢write-addr addr addr-heap =
-      (λ eq → stack-heap-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-heap (sym eq)) ,
-      (λ eq → stack-heap-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-heap (sym eq)) ,
-      (λ eq → stack-heap-disjoint new-rsp addr addr-rsp-32-in-stack addr-heap (sym eq)) ,
-      (λ eq → stack-heap-disjoint (new-rsp +ℕ slot-size) addr addr-rsp-24-in-stack addr-heap (sym eq))
+      (λ eq → stack-heap-addr-disjoint rsp-after-push-r15 addr addr-rsp-8-in-stack addr-heap (sym eq)) ,
+      (λ eq → stack-heap-addr-disjoint rsp-after-push-rbp addr addr-rsp-16-in-stack addr-heap (sym eq)) ,
+      (λ eq → stack-heap-addr-disjoint new-rsp addr addr-rsp-32-in-stack addr-heap (sym eq)) ,
+      (λ eq → stack-heap-addr-disjoint (new-rsp +ℕ slot-size) addr addr-rsp-24-in-stack addr-heap (sym eq))
 
     -- Chain memory preservation at heap addresses through all states
-    mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s8) addr ≡ readMem (memory s) addr
+    mem-heap-preserved : ∀ addr → InHeap addr → readMem (memory s8) addr ≡ readMem (memory s) addr
     mem-heap-preserved addr addr-heap = mem-s7-heap
       where
         disj = heap-addr≢write-addr addr addr-heap
@@ -1231,7 +1231,7 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
   halted s ≡ false →
   pc s ≡ ret-offset →
   readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
-  region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
+  InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
   readReg (regs s) rsp > slots 2 →
   ∃[ s' ] ThunkRetResult prog s s' ret-addr
 thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
@@ -1305,7 +1305,7 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     -- StackInvariant: r15 is in code region (ret doesn't change r15)
     -- FULLY PROVEN: Direct construction using explicit r15-in-code evidence
     stack-inv1 : StackInvariant s1
-    stack-inv1 = r15-in-code (trans (cong region-of r15-1) r15-code)
+    stack-inv1 = r15-in-code (subst InCode (sym r15-1) r15-code)
 
     -- D041: RSP after ret = original RSP + 8 (ret pops return address)
     rsp1 : readReg (regs s1) rsp ≡ readReg (regs s) rsp +ℕ 8

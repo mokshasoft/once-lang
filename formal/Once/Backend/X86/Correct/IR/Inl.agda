@@ -24,7 +24,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
          inl-rsp-delta≤inl-req)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; heap; stack;
+  using (InStack; InHeap; InCode;
          stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap; slot-addr)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
@@ -102,7 +102,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     rsp-bound : readReg (regs s) rsp > slots (ir-rsp-delta (inl {A} {B}))
     rsp-bound = ≤-<-trans (slots-mono-≤ (inl-rsp-delta≤inl-req {A} {B})) (StackCapacity.rsp-sufficient cap)
 
-    rsp-region : region-of (readReg (regs s) rsp) ≡ stack
+    rsp-region : InStack (readReg (regs s) rsp)
     rsp-region = StackCapacity.rsp-in-stack cap
 
     -- StackCapacity for output allocation (derived from ir-rsp-delta)
@@ -434,7 +434,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     -- Code memory preserved
     -- D041 REGION APPROACH: Stack and code regions are disjoint
-    mem-code-preserved : ∀ addr → region-of addr ≡ code → readMem (memory s4) addr ≡ readMem (memory s) addr
+    mem-code-preserved : ∀ addr → InCode addr → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
       let -- Get region membership (derived from cap, no postulate!)
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
@@ -446,7 +446,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     -- Heap memory preserved
     -- D041 REGION APPROACH: Stack and heap regions are disjoint
-    mem-heap-preserved : ∀ addr → region-of addr ≡ heap → readMem (memory s4) addr ≡ readMem (memory s) addr
+    mem-heap-preserved : ∀ addr → InHeap addr → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-heap-preserved addr addr-in-heap =
       let -- Get region membership (derived from cap, no postulate!)
           (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
@@ -466,9 +466,9 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     stack-inv-helper : StackInvariant s → StackInvariant s4
     stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-s4-eq r15≡0)
     stack-inv-helper (r15-in-heap r15-heap) =
-      r15-in-heap (trans (cong region-of r15-s4-eq) r15-heap)
+      r15-in-heap (subst InHeap (sym r15-s4-eq) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
-      r15-in-code (trans (cong region-of r15-s4-eq) r15-code)
+      r15-in-code (subst InCode (sym r15-s4-eq) r15-code)
     stack-inv-helper (r15-in-stack frame slot r15-eq' frame-bound) =
       r15-in-stack frame slot r15-eq'' frame-bound'
       where
@@ -543,7 +543,7 @@ run-inl-star-v-auto {A} {B} prefix suffix x s h-false pc-eq input-valid stack-in
     cap-delta = rsp-bound-to-capacity (ir-rsp-delta (inl {A} {B})) s (StackCapacity.rsp-in-stack cap) rsp>slots-delta
 
     -- Stack slot addresses are in stack region (uses cap-delta, no postulate!)
-    slots-in-stack : (region-of (rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) ≡ stack) × (region-of ((rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) +ℕ slot-size) ≡ stack)
+    slots-in-stack : InStack (rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) × InStack ((rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) +ℕ slot-size)
     slots-in-stack = alloc-2-slots-addrs-in-stack s cap-delta
 
     -- Derive disjointness using valid-disjoint-from-stack

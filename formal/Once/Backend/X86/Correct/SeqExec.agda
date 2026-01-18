@@ -20,7 +20,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          slots-mono-≤; pair-setup-consumed-slots)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
+open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl; <⇒≤; ≤-<-trans)
@@ -80,8 +80,8 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
     -- Memory preservation
     mem-above : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-    mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-    mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-code : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-heap : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute pair setup with frame pointer at arbitrary offset in a program (non-halting)
 -- 7 setup instructions: push r14; push r15; push rbp; mov rbp, rsp; sub rsp, 16; mov r15, rsp; mov r14, rdi
@@ -623,7 +623,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     mem-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
     mem-at-0 = trans mem0-s7-s3 (trans mem0-s3-s2 (trans mem0-s2-s1 mem0-s1-s))
       where
-        open import Once.Backend.Common.MemoryRegions using (region-of; stack; stackAddr-write-preserves-zero)
+        open import Once.Backend.Common.MemoryRegions using (InStack; stackAddr-write-preserves-zero)
 
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size
@@ -631,13 +631,13 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write3 = orig-rsp ∸ slots 3
 
         -- Write addresses are in stack region (via capacity-maintained from cap parameter)
-        write1-in-stack : region-of write1 ≡ stack
+        write1-in-stack : InStack write1
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
-        write2-in-stack : region-of write2 ≡ stack
+        write2-in-stack : InStack write2
         write2-in-stack = capacity-maintained cap 2 2≤5
 
-        write3-in-stack : region-of write3 ≡ stack
+        write3-in-stack : InStack write3
         write3-in-stack = capacity-maintained cap 3 3≤5
 
         -- Chain memory preservation at 0 using abstract lemma
@@ -656,10 +656,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         mem0-s1-s = stackAddr-write-preserves-zero (memory s) write1 orig-r14 write1-in-stack
 
     -- Memory at code-region addresses preserved (D041)
-    mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s7) addr ≡ readMem (memory s) addr
+    mem-code : ∀ addr → InCode addr → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-code addr addr-in-code = trans memC-s7-s3 (trans memC-s3-s2 (trans memC-s2-s1 memC-s1-s))
       where
-        open import Once.Backend.Common.MemoryRegions using (region-of; stack; code; stackAddr-write-preserves-code)
+        open import Once.Backend.Common.MemoryRegions using (InStack; InCode; stackAddr-write-preserves-code)
 
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size
@@ -667,13 +667,13 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write3 = orig-rsp ∸ slots 3
 
         -- Write addresses are in stack region (via capacity-maintained from cap parameter)
-        write1-in-stack : region-of write1 ≡ stack
+        write1-in-stack : InStack write1
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
-        write2-in-stack : region-of write2 ≡ stack
+        write2-in-stack : InStack write2
         write2-in-stack = capacity-maintained cap 2 2≤5
 
-        write3-in-stack : region-of write3 ≡ stack
+        write3-in-stack : InStack write3
         write3-in-stack = capacity-maintained cap 3 3≤5
 
         -- Chain memory preservation at code addresses using abstract lemma
@@ -692,10 +692,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         memC-s1-s = stackAddr-write-preserves-code (memory s) write1 orig-r14 addr write1-in-stack addr-in-code
 
     -- Memory at heap-region addresses preserved (D041)
-    mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s7) addr ≡ readMem (memory s) addr
+    mem-heap : ∀ addr → InHeap addr → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-heap addr addr-in-heap = trans memH-s7-s3 (trans memH-s3-s2 (trans memH-s2-s1 memH-s1-s))
       where
-        open import Once.Backend.Common.MemoryRegions using (region-of; stack; heap; stackAddr-write-preserves-heap)
+        open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; stackAddr-write-preserves-heap)
 
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size
@@ -703,13 +703,13 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         write3 = orig-rsp ∸ slots 3
 
         -- Write addresses are in stack region (via capacity-maintained from cap parameter)
-        write1-in-stack : region-of write1 ≡ stack
+        write1-in-stack : InStack write1
         write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
 
-        write2-in-stack : region-of write2 ≡ stack
+        write2-in-stack : InStack write2
         write2-in-stack = capacity-maintained cap 2 2≤5
 
-        write3-in-stack : region-of write3 ≡ stack
+        write3-in-stack : InStack write3
         write3-in-stack = capacity-maintained cap 3 3≤5
 
         -- Chain memory preservation at heap addresses using abstract lemma

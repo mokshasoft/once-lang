@@ -34,7 +34,7 @@ open import Once.Backend.Common.ProgramLemmas
 
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; heap; stack; stack-code-disjoint; StackPointer; frameSlot; slot-addr;
+  using (InStack; InHeap; InCode; stack-code-addr-disjoint; StackPointer; frameSlot; slot-addr;
          zero-not-in-stack; slot-addr-above-thunk-rbp; slot-addr-≥-base)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
@@ -499,7 +499,7 @@ mutual
     StackInvariant s →
     readReg (regs s) rsp > slots 2 →
     StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ slot-size →  -- D041: caller-sp bound
-    region-of (readReg (regs s) r15) ≡ code →  -- r15 in code region (from Apply)
+    InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
     Acc _<_ (ir-size (curry f)) →  -- Acc for curry f
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
@@ -1120,8 +1120,8 @@ mutual
       -- Step 3: Trace ret instruction
       -- r15 is in code region at s-after-f (restored to entry value by cleanup)
       -- Chain: s-after-f.r15 = s-after-setup.r15 = s.r15 (via r15-f and r15-setup)
-      r15-in-code-f : region-of (readReg (regs s-after-f) r15) ≡ code
-      r15-in-code-f = trans (cong region-of r15-f-eq-s) r15-in-code-entry
+      r15-in-code-f : InCode (readReg (regs s-after-f) r15)
+      r15-in-code-f = subst InCode (sym r15-f-eq-s) r15-in-code-entry
         where
           -- Chain: s-after-f.r15 = s-after-setup.r15 = s.r15
           r15-f-eq-setup : readReg (regs s-after-f) r15 ≡ readReg (regs s-after-setup) r15
@@ -1290,7 +1290,7 @@ mutual
       -- NOTE: Using ir-mem-above + "code addresses > rbp" is WRONG approach.
       -- Region disjointness (≢) is not the same as address ordering (>).
       -- The postulate below should be replaced by adding ir-mem-code to IRStarResult.
-      thunk-preserves-code-proof : ∀ addr → region-of addr ≡ code →
+      thunk-preserves-code-proof : ∀ addr → InCode addr →
                                    readMem (memory s-final) addr ≡ readMem (memory s) addr
       thunk-preserves-code-proof addr addr-in-code = begin
         readMem (memory s-final) addr
@@ -1305,7 +1305,7 @@ mutual
 
       -- Memory at heap-region addresses preserved:
       -- Same structure as code - thunk writes only to stack, heap is disjoint
-      thunk-preserves-heap-proof : ∀ addr → region-of addr ≡ heap →
+      thunk-preserves-heap-proof : ∀ addr → InHeap addr →
                                    readMem (memory s-final) addr ≡ readMem (memory s) addr
       thunk-preserves-heap-proof addr addr-in-heap = begin
         readMem (memory s-final) addr

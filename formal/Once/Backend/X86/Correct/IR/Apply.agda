@@ -65,7 +65,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          encode-in-heap-sem; encode-offset-in-heap)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word≤thunk-bound)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint;
+  using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          heap-offset; StackPointer; frameSlot; zero-not-in-stack;
          stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
@@ -150,9 +150,9 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   -- Region proof: rdi is in heap (for heap-stack disjointness)
   -- Replaces rdi-eq - we only need the region, not the exact encode equality
-  region-of (readReg (regs s) rdi) ≡ heap →
+  InHeap (readReg (regs s) rdi) →
   -- Region proof: closure-addr is in heap (for heap-stack disjointness)
-  region-of closure-addr ≡ heap →
+  InHeap closure-addr →
   -- Memory layout (derivable from validity, explicit for convenience)
   readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
   readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just arg-addr →
@@ -196,7 +196,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 2)) (StackCapacity.rsp-sufficient cap)
 
     -- D041: Stack region proof for new-rsp (uses cap directly, no postulate!)
-    new-rsp-in-stack : region-of new-rsp ≡ stack
+    new-rsp-in-stack : InStack new-rsp
     new-rsp-in-stack = abstract-to-rsp-slot-in-stack s cap
 
     -- The 6 instructions (push + 5 movs)
@@ -292,7 +292,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     stack-heap-disjoint-rdi eq =
       -- eq : new-rsp ≡ rdi
       -- new-rsp is in stack, rdi is in heap → contradiction
-      stack-heap-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack rdi-in-heap eq
+      stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack rdi-in-heap eq
 
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
     mem-cl-s1 = subst (λ addr → readMem (memory s1) addr ≡ just closure-addr)
@@ -327,20 +327,20 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
       -- eq : new-rsp ≡ rdi + 8
       -- new-rsp is in stack, rdi+8 is in heap (via heap-offset) → contradiction
       let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) slot-size rdi-in-heap
-      in stack-heap-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
+      in stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
 
     -- Memory at closure-addr is preserved (stack vs heap disjointness)
     -- Uses closure-in-heap directly (no encode derivation needed!)
     stack-heap-disjoint-closure : new-rsp ≢ closure-addr
     stack-heap-disjoint-closure eq =
       -- new-rsp is in stack, closure-addr is in heap → contradiction
-      stack-heap-disjoint new-rsp closure-addr new-rsp-in-stack closure-in-heap eq
+      stack-heap-addr-disjoint new-rsp closure-addr new-rsp-in-stack closure-in-heap eq
 
     stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
     stack-heap-disjoint-closure+8 eq =
       -- new-rsp is in stack, closure-addr+8 is in heap (via heap-offset) → contradiction
       let closure+8-in-heap = heap-offset closure-addr slot-size closure-in-heap
-      in stack-heap-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
+      in stack-heap-addr-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
     -- Since s2 = s1 with only regs changed, memory s2 = memory s1
@@ -562,10 +562,10 @@ apply-call-star : ∀ {A B} (prefix suffix : Program)
           -- Memory at 0 preserved (D041: call writes to stack, 0 not in stack)
           × readMem (memory s') 0 ≡ readMem (memory s) 0
           -- Memory at code-region preserved (D041: call writes to stack, disjoint from code)
-          × (∀ addr → region-of addr ≡ code →
+          × (∀ addr → InCode addr →
              readMem (memory s') addr ≡ readMem (memory s) addr)
           -- Memory at heap-region preserved (D041: call writes to stack, disjoint from heap)
-          × (∀ addr → region-of addr ≡ heap →
+          × (∀ addr → InHeap addr →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv cap =
   s1 , star-all , h1 , pc1 , mem1 , rdi1 , r12-1 , r14-1 , rbp1 , stack-inv1 , rsp-sufficient-1 , rsp1-eq , mem-preserved-old-rsp , mem-above-call , mem-at-0-call , mem-code-call , mem-heap-call
@@ -693,7 +693,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
         (apply-alloc-diff-from-above s rsp-bound addr addr≥rsp)
 
     -- Shared: write address is in stack region (D041: uses cap directly, no postulate!)
-    write-addr-in-stack-call : region-of new-rsp ≡ stack
+    write-addr-in-stack-call : InStack new-rsp
     write-addr-in-stack-call = abstract-to-rsp-slot-in-stack s cap
 
     -- Memory at 0 preserved (D041: use abstract interface)
@@ -701,11 +701,11 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     mem-at-0-call = stackAddr-write-preserves-zero (memory s) new-rsp (pc s +ℕ 1) write-addr-in-stack-call
 
     -- Memory at code-region addresses preserved (D041: use abstract interface)
-    mem-code-call : ∀ addr → region-of addr ≡ code → readMem (memory s1) addr ≡ readMem (memory s) addr
+    mem-code-call : ∀ addr → InCode addr → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-code-call addr addr-in-code = stackAddr-write-preserves-code (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack-call addr-in-code
 
     -- Memory at heap-region addresses preserved (D041: use abstract interface)
-    mem-heap-call : ∀ addr → region-of addr ≡ heap → readMem (memory s1) addr ≡ readMem (memory s) addr
+    mem-heap-call : ∀ addr → InHeap addr → readMem (memory s1) addr ≡ readMem (memory s) addr
     mem-heap-call addr addr-in-heap = stackAddr-write-preserves-heap (memory s) new-rsp (pc s +ℕ 1) addr write-addr-in-stack-call addr-in-heap
 
 ------------------------------------------------------------------------
@@ -737,8 +737,8 @@ open ApplyPopResult public
 -- Four cases corresponding to StackInvariant constructors (slot-based)
 data R15OrigInfo (old-r15 orig-rsp : ℕ) : Set where
   r15-was-zero     : old-r15 ≡ 0 → R15OrigInfo old-r15 orig-rsp
-  r15-was-in-heap  : region-of old-r15 ≡ heap → R15OrigInfo old-r15 orig-rsp
-  r15-was-in-code  : region-of old-r15 ≡ code → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-heap  : InHeap old-r15 → R15OrigInfo old-r15 orig-rsp
+  r15-was-in-code  : InCode old-r15 → R15OrigInfo old-r15 orig-rsp
   r15-was-in-stack : (frame : StackPointer) →
                      (slot : ℕ) →
                      old-r15 ≡ slot-addr frame slot →
@@ -883,9 +883,9 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
         derive-stack-inv : R15OrigInfo old-r15 orig-rsp → StackInvariant s1
         derive-stack-inv (r15-was-zero r15-zero) = r15-unused (trans r15-1 r15-zero)
         derive-stack-inv (r15-was-in-heap r15-heap) =
-          r15-in-heap (subst (λ r → region-of r ≡ heap) (sym r15-1) r15-heap)
+          r15-in-heap (subst InHeap (sym r15-1) r15-heap)
         derive-stack-inv (r15-was-in-code r15-code) =
-          r15-in-code (subst (λ r → region-of r ≡ code) (sym r15-1) r15-code)
+          r15-in-code (subst InCode (sym r15-1) r15-code)
         derive-stack-inv (r15-was-in-stack frame slot r15-eq frame-bound) =
           -- frame, slot: unchanged
           -- r15-eq': s1.r15 ≡ slot-addr frame slot
@@ -941,10 +941,10 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
     -- Memory at address 0 is preserved (for r15-unused case)
     mem-at-0     : readMem (memory s') 0 ≡ readMem (memory s) 0
     -- Memory at code-region addresses is preserved (for r15-in-code case)
-    mem-code-region : ∀ addr → region-of addr ≡ code →
+    mem-code-region : ∀ addr → InCode addr →
                       readMem (memory s') addr ≡ readMem (memory s) addr
     -- Memory at heap-region addresses is preserved (for r15-in-heap case)
-    mem-heap-region : ∀ addr → region-of addr ≡ heap →
+    mem-heap-region : ∀ addr → InHeap addr →
                       readMem (memory s') addr ≡ readMem (memory s) addr
 
 open ApplyWfResult public
@@ -1011,7 +1011,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     pair = (cl , arg)
 
     -- rdi-in-heap derived directly from input validity
-    rdi-in-heap : region-of (readReg (regs s) rdi) ≡ heap
+    rdi-in-heap : InHeap (readReg (regs s) rdi)
     rdi-in-heap = valid-in-heap input-valid
 
     -- Decompose input validity to get closure validity
@@ -1033,7 +1033,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     v-cl = subst (λ a → ValidAt cl a (memory s)) closure-addr'-eq v-cl-decomp
 
     -- closure-in-heap derived from closure validity
-    closure-in-heap : region-of closure-addr ≡ heap
+    closure-in-heap : InHeap closure-addr
     closure-in-heap = valid-in-heap v-cl
 
     -- Extract rsp-bound from cap for internal use (cap : StackCapacity s (ir-stack-requirement apply) gives > slots 4)
@@ -1108,17 +1108,17 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     --
     -- Setup phase: memory s-setup = writeMem (memory s) (rsp-8) old-r15
     -- The write address (rsp-8) is in stack region, so heap is preserved
-    setup-write-in-stack : region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
+    setup-write-in-stack : InStack (readReg (regs s) rsp ∸ slot-size)
     setup-write-in-stack = abstract-to-rsp-slot-in-stack s cap
 
-    heap-pres-setup : ∀ a → region-of a ≡ heap →
+    heap-pres-setup : ∀ a → InHeap a →
                       readMem (memory s-setup) a ≡ readMem (memory s) a
     heap-pres-setup a a-in-heap =
       stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 a
         setup-write-in-stack a-in-heap
 
     -- Compose: heap preserved from s to s-call
-    heap-pres-s-to-call : ∀ a → region-of a ≡ heap →
+    heap-pres-s-to-call : ∀ a → InHeap a →
                           readMem (memory s-call) a ≡ readMem (memory s) a
     heap-pres-s-to-call a a-in-heap = trans (mem-heap-call-phase a a-in-heap)
                                             (heap-pres-setup a a-in-heap)
@@ -1156,7 +1156,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 
     -- Proof: r15 is in code region at s-call
     -- Chain: s-call.r15 = s-setup.r15 = code-ptr < length prog
-    r15-call-in-code : region-of (readReg (regs s-call) r15) ≡ code
+    r15-call-in-code : InCode (readReg (regs s-call) r15)
     r15-call-in-code = pc-in-code (readReg (regs s-call) r15) (length prog) r15-call<len
       where
         -- Call preserves r15 (only modifies rsp, pc, and memory)
@@ -1362,7 +1362,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- Call writes to (rsp - 16) which is in stack region
     -- Both are ≢ 0 since 0 is not in stack region (zero-not-in-stack)
     -- Shared: Setup write address (rsp - 8) is in stack region (D041: uses cap, no postulate!)
-    setup-write-in-stack-f : region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
+    setup-write-in-stack-f : InStack (readReg (regs s) rsp ∸ slot-size)
     setup-write-in-stack-f = abstract-to-rsp-slot-in-stack s cap
 
     -- Memory at 0 preserved: chain through all phases using D041 abstract interface
@@ -1375,7 +1375,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         after-pop   = cong (λ m → readMem m 0) PopR.mem-pop-preserved
 
     -- Memory at code-region addresses preserved: chain through all phases
-    mem-code-region-f : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code-region-f : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-region-f addr addr-in-code = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
         after-setup = stackAddr-write-preserves-code (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack-f addr-in-code
@@ -1384,7 +1384,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         after-pop   = cong (λ m → readMem m addr) PopR.mem-pop-preserved
 
     -- Memory at heap-region addresses preserved: chain through all phases (D041)
-    mem-heap-region-f : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-heap-region-f : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-region-f addr addr-in-heap = trans after-pop (trans after-thunk (trans after-call after-setup))
       where
         after-setup = stackAddr-write-preserves-heap (memory s) (readReg (regs s) rsp ∸ slot-size) old-r15 addr setup-write-in-stack-f addr-in-heap

@@ -36,7 +36,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
          pair-r15-in-stack; pair-second-slot-in-stack;
          pair-setup-stack-inv; stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; stack; heap; stack-code-disjoint; stack-heap-disjoint;
+  using (InStack; InHeap; InCode; stack-code-disjoint; stack-code-addr-disjoint;
+         stack-heap-disjoint; stack-heap-addr-disjoint;
          zero-not-in-stack; slot-addr; slot-addr-≥-base;
          slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
@@ -52,7 +53,7 @@ open import Once.Backend.X86.Correct.StarBase
          IRStarResultV; ir-result-valid; ir-rsp-bound-v)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write)
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
+open import Once.Backend.Common.MemoryRegions using (InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_)
 open import Function using (case_of_)
@@ -89,9 +90,9 @@ mk-pair-setup-capacity s = rsp-bound-to-capacity pair-setup-consumed-slots s (rs
 -- | Bridge from abstract slot region to concrete rsp-40 region
 -- Usage: replace `pair-r15-in-stack s cap` with this
 abstract-to-rsp-40-in-stack : ∀ (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                              region-of (readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) ≡ stack
+                              InStack (readReg (regs s) rsp ∸ slots pair-setup-consumed-slots)
 abstract-to-rsp-40-in-stack s cap =
-  subst (λ addr → region-of addr ≡ stack)
+  subst InStack
         (trans (slot-addr-0-is-base (pair-frame-0 s cap))
                (pair-frame-0-addr-eq s cap))
         (pair-frame-slot-0-in-stack s cap)
@@ -99,9 +100,9 @@ abstract-to-rsp-40-in-stack s cap =
 -- | Bridge from abstract slot region to concrete (rsp-40)+8 region
 -- Usage: replace `pair-second-slot-in-stack s cap` with this
 abstract-to-rsp-40+8-in-stack : ∀ (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                                region-of ((readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) +ℕ slot-size) ≡ stack
+                                InStack ((readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) +ℕ slot-size)
 abstract-to-rsp-40+8-in-stack s cap =
-  subst (λ addr → region-of addr ≡ stack)
+  subst InStack
         (pair-frame-slot-1-addr-eq s cap)
         (pair-frame-slot-1-in-stack s cap)
 
@@ -412,9 +413,9 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     -- Null page preservation (address 0 is never written)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     -- Code region preservation (D041)
-    mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Heap region preservation (D041)
-    mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 -- | Execute setup phase and compute all properties
 -- Requires StackCapacity s (ir-stack-requirement ⟨ f , g ⟩): 5 slots for setup + inner requirement remaining
@@ -579,8 +580,8 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
     mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
     mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-    mem-code-setup : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-    mem-heap-setup : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- StackCapacity s pair-setup-consumed-slots derived from input capacity (for downstream use)
     cap-pair-setup : StackCapacity s pair-setup-consumed-slots
     -- Post-setup capacity: after consuming setup slots, we have capacity for inner requirement
@@ -748,9 +749,9 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     -- Null page preservation (address 0 is never written)
     mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
     -- Code region preservation (D041)
-    mem-code-mid : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-code-mid : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     -- Heap region preservation (D041)
-    mem-heap-mid : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-heap-mid : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute middle phase
 pair-middle-star : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -875,8 +876,8 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
 
     -- Shared: r15 s1 is in stack region (used by mem-code-mid-proof, mem-heap-mid-proof)
     -- D041: Lifted from nested where clauses to avoid duplication
-    s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
-    s1-r15-region = subst (λ a → region-of a ≡ stack) (sym r15-s1-eq)
+    s1-r15-region : InStack (readReg (regs s1) r15)
+    s1-r15-region = subst InStack (sym r15-s1-eq)
                           (abstract-to-rsp-40-in-stack s (mk-pair-setup-capacity s))
 
     -- r15 ≠ rbp in s1 (since rsp-40 ≠ rsp-24)
@@ -971,21 +972,21 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
 
     -- Code region preservation (D041): r15 is in stack, code disjoint from stack
     -- Uses shared s1-r15-region computed above
-    mem-code-mid-proof : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-code-mid-proof : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-code-mid-proof addr addr-in-code = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
       where
         r15-neq-addr : readReg (regs s1) r15 ≢ addr
-        r15-neq-addr eq = stack-code-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-code eq
+        r15-neq-addr = stack-code-addr-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-code
 
     -- Heap region preservation (D041): r15 is in stack, heap disjoint from stack
     -- Uses shared s1-r15-region computed above
-    mem-heap-mid-proof : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-heap-mid-proof : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-heap-mid-proof addr addr-in-heap = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
       where
         r15-neq-addr : readReg (regs s1) r15 ≢ addr
-        r15-neq-addr eq = stack-heap-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-heap eq
+        r15-neq-addr = stack-heap-addr-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-heap
 
 ------------------------------------------------------------------------
 -- Validity-based Middle Result (Phase D.5)
@@ -1016,8 +1017,8 @@ record PairMiddleResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
     mem-above-r15-mid : ∀ addr → addr ≢ readReg (regs s1) r15 → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-    mem-code-mid : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
-    mem-heap-mid : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-code-mid : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-heap-mid : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
 -- | Execute middle phase (validity-based, takes IRStarResultV)
 pair-middle-star-v : ∀ {A B C} (f : IR C A) (g : IR C B)
@@ -1072,8 +1073,8 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
     cap-pair-setup : StackCapacity s pair-setup-consumed-slots
     cap-pair-setup = PairSetupResultV.cap-pair-setup setup-res
 
-    s1-r15-region : region-of (readReg (regs s1) r15) ≡ stack
-    s1-r15-region = subst (λ addr → region-of addr ≡ stack)
+    s1-r15-region : InStack (readReg (regs s1) r15)
+    s1-r15-region = subst InStack
                           (sym (trans r15-s1-eq-s-setup r15-setup-raw))
                           (abstract-to-rsp-40-in-stack s cap-pair-setup)
 
@@ -1209,21 +1210,21 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
     mem-at-0-mid-proof = mem-above-mid-raw 0 zero-neq-r15
       where
         zero-neq-r15 : 0 ≢ readReg (regs s1) r15
-        zero-neq-r15 eq = zero-not-in-stack (trans (cong region-of eq) s1-r15-region)
+        zero-neq-r15 eq = zero-not-in-stack (subst InStack (sym eq) s1-r15-region)
 
-    mem-code-mid-proof : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-code-mid-proof : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-code-mid-proof addr addr-in-code = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
       where
         r15-neq-addr : readReg (regs s1) r15 ≢ addr
-        r15-neq-addr eq = stack-code-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-code eq
+        r15-neq-addr = stack-code-addr-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-code
 
-    mem-heap-mid-proof : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
+    mem-heap-mid-proof : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-heap-mid-proof addr addr-in-heap = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
       where
         r15-neq-addr : readReg (regs s1) r15 ≢ addr
-        r15-neq-addr eq = stack-heap-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-heap eq
+        r15-neq-addr = stack-heap-addr-disjoint (readReg (regs s1) r15) addr s1-r15-region addr-in-heap
 
 ------------------------------------------------------------------------
 -- Final Assembly: combine all results into IRStarResult
@@ -1257,8 +1258,8 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
-  (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
-  (∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -1302,7 +1303,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
     -- ir-output-capacity ⟨ f , g ⟩ = ir-stack-requirement ⟨ f , g ⟩ ∸ 0 = ir-stack-requirement ⟨ f , g ⟩
     cap-final : StackCapacity s-final output-cap
     cap-final = rsp-bound-to-capacity output-cap s-final
-                  (subst (λ r → region-of r ≡ stack) (sym rsp-final) (rsp-in-stack cap))
+                  (subst InStack (sym rsp-final) (rsp-in-stack cap))
                   (subst (_> slots output-cap) (sym rsp-final) (rsp-sufficient cap))
 
     -- Star proofs from each phase
@@ -1426,8 +1427,8 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-above-r15+8-fin : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ slot-size → readMem (memory s-final) addr ≡ readMem (memory s3) addr
     -- D041: Memory preservation for address 0, code, and heap regions
     mem-at-0-fin : readMem (memory s-final) 0 ≡ readMem (memory s3) 0
-    mem-code-fin : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s3) addr
-    mem-heap-fin : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+    mem-code-fin : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+    mem-heap-fin : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
 
 -- | Preconditions for pair-final-star: stack layout from setup phase
 record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
@@ -1750,35 +1751,35 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- Case 3: r15-s is in code region
         -- r15-s3 + 8 is a stack address (since r15-s3 = rsp - 40)
         -- Code and stack addresses are disjoint by region separation (D041 pure region proof)
-        case-r15-code : region-of (readReg (regs s) r15) ≡ code →
+        case-r15-code : InCode (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-code r15-code-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
               -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region (via abstract interface)
-              write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack
+              write-addr-in-stack : InStack ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size)
               write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap-pair-setup
               -- Convert via r15-chain: readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ slots 5
-              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
-              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain) write-addr-in-stack
+              s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
+              s3-r15+8-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain) write-addr-in-stack
               -- By stack-code-disjoint: s.r15 (in code) ≠ s3.r15+8 (in stack)
               disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-              disjoint = λ eq' → stack-code-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
-                                                      s3-r15+8-in-stack r15-code-pf (sym eq')
+              disjoint = λ eq' → stack-code-addr-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
+                                                           s3-r15+8-in-stack r15-code-pf (sym eq')
           in disjoint eq
 
         -- Case 4: r15-s is in heap region
         -- r15-s3 + 8 is a stack address (since r15-s3 = rsp - 40)
         -- Heap and stack addresses are disjoint by region separation
-        case-r15-heap : region-of (readReg (regs s) r15) ≡ heap →
+        case-r15-heap : InHeap (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-heap r15-heap-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
-              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
-              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain)
+              s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
+              s3-r15+8-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain)
                                         (abstract-to-rsp-40+8-in-stack s cap-pair-setup)
               disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
-                                                     s3-r15+8-in-stack r15-heap-pf (sym eq')
+              disjoint = λ eq' → stack-heap-addr-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
+                                                          s3-r15+8-in-stack r15-heap-pf (sym eq')
           in disjoint eq
 
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
@@ -2222,31 +2223,31 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             s1-r15<orig-r15 : readReg (regs s1) r15 < orig-r15
             s1-r15<orig-r15 = subst (_< orig-r15) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp rsp≤r15)
         -- Case r15 in code region: code addresses are disjoint from stack addresses (D041 region proof)
-        case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-code-r15 : InCode orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
           let -- s1.r15 = rsp - 40 is in stack region (via abstract interface)
               cap-pair-setup = mk-pair-setup-capacity s
-              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
+              rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
               -- Convert via s1-r15-eq
-              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
-              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              s1-r15-in-stack : InStack (readReg (regs s1) r15)
+              s1-r15-in-stack = subst InStack (sym s1-r15-eq) rsp-40-in-stack
               -- By stack-code-disjoint: orig-r15 (in code) ≠ s1.r15 (in stack)
               disjoint : orig-r15 ≢ readReg (regs s1) r15
-              disjoint = λ eq' → stack-code-disjoint (readReg (regs s1) r15) orig-r15
-                                                      s1-r15-in-stack r15-code-pf (sym eq')
+              disjoint = λ eq' → stack-code-addr-disjoint (readReg (regs s1) r15) orig-r15
+                                                           s1-r15-in-stack r15-code-pf (sym eq')
           in disjoint eq
         -- Case r15 in heap region: heap addresses are disjoint from stack addresses (D041 region proof)
-        case-r15-heap-r15 : region-of orig-r15 ≡ heap → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-heap-r15 : InHeap orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-heap-r15 r15-heap-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
-              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
+              rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
-              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
-              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              s1-r15-in-stack : InStack (readReg (regs s1) r15)
+              s1-r15-in-stack = subst InStack (sym s1-r15-eq) rsp-40-in-stack
               disjoint : orig-r15 ≢ readReg (regs s1) r15
-              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s1) r15) orig-r15
-                                                     s1-r15-in-stack r15-heap-pf (sym eq')
+              disjoint = λ eq' → stack-heap-addr-disjoint (readReg (regs s1) r15) orig-r15
+                                                          s1-r15-in-stack r15-heap-pf (sym eq')
           in disjoint eq
 
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
@@ -2279,7 +2280,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             mem-g-at-0 = ir-mem-at-0 r-g
 
         -- Case 2: r15 in code region - chain ir-mem-code (D041 pure region proof)
-        case-r15-code : region-of orig-r15 ≡ code → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-code : InCode orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
         case-r15-code r15-code = trans mem-g-code (trans mem-mid-code (trans mem-f-code mem-setup-code))
           where
             mem-setup-code = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
@@ -2290,7 +2291,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             mem-g-code = ir-mem-code r-g orig-r15 r15-code
 
         -- Case 3: r15 in heap region - chain ir-mem-heap (D041 pure region proof)
-        case-r15-heap : region-of orig-r15 ≡ heap → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-heap : InHeap orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
         case-r15-heap r15-heap = trans mem-g-heap (trans mem-mid-heap (trans mem-f-heap mem-setup-heap))
           where
             mem-setup-heap = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
@@ -2545,29 +2546,29 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             r15-s3+8<r15-s : readReg (regs s3) r15 +ℕ slot-size < readReg (regs s) r15
             r15-s3+8<r15-s = ≤-trans r15-s3+8<rsp-s rsp≤r15
 
-        case-r15-code : region-of (readReg (regs s) r15) ≡ code →
+        case-r15-code : InCode (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-code r15-code-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
-              write-addr-in-stack : region-of ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size) ≡ stack
+              write-addr-in-stack : InStack ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size)
               write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap-pair-setup
-              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
-              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain) write-addr-in-stack
+              s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
+              s3-r15+8-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain) write-addr-in-stack
               disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-              disjoint = λ eq' → stack-code-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
-                                                      s3-r15+8-in-stack r15-code-pf (sym eq')
+              disjoint = λ eq' → stack-code-addr-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
+                                                           s3-r15+8-in-stack r15-code-pf (sym eq')
           in disjoint eq
 
-        case-r15-heap : region-of (readReg (regs s) r15) ≡ heap →
+        case-r15-heap : InHeap (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-heap r15-heap-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
-              s3-r15+8-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
-              s3-r15+8-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain)
+              s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
+              s3-r15+8-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain)
                                         (abstract-to-rsp-40+8-in-stack s cap-pair-setup)
               disjoint : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
-                                                     s3-r15+8-in-stack r15-heap-pf (sym eq')
+              disjoint = λ eq' → stack-heap-addr-disjoint (readReg (regs s3) r15 +ℕ slot-size) (readReg (regs s) r15)
+                                                          s3-r15+8-in-stack r15-heap-pf (sym eq')
           in disjoint eq
 
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
@@ -2946,27 +2947,27 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                 m∸n<m-r15 (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
             s1-r15<orig-r15 : readReg (regs s1) r15 < orig-r15
             s1-r15<orig-r15 = subst (_< orig-r15) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp rsp≤r15)
-        case-r15-code-r15 : region-of orig-r15 ≡ code → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-code-r15 : InCode orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
-              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
+              rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
-              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
-              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              s1-r15-in-stack : InStack (readReg (regs s1) r15)
+              s1-r15-in-stack = subst InStack (sym s1-r15-eq) rsp-40-in-stack
               disjoint : orig-r15 ≢ readReg (regs s1) r15
-              disjoint = λ eq' → stack-code-disjoint (readReg (regs s1) r15) orig-r15
-                                                      s1-r15-in-stack r15-code-pf (sym eq')
+              disjoint = λ eq' → stack-code-addr-disjoint (readReg (regs s1) r15) orig-r15
+                                                           s1-r15-in-stack r15-code-pf (sym eq')
           in disjoint eq
-        case-r15-heap-r15 : region-of orig-r15 ≡ heap → orig-r15 ≢ readReg (regs s1) r15
+        case-r15-heap-r15 : InHeap orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-heap-r15 r15-heap-pf eq =
           let cap-pair-setup = mk-pair-setup-capacity s
-              rsp-40-in-stack : region-of (readReg (regs s) rsp ∸ slots 5) ≡ stack
+              rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
-              s1-r15-in-stack : region-of (readReg (regs s1) r15) ≡ stack
-              s1-r15-in-stack = subst (λ r → region-of r ≡ stack) (sym s1-r15-eq) rsp-40-in-stack
+              s1-r15-in-stack : InStack (readReg (regs s1) r15)
+              s1-r15-in-stack = subst InStack (sym s1-r15-eq) rsp-40-in-stack
               disjoint : orig-r15 ≢ readReg (regs s1) r15
-              disjoint = λ eq' → stack-heap-disjoint (readReg (regs s1) r15) orig-r15
-                                                      s1-r15-in-stack r15-heap-pf (sym eq')
+              disjoint = λ eq' → stack-heap-addr-disjoint (readReg (regs s1) r15) orig-r15
+                                                           s1-r15-in-stack r15-heap-pf (sym eq')
           in disjoint eq
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
         case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
@@ -2993,7 +2994,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                  (sym s2-eq) (PairMiddleResultV.mem-at-0-mid mid-res)
             mem-g-at-0 = v-mem-at-0 r-g
 
-        case-r15-code : region-of orig-r15 ≡ code → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-code : InCode orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
         case-r15-code r15-code = trans mem-g-code (trans mem-mid-code (trans mem-f-code mem-setup-code))
           where
             mem-setup-code = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
@@ -3003,7 +3004,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                  (sym s2-eq) (PairMiddleResultV.mem-code-mid mid-res orig-r15 r15-code)
             mem-g-code = v-mem-code r-g orig-r15 r15-code
 
-        case-r15-heap : region-of orig-r15 ≡ heap → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
+        case-r15-heap : InHeap orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
         case-r15-heap r15-heap = trans mem-g-heap (trans mem-mid-heap (trans mem-f-heap mem-setup-heap))
           where
             mem-setup-heap = subst (λ ss → readMem (memory ss) orig-r15 ≡ readMem (memory s) orig-r15)
@@ -3319,33 +3320,33 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       cap-pair-setup = mk-pair-setup-capacity s
 
       -- (rsp - slots setup) + slot-size is in stack region (via abstract interface)
-      write-addr-in-stack-raw : region-of ((readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) +ℕ slot-size) ≡ stack
+      write-addr-in-stack-raw : InStack ((readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) +ℕ slot-size)
       write-addr-in-stack-raw = abstract-to-rsp-40+8-in-stack s cap-pair-setup
 
       -- r15-s3 + 8 is in stack region (using r15-chain)
-      write-addr-in-stack : region-of (readReg (regs s3) r15 +ℕ slot-size) ≡ stack
-      write-addr-in-stack = subst (λ r → region-of (r +ℕ slot-size) ≡ stack) (sym r15-chain) write-addr-in-stack-raw
+      write-addr-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
+      write-addr-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain) write-addr-in-stack-raw
 
       -- Memory at address 0 preserved (D041)
       mem-at-0-proof : readMem (memory s9) 0 ≡ readMem (memory s3) 0
       mem-at-0-proof = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {0} {readReg (regs s3) rax} write-addr-neq-0
         where
           write-addr-neq-0 : readReg (regs s3) r15 +ℕ slot-size ≢ 0
-          write-addr-neq-0 eq = zero-not-in-stack (subst (λ a → region-of a ≡ stack) eq write-addr-in-stack)
+          write-addr-neq-0 eq = zero-not-in-stack (subst InStack eq write-addr-in-stack)
 
       -- Memory at code region addresses preserved (D041)
-      mem-code-proof : ∀ addr → region-of addr ≡ code → readMem (memory s9) addr ≡ readMem (memory s3) addr
+      mem-code-proof : ∀ addr → InCode addr → readMem (memory s9) addr ≡ readMem (memory s3) addr
       mem-code-proof addr addr-in-code = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {addr} {readReg (regs s3) rax} write-neq-addr
         where
           write-neq-addr : readReg (regs s3) r15 +ℕ slot-size ≢ addr
-          write-neq-addr eq = stack-code-disjoint (readReg (regs s3) r15 +ℕ slot-size) addr write-addr-in-stack addr-in-code eq
+          write-neq-addr = stack-code-addr-disjoint (readReg (regs s3) r15 +ℕ slot-size) addr write-addr-in-stack addr-in-code
 
       -- Memory at heap region addresses preserved (D041)
-      mem-heap-proof : ∀ addr → region-of addr ≡ heap → readMem (memory s9) addr ≡ readMem (memory s3) addr
+      mem-heap-proof : ∀ addr → InHeap addr → readMem (memory s9) addr ≡ readMem (memory s3) addr
       mem-heap-proof addr addr-in-heap = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {addr} {readReg (regs s3) rax} write-neq-addr
         where
           write-neq-addr : readReg (regs s3) r15 +ℕ slot-size ≢ addr
-          write-neq-addr eq = stack-heap-disjoint (readReg (regs s3) r15 +ℕ slot-size) addr write-addr-in-stack addr-in-heap eq
+          write-neq-addr = stack-heap-addr-disjoint (readReg (regs s3) r15 +ℕ slot-size) addr write-addr-in-stack addr-in-heap
 
 ------------------------------------------------------------------------
 -- Validity-Based Pair Result Assembly
@@ -3385,8 +3386,8 @@ assemble-pair-result-v : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
-  (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
-  (∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResult.s2 mid-res →
   s-setup ≡ PairSetupResult.s-setup setup-res →
@@ -3566,8 +3567,8 @@ assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
-  (∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
-  (∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
+  (∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
   s2 ≡ PairMiddleResultV.s2 mid-res →
   s-setup ≡ PairSetupResultV.s-setup setup-res →

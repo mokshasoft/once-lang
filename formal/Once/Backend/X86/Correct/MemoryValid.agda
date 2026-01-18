@@ -21,7 +21,7 @@ open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writ
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; stack; heap; stack-heap-disjoint)
+  using (InStack; InHeap; stack-heap-addr-disjoint)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
 
@@ -263,7 +263,7 @@ postulate
     ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
     ValidAt v addr1 mem1 →
     addr2 ≡ addr1 →
-    (∀ a → region-of a ≡ heap → readMem mem2 a ≡ readMem mem1 a) →
+    (∀ a → InHeap a → readMem mem2 a ≡ readMem mem1 a) →
     ValidAt v addr2 mem2
 
   -- | Convert validity from (A ⇒ B) to (Eff A B)
@@ -283,7 +283,7 @@ postulate
   valid-in-heap :
     ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
     ValidAt v addr m →
-    region-of addr ≡ heap
+    InHeap addr
 
   -- | Extract validity of left injection's child value
   -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
@@ -364,17 +364,17 @@ postulate
 -- Direct application of valid-in-heap postulate.
 valid-addr-in-heap : ∀ {A : Type} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
   ValidAt v addr m →
-  region-of addr ≡ heap
+  InHeap addr
 valid-addr-in-heap = valid-in-heap
 
 -- | Valid address is disjoint from stack addresses
 -- If addr has ValidAt and stack-addr is in stack, then addr ≢ stack-addr
 valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
   ValidAt v addr m →
-  region-of stack-addr ≡ stack →
+  InStack stack-addr →
   addr ≢ stack-addr
 valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof addr-eq =
-  stack-heap-disjoint stack-addr addr stack-proof (valid-addr-in-heap valid) (sym addr-eq)
+  stack-heap-addr-disjoint stack-addr addr stack-proof (valid-addr-in-heap valid) (sym addr-eq)
 
 ------------------------------------------------------------------------
 -- Creating validity proofs from allocation

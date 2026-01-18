@@ -44,7 +44,7 @@ open import Once.Postulates
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; r15-unused)
 open import Once.Backend.Common.MemoryRegions
-  using (StackPointer; HeapPointer; region-of; stack; heap)
+  using (StackPointer; HeapPointer; InStack; InHeap)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; haddr to hp-addr)
 
 open import Data.Bool using (Bool; true; false)
@@ -151,7 +151,7 @@ stackBase = 0x7FFF0000
 -- | Legacy postulate for stackBase's region membership
 -- DEPRECATED: Use StackPointer's in-stack field instead.
 postulate
-  stackBase-in-stack : region-of 0x7FFF0000 ≡ stack
+  stackBase-in-stack : InStack 0x7FFF0000
 
 -- | Legacy StackPointer using stackBase
 legacyStackPointer : StackPointer
@@ -256,7 +256,7 @@ open import Data.Nat using () renaming (_+_ to _+ℕ_)
 -- | Legacy HeapPointer using hard-coded address
 -- DEPRECATED: Use parameterized version with explicit HeapPointer instead.
 postulate
-  heapBase-in-heap : region-of 0x80000000 ≡ heap
+  heapBase-in-heap : InHeap 0x80000000
 
 legacyHeapPointer : HeapPointer
 legacyHeapPointer = record

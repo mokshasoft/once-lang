@@ -49,17 +49,18 @@ open import Once.Backend.X86.Correct.StackInvariant public
          stack-inv-for-code-ptr)
 open RbpInvariant public
 
--- Import region abstractions
+-- Import region abstractions (interval-based model)
 open import Once.Backend.Common.MemoryRegions
-  using (Region; stack; heap; code; Addr; region-of;
-         regions-disjoint; stack≢heap; stack≢code;
+  using (Addr; InStack; InHeap; InCode;
          stack-heap-disjoint; stack-code-disjoint;
+         stack-heap-addr-disjoint; stack-code-addr-disjoint;
          zero-not-in-stack; pc-in-code;
-         stack-sub-preserves-region;
+         stack-sub-preserves;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
          slot-addr-1-is-base+8;
-         encode-in-heap; heap-offset)
+         encode-in-heap; heap-offset;
+         stack-bounds; lower; upper)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 open import Data.Unit using (⊤; tt)
 
@@ -435,9 +436,9 @@ output-slots≤pair-req f g = ≤-trans output-slots≤pair-setup (pair-setup≤
 ------------------------------------------------------------------------
 
 -- | Stack addresses are never 0 (moved from MemoryRegions to keep it high-level)
-stack-addr-nonzero : ∀ a → region-of a ≡ stack → a ≢ 0
+stack-addr-nonzero : ∀ a → InStack a → a ≢ 0
 stack-addr-nonzero a a-in-stack a≡0 =
-  zero-not-in-stack (subst (λ x → region-of x ≡ stack) a≡0 a-in-stack)
+  zero-not-in-stack (subst InStack a≡0 a-in-stack)
 
 -- | Common bound conversion: rsp > two-push-offset implies rsp > slot-size
 -- Used in many proofs where we have two-slot bound but need single-slot bound
@@ -461,15 +462,15 @@ m∸n<m-when-m>n (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
 -- Instead, use the abstract interface functions below.
 record StackCapacity (s : State) (n : ℕ) : Set where
   field
-    -- rsp points to stack region
-    rsp-in-stack : region-of (readReg (regs s) rsp) ≡ stack
+    -- rsp points to stack region (interval membership)
+    rsp-in-stack : InStack (readReg (regs s) rsp)
 
     -- rsp has sufficient space for n slots (concrete X86 bound)
     rsp-sufficient : readReg (regs s) rsp > n *ℕ slot-size
 
     -- After allocating k slots (k ≤ n), still in stack region
     capacity-maintained : ∀ k → k ≤ n →
-      region-of (readReg (regs s) rsp ∸ (k *ℕ slot-size)) ≡ stack
+      InStack (readReg (regs s) rsp ∸ (k *ℕ slot-size))
 
 open StackCapacity public
 
@@ -518,10 +519,10 @@ capacity-preserved-rsp-unchanged : ∀ (s s' : State) (n : ℕ) →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
   StackCapacity s' n
 capacity-preserved-rsp-unchanged s s' n cap rsp-eq = record
-  { rsp-in-stack = trans (cong region-of rsp-eq) (rsp-in-stack cap)
+  { rsp-in-stack = subst InStack (sym rsp-eq) (rsp-in-stack cap)
   ; rsp-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) (rsp-sufficient cap)
   ; capacity-maintained = λ k k≤n →
-      trans (cong (λ r → region-of (r ∸ (k *ℕ slot-size))) rsp-eq)
+      subst InStack (sym (cong (_∸ (k *ℕ slot-size)) rsp-eq))
             (capacity-maintained cap k k≤n)
   }
 
@@ -541,8 +542,8 @@ capacity-after-push s s' n cap rsp-eq = record
     old-rsp = readReg (regs s) rsp
     new-rsp = readReg (regs s') rsp
 
-    rsp'-in-stack : region-of new-rsp ≡ stack
-    rsp'-in-stack = trans (cong region-of rsp-eq) (capacity-maintained cap 1 (s≤s z≤n))
+    rsp'-in-stack : InStack new-rsp
+    rsp'-in-stack = subst InStack (sym rsp-eq) (capacity-maintained cap 1 (s≤s z≤n))
 
     rsp'-sufficient : new-rsp > n *ℕ slot-size
     rsp'-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) sub-lemma
@@ -567,11 +568,11 @@ capacity-after-push s s' n cap rsp-eq = record
             bound-step : n *ℕ slot-size +ℕ slot-size < (old-rsp ∸ slot-size) +ℕ slot-size
             bound-step = subst (n *ℕ slot-size +ℕ slot-size <_) (sym old-rsp-eq) old-bound'
 
-    cap-maintained : ∀ k → k ≤ n → region-of (new-rsp ∸ (k *ℕ slot-size)) ≡ stack
+    cap-maintained : ∀ k → k ≤ n → InStack (new-rsp ∸ (k *ℕ slot-size))
     cap-maintained k k≤n =
       let 1+k≤sn : (1 +ℕ k) ≤ suc n
           1+k≤sn = s≤s k≤n
-          old-cap-at-1+k : region-of (old-rsp ∸ ((1 +ℕ k) *ℕ slot-size)) ≡ stack
+          old-cap-at-1+k : InStack (old-rsp ∸ ((1 +ℕ k) *ℕ slot-size))
           old-cap-at-1+k = capacity-maintained cap (1 +ℕ k) 1+k≤sn
           step1 : (old-rsp ∸ slot-size) ∸ (k *ℕ slot-size) ≡ old-rsp ∸ (slot-size +ℕ k *ℕ slot-size)
           step1 = ∸-+-assoc old-rsp slot-size (k *ℕ slot-size)
@@ -580,13 +581,13 @@ capacity-after-push s s' n cap rsp-eq = record
           addr-eq : new-rsp ∸ (k *ℕ slot-size) ≡ old-rsp ∸ ((1 +ℕ k) *ℕ slot-size)
           addr-eq = trans (cong (λ r → r ∸ (k *ℕ slot-size)) rsp-eq)
                           (trans step1 (cong (old-rsp ∸_) arith-eq))
-      in trans (cong region-of addr-eq) old-cap-at-1+k
+      in subst InStack (sym addr-eq) old-cap-at-1+k
 
 -- | After pop (rsp += slot-size), capacity increases by 1
 capacity-after-pop : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s n →
   readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ slot-size →
-  region-of (readReg (regs s') rsp) ≡ stack →
+  InStack (readReg (regs s') rsp) →
   StackCapacity s' (suc n)
 capacity-after-pop s s' n cap rsp-eq new-rsp-in-stack = record
   { rsp-in-stack = new-rsp-in-stack
@@ -608,12 +609,12 @@ capacity-after-pop s s' n cap rsp-eq new-rsp-in-stack = record
         add-lemma : old-rsp +ℕ slot-size > (suc n) *ℕ slot-size
         add-lemma = subst (old-rsp +ℕ slot-size >_) (+-comm (n *ℕ slot-size) slot-size) step1
 
-    cap-maintained : ∀ k → k ≤ suc n → region-of (new-rsp ∸ (k *ℕ slot-size)) ≡ stack
+    cap-maintained : ∀ k → k ≤ suc n → InStack (new-rsp ∸ (k *ℕ slot-size))
     cap-maintained zero _ = new-rsp-in-stack
-    cap-maintained (suc k) (s≤s k≤n) = trans (cong region-of addr-eq) old-cap-at-k
+    cap-maintained (suc k) (s≤s k≤n) = subst InStack (sym addr-eq) old-cap-at-k
       where
         open import Data.Nat.Properties using (m+n∸n≡m)
-        old-cap-at-k : region-of (old-rsp ∸ (k *ℕ slot-size)) ≡ stack
+        old-cap-at-k : InStack (old-rsp ∸ (k *ℕ slot-size))
         old-cap-at-k = capacity-maintained cap k k≤n
         step1 : (old-rsp +ℕ slot-size) ∸ (slot-size +ℕ k *ℕ slot-size) ≡ ((old-rsp +ℕ slot-size) ∸ slot-size) ∸ (k *ℕ slot-size)
         step1 = sym (∸-+-assoc (old-rsp +ℕ slot-size) slot-size (k *ℕ slot-size))
@@ -640,8 +641,8 @@ capacity-after-alloc-2-slots s s' n cap rsp-eq = record
     old-rsp = readReg (regs s) rsp
     new-rsp = readReg (regs s') rsp
 
-    rsp'-in-stack : region-of new-rsp ≡ stack
-    rsp'-in-stack = trans (cong region-of rsp-eq) (capacity-maintained cap 2 (s≤s (s≤s z≤n)))
+    rsp'-in-stack : InStack new-rsp
+    rsp'-in-stack = subst InStack (sym rsp-eq) (capacity-maintained cap 2 (s≤s (s≤s z≤n)))
 
     rsp'-sufficient : new-rsp > n *ℕ slot-size
     rsp'-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) sub-lemma
@@ -664,11 +665,11 @@ capacity-after-alloc-2-slots s s' n cap rsp-eq = record
             bound-step : n *ℕ slot-size +ℕ two-push-offset < (old-rsp ∸ two-push-offset) +ℕ two-push-offset
             bound-step = subst (n *ℕ slot-size +ℕ two-push-offset <_) (sym old-rsp-eq) old-bound'
 
-    cap-maintained : ∀ k → k ≤ n → region-of (new-rsp ∸ (k *ℕ slot-size)) ≡ stack
+    cap-maintained : ∀ k → k ≤ n → InStack (new-rsp ∸ (k *ℕ slot-size))
     cap-maintained k k≤n =
       let 2+k≤ssn : (2 +ℕ k) ≤ suc (suc n)
           2+k≤ssn = s≤s (s≤s k≤n)
-          old-cap-at-2+k : region-of (old-rsp ∸ ((2 +ℕ k) *ℕ slot-size)) ≡ stack
+          old-cap-at-2+k : InStack (old-rsp ∸ ((2 +ℕ k) *ℕ slot-size))
           old-cap-at-2+k = capacity-maintained cap (2 +ℕ k) 2+k≤ssn
           step1 : (old-rsp ∸ two-push-offset) ∸ (k *ℕ slot-size) ≡ old-rsp ∸ (two-push-offset +ℕ k *ℕ slot-size)
           step1 = ∸-+-assoc old-rsp two-push-offset (k *ℕ slot-size)
@@ -677,13 +678,13 @@ capacity-after-alloc-2-slots s s' n cap rsp-eq = record
           addr-eq : new-rsp ∸ (k *ℕ slot-size) ≡ old-rsp ∸ ((2 +ℕ k) *ℕ slot-size)
           addr-eq = trans (cong (λ r → r ∸ (k *ℕ slot-size)) rsp-eq)
                           (trans step1 (cong (old-rsp ∸_) arith-eq))
-      in trans (cong region-of addr-eq) old-cap-at-2+k
+      in subst InStack (sym addr-eq) old-cap-at-2+k
 
 -- | After add rsp, 16 (rsp += 16), capacity increases by 2
 capacity-after-dealloc-2-slots : ∀ (s s' : State) (n : ℕ) →
   StackCapacity s n →
   readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ two-push-offset →
-  region-of (readReg (regs s') rsp) ≡ stack →
+  InStack (readReg (regs s') rsp) →
   StackCapacity s' (suc (suc n))
 capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
   { rsp-in-stack = new-rsp-in-stack
@@ -705,9 +706,9 @@ capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
         add-lemma : old-rsp +ℕ two-push-offset > (suc (suc n)) *ℕ slot-size
         add-lemma = subst (old-rsp +ℕ two-push-offset >_) (+-comm (n *ℕ slot-size) two-push-offset) step1
 
-    cap-maintained : ∀ k → k ≤ suc (suc n) → region-of (new-rsp ∸ (k *ℕ slot-size)) ≡ stack
+    cap-maintained : ∀ k → k ≤ suc (suc n) → InStack (new-rsp ∸ (k *ℕ slot-size))
     cap-maintained zero _ = new-rsp-in-stack
-    cap-maintained 1 _ = stack-sub-preserves-region new-rsp slot-size new-rsp-in-stack slot-size≤new-rsp
+    cap-maintained 1 _ = stack-sub-preserves new-rsp slot-size new-rsp-in-stack slot≤new-rsp
       where
         open import Data.Nat.Properties using (<⇒≤; +-monoˡ-<; <-trans)
         rsp>0 : old-rsp > 0
@@ -718,12 +719,12 @@ capacity-after-dealloc-2-slots s s' n cap rsp-eq new-rsp-in-stack = record
         step2 = word<pair
         new-rsp-bound : new-rsp > slot-size
         new-rsp-bound = subst (_> slot-size) (sym rsp-eq) (<-trans step2 step1)
-        slot-size≤new-rsp : slot-size ≤ new-rsp
-        slot-size≤new-rsp = <⇒≤ new-rsp-bound
-    cap-maintained (suc (suc k)) (s≤s (s≤s k≤n)) = trans (cong region-of addr-eq) old-cap-at-k
+        slot≤new-rsp : slot-size ≤ new-rsp
+        slot≤new-rsp = <⇒≤ new-rsp-bound
+    cap-maintained (suc (suc k)) (s≤s (s≤s k≤n)) = subst InStack (sym addr-eq) old-cap-at-k
       where
         open import Data.Nat.Properties using (m+n∸n≡m)
-        old-cap-at-k : region-of (old-rsp ∸ (k *ℕ slot-size)) ≡ stack
+        old-cap-at-k : InStack (old-rsp ∸ (k *ℕ slot-size))
         old-cap-at-k = capacity-maintained cap k k≤n
         step1 : (old-rsp +ℕ two-push-offset) ∸ (two-push-offset +ℕ k *ℕ slot-size) ≡ ((old-rsp +ℕ two-push-offset) ∸ two-push-offset) ∸ (k *ℕ slot-size)
         step1 = sym (∸-+-assoc (old-rsp +ℕ two-push-offset) two-push-offset (k *ℕ slot-size))
@@ -741,10 +742,10 @@ capacity-when-rsp-restored : ∀ (s s' : State) (n : ℕ) →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
   StackCapacity s' n
 capacity-when-rsp-restored s s' n cap rsp-eq = record
-  { rsp-in-stack = subst (λ r → region-of r ≡ stack) (sym rsp-eq) (rsp-in-stack cap)
+  { rsp-in-stack = subst InStack (sym rsp-eq) (rsp-in-stack cap)
   ; rsp-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) (rsp-sufficient cap)
-  ; capacity-maintained = λ k k≤n → subst (λ r → region-of (r ∸ k *ℕ slot-size) ≡ stack)
-                                          (sym rsp-eq) (capacity-maintained cap k k≤n)
+  ; capacity-maintained = λ k k≤n → subst InStack (sym (cong (_∸ k *ℕ slot-size) rsp-eq))
+                                          (capacity-maintained cap k k≤n)
   }
 
 ------------------------------------------------------------------------
@@ -754,13 +755,13 @@ capacity-when-rsp-restored s s' n cap rsp-eq = record
 -- | With capacity n ≥ 2, address rsp - 16 is in stack region
 slot-2-addr-in-stack : ∀ (s : State) →
   StackCapacity s 2 →
-  region-of (readReg (regs s) rsp ∸ two-push-offset) ≡ stack
+  InStack (readReg (regs s) rsp ∸ two-push-offset)
 slot-2-addr-in-stack s cap = capacity-maintained cap 2 (s≤s (s≤s z≤n))
 
 -- | With capacity n ≥ 1, address rsp - slot-size is in stack region
 slot-1-addr-in-stack : ∀ (s : State) →
   StackCapacity s 1 →
-  region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
+  InStack (readReg (regs s) rsp ∸ slot-size)
 slot-1-addr-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
 
 ------------------------------------------------------------------------
@@ -769,7 +770,7 @@ slot-1-addr-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
 
 -- | General conversion: rsp > n*8 gives StackCapacity s n
 rsp-bound-to-capacity : ∀ (n : ℕ) (s : State) →
-  region-of (readReg (regs s) rsp) ≡ stack →
+  InStack (readReg (regs s) rsp) →
   readReg (regs s) rsp > n *ℕ slot-size →
   StackCapacity s n
 rsp-bound-to-capacity n s rsp-in-stack rsp-bound = record
@@ -782,8 +783,8 @@ rsp-bound-to-capacity n s rsp-in-stack rsp-bound = record
     rsp-val = readReg (regs s) rsp
     k*slot≤rsp : ∀ k → k ≤ n → k *ℕ slot-size ≤ rsp-val
     k*slot≤rsp k k≤n = <⇒≤ (≤-<-trans (*-monoˡ-≤ slot-size k≤n) rsp-bound)
-    cap-maintained : ∀ k → k ≤ n → region-of (rsp-val ∸ (k *ℕ slot-size)) ≡ stack
-    cap-maintained k k≤n = stack-sub-preserves-region rsp-val (k *ℕ slot-size) rsp-in-stack (k*slot≤rsp k k≤n)
+    cap-maintained : ∀ k → k ≤ n → InStack (rsp-val ∸ (k *ℕ slot-size))
+    cap-maintained k k≤n = stack-sub-preserves rsp-val (k *ℕ slot-size) rsp-in-stack (k*slot≤rsp k k≤n)
 
 -- Note: rsp-to-capacity-N wrappers have been removed.
 -- Use rsp-bound-to-capacity n s rsp-in-stack rsp-bound directly.
@@ -881,8 +882,8 @@ capacity-after-delta s s' d n cap rsp-eq = record
     -- rsp' in stack: from capacity-maintained at k=d
     d≤d+n : d ≤ d +ℕ n
     d≤d+n = m≤m+n d n
-    rsp'-in-stack : region-of rsp-s' ≡ stack
-    rsp'-in-stack = subst (λ r → region-of r ≡ stack) (sym rsp-eq) (capacity-maintained cap d d≤d+n)
+    rsp'-in-stack : InStack rsp-s'
+    rsp'-in-stack = subst InStack (sym rsp-eq) (capacity-maintained cap d d≤d+n)
 
     -- rsp' sufficient: rsp s > slots (d+n), so rsp s - slots d > slots n
     -- Key insight: if m > a + b, then m - a > b
@@ -917,24 +918,24 @@ capacity-after-delta s s' d n cap rsp-eq = record
         helper : slots n < rsp-s ∸ slots d
         helper = +-cancelˡ-< (slots d) (slots n) (rsp-s ∸ slots d) sum<rsp'
 
-    -- capacity maintained: for k ≤ n, region-of (rsp' ∸ slots k) = stack
+    -- capacity maintained: for k ≤ n, InStack (rsp' ∸ slots k)
     -- rsp' ∸ slots k = (rsp s ∸ slots d) ∸ slots k = rsp s ∸ (slots d + slots k) = rsp s ∸ slots (d + k)
-    cap'-maintained : ∀ k → k ≤ n → region-of (rsp-s' ∸ slots k) ≡ stack
+    cap'-maintained : ∀ k → k ≤ n → InStack (rsp-s' ∸ slots k)
     cap'-maintained k k≤n = step4
       where
         -- Step 1: capacity-maintained gives us region proof for rsp-s ∸ slots (d+k)
-        step1 : region-of (rsp-s ∸ slots (d +ℕ k)) ≡ stack
+        step1 : InStack (rsp-s ∸ slots (d +ℕ k))
         step1 = capacity-maintained cap (d +ℕ k) (+-monoʳ-≤ d k≤n)
         -- Step 2: slots (d+k) = slots d + slots k (slots-distribute)
-        step2 : region-of (rsp-s ∸ (slots d +ℕ slots k)) ≡ stack
-        step2 = subst (λ x → region-of (rsp-s ∸ x) ≡ stack) (slots-distribute d k) step1
+        step2 : InStack (rsp-s ∸ (slots d +ℕ slots k))
+        step2 = subst (λ x → InStack (rsp-s ∸ x)) (slots-distribute d k) step1
         -- Step 3: rsp-s ∸ (slots d + slots k) = (rsp-s ∸ slots d) ∸ slots k (sym ∸-+-assoc)
         -- ∸-+-assoc gives: (m ∸ n) ∸ o ≡ m ∸ (n + o), so we use sym
-        step3 : region-of ((rsp-s ∸ slots d) ∸ slots k) ≡ stack
-        step3 = subst (λ x → region-of x ≡ stack) (sym (∸-+-assoc rsp-s (slots d) (slots k))) step2
+        step3 : InStack ((rsp-s ∸ slots d) ∸ slots k)
+        step3 = subst InStack (sym (∸-+-assoc rsp-s (slots d) (slots k))) step2
         -- Step 4: rsp-s ∸ slots d = rsp-s' (from rsp-eq)
-        step4 : region-of (rsp-s' ∸ slots k) ≡ stack
-        step4 = subst (λ r → region-of (r ∸ slots k) ≡ stack) (sym rsp-eq) step3
+        step4 : InStack (rsp-s' ∸ slots k)
+        step4 = subst (λ r → InStack (r ∸ slots k)) (sym rsp-eq) step3
 
 ------------------------------------------------------------------------
 -- IR-Specific Capacity Derivation Lemmas
@@ -1036,14 +1037,14 @@ apply-frame-1 : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) → StackPoi
 apply-frame-1 s cap = make-frame-at-slot s cap 1 (s≤s z≤n)
 
 apply-frame-slot-0-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
-                              region-of (slot-addr (apply-frame-1 s cap) 0) ≡ stack
+                              InStack (slot-addr (apply-frame-1 s cap) 0)
 apply-frame-slot-0-in-stack s cap = slot-in-stack (apply-frame-1 s cap) 0
 
 -- | Bridge from abstract to concrete for Apply's push address (rsp - slot-size)
 abstract-to-rsp-slot-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
-                             region-of (readReg (regs s) rsp ∸ slot-size) ≡ stack
+                             InStack (readReg (regs s) rsp ∸ slot-size)
 abstract-to-rsp-slot-in-stack s cap =
-  subst (λ addr → region-of addr ≡ stack)
+  subst InStack
         (trans (slot-addr-0-is-base (apply-frame-1 s cap))
                (make-frame-at-slot-addr 1 s cap (s≤s z≤n)))
         (apply-frame-slot-0-in-stack s cap)
@@ -1056,7 +1057,7 @@ abstract-to-rsp-slot-in-stack s cap =
 -- This is the core abstraction - all specific slot proofs derive from this
 rsp-minus-n-slots-in-stack : ∀ (k : ℕ) {n} (s : State) (cap : StackCapacity s n) →
                               k ≤ n →
-                              region-of (readReg (regs s) rsp ∸ slots k) ≡ stack
+                              InStack (readReg (regs s) rsp ∸ slots k)
 rsp-minus-n-slots-in-stack k s cap k≤n = capacity-maintained cap k k≤n
 
 ------------------------------------------------------------------------
@@ -1070,7 +1071,7 @@ thunk-frame k s cap k≤n = make-frame-at-slot s cap k k≤n
 
 -- | Parameterized bridge from abstract to concrete for (rsp - k*slot-size)
 abstract-to-rsp-slots-in-stack : (k : ℕ) {n : ℕ} (s : State) (cap : StackCapacity s n) (k≤n : k ≤ n) →
-                                 region-of (readReg (regs s) rsp ∸ slots k) ≡ stack
+                                 InStack (readReg (regs s) rsp ∸ slots k)
 abstract-to-rsp-slots-in-stack k s cap k≤n = rsp-minus-n-slots-in-stack k s cap k≤n
 
 -- | Thunk rbp frame (at thunk-rbp-slot) >= new rsp frame (at thunk-setup-consumed-slots)
@@ -1093,11 +1094,11 @@ pair-frame-0 s cap = make-frame-at-slot s cap pair-setup-consumed-slots pair-set
     pair-setup-consumed-slots≤pair-setup-consumed-slots = ≤-refl
 
 pair-frame-slot-0-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                             region-of (slot-addr (pair-frame-0 s cap) 0) ≡ stack
+                             InStack (slot-addr (pair-frame-0 s cap) 0)
 pair-frame-slot-0-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 0
 
 pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                             region-of (slot-addr (pair-frame-0 s cap) 1) ≡ stack
+                             InStack (slot-addr (pair-frame-0 s cap) 1)
 pair-frame-slot-1-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 1
 
 -- | Pair frame 0 address equals rsp - 40
@@ -1123,15 +1124,15 @@ pair-rbp-frame-≥-r15-frame s cap =
 -- | rsp - 40 is in stack region when we have pair-setup capacity
 pair-r15-in-stack : ∀ (s : State) →
   StackCapacity s pair-setup-consumed-slots →
-  region-of (readReg (regs s) rsp ∸ five-slot-offset) ≡ stack
+  InStack (readReg (regs s) rsp ∸ five-slot-offset)
 pair-r15-in-stack s cap = capacity-maintained cap pair-setup-consumed-slots ≤-refl
 
 -- | (rsp - five-slot-offset) + slot-size is in stack region when we have pair-setup capacity
 pair-second-slot-in-stack : ∀ (s : State) →
   StackCapacity s pair-setup-consumed-slots →
-  region-of ((readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size) ≡ stack
+  InStack ((readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size)
 pair-second-slot-in-stack s cap =
-  subst (λ a → region-of a ≡ stack)
+  subst InStack
         (sym (alloc-5-slots-second-addr-eq rsp-val (cap-to-pair-setup-rsp-bound cap)))
         (capacity-maintained cap 4 slot-4≤pair-setup)
   where
@@ -1151,7 +1152,7 @@ pair-second-slot-in-stack s cap =
 
 -- | Get StackCapacity for Pair setup from runtime rsp bound
 pair-stack-capacity : ∀ (s : State) →
-  region-of (readReg (regs s) rsp) ≡ stack →
+  InStack (readReg (regs s) rsp) →
   readReg (regs s) rsp > five-slot-offset →
   StackCapacity s pair-setup-consumed-slots
 pair-stack-capacity s rsp-in-stack rsp-bound = rsp-bound-to-capacity pair-setup-consumed-slots s rsp-in-stack rsp-bound
@@ -1165,7 +1166,7 @@ pair-setup-stack-inv : ∀ (s s-setup : State) →
 pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
   r15-in-stack pair-frame 0 r15-is-slot0 pair-frame-bound
   where
-    base-in-stack : region-of (readReg (regs s) rsp ∸ five-slot-offset) ≡ stack
+    base-in-stack : InStack (readReg (regs s) rsp ∸ five-slot-offset)
     base-in-stack = pair-r15-in-stack s cap
     pair-frame : StackPointer
     pair-frame = record
@@ -1186,14 +1187,14 @@ alloc-2-slots-addrs-in-stack : ∀ (s : State) →
   StackCapacity s 2 →
   let rsp-val = readReg (regs s) rsp
       new-rsp = rsp-val ∸ two-push-offset
-  in (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
+  in InStack new-rsp × InStack (new-rsp +ℕ slot-size)
 alloc-2-slots-addrs-in-stack s cap =
   let rsp-val = readReg (regs s) rsp
       new-rsp = rsp-val ∸ two-push-offset
-      write1-in-stack : region-of new-rsp ≡ stack
+      write1-in-stack : InStack new-rsp
       write1-in-stack = slot-2-addr-in-stack s cap
-      write2-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
-      write2-in-stack = subst (λ a → region-of a ≡ stack)
+      write2-in-stack : InStack (new-rsp +ℕ slot-size)
+      write2-in-stack = subst InStack
                               (sym (alloc-2-slots-second-addr-eq rsp-val (cap-to-inl-inr-rsp-bound cap)))
                               (slot-1-addr-in-stack s (capacity-weaken cap))
   in write1-in-stack , write2-in-stack
@@ -1223,10 +1224,10 @@ alloc-2-slots-addrs-in-stack s cap =
 stack-write-disjoint-from-heap : ∀ (s : State) (n k : ℕ) (heap-addr : Addr) →
   StackCapacity s n →
   k ≤ n →
-  region-of heap-addr ≡ heap →
+  InHeap heap-addr →
   readReg (regs s) rsp ∸ (k *ℕ slot-size) ≢ heap-addr
 stack-write-disjoint-from-heap s n k heap-addr cap k≤n heap-proof =
-  stack-heap-disjoint (readReg (regs s) rsp ∸ (k *ℕ slot-size)) heap-addr
+  stack-heap-addr-disjoint (readReg (regs s) rsp ∸ (k *ℕ slot-size)) heap-addr
                       (capacity-maintained cap k k≤n) heap-proof
 
 ------------------------------------------------------------------------
@@ -1244,7 +1245,7 @@ open AbstractStackInvariant public
 -- | Create AbstractStackInvariant from StackInvariant and rsp bound
 from-old-invariants : ∀ (s : State) →
   StackInvariant s →
-  region-of (readReg (regs s) rsp) ≡ stack →
+  InStack (readReg (regs s) rsp) →
   readReg (regs s) rsp > two-push-offset →
   AbstractStackInvariant s
 from-old-invariants s stack-inv rsp-in-stack rsp-sufficient = record
@@ -1315,10 +1316,10 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
 -- | Proof that stack writes don't affect heap-allocated data
 stack-write-preserves-heap-data : ∀ (s : State) (heap-addr : Addr) →
   AbstractStackInvariant s →
-  region-of heap-addr ≡ heap →
+  InHeap heap-addr →
   readReg (regs s) rsp ∸ two-push-offset ≢ heap-addr
 stack-write-preserves-heap-data s heap-addr inv heap-proof =
-  stack-heap-disjoint (readReg (regs s) rsp ∸ two-push-offset) heap-addr
+  stack-heap-addr-disjoint (readReg (regs s) rsp ∸ two-push-offset) heap-addr
                       (slot-2-addr-in-stack s (capacity inv))
                       heap-proof
 
@@ -1329,7 +1330,7 @@ stack-write-preserves-heap-data s heap-addr inv heap-proof =
 -- | Prove (rsp - two-push-offset) and (rsp - slot-size) are different from r15
 addr-diff-from-invariant : ∀ (s : State) →
   StackInvariant s →
-  region-of (readReg (regs s) rsp) ≡ stack →
+  InStack (readReg (regs s) rsp) →
   readReg (regs s) rsp > two-push-offset →
   let new-rsp = readReg (regs s) rsp ∸ two-push-offset
       orig-r15 = readReg (regs s) r15
@@ -1358,7 +1359,7 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
         addr2-eq : stack-addr2 ≡ rsp-val ∸ slot-size
         addr2-eq = trans (cong (_+ℕ slot-size) (sym (∸-+-assoc rsp-val slot-size slot-size)))
                          (m∸n+n≡m (∸-monoˡ-≤ slot-size rsp≥16))
-    diff-helper : ∀ stack-addr → region-of stack-addr ≡ stack → stack-addr < rsp-val →
+    diff-helper : ∀ stack-addr → InStack stack-addr → stack-addr < rsp-val →
                   R15Status s → stack-addr ≢ readReg (regs s) r15
     diff-helper addr addr-in-stack addr<rsp (r15-unused r15≡0) =
       stack-write-preserves-unused-r15 s addr addr-in-stack r15≡0
@@ -1873,7 +1874,7 @@ record SlotFrame (s : State) (k : ℕ) : Set where
     -- The address equals rsp - slots k
     addr-eq : frame-addr ≡ readReg (regs s) rsp ∸ slots k
     -- The address is in the stack region
-    in-stack : region-of frame-addr ≡ stack
+    in-stack : InStack frame-addr
 
 open SlotFrame public
 
@@ -1946,21 +1947,21 @@ mk-thunk-rsp-frame s cap = mk-slot-frame s thunk-setup-consumed-slots thunk-setu
 ------------------------------------------------------------------------
 
 -- | Encoded values are in the heap region (specialized for Once.Semantics.encode)
-encode-in-heap-sem : ∀ {A : Type} (x : ⟦ A ⟧) → region-of (encode x) ≡ heap
+encode-in-heap-sem : ∀ {A : Type} (x : ⟦ A ⟧) → InHeap (encode x)
 encode-in-heap-sem {A} x = encode-in-heap {⟦ A ⟧} (encode {A}) x
 
 -- | Encoded value + offset is in heap region
 encode-offset-in-heap : ∀ {A : Type} (x : ⟦ A ⟧) (offset : ℕ) →
-  region-of (encode x +ℕ offset) ≡ heap
+  InHeap (encode x +ℕ offset)
 encode-offset-in-heap x offset = heap-offset (encode x) offset (encode-in-heap-sem x)
 
 -- | Heap-stack disjointness via regions (replaces postulate)
 -- Usage: heap-stack-disjoint-via-region pair 0 new-rsp stack-proof
 heap-stack-disjoint-via-region : ∀ {A : Type} (x : ⟦ A ⟧) (offset stack-addr : ℕ) →
-  region-of stack-addr ≡ stack →
+  InStack stack-addr →
   (encode x +ℕ offset) ≢ stack-addr
 heap-stack-disjoint-via-region x offset stack-addr stack-proof eq =
-  stack-heap-disjoint stack-addr (encode x +ℕ offset)
+  stack-heap-addr-disjoint stack-addr (encode x +ℕ offset)
     stack-proof
     (encode-offset-in-heap x offset)
     (sym eq)

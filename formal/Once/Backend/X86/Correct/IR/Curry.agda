@@ -25,7 +25,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          curry-alloc-below-rbp; curry-alloc-nonzero)
 open import Data.Nat.Properties using (≤-<-trans)
 open import Once.Backend.Common.MemoryRegions
-  using (region-of; code; heap; stack; stack-code-disjoint; stack-heap-disjoint;
+  using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          stackAddr-write-preserves-heap; slot-addr)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
@@ -99,8 +99,8 @@ record CurryExecResult {A B C : Type} (f : IR (A * B) C)
     exec-rbp-inv : RbpInvariant s'
     exec-mem-above : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     exec-mem-at-0 : readMem (memory s') 0 ≡ readMem (memory s) 0
-    exec-mem-code : ∀ addr → region-of addr ≡ code → readMem (memory s') addr ≡ readMem (memory s) addr
-    exec-mem-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s') addr ≡ readMem (memory s) addr
+    exec-mem-code : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
+    exec-mem-heap : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
 open CurryExecResult public
 
@@ -158,7 +158,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     rsp-bound : readReg (regs s) rsp > slots (ir-rsp-delta (curry f))
     rsp-bound = ≤-<-trans (slots-mono-≤ (curry-rsp-delta≤curry-req f)) (StackCapacity.rsp-sufficient cap)
 
-    rsp-region : region-of (readReg (regs s) rsp) ≡ stack
+    rsp-region : InStack (readReg (regs s) rsp)
     rsp-region = StackCapacity.rsp-in-stack cap
 
     -- StackCapacity for output allocation (derived from ir-rsp-delta)
@@ -579,15 +579,15 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- orig-rdi is in heap (from input validity), so validity is preserved
 
     -- orig-rdi is in heap (from input validity)
-    orig-rdi-in-heap : region-of orig-rdi ≡ heap
+    orig-rdi-in-heap : InHeap orig-rdi
     orig-rdi-in-heap = valid-in-heap input-valid
 
     -- s2 writes to new-rsp (stack), not orig-rdi (heap)
-    new-rsp-in-stack : region-of new-rsp ≡ stack
+    new-rsp-in-stack : InStack new-rsp
     new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap-output-alloc)
 
     orig-rdi≢new-rsp : orig-rdi ≢ new-rsp
-    orig-rdi≢new-rsp eq = stack-heap-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
+    orig-rdi≢new-rsp eq = stack-heap-addr-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
 
     v-env-s2 : ValidAt x orig-rdi (memory s2)
     v-env-s2 = valid-at-preserved-under-write input-valid orig-rdi≢new-rsp
@@ -597,11 +597,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     v-env-s3 = v-env-s2
 
     -- s4 writes to new-rsp+8 (stack), not orig-rdi (heap)
-    new-rsp+8-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
+    new-rsp+8-in-stack : InStack (new-rsp +ℕ slot-size)
     new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap-output-alloc)
 
     orig-rdi≢new-rsp+8 : orig-rdi ≢ new-rsp +ℕ slot-size
-    orig-rdi≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
+    orig-rdi≢new-rsp+8 eq = stack-heap-addr-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
 
     v-env-s4 : ValidAt x orig-rdi (memory s4)
     v-env-s4 = valid-at-preserved-under-write v-env-s3 orig-rdi≢new-rsp+8
@@ -783,9 +783,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     stack-inv-helper : StackInvariant s → StackInvariant s-final
     stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-final r15≡0)
     stack-inv-helper (r15-in-heap r15-heap) =
-      r15-in-heap (trans (cong region-of r15-final) r15-heap)
+      r15-in-heap (subst InHeap (sym r15-final) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
-      r15-in-code (trans (cong region-of r15-final) r15-code)
+      r15-in-code (subst InCode (sym r15-final) r15-code)
     stack-inv-helper (r15-in-stack frame slot r15-eq frame-bound) =
       r15-in-stack frame slot r15-eq' frame-bound'
       where
@@ -881,24 +881,24 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- 2. Use stack-code-disjoint to prove write ≠ code address
     -- 3. Chain readMem-writeMem-diff
     -- NO ARITHMETIC COMPARISONS at this level
-    mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code-final : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code-final addr addr-in-code =
       let -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
-          writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
+          writes-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
           writes-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
-          new-rsp-in-stack : region-of new-rsp ≡ stack
-          new-rsp-in-stack = proj₁ writes-in-stack
+          new-rsp-in-stk : InStack new-rsp
+          new-rsp-in-stk = proj₁ writes-in-stack
 
-          new-rsp+8-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
-          new-rsp+8-in-stack = proj₂ writes-in-stack
+          new-rsp+8-in-stk : InStack (new-rsp +ℕ slot-size)
+          new-rsp+8-in-stk = proj₂ writes-in-stack
 
           -- Step 2: Disjointness from region membership
           addr≢new-rsp : addr ≢ new-rsp
-          addr≢new-rsp eq = stack-code-disjoint new-rsp addr new-rsp-in-stack addr-in-code (sym eq)
+          addr≢new-rsp eq = stack-code-addr-disjoint new-rsp addr new-rsp-in-stk addr-in-code (sym eq)
 
           addr≢new-rsp+8 : addr ≢ (new-rsp +ℕ slot-size)
-          addr≢new-rsp+8 eq = stack-code-disjoint (new-rsp +ℕ slot-size) addr new-rsp+8-in-stack addr-in-code (sym eq)
+          addr≢new-rsp+8 eq = stack-code-addr-disjoint (new-rsp +ℕ slot-size) addr new-rsp+8-in-stk addr-in-code (sym eq)
 
           -- Step 3: Chain through memory writes
           mem-s2 : readMem (memory s2) addr ≡ readMem (memory s) addr
@@ -914,24 +914,24 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 
     -- Memory at heap-region addresses preserved (D041)
     -- Stack and heap regions are disjoint, curry only writes to stack
-    mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-heap-final : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-heap-final addr addr-in-heap =
       let -- Step 1: Region membership (arithmetic encapsulated in infrastructure)
-          writes-in-stack : (region-of new-rsp ≡ stack) × (region-of (new-rsp +ℕ slot-size) ≡ stack)
+          writes-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
           writes-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
-          new-rsp-in-stack : region-of new-rsp ≡ stack
-          new-rsp-in-stack = proj₁ writes-in-stack
+          new-rsp-in-stk : InStack new-rsp
+          new-rsp-in-stk = proj₁ writes-in-stack
 
-          new-rsp+8-in-stack : region-of (new-rsp +ℕ slot-size) ≡ stack
-          new-rsp+8-in-stack = proj₂ writes-in-stack
+          new-rsp+8-in-stk : InStack (new-rsp +ℕ slot-size)
+          new-rsp+8-in-stk = proj₂ writes-in-stack
 
           -- Step 2: Disjointness from region membership
           addr≢new-rsp : addr ≢ new-rsp
-          addr≢new-rsp eq = stack-heap-disjoint new-rsp addr new-rsp-in-stack addr-in-heap (sym eq)
+          addr≢new-rsp eq = stack-heap-addr-disjoint new-rsp addr new-rsp-in-stk addr-in-heap (sym eq)
 
           addr≢new-rsp+8 : addr ≢ (new-rsp +ℕ slot-size)
-          addr≢new-rsp+8 eq = stack-heap-disjoint (new-rsp +ℕ slot-size) addr new-rsp+8-in-stack addr-in-heap (sym eq)
+          addr≢new-rsp+8 eq = stack-heap-addr-disjoint (new-rsp +ℕ slot-size) addr new-rsp+8-in-stk addr-in-heap (sym eq)
 
           -- Step 3: Chain through memory writes
           mem-s2 : readMem (memory s2) addr ≡ readMem (memory s) addr

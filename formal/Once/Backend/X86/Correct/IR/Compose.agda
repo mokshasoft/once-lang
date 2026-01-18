@@ -16,7 +16,7 @@ open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap)
+open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
@@ -520,7 +520,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
       in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
 
     -- D041: Memory at code-region addresses preserved (validity-based)
-    mem-code-3 : ∀ addr → region-of addr ≡ code → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-code-3 : ∀ addr → InCode addr → readMem (memory s3) addr ≡ readMem (memory s) addr
     mem-code-3 addr addr-in-code =
       let mem-s2-to-s3-code : readMem (memory s3) addr ≡ readMem (memory s2) addr
           mem-s2-to-s3-code = IRStarResultV.ir-mem-code r3 addr addr-in-code
@@ -532,7 +532,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
       in trans mem-s2-to-s3-code (trans mem-s1-to-s2-code mem-s-to-s1-code)
 
     -- D041: Memory at heap-region addresses preserved (validity-based)
-    mem-heap-3 : ∀ addr → region-of addr ≡ heap → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-heap-3 : ∀ addr → InHeap addr → readMem (memory s3) addr ≡ readMem (memory s) addr
     mem-heap-3 addr addr-in-heap =
       let mem-s2-to-s3-heap : readMem (memory s3) addr ≡ readMem (memory s2) addr
           mem-s2-to-s3-heap = IRStarResultV.ir-mem-heap r3 addr addr-in-heap

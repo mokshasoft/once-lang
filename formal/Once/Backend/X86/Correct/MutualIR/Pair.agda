@@ -57,7 +57,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (valid-subst-heap-preserved)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (region-of; code; heap; stack)
+open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
 -- Import StackInstantiation (re-exports StackInvariant)
@@ -250,7 +250,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         in trans rdi2-raw (trans r14-s1-eq-setup r14-setup-eq-rdi)
 
       -- Memory chain: heap preserved s → s-setup → s1 → s2
-      mem-heap-s-to-s2 : ∀ a → region-of a ≡ heap → readMem (memory s2) a ≡ readMem (memory s) a
+      mem-heap-s-to-s2 : ∀ a → InHeap a → readMem (memory s2) a ≡ readMem (memory s) a
       mem-heap-s-to-s2 a h =
         let setup-heap = PairSetupResultV.mem-heap-setup setup-res a h
             f-heap = IRStarResultV.ir-mem-heap r-f-v a h
@@ -414,16 +414,16 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
                               mem-setup-preserves-0)))
 
       -- Memory in code region preserved
-      mem-setup-preserves-code : ∀ addr → region-of addr ≡ code → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+      mem-setup-preserves-code : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
       mem-setup-preserves-code = PairSetupResultV.mem-code-setup setup-res
 
-      mem-mid-preserves-code : ∀ addr → region-of addr ≡ code → readMem (memory s2) addr ≡ readMem (memory s1) addr
+      mem-mid-preserves-code : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
       mem-mid-preserves-code = PairMiddleResultV.mem-code-mid mid-res
 
-      mem-final-preserves-code : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+      mem-final-preserves-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
       mem-final-preserves-code = PairFinalResult.mem-code-fin final-res
 
-      mem-code-final : ∀ addr → region-of addr ≡ code → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-code-final : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
       mem-code-final addr addr-in-code = trans (mem-final-preserves-code addr addr-in-code)
                                          (trans (IRStarResultV.ir-mem-code r-g-v addr addr-in-code)
                                          (trans (mem-mid-preserves-code addr addr-in-code)
@@ -431,16 +431,16 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
                                                 (mem-setup-preserves-code addr addr-in-code))))
 
       -- Memory in heap region preserved
-      mem-setup-preserves-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+      mem-setup-preserves-heap : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
       mem-setup-preserves-heap = PairSetupResultV.mem-heap-setup setup-res
 
-      mem-mid-preserves-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s2) addr ≡ readMem (memory s1) addr
+      mem-mid-preserves-heap : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
       mem-mid-preserves-heap = PairMiddleResultV.mem-heap-mid mid-res
 
-      mem-final-preserves-heap : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+      mem-final-preserves-heap : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
       mem-final-preserves-heap = PairFinalResult.mem-heap-fin final-res
 
-      mem-heap-final : ∀ addr → region-of addr ≡ heap → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-heap-final : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
       mem-heap-final addr addr-in-heap = trans (mem-final-preserves-heap addr addr-in-heap)
                                          (trans (IRStarResultV.ir-mem-heap r-g-v addr addr-in-heap)
                                          (trans (mem-mid-preserves-heap addr addr-in-heap)
@@ -453,7 +453,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
 
       -- Construct validity for f's result at s-final
       -- Chain: s1 →(mid)→ s2 →(g)→ s3 →(final)→ s-final (all heap-preserving)
-      mem-heap-s1-to-s-final : ∀ a → region-of a ≡ heap → readMem (memory s-final) a ≡ readMem (memory s1) a
+      mem-heap-s1-to-s-final : ∀ a → InHeap a → readMem (memory s-final) a ≡ readMem (memory s1) a
       mem-heap-s1-to-s-final a h = trans (mem-final-preserves-heap a h)
                                    (trans (IRStarResultV.ir-mem-heap r-g-v a h)
                                    (mem-mid-preserves-heap a h))
@@ -466,7 +466,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
 
       -- Construct validity for g's result at s-final
       -- Chain: s3 →(final)→ s-final (heap-preserving)
-      mem-heap-s3-to-s-final : ∀ a → region-of a ≡ heap → readMem (memory s-final) a ≡ readMem (memory s3) a
+      mem-heap-s3-to-s-final : ∀ a → InHeap a → readMem (memory s-final) a ≡ readMem (memory s3) a
       mem-heap-s3-to-s-final = mem-final-preserves-heap
 
       valid-g-at-final : ValidAt (eval g x) (readReg (regs s3) rax) (memory s-final)
