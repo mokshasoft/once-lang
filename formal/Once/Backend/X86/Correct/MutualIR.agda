@@ -43,11 +43,12 @@ open FrameSlotInternal using (frameSlot-is-readMem)
 -- Import stack capacity and region lemmas for D041 approach
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity; rsp-in-stack;
-         slot-size; slots; ir-stack-requirement;
+         slot-size; slots; slots-mono-≤; ir-stack-requirement;
          capacity-left-from-max; capacity-right-from-max; capacity-from-larger;
          capacity-preserved-rsp-unchanged;
          -- Named capacity constants (from codegen)
          curry-closure-capacity; inl-inr-capacity; apply-capacity;
+         thunk-setup-capacity; thunk-setup-fits-pair-capacity;
          -- IR-specific capacity bounds
          curry-closure-capacity≤curry-req; inl-capacity≤inl-req;
          inr-capacity≤inr-req; apply-capacity≤apply-req)
@@ -528,22 +529,20 @@ mutual
 
       -- v-env is now an input parameter (no more valid-from-encode bridge!)
 
-      -- Construct StackCapacity s 6 for thunk-setup-star
-      -- Thunk setup needs 6 slots: push r15 (1) + push rbp (1) + sub 16 (2) + output (2) = 6
-      rsp>slots6 : readReg (regs s) rsp > slots 6
-      rsp>slots6 = ≤-<-trans (slots-mono-≤ 6≤7) (rsp-bound-after-stack-op s)
+      -- Construct StackCapacity for thunk-setup-star
+      -- Uses thunk-setup-fits-pair-capacity to derive from rsp-bound-after-stack-op
+      rsp-above-thunk-setup : readReg (regs s) rsp > slots thunk-setup-capacity
+      rsp-above-thunk-setup = ≤-<-trans (slots-mono-≤ thunk-setup-fits-pair-capacity) (rsp-bound-after-stack-op s)
         where
           open import Data.Nat.Properties using (≤-<-trans)
-          6≤7 : 6 ≤ 7
-          6≤7 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
 
-      cap6 : StackCapacity s 6
-      cap6 = rsp-bound-to-capacity 6 s (rsp-in-stack-after-stack-op s) rsp>slots6
+      cap-thunk-setup : StackCapacity s thunk-setup-capacity
+      cap-thunk-setup = rsp-bound-to-capacity thunk-setup-capacity s (rsp-in-stack-after-stack-op s) rsp-above-thunk-setup
 
-      -- Step 1: Trace 8 setup instructions (now takes StackCapacity s 6)
+      -- Step 1: Trace 8 setup instructions (takes StackCapacity s thunk-setup-capacity)
       -- Returns ThunkSetupResult record for clean field access
       setup-result = thunk-setup-star f prefix suffix env arg s
-                       h-eq pc-eq v-arg v-env stack-inv cap6
+                       h-eq pc-eq v-arg v-env stack-inv cap-thunk-setup
       s-after-setup = proj₁ setup-result
       setup-rec = proj₂ setup-result
       open TE.ThunkSetupResult setup-rec

@@ -256,6 +256,11 @@ thunk-setup-fits-capacity = m≤m+n thunk-setup-consumed-slots output-slots
 apply-setup-fits-capacity : apply-consumed-slots ≤ apply-capacity
 apply-setup-fits-capacity = m≤m+n apply-consumed-slots output-slots
 
+-- Cross-capacity relationships: thunk-setup fits in pair capacity
+-- Used when curry thunk setup runs with pair capacity bound
+thunk-setup-fits-pair-capacity : thunk-setup-capacity ≤ pair-capacity
+thunk-setup-fits-pair-capacity = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
+
   inl-inr-capacity-correct : inl-inr-capacity ≡ injection-consumed-slots +ℕ output-slots
   inl-inr-capacity-correct = refl
 
