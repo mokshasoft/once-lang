@@ -529,18 +529,120 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
                                   (trans (IRStarResultV.ir-mem-heap r-f addr in-heap)
                                          (mem-heap-setup addr in-heap))
 
-    -- These memory preservation proofs require fields not yet in CaseInlSetupResult
-    -- For now, use postulates. TODO: add mem-code-setup, mem-at-0-setup to CaseInlSetupResult
+    -- Memory preservation: chain through s → s-setup → s1 → s-final
+    mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code addr in-code = trans (cong (λ m → readMem m addr) mem-s-final)
+                                  (trans (IRStarResultV.ir-mem-code r-f addr in-code)
+                                         (CaseInlSetupResult.mem-code-setup setup-res addr in-code))
+
+    mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+    mem-at-0 = trans (cong (λ m → readMem m 0) mem-s-final)
+                     (trans (IRStarResultV.ir-mem-at-0 r-f)
+                            (CaseInlSetupResult.mem-at-0-setup setup-res))
+
+    -- mem-r15: r15 is preserved through setup, so we use r15-setup to align addresses
+    mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-r15 = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-s-final)
+                    (trans (subst (λ addr → readMem (memory s1) addr ≡ readMem (memory s-setup) addr)
+                                  (sym r15-setup)
+                                  (IRStarResultV.ir-mem r-f))
+                           (CaseInlSetupResult.mem-r15-setup setup-res))
+
+    -- ========== Memory preservation at caller's rbp ==========
+    -- Key: orig-rbp > new-rbp (from RbpInvariant), so we can use ir-mem-above
+    -- new-rbp = orig-rsp - slot-size = readReg (regs s-setup) rbp
+    -- Chain: s-final → s1 (via mem-s-final) → s-setup (via ir-mem-above) → s (via mem-rbp-setup)
+
+    new-rbp = readReg (regs s-setup) rbp
+
+    -- From RbpInvariant: orig-rbp ≥ orig-rsp, and new-rbp = orig-rsp - slot-size
+    -- So orig-rbp ≥ orig-rsp > new-rbp
+    orig-rbp>new-rbp : orig-rbp > new-rbp
+    orig-rbp>new-rbp = <-≤-trans new-rbp<rsp (RbpInvariant.rsp≤rbp rbp-inv)
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (m<m+n; m∸n+n≡m; <⇒≤; <-≤-trans)
+
+        -- From StackCapacity s (suc (f-req ⊔ g-req)), derive StackCapacity s 1
+        -- Since 1 ≤ suc (f-req ⊔ g-req) always
+        case-req≥1 : 1 ≤ suc (f-req ⊔ g-req)
+        case-req≥1 = s≤s z≤n
+
+        cap-1 : StackCapacity s 1
+        cap-1 = capacity-from-larger s 1 (suc (f-req ⊔ g-req)) cap-in' case-req≥1
+
+        -- From StackCapacity s 1: slot-size < orig-rsp
+        slot<rsp : slot-size < orig-rsp
+        slot<rsp = rsp-sufficient cap-1
+
+        -- new-rbp = orig-rsp - slot-size < orig-rsp
+        new-rbp<rsp : new-rbp < orig-rsp
+        new-rbp<rsp = subst (_< orig-rsp) (sym rbp-setup) rsp-slot<rsp
+          where
+            rsp-slot<rsp : orig-rsp ∸ slot-size < orig-rsp
+            rsp-slot<rsp = subst ((orig-rsp ∸ slot-size) <_) (m∸n+n≡m (<⇒≤ slot<rsp))
+                                 (m<m+n (orig-rsp ∸ slot-size) {slot-size} (s≤s z≤n))
+
+    -- Memory at orig-rbp: chain through s-final → s1 → s-setup → s
+    mem-rbp : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp = trans (cong (λ m → readMem m orig-rbp) mem-s-final)
+                    (trans (IRStarResultV.ir-mem-above r-f orig-rbp orig-rbp>new-rbp)
+                           (CaseInlSetupResult.mem-rbp-setup setup-res))
+
+    -- Memory at orig-rbp+8: similar chain
+    orig-rbp+8>new-rbp : orig-rbp +ℕ 8 > new-rbp
+    orig-rbp+8>new-rbp = <-trans orig-rbp>new-rbp (m<m+n orig-rbp {8} (s≤s z≤n))
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (<-trans; m<m+n)
+
+    mem-rbp+8 : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8 = trans (cong (λ m → readMem m (orig-rbp +ℕ 8)) mem-s-final)
+                      (trans (IRStarResultV.ir-mem-above r-f (orig-rbp +ℕ 8) orig-rbp+8>new-rbp)
+                             (CaseInlSetupResult.mem-rbp+8-setup setup-res))
+
+    -- Memory above orig-rbp: similar chain (any addr > orig-rbp > new-rbp)
+    mem-above : ∀ addr → addr > orig-rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-above addr addr>rbp = trans (cong (λ m → readMem m addr) mem-s-final)
+                                    (trans (IRStarResultV.ir-mem-above r-f addr addr>new-rbp)
+                                           (CaseInlSetupResult.mem-above-setup setup-res addr addr>rbp))
+      where
+        addr>new-rbp : addr > new-rbp
+        addr>new-rbp = <-trans orig-rbp>new-rbp addr>rbp
+          where open import Data.Nat.Properties using (<-trans)
+
+    -- ========== Stack Invariant final ==========
+    -- Chain r15 and rsp back to original state s:
+    -- - r15: r15-final proves r15 s-final = r15 s
+    -- - rsp: rsp-final proves rsp s-final = orig-rsp = rsp s
+    stack-inv-final : StackInvariant s-final
+    stack-inv-final = stack-inv-preserved-unchanged s s-final stack-inv r15-final rsp-final
+      where
+        open import Once.Backend.X86.Correct.StackInvariant using (stack-inv-preserved-unchanged)
+
+    -- ========== Stack Capacity final ==========
+    -- ir-output-capacity [ f , g ] = ir-stack-requirement [ f , g ] (since delta = 0)
+    -- rsp s-final = orig-rsp = rsp s, and we have cap-in : StackCapacity s (ir-stack-requirement [ f , g ])
+    cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
+    cap-final = capacity-preserved-rsp-unchanged s s-final (ir-output-capacity [ f , g ]) cap-in' rsp-final
+
+    -- ========== RbpInvariant final ==========
+    -- After cleanup, rbp = orig-rbp and rsp = orig-rsp, both restored to original values
+    -- So we can reuse the frame from rbp-inv
+    rbp-inv-final : RbpInvariant s-final
+    rbp-inv-final = record
+      { rbp-frame = RbpInvariant.rbp-frame rbp-inv
+      ; rbp-is-base = trans rbp-final (RbpInvariant.rbp-is-base rbp-inv)
+      ; frame-bound = subst (λ x → sp-addr orig-frame ≥ x) (sym rsp-final) (RbpInvariant.frame-bound rbp-inv)
+      }
+      where
+        open import Data.Nat using (_≥_)
+        open import Once.Backend.Common.MemoryRegions using (StackPointer) renaming (addr to sp-addr)
+        orig-frame = RbpInvariant.rbp-frame rbp-inv
+
+    -- ClosureWFOutput is a global property about program structure
+    -- It asserts that closures in the program are well-formed
     postulate
-      mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-      mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
-      mem-rbp : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
-      mem-rbp+8 : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
-      mem-above : ∀ addr → addr > orig-rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      stack-inv-final : StackInvariant s-final
-      cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
-      rbp-inv-final : RbpInvariant s-final
       closure-wf-final : ClosureWFOutput prog
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)

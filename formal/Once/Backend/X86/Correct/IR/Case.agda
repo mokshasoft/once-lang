@@ -44,12 +44,13 @@ open import Once.Backend.X86.Correct.RegisterLemmas
          readReg-writeReg-r11-r14; readReg-writeReg-r11-r15;
          readReg-writeReg-rdi-rsp; readReg-writeReg-rdi-rbp; readReg-writeReg-rdi-r14; readReg-writeReg-rdi-r15)
 open import Once.Backend.Common.MemoryRegions
-  using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint)
+  using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
+         stack-code-addr-disjoint; zero-not-in-stack)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; zero; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; ≤-<-trans; <⇒≤; m∸n≤m; ≤-refl)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; ≤-<-trans; <⇒≤; <⇒≢; m∸n≤m; ≤-refl; m<m+n; m∸n+n≡m)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.List.Properties using (++-assoc)
 open import Once.Backend.X86.Correct.CompileLength using (length-++; compile-length-correct)
@@ -85,8 +86,15 @@ record CaseInlSetupResult {A B C : Type} (a : ⟦ A ⟧)
     rsp-setup  : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slot-size
     r14-setup  : readReg (regs s-setup) r14 ≡ readReg (regs s) r14
     r15-setup  : readReg (regs s-setup) r15 ≡ readReg (regs s) r15
-    -- Memory preservation
+    -- Memory preservation (setup only writes to stack via push)
     mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+    mem-r15-setup  : readMem (memory s-setup) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    -- Memory at rbp/rbp+8/above preserved (push writes below rbp per RbpInvariant)
+    mem-rbp-setup  : readMem (memory s-setup) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp+8-setup : readMem (memory s-setup) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-above-setup : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Stack frame: push wrote orig-rbp at (rsp - slot-size) = rbp
     mem-saved-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     -- Invariants
@@ -455,6 +463,32 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         mem-preserved : readMem (memory s6) addr ≡ readMem orig-mem addr
         mem-preserved = mem-s1  -- memory s6 = ... = memory s1
 
+    -- Code memory preserved (push writes to stack, not code region)
+    mem-code6 : ∀ addr → InCode addr → readMem (memory s6) addr ≡ readMem orig-mem addr
+    mem-code6 addr addr-in-code = mem-preserved
+      where
+        push-addr≢addr : push-addr ≢ addr
+        push-addr≢addr eq = stack-code-addr-disjoint push-addr addr push-addr-in-stack addr-in-code eq
+
+        mem-s1 : readMem (memory s1) addr ≡ readMem orig-mem addr
+        mem-s1 = readMem-writeMem-diff orig-mem push-addr addr orig-rbp push-addr≢addr
+
+        mem-preserved : readMem (memory s6) addr ≡ readMem orig-mem addr
+        mem-preserved = mem-s1
+
+    -- Memory at 0 preserved (0 is not in stack region)
+    mem-at-0-6 : readMem (memory s6) 0 ≡ readMem orig-mem 0
+    mem-at-0-6 = mem-preserved
+      where
+        push-addr≢0 : push-addr ≢ 0
+        push-addr≢0 eq = zero-not-in-stack (subst InStack eq push-addr-in-stack)
+
+        mem-s1 : readMem (memory s1) 0 ≡ readMem orig-mem 0
+        mem-s1 = readMem-writeMem-diff orig-mem push-addr 0 orig-rbp push-addr≢0
+
+        mem-preserved : readMem (memory s6) 0 ≡ readMem orig-mem 0
+        mem-preserved = mem-s1
+
     -- ========== StackInvariant preservation ==========
     -- r15 is unchanged through all 6 instructions
     -- rsp is decreased (push decreases rsp by slot-size)
@@ -504,6 +538,121 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         push-wrote-rbp : readMem (memory s6) push-addr ≡ just orig-rbp
         push-wrote-rbp = push-wrote-orig-rbp  -- memory s6 = memory s1
 
+    -- ========== Memory preservation at rbp addresses ==========
+    -- Key: push writes to (orig-rsp - slot-size), and RbpInvariant says rbp ≥ rsp
+    -- So push-addr = rsp - slot-size < rsp ≤ rbp, meaning push-addr < rbp
+
+    -- From StackCapacity s 1: slot-size < orig-rsp
+    slot-size<rsp : slot-size < orig-rsp
+    slot-size<rsp = rsp-sufficient cap-1
+      where
+        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-sufficient)
+
+    -- Therefore push-addr < orig-rsp
+    -- Proof: slot-size ≤ rsp, so (rsp - slot-size) + slot-size = rsp
+    --        And slot-size > 0, so (rsp - slot-size) < (rsp - slot-size) + slot-size = rsp
+    push-addr<rsp : push-addr < orig-rsp
+    push-addr<rsp = subst (push-addr <_) sum-eq push-addr<sum
+      where
+        slot-size≤rsp : slot-size ≤ orig-rsp
+        slot-size≤rsp = <⇒≤ slot-size<rsp
+
+        -- (orig-rsp - slot-size) + slot-size = orig-rsp
+        sum-eq : push-addr +ℕ slot-size ≡ orig-rsp
+        sum-eq = m∸n+n≡m slot-size≤rsp
+
+        -- slot-size > 0, so push-addr < push-addr + slot-size
+        push-addr<sum : push-addr < push-addr +ℕ slot-size
+        push-addr<sum = m<m+n push-addr {slot-size} (s≤s z≤n)
+
+    -- From RbpInvariant: rsp ≤ rbp
+    rsp≤rbp : orig-rsp ≤ orig-rbp
+    rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
+
+    -- Chain: push-addr < rsp ≤ rbp, so push-addr < rbp
+    push-addr<rbp : push-addr < orig-rbp
+    push-addr<rbp = <-≤-trans push-addr<rsp rsp≤rbp
+      where
+        open import Data.Nat.Properties using (<-≤-trans)
+
+    -- Therefore push-addr ≢ rbp
+    push-addr≢rbp : push-addr ≢ orig-rbp
+    push-addr≢rbp = <⇒≢ push-addr<rbp
+
+    -- Memory at rbp preserved
+    mem-rbp-6 : readMem (memory s6) orig-rbp ≡ readMem orig-mem orig-rbp
+    mem-rbp-6 = readMem-writeMem-diff orig-mem push-addr orig-rbp orig-rbp push-addr≢rbp
+
+    -- push-addr < rbp < rbp+8, so push-addr ≠ rbp+8
+    push-addr<rbp+8 : push-addr < orig-rbp +ℕ 8
+    push-addr<rbp+8 = <-trans push-addr<rbp rbp<rbp+8
+      where
+        rbp<rbp+8 : orig-rbp < orig-rbp +ℕ 8
+        rbp<rbp+8 = m<m+n orig-rbp {8} (s≤s z≤n)
+
+    push-addr≢rbp+8 : push-addr ≢ orig-rbp +ℕ 8
+    push-addr≢rbp+8 = <⇒≢ push-addr<rbp+8
+
+    mem-rbp+8-6 : readMem (memory s6) (orig-rbp +ℕ 8) ≡ readMem orig-mem (orig-rbp +ℕ 8)
+    mem-rbp+8-6 = readMem-writeMem-diff orig-mem push-addr (orig-rbp +ℕ 8) orig-rbp push-addr≢rbp+8
+
+    -- Memory above rbp preserved (any addr > rbp implies addr ≠ push-addr since push-addr < rbp)
+    mem-above-6 : ∀ addr → addr > orig-rbp → readMem (memory s6) addr ≡ readMem orig-mem addr
+    mem-above-6 addr addr>rbp = readMem-writeMem-diff orig-mem push-addr addr orig-rbp push-addr≢addr
+      where
+        push-addr<addr : push-addr < addr
+        push-addr<addr = <-trans push-addr<rbp addr>rbp
+          where open import Data.Nat.Properties using (<-trans)
+
+        push-addr≢addr : push-addr ≢ addr
+        push-addr≢addr = <⇒≢ push-addr<addr
+
+    -- Memory at r15 preserved
+    -- Uses stack-write-preserves-r15 which handles all R15Status cases
+    mem-r15-6 : readMem (memory s6) (readReg (regs s) r15) ≡ readMem orig-mem (readReg (regs s) r15)
+    mem-r15-6 = readMem-writeMem-diff orig-mem push-addr orig-r15 orig-rbp push-addr≢r15
+      where
+        open import Once.Backend.X86.Correct.StackInvariant
+          using (stack-write-preserves-r15; FrameEvidenceFor;
+                 R15Status; r15-unused; r15-in-heap; r15-in-code; r15-in-stack)
+        open import Once.Backend.Common.MemoryRegions using (slot-addr; slot-addr-0-is-base)
+        open import Data.Unit using (tt)
+        open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
+
+        -- push-addr = slot-addr new-frame 0 (slot 0 of the new frame)
+        push-addr-is-slot0 : push-addr ≡ slot-addr new-frame 0
+        push-addr-is-slot0 = sym (trans (slot-addr-0-is-base new-frame) new-frame-addr)
+
+        -- Helper to compute frame evidence by case analysis
+        -- Can't use 'with' on module parameter, so we use a helper function
+        compute-frame-evidence : (inv : R15Status s) → FrameEvidenceFor new-frame inv
+        compute-frame-evidence (r15-unused _) = tt
+        compute-frame-evidence (r15-in-heap _) = tt
+        compute-frame-evidence (r15-in-code _) = tt
+        compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame≢r15-frame
+          where
+            -- sp-addr new-frame = orig-rsp - slot-size
+            -- sp-addr r15-frame ≥ orig-rsp (from r15-frame-bound)
+            -- We need: orig-rsp - slot-size < orig-rsp ≤ sp-addr r15-frame
+            -- Therefore: sp-addr new-frame < sp-addr r15-frame, so they're ≠
+
+            new-frame<r15-frame : sp-addr new-frame < sp-addr r15-frame
+            new-frame<r15-frame = <-≤-trans new-frame<rsp r15-frame-bound
+              where
+                -- new-frame < orig-rsp (from slot-size<rsp and m∸n<m logic)
+                new-frame<rsp : sp-addr new-frame < orig-rsp
+                new-frame<rsp = subst (_< orig-rsp) (sym new-frame-addr) push-addr<rsp
+
+            new-frame≢r15-frame : sp-addr new-frame ≢ sp-addr r15-frame
+            new-frame≢r15-frame = <⇒≢ new-frame<r15-frame
+
+        frame-evidence : FrameEvidenceFor new-frame stack-inv
+        frame-evidence = compute-frame-evidence stack-inv
+
+        push-addr≢r15 : push-addr ≢ orig-r15
+        push-addr≢r15 = stack-write-preserves-r15 s push-addr new-frame 0
+                          push-addr-is-slot0 stack-inv frame-evidence
+
     -- ========== Assemble result ==========
     result : CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s6 val-addr
     result = record
@@ -516,10 +665,84 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
       ; r14-setup = r146
       ; r15-setup = r156
       ; mem-heap-setup = mem-heap6
+      ; mem-code-setup = mem-code6
+      ; mem-at-0-setup = mem-at-0-6
+      ; mem-r15-setup = mem-r15-6
+      ; mem-rbp-setup = mem-rbp-6
+      ; mem-rbp+8-setup = mem-rbp+8-6
+      ; mem-above-setup = mem-above-6
       ; mem-saved-rbp = mem-at-rbp6
       ; stack-inv-setup = stack-inv6
       ; rbp-inv-setup = rbp-inv6
       }
+
+------------------------------------------------------------------------
+-- Case Inr Setup Result
+--
+-- Result of executing the setup sequence for inr branch:
+--   0: push rbp
+--   1: mov rbp, rsp
+--   2: mov r11, [rdi]     ; load tag (should be 1 for inr)
+--   3: cmp r11, 0         ; sets ZF=false (1 ≠ 0)
+--   4: jne right-offset   ; TAKEN (ZF=false) - jumps to position (7 + len-f)
+--   7+len-f: mov rdi, [rdi+8]   ; load value pointer
+--
+-- After these instructions, PC is at (8 + len-f).
+------------------------------------------------------------------------
+
+record CaseInrSetupResult {A B C : Type} (b : ⟦ B ⟧)
+    (prefix suffix : Program) (f : IR A C) (g : IR B C)
+    (s s-setup : State) (val-addr : ℕ) : Set where
+  private
+    len-f = compile-length f
+  field
+    -- Execution star
+    star-setup : Star (prefix ++ compile-x86 [ f , g ] ++ suffix) s s-setup
+    -- State properties
+    h-setup    : halted s-setup ≡ false
+    pc-setup   : pc s-setup ≡ length prefix +ℕ 8 +ℕ len-f
+    -- Register values
+    rdi-setup  : readReg (regs s-setup) rdi ≡ val-addr
+    rbp-setup  : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slot-size
+    rsp-setup  : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slot-size
+    r14-setup  : readReg (regs s-setup) r14 ≡ readReg (regs s) r14
+    r15-setup  : readReg (regs s-setup) r15 ≡ readReg (regs s) r15
+    -- Memory preservation (setup only writes to stack via push)
+    mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
+    mem-r15-setup  : readMem (memory s-setup) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    -- Memory at rbp/rbp+8/above preserved (push writes below rbp per RbpInvariant)
+    mem-rbp-setup  : readMem (memory s-setup) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp+8-setup : readMem (memory s-setup) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-above-setup : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- Stack frame: push wrote orig-rbp at (rsp - slot-size) = rbp
+    mem-saved-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
+    -- Invariants
+    stack-inv-setup : StackInvariant s-setup
+    rbp-inv-setup   : RbpInvariant s-setup
+
+------------------------------------------------------------------------
+-- Case Inr Setup Proof
+--
+-- The inr setup is more complex because the jne is taken.
+-- We execute: push rbp, mov rbp rsp, mov r11 [rdi], cmp r11 0, jne (taken)
+-- Then the jump lands at the right-label where we execute: mov rdi [rdi+8]
+------------------------------------------------------------------------
+
+postulate
+  case-inr-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
+    (prefix suffix : Program) (b : ⟦ B ⟧) (s : State)
+    (val-addr : ℕ) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    StackCapacity s (ir-stack-requirement [ f , g ]) →
+    RbpInvariant s →
+    -- Value pointer at input address + 8
+    readMem (memory s) (readReg (regs s) rdi +ℕ 8) ≡ just val-addr →
+    ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
 
 ------------------------------------------------------------------------
 -- Case Cleanup Result
