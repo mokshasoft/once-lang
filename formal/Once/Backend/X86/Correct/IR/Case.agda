@@ -857,8 +857,52 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     -- ========== Final PC ==========
     -- PC after cleanup = 11 + len-f + len-g = compile-length [ f , g ]
     -- Since compile-length [ f , g ] = case-overhead + len-f + len-g = 11 + len-f + len-g
-    postulate
-      pc3 : pc s3 ≡ length prefix +ℕ compile-length [ f , g ]
+    pc3 : pc s3 ≡ length prefix +ℕ compile-length [ f , g ]
+    pc3 = trans step1' (trans step2' (trans step3' (trans step4' (trans step5' step6'))))
+      where
+        -- pc s3 = pc s2 + 1  (definitionally from s3 definition)
+        step1' : pc s3 ≡ ((length prefix +ℕ 10) +ℕ len-f) +ℕ len-g +ℕ 1
+        step1' = cong (_+ℕ 1) pc-s2
+
+        -- Regroup: (((a + 10) + b) + c) + 1 = ((a + 10) + b) + (c + 1)
+        step2' : ((length prefix +ℕ 10) +ℕ len-f) +ℕ len-g +ℕ 1 ≡ ((length prefix +ℕ 10) +ℕ len-f) +ℕ (len-g +ℕ 1)
+        step2' = +-assoc ((length prefix +ℕ 10) +ℕ len-f) len-g 1
+
+        -- ((a + 10) + b) + (c + 1) = (a + 10) + (b + (c + 1))
+        step3' : ((length prefix +ℕ 10) +ℕ len-f) +ℕ (len-g +ℕ 1) ≡ (length prefix +ℕ 10) +ℕ (len-f +ℕ (len-g +ℕ 1))
+        step3' = +-assoc (length prefix +ℕ 10) len-f (len-g +ℕ 1)
+
+        -- (a + 10) + (b + (c + 1)) = a + (10 + (b + (c + 1)))
+        step4' : (length prefix +ℕ 10) +ℕ (len-f +ℕ (len-g +ℕ 1)) ≡ length prefix +ℕ (10 +ℕ (len-f +ℕ (len-g +ℕ 1)))
+        step4' = +-assoc (length prefix) 10 (len-f +ℕ (len-g +ℕ 1))
+
+        -- 10 + (b + (c + 1)) = 11 + b + c = (11 + b) + c = compile-length [ f , g ]
+        -- First: b + (c + 1) = (b + c) + 1
+        inner1 : len-f +ℕ (len-g +ℕ 1) ≡ (len-f +ℕ len-g) +ℕ 1
+        inner1 = sym (+-assoc len-f len-g 1)
+
+        -- (b + c) + 1 = 1 + (b + c)
+        inner2 : (len-f +ℕ len-g) +ℕ 1 ≡ 1 +ℕ (len-f +ℕ len-g)
+        inner2 = +-comm (len-f +ℕ len-g) 1
+
+        -- 10 + (1 + (b + c)) = (10 + 1) + (b + c) = 11 + (b + c)
+        inner3 : 10 +ℕ (1 +ℕ (len-f +ℕ len-g)) ≡ (10 +ℕ 1) +ℕ (len-f +ℕ len-g)
+        inner3 = sym (+-assoc 10 1 (len-f +ℕ len-g))
+
+        -- 11 + (b + c) = (11 + b) + c
+        inner4 : 11 +ℕ (len-f +ℕ len-g) ≡ (11 +ℕ len-f) +ℕ len-g
+        inner4 = sym (+-assoc 11 len-f len-g)
+
+        -- compile-length [ f , g ] = (case-overhead + len-f) + len-g = (11 + len-f) + len-g
+        step5' : length prefix +ℕ (10 +ℕ (len-f +ℕ (len-g +ℕ 1))) ≡ length prefix +ℕ ((11 +ℕ len-f) +ℕ len-g)
+        step5' = cong (length prefix +ℕ_)
+                     (trans (cong (10 +ℕ_) inner1)
+                            (trans (cong (10 +ℕ_) inner2)
+                                   (trans inner3 inner4)))
+
+        -- length prefix + ((11 + len-f) + len-g) = length prefix + compile-length [ f , g ]
+        step6' : length prefix +ℕ ((11 +ℕ len-f) +ℕ len-g) ≡ length prefix +ℕ compile-length [ f , g ]
+        step6' = refl  -- case-overhead = 11 definitionally
 
     -- ========== Final register values ==========
     -- rsp in s3 = rbp-val + slot-size = (orig-rsp - slot-size) + slot-size = orig-rsp
