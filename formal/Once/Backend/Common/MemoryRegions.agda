@@ -10,14 +10,6 @@
 --   2. Disjointness is a THEOREM from interval non-overlap
 --   3. No magic numbers or sentinel addresses
 --   4. Clear semantics - regions ARE intervals
---
--- POSTULATES (total: 4 structural):
---   - stack-bounds, heap-bounds, code-bounds: interval definitions
---   - intervals-disjoint: the three intervals don't overlap
---
--- THEOREMS (derived from intervals):
---   - stack-heap-disjoint, stack-code-disjoint, heap-code-disjoint
---   - stack-sub-preserves: subtraction within bounds stays in stack
 ------------------------------------------------------------------------
 
 module Once.Backend.Common.MemoryRegions where
@@ -159,32 +151,6 @@ mkHeapPointer : (a : Addr) → InHeap a → HeapPointer
 mkHeapPointer a proof = record { haddr = a ; in-heap = proof }
 
 ------------------------------------------------------------------------
--- Stack Capacity
-------------------------------------------------------------------------
-
-record HasCapacity (sp : StackPointer) (n : ℕ) : Set where
-  field
-    capacity-proof : ∀ k → k ≤ n → lower stack-bounds ≤ addr sp ∸ (k * 8)
-
-open HasCapacity public
-
-------------------------------------------------------------------------
--- Stack Operations
-------------------------------------------------------------------------
-
-postulate
-  stack-alloc : (sp : StackPointer) (n : ℕ) → HasCapacity sp n →
-    ∃[ sp' ] (addr sp' ≡ addr sp ∸ (n * 8))
-
-  stack-dealloc : (sp : StackPointer) (n : ℕ) →
-    ∃[ sp' ] (addr sp' ≡ addr sp + (n * 8) × InStack (addr sp'))
-
-  alloc-dealloc-inverse : (sp : StackPointer) (n : ℕ) (cap : HasCapacity sp n) →
-    let (sp' , _) = stack-alloc sp n cap
-        (sp'' , _ , _) = stack-dealloc sp' n
-    in addr sp'' ≡ addr sp
-
-------------------------------------------------------------------------
 -- Stack Slot Addressing
 ------------------------------------------------------------------------
 
@@ -213,7 +179,6 @@ postulate
 ------------------------------------------------------------------------
 
 postulate
-  code-addr-bound : ∀ a (prog-len : ℕ) → InCode a → a < prog-len
   pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) → pc < prog-len → InCode pc
 
 ------------------------------------------------------------------------
@@ -234,29 +199,8 @@ stack-preserves-code = stack-code-addr-disjoint
 
 postulate
   frameSlot : Memory → StackPointer → ℕ → Maybe Word
-  frameWriteSlot : Memory → StackPointer → ℕ → Word → Memory
-  frameSlot-write-same : ∀ mem sp k val →
-    frameSlot (frameWriteSlot mem sp k val) sp k ≡ just val
-  frameSlot-distinct-frames : ∀ mem sp₁ sp₂ k₁ k₂ val →
-    addr sp₁ ≢ addr sp₂ →
-    frameSlot (frameWriteSlot mem sp₁ k₁ val) sp₂ k₂ ≡ frameSlot mem sp₂ k₂
-  frameSlot-distinct-slots : ∀ mem sp k₁ k₂ val →
-    k₁ ≢ k₂ →
-    frameSlot (frameWriteSlot mem sp k₁ val) sp k₂ ≡ frameSlot mem sp k₂
-
-------------------------------------------------------------------------
--- Memory Preservation Properties
-------------------------------------------------------------------------
 
 postulate
-  frameWriteSlot-preserves-heap : ∀ mem sp k val heap-addr →
-    InHeap heap-addr →
-    readMem (frameWriteSlot mem sp k val) heap-addr ≡ readMem mem heap-addr
-
-  frameWriteSlot-preserves-code : ∀ mem sp k val code-addr →
-    InCode code-addr →
-    readMem (frameWriteSlot mem sp k val) code-addr ≡ readMem mem code-addr
-
   stackAddr-write-preserves-heap : ∀ mem addr val heap-addr →
     InStack addr → InHeap heap-addr →
     readMem (writeMem mem addr val) heap-addr ≡ readMem mem heap-addr
@@ -272,6 +216,4 @@ postulate
 module FrameSlotInternal where
   postulate
     frameSlot-0-is-top : ∀ mem sp → frameSlot mem sp 0 ≡ readMem mem (addr sp)
-    frameWriteSlot-0-is-writeMem : ∀ mem sp val →
-      frameWriteSlot mem sp 0 val ≡ writeMem mem (addr sp) val
     frameSlot-is-readMem : ∀ mem sp k → frameSlot mem sp k ≡ readMem mem (slot-addr sp k)
