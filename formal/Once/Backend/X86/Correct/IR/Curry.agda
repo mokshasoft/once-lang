@@ -12,7 +12,6 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-closure-construct)
-open import Once.Backend.X86.Postulates using (curry-rsp-preserved)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation

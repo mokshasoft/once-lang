@@ -18,9 +18,6 @@ open import Once.Backend.X86.Semantics using () renaming (module State to St)
 open St using (regs)
 
 open import Once.Backend.Common.MemoryRegions using (InStack)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
-open import Once.IR using (IR)
-open import Once.Type using (_*_)
 
 ------------------------------------------------------------------------
 -- Postulate P4: Stack Pointer Bounds (Runtime Property)
@@ -78,32 +75,6 @@ postulate
 --
 -- This ensures capacity is properly accounted for through closure calls.
 ------------------------------------------------------------------------
-
-------------------------------------------------------------------------
--- Postulate P5: Curry RSP Preservation (Semantic Simplification)
-------------------------------------------------------------------------
---
--- TECHNICAL DEBT: Curry actually decreases rsp by slots 2 (closure allocation).
--- This postulate falsely claims rsp is preserved to satisfy IRStarResultV.ir-rsp.
---
--- JUSTIFICATION:
---   For compose (g ∘ curry f), capacity threading via rsp preservation is complex
---   when curry changes rsp. The correct fix involves:
---   1. Tracking rsp deltas through IR execution, or
---   2. Changing IRStarResultV to not require universal rsp preservation
---   For now, this postulate allows the proofs to compile while capturing the
---   semantic intent. The actual rsp change is handled by ir-capacity.
---
--- TODO: Eliminate by one of:
---   - Adding ir-rsp-delta field to IRStarResultV
---   - Using capacity-from-larger with arithmetic accounting for curry's allocation
---   - Special-casing curry in compose/case/pair proofs
---
-------------------------------------------------------------------------
-
-postulate
-  curry-rsp-preserved : ∀ {A B C} (f : IR (A * B) C) (s s' : State) →
-    readReg (regs s') rsp ≡ readReg (regs s) rsp
 
 ------------------------------------------------------------------------
 -- NOTE: apply-produces-result ELIMINATED
