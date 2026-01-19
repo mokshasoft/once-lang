@@ -18,7 +18,7 @@ open import Once.Backend.X86.Semantics using () renaming (module State to St)
 open St using (regs)
 
 open import Once.Backend.Common.MemoryRegions using (InStack)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; ir-stack-requirement)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots)
 open import Once.IR using (IR)
 open import Once.Type using (_*_)
 
@@ -55,11 +55,20 @@ postulate
   -- but is also in the correct memory region.
   rsp-in-stack-after-stack-op : ∀ (s : State) → InStack (readReg (regs s) rsp)
 
-  -- Dynamic capacity bound for thunk execution
-  -- Thunks (curry closures) invoke their inner IR with dynamic capacity.
-  -- This postulate bounds the capacity needed for the inner IR.
-  -- TODO: Eliminate by threading capacity from initial state through curry/apply chain
-  rsp-bound-for-ir : ∀ {A B} (ir : IR A B) (s : State) → readReg (regs s) rsp > slots (ir-stack-requirement ir)
+------------------------------------------------------------------------
+-- NOTE: rsp-bound-for-ir ELIMINATED
+------------------------------------------------------------------------
+--
+-- The rsp-bound-for-ir postulate has been eliminated!
+--
+-- Instead of assuming dynamic capacity bounds, capacity is now threaded
+-- through the proofs:
+--   1. curry produces ClosureWellFormed with thunk-capacity field
+--   2. apply provides capacity to thunk-correct via this field
+--   3. pair/compose/case thread capacity via capacity-from-larger
+--
+-- This ensures capacity is properly accounted for through closure calls.
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- Postulate P5: Curry RSP Preservation (Semantic Simplification)

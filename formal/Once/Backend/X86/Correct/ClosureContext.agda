@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; apply-capacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; apply-capacity; apply-consumed-slots)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -189,12 +189,12 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
       offset = length prefix
       cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
-  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s apply-capacity →  -- Apply capacity: push r15 + call + thunk output
+  StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →  -- Apply + thunk capacity
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
@@ -284,12 +284,12 @@ test-apply-with-wf-eliminates-postulate :
       cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
   -- Preconditions that would be established by curry + pair
-  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s apply-capacity →  -- Apply capacity: push r15 + call + thunk output
+  StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →  -- Apply + thunk capacity
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)

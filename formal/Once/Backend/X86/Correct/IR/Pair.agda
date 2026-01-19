@@ -14,7 +14,6 @@ open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-
 
 -- Additional imports not in Foundation
 open import Once.Postulates using (encode-pair-construct)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
@@ -26,7 +25,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          pair-setup-consumed-slots; pair-capacity; pair-setup-fits-capacity;
          -- Dynamic capacity functions
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
-         pair-inner-requirement;
+         pair-inner-requirement; pair-setup≤pair-req; capacity-from-larger;
          capacity-when-rsp-restored; capacity-preserved-rsp-unchanged;
          capacity-after-delta;  -- For deriving post-setup capacity
          -- Abstract interface (D041-compliant, no arithmetic in types)
@@ -62,19 +61,6 @@ open import Data.List.Properties using (++-assoc) renaming (length-++ to List-le
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
-
-------------------------------------------------------------------------
--- Capacity Helper (D041 Refactoring)
-------------------------------------------------------------------------
--- Centralized pair-setup capacity creation to avoid repeated pattern:
---   Derives rsp > slots pair-setup-consumed-slots from postulate via slot monotonicity
---   Uses pair-setup-fits-capacity from StackInstantiation (single source of truth)
-
-mk-pair-setup-capacity : (s : State) → StackCapacity s pair-setup-consumed-slots
-mk-pair-setup-capacity s = rsp-bound-to-capacity pair-setup-consumed-slots s (rsp-in-stack-after-stack-op s) rsp-above-setup
-  where
-    rsp-above-setup : readReg (regs s) rsp > slots pair-setup-consumed-slots
-    rsp-above-setup = ≤-<-trans (slots-mono-≤ pair-setup-fits-capacity) (rsp-bound-after-stack-op s)
 
 ------------------------------------------------------------------------
 -- Abstract Interface Bridging (D041 Migration)
@@ -414,6 +400,8 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Heap region preservation (D041)
     mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- StackCapacity s pair-setup-consumed-slots derived from input capacity (for downstream use)
+    cap-pair-setup : StackCapacity s pair-setup-consumed-slots
 
 -- | Execute setup phase and compute all properties
 -- Requires StackCapacity s (ir-stack-requirement ⟨ f , g ⟩): 5 slots for setup + inner requirement remaining
@@ -443,6 +431,7 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = rec
   ; mem-stack-r14 = mem-r14-setup
   ; mem-code-setup = mem-code-from-setup
   ; mem-heap-setup = mem-heap-from-setup
+  ; cap-pair-setup = cap-pair-setup
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -863,7 +852,7 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
     -- D041: Lifted from nested where clauses to avoid duplication
     s1-r15-region : InStack (readReg (regs s1) r15)
     s1-r15-region = subst InStack (sym r15-s1-eq)
-                          (abstract-to-rsp-40-in-stack s (mk-pair-setup-capacity s))
+                          (abstract-to-rsp-40-in-stack s (PairSetupResult.cap-pair-setup setup-res))
 
     -- r15 ≠ rbp in s1 (since rsp-40 ≠ rsp-24)
     -- Key: if rsp - 40 = rsp - 24 with rsp ≥ 40, then (rsp-24) = (rsp-40),
@@ -1712,7 +1701,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code : InCode (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-code r15-code-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResult.cap-pair-setup setup-res
               -- r15-s3 + 8 = (rsp - 40) + 8 is in stack region (via abstract interface)
               write-addr-in-stack : InStack ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size)
               write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap-pair-setup
@@ -1731,7 +1720,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-heap : InHeap (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-heap r15-heap-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResult.cap-pair-setup setup-res
               s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
               s3-r15+8-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain)
                                         (abstract-to-rsp-40+8-in-stack s cap-pair-setup)
@@ -2177,7 +2166,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code-r15 : InCode orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
           let -- s1.r15 = rsp - 40 is in stack region (via abstract interface)
-              cap-pair-setup = mk-pair-setup-capacity s
+              cap-pair-setup = PairSetupResult.cap-pair-setup setup-res
               rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
               -- Convert via s1-r15-eq
@@ -2191,7 +2180,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         -- Case r15 in heap region: heap addresses are disjoint from stack addresses (D041 region proof)
         case-r15-heap-r15 : InHeap orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-heap-r15 r15-heap-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResult.cap-pair-setup setup-res
               rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
               s1-r15-in-stack : InStack (readReg (regs s1) r15)
@@ -2475,7 +2464,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-code : InCode (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-code r15-code-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResultV.cap-pair-setup setup-res
               write-addr-in-stack : InStack ((readReg (regs s) rsp ∸ slots 5) +ℕ slot-size)
               write-addr-in-stack = abstract-to-rsp-40+8-in-stack s cap-pair-setup
               s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
@@ -2488,7 +2477,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         case-r15-heap : InHeap (readReg (regs s) r15) →
                         readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-heap r15-heap-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResultV.cap-pair-setup setup-res
               s3-r15+8-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
               s3-r15+8-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain)
                                         (abstract-to-rsp-40+8-in-stack s cap-pair-setup)
@@ -2870,7 +2859,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             s1-r15<orig-r15 = subst (_< orig-r15) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp rsp≤r15)
         case-r15-code-r15 : InCode orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-code-r15 r15-code-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResultV.cap-pair-setup setup-res
               rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
               s1-r15-in-stack : InStack (readReg (regs s1) r15)
@@ -2881,7 +2870,7 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           in disjoint eq
         case-r15-heap-r15 : InHeap orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-heap-r15 r15-heap-pf eq =
-          let cap-pair-setup = mk-pair-setup-capacity s
+          let cap-pair-setup = PairSetupResultV.cap-pair-setup setup-res
               rsp-40-in-stack : InStack (readReg (regs s) rsp ∸ slots 5)
               rsp-40-in-stack = abstract-to-rsp-40-in-stack s cap-pair-setup
               s1-r15-in-stack : InStack (readReg (regs s1) r15)
@@ -3223,7 +3212,7 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       cap-precond : StackCapacity s (ir-stack-requirement ⟨ f , g ⟩)
       cap-precond = PairFinalPrecond.cap precond
       cap-pair-setup : StackCapacity s pair-setup-consumed-slots
-      cap-pair-setup = mk-pair-setup-capacity s
+      cap-pair-setup = capacity-from-larger s pair-setup-consumed-slots (ir-stack-requirement ⟨ f , g ⟩) cap-precond (pair-setup≤pair-req f g)
 
       -- (rsp - slots setup) + slot-size is in stack region (via abstract interface)
       write-addr-in-stack-raw : InStack ((readReg (regs s) rsp ∸ slots pair-setup-consumed-slots) +ℕ slot-size)

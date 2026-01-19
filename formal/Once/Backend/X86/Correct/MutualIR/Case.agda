@@ -69,10 +69,6 @@ open import Once.Backend.X86.Correct.CompileLength using (length-++; compile-len
 open import Data.Maybe using (just; nothing)
 open import Relation.Nullary using (yes; no)
 
--- Import Postulates for blanket stack lemmas (TODO: eliminate these)
-open import Once.Backend.X86.Postulates
-  using (rsp-in-stack-after-stack-op; rsp-bound-for-ir)
-
 -- Import Case helpers
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseInlSetupResult; case-inl-setup-star; CaseCleanupResult; case-inl-cleanup-star;

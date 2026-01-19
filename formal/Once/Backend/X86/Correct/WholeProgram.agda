@@ -72,9 +72,8 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity; ir-stack-requirement; ir-output-capacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity; ir-stack-requirement; ir-output-capacity; thunk-setup-consumed-slots; thunk-setup-cap≤thunk-consumed+ir-req)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
@@ -289,9 +288,11 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
       wf-at-thunk : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf-at-thunk = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-capacity = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
+        ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁
+              h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁
               (<-wellFounded (ir-size (curry f)))
         }
       -- Transport wf to use mem-code-ptr (which equals thunk-offset)

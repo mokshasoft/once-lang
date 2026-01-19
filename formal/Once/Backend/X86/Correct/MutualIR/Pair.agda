@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; ir-rsp-delta; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (rsp-min-pair-fits-frame; word-fits-thunk-bound-strict)
 open import Once.Backend.Common.MemoryRegions
@@ -66,9 +66,10 @@ open import Once.Backend.X86.Correct.StackInstantiation
          make-frame-at-slot; pair-rbp-frame-≥-r15-frame; slot-size;
          rsp-bound-to-capacity; m∸n<m-when-m>n; capacity-from-larger)
 
--- Import blanket postulates (TODO: eliminate these)
-open import Once.Backend.X86.Postulates
-  using (rsp-in-stack-after-stack-op; rsp-bound-for-ir)
+-- Import capacity derivation helpers for threading through pair execution
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (capacity-preserved-rsp-unchanged; capacity-after-delta;
+         ir-rsp-delta; pair-delta-g-fits-inner)
 
 -- Import Data.Nat.Properties at module level to avoid repeated imports
 open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl; m∸n≤m; <-trans; m≤n⇒m∸n≡0; ≰⇒>; m∸n+n≡m; m+n∸n≡m; +-assoc; +-comm)
@@ -199,10 +200,10 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
 
       -- Derive StackCapacity for f at s-setup from cap-inner (properly threaded capacity)
       -- cap-inner : StackCapacity s-setup (pair-inner-requirement f g)
-      -- ir-stack-requirement f ≤ pair-inner-requirement f g = ir-stack-requirement f ⊔ ir-stack-requirement g
+      -- ir-stack-requirement f ≤ pair-inner-requirement f g = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g)
       cap-setup : StackCapacity s-setup (ir-stack-requirement f)
       cap-setup = capacity-from-larger s-setup (ir-stack-requirement f) (pair-inner-requirement f g)
-                    (PairSetupResultV.cap-inner setup-res) (m≤m⊔n (ir-stack-requirement f) (ir-stack-requirement g))
+                    (PairSetupResultV.cap-inner setup-res) (m≤m⊔n (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g))
 
       step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
       step-f = run-ir-star f f<bound prefix-f suffix-f caller-sp x s-setup
@@ -263,14 +264,32 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         rdi-s2-eq-s            -- rdi in s2 = rdi in s
         mem-heap-s-to-s2        -- heap memory preserved
 
-      -- Derive StackCapacity for g at s2 using postulate
-      -- TODO: Eliminate this postulate. The challenge is that after f executes,
-      -- ir-output-capacity f might be < ir-stack-requirement g if f has non-zero rsp-delta.
-      -- The fix requires changing pair-inner-requirement to: max(req-f, delta-f + req-g)
-      -- This ensures capacity for g even after f's stack consumption.
+      -- Derive StackCapacity for g at s2 by threading through:
+      --   cap-inner (s-setup) → cap-adjusted (s-setup) → cap-s1 (s1) → cap-s2 (s2)
+
+      -- Step 1: Get cap-inner from setup result
+      cap-inner : StackCapacity s-setup (pair-inner-requirement f g)
+      cap-inner = PairSetupResultV.cap-inner setup-res
+
+      -- Step 2: Narrow to (delta-f + req-g) using structural lemma
+      cap-adjusted : StackCapacity s-setup (ir-rsp-delta f +ℕ ir-stack-requirement g)
+      cap-adjusted = capacity-from-larger s-setup
+                       (ir-rsp-delta f +ℕ ir-stack-requirement g)
+                       (pair-inner-requirement f g)
+                       cap-inner
+                       (pair-delta-g-fits-inner f g)
+
+      -- Step 3: After f consumes delta-f slots, derive capacity for req-g at s1
+      cap-s1 : StackCapacity s1 (ir-stack-requirement g)
+      cap-s1 = capacity-after-delta s-setup s1
+                 (ir-rsp-delta f) (ir-stack-requirement g)
+                 cap-adjusted
+                 (IRStarResultV.ir-rsp r-f-v)
+
+      -- Step 4: Preserve through middle (rsp unchanged)
       cap-s2 : StackCapacity s2 (ir-stack-requirement g)
-      cap-s2 = rsp-bound-to-capacity (ir-stack-requirement g) s2
-                 (rsp-in-stack-after-stack-op s2) (rsp-bound-for-ir g s2)
+      cap-s2 = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g)
+                 cap-s1 rsp-s2-eq-s1
 
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix-g caller-sp x s2

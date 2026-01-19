@@ -49,10 +49,11 @@ open import Once.Backend.X86.Correct.StackInstantiation
          stack-inv-preserved-r15-unchanged; stack-inv-preserved-unchanged;
          StackCapacity; capacity-maintained; slots-mono-≤;
          capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
-         capacity-when-rsp-restored;
+         capacity-when-rsp-restored; capacity-after-delta;
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
          -- Apply intermediate capacities (symbolic names)
-         apply-cap-after-push; apply-cap-after-call;
+         apply-cap-after-push; apply-cap-after-call; apply-consumed-slots;
+         output-slots; capacity-from-larger;
          -- D041: Abstract interface (no arithmetic in types)
          apply-frame-1; apply-frame-slot-0-in-stack; abstract-to-rsp-slot-in-stack;
          -- D041: Abstract helpers for 1-slot and 2-slot allocation
@@ -98,7 +99,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-preserves-above-entry-rsp)
 
 open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n; ∸-+-assoc)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
@@ -189,7 +190,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     old-rsp = readReg (regs s) rsp
     new-rsp = old-rsp ∸ slot-size
 
-    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s (ir-stack-requirement apply) gives > slots 4)
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 4 gives > slots 4)
     -- Derive > slots 2 for helpers that need weaker bound
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
     rsp-bound : readReg (regs s) rsp > slots 2
@@ -942,7 +943,8 @@ open ApplyWfResult public
 
 -- | run-apply-with-wf: Full apply execution with ClosureWellFormed
 -- E is the env type, env is the captured environment value
--- Takes StackCapacity s (ir-stack-requirement apply) for postulate-free capacity threading
+-- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
+-- This is a dynamic capacity requirement that depends on the closure being applied
 run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (code-ptr : ℕ) (env : ⟦ E ⟧)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -951,11 +953,11 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
       offset = length prefix
       cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
-  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
+  StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →
   -- Key: ValidAt for input pair (replaces rdi-eq for heap-stack separation)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1026,15 +1028,31 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     closure-in-heap : InHeap closure-addr
     closure-in-heap = valid-in-heap v-cl
 
-    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s (ir-stack-requirement apply) gives > slots 4)
-    -- Derive > slots 2 for helpers that need weaker bound
+    -- Extract rsp-bound from cap for internal use
+    -- cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity) gives > slots (2 + thunk-cap)
+    -- Derive > slots 2 for helpers that need weaker bound (since 2 ≤ 2 + thunk-cap)
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
     rsp-bound : readReg (regs s) rsp > slots 2
-    rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 2)) (StackCapacity.rsp-sufficient cap)
+    rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 (ClosureWellFormed.thunk-capacity wf))) (StackCapacity.rsp-sufficient cap)
+
+    -- Derive StackCapacity s 4 for apply-setup-star
+    -- cap : StackCapacity s (2 + wf.thunk-capacity) where wf.thunk-capacity ≥ 6 (from thunk-capacity-sufficient)
+    -- So 2 + wf.thunk-capacity ≥ 2 + 6 = 8 ≥ 4
+    open import Once.Backend.X86.Correct.StackInstantiation using (capacity-from-larger; thunk-setup-capacity)
+    open import Data.Nat.Properties using (+-monoʳ-≤)
+    -- 4 ≤ apply-consumed-slots + thunk-setup-capacity = 2 + 6 = 8
+    four≤apply-consumed+thunk-setup : 4 ≤ apply-consumed-slots +ℕ thunk-setup-capacity
+    four≤apply-consumed+thunk-setup = s≤s (s≤s (s≤s (s≤s z≤n)))
+    -- 2 + 6 ≤ 2 + wf.thunk-capacity (since wf.thunk-capacity ≥ 6)
+    apply-consumed+thunk-setup≤cap : apply-consumed-slots +ℕ thunk-setup-capacity ≤ apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf
+    apply-consumed+thunk-setup≤cap = +-monoʳ-≤ apply-consumed-slots (ClosureWellFormed.thunk-capacity-sufficient wf)
+    cap-for-setup : StackCapacity s (ir-stack-requirement (apply {A} {B}))
+    cap-for-setup = capacity-from-larger s 4 (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) cap
+                      (≤-trans four≤apply-consumed+thunk-setup apply-consumed+thunk-setup≤cap)
 
     -- Step 1: Setup phase (now takes StackCapacity s (ir-stack-requirement apply), outputs StackCapacity s-setup 3)
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
-                     h-eq pc-eq stack-inv cap rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
+                     h-eq pc-eq stack-inv cap-for-setup rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
     star-setup = proj₁ (proj₂ setup-result)
     h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -1159,10 +1177,19 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         r15-call<len : readReg (regs s-call) r15 < length prog
         r15-call<len = Relation.Binary.PropositionalEquality.subst (_< length prog) (sym r15-call-eq-code-ptr) (code-ptr-valid wf)
 
-    -- rsp-sufficient-call is StackCapacity s-call 2, extract rsp > slots 2 for thunk-correct
+    -- Derive StackCapacity s-call (wf.thunk-capacity) from input capacity using capacity-after-delta
+    -- Input: cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity)
+    -- After setup+call consumes apply-consumed-slots (2), we have wf.thunk-capacity remaining
+    -- RSP delta: s-call.rsp = s.rsp - slots apply-consumed-slots
+    rsp-delta-to-call : readReg (regs s-call) rsp ≡ readReg (regs s) rsp ∸ slots apply-consumed-slots
+    rsp-delta-to-call = trans rsp-call (trans (cong (_∸ slot-size) rsp-setup) (∸-+-assoc (readReg (regs s) rsp) slot-size slot-size))
+
+    cap-for-thunk : StackCapacity s-call (ClosureWellFormed.thunk-capacity wf)
+    cap-for-thunk = capacity-after-delta s s-call apply-consumed-slots (ClosureWellFormed.thunk-capacity wf) cap rsp-delta-to-call
+
     thunk-result = thunk-correct wf arg s-call ret-addr apply-sp
                      h-call pc-call arg-valid-at-call env-valid-at-call mem-ret
-                     stack-inv-call (StackCapacity.rsp-sufficient rsp-sufficient-call) apply-sp-bound r15-call-in-code
+                     stack-inv-call cap-for-thunk apply-sp-bound r15-call-in-code
     s-thunk = proj₁ thunk-result
     thunk-res = proj₁ (proj₂ thunk-result)
     pc-thunk = proj₂ (proj₂ thunk-result)
@@ -1369,7 +1396,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 ------------------------------------------------------------------------
 
 -- | Wrapper that produces IRStarResult from run-apply-with-wf
--- Takes StackCapacity s (ir-stack-requirement apply) directly (eliminates blanket postulates)
+-- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
 run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1378,11 +1405,11 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
       offset = length prefix
       cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
   in
-  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
+  StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   (∃[ closure-addr ] (
@@ -1444,7 +1471,7 @@ open import Once.Backend.X86.Correct.StarBase
             ir-rsp-bound to ir-rsp-bound'; ir-rbp-inv to ir-rbp-inv'; ir-closure-wf to ir-closure-wf')
 open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
--- Takes StackCapacity s (ir-stack-requirement apply) directly (eliminates blanket postulates)
+-- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
 run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1453,13 +1480,13 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
       offset = length prefix
       x = (record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics } , arg)
   in
-  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
   pc s ≡ offset →
   -- Key: ValidAt for input pair (replaces rdi-eq)
   ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
+  StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →
   RbpInvariant s →
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
@@ -1490,8 +1517,15 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-mem-heap = WfR.mem-heap-region  -- PROVEN via D041 region-based chain
     ; ir-stack-inv = WfR.stack-inv
     -- Derive s' capacity from s capacity via rsp-restored (apply restores RSP, delta = 0)
-    -- ir-output-capacity apply = ir-stack-requirement apply ∸ 0 = 4 (definitionally)
-    ; ir-capacity = capacity-when-rsp-restored s s' (ir-output-capacity (apply {A} {B})) cap WfR.rsp-restored
+    -- cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity)
+    -- Need: StackCapacity s' (ir-output-capacity apply) = StackCapacity s' 4
+    -- First derive StackCapacity s 4 from cap (since 4 ≤ 2 + thunk-capacity when thunk-capacity ≥ 6)
+    -- Then transfer to s' via rsp-restored
+    ; ir-capacity = capacity-when-rsp-restored s s' (ir-output-capacity (apply {A} {B}))
+                      (capacity-from-larger s (ir-output-capacity (apply {A} {B}))
+                        (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) cap
+                        output-cap-≤-input-cap)
+                      WfR.rsp-restored
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }
@@ -1508,6 +1542,20 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
                   wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
+
+    -- Capacity derivation for ir-capacity
+    -- ir-output-capacity apply = 4, thunk-capacity ≥ 6, so 4 ≤ 2 + 6 ≤ 2 + thunk-capacity
+    open import Once.Backend.X86.Correct.StackInstantiation using (thunk-setup-capacity)
+    open import Data.Nat.Properties using (+-monoʳ-≤; ≤-trans)
+
+    four≤apply-consumed+thunk-setup : 4 ≤ apply-consumed-slots +ℕ thunk-setup-capacity
+    four≤apply-consumed+thunk-setup = s≤s (s≤s (s≤s (s≤s z≤n)))
+
+    apply-consumed+thunk-setup≤cap : apply-consumed-slots +ℕ thunk-setup-capacity ≤ apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf
+    apply-consumed+thunk-setup≤cap = +-monoʳ-≤ apply-consumed-slots (ClosureWellFormed.thunk-capacity-sufficient wf)
+
+    output-cap-≤-input-cap : ir-output-capacity (apply {A} {B}) ≤ apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf
+    output-cap-≤-input-cap = ≤-trans four≤apply-consumed+thunk-setup apply-consumed+thunk-setup≤cap
 
     -- PROVEN: RbpInvariant preserved via RSP restoration and RBP preservation
     -- From: WfR.rsp-restored : s'.rsp ≡ s.rsp
@@ -1585,7 +1633,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 --   closure-at : ClosureAtS env-addr code-ptr closure-addr m
 ------------------------------------------------------------------------
 
--- Takes StackCapacity s (ir-stack-requirement apply) directly (eliminates blanket postulates)
+-- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -1596,11 +1644,11 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
       cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
       x = (cl , arg)
   in
-  ClosureWellFormed {E} {A} {B} prog code-ptr env semantics →
+  (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
-  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
+  StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →
   RbpInvariant s →
   -- Validity-based memory layout:
   (v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)) →

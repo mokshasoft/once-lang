@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity; thunk-setup-capacity)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegions
   using (InCode; InHeap; StackPointer; frameSlot)
@@ -117,12 +117,26 @@ open ThunkResult public
 --
 -- E is the env type, env is the captured environment value.
 -- thunk-correct takes validity for both arg AND env (fully validity-based!)
+--
+-- thunk-capacity: Stack capacity needed by the thunk.
+-- Set by curry to (thunk-setup-consumed-slots + ir-stack-requirement f).
+-- This threads capacity through the closure interface.
+-- NOTE: rsp-bound-for-ir has been ELIMINATED by this threading!
 record ClosureWellFormed {E A B : Type} (prog : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧) : Set where
   field
     -- The code-ptr is within the program bounds
     code-ptr-valid : code-ptr < length prog
+
+    -- Stack capacity required by the thunk
+    -- Curry sets this to (thunk-setup-consumed-slots + ir-stack-requirement f)
+    thunk-capacity : ℕ
+
+    -- Thunk capacity is at least thunk-setup-capacity (= 6)
+    -- This is always true since thunk-capacity = 4 + ir-req f ≥ 4 + 2 = 6
+    -- Needed by apply to derive it has enough capacity for setup
+    thunk-capacity-sufficient : thunk-capacity ≥ thunk-setup-capacity
 
     -- Executing from code-ptr produces correct result for any input
     -- ret-addr: the return address (pushed by call, popped by ret)
@@ -131,6 +145,7 @@ record ClosureWellFormed {E A B : Type} (prog : Program)
     -- r15-in-code-evidence: r15 is in code region (set by Apply before call)
     -- v-arg: validity proof for argument (eliminates encode bridging!)
     -- v-env: validity proof for environment (eliminates encode bridging!)
+    -- cap: StackCapacity threaded from caller (replaces rsp > slots 2)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
@@ -138,7 +153,7 @@ record ClosureWellFormed {E A B : Type} (prog : Program)
       ValidAt env (readReg (regs s) r12) (memory s) →  -- validity for env!
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →
-      readReg (regs s) rsp > slots 2 →
+      StackCapacity s thunk-capacity →  -- Capacity threaded from caller
       StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
       InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
       ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a

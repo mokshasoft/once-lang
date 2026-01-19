@@ -66,7 +66,7 @@ open import Data.Unit using (⊤; tt)
 
 -- Arithmetic imports (the instantiation layer uses these)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢; ⊔-mono-≤; m∸n+n≡m; m≤n⊔m; m≤m+n)
+open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢; ⊔-mono-≤; m∸n+n≡m; m≤n⊔m; m≤m+n; m≤m⊔n)
 open import Relation.Nullary using (yes; no)
 
 -- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
@@ -358,13 +358,46 @@ ir-stack-requirement inr = 4
 -- we need enough remaining for g. So: max(req f, delta f + req g)
 ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g)
 -- Pair: setup frame consumes pair-setup-consumed-slots, then run f, then g
-ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ (ir-stack-requirement f ⊔ ir-stack-requirement g)
+-- After f uses delta-f slots, we need enough remaining for g (same pattern as compose)
+ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ (ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g))
 -- Case: frame setup (1 slot for saved rbp), then run left or right branch
 ir-stack-requirement [ l , r ] = 1 +ℕ (ir-stack-requirement l ⊔ ir-stack-requirement r)
 -- Curry: closure setup (2) + thunk setup (4) + inner requirement
 ir-stack-requirement (curry f) = 2 +ℕ (4 +ℕ ir-stack-requirement f)
 -- Apply: calls thunk from closure (literal 4)
 ir-stack-requirement apply = 4
+
+-- | Every IR requires at least output-slots (2)
+-- This is trivially true by case analysis: all base cases are ≥ 2
+output-slots≤ir-req : ∀ {A B} (ir : IR A B) → output-slots ≤ ir-stack-requirement ir
+output-slots≤ir-req id = ≤-refl
+output-slots≤ir-req fst = ≤-refl
+output-slots≤ir-req snd = ≤-refl
+output-slots≤ir-req terminal = ≤-refl
+output-slots≤ir-req initial = ≤-refl
+output-slots≤ir-req fold = ≤-refl
+output-slots≤ir-req unfold = ≤-refl
+output-slots≤ir-req arr = ≤-refl
+output-slots≤ir-req (Prim _) = ≤-refl
+output-slots≤ir-req inl = from-yes-≤ (output-slots ≤? 4)
+output-slots≤ir-req inr = from-yes-≤ (output-slots ≤? 4)
+output-slots≤ir-req (g ∘ f) = ≤-trans (output-slots≤ir-req f) (m≤m⊔n _ _)
+output-slots≤ir-req ⟨ f , g ⟩ = ≤-trans (from-yes-≤ (output-slots ≤? pair-setup-consumed-slots))
+                                         (m≤m+n pair-setup-consumed-slots _)
+output-slots≤ir-req [ l , r ] = ≤-trans (from-yes-≤ (output-slots ≤? 1)) (m≤m+n 1 _)
+output-slots≤ir-req (curry f) = ≤-trans (from-yes-≤ (output-slots ≤? 2)) (m≤m+n 2 _)
+output-slots≤ir-req apply = from-yes-≤ (output-slots ≤? 4)
+
+-- | thunk-setup-capacity ≤ thunk-setup-consumed-slots + ir-stack-requirement f
+-- Used for threading capacity through thunk: given capacity for (4 + ir-req f),
+-- we can derive capacity for 6 (thunk-setup-capacity) since ir-req f ≥ 2.
+-- Proof: 6 = 4 + 2 ≤ 4 + ir-req f (since ir-req f ≥ 2)
+thunk-setup-cap≤thunk-consumed+ir-req : ∀ {A B C} (f : IR (A * B) C) →
+  thunk-setup-capacity ≤ thunk-setup-consumed-slots +ℕ ir-stack-requirement f
+thunk-setup-cap≤thunk-consumed+ir-req f =
+  subst (_≤ thunk-setup-consumed-slots +ℕ ir-stack-requirement f)
+        (sym thunk-setup-capacity-correct)
+        (+-monoʳ-≤ thunk-setup-consumed-slots (output-slots≤ir-req f))
 
 ------------------------------------------------------------------------
 -- Output Capacity (what remains after IR execution)
@@ -415,11 +448,20 @@ ir-requirement-split : ∀ {A B} (ir : IR A B) →
 ir-requirement-split ir = trans (sym (m∸n+n≡m (ir-delta-≤-requirement ir)))
                                 (+-comm (ir-output-capacity ir) (ir-rsp-delta ir))
 
--- | Inner requirement for pair: maximum of f and g requirements
+-- | Inner requirement for pair: accounts for f's delta when computing capacity for g
 -- This is what's needed AFTER the pair-setup-consumed-slots frame setup is complete.
--- Semantically: pair-inner-requirement f g = ir-stack-requirement ⟨ f , g ⟩ ∸ pair-setup-consumed-slots
+-- KEY: We need max(req-f, delta-f + req-g) to ensure after f consumes delta-f slots,
+-- we still have req-g capacity for g. The old definition max(req-f, req-g) was insufficient
+-- when f has non-zero delta and req-g > output-f.
 pair-inner-requirement : ∀ {A B C} → IR C A → IR C B → ℕ
-pair-inner-requirement f g = ir-stack-requirement f ⊔ ir-stack-requirement g
+pair-inner-requirement f g = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g)
+
+-- | delta-f + req-g fits within pair-inner-requirement
+-- This is the key lemma for deriving g's capacity after f executes.
+-- Follows directly from the definition: delta-f + req-g ≤ max(req-f, delta-f + req-g)
+pair-delta-g-fits-inner : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  ir-rsp-delta f +ℕ ir-stack-requirement g ≤ pair-inner-requirement f g
+pair-delta-g-fits-inner f g = m≤n⊔m (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g)
 
 -- | Pair setup slots ≤ pair requirement
 -- Follows from: ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ inner-req

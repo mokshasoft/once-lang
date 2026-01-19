@@ -98,6 +98,10 @@ record ThunkSetupResult {A B C : Type} (f : IR (A * B) C)
     rsp-sufficient-setup : readReg (regs s') rsp > slots 2
     rbp-inv-setup : RbpInvariant s'
 
+    -- RSP delta: thunk setup consumes thunk-setup-consumed-slots (4) slots
+    -- Used for capacity threading: given capacity (4 + f-req), after delta we have f-req
+    rsp-setup : readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slots thunk-setup-consumed-slots
+
     -- Memory at rbp contains original rbp
     mem-at-rbp-setup : readMem (memory s') (readReg (regs s') rbp) ≡ just (readReg (regs s) rbp)
 
@@ -146,6 +150,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     ; stack-inv-setup = stack-inv8
     ; rsp-sufficient-setup = rsp-sufficient-8
     ; rbp-inv-setup = rbp-inv8
+    ; rsp-setup = rsp-setup-8
     ; mem-at-rbp-setup = mem-at-rbp8
     ; mem-old-rsp-setup = mem-old-rsp-preserved
     ; mem-r15-setup = mem-r15-preserved
@@ -500,6 +505,18 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     rsp-s8≤s : readReg (regs s8) rsp ≤ readReg (regs s) rsp
     rsp-s8≤s = subst (_≤ old-rsp) (sym rsp-s8) rsp-decreased
+
+    -- RSP delta for capacity threading: s8.rsp = old-rsp - slots thunk-setup-consumed-slots
+    -- Derivation: new-rsp = (old-rsp - slots 2) - slots 2 = old-rsp - slots 4 = old-rsp - slots thunk-setup-consumed-slots
+    rsp-setup-8 : readReg (regs s8) rsp ≡ old-rsp ∸ slots thunk-setup-consumed-slots
+    rsp-setup-8 = trans rsp-s8 new-rsp-eq-global
+      where
+        -- new-rsp = rsp-after-push-rbp - slots 2
+        -- rsp-after-push-rbp = old-rsp - slots 2
+        -- So new-rsp = old-rsp - slots 2 - slots 2 = old-rsp - slots 4
+        new-rsp-eq-global : new-rsp ≡ old-rsp ∸ slots thunk-setup-consumed-slots
+        new-rsp-eq-global = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16)
+                                  (∸-+-assoc old-rsp (slots 2) (slots 2))
 
     stack-inv8 : StackInvariant s8
     stack-inv8 = stack-inv-preserved-r15-unchanged s s8 stack-inv r15-8 rsp-s8≤s

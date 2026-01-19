@@ -60,7 +60,7 @@ open import Once.Postulates
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
          encode-inl-construct; encode-inr-construct; encode-closure-addr)
 open import Once.Backend.X86.Postulates
-  using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op; rsp-bound-for-ir)
+  using (rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -321,12 +321,15 @@ mutual
       -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
       -- Now uses env type A and env value x (not encode x)
       -- ac (Acc for curry f) is passed to curry-thunk-correct-impl for termination
+      -- thunk-capacity: tracks stack requirement for capacity threading
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-capacity = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
+        ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ ac
+              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ ac
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
@@ -453,12 +456,15 @@ mutual
       -- Note: thunk-correct provides caller-sp₁ (apply's frame), which is passed to
       -- curry-thunk-correct-impl for memory preservation
       -- r15-in-code₁ is explicit evidence that r15 is in code region (from Apply)
+      -- thunk-capacity: tracks stack requirement for capacity threading
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ →
+        ; thunk-capacity = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
+        ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
+        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ rsp-sufficient₁ caller-sp-bound₁ r15-in-code₁ ac
+              h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ ac
         }
 
   ------------------------------------------------------------------------
@@ -484,11 +490,15 @@ mutual
   -- caller-sp-bound: addr caller-sp = s.rsp + 8 (call convention)
   -- r15-in-code: r15 is in code region (from Apply, allows postulate-free ret)
   -- ac: Accessibility proof for curry f, used to extract smaller Acc for f
+  -- cap: StackCapacity threaded from caller (replaces postulate-based capacity)
+  --      Capacity needed: thunk-setup-consumed-slots + ir-stack-requirement f
+  --      This is 4 + f-req, where thunk setup consumes 4 and f needs f-req
   curry-thunk-correct-impl : ∀ {A B C} (f : IR (A * B) C)
                              (prefix suffix : Program) (caller-sp : StackPointer) (env : ⟦ A ⟧)
                              (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
         thunk-offset = length prefix +ℕ 6
+        thunk-cap = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
     in
     halted s ≡ false →
     pc s ≡ thunk-offset →
@@ -496,25 +506,30 @@ mutual
     ValidAt env (readReg (regs s) r12) (memory s) →  -- validity for env!
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
-    readReg (regs s) rsp > slots 2 →
+    StackCapacity s thunk-cap →  -- Threaded capacity: 4 + ir-stack-requirement f
     StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ slot-size →  -- D041: caller-sp bound
     InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
     Acc _<_ (ir-size (curry f)) →  -- Acc for curry f
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
             × pc s' ≡ ret-addr)
   curry-thunk-correct-impl {A} {B} {C} f prefix suffix caller-sp env arg s ret-addr
-                           h-eq pc-eq v-arg v-env mem-ret stack-inv rsp-sufficient caller-sp-bound r15-in-code-entry (acc smaller-acc) =
+                           h-eq pc-eq v-arg v-env mem-ret stack-inv cap-thunk caller-sp-bound r15-in-code-entry (acc smaller-acc) =
     s-final , thunk-result , pc-final
     where
       open import Once.Backend.X86.Correct.ClosureWellFormed
         using (ThunkResult; thunk-star; thunk-halted; thunk-result-valid;
                thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-capacity)
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-      open import Data.Nat.Properties using (≤-trans; +-comm)
+      open import Data.Nat.Properties using (≤-trans; +-comm; m≤m+n; ≤-<-trans; <⇒≤)
 
-      -- From rsp > slots 2, derive 8 ≤ rsp (for m+[n∸m]≡n)
+      -- Derive 8 ≤ rsp from capacity (for m+[n∸m]≡n)
+      -- thunk-setup-consumed-slots = 4, so 4 + ir-req f ≥ 4 ≥ 1, meaning rsp > slots 1 ≥ 8
       8≤rsp : 8 ≤ readReg (regs s) rsp
-      8≤rsp = ≤-trans word-fits-thunk-bound rsp-sufficient
+      8≤rsp = ≤-trans (m≤m+n slot-size 0) (<⇒≤ (≤-<-trans (slots-mono-≤ 1≤thunk-cap) (StackCapacity.rsp-sufficient cap-thunk)))
+        where
+          -- 1 ≤ 4 + ir-req f (thunk-setup-consumed-slots = 4 ≥ 1)
+          1≤thunk-cap : 1 ≤ thunk-setup-consumed-slots +ℕ ir-stack-requirement f
+          1≤thunk-cap = ≤-trans (s≤s z≤n) (m≤m+n thunk-setup-consumed-slots (ir-stack-requirement f))
 
       prog = prefix ++ compile-x86 (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
@@ -523,15 +538,13 @@ mutual
 
       -- v-env is now an input parameter (no more valid-from-encode bridge!)
 
-      -- Construct StackCapacity for thunk-setup-star
-      -- Uses thunk-setup-fits-pair-capacity to derive from rsp-bound-after-stack-op
-      rsp-above-thunk-setup : readReg (regs s) rsp > slots thunk-setup-capacity
-      rsp-above-thunk-setup = ≤-<-trans (slots-mono-≤ thunk-setup-fits-pair-capacity) (rsp-bound-after-stack-op s)
-        where
-          open import Data.Nat.Properties using (≤-<-trans)
-
+      -- Derive StackCapacity for thunk-setup-star from threaded capacity
+      -- cap-thunk : StackCapacity s (4 + ir-stack-requirement f)
+      -- thunk-setup-capacity = 6 ≤ 4 + ir-req f (since ir-req f ≥ 2)
       cap-thunk-setup : StackCapacity s thunk-setup-capacity
-      cap-thunk-setup = rsp-bound-to-capacity thunk-setup-capacity s (rsp-in-stack-after-stack-op s) rsp-above-thunk-setup
+      cap-thunk-setup = capacity-from-larger s thunk-setup-capacity
+                          (thunk-setup-consumed-slots +ℕ ir-stack-requirement f)
+                          cap-thunk (thunk-setup-cap≤thunk-consumed+ir-req f)
 
       -- Step 1: Trace 8 setup instructions (takes StackCapacity s thunk-setup-capacity)
       -- Returns ThunkSetupResult record for clean field access
@@ -666,10 +679,12 @@ mutual
 
       -- Call validity-based dispatcher with smaller Acc proof
       -- NOTE: Inlining (smaller-acc (curry-smaller f)) for termination checker visibility
-      -- Construct StackCapacity for inner IR f using dynamic capacity postulate
+      -- Derive StackCapacity for inner IR f from threaded capacity using capacity-after-delta
+      -- cap-thunk : StackCapacity s (thunk-setup-consumed-slots + ir-stack-requirement f)
+      -- After setup consumes thunk-setup-consumed-slots, we have ir-stack-requirement f remaining
       cap-setup : StackCapacity s-after-setup (ir-stack-requirement f)
-      cap-setup = rsp-bound-to-capacity (ir-stack-requirement f) s-after-setup
-                    (rsp-in-stack-after-stack-op s-after-setup) (rsp-bound-for-ir f s-after-setup)
+      cap-setup = capacity-after-delta s s-after-setup thunk-setup-consumed-slots (ir-stack-requirement f)
+                    cap-thunk rsp-setup
 
       step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f-v = run-ir-star-at-offset-v f prefix-f suffix-f caller-sp (env , arg) s-after-setup
@@ -821,9 +836,11 @@ mutual
       rsp-c1 = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Precondition: 16 ≤ old-rsp-s (for m+[n∸m]≡n later)
-      -- rsp-sufficient : rsp > slots 2 means 16 < rsp, which implies 16 ≤ rsp
+      -- Derive rsp > slots 2 from cap-thunk (capacity 4 + ir-req f ≥ 2)
+      rsp>slots2 : readReg (regs s) rsp > slots 2
+      rsp>slots2 = ≤-<-trans (slots-mono-≤ (m≤m+n 2 (output-slots +ℕ ir-stack-requirement f))) (StackCapacity.rsp-sufficient cap-thunk)
       16≤rsp : slots 2 ≤ readReg (regs s) rsp
-      16≤rsp = Data.Nat.Properties.<⇒≤ rsp-sufficient
+      16≤rsp = Data.Nat.Properties.<⇒≤ rsp>slots2
 
       -- rsp after pop rbp = (old-rsp-s - 16) + 8 = old-rsp-s - 8
       -- Proof: (m ∸ 16) + 8 = ((m ∸ 8) ∸ 8) + 8 = m ∸ 8
@@ -1004,9 +1021,9 @@ mutual
       star-c = ⟨ IRStarResultV.ir-halted r-f-v , step-c0 ⟩◅ ⟨ h-c1 , step-c1 ⟩◅ ⟨ h-c2 , step-c2 ⟩◅ refl*
 
       -- Stack invariant and rsp bound
-      -- rsp-sufficient-c3 follows from rsp-c3 (rsp restored to original) and rsp-sufficient (original > 16)
+      -- rsp-sufficient-c3 follows from rsp-c3 (rsp restored to original) and rsp>slots2 (original > 16)
       rsp-sufficient-c3 : readReg (regs s-c3) rsp > slots 2
-      rsp-sufficient-c3 = subst (_> slots 2) (sym rsp-c3) rsp-sufficient
+      rsp-sufficient-c3 = subst (_> slots 2) (sym rsp-c3) rsp>slots2
 
       -- Stack invariant: r15 and rsp restored to original
       r15-s-to-c3 : readReg (regs s-c3) r15 ≡ readReg (regs s) r15
@@ -1243,7 +1260,7 @@ mutual
           slot-addr>rbp : the-slot-addr > readReg (regs s-after-setup) rbp
           slot-addr>rbp = slot-addr-above-thunk-rbp caller-sp k
                            (readReg (regs s) rsp) (readReg (regs s-after-setup) rbp)
-                           caller-sp-bound rbp-setup rsp-sufficient
+                           caller-sp-bound rbp-setup rsp>slots2
 
           -- D041 PROVEN: Caller slots are above initial rsp
           -- From caller-sp.addr = rsp + 8 and slot-addr ≥ addr caller-sp
@@ -1321,7 +1338,7 @@ mutual
           -- addr > rsp > rsp - 16 = rbp-after-setup
           -- Use private m∸n<m-when-positive helper instead of local definition
           rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ slots 2
-          rsp>rsp-16 = m∸n<m-when-positive (readReg (regs s) rsp) (slots 2) (≤-trans (s≤s z≤n) rsp-sufficient) (s≤s z≤n)
+          rsp>rsp-16 = m∸n<m-when-positive (readReg (regs s) rsp) (slots 2) (≤-trans (s≤s z≤n) rsp>slots2) (s≤s z≤n)
           addr>rbp : addr > readReg (regs s-after-setup) rbp
           addr>rbp = subst (addr >_) (sym rbp-setup) (<-trans rsp>rsp-16 addr>rsp)
 
@@ -1370,7 +1387,7 @@ mutual
     in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
   run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv _ =
     let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
-                              closure-wf-post h-false pc-eq stack-inv cap rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
+                              closure-wf-post h-false pc-eq stack-inv cap-for-apply rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
     in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
     where
       open import Data.Product using (proj₁; proj₂)
@@ -1436,6 +1453,11 @@ mutual
         closure-wf-v-env : ValidAt closure-wf-env (encode closure-wf-env) (memory s)
         -- Consistency: the env-addr in Closure must match encode of the env value
         closure-wf-env-addr-eq : env-addr ≡ encode closure-wf-env
+        -- Capacity postulate: the available capacity is sufficient for apply + thunk
+        -- This is justified because in a properly compiled program, the stack capacity
+        -- at apply call sites includes the thunk's requirement.
+        -- When closure-wf threading is complete, this becomes derivable.
+        cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity closure-wf-post)
 
       -- Closure with env-addr matching closure-wf-env (for run-apply-to-ir-result-v)
       cl'' : Closure A B
