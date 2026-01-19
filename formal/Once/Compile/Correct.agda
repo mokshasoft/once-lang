@@ -20,7 +20,7 @@ open import Once.Optimize using (optimize)
 open import Once.Optimize.Correct using (optimize-correct)
 open import Once.Compile using (compile)
 
-open import Data.Bool using (true)
+open import Data.Bool using (true; false)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
@@ -41,48 +41,54 @@ open import Once.Backend.X86.Syntax using (rax)
 open import Once.Backend.X86.Semantics as X86
 open X86.State using (regs; halted; memory)
 open import Once.Backend.X86.CodeGen using (compile-x86; compile-length)
-open import Once.Backend.X86.Correct.InitState using (initWithInput; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-rbp-inv)
+open import Once.Backend.X86.Correct.InitState using (initWithInput; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-rbp-inv; initWithInput-stack-capacity)
 open import Once.Backend.X86.Correct.Star using (Star)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode)
-open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement; rsp-bound-to-capacity; slots)
-open import Once.Backend.X86.Postulates using (rsp-bound-after-stack-op; rsp-in-stack-after-stack-op)
+open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement; slots; capacity-from-larger)
 open import Once.Backend.X86.Correct.WholeProgram using (whole-program-correct)
 open import Once.Backend.Common.MemoryRegions using (StackPointer)
+open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Postulates using (encode)
-open import Data.Nat.Properties using (m≤m+n; ≤-trans)
+open import Data.Nat using (_>_; _≤_)
+open import Data.Nat.Properties using (≤-trans)
 
 -- | Validity-based x86 compilation correctness (whole-program)
 -- Returns halted ≡ false because execution stops at end of code (pc = compile-length)
 -- The result is correct: rax contains the encoded output value
-compile-correct-x86 : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
-  let s₀ = initWithInput x
+--
+-- Takes a StackPointer with sufficient capacity as precondition.
+-- This eliminates the blanket rsp-bound-after-stack-op postulate!
+compile-correct-x86 : ∀ {A B} (ir : SurfaceIR A B) (sp : StackPointer) (x : ⟦ A ⟧) →
+  sp-addr sp > slots (ir-stack-requirement (compile ir)) →
+  let s₀ = initWithInput sp x
       code = compile-x86 (compile ir)
   in ∃[ s ] (Star code s₀ s
         × halted s ≡ false
-        × pc s ≡ compile-length (compile ir)
+        × X86.State.pc s ≡ compile-length (compile ir)
         × ValidAt (evalSurface ir x) (X86.readReg (regs s) rax) (memory s))
-  where
-    open X86.State using (pc)
-compile-correct-x86 ir x =
+compile-correct-x86 ir sp x sp-bound =
   let ir' = compile ir
-      s₀ = initWithInput x
-      -- Derive capacity from blanket postulate
-      rsp>req : X86.readReg (regs s₀) X86.rsp > slots (ir-stack-requirement ir')
-      rsp>req = ≤-trans (m≤m+n (slots (ir-stack-requirement ir')) _) (rsp-bound-after-stack-op s₀)
+      s₀ = initWithInput sp x
+      -- Derive capacity from sp-bound (no postulate!)
+      cap-2 : StackCapacity s₀ 2
+      cap-2 = initWithInput-stack-capacity sp x (≤-trans (slots-mono-2-to-req ir') sp-bound)
       cap : StackCapacity s₀ (ir-stack-requirement ir')
-      cap = rsp-bound-to-capacity (ir-stack-requirement ir') s₀ (rsp-in-stack-after-stack-op s₀) rsp>req
-      -- Create a dummy caller-sp (not used in practice for entry point)
+      cap = capacity-from-larger s₀ (ir-stack-requirement ir') 2 cap-2 (output-slots≤ir-req ir')
+      -- Use sp as caller-sp for entry point
       caller-sp : StackPointer
-      caller-sp = record { addr = 0 }
+      caller-sp = sp
       -- Get input validity from encode
       input-valid = valid-from-encode {x = x} refl
       -- Run whole-program-correct
       (s , star , h-false , pc-eq , result-valid) = whole-program-correct ir' caller-sp x s₀
-        (initWithInput-halted x) (initWithInput-pc x) input-valid
-        (initWithInput-stack-inv x) cap (initWithInput-rbp-inv x)
+        (initWithInput-halted sp x) (initWithInput-pc sp x) input-valid
+        (initWithInput-stack-inv sp x) cap (initWithInput-rbp-inv sp x)
   in s , star , h-false , pc-eq , subst-valid result-valid (compile-preserves-semantics ir x)
   where
-    open X86.State using (pc)
+    open import Once.Backend.X86.Correct.StackInstantiation using (slots-mono-≤; output-slots≤ir-req)
+    -- Helper: 2 ≤ ir-stack-requirement ir' implies slots 2 ≤ slots (ir-stack-requirement ir')
+    slots-mono-2-to-req : ∀ {A B} (ir' : Core.IR A B) → slots 2 ≤ slots (ir-stack-requirement ir')
+    slots-mono-2-to-req ir' = slots-mono-≤ (output-slots≤ir-req ir')
     -- Substitute semantic equality into validity
     subst-valid : ∀ {A} {v w : ⟦ A ⟧} {addr m} → ValidAt v addr m → v ≡ w → ValidAt w addr m
     subst-valid v-valid refl = v-valid

@@ -45,14 +45,23 @@ open import Once.Type using (_*_)
 --
 ------------------------------------------------------------------------
 
-postulate
-  -- Changed from > slots 2 to > slots 7 to support pair operations
-  -- Pair needs: 5 slots for setup (3 pushes + sub 16) + 2 slots remaining capacity
-  rsp-bound-after-stack-op : ∀ (s : State) → readReg (regs s) rsp > slots 7
+------------------------------------------------------------------------
+-- NOTE: rsp-bound-after-stack-op ELIMINATED
+------------------------------------------------------------------------
+--
+-- The rsp-bound-after-stack-op postulate has been eliminated!
+--
+-- Instead of assuming blanket stack bounds, capacity is now:
+--   1. Taken as a precondition (StackPointer with sufficient addr)
+--   2. Threaded through via StackCapacity and capacity-from-larger
+--   3. The entry point (compile-correct-x86) takes sp-addr sp > slots n
+--
+------------------------------------------------------------------------
 
+postulate
   -- RSP is always in stack region (runtime invariant)
-  -- Companion to rsp-bound-after-stack-op: rsp not only has enough space,
-  -- but is also in the correct memory region.
+  -- Used by curry to construct thunk-capacity from rsp-sufficient proof.
+  -- TODO: Eliminate by threading InStack evidence through StackCapacity
   rsp-in-stack-after-stack-op : ∀ (s : State) → InStack (readReg (regs s) rsp)
 
 ------------------------------------------------------------------------
