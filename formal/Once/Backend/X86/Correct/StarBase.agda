@@ -14,7 +14,7 @@ open import Once.Backend.X86.Correct.Foundation
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
-open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-unused; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
 open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode; stack-code-disjoint)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
@@ -84,9 +84,6 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- Memory above frame preserved (for caller's rbp in pair proofs)
     -- Any address strictly above rbp is not touched by IR execution
     ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
-    -- Memory at address 0 preserved (null page never written)
-    -- No IR generator writes to address 0, so this is always preserved
-    ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
     -- D041: Memory at code-region addresses preserved
     -- IR only writes to stack region, code region is disjoint from stack (stack-code-disjoint)
     -- Therefore code addresses are never written by IR execution
@@ -168,7 +165,6 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
-    ir-mem-at-0   : readMem (memory s') 0 ≡ readMem (memory s) 0
     ir-mem-code   : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-mem-heap   : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
@@ -183,7 +179,7 @@ open IRStarResultV public using ()
            ; ir-result-valid to ir-result-valid
            ; ir-r14 to ir-r14-v; ir-r15 to ir-r15-v; ir-rbp to ir-rbp-v; ir-rsp to ir-rsp-v
            ; ir-mem to ir-mem-v; ir-mem-rbp to ir-mem-rbp-v; ir-mem-rbp+8 to ir-mem-rbp+8-v
-           ; ir-mem-above to ir-mem-above-v; ir-mem-at-0 to ir-mem-at-0-v
+           ; ir-mem-above to ir-mem-above-v
            ; ir-mem-code to ir-mem-code-v; ir-mem-heap to ir-mem-heap-v
            ; ir-stack-inv to ir-stack-inv-v; ir-capacity to ir-capacity-v
            ; ir-rbp-inv to ir-rbp-inv-v; ir-closure-wf to ir-closure-wf-v )
@@ -305,7 +301,6 @@ run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in 
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -348,7 +343,6 @@ run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv cap-in rbp-in
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -402,7 +396,6 @@ run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv cap-i
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -459,7 +452,6 @@ run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -528,7 +520,6 @@ run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl  -- fst doesn't write memory
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -590,7 +581,6 @@ run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl  -- snd doesn't write memory
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -673,7 +663,6 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-mem-rbp = refl
     ; ir-mem-rbp+8 = refl
     ; ir-mem-above = λ _ _ → refl  -- arr doesn't write memory
-    ; ir-mem-at-0 = refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
@@ -684,9 +673,17 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-closure-wf = no-closure
     }
 
--- | Validity-based prim execution (postulated)
--- Prim correctness is already postulated; this is the validity version
--- Input disjointness flows forward (prim doesn't allocate on stack)
+-- | Validity-based prim execution (POSTULATE - semantic gap)
+--
+-- ISSUE: compile-x86 (Prim _) = mov rax, rdi (identity/passthrough)
+--        but eval (Prim name) x = evalPrim name x (arbitrary operation)
+--
+-- The codegen is a STUB - it doesn't implement actual primitive operations.
+-- This postulate hides that gap. To eliminate it, codegen would need to
+-- generate actual runtime calls for each primitive operation.
+--
+-- For programs not using Prim, the correctness proof is complete.
+-- For programs using Prim (arithmetic, comparisons, etc.), this is trusted.
 postulate
   run-prim-star-vv : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →

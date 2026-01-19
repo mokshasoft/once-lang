@@ -39,7 +39,7 @@ open ≡-Reasoning
 
 -- Import region lemmas for D041 approach
 open import Once.Backend.Common.MemoryRegions
-  using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint; zero-not-in-stack;
+  using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 
@@ -107,9 +107,6 @@ record ThunkSetupResult {A B C : Type} (f : IR (A * B) C)
     -- Memory for r15 restoration
     mem-r15-setup : readMem (memory s') (readReg (regs s) rsp ∸ slot-size) ≡ just (readReg (regs s) r15)
 
-    -- Memory at 0 preserved
-    mem-at-0-setup : readMem (memory s') 0 ≡ readMem (memory s) 0
-
     -- Memory at code region preserved
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
@@ -152,7 +149,6 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     ; mem-at-rbp-setup = mem-at-rbp8
     ; mem-old-rsp-setup = mem-old-rsp-preserved
     ; mem-r15-setup = mem-r15-preserved
-    ; mem-at-0-setup = mem-at-0-preserved
     ; mem-code-setup = mem-code-preserved
     ; mem-heap-setup = mem-heap-preserved
     ; mem-above-setup = mem-above-rsp-preserved
@@ -943,51 +939,6 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     addr-rsp-24-in-stack : InStack (new-rsp +ℕ slot-size)
     addr-rsp-24-in-stack = subst (λ x → InStack x) (sym new-rsp+8-eq)
                                  (abstract-to-rsp-slots-in-stack 3 s cap thunk-intermediate-fits-setup)
-
-    -- Address 0 is not in stack region, so write addresses ≠ 0
-    addr-rsp-8≢0 : rsp-after-push-r15 ≢ 0
-    addr-rsp-8≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-8-in-stack)
-
-    addr-rsp-16≢0 : rsp-after-push-rbp ≢ 0
-    addr-rsp-16≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-16-in-stack)
-
-    addr-rsp-32≢0 : new-rsp ≢ 0
-    addr-rsp-32≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-32-in-stack)
-
-    addr-rsp-24≢0 : new-rsp +ℕ slot-size ≢ 0
-    addr-rsp-24≢0 eq = zero-not-in-stack (subst InStack eq addr-rsp-24-in-stack)
-
-    -- Chain memory preservation at 0 through all states
-    -- s1 doesn't write memory
-    mem-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
-    mem-s1-at-0 = refl
-
-    -- s2 writes at rsp-after-push-r15 ≠ 0
-    mem-s2-at-0 : readMem (memory s2) 0 ≡ readMem (memory s) 0
-    mem-s2-at-0 = mem-read-other {memory s1} {rsp-after-push-r15} {0} {old-r15} addr-rsp-8≢0
-
-    -- s3 writes at rsp-after-push-rbp ≠ 0
-    mem-s3-at-0 : readMem (memory s3) 0 ≡ readMem (memory s) 0
-    mem-s3-at-0 = trans (mem-read-other {memory s2} {rsp-after-push-rbp} {0} {old-rbp} addr-rsp-16≢0)
-                        mem-s2-at-0
-
-    -- s4, s5 don't write memory
-    mem-s5-at-0 : readMem (memory s5) 0 ≡ readMem (memory s) 0
-    mem-s5-at-0 = mem-s3-at-0
-
-    -- s6 writes at new-rsp ≠ 0
-    mem-s6-at-0 : readMem (memory s6) 0 ≡ readMem (memory s) 0
-    mem-s6-at-0 = trans (mem-read-other {memory s5} {new-rsp} {0} {readReg (regs s5) r12} addr-rsp-32≢0)
-                        mem-s5-at-0
-
-    -- s7 writes at new-rsp + 8 ≠ 0
-    mem-s7-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
-    mem-s7-at-0 = trans (mem-read-other {memory s6} {new-rsp +ℕ slot-size} {0} {readReg (regs s6) rdi} addr-rsp-24≢0)
-                        mem-s6-at-0
-
-    -- s8 doesn't write memory
-    mem-at-0-preserved : readMem (memory s8) 0 ≡ readMem (memory s) 0
-    mem-at-0-preserved = mem-s7-at-0
 
     ------------------------------------------------------------------------
     -- D041: Memory at code-region addresses preserved

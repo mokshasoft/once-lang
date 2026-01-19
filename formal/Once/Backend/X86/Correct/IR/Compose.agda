@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp; ir-rsp-v;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
          ir-result-valid; ir-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
@@ -346,7 +346,6 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
   ; ir-mem-rbp = mem-rbp-3
   ; ir-mem-rbp+8 = mem-rbp+8-3
   ; ir-mem-above = mem-above-3
-  ; ir-mem-at-0 = mem-at-0-3
   ; ir-mem-code = mem-code-3
   ; ir-mem-heap = mem-heap-3
   ; ir-stack-inv = stack-inv-3
@@ -506,18 +505,6 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
           mem-s-to-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
           mem-s-to-s1 = IRStarResultV.ir-mem-above r1 addr addr>rbp
       in trans mem-s2-to-s3 (trans mem-s1-to-s2-addr mem-s-to-s1)
-
-    -- Memory at address 0 preservation (validity-based)
-    mem-at-0-3 : readMem (memory s3) 0 ≡ readMem (memory s) 0
-    mem-at-0-3 =
-      let mem-s2-to-s3-at-0 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
-          mem-s2-to-s3-at-0 = IRStarResultV.ir-mem-at-0 r3
-          mem-s1-to-s2-at-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-          mem-s1-to-s2-at-0 = subst (λ s2'' → readMem (memory s2'') 0 ≡ readMem (memory s1) 0)
-                                    (sym s2-eq) (mem-s1-to-s2 0)
-          mem-s-to-s1-at-0 : readMem (memory s1) 0 ≡ readMem (memory s) 0
-          mem-s-to-s1-at-0 = IRStarResultV.ir-mem-at-0 r1
-      in trans mem-s2-to-s3-at-0 (trans mem-s1-to-s2-at-0 mem-s-to-s1-at-0)
 
     -- D041: Memory at code-region addresses preserved (validity-based)
     mem-code-3 : ∀ addr → InCode addr → readMem (memory s3) addr ≡ readMem (memory s) addr

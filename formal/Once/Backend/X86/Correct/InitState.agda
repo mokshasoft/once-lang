@@ -41,7 +41,10 @@ open import Once.Postulates
 
 -- Import StackInvariant for initial state proof
 open import Once.Backend.X86.Correct.StackInvariant
-  using (StackInvariant; RbpInvariant; r15-unused)
+  using (StackInvariant; RbpInvariant; r15-in-heap)
+-- Import encode-in-heap-sem for proving r15 is in heap
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (encode-in-heap-sem)
 open import Once.Backend.Common.MemoryRegions
   using (StackPointer; HeapPointer; InStack; InHeap)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; haddr to hp-addr)
@@ -64,13 +67,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 --
 -- Sets up machine state ready to execute generated code:
 --   - rdi contains encoded input
+--   - r15 contains encoded input (always in heap - eliminates r15-unused case)
 --   - Memory contains encoded heap objects
 --   - rsp = rbp = sp.addr (stack pointer = frame pointer at entry)
 --   - pc = 0
 --   - halted = false
 initWithInput : ∀ {A} → (sp : StackPointer) → ⟦ A ⟧ → State
 initWithInput {A} sp x = mkstate
-  (writeReg (writeReg (writeReg emptyRegFile rdi (encode x)) rsp (sp-addr sp)) rbp (sp-addr sp))
+  (writeReg (writeReg (writeReg (writeReg emptyRegFile rdi (encode x)) rsp (sp-addr sp)) rbp (sp-addr sp)) r15 (encode x))
   encodedMemory
   initFlags
   0
@@ -98,13 +102,11 @@ initWithInput-halted sp x = refl
 initWithInput-pc : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) → pc (initWithInput sp x) ≡ 0
 initWithInput-pc sp x = refl
 
--- | Initial state satisfies StackInvariant (r15 = 0)
--- The initial state only sets rdi, rsp, rbp from emptyRegFile (which has r15 = 0)
+-- | Initial state satisfies StackInvariant (r15 in heap)
+-- The initial state sets r15 = encode x, which is in heap
 initWithInput-stack-inv : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) → StackInvariant (initWithInput sp x)
-initWithInput-stack-inv sp x = r15-unused r15≡0
-  where
-    r15≡0 : readReg (regs (initWithInput sp x)) r15 ≡ 0
-    r15≡0 = refl  -- r15 untouched, defaults to 0 from emptyRegFile
+initWithInput-stack-inv {A} sp x = r15-in-heap (encode-in-heap-sem x)
+  -- r15 = encode x, and encode-in-heap-sem proves encode x is in heap
 
 -- | Initial state has sufficient stack capacity
 open import Data.Nat using (ℕ; _>_; _≤_)

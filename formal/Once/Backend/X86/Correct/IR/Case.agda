@@ -45,7 +45,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
          readReg-writeReg-rdi-rsp; readReg-writeReg-rdi-rbp; readReg-writeReg-rdi-r14; readReg-writeReg-rdi-r15)
 open import Once.Backend.Common.MemoryRegions
   using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
-         stack-code-addr-disjoint; zero-not-in-stack)
+         stack-code-addr-disjoint)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 
 open import Data.Bool using (Bool; true; false)
@@ -89,7 +89,6 @@ record CaseInlSetupResult {A B C : Type} (a : ⟦ A ⟧)
     -- Memory preservation (setup only writes to stack via push)
     mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-r15-setup  : readMem (memory s-setup) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     -- Memory at rbp/rbp+8/above preserved (push writes below rbp per RbpInvariant)
     mem-rbp-setup  : readMem (memory s-setup) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
@@ -476,19 +475,6 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         mem-preserved : readMem (memory s6) addr ≡ readMem orig-mem addr
         mem-preserved = mem-s1
 
-    -- Memory at 0 preserved (0 is not in stack region)
-    mem-at-0-6 : readMem (memory s6) 0 ≡ readMem orig-mem 0
-    mem-at-0-6 = mem-preserved
-      where
-        push-addr≢0 : push-addr ≢ 0
-        push-addr≢0 eq = zero-not-in-stack (subst InStack eq push-addr-in-stack)
-
-        mem-s1 : readMem (memory s1) 0 ≡ readMem orig-mem 0
-        mem-s1 = readMem-writeMem-diff orig-mem push-addr 0 orig-rbp push-addr≢0
-
-        mem-preserved : readMem (memory s6) 0 ≡ readMem orig-mem 0
-        mem-preserved = mem-s1
-
     -- ========== StackInvariant preservation ==========
     -- r15 is unchanged through all 6 instructions
     -- rsp is decreased (push decreases rsp by slot-size)
@@ -614,7 +600,7 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
       where
         open import Once.Backend.X86.Correct.StackInvariant
           using (stack-write-preserves-r15; FrameEvidenceFor;
-                 R15Status; r15-unused; r15-in-heap; r15-in-code; r15-in-stack)
+                 R15Status; r15-in-heap; r15-in-code; r15-in-stack)
         open import Once.Backend.Common.MemoryRegions using (slot-addr; slot-addr-0-is-base)
         open import Data.Unit using (tt)
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
@@ -626,7 +612,6 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         -- Helper to compute frame evidence by case analysis
         -- Can't use 'with' on module parameter, so we use a helper function
         compute-frame-evidence : (inv : R15Status s) → FrameEvidenceFor new-frame inv
-        compute-frame-evidence (r15-unused _) = tt
         compute-frame-evidence (r15-in-heap _) = tt
         compute-frame-evidence (r15-in-code _) = tt
         compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame≢r15-frame
@@ -666,7 +651,6 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
       ; r15-setup = r156
       ; mem-heap-setup = mem-heap6
       ; mem-code-setup = mem-code6
-      ; mem-at-0-setup = mem-at-0-6
       ; mem-r15-setup = mem-r15-6
       ; mem-rbp-setup = mem-rbp-6
       ; mem-rbp+8-setup = mem-rbp+8-6
@@ -711,7 +695,6 @@ record CaseInrSetupResult {A B C : Type} (b : ⟦ B ⟧)
     -- Memory preservation (setup only writes to stack via push)
     mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-r15-setup  : readMem (memory s-setup) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     -- Memory at rbp/rbp+8/above preserved (push writes below rbp per RbpInvariant)
     mem-rbp-setup  : readMem (memory s-setup) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
@@ -1204,12 +1187,6 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         push-addr≢addr : push-addr ≢ addr
         push-addr≢addr eq = stack-code-addr-disjoint push-addr addr push-addr-in-stack addr-in-code eq
 
-    mem-at-0-6 : readMem (memory s6) 0 ≡ readMem orig-mem 0
-    mem-at-0-6 = readMem-writeMem-diff orig-mem push-addr 0 orig-rbp push-addr≢0
-      where
-        push-addr≢0 : push-addr ≢ 0
-        push-addr≢0 eq = zero-not-in-stack (subst InStack eq push-addr-in-stack)
-
     -- ========== StackInvariant preservation ==========
     rsp-s7-≤-orig : readReg (regs s7) rsp ≤ orig-rsp
     rsp-s7-≤-orig = subst (_≤ orig-rsp) (sym rsp7) (m∸n≤m orig-rsp slot-size)
@@ -1303,7 +1280,7 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
       where
         open import Once.Backend.X86.Correct.StackInvariant
           using (stack-write-preserves-r15; FrameEvidenceFor;
-                 R15Status; r15-unused; r15-in-heap; r15-in-code; r15-in-stack)
+                 R15Status; r15-in-heap; r15-in-code; r15-in-stack)
         open import Once.Backend.Common.MemoryRegions using (slot-addr; slot-addr-0-is-base)
         open import Data.Unit using (tt)
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
@@ -1312,7 +1289,6 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         push-addr-is-slot0 = sym (trans (slot-addr-0-is-base new-frame) new-frame-addr)
 
         compute-frame-evidence : (inv : R15Status s) → FrameEvidenceFor new-frame inv
-        compute-frame-evidence (r15-unused _) = tt
         compute-frame-evidence (r15-in-heap _) = tt
         compute-frame-evidence (r15-in-code _) = tt
         compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame≢r15-frame
@@ -1348,7 +1324,6 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
       ; r15-setup = r157
       ; mem-heap-setup = mem-heap6  -- memory s7 = memory s6
       ; mem-code-setup = mem-code6
-      ; mem-at-0-setup = mem-at-0-6
       ; mem-r15-setup = mem-r15-6
       ; mem-rbp-setup = mem-rbp-6
       ; mem-rbp+8-setup = mem-rbp+8-6

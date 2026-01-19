@@ -35,7 +35,7 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegions
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; StackPointer; frameSlot; slot-addr;
-         zero-not-in-stack; slot-addr-above-thunk-rbp; slot-addr-≥-base)
+         slot-addr-above-thunk-rbp; slot-addr-≥-base)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
@@ -86,7 +86,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StarBase public
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf; ir-capacity;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf; ir-capacity;
          ir-result-valid;  -- Validity-based result field
          -- Validity-based versions only
          run-id-star-vv; run-terminal-star-vv; run-fold-star-vv; run-unfold-star-vv;
@@ -105,7 +105,7 @@ open import Once.Backend.X86.Correct.IR.Curry
   using (run-curry-star; CurryExecResult; CurryMemoryResult; closure-addr;
          exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-rsp; exec-mem;
          exec-mem-rbp; exec-mem-rbp+8; exec-stack-inv; exec-capacity; exec-rbp-inv;
-         exec-mem-above; exec-mem-at-0; exec-mem-code; exec-mem-heap)
+         exec-mem-above; exec-mem-code; exec-mem-heap)
 
 -- Import closure well-formedness infrastructure for whole-program proofs
 open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -252,7 +252,6 @@ mutual
       ; ir-mem-rbp = exec-mem-rbp exec-res
       ; ir-mem-rbp+8 = exec-mem-rbp+8 exec-res
       ; ir-mem-above = exec-mem-above exec-res
-      ; ir-mem-at-0 = exec-mem-at-0 exec-res
       ; ir-mem-code = exec-mem-code exec-res
       ; ir-mem-heap = exec-mem-heap exec-res
       ; ir-stack-inv = exec-stack-inv exec-res
@@ -1260,21 +1259,6 @@ mutual
                                         readMem (memory s) the-slot-addr
           setup-preserves-caller-slot = mem-above-setup the-slot-addr slot-addr>rsp
 
-      -- Memory at address 0 preserved:
-      -- Thunk writes only to stack region, 0 is not in stack region
-      -- PROVEN: Chain ret → cleanup → IR → setup memory preservation at address 0
-      thunk-preserves-zero-proof : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-      thunk-preserves-zero-proof = begin
-        readMem (memory s-final) 0
-          ≡⟨ mem-ret-preserves 0 ⟩
-        readMem (memory s-after-f) 0
-          ≡⟨ mem-f-preserved 0 ⟩
-        readMem (memory s-after-f-raw) 0
-          ≡⟨ IRStarResultV.ir-mem-at-0 r-f-v ⟩
-        readMem (memory s-after-setup) 0
-          ≡⟨ mem-at-0-setup ⟩
-        readMem (memory s) 0 ∎
-
       -- Memory at code-region addresses preserved:
       -- Thunk writes only to stack region, code region is disjoint from stack
       --
@@ -1353,7 +1337,6 @@ mutual
         ; thunk-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
         ; thunk-rsp-plus-8 = thunk-rsp-plus-8-proof
         ; thunk-preserves-frame = thunk-preserves-frame-proof
-        ; thunk-preserves-zero = thunk-preserves-zero-proof
         ; thunk-preserves-code = thunk-preserves-code-proof
         ; thunk-preserves-heap = thunk-preserves-heap-proof
         ; thunk-preserves-above-entry-rsp = thunk-preserves-above-entry-rsp-proof

@@ -396,23 +396,6 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           mem-chain : readMem (memory s-final) addr ≡ readMem (memory s) addr
           mem-chain = trans mem-final-phase (trans mem-g (trans mem-mid (trans mem-f mem-setup)))
 
-      -- Memory at address 0 preserved
-      mem-setup-preserves-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-      mem-setup-preserves-0 = PairSetupResultV.mem-at-0-setup setup-res
-
-      mem-mid-preserves-0 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-      mem-mid-preserves-0 = PairMiddleResultV.mem-at-0-mid mid-res
-
-      mem-final-preserves-0 : readMem (memory s-final) 0 ≡ readMem (memory s3) 0
-      mem-final-preserves-0 = PairFinalResult.mem-at-0-fin final-res
-
-      mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-      mem-at-0-final = trans mem-final-preserves-0
-                       (trans (IRStarResultV.ir-mem-at-0 r-g-v)
-                       (trans mem-mid-preserves-0
-                       (trans (IRStarResultV.ir-mem-at-0 r-f-v)
-                              mem-setup-preserves-0)))
-
       -- Memory in code region preserved
       mem-setup-preserves-code : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
       mem-setup-preserves-code = PairSetupResultV.mem-code-setup setup-res
@@ -481,7 +464,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
                   setup-res r-f-v mid-res r-g-v
                   h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                   stack-inv-final cap-in mem-fst-final mem-snd-final
-                  rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
+                  rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
                   star-fin refl refl
                   rbp-inv rsp-final-eq
                   valid-f-at-final valid-g-at-final

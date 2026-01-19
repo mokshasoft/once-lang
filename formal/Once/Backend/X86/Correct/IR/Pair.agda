@@ -20,7 +20,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-frame-strict; pair-fits-frame-strict; regs-fits-frame-strict; word-fits-regs; pair-fits-regs; regs-fits-frame)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (StackInvariant; StackCapacity; RbpInvariant; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
+  using (StackInvariant; StackCapacity; RbpInvariant; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-bound-to-capacity; pair-stack-capacity; slots; slot-size;
          rsp-in-stack; rsp-sufficient; capacity-maintained; slots-mono-≤; slots-distribute;
          pair-setup-consumed-slots; pair-capacity; pair-setup-fits-capacity;
@@ -38,7 +38,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.Common.MemoryRegions
   using (InStack; InHeap; InCode; stack-code-disjoint; stack-code-addr-disjoint;
          stack-heap-disjoint; stack-heap-addr-disjoint;
-         zero-not-in-stack; slot-addr; slot-addr-≥-base;
+         slot-addr; slot-addr-≥-base;
          slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
@@ -48,7 +48,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged;
          IRStarResultV; ir-result-valid; ir-rsp-bound-v)
 open import Once.Backend.X86.Correct.MemoryValid
@@ -410,8 +410,6 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
     mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
-    -- Null page preservation (address 0 is never written)
-    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     -- Code region preservation (D041)
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Heap region preservation (D041)
@@ -443,7 +441,6 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = rec
   ; mem-stack-rbp = mem-rbp-setup
   ; mem-stack-r15 = mem-r15-setup
   ; mem-stack-r14 = mem-r14-setup
-  ; mem-at-0-setup = mem-at-0-setup-proof
   ; mem-code-setup = mem-code-from-setup
   ; mem-heap-setup = mem-heap-from-setup
   }
@@ -493,7 +490,6 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = rec
                ; mem-slot8 to mem-r15-setup
                ; mem-slot16 to mem-r14-setup
                ; mem-above to mem-above-eq-raw
-               ; mem-at-0 to mem-at-0-from-setup
                ; mem-code to mem-code-from-setup
                ; mem-heap to mem-heap-from-setup )
 
@@ -545,11 +541,6 @@ pair-setup-star {A} {B} {C} f g prefix suffix x s h-false pc-eq rdi-eq cap = rec
             bound = subst (λ x → slots inner-req +ℕ slots setup-slots < x) (sym rsp∸setup+setup≡rsp)
                           (subst (orig-rsp >_) (+-comm (slots setup-slots) (slots inner-req)) rsp>sum)
 
-    -- Memory at address 0 is preserved through setup
-    -- Extracted directly from frame-setup-star result
-    mem-at-0-setup-proof : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
-    mem-at-0-setup-proof = mem-at-0-from-setup
-
 ------------------------------------------------------------------------
 -- Validity-based Setup Result (Phase D.5)
 -- Same as PairSetupResult but without encode-based fields
@@ -579,7 +570,6 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
     mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
-    mem-at-0-setup : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- StackCapacity s pair-setup-consumed-slots derived from input capacity (for downstream use)
@@ -611,7 +601,6 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
   ; mem-stack-rbp = mem-rbp-setup
   ; mem-stack-r15 = mem-r15-setup
   ; mem-stack-r14 = mem-r14-setup
-  ; mem-at-0-setup = mem-at-0-from-setup
   ; mem-code-setup = mem-code-from-setup
   ; mem-heap-setup = mem-heap-from-setup
   ; cap-pair-setup = cap-pair-setup
@@ -662,7 +651,6 @@ pair-setup-star-v {A} {B} {C} f g prefix suffix x s h-false pc-eq cap = record
                ; mem-slot8 to mem-r15-setup
                ; mem-slot16 to mem-r14-setup
                ; mem-above to mem-above-eq-raw
-               ; mem-at-0 to mem-at-0-from-setup
                ; mem-code to mem-code-from-setup
                ; mem-heap to mem-heap-from-setup )
 
@@ -746,8 +734,6 @@ record PairMiddleResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
     -- Memory preservation: addresses ≠ r15 are unchanged
     mem-above-r15-mid : ∀ addr → addr ≢ readReg (regs s1) r15 → readMem (memory s2) addr ≡ readMem (memory s1) addr
-    -- Null page preservation (address 0 is never written)
-    mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
     -- Code region preservation (D041)
     mem-code-mid : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     -- Heap region preservation (D041)
@@ -782,7 +768,6 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
   ; mem-fst-stored = mem-fst-stored
   ; mem-rbp-mid = mem-rbp-mid
   ; mem-above-r15-mid = mem-above-mid-raw
-  ; mem-at-0-mid = mem-at-0-mid-proof
   ; mem-code-mid = mem-code-mid-proof
   ; mem-heap-mid = mem-heap-mid-proof
   }
@@ -966,10 +951,6 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
         r15>0 : readReg (regs s1) r15 > 0
         r15>0 = subst (_> 0) (sym r15-s1-eq) rsp-after-setup>0
 
-    mem-at-0-mid-proof : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-    mem-at-0-mid-proof = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) 0
-                                                (readReg (regs s1) rax) r15-neq-0
-
     -- Code region preservation (D041): r15 is in stack, code disjoint from stack
     -- Uses shared s1-r15-region computed above
     mem-code-mid-proof : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
@@ -1016,7 +997,6 @@ record PairMiddleResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-fst-stored : readMem (memory s2) (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)
     mem-rbp-mid : readMem (memory s2) (readReg (regs s1) rbp) ≡ readMem (memory s1) (readReg (regs s1) rbp)
     mem-above-r15-mid : ∀ addr → addr ≢ readReg (regs s1) r15 → readMem (memory s2) addr ≡ readMem (memory s1) addr
-    mem-at-0-mid : readMem (memory s2) 0 ≡ readMem (memory s1) 0
     mem-code-mid : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-heap-mid : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
@@ -1047,7 +1027,6 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
   ; mem-fst-stored = mem-fst-stored
   ; mem-rbp-mid = mem-rbp-mid
   ; mem-above-r15-mid = mem-above-mid-raw
-  ; mem-at-0-mid = mem-at-0-mid-proof
   ; mem-code-mid = mem-code-mid-proof
   ; mem-heap-mid = mem-heap-mid-proof
   }
@@ -1206,12 +1185,6 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
     mem-above-mid-raw addr neq = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                                         (readReg (regs s1) rax) (λ eq → neq (sym eq))
 
-    mem-at-0-mid-proof : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-    mem-at-0-mid-proof = mem-above-mid-raw 0 zero-neq-r15
-      where
-        zero-neq-r15 : 0 ≢ readReg (regs s1) r15
-        zero-neq-r15 eq = zero-not-in-stack (subst InStack (sym eq) s1-r15-region)
-
     mem-code-mid-proof : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
     mem-code-mid-proof addr addr-in-code = readMem-writeMem-diff (memory s1) (readReg (regs s1) r15) addr
                                              (readReg (regs s1) rax) r15-neq-addr
@@ -1257,7 +1230,6 @@ assemble-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
   readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
-  readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
   (∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   (∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
@@ -1270,7 +1242,7 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
                      setup-res r-f mid-res r-g
                      h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                      stack-inv-final cap mem-fst-final mem-snd-final
-                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
+                     rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
                      star-fin s2-eq s-setup-eq
                      rbp-inv rsp-final = record
   { ir-star = star-all
@@ -1287,7 +1259,6 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
   ; ir-capacity = cap-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
-  ; ir-mem-at-0 = mem-at-0-final
   ; ir-mem-code = mem-code-final
   ; ir-mem-heap = mem-heap-final
   ; ir-closure-wf = closure-wf-final  -- Prefer g's closure (executed last)
@@ -1425,8 +1396,7 @@ record PairFinalResult {A B C : Type} (f : IR C A) (g : IR C B)
     mem-rbp+8-fin : readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size)
     -- Memory preservation: addresses ≠ r15-s3 + 8 are unchanged (only write is at r15-s3+8)
     mem-above-r15+8-fin : ∀ addr → addr ≢ readReg (regs s3) r15 +ℕ slot-size → readMem (memory s-final) addr ≡ readMem (memory s3) addr
-    -- D041: Memory preservation for address 0, code, and heap regions
-    mem-at-0-fin : readMem (memory s-final) 0 ≡ readMem (memory s3) 0
+    -- D041: Memory preservation for code and heap regions
     mem-code-fin : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
     mem-heap-fin : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
 
@@ -1714,19 +1684,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
     disjoint-orig-s3 = case-stack-inv stack-inv
       where
-        -- Case 1: r15-s = 0, then 0 ≢ r15-s3 + 8 (since r15-s3 + 8 ≥ 8 > 0)
-        -- 0 < n + 8 for any n, so 0 ≢ n + 8
-        -- Use +-suc to show n + 8 = suc (n + 7), then 0 < suc _ is trivial
-        0<n+8 : ∀ n → 0 < n +ℕ slot-size
-        0<n+8 n = subst (1 ≤_) (sym (+-suc n 7)) (s≤s z≤n)
-
-        case-r15-zero : readReg (regs s) r15 ≡ 0 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-        case-r15-zero r15≡0 eq = <⇒≢ (0<n+8 (readReg (regs s3) r15)) (sym combined-eq)
-          where
-            combined-eq : readReg (regs s3) r15 +ℕ slot-size ≡ 0
-            combined-eq = trans (sym eq) r15≡0
-
-        -- Case 2: rsp-s ≤ r15-s, then r15-s3 + slot-size = (rsp-s ∸ slots setup-slots-local) + slot-size < rsp-s ≤ r15-s
+        -- Case: rsp-s ≤ r15-s, then r15-s3 + slot-size = (rsp-s ∸ slots setup-slots-local) + slot-size < rsp-s ≤ r15-s
         case-r15-stack : readReg (regs s) rsp ≤ readReg (regs s) r15 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-stack rsp≤r15 eq = <⇒≢ r15-s3+8<r15-s (sym eq)
           where
@@ -1783,7 +1741,6 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           in disjoint eq
 
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-        case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
         case-stack-inv (r15-in-heap r15-heap) = case-r15-heap r15-heap
         case-stack-inv (r15-in-code r15-code) = case-r15-code r15-code
         case-stack-inv (r15-in-stack frame slot r15-eq frame-bound) =
@@ -2204,12 +2161,6 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local
         s1-r15-eq = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
                                               (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
-        -- s1.r15 = rsp - slots setup > 0
-        s1-r15>0 : readReg (regs s1) r15 > 0
-        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp-after-setup>0
-        -- Case r15 = 0: 0 ≠ s1.r15 since s1.r15 > 0
-        case-r15-zero-r15 : orig-r15 ≡ 0 → orig-r15 ≢ readReg (regs s1) r15
-        case-r15-zero-r15 r15≡0 eq = 0≢pos (readReg (regs s1) r15) s1-r15>0 (trans (sym r15≡0) eq)
         -- Case rsp ≤ r15: s1.r15 = rsp - 40 < rsp ≤ r15
         case-r15-stack-r15 : readReg (regs s) rsp ≤ orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-stack-r15 rsp≤r15 eq = Data.Nat.Properties.<⇒≢ s1-r15<orig-r15 (sym eq)
@@ -2251,7 +2202,6 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           in disjoint eq
 
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
-        case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
         case-stack-inv-r15 (r15-in-heap r15-heap) = case-r15-heap-r15 r15-heap
         case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
         case-stack-inv-r15 (r15-in-stack frame slot r15-eq frame-bound) =
@@ -2266,20 +2216,7 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     mem-frame-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
     mem-frame-s3 = case-mem-frame stack-inv
       where
-        -- Case 1: r15 = 0 - chain ir-mem-at-0
-        case-r15-zero : orig-r15 ≡ 0 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        case-r15-zero r15≡0 = trans (cong (readMem (memory s3)) r15≡0)
-                              (trans (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
-                                     (cong (readMem (memory s)) (sym r15≡0)))
-          where
-            mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
-                                   (sym s-setup-eq) (PairSetupResult.mem-at-0-setup setup-res)
-            mem-f-at-0 = ir-mem-at-0 r-f
-            mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
-                                 (sym s2-eq) (PairMiddleResult.mem-at-0-mid mid-res)
-            mem-g-at-0 = ir-mem-at-0 r-g
-
-        -- Case 2: r15 in code region - chain ir-mem-code (D041 pure region proof)
+        -- Case: r15 in code region - chain ir-mem-code (D041 pure region proof)
         case-r15-code : InCode orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
         case-r15-code r15-code = trans mem-g-code (trans mem-mid-code (trans mem-f-code mem-setup-code))
           where
@@ -2325,7 +2262,6 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
 
         -- Dispatch on StackInvariant
         case-mem-frame : StackInvariant s → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        case-mem-frame (r15-unused r15≡0) = case-r15-zero r15≡0
         case-mem-frame (r15-in-code r15-code) = case-r15-code r15-code
         case-mem-frame (r15-in-heap r15-heap) = case-r15-heap r15-heap
         case-mem-frame (r15-in-stack frame slot r15-eq frame-bound) =
@@ -2396,7 +2332,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     v-mem-above = IRStarResultV.ir-mem-above
     v-mem-rbp = IRStarResultV.ir-mem-rbp
     v-mem-rbp+8 = IRStarResultV.ir-mem-rbp+8
-    v-mem-at-0 = IRStarResultV.ir-mem-at-0
     v-mem-code = IRStarResultV.ir-mem-code
     v-mem-heap = IRStarResultV.ir-mem-heap
 
@@ -2521,15 +2456,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     disjoint-orig-s3 : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
     disjoint-orig-s3 = case-stack-inv stack-inv
       where
-        0<n+8 : ∀ n → 0 < n +ℕ slot-size
-        0<n+8 n = subst (1 ≤_) (sym (+-suc n 7)) (s≤s z≤n)
-
-        case-r15-zero : readReg (regs s) r15 ≡ 0 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-        case-r15-zero r15≡0 eq = <⇒≢ (0<n+8 (readReg (regs s3) r15)) (sym combined-eq)
-          where
-            combined-eq : readReg (regs s3) r15 +ℕ slot-size ≡ 0
-            combined-eq = trans (sym eq) r15≡0
-
         case-r15-stack : readReg (regs s) rsp ≤ readReg (regs s) r15 → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
         case-r15-stack rsp≤r15 eq = <⇒≢ r15-s3+8<r15-s (sym eq)
           where
@@ -2572,7 +2498,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
           in disjoint eq
 
         case-stack-inv : StackInvariant s → readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
-        case-stack-inv (r15-unused r15≡0) = case-r15-zero r15≡0
         case-stack-inv (r15-in-heap r15-heap) = case-r15-heap r15-heap
         case-stack-inv (r15-in-code r15-code) = case-r15-code r15-code
         case-stack-inv (r15-in-stack frame slot r15-eq frame-bound) =
@@ -2932,10 +2857,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         s1-r15-eq : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local
         s1-r15-eq = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ slots setup-slots-local)
                                               (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
-        s1-r15>0 : readReg (regs s1) r15 > 0
-        s1-r15>0 = subst (_> 0) (sym s1-r15-eq) rsp-after-setup>0
-        case-r15-zero-r15 : orig-r15 ≡ 0 → orig-r15 ≢ readReg (regs s1) r15
-        case-r15-zero-r15 r15≡0 eq = 0≢pos (readReg (regs s1) r15) s1-r15>0 (trans (sym r15≡0) eq)
         case-r15-stack-r15 : readReg (regs s) rsp ≤ orig-r15 → orig-r15 ≢ readReg (regs s1) r15
         case-r15-stack-r15 rsp≤r15 eq = Data.Nat.Properties.<⇒≢ s1-r15<orig-r15 (sym eq)
           where
@@ -2970,7 +2891,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                                                            s1-r15-in-stack r15-heap-pf (sym eq')
           in disjoint eq
         case-stack-inv-r15 : StackInvariant s → orig-r15 ≢ readReg (regs s1) r15
-        case-stack-inv-r15 (r15-unused r15≡0) = case-r15-zero-r15 r15≡0
         case-stack-inv-r15 (r15-in-heap r15-heap) = case-r15-heap-r15 r15-heap
         case-stack-inv-r15 (r15-in-code r15-code) = case-r15-code-r15 r15-code
         case-stack-inv-r15 (r15-in-stack frame slot r15-eq frame-bound) =
@@ -2982,18 +2902,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     mem-frame-s3 : readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
     mem-frame-s3 = case-mem-frame stack-inv
       where
-        case-r15-zero : orig-r15 ≡ 0 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        case-r15-zero r15≡0 = trans (cong (readMem (memory s3)) r15≡0)
-                              (trans (trans mem-g-at-0 (trans mem-mid-at-0 (trans mem-f-at-0 mem-setup-at-0)))
-                                     (cong (readMem (memory s)) (sym r15≡0)))
-          where
-            mem-setup-at-0 = subst (λ ss → readMem (memory ss) 0 ≡ readMem (memory s) 0)
-                                   (sym s-setup-eq) (PairSetupResultV.mem-at-0-setup setup-res)
-            mem-f-at-0 = v-mem-at-0 r-f
-            mem-mid-at-0 = subst (λ s2' → readMem (memory s2') 0 ≡ readMem (memory s1) 0)
-                                 (sym s2-eq) (PairMiddleResultV.mem-at-0-mid mid-res)
-            mem-g-at-0 = v-mem-at-0 r-g
-
         case-r15-code : InCode orig-r15 → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
         case-r15-code r15-code = trans mem-g-code (trans mem-mid-code (trans mem-f-code mem-setup-code))
           where
@@ -3036,7 +2944,6 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             mem-g-r15 = v-mem-above r-g orig-r15 r15>s2-rbp
 
         case-mem-frame : StackInvariant s → readMem (memory s3) orig-r15 ≡ readMem (memory s) orig-r15
-        case-mem-frame (r15-unused r15≡0) = case-r15-zero r15≡0
         case-mem-frame (r15-in-code r15-code) = case-r15-code r15-code
         case-mem-frame (r15-in-heap r15-heap) = case-r15-heap r15-heap
         case-mem-frame (r15-in-stack frame slot r15-eq frame-bound) =
@@ -3072,7 +2979,6 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
     ; mem-rbp-fin = mem-rbp-preserved
     ; mem-rbp+8-fin = mem-rbp+8-preserved
     ; mem-above-r15+8-fin = mem-above-r15+8-proof
-    ; mem-at-0-fin = mem-at-0-proof
     ; mem-code-fin = mem-code-proof
     ; mem-heap-fin = mem-heap-proof
     }
@@ -3327,13 +3233,6 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       write-addr-in-stack : InStack (readReg (regs s3) r15 +ℕ slot-size)
       write-addr-in-stack = subst (λ r → InStack (r +ℕ slot-size)) (sym r15-chain) write-addr-in-stack-raw
 
-      -- Memory at address 0 preserved (D041)
-      mem-at-0-proof : readMem (memory s9) 0 ≡ readMem (memory s3) 0
-      mem-at-0-proof = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {0} {readReg (regs s3) rax} write-addr-neq-0
-        where
-          write-addr-neq-0 : readReg (regs s3) r15 +ℕ slot-size ≢ 0
-          write-addr-neq-0 eq = zero-not-in-stack (subst InStack eq write-addr-in-stack)
-
       -- Memory at code region addresses preserved (D041)
       mem-code-proof : ∀ addr → InCode addr → readMem (memory s9) addr ≡ readMem (memory s3) addr
       mem-code-proof addr addr-in-code = mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {addr} {readReg (regs s3) rax} write-neq-addr
@@ -3385,7 +3284,6 @@ assemble-pair-result-v : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
   readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
-  readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
   (∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   (∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
@@ -3404,7 +3302,7 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
                        setup-res r-f mid-res r-g
                        h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                        stack-inv-final cap mem-fst-final mem-snd-final
-                       rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
+                       rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
                        star-fin s2-eq s-setup-eq
                        rbp-inv rsp-final
                        f-valid-final g-valid-final = record
@@ -3423,7 +3321,6 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
   ; ir-capacity = cap-final  -- Derived from initial cap via rsp-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
-  ; ir-mem-at-0 = mem-at-0-final
   ; ir-mem-code = mem-code-final
   ; ir-mem-heap = mem-heap-final
   ; ir-closure-wf = closure-wf-final
@@ -3566,7 +3463,6 @@ assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
   readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp) →
   readMem (memory s-final) (readReg (regs s) rbp +ℕ slot-size) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ slot-size) →
   (∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
-  readMem (memory s-final) 0 ≡ readMem (memory s) 0 →
   (∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   (∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   Star prog s3 s-final →
@@ -3583,7 +3479,7 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
                         setup-res r-f mid-res r-g
                         h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
                         stack-inv-final cap mem-fst-final mem-snd-final
-                        rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-at-0-final mem-code-final mem-heap-final
+                        rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
                         star-fin s2-eq s-setup-eq
                         rbp-inv rsp-final
                         f-valid-final g-valid-final = record
@@ -3602,7 +3498,6 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
   ; ir-capacity = cap-final  -- Derived from initial cap via rsp-final
   ; ir-rbp-inv = rbp-inv-preserved-unchanged s s-final rbp-inv rsp-final rbp-final
   ; ir-mem-above = mem-above-final
-  ; ir-mem-at-0 = mem-at-0-final
   ; ir-mem-code = mem-code-final
   ; ir-mem-heap = mem-heap-final
   ; ir-closure-wf = closure-wf-final

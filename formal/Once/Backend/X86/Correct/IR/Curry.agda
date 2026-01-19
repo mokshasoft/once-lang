@@ -34,7 +34,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write)
@@ -98,7 +98,6 @@ record CurryExecResult {A B C : Type} (f : IR (A * B) C)
     exec-capacity : StackCapacity s' (ir-output-capacity (curry f))
     exec-rbp-inv : RbpInvariant s'
     exec-mem-above : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
-    exec-mem-at-0 : readMem (memory s') 0 ≡ readMem (memory s) 0
     exec-mem-code : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
     exec-mem-heap : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
@@ -136,7 +135,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     ; exec-capacity = output-capacity
     ; exec-rbp-inv = rbp-inv-final
     ; exec-mem-above = mem-above-final
-    ; exec-mem-at-0 = mem-at-0-final
     ; exec-mem-code = mem-code-final
     ; exec-mem-heap = mem-heap-final
     } , record
@@ -769,7 +767,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 
     -- StackInvariant preservation (region-based)
     stack-inv-helper : StackInvariant s → StackInvariant s-final
-    stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-final r15≡0)
     stack-inv-helper (r15-in-heap r15-heap) =
       r15-in-heap (subst InHeap (sym r15-final) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
@@ -844,25 +841,6 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
           mem-s7 : readMem (memory s7) addr ≡ readMem (memory s6) addr
           mem-s7 = refl
       in trans mem-s7 (trans mem-s6 (trans mem-s5 (trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1)))))
-
-    -- Memory at 0 preserved through all states
-    -- D041: Use abstract helper for nonzero proofs
-    mem-at-0-final : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-    mem-at-0-final =
-      let -- D041: Abstract helper provides nonzero proofs
-          alloc-nonzero = curry-alloc-nonzero s rsp-bound
-          diff-new-rsp : new-rsp ≢ 0
-          diff-new-rsp = proj₁ alloc-nonzero
-          diff-new-rsp+8 : (new-rsp +ℕ slot-size) ≢ 0
-          diff-new-rsp+8 = proj₂ alloc-nonzero
-          -- Chain through all states
-          mem-s2 : readMem (memory s2) 0 ≡ readMem (memory s) 0
-          mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) 0
-                     (readReg (regs s1) rdi) (subst (λ x → x ≢ 0) (sym rsp-s1) diff-new-rsp)
-          mem-s4 : readMem (memory s4) 0 ≡ readMem (memory s2) 0
-          mem-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ slot-size) 0
-                     (readReg (regs s3) r9) (subst (λ x → (x +ℕ slot-size) ≢ 0) (sym rsp-s3) diff-new-rsp+8)
-      in trans mem-s4 mem-s2
 
     -- D041: Memory at code-region addresses preserved (PURE REGION APPROACH)
     -- 1. Get region membership for both write addresses (encapsulates arithmetic)
@@ -976,7 +954,6 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     ; ir-capacity = exec-capacity exec-result
     ; ir-rbp-inv = exec-rbp-inv exec-result
     ; ir-mem-above = exec-mem-above exec-result
-    ; ir-mem-at-0 = exec-mem-at-0 exec-result
     ; ir-mem-code = exec-mem-code exec-result
     ; ir-mem-heap = exec-mem-heap exec-result
     ; ir-closure-wf = no-closure  -- TODO: curry should produce ClosureWellFormed

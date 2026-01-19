@@ -22,7 +22,7 @@ open import Once.Backend.Common.MemoryRegions
   using (Addr; InStack; InHeap; InCode;
          stack-heap-disjoint; stack-code-disjoint;
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
-         zero-not-in-stack; pc-in-code;
+         pc-in-code;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; in-stack to sp-in-stack)
@@ -38,10 +38,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 -- | Track what region r15 currently points to
 -- This is the abstract invariant - no arithmetic here.
+-- NOTE: r15 is always initialized to a meaningful address (in heap),
+-- so there is no "unused" case. r15 is always in one of the three regions.
 data R15Status (s : State) : Set where
-  -- r15 = 0 (unused, doesn't point to any region)
-  r15-unused : readReg (regs s) r15 ≡ 0 → R15Status s
-
   -- r15 points to heap (e.g., closure pointer, data structure)
   r15-in-heap : InHeap (readReg (regs s) r15) → R15Status s
 
@@ -90,7 +89,6 @@ StackInvariant = R15Status
 -- | Evidence needed for r15-in-stack case: write frame is different from r15 frame
 -- For other R15Status cases, no additional evidence is needed.
 FrameEvidenceFor : ∀ {s : State} → StackPointer → R15Status s → Set
-FrameEvidenceFor write-frame (r15-unused _) = ⊤
 FrameEvidenceFor write-frame (r15-in-heap _) = ⊤
 FrameEvidenceFor write-frame (r15-in-code _) = ⊤
 FrameEvidenceFor write-frame (r15-in-stack r15-frame r15-slot _ _) =
@@ -116,18 +114,6 @@ stack-write-preserves-code-r15 : ∀ (s : State) (stack-addr : Addr) →
 stack-write-preserves-code-r15 s stack-addr stack-in r15-code =
   stack-code-addr-disjoint stack-addr (readReg (regs s) r15) stack-in r15-code
 
--- | Stack writes don't affect r15 when r15 is unused (r15 = 0)
-stack-write-preserves-unused-r15 : ∀ (s : State) (stack-addr : Addr) →
-  InStack stack-addr →
-  readReg (regs s) r15 ≡ 0 →
-  stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-unused-r15 s stack-addr stack-in r15≡0 eq =
-  let stack-addr≡0 : stack-addr ≡ 0
-      stack-addr≡0 = trans eq r15≡0
-      zero-in-stack : InStack 0
-      zero-in-stack = subst InStack stack-addr≡0 stack-in
-  in zero-not-in-stack zero-in-stack
-
 -- | Stack writes in one frame don't affect r15 when r15 is in a different frame.
 stack-write-preserves-instack-r15 : ∀ (s : State) (stack-addr : Addr) →
   (write-frame : StackPointer) →
@@ -151,10 +137,6 @@ stack-write-preserves-r15 : ∀ (s : State) (stack-addr : Addr) →
   (r15-inv : R15Status s) →
   FrameEvidenceFor write-frame r15-inv →
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-unused r15≡0) _ =
-  stack-write-preserves-unused-r15 s stack-addr
-    (subst InStack (sym addr-eq) (slot-in-stack write-frame write-slot))
-    r15≡0
 stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-in-heap r15-heap) _ =
   stack-write-preserves-heap-r15 s stack-addr
     (subst InStack (sym addr-eq) (slot-in-stack write-frame write-slot))
@@ -178,8 +160,6 @@ stack-inv-preserved-unchanged : ∀ (s s' : State) →
   readReg (regs s') r15 ≡ readReg (regs s) r15 →
   readReg (regs s') rsp ≡ readReg (regs s) rsp →
   StackInvariant s'
-stack-inv-preserved-unchanged s s' (r15-unused r15≡0) r15-eq _ =
-  r15-unused (trans r15-eq r15≡0)
 stack-inv-preserved-unchanged s s' (r15-in-heap r15-heap) r15-eq _ =
   r15-in-heap (subst InHeap (sym r15-eq) r15-heap)
 stack-inv-preserved-unchanged s s' (r15-in-code r15-code) r15-eq _ =
@@ -196,8 +176,6 @@ stack-inv-preserved-r15-unchanged : ∀ (s s' : State) →
   readReg (regs s') r15 ≡ readReg (regs s) r15 →
   readReg (regs s') rsp ≤ readReg (regs s) rsp →
   StackInvariant s'
-stack-inv-preserved-r15-unchanged s s' (r15-unused r15≡0) r15-eq _ =
-  r15-unused (trans r15-eq r15≡0)
 stack-inv-preserved-r15-unchanged s s' (r15-in-heap r15-heap) r15-eq _ =
   r15-in-heap (subst InHeap (sym r15-eq) r15-heap)
 stack-inv-preserved-r15-unchanged s s' (r15-in-code r15-code) r15-eq _ =

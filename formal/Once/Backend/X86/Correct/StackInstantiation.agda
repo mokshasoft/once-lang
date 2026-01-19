@@ -39,11 +39,11 @@ open Once.Backend.X86.Semantics.State
 
 -- Import and re-export abstract types from StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant public
-  using (R15Status; r15-unused; r15-in-heap; r15-in-code; r15-in-stack;
+  using (R15Status; r15-in-heap; r15-in-code; r15-in-stack;
          RbpInvariant;
          StackInvariant; FrameEvidenceFor;
          stack-write-preserves-heap-r15; stack-write-preserves-code-r15;
-         stack-write-preserves-unused-r15; stack-write-preserves-instack-r15;
+         stack-write-preserves-instack-r15;
          stack-write-preserves-r15;
          stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged;
          stack-inv-for-code-ptr)
@@ -54,7 +54,7 @@ open import Once.Backend.Common.MemoryRegions
   using (Addr; InStack; InHeap; InCode;
          stack-heap-disjoint; stack-code-disjoint;
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
-         zero-not-in-stack; pc-in-code;
+         pc-in-code;
          stack-sub-preserves;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
@@ -448,11 +448,6 @@ output-slots≤pair-req f g = ≤-trans output-slots≤pair-setup (pair-setup≤
 ------------------------------------------------------------------------
 -- Centralized Arithmetic Helpers (D041: define early for use throughout)
 ------------------------------------------------------------------------
-
--- | Stack addresses are never 0 (moved from MemoryRegions to keep it high-level)
-stack-addr-nonzero : ∀ a → InStack a → a ≢ 0
-stack-addr-nonzero a a-in-stack a≡0 =
-  zero-not-in-stack (subst InStack a≡0 a-in-stack)
 
 -- | Common bound conversion: rsp > two-push-offset implies rsp > slot-size
 -- Used in many proofs where we have two-slot bound but need single-slot bound
@@ -1283,7 +1278,6 @@ stack-write-slot-2-preserves-r15 s inv = helper (r15-status inv)
     addr<rsp : stack-addr < readReg (regs s) rsp
     addr<rsp = m∸n<m-when-m>n (readReg (regs s) rsp) two-push-offset (s≤s z≤n) (rsp-sufficient (capacity inv))
     helper : R15Status s → stack-addr ≢ readReg (regs s) r15
-    helper (r15-unused r15≡0) = stack-write-preserves-unused-r15 s stack-addr stack-addr-in-stack r15≡0
     helper (r15-in-heap r15-heap) = stack-write-preserves-heap-r15 s stack-addr stack-addr-in-stack r15-heap
     helper (r15-in-code r15-code) = stack-write-preserves-code-r15 s stack-addr stack-addr-in-stack r15-code
     helper (r15-in-stack r15-frame r15-slot r15-eq frame-bound) =
@@ -1312,7 +1306,6 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
     addr<rsp : stack-addr < readReg (regs s) rsp
     addr<rsp = m∸n<m-when-m>n (readReg (regs s) rsp) slot-size (s≤s z≤n) rsp>slot
     helper : R15Status s → stack-addr ≢ readReg (regs s) r15
-    helper (r15-unused r15≡0) = stack-write-preserves-unused-r15 s stack-addr stack-addr-in-stack r15≡0
     helper (r15-in-heap r15-heap) = stack-write-preserves-heap-r15 s stack-addr stack-addr-in-stack r15-heap
     helper (r15-in-code r15-code) = stack-write-preserves-code-r15 s stack-addr stack-addr-in-stack r15-code
     helper (r15-in-stack r15-frame r15-slot r15-eq frame-bound) =
@@ -1375,8 +1368,6 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
                          (m∸n+n≡m (∸-monoˡ-≤ slot-size rsp≥2slot))
     diff-helper : ∀ stack-addr → InStack stack-addr → stack-addr < rsp-val →
                   R15Status s → stack-addr ≢ readReg (regs s) r15
-    diff-helper addr addr-in-stack addr<rsp (r15-unused r15≡0) =
-      stack-write-preserves-unused-r15 s addr addr-in-stack r15≡0
     diff-helper addr addr-in-stack addr<rsp (r15-in-heap r15-heap) =
       stack-write-preserves-heap-r15 s addr addr-in-stack r15-heap
     diff-helper addr addr-in-stack addr<rsp (r15-in-code r15-code) =

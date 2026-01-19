@@ -82,7 +82,6 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
 
     -- Memory preservation
     mem-above : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-    mem-at-0 : readMem (memory s-setup) 0 ≡ readMem (memory s) 0
     mem-code : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-heap : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
@@ -111,7 +110,6 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
   ; mem-slot8 = mem-r15-eq
   ; mem-slot16 = mem-r14-eq
   ; mem-above = mem-above-eq
-  ; mem-at-0 = mem-at-0
   ; mem-code = mem-code
   ; mem-heap = mem-heap
   }
@@ -620,43 +618,6 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         -- Memory s1: step 1 wrote at write1, which ≠ addr
         mem-s1-s : readMem (memory s1) addr ≡ readMem (memory s) addr
         mem-s1-s = mem-read-other {memory s} {write1} {addr} {orig-r14} (λ eq → addr≢write1 (sym eq))
-
-    -- Memory at address 0 is preserved
-    -- Uses abstract stackAddr-write-preserves-zero lemma (no inline arithmetic reasoning)
-    mem-at-0 : readMem (memory s7) 0 ≡ readMem (memory s) 0
-    mem-at-0 = trans mem0-s7-s3 (trans mem0-s3-s2 (trans mem0-s2-s1 mem0-s1-s))
-      where
-        open import Once.Backend.Common.MemoryRegions using (InStack; stackAddr-write-preserves-zero)
-
-        -- Write addresses (from x86 semantics)
-        write1 = orig-rsp ∸ slot-size
-        write2 = orig-rsp ∸ slots 2
-        write3 = orig-rsp ∸ slots 3
-
-        -- Write addresses are in stack region (via capacity-maintained from cap parameter)
-        write1-in-stack : InStack write1
-        write1-in-stack = capacity-maintained cap 1 (s≤s z≤n)
-
-        write2-in-stack : InStack write2
-        write2-in-stack = capacity-maintained cap 2 output-slots≤pair-setup
-
-        write3-in-stack : InStack write3
-        write3-in-stack = capacity-maintained cap 3 apply-cap-fits-pair-setup
-
-        -- Chain memory preservation at 0 using abstract lemma
-        mem0-s7-s3 : readMem (memory s7) 0 ≡ readMem (memory s3) 0
-        mem0-s7-s3 = refl
-
-        mem0-s3-s2 : readMem (memory s3) 0 ≡ readMem (memory s2) 0
-        mem0-s3-s2 = trans (cong (λ a → readMem (writeMem (memory s2) a (readReg (regs s2) rbp)) 0) write-addr-s3)
-                          (stackAddr-write-preserves-zero (memory s2) write3 (readReg (regs s2) rbp) write3-in-stack)
-
-        mem0-s2-s1 : readMem (memory s2) 0 ≡ readMem (memory s1) 0
-        mem0-s2-s1 = trans (cong (λ a → readMem (writeMem (memory s1) a (readReg (regs s1) r15)) 0) write-addr-s2)
-                          (stackAddr-write-preserves-zero (memory s1) write2 (readReg (regs s1) r15) write2-in-stack)
-
-        mem0-s1-s : readMem (memory s1) 0 ≡ readMem (memory s) 0
-        mem0-s1-s = stackAddr-write-preserves-zero (memory s) write1 orig-r14 write1-in-stack
 
     -- Memory at code-region addresses preserved (D041)
     mem-code : ∀ addr → InCode addr → readMem (memory s7) addr ≡ readMem (memory s) addr

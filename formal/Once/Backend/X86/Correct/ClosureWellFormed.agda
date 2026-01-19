@@ -75,10 +75,6 @@ record ThunkResult {A B : Type} (prog : Program) (s s' : State)
     thunk-preserves-frame : ∀ k → frameSlot (memory s') caller-sp k ≡
                                   frameSlot (memory s) caller-sp k
 
-    -- Memory at address 0 is preserved (null page protection)
-    -- Thunk only writes to stack region, and 0 is not in stack region
-    thunk-preserves-zero : readMem (memory s') 0 ≡ readMem (memory s) 0
-
     -- Memory at code-region addresses is preserved
     -- Thunk only writes to stack region, which is disjoint from code region
     thunk-preserves-code : ∀ addr → InCode addr →

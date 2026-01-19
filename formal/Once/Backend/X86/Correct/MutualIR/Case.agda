@@ -492,11 +492,6 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
                                   (trans (IRStarResultV.ir-mem-code r-f addr in-code)
                                          (CaseInlSetupResult.mem-code-setup setup-res addr in-code))
 
-    mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-    mem-at-0 = trans (cong (λ m → readMem m 0) mem-s-final)
-                     (trans (IRStarResultV.ir-mem-at-0 r-f)
-                            (CaseInlSetupResult.mem-at-0-setup setup-res))
-
     -- mem-r15: r15 is preserved through setup, so we use r15-setup to align addresses
     mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     mem-r15 = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-s-final)
@@ -617,7 +612,6 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
       ; ir-mem-rbp = mem-rbp
       ; ir-mem-rbp+8 = mem-rbp+8
       ; ir-mem-above = mem-above
-      ; ir-mem-at-0 = mem-at-0
       ; ir-mem-code = mem-code
       ; ir-mem-heap = mem-heap
       ; ir-stack-inv = stack-inv-final
@@ -1012,11 +1006,6 @@ run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-f
                                   (trans (IRStarResultV.ir-mem-code r-g addr in-code)
                                          (CaseInrSetupResult.mem-code-setup setup-res addr in-code))
 
-    mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-    mem-at-0 = trans (cong (λ m → readMem m 0) mem-s-final)
-                     (trans (IRStarResultV.ir-mem-at-0 r-g)
-                            (CaseInrSetupResult.mem-at-0-setup setup-res))
-
     mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
     mem-r15 = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-s-final)
                     (trans (subst (λ addr → readMem (memory s1) addr ≡ readMem (memory s-setup) addr)
@@ -1114,7 +1103,6 @@ run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-f
       ; ir-mem-rbp = mem-rbp
       ; ir-mem-rbp+8 = mem-rbp+8
       ; ir-mem-above = mem-above
-      ; ir-mem-at-0 = mem-at-0
       ; ir-mem-code = mem-code
       ; ir-mem-heap = mem-heap
       ; ir-stack-inv = stack-inv-final

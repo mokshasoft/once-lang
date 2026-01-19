@@ -217,15 +217,6 @@ postulate
   pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) → pc < prog-len → InCode pc
 
 ------------------------------------------------------------------------
--- Zero Not In Stack (null page protection)
-------------------------------------------------------------------------
-
--- | Address 0 is not in the stack region
--- This follows from 0 < lower stack-bounds (null page is unmapped)
-postulate
-  zero-not-in-stack : ¬ (InStack 0)
-
-------------------------------------------------------------------------
 -- Memory Preservation: Stack writes don't affect heap/code
 ------------------------------------------------------------------------
 
@@ -273,10 +264,6 @@ postulate
   stackAddr-write-preserves-code : ∀ mem addr val code-addr →
     InStack addr → InCode code-addr →
     readMem (writeMem mem addr val) code-addr ≡ readMem mem code-addr
-
-  stackAddr-write-preserves-zero : ∀ mem addr val →
-    InStack addr →
-    readMem (writeMem mem addr val) 0 ≡ readMem mem 0
 
 ------------------------------------------------------------------------
 -- INTERNAL: Abstraction Boundary Glue

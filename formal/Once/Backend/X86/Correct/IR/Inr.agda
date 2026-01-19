@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          inr-rsp-delta≤inr-req)
 open import Once.Backend.Common.MemoryRegions
   using (InStack; InHeap; InCode;
-         stackAddr-write-preserves-zero; stackAddr-write-preserves-code;
+         stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap; slot-addr)
 open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.SeqExec
@@ -36,7 +36,7 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
-         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-inr; InrAtS; inr-at-s; valid-at-preserved-under-writes;
@@ -75,7 +75,6 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     ; ir-mem-rbp = mem-rbp-preserved
     ; ir-mem-rbp+8 = mem-rbp+8-preserved
     ; ir-mem-above = mem-above-preserved
-    ; ir-mem-at-0 = mem-at-0-preserved
     ; ir-mem-code = mem-code-preserved
     ; ir-mem-heap = mem-heap-preserved
     ; ir-stack-inv = stack-inv'
@@ -420,14 +419,6 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
           mem-s3-above = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) addr orig-rdi diff-2) mem-s2-above
       in mem-s3-above
 
-    -- Memory at address 0 preserved (uses cap-output-alloc, no postulate!)
-    mem-at-0-preserved : readMem (memory s4) 0 ≡ readMem (memory s) 0
-    mem-at-0-preserved =
-      let (tag-addr-in-stack , val-addr-in-stack) = alloc-2-slots-addrs-in-stack s cap-output-alloc
-          after-tag-write = stackAddr-write-preserves-zero (memory s1) new-rsp 1 tag-addr-in-stack
-          after-val-write = stackAddr-write-preserves-zero (memory s2) (new-rsp +ℕ slot-size) orig-rdi val-addr-in-stack
-      in trans after-val-write after-tag-write
-
     -- Memory at code-region addresses preserved (uses cap-output-alloc, no postulate!)
     mem-code-preserved : ∀ addr → InCode addr → readMem (memory s4) addr ≡ readMem (memory s) addr
     mem-code-preserved addr addr-in-code =
@@ -452,7 +443,6 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     rsp-s4-eq = rsp-s4
 
     stack-inv-helper : StackInvariant s → StackInvariant s4
-    stack-inv-helper (r15-unused r15≡0) = r15-unused (trans r15-s4-eq r15≡0)
     stack-inv-helper (r15-in-heap r15-heap) =
       r15-in-heap (subst InHeap (sym r15-s4-eq) r15-heap)
     stack-inv-helper (r15-in-code r15-code) =
