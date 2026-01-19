@@ -428,18 +428,34 @@ malonzo-core:
 
 .PHONY: count-postulates
 count-postulates:
-	@echo "Counting postulates in Agda files (excluding comments)..."
+	@echo "Counting postulates in Agda files..."
+	@echo "(Counts type signatures within postulate blocks, not 'postulate' keywords)"
 	@echo ""
-	@echo "=== Postulate Count by File ==="
-	@grep -rn "^[[:space:]]*postulate" --include="*.agda" . 2>/dev/null | \
-		grep -v "^[^:]*:[[:space:]]*--" | \
-		cut -d: -f1 | sort | uniq -c | sort -rn
+	@echo "=== Postulates by File ==="
+	@find . -name "*.agda" -type f | sort | while read f; do \
+		postulates=$$(awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
+			/^[^[:space:]]/ { in_postulate = 0 } \
+			in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { print }' "$$f"); \
+		if [ -n "$$postulates" ]; then \
+			count=$$(echo "$$postulates" | wc -l | tr -d ' '); \
+			echo ""; \
+			echo "--- $$f ($$count) ---"; \
+			echo "$$postulates" | sed 's/^[[:space:]]*/  /'; \
+		fi; \
+	done
 	@echo ""
 	@echo "=== Summary ==="
-	@TOTAL=$$(grep -rn "^[[:space:]]*postulate" --include="*.agda" . 2>/dev/null | \
-		grep -v "^[^:]*:[[:space:]]*--" | wc -l | tr -d ' '); \
-	FILES=$$(grep -rn "^[[:space:]]*postulate" --include="*.agda" . 2>/dev/null | \
-		grep -v "^[^:]*:[[:space:]]*--" | cut -d: -f1 | sort -u | wc -l | tr -d ' '); \
+	@TOTAL=$$(find . -name "*.agda" -type f -exec awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
+		/^[^[:space:]]/ { in_postulate = 0 } \
+		in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { count++ } \
+		END { print count+0 }' {} + | awk '{s+=$$1} END {print s}'); \
+	FILES=$$(find . -name "*.agda" -type f | while read f; do \
+		count=$$(awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
+			/^[^[:space:]]/ { in_postulate = 0 } \
+			in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { count++ } \
+			END { print count+0 }' "$$f"); \
+		if [ "$$count" -gt 0 ]; then echo "$$f"; fi; \
+	done | wc -l | tr -d ' '); \
 	echo "Total postulates: $$TOTAL"; \
 	echo "Files with postulates: $$FILES"
 
