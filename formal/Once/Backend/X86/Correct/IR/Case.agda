@@ -757,7 +757,10 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     fetch-skip-3 i0 i1 i2 xs n = refl
 
     -- fetch at index 9+len-f+len-g in case-code gets cleanup-mov
-    -- Use postulate for now - the proof is complex due to list structure
+    -- Structure: case-code = 6 setup ++ len-f f ++ 3 middle ++ len-g g ++ cleanup ++ suffix
+    -- Position 9+len-f+len-g = case-setup-count + case-prefix-count + len-f + case-middle-count + len-g
+    --                        = position of cleanup-mov
+    -- TODO: Move to FetchLemmas.agda with proper symbolic position computation
     postulate
       fetch-case-code-cleanup : fetch case-code (9 +ℕ len-f +ℕ len-g) ≡ just cleanup-mov
 
