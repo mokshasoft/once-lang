@@ -65,7 +65,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode; heap-offset)
 open import Data.Nat.Properties using (≤-trans; <-trans; ≤-<-trans; <⇒≤; m≤m⊔n; m≤n⊔m; m∸n≤m; +-comm; suc-injective; m≤m+n)
 open import Data.List.Properties using (++-assoc)
-open import Once.Backend.X86.Correct.CompileLength using (length-++)
+open import Once.Backend.X86.Correct.CompileLength using (length-++; compile-length-correct)
 open import Data.Maybe using (just; nothing)
 open import Relation.Nullary using (yes; no)
 
@@ -75,8 +75,9 @@ open import Once.Backend.X86.Postulates
 
 -- Import Case helpers
 open import Once.Backend.X86.Correct.IR.Case
-  using (CaseInlSetupResult; case-inl-setup-star; CaseCleanupResult; case-inl-cleanup-star)
-open import Once.Backend.X86.Correct.IR.Case using (module CaseInlSetupResult; module CaseCleanupResult)
+  using (CaseInlSetupResult; case-inl-setup-star; CaseCleanupResult; case-inl-cleanup-star;
+         CaseInrSetupResult; case-inr-setup-star; case-inr-cleanup-star)
+open import Once.Backend.X86.Correct.IR.Case using (module CaseInlSetupResult; module CaseCleanupResult; module CaseInrSetupResult)
 
 ------------------------------------------------------------------------
 -- Case implementation using size-bounded dispatcher
@@ -626,19 +627,501 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
       }
 
 -- | Validity-based case execution (inr branch)
--- Executes: frame setup (2), prefix (3), jne taken to label, prefix-right (2), g, cleanup (2)
-postulate
-  run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) →
-    ir-size g < bound →
-    (prefix suffix : Program) (caller-sp : StackPointer) (b : ⟦ B ⟧) (s : State) →
-    halted s ≡ false →
-    pc s ≡ length prefix →
-    ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
-    StackInvariant s →
-    StackCapacity s (ir-stack-requirement [ f , g ]) →
-    RbpInvariant s →
-    let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-    in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
+-- Executes: frame setup (2), prefix (4), jne taken (1), label (1), mov rdi [rdi+8] (1), g, cleanup (2)
+--
+-- Instruction sequence for inr:
+--   0:           push rbp
+--   1:           mov rbp, rsp
+--   2:           mov r11, [rdi]        ; load tag
+--   3:           cmp r11, 0            ; compare with 0
+--   4:           jne target            ; TAKEN (tag = 1)
+--   ...          (f code, skipped)
+--   6+len-f:     jmp cleanup           ; (skipped)
+--   7+len-f:     label                 ; landed here
+--   8+len-f:     mov rdi, [rdi+8]      ; load value
+--   9+len-f:     (g code starts here)
+--   9+len-f+len-g: mov rsp, rbp
+--   10+len-f+len-g: pop rbp
+--
+run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) →
+  ir-size g < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (b : ⟦ B ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt {A + B} (inj₂ b) (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement [ f , g ]) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
+run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+    s-final , result
+  where
+    open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ)
+
+    -- Program and code lengths
+    len-f = compile-length f
+    len-g = compile-length g
+    case-code = compile-x86 [ f , g ]
+    prog = prefix ++ case-code ++ suffix
+
+    -- Original state values
+    orig-rdi = readReg (regs s) rdi
+    orig-rsp = readReg (regs s) rsp
+    orig-rbp = readReg (regs s) rbp
+    orig-r14 = readReg (regs s) r14
+    orig-r15 = readReg (regs s) r15
+    orig-mem = memory s
+
+    -- ========== Phase 1: Frame setup and tag check ==========
+    -- push rbp, mov rbp rsp, mov r11 [rdi], cmp r11 0, jne (taken), label, mov rdi [rdi+8]
+
+    -- Tag is 1 (from ValidAt inr)
+    tag-is-1 : readMem orig-mem orig-rdi ≡ just 1
+    tag-is-1 = valid-inr-tag-is-1 input-valid
+
+    -- Value pointer exists
+    val-ptr-exists : ∃[ val-addr ] (readMem orig-mem (orig-rdi +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr orig-mem)
+    val-ptr-exists = valid-inr-val-ptr input-valid
+
+    val-addr = proj₁ val-ptr-exists
+    val-at-rdi+8 = proj₁ (proj₂ val-ptr-exists)
+    input-valid-b = proj₂ (proj₂ val-ptr-exists)
+
+    -- ========== Capacity calculation ==========
+    case-req = ir-stack-requirement [ f , g ]
+    f-req = ir-stack-requirement f
+    g-req = ir-stack-requirement g
+
+    -- g-req ≤ max(f-req, g-req)
+    g-req≤max : g-req ≤ (f-req ⊔ g-req)
+    g-req≤max = m≤n⊔m f-req g-req
+
+    -- Step 1: ir-stack-requirement [ f , g ] = suc (f-req ⊔ g-req)
+    case-req-eq : case-req ≡ suc (f-req ⊔ g-req)
+    case-req-eq = refl
+
+    -- Step 2: Convert cap-in to StackCapacity s (suc (f-req ⊔ g-req))
+    cap-in' : StackCapacity s (suc (f-req ⊔ g-req))
+    cap-in' = subst (StackCapacity s) case-req-eq cap-in
+
+    -- ========== Setup using helper ==========
+    -- Execute 7 instructions: push rbp, mov rbp rsp, mov r11 [rdi], cmp r11 0, jne(taken), label, mov rdi [rdi+8]
+
+    -- Derive InHeap proofs from ValidAt
+    rdi-in-heap : InHeap orig-rdi
+    rdi-in-heap = valid-addr-in-heap input-valid
+
+    -- rdi+8 is also in heap (follows from rdi in heap + heap is contiguous)
+    rdi+8-in-heap : InHeap (orig-rdi +ℕ slot-size)
+    rdi+8-in-heap = heap-offset orig-rdi slot-size rdi-in-heap
+
+    setup-result : ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
+    setup-result = case-inr-setup-star f g prefix suffix b s val-addr
+                     h-false pc-eq tag-is-1 val-at-rdi+8 rdi-in-heap rdi+8-in-heap stack-inv cap-in rbp-inv
+
+    s-setup : State
+    s-setup = proj₁ setup-result
+
+    setup-res : CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
+    setup-res = proj₂ setup-result
+
+    -- Extract properties from setup result
+    star-setup : Star prog s s-setup
+    star-setup = CaseInrSetupResult.star-setup setup-res
+
+    h-setup : halted s-setup ≡ false
+    h-setup = CaseInrSetupResult.h-setup setup-res
+
+    -- PC after inr setup: length prefix + 9 + len-f
+    pc-setup : pc s-setup ≡ length prefix +ℕ 9 +ℕ len-f
+    pc-setup = CaseInrSetupResult.pc-setup setup-res
+
+    rdi-setup : readReg (regs s-setup) rdi ≡ val-addr
+    rdi-setup = CaseInrSetupResult.rdi-setup setup-res
+
+    rbp-setup : readReg (regs s-setup) rbp ≡ orig-rsp ∸ slot-size
+    rbp-setup = CaseInrSetupResult.rbp-setup setup-res
+
+    rsp-setup : readReg (regs s-setup) rsp ≡ orig-rsp ∸ slot-size
+    rsp-setup = CaseInrSetupResult.rsp-setup setup-res
+
+    r14-setup : readReg (regs s-setup) r14 ≡ orig-r14
+    r14-setup = CaseInrSetupResult.r14-setup setup-res
+
+    r15-setup : readReg (regs s-setup) r15 ≡ orig-r15
+    r15-setup = CaseInrSetupResult.r15-setup setup-res
+
+    mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
+    mem-heap-setup = CaseInrSetupResult.mem-heap-setup setup-res
+
+    stack-inv-setup : StackInvariant s-setup
+    stack-inv-setup = CaseInrSetupResult.stack-inv-setup setup-res
+
+    -- Capacity for g: derive from case capacity after push
+    rsp-setup-from-s : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slot-size
+    rsp-setup-from-s = rsp-setup
+
+    -- Apply capacity-after-push to get StackCapacity s-setup (f-req ⊔ g-req)
+    cap-max : StackCapacity s-setup (f-req ⊔ g-req)
+    cap-max = capacity-after-push s s-setup (f-req ⊔ g-req) cap-in' rsp-setup-from-s
+
+    -- Apply capacity-from-larger to get StackCapacity s-setup g-req
+    cap-setup : StackCapacity s-setup g-req
+    cap-setup = capacity-from-larger s-setup g-req (f-req ⊔ g-req) cap-max g-req≤max
+
+    rbp-inv-setup : RbpInvariant s-setup
+    rbp-inv-setup = CaseInrSetupResult.rbp-inv-setup setup-res
+
+    -- Input validity for g after setup (heap preserved)
+    input-valid-for-g : ValidAt b (readReg (regs s-setup) rdi) (memory s-setup)
+    input-valid-for-g = valid-subst-heap-preserved input-valid-b rdi-setup mem-heap-setup
+
+    -- ========== Prefix and suffix for g ==========
+    -- The inr setup instructions (7 instructions total, PC lands at 9+len-f)
+    -- Layout: setup (6) ++ f (len-f) ++ jmp (1) ++ label (1) ++ mov rdi (1) ++ g (len-g) ++ cleanup (2)
+    --
+    -- For g:
+    -- prefix-g = prefix ++ setup (6) ++ f (len-f) ++ jmp (1) ++ label (1) ++ mov rdi (1)
+    -- code-g = compile-x86 g
+    -- suffix-g = cleanup (2) ++ suffix
+
+    setup-instrs-before-f : Program
+    setup-instrs-before-f = push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
+                            mov (reg r11) (mem (base rdi)) ∷ cmp (reg r11) (imm 0) ∷
+                            jne (case-jne-base +ℕ len-f) ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
+
+    code-f = compile-x86 f
+
+    middle-instrs : Program
+    middle-instrs = jmp (case-jmp-base +ℕ len-g) ∷ label (case-right-label-base +ℕ len-f) ∷
+                    mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
+
+    cleanup-instrs : Program
+    cleanup-instrs = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+
+    -- Prefix for g: prefix ++ setup (6) ++ f (len-f) ++ middle (3)
+    prefix-g = prefix ++ setup-instrs-before-f ++ code-f ++ middle-instrs
+    code-g = compile-x86 g
+    suffix-g = cleanup-instrs ++ suffix
+
+    -- Length of prefix-g = length prefix + 6 + len-f + 3 = length prefix + 9 + len-f
+    -- Helper: length code-f = len-f
+    len-code-f : length code-f ≡ len-f
+    len-code-f = compile-length-correct f
+
+    len-prefix-g : length prefix-g ≡ length prefix +ℕ 9 +ℕ len-f
+    len-prefix-g = trans (length-++ prefix (setup-instrs-before-f ++ code-f ++ middle-instrs))
+                         (trans (cong (length prefix +ℕ_) (length-++ setup-instrs-before-f (code-f ++ middle-instrs)))
+                                (trans (cong (length prefix +ℕ_) (cong (6 +ℕ_) (length-++ code-f middle-instrs)))
+                                       (trans (cong (length prefix +ℕ_) (cong (6 +ℕ_) (cong (_+ℕ 3) len-code-f)))
+                                              (trans (cong (length prefix +ℕ_) (trans (+-assoc 6 len-f 3)
+                                                                                      (trans (cong (6 +ℕ_) (+-comm len-f 3))
+                                                                                             (sym (+-assoc 6 3 len-f)))))
+                                                     (sym (+-assoc (length prefix) 9 len-f))))))
+
+    -- pc s-setup = length prefix-g
+    pc-eq-prefix-g : pc s-setup ≡ length prefix-g
+    pc-eq-prefix-g = trans pc-setup (sym len-prefix-g)
+
+    -- Execute g
+    step-g : ∃[ s1 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-setup s1 b (length prefix-g)
+    step-g = run-ir-star g g<bound prefix-g suffix-g caller-sp b s-setup
+               h-setup
+               pc-eq-prefix-g
+               input-valid-for-g
+               stack-inv-setup
+               cap-setup
+               rbp-inv-setup
+
+    s1 : State
+    s1 = proj₁ step-g
+
+    r-g : IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s-setup s1 b (length prefix-g)
+    r-g = proj₂ step-g
+
+    -- ========== Cleanup using helper ==========
+    -- Execute: mov rsp rbp, pop rbp (2 instructions, no jmp needed for inr)
+
+    h-s1 : halted s1 ≡ false
+    h-s1 = IRStarResultV.ir-halted r-g
+
+    -- PC after g: length prefix + 9 + len-f + len-g
+    pc-s1 : pc s1 ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
+    pc-s1 = trans (IRStarResultV.ir-pc r-g) (cong (_+ℕ compile-length g) len-prefix-g)
+
+    -- Need: rbp s1 = orig-rsp - slot-size
+    rbp-s1 : readReg (regs s1) rbp ≡ orig-rsp ∸ slot-size
+    rbp-s1 = trans (IRStarResultV.ir-rbp r-g) rbp-setup
+
+    -- Need: mem s1 at (rbp s1) = just orig-rbp
+    mem-saved-rbp-setup : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just orig-rbp
+    mem-saved-rbp-setup = CaseInrSetupResult.mem-saved-rbp setup-res
+
+    mem-rbp-s1 : readMem (memory s1) (readReg (regs s1) rbp) ≡ just orig-rbp
+    mem-rbp-s1 = trans (subst (λ addr → readMem (memory s1) addr ≡ readMem (memory s-setup) addr)
+                              (sym (IRStarResultV.ir-rbp r-g))
+                              (IRStarResultV.ir-mem-rbp r-g))
+                       (subst (λ v → readMem (memory s-setup) v ≡ just orig-rbp)
+                              (sym (IRStarResultV.ir-rbp r-g))
+                              mem-saved-rbp-setup)
+
+    stack-inv-s1 : StackInvariant s1
+    stack-inv-s1 = IRStarResultV.ir-stack-inv r-g
+
+    -- Stack capacity: slot-size ≤ orig-rsp
+    rsp-has-cap : slot-size ≤ orig-rsp
+    rsp-has-cap = <⇒≤ (≤-<-trans slot≤suc*slot (rsp-sufficient cap-in'))
+      where
+        slot≤suc*slot : slot-size ≤ (suc (f-req ⊔ g-req)) *ℕ slot-size
+        slot≤suc*slot = m≤m+n slot-size ((f-req ⊔ g-req) *ℕ slot-size)
+
+    -- Call inr cleanup helper (2 instructions: mov rsp rbp, pop rbp)
+    cleanup-result : ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s1 s-final orig-rsp orig-rbp
+    cleanup-result = case-inr-cleanup-star f g prefix suffix s1 orig-rsp orig-rbp
+                       h-s1 pc-s1 rbp-s1 mem-rbp-s1 rsp-has-cap stack-inv-s1
+
+    s-final : State
+    s-final = proj₁ cleanup-result
+
+    cleanup-res : CaseCleanupResult {A} {B} {C} prefix suffix f g s1 s-final orig-rsp orig-rbp
+    cleanup-res = proj₂ cleanup-result
+
+    star-cleanup : Star prog s1 s-final
+    star-cleanup = CaseCleanupResult.star-cleanup cleanup-res
+
+    h-final : halted s-final ≡ false
+    h-final = CaseCleanupResult.h-final cleanup-res
+
+    pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
+    pc-final = CaseCleanupResult.pc-final cleanup-res
+
+    rsp-final : readReg (regs s-final) rsp ≡ orig-rsp
+    rsp-final = CaseCleanupResult.rsp-final cleanup-res
+
+    rbp-final : readReg (regs s-final) rbp ≡ orig-rbp
+    rbp-final = CaseCleanupResult.rbp-final cleanup-res
+
+    -- ========== Program equality ==========
+    -- Need to show: prefix-g ++ code-g ++ suffix-g ≡ prog
+
+    prog-eq-g : prefix-g ++ code-g ++ suffix-g ≡ prog
+    prog-eq-g = trans step4 (trans step5 (trans step8 step9))
+      where
+        -- prefix-g = prefix ++ (setup-instrs-before-f ++ code-f ++ middle-instrs)
+        -- suffix-g = cleanup-instrs ++ suffix
+        -- code-g = compile-x86 g
+
+        -- The part before g in case-code
+        pre-g : Program
+        pre-g = setup-instrs-before-f ++ code-f ++ middle-instrs
+
+        -- case-code = pre-g ++ code-g ++ cleanup-instrs (by definition of compile-x86 [ f , g ])
+        -- This is: setup(6) ++ f ++ middle(3) ++ g ++ cleanup(2)
+
+        -- Step 1: code-g ++ suffix-g = code-g ++ (cleanup-instrs ++ suffix)
+        step1 : code-g ++ suffix-g ≡ code-g ++ (cleanup-instrs ++ suffix)
+        step1 = refl
+
+        -- Step 2: code-g ++ (cleanup-instrs ++ suffix) = (code-g ++ cleanup-instrs) ++ suffix
+        step2 : code-g ++ (cleanup-instrs ++ suffix) ≡ (code-g ++ cleanup-instrs) ++ suffix
+        step2 = sym (++-assoc code-g cleanup-instrs suffix)
+
+        -- Step 3: code-g ++ suffix-g = (code-g ++ cleanup-instrs) ++ suffix
+        step3 : code-g ++ suffix-g ≡ (code-g ++ cleanup-instrs) ++ suffix
+        step3 = trans step1 step2
+
+        -- Step 4: prefix-g ++ (code-g ++ suffix-g) = prefix-g ++ ((code-g ++ cleanup-instrs) ++ suffix)
+        step4 : prefix-g ++ (code-g ++ suffix-g) ≡ prefix-g ++ ((code-g ++ cleanup-instrs) ++ suffix)
+        step4 = cong (prefix-g ++_) step3
+
+        -- Step 5: prefix-g ++ ((code-g ++ cleanup-instrs) ++ suffix)
+        --       = (prefix-g ++ (code-g ++ cleanup-instrs)) ++ suffix
+        step5 : prefix-g ++ ((code-g ++ cleanup-instrs) ++ suffix) ≡ (prefix-g ++ (code-g ++ cleanup-instrs)) ++ suffix
+        step5 = sym (++-assoc prefix-g (code-g ++ cleanup-instrs) suffix)
+
+        -- Step 6: prefix-g ++ (code-g ++ cleanup-instrs)
+        --       = prefix ++ (pre-g ++ (code-g ++ cleanup-instrs))
+        step6 : prefix-g ++ (code-g ++ cleanup-instrs) ≡ prefix ++ (pre-g ++ (code-g ++ cleanup-instrs))
+        step6 = ++-assoc prefix pre-g (code-g ++ cleanup-instrs)
+
+        -- Step 7: pre-g ++ (code-g ++ cleanup-instrs) = compile-x86 [ f , g ]
+        -- Need to reassociate: (setup ++ (f ++ middle)) ++ (g ++ cleanup) = setup ++ (f ++ (middle ++ (g ++ cleanup)))
+        step7a : pre-g ++ (code-g ++ cleanup-instrs) ≡ setup-instrs-before-f ++ ((code-f ++ middle-instrs) ++ (code-g ++ cleanup-instrs))
+        step7a = ++-assoc setup-instrs-before-f (code-f ++ middle-instrs) (code-g ++ cleanup-instrs)
+
+        step7b : setup-instrs-before-f ++ ((code-f ++ middle-instrs) ++ (code-g ++ cleanup-instrs)) ≡ setup-instrs-before-f ++ (code-f ++ (middle-instrs ++ (code-g ++ cleanup-instrs)))
+        step7b = cong (setup-instrs-before-f ++_) (++-assoc code-f middle-instrs (code-g ++ cleanup-instrs))
+
+        -- Now this should match compile-x86 [ f , g ] definitionally
+        step7c : setup-instrs-before-f ++ (code-f ++ (middle-instrs ++ (code-g ++ cleanup-instrs))) ≡ compile-x86 [ f , g ]
+        step7c = refl
+
+        step7 : prefix ++ (pre-g ++ (code-g ++ cleanup-instrs)) ≡ prefix ++ compile-x86 [ f , g ]
+        step7 = cong (prefix ++_) (trans step7a (trans step7b step7c))
+
+        -- Step 8: (prefix-g ++ (code-g ++ cleanup-instrs)) ++ suffix = (prefix ++ compile-x86 [ f , g ]) ++ suffix
+        step8 : (prefix-g ++ (code-g ++ cleanup-instrs)) ++ suffix ≡ (prefix ++ compile-x86 [ f , g ]) ++ suffix
+        step8 = cong (_++ suffix) (trans step6 step7)
+
+        -- Step 9: (prefix ++ compile-x86 [ f , g ]) ++ suffix = prog
+        step9 : (prefix ++ compile-x86 [ f , g ]) ++ suffix ≡ prog
+        step9 = ++-assoc prefix (compile-x86 [ f , g ]) suffix
+
+    star-g : Star prog s-setup s1
+    star-g = subst (λ p → Star p s-setup s1) prog-eq-g (IRStarResultV.ir-star r-g)
+
+    -- Full execution star
+    full-star : Star prog s s-final
+    full-star = star-trans (star-trans star-setup star-g) star-cleanup
+
+    -- ========== Register preservation ==========
+    r14-final : readReg (regs s-final) r14 ≡ orig-r14
+    r14-final = trans (CaseCleanupResult.r14-preserved cleanup-res)
+                      (trans (IRStarResultV.ir-r14 r-g) r14-setup)
+
+    r15-final : readReg (regs s-final) r15 ≡ orig-r15
+    r15-final = trans (CaseCleanupResult.r15-preserved cleanup-res)
+                      (trans (IRStarResultV.ir-r15 r-g) r15-setup)
+
+    rsp-eq : readReg (regs s-final) rsp ≡ orig-rsp ∸ slots 0
+    rsp-eq = rsp-final
+
+    -- ========== Result validity ==========
+    -- eval [ f , g ] (inj₂ b) = eval g b
+    rax-s-final : readReg (regs s-final) rax ≡ readReg (regs s1) rax
+    rax-s-final = CaseCleanupResult.rax-preserved cleanup-res
+
+    mem-s-final : memory s-final ≡ memory s1
+    mem-s-final = CaseCleanupResult.memory-preserved cleanup-res
+
+    result-valid-g : ValidAt (eval g b) (readReg (regs s1) rax) (memory s1)
+    result-valid-g = IRStarResultV.ir-result-valid r-g
+
+    result-valid : ValidAt (eval [ f , g ] (inj₂ b)) (readReg (regs s-final) rax) (memory s-final)
+    result-valid = subst₂ (ValidAt (eval g b)) (sym rax-s-final) (sym mem-s-final) result-valid-g
+
+    -- ========== Memory preservation ==========
+    mem-heap : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-heap addr in-heap = trans (cong (λ m → readMem m addr) mem-s-final)
+                                  (trans (IRStarResultV.ir-mem-heap r-g addr in-heap)
+                                         (mem-heap-setup addr in-heap))
+
+    mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-code addr in-code = trans (cong (λ m → readMem m addr) mem-s-final)
+                                  (trans (IRStarResultV.ir-mem-code r-g addr in-code)
+                                         (CaseInrSetupResult.mem-code-setup setup-res addr in-code))
+
+    mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
+    mem-at-0 = trans (cong (λ m → readMem m 0) mem-s-final)
+                     (trans (IRStarResultV.ir-mem-at-0 r-g)
+                            (CaseInrSetupResult.mem-at-0-setup setup-res))
+
+    mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-r15 = trans (cong (λ m → readMem m (readReg (regs s) r15)) mem-s-final)
+                    (trans (subst (λ addr → readMem (memory s1) addr ≡ readMem (memory s-setup) addr)
+                                  (sym r15-setup)
+                                  (IRStarResultV.ir-mem r-g))
+                           (CaseInrSetupResult.mem-r15-setup setup-res))
+
+    -- ========== Memory preservation at caller's rbp ==========
+    new-rbp = readReg (regs s-setup) rbp
+
+    orig-rbp>new-rbp : orig-rbp > new-rbp
+    orig-rbp>new-rbp = <-≤-trans new-rbp<rsp (RbpInvariant.rsp≤rbp rbp-inv)
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (m<m+n; m∸n+n≡m; <⇒≤; <-≤-trans)
+
+        case-req≥1 : 1 ≤ suc (f-req ⊔ g-req)
+        case-req≥1 = s≤s z≤n
+
+        cap-1 : StackCapacity s 1
+        cap-1 = capacity-from-larger s 1 (suc (f-req ⊔ g-req)) cap-in' case-req≥1
+
+        slot<rsp : slot-size < orig-rsp
+        slot<rsp = rsp-sufficient cap-1
+
+        new-rbp<rsp : new-rbp < orig-rsp
+        new-rbp<rsp = subst (_< orig-rsp) (sym rbp-setup) rsp-slot<rsp
+          where
+            rsp-slot<rsp : orig-rsp ∸ slot-size < orig-rsp
+            rsp-slot<rsp = subst ((orig-rsp ∸ slot-size) <_) (m∸n+n≡m (<⇒≤ slot<rsp))
+                                 (m<m+n (orig-rsp ∸ slot-size) {slot-size} (s≤s z≤n))
+
+    mem-rbp : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-rbp = trans (cong (λ m → readMem m orig-rbp) mem-s-final)
+                    (trans (IRStarResultV.ir-mem-above r-g orig-rbp orig-rbp>new-rbp)
+                           (CaseInrSetupResult.mem-rbp-setup setup-res))
+
+    orig-rbp+8>new-rbp : orig-rbp +ℕ 8 > new-rbp
+    orig-rbp+8>new-rbp = <-trans orig-rbp>new-rbp (m<m+n orig-rbp {8} (s≤s z≤n))
+      where
+        open import Data.Nat using (s≤s; z≤n)
+        open import Data.Nat.Properties using (<-trans; m<m+n)
+
+    mem-rbp+8 : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+    mem-rbp+8 = trans (cong (λ m → readMem m (orig-rbp +ℕ 8)) mem-s-final)
+                      (trans (IRStarResultV.ir-mem-above r-g (orig-rbp +ℕ 8) orig-rbp+8>new-rbp)
+                             (CaseInrSetupResult.mem-rbp+8-setup setup-res))
+
+    mem-above : ∀ addr → addr > orig-rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-above addr addr>rbp = trans (cong (λ m → readMem m addr) mem-s-final)
+                                    (trans (IRStarResultV.ir-mem-above r-g addr addr>new-rbp)
+                                           (CaseInrSetupResult.mem-above-setup setup-res addr addr>rbp))
+      where
+        addr>new-rbp : addr > new-rbp
+        addr>new-rbp = <-trans orig-rbp>new-rbp addr>rbp
+          where open import Data.Nat.Properties using (<-trans)
+
+    -- ========== Stack Invariant final ==========
+    stack-inv-final : StackInvariant s-final
+    stack-inv-final = stack-inv-preserved-unchanged s s-final stack-inv r15-final rsp-final
+      where
+        open import Once.Backend.X86.Correct.StackInvariant using (stack-inv-preserved-unchanged)
+
+    -- ========== Stack Capacity final ==========
+    cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
+    cap-final = capacity-preserved-rsp-unchanged s s-final (ir-output-capacity [ f , g ]) cap-in' rsp-final
+
+    -- ========== RbpInvariant final ==========
+    rbp-inv-final : RbpInvariant s-final
+    rbp-inv-final = record
+      { rbp-frame = RbpInvariant.rbp-frame rbp-inv
+      ; rbp-is-base = trans rbp-final (RbpInvariant.rbp-is-base rbp-inv)
+      ; frame-bound = subst (λ x → sp-addr orig-frame ≥ x) (sym rsp-final) (RbpInvariant.frame-bound rbp-inv)
+      }
+      where
+        open import Data.Nat using (_≥_)
+        open import Once.Backend.Common.MemoryRegions using (StackPointer) renaming (addr to sp-addr)
+        orig-frame = RbpInvariant.rbp-frame rbp-inv
+
+    -- ClosureWFOutput: transport from g's result to prog
+    closure-wf-final : ClosureWFOutput prog
+    closure-wf-final = subst ClosureWFOutput prog-eq-g (IRStarResultV.ir-closure-wf r-g)
+
+    result : IRStarResultV [ f , g ] prog s s-final (inj₂ b) (length prefix)
+    result = record
+      { ir-star = full-star
+      ; ir-halted = h-final
+      ; ir-pc = pc-final
+      ; ir-result-valid = result-valid
+      ; ir-r14 = r14-final
+      ; ir-r15 = r15-final
+      ; ir-rbp = rbp-final
+      ; ir-rsp = rsp-eq
+      ; ir-mem = mem-r15
+      ; ir-mem-rbp = mem-rbp
+      ; ir-mem-rbp+8 = mem-rbp+8
+      ; ir-mem-above = mem-above
+      ; ir-mem-at-0 = mem-at-0
+      ; ir-mem-code = mem-code
+      ; ir-mem-heap = mem-heap
+      ; ir-stack-inv = stack-inv-final
+      ; ir-capacity = cap-final
+      ; ir-rbp-inv = rbp-inv-final
+      ; ir-closure-wf = closure-wf-final
+      }
 
 -- | Validity-based case execution dispatcher
 -- Dispatches to branch implementations based on sum injection
