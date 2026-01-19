@@ -59,8 +59,6 @@ open import Once.Postulates
          encode-inr-tag; encode-inr-val; encode-arr-identity;
          encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
          encode-inl-construct; encode-inr-construct; encode-closure-addr)
-open import Once.Backend.X86.Postulates
-  using (rsp-in-stack-after-stack-op)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -1205,6 +1203,15 @@ mutual
       thunk-rsp-plus-8-proof : readReg (regs s-final) rsp ≡ readReg (regs s) rsp +ℕ slot-size
       thunk-rsp-plus-8-proof = trans rsp-ret-plus-8 (cong (_+ℕ slot-size) rsp-f-restored)
 
+      -- s-final.rsp = caller-sp.addr (ret returns to caller's frame)
+      -- This follows from: s-final.rsp = s.rsp + 8 = caller-sp.addr
+      rsp-final-is-caller : readReg (regs s-final) rsp ≡ StackPointer.addr caller-sp
+      rsp-final-is-caller = trans thunk-rsp-plus-8-proof (sym caller-sp-bound)
+
+      -- InStack for s-final.rsp derived from caller-sp (no postulate needed!)
+      rsp-final-in-stack : InStack (readReg (regs s-final) rsp)
+      rsp-final-in-stack = subst InStack (sym rsp-final-is-caller) (StackPointer.in-stack caller-sp)
+
       -- Validity propagation from s-after-f-raw to s-final
       -- Chain: s-after-f-raw → s-after-cleanup (= s-after-f) → s-final
       -- Uses valid-subst-addr-mem to propagate through address/memory preservation
@@ -1351,7 +1358,7 @@ mutual
         ; thunk-r15 = trans r15-final (trans r15-f r15-setup)
         ; thunk-rbp = trans rbp-final rbp-f  -- rbp-f gives s-after-f.rbp = s.rbp directly
         ; thunk-stack-inv = stack-inv-final
-        ; thunk-capacity = rsp-bound-to-capacity 2 s-final (rsp-in-stack-after-stack-op s-final) rsp-sufficient-final
+        ; thunk-capacity = rsp-bound-to-capacity 2 s-final rsp-final-in-stack rsp-sufficient-final
         ; thunk-rsp-plus-8 = thunk-rsp-plus-8-proof
         ; thunk-preserves-frame = thunk-preserves-frame-proof
         ; thunk-preserves-code = thunk-preserves-code-proof
