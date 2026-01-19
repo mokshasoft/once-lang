@@ -33,8 +33,8 @@ open import Once.IR
 open import Once.Memory using (Word)
 open import Once.Semantics
 
--- Note: X86-specific postulates are in Once.Backend.X86.Postulates
--- to avoid cyclic imports. See P4 and P5 there.
+-- Note: X86-specific postulates have been ELIMINATED.
+-- All X86 proofs now use proper capacity and region threading.
 
 -- Re-export encode and PROVEN encoding properties from Semantics
 open Once.Semantics public using (encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
