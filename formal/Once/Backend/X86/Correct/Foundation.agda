@@ -43,14 +43,10 @@ open import Once.Backend.Common.Memory
   public
 
 -- Import encoding axioms from centralized Once.Postulates
+-- NOTE: Most encode-* postulates eliminated in X86 via validity-based proofs.
+-- Only encode-pair-construct still used (in IR/Pair.agda).
 open import Once.Postulates
-  using ( encode-pair-fst; encode-pair-snd
-        ; encode-inl-tag; encode-inl-val
-        ; encode-inr-tag; encode-inr-val
-        ; encode-pair-construct
-        ; encode-inl-construct; encode-inr-construct
-        ; encode-closure-construct
-        )
+  using ( encode-pair-construct )
   public
 
 ------------------------------------------------------------------------

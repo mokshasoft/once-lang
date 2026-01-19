@@ -31,8 +31,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          InlAtS; InrAtS; ClosureAtS;
          valid-arrow-to-eff)
-open import Once.Postulates
-  using (encode-pair-fst; encode-pair-snd; encode-fix-unwrap; encode-fix-wrap)
+-- NOTE: encode-* postulates no longer needed - using validity-based proofs
 
 open import Data.Nat using (_>_)
 open import Data.List.Properties using (++-assoc)

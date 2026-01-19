@@ -35,8 +35,7 @@ module Once.Backend.X86.Correct.IR.Apply where
 open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
--- NOTE: IR/Apply.agda is now postulate-free! Capacity threading eliminates blanket postulates.
-open import Once.Postulates using (encode-pair-fst)
+-- NOTE: IR/Apply.agda is postulate-free! Uses validity-based proofs.
 open import Once.Backend.X86.Encoding using (mem-read-write)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)

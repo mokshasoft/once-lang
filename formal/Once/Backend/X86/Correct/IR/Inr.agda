@@ -12,8 +12,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Backend.Common.Memory using (n≢n+suc)
-open import Once.Postulates using (encode-inr-construct)
--- Blanket postulates eliminated! StackCapacity s 4 threaded through instead.
+-- NOTE: encode-inr-construct eliminated via validity-based proofs
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)

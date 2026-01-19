@@ -63,10 +63,8 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
-open import Once.Postulates
-  using (encode; encode-pair-fst; encode-pair-snd;
-         encode-pair-construct; encode-inl-tag; encode-inl-val;
-         encode-inr-tag; encode-inr-val)
+-- NOTE: encode-* reading postulates eliminated via validity-based proofs
+open import Once.Postulates using (encode)
 
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)

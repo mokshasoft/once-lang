@@ -53,12 +53,11 @@ open import Once.Backend.X86.Correct.StackInstantiation
          curry-closure-capacity≤curry-req; inl-capacity≤inl-req;
          inr-capacity≤inr-req; apply-capacity≤apply-req)
 
+-- NOTE: Most encode-* reading postulates eliminated via validity-based proofs.
+-- Remaining: encode-unit, encode-pair-construct, encode-fix-*, encode-arr-identity
 open import Once.Postulates
-  using (encode; encode-unit; encode-pair-fst; encode-pair-snd;
-         encode-pair-construct; encode-inl-tag; encode-inl-val;
-         encode-inr-tag; encode-inr-val; encode-arr-identity;
-         encode-closure-construct; encode-fix-unwrap; encode-fix-wrap;
-         encode-inl-construct; encode-inr-construct; encode-closure-addr)
+  using (encode; encode-unit; encode-pair-construct;
+         encode-fix-unwrap; encode-fix-wrap; encode-arr-identity)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
