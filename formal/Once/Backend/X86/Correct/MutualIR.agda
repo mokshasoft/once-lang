@@ -15,7 +15,7 @@ module Once.Backend.X86.Correct.MutualIR where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+open import Once.Semantics hiding (env-addr; semantics)
   renaming (Closure-η to Closure-η-sem)
 
 open import Once.Backend.X86.Syntax
@@ -303,7 +303,8 @@ mutual
       sem-closure = eval (curry f) x
 
       -- Closure validity via valid-closure-env constructor
-      -- The env-addr equality is refl because Closure.env-addr (eval (curry f) x) = encode x by definition
+      -- Closure.env-addr sem-closure = encode x (by definition of eval curry)
+      -- So the first argument to valid-closure-env is refl
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
       closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
 
@@ -1410,24 +1411,12 @@ mutual
       arg : ⟦ A ⟧
       arg = proj₂ x
 
-      -- Extract code-ptr, env-addr, semantics from closure
-      code-ptr : ℕ
-      code-ptr = Closure.code-ptr cl
-
+      -- Extract env-addr, semantics from closure (code-ptr is now runtime-only)
       env-addr : ℕ
       env-addr = Closure.env-addr cl
 
       sem : ⟦ A ⟧ → ⟦ B ⟧
       sem = Closure.semantics cl
-
-      -- The semantic value x' for the original closure
-      x' : ⟦ (A ⇒ B) * A ⟧
-      x' = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem } , arg)
-
-      -- Prove x' ≡ x (eta-expansion of Closure record and pair)
-      -- Uses Closure-η from Semantics.agda for propositional eta
-      x'-eq-x : x' ≡ x
-      x'-eq-x = cong₂ _,_ (Closure-η-sem cl) refl
 
       -- ============================================================
       -- VALIDITY DECOMPOSITION (replaces mem-layout postulate)
@@ -1441,12 +1430,25 @@ mutual
       apply-v-arg = proj₁ (proj₂ (proj₂ (proj₂ pair-decomp)))
       apply-pair-at = proj₂ (proj₂ (proj₂ (proj₂ pair-decomp)))
 
+      -- Decompose closure validity into memory layout
+      -- Returns existential code-ptr (runtime property, not semantic)
+      apply-closure-decomp = valid-closure-decompose apply-v-cl-raw
+      code-ptr : ℕ
+      code-ptr = proj₁ apply-closure-decomp
+      apply-closure-at-raw = proj₂ apply-closure-decomp
+
+      -- The semantic value x' (matches cl via Closure-η)
+      x' : ⟦ (A ⇒ B) * A ⟧
+      x' = (record { env-addr = env-addr ; semantics = sem } , arg)
+
+      -- Prove x' ≡ x (eta-expansion of Closure record and pair)
+      -- Uses Closure-η from Semantics.agda for propositional eta
+      x'-eq-x : x' ≡ x
+      x'-eq-x = cong₂ _,_ (Closure-η-sem cl) refl
+
       -- Constructed closure record (same as x')
       cl' : Closure A B
-      cl' = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = sem }
-
-      -- Decompose closure validity into memory layout
-      apply-closure-at-raw = valid-closure-decompose apply-v-cl-raw
+      cl' = record { env-addr = env-addr ; semantics = sem }
 
       -- POSTULATE: Closure well-formedness for closures in the program
       -- This is justified because all closures come from curry in the same program,
@@ -1468,7 +1470,7 @@ mutual
 
       -- Closure with env-addr matching closure-wf-env (for run-apply-to-ir-result-v)
       cl'' : Closure A B
-      cl'' = record { env-addr = encode closure-wf-env ; code-ptr = code-ptr ; semantics = sem }
+      cl'' = record { env-addr = encode closure-wf-env ; semantics = sem }
 
       -- Transport validity from cl to cl'' using the env-addr equality
       -- First transport from cl to cl' (using Closure eta)
@@ -1477,7 +1479,7 @@ mutual
 
       -- Then transport from cl' to cl'' (using closure-wf-env-addr-eq)
       apply-v-cl : ValidAt {A ⇒ B} cl'' apply-closure-addr (memory s)
-      apply-v-cl = subst (λ e → ValidAt (record { env-addr = e ; code-ptr = code-ptr ; semantics = sem }) apply-closure-addr (memory s))
+      apply-v-cl = subst (λ e → ValidAt (record { env-addr = e ; semantics = sem }) apply-closure-addr (memory s))
                          closure-wf-env-addr-eq apply-v-cl'
 
       -- Transport closure-at to use encode closure-wf-env
@@ -1492,7 +1494,7 @@ mutual
       -- Prove x'' ≡ x by transitivity: x'' ≡ x' ≡ x
       -- First, x'' ≡ x' using sym of closure-wf-env-addr-eq
       cl''-eq-cl' : cl'' ≡ cl'
-      cl''-eq-cl' = cong (λ e → record { env-addr = e ; code-ptr = code-ptr ; semantics = sem }) (sym closure-wf-env-addr-eq)
+      cl''-eq-cl' = cong (λ e → record { env-addr = e ; semantics = sem }) (sym closure-wf-env-addr-eq)
 
       x''-eq-x' : x'' ≡ x'
       x''-eq-x' = cong (λ c → (c , arg)) cl''-eq-cl'

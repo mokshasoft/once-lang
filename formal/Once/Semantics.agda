@@ -28,8 +28,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 ------------------------------------------------------------------------
 
 -- Re-export core type interpretation
+-- NOTE: code-ptr removed from Closure - it's a compilation artifact, not semantic
 open import Once.SemanticBase public
-  using (⟦Fix⟧; wrap; unwrap; Closure; env-addr; code-ptr; semantics; ⟦_⟧)
+  using (⟦Fix⟧; wrap; unwrap; Closure; env-addr; semantics; ⟦_⟧)
   renaming ()
 
 -- Re-export encoding postulates
@@ -89,7 +90,6 @@ open import Once.SemanticBase public
 postulate
   Closure-η : ∀ {A B} (cl : Closure A B) →
     record { env-addr = env-addr cl
-           ; code-ptr = code-ptr cl
            ; semantics = semantics cl } ≡ cl
 
 ------------------------------------------------------------------------
@@ -129,9 +129,9 @@ eval initial ()
 -- Exponential (with explicit Closure)
 -- curry f : IR A (B ⇒ C) creates a closure capturing the input
 -- env-addr = encode a makes closure encoding computable!
+-- NOTE: code-ptr is NOT in Closure - it's a compilation artifact, not semantic.
 eval (curry f) a       = record
   { env-addr  = encode a  -- Encoded environment (enables derivable encode-closure-construct)
-  ; code-ptr  = 0         -- Placeholder; actual code pointer from compilation
   ; semantics = λ b → eval f (a , b)
   }
 -- apply : IR ((A ⇒ B) * A) B extracts and applies the closure's semantics

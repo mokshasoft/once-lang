@@ -15,7 +15,7 @@ module Once.Backend.X86.Correct.ClosureWellFormed where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+open import Once.Semantics hiding (env-addr; semantics)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics

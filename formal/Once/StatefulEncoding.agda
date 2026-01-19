@@ -74,14 +74,17 @@ encode-s {A + B} (inj₂ b) st =
       (st₂ , base) = alloc-two-words st₁ 1 addr-b
   in (base , st₂)
 
--- Closure: allocate [env-addr, code-ptr]
+-- Closure: allocate [env-addr, code-ptr-placeholder]
+-- Note: code-ptr is a compilation artifact, not a semantic property.
+-- At semantic level, we use 0 as a placeholder. Runtime code-ptr is
+-- determined by code generation.
 encode-s {A ⇒[ _ ] B} cl st =
-  let (st' , base) = alloc-two-words st (Closure.env-addr cl) (Closure.code-ptr cl)
+  let (st' , base) = alloc-two-words st (Closure.env-addr cl) 0
   in (base , st')
 
 -- Eff is same as ⇒
 encode-s {Eff A B} cl st =
-  let (st' , base) = alloc-two-words st (Closure.env-addr cl) (Closure.code-ptr cl)
+  let (st' , base) = alloc-two-words st (Closure.env-addr cl) 0
   in (base , st')
 
 -- Fix: identity (no allocation)
@@ -161,13 +164,15 @@ encode-inr-val-thm {A} {B} b st =
 encode-closure-env-thm : ∀ {A B} (cl : Closure A B) (st : AllocState) →
   let (addr-cl , st') = encode-s {A ⇒ B} cl st
   in readMem (mem st') addr-cl ≡ just (Closure.env-addr cl)
-encode-closure-env-thm cl st = alloc-two-words-fst st (Closure.env-addr cl) (Closure.code-ptr cl)
+encode-closure-env-thm cl st = alloc-two-words-fst st (Closure.env-addr cl) 0
 
--- | Closure code: reading base+8 returns code-ptr
-encode-closure-code-thm : ∀ {A B} (cl : Closure A B) (st : AllocState) →
+-- | Closure code slot: reading base+8 returns 0 (placeholder)
+-- Note: At semantic level, code-ptr is unknown. The actual code-ptr is
+-- determined at compile time and stored by code generation.
+encode-closure-code-slot-thm : ∀ {A B} (cl : Closure A B) (st : AllocState) →
   let (addr-cl , st') = encode-s {A ⇒ B} cl st
-  in readMem (mem st') (addr-cl +ℕ 8) ≡ just (Closure.code-ptr cl)
-encode-closure-code-thm cl st = alloc-two-words-snd st (Closure.env-addr cl) (Closure.code-ptr cl)
+  in readMem (mem st') (addr-cl +ℕ 8) ≡ just 0
+encode-closure-code-slot-thm cl st = alloc-two-words-snd st (Closure.env-addr cl) 0
 
 ------------------------------------------------------------------------
 -- Simple type theorems (trivial by definition)

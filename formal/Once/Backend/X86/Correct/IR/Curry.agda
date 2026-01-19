@@ -65,7 +65,7 @@ record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
     -- Memory layout of the closure
     mem-env : readMem (memory s-final) closure-addr ≡ just env-addr
     mem-cp : readMem (memory s-final) (closure-addr +ℕ slot-size) ≡ just code-ptr
-    -- Env validity (replaces env-is-encoded : env-addr ≡ encode x)
+    -- Env validity
     v-env : ValidAt x env-addr (memory s-final)
     code-ptr-is-thunk : code-ptr ≡ offset +ℕ 6
 
@@ -989,7 +989,8 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     sem-closure = eval (curry f) x
 
     -- Closure validity via valid-closure-env constructor
-    -- The env-addr equality is refl because Closure.env-addr (eval (curry f) x) = encode x by definition
+    -- Closure.env-addr (eval (curry f) x) = encode x (by definition of eval for curry)
+    -- So the first arg to valid-closure-env is refl
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
     closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
 

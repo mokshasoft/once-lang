@@ -363,12 +363,12 @@ postulate
   -- ELIMINABLE: Need ClosureAtS validity predicate (similar to PairAtS)
   -- Encoding preserves closure structure
   -- A closure is encoded as a pointer to [env-addr, code-ptr]
-  -- These accessors extract the components from an encoded closure
+  -- env-addr is part of the semantic Closure; code-ptr is a compilation artifact
   encode-closure-env : ∀ {A B} (closure : ⟦ A ⇒ B ⟧) (m : Memory) →
     readMem m (encode {A ⇒ B} closure) ≡ just (Closure.env-addr closure)
 
-  encode-closure-code-ptr : ∀ {A B} (closure : ⟦ A ⇒ B ⟧) (m : Memory) →
-    readMem m ((encode {A ⇒ B} closure) +ℕ 8) ≡ just (Closure.code-ptr closure)
+  -- NOTE: encode-closure-code-ptr removed - code-ptr is not in semantic Closure
+  -- Runtime code-ptr is tracked via ClosureAtS and ClosureWellFormed
 
   -- ELIMINABLE: ClosureAtS produces closures directly from memory writes
   -- Encoding construction for closures (functions):

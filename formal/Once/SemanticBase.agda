@@ -40,13 +40,17 @@ open ⟦Fix⟧ public
 
 -- NOTE: NO_POSITIVITY_CHECK needed for mutual recursion between
 -- Closure.semantics : ⟦ A ⟧ → ⟦ B ⟧ and ⟦ A ⇒ B ⟧ = Closure A B
+--
+-- NOTE: code-ptr is NOT part of the semantic Closure record.
+-- It's a compilation artifact determined by CodeGen, not a semantic property.
+-- Runtime code-ptr is tracked in ClosureAtS (memory layout) and
+-- ClosureWellFormed (links code-ptr to program location).
 {-# NO_POSITIVITY_CHECK #-}
 mutual
   record Closure (A B : Type) : Set where
     field
-      env-addr  : Word
-      code-ptr  : Word
-      semantics : ⟦ A ⟧ → ⟦ B ⟧
+      env-addr  : Word           -- encoded environment address
+      semantics : ⟦ A ⟧ → ⟦ B ⟧  -- the function behavior
 
   ⟦_⟧ : Type → Set
   ⟦ Unit ⟧         = ⊤

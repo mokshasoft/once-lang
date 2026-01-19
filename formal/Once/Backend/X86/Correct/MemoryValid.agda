@@ -23,6 +23,7 @@ open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
 open import Once.Backend.Common.MemoryRegions
   using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
+open import Once.Backend.X86.Correct.Star using (just-injective)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
 
@@ -152,8 +153,10 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
 
   -- Closure: env and code-ptr at addr
   -- Note: Closures are abstract (env-addr and code-ptr are just words)
-  valid-closure : ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
-    ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr m →
+  -- Closure validity: code-ptr is a parameter (not from Closure record)
+  -- code-ptr is a compilation artifact tracked in ClosureAtS/ClosureWellFormed
+  valid-closure : ∀ {A B} {cl : Closure A B} {code-ptr addr : Word} {m : Memory} →
+    ClosureAtS (Closure.env-addr cl) code-ptr addr m →
     ValidAt {A ⇒ B} cl addr m
 
   -- Closure from env validity: for curry-created closures
@@ -161,7 +164,6 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   --   1. Closure.env-addr cl ≡ encode env  (by eval definition for curry)
   --   2. ValidAt env env-addr m            (env validity from input)
   --   3. ClosureAtS layout                 (from memory writes)
-  -- This constructor builds closure validity without addr-from-valid.
   valid-closure-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
                       {env-addr code-ptr closure-addr : Word} {m : Memory} →
     Closure.env-addr cl ≡ encode env →  -- semantic property (refl for curry)
@@ -170,8 +172,9 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ValidAt {A ⇒ B} cl closure-addr m
 
   -- Eff: same as closure (Eff = Closure at runtime)
-  valid-eff : ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
-    ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr m →
+  -- code-ptr is a parameter (not from Closure record)
+  valid-eff : ∀ {A B} {cl : Closure A B} {code-ptr addr : Word} {m : Memory} →
+    ClosureAtS (Closure.env-addr cl) code-ptr addr m →
     ValidAt {Eff A B} cl addr m
 
   -- Eff from env validity: for curry-created effect closures
@@ -209,37 +212,19 @@ postulate
     addr ≡ encode v →
     ValidAt v addr m
 
-  -- | Propagate validity through address/memory substitution
-  -- If validity holds at addr1/mem1, and addr2=addr1 and mem2 agrees with mem1,
-  -- then validity holds at addr2/mem2.
-  -- ELIMINABLE: Provable by induction on ValidAt structure once AtS predicates
-  -- are shown to be preserved under pointwise memory equality.
-  valid-subst-addr-mem :
-    ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
-    ValidAt v addr1 mem1 →
-    addr2 ≡ addr1 →
-    (∀ a → readMem mem2 a ≡ readMem mem1 a) →
-    ValidAt v addr2 mem2
 
-  -- | Propagate validity when only heap memory is preserved
-  -- ValidAt structures only depend on heap memory (not stack), so heap
-  -- preservation is sufficient for validity propagation.
-  -- ELIMINABLE: Provable by induction on ValidAt structure.
-  valid-subst-heap-preserved :
-    ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
-    ValidAt v addr1 mem1 →
-    addr2 ≡ addr1 →
-    (∀ a → InHeap a → readMem mem2 a ≡ readMem mem1 a) →
-    ValidAt v addr2 mem2
+-- | Convert validity from (A ⇒ B) to (Eff A B)
+-- These types have the same runtime representation (Closure A B), but
+-- ValidAt uses Type as a type index, so conversion is needed.
+-- Proven by pattern matching on valid-closure and constructing valid-eff.
+valid-arrow-to-eff :
+  ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
+  ValidAt {A ⇒ B} cl addr m →
+  ValidAt {Eff A B} cl addr m
+valid-arrow-to-eff (valid-closure closS) = valid-eff closS
+valid-arrow-to-eff (valid-closure-env sem-eq venv closS) = valid-eff-env sem-eq venv closS
 
-  -- | Convert validity from (A ⇒ B) to (Eff A B)
-  -- These types have the same runtime representation (Closure A B), but
-  -- ValidAt uses Type as a type index, so conversion is needed.
-  -- ELIMINABLE: Provable by pattern matching on valid-closure and constructing valid-eff.
-  valid-arrow-to-eff :
-    ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
-    ValidAt {A ⇒ B} cl addr m →
-    ValidAt {Eff A B} cl addr m
+postulate
 
   -- | Valid address is in heap region
   -- ValidAt structures represent heap-allocated data, so the address must be in heap.
@@ -251,73 +236,268 @@ postulate
     ValidAt v addr m →
     InHeap addr
 
-  -- | Extract validity of left injection's child value
-  -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
-  -- then a is validly represented at val-addr.
-  -- ELIMINABLE: Provable from ValidAt structure (sum validity implies child validity).
-  valid-inl-child :
-    ∀ {A B} {a : ⟦ A ⟧} {addr val-addr : Word} {mem : Memory} →
-    ValidAt {A + B} (inj₁ a) addr mem →
-    readMem mem (addr +ℕ slot-size) ≡ just val-addr →
-    ValidAt a val-addr mem
+-- | Extract validity of left injection's child value
+-- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
+-- then a is validly represented at val-addr.
+-- Proven from ValidAt structure (sum validity implies child validity).
+valid-inl-child :
+  ∀ {A B} {a : ⟦ A ⟧} {addr val-addr : Word} {mem : Memory} →
+  ValidAt {A + B} (inj₁ a) addr mem →
+  readMem mem (addr +ℕ slot-size) ≡ just val-addr →
+  ValidAt a val-addr mem
+valid-inl-child (valid-inl {addr-a = addr-a} va inlS) mem-eq =
+  let addr-eq = just-injective (trans (sym (val-valid-inl-s inlS)) mem-eq)
+  in subst (λ a → ValidAt _ a _) addr-eq va
 
-  -- | Extract validity of right injection's child value
-  -- If (inj₂ b) is validly represented at addr, and mem[addr+8] = val-addr,
-  -- then b is validly represented at val-addr.
-  -- ELIMINABLE: Provable from ValidAt structure (sum validity implies child validity).
-  valid-inr-child :
-    ∀ {A B} {b : ⟦ B ⟧} {addr val-addr : Word} {mem : Memory} →
-    ValidAt {A + B} (inj₂ b) addr mem →
-    readMem mem (addr +ℕ slot-size) ≡ just val-addr →
-    ValidAt b val-addr mem
+-- | Extract validity of right injection's child value
+-- If (inj₂ b) is validly represented at addr, and mem[addr+8] = val-addr,
+-- then b is validly represented at val-addr.
+-- Proven from ValidAt structure (sum validity implies child validity).
+valid-inr-child :
+  ∀ {A B} {b : ⟦ B ⟧} {addr val-addr : Word} {mem : Memory} →
+  ValidAt {A + B} (inj₂ b) addr mem →
+  readMem mem (addr +ℕ slot-size) ≡ just val-addr →
+  ValidAt b val-addr mem
+valid-inr-child (valid-inr {addr-b = addr-b} vb inrS) mem-eq =
+  let addr-eq = just-injective (trans (sym (val-valid-inr-s inrS)) mem-eq)
+  in subst (λ a → ValidAt _ a _) addr-eq vb
 
-  -- | Left injection tag is 0 in memory
-  -- If (inj₁ a) is validly represented at addr, then mem[addr] = 0.
-  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
-  valid-inl-tag-is-0 :
-    ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
-    ValidAt {A + B} (inj₁ a) addr mem →
-    readMem mem addr ≡ just 0
+------------------------------------------------------------------------
+-- AtS preservation under memory equality
+------------------------------------------------------------------------
 
-  -- | Left injection value pointer exists in memory
-  -- If (inj₁ a) is validly represented at addr, then mem[addr+8] contains a valid pointer.
-  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
-  valid-inl-val-ptr :
-    ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
-    ValidAt {A + B} (inj₁ a) addr mem →
-    ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt a val-addr mem)
+-- | Helper: PairAtS preserved under memory equality
+PairAtS-preserved-under-mem-eq :
+  ∀ {addr-a addr-b addr : Word} {m1 m2 : Memory} →
+  PairAtS addr-a addr-b addr m1 →
+  (∀ a → readMem m2 a ≡ readMem m1 a) →
+  PairAtS addr-a addr-b addr m2
+PairAtS-preserved-under-mem-eq {addr-a} {addr-b} {addr} pairS mem-eq =
+  pair-at-s (trans (mem-eq addr) (fst-valid-s pairS))
+            (trans (mem-eq (addr +ℕ slot-size)) (snd-valid-s pairS))
 
-  -- | Right injection tag is 1 in memory
-  -- If (inj₂ b) is validly represented at addr, then mem[addr] = 1.
-  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
-  valid-inr-tag-is-1 :
-    ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
-    ValidAt {A + B} (inj₂ b) addr mem →
-    readMem mem addr ≡ just 1
+-- | Helper: InlAtS preserved under memory equality
+InlAtS-preserved-under-mem-eq :
+  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
+  InlAtS addr-val addr-sum m1 →
+  (∀ a → readMem m2 a ≡ readMem m1 a) →
+  InlAtS addr-val addr-sum m2
+InlAtS-preserved-under-mem-eq {addr-val} {addr-sum} inlS mem-eq =
+  inl-at-s (trans (mem-eq addr-sum) (tag-valid-inl-s inlS))
+           (trans (mem-eq (addr-sum +ℕ slot-size)) (val-valid-inl-s inlS))
 
-  -- | Right injection value pointer exists in memory
-  -- If (inj₂ b) is validly represented at addr, then mem[addr+8] contains a valid pointer.
-  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
-  valid-inr-val-ptr :
-    ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
-    ValidAt {A + B} (inj₂ b) addr mem →
-    ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr mem)
+-- | Helper: InrAtS preserved under memory equality
+InrAtS-preserved-under-mem-eq :
+  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
+  InrAtS addr-val addr-sum m1 →
+  (∀ a → readMem m2 a ≡ readMem m1 a) →
+  InrAtS addr-val addr-sum m2
+InrAtS-preserved-under-mem-eq {addr-val} {addr-sum} inrS mem-eq =
+  inr-at-s (trans (mem-eq addr-sum) (tag-valid-inr-s inrS))
+           (trans (mem-eq (addr-sum +ℕ slot-size)) (val-valid-inr-s inrS))
 
-  -- | Extract fst component validity from pair validity
-  -- If (a, b) is validly represented at addr, extracts component addresses and validities.
-  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
-  valid-pair-decompose :
-    ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
-    ValidAt {A * B} (a , b) addr mem →
-    ∃[ addr-a ] ∃[ addr-b ]
-      (ValidAt a addr-a mem × ValidAt b addr-b mem × PairAtS addr-a addr-b addr mem)
+-- | Helper: ClosureAtS preserved under memory equality
+ClosureAtS-preserved-under-mem-eq :
+  ∀ {env-addr code-ptr addr-closure : Word} {m1 m2 : Memory} →
+  ClosureAtS env-addr code-ptr addr-closure m1 →
+  (∀ a → readMem m2 a ≡ readMem m1 a) →
+  ClosureAtS env-addr code-ptr addr-closure m2
+ClosureAtS-preserved-under-mem-eq {env-addr} {code-ptr} {addr-closure} closS mem-eq =
+  closure-at-s (trans (mem-eq addr-closure) (env-valid-s closS))
+               (trans (mem-eq (addr-closure +ℕ slot-size)) (code-valid-s closS))
 
-  -- | Extract closure memory layout from closure validity
-  -- ELIMINABLE: Direct consequence of ValidAt structure definition.
+------------------------------------------------------------------------
+-- ValidAt preservation under memory equality
+------------------------------------------------------------------------
+
+-- | Propagate validity through address/memory substitution
+-- If validity holds at addr1/mem1, and addr2=addr1 and mem2 agrees with mem1,
+-- then validity holds at addr2/mem2.
+-- Proven by induction on ValidAt structure.
+valid-subst-addr-mem :
+  ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
+  ValidAt v addr1 mem1 →
+  addr2 ≡ addr1 →
+  (∀ a → readMem mem2 a ≡ readMem mem1 a) →
+  ValidAt v addr2 mem2
+valid-subst-addr-mem valid-unit refl _ = valid-unit
+valid-subst-addr-mem (valid-pair va vb pairS) refl mem-eq =
+  valid-pair (valid-subst-addr-mem va refl mem-eq)
+             (valid-subst-addr-mem vb refl mem-eq)
+             (PairAtS-preserved-under-mem-eq pairS mem-eq)
+valid-subst-addr-mem (valid-inl va inlS) refl mem-eq =
+  valid-inl (valid-subst-addr-mem va refl mem-eq)
+            (InlAtS-preserved-under-mem-eq inlS mem-eq)
+valid-subst-addr-mem (valid-inr vb inrS) refl mem-eq =
+  valid-inr (valid-subst-addr-mem vb refl mem-eq)
+            (InrAtS-preserved-under-mem-eq inrS mem-eq)
+valid-subst-addr-mem (valid-closure closS) refl mem-eq =
+  valid-closure (ClosureAtS-preserved-under-mem-eq closS mem-eq)
+valid-subst-addr-mem (valid-closure-env sem-eq venv closS) refl mem-eq =
+  valid-closure-env sem-eq
+    (valid-subst-addr-mem venv refl mem-eq)
+    (ClosureAtS-preserved-under-mem-eq closS mem-eq)
+valid-subst-addr-mem (valid-eff closS) refl mem-eq =
+  valid-eff (ClosureAtS-preserved-under-mem-eq closS mem-eq)
+valid-subst-addr-mem (valid-eff-env sem-eq venv closS) refl mem-eq =
+  valid-eff-env sem-eq
+    (valid-subst-addr-mem venv refl mem-eq)
+    (ClosureAtS-preserved-under-mem-eq closS mem-eq)
+valid-subst-addr-mem (valid-fix vx) refl mem-eq =
+  valid-fix (valid-subst-addr-mem vx refl mem-eq)
+
+------------------------------------------------------------------------
+-- ValidAt preservation under heap-only memory preservation
+------------------------------------------------------------------------
+
+-- The key insight: ValidAt only references heap addresses (established by valid-in-heap),
+-- so heap preservation is sufficient for validity propagation.
+
+-- Note: These helpers require InHeap proofs which come from valid-in-heap (postulate).
+-- We define them here but they rely on valid-in-heap being called appropriately.
+
+-- | Helper: PairAtS preserved under heap-only memory equality
+PairAtS-preserved-under-heap-eq :
+  ∀ {addr-a addr-b addr : Word} {m1 m2 : Memory} →
+  PairAtS addr-a addr-b addr m1 →
+  InHeap addr →  -- addr is in heap
+  (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
+  PairAtS addr-a addr-b addr m2
+PairAtS-preserved-under-heap-eq {addr-a} {addr-b} {addr} pairS addr-in-heap heap-eq =
+  let addr+8-in-heap = heap-offset addr slot-size addr-in-heap
+  in pair-at-s (trans (heap-eq addr addr-in-heap) (fst-valid-s pairS))
+               (trans (heap-eq (addr +ℕ slot-size) addr+8-in-heap) (snd-valid-s pairS))
+
+-- | Helper: InlAtS preserved under heap-only memory equality
+InlAtS-preserved-under-heap-eq :
+  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
+  InlAtS addr-val addr-sum m1 →
+  InHeap addr-sum →
+  (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
+  InlAtS addr-val addr-sum m2
+InlAtS-preserved-under-heap-eq {addr-val} {addr-sum} inlS addr-in-heap heap-eq =
+  let addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+  in inl-at-s (trans (heap-eq addr-sum addr-in-heap) (tag-valid-inl-s inlS))
+              (trans (heap-eq (addr-sum +ℕ slot-size) addr+8-in-heap) (val-valid-inl-s inlS))
+
+-- | Helper: InrAtS preserved under heap-only memory equality
+InrAtS-preserved-under-heap-eq :
+  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
+  InrAtS addr-val addr-sum m1 →
+  InHeap addr-sum →
+  (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
+  InrAtS addr-val addr-sum m2
+InrAtS-preserved-under-heap-eq {addr-val} {addr-sum} inrS addr-in-heap heap-eq =
+  let addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+  in inr-at-s (trans (heap-eq addr-sum addr-in-heap) (tag-valid-inr-s inrS))
+              (trans (heap-eq (addr-sum +ℕ slot-size) addr+8-in-heap) (val-valid-inr-s inrS))
+
+-- | Helper: ClosureAtS preserved under heap-only memory equality
+ClosureAtS-preserved-under-heap-eq :
+  ∀ {env-addr code-ptr addr-closure : Word} {m1 m2 : Memory} →
+  ClosureAtS env-addr code-ptr addr-closure m1 →
+  InHeap addr-closure →
+  (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
+  ClosureAtS env-addr code-ptr addr-closure m2
+ClosureAtS-preserved-under-heap-eq {env-addr} {code-ptr} {addr-closure} closS addr-in-heap heap-eq =
+  let addr+8-in-heap = heap-offset addr-closure slot-size addr-in-heap
+  in closure-at-s (trans (heap-eq addr-closure addr-in-heap) (env-valid-s closS))
+                  (trans (heap-eq (addr-closure +ℕ slot-size) addr+8-in-heap) (code-valid-s closS))
+
+-- | Propagate validity when only heap memory is preserved
+-- ValidAt structures only depend on heap memory (not stack), so heap
+-- preservation is sufficient for validity propagation.
+-- Proven by induction on ValidAt structure using valid-in-heap.
+valid-subst-heap-preserved :
+  ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
+  ValidAt v addr1 mem1 →
+  addr2 ≡ addr1 →
+  (∀ a → InHeap a → readMem mem2 a ≡ readMem mem1 a) →
+  ValidAt v addr2 mem2
+valid-subst-heap-preserved valid-unit refl _ = valid-unit
+valid-subst-heap-preserved (valid-pair {addr = addr} va vb pairS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-pair va vb pairS)
+  in valid-pair (valid-subst-heap-preserved va refl heap-eq)
+                (valid-subst-heap-preserved vb refl heap-eq)
+                (PairAtS-preserved-under-heap-eq pairS heap-proof heap-eq)
+valid-subst-heap-preserved {A + B} (valid-inl {a = a} {addr-a = addr-a} {addr = addr} va inlS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-inl {A} {B} {a} va inlS)
+  in valid-inl (valid-subst-heap-preserved va refl heap-eq)
+               (InlAtS-preserved-under-heap-eq inlS heap-proof heap-eq)
+valid-subst-heap-preserved {A + B} (valid-inr {b = b} {addr-b = addr-b} {addr = addr} vb inrS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-inr {A} {B} {b} vb inrS)
+  in valid-inr (valid-subst-heap-preserved vb refl heap-eq)
+               (InrAtS-preserved-under-heap-eq inrS heap-proof heap-eq)
+valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure {code-ptr = cp} {addr = addr} closS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-closure {cl = cl} {code-ptr = cp} closS)
+  in valid-closure (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
+valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env {E = E} {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = addr} sem-eq venv closS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} sem-eq venv closS)
+  in valid-closure-env sem-eq
+       (valid-subst-heap-preserved venv refl heap-eq)
+       (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
+valid-subst-heap-preserved {Eff A B} {cl} (valid-eff {code-ptr = cp} {addr = addr} closS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-eff {cl = cl} {code-ptr = cp} closS)
+  in valid-eff (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
+valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env {E = E} {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = addr} sem-eq venv closS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} sem-eq venv closS)
+  in valid-eff-env sem-eq
+       (valid-subst-heap-preserved venv refl heap-eq)
+       (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
+valid-subst-heap-preserved (valid-fix vx) refl heap-eq =
+  valid-fix (valid-subst-heap-preserved vx refl heap-eq)
+
+------------------------------------------------------------------------
+-- Proven lemmas from ValidAt structure (moved out of postulate block)
+------------------------------------------------------------------------
+
+-- | Left injection tag is 0 in memory
+-- Pattern match on ValidAt: only valid-inl can construct ValidAt {A + B} (inj₁ a)
+valid-inl-tag-is-0 :
+  ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
+  ValidAt {A + B} (inj₁ a) addr mem →
+  readMem mem addr ≡ just 0
+valid-inl-tag-is-0 (valid-inl _ inlS) = tag-valid-inl-s inlS
+
+-- | Left injection value pointer exists in memory
+valid-inl-val-ptr :
+  ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
+  ValidAt {A + B} (inj₁ a) addr mem →
+  ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt a val-addr mem)
+valid-inl-val-ptr (valid-inl {addr-a = addr-a} va inlS) = addr-a , val-valid-inl-s inlS , va
+
+-- | Right injection tag is 1 in memory
+valid-inr-tag-is-1 :
+  ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
+  ValidAt {A + B} (inj₂ b) addr mem →
+  readMem mem addr ≡ just 1
+valid-inr-tag-is-1 (valid-inr _ inrS) = tag-valid-inr-s inrS
+
+-- | Right injection value pointer exists in memory
+valid-inr-val-ptr :
+  ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
+  ValidAt {A + B} (inj₂ b) addr mem →
+  ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr mem)
+valid-inr-val-ptr (valid-inr {addr-b = addr-b} vb inrS) = addr-b , val-valid-inr-s inrS , vb
+
+-- | Extract fst component validity from pair validity
+valid-pair-decompose :
+  ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
+  ValidAt {A * B} (a , b) addr mem →
+  ∃[ addr-a ] ∃[ addr-b ]
+    (ValidAt a addr-a mem × ValidAt b addr-b mem × PairAtS addr-a addr-b addr mem)
+valid-pair-decompose (valid-pair {addr-a = addr-a} {addr-b = addr-b} va vb pairS) =
+  addr-a , addr-b , va , vb , pairS
+
+-- | Extract closure memory layout from closure validity
+-- Returns existential code-ptr since it's not part of the semantic Closure
+-- POSTULATE: The valid-closure-env case requires knowing env-addr = Closure.env-addr cl,
+-- which requires env-addr = encode x at function entry. This is an encode boundary issue.
+postulate
   valid-closure-decompose :
     ∀ {A B} {cl : Closure A B} {addr : Word} {mem : Memory} →
     ValidAt {A ⇒ B} cl addr mem →
-    ClosureAtS (Closure.env-addr cl) (Closure.code-ptr cl) addr mem
+    ∃[ code-ptr ] ClosureAtS (Closure.env-addr cl) code-ptr addr mem
 
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
@@ -480,28 +660,26 @@ valid-at-preserved-under-stack-write {A = A + B} (valid-inr {A} {B} {addr-b = ad
   valid-inr
     (valid-at-preserved-under-stack-write vb w-in-stack)
     (InrAtS-preserved-under-stack-write {addr-b} {addr} inrS (valid-in-heap (valid-inr {A} {B} vb inrS)) w-in-stack)
-valid-at-preserved-under-stack-write (valid-closure {cl = cl} {addr = addr} closS) w-in-stack =
+valid-at-preserved-under-stack-write (valid-closure {cl = cl} {code-ptr = code-ptr} {addr = addr} closS) w-in-stack =
   let env-addr = Closure.env-addr cl
-      code-ptr = Closure.code-ptr cl
-      heap-proof = valid-in-heap (valid-closure {cl = cl} closS)
+      heap-proof = valid-in-heap (valid-closure {cl = cl} {code-ptr = code-ptr} closS)
   in valid-closure
        (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr} closS heap-proof w-in-stack)
-valid-at-preserved-under-stack-write (valid-closure-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} eq venv closS) w-in-stack =
-  valid-closure-env eq
+valid-at-preserved-under-stack-write (valid-closure-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} sem-eq venv closS) w-in-stack =
+  valid-closure-env sem-eq
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {closure-addr}
-      closS (valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} eq venv closS)) w-in-stack)
-valid-at-preserved-under-stack-write (valid-eff {cl = cl} {addr = addr} closS) w-in-stack =
+      closS (valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} sem-eq venv closS)) w-in-stack)
+valid-at-preserved-under-stack-write (valid-eff {cl = cl} {code-ptr = code-ptr} {addr = addr} closS) w-in-stack =
   let env-addr = Closure.env-addr cl
-      code-ptr = Closure.code-ptr cl
-      heap-proof = valid-in-heap (valid-eff {cl = cl} closS)
+      heap-proof = valid-in-heap (valid-eff {cl = cl} {code-ptr = code-ptr} closS)
   in valid-eff
        (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr} closS heap-proof w-in-stack)
-valid-at-preserved-under-stack-write (valid-eff-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} eq venv closS) w-in-stack =
-  valid-eff-env eq
+valid-at-preserved-under-stack-write (valid-eff-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} sem-eq venv closS) w-in-stack =
+  valid-eff-env sem-eq
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {closure-addr}
-      closS (valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} eq venv closS)) w-in-stack)
+      closS (valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} sem-eq venv closS)) w-in-stack)
 valid-at-preserved-under-stack-write (valid-fix vx) w-in-stack =
   valid-fix (valid-at-preserved-under-stack-write vx w-in-stack)
 

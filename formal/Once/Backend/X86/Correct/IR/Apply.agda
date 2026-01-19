@@ -951,7 +951,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (arg : ⟦ A ⟧) (arg-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; semantics = semantics }
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
@@ -995,7 +995,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- Construct the closure from its components (env-addr = encode env)
     env-addr = encode env
     cl : Closure A B
-    cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
+    cl = record { env-addr = env-addr ; semantics = semantics }
 
     -- Step 1: Trace 6 setup instructions (push + 5 movs)
     -- Derive region proofs from input-valid for heap-stack disjointness
@@ -1403,7 +1403,7 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (arg : ⟦ A ⟧) (arg-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; semantics = semantics }
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
@@ -1478,7 +1478,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (arg : ⟦ A ⟧) (arg-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      x = (record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics } , arg)
+      x = (record { env-addr = encode env ; semantics = semantics } , arg)
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
@@ -1535,7 +1535,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     offset = length prefix
     env-addr = encode env
     x : ⟦ (A ⇒ B) * A ⟧
-    x = (record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics } , arg)
+    x = (record { env-addr = env-addr ; semantics = semantics } , arg)
 
     -- Use proven run-apply-with-wf
     wf-result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s
@@ -1641,7 +1641,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; semantics = semantics }
       x = (cl , arg)
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
@@ -1663,7 +1663,7 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
     env-addr = encode env
-    cl = record { env-addr = env-addr ; code-ptr = code-ptr ; semantics = semantics }
+    cl = record { env-addr = env-addr ; semantics = semantics }
     x : ⟦ (A ⇒ B) * A ⟧
     x = (cl , arg)
 

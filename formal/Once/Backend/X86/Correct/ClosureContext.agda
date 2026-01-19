@@ -25,7 +25,7 @@ module Once.Backend.X86.Correct.ClosureContext where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics hiding (code-ptr; env-addr; semantics)
+open import Once.Semantics hiding (env-addr; semantics)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
@@ -187,7 +187,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
                          (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; semantics = semantics }
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
@@ -281,7 +281,7 @@ test-apply-with-wf-eliminates-postulate :
     (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; code-ptr = code-ptr ; semantics = semantics }
+      cl = record { env-addr = encode env ; semantics = semantics }
   in
   -- Preconditions that would be established by curry + pair
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
